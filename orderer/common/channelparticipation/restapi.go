@@ -8,19 +8,24 @@ package channelparticipation
 
 import (
 	"encoding/json"
-	"github.com/hyperledger/fabric/orderer/common/types"
 	"net/http"
 	"path"
 	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/pkg/errors"
 )
 
-const URLBaseV1 = "/participation/v1/"
-const URLBaseV1Channels = URLBaseV1 + "channels"
+const (
+	URLBaseV1           = "/participation/v1/"
+	URLBaseV1Channels   = URLBaseV1 + "channels"
+	channelIDKey        = "channelID"
+	urlWithChannelIDKey = URLBaseV1Channels + "/{" + channelIDKey + "}"
+)
 
 //go:generate counterfeiter -o mocks/channel_management.go -fake-name ChannelManagement . ChannelManagement
 
@@ -41,15 +46,29 @@ type HTTPHandler struct {
 	logger    *flogging.FabricLogger
 	config    localconfig.ChannelParticipation
 	registrar ChannelManagement
+	router    *mux.Router
 	// TODO skeleton
 }
 
 func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelManagement) *HTTPHandler {
-	return &HTTPHandler{
+	handler := &HTTPHandler{
 		logger:    flogging.MustGetLogger("orderer.commmon.channelparticipation"),
 		config:    config,
 		registrar: registrar,
+		router:    mux.NewRouter(),
 	}
+
+	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveListOne).Methods("GET")
+	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveJoin).Methods("POST")
+	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveRemove).Methods("DELETE")
+	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveNotAllowed)
+
+	handler.router.HandleFunc(URLBaseV1Channels, handler.serveListAll).Methods("GET")
+	handler.router.HandleFunc(URLBaseV1Channels, handler.serveNotAllowed)
+
+	handler.router.Handle(URLBaseV1, nil) //TODO redirect to URLBaseV1Channels
+
+	return handler
 }
 
 func (h *HTTPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
@@ -59,49 +78,87 @@ func (h *HTTPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	switch req.Method {
-	case http.MethodGet:
-		_, err := negotiateContentType(req) // Only application/json for now
-		if err != nil {
-			h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
-			return
-		}
+	h.router.ServeHTTP(resp, req)
+}
 
-		channelID, all, err := detectResource(req.URL.Path)
-		if err != nil {
-			h.sendResponseJsonError(resp, http.StatusBadRequest, err)
-		}
+// List all channels
+func (h *HTTPHandler) serveListAll(resp http.ResponseWriter, req *http.Request) {
+	_, err := negotiateContentType(req) // Only application/json for now
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
+		return
+	}
+	channelList := h.registrar.ListAllChannels()
+	for i, info := range channelList.Channels {
+		channelList.Channels[i].URL = path.Join(URLBaseV1Channels, info.Name)
+	}
+	h.sendResponseOK(resp, channelList)
+}
 
-		// Asking for a list of all channels
-		if all {
-			channelList := h.registrar.ListAllChannels()
-			for i, info := range channelList.Channels {
-				channelList.Channels[i].URL = path.Join(URLBaseV1Channels, info.Name)
-			}
-			h.sendResponseOK(resp, channelList)
-			return
-		}
+// List a single channel
+func (h *HTTPHandler) serveListOne(resp http.ResponseWriter, req *http.Request) {
+	_, err := negotiateContentType(req) // Only application/json for now
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
+		return
+	}
 
-		// Asking for a single channel
-		if err = configtx.ValidateChannelID(channelID); err != nil {
-			h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "invalid channel ID"))
-			return
-		}
-		infoFull, err := h.registrar.ListChannel(channelID)
-		if err != nil {
-			h.sendResponseJsonError(resp, http.StatusNotFound, err)
-			return
-		}
-		h.sendResponseOK(resp, infoFull)
+	channelID, ok := mux.Vars(req)[channelIDKey]
+	if !ok {
+		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.Wrap(err, "missing channel ID"))
+		return
+	}
 
-	case http.MethodPost, http.MethodDelete:
-		//TODO skeleton
-		err := errors.Errorf("not implemented yet: %s %s", req.Method, req.URL.String())
-		h.sendResponseJsonError(resp, http.StatusNotImplemented, err)
+	if err = configtx.ValidateChannelID(channelID); err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "invalid channel ID"))
+		return
+	}
+	infoFull, err := h.registrar.ListChannel(channelID)
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusNotFound, err)
+		return
+	}
+	h.sendResponseOK(resp, infoFull)
+}
 
-	default:
-		err := errors.Errorf("invalid request method: %s", req.Method)
-		h.sendResponseJsonError(resp, http.StatusBadRequest, err)
+// Join a channel
+func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
+	_, err := negotiateContentType(req) // Only application/json for now
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
+		return
+	}
+
+	//TODO
+	err = errors.Errorf("not implemented yet: %s %s", req.Method, req.URL.String())
+	h.sendResponseJsonError(resp, http.StatusNotImplemented, err)
+}
+
+// Remove a channel
+func (h *HTTPHandler) serveRemove(resp http.ResponseWriter, req *http.Request) {
+	_, err := negotiateContentType(req) // Only application/json for now
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
+		return
+	}
+
+	//TODO
+	err = errors.Errorf("not implemented yet: %s %s", req.Method, req.URL.String())
+	h.sendResponseJsonError(resp, http.StatusNotImplemented, err)
+}
+
+func (h *HTTPHandler) serveNotAllowed(resp http.ResponseWriter, req *http.Request) {
+	err := errors.Errorf("invalid request method: %s", req.Method)
+	encoder := json.NewEncoder(resp)
+	resp.WriteHeader(http.StatusMethodNotAllowed)
+	if _, ok := mux.Vars(req)[channelIDKey]; ok {
+		resp.Header().Set("Allow", "GET, POST, DELETE")
+	} else {
+		resp.Header().Set("Allow", "GET")
+	}
+	resp.Header().Set("Content-Type", "application/json")
+	if err := encoder.Encode(&types.ErrorResponse{Error: err.Error()}); err != nil {
+		h.logger.Errorf("failed to encode error, err: %s", err)
 	}
 }
 
@@ -121,21 +178,6 @@ func negotiateContentType(req *http.Request) (string, error) {
 	}
 
 	return "", errors.New("response Content-Type is application/json only")
-}
-
-func detectResource(path string) (string, bool, error) {
-	nakedPath := strings.TrimSuffix(path, "/")
-
-	if !strings.HasPrefix(path, URLBaseV1Channels) {
-		return "", false, errors.Errorf("invalid path: %s", path)
-	}
-	channel := strings.TrimPrefix(nakedPath, URLBaseV1Channels)
-
-	if len(channel) == 0 {
-		return "", true, nil
-	}
-
-	return channel[1:], false, nil
 }
 
 func (h *HTTPHandler) sendResponseJsonError(resp http.ResponseWriter, code int, err error) {

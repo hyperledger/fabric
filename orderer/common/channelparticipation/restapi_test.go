@@ -9,14 +9,15 @@ package channelparticipation_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hyperledger/fabric/orderer/common/types"
 	"net/http"
 	"net/http/httptest"
+	"path"
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation/mocks"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,14 +47,28 @@ func TestHTTPHandler_ServeHTTP_InvalidMethods(t *testing.T) {
 	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
 	h := channelparticipation.NewHTTPHandler(config, nil)
 	require.NotNilf(t, h, "cannot create handler")
-
 	invalidMethods := []string{http.MethodConnect, http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodPut, http.MethodTrace}
-	for _, method := range invalidMethods {
-		resp := httptest.NewRecorder()
-		req := httptest.NewRequest(method, channelparticipation.URLBaseV1, nil)
-		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusBadRequest, fmt.Sprintf("invalid request method: %s", method), resp)
-	}
+
+	t.Run("on /channels/ch-id", func(t *testing.T) {
+		for _, method := range invalidMethods {
+			resp := httptest.NewRecorder()
+			req := httptest.NewRequest(method, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
+			h.ServeHTTP(resp, req)
+			checkErrorResponse(t, http.StatusMethodNotAllowed, fmt.Sprintf("invalid request method: %s", method), resp)
+			assert.Equal(t, "GET, POST, DELETE", resp.Header().Get("Allow"), "%s", method)
+		}
+	})
+
+	t.Run("on /channels", func(t *testing.T) {
+		invalidMethodsExt := append(invalidMethods, http.MethodDelete, http.MethodPost)
+		for _, method := range invalidMethodsExt {
+			resp := httptest.NewRecorder()
+			req := httptest.NewRequest(method, channelparticipation.URLBaseV1Channels, nil)
+			h.ServeHTTP(resp, req)
+			checkErrorResponse(t, http.StatusMethodNotAllowed, fmt.Sprintf("invalid request method: %s", method), resp)
+			assert.Equal(t, "GET", resp.Header().Get("Allow"), "%s", method)
+		}
+	})
 }
 
 func TestHTTPHandler_ServeHTTP_ListErrors(t *testing.T) {
@@ -65,33 +80,35 @@ func TestHTTPHandler_ServeHTTP_ListErrors(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/oops", nil)
 		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusBadRequest, "invalid path: /oops", resp)
+		assert.Equal(t, http.StatusNotFound, resp.Code)
 	})
 
 	t.Run("missing channels collection", func(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1, nil)
 		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusBadRequest, "invalid path: /participation/v1/", resp)
+		assert.Equal(t, http.StatusNotFound, resp.Code)
 	})
 
 	t.Run("bad resource", func(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1+"oops", nil)
 		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusBadRequest, "invalid path: /participation/v1/oops", resp)
+		assert.Equal(t, http.StatusNotFound, resp.Code)
 	})
 
 	t.Run("bad channel ID", func(t *testing.T) {
 		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/no/slash", nil)
+		h.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusNotFound, resp.Code)
+	})
+
+	t.Run("illegal character in channel ID", func(t *testing.T) {
+		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/Oops", nil)
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "invalid channel ID: 'Oops' contains illegal characters", resp)
-
-		resp = httptest.NewRecorder()
-		req = httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/no/slash", nil)
-		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusBadRequest, "invalid channel ID: 'no/slash' contains illegal characters", resp)
 	})
 
 	t.Run("bad Accept header", func(t *testing.T) {
@@ -200,6 +217,30 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 	})
 }
 
+func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
+	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
+	fakeManager := &mocks.ChannelManagement{}
+	h := channelparticipation.NewHTTPHandler(config, fakeManager)
+	require.NotNilf(t, h, "cannot create handler")
+
+	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
+	h.ServeHTTP(resp, req)
+	checkErrorResponse(t, http.StatusNotImplemented, "not implemented yet: POST /participation/v1/channels/ch-id", resp)
+}
+
+func TestHTTPHandler_ServeHTTP_Remove(t *testing.T) {
+	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
+	fakeManager := &mocks.ChannelManagement{}
+	h := channelparticipation.NewHTTPHandler(config, fakeManager)
+	require.NotNilf(t, h, "cannot create handler")
+
+	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
+	h.ServeHTTP(resp, req)
+	checkErrorResponse(t, http.StatusNotImplemented, "not implemented yet: DELETE /participation/v1/channels/ch-id", resp)
+}
+
 func checkErrorResponse(t *testing.T, expectedCode int, expectedErrMsg string, resp *httptest.ResponseRecorder) {
 	assert.Equal(t, expectedCode, resp.Code)
 
@@ -212,6 +253,6 @@ func checkErrorResponse(t *testing.T, expectedCode int, expectedErrMsg string, r
 	decoder := json.NewDecoder(resp.Body)
 	respErr := &types.ErrorResponse{}
 	err := decoder.Decode(respErr)
-	assert.NoError(t, err)
+	assert.NoError(t, err, "body: %s", string(resp.Body.Bytes()))
 	assert.Equal(t, expectedErrMsg, respErr.Error)
 }
