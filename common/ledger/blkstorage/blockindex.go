@@ -8,14 +8,15 @@ package blkstorage
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
-	"io"
+	"hash"
+	"path"
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
@@ -28,7 +29,10 @@ const (
 	txIDIdxKeyPrefix            = 't'
 	blockNumTranNumIdxKeyPrefix = 'a'
 	indexCheckpointKeyStr       = "indexCheckpointKey"
-	exportFileFormatVersion     = byte(1)
+
+	snapshotFileFormat       = byte(1)
+	snapshotDataFileName     = "txids.data"
+	snapshotMetadataFileName = "txids.metadata"
 )
 
 var indexCheckpointKey = []byte(indexCheckpointKeyStr)
@@ -252,42 +256,67 @@ func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint
 	return txFLP, nil
 }
 
-func (index *blockIndex) exportUniqueTxIDs(writer io.Writer) error {
+func (index *blockIndex) exportUniqueTxIDs(dir string, hasher hash.Hash) (map[string][]byte, error) {
 	if !index.isAttributeIndexed(IndexableAttrTxID) {
-		return ErrAttrNotIndexed
+		return nil, ErrAttrNotIndexed
 	}
-	writer.Write([]byte{exportFileFormatVersion})
+
+	// create the data file
+	dataFile, err := snapshot.CreateFile(path.Join(dir, snapshotDataFileName), snapshotFileFormat, hasher)
+	if err != nil {
+		return nil, err
+	}
+	defer dataFile.Close()
+
 	dbItr := index.db.GetIterator([]byte{txIDIdxKeyPrefix}, []byte{txIDIdxKeyPrefix + 1})
 	defer dbItr.Release()
 	if err := dbItr.Error(); err != nil {
-		return errors.Wrap(err, "internal leveldb error while obtaining db iterator")
+		return nil, errors.Wrap(err, "internal leveldb error while obtaining db iterator")
 	}
 
 	var previousTxID string
-	reusableBuf := make([]byte, binary.MaxVarintLen64)
+	var numTxIDs uint64 = 0
 	for dbItr.Next() {
 		if err := dbItr.Error(); err != nil {
-			return errors.Wrap(err, "internal leveldb error while iterating for txids")
+			return nil, errors.Wrap(err, "internal leveldb error while iterating for txids")
 		}
 		txID, err := retrieveTxID(dbItr.Key())
 		if err != nil {
-			return err
+			return nil, err
 		}
 		// duplicate TxID may be present in the index
 		if previousTxID == txID {
 			continue
 		}
 		previousTxID = txID
-
-		n := binary.PutUvarint(reusableBuf, uint64(len(txID)))
-		if _, err := writer.Write(reusableBuf[:n]); err != nil {
-			return err
+		if err := dataFile.EncodeString(txID); err != nil {
+			return nil, err
 		}
-		if _, err := writer.Write([]byte(txID)); err != nil {
-			return err
-		}
+		numTxIDs++
 	}
-	return nil
+
+	dataHash, err := dataFile.Done()
+	if err != nil {
+		return nil, err
+	}
+
+	// create the metadata file
+	hasher.Reset()
+	metadataFile, err := snapshot.CreateFile(path.Join(dir, snapshotMetadataFileName), snapshotFileFormat, hasher)
+	if err != nil {
+		return nil, err
+	}
+	defer metadataFile.Close()
+
+	if err = metadataFile.EncodeUVarint(numTxIDs); err != nil {
+		return nil, err
+	}
+	metadataHash, err := metadataFile.Done()
+
+	return map[string][]byte{
+		snapshotDataFileName:     dataHash,
+		snapshotMetadataFileName: metadataHash,
+	}, nil
 }
 
 func constructBlockNumKey(blockNum uint64) []byte {
