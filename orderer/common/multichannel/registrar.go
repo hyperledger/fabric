@@ -11,6 +11,7 @@ package multichannel
 
 import (
 	"fmt"
+	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"sync"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -369,4 +370,14 @@ func (r *Registrar) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfi
 // CreateBundle calls channelconfig.NewBundle
 func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelconfig.Resources, error) {
 	return channelconfig.NewBundle(channelID, config, r.bccsp)
+}
+
+func (r *Registrar) ListAllChannels() ([]channelparticipation.ChannelInfoShort, string) {
+	//TODO
+	return make([]channelparticipation.ChannelInfoShort,0), ""
+}
+
+func (r *Registrar) ListChannel(channelID string) (*channelparticipation.ChannelInfoFull, error) {
+	//TODO
+	return nil, errors.New("Not implemented yet")
 }
