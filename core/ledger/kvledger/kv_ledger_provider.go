@@ -509,7 +509,7 @@ func (s *idStore) checkUpgradeEligibility() (bool, error) {
 		return false, err
 	}
 	if emptydb {
-		logger.Warnf("Ledger database %s is empty, nothing to upgrade.", s.dbPath)
+		logger.Warnf("Ledger database %s is empty, nothing to upgrade", s.dbPath)
 		return false, nil
 	}
 	format, err := s.db.Get(formatKey)
@@ -517,7 +517,7 @@ func (s *idStore) checkUpgradeEligibility() (bool, error) {
 		return false, err
 	}
 	if bytes.Equal(format, []byte(dataformat.CurrentFormat)) {
-		logger.Info("Ledger data format is current, nothing to upgrade.")
+		logger.Debugf("Ledger database %s has current data format, nothing to upgrade", s.dbPath)
 		return false, nil
 	}
 	if !bytes.Equal(format, []byte(dataformat.PreviousFormat)) {
