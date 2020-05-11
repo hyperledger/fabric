@@ -110,10 +110,14 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 	require.NotNilf(t, h, "cannot create handler")
 
 	t.Run("two channels", func(t *testing.T) {
-		list := []types.ChannelInfoShort{
-			{Name: "app-channel", URL: ""},
-			{Name: "system-channel", URL: ""}}
-		fakeManager.ListAllChannelsReturns(list, "system-channel")
+		list := &types.ChannelList{
+			Channels: []types.ChannelInfoShort{
+				{Name: "app-channel", URL: ""},
+				{Name: "system-channel", URL: ""}},
+			SystemChannel: "system-channel",
+			Size:          2,
+		}
+		fakeManager.ListAllChannelsReturns(list)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
 		h.ServeHTTP(resp, req)
@@ -136,8 +140,12 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 	})
 
 	t.Run("no channels", func(t *testing.T) {
-		list := []types.ChannelInfoShort{}
-		fakeManager.ListAllChannelsReturns(list, "")
+		list := &types.ChannelList{
+			Size:          0,
+			SystemChannel: "",
+			Channels:      []types.ChannelInfoShort{},
+		}
+		fakeManager.ListAllChannelsReturns(list)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
 		h.ServeHTTP(resp, req)

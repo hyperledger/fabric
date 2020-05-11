@@ -372,9 +372,13 @@ func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelco
 	return channelconfig.NewBundle(channelID, config, r.bccsp)
 }
 
-func (r *Registrar) ListAllChannels() ([]types.ChannelInfoShort, string) {
+func (r *Registrar) ListAllChannels() *types.ChannelList {
 	//TODO
-	return make([]types.ChannelInfoShort, 0), ""
+	return &types.ChannelList{
+		Size:          0,
+		SystemChannel: "",
+		Channels:      make([]types.ChannelInfoShort, 0),
+	}
 }
 
 func (r *Registrar) ListChannel(channelID string) (*types.ChannelInfo, error) {

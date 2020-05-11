@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/hyperledger/fabric/common/configtx"
@@ -26,7 +27,7 @@ const URLBaseV1Channels = URLBaseV1 + "channels"
 type ChannelManagement interface {
 	// ListAll returns the names of all channels (including the system channel), and the name of the system channel
 	// (empty if does not exist). The URL field is empty, and is to be completed by the caller.
-	ListAllChannels() ([]types.ChannelInfoShort, string)
+	ListAllChannels() *types.ChannelList
 
 	// ListChannel provides extended status information about a channel.
 	// The URL field is empty, and is to be completed by the caller.
@@ -73,13 +74,11 @@ func (h *HTTPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 		// Asking for a list of all channels
 		if all {
-			var channels *types.ChannelList = &types.ChannelList{}
-			channels.Channels, channels.SystemChannel = h.registrar.ListAllChannels()
-			channels.Size = len(channels.Channels)
-			for i, info := range channels.Channels {
-				channels.Channels[i].URL = URLBaseV1Channels + `/` + info.Name
+			channelList := h.registrar.ListAllChannels()
+			for i, info := range channelList.Channels {
+				channelList.Channels[i].URL = path.Join(URLBaseV1Channels, info.Name)
 			}
-			h.sendResponseOK(resp, channels)
+			h.sendResponseOK(resp, channelList)
 			return
 		}
 
