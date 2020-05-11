@@ -163,7 +163,7 @@ github.com/hyperledger/fabric-config/configtx/orderer
 # github.com/hyperledger/fabric-lib-go v1.0.0
 ## explicit
 github.com/hyperledger/fabric-lib-go/healthz
-# github.com/hyperledger/fabric-protos-go v0.0.0-20200424173316-dd554ba3746e
+# github.com/hyperledger/fabric-protos-go v0.0.0-20200506201313-25f6564b9ac4
 ## explicit
 github.com/hyperledger/fabric-protos-go/common
 github.com/hyperledger/fabric-protos-go/discovery

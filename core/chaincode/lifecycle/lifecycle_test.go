@@ -1098,6 +1098,295 @@ var _ = Describe("ExternalFunctions", func() {
 		})
 	})
 
+	Describe("QueryApprovedChaincodeDefinition", func() {
+		var (
+			fakePublicState *mock.ReadWritableState
+			fakeOrgStates   []*mock.ReadWritableState
+
+			testDefinition            *lifecycle.ChaincodeDefinition
+			testChaincodeLocalPackage *lifecycle.ChaincodeLocalPackage
+
+			publicKVS, org0KVS, org1KVS MapLedgerShim
+		)
+
+		BeforeEach(func() {
+			testDefinition = &lifecycle.ChaincodeDefinition{
+				Sequence: 4,
+				EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					EndorsementPlugin: "endorsement-plugin",
+				},
+				ValidationInfo: &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				},
+			}
+
+			testChaincodeLocalPackage = &lifecycle.ChaincodeLocalPackage{
+				PackageID: "hash",
+			}
+
+			publicKVS = MapLedgerShim(map[string][]byte{})
+			fakePublicState = &mock.ReadWritableState{}
+			fakePublicState.GetStateStub = publicKVS.GetState
+			fakePublicState.PutStateStub = publicKVS.PutState
+
+			resources.Serializer.Serialize("namespaces", "cc-name", testDefinition, publicKVS)
+
+			org0KVS = MapLedgerShim(map[string][]byte{})
+			org1KVS = MapLedgerShim(map[string][]byte{})
+			fakeOrg0State := &mock.ReadWritableState{}
+			fakeOrg0State.CollectionNameReturns("_implicit_org_org0")
+			fakeOrg1State := &mock.ReadWritableState{}
+			fakeOrg1State.CollectionNameReturns("_implicit_org_org1")
+			fakeOrgStates = []*mock.ReadWritableState{
+				fakeOrg0State,
+				fakeOrg1State,
+			}
+			for i, kvs := range []MapLedgerShim{org0KVS, org1KVS} {
+				kvs := kvs
+				fakeOrgStates[i].GetStateStub = kvs.GetState
+				fakeOrgStates[i].GetStateHashStub = kvs.GetStateHash
+				fakeOrgStates[i].PutStateStub = kvs.PutState
+			}
+
+			resources.Serializer.Serialize("namespaces", "cc-name#3", testDefinition.Parameters(), fakeOrgStates[0])
+			resources.Serializer.Serialize("chaincode-sources", "cc-name#3", testChaincodeLocalPackage, fakeOrgStates[0])
+			resources.Serializer.Serialize("namespaces", "cc-name#3", testDefinition.Parameters(), fakeOrgStates[1])
+			resources.Serializer.Serialize("chaincode-sources", "cc-name#3", testChaincodeLocalPackage, fakeOrgStates[1])
+
+			resources.Serializer.Serialize("namespaces", "cc-name#4", testDefinition.Parameters(), fakeOrgStates[0])
+			resources.Serializer.Serialize("chaincode-sources", "cc-name#4", testChaincodeLocalPackage, fakeOrgStates[0])
+			resources.Serializer.Serialize("namespaces", "cc-name#4", testDefinition.Parameters(), fakeOrgStates[1])
+			resources.Serializer.Serialize("chaincode-sources", "cc-name#4", testChaincodeLocalPackage, fakeOrgStates[1])
+		})
+
+		It("returns the approved chaincode", func() {
+			cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 3, fakePublicState, fakeOrgStates[0])
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cc.Sequence).To(Equal(int64(3)))
+			Expect(proto.Equal(cc.EndorsementInfo, &lb.ChaincodeEndorsementInfo{
+				Version:           "version",
+				EndorsementPlugin: "endorsement-plugin",
+			})).To(BeTrue())
+			Expect(proto.Equal(cc.ValidationInfo, &lb.ChaincodeValidationInfo{
+				ValidationPlugin:    "validation-plugin",
+				ValidationParameter: []byte("validation-parameter"),
+			})).To(BeTrue())
+			Expect(proto.Equal(cc.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
+			Expect(proto.Equal(cc.Source, &lb.ChaincodeSource{
+				Type: &lb.ChaincodeSource_LocalPackage{
+					LocalPackage: &lb.ChaincodeSource_Local{
+						PackageId: "hash",
+					},
+				},
+			})).To(BeTrue())
+		})
+
+		Context("when the next sequence is not defined and the sequence argument is not provided", func() {
+
+			It("returns the approved chaincode for the current sequence", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 0, fakePublicState, fakeOrgStates[0])
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cc.Sequence).To(Equal(int64(4)))
+				Expect(proto.Equal(cc.EndorsementInfo, &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					EndorsementPlugin: "endorsement-plugin",
+				})).To(BeTrue())
+				Expect(proto.Equal(cc.ValidationInfo, &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				})).To(BeTrue())
+				Expect(proto.Equal(cc.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
+				Expect(proto.Equal(cc.Source, &lb.ChaincodeSource{
+					Type: &lb.ChaincodeSource_LocalPackage{
+						LocalPackage: &lb.ChaincodeSource_Local{
+							PackageId: "hash",
+						},
+					},
+				})).To(BeTrue())
+			})
+		})
+
+		Context("when the next sequence is defined and the sequence argument is not provided", func() {
+			BeforeEach(func() {
+				testChaincodeLocalPackage.PackageID = ""
+				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
+				resources.Serializer.Serialize("chaincode-sources", "cc-name#5", testChaincodeLocalPackage, fakeOrgStates[0])
+			})
+
+			It("returns the approved chaincode for the next sequence", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 0, fakePublicState, fakeOrgStates[0])
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cc.Sequence).To(Equal(int64(5)))
+				Expect(proto.Equal(cc.EndorsementInfo, &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					EndorsementPlugin: "endorsement-plugin",
+				})).To(BeTrue())
+				Expect(proto.Equal(cc.ValidationInfo, &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				})).To(BeTrue())
+				Expect(proto.Equal(cc.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
+				Expect(proto.Equal(cc.Source, &lb.ChaincodeSource{
+					Type: &lb.ChaincodeSource_Unavailable_{
+						Unavailable: &lb.ChaincodeSource_Unavailable{},
+					},
+				})).To(BeTrue())
+			})
+
+			Context("and deserializing namespace metadata for next sequence fails", func() {
+				BeforeEach(func() {
+					org0KVS["namespaces/metadata/cc-name#5"] = []byte("garbage")
+				})
+
+				It("wraps and returns the error", func() {
+					cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 0, fakePublicState, fakeOrgStates[0])
+					Expect(err).To(MatchError("could not deserialize namespace metadata for next sequence 5: could not unmarshal metadata for namespace namespaces/cc-name#5: proto: can't skip unknown wire type 7"))
+					Expect(cc).To(BeNil())
+				})
+			})
+		})
+
+		Context("when the next sequence is defined and the sequence argument is provided", func() {
+			BeforeEach(func() {
+				testChaincodeLocalPackage.PackageID = "hash"
+				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
+				resources.Serializer.Serialize("chaincode-sources", "cc-name#5", testChaincodeLocalPackage, fakeOrgStates[0])
+			})
+
+			It("returns the approved chaincode for the next sequence", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 5, fakePublicState, fakeOrgStates[0])
+				Expect(err).NotTo(HaveOccurred())
+				Expect(cc.Sequence).To(Equal(int64(5)))
+				Expect(proto.Equal(cc.EndorsementInfo, &lb.ChaincodeEndorsementInfo{
+					Version:           "version",
+					EndorsementPlugin: "endorsement-plugin",
+				})).To(BeTrue())
+				Expect(proto.Equal(cc.ValidationInfo, &lb.ChaincodeValidationInfo{
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+				})).To(BeTrue())
+				Expect(proto.Equal(cc.Collections, &pb.CollectionConfigPackage{})).To(BeTrue())
+				Expect(proto.Equal(cc.Source, &lb.ChaincodeSource{
+					Type: &lb.ChaincodeSource_LocalPackage{
+						LocalPackage: &lb.ChaincodeSource_Local{
+							PackageId: "hash",
+						},
+					},
+				})).To(BeTrue())
+			})
+		})
+
+		Context("when the requested sequence number is out of range", func() {
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 5, fakePublicState, fakeOrgStates[0])
+				Expect(err).To(MatchError("could not fetch approved chaincode definition (name: 'cc-name', sequence: '5') on channel 'my-channel'"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when the sequence argument is not provided and querying the public state fails", func() {
+			BeforeEach(func() {
+				fakePublicState.GetStateReturns(nil, fmt.Errorf("get-state-error"))
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 0, fakePublicState, fakeOrgStates[0])
+				Expect(err).To(MatchError("could not get current sequence: could not get state for key namespaces/fields/cc-name/Sequence: get-state-error"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when deserializing namespace metadata for requested sequence fails", func() {
+			BeforeEach(func() {
+				org0KVS["namespaces/metadata/cc-name#4"] = []byte("garbage")
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
+				Expect(err).To(MatchError("could not deserialize namespace metadata for cc-name#4: could not unmarshal metadata for namespace namespaces/cc-name#4: proto: can't skip unknown wire type 7"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when deserializing chaincode parameters fails", func() {
+			BeforeEach(func() {
+				org0KVS["namespaces/fields/cc-name#4/EndorsementInfo"] = []byte("garbage")
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
+				Expect(err).To(MatchError("could not deserialize chaincode parameters for cc-name#4: could not unmarshal state for key namespaces/fields/cc-name#4/EndorsementInfo: proto: can't skip unknown wire type 7"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when deserializing chaincode-source metadata fails", func() {
+			BeforeEach(func() {
+				org0KVS["chaincode-sources/metadata/cc-name#4"] = []byte("garbage")
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
+				Expect(err).To(MatchError("could not deserialize chaincode-source metadata for cc-name#4: could not unmarshal metadata for namespace chaincode-sources/cc-name#4: proto: can't skip unknown wire type 7"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when the requested cc parameters are found but the cc source is not found due to some inconsistency", func() {
+
+			BeforeEach(func() {
+				resources.Serializer.Serialize("namespaces", "cc-name#5", testDefinition.Parameters(), fakeOrgStates[0])
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 5, fakePublicState, fakeOrgStates[0])
+				Expect(err).To(MatchError("could not fetch approved chaincode definition (name: 'cc-name', sequence: '5') on channel 'my-channel'"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when deserializing chaincode package fails", func() {
+			BeforeEach(func() {
+				org0KVS["chaincode-sources/fields/cc-name#4/PackageID"] = []byte("garbage")
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
+				Expect(err).To(MatchError("could not deserialize chaincode package for cc-name#4: could not unmarshal state for key chaincode-sources/fields/cc-name#4/PackageID: proto: can't skip unknown wire type 7"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when the metadata is not for chaincode parameters", func() {
+			BeforeEach(func() {
+				type badStruct struct{}
+				resources.Serializer.Serialize("namespaces", "cc-name#4", &badStruct{}, fakeOrgStates[0])
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
+				Expect(err).To(MatchError("not a chaincode parameters type: badStruct"))
+				Expect(cc).To(BeNil())
+			})
+		})
+
+		Context("when the metadata is not for a chaincode local package", func() {
+			BeforeEach(func() {
+				type badStruct struct{}
+				resources.Serializer.Serialize("chaincode-sources", "cc-name#4", &badStruct{}, fakeOrgStates[0])
+			})
+
+			It("wraps and returns the error", func() {
+				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
+				Expect(err).To(MatchError("not a chaincode local package type: badStruct"))
+				Expect(cc).To(BeNil())
+			})
+		})
+	})
+
 	Describe("CommitChaincodeDefinition", func() {
 		var (
 			fakePublicState *mock.ReadWritableState

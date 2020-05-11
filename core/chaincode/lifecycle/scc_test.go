@@ -1308,6 +1308,108 @@ var _ = Describe("SCC", func() {
 			})
 		})
 
+		Describe("QueryApprovedChaincodeDefinition", func() {
+			var (
+				arg          *lb.QueryApprovedChaincodeDefinitionArgs
+				marshaledArg []byte
+			)
+
+			BeforeEach(func() {
+				arg = &lb.QueryApprovedChaincodeDefinitionArgs{
+					Sequence: 7,
+					Name:     "cc_name",
+				}
+
+				var err error
+				marshaledArg, err = proto.Marshal(arg)
+				Expect(err).NotTo(HaveOccurred())
+
+				fakeStub.GetArgsReturns([][]byte{[]byte("QueryApprovedChaincodeDefinition"), marshaledArg})
+				fakeSCCFuncs.QueryApprovedChaincodeDefinitionReturns(
+					&lifecycle.ApprovedChaincodeDefinition{
+						Sequence: 7,
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+							Version:           "version",
+							EndorsementPlugin: "endorsement-plugin",
+							InitRequired:      true,
+						},
+						ValidationInfo: &lb.ChaincodeValidationInfo{
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+						},
+						Collections: &pb.CollectionConfigPackage{},
+						Source: &lb.ChaincodeSource{
+							Type: &lb.ChaincodeSource_LocalPackage{
+								LocalPackage: &lb.ChaincodeSource_Local{
+									PackageId: "hash",
+								},
+							},
+						},
+					},
+					nil,
+				)
+			})
+
+			It("passes the arguments to and returns the results from the backing scc function implementation", func() {
+				res := scc.Invoke(fakeStub)
+				Expect(res.Status).To(Equal(int32(200)))
+				payload := &lb.QueryApprovedChaincodeDefinitionResult{}
+				err := proto.Unmarshal(res.Payload, payload)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(proto.Equal(payload, &lb.QueryApprovedChaincodeDefinitionResult{
+					Sequence:            7,
+					Version:             "version",
+					EndorsementPlugin:   "endorsement-plugin",
+					ValidationPlugin:    "validation-plugin",
+					ValidationParameter: []byte("validation-parameter"),
+					InitRequired:        true,
+					Collections:         &pb.CollectionConfigPackage{},
+					Source: &lb.ChaincodeSource{
+						Type: &lb.ChaincodeSource_LocalPackage{
+							LocalPackage: &lb.ChaincodeSource_Local{
+								PackageId: "hash",
+							},
+						},
+					},
+				})).To(BeTrue())
+
+				Expect(fakeSCCFuncs.QueryApprovedChaincodeDefinitionCallCount()).To(Equal(1))
+				chname, ccname, sequence, pubState, privState := fakeSCCFuncs.QueryApprovedChaincodeDefinitionArgsForCall(0)
+
+				Expect(chname).To(Equal("test-channel"))
+				Expect(ccname).To(Equal("cc_name"))
+				Expect(sequence).To(Equal(int64(7)))
+
+				Expect(pubState).To(Equal(fakeStub))
+				Expect(privState).To(BeAssignableToTypeOf(&lifecycle.ChaincodePrivateLedgerShim{}))
+				Expect(privState.(*lifecycle.ChaincodePrivateLedgerShim).Collection).To(Equal("_implicit_org_fake-mspid"))
+			})
+
+			Context("when the underlying QueryApprovedChaincodeDefinition function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryApprovedChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinition': underlying-error"))
+				})
+			})
+
+			Context("when the underlying QueryApprovedChaincodeDefinition function implementation fails", func() {
+				BeforeEach(func() {
+					fakeSCCFuncs.QueryApprovedChaincodeDefinitionReturns(nil, fmt.Errorf("underlying-error"))
+				})
+
+				It("wraps and returns the error", func() {
+					res := scc.Invoke(fakeStub)
+					Expect(res.Status).To(Equal(int32(500)))
+					Expect(res.Message).To(Equal("failed to invoke backing implementation of 'QueryApprovedChaincodeDefinition': underlying-error"))
+				})
+			})
+		})
+
 		Describe("QueryChaincodeDefinition", func() {
 			var (
 				arg            *lb.QueryChaincodeDefinitionArgs
