@@ -45,7 +45,12 @@ func TestV11(t *testing.T) {
 	dataHelper.verify(h1)
 	dataHelper.verify(h2)
 
-	env.closeAllLedgersAndDrop(rebuildableStatedb + rebuildableBlockIndex + rebuildableConfigHistory + rebuildableHistoryDB)
+	// rebuild and verify again
+	env.ledgerMgr.Close()
+	require.NoError(t, kvledger.RebuildDBs(env.initializer.Config))
+	env.verifyRebuilableDoesNotExist(rebuildable)
+	env.initLedgerMgmt()
+
 	h1, h2 = env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
 	dataHelper.verify(h1)
 	dataHelper.verify(h2)
@@ -77,13 +82,16 @@ func TestV13WithStateCouchdb(t *testing.T) {
 
 	h1, h2 := env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
 	dataHelper := &v1xSampleDataHelper{sampleDataVersion: "v1.3", t: t}
-
 	dataHelper.verify(h1)
 	dataHelper.verify(h2)
 
-	// drop couchDB and other rebuildable dbs to test db rebuild
-	env.closeAllLedgersAndDrop(rebuildableBlockIndex + rebuildableConfigHistory + rebuildableHistoryDB)
-	require.NoError(t, statecouchdb.DropApplicationDBs(couchdbConfig))
+	// rebuild and verify again
+	env.ledgerMgr.Close()
+	require.NoError(t, kvledger.RebuildDBs(env.initializer.Config))
+	require.True(t, statecouchdb.IsEmpty(t, couchdbConfig))
+	env.verifyRebuilableDoesNotExist(rebuildable)
+	env.initLedgerMgmt()
+
 	h1, h2 = env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
 	dataHelper.verify(h1)
 	dataHelper.verify(h2)

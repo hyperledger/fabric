@@ -9,12 +9,15 @@ package kvledger
 import (
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/pkg/errors"
 )
 
 // RebuildDBs drops existing ledger databases.
 // Dropped database will be rebuilt upon server restart
-func RebuildDBs(rootFSPath string) error {
+func RebuildDBs(config *ledger.Config) error {
+	rootFSPath := config.RootFSPath
 	fileLockPath := fileLockPath(rootFSPath)
 	fileLock := leveldbhelper.NewFileLock(fileLockPath)
 	if err := fileLock.Lock(); err != nil {
@@ -23,6 +26,11 @@ func RebuildDBs(rootFSPath string) error {
 	}
 	defer fileLock.Unlock()
 
+	if config.StateDBConfig.StateDatabase == "CouchDB" {
+		if err := statecouchdb.DropApplicationDBs(config.StateDBConfig.CouchDB); err != nil {
+			return err
+		}
+	}
 	if err := dropDBs(rootFSPath); err != nil {
 		return err
 	}

@@ -21,6 +21,6 @@ var nodeRebuildCmd = &cobra.Command{
 	Long:  "Drops the databases for all the channels and rebuilds them upon peer restart. When the command is executed, the peer must be offline.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ledgerConfig()
-		return kvledger.RebuildDBs(config.RootFSPath)
+		return kvledger.RebuildDBs(config)
 	},
 }

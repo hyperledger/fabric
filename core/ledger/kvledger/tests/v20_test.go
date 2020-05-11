@@ -26,7 +26,7 @@ func TestV20SampleLedger(t *testing.T) {
 	ledgerFSRoot := env.initializer.Config.RootFSPath
 	require.NoError(t, testutil.Unzip("testdata/v20/sample_ledgers/ledgersData.zip", ledgerFSRoot, false))
 
-	// The UpgradeDBs call is not really needed. It is added to test that dbs are not deleted if someone calls UpgradeDBs agains a 2.0 ledger.
+	// The UpgradeDBs call is not really needed. It is added to test that dbs are not deleted if someone calls UpgradeDBs against a 2.0 ledger.
 	require.NoError(t, kvledger.UpgradeDBs(env.initializer.Config))
 	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB | rebuildableBlockIndex
 	env.verifyRebuilablesExist(rebuildable)
@@ -38,7 +38,7 @@ func TestV20SampleLedger(t *testing.T) {
 
 	// rebuild and verify again
 	env.closeLedgerMgmt()
-	kvledger.RebuildDBs(env.getLedgerRootPath())
+	kvledger.RebuildDBs(env.initializer.Config)
 	env.initLedgerMgmt()
 	h1 = env.newTestHelperOpenLgr("testchannel", t)
 	dataHelper.verify(h1)
