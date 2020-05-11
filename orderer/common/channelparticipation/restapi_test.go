@@ -110,8 +110,8 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 
 	t.Run("two channels", func(t *testing.T) {
 		list := []channelparticipation.ChannelInfoShort{
-			channelparticipation.ChannelInfoShort{Name: "app-channel", URL: ""},
-			channelparticipation.ChannelInfoShort{Name: "system-channel", URL: ""}}
+			{Name: "app-channel", URL: ""},
+			{Name: "system-channel", URL: ""}}
 		fakeManager.ListAllChannelsReturns(list, "system-channel")
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)

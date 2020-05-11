@@ -374,7 +374,7 @@ func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelco
 
 func (r *Registrar) ListAllChannels() ([]channelparticipation.ChannelInfoShort, string) {
 	//TODO
-	return make([]channelparticipation.ChannelInfoShort,0), ""
+	return make([]channelparticipation.ChannelInfoShort, 0), ""
 }
 
 func (r *Registrar) ListChannel(channelID string) (*channelparticipation.ChannelInfoFull, error) {
