@@ -29,31 +29,23 @@ func UpgradeDBs(config *ledger.Config) error {
 	defer fileLock.Unlock()
 
 	logger.Infof("Ledger data folder from config = [%s]", rootFSPath)
+
+	if config.StateDBConfig.StateDatabase == "CouchDB" {
+		if err := statecouchdb.DropApplicationDBs(config.StateDBConfig.CouchDB); err != nil {
+			return err
+		}
+	}
+	if err := dropDBs(rootFSPath); err != nil {
+		return err
+	}
+	if err := blkstorage.DeleteBlockStoreIndex(BlockStorePath(rootFSPath)); err != nil {
+		return err
+	}
+
 	dbPath := LedgerProviderPath(rootFSPath)
 	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
 	db.Open()
 	defer db.Close()
-
 	idStore := &idStore{db, dbPath}
-	eligible, err := idStore.checkUpgradeEligibility()
-	if err != nil {
-		return err
-	}
-	if !eligible {
-		return nil
-	}
-
-	if config.StateDBConfig.StateDatabase == "CouchDB" {
-		if err = statecouchdb.DropApplicationDBs(config.StateDBConfig.CouchDB); err != nil {
-			return err
-		}
-	}
-	if err = dropDBs(rootFSPath); err != nil {
-		return err
-	}
-	if err = blkstorage.DeleteBlockStoreIndex(BlockStorePath(rootFSPath)); err != nil {
-		return err
-	}
-
 	return idStore.upgradeFormat()
 }
