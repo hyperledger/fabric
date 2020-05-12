@@ -218,15 +218,31 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 }
 
 func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
-	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
-	fakeManager := &mocks.ChannelManagement{}
-	h := channelparticipation.NewHTTPHandler(config, fakeManager)
-	require.NotNilf(t, h, "cannot create handler")
+	t.Run("not implemented yet", func(t *testing.T) {
+		config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
+		fakeManager := &mocks.ChannelManagement{}
+		h := channelparticipation.NewHTTPHandler(config, fakeManager)
+		require.NotNilf(t, h, "cannot create handler")
 
-	resp := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
-	h.ServeHTTP(resp, req)
-	checkErrorResponse(t, http.StatusNotImplemented, "not implemented yet: POST /participation/v1/channels/ch-id", resp)
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
+		req.Header.Set("Content-Type", "application/json")
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusNotImplemented, "not implemented yet: POST /participation/v1/channels/ch-id", resp)
+	})
+
+	t.Run("content type mismatch", func(t *testing.T) {
+		config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
+		fakeManager := &mocks.ChannelManagement{}
+		h := channelparticipation.NewHTTPHandler(config, fakeManager)
+		require.NotNilf(t, h, "cannot create handler")
+
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
+		req.Header.Set("Content-Type", "text/plain")
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusBadRequest, "unsupported Content-Type: [text/plain]", resp)
+	})
 }
 
 func TestHTTPHandler_ServeHTTP_Remove(t *testing.T) {

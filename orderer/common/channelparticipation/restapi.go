@@ -58,9 +58,11 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 		router:    mux.NewRouter(),
 	}
 
-	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveListOne).Methods("GET")
-	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveJoin).Methods("POST")
-	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveRemove).Methods("DELETE")
+	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveListOne).Methods(http.MethodGet)
+	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveJoin).Methods(http.MethodPost).Headers(
+		"Content-Type", "application/json") // TODO support application/octet-stream & multipart/form-data
+	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveBadContentType).Methods(http.MethodPost)
+	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveRemove).Methods(http.MethodDelete)
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveNotAllowed)
 
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveListAll).Methods("GET")
@@ -145,6 +147,11 @@ func (h *HTTPHandler) serveRemove(resp http.ResponseWriter, req *http.Request) {
 	//TODO
 	err = errors.Errorf("not implemented yet: %s %s", req.Method, req.URL.String())
 	h.sendResponseJsonError(resp, http.StatusNotImplemented, err)
+}
+
+func (h *HTTPHandler) serveBadContentType(resp http.ResponseWriter, req *http.Request) {
+	err := errors.Errorf("unsupported Content-Type: %s", req.Header.Values("Content-Type"))
+	h.sendResponseJsonError(resp, http.StatusBadRequest, err)
 }
 
 func (h *HTTPHandler) serveNotAllowed(resp http.ResponseWriter, req *http.Request) {
