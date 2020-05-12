@@ -155,18 +155,19 @@ func (r *Router) Wait(ccid string) (int, error) {
 }
 
 func (r *Router) Shutdown(timeout time.Duration) {
+	var wg sync.WaitGroup
+	for ccid := range r.containers {
+		wg.Add(1)
+		go func(ccid string) {
+			defer wg.Done()
+			if err := r.Stop(ccid); err != nil {
+				vmLogger.Warnw("failed to stop chaincode", "ccid", ccid, "error", err)
+			}
+		}(ccid)
+	}
+
 	done := make(chan struct{})
 	go func() {
-		var wg sync.WaitGroup
-		wg.Add(len(r.containers))
-		for ccid := range r.containers {
-			go func(ccid string) {
-				if err := r.Stop(ccid); err != nil {
-					vmLogger.Warningf("failed to stop ccid: %s err: %s", ccid, err)
-				}
-				wg.Done()
-			}(ccid)
-		}
 		wg.Wait()
 		close(done)
 	}()

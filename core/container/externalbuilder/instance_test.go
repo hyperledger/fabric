@@ -258,7 +258,7 @@ var _ = Describe("Instance", func() {
 	Describe("Stop", func() {
 		It("terminates the process", func() {
 			cmd := exec.Command("sleep", "90")
-			sess, err := externalbuilder.Start(logger, cmd, "")
+			sess, err := externalbuilder.Start(logger, cmd)
 			Expect(err).NotTo(HaveOccurred())
 			instance.Session = sess
 			instance.TermTimeout = time.Minute
@@ -268,14 +268,14 @@ var _ = Describe("Instance", func() {
 			Consistently(errCh).ShouldNot(Receive())
 
 			err = instance.Stop()
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred())
 			Eventually(errCh).Should(Receive(MatchError("signal: terminated")))
 		})
 
 		Context("when the process doesn't respond to SIGTERM within TermTimeout", func() {
 			It("kills the process with malice", func() {
 				cmd := exec.Command("testdata/ignoreterm.sh")
-				sess, err := externalbuilder.Start(logger, cmd, "")
+				sess, err := externalbuilder.Start(logger, cmd)
 				Expect(err).NotTo(HaveOccurred())
 
 				instance.Session = sess
@@ -286,7 +286,7 @@ var _ = Describe("Instance", func() {
 				Consistently(errCh).ShouldNot(Receive())
 
 				err = instance.Stop()
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 				Eventually(errCh).Should(Receive(MatchError("signal: killed")))
 			})
 		})
