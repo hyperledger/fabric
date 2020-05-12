@@ -58,7 +58,7 @@ type lgrInitializer struct {
 	ledgerID                 string
 	blockStore               *blkstorage.BlockStore
 	pvtdataStore             *pvtdatastorage.Store
-	versionedDB              privacyenabledstate.DB
+	stateDB                  *privacyenabledstate.DB
 	historyDB                *history.DB
 	configHistoryMgr         confighistory.Mgr
 	stateListeners           []ledger.StateListener
@@ -85,7 +85,7 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 
 	txmgrInitializer := &lockbasedtxmgr.Initializer{
 		LedgerID:            ledgerID,
-		DB:                  initializer.versionedDB,
+		DB:                  initializer.stateDB,
 		StateListeners:      initializer.stateListeners,
 		BtlPolicy:           btlPolicy,
 		BookkeepingProvider: initializer.bookkeeperProvider,
@@ -116,7 +116,7 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 	// TODO Move the function `GetChaincodeEventListener` to ledger interface and
 	// this functionality of registering for events to ledgermgmt package so that this
 	// is reused across other future ledger implementations
-	ccEventListener := initializer.versionedDB.GetChaincodeEventListener()
+	ccEventListener := initializer.stateDB.GetChaincodeEventListener()
 	logger.Debugf("Register state db for chaincode lifecycle events: %t", ccEventListener != nil)
 	if ccEventListener != nil {
 		cceventmgmt.GetMgr().Register(ledgerID, ccEventListener)

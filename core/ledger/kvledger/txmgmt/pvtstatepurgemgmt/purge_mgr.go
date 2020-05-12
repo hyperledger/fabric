@@ -51,7 +51,7 @@ type workingset struct {
 
 type purgeMgr struct {
 	btlPolicy pvtdatapolicy.BTLPolicy
-	db        privacyenabledstate.DB
+	db        *privacyenabledstate.DB
 	expKeeper expiryKeeper
 
 	lock    *sync.Mutex
@@ -61,7 +61,7 @@ type purgeMgr struct {
 }
 
 // InstantiatePurgeMgr instantiates a PurgeMgr.
-func InstantiatePurgeMgr(ledgerid string, db privacyenabledstate.DB, btlPolicy pvtdatapolicy.BTLPolicy, bookkeepingProvider bookkeeping.Provider) (PurgeMgr, error) {
+func InstantiatePurgeMgr(ledgerid string, db *privacyenabledstate.DB, btlPolicy pvtdatapolicy.BTLPolicy, bookkeepingProvider bookkeeping.Provider) (PurgeMgr, error) {
 	return &purgeMgr{
 		btlPolicy: btlPolicy,
 		db:        db,

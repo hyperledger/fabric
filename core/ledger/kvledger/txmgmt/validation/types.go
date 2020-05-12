@@ -81,7 +81,7 @@ func (t *transaction) retrieveHash(ns string, coll string) []byte {
 func (u *publicAndHashUpdates) applyWriteSet(
 	txRWSet *rwsetutil.TxRwSet,
 	txHeight *version.Height,
-	db privacyenabledstate.DB,
+	db *privacyenabledstate.DB,
 	containsPostOrderWrites bool,
 ) error {
 	u.publicUpdates.ContainsPostOrderWrites =

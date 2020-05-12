@@ -19,7 +19,7 @@ import (
 // validator validates a tx against the latest committed state
 // and preceding valid transactions with in the same block
 type validator struct {
-	db     privacyenabledstate.DB
+	db     *privacyenabledstate.DB
 	hasher ledger.Hasher
 }
 

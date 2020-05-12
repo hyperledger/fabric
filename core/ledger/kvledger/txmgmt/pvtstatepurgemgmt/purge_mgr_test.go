@@ -29,8 +29,8 @@ const (
 // Tests will be run against each environment in this array
 // For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
 var testEnvs = map[string]privacyenabledstate.TestEnv{
-	levelDBtestEnvName: &privacyenabledstate.LevelDBCommonStorageTestEnv{},
-	couchDBtestEnvName: &privacyenabledstate.CouchDBCommonStorageTestEnv{},
+	levelDBtestEnvName: &privacyenabledstate.LevelDBTestEnv{},
+	couchDBtestEnvName: &privacyenabledstate.CouchDBTestEnv{},
 }
 
 func TestMain(m *testing.M) {
@@ -285,7 +285,7 @@ type testHelper struct {
 	bookkeepingEnv *bookkeeping.TestEnv
 	dbEnv          privacyenabledstate.TestEnv
 
-	db       privacyenabledstate.DB
+	db       *privacyenabledstate.DB
 	purgeMgr PurgeMgr
 }
 

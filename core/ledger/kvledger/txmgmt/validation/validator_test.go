@@ -40,8 +40,8 @@ const (
 // Tests will be run against each environment in this array
 // For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
 var testEnvs = map[string]privacyenabledstate.TestEnv{
-	levelDBtestEnvName: &privacyenabledstate.LevelDBCommonStorageTestEnv{},
-	couchDBtestEnvName: &privacyenabledstate.CouchDBCommonStorageTestEnv{},
+	levelDBtestEnvName: &privacyenabledstate.LevelDBTestEnv{},
+	couchDBtestEnvName: &privacyenabledstate.CouchDBTestEnv{},
 }
 
 func TestMain(m *testing.M) {
@@ -116,8 +116,8 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 
 	if testValidator.db.IsBulkOptimizable() {
 
-		commonStorageDB := testValidator.db.(*privacyenabledstate.CommonStorageDB)
-		bulkOptimizable, _ := commonStorageDB.VersionedDB.(statedb.BulkOptimizable)
+		db := testValidator.db
+		bulkOptimizable, _ := db.VersionedDB.(statedb.BulkOptimizable)
 
 		// Clear cache loaded during ApplyPrivacyAwareUpdates()
 		testValidator.db.ClearCachedVersions()

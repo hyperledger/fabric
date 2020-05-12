@@ -34,7 +34,7 @@ import (
 )
 
 func TestValidateAndPreparePvtBatch(t *testing.T) {
-	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := &privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")
@@ -244,7 +244,7 @@ func TestPreprocessProtoBlockInvalidWriteset(t *testing.T) {
 }
 
 func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
-	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := &privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("testdb")
@@ -294,7 +294,7 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 }
 
 func TestTxStatsInfoWithConfigTx(t *testing.T) {
-	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := &privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")
@@ -317,7 +317,7 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 }
 
 func TestTXMgrContainsPostOrderWrites(t *testing.T) {
-	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := &privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")
@@ -366,7 +366,7 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 }
 
 func TestTxStatsInfo(t *testing.T) {
-	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := &privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")

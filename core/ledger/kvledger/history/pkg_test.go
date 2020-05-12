@@ -40,7 +40,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 
 	blockStorageTestEnv := newBlockStorageTestEnv(t)
 
-	testDBEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := &privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	testDB := testDBEnv.GetDBHandle(testLedgerID)
 	testBookkeepingEnv := bookkeeping.NewTestEnv(t)

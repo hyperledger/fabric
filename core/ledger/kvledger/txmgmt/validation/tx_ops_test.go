@@ -47,7 +47,7 @@ func TestTxOps(t *testing.T) {
 }
 
 func TestTxOpsPreparationValueUpdate(t *testing.T) {
-	testDBEnv := privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
@@ -104,7 +104,7 @@ func TestTxOpsPreparationValueUpdate(t *testing.T) {
 }
 
 func TestTxOpsPreparationMetadataUpdates(t *testing.T) {
-	testDBEnv := privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
@@ -156,7 +156,7 @@ func TestTxOpsPreparationMetadataUpdates(t *testing.T) {
 }
 
 func TestTxOpsPreparationMetadataDelete(t *testing.T) {
-	testDBEnv := privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
@@ -206,7 +206,7 @@ func TestTxOpsPreparationMetadataDelete(t *testing.T) {
 }
 
 func TestTxOpsPreparationMixedUpdates(t *testing.T) {
-	testDBEnv := privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
@@ -282,7 +282,7 @@ func TestTxOpsPreparationMixedUpdates(t *testing.T) {
 }
 
 func TestTxOpsPreparationPvtdataHashes(t *testing.T) {
-	testDBEnv := privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testDBEnv := privacyenabledstate.LevelDBTestEnv{}
 	testDBEnv.Init(t)
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")

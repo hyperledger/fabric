@@ -30,7 +30,7 @@ var logger = flogging.MustGetLogger("validation")
 // CommitBatchPreparer performs validation and prepares the final batch that is to be committed to the statedb
 type CommitBatchPreparer struct {
 	txmgr              txmgr.TxMgr
-	db                 privacyenabledstate.DB
+	db                 *privacyenabledstate.DB
 	validator          *validator
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor
 }
@@ -39,7 +39,7 @@ type CommitBatchPreparer struct {
 // handles the tasks that are agnostic to a particular validation scheme such as parsing the block and handling the pvt data
 func NewCommitBatchPreparer(
 	txmgr txmgr.TxMgr,
-	db privacyenabledstate.DB,
+	db *privacyenabledstate.DB,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 	hasher ledger.Hasher,
 ) *CommitBatchPreparer {
@@ -109,7 +109,7 @@ func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.Bl
 // corresponding hash present in the public rwset
 func validateAndPreparePvtBatch(
 	blk *block,
-	db privacyenabledstate.DB,
+	db *privacyenabledstate.DB,
 	pubAndHashUpdates *publicAndHashUpdates,
 	pvtdata map[uint64]*ledger.TxPvtData,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
@@ -342,7 +342,7 @@ func incrementPvtdataVersionIfNeeded(
 	metadataUpdates metadataUpdates,
 	pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
 	pubAndHashUpdates *publicAndHashUpdates,
-	db privacyenabledstate.DB) error {
+	db *privacyenabledstate.DB) error {
 
 	for collKey := range metadataUpdates {
 		ns, coll, key := collKey.ns, collKey.coll, collKey.key
@@ -391,7 +391,7 @@ func addEntriesToMetadataUpdates(metadataUpdates metadataUpdates, pvtRWSet *rwse
 }
 
 func retrieveLatestVal(ns, coll, key string, pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
-	db privacyenabledstate.DB) (val *statedb.VersionedValue, err error) {
+	db *privacyenabledstate.DB) (val *statedb.VersionedValue, err error) {
 	val = pvtUpdateBatch.Get(ns, coll, key)
 	if val == nil {
 		val, err = db.GetPrivateData(ns, coll, key)

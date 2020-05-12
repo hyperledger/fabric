@@ -135,7 +135,7 @@ func TestApplyWriteSet(t *testing.T) {
 	expected.hashUpdates.Delete(ns1, coll1, key3, ver1)
 	expected.hashUpdates.Put(ns1, coll1, key4, value4, ver1)
 
-	testdbEnv := &privacyenabledstate.LevelDBCommonStorageTestEnv{}
+	testdbEnv := &privacyenabledstate.LevelDBTestEnv{}
 	testdbEnv.Init(t)
 	defer testdbEnv.Cleanup()
 	testdb := testdbEnv.GetDBHandle("testdb")

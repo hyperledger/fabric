@@ -47,7 +47,7 @@ type testEnv interface {
 	cleanup()
 	getName() string
 	getTxMgr() txmgr.TxMgr
-	getVDB() privacyenabledstate.DB
+	getVDB() *privacyenabledstate.DB
 	init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy)
 	stopExternalResource()
 }
@@ -60,8 +60,8 @@ const (
 // Tests will be run against each environment in this array
 // For example, to skip CouchDB tests, remove the entry for couch environment
 var testEnvs = []testEnv{
-	&lockBasedEnv{name: levelDBtestEnvName, testDBEnv: &privacyenabledstate.LevelDBCommonStorageTestEnv{}},
-	&lockBasedEnv{name: couchDBtestEnvName, testDBEnv: &privacyenabledstate.CouchDBCommonStorageTestEnv{}},
+	&lockBasedEnv{name: levelDBtestEnvName, testDBEnv: &privacyenabledstate.LevelDBTestEnv{}},
+	&lockBasedEnv{name: couchDBtestEnvName, testDBEnv: &privacyenabledstate.CouchDBTestEnv{}},
 }
 
 var testEnvsMap = map[string]testEnv{
@@ -76,7 +76,7 @@ type lockBasedEnv struct {
 	name               string
 	t                  testing.TB
 	testBookkeepingEnv *bookkeeping.TestEnv
-	testDB             privacyenabledstate.DB
+	testDB             *privacyenabledstate.DB
 	testDBEnv          privacyenabledstate.TestEnv
 	txmgr              txmgr.TxMgr
 }
@@ -122,7 +122,7 @@ func (env *lockBasedEnv) getTxMgr() txmgr.TxMgr {
 	return env.txmgr
 }
 
-func (env *lockBasedEnv) getVDB() privacyenabledstate.DB {
+func (env *lockBasedEnv) getVDB() *privacyenabledstate.DB {
 	return env.testDB
 }
 
