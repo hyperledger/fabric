@@ -121,6 +121,18 @@ func (c *client) currentHeight() uint64 {
 	return bcInfo.Height
 }
 
+func (c *client) currentCommitHash() []byte {
+	block, err := c.lgr.GetBlockByNumber(c.currentHeight() - 1)
+	c.assert.NoError(err)
+	if len(block.Metadata.Metadata) < int(common.BlockMetadataIndex_COMMIT_HASH+1) {
+		return nil
+	}
+	commitHash := &common.Metadata{}
+	err = proto.Unmarshal(block.Metadata.Metadata[common.BlockMetadataIndex_COMMIT_HASH], commitHash)
+	c.assert.NoError(err)
+	return commitHash.Value
+}
+
 ///////////////////////   simulator wrapper functions  ///////////////////////
 type simulator struct {
 	ledger.TxSimulator

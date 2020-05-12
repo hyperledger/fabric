@@ -177,7 +177,10 @@ func testV11CommitHashes(t *testing.T,
 	env.initLedgerMgmt()
 	h := env.newTestHelperOpenLgr("ledger1", t)
 	blocksAndPvtData := h.retrieveCommittedBlocksAndPvtdata(0, h.currentHeight()-1)
+
+	var commitHashPreReset []byte
 	if preResetCommitHashExists {
+		commitHashPreReset = h.currentCommitHash()
 		h.verifyCommitHashExists()
 	} else {
 		h.verifyCommitHashNotExists()
@@ -199,6 +202,10 @@ func testV11CommitHashes(t *testing.T,
 		require.NoError(t, h.lgr.CommitLegacy(d, &ledger.CommitOptions{FetchPvtDataFromLedger: true}))
 	}
 
+	if preResetCommitHashExists {
+		commitHashPostReset := h.currentCommitHash()
+		require.Equal(t, commitHashPreReset, commitHashPostReset)
+	}
 	if postResetCommitHashExists {
 		h.verifyCommitHashExists()
 	} else {
