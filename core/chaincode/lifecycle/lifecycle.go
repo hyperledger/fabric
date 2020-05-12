@@ -39,6 +39,14 @@ const (
 	// at some network resource). This namespace is only populated in the org implicit collection.
 	ChaincodeSourcesName = "chaincode-sources"
 
+	// ChaincodeLocalPackageType is the name of the type of chaincode-sources which may be serialized
+	// into the org's private data collection
+	ChaincodeLocalPackageType = "ChaincodeLocalPackage"
+
+	// ChaincodeParametersType is the name of the type used to store the parts of the chaincode definition
+	// which are serialized as values in the statedb
+	ChaincodeParametersType = "ChaincodeParameters"
+
 	// ChaincodeDefinitionType is the name of the type used to store defined chaincodes
 	ChaincodeDefinitionType = "ChaincodeDefinition"
 
@@ -140,6 +148,14 @@ type ChaincodeDefinition struct {
 	EndorsementInfo *lb.ChaincodeEndorsementInfo
 	ValidationInfo  *lb.ChaincodeValidationInfo
 	Collections     *pb.CollectionConfigPackage
+}
+
+type ApprovedChaincodeDefinition struct {
+	Sequence        int64
+	EndorsementInfo *lb.ChaincodeEndorsementInfo
+	ValidationInfo  *lb.ChaincodeValidationInfo
+	Collections     *pb.CollectionConfigPackage
+	Source          *lb.ChaincodeSource
 }
 
 // Parameters returns the non-sequence info of the chaincode definition
@@ -494,6 +510,99 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 	logger.Infof("Successfully endorsed chaincode approval with name '%s', package ID '%s', on channel '%s' with definition {%s}", ccname, packageID, chname, cd)
 
 	return nil
+}
+
+// QueryApprovedChaincodeDefinition returns the approved chaincode definition in Org state by using the given parameters.
+// If the parameter of sequence is not provided, this function returns the latest approved chaincode definition
+// (latest: new one of the currently defined sequence number and the next sequence number).
+func (ef *ExternalFunctions) QueryApprovedChaincodeDefinition(chname, ccname string, sequence int64, publicState ReadableState, orgState ReadableState) (*ApprovedChaincodeDefinition, error) {
+
+	requestedSequence := sequence
+
+	// If requested sequence is not provided,
+	// set the latest sequence number (either the currently defined sequence number or the next sequence number)
+	if requestedSequence == 0 {
+		currentSequence, err := ef.Resources.Serializer.DeserializeFieldAsInt64(NamespacesName, ccname, "Sequence", publicState)
+		if err != nil {
+			return nil, errors.WithMessage(err, "could not get current sequence")
+		}
+		requestedSequence = currentSequence
+
+		nextSequence := currentSequence + 1
+		privateName := fmt.Sprintf("%s#%d", ccname, nextSequence)
+		_, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, privateName, orgState)
+		if err != nil {
+			return nil, errors.WithMessagef(err, "could not deserialize namespace metadata for next sequence %d", nextSequence)
+		}
+		if ok {
+			requestedSequence = nextSequence
+		}
+	}
+
+	logger.Infof("Attempting to fetch approved definition (name: '%s', sequence: '%d') on channel '%s'", ccname, requestedSequence, chname)
+	privateName := fmt.Sprintf("%s#%d", ccname, requestedSequence)
+	metadata, ok, err := ef.Resources.Serializer.DeserializeMetadata(NamespacesName, privateName, orgState)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not deserialize namespace metadata for %s", privateName)
+	}
+
+	if !ok {
+		return nil, errors.Errorf("could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, sequence, chname)
+	}
+
+	if metadata.Datatype != ChaincodeParametersType {
+		return nil, errors.Errorf("not a chaincode parameters type: %s", metadata.Datatype)
+	}
+
+	// Get chaincode parameters for the request sequence
+	ccParameters := &ChaincodeParameters{}
+	if err := ef.Resources.Serializer.Deserialize(NamespacesName, privateName, metadata, ccParameters, orgState); err != nil {
+		return nil, errors.WithMessagef(err, "could not deserialize chaincode parameters for %s", privateName)
+	}
+
+	// Get package ID for the requested sequence
+	metadata, ok, err = ef.Resources.Serializer.DeserializeMetadata(ChaincodeSourcesName, privateName, orgState)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "could not deserialize chaincode-source metadata for %s", privateName)
+	}
+	if !ok {
+		return nil, errors.Errorf("could not fetch approved chaincode definition (name: '%s', sequence: '%d') on channel '%s'", ccname, sequence, chname)
+	}
+	if metadata.Datatype != ChaincodeLocalPackageType {
+		return nil, errors.Errorf("not a chaincode local package type: %s", metadata.Datatype)
+	}
+
+	ccLocalPackage := &ChaincodeLocalPackage{}
+	if err := ef.Resources.Serializer.Deserialize(ChaincodeSourcesName, privateName, metadata, ccLocalPackage, orgState); err != nil {
+		return nil, errors.WithMessagef(err, "could not deserialize chaincode package for %s", privateName)
+	}
+
+	// Convert to lb.ChaincodeSource
+	// An empty package ID means that the chaincode won't be invocable
+	var ccsrc *lb.ChaincodeSource
+	if ccLocalPackage.PackageID != "" {
+		ccsrc = &lb.ChaincodeSource{
+			Type: &lb.ChaincodeSource_LocalPackage{
+				LocalPackage: &lb.ChaincodeSource_Local{
+					PackageId: ccLocalPackage.PackageID,
+				},
+			},
+		}
+	} else {
+		ccsrc = &lb.ChaincodeSource{
+			Type: &lb.ChaincodeSource_Unavailable_{
+				Unavailable: &lb.ChaincodeSource_Unavailable{},
+			},
+		}
+	}
+
+	return &ApprovedChaincodeDefinition{
+		Sequence:        requestedSequence,
+		EndorsementInfo: ccParameters.EndorsementInfo,
+		ValidationInfo:  ccParameters.ValidationInfo,
+		Collections:     ccParameters.Collections,
+		Source:          ccsrc,
+	}, nil
 }
 
 // ErrNamespaceNotDefined is the error returned when a namespace

@@ -50,6 +50,10 @@ const (
 	// used to approve a chaincode definition for execution by the user's own org
 	ApproveChaincodeDefinitionForMyOrgFuncName = "ApproveChaincodeDefinitionForMyOrg"
 
+	// QueryApprovedChaincodeDefinitionFuncName is the chaincode function name used to
+	// query a approved chaincode definition for the user's own org
+	QueryApprovedChaincodeDefinitionFuncName = "QueryApprovedChaincodeDefinition"
+
 	// CheckCommitReadinessFuncName is the chaincode function name used to check
 	// a specified chaincode definition is ready to be committed. It returns the
 	// approval status for a given definition over a given set of orgs
@@ -86,6 +90,9 @@ type SCCFunctions interface {
 
 	// ApproveChaincodeDefinitionForOrg records a chaincode definition into this org's implicit collection.
 	ApproveChaincodeDefinitionForOrg(chname, ccname string, cd *ChaincodeDefinition, packageID string, publicState ReadableState, orgState ReadWritableState) error
+
+	// QueryApprovedChaincodeDefinition returns a approved chaincode definition from this org's implicit collection.
+	QueryApprovedChaincodeDefinition(chname, ccname string, sequence int64, publicState ReadableState, orgState ReadableState) (*ApprovedChaincodeDefinition, error)
 
 	// CheckCommitReadiness returns a map containing the orgs
 	// whose orgStates were supplied and whether or not they have approved
@@ -407,6 +414,41 @@ func (i *Invocation) ApproveChaincodeDefinitionForMyOrg(input *lb.ApproveChainco
 		return nil, err
 	}
 	return &lb.ApproveChaincodeDefinitionForMyOrgResult{}, nil
+}
+
+// QueryApprovedChaincodeDefinition is a SCC function that may be dispatched
+// to which routes to the underlying lifecycle implementation.
+func (i *Invocation) QueryApprovedChaincodeDefinition(input *lb.QueryApprovedChaincodeDefinitionArgs) (proto.Message, error) {
+	logger.Debugf("received invocation of QueryApprovedChaincodeDefinition on channel '%s' for chaincode '%s'",
+		i.Stub.GetChannelID(),
+		input.Name,
+	)
+	collectionName := ImplicitCollectionNameForOrg(i.SCC.OrgMSPID)
+
+	ca, err := i.SCC.Functions.QueryApprovedChaincodeDefinition(
+		i.Stub.GetChannelID(),
+		input.Name,
+		input.Sequence,
+		i.Stub,
+		&ChaincodePrivateLedgerShim{
+			Collection: collectionName,
+			Stub:       i.Stub,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &lb.QueryApprovedChaincodeDefinitionResult{
+		Sequence:            ca.Sequence,
+		Version:             ca.EndorsementInfo.Version,
+		EndorsementPlugin:   ca.EndorsementInfo.EndorsementPlugin,
+		ValidationPlugin:    ca.ValidationInfo.ValidationPlugin,
+		ValidationParameter: ca.ValidationInfo.ValidationParameter,
+		InitRequired:        ca.EndorsementInfo.InitRequired,
+		Collections:         ca.Collections,
+		Source:              ca.Source,
+	}, nil
 }
 
 // CheckCommitReadiness is a SCC function that may be dispatched

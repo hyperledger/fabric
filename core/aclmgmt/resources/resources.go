@@ -17,6 +17,7 @@ const (
 	Lifecycle_GetInstalledChaincodePackage       = "_lifecycle/GetInstalledChaincodePackage"
 	Lifecycle_QueryInstalledChaincodes           = "_lifecycle/QueryInstalledChaincodes"
 	Lifecycle_ApproveChaincodeDefinitionForMyOrg = "_lifecycle/ApproveChaincodeDefinitionForMyOrg"
+	Lifecycle_QueryApprovedChaincodeDefinition   = "_lifecycle/QueryApprovedChaincodeDefinition"
 	Lifecycle_CommitChaincodeDefinition          = "_lifecycle/CommitChaincodeDefinition"
 	Lifecycle_QueryChaincodeDefinition           = "_lifecycle/QueryChaincodeDefinition"
 	Lifecycle_QueryChaincodeDefinitions          = "_lifecycle/QueryChaincodeDefinitions"

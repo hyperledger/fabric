@@ -85,6 +85,23 @@ type SCCFunctions struct {
 		result1 *chaincode.InstalledChaincode
 		result2 error
 	}
+	QueryApprovedChaincodeDefinitionStub        func(string, string, int64, lifecycle.ReadableState, lifecycle.ReadableState) (*lifecycle.ApprovedChaincodeDefinition, error)
+	queryApprovedChaincodeDefinitionMutex       sync.RWMutex
+	queryApprovedChaincodeDefinitionArgsForCall []struct {
+		arg1 string
+		arg2 string
+		arg3 int64
+		arg4 lifecycle.ReadableState
+		arg5 lifecycle.ReadableState
+	}
+	queryApprovedChaincodeDefinitionReturns struct {
+		result1 *lifecycle.ApprovedChaincodeDefinition
+		result2 error
+	}
+	queryApprovedChaincodeDefinitionReturnsOnCall map[int]struct {
+		result1 *lifecycle.ApprovedChaincodeDefinition
+		result2 error
+	}
 	QueryChaincodeDefinitionStub        func(string, lifecycle.ReadableState) (*lifecycle.ChaincodeDefinition, error)
 	queryChaincodeDefinitionMutex       sync.RWMutex
 	queryChaincodeDefinitionArgsForCall []struct {
@@ -494,6 +511,73 @@ func (fake *SCCFunctions) InstallChaincodeReturnsOnCall(i int, result1 *chaincod
 	}{result1, result2}
 }
 
+func (fake *SCCFunctions) QueryApprovedChaincodeDefinition(arg1 string, arg2 string, arg3 int64, arg4 lifecycle.ReadableState, arg5 lifecycle.ReadableState) (*lifecycle.ApprovedChaincodeDefinition, error) {
+	fake.queryApprovedChaincodeDefinitionMutex.Lock()
+	ret, specificReturn := fake.queryApprovedChaincodeDefinitionReturnsOnCall[len(fake.queryApprovedChaincodeDefinitionArgsForCall)]
+	fake.queryApprovedChaincodeDefinitionArgsForCall = append(fake.queryApprovedChaincodeDefinitionArgsForCall, struct {
+		arg1 string
+		arg2 string
+		arg3 int64
+		arg4 lifecycle.ReadableState
+		arg5 lifecycle.ReadableState
+	}{arg1, arg2, arg3, arg4, arg5})
+	fake.recordInvocation("QueryApprovedChaincodeDefinition", []interface{}{arg1, arg2, arg3, arg4, arg5})
+	fake.queryApprovedChaincodeDefinitionMutex.Unlock()
+	if fake.QueryApprovedChaincodeDefinitionStub != nil {
+		return fake.QueryApprovedChaincodeDefinitionStub(arg1, arg2, arg3, arg4, arg5)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.queryApprovedChaincodeDefinitionReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *SCCFunctions) QueryApprovedChaincodeDefinitionCallCount() int {
+	fake.queryApprovedChaincodeDefinitionMutex.RLock()
+	defer fake.queryApprovedChaincodeDefinitionMutex.RUnlock()
+	return len(fake.queryApprovedChaincodeDefinitionArgsForCall)
+}
+
+func (fake *SCCFunctions) QueryApprovedChaincodeDefinitionCalls(stub func(string, string, int64, lifecycle.ReadableState, lifecycle.ReadableState) (*lifecycle.ApprovedChaincodeDefinition, error)) {
+	fake.queryApprovedChaincodeDefinitionMutex.Lock()
+	defer fake.queryApprovedChaincodeDefinitionMutex.Unlock()
+	fake.QueryApprovedChaincodeDefinitionStub = stub
+}
+
+func (fake *SCCFunctions) QueryApprovedChaincodeDefinitionArgsForCall(i int) (string, string, int64, lifecycle.ReadableState, lifecycle.ReadableState) {
+	fake.queryApprovedChaincodeDefinitionMutex.RLock()
+	defer fake.queryApprovedChaincodeDefinitionMutex.RUnlock()
+	argsForCall := fake.queryApprovedChaincodeDefinitionArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
+}
+
+func (fake *SCCFunctions) QueryApprovedChaincodeDefinitionReturns(result1 *lifecycle.ApprovedChaincodeDefinition, result2 error) {
+	fake.queryApprovedChaincodeDefinitionMutex.Lock()
+	defer fake.queryApprovedChaincodeDefinitionMutex.Unlock()
+	fake.QueryApprovedChaincodeDefinitionStub = nil
+	fake.queryApprovedChaincodeDefinitionReturns = struct {
+		result1 *lifecycle.ApprovedChaincodeDefinition
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *SCCFunctions) QueryApprovedChaincodeDefinitionReturnsOnCall(i int, result1 *lifecycle.ApprovedChaincodeDefinition, result2 error) {
+	fake.queryApprovedChaincodeDefinitionMutex.Lock()
+	defer fake.queryApprovedChaincodeDefinitionMutex.Unlock()
+	fake.QueryApprovedChaincodeDefinitionStub = nil
+	if fake.queryApprovedChaincodeDefinitionReturnsOnCall == nil {
+		fake.queryApprovedChaincodeDefinitionReturnsOnCall = make(map[int]struct {
+			result1 *lifecycle.ApprovedChaincodeDefinition
+			result2 error
+		})
+	}
+	fake.queryApprovedChaincodeDefinitionReturnsOnCall[i] = struct {
+		result1 *lifecycle.ApprovedChaincodeDefinition
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *SCCFunctions) QueryChaincodeDefinition(arg1 string, arg2 lifecycle.ReadableState) (*lifecycle.ChaincodeDefinition, error) {
 	fake.queryChaincodeDefinitionMutex.Lock()
 	ret, specificReturn := fake.queryChaincodeDefinitionReturnsOnCall[len(fake.queryChaincodeDefinitionArgsForCall)]
@@ -819,6 +903,8 @@ func (fake *SCCFunctions) Invocations() map[string][][]interface{} {
 	defer fake.getInstalledChaincodePackageMutex.RUnlock()
 	fake.installChaincodeMutex.RLock()
 	defer fake.installChaincodeMutex.RUnlock()
+	fake.queryApprovedChaincodeDefinitionMutex.RLock()
+	defer fake.queryApprovedChaincodeDefinitionMutex.RUnlock()
 	fake.queryChaincodeDefinitionMutex.RLock()
 	defer fake.queryChaincodeDefinitionMutex.RUnlock()
 	fake.queryInstalledChaincodeMutex.RLock()
