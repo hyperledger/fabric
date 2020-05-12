@@ -120,7 +120,12 @@ func (s *System) Start() error {
 	}
 	s.addr = listener.Addr().String()
 
-	go s.httpServer.Serve(listener)
+	go func() {
+		err := s.httpServer.Serve(listener)
+		if err != nil {
+			s.Log("http server serve failed")
+		}
+	}()
 
 	return nil
 }
