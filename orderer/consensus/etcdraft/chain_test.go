@@ -3217,6 +3217,10 @@ type chain struct {
 	stepLock sync.Mutex
 	step     stepFunc
 
+	// msgBuffer serializes ingress messages for a chain
+	// so they are delivered in the same order
+	msgBuffer chan *msg
+
 	support      *consensusmocks.FakeConsenterSupport
 	cutter       *mockblockcutter.Receiver
 	configurator *mocks.FakeConfigurator
@@ -3241,6 +3245,11 @@ type chain struct {
 	*etcdraft.Chain
 
 	cryptoProvider bccsp.BCCSP
+}
+
+type msg struct {
+	req    *orderer.ConsensusRequest
+	sender uint64
 }
 
 func newChain(
@@ -3313,6 +3322,7 @@ func newChain(
 		ledgerHeight:   1,
 		fakeFields:     fakeFields,
 		cryptoProvider: cryptoProvider,
+		msgBuffer:      make(chan *msg, 500),
 	}
 
 	// receives normal blocks and metadata and appends it into
@@ -3377,6 +3387,13 @@ func newChain(
 		defer c.ledgerLock.RUnlock()
 		return c.ledger[number]
 	}
+
+	// consume ingress messages for chain
+	go func() {
+		for msg := range c.msgBuffer {
+			c.Consensus(msg.req, msg.sender)
+		}
+	}()
 
 	return c
 }
@@ -3470,7 +3487,7 @@ func (n *network) connected(id uint64) bool {
 func (n *network) addChain(c *chain) {
 	n.connect(c.id) // chain is connected by default
 
-	c.step = func(dest uint64, msg *orderer.ConsensusRequest) error {
+	c.step = func(dest uint64, req *orderer.ConsensusRequest) error {
 		if !n.linked(c.id, dest) {
 			return errors.Errorf("connection refused")
 		}
@@ -3482,10 +3499,7 @@ func (n *network) addChain(c *chain) {
 		n.RLock()
 		target := n.chains[dest]
 		n.RUnlock()
-		go func() {
-			defer GinkgoRecover()
-			target.Consensus(msg, c.id)
-		}()
+		target.msgBuffer <- &msg{req: req, sender: c.id}
 		return nil
 	}
 
