@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/deliver/mock"
-	mockblockledger "github.com/hyperledger/fabric/common/ledger/blockledger/mocks"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
@@ -27,28 +27,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-//go:generate counterfeiter -o mocks/policy_manager.go --fake-name PolicyManager . policyManager
-
-type policyManager interface {
-	policies.Manager
-}
-
 //go:generate counterfeiter -o mocks/policy.go --fake-name Policy . policy
+//go:generate counterfeiter -o mocks/policy_manager.go --fake-name PolicyManager . policyManager
+//go:generate counterfeiter -o mocks/read_writer.go --fake-name ReadWriter . readWriter
 
-type policy interface {
-	policies.Policy
-}
+type policy interface{ policies.Policy }
+type policyManager interface{ policies.Manager }
+type readWriter interface{ blockledger.ReadWriter }
 
 func TestChainSupportBlock(t *testing.T) {
-	ledger := &mockblockledger.ReadWriter{}
-	ledger.On("Height").Return(uint64(100))
+	ledger := &mocks.ReadWriter{}
+	ledger.HeightReturns(100)
 	iterator := &mock.BlockIterator{}
 	iterator.NextReturns(&common.Block{Header: &common.BlockHeader{Number: 99}}, common.Status_SUCCESS)
-	ledger.On("Iterator", &orderer.SeekPosition{
-		Type: &orderer.SeekPosition_Specified{
-			Specified: &orderer.SeekSpecified{Number: 99},
-		},
-	}).Return(iterator, uint64(99))
+	ledger.IteratorReturns(iterator, 99)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 	cs := &ChainSupport{

@@ -18,7 +18,7 @@ import (
 var logger = flogging.MustGetLogger("discovery.DiscoverySupport")
 
 type MetadataRetriever interface {
-	Metadata(channel string, cc string, loadCollections bool) *chaincode.Metadata
+	Metadata(channel string, cc string, collections ...string) *chaincode.Metadata
 }
 
 // DiscoverySupport implements support that is used for service discovery
@@ -35,20 +35,61 @@ func NewDiscoverySupport(ci MetadataRetriever) *DiscoverySupport {
 	return s
 }
 
-func (s *DiscoverySupport) PolicyByChaincode(channel string, cc string) policies.InquireablePolicy {
-	chaincodeData := s.ci.Metadata(channel, cc, false)
+func (s *DiscoverySupport) PoliciesByChaincode(channel string, cc string, collections ...string) []policies.InquireablePolicy {
+	chaincodeData := s.ci.Metadata(channel, cc, collections...)
 	if chaincodeData == nil {
-		logger.Info("Chaincode", cc, "wasn't found")
+		logger.Infof("Chaincode %s wasn't found", cc)
 		return nil
 	}
+
+	// chaincode policy
 	pol := &common2.SignaturePolicyEnvelope{}
 	if err := proto.Unmarshal(chaincodeData.Policy, pol); err != nil {
-		logger.Warning("Failed unmarshaling policy for chaincode", cc, ":", err)
+		logger.Errorf("Failed unmarshaling policy for chaincode '%s': %s", cc, err)
 		return nil
 	}
 	if len(pol.Identities) == 0 || pol.Rule == nil {
-		logger.Warningf("Invalid policy, either Identities(%v) or Rule(%v) are empty:", pol.Identities, pol.Rule)
+		logger.Errorf("Invalid policy, either Identities(%v) or Rule(%v) are empty", pol.Identities, pol.Rule)
 		return nil
 	}
-	return inquire.NewInquireableSignaturePolicy(pol)
+	// chaincodeData.CollectionPolicies will be nil when using legacy lifecycle (lscc)
+	// because collection endorsement policies are not supported in lscc
+	chaincodePolicy := inquire.NewInquireableSignaturePolicy(pol)
+	if chaincodeData.CollectionPolicies == nil || len(collections) == 0 {
+		return []policies.InquireablePolicy{chaincodePolicy}
+	}
+
+	// process any collection policies
+	inquireablePolicies := make(map[string]struct{})
+	uniqueInquireablePolicies := []policies.InquireablePolicy{}
+
+	for _, collectionName := range collections {
+		// default to the chaincode policy if the collection policy doesn't exist
+		if _, collectionPolicyExists := chaincodeData.CollectionPolicies[collectionName]; !collectionPolicyExists {
+			if _, exists := inquireablePolicies[string(chaincodeData.Policy)]; !exists {
+				uniqueInquireablePolicies = append(uniqueInquireablePolicies, chaincodePolicy)
+				inquireablePolicies[string(chaincodeData.Policy)] = struct{}{}
+			}
+			continue
+		}
+
+		collectionPolicy := chaincodeData.CollectionPolicies[collectionName]
+		pol := &common2.SignaturePolicyEnvelope{}
+		if err := proto.Unmarshal(collectionPolicy, pol); err != nil {
+			logger.Errorf("Failed unmarshaling collection policy for chaincode '%s' collection '%s': %s", cc, collectionName, err)
+			return nil
+		}
+		if len(pol.Identities) == 0 || pol.Rule == nil {
+			logger.Errorf("Invalid collection policy, either Identities(%v) or Rule(%v) are empty", pol.Identities, pol.Rule)
+			return nil
+		}
+		// only add to uniqueInquireablePolicies if the policy doesn't already exist there
+		// this prevents duplicate inquireablePolicies from being returned
+		if _, exists := inquireablePolicies[string(collectionPolicy)]; !exists {
+			uniqueInquireablePolicies = append(uniqueInquireablePolicies, inquire.NewInquireableSignaturePolicy(pol))
+			inquireablePolicies[string(collectionPolicy)] = struct{}{}
+		}
+	}
+
+	return uniqueInquireablePolicies
 }

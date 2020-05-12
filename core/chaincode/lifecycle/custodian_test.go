@@ -99,4 +99,20 @@ var _ = Describe("Custodian", func() {
 
 		Expect(fakeBuilder.BuildCallCount()).To(Equal(0))
 	})
+
+	It("stops chaincodes", func() {
+		cc.NotifyStoppable("ccid1")
+		cc.NotifyStoppable("ccid2")
+		cc.NotifyStoppable("ccid3")
+		Eventually(fakeLauncher.StopCallCount).Should(Equal(3))
+		ccid := fakeLauncher.StopArgsForCall(0)
+		Expect(ccid).To(Equal("ccid1"))
+		ccid = fakeLauncher.StopArgsForCall(1)
+		Expect(ccid).To(Equal("ccid2"))
+		ccid = fakeLauncher.StopArgsForCall(2)
+		Expect(ccid).To(Equal("ccid3"))
+
+		Expect(fakeBuilder.BuildCallCount()).To(Equal(0))
+		Expect(fakeLauncher.LaunchCallCount()).To(Equal(0))
+	})
 })

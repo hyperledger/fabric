@@ -39,10 +39,8 @@ var cobraCommand = &cobra.Command{
 
 // GetInfo returns version information for the peer
 func GetInfo() string {
-	ccinfo := fmt.Sprintf("  Base Docker Namespace: %s\n"+
-		"  Base Docker Label: %s\n"+
+	ccinfo := fmt.Sprintf("  Base Docker Label: %s\n"+
 		"  Docker Namespace: %s\n",
-		metadata.BaseDockerNamespace,
 		metadata.BaseDockerLabel,
 		metadata.DockerNamespace)
 

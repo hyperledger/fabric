@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/comm"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
@@ -32,6 +32,7 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
@@ -179,9 +180,19 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 	if err != nil {
 		panic(err)
 	}
+
+	// FAB-16233 This is meant to mitigate timeouts when
+	// seekAssertions does not receive a value
+	timer := time.NewTimer(1 * time.Minute)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		panic("timed out waiting for seek assertions to receive a value")
 	// Get the next seek assertion and ensure the next seek is of the expected type
-	seekAssert := <-ds.seekAssertions
-	seekAssert(seekInfo, channel)
+	case seekAssert := <-ds.seekAssertions:
+		seekAssert(seekInfo, channel)
+	}
 
 	if seekInfo.GetStart().GetSpecified() != nil {
 		return ds.deliverBlocks(stream)
@@ -271,8 +282,11 @@ func (ds *deliverServer) addExpectProbeAssert() {
 
 func (ds *deliverServer) addExpectPullAssert(seq uint64) {
 	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
-		assert.NotNil(ds.t, info.GetStart().GetSpecified())
-		assert.Equal(ds.t, seq, info.GetStart().GetSpecified().Number)
+		seekPosition := info.GetStart()
+		require.NotNil(ds.t, seekPosition)
+		seekSpecified := seekPosition.GetSpecified()
+		require.NotNil(ds.t, seekSpecified)
+		assert.Equal(ds.t, seq, seekSpecified.Number)
 		assert.Equal(ds.t, info.ErrorResponse, orderer.SeekInfo_BEST_EFFORT)
 	}
 }

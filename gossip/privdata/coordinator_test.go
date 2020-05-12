@@ -321,8 +321,11 @@ type collectionAccessPolicy struct {
 	n  uint64
 }
 
-func (cap *collectionAccessPolicy) MemberOrgs() []string {
-	return []string{"org0", "org1"}
+func (cap *collectionAccessPolicy) MemberOrgs() map[string]struct{} {
+	return map[string]struct{}{
+		"org0": {},
+		"org1": {},
+	}
 }
 
 func (cap *collectionAccessPolicy) RequiredPeerCount() int {
@@ -583,6 +586,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
 	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
 		Signature: signature,
@@ -636,7 +640,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -651,7 +655,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	// Scenario II: Validator has an error while validating the block
 	block = bf.create()
 	pvtData = pdFactory.create()
-	coordinator = NewCoordinator(Support{
+	coordinator = NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -666,7 +670,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	// Scenario III: Block we got contains an inadequate length of Tx filter in the metadata
 	block = bf.withMetadataSize(100).create()
 	pvtData = pdFactory.create()
-	coordinator = NewCoordinator(Support{
+	coordinator = NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -721,7 +725,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	appCapability = &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(false)
-	coordinator = NewCoordinator(Support{
+	coordinator = NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -783,7 +787,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	fetcher.On("fetch", mock.Anything).expectingDigests(digKeys).Return(&privdatacommon.FetchedPvtDataContainer{
 		AvailableElements: nil,
 	}, nil)
-	coordinator = NewCoordinator(Support{
+	coordinator = NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -851,7 +855,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		AddTxnWithEndorsement("tx2", "ns2", hash, "org2", true, "c1").create()
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
-	coordinator = NewCoordinator(Support{
+	coordinator = NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -891,6 +895,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
 	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
 		Signature: signature,
@@ -972,7 +977,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1016,6 +1021,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
 	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
 		Signature: signature,
@@ -1092,7 +1098,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1187,7 +1193,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	// we verify that the error propagates properly.
 	mockCs := &mocks.CollectionStore{}
 	mockCs.On("RetrieveCollectionConfig", mock.Anything).Return(nil, errors.New("test error"))
-	coordinator = NewCoordinator(Support{
+	coordinator = NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    mockCs,
 		Committer:          committer,
@@ -1234,7 +1240,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		assert.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
-	coordinator = NewCoordinator(Support{
+	coordinator = NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1271,7 +1277,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		assert.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
-	coordinator = NewCoordinator(Support{
+	coordinator = NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1297,6 +1303,7 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
 	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
 		Signature: signature,
@@ -1346,7 +1353,7 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    nil,
 		Committer:          committer,
@@ -1370,6 +1377,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
 	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
 		Signature: signature,
@@ -1460,7 +1468,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1485,6 +1493,7 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
 	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
 		Signature: signature,
@@ -1533,7 +1542,7 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1556,6 +1565,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
 	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
 		Signature: signature,
@@ -1578,7 +1588,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1606,7 +1616,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 		PvtData: expectedCommittedPrivateData1,
 	}, nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
-	coordinator = NewCoordinator(Support{
+	coordinator = NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1632,6 +1642,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 func TestPurgeBelowHeight(t *testing.T) {
 	conf := testConfig
 	conf.TransientBlockRetention = 5
+	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{}
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
 
@@ -1709,7 +1720,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1731,6 +1742,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 }
 
 func TestCoordinatorStorePvtData(t *testing.T) {
+	mspID := "Org1MSP"
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 	cs := createcollectionStore(protoutil.SignedData{}).thatAcceptsAll()
 	committer := &mocks.Committer{}
@@ -1749,7 +1761,7 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1799,6 +1811,7 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
 	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
 		Signature: signature,
@@ -1846,7 +1859,7 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,
@@ -1870,6 +1883,7 @@ func TestCoordinatorMetrics(t *testing.T) {
 	data := []byte{1, 2, 3}
 	signature, err := identity.Sign(data)
 	require.NoError(t, err, fmt.Sprintf("Could not sign identity, got err %s", err))
+	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{
 		Identity:  serializedID,
 		Signature: signature,
@@ -1929,7 +1943,7 @@ func TestCoordinatorMetrics(t *testing.T) {
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,

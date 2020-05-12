@@ -6,9 +6,6 @@ you're an architect, administrator or developer, you can use this topic to get a
 solid understanding of the major structure and process components in a
 Hyperledger Fabric blockchain network. This topic will use a manageable worked
 example that introduces all of the major components in a blockchain network.
-After understanding this example you can read more detailed information about
-these components elsewhere in the documentation, or try
-[building a sample network](../build_network.html).
 
 After reading this topic and understanding the concept of policies, you will
 have a solid understanding of the decisions that organizations need to make to
@@ -935,7 +932,7 @@ organizations may have their permissions increased or decreased. Let's
 investigate a little more how change policy is implemented in Hyperledger
 Fabric.
 
-They key point of understanding is that policy change is managed by a
+The key point of understanding is that policy change is managed by a
 policy within the policy itself.  The **modification policy**, or
 **mod_policy** for short, is a first class policy within a network or channel
 configuration that manages change. Let's give two brief examples of how we've

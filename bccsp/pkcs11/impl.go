@@ -53,7 +53,7 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 	}
 
 	sessions := make(chan pkcs11.SessionHandle, sessionCacheSize)
-	csp := &impl{swCSP, conf, ctx, sessions, slot, lib, opts.SoftVerify, opts.Immutable}
+	csp := &impl{swCSP, conf, ctx, sessions, slot, pin, lib, opts.SoftVerify, opts.Immutable}
 	csp.returnSession(*session)
 	return csp, nil
 }
@@ -66,6 +66,7 @@ type impl struct {
 	ctx      *pkcs11.Ctx
 	sessions chan pkcs11.SessionHandle
 	slot     uint
+	pin      string
 
 	lib        string
 	softVerify bool

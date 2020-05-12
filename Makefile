@@ -42,12 +42,8 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
 
-ALPINE_VER ?= 3.10
-BASE_VERSION = 2.0.0
-PREV_VERSION = 2.0.0-beta
-
-# BASEIMAGE_RELEASE should be removed now
-BASEIMAGE_RELEASE = 0.4.18
+ALPINE_VER ?= 3.11
+BASE_VERSION = 2.2.0
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
@@ -64,6 +60,10 @@ BUILD_DIR ?= build
 EXTRA_VERSION ?= $(shell git rev-parse --short HEAD)
 PROJECT_VERSION=$(BASE_VERSION)-snapshot-$(EXTRA_VERSION)
 
+# TWO_DIGIT_VERSION is derived, e.g. "2.0", especially useful as a local tag
+# for two digit references to most recent baseos and ccenv patch releases
+TWO_DIGIT_VERSION = $(shell echo $(BASE_VERSION) | cut -d '.' -f 1,2)
+
 PKGNAME = github.com/hyperledger/fabric
 ARCH=$(shell go env GOARCH)
 MARCH=$(shell go env GOOS)-$(shell go env GOARCH)
@@ -73,9 +73,8 @@ METADATA_VAR = Version=$(BASE_VERSION)
 METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
-METADATA_VAR += BaseDockerNamespace=$(BASE_DOCKER_NS)
 
-GO_VER = $(shell grep "GO_VER" ci.properties |cut -d'=' -f2-)
+GO_VER = 1.14.1
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
@@ -113,7 +112,7 @@ help-docs: native
 	@scripts/generateHelpDocs.sh
 
 .PHONY: spelling
-spelling:
+spelling: gotool.misspell
 	@scripts/check_spelling.sh
 
 .PHONY: references
@@ -133,14 +132,14 @@ gotools: gotools-install
 
 .PHONY: check-go-version
 check-go-version:
-	@scripts/check_go_version.sh
+	@scripts/check_go_version.sh $(GO_VER)
 
 .PHONY: integration-test
-integration-test: gotool.ginkgo ccenv-docker baseos-docker docker-thirdparty
+integration-test: gotool.ginkgo baseos-docker ccenv-docker docker-thirdparty
 	./scripts/run-integration-tests.sh
 
 .PHONY: unit-test
-unit-test: unit-test-clean docker-thirdparty ccenv-docker baseos-docker
+unit-test: unit-test-clean docker-thirdparty-couchdb
 	./scripts/run-unit-tests.sh
 
 .PHONY: unit-tests
@@ -150,11 +149,14 @@ unit-tests: unit-test
 # Also pull ccenv-1.4 for compatibility test to ensure pre-2.0 installed chaincodes
 # can be built by a peer configured to use the ccenv-1.4 as the builder image.
 .PHONY: docker-thirdparty
-docker-thirdparty:
-	docker pull couchdb:${COUCHDB_VER}
+docker-thirdparty: docker-thirdparty-couchdb
 	docker pull confluentinc/cp-zookeeper:${ZOOKEEPER_VER}
 	docker pull confluentinc/cp-kafka:${KAFKA_VER}
 	docker pull hyperledger/fabric-ccenv:1.4
+
+.PHONY: docker-thirdparty-couchdb
+docker-thirdparty-couchdb:
+	docker pull couchdb:${COUCHDB_VER}
 
 .PHONY: verify
 verify: export JOB_TYPE=VERIFY
@@ -165,33 +167,29 @@ profile: export JOB_TYPE=PROFILE
 profile: unit-test
 
 .PHONY: linter
-linter: check-deps gotools
+linter: check-deps gotool.goimports
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
 
 .PHONY: check-deps
-check-deps: gotools
+check-deps:
 	@echo "DEP: Checking for dependency issues.."
 	./scripts/check_deps.sh
 
 .PHONY: check-metrics-docs
-check-metrics-doc: gotools
+check-metrics-doc:
 	@echo "METRICS: Checking for outdated reference documentation.."
 	./scripts/metrics_doc.sh check
 
 .PHONY: generate-metrics-docs
-generate-metrics-doc: gotools
+generate-metrics-doc:
 	@echo "Generating metrics reference documentation..."
 	./scripts/metrics_doc.sh generate
 
 .PHONY: protos
-protos: gotools
+protos: gotool.protoc-gen-go
 	@echo "Compiling non-API protos..."
 	./scripts/compile_protos.sh
-
-.PHONY: changelog
-changelog:
-	./scripts/changelog.sh v$(PREV_VERSION) v$(BASE_VERSION)
 
 .PHONY: native
 native: $(RELEASE_EXES)
@@ -226,6 +224,7 @@ $(BUILD_DIR)/images/%/$(DUMMY):
 		$(BUILD_ARGS) \
 		-t $(DOCKER_NS)/fabric-$* ./$(BUILD_CONTEXT)
 	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(BASE_VERSION)
+	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(TWO_DIGIT_VERSION)
 	docker tag $(DOCKER_NS)/fabric-$* $(DOCKER_NS)/fabric-$*:$(DOCKER_TAG)
 	@touch $@
 

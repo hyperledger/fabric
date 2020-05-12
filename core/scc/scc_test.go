@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/mock"
-	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 )
 
 //go:generate counterfeiter -o mock/chaincode_stream_handler.go --fake-name ChaincodeStreamHandler . chaincodeStreamHandler
@@ -21,14 +21,24 @@ type chaincodeStreamHandler interface {
 }
 
 func TestDeploy(t *testing.T) {
-	gt := gomega.NewGomegaWithT(t)
+	gt := NewGomegaWithT(t)
 
-	csh := &mock.ChaincodeStreamHandler{}
 	doneC := make(chan struct{})
-	close(doneC)
+	csh := &mock.ChaincodeStreamHandler{}
 	csh.LaunchInProcReturns(doneC)
-	scc.DeploySysCC(&lifecycle.SCC{}, csh)
-	gt.Expect(csh.LaunchInProcCallCount()).To(gomega.Equal(1))
-	gt.Expect(csh.LaunchInProcArgsForCall(0)).To(gomega.Equal("_lifecycle.syscc"))
-	gt.Eventually(csh.HandleChaincodeStreamCallCount).Should(gomega.Equal(1))
+
+	deployC := make(chan struct{})
+	go func() { scc.DeploySysCC(&lifecycle.SCC{}, csh); close(deployC) }()
+
+	// Consume the register message to enable cleanup
+	gt.Eventually(csh.HandleChaincodeStreamCallCount).Should(Equal(1))
+	stream := csh.HandleChaincodeStreamArgsForCall(0)
+	stream.Recv()
+
+	close(doneC)
+	gt.Eventually(deployC).Should(BeClosed())
+
+	gt.Expect(csh.LaunchInProcCallCount()).To(Equal(1))
+	gt.Expect(csh.LaunchInProcArgsForCall(0)).To(Equal("_lifecycle.syscc"))
+	gt.Eventually(csh.HandleChaincodeStreamCallCount).Should(Equal(1))
 }

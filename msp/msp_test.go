@@ -10,10 +10,12 @@ package msp
 import (
 	"crypto/ecdsa"
 	"crypto/x509"
+	"encoding/asn1"
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -106,7 +108,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 	b, err := proto.Marshal(mspconf)
 	assert.NoError(t, err)
 	conf.Config = b
-	newmsp, err := newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	newmsp, err := newBccspMsp(MSPv1_0, factory.GetDefault())
 	assert.NoError(t, err)
 	err = newmsp.Setup(conf)
 	assert.NoError(t, err)
@@ -119,7 +121,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 	b, err = proto.Marshal(mspconf)
 	assert.NoError(t, err)
 	conf.Config = b
-	newmsp, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	newmsp, err = newBccspMsp(MSPv1_0, factory.GetDefault())
 	assert.NoError(t, err)
 	err = newmsp.Setup(conf)
 	assert.NoError(t, err)
@@ -131,7 +133,7 @@ func TestMSPSetupNoCryptoConf(t *testing.T) {
 	b, err = proto.Marshal(mspconf)
 	assert.NoError(t, err)
 	conf.Config = b
-	newmsp, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	newmsp, err = newBccspMsp(MSPv1_0, factory.GetDefault())
 	assert.NoError(t, err)
 	err = newmsp.Setup(conf)
 	assert.NoError(t, err)
@@ -336,6 +338,50 @@ func TestIsWellFormed(t *testing.T) {
 	err = mspMgr.IsWellFormed(sId)
 	assert.Error(t, err)
 	assert.Equal(t, "no MSP provider recognizes the identity", err.Error())
+
+	// Restore the identity to what it was
+	sId = &msp.SerializedIdentity{}
+	err = proto.Unmarshal(serializedID, sId)
+	assert.NoError(t, err)
+
+	// Append some trailing junk at the end
+	sId.IdBytes = append(sId.IdBytes, []byte{1, 2, 3}...)
+	// And ensure it is deemed invalid
+	err = localMsp.IsWellFormed(sId)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "for MSP SampleOrg has trailing bytes")
+
+	// Parse the certificate of the identity
+	cert, err := x509.ParseCertificate(bl.Bytes)
+	assert.NoError(t, err)
+	// Obtain the ECDSA signature
+	r, s, err := utils.UnmarshalECDSASignature(cert.Signature)
+	assert.NoError(t, err)
+
+	// Modify it by appending some bytes to its end.
+	modifiedSig, err := asn1.Marshal(rst{
+		R: r,
+		S: s,
+		T: big.NewInt(100),
+	})
+	assert.NoError(t, err)
+	newCert, err := certFromX509Cert(cert)
+	assert.NoError(t, err)
+	newCert.SignatureValue.Bytes = modifiedSig
+	newCert.SignatureValue.BitLength = len(newCert.SignatureValue.Bytes) * 8
+	newCert.Raw = nil
+	// Pour it back into the identity
+	rawCert, err := asn1.Marshal(newCert)
+	assert.NoError(t, err)
+	sId.IdBytes = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rawCert})
+	// Ensure it is invalid now and the signature modification is detected
+	err = localMsp.IsWellFormed(sId)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "for MSP SampleOrg has a non canonical signature")
+}
+
+type rst struct {
+	R, S, T *big.Int
 }
 
 func TestValidateCAIdentity(t *testing.T) {
@@ -1111,25 +1157,25 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	localMsp, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	localMsp, err = newBccspMsp(MSPv1_0, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspBad, err = newBccspMsp(MSPv1_0, factory.DefaultBCCSP)
+	localMspBad, err = newBccspMsp(MSPv1_0, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspV13, err = newBccspMsp(MSPv1_3, factory.DefaultBCCSP)
+	localMspV13, err = newBccspMsp(MSPv1_3, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for V1.3 msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)
 	}
 
-	localMspV11, err = newBccspMsp(MSPv1_1, factory.DefaultBCCSP)
+	localMspV11, err = newBccspMsp(MSPv1_1, factory.GetDefault())
 	if err != nil {
 		fmt.Printf("Constructor for V1.1 msp should have succeeded, got err %s instead", err)
 		os.Exit(-1)

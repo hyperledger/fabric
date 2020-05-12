@@ -44,7 +44,7 @@ var _ = Describe("Platforms", func() {
 			Context("when the platform is unknown", func() {
 				It("returns an error", func() {
 					err := registry.ValidateSpec("badType", "")
-					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
+					Expect(err).To(MatchError("unknown chaincodeType: badType"))
 				})
 			})
 		})
@@ -73,7 +73,7 @@ var _ = Describe("Platforms", func() {
 			Context("when the platform is unknown", func() {
 				It("returns an error", func() {
 					err := registry.ValidateDeploymentSpec("badType", nil)
-					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
+					Expect(err).To(MatchError("unknown chaincodeType: badType"))
 				})
 			})
 		})
@@ -92,7 +92,7 @@ var _ = Describe("Platforms", func() {
 				It("returns an error", func() {
 					payload, err := registry.GetDeploymentPayload("badType", "")
 					Expect(payload).To(BeNil())
-					Expect(err).To(MatchError("Unknown chaincodeType: badType"))
+					Expect(err).To(MatchError("unknown chaincodeType: badType"))
 				})
 			})
 		})

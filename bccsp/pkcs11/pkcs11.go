@@ -15,8 +15,10 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/miekg/pkcs11"
+	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -51,60 +53,60 @@ func loadLib(lib, pin, label string) (*pkcs11.Ctx, uint, *pkcs11.SessionHandle, 
 		}
 	}
 	if !found {
-		return nil, slot, nil, fmt.Errorf("Could not find token with label %s", label)
+		return nil, slot, nil, fmt.Errorf("could not find token with label %s", label)
 	}
 
-	var session pkcs11.SessionHandle
-	for i := 0; i < 10; i++ {
-		session, err = ctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
-		if err != nil {
-			logger.Warningf("OpenSession failed, retrying [%s]\n", err)
-		} else {
-			break
-		}
-	}
+	session, err := createSession(ctx, slot, pin)
 	if err != nil {
-		logger.Fatalf("OpenSession [%s]\n", err)
-	}
-	logger.Debugf("Created new pkcs11 session %+v on slot %d\n", session, slot)
-
-	if pin == "" {
-		return nil, slot, nil, fmt.Errorf("No PIN set")
-	}
-	err = ctx.Login(session, pkcs11.CKU_USER, pin)
-	if err != nil {
-		if err != pkcs11.Error(pkcs11.CKR_USER_ALREADY_LOGGED_IN) {
-			return nil, slot, nil, fmt.Errorf("Login failed [%s]", err)
-		}
+		return nil, slot, nil, err
 	}
 
 	return ctx, slot, &session, nil
 }
 
-func (csp *impl) getSession() (session pkcs11.SessionHandle) {
+func (csp *impl) getSession() (session pkcs11.SessionHandle, err error) {
 	select {
 	case session = <-csp.sessions:
-		logger.Debugf("Reusing existing pkcs11 session %+v on slot %d\n", session, csp.slot)
+		_, err = csp.ctx.GetSessionInfo(session)
+		if err != nil {
+			logger.Warningf("Get session info failed [%s], closing existing session and getting a new session\n", err)
+			csp.ctx.CloseSession(session)
+			session, err = createSession(csp.ctx, csp.slot, csp.pin)
+		} else {
+			logger.Debugf("Reusing existing pkcs11 session %+v on slot %d\n", session, csp.slot)
+		}
 
 	default:
 		// cache is empty (or completely in use), create a new session
-		var s pkcs11.SessionHandle
-		var err error
-		for i := 0; i < 10; i++ {
-			s, err = csp.ctx.OpenSession(csp.slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
-			if err != nil {
-				logger.Warningf("OpenSession failed, retrying [%s]\n", err)
-			} else {
-				break
-			}
-		}
-		if err != nil {
-			panic(fmt.Errorf("OpenSession failed [%s]", err))
-		}
-		logger.Debugf("Created new pkcs11 session %+v on slot %d\n", s, csp.slot)
-		session = s
+		session, err = createSession(csp.ctx, csp.slot, csp.pin)
 	}
-	return session
+	return session, err
+}
+
+func createSession(ctx *pkcs11.Ctx, slot uint, pin string) (pkcs11.SessionHandle, error) {
+	var s pkcs11.SessionHandle
+	var err error
+	// attempt 10 times to open a session with a 100ms delay after each attempt
+	for i := 0; i < 10; i++ {
+		s, err = ctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
+		if err != nil {
+			logger.Warningf("OpenSession failed, retrying [%s]\n", err)
+		} else {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if err != nil {
+		return 0, errors.Wrap(err, "OpenSession failed")
+	}
+	logger.Debugf("Created new pkcs11 session %+v on slot %d\n", s, slot)
+	session := s
+
+	err = ctx.Login(session, pkcs11.CKU_USER, pin)
+	if err != nil && err != pkcs11.Error(pkcs11.CKR_USER_ALREADY_LOGGED_IN) {
+		return session, errors.Wrap(err, "Login failed")
+	}
+	return session, nil
 }
 
 func (csp *impl) returnSession(session pkcs11.SessionHandle) {
@@ -120,7 +122,10 @@ func (csp *impl) returnSession(session pkcs11.SessionHandle) {
 // Look for an EC key by SKI, stored in CKA_ID
 func (csp *impl) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err error) {
 	p11lib := csp.ctx
-	session := csp.getSession()
+	session, err := csp.getSession()
+	if err != nil {
+		return nil, false, err
+	}
 	defer csp.returnSession(session)
 	isPriv = true
 	_, err = findKeyPairFromSKI(p11lib, session, ski, privateKeyType)
@@ -196,7 +201,10 @@ func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
 
 func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski []byte, pubKey *ecdsa.PublicKey, err error) {
 	p11lib := csp.ctx
-	session := csp.getSession()
+	session, err := csp.getSession()
+	if err != nil {
+		return nil, nil, err
+	}
 	defer csp.returnSession(session)
 
 	id := nextIDCtr()
@@ -312,7 +320,10 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 
 func (csp *impl) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err error) {
 	p11lib := csp.ctx
-	session := csp.getSession()
+	session, err := csp.getSession()
+	if err != nil {
+		return nil, nil, err
+	}
 	defer csp.returnSession(session)
 
 	privateKey, err := findKeyPairFromSKI(p11lib, session, ski, privateKeyType)
@@ -342,7 +353,10 @@ func (csp *impl) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err error)
 
 func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize int) (bool, error) {
 	p11lib := csp.ctx
-	session := csp.getSession()
+	session, err := csp.getSession()
+	if err != nil {
+		return false, err
+	}
 	defer csp.returnSession(session)
 
 	logger.Debugf("Verify ECDSA\n")

@@ -119,6 +119,7 @@ type CoordinatorConfig struct {
 }
 
 type coordinator struct {
+	mspID          string
 	selfSignedData protoutil.SignedData
 	Support
 	store                          *transientstore.Store
@@ -130,9 +131,10 @@ type coordinator struct {
 }
 
 // NewCoordinator creates a new instance of coordinator
-func NewCoordinator(support Support, store *transientstore.Store, selfSignedData protoutil.SignedData, metrics *metrics.PrivdataMetrics,
+func NewCoordinator(mspID string, support Support, store *transientstore.Store, selfSignedData protoutil.SignedData, metrics *metrics.PrivdataMetrics,
 	config CoordinatorConfig, idDeserializerFactory IdentityDeserializerFactory) Coordinator {
 	return &coordinator{Support: support,
+		mspID:                          mspID,
 		store:                          store,
 		selfSignedData:                 selfSignedData,
 		transientBlockRetention:        config.TransientBlockRetention,
@@ -183,6 +185,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	fetchDurationHistogram := c.metrics.FetchDuration.With("channel", c.ChainID)
 	purgeDurationHistogram := c.metrics.PurgeDuration.With("channel", c.ChainID)
 	pdp := &PvtdataProvider{
+		mspID:                                   c.mspID,
 		selfSignedData:                          c.selfSignedData,
 		logger:                                  logger.With("channel", c.ChainID),
 		listMissingPrivateDataDurationHistogram: listMissingPrivateDataDurationHistogram,

@@ -30,8 +30,8 @@ func pvtDataConf() *PrivateDataConfig {
 // StoreEnv provides the  store env for testing
 type StoreEnv struct {
 	t                 testing.TB
-	TestStoreProvider Provider
-	TestStore         Store
+	TestStoreProvider *Provider
+	TestStore         *Store
 	ledgerid          string
 	btlPolicy         pvtdatapolicy.BTLPolicy
 	conf              *PrivateDataConfig

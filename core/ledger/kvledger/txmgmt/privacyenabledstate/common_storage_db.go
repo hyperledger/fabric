@@ -16,11 +16,11 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
 )
@@ -64,8 +64,7 @@ func NewCommonStorageDBProvider(
 	var err error
 
 	if stateDBConf != nil && stateDBConf.StateDatabase == couchDB {
-		cache := statedb.NewCache(stateDBConf.CouchDB.UserCacheSizeMBs, sysNamespaces)
-		if vdbProvider, err = statecouchdb.NewVersionedDBProvider(stateDBConf.CouchDB, metricsProvider, cache); err != nil {
+		if vdbProvider, err = statecouchdb.NewVersionedDBProvider(stateDBConf.CouchDB, metricsProvider, sysNamespaces); err != nil {
 			return nil, err
 		}
 	} else {
@@ -306,29 +305,29 @@ func (s *CommonStorageDB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt
 		return nil
 	}
 
-	for directoryPath, archiveDirectoryEntries := range dbArtifacts {
-		// split the directory name
-		directoryPathArray := strings.Split(directoryPath, "/")
-		// process the indexes for the chain
-		if directoryPathArray[3] == "indexes" {
-			err := indexCapable.ProcessIndexesForChaincodeDeploy(chaincodeDefinition.Name, archiveDirectoryEntries)
+	for directoryPath, indexFiles := range dbArtifacts {
+		indexFilesData := make(map[string][]byte)
+		for _, f := range indexFiles {
+			indexFilesData[f.FileHeader.Name] = f.FileContent
+		}
+
+		indexInfo := getIndexInfo(directoryPath)
+		switch {
+		case indexInfo.hasIndexForChaincode:
+			err := indexCapable.ProcessIndexesForChaincodeDeploy(chaincodeDefinition.Name, indexFilesData)
 			if err != nil {
 				logger.Errorf("Error processing index for chaincode [%s]: %s", chaincodeDefinition.Name, err)
 			}
-			continue
-		}
-		// check for the indexes directory for the collection
-		if directoryPathArray[3] == "collections" && directoryPathArray[5] == "indexes" {
-			collectionName := directoryPathArray[4]
-			_, ok := collectionConfigMap[collectionName]
+		case indexInfo.hasIndexForCollection:
+			_, ok := collectionConfigMap[indexInfo.collectionName]
 			if !ok {
-				logger.Errorf("Error processing index for chaincode [%s]: cannot create an index for an undefined collection=[%s]", chaincodeDefinition.Name, collectionName)
-			} else {
-				err := indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, collectionName),
-					archiveDirectoryEntries)
-				if err != nil {
-					logger.Errorf("Error processing collection index for chaincode [%s]: %s", chaincodeDefinition.Name, err)
-				}
+				logger.Errorf("Error processing index for chaincode [%s]: cannot create an index for an undefined collection=[%s]",
+					chaincodeDefinition.Name, indexInfo.collectionName)
+				continue
+			}
+			err := indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, indexInfo.collectionName), indexFilesData)
+			if err != nil {
+				logger.Errorf("Error processing collection index for chaincode [%s]: %s", chaincodeDefinition.Name, err)
 			}
 		}
 	}
@@ -384,4 +383,37 @@ func extractCollectionNames(chaincodeDefinition *cceventmgmt.ChaincodeDefinition
 		}
 	}
 	return collectionConfigsMap, nil
+}
+
+type indexInfo struct {
+	hasIndexForChaincode  bool
+	hasIndexForCollection bool
+	collectionName        string
+}
+
+const (
+	// Example for chaincode indexes:
+	// "META-INF/statedb/couchdb/indexes/indexColorSortName.json"
+	chaincodeIndexDirDepth = 3
+	// Example for collection scoped indexes:
+	// "META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json"
+	collectionDirDepth      = 3
+	collectionNameDepth     = 4
+	collectionIndexDirDepth = 5
+)
+
+func getIndexInfo(indexPath string) *indexInfo {
+	indexInfo := &indexInfo{}
+	dirsDepth := strings.Split(indexPath, "/")
+	switch {
+	case len(dirsDepth) > chaincodeIndexDirDepth &&
+		dirsDepth[chaincodeIndexDirDepth] == "indexes":
+		indexInfo.hasIndexForChaincode = true
+	case len(dirsDepth) > collectionDirDepth &&
+		dirsDepth[collectionDirDepth] == "collections" &&
+		dirsDepth[collectionIndexDirDepth] == "indexes":
+		indexInfo.hasIndexForCollection = true
+		indexInfo.collectionName = dirsDepth[collectionNameDepth]
+	}
+	return indexInfo
 }

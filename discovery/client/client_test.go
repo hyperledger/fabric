@@ -24,17 +24,17 @@ import (
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/core/comm"
 	fabricdisc "github.com/hyperledger/fabric/discovery"
 	"github.com/hyperledger/fabric/discovery/endorsement"
 	"github.com/hyperledger/fabric/gossip/api"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gdisc "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/protoext"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -317,7 +317,7 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 	pe := &principalEvaluator{}
 	pf := &policyFetcher{}
 
-	sigPol, _ := cauthdsl.FromString("OR(AND('A.member', 'B.member'), 'C.member', AND('A.member', 'D.member'))")
+	sigPol, _ := policydsl.FromString("OR(AND('A.member', 'B.member'), 'C.member', AND('A.member', 'D.member'))")
 	polBytes, _ := proto.Marshal(sigPol)
 	mdf.On("Metadata", "mycc").Return(&chaincode.Metadata{
 		Policy:  polBytes,
@@ -326,11 +326,11 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 		Id:      []byte{1, 2, 3},
 	})
 
-	pf.On("PolicyByChaincode", "mycc").Return(&inquireablePolicy{
+	pf.On("PoliciesByChaincode", "mycc").Return(&inquireablePolicy{
 		orgCombinations: orgCombinationsThatSatisfyPolicy,
 	})
 
-	sigPol, _ = cauthdsl.FromString("AND('B.member', 'C.member')")
+	sigPol, _ = policydsl.FromString("AND('B.member', 'C.member')")
 	polBytes, _ = proto.Marshal(sigPol)
 	mdf.On("Metadata", "mycc2").Return(&chaincode.Metadata{
 		Policy:  polBytes,
@@ -342,11 +342,11 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 		}),
 	})
 
-	pf.On("PolicyByChaincode", "mycc2").Return(&inquireablePolicy{
+	pf.On("PoliciesByChaincode", "mycc2").Return(&inquireablePolicy{
 		orgCombinations: orgCombinationsThatSatisfyPolicy2,
 	})
 
-	sigPol, _ = cauthdsl.FromString("AND('A.member', 'B.member', 'C.member', 'D.member')")
+	sigPol, _ = policydsl.FromString("AND('A.member', 'B.member', 'C.member', 'D.member')")
 	polBytes, _ = proto.Marshal(sigPol)
 	mdf.On("Metadata", "mycc3").Return(&chaincode.Metadata{
 		Policy:  polBytes,
@@ -355,7 +355,7 @@ func createDiscoveryService(sup *mockSupport) discovery.DiscoveryServer {
 		Id:      []byte{1, 2, 3},
 	})
 
-	pf.On("PolicyByChaincode", "mycc3").Return(&inquireablePolicy{
+	pf.On("PoliciesByChaincode", "mycc3").Return(&inquireablePolicy{
 		orgCombinations: [][]string{{"A", "B", "C", "D"}},
 	})
 
@@ -798,7 +798,7 @@ type ccMetadataFetcher struct {
 	mock.Mock
 }
 
-func (mdf *ccMetadataFetcher) Metadata(channel string, cc string, _ bool) *chaincode.Metadata {
+func (mdf *ccMetadataFetcher) Metadata(channel string, cc string, _ ...string) *chaincode.Metadata {
 	return mdf.Called(cc).Get(0).(*chaincode.Metadata)
 }
 
@@ -820,8 +820,8 @@ type policyFetcher struct {
 	mock.Mock
 }
 
-func (pf *policyFetcher) PolicyByChaincode(channel string, cc string) policies.InquireablePolicy {
-	return pf.Called(cc).Get(0).(policies.InquireablePolicy)
+func (pf *policyFetcher) PoliciesByChaincode(channel string, cc string, collections ...string) []policies.InquireablePolicy {
+	return []policies.InquireablePolicy{pf.Called(cc).Get(0).(policies.InquireablePolicy)}
 }
 
 type endorsementAnalyzer interface {

@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package inquire
 
 import (
-	"reflect"
-
 	"github.com/hyperledger/fabric/common/policies"
 )
 
@@ -275,7 +273,7 @@ func (cps ComparablePrincipalSet) IsSubset(sets ComparablePrincipalSet) bool {
 	for _, p1 := range cps {
 		var found bool
 		for _, p2 := range sets {
-			if reflect.DeepEqual(p1, p2) {
+			if p1.Equal(p2) {
 				found = true
 			}
 		}

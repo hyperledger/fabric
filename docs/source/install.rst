@@ -1,5 +1,5 @@
-Install Samples, Binaries and Docker Images
-===========================================
+Install Samples, Binaries, and Docker Images
+============================================
 
 While we work on developing real installers for the Hyperledger Fabric
 binaries, we provide a script that will download and install samples and
@@ -48,12 +48,13 @@ the binaries and images.
 
 .. note:: If you want a specific release, pass a version identifier for Fabric,
           Fabric-ca and thirdparty Docker images.
-          The command below demonstrates how to download **Fabric v2.0.0 Beta release v2.0.0-beta**
+          The command below demonstrates how to download the latest production releases -
+          **Fabric v2.1.0** and **Fabric CA v1.4.6**
 
 .. code:: bash
 
   curl -sSL https://bit.ly/2ysbOFE | bash -s -- <fabric_version> <fabric-ca_version> <thirdparty_version>
-  curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.0.0-beta 1.4.4 0.4.18
+  curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.1.0 1.4.6 0.4.18
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
@@ -63,7 +64,7 @@ the binaries and images.
 	  information on where to find the latest version of curl and
 	  get the right environment. Alternately, you can substitute
 	  the un-shortened URL:
-	  https://raw.githubusercontent.com/hyperledger/fabric/master/scripts/bootstrap.sh
+	  https://raw.githubusercontent.com/hyperledger/fabric/{BRANCH}/scripts/bootstrap.sh
 
 The command above downloads and executes a bash script
 that will download and extract all of the platform-specific binaries you

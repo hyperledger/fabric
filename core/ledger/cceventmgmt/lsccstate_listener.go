@@ -16,6 +16,11 @@ type KVLedgerLSCCStateListener struct {
 	DeployedChaincodeInfoProvider ledger.DeployedChaincodeInfoProvider
 }
 
+// Name returns the name of the listener
+func (listener *KVLedgerLSCCStateListener) Name() string {
+	return "lscc state listener"
+}
+
 func (listener *KVLedgerLSCCStateListener) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
 	// Noop
 	return nil

@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	corepeer "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
@@ -187,7 +188,7 @@ func (e *env) getLevelstateDBPath() string {
 }
 
 func (e *env) getBlockIndexDBPath() string {
-	return filepath.Join(kvledger.BlockStorePath(e.initializer.Config.RootFSPath), fsblkstorage.IndexDir)
+	return filepath.Join(kvledger.BlockStorePath(e.initializer.Config.RootFSPath), blkstorage.IndexDir)
 }
 
 func (e *env) getConfigHistoryDBPath() string {
@@ -217,7 +218,8 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 		}
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		assert.NoError(t, err)
-		membershipInfoProvider := privdata.NewMembershipInfoProvider(createSelfSignedData(cryptoProvider), identityDeserializerFactory)
+		mspID := "test-mspid"
+		membershipInfoProvider := privdata.NewMembershipInfoProvider(mspID, createSelfSignedData(cryptoProvider), identityDeserializerFactory)
 		initializer.MembershipInfoProvider = membershipInfoProvider
 	}
 
@@ -313,13 +315,14 @@ func (dc *deployedCCInfoProviderWrapper) AllCollectionsConfigPkg(channelName, ch
 func (dc *deployedCCInfoProviderWrapper) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*peer.StaticCollectionConfig, error) {
 	collConfigs := make([]*peer.StaticCollectionConfig, 0, len(dc.orgMSPIDs))
 	for _, mspID := range dc.orgMSPIDs {
-		collConfigs = append(collConfigs, lifecycle.GenerateImplicitCollectionForOrg(mspID))
+		collConfigs = append(collConfigs, dc.ValidatorCommitter.GenerateImplicitCollectionForOrg(mspID))
 	}
 	return collConfigs, nil
 }
 
 func createDeployedCCInfoProvider(orgMSPIDs []string) ledger.DeployedChaincodeInfoProvider {
 	deployedCCInfoProvider := &lifecycle.ValidatorCommitter{
+		CoreConfig: &corepeer.Config{},
 		Resources: &lifecycle.Resources{
 			Serializer: &lifecycle.Serializer{},
 		},

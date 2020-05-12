@@ -5,9 +5,7 @@ Overview
 --------
 
 Logging in the ``peer`` and ``orderer`` is provided by the
-``common/flogging`` package. Chaincodes written in Go also use this
-package if they use the logging methods provided by the ``shim``.
-This package supports
+``common/flogging`` package. This package supports
 
 -  Logging control based on the severity of the message
 -  Logging control based on the software *logger* generating the message

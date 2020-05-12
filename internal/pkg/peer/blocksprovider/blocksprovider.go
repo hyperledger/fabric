@@ -94,6 +94,7 @@ type Deliverer struct {
 	Signer          identity.SignerSerializer
 	DeliverStreamer DeliverStreamer
 	Logger          *flogging.FabricLogger
+	YieldLeadership bool
 
 	MaxRetryDelay     time.Duration
 	InitialRetryDelay time.Duration
@@ -134,8 +135,11 @@ func (d *Deliverer) DeliverBlocks() {
 			}
 			totalDuration += sleepDuration
 			if totalDuration > d.MaxRetryDuration {
-				d.Logger.Warningf("attempted to retry block delivery for more than %v, giving up", d.MaxRetryDuration)
-				return
+				if d.YieldLeadership {
+					d.Logger.Warningf("attempted to retry block delivery for more than %v, giving up", d.MaxRetryDuration)
+					return
+				}
+				d.Logger.Warningf("peer is a static leader, ignoring peer.deliveryclient.reconnectTotalTimeThreshold")
 			}
 			d.sleeper.Sleep(sleepDuration, d.DoneC)
 		}

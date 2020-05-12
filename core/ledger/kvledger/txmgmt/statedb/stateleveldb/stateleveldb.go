@@ -12,8 +12,8 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
@@ -37,8 +37,8 @@ func NewVersionedDBProvider(dbPath string) (*VersionedDBProvider, error) {
 	logger.Debugf("constructing VersionedDBProvider dbPath=%s", dbPath)
 	dbProvider, err := leveldbhelper.NewProvider(
 		&leveldbhelper.Conf{
-			DBPath:                dbPath,
-			ExpectedFormatVersion: dataformat.Version20,
+			DBPath:         dbPath,
+			ExpectedFormat: dataformat.CurrentFormat,
 		})
 	if err != nil {
 		return nil, err
@@ -130,35 +130,19 @@ func (vdb *versionedDB) GetStateMultipleKeys(namespace string, keys []string) ([
 // startKey is inclusive
 // endKey is exclusive
 func (vdb *versionedDB) GetStateRangeScanIterator(namespace string, startKey string, endKey string) (statedb.ResultsIterator, error) {
-	return vdb.GetStateRangeScanIteratorWithMetadata(namespace, startKey, endKey, nil)
+	// pageSize = 0 denotes unlimited page size
+	return vdb.GetStateRangeScanIteratorWithPagination(namespace, startKey, endKey, 0)
 }
 
-const optionLimit = "limit"
-
-// GetStateRangeScanIteratorWithMetadata implements method in VersionedDB interface
-func (vdb *versionedDB) GetStateRangeScanIteratorWithMetadata(namespace string, startKey string, endKey string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
-
-	requestedLimit := int32(0)
-	// if metadata is provided, validate and apply options
-	if metadata != nil {
-		//validate the metadata
-		err := statedb.ValidateRangeMetadata(metadata)
-		if err != nil {
-			return nil, err
-		}
-		if limitOption, ok := metadata[optionLimit]; ok {
-			requestedLimit = limitOption.(int32)
-		}
-	}
-
-	// Note:  metadata is not used for the goleveldb implementation of the range query
+// GetStateRangeScanIteratorWithPagination implements method in VersionedDB interface
+func (vdb *versionedDB) GetStateRangeScanIteratorWithPagination(namespace string, startKey string, endKey string, pageSize int32) (statedb.QueryResultsIterator, error) {
 	dataStartKey := encodeDataKey(namespace, startKey)
 	dataEndKey := encodeDataKey(namespace, endKey)
 	if endKey == "" {
 		dataEndKey[len(dataEndKey)-1] = lastKeyIndicator
 	}
 	dbItr := vdb.db.GetIterator(dataStartKey, dataEndKey)
-	return newKVScanner(namespace, dbItr, requestedLimit), nil
+	return newKVScanner(namespace, dbItr, pageSize), nil
 }
 
 // ExecuteQuery implements method in VersionedDB interface
@@ -166,8 +150,8 @@ func (vdb *versionedDB) ExecuteQuery(namespace, query string) (statedb.ResultsIt
 	return nil, errors.New("ExecuteQuery not supported for leveldb")
 }
 
-// ExecuteQueryWithMetadata implements method in VersionedDB interface
-func (vdb *versionedDB) ExecuteQueryWithMetadata(namespace, query string, metadata map[string]interface{}) (statedb.QueryResultsIterator, error) {
+// ExecuteQueryWithPagination implements method in VersionedDB interface
+func (vdb *versionedDB) ExecuteQueryWithPagination(namespace, query, bookmark string, pageSize int32) (statedb.QueryResultsIterator, error) {
 	return nil, errors.New("ExecuteQueryWithMetadata not supported for leveldb")
 }
 

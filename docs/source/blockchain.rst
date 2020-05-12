@@ -215,47 +215,5 @@ participants. As with privacy, there is a spectrum of needs; from networks
 that are highly structured in their relationships to those that are more
 peer-to-peer.
 
-We’ll learn more about the Hyperledger Fabric consensus mechanisms, which
-currently include Kafka, and Raft.
-
-Where can I learn more?
------------------------
-
-* `Identity <identity/identity.html>`_ (conceptual documentation)
-
-A conceptual doc that will take you through the critical role identities play
-in a Fabric network (using an established PKI structure and x.509 certificates).
-
-* `Membership <membership/membership.html>`_ (conceptual documentation)
-
-Talks through the role of a Membership Service Provider (MSP), which converts
-identities into roles in a Fabric network.
-
-* `Peers <peers/peers.html>`_ (conceptual documentation)
-
-Peers --- owned by organizations --- host the ledger and smart contracts and make
-up the physical structure of a Fabric network.
-
-* :doc:`build_network` (tutorial)
-
-Learn how to download Fabric binaries and bootstrap your own sample network with
-a sample script. Then tear down the network and learn how it was constructed one
-step at a time.
-
-* :doc:`write_first_app` (tutorial)
-
-Deploys a very simple network --- even simpler than Build Your First Network ---
-to use with a simple smart contract and application.
-
-* :doc:`txflow`
-
-A high level look at a sample transaction flow.
-
-* :doc:`fabric_model`
-
-A high level look at some of components and concepts brought up in this introduction as
-well as a few others and describes how they work together in a sample
-transaction flow.
-
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

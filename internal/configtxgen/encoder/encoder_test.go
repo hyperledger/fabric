@@ -46,7 +46,66 @@ func CreateStandardPolicies() map[string]*genesisconfig.Policy {
 	}
 }
 
+func CreateStandardOrdererPolicies() map[string]*genesisconfig.Policy {
+	policies := CreateStandardPolicies()
+
+	policies["BlockValidation"] = &genesisconfig.Policy{
+		Type: "ImplicitMeta",
+		Rule: "ANY Admins",
+	}
+
+	return policies
+}
+
 var _ = Describe("Encoder", func() {
+	Describe("AddOrdererPolicies", func() {
+		var (
+			cg       *cb.ConfigGroup
+			policies map[string]*genesisconfig.Policy
+		)
+
+		BeforeEach(func() {
+			cg = protoutil.NewConfigGroup()
+			policies = CreateStandardOrdererPolicies()
+		})
+
+		It("adds the block validation policy to the group", func() {
+			err := encoder.AddOrdererPolicies(cg, policies, "Admins")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(cg.Policies)).To(Equal(4))
+
+			Expect(cg.Policies["BlockValidation"].Policy).To(Equal(&cb.Policy{
+				Type: int32(cb.Policy_IMPLICIT_META),
+				Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+					SubPolicy: "Admins",
+					Rule:      cb.ImplicitMetaPolicy_ANY,
+				}),
+			}))
+		})
+
+		Context("when the policy map is nil", func() {
+			BeforeEach(func() {
+				policies = nil
+			})
+
+			It("returns an error", func() {
+				err := encoder.AddOrdererPolicies(cg, policies, "Admins")
+				Expect(err).To(MatchError("no policies defined"))
+			})
+		})
+
+		Context("when the policy map is missing 'BlockValidation'", func() {
+			BeforeEach(func() {
+				delete(policies, "BlockValidation")
+			})
+
+			It("returns an error", func() {
+				err := encoder.AddOrdererPolicies(cg, policies, "Admins")
+				Expect(err).To(MatchError("no BlockValidation policy defined"))
+			})
+		})
+	})
+
 	Describe("AddPolicies", func() {
 		var (
 			cg       *cb.ConfigGroup
@@ -58,13 +117,34 @@ var _ = Describe("Encoder", func() {
 			policies = CreateStandardPolicies()
 		})
 
-		It("adds the policies to the group", func() {
+		It("adds the standard policies to the group", func() {
 			err := encoder.AddPolicies(cg, policies, "Admins")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(cg.Policies)).To(Equal(3))
-			Expect(cg.Policies["Admins"]).NotTo(BeNil())
-			Expect(cg.Policies["Readers"]).NotTo(BeNil())
-			Expect(cg.Policies["Writers"]).NotTo(BeNil())
+
+			Expect(cg.Policies["Admins"].Policy).To(Equal(&cb.Policy{
+				Type: int32(cb.Policy_IMPLICIT_META),
+				Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+					SubPolicy: "Admins",
+					Rule:      cb.ImplicitMetaPolicy_ANY,
+				}),
+			}))
+
+			Expect(cg.Policies["Readers"].Policy).To(Equal(&cb.Policy{
+				Type: int32(cb.Policy_IMPLICIT_META),
+				Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+					SubPolicy: "Readers",
+					Rule:      cb.ImplicitMetaPolicy_ANY,
+				}),
+			}))
+
+			Expect(cg.Policies["Writers"].Policy).To(Equal(&cb.Policy{
+				Type: int32(cb.Policy_IMPLICIT_META),
+				Value: protoutil.MarshalOrPanic(&cb.ImplicitMetaPolicy{
+					SubPolicy: "Writers",
+					Rule:      cb.ImplicitMetaPolicy_ANY,
+				}),
+			}))
 		})
 
 		Context("when the policy map is nil", func() {
@@ -161,7 +241,7 @@ var _ = Describe("Encoder", func() {
 				},
 				Orderer: &genesisconfig.Orderer{
 					OrdererType: "solo",
-					Policies:    CreateStandardPolicies(),
+					Policies:    CreateStandardOrdererPolicies(),
 					Addresses:   []string{"foo.com:7050", "bar.com:8050"},
 				},
 				Consortiums: map[string]*genesisconfig.Consortium{
@@ -279,7 +359,7 @@ var _ = Describe("Encoder", func() {
 						Policies: CreateStandardPolicies(),
 					},
 				},
-				Policies: CreateStandardPolicies(),
+				Policies: CreateStandardOrdererPolicies(),
 				Capabilities: map[string]bool{
 					"FakeCapability": true,
 				},
@@ -986,7 +1066,7 @@ var _ = Describe("Encoder", func() {
 					Policies:   CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "solo",
-						Policies:    CreateStandardPolicies(),
+						Policies:    CreateStandardOrdererPolicies(),
 					},
 					Application: &genesisconfig.Application{
 						Organizations: []*genesisconfig.Organization{
@@ -1019,7 +1099,7 @@ var _ = Describe("Encoder", func() {
 					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "kafka",
-						Policies:    CreateStandardPolicies(),
+						Policies:    CreateStandardOrdererPolicies(),
 					},
 					Consortiums: map[string]*genesisconfig.Consortium{
 						"SampleConsortium": {
@@ -1097,7 +1177,7 @@ var _ = Describe("Encoder", func() {
 					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "solo",
-						Policies:    CreateStandardPolicies(),
+						Policies:    CreateStandardOrdererPolicies(),
 					},
 					Application: &genesisconfig.Application{
 						Policies: CreateStandardPolicies(),
@@ -1161,7 +1241,7 @@ var _ = Describe("Encoder", func() {
 					Consortium: "SampleConsortium",
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "solo",
-						Policies:    CreateStandardPolicies(),
+						Policies:    CreateStandardOrdererPolicies(),
 					},
 					Application: &genesisconfig.Application{
 						Organizations: []*genesisconfig.Organization{
@@ -1182,7 +1262,7 @@ var _ = Describe("Encoder", func() {
 					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "kafka",
-						Policies:    CreateStandardPolicies(),
+						Policies:    CreateStandardOrdererPolicies(),
 					},
 					Consortiums: map[string]*genesisconfig.Consortium{
 						"SampleConsortium": {
@@ -1376,7 +1456,7 @@ var _ = Describe("Encoder", func() {
 					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "solo",
-						Policies:    CreateStandardPolicies(),
+						Policies:    CreateStandardOrdererPolicies(),
 					},
 				}
 			})
@@ -1425,7 +1505,7 @@ var _ = Describe("Encoder", func() {
 					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
 						OrdererType: "solo",
-						Policies:    CreateStandardPolicies(),
+						Policies:    CreateStandardOrdererPolicies(),
 					},
 				}
 			})
@@ -1456,7 +1536,7 @@ var _ = Describe("Encoder", func() {
 				bs = encoder.New(&genesisconfig.Profile{
 					Policies: CreateStandardPolicies(),
 					Orderer: &genesisconfig.Orderer{
-						Policies:    CreateStandardPolicies(),
+						Policies:    CreateStandardOrdererPolicies(),
 						OrdererType: "solo",
 					},
 				})

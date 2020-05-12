@@ -386,7 +386,7 @@ func TestMetadata(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Scenario I: No subscription was invoked on the lifecycle
-	md := m.Metadata("mychannel", "cc1", false)
+	md := m.Metadata("mychannel", "cc1")
 	assert.Nil(t, md)
 	assertLogged(t, recorder, "Requested Metadata for non-existent channel mychannel")
 
@@ -398,7 +398,7 @@ func TestMetadata(t *testing.T) {
 	defer sub.ChaincodeDeployDone(true)
 	assert.NoError(t, err)
 	assert.NotNil(t, sub)
-	md = m.Metadata("mychannel", "cc1", false)
+	md = m.Metadata("mychannel", "cc1")
 	assert.Equal(t, &chaincode.Metadata{
 		Name:    "cc1",
 		Version: "1.0",
@@ -410,7 +410,7 @@ func TestMetadata(t *testing.T) {
 	// Scenario III: A metadata retrieval is made and the chaincode is not in memory yet,
 	// and when the query is attempted to be made - it fails.
 	queryCreator.On("NewQuery").Return(nil, errors.New("failed obtaining query executor")).Once()
-	md = m.Metadata("mychannel", "cc2", false)
+	md = m.Metadata("mychannel", "cc2")
 	assert.Nil(t, md)
 	assertLogged(t, recorder, "Failed obtaining new query for channel mychannel : failed obtaining query executor")
 
@@ -418,7 +418,7 @@ func TestMetadata(t *testing.T) {
 	// and when the query is attempted to be made - it succeeds, but GetState fails.
 	queryCreator.On("NewQuery").Return(query, nil).Once()
 	query.On("GetState", "lscc", "cc2").Return(nil, errors.New("GetState failed")).Once()
-	md = m.Metadata("mychannel", "cc2", false)
+	md = m.Metadata("mychannel", "cc2")
 	assert.Nil(t, md)
 	assertLogged(t, recorder, "Failed querying LSCC for channel mychannel : GetState failed")
 
@@ -426,7 +426,7 @@ func TestMetadata(t *testing.T) {
 	// and both the query and the GetState succeed, however - GetState returns nil
 	queryCreator.On("NewQuery").Return(query, nil).Once()
 	query.On("GetState", "lscc", "cc2").Return(nil, nil).Once()
-	md = m.Metadata("mychannel", "cc2", false)
+	md = m.Metadata("mychannel", "cc2")
 	assert.Nil(t, md)
 	assertLogged(t, recorder, "Chaincode cc2 isn't defined in channel mychannel")
 
@@ -434,7 +434,7 @@ func TestMetadata(t *testing.T) {
 	// and both the query and the GetState succeed, however - GetState returns a valid metadata
 	queryCreator.On("NewQuery").Return(query, nil).Once()
 	query.On("GetState", "lscc", "cc2").Return(cc2Bytes, nil).Once()
-	md = m.Metadata("mychannel", "cc2", false)
+	md = m.Metadata("mychannel", "cc2")
 	assert.Equal(t, &chaincode.Metadata{
 		Name:    "cc2",
 		Version: "1.0",
@@ -447,7 +447,7 @@ func TestMetadata(t *testing.T) {
 	queryCreator.On("NewQuery").Return(query, nil).Once()
 	query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil).Once()
 	query.On("GetState", "lscc", privdata.BuildCollectionKVSKey("cc1")).Return(protoutil.MarshalOrPanic(&peer.CollectionConfigPackage{}), nil).Once()
-	md = m.Metadata("mychannel", "cc1", true)
+	md = m.Metadata("mychannel", "cc1", "col1")
 	assert.Equal(t, &chaincode.Metadata{
 		Name:              "cc1",
 		Version:           "1.0",
@@ -463,7 +463,7 @@ func TestMetadata(t *testing.T) {
 	queryCreator.On("NewQuery").Return(query, nil).Once()
 	query.On("GetState", "lscc", "cc1").Return(cc1Bytes, nil).Once()
 	query.On("GetState", "lscc", privdata.BuildCollectionKVSKey("cc1")).Return(nil, errors.New("foo")).Once()
-	md = m.Metadata("mychannel", "cc1", true)
+	md = m.Metadata("mychannel", "cc1", "col1")
 	assert.Nil(t, md)
 	assertLogged(t, recorder, "Failed querying lscc namespace for cc1~collection: foo")
 }

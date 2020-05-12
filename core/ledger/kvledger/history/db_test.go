@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -20,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -98,7 +99,7 @@ func TestHistory(t *testing.T) {
 	defer env.cleanup()
 	provider := env.testBlockStorageEnv.provider
 	ledger1id := "ledger1"
-	store1, err := provider.OpenBlockStore(ledger1id)
+	store1, err := provider.Open(ledger1id)
 	assert.NoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
 	assert.Equal(t, "history", env.testHistoryDB.Name())
@@ -201,7 +202,7 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	defer env.cleanup()
 	provider := env.testBlockStorageEnv.provider
 	ledger1id := "ledger1"
-	store1, err := provider.OpenBlockStore(ledger1id)
+	store1, err := provider.Open(ledger1id)
 	assert.NoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
 
@@ -220,7 +221,7 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	block1 := bg.NextBlock([][]byte{pubSimResBytes})
 
 	//for this invalid tran test, set the transaction to invalid
-	txsFilter := util.TxValidationFlags(block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	txsFilter.SetFlag(0, peer.TxValidationCode_INVALID_OTHER_REASON)
 	block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
@@ -258,7 +259,7 @@ func TestHistoryWithKeyContainingNilBytes(t *testing.T) {
 	defer env.cleanup()
 	provider := env.testBlockStorageEnv.provider
 	ledger1id := "ledger1"
-	store1, err := provider.OpenBlockStore(ledger1id)
+	store1, err := provider.Open(ledger1id)
 	assert.NoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
 
@@ -356,7 +357,7 @@ func TestHistoryWithBlockNumber256(t *testing.T) {
 	defer env.cleanup()
 	provider := env.testBlockStorageEnv.provider
 	ledger1id := "ledger1"
-	store1, err := provider.OpenBlockStore(ledger1id)
+	store1, err := provider.Open(ledger1id)
 	assert.NoError(t, err, "Error upon provider.OpenBlockStore()")
 	defer store1.Shutdown()
 

@@ -90,7 +90,9 @@ func TestPKCS11GetSession(t *testing.T) {
 	}
 	var sessions []pkcs11.SessionHandle
 	for i := 0; i < 3*sessionCacheSize; i++ {
-		sessions = append(sessions, currentBCCSP.(*impl).getSession())
+		session, err := currentBCCSP.(*impl).getSession()
+		assert.NoError(t, err)
+		sessions = append(sessions, session)
 	}
 
 	// Return all sessions, should leave sessionCacheSize cached
@@ -105,13 +107,13 @@ func TestPKCS11GetSession(t *testing.T) {
 
 	// Should be able to get sessionCacheSize cached sessions
 	for i := 0; i < sessionCacheSize; i++ {
-		sessions = append(sessions, currentBCCSP.(*impl).getSession())
+		session, err := currentBCCSP.(*impl).getSession()
+		assert.NoError(t, err)
+		sessions = append(sessions, session)
 	}
 
-	// This one should fail
-	assert.Panics(t, func() {
-		currentBCCSP.(*impl).getSession()
-	}, "Should not been able to create another session")
+	_, err := currentBCCSP.(*impl).getSession()
+	assert.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
 
 	// Cleanup
 	for _, session := range sessions {

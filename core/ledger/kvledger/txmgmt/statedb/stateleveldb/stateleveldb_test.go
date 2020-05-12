@@ -9,9 +9,9 @@ package stateleveldb
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -112,6 +112,12 @@ func TestPaginatedRangeQuery(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
 	commontests.TestPaginatedRangeQuery(t, env.DBProvider)
+}
+
+func TestRangeQuerySpecialCharacters(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestRangeQuerySpecialCharacters(t, env.DBProvider)
 }
 
 func TestApplyUpdatesWithNilHeight(t *testing.T) {

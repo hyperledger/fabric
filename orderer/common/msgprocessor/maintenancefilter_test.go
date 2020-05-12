@@ -27,9 +27,9 @@ import (
 
 func newMockOrdererConfig(migration bool, state orderer.ConsensusType_State) *mocks.OrdererConfig {
 	mockOrderer := &mocks.OrdererConfig{}
-	mockCapabilties := &mocks.OrdererCapabilities{}
-	mockCapabilties.ConsensusTypeMigrationReturns(migration)
-	mockOrderer.CapabilitiesReturns(mockCapabilties)
+	mockCapabilities := &mocks.OrdererCapabilities{}
+	mockCapabilities.ConsensusTypeMigrationReturns(migration)
+	mockOrderer.CapabilitiesReturns(mockCapabilities)
 	mockOrderer.ConsensusTypeReturns("kafka")
 	mockOrderer.ConsensusStateReturns(state)
 	return mockOrderer
@@ -80,7 +80,7 @@ func TestMaintenanceDisabled(t *testing.T) {
 	})
 }
 
-func TestMaintenanceParseEvelope(t *testing.T) {
+func TestMaintenanceParseEnvelope(t *testing.T) {
 	msActive := &mockSystemChannelFilterSupport{
 		OrdererConfigVal: newMockOrdererConfig(true, orderer.ConsensusType_STATE_NORMAL),
 	}

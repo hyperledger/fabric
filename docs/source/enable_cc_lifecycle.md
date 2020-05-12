@@ -109,13 +109,16 @@ Note that the `enable_lifecycle.json` uses sample values, for example `org1Polic
 		}
    },
    "acls": {
+		"_lifecycle/CheckCommitReadiness": {
+			"policy_ref": "/Channel/Application/Writers"
+		},
 		"_lifecycle/CommitChaincodeDefinition": {
 			"policy_ref": "/Channel/Application/Writers"
 		},
 		"_lifecycle/QueryChaincodeDefinition": {
 			"policy_ref": "/Channel/Application/Readers"
 		},
-		"_lifecycle/QueryNamespaceDefinitions": {
+		"_lifecycle/QueryChaincodeDefinitions": {
 			"policy_ref": "/Channel/Application/Readers"
 		}
    }
@@ -208,13 +211,16 @@ The following [Access Control List (ACL)](./access_control.html) in `enable_life
 
 ```
 "acls": {
+ "_lifecycle/CheckCommitReadiness": {
+   "policy_ref": "/Channel/Application/Writers"
+ },
  "_lifecycle/CommitChaincodeDefinition": {
    "policy_ref": "/Channel/Application/Writers"
  },
  "_lifecycle/QueryChaincodeDefinition": {
    "policy_ref": "/Channel/Application/Readers"
  },
- "_lifecycle/QueryNamespaceDefinitions": {
+ "_lifecycle/QueryChaincodeDefinitions": {
    "policy_ref": "/Channel/Application/Readers"
 ```
 
@@ -225,7 +231,7 @@ Once you have the environment variables set, navigate to [Step 1: Pull and trans
 Once you have a `modified_config.json`, add the ACLs (as listed in `enable_lifecycle.json`) using this command:
 
 ```
-jq -s '.[0] * {"channel_group":{"groups":{"Application": {"values": {"ACLs": {"value": {"acls": .[1].acls}}}}}}}' config.json ./scripts/policies.json > modified_config.json
+jq -s '.[0] * {"channel_group":{"groups":{"Application": {"values": {"ACLs": {"value": {"acls": .[1].acls}}}}}}}' config.json ./enable_lifecycle.json > modified_config.json
 ```
 
 Then, follow the steps at [Step 3: Re-encode and submit the config](./config_update.html#step-3-re-encode-and-submit-the-config).

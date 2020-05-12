@@ -66,7 +66,7 @@ var _ = Describe("Gossip Test", func() {
 		)
 
 		BeforeEach(func() {
-			network = nwo.New(nwo.BasicSolo(), testDir, client, StartPort(), components)
+			network = nwo.New(nwo.FullSolo(), testDir, client, StartPort(), components)
 
 			network.GenerateConfigTree()
 			//  modify peer config

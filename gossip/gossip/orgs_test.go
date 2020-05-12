@@ -18,7 +18,6 @@ import (
 	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/gossip/api"
 	gcomm "github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -27,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -143,7 +143,6 @@ func newGossipInstanceWithGRPCWithExternalEndpoint(id int, port int, gRPCServer 
 }
 
 func TestMultipleOrgEndpointLeakage(t *testing.T) {
-	t.Parallel()
 	// Scenario: create 2 organizations, each with 5 peers.
 	// Both organizations will have an anchor peer each
 	// The first 2 peers of each org would have an external endpoint, the rest won't.
@@ -271,7 +270,6 @@ func TestMultipleOrgEndpointLeakage(t *testing.T) {
 }
 
 func TestConfidentiality(t *testing.T) {
-	t.Parallel()
 	// Scenario: create 4 organizations: {A, B, C, D}, each with 3 peers.
 	// Make only the first 2 peers have an external endpoint.
 	// Also, add the peers to the following channels:

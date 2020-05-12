@@ -7,14 +7,19 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"github.com/hyperledger/fabric/common/ledger/blkstorage/fsblkstorage"
-	"github.com/hyperledger/fabric/common/ledger/dataformat"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/pkg/errors"
 )
 
-// UpgradeDBs upgrades existing ledger databases to the latest formats
-func UpgradeDBs(rootFSPath string) error {
+// UpgradeDBs upgrades existing ledger databases to the latest formats.
+// It checks the format of idStore and does not drop any databases
+// if the format is already the latest version. Otherwise, it drops
+// ledger databases and upgrades the idStore format.
+func UpgradeDBs(config *ledger.Config) error {
+	rootFSPath := config.RootFSPath
 	fileLockPath := fileLockPath(rootFSPath)
 	fileLock := leveldbhelper.NewFileLock(fileLockPath)
 	if err := fileLock.Lock(); err != nil {
@@ -25,28 +30,22 @@ func UpgradeDBs(rootFSPath string) error {
 
 	logger.Infof("Ledger data folder from config = [%s]", rootFSPath)
 
-	// upgrades idStore (ledgerProvider) and drop databases
-	if err := UpgradeIDStoreFormat(rootFSPath); err != nil {
-		return err
+	if config.StateDBConfig.StateDatabase == "CouchDB" {
+		if err := statecouchdb.DropApplicationDBs(config.StateDBConfig.CouchDB); err != nil {
+			return err
+		}
 	}
-
 	if err := dropDBs(rootFSPath); err != nil {
 		return err
 	}
-
-	blockstorePath := BlockStorePath(rootFSPath)
-	return fsblkstorage.DeleteBlockStoreIndex(blockstorePath)
-}
-
-// UpgradeIDStoreFormat upgrades the format for idStore
-func UpgradeIDStoreFormat(rootFSPath string) error {
-	logger.Debugf("Attempting to upgrade idStore data format to current format %s", dataformat.Version20)
+	if err := blkstorage.DeleteBlockStoreIndex(BlockStorePath(rootFSPath)); err != nil {
+		return err
+	}
 
 	dbPath := LedgerProviderPath(rootFSPath)
 	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
 	db.Open()
 	defer db.Close()
-
 	idStore := &idStore{db, dbPath}
 	return idStore.upgradeFormat()
 }

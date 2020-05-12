@@ -267,10 +267,11 @@ type Builder struct {
 	Location     string
 	Logger       *flogging.FabricLogger
 	Name         string
+	MSPID        string
 }
 
 // CreateBuilders will construct builders from the peer configuration.
-func CreateBuilders(builderConfs []peer.ExternalBuilder) []*Builder {
+func CreateBuilders(builderConfs []peer.ExternalBuilder, mspid string) []*Builder {
 	var builders []*Builder
 	for _, builderConf := range builderConfs {
 		builders = append(builders, &Builder{
@@ -278,6 +279,7 @@ func CreateBuilders(builderConfs []peer.ExternalBuilder) []*Builder {
 			Name:         builderConf.Name,
 			EnvWhitelist: builderConf.EnvironmentWhitelist,
 			Logger:       logger.Named(builderConf.Name),
+			MSPID:        mspid,
 		})
 	}
 	return builders
@@ -314,13 +316,10 @@ func (b *Builder) Build(buildContext *BuildContext) error {
 func (b *Builder) Release(buildContext *BuildContext) error {
 	release := filepath.Join(b.Location, "bin", "release")
 
-	_, err := os.Stat(release)
-	if os.IsNotExist(err) {
+	_, err := exec.LookPath(release)
+	if err != nil {
 		b.Logger.Debugf("Skipping release step for '%s' as no release binary found", buildContext.CCID)
 		return nil
-	}
-	if err != nil {
-		return errors.WithMessagef(err, "could not stat release binary '%s'", release)
 	}
 
 	cmd := b.NewCommand(release, buildContext.BldDir, buildContext.ReleaseDir)
@@ -339,9 +338,10 @@ type runConfig struct {
 	ClientCert  string `json:"client_cert"` // PEM encoded client certificate
 	ClientKey   string `json:"client_key"`  // PEM encoded client key
 	RootCert    string `json:"root_cert"`   // PEM encoded peer chaincode certificate
+	MSPID       string `json:"mspid"`
 }
 
-func newRunConfig(ccid string, peerConnection *ccintf.PeerConnection) runConfig {
+func newRunConfig(ccid string, peerConnection *ccintf.PeerConnection, mspid string) runConfig {
 	var tlsConfig ccintf.TLSConfig
 	if peerConnection.TLSConfig != nil {
 		tlsConfig = *peerConnection.TLSConfig
@@ -353,6 +353,7 @@ func newRunConfig(ccid string, peerConnection *ccintf.PeerConnection) runConfig 
 		ClientCert:  string(tlsConfig.ClientCert),
 		ClientKey:   string(tlsConfig.ClientKey),
 		RootCert:    string(tlsConfig.RootCert),
+		MSPID:       mspid,
 	}
 }
 
@@ -364,7 +365,7 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 		return nil, errors.WithMessage(err, "could not create temp run dir")
 	}
 
-	rc := newRunConfig(ccid, peerConnection)
+	rc := newRunConfig(ccid, peerConnection, b.MSPID)
 	marshaledRC, err := json.Marshal(rc)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not marshal run config")

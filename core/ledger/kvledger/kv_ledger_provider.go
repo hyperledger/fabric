@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -20,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/ledgerstorage"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -49,22 +49,32 @@ var (
 
 	// formatKey
 	formatKey = []byte("f")
+
+	attrsToIndex = []blkstorage.IndexableAttr{
+		blkstorage.IndexableAttrBlockHash,
+		blkstorage.IndexableAttrBlockNum,
+		blkstorage.IndexableAttrTxID,
+		blkstorage.IndexableAttrBlockNumTranNum,
+	}
 )
+
+const maxBlockFileSize = 64 * 1024 * 1024
 
 // Provider implements interface ledger.PeerLedgerProvider
 type Provider struct {
-	idStore             *idStore
-	ledgerStoreProvider *ledgerstorage.Provider
-	vdbProvider         privacyenabledstate.DBProvider
-	historydbProvider   *history.DBProvider
-	configHistoryMgr    confighistory.Mgr
-	stateListeners      []ledger.StateListener
-	bookkeepingProvider bookkeeping.Provider
-	initializer         *ledger.Initializer
-	collElgNotifier     *collElgNotifier
-	stats               *stats
-	fileLock            *leveldbhelper.FileLock
-	hasher              ledger.Hasher
+	idStore              *idStore
+	blkStoreProvider     *blkstorage.BlockStoreProvider
+	pvtdataStoreProvider *pvtdatastorage.Provider
+	vdbProvider          privacyenabledstate.DBProvider
+	historydbProvider    *history.DBProvider
+	configHistoryMgr     confighistory.Mgr
+	stateListeners       []ledger.StateListener
+	bookkeepingProvider  bookkeeping.Provider
+	initializer          *ledger.Initializer
+	collElgNotifier      *collElgNotifier
+	stats                *stats
+	fileLock             *leveldbhelper.FileLock
+	hasher               ledger.Hasher
 }
 
 // NewProvider instantiates a new Provider.
@@ -78,8 +88,8 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 	defer func() {
 		if e != nil {
 			p.Close()
-			if errFormatMismatch, ok := e.(*dataformat.ErrVersionMismatch); ok {
-				if errFormatMismatch.Version == dataformat.Version1x && errFormatMismatch.ExpectedVersion == dataformat.Version20 {
+			if errFormatMismatch, ok := e.(*dataformat.ErrFormatMismatch); ok {
+				if errFormatMismatch.Format == dataformat.PreviousFormat && errFormatMismatch.ExpectedFormat == dataformat.CurrentFormat {
 					logger.Errorf("Please execute the 'peer node upgrade-dbs' command to upgrade the database format: %s", errFormatMismatch)
 				} else {
 					logger.Errorf("Please check the Fabric version matches the ledger data format: %s", errFormatMismatch)
@@ -101,7 +111,11 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 		return nil, err
 	}
 
-	if err := p.initLedgerStorageProvider(); err != nil {
+	if err := p.initBlockStoreProvider(); err != nil {
+		return nil, err
+	}
+
+	if err := p.initPvtDataStoreProvider(); err != nil {
 		return nil, err
 	}
 
@@ -137,22 +151,33 @@ func (p *Provider) initLedgerIDInventory() error {
 	return nil
 }
 
-func (p *Provider) initLedgerStorageProvider() error {
-	// initialize ledger storage
-	privateData := &pvtdatastorage.PrivateDataConfig{
-		PrivateDataConfig: p.initializer.Config.PrivateDataConfig,
-		StorePath:         PvtDataStorePath(p.initializer.Config.RootFSPath),
-	}
-
-	ledgerStoreProvider, err := ledgerstorage.NewProvider(
-		BlockStorePath(p.initializer.Config.RootFSPath),
-		privateData,
+func (p *Provider) initBlockStoreProvider() error {
+	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
+	blkStoreProvider, err := blkstorage.NewProvider(
+		blkstorage.NewConf(
+			BlockStorePath(p.initializer.Config.RootFSPath),
+			maxBlockFileSize,
+		),
+		indexConfig,
 		p.initializer.MetricsProvider,
 	)
 	if err != nil {
 		return err
 	}
-	p.ledgerStoreProvider = ledgerStoreProvider
+	p.blkStoreProvider = blkStoreProvider
+	return nil
+}
+
+func (p *Provider) initPvtDataStoreProvider() error {
+	privateDataConfig := &pvtdatastorage.PrivateDataConfig{
+		PrivateDataConfig: p.initializer.Config.PrivateDataConfig,
+		StorePath:         PvtDataStorePath(p.initializer.Config.RootFSPath),
+	}
+	pvtdataStoreProvider, err := pvtdatastorage.NewProvider(privateDataConfig)
+	if err != nil {
+		return err
+	}
+	p.pvtdataStoreProvider = pvtdataStoreProvider
 	return nil
 }
 
@@ -233,7 +258,7 @@ func (p *Provider) initLedgerStatistics() {
 // created ledgers list (atomically). If a crash happens in between, the 'recoverUnderConstructionLedger'
 // function is invoked before declaring the provider to be usable
 func (p *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger, error) {
-	ledgerID, err := protoutil.GetChainIDFromBlock(genesisBlock)
+	ledgerID, err := protoutil.GetChannelIDFromBlock(genesisBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +272,7 @@ func (p *Provider) Create(genesisBlock *common.Block) (ledger.PeerLedger, error)
 	if err = p.idStore.setUnderConstructionFlag(ledgerID); err != nil {
 		return nil, err
 	}
-	lgr, err := p.openInternal(ledgerID)
+	lgr, err := p.open(ledgerID)
 	if err != nil {
 		logger.Errorf("Error opening a new empty ledger. Unsetting under construction flag. Error: %+v", err)
 		panicOnErr(p.runCleanup(ledgerID), "Error running cleanup for ledger id [%s]", ledgerID)
@@ -276,16 +301,22 @@ func (p *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 	if !active {
 		return nil, ErrInactiveLedger
 	}
-	return p.openInternal(ledgerID)
+	return p.open(ledgerID)
 }
 
-func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
+func (p *Provider) open(ledgerID string) (ledger.PeerLedger, error) {
 	// Get the block store for a chain/ledger
-	blockStore, err := p.ledgerStoreProvider.Open(ledgerID)
+	blockStore, err := p.blkStoreProvider.Open(ledgerID)
 	if err != nil {
 		return nil, err
 	}
-	p.collElgNotifier.registerListener(ledgerID, blockStore)
+
+	pvtdataStore, err := p.pvtdataStoreProvider.OpenStore(ledgerID)
+	if err != nil {
+		return nil, err
+	}
+
+	p.collElgNotifier.registerListener(ledgerID, pvtdataStore)
 
 	// Get the versioned database (state database) for a chain/ledger
 	vDB, err := p.vdbProvider.GetDBHandle(ledgerID)
@@ -302,22 +333,23 @@ func (p *Provider) openInternal(ledgerID string) (ledger.PeerLedger, error) {
 		}
 	}
 
-	// Create a kvLedger for this chain/ledger, which encapsulates the underlying data stores
-	// (id store, blockstore, state database, history database)
-	l, err := newKVLedger(
-		ledgerID,
-		blockStore,
-		vDB,
-		historyDB,
-		p.configHistoryMgr,
-		p.stateListeners,
-		p.bookkeepingProvider,
-		p.initializer.DeployedChaincodeInfoProvider,
-		p.initializer.ChaincodeLifecycleEventProvider,
-		p.stats.ledgerStats(ledgerID),
-		p.initializer.CustomTxProcessors,
-		p.hasher,
-	)
+	initializer := &lgrInitializer{
+		ledgerID:                 ledgerID,
+		blockStore:               blockStore,
+		pvtdataStore:             pvtdataStore,
+		versionedDB:              vDB,
+		historyDB:                historyDB,
+		configHistoryMgr:         p.configHistoryMgr,
+		stateListeners:           p.stateListeners,
+		bookkeeperProvider:       p.bookkeepingProvider,
+		ccInfoProvider:           p.initializer.DeployedChaincodeInfoProvider,
+		ccLifecycleEventProvider: p.initializer.ChaincodeLifecycleEventProvider,
+		stats:                    p.stats.ledgerStats(ledgerID),
+		customTxProcessors:       p.initializer.CustomTxProcessors,
+		hasher:                   p.hasher,
+	}
+
+	l, err := newKVLedger(initializer)
 	if err != nil {
 		return nil, err
 	}
@@ -339,8 +371,11 @@ func (p *Provider) Close() {
 	if p.idStore != nil {
 		p.idStore.close()
 	}
-	if p.ledgerStoreProvider != nil {
-		p.ledgerStoreProvider.Close()
+	if p.blkStoreProvider != nil {
+		p.blkStoreProvider.Close()
+	}
+	if p.pvtdataStoreProvider != nil {
+		p.pvtdataStoreProvider.Close()
 	}
 	if p.vdbProvider != nil {
 		p.vdbProvider.Close()
@@ -372,7 +407,7 @@ func (p *Provider) recoverUnderConstructionLedger() {
 		return
 	}
 	logger.Infof("ledger [%s] found as under construction", ledgerID)
-	ledger, err := p.openInternal(ledgerID)
+	ledger, err := p.open(ledgerID)
 	panicOnErr(err, "Error while opening under construction ledger [%s]", ledgerID)
 	bcInfo, err := ledger.GetBlockchainInfo()
 	panicOnErr(err, "Error while getting blockchain info for the under construction ledger [%s]", ledgerID)
@@ -437,7 +472,7 @@ func openIDStore(path string) (s *idStore, e error) {
 		return nil, err
 	}
 
-	expectedFormatBytes := []byte(dataformat.Version20)
+	expectedFormatBytes := []byte(dataformat.CurrentFormat)
 	if emptyDB {
 		// add format key to a new db
 		err := db.Put(formatKey, expectedFormatBytes, true)
@@ -448,46 +483,67 @@ func openIDStore(path string) (s *idStore, e error) {
 	}
 
 	// verify the format is current for an existing db
-	formatVersion, err := db.Get(formatKey)
+	format, err := db.Get(formatKey)
 	if err != nil {
 		return nil, err
 	}
-	if !bytes.Equal(formatVersion, expectedFormatBytes) {
+	if !bytes.Equal(format, expectedFormatBytes) {
 		logger.Errorf("The db at path [%s] contains data in unexpected format. expected data format = [%s] (%#v), data format = [%s] (%#v).",
-			path, dataformat.Version20, expectedFormatBytes, formatVersion, formatVersion)
-		return nil, &dataformat.ErrVersionMismatch{
-			ExpectedVersion: dataformat.Version20,
-			Version:         string(formatVersion),
-			DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", path),
+			path, dataformat.CurrentFormat, expectedFormatBytes, format, format)
+		return nil, &dataformat.ErrFormatMismatch{
+			ExpectedFormat: dataformat.CurrentFormat,
+			Format:         string(format),
+			DBInfo:         fmt.Sprintf("leveldb for channel-IDs at [%s]", path),
 		}
 	}
 	return &idStore{db, path}, nil
 }
 
-func (s *idStore) upgradeFormat() error {
+// checkUpgradeEligibility checks if the format is eligible to upgrade.
+// It returns true if the format is eligible to upgrade to the current format.
+// It returns false if either the format is the current format or the db is empty.
+// Otherwise, an ErrFormatMismatch is returned.
+func (s *idStore) checkUpgradeEligibility() (bool, error) {
+	emptydb, err := s.db.IsEmpty()
+	if err != nil {
+		return false, err
+	}
+	if emptydb {
+		logger.Warnf("Ledger database %s is empty, nothing to upgrade", s.dbPath)
+		return false, nil
+	}
 	format, err := s.db.Get(formatKey)
+	if err != nil {
+		return false, err
+	}
+	if bytes.Equal(format, []byte(dataformat.CurrentFormat)) {
+		logger.Debugf("Ledger database %s has current data format, nothing to upgrade", s.dbPath)
+		return false, nil
+	}
+	if !bytes.Equal(format, []byte(dataformat.PreviousFormat)) {
+		err = &dataformat.ErrFormatMismatch{
+			ExpectedFormat: dataformat.PreviousFormat,
+			Format:         string(format),
+			DBInfo:         fmt.Sprintf("leveldb for channel-IDs at [%s]", s.dbPath),
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *idStore) upgradeFormat() error {
+	eligible, err := s.checkUpgradeEligibility()
 	if err != nil {
 		return err
 	}
-	idStoreFormatBytes := []byte(dataformat.Version20)
-	if bytes.Equal(format, idStoreFormatBytes) {
-		logger.Debug("Format is current, nothing to do")
+	if !eligible {
 		return nil
 	}
-	if format != nil {
-		err = &dataformat.ErrVersionMismatch{
-			ExpectedVersion: "",
-			Version:         string(format),
-			DBInfo:          fmt.Sprintf("leveldb for channel-IDs at [%s]", s.dbPath),
-		}
-		logger.Errorf("Failed to upgrade format [%#v] to new format [%#v]: %s", format, idStoreFormatBytes, err)
-		return err
-	}
 
-	logger.Infof("The ledgerProvider db format is old, upgrading to the new format %s", dataformat.Version20)
+	logger.Infof("Upgrading ledgerProvider database to the new format %s", dataformat.CurrentFormat)
 
 	batch := &leveldb.Batch{}
-	batch.Put(formatKey, idStoreFormatBytes)
+	batch.Put(formatKey, []byte(dataformat.CurrentFormat))
 
 	// add new metadata key for each ledger (channel)
 	metadata, err := protoutil.Marshal(&msgs.LedgerMetadata{Status: msgs.Status_ACTIVE})

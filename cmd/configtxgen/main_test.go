@@ -46,6 +46,13 @@ func TestInspectBlock(t *testing.T) {
 	assert.NoError(t, doInspectBlock(blockDest), "Good block inspection request")
 }
 
+func TestInspectBlockErr(t *testing.T) {
+	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+
+	assert.Error(t, doOutputBlock(config, "foo", ""), "Error writing genesis block:")
+	assert.Error(t, doInspectBlock(""), "Could not read block")
+}
+
 func TestMissingOrdererSection(t *testing.T) {
 	blockDest := filepath.Join(tmpDir, "block")
 

@@ -10,7 +10,7 @@ separate channels in each of these cases creates additional administrative overh
 cases in which you want all channel participants to see a transaction while keeping
 a portion of the data private.
 
-That's why, starting in v1.2, Fabric offers the ability to create
+That's why Fabric offers the ability to create
 **private data collections**, which allow a defined subset of organizations on a
 channel the ability to endorse, commit, or query private data without having to
 create a separate channel.
@@ -272,7 +272,7 @@ data can be bound to the same conditions as regular channel state data, specific
   for example to specify that only an owner's organization peer, custodian's organization
   peer, or other third party must endorse such transactions.
 
-### Private data sharing example
+### Example scenario: Asset transfer using private data collections
 
 The private data sharing patterns mentioned above can be combined to enable powerful
 chaincode-based applications. For example, consider how an asset transfer scenario

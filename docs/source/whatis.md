@@ -12,7 +12,7 @@ have followed in its footsteps. Ethereum, an alternative cryptocurrency, took a
 different approach, integrating many of the same characteristics as Bitcoin but
 adding _smart contracts_ to create a platform for distributed applications.
 Bitcoin and Ethereum fall into a class of blockchain that we would classify as
-_public permissionless_ blockchain technology.  Basically, these are public
+_public permissionless_ blockchain technology. Basically, these are public
 networks, open to anyone, where participants interact anonymously.
 
 As the popularity of Bitcoin, Ethereum and a few other derivative technologies
@@ -97,7 +97,7 @@ deployed with roughly the same operational cost as any other distributed system.
 The combination of these differentiating design features makes Fabric one of
 the **better performing platforms** available today both in terms of transaction
 processing and transaction confirmation latency, and it enables **privacy and confidentiality** of transactions and the smart contracts (what Fabric calls
-  "chaincode") that implement them.
+"chaincode") that implement them.
 
 Let's explore these differentiating features in more detail.
 
@@ -223,9 +223,7 @@ scale of the system. This first phase also **eliminates any non-determinism**,
 as inconsistent results can be filtered out before ordering.
 
 Because we have eliminated non-determinism, Fabric is the first blockchain
-technology that **enables use of standard programming languages**. In the 1.1.0
-release, smart contracts can be written in either Go or Node.js, while there are
-plans to support other popular languages including Java in subsequent releases.
+technology that **enables use of standard programming languages**.
 
 ## Privacy and Confidentiality
 
@@ -242,7 +240,7 @@ cases. For example, in a network of supply-chain partners, some consumers might
 be given preferred rates as a means of either solidifying a relationship, or
 promoting additional sales. If every participant can see every contract and
 transaction, it becomes impossible to maintain such business relationships in a
-completely transparent network -- everyone will want the preferred rates!
+completely transparent network --- everyone will want the preferred rates!
 
 As a second example, consider the securities industry, where a trader building
 a position (or disposing of one) would not want her competitors to know of this,
@@ -268,17 +266,14 @@ might explore approaches that restrict the distribution of confidential
 information exclusively to authorized nodes.
 
 Hyperledger Fabric, being a permissioned platform, enables confidentiality
-through its channel architecture. Basically, participants on a Fabric network
-can establish a "channel" between the subset of participants that should be
-granted visibility to a particular set of transactions. Think of this as a
-network overlay. Thus, only those nodes that participate in a channel have
-access to the smart contract (chaincode) and data transacted, preserving the
-privacy and confidentiality of both.
-
-To improve upon its privacy and confidentiality capabilities, Fabric has
-added support for [private data](./private-data/private-data.html) and is working
-on zero knowledge proofs (ZKP) available in the future. More on this as it
-becomes available.
+through its channel architecture and [private data](./private-data/private-data.html)
+feature. In channels, participants on a Fabric network establish a sub-network
+where every member has visibility to a particular set of transactions. Thus, only
+those nodes that participate in a channel have access to the smart contract
+(chaincode) and data transacted, preserving the privacy and confidentiality of
+both. Private data allows collections between members on a channel, allowing
+much of the same protection as channels without the maintenance overhead of
+creating and maintaining a separate channel.
 
 ## Pluggable Consensus
 
@@ -290,10 +285,9 @@ particular deployment or solution. This modular architecture allows the platform
 to rely on well-established toolkits for CFT (crash fault-tolerant) or BFT
 (byzantine fault-tolerant) ordering.
 
-Fabric currently offers two CFT ordering service implementations. The first is
+Fabric currently offers a CFT ordering service implementation
 based on the [`etcd` library](https://coreos.com/etcd/) of the [Raft protocol](https://raft.github.io/raft.pdf).
-The other is [Kafka](https://kafka.apache.org/) (which uses [Zookeeper](https://zookeeper.apache.org/)
-internally). For information about currently available ordering services, check
+For information about currently available ordering services, check
 out our [conceptual documentation about ordering](./orderer/ordering_service.html).
 
 Note also that these are not mutually exclusive. A Fabric network can have
@@ -304,22 +298,11 @@ requirements.
 
 Performance of a blockchain platform can be affected by many variables such as
 transaction size, block size, network size, as well as limits of the hardware,
-etc. The Hyperledger community is currently developing [a draft set of measures](https://docs.google.com/document/d/1DQ6PqoeIH0pCNJSEYiw7JVbExDvWh_ZRVhWkuioG4k0/edit#heading=h.t3gztry2ja8i) within the Performance and Scale working group, along
-with a corresponding implementation of a benchmarking framework called
-[Hyperledger Caliper](https://wiki.hyperledger.org/projects/caliper).
+etc. The Hyperledger Fabric [Performance and Scale working group](https://wiki.hyperledger.org/display/PSWG/Performance+and+Scale+Working+Group)
+currently works on a benchmarking framework called [Hyperledger Caliper](https://wiki.hyperledger.org/projects/caliper).
 
-While that work continues to be developed and should be seen as a definitive
-measure of blockchain platform performance and scale characteristics, a team
-from IBM Research has published a
-[peer reviewed paper](https://arxiv.org/abs/1801.10228v1) that evaluated the
-architecture and performance of Hyperledger Fabric. The paper offers an in-depth
-discussion of the architecture of Fabric and then reports on the team's
-performance evaluation of the platform using a preliminary release of
-Hyperledger Fabric v1.1.
-
-The benchmarking efforts that the research team did yielded a significant
-number of performance improvements for the Fabric v1.1.0 release that more than
-doubled the overall performance of the platform from the v1.0.0 release levels.
+Several research papers have been published studying and testing the performance
+capabilities of Hyperledger Fabric. The latest [scaled Fabric to 20,000 transactions per second](https://arxiv.org/abs/1901.00910).
 
 ## Conclusion
 
@@ -332,15 +315,15 @@ enable the platform to support a wide range of industry use cases ranging from
 government, to finance, to supply-chain logistics, to healthcare and so much
 more.
 
-Hyperledger Fabric is the most active of the
-Hyperledger projects. The community building around the platform is growing
-steadily, and the innovation delivered with each successive release far
-out-paces any of the other enterprise blockchain platforms.
+Hyperledger Fabric is the most active of the Hyperledger projects. The community
+building around the platform is growing steadily, and the innovation delivered
+with each successive release far out-paces any of the other enterprise blockchain
+platforms.
 
 ## Acknowledgement
 
 The preceding is derived from the peer reviewed
-["Hyperledger Fabric: A Distributed Operating System for Permissioned Blockchains"](https://arxiv.org/abs/1801.10228v2) - Elli Androulaki, Artem
+["Hyperledger Fabric: A Distributed Operating System for Permissioned Blockchains"](https://dl.acm.org/doi/10.1145/3190508.3190538) - Elli Androulaki, Artem
 Barger, Vita Bortnikov, Christian Cachin, Konstantinos Christidis, Angelo De
 Caro, David Enyeart, Christopher Ferris, Gennady Laventman, Yacov Manevich,
 Srinivasan Muralidharan, Chet Murthy, Binh Nguyen, Manish Sethi, Gari Singh,

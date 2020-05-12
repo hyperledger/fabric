@@ -50,6 +50,7 @@ type Peer struct {
 	Handlers               *Handlers       `yaml:"handlers,omitempty"`
 	ValidatorPoolSize      int             `yaml:"validatorPoolSize,omitempty"`
 	Discovery              *Discovery      `yaml:"discovery,omitempty"`
+	Limits                 *Limits         `yaml:"limits,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
@@ -106,14 +107,21 @@ type GossipElection struct {
 }
 
 type GossipPvtData struct {
-	PullRetryThreshold                         time.Duration `yaml:"pullRetryThreshold,omitempty"`
-	TransientstoreMaxBlockRetention            int           `yaml:"transientstoreMaxBlockRetention,omitempty"`
-	PushAckTimeout                             time.Duration `yaml:"pushAckTimeout,omitempty"`
-	BtlPullMargin                              int           `yaml:"btlPullMargin,omitempty"`
-	ReconcileBatchSize                         int           `yaml:"reconcileBatchSize,omitempty"`
-	ReconcileSleepInterval                     time.Duration `yaml:"reconcileSleepInterval,omitempty"`
-	ReconciliationEnabled                      bool          `yaml:"reconciliationEnabled"`
-	SkipPullingInvalidTransactionsDuringCommit bool          `yaml:"skipPullingInvalidTransactionsDuringCommit"`
+	PullRetryThreshold                         time.Duration                   `yaml:"pullRetryThreshold,omitempty"`
+	TransientstoreMaxBlockRetention            int                             `yaml:"transientstoreMaxBlockRetention,omitempty"`
+	PushAckTimeout                             time.Duration                   `yaml:"pushAckTimeout,omitempty"`
+	BtlPullMargin                              int                             `yaml:"btlPullMargin,omitempty"`
+	ReconcileBatchSize                         int                             `yaml:"reconcileBatchSize,omitempty"`
+	ReconcileSleepInterval                     time.Duration                   `yaml:"reconcileSleepInterval,omitempty"`
+	ReconciliationEnabled                      bool                            `yaml:"reconciliationEnabled"`
+	SkipPullingInvalidTransactionsDuringCommit bool                            `yaml:"skipPullingInvalidTransactionsDuringCommit"`
+	ImplicitCollDisseminationPolicy            ImplicitCollDisseminationPolicy `yaml:"implicitCollectionDisseminationPolicy"`
+}
+
+type ImplicitCollDisseminationPolicy struct {
+	RequiredPeerCount int `yaml:"requiredPeerCount,omitempty"`
+	// do not tag omitempty in order to override MaxPeerCount default with 0
+	MaxPeerCount int `yaml:"maxPeerCount"`
 }
 
 type GossipState struct {
@@ -203,6 +211,15 @@ type Discovery struct {
 	AuthCacheMaxSize             int     `yaml:"authCacheMaxSize,omitempty"`
 	AuthCachePurgeRetentionRatio float64 `yaml:"authCachePurgeRetentionRatio"`
 	OrgMembersAllowedAccess      bool    `yaml:"orgMembersAllowedAccess"`
+}
+
+type Limits struct {
+	Concurrency *Concurrency `yaml:"concurrency,omitempty"`
+}
+
+type Concurrency struct {
+	EndorserService int `yaml:"endorserService,omitempty"`
+	DeliverService  int `yaml:"deliverService,omitempty"`
 }
 
 type VM struct {

@@ -147,3 +147,12 @@ func (r *RuntimeLauncher) Launch(ccid string, streamHandler extcc.StreamHandler)
 	chaincodeLogger.Debug("launch complete")
 	return err
 }
+
+func (r *RuntimeLauncher) Stop(ccid string) error {
+	err := r.Runtime.Stop(ccid)
+	if err != nil {
+		return errors.WithMessagef(err, "failed to stop chaincode %s", ccid)
+	}
+
+	return nil
+}

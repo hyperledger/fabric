@@ -30,7 +30,7 @@ type Collection interface {
 
 	// MemberOrgs returns the collection's members as MSP IDs. This serves as
 	// a human-readable way of quickly identifying who is part of a collection.
-	MemberOrgs() []string
+	MemberOrgs() map[string]struct{}
 }
 
 // CollectionAccessPolicy encapsulates functions for the access policy of a collection
@@ -49,7 +49,7 @@ type CollectionAccessPolicy interface {
 
 	// MemberOrgs returns the collection's members as MSP IDs. This serves as
 	// a human-readable way of quickly identifying who is part of a collection.
-	MemberOrgs() []string
+	MemberOrgs() map[string]struct{}
 
 	// IsMemberOnlyRead returns a true if only collection members can read
 	// the private data

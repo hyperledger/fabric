@@ -19,11 +19,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
 	"errors"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/mocks"
-	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,7 +52,7 @@ func TestInitFailures(t *testing.T) {
 func TestInit(t *testing.T) {
 	k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.NoError(t, err)
-	pkRaw, err := utils.PublicKeyToDER(&k.PublicKey)
+	pkRaw, err := x509.MarshalPKIXPublicKey(&k.PublicKey)
 	assert.NoError(t, err)
 
 	signer, err := New(&mocks.MockBCCSP{}, &mocks.MockKey{PK: &mocks.MockKey{BytesValue: pkRaw}})

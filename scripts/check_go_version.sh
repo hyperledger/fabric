@@ -4,7 +4,7 @@
 
 set -e
 
-CI_VERSION="$(grep "GO_VER" ci.properties | cut -f2- -d'=')"
+CI_VERSION=$1
 GO_VERSION="$(go version | cut -f3 -d' ' | sed -E 's/^go//')"
 
 fail() {

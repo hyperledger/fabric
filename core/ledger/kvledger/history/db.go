@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -12,9 +13,9 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
-	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	protoutil "github.com/hyperledger/fabric/protoutil"
 )
 
@@ -30,8 +31,8 @@ func NewDBProvider(path string) (*DBProvider, error) {
 	logger.Debugf("constructing HistoryDBProvider dbPath=%s", path)
 	levelDBProvider, err := leveldbhelper.NewProvider(
 		&leveldbhelper.Conf{
-			DBPath:                path,
-			ExpectedFormatVersion: dataformat.Version20,
+			DBPath:         path,
+			ExpectedFormat: dataformat.CurrentFormat,
 		},
 	)
 	if err != nil {
@@ -75,7 +76,7 @@ func (d *DB) Commit(block *common.Block) error {
 		d.name, blockNo, len(block.Data.Data))
 
 	// Get the invalidation byte array for the block
-	txsFilter := util.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 
 	// write each tran's write set to history db
 	for _, envBytes := range block.Data.Data {
@@ -145,7 +146,7 @@ func (d *DB) Commit(block *common.Block) error {
 }
 
 // NewQueryExecutor implements method in HistoryDB interface
-func (d *DB) NewQueryExecutor(blockStore blkstorage.BlockStore) (ledger.HistoryQueryExecutor, error) {
+func (d *DB) NewQueryExecutor(blockStore *blkstorage.BlockStore) (ledger.HistoryQueryExecutor, error) {
 	return &QueryExecutor{d.levelDB, blockStore}, nil
 }
 

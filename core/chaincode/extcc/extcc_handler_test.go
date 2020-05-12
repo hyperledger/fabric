@@ -12,8 +12,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/chaincode/extcc"
 	"github.com/hyperledger/fabric/core/chaincode/extcc/mock"
-	"github.com/hyperledger/fabric/core/comm"
 	"github.com/hyperledger/fabric/core/container/ccintf"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 
 	"google.golang.org/grpc"
 

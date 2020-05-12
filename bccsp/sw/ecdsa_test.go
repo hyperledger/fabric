@@ -35,14 +35,13 @@ func TestSignECDSABadParameter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Induce an error on the underlying ecdsa algorithm
-	msg := []byte("hello world")
-	oldN := lowLevelKey.Params().N
-	defer func() { lowLevelKey.Params().N = oldN }()
-	lowLevelKey.Params().N = big.NewInt(0)
-	_, err = signECDSA(lowLevelKey, msg, nil)
+	curve := *elliptic.P256().Params()
+	curve.N = big.NewInt(0)
+	lowLevelKey.Curve = &curve
+
+	_, err = signECDSA(lowLevelKey, []byte("hello world"), nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "zero parameter")
-	lowLevelKey.Params().N = oldN
 }
 
 func TestVerifyECDSA(t *testing.T) {
@@ -59,10 +58,6 @@ func TestVerifyECDSA(t *testing.T) {
 	valid, err := verifyECDSA(&lowLevelKey.PublicKey, sigma, msg, nil)
 	assert.NoError(t, err)
 	assert.True(t, valid)
-
-	_, err = verifyECDSA(&lowLevelKey.PublicKey, nil, msg, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed unmashalling signature [")
 
 	_, err = verifyECDSA(&lowLevelKey.PublicKey, nil, msg, nil)
 	assert.Error(t, err)

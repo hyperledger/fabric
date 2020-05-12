@@ -14,7 +14,7 @@ import (
 )
 
 // testhelper embeds (1) a client, (2) a committer and (3) a verifier, all three operate on
-// a ledger instance and add helping/resuable functionality on top of ledger apis that helps
+// a ledger instance and add helping/reusable functionality on top of ledger apis that helps
 // in avoiding the repeation in the actual tests code.
 // the 'client' adds value to the simulation relation apis, the 'committer' helps in cutting the
 // next block and committing the block, and finally, the verifier helps in veryfying that the

@@ -88,7 +88,7 @@ are required:
    ``IssuerRevocationPublicKey`` from step 1.
 
    For example, consider the following excerpt from
-   `configtx.yaml in the Hyperledger Java SDK sample <https://github.com/hyperledger/fabric-sdk-java/blob/master/src/test/fixture/sdkintegration/e2e-2Orgs/v1.3/configtx.yaml>`_:
+   `configtx.yaml in the Hyperledger Java SDK sample <https://github.com/hyperledger/fabric-sdk-java/blob/{BRANCH}/src/test/fixture/sdkintegration/e2e-2Orgs/v1.3/configtx.yaml>`_:
 
    .. code:: bash
 
@@ -138,7 +138,7 @@ From a verifier perspective, there is one more actor to consider: chaincode.
 What can chaincode learn about the transactor when an Idemix credential is used?
 
 The `cid (Client Identity) library <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/pkg/cid>`_
-(for golang only) has been extended to support the ``GetAttributeValue`` function
+(for Go only) has been extended to support the ``GetAttributeValue`` function
 when an Idemix credential is used. However, as mentioned in the "Current
 limitations" section below, there are only two attributes which are disclosed in
 the Idemix case: ``ou`` and ``role``.
@@ -153,10 +153,10 @@ If Fabric CA is the credential issuer:
   create an 'admin' identity, register the identity with the ``role`` attribute
   and a value of ``2``.
 
-For an example of setting an affiliation in the Java SDK see this `sample <https://github.com/hyperledger/fabric-sdk-java/blob/master/src/test/java/org/hyperledger/fabric/sdkintegration/End2endIdemixIT.java#L121>`_.
+For an example of setting an affiliation in the Java SDK see this `sample <https://github.com/hyperledger/fabric-sdk-java/blob/{BRANCH}/src/test/java/org/hyperledger/fabric/sdkintegration/End2endIdemixIT.java#L121>`_.
 
 For an example of using the CID library in go chaincode to retrieve attributes,
-see this `go chaincode <https://github.com/hyperledger/fabric-sdk-java/blob/master/src/test/fixture/sdkintegration/gocc/sampleIdemix/src/github.com/example_cc/example_cc.go#L88>`_.
+see this `go chaincode <https://github.com/hyperledger/fabric-sdk-java/blob/{BRANCH}/src/test/fixture/sdkintegration/gocc/sampleIdemix/src/github.com/example_cc/example_cc.go#L88>`_.
 
 Idemix organizations cannot be used to endorse a chaincode or approve a chaincode
 definition. This needs to be taken into account when you set the

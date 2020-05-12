@@ -111,9 +111,7 @@ description.
 
 Continuous Integration (CI) Execution
 -------------------------------------
-There is a target in the Hyperledger Fabric Makefile for executing `integration`_ tests.
-
-.. _integration: https://jenkins.hyperledger.org/view/fabric/job/fabric-verify-integration-tests-x86_64
+There is a target in the Hyperledger Fabric Makefile for executing integration tests.
 
 To execute the integration tests using the Makefile, execute the following:
 

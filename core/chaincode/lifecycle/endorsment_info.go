@@ -109,6 +109,19 @@ func (cei *ChaincodeEndorsementInfoSource) ChaincodeEndorsementInfo(channelID, c
 		}, nil
 	}
 
+	// return legacy cc endorsement info if V20 is not enabled
+	channelConfig := cei.Resources.ChannelConfigSource.GetStableChannelConfig(channelID)
+	if channelConfig == nil {
+		return nil, errors.Errorf("could not get channel config for channel '%s'", channelID)
+	}
+	ac, ok := channelConfig.ApplicationConfig()
+	if !ok {
+		return nil, errors.Errorf("could not get application config for channel '%s'", channelID)
+	}
+	if !ac.Capabilities().LifecycleV20() {
+		return cei.LegacyImpl.ChaincodeEndorsementInfo(channelID, chaincodeName, qe)
+	}
+
 	chaincodeInfo, ok, err := cei.CachedChaincodeInfo(channelID, chaincodeName, qe)
 	if err != nil {
 		return nil, err

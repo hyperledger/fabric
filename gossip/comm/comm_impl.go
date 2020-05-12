@@ -37,6 +37,10 @@ const (
 	DefSendBuffSize  = 20
 )
 
+var (
+	errProbe = errors.New("probe")
+)
+
 // SecurityAdvisor defines an external auxiliary object
 // that provides security and identity related capabilities
 type SecurityAdvisor interface {
@@ -154,7 +158,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 
 	cl := proto.NewGossipClient(cc)
 
-	ctx, cancel = context.WithTimeout(context.Background(), DefConnTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), c.connTimeout)
 	defer cancel()
 	if _, err = cl.Ping(ctx, &proto.Empty{}); err != nil {
 		cc.Close()
@@ -163,7 +167,7 @@ func (c *commImpl) createConnection(endpoint string, expectedPKIID common.PKIidT
 
 	ctx, cancel = context.WithCancel(context.Background())
 	if stream, err = cl.GossipStream(ctx); err == nil {
-		connInfo, err = c.authenticateRemotePeer(stream, true)
+		connInfo, err = c.authenticateRemotePeer(stream, true, false)
 		if err == nil {
 			pkiID = connInfo.ID
 			// PKIID is nil when we don't know the remote PKI id's
@@ -271,7 +275,7 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	}
 	defer cc.Close()
 	cl := proto.NewGossipClient(cc)
-	ctx, cancel = context.WithTimeout(context.Background(), DefConnTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), c.connTimeout)
 	defer cancel()
 	_, err = cl.Ping(ctx, &proto.Empty{})
 	c.logger.Debugf("Returning %v", err)
@@ -293,7 +297,7 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 	defer cc.Close()
 
 	cl := proto.NewGossipClient(cc)
-	ctx, cancel = context.WithTimeout(context.Background(), DefConnTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), c.connTimeout)
 	defer cancel()
 	if _, err = cl.Ping(ctx, &proto.Empty{}); err != nil {
 		return nil, err
@@ -305,7 +309,7 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 	if err != nil {
 		return nil, err
 	}
-	connInfo, err := c.authenticateRemotePeer(stream, true)
+	connInfo, err := c.authenticateRemotePeer(stream, true, true)
 	if err != nil {
 		c.logger.Warningf("Authentication failed: %v", err)
 		return nil, err
@@ -404,7 +408,7 @@ func extractRemoteAddress(stream stream) string {
 	return remoteAddress
 }
 
-func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*protoext.ConnectionInfo, error) {
+func (c *commImpl) authenticateRemotePeer(stream stream, initiator, isProbe bool) (*protoext.ConnectionInfo, error) {
 	ctx := stream.Context()
 	remoteAddress := extractRemoteAddress(stream)
 	remoteCertHash := extractCertificateHashFromContext(ctx)
@@ -431,7 +435,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*proto
 		return nil, fmt.Errorf("No TLS certificate")
 	}
 
-	cMsg, err = c.createConnectionMsg(c.PKIID, selfCertHash, c.peerIdentity, signer)
+	cMsg, err = c.createConnectionMsg(c.PKIID, selfCertHash, c.peerIdentity, signer, isProbe)
 	if err != nil {
 		return nil, err
 	}
@@ -491,6 +495,10 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator bool) (*proto
 	}
 
 	c.logger.Debug("Authenticated", remoteAddress)
+
+	if receivedMsg.Probe {
+		return connInfo, errProbe
+	}
 
 	return connInfo, nil
 }
@@ -556,7 +564,13 @@ func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	if c.isStopping() {
 		return fmt.Errorf("Shutting down")
 	}
-	connInfo, err := c.authenticateRemotePeer(stream, false)
+	connInfo, err := c.authenticateRemotePeer(stream, false, false)
+
+	if err == errProbe {
+		c.logger.Infof("Peer %s (%s) probed us", connInfo.ID, connInfo.Endpoint)
+		return nil
+	}
+
 	if err != nil {
 		c.logger.Errorf("Authentication failed: %v", err)
 		return err
@@ -588,10 +602,12 @@ func (c *commImpl) Ping(context.Context, *proto.Empty) (*proto.Empty, error) {
 }
 
 func (c *commImpl) disconnect(pkiID common.PKIidType) {
-	if c.isStopping() {
+	select {
+	case c.deadEndpoints <- pkiID:
+	case <-c.exitChan:
 		return
 	}
-	c.deadEndpoints <- pkiID
+
 	c.connStore.closeConnByPKIid(pkiID)
 }
 
@@ -618,7 +634,7 @@ func readWithTimeout(stream stream, timeout time.Duration, address string) (*pro
 	}
 }
 
-func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, certHash []byte, cert api.PeerIdentityType, signer protoext.Signer) (*protoext.SignedGossipMessage, error) {
+func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, certHash []byte, cert api.PeerIdentityType, signer protoext.Signer, isProbe bool) (*protoext.SignedGossipMessage, error) {
 	m := &proto.GossipMessage{
 		Tag:   proto.GossipMessage_EMPTY,
 		Nonce: 0,
@@ -627,6 +643,7 @@ func (c *commImpl) createConnectionMsg(pkiID common.PKIidType, certHash []byte, 
 				TlsCertHash: certHash,
 				Identity:    cert,
 				PkiId:       pkiID,
+				Probe:       isProbe,
 			},
 		},
 	}

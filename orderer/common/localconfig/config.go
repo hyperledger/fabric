@@ -4,9 +4,11 @@
 package localconfig
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -28,13 +30,14 @@ var logger = flogging.MustGetLogger("localconfig")
 // modify the default mapping, see the "Unmarshal"
 // section of https://github.com/spf13/viper for more info.
 type TopLevel struct {
-	General    General
-	FileLedger FileLedger
-	Kafka      Kafka
-	Debug      Debug
-	Consensus  interface{}
-	Operations Operations
-	Metrics    Metrics
+	General              General
+	FileLedger           FileLedger
+	Kafka                Kafka
+	Debug                Debug
+	Consensus            interface{}
+	Operations           Operations
+	Metrics              Metrics
+	ChannelParticipation ChannelParticipation
 }
 
 // General contains config which should be common among all orderer types.
@@ -183,13 +186,13 @@ type Debug struct {
 	DeliverTraceDir   string
 }
 
-// Operations configures the operations endpont for the orderer.
+// Operations configures the operations endpoint for the orderer.
 type Operations struct {
 	ListenAddress string
 	TLS           TLS
 }
 
-// Operations confiures the metrics provider for the orderer.
+// Metrics configures the metrics provider for the orderer.
 type Metrics struct {
 	Provider string
 	Statsd   Statsd
@@ -201,6 +204,13 @@ type Statsd struct {
 	Address       string
 	WriteInterval time.Duration
 	Prefix        string
+}
+
+// ChannelParticipation provides the channel participation API configuration for the orderer.
+// Channel participation uses the same ListenAddress and TLS settings of the Operations service.
+type ChannelParticipation struct {
+	Enabled       bool
+	RemoveStorage bool // Whether to permanently remove storage on channel removal.
 }
 
 // Defaults carries the default orderer configuration values.
@@ -278,11 +288,32 @@ var Defaults = TopLevel{
 	Metrics: Metrics{
 		Provider: "disabled",
 	},
+	ChannelParticipation: ChannelParticipation{
+		Enabled:       false,
+		RemoveStorage: false,
+	},
 }
 
 // Load parses the orderer YAML file and environment, producing
 // a struct suitable for config use, returning error on failure.
 func Load() (*TopLevel, error) {
+	return cache.load()
+}
+
+// configCache stores marshalled bytes of config structures that produced from
+// EnhancedExactUnmarshal. Cache key is the path of the configuration file that was used.
+type configCache struct {
+	mutex sync.Mutex
+	cache map[string][]byte
+}
+
+var cache = &configCache{}
+
+// Load will load the configuration and cache it on the first call; subsequent
+// calls will return a clone of the configuration that was previously loaded.
+func (c *configCache) load() (*TopLevel, error) {
+	var uconf TopLevel
+
 	config := viper.New()
 	coreconfig.InitViper(config, "orderer")
 	config.SetEnvPrefix(Prefix)
@@ -294,12 +325,32 @@ func Load() (*TopLevel, error) {
 		return nil, fmt.Errorf("Error reading configuration: %s", err)
 	}
 
-	var uconf TopLevel
-	if err := viperutil.EnhancedExactUnmarshal(config, &uconf); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	serializedConf, ok := c.cache[config.ConfigFileUsed()]
+	if !ok {
+		err := viperutil.EnhancedExactUnmarshal(config, &uconf)
+		if err != nil {
+			return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
+		}
+
+		serializedConf, err = json.Marshal(uconf)
+		if err != nil {
+			return nil, err
+		}
+
+		if c.cache == nil {
+			c.cache = map[string][]byte{}
+		}
+		c.cache[config.ConfigFileUsed()] = serializedConf
 	}
 
+	err := json.Unmarshal(serializedConf, &uconf)
+	if err != nil {
+		return nil, err
+	}
 	uconf.completeInitialization(filepath.Dir(config.ConfigFileUsed()))
+
 	return &uconf, nil
 }
 

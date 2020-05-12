@@ -16,3 +16,4 @@
 *.yml text eol=lf
 *.zip binary
 LICENSE text eol=lf
+vendor/** -text

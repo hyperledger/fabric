@@ -14,7 +14,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -83,7 +83,7 @@ func createPolicyBytes(signaturePolicy, channelConfigPolicy string) ([]byte, err
 
 	var applicationPolicy *pb.ApplicationPolicy
 	if signaturePolicy != "" {
-		signaturePolicyEnvelope, err := cauthdsl.FromString(signaturePolicy)
+		signaturePolicyEnvelope, err := policydsl.FromString(signaturePolicy)
 		if err != nil {
 			return nil, errors.Errorf("invalid signature policy: %s", signaturePolicy)
 		}

@@ -12,13 +12,14 @@ import (
 	"testing"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRebuildDBs(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t)
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
 	numLedgers := 3
 	for i := 0; i < numLedgers; i++ {
@@ -27,15 +28,15 @@ func TestRebuildDBs(t *testing.T) {
 	}
 
 	// rebuild should fail when provider is still open
-	err := RebuildDBs(conf.RootFSPath)
+	err := RebuildDBs(conf)
 	require.Error(t, err, "as another peer node command is executing, wait for that command to complete its execution or terminate it before retrying")
 	provider.Close()
 
-	rootFSPath := conf.RootFSPath
-	err = RebuildDBs(rootFSPath)
+	err = RebuildDBs(conf)
 	require.NoError(t, err)
 
 	// verify blockstoreIndex, configHistory, history, state, bookkeeper dbs are deleted
+	rootFSPath := conf.RootFSPath
 	_, err = os.Stat(filepath.Join(BlockStorePath(rootFSPath), "index"))
 	require.Equal(t, os.IsNotExist(err), true)
 	_, err = os.Stat(ConfigHistoryDBPath(rootFSPath))
@@ -48,6 +49,6 @@ func TestRebuildDBs(t *testing.T) {
 	require.Equal(t, os.IsNotExist(err), true)
 
 	// rebuild again should be successful
-	err = RebuildDBs(rootFSPath)
+	err = RebuildDBs(conf)
 	require.NoError(t, err)
 }

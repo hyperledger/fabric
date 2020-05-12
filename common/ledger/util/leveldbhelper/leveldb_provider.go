@@ -28,14 +28,14 @@ var (
 
 // Conf configuration for `Provider`
 //
-// `ExpectedFormatVersion` is the expected value of the format key in the internal database.
+// `ExpectedFormat` is the expected value of the format key in the internal database.
 // At the time of opening the db, A check is performed that
 // either the db is empty (i.e., opening for the first time) or the value
-// of the formatVersionKey is equal to `ExpectedFormatVersion`. Otherwise, an error is returned.
-// A nil value for ExpectedFormatVersion indicates that the format is never set and hence there is no such record
+// of the formatVersionKey is equal to `ExpectedFormat`. Otherwise, an error is returned.
+// A nil value for ExpectedFormat indicates that the format is never set and hence there is no such record.
 type Conf struct {
-	DBPath                string
-	ExpectedFormatVersion string
+	DBPath         string
+	ExpectedFormat string
 }
 
 // Provider enables to use a single leveldb as multiple logical leveldbs
@@ -78,9 +78,9 @@ func openDBAndCheckFormat(conf *Conf) (d *DB, e error) {
 		return nil, err
 	}
 
-	if dbEmpty && conf.ExpectedFormatVersion != "" {
-		logger.Infof("DB is empty Setting db format as %s", conf.ExpectedFormatVersion)
-		if err := internalDB.Put(formatVersionKey, []byte(conf.ExpectedFormatVersion), true); err != nil {
+	if dbEmpty && conf.ExpectedFormat != "" {
+		logger.Infof("DB is empty Setting db format as %s", conf.ExpectedFormat)
+		if err := internalDB.Put(formatVersionKey, []byte(conf.ExpectedFormat), true); err != nil {
 			return nil, err
 		}
 		return db, nil
@@ -92,13 +92,13 @@ func openDBAndCheckFormat(conf *Conf) (d *DB, e error) {
 	}
 	logger.Debugf("Checking for db format at path [%s]", conf.DBPath)
 
-	if !bytes.Equal(formatVersion, []byte(conf.ExpectedFormatVersion)) {
+	if !bytes.Equal(formatVersion, []byte(conf.ExpectedFormat)) {
 		logger.Errorf("The db at path [%s] contains data in unexpected format. expected data format = [%s] (%#v), data format = [%s] (%#v).",
-			conf.DBPath, conf.ExpectedFormatVersion, []byte(conf.ExpectedFormatVersion), formatVersion, formatVersion)
-		return nil, &dataformat.ErrVersionMismatch{
-			ExpectedVersion: conf.ExpectedFormatVersion,
-			Version:         string(formatVersion),
-			DBInfo:          fmt.Sprintf("leveldb at [%s]", conf.DBPath),
+			conf.DBPath, conf.ExpectedFormat, []byte(conf.ExpectedFormat), formatVersion, formatVersion)
+		return nil, &dataformat.ErrFormatMismatch{
+			ExpectedFormat: conf.ExpectedFormat,
+			Format:         string(formatVersion),
+			DBInfo:         fmt.Sprintf("leveldb at [%s]", conf.DBPath),
 		}
 	}
 	logger.Debug("format is latest, nothing to do")

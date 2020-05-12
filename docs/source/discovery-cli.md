@@ -372,11 +372,16 @@ be supplied:
     are expected to used by the chaincode(s). To map from thechaincodes
     passed via `--chaincode` to the collections, the following syntax
     should be used: `collection=CC:Collection1,Collection2,...`.
+- The `--noPrivateReads` is used to indicate that the transaction is not expected
+    to read private data for a certain chaincode.
+    This is useful for private data "blind writes", among other things.
 
 For example, to query for a chaincode invocation that results in both
 cc1 and cc2 to be invoked, as well as writes to private data collection
 col1 by cc2, one needs to specify:
 `--chaincode=cc1 --chaincode=cc2 --collection=cc2:col1`
+
+If chaincode cc2 is not expected to read from collection `col1` then `--noPrivateReads=cc2` should be used.
 
 Below is the output of an endorsers query for chaincode **mycc** when
 the endorsement policy is `AND('Org1.peer', 'Org2.peer')`:

@@ -21,8 +21,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	protospeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/semaphore"
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
@@ -35,10 +35,10 @@ import (
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	ledgerutils "github.com/hyperledger/fabric/core/ledger/util"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	supportmocks "github.com/hyperledger/fabric/discovery/support/mocks"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -48,7 +48,7 @@ import (
 )
 
 func signedByAnyMember(ids []string) []byte {
-	p := cauthdsl.SignedByAnyMember(ids)
+	p := policydsl.SignedByAnyMember(ids)
 	return protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: p}})
 }
 
@@ -138,13 +138,13 @@ func getEnvWithSigner(ccID string, event []byte, res []byte, sig msp.SigningIden
 }
 
 func assertInvalid(block *common.Block, t *testing.T, code peer.TxValidationCode) {
-	txsFilter := ledgerutils.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assert.True(t, txsFilter.IsInvalid(0))
 	assert.True(t, txsFilter.IsSetTo(0, code))
 }
 
 func assertValid(block *common.Block, t *testing.T) {
-	txsFilter := ledgerutils.TxValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assert.False(t, txsFilter.IsInvalid(0))
 }
 
@@ -468,7 +468,7 @@ func TestParallelValidation(t *testing.T) {
 
 	mockCR.On("CollectionValidationInfo", ccID, "col1", mock.Anything).Return(nil, nil, nil)
 
-	policy := cauthdsl.SignedByMspPeer("Org1")
+	policy := policydsl.SignedByMspPeer("Org1")
 	polBytes := protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: policy}})
 	mockQE.On("GetState", "lscc", ccID).Return(protoutil.MarshalOrPanic(&ccp.ChaincodeData{
 		Name:    ccID,
@@ -565,7 +565,7 @@ func TestParallelValidation(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Block metadata array position to store serialized bit array filter of invalid transactions
-	txsFilter := ledgerutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsFilter := txflags.ValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	// tx validity
 	for txNum := 0; txNum < txCnt; txNum += 1 {
 		switch uint(txNum / 10) {
@@ -927,7 +927,7 @@ func TestValidateTxWithStateBasedEndorsement(t *testing.T) {
 		Vscc:    "vscc",
 		Policy:  signedByAnyMember([]string{"SampleOrg"}),
 	}), nil)
-	mockQE.On("GetStateMetadata", ccID, "key").Return(map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: cauthdsl.RejectAllPolicy}})}, nil)
+	mockQE.On("GetStateMetadata", ccID, "key").Return(map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): protoutil.MarshalOrPanic(&protospeer.ApplicationPolicy{Type: &protospeer.ApplicationPolicy_SignaturePolicy{SignaturePolicy: policydsl.RejectAllPolicy}})}, nil)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}}, Header: &common.BlockHeader{Number: 3}}
@@ -1052,7 +1052,7 @@ func TestDuplicateTxId(t *testing.T) {
 	assertion.NoError(err)
 
 	// We expect the tx to be invalid because of a duplicate txid
-	txsfltr := ledgerutils.TxValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	txsfltr := txflags.ValidationFlags(b.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	assertion.True(txsfltr.IsInvalid(0))
 	assertion.True(txsfltr.Flag(0) == peer.TxValidationCode_DUPLICATE_TXID)
 }

@@ -7,23 +7,18 @@ SPDX-License-Identifier: Apache-2.0
 package tests
 
 import (
-	"testing"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	protopeer "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/cauthdsl"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/tests/fakes"
-	lutils "github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
+	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/require"
 )
 
 var logger = flogging.MustGetLogger("test2")
@@ -75,7 +70,7 @@ func convertToMemberOrgsPolicy(members []string) *protopeer.CollectionPolicyConf
 	}
 	return &protopeer.CollectionPolicyConfig{
 		Payload: &protopeer.CollectionPolicyConfig_SignaturePolicy{
-			SignaturePolicy: cauthdsl.Envelope(cauthdsl.Or(cauthdsl.SignedBy(0), cauthdsl.SignedBy(1)), data),
+			SignaturePolicy: policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), data),
 		},
 	}
 }
@@ -228,21 +223,5 @@ func constructTestGenesisBlock(channelid string) (*common.Block, error) {
 func setBlockFlagsToValid(block *common.Block) {
 	protoutil.InitBlockMetadata(block)
 	block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
-		lutils.NewTxValidationFlagsSetValue(len(block.Data.Data), protopeer.TxValidationCode_VALID)
-}
-
-func dropCouchDBs(t *testing.T, couchdbConfig *couchdb.Config) {
-	couchInstance, err := couchdb.CreateCouchInstance(couchdbConfig, &disabled.Provider{})
-	require.NoError(t, err)
-	dbNames, err := couchInstance.RetrieveApplicationDBNames()
-	require.NoError(t, err)
-	for _, dbName := range dbNames {
-		db := &couchdb.CouchDatabase{
-			CouchInstance: couchInstance,
-			DBName:        dbName,
-		}
-		response, err := db.DropDatabase()
-		require.NoError(t, err)
-		require.True(t, response.Ok)
-	}
+		txflags.NewWithValues(len(block.Data.Data), protopeer.TxValidationCode_VALID)
 }

@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -11,15 +12,14 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/util/couchdb"
 	"github.com/pkg/errors"
 )
 
 type committer struct {
-	db             *couchdb.CouchDatabase
+	db             *couchDatabase
 	batchUpdateMap map[string]*batchableDocument
 	namespace      string
-	cacheKVs       statedb.CacheKVs
+	cacheKVs       cacheKVs
 	cacheEnabled   bool
 }
 
@@ -34,8 +34,8 @@ func (c *committer) addToCacheUpdate(kv *keyValue) {
 		return
 	}
 
-	c.cacheKVs[kv.key] = &statedb.CacheValue{
-		VersionBytes:   kv.Version.ToBytes(),
+	c.cacheKVs[kv.key] = &CacheValue{
+		Version:        kv.Version.ToBytes(),
 		Value:          kv.Value,
 		Metadata:       kv.Metadata,
 		AdditionalInfo: []byte(kv.revision),
@@ -88,7 +88,7 @@ func (vdb *VersionedDB) buildCommitters(updates *statedb.UpdateBatch) ([]*commit
 	var allCommitters []*committer
 	select {
 	case err := <-errsChan:
-		return nil, err
+		return nil, errors.WithStack(err)
 	default:
 		for i := 0; i < len(namespaces); i++ {
 			allCommitters = append(allCommitters, <-nsCommittersChan...)
@@ -104,21 +104,21 @@ func (vdb *VersionedDB) buildCommittersForNs(ns string, nsUpdates map[string]*st
 		return nil, err
 	}
 	// for each namespace, build mutiple committers based on the maxBatchSize
-	maxBatchSize := db.CouchInstance.MaxBatchUpdateSize()
+	maxBatchSize := db.couchInstance.maxBatchUpdateSize()
 	numCommitters := 1
 	if maxBatchSize > 0 {
 		numCommitters = int(math.Ceil(float64(len(nsUpdates)) / float64(maxBatchSize)))
 	}
 	committers := make([]*committer, numCommitters)
 
-	cacheEnabled := vdb.cache.Enabled(ns)
+	cacheEnabled := vdb.cache.enabled(ns)
 
 	for i := 0; i < numCommitters; i++ {
 		committers[i] = &committer{
 			db:             db,
 			batchUpdateMap: make(map[string]*batchableDocument),
 			namespace:      ns,
-			cacheKVs:       make(statedb.CacheKVs),
+			cacheKVs:       make(cacheKVs),
 			cacheEnabled:   cacheEnabled,
 		}
 	}
@@ -164,7 +164,7 @@ func (vdb *VersionedDB) executeCommitter(committers []*committer) error {
 
 	select {
 	case err := <-errsChan:
-		return err
+		return errors.WithStack(err)
 	default:
 		return nil
 	}
@@ -172,13 +172,13 @@ func (vdb *VersionedDB) executeCommitter(committers []*committer) error {
 
 // commitUpdates commits the given updates to couchdb
 func (c *committer) commitUpdates() error {
-	docs := []*couchdb.CouchDoc{}
+	docs := []*couchDoc{}
 	for _, update := range c.batchUpdateMap {
 		docs = append(docs, &update.CouchDoc)
 	}
 
 	// Do the bulk update into couchdb. Note that this will do retries if the entire bulk update fails or times out
-	responses, err := c.db.BatchUpdateDocuments(docs)
+	responses, err := c.db.batchUpdateDocuments(docs)
 	if err != nil {
 		return err
 	}
@@ -197,8 +197,8 @@ func (c *committer) commitUpdates() error {
 		//Remove the "_rev" from the JSON before saving
 		//this will allow the CouchDB retry logic to retry revisions without encountering
 		//a mismatch between the "If-Match" and the "_rev" tag in the JSON
-		if doc.CouchDoc.JSONValue != nil {
-			err = removeJSONRevision(&doc.CouchDoc.JSONValue)
+		if doc.CouchDoc.jsonValue != nil {
+			err = removeJSONRevision(&doc.CouchDoc.jsonValue)
 			if err != nil {
 				return err
 			}
@@ -209,13 +209,13 @@ func (c *committer) commitUpdates() error {
 			// If this is a deleted document, then retry the delete
 			// If the delete fails due to a document not being found (404 error),
 			// the document has already been deleted and the DeleteDoc will not return an error
-			err = c.db.DeleteDoc(resp.ID, "")
+			err = c.db.deleteDoc(resp.ID, "")
 		} else {
-			logger.Warningf("CouchDB batch document update encountered an problem. Retrying update for document ID:%s", resp.ID)
+			logger.Warningf("CouchDB batch document update encountered an problem. Reason:%s, Retrying update for document ID:%s", resp.Reason, resp.ID)
 			// Save the individual document to couchdb
 			// Note that this will do retries as needed
 			var revision string
-			revision, err = c.db.SaveDoc(resp.ID, "", &doc.CouchDoc)
+			revision, err = c.db.saveDoc(resp.ID, "", &doc.CouchDoc)
 			c.updateRevisionInCacheUpdate(resp.ID, revision)
 		}
 
@@ -267,13 +267,13 @@ func (vdb *VersionedDB) getRevisions(ns string, nsUpdates map[string]*statedb.Ve
 }
 
 func (vdb *VersionedDB) addMissingRevisionsFromCache(ns string, keys []string, revs map[string]string) ([]string, error) {
-	if !vdb.cache.Enabled(ns) {
+	if !vdb.cache.enabled(ns) {
 		return keys, nil
 	}
 
 	var missingKeys []string
 	for _, k := range keys {
-		cv, err := vdb.cache.GetState(vdb.chainName, ns, k)
+		cv, err := vdb.cache.getState(vdb.chainName, ns, k)
 		if err != nil {
 			return nil, err
 		}
@@ -292,7 +292,7 @@ func (vdb *VersionedDB) addMissingRevisionsFromDB(ns string, missingKeys []strin
 		return err
 	}
 
-	logger.Debugf("Pulling revisions for the [%d] keys for namsespace [%s] that were not part of the readset", len(missingKeys), db.DBName)
+	logger.Debugf("Pulling revisions for the [%d] keys for namsespace [%s] that were not part of the readset", len(missingKeys), db.dbName)
 	retrievedMetadata, err := retrieveNsMetadata(db, missingKeys)
 	if err != nil {
 		return err
@@ -306,6 +306,6 @@ func (vdb *VersionedDB) addMissingRevisionsFromDB(ns string, missingKeys []strin
 
 //batchableDocument defines a document for a batch
 type batchableDocument struct {
-	CouchDoc couchdb.CouchDoc
+	CouchDoc couchDoc
 	Deleted  bool
 }

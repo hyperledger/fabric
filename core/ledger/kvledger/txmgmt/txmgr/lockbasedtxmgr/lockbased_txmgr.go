@@ -1,5 +1,6 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -15,14 +16,13 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/pvtstatepurgemgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/queryutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
@@ -33,16 +33,16 @@ var logger = flogging.MustGetLogger("lockbasedtxmgr")
 // LockBasedTxMgr a simple implementation of interface `txmgmt.TxMgr`.
 // This implementation uses a read-write lock to prevent conflicts between transaction simulation and committing
 type LockBasedTxMgr struct {
-	ledgerid        string
-	db              privacyenabledstate.DB
-	pvtdataPurgeMgr *pvtdataPurgeMgr
-	validator       validator.Validator
-	stateListeners  []ledger.StateListener
-	ccInfoProvider  ledger.DeployedChaincodeInfoProvider
-	commitRWLock    sync.RWMutex
-	oldBlockCommit  sync.Mutex
-	current         *current
-	hasher          ledger.Hasher
+	ledgerid            string
+	db                  privacyenabledstate.DB
+	pvtdataPurgeMgr     *pvtdataPurgeMgr
+	commitBatchPreparer *validation.CommitBatchPreparer
+	stateListeners      []ledger.StateListener
+	ccInfoProvider      ledger.DeployedChaincodeInfoProvider
+	commitRWLock        sync.RWMutex
+	oldBlockCommit      sync.Mutex
+	current             *current
+	hasher              ledger.Hasher
 }
 
 type current struct {
@@ -59,36 +59,46 @@ func (c *current) maxTxNumber() uint64 {
 	return uint64(len(c.block.Data.Data)) - 1
 }
 
-// NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
-func NewLockBasedTxMgr(
-	ledgerid string,
-	db privacyenabledstate.DB,
-	stateListeners []ledger.StateListener,
-	btlPolicy pvtdatapolicy.BTLPolicy,
-	bookkeepingProvider bookkeeping.Provider,
-	ccInfoProvider ledger.DeployedChaincodeInfoProvider,
-	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
-	hasher ledger.Hasher,
-) (*LockBasedTxMgr, error) {
+type Initializer struct {
+	LedgerID            string
+	DB                  privacyenabledstate.DB
+	StateListeners      []ledger.StateListener
+	BtlPolicy           pvtdatapolicy.BTLPolicy
+	BookkeepingProvider bookkeeping.Provider
+	CCInfoProvider      ledger.DeployedChaincodeInfoProvider
+	CustomTxProcessors  map[common.HeaderType]ledger.CustomTxProcessor
+	Hasher              ledger.Hasher
+}
 
-	if hasher == nil {
+// NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
+func NewLockBasedTxMgr(initializer *Initializer) (*LockBasedTxMgr, error) {
+
+	if initializer.Hasher == nil {
 		return nil, errors.New("create new lock based TxMgr failed: passed in nil ledger hasher")
 	}
 
-	db.Open()
+	initializer.DB.Open()
 	txmgr := &LockBasedTxMgr{
-		ledgerid:       ledgerid,
-		db:             db,
-		stateListeners: stateListeners,
-		ccInfoProvider: ccInfoProvider,
-		hasher:         hasher,
+		ledgerid:       initializer.LedgerID,
+		db:             initializer.DB,
+		stateListeners: initializer.StateListeners,
+		ccInfoProvider: initializer.CCInfoProvider,
+		hasher:         initializer.Hasher,
 	}
-	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(ledgerid, db, btlPolicy, bookkeepingProvider)
+	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(
+		initializer.LedgerID,
+		initializer.DB,
+		initializer.BtlPolicy,
+		initializer.BookkeepingProvider)
 	if err != nil {
 		return nil, err
 	}
 	txmgr.pvtdataPurgeMgr = &pvtdataPurgeMgr{pvtstatePurgeMgr, false}
-	txmgr.validator = valimpl.NewStatebasedValidator(txmgr, db, customTxProcessors, hasher)
+	txmgr.commitBatchPreparer = validation.NewCommitBatchPreparer(
+		txmgr,
+		initializer.DB,
+		initializer.CustomTxProcessors,
+		initializer.Hasher)
 	return txmgr, nil
 }
 
@@ -100,12 +110,12 @@ func (txmgr *LockBasedTxMgr) GetLastSavepoint() (*version.Height, error) {
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, txid, true, txmgr.hasher)
+	qe := newQueryExecutor(txmgr, txid, nil, true, txmgr.hasher)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
 
-// NewQueryExecutorWithNoCollChecks is a workaround to make the initilization of lifecycle cache
+// NewQueryExecutorNoCollChecks is a workaround to make the initilization of lifecycle cache
 // work. The issue is that in the current lifecycle code the cache is initialized via Initialize
 // function of a statelistener which gets invoked during ledger opening. This invovation eventually
 // leads to a call to DeployedChaincodeInfoProvider which inturn needs the channel config in order
@@ -116,7 +126,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor
 // querying the ledger state so that the sequence of initialization is explicitly controlled.
 // However that needs a bigger refactoring of code.
 func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, "", false, txmgr.hasher)
+	qe := newQueryExecutor(txmgr, "", nil, false, txmgr.hasher)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
@@ -124,7 +134,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecuto
 // NewTxSimulator implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, error) {
 	logger.Debugf("constructing new tx simulator")
-	s, err := newLockBasedTxSimulator(txmgr, txid, txmgr.hasher)
+	s, err := newTxSimulator(txmgr, txid, txmgr.hasher)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +164,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 
 	block := blockAndPvtdata.Block
 	logger.Debugf("Validating new block with num trans = [%d]", len(block.Data.Data))
-	batch, txstatsInfo, err := txmgr.validator.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
+	batch, txstatsInfo, err := txmgr.commitBatchPreparer.ValidateAndPrepareBatch(blockAndPvtdata, doMVCCValidation)
 	if err != nil {
 		txmgr.reset()
 		return nil, nil, err
@@ -165,8 +175,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 		return nil, nil, err
 	}
 
-	updateBytesBuilder := &privacyenabledstate.UpdatesBytesBuilder{}
-	updateBytes, err := updateBytesBuilder.DeterministicBytesForPubAndHashUpdates(batch)
+	updateBytes, err := deterministicBytesForPubAndHashUpdates(batch)
 	return txstatsInfo, updateBytes, err
 }
 
@@ -454,7 +463,7 @@ func (txmgr *LockBasedTxMgr) invokeNamespaceListeners() error {
 		if err := listener.HandleStateUpdates(trigger); err != nil {
 			return err
 		}
-		logger.Debugf("Invoking listener for state changes:%s", listener)
+		logger.Debugf("Invoking listener for state changes:%s", listener.Name())
 	}
 	return nil
 }

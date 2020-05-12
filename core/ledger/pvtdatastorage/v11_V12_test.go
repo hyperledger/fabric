@@ -69,13 +69,13 @@ func TestV11v12(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func checkDataNotExists(t *testing.T, s Store, blkNum int) {
+func checkDataNotExists(t *testing.T, s *Store, blkNum int) {
 	data, err := s.GetPvtDataByBlockNum(uint64(blkNum), nil)
 	assert.NoError(t, err)
 	assert.Nil(t, data)
 }
 
-func checkDataExists(t *testing.T, s Store, blkNum int) {
+func checkDataExists(t *testing.T, s *Store, blkNum int) {
 	data, err := s.GetPvtDataByBlockNum(uint64(blkNum), nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, data)

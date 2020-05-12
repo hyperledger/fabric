@@ -11,12 +11,12 @@ pr: none
 variables:
   GOPATH: $(Agent.BuildDirectory)/go
   PATH: $(Agent.BuildDirectory)/go/bin:/usr/local/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  GOVER: 1.13.4
+  GOVER: 1.14.1
 
 jobs:
   - job: UnitTests
     pool:
-      vmImage: ubuntu-16.04
+      vmImage: ubuntu-18.04
     steps:
       - template: install_deps.yml
       - checkout: self

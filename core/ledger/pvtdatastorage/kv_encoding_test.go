@@ -117,3 +117,35 @@ func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 		},
 	)
 }
+
+func TestBasicEncodingDecoding(t *testing.T) {
+	for i := 0; i < 10000; i++ {
+		value := encodeReverseOrderVarUint64(uint64(i))
+		nextValue := encodeReverseOrderVarUint64(uint64(i + 1))
+		if !(bytes.Compare(value, nextValue) > 0) {
+			t.Fatalf("A smaller integer should result into greater bytes. Encoded bytes for [%d] is [%x] and for [%d] is [%x]",
+				i, i+1, value, nextValue)
+		}
+		decodedValue, _ := decodeReverseOrderVarUint64(value)
+		if decodedValue != uint64(i) {
+			t.Fatalf("Value not same after decoding. Original value = [%d], decode value = [%d]", i, decodedValue)
+		}
+	}
+}
+
+func TestDecodingAppendedValues(t *testing.T) {
+	appendedValues := []byte{}
+	for i := 0; i < 1000; i++ {
+		appendedValues = append(appendedValues, encodeReverseOrderVarUint64(uint64(i))...)
+	}
+
+	len := 0
+	value := uint64(0)
+	for i := 0; i < 1000; i++ {
+		appendedValues = appendedValues[len:]
+		value, len = decodeReverseOrderVarUint64(appendedValues)
+		if value != uint64(i) {
+			t.Fatalf("expected value = [%d], decode value = [%d]", i, value)
+		}
+	}
+}

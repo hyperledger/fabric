@@ -92,18 +92,19 @@ type TxSimulator struct {
 		result1 ledgera.ResultsIterator
 		result2 error
 	}
-	ExecuteQueryWithMetadataStub        func(string, string, map[string]interface{}) (ledger.QueryResultsIterator, error)
-	executeQueryWithMetadataMutex       sync.RWMutex
-	executeQueryWithMetadataArgsForCall []struct {
+	ExecuteQueryWithPaginationStub        func(string, string, string, int32) (ledger.QueryResultsIterator, error)
+	executeQueryWithPaginationMutex       sync.RWMutex
+	executeQueryWithPaginationArgsForCall []struct {
 		arg1 string
 		arg2 string
-		arg3 map[string]interface{}
+		arg3 string
+		arg4 int32
 	}
-	executeQueryWithMetadataReturns struct {
+	executeQueryWithPaginationReturns struct {
 		result1 ledger.QueryResultsIterator
 		result2 error
 	}
-	executeQueryWithMetadataReturnsOnCall map[int]struct {
+	executeQueryWithPaginationReturnsOnCall map[int]struct {
 		result1 ledger.QueryResultsIterator
 		result2 error
 	}
@@ -266,19 +267,19 @@ type TxSimulator struct {
 		result1 ledgera.ResultsIterator
 		result2 error
 	}
-	GetStateRangeScanIteratorWithMetadataStub        func(string, string, string, map[string]interface{}) (ledger.QueryResultsIterator, error)
-	getStateRangeScanIteratorWithMetadataMutex       sync.RWMutex
-	getStateRangeScanIteratorWithMetadataArgsForCall []struct {
+	GetStateRangeScanIteratorWithPaginationStub        func(string, string, string, int32) (ledger.QueryResultsIterator, error)
+	getStateRangeScanIteratorWithPaginationMutex       sync.RWMutex
+	getStateRangeScanIteratorWithPaginationArgsForCall []struct {
 		arg1 string
 		arg2 string
 		arg3 string
-		arg4 map[string]interface{}
+		arg4 int32
 	}
-	getStateRangeScanIteratorWithMetadataReturns struct {
+	getStateRangeScanIteratorWithPaginationReturns struct {
 		result1 ledger.QueryResultsIterator
 		result2 error
 	}
-	getStateRangeScanIteratorWithMetadataReturnsOnCall map[int]struct {
+	getStateRangeScanIteratorWithPaginationReturnsOnCall map[int]struct {
 		result1 ledger.QueryResultsIterator
 		result2 error
 	}
@@ -775,66 +776,67 @@ func (fake *TxSimulator) ExecuteQueryOnPrivateDataReturnsOnCall(i int, result1 l
 	}{result1, result2}
 }
 
-func (fake *TxSimulator) ExecuteQueryWithMetadata(arg1 string, arg2 string, arg3 map[string]interface{}) (ledger.QueryResultsIterator, error) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	ret, specificReturn := fake.executeQueryWithMetadataReturnsOnCall[len(fake.executeQueryWithMetadataArgsForCall)]
-	fake.executeQueryWithMetadataArgsForCall = append(fake.executeQueryWithMetadataArgsForCall, struct {
+func (fake *TxSimulator) ExecuteQueryWithPagination(arg1 string, arg2 string, arg3 string, arg4 int32) (ledger.QueryResultsIterator, error) {
+	fake.executeQueryWithPaginationMutex.Lock()
+	ret, specificReturn := fake.executeQueryWithPaginationReturnsOnCall[len(fake.executeQueryWithPaginationArgsForCall)]
+	fake.executeQueryWithPaginationArgsForCall = append(fake.executeQueryWithPaginationArgsForCall, struct {
 		arg1 string
 		arg2 string
-		arg3 map[string]interface{}
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("ExecuteQueryWithMetadata", []interface{}{arg1, arg2, arg3})
-	fake.executeQueryWithMetadataMutex.Unlock()
-	if fake.ExecuteQueryWithMetadataStub != nil {
-		return fake.ExecuteQueryWithMetadataStub(arg1, arg2, arg3)
+		arg3 string
+		arg4 int32
+	}{arg1, arg2, arg3, arg4})
+	fake.recordInvocation("ExecuteQueryWithPagination", []interface{}{arg1, arg2, arg3, arg4})
+	fake.executeQueryWithPaginationMutex.Unlock()
+	if fake.ExecuteQueryWithPaginationStub != nil {
+		return fake.ExecuteQueryWithPaginationStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.executeQueryWithMetadataReturns
+	fakeReturns := fake.executeQueryWithPaginationReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *TxSimulator) ExecuteQueryWithMetadataCallCount() int {
-	fake.executeQueryWithMetadataMutex.RLock()
-	defer fake.executeQueryWithMetadataMutex.RUnlock()
-	return len(fake.executeQueryWithMetadataArgsForCall)
+func (fake *TxSimulator) ExecuteQueryWithPaginationCallCount() int {
+	fake.executeQueryWithPaginationMutex.RLock()
+	defer fake.executeQueryWithPaginationMutex.RUnlock()
+	return len(fake.executeQueryWithPaginationArgsForCall)
 }
 
-func (fake *TxSimulator) ExecuteQueryWithMetadataCalls(stub func(string, string, map[string]interface{}) (ledger.QueryResultsIterator, error)) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	defer fake.executeQueryWithMetadataMutex.Unlock()
-	fake.ExecuteQueryWithMetadataStub = stub
+func (fake *TxSimulator) ExecuteQueryWithPaginationCalls(stub func(string, string, string, int32) (ledger.QueryResultsIterator, error)) {
+	fake.executeQueryWithPaginationMutex.Lock()
+	defer fake.executeQueryWithPaginationMutex.Unlock()
+	fake.ExecuteQueryWithPaginationStub = stub
 }
 
-func (fake *TxSimulator) ExecuteQueryWithMetadataArgsForCall(i int) (string, string, map[string]interface{}) {
-	fake.executeQueryWithMetadataMutex.RLock()
-	defer fake.executeQueryWithMetadataMutex.RUnlock()
-	argsForCall := fake.executeQueryWithMetadataArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+func (fake *TxSimulator) ExecuteQueryWithPaginationArgsForCall(i int) (string, string, string, int32) {
+	fake.executeQueryWithPaginationMutex.RLock()
+	defer fake.executeQueryWithPaginationMutex.RUnlock()
+	argsForCall := fake.executeQueryWithPaginationArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *TxSimulator) ExecuteQueryWithMetadataReturns(result1 ledger.QueryResultsIterator, result2 error) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	defer fake.executeQueryWithMetadataMutex.Unlock()
-	fake.ExecuteQueryWithMetadataStub = nil
-	fake.executeQueryWithMetadataReturns = struct {
+func (fake *TxSimulator) ExecuteQueryWithPaginationReturns(result1 ledger.QueryResultsIterator, result2 error) {
+	fake.executeQueryWithPaginationMutex.Lock()
+	defer fake.executeQueryWithPaginationMutex.Unlock()
+	fake.ExecuteQueryWithPaginationStub = nil
+	fake.executeQueryWithPaginationReturns = struct {
 		result1 ledger.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *TxSimulator) ExecuteQueryWithMetadataReturnsOnCall(i int, result1 ledger.QueryResultsIterator, result2 error) {
-	fake.executeQueryWithMetadataMutex.Lock()
-	defer fake.executeQueryWithMetadataMutex.Unlock()
-	fake.ExecuteQueryWithMetadataStub = nil
-	if fake.executeQueryWithMetadataReturnsOnCall == nil {
-		fake.executeQueryWithMetadataReturnsOnCall = make(map[int]struct {
+func (fake *TxSimulator) ExecuteQueryWithPaginationReturnsOnCall(i int, result1 ledger.QueryResultsIterator, result2 error) {
+	fake.executeQueryWithPaginationMutex.Lock()
+	defer fake.executeQueryWithPaginationMutex.Unlock()
+	fake.ExecuteQueryWithPaginationStub = nil
+	if fake.executeQueryWithPaginationReturnsOnCall == nil {
+		fake.executeQueryWithPaginationReturnsOnCall = make(map[int]struct {
 			result1 ledger.QueryResultsIterator
 			result2 error
 		})
 	}
-	fake.executeQueryWithMetadataReturnsOnCall[i] = struct {
+	fake.executeQueryWithPaginationReturnsOnCall[i] = struct {
 		result1 ledger.QueryResultsIterator
 		result2 error
 	}{result1, result2}
@@ -1563,67 +1565,67 @@ func (fake *TxSimulator) GetStateRangeScanIteratorReturnsOnCall(i int, result1 l
 	}{result1, result2}
 }
 
-func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadata(arg1 string, arg2 string, arg3 string, arg4 map[string]interface{}) (ledger.QueryResultsIterator, error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	ret, specificReturn := fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)]
-	fake.getStateRangeScanIteratorWithMetadataArgsForCall = append(fake.getStateRangeScanIteratorWithMetadataArgsForCall, struct {
+func (fake *TxSimulator) GetStateRangeScanIteratorWithPagination(arg1 string, arg2 string, arg3 string, arg4 int32) (ledger.QueryResultsIterator, error) {
+	fake.getStateRangeScanIteratorWithPaginationMutex.Lock()
+	ret, specificReturn := fake.getStateRangeScanIteratorWithPaginationReturnsOnCall[len(fake.getStateRangeScanIteratorWithPaginationArgsForCall)]
+	fake.getStateRangeScanIteratorWithPaginationArgsForCall = append(fake.getStateRangeScanIteratorWithPaginationArgsForCall, struct {
 		arg1 string
 		arg2 string
 		arg3 string
-		arg4 map[string]interface{}
+		arg4 int32
 	}{arg1, arg2, arg3, arg4})
-	fake.recordInvocation("GetStateRangeScanIteratorWithMetadata", []interface{}{arg1, arg2, arg3, arg4})
-	fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	if fake.GetStateRangeScanIteratorWithMetadataStub != nil {
-		return fake.GetStateRangeScanIteratorWithMetadataStub(arg1, arg2, arg3, arg4)
+	fake.recordInvocation("GetStateRangeScanIteratorWithPagination", []interface{}{arg1, arg2, arg3, arg4})
+	fake.getStateRangeScanIteratorWithPaginationMutex.Unlock()
+	if fake.GetStateRangeScanIteratorWithPaginationStub != nil {
+		return fake.GetStateRangeScanIteratorWithPaginationStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getStateRangeScanIteratorWithMetadataReturns
+	fakeReturns := fake.getStateRangeScanIteratorWithPaginationReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadataCallCount() int {
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
-	return len(fake.getStateRangeScanIteratorWithMetadataArgsForCall)
+func (fake *TxSimulator) GetStateRangeScanIteratorWithPaginationCallCount() int {
+	fake.getStateRangeScanIteratorWithPaginationMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.RUnlock()
+	return len(fake.getStateRangeScanIteratorWithPaginationArgsForCall)
 }
 
-func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadataCalls(stub func(string, string, string, map[string]interface{}) (ledger.QueryResultsIterator, error)) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = stub
+func (fake *TxSimulator) GetStateRangeScanIteratorWithPaginationCalls(stub func(string, string, string, int32) (ledger.QueryResultsIterator, error)) {
+	fake.getStateRangeScanIteratorWithPaginationMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithPaginationStub = stub
 }
 
-func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadataArgsForCall(i int) (string, string, string, map[string]interface{}) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
-	argsForCall := fake.getStateRangeScanIteratorWithMetadataArgsForCall[i]
+func (fake *TxSimulator) GetStateRangeScanIteratorWithPaginationArgsForCall(i int) (string, string, string, int32) {
+	fake.getStateRangeScanIteratorWithPaginationMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.RUnlock()
+	argsForCall := fake.getStateRangeScanIteratorWithPaginationArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
-func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadataReturns(result1 ledger.QueryResultsIterator, result2 error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = nil
-	fake.getStateRangeScanIteratorWithMetadataReturns = struct {
+func (fake *TxSimulator) GetStateRangeScanIteratorWithPaginationReturns(result1 ledger.QueryResultsIterator, result2 error) {
+	fake.getStateRangeScanIteratorWithPaginationMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithPaginationStub = nil
+	fake.getStateRangeScanIteratorWithPaginationReturns = struct {
 		result1 ledger.QueryResultsIterator
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *TxSimulator) GetStateRangeScanIteratorWithMetadataReturnsOnCall(i int, result1 ledger.QueryResultsIterator, result2 error) {
-	fake.getStateRangeScanIteratorWithMetadataMutex.Lock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.Unlock()
-	fake.GetStateRangeScanIteratorWithMetadataStub = nil
-	if fake.getStateRangeScanIteratorWithMetadataReturnsOnCall == nil {
-		fake.getStateRangeScanIteratorWithMetadataReturnsOnCall = make(map[int]struct {
+func (fake *TxSimulator) GetStateRangeScanIteratorWithPaginationReturnsOnCall(i int, result1 ledger.QueryResultsIterator, result2 error) {
+	fake.getStateRangeScanIteratorWithPaginationMutex.Lock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.Unlock()
+	fake.GetStateRangeScanIteratorWithPaginationStub = nil
+	if fake.getStateRangeScanIteratorWithPaginationReturnsOnCall == nil {
+		fake.getStateRangeScanIteratorWithPaginationReturnsOnCall = make(map[int]struct {
 			result1 ledger.QueryResultsIterator
 			result2 error
 		})
 	}
-	fake.getStateRangeScanIteratorWithMetadataReturnsOnCall[i] = struct {
+	fake.getStateRangeScanIteratorWithPaginationReturnsOnCall[i] = struct {
 		result1 ledger.QueryResultsIterator
 		result2 error
 	}{result1, result2}
@@ -2084,8 +2086,8 @@ func (fake *TxSimulator) Invocations() map[string][][]interface{} {
 	defer fake.executeQueryMutex.RUnlock()
 	fake.executeQueryOnPrivateDataMutex.RLock()
 	defer fake.executeQueryOnPrivateDataMutex.RUnlock()
-	fake.executeQueryWithMetadataMutex.RLock()
-	defer fake.executeQueryWithMetadataMutex.RUnlock()
+	fake.executeQueryWithPaginationMutex.RLock()
+	defer fake.executeQueryWithPaginationMutex.RUnlock()
 	fake.executeUpdateMutex.RLock()
 	defer fake.executeUpdateMutex.RUnlock()
 	fake.getPrivateDataMutex.RLock()
@@ -2108,8 +2110,8 @@ func (fake *TxSimulator) Invocations() map[string][][]interface{} {
 	defer fake.getStateMultipleKeysMutex.RUnlock()
 	fake.getStateRangeScanIteratorMutex.RLock()
 	defer fake.getStateRangeScanIteratorMutex.RUnlock()
-	fake.getStateRangeScanIteratorWithMetadataMutex.RLock()
-	defer fake.getStateRangeScanIteratorWithMetadataMutex.RUnlock()
+	fake.getStateRangeScanIteratorWithPaginationMutex.RLock()
+	defer fake.getStateRangeScanIteratorWithPaginationMutex.RUnlock()
 	fake.getTxSimulationResultsMutex.RLock()
 	defer fake.getTxSimulationResultsMutex.RUnlock()
 	fake.setPrivateDataMutex.RLock()
