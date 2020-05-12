@@ -42,9 +42,9 @@ For more information, check out [Logging control](./logging-control.html#chainco
 
 ### Peer databases upgrade
 
-For information about how to upgrade peers, check out our documentation on [upgrading components](./upgrading_your_components.html). During the process for [upgrading your peers](./upgrading_your_components.html#upgrade-the-peers), you will need to perform one additional step to upgrade the peer databases. The databases of all peers (which include not just the state database but the history database and other internal databases for the peer) must be rebuilt using the v2.x data format as part of the upgrade to v2.x. To trigger the rebuild, the databases must be dropped before the peer is started. The instructions below utilize the `peer node upgrade-dbs` command to drop the local databases managed by the peer and prepare them for upgrade, so that they can be rebuilt the first time the v2.x peer starts. If you are using CouchDB as the state database, since it is not a local database, the peer cannot automatically drop this database. You must drop the CouchDB state database yourself.
+For information about how to upgrade peers, check out our documentation on [upgrading components](./upgrading_your_components.html). During the process for [upgrading your peers](./upgrading_your_components.html#upgrade-the-peers), you will need to perform one additional step to upgrade the peer databases. The databases of all peers (which include not just the state database but the history database and other internal databases for the peer) must be rebuilt using the v2.x data format as part of the upgrade to v2.x. To trigger the rebuild, the databases must be dropped before the peer is started. The instructions below utilize the `peer node upgrade-dbs` command to drop the local databases managed by the peer and prepare them for upgrade, so that they can be rebuilt the first time the v2.x peer starts. If you are using CouchDB as the state database, the peer has support to automatically drop this database as of v2.2. To leverage the support, you must configure the peer with CouchDB as the state database and start CouchDB before running the `upgrade-dbs` command. In v2.0 and v2.1, the peer does not automatically drop the CouchDB state database; therefore you must drop it yourself.
 
-Follow the commands to upgrade a peer until the `docker run` command to launch the new peer container (you can skip the step where you set an `IMAGE_TAG`, since the `upgrade dbs` command is for the v2.x release of Fabric only, but you will need to set the `PEER_CONTAINER` and `LEDGERS_BACKUP` environment variables). Instead of the `docker run` command to launch the peer, run this command instead to drop and prepare the local databases managed by the peer (substitute `2.1` for `2.0` in these commands if you are upgrading to that binary version from the 1.4.x LTS):
+Follow the commands to upgrade a peer until the `docker run` command to launch the new peer container (you can skip the step where you set an `IMAGE_TAG`, since the `upgrade-dbs` command is for the v2.x release of Fabric only, but you will need to set the `PEER_CONTAINER` and `LEDGERS_BACKUP` environment variables). Instead of the `docker run` command to launch the peer, run this command instead to drop and prepare the local databases managed by the peer (substitute `2.1` for `2.0` in these commands if you are upgrading to that binary version from the 1.4.x LTS):
 
 ```
 docker run --rm -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ \
@@ -54,7 +54,7 @@ docker run --rm -v /opt/backup/$PEER_CONTAINER/:/var/hyperledger/production/ \
             hyperledger/fabric-peer:2.0 peer node upgrade-dbs
 ```
 
-If you are using CouchDB as the state database, also drop the CouchDB database.  This can be done by removing the CouchDB /data volume directory.
+In v2.0 and v2.1, if you are using CouchDB as the state database, also drop the CouchDB database. This can be done by removing the CouchDB /data volume directory.
 
 Then issue this command to start the peer using the `2.0` tag:
 
