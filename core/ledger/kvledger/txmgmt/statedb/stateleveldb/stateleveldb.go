@@ -21,10 +21,12 @@ import (
 var logger = flogging.MustGetLogger("stateleveldb")
 
 var (
-	dataKeyPrefix    = []byte{'d'}
-	nsKeySep         = []byte{0x00}
-	lastKeyIndicator = byte(0x01)
-	savePointKey     = []byte{'s'}
+	dataKeyPrefix               = []byte{'d'}
+	dataKeyStopper              = []byte{'e'}
+	nsKeySep                    = []byte{0x00}
+	lastKeyIndicator            = byte(0x01)
+	savePointKey                = []byte{'s'}
+	fullScanIteratorValueFormat = byte(1)
 )
 
 // VersionedDBProvider implements interface VersionedDBProvider
@@ -206,6 +208,15 @@ func (vdb *versionedDB) GetLatestSavePoint() (*version.Height, error) {
 	return version, nil
 }
 
+// GetFullScanIterator implements method in VersionedDB interface. 	This function returns a
+// FullScanIterator that can be used to iterate over entire data in the statedb for a channel.
+// `skipNamespace` parameter can be used to control if the consumer wants the FullScanIterator
+// to skip one or more namespaces from the returned results. The intended use of this iterator
+// is to generate the snapshot files for the stateleveldb
+func (vdb *versionedDB) GetFullScanIterator(skipNamespace func(string) bool) (statedb.FullScanIterator, byte, error) {
+	return newFullDBScanner(vdb.db, skipNamespace)
+}
+
 func encodeDataKey(ns, key string) []byte {
 	k := append(dataKeyPrefix, []byte(ns)...)
 	k = append(k, nsKeySep...)
@@ -215,6 +226,11 @@ func encodeDataKey(ns, key string) []byte {
 func decodeDataKey(encodedDataKey []byte) (string, string) {
 	split := bytes.SplitN(encodedDataKey, nsKeySep, 2)
 	return string(split[0][1:]), string(split[1])
+}
+
+func dataKeyStarterForNextNamespace(ns string) []byte {
+	k := append(dataKeyPrefix, []byte(ns)...)
+	return append(k, lastKeyIndicator)
 }
 
 type kvScanner struct {
@@ -267,4 +283,62 @@ func (scanner *kvScanner) GetBookmarkAndClose() string {
 	}
 	scanner.Close()
 	return retval
+}
+
+type fullDBScanner struct {
+	db               *leveldbhelper.DBHandle
+	dbItr            iterator.Iterator
+	toSkip           func(namespace string) bool
+	currentNamespace string
+}
+
+func newFullDBScanner(db *leveldbhelper.DBHandle, skipNamespace func(namespace string) bool) (*fullDBScanner, byte, error) {
+	dbItr := db.GetIterator(dataKeyPrefix, dataKeyStopper)
+	if err := dbItr.Error(); err != nil {
+		return nil, byte(0), errors.Wrap(err, "internal leveldb error while obtaining db iterator")
+	}
+	return &fullDBScanner{
+			db:     db,
+			dbItr:  dbItr,
+			toSkip: skipNamespace,
+		},
+		fullScanIteratorValueFormat,
+		nil
+}
+
+// Next returns the key-values in the lexical order of <Namespace, key>
+// The bytes returned for the <version, value, metadata> are the same as they are stored in the leveldb.
+// Since, the primary intended use of this function is to generate the snapshot files for the statedb, the same
+// bytes can be consumed back as is. Hence, we do not decode or transform these bytes for the efficiency
+func (s *fullDBScanner) Next() (*statedb.CompositeKey, []byte, error) {
+	for s.dbItr.Next() {
+		dbKey := s.dbItr.Key()
+		dbVal := s.dbItr.Value()
+		ns, key := decodeDataKey(dbKey)
+		compositeKey := &statedb.CompositeKey{
+			Namespace: ns,
+			Key:       key,
+		}
+
+		switch {
+		case ns == s.currentNamespace:
+			return compositeKey, dbVal, nil
+		// new namespace begins
+		case !s.toSkip(ns):
+			s.currentNamespace = ns
+			return compositeKey, dbVal, nil
+		// skip the new namespace
+		default:
+			s.dbItr.Release()
+			s.dbItr = s.db.GetIterator(dataKeyStarterForNextNamespace(ns), dataKeyStopper)
+			if err := s.dbItr.Error(); err != nil {
+				return nil, nil, errors.Wrapf(err, "internal leveldb error while obtaining db iterator for skipping a namespace [%s]", ns)
+			}
+		}
+	}
+	return nil, nil, errors.Wrap(s.dbItr.Error(), "internal leveldb error while retrieving data from db iterator")
+}
+
+func (s *fullDBScanner) Close() {
+	s.dbItr.Release()
 }

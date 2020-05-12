@@ -769,6 +769,10 @@ func (vdb *VersionedDB) GetLatestSavePoint() (*version.Height, error) {
 	return decodeSavepoint(couchDoc)
 }
 
+func (vdb *VersionedDB) GetFullScanIterator(skipNamespace func(string) bool) (statedb.FullScanIterator, byte, error) {
+	return nil, byte(0), errors.New("Not yet implemented")
+}
+
 // applyAdditionalQueryOptions will add additional fields to the query required for query processing
 func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBookmark string) (string, error) {
 	const jsonQueryFields = "fields"
