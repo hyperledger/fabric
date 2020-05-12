@@ -102,9 +102,9 @@ If you are connecting to softhsm2 using the Fabric orderer, you could set the fo
 
 ```
 ORDERER_GENERAL_BCCSP_DEFAULT=PKCS11
-ORDERER_GENERAL_PKCS11_LIBRARY=/etc/hyperledger/fabric/libsofthsm2.so
-ORDERER_GENERAL_PKCS11_PIN=71811222
-ORDERER_GENERAL_PKCS11_LABEL=fabric
+ORDERER_GENERAL_BCCSP_PKCS11_LIBRARY=/etc/hyperledger/fabric/libsofthsm2.so
+ORDERER_GENERAL_BCCSP_PKCS11_PIN=71811222
+ORDERER_GENERAL_BCCSP_PKCS11_LABEL=fabric
 ```
 
 If you are deploying your nodes using docker compose, after building your own
