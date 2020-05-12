@@ -24,8 +24,8 @@ import (
       sends each request to its corresponding peer.
    4) Each peer sends back the response containing the items requested, if it still holds them and the NONCE.
 
-    Other peer				   			   Initiator
-	 O	<-------- Hello <NONCE> -------------------------	O
+    Other peer												Initiator
+	 O	<-------- Hello <NONCE> -------------------------		O
 	/|\	--------- Digest <[3,5,8, 10...], NONCE> -------->     /|\
 	 |	<-------- Request <[3,8], NONCE> -----------------      |
 	/ \	--------- Response <[item3, item8], NONCE>------->     / \
