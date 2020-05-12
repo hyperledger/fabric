@@ -18,20 +18,22 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 )
 
+type ExitFunc func(error)
+
 type Session struct {
 	mutex      sync.Mutex
 	command    *exec.Cmd
 	exited     chan struct{}
 	exitErr    error
 	waitStatus syscall.WaitStatus
-	launchDir  string
+	exitFuncs  []ExitFunc
 }
 
 // Start will start the provided command and return a Session that can be used
 // to await completion or signal the process.
 //
 // The provided logger is used log stderr from the running process.
-func Start(logger *flogging.FabricLogger, cmd *exec.Cmd, launchDir string) (*Session, error) {
+func Start(logger *flogging.FabricLogger, cmd *exec.Cmd, exitFuncs ...ExitFunc) (*Session, error) {
 	logger = logger.With("command", filepath.Base(cmd.Path))
 
 	stderr, err := cmd.StderrPipe()
@@ -46,8 +48,8 @@ func Start(logger *flogging.FabricLogger, cmd *exec.Cmd, launchDir string) (*Ses
 
 	sess := &Session{
 		command:   cmd,
+		exitFuncs: exitFuncs,
 		exited:    make(chan struct{}),
-		launchDir: launchDir,
 	}
 	go sess.waitForExit(logger, stderr)
 
@@ -72,7 +74,9 @@ func (s *Session) waitForExit(logger *flogging.FabricLogger, stderr io.Reader) {
 	defer s.mutex.Unlock()
 	s.exitErr = err
 	s.waitStatus = s.command.ProcessState.Sys().(syscall.WaitStatus)
-	os.RemoveAll(s.launchDir)
+	for _, exit := range s.exitFuncs {
+		exit(s.exitErr)
+	}
 	close(s.exited)
 }
 
