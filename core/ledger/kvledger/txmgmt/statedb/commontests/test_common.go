@@ -7,12 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package commontests
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestGetStateMultipleKeys tests read for given multiple keys
@@ -979,4 +981,113 @@ func TestApplyUpdatesWithNilHeight(t *testing.T, dbProvider statedb.VersionedDBP
 	assert.NoError(t, err)
 	assert.Equal(t, savePoint, ht) // savepoint should still be what was set with batch1
 	// (because batch2 calls ApplyUpdates with savepoint as nil)
+}
+
+func TestFullScanIterator(
+	t *testing.T,
+	dbProvider statedb.VersionedDBProvider,
+	valueFormat byte,
+	dbValueDeserializer func(b []byte) (*statedb.VersionedValue, error)) {
+
+	db, err := dbProvider.GetDBHandle("test-full-scan-iterator")
+	assert.NoError(t, err)
+
+	// generateSampleData returns a slice of KVs. The returned value contains five KVs for each of the namespaces
+	generateSampleData := func(namespaces ...string) []*statedb.VersionedKV {
+		sampleData := []*statedb.VersionedKV{}
+		for _, ns := range namespaces {
+			for i := 0; i < 5; i++ {
+				sampleKV := &statedb.VersionedKV{
+					CompositeKey: statedb.CompositeKey{
+						Namespace: ns,
+						Key:       fmt.Sprintf("key-%d", i),
+					},
+					VersionedValue: statedb.VersionedValue{
+						Value:    []byte(fmt.Sprintf("value-for-key-%d-for-%s", i, ns)),
+						Version:  version.NewHeight(1, 1),
+						Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-%s", i, ns)),
+					},
+				}
+				sampleData = append(sampleData, sampleKV)
+			}
+		}
+		return sampleData
+	}
+
+	// add the sample data for four namespaces to the db
+	batch := statedb.NewUpdateBatch()
+	for _, kv := range generateSampleData("ns1", "ns2", "ns3", "ns4") {
+		batch.PutValAndMetadata(kv.Namespace, kv.Key, kv.Value, kv.Metadata, kv.Version)
+	}
+	db.ApplyUpdates(batch, version.NewHeight(5, 5))
+
+	// verifyFullScanIterator verifies the output of the FullScanIterator with skipping zero or more namespaces
+	verifyFullScanIterator := func(skipNamespaces stringset) {
+		fullScanItr, valFormat, err := db.GetFullScanIterator(
+			func(ns string) bool {
+				return skipNamespaces.contains(ns)
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, valueFormat, valFormat)
+		results := []*statedb.VersionedKV{}
+		for {
+			compositeKV, serializedVersionedValue, err := fullScanItr.Next()
+			require.NoError(t, err)
+			if compositeKV == nil {
+				break
+			}
+			versionedVal, err := dbValueDeserializer(serializedVersionedValue)
+			require.NoError(t, err)
+			results = append(results, &statedb.VersionedKV{
+				CompositeKey:   *compositeKV,
+				VersionedValue: *versionedVal,
+			})
+		}
+
+		expectedNamespacesInResults := stringset{"ns1", "ns2", "ns3", "ns4"}.minus(skipNamespaces)
+		expectedResults := []*statedb.VersionedKV{}
+		for _, ns := range expectedNamespacesInResults {
+			expectedResults = append(expectedResults, generateSampleData(ns)...)
+		}
+		require.Equal(t, expectedResults, results)
+		fmt.Printf("Len = %d", len(results))
+	}
+
+	// skip no namespaces
+	verifyFullScanIterator(stringset{})
+	// skip the first namespace
+	verifyFullScanIterator(stringset{"ns1"})
+	// skip the middle namespace
+	verifyFullScanIterator(stringset{"ns2"})
+	// skip the last namespace
+	verifyFullScanIterator(stringset{"ns4"})
+	// skip the first two namespaces
+	verifyFullScanIterator(stringset{"ns1", "ns2"})
+	// skip the last two namespaces
+	verifyFullScanIterator(stringset{"ns3", "ns4"})
+	// skip all the namespaces
+	verifyFullScanIterator(stringset{"ns1", "ns2", "ns3", "ns4"})
+}
+
+type stringset []string
+
+func (universe stringset) contains(str string) bool {
+	for _, element := range universe {
+		if element == str {
+			return true
+		}
+	}
+	return false
+}
+
+func (universe stringset) minus(toMinus stringset) stringset {
+	var final stringset
+	for _, element := range universe {
+		if toMinus.contains(element) {
+			continue
+		}
+		final = append(final, element)
+	}
+	return final
 }

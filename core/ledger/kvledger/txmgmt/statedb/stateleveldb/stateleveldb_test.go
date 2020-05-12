@@ -13,6 +13,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBasicRW(t *testing.T) {
@@ -124,4 +125,91 @@ func TestApplyUpdatesWithNilHeight(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
 	commontests.TestApplyUpdatesWithNilHeight(t, env.DBProvider)
+}
+
+func TestFullScanIterator(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestFullScanIterator(
+		t,
+		env.DBProvider,
+		byte(1),
+		func(dbVal []byte) (*statedb.VersionedValue, error) {
+			return decodeValue(dbVal)
+		},
+	)
+}
+
+func TestFullScanIteratorErrorPropagation(t *testing.T) {
+	var env *TestVDBEnv
+	var cleanup func()
+	var vdbProvider *VersionedDBProvider
+	var vdb *versionedDB
+
+	initEnv := func() {
+		env = NewTestVDBEnv(t)
+		vdbProvider = env.DBProvider
+		db, err := vdbProvider.GetDBHandle("TestFullScanIteratorErrorPropagation")
+		require.NoError(t, err)
+		vdb = db.(*versionedDB)
+		cleanup = func() {
+			env.Cleanup()
+		}
+	}
+
+	reInitEnv := func() {
+		env.Cleanup()
+		initEnv()
+	}
+
+	initEnv()
+	defer cleanup()
+
+	// error from function GetFullScanIterator
+	vdbProvider.Close()
+	_, _, err := vdb.GetFullScanIterator(
+		func(string) bool {
+			return false
+		},
+	)
+	require.Contains(t, err.Error(), "internal leveldb error while obtaining db iterator:")
+
+	// error from function Next
+	reInitEnv()
+	itr, _, err := vdb.GetFullScanIterator(
+		func(string) bool {
+			return false
+		},
+	)
+	require.NoError(t, err)
+	itr.Close()
+	_, _, err = itr.Next()
+	require.Contains(t, err.Error(), "internal leveldb error while retrieving data from db iterator:")
+
+	// error from function Next when switching to new iterator for skipping a namespace
+	reInitEnv()
+	batch := statedb.NewUpdateBatch()
+	batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
+	batch.Put("ns2", "key2", []byte("value2"), version.NewHeight(1, 1))
+	batch.Put("ns3", "key3", []byte("value3"), version.NewHeight(1, 1))
+	vdb.ApplyUpdates(batch, version.NewHeight(2, 2))
+
+	itr, _, err = vdb.GetFullScanIterator(
+		func(ns string) bool {
+			return ns == "ns2"
+		},
+	)
+	require.NoError(t, err)
+	compositeKey, _, err := itr.Next()
+	require.NoError(t, err)
+	require.Equal(t,
+		&statedb.CompositeKey{
+			Namespace: "ns1",
+			Key:       "key1",
+		},
+		compositeKey,
+	)
+	vdbProvider.Close()
+	compositeKey, _, err = itr.Next()
+	require.Contains(t, err.Error(), "internal leveldb error while obtaining db iterator for skipping a namespace [ns2]:")
 }

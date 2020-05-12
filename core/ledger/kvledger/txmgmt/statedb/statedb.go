@@ -65,6 +65,12 @@ type VersionedDB interface {
 	// BytesKeySupported returns true if the implementation (underlying db) supports the any bytes to be used as key.
 	// For instance, leveldb supports any bytes for the key while the couchdb supports only valid utf-8 string
 	BytesKeySupported() bool
+	// GetFullScanIterator returns a FullScanIterator that can be used to iterate over entire data in the statedb.
+	// `skipNamespace` parameter can be used to control if the consumer wants the FullScanIterator
+	// to skip one or more namespaces from the returned results. The second parameter returns the format information
+	// about the value bytes returned by the Next function in the returned FullScanIterator.
+	// The intended use of this iterator is to generate the snapshot files for the statedb.
+	GetFullScanIterator(skipNamespace func(string) bool) (FullScanIterator, byte, error)
 	// Open opens the db
 	Open() error
 	// Close closes the db
@@ -84,6 +90,16 @@ type BulkOptimizable interface {
 type IndexCapable interface {
 	GetDBType() string
 	ProcessIndexesForChaincodeDeploy(namespace string, indexFilesData map[string][]byte) error
+}
+
+// FullScanIterator provides a mean to iterate over entire statedb. The intended use of this iterator
+// is to generate the snapshot files for the statedb
+type FullScanIterator interface {
+	// Next returns the key-values in the lexical order of <Namespace, key>
+	// A particular statedb implementation is free to chose any deterministic bytes representation for the <version, value, metadata>
+	Next() (*CompositeKey, []byte, error)
+	// Close releases any resources held with the implementation
+	Close()
 }
 
 // CompositeKey encloses Namespace and Key components

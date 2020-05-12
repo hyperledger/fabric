@@ -65,6 +65,21 @@ type VersionedDB struct {
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}
+	GetFullScanIteratorStub        func(func(string) bool) (statedb.FullScanIterator, byte, error)
+	getFullScanIteratorMutex       sync.RWMutex
+	getFullScanIteratorArgsForCall []struct {
+		arg1 func(string) bool
+	}
+	getFullScanIteratorReturns struct {
+		result1 statedb.FullScanIterator
+		result2 byte
+		result3 error
+	}
+	getFullScanIteratorReturnsOnCall map[int]struct {
+		result1 statedb.FullScanIterator
+		result2 byte
+		result3 error
+	}
 	GetLatestSavePointStub        func() (*version.Height, error)
 	getLatestSavePointMutex       sync.RWMutex
 	getLatestSavePointArgsForCall []struct {
@@ -440,6 +455,72 @@ func (fake *VersionedDB) ExecuteQueryWithPaginationReturnsOnCall(i int, result1 
 		result1 statedb.QueryResultsIterator
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *VersionedDB) GetFullScanIterator(arg1 func(string) bool) (statedb.FullScanIterator, byte, error) {
+	fake.getFullScanIteratorMutex.Lock()
+	ret, specificReturn := fake.getFullScanIteratorReturnsOnCall[len(fake.getFullScanIteratorArgsForCall)]
+	fake.getFullScanIteratorArgsForCall = append(fake.getFullScanIteratorArgsForCall, struct {
+		arg1 func(string) bool
+	}{arg1})
+	fake.recordInvocation("GetFullScanIterator", []interface{}{arg1})
+	fake.getFullScanIteratorMutex.Unlock()
+	if fake.GetFullScanIteratorStub != nil {
+		return fake.GetFullScanIteratorStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2, ret.result3
+	}
+	fakeReturns := fake.getFullScanIteratorReturns
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
+}
+
+func (fake *VersionedDB) GetFullScanIteratorCallCount() int {
+	fake.getFullScanIteratorMutex.RLock()
+	defer fake.getFullScanIteratorMutex.RUnlock()
+	return len(fake.getFullScanIteratorArgsForCall)
+}
+
+func (fake *VersionedDB) GetFullScanIteratorCalls(stub func(func(string) bool) (statedb.FullScanIterator, byte, error)) {
+	fake.getFullScanIteratorMutex.Lock()
+	defer fake.getFullScanIteratorMutex.Unlock()
+	fake.GetFullScanIteratorStub = stub
+}
+
+func (fake *VersionedDB) GetFullScanIteratorArgsForCall(i int) func(string) bool {
+	fake.getFullScanIteratorMutex.RLock()
+	defer fake.getFullScanIteratorMutex.RUnlock()
+	argsForCall := fake.getFullScanIteratorArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *VersionedDB) GetFullScanIteratorReturns(result1 statedb.FullScanIterator, result2 byte, result3 error) {
+	fake.getFullScanIteratorMutex.Lock()
+	defer fake.getFullScanIteratorMutex.Unlock()
+	fake.GetFullScanIteratorStub = nil
+	fake.getFullScanIteratorReturns = struct {
+		result1 statedb.FullScanIterator
+		result2 byte
+		result3 error
+	}{result1, result2, result3}
+}
+
+func (fake *VersionedDB) GetFullScanIteratorReturnsOnCall(i int, result1 statedb.FullScanIterator, result2 byte, result3 error) {
+	fake.getFullScanIteratorMutex.Lock()
+	defer fake.getFullScanIteratorMutex.Unlock()
+	fake.GetFullScanIteratorStub = nil
+	if fake.getFullScanIteratorReturnsOnCall == nil {
+		fake.getFullScanIteratorReturnsOnCall = make(map[int]struct {
+			result1 statedb.FullScanIterator
+			result2 byte
+			result3 error
+		})
+	}
+	fake.getFullScanIteratorReturnsOnCall[i] = struct {
+		result1 statedb.FullScanIterator
+		result2 byte
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *VersionedDB) GetLatestSavePoint() (*version.Height, error) {
@@ -956,6 +1037,8 @@ func (fake *VersionedDB) Invocations() map[string][][]interface{} {
 	defer fake.executeQueryMutex.RUnlock()
 	fake.executeQueryWithPaginationMutex.RLock()
 	defer fake.executeQueryWithPaginationMutex.RUnlock()
+	fake.getFullScanIteratorMutex.RLock()
+	defer fake.getFullScanIteratorMutex.RUnlock()
 	fake.getLatestSavePointMutex.RLock()
 	defer fake.getLatestSavePointMutex.RUnlock()
 	fake.getStateMutex.RLock()
