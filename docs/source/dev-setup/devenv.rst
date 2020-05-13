@@ -18,9 +18,9 @@ Steps
 Install the Prerequisites
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For development on macOS, we recommend using `Homebrew <https://brew.sh>`__ to
-install the development prereqs. The Xcode command line tools will be installed as
-part of the Homebrew installation.
+For macOS, we recommend using `Homebrew <https://brew.sh>`__ to manage the
+development prereqs. The Xcode command line tools will be installed as part of
+the Homebrew installation.
 
 Once Homebrew is ready, installing the necessary prerequisites is very easy:
 
@@ -29,7 +29,7 @@ Once Homebrew is ready, installing the necessary prerequisites is very easy:
     brew install git go jq softhsm
     brew cask install --appdir="/Applications" docker
 
-Docker Desktop must be launched after to complete it setup so be sure to open
+Docker Desktop must be launched to complete the installation so be sure to open
 the application after installing it:
 
 ::
@@ -114,7 +114,7 @@ directory.
     make gotools
 
 After installing the tools, the build environment can be verified by running a
-a few commands.
+few commands.
 
 ::
 
