@@ -182,8 +182,9 @@ ordering service nodes, stop all Kafka brokers and Zookeepers, and then restart
 only the ordering service nodes. They should restart as Raft nodes, form a cluster per
 channel, and elect a leader on each channel.
 
-**Note**: Since Raft-based ordering service requires mutual TLS between orderer nodes,
-**additional configurations** are required before you start them again, see
+**Note**: Since the Raft-based ordering service uses client and server TLS certificates for
+authentication between orderer nodes, **additional configurations** are required before
+you start them again, see
 [Section: Local Configuration](./raft_configuration.md#local-configuration) for more details.
 
 After restart process finished, make sure to **validate** that a
