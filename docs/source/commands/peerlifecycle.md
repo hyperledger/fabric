@@ -201,7 +201,7 @@ Flags:
   -n, --name string                    Name of the chaincode
       --package-id string              The identifier of the chaincode install package
       --peerAddresses stringArray      The addresses of the peers to connect to
-      --sequence int                   The sequence number of the chaincode definition for the channel (default 1)
+      --sequence int                   The sequence number of the chaincode definition for the channel
       --signature-policy string        The endorsement policy associated to this chaincode specified as a signature policy
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
   -V, --validation-plugin string       The name of the validation plugin to be used for this chaincode
@@ -239,7 +239,7 @@ Flags:
   -n, --name string                    Name of the chaincode
   -O, --output string                  The output format for query results. Default is human-readable plain-text. json is currently the only supported format.
       --peerAddresses stringArray      The addresses of the peers to connect to
-      --sequence int                   The sequence number of the chaincode definition for the channel (default 1)
+      --sequence int                   The sequence number of the chaincode definition for the channel
       --signature-policy string        The endorsement policy associated to this chaincode specified as a signature policy
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
   -V, --validation-plugin string       The name of the validation plugin to be used for this chaincode
@@ -274,7 +274,7 @@ Flags:
       --init-required                  Whether the chaincode requires invoking 'init'
   -n, --name string                    Name of the chaincode
       --peerAddresses stringArray      The addresses of the peers to connect to
-      --sequence int                   The sequence number of the chaincode definition for the channel (default 1)
+      --sequence int                   The sequence number of the chaincode definition for the channel
       --signature-policy string        The endorsement policy associated to this chaincode specified as a signature policy
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
   -V, --validation-plugin string       The name of the validation plugin to be used for this chaincode
