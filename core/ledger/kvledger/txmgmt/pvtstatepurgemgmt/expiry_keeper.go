@@ -33,7 +33,7 @@ type expiryInfo struct {
 	pvtdataKeys   *PvtdataKeys
 }
 
-// expiryInfoKey is used as a key of an entry in the bookkeeper (backed by a leveldb instance)
+// expiryInfoKey is used as a key of an entry in the expiryKeeper (backed by a leveldb instance)
 type expiryInfoKey struct {
 	committingBlk uint64
 	expiryBlk     uint64
@@ -43,9 +43,9 @@ func newExpiryKeeper(ledgerid string, provider bookkeeping.Provider) *expiryKeep
 	return &expiryKeeper{provider.GetDBHandle(ledgerid, bookkeeping.PvtdataExpiry)}
 }
 
-// updateBookkeeping keeps track of the list of keys and their corresponding expiry block number
-// 'toTrack' parameter causes new entries in the bookkeeper and  'toClear' parameter contains the entries that
-// are to be removed from the bookkeeper. This function is invoked with the commit of every block. As an
+// update keeps track of the list of keys and their corresponding expiry block number
+// 'toTrack' parameter causes new entries in the expiryKeeper and  'toClear' parameter contains the entries that
+// are to be removed from the expiryKeeper. This function is invoked with the commit of every block. As an
 // example, the commit of the block with block number 50, 'toTrack' parameter may contain following two entries:
 // (1) &expiryInfo{&expiryInfoKey{committingBlk: 50, expiryBlk: 55}, pvtdataKeys....} and
 // (2) &expiryInfo{&expiryInfoKey{committingBlk: 50, expiryBlk: 60}, pvtdataKeys....}
@@ -55,7 +55,7 @@ func newExpiryKeeper(ledgerid string, provider bookkeeping.Provider) *expiryKeep
 // (1) &expiryInfoKey{committingBlk: 45, expiryBlk: 50} and (2) &expiryInfoKey{committingBlk: 40, expiryBlk: 50}. The first entry was created
 // at the time of the commit of the block number 45 and the second entry was created at the time of the commit of the block number 40, however
 // both are expiring with the commit of block number 50.
-func (ek *expiryKeeper) updateBookkeeping(toTrack []*expiryInfo, toClear []*expiryInfoKey) error {
+func (ek *expiryKeeper) update(toTrack []*expiryInfo, toClear []*expiryInfoKey) error {
 	updateBatch := leveldbhelper.NewUpdateBatch()
 	for _, expinfo := range toTrack {
 		k, v, err := encodeKV(expinfo)

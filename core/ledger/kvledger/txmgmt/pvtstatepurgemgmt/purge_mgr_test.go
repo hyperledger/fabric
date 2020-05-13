@@ -308,14 +308,15 @@ func (h *testHelper) cleanup() {
 
 func (h *testHelper) commitUpdatesForTesting(blkNum uint64, updates *privacyenabledstate.UpdateBatch) {
 	h.purgeMgr.PrepareForExpiringKeys(blkNum)
-	assert.NoError(h.t, h.purgeMgr.DeleteExpiredAndUpdateBookkeeping(updates.PvtUpdates, updates.HashUpdates))
+	assert.NoError(h.t, h.purgeMgr.UpdateExpiryInfo(updates.PvtUpdates, updates.HashUpdates))
+	assert.NoError(h.t, h.purgeMgr.AddExpiredEntriesToUpdateBatch(updates.PvtUpdates, updates.HashUpdates))
 	assert.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(blkNum, 1)))
 	h.db.ClearCachedVersions()
 	h.purgeMgr.BlockCommitDone()
 }
 
 func (h *testHelper) commitPvtDataOfOldBlocksForTesting(updates *privacyenabledstate.UpdateBatch) {
-	assert.NoError(h.t, h.purgeMgr.UpdateBookkeepingForPvtDataOfOldBlocks(updates.PvtUpdates))
+	assert.NoError(h.t, h.purgeMgr.UpdateExpiryInfoOfPvtDataOfOldBlocks(updates.PvtUpdates))
 	assert.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, nil))
 }
 

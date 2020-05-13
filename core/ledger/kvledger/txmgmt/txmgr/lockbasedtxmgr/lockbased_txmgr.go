@@ -241,8 +241,8 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(reconciledPv
 	// to update the list. This is because RemoveStaleAndCommitPvtDataOfOldBlocks
 	// may have added new data which might be eligible for expiry during the
 	// next regular block commit.
-	logger.Debug("Updating bookkeeping info in the purge manager")
-	if err := txmgr.pvtdataPurgeMgr.UpdateBookkeepingForPvtDataOfOldBlocks(batch.PvtUpdates); err != nil {
+	logger.Debug("Updating expiry info in the purge manager")
+	if err := txmgr.pvtdataPurgeMgr.UpdateExpiryInfoOfPvtDataOfOldBlocks(batch.PvtUpdates); err != nil {
 		return err
 	}
 
@@ -514,7 +514,12 @@ func (txmgr *LockBasedTxMgr) Commit() error {
 		panic("validateAndPrepare() method should have been called before calling commit()")
 	}
 
-	if err := txmgr.pvtdataPurgeMgr.DeleteExpiredAndUpdateBookkeeping(
+	if err := txmgr.pvtdataPurgeMgr.UpdateExpiryInfo(
+		txmgr.current.batch.PvtUpdates, txmgr.current.batch.HashUpdates); err != nil {
+		return err
+	}
+
+	if err := txmgr.pvtdataPurgeMgr.AddExpiredEntriesToUpdateBatch(
 		txmgr.current.batch.PvtUpdates, txmgr.current.batch.HashUpdates); err != nil {
 		return err
 	}

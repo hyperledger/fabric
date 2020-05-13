@@ -73,15 +73,15 @@ func (p *PurgeMgr) WaitForPrepareToFinish() {
 	p.lock.Unlock()
 }
 
-// UpdateBookkeepingForPvtDataOfOldBlocks updates the existing expiry entries in the bookkeeper with the given pvtUpdates
-func (p *PurgeMgr) UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyenabledstate.PvtUpdateBatch) error {
+// UpdateExpirtyInfoPvtDataOfOldBlocks updates the existing expiry entries in the expiryKeeper with the given pvtUpdates
+func (p *PurgeMgr) UpdateExpiryInfoOfPvtDataOfOldBlocks(pvtUpdates *privacyenabledstate.PvtUpdateBatch) error {
 	builder := newExpiryScheduleBuilder(p.btlPolicy)
 	pvtUpdateCompositeKeyMap := pvtUpdates.ToCompositeKeyMap()
 	for k, vv := range pvtUpdateCompositeKeyMap {
 		builder.add(k.Namespace, k.CollectionName, k.Key, util.ComputeStringHash(k.Key), vv)
 	}
 
-	var updatedList []*expiryInfo
+	var expiryInfoUpdates []*expiryInfo
 	for _, toAdd := range builder.getExpiryInfo() {
 		toUpdate, err := p.expKeeper.retrieveByExpiryKey(toAdd.expiryInfoKey)
 		if err != nil {
@@ -91,7 +91,7 @@ func (p *PurgeMgr) UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyena
 		// to only the keyHash of this pvtUpdateKey), for simplicity and to be less
 		// expensive, we append a new entry
 		toUpdate.pvtdataKeys.addAll(toAdd.pvtdataKeys)
-		updatedList = append(updatedList, toUpdate)
+		expiryInfoUpdates = append(expiryInfoUpdates, toUpdate)
 	}
 
 	// As the expiring keys list might have been constructed after the last
@@ -101,7 +101,7 @@ func (p *PurgeMgr) UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyena
 	// hashedKey in the expiring keys list would be missing the pvtData.
 	p.addMissingPvtDataToWorkingSet(pvtUpdateCompositeKeyMap)
 
-	return p.expKeeper.updateBookkeeping(updatedList, nil)
+	return p.expKeeper.update(expiryInfoUpdates, nil)
 }
 
 func (p *PurgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.PvtdataCompositeKeyMap) {
@@ -137,19 +137,24 @@ func (p *PurgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.Pvt
 	}
 }
 
-// DeleteExpiredAndUpdateBookkeeping updates the bookkeeping and modifies the update batch by adding the deletes for the expired pvtdata
-func (p *PurgeMgr) DeleteExpiredAndUpdateBookkeeping(
+func (p *PurgeMgr) UpdateExpiryInfo(
+	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
+	hashedUpdates *privacyenabledstate.HashedUpdateBatch) error {
+	expiryInfoUpdates, err := buildExpirySchedule(p.btlPolicy, pvtUpdates, hashedUpdates)
+	if err != nil {
+		return err
+	}
+	return p.expKeeper.update(expiryInfoUpdates, nil)
+}
+
+// AddExpiredEntriesToUpdateBatch add the expired pvtdata to the updateBatch of next block to be committed
+func (p *PurgeMgr) AddExpiredEntriesToUpdateBatch(
 	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
 	hashedUpdates *privacyenabledstate.HashedUpdateBatch) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	if p.workingset.err != nil {
 		return p.workingset.err
-	}
-
-	listExpiryInfo, err := buildExpirySchedule(p.btlPolicy, pvtUpdates, hashedUpdates)
-	if err != nil {
-		return err
 	}
 
 	// For each key selected for purging, check if the key is not getting updated in the current block,
@@ -177,7 +182,7 @@ func (p *PurgeMgr) DeleteExpiredAndUpdateBookkeeping(
 			pvtUpdates.Delete(ns, coll, key, expiringTxVersion)
 		}
 	}
-	return p.expKeeper.updateBookkeeping(listExpiryInfo, nil)
+	return nil
 }
 
 // BlockCommitDone is a callback to the PurgeMgr when the block is committed to the ledger
@@ -190,7 +195,7 @@ func (p *PurgeMgr) DeleteExpiredAndUpdateBookkeeping(
 // entries updates and block commit
 func (p *PurgeMgr) BlockCommitDone() error {
 	defer func() { p.workingset = nil }()
-	return p.expKeeper.updateBookkeeping(nil, p.workingset.toClearFromSchedule)
+	return p.expKeeper.update(nil, p.workingset.toClearFromSchedule)
 }
 
 // prepareWorkingsetFor returns a working set for a given expiring block 'expiringAtBlk'.
@@ -198,7 +203,7 @@ func (p *PurgeMgr) BlockCommitDone() error {
 func (p *PurgeMgr) prepareWorkingsetFor(expiringAtBlk uint64) *workingset {
 	logger.Debugf("Preparing potential purge list working-set for expiringAtBlk [%d]", expiringAtBlk)
 	workingset := &workingset{expiringBlk: expiringAtBlk}
-	// Retrieve the keys from bookkeeper
+	// Retrieve the keys from expiryKeeper
 	expiryInfo, err := p.expKeeper.retrieve(expiringAtBlk)
 	if err != nil {
 		workingset.err = err
@@ -256,7 +261,7 @@ func (p *PurgeMgr) prepareWorkingsetFor(expiringAtBlk uint64) *workingset {
 	}
 	// Final keys to purge from state
 	workingset.toPurge = toPurge
-	// Keys to clear from bookkeeper
+	// Keys to clear from expiryKeeper
 	workingset.toClearFromSchedule = expiryInfoKeysToClear
 	return workingset
 }
