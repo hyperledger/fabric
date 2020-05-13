@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package policies
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"strings"
 
@@ -367,7 +369,12 @@ func SignatureSetToValidIdentities(signedData []*protoutil.SignedData, identityD
 	for i, sd := range signedData {
 		identity, err := identityDeserializer.DeserializeIdentity(sd.Identity)
 		if err != nil {
-			logger.Warningf("principal deserialization failure (%s) for identity %x", err, sd.Identity)
+			logMsg, err2 := logMessageForSerializedIdentity(sd.Identity)
+			if err2 != nil {
+				logger.Warnw("invalid identity", "identity-error", err2.Error(), "error", err.Error())
+				continue
+			}
+			logger.Warnw(fmt.Sprintf("invalid identity: %s", logMsg), "error", err.Error())
 			continue
 		}
 
@@ -392,4 +399,23 @@ func SignatureSetToValidIdentities(signedData []*protoutil.SignedData, identityD
 	}
 
 	return identities
+}
+
+func logMessageForSerializedIdentity(serializedIdentity []byte) (string, error) {
+	id := &msp.SerializedIdentity{}
+	err := proto.Unmarshal(serializedIdentity, id)
+	if err != nil {
+		return "", errors.Wrap(err, "unmarshaling serialized identity")
+	}
+	pemBlock, _ := pem.Decode(id.IdBytes)
+	if pemBlock == nil {
+		// not all identities are certificates so simply log the serialized
+		// identity bytes
+		return fmt.Sprintf("serialized-identity=%x", serializedIdentity), nil
+	}
+	cert, err := x509.ParseCertificate(pemBlock.Bytes)
+	if err != nil {
+		return "", errors.Wrap(err, "parsing certificate")
+	}
+	return fmt.Sprintf("certificate subject=%s serialnumber=%d", cert.Subject, cert.SerialNumber), nil
 }
