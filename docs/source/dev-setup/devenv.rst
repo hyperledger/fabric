@@ -24,13 +24,6 @@ Prerequisites
 
     export PATH=/usr/local/opt/gnu-tar/libexec/gnubin:$PATH
 
--  `Libtool <https://www.gnu.org/software/libtool/>`__. You can use
-   Homebrew to install it as follows:
-
-::
-
-    brew install libtool
-
 -  `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__. You can use
    Homebrew or apt to install it as follows:
 
@@ -108,7 +101,7 @@ appropriate environment variables. For example, on macOS:
 
 ::
 
-    export PKCS11_LIB="/usr/local/Cellar/softhsm/2.5.0/lib/softhsm/libsofthsm2.so"
+    export PKCS11_LIB="/usr/local/Cellar/softhsm/2.6.1/lib/softhsm/libsofthsm2.so"
     export PKCS11_PIN=98765432
     export PKCS11_LABEL="ForFabric"
 
