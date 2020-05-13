@@ -2,6 +2,9 @@ module github.com/hyperledger/fabric
 
 go 1.14
 
+// https://github.com/golang/go/issues/34610
+replace golang.org/x/sys => golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380
+
 require (
 	code.cloudfoundry.org/clock v1.0.0
 	github.com/DataDog/zstd v1.4.0 // indirect
@@ -60,7 +63,6 @@ require (
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20181228115726-23731bf9ba55
 	go.uber.org/zap v1.14.1
 	golang.org/x/crypto v0.0.0-20200221231518-2aa609cf4a9d
-	golang.org/x/sys v0.0.0-20200409092240-59c9f1ba88fa // indirect
 	golang.org/x/text v0.3.2 // indirect
 	golang.org/x/tools v0.0.0-20200131233409-575de47986ce
 	google.golang.org/grpc v1.29.1
