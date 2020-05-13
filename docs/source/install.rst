@@ -82,7 +82,8 @@ created above. It retrieves the following platform-specific binaries:
   * ``idemixgen``
   * ``orderer``,
   * ``peer``,
-  * ``fabric-ca-client``
+  * ``fabric-ca-client``,
+  * ``fabric-ca-server``
 
 and places them in the ``bin`` sub-directory of the current working
 directory.
