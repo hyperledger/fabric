@@ -18,21 +18,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
-type keyAndVersion struct {
-	key             string
-	committingBlock uint64
-	purgeKeyOnly    bool
-}
-
-type expiryInfoMap map[privacyenabledstate.HashedCompositeKey]*keyAndVersion
-
-type workingset struct {
-	toPurge             expiryInfoMap
-	toClearFromSchedule []*expiryInfoKey
-	expiringBlk         uint64
-	err                 error
-}
-
 type PurgeMgr struct {
 	btlPolicy pvtdatapolicy.BTLPolicy
 	db        *privacyenabledstate.DB
@@ -42,6 +27,21 @@ type PurgeMgr struct {
 	waitGrp *sync.WaitGroup
 
 	workingset *workingset
+}
+
+type workingset struct {
+	toPurge             expiryInfoMap
+	toClearFromSchedule []*expiryInfoKey
+	expiringBlk         uint64
+	err                 error
+}
+
+type expiryInfoMap map[privacyenabledstate.HashedCompositeKey]*keyAndVersion
+
+type keyAndVersion struct {
+	key             string
+	committingBlock uint64
+	purgeKeyOnly    bool
 }
 
 // InstantiatePurgeMgr instantiates a PurgeMgr.

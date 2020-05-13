@@ -45,6 +45,13 @@ type LockBasedTxMgr struct {
 	hasher              ledger.Hasher
 }
 
+// pvtdataPurgeMgr wraps the actual purge manager and an additional flag 'usedOnce'
+// for usage of this additional flag, see the relevant comments in the txmgr.Commit() function above
+type pvtdataPurgeMgr struct {
+	*pvtstatepurgemgmt.PurgeMgr
+	usedOnce bool
+}
+
 type current struct {
 	block     *common.Block
 	batch     *privacyenabledstate.UpdateBatch
@@ -628,11 +635,4 @@ func (txmgr *LockBasedTxMgr) updateStateListeners() {
 
 func (txmgr *LockBasedTxMgr) reset() {
 	txmgr.current = nil
-}
-
-// pvtdataPurgeMgr wraps the actual purge manager and an additional flag 'usedOnce'
-// for usage of this additional flag, see the relevant comments in the txmgr.Commit() function above
-type pvtdataPurgeMgr struct {
-	*pvtstatepurgemgmt.PurgeMgr
-	usedOnce bool
 }

@@ -20,10 +20,8 @@ const (
 	expiryPrefix = '1'
 )
 
-// expiryInfoKey is used as a key of an entry in the bookkeeper (backed by a leveldb instance)
-type expiryInfoKey struct {
-	committingBlk uint64
-	expiryBlk     uint64
+type expiryKeeper struct {
+	db *leveldbhelper.DBHandle
 }
 
 // expiryInfo encapsulates an 'expiryInfoKey' and corresponding private data keys.
@@ -35,12 +33,14 @@ type expiryInfo struct {
 	pvtdataKeys   *PvtdataKeys
 }
 
-func newExpiryKeeper(ledgerid string, provider bookkeeping.Provider) *expiryKeeper {
-	return &expiryKeeper{provider.GetDBHandle(ledgerid, bookkeeping.PvtdataExpiry)}
+// expiryInfoKey is used as a key of an entry in the bookkeeper (backed by a leveldb instance)
+type expiryInfoKey struct {
+	committingBlk uint64
+	expiryBlk     uint64
 }
 
-type expiryKeeper struct {
-	db *leveldbhelper.DBHandle
+func newExpiryKeeper(ledgerid string, provider bookkeeping.Provider) *expiryKeeper {
+	return &expiryKeeper{provider.GetDBHandle(ledgerid, bookkeeping.PvtdataExpiry)}
 }
 
 // updateBookkeeping keeps track of the list of keys and their corresponding expiry block number
