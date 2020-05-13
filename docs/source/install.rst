@@ -74,10 +74,11 @@ created above. It retrieves the following platform-specific binaries:
   * ``configtxlator``,
   * ``cryptogen``,
   * ``discover``,
-  * ``idemixgen``
+  * ``idemixgen``,
   * ``orderer``,
-  * ``peer``, and
-  * ``fabric-ca-client``
+  * ``peer``,
+  * ``fabric-ca-client``,
+  * ``fabric-ca-server``
 
 and places them in the ``bin`` sub-directory of the current working
 directory.
