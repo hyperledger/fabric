@@ -54,9 +54,10 @@ Usage:
     -s <dbtype> - the database backend to use: goleveldb (default) or couchdb
     -r <max retry> - CLI times out after certain number of attempts (defaults to 5)
     -d <delay> - delay duration in seconds (defaults to 3)
-    -l <language> - the programming language of the chaincode to deploy: go (default), javascript, or java
+    -l <language> - the programming language of the chaincode to deploy: go (default), java, javascript, typescript
     -v <version>  - chaincode version. Must be a round number, 1, 2, 3, etc
     -i <imagetag> - the tag to be used to launch the network (defaults to "latest")
+    -cai <ca_imagetag> - the image tag to be used for CA (defaults to "1.4.6")
     -verbose - verbose mode
   network.sh -h (print this message)
 
