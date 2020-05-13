@@ -18,22 +18,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
-// PurgeMgr manages purging of the expired pvtdata
-type PurgeMgr interface {
-	// PrepareForExpiringKeys gives a chance to the PurgeMgr to do background work in advance if any
-	PrepareForExpiringKeys(expiringAtBlk uint64)
-	// WaitForPrepareToFinish holds the caller till the background goroutine launched by 'PrepareForExpiringKeys' is finished
-	WaitForPrepareToFinish()
-	// DeleteExpiredAndUpdateBookkeeping updates the bookkeeping and modifies the update batch by adding the deletes for the expired pvtdata
-	DeleteExpiredAndUpdateBookkeeping(
-		pvtUpdates *privacyenabledstate.PvtUpdateBatch,
-		hashedUpdates *privacyenabledstate.HashedUpdateBatch) error
-	// UpdateBookkeepingForPvtDataOfOldBlocks updates the existing expiry entries in the bookkeeper with the given pvtUpdates
-	UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyenabledstate.PvtUpdateBatch) error
-	// BlockCommitDone is a callback to the PurgeMgr when the block is committed to the ledger
-	BlockCommitDone() error
-}
-
 type keyAndVersion struct {
 	key             string
 	committingBlock uint64
@@ -49,10 +33,10 @@ type workingset struct {
 	err                 error
 }
 
-type purgeMgr struct {
+type PurgeMgr struct {
 	btlPolicy pvtdatapolicy.BTLPolicy
 	db        *privacyenabledstate.DB
-	expKeeper expiryKeeper
+	expKeeper *expiryKeeper
 
 	lock    *sync.Mutex
 	waitGrp *sync.WaitGroup
@@ -61,8 +45,8 @@ type purgeMgr struct {
 }
 
 // InstantiatePurgeMgr instantiates a PurgeMgr.
-func InstantiatePurgeMgr(ledgerid string, db *privacyenabledstate.DB, btlPolicy pvtdatapolicy.BTLPolicy, bookkeepingProvider bookkeeping.Provider) (PurgeMgr, error) {
-	return &purgeMgr{
+func InstantiatePurgeMgr(ledgerid string, db *privacyenabledstate.DB, btlPolicy pvtdatapolicy.BTLPolicy, bookkeepingProvider bookkeeping.Provider) (*PurgeMgr, error) {
+	return &PurgeMgr{
 		btlPolicy: btlPolicy,
 		db:        db,
 		expKeeper: newExpiryKeeper(ledgerid, bookkeepingProvider),
@@ -71,8 +55,8 @@ func InstantiatePurgeMgr(ledgerid string, db *privacyenabledstate.DB, btlPolicy 
 	}, nil
 }
 
-// PrepareForExpiringKeys implements function in the interface 'PurgeMgr'
-func (p *purgeMgr) PrepareForExpiringKeys(expiringAtBlk uint64) {
+// PrepareForExpiringKeys gives a chance to the PurgeMgr to do background work in advance if any
+func (p *PurgeMgr) PrepareForExpiringKeys(expiringAtBlk uint64) {
 	p.waitGrp.Add(1)
 	go func() {
 		p.lock.Lock()
@@ -83,13 +67,14 @@ func (p *purgeMgr) PrepareForExpiringKeys(expiringAtBlk uint64) {
 	p.waitGrp.Wait()
 }
 
-// WaitForPrepareToFinish implements function in the interface 'PurgeMgr'
-func (p *purgeMgr) WaitForPrepareToFinish() {
+// WaitForPrepareToFinish holds the caller till the background goroutine launched by 'PrepareForExpiringKeys' is finished
+func (p *PurgeMgr) WaitForPrepareToFinish() {
 	p.lock.Lock()
 	p.lock.Unlock()
 }
 
-func (p *purgeMgr) UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyenabledstate.PvtUpdateBatch) error {
+// UpdateBookkeepingForPvtDataOfOldBlocks updates the existing expiry entries in the bookkeeper with the given pvtUpdates
+func (p *PurgeMgr) UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyenabledstate.PvtUpdateBatch) error {
 	builder := newExpiryScheduleBuilder(p.btlPolicy)
 	pvtUpdateCompositeKeyMap := pvtUpdates.ToCompositeKeyMap()
 	for k, vv := range pvtUpdateCompositeKeyMap {
@@ -119,7 +104,7 @@ func (p *purgeMgr) UpdateBookkeepingForPvtDataOfOldBlocks(pvtUpdates *privacyena
 	return p.expKeeper.updateBookkeeping(updatedList, nil)
 }
 
-func (p *purgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.PvtdataCompositeKeyMap) {
+func (p *PurgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.PvtdataCompositeKeyMap) {
 	if p.workingset == nil || len(p.workingset.toPurge) == 0 {
 		return
 	}
@@ -152,8 +137,8 @@ func (p *purgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.Pvt
 	}
 }
 
-// DeleteExpiredAndUpdateBookkeeping implements function in the interface 'PurgeMgr'
-func (p *purgeMgr) DeleteExpiredAndUpdateBookkeeping(
+// DeleteExpiredAndUpdateBookkeeping updates the bookkeeping and modifies the update batch by adding the deletes for the expired pvtdata
+func (p *PurgeMgr) DeleteExpiredAndUpdateBookkeeping(
 	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
 	hashedUpdates *privacyenabledstate.HashedUpdateBatch) error {
 	p.lock.Lock()
@@ -195,7 +180,7 @@ func (p *purgeMgr) DeleteExpiredAndUpdateBookkeeping(
 	return p.expKeeper.updateBookkeeping(listExpiryInfo, nil)
 }
 
-// BlockCommitDone implements function in the interface 'PurgeMgr'
+// BlockCommitDone is a callback to the PurgeMgr when the block is committed to the ledger
 // These orphan entries for purge-schedule can be cleared off in bulk in a separate background routine as well
 // If we maintain the following logic (i.e., clear off entries just after block commit), we need a TODO -
 // We need to perform a check in the start, because there could be a crash between the block commit and
@@ -203,14 +188,14 @@ func (p *purgeMgr) DeleteExpiredAndUpdateBookkeeping(
 // Also, the another way is to club the delete of these entries in the same batch that adds entries for the future expirations -
 // however, that requires updating the expiry store by replaying the last block from blockchain in order to sustain a crash between
 // entries updates and block commit
-func (p *purgeMgr) BlockCommitDone() error {
+func (p *PurgeMgr) BlockCommitDone() error {
 	defer func() { p.workingset = nil }()
 	return p.expKeeper.updateBookkeeping(nil, p.workingset.toClearFromSchedule)
 }
 
 // prepareWorkingsetFor returns a working set for a given expiring block 'expiringAtBlk'.
 // This working set contains the pvt data keys that will expire with the commit of block 'expiringAtBlk'.
-func (p *purgeMgr) prepareWorkingsetFor(expiringAtBlk uint64) *workingset {
+func (p *PurgeMgr) prepareWorkingsetFor(expiringAtBlk uint64) *workingset {
 	logger.Debugf("Preparing potential purge list working-set for expiringAtBlk [%d]", expiringAtBlk)
 	workingset := &workingset{expiringBlk: expiringAtBlk}
 	// Retrieve the keys from bookkeeper
@@ -276,7 +261,7 @@ func (p *purgeMgr) prepareWorkingsetFor(expiringAtBlk uint64) *workingset {
 	return workingset
 }
 
-func (p *purgeMgr) preloadCommittedVersionsInCache(expInfoMap expiryInfoMap) {
+func (p *PurgeMgr) preloadCommittedVersionsInCache(expInfoMap expiryInfoMap) {
 	if !p.db.IsBulkOptimizable() {
 		return
 	}

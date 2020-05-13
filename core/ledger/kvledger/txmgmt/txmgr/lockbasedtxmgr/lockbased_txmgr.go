@@ -633,6 +633,6 @@ func (txmgr *LockBasedTxMgr) reset() {
 // pvtdataPurgeMgr wraps the actual purge manager and an additional flag 'usedOnce'
 // for usage of this additional flag, see the relevant comments in the txmgr.Commit() function above
 type pvtdataPurgeMgr struct {
-	pvtstatepurgemgmt.PurgeMgr
+	*pvtstatepurgemgmt.PurgeMgr
 	usedOnce bool
 }
