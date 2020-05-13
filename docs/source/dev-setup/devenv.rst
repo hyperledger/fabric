@@ -4,43 +4,38 @@ Setting up the development environment
 Prerequisites
 ~~~~~~~~~~~~~
 
--  Git client
+-  `Git client <https://git-scm.com/downloads>`__
 -  `Go <https://golang.org/dl/>`__ version 1.14.x
 -  `Docker <https://docs.docker.com/get-docker/>`__ version 18.03 or later
--  (macOS)
-   `Xcode <https://itunes.apple.com/us/app/xcode/id497799835?mt=12>`__
-   must be installed
--  (macOS) GNU tar. You can use `Homebrew <https://brew.sh/>`__ to install
-   it as follows:
+-  (macOS) `Xcode Command Line Tools <https://developer.apple.com/downloads/>`__
+-  `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__
+-  `jq <https://stedolan.github.io/jq/download/>`__
 
-::
-
-    brew install gnu-tar
-
--  (macOS) If you've installed GNU tar, you should prepend the "gnubin"
-   directory to your $PATH with something like:
-
-::
-
-    export PATH=/usr/local/opt/gnu-tar/libexec/gnubin:$PATH
-
--  `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__. You can use
-   Homebrew or apt to install it as follows:
-
-::
-
-    brew install softhsm              # macOS
-    sudo apt-get install libsofthsm2  # Ubuntu
-
--  `jq <https://stedolan.github.io/jq/download/>`__. You can use
-   Homebrew to install it as follows:
-
-::
-
-    brew install jq
 
 Steps
 ~~~~~
+
+Install the Prerequisites
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For development on macOS, we recommend using `Homebrew <https://brew.sh>`__ to
+install the development prereqs. The Xcode command line tools will be installed as
+part of the Homebrew installation.
+
+Once Homebrew is ready, installing the necessary prerequisites is very easy:
+
+::
+
+    brew install git go jq softhsm
+    brew cask install --appdir="/Applications" docker
+
+Docker Desktop must be launched after to complete it setup so be sure to open
+the application after installing it:
+
+::
+
+    open /Applications/Docker.app
+
 
 Clone the Hyperledger Fabric source
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,6 +64,7 @@ the repository.
     ::
 
         git config --global core.autocrlf false
+
 
 Configure SoftHSM
 ^^^^^^^^^^^^^^^^^
