@@ -91,9 +91,7 @@ While all of the non-TLS certificates associated with an organization can be cre
 
 **In a production network, it is recommended to deploy at least one CA per organization for enrollment purposes and another for TLS.** For example, if you deploy three peers that are associated with one organization and an ordering node that is associated with an ordering organization, you will need at least four CAs. Two of the CAs will be for the peer organization (generating the enrollment and TLS certificates for the peer, admins, communications, and the folder structure of the MSP representing the organization) and the other two will be for the orderer organization. Note that users will generally only register and enroll with the enrollment CA, while nodes will register and enroll with both the enrollment CA (where the node will get its signing certificates that identify it when it attempts to sign its actions) and with the TLS CA (where it will get the TLS certificates it uses to authenticate its communications).
 
-To install the Fabric CA client, which is used to register and enroll identities, follow the instructions in `the Fabric CA User's Guide <https://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#overview>`_. Note that there are a number of configuration options when deploying a CA (the database type, for example, or whether to use LDAP).
-
-For an example of how to setup a CA and enroll its admin, check out `Setup Orderer Org CA <https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#setup-orderer-org-ca>`_. For an example of how to set up a TLS CA, check out `Setup TLS CA <https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#setup-tls-ca>`_. Note that bootstrapping the CA server means assigning a username and password that functions as "registering" the CA admin.
+For an example of how to setup an organization CA and a TLS CA and enroll their admin identity, check out the `Fabric CA Deployment Guide <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-deploy.html>`__.  The deploy guide uses the Fabric CA client to register and enroll the identities that are required when setting up CAs.
 
 .. _dg-step-four-use-the-ca-to-create-identities-and-msps:
 
@@ -105,7 +103,7 @@ After you have created your CAs, you can use them to create the certificates for
 * **Register and enroll an admin identity and create an MSP**. After the CA that will be associated with an organization has been created, it can be used to first register an identity and then enroll it. In the first step, a username and password for the identity is assigned by the admin of the CA. Attributes and affiliations can also be given to the identity (for example, a ``role`` of ``admin``, which is necessary for organization admins). After the identity has been registered, it can be enrolled by using the username and password. The CA will generate two certificates for this identity --- a public certificate (also known as a signcert) known to the other members of the network, and the private key (stored in the ``keystore`` folder) used to sign actions taken by the identity. The CA will also generate an MSP file containing the public certificate of the CA issuing the certificate and the root of trust for the CA (this may or may not be the same CA). This MSP can be thought of as defining the organization associated with the identity of the admin. For an example of how this process looks, check out the `this example of how an admin is enrolled <https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-org1-s-admin>`_. In cases where the admin of the org will also be an admin of a node (which will be typical), **you must create the org admin identity before creating the local MSP of a node, since the certificate of the node admin must be used when creating the local MSP**.
 * **Register and enroll node identities**. Just as an org admin identity is registered and enrolled, the identity of a node must be registered and enrolled with both an enrollment CA and the TLS CA. For this reason, it can be useful for your enrollment CA and TLS to share a database (which allows the node identity to only be registered once and enrolled by each CA server separately), though this is an optional configuration option. Instead of giving a node a role of ``admin`` or ``user`` when registering it with the enrollment CA, give it a role of ``peer`` or ``orderer``. As with the admin, attributes and affiliations for this identity can also be assigned. The MSP structure for a node is known as a "local MSP", since the permissions assigned to the identities are only relevant at the local (node) level. This MSP is created when the node identity is created, and is used when bootstrapping the node. You will use the TLS root certificate generated when enrolling with the TLS CA when joining your organization to the channel (this certificate must be added to the org MSP that was created when you enrolled your admin) and when using the peer binary as a CLI client to make calls to other peers (as in ``peer chaincode invoke``) or ordering nodes (as in ``peer channel fetch``) because there is no ``orderer`` CLI. It is not necessary to add the TLS root certificates to the local MSP of a node because these certificates are contained in the channel configuration.
 
-For more conceptual information about identities and permissions in a Fabric-based blockchain network, see :doc:`identity/identity` and :doc:`membership/membership.html`.
+For more conceptual information about identities and permissions in a Fabric-based blockchain network, see :doc:`identity/identity` and :doc:`membership/membership`.
 
 For a look at how to use a CA to generate an admin identity and MSP, check out `Enroll Org1's Admin <https://hyperledger-fabric-ca.readthedocs.io/en/latest/operations_guide.html#enroll-org1-s-admin>`_.
 
@@ -145,11 +143,11 @@ Either way, here are some values in ``core.yaml`` you must review.
 
 * ``peer.tls``: When you set the ``enabled`` value to ``true`` (as should be done in a production network), you will have to specify the locations of the relevant TLS certificates. Note that all of the nodes in a network (both the peers and the ordering nodes) must either all have TLS enabled or not enabled. For production networks, it is highly recommended to enable TLS. As with your MSP, it is a best practice to mount this volume external to your container.
 
-* ``ledger``: users have a number of decisions to make about their ledger, including the state database type (LevelDB or CouchDB, for example), and its location (specified in ``fileSystemPath``). Note that for CouchDB in particular it is a best practice to operate your state database external to the peer, as you will be better able to allocate specific resources to the database this way.
+* ``ledger``: users have a number of decisions to make about their ledger, including the state database type (LevelDB or CouchDB, for example), and its location (specified in ``fileSystemPath``). Note that for CouchDB, it is a best practice to operate your state database external to the peer (for example, in a separate container), as you will be better able to allocate specific resources to the database this way. For latency and security reasons, it is a best practice to have the CouchDB container on the same server as the peer. Access to the CouchDB container should be restricted to only the peer container.
 
 * ``gossip``: there are a number of configuration options to think about when setting up :doc:`gossip`, including the ``externalEndpoint`` (which makes peers discoverable to peers owned by other organizations) as well as the ``bootstrap`` address (which identifies a peer in the peer's own organization).
 
-* ``chaincode.externalBuilders``: this field is important to set when using :doc:`cc_service.html`.
+* ``chaincode.externalBuilders``: this field is important to set when using :doc:`cc_service`.
 
 When you're comfortable with how your peer has been configured, how your volumes are mounted, and your backend configuration, you can run the command to launch the peer (this command will depend on your backend configuration).
 
@@ -195,11 +193,19 @@ When you're comfortable with how your ordering node has been configured, how you
 Next steps
 ----------
 
-Blockchain networks are all about connection, so once you've deployed nodes, you'll obviously want to connect them to other nodes! If you have a peer organization and a peer, you'll want to join your organization to a consortium and join or :doc:`channels`. If you have an ordering node, you will want to add peer organizations to your consortium. You'll also want to learn how to develop chaincode, which you can learn about in the topics :doc:`developapps/scenario` and :doc:`chaincode_lifecycle`.
+Blockchain networks are all about connection, so once you've deployed nodes, you'll obviously want to connect them to other nodes! If you have a peer organization and a peer, you'll want to join your organization to a consortium and join or :doc:`channels`. If you have an ordering node, you will want to add peer organizations to your consortium. You'll also want to learn how to develop chaincode, which you can learn about in the topics :doc:`developapps/scenario` and :doc:`chaincode4noah`.
 
 Part of the process of connecting nodes and creating channels will involve modifying policies to fit the use cases of business networks. For more information about policies, check out :doc:`policies/policies`.
 
 One of the common tasks in a Fabric will be the editing of existing channels. For a tutorial about that process, check out :doc:`config_update`. One popular channel update is to add an org to an existing channel. For a tutorial about that specific process, check out :doc:`channel_update_tutorial`. For information about upgrading nodes after they have been deployed, check out :doc:`upgrading_your_components`.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Deploying a Production CA
+
+   Planning for a CA <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-deploy-topology.html>
+   Checklist for a production CA server <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-config.html>
+   CA deployment steps <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/cadeploy.html>
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
