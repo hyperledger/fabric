@@ -127,12 +127,12 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 	require.NotNilf(t, h, "cannot create handler")
 
 	t.Run("two channels", func(t *testing.T) {
-		list := &types.ChannelList{
+		list := types.ChannelList{
 			Channels: []types.ChannelInfoShort{
-				{Name: "app-channel", URL: ""},
-				{Name: "system-channel", URL: ""}},
-			SystemChannel: "system-channel",
-			Size:          2,
+				{Name: "app-channel1", URL: ""},
+				{Name: "app-channel2", URL: ""},
+			},
+			SystemChannel: &types.ChannelInfoShort{Name: "system-channel", URL: ""},
 		}
 		fakeManager.ListAllChannelsReturns(list)
 		resp := httptest.NewRecorder()
@@ -144,22 +144,20 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		listAll := &types.ChannelList{}
 		err := json.Unmarshal(resp.Body.Bytes(), listAll)
 		require.NoError(t, err, "cannot be unmarshaled")
-		assert.Equal(t, 2, listAll.Size)
 		assert.Equal(t, 2, len(listAll.Channels))
-		assert.Equal(t, "system-channel", listAll.SystemChannel)
+		assert.Equal(t, list.SystemChannel, listAll.SystemChannel)
 		m := make(map[string]bool)
 		for _, item := range listAll.Channels {
 			m[item.Name] = true
 			assert.Equal(t, channelparticipation.URLBaseV1Channels+"/"+item.Name, item.URL)
 		}
-		assert.True(t, m["system-channel"])
-		assert.True(t, m["app-channel"])
+		assert.True(t, m["app-channel1"])
+		assert.True(t, m["app-channel2"])
 	})
 
-	t.Run("no channels", func(t *testing.T) {
-		list := &types.ChannelList{
-			Size:          0,
-			SystemChannel: "",
+	t.Run("no channels, empty channels", func(t *testing.T) {
+		list := types.ChannelList{
+			SystemChannel: nil,
 			Channels:      []types.ChannelInfoShort{},
 		}
 		fakeManager.ListAllChannelsReturns(list)
@@ -172,9 +170,29 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		listAll := &types.ChannelList{}
 		err := json.Unmarshal(resp.Body.Bytes(), listAll)
 		require.NoError(t, err, "cannot be unmarshaled")
-		assert.Equal(t, 0, listAll.Size)
 		assert.Equal(t, 0, len(listAll.Channels))
-		assert.Equal(t, "", listAll.SystemChannel)
+		assert.NotNil(t, listAll.Channels)
+		assert.Nil(t, listAll.SystemChannel)
+	})
+
+	t.Run("no channels", func(t *testing.T) {
+		list := types.ChannelList{
+			SystemChannel: nil,
+			Channels:      nil,
+		}
+		fakeManager.ListAllChannelsReturns(list)
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
+		h.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
+
+		listAll := &types.ChannelList{}
+		err := json.Unmarshal(resp.Body.Bytes(), listAll)
+		require.NoError(t, err, "cannot be unmarshaled")
+		assert.Equal(t, 0, len(listAll.Channels))
+		assert.Nil(t, listAll.Channels)
+		assert.Nil(t, listAll.SystemChannel)
 	})
 }
 
@@ -191,10 +209,9 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 			ClusterRelation: "member",
 			Status:          "active",
 			Height:          3,
-			BlockHash:       []byte{1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8},
 		}
 
-		fakeManager.ListChannelReturns(&info, nil)
+		fakeManager.ListChannelReturns(info, nil)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel", nil)
 		h.ServeHTTP(resp, req)
@@ -205,11 +222,10 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
 		require.NoError(t, err, "cannot be unmarshaled")
 		assert.Equal(t, info, infoResp)
-
 	})
 
 	t.Run("channel does not exists", func(t *testing.T) {
-		fakeManager.ListChannelReturns(nil, errors.New("not found"))
+		fakeManager.ListChannelReturns(types.ChannelInfo{}, errors.New("not found"))
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel", nil)
 		h.ServeHTTP(resp, req)

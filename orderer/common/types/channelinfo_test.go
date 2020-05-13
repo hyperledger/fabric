@@ -54,18 +54,13 @@ func TestChannelInfoShort(t *testing.T) {
 }
 
 func TestChannelList(t *testing.T) {
-	list := types.ChannelList{
-		Channels:      nil,
-		Size:          0,
-		SystemChannel: "",
-	}
+	list := types.ChannelList{SystemChannel: nil, Channels: nil}
 
 	buff, err := json.Marshal(list)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"size":0,"systemChannel":"","channels":null}`, string(buff))
+	assert.Equal(t, `{"systemChannel":null,"channels":null}`, string(buff))
 
-	list.Size = 2
-	list.SystemChannel = "a"
+	list.SystemChannel = &types.ChannelInfoShort{Name: "s", URL: "/api/channels/s"}
 	list.Channels = []types.ChannelInfoShort{
 		{Name: "a", URL: "/api/channels/a"},
 		{Name: "b", URL: "/api/channels/b"},
@@ -73,7 +68,7 @@ func TestChannelList(t *testing.T) {
 
 	buff, err = json.Marshal(list)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"size":2,"systemChannel":"a","channels":[{"name":"a","url":"/api/channels/a"},{"name":"b","url":"/api/channels/b"}]}`, string(buff))
+	assert.Equal(t, `{"systemChannel":{"name":"s","url":"/api/channels/s"},"channels":[{"name":"a","url":"/api/channels/a"},{"name":"b","url":"/api/channels/b"}]}`, string(buff))
 }
 
 func TestChannelInfo(t *testing.T) {
@@ -83,16 +78,14 @@ func TestChannelInfo(t *testing.T) {
 		ClusterRelation: "follower",
 		Status:          "active",
 		Height:          uint64(1) << 60,
-		BlockHash:       []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
 	}
 
 	buff, err := json.Marshal(info)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"name":"a","url":"/api/channels/a","clusterRelation":"follower","status":"active","height":1152921504606846976,"blockHash":"AQIDBAUGBwgJCgsMDQ4PEA=="}`, string(buff))
+	assert.Equal(t, `{"name":"a","url":"/api/channels/a","clusterRelation":"follower","status":"active","height":1152921504606846976}`, string(buff))
 
 	var info2 types.ChannelInfo
 	err = json.Unmarshal(buff, &info2)
 	assert.NoError(t, err)
 	assert.Equal(t, info.Height, info2.Height)
-	assert.Equal(t, info.BlockHash, info2.BlockHash)
 }

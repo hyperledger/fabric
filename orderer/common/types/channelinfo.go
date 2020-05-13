@@ -15,9 +15,8 @@ type ErrorResponse struct {
 // ChannelList carries the response to an HTTP request to List all the channels.
 // This is marshaled into the body of the HTTP response.
 type ChannelList struct {
-	Size          int                `json:"size"`          // The number of channels
-	SystemChannel string             `json:"systemChannel"` // The system channel name, empty if doesn't exist
-	Channels      []ChannelInfoShort `json:"channels"`      // All channels
+	SystemChannel *ChannelInfoShort  `json:"systemChannel"` // The system channel, nil if doesn't exist
+	Channels      []ChannelInfoShort `json:"channels"`      // Application channels only
 }
 
 // ChannelInfoShort carries a short info of a single channel.
@@ -34,5 +33,4 @@ type ChannelInfo struct {
 	ClusterRelation string `json:"clusterRelation"` // Whether it is a “member” or ”follower”, case insensitive
 	Status          string `json:"status"`          // ”onboarding” or ”active”, case insensitive
 	Height          uint64 `json:"height"`          // Current block height
-	BlockHash       []byte `json:"blockHash"`       // Last block hash
 }

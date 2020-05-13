@@ -30,13 +30,14 @@ const (
 //go:generate counterfeiter -o mocks/channel_management.go -fake-name ChannelManagement . ChannelManagement
 
 type ChannelManagement interface {
-	// ListAll returns the names of all channels (including the system channel), and the name of the system channel
-	// (empty if does not exist). The URL field is empty, and is to be completed by the caller.
-	ListAllChannels() *types.ChannelList
+	// ListAllChannels returns a slice of ChannelInfoShort containing all application channels (excluding the system
+	// channel), and ChannelInfoShort of the system channel (nil if does not exist).
+	// The URL fields are empty, and are to be completed by the caller.
+	ListAllChannels() types.ChannelList
 
 	// ListChannel provides extended status information about a channel.
 	// The URL field is empty, and is to be completed by the caller.
-	ListChannel(channelID string) (*types.ChannelInfo, error)
+	ListChannel(channelID string) (types.ChannelInfo, error)
 
 	// TODO skeleton
 }
@@ -91,6 +92,9 @@ func (h *HTTPHandler) serveListAll(resp http.ResponseWriter, req *http.Request) 
 		return
 	}
 	channelList := h.registrar.ListAllChannels()
+	if channelList.SystemChannel != nil && channelList.SystemChannel.Name != "" {
+		channelList.SystemChannel.URL = path.Join(URLBaseV1Channels, channelList.SystemChannel.Name)
+	}
 	for i, info := range channelList.Channels {
 		channelList.Channels[i].URL = path.Join(URLBaseV1Channels, info.Name)
 	}
