@@ -21,6 +21,7 @@ The `peer lifecycle chaincode` command has the following subcommands:
   * queryinstalled
   * getinstalledpackage
   * approveformyorg
+  * queryapproved
   * checkcommitreadiness
   * commit
   * querycommitted
@@ -36,7 +37,7 @@ Usage:
   peer lifecycle [command]
 
 Available Commands:
-  chaincode   Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|checkcommitreadiness|commit|querycommitted
+  chaincode   Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted
 
 Flags:
   -h, --help   help for lifecycle
@@ -47,7 +48,7 @@ Use "peer lifecycle [command] --help" for more information about a command.
 
 ## peer lifecycle chaincode
 ```
-Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|checkcommitreadiness|commit|querycommitted
+Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted
 
 Usage:
   peer lifecycle chaincode [command]
@@ -59,6 +60,7 @@ Available Commands:
   getinstalledpackage  Get an installed chaincode package from a peer.
   install              Install a chaincode.
   package              Package a chaincode
+  queryapproved        Query an org's approved chaincode definition from its peer.
   querycommitted       Query the committed chaincode definitions by channel on a peer.
   queryinstalled       Query the installed chaincodes on a peer.
 
@@ -208,6 +210,35 @@ Flags:
   -v, --version string                 Version of the chaincode
       --waitForEvent                   Whether to wait for the event from each peer's deliver filtered service signifying that the transaction has been committed successfully (default true)
       --waitForEventTimeout duration   Time to wait for the event from each peer's deliver filtered service signifying that the 'invoke' transaction has been committed successfully (default 30s)
+
+Global Flags:
+      --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
+      --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
+      --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+      --connTimeout duration                Timeout for client to connect (default 3s)
+      --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
+  -o, --orderer string                      Ordering service endpoint
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --tls                                 Use TLS when communicating with the orderer endpoint
+```
+
+
+## peer lifecycle chaincode queryapproved
+```
+Query an organization's approved chaincode definition from its peer.
+
+Usage:
+  peer lifecycle chaincode queryapproved [flags]
+
+Flags:
+  -C, --channelID string               The channel on which this command should be executed
+      --connectionProfile string       The fully qualified path to the connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
+  -h, --help                           help for queryapproved
+  -n, --name string                    Name of the chaincode
+  -O, --output string                  The output format for query results. Default is human-readable plain-text. json is currently the only supported format.
+      --peerAddresses stringArray      The addresses of the peers to connect to
+      --sequence int                   The sequence number of the chaincode definition for the channel
+      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
 
 Global Flags:
       --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
@@ -458,6 +489,87 @@ channel `mychannel`.
     2019-03-18 16:04:09.046 UTC [cli.lifecycle.chaincode] InitCmdFactory -> INFO 001 Retrieved channel (mychannel) orderer endpoint: orderer.example.com:7050
     2019-03-18 16:04:11.253 UTC [chaincodeCmd] ClientWait -> INFO 002 txid [efba188ca77889cc1c328fc98e0bb12d3ad0abcda3f84da3714471c7c1e6c13c] committed with status (VALID) at peer0.org1.example.com:7051
     ```
+
+### peer lifecycle chaincode queryapproved example
+
+You can query an organization's approved chaincode definition by using the `peer lifecycle chaincode queryapproved` command.
+You can use this command to see the details (including package ID) of approved chaincode definitions.
+
+  * Here is an example of the `peer lifecycle chaincode queryapproved` command,
+    which queries the approved definition of a chaincode named `mycc` at sequence number `1` on
+    channel `mychannel`.
+
+    ```
+    peer lifecycle chaincode queryapproved -C mychannel -n mycc --sequence 1
+
+    Approved chaincode definition for chaincode 'mycc' on channel 'mychannel':
+    sequence: 1, version: 1, init-required: true, package-id: mycc_1:d02f72000e7c0f715840f51cb8d72d70bc1ba230552f8445dded0ec8b6e0b830, endorsement plugin: escc, validation plugin: vscc
+    ```
+
+    If NO package is specified for the approved definition, this command will display an empty package ID.
+
+  * You can also use this command without specifying the sequence number in order to query the latest approved definition (latest: the newer of the currently defined sequence number and the next sequence number).
+
+    ```
+    peer lifecycle chaincode queryapproved -C mychannel -n mycc
+
+    Approved chaincode definition for chaincode 'mycc' on channel 'mychannel':
+    sequence: 3, version: 3, init-required: false, package-id: mycc_1:d02f72000e7c0f715840f51cb8d72d70bc1ba230552f8445dded0ec8b6e0b830, endorsement plugin: escc, validation plugin: vscc
+    ```
+
+  * You can also use the `--output` flag to have the CLI format the output as
+    JSON.
+
+    - When querying an approved chaincode definition for which package is specified
+
+      ```
+      peer lifecycle chaincode queryapproved -C mychannel -n mycc --sequence 1 --output json
+      ```
+
+      If successful, the command will return a JSON that has the approved chaincode definition for chaincode `mycc` at sequence number `1` on channel `mychannel`.
+
+      ```
+      {
+        "sequence": 1,
+        "version": "1",
+        "endorsement_plugin": "escc",
+        "validation_plugin": "vscc",
+        "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+        "collections": {},
+        "init_required": true,
+        "source": {
+          "Type": {
+            "LocalPackage": {
+              "package_id": "mycc_1:d02f72000e7c0f715840f51cb8d72d70bc1ba230552f8445dded0ec8b6e0b830"
+            }
+          }
+        }
+      }
+      ```
+
+    - When querying an approved chaincode definition for which package is NOT specified
+
+      ```
+      peer lifecycle chaincode queryapproved -C mychannel -n mycc --sequence 2 --output json
+      ```
+
+      If successful, the command will return a JSON that has the approved chaincode definition for chaincode `mycc` at sequence number `2` on channel `mychannel`.
+
+      ```
+      {
+        "sequence": 2,
+        "version": "2",
+        "endorsement_plugin": "escc",
+        "validation_plugin": "vscc",
+        "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+        "collections": {},
+        "source": {
+          "Type": {
+            "Unavailable": {}
+          }
+        }
+      }
+      ```
 
 ### peer lifecycle chaincode checkcommitreadiness example
 
