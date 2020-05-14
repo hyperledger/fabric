@@ -8,11 +8,14 @@ package channelparticipation
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
@@ -39,6 +42,8 @@ type ChannelManagement interface {
 	// The URL field is empty, and is to be completed by the caller.
 	ChannelInfo(channelID string) (types.ChannelInfo, error)
 
+	// JoinChannel instructs the orderer to create a channel and join it with the provided config block.
+	JoinChannel(channelID string, configBlock *cb.Block) (types.ChannelInfo, error)
 	// TODO skeleton
 }
 
@@ -127,7 +132,7 @@ func (h *HTTPHandler) serveListOne(resp http.ResponseWriter, req *http.Request) 
 	h.sendResponseOK(resp, infoFull)
 }
 
-// Join a channel
+// Join a channel. Expect application/json content.
 func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 	_, err := negotiateContentType(req) // Only application/json for now
 	if err != nil {
@@ -135,9 +140,59 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	//TODO
-	err = errors.Errorf("not implemented yet: %s %s", req.Method, req.URL.String())
-	h.sendResponseJsonError(resp, http.StatusNotImplemented, err)
+	channelID, ok := mux.Vars(req)[channelIDKey]
+	if !ok {
+		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.Wrap(err, "missing channel ID"))
+		return
+	}
+
+	if err = configtx.ValidateChannelID(channelID); err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "invalid channel ID"))
+		return
+	}
+
+	bodyBytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		h.logger.Debugf("Failed to read request body: %s", err)
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot read request body"))
+		return
+	}
+
+	body := types.JoinBody{}
+	err = json.Unmarshal(bodyBytes, &body)
+	if err != nil {
+		h.logger.Debugf("Failed to json.Unmarshal request body: %s", err)
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot json.Unmarshal request body"))
+		return
+	}
+
+	block := &cb.Block{}
+	err = proto.Unmarshal(body.ConfigBlock, block)
+	if err != nil {
+		h.logger.Debugf("Failed to unmarshal ConfigBlock field: %s", err)
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot unmarshal ConfigBlock field"))
+		return
+	}
+
+	info, err := h.registrar.JoinChannel(channelID, block)
+	if err == nil {
+		info.URL = path.Join(URLBaseV1Channels, info.Name)
+		h.logger.Debugf("Successfully joined channel: %s", info)
+		h.sendResponseCreated(resp, info.URL, info)
+		return
+	}
+
+	h.logger.Debugf("Failed to JoinChannel: %s", err)
+	switch err {
+	case types.ErrSystemChannelExists:
+		h.sendResponseNotAllowed(resp, errors.Wrap(err, "cannot join"), http.MethodGet)
+	case types.ErrChannelAlreadyExists:
+		h.sendResponseNotAllowed(resp, errors.Wrap(err, "cannot join"), http.MethodGet, http.MethodDelete)
+	case types.ErrAppChannelsAlreadyExists:
+		h.sendResponseJsonError(resp, http.StatusForbidden, errors.Wrap(err, "cannot join"))
+	default:
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot join"))
+	}
 }
 
 // Remove a channel
@@ -160,17 +215,13 @@ func (h *HTTPHandler) serveBadContentType(resp http.ResponseWriter, req *http.Re
 
 func (h *HTTPHandler) serveNotAllowed(resp http.ResponseWriter, req *http.Request) {
 	err := errors.Errorf("invalid request method: %s", req.Method)
-	encoder := json.NewEncoder(resp)
-	resp.WriteHeader(http.StatusMethodNotAllowed)
+
 	if _, ok := mux.Vars(req)[channelIDKey]; ok {
-		resp.Header().Set("Allow", "GET, POST, DELETE")
-	} else {
-		resp.Header().Set("Allow", "GET")
+		h.sendResponseNotAllowed(resp, err, http.MethodGet, http.MethodPost, http.MethodDelete)
+		return
 	}
-	resp.Header().Set("Content-Type", "application/json")
-	if err := encoder.Encode(&types.ErrorResponse{Error: err.Error()}); err != nil {
-		h.logger.Errorf("failed to encode error, err: %s", err)
-	}
+
+	h.sendResponseNotAllowed(resp, err, http.MethodGet)
 }
 
 func negotiateContentType(req *http.Request) (string, error) {
@@ -206,5 +257,26 @@ func (h *HTTPHandler) sendResponseOK(resp http.ResponseWriter, content interface
 	resp.Header().Set("Content-Type", "application/json")
 	if err := encoder.Encode(content); err != nil {
 		h.logger.Errorf("failed to encode content, err: %s", err)
+	}
+}
+
+func (h *HTTPHandler) sendResponseCreated(resp http.ResponseWriter, location string, content interface{}) {
+	encoder := json.NewEncoder(resp)
+	resp.WriteHeader(http.StatusCreated)
+	resp.Header().Set("Location", location)
+	resp.Header().Set("Content-Type", "application/json")
+	if err := encoder.Encode(content); err != nil {
+		h.logger.Errorf("failed to encode content, err: %s", err)
+	}
+}
+
+func (h *HTTPHandler) sendResponseNotAllowed(resp http.ResponseWriter, err error, allow ...string) {
+	encoder := json.NewEncoder(resp)
+	resp.WriteHeader(http.StatusMethodNotAllowed)
+	allowVal := strings.Join(allow, ", ")
+	resp.Header().Set("Allow", allowVal)
+	resp.Header().Set("Content-Type", "application/json")
+	if err := encoder.Encode(&types.ErrorResponse{Error: err.Error()}); err != nil {
+		h.logger.Errorf("failed to encode error, err: %s", err)
 	}
 }

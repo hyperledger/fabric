@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package channelparticipation_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -34,8 +35,7 @@ func TestNewHTTPHandler(t *testing.T) {
 
 func TestHTTPHandler_ServeHTTP_Disabled(t *testing.T) {
 	config := localconfig.ChannelParticipation{Enabled: false, RemoveStorage: false}
-	h := channelparticipation.NewHTTPHandler(config, &mocks.ChannelManagement{})
-	require.NotNilf(t, h, "cannot create handler")
+	_, h := setup(config, t)
 
 	resp := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", channelparticipation.URLBaseV1, nil)
@@ -45,8 +45,7 @@ func TestHTTPHandler_ServeHTTP_Disabled(t *testing.T) {
 
 func TestHTTPHandler_ServeHTTP_InvalidMethods(t *testing.T) {
 	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
-	h := channelparticipation.NewHTTPHandler(config, nil)
-	require.NotNilf(t, h, "cannot create handler")
+	_, h := setup(config, t)
 	invalidMethods := []string{http.MethodConnect, http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodPut, http.MethodTrace}
 
 	t.Run("on /channels/ch-id", func(t *testing.T) {
@@ -73,8 +72,7 @@ func TestHTTPHandler_ServeHTTP_InvalidMethods(t *testing.T) {
 
 func TestHTTPHandler_ServeHTTP_ListErrors(t *testing.T) {
 	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
-	h := channelparticipation.NewHTTPHandler(config, &mocks.ChannelManagement{})
-	require.NotNilf(t, h, "cannot create handler")
+	_, h := setup(config, t)
 
 	t.Run("bad base", func(t *testing.T) {
 		resp := httptest.NewRecorder()
@@ -122,9 +120,7 @@ func TestHTTPHandler_ServeHTTP_ListErrors(t *testing.T) {
 
 func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
-	fakeManager := &mocks.ChannelManagement{}
-	h := channelparticipation.NewHTTPHandler(config, fakeManager)
-	require.NotNilf(t, h, "cannot create handler")
+	fakeManager, h := setup(config, t)
 
 	t.Run("two channels", func(t *testing.T) {
 		list := types.ChannelList{
@@ -198,8 +194,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 
 func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
-	fakeManager := &mocks.ChannelManagement{}
-	h := channelparticipation.NewHTTPHandler(config, fakeManager)
+	fakeManager, h := setup(config, t)
 	require.NotNilf(t, h, "cannot create handler")
 
 	t.Run("channel exists", func(t *testing.T) {
@@ -234,43 +229,120 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 }
 
 func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
-	t.Run("not implemented yet", func(t *testing.T) {
-		config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
-		fakeManager := &mocks.ChannelManagement{}
-		h := channelparticipation.NewHTTPHandler(config, fakeManager)
-		require.NotNilf(t, h, "cannot create handler")
+	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
+
+	t.Run("created", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		info := types.ChannelInfo{
+			Name:            "app-channel",
+			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
+			ClusterRelation: "member",
+			Status:          "active",
+			Height:          1,
+		}
+		fakeManager.JoinChannelReturns(info, nil)
 
 		resp := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
-		req.Header.Set("Content-Type", "application/json")
+		req := genJoinRequest(t)
 		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusNotImplemented, "not implemented yet: POST /participation/v1/channels/ch-id", resp)
+		assert.Equal(t, http.StatusCreated, resp.Code)
+		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
+
+		infoResp := types.ChannelInfo{}
+		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
+		require.NoError(t, err, "cannot be unmarshaled")
+		assert.Equal(t, info, infoResp)
+	})
+
+	t.Run("Error: System Channel Exists", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrSystemChannelExists)
+		resp := httptest.NewRecorder()
+		req := genJoinRequest(t)
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: system channel exists", resp)
+		assert.Equal(t, "GET", resp.Header().Get("Allow"))
+	})
+
+	t.Run("Error: Channel Exists", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrChannelAlreadyExists)
+		resp := httptest.NewRecorder()
+		req := genJoinRequest(t)
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: channel already exists", resp)
+		assert.Equal(t, "GET, DELETE", resp.Header().Get("Allow"))
+	})
+
+	t.Run("Error: App Channels Exist", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrAppChannelsAlreadyExists)
+		resp := httptest.NewRecorder()
+		req := genJoinRequest(t)
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusForbidden, "cannot join: application channels already exist", resp)
 	})
 
 	t.Run("content type mismatch", func(t *testing.T) {
-		config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
-		fakeManager := &mocks.ChannelManagement{}
-		h := channelparticipation.NewHTTPHandler(config, fakeManager)
-		require.NotNilf(t, h, "cannot create handler")
-
+		_, h := setup(config, t)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
 		req.Header.Set("Content-Type", "text/plain")
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "unsupported Content-Type: [text/plain]", resp)
 	})
+
+	t.Run("bad channel-id", func(t *testing.T) {
+		_, h := setup(config, t)
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-ID"), nil)
+		req.Header.Set("Content-Type", "application/json")
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusBadRequest, "invalid channel ID: 'ch-ID' contains illegal characters", resp)
+	})
+
+	t.Run("bad body - not json", func(t *testing.T) {
+		_, h := setup(config, t)
+		resp := httptest.NewRecorder()
+		badBody := &bytes.Buffer{}
+		_, err := badBody.Write([]byte("not json"))
+		require.NoError(t, err)
+		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), badBody)
+		req.Header.Set("Content-Type", "application/json")
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusBadRequest, "cannot json.Unmarshal request body: invalid character 'o' in literal null (expecting 'u')", resp)
+	})
+
+	t.Run("bad body - not a block", func(t *testing.T) {
+		_, h := setup(config, t)
+		resp := httptest.NewRecorder()
+		badBody := &bytes.Buffer{}
+		encoder := json.NewEncoder(badBody)
+		err := encoder.Encode(&types.JoinBody{ConfigBlock: []byte{1, 2, 3, 4}})
+		require.NoError(t, err)
+		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), badBody)
+		req.Header.Set("Content-Type", "application/json")
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusBadRequest, "cannot unmarshal ConfigBlock field: proto: common.Block: illegal tag 0 (wire type 1)", resp)
+	})
 }
 
 func TestHTTPHandler_ServeHTTP_Remove(t *testing.T) {
 	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
-	fakeManager := &mocks.ChannelManagement{}
-	h := channelparticipation.NewHTTPHandler(config, fakeManager)
+	_, h := setup(config, t)
 	require.NotNilf(t, h, "cannot create handler")
 
 	resp := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodDelete, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
 	h.ServeHTTP(resp, req)
 	checkErrorResponse(t, http.StatusNotImplemented, "not implemented yet: DELETE /participation/v1/channels/ch-id", resp)
+}
+
+func setup(config localconfig.ChannelParticipation, t *testing.T) (*mocks.ChannelManagement, *channelparticipation.HTTPHandler) {
+	fakeManager := &mocks.ChannelManagement{}
+	h := channelparticipation.NewHTTPHandler(config, fakeManager)
+	require.NotNilf(t, h, "cannot create handler")
+	return fakeManager, h
 }
 
 func checkErrorResponse(t *testing.T, expectedCode int, expectedErrMsg string, resp *httptest.ResponseRecorder) {
@@ -287,4 +359,14 @@ func checkErrorResponse(t *testing.T, expectedCode int, expectedErrMsg string, r
 	err := decoder.Decode(respErr)
 	assert.NoError(t, err, "body: %s", string(resp.Body.Bytes()))
 	assert.Equal(t, expectedErrMsg, respErr.Error)
+}
+
+func genJoinRequest(t *testing.T) *http.Request {
+	joinBody := &bytes.Buffer{}
+	encoder := json.NewEncoder(joinBody)
+	err := encoder.Encode(&types.JoinBody{ConfigBlock: []byte{}})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), joinBody)
+	req.Header.Set("Content-Type", "application/json")
+	return req
 }

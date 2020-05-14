@@ -404,3 +404,8 @@ func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 	//TODO
 	return types.ChannelInfo{}, errors.New("Not implemented yet")
 }
+
+func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block) (types.ChannelInfo, error) {
+	//TODO
+	return types.ChannelInfo{}, errors.New("Not implemented yet")
+}
