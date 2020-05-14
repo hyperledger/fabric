@@ -8,6 +8,7 @@ package configtx
 
 import (
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -48,43 +49,46 @@ type Orderer struct {
 	State orderer.ConsensusState
 }
 
-// SetOrdererConfiguration modifies an existing config tx's Orderer configuration
-// via the passed in Orderer values. It skips updating OrdererOrgGroups and Policies.
-func (c *ConfigTx) SetOrdererConfiguration(o Orderer) error {
-	ordererGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey]
-
-	// update orderer addresses
-	if len(o.Addresses) > 0 {
-		err := setValue(c.updated.ChannelGroup, ordererAddressesValue(o.Addresses), ordererAdminsPolicyName)
-		if err != nil {
-			return err
-		}
-	}
-
-	// update orderer values
-	err := addOrdererValues(ordererGroup, o)
-	if err != nil {
-		return err
-	}
-
-	return nil
+// OrdererGroup encapsulates the parts of the config that control
+// the orderering service behavior.
+type OrdererGroup struct {
+	channelGroup *cb.ConfigGroup
+	ordererGroup *cb.ConfigGroup
 }
 
-// OrdererConfiguration returns the existing orderer configuration values from a config
-// transaction as an Orderer type. This can be used to retrieve existing values for the orderer
-// prior to updating the orderer configuration.
-func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
-	ordererGroup, ok := c.original.ChannelGroup.Groups[OrdererGroupKey]
-	if !ok {
-		return Orderer{}, errors.New("config does not contain orderer group")
-	}
+// OrdererOrg encapsulates the parts of the config that control
+// an orderer organization's configuration.
+type OrdererOrg struct {
+	orgGroup *cb.ConfigGroup
+	name     string
+}
 
+// Orderer returns the orderer group from the updated config.
+func (c *ConfigTx) Orderer() *OrdererGroup {
+	channelGroup := c.updated.ChannelGroup
+	ordererGroup := channelGroup.Groups[OrdererGroupKey]
+	return &OrdererGroup{channelGroup: channelGroup, ordererGroup: ordererGroup}
+}
+
+// Organization returns the orderer org from the updated config.
+func (o *OrdererGroup) Organization(name string) *OrdererOrg {
+	orgGroup, ok := o.ordererGroup.Groups[name]
+	if !ok {
+		return nil
+	}
+	return &OrdererOrg{name: name, orgGroup: orgGroup}
+}
+
+// Configuration returns the existing orderer configuration values from the updated
+// config in a config transaction as an Orderer type. This can be used to retrieve
+// existing values for the orderer prior to updating the orderer configuration.
+func (o *OrdererGroup) Configuration() (Orderer, error) {
 	// CONSENSUS TYPE, STATE, AND METADATA
 	var etcdRaft orderer.EtcdRaft
 	kafkaBrokers := orderer.Kafka{}
 
 	consensusTypeProto := &ob.ConsensusType{}
-	err := unmarshalConfigValueAtKey(ordererGroup, orderer.ConsensusTypeKey, consensusTypeProto)
+	err := unmarshalConfigValueAtKey(o.ordererGroup, orderer.ConsensusTypeKey, consensusTypeProto)
 	if err != nil {
 		return Orderer{}, errors.New("cannot determine consensus type of orderer")
 	}
@@ -95,7 +99,7 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 	switch consensusTypeProto.Type {
 	case orderer.ConsensusTypeSolo:
 	case orderer.ConsensusTypeKafka:
-		kafkaBrokersValue, ok := ordererGroup.Values[orderer.KafkaBrokersKey]
+		kafkaBrokersValue, ok := o.ordererGroup.Values[orderer.KafkaBrokersKey]
 		if !ok {
 			return Orderer{}, errors.New("unable to find kafka brokers for kafka orderer")
 		}
@@ -117,20 +121,20 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 	}
 
 	// ORDERER ADDRESSES
-	ordererAddresses, err := getOrdererAddresses(c.original)
+	ordererAddresses, err := o.getOrdererAddresses()
 	if err != nil {
 		return Orderer{}, err
 	}
 
 	// BATCHSIZE AND TIMEOUT
 	batchSize := &ob.BatchSize{}
-	err = unmarshalConfigValueAtKey(ordererGroup, orderer.BatchSizeKey, batchSize)
+	err = unmarshalConfigValueAtKey(o.ordererGroup, orderer.BatchSizeKey, batchSize)
 	if err != nil {
 		return Orderer{}, err
 	}
 
 	batchTimeoutProto := &ob.BatchTimeout{}
-	err = unmarshalConfigValueAtKey(ordererGroup, orderer.BatchTimeoutKey, batchTimeoutProto)
+	err = unmarshalConfigValueAtKey(o.ordererGroup, orderer.BatchTimeoutKey, batchTimeoutProto)
 	if err != nil {
 		return Orderer{}, err
 	}
@@ -142,8 +146,8 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 
 	// ORDERER ORGS
 	var ordererOrgs []Organization
-	for orgName := range ordererGroup.Groups {
-		orgConfig, err := c.OrdererOrg(orgName)
+	for orgName := range o.ordererGroup.Groups {
+		orgConfig, err := o.Organization(orgName).Configuration()
 		if err != nil {
 			return Orderer{}, fmt.Errorf("retrieving orderer org %s: %v", orgName, err)
 		}
@@ -153,19 +157,19 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 
 	// MAX CHANNELS
 	channelRestrictions := &ob.ChannelRestrictions{}
-	err = unmarshalConfigValueAtKey(ordererGroup, orderer.ChannelRestrictionsKey, channelRestrictions)
+	err = unmarshalConfigValueAtKey(o.ordererGroup, orderer.ChannelRestrictionsKey, channelRestrictions)
 	if err != nil {
 		return Orderer{}, err
 	}
 
 	// CAPABILITIES
-	capabilities, err := getCapabilities(ordererGroup)
+	capabilities, err := getCapabilities(o.ordererGroup)
 	if err != nil {
 		return Orderer{}, fmt.Errorf("retrieving orderer capabilities: %v", err)
 	}
 
 	// POLICIES
-	policies, err := c.OrdererPolicies()
+	policies, err := o.Policies()
 	if err != nil {
 		return Orderer{}, fmt.Errorf("retrieving orderer policies: %v", err)
 	}
@@ -189,33 +193,145 @@ func (c *ConfigTx) OrdererConfiguration() (Orderer, error) {
 	}, nil
 }
 
-// SetOrdererOrg sets the organization config group for the given orderer
-// org key in an existing Orderer configuration's Groups map.
-// If the orderer org already exists in the current configuration, its value will be overwritten.
-func (c *ConfigTx) SetOrdererOrg(org Organization) error {
-	ordererGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey]
-
-	orgGroup, err := newOrdererOrgConfigGroup(org)
+func (o *OrdererGroup) getOrdererAddresses() ([]Address, error) {
+	ordererAddressesProto := &cb.OrdererAddresses{}
+	err := unmarshalConfigValueAtKey(o.channelGroup, OrdererAddressesKey, ordererAddressesProto)
 	if err != nil {
-		return fmt.Errorf("failed to create orderer org '%s': %v", org.Name, err)
+		return nil, err
 	}
 
-	ordererGroup.Groups[org.Name] = orgGroup
+	var addresses []Address
+
+	for _, a := range ordererAddressesProto.Addresses {
+		host, port, err := parseAddress(a)
+		if err != nil {
+			return nil, err
+		}
+
+		addresses = append(addresses, Address{Host: host, Port: port})
+	}
+
+	return addresses, nil
+}
+
+// Configuration retrieves an existing org's configuration from an
+// orderer organization config group in the updated config.
+func (o *OrdererOrg) Configuration() (Organization, error) {
+	org, err := getOrganization(o.orgGroup, o.name)
+	if err != nil {
+		return Organization{}, err
+	}
+
+	// Orderer organization requires orderer endpoints.
+	endpointsProtos := &cb.OrdererAddresses{}
+	err = unmarshalConfigValueAtKey(o.orgGroup, EndpointsKey, endpointsProtos)
+	if err != nil {
+		return Organization{}, err
+	}
+	ordererEndpoints := make([]string, len(endpointsProtos.Addresses))
+	for i, address := range endpointsProtos.Addresses {
+		ordererEndpoints[i] = address
+	}
+	org.OrdererEndpoints = ordererEndpoints
+
+	// Remove AnchorPeers which are application org specific.
+	org.AnchorPeers = nil
+
+	return org, nil
+}
+
+// SetOrganization sets the organization config group for the given orderer
+// org key in an existing Orderer configuration's Groups map.
+// If the orderer org already exists in the current configuration, its value will be overwritten.
+func (o *OrdererGroup) SetOrganization(org Organization) error {
+	orgGroup, err := newOrdererOrgConfigGroup(org)
+	if err != nil {
+		return fmt.Errorf("failed to create orderer org %s: %v", org.Name, err)
+	}
+
+	o.ordererGroup.Groups[org.Name] = orgGroup
 
 	return nil
 }
 
-// SetOrdererEndpoint adds an orderer's endpoint to an existing channel config transaction.
-// If the same endpoint already exist in current configuration, this will be a no-op.
-func (c *ConfigTx) SetOrdererEndpoint(orgName string, endpoint Address) error {
-	ordererOrgGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
+// RemoveOrganization removes an org from the Orderer group.
+// Removal will panic if the orderer group does not exist.
+func (o *OrdererGroup) RemoveOrganization(name string) {
+	delete(o.ordererGroup.Groups, name)
+}
 
+// SetConfiguration modifies an updated config's Orderer configuration
+// via the passed in Orderer values. It skips updating OrdererOrgGroups and Policies.
+func (o *OrdererGroup) SetConfiguration(ord Orderer) error {
+	// update orderer addresses
+	if len(ord.Addresses) > 0 {
+		err := setValue(o.channelGroup, ordererAddressesValue(ord.Addresses), ordererAdminsPolicyName)
+		if err != nil {
+			return err
+		}
+	}
+
+	// update orderer values
+	err := addOrdererValues(o.ordererGroup, ord)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Capabilities returns a map of enabled orderer capabilities
+// from the updated config.
+func (o *OrdererGroup) Capabilities() ([]string, error) {
+	capabilities, err := getCapabilities(o.ordererGroup)
+	if err != nil {
+		return nil, fmt.Errorf("retrieving orderer capabilities: %v", err)
+	}
+
+	return capabilities, nil
+}
+
+// AddCapability adds capability to the provided channel config.
+// If the provided capability already exist in current configuration, this action
+// will be a no-op.
+func (o *OrdererGroup) AddCapability(capability string) error {
+	capabilities, err := o.Capabilities()
+	if err != nil {
+		return err
+	}
+
+	err = addCapability(o.ordererGroup, capabilities, AdminsPolicyKey, capability)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RemoveCapability removes capability to the provided channel config.
+func (o *OrdererGroup) RemoveCapability(capability string) error {
+	capabilities, err := o.Capabilities()
+	if err != nil {
+		return err
+	}
+
+	err = removeCapability(o.ordererGroup, capabilities, AdminsPolicyKey, capability)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetEndpoint adds an orderer's endpoint to an existing channel config transaction.
+// If the same endpoint already exist in current configuration, this will be a no-op.
+func (o *OrdererOrg) SetEndpoint(endpoint Address) error {
 	ordererAddrProto := &cb.OrdererAddresses{}
 
-	if ordererAddrConfigValue, ok := ordererOrgGroup.Values[EndpointsKey]; ok {
+	if ordererAddrConfigValue, ok := o.orgGroup.Values[EndpointsKey]; ok {
 		err := proto.Unmarshal(ordererAddrConfigValue.Value, ordererAddrProto)
 		if err != nil {
-			return fmt.Errorf("failed unmarshalling orderer org %s's endpoints: %v", orgName, err)
+			return fmt.Errorf("failed unmarshaling endpoints for orderer org %s: %v", o.name, err)
 		}
 	}
 
@@ -231,25 +347,23 @@ func (c *ConfigTx) SetOrdererEndpoint(orgName string, endpoint Address) error {
 	existingOrdererEndpoints = append(existingOrdererEndpoints, endpointToAdd)
 
 	// Add orderer endpoints config value back to orderer org
-	err := setValue(ordererOrgGroup, endpointsValue(existingOrdererEndpoints), AdminsPolicyKey)
+	err := setValue(o.orgGroup, endpointsValue(existingOrdererEndpoints), AdminsPolicyKey)
 	if err != nil {
-		return fmt.Errorf("failed to add endpoint %v to orderer org %s: %v", endpoint, orgName, err)
+		return fmt.Errorf("failed to add endpoint %v to orderer org %s: %v", endpoint, o.name, err)
 	}
 
 	return nil
 }
 
-// RemoveOrdererEndpoint removes an orderer's endpoint from an existing channel config transaction.
+// RemoveEndpoint removes an orderer's endpoint from an existing channel config transaction.
 // Removal will panic if either the orderer group or orderer org group does not exist.
-func (c *ConfigTx) RemoveOrdererEndpoint(orgName string, endpoint Address) error {
-	ordererOrgGroup := c.updated.ChannelGroup.Groups[OrdererGroupKey].Groups[orgName]
-
+func (o *OrdererOrg) RemoveEndpoint(endpoint Address) error {
 	ordererAddrProto := &cb.OrdererAddresses{}
 
-	if ordererAddrConfigValue, ok := ordererOrgGroup.Values[EndpointsKey]; ok {
+	if ordererAddrConfigValue, ok := o.orgGroup.Values[EndpointsKey]; ok {
 		err := proto.Unmarshal(ordererAddrConfigValue.Value, ordererAddrProto)
 		if err != nil {
-			return fmt.Errorf("failed unmarshaling orderer org %s's endpoints: %v", orgName, err)
+			return fmt.Errorf("failed unmarshaling endpoints for orderer org %s: %v", o.name, err)
 		}
 	}
 
@@ -263,12 +377,123 @@ func (c *ConfigTx) RemoveOrdererEndpoint(orgName string, endpoint Address) error
 	}
 
 	// Add orderer endpoints config value back to orderer org
-	err := setValue(ordererOrgGroup, endpointsValue(existingEndpoints), AdminsPolicyKey)
+	err := setValue(o.orgGroup, endpointsValue(existingEndpoints), AdminsPolicyKey)
 	if err != nil {
-		return fmt.Errorf("failed to remove endpoint %v from orderer org %s: %v", endpoint, orgName, err)
+		return fmt.Errorf("failed to remove endpoint %v from orderer org %s: %v", endpoint, o.name, err)
 	}
 
 	return nil
+}
+
+// SetPolicy sets the specified policy in the orderer group's config policy map.
+// If the policy already exist in current configuration, its value will be overwritten.
+func (o *OrdererGroup) SetPolicy(modPolicy, policyName string, policy Policy) error {
+	err := setPolicy(o.ordererGroup, modPolicy, policyName, policy)
+	if err != nil {
+		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
+	}
+
+	return nil
+}
+
+// RemovePolicy removes an existing orderer policy configuration.
+func (o *OrdererGroup) RemovePolicy(policyName string) error {
+	if policyName == BlockValidationPolicyKey {
+		return errors.New("BlockValidation policy must be defined")
+	}
+
+	policies, err := o.Policies()
+	if err != nil {
+		return err
+	}
+
+	removePolicy(o.ordererGroup, policyName, policies)
+	return nil
+}
+
+// Policies returns a map of policies for channel orderer in the
+// updated config.
+func (o *OrdererGroup) Policies() (map[string]Policy, error) {
+	return getPolicies(o.ordererGroup.Policies)
+}
+
+// MSP returns the MSP value for an orderer organization in the
+// updated config.
+func (o *OrdererOrg) MSP() (MSP, error) {
+	return getMSPConfig(o.orgGroup)
+}
+
+// SetMSP updates the MSP config for the specified orderer org
+// in the updated config.
+func (o *OrdererOrg) SetMSP(updatedMSP MSP) error {
+	currentMSP, err := o.MSP()
+	if err != nil {
+		return fmt.Errorf("retrieving msp: %v", err)
+	}
+
+	if currentMSP.Name != updatedMSP.Name {
+		return errors.New("MSP name cannot be changed")
+	}
+
+	err = updatedMSP.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	err = o.setMSPConfig(updatedMSP)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (o *OrdererOrg) setMSPConfig(updatedMSP MSP) error {
+	mspConfig, err := newMSPConfig(updatedMSP)
+	if err != nil {
+		return fmt.Errorf("new msp config: %v", err)
+	}
+
+	err = setValue(o.orgGroup, mspValue(mspConfig), AdminsPolicyKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CreateMSPCRL creates a CRL that revokes the provided certificates
+// for the specified orderer org signed by the provided SigningIdentity.
+func (o *OrdererOrg) CreateMSPCRL(signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
+	msp, err := o.MSP()
+	if err != nil {
+		return nil, fmt.Errorf("retrieving orderer msp: %s", err)
+	}
+
+	return msp.newMSPCRL(signingIdentity, certs...)
+}
+
+// SetPolicy sets the specified policy in the orderer org group's config policy map.
+// If the policy already exist in current configuration, its value will be overwritten.
+func (o *OrdererOrg) SetPolicy(modPolicy, policyName string, policy Policy) error {
+	return setPolicy(o.orgGroup, modPolicy, policyName, policy)
+}
+
+// RemovePolicy removes an existing policy from an orderer organization.
+func (o *OrdererOrg) RemovePolicy(policyName string) error {
+	policies, err := o.Policies()
+	if err != nil {
+		return err
+	}
+
+	removePolicy(o.orgGroup, policyName, policies)
+	return nil
+}
+
+// Policies returns a map of policies for a specific orderer org
+// in the updated config.
+func (o *OrdererOrg) Policies() (map[string]Policy, error) {
+	return getPolicies(o.orgGroup.Policies)
 }
 
 // newOrdererGroup returns the orderer component of the channel configuration.
@@ -301,7 +526,8 @@ func newOrdererGroup(orderer Orderer) (*cb.ConfigGroup, error) {
 	return ordererGroup, nil
 }
 
-// addOrdererValues adds configuration specified in *Orderer to an orderer *cb.ConfigGroup's Values map.
+// addOrdererValues adds configuration specified in Orderer to an orderer
+// *cb.ConfigGroup's Values map.
 func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 	err := setValue(ordererGroup, batchSizeValue(
 		o.BatchSize.MaxMessageCount,
@@ -359,7 +585,7 @@ func addOrdererValues(ordererGroup *cb.ConfigGroup, o Orderer) error {
 	return nil
 }
 
-// setOrdererPolicies sets *cb.ConfigPolicies to the passed Orderer *cb.ConfigGroup's Policies map.
+// setOrdererPolicies adds *cb.ConfigPolicies to the passed Orderer *cb.ConfigGroup's Policies map.
 // It checks that the BlockValidation policy is defined alongside the standard policy checks.
 func setOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy string) error {
 	if policyMap == nil {

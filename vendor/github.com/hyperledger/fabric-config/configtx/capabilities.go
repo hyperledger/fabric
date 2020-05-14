@@ -14,139 +14,6 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 )
 
-// ChannelCapabilities returns a map of enabled channel capabilities
-// from a config transaction.
-func (c *ConfigTx) ChannelCapabilities() ([]string, error) {
-	capabilities, err := getCapabilities(c.original.ChannelGroup)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving channel capabilities: %v", err)
-	}
-
-	return capabilities, nil
-}
-
-// OrdererCapabilities returns a map of enabled orderer capabilities
-// from a config transaction.
-func (c *ConfigTx) OrdererCapabilities() ([]string, error) {
-	orderer := c.original.ChannelGroup.Groups[OrdererGroupKey]
-
-	capabilities, err := getCapabilities(orderer)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving orderer capabilities: %v", err)
-	}
-
-	return capabilities, nil
-}
-
-// ApplicationCapabilities returns a map of enabled application capabilities
-// from a config transaction.
-func (c *ConfigTx) ApplicationCapabilities() ([]string, error) {
-	application := c.original.ChannelGroup.Groups[ApplicationGroupKey]
-
-	capabilities, err := getCapabilities(application)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving application capabilities: %v", err)
-	}
-
-	return capabilities, nil
-}
-
-// AddChannelCapability adds capability to the provided channel config.
-// If the provided capability already exist in current configuration, this action
-// will be a no-op.
-func (c *ConfigTx) AddChannelCapability(capability string) error {
-	capabilities, err := c.ChannelCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = addCapability(c.updated.ChannelGroup, capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// AddOrdererCapability adds capability to the provided channel config.
-// If the provided capability already exist in current configuration, this action
-// will be a no-op.
-func (c *ConfigTx) AddOrdererCapability(capability string) error {
-	capabilities, err := c.OrdererCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = addCapability(c.updated.ChannelGroup.Groups[OrdererGroupKey], capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// AddApplicationCapability sets capability to the provided channel config.
-// If the provided capability already exist in current configuration, this action
-// will be a no-op.
-func (c *ConfigTx) AddApplicationCapability(capability string) error {
-	capabilities, err := c.ApplicationCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = addCapability(c.updated.ChannelGroup.Groups[ApplicationGroupKey], capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// RemoveChannelCapability removes capability to the provided channel config.
-func (c *ConfigTx) RemoveChannelCapability(capability string) error {
-	capabilities, err := c.ChannelCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = removeCapability(c.updated.ChannelGroup, capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// RemoveOrdererCapability removes capability to the provided channel config.
-func (c *ConfigTx) RemoveOrdererCapability(capability string) error {
-	capabilities, err := c.OrdererCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = removeCapability(c.updated.ChannelGroup.Groups[OrdererGroupKey], capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// RemoveApplicationCapability removes capability to the provided channel config.
-func (c *ConfigTx) RemoveApplicationCapability(capability string) error {
-	capabilities, err := c.ApplicationCapabilities()
-	if err != nil {
-		return err
-	}
-
-	err = removeCapability(c.updated.ChannelGroup.Groups[ApplicationGroupKey], capabilities, AdminsPolicyKey, capability)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // capabilitiesValue returns the config definition for a set of capabilities.
 // It is a value for the /Channel/Orderer, Channel/Application/, and /Channel groups.
 func capabilitiesValue(capabilities []string) *standardConfigValue {
@@ -213,7 +80,7 @@ func getCapabilities(configGroup *cb.ConfigGroup) ([]string, error) {
 
 	err := proto.Unmarshal(capabilitiesValue.Value, capabilitiesProto)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshalling capabilities: %v", err)
+		return nil, fmt.Errorf("unmarshaling capabilities: %v", err)
 	}
 
 	capabilities := []string{}
