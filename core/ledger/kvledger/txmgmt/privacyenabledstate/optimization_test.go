@@ -58,7 +58,7 @@ func TestMetadataHintOptimizationSkippingGoingToDB(t *testing.T) {
 	bookkeeper := bookkeepingTestEnv.TestProvider.GetDBHandle("ledger1", bookkeeping.MetadataPresenceIndicator)
 
 	mockVersionedDB := &mock.VersionedDB{}
-	db, err := NewCommonStorageDB(mockVersionedDB, "testledger", newMetadataHint(bookkeeper))
+	db, err := NewDB(mockVersionedDB, "testledger", newMetadataHint(bookkeeper))
 	assert.NoError(t, err)
 	updates := NewUpdateBatch()
 	updates.PubUpdates.PutValAndMetadata("ns1", "key", []byte("value"), []byte("metadata"), version.NewHeight(1, 1))

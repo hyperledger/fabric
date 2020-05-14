@@ -7,228 +7,417 @@ SPDX-License-Identifier: Apache-2.0
 package privacyenabledstate
 
 import (
-	"fmt"
+	"encoding/base64"
+	"strings"
 
+	"github.com/hyperledger/fabric-lib-go/healthz"
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
+	"github.com/hyperledger/fabric/core/ledger/util"
+	"github.com/pkg/errors"
 )
 
-// DBProvider provides handle to a PvtVersionedDB
-type DBProvider interface {
-	// GetDBHandle returns a handle to a PvtVersionedDB
-	GetDBHandle(id string) (DB, error)
-	// Close closes all the PvtVersionedDB instances and releases any resources held by VersionedDBProvider
-	Close()
+var logger = flogging.MustGetLogger("privacyenabledstate")
+
+const (
+	nsJoiner       = "$$"
+	pvtDataPrefix  = "p"
+	hashDataPrefix = "h"
+	couchDB        = "CouchDB"
+)
+
+// StateDBConfig encapsulates the configuration for stateDB on the ledger.
+type StateDBConfig struct {
+	// ledger.StateDBConfig is used to configure the stateDB for the ledger.
+	*ledger.StateDBConfig
+	// LevelDBPath is the filesystem path when statedb type is "goleveldb".
+	// It is internally computed by the ledger component,
+	// so it is not in ledger.StateDBConfig and not exposed to other components.
+	LevelDBPath string
 }
 
-// DB extends VersionedDB interface. This interface provides additional functions for managing private data state
-type DB interface {
+// DBProvider encapsulates other providers such as VersionedDBProvider and
+// BookeepingProvider which are required to create DB for a channel
+type DBProvider struct {
+	statedb.VersionedDBProvider
+	HealthCheckRegistry ledger.HealthCheckRegistry
+	bookkeepingProvider bookkeeping.Provider
+}
+
+// NewDBProvider constructs an instance of DBProvider
+func NewDBProvider(
+	bookkeeperProvider bookkeeping.Provider,
+	metricsProvider metrics.Provider,
+	healthCheckRegistry ledger.HealthCheckRegistry,
+	stateDBConf *StateDBConfig,
+	sysNamespaces []string,
+) (*DBProvider, error) {
+
+	var vdbProvider statedb.VersionedDBProvider
+	var err error
+
+	if stateDBConf != nil && stateDBConf.StateDatabase == couchDB {
+		if vdbProvider, err = statecouchdb.NewVersionedDBProvider(stateDBConf.CouchDB, metricsProvider, sysNamespaces); err != nil {
+			return nil, err
+		}
+	} else {
+		if vdbProvider, err = stateleveldb.NewVersionedDBProvider(stateDBConf.LevelDBPath); err != nil {
+			return nil, err
+		}
+	}
+
+	dbProvider := &DBProvider{vdbProvider, healthCheckRegistry, bookkeeperProvider}
+
+	err = dbProvider.RegisterHealthChecker()
+	if err != nil {
+		return nil, err
+	}
+
+	return dbProvider, nil
+}
+
+// RegisterHealthChecker registers the underlying stateDB with the healthChecker.
+// For now, we register only the CouchDB as it runs as a separate process but not
+// for the GoLevelDB as it is an embedded database.
+func (p *DBProvider) RegisterHealthChecker() error {
+	if healthChecker, ok := p.VersionedDBProvider.(healthz.HealthChecker); ok {
+		return p.HealthCheckRegistry.RegisterChecker("couchdb", healthChecker)
+	}
+	return nil
+}
+
+// GetDBHandle gets a handle to DB for a given id, i.e., a channel
+func (p *DBProvider) GetDBHandle(id string) (*DB, error) {
+	vdb, err := p.VersionedDBProvider.GetDBHandle(id)
+	if err != nil {
+		return nil, err
+	}
+	bookkeeper := p.bookkeepingProvider.GetDBHandle(id, bookkeeping.MetadataPresenceIndicator)
+	metadataHint := newMetadataHint(bookkeeper)
+	return NewDB(vdb, id, metadataHint)
+}
+
+// Close closes all the VersionedDB instances and releases any resources held by VersionedDBProvider
+func (p *DBProvider) Close() {
+	p.VersionedDBProvider.Close()
+}
+
+// DB uses a single database to maintain both the public and private data
+type DB struct {
 	statedb.VersionedDB
-	IsBulkOptimizable() bool
-	LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*statedb.CompositeKey, hashedKeys []*HashedCompositeKey) error
-	GetCachedKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, bool)
-	ClearCachedVersions()
-	GetChaincodeEventListener() cceventmgmt.ChaincodeLifecycleEventListener
-	GetPrivateData(namespace, collection, key string) (*statedb.VersionedValue, error)
-	GetPrivateDataHash(namespace, collection, key string) (*statedb.VersionedValue, error)
-	GetValueHash(namespace, collection string, keyHash []byte) (*statedb.VersionedValue, error)
-	GetKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, error)
-	GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([]*statedb.VersionedValue, error)
-	GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (statedb.ResultsIterator, error)
-	GetStateMetadata(namespace, key string) ([]byte, error)
-	GetPrivateDataMetadataByHash(namespace, collection string, keyHash []byte) ([]byte, error)
-	ExecuteQueryOnPrivateData(namespace, collection, query string) (statedb.ResultsIterator, error)
-	ApplyPrivacyAwareUpdates(updates *UpdateBatch, height *version.Height) error
+	metadataHint *metadataHint
 }
 
-// PvtdataCompositeKey encloses Namespace, CollectionName and Key components
-type PvtdataCompositeKey struct {
-	Namespace      string
-	CollectionName string
-	Key            string
+// NewDB wraps a VersionedDB instance. The public data is managed directly by the wrapped versionedDB.
+// For managing the hashed data and private data, this implementation creates separate namespaces in the wrapped db
+func NewDB(vdb statedb.VersionedDB, ledgerid string, metadataHint *metadataHint) (*DB, error) {
+	return &DB{vdb, metadataHint}, nil
 }
 
-// HashedCompositeKey encloses Namespace, CollectionName and KeyHash components
-type HashedCompositeKey struct {
-	Namespace      string
-	CollectionName string
-	KeyHash        string
+// IsBulkOptimizable checks whether the underlying statedb implements statedb.BulkOptimizable
+func (s *DB) IsBulkOptimizable() bool {
+	_, ok := s.VersionedDB.(statedb.BulkOptimizable)
+	return ok
 }
 
-// PvtKVWrite encloses Key, IsDelete, Value, and Version components
-type PvtKVWrite struct {
-	Key      string
-	IsDelete bool
-	Value    []byte
-	Version  *version.Height
-}
+// LoadCommittedVersionsOfPubAndHashedKeys loads committed version of given public and hashed states
+func (s *DB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*statedb.CompositeKey,
+	hashedKeys []*HashedCompositeKey) error {
 
-// UpdateBatch encapsulates the updates to Public, Private, and Hashed data.
-// This is expected to contain a consistent set of updates
-type UpdateBatch struct {
-	PubUpdates  *PubUpdateBatch
-	HashUpdates *HashedUpdateBatch
-	PvtUpdates  *PvtUpdateBatch
-}
-
-// PubUpdateBatch contains update for the public data
-type PubUpdateBatch struct {
-	*statedb.UpdateBatch
-}
-
-// HashedUpdateBatch contains updates for the hashes of the private data
-type HashedUpdateBatch struct {
-	UpdateMap
-}
-
-// PvtUpdateBatch contains updates for the private data
-type PvtUpdateBatch struct {
-	UpdateMap
-}
-
-// UpdateMap maintains entries of tuple <Namespace, UpdatesForNamespace>
-type UpdateMap map[string]NsBatch
-
-// nsBatch contains updates related to one namespace
-type NsBatch struct {
-	*statedb.UpdateBatch
-}
-
-// NewUpdateBatch creates and empty UpdateBatch
-func NewUpdateBatch() *UpdateBatch {
-	return &UpdateBatch{NewPubUpdateBatch(), NewHashedUpdateBatch(), NewPvtUpdateBatch()}
-}
-
-// NewPubUpdateBatch creates an empty PubUpdateBatch
-func NewPubUpdateBatch() *PubUpdateBatch {
-	return &PubUpdateBatch{statedb.NewUpdateBatch()}
-}
-
-// NewHashedUpdateBatch creates an empty HashedUpdateBatch
-func NewHashedUpdateBatch() *HashedUpdateBatch {
-	return &HashedUpdateBatch{make(map[string]NsBatch)}
-}
-
-// NewPvtUpdateBatch creates an empty PvtUpdateBatch
-func NewPvtUpdateBatch() *PvtUpdateBatch {
-	return &PvtUpdateBatch{make(map[string]NsBatch)}
-}
-
-// IsEmpty returns true if there exists any updates
-func (b UpdateMap) IsEmpty() bool {
-	return len(b) == 0
-}
-
-// Put sets the value in the batch for a given combination of namespace and collection name
-func (b UpdateMap) Put(ns, coll, key string, value []byte, version *version.Height) {
-	b.PutValAndMetadata(ns, coll, key, value, nil, version)
-}
-
-// PutValAndMetadata adds a key with value and metadata
-func (b UpdateMap) PutValAndMetadata(ns, coll, key string, value []byte, metadata []byte, version *version.Height) {
-	b.getOrCreateNsBatch(ns).PutValAndMetadata(coll, key, value, metadata, version)
-}
-
-// Delete adds a delete marker in the batch for a given combination of namespace and collection name
-func (b UpdateMap) Delete(ns, coll, key string, version *version.Height) {
-	b.getOrCreateNsBatch(ns).Delete(coll, key, version)
-}
-
-// Get retrieves the value from the batch for a given combination of namespace and collection name
-func (b UpdateMap) Get(ns, coll, key string) *statedb.VersionedValue {
-	nsPvtBatch, ok := b[ns]
+	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
 	if !ok {
 		return nil
 	}
-	return nsPvtBatch.Get(coll, key)
+	// Here, hashedKeys are merged into pubKeys to get a combined set of keys for combined loading
+	for _, key := range hashedKeys {
+		ns := deriveHashedDataNs(key.Namespace, key.CollectionName)
+		// No need to check for duplicates as hashedKeys are in separate namespace
+		var keyHashStr string
+		if !s.BytesKeySupported() {
+			keyHashStr = base64.StdEncoding.EncodeToString([]byte(key.KeyHash))
+		} else {
+			keyHashStr = key.KeyHash
+		}
+		pubKeys = append(pubKeys, &statedb.CompositeKey{
+			Namespace: ns,
+			Key:       keyHashStr,
+		})
+	}
+
+	err := bulkOptimizable.LoadCommittedVersions(pubKeys)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// Contains returns true if the given <ns,coll,key> tuple is present in the batch
-func (b UpdateMap) Contains(ns, coll, key string) bool {
-	nsBatch, ok := b[ns]
+// ClearCachedVersions clears the version cache
+func (s *DB) ClearCachedVersions() {
+	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
+	if ok {
+		bulkOptimizable.ClearCachedVersions()
+	}
+}
+
+// GetChaincodeEventListener returns a struct that implements cceventmgmt.ChaincodeLifecycleEventListener
+// if the underlying statedb implements statedb.IndexCapable.
+func (s *DB) GetChaincodeEventListener() cceventmgmt.ChaincodeLifecycleEventListener {
+	_, ok := s.VersionedDB.(statedb.IndexCapable)
+	if ok {
+		return s
+	}
+	return nil
+}
+
+// GetPrivateData gets the value of a private data item identified by a tuple <namespace, collection, key>
+func (s *DB) GetPrivateData(namespace, collection, key string) (*statedb.VersionedValue, error) {
+	return s.GetState(derivePvtDataNs(namespace, collection), key)
+}
+
+// GetPrivateDataHash gets the hash of the value of a private data item identified by a tuple <namespace, collection, key>
+func (s *DB) GetPrivateDataHash(namespace, collection, key string) (*statedb.VersionedValue, error) {
+	return s.GetValueHash(namespace, collection, util.ComputeStringHash(key))
+}
+
+// GetPrivateDataHash gets the value hash of a private data item identified by a tuple <namespace, collection, keyHash>
+func (s *DB) GetValueHash(namespace, collection string, keyHash []byte) (*statedb.VersionedValue, error) {
+	keyHashStr := string(keyHash)
+	if !s.BytesKeySupported() {
+		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
+	}
+	return s.GetState(deriveHashedDataNs(namespace, collection), keyHashStr)
+}
+
+// GetKeyHashVersion gets the version of a private data item identified by a tuple <namespace, collection, keyHash>
+func (s *DB) GetKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, error) {
+	keyHashStr := string(keyHash)
+	if !s.BytesKeySupported() {
+		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
+	}
+	return s.GetVersion(deriveHashedDataNs(namespace, collection), keyHashStr)
+}
+
+// GetCachedKeyHashVersion retrieves the keyhash version from cache
+func (s *DB) GetCachedKeyHashVersion(namespace, collection string, keyHash []byte) (*version.Height, bool) {
+	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
 	if !ok {
-		return false
+		return nil, false
 	}
-	return nsBatch.Exists(coll, key)
-}
 
-func (nsb NsBatch) GetCollectionNames() []string {
-	return nsb.GetUpdatedNamespaces()
-}
-
-func (nsb NsBatch) GetCollectionUpdates(collName string) map[string]*statedb.VersionedValue {
-	return nsb.GetUpdates(collName)
-}
-
-func (b UpdateMap) GetUpdatedNamespaces() []string {
-	namespaces := []string{}
-	for ns := range b {
-		namespaces = append(namespaces, ns)
+	keyHashStr := string(keyHash)
+	if !s.BytesKeySupported() {
+		keyHashStr = base64.StdEncoding.EncodeToString(keyHash)
 	}
-	return namespaces
+	return bulkOptimizable.GetCachedVersion(deriveHashedDataNs(namespace, collection), keyHashStr)
 }
 
-func (b UpdateMap) getOrCreateNsBatch(ns string) NsBatch {
-	batch, ok := b[ns]
+// GetPrivateDataMultipleKeys gets the values for the multiple private data items in a single call
+func (s *DB) GetPrivateDataMultipleKeys(namespace, collection string, keys []string) ([]*statedb.VersionedValue, error) {
+	return s.GetStateMultipleKeys(derivePvtDataNs(namespace, collection), keys)
+}
+
+// GetPrivateDataRangeScanIterator returns an iterator that contains all the key-values between given key ranges.
+// startKey is included in the results and endKey is excluded.
+func (s *DB) GetPrivateDataRangeScanIterator(namespace, collection, startKey, endKey string) (statedb.ResultsIterator, error) {
+	return s.GetStateRangeScanIterator(derivePvtDataNs(namespace, collection), startKey, endKey)
+}
+
+// ExecuteQuery executes the given query and returns an iterator that contains results of type specific to the underlying data store.
+func (s DB) ExecuteQueryOnPrivateData(namespace, collection, query string) (statedb.ResultsIterator, error) {
+	return s.ExecuteQuery(derivePvtDataNs(namespace, collection), query)
+}
+
+// ApplyUpdates overrides the function in statedb.VersionedDB and throws appropriate error message
+// Otherwise, somewhere in the code, usage of this function could lead to updating only public data.
+func (s *DB) ApplyUpdates(batch *statedb.UpdateBatch, height *version.Height) error {
+	return errors.New("this function should not be invoked on this type. Please invoke function ApplyPrivacyAwareUpdates")
+}
+
+// ApplyPrivacyAwareUpdates applies the batch to the underlying db
+func (s *DB) ApplyPrivacyAwareUpdates(updates *UpdateBatch, height *version.Height) error {
+	// combinedUpdates includes both updates to public db and private db, which are partitioned by a separate namespace
+	combinedUpdates := updates.PubUpdates
+	addPvtUpdates(combinedUpdates, updates.PvtUpdates)
+	addHashedUpdates(combinedUpdates, updates.HashUpdates, !s.BytesKeySupported())
+	s.metadataHint.setMetadataUsedFlag(updates)
+	return s.VersionedDB.ApplyUpdates(combinedUpdates.UpdateBatch, height)
+}
+
+// GetStateMetadata implements corresponding function in interface DB. This implementation provides
+// an optimization such that it keeps track if a namespaces has never stored metadata for any of
+// its items, the value 'nil' is returned without going to the db. This is intended to be invoked
+// in the validation and commit path. This saves the chaincodes from paying unnecessary performance
+// penalty if they do not use features that leverage metadata (such as key-level endorsement),
+func (s *DB) GetStateMetadata(namespace, key string) ([]byte, error) {
+	if !s.metadataHint.metadataEverUsedFor(namespace) {
+		return nil, nil
+	}
+	vv, err := s.GetState(namespace, key)
+	if err != nil || vv == nil {
+		return nil, err
+	}
+	return vv.Metadata, nil
+}
+
+// GetPrivateDataMetadataByHash implements corresponding function in interface DB. For additional details, see
+// description of the similar function 'GetStateMetadata'
+func (s *DB) GetPrivateDataMetadataByHash(namespace, collection string, keyHash []byte) ([]byte, error) {
+	if !s.metadataHint.metadataEverUsedFor(namespace) {
+		return nil, nil
+	}
+	vv, err := s.GetValueHash(namespace, collection, keyHash)
+	if err != nil || vv == nil {
+		return nil, err
+	}
+	return vv.Metadata, nil
+}
+
+// HandleChaincodeDeploy initializes database artifacts for the database associated with the namespace
+// This function deliberately suppresses the errors that occur during the creation of the indexes on couchdb.
+// This is because, in the present code, we do not differentiate between the errors because of couchdb interaction
+// and the errors because of bad index files - the later being unfixable by the admin. Note that the error suppression
+// is acceptable since peer can continue in the committing role without the indexes. However, executing chaincode queries
+// may be affected, until a new chaincode with fixed indexes is installed and instantiated
+func (s *DB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
+	//Check to see if the interface for IndexCapable is implemented
+	indexCapable, ok := s.VersionedDB.(statedb.IndexCapable)
 	if !ok {
-		batch = NsBatch{statedb.NewUpdateBatch()}
-		b[ns] = batch
+		return nil
 	}
-	return batch
-}
+	if chaincodeDefinition == nil {
+		return errors.New("chaincode definition not found while creating couchdb index")
+	}
+	dbArtifacts, err := ccprovider.ExtractFileEntries(dbArtifactsTar, indexCapable.GetDBType())
+	if err != nil {
+		logger.Errorf("Index creation: error extracting db artifacts from tar for chaincode [%s]: %s", chaincodeDefinition.Name, err)
+		return nil
+	}
 
-// Contains returns true if the given <ns,coll,keyHash> tuple is present in the batch
-func (h HashedUpdateBatch) Contains(ns, coll string, keyHash []byte) bool {
-	return h.UpdateMap.Contains(ns, coll, string(keyHash))
-}
+	collectionConfigMap, err := extractCollectionNames(chaincodeDefinition)
+	if err != nil {
+		logger.Errorf("Error while retrieving collection config for chaincode=[%s]: %s",
+			chaincodeDefinition.Name, err)
+		return nil
+	}
 
-// Put overrides the function in UpdateMap for allowing the key to be a []byte instead of a string
-func (h HashedUpdateBatch) Put(ns, coll string, key []byte, value []byte, version *version.Height) {
-	h.PutValHashAndMetadata(ns, coll, key, value, nil, version)
-}
+	for directoryPath, indexFiles := range dbArtifacts {
+		indexFilesData := make(map[string][]byte)
+		for _, f := range indexFiles {
+			indexFilesData[f.FileHeader.Name] = f.FileContent
+		}
 
-// PutValHashAndMetadata adds a key with value and metadata
-// TODO introducing a new function to limit the refactoring. Later in a separate CR, the 'Put' function above should be removed
-func (h HashedUpdateBatch) PutValHashAndMetadata(ns, coll string, key []byte, value []byte, metadata []byte, version *version.Height) {
-	h.UpdateMap.PutValAndMetadata(ns, coll, string(key), value, metadata, version)
-}
-
-// Delete overrides the function in UpdateMap for allowing the key to be a []byte instead of a string
-func (h HashedUpdateBatch) Delete(ns, coll string, key []byte, version *version.Height) {
-	h.UpdateMap.Delete(ns, coll, string(key), version)
-}
-
-// ToCompositeKeyMap rearranges the update batch data in the form of a single map
-func (h HashedUpdateBatch) ToCompositeKeyMap() map[HashedCompositeKey]*statedb.VersionedValue {
-	m := make(map[HashedCompositeKey]*statedb.VersionedValue)
-	for ns, nsBatch := range h.UpdateMap {
-		for _, coll := range nsBatch.GetCollectionNames() {
-			for key, vv := range nsBatch.GetUpdates(coll) {
-				m[HashedCompositeKey{ns, coll, key}] = vv
+		indexInfo := getIndexInfo(directoryPath)
+		switch {
+		case indexInfo.hasIndexForChaincode:
+			err := indexCapable.ProcessIndexesForChaincodeDeploy(chaincodeDefinition.Name, indexFilesData)
+			if err != nil {
+				logger.Errorf("Error processing index for chaincode [%s]: %s", chaincodeDefinition.Name, err)
+			}
+		case indexInfo.hasIndexForCollection:
+			_, ok := collectionConfigMap[indexInfo.collectionName]
+			if !ok {
+				logger.Errorf("Error processing index for chaincode [%s]: cannot create an index for an undefined collection=[%s]",
+					chaincodeDefinition.Name, indexInfo.collectionName)
+				continue
+			}
+			err := indexCapable.ProcessIndexesForChaincodeDeploy(derivePvtDataNs(chaincodeDefinition.Name, indexInfo.collectionName), indexFilesData)
+			if err != nil {
+				logger.Errorf("Error processing collection index for chaincode [%s]: %s", chaincodeDefinition.Name, err)
 			}
 		}
 	}
-	return m
+	return nil
 }
 
-// PvtdataCompositeKeyMap is a map of PvtdataCompositeKey to VersionedValue
-type PvtdataCompositeKeyMap map[PvtdataCompositeKey]*statedb.VersionedValue
+// ChaincodeDeployDone is a noop for couchdb state impl
+func (s *DB) ChaincodeDeployDone(succeeded bool) {
+	// NOOP
+}
 
-// ToCompositeKeyMap rearranges the update batch data in the form of a single map
-func (p PvtUpdateBatch) ToCompositeKeyMap() PvtdataCompositeKeyMap {
-	m := make(PvtdataCompositeKeyMap)
-	for ns, nsBatch := range p.UpdateMap {
+func derivePvtDataNs(namespace, collection string) string {
+	return namespace + nsJoiner + pvtDataPrefix + collection
+}
+
+func deriveHashedDataNs(namespace, collection string) string {
+	return namespace + nsJoiner + hashDataPrefix + collection
+}
+
+func addPvtUpdates(pubUpdateBatch *PubUpdateBatch, pvtUpdateBatch *PvtUpdateBatch) {
+	for ns, nsBatch := range pvtUpdateBatch.UpdateMap {
 		for _, coll := range nsBatch.GetCollectionNames() {
 			for key, vv := range nsBatch.GetUpdates(coll) {
-				m[PvtdataCompositeKey{ns, coll, key}] = vv
+				pubUpdateBatch.Update(derivePvtDataNs(ns, coll), key, vv)
 			}
 		}
 	}
-	return m
 }
 
-// String returns a print friendly form of HashedCompositeKey
-func (hck *HashedCompositeKey) String() string {
-	return fmt.Sprintf("ns=%s, collection=%s, keyHash=%x", hck.Namespace, hck.CollectionName, hck.KeyHash)
+func addHashedUpdates(pubUpdateBatch *PubUpdateBatch, hashedUpdateBatch *HashedUpdateBatch, base64Key bool) {
+	for ns, nsBatch := range hashedUpdateBatch.UpdateMap {
+		for _, coll := range nsBatch.GetCollectionNames() {
+			for key, vv := range nsBatch.GetUpdates(coll) {
+				if base64Key {
+					key = base64.StdEncoding.EncodeToString([]byte(key))
+				}
+				pubUpdateBatch.Update(deriveHashedDataNs(ns, coll), key, vv)
+			}
+		}
+	}
+}
+
+func extractCollectionNames(chaincodeDefinition *cceventmgmt.ChaincodeDefinition) (map[string]bool, error) {
+	collectionConfigs := chaincodeDefinition.CollectionConfigs
+	collectionConfigsMap := make(map[string]bool)
+	if collectionConfigs != nil {
+		for _, config := range collectionConfigs.Config {
+			sConfig := config.GetStaticCollectionConfig()
+			if sConfig == nil {
+				continue
+			}
+			collectionConfigsMap[sConfig.Name] = true
+		}
+	}
+	return collectionConfigsMap, nil
+}
+
+type indexInfo struct {
+	hasIndexForChaincode  bool
+	hasIndexForCollection bool
+	collectionName        string
+}
+
+const (
+	// Example for chaincode indexes:
+	// "META-INF/statedb/couchdb/indexes/indexColorSortName.json"
+	chaincodeIndexDirDepth = 3
+	// Example for collection scoped indexes:
+	// "META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json"
+	collectionDirDepth      = 3
+	collectionNameDepth     = 4
+	collectionIndexDirDepth = 5
+)
+
+func getIndexInfo(indexPath string) *indexInfo {
+	indexInfo := &indexInfo{}
+	dirsDepth := strings.Split(indexPath, "/")
+	switch {
+	case len(dirsDepth) > chaincodeIndexDirDepth &&
+		dirsDepth[chaincodeIndexDirDepth] == "indexes":
+		indexInfo.hasIndexForChaincode = true
+	case len(dirsDepth) > collectionDirDepth &&
+		dirsDepth[collectionDirDepth] == "collections" &&
+		dirsDepth[collectionIndexDirDepth] == "indexes":
+		indexInfo.hasIndexForCollection = true
+		indexInfo.collectionName = dirsDepth[collectionNameDepth]
+	}
+	return indexInfo
 }

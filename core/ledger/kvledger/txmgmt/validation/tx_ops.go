@@ -16,7 +16,7 @@ import (
 )
 
 func prepareTxOps(rwset *rwsetutil.TxRwSet, txht *version.Height,
-	precedingUpdates *publicAndHashUpdates, db privacyenabledstate.DB) (txOps, error) {
+	precedingUpdates *publicAndHashUpdates, db *privacyenabledstate.DB) (txOps, error) {
 	txops := txOps{}
 	txops.applyTxRwset(rwset)
 	//logger.Debugf("prepareTxOps() txops after applying raw rwset=%#v", spew.Sdump(txops))
@@ -120,7 +120,7 @@ func (txops txOps) applyMetadata(ns, coll string, metadataWrite *kvrwset.KVMetad
 // Further, all the keys that gets written will be required to pull from statedb by vscc for endorsement policy check (in the case of key level
 // endorsement) and hence, the bulkload should be combined
 func retrieveLatestState(ns, coll, key string,
-	precedingUpdates *publicAndHashUpdates, db privacyenabledstate.DB) (*statedb.VersionedValue, error) {
+	precedingUpdates *publicAndHashUpdates, db *privacyenabledstate.DB) (*statedb.VersionedValue, error) {
 	var vv *statedb.VersionedValue
 	var err error
 	if coll == "" {
@@ -139,7 +139,7 @@ func retrieveLatestState(ns, coll, key string,
 }
 
 func retrieveLatestMetadata(ns, coll, key string,
-	precedingUpdates *publicAndHashUpdates, db privacyenabledstate.DB) ([]byte, error) {
+	precedingUpdates *publicAndHashUpdates, db *privacyenabledstate.DB) ([]byte, error) {
 	if coll == "" {
 		vv := precedingUpdates.publicUpdates.Get(ns, key)
 		if vv != nil {

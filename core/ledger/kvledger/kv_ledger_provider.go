@@ -65,7 +65,7 @@ type Provider struct {
 	idStore              *idStore
 	blkStoreProvider     *blkstorage.BlockStoreProvider
 	pvtdataStoreProvider *pvtdatastorage.Provider
-	vdbProvider          privacyenabledstate.DBProvider
+	dbProvider           *privacyenabledstate.DBProvider
 	historydbProvider    *history.DBProvider
 	configHistoryMgr     confighistory.Mgr
 	stateListeners       []ledger.StateListener
@@ -238,7 +238,7 @@ func (p *Provider) initStateDBProvider() error {
 		LevelDBPath:   StateDBPath(p.initializer.Config.RootFSPath),
 	}
 	sysNamespaces := p.initializer.DeployedChaincodeInfoProvider.Namespaces()
-	p.vdbProvider, err = privacyenabledstate.NewCommonStorageDBProvider(
+	p.dbProvider, err = privacyenabledstate.NewDBProvider(
 		p.bookkeepingProvider,
 		p.initializer.MetricsProvider,
 		p.initializer.HealthCheckRegistry,
@@ -319,7 +319,7 @@ func (p *Provider) open(ledgerID string) (ledger.PeerLedger, error) {
 	p.collElgNotifier.registerListener(ledgerID, pvtdataStore)
 
 	// Get the versioned database (state database) for a chain/ledger
-	vDB, err := p.vdbProvider.GetDBHandle(ledgerID)
+	db, err := p.dbProvider.GetDBHandle(ledgerID)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +337,7 @@ func (p *Provider) open(ledgerID string) (ledger.PeerLedger, error) {
 		ledgerID:                 ledgerID,
 		blockStore:               blockStore,
 		pvtdataStore:             pvtdataStore,
-		versionedDB:              vDB,
+		stateDB:                  db,
 		historyDB:                historyDB,
 		configHistoryMgr:         p.configHistoryMgr,
 		stateListeners:           p.stateListeners,
@@ -377,8 +377,8 @@ func (p *Provider) Close() {
 	if p.pvtdataStoreProvider != nil {
 		p.pvtdataStoreProvider.Close()
 	}
-	if p.vdbProvider != nil {
-		p.vdbProvider.Close()
+	if p.dbProvider != nil {
+		p.dbProvider.Close()
 	}
 	if p.bookkeepingProvider != nil {
 		p.bookkeepingProvider.Close()

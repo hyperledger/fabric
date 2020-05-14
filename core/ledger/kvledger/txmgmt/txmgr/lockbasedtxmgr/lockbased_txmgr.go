@@ -34,7 +34,7 @@ var logger = flogging.MustGetLogger("lockbasedtxmgr")
 // This implementation uses a read-write lock to prevent conflicts between transaction simulation and committing
 type LockBasedTxMgr struct {
 	ledgerid            string
-	db                  privacyenabledstate.DB
+	db                  *privacyenabledstate.DB
 	pvtdataPurgeMgr     *pvtdataPurgeMgr
 	commitBatchPreparer *validation.CommitBatchPreparer
 	stateListeners      []ledger.StateListener
@@ -61,7 +61,7 @@ func (c *current) maxTxNumber() uint64 {
 
 type Initializer struct {
 	LedgerID            string
-	DB                  privacyenabledstate.DB
+	DB                  *privacyenabledstate.DB
 	StateListeners      []ledger.StateListener
 	BtlPolicy           pvtdatapolicy.BTLPolicy
 	BookkeepingProvider bookkeeping.Provider
@@ -323,7 +323,7 @@ func (uniquePvtData uniquePvtDataMap) updateUsingPvtWrite(pvtWrite *kvrwset.KVWr
 	}
 }
 
-func (uniquePvtData uniquePvtDataMap) findAndRemoveStalePvtData(db privacyenabledstate.DB) error {
+func (uniquePvtData uniquePvtDataMap) findAndRemoveStalePvtData(db *privacyenabledstate.DB) error {
 	// (1) load all committed versions
 	if err := uniquePvtData.loadCommittedVersionIntoCache(db); err != nil {
 		return err
@@ -342,7 +342,7 @@ func (uniquePvtData uniquePvtDataMap) findAndRemoveStalePvtData(db privacyenable
 	return nil
 }
 
-func (uniquePvtData uniquePvtDataMap) loadCommittedVersionIntoCache(db privacyenabledstate.DB) error {
+func (uniquePvtData uniquePvtDataMap) loadCommittedVersionIntoCache(db *privacyenabledstate.DB) error {
 	// Note that ClearCachedVersions would not be called till we validate and commit these
 	// pvt data of old blocks. This is because only during the exclusive lock duration, we
 	// clear the cache and we have already acquired one before reaching here.
@@ -361,7 +361,7 @@ func (uniquePvtData uniquePvtDataMap) loadCommittedVersionIntoCache(db privacyen
 }
 
 func checkIfPvtWriteIsStale(hashedKey *privacyenabledstate.HashedCompositeKey,
-	kvWrite *privacyenabledstate.PvtKVWrite, db privacyenabledstate.DB) (bool, error) {
+	kvWrite *privacyenabledstate.PvtKVWrite, db *privacyenabledstate.DB) (bool, error) {
 
 	ns := hashedKey.Namespace
 	coll := hashedKey.CollectionName

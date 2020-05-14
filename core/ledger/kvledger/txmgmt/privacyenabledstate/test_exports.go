@@ -24,35 +24,34 @@ import (
 type TestEnv interface {
 	StartExternalResource()
 	Init(t testing.TB)
-	GetDBHandle(id string) DB
+	GetDBHandle(id string) *DB
 	GetName() string
 	Cleanup()
 	StopExternalResource()
 }
 
 // Tests will be run against each environment in this array
-// For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
-//var testEnvs = []testEnv{&levelDBCommonStorageTestEnv{}, &couchDBCommonStorageTestEnv{}}
-var testEnvs = []TestEnv{&LevelDBCommonStorageTestEnv{}, &CouchDBCommonStorageTestEnv{}}
+// For example, to skip CouchDB tests, remove &CouchDBLockBasedEnv{}
+var testEnvs = []TestEnv{&LevelDBTestEnv{}, &CouchDBTestEnv{}}
 
 ///////////// LevelDB Environment //////////////
 
-// LevelDBCommonStorageTestEnv implements TestEnv interface for leveldb based storage
-type LevelDBCommonStorageTestEnv struct {
+// LevelDBTestEnv implements TestEnv interface for leveldb based storage
+type LevelDBTestEnv struct {
 	t                 testing.TB
-	provider          DBProvider
+	provider          *DBProvider
 	bookkeeperTestEnv *bookkeeping.TestEnv
 	dbPath            string
 }
 
 // Init implements corresponding function from interface TestEnv
-func (env *LevelDBCommonStorageTestEnv) Init(t testing.TB) {
+func (env *LevelDBTestEnv) Init(t testing.TB) {
 	dbPath, err := ioutil.TempDir("", "cstestenv")
 	if err != nil {
 		t.Fatalf("Failed to create level db storage directory: %s", err)
 	}
 	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t)
-	dbProvider, err := NewCommonStorageDBProvider(
+	dbProvider, err := NewDBProvider(
 		env.bookkeeperTestEnv.TestProvider,
 		&disabled.Provider{},
 		&mock.HealthCheckRegistry{},
@@ -69,29 +68,29 @@ func (env *LevelDBCommonStorageTestEnv) Init(t testing.TB) {
 }
 
 // StartExternalResource will be an empty implementation for levelDB test environment.
-func (env *LevelDBCommonStorageTestEnv) StartExternalResource() {
+func (env *LevelDBTestEnv) StartExternalResource() {
 	// empty implementation
 }
 
 // StopExternalResource will be an empty implementation for levelDB test environment.
-func (env *LevelDBCommonStorageTestEnv) StopExternalResource() {
+func (env *LevelDBTestEnv) StopExternalResource() {
 	// empty implementation
 }
 
 // GetDBHandle implements corresponding function from interface TestEnv
-func (env *LevelDBCommonStorageTestEnv) GetDBHandle(id string) DB {
+func (env *LevelDBTestEnv) GetDBHandle(id string) *DB {
 	db, err := env.provider.GetDBHandle(id)
 	assert.NoError(env.t, err)
 	return db
 }
 
 // GetName implements corresponding function from interface TestEnv
-func (env *LevelDBCommonStorageTestEnv) GetName() string {
-	return "levelDBCommonStorageTestEnv"
+func (env *LevelDBTestEnv) GetName() string {
+	return "levelDBTestEnv"
 }
 
 // Cleanup implements corresponding function from interface TestEnv
-func (env *LevelDBCommonStorageTestEnv) Cleanup() {
+func (env *LevelDBTestEnv) Cleanup() {
 	env.provider.Close()
 	env.bookkeeperTestEnv.Cleanup()
 	os.RemoveAll(env.dbPath)
@@ -99,11 +98,11 @@ func (env *LevelDBCommonStorageTestEnv) Cleanup() {
 
 ///////////// CouchDB Environment //////////////
 
-// CouchDBCommonStorageTestEnv implements TestEnv interface for couchdb based storage
-type CouchDBCommonStorageTestEnv struct {
+// CouchDBTestEnv implements TestEnv interface for couchdb based storage
+type CouchDBTestEnv struct {
 	couchAddress      string
 	t                 testing.TB
-	provider          DBProvider
+	provider          *DBProvider
 	bookkeeperTestEnv *bookkeeping.TestEnv
 	redoPath          string
 	couchCleanup      func()
@@ -111,7 +110,7 @@ type CouchDBCommonStorageTestEnv struct {
 }
 
 // StartExternalResource starts external couchDB resources.
-func (env *CouchDBCommonStorageTestEnv) StartExternalResource() {
+func (env *CouchDBTestEnv) StartExternalResource() {
 	if env.couchAddress != "" {
 		return
 	}
@@ -119,14 +118,14 @@ func (env *CouchDBCommonStorageTestEnv) StartExternalResource() {
 }
 
 // StopExternalResource stops external couchDB resources.
-func (env *CouchDBCommonStorageTestEnv) StopExternalResource() {
+func (env *CouchDBTestEnv) StopExternalResource() {
 	if env.couchAddress != "" {
 		env.couchCleanup()
 	}
 }
 
 // Init implements corresponding function from interface TestEnv
-func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
+func (env *CouchDBTestEnv) Init(t testing.TB) {
 	redoPath, err := ioutil.TempDir("", "pestate")
 	if err != nil {
 		t.Fatalf("Failed to create redo log directory: %s", err)
@@ -154,7 +153,7 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 	}
 
 	env.bookkeeperTestEnv = bookkeeping.NewTestEnv(t)
-	dbProvider, err := NewCommonStorageDBProvider(
+	dbProvider, err := NewDBProvider(
 		env.bookkeeperTestEnv.TestProvider,
 		&disabled.Provider{},
 		&mock.HealthCheckRegistry{},
@@ -168,21 +167,20 @@ func (env *CouchDBCommonStorageTestEnv) Init(t testing.TB) {
 }
 
 // GetDBHandle implements corresponding function from interface TestEnv
-func (env *CouchDBCommonStorageTestEnv) GetDBHandle(id string) DB {
+func (env *CouchDBTestEnv) GetDBHandle(id string) *DB {
 	db, err := env.provider.GetDBHandle(id)
 	assert.NoError(env.t, err)
 	return db
 }
 
 // GetName implements corresponding function from interface TestEnv
-func (env *CouchDBCommonStorageTestEnv) GetName() string {
-	return "couchDBCommonStorageTestEnv"
+func (env *CouchDBTestEnv) GetName() string {
+	return "couchDBTestEnv"
 }
 
 // Cleanup implements corresponding function from interface TestEnv
-func (env *CouchDBCommonStorageTestEnv) Cleanup() {
-	csdbProvider := env.provider.(*CommonStorageDBProvider)
-	if csdbProvider != nil {
+func (env *CouchDBTestEnv) Cleanup() {
+	if env.provider != nil {
 		assert.NoError(env.t, statecouchdb.DropApplicationDBs(env.couchDBConfig))
 	}
 	os.RemoveAll(env.redoPath)
