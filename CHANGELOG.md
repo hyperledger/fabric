@@ -1,3 +1,37 @@
+## v1.4.7
+Thu May 14 12:56:18 EDT 2020
+
+* [51138b8](https://github.com/hyperledger/fabric/commit/51138b8) Add release notes for v1.4.7
+* [a178051](https://github.com/hyperledger/fabric/commit/a178051) [FAB-17728](https://jira.hyperledger.org/browse/FAB-17728) Add 100ms delay to pkcs11 create session loop (#1253)
+* [ea185b8](https://github.com/hyperledger/fabric/commit/ea185b8) Correct HSM environment variables
+* [8ff5d16](https://github.com/hyperledger/fabric/commit/8ff5d16) Bump baseimage version
+* [6112b99](https://github.com/hyperledger/fabric/commit/6112b99) [FAB-17821](https://jira.hyperledger.org/browse/FAB-17821) fix: use keyword as variable name
+* [1964a1b](https://github.com/hyperledger/fabric/commit/1964a1b) [FAB-17778](https://jira.hyperledger.org/browse/FAB-17778) MSP.IsWellFormed: Only allow canonical CA signatures
+* [5066919](https://github.com/hyperledger/fabric/commit/5066919) [FAB-17778](https://jira.hyperledger.org/browse/FAB-17778) Force sanitized signatures be canonically built
+* [c66c3c4](https://github.com/hyperledger/fabric/commit/c66c3c4) add the sample policy to remove the test warning info
+* [e1db649](https://github.com/hyperledger/fabric/commit/e1db649) [FAB-17552](https://jira.hyperledger.org/browse/FAB-17552): add unit test for createKeyStore
+* [f27803f](https://github.com/hyperledger/fabric/commit/f27803f) [FAB-17752](https://jira.hyperledger.org/browse/FAB-17752): following review guide
+* [c403374](https://github.com/hyperledger/fabric/commit/c403374) [FAB-17752](https://jira.hyperledger.org/browse/FAB-17752): return errors when creating keystore
+* [2f740c4](https://github.com/hyperledger/fabric/commit/2f740c4) [FAB-17732](https://jira.hyperledger.org/browse/FAB-17732) Port HSM updates to release-1.4 branch (#1110)
+* [1f0a0dd](https://github.com/hyperledger/fabric/commit/1f0a0dd) Validate session and get new if invalid
+* [b03b3d9](https://github.com/hyperledger/fabric/commit/b03b3d9) [FAB-17540](https://jira.hyperledger.org/browse/FAB-17540) Fix for race read/write tlsconfig (#1050)
+* [856f215](https://github.com/hyperledger/fabric/commit/856f215) [FAB-15461](https://jira.hyperledger.org/browse/FAB-15461) Fix election adapter to return correct peers
+* [f9e80e8](https://github.com/hyperledger/fabric/commit/f9e80e8) [FAB-16879](https://jira.hyperledger.org/browse/FAB-16879) Add stack trace to couchdb http errors (#1048)
+* [c68ee5c](https://github.com/hyperledger/fabric/commit/c68ee5c) [FABB-148, FABB-149]
+* [9007739](https://github.com/hyperledger/fabric/commit/9007739) Properly handle malformed gossip envelopes (#1037)
+* [780b16f](https://github.com/hyperledger/fabric/commit/780b16f) Fix organizations typo
+* [5c2a996](https://github.com/hyperledger/fabric/commit/5c2a996) Update to go 1.13
+* [3b5b58b](https://github.com/hyperledger/fabric/commit/3b5b58b) Fix deadline logging test
+* [be925f8](https://github.com/hyperledger/fabric/commit/be925f8) [FAB-16810](https://jira.hyperledger.org/browse/FAB-16810) comm test changes to support go 1.13
+* [7cf38b5](https://github.com/hyperledger/fabric/commit/7cf38b5) [FAB-16810](https://jira.hyperledger.org/browse/FAB-16810) bccsp test changes for go 1.13
+* [9461ba2](https://github.com/hyperledger/fabric/commit/9461ba2) [FAB-17696](https://jira.hyperledger.org/browse/FAB-17696) Fixed Wiki Link to Contributor meetings
+* [1e51225](https://github.com/hyperledger/fabric/commit/1e51225) [FAB-17109](https://jira.hyperledger.org/browse/FAB-17109) Retrieve ReconnectBackoffThreshold as duration
+* [afbc42f](https://github.com/hyperledger/fabric/commit/afbc42f) [FAB-16951](https://jira.hyperledger.org/browse/FAB-16951) Alternative mechanisms to find pkcs11 key
+* [ca93be5](https://github.com/hyperledger/fabric/commit/ca93be5) BCCSP initialization cleanup
+* [2bb6415](https://github.com/hyperledger/fabric/commit/2bb6415) [FAB-17517](https://jira.hyperledger.org/browse/FAB-17517) Only Initialize specified provider
+* [defb36c](https://github.com/hyperledger/fabric/commit/defb36c) Add MSP Key concepts topic to release-1.4 branch
+* [609ddf8](https://github.com/hyperledger/fabric/commit/609ddf8) Prepare for fabric v1.4.7 release (#743)
+
 ## v1.4.6
 Tue Feb 25 12:48:07 EST 2020
 

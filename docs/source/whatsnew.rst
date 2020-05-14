@@ -180,6 +180,7 @@ with a link to the full release change log.
 * `Fabric v1.4.4 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.4>`_.
 * `Fabric v1.4.5 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.5>`_.
 * `Fabric v1.4.6 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.6>`_.
+* `Fabric v1.4.7 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.7>`_.
 * `Fabric CA v1.4.0 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.0>`_.
 * `Fabric CA v1.4.1 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.1>`_.
 * `Fabric CA v1.4.2 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.2>`_.
@@ -187,6 +188,7 @@ with a link to the full release change log.
 * `Fabric CA v1.4.4 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.4>`_.
 * `Fabric CA v1.4.5 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.5>`_.
 * `Fabric CA v1.4.6 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.6>`_.
+* `Fabric CA v1.4.7 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.7>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
