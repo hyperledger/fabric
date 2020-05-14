@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -152,8 +153,8 @@ func TestNewRegistrar(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 
-	// This test checks to make sure the orderer refuses to come up if it cannot find a system channel
-	t.Run("No system chain - failure", func(t *testing.T) {
+	// This test checks to make sure the orderer can come up if it cannot find any chains
+	t.Run("No chains", func(t *testing.T) {
 		tmpdir, err := ioutil.TempDir("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
@@ -164,9 +165,14 @@ func TestNewRegistrar(t *testing.T) {
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
+		var manager *Registrar
 		assert.NotPanics(t, func() {
-			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider).Initialize(consenters)
+			manager = NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+			manager.Initialize(consenters)
 		}, "Should not panic when starting without a system channel")
+		require.NotNil(t, manager)
+		list := manager.ChannelList()
+		assert.Equal(t, types.ChannelList{SystemChannel: nil, Channels: nil}, list)
 	})
 
 	// This test checks to make sure that the orderer refuses to come up if there are multiple system channels
@@ -195,7 +201,7 @@ func TestNewRegistrar(t *testing.T) {
 	})
 
 	// This test essentially brings the entire system up and is ultimately what main.go will replicate
-	t.Run("Correct flow", func(t *testing.T) {
+	t.Run("Correct flow with system channel", func(t *testing.T) {
 		tmpdir, err := ioutil.TempDir("", "registrar_test-")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
@@ -213,6 +219,17 @@ func TestNewRegistrar(t *testing.T) {
 
 		chainSupport = manager.GetChain("testchannelid")
 		assert.NotNilf(t, chainSupport, "Should have gotten chain which was initialized by ledger")
+
+		list := manager.ChannelList()
+		require.NotNil(t, list.SystemChannel)
+
+		assert.Equal(
+			t,
+			types.ChannelList{
+				SystemChannel: &types.ChannelInfoShort{Name: "testchannelid", URL: ""},
+				Channels:      []types.ChannelInfoShort{}},
+			list,
+		)
 
 		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, "testchannelid", chainSupport, rl, t)
 	})
@@ -251,6 +268,16 @@ func TestCreateChain(t *testing.T) {
 		manager.CreateChain("mychannel")
 		chain := manager.GetChain("mychannel")
 		assert.NotNil(t, chain)
+
+		list := manager.ChannelList()
+		assert.Equal(
+			t,
+			types.ChannelList{
+				SystemChannel: &types.ChannelInfoShort{Name: "testchannelid", URL: ""},
+				Channels:      []types.ChannelInfoShort{{Name: "mychannel", URL: ""}}},
+			list,
+		)
+
 		// A subsequent creation, replaces the chain.
 		manager.CreateChain("mychannel")
 		chain2 := manager.GetChain("mychannel")
@@ -260,6 +287,7 @@ func TestCreateChain(t *testing.T) {
 		// The old chain is halted
 		_, ok := <-chain.Chain.(*mockChain).queue
 		assert.False(t, ok)
+
 		// The new chain is not halted: Close the channel to prove that.
 		close(chain2.Chain.(*mockChain).queue)
 	})
