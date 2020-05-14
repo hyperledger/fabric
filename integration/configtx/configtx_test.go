@@ -29,7 +29,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-var _ = Describe("Config", func() {
+var _ = Describe("ConfigTx", func() {
 	var (
 		client  *docker.Client
 		testDir string
@@ -70,7 +70,7 @@ var _ = Describe("Config", func() {
 		os.RemoveAll(testDir)
 	})
 
-	It("creates channels and updates them using pkg/config", func() {
+	It("creates channels and updates them using fabric-config/configtx", func() {
 		orderer := network.Orderer("orderer")
 		testPeers := network.PeersWithChannel("testchannel")
 		org1peer0 := network.Peer("Org1", "peer0")
@@ -115,7 +115,9 @@ var _ = Describe("Config", func() {
 		}
 
 		channelID := "testchannel"
-		envelope, err := configtx.NewCreateChannelTx(channel, channelID)
+		createChannelUpdate, err := configtx.NewCreateChannelTx(channel, channelID)
+		Expect(err).NotTo(HaveOccurred())
+		envelope, err := configtx.NewEnvelope(createChannelUpdate)
 		Expect(err).NotTo(HaveOccurred())
 		envBytes, err := proto.Marshal(envelope)
 		Expect(err).NotTo(HaveOccurred())
@@ -149,7 +151,7 @@ var _ = Describe("Config", func() {
 
 			By("adding the anchor peer for " + peer.Organization)
 			host, port := peerHostPort(network, peer)
-			err = c.AddAnchorPeer(peer.Organization, configtx.Address{Host: host, Port: port})
+			err = c.Application().Organization(peer.Organization).AddAnchorPeer(configtx.Address{Host: host, Port: port})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("computing the config update")
@@ -162,11 +164,13 @@ var _ = Describe("Config", func() {
 				PrivateKey:  parsePeerPrivateKey(network, peer, "Admin"),
 				MSPID:       network.Organization(peer.Organization).MSPID,
 			}
-			signature, err := signingIdentity.SignConfigUpdate(configUpdate)
+			signature, err := signingIdentity.CreateConfigSignature(configUpdate)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("creating a signed config update envelope with the detached signature")
-			configUpdateEnvelope, err := signingIdentity.SignConfigUpdateEnvelope(configUpdate, signature)
+			configUpdateEnvelope, err := configtx.NewEnvelope(configUpdate, signature)
+			Expect(err).NotTo(HaveOccurred())
+			err = signingIdentity.SignEnvelope(configUpdateEnvelope)
 			Expect(err).NotTo(HaveOccurred())
 			configUpdateBytes, err := proto.Marshal(configUpdateEnvelope)
 			Expect(err).NotTo(HaveOccurred())
