@@ -184,6 +184,17 @@ type couchSavepointData struct {
 	TxNum    uint64 `json:"TxNum"`
 }
 
+type channelMetadata struct {
+	ChannelName string `json:"ChannelName"`
+	// namespace to namespaceDBInfo mapping
+	NamespaceDBsInfo map[string]*namespaceDBInfo `json:"NamespaceDBsInfo"`
+}
+
+type namespaceDBInfo struct {
+	Namespace string `json:"Namespace"`
+	DBName    string `json:"DBName"`
+}
+
 func encodeSavepoint(height *version.Height) (*couchDoc, error) {
 	var err error
 	var savepointDoc couchSavepointData
@@ -207,6 +218,26 @@ func decodeSavepoint(couchDoc *couchDoc) (*version.Height, error) {
 		return nil, err
 	}
 	return &version.Height{BlockNum: savepointDoc.BlockNum, TxNum: savepointDoc.TxNum}, nil
+}
+
+func encodeChannelMetadata(metadataDoc *channelMetadata) (*couchDoc, error) {
+	metadataJSON, err := json.Marshal(metadataDoc)
+	if err != nil {
+		err = errors.Wrap(err, "failed to marshal channel metadata")
+		logger.Errorf("%+v", err)
+		return nil, err
+	}
+	return &couchDoc{jsonValue: metadataJSON, attachments: nil}, nil
+}
+
+func decodeChannelMetadata(couchDoc *couchDoc) (*channelMetadata, error) {
+	metadataDoc := &channelMetadata{}
+	if err := json.Unmarshal(couchDoc.jsonValue, &metadataDoc); err != nil {
+		err = errors.Wrap(err, "failed to unmarshal channel metadata")
+		logger.Errorf("%+v", err)
+		return nil, err
+	}
+	return metadataDoc, nil
 }
 
 type dataformatInfo struct {

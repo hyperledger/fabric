@@ -27,6 +27,10 @@ var logger = flogging.MustGetLogger("statecouchdb")
 const (
 	// savepointDocID is used as a key for maintaining savepoint (maintained in metadatadb for a channel)
 	savepointDocID = "statedb_savepoint"
+	// channelMetadataDocID is used as a key to store the channel metadata for a channel (maintained in the channel's metadatadb).
+	// Due to CouchDB's length restriction on db names, channel names and namepsaces may be truncated in db names.
+	// The metadata is used for dropping channel-specific databases and snapshot support.
+	channelMetadataDocID = "channel_metadata"
 	// fabricInternalDBName is used to create a db in couch that would be used for internal data such as the version of the data format
 	// a double underscore ensures that the dbname does not clash with the dbnames created for the chaincodes
 	fabricInternalDBName = "fabric__internal"
@@ -169,7 +173,8 @@ type VersionedDB struct {
 	couchInstance      *couchInstance
 	metadataDB         *couchDatabase            // A database per channel to store metadata such as savepoint.
 	chainName          string                    // The name of the chain/channel.
-	namespaceDBs       map[string]*couchDatabase // One database per deployed chaincode.
+	namespaceDBs       map[string]*couchDatabase // One database per namespace.
+	channelMetadata    *channelMetadata          // Store channel name and namespaceDBInfo
 	committedDataCache *versionsCache            // Used as a local cache during bulk processing of a block.
 	verCacheLock       sync.RWMutex
 	mux                sync.RWMutex
@@ -197,6 +202,21 @@ func newVersionedDB(couchInstance *couchInstance, redoLogger *redoLogger, dbName
 		redoLogger:         redoLogger,
 		cache:              cache,
 	}
+
+	vdb.channelMetadata, err = vdb.readChannelMetadata()
+	if err != nil {
+		return nil, err
+	}
+	if vdb.channelMetadata == nil {
+		vdb.channelMetadata = &channelMetadata{
+			ChannelName:      chainName,
+			NamespaceDBsInfo: make(map[string]*namespaceDBInfo),
+		}
+		if err = vdb.writeChannelMetadata(); err != nil {
+			return nil, err
+		}
+	}
+
 	logger.Debugf("chain [%s]: checking for redolog record", chainName)
 	redologRecord, err := redoLogger.load()
 	if err != nil {
@@ -241,6 +261,16 @@ func (vdb *VersionedDB) getNamespaceDBHandle(namespace string) (*couchDatabase, 
 	db = vdb.namespaceDBs[namespace]
 	if db == nil {
 		var err error
+		if _, ok := vdb.channelMetadata.NamespaceDBsInfo[namespace]; !ok {
+			logger.Debugf("[%s] add namespaceDBInfo for namespace %s", vdb.chainName, namespace)
+			vdb.channelMetadata.NamespaceDBsInfo[namespace] = &namespaceDBInfo{
+				Namespace: namespace,
+				DBName:    namespaceDBName,
+			}
+			if err = vdb.writeChannelMetadata(); err != nil {
+				return nil, err
+			}
+		}
 		db, err = createCouchDatabase(vdb.couchInstance, namespaceDBName)
 		if err != nil {
 			return nil, err
@@ -690,6 +720,19 @@ func (vdb *VersionedDB) Close() {
 	// no need to close db since a shared couch instance is used
 }
 
+// writeChannelMetadata saves channel metadata to metadataDB
+func (vdb *VersionedDB) writeChannelMetadata() error {
+	couchDoc, err := encodeChannelMetadata(vdb.channelMetadata)
+	if err != nil {
+		return err
+	}
+	if _, err := vdb.metadataDB.saveDoc(channelMetadataDocID, "", couchDoc); err != nil {
+		return err
+	}
+	_, err = vdb.metadataDB.ensureFullCommit()
+	return err
+}
+
 // ensureFullCommitAndRecordSavepoint flushes all the dbs (corresponding to `namespaces`) to disk
 // and Record a savepoint in the metadata db.
 // Couch parallelizes writes in cluster or sharded setup and ordering is not guaranteed.
@@ -767,6 +810,21 @@ func (vdb *VersionedDB) GetLatestSavePoint() (*version.Height, error) {
 		return nil, nil
 	}
 	return decodeSavepoint(couchDoc)
+}
+
+// readChannelMetadata returns channel metadata stored in metadataDB
+func (vdb *VersionedDB) readChannelMetadata() (*channelMetadata, error) {
+	var err error
+	couchDoc, _, err := vdb.metadataDB.readDoc(channelMetadataDocID)
+	if err != nil {
+		logger.Errorf("Failed to read db name mapping data %s", err.Error())
+		return nil, err
+	}
+	// ReadDoc() not found (404) will result in nil response, in these cases return nil
+	if couchDoc == nil || couchDoc.jsonValue == nil {
+		return nil, nil
+	}
+	return decodeChannelMetadata(couchDoc)
 }
 
 func (vdb *VersionedDB) GetFullScanIterator(skipNamespace func(string) bool) (statedb.FullScanIterator, byte, error) {
