@@ -119,73 +119,29 @@ func (c *ConfigTx) ComputeUpdate(channelID string) (*cb.ConfigUpdate, error) {
 	return updt, nil
 }
 
-// ChannelConfiguration returns a channel configuration value from a config transaction.
-func (c *ConfigTx) ChannelConfiguration() (Channel, error) {
-	channelGroup := c.original.ChannelGroup
-	var (
-		err          error
-		consortium   string
-		application  Application
-		orderer      Orderer
-		consortiums  []Consortium
-		capabilities []string
-	)
-
-	if _, ok := channelGroup.Values[ConsortiumKey]; ok {
-		consortiumProto := &cb.Consortium{}
-		err := unmarshalConfigValueAtKey(channelGroup, ConsortiumKey, consortiumProto)
-		if err != nil {
-			return Channel{}, err
-		}
-		consortium = consortiumProto.Name
-	}
-
-	if _, ok := channelGroup.Groups[ApplicationGroupKey]; ok {
-		application, err = c.ApplicationConfiguration()
-		if err != nil {
-			return Channel{}, err
-		}
-	}
-
-	if _, ok := channelGroup.Groups[OrdererGroupKey]; ok {
-		orderer, err = c.OrdererConfiguration()
-		if err != nil {
-			return Channel{}, err
-		}
-	}
-
-	if _, ok := channelGroup.Groups[ConsortiumsGroupKey]; ok {
-		consortiums, err = c.Consortiums()
-		if err != nil {
-			return Channel{}, err
-		}
-	}
-
-	if _, ok := channelGroup.Values[CapabilitiesKey]; ok {
-		capabilities, err = c.ChannelCapabilities()
-		if err != nil {
-			return Channel{}, err
-		}
-	}
-
-	policies, err := c.ChannelPolicies()
+// NewEnvelope creates an envelope with the provided config update and config signatures.
+func NewEnvelope(c *cb.ConfigUpdate, signatures ...*cb.ConfigSignature) (*cb.Envelope, error) {
+	cBytes, err := proto.Marshal(c)
 	if err != nil {
-		return Channel{}, err
+		return nil, fmt.Errorf("marshaling config update: %v", err)
 	}
 
-	return Channel{
-		Consortium:   consortium,
-		Application:  application,
-		Orderer:      orderer,
-		Consortiums:  consortiums,
-		Capabilities: capabilities,
-		Policies:     policies,
-	}, nil
+	configUpdateEnvelope := &cb.ConfigUpdateEnvelope{
+		ConfigUpdate: cBytes,
+		Signatures:   signatures,
+	}
+
+	envelope, err := newEnvelope(cb.HeaderType_CONFIG_UPDATE, c.ChannelId, configUpdateEnvelope)
+	if err != nil {
+		return nil, err
+	}
+
+	return envelope, nil
 }
 
-// NewCreateChannelTx creates a create channel tx using the provided application channel
-// configuration and returns an unsigned envelope for an application channel creation transaction.
-func NewCreateChannelTx(channelConfig Channel, channelID string) (*cb.Envelope, error) {
+// NewCreateChannelTx creates a create channel config update transaction using the
+// provided application channel configuration.
+func NewCreateChannelTx(channelConfig Channel, channelID string) (*cb.ConfigUpdate, error) {
 	var err error
 
 	if channelID == "" {
@@ -197,26 +153,12 @@ func NewCreateChannelTx(channelConfig Channel, channelID string) (*cb.Envelope, 
 		return nil, fmt.Errorf("creating default config template: %v", err)
 	}
 
-	newChannelConfigUpdate, err := newChannelCreateConfigUpdate(channelID, channelConfig, ct)
+	configUpdate, err := newChannelCreateConfigUpdate(channelID, channelConfig, ct)
 	if err != nil {
 		return nil, fmt.Errorf("creating channel create config update: %v", err)
 	}
 
-	configUpdate, err := proto.Marshal(newChannelConfigUpdate)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling new channel config update: %v", err)
-	}
-
-	newConfigUpdateEnv := &cb.ConfigUpdateEnvelope{
-		ConfigUpdate: configUpdate,
-	}
-
-	env, err := newEnvelope(cb.HeaderType_CONFIG_UPDATE, channelID, newConfigUpdateEnv)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create envelope: %v", err)
-	}
-
-	return env, nil
+	return configUpdate, nil
 }
 
 // NewSystemChannelGenesisBlock creates a genesis block using the provided consortiums and orderer
