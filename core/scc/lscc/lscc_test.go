@@ -209,7 +209,7 @@ func TestInstall(t *testing.T) {
 	assert.Equal(t, 1, chaincodeBuilder.BuildCallCount())
 
 	chaincodeBuilder.BuildReturns(fmt.Errorf("fake-build-error"))
-	testInstall(t, "example02-different", "0", path, false, "could not build chaincode: fake-build-error", "Alice", scc, stub, nil)
+	testInstall(t, "example02-different", "0", path, false, "chaincode installed to peer but could not build chaincode: fake-build-error", "Alice", scc, stub, nil)
 	chaincodeBuilder.BuildReturns(nil)
 
 	// This is a bad test, but it does at least exercise the external builder md path
