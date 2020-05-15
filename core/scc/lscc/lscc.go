@@ -722,7 +722,7 @@ func (lscc *SCC) executeInstall(stub shim.ChaincodeStubInterface, ccbytes []byte
 	}
 	<-buildStatus.Done()
 	if err := buildStatus.Err(); err != nil {
-		return errors.WithMessage(err, "could not build chaincode")
+		return errors.WithMessage(err, "chaincode installed to peer but could not build chaincode")
 	}
 
 	md, err := lscc.EbMetadataProvider.PackageMetadata(ccid)
