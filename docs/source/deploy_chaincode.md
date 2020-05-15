@@ -133,7 +133,7 @@ cd ../../../test-network
 
 You can use the `peer` CLI to create a chaincode package in the required format. The `peer` binaries are located in the `bin` folder of the `fabric-samples` repository. Use the following command to add those binaries to your CLI Path:
 ```
-export PATH=${PWD}/../bin:${PWD}:$PATH
+export PATH=${PWD}/../bin:$PATH
 ```
 You also need to set the `FABRIC_CFG_PATH` to point to the `core.yaml` file in the `fabric-samples` repository:
 ```
@@ -209,7 +209,7 @@ cd ../../../test-network
 
 You can use the `peer` CLI to create a chaincode package in the required format. The `peer` binaries are located in the `bin` folder of the `fabric-samples` repository. Use the following command to add those binaries to your CLI Path:
 ```
-export PATH=${PWD}/../bin:${PWD}:$PATH
+export PATH=${PWD}/../bin:$PATH
 ```
 You also need to set the `FABRIC_CFG_PATH` to point to the `core.yaml` file in the `fabric-samples` repository:
 ```
@@ -265,7 +265,7 @@ cd ../../../test-network
 
 You can use the `peer` CLI to create a chaincode package in the required format. The `peer` binaries are located in the `bin` folder of the `fabric-samples` repository. Use the following command to add those binaries to your CLI Path:
 ```
-export PATH=${PWD}/../bin:${PWD}:$PATH
+export PATH=${PWD}/../bin:$PATH
 ```
 You also need to set the `FABRIC_CFG_PATH` to point to the `core.yaml` file in the `fabric-samples` repository:
 ```
@@ -463,7 +463,7 @@ cd ../../../test-network
 ```
 You can then issue the following commands to package the JavaScript chaincode from the `test-network` directory. We will set the environment variables needed to use the `peer` CLI again in case you closed your terminal.
 ```
-export PATH=${PWD}/../bin:${PWD}:$PATH
+export PATH=${PWD}/../bin:$PATH
 export FABRIC_CFG_PATH=$PWD/../config/
 export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
 peer lifecycle chaincode package fabcar_2.tar.gz --path ../chaincode/fabcar/javascript/ --lang node --label fabcar_2
