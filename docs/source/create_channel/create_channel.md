@@ -25,7 +25,7 @@ cd fabric-samples/test-network
 ```
 We will operate from the `test-network` directory for the remainder of the tutorial. Use the following command to add the configtxgen tool to your CLI path:
 ```
-export PATH=${PWD}/../bin:${PWD}:$PATH
+export PATH=${PWD}/../bin:$PATH
 ```
 
 In order to use `configtxgen`, you need to the set the `FABRIC_CFG_PATH` environment variable to the path of the directory that contains your local copy of the `configtx.yaml` file. For this tutorial, we will reference the `configtx.yaml` used to setup the Fabric test network in the `configtx` folder:

@@ -578,7 +578,7 @@ with the network as the Org3 admin:
 
 .. code:: bash
 
-    export PATH=${PWD}/../bin:${PWD}:$PATH
+    export PATH=${PWD}/../bin:$PATH
     export FABRIC_CFG_PATH=$PWD/../config/
     export CORE_PEER_TLS_ENABLED=true
     export CORE_PEER_LOCALMSPID="Org3MSP"

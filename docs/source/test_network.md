@@ -280,7 +280,7 @@ followed the instructions to [install the Samples, Binaries and Docker Images](i
 You can find the `peer` binaries in the `bin` folder of the `fabric-samples`
 repository. Use the following command to add those binaries to your CLI Path:
 ```
-export PATH=${PWD}/../bin:${PWD}:$PATH
+export PATH=${PWD}/../bin:$PATH
 ```
 You also need to set the `FABRIC_CFG_PATH` to point to the `core.yaml` file in
 the `fabric-samples` repository:
