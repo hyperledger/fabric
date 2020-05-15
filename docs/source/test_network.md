@@ -312,7 +312,16 @@ peer chaincode query -C mychannel -n fabcar -c '{"Args":["queryAllCars"]}'
 If the command is successful, you can see the same list of cars that were printed
 in the logs when you ran the script:
 ```
-[{"Key":"CAR0", "Record":{"make":"Toyota","model":"Prius","colour":"blue","owner":"Tomoko"}},{"Key":"CAR1", "Record":{"make":"Ford","model":"Mustang","colour":"red","owner":"Brad"}},{"Key":"CAR2", "Record":{"make":"Hyundai","model":"Tucson","colour":"green","owner":"Jin Soo"}},{"Key":"CAR3", "Record":{"make":"Volkswagen","model":"Passat","colour":"yellow","owner":"Max"}},{"Key":"CAR4", "Record":{"make":"Tesla","model":"S","colour":"black","owner":"Adriana"}},{"Key":"CAR5", "Record":{"make":"Peugeot","model":"205","colour":"purple","owner":"Michel"}},{"Key":"CAR6", "Record":{"make":"Chery","model":"S22L","colour":"white","owner":"Aarav"}},{"Key":"CAR7", "Record":{"make":"Fiat","model":"Punto","colour":"violet","owner":"Pari"}},{"Key":"CAR8", "Record":{"make":"Tata","model":"Nano","colour":"indigo","owner":"Valeria"}},{"Key":"CAR9", "Record":{"make":"Holden","model":"Barina","colour":"brown","owner":"Shotaro"}}]
+[{"Key":"CAR0", "Record":{"make":"Toyota","model":"Prius","colour":"blue","owner":"Tomoko"}},
+{"Key":"CAR1", "Record":{"make":"Ford","model":"Mustang","colour":"red","owner":"Brad"}},
+{"Key":"CAR2", "Record":{"make":"Hyundai","model":"Tucson","colour":"green","owner":"Jin Soo"}},
+{"Key":"CAR3", "Record":{"make":"Volkswagen","model":"Passat","colour":"yellow","owner":"Max"}},
+{"Key":"CAR4", "Record":{"make":"Tesla","model":"S","colour":"black","owner":"Adriana"}},
+{"Key":"CAR5", "Record":{"make":"Peugeot","model":"205","colour":"purple","owner":"Michel"}},
+{"Key":"CAR6", "Record":{"make":"Chery","model":"S22L","colour":"white","owner":"Aarav"}},
+{"Key":"CAR7", "Record":{"make":"Fiat","model":"Punto","colour":"violet","owner":"Pari"}},
+{"Key":"CAR8", "Record":{"make":"Tata","model":"Nano","colour":"indigo","owner":"Valeria"}},
+{"Key":"CAR9", "Record":{"make":"Holden","model":"Barina","colour":"brown","owner":"Shotaro"}}]
 ```
 
 Chaincodes are invoked when a network member wants to transfer or change an
@@ -326,6 +335,11 @@ If the command is successful, you should see the following response:
 ```
 2019-12-04 17:38:21.048 EST [chaincodeCmd] chaincodeInvokeOrQuery -> INFO 001 Chaincode invoke successful. result: status:200
 ```
+
+**Note:** If you deployed the Java chaincode, run the invoke command with the
+following arguments instead: `'{"function":"changeCarOwner","Args":["CAR009","Dave"]}'`
+The Fabcar chaincode written in Java uses a different index than the chaincode
+written in Javascipt or Go.
 
 Because the endorsement policy for the fabcar chaincode requires the transaction
 to be signed by Org1 and Org2, the chaincode invoke command needs to target both
@@ -349,12 +363,12 @@ export CORE_PEER_ADDRESS=localhost:9051
 
 You can now query the fabcar chaincode running on `peer0.org2.example.com`:
 ```
-peer chaincode query -C mychannel -n fabcar -c '{"Args":["queryAllCars"]}'
+peer chaincode query -C mychannel -n fabcar -c '{"Args":["queryCar","CAR9"]}'
 ```
 
 The result will show that `"CAR9"` was transferred to Dave:
 ```
-[{"Key":"CAR0", "Record":{"make":"Toyota","model":"Prius","colour":"blue","owner":"Tomoko"}},{"Key":"CAR1", "Record":{"make":"Ford","model":"Mustang","colour":"red","owner":"Brad"}},{"Key":"CAR2", "Record":{"make":"Hyundai","model":"Tucson","colour":"green","owner":"Jin Soo"}},{"Key":"CAR3", "Record":{"make":"Volkswagen","model":"Passat","colour":"yellow","owner":"Max"}},{"Key":"CAR4", "Record":{"make":"Tesla","model":"S","colour":"black","owner":"Adriana"}},{"Key":"CAR5", "Record":{"make":"Peugeot","model":"205","colour":"purple","owner":"Michel"}},{"Key":"CAR6", "Record":{"make":"Chery","model":"S22L","colour":"white","owner":"Aarav"}},{"Key":"CAR7", "Record":{"make":"Fiat","model":"Punto","colour":"violet","owner":"Pari"}},{"Key":"CAR8", "Record":{"make":"Tata","model":"Nano","colour":"indigo","owner":"Valeria"}},{"Key":"CAR9", "Record":{"make":"Holden","model":"Barina","colour":"brown","owner":"Dave"}}]
+{"make":"Holden","model":"Barina","colour":"brown","owner":"Dave"}
 ```
 
 ## Bring down the network
@@ -370,6 +384,24 @@ organization crypto material, and remove the chaincode images from your Docker
 Registry. The command also removes the channel artifacts and docker volumes from
 previous runs, allowing you to run `./network.sh up` again if you encountered
 any problems.
+
+## Next steps
+
+Now that you have used the test network to deploy Hyperledger Fabric on your
+local machine, you can use the tutorials to start developing your own solution:
+
+- Learn how to deploy your own smart contracts to the test network using the
+[Deploying a smart contract to a channel](deploy_chaincode.html) tutorial.
+- Visit the [Writing Your First Application](write_first_app.html) tutorial
+to learn how to use the APIs provided by the Fabric SDKs to invoke smart
+contracts from your client applications.
+- If you are ready to deploy a more complicated smart contract to the network, follow
+the [commercial paper tutorial](tutorial/commercial_paper.html) to explore a
+use case in which two organizations use a blockchain network to trade commercial
+paper.
+
+You can find the the complete list of Fabric tutorials on the [tutorials](tutorials.html)
+page.
 
 ## Bring up the network with Certificate Authorities
 
@@ -470,15 +502,16 @@ organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/
     ├── IssuerPublicKey
     ├── IssuerRevocationPublicKey
     ├── cacerts
-    │   └── localhost-7054-ca-org1.pem
+    │   └── localhost-7054-ca-org1.pem
     ├── config.yaml
     ├── keystore
-    │   └── 58e81e6f1ee8930df46841bf88c22a08ae53c1332319854608539ee78ed2fd65_sk
+    │   └── 58e81e6f1ee8930df46841bf88c22a08ae53c1332319854608539ee78ed2fd65_sk
     ├── signcerts
-    │   └── cert.pem
+    │   └── cert.pem
     └── user
 ```
-You can learn more about the contents of MSP folders by going to the [Membership Service Provider](membership/membership.html)
+You can find the certificate of the admin user in the `signcerts` folder and the
+private key in the `keystore` folder. To learn more about MSPs, see the [Membership Service Provider](membership/membership.html)
 concept topic.
 
 Both cryptogen and the Fabric CAs generate the cryptographic material for each organization
