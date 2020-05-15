@@ -179,7 +179,7 @@ func TestKeyUpdateBeforeExpiryBlock(t *testing.T) {
 	block1Updates := privacyenabledstate.NewUpdateBatch()
 	putHashUpdates(block1Updates, "ns", "coll", "pvtkey", []byte("pvtvalue-1"), version.NewHeight(1, 1))
 	helper.commitUpdatesForTesting(1, block1Updates)
-	expInfo, _ := helper.purgeMgr.(*purgeMgr).expKeeper.retrieve(3)
+	expInfo, _ := helper.purgeMgr.expKeeper.retrieve(3)
 	assert.Len(t, expInfo, 1)
 
 	// block-2 update: Update both hash and pvt data
@@ -286,7 +286,7 @@ type testHelper struct {
 	dbEnv          privacyenabledstate.TestEnv
 
 	db       *privacyenabledstate.DB
-	purgeMgr PurgeMgr
+	purgeMgr *PurgeMgr
 }
 
 func (h *testHelper) init(t *testing.T, ledgerid string, btlPolicy pvtdatapolicy.BTLPolicy, dbEnv privacyenabledstate.TestEnv) {
@@ -308,14 +308,15 @@ func (h *testHelper) cleanup() {
 
 func (h *testHelper) commitUpdatesForTesting(blkNum uint64, updates *privacyenabledstate.UpdateBatch) {
 	h.purgeMgr.PrepareForExpiringKeys(blkNum)
-	assert.NoError(h.t, h.purgeMgr.DeleteExpiredAndUpdateBookkeeping(updates.PvtUpdates, updates.HashUpdates))
+	assert.NoError(h.t, h.purgeMgr.UpdateExpiryInfo(updates.PvtUpdates, updates.HashUpdates))
+	assert.NoError(h.t, h.purgeMgr.AddExpiredEntriesToUpdateBatch(updates.PvtUpdates, updates.HashUpdates))
 	assert.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(blkNum, 1)))
 	h.db.ClearCachedVersions()
 	h.purgeMgr.BlockCommitDone()
 }
 
 func (h *testHelper) commitPvtDataOfOldBlocksForTesting(updates *privacyenabledstate.UpdateBatch) {
-	assert.NoError(h.t, h.purgeMgr.UpdateBookkeepingForPvtDataOfOldBlocks(updates.PvtUpdates))
+	assert.NoError(h.t, h.purgeMgr.UpdateExpiryInfoOfPvtDataOfOldBlocks(updates.PvtUpdates))
 	assert.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, nil))
 }
 
@@ -362,13 +363,13 @@ func (h *testHelper) fetchPvtdataFronDB(ns, coll, key string) (kv *statedb.Versi
 }
 
 func (h *testHelper) checkExpiryEntryExistsForBlockNum(expiringBlk uint64, expectedNumEntries int) {
-	expInfo, err := h.purgeMgr.(*purgeMgr).expKeeper.retrieve(expiringBlk)
+	expInfo, err := h.purgeMgr.expKeeper.retrieve(expiringBlk)
 	assert.NoError(h.t, err)
 	assert.Len(h.t, expInfo, expectedNumEntries)
 }
 
 func (h *testHelper) checkNoExpiryEntryExistsForBlockNum(expiringBlk uint64) {
-	expInfo, err := h.purgeMgr.(*purgeMgr).expKeeper.retrieve(expiringBlk)
+	expInfo, err := h.purgeMgr.expKeeper.retrieve(expiringBlk)
 	assert.NoError(h.t, err)
 	assert.Len(h.t, expInfo, 0)
 }

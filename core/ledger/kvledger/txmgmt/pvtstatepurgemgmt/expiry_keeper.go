@@ -20,10 +20,8 @@ const (
 	expiryPrefix = '1'
 )
 
-// expiryInfoKey is used as a key of an entry in the bookkeeper (backed by a leveldb instance)
-type expiryInfoKey struct {
-	committingBlk uint64
-	expiryBlk     uint64
+type expiryKeeper struct {
+	db *leveldbhelper.DBHandle
 }
 
 // expiryInfo encapsulates an 'expiryInfoKey' and corresponding private data keys.
@@ -35,27 +33,19 @@ type expiryInfo struct {
 	pvtdataKeys   *PvtdataKeys
 }
 
-// expiryKeeper is used to keep track of the expired items in the pvtdata space
-type expiryKeeper interface {
-	// updateBookkeeping keeps track of the list of keys and their corresponding expiry block number
-	updateBookkeeping(toTrack []*expiryInfo, toClear []*expiryInfoKey) error
-	// retrieve returns the keys info that are supposed to be expired by the given block number
-	retrieve(expiringAtBlkNum uint64) ([]*expiryInfo, error)
-	// retrieveByExpiryKey retrieves the expiryInfo for given expiryKey
-	retrieveByExpiryKey(expiryKey *expiryInfoKey) (*expiryInfo, error)
+// expiryInfoKey is used as a key of an entry in the expiryKeeper (backed by a leveldb instance)
+type expiryInfoKey struct {
+	committingBlk uint64
+	expiryBlk     uint64
 }
 
-func newExpiryKeeper(ledgerid string, provider bookkeeping.Provider) expiryKeeper {
-	return &expKeeper{provider.GetDBHandle(ledgerid, bookkeeping.PvtdataExpiry)}
+func newExpiryKeeper(ledgerid string, provider bookkeeping.Provider) *expiryKeeper {
+	return &expiryKeeper{provider.GetDBHandle(ledgerid, bookkeeping.PvtdataExpiry)}
 }
 
-type expKeeper struct {
-	db *leveldbhelper.DBHandle
-}
-
-// updateBookkeeping updates the information stored in the bookkeeper
-// 'toTrack' parameter causes new entries in the bookkeeper and  'toClear' parameter contains the entries that
-// are to be removed from the bookkeeper. This function is invoked with the commit of every block. As an
+// update keeps track of the list of keys and their corresponding expiry block number
+// 'toTrack' parameter causes new entries in the expiryKeeper and  'toClear' parameter contains the entries that
+// are to be removed from the expiryKeeper. This function is invoked with the commit of every block. As an
 // example, the commit of the block with block number 50, 'toTrack' parameter may contain following two entries:
 // (1) &expiryInfo{&expiryInfoKey{committingBlk: 50, expiryBlk: 55}, pvtdataKeys....} and
 // (2) &expiryInfo{&expiryInfoKey{committingBlk: 50, expiryBlk: 60}, pvtdataKeys....}
@@ -65,7 +55,7 @@ type expKeeper struct {
 // (1) &expiryInfoKey{committingBlk: 45, expiryBlk: 50} and (2) &expiryInfoKey{committingBlk: 40, expiryBlk: 50}. The first entry was created
 // at the time of the commit of the block number 45 and the second entry was created at the time of the commit of the block number 40, however
 // both are expiring with the commit of block number 50.
-func (ek *expKeeper) updateBookkeeping(toTrack []*expiryInfo, toClear []*expiryInfoKey) error {
+func (ek *expiryKeeper) update(toTrack []*expiryInfo, toClear []*expiryInfoKey) error {
 	updateBatch := leveldbhelper.NewUpdateBatch()
 	for _, expinfo := range toTrack {
 		k, v, err := encodeKV(expinfo)
@@ -80,7 +70,8 @@ func (ek *expKeeper) updateBookkeeping(toTrack []*expiryInfo, toClear []*expiryI
 	return ek.db.WriteBatch(updateBatch, true)
 }
 
-func (ek *expKeeper) retrieve(expiringAtBlkNum uint64) ([]*expiryInfo, error) {
+// retrieve returns the keys info that are supposed to be expired by the given block number
+func (ek *expiryKeeper) retrieve(expiringAtBlkNum uint64) ([]*expiryInfo, error) {
 	startKey := encodeExpiryInfoKey(&expiryInfoKey{expiryBlk: expiringAtBlkNum, committingBlk: 0})
 	endKey := encodeExpiryInfoKey(&expiryInfoKey{expiryBlk: expiringAtBlkNum + 1, committingBlk: 0})
 	itr := ek.db.GetIterator(startKey, endKey)
@@ -97,7 +88,8 @@ func (ek *expKeeper) retrieve(expiringAtBlkNum uint64) ([]*expiryInfo, error) {
 	return listExpinfo, nil
 }
 
-func (ek *expKeeper) retrieveByExpiryKey(expiryKey *expiryInfoKey) (*expiryInfo, error) {
+// retrieveByExpiryKey retrieves the expiryInfo for given expiryKey
+func (ek *expiryKeeper) retrieveByExpiryKey(expiryKey *expiryInfoKey) (*expiryInfo, error) {
 	key := encodeExpiryInfoKey(expiryKey)
 	value, err := ek.db.Get(key)
 	if err != nil {
