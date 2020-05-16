@@ -48,6 +48,24 @@ var _ = Describe("BuildRegistry", func() {
 			Expect(newBS).To(Equal(initialBS))
 		})
 	})
+
+	When("a previous build status had an error", func() {
+		BeforeEach(func() {
+			bs, ok := br.BuildStatus("ccid")
+			Expect(ok).To(BeFalse())
+			Expect(bs).NotTo(BeNil())
+			bs.Notify(fmt.Errorf("fake-error"))
+			Expect(bs.Done()).To(BeClosed())
+			Expect(bs.Err()).To(MatchError(fmt.Errorf("fake-error")))
+		})
+
+		It("can be reset", func() {
+			bs := br.ResetBuildStatus("ccid")
+			Expect(bs).NotTo(BeNil())
+			Expect(bs.Done()).NotTo(BeClosed())
+			Expect(bs.Err()).To(BeNil())
+		})
+	})
 })
 
 var _ = Describe("BuildStatus", func() {
