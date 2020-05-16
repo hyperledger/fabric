@@ -185,8 +185,8 @@ func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 			PackageFile: chaincode.PackageFile,
 			ClientAuth:  n.ClientAuthRequired,
 		})
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		ExpectWithOffset(1, err).NotTo(HaveOccurred())
+		EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit())
 
 		EnsureInstalled(n, chaincode.Label, chaincode.PackageID, p)
 	}
