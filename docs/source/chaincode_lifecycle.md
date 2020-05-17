@@ -82,7 +82,7 @@ automatically create a file in this format.
 - The chaincode needs to be packaged in a tar file, ending with a `.tar.gz` file
   extension.
 - The tar file needs to contain two files (no directory): a metadata file
-  "metadata.json" and another tar containing the chaincode files.
+  "metadata.json" and another tar "code.tar.gz" containing the chaincode files.
 - "metadata.json" contains JSON that specifies the
   chaincode language, code path, and package label. You can see an example of
   a metadata file below:
