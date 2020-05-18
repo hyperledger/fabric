@@ -8,12 +8,15 @@ package confighistory
 
 import (
 	"fmt"
+	"hash"
+	"path"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 )
@@ -22,12 +25,15 @@ var logger = flogging.MustGetLogger("confighistory")
 
 const (
 	collectionConfigNamespace = "lscc" // lscc namespace was introduced in version 1.2 and we continue to use this in order to be compatible with existing data
+	snapshotFileFormat        = byte(1)
+	snapshotDataFileName      = "confighistory.data"
+	snapshotMetadataFileName  = "confighistory.metadata"
 )
 
 // Mgr should be registered as a state listener. The state listener builds the history and retriever helps in querying the history
 type Mgr interface {
 	ledger.StateListener
-	GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) ledger.ConfigHistoryRetriever
+	GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) *Retriever
 	Close()
 }
 
@@ -105,8 +111,8 @@ func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 }
 
 // GetRetriever returns an implementation of `ledger.ConfigHistoryRetriever` for the given ledger id.
-func (m *mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) ledger.ConfigHistoryRetriever {
-	return &retriever{
+func (m *mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) *Retriever {
+	return &Retriever{
 		ledgerInfoRetriever:    ledgerInfoRetriever,
 		ledgerID:               ledgerID,
 		deployedCCInfoProvider: m.ccInfoProvider,
@@ -119,7 +125,7 @@ func (m *mgr) Close() {
 	m.dbProvider.Close()
 }
 
-type retriever struct {
+type Retriever struct {
 	ledgerInfoRetriever    LedgerInfoRetriever
 	ledgerID               string
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
@@ -127,7 +133,7 @@ type retriever struct {
 }
 
 // MostRecentCollectionConfigBelow implements function from the interface ledger.ConfigHistoryRetriever
-func (r *retriever) MostRecentCollectionConfigBelow(blockNum uint64, chaincodeName string) (*ledger.CollectionConfigInfo, error) {
+func (r *Retriever) MostRecentCollectionConfigBelow(blockNum uint64, chaincodeName string) (*ledger.CollectionConfigInfo, error) {
 	compositeKV, err := r.dbHandle.mostRecentEntryBelow(blockNum, collectionConfigNamespace, constructCollectionConfigKey(chaincodeName))
 	if err != nil {
 		return nil, err
@@ -141,7 +147,7 @@ func (r *retriever) MostRecentCollectionConfigBelow(blockNum uint64, chaincodeNa
 }
 
 // CollectionConfigAt implements function from the interface ledger.ConfigHistoryRetriever
-func (r *retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*ledger.CollectionConfigInfo, error) {
+func (r *Retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*ledger.CollectionConfigInfo, error) {
 	info, err := r.ledgerInfoRetriever.GetBlockchainInfo()
 	if err != nil {
 		return nil, err
@@ -163,7 +169,67 @@ func (r *retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*
 	return constructCollectionConfigInfo(compositeKV, implicitColls)
 }
 
-func (r *retriever) getImplicitCollection(chaincodeName string) ([]*peer.StaticCollectionConfig, error) {
+// ExportConfigHistory exports configuration history from the confighistoryDB to
+// a file. Currently, we store only one type of configuration in the db, i.e.,
+// private data collection configuration.
+// We write the full key and value stored in the database as is to the file.
+// Though we could decode the key and write a proto message with exact ns, key,
+// block number, and collection config, we store the full key and value to avoid
+// unnecessary encoding and decoding of proto messages.
+// The key format stored in db is "s" + ns + byte(0) + key + "~collection" + byte(0)
+// + blockNum. As we store the key as is, we store 13 extra bytes. For a million
+// records, it would add only 12 MB overhead. Note that the protobuf also adds some
+// extra bytes. Further, the collection config namespace is not expected to have
+// millions of entries.
+func (r *Retriever) ExportConfigHistory(dir string, hasher hash.Hash) (map[string][]byte, error) {
+	dataFileWriter, err := snapshot.CreateFile(path.Join(dir, snapshotDataFileName), snapshotFileFormat, hasher)
+	if err != nil {
+		return nil, err
+	}
+	defer dataFileWriter.Close()
+
+	nsItr := r.dbHandle.getNamespaceIterator(collectionConfigNamespace)
+	if err := nsItr.Error(); err != nil {
+		return nil, errors.Wrap(err, "internal leveldb error while obtaining db iterator")
+
+	}
+	defer nsItr.Release()
+	var numCollectionConfigs uint64 = 0
+	for nsItr.Next() {
+		if err := nsItr.Error(); err != nil {
+			return nil, errors.Wrap(err, "internal leveldb error while iterating for collection config history")
+		}
+		if err := dataFileWriter.EncodeBytes(nsItr.Key()); err != nil {
+			return nil, err
+		}
+		if err := dataFileWriter.EncodeBytes(nsItr.Value()); err != nil {
+			return nil, err
+		}
+		numCollectionConfigs++
+	}
+	dataHash, err := dataFileWriter.Done()
+	if err != nil {
+		return nil, err
+	}
+
+	hasher.Reset()
+	metadataFileWriter, err := snapshot.CreateFile(path.Join(dir, snapshotMetadataFileName), snapshotFileFormat, hasher)
+	if err != nil {
+		return nil, err
+	}
+	defer metadataFileWriter.Close()
+	if err = metadataFileWriter.EncodeUVarint(numCollectionConfigs); err != nil {
+		return nil, err
+	}
+	metadataHash, err := metadataFileWriter.Done()
+
+	return map[string][]byte{
+		snapshotDataFileName:     dataHash,
+		snapshotMetadataFileName: metadataHash,
+	}, nil
+}
+
+func (r *Retriever) getImplicitCollection(chaincodeName string) ([]*peer.StaticCollectionConfig, error) {
 	qe, err := r.ledgerInfoRetriever.NewQueryExecutor()
 	if err != nil {
 		return nil, err

@@ -18,6 +18,7 @@ import (
 const (
 	keyPrefix     = "s"
 	separatorByte = byte(0)
+	nsStopper     = byte(1)
 )
 
 type compositeKey struct {
@@ -97,6 +98,14 @@ func (d *db) entryAt(blockNum uint64, ns, key string) (*compositeKV, error) {
 	}
 	k, v := decodeCompositeKey(keyBytes), valBytes
 	return &compositeKV{k, v}, nil
+}
+
+func (d *db) getNamespaceIterator(ns string) *leveldbhelper.Iterator {
+	nsStartKey := []byte(keyPrefix + ns)
+	nsStartKey = append(nsStartKey, separatorByte)
+	nsEndKey := []byte(keyPrefix + ns)
+	nsEndKey = append(nsEndKey, nsStopper)
+	return d.GetIterator(nsStartKey, nsEndKey)
 }
 
 func encodeCompositeKey(ns, key string, blockNum uint64) []byte {

@@ -12,6 +12,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,6 +67,50 @@ func TestQueries(t *testing.T) {
 	checkEntryAt(t, "testcase-query10", db, "ns1", "key1", 45, nil)
 }
 
+func TestGetNamespaceIterator(t *testing.T) {
+	testDBPath := "/tmp/fabric/core/ledger/confighistory"
+	provider, err := newDBProvider(testDBPath)
+	require.NoError(t, err)
+	defer deleteTestPath(t, testDBPath)
+
+	db := provider.getDB("ledger1")
+	nsItr1 := db.getNamespaceIterator("ns1")
+	require.NoError(t, nsItr1.Error())
+	defer nsItr1.Release()
+	verifyNsEntries(t, nsItr1, nil)
+
+	sampleData := []*compositeKV{
+		{&compositeKey{ns: "ns1", key: "key1", blockNum: 40}, []byte("val1_40")}, // index 0
+		{&compositeKey{ns: "ns1", key: "key1", blockNum: 30}, []byte("val1_30")}, // index 1
+		{&compositeKey{ns: "ns1", key: "key1", blockNum: 20}, []byte("val1_20")}, // index 2
+		{&compositeKey{ns: "ns2", key: "key1", blockNum: 50}, []byte("val1_50")}, // index 3
+		{&compositeKey{ns: "ns2", key: "key1", blockNum: 20}, []byte("val1_20")}, // index 4
+		{&compositeKey{ns: "ns2", key: "key1", blockNum: 10}, []byte("val1_10")}, // index 5
+	}
+	populateDBWithSampleData(t, db, sampleData)
+
+	nsItr2 := db.getNamespaceIterator("ns1")
+	require.NoError(t, nsItr2.Error())
+	defer nsItr2.Release()
+	verifyNsEntries(t, nsItr2, sampleData[:3])
+
+	nsItr3 := db.getNamespaceIterator("ns2")
+	require.NoError(t, nsItr3.Error())
+	defer nsItr3.Release()
+	verifyNsEntries(t, nsItr3, sampleData[3:])
+}
+
+func verifyNsEntries(t *testing.T, nsItr *leveldbhelper.Iterator, expectedEntries []*compositeKV) {
+	var retrievedEntries []*compositeKV
+	for nsItr.Next() {
+		require.NoError(t, nsItr.Error())
+		key := decodeCompositeKey(nsItr.Key())
+		val := make([]byte, len(nsItr.Value()))
+		copy(val, nsItr.Value())
+		retrievedEntries = append(retrievedEntries, &compositeKV{key, val})
+	}
+	require.Equal(t, expectedEntries, retrievedEntries)
+}
 func populateDBWithSampleData(t *testing.T, db *db, sampledata []*compositeKV) {
 	batch := newBatch()
 	for _, data := range sampledata {
