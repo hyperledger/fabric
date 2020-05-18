@@ -19,7 +19,7 @@ import (
 )
 
 // FileWriter creates a new file for ledger snapshot. This is expected to be used by various
-// components of ledger, such as blockstorage and statedb for exporting the relevent snapshot data
+// components of ledger, such as blockstorage and statedb for exporting the relevant snapshot data
 type FileWriter struct {
 	file              *os.File
 	hasher            hash.Hash
@@ -191,6 +191,9 @@ func (r *FileReader) decodeBytes() ([]byte, error) {
 		return nil, err
 	}
 	size := int(sizeUint)
+	if size == 0 {
+		return []byte{}, nil
+	}
 	if len(r.reusableByteSlice) < size {
 		r.reusableByteSlice = make([]byte, size)
 	}

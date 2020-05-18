@@ -31,6 +31,7 @@ func TestFileCreateAndRead(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, fileCreator.EncodeString("Hi there"))
 	require.NoError(t, fileCreator.EncodeString("How are you?"))
+	require.NoError(t, fileCreator.EncodeString("")) // zreo length string
 	require.NoError(t, fileCreator.EncodeUVarint(uint64(25)))
 	require.NoError(t, fileCreator.EncodeProtoMessage(
 		&common.BlockchainInfo{
@@ -40,6 +41,7 @@ func TestFileCreateAndRead(t *testing.T) {
 		},
 	))
 	require.NoError(t, fileCreator.EncodeBytes([]byte("some junk bytes")))
+	require.NoError(t, fileCreator.EncodeBytes([]byte{})) // zreo length slice
 
 	// Done and verify the returned hash
 	dataHash, err := fileCreator.Done()
@@ -62,6 +64,10 @@ func TestFileCreateAndRead(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "How are you?", str)
 
+	str, err = fileReader.DecodeString()
+	require.NoError(t, err)
+	require.Equal(t, "", str)
+
 	number, err := fileReader.DecodeUVarInt()
 	require.NoError(t, err)
 	require.Equal(t, uint64(25), number)
@@ -80,6 +86,10 @@ func TestFileCreateAndRead(t *testing.T) {
 	b, err := fileReader.DecodeBytes()
 	require.NoError(t, err)
 	require.Equal(t, []byte("some junk bytes"), b)
+
+	b, err = fileReader.DecodeBytes()
+	require.NoError(t, err)
+	require.Equal(t, []byte{}, b)
 }
 
 func TestFileCreatorErrorPropagation(t *testing.T) {
