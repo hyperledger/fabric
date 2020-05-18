@@ -340,5 +340,8 @@ func (s *fullDBScanner) Next() (*statedb.CompositeKey, []byte, error) {
 }
 
 func (s *fullDBScanner) Close() {
+	if s == nil {
+		return
+	}
 	s.dbItr.Release()
 }

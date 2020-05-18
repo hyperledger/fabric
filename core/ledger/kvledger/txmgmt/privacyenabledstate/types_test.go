@@ -11,12 +11,14 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
+	flogging.ActivateSpec("privacyenabledstate=debug")
 	exitCode := m.Run()
 	for _, testEnv := range testEnvs {
 		testEnv.StopExternalResource()

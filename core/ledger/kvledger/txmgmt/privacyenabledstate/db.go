@@ -351,6 +351,14 @@ func deriveHashedDataNs(namespace, collection string) string {
 	return namespace + nsJoiner + hashDataPrefix + collection
 }
 
+func isPvtdataNs(namespace string) bool {
+	return strings.Contains(namespace, nsJoiner+pvtDataPrefix)
+}
+
+func isHashedDataNs(namespace string) bool {
+	return strings.Contains(namespace, nsJoiner+hashDataPrefix)
+}
+
 func addPvtUpdates(pubUpdateBatch *PubUpdateBatch, pvtUpdateBatch *PvtUpdateBatch) {
 	for ns, nsBatch := range pvtUpdateBatch.UpdateMap {
 		for _, coll := range nsBatch.GetCollectionNames() {
