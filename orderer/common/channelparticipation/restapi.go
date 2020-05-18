@@ -30,14 +30,14 @@ const (
 //go:generate counterfeiter -o mocks/channel_management.go -fake-name ChannelManagement . ChannelManagement
 
 type ChannelManagement interface {
-	// ListAllChannels returns a slice of ChannelInfoShort containing all application channels (excluding the system
+	// ChannelList returns a slice of ChannelInfoShort containing all application channels (excluding the system
 	// channel), and ChannelInfoShort of the system channel (nil if does not exist).
 	// The URL fields are empty, and are to be completed by the caller.
-	ListAllChannels() types.ChannelList
+	ChannelList() types.ChannelList
 
-	// ListChannel provides extended status information about a channel.
+	// ChannelInfo provides extended status information about a channel.
 	// The URL field is empty, and is to be completed by the caller.
-	ListChannel(channelID string) (types.ChannelInfo, error)
+	ChannelInfo(channelID string) (types.ChannelInfo, error)
 
 	// TODO skeleton
 }
@@ -91,7 +91,7 @@ func (h *HTTPHandler) serveListAll(resp http.ResponseWriter, req *http.Request) 
 		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
 		return
 	}
-	channelList := h.registrar.ListAllChannels()
+	channelList := h.registrar.ChannelList()
 	if channelList.SystemChannel != nil && channelList.SystemChannel.Name != "" {
 		channelList.SystemChannel.URL = path.Join(URLBaseV1Channels, channelList.SystemChannel.Name)
 	}
@@ -119,7 +119,7 @@ func (h *HTTPHandler) serveListOne(resp http.ResponseWriter, req *http.Request) 
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "invalid channel ID"))
 		return
 	}
-	infoFull, err := h.registrar.ListChannel(channelID)
+	infoFull, err := h.registrar.ChannelInfo(channelID)
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusNotFound, err)
 		return

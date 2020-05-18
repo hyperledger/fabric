@@ -134,7 +134,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 			},
 			SystemChannel: &types.ChannelInfoShort{Name: "system-channel", URL: ""},
 		}
-		fakeManager.ListAllChannelsReturns(list)
+		fakeManager.ChannelListReturns(list)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
 		h.ServeHTTP(resp, req)
@@ -160,7 +160,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 			SystemChannel: nil,
 			Channels:      []types.ChannelInfoShort{},
 		}
-		fakeManager.ListAllChannelsReturns(list)
+		fakeManager.ChannelListReturns(list)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
 		h.ServeHTTP(resp, req)
@@ -180,7 +180,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 			SystemChannel: nil,
 			Channels:      nil,
 		}
-		fakeManager.ListAllChannelsReturns(list)
+		fakeManager.ChannelListReturns(list)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
 		h.ServeHTTP(resp, req)
@@ -211,7 +211,7 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 			Height:          3,
 		}
 
-		fakeManager.ListChannelReturns(info, nil)
+		fakeManager.ChannelInfoReturns(info, nil)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel", nil)
 		h.ServeHTTP(resp, req)
@@ -225,7 +225,7 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 	})
 
 	t.Run("channel does not exists", func(t *testing.T) {
-		fakeManager.ListChannelReturns(types.ChannelInfo{}, errors.New("not found"))
+		fakeManager.ChannelInfoReturns(types.ChannelInfo{}, errors.New("not found"))
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel", nil)
 		h.ServeHTTP(resp, req)

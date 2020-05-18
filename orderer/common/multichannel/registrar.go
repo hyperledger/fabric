@@ -372,7 +372,7 @@ func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelco
 	return channelconfig.NewBundle(channelID, config, r.bccsp)
 }
 
-func (r *Registrar) ListAllChannels() types.ChannelList {
+func (r *Registrar) ChannelList() types.ChannelList {
 	//TODO
 	return types.ChannelList{
 		SystemChannel: nil,
@@ -380,7 +380,7 @@ func (r *Registrar) ListAllChannels() types.ChannelList {
 	}
 }
 
-func (r *Registrar) ListChannel(channelID string) (types.ChannelInfo, error) {
+func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 	//TODO
 	return types.ChannelInfo{}, errors.New("Not implemented yet")
 }
