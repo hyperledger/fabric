@@ -1176,7 +1176,7 @@ func (dbclient *couchDatabase) listIndex() ([]*indexResult, error) {
 	}
 
 	dbName := dbclient.dbName
-	logger.Debug("[%s] Entering ListIndex()", dbName)
+	logger.Debugf("[%s] Entering ListIndex()", dbName)
 
 	indexURL, err := url.Parse(dbclient.couchInstance.url())
 	if err != nil {
