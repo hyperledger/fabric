@@ -11,24 +11,23 @@
 set -eu
 
 fabric_dir="$(cd "$(dirname "$0")/.." && pwd)"
-cd ${fabric_dir}
+cd "$fabric_dir"
 
 declare -a test_dirs
-test_dirs=($(
- go list -f '{{if or (len .TestGoFiles | ne 0) (len .XTestGoFiles | ne 0)}}{{println .Dir}}{{end}}' ./... | \
- grep integration | \
- sed "s,${fabric_dir},.,g"
-))
+while IFS='' read -r line; do test_dirs+=("$line"); done < <(
+  go list -f '{{ if or (len .TestGoFiles | ne 0) (len .XTestGoFiles | ne 0) }}{{ println .Dir }}{{ end }}' ./... | \
+    grep integration | \
+    sed s,"${fabric_dir}",.,g
+)
 
 total_agents=${SYSTEM_TOTALJOBSINPHASE:-1}   # standard VSTS variables available using parallel execution; total number of parallel jobs running
 agent_number=${SYSTEM_JOBPOSITIONINPHASE:-1} # current job position
 
 declare -a dirs
-test_count=${#test_dirs[@]}
-for ((i = "$agent_number"; i <= "$test_count"; )); do
+for ((i = "$agent_number"; i <= "${#test_dirs[@]}"; )); do
   dirs+=("${test_dirs[$i - 1]}")
-  i=$((${i} + ${total_agents}))
+  i=$((i + total_agents))
 done
 
-printf "\nRunning the following test suites:\n\n$(echo ${dirs[*]} | tr -s ' ' '\n')\n\nStarting tests...\n\n"
-ginkgo -keepGoing --slowSpecThreshold 60 ${dirs[*]}
+printf "\nRunning the following test suites:\n\n%s\n\nStarting tests...\n\n" "$(echo "${dirs[@]}" | tr -s ' ' '\n')"
+ginkgo -keepGoing --slowSpecThreshold 60 "${dirs[@]}"

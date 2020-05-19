@@ -36,7 +36,7 @@ dockerPull() {
     three_digit_image_tag=$1
     shift
     #two_digit_image_tag is derived, e.g. "1.4", especially useful as a local tag for two digit references to most recent baseos, ccenv, javaenv, nodeenv patch releases
-    two_digit_image_tag=$(echo $three_digit_image_tag | cut -d'.' -f1,2)
+    two_digit_image_tag=$(echo "$three_digit_image_tag" | cut -d'.' -f1,2)
     while [[ $# -gt 0 ]]
     do
         image_name="$1"
