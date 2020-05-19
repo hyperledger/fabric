@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -369,4 +370,17 @@ func (r *Registrar) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfi
 // CreateBundle calls channelconfig.NewBundle
 func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelconfig.Resources, error) {
 	return channelconfig.NewBundle(channelID, config, r.bccsp)
+}
+
+func (r *Registrar) ChannelList() types.ChannelList {
+	//TODO
+	return types.ChannelList{
+		SystemChannel: nil,
+		Channels:      nil,
+	}
+}
+
+func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
+	//TODO
+	return types.ChannelInfo{}, errors.New("Not implemented yet")
 }
