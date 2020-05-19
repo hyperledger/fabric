@@ -118,7 +118,7 @@ few commands.
 
 ::
 
-    make basic-checks docker-test-prereqs
+    make basic-checks integration-test-prereqs
     ginkgo -r ./integration/nwo
 
 If those commands completely successfully, you're ready to Go!
