@@ -183,6 +183,12 @@ func constructCouchDBUrl(connectURL *url.URL, dbName string, pathElements ...str
 
 // constructMetadataDBName truncates the db name to couchdb allowed length to
 // construct the metadataDBName
+// Note:
+// Currently there is a non-deterministic collision between metadataDB and namespaceDB with namespace="".
+// When channel name is not truncated, metadataDB and namespaceDB with namespace="" have the same db name.
+// When channel name is truncated, these two DBs have different db names.
+// We have to deal with this behavior for now. In the future, we may rename metadataDB and
+// migrate the content to avoid the collision.
 func constructMetadataDBName(dbName string) string {
 	if len(dbName) > maxLength {
 		untruncatedDBName := dbName
