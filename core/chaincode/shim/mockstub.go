@@ -200,6 +200,14 @@ func (stub *MockStub) GetPrivateDataQueryResult(collection, query string) (State
 	return nil, errors.New("Not Implemented")
 }
 
+func (stub *MockStub) GetPrivateDataQueryResultWithPagination(collection, query string, pageSize int32,
+	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	// Not implemented since the mock engine does not have a query engine.
+	// However, a very simple query engine that supports string matching
+	// could be implemented to test that the framework supports queries
+	return nil, nil, errors.New("Not Implemented")
+}
+
 // GetState retrieves the value for a given key from the ledger
 func (stub *MockStub) GetState(key string) ([]byte, error) {
 	value := stub.State[key]

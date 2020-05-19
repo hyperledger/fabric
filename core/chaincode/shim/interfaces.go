@@ -310,6 +310,27 @@ type ChaincodeStubInterface interface {
 	// ledger, and should limit use to read-only chaincode operations.
 	GetPrivateDataQueryResult(collection, query string) (StateQueryIteratorInterface, error)
 
+	// GetPrivateDataQueryResultWithPagination performs a "rich" query against a given private
+	// collection. It is only supported for state databases that support rich query,
+	// e.g.CouchDB. The query string is in the native syntax
+	// of the underlying state database. An iterator is returned
+	// which can be used to iterate (next) over the query result set.
+	// When an empty string is passed as a value to the bookmark argument, the returned
+	// iterator can be used to fetch the first `pageSize` of query results.
+	// When the bookmark is a non-empty string, the iterator can be used to fetch
+	// the first `pageSize` keys between the bookmark and the last key in the query result.
+	// Note that only the bookmark present in a prior page of query results (ResponseMetadata)
+	// can be used as a value to the bookmark argument. Otherwise, an empty string
+	// must be passed as bookmark.
+	// The query is NOT re-executed during validation phase, phantom reads are
+	// not detected. That is, other committed transactions may have added,
+	// updated, or removed keys that impact the result set, and this would not
+	// be detected at validation/commit time. Applications susceptible to this
+	// should therefore not use GetQueryResult as part of transactions that update
+	// ledger, and should limit use to read-only chaincode operations.
+	GetPrivateDataQueryResultWithPagination(collection, query string, pageSize int32,
+		bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error)
+
 	// GetCreator returns `SignatureHeader.Creator` (e.g. an identity)
 	// of the `SignedProposal`. This is the identity of the agent (or user)
 	// submitting the transaction.

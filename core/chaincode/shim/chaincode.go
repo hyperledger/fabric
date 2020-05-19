@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/protos/ledger/queryresult"
 	pb "github.com/hyperledger/fabric/protos/peer"
 	"github.com/hyperledger/fabric/protos/utils"
-	logging "github.com/op/go-logging"
+	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -601,6 +601,21 @@ func (stub *ChaincodeStub) GetPrivateDataQueryResult(collection, query string) (
 	iterator, _, err := stub.handleGetQueryResult(collection, query, nil)
 
 	return iterator, err
+}
+
+// GetPrivateDataQueryResultWithPagination documentation can be found in interfaces.go
+func (stub *ChaincodeStub) GetPrivateDataQueryResultWithPagination(collection, query string, pageSize int32,
+	bookmark string) (StateQueryIteratorInterface, *pb.QueryResponseMetadata, error) {
+	if collection == "" {
+		return nil, nil, fmt.Errorf("collection must not be an empty string")
+	}
+
+	metadata, err := createQueryMetadata(pageSize, bookmark)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return stub.handleGetQueryResult(collection, query, metadata)
 }
 
 // GetPrivateDataValidationParameter documentation can be found in interfaces.go
