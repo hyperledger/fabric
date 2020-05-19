@@ -7,40 +7,42 @@
 # This makefile defines the following targets
 #
 #   - all (default) - builds all targets and runs all non-integration tests/checks
+#   - basic-checks - performs basic checks like license, spelling, trailing spaces and linter
+#   - check-deps - check for vendored dependencies that are no longer used
 #   - checks - runs all non-integration tests/checks
-#   - desk-check - runs linters and verify to test changed packages
+#   - clean-all - superset of 'clean' that also removes persistent state
+#   - clean - cleans the build area
 #   - configtxgen - builds a native configtxgen binary
 #   - configtxlator - builds a native configtxlator binary
-#   - cryptogen  -  builds a native cryptogen binary
-#   - idemixgen  -  builds a native idemixgen binary
-#   - peer - builds a native fabric peer binary
-#   - orderer - builds a native fabric orderer binary
-#   - release - builds release packages for the host platform
-#   - release-all - builds release packages for all target platforms
-#   - publish-images - publishes release docker images to nexus3 or docker hub.
-#   - unit-test - runs the go-test based unit tests
-#   - verify - runs unit tests for only the changed package tree
-#   - profile - runs unit tests for all packages in coverprofile mode (slow)
-#   - gotools - installs go tools like golint
-#   - linter - runs all code checks
-#   - check-deps - check for vendored dependencies that are no longer used
-#   - license - checks go source files for Apache license header
-#   - native - ensures all native binaries are available
+#   - cryptogen - builds a native cryptogen binary
+#   - desk-check - runs linters and verify to test changed packages
+#   - dist-clean - clean release packages for all target platforms
 #   - docker[-clean] - ensures all docker images are available[/cleaned]
 #   - docker-list - generates a list of docker images that 'make docker' produces
-#   - peer-docker[-clean] - ensures the peer container is available[/cleaned]
-#   - orderer-docker[-clean] - ensures the orderer container is available[/cleaned]
-#   - tools-docker[-clean] - ensures the tools container is available[/cleaned]
-#   - protos - generate all protobuf artifacts based on .proto files
-#   - clean - cleans the build area
-#   - clean-all - superset of 'clean' that also removes persistent state
-#   - dist-clean - clean release packages for all target platforms
-#   - unit-test-clean - cleans unit test state (particularly from docker)
-#   - basic-checks - performs basic checks like license, spelling, trailing spaces and linter
-#   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
+#   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
+#   - gotools - installs go tools like golint
 #   - help-docs - generate the command reference docs
+#   - idemixgen - builds a native idemixgen binary
+#   - integration-test-prereqs - setup prerequisites for integration tests
+#   - integration-test - runs the integration tests
+#   - license - checks go source files for Apache license header
+#   - linter - runs all code checks
+#   - native - ensures all native binaries are available
+#   - orderer - builds a native fabric orderer binary
+#   - orderer-docker[-clean] - ensures the orderer container is available[/cleaned]
+#   - peer - builds a native fabric peer binary
+#   - peer-docker[-clean] - ensures the peer container is available[/cleaned]
+#   - profile - runs unit tests for all packages in coverprofile mode (slow)
+#   - protos - generate all protobuf artifacts based on .proto files
+#   - publish-images - publishes release docker images to nexus3 or docker hub.
+#   - release-all - builds release packages for all target platforms
+#   - release - builds release packages for the host platform
+#   - tools-docker[-clean] - ensures the tools container is available[/cleaned]
+#   - unit-test-clean - cleans unit test state (particularly from docker)
+#   - unit-test - runs the go-test based unit tests
+#   - verify - runs unit tests for only the changed package tree
 
 ALPINE_VER ?= 3.11
 BASE_VERSION = 2.2.0
@@ -135,8 +137,11 @@ check-go-version:
 	@scripts/check_go_version.sh $(GO_VER)
 
 .PHONY: integration-test
-integration-test: gotool.ginkgo baseos-docker ccenv-docker docker-thirdparty
+integration-test: integration-test-prereqs
 	./scripts/run-integration-tests.sh
+
+.PHONY: integration-test-prereqs
+integration-test-prereqs: gotool.ginkgo baseos-docker ccenv-docker docker-thirdparty
 
 .PHONY: unit-test
 unit-test: unit-test-clean docker-thirdparty-couchdb
