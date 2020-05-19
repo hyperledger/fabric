@@ -36,9 +36,13 @@ type ChannelInfo struct {
 	Name string `json:"name"`
 	// The channel relative URL (no Host:Port, only path), e.g.: "/participation/v1/channels/my-channel".
 	URL string `json:"url"`
-	// Whether the orderer is a “member” or ”follower” of the cluster, for this channel. Case insensitive.
+	// Whether the orderer is a “member” or ”follower” of the cluster, or "config-tracker" of the cluster, for this channel.
+	// For non cluster consensus types (solo, kafka) it is "none".
+	// Possible values:  “member”, ”follower”, "config-tracker", "none".
 	ClusterRelation string `json:"clusterRelation"`
-	// Whether the orderer is ”onboarding” or ”active”, for this channel. Case insensitive.
+	// Whether the orderer is ”onboarding”, ”active”, or "inactive", for this channel.
+	// For non cluster consensus types (solo, kafka) it is "active".
+	// Possible values:  “onboarding”, ”active”, "inactive".
 	Status string `json:"status"`
 	// Current block height.
 	Height uint64 `json:"height"`

@@ -202,6 +202,9 @@ var _ = Describe("Chain", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			chain.Start()
+			cRel, status := chain.StatusReport()
+			Expect(cRel).To(Equal("member"))
+			Expect(status).To(Equal("active"))
 
 			// When the Raft node bootstraps, it produces a ConfChange
 			// to add itself, which needs to be consumed with Ready().

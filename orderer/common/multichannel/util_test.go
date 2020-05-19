@@ -23,16 +23,33 @@ import (
 )
 
 type mockConsenter struct {
+	cluster bool
 }
 
 func (mc *mockConsenter) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
-	return &mockChain{
+	chain := &mockChain{
 		queue:    make(chan *cb.Envelope),
 		cutter:   support.BlockCutter(),
 		support:  support,
 		metadata: metadata,
 		done:     make(chan struct{}),
-	}, nil
+	}
+
+	if mc.cluster {
+		clusterChain := &mockChainCluster{}
+		clusterChain.mockChain = chain
+		return clusterChain, nil
+	}
+
+	return chain, nil
+}
+
+type mockChainCluster struct {
+	*mockChain
+}
+
+func (c *mockChainCluster) StatusReport() (string, string) {
+	return "mock", "test"
 }
 
 type mockChain struct {

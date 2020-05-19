@@ -19,5 +19,5 @@ var ErrChannelAlreadyExists = errors.New("channel already exists")
 // already exist.
 var ErrAppChannelsAlreadyExists = errors.New("application channels already exist")
 
-// This error is returned when trying to remove a channel that does not exist
+// This error is returned when trying to remove or list a channel that does not exist
 var ErrChannelNotExist = errors.New("channel does not exist")

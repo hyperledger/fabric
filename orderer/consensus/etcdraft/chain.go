@@ -1315,6 +1315,11 @@ func (c *Chain) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []b
 	return nil
 }
 
+// StatusReport returns the ClusterRelation & Status
+func (c *Chain) StatusReport() (string, string) {
+	return "member", "active"
+}
+
 func (c *Chain) suspectEviction() bool {
 	if c.isRunning() != nil {
 		return false
