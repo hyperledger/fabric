@@ -54,7 +54,7 @@ func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) er
 
 var m sync.Mutex
 var localMsp msp.MSP
-var mspMap map[string]msp.MSPManager = make(map[string]msp.MSPManager)
+var mspMap = make(map[string]msp.MSPManager)
 var mspLogger = flogging.MustGetLogger("msp")
 
 // TODO - this is a temporary solution to allow the peer to track whether the
