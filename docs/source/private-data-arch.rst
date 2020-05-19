@@ -234,6 +234,7 @@ And for the CouchDB state database, JSON content queries can be passed using the
 shim API:
 
 * ``GetPrivateDataQueryResult(collection, query string)``
+* ``GetPrivateDataQueryResultWithPagination(collection, query string, pageSize int32, bookmark string)
 
 Limitations:
 
