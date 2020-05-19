@@ -29,6 +29,7 @@ function filterExcludedAndGeneratedFiles {
         '_sk$'
         '\.tx$'
         '\.txt$'
+        '^NOTICE$'
         '(^|/)testdata\/'
         '(^|/)vendor\/'
         '(^|/)Pipfile$'
