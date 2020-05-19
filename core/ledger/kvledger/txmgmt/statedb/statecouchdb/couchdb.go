@@ -1814,12 +1814,16 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 		// If the maxRetries is greater than 0, then log the retry info
 		if maxRetries > 0 {
 
+			retryMessage := fmt.Sprintf("Retrying couchdb request in %s", waitDuration)
+			if attempts == maxRetries {
+				retryMessage = "Retries exhausted"
+			}
+
 			//if this is an unexpected golang http error, log the error and retry
 			if errResp != nil {
 
 				//Log the error with the retry count and continue
-				logger.Warningf("Retrying couchdb request in %s. Attempt:%v  Error:%v",
-					waitDuration.String(), attempts+1, errResp.Error())
+				logger.Warningf("Attempt %d of %d returned error: %s. %s", attempts+1, maxRetries+1, errResp.Error(), retryMessage)
 
 				//otherwise this is an unexpected 500 error from CouchDB. Log the error and retry.
 			} else {
@@ -1838,12 +1842,14 @@ func (couchInstance *couchInstance) handleRequest(ctx context.Context, method, d
 				}
 
 				//Log the 500 error with the retry count and continue
-				logger.Warningf("Retrying couchdb request in %s. Attempt:%v  Couch DB Error:%s,  Status Code:%v  Reason:%v",
-					waitDuration.String(), attempts+1, couchDBReturn.Error, resp.Status, couchDBReturn.Reason)
+				logger.Warningf("Attempt %d of %d returned Couch DB Error:%s,  Status Code:%v  Reason:%s. %s",
+					attempts+1, maxRetries+1, couchDBReturn.Error, resp.Status, couchDBReturn.Reason, retryMessage)
 
 			}
-			//sleep for specified sleep time, then retry
-			time.Sleep(waitDuration)
+			//if there are more retries remaining, sleep for specified sleep time, then retry
+			if attempts < maxRetries {
+				time.Sleep(waitDuration)
+			}
 
 			//backoff, doubling the retry time for next attempt
 			waitDuration *= 2
