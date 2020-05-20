@@ -607,7 +607,7 @@ func testutilNewProvider(conf *lgr.Config, t *testing.T, ccInfoProvider *mock.De
 			DeployedChaincodeInfoProvider: ccInfoProvider,
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
-			Hasher:                        cryptoProvider,
+			HashProvider:                  cryptoProvider,
 		},
 	)
 	require.NoError(t, err, "Failed to create new Provider")

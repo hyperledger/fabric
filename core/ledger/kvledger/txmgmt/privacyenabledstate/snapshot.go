@@ -26,7 +26,7 @@ const (
 // contains the exported public state and the files private_state_hashes.data and private_state_hashes.data contain the exported private state hashes.
 // The file format for public state and the private state hashes are the same. The data files contains a series of tuple <key,value> and the metadata
 // files contains a series of tuple <namespace, num entries for the namespace in the data file>.
-func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHasher func() hash.Hash) (map[string][]byte, error) {
+func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.NewHashFunc) (map[string][]byte, error) {
 	itr, dbValueFormat, err := s.GetFullScanIterator(isPvtdataNs)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHasher func() hash.H
 		path.Join(dir, pubStateDataFileName),
 		path.Join(dir, pubStateMetadataFileName),
 		dbValueFormat,
-		newHasher,
+		newHashFunc,
 	)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHasher func() hash.H
 		path.Join(dir, pvtStateHashesFileName),
 		path.Join(dir, pvtStateHashesMetadataFileName),
 		dbValueFormat,
-		newHasher,
+		newHashFunc,
 	)
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ type snapshotWriter struct {
 func newSnapshotWriter(
 	dataFilePath, metadataFilePath string,
 	dbValueFormat byte,
-	newHasher func() hash.Hash,
+	newHash func() (hash.Hash, error),
 ) (*snapshotWriter, error) {
 
 	var dataFile, metadataFile *snapshot.FileWriter
@@ -115,7 +115,7 @@ func newSnapshotWriter(
 		}
 	}()
 
-	dataFile, err = snapshot.CreateFile(dataFilePath, snapshotFileFormat, newHasher())
+	dataFile, err = snapshot.CreateFile(dataFilePath, snapshotFileFormat, newHash)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func newSnapshotWriter(
 		return nil, err
 	}
 
-	metadataFile, err = snapshot.CreateFile(metadataFilePath, snapshotFileFormat, newHasher())
+	metadataFile, err = snapshot.CreateFile(metadataFilePath, snapshotFileFormat, newHash)
 	if err != nil {
 		return nil, err
 	}

@@ -9,6 +9,7 @@ package confighistory
 import (
 	"crypto/sha256"
 	"fmt"
+	"hash"
 	"io/ioutil"
 	"math"
 	"os"
@@ -24,6 +25,12 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+)
+
+var (
+	testNewHashFunc = func() (hash.Hash, error) {
+		return sha256.New(), nil
+	}
 )
 
 func TestMain(m *testing.M) {
@@ -297,8 +304,9 @@ func newTestEnvForSnapshot(t *testing.T) *testEnvForSnapshot {
 func TestExportConfigHistory(t *testing.T) {
 	env := newTestEnvForSnapshot(t)
 	defer env.cleanup()
+
 	// config history database is empty
-	fileHashes, err := env.retriever.ExportConfigHistory(env.testSnapshotDir, sha256.New())
+	fileHashes, err := env.retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 	verifyExportedConfigHistory(t, env.testSnapshotDir, fileHashes, nil)
 	os.Remove(path.Join(env.testSnapshotDir, snapshotDataFileName))
@@ -321,7 +329,7 @@ func TestExportConfigHistory(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, dbHandle.writeBatch(batch, true))
 
-	fileHashes, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, sha256.New())
+	fileHashes, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 	cc1configBytes, err := proto.Marshal(cc1collConfigPackage)
 	require.NoError(t, err)
@@ -354,7 +362,7 @@ func TestExportConfigHistory(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, dbHandle.writeBatch(batch, true))
 
-	fileHashes, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, sha256.New())
+	fileHashes, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 
 	cc1configBytesNew, err := proto.Marshal(cc1collConfigPackageNew)
@@ -422,7 +430,7 @@ func TestExportConfigHistoryErrorCase(t *testing.T) {
 	dataFilePath := path.Join(env.testSnapshotDir, snapshotDataFileName)
 	_, err := os.Create(dataFilePath)
 	require.NoError(t, err)
-	_, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, sha256.New())
+	_, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 	require.Contains(t, err.Error(), "error while creating the snapshot file: "+dataFilePath)
 	os.RemoveAll(env.testSnapshotDir)
 
@@ -431,14 +439,14 @@ func TestExportConfigHistoryErrorCase(t *testing.T) {
 	metadataFilePath := path.Join(env.testSnapshotDir, snapshotMetadataFileName)
 	_, err = os.Create(metadataFilePath)
 	require.NoError(t, err)
-	_, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, sha256.New())
+	_, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 	require.Contains(t, err.Error(), "error while creating the snapshot file: "+metadataFilePath)
 	os.RemoveAll(env.testSnapshotDir)
 
 	// error while reading from leveldb
 	require.NoError(t, os.MkdirAll(env.testSnapshotDir, 0700))
 	env.mgr.dbProvider.Close()
-	_, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, sha256.New())
+	_, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 	require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
 	os.RemoveAll(env.testSnapshotDir)
 }

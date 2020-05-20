@@ -36,7 +36,7 @@ func TestStateListener(t *testing.T) {
 			StateListeners:                []ledger.StateListener{mockListener},
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
-			Hasher:                        cryptoProvider,
+			HashProvider:                  cryptoProvider,
 		},
 	)
 	if err != nil {
@@ -107,7 +107,7 @@ func TestStateListener(t *testing.T) {
 			StateListeners:                []ledger.StateListener{mockListener},
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
-			Hasher:                        cryptoProvider,
+			HashProvider:                  cryptoProvider,
 		},
 	)
 	if err != nil {

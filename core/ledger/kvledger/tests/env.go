@@ -53,7 +53,7 @@ func newEnv(t *testing.T) *env {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 	return newEnvWithInitializer(t, &ledgermgmt.Initializer{
-		Hasher: cryptoProvider,
+		HashProvider: cryptoProvider,
 		EbMetadataProvider: &externalbuilder.MetadataProvider{
 			DurablePath: "testdata",
 		},

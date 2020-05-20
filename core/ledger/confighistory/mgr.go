@@ -8,7 +8,6 @@ package confighistory
 
 import (
 	"fmt"
-	"hash"
 	"path"
 
 	"github.com/golang/protobuf/proto"
@@ -181,8 +180,8 @@ func (r *Retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*
 // records, it would add only 12 MB overhead. Note that the protobuf also adds some
 // extra bytes. Further, the collection config namespace is not expected to have
 // millions of entries.
-func (r *Retriever) ExportConfigHistory(dir string, hasher hash.Hash) (map[string][]byte, error) {
-	dataFileWriter, err := snapshot.CreateFile(path.Join(dir, snapshotDataFileName), snapshotFileFormat, hasher)
+func (r *Retriever) ExportConfigHistory(dir string, newHashFunc snapshot.NewHashFunc) (map[string][]byte, error) {
+	dataFileWriter, err := snapshot.CreateFile(path.Join(dir, snapshotDataFileName), snapshotFileFormat, newHashFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -212,8 +211,7 @@ func (r *Retriever) ExportConfigHistory(dir string, hasher hash.Hash) (map[strin
 		return nil, err
 	}
 
-	hasher.Reset()
-	metadataFileWriter, err := snapshot.CreateFile(path.Join(dir, snapshotMetadataFileName), snapshotFileFormat, hasher)
+	metadataFileWriter, err := snapshot.CreateFile(path.Join(dir, snapshotMetadataFileName), snapshotFileFormat, newHashFunc)
 	if err != nil {
 		return nil, err
 	}

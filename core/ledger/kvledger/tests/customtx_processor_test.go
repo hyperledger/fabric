@@ -31,7 +31,7 @@ func TestReadWriteCustomTxProcessor(t *testing.T) {
 			CustomTxProcessors: map[common.HeaderType]ledger.CustomTxProcessor{
 				100: fakeTxProcessor,
 			},
-			Hasher: cryptoProvider,
+			HashProvider: cryptoProvider,
 		},
 	)
 	defer env.cleanup()
@@ -84,7 +84,7 @@ func TestRangeReadAndWriteCustomTxProcessor(t *testing.T) {
 				102: fakeTxProcessor2,
 				103: fakeTxProcessor3,
 			},
-			Hasher: cryptoProvider,
+			HashProvider: cryptoProvider,
 		},
 	)
 	defer env.cleanup()

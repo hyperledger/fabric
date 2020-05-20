@@ -22,6 +22,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	testNewHashFunc = func() (hash.Hash, error) {
+		return sha256.New(), nil
+	}
+)
+
 func TestSnapshot(t *testing.T) {
 	for _, env := range testEnvs {
 		if _, ok := env.(*LevelDBTestEnv); !ok {
@@ -119,10 +125,7 @@ func testSnapshotWithSampleData(t *testing.T, env TestEnv,
 		os.RemoveAll(snapshotDir)
 	}()
 
-	newHasher := func() hash.Hash {
-		return sha256.New()
-	}
-	filesAndHashes, err := db.ExportPubStateAndPvtStateHashes(snapshotDir, newHasher)
+	filesAndHashes, err := db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 	require.Len(t, filesAndHashes, 4)
 	require.Contains(t, filesAndHashes, pubStateDataFileName)
@@ -208,10 +211,6 @@ func TestSnapshotErrorPropagation(t *testing.T) {
 	var db *DB
 	var cleanup func()
 	var err error
-	newHasher := func() hash.Hash {
-		return sha256.New()
-	}
-
 	init := func() {
 		dbEnv = &LevelDBTestEnv{}
 		dbEnv.Init(t)
@@ -238,7 +237,7 @@ func TestSnapshotErrorPropagation(t *testing.T) {
 	pubStateDataFilePath := path.Join(snapshotDir, pubStateDataFileName)
 	_, err = os.Create(pubStateDataFilePath)
 	require.NoError(t, err)
-	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, newHasher)
+	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 	require.Contains(t, err.Error(), "error while creating the snapshot file: "+pubStateDataFilePath)
 
 	// pubStateMetadataFile already exists
@@ -246,7 +245,7 @@ func TestSnapshotErrorPropagation(t *testing.T) {
 	pubStateMetadataFilePath := path.Join(snapshotDir, pubStateMetadataFileName)
 	_, err = os.Create(pubStateMetadataFilePath)
 	require.NoError(t, err)
-	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, newHasher)
+	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 	require.Contains(t, err.Error(), "error while creating the snapshot file: "+pubStateMetadataFilePath)
 
 	// pvtStateHashesDataFile already exists
@@ -254,7 +253,7 @@ func TestSnapshotErrorPropagation(t *testing.T) {
 	pvtStateHashesDataFilePath := path.Join(snapshotDir, pvtStateHashesFileName)
 	_, err = os.Create(pvtStateHashesDataFilePath)
 	require.NoError(t, err)
-	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, newHasher)
+	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 	require.Contains(t, err.Error(), "error while creating the snapshot file: "+pvtStateHashesDataFilePath)
 
 	// pvtStateHashesMetadataFile already exists
@@ -262,11 +261,11 @@ func TestSnapshotErrorPropagation(t *testing.T) {
 	pvtStateHashesMetadataFilePath := path.Join(snapshotDir, pvtStateHashesMetadataFileName)
 	_, err = os.Create(pvtStateHashesMetadataFilePath)
 	require.NoError(t, err)
-	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, newHasher)
+	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 	require.Contains(t, err.Error(), "error while creating the snapshot file: "+pvtStateHashesMetadataFilePath)
 
 	reinit()
 	dbEnv.provider.Close()
-	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, newHasher)
+	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 	require.Contains(t, err.Error(), "internal leveldb error while obtaining db iterator:")
 }

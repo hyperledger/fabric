@@ -426,7 +426,7 @@ func serve(args []string) error {
 			HealthCheckRegistry:             opsSystem,
 			StateListeners:                  []ledger.StateListener{lifecycleCache},
 			Config:                          ledgerConfig(),
-			Hasher:                          factory.GetDefault(),
+			HashProvider:                    factory.GetDefault(),
 			EbMetadataProvider:              ebMetadataProvider,
 		},
 	)
