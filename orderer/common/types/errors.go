@@ -18,3 +18,6 @@ var ErrChannelAlreadyExists = errors.New("channel already exists")
 // This error is returned when trying to join a system channel (that does not exist) when application channels
 // already exist.
 var ErrAppChannelsAlreadyExists = errors.New("application channels already exist")
+
+// This error is returned when trying to remove a channel that does not exist
+var ErrChannelNotExist = errors.New("channel does not exist")
