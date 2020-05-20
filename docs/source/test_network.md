@@ -493,7 +493,7 @@ establishes the identity's role and membership in the organization that operated
 the CA. You can use the following command to examine the MSP folder of the Org1
 admin user:
 ```
-tree organizations/peerOrganizations/org1.example.com/users/Admin/@org1.example.com/
+tree organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/
 ```
 The command will reveal the MSP folder structure and configuration file:
 ```
