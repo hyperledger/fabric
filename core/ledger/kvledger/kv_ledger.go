@@ -44,7 +44,7 @@ type kvLedger struct {
 	pvtdataStore           *pvtdatastorage.Store
 	txtmgmt                txmgr.TxMgr
 	historyDB              *history.DB
-	configHistoryRetriever ledger.ConfigHistoryRetriever
+	configHistoryRetriever *confighistory.Retriever
 	blockAPIsRWLock        *sync.RWMutex
 	stats                  *ledgerStats
 	commitHash             []byte
