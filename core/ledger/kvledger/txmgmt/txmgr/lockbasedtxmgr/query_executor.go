@@ -36,11 +36,15 @@ type queryExecutor struct {
 	itrs              []*resultsItr
 	err               error
 	doneInvoked       bool
-	hasher            ledger.Hasher
+	hasher            rwsetutil.HashFunc
 	txid              string
 }
 
-func newQueryExecutor(txmgr *LockBasedTxMgr, txid string, rwsetBuilder *rwsetutil.RWSetBuilder, performCollCheck bool, hasher ledger.Hasher) *queryExecutor {
+func newQueryExecutor(txmgr *LockBasedTxMgr,
+	txid string,
+	rwsetBuilder *rwsetutil.RWSetBuilder,
+	performCollCheck bool,
+	hashFunc rwsetutil.HashFunc) *queryExecutor {
 	logger.Debugf("constructing new query executor txid = [%s]", txid)
 	qe := &queryExecutor{}
 	qe.txid = txid
@@ -49,7 +53,7 @@ func newQueryExecutor(txmgr *LockBasedTxMgr, txid string, rwsetBuilder *rwsetuti
 		qe.collectReadset = true
 		qe.rwsetBuilder = rwsetBuilder
 	}
-	qe.hasher = hasher
+	qe.hasher = hashFunc
 	validator := newCollNameValidator(txmgr.ledgerid, txmgr.ccInfoProvider, qe, !performCollCheck)
 	qe.collNameValidator = validator
 	return qe
@@ -394,7 +398,8 @@ type resultsItr struct {
 }
 
 func newResultsItr(ns string, startKey string, endKey string, pageSize int32,
-	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool, maxDegree uint32, hasher ledger.Hasher) (*resultsItr, error) {
+	db statedb.VersionedDB, rwsetBuilder *rwsetutil.RWSetBuilder, enableHashing bool,
+	maxDegree uint32, hashFunc rwsetutil.HashFunc) (*resultsItr, error) {
 	var err error
 	var dbItr statedb.ResultsIterator
 	if pageSize == 0 {
@@ -412,7 +417,7 @@ func newResultsItr(ns string, startKey string, endKey string, pageSize int32,
 		itr.endKey = endKey
 		// just set the StartKey... set the EndKey later below in the Next() method.
 		itr.rangeQueryInfo = &kvrwset.RangeQueryInfo{StartKey: startKey}
-		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelper(enableHashing, maxDegree, hasher)
+		resultsHelper, err := rwsetutil.NewRangeQueryResultsHelper(enableHashing, maxDegree, hashFunc)
 		if err != nil {
 			return nil, err
 		}

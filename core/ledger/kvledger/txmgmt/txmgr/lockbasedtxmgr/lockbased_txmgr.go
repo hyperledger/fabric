@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/pvtstatepurgemgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/queryutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
@@ -42,7 +43,7 @@ type LockBasedTxMgr struct {
 	commitRWLock        sync.RWMutex
 	oldBlockCommit      sync.Mutex
 	current             *current
-	hasher              ledger.Hasher
+	hashFunc            rwsetutil.HashFunc
 }
 
 // pvtdataPurgeMgr wraps the actual purge manager and an additional flag 'usedOnce'
@@ -74,13 +75,13 @@ type Initializer struct {
 	BookkeepingProvider bookkeeping.Provider
 	CCInfoProvider      ledger.DeployedChaincodeInfoProvider
 	CustomTxProcessors  map[common.HeaderType]ledger.CustomTxProcessor
-	Hasher              ledger.Hasher
+	HashFunc            rwsetutil.HashFunc
 }
 
 // NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
 func NewLockBasedTxMgr(initializer *Initializer) (*LockBasedTxMgr, error) {
 
-	if initializer.Hasher == nil {
+	if initializer.HashFunc == nil {
 		return nil, errors.New("create new lock based TxMgr failed: passed in nil ledger hasher")
 	}
 
@@ -90,7 +91,7 @@ func NewLockBasedTxMgr(initializer *Initializer) (*LockBasedTxMgr, error) {
 		db:             initializer.DB,
 		stateListeners: initializer.StateListeners,
 		ccInfoProvider: initializer.CCInfoProvider,
-		hasher:         initializer.Hasher,
+		hashFunc:       initializer.HashFunc,
 	}
 	pvtstatePurgeMgr, err := pvtstatepurgemgmt.InstantiatePurgeMgr(
 		initializer.LedgerID,
@@ -105,7 +106,7 @@ func NewLockBasedTxMgr(initializer *Initializer) (*LockBasedTxMgr, error) {
 		txmgr,
 		initializer.DB,
 		initializer.CustomTxProcessors,
-		initializer.Hasher)
+		initializer.HashFunc)
 	return txmgr, nil
 }
 
@@ -117,7 +118,7 @@ func (txmgr *LockBasedTxMgr) GetLastSavepoint() (*version.Height, error) {
 
 // NewQueryExecutor implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, txid, nil, true, txmgr.hasher)
+	qe := newQueryExecutor(txmgr, txid, nil, true, txmgr.hashFunc)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
@@ -133,7 +134,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutor(txid string) (ledger.QueryExecutor
 // querying the ledger state so that the sequence of initialization is explicitly controlled.
 // However that needs a bigger refactoring of code.
 func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecutor, error) {
-	qe := newQueryExecutor(txmgr, "", nil, false, txmgr.hasher)
+	qe := newQueryExecutor(txmgr, "", nil, false, txmgr.hashFunc)
 	txmgr.commitRWLock.RLock()
 	return qe, nil
 }
@@ -141,7 +142,7 @@ func (txmgr *LockBasedTxMgr) NewQueryExecutorNoCollChecks() (ledger.QueryExecuto
 // NewTxSimulator implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, error) {
 	logger.Debugf("constructing new tx simulator")
-	s, err := newTxSimulator(txmgr, txid, txmgr.hasher)
+	s, err := newTxSimulator(txmgr, txid, txmgr.hashFunc)
 	if err != nil {
 		return nil, err
 	}

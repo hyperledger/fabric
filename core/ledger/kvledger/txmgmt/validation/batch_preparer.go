@@ -41,14 +41,14 @@ func NewCommitBatchPreparer(
 	txmgr txmgr.TxMgr,
 	db *privacyenabledstate.DB,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
-	hasher ledger.Hasher,
+	hashFunc rwsetutil.HashFunc,
 ) *CommitBatchPreparer {
 	return &CommitBatchPreparer{
 		txmgr,
 		db,
 		&validator{
-			db:     db,
-			hasher: hasher,
+			db:       db,
+			hashFunc: hashFunc,
 		},
 		customTxProcessors,
 	}
