@@ -12,11 +12,9 @@ Maintainers
 | Chris Ferris | [christo4ferris][christo4ferris] | cbf | <chris.ferris@gmail.com>
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Jay Guo | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
-| Jonathan Levi | [hacera][hacera] |JonathanLevi | <jonathan@hacera.com>
 | Jason Yellick | [jyellick][jyellick] | jyellick | <jyellick@us.ibm.com>
 | Manish Sethi | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
 | Gari Singh | [mastersingh24][mastersingh24] | mastersingh24 | <gari.r.singh@gmail.com>
-| Srinivasan Muralidharan | [muralisrini][muralisrini] | muralisr | <srinivasan.muralidharan99@gmail.com>
 | Matthew Sykes | [sykesm][sykesm] | sykesm | <sykesmat@us.ibm.com>
 | Yacov Manevich | [yacovm][yacovm] | yacovm | <yacovm@il.ibm.com>
 
@@ -46,9 +44,11 @@ Maintainers
 | Binh Nguyen | [binhn][binhn] | binhn | <binh1010010110@gmail.com>
 | Gabor Hosszu | [gabre][gabre] | hgabor | <gabor@digitalasset.com>
 | Greg Haskins | [ghaskins][ghaskins] | ghaskins | <gregory.haskins@gmail.com>
+| Jonathan Levi | [hacera][hacera] |JonathanLevi | <jonathan@hacera.com>
 | Yaoguo Jiang | [jiangyaoguo][jiangyaoguo] | jiangyaoguo | <jiangyaoguo@gmail.com>
 | Jim Zhang | [jimthematrix][jimthematrix] | jimthematrix | <jim_the_matrix@hotmail.com>
 | Kostas Christidis | [kchristidis][kchristidis] | kostas | <kostas@gmail.com>
+| Srinivasan Muralidharan | [muralisrini][muralisrini] | muralisr | <srinivasan.muralidharan99@gmail.com>
 | Keith Smith | [smithbk][smithbk] | smithbk | <bksmith@us.ibm.com>
 | Sheehan Anderson | [srderson][srderson] | sheehan | <sranderson@gmail.com>
 | Tamas Blummer | [tamasblummer][tamasblummer] | tamas | <tamas@digitalasset.com>
