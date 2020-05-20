@@ -15,6 +15,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
@@ -35,6 +36,10 @@ import (
 )
 
 var logger = flogging.MustGetLogger("kvledger")
+
+var (
+	rwsetHashOpts = &bccsp.SHA256Opts{}
+)
 
 // kvLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
@@ -91,7 +96,9 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 		BookkeepingProvider: initializer.bookkeeperProvider,
 		CCInfoProvider:      initializer.ccInfoProvider,
 		CustomTxProcessors:  initializer.customTxProcessors,
-		Hasher:              initializer.hasher,
+		HashFunc: func(data []byte) (hashsum []byte, err error) {
+			return initializer.hasher.Hash(data, rwsetHashOpts)
+		},
 	}
 	if err := l.initTxMgr(txmgrInitializer); err != nil {
 		return nil, err

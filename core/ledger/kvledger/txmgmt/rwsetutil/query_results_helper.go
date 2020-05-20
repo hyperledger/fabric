@@ -11,8 +11,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 )
 
@@ -26,9 +24,9 @@ const (
 	leafLevel = MerkleTreeLevel(1)
 )
 
-var (
-	hashOpts = &bccsp.SHA256Opts{}
-)
+// HashFunc - the function signature for the hash function that is used in building and validating
+// the merkle tree in the rwset, for the range query results
+type HashFunc func(data []byte) (hashsum []byte, err error)
 
 // RangeQueryResultsHelper helps preparing range query results for phantom items detection during validation.
 // The results are expected to be fed as they are being iterated over.
@@ -55,21 +53,21 @@ type RangeQueryResultsHelper struct {
 	mt             *merkleTree
 	maxDegree      uint32
 	hashingEnabled bool
-	hasher         ledger.Hasher
+	hashFunc       HashFunc
 }
 
 // NewRangeQueryResultsHelper constructs a RangeQueryResultsHelper
-func NewRangeQueryResultsHelper(enableHashing bool, maxDegree uint32, hasher ledger.Hasher) (*RangeQueryResultsHelper, error) {
+func NewRangeQueryResultsHelper(enableHashing bool, maxDegree uint32, hashFunc HashFunc) (*RangeQueryResultsHelper, error) {
 	helper := &RangeQueryResultsHelper{
 		pendingResults: nil,
 		hashingEnabled: enableHashing,
 		maxDegree:      maxDegree,
 		mt:             nil,
-		hasher:         hasher,
+		hashFunc:       hashFunc,
 	}
 	if enableHashing {
 		var err error
-		if helper.mt, err = newMerkleTree(maxDegree, hasher); err != nil {
+		if helper.mt, err = newMerkleTree(maxDegree, hashFunc); err != nil {
 			return nil, err
 		}
 	}
@@ -130,7 +128,7 @@ func (helper *RangeQueryResultsHelper) processPendingResults() error {
 		return err
 	}
 	helper.pendingResults = nil
-	hash, err := helper.hasher.Hash(b, hashOpts)
+	hash, err := helper.hashFunc(b)
 	if err != nil {
 		return err
 	}
@@ -148,10 +146,10 @@ type merkleTree struct {
 	tree      map[MerkleTreeLevel][]Hash
 	maxLevel  MerkleTreeLevel
 	maxDegree uint32
-	hasher    ledger.Hasher
+	hashFunc  HashFunc
 }
 
-func newMerkleTree(maxDegree uint32, hasher ledger.Hasher) (*merkleTree, error) {
+func newMerkleTree(maxDegree uint32, hashFunc HashFunc) (*merkleTree, error) {
 	if maxDegree < 2 {
 		return nil, errors.Errorf("maxDegree [%d] should not be less than 2 in the merkle tree", maxDegree)
 	}
@@ -159,7 +157,7 @@ func newMerkleTree(maxDegree uint32, hasher ledger.Hasher) (*merkleTree, error) 
 		make(map[MerkleTreeLevel][]Hash),
 		1,
 		maxDegree,
-		hasher,
+		hashFunc,
 	}, nil
 }
 
@@ -176,7 +174,7 @@ func (m *merkleTree) update(nextLeafLevelHash Hash) error {
 		if uint32(len(currentLevelHashes)) <= m.maxDegree {
 			return nil
 		}
-		nextLevelHash, err := computeCombinedHash(currentLevelHashes, m.hasher)
+		nextLevelHash, err := computeCombinedHash(currentLevelHashes, m.hashFunc)
 		if err != nil {
 			return err
 		}
@@ -208,7 +206,7 @@ func (m *merkleTree) done() error {
 		case 1:
 			h = currentLevelHashes[0]
 		default:
-			if h, err = computeCombinedHash(currentLevelHashes, m.hasher); err != nil {
+			if h, err = computeCombinedHash(currentLevelHashes, m.hashFunc); err != nil {
 				return err
 			}
 		}
@@ -221,7 +219,7 @@ func (m *merkleTree) done() error {
 	if uint32(len(finalHashes)) > m.maxDegree {
 		delete(m.tree, m.maxLevel)
 		m.maxLevel++
-		combinedHash, err := computeCombinedHash(finalHashes, m.hasher)
+		combinedHash, err := computeCombinedHash(finalHashes, m.hashFunc)
 		if err != nil {
 			return err
 		}
@@ -252,12 +250,12 @@ func (m *merkleTree) String() string {
 	return fmt.Sprintf("tree := %#v", m.tree)
 }
 
-func computeCombinedHash(hashes []Hash, hasher ledger.Hasher) (Hash, error) {
+func computeCombinedHash(hashes []Hash, hashFunc HashFunc) (Hash, error) {
 	combinedHash := []byte{}
 	for _, h := range hashes {
 		combinedHash = append(combinedHash, h...)
 	}
-	return hasher.Hash(combinedHash, hashOpts)
+	return hashFunc(combinedHash)
 }
 
 func hashesToBytes(hashes []Hash) [][]byte {

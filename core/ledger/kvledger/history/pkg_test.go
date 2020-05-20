@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package history
 
 import (
+	"crypto/sha256"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
@@ -22,7 +22,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-/////// levelDBLockBasedHistoryEnv //////
+var (
+	testHashFunc = func(data []byte) ([]byte, error) {
+		h := sha256.New()
+		if _, err := h.Write(data); err != nil {
+			return nil, err
+		}
+		return h.Sum(nil), nil
+	}
+)
 
 type levelDBLockBasedHistoryEnv struct {
 	t                     testing.TB
@@ -50,8 +58,6 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 		t.Fatalf("Failed to create history database directory: %s", err)
 	}
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
 	txmgrInitializer := &lockbasedtxmgr.Initializer{
 		LedgerID:            testLedgerID,
 		DB:                  testDB,
@@ -60,7 +66,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 		BookkeepingProvider: testBookkeepingEnv.TestProvider,
 		CCInfoProvider:      &mock.DeployedChaincodeInfoProvider{},
 		CustomTxProcessors:  nil,
-		Hasher:              cryptoProvider,
+		HashFunc:            testHashFunc,
 	}
 	txMgr, err := lockbasedtxmgr.NewLockBasedTxMgr(txmgrInitializer)
 

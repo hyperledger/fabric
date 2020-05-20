@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package validation
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -37,12 +37,22 @@ const (
 	couchDBtestEnvName = "couchDB_LockBasedTxMgr"
 )
 
-// Tests will be run against each environment in this array
-// For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
-var testEnvs = map[string]privacyenabledstate.TestEnv{
-	levelDBtestEnvName: &privacyenabledstate.LevelDBTestEnv{},
-	couchDBtestEnvName: &privacyenabledstate.CouchDBTestEnv{},
-}
+var (
+	// Tests will be run against each environment in this array
+	// For example, to skip CouchDB tests, remove &couchDBLockBasedEnv{}
+	testEnvs = map[string]privacyenabledstate.TestEnv{
+		levelDBtestEnvName: &privacyenabledstate.LevelDBTestEnv{},
+		couchDBtestEnvName: &privacyenabledstate.CouchDBTestEnv{},
+	}
+
+	testHashFunc = func(data []byte) ([]byte, error) {
+		h := sha256.New()
+		if _, err := h.Write(data); err != nil {
+			return nil, err
+		}
+		return h.Sum(nil), nil
+	}
+)
 
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("statevalidator,statebasedval,statecouchdb=debug")
@@ -59,10 +69,7 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("testdb")
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-
-	testValidator := &validator{db: db, hasher: cryptoProvider}
+	testValidator := &validator{db: db, hashFunc: testHashFunc}
 
 	//populate db with initial data
 	batch := privacyenabledstate.NewUpdateBatch()
@@ -198,9 +205,7 @@ func TestValidator(t *testing.T) {
 	batch.PubUpdates.Put("ns1", "key5", []byte("value5"), version.NewHeight(1, 4))
 	db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 4))
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	testValidator := &validator{db: db, hasher: cryptoProvider}
+	testValidator := &validator{db: db, hashFunc: testHashFunc}
 
 	//rwset1 should be valid
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
@@ -243,9 +248,7 @@ func TestPhantomValidation(t *testing.T) {
 	batch.PubUpdates.Put("ns1", "key5", []byte("value5"), version.NewHeight(1, 4))
 	db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 4))
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	testValidator := &validator{db: db, hasher: cryptoProvider}
+	testValidator := &validator{db: db, hashFunc: testHashFunc}
 
 	//rwset1 should be valid
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
@@ -320,9 +323,7 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 	batch.PubUpdates.Put("ns1", "key9", []byte("value9"), version.NewHeight(1, 8))
 	db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 8))
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	testValidator := &validator{db: db, hasher: cryptoProvider}
+	testValidator := &validator{db: db, hashFunc: testHashFunc}
 
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key9", ItrExhausted: true}
@@ -386,9 +387,7 @@ func buildTestHashResults(t *testing.T, maxDegree int, kvReads []*kvrwset.KVRead
 	if len(kvReads) <= maxDegree {
 		t.Fatal("This method should be called with number of KVReads more than maxDegree; Else, hashing won't be performedrwset")
 	}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	helper, _ := rwsetutil.NewRangeQueryResultsHelper(true, uint32(maxDegree), cryptoProvider)
+	helper, _ := rwsetutil.NewRangeQueryResultsHelper(true, uint32(maxDegree), testHashFunc)
 	for _, kvRead := range kvReads {
 		helper.AddResult(kvRead)
 	}

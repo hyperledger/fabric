@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package lockbasedtxmgr
 
 import (
+	"crypto/sha256"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -20,6 +20,16 @@ import (
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/assert"
+)
+
+var (
+	testHashFunc = func(data []byte) ([]byte, error) {
+		h := sha256.New()
+		if _, err := h.Write(data); err != nil {
+			return nil, err
+		}
+		return h.Sum(nil), nil
+	}
 )
 
 func TestPvtdataResultsItr(t *testing.T) {
@@ -49,9 +59,7 @@ func TestPvtdataResultsItr(t *testing.T) {
 	putPvtUpdates(t, updates, "ns2", "coll1", "key6", []byte("pvt_value6"), version.NewHeight(1, 6))
 	putPvtUpdates(t, updates, "ns3", "coll1", "key7", []byte("pvt_value7"), version.NewHeight(1, 7))
 	txMgr.db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 7))
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	qe := newQueryExecutor(txMgr, "", nil, true, cryptoProvider)
+	qe := newQueryExecutor(txMgr, "", nil, true, testHashFunc)
 
 	resItr, err := qe.GetPrivateDataRangeScanIterator("ns1", "coll1", "key1", "key3")
 	assert.NoError(t, err)
@@ -109,18 +117,14 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 	assert.NoError(t, txMgr.Commit())
 
 	t.Run("query-helper-for-queryexecutor", func(t *testing.T) {
-		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		assert.NoError(t, err)
-		qe := newQueryExecutor(txMgr.(*LockBasedTxMgr), "", nil, true, cryptoProvider)
+		qe := newQueryExecutor(txMgr.(*LockBasedTxMgr), "", nil, true, testHashFunc)
 		metadataRetrieved, err := qe.GetPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.NoError(t, err)
 		assert.Equal(t, metadata1, metadataRetrieved)
 	})
 
 	t.Run("query-helper-for-txsimulator", func(t *testing.T) {
-		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		assert.NoError(t, err)
-		qe := newQueryExecutor(txMgr.(*LockBasedTxMgr), "txid-1", rwsetutil.NewRWSetBuilder(), true, cryptoProvider)
+		qe := newQueryExecutor(txMgr.(*LockBasedTxMgr), "txid-1", rwsetutil.NewRWSetBuilder(), true, testHashFunc)
 		_, err = qe.GetPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.EqualError(t, err, "retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
 	})

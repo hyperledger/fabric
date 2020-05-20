@@ -26,9 +26,9 @@ type txSimulator struct {
 	paginatedQueriesPerformed bool
 }
 
-func newTxSimulator(txmgr *LockBasedTxMgr, txid string, hasher ledger.Hasher) (*txSimulator, error) {
+func newTxSimulator(txmgr *LockBasedTxMgr, txid string, hashFunc rwsetutil.HashFunc) (*txSimulator, error) {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
-	qe := newQueryExecutor(txmgr, txid, rwsetBuilder, true, hasher)
+	qe := newQueryExecutor(txmgr, txid, rwsetBuilder, true, hashFunc)
 	logger.Debugf("constructing new tx simulator txid = [%s]", txid)
 	return &txSimulator{qe, rwsetBuilder, false, false, false, false}, nil
 }

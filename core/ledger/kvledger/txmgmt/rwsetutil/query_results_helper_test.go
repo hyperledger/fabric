@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package rwsetutil
@@ -23,15 +13,23 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+var (
+	testHashFunc = func(data []byte) ([]byte, error) {
+		h := sha256.New()
+		if _, err := h.Write(data); err != nil {
+			return nil, err
+		}
+		return h.Sum(nil), nil
+	}
 )
 
 func TestQueryResultHelper_NoResults(t *testing.T) {
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	helper, _ := NewRangeQueryResultsHelper(true, 3, cryptoProvider)
+	helper, _ := NewRangeQueryResultsHelper(true, 3, testHashFunc)
 	r, h, err := helper.Done()
 	assert.NoError(t, err)
 	assert.Nil(t, h)
@@ -193,9 +191,7 @@ func TestQueryResultHelper_Hash_FirstLevelSkipNeededInDone(t *testing.T) {
 }
 
 func buildTestResults(t *testing.T, enableHashing bool, maxDegree int, kvReads []*kvrwset.KVRead) ([]*kvrwset.KVRead, *kvrwset.QueryReadsMerkleSummary) {
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	helper, _ := NewRangeQueryResultsHelper(enableHashing, uint32(maxDegree), cryptoProvider)
+	helper, _ := NewRangeQueryResultsHelper(enableHashing, uint32(maxDegree), testHashFunc)
 	for _, kvRead := range kvReads {
 		helper.AddResult(kvRead)
 	}
@@ -217,17 +213,13 @@ func computeTestHashKVReads(t *testing.T, kvReads []*kvrwset.KVRead) Hash {
 	queryReads.KvReads = kvReads
 	b, err := proto.Marshal(queryReads)
 	assert.NoError(t, err)
-	hash := sha256.New()
-	_, err = hash.Write(b)
-	assert.NoError(t, err)
-	h := hash.Sum(nil)
+	h, err := testHashFunc(b)
+	require.NoError(t, err)
 	return h
 }
 
 func computeTestCombinedHash(t *testing.T, hashes ...Hash) Hash {
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	h, err := computeCombinedHash(hashes, cryptoProvider)
+	h, err := computeCombinedHash(hashes, testHashFunc)
 	assert.NoError(t, err)
 	return h
 }

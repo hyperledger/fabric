@@ -9,7 +9,6 @@ package lockbasedtxmgr
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/stretchr/testify/assert"
@@ -58,9 +57,7 @@ func TestPvtGetNoCollection(t *testing.T) {
 	testEnv.init(t, "test-pvtdata-get-no-collection", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	qe := newQueryExecutor(txMgr, "", nil, true, cryptoProvider)
+	qe := newQueryExecutor(txMgr, "", nil, true, testHashFunc)
 	valueHash, metadataBytes, err := qe.getPrivateDataValueHash("cc", "coll", "key")
 	assert.Nil(t, valueHash)
 	assert.Nil(t, metadataBytes)
