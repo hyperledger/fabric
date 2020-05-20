@@ -252,7 +252,9 @@ func Main() {
 	}
 	ab.RegisterAtomicBroadcastServer(grpcServer.Server(), server)
 	logger.Info("Beginning to serve requests")
-	grpcServer.Start()
+	if err := grpcServer.Start(); err != nil {
+		logger.Fatalf("Atomic Broadcast gRPC server has terminated while serving requests due to: %v", err)
+	}
 }
 
 func reuseListener(conf *localconfig.TopLevel, typ string) bool {
