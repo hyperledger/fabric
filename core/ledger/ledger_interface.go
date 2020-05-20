@@ -45,6 +45,8 @@ type Config struct {
 	PrivateDataConfig *PrivateDataConfig
 	// HistoryDBConfig holds the configuration parameters for the transaction history database.
 	HistoryDBConfig *HistoryDBConfig
+	// SnapshotsConfig holds the configuration parameters for the snapshots.
+	SnapshotsConfig *SnapshotsConfig
 }
 
 // StateDBConfig is a structure used to configure the state parameters for the ledger.
@@ -111,6 +113,12 @@ type PrivateDataConfig struct {
 // HistoryDBConfig is a structure used to configure the transaction history database.
 type HistoryDBConfig struct {
 	Enabled bool
+}
+
+// SnapshotsConfig is a structure used to configure snapshot function
+type SnapshotsConfig struct {
+	// RootDir is the top-level directory for the snapshots.
+	RootDir string
 }
 
 // PeerLedgerProvider provides handle to ledger instances

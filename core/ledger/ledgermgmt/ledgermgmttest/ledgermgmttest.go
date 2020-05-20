@@ -8,6 +8,7 @@ package ledgermgmttest
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -37,6 +38,9 @@ func NewInitializer(testLedgerDir string) *ledgermgmt.Initializer {
 				MaxBatchSize:    5000,
 				BatchesInterval: 1000,
 				PurgeInterval:   100,
+			},
+			SnapshotsConfig: &ledger.SnapshotsConfig{
+				RootDir: filepath.Join(testLedgerDir, "snapshots"),
 			},
 		},
 		MetricsProvider:                 &disabled.Provider{},

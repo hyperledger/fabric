@@ -38,7 +38,8 @@ import (
 var logger = flogging.MustGetLogger("kvledger")
 
 var (
-	rwsetHashOpts = &bccsp.SHA256Opts{}
+	rwsetHashOpts    = &bccsp.SHA256Opts{}
+	snapshotHashOpts = &bccsp.SHA256Opts{}
 )
 
 // kvLedger provides an implementation of `ledger.PeerLedger`.
@@ -53,6 +54,8 @@ type kvLedger struct {
 	blockAPIsRWLock        *sync.RWMutex
 	stats                  *ledgerStats
 	commitHash             []byte
+	hashProvider           ledger.HashProvider
+	snapshotsConfig        *ledger.SnapshotsConfig
 	// isPvtDataStoreAheadOfBlockStore is read during missing pvtData
 	// reconciliation and may be updated during a regular block commit.
 	// Hence, we use atomic value to ensure consistent read.
@@ -73,6 +76,7 @@ type lgrInitializer struct {
 	stats                    *ledgerStats
 	customTxProcessors       map[common.HeaderType]ledger.CustomTxProcessor
 	hashProvider             ledger.HashProvider
+	snapshotsConfig          *ledger.SnapshotsConfig
 }
 
 func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
@@ -83,6 +87,8 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 		blockStore:      initializer.blockStore,
 		pvtdataStore:    initializer.pvtdataStore,
 		historyDB:       initializer.historyDB,
+		hashProvider:    initializer.hashProvider,
+		snapshotsConfig: initializer.snapshotsConfig,
 		blockAPIsRWLock: &sync.RWMutex{},
 	}
 

@@ -76,7 +76,7 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 		},
 	)
 	if err != nil {
-		panic(fmt.Sprintf("Error in instantiating ledger provider: %s", err))
+		panic(fmt.Sprintf("Error in instantiating ledger provider: %+v", err))
 	}
 	ledgerMgr := &LedgerMgr{
 		openedLedgers:      make(map[string]ledger.PeerLedger),

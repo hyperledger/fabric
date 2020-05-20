@@ -253,6 +253,11 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 			PurgeInterval:   100,
 		}
 	}
+	if initializer.Config.SnapshotsConfig == nil {
+		initializer.Config.SnapshotsConfig = &ledger.SnapshotsConfig{
+			RootDir: filepath.Join(initializer.Config.RootFSPath, "snapshots"),
+		}
+	}
 }
 
 func createSelfSignedData(cryptoProvider bccsp.BCCSP) protoutil.SignedData {
