@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
@@ -86,6 +87,7 @@ func (c *current) maxTxNumber() uint64 {
 	return uint64(len(c.block.Data.Data)) - 1
 }
 
+// Initializer captures the dependencies for tx manager
 type Initializer struct {
 	LedgerID            string
 	DB                  *privacyenabledstate.DB
@@ -613,6 +615,13 @@ func (txmgr *LockBasedTxMgr) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvt
 	}
 
 	return txmgr.Commit()
+}
+
+// ExportPubStateAndPvtStateHashes simply delegates the call to the statedb for exporting the data for a snapshot.
+// It is assumed that the consumer would invoke this function when the commits are paused
+func (txmgr *LockBasedTxMgr) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.NewHashFunc) (map[string][]byte, error) {
+	// no need to acuqire any lock in this function, as the commits would be paused
+	return txmgr.db.ExportPubStateAndPvtStateHashes(dir, newHashFunc)
 }
 
 func extractStateUpdates(batch *privacyenabledstate.UpdateBatch, namespaces []string) ledger.StateUpdates {

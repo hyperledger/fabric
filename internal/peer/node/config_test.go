@@ -16,7 +16,7 @@ import (
 )
 
 func TestLedgerConfig(t *testing.T) {
-	defer viper.Set("ledger.state.stateDatabase", "goleveldb")
+	defer viper.Reset()
 	var tests = []struct {
 		name     string
 		config   map[string]interface{}
@@ -41,6 +41,9 @@ func TestLedgerConfig(t *testing.T) {
 				},
 				HistoryDBConfig: &ledger.HistoryDBConfig{
 					Enabled: false,
+				},
+				SnapshotsConfig: &ledger.SnapshotsConfig{
+					RootDir: "/peerfs/ledgersData/snapshots",
 				},
 			},
 		},
@@ -85,6 +88,9 @@ func TestLedgerConfig(t *testing.T) {
 				HistoryDBConfig: &ledger.HistoryDBConfig{
 					Enabled: false,
 				},
+				SnapshotsConfig: &ledger.SnapshotsConfig{
+					RootDir: "/peerfs/ledgersData/snapshots",
+				},
 			},
 		},
 		{
@@ -107,6 +113,7 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.pvtdataStore.collElgProcDbBatchesInterval":   10000,
 				"ledger.pvtdataStore.purgeInterval":                  1000,
 				"ledger.history.enableHistoryDatabase":               true,
+				"ledger.snapshots.rootDir":                           "/peerfs/snapshots",
 			},
 			expected: &ledger.Config{
 				RootFSPath: "/peerfs/ledgersData",
@@ -134,6 +141,9 @@ func TestLedgerConfig(t *testing.T) {
 				},
 				HistoryDBConfig: &ledger.HistoryDBConfig{
 					Enabled: true,
+				},
+				SnapshotsConfig: &ledger.SnapshotsConfig{
+					RootDir: "/peerfs/snapshots",
 				},
 			},
 		},

@@ -992,9 +992,13 @@ func prepareNextBlockForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockG
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block := bg.NextBlock([][]byte{pubSimBytes})
-	return &lgr.BlockAndPvtData{Block: block,
-		PvtData: lgr.TxPvtDataMap{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
+	blkAndPvtData := &lgr.BlockAndPvtData{Block: block}
+	if len(pvtKVs) != 0 {
+		blkAndPvtData.PvtData = lgr.TxPvtDataMap{
+			0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults},
+		}
 	}
+	return blkAndPvtData
 }
 
 func checkBCSummaryForTest(t *testing.T, l lgr.PeerLedger, expectedBCSummary *bcSummary) {

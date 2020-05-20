@@ -42,6 +42,10 @@ func ledgerConfig() *ledger.Config {
 	}
 
 	rootFSPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData")
+	snapshotsRootDir := viper.GetString("ledger.snapshots.rootDir")
+	if snapshotsRootDir == "" {
+		snapshotsRootDir = filepath.Join(rootFSPath, "snapshots")
+	}
 	conf := &ledger.Config{
 		RootFSPath: rootFSPath,
 		StateDBConfig: &ledger.StateDBConfig{
@@ -55,6 +59,9 @@ func ledgerConfig() *ledger.Config {
 		},
 		HistoryDBConfig: &ledger.HistoryDBConfig{
 			Enabled: viper.GetBool("ledger.history.enableHistoryDatabase"),
+		},
+		SnapshotsConfig: &ledger.SnapshotsConfig{
+			RootDir: snapshotsRootDir,
 		},
 	}
 

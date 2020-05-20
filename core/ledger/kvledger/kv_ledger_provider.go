@@ -9,6 +9,8 @@ package kvledger
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -74,15 +76,13 @@ type Provider struct {
 	collElgNotifier      *collElgNotifier
 	stats                *stats
 	fileLock             *leveldbhelper.FileLock
-	hashProvider         ledger.HashProvider
 }
 
 // NewProvider instantiates a new Provider.
 // This is not thread-safe and assumed to be synchronized by the caller
 func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 	p := &Provider{
-		initializer:  initializer,
-		hashProvider: initializer.HashProvider,
+		initializer: initializer,
 	}
 
 	defer func() {
@@ -110,35 +110,28 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 	if err := p.initLedgerIDInventory(); err != nil {
 		return nil, err
 	}
-
 	if err := p.initBlockStoreProvider(); err != nil {
 		return nil, err
 	}
-
 	if err := p.initPvtDataStoreProvider(); err != nil {
 		return nil, err
 	}
-
 	if err := p.initHistoryDBProvider(); err != nil {
 		return nil, err
 	}
-
 	if err := p.initConfigHistoryManager(); err != nil {
 		return nil, err
 	}
-
 	p.initCollElgNotifier()
-
 	p.initStateListeners()
-
 	if err := p.initStateDBProvider(); err != nil {
 		return nil, err
 	}
-
 	p.initLedgerStatistics()
-
 	p.recoverUnderConstructionLedger()
-
+	if err := p.initSnapshotDir(); err != nil {
+		return nil, err
+	}
 	return p, nil
 }
 
@@ -252,6 +245,27 @@ func (p *Provider) initLedgerStatistics() {
 	p.stats = newStats(p.initializer.MetricsProvider)
 }
 
+func (p *Provider) initSnapshotDir() error {
+	snapshotsRootDir := p.initializer.Config.SnapshotsConfig.RootDir
+	if !path.IsAbs(snapshotsRootDir) {
+		return errors.Errorf("invalid path: %s. The path for the snapshot dir is expected to be an absolute path", snapshotsRootDir)
+	}
+
+	inProgressSnapshotsPath := InProgressSnapshotsPath(snapshotsRootDir)
+	completedSnapshotsPath := CompletedSnapshotsPath(snapshotsRootDir)
+
+	if err := os.RemoveAll(inProgressSnapshotsPath); err != nil {
+		return errors.Wrapf(err, "error while deleting the dir: %s", inProgressSnapshotsPath)
+	}
+	if err := os.MkdirAll(inProgressSnapshotsPath, 0755); err != nil {
+		return errors.Wrapf(err, "error while creating the dir: %s", inProgressSnapshotsPath)
+	}
+	if err := os.MkdirAll(completedSnapshotsPath, 0755); err != nil {
+		return errors.Wrapf(err, "error while creating the dir: %s", completedSnapshotsPath)
+	}
+	return syncDir(snapshotsRootDir)
+}
+
 // Create implements the corresponding method from interface ledger.PeerLedgerProvider
 // This functions sets a under construction flag before doing any thing related to ledger creation and
 // upon a successful ledger creation with the committed genesis block, removes the flag and add entry into
@@ -346,7 +360,8 @@ func (p *Provider) open(ledgerID string) (ledger.PeerLedger, error) {
 		ccLifecycleEventProvider: p.initializer.ChaincodeLifecycleEventProvider,
 		stats:                    p.stats.ledgerStats(ledgerID),
 		customTxProcessors:       p.initializer.CustomTxProcessors,
-		hashProvider:             p.hashProvider,
+		hashProvider:             p.initializer.HashProvider,
+		snapshotsConfig:          p.initializer.Config.SnapshotsConfig,
 	}
 
 	l, err := newKVLedger(initializer)
