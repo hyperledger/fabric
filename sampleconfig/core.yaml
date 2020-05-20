@@ -24,13 +24,13 @@ peer:
 
     # The endpoint this peer uses to listen for inbound chaincode connections.
     # If this is commented-out, the listen address is selected to be
-    # the peer's address (see below) with port 7052
+    # the peer listenAddress (see above) with port 7051
     # chaincodeListenAddress: 0.0.0.0:7052
 
     # The endpoint the chaincode for this peer uses to connect to the peer.
     # If this is not specified, the chaincodeListenAddress address is selected.
     # And if chaincodeListenAddress is not specified, address is selected from
-    # peer listenAddress.
+    # peer address.
     # chaincodeAddress: 0.0.0.0:7052
 
     # When used as peer config, this represents the endpoint to other peers

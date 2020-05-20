@@ -369,6 +369,7 @@ func TestGlobalConfigDefault(t *testing.T) {
 		ValidatorPoolSize:             runtime.NumCPU(),
 		VMNetworkMode:                 "host",
 		DeliverClientKeepaliveOptions: comm.DefaultKeepaliveOptions,
+		ChaincodeAddress:              "localhost:8080",
 	}
 
 	assert.Equal(t, expectedConfig, coreConfig)

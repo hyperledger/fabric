@@ -246,8 +246,13 @@ func (c *Config) load() error {
 	c.DiscoveryAuthCacheMaxSize = viper.GetInt("peer.discovery.authCacheMaxSize")
 	c.DiscoveryAuthCachePurgeRetentionRatio = viper.GetFloat64("peer.discovery.authCachePurgeRetentionRatio")
 	c.ChaincodeListenAddress = viper.GetString("peer.chaincodeListenAddress")
+	if c.ChaincodeListenAddress == "" {
+		c.ChaincodeListenAddress = viper.GetString("peer.listenAddress")
+	}
 	c.ChaincodeAddress = viper.GetString("peer.chaincodeAddress")
-
+	if c.ChaincodeAddress == "" {
+		c.ChaincodeAddress = viper.GetString("peer.address")
+	}
 	c.ValidatorPoolSize = viper.GetInt("peer.validatorPoolSize")
 	if c.ValidatorPoolSize <= 0 {
 		c.ValidatorPoolSize = runtime.NumCPU()
