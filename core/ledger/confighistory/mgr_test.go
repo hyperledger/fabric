@@ -308,9 +308,10 @@ func TestExportConfigHistory(t *testing.T) {
 	// config history database is empty
 	fileHashes, err := env.retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
-	verifyExportedConfigHistory(t, env.testSnapshotDir, fileHashes, nil)
-	os.Remove(path.Join(env.testSnapshotDir, snapshotDataFileName))
-	os.Remove(path.Join(env.testSnapshotDir, snapshotMetadataFileName))
+	require.Empty(t, fileHashes)
+	files, err := ioutil.ReadDir(env.testSnapshotDir)
+	require.NoError(t, err)
+	require.Len(t, files, 0)
 
 	// config history database has 3 chaincodes each with 1 collection config entry in the
 	// collectionConfigNamespace
@@ -426,10 +427,23 @@ func verifyExportedConfigHistory(t *testing.T, dir string, fileHashes map[string
 func TestExportConfigHistoryErrorCase(t *testing.T) {
 	env := newTestEnvForSnapshot(t)
 	defer env.cleanup()
+
+	dbHandle := env.mgr.dbProvider.getDB("ledger1")
+	cc1collConfigPackage := testutilCreateCollConfigPkg([]string{"Explicit-cc1-coll-1", "Explicit-cc1-coll-2"})
+	batch, err := prepareDBBatch(
+		map[string]*peer.CollectionConfigPackage{
+			"chaincode1": cc1collConfigPackage,
+		},
+		50,
+	)
+	assert.NoError(t, err)
+	assert.NoError(t, dbHandle.writeBatch(batch, true))
+
 	// error during data file creation
 	dataFilePath := path.Join(env.testSnapshotDir, snapshotDataFileName)
-	_, err := os.Create(dataFilePath)
+	_, err = os.Create(dataFilePath)
 	require.NoError(t, err)
+
 	_, err = env.retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 	require.Contains(t, err.Error(), "error while creating the snapshot file: "+dataFilePath)
 	os.RemoveAll(env.testSnapshotDir)

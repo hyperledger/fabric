@@ -9,7 +9,7 @@ package blkstorage
 import (
 	"bytes"
 	"fmt"
-	"path"
+	"path/filepath"
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
@@ -260,13 +260,6 @@ func (index *blockIndex) exportUniqueTxIDs(dir string, newHashFunc snapshot.NewH
 		return nil, ErrAttrNotIndexed
 	}
 
-	// create the data file
-	dataFile, err := snapshot.CreateFile(path.Join(dir, snapshotDataFileName), snapshotFileFormat, newHashFunc)
-	if err != nil {
-		return nil, err
-	}
-	defer dataFile.Close()
-
 	dbItr := index.db.GetIterator([]byte{txIDIdxKeyPrefix}, []byte{txIDIdxKeyPrefix + 1})
 	defer dbItr.Release()
 	if err := dbItr.Error(); err != nil {
@@ -275,6 +268,8 @@ func (index *blockIndex) exportUniqueTxIDs(dir string, newHashFunc snapshot.NewH
 
 	var previousTxID string
 	var numTxIDs uint64 = 0
+	var dataFile *snapshot.FileWriter
+	var err error
 	for dbItr.Next() {
 		if err := dbItr.Error(); err != nil {
 			return nil, errors.Wrap(err, "internal leveldb error while iterating for txids")
@@ -288,10 +283,21 @@ func (index *blockIndex) exportUniqueTxIDs(dir string, newHashFunc snapshot.NewH
 			continue
 		}
 		previousTxID = txID
+		if numTxIDs == 0 { // first iteration, create the data file
+			dataFile, err = snapshot.CreateFile(filepath.Join(dir, snapshotDataFileName), snapshotFileFormat, newHashFunc)
+			if err != nil {
+				return nil, err
+			}
+			defer dataFile.Close()
+		}
 		if err := dataFile.EncodeString(txID); err != nil {
 			return nil, err
 		}
 		numTxIDs++
+	}
+
+	if dataFile == nil {
+		return nil, nil
 	}
 
 	dataHash, err := dataFile.Done()
@@ -300,7 +306,7 @@ func (index *blockIndex) exportUniqueTxIDs(dir string, newHashFunc snapshot.NewH
 	}
 
 	// create the metadata file
-	metadataFile, err := snapshot.CreateFile(path.Join(dir, snapshotMetadataFileName), snapshotFileFormat, newHashFunc)
+	metadataFile, err := snapshot.CreateFile(filepath.Join(dir, snapshotMetadataFileName), snapshotFileFormat, newHashFunc)
 	if err != nil {
 		return nil, err
 	}

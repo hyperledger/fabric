@@ -12,7 +12,7 @@ import (
 	"hash"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -84,7 +84,9 @@ func testSanpshot(t *testing.T, env TestEnv) {
 		derivePvtDataNs("ns3", "coll1"),
 	)
 
+	testSnapshotWithSampleData(t, env, nil, nil, nil)                                           // no data
 	testSnapshotWithSampleData(t, env, samplePublicState, nil, nil)                             // test with only public data
+	testSnapshotWithSampleData(t, env, nil, samplePvtStateHashes, nil)                          // test with only pvtdata hashes
 	testSnapshotWithSampleData(t, env, samplePublicState, samplePvtStateHashes, nil)            // test with public data and pvtdata hashes
 	testSnapshotWithSampleData(t, env, samplePublicState, samplePvtStateHashes, samplePvtState) // test with public data, pvtdata hashes, and pvt data
 }
@@ -127,32 +129,41 @@ func testSnapshotWithSampleData(t *testing.T, env TestEnv,
 
 	filesAndHashes, err := db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
 	require.NoError(t, err)
-	require.Len(t, filesAndHashes, 4)
-	require.Contains(t, filesAndHashes, pubStateDataFileName)
-	require.Contains(t, filesAndHashes, pubStateMetadataFileName)
-	require.Contains(t, filesAndHashes, pvtStateHashesFileName)
-	require.Contains(t, filesAndHashes, pvtStateHashesMetadataFileName)
 
 	for f, h := range filesAndHashes {
-		expectedFile := path.Join(snapshotDir, f)
+		expectedFile := filepath.Join(snapshotDir, f)
 		require.FileExists(t, expectedFile)
 		require.Equal(t, sha256ForFileForTest(t, expectedFile), h)
 	}
 
-	// verify snapshot files contents
-	pubStateFromSnapshot := loadSnapshotDataForTest(t,
-		env,
-		path.Join(snapshotDir, pubStateDataFileName),
-		path.Join(snapshotDir, pubStateMetadataFileName),
-	)
+	numFilesExpected := 0
+	if len(publicState) != 0 {
+		numFilesExpected += 2
+		require.Contains(t, filesAndHashes, pubStateDataFileName)
+		require.Contains(t, filesAndHashes, pubStateMetadataFileName)
+		// verify snapshot files contents
+		pubStateFromSnapshot := loadSnapshotDataForTest(t,
+			env,
+			filepath.Join(snapshotDir, pubStateDataFileName),
+			filepath.Join(snapshotDir, pubStateMetadataFileName),
+		)
+		require.Equal(t, publicState, pubStateFromSnapshot)
+	}
 
-	pvtStateHashesFromSnapshot := loadSnapshotDataForTest(t,
-		env,
-		path.Join(snapshotDir, pvtStateHashesFileName),
-		path.Join(snapshotDir, pvtStateHashesMetadataFileName),
-	)
-	require.Equal(t, publicState, pubStateFromSnapshot)
-	require.Equal(t, pvtStateHashes, pvtStateHashesFromSnapshot)
+	if len(pvtStateHashes) != 0 {
+		numFilesExpected += 2
+		require.Contains(t, filesAndHashes, pvtStateHashesFileName)
+		require.Contains(t, filesAndHashes, pvtStateHashesMetadataFileName)
+		// verify snapshot files contents
+		pvtStateHashesFromSnapshot := loadSnapshotDataForTest(t,
+			env,
+			filepath.Join(snapshotDir, pvtStateHashesFileName),
+			filepath.Join(snapshotDir, pvtStateHashesMetadataFileName),
+		)
+
+		require.Equal(t, pvtStateHashes, pvtStateHashesFromSnapshot)
+	}
+	require.Len(t, filesAndHashes, numFilesExpected)
 }
 
 func sha256ForFileForTest(t *testing.T, file string) []byte {
@@ -217,6 +228,7 @@ func TestSnapshotErrorPropagation(t *testing.T) {
 		db = dbEnv.GetDBHandle(generateLedgerID(t))
 		updateBatch := NewUpdateBatch()
 		updateBatch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
+		updateBatch.HashUpdates.Put("ns1", "coll1", []byte("key1"), []byte("value1"), version.NewHeight(1, 1))
 		db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1))
 		snapshotDir, err = ioutil.TempDir("", "testsnapshot")
 		require.NoError(t, err)
@@ -234,7 +246,7 @@ func TestSnapshotErrorPropagation(t *testing.T) {
 	// pubStateDataFile already exists
 	init()
 	defer cleanup()
-	pubStateDataFilePath := path.Join(snapshotDir, pubStateDataFileName)
+	pubStateDataFilePath := filepath.Join(snapshotDir, pubStateDataFileName)
 	_, err = os.Create(pubStateDataFilePath)
 	require.NoError(t, err)
 	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
@@ -242,7 +254,7 @@ func TestSnapshotErrorPropagation(t *testing.T) {
 
 	// pubStateMetadataFile already exists
 	reinit()
-	pubStateMetadataFilePath := path.Join(snapshotDir, pubStateMetadataFileName)
+	pubStateMetadataFilePath := filepath.Join(snapshotDir, pubStateMetadataFileName)
 	_, err = os.Create(pubStateMetadataFilePath)
 	require.NoError(t, err)
 	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
@@ -250,7 +262,7 @@ func TestSnapshotErrorPropagation(t *testing.T) {
 
 	// pvtStateHashesDataFile already exists
 	reinit()
-	pvtStateHashesDataFilePath := path.Join(snapshotDir, pvtStateHashesFileName)
+	pvtStateHashesDataFilePath := filepath.Join(snapshotDir, pvtStateHashesFileName)
 	_, err = os.Create(pvtStateHashesDataFilePath)
 	require.NoError(t, err)
 	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
@@ -258,7 +270,7 @@ func TestSnapshotErrorPropagation(t *testing.T) {
 
 	// pvtStateHashesMetadataFile already exists
 	reinit()
-	pvtStateHashesMetadataFilePath := path.Join(snapshotDir, pvtStateHashesMetadataFileName)
+	pvtStateHashesMetadataFilePath := filepath.Join(snapshotDir, pvtStateHashesMetadataFileName)
 	_, err = os.Create(pvtStateHashesMetadataFilePath)
 	require.NoError(t, err)
 	_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
