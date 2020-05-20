@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package nwo
 
-// BasicSolo is a configuration wtih two organizations and one peer per org.
+// BasicSolo is a configuration with two organizations and one peer per org.
 func BasicSolo() *Config {
 	return &Config{
 		Organizations: []*Organization{{
@@ -75,7 +75,7 @@ func BasicSolo() *Config {
 	}
 }
 
-// FullSolo is a configuration wtih two organizations and two peers per org.
+// FullSolo is a configuration with two organizations and two peers per org.
 func FullSolo() *Config {
 	config := BasicSolo()
 

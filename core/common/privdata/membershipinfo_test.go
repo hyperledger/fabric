@@ -23,18 +23,20 @@ func TestMembershipInfoProvider(t *testing.T) {
 		Signature: []byte{1, 2, 3},
 		Data:      []byte{4, 5, 6},
 	}
+	emptyPeerSelfSignedData := protoutil.SignedData{}
 
 	identityDeserializer := func(chainID string) msp.IdentityDeserializer {
 		return &mockDeserializer{}
 	}
 
-	// verify membership provider returns true
-	membershipProvider := NewMembershipInfoProvider(mspID, peerSelfSignedData, identityDeserializer)
+	// verify membership provider pass simple check returns true
+	membershipProvider := NewMembershipInfoProvider(mspID, emptyPeerSelfSignedData, identityDeserializer)
 	res, err := membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
 	assert.True(t, res)
 	assert.Nil(t, err)
 
-	// verify membership provider returns false
+	// verify membership provider fall back to default access policy evaluation returns false
+	membershipProvider = NewMembershipInfoProvider(mspID, peerSelfSignedData, identityDeserializer)
 	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
 	assert.False(t, res)
 	assert.Nil(t, err)
@@ -46,6 +48,17 @@ func TestMembershipInfoProvider(t *testing.T) {
 
 	// verify membership provider returns false and nil when collection policy config is invalid
 	res, err = membershipProvider.AmMemberOf("test1", getBadAccessPolicy([]string{"signer0"}, 1))
+	assert.False(t, res)
+	assert.Nil(t, err)
+
+	// verify membership provider with empty mspID and fall back to default access policy evaluation returns true
+	membershipProvider = NewMembershipInfoProvider("", peerSelfSignedData, identityDeserializer)
+	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
+	assert.True(t, res)
+	assert.Nil(t, err)
+
+	// verify membership provider with empty mspID and fall back to default access policy evaluation returns false
+	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
 	assert.False(t, res)
 	assert.Nil(t, err)
 }
