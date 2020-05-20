@@ -24,7 +24,7 @@ type MembershipProvider struct {
 
 // NewMembershipInfoProvider returns MembershipProvider
 func NewMembershipInfoProvider(mspID string, selfSignedData protoutil.SignedData, identityDeserializerFunc func(chainID string) msp.IdentityDeserializer) *MembershipProvider {
-	return &MembershipProvider{selfSignedData: selfSignedData, IdentityDeserializerFactory: identityDeserializerFunc}
+	return &MembershipProvider{mspID: mspID, selfSignedData: selfSignedData, IdentityDeserializerFactory: identityDeserializerFunc}
 }
 
 // AmMemberOf checks whether the current peer is a member of the given collection config.
