@@ -366,6 +366,36 @@ func (c ChaincodeApproveForMyOrg) Args() []string {
 	return args
 }
 
+type ChaincodeQueryApproved struct {
+	ChannelID     string
+	Name          string
+	Sequence      string
+	PeerAddresses []string
+	ClientAuth    bool
+}
+
+func (c ChaincodeQueryApproved) SessionName() string {
+	return "peer-lifecycle-chaincode-queryapproved"
+}
+
+func (c ChaincodeQueryApproved) Args() []string {
+	args := []string{
+		"lifecycle", "chaincode", "queryapproved",
+		"--channelID", c.ChannelID,
+		"--name", c.Name,
+		"--sequence", c.Sequence,
+		"--output", "json",
+	}
+	for _, p := range c.PeerAddresses {
+		args = append(args, "--peerAddresses", p)
+	}
+	if c.ClientAuth {
+		args = append(args, "--clientauth")
+	}
+
+	return args
+}
+
 type ChaincodeCheckCommitReadiness struct {
 	ChannelID           string
 	Name                string
