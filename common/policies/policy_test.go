@@ -15,11 +15,14 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/common/policies/mocks"
 	mspi "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zapcore"
 )
 
 //go:generate counterfeiter -o mocks/identity_deserializer.go --fake-name IdentityDeserializer . identityDeserializer
@@ -284,22 +287,58 @@ func TestSignatureSetToValidIdentities(t *testing.T) {
 	assert.Equal(t, []byte("identity1"), sidBytes)
 }
 
-func TestSignatureSetToValidIdentitiesDeserialiseErr(t *testing.T) {
-	sd := []*protoutil.SignedData{
+func TestSignatureSetToValidIdentitiesDeserializeErr(t *testing.T) {
+	oldLogger := logger
+	l, recorder := floggingtest.NewTestLogger(t, floggingtest.AtLevel(zapcore.InfoLevel))
+	logger = l
+	defer func() { logger = oldLogger }()
+
+	fakeIdentityDeserializer := &mocks.IdentityDeserializer{}
+	fakeIdentityDeserializer.DeserializeIdentityReturns(nil, errors.New("mango"))
+
+	// generate actual x509 certificate
+	ca, err := tlsgen.NewCA()
+	assert.NoError(t, err)
+	client1, err := ca.NewClientCertKeyPair()
+	assert.NoError(t, err)
+	id := &msp.SerializedIdentity{
+		IdBytes: client1.Cert,
+	}
+	idBytes, err := proto.Marshal(id)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		spec                     string
+		signedData               []*protoutil.SignedData
+		expectedLogEntryContains []string
+	}{
 		{
-			Data:      []byte("data1"),
-			Identity:  []byte("identity1"),
-			Signature: []byte("signature1"),
+			spec: "deserialize identity error - identity is random bytes",
+			signedData: []*protoutil.SignedData{
+				{
+					Identity: []byte("identity1"),
+				},
+			},
+			expectedLogEntryContains: []string{"invalid identity", fmt.Sprintf("serialized-identity=%x", []byte("identity1")), "error=mango"},
+		},
+		{
+			spec: "deserialize identity error - actual certificate",
+			signedData: []*protoutil.SignedData{
+				{
+					Identity: idBytes,
+				},
+			},
+			expectedLogEntryContains: []string{"invalid identity", fmt.Sprintf("certificate subject=%s serialnumber=%d", client1.TLSCert.Subject, client1.TLSCert.SerialNumber), "error=mango"},
 		},
 	}
 
-	fIDDs := &mocks.IdentityDeserializer{}
-	fIDDs.DeserializeIdentityReturns(nil, errors.New("bad identity"))
-
-	ids := SignatureSetToValidIdentities(sd, fIDDs)
-	assert.Len(t, ids, 0)
-	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
-	assert.Equal(t, []byte("identity1"), sidBytes)
+	for _, tc := range tests {
+		t.Run(tc.spec, func(t *testing.T) {
+			ids := SignatureSetToValidIdentities(tc.signedData, fakeIdentityDeserializer)
+			assert.Len(t, ids, 0)
+			assertLogContains(t, recorder, tc.expectedLogEntryContains...)
+		})
+	}
 }
 
 func TestSignatureSetToValidIdentitiesVerifyErr(t *testing.T) {
@@ -327,4 +366,11 @@ func TestSignatureSetToValidIdentitiesVerifyErr(t *testing.T) {
 	assert.Equal(t, []byte("signature1"), sig)
 	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
 	assert.Equal(t, []byte("identity1"), sidBytes)
+}
+
+func assertLogContains(t *testing.T, r *floggingtest.Recorder, ss ...string) {
+	defer r.Reset()
+	for _, s := range ss {
+		assert.NotEmpty(t, r.EntriesContaining(s))
+	}
 }
