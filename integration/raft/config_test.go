@@ -989,7 +989,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Launching the orderers")
 			for _, o := range orderers {
-				runner := network.OrdererRunner(o)
+				runner := network.OrdererRunner(o, "FABRIC_LOGGING_SPEC=orderer.consensus.etcdraft=debug:info")
 				ordererRunners = append(ordererRunners, runner)
 				process := ifrit.Invoke(runner)
 				ordererProcesses = append(ordererProcesses, process)
@@ -1076,6 +1076,80 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			resp, err := nwo.Broadcast(network, orderers[survivor], env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+		})
+
+		When("an evicted node is added back while it's offline", func() {
+			It("can start with correct new raft id", func() {
+				o1 := network.Orderer("orderer1")
+				o2 := network.Orderer("orderer2")
+				o3 := network.Orderer("orderer3")
+
+				By("Waiting for them to elect a leader")
+				findLeader(ordererRunners)
+
+				By("Creating an application channel testchannel")
+				network.CreateChannel("testchannel", o1, peer)
+
+				assertBlockReception(map[string]int{
+					"testchannel":   0,
+					"systemchannel": 1,
+				}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+
+				By("Killing the first orderer")
+				ordererProcesses[0].Signal(syscall.SIGTERM)
+				Eventually(ordererProcesses[0].Wait(), network.EventuallyTimeout).Should(Receive())
+
+				// We need to wait for stabilization, as we might have killed the leader OSN.
+				By("Waiting for the channel to stabilize after killing the orderer")
+				assertBlockReception(map[string]int{
+					"testchannel":   0,
+					"systemchannel": 1,
+				}, []*nwo.Orderer{o2, o3}, peer, network)
+
+				By("observing active nodes to shrink")
+				o2Runner := ordererRunners[1]
+				Eventually(o2Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Current active nodes in cluster are: \\[2 3\\]"))
+
+				By("Removing the first orderer from the application channel")
+				server1CertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(o1), "server.crt"))
+				Expect(err).To(Not(HaveOccurred()))
+				removeConsenter(network, peer, o2, "testchannel", server1CertBytes)
+
+				By("Adding the evicted orderer back to the application channel")
+				addConsenter(network, peer, o2, "testchannel", etcdraft.Consenter{
+					ServerTlsCert: server1CertBytes,
+					ClientTlsCert: server1CertBytes,
+					Host:          "127.0.0.1",
+					Port:          uint32(network.OrdererPort(o1, nwo.ClusterPort)),
+				})
+
+				By("Removing the first orderer from the application channel again")
+				removeConsenter(network, peer, o2, "testchannel", server1CertBytes)
+
+				By("Adding the evicted orderer back to the application channel again")
+				addConsenter(network, peer, o2, "testchannel", etcdraft.Consenter{
+					ServerTlsCert: server1CertBytes,
+					ClientTlsCert: server1CertBytes,
+					Host:          "127.0.0.1",
+					Port:          uint32(network.OrdererPort(o1, nwo.ClusterPort)),
+				})
+
+				By("Starting the first orderer again")
+				o1Runner := network.OrdererRunner(o1)
+				ordererProcesses[0] = ifrit.Invoke(o1Runner)
+				Eventually(ordererProcesses[0].Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+				By("Submitting tx")
+				env := CreateBroadcastEnvelope(network, o2, "testchannel", []byte("foo"))
+				resp, err := nwo.Broadcast(network, o2, env)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+				By("Waiting for the channel to stabilize")
+				assertBlockReception(map[string]int{
+					"testchannel": 5,
+				}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+			})
 		})
 
 		It("notices it even if it is down at the time of its eviction", func() {
