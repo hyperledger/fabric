@@ -381,10 +381,7 @@ func (r *Registrar) ChannelList() types.ChannelList {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	list := types.ChannelList{
-		SystemChannel: nil,
-		Channels:      nil,
-	}
+	list := types.ChannelList{}
 
 	if len(r.chains) == 0 {
 		return list
