@@ -153,8 +153,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 
 	t.Run("no channels, empty channels", func(t *testing.T) {
 		list := types.ChannelList{
-			SystemChannel: nil,
-			Channels:      []types.ChannelInfoShort{},
+			Channels: []types.ChannelInfoShort{},
 		}
 		fakeManager.ChannelListReturns(list)
 		resp := httptest.NewRecorder()
@@ -172,10 +171,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 	})
 
 	t.Run("no channels", func(t *testing.T) {
-		list := types.ChannelList{
-			SystemChannel: nil,
-			Channels:      nil,
-		}
+		list := types.ChannelList{}
 		fakeManager.ChannelListReturns(list)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
