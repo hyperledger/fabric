@@ -227,7 +227,7 @@ func TestNewRegistrar(t *testing.T) {
 			t,
 			types.ChannelList{
 				SystemChannel: &types.ChannelInfoShort{Name: "testchannelid", URL: ""},
-				Channels:      []types.ChannelInfoShort{}},
+				Channels:      nil},
 			list,
 		)
 

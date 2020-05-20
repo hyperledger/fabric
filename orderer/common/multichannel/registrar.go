@@ -391,14 +391,13 @@ func (r *Registrar) ChannelList() types.ChannelList {
 	}
 
 	if r.systemChannelID != "" {
-		list.SystemChannel = &types.ChannelInfoShort{Name: r.systemChannelID, URL: ""}
+		list.SystemChannel = &types.ChannelInfoShort{Name: r.systemChannelID}
 	}
-	list.Channels = make([]types.ChannelInfoShort, 0)
 	for name := range r.chains {
 		if name == r.systemChannelID {
 			continue
 		}
-		list.Channels = append(list.Channels, types.ChannelInfoShort{Name: name, URL: ""})
+		list.Channels = append(list.Channels, types.ChannelInfoShort{Name: name})
 	}
 
 	return list
