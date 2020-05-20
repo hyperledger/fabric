@@ -8,6 +8,7 @@ package ledger
 
 import (
 	"fmt"
+	"hash"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -31,7 +32,7 @@ type Initializer struct {
 	HealthCheckRegistry             HealthCheckRegistry
 	Config                          *Config
 	CustomTxProcessors              map[common.HeaderType]CustomTxProcessor
-	Hasher                          Hasher
+	HashProvider                    HashProvider
 }
 
 // Config is a structure used to configure a ledger provider.
@@ -691,10 +692,10 @@ func (e *InvalidTxError) Error() string {
 	return e.Msg
 }
 
-// Hasher implements the hash function that should be used for all ledger components.
+// HashProvider provides access to a hash.Hash for ledger components.
 // Currently works at a stepping stone to decrease surface area of bccsp
-type Hasher interface {
-	Hash(msg []byte, opts bccsp.HashOpts) (hash []byte, err error)
+type HashProvider interface {
+	GetHash(opts bccsp.HashOpts) (hash.Hash, error)
 }
 
 //go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener

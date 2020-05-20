@@ -74,15 +74,15 @@ type Provider struct {
 	collElgNotifier      *collElgNotifier
 	stats                *stats
 	fileLock             *leveldbhelper.FileLock
-	hasher               ledger.Hasher
+	hashProvider         ledger.HashProvider
 }
 
 // NewProvider instantiates a new Provider.
 // This is not thread-safe and assumed to be synchronized by the caller
 func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 	p := &Provider{
-		initializer: initializer,
-		hasher:      initializer.Hasher,
+		initializer:  initializer,
+		hashProvider: initializer.HashProvider,
 	}
 
 	defer func() {
@@ -346,7 +346,7 @@ func (p *Provider) open(ledgerID string) (ledger.PeerLedger, error) {
 		ccLifecycleEventProvider: p.initializer.ChaincodeLifecycleEventProvider,
 		stats:                    p.stats.ledgerStats(ledgerID),
 		customTxProcessors:       p.initializer.CustomTxProcessors,
-		hasher:                   p.hasher,
+		hashProvider:             p.hashProvider,
 	}
 
 	l, err := newKVLedger(initializer)

@@ -143,7 +143,7 @@ func constructDefaultInitializer(testDir string) (*Initializer, error) {
 
 		MetricsProvider:               &disabled.Provider{},
 		DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
-		Hasher:                        cryptoProvider,
+		HashProvider:                  cryptoProvider,
 	}, nil
 }
 

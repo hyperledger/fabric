@@ -41,7 +41,7 @@ func NewInitializer(testLedgerDir string) *ledgermgmt.Initializer {
 		},
 		MetricsProvider:                 &disabled.Provider{},
 		DeployedChaincodeInfoProvider:   &mock.DeployedChaincodeInfoProvider{},
-		Hasher:                          cryptoProvider,
+		HashProvider:                    cryptoProvider,
 		HealthCheckRegistry:             &mock.HealthCheckRegistry{},
 		ChaincodeLifecycleEventProvider: &mock.ChaincodeLifecycleEventProvider{},
 	}

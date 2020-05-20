@@ -34,7 +34,7 @@ func TestStatsBlockCommit(t *testing.T) {
 			DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 			MetricsProvider:               testMetricProvider.fakeProvider,
 			Config:                        conf,
-			Hasher:                        cryptoProvider,
+			HashProvider:                  cryptoProvider,
 		},
 	)
 	if err != nil {
