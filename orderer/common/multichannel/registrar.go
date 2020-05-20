@@ -230,6 +230,8 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 
 // SystemChannelID returns the ChannelID for the system channel.
 func (r *Registrar) SystemChannelID() string {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
 	return r.systemChannelID
 }
 
@@ -372,12 +374,30 @@ func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelco
 	return channelconfig.NewBundle(channelID, config, r.bccsp)
 }
 
+// ChannelList returns a slice of ChannelInfoShort containing all application channels (excluding the system
+// channel), and ChannelInfoShort of the system channel (nil if does not exist).
+// The URL fields are empty, and are to be completed by the caller.
 func (r *Registrar) ChannelList() types.ChannelList {
-	//TODO
-	return types.ChannelList{
-		SystemChannel: nil,
-		Channels:      nil,
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	list := types.ChannelList{}
+
+	if len(r.chains) == 0 {
+		return list
 	}
+
+	if r.systemChannelID != "" {
+		list.SystemChannel = &types.ChannelInfoShort{Name: r.systemChannelID}
+	}
+	for name := range r.chains {
+		if name == r.systemChannelID {
+			continue
+		}
+		list.Channels = append(list.Channels, types.ChannelInfoShort{Name: name})
+	}
+
+	return list
 }
 
 func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
