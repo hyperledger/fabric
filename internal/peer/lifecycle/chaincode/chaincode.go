@@ -46,6 +46,7 @@ func Cmd(cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeCmd.AddCommand(QueryInstalledCmd(nil, cryptoProvider))
 	chaincodeCmd.AddCommand(GetInstalledPackageCmd(nil, cryptoProvider))
 	chaincodeCmd.AddCommand(ApproveForMyOrgCmd(nil, cryptoProvider))
+	chaincodeCmd.AddCommand(QueryApprovedCmd(nil, cryptoProvider))
 	chaincodeCmd.AddCommand(CheckCommitReadinessCmd(nil, cryptoProvider))
 	chaincodeCmd.AddCommand(CommitCmd(nil, cryptoProvider))
 	chaincodeCmd.AddCommand(QueryCommittedCmd(nil, cryptoProvider))
@@ -80,8 +81,8 @@ var (
 
 var chaincodeCmd = &cobra.Command{
 	Use:   "chaincode",
-	Short: "Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|checkcommitreadiness|commit|querycommitted",
-	Long:  "Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|checkcommitreadiness|commit|querycommitted",
+	Short: "Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted",
+	Long:  "Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		common.InitCmd(cmd, args)
 		common.SetOrdererEnv(cmd, args)
