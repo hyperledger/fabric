@@ -20,39 +20,33 @@ func TestSecondChanceCache(t *testing.T) {
 
 	cache.add("a", "xyz")
 
-	obj, ok := cache.get("a")
-	assert.True(t, ok)
-	assert.Equal(t, "xyz", obj.(string))
-
 	cache.add("b", "123")
-
-	obj, ok = cache.get("b")
+	// get b, b referenced bit is set to true
+	obj, ok := cache.get("b")
 	assert.True(t, ok)
 	assert.Equal(t, "123", obj.(string))
 
+	// add c. victim scan: delete a and set b as the next candidate of a victim
 	cache.add("c", "777")
 
-	obj, ok = cache.get("c")
-	assert.True(t, ok)
-	assert.Equal(t, "777", obj.(string))
-
+	// check a is deleted
 	_, ok = cache.get("a")
 	assert.False(t, ok)
 
-	_, ok = cache.get("b")
-	assert.True(t, ok)
-
-	cache.add("b", "456")
-
-	obj, ok = cache.get("b")
-	assert.True(t, ok)
-	assert.Equal(t, "456", obj.(string))
-
+	// add d. victim scan: b referenced bit is set to false and delete c
 	cache.add("d", "555")
 
-	obj, ok = cache.get("b")
-	_, ok = cache.get("b")
+	// check c is deleted
+	_, ok = cache.get("c")
 	assert.False(t, ok)
+
+	// check b and d
+	obj, ok = cache.get("b")
+	assert.True(t, ok)
+	assert.Equal(t, "123", obj.(string))
+	obj, ok = cache.get("d")
+	assert.True(t, ok)
+	assert.Equal(t, "555", obj.(string))
 }
 
 func TestSecondChanceCacheConcurrent(t *testing.T) {
