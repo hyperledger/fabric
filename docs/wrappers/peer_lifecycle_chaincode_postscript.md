@@ -136,6 +136,87 @@ channel `mychannel`.
     2019-03-18 16:04:11.253 UTC [chaincodeCmd] ClientWait -> INFO 002 txid [efba188ca77889cc1c328fc98e0bb12d3ad0abcda3f84da3714471c7c1e6c13c] committed with status (VALID) at peer0.org1.example.com:7051
     ```
 
+### peer lifecycle chaincode queryapproved example
+
+You can query an organization's approved chaincode definition by using the `peer lifecycle chaincode queryapproved` command.
+You can use this command to see the details (including package ID) of approved chaincode definitions.
+
+  * Here is an example of the `peer lifecycle chaincode queryapproved` command,
+    which queries the approved definition of a chaincode named `mycc` at sequence number `1` on
+    channel `mychannel`.
+
+    ```
+    peer lifecycle chaincode queryapproved -C mychannel -n mycc --sequence 1
+
+    Approved chaincode definition for chaincode 'mycc' on channel 'mychannel':
+    sequence: 1, version: 1, init-required: true, package-id: mycc_1:d02f72000e7c0f715840f51cb8d72d70bc1ba230552f8445dded0ec8b6e0b830, endorsement plugin: escc, validation plugin: vscc
+    ```
+
+    If NO package is specified for the approved definition, this command will display an empty package ID.
+
+  * You can also use this command without specifying the sequence number in order to query the latest approved definition (latest: the newer of the currently defined sequence number and the next sequence number).
+
+    ```
+    peer lifecycle chaincode queryapproved -C mychannel -n mycc
+
+    Approved chaincode definition for chaincode 'mycc' on channel 'mychannel':
+    sequence: 3, version: 3, init-required: false, package-id: mycc_1:d02f72000e7c0f715840f51cb8d72d70bc1ba230552f8445dded0ec8b6e0b830, endorsement plugin: escc, validation plugin: vscc
+    ```
+
+  * You can also use the `--output` flag to have the CLI format the output as
+    JSON.
+
+    - When querying an approved chaincode definition for which package is specified
+
+      ```
+      peer lifecycle chaincode queryapproved -C mychannel -n mycc --sequence 1 --output json
+      ```
+
+      If successful, the command will return a JSON that has the approved chaincode definition for chaincode `mycc` at sequence number `1` on channel `mychannel`.
+
+      ```
+      {
+        "sequence": 1,
+        "version": "1",
+        "endorsement_plugin": "escc",
+        "validation_plugin": "vscc",
+        "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+        "collections": {},
+        "init_required": true,
+        "source": {
+          "Type": {
+            "LocalPackage": {
+              "package_id": "mycc_1:d02f72000e7c0f715840f51cb8d72d70bc1ba230552f8445dded0ec8b6e0b830"
+            }
+          }
+        }
+      }
+      ```
+
+    - When querying an approved chaincode definition for which package is NOT specified
+
+      ```
+      peer lifecycle chaincode queryapproved -C mychannel -n mycc --sequence 2 --output json
+      ```
+
+      If successful, the command will return a JSON that has the approved chaincode definition for chaincode `mycc` at sequence number `2` on channel `mychannel`.
+
+      ```
+      {
+        "sequence": 2,
+        "version": "2",
+        "endorsement_plugin": "escc",
+        "validation_plugin": "vscc",
+        "validation_parameter": "EiAvQ2hhbm5lbC9BcHBsaWNhdGlvbi9FbmRvcnNlbWVudA==",
+        "collections": {},
+        "source": {
+          "Type": {
+            "Unavailable": {}
+          }
+        }
+      }
+      ```
+
 ### peer lifecycle chaincode checkcommitreadiness example
 
 You can check whether a chaincode definition is ready to be committed using the
