@@ -170,21 +170,25 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		assert.Nil(t, listAll.SystemChannel)
 	})
 
-	t.Run("no channels", func(t *testing.T) {
+	t.Run("no channels, Accept ok", func(t *testing.T) {
 		list := types.ChannelList{}
 		fakeManager.ChannelListReturns(list)
-		resp := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
-		h.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusOK, resp.Code)
-		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
 
-		listAll := &types.ChannelList{}
-		err := json.Unmarshal(resp.Body.Bytes(), listAll)
-		require.NoError(t, err, "cannot be unmarshaled")
-		assert.Equal(t, 0, len(listAll.Channels))
-		assert.Nil(t, listAll.Channels)
-		assert.Nil(t, listAll.SystemChannel)
+		for _, accept := range []string{"application/json", "application/*", "*/*"} {
+			resp := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
+			req.Header.Set("Accept", accept)
+			h.ServeHTTP(resp, req)
+			assert.Equal(t, http.StatusOK, resp.Code, "Accept: %s", accept)
+			assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
+
+			listAll := &types.ChannelList{}
+			err := json.Unmarshal(resp.Body.Bytes(), listAll)
+			require.NoError(t, err, "cannot be unmarshaled")
+			assert.Equal(t, 0, len(listAll.Channels))
+			assert.Nil(t, listAll.Channels)
+			assert.Nil(t, listAll.SystemChannel)
+		}
 	})
 }
 

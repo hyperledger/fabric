@@ -91,7 +91,7 @@ func (h *HTTPHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 
 // List all channels
 func (h *HTTPHandler) serveListAll(resp http.ResponseWriter, req *http.Request) {
-	_, err := negotiateContentType(req) // Only application/json for now
+	_, err := negotiateContentType(req) // Only application/json responses for now
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
 		return
@@ -108,22 +108,17 @@ func (h *HTTPHandler) serveListAll(resp http.ResponseWriter, req *http.Request) 
 
 // List a single channel
 func (h *HTTPHandler) serveListOne(resp http.ResponseWriter, req *http.Request) {
-	_, err := negotiateContentType(req) // Only application/json for now
+	_, err := negotiateContentType(req) // Only application/json responses for now
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
 		return
 	}
 
-	channelID, ok := mux.Vars(req)[channelIDKey]
+	channelID, ok := h.extractChannelID(req, resp)
 	if !ok {
-		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.Wrap(err, "missing channel ID"))
 		return
 	}
 
-	if err = configtx.ValidateChannelID(channelID); err != nil {
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "invalid channel ID"))
-		return
-	}
 	infoFull, err := h.registrar.ChannelInfo(channelID)
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusNotFound, err)
@@ -134,43 +129,19 @@ func (h *HTTPHandler) serveListOne(resp http.ResponseWriter, req *http.Request) 
 
 // Join a channel. Expect application/json content.
 func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
-	_, err := negotiateContentType(req) // Only application/json for now
+	_, err := negotiateContentType(req) // Only application/json responses for now
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
 		return
 	}
 
-	channelID, ok := mux.Vars(req)[channelIDKey]
+	channelID, ok := h.extractChannelID(req, resp)
 	if !ok {
-		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.Wrap(err, "missing channel ID"))
 		return
 	}
 
-	if err = configtx.ValidateChannelID(channelID); err != nil {
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "invalid channel ID"))
-		return
-	}
-
-	bodyBytes, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		h.logger.Debugf("Failed to read request body: %s", err)
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot read request body"))
-		return
-	}
-
-	body := types.JoinBody{}
-	err = json.Unmarshal(bodyBytes, &body)
-	if err != nil {
-		h.logger.Debugf("Failed to json.Unmarshal request body: %s", err)
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot json.Unmarshal request body"))
-		return
-	}
-
-	block := &cb.Block{}
-	err = proto.Unmarshal(body.ConfigBlock, block)
-	if err != nil {
-		h.logger.Debugf("Failed to unmarshal ConfigBlock field: %s", err)
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot unmarshal ConfigBlock field"))
+	block, ok := h.jsonBodyToBlock(req, resp) //TODO add support for application/octet-stream & multipart/form-data
+	if !ok {
 		return
 	}
 
@@ -182,13 +153,63 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	h.sendJoinError(err, resp)
+}
+
+func (h *HTTPHandler) jsonBodyToBlock(req *http.Request, resp http.ResponseWriter) (*cb.Block, bool) {
+	block := &cb.Block{}
+
+	bodyBytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		h.logger.Debugf("Failed to read request body: %s", err)
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot read request body"))
+		return nil, false
+	}
+
+	body := types.JoinBody{}
+	err = json.Unmarshal(bodyBytes, &body)
+	if err != nil {
+		h.logger.Debugf("Failed to json.Unmarshal request body: %s", err)
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot json.Unmarshal request body"))
+		return nil, false
+	}
+
+	err = proto.Unmarshal(body.ConfigBlock, block)
+	if err != nil {
+		h.logger.Debugf("Failed to unmarshal ConfigBlock field: %s", err)
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot unmarshal ConfigBlock field"))
+		return nil, false
+	}
+
+	return block, true
+}
+
+func (h *HTTPHandler) extractChannelID(req *http.Request, resp http.ResponseWriter) (string, bool) {
+	channelID, ok := mux.Vars(req)[channelIDKey]
+	if !ok {
+		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.New("missing channel ID"))
+		return "", false
+	}
+
+	if err := configtx.ValidateChannelID(channelID); err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "invalid channel ID"))
+		return "", false
+	}
+	return channelID, true
+}
+
+func (h *HTTPHandler) sendJoinError(err error, resp http.ResponseWriter) {
 	h.logger.Debugf("Failed to JoinChannel: %s", err)
 	switch err {
 	case types.ErrSystemChannelExists:
+		// The client is trying to join an app-channel, but the system channel exists: only GET is allowed on app channels.
 		h.sendResponseNotAllowed(resp, errors.Wrap(err, "cannot join"), http.MethodGet)
 	case types.ErrChannelAlreadyExists:
+		// The client is trying to join an app-channel that exists, but the system channel does not;
+		// The client is trying to join the system-channel, and it exists. GET & DELETE are allowed on the channel.
 		h.sendResponseNotAllowed(resp, errors.Wrap(err, "cannot join"), http.MethodGet, http.MethodDelete)
 	case types.ErrAppChannelsAlreadyExists:
+		// The client is trying to join the system-channel that does not exist, but app channels exist.
 		h.sendResponseJsonError(resp, http.StatusForbidden, errors.Wrap(err, "cannot join"))
 	default:
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot join"))
@@ -197,7 +218,7 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 
 // Remove a channel
 func (h *HTTPHandler) serveRemove(resp http.ResponseWriter, req *http.Request) {
-	_, err := negotiateContentType(req) // Only application/json for now
+	_, err := negotiateContentType(req) // Only application/json responses for now
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusNotAcceptable, err)
 		return
