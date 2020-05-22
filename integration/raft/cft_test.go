@@ -535,7 +535,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Expect(denv).NotTo(BeNil())
 
 			block, err := nwo.Deliver(network, orderer, denv)
-			Expect(denv).NotTo(BeNil())
+			Expect(err).To(HaveOccurred())
 			Expect(block).To(BeNil())
 			Eventually(runner.Err(), time.Minute, time.Second).Should(gbytes.Say("client identity expired"))
 
@@ -581,7 +581,8 @@ func findLeader(ordererRunners []*ginkgomon.Runner) int {
 		Eventually(runner.Err(), time.Minute, time.Second).Should(gbytes.Say("Raft leader changed: [0-9] -> "))
 
 		idBuff := make([]byte, 1)
-		runner.Err().Read(idBuff)
+		_, err := runner.Err().Read(idBuff)
+		Expect(err).NotTo(HaveOccurred())
 
 		newLeader, err := strconv.ParseInt(string(idBuff), 10, 32)
 		Expect(err).To(BeNil())
