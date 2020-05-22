@@ -191,7 +191,10 @@ func (t *MarblesPrivateChaincode) initMarble(stub shim.ChaincodeStubInterface, a
 	//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the marble.
 	//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
 	value := []byte{0x00}
-	stub.PutPrivateData("collectionMarbles", colorNameIndexKey, value)
+	err = stub.PutPrivateData("collectionMarbles", colorNameIndexKey, value)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
 
 	// ==== Marble saved and indexed. Return success ====
 	fmt.Println("- end init marble")
