@@ -265,14 +265,14 @@ var _ = Describe("QueryApproved", func() {
 	})
 
 	Describe("QueryApprovedCmd", func() {
-		var (
-			queryApprovedCmd *cobra.Command
-		)
+		var queryApprovedCmd *cobra.Command
 
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
 			queryApprovedCmd = chaincode.QueryApprovedCmd(nil, cryptoProvider)
+			queryApprovedCmd.SilenceErrors = true
+			queryApprovedCmd.SilenceUsage = true
 			queryApprovedCmd.SetArgs([]string{
 				"--name=testcc",
 				"--channelID=testchannel",

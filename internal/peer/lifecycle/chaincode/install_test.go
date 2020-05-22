@@ -169,14 +169,14 @@ var _ = Describe("Install", func() {
 	})
 
 	Describe("InstallCmd", func() {
-		var (
-			installCmd *cobra.Command
-		)
+		var installCmd *cobra.Command
 
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
 			installCmd = chaincode.InstallCmd(nil, cryptoProvider)
+			installCmd.SilenceErrors = true
+			installCmd.SilenceUsage = true
 			installCmd.SetArgs([]string{
 				"testpkg",
 				"--peerAddresses=test1",
