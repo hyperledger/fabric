@@ -199,7 +199,8 @@ func TestObserverCheck(t *testing.T) {
 	checkedEntry := &zapcore.CheckedEntry{}
 
 	levels := &flogging.LoggerLevels{}
-	levels.ActivateSpec("debug")
+	err := levels.ActivateSpec("debug")
+	assert.NoError(t, err)
 	core := &flogging.Core{
 		LevelEnabler: zap.LevelEnablerFunc(func(l zapcore.Level) bool { return true }),
 		Levels:       levels,
@@ -227,7 +228,8 @@ func TestObserverWriteEntry(t *testing.T) {
 	}
 
 	levels := &flogging.LoggerLevels{}
-	levels.ActivateSpec("debug")
+	err := levels.ActivateSpec("debug")
+	assert.NoError(t, err)
 	selector := &sw{}
 	output := &sw{}
 	core := &flogging.Core{
@@ -241,7 +243,7 @@ func TestObserverWriteEntry(t *testing.T) {
 		Observer: observer,
 	}
 
-	err := core.Write(entry, fields)
+	err = core.Write(entry, fields)
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, observer.WriteEntryCallCount())

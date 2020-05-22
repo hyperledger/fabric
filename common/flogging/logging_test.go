@@ -66,7 +66,8 @@ func TestLoggingSetWriter(t *testing.T) {
 	original := logging.SetWriter(ws)
 
 	assert.Exactly(t, old, original)
-	logging.Write([]byte("hello"))
+	_, err = logging.Write([]byte("hello"))
+	assert.NoError(t, err)
 	assert.Equal(t, 1, ws.WriteCallCount())
 	assert.Equal(t, []byte("hello"), ws.WriteArgsForCall(0))
 
