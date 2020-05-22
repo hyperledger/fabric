@@ -85,8 +85,8 @@ func (c *CommitReadinessCheckInput) Validate() error {
 func CheckCommitReadinessCmd(c *CommitReadinessChecker, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeCheckCommitReadinessCmd := &cobra.Command{
 		Use:   "checkcommitreadiness",
-		Short: fmt.Sprintf("Check whether a chaincode definition is ready to be committed on a channel."),
-		Long:  fmt.Sprintf("Check whether a chaincode definition is ready to be committed on a channel."),
+		Short: "Check whether a chaincode definition is ready to be committed on a channel.",
+		Long:  "Check whether a chaincode definition is ready to be committed on a channel.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if c == nil {
 				// set input from CLI flags

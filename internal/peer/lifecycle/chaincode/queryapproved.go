@@ -46,8 +46,8 @@ type ApprovedQueryInput struct {
 func QueryApprovedCmd(a *ApprovedQuerier, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	chaincodeQueryApprovedCmd := &cobra.Command{
 		Use:   "queryapproved",
-		Short: fmt.Sprintf("Query an org's approved chaincode definition from its peer."),
-		Long:  fmt.Sprintf("Query an organization's approved chaincode definition from its peer."),
+		Short: "Query an org's approved chaincode definition from its peer.",
+		Long:  "Query an organization's approved chaincode definition from its peer.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if a == nil {
 				ccInput := &ClientConnectionsInput{
