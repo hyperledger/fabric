@@ -136,8 +136,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			sysStartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
 			Expect(sysStartBlockNum).ToNot(Equal(0))
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			updatedConfig, consensusTypeValue, err := extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue := extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			By("1) Verify: new channels cannot be created")
@@ -155,8 +154,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			std1EntryBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(std1EntryBlockNum).ToNot(Equal(0))
 			config = nwo.GetConfig(network, peer, orderer, channel1)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			By("2) Verify: Normal TX's on standard channel are blocked")
@@ -164,7 +162,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			//In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
 			By("2) Verify: delivery request from peer is blocked")
-			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
+			err := checkPeerDeliverRequest(orderer, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
 			//=== Step 3: config update on system channel, State=NORMAL, abort ===
@@ -217,8 +215,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			sysStartBlockNum = nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
 			Expect(sysStartBlockNum).ToNot(Equal(0))
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			//=== Step 6: Config update on standard channel1, MAINTENANCE, again ===
@@ -233,8 +230,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(std1EntryBlockNum).ToNot(Equal(0))
 
 			config = nwo.GetConfig(network, peer, orderer, channel1)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			By("6) Verify: delivery request from peer is blocked")
@@ -256,8 +252,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(std2EntryBlockNum).ToNot(Equal(0))
 
 			config = nwo.GetConfig(network, peer, orderer, channel2)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			By("7) Verify: delivery request from peer is blocked")
@@ -364,8 +359,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			sysStartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
 			Expect(sysStartBlockNum).ToNot(Equal(0))
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			updatedConfig, consensusTypeValue, err := extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue := extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			//=== Step 6: ===
@@ -379,8 +373,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			std1StartBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(std1StartBlockNum).ToNot(Equal(0))
 			config = nwo.GetConfig(network, peer, orderer, channel1)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			//=== Step 7: ===
@@ -419,8 +412,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			sysBlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, syschannel)
 			Expect(sysBlockNum).To(Equal(sysStartBlockNum + 1))
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			//=== Step 12: ===
@@ -435,16 +427,15 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			std1BlockNum := nwo.CurrentConfigBlockNumber(network, peer, orderer, channel1)
 			Expect(std1BlockNum).To(Equal(std1StartBlockNum + 1))
 			config = nwo.GetConfig(network, peer, orderer, channel1)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			//=== Step 13: ===
 			By("13) Config update on system channel, changing value other than ConsensusType.Type is permitted")
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updatedConfig = proto.Clone(config).(*common.Config)
 			updateConfigWithBatchTimeout(updatedConfig)
 			nwo.UpdateOrdererConfig(network, orderer, syschannel, config, updatedConfig, peer, orderer)
 
@@ -455,9 +446,9 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			//=== Step 14: ===
 			By("14) Config update on standard channel, changing value other than ConsensusType.Type is permitted")
 			config = nwo.GetConfig(network, peer, orderer, channel1)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "etcdraft", protosorderer.ConsensusType_STATE_MAINTENANCE)
+			updatedConfig = proto.Clone(config).(*common.Config)
 			updateConfigWithBatchTimeout(updatedConfig)
 			nwo.UpdateOrdererConfig(network, orderer, channel1, config, updatedConfig, peer, orderer)
 
@@ -544,8 +535,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(sysStartBlockNum).ToNot(Equal(0))
 
 			config = nwo.GetConfig(network, peer, o1, syschannel)
-			updatedConfig, consensusTypeValue, err := extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue := extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			//=== Step 2: Config update on standard channel, MAINTENANCE ===
@@ -560,8 +550,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(chan1StartBlockNum).ToNot(Equal(0))
 
 			config = nwo.GetConfig(network, peer, o1, channel1)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "kafka", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			//=== Step 3: config update on system channel, State=MAINTENANCE, type=etcdraft ===
@@ -631,7 +620,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			By("8) Standard channel still in maintenance, State=MAINTENANCE, normal TX's blocked, delivery to peers blocked")
 			assertTxFailed(network, o1, channel1)
 
-			err = checkPeerDeliverRequest(o1, peer, network, channel1)
+			err := checkPeerDeliverRequest(o1, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
 			By("9) Release - executing config transaction on system channel with restarted orderer")
@@ -786,8 +775,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(sysStartBlockNum).ToNot(Equal(0))
 
 			config = nwo.GetConfig(network, peer, orderer, syschannel)
-			updatedConfig, consensusTypeValue, err := extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue := extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "solo", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			//=== Step 2: Config update on standard channel, MAINTENANCE ===
@@ -802,8 +790,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(chan1StartBlockNum).ToNot(Equal(0))
 
 			config = nwo.GetConfig(network, peer, orderer, channel1)
-			updatedConfig, consensusTypeValue, err = extractOrdererConsensusType(config)
-			Expect(err).NotTo(HaveOccurred())
+			consensusTypeValue = extractOrdererConsensusType(config)
 			validateConsensusTypeValue(consensusTypeValue, "solo", protosorderer.ConsensusType_STATE_MAINTENANCE)
 
 			//=== Step 3: config update on system channel, State=MAINTENANCE, type=etcdraft ===
@@ -862,7 +849,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			By("8) Standard channel still in maintenance, State=MAINTENANCE, normal TX's blocked, delivery to peers blocked")
 			assertTxFailed(network, orderer, channel1)
 
-			err = checkPeerDeliverRequest(orderer, peer, network, channel1)
+			err := checkPeerDeliverRequest(orderer, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
 
 			By("9) Release - executing config transaction on system channel with restarted orderer")
@@ -961,12 +948,12 @@ func validateConsensusTypeValue(value *protosorderer.ConsensusType, cType string
 	Expect(value.State).To(Equal(state))
 }
 
-func extractOrdererConsensusType(config *common.Config) (*common.Config, *protosorderer.ConsensusType, error) {
-	updatedConfig := proto.Clone(config).(*common.Config)
-	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
-	consensusTypeValue := new(protosorderer.ConsensusType)
-	err := proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
-	return updatedConfig, consensusTypeValue, err
+func extractOrdererConsensusType(config *common.Config) *protosorderer.ConsensusType {
+	var consensusTypeValue protosorderer.ConsensusType
+	consensusTypeConfigValue := config.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+	err := proto.Unmarshal(consensusTypeConfigValue.Value, &consensusTypeValue)
+	Expect(err).NotTo(HaveOccurred())
+	return &consensusTypeValue
 }
 
 func updateConfigWithConsensusType(
@@ -1136,8 +1123,8 @@ func prepareTransition(
 	toConsensusType string, toConsensusMetadata []byte, toMigState protosorderer.ConsensusType_State, // To
 ) (current, updated *common.Config) {
 	current = nwo.GetConfig(network, peer, orderer, channel)
-	updated, consensusTypeValue, err := extractOrdererConsensusType(current)
-	Expect(err).NotTo(HaveOccurred())
+	updated = proto.Clone(current).(*common.Config)
+	consensusTypeValue := extractOrdererConsensusType(current)
 	validateConsensusTypeValue(consensusTypeValue, fromConsensusType, fromMigState)
 	updateConfigWithConsensusType(toConsensusType, toConsensusMetadata, toMigState, updated, consensusTypeValue)
 	return current, updated
