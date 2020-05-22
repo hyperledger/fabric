@@ -17,9 +17,6 @@ import (
 )
 
 func TestX509PublicKeyImportOptsKeyImporter(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TestX509PublicKeyImportOptsKeyImporter")
-	}
 	ki := currentBCCSP
 
 	_, err := ki.KeyImport("Hello World", &bccsp.X509PublicKeyImportOpts{})

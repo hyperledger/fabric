@@ -19,9 +19,6 @@ import (
 )
 
 func TestKeyGenFailures(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TestKeyGenFailures")
-	}
 	var testOpts bccsp.KeyGenOpts
 	ki := currentBCCSP
 	_, err := ki.KeyGen(testOpts)
@@ -30,9 +27,6 @@ func TestKeyGenFailures(t *testing.T) {
 }
 
 func TestLoadLib(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TestLoadLib")
-	}
 	// Setup PKCS11 library and provide initial set of values
 	lib, pin, label := FindPKCS11Lib()
 
@@ -49,18 +43,15 @@ func TestLoadLib(t *testing.T) {
 	// Test for invalid label
 	_, _, _, err = loadLib(lib, pin, "badLabel")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Could not find token with label")
+	assert.Contains(t, err.Error(), "could not find token with label")
 
 	// Test for no pin
 	_, _, _, err = loadLib(lib, "", label)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "No PIN set")
+	assert.Contains(t, err.Error(), "Login failed: pkcs11")
 }
 
 func TestNamedCurveFromOID(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TestNamedCurveFromOID")
-	}
 	// Test for valid P224 elliptic curve
 	namedCurve := namedCurveFromOID(oidNamedCurveP224)
 	assert.Equal(t, elliptic.P224(), namedCurve, "Did not receive expected named curve for oidNamedCurveP224")
@@ -85,9 +76,6 @@ func TestNamedCurveFromOID(t *testing.T) {
 }
 
 func TestPKCS11GetSession(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TestPKCS11GetSession")
-	}
 	var sessions []pkcs11.SessionHandle
 	for i := 0; i < 3*sessionCacheSize; i++ {
 		session, err := currentBCCSP.(*impl).getSession()
@@ -123,10 +111,6 @@ func TestPKCS11GetSession(t *testing.T) {
 }
 
 func TestPKCS11ECKeySignVerify(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping TestPKCS11ECKeySignVerify")
-	}
-
 	msg1 := []byte("This is my very authentic message")
 	msg2 := []byte("This is my very unauthentic message")
 	hash1, _ := currentBCCSP.Hash(msg1, &bccsp.SHAOpts{})
