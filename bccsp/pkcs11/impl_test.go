@@ -10,7 +10,6 @@ package pkcs11
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
@@ -1233,31 +1232,4 @@ func TestSHA(t *testing.T) {
 			t.Fatalf("Discrempancy found in HASH result [%x], [%x]!=[%x]", b, h1, h2)
 		}
 	}
-}
-
-func getCryptoHashIndex(t *testing.T) crypto.Hash {
-	switch currentTestConfig.hashFamily {
-	case "SHA2":
-		switch currentTestConfig.securityLevel {
-		case 256:
-			return crypto.SHA256
-		case 384:
-			return crypto.SHA384
-		default:
-			t.Fatalf("Invalid security level [%d]", currentTestConfig.securityLevel)
-		}
-	case "SHA3":
-		switch currentTestConfig.securityLevel {
-		case 256:
-			return crypto.SHA3_256
-		case 384:
-			return crypto.SHA3_384
-		default:
-			t.Fatalf("Invalid security level [%d]", currentTestConfig.securityLevel)
-		}
-	default:
-		t.Fatalf("Invalid hash family [%s]", currentTestConfig.hashFamily)
-	}
-
-	return crypto.SHA3_256
 }
