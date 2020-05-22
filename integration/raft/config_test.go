@@ -152,7 +152,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			genesisBlock := pgen.GenesisBlockForChannel(network.SystemChannel.Name)
 			data, err := proto.Marshal(genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
-			ioutil.WriteFile(network.OutputBlockPath(network.SystemChannel.Name), data, 0644)
+			err = ioutil.WriteFile(network.OutputBlockPath(network.SystemChannel.Name), data, 0644)
+			Expect(err).NotTo(HaveOccurred())
 
 			By("Starting orderer with malformed genesis block")
 			ordererRunner := network.OrdererGroupRunner()
@@ -194,7 +195,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 			data, err = proto.Marshal(configtx)
 			Expect(err).NotTo(HaveOccurred())
-			ioutil.WriteFile(network.CreateChannelTxPath(channel), data, 0644)
+			err = ioutil.WriteFile(network.CreateChannelTxPath(channel), data, 0644)
+			Expect(err).NotTo(HaveOccurred())
 
 			By("Submitting malformed channel creation config tx to orderer")
 			org1Peer0 := network.Peer("Org1", "peer0")
@@ -1412,10 +1414,12 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 		ordererOrg := updatedConfig.ChannelGroup.Groups["Orderer"].Groups["OrdererOrg"]
 		mspConfig := &msp.MSPConfig{}
-		proto.Unmarshal(ordererOrg.Values["MSP"].Value, mspConfig)
+		err := proto.Unmarshal(ordererOrg.Values["MSP"].Value, mspConfig)
+		Expect(err).NotTo(HaveOccurred())
 
 		fabMSPConfig := &msp.FabricMSPConfig{}
-		proto.Unmarshal(mspConfig.Config, fabMSPConfig)
+		err = proto.Unmarshal(mspConfig.Config, fabMSPConfig)
+		Expect(err).NotTo(HaveOccurred())
 
 		fabMSPConfig.Name = "OrdererMSP2"
 

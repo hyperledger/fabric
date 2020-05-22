@@ -51,7 +51,8 @@ var _ = Describe("SBE_E2E", func() {
 			CollectionsConfig: "testdata/collection_config.json",
 		}
 
-		tempDir, err = ioutil.TempDir("", "nwo")
+		tempDir, err = ioutil.TempDir("", "sbe")
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -62,6 +63,7 @@ var _ = Describe("SBE_E2E", func() {
 		if network != nil {
 			network.Cleanup()
 		}
+		os.RemoveAll(tempDir)
 		os.RemoveAll(testDir)
 	})
 
@@ -443,7 +445,8 @@ func getLedgerHeight(n *nwo.Network, peer *nwo.Peer, channelName string) int {
 
 	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
 	var channelInfo = common.BlockchainInfo{}
-	json.Unmarshal([]byte(channelInfoStr), &channelInfo)
+	err = json.Unmarshal([]byte(channelInfoStr), &channelInfo)
+	Expect(err).NotTo(HaveOccurred())
 	return int(channelInfo.Height)
 }
 
