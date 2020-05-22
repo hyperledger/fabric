@@ -117,6 +117,7 @@ var _ = Describe("QueryCommitted", func() {
 					},
 				}
 				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				Expect(err).NotTo(HaveOccurred())
 				Eventually(committedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
 			})
 		})
@@ -190,6 +191,7 @@ var _ = Describe("QueryCommitted", func() {
 						},
 					}
 					json, err := json.MarshalIndent(expectedOutput, "", "\t")
+					Expect(err).NotTo(HaveOccurred())
 					Eventually(committedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
 				})
 			})

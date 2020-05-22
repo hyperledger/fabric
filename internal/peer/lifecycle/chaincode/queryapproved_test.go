@@ -128,6 +128,7 @@ var _ = Describe("QueryApproved", func() {
 					},
 				}
 				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				Expect(err).NotTo(HaveOccurred())
 				Eventually(approvedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
 			})
 		})

@@ -90,6 +90,7 @@ var _ = Describe("QueryInstalled", func() {
 					},
 				}
 				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				Expect(err).NotTo(HaveOccurred())
 				Eventually(installedQuerier.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
 			})
 		})
