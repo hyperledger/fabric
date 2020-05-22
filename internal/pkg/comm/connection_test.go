@@ -11,11 +11,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/hyperledger/fabric/internal/pkg/comm/testpb"
 	"github.com/stretchr/testify/assert"
@@ -125,43 +123,4 @@ func (s *srv) assertServiced(t *testing.T) {
 func (s *srv) EmptyCall(context.Context, *testpb.Empty) (*testpb.Empty, error) {
 	atomic.StoreUint32(&s.serviced, 1)
 	return &testpb.Empty{}, nil
-}
-
-func newServer(org string) *srv {
-	certs := map[string][]byte{
-		"ca.crt":     nil,
-		"server.crt": nil,
-		"server.key": nil,
-	}
-	for suffix := range certs {
-		fName := filepath.Join("testdata", "impersonation", org, suffix)
-		cert, err := ioutil.ReadFile(fName)
-		if err != nil {
-			panic(fmt.Errorf("Failed reading %s: %v", fName, err))
-		}
-		certs[suffix] = cert
-	}
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		panic(fmt.Errorf("Failed to create listener: %v", err))
-	}
-	gSrv, err := NewGRPCServerFromListener(l, ServerConfig{
-		ConnectionTimeout: 250 * time.Millisecond,
-		SecOpts: SecureOptions{
-			Certificate: certs["server.crt"],
-			Key:         certs["server.key"],
-			UseTLS:      true,
-		},
-	})
-	if err != nil {
-		panic(fmt.Errorf("Failed starting gRPC server: %v", err))
-	}
-	s := &srv{
-		address:    l.Addr().String(),
-		caCert:     certs["ca.crt"],
-		GRPCServer: gSrv,
-	}
-	testpb.RegisterTestServiceServer(gSrv.Server(), s)
-	go s.Start()
-	return s
 }
