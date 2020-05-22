@@ -296,14 +296,14 @@ var _ = Describe("Commit", func() {
 	})
 
 	Describe("CommitCmd", func() {
-		var (
-			commitCmd *cobra.Command
-		)
+		var commitCmd *cobra.Command
 
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
 			commitCmd = chaincode.CommitCmd(nil, cryptoProvider)
+			commitCmd.SilenceErrors = true
+			commitCmd.SilenceUsage = true
 			commitCmd.SetArgs([]string{
 				"--channelID=testchannel",
 				"--name=testcc",

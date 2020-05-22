@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
@@ -63,6 +64,10 @@ func TestChaincode(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Chaincode Suite")
 }
+
+var _ = BeforeSuite(func() {
+	flogging.SetWriter(GinkgoWriter)
+})
 
 // TODO remove this?
 func TestMain(m *testing.M) {

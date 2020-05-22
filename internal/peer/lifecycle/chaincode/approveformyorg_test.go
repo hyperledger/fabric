@@ -297,14 +297,14 @@ var _ = Describe("ApproverForMyOrg", func() {
 	})
 
 	Describe("ApproveForMyOrgCmd", func() {
-		var (
-			approveForMyOrgCmd *cobra.Command
-		)
+		var approveForMyOrgCmd *cobra.Command
 
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
 			approveForMyOrgCmd = chaincode.ApproveForMyOrgCmd(nil, cryptoProvider)
+			approveForMyOrgCmd.SilenceErrors = true
+			approveForMyOrgCmd.SilenceUsage = true
 			approveForMyOrgCmd.SetArgs([]string{
 				"--channelID=testchannel",
 				"--name=testcc",
@@ -328,9 +328,6 @@ var _ = Describe("ApproverForMyOrg", func() {
 
 		Context("when the channel config policy is specified", func() {
 			BeforeEach(func() {
-				cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-				Expect(err).To(BeNil())
-				approveForMyOrgCmd = chaincode.ApproveForMyOrgCmd(nil, cryptoProvider)
 				approveForMyOrgCmd.SetArgs([]string{
 					"--channel-config-policy=/Channel/Application/Readers",
 					"--channelID=testchannel",

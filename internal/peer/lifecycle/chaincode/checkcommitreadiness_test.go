@@ -235,14 +235,14 @@ var _ = Describe("CheckCommitReadiness", func() {
 	})
 
 	Describe("CheckCommitReadinessCmd", func() {
-		var (
-			checkCommitReadinessCmd *cobra.Command
-		)
+		var checkCommitReadinessCmd *cobra.Command
 
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
 			checkCommitReadinessCmd = chaincode.CheckCommitReadinessCmd(nil, cryptoProvider)
+			checkCommitReadinessCmd.SilenceErrors = true
+			checkCommitReadinessCmd.SilenceUsage = true
 			checkCommitReadinessCmd.SetArgs([]string{
 				"--channelID=testchannel",
 				"--name=testcc",

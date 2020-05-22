@@ -216,14 +216,14 @@ var _ = Describe("GetInstalledPackage", func() {
 	})
 
 	Describe("GetInstalledPackageCmd", func() {
-		var (
-			getInstalledPackageCmd *cobra.Command
-		)
+		var getInstalledPackageCmd *cobra.Command
 
 		BeforeEach(func() {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			Expect(err).To(BeNil())
 			getInstalledPackageCmd = chaincode.GetInstalledPackageCmd(nil, cryptoProvider)
+			getInstalledPackageCmd.SilenceErrors = true
+			getInstalledPackageCmd.SilenceUsage = true
 			getInstalledPackageCmd.SetArgs([]string{
 				"--package-id=test-package",
 				"--peerAddresses=test1",
