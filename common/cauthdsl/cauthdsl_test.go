@@ -93,10 +93,7 @@ func (md *mockDeserializer) DeserializeIdentity(serializedIdentity []byte) (msp.
 	return &mockIdentity{idBytes: serializedIdentity}, nil
 }
 
-var validSignature = []byte("signed")
 var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
-var msgs = [][]byte{nil, nil}
-var moreMsgs = [][]byte{nil, nil, nil}
 
 func TestSimpleSignature(t *testing.T) {
 	policy := policydsl.Envelope(policydsl.SignedBy(0), signers)
