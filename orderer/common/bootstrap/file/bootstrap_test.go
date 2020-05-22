@@ -37,11 +37,8 @@ func TestGenesisBlock(t *testing.T) {
 	})
 
 	t.Run("Bad - Malformed Block", func(t *testing.T) {
-		testFileHandle, err := os.Create(testFile)
+		err := ioutil.WriteFile(testFile, []byte("abc"), 0644)
 		assert.NoErrorf(t, err, "generate temporary test file: %s", file)
-		defer os.Remove(testFile)
-		testFileHandle.Write([]byte("abc"))
-		testFileHandle.Close()
 
 		assert.Panics(t, func() {
 			helper := bootfile.New(testFile)
@@ -74,11 +71,9 @@ func TestGenesisBlock(t *testing.T) {
 			Metadata: metadata,
 		}
 		marshalledBlock, _ := proto.Marshal(block)
-		testFileHandle, err := os.Create(testFile)
+		err := ioutil.WriteFile(testFile, marshalledBlock, 0644)
 		assert.NoErrorf(t, err, "generate temporary test file: %s", file)
 		defer os.Remove(testFile)
-		testFileHandle.Write(marshalledBlock)
-		testFileHandle.Close()
 
 		helper := bootfile.New(testFile)
 		outBlock := helper.GenesisBlock()
@@ -126,11 +121,8 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	testFile := path.Join(testDir, file)
-	testFileHandle, err := os.Create(testFile)
+	err = ioutil.WriteFile(testFile, marshalledBlock, 0644)
 	assert.NoErrorf(t, err, "generate temporary test file: %s", file)
-
-	testFileHandle.Write(marshalledBlock)
-	testFileHandle.Close()
 
 	testFileBak := path.Join(testDir, fileBak)
 	testFileFake := path.Join(testDir, fileFake)
