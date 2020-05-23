@@ -7,15 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"sync/atomic"
 	"testing"
 
-	"github.com/hyperledger/fabric/internal/pkg/comm/testpb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -106,21 +103,4 @@ func TestCredentialSupport(t *testing.T) {
 	creds = cs.GetPeerCredentials()
 	assert.Equal(t, "1.2", creds.Info().SecurityVersion,
 		"Expected Security version to be 1.2")
-}
-
-type srv struct {
-	address string
-	*GRPCServer
-	caCert   []byte
-	serviced uint32
-}
-
-func (s *srv) assertServiced(t *testing.T) {
-	assert.Equal(t, uint32(1), atomic.LoadUint32(&s.serviced))
-	atomic.StoreUint32(&s.serviced, 0)
-}
-
-func (s *srv) EmptyCall(context.Context, *testpb.Empty) (*testpb.Empty, error) {
-	atomic.StoreUint32(&s.serviced, 1)
-	return &testpb.Empty{}, nil
 }
