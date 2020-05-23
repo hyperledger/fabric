@@ -225,10 +225,7 @@ func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, 
 			sessionLogger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 			return nil, errors.New("policy not found")
 		}
-
-		for _, pol := range policies {
-			inquireablePolicies = append(inquireablePolicies, pol)
-		}
+		inquireablePolicies = append(inquireablePolicies, policies...)
 	}
 
 	var cpss []inquire.ComparablePrincipalSets
