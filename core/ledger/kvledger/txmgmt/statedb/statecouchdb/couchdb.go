@@ -100,11 +100,6 @@ type docMetadata struct {
 	AttachmentsInfo map[string]*attachmentInfo `json:"_attachments"`
 }
 
-//docID is a minimal structure for capturing the ID from a query result
-type docID struct {
-	ID string `json:"_id"`
-}
-
 //queryResult is used for returning query results from CouchDB
 type queryResult struct {
 	id          string
