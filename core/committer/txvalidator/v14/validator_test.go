@@ -1927,10 +1927,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func ToHex(q uint64) string {
-	return "0x" + strconv.FormatUint(q, 16)
-}
-
 func constructLedgerMgrWithTestDefaults(t *testing.T, testDir string) (*ledgermgmt.LedgerMgr, func()) {
 	testDir, err := ioutil.TempDir("", testDir)
 	if err != nil {

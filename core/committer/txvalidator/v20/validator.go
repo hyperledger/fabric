@@ -8,7 +8,6 @@ package txvalidator
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -486,11 +485,6 @@ func (v *TxValidator) checkTxIdDupsLedger(tIdx int, chdr *common.ChannelHeader, 
 			err:  err,
 		}
 	}
-}
-
-// generateCCKey generates a unique identifier for chaincode in specific channel
-func (v *TxValidator) generateCCKey(ccName, chainID string) string {
-	return fmt.Sprintf("%s/%s", ccName, chainID)
 }
 
 type dynamicDeserializer struct {
