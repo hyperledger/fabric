@@ -254,7 +254,7 @@ trusted members of a blockchain network. That's where a Membership Service Provi
 (MSP) comes into play --- **it identifies the parties who are the members of a
 given organization in the blockchain network**.
 
-To learn more about membership, check out the conceptual documentation on [MSPs](../membership/membership.html).
+To learn more about membership, check out the conceptual documentation on [MSPs](../membership/membership.md).
 
 <!---
 Licensed under Creative Commons Attribution 4.0 International License https://creativecommons.org/licenses/by/4.0/
