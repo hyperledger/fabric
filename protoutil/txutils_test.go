@@ -33,6 +33,7 @@ func TestGetPayloads(t *testing.T) {
 		Extension: ccActionBytes,
 	}
 	proposalResponseBytes, err := proto.Marshal(proposalResponsePayload)
+	assert.NoError(t, err)
 	ccActionPayload := &pb.ChaincodeActionPayload{
 		Action: &pb.ChaincodeEndorsedAction{
 			ProposalResponsePayload: proposalResponseBytes,
@@ -50,6 +51,7 @@ func TestGetPayloads(t *testing.T) {
 	proposalResponseBytes, err = proto.Marshal(&pb.ProposalResponsePayload{
 		Extension: nil,
 	})
+	assert.NoError(t, err)
 	ccActionPayloadBytes, _ = proto.Marshal(&pb.ChaincodeActionPayload{
 		Action: &pb.ChaincodeEndorsedAction{
 			ProposalResponsePayload: proposalResponseBytes,
@@ -444,12 +446,9 @@ func TestGetProposalHash2(t *testing.T) {
 	}
 	propHash, err := protoutil.GetProposalHash2(hdr, []byte("ccproppayload"))
 	assert.NoError(t, err, "Unexpected error getting hash2 for proposal")
-	t.Logf("%x", propHash)
-	assert.Equal(t, expectedHash, propHash,
-		"Proposal hash did not match expected hash")
+	assert.Equal(t, expectedHash, propHash, "Proposal hash did not match expected hash")
 
-	propHash, err = protoutil.GetProposalHash2(&cb.Header{},
-		[]byte("ccproppayload"))
+	_, err = protoutil.GetProposalHash2(&cb.Header{}, []byte("ccproppayload"))
 	assert.Error(t, err, "Expected error with nil arguments")
 }
 
@@ -465,15 +464,12 @@ func TestGetProposalHash1(t *testing.T) {
 
 	propHash, err := protoutil.GetProposalHash1(hdr, ccProposal)
 	assert.NoError(t, err, "Unexpected error getting hash for proposal")
-	t.Logf("%x", propHash)
-	assert.Equal(t, expectedHash, propHash,
-		"Proposal hash did not match expected hash")
+	assert.Equal(t, expectedHash, propHash, "Proposal hash did not match expected hash")
 
-	propHash, err = protoutil.GetProposalHash1(hdr, []byte("ccproppayload"))
-	assert.Error(t, err,
-		"Expected error with malformed chaincode proposal payload")
+	_, err = protoutil.GetProposalHash1(hdr, []byte("ccproppayload"))
+	assert.Error(t, err, "Expected error with malformed chaincode proposal payload")
 
-	propHash, err = protoutil.GetProposalHash1(&cb.Header{}, []byte("ccproppayload"))
+	_, err = protoutil.GetProposalHash1(&cb.Header{}, []byte("ccproppayload"))
 	assert.Error(t, err, "Expected error with nil arguments")
 }
 
