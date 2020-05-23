@@ -354,24 +354,6 @@ func testBlock() *cb.Block {
 	}
 }
 
-type mockLocalSigner struct {
-	returnError bool
-}
-
-func (m *mockLocalSigner) NewSignatureHeader() (*cb.SignatureHeader, error) {
-	if m.returnError {
-		return nil, errors.New("signature header error")
-	}
-	return &cb.SignatureHeader{}, nil
-}
-
-func (m *mockLocalSigner) Sign(message []byte) ([]byte, error) {
-	if m.returnError {
-		return nil, errors.New("sign error")
-	}
-	return message, nil
-}
-
 func TestChannelHeader(t *testing.T) {
 	makeEnvelope := func(payload *cb.Payload) *cb.Envelope {
 		return &cb.Envelope{
