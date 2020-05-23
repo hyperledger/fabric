@@ -368,7 +368,7 @@ var _ = Describe("Blocksprovider", func() {
 			}
 		})
 
-		It("disconnects, sleeps, and retries until the recv is successfull", func() {
+		It("disconnects, sleeps, and retries until the recv is successful", func() {
 			Eventually(fakeDeliverClient.RecvCallCount).Should(Equal(2))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(1))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))
@@ -416,7 +416,7 @@ var _ = Describe("Blocksprovider", func() {
 			}
 		})
 
-		It("disconnects, sleeps, and retries until the recv is successfull and resets the failure count", func() {
+		It("disconnects, sleeps, and retries until the recv is successful and resets the failure count", func() {
 			Eventually(fakeDeliverClient.RecvCallCount).Should(Equal(5))
 			Expect(fakeSleeper.SleepCallCount()).To(Equal(3))
 			Expect(fakeSleeper.SleepArgsForCall(0)).To(Equal(100 * time.Millisecond))

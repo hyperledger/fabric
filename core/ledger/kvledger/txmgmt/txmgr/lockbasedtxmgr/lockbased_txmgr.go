@@ -163,7 +163,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 	// interleave and nullify the optimization provided by the bulk read API.
 	// Once the ledger cache (FAB-103) is introduced and existing
 	// LoadCommittedVersions() is refactored to return a map, we can allow
-	// these three functions to execute parallely.
+	// these three functions to execute parallelly.
 	logger.Debugf("Waiting for purge mgr to finish the background job of computing expirying keys for the block")
 	txmgr.pvtdataPurgeMgr.WaitForPrepareToFinish()
 	txmgr.oldBlockCommit.Lock()
@@ -208,7 +208,7 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(reconciledPv
 	// interleave and nullify the optimization provided by the bulk read API.
 	// Once the ledger cache (FAB-103) is introduced and existing
 	// LoadCommittedVersions() is refactored to return a map, we can allow
-	// these three functions to execute parallely. However, we cannot remove
+	// these three functions to execute parallelly. However, we cannot remove
 	// the lock on oldBlockCommit as it is also used to avoid interleaving
 	// between Commit() and execution of this function for the correctness.
 	logger.Debug("Waiting for purge mgr to finish the background job of computing expirying keys for the block")

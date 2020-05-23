@@ -169,7 +169,7 @@ var _ = Describe("SCC", func() {
 
 				fakeSCCFuncs.InstallChaincodeReturns(&chaincode.InstalledChaincode{
 					Label:     "label",
-					PackageID: "packageid",
+					PackageID: "package-id",
 				}, nil)
 			})
 
@@ -179,7 +179,7 @@ var _ = Describe("SCC", func() {
 				payload := &lb.InstallChaincodeResult{}
 				err := proto.Unmarshal(res.Payload, payload)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(payload.PackageId).To(Equal("packageid"))
+				Expect(payload.PackageId).To(Equal("package-id"))
 
 				Expect(fakeSCCFuncs.InstallChaincodeCallCount()).To(Equal(1))
 				ccInstallPackage := fakeSCCFuncs.InstallChaincodeArgsForCall(0)

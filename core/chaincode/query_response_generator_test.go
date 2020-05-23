@@ -27,7 +27,7 @@ func TestBuildQueryResponse(t *testing.T) {
 		Value:     []byte("value"),
 	}
 
-	// test various boundry cases around maxResultLimit
+	// test various boundary cases around maxResultLimit
 	const maxResultLimit = 10
 	testCases := []struct {
 		recordCount          int

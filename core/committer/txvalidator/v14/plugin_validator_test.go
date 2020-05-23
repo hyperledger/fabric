@@ -29,8 +29,8 @@ func TestValidateWithPlugin(t *testing.T) {
 	pm := make(plugin.MapBasedMapper)
 	qec := &mocks.QueryExecutorCreator{}
 	deserializer := &mocks.IdentityDeserializer{}
-	capabilites := &mocks.Capabilities{}
-	v := txvalidator.NewPluginValidator(pm, qec, deserializer, capabilites)
+	capabilities := &mocks.Capabilities{}
+	v := txvalidator.NewPluginValidator(pm, qec, deserializer, capabilities)
 	ctx := &txvalidator.Context{
 		Namespace: "mycc",
 		VSCCName:  "vscc",
@@ -85,8 +85,8 @@ func TestSamplePlugin(t *testing.T) {
 		Id:    "foo",
 	})
 	deserializer.On("DeserializeIdentity", []byte{7, 8, 9}).Return(identity, nil)
-	capabilites := &mocks.Capabilities{}
-	capabilites.On("PrivateChannelData").Return(true)
+	capabilities := &mocks.Capabilities{}
+	capabilities.On("PrivateChannelData").Return(true)
 	factory := &mocks.PluginFactory{}
 	factory.On("New").Return(testdata.NewSampleValidationPlugin(t))
 	pm["vscc"] = factory
@@ -99,7 +99,7 @@ func TestSamplePlugin(t *testing.T) {
 
 	txnData, _ := proto.Marshal(&transaction)
 
-	v := txvalidator.NewPluginValidator(pm, qec, deserializer, capabilites)
+	v := txvalidator.NewPluginValidator(pm, qec, deserializer, capabilities)
 	acceptAllPolicyBytes, _ := proto.Marshal(policydsl.AcceptAllPolicy)
 	ctx := &txvalidator.Context{
 		Namespace: "mycc",

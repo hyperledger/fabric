@@ -133,7 +133,7 @@ var _ = Describe("Dispatcher", func() {
 			})
 		})
 
-		Context("when the receiver does not return the right number of paramters", func() {
+		Context("when the receiver does not return the right number of parameters", func() {
 			It("returns an error", func() {
 				_, err := d.Dispatch(inputBytes, "NoReturnValues", testReceiver)
 				Expect(err).To(MatchError("receiver dispatcher_test.TestReceiver.NoReturnValues returns 0 values but expected 2"))

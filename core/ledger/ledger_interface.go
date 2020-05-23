@@ -640,7 +640,7 @@ type HealthCheckRegistry interface {
 // to be able to listen to chaincode lifecycle events. 'dbArtifactsTar' represents db specific artifacts
 // (such as index specs) packaged in a tar. Note that this interface is redefined here (in addition to
 // the one defined in ledger/cceventmgmt package). Using the same interface for the new lifecycle path causes
-// a cyclic import dependency. Moreover, eventually the whole package ledger/cceventmgmt is intented to
+// a cyclic import dependency. Moreover, eventually the whole package ledger/cceventmgmt is intended to
 // be removed when migration to new lifecycle is mandated.
 type ChaincodeLifecycleEventListener interface {
 	// HandleChaincodeDeploy is invoked when chaincode installed + defined becomes true.

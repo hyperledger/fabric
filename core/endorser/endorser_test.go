@@ -500,7 +500,7 @@ var _ = Describe("Endorser", func() {
 		Expect(blkHt).To(Equal(uint64(7)))
 
 		// TODO, this deserves a better test, but there was none before and this logic,
-		// really seems far too jumbled to be in the endorser package.  There are seperate
+		// really seems far too jumbled to be in the endorser package.  There are separate
 		// tests of the private data assembly functions in their test file.
 		Expect(privateData).NotTo(BeNil())
 		Expect(privateData.EndorsedAt).To(Equal(uint64(7)))

@@ -137,7 +137,7 @@ type Reprocessor interface {
 }
 
 // ReprocessReadHinter is an optional interface that a `Processor` may choose to implement if it implements Reprocessor.
-// This is similar to as a processor may implement the ReadHinter interface albiet this gets invoked only if Reprocessor
+// This is similar to as a processor may implement the ReadHinter interface albeit this gets invoked only if Reprocessor
 // is used for processing the transaction
 type ReprocessReadHinter interface {
 	ReprocessReadHint(potentialWrites *statedata.WriteHint) *statedata.ReadHint

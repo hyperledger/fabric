@@ -267,7 +267,7 @@ var _ = Describe("LaunchState", func() {
 		Expect(launchState.Err()).To(BeNil())
 	})
 
-	It("can be notified mulitple times but honors the first", func() {
+	It("can be notified multitple times but honors the first", func() {
 		Expect(launchState.Done()).NotTo(BeNil())
 		Consistently(launchState.Done()).ShouldNot(BeClosed())
 

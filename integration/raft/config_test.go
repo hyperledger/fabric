@@ -1030,10 +1030,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			secondEvictedNode := findLeader(survivedOrdererRunners) - 1
 
-			var surviver int
+			var survivor int
 			for i := range orderers {
 				if i != firstEvictedNode && i != secondEvictedNode {
-					surviver = i
+					survivor = i
 					break
 				}
 			}
@@ -1049,8 +1049,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			server2CertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(orderers[secondEvictedNode]), "server.crt"))
 			Expect(err).To(Not(HaveOccurred()))
 
-			removeConsenter(network, peer, orderers[surviver], "systemchannel", server2CertBytes)
-			findLeader([]*ginkgomon.Runner{ordererRunners[surviver]})
+			removeConsenter(network, peer, orderers[survivor], "systemchannel", server2CertBytes)
+			findLeader([]*ginkgomon.Runner{ordererRunners[survivor]})
 
 			fmt.Fprintln(GinkgoWriter, "Ensuring the other orderer detect the eviction of the node on channel systemchannel")
 			Eventually(ordererRunners[secondEvictedNode].Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say(stopMsg))
@@ -1059,7 +1059,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ensureEvicted(orderers[secondEvictedNode], peer, network, "systemchannel")
 
 			By("Re-adding first evicted orderer")
-			addConsenter(network, peer, network.Orderers[surviver], "systemchannel", etcdraft.Consenter{
+			addConsenter(network, peer, network.Orderers[survivor], "systemchannel", etcdraft.Consenter{
 				Host:          "127.0.0.1",
 				Port:          uint32(network.OrdererPort(orderers[firstEvictedNode], nwo.ClusterPort)),
 				ClientTlsCert: server1CertBytes,
@@ -1072,7 +1072,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, []*nwo.Orderer{orderers[firstEvictedNode]}, peer, network)
 
 			env := CreateBroadcastEnvelope(network, orderers[secondEvictedNode], network.SystemChannel.Name, []byte("foo"))
-			resp, err := nwo.Broadcast(network, orderers[surviver], env)
+			resp, err := nwo.Broadcast(network, orderers[survivor], env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 		})

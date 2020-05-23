@@ -1444,7 +1444,7 @@ func TestChannelMetadata_NegativeTests(t *testing.T) {
 
 	// call createCouchDatabase to simulate peer crashes after metadataDB is created but before channelMetadata is updated
 	// then call DBProvider.GetDBHandle and verify channelMetadata is correctly generated
-	channelName = "testchannelmetadata-simulatefailure-inbetween"
+	channelName = "testchannelmetadata-simulatefailure-in-between"
 	couchInstance, err := createCouchInstance(vdbEnv.config, &disabled.Provider{})
 	metadatadbName := constructMetadataDBName(channelName)
 	metadataDB, err := createCouchDatabase(couchInstance, metadatadbName)

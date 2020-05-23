@@ -123,7 +123,7 @@ peer:
     # The privateKey to be used by this peer
     # privateKey: 794ef087680e2494fa4918fd8fb80fb284b50b57d321a31423fe42b9ccf6216047cea0b66fe8365a8e3f2a8140c6866cc45852e63124668bee1daa9c97da0c2a
 
-    # The networkId allows for logical seperation of networks
+    # The networkId allows for logical separation of networks
     # networkId: dev
     # networkId: test
     networkId: dev

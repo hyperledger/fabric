@@ -81,10 +81,10 @@ issue transaction. See how `paperList` is similarly used by the **redeem** and
 reason about.
 
 You can also see that there's another element in the context -- `ctx.stub` --
-which was not explictly added by `CommercialPaperContext`. That's because `stub`
-and other variables are part of the built-in context. Let's now examine the
-structure of this built-in context, these implicit variables and how to use
-them.
+which was not explicitly added by `CommercialPaperContext`. That's because
+`stub` and other variables are part of the built-in context. Let's now examine
+the structure of this built-in context, these implicit variables and how to
+use them.
 
 ## Structure
 
