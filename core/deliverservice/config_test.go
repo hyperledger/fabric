@@ -147,7 +147,8 @@ func TestLoadOverridesMap(t *testing.T) {
 
 		viper.Reset()
 		viper.SetConfigType("yaml")
-		viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		err := viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		require.NoError(t, err)
 		res, err := deliverservice.LoadOverridesMap()
 		require.NoError(t, err)
 		require.Len(t, res, 2)
@@ -174,7 +175,8 @@ func TestLoadOverridesMap(t *testing.T) {
 
 		viper.Reset()
 		viper.SetConfigType("yaml")
-		viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		err := viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		require.NoError(t, err)
 		res, err := deliverservice.LoadOverridesMap()
 		require.NoError(t, err)
 		assert.Len(t, res, 1)
@@ -193,7 +195,8 @@ func TestLoadOverridesMap(t *testing.T) {
 
 		viper.Reset()
 		viper.SetConfigType("yaml")
-		viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		err := viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		require.NoError(t, err)
 		res, err := deliverservice.LoadOverridesMap()
 		require.NoError(t, err)
 		assert.Len(t, res, 2)
@@ -208,8 +211,9 @@ func TestLoadOverridesMap(t *testing.T) {
 
 		viper.Reset()
 		viper.SetConfigType("yaml")
-		viper.ReadConfig(bytes.NewBuffer([]byte(config)))
-		_, err := deliverservice.LoadOverridesMap()
+		err := viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		require.NoError(t, err)
+		_, err = deliverservice.LoadOverridesMap()
 		require.EqualError(t, err, "could not unmarshal peer.deliveryclient.addressOverrides: '': source data must be an array or slice, got string")
 	})
 
@@ -221,7 +225,8 @@ func TestLoadOverridesMap(t *testing.T) {
 
 		viper.Reset()
 		viper.SetConfigType("yaml")
-		viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		err := viper.ReadConfig(bytes.NewBuffer([]byte(config)))
+		require.NoError(t, err)
 		res, err := deliverservice.LoadOverridesMap()
 		require.NoError(t, err)
 		assert.Nil(t, res)
