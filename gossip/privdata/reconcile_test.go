@@ -33,8 +33,7 @@ func TestNoItemsToReconcile(t *testing.T) {
 	committer := &mocks.Committer{}
 	fetcher := &mocks.ReconciliationFetcher{}
 	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
-	var missingInfo ledger.MissingPvtDataInfo
-	missingInfo = make(map[uint64]ledger.MissingBlockPvtdataInfo)
+	missingInfo := ledger.MissingPvtDataInfo{}
 
 	missingPvtDataTracker.On("GetMissingPvtDataInfoForMostRecentBlocks", mock.Anything).Return(missingInfo, nil)
 	committer.On("GetMissingPvtDataTracker").Return(missingPvtDataTracker, nil)
@@ -60,9 +59,8 @@ func TestNotReconcilingWhenCollectionConfigNotAvailable(t *testing.T) {
 	fetcher := &mocks.ReconciliationFetcher{}
 	configHistoryRetriever := &mocks.ConfigHistoryRetriever{}
 	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
-	var missingInfo ledger.MissingPvtDataInfo
 
-	missingInfo = map[uint64]ledger.MissingBlockPvtdataInfo{
+	missingInfo := ledger.MissingPvtDataInfo{
 		1: map[uint64][]*ledger.MissingCollectionPvtDataInfo{
 			1: {{Collection: "col1", Namespace: "chain1"}},
 		},
@@ -102,9 +100,8 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 	fetcher := &mocks.ReconciliationFetcher{}
 	configHistoryRetriever := &mocks.ConfigHistoryRetriever{}
 	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
-	var missingInfo ledger.MissingPvtDataInfo
 
-	missingInfo = map[uint64]ledger.MissingBlockPvtdataInfo{
+	missingInfo := ledger.MissingPvtDataInfo{
 		3: map[uint64][]*ledger.MissingCollectionPvtDataInfo{
 			1: {{Collection: "col1", Namespace: "ns1"}},
 		},
@@ -192,9 +189,8 @@ func TestReconciliationHappyPathWithScheduler(t *testing.T) {
 	fetcher := &mocks.ReconciliationFetcher{}
 	configHistoryRetriever := &mocks.ConfigHistoryRetriever{}
 	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
-	var missingInfo ledger.MissingPvtDataInfo
 
-	missingInfo = map[uint64]ledger.MissingBlockPvtdataInfo{
+	missingInfo := ledger.MissingPvtDataInfo{
 		3: map[uint64][]*ledger.MissingCollectionPvtDataInfo{
 			1: {{Collection: "col1", Namespace: "ns1"}},
 		},
@@ -414,9 +410,8 @@ func TestReconciliationFailedToCommit(t *testing.T) {
 	fetcher := &mocks.ReconciliationFetcher{}
 	configHistoryRetriever := &mocks.ConfigHistoryRetriever{}
 	missingPvtDataTracker := &mocks.MissingPvtDataTracker{}
-	var missingInfo ledger.MissingPvtDataInfo
 
-	missingInfo = map[uint64]ledger.MissingBlockPvtdataInfo{
+	missingInfo := ledger.MissingPvtDataInfo{
 		3: map[uint64][]*ledger.MissingCollectionPvtDataInfo{
 			1: {{Collection: "col1", Namespace: "ns1"}},
 		},

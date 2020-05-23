@@ -352,8 +352,7 @@ func testInitLedgerPanic(t *testing.T, env *env, ledgerFSRoot string, couchdbCon
 		t.Logf("verifying that a panic occurs because statecouchdb has old format and then drop the statedb to proceed")
 		require.PanicsWithValue(
 			t,
-			fmt.Sprintf(
-				"Error in instantiating ledger provider: unexpected format. db info = [CouchDB for state database], data format = [], expected format = [2.0]"),
+			"Error in instantiating ledger provider: unexpected format. db info = [CouchDB for state database], data format = [], expected format = [2.0]",
 			func() { env.initLedgerMgmt() },
 			"A panic should occur because statedb is in format 1.x",
 		)

@@ -370,8 +370,7 @@ func TestPEMBlocksFromFileEnv(t *testing.T) {
 }
 
 func TestStringFromFileNotSpecified(t *testing.T) {
-
-	yaml := fmt.Sprintf("---\nInner:\n  Single:\n    File:\n")
+	yaml := "---\nInner:\n  Single:\n    File:\n"
 
 	config := viper.New()
 	config.SetConfigType("yaml")
@@ -383,11 +382,9 @@ func TestStringFromFileNotSpecified(t *testing.T) {
 	if err := EnhancedExactUnmarshal(config, &uconf); err == nil {
 		t.Fatalf("Should of failed to unmarshall.")
 	}
-
 }
 
 func TestStringFromFileEnv(t *testing.T) {
-
 	expectedValue := "this is the text in the file"
 
 	// create temp file

@@ -38,7 +38,7 @@ func generateFakeCDS(ccname, path, file string, mode int64) (*pb.ChaincodeDeploy
 	gw := gzip.NewWriter(codePackage)
 	tw := tar.NewWriter(gw)
 
-	payload := make([]byte, 25, 25)
+	payload := make([]byte, 25)
 	err := tw.WriteHeader(&tar.Header{Name: file, Mode: mode, Size: int64(len(payload))})
 	if err != nil {
 		return nil, err

@@ -48,9 +48,7 @@ type mockBlockWriterSupport struct {
 	sequence   uint64
 }
 
-func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {
-	return
-}
+func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {}
 
 func (mbws mockBlockWriterSupport) CreateBundle(channelID string, config *cb.Config) (*newchannelconfig.Bundle, error) {
 	return channelconfig.NewBundle(channelID, config, mbws.bccsp)

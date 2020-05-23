@@ -60,10 +60,8 @@ func (h *Height) Compare(h1 *Height) int {
 	switch {
 	case h.BlockNum != h1.BlockNum:
 		res = int(h.BlockNum - h1.BlockNum)
-		break
 	case h.TxNum != h1.TxNum:
 		res = int(h.TxNum - h1.TxNum)
-		break
 	default:
 		return 0
 	}

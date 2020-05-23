@@ -221,9 +221,7 @@ func TestSend(t *testing.T) {
 				Comm:          comm,
 			}
 
-			var err error
-
-			err = testCase.method(rpc)
+			err := testCase.method(rpc)
 			if testCase.remoteError == nil && testCase.stepReturns[1] == nil {
 				<-sent
 			}

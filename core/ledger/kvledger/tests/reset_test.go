@@ -29,7 +29,7 @@ func TestResetAllLedgers(t *testing.T) {
 	// create ledgers and pouplate with sample data
 	// Also, retrieve the genesis blocks and blockchain info for matching later
 	numLedgers := 10
-	ledgerIDs := make([]string, numLedgers, numLedgers)
+	ledgerIDs := make([]string, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		ledgerIDs[i] = fmt.Sprintf("ledger-%d", i)
 		h := env.newTestHelperCreateLgr(ledgerIDs[i], t)

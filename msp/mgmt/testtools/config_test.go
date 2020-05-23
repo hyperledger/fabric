@@ -32,7 +32,7 @@ func TestFakeSetup(t *testing.T) {
 		t.Fatalf("EnlistedMSPs failed, err %s", err)
 	}
 
-	if msps == nil || len(msps) == 0 {
+	if len(msps) == 0 {
 		t.Fatalf("There are no MSPS in the manager for chain %s", "testchannelid")
 	}
 }

@@ -631,10 +631,7 @@ func (lscc *SCC) getInstalledChaincodes() pb.Response {
 // check validity of channel name
 func (lscc *SCC) isValidChannelName(channel string) bool {
 	// TODO we probably need more checks
-	if channel == "" {
-		return false
-	}
-	return true
+	return channel != ""
 }
 
 // isValidChaincodeName checks the validity of chaincode name. Chaincode names

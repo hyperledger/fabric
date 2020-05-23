@@ -39,9 +39,7 @@ func (tr TestReceiver) NotPointerParameter(foo string) (*timestamp.Timestamp, er
 	return ptypes.TimestampProto(time.Unix(0, 0))
 }
 
-func (tr TestReceiver) NoReturnValues(ts *timestamp.Timestamp) {
-	return
-}
+func (tr TestReceiver) NoReturnValues(ts *timestamp.Timestamp) {}
 
 func (tr TestReceiver) NotProtoReturn(ts *timestamp.Timestamp) (string, error) {
 	return "", nil

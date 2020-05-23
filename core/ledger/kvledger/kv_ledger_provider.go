@@ -428,7 +428,6 @@ func (p *Provider) recoverUnderConstructionLedger() {
 			"data inconsistency: under construction flag is set for ledger [%s] while the height of the blockchain is [%d]",
 			ledgerID, bcInfo.Height))
 	}
-	return
 }
 
 // runCleanup cleans up blockstorage, statedb, and historydb for what

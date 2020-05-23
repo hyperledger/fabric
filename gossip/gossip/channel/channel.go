@@ -516,10 +516,7 @@ func (gc *gossipChannel) EligibleForChannel(member discovery.NetworkMember) bool
 		return false
 	}
 	msg := gc.stateInfoMsgStore.MsgByID(member.PKIid)
-	if msg == nil {
-		return false
-	}
-	return true
+	return msg != nil
 }
 
 // AddToMsgStore adds a given GossipMessage to the message store

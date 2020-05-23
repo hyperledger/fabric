@@ -296,14 +296,9 @@ func (p *Peer) createChannel(
 		orgAddresses := map[string]orderers.OrdererOrg{}
 		if ordererConfig, ok := bundle.OrdererConfig(); ok {
 			for orgName, org := range ordererConfig.Organizations() {
-				certs := [][]byte{}
-				for _, root := range org.MSP().GetTLSRootCerts() {
-					certs = append(certs, root)
-				}
-
-				for _, intermediate := range org.MSP().GetTLSIntermediateCerts() {
-					certs = append(certs, intermediate)
-				}
+				var certs [][]byte
+				certs = append(certs, org.MSP().GetTLSRootCerts()...)
+				certs = append(certs, org.MSP().GetTLSIntermediateCerts()...)
 
 				orgAddresses[orgName] = orderers.OrdererOrg{
 					Addresses: org.Endpoints(),

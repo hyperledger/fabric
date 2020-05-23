@@ -187,7 +187,7 @@ func (c *committer) commitUpdates() error {
 	// iterate through the response from CouchDB by document
 	for _, resp := range responses {
 		// If the document returned an error, retry the individual document
-		if resp.Ok == true {
+		if resp.Ok {
 			c.updateRevisionInCacheUpdate(resp.ID, resp.Rev)
 			continue
 		}

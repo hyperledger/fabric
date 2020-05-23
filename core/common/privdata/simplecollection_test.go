@@ -203,9 +203,7 @@ func TestSimpleCollectionFilter(t *testing.T) {
 	assert.NoError(t, err)
 
 	// get the collection access filter
-	var cap CollectionAccessPolicy
-	cap = &sc
-	accessFilter := cap.AccessFilter()
+	accessFilter := (&sc).AccessFilter()
 
 	// check filter: not a member of the collection
 	notMember := protoutil.SignedData{
