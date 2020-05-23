@@ -526,11 +526,3 @@ func (imb InMemBuilder) Build() (io.Reader, error) {
 	gw.Close()
 	return inputbuf, nil
 }
-
-type mockBuilder struct {
-	buildFunc func() (io.Reader, error)
-}
-
-func (m *mockBuilder) Build() (io.Reader, error) {
-	return m.buildFunc()
-}
