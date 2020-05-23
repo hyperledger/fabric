@@ -139,7 +139,7 @@ func ListSnapshots(logger *flogging.FabricLogger, snapDir string) []uint64 {
 			snapfiles = append(snapfiles, filenames[i])
 		}
 	}
-	sort.Sort(sort.StringSlice(snapfiles))
+	sort.Strings(snapfiles)
 
 	var snapshots []uint64
 	for _, snapfile := range snapfiles {

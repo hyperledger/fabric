@@ -218,7 +218,7 @@ func TestEvictionSuspector(t *testing.T) {
 					return testCase.height
 				},
 				logger:         flogging.MustGetLogger("test"),
-				triggerCatchUp: func(sn *raftpb.Snapshot) { return },
+				triggerCatchUp: func(sn *raftpb.Snapshot) {},
 			}
 
 			foundExpectedLog := testCase.expectedLog == ""
