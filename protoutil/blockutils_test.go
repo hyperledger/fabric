@@ -75,6 +75,7 @@ func TestGetChannelIDFromBlockBytes(t *testing.T) {
 	gb, err := configtxtest.MakeGenesisBlock(testChannelID)
 	assert.NoError(t, err, "Failed to create test configuration block")
 	bytes, err := proto.Marshal(gb)
+	assert.NoError(t, err)
 	cid, err := protoutil.GetChannelIDFromBlockBytes(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, testChannelID, cid, "Failed to return expected chain ID")
