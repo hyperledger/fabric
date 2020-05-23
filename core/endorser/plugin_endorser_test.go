@@ -199,28 +199,6 @@ func (fep *fakeEndorsementPlugin) Init(dependencies ...endorsement.Dependency) e
 	panic("could not find State dependency")
 }
 
-type rwsetScanner struct {
-	mock.Mock
-	data []*rwset.TxPvtReadWriteSet
-}
-
-func (rws *rwsetScanner) Next() (*transientstore.EndorserPvtSimulationResults, error) {
-	if len(rws.data) == 0 {
-		return nil, nil
-	}
-	res := rws.data[0]
-	rws.data = rws.data[1:]
-	return &transientstore.EndorserPvtSimulationResults{
-		PvtSimulationResultsWithConfig: &tspb.TxPvtReadWriteSetWithConfigInfo{
-			PvtRwset: res,
-		},
-	}, nil
-}
-
-func (rws *rwsetScanner) Close() {
-	rws.Called()
-}
-
 func TestTransientStore(t *testing.T) {
 	plugin := &fakeEndorsementPlugin{}
 	factory := &mocks.PluginFactory{}
