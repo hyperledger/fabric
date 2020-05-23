@@ -3757,12 +3757,10 @@ func (c *mockConsenterSupport) CreateNextBlock(messages []*cb.Envelope) *cb.Bloc
 
 func (c *mockConsenterSupport) WriteBlock(block *cb.Block, encodedMetadataValue []byte) {
 	c.Called(block, encodedMetadataValue)
-	return
 }
 
 func (c *mockConsenterSupport) WriteConfigBlock(block *cb.Block, encodedMetadataValue []byte) {
 	c.Called(block, encodedMetadataValue)
-	return
 }
 
 func (c *mockConsenterSupport) Sequence() uint64 {
