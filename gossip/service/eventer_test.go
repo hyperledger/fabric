@@ -32,9 +32,6 @@ func (mr *mockReceiver) updateAnchors(config Config) {
 	mr.sequence = config.Sequence()
 }
 
-func (mr *mockReceiver) updateEndpoints(chainID string, endpoints []string) {
-}
-
 type mockConfig mockReceiver
 
 func (mc *mockConfig) OrdererAddresses() []string {

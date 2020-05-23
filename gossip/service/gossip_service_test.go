@@ -111,7 +111,8 @@ func TestInitGossipService(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 
-	msptesttools.LoadMSPSetupForTesting()
+	err = msptesttools.LoadMSPSetupForTesting()
+	require.NoError(t, err)
 	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
 
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
@@ -923,6 +924,7 @@ func TestChannelConfig(t *testing.T) {
 	assert.NoError(t, err)
 
 	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
+	assert.NoError(t, err)
 
 	gossipService, err := New(
 		mockSignerSerializer,
