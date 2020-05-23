@@ -230,8 +230,7 @@ func (r *retrievedBlockAndPvtdata) sameMetadata(expectedBlock *common.Block) {
 }
 
 func (r *retrievedBlockAndPvtdata) containsValidationCode(txSeq int, validationCode protopeer.TxValidationCode) {
-	var txFilter txflags.ValidationFlags
-	txFilter = r.BlockAndPvtData.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER]
+	txFilter := txflags.ValidationFlags(r.BlockAndPvtData.Block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	r.assert.Equal(validationCode, txFilter.Flag(txSeq))
 }
 

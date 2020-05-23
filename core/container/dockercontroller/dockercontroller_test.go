@@ -376,7 +376,7 @@ func TestGetVMName(t *testing.T) {
 			name:           "myCC-preserveCase",
 			vm:             &DockerVM{NetworkID: "Dev", PeerID: "Peer0"},
 			ccid:           "myCC:1.0",
-			expectedOutput: fmt.Sprintf("%s", "Dev-Peer0-myCC-1.0"),
+			expectedOutput: "Dev-Peer0-myCC-1.0",
 		},
 	}
 

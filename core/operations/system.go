@@ -100,10 +100,8 @@ func (s *System) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 
 	close(ready)
 
-	select {
-	case <-signals:
-		return s.Stop()
-	}
+	<-signals
+	return s.Stop()
 }
 
 func (s *System) Start() error {

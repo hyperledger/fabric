@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 func parseTestParams() []string {
 	testParams := flag.String("testParams", "", "Test specific parameters")
 	flag.Parse()
-	regex, err := regexp.Compile(",(\\s+)?")
+	regex, err := regexp.Compile(`,(\s+)?`)
 	if err != nil {
 		panic(fmt.Errorf("Error: %s", err))
 	}

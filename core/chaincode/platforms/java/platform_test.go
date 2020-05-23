@@ -177,7 +177,7 @@ func generateMockPackegeBytes(fileName string, mode int64) ([]byte, error) {
 	codePackage := bytes.NewBuffer(nil)
 	gw := gzip.NewWriter(codePackage)
 	tw := tar.NewWriter(gw)
-	payload := make([]byte, 25, 25)
+	payload := make([]byte, 25)
 	err := tw.WriteHeader(&tar.Header{Name: fileName, Size: int64(len(payload)), ModTime: zeroTime, AccessTime: zeroTime, ChangeTime: zeroTime, Mode: mode})
 	if err != nil {
 		return nil, err

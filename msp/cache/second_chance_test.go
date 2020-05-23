@@ -56,7 +56,7 @@ func TestSecondChanceCacheConcurrent(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(workers)
 
-	key1 := fmt.Sprintf("key1")
+	key1 := "key1"
 	val1 := key1
 
 	for i := 0; i < workers; i++ {

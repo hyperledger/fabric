@@ -285,6 +285,6 @@ func checkErrorResponse(t *testing.T, expectedCode int, expectedErrMsg string, r
 	decoder := json.NewDecoder(resp.Body)
 	respErr := &types.ErrorResponse{}
 	err := decoder.Decode(respErr)
-	assert.NoError(t, err, "body: %s", string(resp.Body.Bytes()))
+	assert.NoError(t, err, "body: %s", resp.Body.String())
 	assert.Equal(t, expectedErrMsg, respErr.Error)
 }

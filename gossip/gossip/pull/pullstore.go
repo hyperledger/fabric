@@ -407,11 +407,7 @@ func (p *pullMediatorImpl) peersWithEndpoints(endpoints ...string) []*comm.Remot
 func (p *pullMediatorImpl) hooksByMsgType(msgType MsgType) []MessageHook {
 	p.RLock()
 	defer p.RUnlock()
-	returnedHooks := []MessageHook{}
-	for _, h := range p.msgType2Hook[msgType] {
-		returnedHooks = append(returnedHooks, h)
-	}
-	return returnedHooks
+	return append([]MessageHook(nil), p.msgType2Hook[msgType]...)
 }
 
 // SelectEndpoints select k peers from peerPool and returns them.

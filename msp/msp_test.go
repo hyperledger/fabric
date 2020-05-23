@@ -862,10 +862,7 @@ func createCombinedPrincipal(principals ...*msp.MSPPrincipal) (*msp.MSPPrincipal
 	if len(principals) == 0 {
 		return nil, errors.New("no principals in CombinedPrincipal")
 	}
-	var principalsArray []*msp.MSPPrincipal
-	for _, principal := range principals {
-		principalsArray = append(principalsArray, principal)
-	}
+	principalsArray := append([]*msp.MSPPrincipal(nil), principals...)
 	combinedPrincipal := &msp.CombinedPrincipal{Principals: principalsArray}
 	combinedPrincipalBytes, err := proto.Marshal(combinedPrincipal)
 	if err != nil {

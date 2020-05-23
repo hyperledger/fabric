@@ -61,7 +61,7 @@ func (cli *CLI) Command(name, help string, onCommand CLICommand) *kingpin.CmdCla
 // Run makes the CLI process the arguments and executes the command(s) with the flag(s)
 func (cli *CLI) Run(args []string) {
 	configFile = cli.app.Flag("configFile", "Specifies the config file to load the configuration from").String()
-	persist := cli.app.Command(saveConfigCommand, fmt.Sprintf("Save the config passed by flags into the file specified by --configFile"))
+	persist := cli.app.Command(saveConfigCommand, "Save the config passed by flags into the file specified by --configFile")
 	configureFlags(cli.app)
 
 	command := kingpin.MustParse(cli.app.Parse(args))

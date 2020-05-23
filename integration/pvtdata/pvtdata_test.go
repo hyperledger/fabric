@@ -131,7 +131,7 @@ var _ bool = Describe("PrivateData", func() {
 				ChannelID: channelID,
 				Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 				Name:      testChaincodeHighRequiredPeerCount.Name,
-				Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
+				Ctor:      `{"Args":["initMarble"]}`,
 				Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
 				PeerAddresses: []string{
 					network.PeerAddress(network.Peer("Org1", "peer0"), nwo.ListenPort),
@@ -671,7 +671,7 @@ var _ bool = Describe("PrivateData", func() {
 							ChannelID: channelID,
 							Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 							Name:      testChaincode.Name,
-							Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
+							Ctor:      `{"Args":["initMarble"]}`,
 							Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
 							PeerAddresses: []string{
 								network.PeerAddress(peer, nwo.ListenPort),
@@ -744,7 +744,7 @@ var _ bool = Describe("PrivateData", func() {
 							ChannelID: channelID,
 							Orderer:   network.OrdererAddress(orderer, nwo.ListenPort),
 							Name:      testChaincode.Name,
-							Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
+							Ctor:      `{"Args":["initMarble"]}`,
 							Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
 							PeerAddresses: []string{
 								network.PeerAddress(peer, nwo.ListenPort),
@@ -925,7 +925,7 @@ var _ bool = Describe("PrivateData", func() {
 				ChannelID:     channelID,
 				Orderer:       network.OrdererAddress(orderer, nwo.ListenPort),
 				Name:          "marblesp",
-				Ctor:          fmt.Sprintf(`{"Args":["initMarble"]}`),
+				Ctor:          `{"Args":["initMarble"]}`,
 				Transient:     fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
 				PeerAddresses: []string{network.PeerAddress(peer2, nwo.ListenPort)},
 				WaitForEvent:  true,
@@ -1136,7 +1136,7 @@ func addMarble(n *nwo.Network, orderer *nwo.Orderer, chaincodeName, marbleDetail
 		ChannelID: channelID,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      chaincodeName,
-		Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
+		Ctor:      `{"Args":["initMarble"]}`,
 		Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
 		PeerAddresses: []string{
 			n.PeerAddress(peer, nwo.ListenPort),
@@ -1154,7 +1154,7 @@ func deleteMarble(n *nwo.Network, orderer *nwo.Orderer, chaincodeName, marbleDel
 		ChannelID: channelID,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      chaincodeName,
-		Ctor:      fmt.Sprintf(`{"Args":["delete"]}`),
+		Ctor:      `{"Args":["delete"]}`,
 		Transient: fmt.Sprintf(`{"marble_delete":"%s"}`, marbleDeleteBase64),
 		PeerAddresses: []string{
 			n.PeerAddress(peer, nwo.ListenPort),
@@ -1172,7 +1172,7 @@ func transferMarble(n *nwo.Network, orderer *nwo.Orderer, chaincodeName, marbleO
 		ChannelID: channelID,
 		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
 		Name:      chaincodeName,
-		Ctor:      fmt.Sprintf(`{"Args":["transferMarble"]}`),
+		Ctor:      `{"Args":["transferMarble"]}`,
 		Transient: fmt.Sprintf(`{"marble_owner":"%s"}`, marbleOwnerBase64),
 		PeerAddresses: []string{
 			n.PeerAddress(peer, nwo.ListenPort),
@@ -1355,7 +1355,7 @@ func assertDoesNotExistInCollectionMPD(n *nwo.Network, chaincodeName, marbleName
 // in collection 'readMarble' at the given peers
 func assertOwnershipInCollectionM(n *nwo.Network, chaincodeName, marbleName string, peerList ...*nwo.Peer) {
 	query := fmt.Sprintf(`{"Args":["readMarble","%s"]}`, marbleName)
-	expectedMsg := fmt.Sprintf(`{"docType":"marble","name":"test-marble-0","color":"blue","size":35,"owner":"jerry"}`)
+	expectedMsg := `{"docType":"marble","name":"test-marble-0","color":"blue","size":35,"owner":"jerry"}`
 	queryChaincodePerPeer(n, query, chaincodeName, expectedMsg, true, peerList...)
 }
 

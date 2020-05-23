@@ -291,18 +291,18 @@ func validateFieldMap(jsonFragment map[string]interface{}) error {
 	//iterate the fields to validate the sort criteria
 	for jsonKey, jsonValue := range jsonFragment {
 
-		switch jsonValue.(type) {
+		switch jsonValue := jsonValue.(type) {
 
 		case string:
 			//Ensure the sort is either "asc" or "desc"
-			if !(strings.ToLower(jsonValue.(string)) == "asc" || strings.ToLower(jsonValue.(string)) == "desc") {
+			jv := strings.ToLower(jsonValue)
+			if jv != "asc" && jv != "desc" {
 				return fmt.Errorf("Sort must be either \"asc\" or \"desc\".  \"%s\" was found.", jsonValue)
 			}
 			logger.Debugf("Found index field name: \"%s\":\"%s\"", jsonKey, jsonValue)
 
 		default:
 			return fmt.Errorf("Invalid field definition, fields must be in the form \"fieldname\":\"sort\"")
-
 		}
 	}
 

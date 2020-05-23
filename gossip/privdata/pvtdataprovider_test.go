@@ -977,9 +977,8 @@ func TestRetryFetchFromPeer(t *testing.T) {
 
 	_, err = pdp.RetrievePvtdata(pvtdataToRetrieve)
 	assert.NoError(t, err)
-	var maxRetries int
 
-	maxRetries = int(testConfig.PullRetryThreshold / pullRetrySleepInterval)
+	maxRetries := int(testConfig.PullRetryThreshold / pullRetrySleepInterval)
 	assert.Equal(t, fakeSleeper.SleepCallCount() <= maxRetries, true)
 	assert.Equal(t, fakeSleeper.SleepArgsForCall(0), pullRetrySleepInterval)
 }
