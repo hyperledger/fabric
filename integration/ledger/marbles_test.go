@@ -204,11 +204,6 @@ var _ bool = Describe("all shim APIs for non-private data", func() {
 	})
 })
 
-type chaincode struct {
-	nwo.Chaincode
-	isLegacy bool
-}
-
 // marble is the struct to unmarshal the response bytes returned from getMarble API
 type marble struct {
 	ObjectType string `json:"docType"` //docType is "marble"
