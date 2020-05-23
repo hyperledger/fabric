@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestCheckPolicyInvalidArgs(t *testing.T) {
@@ -190,13 +189,4 @@ func TestPolicyChecker(t *testing.T) {
 	err = pc.CheckPolicyNoChannel(mgmt.Members, sProp)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Failed deserializing proposal creator during channelless check policy with policy [Members]: [Invalid Identity]")
-}
-
-type MockPolicyCheckerFactory struct {
-	mock.Mock
-}
-
-func (m *MockPolicyCheckerFactory) NewPolicyChecker() PolicyChecker {
-	args := m.Called()
-	return args.Get(0).(PolicyChecker)
 }
