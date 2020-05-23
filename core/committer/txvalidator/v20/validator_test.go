@@ -1268,7 +1268,3 @@ func TestMain(m *testing.M) {
 
 	os.Exit(m.Run())
 }
-
-func ToHex(q uint64) string {
-	return "0x" + strconv.FormatUint(q, 16)
-}
