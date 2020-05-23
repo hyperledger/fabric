@@ -233,8 +233,8 @@ func (ls *LegacySecurity) SecurityCheckLegacyChaincode(cd *ccprovider.ChaincodeD
 			}
 
 			// This is 'the big security check', though it's no clear what's being accomplished
-			// here.  Basically, it seems to try to verify that the chaincode defintion matches
-			// what's on the filesystem, which, might include instanatiation policy, but it's
+			// here.  Basically, it seems to try to verify that the chaincode definition matches
+			// what's on the filesystem, which, might include instantiation policy, but it's
 			// not obvious from the code, and was being checked separately, so we check it
 			// explicitly below.
 			if err = ccpack.ValidateCC(cd); err != nil {

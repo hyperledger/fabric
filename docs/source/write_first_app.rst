@@ -51,7 +51,7 @@ In addition to the standard :doc:`prereqs` for Fabric, this tutorial leverages t
 - If you are using macOS, complete the following steps:
 
   1. Install `Homebrew <https://brew.sh/>`_.
-  2. Check the Node SDK `prerequisties <https://github.com/hyperledger/fabric-sdk-node#build-and-test>`_ to find out what level of Node to install.
+  2. Check the Node SDK `prerequisites <https://github.com/hyperledger/fabric-sdk-node#build-and-test>`_ to find out what level of Node to install.
   3. Run ``brew install node`` to download the latest version of node or choose a specific version, for example: ``brew install node@10`` according to what is supported in the prerequisites.
   4. Run ``npm install``.
 

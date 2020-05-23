@@ -51,7 +51,7 @@ configuration update to make sure that the requestor has the proper
 administrative rights. If so, the orderer validates the update request against
 the existing configuration, generates a new configuration transaction,
 and packages it into a block that is relayed to all peers on the channel. The
-peers then processs the configuration transactions in order to verify that the
+peers then process the configuration transactions in order to verify that the
 modifications approved by the orderer do indeed satisfy the policies defined in
 the channel.
 

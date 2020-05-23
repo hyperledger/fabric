@@ -326,7 +326,7 @@ func (c *Cache) StateCommitDone(channelName string) {
 	// between HandleStateUpdate and StateCommitDone, it's possible (in fact likely)
 	// that a chaincode invocation will acquire a read-lock on the world state, then attempt
 	// to get chaincode info from the cache, resulting in a deadlock.  So, we choose
-	// potential inconsistenty between the cache and the world state which the callers
+	// potential inconsistency between the cache and the world state which the callers
 	// must detect and cope with as necessary.  Note, the cache will always be _at least_
 	// as current as the committed state.
 	c.eventBroker.ApproveOrDefineCommitted(channelName)

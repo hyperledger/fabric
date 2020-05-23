@@ -104,7 +104,7 @@ func (c *Channel) Capabilities() channelconfig.ApplicationCapabilities {
 	return ac.Capabilities()
 }
 
-// GetMSPIDs retrieves the MSP IDs of the organziations in the current channel
+// GetMSPIDs retrieves the MSP IDs of the organizations in the current channel
 // configuration.
 func (c *Channel) GetMSPIDs() []string {
 	ac, ok := c.Resources().ApplicationConfig()

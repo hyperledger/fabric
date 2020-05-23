@@ -100,7 +100,7 @@ which provide the ability to configure access to resources by associating those
 resources with existing policies. These "resources" could be functions on system
 chaincode (e.g., "GetBlockByNumber" on the "qscc" system chaincode) or other
 resources (e.g.,who can receive Block events). ACLs refer to policies
-defined in an application channel configuraton and extends them to control
+defined in an application channel configuration and extends them to control
 additional resources. The default set of Fabric ACLs is visible in the
 `configtx.yaml` file under the `Application: &ApplicationDefaults` section but
 they can and should be overridden in a production environment. The list of

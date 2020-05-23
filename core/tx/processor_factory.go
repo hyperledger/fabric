@@ -40,7 +40,7 @@ func (f *ProcessorFactory) CreateProcessor(txEnvelopeBytes []byte) (processor tx
 	return c.NewProcessor(txEnv)
 }
 
-// validateProtoAndConstructTxEnv attemps to unmarshal the bytes and prepare an instance of struct tx.Envelope
+// validateProtoAndConstructTxEnv attempts to unmarshal the bytes and prepare an instance of struct tx.Envelope
 // It returns an error of type `tx.InvalidErr` if the proto message is found to be invalid
 func validateProtoAndConstructTxEnv(txEnvelopeBytes []byte) (*tx.Envelope, error) {
 	txenv, err := protoutil.UnmarshalEnvelope(txEnvelopeBytes)

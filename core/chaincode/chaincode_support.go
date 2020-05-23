@@ -205,7 +205,7 @@ func (cs *ChaincodeSupport) Invoke(txParams *ccprovider.TransactionParams, chain
 // CheckInvocation inspects the parameters of an invocation and determines if, how, and to where a that invocation should be routed.
 // First, we ensure that the target namespace is defined on the channel and invokable on this peer, according to the lifecycle implementation.
 // Then, if the chaincode definition requires it, this function enforces 'init exactly once' semantics.
-// Finally, it returns the chaincode ID to route to and the message type of the request (normal transation, or init).
+// Finally, it returns the chaincode ID to route to and the message type of the request (normal transaction, or init).
 func (cs *ChaincodeSupport) CheckInvocation(txParams *ccprovider.TransactionParams, chaincodeName string, input *pb.ChaincodeInput) (ccid string, cctype pb.ChaincodeMessage_Type, err error) {
 	chaincodeLogger.Debugf("[%s] getting chaincode data for %s on channel %s", shorttxid(txParams.TxID), chaincodeName, txParams.ChannelID)
 	cii, err := cs.Lifecycle.ChaincodeEndorsementInfo(txParams.ChannelID, chaincodeName, txParams.TXSimulator)

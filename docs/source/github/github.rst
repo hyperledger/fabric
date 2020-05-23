@@ -20,7 +20,7 @@ To fork a repository:
 .. image:: ../images/fork.png
    :scale: 50%
 
-- Your browser will automatically take you to the forked repostiory within
+- Your browser will automatically take you to the forked repository within
   your personal GitHub account once the forking process has complete
 
 You can now clone your personal fork to your local machine.
@@ -117,8 +117,8 @@ the GitHub repository. To create a feature branch, perform the following steps:
 
 Now that you have created a local feature branch, you can perform your updates.
 
-Commiting and Pushing Changes to Your Forked Repository
--------------------------------------------------------
+Committing and Pushing Changes to Your Forked Repository
+--------------------------------------------------------
 
 Once you have completed the work you intend to perform in your local feature branch,
 you can commit this code and push it to your forked repository to save its state.

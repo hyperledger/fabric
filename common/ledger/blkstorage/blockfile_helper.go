@@ -78,7 +78,7 @@ func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, err
 }
 
 // binarySearchFileNumForBlock locates the file number that contains the given block number.
-// This function assumes that the caller invokes this function with a block number that has been commited
+// This function assumes that the caller invokes this function with a block number that has been committed
 // For any uncommitted block, this function returns the last file present
 func binarySearchFileNumForBlock(rootDir string, blockNum uint64) (int, error) {
 	cpInfo, err := constructCheckpointInfoFromBlockFiles(rootDir)

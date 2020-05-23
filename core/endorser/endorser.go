@@ -343,7 +343,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	}
 
 	if pResp.Endorsement != nil || up.ChannelHeader.ChannelId == "" {
-		// We mark the tx as successfull only if it was successfully endorsed, or
+		// We mark the tx as successful only if it was successfully endorsed, or
 		// if it was a system chaincode on a channel-less channel and therefore
 		// cannot be endorsed.
 		success = true

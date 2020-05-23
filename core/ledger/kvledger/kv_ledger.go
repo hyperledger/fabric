@@ -157,7 +157,7 @@ func (l *kvLedger) initTxMgr(initializer *lockbasedtxmgr.Initializer) error {
 	}
 	l.txtmgmt = txmgr
 	// This is a workaround for populating lifecycle cache.
-	// See comments on this function for deatils
+	// See comments on this function for details
 	qe, err := txmgr.NewQueryExecutorNoCollChecks()
 	if err != nil {
 		return err

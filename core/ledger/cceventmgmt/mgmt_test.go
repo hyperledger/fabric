@@ -53,7 +53,7 @@ func TestCCEventMgmt(t *testing.T) {
 	_ = cc2ExpectedEvent
 	cc3ExpectedEvent := &mockEvent{cc3Def, cc3DBArtifactsTar}
 
-	// Deploy cc3 on chain1 - handler1 and handler3 should recieve event because cc3 is being deployed only on chain1
+	// Deploy cc3 on chain1 - handler1 and handler3 should receive event because cc3 is being deployed only on chain1
 	eventMgr.HandleChaincodeDeploy("channel1", []*ChaincodeDefinition{cc3Def})
 	eventMgr.ChaincodeDeployDone("channel1")
 	assert.Contains(t, handler1.eventsRecieved, cc3ExpectedEvent)
@@ -63,7 +63,7 @@ func TestCCEventMgmt(t *testing.T) {
 	assert.Equal(t, 0, handler2.doneRecievedCount)
 	assert.Equal(t, 1, handler3.doneRecievedCount)
 
-	// Deploy cc3 on chain2 as well and this time handler2 should also recieve event
+	// Deploy cc3 on chain2 as well and this time handler2 should also receive event
 	eventMgr.HandleChaincodeDeploy("channel2", []*ChaincodeDefinition{cc3Def})
 	eventMgr.ChaincodeDeployDone("channel2")
 	assert.Contains(t, handler2.eventsRecieved, cc3ExpectedEvent)
