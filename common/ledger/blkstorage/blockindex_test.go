@@ -444,11 +444,3 @@ func verifyTxIDKeyDecodable(t *testing.T, txIDKey []byte, expectedTxID string, e
 	require.Equal(t, expectedTxNum, txNum)
 	require.Len(t, txIDKey, firstIndexTxNum+n)
 }
-
-type errorThrowingWriter struct {
-	err error
-}
-
-func (w *errorThrowingWriter) Write(p []byte) (n int, err error) {
-	return 0, w.err
-}
