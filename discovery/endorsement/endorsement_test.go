@@ -686,8 +686,9 @@ func TestPop(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, slice, 1)
 	_, slice, err = popComparablePrincipalSets(slice)
+	assert.NoError(t, err)
 	assert.Len(t, slice, 0)
-	_, slice, err = popComparablePrincipalSets(slice)
+	_, _, err = popComparablePrincipalSets(slice)
 	assert.Error(t, err)
 	assert.Equal(t, "no principal sets remained after filtering", err.Error())
 }
