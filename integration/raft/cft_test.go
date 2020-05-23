@@ -372,10 +372,10 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("Expiring orderer TLS certificates")
 			for filePath, certPEM := range serverTLSCerts {
 				expiredCert, earlyMadeCACert := expireCertificate(certPEM, ordererTLSCACert, ordererTLSCAKey)
-				err = ioutil.WriteFile(filePath, expiredCert, 600)
+				err = ioutil.WriteFile(filePath, expiredCert, 0600)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = ioutil.WriteFile(ordererTLSCACertPath, earlyMadeCACert, 600)
+				err = ioutil.WriteFile(ordererTLSCACertPath, earlyMadeCACert, 0600)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
@@ -470,20 +470,20 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			expiredAdminCert, earlyCACert := expireCertificate(originalAdminCert, ordererCACert, ordererCAKey)
-			err = ioutil.WriteFile(adminCertPath, expiredAdminCert, 600)
+			err = ioutil.WriteFile(adminCertPath, expiredAdminCert, 0600)
 			Expect(err).NotTo(HaveOccurred())
 
 			adminPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
 				ordererDomain, "msp", "admincerts", fmt.Sprintf("Admin@%s-cert.pem", ordererDomain))
-			err = ioutil.WriteFile(adminPath, expiredAdminCert, 600)
+			err = ioutil.WriteFile(adminPath, expiredAdminCert, 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			err = ioutil.WriteFile(ordererCACertPath, earlyCACert, 600)
+			err = ioutil.WriteFile(ordererCACertPath, earlyCACert, 0600)
 			Expect(err).NotTo(HaveOccurred())
 
 			ordererCACertPath = filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
 				ordererDomain, "msp", "cacerts", fmt.Sprintf("ca.%s-cert.pem", ordererDomain))
-			err = ioutil.WriteFile(ordererCACertPath, earlyCACert, 600)
+			err = ioutil.WriteFile(ordererCACertPath, earlyCACert, 0600)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Regenerating config")
@@ -561,7 +561,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Expect(block).NotTo(BeNil())
 
 			By("Restore the original admin cert")
-			err = ioutil.WriteFile(adminCertPath, originalAdminCert, 600)
+			err = ioutil.WriteFile(adminCertPath, originalAdminCert, 0600)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Ensure we can fetch the block using our original un-expired admin cert")
