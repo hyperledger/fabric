@@ -1117,15 +1117,15 @@ func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}
 				return err
 			}
 			defer controller.Close()
-
 			// create the topic
 			req := &sarama.CreateTopicsRequest{
 				Version: 0,
 				TopicDetails: map[string]*sarama.TopicDetail{
-					channel.topic(): topicDetail},
-				Timeout: 3 * time.Second}
-			resp := &sarama.CreateTopicsResponse{}
-			resp, err = controller.CreateTopics(req)
+					channel.topic(): topicDetail,
+				},
+				Timeout: 3 * time.Second,
+			}
+			resp, err := controller.CreateTopics(req)
 			if err != nil {
 				return err
 			}
