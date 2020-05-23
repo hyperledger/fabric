@@ -224,6 +224,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 	ous := []string{"TestOU", "PeerOU"}
 	cert, err = rootCA.SignCertificate(certDir, testName, ous, nil, &priv.PublicKey,
 		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
+	assert.NoError(t, err)
 	assert.Contains(t, cert.Subject.OrganizationalUnit, ous[0])
 	assert.Contains(t, cert.Subject.OrganizationalUnit, ous[1])
 
@@ -231,6 +232,7 @@ func TestGenerateSignCertificate(t *testing.T) {
 	sans := []string{testName2, testIP}
 	cert, err = rootCA.SignCertificate(certDir, testName, nil, sans, &priv.PublicKey,
 		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
+	assert.NoError(t, err)
 	assert.Contains(t, cert.DNSNames, testName2)
 	assert.Contains(t, cert.IPAddresses, net.ParseIP(testIP).To4())
 
