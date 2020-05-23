@@ -340,7 +340,8 @@ func (nh *networkHelper) getLedgerHeight(peer *nwo.Peer) int {
 
 	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
 	var channelInfo = common.BlockchainInfo{}
-	json.Unmarshal([]byte(channelInfoStr), &channelInfo)
+	err = json.Unmarshal([]byte(channelInfoStr), &channelInfo)
+	Expect(err).NotTo(HaveOccurred())
 	return int(channelInfo.Height)
 }
 
@@ -433,7 +434,7 @@ func (th *testHelper) addMarble(chaincodeName, marbleDetails string, peer *nwo.P
 		ChannelID: th.channelID,
 		Orderer:   th.OrdererAddress(th.orderer, nwo.ListenPort),
 		Name:      chaincodeName,
-		Ctor:      fmt.Sprintf(`{"Args":["initMarble"]}`),
+		Ctor:      `{"Args":["initMarble"]}`,
 		Transient: fmt.Sprintf(`{"marble":"%s"}`, marbleDetailsBase64),
 		PeerAddresses: []string{
 			th.PeerAddress(peer, nwo.ListenPort),
