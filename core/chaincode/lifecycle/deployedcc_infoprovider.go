@@ -103,6 +103,44 @@ func (vc *ValidatorCommitter) ChaincodeInfo(channelName, chaincodeName string, q
 	}, nil
 }
 
+// AllChaincodesInfo returns the mapping of chaincode name to DeployedChaincodeInfo for all the deployed chaincodes
+func (vc *ValidatorCommitter) AllChaincodesInfo(channelName string, sqe ledger.SimpleQueryExecutor) (map[string]*ledger.DeployedChaincodeInfo, error) {
+	sqes := &SimpleQueryExecutorShim{
+		Namespace:           LifecycleNamespace,
+		SimpleQueryExecutor: sqe,
+	}
+	ccQuery := &ExternalFunctions{Resources: vc.Resources}
+	namespaceDefs, err := ccQuery.QueryNamespaceDefinitions(sqes)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]*ledger.DeployedChaincodeInfo)
+	for ccName, value := range namespaceDefs {
+		if value != FriendlyChaincodeDefinitionType {
+			continue
+		}
+		deployedccInfo, err := vc.ChaincodeInfo(channelName, ccName, sqe)
+		if err != nil {
+			return nil, err
+		}
+		result[ccName] = deployedccInfo
+	}
+
+	legacyCCs, err := vc.LegacyDeployedCCInfoProvider.AllChaincodesInfo(channelName, sqe)
+	if err != nil {
+		return nil, err
+	}
+
+	for ccName, deployedccInfo := range legacyCCs {
+		if _, ok := result[ccName]; !ok {
+			result[ccName] = deployedccInfo
+		}
+	}
+
+	return result, nil
+}
+
 var ImplicitCollectionMatcher = regexp.MustCompile("^" + ImplicitCollectionNameForOrg("(.+)") + "$")
 
 // AllCollectionsConfigPkg implements function in interface ledger.DeployedChaincodeInfoProvider

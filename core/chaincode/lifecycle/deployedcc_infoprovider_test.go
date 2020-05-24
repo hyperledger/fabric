@@ -10,11 +10,13 @@ import (
 	"fmt"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
@@ -42,7 +44,8 @@ var _ = Describe("ValidatorCommitter", func() {
 		fakeOrgConfigs          []*mock.ApplicationOrgConfig
 		fakePolicyManager       *mock.PolicyManager
 
-		fakePublicState MapLedgerShim
+		fakePublicState  MapLedgerShim
+		fakeChaincodeDef *lifecycle.ChaincodeDefinition
 	)
 
 	BeforeEach(func() {
@@ -88,7 +91,7 @@ var _ = Describe("ValidatorCommitter", func() {
 			return fakePublicState.GetState(key)
 		}
 
-		err := resources.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", &lifecycle.ChaincodeDefinition{
+		fakeChaincodeDef = &lifecycle.ChaincodeDefinition{
 			EndorsementInfo: &lb.ChaincodeEndorsementInfo{
 				Version: "version",
 			},
@@ -107,7 +110,8 @@ var _ = Describe("ValidatorCommitter", func() {
 					},
 				},
 			},
-		}, fakePublicState)
+		}
+		err := resources.Serializer.Serialize(lifecycle.NamespacesName, "cc-name", fakeChaincodeDef, fakePublicState)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -231,6 +235,145 @@ var _ = Describe("ValidatorCommitter", func() {
 
 			It("wraps and returns that error", func() {
 				_, err := vc.ChaincodeInfo("channel-name", "cc-name", fakeQueryExecutor)
+				Expect(err).To(MatchError("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
+			})
+		})
+	})
+
+	Describe("AllChaincodesInfo", func() {
+		var (
+			fakeStateIteratorKVs MapLedgerShim
+		)
+		BeforeEach(func() {
+			fakeStateIteratorKVs = MapLedgerShim(map[string][]byte{})
+			err := resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{}, fakeStateIteratorKVs)
+			Expect(err).NotTo(HaveOccurred())
+			fakeQueryExecutor.GetStateRangeScanIteratorStub = func(namespace, begin, end string) (commonledger.ResultsIterator, error) {
+				fakeResultsIterator := &mock.ResultsIterator{}
+				i := 0
+				for key, value := range fakeStateIteratorKVs {
+					if key >= begin && key < end {
+						fakeResultsIterator.NextReturnsOnCall(i, &queryresult.KV{
+							Key:   key,
+							Value: value,
+						}, nil)
+						i++
+					}
+				}
+				return fakeResultsIterator, nil
+			}
+		})
+
+		It("returns deployed chaincodes info for new lifecycle chaincodes", func() {
+			res, err := vc.AllChaincodesInfo("channel-name", fakeQueryExecutor)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).To(HaveLen(1))
+			// because ExplicitCollectionConfigPkg is a protobuf object, we have to compare individual fields
+			ccInfo, ok := res["cc-name"]
+			Expect(ok).To(BeTrue())
+			Expect(ccInfo.Name).To(Equal("cc-name"))
+			Expect(ccInfo.IsLegacy).To(BeFalse())
+			Expect(ccInfo.Version).To(Equal(fakeChaincodeDef.EndorsementInfo.Version))
+			Expect(proto.Equal(ccInfo.ExplicitCollectionConfigPkg, fakeChaincodeDef.Collections)).To(BeTrue())
+		})
+
+		Context("when state range scan returns an error", func() {
+			BeforeEach(func() {
+				fakeQueryExecutor.GetStateRangeScanIteratorReturns(nil, fmt.Errorf("rangescan-error"))
+			})
+
+			It("returns the error", func() {
+				_, err := vc.AllChaincodesInfo("channel-name", fakeQueryExecutor)
+				Expect(err).To(MatchError("could not query namespace metadata: could not get state range for namespace namespaces: could not get state iterator: rangescan-error"))
+			})
+		})
+
+		Context("when get state returns an error", func() {
+			BeforeEach(func() {
+				fakeQueryExecutor.GetStateReturns(nil, fmt.Errorf("getstate-error"))
+			})
+
+			It("returns the error", func() {
+				_, err := vc.AllChaincodesInfo("channel-name", fakeQueryExecutor)
+				Expect(err).To(MatchError("could not get info about chaincode: could not deserialize metadata for chaincode cc-name: could not query metadata for namespace namespaces/cc-name: getstate-error"))
+			})
+		})
+
+		Context("when LegacyProvider.AllChaincodesInfo returns DeployedChaincodeInfo", func() {
+			var (
+				cc1Info, cc2Info *ledger.DeployedChaincodeInfo
+			)
+			BeforeEach(func() {
+				// fakeLegacyProvider returns 2 DeployedChaincodeInfo, one of them has the same name as new lifecycle chaincode "cc-name"
+				cc1Info = &ledger.DeployedChaincodeInfo{
+					Name:     "cc-name",
+					Hash:     []byte("hash"),
+					Version:  "cc-version",
+					IsLegacy: true,
+				}
+				cc2Info = &ledger.DeployedChaincodeInfo{
+					Name:     "another-cc-name",
+					Hash:     []byte("hash"),
+					Version:  "cc-version",
+					IsLegacy: true,
+					ExplicitCollectionConfigPkg: &pb.CollectionConfigPackage{
+						Config: []*pb.CollectionConfig{
+							{
+								Payload: &pb.CollectionConfig_StaticCollectionConfig{
+									StaticCollectionConfig: &pb.StaticCollectionConfig{
+										Name: "collection-name",
+									},
+								},
+							},
+						},
+					},
+				}
+				fakeLegacyProvider.AllChaincodesInfoReturns(map[string]*ledger.DeployedChaincodeInfo{
+					"cc-name":         cc1Info,
+					"another-cc-name": cc2Info,
+				}, nil)
+			})
+
+			It("returns new lifecycle and legacy chaincodes but excludes duplicate legacy chaincode", func() {
+				res, err := vc.AllChaincodesInfo("testchannel", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(res).To(HaveLen(2))
+				Expect(fakeLegacyProvider.AllChaincodesInfoCallCount()).To(Equal(1))
+				channelID, qe := fakeLegacyProvider.AllChaincodesInfoArgsForCall(0)
+				Expect(channelID).To(Equal("testchannel"))
+				Expect(qe).To(Equal(fakeQueryExecutor))
+
+				newlifecycleCCInfo, ok := res["cc-name"]
+				Expect(ok).To(BeTrue())
+				Expect(newlifecycleCCInfo.Name).To(Equal("cc-name"))
+				Expect(newlifecycleCCInfo.IsLegacy).To(BeFalse())
+				Expect(newlifecycleCCInfo.Version).To(Equal(fakeChaincodeDef.EndorsementInfo.Version))
+				Expect(proto.Equal(newlifecycleCCInfo.ExplicitCollectionConfigPkg, fakeChaincodeDef.Collections)).To(BeTrue())
+
+				legacyCCInfo, ok := res["another-cc-name"]
+				Expect(ok).To(BeTrue())
+				Expect(legacyCCInfo).To(Equal(cc2Info))
+			})
+		})
+
+		Context("when LegacyProvider.AllChaincodesInfo returns an error", func() {
+			BeforeEach(func() {
+				fakeLegacyProvider.AllChaincodesInfoReturns(nil, fmt.Errorf("chaincode-info-error"))
+			})
+
+			It("passes through to the legacy impl", func() {
+				_, err := vc.AllChaincodesInfo("testchannel", fakeQueryExecutor)
+				Expect(err).To(MatchError("chaincode-info-error"))
+			})
+		})
+
+		Context("when the data is corrupt", func() {
+			BeforeEach(func() {
+				fakePublicState["namespaces/fields/cc-name/ValidationInfo"] = []byte("garbage")
+			})
+
+			It("wraps and returns that error", func() {
+				_, err := vc.AllChaincodesInfo("channel-name", fakeQueryExecutor)
 				Expect(err).To(MatchError("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
 			})
 		})
