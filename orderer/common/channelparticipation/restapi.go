@@ -9,6 +9,8 @@ package channelparticipation
 import (
 	"encoding/json"
 	"io/ioutil"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"path"
 	"strings"
@@ -24,8 +26,11 @@ import (
 )
 
 const (
-	URLBaseV1           = "/participation/v1/"
-	URLBaseV1Channels   = URLBaseV1 + "channels"
+	URLBaseV1         = "/participation/v1/"
+	URLBaseV1Channels = URLBaseV1 + "channels"
+
+	FormDataConfigBlockKey = "config-block"
+
 	channelIDKey        = "channelID"
 	urlWithChannelIDKey = URLBaseV1Channels + "/{" + channelIDKey + "}"
 )
@@ -65,9 +70,13 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	}
 
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveListOne).Methods(http.MethodGet)
+
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveJoin).Methods(http.MethodPost).Headers(
-		"Content-Type", "application/json") // TODO support application/octet-stream & multipart/form-data
+		"Content-Type", "application/json")
+	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveJoin).Methods(http.MethodPost).HeadersRegexp(
+		"Content-Type", "multipart/form-data*")
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveBadContentType).Methods(http.MethodPost)
+
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveRemove).Methods(http.MethodDelete)
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveNotAllowed)
 
@@ -140,8 +149,20 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	block, ok := h.jsonBodyToBlock(req, resp) //TODO add support for application/octet-stream & multipart/form-data
-	if !ok {
+	var block *cb.Block
+	mediaType, params, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot parse Mime media type"))
+		return
+	}
+
+	switch mediaType { //Handler will pass on only those two
+	case "application/json":
+		block = h.jsonBodyToBlock(req, resp)
+	case "multipart/form-data":
+		block = h.multipartFormDataBodyToBlock(params, req, resp)
+	}
+	if block == nil {
 		return
 	}
 
@@ -156,14 +177,55 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 	h.sendJoinError(err, resp)
 }
 
-func (h *HTTPHandler) jsonBodyToBlock(req *http.Request, resp http.ResponseWriter) (*cb.Block, bool) {
-	block := &cb.Block{}
+func (h *HTTPHandler) multipartFormDataBodyToBlock(params map[string]string, req *http.Request, resp http.ResponseWriter) *cb.Block {
+	boundary := params["boundary"]
+	reader := multipart.NewReader(req.Body, boundary)
+	form, err := reader.ReadForm(100 * 1024 * 1024)
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot read form from request body"))
+		return nil
+	}
 
+	if _, exist := form.File[FormDataConfigBlockKey]; !exist {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Errorf("form does not contains part key: %s", FormDataConfigBlockKey))
+		return nil
+	}
+
+	if len(form.File) != 1 || len(form.Value) != 0 {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.New("form contains too many parts"))
+		return nil
+	}
+
+	fileHeader := form.File[FormDataConfigBlockKey][0]
+	file, err := fileHeader.Open()
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrapf(err, "cannot open file part %s from request body", FormDataConfigBlockKey))
+		return nil
+	}
+
+	blockBytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrapf(err, "cannot read file part %s from request body", FormDataConfigBlockKey))
+		return nil
+	}
+
+	block := &cb.Block{}
+	err = proto.Unmarshal(blockBytes, block)
+	if err != nil {
+		h.logger.Debugf("Failed to unmarshal blockBytes: %s", err)
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrapf(err, "cannot unmarshal file part %s into a block", FormDataConfigBlockKey))
+		return nil
+	}
+
+	return block
+}
+
+func (h *HTTPHandler) jsonBodyToBlock(req *http.Request, resp http.ResponseWriter) *cb.Block {
 	bodyBytes, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		h.logger.Debugf("Failed to read request body: %s", err)
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot read request body"))
-		return nil, false
+		return nil
 	}
 
 	body := types.JoinBody{}
@@ -171,17 +233,18 @@ func (h *HTTPHandler) jsonBodyToBlock(req *http.Request, resp http.ResponseWrite
 	if err != nil {
 		h.logger.Debugf("Failed to json.Unmarshal request body: %s", err)
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot json.Unmarshal request body"))
-		return nil, false
+		return nil
 	}
 
+	block := &cb.Block{}
 	err = proto.Unmarshal(body.ConfigBlock, block)
 	if err != nil {
 		h.logger.Debugf("Failed to unmarshal ConfigBlock field: %s", err)
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot unmarshal ConfigBlock field"))
-		return nil, false
+		return nil
 	}
 
-	return block, true
+	return block
 }
 
 func (h *HTTPHandler) extractChannelID(req *http.Request, resp http.ResponseWriter) (string, bool) {
