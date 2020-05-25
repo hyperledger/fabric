@@ -71,7 +71,7 @@ Set up the blockchain network
 -----------------------------
 
 If you've already run through :doc:`test_network` tutorial and have a network up
-and running, this tutorial will bring down your running network network before
+and running, this tutorial will bring down your running network before
 bringing up a new one.
 
 
