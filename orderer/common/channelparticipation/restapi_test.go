@@ -231,74 +231,66 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 
 func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
-	mimeType := []string{"application/json", "multipart/form-data"}
 
-	for i, genJoinReqFunc := range []func(t *testing.T, blockBytes []byte) *http.Request{genJoinRequestJson, genJoinRequestFormData} {
+	t.Run("created ok", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		info := types.ChannelInfo{
+			Name:            "app-channel",
+			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
+			ClusterRelation: "member",
+			Status:          "active",
+			Height:          1,
+		}
+		fakeManager.JoinChannelReturns(info, nil)
 
-		t.Run(fmt.Sprintf("created: with: %s", mimeType[i]), func(t *testing.T) {
-			fakeManager, h := setup(config, t)
-			info := types.ChannelInfo{
-				Name:            "app-channel",
-				URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
-				ClusterRelation: "member",
-				Status:          "active",
-				Height:          1,
-			}
-			fakeManager.JoinChannelReturns(info, nil)
+		resp := httptest.NewRecorder()
+		req := genJoinRequestFormData(t, []byte{})
+		h.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusCreated, resp.Code)
+		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
 
-			resp := httptest.NewRecorder()
-			req := genJoinReqFunc(t, []byte{})
-			h.ServeHTTP(resp, req)
-			assert.Equal(t, http.StatusCreated, resp.Code)
-			assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
+		infoResp := types.ChannelInfo{}
+		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
+		require.NoError(t, err, "cannot be unmarshaled")
+		assert.Equal(t, info, infoResp)
+	})
 
-			infoResp := types.ChannelInfo{}
-			err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
-			require.NoError(t, err, "cannot be unmarshaled")
-			assert.Equal(t, info, infoResp)
-		})
+	t.Run("Error: System Channel Exists", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrSystemChannelExists)
+		resp := httptest.NewRecorder()
+		req := genJoinRequestFormData(t, []byte{})
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: system channel exists", resp)
+		assert.Equal(t, "GET", resp.Header().Get("Allow"))
+	})
 
-		t.Run(fmt.Sprintf("Error: System Channel Exists, with: %s", mimeType[i]), func(t *testing.T) {
-			fakeManager, h := setup(config, t)
-			fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrSystemChannelExists)
-			resp := httptest.NewRecorder()
-			req := genJoinReqFunc(t, []byte{})
-			h.ServeHTTP(resp, req)
-			checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: system channel exists", resp)
-			assert.Equal(t, "GET", resp.Header().Get("Allow"))
-		})
+	t.Run("Error: Channel Exists", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrChannelAlreadyExists)
+		resp := httptest.NewRecorder()
+		req := genJoinRequestFormData(t, []byte{})
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: channel already exists", resp)
+		assert.Equal(t, "GET, DELETE", resp.Header().Get("Allow"))
+	})
 
-		t.Run(fmt.Sprintf("Error: Channel Exists, with: %s", mimeType[i]), func(t *testing.T) {
-			fakeManager, h := setup(config, t)
-			fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrChannelAlreadyExists)
-			resp := httptest.NewRecorder()
-			req := genJoinReqFunc(t, []byte{})
-			h.ServeHTTP(resp, req)
-			checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: channel already exists", resp)
-			assert.Equal(t, "GET, DELETE", resp.Header().Get("Allow"))
-		})
+	t.Run("Error: App Channels Exist", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrAppChannelsAlreadyExists)
+		resp := httptest.NewRecorder()
+		req := genJoinRequestFormData(t, []byte{})
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusForbidden, "cannot join: application channels already exist", resp)
+	})
 
-		t.Run(fmt.Sprintf("Error: App Channels Exist, with: %s", mimeType[i]), func(t *testing.T) {
-			fakeManager, h := setup(config, t)
-			fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrAppChannelsAlreadyExists)
-			resp := httptest.NewRecorder()
-			req := genJoinReqFunc(t, []byte{})
-			h.ServeHTTP(resp, req)
-			checkErrorResponse(t, http.StatusForbidden, "cannot join: application channels already exist", resp)
-		})
-
-		t.Run(fmt.Sprintf("bad body - not a block, with: %s", mimeType[i]), func(t *testing.T) {
-			_, h := setup(config, t)
-			resp := httptest.NewRecorder()
-			req := genJoinReqFunc(t, []byte{1, 2, 3, 4})
-			h.ServeHTTP(resp, req)
-			if i == 0 {
-				checkErrorResponse(t, http.StatusBadRequest, "cannot unmarshal ConfigBlock field: proto: common.Block: illegal tag 0 (wire type 1)", resp)
-			} else {
-				checkErrorResponse(t, http.StatusBadRequest, "cannot unmarshal file part config-block into a block: proto: common.Block: illegal tag 0 (wire type 1)", resp)
-			}
-		})
-	}
+	t.Run("bad body - not a block", func(t *testing.T) {
+		_, h := setup(config, t)
+		resp := httptest.NewRecorder()
+		req := genJoinRequestFormData(t, []byte{1, 2, 3, 4})
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusBadRequest, "cannot unmarshal file part config-block into a block: proto: common.Block: illegal tag 0 (wire type 1)", resp)
+	})
 
 	t.Run("content type mismatch", func(t *testing.T) {
 		_, h := setup(config, t)
@@ -313,21 +305,9 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		_, h := setup(config, t)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-ID"), nil)
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", "multipart/form-data")
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "invalid channel ID: 'ch-ID' contains illegal characters", resp)
-	})
-
-	t.Run("json: bad body - not json", func(t *testing.T) {
-		_, h := setup(config, t)
-		resp := httptest.NewRecorder()
-		badBody := &bytes.Buffer{}
-		_, err := badBody.Write([]byte("not json"))
-		require.NoError(t, err)
-		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), badBody)
-		req.Header.Set("Content-Type", "application/json")
-		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusBadRequest, "cannot json.Unmarshal request body: invalid character 'o' in literal null (expecting 'u')", resp)
 	})
 
 	t.Run("form-data: bad form - no boundary", func(t *testing.T) {
@@ -423,16 +403,6 @@ func checkErrorResponse(t *testing.T, expectedCode int, expectedErrMsg string, r
 	err := decoder.Decode(respErr)
 	assert.NoError(t, err, "body: %s", string(resp.Body.Bytes()))
 	assert.Equal(t, expectedErrMsg, respErr.Error)
-}
-
-func genJoinRequestJson(t *testing.T, blockBytes []byte) *http.Request {
-	joinBody := &bytes.Buffer{}
-	encoder := json.NewEncoder(joinBody)
-	err := encoder.Encode(&types.JoinBody{ConfigBlock: blockBytes})
-	require.NoError(t, err)
-	req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), joinBody)
-	req.Header.Set("Content-Type", "application/json")
-	return req
 }
 
 func genJoinRequestFormData(t *testing.T, blockBytes []byte) *http.Request {

@@ -71,8 +71,6 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveListOne).Methods(http.MethodGet)
 
-	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveJoin).Methods(http.MethodPost).Headers(
-		"Content-Type", "application/json")
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveJoin).Methods(http.MethodPost).HeadersRegexp(
 		"Content-Type", "multipart/form-data*")
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveBadContentType).Methods(http.MethodPost)
@@ -136,7 +134,8 @@ func (h *HTTPHandler) serveListOne(resp http.ResponseWriter, req *http.Request) 
 	h.sendResponseOK(resp, infoFull)
 }
 
-// Join a channel. Expect application/json content.
+// Join a channel.
+// Expect multipart/form-data.
 func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 	_, err := negotiateContentType(req) // Only application/json responses for now
 	if err != nil {
@@ -149,19 +148,13 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var block *cb.Block
-	mediaType, params, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
+	_, params, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot parse Mime media type"))
 		return
 	}
 
-	switch mediaType { //Handler will pass on only those two
-	case "application/json":
-		block = h.jsonBodyToBlock(req, resp)
-	case "multipart/form-data":
-		block = h.multipartFormDataBodyToBlock(params, req, resp)
-	}
+	block := h.multipartFormDataBodyToBlock(params, req, resp)
 	if block == nil {
 		return
 	}
@@ -177,6 +170,7 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 	h.sendJoinError(err, resp)
 }
 
+// Expect a multipart/form-data with a single part, of type file, with key FormDataConfigBlockKey.
 func (h *HTTPHandler) multipartFormDataBodyToBlock(params map[string]string, req *http.Request, resp http.ResponseWriter) *cb.Block {
 	boundary := params["boundary"]
 	reader := multipart.NewReader(req.Body, boundary)
@@ -214,33 +208,6 @@ func (h *HTTPHandler) multipartFormDataBodyToBlock(params map[string]string, req
 	if err != nil {
 		h.logger.Debugf("Failed to unmarshal blockBytes: %s", err)
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrapf(err, "cannot unmarshal file part %s into a block", FormDataConfigBlockKey))
-		return nil
-	}
-
-	return block
-}
-
-func (h *HTTPHandler) jsonBodyToBlock(req *http.Request, resp http.ResponseWriter) *cb.Block {
-	bodyBytes, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		h.logger.Debugf("Failed to read request body: %s", err)
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot read request body"))
-		return nil
-	}
-
-	body := types.JoinBody{}
-	err = json.Unmarshal(bodyBytes, &body)
-	if err != nil {
-		h.logger.Debugf("Failed to json.Unmarshal request body: %s", err)
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot json.Unmarshal request body"))
-		return nil
-	}
-
-	block := &cb.Block{}
-	err = proto.Unmarshal(body.ConfigBlock, block)
-	if err != nil {
-		h.logger.Debugf("Failed to unmarshal ConfigBlock field: %s", err)
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot unmarshal ConfigBlock field"))
 		return nil
 	}
 
