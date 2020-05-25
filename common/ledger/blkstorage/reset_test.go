@@ -73,6 +73,7 @@ func TestResetToGenesisBlkMultipleBlkFiles(t *testing.T) {
 
 	ledgerDir := (&Conf{blockStorageDir: blockStoreRootDir}).getLedgerBlockDir("ledger1")
 	files, err := ioutil.ReadDir(ledgerDir)
+	require.NoError(t, err)
 	require.Len(t, files, 5)
 	resetToGenesisBlk(ledgerDir)
 	assertBlocksDirOnlyFileWithGenesisBlock(t, ledgerDir, blocks[0])
@@ -108,6 +109,7 @@ func TestResetBlockStore(t *testing.T) {
 	// test load and clear preResetHeight for ledger1 and ledger2
 	ledgerIDs := []string{"ledger1", "ledger2"}
 	h, err := LoadPreResetHeight(blockStoreRootDir, ledgerIDs)
+	require.NoError(t, err)
 	require.Equal(t,
 		map[string]uint64{
 			"ledger1": 20,
@@ -125,6 +127,7 @@ func TestResetBlockStore(t *testing.T) {
 
 	require.NoError(t, ClearPreResetHeight(blockStoreRootDir, ledgerIDs))
 	h, err = LoadPreResetHeight(blockStoreRootDir, ledgerIDs)
+	require.NoError(t, err)
 	require.Equal(t,
 		map[string]uint64{},
 		h,
@@ -134,6 +137,7 @@ func TestResetBlockStore(t *testing.T) {
 	require.NoError(t, ResetBlockStore(blockStoreRootDir))
 	ledgerIDs = []string{"ledger2"}
 	h, err = LoadPreResetHeight(blockStoreRootDir, ledgerIDs)
+	require.NoError(t, err)
 	require.Equal(t,
 		map[string]uint64{
 			"ledger2": 40,
@@ -143,6 +147,7 @@ func TestResetBlockStore(t *testing.T) {
 	require.NoError(t, ClearPreResetHeight(blockStoreRootDir, ledgerIDs))
 	// verify that ledger1 has preResetHeight file is not deleted
 	h, err = LoadPreResetHeight(blockStoreRootDir, []string{"ledger1", "ledger2"})
+	require.NoError(t, err)
 	require.Equal(t,
 		map[string]uint64{
 			"ledger1": 20,
@@ -195,6 +200,7 @@ func TestRecordHeight(t *testing.T) {
 
 func assertBlocksDirOnlyFileWithGenesisBlock(t *testing.T, ledgerDir string, genesisBlock *common.Block) {
 	files, err := ioutil.ReadDir(ledgerDir)
+	require.NoError(t, err)
 	require.Len(t, files, 2)
 	require.Equal(t, "__backupGenesisBlockBytes", files[0].Name())
 	require.Equal(t, "blockfile_000000", files[1].Name())
@@ -225,7 +231,7 @@ func assertBlockStorePostReset(t *testing.T, store *BlockStore, originallyCommit
 	require.NoError(t, err)
 	require.Equal(t, originallyCommittedBlocks[0], blk)
 
-	blk, err = store.RetrieveBlockByNumber(1)
+	_, err = store.RetrieveBlockByNumber(1)
 	require.Error(t, err)
 	require.Equal(t, err, ErrNotFoundInIndex)
 

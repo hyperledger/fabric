@@ -116,6 +116,7 @@ func TestMSPIDMapping(t *testing.T) {
 
 	cs := config.NewDiscoverySupport(fakeBlockGetter)
 	res, err := cs.Config("mychannel")
+	assert.NoError(t, err)
 
 	actualKeys := make(map[string]struct{})
 	for key := range res.Orderers {

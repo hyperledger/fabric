@@ -163,7 +163,7 @@ func TestMgr(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Nil(t, retrievedConfig)
 
-		retrievedConfig, err = retriever.CollectionConfigAt(5000, chaincodeName)
+		_, err = retriever.CollectionConfigAt(5000, chaincodeName)
 		typedErr, ok := err.(*ledger.ErrCollectionConfigNotYetAvailable)
 		assert.True(t, ok)
 		assert.Equal(t, maxBlockNumberInLedger, typedErr.MaxBlockNumCommitted)

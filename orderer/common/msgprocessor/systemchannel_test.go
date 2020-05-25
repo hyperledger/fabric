@@ -438,6 +438,7 @@ func TestSystemChannelConfigMsg(t *testing.T) {
 			assert.NotNil(t, config)
 			assert.Nil(t, err)
 			hdr, err := protoutil.ChannelHeader(config)
+			assert.NoError(t, err)
 			assert.Equal(
 				t,
 				int32(cb.HeaderType_ORDERER_TRANSACTION),
@@ -491,6 +492,7 @@ func TestNewChannelConfig(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 	ctxm, err := channelconfig.NewBundle(channelID, &cb.Config{ChannelGroup: channelGroup}, cryptoProvider)
+	assert.NoError(t, err)
 
 	originalCG := proto.Clone(ctxm.ConfigtxValidator().ConfigProto().ChannelGroup).(*cb.ConfigGroup)
 

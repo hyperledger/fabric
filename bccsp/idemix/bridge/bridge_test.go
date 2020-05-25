@@ -258,7 +258,6 @@ var _ = Describe("Idemix Bridge", func() {
 		})
 
 		Context("public nym import", func() {
-
 			It("success", func() {
 				npk := handlers.NewNymPublicKey(&bridge.Ecp{
 					E: FP256BN.NewECPbigs(FP256BN.NewBIGint(10), FP256BN.NewBIGint(20)),
@@ -268,6 +267,7 @@ var _ = Describe("Idemix Bridge", func() {
 				Expect(raw).NotTo(BeNil())
 
 				npk2, err := User.NewPublicNymFromBytes(raw)
+				Expect(err).NotTo(HaveOccurred())
 				raw2, err := npk2.Bytes()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(raw2).NotTo(BeNil())

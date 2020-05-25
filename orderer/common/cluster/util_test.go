@@ -87,6 +87,7 @@ func TestDialerCustomKeepAliveOptions(t *testing.T) {
 	assert.NoError(t, err)
 
 	clientKeyPair, err := ca.NewClientCertKeyPair()
+	assert.NoError(t, err)
 	clientConfig := comm.ClientConfig{
 		KaOpts: comm.KeepaliveOptions{
 			ClientTimeout: time.Second * 12345,

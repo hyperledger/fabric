@@ -644,9 +644,8 @@ func (s *idStore) getLedgerMetadata(ledgerID string) (*msgs.LedgerMetadata, erro
 
 func (s *idStore) ledgerIDExists(ledgerID string) (bool, error) {
 	key := s.encodeLedgerKey(ledgerID, ledgerKeyPrefix)
-	val := []byte{}
-	err := error(nil)
-	if val, err = s.db.Get(key); err != nil {
+	val, err := s.db.Get(key)
+	if err != nil {
 		return false, err
 	}
 	return val != nil, nil

@@ -157,10 +157,10 @@ func retrieveLatestMetadata(ns, coll, key string,
 type keyOpsFlag uint8
 
 const (
-	upsertVal      keyOpsFlag = 1 // 1 << 0
-	metadataUpdate            = 2 // 1 << 1
-	metadataDelete            = 4 // 1 << 2
-	keyDelete                 = 8 // 1 << 3
+	upsertVal keyOpsFlag = 1 << iota
+	metadataUpdate
+	metadataDelete
+	keyDelete
 )
 
 type compositeKey struct {

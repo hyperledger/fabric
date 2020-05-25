@@ -113,7 +113,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 	assert.Len(t, hashMismatched, 0)
 
 	// construct pvtData from missing data in tx7 with wrong pvtData
-	wrongPvtDataBlk1Tx7, pubSimResBytesBlk1Tx7 = produceSamplePvtdata(t, 7, []string{"ns-1:coll-2"}, [][]byte{v6})
+	wrongPvtDataBlk1Tx7, _ = produceSamplePvtdata(t, 7, []string{"ns-1:coll-2"}, [][]byte{v6})
 	pvtdata = []*ledger.ReconciledPvtdata{
 		{
 			BlockNum: 1,

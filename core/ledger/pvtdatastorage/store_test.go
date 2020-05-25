@@ -105,6 +105,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	filter.Add("ns-1", "coll-1")
 	filter.Add("ns-2", "coll-2")
 	retrievedData, err = store.GetPvtDataByBlockNum(1, filter)
+	assert.NoError(err)
 	expectedRetrievedData := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-2:coll-2"}),
 		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-2:coll-2"}),
@@ -754,6 +755,7 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	expectedMissingPvtDataInfo.Add(1, 4, "ns-2", "coll-2")
 	expectedMissingPvtDataInfo.Add(2, 1, "ns-2", "coll-2")
 	missingPvtDataInfo, err = testStore.GetMissingPvtDataInfoForMostRecentBlocks(10)
+	assert.NoError(err)
 	assert.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
 }
 

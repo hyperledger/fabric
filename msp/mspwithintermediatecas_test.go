@@ -52,9 +52,6 @@ func TestMSPWithIntermediateCAs(t *testing.T) {
 	err = localMsp.Validate(id)
 	assert.Error(t, err)
 
-	id, err = thisMSP.DeserializeIdentity(sidBytes)
-	assert.NoError(t, err)
-
 	// ensure that validation of an identity of the local MSP
 	// fails with the MSP with intermediate CAs
 	localMSPID, err := localMsp.GetDefaultSigningIdentity()

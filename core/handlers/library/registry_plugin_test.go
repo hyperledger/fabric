@@ -60,7 +60,7 @@ func TestLoadAuthPlugin(t *testing.T) {
 	assert.Len(t, testReg.filters, 1, "Expected filter to be registered")
 
 	testReg.filters[0].Init(endorser)
-	testReg.filters[0].ProcessProposal(nil, nil)
+	testReg.filters[0].ProcessProposal(context.TODO(), nil)
 	assert.True(t, endorser.invoked, "Expected filter to invoke endorser on invoke")
 }
 

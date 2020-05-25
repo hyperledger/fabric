@@ -978,21 +978,6 @@ func btlPolicyForSampleData() pvtdatapolicy.BTLPolicy {
 	)
 }
 
-func prepareNextBlockWithMissingPvtDataForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockGenerator,
-	txid string, pubKVs map[string]string, pvtKVs map[string]string) (*lgr.BlockAndPvtData, *lgr.TxPvtData) {
-
-	blockAndPvtData := prepareNextBlockForTest(t, l, bg, txid, pubKVs, pvtKVs)
-
-	blkMissingDataInfo := make(lgr.TxMissingPvtDataMap)
-	blkMissingDataInfo.Add(0, "ns", "coll", true)
-	blockAndPvtData.MissingPvtData = blkMissingDataInfo
-
-	pvtData := blockAndPvtData.PvtData[0]
-	delete(blockAndPvtData.PvtData, 0)
-
-	return blockAndPvtData, pvtData
-}
-
 func prepareNextBlockForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockGenerator,
 	txid string, pubKVs map[string]string, pvtKVs map[string]string) *lgr.BlockAndPvtData {
 	simulator, _ := l.NewTxSimulator(txid)

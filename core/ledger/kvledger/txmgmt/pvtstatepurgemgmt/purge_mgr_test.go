@@ -321,7 +321,6 @@ func (h *testHelper) commitPvtDataOfOldBlocksForTesting(updates *privacyenableds
 }
 
 func (h *testHelper) checkPvtdataExists(ns, coll, key string, value []byte) {
-	vv, _ := h.fetchPvtdataFronDB(ns, coll, key)
 	vv, hashVersion := h.fetchPvtdataFronDB(ns, coll, key)
 	assert.NotNil(h.t, vv)
 	assert.Equal(h.t, value, vv.Value)

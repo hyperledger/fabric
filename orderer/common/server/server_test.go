@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package server
 
 import (
-	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -22,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/peer"
 )
 
 func TestBroadcastNoPanic(t *testing.T) {
@@ -39,17 +37,11 @@ type recvr interface {
 	Recv() (*cb.Envelope, error)
 }
 
-type mockSrv struct {
+type mockBroadcastSrv struct {
 	grpc.ServerStream
 	msg *cb.Envelope
 	err error
 }
-
-func (mockSrv) Context() context.Context {
-	return peer.NewContext(context.Background(), &peer.Peer{})
-}
-
-type mockBroadcastSrv mockSrv
 
 func (mbs *mockBroadcastSrv) Recv() (*cb.Envelope, error) {
 	return mbs.msg, mbs.err
@@ -59,7 +51,11 @@ func (mbs *mockBroadcastSrv) Send(br *ab.BroadcastResponse) error {
 	panic("Unimplemented")
 }
 
-type mockDeliverSrv mockSrv
+type mockDeliverSrv struct {
+	grpc.ServerStream
+	msg *cb.Envelope
+	err error
+}
 
 func (mds *mockDeliverSrv) CreateStatusReply(status cb.Status) proto.Message {
 	return &ab.DeliverResponse{

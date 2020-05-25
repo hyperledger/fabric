@@ -154,6 +154,7 @@ func createRWset(t *testing.T, ccnames ...string) []byte {
 	rwset, err := rwsetBuilder.GetTxSimulationResults()
 	assert.NoError(t, err)
 	rwsetBytes, err := rwset.GetPubSimulationBytes()
+	assert.NoError(t, err)
 	return rwsetBytes
 }
 
@@ -717,6 +718,7 @@ func TestParallelValidation(t *testing.T) {
 		rwset, err := rwsetBuilder.GetTxSimulationResults()
 		assert.NoError(t, err)
 		rwsetBytes, err := rwset.GetPubSimulationBytes()
+		assert.NoError(t, err)
 		tx := getEnvWithSigner(ccID, nil, rwsetBytes, sig, t)
 		blockData = append(blockData, protoutil.MarshalOrPanic(tx))
 	}

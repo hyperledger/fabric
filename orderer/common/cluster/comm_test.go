@@ -369,7 +369,6 @@ func TestSendBigMessage(t *testing.T) {
 		err = stream.Send(wrappedMsg)
 		assert.NoError(t, err)
 		t.Log("Sending took", time.Since(t1))
-		t1 = time.Now()
 
 		// Unfreeze the node. It can now call Recv, and signal the messageReceived waitGroup.
 		node.unfreeze()
@@ -928,6 +927,7 @@ func TestMembershipReconfiguration(t *testing.T) {
 	}, time.Minute).Should(gomega.BeTrue())
 
 	stub, err := node2.c.Remote(testChannel, node1.nodeInfo.ID)
+	assert.NoError(t, err)
 
 	stream := assertEventualEstablishStream(t, stub)
 	err = stream.Send(wrapSubmitReq(testSubReq))
@@ -982,6 +982,7 @@ func TestShutdown(t *testing.T) {
 	}, time.Minute).Should(gomega.Succeed())
 
 	stub, err := node2.c.Remote(testChannel, node1.nodeInfo.ID)
+	assert.NoError(t, err)
 
 	// Therefore, sending a message doesn't succeed because node 1 rejected the configuration change
 	gt.Eventually(func() string {
@@ -1059,7 +1060,9 @@ func TestMultiChannelConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		assertEventualSendMessage(t, node2toNode1, &orderer.SubmitRequest{Channel: "foo"})
+		assert.NoError(t, err)
 		stream, err := node2toNode1.NewStream(time.Hour)
+		assert.NoError(t, err)
 		err = stream.Send(barReq)
 		assert.NoError(t, err)
 		_, err = stream.Recv()
@@ -1067,6 +1070,7 @@ func TestMultiChannelConfig(t *testing.T) {
 
 		assertEventualSendMessage(t, node3toNode1, &orderer.SubmitRequest{Channel: "bar"})
 		stream, err = node3toNode1.NewStream(time.Hour)
+		assert.NoError(t, err)
 		err = stream.Send(fooReq)
 		assert.NoError(t, err)
 		_, err = stream.Recv()

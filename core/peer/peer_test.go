@@ -61,17 +61,21 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
 	defaultSecureDialOpts := func() []grpc.DialOption { return []grpc.DialOption{grpc.WithInsecure()} }
-	defaultDeliverClientDialOpts := []grpc.DialOption{grpc.WithBlock()}
+	var defaultDeliverClientDialOpts []grpc.DialOption
 	defaultDeliverClientDialOpts = append(
 		defaultDeliverClientDialOpts,
+		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(
 			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
-			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
+			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize),
+		),
+	)
 	defaultDeliverClientDialOpts = append(
 		defaultDeliverClientDialOpts,
 		comm.ClientKeepaliveOptions(comm.DefaultKeepaliveOptions)...,
 	)
 	gossipConfig, err := gossip.GlobalConfig("localhost:0", nil)
+	require.NoError(t, err)
 
 	gossipService, err := gossipservice.New(
 		signer,

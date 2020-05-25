@@ -179,10 +179,6 @@ func (e *env) closeLedgerMgmt() {
 	e.ledgerMgr.Close()
 }
 
-func (e *env) getLedgerRootPath() string {
-	return e.initializer.Config.RootFSPath
-}
-
 func (e *env) getLevelstateDBPath() string {
 	return kvledger.StateDBPath(e.initializer.Config.RootFSPath)
 }

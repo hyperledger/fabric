@@ -165,24 +165,3 @@ func TestInstall(t *testing.T) {
 		t.Fatalf("Install failed with error: %v", err)
 	}
 }
-
-func newInstallerForTest(t *testing.T, ec pb.EndorserClient) (installer *Installer, cleanup func()) {
-	fsPath, err := ioutil.TempDir("", "installerForTest")
-	assert.NoError(t, err)
-	_, mockCF := initInstallTest(t, fsPath, ec, nil)
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-
-	i := &Installer{
-		EndorserClients: mockCF.EndorserClients,
-		Signer:          mockCF.Signer,
-		CryptoProvider:  cryptoProvider,
-	}
-
-	cleanupFunc := func() {
-		cleanupInstallTest(fsPath)
-	}
-
-	return i, cleanupFunc
-}

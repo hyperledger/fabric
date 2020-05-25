@@ -198,6 +198,7 @@ func TestProcessConfigMsg(t *testing.T) {
 		assert.Equal(t, cs, ms.SequenceVal)
 		assert.Nil(t, err)
 		hdr, err := protoutil.ChannelHeader(config)
+		assert.NoError(t, err)
 		assert.Equal(
 			t,
 			int32(cb.HeaderType_CONFIG),

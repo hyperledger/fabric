@@ -90,6 +90,7 @@ func TestSetupBad(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed unmarshalling idemix msp config")
 
 	conf, err = GetIdemixMspConfig("testdata/idemix/MSP1OU1", "IdemixMSP1")
+	assert.NoError(t, err)
 	idemixconfig := &msp.IdemixMSPConfig{}
 	err = proto.Unmarshal(conf.Config, idemixconfig)
 	assert.NoError(t, err)
@@ -178,6 +179,7 @@ func TestIdentitySerialization(t *testing.T) {
 	assert.NoError(t, err)
 
 	verID, err := msp.DeserializeIdentity(serializedID)
+	assert.NoError(t, err)
 
 	err = verID.Validate()
 	assert.NoError(t, err)

@@ -273,25 +273,6 @@ func (e *PeerConfiger) getConfigBlock(channelID []byte) pb.Response {
 	return shim.Success(blockBytes)
 }
 
-func (e *PeerConfiger) supportByType(channelID []byte, env *common.Envelope) (config.Config, error) {
-	payload := &common.Payload{}
-
-	if err := proto.Unmarshal(env.Payload, payload); err != nil {
-		return nil, errors.Errorf("failed unmarshaling payload: %v", err)
-	}
-
-	channelHdr := &common.ChannelHeader{}
-	if err := proto.Unmarshal(payload.Header.ChannelHeader, channelHdr); err != nil {
-		return nil, errors.Errorf("failed unmarshaling payload header: %v", err)
-	}
-
-	switch common.HeaderType(channelHdr.Type) {
-	case common.HeaderType_CONFIG_UPDATE:
-		return e.configMgr.GetChannelConfig(string(channelID)), nil
-	}
-	return nil, errors.Errorf("invalid payload header type: %d", channelHdr.Type)
-}
-
 // getChannels returns information about all channels for this peer
 func (e *PeerConfiger) getChannels() pb.Response {
 	channelInfoArray := e.peer.GetChannelsInfo()

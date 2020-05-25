@@ -8,7 +8,6 @@ package channel
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -55,28 +54,28 @@ func (cc *endorserClient) getChannels() ([]*pb.ChannelInfo, error) {
 	c, _ := cc.cf.Signer.Serialize()
 	prop, _, err = protoutil.CreateProposalFromCIS(common2.HeaderType_ENDORSER_TRANSACTION, "", invocation, c)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Cannot create proposal, due to %s", err))
+		return nil, fmt.Errorf("Cannot create proposal, due to %s", err)
 	}
 
 	var signedProp *pb.SignedProposal
 	signedProp, err = protoutil.GetSignedProposal(prop, cc.cf.Signer)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Cannot create signed proposal, due to %s", err))
+		return nil, fmt.Errorf("Cannot create signed proposal, due to %s", err)
 	}
 
 	proposalResp, err := cc.cf.EndorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Failed sending proposal, got %s", err))
+		return nil, fmt.Errorf("Failed sending proposal, got %s", err)
 	}
 
 	if proposalResp.Response == nil || proposalResp.Response.Status != 200 {
-		return nil, errors.New(fmt.Sprintf("Received bad response, status %d: %s", proposalResp.Response.Status, proposalResp.Response.Message))
+		return nil, fmt.Errorf("Received bad response, status %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
 	}
 
 	var channelQueryResponse pb.ChannelQueryResponse
 	err = proto.Unmarshal(proposalResp.Response.Payload, &channelQueryResponse)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Cannot read channels list response, %s", err))
+		return nil, fmt.Errorf("Cannot read channels list response, %s", err)
 	}
 
 	return channelQueryResponse.Channels, nil

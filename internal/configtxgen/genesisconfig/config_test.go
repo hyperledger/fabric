@@ -292,6 +292,7 @@ func TestLoadConfigCache(t *testing.T) {
 	assert.NoError(t, err)
 	os.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
 	updated, err := c.load(v, configPath)
+	assert.NoError(t, err)
 	assert.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)
 
 	// Change the configuration we got back and load again.

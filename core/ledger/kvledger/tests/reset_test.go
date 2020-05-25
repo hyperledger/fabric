@@ -52,6 +52,7 @@ func TestResetAllLedgers(t *testing.T) {
 	env.verifyRebuilableDoesNotExist(rebuildable)
 	env.initLedgerMgmt()
 	preResetHt, err := kvledger.LoadPreResetHeight(rootFSPath, ledgerIDs)
+	require.NoError(t, err)
 	t.Logf("preResetHt = %#v", preResetHt)
 	// open all the ledgers again and verify that
 	// - initial height==1
@@ -159,6 +160,7 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 
 	// ensure that the reset is executed correctly
 	preResetHt, err := kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, []string{"ledger1"})
+	require.NoError(t, err)
 	t.Logf("preResetHt = %#v", preResetHt)
 	require.Equal(t, uint64(5), preResetHt["ledger1"])
 	h = env.newTestHelperOpenLgr("ledger1", t)

@@ -43,8 +43,8 @@ var _ = Describe("Tar", func() {
 		Context("when the archive conains an odd file type", func() {
 			It("returns an error", func() {
 				file, err := os.Open("testdata/archive_with_symlink.tar.gz")
-				defer file.Close()
 				Expect(err).NotTo(HaveOccurred())
+				defer file.Close()
 				err = externalbuilder.Untar(file, dst)
 				Expect(err).To(MatchError("invalid file type '50' contained in archive for file 'c.file'"))
 			})

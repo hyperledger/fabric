@@ -846,11 +846,10 @@ func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBook
 		return "", err
 	}
 	if fieldsJSONArray, ok := jsonQueryMap[jsonQueryFields]; ok {
-		switch fieldsJSONArray.(type) {
+		switch fieldsJSONArray := fieldsJSONArray.(type) {
 		case []interface{}:
 			//Add the "_id", and "version" fields,  these are needed by default
-			jsonQueryMap[jsonQueryFields] = append(fieldsJSONArray.([]interface{}),
-				idField, versionField)
+			jsonQueryMap[jsonQueryFields] = append(fieldsJSONArray, idField, versionField)
 		default:
 			return "", errors.New("fields definition must be an array")
 		}
@@ -957,9 +956,7 @@ func (scanner *queryScanner) Next() (statedb.QueryResult, error) {
 		VersionedValue: *kv.VersionedValue}, nil
 }
 
-func (scanner *queryScanner) Close() {
-	scanner = nil
-}
+func (scanner *queryScanner) Close() {}
 
 func (scanner *queryScanner) GetBookmarkAndClose() string {
 	retval := ""

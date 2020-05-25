@@ -144,7 +144,7 @@ func TestBuildCommitters(t *testing.T) {
 	badBatch := statedb.NewUpdateBatch()
 	badBatch.Put("bad-ns", "bad-key", []byte("bad-value"), nil)
 
-	committer, err = db.buildCommitters(badBatch)
+	_, err = db.buildCommitters(badBatch)
 	assert.EqualError(t, err, "nil version not supported")
 }
 

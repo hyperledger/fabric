@@ -78,7 +78,6 @@ func (b *EventBroker) ProcessInstallEvent(localChaincode *LocalChaincode) {
 			b.invokeDoneOnListeners(channelID, true)
 		}
 	}
-	return
 }
 
 // ProcessApproveOrDefineEvent gets invoked by an event that makes approve and define to be true
@@ -104,7 +103,6 @@ func (b *EventBroker) ProcessApproveOrDefineEvent(channelID string, chaincodeNam
 	}
 	b.invokeListeners(channelID, ccdef, dbArtifacts)
 	b.defineCallbackStatus.Store(channelID, struct{}{})
-	return
 }
 
 // ApproveOrDefineCommitted gets invoked after the commit of state updates that triggered the invocation of

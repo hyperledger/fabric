@@ -284,7 +284,7 @@ func TestIsEmpty(t *testing.T) {
 	configCopy.Address = "junk"
 	configCopy.MaxRetries = 0
 	couchInstance.conf = &configCopy
-	isEmpty, err = couchInstance.isEmpty(ignore)
+	_, err = couchInstance.isEmpty(ignore)
 	require.Error(t, err)
 	require.Regexp(t, `unable to connect to CouchDB, check the hostname and port: http error calling couchdb: Get "?http://junk/_all_dbs"?`, err.Error())
 }

@@ -547,12 +547,12 @@ func TestSignAndVerifyFailures(t *testing.T) {
 	hash := id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily
 	id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily = "barf"
 
-	sig, err := id.Sign(msg)
+	_, err = id.Sign(msg)
 	assert.Error(t, err)
 
 	id.(*signingidentity).msp.cryptoConfig.SignatureHashFamily = hash
 
-	sig, err = id.Sign(msg)
+	sig, err := id.Sign(msg)
 	if err != nil {
 		t.Fatalf("Sign should have succeeded")
 		return
@@ -1265,6 +1265,7 @@ func getLocalMSP(t *testing.T, dir string) MSP {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 	thisMSP, err := NewBccspMspWithKeyStore(MSPv1_0, ks, cryptoProvider)
+	assert.NoError(t, err)
 	err = thisMSP.Setup(conf)
 	assert.NoError(t, err)
 

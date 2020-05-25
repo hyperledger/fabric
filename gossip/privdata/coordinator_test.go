@@ -1571,8 +1571,6 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 		Signature: signature,
 		Data:      data,
 	}
-	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
-	committer := &mocks.Committer{}
 
 	store := newTransientStore(t)
 	defer store.tearDown()
@@ -1582,20 +1580,14 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	})
 
 	fetcher := &fetcherMock{t: t}
+
+	committer := &mocks.Committer{}
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
 	capabilityProvider := &capabilitymock.CapabilityProvider{}
 	appCapability := &capabilitymock.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
-	coordinator := NewCoordinator(mspID, Support{
-		ChainID:            "testchannelid",
-		CollectionStore:    cs,
-		Committer:          committer,
-		Fetcher:            fetcher,
-		Validator:          &validatorMock{},
-		CapabilityProvider: capabilityProvider,
-	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
 	bf := &blockFactory{
@@ -1605,7 +1597,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 
 	// Green path - block and private data is returned, but the requester isn't eligible for all the private data,
 	// but only to a subset of it.
-	cs = createcollectionStore(peerSelfSignedData).thatAccepts(CollectionCriteria{
+	cs := createcollectionStore(peerSelfSignedData).thatAccepts(CollectionCriteria{
 		Namespace:  "ns1",
 		Collection: "c2",
 		Channel:    "testchannelid",
@@ -1616,7 +1608,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 		PvtData: expectedCommittedPrivateData1,
 	}, nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
-	coordinator = NewCoordinator(mspID, Support{
+	coordinator := NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
 		CollectionStore:    cs,
 		Committer:          committer,

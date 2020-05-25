@@ -122,6 +122,7 @@ var _ = Describe("Health", func() {
 					return statusCode
 				}, network.EventuallyTimeout).Should(Equal(http.StatusServiceUnavailable))
 				statusCode, status = DoHealthCheck(authClient, healthURL)
+				Expect(statusCode).To(Equal(http.StatusServiceUnavailable))
 				Expect(status.Status).To(Equal("Service Unavailable"))
 				Expect(status.FailedChecks[0].Component).To(Equal("couchdb"))
 				Expect(status.FailedChecks[0].Reason).To(MatchRegexp(fmt.Sprintf(`failed to connect to couch db \[http error calling couchdb: Head "?http://%s"?: dial tcp %s: .*\]`, couchAddr, couchAddr)))

@@ -87,9 +87,9 @@ func upgrade(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope,
 	if err != nil {
 		return nil, fmt.Errorf("error endorsing %s: %s", chainFuncName, err)
 	}
-	logger.Debugf("endorse upgrade proposal, get response <%v>", proposalResponse.Response)
 
 	if proposalResponse != nil {
+		logger.Debugf("endorse upgrade proposal, get response <%v>", proposalResponse.Response)
 		// assemble a signed transaction (it's an Envelope message)
 		env, err := protoutil.CreateSignedTx(prop, cf.Signer, proposalResponse)
 		if err != nil {

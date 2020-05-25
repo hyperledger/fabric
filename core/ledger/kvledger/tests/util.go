@@ -166,10 +166,10 @@ func constructUnsignedTxEnv(
 			},
 			ss,
 		)
-
 	} else {
 		// if txid is set, we should not generate a txid instead reuse the given txid
-		nonce, err := crypto.GetRandomNonce()
+		var nonce []byte
+		nonce, err = crypto.GetRandomNonce()
 		if err != nil {
 			return nil, "", err
 		}
@@ -186,9 +186,9 @@ func constructUnsignedTxEnv(
 			ss,
 			nil,
 		)
-	}
-	if err != nil {
-		return nil, "", err
+		if err != nil {
+			return nil, "", err
+		}
 	}
 
 	presp, err := protoutil.CreateProposalResponse(
