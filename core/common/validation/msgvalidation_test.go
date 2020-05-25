@@ -8,7 +8,6 @@ package validation
 
 import (
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -134,8 +133,4 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, "junkchannel", cryptoProvider)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "MSP error: channel doesn't exist")
-}
-
-func ToHex(q uint64) string {
-	return "0x" + strconv.FormatUint(q, 16)
 }

@@ -1084,10 +1084,6 @@ func (f *ledgerHeightFilter) Filter(endorsers Endorsers) Endorsers {
 		return endorsers
 	}
 
-	if f.threshold < 0 {
-		return endorsers.Shuffle()
-	}
-
 	maxHeight := getMaxLedgerHeight(endorsers)
 
 	if maxHeight <= f.threshold {

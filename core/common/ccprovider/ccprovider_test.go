@@ -113,6 +113,7 @@ func TestInstalledCCs(t *testing.T) {
 
 func TestSetGetChaincodeInstallPath(t *testing.T) {
 	tempDir, err := ioutil.TempDir("", "ccprovider")
+	assert.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())

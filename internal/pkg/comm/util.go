@@ -35,7 +35,6 @@ func AddPemToCertPool(pemCerts []byte, pool *x509.CertPool) error {
 // parse PEM-encoded certs
 func pemToX509Certs(pemCerts []byte) ([]*x509.Certificate, error) {
 	var certs []*x509.Certificate
-	var subjects []string
 
 	// it's possible that multiple certs are encoded
 	for len(pemCerts) > 0 {
@@ -51,7 +50,6 @@ func pemToX509Certs(pemCerts []byte) ([]*x509.Certificate, error) {
 		}
 
 		certs = append(certs, cert)
-		subjects = append(subjects, string(cert.RawSubject))
 	}
 
 	return certs, nil

@@ -49,7 +49,8 @@ func TestExpiringBlock(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(math.MaxUint64), expiringBlk)
 
-	expiringBlk, err = btlPolicy.GetExpiringBlock("ns1", "coll4", 50)
+	_, err = btlPolicy.GetExpiringBlock("ns1", "coll4", 50)
+	assert.Error(t, err)
 	_, ok := err.(privdata.NoSuchCollectionError)
 	assert.True(t, ok)
 }

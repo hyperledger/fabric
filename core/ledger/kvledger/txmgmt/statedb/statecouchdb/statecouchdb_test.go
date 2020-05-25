@@ -174,6 +174,7 @@ func TestGetStateFromCache(t *testing.T) {
 	require.NoError(t, vdbEnv.cache.putState(chainID, "ns", "key1", cacheValue))
 
 	vv, err = db.GetState("ns", "key1")
+	require.NoError(t, err)
 	expectedVV, err := constructVersionedValue(cacheValue)
 	require.NoError(t, err)
 	require.Equal(t, expectedVV, vv)
@@ -236,6 +237,7 @@ func TestGetVersionFromCache(t *testing.T) {
 	require.NoError(t, vdbEnv.cache.putState(chainID, "ns", "key1", cacheValue))
 
 	ver, err = db.GetVersion("ns", "key1")
+	require.NoError(t, err)
 	expectedVer, _, err := version.NewHeightFromBytes(cacheValue.Version)
 	require.NoError(t, err)
 	require.Equal(t, expectedVer, ver)
@@ -699,7 +701,7 @@ func TestTryCastingToJSON(t *testing.T) {
 	assert.Equal(t, "B", jsonVal["b"])
 
 	sampleNonJSON := []byte(`This is not a json`)
-	isJSON, jsonVal = tryCastingToJSON(sampleNonJSON)
+	isJSON, _ = tryCastingToJSON(sampleNonJSON)
 	assert.False(t, isJSON)
 }
 
@@ -886,11 +888,7 @@ func TestPaginatedQuery(t *testing.T) {
 	_, err = db.ExecuteQuery("ns1", queryString)
 	assert.NoError(t, err)
 
-	// Create a query with a sort
-	queryString = `{"selector":{"color":"red"}, "sort": [{"size": "asc"}]}`
-
 	indexCapable, ok := db.(statedb.IndexCapable)
-
 	if !ok {
 		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
 	}
@@ -1434,8 +1432,10 @@ func TestChannelMetadata_NegativeTests(t *testing.T) {
 	// then call DBProvider.GetDBHandle and verify channelMetadata is correctly generated
 	channelName = "testchannelmetadata-simulatefailure-in-between"
 	couchInstance, err := createCouchInstance(vdbEnv.config, &disabled.Provider{})
+	require.NoError(t, err)
 	metadatadbName := constructMetadataDBName(channelName)
 	metadataDB, err := createCouchDatabase(couchInstance, metadatadbName)
+	require.NoError(t, err)
 	vdb = &VersionedDB{
 		metadataDB: metadataDB,
 	}

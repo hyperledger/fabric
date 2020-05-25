@@ -1092,7 +1092,7 @@ func (g *Node) createCertStorePuller() pull.Mediator {
 		if identityMsg == nil || identityMsg.PkiId == nil {
 			return ""
 		}
-		return fmt.Sprintf("%s", string(identityMsg.PkiId))
+		return string(identityMsg.PkiId)
 	}
 	certConsumer := func(msg *protoext.SignedGossipMessage) {
 		idMsg := msg.GetPeerIdentity()

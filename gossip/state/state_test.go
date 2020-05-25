@@ -282,7 +282,7 @@ func (mock *ramLedger) GetPvtDataAndBlockByNum(blockNum uint64, filter ledger.Pv
 	defer mock.RUnlock()
 
 	if block, ok := mock.ledger[blockNum]; !ok {
-		return nil, errors.New(fmt.Sprintf("no block with seq = %d found", blockNum))
+		return nil, fmt.Errorf("no block with seq = %d found", blockNum)
 	} else {
 		return block, nil
 	}
@@ -324,7 +324,7 @@ func (mock *ramLedger) GetBlockByNumber(blockNumber uint64) (*pcomm.Block, error
 	defer mock.RUnlock()
 
 	if blockAndPvtData, ok := mock.ledger[blockNumber]; !ok {
-		return nil, errors.New(fmt.Sprintf("no block with seq = %d found", blockNumber))
+		return nil, fmt.Errorf("no block with seq = %d found", blockNumber)
 	} else {
 		return blockAndPvtData.Block, nil
 	}

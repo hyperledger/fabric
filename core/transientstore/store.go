@@ -295,9 +295,9 @@ func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 	}
 
 	txPvtRWSet := &rwset.TxPvtReadWriteSet{}
-	var filteredTxPvtRWSet *rwset.TxPvtReadWriteSet = nil
 	txPvtRWSetWithConfig := &transientstore.TxPvtReadWriteSetWithConfigInfo{}
 
+	var filteredTxPvtRWSet *rwset.TxPvtReadWriteSet
 	if dbVal[0] == nilByte {
 		// new proto, i.e., TxPvtReadWriteSetWithConfigInfo
 		if err := proto.Unmarshal(dbVal[1:], txPvtRWSetWithConfig); err != nil {

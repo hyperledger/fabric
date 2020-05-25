@@ -210,6 +210,6 @@ func TestFullScanIteratorErrorPropagation(t *testing.T) {
 		compositeKey,
 	)
 	vdbProvider.Close()
-	compositeKey, _, err = itr.Next()
+	_, _, err = itr.Next()
 	require.Contains(t, err.Error(), "internal leveldb error while obtaining db iterator for skipping a namespace [ns2]:")
 }

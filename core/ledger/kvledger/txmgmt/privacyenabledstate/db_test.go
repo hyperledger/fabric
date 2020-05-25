@@ -147,6 +147,7 @@ func testDB(t *testing.T, env TestEnv) {
 	assert.Nil(t, vv)
 
 	vv, err = db.GetValueHash("ns1", "coll1", util.ComputeStringHash("key1"))
+	assert.NoError(t, err)
 	assert.Nil(t, vv)
 }
 
@@ -311,7 +312,7 @@ func testQueryOnCouchDB(t *testing.T, env TestEnv) {
 	testQueryItr(t, itr, []string{testKey(1)}, []string{"jerry"})
 
 	// query using bad query string
-	itr, err = db.ExecuteQueryOnPrivateData("ns1", "coll1", "this is an invalid query string")
+	_, err = db.ExecuteQueryOnPrivateData("ns1", "coll1", "this is an invalid query string")
 	assert.Error(t, err, "Should have received an error for invalid query string")
 
 	// query returns 0 records

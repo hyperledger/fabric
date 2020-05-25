@@ -3835,10 +3835,6 @@ func StateEqual(lead uint64, state raft.StateType) types.GomegaMatcher {
 	return Equal(raft.SoftState{Lead: lead, RaftState: state})
 }
 
-func BeLeader() types.GomegaMatcher {
-	return &StateMatcher{expect: raft.StateLeader}
-}
-
 func BeFollower() types.GomegaMatcher {
 	return &StateMatcher{expect: raft.StateFollower}
 }

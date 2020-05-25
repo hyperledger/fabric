@@ -639,7 +639,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	var err error
 
 	// Error case 1
-	env, err = sanityCheckAndSignConfigTx(env, signer)
+	_, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.Error(t, err, "Error expected for nil payload")
 	assert.Contains(t, err.Error(), "bad payload")
 
@@ -648,7 +648,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	data, err1 := proto.Marshal(p)
 	assert.NoError(t, err1)
 	env = &cb.Envelope{Payload: data}
-	env, err = sanityCheckAndSignConfigTx(env, signer)
+	_, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.Error(t, err, "Error expected for bad payload header")
 	assert.Contains(t, err.Error(), "bad header")
 
@@ -658,7 +658,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	data, err = proto.Marshal(p)
 	assert.NoError(t, err)
 	env = &cb.Envelope{Payload: data}
-	env, err = sanityCheckAndSignConfigTx(env, signer)
+	_, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.Error(t, err, "Error expected for bad channel header")
 	assert.Contains(t, err.Error(), "could not unmarshall channel header")
 
@@ -676,7 +676,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 	data, err = proto.Marshal(p)
 	assert.NoError(t, err)
 	env = &cb.Envelope{Payload: data}
-	env, err = sanityCheckAndSignConfigTx(env, signer)
+	_, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.Error(t, err, "Error expected for bad payload data")
 	assert.Contains(t, err.Error(), "Bad config update env")
 
@@ -691,7 +691,7 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 		0,
 		0)
 	assert.NoError(t, err)
-	env, err = sanityCheckAndSignConfigTx(env, signer)
+	_, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.EqualError(t, err, "bad signer header")
 
 	// Error case 6
@@ -705,6 +705,6 @@ func TestSanityCheckAndSignChannelCreateTx(t *testing.T) {
 		0,
 		0)
 	assert.NoError(t, err)
-	env, err = sanityCheckAndSignConfigTx(env, signer)
+	_, err = sanityCheckAndSignConfigTx(env, signer)
 	assert.EqualError(t, err, "signer failed to sign")
 }

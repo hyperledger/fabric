@@ -393,7 +393,6 @@ func TestDeploy(t *testing.T) {
 
 	// As the PrivateChannelData is disabled, the following error message is expected due to the presence of
 	// collectionConfigBytes in the stub.args
-	errMessage := InvalidArgsLenErr(7).Error()
 	testDeploy(t, "example02", "1.0", path, false, false, true, PrivateChannelDataNotAvailable("").Error(), scc, stub, []byte("collections"))
 
 	// Enable PrivateChannelData
@@ -420,7 +419,7 @@ func TestDeploy(t *testing.T) {
 
 	// As the PrivateChannelData is enabled and collectionConfigBytes is invalid, the following error
 	// message is expected.
-	errMessage = "invalid collection configuration supplied for chaincode example02:1.0"
+	errMessage := "invalid collection configuration supplied for chaincode example02:1.0"
 	testDeploy(t, "example02", "1.0", path, false, false, true, errMessage, scc, stub, []byte("invalid collection"))
 	// Should contain an entry for the chaincodeData only
 	assert.Equal(t, 1, len(stub.State))

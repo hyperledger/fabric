@@ -281,16 +281,14 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
 	var defaultSecureDialOpts = func() []grpc.DialOption {
-		var dialOpts []grpc.DialOption
-		dialOpts = append(dialOpts, grpc.WithInsecure())
-		return dialOpts
+		return []grpc.DialOption{grpc.WithInsecure()}
 	}
-	defaultDeliverClientDialOpts := []grpc.DialOption{grpc.WithBlock()}
+	var defaultDeliverClientDialOpts []grpc.DialOption
 	defaultDeliverClientDialOpts = append(
 		defaultDeliverClientDialOpts,
-		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
-			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)))
+		grpc.WithBlock(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)),
+	)
 	defaultDeliverClientDialOpts = append(
 		defaultDeliverClientDialOpts,
 		comm.ClientKeepaliveOptions(comm.DefaultKeepaliveOptions)...,

@@ -54,15 +54,21 @@ func TestMain(m *testing.M) {
 	var err error
 	configtxgen, err = gexec.Build("github.com/hyperledger/fabric/cmd/configtxgen")
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "configtxgen build failed: %v", err)
 		os.Exit(-1)
 	}
 	cryptogen, err = gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "cryptogen build failed: %v", err)
 		os.Exit(-1)
 	}
 	defer gexec.CleanupBuildArtifacts()
 
 	tempDir, err = ioutil.TempDir("", "onboarding-test")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create temporary directory: %v", err)
+		os.Exit(-1)
+	}
 	defer os.RemoveAll(tempDir)
 
 	copyYamlFiles("testdata", tempDir)

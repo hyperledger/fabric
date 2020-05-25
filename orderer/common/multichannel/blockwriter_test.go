@@ -45,7 +45,6 @@ type mockBlockWriterSupport struct {
 	blockledger.ReadWriter
 	fakeConfig *mock.OrdererConfig
 	bccsp      bccsp.BCCSP
-	sequence   uint64
 }
 
 func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {}

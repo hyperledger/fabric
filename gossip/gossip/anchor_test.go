@@ -279,9 +279,9 @@ func TestBootstrapPeerMisConfiguration(t *testing.T) {
 	orgA := "orgA"
 	orgB := "orgB"
 
-	port, grpc, cert, secDialOpt, _ := utilgossip.CreateGRPCLayer()
+	port, grpc, cert, _, _ := utilgossip.CreateGRPCLayer()
 	fmt.Printf("port %d\n", port)
-	port1, grpc1, cert1, secDialOpt, _ := utilgossip.CreateGRPCLayer()
+	port1, grpc1, cert1, _, _ := utilgossip.CreateGRPCLayer()
 	fmt.Printf("port1 %d\n", port1)
 	port2, grpc2, cert2, secDialOpt, _ := utilgossip.CreateGRPCLayer()
 	fmt.Printf("port2 %d\n", port2)

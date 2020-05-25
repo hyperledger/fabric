@@ -120,7 +120,7 @@ func TestGeneratePrivateKey(t *testing.T) {
 	assert.Equal(t, true, checkForFile(expectedFile),
 		"Expected to find private key file")
 
-	priv, err = csp.GeneratePrivateKey("notExist")
+	_, err = csp.GeneratePrivateKey("notExist")
 	assert.Contains(t, err.Error(), "no such file or directory")
 }
 

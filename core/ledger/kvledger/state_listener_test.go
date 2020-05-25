@@ -45,6 +45,7 @@ func TestStateListener(t *testing.T) {
 
 	bg, gb := testutil.NewBlockGenerator(t, channelid, false)
 	lgr, err := provider.Create(gb)
+	assert.NoError(t, err)
 	// Simulate tx1
 	sim1, err := lgr.NewTxSimulator("test_tx_1")
 	assert.NoError(t, err)

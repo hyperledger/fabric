@@ -310,6 +310,9 @@ func (index *blockIndex) exportUniqueTxIDs(dir string, newHashFunc snapshot.NewH
 		return nil, err
 	}
 	metadataHash, err := metadataFile.Done()
+	if err != nil {
+		return nil, err
+	}
 
 	return map[string][]byte{
 		snapshotDataFileName:     dataHash,

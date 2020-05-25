@@ -148,6 +148,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 
 	envs := []*common.Envelope{}
 	env, _, err := testutil.ConstructTransaction(t, pubSimulationResBytes, "", true)
+	assert.NoError(t, err)
 	envs = append(envs, env)
 	envs = append(envs, env)
 	block := testutil.NewBlock(envs, 1, gbHash)

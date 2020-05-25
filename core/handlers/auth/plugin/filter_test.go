@@ -28,6 +28,6 @@ func TestFilter(t *testing.T) {
 	auth := NewFilter()
 	nextEndorser := &mockEndorserServer{}
 	auth.Init(nextEndorser)
-	auth.ProcessProposal(nil, nil)
+	auth.ProcessProposal(context.Background(), nil)
 	assert.True(t, nextEndorser.invoked)
 }

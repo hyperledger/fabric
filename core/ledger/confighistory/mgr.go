@@ -220,6 +220,9 @@ func (r *Retriever) ExportConfigHistory(dir string, newHashFunc snapshot.NewHash
 		return nil, err
 	}
 	metadataHash, err := metadataFileWriter.Done()
+	if err != nil {
+		return nil, err
+	}
 
 	return map[string][]byte{
 		snapshotDataFileName:     dataHash,

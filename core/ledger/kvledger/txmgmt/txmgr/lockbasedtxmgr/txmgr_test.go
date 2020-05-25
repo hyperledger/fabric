@@ -1143,7 +1143,7 @@ func testValidationAndCommitOfOldPvtData(t *testing.T, env testEnv) {
 
 	vv, err = db.GetPrivateData("ns1", "coll1", "key2")
 	assert.NoError(t, err)
-	assert.Equal(t, nil, nil) // deleted
+	assert.Nil(t, vv) // deleted
 
 	vv, err = db.GetPrivateData("ns1", "coll2", "key3")
 	assert.NoError(t, err)

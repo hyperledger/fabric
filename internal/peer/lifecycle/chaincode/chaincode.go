@@ -11,7 +11,6 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/chaincode/platforms"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -25,12 +24,6 @@ const (
 )
 
 var logger = flogging.MustGetLogger("cli.lifecycle.chaincode")
-
-// XXX This is a terrible singleton hack, however
-// it simply making a latent dependency explicit.
-// It should be removed along with the other package
-// scoped variables
-var platformRegistry = platforms.NewRegistry(platforms.SupportedPlatforms...)
 
 func addFlags(cmd *cobra.Command) {
 	common.AddOrdererFlags(cmd)

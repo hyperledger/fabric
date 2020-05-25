@@ -298,11 +298,11 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	assert.Nil(t, queryResult1)
 
 	// query using bad query string
-	itr, err = db.ExecuteQuery("ns1", "this is an invalid query string")
+	_, err = db.ExecuteQuery("ns1", "this is an invalid query string")
 	assert.Error(t, err, "Should have received an error for invalid query string")
 
 	// query returns 0 records
-	itr, err = db.ExecuteQuery("ns1", `{"selector":{"owner":"not_a_valid_name"}}`)
+	_, err = db.ExecuteQuery("ns1", `{"selector":{"owner":"not_a_valid_name"}}`)
 	assert.NoError(t, err)
 
 	// verify no results

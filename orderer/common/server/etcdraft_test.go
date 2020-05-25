@@ -44,6 +44,7 @@ func TestSpawnEtcdRaft(t *testing.T) {
 	defer gexec.CleanupBuildArtifacts()
 
 	tempDir, err := ioutil.TempDir("", "etcdraft-test")
+	gt.Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
 	copyYamlFiles(gt, "testdata", tempDir)

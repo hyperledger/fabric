@@ -173,6 +173,7 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 	sim.SetPrivateData(namespace, "coll", "key1", []byte("value1_new")) // change value for key1
 	sim.DeletePrivateData(namespace, "coll", "key2")                    // delete key2
 	simRes, err := sim.GetTxSimulationResults()
+	assert.NoError(t, err)
 	simResBytes, err := simRes.GetPubSimulationBytes()
 	assert.NoError(t, err)
 	block := testutil.ConstructBlock(t, 1, nil, [][]byte{simResBytes}, false)
