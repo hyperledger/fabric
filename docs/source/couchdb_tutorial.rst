@@ -267,7 +267,7 @@ Start the network
 
 
 We will bring up the Fabric test network and use it to deploy the marbles
-chainocde. Use the following command to navigate to the `test-network` directory
+chaincode. Use the following command to navigate to the `test-network` directory
 in the Fabric samples:
 
 .. code:: bash

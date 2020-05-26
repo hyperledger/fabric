@@ -564,7 +564,7 @@ below provide a guided tour of what happens when you issue the command of
 - If you issue the `deployCC` command, `./network.sh` runs the ``deployCC.sh``
   script to install the **fabcar** chaincode on both peers and then define then
   chaincode on the channel. Once the chaincode definition is committed to the
-  channel, the peer cli initializes the chainocde using the `Init` and invokes
+  channel, the peer cli initializes the chaincode using the `Init` and invokes
   the chaincode to put initial data on the ledger.
 
 ## Troubleshooting
