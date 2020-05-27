@@ -300,7 +300,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"})
 
-	_, _, err = ledger1.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata2, true)
+	_, _, err = ledger1.(*kvLedger).txmgr.ValidateAndPrepare(blockAndPvtdata2, true)
 	assert.NoError(t, err)
 	assert.NoError(t, ledger1.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata2))
 
@@ -356,11 +356,11 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 		map[string]string{"key1": "pvtValue1.3", "key2": "pvtValue2.3", "key3": "pvtValue3.3"},
 	)
-	_, _, err = ledger2.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata3, true)
+	_, _, err = ledger2.(*kvLedger).txmgr.ValidateAndPrepare(blockAndPvtdata3, true)
 	assert.NoError(t, err)
 	assert.NoError(t, ledger2.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata3))
 	// committing the transaction to state DB
-	assert.NoError(t, ledger2.(*kvLedger).txtmgmt.Commit())
+	assert.NoError(t, ledger2.(*kvLedger).txmgr.Commit())
 
 	// assume that peer fails here after committing the transaction to state DB but before history DB
 	checkBCSummaryForTest(t, ledger2,
@@ -416,7 +416,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 		map[string]string{"key1": "pvtValue1.4", "key2": "pvtValue2.4", "key3": "pvtValue3.4"},
 	)
 
-	_, _, err = ledger3.(*kvLedger).txtmgmt.ValidateAndPrepare(blockAndPvtdata4, true)
+	_, _, err = ledger3.(*kvLedger).txmgr.ValidateAndPrepare(blockAndPvtdata4, true)
 	assert.NoError(t, err)
 	assert.NoError(t, ledger3.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtdata4))
 	assert.NoError(t, ledger3.(*kvLedger).historyDB.Commit(blockAndPvtdata4.Block))
@@ -1004,7 +1004,7 @@ func checkBCSummaryForTest(t *testing.T, l lgr.PeerLedger, expectedBCSummary *bc
 	}
 
 	if expectedBCSummary.stateDBSavePoint != 0 {
-		actualStateDBSavepoint, _ := l.(*kvLedger).txtmgmt.GetLastSavepoint()
+		actualStateDBSavepoint, _ := l.(*kvLedger).txmgr.GetLastSavepoint()
 		assert.Equal(t, expectedBCSummary.stateDBSavePoint, actualStateDBSavepoint.BlockNum)
 	}
 

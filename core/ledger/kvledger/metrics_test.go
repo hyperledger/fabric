@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	lgr "github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/assert"
 )
@@ -76,7 +76,7 @@ func TestStatsBlockCommit(t *testing.T) {
 	// invoke updateBlockStats api explicitly and verify the calls with fake metrics
 	ledger.updateBlockStats(
 		1*time.Second, 2*time.Second, 3*time.Second,
-		[]*txmgr.TxStatInfo{
+		[]*validation.TxStatInfo{
 			{
 				ValidationCode: peer.TxValidationCode_VALID,
 				TxType:         common.HeaderType_ENDORSER_TRANSACTION,

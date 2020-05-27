@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/history"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
@@ -47,7 +47,7 @@ type kvLedger struct {
 	ledgerID               string
 	blockStore             *blkstorage.BlockStore
 	pvtdataStore           *pvtdatastorage.Store
-	txtmgmt                txmgr.TxMgr
+	txmgr                  *txmgr.LockBasedTxMgr
 	historyDB              *history.DB
 	configHistoryRetriever *confighistory.Retriever
 	blockAPIsRWLock        *sync.RWMutex
@@ -99,7 +99,7 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 		return hash.Sum(nil), nil
 	}
 
-	txmgrInitializer := &lockbasedtxmgr.Initializer{
+	txmgrInitializer := &txmgr.Initializer{
 		LedgerID:            ledgerID,
 		DB:                  initializer.stateDB,
 		StateListeners:      initializer.stateListeners,
@@ -149,13 +149,13 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 	return l, nil
 }
 
-func (l *kvLedger) initTxMgr(initializer *lockbasedtxmgr.Initializer) error {
+func (l *kvLedger) initTxMgr(initializer *txmgr.Initializer) error {
 	var err error
-	txmgr, err := lockbasedtxmgr.NewLockBasedTxMgr(initializer)
+	txmgr, err := txmgr.NewLockBasedTxMgr(initializer)
 	if err != nil {
 		return err
 	}
-	l.txtmgmt = txmgr
+	l.txmgr = txmgr
 	// This is a workaround for populating lifecycle cache.
 	// See comments on this function for details
 	qe, err := txmgr.NewQueryExecutorNoCollChecks()
@@ -231,7 +231,7 @@ func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
 		return nil
 	}
 	lastAvailableBlockNum := info.Height - 1
-	recoverables := []recoverable{l.txtmgmt}
+	recoverables := []recoverable{l.txmgr}
 	if l.historyDB != nil {
 		recoverables = append(recoverables, l.historyDB)
 	}
@@ -416,14 +416,14 @@ func (l *kvLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode
 
 // NewTxSimulator returns new `ledger.TxSimulator`
 func (l *kvLedger) NewTxSimulator(txid string) (ledger.TxSimulator, error) {
-	return l.txtmgmt.NewTxSimulator(txid)
+	return l.txmgr.NewTxSimulator(txid)
 }
 
 // NewQueryExecutor gives handle to a query executor.
 // A client can obtain more than one 'QueryExecutor's for parallel execution.
 // Any synchronization should be performed at the implementation level if required
 func (l *kvLedger) NewQueryExecutor() (ledger.QueryExecutor, error) {
-	return l.txtmgmt.NewQueryExecutor(util.GenerateUUID())
+	return l.txmgr.NewQueryExecutor(util.GenerateUUID())
 }
 
 // NewHistoryQueryExecutor gives handle to a history query executor.
@@ -465,7 +465,7 @@ func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitO
 	}
 
 	logger.Debugf("[%s] Validating state for block [%d]", l.ledgerID, blockNo)
-	txstatsInfo, updateBatchBytes, err := l.txtmgmt.ValidateAndPrepare(pvtdataAndBlock, true)
+	txstatsInfo, updateBatchBytes, err := l.txmgr.ValidateAndPrepare(pvtdataAndBlock, true)
 	if err != nil {
 		return err
 	}
@@ -490,7 +490,7 @@ func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitO
 
 	startCommitState := time.Now()
 	logger.Debugf("[%s] Committing block [%d] transactions to state database", l.ledgerID, blockNo)
-	if err = l.txtmgmt.Commit(); err != nil {
+	if err = l.txmgr.Commit(); err != nil {
 		panic(errors.WithMessage(err, "error during commit to txmgr"))
 	}
 	elapsedCommitState := time.Since(startCommitState)
@@ -575,7 +575,7 @@ func (l *kvLedger) updateBlockStats(
 	blockProcessingTime time.Duration,
 	blockstorageAndPvtdataCommitTime time.Duration,
 	statedbCommitTime time.Duration,
-	txstatsInfo []*txmgr.TxStatInfo,
+	txstatsInfo []*validation.TxStatInfo,
 ) {
 	l.stats.updateBlockProcessingTime(blockProcessingTime)
 	l.stats.updateBlockstorageAndPvtdataCommitTime(blockstorageAndPvtdataCommitTime)
@@ -706,7 +706,7 @@ func (l *kvLedger) applyValidTxPvtDataOfOldBlocks(hashVerifiedPvtData map[uint64
 	// the peer restart, then the pvtData in stateDB may not be in sync with the pvtData in
 	// ledger store till the reconciler is enabled.
 	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the stateDB", l.ledgerID, len(hashVerifiedPvtData))
-	return l.txtmgmt.RemoveStaleAndCommitPvtDataOfOldBlocks(committedPvtData)
+	return l.txmgr.RemoveStaleAndCommitPvtDataOfOldBlocks(committedPvtData)
 }
 
 func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error) {
@@ -716,7 +716,7 @@ func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, err
 // Close closes `KVLedger`
 func (l *kvLedger) Close() {
 	l.blockStore.Shutdown()
-	l.txtmgmt.Shutdown()
+	l.txmgr.Shutdown()
 }
 
 type blocksItr struct {

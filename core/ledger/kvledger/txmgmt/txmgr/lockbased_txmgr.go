@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package lockbasedtxmgr
+package txmgr
 
 import (
 	"bytes"
@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/pvtstatepurgemgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/queryutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/core/ledger/util"
@@ -51,6 +50,26 @@ type LockBasedTxMgr struct {
 type pvtdataPurgeMgr struct {
 	*pvtstatepurgemgmt.PurgeMgr
 	usedOnce bool
+}
+
+// ErrUnsupportedTransaction is expected to be thrown if a unsupported query is performed in an update transaction
+type ErrUnsupportedTransaction struct {
+	Msg string
+}
+
+func (e *ErrUnsupportedTransaction) Error() string {
+	return e.Msg
+}
+
+// ErrPvtdataNotAvailable is to be thrown when an application seeks a private data item
+// during simulation and the simulator is not capable of returning the version of the
+// private data item consistent with the snapshot exposed to the simulation
+type ErrPvtdataNotAvailable struct {
+	Msg string
+}
+
+func (e *ErrPvtdataNotAvailable) Error() string {
+	return e.Msg
 }
 
 type current struct {
@@ -152,7 +171,7 @@ func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, er
 
 // ValidateAndPrepare implements method in interface `txmgmt.TxMgr`
 func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) (
-	[]*txmgr.TxStatInfo, []byte, error,
+	[]*validation.TxStatInfo, []byte, error,
 ) {
 	// Among ValidateAndPrepare(), PrepareExpiringKeys(), and
 	// RemoveStaleAndCommitPvtDataOfOldBlocks(), we can allow only one

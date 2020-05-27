@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr/lockbasedtxmgr"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,7 +36,7 @@ type levelDBLockBasedHistoryEnv struct {
 	testBlockStorageEnv   *testBlockStoreEnv
 	testDBEnv             privacyenabledstate.TestEnv
 	testBookkeepingEnv    *bookkeeping.TestEnv
-	txmgr                 txmgr.TxMgr
+	txmgr                 *txmgr.LockBasedTxMgr
 	testHistoryDBProvider *DBProvider
 	testHistoryDB         *DB
 	testHistoryDBPath     string
@@ -58,7 +57,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 		t.Fatalf("Failed to create history database directory: %s", err)
 	}
 
-	txmgrInitializer := &lockbasedtxmgr.Initializer{
+	txmgrInitializer := &txmgr.Initializer{
 		LedgerID:            testLedgerID,
 		DB:                  testDB,
 		StateListeners:      nil,
@@ -68,7 +67,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 		CustomTxProcessors:  nil,
 		HashFunc:            testHashFunc,
 	}
-	txMgr, err := lockbasedtxmgr.NewLockBasedTxMgr(txmgrInitializer)
+	txMgr, err := txmgr.NewLockBasedTxMgr(txmgrInitializer)
 
 	assert.NoError(t, err)
 	testHistoryDBProvider, err := NewDBProvider(testHistoryDBPath)

@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation/mock"
 	mocklgr "github.com/hyperledger/fabric/core/ledger/mock"
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
@@ -303,7 +302,7 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 	gb := testutil.ConstructTestBlocks(t, 1)[0]
 	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: gb}, true)
 	assert.NoError(t, err)
-	expectedTxStatInfo := []*txmgr.TxStatInfo{
+	expectedTxStatInfo := []*TxStatInfo{
 		{
 			TxType:         common.HeaderType_CONFIG,
 			ValidationCode: peer.TxValidationCode_VALID,
@@ -319,15 +318,15 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 	defer testDBEnv.Cleanup()
 	testDB := testDBEnv.GetDBHandle("emptydb")
 	mockSimulator := &mocklgr.TxSimulator{}
-	mockTxmgr := &mock.TxMgr{}
-	mockTxmgr.NewTxSimulatorReturns(mockSimulator, nil)
+	mockSimulatorProvider := &mock.PostOrderSimulatorProvider{}
+	mockSimulatorProvider.NewTxSimulatorReturns(mockSimulator, nil)
 
 	fakeTxProcessor := &mock.Processor{}
 	customTxProcessors := map[common.HeaderType]ledger.CustomTxProcessor{
 		common.HeaderType_CONFIG: fakeTxProcessor,
 	}
 
-	v := NewCommitBatchPreparer(mockTxmgr, testDB, customTxProcessors, testHashFunc)
+	v := NewCommitBatchPreparer(mockSimulatorProvider, testDB, customTxProcessors, testHashFunc)
 	blocks := testutil.ConstructTestBlocks(t, 2)
 
 	// block with config tx that produces post order writes
@@ -445,7 +444,7 @@ func TestTxStatsInfo(t *testing.T) {
 	// collect the validation stats for the block and check against the expected stats
 	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blk}, true)
 	assert.NoError(t, err)
-	expectedTxStatInfo := []*txmgr.TxStatInfo{
+	expectedTxStatInfo := []*TxStatInfo{
 		{
 			TxType:         common.HeaderType_ENDORSER_TRANSACTION,
 			ValidationCode: peer.TxValidationCode_VALID,
@@ -556,9 +555,9 @@ type processor interface {
 	ledger.CustomTxProcessor
 }
 
-//go:generate counterfeiter -o mock/txmgr.go --fake-name TxMgr . txMgr
-type txMgr interface {
-	txmgr.TxMgr
+//go:generate counterfeiter -o mock/postOrderSimulatorProvider.go --fake-name PostOrderSimulatorProvider . postOrderSimulatorProvider
+type postOrderSimulatorProvider interface {
+	PostOrderSimulatorProvider
 }
 
 // Test for txType != common.HeaderType_ENDORSER_TRANSACTION
@@ -586,10 +585,10 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 		PubSimulationResults: &pubsimresults,
 		PvtSimulationResults: nil,
 	}
-	txsim_ := new(mock.TxSimulator)
-	txsim_.GetTxSimulationResultsReturns(txsimres, nil)
-	txmgr_ := new(mock.TxMgr)
-	txmgr_.NewTxSimulatorReturns(txsim_, nil)
+	txsim := new(mock.TxSimulator)
+	txsim.GetTxSimulationResultsReturns(txsimres, nil)
+	txsimProvider := new(mock.PostOrderSimulatorProvider)
+	txsimProvider.NewTxSimulatorReturns(txsim, nil)
 
 	// Prepare param2: validateKVFunc
 	alwaysValidKVFunc := func(key string, value []byte) error {
@@ -619,7 +618,7 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 	)
 
 	// Call
-	internalBlock, txsStatInfo, err2 := preprocessProtoBlock(txmgr_, alwaysValidKVFunc, blk, false, customTxProcessors)
+	internalBlock, txsStatInfo, err2 := preprocessProtoBlock(txsimProvider, alwaysValidKVFunc, blk, false, customTxProcessors)
 
 	// Prepare expected value
 	expectedPreprocessedBlock := &block{
@@ -650,7 +649,7 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 			containsPostOrderWrites: true,
 		},
 	)
-	expectedTxStatInfo := []*txmgr.TxStatInfo{
+	expectedTxStatInfo := []*TxStatInfo{
 		{
 			TxType: 100,
 		},
