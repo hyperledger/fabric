@@ -401,7 +401,7 @@ the [commercial paper tutorial](tutorial/commercial_paper.html) to explore a
 use case in which two organizations use a blockchain network to trade commercial
 paper.
 
-You can find the the complete list of Fabric tutorials on the [tutorials](tutorials.html)
+You can find the complete list of Fabric tutorials on the [tutorials](tutorials.html)
 page.
 
 ## Bring up the network with Certificate Authorities

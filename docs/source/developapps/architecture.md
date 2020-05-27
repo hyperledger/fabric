@@ -154,7 +154,7 @@ unique **composite** key formed by the concatenation of `org.papernet.paper`,
     allegiance; we don't need a list of fans.
 
 
-  * Hyperlegder Fabric internally uses a concurrency control
+  * Hyperledger Fabric internally uses a concurrency control
     mechanism <!-- Add more information to explain this topic-->
     to update a ledger, such that keeping papers in separate state vectors vastly
     reduces the opportunity for shared-state collisions. Such collisions require

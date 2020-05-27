@@ -81,7 +81,7 @@ the repository.
     git clone https://github.com/<your_github_userid>/fabric
 
 .. note::
-    If you are running Windows, before cloning the repository, run thefollowing
+    If you are running Windows, before cloning the repository, run the following
     command:
 
     ::

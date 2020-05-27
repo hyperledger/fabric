@@ -419,7 +419,7 @@ Managing external dependencies for chaincode written in Go
 ----------------------------------------------------------
 Your Go chaincode depends on Go packages (like the chaincode shim) that are not
 part of the standard library. The source to these packages must be included in
-your chaincode package when it is installed to a peer. If you have scructured
+your chaincode package when it is installed to a peer. If you have structured
 your chaincode as a module, the easiest way to do this is to "vendor" the
 dependencies with ``go mod vendor`` before packaging your chaincode.
 

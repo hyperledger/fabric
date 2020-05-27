@@ -434,7 +434,7 @@ Kafka-based ordering service. You can also consult
 [this sample configuration file](https://github.com/hyperledger/fabric/blob/release-1.1/bddtests/dc-orderer-kafka.yml)
 for a brief explanation of the sensible defaults for Kafka and ZooKeeper.
 
-To learn how to bring up a a Kafka-based ordering service, check out [our documentation on Kafka](../kafka.html).
+To learn how to bring up a Kafka-based ordering service, check out [our documentation on Kafka](../kafka.html).
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/) -->
