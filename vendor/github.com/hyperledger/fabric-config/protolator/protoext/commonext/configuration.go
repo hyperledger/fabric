@@ -10,12 +10,10 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-config/protolator/protoext/ordererext"
+	"github.com/hyperledger/fabric-config/protolator/protoext/peerext"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/common/tools/protolator/protoext/ordererext"
-	"github.com/hyperledger/fabric/common/tools/protolator/protoext/peerext"
-
-	"github.com/pkg/errors"
 )
 
 type DynamicChannelGroup struct {
@@ -46,7 +44,7 @@ func (dcg *DynamicChannelGroup) DynamicMapFieldProto(name string, key string, ba
 		case "Application":
 			return &peerext.DynamicApplicationGroup{ConfigGroup: cg}, nil
 		default:
-			return nil, errors.Errorf("unknown channel group sub-group '%s'", key)
+			return nil, fmt.Errorf("unknown channel group sub-group '%s'", key)
 		}
 	case "values":
 		cv, ok := base.(*common.ConfigValue)

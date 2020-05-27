@@ -165,12 +165,19 @@ github.com/hyperledger/fabric-chaincode-go/pkg/statebased
 github.com/hyperledger/fabric-chaincode-go/shim
 github.com/hyperledger/fabric-chaincode-go/shim/internal
 github.com/hyperledger/fabric-chaincode-go/shimtest
-# github.com/hyperledger/fabric-config v0.0.0-20200514142724-e1bf69d9f3fe
+# github.com/hyperledger/fabric-config v0.0.1
 ## explicit
 github.com/hyperledger/fabric-config/configtx
 github.com/hyperledger/fabric-config/configtx/internal/policydsl
 github.com/hyperledger/fabric-config/configtx/membership
 github.com/hyperledger/fabric-config/configtx/orderer
+github.com/hyperledger/fabric-config/protolator
+github.com/hyperledger/fabric-config/protolator/protoext
+github.com/hyperledger/fabric-config/protolator/protoext/commonext
+github.com/hyperledger/fabric-config/protolator/protoext/ledger/rwsetext
+github.com/hyperledger/fabric-config/protolator/protoext/mspext
+github.com/hyperledger/fabric-config/protolator/protoext/ordererext
+github.com/hyperledger/fabric-config/protolator/protoext/peerext
 # github.com/hyperledger/fabric-lib-go v1.0.0
 ## explicit
 github.com/hyperledger/fabric-lib-go/healthz
