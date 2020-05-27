@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package lockbasedtxmgr
+package txmgr
 
 import (
 	"testing"
@@ -19,7 +19,7 @@ func TestCollectionValidation(t *testing.T) {
 	testEnv.init(t, "testLedger", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
-	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr),
+	populateCollConfigForTest(t, txMgr,
 		[]collConfigkey{
 			{"ns1", "coll1"},
 			{"ns1", "coll2"},
@@ -56,7 +56,7 @@ func TestPvtGetNoCollection(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-pvtdata-get-no-collection", nil)
 	defer testEnv.cleanup()
-	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	txMgr := testEnv.getTxMgr()
 	qe := newQueryExecutor(txMgr, "", nil, true, testHashFunc)
 	valueHash, metadataBytes, err := qe.getPrivateDataValueHash("cc", "coll", "key")
 	assert.Nil(t, valueHash)
@@ -68,7 +68,7 @@ func TestPvtPutNoCollection(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-pvtdata-put-no-collection", nil)
 	defer testEnv.cleanup()
-	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	txMgr := testEnv.getTxMgr()
 	txsim, err := txMgr.NewTxSimulator("txid")
 	assert.NoError(t, err)
 	err = txsim.SetPrivateDataMetadata("cc", "coll", "key", map[string][]byte{})
@@ -80,7 +80,7 @@ func TestNoCollectionValidationCheck(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-no-collection-validation-check", nil)
 	defer testEnv.cleanup()
-	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	txMgr := testEnv.getTxMgr()
 	qe, err := txMgr.NewQueryExecutorNoCollChecks()
 	assert.NoError(t, err)
 	valueHash, err := qe.GetPrivateDataHash("cc", "coll", "key")

@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package lockbasedtxmgr
+package txmgr
 
 import (
 	"crypto/sha256"
@@ -44,7 +44,7 @@ func TestPvtdataResultsItr(t *testing.T) {
 	testEnv.init(t, "test-pvtdata-range-queries", btlPolicy)
 	defer testEnv.cleanup()
 
-	txMgr := testEnv.getTxMgr().(*LockBasedTxMgr)
+	txMgr := testEnv.getTxMgr()
 	populateCollConfigForTest(t, txMgr, []collConfigkey{
 		{"ns1", "coll1"}, {"ns2", "coll1"}, {"ns3", "coll1"}, {"ns4", "coll1"}},
 		version.NewHeight(1, 0),
@@ -104,7 +104,7 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 
 	txMgr := env.getTxMgr()
 	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
-	populateCollConfigForTest(t, txMgr.(*LockBasedTxMgr), []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
+	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 	// Simulate and commit tx1 - set val and metadata for key1
 	key1, value1, metadata1 := "key1", []byte("value1"), map[string][]byte{"entry1": []byte("meatadata1-entry1")}
 	s1, _ := txMgr.NewTxSimulator("test_tx1")
@@ -117,14 +117,14 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 	assert.NoError(t, txMgr.Commit())
 
 	t.Run("query-helper-for-queryexecutor", func(t *testing.T) {
-		qe := newQueryExecutor(txMgr.(*LockBasedTxMgr), "", nil, true, testHashFunc)
+		qe := newQueryExecutor(txMgr, "", nil, true, testHashFunc)
 		metadataRetrieved, err := qe.GetPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.NoError(t, err)
 		assert.Equal(t, metadata1, metadataRetrieved)
 	})
 
 	t.Run("query-helper-for-txsimulator", func(t *testing.T) {
-		qe := newQueryExecutor(txMgr.(*LockBasedTxMgr), "txid-1", rwsetutil.NewRWSetBuilder(), true, testHashFunc)
+		qe := newQueryExecutor(txMgr, "txid-1", rwsetutil.NewRWSetBuilder(), true, testHashFunc)
 		_, err = qe.GetPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
 		assert.EqualError(t, err, "retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
 	})
@@ -145,7 +145,7 @@ func testGetPvtdataHash(t *testing.T, env testEnv) {
 	)
 	env.init(t, ledgerid, btlPolicy)
 	defer env.cleanup()
-	txMgr := env.getTxMgr().(*LockBasedTxMgr)
+	txMgr := env.getTxMgr()
 	populateCollConfigForTest(t, txMgr, []collConfigkey{{"ns", "coll"}}, version.NewHeight(1, 1))
 
 	batch := privacyenabledstate.NewUpdateBatch()

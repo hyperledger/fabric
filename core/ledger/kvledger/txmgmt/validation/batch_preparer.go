@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
@@ -27,24 +26,37 @@ import (
 
 var logger = flogging.MustGetLogger("validation")
 
+// PostOrderSimulatorProvider provides access to a tx simulator for executing post order non-endorser transactions
+type PostOrderSimulatorProvider interface {
+	NewTxSimulator(txid string) (ledger.TxSimulator, error)
+}
+
 // CommitBatchPreparer performs validation and prepares the final batch that is to be committed to the statedb
 type CommitBatchPreparer struct {
-	txmgr              txmgr.TxMgr
-	db                 *privacyenabledstate.DB
-	validator          *validator
-	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor
+	postOrderSimulatorProvider PostOrderSimulatorProvider
+	db                         *privacyenabledstate.DB
+	validator                  *validator
+	customTxProcessors         map[common.HeaderType]ledger.CustomTxProcessor
+}
+
+// TxStatInfo encapsulates information about a transaction
+type TxStatInfo struct {
+	ValidationCode peer.TxValidationCode
+	TxType         common.HeaderType
+	ChaincodeID    *peer.ChaincodeID
+	NumCollections int
 }
 
 // NewCommitBatchPreparer constructs a validator that internally manages statebased validator and in addition
 // handles the tasks that are agnostic to a particular validation scheme such as parsing the block and handling the pvt data
 func NewCommitBatchPreparer(
-	txmgr txmgr.TxMgr,
+	postOrderSimulatorProvider PostOrderSimulatorProvider,
 	db *privacyenabledstate.DB,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 	hashFunc rwsetutil.HashFunc,
 ) *CommitBatchPreparer {
 	return &CommitBatchPreparer{
-		txmgr,
+		postOrderSimulatorProvider,
 		db,
 		&validator{
 			db:       db,
@@ -56,18 +68,18 @@ func NewCommitBatchPreparer(
 
 // ValidateAndPrepareBatch performs validation of transactions in the block and prepares the batch of final writes
 func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.BlockAndPvtData,
-	doMVCCValidation bool) (*privacyenabledstate.UpdateBatch, []*txmgr.TxStatInfo, error) {
+	doMVCCValidation bool) (*privacyenabledstate.UpdateBatch, []*TxStatInfo, error) {
 	blk := blockAndPvtdata.Block
 	logger.Debugf("ValidateAndPrepareBatch() for block number = [%d]", blk.Header.Number)
 	var internalBlock *block
-	var txsStatInfo []*txmgr.TxStatInfo
+	var txsStatInfo []*TxStatInfo
 	var pubAndHashUpdates *publicAndHashUpdates
 	var pvtUpdates *privacyenabledstate.PvtUpdateBatch
 	var err error
 
 	logger.Debug("preprocessing ProtoBlock...")
 	if internalBlock, txsStatInfo, err = preprocessProtoBlock(
-		p.txmgr,
+		p.postOrderSimulatorProvider,
 		p.db.ValidateKeyValue,
 		blk,
 		doMVCCValidation,
@@ -177,13 +189,13 @@ func validatePvtdata(tx *transaction, pvtdata *ledger.TxPvtData) error {
 
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
 // The returned 'Block' structure contains only transactions that are endorser transactions and are not already marked as invalid
-func preprocessProtoBlock(txMgr txmgr.TxMgr,
+func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 	validateKVFunc func(key string, value []byte) error,
 	blk *common.Block, doMVCCValidation bool,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
-) (*block, []*txmgr.TxStatInfo, error) {
+) (*block, []*TxStatInfo, error) {
 	b := &block{num: blk.Header.Number}
-	txsStatInfo := []*txmgr.TxStatInfo{}
+	txsStatInfo := []*TxStatInfo{}
 	// Committer validator has already set validation flags based on well formed tran checks
 	txsFilter := txflags.ValidationFlags(blk.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	for txIndex, envBytes := range blk.Data.Data {
@@ -191,7 +203,7 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 		var chdr *common.ChannelHeader
 		var payload *common.Payload
 		var err error
-		txStatInfo := &txmgr.TxStatInfo{TxType: -1}
+		txStatInfo := &TxStatInfo{TxType: -1}
 		txsStatInfo = append(txsStatInfo, txStatInfo)
 		if env, err = protoutil.GetEnvelopeFromBlock(envBytes); err == nil {
 			if payload, err = protoutil.UnmarshalPayload(env.Payload); err == nil {
@@ -229,7 +241,14 @@ func preprocessProtoBlock(txMgr txmgr.TxMgr,
 				continue
 			}
 		} else {
-			rwsetProto, err := processNonEndorserTx(env, chdr.TxId, txType, txMgr, !doMVCCValidation, customTxProcessors)
+			rwsetProto, err := processNonEndorserTx(
+				env,
+				chdr.TxId,
+				txType,
+				postOrderSimulatorProvider,
+				!doMVCCValidation,
+				customTxProcessors,
+			)
 			if _, ok := err.(*ledger.InvalidTxError); ok {
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 				continue
@@ -268,7 +287,7 @@ func processNonEndorserTx(
 	txEnv *common.Envelope,
 	txid string,
 	txType common.HeaderType,
-	txmgr txmgr.TxMgr,
+	postOrderSimulatorProvider PostOrderSimulatorProvider,
 	synchingState bool,
 	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 ) (*rwset.TxReadWriteSet, error) {
@@ -282,7 +301,7 @@ func processNonEndorserTx(
 	var err error
 	var sim ledger.TxSimulator
 	var simRes *ledger.TxSimulationResults
-	if sim, err = txmgr.NewTxSimulator(txid); err != nil {
+	if sim, err = postOrderSimulatorProvider.NewTxSimulator(txid); err != nil {
 		return nil, err
 	}
 	defer sim.Done()

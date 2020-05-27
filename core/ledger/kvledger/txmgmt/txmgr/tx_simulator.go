@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package lockbasedtxmgr
+package txmgr
 
 import (
 	"fmt"
@@ -12,7 +12,6 @@ import (
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/pkg/errors"
 )
 
@@ -187,7 +186,7 @@ func (s *txSimulator) checkWritePrecondition(key string, value []byte) error {
 
 func (s *txSimulator) checkBeforePvtdataQueries() error {
 	if s.writePerformed {
-		return &txmgr.ErrUnsupportedTransaction{
+		return &ErrUnsupportedTransaction{
 			Msg: fmt.Sprintf("txid [%s]: Queries on pvt data is supported only in a read-only transaction", s.txid),
 		}
 	}
@@ -197,7 +196,7 @@ func (s *txSimulator) checkBeforePvtdataQueries() error {
 
 func (s *txSimulator) checkPvtdataQueryPerformed() error {
 	if s.pvtdataQueriesPerformed {
-		return &txmgr.ErrUnsupportedTransaction{
+		return &ErrUnsupportedTransaction{
 			Msg: fmt.Sprintf("txid [%s]: Transaction has already performed queries on pvt data. Writes are not allowed", s.txid),
 		}
 	}
@@ -206,7 +205,7 @@ func (s *txSimulator) checkPvtdataQueryPerformed() error {
 
 func (s *txSimulator) checkBeforePaginatedQueries() error {
 	if s.writePerformed {
-		return &txmgr.ErrUnsupportedTransaction{
+		return &ErrUnsupportedTransaction{
 			Msg: fmt.Sprintf("txid [%s]: Paginated queries are supported only in a read-only transaction", s.txid),
 		}
 	}
@@ -216,7 +215,7 @@ func (s *txSimulator) checkBeforePaginatedQueries() error {
 
 func (s *txSimulator) checkPaginatedQueryPerformed() error {
 	if s.paginatedQueriesPerformed {
-		return &txmgr.ErrUnsupportedTransaction{
+		return &ErrUnsupportedTransaction{
 			Msg: fmt.Sprintf("txid [%s]: Transaction has already performed a paginated query. Writes are not allowed", s.txid),
 		}
 	}

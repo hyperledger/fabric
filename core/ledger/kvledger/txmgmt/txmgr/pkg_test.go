@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package lockbasedtxmgr
+package txmgr
 
 import (
 	"fmt"
@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
@@ -45,7 +44,7 @@ func TestMain(m *testing.M) {
 type testEnv interface {
 	cleanup()
 	getName() string
-	getTxMgr() txmgr.TxMgr
+	getTxMgr() *LockBasedTxMgr
 	getVDB() *privacyenabledstate.DB
 	init(t *testing.T, testLedgerID string, btlPolicy pvtdatapolicy.BTLPolicy)
 	stopExternalResource()
@@ -77,7 +76,7 @@ type lockBasedEnv struct {
 	testBookkeepingEnv *bookkeeping.TestEnv
 	testDB             *privacyenabledstate.DB
 	testDBEnv          privacyenabledstate.TestEnv
-	txmgr              txmgr.TxMgr
+	txmgr              *LockBasedTxMgr
 }
 
 func (env *lockBasedEnv) getName() string {
@@ -115,7 +114,7 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 
 }
 
-func (env *lockBasedEnv) getTxMgr() txmgr.TxMgr {
+func (env *lockBasedEnv) getTxMgr() *LockBasedTxMgr {
 	return env.txmgr
 }
 
@@ -140,11 +139,11 @@ func (env *lockBasedEnv) stopExternalResource() {
 
 type txMgrTestHelper struct {
 	t     *testing.T
-	txMgr txmgr.TxMgr
+	txMgr *LockBasedTxMgr
 	bg    *testutil.BlockGenerator
 }
 
-func newTxMgrTestHelper(t *testing.T, txMgr txmgr.TxMgr) *txMgrTestHelper {
+func newTxMgrTestHelper(t *testing.T, txMgr *LockBasedTxMgr) *txMgrTestHelper {
 	bg, _ := testutil.NewBlockGenerator(t, "testLedger", false)
 	return &txMgrTestHelper{t, txMgr, bg}
 }

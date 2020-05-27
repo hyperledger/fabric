@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package lockbasedtxmgr
+package txmgr
 
 import (
 	"fmt"
@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statemetadata"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
 )
@@ -215,7 +214,7 @@ func (q *queryExecutor) GetPrivateData(ns, coll, key string) ([]byte, error) {
 		return nil, err
 	}
 	if !version.AreSame(hashVersion, ver) {
-		return nil, &txmgr.ErrPvtdataNotAvailable{Msg: fmt.Sprintf(
+		return nil, &ErrPvtdataNotAvailable{Msg: fmt.Sprintf(
 			"private data matching public hash version is not available. Public hash version = %s, Private data version = %s",
 			hashVersion, ver)}
 	}
