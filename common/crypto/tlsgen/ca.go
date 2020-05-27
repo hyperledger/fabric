@@ -29,6 +29,8 @@ type CA interface {
 	// CertBytes returns the certificate of the CA in PEM encoding
 	CertBytes() []byte
 
+	NewIntermediateCA() (CA, error)
+
 	// newCertKeyPair returns a certificate and private key pair and nil,
 	// or nil, error in case of failure
 	// The certificate is signed by the CA and is used for TLS client authentication
@@ -53,6 +55,16 @@ func NewCA() (CA, error) {
 		return nil, err
 	}
 	return c, nil
+}
+
+func (c *ca) NewIntermediateCA() (CA, error) {
+	intermediateCA := &ca{}
+	var err error
+	intermediateCA.caCert, err = newCertKeyPair(true, false, "", c.caCert.Signer, c.caCert.TLSCert)
+	if err != nil {
+		return nil, err
+	}
+	return intermediateCA, nil
 }
 
 // CertBytes returns the certificate of the CA in PEM encoding
