@@ -409,3 +409,8 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block) (types.
 	//TODO
 	return types.ChannelInfo{}, errors.New("Not implemented yet")
 }
+
+func (r *Registrar) RemoveChannel(channelID string, removeStorage bool) error {
+	//TODO
+	return errors.New("Not implemented yet")
+}

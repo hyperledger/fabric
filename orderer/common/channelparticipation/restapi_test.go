@@ -13,6 +13,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path"
 	"testing"
 
@@ -373,13 +374,126 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 
 func TestHTTPHandler_ServeHTTP_Remove(t *testing.T) {
 	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
-	_, h := setup(config, t)
-	require.NotNilf(t, h, "cannot create handler")
+	fakeManager, h := setup(config, t)
 
-	resp := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodDelete, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
-	h.ServeHTTP(resp, req)
-	checkErrorResponse(t, http.StatusNotImplemented, "not implemented yet: DELETE /participation/v1/channels/ch-id", resp)
+	type testDef struct {
+		name         string
+		channel      string
+		query        string
+		fakeReturns  error
+		expectedCode int
+		expectedErr  error
+	}
+
+	testCases := []testDef{
+		{
+			name:         "success - no query",
+			channel:      "my-channel",
+			query:        "",
+			fakeReturns:  nil,
+			expectedCode: http.StatusNoContent,
+			expectedErr:  nil,
+		},
+		{
+			name:         "success - query - false",
+			channel:      "my-channel",
+			query:        channelparticipation.RemoveStorageQueryKey + "=false",
+			fakeReturns:  nil,
+			expectedCode: http.StatusNoContent,
+			expectedErr:  nil,
+		},
+		{
+			name:         "success - query - true",
+			channel:      "my-channel",
+			query:        channelparticipation.RemoveStorageQueryKey + "=true",
+			fakeReturns:  nil,
+			expectedCode: http.StatusNoContent,
+			expectedErr:  nil,
+		},
+		{
+			name:         "bad channel ID",
+			channel:      "My-Channel",
+			query:        "",
+			fakeReturns:  nil,
+			expectedCode: http.StatusBadRequest,
+			expectedErr:  errors.New("invalid channel ID: 'My-Channel' contains illegal characters"),
+		},
+		{
+			name:         "channel does not exist",
+			channel:      "my-channel",
+			query:        "",
+			fakeReturns:  types.ErrChannelNotExist,
+			expectedCode: http.StatusNotFound,
+			expectedErr:  errors.Wrap(types.ErrChannelNotExist, "cannot remove"),
+		},
+		{
+			name:         "bad query - invalid key",
+			channel:      "my-channel",
+			query:        "bogus=false",
+			fakeReturns:  nil,
+			expectedCode: http.StatusBadRequest,
+			expectedErr:  errors.New("cannot remove: invalid query key"),
+		},
+		{
+			name:         "bad query - too many keys",
+			channel:      "my-channel",
+			query:        "bogus=false&stupid=true",
+			fakeReturns:  nil,
+			expectedCode: http.StatusBadRequest,
+			expectedErr:  errors.New("cannot remove: too many query keys"),
+		},
+		{
+			name:         "bad query - value",
+			channel:      "my-channel",
+			query:        channelparticipation.RemoveStorageQueryKey + "=10",
+			fakeReturns:  nil,
+			expectedCode: http.StatusBadRequest,
+			expectedErr:  errors.New("cannot remove: invalid query parameter: strconv.ParseBool: parsing \"10\": invalid syntax"),
+		},
+		{
+			name:         "bad query - too many parameters",
+			channel:      "my-channel",
+			query:        channelparticipation.RemoveStorageQueryKey + "=true&" + channelparticipation.RemoveStorageQueryKey + "=false",
+			fakeReturns:  nil,
+			expectedCode: http.StatusBadRequest,
+			expectedErr:  errors.New("cannot remove: too many query parameters"),
+		},
+		{
+			name:         "some other error",
+			channel:      "my-channel",
+			query:        "",
+			fakeReturns:  os.ErrInvalid,
+			expectedCode: http.StatusBadRequest,
+			expectedErr:  errors.Wrap(os.ErrInvalid, "cannot remove"),
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			fakeManager.RemoveChannelReturns(testCase.fakeReturns)
+			resp := httptest.NewRecorder()
+			target := path.Join(channelparticipation.URLBaseV1Channels, testCase.channel) + "?" + testCase.query
+			req := httptest.NewRequest(http.MethodDelete, target, nil)
+			h.ServeHTTP(resp, req)
+
+			if testCase.expectedErr == nil {
+				assert.Equal(t, testCase.expectedCode, resp.Code)
+				assert.Equal(t, 0, resp.Body.Len(), "empty body")
+			} else {
+				checkErrorResponse(t, testCase.expectedCode, testCase.expectedErr.Error(), resp)
+			}
+		})
+	}
+
+	t.Run("Error: System Channel Exists", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.RemoveChannelReturns(types.ErrSystemChannelExists)
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodDelete, path.Join(channelparticipation.URLBaseV1Channels, "my-channel"), nil)
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot remove: system channel exists", resp)
+		assert.Equal(t, "GET", resp.Header().Get("Allow"))
+	})
 }
 
 func setup(config localconfig.ChannelParticipation, t *testing.T) (*mocks.ChannelManagement, *channelparticipation.HTTPHandler) {
