@@ -182,7 +182,7 @@ The `CORE_PEER_ADDRESS` environment variable has been set to target ``peer0.org1
 2020-03-06 17:49:10.060 EST [channelCmd] executeJoin -> INFO 002 Successfully submitted proposal to join channel
 ```
 
-You can verify that the peer has joined the chanel using the [peer channel getinfo](../commands/peerchannel.html#peer-channel-getinfo) command:
+You can verify that the peer has joined the channel using the [peer channel getinfo](../commands/peerchannel.html#peer-channel-getinfo) command:
 ```
 peer channel getinfo -c channel1
 ```

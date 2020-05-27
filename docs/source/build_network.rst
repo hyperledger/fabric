@@ -1179,7 +1179,7 @@ the network pass ``docker-compose-couch.yaml`` as well:
 You can use **abstore** chaincode against the CouchDB state database
 using the steps outlined above, however in order to exercise the CouchDB query
 capabilities you will need to use a chaincode that has data modeled as JSON.
-The sample chaincode **marbles02** has been written to demostrate the queries
+The sample chaincode **marbles02** has been written to demonstrate the queries
 you can issue from your chaincode if you are using a CouchDB database. You can
 locate the **marbles02** chaincode in the ``fabric/examples/chaincode/go``
 directory.

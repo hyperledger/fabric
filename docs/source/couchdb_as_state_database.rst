@@ -132,7 +132,7 @@ Any index in the chaincode’s ``META-INF/statedb/couchdb/indexes`` directory
 will be packaged up with the chaincode for deployment. The index will be deployed
 to a peers channel and chaincode specific database when the chaincode package is
 installed on the peer and the chaincode definition is committed to the channel. If you
-install the chaincode first and then commit the the chaincode definition to the
+install the chaincode first and then commit the chaincode definition to the
 channel, the index will be deployed at commit time. If the chaincode has already
 been defined on the channel and the chaincode package subsequently installed on
 a peer joined to the channel, the index will be deployed at chaincode

@@ -164,7 +164,7 @@ Org3 peer. From the ``addOrg3`` directory, issue the following command:
 
   docker-compose -f docker/docker-compose-org3.yaml up -d
 
-If the command is successful, you will see the the creation of the Org3 peer and
+If the command is successful, you will see the creation of the Org3 peer and
 an instance of the Fabric tools container named Org3CLI:
 
 .. code:: bash
