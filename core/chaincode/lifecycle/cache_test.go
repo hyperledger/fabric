@@ -116,15 +116,17 @@ var _ = Describe("Cache", func() {
 						string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/EndorsementInfo"))),
 						string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/ValidationInfo"))),
 						string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/Collections"))),
+						string(util.ComputeSHA256([]byte("chaincode-sources/fields/chaincode-name#3/PackageID"))),
 					},
 				},
 			},
 			InterestingHashes: map[string]string{
-				string(util.ComputeSHA256([]byte("namespaces/metadata/chaincode-name#3"))):               "chaincode-name",
-				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/Sequence"))):        "chaincode-name",
-				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/EndorsementInfo"))): "chaincode-name",
-				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/ValidationInfo"))):  "chaincode-name",
-				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/Collections"))):     "chaincode-name",
+				string(util.ComputeSHA256([]byte("namespaces/metadata/chaincode-name#3"))):                "chaincode-name",
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/Sequence"))):         "chaincode-name",
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/EndorsementInfo"))):  "chaincode-name",
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/ValidationInfo"))):   "chaincode-name",
+				string(util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#3/Collections"))):      "chaincode-name",
+				string(util.ComputeSHA256([]byte("chaincode-sources/fields/chaincode-name#3/PackageID"))): "chaincode-name",
 			},
 		}
 
@@ -1143,6 +1145,89 @@ var _ = Describe("Cache", func() {
 					Expect(installedCC.References["channel-id"]).To(HaveLen(1))
 				})
 			})
+
+			Context("when an existing chaincode definition with a package is updated", func() {
+
+				BeforeEach(func() {
+					channelCache.Chaincodes["chaincode-name"].InstallInfo = &lifecycle.ChaincodeInstallInfo{
+						Label:     "chaincode-label",
+						PackageID: "packageID",
+					}
+
+					localChaincodes = map[string]*lifecycle.LocalChaincode{
+						string(util.ComputeSHA256(protoutil.MarshalOrPanic(&lb.StateData{
+							Type: &lb.StateData_String_{String_: "packageID"},
+						}))): {
+							References: map[string]map[string]*lifecycle.CachedChaincodeDefinition{
+								"channel-id": {
+									"chaincode-name": channelCache.Chaincodes["chaincode-name"],
+								},
+							},
+							Info: &lifecycle.ChaincodeInstallInfo{
+								Label:     "chaincode-label",
+								PackageID: "packageID",
+							},
+						},
+					}
+					lifecycle.SetLocalChaincodesMap(c, localChaincodes)
+
+					err := resources.Serializer.Serialize(lifecycle.NamespacesName, "chaincode-name", &lifecycle.ChaincodeDefinition{
+						Sequence: 3,
+					}, fakePublicState)
+					Expect(err).NotTo(HaveOccurred())
+				})
+
+				Context("by an approve event with an empty package ID for the current sequence number", func() {
+
+					BeforeEach(func() {
+						approvalTrigger.StateUpdates["_lifecycle"].CollHashUpdates["_implicit_org_my-mspid"] = []*kvrwset.KVWriteHash{
+							{KeyHash: util.ComputeSHA256([]byte("chaincode-sources/fields/chaincode-name#3/PackageID"))},
+						}
+					})
+
+					It("receives the event, cleans up stale chaincode definition references and stops the unreferenced chaincode", func() {
+
+						approve("", "chaincode-name", 3)
+
+						installedCC, err := c.GetInstalledChaincode("packageID")
+						Expect(err).NotTo(HaveOccurred())
+						Expect(installedCC.References["channel-id"]).To(HaveLen(0))
+						Expect(err).NotTo(HaveOccurred())
+
+						fakeLauncher := &mock.ChaincodeLauncher{}
+						go chaincodeCustodian.Work(nil, nil, fakeLauncher)
+						Eventually(fakeLauncher.StopCallCount).Should(Equal(1))
+					})
+				})
+
+				Context("by approve and commit events with an empty package ID for the next sequence number", func() {
+
+					BeforeEach(func() {
+						approvalTrigger.StateUpdates["_lifecycle"].CollHashUpdates["_implicit_org_my-mspid"] = []*kvrwset.KVWriteHash{
+							{KeyHash: util.ComputeSHA256([]byte("chaincode-sources/fields/chaincode-name#4/PackageID"))},
+						}
+
+						definitionTrigger.StateUpdates["_lifecycle"].PublicUpdates[0].Key = "namespaces/fields/chaincode-name/Sequence"
+					})
+
+					It("receives the event, cleans up stale chaincode definition references and stops the unreferenced chaincode", func() {
+
+						approve("", "chaincode-name", 4)
+						define("chaincode-name", 4)
+						c.StateCommitDone("channel-id")
+
+						installedCC, err := c.GetInstalledChaincode("packageID")
+						Expect(err).NotTo(HaveOccurred())
+						Expect(installedCC.References["channel-id"]).To(HaveLen(0))
+						Expect(err).NotTo(HaveOccurred())
+
+						fakeLauncher := &mock.ChaincodeLauncher{}
+						go chaincodeCustodian.Work(nil, nil, fakeLauncher)
+						Eventually(fakeLauncher.StopCallCount).Should(Equal(1))
+					})
+				})
+			})
+
 		})
 	})
 })
