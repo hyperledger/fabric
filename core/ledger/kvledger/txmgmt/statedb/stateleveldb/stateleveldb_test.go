@@ -135,7 +135,7 @@ func TestFullScanIterator(t *testing.T) {
 		env.DBProvider,
 		byte(1),
 		func(dbVal []byte) (*statedb.VersionedValue, error) {
-			return decodeValue(dbVal)
+			return statedb.DecodeValue(dbVal)
 		},
 	)
 }

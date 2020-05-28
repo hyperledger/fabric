@@ -4,16 +4,15 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package stateleveldb
+package statedb
 
 import (
 	proto "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 )
 
 // encodeValue encodes the value, version, and metadata
-func encodeValue(v *statedb.VersionedValue) ([]byte, error) {
+func EncodeValue(v *VersionedValue) ([]byte, error) {
 	return proto.Marshal(
 		&DBValue{
 			Version:  v.Version.ToBytes(),
@@ -24,7 +23,7 @@ func encodeValue(v *statedb.VersionedValue) ([]byte, error) {
 }
 
 // decodeValue decodes the statedb value bytes
-func decodeValue(encodedValue []byte) (*statedb.VersionedValue, error) {
+func DecodeValue(encodedValue []byte) (*VersionedValue, error) {
 	dbValue := &DBValue{}
 	err := proto.Unmarshal(encodedValue, dbValue)
 	if err != nil {
@@ -40,5 +39,5 @@ func decodeValue(encodedValue []byte) (*statedb.VersionedValue, error) {
 	if val == nil {
 		val = []byte{}
 	}
-	return &statedb.VersionedValue{Version: ver, Value: val, Metadata: metadata}, nil
+	return &VersionedValue{Version: ver, Value: val, Metadata: metadata}, nil
 }

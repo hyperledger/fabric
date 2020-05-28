@@ -4,19 +4,18 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package stateleveldb
+package statedb
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEncodeDecodeVersionedValues(t *testing.T) {
-	testdata := []*statedb.VersionedValue{
+	testdata := []*VersionedValue{
 		{
 			Value:   []byte("value0"),
 			Version: version.NewHeight(0, 0),
@@ -44,10 +43,10 @@ func TestEncodeDecodeVersionedValues(t *testing.T) {
 	}
 }
 
-func testEncodeDecodeVersionedValues(t *testing.T, v *statedb.VersionedValue) {
-	encodedVal, err := encodeValue(v)
+func testEncodeDecodeVersionedValues(t *testing.T, v *VersionedValue) {
+	encodedVal, err := EncodeValue(v)
 	assert.NoError(t, err)
-	decodedVal, err := decodeValue(encodedVal)
+	decodedVal, err := DecodeValue(encodedVal)
 	assert.NoError(t, err)
 	assert.Equal(t, v, decodedVal)
 }

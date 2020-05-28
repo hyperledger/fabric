@@ -46,6 +46,6 @@ var (
 	TestEnvDBValueformat = fullScanIteratorValueFormat
 	// TestEnvDBValueDecoder exports the function for decoding the dbvalue bytes
 	TestEnvDBValueDecoder = func(dbValue []byte) (*statedb.VersionedValue, error) {
-		return decodeValue(dbValue)
+		return statedb.DecodeValue(dbValue)
 	}
 )
