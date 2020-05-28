@@ -8,6 +8,7 @@ package lscc
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -82,6 +83,36 @@ func (p *DeployedCCInfoProvider) ChaincodeInfo(channelName, chaincodeName string
 		ExplicitCollectionConfigPkg: collConfigPkg,
 		IsLegacy:                    true,
 	}, nil
+}
+
+// AllChaincodesInfo returns the mapping of chaincode name to DeployedChaincodeInfo for legacy chaincodes
+func (p *DeployedCCInfoProvider) AllChaincodesInfo(channelName string, qe ledger.SimpleQueryExecutor) (map[string]*ledger.DeployedChaincodeInfo, error) {
+	iter, err := qe.GetStateRangeScanIterator(lsccNamespace, "", "")
+	if err != nil {
+		return nil, err
+	}
+	defer iter.Close()
+
+	result := make(map[string]*ledger.DeployedChaincodeInfo)
+	for {
+		entry, err := iter.Next()
+		if err != nil {
+			return nil, err
+		}
+		if entry == nil {
+			break
+		}
+
+		kv := entry.(*queryresult.KV)
+		if !privdata.IsCollectionConfigKey(kv.Key) {
+			deployedccInfo, err := p.ChaincodeInfo(channelName, kv.Key, qe)
+			if err != nil {
+				return nil, err
+			}
+			result[kv.Key] = deployedccInfo
+		}
+	}
+	return result, nil
 }
 
 // AllCollectionsConfigPkg implements function in interface ledger.DeployedChaincodeInfoProvider

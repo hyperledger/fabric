@@ -592,6 +592,8 @@ type DeployedChaincodeInfoProvider interface {
 	UpdatedChaincodes(stateUpdates map[string][]*kvrwset.KVWrite) ([]*ChaincodeLifecycleInfo, error)
 	// ChaincodeInfo returns the info about a deployed chaincode
 	ChaincodeInfo(channelName, chaincodeName string, qe SimpleQueryExecutor) (*DeployedChaincodeInfo, error)
+	// AllChaincodesInfo returns the mapping of chaincode name to DeployedChaincodeInfo for all the deployed chaincodes
+	AllChaincodesInfo(channelName string, qe SimpleQueryExecutor) (map[string]*DeployedChaincodeInfo, error)
 	// CollectionInfo returns the proto msg that defines the named collection. This function can be called for both explicit and implicit collections
 	CollectionInfo(channelName, chaincodeName, collectionName string, qe SimpleQueryExecutor) (*peer.StaticCollectionConfig, error)
 	// ImplicitCollections returns a slice that contains one proto msg for each of the implicit collections
