@@ -35,6 +35,20 @@ func (br *BuildRegistry) BuildStatus(ccid string) (*BuildStatus, bool) {
 	return bs, ok
 }
 
+// ResetBuildStatus returns a new BuildStatus for the ccid. This build status
+// is new and the caller's responsibility. The caller must use external
+// locking to ensure the build status is not reset by another install request
+// and must call Notify with the error (or nil) upon completion.
+func (br *BuildRegistry) ResetBuildStatus(ccid string) *BuildStatus {
+	br.mutex.Lock()
+	defer br.mutex.Unlock()
+
+	bs := NewBuildStatus()
+	br.builds[ccid] = bs
+
+	return bs
+}
+
 type BuildStatus struct {
 	mutex sync.Mutex
 	doneC chan struct{}

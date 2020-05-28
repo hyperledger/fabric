@@ -9,6 +9,7 @@ package lifecycle
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
@@ -308,6 +309,8 @@ type ExternalFunctions struct {
 	InstalledChaincodesLister InstalledChaincodesLister
 	ChaincodeBuilder          ChaincodeBuilder
 	BuildRegistry             *container.BuildRegistry
+	mutex                     sync.Mutex
+	BuildLocks                map[string]sync.Mutex
 }
 
 // CheckCommitReadiness takes a chaincode definition, checks that
@@ -674,11 +677,22 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 		return nil, errors.WithMessage(err, "could not save cc install package")
 	}
 
+	buildLock := ef.getBuildLock(packageID)
+	buildLock.Lock()
+	defer buildLock.Unlock()
+
 	buildStatus, ok := ef.BuildRegistry.BuildStatus(packageID)
-	if !ok {
-		err := ef.ChaincodeBuilder.Build(packageID)
-		buildStatus.Notify(err)
+	if ok {
+		// another invocation of lifecycle has concurrently
+		// installed a chaincode with this package id
+		<-buildStatus.Done()
+		if buildStatus.Err() == nil {
+			return nil, errors.New("chaincode already successfully installed")
+		}
+		buildStatus = ef.BuildRegistry.ResetBuildStatus(packageID)
 	}
+	err = ef.ChaincodeBuilder.Build(packageID)
+	buildStatus.Notify(err)
 	<-buildStatus.Done()
 	if err := buildStatus.Err(); err != nil {
 		ef.Resources.ChaincodeStore.Delete(packageID)
@@ -695,6 +709,22 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 		PackageID: packageID,
 		Label:     pkg.Metadata.Label,
 	}, nil
+}
+
+func (ef *ExternalFunctions) getBuildLock(packageID string) *sync.Mutex {
+	ef.mutex.Lock()
+	defer ef.mutex.Unlock()
+
+	if ef.BuildLocks == nil {
+		ef.BuildLocks = map[string]sync.Mutex{}
+	}
+
+	buildLock, ok := ef.BuildLocks[packageID]
+	if !ok {
+		ef.BuildLocks[packageID] = sync.Mutex{}
+	}
+
+	return &buildLock
 }
 
 // GetInstalledChaincodePackage retrieves the installed chaincode with the given package ID
