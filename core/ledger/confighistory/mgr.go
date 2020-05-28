@@ -8,7 +8,7 @@ package confighistory
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -181,22 +181,26 @@ func (r *Retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*
 // extra bytes. Further, the collection config namespace is not expected to have
 // millions of entries.
 func (r *Retriever) ExportConfigHistory(dir string, newHashFunc snapshot.NewHashFunc) (map[string][]byte, error) {
-	dataFileWriter, err := snapshot.CreateFile(path.Join(dir, snapshotDataFileName), snapshotFileFormat, newHashFunc)
-	if err != nil {
-		return nil, err
-	}
-	defer dataFileWriter.Close()
-
 	nsItr := r.dbHandle.getNamespaceIterator(collectionConfigNamespace)
 	if err := nsItr.Error(); err != nil {
 		return nil, errors.Wrap(err, "internal leveldb error while obtaining db iterator")
 
 	}
 	defer nsItr.Release()
+
 	var numCollectionConfigs uint64 = 0
+	var dataFileWriter *snapshot.FileWriter
+	var err error
 	for nsItr.Next() {
 		if err := nsItr.Error(); err != nil {
 			return nil, errors.Wrap(err, "internal leveldb error while iterating for collection config history")
+		}
+		if numCollectionConfigs == 0 { // first iteration, create the data file
+			dataFileWriter, err = snapshot.CreateFile(filepath.Join(dir, snapshotDataFileName), snapshotFileFormat, newHashFunc)
+			if err != nil {
+				return nil, err
+			}
+			defer dataFileWriter.Close()
 		}
 		if err := dataFileWriter.EncodeBytes(nsItr.Key()); err != nil {
 			return nil, err
@@ -206,12 +210,16 @@ func (r *Retriever) ExportConfigHistory(dir string, newHashFunc snapshot.NewHash
 		}
 		numCollectionConfigs++
 	}
+
+	if dataFileWriter == nil {
+		return nil, nil
+	}
+
 	dataHash, err := dataFileWriter.Done()
 	if err != nil {
 		return nil, err
 	}
-
-	metadataFileWriter, err := snapshot.CreateFile(path.Join(dir, snapshotMetadataFileName), snapshotFileFormat, newHashFunc)
+	metadataFileWriter, err := snapshot.CreateFile(filepath.Join(dir, snapshotMetadataFileName), snapshotFileFormat, newHashFunc)
 	if err != nil {
 		return nil, err
 	}

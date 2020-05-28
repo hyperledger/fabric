@@ -98,6 +98,9 @@ func (c *FileWriter) Done() ([]byte, error) {
 	if err := c.bufWriter.Flush(); err != nil {
 		return nil, errors.Wrapf(err, "error while flushing to the snapshot file: %s ", c.file.Name())
 	}
+	if err := c.file.Sync(); err != nil {
+		return nil, err
+	}
 	if err := c.file.Close(); err != nil {
 		return nil, errors.Wrapf(err, "error while closing the snapshot file: %s ", c.file.Name())
 	}

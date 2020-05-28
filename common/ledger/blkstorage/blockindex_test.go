@@ -12,7 +12,7 @@ import (
 	"hash"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -270,20 +270,27 @@ func TestExportUniqueTxIDs(t *testing.T) {
 	defer blkfileMgrWrapper.close()
 	blkfileMgr := blkfileMgrWrapper.blockfileMgr
 
-	bg, gb := testutil.NewBlockGenerator(t, "myChannel", false)
-	blkfileMgr.addBlock(gb)
-
 	testSnapshotDir := testPath()
 	defer os.RemoveAll(testSnapshotDir)
 
-	// add genesis block and test the exported bytes
-	configTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(gb.Data.Data[0])
-	require.NoError(t, err)
+	// empty store generates no output
 	fileHashes, err := blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
+	require.Empty(t, fileHashes)
+	files, err := ioutil.ReadDir(testSnapshotDir)
+	require.NoError(t, err)
+	require.Len(t, files, 0)
+
+	// add genesis block and test the exported bytes
+	bg, gb := testutil.NewBlockGenerator(t, "myChannel", false)
+	blkfileMgr.addBlock(gb)
+	configTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(gb.Data.Data[0])
+	require.NoError(t, err)
+	fileHashes, err = blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
+	require.NoError(t, err)
 	verifyExportedTxIDs(t, testSnapshotDir, fileHashes, configTxID)
-	os.Remove(path.Join(testSnapshotDir, snapshotDataFileName))
-	os.Remove(path.Join(testSnapshotDir, snapshotMetadataFileName))
+	os.Remove(filepath.Join(testSnapshotDir, snapshotDataFileName))
+	os.Remove(filepath.Join(testSnapshotDir, snapshotMetadataFileName))
 
 	// add block-1 and test the exported bytes
 	block1 := bg.NextBlockWithTxid(
@@ -300,8 +307,8 @@ func TestExportUniqueTxIDs(t *testing.T) {
 	fileHashes, err = blkfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.NoError(t, err)
 	verifyExportedTxIDs(t, testSnapshotDir, fileHashes, "txid-1", "txid-2", "txid-3", configTxID) //"txid-1" appears once, Txids appear in radix sort order
-	os.Remove(path.Join(testSnapshotDir, snapshotDataFileName))
-	os.Remove(path.Join(testSnapshotDir, snapshotMetadataFileName))
+	os.Remove(filepath.Join(testSnapshotDir, snapshotDataFileName))
+	os.Remove(filepath.Join(testSnapshotDir, snapshotMetadataFileName))
 
 	// add block-2 and test the exported bytes
 	block2 := bg.NextBlockWithTxid(
@@ -351,7 +358,7 @@ func TestExportUniqueTxIDsErrorCases(t *testing.T) {
 	defer os.RemoveAll(testSnapshotDir)
 
 	// error during data file creation
-	dataFilePath := path.Join(testSnapshotDir, snapshotDataFileName)
+	dataFilePath := filepath.Join(testSnapshotDir, snapshotDataFileName)
 	_, err := os.Create(dataFilePath)
 	require.NoError(t, err)
 	_, err = blkfileMgrWrapper.blockfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
@@ -361,7 +368,7 @@ func TestExportUniqueTxIDsErrorCases(t *testing.T) {
 	// error during metadata file creation
 	fmt.Printf("testSnapshotDir=%s", testSnapshotDir)
 	require.NoError(t, os.MkdirAll(testSnapshotDir, 0700))
-	metadataFilePath := path.Join(testSnapshotDir, snapshotMetadataFileName)
+	metadataFilePath := filepath.Join(testSnapshotDir, snapshotMetadataFileName)
 	_, err = os.Create(metadataFilePath)
 	require.NoError(t, err)
 	_, err = blkfileMgrWrapper.blockfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
@@ -388,13 +395,13 @@ func verifyExportedTxIDs(t *testing.T, dir string, fileHashes map[string][]byte,
 	require.Contains(t, fileHashes, snapshotDataFileName)
 	require.Contains(t, fileHashes, snapshotMetadataFileName)
 
-	dataFile := path.Join(dir, snapshotDataFileName)
+	dataFile := filepath.Join(dir, snapshotDataFileName)
 	dataFileContent, err := ioutil.ReadFile(dataFile)
 	require.NoError(t, err)
 	dataFileHash := sha256.Sum256(dataFileContent)
 	require.Equal(t, dataFileHash[:], fileHashes[snapshotDataFileName])
 
-	metadataFile := path.Join(dir, snapshotMetadataFileName)
+	metadataFile := filepath.Join(dir, snapshotMetadataFileName)
 	metadataFileContent, err := ioutil.ReadFile(metadataFile)
 	require.NoError(t, err)
 	metadataFileHash := sha256.Sum256(metadataFileContent)
