@@ -485,8 +485,8 @@ Profiles:
     SampleInsecureKafka:
         <<: *ChannelDefaults
         Orderer:
-            OrdererType: kafka
             <<: *OrdererDefaults
+            OrdererType: kafka
         Consortiums:
             SampleConsortium:
                 Organizations:
