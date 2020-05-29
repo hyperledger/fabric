@@ -432,7 +432,7 @@ func getTxInfoFromTransactionBytes(envBytes []byte) (*txInfo, error) {
 
 	if chdr.Type != int32(common.HeaderType_ENDORSER_TRANSACTION) {
 		err := errors.New("header type is not an endorser transaction")
-		logger.Warningf("Invalid transaction type: %s", err)
+		logger.Debugf("Invalid transaction type: %s", err)
 		return nil, err
 	}
 
