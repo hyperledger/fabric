@@ -93,6 +93,7 @@ func getKeysRecursively(base string, getKey viperGetter, nodeKeys map[string]int
 
 func unmarshalJSON(val interface{}) (map[string]string, bool) {
 	mp := map[string]string{}
+
 	s, ok := val.(string)
 	if !ok {
 		logger.Debugf("Unmarshal JSON: value is not a string: %v", val)
@@ -303,7 +304,7 @@ func bccspHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, e
 
 	config := factory.GetDefaultOpts()
 
-	err := mapstructure.Decode(data, config)
+	err := mapstructure.WeakDecode(data, config)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not decode bcssp type")
 	}
