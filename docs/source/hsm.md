@@ -53,7 +53,7 @@ bccsp:
   default: PKCS11
   pkcs11:
     Library: /etc/hyperledger/fabric/libsofthsm2.so
-    Pin: 71811222
+    Pin: "71811222"
     Label: fabric
     hash: SHA2
     security: 256
@@ -134,7 +134,7 @@ You can set up a Fabric CA to use an HSM by making the same edits to the CA serv
     default: PKCS11
     pkcs11:
       Library: /etc/hyperledger/fabric/libsofthsm2.so
-      Pin: 71811222
+      Pin: "71811222"
       Label: fabric
       hash: SHA2
       security: 256
