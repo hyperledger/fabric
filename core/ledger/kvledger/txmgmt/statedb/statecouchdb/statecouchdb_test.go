@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
@@ -1476,4 +1477,145 @@ func TestChannelMetadata_NegativeTests(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedChannelMetadata, savedChannelMetadata)
 	require.Equal(t, expectedChannelMetadata, vdb.channelMetadata)
+}
+
+func TestRangeQueryWithInternalLimitAndPageSize(t *testing.T) {
+	// generateSampleData returns a slice of KVs. The returned value contains 12 KVs for a namespace ns1
+	generateSampleData := func() []*statedb.VersionedKV {
+		sampleData := []*statedb.VersionedKV{}
+		ver := version.NewHeight(1, 1)
+		sampleKV := &statedb.VersionedKV{
+			CompositeKey:   statedb.CompositeKey{Namespace: "ns1", Key: string('\u0000')},
+			VersionedValue: statedb.VersionedValue{Value: []byte("v0"), Version: ver, Metadata: []byte("m0")},
+		}
+		sampleData = append(sampleData, sampleKV)
+		for i := 0; i < 10; i++ {
+			sampleKV = &statedb.VersionedKV{
+				CompositeKey: statedb.CompositeKey{
+					Namespace: "ns1",
+					Key:       fmt.Sprintf("key-%d", i),
+				},
+				VersionedValue: statedb.VersionedValue{
+					Value:    []byte(fmt.Sprintf("value-for-key-%d-for-ns1", i)),
+					Version:  ver,
+					Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-ns1", i)),
+				},
+			}
+			sampleData = append(sampleData, sampleKV)
+		}
+		sampleKV = &statedb.VersionedKV{
+			CompositeKey:   statedb.CompositeKey{Namespace: "ns1", Key: string(utf8.MaxRune)},
+			VersionedValue: statedb.VersionedValue{Value: []byte("v1"), Version: ver, Metadata: []byte("m1")},
+		}
+		sampleData = append(sampleData, sampleKV)
+		return sampleData
+	}
+
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
+	channelName := "ch1"
+	vdb, err := vdbEnv.DBProvider.GetDBHandle(channelName)
+	require.NoError(t, err)
+	db := vdb.(*VersionedDB)
+
+	sampleData := generateSampleData()
+	batch := statedb.NewUpdateBatch()
+	for _, d := range sampleData {
+		batch.PutValAndMetadata(d.Namespace, d.Key, d.Value, d.Metadata, d.Version)
+	}
+	db.ApplyUpdates(batch, version.NewHeight(1, 1))
+
+	defaultLimit := vdbEnv.config.InternalQueryLimit
+
+	// Scenario 1: We try to fetch either 11 records or all 12 records. We pass various internalQueryLimits.
+	// key utf8.MaxRune would not be included as inclusive_end is always set to false
+	testRangeQueryWithInternalLimit(t, "ns1", db, 2, string('\u0000'), string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithInternalLimit(t, "ns1", db, 5, string('\u0000'), string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithInternalLimit(t, "ns1", db, 2, string('\u0000'), "", sampleData)
+	testRangeQueryWithInternalLimit(t, "ns1", db, 5, string('\u0000'), "", sampleData)
+	testRangeQueryWithInternalLimit(t, "ns1", db, 2, "", string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithInternalLimit(t, "ns1", db, 5, "", string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithInternalLimit(t, "ns1", db, 2, "", "", sampleData)
+	testRangeQueryWithInternalLimit(t, "ns1", db, 5, "", "", sampleData)
+
+	// Scenario 2: We try to fetch either 11 records or all 12 records using pagination. We pass various page sizes while
+	// keeping the internalQueryLimit as the default one, i.e., 1000.
+	vdbEnv.config.InternalQueryLimit = defaultLimit
+	testRangeQueryWithPageSize(t, "ns1", db, 2, string('\u0000'), string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithPageSize(t, "ns1", db, 15, string('\u0000'), string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithPageSize(t, "ns1", db, 2, string('\u0000'), "", sampleData)
+	testRangeQueryWithPageSize(t, "ns1", db, 15, string('\u0000'), "", sampleData)
+	testRangeQueryWithPageSize(t, "ns1", db, 2, "", string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithPageSize(t, "ns1", db, 15, "", string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithPageSize(t, "ns1", db, 2, "", "", sampleData)
+	testRangeQueryWithPageSize(t, "ns1", db, 15, "", "", sampleData)
+
+	// Scenario 3: We try to fetch either 11 records or all 12 records using pagination. We pass various page sizes while
+	// keeping the internalQueryLimit to 1.
+	vdbEnv.config.InternalQueryLimit = 1
+	testRangeQueryWithPageSize(t, "ns1", db, 2, string('\u0000'), string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithPageSize(t, "ns1", db, 15, string('\u0000'), string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithPageSize(t, "ns1", db, 2, string('\u0000'), "", sampleData)
+	testRangeQueryWithPageSize(t, "ns1", db, 15, string('\u0000'), "", sampleData)
+	testRangeQueryWithPageSize(t, "ns1", db, 2, "", string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithPageSize(t, "ns1", db, 15, "", string(utf8.MaxRune), sampleData[:len(sampleData)-1])
+	testRangeQueryWithPageSize(t, "ns1", db, 2, "", "", sampleData)
+	testRangeQueryWithPageSize(t, "ns1", db, 15, "", "", sampleData)
+}
+
+func testRangeQueryWithInternalLimit(
+	t *testing.T,
+	ns string,
+	db *VersionedDB,
+	limit int,
+	startKey, endKey string,
+	expectedResults []*statedb.VersionedKV,
+) {
+	vdbEnv.config.InternalQueryLimit = limit
+	require.Equal(t, int32(limit), db.couchInstance.internalQueryLimit())
+	itr, err := db.GetStateRangeScanIterator(ns, startKey, endKey)
+	require.NoError(t, err)
+	require.Equal(t, int32(limit), itr.(*queryScanner).queryDefinition.internalQueryLimit)
+	results := []*statedb.VersionedKV{}
+	for {
+		result, err := itr.Next()
+		require.NoError(t, err)
+		if result == nil {
+			itr.Close()
+			break
+		}
+		kv := result.(*statedb.VersionedKV)
+		results = append(results, kv)
+	}
+	require.Equal(t, expectedResults, results)
+}
+
+func testRangeQueryWithPageSize(
+	t *testing.T,
+	ns string,
+	db *VersionedDB,
+	pageSize int,
+	startKey, endKey string,
+	expectedResults []*statedb.VersionedKV,
+) {
+	itr, err := db.GetStateRangeScanIteratorWithPagination(ns, startKey, endKey, int32(pageSize))
+	require.NoError(t, err)
+	results := []*statedb.VersionedKV{}
+	for {
+		result, err := itr.Next()
+		require.NoError(t, err)
+		if result != nil {
+			kv := result.(*statedb.VersionedKV)
+			results = append(results, kv)
+			continue
+		}
+		nextStartKey := itr.GetBookmarkAndClose()
+		if nextStartKey == endKey {
+			break
+		}
+		itr, err = db.GetStateRangeScanIteratorWithPagination(ns, nextStartKey, endKey, int32(pageSize))
+		require.NoError(t, err)
+		continue
+	}
+	require.Equal(t, expectedResults, results)
 }
