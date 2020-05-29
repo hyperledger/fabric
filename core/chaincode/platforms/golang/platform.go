@@ -490,7 +490,6 @@ func distributions() []dist {
 	// pre-populate linux architecutures
 	dists := map[dist]bool{
 		{goos: "linux", goarch: "amd64"}: true,
-		{goos: "linux", goarch: "s390x"}: true,
 	}
 
 	// add local OS and ARCH

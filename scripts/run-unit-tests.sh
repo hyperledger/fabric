@@ -171,11 +171,6 @@ run_tests_with_coverage() {
 }
 
 main() {
-    # explicit exclusions for ppc and s390x
-    if [ "$(uname -m)" == "ppc64le" ] || [ "$(uname -m)" == "s390x" ]; then
-        excluded_packages+=("github.com/hyperledger/fabric/core/chaincode/platforms/java")
-    fi
-
     # default behavior is to run all tests
     local -a package_spec=("${TEST_PKGS:-github.com/hyperledger/fabric/...}")
 
