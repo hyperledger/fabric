@@ -1,6 +1,3 @@
-// +build go1.9,linux,cgo go1.10,darwin,cgo
-// +build !ppc64le
-
 /*
 Copyright SecureKey Technologies Inc. All Rights Reserved.
 
