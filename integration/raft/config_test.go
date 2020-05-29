@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -1107,16 +1108,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, []*nwo.Orderer{o2, o3}, peer, network)
 
 			By("Removing the first orderer from an application channel")
-			extendNetwork(network)
-			certificatesOfOrderers := refreshOrdererPEMs(network)
-			removeConsenter(network, peer, o2, "testchannel", certificatesOfOrderers[0].oldCert)
-
-			certPath := certificatesOfOrderers[0].dstFile
-			keyFile := strings.Replace(certPath, "server.crt", "server.key", -1)
-			err := ioutil.WriteFile(certPath, certificatesOfOrderers[0].oldCert, 0644)
-			Expect(err).To(Not(HaveOccurred()))
-			err = ioutil.WriteFile(keyFile, certificatesOfOrderers[0].oldKey, 0644)
-			Expect(err).To(Not(HaveOccurred()))
+			o1cert, err := ioutil.ReadFile(path.Join(network.OrdererLocalTLSDir(o1), "server.crt"))
+			Expect(err).ToNot(HaveOccurred())
+			removeConsenter(network, peer, o2, "testchannel", o1cert)
 
 			By("Starting the orderer again")
 			ordererRunner := network.OrdererRunner(orderers[0])
@@ -1154,8 +1148,8 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Adding the evicted orderer back to the application channel")
 			addConsenter(network, peer, o2, "testchannel", etcdraft.Consenter{
-				ServerTlsCert: certificatesOfOrderers[0].oldCert,
-				ClientTlsCert: certificatesOfOrderers[0].oldCert,
+				ServerTlsCert: o1cert,
+				ClientTlsCert: o1cert,
 				Host:          "127.0.0.1",
 				Port:          uint32(network.OrdererPort(orderers[0], nwo.ClusterPort)),
 			})
