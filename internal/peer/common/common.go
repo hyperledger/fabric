@@ -135,7 +135,7 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	SetBCCSPKeystorePath()
 	bccspConfig := factory.GetDefaultOpts()
 	if config := viper.Get("peer.BCCSP"); config != nil {
-		err = mapstructure.Decode(config, bccspConfig)
+		err = mapstructure.WeakDecode(config, bccspConfig)
 		if err != nil {
 			return errors.WithMessage(err, "could not decode peer BCCSP configuration")
 		}
