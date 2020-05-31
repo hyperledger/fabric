@@ -16,19 +16,20 @@ import (
 	"testing"
 
 	"github.com/Shopify/sarama"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/orderer/mocks/util"
 	"github.com/spf13/viper"
 )
 
 const Prefix = "VIPERUTIL"
 
-type testSlice struct {
-	Inner struct {
-		Slice []string
-	}
-}
-
 func TestEnvSlice(t *testing.T) {
+	type testSlice struct {
+		Inner struct {
+			Slice []string
+		}
+	}
+
 	envVar := "VIPERUTIL_INNER_SLICE"
 	envVal := "[a, b, c]"
 	os.Setenv(envVar, envVal)
@@ -49,9 +50,7 @@ func TestEnvSlice(t *testing.T) {
 	}
 
 	var uconf testSlice
-
-	err = EnhancedExactUnmarshal(config, &uconf)
-	if err != nil {
+	if err := EnhancedExactUnmarshal(config, &uconf); err != nil {
 		t.Fatalf("Failed to unmarshal with: %s", err)
 	}
 
@@ -62,7 +61,6 @@ func TestEnvSlice(t *testing.T) {
 }
 
 func TestKafkaVersionDecode(t *testing.T) {
-
 	type testKafkaVersion struct {
 		Inner struct {
 			Version sarama.KafkaVersion
@@ -405,7 +403,6 @@ func TestStringFromFileEnv(t *testing.T) {
 	}{
 		{"Override", "---\nInner:\n  Single:\n    File: wrong_file"},
 		{"NoFileElement", "---\nInner:\n  Single:\n"},
-		// {"NoElementAtAll", "---\nInner:\n"}, test case for another time
 	}
 
 	for _, tc := range testCases {
@@ -439,7 +436,6 @@ func TestStringFromFileEnv(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestDecodeOpaqueField(t *testing.T) {
@@ -458,10 +454,49 @@ Hello:
 		Hello struct{ World int }
 	}
 	if err := EnhancedExactUnmarshal(config, &conf); err != nil {
-		t.Fatalf("Error unmashalling: %s", err)
+		t.Fatalf("Error unmarshalling: %s", err)
 	}
 
 	if conf.Foo != "bar" || conf.Hello.World != 42 {
 		t.Fatalf("Incorrect decoding")
+	}
+}
+
+func TestBCCSPDecodeHookOverride(t *testing.T) {
+	type testConfig struct {
+		BCCSP *factory.FactoryOpts
+	}
+	yaml := `
+BCCSP:
+  Default: default-provider
+  SW:
+    Security: 999
+`
+
+	config := viper.New()
+	config.SetEnvPrefix("VIPERUTIL")
+	config.AutomaticEnv()
+	replacer := strings.NewReplacer(".", "_")
+	config.SetEnvKeyReplacer(replacer)
+	config.SetConfigType("yaml")
+
+	overrideVar := "VIPERUTIL_BCCSP_SW_SECURITY"
+	os.Setenv(overrideVar, "1111")
+	defer os.Unsetenv(overrideVar)
+	if err := config.ReadConfig(strings.NewReader(yaml)); err != nil {
+		t.Fatalf("Error reading config: %s", err)
+	}
+
+	var tc testConfig
+	if err := EnhancedExactUnmarshal(config, &tc); err != nil {
+		t.Fatalf("Error unmarshaling: %s", err)
+	}
+
+	if tc.BCCSP == nil || tc.BCCSP.SwOpts == nil {
+		t.Fatalf("expected BCCSP.SW to be non-nil: %#v", tc)
+	}
+
+	if tc.BCCSP.SwOpts.SecLevel != 1111 {
+		t.Fatalf("expected BCCSP.SW.SecLevel to equal 1111 but was %v\n", tc.BCCSP.SwOpts.SecLevel)
 	}
 }
