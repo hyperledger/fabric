@@ -29,6 +29,23 @@ type ChannelInfoShort struct {
 	URL string `json:"url"`
 }
 
+type ClusterRelation string
+
+const (
+	ClusterRelationMember        ClusterRelation = "member"
+	ClusterRelationFollower      ClusterRelation = "follower"
+	ClusterRelationConfigTracker ClusterRelation = "config-tracker"
+	ClusterRelationNone          ClusterRelation = "none"
+)
+
+type Status string
+
+const (
+	StatusActive     Status = "active"
+	StatusOnBoarding Status = "onboarding"
+	StatusInactive   Status = "inactive"
+)
+
 // ChannelInfo carries the response to an HTTP request to List a single channel.
 // This is marshaled into the body of the HTTP response.
 type ChannelInfo struct {
@@ -39,11 +56,11 @@ type ChannelInfo struct {
 	// Whether the orderer is a “member” or ”follower” of the cluster, or "config-tracker" of the cluster, for this channel.
 	// For non cluster consensus types (solo, kafka) it is "none".
 	// Possible values:  “member”, ”follower”, "config-tracker", "none".
-	ClusterRelation string `json:"clusterRelation"`
+	ClusterRelation ClusterRelation `json:"clusterRelation"`
 	// Whether the orderer is ”onboarding”, ”active”, or "inactive", for this channel.
 	// For non cluster consensus types (solo, kafka) it is "active".
 	// Possible values:  “onboarding”, ”active”, "inactive".
-	Status string `json:"status"`
+	Status Status `json:"status"`
 	// Current block height.
 	Height uint64 `json:"height"`
 }

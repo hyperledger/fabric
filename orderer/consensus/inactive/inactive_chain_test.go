@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package inactive_test
 
 import (
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/consensus/inactive"
@@ -27,6 +28,6 @@ func TestInactiveChain(t *testing.T) {
 	assert.False(t, open)
 
 	cRel, status := chain.StatusReport()
-	assert.Equal(t, "config-tracker", cRel)
-	assert.Equal(t, "inactive", status)
+	assert.Equal(t, types.ClusterRelationConfigTracker, cRel)
+	assert.Equal(t, types.StatusInactive, status)
 }

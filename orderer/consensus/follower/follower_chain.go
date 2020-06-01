@@ -8,6 +8,7 @@ package follower
 
 import (
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/orderer/common/types"
 )
 
 //TODO skeleton
@@ -58,8 +59,8 @@ func (c *Chain) Halt() {
 }
 
 // StatusReport returns the ClusterRelation & Status
-func (c *Chain) StatusReport() (string, string) {
-	status := "active"
+func (c *Chain) StatusReport() (types.ClusterRelation, types.Status) {
+	status := types.StatusActive
 	//TODO if (height is >= join-block.height) return "active"; else return "onboarding"
-	return "follower", status
+	return types.ClusterRelationFollower, status
 }

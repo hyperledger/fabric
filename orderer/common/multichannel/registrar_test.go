@@ -291,14 +291,14 @@ func TestCreateChain(t *testing.T) {
 		info, err := manager.ChannelInfo("testchannelid")
 		assert.NoError(t, err)
 		assert.Equal(t,
-			types.ChannelInfo{Name: "testchannelid", URL: "", ClusterRelation: "mock", Status: "test", Height: 1},
+			types.ChannelInfo{Name: "testchannelid", URL: "", ClusterRelation: types.ClusterRelationMember, Status: types.StatusActive, Height: 1},
 			info,
 		)
 
 		info, err = manager.ChannelInfo("mychannel")
 		assert.NoError(t, err)
 		assert.Equal(t,
-			types.ChannelInfo{Name: "mychannel", URL: "", ClusterRelation: "mock", Status: "test", Height: 1},
+			types.ChannelInfo{Name: "mychannel", URL: "", ClusterRelation: types.ClusterRelationMember, Status: types.StatusActive, Height: 1},
 			info,
 		)
 

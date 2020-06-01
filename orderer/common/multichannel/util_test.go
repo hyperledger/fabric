@@ -8,6 +8,7 @@ package multichannel
 
 import (
 	"fmt"
+	"github.com/hyperledger/fabric/orderer/common/types"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/capabilities"
@@ -48,8 +49,8 @@ type mockChainCluster struct {
 	*mockChain
 }
 
-func (c *mockChainCluster) StatusReport() (string, string) {
-	return "mock", "test"
+func (c *mockChainCluster) StatusReport() (types.ClusterRelation, types.Status) {
+	return types.ClusterRelationMember, types.StatusActive
 }
 
 type mockChain struct {

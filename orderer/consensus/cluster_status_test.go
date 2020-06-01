@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package consensus_test
 
 import (
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/consensus"
@@ -15,12 +16,12 @@ import (
 
 func TestStaticStatusReporter(t *testing.T) {
 	staticSR := &consensus.StaticStatusReporter{
-		ClusterRelation: "maybe",
-		Status:          "not-sure",
+		ClusterRelation: types.ClusterRelationNone,
+		Status:          types.StatusActive,
 	}
 
 	var sr consensus.StatusReporter = staticSR // make sure it implements this interface
 	cRel, status := sr.StatusReport()
-	assert.Equal(t, "maybe", cRel)
-	assert.Equal(t, "not-sure", status)
+	assert.Equal(t, types.ClusterRelationNone, cRel)
+	assert.Equal(t, types.StatusActive, status)
 }

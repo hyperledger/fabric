@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -95,7 +96,7 @@ func newChainSupport(
 
 	cs.StatusReporter, ok = cs.Chain.(consensus.StatusReporter)
 	if !ok { // Non-cluster types: solo, kafka
-		cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: "none", Status: "active"}
+		cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: types.ClusterRelationNone, Status: types.StatusActive}
 	}
 
 	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChannelID())

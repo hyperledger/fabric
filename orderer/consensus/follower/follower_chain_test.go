@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package follower_test
 
 import (
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/consensus/follower"
@@ -29,6 +30,6 @@ func TestFollowerChain(t *testing.T) {
 	assert.False(t, open)
 
 	cRel, status := chain.StatusReport()
-	assert.Equal(t, "follower", cRel)
-	assert.True(t, status == "active" || status == "onboarding")
+	assert.Equal(t, types.ClusterRelationFollower, cRel)
+	assert.True(t, status == types.StatusActive || status == types.StatusOnBoarding)
 }
