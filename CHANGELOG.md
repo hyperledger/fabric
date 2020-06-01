@@ -1,3 +1,39 @@
+## "v2.1.1"
+
+* [7be9c62](https://github.com/hyperledger/fabric/commit/7be9c62) _lifecycle ignore previous build failure during install
+* [4cbaeb4](https://github.com/hyperledger/fabric/commit/4cbaeb4) Validate TLS certs during raft consenter addition (#1342)
+* [02fc373](https://github.com/hyperledger/fabric/commit/02fc373) Fixed write_first_app.rst typo
+* [6b7177b](https://github.com/hyperledger/fabric/commit/6b7177b) Ensure backward compatibility of range query rwset
+* [d39afc8](https://github.com/hyperledger/fabric/commit/d39afc8) Update Prereqs for Fabric users
+* [f485b83](https://github.com/hyperledger/fabric/commit/f485b83) [FAB-10879](https://jira.hyperledger.org/browse/FAB-10879) Adding instructions for modifying Commands Reference to the docs README.md
+* [389d616](https://github.com/hyperledger/fabric/commit/389d616) Switch from os.Stat to exec.LookPath
+* [fe7e948](https://github.com/hyperledger/fabric/commit/fe7e948) Fix script help text in the test network document
+* [dff43d2](https://github.com/hyperledger/fabric/commit/dff43d2) fix test network docs typo
+* [c705510](https://github.com/hyperledger/fabric/commit/c705510) Fix the installed binary list in the document
+* [716dc7e](https://github.com/hyperledger/fabric/commit/716dc7e) [FAB-17844](https://jira.hyperledger.org/browse/FAB-17844) Copy symlinks as-is in external builder output
+* [f2bfb58](https://github.com/hyperledger/fabric/commit/f2bfb58) Add export to deploy CC tutorial
+* [6dc13f0](https://github.com/hyperledger/fabric/commit/6dc13f0) Remove adding PWD to path in tutorials
+* [e197020](https://github.com/hyperledger/fabric/commit/e197020) Cherry pick test network tutorial improvements to 2.1
+* [6eec309](https://github.com/hyperledger/fabric/commit/6eec309) Clarify error message when lscc chaincode install fails during build
+* [e765962](https://github.com/hyperledger/fabric/commit/e765962) [FAB-17438](https://jira.hyperledger.org/browse/FAB-17438) Add links to CA deployment Guide from Fabric Deployment Guide
+* [2cac1e2](https://github.com/hyperledger/fabric/commit/2cac1e2) Replace link to removed topic with link to relavent image
+* [2052dd2](https://github.com/hyperledger/fabric/commit/2052dd2) [FAB-17728](https://jira.hyperledger.org/browse/FAB-17728) Add 100ms delay to pkcs11 create session loop after failing to retrieve a session from the HSM session cache
+* [9ce5aeb](https://github.com/hyperledger/fabric/commit/9ce5aeb) Validate session and get new if invalid (#1255)
+* [ba86e48](https://github.com/hyperledger/fabric/commit/ba86e48) Fix misleading doc statement
+* [c66bcda](https://github.com/hyperledger/fabric/commit/c66bcda) Correct HSM environment variables
+* [d1e1cbd](https://github.com/hyperledger/fabric/commit/d1e1cbd) Update enable_cc_lifecycle.md
+* [bde493c](https://github.com/hyperledger/fabric/commit/bde493c) Update old link in command wrappers
+* [971add2](https://github.com/hyperledger/fabric/commit/971add2) Add link to Go contract API to smart contract processing topic
+* [2909e71](https://github.com/hyperledger/fabric/commit/2909e71) Doc that Init is not required if you use the contract API
+* [d25e8ce](https://github.com/hyperledger/fabric/commit/d25e8ce) Replace erroneous double dash
+* [e87c350](https://github.com/hyperledger/fabric/commit/e87c350) Add statement about compliance to HSM docs
+* [a3d4168](https://github.com/hyperledger/fabric/commit/a3d4168) [FAB-17778](https://jira.hyperledger.org/browse/FAB-17778) Force sanitized signatures be canonically built
+* [407afa7](https://github.com/hyperledger/fabric/commit/407afa7) Remove typo from commercial paper tutorial
+* [4abbf5a](https://github.com/hyperledger/fabric/commit/4abbf5a) Add upgrade steps and troubleshooting to deployCC tutorial
+* [6189c3b](https://github.com/hyperledger/fabric/commit/6189c3b) Let users know that anchor peer tx is deprecated
+* [5cf1f96](https://github.com/hyperledger/fabric/commit/5cf1f96) [FAB-17700](https://jira.hyperledger.org/browse/FAB-17700) Fix wrong `docker rmi` in documents
+* [aee43e6](https://github.com/hyperledger/fabric/commit/aee43e6) [FAB-17732](https://jira.hyperledger.org/browse/FAB-17732) HSM clarifications (#1108)
+
 ## "v2.1.0"
 
 * [6cfea8b](https://github.com/hyperledger/fabric/commit/6cfea8b) Add release notes for v2.1.0

@@ -6,11 +6,11 @@
 #
 
 # if version not passed in, default to latest released version
-VERSION=2.1.0
+VERSION=2.1.1
 # if ca version not passed in, default to latest released version
-CA_VERSION=1.4.6
+CA_VERSION=1.4.7
 # current version of thirdparty images (couchdb, kafka and zookeeper) released
-THIRDPARTY_IMAGE_VERSION=0.4.18
+THIRDPARTY_IMAGE_VERSION=0.4.20
 ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
 MARCH=$(uname -m)
 
@@ -23,8 +23,8 @@ printHelp() {
     echo "-s : bypass fabric-samples repo clone"
     echo "-b : bypass download of platform-specific binaries"
     echo
-    echo "e.g. bootstrap.sh 2.1.0 1.4.6 0.4.18 -s"
-    echo "would download docker images and binaries for Fabric v2.1.0 and Fabric CA v1.4.6"
+    echo "e.g. bootstrap.sh 2.1.1 1.4.7 0.4.20 -s"
+    echo "would download docker images and binaries for Fabric v2.1.1 and Fabric CA v1.4.7"
 }
 
 # dockerPull() pulls docker images from fabric and chaincode repositories
@@ -32,7 +32,7 @@ printHelp() {
 # be skipped, since this script doesn't terminate upon errors.
 
 dockerPull() {
-    #three_digit_image_tag is passed in, e.g. "1.4.6"
+    #three_digit_image_tag is passed in, e.g. "1.4.7"
     three_digit_image_tag=$1
     shift
     #two_digit_image_tag is derived, e.g. "1.4", especially useful as a local tag for two digit references to most recent baseos, ccenv, javaenv, nodeenv patch releases
