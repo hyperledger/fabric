@@ -13,9 +13,10 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestEncodeDecode(t *testing.T) {
+func TestEncodeDecodeOfVersionAndMetadata(t *testing.T) {
 	testdata := []*statedb.VersionedValue{
 		{
 			Version: version.NewHeight(1, 2),
@@ -31,12 +32,12 @@ func TestEncodeDecode(t *testing.T) {
 
 	for i, testdatum := range testdata {
 		t.Run(fmt.Sprintf("testcase-newfmt-%d", i),
-			func(t *testing.T) { testEncodeDecode(t, testdatum) },
+			func(t *testing.T) { testEncodeDecodeOfVersionAndMetadata(t, testdatum) },
 		)
 	}
 }
 
-func testEncodeDecode(t *testing.T, v *statedb.VersionedValue) {
+func testEncodeDecodeOfVersionAndMetadata(t *testing.T, v *statedb.VersionedValue) {
 	encodedVerField, err := encodeVersionAndMetadata(v.Version, v.Metadata)
 	assert.NoError(t, err)
 
@@ -44,4 +45,13 @@ func testEncodeDecode(t *testing.T, v *statedb.VersionedValue) {
 	assert.NoError(t, err)
 	assert.Equal(t, v.Version, ver)
 	assert.Equal(t, v.Metadata, metadata)
+}
+
+func TestEncodeDecodeOfValueVersionMetadata(t *testing.T) {
+	val := &ValueVersionMetadata{Value: []byte("val1"), VersionAndMetadata: []byte("metadata1")}
+	encodedVal, err := encodeValueVersionMetadata([]byte("val1"), []byte("metadata1"))
+	require.NoError(t, err)
+	decodedVal, err := decodeValueVersionMetadata(encodedVal)
+	require.NoError(t, err)
+	require.Equal(t, val, decodedVal)
 }

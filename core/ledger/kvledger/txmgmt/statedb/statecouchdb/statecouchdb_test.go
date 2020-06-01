@@ -1619,3 +1619,118 @@ func testRangeQueryWithPageSize(
 	}
 	require.Equal(t, expectedResults, results)
 }
+
+func TestFullScanIterator(t *testing.T) {
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
+
+	commontests.TestFullScanIterator(
+		t,
+		vdbEnv.DBProvider,
+		byte(1),
+		constructVersionedValueForTest,
+	)
+}
+
+func constructVersionedValueForTest(dbVal []byte) (*statedb.VersionedValue, error) {
+	v, err := decodeValueVersionMetadata(dbVal)
+	if err != nil {
+		return nil, err
+	}
+	ver, meta, err := decodeVersionAndMetadata(string(v.VersionAndMetadata))
+	if err != nil {
+		return nil, err
+	}
+	return &statedb.VersionedValue{
+		Value:    v.Value,
+		Version:  ver,
+		Metadata: meta,
+	}, nil
+}
+
+func TestFullScanIteratorDeterministicJSONOutput(t *testing.T) {
+	generateSampleData := func(ns string, sortedJSON bool) []*statedb.VersionedKV {
+		sampleData := []*statedb.VersionedKV{}
+		ver := version.NewHeight(1, 1)
+		for i := 0; i < 10; i++ {
+			sampleKV := &statedb.VersionedKV{
+				CompositeKey: statedb.CompositeKey{
+					Namespace: ns,
+					Key:       fmt.Sprintf("key-%d", i),
+				},
+				VersionedValue: statedb.VersionedValue{
+					Version:  ver,
+					Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-ns1", i)),
+				},
+			}
+			if sortedJSON {
+				sampleKV.Value = []byte(fmt.Sprintf(`{"a":0,"b":0,"c":%d}`, i))
+			} else {
+				sampleKV.Value = []byte(fmt.Sprintf(`{"c":%d,"b":0,"a":0}`, i))
+			}
+			sampleData = append(sampleData, sampleKV)
+		}
+		return sampleData
+	}
+
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
+	channelName := "ch1"
+	vdb, err := vdbEnv.DBProvider.GetDBHandle(channelName)
+	require.NoError(t, err)
+	db := vdb.(*VersionedDB)
+
+	// creating and storing JSON value with sorted keys
+	sampleDataWithSortedJSON := generateSampleData("ns1", true)
+	batch := statedb.NewUpdateBatch()
+	for _, d := range sampleDataWithSortedJSON {
+		batch.PutValAndMetadata(d.Namespace, d.Key, d.Value, d.Metadata, d.Version)
+	}
+	db.ApplyUpdates(batch, version.NewHeight(1, 1))
+
+	retrieveOnlyNs1 := func(ns string) bool {
+		return ns != "ns1"
+	}
+	dbItr, format, err := db.GetFullScanIterator(retrieveOnlyNs1)
+	require.NoError(t, err)
+	require.Equal(t, fullScanIteratorValueFormat, format)
+	require.NotNil(t, dbItr)
+	verifyFullScanIterator(t, dbItr, sampleDataWithSortedJSON)
+
+	// creating and storing JSON value with unsorted JSON-keys
+	sampleDataWithUnsortedJSON := generateSampleData("ns2", false)
+	batch = statedb.NewUpdateBatch()
+	for _, d := range sampleDataWithUnsortedJSON {
+		batch.PutValAndMetadata(d.Namespace, d.Key, d.Value, d.Metadata, d.Version)
+	}
+	db.ApplyUpdates(batch, version.NewHeight(1, 1))
+
+	retrieveOnlyNs2 := func(ns string) bool {
+		return ns != "ns2"
+	}
+	sampleDataWithSortedJSON = generateSampleData("ns2", true)
+	dbItr, format, err = db.GetFullScanIterator(retrieveOnlyNs2)
+	require.NoError(t, err)
+	require.Equal(t, fullScanIteratorValueFormat, format)
+	require.NotNil(t, dbItr)
+	verifyFullScanIterator(t, dbItr, sampleDataWithSortedJSON)
+}
+
+func verifyFullScanIterator(
+	t *testing.T,
+	dbIter statedb.FullScanIterator,
+	expectedResult []*statedb.VersionedKV,
+) {
+	results := []*statedb.VersionedKV{}
+	for {
+		ck, valBytes, err := dbIter.Next()
+		require.NoError(t, err)
+		if ck == nil {
+			break
+		}
+		val, err := constructVersionedValueForTest(valBytes)
+		require.NoError(t, err)
+		results = append(results, &statedb.VersionedKV{CompositeKey: *ck, VersionedValue: *val})
+	}
+	require.Equal(t, expectedResult, results)
+}

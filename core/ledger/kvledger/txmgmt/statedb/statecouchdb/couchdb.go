@@ -152,6 +152,7 @@ type fileDetails struct {
 
 //couchDoc defines the structure for a JSON document value
 type couchDoc struct {
+	id          string
 	jsonValue   []byte
 	attachments []*attachmentInfo
 }

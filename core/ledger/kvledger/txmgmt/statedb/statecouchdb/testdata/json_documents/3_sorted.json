@@ -1,0 +1,64 @@
+{
+  "A": 1,
+  "Backslash": "\\",
+  "Backspace": "\u0008",
+  "CarriageReturn": "\r",
+  "FormFeed": "\u000c",
+  "Newline": "\n",
+  "PublicKey": {
+    "Curve": {
+      "B": 4.105836372515214e+76,
+      "BitSize": 256,
+      "Gx": 4.8439561293906455e+76,
+      "Gy": 3.6134250956749796e+76,
+      "N": 1.1579208921035625e+77,
+      "Name": "P-256",
+      "P": 1.1579208921035625e+77
+    },
+    "X": 1.2713421817418933e+76,
+    "Y": 3.4338776428353404e+76
+  },
+  "Tab": "\t",
+  "Z": 1,
+  "chaincode_spec": {
+    "chaincode_id": {
+      "name": "lscc"
+    },
+    "input": {
+      "Args": [
+        "deploy",
+        "ch1",
+        "\nU\u0008\u0001\u0012I\n=github.com/hyperledger/fabric/examples/chaincode/go/marbles02\u0012\u0005mycc1\u001a\u00010\u001a\u0006\n\u0004init",
+        "",
+        "escc",
+        "vscc"
+      ]
+    },
+    "type": 1
+  },
+  "description": "Information about SBA CIO√¢‚Ç¨‚Ñ¢s ƒ¶ membership ≈í≈Æ≈ß≈∏∆ï∆¢Œ£ in ƒà governance boards.",
+  "ns_read_write_Set": [
+    {
+      "KVRWSet": {
+        "reads": [
+          {
+            "key": "mycc1"
+          }
+        ],
+        "writes": [
+          {
+            "key": "mycc1",
+            "value": "\n\u0005mycc1\u0012\u00010\u001a\u0004escc\"\u0004vscc*\u0017\u0012\u0008\u0012\u0006\u0008\u0001\u0012\u0002\u0008\u0000\u001a\u000b\u0012\t\n\u0007DEFAULT2D\n ��$˞�K݂o�pJ{��_��(\u0015ݮ�\u003e\u001a�c�\tS�\u0012 \u0012V�1\u000e�\u000e��\u0010Q�i�$�VtV\\�\u0018L(�I����F�: E��ؿk�\u003c\u0015�x��F\r�\u0005��C9\u0001�\t�bA\u000e\u0018�5�B\u0019\u0012\u0008\u0012\u0006\u0008\u0001\u0012\u0002\u0008\u0000\u001a\r\u0012\u000b\n\u0007DEFAULT\u0010\u0001"
+          }
+        ]
+      },
+      "Namespace": "lscc"
+    }
+  ],
+  "writes": [
+    {
+      "key": "marble4",
+      "value": "{\"docType\":\"marble\",\"name\":\"marble4\",\"color\":\"blue\",\"size\":70,\"owner\":\"jerry\"}"
+    }
+  ]
+}
