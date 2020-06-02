@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -241,51 +242,71 @@ func ACLValues(acls map[string]string) *StandardConfigValue {
 
 // ValidateCapabilities validates whether the peer can meet the capabilities requirement in the given config block
 func ValidateCapabilities(block *cb.Block, bccsp bccsp.BCCSP) error {
-	envelopeConfig, err := protoutil.ExtractEnvelope(block, 0)
+	cc, err := extractChannelConfig(block, bccsp)
 	if err != nil {
-		return errors.Errorf("failed to %s", err)
+		return err
 	}
-
-	configEnv := &cb.ConfigEnvelope{}
-	_, err = protoutil.UnmarshalEnvelopeOfType(envelopeConfig, cb.HeaderType_CONFIG, configEnv)
-	if err != nil {
-		return errors.Errorf("malformed configuration envelope: %s", err)
-	}
-
-	if configEnv.Config == nil {
-		return errors.New("nil config envelope Config")
-	}
-
-	if configEnv.Config.ChannelGroup == nil {
-		return errors.New("no channel configuration was found in the config block")
-	}
-
-	if configEnv.Config.ChannelGroup.Groups == nil {
-		return errors.New("no channel configuration groups are available")
-	}
-
-	_, exists := configEnv.Config.ChannelGroup.Groups[ApplicationGroupKey]
-	if !exists {
-		return errors.Errorf("invalid configuration block, missing %s "+
-			"configuration group", ApplicationGroupKey)
-	}
-
-	cc, err := NewChannelConfig(configEnv.Config.ChannelGroup, bccsp)
-	if err != nil {
-		return errors.Errorf("no valid channel configuration found due to %s", err)
-	}
-
 	// Check the channel top-level capabilities
 	if err := cc.Capabilities().Supported(); err != nil {
 		return err
 	}
 
 	// Check the application capabilities
-	if err := cc.ApplicationConfig().Capabilities().Supported(); err != nil {
-		return err
+	return cc.ApplicationConfig().Capabilities().Supported()
+}
+
+// ExtractMSPIDsForApplicationOrgs extracts MSPIDs for application organizations
+func ExtractMSPIDsForApplicationOrgs(block *cb.Block, bccsp bccsp.BCCSP) ([]string, error) {
+	cc, err := extractChannelConfig(block, factory.GetDefault())
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	if cc.ApplicationConfig() == nil {
+		return nil, errors.Errorf("could not get application config for the channel")
+	}
+	orgs := cc.ApplicationConfig().Organizations()
+	mspids := make([]string, 0, len(orgs))
+	for _, org := range orgs {
+		mspids = append(mspids, org.MSPID())
+	}
+	return mspids, nil
+}
+
+func extractChannelConfig(block *cb.Block, bccsp bccsp.BCCSP) (*ChannelConfig, error) {
+	envelopeConfig, err := protoutil.ExtractEnvelope(block, 0)
+	if err != nil {
+		return nil, errors.WithMessage(err, "malformed configuration block")
+	}
+
+	configEnv := &cb.ConfigEnvelope{}
+	_, err = protoutil.UnmarshalEnvelopeOfType(envelopeConfig, cb.HeaderType_CONFIG, configEnv)
+	if err != nil {
+		return nil, errors.WithMessage(err, "malformed configuration envelope")
+	}
+
+	if configEnv.Config == nil {
+		return nil, errors.New("no config found in envelope")
+	}
+
+	if configEnv.Config.ChannelGroup == nil {
+		return nil, errors.New("no channel configuration found in the config block")
+	}
+
+	if configEnv.Config.ChannelGroup.Groups == nil {
+		return nil, errors.New("no channel configuration groups are available")
+	}
+
+	_, exists := configEnv.Config.ChannelGroup.Groups[ApplicationGroupKey]
+	if !exists {
+		return nil, errors.Errorf("invalid configuration block, missing %s configuration group", ApplicationGroupKey)
+	}
+
+	cc, err := NewChannelConfig(configEnv.Config.ChannelGroup, bccsp)
+	if err != nil {
+		return nil, errors.WithMessage(err, "no valid channel configuration found")
+	}
+	return cc, nil
 }
 
 // MarshalEtcdRaftMetadata serializes etcd RAFT metadata.
