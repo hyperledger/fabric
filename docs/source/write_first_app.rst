@@ -163,7 +163,7 @@ Enrolling the admin user
 .. note:: The following two sections involve communication with the Certificate
           Authority. You may find it useful to stream the CA logs when running
           the upcoming programs by opening a new terminal shell and running
-          ``docker logs -f ca_peerOrg1``.
+          ``docker logs -f ca_org1``.
 
 When we created the network, an admin user --- literally called ``admin`` ---
 was created as the **registrar** for the certificate authority (CA). Our first
