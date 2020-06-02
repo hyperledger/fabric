@@ -1109,6 +1109,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				By("Removing the first orderer from the application channel")
 				server1CertBytes, err := ioutil.ReadFile(filepath.Join(network.OrdererLocalTLSDir(o1), "server.crt"))
 				Expect(err).To(Not(HaveOccurred()))
+
 				removeConsenter(network, peer, o2, "testchannel", server1CertBytes)
 
 				By("Adding the evicted orderer back to the application channel")

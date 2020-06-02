@@ -1315,7 +1315,7 @@ func (c *Chain) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []b
 
 	active := c.ActiveNodes.Load().([]uint64)
 	if changes.UnacceptableQuorumLoss(active) {
-		return errors.Errorf("%d out of %d nodes are alive, configuration will result in quorum loss", len(active), len(dummyOldConsentersMap))
+		return errors.Errorf("%d out of %d nodes are alive, configuration will result in quorum loss (%s)", len(active), len(dummyOldConsentersMap), changes)
 	}
 
 	return nil

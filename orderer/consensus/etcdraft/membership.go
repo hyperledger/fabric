@@ -67,15 +67,19 @@ func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters
 		addedNodeIndex = i
 		result.AddedNodes = append(result.AddedNodes, c)
 	}
+	fmt.Printf("Add node %d\n", addedNodeIndex)
 
 	var deletedNodeID uint64
 	newConsentersSet := ConsentersToMap(newConsenters)
+	fmt.Printf("New consenters: %+v\n", newConsentersSet)
+	fmt.Printf("Old consenters: %+v\n", oldConsenters)
 	for nodeID, c := range oldConsenters {
 		if _, exists := newConsentersSet[string(c.ClientTlsCert)]; !exists {
 			result.RemovedNodes = append(result.RemovedNodes, c)
 			deletedNodeID = nodeID
 		}
 	}
+	fmt.Printf("delete node %d\n", deletedNodeID)
 
 	switch {
 	case len(result.AddedNodes) == 1 && len(result.RemovedNodes) == 1:
@@ -202,7 +206,7 @@ func parseCertificateFromBytes(cert []byte) (*x509.Certificate, error) {
 
 // Stringer implements fmt.Stringer interface
 func (mc *MembershipChanges) String() string {
-	return fmt.Sprintf("add %d node(s), remove %d node(s)", len(mc.AddedNodes), len(mc.RemovedNodes))
+	return fmt.Sprintf("add %d node(s), remove %d node(s)， ConfChange %+v", len(mc.AddedNodes), len(mc.RemovedNodes), mc.ConfChange)
 }
 
 // Changed indicates whether these changes actually do anything
