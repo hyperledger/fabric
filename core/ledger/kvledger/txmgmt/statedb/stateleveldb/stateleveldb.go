@@ -286,10 +286,9 @@ func (scanner *kvScanner) GetBookmarkAndClose() string {
 }
 
 type fullDBScanner struct {
-	db               *leveldbhelper.DBHandle
-	dbItr            iterator.Iterator
-	toSkip           func(namespace string) bool
-	currentNamespace string
+	db     *leveldbhelper.DBHandle
+	dbItr  iterator.Iterator
+	toSkip func(namespace string) bool
 }
 
 func newFullDBScanner(db *leveldbhelper.DBHandle, skipNamespace func(namespace string) bool) (*fullDBScanner, byte, error) {
@@ -321,13 +320,8 @@ func (s *fullDBScanner) Next() (*statedb.CompositeKey, []byte, error) {
 		}
 
 		switch {
-		case ns == s.currentNamespace:
-			return compositeKey, dbVal, nil
-		// new namespace begins
 		case !s.toSkip(ns):
-			s.currentNamespace = ns
 			return compositeKey, dbVal, nil
-		// skip the new namespace
 		default:
 			s.dbItr.Release()
 			s.dbItr = s.db.GetIterator(dataKeyStarterForNextNamespace(ns), dataKeyStopper)
