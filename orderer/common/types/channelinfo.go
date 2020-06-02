@@ -29,21 +29,36 @@ type ChannelInfoShort struct {
 	URL string `json:"url"`
 }
 
+// ClusterRelation represents the relationship between the orderer and the channel's consensus cluster.
 type ClusterRelation string
 
 const (
-	ClusterRelationMember        ClusterRelation = "member"
-	ClusterRelationFollower      ClusterRelation = "follower"
+	// The orderer is a cluster member of a cluster consensus protocol (e.g. etcdraft) for a specific channel.
+	// That is, the orderer is in the consenters set of the channel.
+	ClusterRelationMember ClusterRelation = "member"
+	// The orderer is following a cluster consensus protocol by pulling blocks from other orderers.
+	// The orderer is NOT in the consenters set of the channel.
+	ClusterRelationFollower ClusterRelation = "follower"
+	// The orderer is NOT in the consenters set of the channel, and is just tracking (polling) the last config block
+	// of the channel in order to detect when it is added to the channel.
 	ClusterRelationConfigTracker ClusterRelation = "config-tracker"
-	ClusterRelationNone          ClusterRelation = "none"
+	// The orderer runs a non-cluster consensus type, solo or kafka.
+	ClusterRelationNone ClusterRelation = "none"
 )
 
+// Status represents the degree by which the orderer had caught up with the rest of the cluster after joining the
+// channel (either as a member or a follower).
 type Status string
 
 const (
-	StatusActive     Status = "active"
+	// The orderer is active in the channel's consensus protocol, or following the cluster,
+	// with block height > the join-block number. (Height is last block number +1).
+	StatusActive Status = "active"
+	// The orderer is catching up with the cluster by pulling blocks from other orderers,
+	// with block height <= the join-block number.
 	StatusOnBoarding Status = "onboarding"
-	StatusInactive   Status = "inactive"
+	// The orderer is not storing any blocks for this channel.
+	StatusInactive Status = "inactive"
 )
 
 // ChannelInfo carries the response to an HTTP request to List a single channel.
