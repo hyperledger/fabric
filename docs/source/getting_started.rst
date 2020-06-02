@@ -49,7 +49,7 @@ In addition, there are two more application SDKs that have not yet been official
   * `Python SDK <https://github.com/hyperledger/fabric-sdk-py>`__.
   * `Go SDK <https://github.com/hyperledger/fabric-sdk-go>`__.
 
-Currently, Node.js and Java support the new application programming model delivered in Hyperledger Fabric v1.4. Support for Go is planned to be delivered in a later release.
+Currently, Node.js, Java and Go support the new application programming model delivered in Hyperledger Fabric v1.4.
 
 Hyperledger Fabric CA
 ^^^^^^^^^^^^^^^^^^^^^
