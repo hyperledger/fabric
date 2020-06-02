@@ -8,6 +8,7 @@ package multichannel
 
 import (
 	"fmt"
+	"github.com/hyperledger/fabric/orderer/common/types"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/capabilities"
@@ -23,16 +24,33 @@ import (
 )
 
 type mockConsenter struct {
+	cluster bool
 }
 
 func (mc *mockConsenter) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
-	return &mockChain{
+	chain := &mockChain{
 		queue:    make(chan *cb.Envelope),
 		cutter:   support.BlockCutter(),
 		support:  support,
 		metadata: metadata,
 		done:     make(chan struct{}),
-	}, nil
+	}
+
+	if mc.cluster {
+		clusterChain := &mockChainCluster{}
+		clusterChain.mockChain = chain
+		return clusterChain, nil
+	}
+
+	return chain, nil
+}
+
+type mockChainCluster struct {
+	*mockChain
+}
+
+func (c *mockChainCluster) StatusReport() (types.ClusterRelation, types.Status) {
+	return types.ClusterRelationMember, types.StatusActive
 }
 
 type mockChain struct {

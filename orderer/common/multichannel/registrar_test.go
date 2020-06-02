@@ -172,7 +172,10 @@ func TestNewRegistrar(t *testing.T) {
 		}, "Should not panic when starting without a system channel")
 		require.NotNil(t, manager)
 		list := manager.ChannelList()
-		assert.Equal(t, types.ChannelList{SystemChannel: nil, Channels: nil}, list)
+		assert.Equal(t, types.ChannelList{}, list)
+		info, err := manager.ChannelInfo("my-channel")
+		assert.EqualError(t, err, types.ErrChannelNotExist.Error())
+		assert.Equal(t, types.ChannelInfo{}, info)
 	})
 
 	// This test checks to make sure that the orderer refuses to come up if there are multiple system channels
@@ -231,6 +234,13 @@ func TestNewRegistrar(t *testing.T) {
 			list,
 		)
 
+		info, err := manager.ChannelInfo("testchannelid")
+		assert.NoError(t, err)
+		assert.Equal(t,
+			types.ChannelInfo{Name: "testchannelid", URL: "", ClusterRelation: "none", Status: "active", Height: 1},
+			info,
+		)
+
 		testMessageOrderAndRetrieval(confSys.Orderer.BatchSize.MaxMessageCount, "testchannelid", chainSupport, rl, t)
 	})
 }
@@ -251,7 +261,7 @@ func TestCreateChain(t *testing.T) {
 		lf, _ := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
 		consenters := make(map[string]consensus.Consenter)
-		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
+		consenters[confSys.Orderer.OrdererType] = &mockConsenter{cluster: true}
 
 		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 		manager.Initialize(consenters)
@@ -278,6 +288,20 @@ func TestCreateChain(t *testing.T) {
 			list,
 		)
 
+		info, err := manager.ChannelInfo("testchannelid")
+		assert.NoError(t, err)
+		assert.Equal(t,
+			types.ChannelInfo{Name: "testchannelid", URL: "", ClusterRelation: types.ClusterRelationMember, Status: types.StatusActive, Height: 1},
+			info,
+		)
+
+		info, err = manager.ChannelInfo("mychannel")
+		assert.NoError(t, err)
+		assert.Equal(t,
+			types.ChannelInfo{Name: "mychannel", URL: "", ClusterRelation: types.ClusterRelationMember, Status: types.StatusActive, Height: 1},
+			info,
+		)
+
 		// A subsequent creation, replaces the chain.
 		manager.CreateChain("mychannel")
 		chain2 := manager.GetChain("mychannel")
@@ -285,11 +309,11 @@ func TestCreateChain(t *testing.T) {
 		// They are not the same
 		assert.NotEqual(t, chain, chain2)
 		// The old chain is halted
-		_, ok := <-chain.Chain.(*mockChain).queue
+		_, ok := <-chain.Chain.(*mockChainCluster).queue
 		assert.False(t, ok)
 
 		// The new chain is not halted: Close the channel to prove that.
-		close(chain2.Chain.(*mockChain).queue)
+		close(chain2.Chain.(*mockChainCluster).queue)
 	})
 
 	// This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain

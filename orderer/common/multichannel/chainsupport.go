@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -34,6 +35,11 @@ type ChainSupport struct {
 	// that there is a single consensus type at this orderer node and therefore the resolution of
 	// the consensus type too happens only at the ChainSupport level.
 	consensus.MetadataValidator
+
+	// The registrar is not aware of the exact type that the Chain is, e.g. etcdraft, inactive, or follower.
+	// Therefore, we let each chain report its cluster relation and status through this interface. Non cluster
+	// type chains (solo, kafka) are assigned a static reporter.
+	consensus.StatusReporter
 }
 
 func newChainSupport(
@@ -86,6 +92,11 @@ func newChainSupport(
 	cs.MetadataValidator, ok = cs.Chain.(consensus.MetadataValidator)
 	if !ok {
 		cs.MetadataValidator = consensus.NoOpMetadataValidator{}
+	}
+
+	cs.StatusReporter, ok = cs.Chain.(consensus.StatusReporter)
+	if !ok { // Non-cluster types: solo, kafka
+		cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: types.ClusterRelationNone, Status: types.StatusActive}
 	}
 
 	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChannelID())

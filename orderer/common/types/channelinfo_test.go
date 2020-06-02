@@ -75,8 +75,8 @@ func TestChannelInfo(t *testing.T) {
 	info := types.ChannelInfo{
 		Name:            "a",
 		URL:             "/api/channels/a",
-		ClusterRelation: "follower",
-		Status:          "active",
+		ClusterRelation: types.ClusterRelationFollower,
+		Status:          types.StatusActive,
 		Height:          uint64(1) << 60,
 	}
 

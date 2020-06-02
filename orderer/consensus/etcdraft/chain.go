@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -1313,6 +1314,11 @@ func (c *Chain) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []b
 	}
 
 	return nil
+}
+
+// StatusReport returns the ClusterRelation & Status
+func (c *Chain) StatusReport() (types.ClusterRelation, types.Status) {
+	return types.ClusterRelationMember, types.StatusActive
 }
 
 func (c *Chain) suspectEviction() bool {

@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
+	orderer_types "github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
@@ -202,6 +203,9 @@ var _ = Describe("Chain", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			chain.Start()
+			cRel, status := chain.StatusReport()
+			Expect(cRel).To(Equal(orderer_types.ClusterRelationMember))
+			Expect(status).To(Equal(orderer_types.StatusActive))
 
 			// When the Raft node bootstraps, it produces a ConfChange
 			// to add itself, which needs to be consumed with Ready().

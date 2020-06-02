@@ -4,20 +4,22 @@ Copyright IBM Corp. 2017 All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package inactive_test
+package follower_test
 
 import (
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"testing"
 
-	"github.com/hyperledger/fabric/orderer/consensus/inactive"
+	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInactiveChain(t *testing.T) {
-	err := errors.New("foo")
-	chain := &inactive.Chain{Err: err}
+//TODO skeleton
+
+func TestFollowerChain(t *testing.T) {
+	err := errors.New("bar")
+	chain := &follower.Chain{Err: err}
 
 	assert.Equal(t, err, chain.Order(nil, 0))
 	assert.Equal(t, err, chain.Configure(nil, 0))
@@ -28,6 +30,6 @@ func TestInactiveChain(t *testing.T) {
 	assert.False(t, open)
 
 	cRel, status := chain.StatusReport()
-	assert.Equal(t, types.ClusterRelationConfigTracker, cRel)
-	assert.Equal(t, types.StatusInactive, status)
+	assert.Equal(t, types.ClusterRelationFollower, cRel)
+	assert.True(t, status == types.StatusActive || status == types.StatusOnBoarding)
 }
