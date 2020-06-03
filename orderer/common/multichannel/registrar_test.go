@@ -505,6 +505,6 @@ func TestBroadcastChannelSupport(t *testing.T) {
 		configTx := makeConfigTxFull("testchannelid", 1)
 		_, _, _, err = registrar.BroadcastChannelSupport(configTx)
 		assert.Error(t, err)
-		assert.Equal(t, "channel creation request not allowed because the orderer system channel is not yet defined", err.Error())
+		assert.Equal(t, "channel creation request not allowed because the orderer system channel is not defined", err.Error())
 	})
 }

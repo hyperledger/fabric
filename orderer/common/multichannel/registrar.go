@@ -235,6 +235,13 @@ func (r *Registrar) SystemChannelID() string {
 	return r.systemChannelID
 }
 
+// SystemChannel returns the ChainSupport for the system channel.
+func (r *Registrar) SystemChannel() *ChainSupport {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	return r.systemChannel
+}
+
 // BroadcastChannelSupport returns the message channel header, whether the message is a config update
 // and the channel resources for a message or an error if the message is not a message which can
 // be processed directly (like CONFIG and ORDERER_TRANSACTION messages)
@@ -247,10 +254,11 @@ func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader
 	cs := r.GetChain(chdr.ChannelId)
 	// New channel creation
 	if cs == nil {
-		if r.systemChannel == nil {
-			return nil, false, nil, errors.New("channel creation request not allowed because the orderer system channel is not yet defined")
+		sysChan := r.SystemChannel()
+		if sysChan == nil {
+			return nil, false, nil, errors.New("channel creation request not allowed because the orderer system channel is not defined")
 		}
-		cs = r.systemChannel
+		cs = sysChan
 	}
 
 	isConfig := false
