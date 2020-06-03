@@ -1,0 +1,62 @@
+{
+  "problems": [
+    {
+      "Asthma": [
+        {}
+      ],
+      "Diabetes": [
+        {
+          "labs": [
+            {
+              "missing_field": "missing_value"
+            }
+          ],
+          "medications": [
+            {
+              "medicationsClasses": [
+                {
+                  "className": [
+                    {
+                      "associatedDrug": [
+                        {
+                          "dose": "",
+                          "name": "asprin",
+                          "strength": "500 mg"
+                        }
+                      ],
+                      "associatedDrug#2": [
+                        {
+                          "dose": "",
+                          "name": "somethingElse",
+                          "strength": "500 mg"
+                        }
+                      ]
+                    }
+                  ],
+                  "className2": [
+                    {
+                      "associatedDrug": [
+                        {
+                          "dose": "",
+                          "name": "asprin",
+                          "strength": "500 mg"
+                        }
+                      ],
+                      "associatedDrug#2": [
+                        {
+                          "dose": "",
+                          "name": "somethingElse",
+                          "strength": "500 mg"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

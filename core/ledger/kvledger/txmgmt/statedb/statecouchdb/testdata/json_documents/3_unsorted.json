@@ -1,0 +1,30 @@
+{
+  "writes": [
+    {
+      "value": "{\"docType\":\"marble\",\"name\":\"marble4\",\"color\":\"blue\",\"size\":70,\"owner\":\"jerry\"}",
+      "key": "marble4"
+    }
+  ],
+  "PublicKey": {
+    "Curve": {
+      "P": 1.1579208921035625e+77,
+      "N": 1.1579208921035625e+77,
+      "B": 4.105836372515214e+76,
+      "Gx": 4.8439561293906455e+76,
+      "Gy": 3.6134250956749796e+76,
+      "BitSize": 256,
+      "Name": "P-256"
+    },
+    "X": 1.2713421817418933e+76,
+    "Y": 3.4338776428353404e+76
+  },
+  "description": "Information about SBA CIO√¢‚Ç¨‚Ñ¢s ƒ¶ membership ≈í≈Æ≈ß≈∏∆ï∆¢Œ£ in ƒà governance boards.",
+  "Z": 1,
+  "A": 1,
+  "Backslash": "\\",
+  "Tab": "\t",
+  "CarriageReturn": "\r",
+  "Newline": "\n",
+  "FormFeed": "\f",
+  "Backspace": "\b"
+}

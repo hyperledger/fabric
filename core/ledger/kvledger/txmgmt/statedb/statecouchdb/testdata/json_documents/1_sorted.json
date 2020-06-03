@@ -1,0 +1,78 @@
+{
+  "batters": {
+    "batter": [
+      null,
+      {
+        "id": "1001",
+        "type": "Regular"
+      },
+      {
+        "id": "1002",
+        "type": "Chocolate"
+      },
+      {
+        "id": "1003",
+        "type": "Blueberry"
+      },
+      {
+        "id": "1004",
+        "type": "Devil's Food"
+      },
+      {
+        "propery": {
+          "color": "blue",
+          "shape": "round"
+        }
+      }
+    ]
+  },
+  "bool": true,
+  "cars": [
+    "BMW",
+    "Fiat",
+    "Ford"
+  ],
+  "id": "0001",
+  "name": "Cake",
+  "num": 1,
+  "ppu": 0.55,
+  "topping": [
+    {
+      "cars": [
+        "BMW",
+        "Fiat",
+        "Ford",
+        null
+      ]
+    },
+    {
+      "id": "5001",
+      "type": "None"
+    },
+    {
+      "id": "5002",
+      "type": "Glazed"
+    },
+    {
+      "id": "5003",
+      "type": "Chocolate"
+    },
+    {
+      "id": "5004",
+      "type": "Maple"
+    },
+    {
+      "id": "5005",
+      "type": "Sugar"
+    },
+    {
+      "id": "5006",
+      "type": "Chocolate with Sprinkles"
+    },
+    {
+      "id": "5007",
+      "type": "Powdered Sugar"
+    }
+  ],
+  "type": "donut"
+}

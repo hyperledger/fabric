@@ -9,6 +9,10 @@ package statecouchdb
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -301,4 +305,53 @@ func removeJSONRevision(jsonValue *[]byte) error {
 		logger.Errorf("Failed to marshal couchdb JSON data: %+v", err)
 	}
 	return err
+}
+
+func sortJSON(v reflect.Value) string {
+	if v.IsNil() {
+		return `null`
+	}
+	for v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
+		v = v.Elem()
+	}
+	var jsonStr string
+
+	switch v.Kind() {
+	case reflect.Map:
+		jsonStr = `{`
+		keys := append([]reflect.Value{}, v.MapKeys()...)
+		sort.Slice(keys, func(i, j int) bool {
+			return keys[i].String() < keys[j].String()
+		})
+		for i, k := range keys {
+			jsonStr += `"` + k.String() + `":`
+			jsonStr += sortJSON(v.MapIndex(k))
+			if i < len(keys)-1 {
+				jsonStr += `,`
+			}
+		}
+		jsonStr += `}`
+	case reflect.String:
+		if v.Type().Name() == "Number" {
+			return fmt.Sprintf(`%v`, v)
+		}
+		return strconv.Quote(v.String())
+	case reflect.Array, reflect.Slice:
+		jsonStr = `[`
+		elements := make([]string, 0, v.Len())
+		for i := 0; i < v.Len(); i++ {
+			elements = append(elements, sortJSON(v.Index(i)))
+		}
+		sort.Strings(elements)
+		for i, e := range elements {
+			jsonStr += e
+			if i < len(elements)-1 {
+				jsonStr += `,`
+			}
+		}
+		jsonStr += `]`
+	case reflect.Bool:
+		return fmt.Sprintf(`%v`, v)
+	}
+	return jsonStr
 }
