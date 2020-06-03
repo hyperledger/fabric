@@ -19,7 +19,7 @@ func signconfigtxCmd(cf *ChannelCmdFactory) *cobra.Command {
 		Short: "Signs a configtx update.",
 		Long:  "Signs the supplied configtx update file in place on the filesystem. Requires '-f'.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return sign(cmd, args, cf)
+			return signConfigTx(cmd, args, cf)
 		},
 	}
 	flagList := []string{
@@ -30,7 +30,7 @@ func signconfigtxCmd(cf *ChannelCmdFactory) *cobra.Command {
 	return signconfigtxCmd
 }
 
-func sign(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
+func signConfigTx(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 	if channelTxFile == "" {
 		return InvalidCreateTx("No configtx file name supplied")
 	}

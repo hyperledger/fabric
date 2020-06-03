@@ -43,6 +43,9 @@ var (
 
 	// fetch related variables
 	bestEffort bool
+
+	// update related variables
+	sign bool
 )
 
 // Cmd returns the cobra command for Node
@@ -81,6 +84,7 @@ func resetFlags() {
 	flags.StringVarP(&outputBlock, "outputBlock", "", common.UndefinedParamValue, `The path to write the genesis block for the channel. (default ./<channelID>.block)`)
 	flags.DurationVarP(&timeout, "timeout", "t", 10*time.Second, "Channel creation timeout")
 	flags.BoolVarP(&bestEffort, "bestEffort", "", false, "Whether fetch requests should ignore errors and return blocks on a best effort basis")
+	flags.BoolVarP(&sign, "sign", "s", true, "Whether update requests should be signed before submitting.")
 }
 
 func attachFlags(cmd *cobra.Command, names []string) {

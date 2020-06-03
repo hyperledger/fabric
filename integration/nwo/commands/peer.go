@@ -742,10 +742,11 @@ func (s SignConfigTx) Args() []string {
 }
 
 type ChannelUpdate struct {
-	ChannelID  string
-	Orderer    string
-	File       string
-	ClientAuth bool
+	ChannelID      string
+	Orderer        string
+	File           string
+	ClientAuth     bool
+	DisableSigning bool
 }
 
 func (c ChannelUpdate) SessionName() string {
@@ -761,6 +762,9 @@ func (c ChannelUpdate) Args() []string {
 	}
 	if c.ClientAuth {
 		args = append(args, "--clientauth")
+	}
+	if c.DisableSigning {
+		args = append(args, "--sign=false")
 	}
 	return args
 }

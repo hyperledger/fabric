@@ -20,7 +20,7 @@ func updateCmd(cf *ChannelCmdFactory) *cobra.Command {
 	updateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "Send a configtx update.",
-		Long:  "Signs and sends the supplied configtx update file to the channel. Requires '-f', '-o', '-c'.",
+		Long:  "Signs and sends the supplied configtx update file to the channel. Requires '-f', '-o', '-c'. Use '--sign=false' to disable signing.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return update(cmd, args, cf)
 		},
@@ -28,6 +28,7 @@ func updateCmd(cf *ChannelCmdFactory) *cobra.Command {
 	flagList := []string{
 		"channelID",
 		"file",
+		"sign",
 	}
 	attachFlags(updateCmd, flagList)
 
@@ -35,7 +36,7 @@ func updateCmd(cf *ChannelCmdFactory) *cobra.Command {
 }
 
 func update(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
-	//the global chainID filled by the "-c" command
+	// the global channelID filled by the "-c" command
 	if channelID == common.UndefinedParamValue {
 		return errors.New("Must supply channel ID")
 	}
@@ -64,19 +65,20 @@ func update(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		return err
 	}
 
-	sCtxEnv, err := sanityCheckAndSignConfigTx(ctxEnv, cf.Signer)
-	if err != nil {
-		return err
+	if sign {
+		ctxEnv, err = sanityCheckAndSignConfigTx(ctxEnv, cf.Signer)
+		if err != nil {
+			return err
+		}
 	}
 
-	var broadcastClient common.BroadcastClient
-	broadcastClient, err = cf.BroadcastFactory()
+	broadcastClient, err := cf.BroadcastFactory()
 	if err != nil {
 		return fmt.Errorf("Error getting broadcast client: %s", err)
 	}
-
 	defer broadcastClient.Close()
-	err = broadcastClient.Send(sCtxEnv)
+
+	err = broadcastClient.Send(ctxEnv)
 	if err != nil {
 		return err
 	}
