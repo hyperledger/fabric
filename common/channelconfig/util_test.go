@@ -7,11 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-config/protolator"
+	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
@@ -294,6 +297,21 @@ func TestValidateCapabilities(t *testing.T) {
 	cfgBlock = createCfgBlockWithUnsupportedCapabilities(t)
 	err = ValidateCapabilities(cfgBlock, cryptoProvider)
 	assert.EqualError(t, err, "Channel capability INCOMPATIBLE_CAPABILITIES is required but not supported")
+}
+
+func TestExtractMSPIDsForApplicationOrgs(t *testing.T) {
+	// load test_configblock.json that contains the application group
+	// and other properties needed to build channel config and extract MSPIDs
+	blockData, err := ioutil.ReadFile("testdata/test_configblock.json")
+	assert.NoError(t, err)
+	block := &common.Block{}
+	protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block)
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+	mspids, err := ExtractMSPIDsForApplicationOrgs(block, cryptoProvider)
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, mspids, []string{"Org1MSP", "Org2MSP"})
 }
 
 func TestMarshalEtcdRaftMetadata(t *testing.T) {
