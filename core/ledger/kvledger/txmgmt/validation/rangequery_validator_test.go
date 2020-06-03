@@ -57,7 +57,7 @@ func testRangeQuery(t *testing.T, testcase string, stateData *statedb.UpdateBatc
 	t.Run(testcase, func(t *testing.T) {
 		testDBEnv := stateleveldb.NewTestVDBEnv(t)
 		defer testDBEnv.Cleanup()
-		db, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
+		db, err := testDBEnv.DBProvider.GetDBHandle("TestDB", nil)
 		assert.NoError(t, err)
 		if stateData != nil {
 			db.ApplyUpdates(stateData, savepoint)

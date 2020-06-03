@@ -8,6 +8,7 @@ package kvledger
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -16,16 +17,80 @@ import (
 	"github.com/hyperledger/fabric-config/protolator"
 	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
-// TestGetAllMSPIDs verifies GetAllMSPIDs by adding and removing organizations to the channel config.
+func TestNamespacesAndCollections(t *testing.T) {
+	channelName := "testnamespacesandcollections"
+	basePath, err := ioutil.TempDir("", "testchannelinfoprovider")
+	require.NoError(t, err)
+	defer os.RemoveAll(basePath)
+	blkStoreProvider, blkStore := openBlockStorage(t, channelName, basePath)
+	defer blkStoreProvider.Close()
+
+	// add genesis block and another config block so that we can retrieve MSPIDs
+	// 3 orgs/MSPIDs are added: SampleOrg/SampleOrg, org1/Org1MSP, org2/Org2MSP
+	genesisBlock, err := test.MakeGenesisBlock(channelName)
+	require.NoError(t, err)
+	require.NoError(t, blkStore.AddBlock(genesisBlock))
+	orgGroups := createTestOrgGroups(t)
+	config := getConfigFromBlock(genesisBlock)
+	config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups["org1"] = orgGroups["org1"]
+	config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups["org2"] = orgGroups["org2"]
+	configEnv := getEnvelopeFromConfig(channelName, config)
+	configBlock := newBlock([]*cb.Envelope{configEnv}, 1, 1, protoutil.BlockHeaderHash(genesisBlock.Header))
+	require.NoError(t, blkStore.AddBlock(configBlock))
+
+	// prepare fakeDeployedCCInfoProvider to create mocked test data
+	deployedccInfo := map[string]*ledger.DeployedChaincodeInfo{
+		"cc1": {
+			Name:                        "cc1",
+			Version:                     "version",
+			Hash:                        []byte("cc1-hash"),
+			ExplicitCollectionConfigPkg: prepareCollectionConfigPackage([]string{"collectionA", "collectionB"}),
+		},
+		"cc2": {
+			Name:    "cc2",
+			Version: "version",
+			Hash:    []byte("cc2-hash"),
+		},
+	}
+	fakeDeployedCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	fakeDeployedCCInfoProvider.NamespacesReturns([]string{"_lifecycle", "lscc"})
+	fakeDeployedCCInfoProvider.AllChaincodesInfoReturns(deployedccInfo, nil)
+	fakeDeployedCCInfoProvider.GenerateImplicitCollectionForOrgStub = func(mspID string) *pb.StaticCollectionConfig {
+		return &pb.StaticCollectionConfig{
+			Name: fmt.Sprintf("_implicit_org_%s", mspID),
+		}
+	}
+
+	// verify NamespacesAndCollections
+	channelInfoProvider := &channelInfoProvider{channelName, blkStore, fakeDeployedCCInfoProvider}
+	expectedNamespacesAndColls := map[string][]string{
+		"cc1":        {"_implicit_org_Org1MSP", "_implicit_org_Org2MSP", "_implicit_org_SampleOrg", "collectionA", "collectionB"},
+		"cc2":        {"_implicit_org_Org1MSP", "_implicit_org_Org2MSP", "_implicit_org_SampleOrg"},
+		"_lifecycle": {"_implicit_org_Org1MSP", "_implicit_org_Org2MSP", "_implicit_org_SampleOrg"},
+		"lscc":       {},
+		"":           {},
+	}
+	namespacesAndColls, err := channelInfoProvider.NamespacesAndCollections(nil)
+	require.NoError(t, err)
+	require.Equal(t, len(expectedNamespacesAndColls), len(namespacesAndColls))
+	for ns, colls := range expectedNamespacesAndColls {
+		require.ElementsMatch(t, colls, namespacesAndColls[ns])
+	}
+}
+
+// TestGetAllMSPIDs verifies getAllMSPIDs by adding and removing organizations to the channel config.
 func TestGetAllMSPIDs(t *testing.T) {
 	channelName := "testgetallmspids"
 	basePath, err := ioutil.TempDir("", "testchannelinfoprovider")
@@ -34,7 +99,7 @@ func TestGetAllMSPIDs(t *testing.T) {
 
 	blkStoreProvider, blkStore := openBlockStorage(t, channelName, basePath)
 	defer blkStoreProvider.Close()
-	channelInfoProvider := &channelInfoProvider{channelName, blkStore}
+	channelInfoProvider := &channelInfoProvider{channelName, blkStore, nil}
 
 	var block *cb.Block
 	var configBlock *cb.Block
@@ -112,7 +177,7 @@ func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
 
 	blkStoreProvider, blkStore := openBlockStorage(t, channelName, basePath)
 	defer blkStoreProvider.Close()
-	channelInfoProvider := &channelInfoProvider{channelName, blkStore}
+	channelInfoProvider := &channelInfoProvider{channelName, blkStore, nil}
 
 	var configBlock *cb.Block
 	var lastBlockNum = uint64(0)
@@ -128,7 +193,7 @@ func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
 	lastConfigBlockNum++
 	configBlock = newBlock([]*cb.Envelope{}, lastBlockNum, lastConfigBlockNum, protoutil.BlockHeaderHash(configBlock.Header))
 	require.NoError(t, blkStore.AddBlock(configBlock))
-	_, err = channelInfoProvider.GetAllMSPIDs()
+	_, err = channelInfoProvider.getAllMSPIDs()
 	require.EqualError(t, err, "malformed configuration block: envelope index out of bounds")
 
 	// test RetrieveBlockByNumber error by using a non-existent block num for config block index
@@ -136,7 +201,7 @@ func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
 	lastConfigBlockNum++
 	configBlock = newBlock(nil, lastBlockNum, lastBlockNum+1, protoutil.BlockHeaderHash(configBlock.Header))
 	require.NoError(t, blkStore.AddBlock(configBlock))
-	_, err = channelInfoProvider.GetAllMSPIDs()
+	_, err = channelInfoProvider.getAllMSPIDs()
 	require.EqualError(t, err, "Entry not found in index")
 
 	// test GetLastConfigIndexFromBlock error by using invalid bytes for LastConfig metadata value
@@ -145,12 +210,12 @@ func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
 	configBlock = newBlock(nil, lastBlockNum, lastConfigBlockNum, protoutil.BlockHeaderHash(configBlock.Header))
 	configBlock.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = []byte("invalid_bytes")
 	require.NoError(t, blkStore.AddBlock(configBlock))
-	_, err = channelInfoProvider.GetAllMSPIDs()
+	_, err = channelInfoProvider.getAllMSPIDs()
 	require.EqualError(t, err, "failed to retrieve metadata: error unmarshaling metadata at index [SIGNATURES]: unexpected EOF")
 
 	// test RetrieveBlockByNumber error (before calling GetLastConfigIndexFromBlock) by closing block store provider
 	blkStoreProvider.Close()
-	_, err = channelInfoProvider.GetAllMSPIDs()
+	_, err = channelInfoProvider.getAllMSPIDs()
 	require.Contains(t, err.Error(), "leveldb: closed")
 }
 
@@ -167,7 +232,7 @@ func openBlockStorage(t *testing.T, channelName string, basePath string) (*blkst
 }
 
 func verifyGetAllMSPIDs(t *testing.T, channelInfoProvider *channelInfoProvider, expectedMSPIDs []string) {
-	mspids, err := channelInfoProvider.GetAllMSPIDs()
+	mspids, err := channelInfoProvider.getAllMSPIDs()
 	require.NoError(t, err)
 	require.ElementsMatch(t, expectedMSPIDs, mspids)
 }
@@ -229,4 +294,18 @@ func createTestOrgGroups(t *testing.T) map[string]*cb.ConfigGroup {
 	protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block)
 	config := getConfigFromBlock(block)
 	return config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups
+}
+
+func prepareCollectionConfigPackage(collNames []string) *pb.CollectionConfigPackage {
+	collConfigs := make([]*pb.CollectionConfig, len(collNames))
+	for i, name := range collNames {
+		collConfigs[i] = &pb.CollectionConfig{
+			Payload: &pb.CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &pb.StaticCollectionConfig{
+					Name: name,
+				},
+			},
+		}
+	}
+	return &pb.CollectionConfigPackage{Config: collConfigs}
 }

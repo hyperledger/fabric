@@ -606,6 +606,8 @@ type DeployedChaincodeInfoProvider interface {
 	CollectionInfo(channelName, chaincodeName, collectionName string, qe SimpleQueryExecutor) (*peer.StaticCollectionConfig, error)
 	// ImplicitCollections returns a slice that contains one proto msg for each of the implicit collections
 	ImplicitCollections(channelName, chaincodeName string, qe SimpleQueryExecutor) ([]*peer.StaticCollectionConfig, error)
+	// GenerateImplicitCollectionForOrg generates implicit collection for the org
+	GenerateImplicitCollectionForOrg(mspid string) *peer.StaticCollectionConfig
 	// AllCollectionsConfigPkg returns a combined collection config pkg that contains both explicit and implicit collections
 	AllCollectionsConfigPkg(channelName, chaincodeName string, qe SimpleQueryExecutor) (*peer.CollectionConfigPackage, error)
 }

@@ -138,7 +138,7 @@ func writeDataFormatVersion(couchInstance *couchInstance, dataformatVersion stri
 }
 
 // GetDBHandle gets the handle to a named database
-func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.VersionedDB, error) {
+func (provider *VersionedDBProvider) GetDBHandle(dbName string, nsProvider statedb.NamespaceProvider) (statedb.VersionedDB, error) {
 	provider.mux.Lock()
 	defer provider.mux.Unlock()
 	vdb := provider.databases[dbName]
@@ -149,6 +149,7 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.Version
 			provider.redoLoggerProvider.newRedoLogger(dbName),
 			dbName,
 			provider.cache,
+			nsProvider,
 		)
 		if err != nil {
 			return nil, err
@@ -184,7 +185,7 @@ type VersionedDB struct {
 }
 
 // newVersionedDB constructs an instance of VersionedDB
-func newVersionedDB(couchInstance *couchInstance, redoLogger *redoLogger, dbName string, cache *cache) (*VersionedDB, error) {
+func newVersionedDB(couchInstance *couchInstance, redoLogger *redoLogger, dbName string, cache *cache, nsProvider statedb.NamespaceProvider) (*VersionedDB, error) {
 	// CreateCouchDatabase creates a CouchDB database object, as well as the underlying database if it does not exist
 	chainName := dbName
 	dbName = constructMetadataDBName(dbName)
@@ -204,20 +205,6 @@ func newVersionedDB(couchInstance *couchInstance, redoLogger *redoLogger, dbName
 		cache:              cache,
 	}
 
-	vdb.channelMetadata, err = vdb.readChannelMetadata()
-	if err != nil {
-		return nil, err
-	}
-	if vdb.channelMetadata == nil {
-		vdb.channelMetadata = &channelMetadata{
-			ChannelName:      chainName,
-			NamespaceDBsInfo: make(map[string]*namespaceDBInfo),
-		}
-		if err = vdb.writeChannelMetadata(); err != nil {
-			return nil, err
-		}
-	}
-
 	logger.Debugf("chain [%s]: checking for redolog record", chainName)
 	redologRecord, err := redoLogger.load()
 	if err != nil {
@@ -225,6 +212,11 @@ func newVersionedDB(couchInstance *couchInstance, redoLogger *redoLogger, dbName
 	}
 	savepoint, err := vdb.GetLatestSavePoint()
 	if err != nil {
+		return nil, err
+	}
+
+	isNewDB := savepoint == nil
+	if err = vdb.initChannelMetadata(isNewDB, nsProvider); err != nil {
 		return nil, err
 	}
 
@@ -727,19 +719,6 @@ func (vdb *VersionedDB) Close() {
 	// no need to close db since a shared couch instance is used
 }
 
-// writeChannelMetadata saves channel metadata to metadataDB
-func (vdb *VersionedDB) writeChannelMetadata() error {
-	couchDoc, err := encodeChannelMetadata(vdb.channelMetadata)
-	if err != nil {
-		return err
-	}
-	if _, err := vdb.metadataDB.saveDoc(channelMetadataDocID, "", couchDoc); err != nil {
-		return err
-	}
-	_, err = vdb.metadataDB.ensureFullCommit()
-	return err
-}
-
 // ensureFullCommitAndRecordSavepoint flushes all the dbs (corresponding to `namespaces`) to disk
 // and Record a savepoint in the metadata db.
 // Couch parallelizes writes in cluster or sharded setup and ordering is not guaranteed.
@@ -819,6 +798,56 @@ func (vdb *VersionedDB) GetLatestSavePoint() (*version.Height, error) {
 	return decodeSavepoint(couchDoc)
 }
 
+// initChannelMetadata initizlizes channelMetadata and build NamespaceDBInfo mapping if not present
+func (vdb *VersionedDB) initChannelMetadata(isNewDB bool, namespaceProvider statedb.NamespaceProvider) error {
+	// create channelMetadata with empty NamespaceDBInfo mapping for a new DB
+	if isNewDB {
+		vdb.channelMetadata = &channelMetadata{
+			ChannelName:      vdb.chainName,
+			NamespaceDBsInfo: make(map[string]*namespaceDBInfo),
+		}
+		return vdb.writeChannelMetadata()
+	}
+
+	// read stored channelMetadata from an existing DB
+	var err error
+	vdb.channelMetadata, err = vdb.readChannelMetadata()
+	if vdb.channelMetadata != nil || err != nil {
+		return err
+	}
+
+	// channelMetadata is not present - this is the case when opening older dbs (e.g., v2.0/v2.1) for the first time
+	// create channelMetadata and build NamespaceDBInfo mapping retroactively
+	vdb.channelMetadata = &channelMetadata{
+		ChannelName:      vdb.chainName,
+		NamespaceDBsInfo: make(map[string]*namespaceDBInfo),
+	}
+	// retrieve existing DB names
+	dbNames, err := vdb.couchInstance.retrieveApplicationDBNames()
+	if err != nil {
+		return err
+	}
+	existingDBNames := make(map[string]struct{}, len(dbNames))
+	for _, dbName := range dbNames {
+		existingDBNames[dbName] = struct{}{}
+	}
+	// get namespaces and add a namespace to channelMetadata only if its DB name already exists
+	namespaces, err := namespaceProvider.PossibleNamespaces(vdb)
+	if err != nil {
+		return err
+	}
+	for _, ns := range namespaces {
+		dbName := constructNamespaceDBName(vdb.chainName, ns)
+		if _, ok := existingDBNames[dbName]; ok {
+			vdb.channelMetadata.NamespaceDBsInfo[ns] = &namespaceDBInfo{
+				Namespace: ns,
+				DBName:    dbName,
+			}
+		}
+	}
+	return vdb.writeChannelMetadata()
+}
+
 // readChannelMetadata returns channel metadata stored in metadataDB
 func (vdb *VersionedDB) readChannelMetadata() (*channelMetadata, error) {
 	var err error
@@ -832,6 +861,19 @@ func (vdb *VersionedDB) readChannelMetadata() (*channelMetadata, error) {
 		return nil, nil
 	}
 	return decodeChannelMetadata(couchDoc)
+}
+
+// writeChannelMetadata saves channel metadata to metadataDB
+func (vdb *VersionedDB) writeChannelMetadata() error {
+	couchDoc, err := encodeChannelMetadata(vdb.channelMetadata)
+	if err != nil {
+		return err
+	}
+	if _, err := vdb.metadataDB.saveDoc(channelMetadataDocID, "", couchDoc); err != nil {
+		return err
+	}
+	_, err = vdb.metadataDB.ensureFullCommit()
+	return err
 }
 
 // GetFullScanIterator implements method in VersionedDB interface. This function returns a

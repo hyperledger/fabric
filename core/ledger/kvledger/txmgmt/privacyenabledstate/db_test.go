@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	testmock "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
@@ -586,4 +587,51 @@ func generateLedgerID(t *testing.T) string {
 	_, err := io.ReadFull(rand.Reader, bytes)
 	assert.NoError(t, err)
 	return fmt.Sprintf("x%s", hex.EncodeToString(bytes))
+}
+
+//go:generate counterfeiter -o mock/channelinfo_provider.go -fake-name ChannelInfoProvider . channelInfoProviderWrapper
+
+// define this interface to break circular dependency
+type channelInfoProviderWrapper interface {
+	channelInfoProvider
+}
+
+func TestPossibleNamespaces(t *testing.T) {
+	namespacesAndCollections := map[string][]string{
+		"cc1":        {"_implicit_org_Org1MSP", "_implicit_org_Org2MSP", "collectionA", "collectionB"},
+		"cc2":        {"_implicit_org_Org1MSP", "_implicit_org_Org2MSP"},
+		"_lifecycle": {"_implicit_org_Org1MSP", "_implicit_org_Org2MSP"},
+		"lscc":       {},
+		"":           {},
+	}
+	expectedNamespaces := []string{
+		"cc1",
+		"cc1$$p_implicit_org_Org1MSP",
+		"cc1$$h_implicit_org_Org1MSP",
+		"cc1$$p_implicit_org_Org2MSP",
+		"cc1$$h_implicit_org_Org2MSP",
+		"cc1$$pcollectionA",
+		"cc1$$hcollectionA",
+		"cc1$$pcollectionB",
+		"cc1$$hcollectionB",
+		"cc2",
+		"cc2$$p_implicit_org_Org1MSP",
+		"cc2$$h_implicit_org_Org1MSP",
+		"cc2$$p_implicit_org_Org2MSP",
+		"cc2$$h_implicit_org_Org2MSP",
+		"_lifecycle",
+		"_lifecycle$$p_implicit_org_Org1MSP",
+		"_lifecycle$$h_implicit_org_Org1MSP",
+		"_lifecycle$$p_implicit_org_Org2MSP",
+		"_lifecycle$$h_implicit_org_Org2MSP",
+		"lscc",
+		"",
+	}
+
+	fakeChannelInfoProvider := &testmock.ChannelInfoProvider{}
+	fakeChannelInfoProvider.NamespacesAndCollectionsReturns(namespacesAndCollections, nil)
+	nsProvider := &namespaceProvider{fakeChannelInfoProvider}
+	namespaces, err := nsProvider.PossibleNamespaces(&statecouchdb.VersionedDB{})
+	require.NoError(t, err)
+	require.ElementsMatch(t, expectedNamespaces, namespaces)
 }

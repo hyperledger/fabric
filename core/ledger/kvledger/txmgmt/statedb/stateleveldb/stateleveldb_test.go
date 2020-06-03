@@ -57,7 +57,7 @@ func testDataKeyEncoding(t *testing.T, dbName string, ns string, key string) {
 func TestQueryOnLevelDB(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	db, err := env.DBProvider.GetDBHandle("testquery")
+	db, err := env.DBProvider.GetDBHandle("testquery", nil)
 	assert.NoError(t, err)
 	db.Open()
 	defer db.Close()
@@ -92,7 +92,7 @@ func TestUtilityFunctions(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
 
-	db, err := env.DBProvider.GetDBHandle("testutilityfunctions")
+	db, err := env.DBProvider.GetDBHandle("testutilityfunctions", nil)
 	assert.NoError(t, err)
 
 	// BytesKeySupported should be true for goleveldb
@@ -149,7 +149,7 @@ func TestFullScanIteratorErrorPropagation(t *testing.T) {
 	initEnv := func() {
 		env = NewTestVDBEnv(t)
 		vdbProvider = env.DBProvider
-		db, err := vdbProvider.GetDBHandle("TestFullScanIteratorErrorPropagation")
+		db, err := vdbProvider.GetDBHandle("TestFullScanIteratorErrorPropagation", nil)
 		require.NoError(t, err)
 		vdb = db.(*versionedDB)
 		cleanup = func() {

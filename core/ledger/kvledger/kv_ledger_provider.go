@@ -333,7 +333,8 @@ func (p *Provider) open(ledgerID string) (ledger.PeerLedger, error) {
 	p.collElgNotifier.registerListener(ledgerID, pvtdataStore)
 
 	// Get the versioned database (state database) for a chain/ledger
-	db, err := p.dbProvider.GetDBHandle(ledgerID)
+	channelInfoProvider := &channelInfoProvider{ledgerID, blockStore, p.collElgNotifier.deployedChaincodeInfoProvider}
+	db, err := p.dbProvider.GetDBHandle(ledgerID, channelInfoProvider)
 	if err != nil {
 		return nil, err
 	}
