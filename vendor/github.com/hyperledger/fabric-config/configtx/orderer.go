@@ -32,8 +32,6 @@ type Orderer struct {
 	// OrdererType is the type of orderer
 	// Options: `Solo`, `Kafka` or `Raft`
 	OrdererType string
-	// Addresses is the list of orderer addresses.
-	Addresses []Address
 	// BatchTimeout is the wait time between transactions.
 	BatchTimeout  time.Duration
 	BatchSize     orderer.BatchSize
@@ -120,12 +118,6 @@ func (o *OrdererGroup) Configuration() (Orderer, error) {
 		return Orderer{}, fmt.Errorf("config contains unknown consensus type '%s'", consensusTypeProto.Type)
 	}
 
-	// ORDERER ADDRESSES
-	ordererAddresses, err := o.getOrdererAddresses()
-	if err != nil {
-		return Orderer{}, err
-	}
-
 	// BATCHSIZE AND TIMEOUT
 	batchSize := &ob.BatchSize{}
 	err = unmarshalConfigValueAtKey(o.ordererGroup, orderer.BatchSizeKey, batchSize)
@@ -176,7 +168,6 @@ func (o *OrdererGroup) Configuration() (Orderer, error) {
 
 	return Orderer{
 		OrdererType:  ordererType,
-		Addresses:    ordererAddresses,
 		BatchTimeout: batchTimeout,
 		BatchSize: orderer.BatchSize{
 			MaxMessageCount:   batchSize.MaxMessageCount,
@@ -191,27 +182,6 @@ func (o *OrdererGroup) Configuration() (Orderer, error) {
 		Policies:      policies,
 		State:         state,
 	}, nil
-}
-
-func (o *OrdererGroup) getOrdererAddresses() ([]Address, error) {
-	ordererAddressesProto := &cb.OrdererAddresses{}
-	err := unmarshalConfigValueAtKey(o.channelGroup, OrdererAddressesKey, ordererAddressesProto)
-	if err != nil {
-		return nil, err
-	}
-
-	var addresses []Address
-
-	for _, a := range ordererAddressesProto.Addresses {
-		host, port, err := parseAddress(a)
-		if err != nil {
-			return nil, err
-		}
-
-		addresses = append(addresses, Address{Host: host, Port: port})
-	}
-
-	return addresses, nil
 }
 
 // Configuration retrieves an existing org's configuration from an
@@ -263,14 +233,6 @@ func (o *OrdererGroup) RemoveOrganization(name string) {
 // SetConfiguration modifies an updated config's Orderer configuration
 // via the passed in Orderer values. It skips updating OrdererOrgGroups and Policies.
 func (o *OrdererGroup) SetConfiguration(ord Orderer) error {
-	// update orderer addresses
-	if len(ord.Addresses) > 0 {
-		err := setValue(o.channelGroup, ordererAddressesValue(ord.Addresses), ordererAdminsPolicyName)
-		if err != nil {
-			return err
-		}
-	}
-
 	// update orderer values
 	err := addOrdererValues(o.ordererGroup, ord)
 	if err != nil {
@@ -517,6 +479,11 @@ func newOrdererGroup(orderer Orderer) (*cb.ConfigGroup, error) {
 
 	// add orderer groups
 	for _, org := range orderer.Organizations {
+		// As of fabric v1.4 we expect new system channels to contain orderer endpoints at the org level
+		if len(org.OrdererEndpoints) == 0 {
+			return nil, fmt.Errorf("orderer endpoints are not defined for org %s", org.Name)
+		}
+
 		ordererGroup.Groups[org.Name], err = newOrdererOrgConfigGroup(org)
 		if err != nil {
 			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
@@ -777,27 +744,6 @@ func unmarshalEtcdRaftMetadata(mdBytes []byte) (orderer.EtcdRaft, error) {
 			SnapshotIntervalSize: etcdRaftMetadata.Options.SnapshotIntervalSize,
 		},
 	}, nil
-}
-
-func getOrdererAddresses(config *cb.Config) ([]Address, error) {
-	ordererAddressesProto := &cb.OrdererAddresses{}
-	err := unmarshalConfigValueAtKey(config.ChannelGroup, OrdererAddressesKey, ordererAddressesProto)
-	if err != nil {
-		return nil, err
-	}
-
-	var addresses []Address
-
-	for _, a := range ordererAddressesProto.Addresses {
-		host, port, err := parseAddress(a)
-		if err != nil {
-			return nil, err
-		}
-
-		addresses = append(addresses, Address{Host: host, Port: port})
-	}
-
-	return addresses, nil
 }
 
 // getOrdererOrg returns the organization config group for an orderer org in the

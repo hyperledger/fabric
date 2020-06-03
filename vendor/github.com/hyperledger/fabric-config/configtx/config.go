@@ -229,15 +229,6 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 		return nil, err
 	}
 
-	if len(channelConfig.Orderer.Addresses) == 0 {
-		return nil, errors.New("orderer endpoints is not defined in channel config")
-	}
-
-	err = setValue(channelGroup, ordererAddressesValue(channelConfig.Orderer.Addresses), ordererAdminsPolicyName)
-	if err != nil {
-		return nil, err
-	}
-
 	if len(channelConfig.Capabilities) == 0 {
 		return nil, errors.New("capabilities is not defined in channel config")
 	}
@@ -306,22 +297,6 @@ func implicitMetaFromString(input string) (*cb.ImplicitMetaPolicy, error) {
 	}
 
 	return res, nil
-}
-
-// ordererAddressesValue returns the a config definition for the orderer addresses.
-// It is a value for the /Channel group.
-func ordererAddressesValue(addresses []Address) *standardConfigValue {
-	var addrs []string
-	for _, a := range addresses {
-		addrs = append(addrs, fmt.Sprintf("%s:%d", a.Host, a.Port))
-	}
-
-	return &standardConfigValue{
-		key: OrdererAddressesKey,
-		value: &cb.OrdererAddresses{
-			Addresses: addrs,
-		},
-	}
 }
 
 // mspValue returns the config definition for an MSP.
