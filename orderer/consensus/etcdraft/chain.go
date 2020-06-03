@@ -1301,7 +1301,10 @@ func (c *Chain) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []b
 	}
 
 	// create the dummy parameters for ComputeMembershipChanges
-	dummyOldBlockMetadata, _ := ReadBlockMetadata(nil, oldMetadata)
+	c.raftMetadataLock.RLock()
+	dummyOldBlockMetadata := proto.Clone(c.opts.BlockMetadata).(*etcdraft.BlockMetadata)
+	c.raftMetadataLock.RUnlock()
+
 	dummyOldConsentersMap := CreateConsentersMap(dummyOldBlockMetadata, oldMetadata)
 	changes, err := ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters, c.support.SharedConfig())
 	if err != nil {
