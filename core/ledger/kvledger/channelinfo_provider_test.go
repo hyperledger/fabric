@@ -32,19 +32,9 @@ func TestGetAllMSPIDs(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(basePath)
 
-	blkStoreProvider, err := blkstorage.NewProvider(
-		blkstorage.NewConf(basePath, maxBlockFileSize),
-		&blkstorage.IndexConfig{AttrsToIndex: attrsToIndex},
-		&disabled.Provider{},
-	)
-	require.NoError(t, err)
+	blkStoreProvider, blkStore := openBlockStorage(t, channelName, basePath)
 	defer blkStoreProvider.Close()
-	blkStore, err := blkStoreProvider.Open(channelName)
-	require.NoError(t, err)
-	channelInfoProvider := &channelInfoProvider{
-		channelName: channelName,
-		blockStore:  blkStore,
-	}
+	channelInfoProvider := &channelInfoProvider{channelName, blkStore}
 
 	var block *cb.Block
 	var configBlock *cb.Block
@@ -112,6 +102,68 @@ func TestGetAllMSPIDs(t *testing.T) {
 	require.Equal(t, 2, len(config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups))
 	require.Contains(t, config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups, "SampleOrg")
 	require.Contains(t, config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups, "org2")
+}
+
+func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
+	channelName := "testgetallmspidsnegativetests"
+	basePath, err := ioutil.TempDir("", "testchannelinfoprovider_negativetests")
+	require.NoError(t, err)
+	defer os.RemoveAll(basePath)
+
+	blkStoreProvider, blkStore := openBlockStorage(t, channelName, basePath)
+	defer blkStoreProvider.Close()
+	channelInfoProvider := &channelInfoProvider{channelName, blkStore}
+
+	var configBlock *cb.Block
+	var lastBlockNum = uint64(0)
+	var lastConfigBlockNum = uint64(0)
+
+	// add genesis block
+	configBlock, err = test.MakeGenesisBlock(channelName)
+	require.NoError(t, err)
+	require.NoError(t, blkStore.AddBlock(configBlock))
+
+	// test ExtractMSPIDsForApplicationOrgs error by having a malformed config block
+	lastBlockNum++
+	lastConfigBlockNum++
+	configBlock = newBlock([]*cb.Envelope{}, lastBlockNum, lastConfigBlockNum, protoutil.BlockHeaderHash(configBlock.Header))
+	require.NoError(t, blkStore.AddBlock(configBlock))
+	_, err = channelInfoProvider.GetAllMSPIDs()
+	require.EqualError(t, err, "malformed configuration block: envelope index out of bounds")
+
+	// test RetrieveBlockByNumber error by using a non-existent block num for config block index
+	lastBlockNum++
+	lastConfigBlockNum++
+	configBlock = newBlock(nil, lastBlockNum, lastBlockNum+1, protoutil.BlockHeaderHash(configBlock.Header))
+	require.NoError(t, blkStore.AddBlock(configBlock))
+	_, err = channelInfoProvider.GetAllMSPIDs()
+	require.EqualError(t, err, "Entry not found in index")
+
+	// test GetLastConfigIndexFromBlock error by using invalid bytes for LastConfig metadata value
+	lastBlockNum++
+	lastConfigBlockNum++
+	configBlock = newBlock(nil, lastBlockNum, lastConfigBlockNum, protoutil.BlockHeaderHash(configBlock.Header))
+	configBlock.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = []byte("invalid_bytes")
+	require.NoError(t, blkStore.AddBlock(configBlock))
+	_, err = channelInfoProvider.GetAllMSPIDs()
+	require.EqualError(t, err, "failed to retrieve metadata: error unmarshaling metadata at index [SIGNATURES]: unexpected EOF")
+
+	// test RetrieveBlockByNumber error (before calling GetLastConfigIndexFromBlock) by closing block store provider
+	blkStoreProvider.Close()
+	_, err = channelInfoProvider.GetAllMSPIDs()
+	require.Contains(t, err.Error(), "leveldb: closed")
+}
+
+func openBlockStorage(t *testing.T, channelName string, basePath string) (*blkstorage.BlockStoreProvider, *blkstorage.BlockStore) {
+	blkStoreProvider, err := blkstorage.NewProvider(
+		blkstorage.NewConf(basePath, maxBlockFileSize),
+		&blkstorage.IndexConfig{AttrsToIndex: attrsToIndex},
+		&disabled.Provider{},
+	)
+	require.NoError(t, err)
+	blkStore, err := blkStoreProvider.Open(channelName)
+	require.NoError(t, err)
+	return blkStoreProvider, blkStore
 }
 
 func verifyGetAllMSPIDs(t *testing.T, channelInfoProvider *channelInfoProvider, expectedMSPIDs []string) {
