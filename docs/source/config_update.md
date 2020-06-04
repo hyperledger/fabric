@@ -1035,7 +1035,7 @@ configtxlator proto_encode --input config_update_in_envelope.json --type common.
 Submit the config update transaction:
 
 ```
-peer channel update -f config_update_in_envelope.pb -c $CH_NAME -o $ORDERER_CONTAINER --tls true --cafile $TLS_ROOT_CA
+peer channel update -f config_update_in_envelope.pb -c $CH_NAME -o $ORDERER_CONTAINER --tls --cafile $TLS_ROOT_CA
 ```
 
 Our config update transaction represents the difference between the original config and the modified one, but the ordering service will translate this into a full channel config.
