@@ -157,7 +157,7 @@ export CORE_PEER_ADDRESS=localhost:7051
 
 You can now create the channel by using the following command:
 ```
-peer channel create -o localhost:7050  --ordererTLSHostnameOverride orderer.example.com -c channel1 -f ./channel-artifacts/channel1.tx --outputBlock ./channel-artifacts/channel1.block --tls true --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+peer channel create -o localhost:7050  --ordererTLSHostnameOverride orderer.example.com -c channel1 -f ./channel-artifacts/channel1.tx --outputBlock ./channel-artifacts/channel1.block --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 ```
 
 The command above provides the path to the channel creation transaction file using the `-f` flag and uses the `-c` flag to specify the channel name. The `-o` flag is used to select the ordering node that will be used to create the channel. The `--cafile` is the path to the TLS certificate of the ordering node. When you run the `peer channel create` command, the `peer` CLI will generate the following response:
