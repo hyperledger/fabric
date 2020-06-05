@@ -1716,6 +1716,72 @@ func TestFullScanIteratorDeterministicJSONOutput(t *testing.T) {
 	verifyFullScanIterator(t, dbItr, sampleDataWithSortedJSON)
 }
 
+func TestFullScanIteratorSkipInternalKeys(t *testing.T) {
+	generateSampleData := func(ns string, keys []string) []*statedb.VersionedKV {
+		sampleData := []*statedb.VersionedKV{}
+		ver := version.NewHeight(1, 1)
+		for i := 0; i < len(keys); i++ {
+			sampleKV := &statedb.VersionedKV{
+				CompositeKey: statedb.CompositeKey{
+					Namespace: ns,
+					Key:       keys[i],
+				},
+				VersionedValue: statedb.VersionedValue{
+					Value:    []byte(fmt.Sprintf("value-for-%s-for-ns1", keys[i])),
+					Version:  ver,
+					Metadata: []byte(fmt.Sprintf("metadata-for-%s-for-ns1", keys[i])),
+				},
+			}
+			sampleData = append(sampleData, sampleKV)
+		}
+		return sampleData
+	}
+
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
+	channelName := "ch1"
+	vdb, err := vdbEnv.DBProvider.GetDBHandle(channelName)
+	require.NoError(t, err)
+	db := vdb.(*VersionedDB)
+
+	keys := []string{channelMetadataDocID, "key-1", "key-2", "key-3", "key-4", "key-5", savepointDocID}
+	sampleData := generateSampleData("ns1", keys)
+	batch := statedb.NewUpdateBatch()
+	for _, d := range sampleData {
+		batch.PutValAndMetadata(d.Namespace, d.Key, d.Value, d.Metadata, d.Version)
+	}
+	db.ApplyUpdates(batch, version.NewHeight(1, 1))
+
+	retrieveOnlyNs1 := func(ns string) bool {
+		return ns != "ns1"
+	}
+	dbItr, format, err := db.GetFullScanIterator(retrieveOnlyNs1)
+	require.NoError(t, err)
+	require.Equal(t, fullScanIteratorValueFormat, format)
+	require.NotNil(t, dbItr)
+	verifyFullScanIterator(t, dbItr, sampleData)
+
+	sampleData = generateSampleData("", keys)
+	batch = statedb.NewUpdateBatch()
+	for _, d := range sampleData {
+		batch.PutValAndMetadata(d.Namespace, d.Key, d.Value, d.Metadata, d.Version)
+	}
+	db.ApplyUpdates(batch, version.NewHeight(1, 1))
+
+	retrieveOnlyEmptyNs := func(ns string) bool {
+		return ns != ""
+	}
+	// remove internal keys such as savepointDocID and channelMetadataDocID
+	// as it is an empty namespace
+	keys = []string{"key-1", "key-2", "key-3", "key-4", "key-5"}
+	sampleData = generateSampleData("", keys)
+	dbItr, format, err = db.GetFullScanIterator(retrieveOnlyEmptyNs)
+	require.NoError(t, err)
+	require.Equal(t, fullScanIteratorValueFormat, format)
+	require.NotNil(t, dbItr)
+	verifyFullScanIterator(t, dbItr, sampleData)
+}
+
 func verifyFullScanIterator(
 	t *testing.T,
 	dbIter statedb.FullScanIterator,

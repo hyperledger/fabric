@@ -857,18 +857,18 @@ func (vdb *VersionedDB) GetFullScanIterator(skipNamespace func(string) bool) (st
 	for _, ns := range namespacesToScan {
 		db, err := vdb.getNamespaceDBHandle(ns)
 		if err != nil {
-			return nil, byte(0), errors.Wrapf(err, "failed to get database handle for the namespace %s", ns)
+			return nil, byte(0), errors.WithMessagef(err, "failed to get database handle for the namespace %s", ns)
 		}
 		dbsToScan = append(dbsToScan, &namespaceDB{ns, db})
 	}
 
-	// some of the databases might contains internal keys.
-	// The scanner must skip these keys.
-	toSkipKeys := map[string]bool{
+	// the database which belong to an empty namespace contains
+	// internal keys. The scanner must skip these keys.
+	toSkipKeysFromEmptyNs := map[string]bool{
 		savepointDocID:       true,
 		channelMetadataDocID: true,
 	}
-	return newDBsScanner(dbsToScan, vdb.couchInstance.internalQueryLimit(), toSkipKeys)
+	return newDBsScanner(dbsToScan, vdb.couchInstance.internalQueryLimit(), toSkipKeysFromEmptyNs)
 }
 
 // applyAdditionalQueryOptions will add additional fields to the query required for query processing
@@ -1046,12 +1046,12 @@ func constructVersionedValue(cv *CacheValue) (*statedb.VersionedValue, error) {
 }
 
 type dbsScanner struct {
-	dbs               []*namespaceDB
-	nextDBToScanIndex int
-	resultItr         *queryScanner
-	currentNamespace  string
-	prefetchLimit     int32
-	toSkipKeys        map[string]bool
+	dbs                   []*namespaceDB
+	nextDBToScanIndex     int
+	resultItr             *queryScanner
+	currentNamespace      string
+	prefetchLimit         int32
+	toSkipKeysFromEmptyNs map[string]bool
 }
 
 type namespaceDB struct {
@@ -1059,26 +1059,26 @@ type namespaceDB struct {
 	db *couchDatabase
 }
 
-func newDBsScanner(dbsToScan []*namespaceDB, prefetchLimit int32, toSkipKeys map[string]bool) (*dbsScanner, byte, error) {
+func newDBsScanner(dbsToScan []*namespaceDB, prefetchLimit int32, toSkipKeysFromEmptyNs map[string]bool) (*dbsScanner, byte, error) {
 	if len(dbsToScan) == 0 {
 		return nil, fullScanIteratorValueFormat, nil
 	}
 	s := &dbsScanner{
-		dbs:           dbsToScan,
-		prefetchLimit: prefetchLimit,
-		toSkipKeys:    toSkipKeys,
+		dbs:                   dbsToScan,
+		prefetchLimit:         prefetchLimit,
+		toSkipKeysFromEmptyNs: toSkipKeysFromEmptyNs,
 	}
-	if err := s.startScanningNextDB(); err != nil {
+	if err := s.beginNextDBScan(); err != nil {
 		return nil, byte(0), err
 	}
 	return s, fullScanIteratorValueFormat, nil
 }
 
-func (s *dbsScanner) startScanningNextDB() error {
+func (s *dbsScanner) beginNextDBScan() error {
 	dbUnderScan := s.dbs[s.nextDBToScanIndex]
 	queryScanner, err := newQueryScanner(dbUnderScan.ns, dbUnderScan.db, "", s.prefetchLimit, 0, "", "", "")
 	if err != nil {
-		return errors.Wrapf(
+		return errors.WithMessagef(
 			err,
 			"failed to create a query scanner for the database %s associated with the namespace %s",
 			dbUnderScan.db.dbName,
@@ -1101,7 +1101,7 @@ func (s *dbsScanner) Next() (*statedb.CompositeKey, []byte, error) {
 	for {
 		couchDoc, err := s.resultItr.next()
 		if err != nil {
-			return nil, nil, errors.Wrapf(
+			return nil, nil, errors.WithMessagef(
 				err,
 				"failed to retrieve the next entry from scanner associated with namespace %s",
 				s.currentNamespace,
@@ -1112,30 +1112,25 @@ func (s *dbsScanner) Next() (*statedb.CompositeKey, []byte, error) {
 			if len(s.dbs) <= s.nextDBToScanIndex {
 				break
 			}
-			if err := s.startScanningNextDB(); err != nil {
+			if err := s.beginNextDBScan(); err != nil {
 				return nil, nil, err
 			}
 			continue
 		}
-		if s.toSkipKeys[couchDoc.id] {
+		if s.currentNamespace == "" && s.toSkipKeysFromEmptyNs[couchDoc.id] {
 			continue
 		}
-		// TODO: for config block, either we need to perform a deserialization and then
-		// a deterministic serialization either here or we need to always serialize the config
-		// block deterministically after the validateAndPrepareBatch in the txmgr before
-		// committing the config block. As we anyway need to rebuild DBs to add channelMetadata,
-		// we can use the opportunity to employ the later approach which is more cleaner.
 		fields, err := validateAndRetrieveFields(couchDoc)
 		if err != nil {
-			return nil, nil, errors.Wrapf(
+			return nil, nil, errors.WithMessagef(
 				err,
 				"failed to validate and retrieve fields from couch doc with id %s",
 				couchDoc.id,
 			)
 		}
-		val, err := encodeValueVersionMetadata(fields.value, fields.versionAndMetadata)
+		dbval, err := encodeValueVersionMetadata(fields.value, fields.versionAndMetadata)
 		if err != nil {
-			return nil, nil, errors.Wrapf(
+			return nil, nil, errors.WithMessagef(
 				err,
 				"failed to encode value [%v] version and metadata [%v]",
 				fields.value,
@@ -1145,7 +1140,7 @@ func (s *dbsScanner) Next() (*statedb.CompositeKey, []byte, error) {
 		return &statedb.CompositeKey{
 			Namespace: s.currentNamespace,
 			Key:       couchDoc.id,
-		}, val, nil
+		}, dbval, nil
 	}
 	return nil, nil, nil
 }

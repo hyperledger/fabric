@@ -48,30 +48,17 @@ func TestKVAndDocConversion(t *testing.T) {
 			Metadata: []byte("metadata2"),
 		},
 	}
-	testKVAndDocConversion(t, keyWithSortedJSONValue)
-
-	keyWithUnsortedJSONValue := &keyValue{
-		"key3", "rev3",
-		&statedb.VersionedValue{
-			// the value is not sorted
-			Value:    []byte(`{"marble":"m1","color":"blue"}`),
-			Version:  version.NewHeight(1, 3),
-			Metadata: []byte("metadata3"),
-		},
+	testData := []*keyValue{
+		keyDelete,
+		keyWithBinaryValue,
+		keyWithSortedJSONValue,
 	}
-	testKVAndDocConversionUnsortedJSON(t, keyWithUnsortedJSONValue, `{"color":"blue","marble":"m1"}`)
-
-	keyWithEmptySpaceInJSONValue := &keyValue{
-		"key4", "rev4",
-		&statedb.VersionedValue{
-			// even empty spaces are removed by json.Marshal
-			Value:    []byte(`{"color": "blue", "marble": "m1"}`),
-			Version:  version.NewHeight(1, 4),
-			Metadata: []byte("metadata4"),
-		},
+	for i := 0; i < len(testData); i++ {
+		t.Run(fmt.Sprintf("testdata-%d", i),
+			func(t *testing.T) {
+				testKVAndDocConversion(t, testData[i])
+			})
 	}
-	// we treat the JSON with empty space as unsorted JSON
-	testKVAndDocConversionUnsortedJSON(t, keyWithEmptySpaceInJSONValue, `{"color":"blue","marble":"m1"}`)
 }
 
 func testKVAndDocConversion(t *testing.T, kv *keyValue) {
@@ -80,34 +67,6 @@ func testKVAndDocConversion(t *testing.T, kv *keyValue) {
 	actualKV, err := couchDocToKeyValue(doc)
 	require.NoError(t, err)
 	require.Equal(t, kv, actualKV)
-}
-
-func testKVAndDocConversionUnsortedJSON(t *testing.T, kv *keyValue, sortedJSON string) {
-	doc, err := keyValToCouchDoc(kv)
-	require.NoError(t, err)
-	actualKV, err := couchDocToKeyValue(doc)
-	require.NoError(t, err)
-	// compare individual items as value field
-	// is expected to differ
-	require.Equal(t, kv.key, actualKV.key)
-	require.Equal(t, kv.revision, actualKV.revision)
-	require.Equal(t, kv.Version, actualKV.Version)
-	require.Equal(t, kv.Metadata, actualKV.Metadata)
-	// value would differ
-	require.NotEqual(t, kv.Value, actualKV.Value)
-	// value in the json form should be equal (key must
-	// match but can be in any order)
-	require.JSONEq(t, string(kv.Value), string(actualKV.Value))
-	// should match the sortedJSON
-	fmt.Println(sortedJSON)
-	fmt.Println(string(actualKV.Value))
-	require.Equal(t, []byte(sortedJSON), actualKV.Value)
-	// let's sort it using marshal and unmarshal
-	jsonDoc := make(jsonValue)
-	json.Unmarshal(kv.Value, &jsonDoc)
-	sortedValue, err := json.Marshal(jsonDoc)
-	require.NoError(t, err)
-	require.Equal(t, sortedValue, actualKV.Value)
 }
 
 func TestSortJSON(t *testing.T) {
