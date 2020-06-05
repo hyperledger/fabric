@@ -1004,7 +1004,6 @@ func (scanner *queryScanner) next() (*couchDoc, error) {
 	}
 	result := scanner.resultsInfo.results[scanner.paginationInfo.cursor]
 	return &couchDoc{
-		id:          result.id,
 		jsonValue:   result.value,
 		attachments: result.attachments,
 	}, nil
@@ -1117,18 +1116,27 @@ func (s *dbsScanner) Next() (*statedb.CompositeKey, []byte, error) {
 			}
 			continue
 		}
-		if s.currentNamespace == "" && s.toSkipKeysFromEmptyNs[couchDoc.id] {
-			continue
+		if s.currentNamespace == "" {
+			key, err := couchDoc.key()
+			if err != nil {
+				return nil, nil, errors.WithMessagef(
+					err,
+					"failed to retrieve key from the couchdoc present in the empty namespace",
+				)
+			}
+			if s.toSkipKeysFromEmptyNs[key] {
+				continue
+			}
 		}
 		fields, err := validateAndRetrieveFields(couchDoc)
 		if err != nil {
 			return nil, nil, errors.WithMessagef(
 				err,
 				"failed to validate and retrieve fields from couch doc with id %s",
-				couchDoc.id,
+				fields.id,
 			)
 		}
-		dbval, err := encodeValueVersionMetadata(fields.value, fields.versionAndMetadata)
+		dbval, err := encodeValueVersionMetadata(fields.value, []byte(fields.versionAndMetadata))
 		if err != nil {
 			return nil, nil, errors.WithMessagef(
 				err,
@@ -1139,7 +1147,7 @@ func (s *dbsScanner) Next() (*statedb.CompositeKey, []byte, error) {
 		}
 		return &statedb.CompositeKey{
 			Namespace: s.currentNamespace,
-			Key:       couchDoc.id,
+			Key:       fields.id,
 		}, dbval, nil
 	}
 	return nil, nil, nil

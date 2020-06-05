@@ -19,16 +19,6 @@ import (
 )
 
 func TestKVAndDocConversion(t *testing.T) {
-	keyDelete := &keyValue{
-		"key0", "rev0",
-		&statedb.VersionedValue{
-			Value:    nil,
-			Version:  version.NewHeight(1, 0),
-			Metadata: nil,
-		},
-	}
-	testKVAndDocConversion(t, keyDelete)
-
 	keyWithBinaryValue := &keyValue{
 		"key1", "rev1",
 		&statedb.VersionedValue{
@@ -37,7 +27,6 @@ func TestKVAndDocConversion(t *testing.T) {
 			Metadata: []byte("metadata1"),
 		},
 	}
-	testKVAndDocConversion(t, keyWithBinaryValue)
 
 	keyWithSortedJSONValue := &keyValue{
 		"key2", "rev2",
@@ -49,7 +38,6 @@ func TestKVAndDocConversion(t *testing.T) {
 		},
 	}
 	testData := []*keyValue{
-		keyDelete,
 		keyWithBinaryValue,
 		keyWithSortedJSONValue,
 	}

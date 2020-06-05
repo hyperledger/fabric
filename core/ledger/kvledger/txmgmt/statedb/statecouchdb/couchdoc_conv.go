@@ -71,12 +71,12 @@ func couchDocToKeyValue(doc *couchDoc) (*keyValue, error) {
 	if err != nil {
 		return nil, err
 	}
-	version, metadata, err := decodeVersionAndMetadata(string(docFields.versionAndMetadata))
+	version, metadata, err := decodeVersionAndMetadata(docFields.versionAndMetadata)
 	if err != nil {
 		return nil, err
 	}
 	return &keyValue{
-		doc.id, docFields.revision,
+		docFields.id, docFields.revision,
 		&statedb.VersionedValue{
 			Value:    docFields.value,
 			Version:  version,
@@ -86,9 +86,10 @@ func couchDocToKeyValue(doc *couchDoc) (*keyValue, error) {
 }
 
 type couchDocFields struct {
+	id                 string
 	revision           string
 	value              []byte
-	versionAndMetadata []byte
+	versionAndMetadata string
 }
 
 func validateAndRetrieveFields(doc *couchDoc) (*couchDocFields, error) {
@@ -100,22 +101,19 @@ func validateAndRetrieveFields(doc *couchDoc) (*couchDocFields, error) {
 	}
 
 	docFields := &couchDocFields{}
+	docFields.id = jsonDoc[idField].(string)
 	if jsonDoc[revField] != nil {
 		docFields.revision = jsonDoc[revField].(string)
 	}
 	if jsonDoc[versionField] == nil {
 		return nil, fmt.Errorf("version field %s was not found", versionField)
 	}
-	docFields.versionAndMetadata = []byte(jsonDoc[versionField].(string))
+	docFields.versionAndMetadata = jsonDoc[versionField].(string)
 
 	delete(jsonDoc, idField)
 	delete(jsonDoc, revField)
 	delete(jsonDoc, versionField)
 
-	if jsonDoc[deletedField] != nil {
-		docFields.value = nil
-		return docFields, nil
-	}
 	var err error
 	if doc.attachments == nil {
 		docFields.value, err = json.Marshal(jsonDoc)
@@ -184,7 +182,6 @@ func keyValToCouchDoc(kv *keyValue) (*couchDoc, error) {
 		attachments := append([]*attachmentInfo{}, attachment)
 		couchDoc.attachments = attachments
 	}
-	couchDoc.id = kv.key
 	return couchDoc, nil
 }
 
