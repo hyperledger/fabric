@@ -1656,3 +1656,20 @@ func TestURLWithSpecialCharacters(t *testing.T) {
 	assert.Equal(t, database, dbInfo.DbName)
 
 }
+
+func TestCouchDocKey(t *testing.T) {
+	m := make(jsonValue)
+	m[idField] = "key-1"
+	m[revField] = "rev-1"
+	m["a"] = "b"
+	json, err := json.Marshal(m)
+	require.NoError(t, err)
+	doc := &couchDoc{jsonValue: json}
+	actualKey, err := doc.key()
+	require.NoError(t, err)
+	require.Equal(t, "key-1", actualKey)
+
+	doc = &couchDoc{jsonValue: []byte("random")}
+	_, err = doc.key()
+	require.Error(t, err)
+}

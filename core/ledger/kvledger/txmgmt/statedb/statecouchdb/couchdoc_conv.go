@@ -9,6 +9,7 @@ package statecouchdb
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -66,58 +67,64 @@ func (v jsonValue) toBytes() ([]byte, error) {
 }
 
 func couchDocToKeyValue(doc *couchDoc) (*keyValue, error) {
-	// initialize the return value
-	var returnValue []byte
-	var err error
-	// create a generic map unmarshal the json
-	jsonResult := make(map[string]interface{})
-	decoder := json.NewDecoder(bytes.NewBuffer(doc.jsonValue))
-	decoder.UseNumber()
-	if err = decoder.Decode(&jsonResult); err != nil {
-		return nil, err
-	}
-	// verify the version field exists
-	if _, fieldFound := jsonResult[versionField]; !fieldFound {
-		return nil, errors.Errorf("version field %s was not found", versionField)
-	}
-	key := jsonResult[idField].(string)
-	// create the return version from the version field in the JSON
-
-	returnVersion, returnMetadata, err := decodeVersionAndMetadata(jsonResult[versionField].(string))
+	docFields, err := validateAndRetrieveFields(doc)
 	if err != nil {
 		return nil, err
 	}
-	var revision string
-	if jsonResult[revField] != nil {
-		revision = jsonResult[revField].(string)
-	}
-
-	// remove the _id, _rev and version fields
-	delete(jsonResult, idField)
-	delete(jsonResult, revField)
-	delete(jsonResult, versionField)
-
-	// handle binary or json data
-	if doc.attachments != nil { // binary attachment
-		// get binary data from attachment
-		for _, attachment := range doc.attachments {
-			if attachment.Name == binaryWrapper {
-				returnValue = attachment.AttachmentBytes
-			}
-		}
-	} else {
-		// marshal the returned JSON data.
-		if returnValue, err = json.Marshal(jsonResult); err != nil {
-			return nil, err
-		}
+	version, metadata, err := decodeVersionAndMetadata(docFields.versionAndMetadata)
+	if err != nil {
+		return nil, err
 	}
 	return &keyValue{
-		key, revision,
+		docFields.id, docFields.revision,
 		&statedb.VersionedValue{
-			Value:    returnValue,
-			Metadata: returnMetadata,
-			Version:  returnVersion},
+			Value:    docFields.value,
+			Version:  version,
+			Metadata: metadata,
+		},
 	}, nil
+}
+
+type couchDocFields struct {
+	id                 string
+	revision           string
+	value              []byte
+	versionAndMetadata string
+}
+
+func validateAndRetrieveFields(doc *couchDoc) (*couchDocFields, error) {
+	jsonDoc := make(jsonValue)
+	decoder := json.NewDecoder(bytes.NewBuffer(doc.jsonValue))
+	decoder.UseNumber()
+	if err := decoder.Decode(&jsonDoc); err != nil {
+		return nil, err
+	}
+
+	docFields := &couchDocFields{}
+	docFields.id = jsonDoc[idField].(string)
+	if jsonDoc[revField] != nil {
+		docFields.revision = jsonDoc[revField].(string)
+	}
+	if jsonDoc[versionField] == nil {
+		return nil, fmt.Errorf("version field %s was not found", versionField)
+	}
+	docFields.versionAndMetadata = jsonDoc[versionField].(string)
+
+	delete(jsonDoc, idField)
+	delete(jsonDoc, revField)
+	delete(jsonDoc, versionField)
+
+	var err error
+	if doc.attachments == nil {
+		docFields.value, err = json.Marshal(jsonDoc)
+		return docFields, err
+	}
+	for _, attachment := range doc.attachments {
+		if attachment.Name == binaryWrapper {
+			docFields.value = attachment.AttachmentBytes
+		}
+	}
+	return docFields, err
 }
 
 func keyValToCouchDoc(kv *keyValue) (*couchDoc, error) {
