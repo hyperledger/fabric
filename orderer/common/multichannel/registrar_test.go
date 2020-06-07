@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	"github.com/hyperledger/fabric/orderer/common/types"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -28,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -506,5 +506,61 @@ func TestBroadcastChannelSupport(t *testing.T) {
 		_, _, _, err = registrar.BroadcastChannelSupport(configTx)
 		assert.Error(t, err)
 		assert.Equal(t, "channel creation request not allowed because the orderer system channel is not defined", err.Error())
+	})
+}
+
+func TestRegistrar_JoinChannel(t *testing.T) {
+	// system channel
+	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	genesisBlockSys := encoder.New(confSys).GenesisBlockForChannel("sys-channel")
+	confApp := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	confApp.Consortiums = nil
+	confApp.Consortium = ""
+	genesisBlockApp := encoder.New(confApp).GenesisBlockForChannel("my-channel")
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	t.Run("Reject join when system channel exists", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "sys-channel", genesisBlockSys)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		registrar.Initialize(mockConsenters)
+
+		info, err := registrar.JoinChannel("some-app-channel", &cb.Block{})
+		assert.EqualError(t, err, "system channel exists")
+		assert.Equal(t, types.ChannelInfo{}, info)
+	})
+
+	t.Run("Reject join when channel exists", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
+		config := localconfig.TopLevel{}
+		config.General.BootstrapMethod = "none"
+		config.General.GenesisFile = ""
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		registrar.Initialize(mockConsenters)
+
+		ledger, err := ledgerFactory.GetOrCreate("my-channel")
+		assert.NoError(t, err)
+		ledger.Append(genesisBlockApp)
+
+		// Before creating the chain, it doesn't exist
+		assert.Nil(t, registrar.GetChain("my-channel"))
+		// After creating the chain, it exists
+		registrar.CreateChain("my-channel")
+		assert.NotNil(t, registrar.GetChain("my-channel"))
+
+		info, err := registrar.JoinChannel("my-channel", &cb.Block{})
+		assert.EqualError(t, err, "channel already exists")
+		assert.Equal(t, types.ChannelInfo{}, info)
 	})
 }
