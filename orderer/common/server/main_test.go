@@ -813,15 +813,15 @@ func TestConfigureClusterListener(t *testing.T) {
 func TestReuseListener(t *testing.T) {
 	t.Run("good to reuse", func(t *testing.T) {
 		top := &localconfig.TopLevel{General: localconfig.General{TLS: localconfig.TLS{Enabled: true}}}
-		require.True(t, reuseListener(top, "foo"))
+		require.True(t, reuseListener(top))
 	})
 
 	t.Run("reuse tls disabled", func(t *testing.T) {
 		top := &localconfig.TopLevel{}
 		require.PanicsWithValue(
 			t,
-			"TLS is required for running ordering nodes of type foo.",
-			func() { reuseListener(top, "foo") },
+			"TLS is required for running ordering nodes of cluster type.",
+			func() { reuseListener(top) },
 		)
 	})
 
@@ -836,7 +836,7 @@ func TestReuseListener(t *testing.T) {
 				},
 			},
 		}
-		require.False(t, reuseListener(top, "foo"))
+		require.False(t, reuseListener(top))
 	})
 
 	t.Run("partial config", func(t *testing.T) {
@@ -853,7 +853,7 @@ func TestReuseListener(t *testing.T) {
 			t,
 			"Options: General.Cluster.ListenPort, General.Cluster.ListenAddress,"+
 				" General.Cluster.ServerCertificate, General.Cluster.ServerPrivateKey, should be defined altogether.",
-			func() { reuseListener(top, "foo") },
+			func() { reuseListener(top) },
 		)
 	})
 }

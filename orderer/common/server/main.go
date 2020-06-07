@@ -112,58 +112,91 @@ func Main() {
 		logger.Panicf("Failed to create ledger factory: %v", err)
 	}
 
-	var clusterBootBlock *cb.Block
+	var bootstrapBlock *cb.Block
+	if conf.General.BootstrapMethod == "file" {
+		bootstrapBlock = file.New(conf.General.BootstrapFile).GenesisBlock()
+		if err := onboarding.ValidateBootstrapBlock(bootstrapBlock, cryptoProvider); err != nil {
+			logger.Panicf("Failed validating bootstrap block: %v", err)
+		}
+
+		// Are we bootstrapping with a genesis block? If yes, generate the system channel with a genesis block.
+		if len(lf.ChannelIDs()) == 0 && bootstrapBlock.Header.Number == 0 {
+			logger.Info("Bootstrapping the system channel")
+			initializeBootstrapChannel(bootstrapBlock, lf)
+		} else if len(lf.ChannelIDs()) > 0 {
+			logger.Info("Not bootstrapping because of existing channels")
+		} else {
+			logger.Info("Not bootstrapping because bootstrap block is not genesis block")
+		}
+	} else if conf.General.BootstrapMethod != "none" {
+		logger.Panicf("Unknown bootstrap method: %s", conf.General.BootstrapMethod)
+	}
+
+	sysChanConfigBlock := extractSystemChannel(lf, cryptoProvider)
+	clusterBootBlock := selectClusterBootBlock(bootstrapBlock, sysChanConfigBlock)
+	if clusterBootBlock == nil {
+		logger.Infof("Starting without a system channel")
+	} else {
+		sysChanID, err := protoutil.GetChannelIDFromBlock(clusterBootBlock)
+		if err != nil {
+			logger.Panicf("Failed getting channel ID from clusterBootBlock: %s", err)
+		}
+		logger.Infof("Starting with system channel: %s", sysChanID)
+	}
+
 	// configure following artifacts properly if orderer is of cluster type
-	var r *onboarding.ReplicationInitiator
+	var repInitiator *onboarding.ReplicationInitiator
 	clusterServerConfig := serverConfig
 	clusterGRPCServer := grpcServer // by default, cluster shares the same grpc server
 	var clusterClientConfig comm.ClientConfig
 	var clusterDialer *cluster.PredicateDialer
-	var clusterType, reuseGrpcListener bool
+	var clusterType bool
+	var reuseGrpcListener bool
 	var serversToUpdate []*comm.GRPCServer
-	bootstrapMethod := conf.General.BootstrapMethod
-	if bootstrapMethod == "file" || bootstrapMethod == "none" {
-		bootstrapBlock := extractBootstrapBlock(conf)
-		if bootstrapBlock == nil {
-			bootstrapBlock = extractSystemChannel(lf, cryptoProvider)
-		}
-		if bootstrapBlock != nil {
-			if err := onboarding.ValidateBootstrapBlock(bootstrapBlock, cryptoProvider); err != nil {
-				logger.Panicf("Failed validating bootstrap block: %v", err)
+
+	// This happens only when the orderer is operating with a system channel.
+	if clusterBootBlock != nil {
+		consensusTypeName := consensusType(clusterBootBlock, cryptoProvider)
+		_, clusterType = clusterTypes[consensusTypeName]
+
+		if clusterType {
+			logger.Infof("Setting up cluster for orderer type %s", consensusTypeName)
+			clusterClientConfig = initializeClusterClientConfig(conf)
+			clusterDialer = &cluster.PredicateDialer{
+				Config: clusterClientConfig,
 			}
-			sysChanLastConfigBlock := extractSysChanLastConfig(lf, bootstrapBlock)
-			clusterBootBlock = selectClusterBootBlock(bootstrapBlock, sysChanLastConfigBlock)
 
-			typ := consensusType(bootstrapBlock, cryptoProvider)
-			clusterType = isClusterType(clusterBootBlock, cryptoProvider)
-			if clusterType {
-				logger.Infof("Setting up cluster for orderer type %s", typ)
-				clusterClientConfig = initializeClusterClientConfig(conf)
-				clusterDialer = &cluster.PredicateDialer{
-					Config: clusterClientConfig,
-				}
-
-				r = onboarding.NewReplicationInitiator(lf, bootstrapBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
-				// Only clusters that are equipped with a recent config block can replicate.
-				if conf.General.BootstrapMethod == "file" {
-					r.ReplicateIfNeeded(bootstrapBlock)
-				}
-
-				if reuseGrpcListener = reuseListener(conf, typ); !reuseGrpcListener {
-					clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
-				}
-
-				// If we have a separate gRPC server for the cluster,
-				// we need to update its TLS CA certificate pool.
-				serversToUpdate = append(serversToUpdate, clusterGRPCServer)
+			if reuseGrpcListener = reuseListener(conf); !reuseGrpcListener {
+				clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
 			}
-			// Are we bootstrapping?
-			if len(lf.ChannelIDs()) == 0 {
-				initializeBootstrapChannel(clusterBootBlock, lf)
-			} else {
-				logger.Info("Not bootstrapping because of existing channels")
+
+			// If we have a separate gRPC server for the cluster,
+			// we need to update its TLS CA certificate pool.
+			serversToUpdate = append(serversToUpdate, clusterGRPCServer)
+
+			// Are we bootstrapping with a block with number >0 ?
+			// Only clusters that are equipped with a recent config block (number i.e. >0) can replicate.
+			// This will replicate all channels if the clusterBootBlock number > system-channel height (i.e. there is a gap in the ledger).
+			repInitiator = onboarding.NewReplicationInitiator(lf, clusterBootBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
+			if conf.General.BootstrapMethod == "file" {
+				repInitiator.ReplicateIfNeeded(clusterBootBlock)
 			}
 		}
+	} else {
+		logger.Infof("Setting up cluster when there is no system channel: assuming cluster-type consensus")
+		clusterType = true
+		clusterClientConfig = initializeClusterClientConfig(conf)
+		clusterDialer = &cluster.PredicateDialer{
+			Config: clusterClientConfig,
+		}
+
+		if reuseGrpcListener = reuseListener(conf); !reuseGrpcListener {
+			clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
+		}
+
+		// If we have a separate gRPC server for the cluster,
+		// we need to update its TLS CA certificate pool.
+		serversToUpdate = append(serversToUpdate, clusterGRPCServer)
 	}
 
 	identityBytes, err := signer.Serialize()
@@ -200,7 +233,7 @@ func Main() {
 
 	manager := initializeMultichannelRegistrar(
 		clusterBootBlock,
-		r,
+		repInitiator,
 		clusterDialer,
 		clusterServerConfig,
 		clusterGRPCServer,
@@ -257,7 +290,7 @@ func Main() {
 	}
 }
 
-func reuseListener(conf *localconfig.TopLevel, typ string) bool {
+func reuseListener(conf *localconfig.TopLevel) bool {
 	clusterConf := conf.General.Cluster
 	// If listen address is not configured, and the TLS certificate isn't configured,
 	// it means we use the general listener of the node.
@@ -265,7 +298,7 @@ func reuseListener(conf *localconfig.TopLevel, typ string) bool {
 		logger.Info("Cluster listener is not configured, defaulting to use the general listener on port", conf.General.ListenPort)
 
 		if !conf.General.TLS.Enabled {
-			logger.Panicf("TLS is required for running ordering nodes of type %s.", typ)
+			logger.Panicf("TLS is required for running ordering nodes of cluster type.")
 		}
 
 		return true
@@ -329,6 +362,11 @@ func selectClusterBootBlock(bootstrapBlock, sysChanLastConfig *cb.Block) *cb.Blo
 	if sysChanLastConfig == nil {
 		logger.Debug("Selected bootstrap block, because system channel last config block is nil")
 		return bootstrapBlock
+	}
+
+	if bootstrapBlock == nil {
+		logger.Info("Selected system channel last config block, because bootstrap block is nil")
+		return sysChanLastConfig
 	}
 
 	if sysChanLastConfig.Header.Number > bootstrapBlock.Header.Number {
@@ -671,7 +709,7 @@ type healthChecker interface {
 
 func initializeMultichannelRegistrar(
 	bootstrapBlock *cb.Block,
-	ri *onboarding.ReplicationInitiator,
+	repInitiator *onboarding.ReplicationInitiator,
 	clusterDialer *cluster.PredicateDialer,
 	srvConf comm.ServerConfig,
 	srv *comm.GRPCServer,
@@ -690,7 +728,7 @@ func initializeMultichannelRegistrar(
 	var icr etcdraft.InactiveChainRegistry
 	if conf.General.BootstrapMethod == "file" || conf.General.BootstrapMethod == "none" {
 		if bootstrapBlock != nil && isClusterType(bootstrapBlock, bccsp) {
-			etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, ri, srvConf, srv, registrar, metricsProvider, bccsp)
+			etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, repInitiator, srvConf, srv, registrar, metricsProvider, bccsp)
 			icr = etcdConsenter.InactiveChainRegistry
 		}
 	}
@@ -698,6 +736,7 @@ func initializeMultichannelRegistrar(
 	consenters["solo"] = solo.New()
 	var kafkaMetrics *kafka.Metrics
 	consenters["kafka"], kafkaMetrics = kafka.New(conf.Kafka, metricsProvider, healthChecker, icr, registrar.CreateChain)
+
 	// Note, we pass a 'nil' channel here, we could pass a channel that
 	// closes if we wished to cleanup this routine on exit.
 	go kafkaMetrics.PollGoMetricsUntilStop(time.Minute, nil)
