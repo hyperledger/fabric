@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package server
+package onboarding
 
 import (
 	"fmt"
@@ -29,12 +29,14 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
+	cluster_mocks "github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
+	onboarding_mocks "github.com/hyperledger/fabric/orderer/common/onboarding/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -76,11 +78,18 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
+}
+
 //go:generate counterfeiter -o mocks/read_writer.go --fake-name ReadWriter . readWriter
+
 type readWriter interface{ blockledger.ReadWriter }
 
 func copyYamlFiles(src, dst string) {
-	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml", "orderer.yaml"} {
+	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml"} {
 		fileBytes, err := ioutil.ReadFile(filepath.Join(src, file))
 		if err != nil {
 			os.Exit(-1)
@@ -273,21 +282,21 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 	blocksCommittedToSystemLedger := make(chan uint64, 3)
 	blocksCommittedToApplicationLedger := make(chan uint64, 1)
 
-	systemLedger := &mocks.LedgerWriter{}
+	systemLedger := &cluster_mocks.LedgerWriter{}
 	systemLedger.On("Height").Return(uint64(0))
 	systemLedger.On("Append", mock.Anything).Return(nil).Run(func(arguments mock.Arguments) {
 		seq := arguments.Get(0).(*common.Block).Header.Number
 		blocksCommittedToSystemLedger <- seq
 	})
 
-	appLedger := &mocks.LedgerWriter{}
+	appLedger := &cluster_mocks.LedgerWriter{}
 	appLedger.On("Height").Return(uint64(0))
 	appLedger.On("Append", mock.Anything).Return(nil).Run(func(arguments mock.Arguments) {
 		seq := arguments.Get(0).(*common.Block).Header.Number
 		blocksCommittedToApplicationLedger <- seq
 	})
 
-	lf := &mocks.LedgerFactory{}
+	lf := &cluster_mocks.LedgerFactory{}
 	lf.On("GetOrCreate", "system").Return(systemLedger, nil)
 	lf.On("GetOrCreate", "testchannel").Return(appLedger, nil)
 	lf.On("Close")
@@ -312,15 +321,15 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 		ServerRootCAs: [][]byte{caCert},
 	}
 
-	verifier := &mocks.BlockVerifier{}
+	verifier := &cluster_mocks.BlockVerifier{}
 	verifier.On("VerifyBlockSignature", mock.Anything, mock.Anything).Return(nil)
-	vr := &mocks.VerifierRetriever{}
+	vr := &cluster_mocks.VerifierRetriever{}
 	vr.On("RetrieveVerifier", mock.Anything).Return(verifier)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	assert.NoError(t, err)
 
-	r := &replicationInitiator{
+	r := &ReplicationInitiator{
 		verifierRetriever: vr,
 		lf:                lf,
 		logger:            flogging.MustGetLogger("testOnboarding"),
@@ -463,7 +472,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 		},
 	}
 
-	r.replicateIfNeeded(bootBlock)
+	r.ReplicateIfNeeded(bootBlock)
 
 	// Ensure all events were invoked
 	assert.True(t, probe)
@@ -565,7 +574,7 @@ func TestReplicate(t *testing.T) {
 		signer             identity.SignerSerializer
 		zapHooks           []func(zapcore.Entry) error
 		shouldConnect      bool
-		replicateFunc      func(*replicationInitiator, *common.Block)
+		replicateFunc      func(*ReplicationInitiator, *common.Block)
 		verificationCount  int
 	}{
 		{
@@ -579,8 +588,8 @@ func TestReplicate(t *testing.T) {
 					return nil
 				},
 			},
-			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
-				ri.replicateIfNeeded(bootstrapBlock)
+			replicateFunc: func(ri *ReplicationInitiator, bootstrapBlock *common.Block) {
+				ri.ReplicateIfNeeded(bootstrapBlock)
 			},
 		},
 		{
@@ -590,8 +599,8 @@ func TestReplicate(t *testing.T) {
 			bootBlock:          &bootBlockWithCorruptedPayload,
 			conf:               &localconfig.TopLevel{},
 			secOpts:            comm.SecureOptions{},
-			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
-				ri.replicateIfNeeded(bootstrapBlock)
+			replicateFunc: func(ri *ReplicationInitiator, bootstrapBlock *common.Block) {
+				ri.ReplicateIfNeeded(bootstrapBlock)
 			},
 		},
 		{
@@ -601,8 +610,8 @@ func TestReplicate(t *testing.T) {
 			bootBlock:          &common.Block{Header: &common.BlockHeader{Number: 100}},
 			conf:               &localconfig.TopLevel{},
 			secOpts:            comm.SecureOptions{},
-			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
-				ri.replicateIfNeeded(bootstrapBlock)
+			replicateFunc: func(ri *ReplicationInitiator, bootstrapBlock *common.Block) {
+				ri.ReplicateIfNeeded(bootstrapBlock)
 			},
 		},
 		{
@@ -616,8 +625,8 @@ func TestReplicate(t *testing.T) {
 				Certificate: cert,
 				Key:         key,
 			},
-			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
-				ri.replicateIfNeeded(bootstrapBlock)
+			replicateFunc: func(ri *ReplicationInitiator, bootstrapBlock *common.Block) {
+				ri.ReplicateIfNeeded(bootstrapBlock)
 			},
 		},
 		{
@@ -636,8 +645,8 @@ func TestReplicate(t *testing.T) {
 					return nil
 				},
 			},
-			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
-				ri.replicateIfNeeded(bootstrapBlock)
+			replicateFunc: func(ri *ReplicationInitiator, bootstrapBlock *common.Block) {
+				ri.ReplicateIfNeeded(bootstrapBlock)
 			},
 		},
 		{
@@ -658,8 +667,8 @@ func TestReplicate(t *testing.T) {
 				UseTLS:        true,
 				ServerRootCAs: [][]byte{caCert},
 			},
-			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
-				ri.replicateIfNeeded(bootstrapBlock)
+			replicateFunc: func(ri *ReplicationInitiator, bootstrapBlock *common.Block) {
+				ri.ReplicateIfNeeded(bootstrapBlock)
 			},
 		},
 		{
@@ -679,7 +688,7 @@ func TestReplicate(t *testing.T) {
 				UseTLS:        true,
 				ServerRootCAs: [][]byte{caCert},
 			},
-			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
+			replicateFunc: func(ri *ReplicationInitiator, bootstrapBlock *common.Block) {
 				ri.ReplicateChains(bootstrapBlock, []string{"foo"})
 			},
 			zapHooks: []func(entry zapcore.Entry) error{
@@ -715,7 +724,7 @@ func TestReplicate(t *testing.T) {
 				UseTLS:        true,
 				ServerRootCAs: [][]byte{caCert},
 			},
-			replicateFunc: func(ri *replicationInitiator, bootstrapBlock *common.Block) {
+			replicateFunc: func(ri *ReplicationInitiator, bootstrapBlock *common.Block) {
 				ri.ReplicateChains(bootstrapBlock, []string{"testchannel"})
 			},
 		},
@@ -725,22 +734,22 @@ func TestReplicate(t *testing.T) {
 			deliverServer := prepareTestCase()
 			defer deliverServer.srv.Stop()
 
-			lw := &mocks.LedgerWriter{}
+			lw := &cluster_mocks.LedgerWriter{}
 			lw.On("Height").Return(testCase.systemLedgerHeight).Once()
 
-			lf := &mocks.LedgerFactory{}
+			lf := &cluster_mocks.LedgerFactory{}
 			lf.On("GetOrCreate", mock.Anything).Return(lw, testCase.ledgerFactoryErr).Twice()
 			lf.On("Close")
 
-			verifier := &mocks.BlockVerifier{}
+			verifier := &cluster_mocks.BlockVerifier{}
 			verifier.On("VerifyBlockSignature", mock.Anything, mock.Anything).Return(nil)
-			vr := &mocks.VerifierRetriever{}
+			vr := &cluster_mocks.VerifierRetriever{}
 			vr.On("RetrieveVerifier", mock.Anything).Return(verifier)
 
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 			assert.NoError(t, err)
 
-			r := &replicationInitiator{
+			r := &ReplicationInitiator{
 				verifierRetriever: vr,
 				lf:                lf,
 				logger:            flogging.MustGetLogger("testReplicateIfNeeded"),
@@ -834,8 +843,8 @@ func TestInactiveChainReplicator(t *testing.T) {
 				registeredChains[chain] = struct{}{}
 			}
 			scheduler := make(chan time.Time)
-			replicator := &server_mocks.ChainReplicator{}
-			icr := &inactiveChainReplicator{
+			replicator := &onboarding_mocks.ChainReplicator{}
+			icr := &InactiveChainReplicator{
 				registerChain:            registerChain,
 				logger:                   flogging.MustGetLogger("test"),
 				replicator:               replicator,
@@ -879,7 +888,7 @@ func TestInactiveChainReplicator(t *testing.T) {
 				scheduler <- time.Time{}
 				icr.stop()
 			}()
-			icr.run()
+			icr.Run()
 			replicatorStopped.Wait()
 			close(trackedChains)
 
@@ -895,7 +904,7 @@ func TestInactiveChainReplicator(t *testing.T) {
 }
 
 func TestInactiveChainReplicatorChannels(t *testing.T) {
-	icr := &inactiveChainReplicator{
+	icr := &InactiveChainReplicator{
 		logger:                   flogging.MustGetLogger("test"),
 		chains2CreationCallbacks: make(map[string]chainCreation),
 	}
@@ -963,7 +972,7 @@ func TestVerifierLoader(t *testing.T) {
 	configBlock := &common.Block{}
 	assert.NoError(t, proto.Unmarshal(systemChannelBlockBytes, configBlock))
 
-	verifier := &mocks.BlockVerifier{}
+	verifier := &cluster_mocks.BlockVerifier{}
 
 	for _, testCase := range []struct {
 		description               string
@@ -1054,15 +1063,15 @@ func TestVerifierLoader(t *testing.T) {
 			iterator.NextReturnsOnCall(0, testCase.lastBlock, common.Status_SUCCESS)
 			iterator.NextReturnsOnCall(1, testCase.lastConfigBlock, common.Status_SUCCESS)
 
-			ledger := &server_mocks.ReadWriter{}
+			ledger := &onboarding_mocks.ReadWriter{}
 			ledger.HeightReturns(testCase.ledgerHeight)
 			ledger.IteratorReturns(iterator, 1)
 
-			ledgerFactory := &server_mocks.Factory{}
+			ledgerFactory := &onboarding_mocks.Factory{}
 			ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, testCase.ledgerGetOrCreateErr)
 			ledgerFactory.On("ChannelIDs").Return([]string{"mychannel"})
 
-			verifierFactory := &mocks.VerifierFactory{}
+			verifierFactory := &cluster_mocks.VerifierFactory{}
 			verifierFactory.On("VerifierFromConfig", mock.Anything, "mychannel").Return(verifier, testCase.verifierFromConfigErr)
 
 			var onFailureInvoked bool
@@ -1182,4 +1191,53 @@ func generateBootstrapBlock(t *testing.T, tempDir, configtxgen, channel, profile
 	gt.Expect(configtxgenProcess.Err).To(gbytes.Say("Writing genesis block"))
 
 	return genesisBlockPath
+}
+
+// generateCryptoMaterials uses cryptogen to generate the necessary
+// MSP files and TLS certificates
+func generateCryptoMaterials(t *testing.T, cryptogen string) string {
+	gt := NewGomegaWithT(t)
+	cryptoPath := filepath.Join(tempDir, "crypto")
+
+	cmd := exec.Command(
+		cryptogen,
+		"generate",
+		"--config", filepath.Join(tempDir, "examplecom-config.yaml"),
+		"--output", cryptoPath,
+	)
+	cryptogenProcess, err := gexec.Start(cmd, nil, nil)
+	gt.Expect(err).NotTo(HaveOccurred())
+	gt.Eventually(cryptogenProcess, time.Minute).Should(gexec.Exit(0))
+
+	return cryptoPath
+}
+
+func TestCreateReplicator(t *testing.T) {
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+	bootBlock := encoder.New(genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile)).GenesisBlockForChannel("system")
+
+	iterator := &deliver_mocks.BlockIterator{}
+	iterator.NextReturnsOnCall(0, bootBlock, common.Status_SUCCESS)
+	iterator.NextReturnsOnCall(1, bootBlock, common.Status_SUCCESS)
+
+	ledger := &onboarding_mocks.ReadWriter{}
+	ledger.HeightReturns(1)
+	ledger.IteratorReturns(iterator, 1)
+
+	ledgerFactory := &onboarding_mocks.Factory{}
+	ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, nil)
+	ledgerFactory.On("ChannelIDs").Return([]string{"mychannel"})
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	assert.NoError(t, err)
+
+	signer := &onboarding_mocks.SignerSerializer{}
+	r := NewReplicationInitiator(ledgerFactory, bootBlock, &localconfig.TopLevel{}, comm.SecureOptions{}, signer, cryptoProvider)
+
+	err = r.verifierRetriever.RetrieveVerifier("mychannel").VerifyBlockSignature(nil, nil)
+	assert.EqualError(t, err, "implicit policy evaluation failed - 0 sub-policies were satisfied, but this policy requires 1 of the 'Writers' sub-policies to be satisfied")
+
+	err = r.verifierRetriever.RetrieveVerifier("system").VerifyBlockSignature(nil, nil)
+	assert.NoError(t, err)
 }

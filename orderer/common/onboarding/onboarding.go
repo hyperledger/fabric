@@ -4,9 +4,11 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package server
+package onboarding
 
 import (
+	"github.com/hyperledger/fabric-config/protolator"
+	"os"
 	"sync"
 	"time"
 
@@ -26,14 +28,17 @@ import (
 )
 
 const (
-	defaultReplicationBackgroundRefreshInterval = time.Minute * 5
+	DefaultReplicationBackgroundRefreshInterval = time.Minute * 5
 	replicationBackgroundInitialRefreshInterval = time.Second * 10
 )
 
-type replicationInitiator struct {
-	registerChain     func(chain string)
+var logger = flogging.MustGetLogger("orderer.common.onboarding")
+
+type ReplicationInitiator struct {
+	RegisterChain func(chain string)
+	ChannelLister cluster.ChannelLister
+
 	verifierRetriever cluster.VerifierRetriever
-	channelLister     cluster.ChannelLister
 	logger            *flogging.FabricLogger
 	secOpts           comm.SecureOptions
 	conf              *localconfig.TopLevel
@@ -42,7 +47,59 @@ type replicationInitiator struct {
 	cryptoProvider    bccsp.BCCSP
 }
 
-func (ri *replicationInitiator) replicateIfNeeded(bootstrapBlock *common.Block) {
+func NewReplicationInitiator(
+	lf blockledger.Factory,
+	bootstrapBlock *common.Block,
+	conf *localconfig.TopLevel,
+	secOpts comm.SecureOptions,
+	signer identity.SignerSerializer,
+	bccsp bccsp.BCCSP,
+) *ReplicationInitiator {
+	logger := flogging.MustGetLogger("orderer.common.cluster")
+
+	vl := &verifierLoader{
+		verifierFactory: &cluster.BlockVerifierAssembler{Logger: logger, BCCSP: bccsp},
+		onFailure: func(block *common.Block) {
+			protolator.DeepMarshalJSON(os.Stdout, block)
+		},
+		ledgerFactory: lf,
+		logger:        logger,
+	}
+
+	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
+	if err != nil {
+		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
+	}
+
+	// System channel is not verified because we trust the bootstrap block
+	// and use backward hash chain verification.
+	verifiersByChannel := vl.loadVerifiers()
+	verifiersByChannel[systemChannelName] = &cluster.NoopBlockVerifier{}
+
+	vr := &cluster.VerificationRegistry{
+		LoadVerifier:       vl.loadVerifier,
+		Logger:             logger,
+		VerifiersByChannel: verifiersByChannel,
+		VerifierFactory:    &cluster.BlockVerifierAssembler{Logger: logger, BCCSP: bccsp},
+	}
+
+	ledgerFactory := &ledgerFactory{
+		Factory:       lf,
+		onBlockCommit: vr.BlockCommitted,
+	}
+	return &ReplicationInitiator{
+		RegisterChain:     vr.RegisterVerifier,
+		verifierRetriever: vr,
+		logger:            logger,
+		secOpts:           secOpts,
+		conf:              conf,
+		lf:                ledgerFactory,
+		signer:            signer,
+		cryptoProvider:    bccsp,
+	}
+}
+
+func (ri *ReplicationInitiator) ReplicateIfNeeded(bootstrapBlock *common.Block) {
 	if bootstrapBlock.Header.Number == 0 {
 		ri.logger.Debug("Booted with a genesis block, replication isn't an option")
 		return
@@ -50,7 +107,7 @@ func (ri *replicationInitiator) replicateIfNeeded(bootstrapBlock *common.Block) 
 	ri.replicateNeededChannels(bootstrapBlock)
 }
 
-func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, filter func(string) bool) *cluster.Replicator {
+func (ri *ReplicationInitiator) createReplicator(bootstrapBlock *common.Block, filter func(string) bool) *cluster.Replicator {
 	consenterCert := &etcdraft.ConsenterCertificate{
 		ConsenterCertificate: ri.secOpts.Certificate,
 		CryptoProvider:       ri.cryptoProvider,
@@ -84,14 +141,14 @@ func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, f
 	}
 
 	// If a custom channel lister is requested, use it
-	if ri.channelLister != nil {
-		replicator.ChannelLister = ri.channelLister
+	if ri.ChannelLister != nil {
+		replicator.ChannelLister = ri.ChannelLister
 	}
 
 	return replicator
 }
 
-func (ri *replicationInitiator) replicateNeededChannels(bootstrapBlock *common.Block) {
+func (ri *ReplicationInitiator) replicateNeededChannels(bootstrapBlock *common.Block) {
 	replicator := ri.createReplicator(bootstrapBlock, cluster.AnyChannel)
 	defer replicator.Puller.Close()
 	replicationNeeded, err := replicator.IsReplicationNeeded()
@@ -110,7 +167,7 @@ func (ri *replicationInitiator) replicateNeededChannels(bootstrapBlock *common.B
 
 // ReplicateChains replicates the given chains with the assistance of the given last system channel config block,
 // and returns the names of the chains that were successfully replicated.
-func (ri *replicationInitiator) ReplicateChains(lastConfigBlock *common.Block, chains []string) []string {
+func (ri *ReplicationInitiator) ReplicateChains(lastConfigBlock *common.Block, chains []string) []string {
 	ri.logger.Info("Will now replicate chains", chains)
 	wantedChannels := make(map[string]struct{})
 	for _, chain := range chains {
@@ -153,8 +210,8 @@ type ChainReplicator interface {
 	ReplicateChains(lastConfigBlock *common.Block, chains []string) []string
 }
 
-// inactiveChainReplicator tracks disabled chains and replicates them upon demand
-type inactiveChainReplicator struct {
+// InactiveChainReplicator tracks disabled chains and replicates them upon demand
+type InactiveChainReplicator struct {
 	registerChain                     func(chain string)
 	logger                            *flogging.FabricLogger
 	retrieveLastSysChannelConfigBlock func() *common.Block
@@ -165,7 +222,29 @@ type inactiveChainReplicator struct {
 	chains2CreationCallbacks          map[string]chainCreation
 }
 
-func (dc *inactiveChainReplicator) Channels() []cluster.ChannelGenesisBlock {
+func NewInactiveChainReplicator(
+	chainReplicator ChainReplicator,
+	getSysChannelConfigBlockFunc func() *common.Block,
+	registerChainFunc func(chain string),
+	replicationRefreshInterval time.Duration,
+) *InactiveChainReplicator {
+	exponentialSleep := exponentialDurationSeries(replicationBackgroundInitialRefreshInterval, replicationRefreshInterval)
+	ticker := newTicker(exponentialSleep)
+
+	icr := &InactiveChainReplicator{
+		logger:                            logger,
+		scheduleChan:                      ticker.C,
+		quitChan:                          make(chan struct{}),
+		replicator:                        chainReplicator,
+		chains2CreationCallbacks:          make(map[string]chainCreation),
+		retrieveLastSysChannelConfigBlock: getSysChannelConfigBlockFunc,
+		registerChain:                     registerChainFunc,
+	}
+
+	return icr
+}
+
+func (dc *InactiveChainReplicator) Channels() []cluster.ChannelGenesisBlock {
 	dc.lock.RLock()
 	defer dc.lock.RUnlock()
 
@@ -179,7 +258,7 @@ func (dc *inactiveChainReplicator) Channels() []cluster.ChannelGenesisBlock {
 	return res
 }
 
-func (dc *inactiveChainReplicator) Close() {}
+func (dc *InactiveChainReplicator) Close() {}
 
 type chainCreation struct {
 	create       func()
@@ -188,7 +267,7 @@ type chainCreation struct {
 
 // TrackChain tracks a chain with the given name, and calls the given callback
 // when this chain should be activated.
-func (dc *inactiveChainReplicator) TrackChain(chain string, genesisBlock *common.Block, createChainCallback func()) {
+func (dc *InactiveChainReplicator) TrackChain(chain string, genesisBlock *common.Block, createChainCallback func()) {
 	dc.lock.Lock()
 	defer dc.lock.Unlock()
 
@@ -199,7 +278,7 @@ func (dc *inactiveChainReplicator) TrackChain(chain string, genesisBlock *common
 	}
 }
 
-func (dc *inactiveChainReplicator) run() {
+func (dc *InactiveChainReplicator) Run() {
 	for {
 		select {
 		case <-dc.scheduleChan:
@@ -210,7 +289,7 @@ func (dc *inactiveChainReplicator) run() {
 	}
 }
 
-func (dc *inactiveChainReplicator) replicateDisabledChains() {
+func (dc *InactiveChainReplicator) replicateDisabledChains() {
 	chains := dc.listInactiveChains()
 	if len(chains) == 0 {
 		dc.logger.Debugf("No inactive chains to try to replicate")
@@ -236,11 +315,11 @@ func (dc *inactiveChainReplicator) replicateDisabledChains() {
 	}
 }
 
-func (dc *inactiveChainReplicator) stop() {
+func (dc *InactiveChainReplicator) stop() {
 	close(dc.quitChan)
 }
 
-func (dc *inactiveChainReplicator) listInactiveChains() []string {
+func (dc *InactiveChainReplicator) listInactiveChains() []string {
 	dc.lock.RLock()
 	defer dc.lock.RUnlock()
 	var chains []string
