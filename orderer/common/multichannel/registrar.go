@@ -426,6 +426,18 @@ func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 }
 
 func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block) (types.ChannelInfo, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	if r.systemChannelID != "" {
+		return types.ChannelInfo{}, types.ErrSystemChannelExists
+	}
+
+	_, ok := r.chains[channelID]
+	if ok {
+		return types.ChannelInfo{}, types.ErrChannelAlreadyExists
+	}
+
 	//TODO
 	return types.ChannelInfo{}, errors.New("Not implemented yet")
 }
