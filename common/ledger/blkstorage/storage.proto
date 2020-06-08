@@ -15,3 +15,9 @@ message txIDIndexValue {
     bytes tx_location = 2;
     int32 tx_validation_code = 3;
 }
+
+message bootstrappingSnapshotInfo {
+    uint64 lastBlockNum = 1;
+    bytes lastBlockHash = 2;
+    bytes previousBlockHash = 3;
+}

@@ -9,10 +9,12 @@ package blkstorage
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/pkg/errors"
 )
@@ -37,7 +39,12 @@ func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, err
 	logger.Debugf("Last file number found = %d", lastFileNum)
 
 	if lastFileNum == -1 {
-		cpInfo := &checkpointInfo{0, 0, true, 0}
+		cpInfo := &checkpointInfo{
+			latestFileChunkSuffixNum:    0,
+			latestFileChunksize:         0,
+			noBlockFiles:                true,
+			lastBlockNumberInBlockFiles: 0,
+		}
 		logger.Debugf("No block file found")
 		return cpInfo, nil
 	}
@@ -68,10 +75,10 @@ func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, err
 	}
 
 	cpInfo := &checkpointInfo{
-		lastBlockNumber:          lastBlockNumber,
-		latestFileChunksize:      int(endOffsetLastBlock),
-		latestFileChunkSuffixNum: lastFileNum,
-		isChainEmpty:             lastFileNum == 0 && numBlocksInFile == 0,
+		lastBlockNumberInBlockFiles: lastBlockNumber,
+		latestFileChunksize:         int(endOffsetLastBlock),
+		latestFileChunkSuffixNum:    lastFileNum,
+		noBlockFiles:                lastFileNum == 0 && numBlocksInFile == 0,
 	}
 	logger.Debugf("Checkpoint info constructed from file system = %s", spew.Sdump(cpInfo))
 	return cpInfo, nil
@@ -161,4 +168,19 @@ func getFileInfoOrPanic(rootDir string, fileNum int) os.FileInfo {
 		panic(errors.Wrapf(err, "error retrieving file info for file number %d", fileNum))
 	}
 	return fileInfo
+}
+
+func loadBootstrappingSnapshotInfo(rootDir string) (*BootstrappingSnapshotInfo, error) {
+	bsiBytes, err := ioutil.ReadFile(filepath.Join(rootDir, bootstrappingSnapshotInfoFile))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "error while reading bootstrappingSnapshotInfo file")
+	}
+	bsi := &BootstrappingSnapshotInfo{}
+	if err := proto.Unmarshal(bsiBytes, bsi); err != nil {
+		return nil, errors.Wrapf(err, "error while unmarshalling bootstrappingSnapshotInfo")
+	}
+	return bsi, nil
 }

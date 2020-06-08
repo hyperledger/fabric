@@ -34,8 +34,12 @@ const (
 	snapshotMetadataFileName = "txids.metadata"
 )
 
-var indexCheckpointKey = []byte(indexCheckpointKeyStr)
-var errIndexEmpty = errors.New("NoBlockIndexed")
+var (
+	indexCheckpointKey              = []byte(indexCheckpointKeyStr)
+	errIndexCheckpointKeyNotPresent = errors.New("NoBlockIndexed")
+	errNilValue                     = errors.New("")
+	importTxIDsBatchSize            = uint64(1000) // txID is 64 bytes, so batch size roughly translates to 64KB
+)
 
 type blockIdxInfo struct {
 	blockNum  uint64
@@ -57,7 +61,10 @@ func newBlockIndex(indexConfig *IndexConfig, db *leveldbhelper.DBHandle) (*block
 	for _, indexItem := range indexItems {
 		indexItemsMap[indexItem] = true
 	}
-	return &blockIndex{indexItemsMap, db}, nil
+	return &blockIndex{
+		indexItemsMap: indexItemsMap,
+		db:            db,
+	}, nil
 }
 
 func (index *blockIndex) getLastBlockIndexed() (uint64, error) {
@@ -67,7 +74,7 @@ func (index *blockIndex) getLastBlockIndexed() (uint64, error) {
 		return 0, err
 	}
 	if blockNumBytes == nil {
-		return 0, errIndexEmpty
+		return 0, errIndexCheckpointKeyNotPresent
 	}
 	return decodeBlockNum(blockNumBytes), nil
 }
@@ -232,6 +239,9 @@ func (index *blockIndex) getTxIDVal(txID string) (*TxIDIndexValue, error) {
 		return nil, ErrNotFoundInIndex
 	}
 	valBytes := itr.Value()
+	if len(valBytes) == 0 {
+		return nil, errNilValue
+	}
 	val := &TxIDIndexValue{}
 	if err := proto.Unmarshal(valBytes, val); err != nil {
 		return nil, errors.Wrapf(err, "unexpected error while unmarshaling bytes [%#v] into TxIDIndexValProto", valBytes)
@@ -324,6 +334,47 @@ func (index *blockIndex) exportUniqueTxIDs(dir string, newHashFunc snapshot.NewH
 		snapshotDataFileName:     dataHash,
 		snapshotMetadataFileName: metadataHash,
 	}, nil
+}
+
+func importTxIDsFromSnapshot(
+	snapshotDir string,
+	lastBlockNumInSnapshot uint64,
+	db *leveldbhelper.DBHandle) error {
+
+	batch := leveldbhelper.NewUpdateBatch()
+	txIDsMetadata, err := snapshot.OpenFile(filepath.Join(snapshotDir, snapshotMetadataFileName), snapshotFileFormat)
+	if err != nil {
+		return err
+	}
+	numTxIDs, err := txIDsMetadata.DecodeUVarInt()
+	if err != nil {
+		return err
+	}
+	txIDsData, err := snapshot.OpenFile(filepath.Join(snapshotDir, snapshotDataFileName), snapshotFileFormat)
+	if err != nil {
+		return err
+	}
+	for i := uint64(0); i < numTxIDs; i++ {
+		txID, err := txIDsData.DecodeString()
+		if err != nil {
+			return err
+		}
+		batch.Put(
+			constructTxIDKey(txID, lastBlockNumInSnapshot, uint64(i)),
+			[]byte{},
+		)
+		if (i+1)%importTxIDsBatchSize == 0 {
+			if err := db.WriteBatch(batch, true); err != nil {
+				return err
+			}
+			batch = leveldbhelper.NewUpdateBatch()
+		}
+	}
+	batch.Put(indexCheckpointKey, encodeBlockNum(lastBlockNumInSnapshot))
+	if err := db.WriteBatch(batch, true); err != nil {
+		return err
+	}
+	return nil
 }
 
 func constructBlockNumKey(blockNum uint64) []byte {
