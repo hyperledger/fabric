@@ -84,3 +84,86 @@ func TestValidateIntermediateConfigOU(t *testing.T) {
 	err = thisMSP.Setup(conf)
 	assert.NoError(t, err)
 }
+
+func TestValidateIdentityOUsV142(t *testing.T) {
+	t.Parallel()
+
+	msp := getLocalMSPWithVersion(t, "testdata/nodeouadmin4", MSPv1_4_3).(*bccspmsp)
+
+	tests := []struct {
+		testName      string
+		ouIdentifiers map[string][][]byte
+		adminOU       *OUIdentifier
+		ouEnforcement bool
+		err           string
+	}{
+		{
+			testName:      "When OU Enforced with custom OU and admin OU defined",
+			ouIdentifiers: msp.ouIdentifiers,
+			adminOU:       msp.adminOU,
+			ouEnforcement: true,
+			err:           "",
+		},
+		{
+			testName:      "When OU Enforced with custom OU defined",
+			ouIdentifiers: msp.ouIdentifiers,
+			adminOU:       nil,
+			ouEnforcement: true,
+			err:           "",
+		},
+		{
+			testName:      "When OU Enforced with admin OU defined",
+			ouIdentifiers: nil,
+			adminOU:       msp.adminOU,
+			ouEnforcement: true,
+			err:           "",
+		},
+		{
+			testName:      "When no OU Enforced with custom OU and admin OU defined",
+			ouIdentifiers: msp.ouIdentifiers,
+			adminOU:       msp.adminOU,
+			ouEnforcement: false,
+			err:           "none of the identity's organizational units",
+		},
+		{
+			testName:      "When no OU Enforced with admin OU defined",
+			ouIdentifiers: nil,
+			adminOU:       msp.adminOU,
+			ouEnforcement: false,
+			err:           "none of the identity's organizational units",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.testName, func(t *testing.T) {
+
+			localMSP := getLocalMSPWithVersion(t, "testdata/nodeouadmin4", MSPv1_4_3).(*bccspmsp)
+
+			cert, err := readFile("testdata/nodeouadmin4/adm/testadmincert.pem")
+			assert.NoError(t, err)
+
+			id, _, err := localMSP.getIdentityFromConf(cert)
+			assert.NoError(t, err)
+
+			if tt.ouIdentifiers != nil {
+				localMSP.ouIdentifiers = tt.ouIdentifiers
+			}
+
+			if tt.adminOU != nil {
+				localMSP.adminOU = tt.adminOU
+			}
+
+			localMSP.ouEnforcement = tt.ouEnforcement
+
+			err = localMSP.validateIdentityOUsV142(id.(*identity))
+
+			if tt.err == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.err)
+			}
+		})
+	}
+}

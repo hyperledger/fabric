@@ -170,18 +170,15 @@ func (msp *bccspmsp) validateIdentityOUsV1(id *identity) error {
 }
 
 func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
-	// Run the same checks as per V1
-	err := msp.validateIdentityOUsV1(id)
-	if err != nil {
-		return err
-	}
-
 	// Perform V1_1 additional checks:
 	//
 	// -- Check for OU enforcement
 	if !msp.ouEnforcement {
 		// No enforcement required
-		return nil
+		// Run the same checks as per V1
+		// Check OUs however error only when not enforced and
+		// no special OUs defined
+		return msp.validateIdentityOUsV1(id)
 	}
 
 	// Make sure that the identity has only one of the special OUs
@@ -217,16 +214,13 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 }
 
 func (msp *bccspmsp) validateIdentityOUsV142(id *identity) error {
-	// Run the same checks as per V1
-	err := msp.validateIdentityOUsV1(id)
-	if err != nil {
-		return err
-	}
-
 	// -- Check for OU enforcement
 	if !msp.ouEnforcement {
 		// No enforcement required
-		return nil
+		// Run the same checks as per V1
+		// Check OUs however error only when not enforced and
+		// no special OUs defined
+		return msp.validateIdentityOUsV1(id)
 	}
 
 	// Make sure that the identity has only one of the special OUs
