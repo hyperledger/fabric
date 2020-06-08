@@ -15,18 +15,18 @@ import (
 	"os"
 	"strconv"
 	"syscall"
+	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/configtx"
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
 )
 
 var _ = Describe("ConfigTx", func() {
@@ -72,7 +72,6 @@ var _ = Describe("ConfigTx", func() {
 
 	It("creates channels and updates them using fabric-config/configtx", func() {
 		orderer := network.Orderer("orderer")
-		testPeers := network.PeersWithChannel("testchannel")
 		org1peer0 := network.Peer("Org1", "peer0")
 
 		By("setting up the channel")
@@ -115,8 +114,9 @@ var _ = Describe("ConfigTx", func() {
 		}
 
 		channelID := "testchannel"
-		createChannelUpdate, err := configtx.NewCreateChannelTx(channel, channelID)
+		createChannelUpdate, err := configtx.NewMarshaledCreateChannelTx(channel, channelID)
 		Expect(err).NotTo(HaveOccurred())
+
 		envelope, err := configtx.NewEnvelope(createChannelUpdate)
 		Expect(err).NotTo(HaveOccurred())
 		envBytes, err := proto.Marshal(envelope)
@@ -140,72 +140,173 @@ var _ = Describe("ConfigTx", func() {
 		Eventually(createChannel, network.EventuallyTimeout).Should(Equal(0))
 
 		By("joining all peers to the channel")
+		testPeers := network.PeersWithChannel("testchannel")
 		network.JoinChannel("testchannel", orderer, testPeers...)
+
+		By("getting the current channel config")
+		org2peer0 := network.Peer("Org2", "peer0")
+		channelConfig := nwo.GetConfig(network, org2peer0, orderer, "testchannel")
+		c := configtx.New(channelConfig)
+
+		By("updating orderer channel configuration")
+		o := c.Orderer()
+		oConfig, err := o.Configuration()
+		Expect(err).NotTo(HaveOccurred())
+		oConfig.BatchTimeout = 2 * time.Second
+		err = o.SetConfiguration(oConfig)
+		Expect(err).NotTo(HaveOccurred())
+		host, port := ordererHostPort(network, orderer)
+		err = o.Organization(orderer.Organization).SetEndpoint(configtx.Address{Host: host, Port: port + 1})
+		Expect(err).NotTo(HaveOccurred())
+
+		By("computing the config update")
+		configUpdate, err := c.ComputeMarshaledUpdate("testchannel")
+		Expect(err).NotTo(HaveOccurred())
+
+		By("creating a detached signature for the orderer")
+		signingIdentity := configtx.SigningIdentity{
+			Certificate: parseOrdererAdminX509Certificate(network, orderer),
+			PrivateKey:  parseOrdererAdminPrivateKey(network, orderer),
+			MSPID:       network.Organization(orderer.Organization).MSPID,
+		}
+		signature, err := signingIdentity.CreateConfigSignature(configUpdate)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("creating a signed config update envelope with the orderer's detached signature")
+		configUpdateEnvelope, err := configtx.NewEnvelope(configUpdate, signature)
+		Expect(err).NotTo(HaveOccurred())
+		err = signingIdentity.SignEnvelope(configUpdateEnvelope)
+		Expect(err).NotTo(HaveOccurred())
+
+		currentBlockNumber := nwo.CurrentConfigBlockNumber(network, org2peer0, orderer, "testchannel")
+
+		By("submitting the channel config update")
+		resp, err := nwo.Broadcast(network, orderer, configUpdateEnvelope)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+		ccb := func() uint64 { return nwo.CurrentConfigBlockNumber(network, org2peer0, orderer, "testchannel") }
+		Eventually(ccb, network.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
+
+		By("ensuring the active channel config matches the submitted config")
+		updatedChannelConfig := nwo.GetConfig(network, org2peer0, orderer, "testchannel")
+		Expect(proto.Equal(c.UpdatedConfig(), updatedChannelConfig)).To(BeTrue())
+
+		By("checking the current application capabilities")
+		c = configtx.New(updatedChannelConfig)
+		a := c.Application()
+		capabilities, err := a.Capabilities()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(capabilities).To(HaveLen(1))
+		Expect(capabilities).To(ContainElement("V1_3"))
+
+		By("enabling V2_0 application capabilities")
+		err = a.AddCapability("V2_0")
+		Expect(err).NotTo(HaveOccurred())
+
+		By("checking the application capabilities after update")
+		capabilities, err = a.Capabilities()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(capabilities).To(HaveLen(2))
+		Expect(capabilities).To(ContainElements("V1_3", "V2_0"))
+
+		By("computing the config update")
+		configUpdate, err = c.ComputeMarshaledUpdate("testchannel")
+		Expect(err).NotTo(HaveOccurred())
+
+		By("creating detached signatures for each peer")
+		signingIdentities := make([]configtx.SigningIdentity, len(testPeers))
+		signatures := make([]*common.ConfigSignature, len(testPeers))
+		for i, p := range testPeers {
+			signingIdentity := configtx.SigningIdentity{
+				Certificate: parsePeerAdminX509Certificate(network, p),
+				PrivateKey:  parsePeerAdminPrivateKey(network, p),
+				MSPID:       network.Organization(p.Organization).MSPID,
+			}
+			signingIdentities[i] = signingIdentity
+			signature, err := signingIdentity.CreateConfigSignature(configUpdate)
+			Expect(err).NotTo(HaveOccurred())
+			signatures[i] = signature
+		}
+
+		By("creating a signed config update envelope with the detached peer signatures")
+		configUpdateEnvelope, err = configtx.NewEnvelope(configUpdate, signatures...)
+		Expect(err).NotTo(HaveOccurred())
+		err = signingIdentities[0].SignEnvelope(configUpdateEnvelope)
+		Expect(err).NotTo(HaveOccurred())
+
+		currentBlockNumber = nwo.CurrentConfigBlockNumber(network, org2peer0, orderer, "testchannel")
+
+		By("submitting the channel config update")
+		resp, err = nwo.Broadcast(network, orderer, configUpdateEnvelope)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+		ccb = func() uint64 { return nwo.CurrentConfigBlockNumber(network, org2peer0, orderer, "testchannel") }
+		Eventually(ccb, network.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
+
+		By("ensuring the active channel config matches the submitted config")
+		updatedChannelConfig = nwo.GetConfig(network, org2peer0, orderer, "testchannel")
+		Expect(proto.Equal(c.UpdatedConfig(), updatedChannelConfig)).To(BeTrue())
 
 		By("adding the anchor peer for each org")
 		for _, peer := range network.AnchorsForChannel("testchannel") {
 			By("getting the current channel config")
-			channelConfig := nwo.GetConfig(network, peer, orderer, "testchannel")
-
-			c := configtx.New(channelConfig)
+			channelConfig = nwo.GetConfig(network, peer, orderer, "testchannel")
+			c = configtx.New(channelConfig)
+			peerOrg := c.Application().Organization(peer.Organization)
 
 			By("adding the anchor peer for " + peer.Organization)
 			host, port := peerHostPort(network, peer)
-			err = c.Application().Organization(peer.Organization).AddAnchorPeer(configtx.Address{Host: host, Port: port})
+			err = peerOrg.AddAnchorPeer(configtx.Address{Host: host, Port: port})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("computing the config update")
-			configUpdate, err := c.ComputeUpdate("testchannel")
+			configUpdate, err = c.ComputeMarshaledUpdate("testchannel")
 			Expect(err).NotTo(HaveOccurred())
 
 			By("creating a detached signature")
 			signingIdentity := configtx.SigningIdentity{
-				Certificate: parsePeerX509Certificate(network, peer),
-				PrivateKey:  parsePeerPrivateKey(network, peer, "Admin"),
+				Certificate: parsePeerAdminX509Certificate(network, peer),
+				PrivateKey:  parsePeerAdminPrivateKey(network, peer),
 				MSPID:       network.Organization(peer.Organization).MSPID,
 			}
 			signature, err := signingIdentity.CreateConfigSignature(configUpdate)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("creating a signed config update envelope with the detached signature")
-			configUpdateEnvelope, err := configtx.NewEnvelope(configUpdate, signature)
+			By("creating a signed config update envelope with the detached peer signature")
+			configUpdateEnvelope, err = configtx.NewEnvelope(configUpdate, signature)
 			Expect(err).NotTo(HaveOccurred())
 			err = signingIdentity.SignEnvelope(configUpdateEnvelope)
 			Expect(err).NotTo(HaveOccurred())
-			configUpdateBytes, err := proto.Marshal(configUpdateEnvelope)
-			Expect(err).NotTo(HaveOccurred())
-			tempFile, err := ioutil.TempFile("", "add-anchor-peer")
-			Expect(err).NotTo(HaveOccurred())
-			tempFile.Close()
-			defer os.Remove(tempFile.Name())
-			err = ioutil.WriteFile(tempFile.Name(), configUpdateBytes, 0644)
-			Expect(err).NotTo(HaveOccurred())
 
-			currentBlockNumber := nwo.CurrentConfigBlockNumber(network, peer, orderer, "testchannel")
+			currentBlockNumber = nwo.CurrentConfigBlockNumber(network, peer, orderer, "testchannel")
 
-			By("submitting the channel config update")
-			sess, err := network.PeerAdminSession(peer, commands.ChannelUpdate{
-				ChannelID:  "testchannel",
-				Orderer:    network.OrdererAddress(orderer, nwo.ListenPort),
-				File:       tempFile.Name(),
-				ClientAuth: network.ClientAuthRequired,
-			})
+			By("submitting the channel config update for " + peer.Organization)
+			resp, err = nwo.Broadcast(network, orderer, configUpdateEnvelope)
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
-			Expect(sess.Err).To(gbytes.Say("Successfully submitted channel update"))
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
-			ccb := func() uint64 { return nwo.CurrentConfigBlockNumber(network, peer, orderer, "testchannel") }
+			ccb = func() uint64 { return nwo.CurrentConfigBlockNumber(network, peer, orderer, "testchannel") }
 			Eventually(ccb, network.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
 
 			By("ensuring the active channel config matches the submitted config")
-			finalChannelConfig := nwo.GetConfig(network, peer, orderer, "testchannel")
-			Expect(c.UpdatedConfig()).To(Equal(finalChannelConfig))
+			updatedChannelConfig = nwo.GetConfig(network, peer, orderer, "testchannel")
+			Expect(proto.Equal(c.UpdatedConfig(), updatedChannelConfig)).To(BeTrue())
 		}
 	})
 })
 
-func parsePeerX509Certificate(n *nwo.Network, p *nwo.Peer) *x509.Certificate {
-	certBytes, err := ioutil.ReadFile(n.PeerCert(p))
+func parsePeerAdminX509Certificate(n *nwo.Network, p *nwo.Peer) *x509.Certificate {
+	return parseCertificate(n.PeerUserCert(p, "Admin"))
+}
+
+func parseOrdererAdminX509Certificate(n *nwo.Network, o *nwo.Orderer) *x509.Certificate {
+	return parseCertificate(n.OrdererUserCert(o, "Admin"))
+}
+
+func parseCertificate(filename string) *x509.Certificate {
+	certBytes, err := ioutil.ReadFile(filename)
 	Expect(err).NotTo(HaveOccurred())
 	pemBlock, _ := pem.Decode(certBytes)
 	cert, err := x509.ParseCertificate(pemBlock.Bytes)
@@ -213,8 +314,16 @@ func parsePeerX509Certificate(n *nwo.Network, p *nwo.Peer) *x509.Certificate {
 	return cert
 }
 
-func parsePeerPrivateKey(n *nwo.Network, p *nwo.Peer, user string) crypto.PrivateKey {
-	pkBytes, err := ioutil.ReadFile(n.PeerUserKey(p, user))
+func parsePeerAdminPrivateKey(n *nwo.Network, p *nwo.Peer) crypto.PrivateKey {
+	return parsePrivateKey(n.PeerUserKey(p, "Admin"))
+}
+
+func parseOrdererAdminPrivateKey(n *nwo.Network, o *nwo.Orderer) crypto.PrivateKey {
+	return parsePrivateKey(n.OrdererUserKey(o, "Admin"))
+}
+
+func parsePrivateKey(filename string) crypto.PrivateKey {
+	pkBytes, err := ioutil.ReadFile(filename)
 	Expect(err).NotTo(HaveOccurred())
 	pemBlock, _ := pem.Decode(pkBytes)
 	privateKey, err := x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
@@ -223,7 +332,15 @@ func parsePeerPrivateKey(n *nwo.Network, p *nwo.Peer, user string) crypto.Privat
 }
 
 func peerHostPort(n *nwo.Network, p *nwo.Peer) (string, int) {
-	host, port, err := net.SplitHostPort(n.PeerAddress(p, nwo.ListenPort))
+	return splitHostPort(n.PeerAddress(p, nwo.ListenPort))
+}
+
+func ordererHostPort(n *nwo.Network, o *nwo.Orderer) (string, int) {
+	return splitHostPort(n.OrdererAddress(o, nwo.ListenPort))
+}
+
+func splitHostPort(address string) (string, int) {
+	host, port, err := net.SplitHostPort(address)
 	Expect(err).NotTo(HaveOccurred())
 	portInt, err := strconv.Atoi(port)
 	Expect(err).NotTo(HaveOccurred())

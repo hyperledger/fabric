@@ -192,17 +192,21 @@ func (o *OrdererOrg) Configuration() (Organization, error) {
 		return Organization{}, err
 	}
 
-	// Orderer organization requires orderer endpoints.
-	endpointsProtos := &cb.OrdererAddresses{}
-	err = unmarshalConfigValueAtKey(o.orgGroup, EndpointsKey, endpointsProtos)
-	if err != nil {
-		return Organization{}, err
+	// OrdererEndpoints are optional when retrieving from an existing config
+	org.OrdererEndpoints = nil
+	_, ok := o.orgGroup.Values[EndpointsKey]
+	if ok {
+		endpointsProtos := &cb.OrdererAddresses{}
+		err = unmarshalConfigValueAtKey(o.orgGroup, EndpointsKey, endpointsProtos)
+		if err != nil {
+			return Organization{}, err
+		}
+		ordererEndpoints := make([]string, len(endpointsProtos.Addresses))
+		for i, address := range endpointsProtos.Addresses {
+			ordererEndpoints[i] = address
+		}
+		org.OrdererEndpoints = ordererEndpoints
 	}
-	ordererEndpoints := make([]string, len(endpointsProtos.Addresses))
-	for i, address := range endpointsProtos.Addresses {
-		ordererEndpoints[i] = address
-	}
-	org.OrdererEndpoints = ordererEndpoints
 
 	// Remove AnchorPeers which are application org specific.
 	org.AnchorPeers = nil
