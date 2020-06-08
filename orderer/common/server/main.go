@@ -728,8 +728,12 @@ func initializeMultichannelRegistrar(
 	var icr etcdraft.InactiveChainRegistry
 	if conf.General.BootstrapMethod == "file" || conf.General.BootstrapMethod == "none" {
 		if bootstrapBlock != nil && isClusterType(bootstrapBlock, bccsp) {
+			// with a system channel
 			etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, repInitiator, srvConf, srv, registrar, metricsProvider, bccsp)
 			icr = etcdConsenter.InactiveChainRegistry
+		} else if bootstrapBlock == nil {
+			// without a system channel: assume cluster type, InactiveChainRegistry == nil, no go-routine.
+			consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
 		}
 	}
 

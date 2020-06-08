@@ -453,6 +453,8 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 	t.Run("registrar without a system channel", func(t *testing.T) {
 		conf.General.BootstrapMethod = "none"
 		conf.General.GenesisFile = ""
+		srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
+		assert.NoError(t, err)
 		lf, _, err := createLedgerFactory(conf, &disabled.Provider{})
 		assert.NoError(t, err)
 		registrar := initializeMultichannelRegistrar(
@@ -460,7 +462,7 @@ func TestInitializeMultichannelRegistrar(t *testing.T) {
 			nil,
 			&cluster.PredicateDialer{},
 			comm.ServerConfig{},
-			nil,
+			srv,
 			conf,
 			signer,
 			&disabled.Provider{},
