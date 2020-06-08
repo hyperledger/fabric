@@ -90,7 +90,7 @@ func toLowS(key ecdsa.PublicKey, sig ecdsaSignature) ecdsaSignature {
 
 // CreateConfigSignature creates a config signature for the the given configuration
 // update using the specified signing identity.
-func (s *SigningIdentity) CreateConfigSignature(configUpdate *cb.ConfigUpdate) (*cb.ConfigSignature, error) {
+func (s *SigningIdentity) CreateConfigSignature(marshaledUpdate []byte) (*cb.ConfigSignature, error) {
 	signatureHeader, err := s.signatureHeader()
 	if err != nil {
 		return nil, fmt.Errorf("creating signature header: %v", err)
@@ -105,14 +105,9 @@ func (s *SigningIdentity) CreateConfigSignature(configUpdate *cb.ConfigUpdate) (
 		SignatureHeader: header,
 	}
 
-	configUpdateBytes, err := proto.Marshal(configUpdate)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling config update: %v", err)
-	}
-
 	configSignature.Signature, err = s.Sign(
 		rand.Reader,
-		concatenateBytes(configSignature.SignatureHeader, configUpdateBytes),
+		concatenateBytes(configSignature.SignatureHeader, marshaledUpdate),
 		nil,
 	)
 	if err != nil {
