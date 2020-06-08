@@ -1,6 +1,6 @@
-# Documentation style guide for contributors
+# Style guide for contributors
 
-*Audience: documentation writers and editors*
+**Audience**: documentation writers and editors
 
 While this style guide will also refer to best practices using ReStructured Text (also known as RST), in general we advise writing documentation in Markdown, as it's a more universally accepted documentation standard. Both formats are usable, however, and if you decide to write a topic in RST (or are editing an RST topic), be sure to refer to this style guide.
 
@@ -10,7 +10,7 @@ While this style guide will also refer to best practices using ReStructured Text
 
 * [For Markdown formatting](http://hyperledger-fabric.readthedocs.io/en/release-1.4/peers/peers.html).
 
-If you just want to look at how things are formatted, you can navigate to the Fabric repo to look at the raw file by clicking on `Edit on Github` link in the upper right hand corner of the page. Then click the `Raw` tab. This will show you the formatting of the doc. **Do not attempt to edit the file on Github.** If you want to make a change, clone the repo and follow the instructions in [Contributing](contributing.html) for creating pull requests.
+If you just want to look at how things are formatted, you can navigate to the Fabric repo to look at the raw file by clicking on `Edit on Github` link in the upper right hand corner of the page. Then click the `Raw` tab. This will show you the formatting of the doc. **Do not attempt to edit the file on Github.** If you want to make a change, clone the repo and follow the instructions in [Contributing](./CONTRIBUTING.html) for creating pull requests.
 
 **Line lengths.**
 
@@ -204,6 +204,27 @@ In markdown, it’s somewhat simpler. You go:
 ```
 
 Both file formats don't like when these things are done out of order. For example, you might want a `####` to be the first thing after your `#` Title. Markdown won’t allow it. Similarly, RST will default to whatever order you give to the title formats (as they appear in the first sections of your doc).
+
+**Relative links should be used whenever possible.**
+
+  For RST, the preferred syntax is:
+  ```
+    :doc:`anchor text <relativepath>`
+  ```
+  Do not put the .rst suffix at the end of the filepath.
+
+  For Markdown, the preferred syntax is:
+  ```
+    [anchor text](<relativepath>)
+  ```
+
+  For other files, such as text or YAML files, use a direct link to the file in
+  github for example:
+
+  [https://github.com/hyperledger/fabric/blob/master/docs/README.md](https://github.com/hyperledger/fabric/blob/master/docs/README.md)
+
+  Relative links are unfortunately not working on github when browsing through a
+  RST file.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->
