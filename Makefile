@@ -44,7 +44,7 @@
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 
-ALPINE_VER ?= 3.11
+ALPINE_VER ?= 3.12
 BASE_VERSION = 2.2.0
 
 # 3rd party image version
@@ -76,7 +76,7 @@ METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 
-GO_VER = 1.14.1
+GO_VER = 1.14.4
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
