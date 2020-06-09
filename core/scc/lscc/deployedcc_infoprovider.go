@@ -62,6 +62,11 @@ func (p *DeployedCCInfoProvider) ImplicitCollections(channelName, chaincodeName 
 	return nil, nil
 }
 
+// GenerateImplicitCollectionForOrg is not implemented for legacy chaincodes
+func (p *DeployedCCInfoProvider) GenerateImplicitCollectionForOrg(mspid string) *peer.StaticCollectionConfig {
+	return nil
+}
+
 // ChaincodeInfo implements function in interface ledger.DeployedChaincodeInfoProvider
 func (p *DeployedCCInfoProvider) ChaincodeInfo(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 	chaincodeDataBytes, err := qe.GetState(lsccNamespace, chaincodeName)

@@ -19,7 +19,7 @@ func TestGetRevision(t *testing.T) {
 	vdbEnv.init(t, nil)
 	defer vdbEnv.cleanup()
 
-	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-get-revisions")
+	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-get-revisions", nil)
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
@@ -85,7 +85,7 @@ func TestBuildCommittersForNs(t *testing.T) {
 	vdbEnv.init(t, nil)
 	defer vdbEnv.cleanup()
 
-	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-build-committers-for-ns")
+	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-build-committers-for-ns", nil)
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
@@ -119,7 +119,7 @@ func TestBuildCommitters(t *testing.T) {
 	vdbEnv.init(t, nil)
 	defer vdbEnv.cleanup()
 
-	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-build-committers")
+	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-build-committers", nil)
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
@@ -152,7 +152,7 @@ func TestExecuteCommitter(t *testing.T) {
 	vdbEnv.init(t, nil)
 	defer vdbEnv.cleanup()
 
-	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-execute-committer")
+	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-execute-committer", nil)
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 
@@ -212,7 +212,7 @@ func TestCommitUpdates(t *testing.T) {
 	vdbEnv.init(t, nil)
 	defer vdbEnv.cleanup()
 
-	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-commitupdates")
+	versionedDB, err := vdbEnv.DBProvider.GetDBHandle("test-commitupdates", nil)
 	assert.NoError(t, err)
 	db := versionedDB.(*VersionedDB)
 

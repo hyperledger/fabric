@@ -15,11 +15,12 @@ import (
 
 //go:generate counterfeiter -o mock/results_iterator.go -fake-name ResultsIterator . ResultsIterator
 //go:generate counterfeiter -o mock/versioned_db.go -fake-name VersionedDB . VersionedDB
+//go:generate counterfeiter -o mock/namespace_provider.go -fake-name NamespaceProvider . NamespaceProvider
 
 // VersionedDBProvider provides an instance of an versioned DB
 type VersionedDBProvider interface {
 	// GetDBHandle returns a handle to a VersionedDB
-	GetDBHandle(id string) (VersionedDB, error)
+	GetDBHandle(id string, namespaceProvider NamespaceProvider) (VersionedDB, error)
 	// Close closes all the VersionedDB instances and releases any resources held by VersionedDBProvider
 	Close()
 }
@@ -75,6 +76,16 @@ type VersionedDB interface {
 	Open() error
 	// Close closes the db
 	Close()
+}
+
+// NamespaceProvider provides a mean for statedb to get all the possible namespaces for a channel.
+// The intended use is for statecouchdb to retroactively build channel metadata when it is missing,
+// e.g., when opening a statecouchdb from v2.0/2.1 version.
+type NamespaceProvider interface {
+	// PossibleNamespaces returns all possible namespaces for the statedb. Note that it is a superset
+	// of the actual namespaces. Therefore, the caller should compare with the existing databases to
+	// filter out the namespaces that have no matched databases.
+	PossibleNamespaces(vdb VersionedDB) ([]string, error)
 }
 
 //BulkOptimizable interface provides additional functions for

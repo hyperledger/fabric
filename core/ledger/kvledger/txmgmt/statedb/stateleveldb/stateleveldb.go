@@ -49,7 +49,7 @@ func NewVersionedDBProvider(dbPath string) (*VersionedDBProvider, error) {
 }
 
 // GetDBHandle gets the handle to a named database
-func (provider *VersionedDBProvider) GetDBHandle(dbName string) (statedb.VersionedDB, error) {
+func (provider *VersionedDBProvider) GetDBHandle(dbName string, namespaceProvider statedb.NamespaceProvider) (statedb.VersionedDB, error) {
 	return newVersionedDB(provider.dbProvider.GetDBHandle(dbName), dbName), nil
 }
 

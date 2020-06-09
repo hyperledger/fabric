@@ -47,7 +47,7 @@ type StateDBConfig struct {
 // DBProvider encapsulates other providers such as VersionedDBProvider and
 // BookeepingProvider which are required to create DB for a channel
 type DBProvider struct {
-	statedb.VersionedDBProvider
+	VersionedDBProvider statedb.VersionedDBProvider
 	HealthCheckRegistry ledger.HealthCheckRegistry
 	bookkeepingProvider bookkeeping.Provider
 }
@@ -95,8 +95,8 @@ func (p *DBProvider) RegisterHealthChecker() error {
 }
 
 // GetDBHandle gets a handle to DB for a given id, i.e., a channel
-func (p *DBProvider) GetDBHandle(id string) (*DB, error) {
-	vdb, err := p.VersionedDBProvider.GetDBHandle(id)
+func (p *DBProvider) GetDBHandle(id string, chInfoProvider channelInfoProvider) (*DB, error) {
+	vdb, err := p.VersionedDBProvider.GetDBHandle(id, &namespaceProvider{chInfoProvider})
 	if err != nil {
 		return nil, err
 	}
@@ -428,4 +428,42 @@ func getIndexInfo(indexPath string) *indexInfo {
 		indexInfo.collectionName = dirsDepth[collectionNameDepth]
 	}
 	return indexInfo
+}
+
+// channelInfoProvider interface enables the privateenabledstate package to retrieve all the config blocks
+// and  namespaces and collections.
+type channelInfoProvider interface {
+	// NamespacesAndCollections returns namespaces and collections for the channel.
+	NamespacesAndCollections(vdb statedb.VersionedDB) (map[string][]string, error)
+}
+
+// namespaceProvider implements statedb.NamespaceProvider interface
+type namespaceProvider struct {
+	channelInfoProvider
+}
+
+// PossibleNamespaces returns all possible namespaces for a channel. In ledger, a private data namespace is
+// created only if the peer is a member of the collection or owns the implicit collection. However, this function
+// adopts a simple implementation that always adds private data namespace for a collection without checking
+// peer membership/ownership. As a result, it returns a superset of namespaces that may be created.
+// However, it will not cause any inconsistent issue because the caller in statecouchdb will check if any
+// existing database matches the namespace and filter out all extra namespaces if no databases match them.
+// Checking peer membership is complicated because it requires retrieving all the collection configs from
+// the collection config store. Because this is a temporary function needed to retroactively build namespaces
+// when upgrading v2.0/2.1 peers to a newer v2.x version and because returning extra private data namespaces
+// does not cause inconsistence, it makes sense to use the simple implementation.
+func (p *namespaceProvider) PossibleNamespaces(vdb statedb.VersionedDB) ([]string, error) {
+	retNamespaces := []string{}
+	nsCollMap, err := p.NamespacesAndCollections(vdb)
+	if err != nil {
+		return nil, err
+	}
+	for ns, collections := range nsCollMap {
+		retNamespaces = append(retNamespaces, ns)
+		for _, collection := range collections {
+			retNamespaces = append(retNamespaces, deriveHashedDataNs(ns, collection))
+			retNamespaces = append(retNamespaces, derivePvtDataNs(ns, collection))
+		}
+	}
+	return retNamespaces, nil
 }

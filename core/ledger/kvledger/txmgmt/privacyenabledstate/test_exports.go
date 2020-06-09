@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
+	testmock "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
@@ -84,7 +85,7 @@ func (env *LevelDBTestEnv) StopExternalResource() {
 
 // GetDBHandle implements corresponding function from interface TestEnv
 func (env *LevelDBTestEnv) GetDBHandle(id string) *DB {
-	db, err := env.provider.GetDBHandle(id)
+	db, err := env.provider.GetDBHandle(id, nil)
 	assert.NoError(env.t, err)
 	return db
 }
@@ -185,7 +186,7 @@ func (env *CouchDBTestEnv) Init(t testing.TB) {
 
 // GetDBHandle implements corresponding function from interface TestEnv
 func (env *CouchDBTestEnv) GetDBHandle(id string) *DB {
-	db, err := env.provider.GetDBHandle(id)
+	db, err := env.provider.GetDBHandle(id, &testmock.ChannelInfoProvider{})
 	assert.NoError(env.t, err)
 	return db
 }

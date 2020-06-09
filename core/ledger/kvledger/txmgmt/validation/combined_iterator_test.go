@@ -19,7 +19,7 @@ func TestCombinedIterator(t *testing.T) {
 	testDBEnv := stateleveldb.NewTestVDBEnv(t)
 	defer testDBEnv.Cleanup()
 
-	db, err := testDBEnv.DBProvider.GetDBHandle("TestDB")
+	db, err := testDBEnv.DBProvider.GetDBHandle("TestDB", nil)
 	assert.NoError(t, err)
 
 	// populate db with initial data
