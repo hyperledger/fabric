@@ -50,10 +50,10 @@ func QueryInstalledCmd(i *InstalledQuerier, cryptoProvider bccsp.BCCSP) *cobra.C
 				ccInput := &ClientConnectionsInput{
 					CommandName:           cmd.Name(),
 					EndorserRequired:      true,
-					ChannelID:             channelID,
 					PeerAddresses:         peerAddresses,
 					TLSRootCertFiles:      tlsRootCertFiles,
 					ConnectionProfilePath: connectionProfilePath,
+					TargetPeer:            targetPeer,
 					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
 				}
 
@@ -85,6 +85,7 @@ func QueryInstalledCmd(i *InstalledQuerier, cryptoProvider bccsp.BCCSP) *cobra.C
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
+		"targetPeer",
 		"output",
 	}
 	attachFlags(chaincodeQueryInstalledCmd, flagList)

@@ -60,10 +60,10 @@ func GetInstalledPackageCmd(i *InstalledPackageGetter, cryptoProvider bccsp.BCCS
 				ccInput := &ClientConnectionsInput{
 					CommandName:           cmd.Name(),
 					EndorserRequired:      true,
-					ChannelID:             channelID,
 					PeerAddresses:         peerAddresses,
 					TLSRootCertFiles:      tlsRootCertFiles,
 					ConnectionProfilePath: connectionProfilePath,
+					TargetPeer:            targetPeer,
 					TLSEnabled:            viper.GetBool("peer.tls.enabled"),
 				}
 
@@ -96,6 +96,7 @@ func GetInstalledPackageCmd(i *InstalledPackageGetter, cryptoProvider bccsp.BCCS
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
+		"targetPeer",
 		"package-id",
 		"output-directory",
 	}

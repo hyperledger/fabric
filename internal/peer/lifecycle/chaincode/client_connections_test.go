@@ -33,7 +33,7 @@ func TestNewClientConnections(t *testing.T) {
 
 	t.Run("uneven connection profile", func(t *testing.T) {
 		input := &ClientConnectionsInput{
-			CommandName:           "install",
+			CommandName:           "commit",
 			ChannelID:             "mychannel",
 			EndorserRequired:      true,
 			ConnectionProfilePath: "testdata/connectionprofile-uneven.yaml",
@@ -42,7 +42,7 @@ func TestNewClientConnections(t *testing.T) {
 		c, err := NewClientConnections(input, cryptoProvider)
 		assert.Nil(c)
 		assert.Error(err)
-		assert.EqualError(err, "failed to validate peer connection parameters: peer 'peer0.org2.example.com' is defined in the channel config but doesn't have associated peer config")
+		assert.EqualError(err, "failed to validate peer connection parameters: peer 'peer0.org2.example.com' doesn't have associated peer config")
 	})
 
 	t.Run("good connection profile - two peers", func(t *testing.T) {
@@ -127,6 +127,48 @@ func TestNewClientConnections(t *testing.T) {
 		assert.Nil(c)
 		assert.Error(err)
 		assert.Contains(err.Error(), "no endorser clients retrieved")
+	})
+
+	t.Run("install using connection profile", func(t *testing.T) {
+		input := &ClientConnectionsInput{
+			CommandName:           "install",
+			EndorserRequired:      true,
+			ConnectionProfilePath: "testdata/connectionprofile.yaml",
+			TargetPeer:            "peer0.org2.example.com",
+		}
+
+		c, err := NewClientConnections(input, cryptoProvider)
+		assert.Nil(c)
+		assert.Error(err)
+		assert.Contains(err.Error(), "failed to retrieve endorser client")
+	})
+
+	t.Run("install using connection profile - no target peer specified", func(t *testing.T) {
+		input := &ClientConnectionsInput{
+			CommandName:           "install",
+			EndorserRequired:      true,
+			ConnectionProfilePath: "testdata/connectionprofile.yaml",
+			TargetPeer:            "",
+		}
+
+		c, err := NewClientConnections(input, cryptoProvider)
+		assert.Nil(c)
+		assert.Error(err)
+		assert.Contains(err.Error(), "failed to validate peer connection parameters: --targetPeer must be specified for channel-less operation using connection profile")
+	})
+
+	t.Run("install using connection profile - target peer doesn't exist", func(t *testing.T) {
+		input := &ClientConnectionsInput{
+			CommandName:           "install",
+			EndorserRequired:      true,
+			ConnectionProfilePath: "testdata/connectionprofile.yaml",
+			TargetPeer:            "not-a-peer",
+		}
+
+		c, err := NewClientConnections(input, cryptoProvider)
+		assert.Nil(c)
+		assert.Error(err)
+		assert.Contains(err.Error(), "failed to validate peer connection parameters: peer 'not-a-peer' doesn't have associated peer config")
 	})
 
 	t.Run("failure connecting to orderer", func(t *testing.T) {
