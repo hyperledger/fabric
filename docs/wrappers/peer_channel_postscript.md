@@ -24,7 +24,7 @@ Here's an example of the `peer channel create` command option.
 
 * Create a new channel `mychannel` for the network, using the orderer at ip
   address `orderer.example.com:7050`.  The configuration update transaction
-  required to create this channel is defined the file `./createchannel.tx`.
+  required to create this channel is contained in the file `./createchannel.tx`.
   Wait 30 seconds for the channel to be created.
 
   ```
