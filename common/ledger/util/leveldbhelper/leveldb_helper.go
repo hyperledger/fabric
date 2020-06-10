@@ -79,6 +79,8 @@ func (dbInst *DB) Open() {
 
 // IsEmpty returns whether or not a database is empty
 func (dbInst *DB) IsEmpty() (bool, error) {
+	dbInst.mutex.RLock()
+	defer dbInst.mutex.RUnlock()
 	itr := dbInst.db.NewIterator(&goleveldbutil.Range{}, dbInst.readOpts)
 	defer itr.Release()
 	hasItems := itr.Next()
