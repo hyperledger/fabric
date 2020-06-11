@@ -49,7 +49,7 @@ type ChannelManagement interface {
 	ChannelInfo(channelID string) (types.ChannelInfo, error)
 
 	// JoinChannel instructs the orderer to create a channel and join it with the provided config block.
-	JoinChannel(channelID string, configBlock *cb.Block) (types.ChannelInfo, error)
+	JoinChannel(channelID string, configBlock *cb.Block, isAppChannel bool) (types.ChannelInfo, error)
 
 	// RemoveChannel instructs the orderer to remove a channel.
 	// Depending on the removeStorage parameter, the storage resources are either removed or archived.
@@ -163,7 +163,13 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	info, err := h.registrar.JoinChannel(channelID, block)
+	isAppChannel, err := ValidateJoinBlock(channelID, block)
+	if err != nil {
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "invalid join block"))
+		return
+	}
+
+	info, err := h.registrar.JoinChannel(channelID, block, isAppChannel)
 	if err == nil {
 		info.URL = path.Join(URLBaseV1Channels, info.Name)
 		h.logger.Debugf("Successfully joined channel: %s", info)

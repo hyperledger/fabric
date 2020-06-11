@@ -531,7 +531,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 		registrar.Initialize(mockConsenters)
 
-		info, err := registrar.JoinChannel("some-app-channel", &cb.Block{})
+		info, err := registrar.JoinChannel("some-app-channel", &cb.Block{}, false)
 		assert.EqualError(t, err, "system channel exists")
 		assert.Equal(t, types.ChannelInfo{}, info)
 	})
@@ -559,7 +559,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		registrar.CreateChain("my-channel")
 		assert.NotNil(t, registrar.GetChain("my-channel"))
 
-		info, err := registrar.JoinChannel("my-channel", &cb.Block{})
+		info, err := registrar.JoinChannel("my-channel", &cb.Block{}, false)
 		assert.EqualError(t, err, "channel already exists")
 		assert.Equal(t, types.ChannelInfo{}, info)
 	})
@@ -571,10 +571,12 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
 		mockConsenters := map[string]consensus.Consenter{"not-raft": &mockConsenter{}}
+
 		config := localconfig.TopLevel{}
 		config.General.BootstrapMethod = "none"
 		config.General.GenesisFile = ""
 		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+
 		assert.Panics(t, func() { registrar.Initialize(mockConsenters) })
 	})
 }
