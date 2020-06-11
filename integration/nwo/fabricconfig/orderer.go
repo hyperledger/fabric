@@ -9,10 +9,11 @@ package fabricconfig
 import "time"
 
 type Orderer struct {
-	General    *General           `yaml:"General,omitempty"`
-	FileLedger *FileLedger        `yaml:"FileLedger,omitempty"`
-	Kafka      *Kafka             `yaml:"Kafka,omitempty"`
-	Operations *OrdererOperations `yaml:"Operations,omitempty"`
+	General              *General              `yaml:"General,omitempty"`
+	FileLedger           *FileLedger           `yaml:"FileLedger,omitempty"`
+	Kafka                *Kafka                `yaml:"Kafka,omitempty"`
+	Operations           *OrdererOperations    `yaml:"Operations,omitempty"`
+	ChannelParticipation *ChannelParticipation `yaml:"ChannelParticipation,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
@@ -120,4 +121,8 @@ type OrdererStatsd struct {
 	Address       string        `yaml:"Address,omitempty"`
 	WriteInterval time.Duration `yaml:"WriteInterval,omitempty"`
 	Prefix        string        `yaml:"Prefix,omitempty"`
+}
+
+type ChannelParticipation struct {
+	Enabled bool `yaml:"Enabled"`
 }
