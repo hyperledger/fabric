@@ -15,6 +15,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -40,17 +41,126 @@ func TestIterator(t *testing.T) {
 		db3.Put([]byte(createTestKey(i)), []byte(createTestValue("db3", i)), false)
 	}
 
-	itr1 := db2.GetIterator([]byte(createTestKey(2)), []byte(createTestKey(4)))
-	defer itr1.Release()
-	checkItrResults(t, itr1, createTestKeys(2, 3), createTestValues("db2", 2, 3))
+	rangeTestCases := []struct {
+		startKey       []byte
+		endKey         []byte
+		expectedKeys   []string
+		expectedValues []string
+	}{
+		{
+			startKey:       []byte(createTestKey(2)),
+			endKey:         []byte(createTestKey(4)),
+			expectedKeys:   createTestKeys(2, 3),
+			expectedValues: createTestValues("db2", 2, 3),
+		},
+		{
+			startKey:       []byte(createTestKey(2)),
+			endKey:         nil,
+			expectedKeys:   createTestKeys(2, 19),
+			expectedValues: createTestValues("db2", 2, 19),
+		},
+		{
+			startKey:       nil,
+			endKey:         nil,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db2", 0, 19),
+		},
+	}
 
-	itr2 := db2.GetIterator([]byte(createTestKey(2)), nil)
-	defer itr2.Release()
-	checkItrResults(t, itr2, createTestKeys(2, 19), createTestValues("db2", 2, 19))
+	for i, testCase := range rangeTestCases {
+		t.Run(
+			fmt.Sprintf("range testCase %d", i),
+			func(t *testing.T) {
+				itr, err := db2.GetIterator(testCase.startKey, testCase.endKey)
+				require.NoError(t, err)
+				defer itr.Release()
+				checkItrResults(t, itr, testCase.expectedKeys, testCase.expectedValues)
+			},
+		)
+	}
 
-	itr3 := db2.GetIterator(nil, nil)
-	defer itr3.Release()
-	checkItrResults(t, itr3, createTestKeys(0, 19), createTestValues("db2", 0, 19))
+	rangeWithSeekTestCases := []struct {
+		startKey          []byte
+		endKey            []byte
+		seekToKey         []byte
+		itrAtKeyAfterSeek []byte
+		expectedKeys      []string
+		expectedValues    []string
+	}{
+		{
+			startKey:          nil,
+			endKey:            nil,
+			seekToKey:         []byte(createTestKey(10)),
+			itrAtKeyAfterSeek: []byte(createTestKey(10)),
+			expectedKeys:      createTestKeys(11, 19),
+			expectedValues:    createTestValues("db1", 11, 19),
+		},
+		{
+			startKey:          []byte(createTestKey(11)),
+			endKey:            nil,
+			seekToKey:         []byte(createTestKey(5)),
+			itrAtKeyAfterSeek: []byte(createTestKey(11)),
+			expectedKeys:      createTestKeys(12, 19),
+			expectedValues:    createTestValues("db1", 12, 19),
+		},
+		{
+			startKey:          nil,
+			endKey:            nil,
+			seekToKey:         []byte(createTestKey(19)),
+			itrAtKeyAfterSeek: []byte(createTestKey(19)),
+			expectedKeys:      nil,
+			expectedValues:    nil,
+		},
+	}
+
+	for i, testCase := range rangeWithSeekTestCases {
+		t.Run(
+			fmt.Sprintf("range with seek testCase %d", i),
+			func(t *testing.T) {
+				itr, err := db1.GetIterator(testCase.startKey, testCase.endKey)
+				require.NoError(t, err)
+				defer itr.Release()
+				require.True(t, itr.Seek(testCase.seekToKey))
+				require.Equal(t, testCase.itrAtKeyAfterSeek, itr.Key())
+				checkItrResults(t, itr, testCase.expectedKeys, testCase.expectedValues)
+			},
+		)
+	}
+
+	t.Run("test-first-prev", func(t *testing.T) {
+		itr, err := db1.GetIterator(nil, nil)
+		require.NoError(t, err)
+		defer itr.Release()
+		require.True(t, itr.Seek([]byte(createTestKey(10))))
+		require.Equal(t, []byte(createTestKey(10)), itr.Key())
+		checkItrResults(t, itr, createTestKeys(11, 19), createTestValues("db1", 11, 19))
+
+		require.True(t, itr.First())
+		require.True(t, itr.Seek([]byte(createTestKey(10))))
+		require.Equal(t, []byte(createTestKey(10)), itr.Key())
+		require.True(t, itr.Prev())
+		checkItrResults(t, itr, createTestKeys(10, 19), createTestValues("db1", 10, 19))
+
+		require.True(t, itr.First())
+		require.False(t, itr.Seek([]byte(createTestKey(20))))
+		require.True(t, itr.First())
+		checkItrResults(t, itr, createTestKeys(1, 19), createTestValues("db1", 1, 19))
+
+		require.True(t, itr.First())
+		require.False(t, itr.Prev())
+		checkItrResults(t, itr, createTestKeys(0, 19), createTestValues("db1", 0, 19))
+
+		require.True(t, itr.First())
+		require.True(t, itr.Last())
+		checkItrResults(t, itr, nil, nil)
+	})
+
+	t.Run("test-error-path", func(t *testing.T) {
+		env.provider.Close()
+		itr, err := db1.GetIterator(nil, nil)
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.Nil(t, itr)
+	})
 }
 
 func TestBatchedUpdates(t *testing.T) {
@@ -87,6 +197,101 @@ func TestBatchedUpdates(t *testing.T) {
 		val3, _ := db.Get([]byte("key3"))
 		assert.Equal(t, "value3", string(val3))
 	}
+}
+
+func TestDeleteAll(t *testing.T) {
+	env := newTestProviderEnv(t, testDBPath)
+	defer env.cleanup()
+	p := env.provider
+
+	db1 := p.GetDBHandle("db1")
+	db2 := p.GetDBHandle("db2")
+	db3 := p.GetDBHandle("db3")
+	db4 := p.GetDBHandle("db4")
+	for i := 0; i < 20; i++ {
+		db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false)
+		db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false)
+		db3.Put([]byte(createTestKey(i)), []byte(createTestValue("db3", i)), false)
+	}
+	// db4 is used to test remove when multiple batches are needed (each long key has 125 bytes)
+	for i := 0; i < 10000; i++ {
+		db4.Put([]byte(createTestLongKey(i)), []byte(createTestValue("db4", i)), false)
+	}
+
+	expectedSetup := []struct {
+		db             *DBHandle
+		expectedKeys   []string
+		expectedValues []string
+	}{
+		{
+			db:             db1,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db1", 0, 19),
+		},
+		{
+			db:             db2,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db2", 0, 19),
+		},
+		{
+			db:             db3,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db3", 0, 19),
+		},
+		{
+			db:             db4,
+			expectedKeys:   createTestLongKeys(0, 9999),
+			expectedValues: createTestValues("db4", 0, 9999),
+		},
+	}
+
+	for _, dbSetup := range expectedSetup {
+		itr, err := dbSetup.db.GetIterator(nil, nil)
+		require.NoError(t, err)
+		checkItrResults(t, itr, dbSetup.expectedKeys, dbSetup.expectedValues)
+		itr.Release()
+	}
+
+	require.NoError(t, db1.DeleteAll())
+	require.NoError(t, db4.DeleteAll())
+
+	expectedResults := []struct {
+		db             *DBHandle
+		expectedKeys   []string
+		expectedValues []string
+	}{
+		{
+			db:             db1,
+			expectedKeys:   nil,
+			expectedValues: nil,
+		},
+		{
+			db:             db2,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db2", 0, 19),
+		},
+		{
+			db:             db3,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db3", 0, 19),
+		},
+		{
+			db:             db4,
+			expectedKeys:   nil,
+			expectedValues: nil,
+		},
+	}
+
+	for _, result := range expectedResults {
+		itr, err := result.db.GetIterator(nil, nil)
+		require.NoError(t, err)
+		checkItrResults(t, itr, result.expectedKeys, result.expectedValues)
+		itr.Release()
+	}
+
+	// negative test
+	p.Close()
+	require.EqualError(t, db2.DeleteAll(), "internal leveldb error while obtaining db iterator: leveldb: closed")
 }
 
 func TestFormatCheck(t *testing.T) {
@@ -141,6 +346,30 @@ func TestFormatCheck(t *testing.T) {
 				testFormatCheck(t, testCase.dataFormat, testCase.expectedFormat, testCase.dataExists, testCase.expectedErr)
 			})
 	}
+}
+
+func TestClose(t *testing.T) {
+	env := newTestProviderEnv(t, testDBPath)
+	defer env.cleanup()
+	p := env.provider
+
+	db1 := p.GetDBHandle("db1")
+	db2 := p.GetDBHandle("db2")
+
+	expectedDBHandles := map[string]*DBHandle{
+		"db1": db1,
+		"db2": db2,
+	}
+	require.Equal(t, expectedDBHandles, p.dbHandles)
+
+	db1.Close()
+	expectedDBHandles = map[string]*DBHandle{
+		"db2": db2,
+	}
+	require.Equal(t, expectedDBHandles, p.dbHandles)
+
+	db2.Close()
+	require.Equal(t, map[string]*DBHandle{}, p.dbHandles)
 }
 
 func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists bool, expectedErr *dataformat.ErrFormatMismatch) {
@@ -220,7 +449,6 @@ func testDBBasicWriteAndReads(t *testing.T, dbNames ...string) {
 }
 
 func checkItrResults(t *testing.T, itr *Iterator, expectedKeys []string, expectedValues []string) {
-	defer itr.Release()
 	var actualKeys []string
 	var actualValues []string
 	for itr.Next(); itr.Valid(); itr.Next() {
@@ -236,6 +464,12 @@ func createTestKey(i int) string {
 	return fmt.Sprintf("key_%06d", i)
 }
 
+const padding100 = "_0123456789_0123456789_0123456789_0123456789_0123456789_0123456789_0123456789_0123456789_0123456789_"
+
+func createTestLongKey(i int) string {
+	return fmt.Sprintf("key_%s_%10d", padding100, i)
+}
+
 func createTestValue(dbname string, i int) string {
 	return fmt.Sprintf("value_%s_%06d", dbname, i)
 }
@@ -244,6 +478,14 @@ func createTestKeys(start int, end int) []string {
 	var keys []string
 	for i := start; i <= end; i++ {
 		keys = append(keys, createTestKey(i))
+	}
+	return keys
+}
+
+func createTestLongKeys(start int, end int) []string {
+	var keys []string
+	for i := start; i <= end; i++ {
+		keys = append(keys, createTestLongKey(i))
 	}
 	return keys
 }

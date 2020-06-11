@@ -112,4 +112,6 @@ Metrics:
     WriteInterval: 5s
     Prefix: {{ ReplaceAll (ToLower Orderer.ID) "." "_" }}
 {{- end }}
+ChannelParticipation:
+  Enabled: {{ .ChannelParticipationEnabled }}
 `

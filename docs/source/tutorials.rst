@@ -10,10 +10,11 @@ SDKs to invoke smart contracts from your client applications. For an in depth
 overview of how Fabric applications and smart contracts work together, you
 can visit the :doc:`developapps/developing_applications` topic.
 
-The :doc:`deploy_chaincode` tutorial can also be used by network operators to learn
-how to use the Fabric chaincode lifecycle to manage smart contracts deployed on
-a running network. Both network operators and application developers can use the
-tutorials on `Private data <./private_data_tutorial.html>`_ and `CouchDB <./couchdb_tutorial.html>`_
+Network operators can use the :doc:`deploy_chaincode` tutorial and the
+:doc:`create_channel/create_channel_overview` tutorial series to learn
+important aspects of administering a running network. Both network operators and
+application developers can use the tutorials on
+`Private data <./private_data_tutorial.html>`_ and `CouchDB <./couchdb_tutorial.html>`_
 to explore important Fabric features. When you are ready to deploy Hyperledger
 Fabric in production, see the guide for :doc:`deployment_guide_overview`.
 
@@ -38,7 +39,7 @@ Finally, we provide an introduction to how to write a basic smart contract,
    tutorial/commercial_paper
    private_data_tutorial
    couchdb_tutorial
-   create_channel/create_channel.md
+   create_channel/create_channel_overview.md
    channel_update_tutorial
    config_update.md
    chaincode4ade

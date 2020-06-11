@@ -138,17 +138,18 @@ type Profile struct {
 
 // Network holds information about a fabric network.
 type Network struct {
-	RootDir               string
-	StartPort             uint16
-	Components            *Components
-	DockerClient          *docker.Client
-	ExternalBuilders      []fabricconfig.ExternalBuilder
-	NetworkID             string
-	EventuallyTimeout     time.Duration
-	SessionCreateInterval time.Duration
-	MetricsProvider       string
-	StatsdEndpoint        string
-	ClientAuthRequired    bool
+	RootDir                     string
+	StartPort                   uint16
+	Components                  *Components
+	DockerClient                *docker.Client
+	ExternalBuilders            []fabricconfig.ExternalBuilder
+	NetworkID                   string
+	EventuallyTimeout           time.Duration
+	SessionCreateInterval       time.Duration
+	MetricsProvider             string
+	StatsdEndpoint              string
+	ClientAuthRequired          bool
+	ChannelParticipationEnabled bool
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
@@ -1211,6 +1212,8 @@ func (n *Network) PeerRunner(p *Peer, env ...string) *ginkgomon.Runner {
 		commands.NodeStart{PeerID: p.ID()},
 		"",
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
+		fmt.Sprintf("CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin"),
+		fmt.Sprintf("CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw"),
 	)
 	cmd.Env = append(cmd.Env, env...)
 

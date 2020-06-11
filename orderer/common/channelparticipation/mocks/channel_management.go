@@ -33,11 +33,12 @@ type ChannelManagement struct {
 	channelListReturnsOnCall map[int]struct {
 		result1 types.ChannelList
 	}
-	JoinChannelStub        func(string, *common.Block) (types.ChannelInfo, error)
+	JoinChannelStub        func(string, *common.Block, bool) (types.ChannelInfo, error)
 	joinChannelMutex       sync.RWMutex
 	joinChannelArgsForCall []struct {
 		arg1 string
 		arg2 *common.Block
+		arg3 bool
 	}
 	joinChannelReturns struct {
 		result1 types.ChannelInfo
@@ -178,17 +179,18 @@ func (fake *ChannelManagement) ChannelListReturnsOnCall(i int, result1 types.Cha
 	}{result1}
 }
 
-func (fake *ChannelManagement) JoinChannel(arg1 string, arg2 *common.Block) (types.ChannelInfo, error) {
+func (fake *ChannelManagement) JoinChannel(arg1 string, arg2 *common.Block, arg3 bool) (types.ChannelInfo, error) {
 	fake.joinChannelMutex.Lock()
 	ret, specificReturn := fake.joinChannelReturnsOnCall[len(fake.joinChannelArgsForCall)]
 	fake.joinChannelArgsForCall = append(fake.joinChannelArgsForCall, struct {
 		arg1 string
 		arg2 *common.Block
-	}{arg1, arg2})
-	fake.recordInvocation("JoinChannel", []interface{}{arg1, arg2})
+		arg3 bool
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("JoinChannel", []interface{}{arg1, arg2, arg3})
 	fake.joinChannelMutex.Unlock()
 	if fake.JoinChannelStub != nil {
-		return fake.JoinChannelStub(arg1, arg2)
+		return fake.JoinChannelStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -203,17 +205,17 @@ func (fake *ChannelManagement) JoinChannelCallCount() int {
 	return len(fake.joinChannelArgsForCall)
 }
 
-func (fake *ChannelManagement) JoinChannelCalls(stub func(string, *common.Block) (types.ChannelInfo, error)) {
+func (fake *ChannelManagement) JoinChannelCalls(stub func(string, *common.Block, bool) (types.ChannelInfo, error)) {
 	fake.joinChannelMutex.Lock()
 	defer fake.joinChannelMutex.Unlock()
 	fake.JoinChannelStub = stub
 }
 
-func (fake *ChannelManagement) JoinChannelArgsForCall(i int) (string, *common.Block) {
+func (fake *ChannelManagement) JoinChannelArgsForCall(i int) (string, *common.Block, bool) {
 	fake.joinChannelMutex.RLock()
 	defer fake.joinChannelMutex.RUnlock()
 	argsForCall := fake.joinChannelArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *ChannelManagement) JoinChannelReturns(result1 types.ChannelInfo, result2 error) {

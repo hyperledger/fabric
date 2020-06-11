@@ -309,9 +309,9 @@ Two ways to handle this:
   Configuration of that MSP would consist of a list of root CAs,
   intermediate CAs and admin certificates; and membership identities would
   include the organizational unit (``OU``) a member belongs to. Policies can then
-  be defined to capture members of a specific ``role`` (should be one of: peer, admin, 
-  client, orderer, member), and these policies may constitute the read/write policies 
-  of a channel or endorsement policies of a chaincode. Specifying custom OUs in 
+  be defined to capture members of a specific ``role`` (should be one of: peer, admin,
+  client, orderer, member), and these policies may constitute the read/write policies
+  of a channel or endorsement policies of a chaincode. Specifying custom OUs in
   the profile section of ``configtx.yaml`` is currently not configured.
   A limitation of this approach is that gossip peers would
   consider peers with membership identities under their local MSP as
@@ -367,7 +367,7 @@ certificates considered by the MSP for ``root of trust``, or intermediate CAs.
 This is a common (security) practice to separate the duties of management of
 membership components from the issuing of new certificates, and/or validation of existing ones.
 
-**5) Blacklisting an intermediate CA.**
+**5) Blocking an intermediate CA.**
 
 As mentioned in previous sections, reconfiguration of an MSP is achieved by
 reconfiguration mechanisms (manual reconfiguration for the local MSP instances,
@@ -383,7 +383,7 @@ considered for that MSP's identity validation:
    which denounces the mentioned intermediate CA's certificate.
 
 In the current MSP implementation we only support method (1) as it is simpler
-and does not require blacklisting the no longer considered intermediate CA.
+and does not require blocking the no longer considered intermediate CA.
 
 **6) CAs and TLS CAs**
 

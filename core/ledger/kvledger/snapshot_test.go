@@ -24,7 +24,6 @@ import (
 	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -61,7 +60,7 @@ func TestGenerateSnapshot(t *testing.T) {
 		map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
 		nil,
 	)
-	assert.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata1, &ledger.CommitOptions{}))
+	require.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata1, &ledger.CommitOptions{}))
 	require.NoError(t, kvlgr.generateSnapshot())
 	verifySnapshotOutput(t,
 		snapshotRootDir,
@@ -78,7 +77,7 @@ func TestGenerateSnapshot(t *testing.T) {
 		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
 		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"},
 	)
-	assert.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata2, &ledger.CommitOptions{}))
+	require.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata2, &ledger.CommitOptions{}))
 	require.NoError(t, kvlgr.generateSnapshot())
 	verifySnapshotOutput(t,
 		snapshotRootDir,
@@ -97,7 +96,7 @@ func TestGenerateSnapshot(t *testing.T) {
 		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
 		nil,
 	)
-	assert.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata3, &ledger.CommitOptions{}))
+	require.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata3, &ledger.CommitOptions{}))
 	require.NoError(t, kvlgr.generateSnapshot())
 	verifySnapshotOutput(t,
 		snapshotRootDir,
@@ -160,7 +159,7 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 func TestSnapshotsDirInitializingErrors(t *testing.T) {
 	initKVLedgerProvider := func(conf *ledger.Config) error {
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, err = NewProvider(
 			&lgr.Initializer{
 				DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},

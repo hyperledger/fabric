@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPanic(t *testing.T) {
@@ -33,29 +33,29 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 
 	//Get() should return above inserted <k,v> pair
 	actualVersionedValue := batch.Get("ns1", "key1")
-	assert.Equal(t, &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, actualVersionedValue)
+	require.Equal(t, &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, actualVersionedValue)
 	//Exists() should return false as key2 does not exist
 	actualResult := batch.Exists("ns1", "key2")
 	expectedResult := false
-	assert.Equal(t, expectedResult, actualResult)
+	require.Equal(t, expectedResult, actualResult)
 
 	//Exists() should return false as ns3 does not exist
 	actualResult = batch.Exists("ns3", "key2")
 	expectedResult = false
-	assert.Equal(t, expectedResult, actualResult)
+	require.Equal(t, expectedResult, actualResult)
 
 	//Get() should return nil as key2 does not exist
 	actualVersionedValue = batch.Get("ns1", "key2")
-	assert.Nil(t, actualVersionedValue)
+	require.Nil(t, actualVersionedValue)
 	//Get() should return nil as ns3 does not exist
 	actualVersionedValue = batch.Get("ns3", "key2")
-	assert.Nil(t, actualVersionedValue)
+	require.Nil(t, actualVersionedValue)
 
 	batch.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 2))
 	//Exists() should return true as key2 exists
 	actualResult = batch.Exists("ns1", "key2")
 	expectedResult = true
-	assert.Equal(t, expectedResult, actualResult)
+	require.Equal(t, expectedResult, actualResult)
 
 	//GetUpdatedNamespaces should return 3 namespaces
 	batch.Put("ns2", "key2", []byte("value2"), version.NewHeight(1, 2))
@@ -63,17 +63,17 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 	actualNamespaces := batch.GetUpdatedNamespaces()
 	sort.Strings(actualNamespaces)
 	expectedNamespaces := []string{"ns1", "ns2", "ns3"}
-	assert.Equal(t, expectedNamespaces, actualNamespaces)
+	require.Equal(t, expectedNamespaces, actualNamespaces)
 
 	//GetUpdates should return two VersionedValues for the namespace ns1
 	expectedUpdates := make(map[string]*VersionedValue)
 	expectedUpdates["key1"] = &VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
 	expectedUpdates["key2"] = &VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
 	actualUpdates := batch.GetUpdates("ns1")
-	assert.Equal(t, expectedUpdates, actualUpdates)
+	require.Equal(t, expectedUpdates, actualUpdates)
 
 	actualUpdates = batch.GetUpdates("ns4")
-	assert.Nil(t, actualUpdates)
+	require.Nil(t, actualUpdates)
 
 	//Delete the above inserted <k,v> pair
 	batch.Delete("ns1", "key2", version.NewHeight(1, 2))
@@ -81,7 +81,7 @@ func TestPutGetDeleteExistsGetUpdates(t *testing.T) {
 	//Exists() should return true iff the key has action(Put/Delete) in this batch
 	actualResult = batch.Exists("ns1", "key2")
 	expectedResult = true
-	assert.Equal(t, expectedResult, actualResult)
+	require.Equal(t, expectedResult, actualResult)
 
 }
 
@@ -117,11 +117,11 @@ func TestUpdateBatchIterator(t *testing.T) {
 func checkItrResults(t *testing.T, itr QueryResultsIterator, expectedResults []*VersionedKV) {
 	for i := 0; i < len(expectedResults); i++ {
 		res, _ := itr.Next()
-		assert.Equal(t, expectedResults[i], res)
+		require.Equal(t, expectedResults[i], res)
 	}
 	lastRes, err := itr.Next()
-	assert.NoError(t, err)
-	assert.Nil(t, lastRes)
+	require.NoError(t, err)
+	require.Nil(t, lastRes)
 	itr.Close()
 }
 
@@ -152,5 +152,5 @@ func TestMergeUpdateBatch(t *testing.T) {
 	expectedBatch.Put("ns1", "key4", []byte("batch2_value4"), version.NewHeight(6, 6))
 	expectedBatch.Delete("ns1", "key5", version.NewHeight(7, 7))
 	expectedBatch.Put("ns2", "key6", []byte("batch2_value6"), version.NewHeight(8, 8))
-	assert.Equal(t, expectedBatch, batch1)
+	require.Equal(t, expectedBatch, batch1)
 }

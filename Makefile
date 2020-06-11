@@ -49,7 +49,7 @@ BASE_VERSION = 2.2.0
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
-COUCHDB_VER ?= 2.3
+COUCHDB_VER ?= 3.1
 KAFKA_VER ?= 5.3.1
 ZOOKEEPER_VER ?= 5.3.1
 

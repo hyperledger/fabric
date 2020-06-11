@@ -122,19 +122,8 @@ func writeDataFormatVersion(couchInstance *couchInstance, dataformatVersion stri
 	if err != nil {
 		return err
 	}
-	if _, err := db.saveDoc(dataformatVersionDocID, "", doc); err != nil {
-		return err
-	}
-	dbResponse, err := db.ensureFullCommit()
-
-	if err != nil {
-		return err
-	}
-	if !dbResponse.Ok {
-		logger.Errorf("failed to perform full commit while writing dataformat version")
-		return errors.New("failed to perform full commit while writing dataformat version")
-	}
-	return nil
+	_, err = db.saveDoc(dataformatVersionDocID, "", doc)
+	return err
 }
 
 // GetDBHandle gets the handle to a named database
@@ -685,8 +674,22 @@ func (vdb *VersionedDB) postCommitProcessing(committers []*committer, namespaces
 
 	}()
 
+	for _, ns := range namespaces {
+		db, err := vdb.getNamespaceDBHandle(ns)
+		if err != nil {
+			return err
+		}
+		if db.couchInstance.conf.WarmIndexesAfterNBlocks > 0 {
+			if db.indexWarmCounter >= db.couchInstance.conf.WarmIndexesAfterNBlocks {
+				go db.runWarmIndexAllIndexes()
+				db.indexWarmCounter = 0
+			}
+			db.indexWarmCounter++
+		}
+	}
+
 	// Record a savepoint at a given height
-	if err := vdb.ensureFullCommitAndRecordSavepoint(height, namespaces); err != nil {
+	if err := vdb.recordSavepoint(height); err != nil {
 		logger.Errorf("Error during recordSavepoint: %s", err.Error())
 		return err
 	}
@@ -719,54 +722,14 @@ func (vdb *VersionedDB) Close() {
 	// no need to close db since a shared couch instance is used
 }
 
-// ensureFullCommitAndRecordSavepoint flushes all the dbs (corresponding to `namespaces`) to disk
-// and Record a savepoint in the metadata db.
-// Couch parallelizes writes in cluster or sharded setup and ordering is not guaranteed.
-// Hence we need to fence the savepoint with sync. So ensure_full_commit on all updated
-// namespace DBs is called before savepoint to ensure all block writes are flushed. Savepoint
-// itself is flushed to the metadataDB.
-func (vdb *VersionedDB) ensureFullCommitAndRecordSavepoint(height *version.Height, namespaces []string) error {
-	// ensure full commit to flush all changes on updated namespaces until now to disk
-	// namespace also includes empty namespace which is nothing but metadataDB
-	errsChan := make(chan error, len(namespaces))
-	defer close(errsChan)
-	var commitWg sync.WaitGroup
-	commitWg.Add(len(namespaces))
-
-	for _, ns := range namespaces {
-		go func(ns string) {
-			defer commitWg.Done()
-			db, err := vdb.getNamespaceDBHandle(ns)
-			if err != nil {
-				errsChan <- err
-				return
-			}
-			_, err = db.ensureFullCommit()
-			if err != nil {
-				errsChan <- err
-				return
-			}
-		}(ns)
-	}
-
-	commitWg.Wait()
-
-	select {
-	case err := <-errsChan:
-		logger.Errorf("Failed to perform full commit")
-		return errors.Wrap(err, "failed to perform full commit")
-	default:
-		logger.Debugf("All changes have been flushed to the disk")
-	}
-
+// recordSavepoint records a savepoint in the metadata db for the channel.
+func (vdb *VersionedDB) recordSavepoint(height *version.Height) error {
 	// If a given height is nil, it denotes that we are committing pvt data of old blocks.
 	// In this case, we should not store a savepoint for recovery. The lastUpdatedOldBlockList
 	// in the pvtstore acts as a savepoint for pvt data.
 	if height == nil {
 		return nil
 	}
-
-	// construct savepoint document and save
 	savepointCouchDoc, err := encodeSavepoint(height)
 	if err != nil {
 		return err
@@ -776,10 +739,6 @@ func (vdb *VersionedDB) ensureFullCommitAndRecordSavepoint(height *version.Heigh
 		logger.Errorf("Failed to save the savepoint to DB %s", err.Error())
 		return err
 	}
-	// Note: Ensure full commit on metadataDB after storing the savepoint is not necessary
-	// as CouchDB syncs states to disk periodically (every 1 second). If peer fails before
-	// syncing the savepoint to disk, ledger recovery process kicks in to ensure consistency
-	// between CouchDB and block store on peer restart
 	return nil
 }
 
@@ -869,10 +828,7 @@ func (vdb *VersionedDB) writeChannelMetadata() error {
 	if err != nil {
 		return err
 	}
-	if _, err := vdb.metadataDB.saveDoc(channelMetadataDocID, "", couchDoc); err != nil {
-		return err
-	}
-	_, err = vdb.metadataDB.ensureFullCommit()
+	_, err = vdb.metadataDB.saveDoc(channelMetadataDocID, "", couchDoc)
 	return err
 }
 

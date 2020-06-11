@@ -7,11 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package viperutil
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
+	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -24,14 +28,230 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 var logger = flogging.MustGetLogger("viperutil")
 
-type viperGetter func(key string) interface{}
+// prototype for get environment variable
+type envGetter func(key string) interface{}
 
-func getKeysRecursively(base string, getKey viperGetter, nodeKeys map[string]interface{}, oType reflect.Type) map[string]interface{} {
+// default config file path
+const OfficialPath = "/etc/hyperledger/fabric"
+
+var SupportedExts []string = []string{"yaml", "yml"}
+
+// ConfigParser holds the configuration file locations.
+// It keeps the config file directory locations and env. variables
+// From the file the config is unmarshalled and stored.
+// Currently "yaml" is supported.
+type ConfigParser struct {
+
+	// configuration file to process
+	configPaths []string
+	configName  string
+	configFile  string
+	configType  string
+
+	// env variable prefix
+	envPrefix           string
+	automaticEnvApplied bool
+	envKeyReplacer      *strings.Replacer
+
+	// parsed config
+	config map[string]interface{}
+}
+
+// Creates a ConfigParser instance
+func New() *ConfigParser {
+	c := new(ConfigParser)
+	c.config = make(map[string]interface{})
+	return c
+}
+
+// Keeps a list of path to search the relevant
+// config file. Multiple paths can be provided.
+func (c *ConfigParser) AddConfigPath(in string) {
+	if in != "" {
+		logger.Debugf("Adding search path : %s", in)
+		for _, b := range c.configPaths {
+			if b == in {
+				return
+			}
+		}
+		c.configPaths = append(c.configPaths, in)
+	}
+}
+
+// The config file name. The extension is not included
+func (c *ConfigParser) SetConfigName(in string) {
+	if in != "" {
+		c.configName = in
+	}
+}
+
+// The extension of the config file
+// Currently only "yaml" is supported.
+func (c *ConfigParser) SetConfigType(in string) {
+	if in != "" {
+		c.configType = in
+	}
+}
+
+// Method to initialize default paths.
+// The defaults paths are CWD and OfficialPath
+// The env variable FABRIC_CFG_PATH can be used to override default
+func (c *ConfigParser) InitConfigPath(configName string) error {
+	var altPath = os.Getenv("FABRIC_CFG_PATH")
+	if altPath != "" {
+		// If the user has overridden the path with an envvar, its the only path
+		// we will consider
+
+		fi, err := os.Stat(altPath)
+		if err != nil || !fi.IsDir() {
+			return fmt.Errorf("FABRIC_CFG_PATH %s does not exist", altPath)
+		}
+
+		c.AddConfigPath(altPath)
+	} else {
+		// If we get here, we should use the default paths in priority order:
+		//
+		// *) CWD
+		// *) /etc/hyperledger/fabric
+
+		// CWD
+		c.AddConfigPath("./")
+
+		// And finally, the official path
+		fi, err := os.Stat(OfficialPath)
+		if err == nil && fi.IsDir() {
+			c.AddConfigPath(OfficialPath)
+		}
+	}
+
+	// Now set the configuration file.
+	c.SetConfigName(configName)
+
+	return nil
+}
+
+// Explicitly setting the full config file name.
+// In this case, configPaths search shall not be done
+func (c *ConfigParser) SetConfigFile(in string) {
+	if in != "" {
+		c.configFile = in
+	}
+}
+
+// Return the used configFile to fill config store
+func (c *ConfigParser) ConfigFileUsed() string { return c.configFile }
+
+// Set the env variable prefix
+// If "peer" is set here, all environment variable
+// searches shall be prefixed with "PEER_"
+func (c *ConfigParser) SetEnvPrefix(in string) {
+	if in != "" {
+		c.envPrefix = in
+	}
+}
+
+// Search for the existence of filename for all supported extensions
+func (c *ConfigParser) searchInPath(in string) (filename string) {
+	logger.Debugf("Searching for config in ", in)
+	for _, ext := range SupportedExts {
+		fullPath := filepath.Join(in, c.configName+"."+ext)
+		logger.Debugf("Checking for ", fullPath)
+		_, err := os.Stat(fullPath)
+		if err == nil {
+			logger.Debugf("Found: ", fullPath)
+			return fullPath
+		}
+	}
+	return ""
+}
+
+// Search for the configName in all configPaths
+func (c *ConfigParser) findConfigFile() string {
+
+	logger.Debugf("Searching for config in ", c.configPaths)
+
+	for _, cp := range c.configPaths {
+		file := c.searchInPath(cp)
+		if file != "" {
+			return file
+		}
+	}
+	return ""
+}
+
+// Get the valid and present config file
+func (c *ConfigParser) getConfigFile() string {
+	// if explicitly set, then use it
+	if c.configFile != "" {
+		return c.configFile
+	}
+
+	c.configFile = c.findConfigFile()
+	return c.configFile
+}
+
+func (c *ConfigParser) ReadInConfig() error {
+
+	cf := c.getConfigFile()
+	logger.Debugf("Attempting to read from config file : %s", cf)
+	file, err := ioutil.ReadFile(cf)
+	if err != nil {
+		logger.Errorf("Unable to read from config file : %s", cf)
+		return err
+	}
+
+	//c.config = make(map[string]interface{})
+
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(bytes.NewReader(file))
+	// read the configFile in config
+	return yaml.Unmarshal(buf.Bytes(), c.config)
+}
+
+// Identify the configFile from the provided configPaths
+// and read and unmarshall and store in config.
+func (c *ConfigParser) ReadConfig(in io.Reader) error {
+	//c.config = make(map[string]interface{})
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(in)
+	return yaml.Unmarshal(buf.Bytes(), c.config)
+}
+
+// Specifies the replacement string.
+// Used in searching env. variables.
+func (c *ConfigParser) SetEnvKeyReplacer(r *strings.Replacer) {
+	c.envKeyReplacer = r
+}
+
+// Set the environment variable search boolean
+func (c *ConfigParser) AutomaticEnv() {
+	c.automaticEnvApplied = true
+}
+
+// Get value for the key by searching
+// environment variables
+func (c *ConfigParser) GetFromEnv(key string) interface{} {
+	envKey := key
+	if c.envPrefix != "" {
+		envKey = strings.ToUpper(c.envPrefix + "_" + envKey)
+	}
+	if c.envKeyReplacer != nil {
+		envKey = c.envKeyReplacer.Replace(envKey)
+	}
+	return os.Getenv(envKey)
+}
+
+// Return the parsed config store
+func (c *ConfigParser) GetParsedConfig() map[string]interface{} {
+	return c.config
+}
+
+func getKeysRecursively(base string, getKey envGetter, nodeKeys map[string]interface{}, oType reflect.Type) map[string]interface{} {
 	subTypes := map[string]reflect.Type{}
 
 	if oType != nil && oType.Kind() == reflect.Struct {
@@ -56,7 +276,12 @@ func getKeysRecursively(base string, getKey viperGetter, nodeKeys map[string]int
 	for key := range nodeKeys {
 		fqKey := base + key
 
-		val := getKey(fqKey)
+		var val interface{}
+		val = nodeKeys[key]
+		// overwrite val, if an environment is available
+		if envVal := getKey(fqKey); envVal != "" {
+			val = envVal
+		}
 		if m, ok := val.(map[interface{}]interface{}); ok {
 			logger.Debugf("Found map[interface{}]interface{} value for %s", fqKey)
 			tmp := make(map[string]interface{})
@@ -76,8 +301,11 @@ func getKeysRecursively(base string, getKey viperGetter, nodeKeys map[string]int
 			result[key] = m
 		} else {
 			if val == nil {
+				var fileVal interface{}
 				fileSubKey := fqKey + ".File"
-				fileVal := getKey(fileSubKey)
+				if envVal := getKey(fileSubKey); envVal != "" {
+					fileVal = envVal
+				}
 				if fileVal != nil {
 					result[key] = map[string]interface{}{"File": fileVal}
 					continue
@@ -315,7 +543,7 @@ func bccspHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, e
 // EnhancedExactUnmarshal is intended to unmarshal a config file into a structure
 // producing error when extraneous variables are introduced and supporting
 // the time.Duration type
-func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
+func EnhancedExactUnmarshal(c *ConfigParser, output interface{}) error {
 	oType := reflect.TypeOf(output)
 	if oType.Kind() != reflect.Ptr {
 		return errors.Errorf("supplied output argument must be a pointer to a struct but is not pointer")
@@ -325,9 +553,8 @@ func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
 		return errors.Errorf("supplied output argument must be a pointer to a struct, but it is pointer to something else")
 	}
 
-	baseKeys := v.AllSettings()
-
-	getterWithClass := func(key string) interface{} { return v.Get(key) } // hide receiver
+	baseKeys := c.GetParsedConfig()
+	getterWithClass := func(key string) interface{} { return c.GetFromEnv(key) }
 	leafKeys := getKeysRecursively("", getterWithClass, baseKeys, eType)
 
 	logger.Debugf("%+v", leafKeys)

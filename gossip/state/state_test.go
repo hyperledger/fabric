@@ -387,11 +387,13 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(logger gutil.Logger, id int, 
 			AliveExpirationTimeout:       discovery.DefAliveExpirationTimeout,
 			AliveExpirationCheckInterval: discovery.DefAliveExpirationCheckInterval,
 			ReconnectInterval:            discovery.DefReconnectInterval,
+			MaxConnectionAttempts:        discovery.DefMaxConnectionAttempts,
+			MsgExpirationFactor:          discovery.DefMsgExpirationFactor,
 		}
 
 		selfID := api.PeerIdentityType(config.InternalEndpoint)
 		mcs := &cryptoServiceMock{acceptor: noopPeerIdentityAcceptor}
-		g = gossip.New(config, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID, secureDialOpts, gossipMetrics)
+		g = gossip.New(config, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID, secureDialOpts, gossipMetrics, nil)
 	}
 
 	g.JoinChan(&joinChanMsg{}, common.ChannelID("testchannelid"))

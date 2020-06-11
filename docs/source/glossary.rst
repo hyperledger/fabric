@@ -496,7 +496,7 @@ Policy
 ------
 
 Policies are expressions composed of properties of digital identities, for
-example: ``Org1.Peer OR Org2.Peer``. They are used to restrict access to
+example: ``OR('Org1.peer', 'Org2.peer')``. They are used to restrict access to
 resources on a blockchain network. For instance, they dictate who can read from
 or write to a channel, or who can use a specific chaincode API via an ACL_.
 Policies may be defined in ``configtx.yaml`` prior to bootstrapping an ordering
@@ -571,7 +571,7 @@ Raft
 
 New for v1.4.1, Raft is a crash fault tolerant (CFT) ordering service
 implementation based on the `etcd library <https://coreos.com/etcd/>`_
-of the `Raft protocol` <https://raft.github.io/raft.pdf>`_. Raft follows a
+of the `Raft protocol <https://raft.github.io/raft.pdf>`_. Raft follows a
 "leader and follower" model, where a leader node is elected (per channel) and
 its decisions are replicated by the followers. Raft ordering services should
 be easier to set up and manage than Kafka-based ordering services, and their

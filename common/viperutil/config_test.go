@@ -18,7 +18,6 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/orderer/mocks/util"
-	"github.com/spf13/viper"
 )
 
 const Prefix = "VIPERUTIL"
@@ -34,7 +33,7 @@ func TestEnvSlice(t *testing.T) {
 	envVal := "[a, b, c]"
 	os.Setenv(envVar, envVal)
 	defer os.Unsetenv(envVar)
-	config := viper.New()
+	config := New()
 	config.SetEnvPrefix(Prefix)
 	config.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
@@ -67,7 +66,7 @@ func TestKafkaVersionDecode(t *testing.T) {
 		}
 	}
 
-	config := viper.New()
+	config := New()
 	config.SetConfigType("yaml")
 
 	testCases := []struct {
@@ -141,7 +140,7 @@ type testByteSize struct {
 }
 
 func TestByteSize(t *testing.T) {
-	config := viper.New()
+	config := New()
 	config.SetConfigType("yaml")
 
 	testCases := []struct {
@@ -190,7 +189,7 @@ func TestByteSize(t *testing.T) {
 }
 
 func TestByteSizeOverflow(t *testing.T) {
-	config := viper.New()
+	config := New()
 	config.SetConfigType("yaml")
 
 	data := "---\nInner:\n    ByteSize: 4GB"
@@ -217,7 +216,7 @@ func TestStringNotFromFile(t *testing.T) {
 	expectedValue := "expected_value"
 	yaml := fmt.Sprintf("---\nInner:\n  Single: %s\n", expectedValue)
 
-	config := viper.New()
+	config := New()
 	config.SetConfigType("yaml")
 
 	if err := config.ReadConfig(bytes.NewReader([]byte(yaml))); err != nil {
@@ -253,7 +252,7 @@ func TestStringFromFile(t *testing.T) {
 
 	yaml := fmt.Sprintf("---\nInner:\n  Single:\n    File: %s", file.Name())
 
-	config := viper.New()
+	config := New()
 	config.SetConfigType("yaml")
 
 	if err = config.ReadConfig(bytes.NewReader([]byte(yaml))); err != nil {
@@ -292,7 +291,7 @@ func TestPEMBlocksFromFile(t *testing.T) {
 
 	yaml := fmt.Sprintf("---\nInner:\n  Multiple:\n    File: %s", file.Name())
 
-	config := viper.New()
+	config := New()
 	config.SetConfigType("yaml")
 
 	if err := config.ReadConfig(bytes.NewReader([]byte(yaml))); err != nil {
@@ -345,7 +344,7 @@ func TestPEMBlocksFromFileEnv(t *testing.T) {
 			envVal := file.Name()
 			os.Setenv(envVar, envVal)
 			defer os.Unsetenv(envVar)
-			config := viper.New()
+			config := New()
 			config.SetEnvPrefix(Prefix)
 			config.AutomaticEnv()
 			replacer := strings.NewReplacer(".", "_")
@@ -370,7 +369,7 @@ func TestPEMBlocksFromFileEnv(t *testing.T) {
 func TestStringFromFileNotSpecified(t *testing.T) {
 	yaml := "---\nInner:\n  Single:\n    File:\n"
 
-	config := viper.New()
+	config := New()
 	config.SetConfigType("yaml")
 
 	if err := config.ReadConfig(bytes.NewReader([]byte(yaml))); err != nil {
@@ -411,7 +410,7 @@ func TestStringFromFileEnv(t *testing.T) {
 			envVal := file.Name()
 			os.Setenv(envVar, envVal)
 			defer os.Unsetenv(envVar)
-			config := viper.New()
+			config := New()
 			config.SetEnvPrefix(Prefix)
 			config.AutomaticEnv()
 			replacer := strings.NewReplacer(".", "_")
@@ -444,7 +443,7 @@ Foo: bar
 Hello:
   World: 42
 `
-	config := viper.New()
+	config := New()
 	config.SetConfigType("yaml")
 	if err := config.ReadConfig(bytes.NewReader([]byte(yaml))); err != nil {
 		t.Fatalf("Error reading config: %s", err)
@@ -473,7 +472,7 @@ BCCSP:
     Security: 999
 `
 
-	config := viper.New()
+	config := New()
 	config.SetEnvPrefix("VIPERUTIL")
 	config.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")

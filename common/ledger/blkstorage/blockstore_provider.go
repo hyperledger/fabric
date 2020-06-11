@@ -36,6 +36,14 @@ type IndexConfig struct {
 	AttrsToIndex []IndexableAttr
 }
 
+// SnapshotInfo captures some of the details about the snapshot
+type SnapshotInfo struct {
+	LedgerID          string
+	LastBlockNum      uint64
+	LastBlockHash     []byte
+	PreviousBlockHash []byte
+}
+
 // Contains returns true iff the supplied parameter is present in the IndexConfig.AttrsToIndex
 func (c *IndexConfig) Contains(indexableAttr IndexableAttr) bool {
 	for _, a := range c.AttrsToIndex {
@@ -95,13 +103,49 @@ func NewProvider(conf *Conf, indexConfig *IndexConfig, metricsProvider metrics.P
 // This method should be invoked only once for a particular ledgerid
 func (p *BlockStoreProvider) Open(ledgerid string) (*BlockStore, error) {
 	indexStoreHandle := p.leveldbProvider.GetDBHandle(ledgerid)
-	return newBlockStore(ledgerid, p.conf, p.indexConfig, indexStoreHandle, p.stats), nil
+	return newBlockStore(ledgerid, p.conf, p.indexConfig, indexStoreHandle, p.stats)
+}
+
+// BootstrapFromSnapshottedTxIDs initializes blockstore from a previously generated snapshot
+// Any failure during bootstrapping the blockstore may leave the partial loaded data
+// on disk. The consumer, such as peer is expected to keep track of failures and cleanup the
+// data explicitly.
+func (p *BlockStoreProvider) BootstrapFromSnapshottedTxIDs(
+	snapshotDir string, snapshotInfo *SnapshotInfo) (*BlockStore, error) {
+	indexStoreHandle := p.leveldbProvider.GetDBHandle(snapshotInfo.LedgerID)
+	if err := bootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo, p.conf, indexStoreHandle); err != nil {
+		return nil, err
+	}
+	return newBlockStore(snapshotInfo.LedgerID, p.conf, p.indexConfig, indexStoreHandle, p.stats)
 }
 
 // Exists tells whether the BlockStore with given id exists
 func (p *BlockStoreProvider) Exists(ledgerid string) (bool, error) {
 	exists, _, err := util.FileExists(p.conf.getLedgerBlockDir(ledgerid))
 	return exists, err
+}
+
+// Remove block index and blocks for the given ledgerid (channelID). It is not an error if the channel does not exist.
+// This function is not error safe. If this function returns an error or a crash takes place, it is highly likely
+// that the data for this ledger is left in an inconsistent state. Opening the ledger again or reusing the previously
+// opened ledger can show unknown behavior.
+func (p *BlockStoreProvider) Remove(ledgerid string) error {
+	exists, err := p.Exists(ledgerid)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	dbHandle := p.leveldbProvider.GetDBHandle(ledgerid)
+	if err := dbHandle.DeleteAll(); err != nil {
+		return err
+	}
+	dbHandle.Close()
+	if err := os.RemoveAll(p.conf.getLedgerBlockDir(ledgerid)); err != nil {
+		return err
+	}
+	return syncDir(p.conf.getChainsDir())
 }
 
 // List lists the ids of the existing ledgers

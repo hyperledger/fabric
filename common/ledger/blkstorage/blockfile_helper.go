@@ -9,19 +9,21 @@ package blkstorage
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/pkg/errors"
 )
 
-// constructCheckpointInfoFromBlockFiles scans the last blockfile (if any) and construct the checkpoint info
+// constructBlockfilesInfo scans the last blockfile (if any) and construct the blockfilesInfo
 // if the last file contains no block or only a partially written block (potentially because of a crash while writing block to the file),
 // this scans the second last file (if any)
-func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, error) {
-	logger.Debugf("Retrieving checkpoint info from block files")
+func constructBlockfilesInfo(rootDir string) (*blockfilesInfo, error) {
+	logger.Debugf("constructing BlockfilesInfo")
 	var lastFileNum int
 	var numBlocksInFile int
 	var endOffsetLastBlock int64
@@ -37,9 +39,14 @@ func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, err
 	logger.Debugf("Last file number found = %d", lastFileNum)
 
 	if lastFileNum == -1 {
-		cpInfo := &checkpointInfo{0, 0, true, 0}
+		blkfilesInfo := &blockfilesInfo{
+			latestFileNumber:   0,
+			latestFileSize:     0,
+			noBlockFiles:       true,
+			lastPersistedBlock: 0,
+		}
 		logger.Debugf("No block file found")
-		return cpInfo, nil
+		return blkfilesInfo, nil
 	}
 
 	fileInfo := getFileInfoOrPanic(rootDir, lastFileNum)
@@ -67,27 +74,27 @@ func constructCheckpointInfoFromBlockFiles(rootDir string) (*checkpointInfo, err
 		lastBlockNumber = lastBlock.Header.Number
 	}
 
-	cpInfo := &checkpointInfo{
-		lastBlockNumber:          lastBlockNumber,
-		latestFileChunksize:      int(endOffsetLastBlock),
-		latestFileChunkSuffixNum: lastFileNum,
-		isChainEmpty:             lastFileNum == 0 && numBlocksInFile == 0,
+	blkfilesInfo := &blockfilesInfo{
+		lastPersistedBlock: lastBlockNumber,
+		latestFileSize:     int(endOffsetLastBlock),
+		latestFileNumber:   lastFileNum,
+		noBlockFiles:       lastFileNum == 0 && numBlocksInFile == 0,
 	}
-	logger.Debugf("Checkpoint info constructed from file system = %s", spew.Sdump(cpInfo))
-	return cpInfo, nil
+	logger.Debugf("blockfilesInfo constructed from file system = %s", spew.Sdump(blkfilesInfo))
+	return blkfilesInfo, nil
 }
 
 // binarySearchFileNumForBlock locates the file number that contains the given block number.
 // This function assumes that the caller invokes this function with a block number that has been committed
 // For any uncommitted block, this function returns the last file present
 func binarySearchFileNumForBlock(rootDir string, blockNum uint64) (int, error) {
-	cpInfo, err := constructCheckpointInfoFromBlockFiles(rootDir)
+	blkfilesInfo, err := constructBlockfilesInfo(rootDir)
 	if err != nil {
 		return -1, err
 	}
 
 	beginFile := 0
-	endFile := cpInfo.latestFileChunkSuffixNum
+	endFile := blkfilesInfo.latestFileNumber
 
 	for endFile != beginFile {
 		searchFile := beginFile + (endFile-beginFile)/2 + 1
@@ -161,4 +168,19 @@ func getFileInfoOrPanic(rootDir string, fileNum int) os.FileInfo {
 		panic(errors.Wrapf(err, "error retrieving file info for file number %d", fileNum))
 	}
 	return fileInfo
+}
+
+func loadBootstrappingSnapshotInfo(rootDir string) (*BootstrappingSnapshotInfo, error) {
+	bsiBytes, err := ioutil.ReadFile(filepath.Join(rootDir, bootstrappingSnapshotInfoFile))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errors.Wrapf(err, "error while reading bootstrappingSnapshotInfo file")
+	}
+	bsi := &BootstrappingSnapshotInfo{}
+	if err := proto.Unmarshal(bsiBytes, bsi); err != nil {
+		return nil, errors.Wrapf(err, "error while unmarshalling bootstrappingSnapshotInfo")
+	}
+	return bsi, nil
 }

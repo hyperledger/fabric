@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBlockSerialization(t *testing.T) {
@@ -36,10 +36,10 @@ func TestBlockSerialization(t *testing.T) {
 	})
 
 	bb, _, err := serializeBlock(block)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	deserializedBlock, err := deserializeBlock(bb)
-	assert.NoError(t, err)
-	assert.Equal(t, block, deserializedBlock)
+	require.NoError(t, err)
+	require.Equal(t, block, deserializedBlock)
 }
 
 func TestSerializedBlockInfo(t *testing.T) {
@@ -86,22 +86,22 @@ func TestSerializedBlockInfo(t *testing.T) {
 
 func testSerializedBlockInfo(t *testing.T, block *common.Block, c *testutilTxIDComputator) {
 	bb, info, err := serializeBlock(block)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	infoFromBB, err := extractSerializedBlockInfo(bb)
-	assert.NoError(t, err)
-	assert.Equal(t, info, infoFromBB)
-	assert.Equal(t, len(block.Data.Data), len(info.txOffsets))
+	require.NoError(t, err)
+	require.Equal(t, info, infoFromBB)
+	require.Equal(t, len(block.Data.Data), len(info.txOffsets))
 	for txIndex, txEnvBytes := range block.Data.Data {
 		txid := c.computeExpectedTxID(txIndex, txEnvBytes)
 		indexInfo := info.txOffsets[txIndex]
 		indexTxID := indexInfo.txID
 		indexOffset := indexInfo.loc
 
-		assert.Equal(t, indexTxID, txid)
+		require.Equal(t, indexTxID, txid)
 		b := bb[indexOffset.offset:]
 		length, num := proto.DecodeVarint(b)
 		txEnvBytesFromBB := b[num : num+int(length)]
-		assert.Equal(t, txEnvBytes, txEnvBytesFromBB)
+		require.Equal(t, txEnvBytes, txEnvBytesFromBB)
 	}
 }
 
@@ -113,9 +113,9 @@ type testutilTxIDComputator struct {
 func (c *testutilTxIDComputator) computeExpectedTxID(txNum int, txEnvBytes []byte) string {
 	txid, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnvBytes)
 	if _, ok := c.malformedTxNums[txNum]; ok {
-		assert.Error(c.t, err)
+		require.Error(c.t, err)
 	} else {
-		assert.NoError(c.t, err)
+		require.NoError(c.t, err)
 	}
 	return txid
 }

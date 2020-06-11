@@ -12,7 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEncodeDecodeVersionedValues(t *testing.T) {
@@ -46,8 +46,8 @@ func TestEncodeDecodeVersionedValues(t *testing.T) {
 
 func testEncodeDecodeVersionedValues(t *testing.T, v *statedb.VersionedValue) {
 	encodedVal, err := encodeValue(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	decodedVal, err := decodeValue(encodedVal)
-	assert.NoError(t, err)
-	assert.Equal(t, v, decodedVal)
+	require.NoError(t, err)
+	require.Equal(t, v, decodedVal)
 }

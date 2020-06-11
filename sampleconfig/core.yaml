@@ -30,7 +30,9 @@ peer:
     # The endpoint the chaincode for this peer uses to connect to the peer.
     # If this is not specified, the chaincodeListenAddress address is selected.
     # And if chaincodeListenAddress is not specified, address is selected from
-    # peer listenAddress.
+    # peer address (see below). If specified peer address is invalid then it
+    # will fallback to the auto detected IP (local IP) regardless of the peer
+    # addressAutoDetect value.
     # chaincodeAddress: 0.0.0.0:7052
 
     # When used as peer config, this represents the endpoint to other peers
@@ -41,6 +43,7 @@ peer:
 
     # Whether the Peer should programmatically determine its address
     # This case is useful for docker containers.
+    # When set to true, will override peer address.
     addressAutoDetect: false
 
     # Keepalive settings for peer server and clients
@@ -94,14 +97,15 @@ peer:
         # Defines whenever peer will initialize dynamic algorithm for
         # "leader" selection, where leader is the peer to establish
         # connection with ordering service and use delivery protocol
-        # to pull ledger blocks from ordering service. It is recommended to
-        # use leader election for large networks of peers.
-        useLeaderElection: true
+        # to pull ledger blocks from ordering service.
+        useLeaderElection: false
         # Statically defines peer to be an organization "leader",
         # where this means that current peer will maintain connection
         # with ordering service and disseminate block across peers in
-        # its own organization
-        orgLeader: false
+        # its own organization. Multiple peers or all peers in an organization
+        # may be configured as org leaders, so that they all pull
+        # blocks directly from ordering service.
+        orgLeader: true
 
         # Interval for membershipTracker polling
         membershipTrackerInterval: 5s
@@ -157,6 +161,10 @@ peer:
         aliveExpirationTimeout: 25s
         # Reconnect interval(unit: second)
         reconnectInterval: 25s
+        # Max number of attempts to connect to a peer
+        maxConnectionAttempts: 120
+        # Message expiration factor for alive messages
+        msgExpirationFactor: 20
         # This is an endpoint that is published to peers outside of the organization.
         # If this isn't set, the peer will not be known to other organizations.
         externalEndpoint:
@@ -575,9 +583,7 @@ chaincode:
     # A value <= 0 turns keepalive off
     keepalive: 0
 
-    # system chaincodes whitelist. To add system chaincode "myscc" to the
-    # whitelist, add "myscc: enable" to the list below, and register in
-    # chaincode/importsysccs.go
+    # enabled system chaincodes
     system:
         _lifecycle: enable
         cscc: enable

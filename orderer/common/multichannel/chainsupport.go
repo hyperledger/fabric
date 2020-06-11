@@ -49,14 +49,14 @@ func newChainSupport(
 	signer identity.SignerSerializer,
 	blockcutterMetrics *blockcutter.Metrics,
 	bccsp bccsp.BCCSP,
-) *ChainSupport {
+) (*ChainSupport, error) {
 	// Read in the last block and metadata for the channel
 	lastBlock := blockledger.GetBlock(ledgerResources, ledgerResources.Height()-1)
 	metadata, err := protoutil.GetConsenterMetadataFromBlock(lastBlock)
 	// Assuming a block created with cb.NewBlock(), this should not
 	// error even if the orderer metadata is an empty byte slice
 	if err != nil {
-		logger.Fatalf("[channel: %s] Error extracting orderer metadata: %s", ledgerResources.ConfigtxValidator().ChannelID(), err)
+		return nil, errors.Wrapf(err, "error extracting orderer metadata for channel: %s", ledgerResources.ConfigtxValidator().ChannelID())
 	}
 
 	// Construct limited support needed as a parameter for additional support
@@ -81,12 +81,12 @@ func newChainSupport(
 	consenterType := ledgerResources.SharedConfig().ConsensusType()
 	consenter, ok := consenters[consenterType]
 	if !ok {
-		logger.Panicf("Error retrieving consenter of type: %s", consenterType)
+		return nil, errors.Errorf("error retrieving consenter of type: %s", consenterType)
 	}
 
 	cs.Chain, err = consenter.HandleChain(cs, metadata)
 	if err != nil {
-		logger.Panicf("[channel: %s] Error creating consenter: %s", cs.ChannelID(), err)
+		return nil, errors.Wrapf(err, "error creating consenter for channel: %s", cs.ChannelID())
 	}
 
 	cs.MetadataValidator, ok = cs.Chain.(consensus.MetadataValidator)
@@ -101,7 +101,70 @@ func newChainSupport(
 
 	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChannelID())
 
-	return cs
+	return cs, nil
+}
+
+func newChainSupportForJoin(
+	joinBlock *cb.Block,
+	registrar *Registrar,
+	ledgerResources *ledgerResources,
+	consenters map[string]consensus.Consenter,
+	signer identity.SignerSerializer,
+	blockcutterMetrics *blockcutter.Metrics,
+	bccsp bccsp.BCCSP,
+) (*ChainSupport, error) {
+
+	if joinBlock.Header.Number == 0 {
+		err := ledgerResources.Append(joinBlock)
+		if err != nil {
+			return nil, errors.Wrap(err, "error appending join block to the ledger")
+		}
+		return newChainSupport(registrar, ledgerResources, consenters, signer, blockcutterMetrics, bccsp)
+	}
+
+	// Construct limited support needed as a parameter for additional support
+	cs := &ChainSupport{
+		ledgerResources:  ledgerResources,
+		SignerSerializer: signer,
+		cutter: blockcutter.NewReceiverImpl(
+			ledgerResources.ConfigtxValidator().ChannelID(),
+			ledgerResources,
+			blockcutterMetrics,
+		),
+		BCCSP: bccsp,
+	}
+
+	// Set up the msgprocessor
+	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, registrar.config), bccsp)
+	// No BlockWriter, this will be created when the chain gets converted from follower.Chain to etcdraft.Chain
+	cs.BlockWriter = nil //TODO change embedding of BlockWriter struct to interface, and put here a NoOp implementation or one that panics if used
+
+	// Get the consenter
+	consenterType := ledgerResources.SharedConfig().ConsensusType()
+	consenter, ok := consenters[consenterType]
+	if !ok {
+		return nil, errors.Errorf("error retrieving consenter of type: %s", consenterType)
+	}
+
+	var err error
+	cs.Chain, err = consenter.JoinChain(cs, joinBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	cs.MetadataValidator, ok = cs.Chain.(consensus.MetadataValidator)
+	if !ok {
+		cs.MetadataValidator = consensus.NoOpMetadataValidator{}
+	}
+
+	cs.StatusReporter, ok = cs.Chain.(consensus.StatusReporter)
+	if !ok { // Non-cluster types: solo, kafka
+		cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: types.ClusterRelationNone, Status: types.StatusActive}
+	}
+
+	logger.Debugf("[channel: %s] Done creating channel support resources for join", cs.ChannelID())
+
+	return cs, nil
 }
 
 // Block returns a block with the following number,

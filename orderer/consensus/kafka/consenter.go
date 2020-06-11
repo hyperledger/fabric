@@ -103,6 +103,10 @@ func (consenter *consenterImpl) HandleChain(support consensus.ConsenterSupport, 
 	return ch, nil
 }
 
+func (c *consenterImpl) JoinChain(support consensus.ConsenterSupport, joinBlock *cb.Block) (consensus.Chain, error) {
+	return nil, errors.New("the Kafka orderer does not support JoinChain")
+}
+
 // commonConsenter allows us to retrieve the configuration options set on the
 // consenter object. These will be common across all chain objects derived by
 // this consenter. They are set using local configuration settings. This

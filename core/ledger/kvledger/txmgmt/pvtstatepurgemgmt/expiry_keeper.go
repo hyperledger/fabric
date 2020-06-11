@@ -74,7 +74,10 @@ func (ek *expiryKeeper) update(toTrack []*expiryInfo, toClear []*expiryInfoKey) 
 func (ek *expiryKeeper) retrieve(expiringAtBlkNum uint64) ([]*expiryInfo, error) {
 	startKey := encodeExpiryInfoKey(&expiryInfoKey{expiryBlk: expiringAtBlkNum, committingBlk: 0})
 	endKey := encodeExpiryInfoKey(&expiryInfoKey{expiryBlk: expiringAtBlkNum + 1, committingBlk: 0})
-	itr := ek.db.GetIterator(startKey, endKey)
+	itr, err := ek.db.GetIterator(startKey, endKey)
+	if err != nil {
+		return nil, err
+	}
 	defer itr.Release()
 
 	var listExpinfo []*expiryInfo

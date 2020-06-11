@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -274,31 +274,31 @@ func TestLoadConfigCache(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 
-	v := viper.New()
+	cfg := viperutil.New()
 	devConfigDir := configtest.GetDevConfigDir()
-	v.AddConfigPath(devConfigDir)
-	v.SetConfigName("configtx")
-	err := v.ReadInConfig()
+	cfg.AddConfigPath(devConfigDir)
+	cfg.SetConfigName("configtx")
+	err := cfg.ReadInConfig()
 	assert.NoError(t, err)
 
-	configPath := v.ConfigFileUsed()
+	configPath := cfg.ConfigFileUsed()
 	c := &configCache{
 		cache: make(map[string][]byte),
 	}
 
 	// Load the initial config, update the environment, and load again.
 	// With the caching behavior, the update should not be reflected.
-	initial, err := c.load(v, configPath)
+	initial, err := c.load(cfg, configPath)
 	assert.NoError(t, err)
 	os.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
-	updated, err := c.load(v, configPath)
+	updated, err := c.load(cfg, configPath)
 	assert.NoError(t, err)
 	assert.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)
 
 	// Change the configuration we got back and load again.
 	// The  new value should not contain the updated to the initial
 	initial.Orderer.OrdererType = "bad-Orderer-Type"
-	updated, err = c.load(v, configPath)
+	updated, err = c.load(cfg, configPath)
 	assert.NoError(t, err)
 	assert.NotEqual(t, initial, updated, "expected %#v to not equal %#v", updated, initial)
 }

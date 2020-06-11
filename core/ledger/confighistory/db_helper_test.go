@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,13 +25,13 @@ func TestEncodeDecodeCompositeKey(t *testing.T) {
 	}
 	for _, k := range sampleKeys {
 		k1 := decodeCompositeKey(encodeCompositeKey(k.ns, k.key, k.blockNum))
-		assert.Equal(t, k, k1)
+		require.Equal(t, k, k1)
 	}
 }
 
 func TestCompareEncodedHeight(t *testing.T) {
-	assert.Equal(t, bytes.Compare(encodeBlockNum(20), encodeBlockNum(40)), 1)
-	assert.Equal(t, bytes.Compare(encodeBlockNum(40), encodeBlockNum(10)), -1)
+	require.Equal(t, bytes.Compare(encodeBlockNum(20), encodeBlockNum(40)), 1)
+	require.Equal(t, bytes.Compare(encodeBlockNum(40), encodeBlockNum(10)), -1)
 }
 
 func TestQueries(t *testing.T) {
@@ -65,6 +64,13 @@ func TestQueries(t *testing.T) {
 	checkEntryAt(t, "testcase-query8", db, "ns1", "key1", 0, sampleData[4])
 	checkEntryAt(t, "testcase-query9", db, "ns1", "key1", 35, nil)
 	checkEntryAt(t, "testcase-query10", db, "ns1", "key1", 45, nil)
+
+	t.Run("test-iter-error-path", func(t *testing.T) {
+		provider.Close()
+		ckv, err := db.mostRecentEntryBelow(45, "ns1", "key1")
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.Nil(t, ckv)
+	})
 }
 
 func TestGetNamespaceIterator(t *testing.T) {
@@ -74,8 +80,8 @@ func TestGetNamespaceIterator(t *testing.T) {
 	defer deleteTestPath(t, testDBPath)
 
 	db := provider.getDB("ledger1")
-	nsItr1 := db.getNamespaceIterator("ns1")
-	require.NoError(t, nsItr1.Error())
+	nsItr1, err := db.getNamespaceIterator("ns1")
+	require.NoError(t, err)
 	defer nsItr1.Release()
 	verifyNsEntries(t, nsItr1, nil)
 
@@ -89,15 +95,23 @@ func TestGetNamespaceIterator(t *testing.T) {
 	}
 	populateDBWithSampleData(t, db, sampleData)
 
-	nsItr2 := db.getNamespaceIterator("ns1")
-	require.NoError(t, nsItr2.Error())
+	nsItr2, err := db.getNamespaceIterator("ns1")
+	require.NoError(t, err)
 	defer nsItr2.Release()
 	verifyNsEntries(t, nsItr2, sampleData[:3])
 
-	nsItr3 := db.getNamespaceIterator("ns2")
-	require.NoError(t, nsItr3.Error())
+	nsItr3, err := db.getNamespaceIterator("ns2")
+	require.NoError(t, err)
 	defer nsItr3.Release()
 	verifyNsEntries(t, nsItr3, sampleData[3:])
+
+	t.Run("test-iter-error-path", func(t *testing.T) {
+		provider.Close()
+		itr, err := db.getNamespaceIterator("ns1")
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.Nil(t, itr)
+	})
+
 }
 
 func verifyNsEntries(t *testing.T, nsItr *leveldbhelper.Iterator, expectedEntries []*compositeKV) {
@@ -116,15 +130,15 @@ func populateDBWithSampleData(t *testing.T, db *db, sampledata []*compositeKV) {
 	for _, data := range sampledata {
 		batch.add(data.ns, data.key, data.blockNum, data.value)
 	}
-	assert.NoError(t, db.writeBatch(batch, true))
+	require.NoError(t, db.writeBatch(batch, true))
 }
 
 func checkRecentEntryBelow(t *testing.T, testcase string, db *db, ns, key string, commitHt uint64, expectedOutput *compositeKV) {
 	t.Run(testcase,
 		func(t *testing.T) {
 			kv, err := db.mostRecentEntryBelow(commitHt, ns, key)
-			assert.NoError(t, err)
-			assert.Equal(t, expectedOutput, kv)
+			require.NoError(t, err)
+			require.Equal(t, expectedOutput, kv)
 		})
 }
 
@@ -132,12 +146,12 @@ func checkEntryAt(t *testing.T, testcase string, db *db, ns, key string, commitH
 	t.Run(testcase,
 		func(t *testing.T) {
 			kv, err := db.entryAt(commitHt, ns, key)
-			assert.NoError(t, err)
-			assert.Equal(t, expectedOutput, kv)
+			require.NoError(t, err)
+			require.Equal(t, expectedOutput, kv)
 		})
 }
 
 func deleteTestPath(t *testing.T, dbPath string) {
 	err := os.RemoveAll(dbPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

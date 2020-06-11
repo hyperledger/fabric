@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
 	coreconfig "github.com/hyperledger/fabric/core/config"
-	"github.com/spf13/viper"
+	//"github.com/spf13/viper"
 )
 
 // Prefix for environment variables.
@@ -314,8 +314,8 @@ var cache = &configCache{}
 func (c *configCache) load() (*TopLevel, error) {
 	var uconf TopLevel
 
-	config := viper.New()
-	coreconfig.InitViper(config, "orderer")
+	config := viperutil.New()
+	config.InitConfigPath("orderer")
 	config.SetEnvPrefix(Prefix)
 	config.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")

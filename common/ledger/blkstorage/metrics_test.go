@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStatsBlockchainHeight(t *testing.T) {
@@ -24,49 +24,49 @@ func TestStatsBlockchainHeight(t *testing.T) {
 	provider := env.provider
 	ledgerid := "ledger-stats"
 	store, err := provider.Open(ledgerid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer store.Shutdown()
 
 	// add genesis block
 	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, "testchannelid", false)
 	err = store.AddBlock(genesisBlock)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// add one more block
 	b1 := blockGenerator.NextBlock([][]byte{})
 	err = store.AddBlock(b1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// should have 3 calls for fakeBlockchainHeightGauge: OpenBlockStore, genesis block, and block b1
 	fakeBlockchainHeightGauge := testMetricProvider.fakeBlockchainHeightGauge
 	expectedCallCount := 3
-	assert.Equal(t, expectedCallCount, fakeBlockchainHeightGauge.SetCallCount())
+	require.Equal(t, expectedCallCount, fakeBlockchainHeightGauge.SetCallCount())
 
 	// verify the call for OpenBlockStore
-	assert.Equal(t, float64(0), fakeBlockchainHeightGauge.SetArgsForCall(0))
-	assert.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(0))
+	require.Equal(t, float64(0), fakeBlockchainHeightGauge.SetArgsForCall(0))
+	require.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(0))
 
 	// verify the call for adding genesis block
-	assert.Equal(t, float64(1), fakeBlockchainHeightGauge.SetArgsForCall(1))
-	assert.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(1))
+	require.Equal(t, float64(1), fakeBlockchainHeightGauge.SetArgsForCall(1))
+	require.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(1))
 
 	// verify the call for adding block b1
-	assert.Equal(t, float64(2), fakeBlockchainHeightGauge.SetArgsForCall(2))
-	assert.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(2))
+	require.Equal(t, float64(2), fakeBlockchainHeightGauge.SetArgsForCall(2))
+	require.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(2))
 
 	// shutdown and reopen the store to verify blockchain height
 	store.Shutdown()
 	store, err = provider.Open(ledgerid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// verify the call when opening an existing ledger - should set height correctly
-	assert.Equal(t, float64(2), fakeBlockchainHeightGauge.SetArgsForCall(3))
-	assert.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(3))
+	require.Equal(t, float64(2), fakeBlockchainHeightGauge.SetArgsForCall(3))
+	require.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(3))
 
 	// invoke updateBlockStats api explicitly and verify the call with fake metrics
 	store.updateBlockStats(10, 1*time.Second)
-	assert.Equal(t, float64(11), fakeBlockchainHeightGauge.SetArgsForCall(4))
-	assert.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(4))
+	require.Equal(t, float64(11), fakeBlockchainHeightGauge.SetArgsForCall(4))
+	require.Equal(t, []string{"channel", ledgerid}, fakeBlockchainHeightGauge.WithArgsForCall(4))
 }
 
 func TestStatsBlockCommit(t *testing.T) {
@@ -77,39 +77,39 @@ func TestStatsBlockCommit(t *testing.T) {
 	provider := env.provider
 	ledgerid := "ledger-stats"
 	store, err := provider.Open(ledgerid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer store.Shutdown()
 
 	// add a genesis block
 	blockGenerator, genesisBlock := testutil.NewBlockGenerator(t, "testchannelid", false)
 	err = store.AddBlock(genesisBlock)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// add 3 more blocks
 	for i := 1; i <= 3; i++ {
 		b := blockGenerator.NextBlock([][]byte{})
 		err = store.AddBlock(b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	fakeBlockstorageCommitTimeHist := testMetricProvider.fakeBlockstorageCommitTimeHist
 
 	// should have 4 calls to fakeBlockstorageCommitTimeHist: genesis block, and 3 blocks
 	expectedCallCount := 1 + 3
-	assert.Equal(t, expectedCallCount, fakeBlockstorageCommitTimeHist.ObserveCallCount())
+	require.Equal(t, expectedCallCount, fakeBlockstorageCommitTimeHist.ObserveCallCount())
 
 	// verify the value of channel in each call (0, 1, 2, 3)
 	for i := 0; i < expectedCallCount; i++ {
-		assert.Equal(t, []string{"channel", ledgerid}, fakeBlockstorageCommitTimeHist.WithArgsForCall(i))
+		require.Equal(t, []string{"channel", ledgerid}, fakeBlockstorageCommitTimeHist.WithArgsForCall(i))
 	}
 
 	// invoke updateBlockStats api explicitly and verify with fake metrics (call number is 4)
 	store.updateBlockStats(4, 10*time.Second)
-	assert.Equal(t,
+	require.Equal(t,
 		[]string{"channel", ledgerid},
 		testMetricProvider.fakeBlockstorageCommitTimeHist.WithArgsForCall(4),
 	)
-	assert.Equal(t,
+	require.Equal(t,
 		float64(10),
 		testMetricProvider.fakeBlockstorageCommitTimeHist.ObserveArgsForCall(4),
 	)

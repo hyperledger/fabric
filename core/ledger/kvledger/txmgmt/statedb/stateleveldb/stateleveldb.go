@@ -143,7 +143,10 @@ func (vdb *versionedDB) GetStateRangeScanIteratorWithPagination(namespace string
 	if endKey == "" {
 		dataEndKey[len(dataEndKey)-1] = lastKeyIndicator
 	}
-	dbItr := vdb.db.GetIterator(dataStartKey, dataEndKey)
+	dbItr, err := vdb.db.GetIterator(dataStartKey, dataEndKey)
+	if err != nil {
+		return nil, err
+	}
 	return newKVScanner(namespace, dbItr, pageSize), nil
 }
 
@@ -292,9 +295,9 @@ type fullDBScanner struct {
 }
 
 func newFullDBScanner(db *leveldbhelper.DBHandle, skipNamespace func(namespace string) bool) (*fullDBScanner, byte, error) {
-	dbItr := db.GetIterator(dataKeyPrefix, dataKeyStopper)
-	if err := dbItr.Error(); err != nil {
-		return nil, byte(0), errors.Wrap(err, "internal leveldb error while obtaining db iterator")
+	dbItr, err := db.GetIterator(dataKeyPrefix, dataKeyStopper)
+	if err != nil {
+		return nil, byte(0), err
 	}
 	return &fullDBScanner{
 			db:     db,
@@ -323,11 +326,8 @@ func (s *fullDBScanner) Next() (*statedb.CompositeKey, []byte, error) {
 		case !s.toSkip(ns):
 			return compositeKey, dbVal, nil
 		default:
-			s.dbItr.Release()
-			s.dbItr = s.db.GetIterator(dataKeyStarterForNextNamespace(ns), dataKeyStopper)
-			if err := s.dbItr.Error(); err != nil {
-				return nil, nil, errors.Wrapf(err, "internal leveldb error while obtaining db iterator for skipping a namespace [%s]", ns)
-			}
+			s.dbItr.Seek(dataKeyStarterForNextNamespace(ns))
+			s.dbItr.Prev()
 		}
 	}
 	return nil, nil, errors.Wrap(s.dbItr.Error(), "internal leveldb error while retrieving data from db iterator")
