@@ -89,9 +89,12 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			network.Bootstrap()
 
 			o1Runner := network.OrdererRunner(o1)
+			// Enable debug log for orderer2 so we could assert its content later
+			o2Runner := network.OrdererRunner(o2, "FABRIC_LOGGING_SPEC=orderer.consensus.etcdraft=debug:info")
+			o3Runner := network.OrdererRunner(o3)
 			orderers := grouper.Members{
-				{Name: o2.ID(), Runner: network.OrdererRunner(o2)},
-				{Name: o3.ID(), Runner: network.OrdererRunner(o3)},
+				{Name: o2.ID(), Runner: o2Runner},
+				{Name: o3.ID(), Runner: o3Runner},
 			}
 			ordererGroup := grouper.NewParallel(syscall.SIGTERM, orderers)
 
@@ -114,6 +117,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("killing orderer1")
 			o1Proc.Signal(syscall.SIGKILL)
 			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
+
+			By("observing active nodes to shrink")
+			Eventually(o2Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Current active nodes in cluster are: \\[2 3\\]"))
 
 			By("broadcasting envelope to running orderer")
 			resp, err = nwo.Broadcast(network, o2, env)
