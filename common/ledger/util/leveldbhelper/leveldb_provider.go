@@ -180,7 +180,7 @@ func (h *DBHandle) GetIterator(startKey []byte, endKey []byte) *Iterator {
 		eKey[len(eKey)-1] = lastKeyIndicator
 	}
 	logger.Debugf("Getting iterator for range [%#v] - [%#v]", sKey, eKey)
-	return &Iterator{h.db.GetIterator(sKey, eKey)}
+	return &Iterator{h.dbName, h.db.GetIterator(sKey, eKey)}
 }
 
 // UpdateBatch encloses the details of multiple `updates`
@@ -213,12 +213,21 @@ func (batch *UpdateBatch) Len() int {
 
 // Iterator extends actual leveldb iterator
 type Iterator struct {
+	dbName string
 	iterator.Iterator
 }
 
 // Key wraps actual leveldb iterator method
 func (itr *Iterator) Key() []byte {
 	return retrieveAppKey(itr.Iterator.Key())
+}
+
+// Seek moves the iterator to the first key/value pair
+// whose key is greater than or equal to the given key.
+// It returns whether such pair exist.
+func (itr *Iterator) Seek(key []byte) bool {
+	levelKey := constructLevelKey(itr.dbName, key)
+	return itr.Iterator.Seek(levelKey)
 }
 
 func constructLevelKey(dbName string, key []byte) []byte {
