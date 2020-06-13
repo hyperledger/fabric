@@ -185,31 +185,4 @@ func TestFullScanIteratorErrorPropagation(t *testing.T) {
 	itr.Close()
 	_, _, err = itr.Next()
 	require.Contains(t, err.Error(), "internal leveldb error while retrieving data from db iterator:")
-
-	// error from function Next when switching to new iterator for skipping a namespace
-	reInitEnv()
-	batch := statedb.NewUpdateBatch()
-	batch.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
-	batch.Put("ns2", "key2", []byte("value2"), version.NewHeight(1, 1))
-	batch.Put("ns3", "key3", []byte("value3"), version.NewHeight(1, 1))
-	vdb.ApplyUpdates(batch, version.NewHeight(2, 2))
-
-	itr, _, err = vdb.GetFullScanIterator(
-		func(ns string) bool {
-			return ns == "ns2"
-		},
-	)
-	require.NoError(t, err)
-	compositeKey, _, err := itr.Next()
-	require.NoError(t, err)
-	require.Equal(t,
-		&statedb.CompositeKey{
-			Namespace: "ns1",
-			Key:       "key1",
-		},
-		compositeKey,
-	)
-	vdbProvider.Close()
-	_, _, err = itr.Next()
-	require.Contains(t, err.Error(), "internal leveldb error while obtaining db iterator for skipping a namespace [ns2]:")
 }

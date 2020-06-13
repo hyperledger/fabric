@@ -1051,23 +1051,29 @@ func TestFullScanIterator(
 			expectedResults = append(expectedResults, generateSampleData(ns)...)
 		}
 		require.Equal(t, expectedResults, results)
-		fmt.Printf("Len = %d", len(results))
 	}
 
-	// skip no namespaces
-	verifyFullScanIterator(stringset{})
-	// skip the first namespace
-	verifyFullScanIterator(stringset{""})
-	// skip the middle namespace
-	verifyFullScanIterator(stringset{"ns2"})
-	// skip the last namespace
-	verifyFullScanIterator(stringset{"ns4"})
-	// skip the first two namespaces
-	verifyFullScanIterator(stringset{"", "ns2"})
-	// skip the last two namespaces
-	verifyFullScanIterator(stringset{"ns3", "ns4"})
-	// skip all the namespaces
-	verifyFullScanIterator(stringset{"", "ns1", "ns2", "ns3", "ns4"})
+	testCases := []stringset{
+		{},                               // skip no namespaces
+		{"", "ns1", "ns2", "ns3", "ns4"}, // skip all the namespaces
+		{""},                             // skip the first namespace
+		{"ns2"},                          // skip the middle namespace
+		{"ns4"},                          // skip the last namespace
+		{"", "ns1"},                      // skip the first two namespaces
+		{"ns3", "ns4"},                   // skip the last two namespaces
+		{"", "ns3"},                      // skip two non-consequitive namespaces
+		{"ns1", "ns4"},                   // skip two non-consequitive namespaces
+		{"", "ns4"},                      // skip the first and last namespace
+	}
+
+	for i, testCase := range testCases {
+		t.Run(
+			fmt.Sprintf("testCase %d", i),
+			func(t *testing.T) {
+				verifyFullScanIterator(testCase)
+			},
+		)
+	}
 }
 
 type stringset []string
