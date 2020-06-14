@@ -24,6 +24,12 @@ type Consenter interface {
 	// the last block committed to the ledger of this Chain. For a new chain, or one which is migrated,
 	// this metadata will be nil (or contain a zero-length Value), as there is no prior metadata to report.
 	HandleChain(support ConsenterSupport, metadata *cb.Metadata) (Chain, error)
+
+	// JoinChain should create and return a reference to a Chain when the channel is started with a join-block
+	// that is not a genesis block (i.e. join-block.number>0), and a ledger with height <= than join-block.number.
+	// This means that there is a gap between the join-block and the last block in the ledger that requires
+	// on-boarding. In contrast, HandleChain creates a Chain based on the last block found in the ledger.
+	JoinChain(support ConsenterSupport, joinBlock *cb.Block) (Chain, error)
 }
 
 // MetadataValidator performs the validation of updates to ConsensusMetadata during config updates to the channel.
