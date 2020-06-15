@@ -449,9 +449,6 @@ func QueryInstalledReferences(n *Network, channel, label, packageID string, chec
 	)
 }
 
-func QueryInstalledNoReferences(n *Network, channel, label, packageID string, checkPeer *Peer) {
-}
-
 type queryInstalledOutput struct {
 	InstalledChaincodes []lifecycle.QueryInstalledChaincodesResult_InstalledChaincode `json:"installed_chaincodes"`
 }
