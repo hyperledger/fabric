@@ -191,6 +191,39 @@ func TestBatchedUpdates(t *testing.T) {
 	}
 }
 
+func TestRemove(t *testing.T) {
+	env := newTestProviderEnv(t, testDBPath)
+	defer env.cleanup()
+	p := env.provider
+
+	db1 := p.GetDBHandle("db1")
+	db2 := p.GetDBHandle("db2")
+	db3 := p.GetDBHandle("db3")
+	for i := 0; i < 20; i++ {
+		db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false)
+		db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false)
+		db3.Put([]byte(createTestKey(i)), []byte(createTestValue("db3", i)), false)
+	}
+
+	itr := db1.GetIterator(nil, nil)
+	defer itr.Release()
+	require.True(t, itr.Next())
+
+	err := p.Remove("db1")
+	require.NoError(t, err)
+	itr1 := db1.GetIterator(nil, nil)
+	defer itr1.Release()
+	require.False(t, itr1.Next())
+
+	itr2 := db2.GetIterator(nil, nil)
+	defer itr2.Release()
+	checkItrResults(t, itr2, createTestKeys(0, 19), createTestValues("db2", 0, 19))
+
+	itr3 := db3.GetIterator(nil, nil)
+	defer itr3.Release()
+	checkItrResults(t, itr3, createTestKeys(0, 19), createTestValues("db3", 0, 19))
+}
+
 func TestFormatCheck(t *testing.T) {
 	testCases := []struct {
 		dataFormat     string

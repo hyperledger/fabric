@@ -32,6 +32,10 @@ func (mbsp *mockBlockStoreProvider) List() ([]string, error) {
 	return mbsp.list, mbsp.error
 }
 
+func (mbsp *mockBlockStoreProvider) Remove(ledgerid string) error {
+	return mbsp.error
+}
+
 func (mbsp *mockBlockStoreProvider) Close() {
 }
 

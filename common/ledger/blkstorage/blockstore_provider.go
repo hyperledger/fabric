@@ -7,7 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
+	"io/ioutil"
 	"os"
+	"strings"
+	"sync"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
@@ -60,6 +63,7 @@ type BlockStoreProvider struct {
 	indexConfig     *IndexConfig
 	leveldbProvider *leveldbhelper.Provider
 	stats           *stats
+	mutex           sync.RWMutex
 }
 
 // NewProvider constructs a filesystem based block store provider
@@ -87,7 +91,15 @@ func NewProvider(conf *Conf, indexConfig *IndexConfig, metricsProvider metrics.P
 	}
 
 	stats := newStats(metricsProvider)
-	return &BlockStoreProvider{conf, indexConfig, p, stats}, nil
+	provider := &BlockStoreProvider{
+		conf:            conf,
+		indexConfig:     indexConfig,
+		leveldbProvider: p,
+		stats:           stats,
+	}
+
+	go provider.completePendingRemoves()
+	return provider, nil
 }
 
 // Open opens a block store for given ledgerid.
@@ -101,12 +113,91 @@ func (p *BlockStoreProvider) Open(ledgerid string) (*BlockStore, error) {
 // Exists tells whether the BlockStore with given id exists
 func (p *BlockStoreProvider) Exists(ledgerid string) (bool, error) {
 	exists, _, err := util.FileExists(p.conf.getLedgerBlockDir(ledgerid))
-	return exists, err
+	if !exists || err != nil {
+		return false, err
+	}
+	toBeRemoved, _, err := util.FileExists(p.conf.getToBeRemovedFilePath(ledgerid))
+	if err != nil {
+		return false, err
+	}
+	return !toBeRemoved, nil
 }
 
 // List lists the ids of the existing ledgers
+// A channel is filtered out if it has a temporary __toBeRemoved_ file.
 func (p *BlockStoreProvider) List() ([]string, error) {
-	return util.ListSubdirs(p.conf.getChainsDir())
+	subdirs, err := util.ListSubdirs(p.conf.getChainsDir())
+	if err != nil {
+		return nil, err
+	}
+	channelNames := []string{}
+	for _, subdir := range subdirs {
+		toBeRemoved, _, err := util.FileExists(p.conf.getToBeRemovedFilePath(subdir))
+		if err != nil {
+			return nil, err
+		}
+		if !toBeRemoved {
+			channelNames = append(channelNames, subdir)
+		}
+	}
+	return channelNames, nil
+}
+
+// Remove block index and blocks for the given ledgerid (channelID).
+// It creates a temporary file to indicate the channel is to be removed and deletes the ledger data in a separate goroutine.
+// If the channel does not exist (or the channel is already marked to be removed), it is not an error.
+func (p *BlockStoreProvider) Remove(ledgerid string) error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	exists, err := p.Exists(ledgerid)
+	if !exists || err != nil {
+		return err
+	}
+
+	f, err := os.Create(p.conf.getToBeRemovedFilePath(ledgerid))
+	if err != nil {
+		return err
+	}
+	f.Close()
+
+	go p.removeLedgerData(ledgerid)
+
+	return nil
+}
+
+// completePendingRemoves checks __toBeRemoved_xxx files and removes the corresponding channel ledger data
+// if any temporary file(s) is found. This function should only be called upon ledger init.
+func (p *BlockStoreProvider) completePendingRemoves() {
+	files, err := ioutil.ReadDir(p.conf.blockStorageDir)
+	if err != nil {
+		logger.Errorf("Error reading dir %s, error: %s", p.conf.blockStorageDir, err)
+		return
+	}
+	for _, f := range files {
+		fileName := f.Name()
+		if !f.IsDir() && strings.HasPrefix(fileName, toBeRemovedFilePrefix) {
+			p.removeLedgerData(fileName[len(toBeRemovedFilePrefix):])
+		}
+	}
+}
+
+func (p *BlockStoreProvider) removeLedgerData(ledgerid string) error {
+	logger.Infof("Removing block data for channel %s", ledgerid)
+	if err := p.leveldbProvider.Remove(ledgerid); err != nil {
+		logger.Errorf("Failed to remove block index for channel %s, error: %s", ledgerid, err)
+		return err
+	}
+	if err := os.RemoveAll(p.conf.getLedgerBlockDir(ledgerid)); err != nil {
+		logger.Errorf("Failed to remove blocks for channel %s, error: %s", ledgerid, err)
+		return err
+	}
+	tempFile := p.conf.getToBeRemovedFilePath(ledgerid)
+	if err := os.Remove(tempFile); err != nil {
+		logger.Errorf("Failed to remove temporary file %s for channel %s", tempFile, ledgerid)
+		return err
+	}
+	logger.Infof("Successfully removed block data for channel %s", ledgerid)
+	return nil
 }
 
 // Close closes the BlockStoreProvider

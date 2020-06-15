@@ -20,6 +20,9 @@ type Factory interface {
 	// ChannelIDs returns the channel IDs the Factory is aware of
 	ChannelIDs() []string
 
+	// Remove removes block indexes and blocks for the given channelID
+	Remove(channelID string) error
+
 	// Close releases all resources acquired by the factory
 	Close()
 }

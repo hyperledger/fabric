@@ -14,6 +14,7 @@ const (
 	// IndexDir is the name of the directory containing all block indexes across ledgers.
 	IndexDir                = "index"
 	defaultMaxBlockfileSize = 64 * 1024 * 1024 // bytes
+	toBeRemovedFilePrefix   = "__toBeRemoved_"
 )
 
 // Conf encapsulates all the configurations for `BlockStore`
@@ -41,4 +42,8 @@ func (conf *Conf) getChainsDir() string {
 
 func (conf *Conf) getLedgerBlockDir(ledgerid string) string {
 	return filepath.Join(conf.getChainsDir(), ledgerid)
+}
+
+func (conf *Conf) getToBeRemovedFilePath(ledgerid string) string {
+	return filepath.Join(conf.blockStorageDir, toBeRemovedFilePrefix+ledgerid)
 }

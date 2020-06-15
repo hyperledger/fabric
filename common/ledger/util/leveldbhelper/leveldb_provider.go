@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -18,7 +19,11 @@ import (
 
 // internalDBName is used to keep track of data related to internals such as data format
 // _ is used as name because this is not allowed as a channelname
-const internalDBName = "_"
+const (
+	internalDBName  = "_"
+	maxBatchSize    = 5000
+	batchesInterval = 1000
+)
 
 var (
 	dbNameKeySep     = []byte{0x00}
@@ -123,6 +128,18 @@ func (p *Provider) GetDBHandle(dbName string) *DBHandle {
 	return dbHandle
 }
 
+// Remove removes all the keys for the given dbName from the leveldb
+func (p *Provider) Remove(dbName string) error {
+	dbHandle := p.GetDBHandle(dbName)
+	if err := dbHandle.DeleteAll(); err != nil {
+		return err
+	}
+	p.mux.Lock()
+	defer p.mux.Unlock()
+	delete(p.dbHandles, dbName)
+	return nil
+}
+
 // Close closes the underlying leveldb
 func (p *Provider) Close() {
 	p.db.Close()
@@ -147,6 +164,32 @@ func (h *DBHandle) Put(key []byte, value []byte, sync bool) error {
 // Delete deletes the given key
 func (h *DBHandle) Delete(key []byte, sync bool) error {
 	return h.db.Delete(constructLevelKey(h.dbName, key), sync)
+}
+
+// DeleteAll deletes all the keys that belong to the channel (dbName).DeleteAll
+func (h *DBHandle) DeleteAll() error {
+	iter := h.GetIterator(nil, nil)
+	defer iter.Release()
+
+	numKeys := 0
+	batch := NewUpdateBatch()
+	for iter.Next() {
+		key := iter.Key()
+		batch.Delete(key)
+		numKeys++
+		if batch.Len() >= maxBatchSize {
+			if err := h.WriteBatch(batch, true); err != nil {
+				return err
+			}
+			batch = NewUpdateBatch()
+			sleepTime := time.Duration(batchesInterval)
+			logger.Infof("Sleep for %d milliseconds between batches of deletion. Entries have been removed for channel %s: %d", sleepTime, h.dbName, numKeys)
+		}
+	}
+	if batch.Len() > 0 {
+		return h.WriteBatch(batch, true)
+	}
+	return nil
 }
 
 // WriteBatch writes a batch in an atomic way

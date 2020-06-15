@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -191,6 +192,60 @@ func TestBlockStoreProvider(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, false, exists)
 
+	ledgerid := constructLedgerid(0)
+	provider.Remove(ledgerid)
+	numStores--
+	verifyLedgerAfterRemove(t, []string{ledgerid}, provider, numStores)
+
+	// manually create toBeRemoved files and then verify Exist/List functions
+	ledgerids := []string{constructLedgerid(1), constructLedgerid(5)}
+	for _, ledgerid := range ledgerids {
+		f, err := os.Create(provider.conf.getToBeRemovedFilePath(ledgerid))
+		require.NoError(t, err)
+		f.Close()
+	}
+	numStores = numStores - len(ledgerids)
+	for _, ledgerid := range ledgerids {
+		exists, err := provider.Exists(ledgerid)
+		require.NoError(t, err)
+		require.Equal(t, false, exists)
+	}
+	storeNames, err = provider.List()
+	require.NoError(t, err)
+	require.Equal(t, numStores, len(storeNames))
+
+	go provider.completePendingRemoves()
+	verifyLedgerAfterRemove(t, ledgerids, provider, numStores)
+}
+
+func verifyLedgerAfterRemove(t *testing.T, ledgerids []string, provider *BlockStoreProvider, expectedNumStores int) {
+	storeNames, err := provider.List()
+	require.NoError(t, err)
+	require.Equal(t, expectedNumStores, len(storeNames))
+
+	for _, ledgerid := range ledgerids {
+		exists, err := provider.Exists(ledgerid)
+		require.NoError(t, err)
+		require.Equal(t, false, exists)
+		blockDirRemoved := func() bool {
+			_, err := os.Stat(provider.conf.getLedgerBlockDir(ledgerid))
+			if os.IsNotExist(err) {
+				return true
+			}
+			return false
+		}
+		toBeRemovedFileNotExisted := func() bool {
+			_, err := os.Stat(provider.conf.getToBeRemovedFilePath(ledgerid))
+			if os.IsNotExist(err) {
+				return true
+			}
+			return false
+		}
+		require.Eventually(t, blockDirRemoved, 2*time.Second, 100*time.Millisecond)
+		require.Eventually(t, toBeRemovedFileNotExisted, 2*time.Second, 100*time.Millisecond)
+		iter := provider.leveldbProvider.GetDBHandle(ledgerid).GetIterator(nil, nil)
+		require.False(t, iter.Next())
+	}
 }
 
 func constructLedgerid(id int) string {

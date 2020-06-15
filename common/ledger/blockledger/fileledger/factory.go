@@ -17,6 +17,7 @@ import (
 type blockStoreProvider interface {
 	Open(ledgerid string) (*blkstorage.BlockStore, error)
 	List() ([]string, error)
+	Remove(ledgerid string) error
 	Close()
 }
 
@@ -54,6 +55,11 @@ func (flf *fileLedgerFactory) ChannelIDs() []string {
 		logger.Panic(err)
 	}
 	return channelIDs
+}
+
+// Remove removes block indexes and blocks for the given channelID
+func (flf *fileLedgerFactory) Remove(channelID string) error {
+	return flf.blkstorageProvider.Remove(channelID)
 }
 
 // Close releases all resources acquired by the factory

@@ -55,3 +55,17 @@ func (_m *Factory) GetOrCreate(chainID string) (blockledger.ReadWriter, error) {
 
 	return r0, r1
 }
+
+// Remove provides a mock function with given fields: channelID
+func (_m *Factory) Remove(channelID string) error {
+	ret := _m.Called(channelID)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(channelID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
