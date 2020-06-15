@@ -9,6 +9,7 @@ Maintainers
 | Brett Logan | [btl5037][btl5037] | btl5037 | <brett.t.logan@ibm.com>
 | Artem Barger | [c0rwin][c0rwin] | c0rwin | <bartem@il.ibm.com>
 | Danny Cao | [caod123][caod123] | caod | <dcao@us.ibm.com>
+| Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
 | Chris Ferris | [christo4ferris][christo4ferris] | cbf | <chris.ferris@gmail.com>
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Jay Guo | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
@@ -58,6 +59,7 @@ Maintainers
 [btl5037]: https://github.com/btl5037
 [c0rwin]: https://github.com/c0rwin
 [caod123]: https://github.com/caod123
+[cendhu]: https://github.com/cendhu
 [christo4ferris]: https://github.com/christo4ferris
 [denali49]: https://github.com/denali49
 [denyeart]: https://github.com/denyeart
