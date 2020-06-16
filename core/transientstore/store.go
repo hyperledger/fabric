@@ -153,7 +153,7 @@ func (s *Store) Persist(txid string, blockHeight uint64,
 
 // GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 // write sets persisted from different endorsers.
-func (s *Store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (RWSetScanner, error) {
+func (s *Store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) RWSetScanner {
 
 	logger.Debugf("Getting private data from transient store for transaction %s", txid)
 
@@ -162,7 +162,7 @@ func (s *Store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) 
 	endKey := createTxidRangeEndKey(txid)
 
 	iter := s.db.GetIterator(startKey, endKey)
-	return &RwsetScanner{txid, iter, filter}, nil
+	return &RwsetScanner{txid, iter, filter}
 }
 
 // PurgeByTxids removes private write sets of a given set of transactions from the

@@ -158,11 +158,7 @@ func (dr *dataRetriever) fromLedger(digests []*protosgossip.PvtDataDigest, block
 
 func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, filter map[string]ledger.PvtCollFilter) (*util.PrivateRWSetWithConfig, error) {
 	results := &util.PrivateRWSetWithConfig{}
-	it, err := dr.store.GetTxPvtRWSetByTxid(dig.TxId, filter)
-	if err != nil {
-		return nil, errors.Errorf("was not able to retrieve private data from transient store, namespace <%s>"+
-			", collection name %s, txID <%s>, due to <%s>", dig.Namespace, dig.Collection, dig.TxId, err)
-	}
+	it := dr.store.GetTxPvtRWSetByTxid(dig.TxId, filter)
 	defer it.Close()
 
 	maxEndorsedAt := uint64(0)

@@ -1150,8 +1150,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	for i := 1; i < 9; i++ {
 		func() {
 			txID := fmt.Sprintf("tx%d", i)
-			iterator, err := store.GetTxPvtRWSetByTxid(txID, nil)
-			require.NoError(t, err, fmt.Sprintf("Failed obtaining iterator from transient store, got err %s", err))
+			iterator := store.GetTxPvtRWSetByTxid(txID, nil)
 			defer iterator.Close()
 			res, err := iterator.Next()
 			require.NoError(t, err, fmt.Sprintf("Failed iterating, got err %s", err))
@@ -1198,8 +1197,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	for i := 1; i <= 9; i++ {
 		func() {
 			txID := fmt.Sprintf("tx%d", i)
-			iterator, err := store.GetTxPvtRWSetByTxid(txID, nil)
-			require.NoError(t, err, fmt.Sprintf("Failed obtaining iterator from transient store, got err %s", err))
+			iterator := store.GetTxPvtRWSetByTxid(txID, nil)
 			defer iterator.Close()
 			res, err := iterator.Next()
 			require.NoError(t, err, fmt.Sprintf("Failed iterating, got err %s", err))
@@ -1222,8 +1220,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	for i := 1; i <= 9; i++ {
 		func() {
 			txID := fmt.Sprintf("tx%d", i)
-			iterator, err := store.GetTxPvtRWSetByTxid(txID, nil)
-			require.NoError(t, err, fmt.Sprintf("Failed obtaining iterator from transient store, got err %s", err))
+			iterator := store.GetTxPvtRWSetByTxid(txID, nil)
 			defer iterator.Close()
 			res, err := iterator.Next()
 			require.NoError(t, err, fmt.Sprintf("Failed iterating, got err %s", err))
@@ -1363,8 +1360,7 @@ func testPurged(t *testing.T,
 			txID := getTxIDBySeqInBlock(pvtdata.SeqInBlock, txPvtdataInfo)
 			require.NotEqual(t, txID, "", fmt.Sprintf("Could not find txID for SeqInBlock %d", pvtdata.SeqInBlock), scenario)
 
-			iterator, err := store.GetTxPvtRWSetByTxid(txID, nil)
-			require.NoError(t, err, fmt.Sprintf("Failed obtaining iterator from transient store, got err %s", err))
+			iterator := store.GetTxPvtRWSetByTxid(txID, nil)
 			defer iterator.Close()
 
 			res, err := iterator.Next()

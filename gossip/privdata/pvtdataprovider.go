@@ -293,11 +293,7 @@ func (pdp *PvtdataProvider) populateFromTransientStore(pvtdata rwsetByKeys, pvtd
 	for k := range pvtdataRetrievalInfo.eligibleMissingKeys {
 		filter := ledger.NewPvtNsCollFilter()
 		filter.Add(k.namespace, k.collection)
-		iterator, err := pdp.transientStore.GetTxPvtRWSetByTxid(k.txID, filter)
-		if err != nil {
-			pdp.logger.Warningf("Failed fetching private data from transient store: Failed obtaining iterator from transient store: %s", err)
-			return
-		}
+		iterator := pdp.transientStore.GetTxPvtRWSetByTxid(k.txID, filter)
 		defer iterator.Close()
 		for {
 			res, err := iterator.Next()

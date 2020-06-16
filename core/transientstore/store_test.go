@@ -136,9 +136,7 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	}
 
 	// Retrieve simulation results of txid-1 from  store
-	iter, err := testStore.GetTxPvtRWSetByTxid(txid, nil)
-	assert.NoError(err)
-
+	iter := testStore.GetTxPvtRWSetByTxid(txid, nil)
 	var actualEndorsersResults []*EndorserPvtSimulationResults
 	for {
 		result, err := iter.Next()
@@ -192,9 +190,7 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 	expectedEndorsersResults = append(expectedEndorsersResults, endorser1SimulationResults)
 
 	// Retrieve simulation results of txid-1 from  store
-	iter, err := testStore.GetTxPvtRWSetByTxid(txid, nil)
-	assert.NoError(err)
-
+	iter := testStore.GetTxPvtRWSetByTxid(txid, nil)
 	var actualEndorsersResults []*EndorserPvtSimulationResults
 	for {
 		result, err := iter.Next()
@@ -273,9 +269,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	}
 
 	// Retrieve simulation results of txid-2 from  store
-	iter, err := testStore.GetTxPvtRWSetByTxid("txid-2", nil)
-	assert.NoError(err)
-
+	iter := testStore.GetTxPvtRWSetByTxid("txid-2", nil)
 	// Expected results for txid-2
 	var expectedEndorsersResults []*EndorserPvtSimulationResults
 	expectedEndorsersResults = append(expectedEndorsersResults, endorser2SimulationResults)
@@ -312,8 +306,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 
 		// Check whether private write sets of txid-2 are removed
 		var expectedEndorsersResults *EndorserPvtSimulationResults = nil
-		iter, err = testStore.GetTxPvtRWSetByTxid(txid, nil)
-		assert.NoError(err)
+		iter = testStore.GetTxPvtRWSetByTxid(txid, nil)
 		// Should return nil, nil
 		result, err := iter.Next()
 		assert.NoError(err)
@@ -321,9 +314,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	}
 
 	// Retrieve simulation results of txid-1 from store
-	iter, err = testStore.GetTxPvtRWSetByTxid("txid-1", nil)
-	assert.NoError(err)
-
+	iter = testStore.GetTxPvtRWSetByTxid("txid-1", nil)
 	// Expected results for txid-1
 	expectedEndorsersResults = nil
 	expectedEndorsersResults = append(expectedEndorsersResults, endorser0SimulationResults)
@@ -360,8 +351,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 
 		// Check whether private write sets of txid-1 are removed
 		var expectedEndorsersResults *EndorserPvtSimulationResults = nil
-		iter, err = testStore.GetTxPvtRWSetByTxid(txid, nil)
-		assert.NoError(err)
+		iter = testStore.GetTxPvtRWSetByTxid(txid, nil)
 		// Should return nil, nil
 		result, err := iter.Next()
 		assert.NoError(err)
@@ -433,8 +423,7 @@ func TestTransientStorePurgeBelowHeight(t *testing.T) {
 	assert.NoError(err)
 
 	// Retrieve simulation results of txid-1 from  store
-	iter, err := testStore.GetTxPvtRWSetByTxid(txid, nil)
-	assert.NoError(err)
+	iter := testStore.GetTxPvtRWSetByTxid(txid, nil)
 
 	// Expected results for txid-1
 	var expectedEndorsersResults []*EndorserPvtSimulationResults
@@ -504,9 +493,7 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	filter.Add("ns-1", "coll-1")
 	filter.Add("ns-2", "coll-2")
 
-	itr, err := testStore.GetTxPvtRWSetByTxid(testTxid, filter)
-	assert.NoError(t, err)
-
+	itr := testStore.GetTxPvtRWSetByTxid(testTxid, filter)
 	var actualRes []*EndorserPvtSimulationResults
 	for {
 		res, err := itr.Next()
@@ -517,6 +504,7 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 		actualRes = append(actualRes, res)
 	}
 
+	var err error
 	// prepare the trimmed pvtrwset manually - retain only "ns-1/coll-1" and "ns-2/coll-2"
 	expectedSimulationRes := samplePvtSimResWithConfig
 	expectedSimulationRes.GetPvtRwset().NsPvtRwset[0].CollectionPvtRwset = expectedSimulationRes.GetPvtRwset().NsPvtRwset[0].CollectionPvtRwset[0:1]

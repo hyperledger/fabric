@@ -100,7 +100,7 @@ func (s *testTransientStore) Persist(txid string, blockHeight uint64,
 	return s.Store.Persist(txid, blockHeight, privateSimulationResultsWithConfig)
 }
 
-func (s *testTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (privdata.RWSetScanner, error) {
+func (s *testTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) privdata.RWSetScanner {
 	return s.Store.GetTxPvtRWSetByTxid(txid, filter)
 }
 

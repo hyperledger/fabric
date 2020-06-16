@@ -193,7 +193,7 @@ func (s *testTransientStore) Persist(txid string, blockHeight uint64,
 	return s.store.Persist(txid, blockHeight, privateSimulationResultsWithConfig)
 }
 
-func (s *testTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (RWSetScanner, error) {
+func (s *testTransientStore) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) RWSetScanner {
 	return s.store.GetTxPvtRWSetByTxid(txid, filter)
 }
 
@@ -607,12 +607,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 
 	assertPurged := func(txns ...string) {
 		for _, txn := range txns {
-			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
-			if err != nil {
-				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
-			}
+			iterator := store.GetTxPvtRWSetByTxid(txn, nil)
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
@@ -927,12 +922,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 
 	assertPurged := func(txns ...string) {
 		for _, txn := range txns {
-			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
-			if err != nil {
-				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
-			}
+			iterator := store.GetTxPvtRWSetByTxid(txn, nil)
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
@@ -1053,12 +1043,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 
 	assertPurged := func(txns ...string) {
 		for _, txn := range txns {
-			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
-			if err != nil {
-				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
-			}
+			iterator := store.GetTxPvtRWSetByTxid(txn, nil)
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
@@ -1411,12 +1396,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 
 	assertPurged := func(txns ...string) {
 		for _, txn := range txns {
-			iterator, err := store.GetTxPvtRWSetByTxid(txn, nil)
-			if err != nil {
-				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
-			}
+			iterator := store.GetTxPvtRWSetByTxid(txn, nil)
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
@@ -1671,12 +1651,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 		}
 		for i := 1; i <= numTx; i++ {
 			txID := fmt.Sprintf("tx%d", i)
-			iterator, err := store.GetTxPvtRWSetByTxid(txID, nil)
-			if err != nil {
-				t.Fatalf("Failed iterating, got err %s", err)
-				iterator.Close()
-				return
-			}
+			iterator := store.GetTxPvtRWSetByTxid(txID, nil)
 			res, err := iterator.Next()
 			if err != nil {
 				t.Fatalf("Failed iterating, got err %s", err)
