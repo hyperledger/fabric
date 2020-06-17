@@ -8,7 +8,6 @@ package etcdraft
 
 import (
 	"bytes"
-	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"path"
 	"reflect"
 	"time"
@@ -26,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -160,13 +160,30 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	id, err := c.detectSelfID(consenters)
 	if err != nil {
 		if c.InactiveChainRegistry != nil {
+			// There is a system channel, use the InactiveChainRegistry to track the future config updates of application channel.
 			c.InactiveChainRegistry.TrackChain(support.ChannelID(), support.Block(0), func() {
 				c.CreateChain(support.ChannelID())
 			})
 			return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
 		} else {
+			// There is no system channel, follow this application channel.
 			//TODO fully construct a follower chain
-			return &follower.Chain{Err: errors.Errorf("orderer is a follower of channel %s", support.ChannelID())}, nil
+			consenterCertificate := &ConsenterCertificate{
+				ConsenterCertificate: c.Cert,
+				CryptoProvider:       c.BCCSP,
+			}
+			return follower.NewChain(
+				support,
+				nil, // We already have a ledger, we are past on-boarding
+				follower.Options{
+					Logger: c.Logger,
+					Cert:   c.Cert,
+				},
+				nil, // TODO plug a method that creates a block puller from support, as the join block is nil
+				nil, // TODO plug in a method that creates an etcdraft.Chain
+				c.BCCSP,
+				consenterCertificate.IsConsenterOfChannel,
+			)
 		}
 	}
 
@@ -256,8 +273,58 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 }
 
 func (c *Consenter) JoinChain(support consensus.ConsenterSupport, joinBlock *common.Block) (consensus.Chain, error) {
-	//TODO fully construct a follower.Chain
-	return nil, errors.New("not implemented")
+	// Check the join block before we create a follower.Chain.
+	// Note that 'support' is built from the join-block and not from the tip of the ledger.
+	configMetadata := &etcdraft.ConfigMetadata{}
+	err := proto.Unmarshal(support.SharedConfig().ConsensusMetadata(), configMetadata)
+	if err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling etcdraft.ConfigMetadata")
+	}
+
+	err = CheckConfigMetadata(configMetadata)
+	if err != nil {
+		c.Logger.Errorf("Error checking config metadata: %v; err: %s", configMetadata, err)
+		return nil, errors.Wrap(err, "error checking etcdraft.ConfigMetadata")
+	}
+
+	consenterCertificate := &ConsenterCertificate{
+		ConsenterCertificate: c.Cert,
+		CryptoProvider:       c.BCCSP,
+	}
+	errIsOf := consenterCertificate.IsConsenterOfChannel(joinBlock)
+	if errIsOf != nil && errIsOf != cluster.ErrNotInChannel {
+		return nil, errors.Wrap(errIsOf, "error checking if the consenter is a member of the channel using the join-block")
+	}
+
+	// A function that creates a block puller from the join block
+	createBlockPullerFunc := func() (follower.ChannelPuller, error) {
+		return follower.BlockPullerFromJoinBlock(joinBlock, support, c.Dialer, c.OrdererConfig.General.Cluster, c.BCCSP)
+	}
+	// Check it once
+	puller, errBP := createBlockPullerFunc()
+	if errBP != nil {
+		return nil, errors.Wrap(errBP, "error creating a block puller from join-block")
+	}
+	defer puller.Close()
+
+	clusterRel := "follower"
+	if errIsOf == nil {
+		clusterRel = "member"
+	}
+	c.Logger.Infof("Joining channel: %s, join-block number: %d, orderer is a %s of the cluster", support.ChannelID(), joinBlock.Header.Number, clusterRel)
+
+	return follower.NewChain(
+		support,
+		joinBlock,
+		follower.Options{
+			Logger: c.Logger,
+			Cert:   c.Cert,
+		},
+		createBlockPullerFunc,
+		nil, // TODO plug in a method that creates an etcdraft.Chain
+		c.BCCSP,
+		consenterCertificate.IsConsenterOfChannel,
+	)
 }
 
 // ReadBlockMetadata attempts to read raft metadata from block metadata, if available.

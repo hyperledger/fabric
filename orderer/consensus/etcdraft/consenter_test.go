@@ -8,7 +8,6 @@ package etcdraft_test
 
 import (
 	"encoding/pem"
-	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"io/ioutil"
 	"os"
 	"path"
@@ -26,8 +25,10 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	clustermocks "github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
+	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
@@ -58,6 +59,9 @@ var _ = Describe("Consenter", func() {
 		snapDir     string
 		walDir      string
 		err         error
+
+		joinBlock      *common.Block
+		configMetaData *etcdraftproto.ConfigMetadata
 	)
 
 	BeforeEach(func() {
@@ -88,6 +92,7 @@ var _ = Describe("Consenter", func() {
 		}
 
 		support.BlockReturns(lastBlock)
+		joinBlock = lastBlock
 	})
 
 	AfterEach(func() {
@@ -377,6 +382,142 @@ var _ = Describe("Consenter", func() {
 		Expect(chain.Order(nil, 0).Error()).To(Equal("orderer is a follower of channel foo"))
 		_, ok := chain.(*follower.Chain)
 		Expect(ok).To(BeTrue())
+	})
+
+	When("Join Chain", func() {
+		BeforeEach(func() {
+			ca, err := tlsgen.NewCA()
+			Expect(err).NotTo(HaveOccurred())
+			pair, err := ca.NewServerCertKeyPair("o1.example.com")
+			Expect(err).NotTo(HaveOccurred())
+			configMetaData = &etcdraftproto.ConfigMetadata{
+				Consenters: []*etcdraftproto.Consenter{
+					{
+						Host:          "o1.example.com",
+						Port:          10666,
+						ClientTlsCert: pair.Cert,
+						ServerTlsCert: pair.Cert,
+					},
+				},
+				Options: &etcdraftproto.Options{
+					TickInterval:      "500ms",
+					ElectionTick:      10,
+					HeartbeatTick:     1,
+					MaxInflightBlocks: 5,
+				},
+			}
+		})
+
+		It("Successfully constructs a follower.Chain", func() {
+			metadata := protoutil.MarshalOrPanic(configMetaData)
+			mockOrderer := &mocks.OrdererConfig{}
+			mockOrderer.ConsensusMetadataReturns(metadata)
+			support.SharedConfigReturns(mockOrderer)
+			support.ChannelIDReturns("foo")
+
+			consenter := newConsenter(chainGetter)
+			consenter.icr = nil
+			consenter.InactiveChainRegistry = nil
+
+			chain, err := consenter.JoinChain(support, joinBlock)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(chain).NotTo(BeNil())
+
+			Expect(chain.Order(nil, 0).Error()).To(Equal("orderer is a follower of channel foo"))
+			followerChain, ok := chain.(*follower.Chain)
+			Expect(ok).To(BeTrue())
+			cRel, st := followerChain.StatusReport()
+			Expect(cRel).To(Equal(types.ClusterRelationFollower))
+			Expect(st).To(Equal(types.StatusOnBoarding))
+
+			Expect(chain.Start).NotTo(Panic())
+			Expect(chain.Halt).NotTo(Panic())
+		})
+
+		It("Fails when metadata is bad - no consenters", func() {
+			configMetaData.Consenters = nil
+			metadata := protoutil.MarshalOrPanic(configMetaData)
+			mockOrderer := &mocks.OrdererConfig{}
+			mockOrderer.ConsensusMetadataReturns(metadata)
+			support.SharedConfigReturns(mockOrderer)
+			support.ChannelIDReturns("foo")
+
+			consenter := newConsenter(chainGetter)
+			consenter.icr = nil
+			consenter.InactiveChainRegistry = nil
+
+			chain, err := consenter.JoinChain(support, joinBlock)
+			Expect(err.Error()).To(Equal("error checking etcdraft.ConfigMetadata: empty consenter set"))
+			Expect(chain).To(BeNil())
+		})
+
+		It("Fails when metadata is bad - bad certificate", func() {
+			configMetaData.Consenters[0].ClientTlsCert = []byte("not a certificate")
+			metadata := protoutil.MarshalOrPanic(configMetaData)
+			mockOrderer := &mocks.OrdererConfig{}
+			mockOrderer.ConsensusMetadataReturns(metadata)
+			support.SharedConfigReturns(mockOrderer)
+			support.ChannelIDReturns("foo")
+
+			consenter := newConsenter(chainGetter)
+			consenter.icr = nil
+			consenter.InactiveChainRegistry = nil
+
+			chain, err := consenter.JoinChain(support, joinBlock)
+			Expect(err.Error()).To(Equal("error checking etcdraft.ConfigMetadata: client TLS certificate is not PEM encoded: not a certificate"))
+			Expect(chain).To(BeNil())
+		})
+
+		It("Fails when metadata is bad - no options", func() {
+			configMetaData.Options = nil
+			metadata := protoutil.MarshalOrPanic(configMetaData)
+			mockOrderer := &mocks.OrdererConfig{}
+			mockOrderer.ConsensusMetadataReturns(metadata)
+			support.SharedConfigReturns(mockOrderer)
+			support.ChannelIDReturns("foo")
+
+			consenter := newConsenter(chainGetter)
+			consenter.icr = nil
+			consenter.InactiveChainRegistry = nil
+
+			chain, err := consenter.JoinChain(support, joinBlock)
+			Expect(err.Error()).To(Equal("error checking etcdraft.ConfigMetadata: nil Raft config metadata options"))
+			Expect(chain).To(BeNil())
+		})
+
+		It("Fails when it cannot invoke a membership predicate", func() {
+			metadata := protoutil.MarshalOrPanic(configMetaData)
+			mockOrderer := &mocks.OrdererConfig{}
+			mockOrderer.ConsensusMetadataReturns(metadata)
+			support.SharedConfigReturns(mockOrderer)
+			support.ChannelIDReturns("foo")
+
+			consenter := newConsenter(chainGetter)
+			consenter.icr = nil
+			consenter.InactiveChainRegistry = nil
+
+			chain, err := consenter.JoinChain(support, &common.Block{}) // This will fail the membership predicate invocation
+			Expect(err.Error()).To(Equal("error checking if the consenter is a member of the channel using the join-block: block data is nil"))
+			Expect(chain).To(BeNil())
+		})
+
+		It("Fails when it cannot build a block puller", func() {
+			metadata := protoutil.MarshalOrPanic(configMetaData)
+			mockOrderer := &mocks.OrdererConfig{}
+			mockOrderer.ConsensusMetadataReturns(metadata)
+			support.SharedConfigReturns(mockOrderer)
+			support.ChannelIDReturns("foo")
+
+			consenter := newConsenter(chainGetter)
+			consenter.icr = nil
+			consenter.InactiveChainRegistry = nil
+			consenter.Dialer.Config.SecOpts.Certificate = []byte("not-a-certificate") // this will cause a failure in block puller creation
+
+			chain, err := consenter.JoinChain(support, joinBlock)
+			Expect(err.Error()).To(Equal("error creating a block puller from join-block: client certificate isn't in PEM format: not-a-certificate"))
+			Expect(chain).To(BeNil())
+		})
+
 	})
 })
 
