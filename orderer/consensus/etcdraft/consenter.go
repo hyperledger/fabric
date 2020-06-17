@@ -8,6 +8,7 @@ package etcdraft
 
 import (
 	"bytes"
+	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"path"
 	"reflect"
 	"time"
@@ -158,10 +159,15 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 
 	id, err := c.detectSelfID(consenters)
 	if err != nil {
-		c.InactiveChainRegistry.TrackChain(support.ChannelID(), support.Block(0), func() {
-			c.CreateChain(support.ChannelID())
-		})
-		return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
+		if c.InactiveChainRegistry != nil {
+			c.InactiveChainRegistry.TrackChain(support.ChannelID(), support.Block(0), func() {
+				c.CreateChain(support.ChannelID())
+			})
+			return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
+		} else {
+			//TODO fully construct a follower chain
+			return &follower.Chain{Err: errors.Errorf("orderer is a follower of channel %s", support.ChannelID())}, nil
+		}
 	}
 
 	var evictionSuspicion time.Duration
@@ -212,6 +218,26 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		Comm:          c.Communication,
 		StreamsByType: cluster.NewStreamsByType(),
 	}
+
+	// when we have a system channel
+	if c.InactiveChainRegistry != nil {
+		return NewChain(
+			support,
+			opts,
+			c.Communication,
+			rpc,
+			c.BCCSP,
+			func() (BlockPuller, error) {
+				return NewBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, c.BCCSP)
+			},
+			func() {
+				c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.CreateChain(support.ChannelID()) })
+			},
+			nil,
+		)
+	}
+
+	// when we do NOT have a system channel
 	return NewChain(
 		support,
 		opts,
@@ -222,7 +248,8 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 			return NewBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, c.BCCSP)
 		},
 		func() {
-			c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.CreateChain(support.ChannelID()) })
+			c.Logger.Warning("Start a follower.Chain: not yet implemented")
+			//TODO start follower.Chain
 		},
 		nil,
 	)
@@ -301,6 +328,11 @@ func New(
 		Dispatcher: comm,
 	}
 	orderer.RegisterClusterServer(srv.Server(), svc)
+
+	if icr == nil {
+		logger.Debug("Created an etcdraft consenter without a system channel, InactiveChainRegistry is nil")
+	}
+
 	return consenter
 }
 

@@ -473,11 +473,11 @@ var _ = Describe("EndToEnd", func() {
 		})
 	})
 
-	Describe("basic solo network without a system channel", func() {
+	Describe("basic etcdraft network without a system channel", func() {
 		var ordererProcess ifrit.Process
 		BeforeEach(func() {
-			soloConfig := nwo.BasicSolo()
-			network = nwo.New(soloConfig, testDir, client, StartPort(), components)
+			raftConfig := nwo.BasicEtcdRaft()
+			network = nwo.New(raftConfig, testDir, client, StartPort(), components)
 			network.GenerateConfigTree()
 
 			orderer := network.Orderer("orderer")
@@ -489,7 +489,7 @@ var _ = Describe("EndToEnd", func() {
 			ordererRunner := network.OrdererRunner(orderer)
 			ordererProcess = ifrit.Invoke(ordererRunner)
 			Eventually(ordererProcess.Ready, network.EventuallyTimeout).Should(BeClosed())
-			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("registrar initializing without a system channel"))
+			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Registrar initializing without a system channel, number of application channels: 0"))
 		})
 
 		AfterEach(func() {
