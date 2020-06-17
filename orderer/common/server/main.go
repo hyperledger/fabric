@@ -119,29 +119,38 @@ func Main() {
 			logger.Panicf("Failed validating bootstrap block: %v", err)
 		}
 
-		// Are we bootstrapping with a genesis block? If yes, generate the system channel with a genesis block.
+		// Are we bootstrapping with a genesis block (i.e. bootstrap block number = 0)?
+		// If yes, generate the system channel with a genesis block.
 		if len(lf.ChannelIDs()) == 0 && bootstrapBlock.Header.Number == 0 {
 			logger.Info("Bootstrapping the system channel")
 			initializeBootstrapChannel(bootstrapBlock, lf)
 		} else if len(lf.ChannelIDs()) > 0 {
-			logger.Info("Not bootstrapping because of existing channels")
+			logger.Info("Not bootstrapping the system channel because of existing channels")
 		} else {
-			logger.Info("Not bootstrapping because bootstrap block is not genesis block")
+			logger.Infof("Not bootstrapping the system channel because the bootstrap block number is %d (>0), replication is needed", bootstrapBlock.Header.Number)
 		}
 	} else if conf.General.BootstrapMethod != "none" {
 		logger.Panicf("Unknown bootstrap method: %s", conf.General.BootstrapMethod)
 	}
 
+	// select the highest numbered block among the bootstrap block and the last config block if the system channel.
 	sysChanConfigBlock := extractSystemChannel(lf, cryptoProvider)
 	clusterBootBlock := selectClusterBootBlock(bootstrapBlock, sysChanConfigBlock)
+
+	// determine whether the orderer is of cluster type
+	var isClusterType bool
 	if clusterBootBlock == nil {
 		logger.Infof("Starting without a system channel")
+		isClusterType = true
 	} else {
 		sysChanID, err := protoutil.GetChannelIDFromBlock(clusterBootBlock)
 		if err != nil {
 			logger.Panicf("Failed getting channel ID from clusterBootBlock: %s", err)
 		}
-		logger.Infof("Starting with system channel: %s", sysChanID)
+
+		consensusTypeName := consensusType(clusterBootBlock, cryptoProvider)
+		logger.Infof("Starting with system channel: %s, consensus type: %s", sysChanID, consensusTypeName)
+		_, isClusterType = clusterTypes[consensusTypeName]
 	}
 
 	// configure following artifacts properly if orderer is of cluster type
@@ -150,41 +159,12 @@ func Main() {
 	clusterGRPCServer := grpcServer // by default, cluster shares the same grpc server
 	var clusterClientConfig comm.ClientConfig
 	var clusterDialer *cluster.PredicateDialer
-	var clusterType bool
+
 	var reuseGrpcListener bool
 	var serversToUpdate []*comm.GRPCServer
 
-	// This happens only when the orderer is operating with a system channel.
-	if clusterBootBlock != nil {
-		consensusTypeName := consensusType(clusterBootBlock, cryptoProvider)
-		_, clusterType = clusterTypes[consensusTypeName]
-
-		if clusterType {
-			logger.Infof("Setting up cluster for orderer type %s", consensusTypeName)
-			clusterClientConfig = initializeClusterClientConfig(conf)
-			clusterDialer = &cluster.PredicateDialer{
-				Config: clusterClientConfig,
-			}
-
-			if reuseGrpcListener = reuseListener(conf); !reuseGrpcListener {
-				clusterServerConfig, clusterGRPCServer = configureClusterListener(conf, serverConfig, ioutil.ReadFile)
-			}
-
-			// If we have a separate gRPC server for the cluster,
-			// we need to update its TLS CA certificate pool.
-			serversToUpdate = append(serversToUpdate, clusterGRPCServer)
-
-			// Are we bootstrapping with a block with number >0 ?
-			// Only clusters that are equipped with a recent config block (number i.e. >0) can replicate.
-			// This will replicate all channels if the clusterBootBlock number > system-channel height (i.e. there is a gap in the ledger).
-			repInitiator = onboarding.NewReplicationInitiator(lf, clusterBootBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
-			if conf.General.BootstrapMethod == "file" {
-				repInitiator.ReplicateIfNeeded(clusterBootBlock)
-			}
-		}
-	} else {
-		logger.Infof("Setting up cluster without a system channel")
-		clusterType = true
+	if isClusterType {
+		logger.Infof("Setting up cluster")
 		clusterClientConfig = initializeClusterClientConfig(conf)
 		clusterDialer = &cluster.PredicateDialer{
 			Config: clusterClientConfig,
@@ -197,6 +177,17 @@ func Main() {
 		// If we have a separate gRPC server for the cluster,
 		// we need to update its TLS CA certificate pool.
 		serversToUpdate = append(serversToUpdate, clusterGRPCServer)
+	}
+
+	// If the orderer has a system channel and is of cluster type, it may have to replicate first.
+	if clusterBootBlock != nil && isClusterType {
+		// Are we bootstrapping with a clusterBootBlock with number >0 ? If yes, perform replication.
+		// Only clusters that are equipped with a recent config block (number i.e. >0) can replicate.
+		// This will replicate all channels if the clusterBootBlock number > system-channel height (i.e. there is a gap in the ledger).
+		repInitiator = onboarding.NewReplicationInitiator(lf, clusterBootBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
+		if conf.General.BootstrapMethod == "file" {
+			repInitiator.ReplicateIfNeeded(clusterBootBlock)
+		}
 	}
 
 	identityBytes, err := signer.Serialize()
@@ -223,7 +214,7 @@ func Main() {
 	tlsCallback := func(bundle *channelconfig.Bundle) {
 		logger.Debug("Executing callback to update root CAs")
 		caMgr.updateTrustedRoots(bundle, serversToUpdate...)
-		if clusterType {
+		if isClusterType {
 			caMgr.updateClusterDialer(
 				clusterDialer,
 				clusterClientConfig.SecOpts.ServerRootCAs,
@@ -275,7 +266,7 @@ func Main() {
 		},
 	}))
 
-	if !reuseGrpcListener && clusterType {
+	if !reuseGrpcListener && isClusterType {
 		logger.Info("Starting cluster listener on", clusterGRPCServer.Address())
 		go clusterGRPCServer.Start()
 	}
