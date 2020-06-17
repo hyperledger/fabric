@@ -46,7 +46,7 @@ var _ = Describe("WithRequestID", func() {
 
 	It("returns the generated request ID in a header", func() {
 		chain.ServeHTTP(resp, req)
-		Expect(resp.Header().Get("X-Request-Id")).To(Equal("generated-id"))
+		Expect(resp.Result().Header.Get("X-Request-Id")).To(Equal("generated-id"))
 	})
 
 	Context("when a request ID is already present", func() {
@@ -69,7 +69,7 @@ var _ = Describe("WithRequestID", func() {
 
 		It("propagates the request ID to the response", func() {
 			chain.ServeHTTP(resp, req)
-			Expect(resp.Header().Get("X-Request-Id")).To(Equal("received-id"))
+			Expect(resp.Result().Header.Get("X-Request-Id")).To(Equal("received-id"))
 		})
 	})
 })
