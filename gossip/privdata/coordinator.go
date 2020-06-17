@@ -228,7 +228,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 
 	// Purge transactions
-	retrievedPvtdata.Purge()
+	go retrievedPvtdata.Purge()
 
 	return nil
 }
