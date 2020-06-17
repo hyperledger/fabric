@@ -21,6 +21,7 @@ var _ = Describe("Version", func() {
 		versionInfoHandler := &VersionInfoHandler{Version: "latest"}
 		versionInfoHandler.ServeHTTP(resp, &http.Request{Method: http.MethodGet})
 		Expect(resp.Result().StatusCode).To(Equal(http.StatusOK))
+		Expect(resp.Result().Header.Get("Content-Type")).To(Equal("application/json"))
 		Expect(resp.Body).To(MatchJSON(`{"Version": "latest"}`))
 	})
 
