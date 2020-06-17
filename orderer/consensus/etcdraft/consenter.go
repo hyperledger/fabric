@@ -330,7 +330,7 @@ func New(
 	orderer.RegisterClusterServer(srv.Server(), svc)
 
 	if icr == nil {
-		logger.Info("created an etcdraft consenter without a system channel")
+		logger.Debug("Created an etcdraft consenter without a system channel, InactiveChainRegistry is nil")
 	}
 
 	return consenter

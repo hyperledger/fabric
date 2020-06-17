@@ -183,7 +183,7 @@ func Main() {
 			}
 		}
 	} else {
-		logger.Infof("Setting up cluster when there is no system channel: assuming cluster-type consensus")
+		logger.Infof("Setting up cluster without a system channel")
 		clusterType = true
 		clusterClientConfig = initializeClusterClientConfig(conf)
 		clusterDialer = &cluster.PredicateDialer{
@@ -365,7 +365,7 @@ func selectClusterBootBlock(bootstrapBlock, sysChanLastConfig *cb.Block) *cb.Blo
 	}
 
 	if bootstrapBlock == nil {
-		logger.Info("Selected system channel last config block, because bootstrap block is nil")
+		logger.Debug("Selected system channel last config block, because bootstrap block is nil")
 		return sysChanLastConfig
 	}
 

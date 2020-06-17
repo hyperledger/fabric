@@ -220,11 +220,13 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 			r.chains[channelID] = chain
 			chain.start()
 		}
-
 	}
 
 	if r.systemChannelID == "" {
-		logger.Warning("registrar initializing without a system channel")
+		logger.Infof("Registrar initializing without a system channel, number of application channels: %d", len(r.chains))
+		if _, etcdRaftFound := r.consenters["etcdraft"]; !etcdRaftFound {
+			logger.Panicf("Error initializing without a system channel: failed to find an etcdraft consenter")
+		}
 	}
 }
 

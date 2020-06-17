@@ -489,9 +489,7 @@ var _ = Describe("EndToEnd", func() {
 			ordererRunner := network.OrdererRunner(orderer)
 			ordererProcess = ifrit.Invoke(ordererRunner)
 			Eventually(ordererProcess.Ready, network.EventuallyTimeout).Should(BeClosed())
-			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Setting up cluster when there is no system channel: assuming cluster-type consensus"))
-			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("created an etcdraft consenter without a system channel"))
-			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("registrar initializing without a system channel"))
+			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Registrar initializing without a system channel, number of application channels: 0"))
 		})
 
 		AfterEach(func() {

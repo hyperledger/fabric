@@ -163,7 +163,7 @@ func TestNewRegistrar(t *testing.T) {
 		require.NoError(t, err)
 
 		consenters := make(map[string]consensus.Consenter)
-		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
+		consenters["etcdraft"] = &mockConsenter{}
 
 		var manager *Registrar
 		assert.NotPanics(t, func() {
@@ -496,7 +496,7 @@ func TestBroadcastChannelSupport(t *testing.T) {
 		defer os.RemoveAll(tmpdir)
 
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
-		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}, "etcdraft": &mockConsenter{}}
 		config := localconfig.TopLevel{}
 		config.General.BootstrapMethod = "none"
 		config.General.GenesisFile = ""
@@ -542,7 +542,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		defer os.RemoveAll(tmpdir)
 
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
-		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}, "etcdraft": &mockConsenter{}}
 		config := localconfig.TopLevel{}
 		config.General.BootstrapMethod = "none"
 		config.General.GenesisFile = ""
@@ -562,5 +562,19 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		info, err := registrar.JoinChannel("my-channel", &cb.Block{})
 		assert.EqualError(t, err, "channel already exists")
 		assert.Equal(t, types.ChannelInfo{}, info)
+	})
+
+	t.Run("no etcdraft consenter without system channel", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
+		mockConsenters := map[string]consensus.Consenter{"not-raft": &mockConsenter{}}
+		config := localconfig.TopLevel{}
+		config.General.BootstrapMethod = "none"
+		config.General.GenesisFile = ""
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		assert.Panics(t, func() { registrar.Initialize(mockConsenters) })
 	})
 }
