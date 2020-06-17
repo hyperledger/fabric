@@ -22,8 +22,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-//TODO skeleton
-
 //go:generate counterfeiter -o mocks/support.go -fake-name Support . Support
 
 // Support defines the interfaces needed by the follower.Chain, out of the much wider consensus.ConsenterSupport.
@@ -400,6 +398,123 @@ func (c *Chain) pullUpToJoin() error {
 // It will exit with 'nil' if it detects a config block that indicates the orderer is a member of the cluster.
 // It checks whether the chain was stopped between blocks.
 func (c *Chain) pullAfterJoin() error {
-	//TODO
-	return errors.New("not implemented yet: pull after join")
+	if c.lastConfig == nil {
+		err := c.loadLastConfig()
+		if err != nil {
+			return errors.Wrap(err, "failed to load last config block")
+		}
+	}
+
+	c.logger.Debugf("last config block: %d", c.lastConfig.Header.Number)
+
+	errNotInChannel := c.amIInChannel(c.lastConfig)
+
+	for errNotInChannel != nil {
+		configBlock, err := c.pullUntilNextConfig()
+		if err != nil {
+			return errors.Wrap(err, "failed to pull until next config")
+		}
+
+		errNotInChannel = c.amIInChannel(configBlock)
+		c.logger.Debugf("next config block: %d; amIInChannel: %v", c.lastConfig.Header.Number, errNotInChannel == nil)
+	}
+
+	return errNotInChannel
+}
+
+// pullUntilNextConfig will return the next config block or an error.
+func (c *Chain) pullUntilNextConfig() (*common.Block, error) {
+	// This puller is built from the tip of the ledger. When we get a new config block we exit the method, which will
+	// destroy the puller. Next time we enter, a new puller is built, taking in the new config.
+	puller, err := c.createBlockPullerFunc()
+	if err != nil {
+		c.logger.Errorf("Error creating block puller: %s", err)
+		return nil, errors.Wrap(err, "error creating block puller")
+	}
+	defer puller.Close()
+
+	var configBlock *common.Block
+	for configBlock == nil {
+		endpoint, latestHeight, err := cluster.LatestHeightAndEndpoint(puller)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get latest height and endpoint")
+		}
+		c.logger.Debugf("Orderer endpoint %s has the biggest ledger height: %d", endpoint, latestHeight)
+
+		if latestHeight <= c.support.Height() {
+			c.logger.Debugf("My height: %d, latest height: %d; going to wait %v for latest height to grow",
+				c.support.Height(), latestHeight, c.retryInterval)
+			select {
+			case <-c.stopChan:
+				return nil, errors.New("stopped while waiting for latest height to grow")
+			case <-c.timeAfter(c.retryInterval):
+				c.increaseRetryInterval()
+				continue
+			}
+		}
+
+		configBlock, err = c.pullUntilLatestOrConfig(puller, latestHeight)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to pull until latest height or config")
+		}
+		c.resetRetryInterval()
+	}
+
+	return configBlock, nil
+}
+
+func (c *Chain) pullUntilLatestOrConfig(puller ChannelPuller, latestHeight uint64) (*common.Block, error) {
+	firstBlockToPull := c.support.Height()
+	var nextBlock = c.support.Block(firstBlockToPull - 1)
+	if nextBlock == nil {
+		return nil, errors.Errorf("cannot retrieve previous block %d", firstBlockToPull-1)
+	}
+	var actualPrevHash = protoutil.BlockHeaderHash(nextBlock.Header)
+
+	// Pull until the latest height or a config block
+	for seq := firstBlockToPull; seq < latestHeight; seq++ {
+		select {
+		case <-c.stopChan:
+			c.logger.Warnf("Stopped while pulling blocks: from %d until %d, last pulled %d",
+				firstBlockToPull, latestHeight, nextBlock.Header.Number)
+			return nil, errors.New("stopped while pulling blocks")
+		default:
+			nextBlock = puller.PullBlock(seq)
+			if nextBlock == nil {
+				return nil, errors.Wrapf(cluster.ErrRetryCountExhausted, "failed to pull block %d", seq)
+			}
+			reportedPrevHash := nextBlock.Header.PreviousHash
+			if !bytes.Equal(reportedPrevHash, actualPrevHash) {
+				return nil, errors.Errorf("block header mismatch on sequence %d, expected %x, got %x",
+					nextBlock.Header.Number, actualPrevHash, reportedPrevHash)
+			}
+			actualPrevHash = protoutil.BlockHeaderHash(nextBlock.Header)
+			if err := c.support.Append(nextBlock); err != nil {
+				return nil, errors.Wrapf(err, "failed to append block %d to the ledger", nextBlock.Header.Number)
+			}
+			c.resetRetryInterval()
+			if protoutil.IsConfigBlock(nextBlock) {
+				c.lastConfig = nextBlock
+				c.logger.Debugf("Pulled blocks from %d to %d, last block is config", firstBlockToPull, nextBlock.Header.Number)
+				return nextBlock, nil
+			}
+		}
+	}
+	c.logger.Debugf("Pulled blocks from %d to %d, no config blocks in that range", firstBlockToPull, nextBlock.Header.Number)
+	return nil, nil
+}
+
+func (c *Chain) loadLastConfig() error {
+	height := c.support.Height()
+	lastBlock := c.support.Block(height - 1)
+	index, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
+	if err != nil {
+		return errors.Wrap(err, "chain does have appropriately encoded last config in its latest block")
+	}
+	lastConfig := c.support.Block(index)
+	if lastConfig == nil {
+		return errors.Wrapf(err, "could not retrieve config block from index %d", index)
+	}
+	c.lastConfig = lastConfig
+	return nil
 }
