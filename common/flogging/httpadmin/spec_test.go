@@ -39,9 +39,9 @@ var _ = Describe("SpecHandler", func() {
 		handler.ServeHTTP(resp, req)
 
 		Expect(fakeLogging.SpecCallCount()).To(Equal(1))
-		Expect(resp.Code).To(Equal(http.StatusOK))
+		Expect(resp.Result().StatusCode).To(Equal(http.StatusOK))
 		Expect(resp.Body).To(MatchJSON(`{"spec": "the-returned-specification"}`))
-		Expect(resp.Header().Get("Content-Type")).To(Equal("application/json"))
+		Expect(resp.Result().Header.Get("Content-Type")).To(Equal("application/json"))
 	})
 
 	It("sets the current logging spec", func() {
@@ -49,7 +49,7 @@ var _ = Describe("SpecHandler", func() {
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, req)
 
-		Expect(resp.Code).To(Equal(http.StatusNoContent))
+		Expect(resp.Result().StatusCode).To(Equal(http.StatusNoContent))
 		Expect(fakeLogging.ActivateSpecCallCount()).To(Equal(1))
 		Expect(fakeLogging.ActivateSpecArgsForCall(0)).To(Equal("updated-spec"))
 	})
@@ -61,7 +61,7 @@ var _ = Describe("SpecHandler", func() {
 			handler.ServeHTTP(resp, req)
 
 			Expect(fakeLogging.ActivateSpecCallCount()).To(Equal(0))
-			Expect(resp.Code).To(Equal(http.StatusBadRequest))
+			Expect(resp.Result().StatusCode).To(Equal(http.StatusBadRequest))
 			Expect(resp.Body).To(MatchJSON(`{"error": "invalid character 'g' looking for beginning of value"}`))
 		})
 	})
@@ -76,7 +76,7 @@ var _ = Describe("SpecHandler", func() {
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, req)
 
-			Expect(resp.Code).To(Equal(http.StatusBadRequest))
+			Expect(resp.Result().StatusCode).To(Equal(http.StatusBadRequest))
 			Expect(resp.Body).To(MatchJSON(`{"error": "ewww; that's not right!"}`))
 		})
 	})
@@ -87,7 +87,7 @@ var _ = Describe("SpecHandler", func() {
 			resp := httptest.NewRecorder()
 			handler.ServeHTTP(resp, req)
 
-			Expect(resp.Code).To(Equal(http.StatusBadRequest))
+			Expect(resp.Result().StatusCode).To(Equal(http.StatusBadRequest))
 			Expect(resp.Body).To(MatchJSON(`{"error": "invalid request method: POST"}`))
 		})
 
