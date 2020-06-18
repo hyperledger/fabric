@@ -228,6 +228,9 @@ func NewInactiveChainReplicator(
 	registerChainFunc func(chain string),
 	replicationRefreshInterval time.Duration,
 ) *InactiveChainReplicator {
+	if replicationRefreshInterval == 0 {
+		replicationRefreshInterval = DefaultReplicationBackgroundRefreshInterval
+	}
 	exponentialSleep := exponentialDurationSeries(replicationBackgroundInitialRefreshInterval, replicationRefreshInterval)
 	ticker := newTicker(exponentialSleep)
 

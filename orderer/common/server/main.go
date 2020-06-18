@@ -752,11 +752,6 @@ func initializeEtcdraftConsenter(
 	metricsProvider metrics.Provider,
 	bccsp bccsp.BCCSP,
 ) *etcdraft.Consenter {
-	replicationRefreshInterval := conf.General.Cluster.ReplicationBackgroundRefreshInterval
-	if replicationRefreshInterval == 0 {
-		replicationRefreshInterval = onboarding.DefaultReplicationBackgroundRefreshInterval
-	}
-
 	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
 	if err != nil {
 		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
@@ -769,7 +764,7 @@ func initializeEtcdraftConsenter(
 		return multichannel.ConfigBlock(systemLedger)
 	}
 
-	icr := onboarding.NewInactiveChainReplicator(ri, getConfigBlock, ri.RegisterChain, replicationRefreshInterval)
+	icr := onboarding.NewInactiveChainReplicator(ri, getConfigBlock, ri.RegisterChain, conf.General.Cluster.ReplicationBackgroundRefreshInterval)
 
 	// Use the inactiveChainReplicator as a channel lister, since it has knowledge
 	// of all inactive chains.
