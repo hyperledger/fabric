@@ -75,7 +75,7 @@ func newRollbackMgr(blockStorageDir, ledgerID string, indexConfig *IndexConfig, 
 
 func (r *rollbackMgr) rollbackBlockIndex() error {
 	lastBlockNumber, err := r.indexStore.getLastBlockIndexed()
-	if err == errIndexEmpty {
+	if err == errIndexCheckpointKeyNotPresent {
 		return nil
 	}
 	if err != nil {
@@ -262,9 +262,9 @@ func validateTargetBlkNum(ledgerDir string, targetBlockNum uint64) error {
 	if err != nil {
 		return err
 	}
-	if cpInfo.lastBlockNumber <= targetBlockNum {
+	if cpInfo.lastBlockNumberInBlockFiles <= targetBlockNum {
 		return errors.Errorf("target block number [%d] should be less than the biggest block number [%d]",
-			targetBlockNum, cpInfo.lastBlockNumber)
+			targetBlockNum, cpInfo.lastBlockNumberInBlockFiles)
 	}
 	return nil
 }

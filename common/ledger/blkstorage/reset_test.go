@@ -193,7 +193,7 @@ func TestRecordHeight(t *testing.T) {
 	require.NoError(t, os.Truncate(lastFile, fileInfo.Size()/2))
 	checkpointInfo, err := constructCheckpointInfoFromBlockFiles(ledgerDir)
 	require.NoError(t, err)
-	require.True(t, checkpointInfo.lastBlockNumber < 59)
+	require.True(t, checkpointInfo.lastBlockNumberInBlockFiles < 59)
 	require.NoError(t, recordHeightIfGreaterThanPreviousRecording(ledgerDir))
 	assertRecordedHeight(t, ledgerDir, "60")
 }

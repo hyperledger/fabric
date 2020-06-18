@@ -25,19 +25,19 @@ type blocksItr struct {
 func newBlockItr(mgr *blockfileMgr, startBlockNum uint64) *blocksItr {
 	mgr.cpInfoCond.L.Lock()
 	defer mgr.cpInfoCond.L.Unlock()
-	return &blocksItr{mgr, mgr.cpInfo.lastBlockNumber, startBlockNum, nil, false, &sync.Mutex{}}
+	return &blocksItr{mgr, mgr.cpInfo.lastBlockNumberInBlockFiles, startBlockNum, nil, false, &sync.Mutex{}}
 }
 
 func (itr *blocksItr) waitForBlock(blockNum uint64) uint64 {
 	itr.mgr.cpInfoCond.L.Lock()
 	defer itr.mgr.cpInfoCond.L.Unlock()
-	for itr.mgr.cpInfo.lastBlockNumber < blockNum && !itr.shouldClose() {
+	for itr.mgr.cpInfo.lastBlockNumberInBlockFiles < blockNum && !itr.shouldClose() {
 		logger.Debugf("Going to wait for newer blocks. maxAvailaBlockNumber=[%d], waitForBlockNum=[%d]",
-			itr.mgr.cpInfo.lastBlockNumber, blockNum)
+			itr.mgr.cpInfo.lastBlockNumberInBlockFiles, blockNum)
 		itr.mgr.cpInfoCond.Wait()
-		logger.Debugf("Came out of wait. maxAvailaBlockNumber=[%d]", itr.mgr.cpInfo.lastBlockNumber)
+		logger.Debugf("Came out of wait. maxAvailaBlockNumber=[%d]", itr.mgr.cpInfo.lastBlockNumberInBlockFiles)
 	}
-	return itr.mgr.cpInfo.lastBlockNumber
+	return itr.mgr.cpInfo.lastBlockNumberInBlockFiles
 }
 
 func (itr *blocksItr) initStream() error {

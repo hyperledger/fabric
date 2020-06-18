@@ -28,7 +28,7 @@ func TestConstructCheckpointInfoFromBlockFiles(t *testing.T) {
 	// checkpoint constructed on an empty block folder should return CPInfo with isChainEmpty: true
 	cpInfo, err := constructCheckpointInfoFromBlockFiles(blkStoreDir)
 	assert.NoError(t, err)
-	assert.Equal(t, &checkpointInfo{isChainEmpty: true, lastBlockNumber: 0, latestFileChunksize: 0, latestFileChunkSuffixNum: 0}, cpInfo)
+	assert.Equal(t, &checkpointInfo{noBlockFiles: true, lastBlockNumberInBlockFiles: 0, latestFileChunksize: 0, latestFileChunkSuffixNum: 0}, cpInfo)
 
 	w := newTestBlockfileWrapper(env, ledgerid)
 	defer w.close()

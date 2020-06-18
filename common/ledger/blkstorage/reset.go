@@ -164,7 +164,7 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 		}
 		logger.Infof("preResetHtFile contains height = %d", previuoslyRecordedHt)
 	}
-	currentHt := checkpointInfo.lastBlockNumber + 1
+	currentHt := checkpointInfo.lastBlockNumberInBlockFiles + 1
 	if currentHt > previuoslyRecordedHt {
 		logger.Infof("Recording current height [%d]", currentHt)
 		return ioutil.WriteFile(preResetHtFile,

@@ -90,10 +90,11 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	blkfileMgrWrapper.addBlocks(blocksBeforeCP)
 	currentCPInfo := blkfileMgrWrapper.blockfileMgr.cpInfo
 	cpInfo1 := &checkpointInfo{
-		currentCPInfo.latestFileChunkSuffixNum,
-		currentCPInfo.latestFileChunksize,
-		currentCPInfo.isChainEmpty,
-		currentCPInfo.lastBlockNumber}
+		latestFileChunkSuffixNum:    currentCPInfo.latestFileChunkSuffixNum,
+		latestFileChunksize:         currentCPInfo.latestFileChunksize,
+		noBlockFiles:                currentCPInfo.noBlockFiles,
+		lastBlockNumberInBlockFiles: currentCPInfo.lastBlockNumberInBlockFiles,
+	}
 
 	// add blocks after cp
 	blkfileMgrWrapper.addBlocks(blocksAfterCP)
@@ -339,7 +340,7 @@ func TestBlockfileMgrRestart(t *testing.T) {
 
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
-	assert.Equal(t, 9, int(blkfileMgrWrapper.blockfileMgr.cpInfo.lastBlockNumber))
+	assert.Equal(t, 9, int(blkfileMgrWrapper.blockfileMgr.cpInfo.lastBlockNumberInBlockFiles))
 	blkfileMgrWrapper.testGetBlockByHash(blocks, nil)
 	assert.Equal(t, expectedHeight, blkfileMgrWrapper.blockfileMgr.getBlockchainInfo().Height)
 }
@@ -444,10 +445,10 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteCPInfo 
 	assert.Equal(t, 0, testutilGetFileSize(t, lastFilePath))
 	assert.Equal(t,
 		&checkpointInfo{
-			latestFileChunkSuffixNum: 1,
-			latestFileChunksize:      0,
-			lastBlockNumber:          4,
-			isChainEmpty:             false,
+			latestFileChunkSuffixNum:    1,
+			latestFileChunksize:         0,
+			lastBlockNumberInBlockFiles: 4,
+			noBlockFiles:                false,
 		},
 		blkfileMgrWrapper.blockfileMgr.cpInfo,
 	)
