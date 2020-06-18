@@ -10,6 +10,7 @@ The API exposes the following capabilities:
 - Log level management
 - Health checks
 - Prometheus target for operational metrics (when configured)
+- Endpoint for retrieving version information
 
 Configuring the Operations Service
 ----------------------------------
@@ -303,6 +304,13 @@ metrics.
 
 For a look at the different metrics that are generated, check out
 :doc:`metrics_reference`.
+
+Version
+-------
+
+The orderer and peer both expose a ``/version`` endpoint. This endpoint
+serves a JSON document containing the orderer or peer version and the commit
+SHA on which the release was created.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
