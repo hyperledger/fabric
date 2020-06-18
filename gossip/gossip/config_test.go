@@ -55,6 +55,8 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.gossip.aliveTimeInterval", "20s")
 	viper.Set("peer.gossip.aliveExpirationTimeout", "21s")
 	viper.Set("peer.gossip.reconnectInterval", "22s")
+	viper.Set("peer.gossip.maxConnectionAttempts", "100")
+	viper.Set("peer.gossip.msgExpirationFactor", "10")
 
 	coreConfig, err := gossip.GlobalConfig(endpoint, nil, bootstrap...)
 	assert.NoError(t, err)
@@ -95,6 +97,8 @@ func TestGlobalConfig(t *testing.T) {
 		AliveExpirationTimeout:       21 * time.Second,
 		AliveExpirationCheckInterval: 21 * time.Second / 10, // AliveExpirationTimeout / 10
 		ReconnectInterval:            22 * time.Second,
+		MaxConnectionAttempts:        100,
+		MsgExpirationFactor:          10,
 	}
 
 	assert.Equal(t, expectedConfig, coreConfig)
@@ -148,6 +152,8 @@ func TestGlobalConfigDefaults(t *testing.T) {
 		AliveExpirationTimeout:       5 * discovery.DefAliveTimeInterval,
 		AliveExpirationCheckInterval: 5 * discovery.DefAliveTimeInterval / 10,
 		ReconnectInterval:            5 * discovery.DefAliveTimeInterval,
+		MaxConnectionAttempts:        120,
+		MsgExpirationFactor:          20,
 	}
 
 	assert.Equal(t, expectedConfig, coreConfig)

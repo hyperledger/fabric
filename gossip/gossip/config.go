@@ -93,6 +93,10 @@ type Config struct {
 	AliveExpirationCheckInterval time.Duration
 	// ReconnectInterval is the Reconnect interval.
 	ReconnectInterval time.Duration
+	// MsgExpirationFactor is the expiration factor for alive message TTL
+	MsgExpirationFactor int
+	// MaxConnectionAttempts is the max number of attempts to connect to a peer (wait for alive ack)
+	MaxConnectionAttempts int
 }
 
 // GlobalConfig builds a Config from the given endpoint, certificate and bootstrap peers.
@@ -142,6 +146,8 @@ func (c *Config) loadConfig(endpoint string, certs *common.TLSCertificates, boot
 	c.AliveExpirationTimeout = util.GetDurationOrDefault("peer.gossip.aliveExpirationTimeout", 5*c.AliveTimeInterval)
 	c.AliveExpirationCheckInterval = c.AliveExpirationTimeout / 10
 	c.ReconnectInterval = util.GetDurationOrDefault("peer.gossip.reconnectInterval", c.AliveExpirationTimeout)
+	c.MaxConnectionAttempts = util.GetIntOrDefault("peer.gossip.maxConnectionAttempts", discovery.DefMaxConnectionAttempts)
+	c.MsgExpirationFactor = util.GetIntOrDefault("peer.gossip.msgExpirationFactor", discovery.DefMsgExpirationFactor)
 
 	return nil
 }
