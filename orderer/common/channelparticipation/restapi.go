@@ -114,6 +114,7 @@ func (h *HTTPHandler) serveListAll(resp http.ResponseWriter, req *http.Request) 
 	for i, info := range channelList.Channels {
 		channelList.Channels[i].URL = path.Join(URLBaseV1Channels, info.Name)
 	}
+	resp.Header().Set("Cache-Control", "no-store")
 	h.sendResponseOK(resp, channelList)
 }
 
@@ -135,6 +136,7 @@ func (h *HTTPHandler) serveListOne(resp http.ResponseWriter, req *http.Request) 
 		h.sendResponseJsonError(resp, http.StatusNotFound, err)
 		return
 	}
+	resp.Header().Set("Cache-Control", "no-store")
 	h.sendResponseOK(resp, infoFull)
 }
 
