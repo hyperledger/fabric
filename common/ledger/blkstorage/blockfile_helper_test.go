@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConstructCheckpointInfoFromBlockFiles(t *testing.T) {
+func TestConstructBlockfilesInfo(t *testing.T) {
 	ledgerid := "testLedger"
 	conf := NewConf(testPath(), 0)
 	blkStoreDir := conf.getLedgerBlockDir(ledgerid)
@@ -25,43 +25,51 @@ func TestConstructCheckpointInfoFromBlockFiles(t *testing.T) {
 	util.CreateDirIfMissing(blkStoreDir)
 	defer env.Cleanup()
 
-	// checkpoint constructed on an empty block folder should return CPInfo with isChainEmpty: true
-	cpInfo, err := constructCheckpointInfoFromBlockFiles(blkStoreDir)
+	// constructBlockfilesInfo on an empty block folder should return blockfileInfo with noBlockFiles: true
+	blkfilesInfo, err := constructBlockfilesInfo(blkStoreDir)
 	assert.NoError(t, err)
-	assert.Equal(t, &checkpointInfo{noBlockFiles: true, lastBlockNumberInBlockFiles: 0, latestFileChunksize: 0, latestFileChunkSuffixNum: 0}, cpInfo)
+	assert.Equal(t,
+		&blockfilesInfo{
+			noBlockFiles:       true,
+			lastPersistedBlock: 0,
+			latestFileSize:     0,
+			latestFileNumber:   0,
+		},
+		blkfilesInfo,
+	)
 
 	w := newTestBlockfileWrapper(env, ledgerid)
 	defer w.close()
 	blockfileMgr := w.blockfileMgr
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
 
-	// Add a few blocks and verify that cpinfo derived from filesystem should be same as from the blockfile manager
+	// Add a few blocks and verify that blockfilesInfo derived from filesystem should be same as from the blockfile manager
 	blockfileMgr.addBlock(gb)
 	for _, blk := range bg.NextTestBlocks(3) {
 		blockfileMgr.addBlock(blk)
 	}
-	checkCPInfoFromFile(t, blkStoreDir, blockfileMgr.cpInfo)
+	checkBlockfilesInfoFromFS(t, blkStoreDir, blockfileMgr.blockfilesInfo)
 
-	// Move the chain to new file and check cpinfo derived from file system
+	// Move the chain to new file and check blockfilesInfo derived from file system
 	blockfileMgr.moveToNextFile()
-	checkCPInfoFromFile(t, blkStoreDir, blockfileMgr.cpInfo)
+	checkBlockfilesInfoFromFS(t, blkStoreDir, blockfileMgr.blockfilesInfo)
 
-	// Add a few blocks that would go to new file and verify that cpinfo derived from filesystem should be same as from the blockfile manager
+	// Add a few blocks that would go to new file and verify that blockfilesInfo derived from filesystem should be same as from the blockfile manager
 	for _, blk := range bg.NextTestBlocks(3) {
 		blockfileMgr.addBlock(blk)
 	}
-	checkCPInfoFromFile(t, blkStoreDir, blockfileMgr.cpInfo)
+	checkBlockfilesInfoFromFS(t, blkStoreDir, blockfileMgr.blockfilesInfo)
 
-	// Write a partial block (to simulate a crash) and verify that cpinfo derived from filesystem should be same as from the blockfile manager
+	// Write a partial block (to simulate a crash) and verify that blockfilesInfo derived from filesystem should be same as from the blockfile manager
 	lastTestBlk := bg.NextTestBlocks(1)[0]
 	blockBytes, _, err := serializeBlock(lastTestBlk)
 	assert.NoError(t, err)
 	partialByte := append(proto.EncodeVarint(uint64(len(blockBytes))), blockBytes[len(blockBytes)/2:]...)
 	blockfileMgr.currentFileWriter.append(partialByte, true)
-	checkCPInfoFromFile(t, blkStoreDir, blockfileMgr.cpInfo)
+	checkBlockfilesInfoFromFS(t, blkStoreDir, blockfileMgr.blockfilesInfo)
 
 	// Close the block storage, drop the index and restart and verify
-	cpInfoBeforeClose := blockfileMgr.cpInfo
+	blkfilesInfoBeforeClose := blockfileMgr.blockfilesInfo
 	w.close()
 	env.provider.Close()
 	indexFolder := conf.getIndexDir()
@@ -70,15 +78,15 @@ func TestConstructCheckpointInfoFromBlockFiles(t *testing.T) {
 	env = newTestEnv(t, conf)
 	w = newTestBlockfileWrapper(env, ledgerid)
 	blockfileMgr = w.blockfileMgr
-	assert.Equal(t, cpInfoBeforeClose, blockfileMgr.cpInfo)
+	assert.Equal(t, blkfilesInfoBeforeClose, blockfileMgr.blockfilesInfo)
 
 	lastBlkIndexed, err := blockfileMgr.index.getLastBlockIndexed()
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(6), lastBlkIndexed)
 
-	// Add the last block again after start and check cpinfo again
+	// Add the last block again after start and check blockfilesInfo again
 	assert.NoError(t, blockfileMgr.addBlock(lastTestBlk))
-	checkCPInfoFromFile(t, blkStoreDir, blockfileMgr.cpInfo)
+	checkBlockfilesInfoFromFS(t, blkStoreDir, blockfileMgr.blockfilesInfo)
 }
 
 func TestBinarySearchBlockFileNum(t *testing.T) {
@@ -107,8 +115,8 @@ func TestBinarySearchBlockFileNum(t *testing.T) {
 	}
 }
 
-func checkCPInfoFromFile(t *testing.T, blkStoreDir string, expectedCPInfo *checkpointInfo) {
-	cpInfo, err := constructCheckpointInfoFromBlockFiles(blkStoreDir)
+func checkBlockfilesInfoFromFS(t *testing.T, blkStoreDir string, expected *blockfilesInfo) {
+	blkfilesInfo, err := constructBlockfilesInfo(blkStoreDir)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedCPInfo, cpInfo)
+	assert.Equal(t, expected, blkfilesInfo)
 }

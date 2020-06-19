@@ -27,7 +27,7 @@ const (
 	blockHashIdxKeyPrefix       = 'h'
 	txIDIdxKeyPrefix            = 't'
 	blockNumTranNumIdxKeyPrefix = 'a'
-	indexCheckpointKeyStr       = "indexCheckpointKey"
+	indexSavePointKeyStr        = "indexCheckpointKey"
 
 	snapshotFileFormat       = byte(1)
 	snapshotDataFileName     = "txids.data"
@@ -35,10 +35,10 @@ const (
 )
 
 var (
-	indexCheckpointKey              = []byte(indexCheckpointKeyStr)
-	errIndexCheckpointKeyNotPresent = errors.New("NoBlockIndexed")
-	errNilValue                     = errors.New("")
-	importTxIDsBatchSize            = uint64(1000) // txID is 64 bytes, so batch size roughly translates to 64KB
+	indexSavePointKey              = []byte(indexSavePointKeyStr)
+	errIndexSavePointKeyNotPresent = errors.New("NoBlockIndexed")
+	errNilValue                    = errors.New("")
+	importTxIDsBatchSize           = uint64(1000) // txID is 64 bytes, so batch size roughly translates to 64KB
 )
 
 type blockIdxInfo struct {
@@ -70,11 +70,11 @@ func newBlockIndex(indexConfig *IndexConfig, db *leveldbhelper.DBHandle) (*block
 func (index *blockIndex) getLastBlockIndexed() (uint64, error) {
 	var blockNumBytes []byte
 	var err error
-	if blockNumBytes, err = index.db.Get(indexCheckpointKey); err != nil {
+	if blockNumBytes, err = index.db.Get(indexSavePointKey); err != nil {
 		return 0, err
 	}
 	if blockNumBytes == nil {
-		return 0, errIndexCheckpointKeyNotPresent
+		return 0, errIndexSavePointKeyNotPresent
 	}
 	return decodeBlockNum(blockNumBytes), nil
 }
@@ -146,7 +146,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		}
 	}
 
-	batch.Put(indexCheckpointKey, encodeBlockNum(blockIdxInfo.blockNum))
+	batch.Put(indexSavePointKey, encodeBlockNum(blockIdxInfo.blockNum))
 	// Setting snyc to true as a precaution, false may be an ok optimization after further testing.
 	if err := index.db.WriteBatch(batch, true); err != nil {
 		return err
@@ -370,7 +370,7 @@ func importTxIDsFromSnapshot(
 			batch = leveldbhelper.NewUpdateBatch()
 		}
 	}
-	batch.Put(indexCheckpointKey, encodeBlockNum(lastBlockNumInSnapshot))
+	batch.Put(indexSavePointKey, encodeBlockNum(lastBlockNumInSnapshot))
 	if err := db.WriteBatch(batch, true); err != nil {
 		return err
 	}

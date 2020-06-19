@@ -75,7 +75,7 @@ func newRollbackMgr(blockStorageDir, ledgerID string, indexConfig *IndexConfig, 
 
 func (r *rollbackMgr) rollbackBlockIndex() error {
 	lastBlockNumber, err := r.indexStore.getLastBlockIndexed()
-	if err == errIndexCheckpointKeyNotPresent {
+	if err == errIndexSavePointKeyNotPresent {
 		return nil
 	}
 	if err != nil {
@@ -139,7 +139,7 @@ func (r *rollbackMgr) deleteIndexEntriesRange(startBlkNum, endBlkNum uint64) err
 		numberOfBlocksToRetrieve--
 	}
 
-	batch.Put(indexCheckpointKey, encodeBlockNum(startBlkNum-1))
+	batch.Put(indexSavePointKey, encodeBlockNum(startBlkNum-1))
 	return r.indexStore.db.WriteBatch(batch, true)
 }
 
@@ -167,7 +167,7 @@ func addIndexEntriesToBeDeleted(batch *leveldbhelper.UpdateBatch, blockInfo *ser
 }
 
 func (r *rollbackMgr) rollbackBlockFiles() error {
-	logger.Infof("Deleting checkpointInfo")
+	logger.Infof("Deleting blockfilesInfo")
 	if err := r.indexStore.db.Delete(blkMgrInfoKey, true); err != nil {
 		return err
 	}
@@ -258,13 +258,13 @@ func validateLedgerID(ledgerDir, ledgerID string) error {
 
 func validateTargetBlkNum(ledgerDir string, targetBlockNum uint64) error {
 	logger.Debugf("Validating the given block number [%d] against the ledger block height", targetBlockNum)
-	cpInfo, err := constructCheckpointInfoFromBlockFiles(ledgerDir)
+	blkfilesInfo, err := constructBlockfilesInfo(ledgerDir)
 	if err != nil {
 		return err
 	}
-	if cpInfo.lastBlockNumberInBlockFiles <= targetBlockNum {
+	if blkfilesInfo.lastPersistedBlock <= targetBlockNum {
 		return errors.Errorf("target block number [%d] should be less than the biggest block number [%d]",
-			targetBlockNum, cpInfo.lastBlockNumberInBlockFiles)
+			targetBlockNum, blkfilesInfo.lastPersistedBlock)
 	}
 	return nil
 }
