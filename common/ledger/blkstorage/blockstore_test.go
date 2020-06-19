@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,10 +25,10 @@ func TestWrongBlockNumber(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 5)
 	for i := 0; i < 3; i++ {
 		err := store.AddBlock(blocks[i])
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	err := store.AddBlock(blocks[4])
-	assert.Error(t, err, "Error shold have been thrown when adding block number 4 while block number 3 is expected")
+	require.Error(t, err, "Error shold have been thrown when adding block number 4 while block number 3 is expected")
 }
 
 func TestTxIDIndexErrorPropagations(t *testing.T) {
@@ -42,7 +41,7 @@ func TestTxIDIndexErrorPropagations(t *testing.T) {
 	blocks := testutil.ConstructTestBlocks(t, 3)
 	for i := 0; i < 3; i++ {
 		err := store.AddBlock(blocks[i])
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	index := store.fileMgr.db

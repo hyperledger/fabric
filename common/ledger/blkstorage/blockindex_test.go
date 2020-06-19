@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,14 +63,14 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 		// Verify that the first set of blocks are indexed in the original index
 		for i := 0; i < numBlocksToIndex; i++ {
 			block, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
-			assert.NoError(t, err, "block [%d] should have been present in the index", i)
-			assert.Equal(t, blocks[i], block)
+			require.NoError(t, err, "block [%d] should have been present in the index", i)
+			require.Equal(t, blocks[i], block)
 		}
 
 		// Before, we test for index sync-up, verify that the last set of blocks not indexed in the original index
 		for i := numBlocksToIndex + 1; i <= numBlocks; i++ {
 			_, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
-			assert.Exactly(t, ErrNotFoundInIndex, err)
+			require.Exactly(t, ErrNotFoundInIndex, err)
 		}
 
 		// perform index sync
@@ -87,8 +86,8 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 		// Now, last set of blocks should also be indexed in the original index
 		for i := numBlocksToIndex; i < numBlocks; i++ {
 			block, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
-			assert.NoError(t, err, "block [%d] should have been present in the index", i)
-			assert.Equal(t, blocks[i], block)
+			require.NoError(t, err, "block [%d] should have been present in the index", i)
+			require.Equal(t, blocks[i], block)
 		}
 	})
 }
@@ -123,56 +122,56 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 		// test 'retrieveBlockByHash'
 		block, err := blockfileMgr.retrieveBlockByHash(protoutil.BlockHeaderHash(blocks[0].Header))
 		if containsAttr(indexItems, IndexableAttrBlockHash) {
-			assert.NoError(t, err, "Error while retrieving block by hash")
-			assert.Equal(t, blocks[0], block)
+			require.NoError(t, err, "Error while retrieving block by hash")
+			require.Equal(t, blocks[0], block)
 		} else {
-			assert.Exactly(t, ErrAttrNotIndexed, err)
+			require.Exactly(t, ErrAttrNotIndexed, err)
 		}
 
 		// test 'retrieveBlockByNumber'
 		block, err = blockfileMgr.retrieveBlockByNumber(0)
 		if containsAttr(indexItems, IndexableAttrBlockNum) {
-			assert.NoError(t, err, "Error while retrieving block by number")
-			assert.Equal(t, blocks[0], block)
+			require.NoError(t, err, "Error while retrieving block by number")
+			require.Equal(t, blocks[0], block)
 		} else {
-			assert.Exactly(t, ErrAttrNotIndexed, err)
+			require.Exactly(t, ErrAttrNotIndexed, err)
 		}
 
 		// test 'retrieveTransactionByID'
 		txid, err := protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		txEnvelope, err := blockfileMgr.retrieveTransactionByID(txid)
 		if containsAttr(indexItems, IndexableAttrTxID) {
-			assert.NoError(t, err, "Error while retrieving tx by id")
+			require.NoError(t, err, "Error while retrieving tx by id")
 			txEnvelopeBytes := blocks[0].Data.Data[0]
 			txEnvelopeOrig, err := protoutil.GetEnvelopeFromBlock(txEnvelopeBytes)
-			assert.NoError(t, err)
-			assert.Equal(t, txEnvelopeOrig, txEnvelope)
+			require.NoError(t, err)
+			require.Equal(t, txEnvelopeOrig, txEnvelope)
 		} else {
-			assert.Exactly(t, ErrAttrNotIndexed, err)
+			require.Exactly(t, ErrAttrNotIndexed, err)
 		}
 
 		//test 'retrieveTrasnactionsByBlockNumTranNum
 		txEnvelope2, err := blockfileMgr.retrieveTransactionByBlockNumTranNum(0, 0)
 		if containsAttr(indexItems, IndexableAttrBlockNumTranNum) {
-			assert.NoError(t, err, "Error while retrieving tx by blockNum and tranNum")
+			require.NoError(t, err, "Error while retrieving tx by blockNum and tranNum")
 			txEnvelopeBytes2 := blocks[0].Data.Data[0]
 			txEnvelopeOrig2, err2 := protoutil.GetEnvelopeFromBlock(txEnvelopeBytes2)
-			assert.NoError(t, err2)
-			assert.Equal(t, txEnvelopeOrig2, txEnvelope2)
+			require.NoError(t, err2)
+			require.Equal(t, txEnvelopeOrig2, txEnvelope2)
 		} else {
-			assert.Exactly(t, ErrAttrNotIndexed, err)
+			require.Exactly(t, ErrAttrNotIndexed, err)
 		}
 
 		// test 'retrieveBlockByTxID'
 		txid, err = protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		block, err = blockfileMgr.retrieveBlockByTxID(txid)
 		if containsAttr(indexItems, IndexableAttrTxID) {
-			assert.NoError(t, err, "Error while retrieving block by txID")
-			assert.Equal(t, block, blocks[0])
+			require.NoError(t, err, "Error while retrieving block by txID")
+			require.Equal(t, block, blocks[0])
 		} else {
-			assert.Exactly(t, ErrAttrNotIndexed, err)
+			require.Exactly(t, ErrAttrNotIndexed, err)
 		}
 
 		for _, block := range blocks {
@@ -180,18 +179,18 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 
 			for idx, d := range block.Data.Data {
 				txid, err = protoutil.GetOrComputeTxIDFromEnvelope(d)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				reason, err := blockfileMgr.retrieveTxValidationCodeByTxID(txid)
 
 				if containsAttr(indexItems, IndexableAttrTxID) {
-					assert.NoError(t, err, "Error while retrieving tx validation code by txID")
+					require.NoError(t, err, "Error while retrieving tx validation code by txID")
 
 					reasonFromFlags := flags.Flag(idx)
 
-					assert.Equal(t, reasonFromFlags, reason)
+					require.Equal(t, reasonFromFlags, reason)
 				} else {
-					assert.Exactly(t, ErrAttrNotIndexed, err)
+					require.Exactly(t, ErrAttrNotIndexed, err)
 				}
 			}
 		}

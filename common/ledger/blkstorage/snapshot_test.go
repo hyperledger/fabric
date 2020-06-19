@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -261,7 +260,7 @@ func TestBootstrapFromSnapshot(t *testing.T) {
 
 			// before, we test for index sync-up, verify that the last set of blocks not indexed in the original index
 			_, err := blkfileMgr.retrieveBlockByNumber(block.Header.Number)
-			assert.Exactly(t, ErrNotFoundInIndex, err)
+			require.Exactly(t, ErrNotFoundInIndex, err)
 
 			// close and open should be able to sync-up the index
 			closeBlockStore()

@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,10 +27,10 @@ func TestIndexConfig(t *testing.T) {
 		},
 	}
 
-	assert := assert.New(t)
-	assert.True(ic.Contains(IndexableAttrBlockNum))
-	assert.True(ic.Contains(IndexableAttrTxID))
-	assert.False(ic.Contains(IndexableAttrBlockNumTranNum))
+	require := require.New(t)
+	require.True(ic.Contains(IndexableAttrBlockNum))
+	require.True(ic.Contains(IndexableAttrTxID))
+	require.False(ic.Contains(IndexableAttrBlockNumTranNum))
 }
 
 func TestMultipleBlockStores(t *testing.T) {
@@ -97,66 +96,66 @@ func TestMultipleBlockStores(t *testing.T) {
 
 func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store *BlockStore) {
 	bcInfo, _ := store.GetBlockchainInfo()
-	assert.Equal(t, uint64(len(expectedBlocks)), bcInfo.Height)
-	assert.Equal(t, protoutil.BlockHeaderHash(expectedBlocks[len(expectedBlocks)-1].GetHeader()), bcInfo.CurrentBlockHash)
+	require.Equal(t, uint64(len(expectedBlocks)), bcInfo.Height)
+	require.Equal(t, protoutil.BlockHeaderHash(expectedBlocks[len(expectedBlocks)-1].GetHeader()), bcInfo.CurrentBlockHash)
 
 	itr, _ := store.RetrieveBlocks(0)
 	for i := 0; i < len(expectedBlocks); i++ {
 		block, _ := itr.Next()
-		assert.Equal(t, expectedBlocks[i], block)
+		require.Equal(t, expectedBlocks[i], block)
 	}
 
 	for blockNum := 0; blockNum < len(expectedBlocks); blockNum++ {
 		block := expectedBlocks[blockNum]
 		flags := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 		retrievedBlock, _ := store.RetrieveBlockByNumber(uint64(blockNum))
-		assert.Equal(t, block, retrievedBlock)
+		require.Equal(t, block, retrievedBlock)
 
 		retrievedBlock, _ = store.RetrieveBlockByHash(protoutil.BlockHeaderHash(block.Header))
-		assert.Equal(t, block, retrievedBlock)
+		require.Equal(t, block, retrievedBlock)
 
 		for txNum := 0; txNum < len(block.Data.Data); txNum++ {
 			txEnvBytes := block.Data.Data[txNum]
 			txEnv, _ := protoutil.GetEnvelopeFromBlock(txEnvBytes)
 			txid, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnvBytes)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			retrievedBlock, _ := store.RetrieveBlockByTxID(txid)
-			assert.Equal(t, block, retrievedBlock)
+			require.Equal(t, block, retrievedBlock)
 
 			retrievedTxEnv, _ := store.RetrieveTxByID(txid)
-			assert.Equal(t, txEnv, retrievedTxEnv)
+			require.Equal(t, txEnv, retrievedTxEnv)
 
 			retrievedTxEnv, _ = store.RetrieveTxByBlockNumTranNum(uint64(blockNum), uint64(txNum))
-			assert.Equal(t, txEnv, retrievedTxEnv)
+			require.Equal(t, txEnv, retrievedTxEnv)
 
 			retrievedTxValCode, err := store.RetrieveTxValidationCodeByTxID(txid)
-			assert.NoError(t, err)
-			assert.Equal(t, flags.Flag(txNum), retrievedTxValCode)
+			require.NoError(t, err)
+			require.Equal(t, flags.Flag(txNum), retrievedTxValCode)
 		}
 	}
 }
 
 func checkWithWrongInputs(t *testing.T, store *BlockStore, numBlocks int) {
 	block, err := store.RetrieveBlockByHash([]byte("non-existent-hash"))
-	assert.Nil(t, block)
-	assert.Equal(t, ErrNotFoundInIndex, err)
+	require.Nil(t, block)
+	require.Equal(t, ErrNotFoundInIndex, err)
 
 	block, err = store.RetrieveBlockByTxID("non-existent-txid")
-	assert.Nil(t, block)
-	assert.Equal(t, ErrNotFoundInIndex, err)
+	require.Nil(t, block)
+	require.Equal(t, ErrNotFoundInIndex, err)
 
 	tx, err := store.RetrieveTxByID("non-existent-txid")
-	assert.Nil(t, tx)
-	assert.Equal(t, ErrNotFoundInIndex, err)
+	require.Nil(t, tx)
+	require.Equal(t, ErrNotFoundInIndex, err)
 
 	tx, err = store.RetrieveTxByBlockNumTranNum(uint64(numBlocks+1), uint64(0))
-	assert.Nil(t, tx)
-	assert.Equal(t, ErrNotFoundInIndex, err)
+	require.Nil(t, tx)
+	require.Equal(t, ErrNotFoundInIndex, err)
 
 	txCode, err := store.RetrieveTxValidationCodeByTxID("non-existent-txid")
-	assert.Equal(t, peer.TxValidationCode(-1), txCode)
-	assert.Equal(t, ErrNotFoundInIndex, err)
+	require.Equal(t, peer.TxValidationCode(-1), txCode)
+	require.Equal(t, ErrNotFoundInIndex, err)
 }
 
 func TestBlockStoreProvider(t *testing.T) {
@@ -165,8 +164,8 @@ func TestBlockStoreProvider(t *testing.T) {
 
 	provider := env.provider
 	storeNames, err := provider.List()
-	assert.NoError(t, err)
-	assert.Empty(t, storeNames)
+	require.NoError(t, err)
+	require.Empty(t, storeNames)
 
 	var stores []*BlockStore
 	numStores := 10
@@ -175,21 +174,21 @@ func TestBlockStoreProvider(t *testing.T) {
 		defer store.Shutdown()
 		stores = append(stores, store)
 	}
-	assert.Equal(t, numStores, len(stores))
+	require.Equal(t, numStores, len(stores))
 
 	storeNames, err = provider.List()
-	assert.NoError(t, err)
-	assert.Equal(t, numStores, len(storeNames))
+	require.NoError(t, err)
+	require.Equal(t, numStores, len(storeNames))
 
 	for i := 0; i < numStores; i++ {
 		exists, err := provider.Exists(constructLedgerid(i))
-		assert.NoError(t, err)
-		assert.Equal(t, true, exists)
+		require.NoError(t, err)
+		require.Equal(t, true, exists)
 	}
 
 	exists, err := provider.Exists(constructLedgerid(numStores + 1))
-	assert.NoError(t, err)
-	assert.Equal(t, false, exists)
+	require.NoError(t, err)
+	require.Equal(t, false, exists)
 
 }
 
