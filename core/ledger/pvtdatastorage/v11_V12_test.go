@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestV11v12 test that we are able to read the mixed format data (for v11 and v12)
@@ -49,10 +49,10 @@ func TestV11v12(t *testing.T) {
 		StorePath: filepath.Join(testWorkingDir, "pvtdataStore"),
 	}
 	p, err := NewProvider(conf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer p.Close()
 	s, err := p.OpenStore(ledgerid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	s.Init(btlPolicy)
 
 	for blk := 0; blk < 10; blk++ {
@@ -66,18 +66,18 @@ func TestV11v12(t *testing.T) {
 
 	_, err = s.GetPvtDataByBlockNum(uint64(15), nil)
 	_, ok := err.(*ErrOutOfRange)
-	assert.True(t, ok)
+	require.True(t, ok)
 }
 
 func checkDataNotExists(t *testing.T, s *Store, blkNum int) {
 	data, err := s.GetPvtDataByBlockNum(uint64(blkNum), nil)
-	assert.NoError(t, err)
-	assert.Nil(t, data)
+	require.NoError(t, err)
+	require.Nil(t, data)
 }
 
 func checkDataExists(t *testing.T, s *Store, blkNum int) {
 	data, err := s.GetPvtDataByBlockNum(uint64(blkNum), nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, data)
+	require.NoError(t, err)
+	require.NotNil(t, data)
 	t.Logf("pvtdata = %s\n", spew.Sdump(data))
 }
