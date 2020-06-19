@@ -36,6 +36,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
+	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/types"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
@@ -95,6 +97,7 @@ var _ = Describe("EndToEnd", func() {
 			network = nwo.New(nwo.BasicSolo(), testDir, nil, StartPort(), components)
 			network.MetricsProvider = "statsd"
 			network.StatsdEndpoint = datagramReader.Address()
+			network.ChannelParticipationEnabled = true
 			network.Profiles = append(network.Profiles, &nwo.Profile{
 				Name:          "TwoOrgsBaseProfileChannel",
 				Consortium:    "SampleConsortium",
@@ -157,6 +160,7 @@ var _ = Describe("EndToEnd", func() {
 
 			By("setting up the channel")
 			network.CreateAndJoinChannel(orderer, "testchannel")
+			channelParticipationList(network, orderer, []string{"testchannel"}, "systemchannel")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			By("attempting to install unsupported chaincode without docker")
@@ -213,6 +217,7 @@ var _ = Describe("EndToEnd", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicKafka(), testDir, client, StartPort(), components)
 			network.MetricsProvider = "prometheus"
+			network.ChannelParticipationEnabled = true
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -256,6 +261,7 @@ var _ = Describe("EndToEnd", func() {
 			orderer := network.Orderer("orderer")
 
 			network.CreateAndJoinChannel(orderer, "testchannel")
+			channelParticipationList(network, orderer, []string{"testchannel"}, "systemchannel")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			// package, install, and approve by org1 - module chaincode
@@ -342,6 +348,7 @@ var _ = Describe("EndToEnd", func() {
 
 		BeforeEach(func() {
 			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, StartPort(), components)
+			network.ChannelParticipationEnabled = true
 			network.GenerateConfigTree()
 			for _, peer := range network.Peers {
 				core := network.ReadPeerConfig(peer)
@@ -390,6 +397,7 @@ var _ = Describe("EndToEnd", func() {
 
 			By("Create second channel and deploy chaincode")
 			network.CreateAndJoinChannel(orderer, "testchannel2")
+			channelParticipationList(network, orderer, []string{"testchannel", "testchannel2"}, "systemchannel")
 			peers := network.PeersWithChannel("testchannel2")
 			nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.ApproveChaincodeForMyOrg(network, "testchannel2", orderer, chaincode, peers...)
@@ -478,6 +486,7 @@ var _ = Describe("EndToEnd", func() {
 		BeforeEach(func() {
 			raftConfig := nwo.BasicEtcdRaft()
 			network = nwo.New(raftConfig, testDir, client, StartPort(), components)
+			network.ChannelParticipationEnabled = true
 			network.GenerateConfigTree()
 
 			orderer := network.Orderer("orderer")
@@ -490,6 +499,8 @@ var _ = Describe("EndToEnd", func() {
 			ordererProcess = ifrit.Invoke(ordererRunner)
 			Eventually(ordererProcess.Ready, network.EventuallyTimeout).Should(BeClosed())
 			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Registrar initializing without a system channel, number of application channels: 0"))
+
+			channelParticipationList(network, orderer, nil)
 		})
 
 		AfterEach(func() {
@@ -913,4 +924,111 @@ func hashFile(file string) string {
 
 func chaincodeContainerNameFilter(n *nwo.Network, chaincode nwo.Chaincode) string {
 	return fmt.Sprintf("^/%s-.*-%s-%s$", n.NetworkID, chaincode.Label, hashFile(chaincode.PackageFile))
+}
+
+type channelList struct {
+	SystemChannel *channelInfoShort  `json:"systemChannel"`
+	Channels      []channelInfoShort `json:"channels"`
+}
+
+type channelInfoShort struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+func channelParticipationList(n *nwo.Network, o *nwo.Orderer, expectedChannels []string, systemChannel ...string) {
+	authClient, unauthClient := OrdererOperationalClients(n, o)
+	listChannelsURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.OperationsPort))
+
+	By("using the channel participation API to list the channels")
+	body := getBody(authClient, listChannelsURL)()
+	list := &channelList{}
+	err := json.Unmarshal([]byte(body), list)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(*list).To(MatchFields(IgnoreExtras, Fields{
+		"Channels":      channelsMatcher(expectedChannels),
+		"SystemChannel": systemChannelMatcher(systemChannel...),
+	}))
+
+	By("listing the channels without a client cert")
+	resp, err := unauthClient.Get(listChannelsURL)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+
+	// for the current test scenarios, we only have these two cluster relations.
+	// other possible values are "follower" and "config-tracker"
+	// TODO generalize and relocate this after join operations are usable/testable
+	clusterRelation := func(consensusType string) string {
+		if consensusType == "etcdraft" {
+			return "member"
+		}
+		return "none"
+	}
+
+	for _, channel := range list.Channels {
+		By("listing the details for channel " + channel.Name)
+		expectedChannelInfo := &channelInfo{
+			Name:            channel.Name,
+			URL:             "", // list single channel always returns empty URL
+			Status:          "active",
+			ClusterRelation: clusterRelation(n.Consensus.Type),
+		}
+
+		if len(n.PeersWithChannel(channel.Name)) > 0 {
+			// get max peer height for the channel since there isn't a way to
+			// directly get the orderer's height that I'm aware of beyond the channel
+			// participation API (and maybe metrics?)
+			maxPeerHeight := nwo.GetMaxLedgerHeight(n, channel.Name, n.PeersWithChannel(channel.Name)...)
+			expectedChannelInfo.Height = uint64(maxPeerHeight)
+		}
+
+		channelParticipationListOne(n, o, channel.URL, expectedChannelInfo)
+	}
+}
+
+func channelsMatcher(channels []string) types.GomegaMatcher {
+	if len(channels) == 0 {
+		return BeEmpty()
+	}
+	matchers := make([]types.GomegaMatcher, len(channels))
+	for i, channel := range channels {
+		matchers[i] = channelInfoShortMatcher(channel)
+	}
+	return ConsistOf(matchers)
+}
+
+func systemChannelMatcher(systemChannel ...string) types.GomegaMatcher {
+	if len(systemChannel) == 0 {
+		return BeNil()
+	}
+	return PointTo(channelInfoShortMatcher(systemChannel[0]))
+}
+
+func channelInfoShortMatcher(channel string) types.GomegaMatcher {
+	return MatchFields(IgnoreExtras, Fields{
+		"Name": Equal(channel),
+		"URL":  Equal(fmt.Sprintf("/participation/v1/channels/%s", channel)),
+	})
+}
+
+type channelInfo struct {
+	Name            string `json:"name"`
+	URL             string `json:"url"`
+	Status          string `json:"status"`
+	ClusterRelation string `json:"clusterRelation"`
+	Height          uint64 `json:"height"`
+}
+
+func channelParticipationListOne(n *nwo.Network, o *nwo.Orderer, channelURL string, expectedChannelInfo *channelInfo) {
+	authClient, _ := OrdererOperationalClients(n, o)
+	listChannelURL := fmt.Sprintf("https://127.0.0.1:%d/%s", n.OrdererPort(o, nwo.OperationsPort), channelURL)
+
+	By("using the channel participation API to list the details of a single channel")
+	body := getBody(authClient, listChannelURL)()
+	c := &channelInfo{}
+	err := json.Unmarshal([]byte(body), c)
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(c).To(Equal(expectedChannelInfo))
 }
