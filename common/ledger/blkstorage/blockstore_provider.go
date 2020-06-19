@@ -125,6 +125,29 @@ func (p *BlockStoreProvider) Exists(ledgerid string) (bool, error) {
 	return exists, err
 }
 
+// Remove block index and blocks for the given ledgerid (channelID). It is not an error if the channel does not exist.
+// This function is not error safe. If this function returns an error or a crash takes place, it is highly likely
+// that the data for this ledger is left in an inconsistent state. Opening the ledger again or reusing the previously
+// opened ledger can show unknown behavior.
+func (p *BlockStoreProvider) Remove(ledgerid string) error {
+	exists, err := p.Exists(ledgerid)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	dbHandle := p.leveldbProvider.GetDBHandle(ledgerid)
+	if err := dbHandle.DeleteAll(); err != nil {
+		return err
+	}
+	dbHandle.Close()
+	if err := os.RemoveAll(p.conf.getLedgerBlockDir(ledgerid)); err != nil {
+		return err
+	}
+	return syncDir(p.conf.getChainsDir())
+}
+
 // List lists the ids of the existing ledgers
 func (p *BlockStoreProvider) List() ([]string, error) {
 	return util.ListSubdirs(p.conf.getChainsDir())

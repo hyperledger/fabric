@@ -52,17 +52,9 @@ func TestMultipleBlockStores(t *testing.T) {
 	require.NoError(t, err)
 	defer store2.Shutdown()
 
-	blocks1 := testutil.ConstructTestBlocks(t, 5)
-	for _, b := range blocks1 {
-		err := store1.AddBlock(b)
-		require.NoError(t, err)
-	}
+	blocks1 := addBlocksToStore(t, store1, 5)
+	blocks2 := addBlocksToStore(t, store2, 10)
 
-	blocks2 := testutil.ConstructTestBlocks(t, 10)
-	for _, b := range blocks2 {
-		err := store2.AddBlock(b)
-		require.NoError(t, err)
-	}
 	checkBlocks(t, blocks1, store1)
 	checkBlocks(t, blocks2, store2)
 	checkWithWrongInputs(t, store1, 5)
@@ -92,6 +84,15 @@ func TestMultipleBlockStores(t *testing.T) {
 	checkBlocks(t, blocks2, newstore2)
 	checkWithWrongInputs(t, newstore1, 5)
 	checkWithWrongInputs(t, newstore2, 10)
+}
+
+func addBlocksToStore(t *testing.T, store *BlockStore, numBlocks int) []*common.Block {
+	blocks := testutil.ConstructTestBlocks(t, numBlocks)
+	for _, b := range blocks {
+		err := store.AddBlock(b)
+		require.NoError(t, err)
+	}
+	return blocks
 }
 
 func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store *BlockStore) {
@@ -190,6 +191,58 @@ func TestBlockStoreProvider(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, false, exists)
 
+}
+
+func TestRemove(t *testing.T) {
+	env := newTestEnv(t, NewConf(testPath(), 0))
+	defer env.Cleanup()
+
+	provider := env.provider
+	store1, err := provider.Open("ledger1")
+	require.NoError(t, err)
+	defer store1.Shutdown()
+	store2, err := provider.Open("ledger2")
+	require.NoError(t, err)
+	defer store2.Shutdown()
+
+	blocks1 := addBlocksToStore(t, store1, 5)
+	blocks2 := addBlocksToStore(t, store2, 10)
+
+	checkBlocks(t, blocks1, store1)
+	checkBlocks(t, blocks2, store2)
+	storeNames, err := provider.List()
+	require.NoError(t, err)
+	require.ElementsMatch(t, storeNames, []string{"ledger1", "ledger2"})
+
+	require.NoError(t, provider.Remove("ledger1"))
+
+	// verify ledger1 block dir and block indexes are deleted
+	exists, err := provider.Exists("ledger1")
+	require.NoError(t, err)
+	require.False(t, exists)
+	itr := provider.leveldbProvider.GetDBHandle("ledger1").GetIterator(nil, nil)
+	defer itr.Release()
+	require.False(t, itr.Next())
+
+	// verify ledger2 ledger data are remained same
+	checkBlocks(t, blocks2, store2)
+	storeNames, err = provider.List()
+	require.NoError(t, err)
+	require.ElementsMatch(t, storeNames, []string{"ledger2"})
+
+	// remove again should return no error
+	require.NoError(t, provider.Remove("ledger1"))
+
+	// verify "ledger1" store can be opened again after remove, but it is an empty store
+	newstore1, err := provider.Open("ledger1")
+	require.NoError(t, err)
+	bcInfo, err := newstore1.GetBlockchainInfo()
+	require.NoError(t, err)
+	require.Equal(t, &common.BlockchainInfo{}, bcInfo)
+
+	// negative test
+	provider.Close()
+	require.EqualError(t, provider.Remove("ledger2"), "internal leveldb error while obtaining db iterator: leveldb: closed")
 }
 
 func constructLedgerid(id int) string {

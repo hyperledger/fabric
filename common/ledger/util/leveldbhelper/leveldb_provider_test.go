@@ -191,6 +191,99 @@ func TestBatchedUpdates(t *testing.T) {
 	}
 }
 
+func TestDeleteAll(t *testing.T) {
+	env := newTestProviderEnv(t, testDBPath)
+	defer env.cleanup()
+	p := env.provider
+
+	db1 := p.GetDBHandle("db1")
+	db2 := p.GetDBHandle("db2")
+	db3 := p.GetDBHandle("db3")
+	db4 := p.GetDBHandle("db4")
+	for i := 0; i < 20; i++ {
+		db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false)
+		db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false)
+		db3.Put([]byte(createTestKey(i)), []byte(createTestValue("db3", i)), false)
+	}
+	// db4 is used to test remove when multiple batches are needed (each long key has 125 bytes)
+	for i := 0; i < 10000; i++ {
+		db4.Put([]byte(createTestLongKey(i)), []byte(createTestValue("db4", i)), false)
+	}
+
+	expectedSetup := []struct {
+		db             *DBHandle
+		expectedKeys   []string
+		expectedValues []string
+	}{
+		{
+			db:             db1,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db1", 0, 19),
+		},
+		{
+			db:             db2,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db2", 0, 19),
+		},
+		{
+			db:             db3,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db3", 0, 19),
+		},
+		{
+			db:             db4,
+			expectedKeys:   createTestLongKeys(0, 9999),
+			expectedValues: createTestValues("db4", 0, 9999),
+		},
+	}
+
+	for _, dbSetup := range expectedSetup {
+		itr := dbSetup.db.GetIterator(nil, nil)
+		checkItrResults(t, itr, dbSetup.expectedKeys, dbSetup.expectedValues)
+		itr.Release()
+	}
+
+	require.NoError(t, db1.DeleteAll())
+	require.NoError(t, db4.DeleteAll())
+
+	expectedResults := []struct {
+		db             *DBHandle
+		expectedKeys   []string
+		expectedValues []string
+	}{
+		{
+			db:             db1,
+			expectedKeys:   nil,
+			expectedValues: nil,
+		},
+		{
+			db:             db2,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db2", 0, 19),
+		},
+		{
+			db:             db3,
+			expectedKeys:   createTestKeys(0, 19),
+			expectedValues: createTestValues("db3", 0, 19),
+		},
+		{
+			db:             db4,
+			expectedKeys:   nil,
+			expectedValues: nil,
+		},
+	}
+
+	for _, result := range expectedResults {
+		itr := result.db.GetIterator(nil, nil)
+		checkItrResults(t, itr, result.expectedKeys, result.expectedValues)
+		itr.Release()
+	}
+
+	// negative test
+	p.Close()
+	require.EqualError(t, db2.DeleteAll(), "internal leveldb error while obtaining db iterator: leveldb: closed")
+}
+
 func TestFormatCheck(t *testing.T) {
 	testCases := []struct {
 		dataFormat     string
@@ -243,6 +336,30 @@ func TestFormatCheck(t *testing.T) {
 				testFormatCheck(t, testCase.dataFormat, testCase.expectedFormat, testCase.dataExists, testCase.expectedErr)
 			})
 	}
+}
+
+func TestClose(t *testing.T) {
+	env := newTestProviderEnv(t, testDBPath)
+	defer env.cleanup()
+	p := env.provider
+
+	db1 := p.GetDBHandle("db1")
+	db2 := p.GetDBHandle("db2")
+
+	expectedDBHandles := map[string]*DBHandle{
+		"db1": db1,
+		"db2": db2,
+	}
+	require.Equal(t, expectedDBHandles, p.dbHandles)
+
+	db1.Close()
+	expectedDBHandles = map[string]*DBHandle{
+		"db2": db2,
+	}
+	require.Equal(t, expectedDBHandles, p.dbHandles)
+
+	db2.Close()
+	require.Equal(t, map[string]*DBHandle{}, p.dbHandles)
 }
 
 func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists bool, expectedErr *dataformat.ErrFormatMismatch) {
@@ -337,6 +454,12 @@ func createTestKey(i int) string {
 	return fmt.Sprintf("key_%06d", i)
 }
 
+const padding100 = "_0123456789_0123456789_0123456789_0123456789_0123456789_0123456789_0123456789_0123456789_0123456789_"
+
+func createTestLongKey(i int) string {
+	return fmt.Sprintf("key_%s_%10d", padding100, i)
+}
+
 func createTestValue(dbname string, i int) string {
 	return fmt.Sprintf("value_%s_%06d", dbname, i)
 }
@@ -345,6 +468,14 @@ func createTestKeys(start int, end int) []string {
 	var keys []string
 	for i := start; i <= end; i++ {
 		keys = append(keys, createTestKey(i))
+	}
+	return keys
+}
+
+func createTestLongKeys(start int, end int) []string {
+	var keys []string
+	for i := start; i <= end; i++ {
+		keys = append(keys, createTestLongKey(i))
 	}
 	return keys
 }
