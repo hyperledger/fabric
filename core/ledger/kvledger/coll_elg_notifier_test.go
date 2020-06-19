@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCollElgNotifier(t *testing.T) {
@@ -66,8 +66,8 @@ func TestCollElgNotifier(t *testing.T) {
 
 	// event triggered should only contain "coll3" as this is the only collection
 	// for which peer became from ineligile to eligible by upgrade tx
-	assert.Equal(t, uint64(500), mockCollElgListener.receivedCommittingBlk)
-	assert.Equal(t,
+	require.Equal(t, uint64(500), mockCollElgListener.receivedCommittingBlk)
+	require.Equal(t,
 		map[string][]string{
 			"cc1": {"coll3"},
 		},
