@@ -18,7 +18,6 @@ import (
 
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -60,24 +59,24 @@ func TestDBBadConnectionDef(t *testing.T) {
 		RequestTimeout:      35 * time.Second,
 	}
 	_, err := createCouchInstance(config, &disabled.Provider{})
-	assert.Error(t, err, "Did not receive error when trying to create database connection definition with a bad hostname")
+	require.Error(t, err, "Did not receive error when trying to create database connection definition with a bad hostname")
 }
 
 func TestEncodePathElement(t *testing.T) {
 	encodedString := encodePathElement("testelement")
-	assert.Equal(t, "testelement", encodedString)
+	require.Equal(t, "testelement", encodedString)
 
 	encodedString = encodePathElement("test element")
-	assert.Equal(t, "test%20element", encodedString)
+	require.Equal(t, "test%20element", encodedString)
 
 	encodedString = encodePathElement("/test element")
-	assert.Equal(t, "%2Ftest%20element", encodedString)
+	require.Equal(t, "%2Ftest%20element", encodedString)
 
 	encodedString = encodePathElement("/test element:")
-	assert.Equal(t, "%2Ftest%20element:", encodedString)
+	require.Equal(t, "%2Ftest%20element:", encodedString)
 
 	encodedString = encodePathElement("/test+ element:")
-	assert.Equal(t, "%2Ftest%2B%20element:", encodedString)
+	require.Equal(t, "%2Ftest%2B%20element:", encodedString)
 }
 
 func TestHealthCheck(t *testing.T) {
@@ -94,8 +93,8 @@ func TestHealthCheck(t *testing.T) {
 		stats:  newStats(&disabled.Provider{}),
 	}
 	err := badCouchDBInstance.healthCheck(context.Background())
-	assert.Error(t, err, "Health check should result in an error if unable to connect to couch db")
-	assert.Contains(t, err.Error(), "failed to connect to couch db")
+	require.Error(t, err, "Health check should result in an error if unable to connect to couch db")
+	require.Contains(t, err.Error(), "failed to connect to couch db")
 
 	//Create a good couchdb instance
 	goodCouchDBInstance := couchInstance{
@@ -104,7 +103,7 @@ func TestHealthCheck(t *testing.T) {
 		stats:  newStats(&disabled.Provider{}),
 	}
 	err = goodCouchDBInstance.healthCheck(context.Background())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestBadCouchDBInstance(t *testing.T) {
@@ -130,67 +129,67 @@ func TestBadCouchDBInstance(t *testing.T) {
 
 	//Test createCouchDatabase with bad connection
 	_, err := createCouchDatabase(&badCouchDBInstance, "baddbtest")
-	assert.Error(t, err, "Error should have been thrown with createCouchDatabase and invalid connection")
+	require.Error(t, err, "Error should have been thrown with createCouchDatabase and invalid connection")
 
 	//Test createSystemDatabasesIfNotExist with bad connection
 	err = createSystemDatabasesIfNotExist(&badCouchDBInstance)
-	assert.Error(t, err, "Error should have been thrown with createSystemDatabasesIfNotExist and invalid connection")
+	require.Error(t, err, "Error should have been thrown with createSystemDatabasesIfNotExist and invalid connection")
 
 	//Test createDatabaseIfNotExist with bad connection
 	err = badDB.createDatabaseIfNotExist()
-	assert.Error(t, err, "Error should have been thrown with createDatabaseIfNotExist and invalid connection")
+	require.Error(t, err, "Error should have been thrown with createDatabaseIfNotExist and invalid connection")
 
 	//Test getDatabaseInfo with bad connection
 	_, _, err = badDB.getDatabaseInfo()
-	assert.Error(t, err, "Error should have been thrown with getDatabaseInfo and invalid connection")
+	require.Error(t, err, "Error should have been thrown with getDatabaseInfo and invalid connection")
 
 	//Test verifyCouchConfig with bad connection
 	_, _, err = badCouchDBInstance.verifyCouchConfig()
-	assert.Error(t, err, "Error should have been thrown with verifyCouchConfig and invalid connection")
+	require.Error(t, err, "Error should have been thrown with verifyCouchConfig and invalid connection")
 
 	//Test dropDatabase with bad connection
 	_, err = badDB.dropDatabase()
-	assert.Error(t, err, "Error should have been thrown with dropDatabase and invalid connection")
+	require.Error(t, err, "Error should have been thrown with dropDatabase and invalid connection")
 
 	//Test readDoc with bad connection
 	_, _, err = badDB.readDoc("1")
-	assert.Error(t, err, "Error should have been thrown with readDoc and invalid connection")
+	require.Error(t, err, "Error should have been thrown with readDoc and invalid connection")
 
 	//Test saveDoc with bad connection
 	_, err = badDB.saveDoc("1", "1", nil)
-	assert.Error(t, err, "Error should have been thrown with saveDoc and invalid connection")
+	require.Error(t, err, "Error should have been thrown with saveDoc and invalid connection")
 
 	//Test deleteDoc with bad connection
 	err = badDB.deleteDoc("1", "1")
-	assert.Error(t, err, "Error should have been thrown with deleteDoc and invalid connection")
+	require.Error(t, err, "Error should have been thrown with deleteDoc and invalid connection")
 
 	//Test readDocRange with bad connection
 	_, _, err = badDB.readDocRange("1", "2", 1000)
-	assert.Error(t, err, "Error should have been thrown with readDocRange and invalid connection")
+	require.Error(t, err, "Error should have been thrown with readDocRange and invalid connection")
 
 	//Test queryDocuments with bad connection
 	_, _, err = badDB.queryDocuments("1")
-	assert.Error(t, err, "Error should have been thrown with queryDocuments and invalid connection")
+	require.Error(t, err, "Error should have been thrown with queryDocuments and invalid connection")
 
 	//Test batchRetrieveDocumentMetadata with bad connection
 	_, err = badDB.batchRetrieveDocumentMetadata(nil)
-	assert.Error(t, err, "Error should have been thrown with batchRetrieveDocumentMetadata and invalid connection")
+	require.Error(t, err, "Error should have been thrown with batchRetrieveDocumentMetadata and invalid connection")
 
 	//Test batchUpdateDocuments with bad connection
 	_, err = badDB.batchUpdateDocuments(nil)
-	assert.Error(t, err, "Error should have been thrown with batchUpdateDocuments and invalid connection")
+	require.Error(t, err, "Error should have been thrown with batchUpdateDocuments and invalid connection")
 
 	//Test listIndex with bad connection
 	_, err = badDB.listIndex()
-	assert.Error(t, err, "Error should have been thrown with listIndex and invalid connection")
+	require.Error(t, err, "Error should have been thrown with listIndex and invalid connection")
 
 	//Test createIndex with bad connection
 	_, err = badDB.createIndex("")
-	assert.Error(t, err, "Error should have been thrown with createIndex and invalid connection")
+	require.Error(t, err, "Error should have been thrown with createIndex and invalid connection")
 
 	//Test deleteIndex with bad connection
 	err = badDB.deleteIndex("", "")
-	assert.Error(t, err, "Error should have been thrown with deleteIndex and invalid connection")
+	require.Error(t, err, "Error should have been thrown with deleteIndex and invalid connection")
 
 }
 
@@ -203,16 +202,16 @@ func TestDBCreateSaveWithoutRevision(t *testing.T) {
 
 	//create a new instance and database object
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Save the test document
 	_, saveerr := db.saveDoc("2", "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 }
 
@@ -225,16 +224,16 @@ func TestDBCreateEnsureFullCommit(t *testing.T) {
 
 	//create a new instance and database object
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Save the test document
 	_, saveerr := db.saveDoc("2", "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 }
 
 func TestIsEmpty(t *testing.T) {
@@ -244,7 +243,7 @@ func TestIsEmpty(t *testing.T) {
 	defer couchDBEnv.cleanup(config)
 
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ignore := []string{"_global_changes", "_replicator", "_users", "fabric__internal"}
 	isEmpty, err := couchInstance.isEmpty(ignore)
@@ -288,30 +287,30 @@ func TestDBBadDatabaseName(t *testing.T) {
 	defer couchDBEnv.cleanup(config)
 	//create a new instance and database object using a valid database name mixed case
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	_, dberr := createCouchDatabase(couchInstance, "testDB")
-	assert.Error(t, dberr, "Error should have been thrown for an invalid db name")
+	require.Error(t, dberr, "Error should have been thrown for an invalid db name")
 
 	//create a new instance and database object using a valid database name letters and numbers
 	couchInstance, err = createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	_, dberr = createCouchDatabase(couchInstance, "test132")
-	assert.NoError(t, dberr, "Error when testing a valid database name")
+	require.NoError(t, dberr, "Error when testing a valid database name")
 
 	//create a new instance and database object using a valid database name - special characters
 	couchInstance, err = createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	_, dberr = createCouchDatabase(couchInstance, "test1234~!@#$%^&*()[]{}.")
-	assert.Error(t, dberr, "Error should have been thrown for an invalid db name")
+	require.Error(t, dberr, "Error should have been thrown for an invalid db name")
 
 	//create a new instance and database object using a invalid database name - too long	/*
 	couchInstance, err = createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	_, dberr = createCouchDatabase(couchInstance, "a12345678901234567890123456789012345678901234"+
 		"56789012345678901234567890123456789012345678901234567890123456789012345678901234567890"+
 		"12345678901234567890123456789012345678901234567890123456789012345678901234567890123456"+
 		"78901234567890123456789012345678901234567890")
-	assert.Error(t, dberr, "Error should have been thrown for invalid database name")
+	require.Error(t, dberr, "Error should have been thrown for invalid database name")
 
 }
 
@@ -327,7 +326,7 @@ func TestDBBadConnection(t *testing.T) {
 		RequestTimeout:      35 * time.Second,
 	}
 	_, err := createCouchInstance(config, &disabled.Provider{})
-	assert.Error(t, err, "Error should have been thrown for a bad connection")
+	require.Error(t, err, "Error should have been thrown for a bad connection")
 }
 
 func TestBadDBCredentials(t *testing.T) {
@@ -342,7 +341,7 @@ func TestBadDBCredentials(t *testing.T) {
 	badConfig.Password = "fred"
 	//create a new instance and database object
 	_, err := createCouchInstance(badConfig, &disabled.Provider{})
-	assert.Error(t, err, "Error should have been thrown for bad credentials")
+	require.Error(t, err, "Error should have been thrown for bad credentials")
 }
 
 func TestDBCreateDatabaseAndPersist(t *testing.T) {
@@ -374,49 +373,49 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 
 	//create a new instance and database object
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Retrieve the info for the new database and make sure the name matches
 	dbResp, _, errdb := db.getDatabaseInfo()
-	assert.NoError(t, errdb, "Error when trying to retrieve database information")
-	assert.Equal(t, database, dbResp.DbName)
+	require.NoError(t, errdb, "Error when trying to retrieve database information")
+	require.Equal(t, database, dbResp.DbName)
 
 	//Save the test document
 	_, saveerr := db.saveDoc("idWith/slash", "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Retrieve the test document
 	dbGetResp, _, geterr := db.readDoc("idWith/slash")
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	//Unmarshal the document to Asset structure
 	assetResp := &Asset{}
 	geterr = json.Unmarshal(dbGetResp.jsonValue, &assetResp)
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	//Verify the owner retrieved matches
-	assert.Equal(t, "jerry", assetResp.Owner)
+	require.Equal(t, "jerry", assetResp.Owner)
 
 	//Save the test document
 	_, saveerr = db.saveDoc("1", "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Retrieve the test document
 	dbGetResp, _, geterr = db.readDoc("1")
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	//Unmarshal the document to Asset structure
 	assetResp = &Asset{}
 	geterr = json.Unmarshal(dbGetResp.jsonValue, &assetResp)
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	//Verify the owner retrieved matches
-	assert.Equal(t, "jerry", assetResp.Owner)
+	require.Equal(t, "jerry", assetResp.Owner)
 
 	//Change owner to bob
 	assetResp.Owner = "bob"
@@ -426,18 +425,18 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 
 	//Save the updated test document
 	_, saveerr = db.saveDoc("1", "", &couchDoc{jsonValue: assetDocUpdated, attachments: nil})
-	assert.NoError(t, saveerr, "Error when trying to save the updated document")
+	require.NoError(t, saveerr, "Error when trying to save the updated document")
 
 	//Retrieve the updated test document
 	dbGetResp, _, geterr = db.readDoc("1")
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	//Unmarshal the document to Asset structure
 	assetResp = &Asset{}
 	json.Unmarshal(dbGetResp.jsonValue, &assetResp)
 
 	//Assert that the update was saved and retrieved
-	assert.Equal(t, "bob", assetResp.Owner)
+	require.Equal(t, "bob", assetResp.Owner)
 
 	testBytes2 := []byte(`test attachment 2`)
 
@@ -450,15 +449,15 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 
 	//Save the test document with an attachment
 	_, saveerr = db.saveDoc("2", "", &couchDoc{jsonValue: nil, attachments: attachments2})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Retrieve the test document with attachments
 	dbGetResp, _, geterr = db.readDoc("2")
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	//verify the text from the attachment is correct
 	testattach := dbGetResp.attachments[0].AttachmentBytes
-	assert.Equal(t, testBytes2, testattach)
+	require.Equal(t, testBytes2, testattach)
 
 	testBytes3 := []byte{}
 
@@ -471,15 +470,15 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 
 	//Save the test document with a zero length attachment
 	_, saveerr = db.saveDoc("3", "", &couchDoc{jsonValue: nil, attachments: attachments3})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Retrieve the test document with attachments
 	dbGetResp, _, geterr = db.readDoc("3")
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	//verify the text from the attachment is correct,  zero bytes
 	testattach = dbGetResp.attachments[0].AttachmentBytes
-	assert.Equal(t, testBytes3, testattach)
+	require.Equal(t, testBytes3, testattach)
 
 	testBytes4a := []byte(`test attachment 4a`)
 	attachment4a := &attachmentInfo{}
@@ -499,20 +498,20 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 
 	//Save the updated test document with multiple attachments
 	_, saveerr = db.saveDoc("4", "", &couchDoc{jsonValue: assetJSON, attachments: attachments4})
-	assert.NoError(t, saveerr, "Error when trying to save the updated document")
+	require.NoError(t, saveerr, "Error when trying to save the updated document")
 
 	//Retrieve the test document with attachments
 	dbGetResp, _, geterr = db.readDoc("4")
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	for _, attach4 := range dbGetResp.attachments {
 
 		currentName := attach4.Name
 		if currentName == "data1" {
-			assert.Equal(t, testBytes4a, attach4.AttachmentBytes)
+			require.Equal(t, testBytes4a, attach4.AttachmentBytes)
 		}
 		if currentName == "data2" {
-			assert.Equal(t, testBytes4b, attach4.AttachmentBytes)
+			require.Equal(t, testBytes4b, attach4.AttachmentBytes)
 		}
 
 	}
@@ -535,47 +534,47 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 
 	//Save the updated test document with multiple attachments and zero length attachments
 	_, saveerr = db.saveDoc("5", "", &couchDoc{jsonValue: assetJSON, attachments: attachments5})
-	assert.NoError(t, saveerr, "Error when trying to save the updated document")
+	require.NoError(t, saveerr, "Error when trying to save the updated document")
 
 	//Retrieve the test document with attachments
 	dbGetResp, _, geterr = db.readDoc("5")
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	for _, attach5 := range dbGetResp.attachments {
 
 		currentName := attach5.Name
 		if currentName == "data1" {
-			assert.Equal(t, testBytes5a, attach5.AttachmentBytes)
+			require.Equal(t, testBytes5a, attach5.AttachmentBytes)
 		}
 		if currentName == "data2" {
-			assert.Equal(t, testBytes5b, attach5.AttachmentBytes)
+			require.Equal(t, testBytes5b, attach5.AttachmentBytes)
 		}
 
 	}
 
 	//Attempt to save the document with an invalid id
 	_, saveerr = db.saveDoc(string([]byte{0xff, 0xfe, 0xfd}), "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-	assert.Error(t, saveerr, "Error should have been thrown when saving a document with an invalid ID")
+	require.Error(t, saveerr, "Error should have been thrown when saving a document with an invalid ID")
 
 	//Attempt to read a document with an invalid id
 	_, _, readerr := db.readDoc(string([]byte{0xff, 0xfe, 0xfd}))
-	assert.Error(t, readerr, "Error should have been thrown when reading a document with an invalid ID")
+	require.Error(t, readerr, "Error should have been thrown when reading a document with an invalid ID")
 
 	//Drop the database
 	_, errdbdrop := db.dropDatabase()
-	assert.NoError(t, errdbdrop, "Error dropping database")
+	require.NoError(t, errdbdrop, "Error dropping database")
 
 	//Make sure an error is thrown for getting info for a missing database
 	_, _, errdbinfo := db.getDatabaseInfo()
-	assert.Error(t, errdbinfo, "Error should have been thrown for missing database")
+	require.Error(t, errdbinfo, "Error should have been thrown for missing database")
 
 	//Attempt to save a document to a deleted database
 	_, saveerr = db.saveDoc("6", "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-	assert.Error(t, saveerr, "Error should have been thrown while attempting to save to a deleted database")
+	require.Error(t, saveerr, "Error should have been thrown while attempting to save to a deleted database")
 
 	//Attempt to read from a deleted database
 	_, _, geterr = db.readDoc("6")
-	assert.NoError(t, geterr, "Error should not have been thrown for a missing database, nil value is returned")
+	require.NoError(t, geterr, "Error should not have been thrown for a missing database, nil value is returned")
 
 }
 
@@ -593,13 +592,13 @@ func TestDBRequestTimeout(t *testing.T) {
 	impossibleTimeout := time.Nanosecond
 	configCopy.RequestTimeout = impossibleTimeout
 	_, err := createCouchInstance(&configCopy, &disabled.Provider{})
-	assert.Error(t, err, "Error should have been thown while trying to create a couchdb instance with a connection timeout")
+	require.Error(t, err, "Error should have been thown while trying to create a couchdb instance with a connection timeout")
 
 	//create a new instance and database object
 	configCopy.MaxRetries = -1
 	configCopy.MaxRetriesOnStartup = 3
 	_, err = createCouchInstance(&configCopy, &disabled.Provider{})
-	assert.Error(t, err, "Error should have been thrown while attempting to create a database")
+	require.Error(t, err, "Error should have been thrown while attempting to create a database")
 }
 
 func TestDBTimeoutConflictRetry(t *testing.T) {
@@ -613,33 +612,33 @@ func TestDBTimeoutConflictRetry(t *testing.T) {
 	configCopy := *config
 	configCopy.MaxRetriesOnStartup = 3
 	couchInstance, err := createCouchInstance(&configCopy, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Retrieve the info for the new database and make sure the name matches
 	dbResp, _, errdb := db.getDatabaseInfo()
-	assert.NoError(t, errdb, "Error when trying to retrieve database information")
-	assert.Equal(t, database, dbResp.DbName)
+	require.NoError(t, errdb, "Error when trying to retrieve database information")
+	require.Equal(t, database, dbResp.DbName)
 
 	//Save the test document
 	_, saveerr := db.saveDoc("1", "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Retrieve the test document
 	_, _, geterr := db.readDoc("1")
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	//Save the test document with an invalid rev.  This should cause a retry
 	_, saveerr = db.saveDoc("1", "1-11111111111111111111111111111111", &couchDoc{jsonValue: assetJSON, attachments: nil})
-	assert.NoError(t, saveerr, "Error when trying to save a document with a revision conflict")
+	require.NoError(t, saveerr, "Error when trying to save a document with a revision conflict")
 
 	//Delete the test document with an invalid rev.  This should cause a retry
 	deleteerr := db.deleteDoc("1", "1-11111111111111111111111111111111")
-	assert.NoError(t, deleteerr, "Error when trying to delete a document with a revision conflict")
+	require.NoError(t, deleteerr, "Error when trying to delete a document with a revision conflict")
 }
 
 func TestDBBadNumberOfRetries(t *testing.T) {
@@ -653,7 +652,7 @@ func TestDBBadNumberOfRetries(t *testing.T) {
 	configCopy.MaxRetries = -1
 	configCopy.MaxRetriesOnStartup = 3
 	_, err := createCouchInstance(&configCopy, &disabled.Provider{})
-	assert.Error(t, err, "Error should have been thrown while attempting to create a database")
+	require.Error(t, err, "Error should have been thrown while attempting to create a database")
 }
 
 func TestDBBadJSON(t *testing.T) {
@@ -665,23 +664,23 @@ func TestDBBadJSON(t *testing.T) {
 
 	//create a new instance and database object
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Retrieve the info for the new database and make sure the name matches
 	dbResp, _, errdb := db.getDatabaseInfo()
-	assert.NoError(t, errdb, "Error when trying to retrieve database information")
-	assert.Equal(t, database, dbResp.DbName)
+	require.NoError(t, errdb, "Error when trying to retrieve database information")
+	require.Equal(t, database, dbResp.DbName)
 
 	badJSON := []byte(`{"asset_name"}`)
 
 	//Save the test document
 	_, saveerr := db.saveDoc("1", "", &couchDoc{jsonValue: badJSON, attachments: nil})
-	assert.Error(t, saveerr, "Error should have been thrown for a bad JSON")
+	require.Error(t, saveerr, "Error should have been thrown for a bad JSON")
 
 }
 
@@ -694,17 +693,17 @@ func TestPrefixScan(t *testing.T) {
 
 	//create a new instance and database object
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Retrieve the info for the new database and make sure the name matches
 	dbResp, _, errdb := db.getDatabaseInfo()
-	assert.NoError(t, errdb, "Error when trying to retrieve database information")
-	assert.Equal(t, database, dbResp.DbName)
+	require.NoError(t, errdb, "Error when trying to retrieve database information")
+	require.Equal(t, database, dbResp.DbName)
 
 	//Save documents
 	for i := 0; i < 20; i++ {
@@ -712,34 +711,34 @@ func TestPrefixScan(t *testing.T) {
 		id2 := string(0) + string(i) + string(1)
 		id3 := string(0) + string(i) + string(utf8.MaxRune-1)
 		_, saveerr := db.saveDoc(id1, "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-		assert.NoError(t, saveerr, "Error when trying to save a document")
+		require.NoError(t, saveerr, "Error when trying to save a document")
 		_, saveerr = db.saveDoc(id2, "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-		assert.NoError(t, saveerr, "Error when trying to save a document")
+		require.NoError(t, saveerr, "Error when trying to save a document")
 		_, saveerr = db.saveDoc(id3, "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-		assert.NoError(t, saveerr, "Error when trying to save a document")
+		require.NoError(t, saveerr, "Error when trying to save a document")
 
 	}
 	startKey := string(0) + string(10)
 	endKey := startKey + string(utf8.MaxRune)
 	_, _, geterr := db.readDoc(endKey)
-	assert.NoError(t, geterr, "Error when trying to get lastkey")
+	require.NoError(t, geterr, "Error when trying to get lastkey")
 
 	resultsPtr, _, geterr := db.readDocRange(startKey, endKey, 1000)
-	assert.NoError(t, geterr, "Error when trying to perform a range scan")
-	assert.NotNil(t, resultsPtr)
+	require.NoError(t, geterr, "Error when trying to perform a range scan")
+	require.NotNil(t, resultsPtr)
 	results := resultsPtr
-	assert.Equal(t, 3, len(results))
-	assert.Equal(t, string(0)+string(10)+string(0), results[0].id)
-	assert.Equal(t, string(0)+string(10)+string(1), results[1].id)
-	assert.Equal(t, string(0)+string(10)+string(utf8.MaxRune-1), results[2].id)
+	require.Equal(t, 3, len(results))
+	require.Equal(t, string(0)+string(10)+string(0), results[0].id)
+	require.Equal(t, string(0)+string(10)+string(1), results[1].id)
+	require.Equal(t, string(0)+string(10)+string(utf8.MaxRune-1), results[2].id)
 
 	//Drop the database
 	_, errdbdrop := db.dropDatabase()
-	assert.NoError(t, errdbdrop, "Error dropping database")
+	require.NoError(t, errdbdrop, "Error dropping database")
 
 	//Retrieve the info for the new database and make sure the name matches
 	_, _, errdbinfo := db.getDatabaseInfo()
-	assert.Error(t, errdbinfo, "Error should have been thrown for missing database")
+	require.Error(t, errdbinfo, "Error should have been thrown for missing database")
 
 }
 
@@ -763,23 +762,23 @@ func TestDBSaveAttachment(t *testing.T) {
 
 	//create a new instance and database object
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Save the test document
 	_, saveerr := db.saveDoc("10", "", &couchDoc{jsonValue: nil, attachments: attachments})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Attempt to retrieve the updated test document with attachments
 	couchDoc, _, geterr2 := db.readDoc("10")
-	assert.NoError(t, geterr2, "Error when trying to retrieve a document with attachment")
-	assert.NotNil(t, couchDoc.attachments)
-	assert.Equal(t, byteText, couchDoc.attachments[0].AttachmentBytes)
-	assert.Equal(t, attachment.Length, couchDoc.attachments[0].Length)
+	require.NoError(t, geterr2, "Error when trying to retrieve a document with attachment")
+	require.NotNil(t, couchDoc.attachments)
+	require.Equal(t, byteText, couchDoc.attachments[0].AttachmentBytes)
+	require.Equal(t, attachment.Length, couchDoc.attachments[0].Length)
 
 }
 
@@ -792,28 +791,28 @@ func TestDBDeleteDocument(t *testing.T) {
 
 	//create a new instance and database object
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Save the test document
 	_, saveerr := db.saveDoc("2", "", &couchDoc{jsonValue: assetJSON, attachments: nil})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Attempt to retrieve the test document
 	_, _, readErr := db.readDoc("2")
-	assert.NoError(t, readErr, "Error when trying to retrieve a document with attachment")
+	require.NoError(t, readErr, "Error when trying to retrieve a document with attachment")
 
 	//Delete the test document
 	deleteErr := db.deleteDoc("2", "")
-	assert.NoError(t, deleteErr, "Error when trying to delete a document")
+	require.NoError(t, deleteErr, "Error when trying to delete a document")
 
 	//Attempt to retrieve the test document
 	readValue, _, _ := db.readDoc("2")
-	assert.Nil(t, readValue)
+	require.Nil(t, readValue)
 
 }
 
@@ -826,16 +825,16 @@ func TestDBDeleteNonExistingDocument(t *testing.T) {
 
 	//create a new instance and database object
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Save the test document
 	deleteErr := db.deleteDoc("2", "")
-	assert.NoError(t, deleteErr, "Error when trying to delete a non existing document")
+	require.NoError(t, deleteErr, "Error when trying to delete a non existing document")
 }
 
 func TestCouchDBVersion(t *testing.T) {
@@ -845,16 +844,16 @@ func TestCouchDBVersion(t *testing.T) {
 	defer couchDBEnv.cleanup(config)
 
 	err := checkCouchDBVersion("2.0.0")
-	assert.NoError(t, err, "Error should not have been thrown for valid version")
+	require.NoError(t, err, "Error should not have been thrown for valid version")
 
 	err = checkCouchDBVersion("4.5.0")
-	assert.NoError(t, err, "Error should not have been thrown for valid version")
+	require.NoError(t, err, "Error should not have been thrown for valid version")
 
 	err = checkCouchDBVersion("1.6.5.4")
-	assert.Error(t, err, "Error should have been thrown for invalid version")
+	require.Error(t, err, "Error should have been thrown for invalid version")
 
 	err = checkCouchDBVersion("0.0.0.0")
-	assert.Error(t, err, "Error should have been thrown for invalid version")
+	require.Error(t, err, "Error should have been thrown for invalid version")
 
 }
 
@@ -878,12 +877,12 @@ func TestIndexOperations(t *testing.T) {
 
 	//create a new instance and database object   --------------------------------------------------------
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	batchUpdateDocs := []*couchDoc{}
 
@@ -899,30 +898,30 @@ func TestIndexOperations(t *testing.T) {
 	batchUpdateDocs = append(batchUpdateDocs, &couchDoc{jsonValue: byteJSON10, attachments: nil})
 
 	_, err = db.batchUpdateDocuments(batchUpdateDocs)
-	assert.NoError(t, err, "Error adding batch of documents")
+	require.NoError(t, err, "Error adding batch of documents")
 
 	//Create an index definition
 	indexDefSize := `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortDoc", "name":"indexSizeSortName","type":"json"}`
 
 	//Create the index
 	_, err = db.createIndex(indexDefSize)
-	assert.NoError(t, err, "Error thrown while creating an index")
+	require.NoError(t, err, "Error thrown while creating an index")
 
 	//Retrieve the list of indexes
 	//Delay for 100ms since CouchDB index list is updated async after index create/drop
 	time.Sleep(100 * time.Millisecond)
 	listResult, err := db.listIndex()
-	assert.NoError(t, err, "Error thrown while retrieving indexes")
+	require.NoError(t, err, "Error thrown while retrieving indexes")
 
 	//There should only be one item returned
-	assert.Equal(t, 1, len(listResult))
+	require.Equal(t, 1, len(listResult))
 
 	//Verify the returned definition
 	for _, elem := range listResult {
-		assert.Equal(t, "indexSizeSortDoc", elem.DesignDocument)
-		assert.Equal(t, "indexSizeSortName", elem.Name)
+		require.Equal(t, "indexSizeSortDoc", elem.DesignDocument)
+		require.Equal(t, "indexSizeSortName", elem.Name)
 		//ensure the index definition is correct,  CouchDB 2.1.1 will also return "partial_filter_selector":{}
-		assert.Equal(t, true, strings.Contains(elem.Definition, `"fields":[{"size":"desc"}]`))
+		require.Equal(t, true, strings.Contains(elem.Definition, `"fields":[{"size":"desc"}]`))
 	}
 
 	//Create an index definition with no DesignDocument or name
@@ -930,103 +929,103 @@ func TestIndexOperations(t *testing.T) {
 
 	//Create the index
 	_, err = db.createIndex(indexDefColor)
-	assert.NoError(t, err, "Error thrown while creating an index")
+	require.NoError(t, err, "Error thrown while creating an index")
 
 	//Retrieve the list of indexes
 	//Delay for 100ms since CouchDB index list is updated async after index create/drop
 	time.Sleep(100 * time.Millisecond)
 	listResult, err = db.listIndex()
-	assert.NoError(t, err, "Error thrown while retrieving indexes")
+	require.NoError(t, err, "Error thrown while retrieving indexes")
 
 	//There should be two indexes returned
-	assert.Equal(t, 2, len(listResult))
+	require.Equal(t, 2, len(listResult))
 
 	//Delete the named index
 	err = db.deleteIndex("indexSizeSortDoc", "indexSizeSortName")
-	assert.NoError(t, err, "Error thrown while deleting an index")
+	require.NoError(t, err, "Error thrown while deleting an index")
 
 	//Retrieve the list of indexes
 	//Delay for 100ms since CouchDB index list is updated async after index create/drop
 	time.Sleep(100 * time.Millisecond)
 	listResult, err = db.listIndex()
-	assert.NoError(t, err, "Error thrown while retrieving indexes")
+	require.NoError(t, err, "Error thrown while retrieving indexes")
 
 	//There should be one index returned
-	assert.Equal(t, 1, len(listResult))
+	require.Equal(t, 1, len(listResult))
 
 	//Delete the unnamed index
 	for _, elem := range listResult {
 		err = db.deleteIndex(elem.DesignDocument, elem.Name)
-		assert.NoError(t, err, "Error thrown while deleting an index")
+		require.NoError(t, err, "Error thrown while deleting an index")
 	}
 
 	//Retrieve the list of indexes
 	//Delay for 100ms since CouchDB index list is updated async after index create/drop
 	time.Sleep(100 * time.Millisecond)
 	listResult, err = db.listIndex()
-	assert.NoError(t, err, "Error thrown while retrieving indexes")
-	assert.Equal(t, 0, len(listResult))
+	require.NoError(t, err, "Error thrown while retrieving indexes")
+	require.Equal(t, 0, len(listResult))
 
 	//Create a query string with a descending sort, this will require an index
 	queryString := `{"selector":{"size": {"$gt": 0}},"fields": ["_id", "_rev", "owner", "asset_name", "color", "size"], "sort":[{"size":"desc"}], "limit": 10,"skip": 0}`
 
 	//Execute a query with a sort, this should throw the exception
 	_, _, err = db.queryDocuments(queryString)
-	assert.Error(t, err, "Error should have thrown while querying without a valid index")
+	require.Error(t, err, "Error should have thrown while querying without a valid index")
 
 	//Create the index
 	_, err = db.createIndex(indexDefSize)
-	assert.NoError(t, err, "Error thrown while creating an index")
+	require.NoError(t, err, "Error thrown while creating an index")
 
 	//Delay for 100ms since CouchDB index list is updated async after index create/drop
 	time.Sleep(100 * time.Millisecond)
 
 	//Execute a query with an index,  this should succeed
 	_, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error thrown while querying with an index")
+	require.NoError(t, err, "Error thrown while querying with an index")
 
 	//Create another index definition
 	indexDefSize = `{"index":{"fields":[{"data.size":"desc"},{"data.owner":"desc"}]},"ddoc":"indexSizeOwnerSortDoc", "name":"indexSizeOwnerSortName","type":"json"}`
 
 	//Create the index
 	dbResp, err := db.createIndex(indexDefSize)
-	assert.NoError(t, err, "Error thrown while creating an index")
+	require.NoError(t, err, "Error thrown while creating an index")
 
 	//verify the response is "created" for an index creation
-	assert.Equal(t, "created", dbResp.Result)
+	require.Equal(t, "created", dbResp.Result)
 
 	//Delay for 100ms since CouchDB index list is updated async after index create/drop
 	time.Sleep(100 * time.Millisecond)
 
 	//Update the index
 	dbResp, err = db.createIndex(indexDefSize)
-	assert.NoError(t, err, "Error thrown while creating an index")
+	require.NoError(t, err, "Error thrown while creating an index")
 
 	//verify the response is "exists" for an update
-	assert.Equal(t, "exists", dbResp.Result)
+	require.Equal(t, "exists", dbResp.Result)
 
 	//Retrieve the list of indexes
 	//Delay for 100ms since CouchDB index list is updated async after index create/drop
 	time.Sleep(100 * time.Millisecond)
 	listResult, err = db.listIndex()
-	assert.NoError(t, err, "Error thrown while retrieving indexes")
+	require.NoError(t, err, "Error thrown while retrieving indexes")
 
 	//There should only be two definitions
-	assert.Equal(t, 2, len(listResult))
+	require.Equal(t, 2, len(listResult))
 
 	//Create an invalid index definition with an invalid JSON
 	indexDefSize = `{"index"{"fields":[{"data.size":"desc"},{"data.owner":"desc"}]},"ddoc":"indexSizeOwnerSortDoc", "name":"indexSizeOwnerSortName","type":"json"}`
 
 	//Create the index
 	_, err = db.createIndex(indexDefSize)
-	assert.Error(t, err, "Error should have been thrown for an invalid index JSON")
+	require.Error(t, err, "Error should have been thrown for an invalid index JSON")
 
 	//Create an invalid index definition with a valid JSON and an invalid index definition
 	indexDefSize = `{"index":{"fields2":[{"data.size":"desc"},{"data.owner":"desc"}]},"ddoc":"indexSizeOwnerSortDoc", "name":"indexSizeOwnerSortName","type":"json"}`
 
 	//Create the index
 	_, err = db.createIndex(indexDefSize)
-	assert.Error(t, err, "Error should have been thrown for an invalid index definition")
+	require.Error(t, err, "Error should have been thrown for an invalid index definition")
 
 }
 
@@ -1136,176 +1135,176 @@ func TestRichQuery(t *testing.T) {
 
 	//create a new instance and database object   --------------------------------------------------------
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Save the test document
 	_, saveerr := db.saveDoc("marble01", "", &couchDoc{jsonValue: byteJSON01, attachments: attachments1})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble02", "", &couchDoc{jsonValue: byteJSON02, attachments: attachments2})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble03", "", &couchDoc{jsonValue: byteJSON03, attachments: attachments3})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble04", "", &couchDoc{jsonValue: byteJSON04, attachments: attachments4})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble05", "", &couchDoc{jsonValue: byteJSON05, attachments: attachments5})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble06", "", &couchDoc{jsonValue: byteJSON06, attachments: attachments6})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble07", "", &couchDoc{jsonValue: byteJSON07, attachments: attachments7})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble08", "", &couchDoc{jsonValue: byteJSON08, attachments: attachments8})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble09", "", &couchDoc{jsonValue: byteJSON09, attachments: attachments9})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble10", "", &couchDoc{jsonValue: byteJSON10, attachments: attachments10})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble11", "", &couchDoc{jsonValue: byteJSON11, attachments: attachments11})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Save the test document
 	_, saveerr = db.saveDoc("marble12", "", &couchDoc{jsonValue: byteJSON12, attachments: attachments12})
-	assert.NoError(t, saveerr, "Error when trying to save a document")
+	require.NoError(t, saveerr, "Error when trying to save a document")
 
 	//Test query with invalid JSON -------------------------------------------------------------------
 	queryString := `{"selector":{"owner":}}`
 
 	_, _, err = db.queryDocuments(queryString)
-	assert.Error(t, err, "Error should have been thrown for bad json")
+	require.Error(t, err, "Error should have been thrown for bad json")
 
 	//Test query with object  -------------------------------------------------------------------
 	queryString = `{"selector":{"owner":{"$eq":"jerry"}}}`
 
 	queryResult, _, err := db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query")
+	require.NoError(t, err, "Error when attempting to execute a query")
 
 	//There should be 3 results for owner="jerry"
-	assert.Equal(t, 3, len(queryResult))
+	require.Equal(t, 3, len(queryResult))
 
 	//Test query with implicit operator   --------------------------------------------------------------
 	queryString = `{"selector":{"owner":"jerry"}}`
 
 	queryResult, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query")
+	require.NoError(t, err, "Error when attempting to execute a query")
 
 	//There should be 3 results for owner="jerry"
-	assert.Equal(t, 3, len(queryResult))
+	require.Equal(t, 3, len(queryResult))
 
 	//Test query with specified fields   -------------------------------------------------------------------
 	queryString = `{"selector":{"owner":{"$eq":"jerry"}},"fields": ["owner","asset_name","color","size"]}`
 
 	queryResult, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query")
+	require.NoError(t, err, "Error when attempting to execute a query")
 
 	//There should be 3 results for owner="jerry"
-	assert.Equal(t, 3, len(queryResult))
+	require.Equal(t, 3, len(queryResult))
 
 	//Test query with a leading operator   -------------------------------------------------------------------
 	queryString = `{"selector":{"$or":[{"owner":{"$eq":"jerry"}},{"owner": {"$eq": "frank"}}]}}`
 
 	queryResult, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query")
+	require.NoError(t, err, "Error when attempting to execute a query")
 
 	//There should be 4 results for owner="jerry" or owner="frank"
-	assert.Equal(t, 4, len(queryResult))
+	require.Equal(t, 4, len(queryResult))
 
 	//Test query implicit and explicit operator   ------------------------------------------------------------------
 	queryString = `{"selector":{"color":"green","$or":[{"owner":"tom"},{"owner":"frank"}]}}`
 
 	queryResult, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query")
+	require.NoError(t, err, "Error when attempting to execute a query")
 
 	//There should be 2 results for color="green" and (owner="jerry" or owner="frank")
-	assert.Equal(t, 2, len(queryResult))
+	require.Equal(t, 2, len(queryResult))
 
 	//Test query with a leading operator  -------------------------------------------------------------------------
 	queryString = `{"selector":{"$and":[{"size":{"$gte":2}},{"size":{"$lte":5}}]}}`
 
 	queryResult, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query")
+	require.NoError(t, err, "Error when attempting to execute a query")
 
 	//There should be 4 results for size >= 2 and size <= 5
-	assert.Equal(t, 4, len(queryResult))
+	require.Equal(t, 4, len(queryResult))
 
 	//Test query with leading and embedded operator  -------------------------------------------------------------
 	queryString = `{"selector":{"$and":[{"size":{"$gte":3}},{"size":{"$lte":10}},{"$not":{"size":7}}]}}`
 
 	queryResult, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query")
+	require.NoError(t, err, "Error when attempting to execute a query")
 
 	//There should be 7 results for size >= 3 and size <= 10 and not 7
-	assert.Equal(t, 7, len(queryResult))
+	require.Equal(t, 7, len(queryResult))
 
 	//Test query with leading operator and array of objects ----------------------------------------------------------
 	queryString = `{"selector":{"$and":[{"size":{"$gte":2}},{"size":{"$lte":10}},{"$nor":[{"size":3},{"size":5},{"size":7}]}]}}`
 
 	queryResult, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query")
+	require.NoError(t, err, "Error when attempting to execute a query")
 
 	//There should be 6 results for size >= 2 and size <= 10 and not 3,5 or 7
-	assert.Equal(t, 6, len(queryResult))
+	require.Equal(t, 6, len(queryResult))
 
 	//Test a range query ---------------------------------------------------------------------------------------------
 	queryResult, _, err = db.readDocRange("marble02", "marble06", 10000)
-	assert.NoError(t, err, "Error when attempting to execute a range query")
+	require.NoError(t, err, "Error when attempting to execute a range query")
 
 	//There should be 4 results
-	assert.Equal(t, 4, len(queryResult))
+	require.Equal(t, 4, len(queryResult))
 
 	//Attachments retrieved should be correct
-	assert.Equal(t, attachment2.AttachmentBytes, queryResult[0].attachments[0].AttachmentBytes)
-	assert.Equal(t, attachment3.AttachmentBytes, queryResult[1].attachments[0].AttachmentBytes)
-	assert.Equal(t, attachment4.AttachmentBytes, queryResult[2].attachments[0].AttachmentBytes)
-	assert.Equal(t, attachment5.AttachmentBytes, queryResult[3].attachments[0].AttachmentBytes)
+	require.Equal(t, attachment2.AttachmentBytes, queryResult[0].attachments[0].AttachmentBytes)
+	require.Equal(t, attachment3.AttachmentBytes, queryResult[1].attachments[0].AttachmentBytes)
+	require.Equal(t, attachment4.AttachmentBytes, queryResult[2].attachments[0].AttachmentBytes)
+	require.Equal(t, attachment5.AttachmentBytes, queryResult[3].attachments[0].AttachmentBytes)
 
 	//Test query with for tom  -------------------------------------------------------------------
 	queryString = `{"selector":{"owner":{"$eq":"tom"}}}`
 
 	queryResult, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query")
+	require.NoError(t, err, "Error when attempting to execute a query")
 
 	//There should be 8 results for owner="tom"
-	assert.Equal(t, 8, len(queryResult))
+	require.Equal(t, 8, len(queryResult))
 
 	//Test query with for tom with limit  -------------------------------------------------------------------
 	queryString = `{"selector":{"owner":{"$eq":"tom"}},"limit":2}`
 
 	queryResult, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query")
+	require.NoError(t, err, "Error when attempting to execute a query")
 
 	//There should be 2 results for owner="tom" with a limit of 2
-	assert.Equal(t, 2, len(queryResult))
+	require.Equal(t, 2, len(queryResult))
 
 	//Create an index definition
 	indexDefSize := `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortDoc", "name":"indexSizeSortName","type":"json"}`
 
 	//Create the index
 	_, err = db.createIndex(indexDefSize)
-	assert.NoError(t, err, "Error thrown while creating an index")
+	require.NoError(t, err, "Error thrown while creating an index")
 
 	//Delay for 100ms since CouchDB index list is updated async after index create/drop
 	time.Sleep(100 * time.Millisecond)
@@ -1314,7 +1313,7 @@ func TestRichQuery(t *testing.T) {
 	queryString = `{"selector":{"size":{"$gt":0}}, "use_index":["indexSizeSortDoc","indexSizeSortName"]}`
 
 	_, _, err = db.queryDocuments(queryString)
-	assert.NoError(t, err, "Error when attempting to execute a query with a valid index")
+	require.NoError(t, err, "Error when attempting to execute a query with a valid index")
 
 }
 
@@ -1373,12 +1372,12 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 
 	//create a new instance and database object   --------------------------------------------------------
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	batchUpdateDocs := []*couchDoc{}
 
@@ -1397,59 +1396,59 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	batchUpdateDocs = append(batchUpdateDocs, value6)
 
 	batchUpdateResp, err := db.batchUpdateDocuments(batchUpdateDocs)
-	assert.NoError(t, err, "Error when attempting to update a batch of documents")
+	require.NoError(t, err, "Error when attempting to update a batch of documents")
 
 	//check to make sure each batch update response was successful
 	for _, updateDoc := range batchUpdateResp {
-		assert.Equal(t, true, updateDoc.Ok)
+		require.Equal(t, true, updateDoc.Ok)
 	}
 
 	//----------------------------------------------
 	//Test Retrieve JSON
 	dbGetResp, _, geterr := db.readDoc("marble01")
-	assert.NoError(t, geterr, "Error when attempting read a document")
+	require.NoError(t, geterr, "Error when attempting read a document")
 
 	assetResp := &Asset{}
 	geterr = json.Unmarshal(dbGetResp.jsonValue, &assetResp)
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 	//Verify the owner retrieved matches
-	assert.Equal(t, "jerry", assetResp.Owner)
+	require.Equal(t, "jerry", assetResp.Owner)
 
 	//----------------------------------------------
 	// Test Retrieve JSON using ID with URL special characters,
 	// this will confirm that batch document IDs and URL IDs are consistent, even if they include special characters
 	dbGetResp, _, geterr = db.readDoc("marble06#$&'()*+,/:;=?@[]")
-	assert.NoError(t, geterr, "Error when attempting read a document")
+	require.NoError(t, geterr, "Error when attempting read a document")
 
 	assetResp = &Asset{}
 	geterr = json.Unmarshal(dbGetResp.jsonValue, &assetResp)
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 	//Verify the owner retrieved matches
-	assert.Equal(t, "jerry", assetResp.Owner)
+	require.Equal(t, "jerry", assetResp.Owner)
 
 	//----------------------------------------------
 	//Test retrieve binary
 	dbGetResp, _, geterr = db.readDoc("marble03")
-	assert.NoError(t, geterr, "Error when attempting read a document")
+	require.NoError(t, geterr, "Error when attempting read a document")
 	//Retrieve the attachments
 	attachments := dbGetResp.attachments
 	//Only one was saved, so take the first
 	retrievedAttachment := attachments[0]
 	//Verify the text matches
-	assert.Equal(t, retrievedAttachment.AttachmentBytes, attachment3.AttachmentBytes)
+	require.Equal(t, retrievedAttachment.AttachmentBytes, attachment3.AttachmentBytes)
 	//----------------------------------------------
 	//Test Bad Updates
 	batchUpdateDocs = []*couchDoc{}
 	batchUpdateDocs = append(batchUpdateDocs, value1)
 	batchUpdateDocs = append(batchUpdateDocs, value2)
 	batchUpdateResp, err = db.batchUpdateDocuments(batchUpdateDocs)
-	assert.NoError(t, err, "Error when attempting to update a batch of documents")
+	require.NoError(t, err, "Error when attempting to update a batch of documents")
 	//No revision was provided, so these two updates should fail
 	//Verify that the "Ok" field is returned as false
 	for _, updateDoc := range batchUpdateResp {
-		assert.Equal(t, false, updateDoc.Ok)
-		assert.Equal(t, updateDocumentConflictError, updateDoc.Error)
-		assert.Equal(t, updateDocumentConflictReason, updateDoc.Reason)
+		require.Equal(t, false, updateDoc.Ok)
+		require.Equal(t, updateDocumentConflictError, updateDoc.Error)
+		require.Equal(t, updateDocumentConflictReason, updateDoc.Reason)
 	}
 
 	//----------------------------------------------
@@ -1461,7 +1460,7 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	keys = append(keys, "marble03")
 
 	batchRevs, err := db.batchRetrieveDocumentMetadata(keys)
-	assert.NoError(t, err, "Error when attempting retrieve revisions")
+	require.NoError(t, err, "Error when attempting retrieve revisions")
 
 	batchUpdateDocs = []*couchDoc{}
 
@@ -1482,10 +1481,10 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 
 	//Update couchdb with the batch
 	batchUpdateResp, err = db.batchUpdateDocuments(batchUpdateDocs)
-	assert.NoError(t, err, "Error when attempting to update a batch of documents")
+	require.NoError(t, err, "Error when attempting to update a batch of documents")
 	//check to make sure each batch update response was successful
 	for _, updateDoc := range batchUpdateResp {
-		assert.Equal(t, true, updateDoc.Ok)
+		require.Equal(t, true, updateDoc.Ok)
 	}
 
 	//----------------------------------------------
@@ -1497,7 +1496,7 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	keys = append(keys, "marble04")
 
 	batchRevs, err = db.batchRetrieveDocumentMetadata(keys)
-	assert.NoError(t, err, "Error when attempting retrieve revisions")
+	require.NoError(t, err, "Error when attempting retrieve revisions")
 
 	batchUpdateDocs = []*couchDoc{}
 
@@ -1517,26 +1516,26 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 
 	//Update couchdb with the batch
 	batchUpdateResp, err = db.batchUpdateDocuments(batchUpdateDocs)
-	assert.NoError(t, err, "Error when attempting to update a batch of documents")
+	require.NoError(t, err, "Error when attempting to update a batch of documents")
 
 	//check to make sure each batch update response was successful
 	for _, updateDoc := range batchUpdateResp {
-		assert.Equal(t, true, updateDoc.Ok)
+		require.Equal(t, true, updateDoc.Ok)
 	}
 
 	//Retrieve the test document
 	dbGetResp, _, geterr = db.readDoc("marble02")
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	//assert the value was deleted
-	assert.Nil(t, dbGetResp)
+	require.Nil(t, dbGetResp)
 
 	//Retrieve the test document
 	dbGetResp, _, geterr = db.readDoc("marble04")
-	assert.NoError(t, geterr, "Error when trying to retrieve a document")
+	require.NoError(t, geterr, "Error when trying to retrieve a document")
 
 	//assert the value was deleted
-	assert.Nil(t, dbGetResp)
+	require.Nil(t, dbGetResp)
 
 }
 
@@ -1573,12 +1572,12 @@ func TestDatabaseSecuritySettings(t *testing.T) {
 
 	//create a new instance and database object   --------------------------------------------------------
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	//Create a database security object
 	securityPermissions := &databaseSecurity{}
@@ -1587,34 +1586,34 @@ func TestDatabaseSecuritySettings(t *testing.T) {
 
 	//Apply security
 	err = db.applyDatabaseSecurity(securityPermissions)
-	assert.NoError(t, err, "Error when trying to apply database security")
+	require.NoError(t, err, "Error when trying to apply database security")
 
 	//Retrieve database security
 	dbSecurity, err := db.getDatabaseSecurity()
-	assert.NoError(t, err, "Error when retrieving database security")
+	require.NoError(t, err, "Error when retrieving database security")
 
 	//Verify retrieval of admins
-	assert.Equal(t, "admin", dbSecurity.Admins.Names[0])
+	require.Equal(t, "admin", dbSecurity.Admins.Names[0])
 
 	//Verify retrieval of members
-	assert.Equal(t, "admin", dbSecurity.Members.Names[0])
+	require.Equal(t, "admin", dbSecurity.Members.Names[0])
 
 	//Create an empty database security object
 	securityPermissions = &databaseSecurity{}
 
 	//Apply the security
 	err = db.applyDatabaseSecurity(securityPermissions)
-	assert.NoError(t, err, "Error when trying to apply database security")
+	require.NoError(t, err, "Error when trying to apply database security")
 
 	//Retrieve database security
 	dbSecurity, err = db.getDatabaseSecurity()
-	assert.NoError(t, err, "Error when retrieving database security")
+	require.NoError(t, err, "Error when retrieving database security")
 
 	//Verify retrieval of admins, should be an empty array
-	assert.Equal(t, 0, len(dbSecurity.Admins.Names))
+	require.Equal(t, 0, len(dbSecurity.Admins.Names))
 
 	//Verify retrieval of members, should be an empty array
-	assert.Equal(t, 0, len(dbSecurity.Members.Names))
+	require.Equal(t, 0, len(dbSecurity.Members.Names))
 
 }
 
@@ -1627,25 +1626,25 @@ func TestURLWithSpecialCharacters(t *testing.T) {
 
 	// parse a contructed URL
 	finalURL, err := url.Parse("http://127.0.0.1:5984")
-	assert.NoError(t, err, "error thrown while parsing couchdb url")
+	require.NoError(t, err, "error thrown while parsing couchdb url")
 
 	// test the constructCouchDBUrl function with multiple path elements
 	couchdbURL := constructCouchDBUrl(finalURL, database, "_index", "designdoc", "json", "indexname")
-	assert.Equal(t, "http://127.0.0.1:5984/testdb%2Bwith%2Bplus_sign/_index/designdoc/json/indexname", couchdbURL.String())
+	require.Equal(t, "http://127.0.0.1:5984/testdb%2Bwith%2Bplus_sign/_index/designdoc/json/indexname", couchdbURL.String())
 
 	//create a new instance and database object   --------------------------------------------------------
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
-	assert.NoError(t, err, "Error when trying to create couch instance")
+	require.NoError(t, err, "Error when trying to create couch instance")
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
 	//create a new database
 	errdb := db.createDatabaseIfNotExist()
-	assert.NoError(t, errdb, "Error when trying to create database")
+	require.NoError(t, errdb, "Error when trying to create database")
 
 	dbInfo, _, errInfo := db.getDatabaseInfo()
-	assert.NoError(t, errInfo, "Error when trying to get database info")
+	require.NoError(t, errInfo, "Error when trying to get database info")
 
-	assert.Equal(t, database, dbInfo.DbName)
+	require.Equal(t, database, dbInfo.DbName)
 
 }
 
