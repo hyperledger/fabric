@@ -61,9 +61,9 @@ func TestBlockfileMgrCrashDuringWriting(t *testing.T) {
 	testBlockfileMgrCrashDuringWriting(t, 0, 5, 1000, 10, true)
 }
 
-func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint int,
-	numBlocksAfterCheckpoint int, numLastBlockBytes int, numPartialBytesToWrite int,
-	deleteCPInfo bool) {
+func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlksBeforeSavingBlkfilesInfo int,
+	numBlksAfterSavingBlkfilesInfo int, numLastBlockBytes int, numPartialBytesToWrite int,
+	deleteBFInfo bool) {
 	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 	ledgerid := "testLedger"
@@ -71,34 +71,34 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
 
 	// create all necessary blocks
-	totalBlocks := numBlocksBeforeCheckpoint + numBlocksAfterCheckpoint
+	totalBlocks := numBlksBeforeSavingBlkfilesInfo + numBlksAfterSavingBlkfilesInfo
 	allBlocks := []*common.Block{gb}
 	allBlocks = append(allBlocks, bg.NextTestBlocks(totalBlocks+1)...)
 
 	// identify the blocks that are to be added beforeCP, afterCP, and after restart
-	blocksBeforeCP := []*common.Block{}
-	blocksAfterCP := []*common.Block{}
-	if numBlocksBeforeCheckpoint != 0 {
-		blocksBeforeCP = allBlocks[0:numBlocksBeforeCheckpoint]
+	blocksBeforeSavingBlkfilesInfo := []*common.Block{}
+	blocksAfterSavingBlkfilesInfo := []*common.Block{}
+	if numBlksBeforeSavingBlkfilesInfo != 0 {
+		blocksBeforeSavingBlkfilesInfo = allBlocks[0:numBlksBeforeSavingBlkfilesInfo]
 	}
-	if numBlocksAfterCheckpoint != 0 {
-		blocksAfterCP = allBlocks[numBlocksBeforeCheckpoint : numBlocksBeforeCheckpoint+numBlocksAfterCheckpoint]
+	if numBlksAfterSavingBlkfilesInfo != 0 {
+		blocksAfterSavingBlkfilesInfo = allBlocks[numBlksBeforeSavingBlkfilesInfo : numBlksBeforeSavingBlkfilesInfo+numBlksAfterSavingBlkfilesInfo]
 	}
-	blocksAfterRestart := allBlocks[numBlocksBeforeCheckpoint+numBlocksAfterCheckpoint:]
+	blocksAfterRestart := allBlocks[numBlksBeforeSavingBlkfilesInfo+numBlksAfterSavingBlkfilesInfo:]
 
 	// add blocks before cp
-	blkfileMgrWrapper.addBlocks(blocksBeforeCP)
-	currentCPInfo := blkfileMgrWrapper.blockfileMgr.cpInfo
-	cpInfo1 := &checkpointInfo{
-		latestFileChunkSuffixNum:    currentCPInfo.latestFileChunkSuffixNum,
-		latestFileChunksize:         currentCPInfo.latestFileChunksize,
-		noBlockFiles:                currentCPInfo.noBlockFiles,
-		lastBlockNumberInBlockFiles: currentCPInfo.lastBlockNumberInBlockFiles,
+	blkfileMgrWrapper.addBlocks(blocksBeforeSavingBlkfilesInfo)
+	currentBlkfilesInfo := blkfileMgrWrapper.blockfileMgr.blockfilesInfo
+	blkfilesInfo1 := &blockfilesInfo{
+		latestFileNumber:   currentBlkfilesInfo.latestFileNumber,
+		latestFileSize:     currentBlkfilesInfo.latestFileSize,
+		noBlockFiles:       currentBlkfilesInfo.noBlockFiles,
+		lastPersistedBlock: currentBlkfilesInfo.lastPersistedBlock,
 	}
 
 	// add blocks after cp
-	blkfileMgrWrapper.addBlocks(blocksAfterCP)
-	cpInfo2 := blkfileMgrWrapper.blockfileMgr.cpInfo
+	blkfileMgrWrapper.addBlocks(blocksAfterSavingBlkfilesInfo)
+	blkfilesInfo2 := blkfileMgrWrapper.blockfileMgr.blockfilesInfo
 
 	// simulate a crash scenario
 	lastBlockBytes := []byte{}
@@ -108,19 +108,19 @@ func testBlockfileMgrCrashDuringWriting(t *testing.T, numBlocksBeforeCheckpoint 
 	lastBlockBytes = append(lastBlockBytes, randomBytes...)
 	partialBytes := lastBlockBytes[:numPartialBytesToWrite]
 	blkfileMgrWrapper.blockfileMgr.currentFileWriter.append(partialBytes, true)
-	if deleteCPInfo {
+	if deleteBFInfo {
 		err := blkfileMgrWrapper.blockfileMgr.db.Delete(blkMgrInfoKey, true)
 		assert.NoError(t, err)
 	} else {
-		blkfileMgrWrapper.blockfileMgr.saveCurrentInfo(cpInfo1, true)
+		blkfileMgrWrapper.blockfileMgr.saveBlkfilesInfo(blkfilesInfo1, true)
 	}
 	blkfileMgrWrapper.close()
 
 	// simulate a start after a crash
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
-	cpInfo3 := blkfileMgrWrapper.blockfileMgr.cpInfo
-	assert.Equal(t, cpInfo2, cpInfo3)
+	blkfilesInfo3 := blkfileMgrWrapper.blockfileMgr.blockfilesInfo
+	assert.Equal(t, blkfilesInfo2, blkfilesInfo3)
 
 	// add fresh blocks after restart
 	blkfileMgrWrapper.addBlocks(blocksAfterRestart)
@@ -340,7 +340,7 @@ func TestBlockfileMgrRestart(t *testing.T) {
 
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
-	assert.Equal(t, 9, int(blkfileMgrWrapper.blockfileMgr.cpInfo.lastBlockNumberInBlockFiles))
+	assert.Equal(t, 9, int(blkfileMgrWrapper.blockfileMgr.blockfilesInfo.lastPersistedBlock))
 	blkfileMgrWrapper.testGetBlockByHash(blocks, nil)
 	assert.Equal(t, expectedHeight, blkfileMgrWrapper.blockfileMgr.getBlockchainInfo().Height)
 }
@@ -362,14 +362,14 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	ledgerid := "testLedger"
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
 	blkfileMgrWrapper.addBlocks(blocks[:100])
-	assert.Equal(t, 1, blkfileMgrWrapper.blockfileMgr.cpInfo.latestFileChunkSuffixNum)
+	assert.Equal(t, 1, blkfileMgrWrapper.blockfileMgr.blockfilesInfo.latestFileNumber)
 	blkfileMgrWrapper.testGetBlockByHash(blocks[:100], nil)
 	blkfileMgrWrapper.close()
 
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
 	blkfileMgrWrapper.addBlocks(blocks[100:])
-	assert.Equal(t, 2, blkfileMgrWrapper.blockfileMgr.cpInfo.latestFileChunkSuffixNum)
+	assert.Equal(t, 2, blkfileMgrWrapper.blockfileMgr.blockfilesInfo.latestFileNumber)
 	blkfileMgrWrapper.testGetBlockByHash(blocks[100:], nil)
 }
 
@@ -394,16 +394,16 @@ func TestBlockfileMgrGetBlockByTxID(t *testing.T) {
 }
 
 func TestBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T) {
-	t.Run("CPInfo persisted", func(t *testing.T) {
+	t.Run("blockfilesInfo persisted", func(t *testing.T) {
 		testBlockfileMgrSimulateCrashAtFirstBlockInFile(t, false)
 	})
 
-	t.Run("CPInfo to be computed from block files", func(t *testing.T) {
+	t.Run("blockfilesInfo to be computed from block files", func(t *testing.T) {
 		testBlockfileMgrSimulateCrashAtFirstBlockInFile(t, true)
 	})
 }
 
-func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteCPInfo bool) {
+func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteBlkfilesInfo bool) {
 	// open blockfileMgr and add 5 blocks
 	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
@@ -425,7 +425,7 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteCPInfo 
 		[]byte("partialBytesForNextBlock depicting a crash during first block in file")...,
 	)
 	blockfileMgr.currentFileWriter.append(partialBytesForNextBlock, true)
-	if deleteCPInfo {
+	if deleteBlkfilesInfo {
 		err := blockfileMgr.db.Delete(blkMgrInfoKey, true)
 		assert.NoError(t, err)
 	}
@@ -444,13 +444,13 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteCPInfo 
 	// last block file (block file number 1) should have been truncated to zero length and concluded as the next file to append to
 	assert.Equal(t, 0, testutilGetFileSize(t, lastFilePath))
 	assert.Equal(t,
-		&checkpointInfo{
-			latestFileChunkSuffixNum:    1,
-			latestFileChunksize:         0,
-			lastBlockNumberInBlockFiles: 4,
-			noBlockFiles:                false,
+		&blockfilesInfo{
+			latestFileNumber:   1,
+			latestFileSize:     0,
+			lastPersistedBlock: 4,
+			noBlockFiles:       false,
 		},
-		blkfileMgrWrapper.blockfileMgr.cpInfo,
+		blkfileMgrWrapper.blockfileMgr.blockfilesInfo,
 	)
 
 	// Add 5 more blocks and assert that they are added to last file (block file number 1) and full scanning across two files works as expected

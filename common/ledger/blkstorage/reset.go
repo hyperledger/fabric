@@ -142,11 +142,11 @@ const (
 // the existing file (if present). This helps in achieving fail-safe behviour of reset utility
 func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 	logger.Infof("Preparing to record current height for ledger at [%s]", ledgerDir)
-	checkpointInfo, err := constructCheckpointInfoFromBlockFiles(ledgerDir)
+	blkfilesInfo, err := constructBlockfilesInfo(ledgerDir)
 	if err != nil {
 		return err
 	}
-	logger.Infof("Loaded current info from blockfiles %#v", checkpointInfo)
+	logger.Infof("Loaded current info from blockfiles %#v", blkfilesInfo)
 	preResetHtFile := path.Join(ledgerDir, fileNamePreRestHt)
 	exists, err := pathExists(preResetHtFile)
 	logger.Infof("preResetHtFile already exists? = %t", exists)
@@ -164,7 +164,7 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 		}
 		logger.Infof("preResetHtFile contains height = %d", previuoslyRecordedHt)
 	}
-	currentHt := checkpointInfo.lastBlockNumberInBlockFiles + 1
+	currentHt := blkfilesInfo.lastPersistedBlock + 1
 	if currentHt > previuoslyRecordedHt {
 		logger.Infof("Recording current height [%d]", currentHt)
 		return ioutil.WriteFile(preResetHtFile,

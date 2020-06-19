@@ -45,14 +45,14 @@ func TestRollback(t *testing.T) {
 	actualBlockchainInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	assert.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
 
-	// 3. Check the checkpointInfo
-	expectedCheckpointInfoLastBlockNumber := uint64(49)
-	expectedCheckpointInfoIsChainEmpty := false
-	actualCheckpointInfo, err := blkfileMgrWrapper.blockfileMgr.loadCurrentInfo()
+	// 3. Check the BlockfileInfo
+	expectedblkfilesInfoLastBlockNumber := uint64(49)
+	expectedBlkfilesInfoIsNoFiles := false
+	actualBlkfilesInfo, err := blkfileMgrWrapper.blockfileMgr.loadBlkfilesInfo()
 	assert.NoError(t, err)
-	assert.Equal(t, expectedCheckpointInfoLastBlockNumber, actualCheckpointInfo.lastBlockNumberInBlockFiles)
-	assert.Equal(t, expectedCheckpointInfoIsChainEmpty, actualCheckpointInfo.noBlockFiles)
-	assert.Equal(t, actualCheckpointInfo.latestFileChunkSuffixNum, 4)
+	assert.Equal(t, expectedblkfilesInfoLastBlockNumber, actualBlkfilesInfo.lastPersistedBlock)
+	assert.Equal(t, expectedBlkfilesInfoIsNoFiles, actualBlkfilesInfo.noBlockFiles)
+	assert.Equal(t, actualBlkfilesInfo.latestFileNumber, 4)
 
 	// 4. Check whether all blocks are stored correctly
 	blkfileMgrWrapper.testGetBlockByNumber(blocks, 0, nil)
@@ -138,14 +138,14 @@ func TestRollbackWithOnlyBlockIndexAttributes(t *testing.T) {
 	actualBlockchainInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	assert.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
 
-	// 3. Check the checkpointInfo
-	expectedCheckpointInfoLastBlockNumber := uint64(49)
-	expectedCheckpointInfoIsChainEmpty := false
-	actualCheckpointInfo, err := blkfileMgrWrapper.blockfileMgr.loadCurrentInfo()
+	// 3. Check the BlockfilesInfo
+	expectedBlkfilesInfoLastBlockNumber := uint64(49)
+	expectedBlkfilesInfoIsNoBlkFiles := false
+	actualBlkfilesInfo, err := blkfileMgrWrapper.blockfileMgr.loadBlkfilesInfo()
 	assert.NoError(t, err)
-	assert.Equal(t, expectedCheckpointInfoLastBlockNumber, actualCheckpointInfo.lastBlockNumberInBlockFiles)
-	assert.Equal(t, expectedCheckpointInfoIsChainEmpty, actualCheckpointInfo.noBlockFiles)
-	assert.Equal(t, actualCheckpointInfo.latestFileChunkSuffixNum, 4)
+	assert.Equal(t, expectedBlkfilesInfoLastBlockNumber, actualBlkfilesInfo.lastPersistedBlock)
+	assert.Equal(t, expectedBlkfilesInfoIsNoBlkFiles, actualBlkfilesInfo.noBlockFiles)
+	assert.Equal(t, actualBlkfilesInfo.latestFileNumber, 4)
 
 	// 4. Close the blkfileMgrWrapper
 	env.provider.Close()
@@ -188,14 +188,14 @@ func TestRollbackWithNoIndexDir(t *testing.T) {
 	actualBlockchainInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	assert.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
 
-	// 3. Check the checkpointInfo
-	expectedCheckpointInfoLastBlockNumber := uint64(49)
-	expectedCheckpointInfoIsChainEmpty := false
-	actualCheckpointInfo, err := blkfileMgrWrapper.blockfileMgr.loadCurrentInfo()
+	// 3. Check the BlockfilesInfo
+	expectedBlkfilesInfoLastBlockNumber := uint64(49)
+	expectedBlkfilesInfoIsChainEmpty := false
+	actualBlkfilesInfo, err := blkfileMgrWrapper.blockfileMgr.loadBlkfilesInfo()
 	assert.NoError(t, err)
-	assert.Equal(t, expectedCheckpointInfoLastBlockNumber, actualCheckpointInfo.lastBlockNumberInBlockFiles)
-	assert.Equal(t, expectedCheckpointInfoIsChainEmpty, actualCheckpointInfo.noBlockFiles)
-	assert.Equal(t, actualCheckpointInfo.latestFileChunkSuffixNum, 4)
+	assert.Equal(t, expectedBlkfilesInfoLastBlockNumber, actualBlkfilesInfo.lastPersistedBlock)
+	assert.Equal(t, expectedBlkfilesInfoIsChainEmpty, actualBlkfilesInfo.noBlockFiles)
+	assert.Equal(t, actualBlkfilesInfo.latestFileNumber, 4)
 
 	// 4. Close the blkfileMgrWrapper
 	env.provider.Close()
@@ -302,15 +302,15 @@ func assertBlockStoreRollback(t *testing.T, path, ledgerID string, blocks []*com
 	actualBlockchainInfo := blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	assert.Equal(t, expectedBlockchainInfo, actualBlockchainInfo)
 
-	// 2. Check the checkpointInfo after the rollback
-	expectedCheckpointInfoLastBlockNumber := rollbackedToBlkNum
-	expectedCheckpointInfoIsChainEmpty := false
+	// 2. Check the BlockfilesInfo after the rollback
+	expectedBlkfilesInfoLastBlockNumber := rollbackedToBlkNum
+	expectedBlkfilesInfoIsNoBlkfiles := false
 	expectedBlockchainInfoLastFileSuffixNum := lastFileSuffixNum
-	actualCheckpointInfo, err := blkfileMgrWrapper.blockfileMgr.loadCurrentInfo()
+	actualBlkfilesInfo, err := blkfileMgrWrapper.blockfileMgr.loadBlkfilesInfo()
 	assert.NoError(t, err)
-	assert.Equal(t, expectedCheckpointInfoLastBlockNumber, actualCheckpointInfo.lastBlockNumberInBlockFiles)
-	assert.Equal(t, expectedCheckpointInfoIsChainEmpty, actualCheckpointInfo.noBlockFiles)
-	assert.Equal(t, expectedBlockchainInfoLastFileSuffixNum, actualCheckpointInfo.latestFileChunkSuffixNum)
+	assert.Equal(t, expectedBlkfilesInfoLastBlockNumber, actualBlkfilesInfo.lastPersistedBlock)
+	assert.Equal(t, expectedBlkfilesInfoIsNoBlkfiles, actualBlkfilesInfo.noBlockFiles)
+	assert.Equal(t, expectedBlockchainInfoLastFileSuffixNum, actualBlkfilesInfo.latestFileNumber)
 
 	// 3. Check whether all blocks till the target block number are stored correctly
 	if blkfileMgrWrapper.blockfileMgr.index.isAttributeIndexed(IndexableAttrBlockNum) {
