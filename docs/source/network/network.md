@@ -298,9 +298,10 @@ add more peers to the channel.
 
 A key part of a P1's configuration is an X.509 identity issued by CA1 which
 associates P1 with organization R1. Once P1 is started, it can **join** channel
-C1 using the orderer O4. When O4 receives this join request, it uses the channel
-configuration CC1 to determine P1's permissions on this channel. For example,
-CC1 determines whether P1 can read and/or write information to the ledger L1.
+C1 using the orderer O4. The orderer O4 uses the channel configuration CC1
+to determine P1's permissions on this channel. For example, policy in CC1
+determines whether P1 (or the organization R1) can read and/or write on the
+channel C1.
 
 Notice how peers are joined to channels by the organizations that own them, and
 though we've only added one peer, we'll see how  there can be multiple peer
