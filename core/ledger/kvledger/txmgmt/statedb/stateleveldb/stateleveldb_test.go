@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/commontests"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,8 +48,8 @@ func testDataKeyEncoding(t *testing.T, dbName string, ns string, key string) {
 	dataKey := encodeDataKey(ns, key)
 	t.Logf("dataKey=%#v", dataKey)
 	ns1, key1 := decodeDataKey(dataKey)
-	assert.Equal(t, ns, ns1)
-	assert.Equal(t, key, key1)
+	require.Equal(t, ns, ns1)
+	require.Equal(t, key, key1)
 }
 
 // TestQueryOnLevelDB tests queries on levelDB.
@@ -58,7 +57,7 @@ func TestQueryOnLevelDB(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
 	db, err := env.DBProvider.GetDBHandle("testquery", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	db.Open()
 	defer db.Close()
 	batch := statedb.NewUpdateBatch()
@@ -72,8 +71,8 @@ func TestQueryOnLevelDB(t *testing.T) {
 	// As queries are not supported in levelDB, call to ExecuteQuery()
 	// should return a error message
 	itr, err := db.ExecuteQuery("ns1", `{"selector":{"owner":"jerry"}}`)
-	assert.Error(t, err, "ExecuteQuery not supported for leveldb")
-	assert.Nil(t, itr)
+	require.Error(t, err, "ExecuteQuery not supported for leveldb")
+	require.Nil(t, itr)
 }
 
 func TestGetStateMultipleKeys(t *testing.T) {
@@ -93,14 +92,14 @@ func TestUtilityFunctions(t *testing.T) {
 	defer env.Cleanup()
 
 	db, err := env.DBProvider.GetDBHandle("testutilityfunctions", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// BytesKeySupported should be true for goleveldb
 	byteKeySupported := db.BytesKeySupported()
-	assert.True(t, byteKeySupported)
+	require.True(t, byteKeySupported)
 
 	// ValidateKeyValue should return nil for a valid key and value
-	assert.NoError(t, db.ValidateKeyValue("testKey", []byte("testValue")), "leveldb should accept all key-values")
+	require.NoError(t, db.ValidateKeyValue("testKey", []byte("testValue")), "leveldb should accept all key-values")
 }
 
 func TestValueAndMetadataWrites(t *testing.T) {
