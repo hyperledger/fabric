@@ -362,18 +362,17 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 }
 
 func (mgr *blockfileMgr) syncIndex() error {
-	var lastBlockIndexed uint64
-	lastBlockIndexMarkerPresent := true
-	var err error
-	//from the database, get the last block that was indexed
-	if lastBlockIndexed, err = mgr.index.getLastBlockIndexed(); err != nil {
+	nextIndexableBlock := uint64(0)
+	lastBlockIndexed, err := mgr.index.getLastBlockIndexed()
+	if err != nil {
 		if err != errIndexCheckpointKeyNotPresent {
 			return err
 		}
-		lastBlockIndexMarkerPresent = false
+	} else {
+		nextIndexableBlock = lastBlockIndexed + 1
 	}
 
-	if mgr.bootstrappedFromSnapshot() && !lastBlockIndexMarkerPresent {
+	if nextIndexableBlock == 0 && mgr.bootstrappedFromSnapshot() {
 		// This condition can happen only if there was a peer crash or failure during
 		// bootstrapping the ledger from a snapshot or the index is dropped/corrupted afterward
 		return errors.Errorf(
@@ -387,17 +386,22 @@ func (mgr *blockfileMgr) syncIndex() error {
 		return nil
 	}
 
+	if nextIndexableBlock == mgr.cpInfo.lastBlockNumberInBlockFiles+1 {
+		logger.Debug("Both the block files and indices are in sync.")
+		return nil
+	}
+
 	startFileNum := 0
 	startOffset := 0
 	skipFirstBlock := false
 	endFileNum := mgr.cpInfo.latestFileChunkSuffixNum
-	startingBlockNum := uint64(0)
 
-	if lastBlockIndexMarkerPresent {
-		if lastBlockIndexed == mgr.cpInfo.lastBlockNumberInBlockFiles {
-			logger.Debug("Both the block files and indices are in sync.")
-			return nil
-		}
+	firstAvailableBlkNum, err := retrieveFirstBlockNumFromFile(mgr.rootDir, 0)
+	if err != nil {
+		return err
+	}
+
+	if nextIndexableBlock > firstAvailableBlkNum {
 		logger.Debugf("Last block indexed [%d], Last block present in block files [%d]", lastBlockIndexed, mgr.cpInfo.lastBlockNumberInBlockFiles)
 		var flp *fileLocPointer
 		if flp, err = mgr.index.getBlockLocByBlockNum(lastBlockIndexed); err != nil {
@@ -405,13 +409,9 @@ func (mgr *blockfileMgr) syncIndex() error {
 		}
 		startFileNum = flp.fileSuffixNum
 		startOffset = flp.locPointer.offset
-		skipFirstBlock = true
-		startingBlockNum = lastBlockIndexed + 1
-	} else {
-		logger.Debugf("No block indexed, Last block present in block files=[%d]", mgr.cpInfo.lastBlockNumberInBlockFiles)
 	}
 
-	logger.Infof("Start building index from block [%d] to last block [%d]", startingBlockNum, mgr.cpInfo.lastBlockNumberInBlockFiles)
+	logger.Infof("Start building index from block [%d] to last block [%d]", nextIndexableBlock, mgr.cpInfo.lastBlockNumberInBlockFiles)
 
 	//open a blockstream to the file location that was stored in the index
 	var stream *blockStream

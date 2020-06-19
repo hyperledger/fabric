@@ -30,216 +30,272 @@ type testBlockDetails struct {
 }
 
 func TestBootstrapFromSnapshot(t *testing.T) {
-	testPath := testPath()
-	env := newTestEnv(t, NewConf(testPath, 0))
-	defer func() {
-		env.Cleanup()
-	}()
-	snapshotDir := filepath.Join(testPath, "snapshot")
-	require.NoError(t, os.Mkdir(snapshotDir, 0755))
+	var testDir string
+	var env *testEnv
+	var blocksDetailsBeforeSnapshot, blocksDetailsAfterSnapshot []*testBlockDetails
+	var blocksBeforeSnapshot, blocksAfterSnapshot []*common.Block
+	var blocksGenerator *testutil.BlockGenerator
 
-	blocksGenerator, genesisBlock := testutil.NewBlockGenerator(t, "testLedger", false)
-	originalBlockStore, err := env.provider.Open("originalLedger")
-	require.NoError(t, err)
-	txIDGenesisTx, err := protoutil.GetOrComputeTxIDFromEnvelope(genesisBlock.Data.Data[0])
-	require.NoError(t, err)
+	var snapshotDir string
+	var snapshotInfo *SnapshotInfo
+	var bootstrappedBlockStore *BlockStore
 
-	blocksDetailsBeforeSnapshot := []*testBlockDetails{
-		{
-			txIDs: []string{txIDGenesisTx},
-		},
-		{
-			txIDs: []string{"txid1", "txid2"},
-		},
-		{
-			txIDs: []string{"txid3", "txid4", "txid5"},
-		},
-	}
+	bootstrappedLedgerName := "bootstrappedLedger"
 
-	blocksDetailsAfterSnapshot := []*testBlockDetails{
-		{
-			txIDs: []string{"txid7", "txid8"},
-		},
-		{
-			txIDs: []string{"txid9", "txid10", "txid11"},
-			validationCodes: []peer.TxValidationCode{
-				peer.TxValidationCode_BAD_CHANNEL_HEADER,
-				peer.TxValidationCode_BAD_CREATOR_SIGNATURE,
+	setup := func() {
+		testDir = testPath()
+		env = newTestEnv(t, NewConf(testDir, 0))
+		snapshotDir = filepath.Join(testDir, "snapshot")
+		require.NoError(t, os.Mkdir(snapshotDir, 0755))
+
+		bg, genesisBlock := testutil.NewBlockGenerator(t, "testLedger", false)
+		blocksGenerator = bg
+		originalBlockStore, err := env.provider.Open("originalLedger")
+		require.NoError(t, err)
+		txIDGenesisTx, err := protoutil.GetOrComputeTxIDFromEnvelope(genesisBlock.Data.Data[0])
+		require.NoError(t, err)
+
+		blocksDetailsBeforeSnapshot = []*testBlockDetails{
+			{
+				txIDs: []string{txIDGenesisTx},
 			},
-		},
-	}
+			{
+				txIDs: []string{"txid1", "txid2"},
+			},
+			{
+				txIDs: []string{"txid3", "txid4", "txid5"},
+			},
+		}
 
-	blocksBeforeSnapshot := []*common.Block{
-		genesisBlock,
-		generateNextTestBlock(blocksGenerator, blocksDetailsBeforeSnapshot[1]),
-		generateNextTestBlock(blocksGenerator, blocksDetailsBeforeSnapshot[2]),
-	}
+		blocksBeforeSnapshot = []*common.Block{
+			genesisBlock,
+			generateNextTestBlock(blocksGenerator, blocksDetailsBeforeSnapshot[1]),
+			generateNextTestBlock(blocksGenerator, blocksDetailsBeforeSnapshot[2]),
+		}
 
-	blocksAfterSnapshot := []*common.Block{
-		generateNextTestBlock(blocksGenerator, blocksDetailsAfterSnapshot[0]),
-		generateNextTestBlock(blocksGenerator, blocksDetailsAfterSnapshot[1]),
-	}
+		blocksDetailsAfterSnapshot = []*testBlockDetails{
+			{
+				txIDs: []string{"txid7", "txid8"},
+			},
+			{
+				txIDs: []string{"txid9", "txid10", "txid11"},
+				validationCodes: []peer.TxValidationCode{
+					peer.TxValidationCode_BAD_CHANNEL_HEADER,
+					peer.TxValidationCode_BAD_CREATOR_SIGNATURE,
+				},
+			},
+		}
 
-	for _, b := range blocksBeforeSnapshot {
-		err := originalBlockStore.AddBlock(b)
+		blocksAfterSnapshot = []*common.Block{
+			generateNextTestBlock(blocksGenerator, blocksDetailsAfterSnapshot[0]),
+			generateNextTestBlock(blocksGenerator, blocksDetailsAfterSnapshot[1]),
+		}
+
+		for _, b := range blocksBeforeSnapshot {
+			err := originalBlockStore.AddBlock(b)
+			require.NoError(t, err)
+		}
+		_, err = originalBlockStore.ExportTxIds(snapshotDir, testNewHashFunc)
+		require.NoError(t, err)
+		lastBlockInSnapshot := blocksBeforeSnapshot[len(blocksBeforeSnapshot)-1]
+
+		snapshotInfo = &SnapshotInfo{
+			LedgerID:          bootstrappedLedgerName,
+			LastBlockHash:     protoutil.BlockHeaderHash(lastBlockInSnapshot.Header),
+			LastBlockNum:      lastBlockInSnapshot.Header.Number,
+			PreviousBlockHash: lastBlockInSnapshot.Header.PreviousHash,
+		}
+
+		// bootstrap another blockstore from the snapshot and verify its APIs
+		importTxIDsBatchSize = uint64(2) // smaller batch size for testing
+
+		bootstrappedBlockStore, err = env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
 		require.NoError(t, err)
 	}
-	_, err = originalBlockStore.ExportTxIds(snapshotDir, testNewHashFunc)
-	require.NoError(t, err)
-	lastBlockInSnapshot := blocksBeforeSnapshot[len(blocksBeforeSnapshot)-1]
 
-	snapshotInfo := &SnapshotInfo{
-		LedgerID:          "bootstrappedLedger",
-		LastBlockHash:     protoutil.BlockHeaderHash(lastBlockInSnapshot.Header),
-		LastBlockNum:      lastBlockInSnapshot.Header.Number,
-		PreviousBlockHash: lastBlockInSnapshot.Header.PreviousHash,
+	cleanup := func() {
+		env.Cleanup()
 	}
 
-	// bootstrap another blockstore from the snapshot and verify its APIs
-	importTxIDsBatchSize = uint64(2) // smaller batch size for testing
-	bootstrappedBlockStore, err := env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
-	require.NoError(t, err)
-
-	// verify queries just after bootstrapping
-	verifyQueriesOnBlocksPriorToSnapshot(
-		t,
-		bootstrappedBlockStore,
-		&common.BlockchainInfo{
-			Height:            snapshotInfo.LastBlockNum + 1,
-			CurrentBlockHash:  snapshotInfo.LastBlockHash,
-			PreviousBlockHash: snapshotInfo.PreviousBlockHash,
-		},
-		blocksDetailsBeforeSnapshot,
-		blocksBeforeSnapshot,
-	)
-
-	require.EqualError(t,
-		bootstrappedBlockStore.AddBlock(blocksAfterSnapshot[1]),
-		"block number should have been 3 but was 4",
-	)
-
-	// add more blocks and verify query results again
-	for _, b := range blocksAfterSnapshot {
-		require.NoError(t, bootstrappedBlockStore.AddBlock(b))
+	closeBlockStore := func() {
+		env.provider.Close()
 	}
-	finalBlock := blocksAfterSnapshot[len(blocksAfterSnapshot)-1]
 
-	expectedBCInfo := &common.BlockchainInfo{
-		Height:            finalBlock.Header.Number + 1,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(finalBlock.Header),
-		PreviousBlockHash: finalBlock.Header.PreviousHash,
+	reopenBlockStore := func() error {
+		env = newTestEnv(t, env.provider.conf)
+		s, err := env.provider.Open(bootstrappedLedgerName)
+		bootstrappedBlockStore = s
+		return err
 	}
-	verifyQueriesOnBlocksPriorToSnapshot(t,
-		bootstrappedBlockStore,
-		expectedBCInfo,
-		blocksDetailsBeforeSnapshot,
-		blocksBeforeSnapshot,
-	)
-	verifyQueriesOnBlocksAddedAfterBootstrapping(t,
-		bootstrappedBlockStore,
-		expectedBCInfo,
-		blocksDetailsAfterSnapshot,
-		blocksAfterSnapshot,
-	)
 
-	// close and re-open the blockstore and again verify the query results
-	env.provider.Close()
-	env = newTestEnv(t, NewConf(testPath, 0))
-	bootstrappedBlockStore, err = env.provider.Open("bootstrappedLedger")
-	require.NoError(t, err)
-	verifyQueriesOnBlocksPriorToSnapshot(t,
-		bootstrappedBlockStore,
-		expectedBCInfo,
-		blocksDetailsBeforeSnapshot,
-		blocksBeforeSnapshot,
-	)
-	verifyQueriesOnBlocksAddedAfterBootstrapping(t,
-		bootstrappedBlockStore,
-		expectedBCInfo,
-		blocksDetailsAfterSnapshot,
-		blocksAfterSnapshot,
-	)
+	t.Run("query-just-after-bootstrap", func(t *testing.T) {
+		setup()
+		defer cleanup()
 
-	// verify that bootstrapped blockstore itself can export TXIDs
-	anotherSnapshotDir := filepath.Join(testPath, "anotherSnapshot")
-	require.NoError(t, os.Mkdir(anotherSnapshotDir, 0755))
-	fileHashes, err := bootstrappedBlockStore.ExportTxIds(anotherSnapshotDir, testNewHashFunc)
-	require.NoError(t, err)
-	expectedTxIDs := []string{}
-	for _, b := range append(blocksDetailsBeforeSnapshot, blocksDetailsAfterSnapshot...) {
-		expectedTxIDs = append(expectedTxIDs, b.txIDs...)
-	}
-	sort.Slice(expectedTxIDs, func(i, j int) bool {
-		ith := expectedTxIDs[i]
-		jth := expectedTxIDs[j]
-		if len(ith) == len(jth) {
-			return ith < jth
-		}
-		return len(ith) < len(jth)
+		verifyQueriesOnBlocksPriorToSnapshot(
+			t,
+			bootstrappedBlockStore,
+			&common.BlockchainInfo{
+				Height:            snapshotInfo.LastBlockNum + 1,
+				CurrentBlockHash:  snapshotInfo.LastBlockHash,
+				PreviousBlockHash: snapshotInfo.PreviousBlockHash,
+			},
+			blocksDetailsBeforeSnapshot,
+			blocksBeforeSnapshot,
+		)
 	})
-	verifyExportedTxIDs(t, anotherSnapshotDir, fileHashes, expectedTxIDs...)
 
-	// verify that the bootstrapped blockstore can sync up indexes
-	toAddWithoutIndexupdates := []*testBlockDetails{
-		{
-			txIDs: []string{"txid_syncup_index_1", "txid_syncup_index_2"},
-		},
-		{
-			txIDs: []string{"txid_syncup_index_3", "txid_syncup_index_4"},
-		},
-	}
+	t.Run("add-more-blocks", func(t *testing.T) {
+		setup()
+		defer cleanup()
 
-	blocks := []*common.Block{}
-	blkfileMgr := bootstrappedBlockStore.fileMgr
-	originalIndexDB := blkfileMgr.index.db
+		require.EqualError(t,
+			bootstrappedBlockStore.AddBlock(blocksAfterSnapshot[1]),
+			"block number should have been 3 but was 4",
+		)
 
-	// redirect index writes to some random place and add two blocks and then set the original index back
-	bootstrappedBlockStore.fileMgr.index.db = env.provider.leveldbProvider.GetDBHandle(filepath.Join(testPath, "someRandomPlace"))
-	for _, blockDetails := range toAddWithoutIndexupdates {
-		block := generateNextTestBlock(blocksGenerator, blockDetails)
-		blocks = append(blocks, block)
-		require.NoError(t, blkfileMgr.addBlock(block))
-	}
-	blkfileMgr.index.db = originalIndexDB
+		for _, b := range blocksAfterSnapshot {
+			require.NoError(t, bootstrappedBlockStore.AddBlock(b))
+		}
+		finalBlock := blocksAfterSnapshot[len(blocksAfterSnapshot)-1]
+		expectedBCInfo := &common.BlockchainInfo{
+			Height:            finalBlock.Header.Number + 1,
+			CurrentBlockHash:  protoutil.BlockHeaderHash(finalBlock.Header),
+			PreviousBlockHash: finalBlock.Header.PreviousHash,
+		}
+		verifyQueriesOnBlocksPriorToSnapshot(t,
+			bootstrappedBlockStore,
+			expectedBCInfo,
+			blocksDetailsBeforeSnapshot,
+			blocksBeforeSnapshot,
+		)
+		verifyQueriesOnBlocksAddedAfterBootstrapping(t,
+			bootstrappedBlockStore,
+			expectedBCInfo,
+			blocksDetailsAfterSnapshot,
+			blocksAfterSnapshot,
+		)
+	})
 
-	// before, we test for index sync-up, verify that the last set of blocks not indexed in the original index
-	for _, block := range blocks {
-		_, err := blkfileMgr.retrieveBlockByNumber(block.Header.Number)
-		assert.Exactly(t, ErrNotFoundInIndex, err)
-	}
+	t.Run("close-and-reopen", func(t *testing.T) {
+		setup()
+		defer cleanup()
 
-	// close and open should sync-up the index
-	env.provider.Close()
-	env = newTestEnv(t, NewConf(testPath, 0))
-	bootstrappedBlockStore, err = env.provider.Open("bootstrappedLedger")
-	require.NoError(t, err)
+		closeBlockStore()
+		require.NoError(t, reopenBlockStore())
+		verifyQueriesOnBlocksPriorToSnapshot(t,
+			bootstrappedBlockStore,
+			&common.BlockchainInfo{
+				Height:            snapshotInfo.LastBlockNum + 1,
+				CurrentBlockHash:  snapshotInfo.LastBlockHash,
+				PreviousBlockHash: snapshotInfo.PreviousBlockHash,
+			},
+			blocksDetailsBeforeSnapshot,
+			blocksBeforeSnapshot,
+		)
 
-	expectedBCInfo = &common.BlockchainInfo{
-		Height:            blocks[1].Header.Number + 1,
-		CurrentBlockHash:  protoutil.BlockHeaderHash(blocks[1].Header),
-		PreviousBlockHash: blocks[1].Header.PreviousHash,
-	}
+		for _, b := range blocksAfterSnapshot {
+			require.NoError(t, bootstrappedBlockStore.AddBlock(b))
+		}
+		closeBlockStore()
+		require.NoError(t, reopenBlockStore())
+		finalBlock := blocksAfterSnapshot[len(blocksAfterSnapshot)-1]
+		expectedBCInfo := &common.BlockchainInfo{
+			Height:            finalBlock.Header.Number + 1,
+			CurrentBlockHash:  protoutil.BlockHeaderHash(finalBlock.Header),
+			PreviousBlockHash: finalBlock.Header.PreviousHash,
+		}
+		verifyQueriesOnBlocksAddedAfterBootstrapping(t,
+			bootstrappedBlockStore,
+			expectedBCInfo,
+			blocksDetailsAfterSnapshot,
+			blocksAfterSnapshot,
+		)
+	})
 
-	verifyQueriesOnBlocksAddedAfterBootstrapping(
-		t,
-		bootstrappedBlockStore,
-		expectedBCInfo,
-		toAddWithoutIndexupdates,
-		blocks,
-	)
+	t.Run("export-txids", func(t *testing.T) {
+		setup()
+		defer cleanup()
 
-	// verify that the bootstrapped blockstore returns error if indexes are deleted
-	env.provider.Close()
-	conf := NewConf(testPath, 0)
-	require.NoError(t, os.RemoveAll(conf.getIndexDir()))
-	env = newTestEnv(t, conf)
-	bootstrappedBlockStore, err = env.provider.Open("bootstrappedLedger")
-	require.EqualError(t, err,
-		fmt.Sprintf(
-			"cannot sync index with block files. blockstore is bootstrapped from a snapshot and first available block=[%d]",
-			len(blocksBeforeSnapshot),
-		),
-	)
+		anotherSnapshotDir := filepath.Join(testDir, "anotherSnapshot")
+		require.NoError(t, os.Mkdir(anotherSnapshotDir, 0755))
+
+		for _, b := range blocksAfterSnapshot {
+			require.NoError(t, bootstrappedBlockStore.AddBlock(b))
+		}
+
+		fileHashes, err := bootstrappedBlockStore.ExportTxIds(anotherSnapshotDir, testNewHashFunc)
+		require.NoError(t, err)
+		expectedTxIDs := []string{}
+		for _, b := range append(blocksDetailsBeforeSnapshot, blocksDetailsAfterSnapshot...) {
+			expectedTxIDs = append(expectedTxIDs, b.txIDs...)
+		}
+		sort.Slice(expectedTxIDs, func(i, j int) bool {
+			ith := expectedTxIDs[i]
+			jth := expectedTxIDs[j]
+			if len(ith) == len(jth) {
+				return ith < jth
+			}
+			return len(ith) < len(jth)
+		})
+		verifyExportedTxIDs(t, anotherSnapshotDir, fileHashes, expectedTxIDs...)
+	})
+
+	t.Run("sync-up-indexes", func(t *testing.T) {
+		setup()
+		defer cleanup()
+
+		blockDetails := []*testBlockDetails{}
+		blocks := []*common.Block{}
+		for i, blockDetail := range blocksDetailsAfterSnapshot {
+			block := blocksAfterSnapshot[i]
+			blockDetails = append(blockDetails, blockDetail)
+			blocks = append(blocks, block)
+
+			// redirect index writes to some random place and add two blocks and then set the original index back
+			blkfileMgr := bootstrappedBlockStore.fileMgr
+			originalIndexDB := blkfileMgr.index.db
+			bootstrappedBlockStore.fileMgr.index.db = env.provider.leveldbProvider.GetDBHandle(filepath.Join(testDir, "someRandomPlace"))
+			require.NoError(t, blkfileMgr.addBlock(block))
+			blkfileMgr.index.db = originalIndexDB
+
+			// before, we test for index sync-up, verify that the last set of blocks not indexed in the original index
+			_, err := blkfileMgr.retrieveBlockByNumber(block.Header.Number)
+			assert.Exactly(t, ErrNotFoundInIndex, err)
+
+			// close and open should be able to sync-up the index
+			closeBlockStore()
+			require.NoError(t, reopenBlockStore())
+
+			finalBlock := blocks[len(blocks)-1]
+			verifyQueriesOnBlocksAddedAfterBootstrapping(
+				t,
+				bootstrappedBlockStore,
+				&common.BlockchainInfo{
+					Height:            finalBlock.Header.Number + 1,
+					CurrentBlockHash:  protoutil.BlockHeaderHash(finalBlock.Header),
+					PreviousBlockHash: finalBlock.Header.PreviousHash,
+				},
+				blockDetails,
+				blocks,
+			)
+		}
+	})
+
+	t.Run("error-when-indexes-deleted", func(t *testing.T) {
+		setup()
+		defer cleanup()
+
+		closeBlockStore()
+		require.NoError(t, os.RemoveAll(env.provider.conf.getIndexDir()))
+		err := reopenBlockStore()
+		require.EqualError(t, err,
+			fmt.Sprintf(
+				"cannot sync index with block files. blockstore is bootstrapped from a snapshot and first available block=[%d]",
+				len(blocksBeforeSnapshot),
+			),
+		)
+	})
 }
 
 func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
