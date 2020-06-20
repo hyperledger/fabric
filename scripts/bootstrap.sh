@@ -11,7 +11,7 @@ VERSION=2.1.1
 CA_VERSION=1.4.7
 # current version of thirdparty images (couchdb, kafka and zookeeper) released
 THIRDPARTY_IMAGE_VERSION=0.4.20
-ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
+ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/cygwin_nt.*|mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
 MARCH=$(uname -m)
 
 printHelp() {
