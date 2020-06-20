@@ -101,7 +101,10 @@ func (p *DBProvider) GetDBHandle(id string, chInfoProvider channelInfoProvider) 
 		return nil, err
 	}
 	bookkeeper := p.bookkeepingProvider.GetDBHandle(id, bookkeeping.MetadataPresenceIndicator)
-	metadataHint := newMetadataHint(bookkeeper)
+	metadataHint, err := newMetadataHint(bookkeeper)
+	if err != nil {
+		return nil, err
+	}
 	return NewDB(vdb, id, metadataHint)
 }
 

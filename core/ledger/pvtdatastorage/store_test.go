@@ -8,6 +8,7 @@ package pvtdatastorage
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
@@ -24,7 +24,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("pvtdatastorage=debug")
 	os.Exit(m.Run())
 }
 
@@ -154,6 +153,44 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	missingPvtDataInfo, err = store.GetMissingPvtDataInfoForMostRecentBlocks(10)
 	require.NoError(err)
 	require.Equal(expectedMissingPvtDataInfo, missingPvtDataInfo)
+}
+
+func TestStoreIteratorError(t *testing.T) {
+	env := NewTestStoreEnv(t, "TestStoreIteratorError", nil, pvtDataConf())
+	defer env.Cleanup()
+	store := env.TestStore
+	require.NoError(t, store.Commit(0, nil, nil))
+	env.TestStoreProvider.Close()
+	errStr := "internal leveldb error while obtaining db iterator: leveldb: closed"
+
+	t.Run("GetPvtDataByBlockNum", func(t *testing.T) {
+		block, err := store.GetPvtDataByBlockNum(0, nil)
+		require.EqualError(t, err, errStr)
+		require.Nil(t, block)
+	})
+
+	t.Run("GetMissingPvtDataInfoForMostRecentBlocks", func(t *testing.T) {
+		missingPvtDataInfo, err := store.GetMissingPvtDataInfoForMostRecentBlocks(10)
+		require.EqualError(t, err, errStr)
+		require.Nil(t, missingPvtDataInfo)
+	})
+
+	t.Run("retrieveExpiryEntries", func(t *testing.T) {
+		expiryEntries, err := store.retrieveExpiryEntries(0, 1)
+		require.EqualError(t, err, errStr)
+		require.Nil(t, expiryEntries)
+	})
+
+	t.Run("processCollElgEvents", func(t *testing.T) {
+		storeDir, err := ioutil.TempDir("", "pdstore")
+		require.NoError(t, err)
+		s := &Store{}
+		dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: storeDir})
+		require.NoError(t, err)
+		s.db = dbProvider.GetDBHandle("test-ledger")
+		dbProvider.Close()
+		require.EqualError(t, s.processCollElgEvents(), errStr)
+	})
 }
 
 func TestCommitPvtDataOfOldBlocks(t *testing.T) {

@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExpiryKVEncoding(t *testing.T) {
@@ -74,6 +75,13 @@ func TestExpiryKeeper(t *testing.T) {
 	assert.Len(t, listExpinfo6, 1)
 	assert.Equal(t, expinfo4.expiryInfoKey, listExpinfo6[0].expiryInfoKey)
 	assert.True(t, proto.Equal(expinfo4.pvtdataKeys, listExpinfo6[0].pvtdataKeys))
+
+	t.Run("test-error-path", func(t *testing.T) {
+		testenv.TestProvider.Close()
+		expirtyInfo, err := expiryKeeper.retrieve(15)
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.Nil(t, expirtyInfo)
+	})
 }
 
 func buildPvtdataKeysForTest(startingEntry int, numEntries int) *PvtdataKeys {

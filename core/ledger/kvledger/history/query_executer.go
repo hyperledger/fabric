@@ -27,7 +27,10 @@ type QueryExecutor struct {
 // GetHistoryForKey implements method in interface `ledger.HistoryQueryExecutor`
 func (q *QueryExecutor) GetHistoryForKey(namespace string, key string) (commonledger.ResultsIterator, error) {
 	rangeScan := constructRangeScan(namespace, key)
-	dbItr := q.levelDB.GetIterator(rangeScan.startKey, rangeScan.endKey)
+	dbItr, err := q.levelDB.GetIterator(rangeScan.startKey, rangeScan.endKey)
+	if err != nil {
+		return nil, err
+	}
 
 	// By default, dbItr is in the orderer of oldest to newest and its cursor is at the beginning of the entries.
 	// Need to call Last() and Next() to move the cursor to the end of the entries so that we can iterate

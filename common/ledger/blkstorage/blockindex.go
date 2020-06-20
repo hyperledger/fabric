@@ -228,7 +228,10 @@ func (index *blockIndex) getTxIDVal(txID string) (*TxIDIndexValue, error) {
 		return nil, ErrAttrNotIndexed
 	}
 	rangeScan := constructTxIDRangeScan(txID)
-	itr := index.db.GetIterator(rangeScan.startKey, rangeScan.stopKey)
+	itr, err := index.db.GetIterator(rangeScan.startKey, rangeScan.stopKey)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "error while trying to retrieve transaction info by TXID [%s]", txID)
+	}
 	defer itr.Release()
 
 	present := itr.Next()
@@ -270,16 +273,15 @@ func (index *blockIndex) exportUniqueTxIDs(dir string, newHashFunc snapshot.NewH
 		return nil, ErrAttrNotIndexed
 	}
 
-	dbItr := index.db.GetIterator([]byte{txIDIdxKeyPrefix}, []byte{txIDIdxKeyPrefix + 1})
-	defer dbItr.Release()
-	if err := dbItr.Error(); err != nil {
-		return nil, errors.Wrap(err, "internal leveldb error while obtaining db iterator")
+	dbItr, err := index.db.GetIterator([]byte{txIDIdxKeyPrefix}, []byte{txIDIdxKeyPrefix + 1})
+	if err != nil {
+		return nil, err
 	}
+	defer dbItr.Release()
 
 	var previousTxID string
 	var numTxIDs uint64 = 0
 	var dataFile *snapshot.FileWriter
-	var err error
 	for dbItr.Next() {
 		if err := dbItr.Error(); err != nil {
 			return nil, errors.Wrap(err, "internal leveldb error while iterating for txids")

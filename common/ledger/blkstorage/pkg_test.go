@@ -153,9 +153,10 @@ func (w *testBlockfileMgrWrapper) testGetMultipleDataByTxID(
 	expectedData []*expectedBlkTxValidationCode,
 ) {
 	rangescan := constructTxIDRangeScan(txID)
-	itr := w.blockfileMgr.db.GetIterator(rangescan.startKey, rangescan.stopKey)
-	defer itr.Release()
+	itr, err := w.blockfileMgr.db.GetIterator(rangescan.startKey, rangescan.stopKey)
 	require := require.New(w.t)
+	require.NoError(err)
+	defer itr.Release()
 
 	fetchedData := []*expectedBlkTxValidationCode{}
 	for itr.Next() {
