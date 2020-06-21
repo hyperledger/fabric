@@ -297,9 +297,8 @@ to access. We can think of L1 as being **physically hosted** on P1, but
 add more peers to the channel.
 
 A key part of a P1's configuration is an X.509 identity issued by CA1 which
-associates P1 with organization R1. Once P1 is started, it can **join** channel
-C1 using the orderer O4. The orderer O4 uses the channel configuration CC1
-to determine P1's permissions on this channel. For example, policy in CC1
+associates P1 with organization R1. The orderer O4 uses the channel configuration
+CC1 to determine P1's permissions on this channel. For example, policy in CC1
 determines whether P1 (or the organization R1) can read and/or write on the
 channel C1.
 
