@@ -140,6 +140,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		h.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusOK, resp.Result().StatusCode)
 		assert.Equal(t, "application/json", resp.Result().Header.Get("Content-Type"))
+		assert.Equal(t, "no-store", resp.Result().Header.Get("Cache-Control"))
 
 		listAll := &types.ChannelList{}
 		err := json.Unmarshal(resp.Body.Bytes(), listAll)
@@ -165,6 +166,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		h.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusOK, resp.Result().StatusCode)
 		assert.Equal(t, "application/json", resp.Result().Header.Get("Content-Type"))
+		assert.Equal(t, "no-store", resp.Result().Header.Get("Cache-Control"))
 
 		listAll := &types.ChannelList{}
 		err := json.Unmarshal(resp.Body.Bytes(), listAll)
@@ -185,6 +187,7 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 			h.ServeHTTP(resp, req)
 			assert.Equal(t, http.StatusOK, resp.Result().StatusCode, "Accept: %s", accept)
 			assert.Equal(t, "application/json", resp.Result().Header.Get("Content-Type"))
+			assert.Equal(t, "no-store", resp.Result().Header.Get("Cache-Control"))
 
 			listAll := &types.ChannelList{}
 			err := json.Unmarshal(resp.Body.Bytes(), listAll)
@@ -216,6 +219,7 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 		h.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusOK, resp.Result().StatusCode)
 		assert.Equal(t, "application/json", resp.Result().Header.Get("Content-Type"))
+		assert.Equal(t, "no-store", resp.Result().Header.Get("Cache-Control"))
 
 		infoResp := types.ChannelInfo{}
 		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
