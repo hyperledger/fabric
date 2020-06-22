@@ -82,10 +82,10 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveRemove).Methods(http.MethodDelete)
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveNotAllowed)
 
-	handler.router.HandleFunc(URLBaseV1Channels, handler.serveListAll).Methods("GET")
+	handler.router.HandleFunc(URLBaseV1Channels, handler.serveListAll).Methods(http.MethodGet)
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveNotAllowed)
 
-	handler.router.Handle(URLBaseV1, nil) //TODO redirect to URLBaseV1Channels
+	handler.router.HandleFunc(URLBaseV1, handler.redirectBaseV1).Methods(http.MethodGet)
 
 	return handler
 }
@@ -138,6 +138,10 @@ func (h *HTTPHandler) serveListOne(resp http.ResponseWriter, req *http.Request) 
 	}
 	resp.Header().Set("Cache-Control", "no-store")
 	h.sendResponseOK(resp, infoFull)
+}
+
+func (h *HTTPHandler) redirectBaseV1(resp http.ResponseWriter, req *http.Request) {
+	http.Redirect(resp, req, URLBaseV1Channels, http.StatusFound)
 }
 
 // Join a channel.
