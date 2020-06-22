@@ -23,7 +23,7 @@ exercised.
 
 Application developers need to be aware of these resources and the default
 policies associated with them. The complete list of these resources are found in
-`configtx.yaml`. You can look at a [sample `configtx.yaml` file here](http://github.com/hyperledger/fabric/blob/release-1.2/sampleconfig/configtx.yaml).
+`configtx.yaml`. You can look at a [sample `configtx.yaml` file here](http://github.com/hyperledger/fabric/blob/release-1.4/sampleconfig/configtx.yaml).
 
 The resources named in `configtx.yaml` is an exhaustive list of all internal resources
 currently defined by Fabric. The loose convention adopted there is `<component>/<resource>`.
