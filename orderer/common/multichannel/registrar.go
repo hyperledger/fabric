@@ -165,7 +165,10 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 		if configTx == nil {
 			logger.Panic("Programming error, configTx should never be nil here")
 		}
-		ledgerResources := r.newLedgerResources(configTx)
+		ledgerResources, err := r.newLedgerResources(configTx)
+		if err != nil {
+			logger.Panicf("Error creating ledger resources: %s", err)
+		}
 		channelID := ledgerResources.ConfigtxValidator().ChannelID()
 
 		if _, ok := ledgerResources.ConsortiumsConfig(); ok {
@@ -173,7 +176,7 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				logger.Panicf("There appear to be two system channels %s and %s", r.systemChannelID, channelID)
 			}
 
-			chain := newChainSupport(
+			chain, err := newChainSupport(
 				r,
 				ledgerResources,
 				r.consenters,
@@ -181,6 +184,9 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				r.blockcutterMetrics,
 				r.bccsp,
 			)
+			if err != nil {
+				logger.Panicf("Error creating chain support: %s", err)
+			}
 			r.templator = msgprocessor.NewDefaultTemplator(chain, r.bccsp)
 			chain.Processor = msgprocessor.NewSystemChannel(
 				chain,
@@ -209,7 +215,7 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 			defer chain.start()
 		} else {
 			logger.Debugf("Starting channel: %s", channelID)
-			chain := newChainSupport(
+			chain, err := newChainSupport(
 				r,
 				ledgerResources,
 				r.consenters,
@@ -217,6 +223,9 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 				r.blockcutterMetrics,
 				r.bccsp,
 			)
+			if err != nil {
+				logger.Panicf("Error creating chain support: %s", err)
+			}
 			r.chains[channelID] = chain
 			chain.start()
 		}
@@ -283,36 +292,39 @@ func (r *Registrar) GetChain(chainID string) *ChainSupport {
 	return r.chains[chainID]
 }
 
-func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
+func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources, error) {
 	payload, err := protoutil.UnmarshalPayload(configTx.Payload)
 	if err != nil {
-		logger.Panicf("Error umarshaling envelope to payload: %s", err)
+		return nil, errors.Wrap(err, "error umarshaling envelope to payload")
 	}
 
 	if payload.Header == nil {
-		logger.Panicf("Missing channel header: %s", err)
+		return nil, errors.New("missing channel header")
 	}
 
 	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
-		logger.Panicf("Error unmarshaling channel header: %s", err)
+		return nil, errors.Wrapf(err, "error unmarshaling channel header")
 	}
 
 	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 	if err != nil {
-		logger.Panicf("Error umarshaling config envelope from payload data: %s", err)
+		return nil, errors.Wrap(err, "error umarshaling config envelope from payload data")
 	}
 
 	bundle, err := channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config, r.bccsp)
 	if err != nil {
-		logger.Panicf("Error creating channelconfig bundle: %s", err)
+		return nil, errors.Wrap(err, "error creating channelconfig bundle")
 	}
 
-	checkResourcesOrPanic(bundle)
+	err = checkResources(bundle)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error checking bundle for channel: %s", chdr.ChannelId)
+	}
 
 	ledger, err := r.ledgerFactory.GetOrCreate(chdr.ChannelId)
 	if err != nil {
-		logger.Panicf("Error getting ledger for %s", chdr.ChannelId)
+		return nil, errors.Wrapf(err, "error getting ledger for channel: %s", chdr.ChannelId)
 	}
 
 	return &ledgerResources{
@@ -321,7 +333,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) *ledgerResources {
 			bccsp:            r.bccsp,
 		},
 		ReadWriter: ledger,
-	}
+	}, nil
 }
 
 // CreateChain makes the Registrar create a chain with the given name.
@@ -343,12 +355,20 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	ledgerResources := r.newLedgerResources(configtx)
+	ledgerResources, err := r.newLedgerResources(configtx)
+	if err != nil {
+		logger.Panicf("Error creating ledger resources: %s", err)
+	}
+
 	// If we have no blocks, we need to create the genesis block ourselves.
 	if ledgerResources.Height() == 0 {
 		ledgerResources.Append(blockledger.CreateNextBlock(ledgerResources, []*cb.Envelope{configtx}))
 	}
-	cs := newChainSupport(r, ledgerResources, r.consenters, r.signer, r.blockcutterMetrics, r.bccsp)
+	cs, err := newChainSupport(r, ledgerResources, r.consenters, r.signer, r.blockcutterMetrics, r.bccsp)
+	if err != nil {
+		logger.Panicf("Error creating chain support: %s", err)
+	}
+
 	chainID := ledgerResources.ConfigtxValidator().ChannelID()
 	r.chains[chainID] = cs
 
@@ -430,8 +450,42 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 		return types.ChannelInfo{}, types.ErrChannelAlreadyExists
 	}
 
-	//TODO
-	return types.ChannelInfo{}, errors.New("Not implemented yet")
+	if !isAppChannel && len(r.chains) > 0 {
+		return types.ChannelInfo{}, types.ErrAppChannelsAlreadyExists
+	}
+
+	configEnv, err := protoutil.ExtractEnvelope(configBlock, 0)
+	if err != nil {
+		return types.ChannelInfo{}, errors.Wrap(err, "failed extracting config envelope from block")
+	}
+
+	//TODO save the join-block in the file repo to make this action crash tolerant.
+
+	ledgerResources, err := r.newLedgerResources(configEnv)
+	if err != nil {
+		//TODO remove join block
+		return types.ChannelInfo{}, errors.Wrap(err, "failed creating ledger resources")
+	}
+
+	joinSupport, err := newChainSupportForJoin(configBlock, r, ledgerResources, r.consenters, r.signer, r.blockcutterMetrics, r.bccsp)
+	if err != nil {
+		//TODO remove join block, clean ledger resources
+		return types.ChannelInfo{}, errors.Wrap(err, "failed creating chain support for join")
+	}
+
+	info := types.ChannelInfo{
+		Name:   channelID,
+		URL:    "",
+		Height: ledgerResources.Height(),
+	}
+	info.ClusterRelation, info.Status = joinSupport.StatusReport()
+
+	logger.Infof("Joining new channel %s", channelID)
+
+	r.chains[channelID] = joinSupport
+	joinSupport.start()
+
+	return info, nil
 }
 
 func (r *Registrar) RemoveChannel(channelID string, removeStorage bool) error {
