@@ -510,54 +510,6 @@ func (dbclient *couchDatabase) dropDatabase() (*dbOperationResponse, error) {
 	return dbResponse, errors.New("error dropping database")
 }
 
-// ensureFullCommit calls _ensure_full_commit for explicit fsync
-func (dbclient *couchDatabase) ensureFullCommit() (*dbOperationResponse, error) {
-	dbName := dbclient.dbName
-
-	logger.Debugf("[%s] Entering EnsureFullCommit()", dbName)
-
-	connectURL, err := url.Parse(dbclient.couchInstance.url())
-	if err != nil {
-		logger.Errorf("URL parse error: %s", err)
-		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.couchInstance.url())
-	}
-
-	//get the number of retries
-	maxRetries := dbclient.couchInstance.conf.MaxRetries
-
-	resp, _, err := dbclient.handleRequest(http.MethodPost, "EnsureFullCommit", connectURL, nil, "", "", maxRetries, true, nil, "_ensure_full_commit")
-	if err != nil {
-		logger.Errorf("Failed to invoke couchdb _ensure_full_commit. Error: %+v", err)
-		return nil, err
-	}
-	defer closeResponseBody(resp)
-
-	dbResponse := &dbOperationResponse{}
-	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
-	if decodeErr != nil {
-		return nil, errors.Wrap(decodeErr, "error decoding response body")
-	}
-
-	// check if we should warm indexes
-	if dbclient.couchInstance.conf.WarmIndexesAfterNBlocks > 0 {
-		// check to see if the number of blocks committed exceeds the threshold for index warming
-		if dbclient.indexWarmCounter >= dbclient.couchInstance.conf.WarmIndexesAfterNBlocks {
-			// use a go routine to launch WarmIndexAllIndexes()
-			go dbclient.runWarmIndexAllIndexes()
-			dbclient.indexWarmCounter = 0
-		}
-		dbclient.indexWarmCounter++
-	}
-
-	logger.Debugf("[%s] Exiting EnsureFullCommit()", dbclient.dbName)
-
-	if dbResponse.Ok {
-		return dbResponse, nil
-	}
-
-	return dbResponse, errors.New("error syncing database")
-}
-
 //saveDoc method provides a function to save a document, id and byte array
 func (dbclient *couchDatabase) saveDoc(id string, rev string, couchDoc *couchDoc) (string, error) {
 	dbName := dbclient.dbName
