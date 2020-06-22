@@ -17,10 +17,12 @@ import (
 	"path"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation/mocks"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/types"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -245,7 +247,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		fakeManager.JoinChannelReturns(info, nil)
 
 		resp := httptest.NewRecorder()
-		req := genJoinRequestFormData(t, []byte{})
+		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
 		h.ServeHTTP(resp, req)
 		assert.Equal(t, http.StatusCreated, resp.Result().StatusCode)
 		assert.Equal(t, "application/json", resp.Result().Header.Get("Content-Type"))
@@ -260,7 +262,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		fakeManager, h := setup(config, t)
 		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrSystemChannelExists)
 		resp := httptest.NewRecorder()
-		req := genJoinRequestFormData(t, []byte{})
+		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: system channel exists", resp)
 		assert.Equal(t, "GET", resp.Result().Header.Get("Allow"))
@@ -270,7 +272,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		fakeManager, h := setup(config, t)
 		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrChannelAlreadyExists)
 		resp := httptest.NewRecorder()
-		req := genJoinRequestFormData(t, []byte{})
+		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: channel already exists", resp)
 		assert.Equal(t, "GET, DELETE", resp.Result().Header.Get("Allow"))
@@ -280,7 +282,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		fakeManager, h := setup(config, t)
 		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrAppChannelsAlreadyExists)
 		resp := httptest.NewRecorder()
-		req := genJoinRequestFormData(t, []byte{})
+		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusForbidden, "cannot join: application channels already exist", resp)
 	})
@@ -291,6 +293,14 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		req := genJoinRequestFormData(t, []byte{1, 2, 3, 4})
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "cannot unmarshal file part config-block into a block: proto: common.Block: illegal tag 0 (wire type 1)", resp)
+	})
+
+	t.Run("bad body - invalid join block", func(t *testing.T) {
+		_, h := setup(config, t)
+		resp := httptest.NewRecorder()
+		req := genJoinRequestFormData(t, []byte{})
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusBadRequest, "invalid join block: block is not a config block", resp)
 	})
 
 	t.Run("content type mismatch", func(t *testing.T) {
@@ -531,4 +541,11 @@ func genJoinRequestFormData(t *testing.T, blockBytes []byte) *http.Request {
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	return req
+}
+
+func validBlockBytes(channelID string) []byte {
+	blockBytes := protoutil.MarshalOrPanic(blockWithGroups(map[string]*common.ConfigGroup{
+		"Application": {},
+	}, channelID))
+	return blockBytes
 }

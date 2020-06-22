@@ -417,7 +417,7 @@ func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 	return info, nil
 }
 
-func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block) (types.ChannelInfo, error) {
+func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppChannel bool) (types.ChannelInfo, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
