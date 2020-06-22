@@ -204,8 +204,9 @@ type Statsd struct {
 // ChannelParticipation provides the channel participation API configuration for the orderer.
 // Channel participation uses the same ListenAddress and TLS settings of the Operations service.
 type ChannelParticipation struct {
-	Enabled       bool
-	RemoveStorage bool // Whether to permanently remove storage on channel removal.
+	Enabled            bool
+	RemoveStorage      bool // Whether to permanently remove storage on channel removal.
+	MaxRequestBodySize uint32
 }
 
 // Defaults carries the default orderer configuration values.
@@ -284,8 +285,9 @@ var Defaults = TopLevel{
 		Provider: "disabled",
 	},
 	ChannelParticipation: ChannelParticipation{
-		Enabled:       false,
-		RemoveStorage: false,
+		Enabled:            false,
+		RemoveStorage:      false,
+		MaxRequestBodySize: 1024 * 1024,
 	},
 }
 
