@@ -14,7 +14,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/ledger/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConstructBlockfilesInfo(t *testing.T) {
@@ -27,8 +27,8 @@ func TestConstructBlockfilesInfo(t *testing.T) {
 
 	// constructBlockfilesInfo on an empty block folder should return blockfileInfo with noBlockFiles: true
 	blkfilesInfo, err := constructBlockfilesInfo(blkStoreDir)
-	assert.NoError(t, err)
-	assert.Equal(t,
+	require.NoError(t, err)
+	require.Equal(t,
 		&blockfilesInfo{
 			noBlockFiles:       true,
 			lastPersistedBlock: 0,
@@ -63,7 +63,7 @@ func TestConstructBlockfilesInfo(t *testing.T) {
 	// Write a partial block (to simulate a crash) and verify that blockfilesInfo derived from filesystem should be same as from the blockfile manager
 	lastTestBlk := bg.NextTestBlocks(1)[0]
 	blockBytes, _, err := serializeBlock(lastTestBlk)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	partialByte := append(proto.EncodeVarint(uint64(len(blockBytes))), blockBytes[len(blockBytes)/2:]...)
 	blockfileMgr.currentFileWriter.append(partialByte, true)
 	checkBlockfilesInfoFromFS(t, blkStoreDir, blockfileMgr.blockfilesInfo)
@@ -73,19 +73,19 @@ func TestConstructBlockfilesInfo(t *testing.T) {
 	w.close()
 	env.provider.Close()
 	indexFolder := conf.getIndexDir()
-	assert.NoError(t, os.RemoveAll(indexFolder))
+	require.NoError(t, os.RemoveAll(indexFolder))
 
 	env = newTestEnv(t, conf)
 	w = newTestBlockfileWrapper(env, ledgerid)
 	blockfileMgr = w.blockfileMgr
-	assert.Equal(t, blkfilesInfoBeforeClose, blockfileMgr.blockfilesInfo)
+	require.Equal(t, blkfilesInfoBeforeClose, blockfileMgr.blockfilesInfo)
 
 	lastBlkIndexed, err := blockfileMgr.index.getLastBlockIndexed()
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(6), lastBlkIndexed)
+	require.NoError(t, err)
+	require.Equal(t, uint64(6), lastBlkIndexed)
 
 	// Add the last block again after start and check blockfilesInfo again
-	assert.NoError(t, blockfileMgr.addBlock(lastTestBlk))
+	require.NoError(t, blockfileMgr.addBlock(lastTestBlk))
 	checkBlockfilesInfoFromFS(t, blkStoreDir, blockfileMgr.blockfilesInfo)
 }
 
@@ -102,21 +102,21 @@ func TestBinarySearchBlockFileNum(t *testing.T) {
 
 	ledgerDir := (&Conf{blockStorageDir: blockStoreRootDir}).getLedgerBlockDir("testLedger")
 	files, err := ioutil.ReadDir(ledgerDir)
-	assert.NoError(t, err)
-	assert.Len(t, files, 11)
+	require.NoError(t, err)
+	require.Len(t, files, 11)
 
 	for i := uint64(0); i < 100; i++ {
 		fileNum, err := binarySearchFileNumForBlock(ledgerDir, i)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		locFromIndex, err := blkfileMgr.index.getBlockLocByBlockNum(i)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		expectedFileNum := locFromIndex.fileSuffixNum
-		assert.Equal(t, expectedFileNum, fileNum)
+		require.Equal(t, expectedFileNum, fileNum)
 	}
 }
 
 func checkBlockfilesInfoFromFS(t *testing.T, blkStoreDir string, expected *blockfilesInfo) {
 	blkfilesInfo, err := constructBlockfilesInfo(blkStoreDir)
-	assert.NoError(t, err)
-	assert.Equal(t, expected, blkfilesInfo)
+	require.NoError(t, err)
+	require.Equal(t, expected, blkfilesInfo)
 }
