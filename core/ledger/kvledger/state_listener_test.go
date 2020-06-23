@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStateListener(t *testing.T) {
@@ -29,7 +29,7 @@ func TestStateListener(t *testing.T) {
 	mockListener := &mockStateListener{namespace: namespace}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	provider, err := NewProvider(
 		&ledger.Initializer{
 			DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
@@ -45,10 +45,10 @@ func TestStateListener(t *testing.T) {
 
 	bg, gb := testutil.NewBlockGenerator(t, channelid, false)
 	lgr, err := provider.Create(gb)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Simulate tx1
 	sim1, err := lgr.NewTxSimulator("test_tx_1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sim1.GetState(namespace, "key1")
 	sim1.SetState(namespace, "key1", []byte("value1"))
 	sim1.SetState(namespace, "key2", []byte("value2"))
@@ -56,14 +56,14 @@ func TestStateListener(t *testing.T) {
 
 	// Simulate tx2 - this has a conflict with tx1 because it reads "key1"
 	sim2, err := lgr.NewTxSimulator("test_tx_2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sim2.GetState(namespace, "key1")
 	sim2.SetState(namespace, "key3", []byte("value3"))
 	sim2.Done()
 
 	// Simulate tx3 - this neighter conflicts with tx1 nor with tx2
 	sim3, err := lgr.NewTxSimulator("test_tx_3")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sim3.SetState(namespace, "key4", []byte("value4"))
 	sim3.Done()
 
@@ -71,32 +71,32 @@ func TestStateListener(t *testing.T) {
 	mockListener.reset()
 	sim1Res, _ := sim1.GetTxSimulationResults()
 	sim1ResBytes, _ := sim1Res.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	blk1 := bg.NextBlock([][]byte{sim1ResBytes})
-	assert.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: blk1}, &ledger.CommitOptions{}))
-	assert.Equal(t, channelid, mockListener.channelName)
-	assert.Contains(t, mockListener.kvWrites, &kvrwset.KVWrite{Key: "key1", Value: []byte("value1")})
-	assert.Contains(t, mockListener.kvWrites, &kvrwset.KVWrite{Key: "key2", Value: []byte("value2")})
+	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: blk1}, &ledger.CommitOptions{}))
+	require.Equal(t, channelid, mockListener.channelName)
+	require.Contains(t, mockListener.kvWrites, &kvrwset.KVWrite{Key: "key1", Value: []byte("value1")})
+	require.Contains(t, mockListener.kvWrites, &kvrwset.KVWrite{Key: "key2", Value: []byte("value2")})
 	// commit tx2 and this should not cause mock listener to receive the state changes made by tx2
 	// (because, tx2 should be found as invalid)
 	mockListener.reset()
 	sim2Res, _ := sim2.GetTxSimulationResults()
 	sim2ResBytes, _ := sim2Res.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	blk2 := bg.NextBlock([][]byte{sim2ResBytes})
-	assert.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: blk2}, &ledger.CommitOptions{}))
-	assert.Equal(t, "", mockListener.channelName)
-	assert.Nil(t, mockListener.kvWrites)
+	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: blk2}, &ledger.CommitOptions{}))
+	require.Equal(t, "", mockListener.channelName)
+	require.Nil(t, mockListener.kvWrites)
 
 	// commit tx3 and this should cause mock listener to receive changes made by tx3
 	mockListener.reset()
 	sim3Res, _ := sim3.GetTxSimulationResults()
 	sim3ResBytes, _ := sim3Res.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	blk3 := bg.NextBlock([][]byte{sim3ResBytes})
-	assert.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: blk3}, &ledger.CommitOptions{}))
-	assert.Equal(t, channelid, mockListener.channelName)
-	assert.Equal(t, []*kvrwset.KVWrite{
+	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: blk3}, &ledger.CommitOptions{}))
+	require.Equal(t, channelid, mockListener.channelName)
+	require.Equal(t, []*kvrwset.KVWrite{
 		{Key: "key4", Value: []byte("value4")},
 	}, mockListener.kvWrites)
 
@@ -116,10 +116,10 @@ func TestStateListener(t *testing.T) {
 	}
 	defer provider.Close()
 	lgr, err = provider.Open(channelid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer lgr.Close()
-	assert.NoError(t, err)
-	assert.Equal(t,
+	require.NoError(t, err)
+	require.Equal(t,
 		[]*queryresult.KV{
 			{
 				Namespace: namespace,

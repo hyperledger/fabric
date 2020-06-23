@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
@@ -53,7 +53,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 
 	pubSimulationResults := &rwset.TxReadWriteSet{}
 	err := proto.Unmarshal(pubSimResBytesBlk1Tx7, pubSimulationResults)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	tx7PvtdataHash := pubSimulationResults.NsRwset[0].CollectionHashedRwset[0].PvtRwsetHash
 
 	// construct block1
@@ -83,7 +83,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		Block:          blk1,
 		PvtData:        pvtDataBlk1,
 		MissingPvtData: missingData}
-	assert.NoError(t, lg.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtData1))
+	require.NoError(t, lg.(*kvLedger).commitToPvtAndBlockStore(blockAndPvtData1))
 
 	// construct pvtData from missing data in tx3, tx6, and tx7
 	pvtdata := []*ledger.ReconciledPvtdata{
@@ -106,11 +106,11 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 	}
 
 	blocksValidPvtData, hashMismatched, err := constructValidAndInvalidPvtData(pvtdata, lg.(*kvLedger).blockStore)
-	assert.NoError(t, err)
-	assert.Equal(t, len(expectedValidBlocksPvtData), len(blocksValidPvtData))
-	assert.ElementsMatch(t, expectedValidBlocksPvtData[1], blocksValidPvtData[1])
+	require.NoError(t, err)
+	require.Equal(t, len(expectedValidBlocksPvtData), len(blocksValidPvtData))
+	require.ElementsMatch(t, expectedValidBlocksPvtData[1], blocksValidPvtData[1])
 	// should not include the pvtData passed for the tx7 even in hashmismatched as ns-6:coll-2 does not exist in tx7
-	assert.Len(t, hashMismatched, 0)
+	require.Len(t, hashMismatched, 0)
 
 	// construct pvtData from missing data in tx7 with wrong pvtData
 	wrongPvtDataBlk1Tx7, _ = produceSamplePvtdata(t, 7, []string{"ns-1:coll-2"}, [][]byte{v6})
@@ -135,10 +135,10 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 	}
 
 	blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(pvtdata, lg.(*kvLedger).blockStore)
-	assert.NoError(t, err)
-	assert.Len(t, blocksValidPvtData, 0)
+	require.NoError(t, err)
+	require.Len(t, blocksValidPvtData, 0)
 
-	assert.ElementsMatch(t, expectedHashMismatches, hashMismatches)
+	require.ElementsMatch(t, expectedHashMismatches, hashMismatches)
 }
 
 func produceSamplePvtdata(t *testing.T, txNum uint64, nsColls []string, values [][]byte) (*ledger.TxPvtData, []byte) {
@@ -152,9 +152,9 @@ func produceSamplePvtdata(t *testing.T, txNum uint64, nsColls []string, values [
 		builder.AddToPvtAndHashedWriteSet(ns, coll, key, value)
 	}
 	simRes, err := builder.GetTxSimulationResults()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	pubSimulationResultsBytes, err := proto.Marshal(simRes.PubSimulationResults)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return &ledger.TxPvtData{SeqInBlock: txNum, WriteSet: simRes.PvtSimulationResults}, pubSimulationResultsBytes
 }
 
@@ -167,7 +167,7 @@ func TestRemoveCollFromTxPvtReadWriteSet(t *testing.T) {
 	)
 
 	removeCollFromTxPvtReadWriteSet(txpvtrwset, "ns-1", "coll-1")
-	assert.Equal(
+	require.Equal(
 		t,
 		testutilConstructSampleTxPvtRwset(
 			[]*testNsColls{
@@ -179,7 +179,7 @@ func TestRemoveCollFromTxPvtReadWriteSet(t *testing.T) {
 	)
 
 	removeCollFromTxPvtReadWriteSet(txpvtrwset, "ns-1", "coll-2")
-	assert.Equal(
+	require.Equal(
 		t,
 		testutilConstructSampleTxPvtRwset(
 			[]*testNsColls{
