@@ -1526,8 +1526,6 @@ func TestInitChannelMetadta(t *testing.T) {
 
 	// test an existing DB with no channelMetadata by deleting channelMetadata, namespace provider should be called
 	require.NoError(t, vdb.metadataDB.deleteDoc(channelMetadataDocID, ""))
-	_, err = vdb.metadataDB.ensureFullCommit()
-	require.NoError(t, err)
 	require.NoError(t, vdb.initChannelMetadata(false, fakeNsProvider))
 	require.Equal(t, expectedChannelMetadata, vdb.channelMetadata)
 	require.Equal(t, 1, fakeNsProvider.PossibleNamespacesCallCount())
@@ -1538,8 +1536,6 @@ func TestInitChannelMetadta(t *testing.T) {
 	// test namespaceProvider error
 	fakeNsProvider.PossibleNamespacesReturns(nil, errors.New("fake-namespaceprivder-error"))
 	require.NoError(t, vdb.metadataDB.deleteDoc(channelMetadataDocID, ""))
-	_, err = vdb.metadataDB.ensureFullCommit()
-	require.NoError(t, err)
 	err = vdb.initChannelMetadata(false, fakeNsProvider)
 	require.EqualError(t, err, "fake-namespaceprivder-error")
 
