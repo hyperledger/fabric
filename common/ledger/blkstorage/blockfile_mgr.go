@@ -17,8 +17,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -89,7 +89,7 @@ At start up a new manager:
 func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore *leveldbhelper.DBHandle) (*blockfileMgr, error) {
 	logger.Debugf("newBlockfileMgr() initializing file-based block storage for ledger: %s ", id)
 	rootDir := conf.getLedgerBlockDir(id)
-	_, err := util.CreateDirIfMissing(rootDir)
+	_, err := fileutil.CreateDirIfMissing(rootDir)
 	if err != nil {
 		panic(fmt.Sprintf("Error creating block storage root dir [%s]: %s", rootDir, err))
 	}
@@ -170,7 +170,7 @@ func bootstrapFromSnapshottedTxIDs(
 	indexStore *leveldbhelper.DBHandle,
 ) error {
 	rootDir := conf.getLedgerBlockDir(snapshotInfo.LedgerID)
-	isEmpty, err := util.CreateDirIfMissing(rootDir)
+	isEmpty, err := fileutil.CreateDirIfMissing(rootDir)
 	if err != nil {
 		return err
 	}
@@ -189,12 +189,16 @@ func bootstrapFromSnapshottedTxIDs(
 		return err
 	}
 
-	if err := createAndSyncFileAtomically(
+	if err := fileutil.CreateAndSyncFileAtomically(
 		rootDir,
 		bootstrappingSnapshotInfoTempFile,
 		bootstrappingSnapshotInfoFile,
 		bsiBytes,
+		0644,
 	); err != nil {
+		return err
+	}
+	if err := fileutil.SyncDir(rootDir); err != nil {
 		return err
 	}
 	if err := importTxIDsFromSnapshot(snapshotDir, snapshotInfo.LastBlockNum, indexStore); err != nil {
@@ -207,7 +211,7 @@ func syncBlockfilesInfoFromFS(rootDir string, blkfilesInfo *blockfilesInfo) {
 	logger.Debugf("Starting blockfilesInfo=%s", blkfilesInfo)
 	//Checks if the file suffix of where the last block was written exists
 	filePath := deriveBlockfilePath(rootDir, blkfilesInfo.latestFileNumber)
-	exists, size, err := util.FileExists(filePath)
+	exists, size, err := fileutil.FileExists(filePath)
 	if err != nil {
 		panic(fmt.Sprintf("Error in checking whether file [%s] exists: %s", filePath, err))
 	}

@@ -9,8 +9,8 @@ package blkstorage
 import (
 	"os"
 
-	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -246,7 +246,7 @@ func ValidateRollbackParams(blockStorageDir, ledgerID string, targetBlockNum uin
 
 func validateLedgerID(ledgerDir, ledgerID string) error {
 	logger.Debugf("Validating the existence of ledgerID [%s]", ledgerID)
-	exists, _, err := util.FileExists(ledgerDir)
+	exists, err := fileutil.DirExists(ledgerDir)
 	if err != nil {
 		return err
 	}

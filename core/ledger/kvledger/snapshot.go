@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 )
 
@@ -76,21 +77,21 @@ func (l *kvLedger) generateSnapshot() error {
 	); err != nil {
 		return err
 	}
-	if err := syncDir(snapshotTempDir); err != nil {
+	if err := fileutil.SyncDir(snapshotTempDir); err != nil {
 		return err
 	}
 	slgr := SnapshotsDirForLedger(snapshotsRootDir, l.ledgerID)
 	if err := os.MkdirAll(slgr, 0755); err != nil {
 		return errors.Wrapf(err, "error while creating final dir for snapshot:%s", slgr)
 	}
-	if err := syncParentDir(slgr); err != nil {
+	if err := fileutil.SyncParentDir(slgr); err != nil {
 		return err
 	}
 	slgrht := SnapshotDirForLedgerHeight(l.snapshotsConfig.RootDir, l.ledgerID, bcInfo.Height)
 	if err := os.Rename(snapshotTempDir, slgrht); err != nil {
 		return errors.Wrapf(err, "error while renaming dir [%s] to [%s]:", snapshotTempDir, slgrht)
 	}
-	return syncParentDir(slgrht)
+	return fileutil.SyncParentDir(slgrht)
 }
 
 func (l *kvLedger) generateSnapshotMetadataFiles(
@@ -126,7 +127,7 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	if err != nil {
 		return errors.Wrap(err, "error while marshelling snapshot metadata to JSON")
 	}
-	if err := createAndSyncFile(filepath.Join(dir, snapshotMetadataFileName), metadata); err != nil {
+	if err := fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotMetadataFileName), metadata, 0444); err != nil {
 		return err
 	}
 
@@ -149,44 +150,5 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	if err != nil {
 		return errors.Wrap(err, "error while marshalling snapshot additional info to JSON")
 	}
-	return createAndSyncFile(filepath.Join(dir, snapshotMetadataHashFileName), metadataAdditionalInfo)
-}
-
-func createAndSyncFile(filePath string, content []byte) error {
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0444)
-	if err != nil {
-		return errors.Wrapf(err, "error while creating file:%s", filePath)
-	}
-	_, err = file.Write(content)
-	if err != nil {
-		file.Close()
-		return errors.Wrapf(err, "error while writing to file:%s", filePath)
-	}
-	if err = file.Sync(); err != nil {
-		file.Close()
-		return errors.Wrapf(err, "error while synching the file:%s", filePath)
-	}
-	if err := file.Close(); err != nil {
-		return errors.Wrapf(err, "error while closing the file:%s", filePath)
-	}
-	return nil
-}
-
-func syncParentDir(path string) error {
-	return syncDir(filepath.Dir(path))
-}
-
-func syncDir(dirPath string) error {
-	dir, err := os.Open(dirPath)
-	if err != nil {
-		return errors.Wrapf(err, "error while opening dir:%s", dirPath)
-	}
-	if err := dir.Sync(); err != nil {
-		dir.Close()
-		return errors.Wrapf(err, "error while synching dir:%s", dirPath)
-	}
-	if err := dir.Close(); err != nil {
-		return errors.Wrapf(err, "error while closing dir:%s", dirPath)
-	}
-	return err
+	return fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotMetadataHashFileName), metadataAdditionalInfo, 0444)
 }

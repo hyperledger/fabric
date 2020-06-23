@@ -13,7 +13,7 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/hyperledger/fabric/common/ledger/util"
+	"github.com/hyperledger/fabric/internal/fileutil"
 )
 
 // ResetBlockStore drops the block storage index and truncates the blocks files for all channels/ledgers to genesis blocks
@@ -31,7 +31,7 @@ func ResetBlockStore(blockStorageDir string) error {
 		logger.Infof("Dir [%s] missing... exiting", chainsDir)
 		return nil
 	}
-	ledgerIDs, err := util.ListSubdirs(chainsDir)
+	ledgerIDs, err := fileutil.ListSubdirs(chainsDir)
 	if err != nil {
 		return err
 	}
