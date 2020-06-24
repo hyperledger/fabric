@@ -71,7 +71,8 @@ type Node struct {
 // New creates a gossip instance attached to a gRPC server
 func New(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 	mcs api.MessageCryptoService, selfIdentity api.PeerIdentityType,
-	secureDialOpts api.PeerSecureDialOpts, gossipMetrics *metrics.GossipMetrics) *Node {
+	secureDialOpts api.PeerSecureDialOpts, gossipMetrics *metrics.GossipMetrics,
+	anchorPeerTracker discovery.AnchorPeerTracker) *Node {
 	var err error
 
 	lgr := util.GetLogger(util.GossipLogger, conf.ID)
@@ -126,10 +127,12 @@ func New(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 		AliveExpirationTimeout:       conf.AliveExpirationTimeout,
 		AliveExpirationCheckInterval: conf.AliveExpirationCheckInterval,
 		ReconnectInterval:            conf.ReconnectInterval,
+		MaxConnectionAttempts:        conf.MaxConnectionAttempts,
+		MsgExpirationFactor:          conf.MsgExpirationFactor,
 		BootstrapPeers:               conf.BootstrapPeers,
 	}
 	g.disc = discovery.NewDiscoveryService(g.selfNetworkMember(), g.discAdapter, g.disSecAdap, g.disclosurePolicy,
-		discoveryConfig)
+		discoveryConfig, anchorPeerTracker)
 	g.logger.Infof("Creating gossip service with self membership of %s", g.selfNetworkMember())
 
 	g.certPuller = g.createCertStorePuller()

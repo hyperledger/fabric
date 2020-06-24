@@ -160,6 +160,10 @@ peer:
         aliveExpirationTimeout: 25s
         # Reconnect interval(unit: second)
         reconnectInterval: 25s
+        # Max number of attempts to connect to a peer
+        maxConnectionAttempts: 120
+        # Message expiration factor for alive messages
+        msgExpirationFactor: 20
         # This is an endpoint that is published to peers outside of the organization.
         # If this isn't set, the peer will not be known to other organizations.
         externalEndpoint:

@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"syscall"
+	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -23,12 +24,13 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
-var _ = Describe("Gossip State Transfer", func() {
+var _ = Describe("Gossip State Transfer and Membership", func() {
 	var (
-		testDir   string
-		network   *nwo.Network
-		nwprocs   *networkProcesses
-		chaincode nwo.Chaincode
+		testDir     string
+		network     *nwo.Network
+		nwprocs     *networkProcesses
+		chaincode   nwo.Chaincode
+		channelName string
 	)
 
 	BeforeEach(func() {
@@ -39,31 +41,10 @@ var _ = Describe("Gossip State Transfer", func() {
 		dockerClient, err := docker.NewClientFromEnv()
 		Expect(err).NotTo(HaveOccurred())
 
+		channelName = "testchannel"
 		network = nwo.New(nwo.FullSolo(), testDir, dockerClient, StartPort(), components)
 		network.GenerateConfigTree()
 
-		//  modify peer config
-		//  Org1: leader election
-		//  Org2: no leader election
-		//      peer0: follower
-		//      peer1: leader
-		for _, peer := range network.Peers {
-			if peer.Organization == "Org1" {
-				if peer.Name == "peer1" {
-					core := network.ReadPeerConfig(peer)
-					core.Peer.Gossip.Bootstrap = fmt.Sprintf("127.0.0.1:%d", network.ReservePort())
-					network.WritePeerConfig(peer, core)
-				}
-			}
-			if peer.Organization == "Org2" {
-				core := network.ReadPeerConfig(peer)
-				core.Peer.Gossip.UseLeaderElection = false
-				core.Peer.Gossip.OrgLeader = peer.Name == "peer1"
-				network.WritePeerConfig(peer, core)
-			}
-		}
-
-		network.Bootstrap()
 		nwprocs = &networkProcesses{
 			network:       network,
 			peerRunners:   map[string]*ginkgomon.Runner{},
@@ -90,6 +71,28 @@ var _ = Describe("Gossip State Transfer", func() {
 	})
 
 	It("syncs blocks from the peer when no orderer is available", func() {
+		//  modify peer config
+		//  Org1: leader election
+		//  Org2: no leader election
+		//      peer0: follower
+		//      peer1: leader
+		for _, peer := range network.Peers {
+			if peer.Organization == "Org1" {
+				if peer.Name == "peer1" {
+					core := network.ReadPeerConfig(peer)
+					core.Peer.Gossip.Bootstrap = fmt.Sprintf("127.0.0.1:%d", network.ReservePort())
+					network.WritePeerConfig(peer, core)
+				}
+			}
+			if peer.Organization == "Org2" {
+				core := network.ReadPeerConfig(peer)
+				core.Peer.Gossip.UseLeaderElection = false
+				core.Peer.Gossip.OrgLeader = peer.Name == "peer1"
+				network.WritePeerConfig(peer, core)
+			}
+		}
+
+		network.Bootstrap()
 		orderer := network.Orderer("orderer")
 		nwprocs.ordererRunner = network.OrdererRunner(orderer)
 		nwprocs.ordererProcess = ifrit.Invoke(nwprocs.ordererRunner)
@@ -101,7 +104,6 @@ var _ = Describe("Gossip State Transfer", func() {
 		By("bringing up all four peers")
 		startPeers(nwprocs, false, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
 
-		channelName := "testchannel"
 		network.CreateChannel(channelName, orderer, peer0Org1)
 		By("joining all peers to channel")
 		network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
@@ -139,6 +141,88 @@ var _ = Describe("Gossip State Transfer", func() {
 		// This effectively tests leader election as well, since the newly elected leader in Org1 (peer1Org1) will be the only peer
 		// that receives blocks from orderer and will therefore serve as the provider of blocks to all other peers.
 		sendTransactionsAndSyncUpPeers(nwprocs, orderer, basePeerForTransactions, channelName, peer0Org1, peer1Org2)
+	})
+
+	When("gossip connection is lost and restored", func() {
+		var (
+			orderer       *nwo.Orderer
+			peerEndpoints map[string]string = map[string]string{}
+		)
+
+		BeforeEach(func() {
+			//  modify peer config
+			for _, peer := range network.Peers {
+				core := network.ReadPeerConfig(peer)
+				core.Peer.Gossip.AliveTimeInterval = 1 * time.Second
+				core.Peer.Gossip.AliveExpirationTimeout = 2 * core.Peer.Gossip.AliveTimeInterval
+				core.Peer.Gossip.ReconnectInterval = 2 * time.Second
+				core.Peer.Gossip.MsgExpirationFactor = 2
+				core.Peer.Gossip.MaxConnectionAttempts = 10
+				network.WritePeerConfig(peer, core)
+				peerEndpoints[peer.ID()] = core.Peer.Address
+			}
+
+			network.Bootstrap()
+			orderer = network.Orderer("orderer")
+			nwprocs.ordererRunner = network.OrdererRunner(orderer)
+			nwprocs.ordererProcess = ifrit.Invoke(nwprocs.ordererRunner)
+			Eventually(nwprocs.ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		})
+
+		It("updates membership when peers in the same org are stopped and restarted", func() {
+			peer0Org1 := network.Peer("Org1", "peer0")
+			peer1Org1 := network.Peer("Org1", "peer1")
+
+			By("bringing up all peers")
+			startPeers(nwprocs, false, peer0Org1, peer1Org1)
+
+			By("creating and joining a channel")
+			network.CreateChannel(channelName, orderer, peer0Org1)
+			network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1)
+			network.UpdateChannelAnchors(orderer, channelName)
+
+			By("verifying membership on anchor peer peer0Org1")
+			Eventually(nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
+				network.DiscoveredPeer(peer0Org1, "_lifecycle"),
+				network.DiscoveredPeer(peer1Org1, "_lifecycle"),
+			))
+
+			By("verifying peer membership when an anchor peer in the same org is stopped and restarted")
+			expectedMsgFromExpirationCallback := fmt.Sprintf("Do not remove bootstrap or anchor peer endpoint %s from membership", peerEndpoints[peer0Org1.ID()])
+			assertPeerMembershipUpdate(network, peer1Org1, []*nwo.Peer{peer0Org1}, nwprocs, expectedMsgFromExpirationCallback)
+
+			By("verifying peer membership when a non-anchor peer in the same org is stopped and restarted")
+			expectedMsgFromExpirationCallback = fmt.Sprintf("Removing member: Endpoint: %s", peerEndpoints[peer1Org1.ID()])
+			assertPeerMembershipUpdate(network, peer0Org1, []*nwo.Peer{peer1Org1}, nwprocs, expectedMsgFromExpirationCallback)
+		})
+
+		It("updates peer membership when peers in another org are stopped and restarted", func() {
+			peer0Org1, peer1Org1 := network.Peer("Org1", "peer0"), network.Peer("Org1", "peer1")
+			peer0Org2, peer1Org2 := network.Peer("Org2", "peer0"), network.Peer("Org2", "peer1")
+
+			By("bringing up all peers")
+			startPeers(nwprocs, false, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
+
+			By("creating and joining a channel")
+			network.CreateChannel(channelName, orderer, peer0Org1)
+			network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1, peer0Org2, peer1Org2)
+			network.UpdateChannelAnchors(orderer, channelName)
+
+			By("verifying membership on peer1Org1")
+			Eventually(nwo.DiscoverPeers(network, peer1Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
+				network.DiscoveredPeer(peer0Org1, "_lifecycle"),
+				network.DiscoveredPeer(peer1Org1, "_lifecycle"),
+				network.DiscoveredPeer(peer0Org2, "_lifecycle"),
+				network.DiscoveredPeer(peer1Org2, "_lifecycle"),
+			))
+
+			By("stopping anchor peer peer0Org1 to have only one peer in org1")
+			stopPeers(nwprocs, peer0Org1)
+
+			By("verifying peer membership update when peers in another org are stopped and restarted")
+			expectedMsgFromExpirationCallback := fmt.Sprintf("Do not remove bootstrap or anchor peer endpoint %s from membership", peerEndpoints[peer0Org2.ID()])
+			assertPeerMembershipUpdate(network, peer1Org1, []*nwo.Peer{peer0Org2, peer1Org2}, nwprocs, expectedMsgFromExpirationCallback)
+		})
 	})
 })
 
@@ -183,7 +267,7 @@ func (n *networkProcesses) terminateAll() {
 }
 
 func startPeers(n *networkProcesses, forceStateTransfer bool, peersToStart ...*nwo.Peer) {
-	env := []string{"FABRIC_LOGGING_SPEC=info:gossip.state=debug"}
+	env := []string{"FABRIC_LOGGING_SPEC=info:gossip.state=debug:gossip.discovery=debug"}
 
 	// Setting CORE_PEER_GOSSIP_STATE_CHECKINTERVAL to 200ms (from default of 10s) will ensure that state transfer happens quickly,
 	// before blocks are gossipped through normal mechanisms
@@ -240,4 +324,33 @@ func sendTransactionsAndSyncUpPeers(n *networkProcesses, orderer *nwo.Orderer, b
 	n.ordererRunner = n.network.OrdererRunner(orderer)
 	n.ordererProcess = ifrit.Invoke(n.ordererRunner)
 	Eventually(n.ordererProcess.Ready(), n.network.EventuallyTimeout).Should(BeClosed())
+}
+
+// assertPeerMembershipUpdate stops and restart peersToRestart and verify peer membership
+func assertPeerMembershipUpdate(network *nwo.Network, peer *nwo.Peer, peersToRestart []*nwo.Peer, nwprocs *networkProcesses, expectedMsgFromExpirationCallback string) {
+	stopPeers(nwprocs, peersToRestart...)
+
+	// timeout is the same amount of time as it takes to remove a message from the aliveMsgStore, and add a second as buffer
+	core := network.ReadPeerConfig(peer)
+	timeout := core.Peer.Gossip.AliveExpirationTimeout*time.Duration(core.Peer.Gossip.MsgExpirationFactor) + time.Second
+	By("verifying peer membership after all other peers are stopped")
+	Eventually(nwo.DiscoverPeers(network, peer, "User1", "testchannel"), timeout, 100*time.Millisecond).Should(ConsistOf(
+		network.DiscoveredPeer(peer, "_lifecycle"),
+	))
+
+	By("verifying expected log message from expiration callback")
+	runner := nwprocs.peerRunners[peer.ID()]
+	Eventually(runner.Err(), network.EventuallyTimeout).Should(gbytes.Say(expectedMsgFromExpirationCallback))
+
+	By("restarting peers")
+	startPeers(nwprocs, false, peersToRestart...)
+
+	By("verifying peer membership, expected to discover restarted peers")
+	expectedPeers := make([]nwo.DiscoveredPeer, len(peersToRestart)+1)
+	expectedPeers[0] = network.DiscoveredPeer(peer, "_lifecycle")
+	for i, p := range peersToRestart {
+		expectedPeers[i+1] = network.DiscoveredPeer(p, "_lifecycle")
+	}
+	timeout = 3 * core.Peer.Gossip.ReconnectInterval
+	Eventually(nwo.DiscoverPeers(network, peer, "User1", "testchannel"), timeout, 100*time.Millisecond).Should(ConsistOf(expectedPeers))
 }

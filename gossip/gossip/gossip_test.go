@@ -41,7 +41,6 @@ var timeout = time.Second * time.Duration(180)
 func TestMain(m *testing.M) {
 	util.SetupTestLogging()
 	rand.Seed(int64(time.Now().Second()))
-	discovery.SetMaxConnAttempts(5)
 	factory.InitFactories(nil)
 	os.Exit(m.Run())
 }
@@ -52,6 +51,8 @@ var discoveryConfig = discovery.DiscoveryConfig{
 	AliveExpirationTimeout:       10 * aliveTimeInterval,
 	AliveExpirationCheckInterval: aliveTimeInterval,
 	ReconnectInterval:            aliveTimeInterval,
+	MaxConnectionAttempts:        5,
+	MsgExpirationFactor:          discovery.DefMsgExpirationFactor,
 }
 
 var orgInChannelA = api.OrgIdentityType("ORG1")
@@ -244,10 +245,12 @@ func newGossipInstanceWithGrpcMcsMetrics(id int, port int, gRPCServer *corecomm.
 		AliveExpirationTimeout:       discoveryConfig.AliveExpirationTimeout,
 		AliveExpirationCheckInterval: discoveryConfig.AliveExpirationCheckInterval,
 		ReconnectInterval:            discoveryConfig.ReconnectInterval,
+		MaxConnectionAttempts:        discoveryConfig.MaxConnectionAttempts,
+		MsgExpirationFactor:          discoveryConfig.MsgExpirationFactor,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := New(conf, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID,
-		secureDialOpts, metrics)
+		secureDialOpts, metrics, nil)
 	go func() {
 		gRPCServer.Start()
 	}()
@@ -301,10 +304,12 @@ func newGossipInstanceWithGRPCWithOnlyPull(id int, port int, gRPCServer *corecom
 		AliveExpirationTimeout:       discoveryConfig.AliveExpirationTimeout,
 		AliveExpirationCheckInterval: discoveryConfig.AliveExpirationCheckInterval,
 		ReconnectInterval:            discoveryConfig.ReconnectInterval,
+		MaxConnectionAttempts:        discoveryConfig.MaxConnectionAttempts,
+		MsgExpirationFactor:          discoveryConfig.MsgExpirationFactor,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := New(conf, gRPCServer.Server(), &orgCryptoService{}, mcs, selfID,
-		secureDialOpts, metrics)
+		secureDialOpts, metrics, nil)
 	go func() {
 		gRPCServer.Start()
 	}()
