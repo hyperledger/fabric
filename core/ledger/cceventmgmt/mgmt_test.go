@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -43,7 +43,7 @@ func TestCCEventMgmt(t *testing.T) {
 
 	handler1, handler2, handler3 := &mockHandler{}, &mockHandler{}, &mockHandler{}
 	eventMgr := GetMgr()
-	assert.NotNil(t, eventMgr)
+	require.NotNil(t, eventMgr)
 	eventMgr.Register("channel1", handler1)
 	eventMgr.Register("channel2", handler2)
 	eventMgr.Register("channel1", handler3)
@@ -56,37 +56,37 @@ func TestCCEventMgmt(t *testing.T) {
 	// Deploy cc3 on chain1 - handler1 and handler3 should receive event because cc3 is being deployed only on chain1
 	eventMgr.HandleChaincodeDeploy("channel1", []*ChaincodeDefinition{cc3Def})
 	eventMgr.ChaincodeDeployDone("channel1")
-	assert.Contains(t, handler1.eventsRecieved, cc3ExpectedEvent)
-	assert.NotContains(t, handler2.eventsRecieved, cc3ExpectedEvent)
-	assert.Contains(t, handler3.eventsRecieved, cc3ExpectedEvent)
-	assert.Equal(t, 1, handler1.doneRecievedCount)
-	assert.Equal(t, 0, handler2.doneRecievedCount)
-	assert.Equal(t, 1, handler3.doneRecievedCount)
+	require.Contains(t, handler1.eventsRecieved, cc3ExpectedEvent)
+	require.NotContains(t, handler2.eventsRecieved, cc3ExpectedEvent)
+	require.Contains(t, handler3.eventsRecieved, cc3ExpectedEvent)
+	require.Equal(t, 1, handler1.doneRecievedCount)
+	require.Equal(t, 0, handler2.doneRecievedCount)
+	require.Equal(t, 1, handler3.doneRecievedCount)
 
 	// Deploy cc3 on chain2 as well and this time handler2 should also receive event
 	eventMgr.HandleChaincodeDeploy("channel2", []*ChaincodeDefinition{cc3Def})
 	eventMgr.ChaincodeDeployDone("channel2")
-	assert.Contains(t, handler2.eventsRecieved, cc3ExpectedEvent)
-	assert.Equal(t, 1, handler1.doneRecievedCount)
-	assert.Equal(t, 1, handler2.doneRecievedCount)
-	assert.Equal(t, 2, handler3.doneRecievedCount)
+	require.Contains(t, handler2.eventsRecieved, cc3ExpectedEvent)
+	require.Equal(t, 1, handler1.doneRecievedCount)
+	require.Equal(t, 1, handler2.doneRecievedCount)
+	require.Equal(t, 2, handler3.doneRecievedCount)
 
 	// Install CC2 - handler1 and handler 3 should receive event because cc2 is deployed only on chain1 and not on chain2
 	eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar)
 	eventMgr.ChaincodeInstallDone(true)
-	assert.Contains(t, handler1.eventsRecieved, cc2ExpectedEvent)
-	assert.NotContains(t, handler2.eventsRecieved, cc2ExpectedEvent)
-	assert.Contains(t, handler3.eventsRecieved, cc2ExpectedEvent)
-	assert.Equal(t, 2, handler1.doneRecievedCount)
-	assert.Equal(t, 1, handler2.doneRecievedCount)
-	assert.Equal(t, 3, handler3.doneRecievedCount)
+	require.Contains(t, handler1.eventsRecieved, cc2ExpectedEvent)
+	require.NotContains(t, handler2.eventsRecieved, cc2ExpectedEvent)
+	require.Contains(t, handler3.eventsRecieved, cc2ExpectedEvent)
+	require.Equal(t, 2, handler1.doneRecievedCount)
+	require.Equal(t, 1, handler2.doneRecievedCount)
+	require.Equal(t, 3, handler3.doneRecievedCount)
 
 	// setting cc2Def as a new lifecycle definition should cause install not to trigger event
 	mockProvider.setChaincodeDeployed("channel1", cc2Def, false)
 	handler1.eventsRecieved = []*mockEvent{}
 	eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar)
 	eventMgr.ChaincodeInstallDone(true)
-	assert.NotContains(t, handler1.eventsRecieved, cc2ExpectedEvent)
+	require.NotContains(t, handler1.eventsRecieved, cc2ExpectedEvent)
 }
 
 func TestLSCCListener(t *testing.T) {
@@ -145,9 +145,9 @@ func TestLSCCListener(t *testing.T) {
 			},
 		)
 		// processes legacy event
-		assert.Contains(t, handler1.eventsRecieved, &mockEvent{cc1Def, ccDBArtifactsTar})
+		require.Contains(t, handler1.eventsRecieved, &mockEvent{cc1Def, ccDBArtifactsTar})
 		// does not processes new lifecycle event
-		assert.NotContains(t, handler1.eventsRecieved, &mockEvent{cc2Def, ccDBArtifactsTar})
+		require.NotContains(t, handler1.eventsRecieved, &mockEvent{cc2Def, ccDBArtifactsTar})
 	})
 }
 
