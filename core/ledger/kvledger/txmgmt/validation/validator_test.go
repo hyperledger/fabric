@@ -20,7 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type keyValue struct {
@@ -133,60 +133,60 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 
 		// pubKV1 should be found in cache
 		version, keyFound := bulkOptimizable.GetCachedVersion(pubKV1.namespace, pubKV1.key)
-		assert.True(t, keyFound)
-		assert.Equal(t, pubKV1.version, version)
+		require.True(t, keyFound)
+		require.Equal(t, pubKV1.version, version)
 
 		// pubKV2 should be found in cache
 		version, keyFound = bulkOptimizable.GetCachedVersion(pubKV2.namespace, pubKV2.key)
-		assert.True(t, keyFound)
-		assert.Equal(t, pubKV2.version, version)
+		require.True(t, keyFound)
+		require.Equal(t, pubKV2.version, version)
 
 		// [ns3, key1] should be found in cache as it was in the readset of transaction 1 though it is
 		// not in the state db but the version would be nil
 		version, keyFound = bulkOptimizable.GetCachedVersion("ns3", "key1")
-		assert.True(t, keyFound)
-		assert.Nil(t, version)
+		require.True(t, keyFound)
+		require.Nil(t, version)
 
 		// [ns4, key1] should not be found in cache as it was not loaded
 		version, keyFound = bulkOptimizable.GetCachedVersion("ns4", "key1")
-		assert.False(t, keyFound)
-		assert.Nil(t, version)
+		require.False(t, keyFound)
+		require.Nil(t, version)
 
 		// hashedKV1 should be found in cache
 		version, keyFound = testValidator.db.GetCachedKeyHashVersion(hashedKV1.namespace,
 			hashedKV1.collection, hashedKV1.keyHash)
-		assert.True(t, keyFound)
-		assert.Equal(t, hashedKV1.version, version)
+		require.True(t, keyFound)
+		require.Equal(t, hashedKV1.version, version)
 
 		// hashedKV2 should be found in cache
 		version, keyFound = testValidator.db.GetCachedKeyHashVersion(hashedKV2.namespace,
 			hashedKV2.collection, hashedKV2.keyHash)
-		assert.True(t, keyFound)
-		assert.Equal(t, hashedKV2.version, version)
+		require.True(t, keyFound)
+		require.Equal(t, hashedKV2.version, version)
 
 		// [ns3, col1, hashedPvtKey1] should be found in cache as it was in the readset of transaction 2 though it is
 		// not in the state db
 		version, keyFound = testValidator.db.GetCachedKeyHashVersion("ns3", "col1", util.ComputeStringHash("hashedPvtKey1"))
-		assert.True(t, keyFound)
-		assert.Nil(t, version)
+		require.True(t, keyFound)
+		require.Nil(t, version)
 
 		// [ns4, col, key1] should not be found in cache as it was not loaded
 		version, keyFound = testValidator.db.GetCachedKeyHashVersion("ns4", "col1", util.ComputeStringHash("key1"))
-		assert.False(t, keyFound)
-		assert.Nil(t, version)
+		require.False(t, keyFound)
+		require.Nil(t, version)
 
 		// Clear cache
 		testValidator.db.ClearCachedVersions()
 
 		// pubKV1 should not be found in cache as cahce got emptied
 		version, keyFound = bulkOptimizable.GetCachedVersion(pubKV1.namespace, pubKV1.key)
-		assert.False(t, keyFound)
-		assert.Nil(t, version)
+		require.False(t, keyFound)
+		require.Nil(t, version)
 
 		// [ns3, col1, key1] should not be found in cache as cahce got emptied
 		version, keyFound = testValidator.db.GetCachedKeyHashVersion("ns3", "col1", util.ComputeStringHash("hashedPvtKey1"))
-		assert.False(t, keyFound)
-		assert.Nil(t, version)
+		require.False(t, keyFound)
+		require.Nil(t, version)
 	}
 }
 
@@ -371,7 +371,7 @@ func checkValidation(t *testing.T, val *validator, transRWSets []*rwsetutil.TxRw
 	}
 	blk := &block{num: 1, txs: trans}
 	_, err := val.validateAndPrepareBatch(blk, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	t.Logf("block.Txs[0].ValidationCode = %d", blk.txs[0].validationCode)
 	var invalidTxs []int
 	for _, tx := range blk.txs {
@@ -379,8 +379,8 @@ func checkValidation(t *testing.T, val *validator, transRWSets []*rwsetutil.TxRw
 			invalidTxs = append(invalidTxs, tx.indexInBlock)
 		}
 	}
-	assert.Equal(t, len(expectedInvalidTxIndexes), len(invalidTxs))
-	assert.ElementsMatch(t, invalidTxs, expectedInvalidTxIndexes)
+	require.Equal(t, len(expectedInvalidTxIndexes), len(invalidTxs))
+	require.ElementsMatch(t, invalidTxs, expectedInvalidTxIndexes)
 }
 
 func buildTestHashResults(t *testing.T, maxDegree int, kvReads []*kvrwset.KVRead) *kvrwset.QueryReadsMerkleSummary {
@@ -392,8 +392,8 @@ func buildTestHashResults(t *testing.T, maxDegree int, kvReads []*kvrwset.KVRead
 		helper.AddResult(kvRead)
 	}
 	_, h, err := helper.Done()
-	assert.NoError(t, err)
-	assert.NotNil(t, h)
+	require.NoError(t, err)
+	require.NotNil(t, h)
 	return h
 }
 
@@ -401,11 +401,11 @@ func getTestPubSimulationRWSet(t *testing.T, builders ...*rwsetutil.RWSetBuilder
 	var pubRWSets []*rwsetutil.TxRwSet
 	for _, b := range builders {
 		s, e := b.GetTxSimulationResults()
-		assert.NoError(t, e)
+		require.NoError(t, e)
 		sBytes, err := s.GetPubSimulationBytes()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		pubRWSet := &rwsetutil.TxRwSet{}
-		assert.NoError(t, pubRWSet.FromProtoBytes(sBytes))
+		require.NoError(t, pubRWSet.FromProtoBytes(sBytes))
 		pubRWSets = append(pubRWSets, pubRWSet)
 	}
 	return pubRWSets
