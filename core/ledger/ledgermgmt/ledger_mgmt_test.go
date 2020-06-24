@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLedgerMgmt(t *testing.T) {
@@ -43,38 +43,38 @@ func TestLedgerMgmt(t *testing.T) {
 		cid := constructTestLedgerID(i)
 		gb, _ := test.MakeGenesisBlock(cid)
 		l, err := ledgerMgr.CreateLedger(cid, gb)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		ledgers[i] = l
 	}
 
 	ids, _ := ledgerMgr.GetLedgerIDs()
-	assert.Len(t, ids, numLedgers)
+	require.Len(t, ids, numLedgers)
 	for i := 0; i < numLedgers; i++ {
-		assert.Equal(t, constructTestLedgerID(i), ids[i])
+		require.Equal(t, constructTestLedgerID(i), ids[i])
 	}
 
 	ledgerID := constructTestLedgerID(2)
 	t.Logf("Ledger selected for test = %s", ledgerID)
 	_, err = ledgerMgr.OpenLedger(ledgerID)
-	assert.Equal(t, ErrLedgerAlreadyOpened, err)
+	require.Equal(t, ErrLedgerAlreadyOpened, err)
 
 	l := ledgers[2]
 	l.Close()
 	// attempt to close the same ledger twice and ensure it doesn't panic
-	assert.NotPanics(t, l.Close)
+	require.NotPanics(t, l.Close)
 
 	_, err = ledgerMgr.OpenLedger(ledgerID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = ledgerMgr.OpenLedger(ledgerID)
-	assert.Equal(t, ErrLedgerAlreadyOpened, err)
+	require.Equal(t, ErrLedgerAlreadyOpened, err)
 	// close all opened ledgers and ledger mgmt
 	ledgerMgr.Close()
 
 	// Recreate LedgerMgr with existing ledgers
 	ledgerMgr = NewLedgerMgr(initializer)
 	_, err = ledgerMgr.OpenLedger(ledgerID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ledgerMgr.Close()
 }
 
@@ -108,19 +108,19 @@ func TestChaincodeInfoProvider(t *testing.T) {
 	}
 	_, err = ccInfoProvider.GetDeployedChaincodeInfo("ledger2", constructTestCCDef("cc2", "1.0", "cc2Hash"))
 	t.Logf("Expected error received = %s", err)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	ccInfo, err := ccInfoProvider.GetDeployedChaincodeInfo("ledger1", constructTestCCDef("cc1", "non-matching-version", "cc1"))
-	assert.NoError(t, err)
-	assert.Nil(t, ccInfo)
+	require.NoError(t, err)
+	require.Nil(t, ccInfo)
 
 	ccInfo, err = ccInfoProvider.GetDeployedChaincodeInfo("ledger1", constructTestCCDef("cc1", "cc1", "non-matching-hash"))
-	assert.NoError(t, err)
-	assert.Nil(t, ccInfo)
+	require.NoError(t, err)
+	require.Nil(t, ccInfo)
 
 	ccInfo, err = ccInfoProvider.GetDeployedChaincodeInfo("ledger1", constructTestCCDef("cc1", "cc1", "cc1"))
-	assert.NoError(t, err)
-	assert.Equal(t, constructTestCCInfo("cc1", "cc1", "cc1"), ccInfo)
+	require.NoError(t, err)
+	require.Equal(t, constructTestCCInfo("cc1", "cc1", "cc1"), ccInfo)
 }
 
 func constructDefaultInitializer(testDir string) (*Initializer, error) {
