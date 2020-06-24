@@ -11,7 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCollectionValidation(t *testing.T) {
@@ -30,26 +30,26 @@ func TestCollectionValidation(t *testing.T) {
 	)
 
 	sim, err := txMgr.NewTxSimulator("tx-id1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = sim.GetPrivateData("ns3", "coll1", "key1")
 	_, ok := err.(*ledger.CollConfigNotDefinedError)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	err = sim.SetPrivateData("ns3", "coll1", "key1", []byte("val1"))
 	_, ok = err.(*ledger.CollConfigNotDefinedError)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	_, err = sim.GetPrivateData("ns1", "coll3", "key1")
 	_, ok = err.(*ledger.InvalidCollNameError)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	err = sim.SetPrivateData("ns1", "coll3", "key1", []byte("val1"))
 	_, ok = err.(*ledger.InvalidCollNameError)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	err = sim.SetPrivateData("ns1", "coll1", "key1", []byte("val1"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestPvtGetNoCollection(t *testing.T) {
@@ -59,10 +59,10 @@ func TestPvtGetNoCollection(t *testing.T) {
 	txMgr := testEnv.getTxMgr()
 	qe := newQueryExecutor(txMgr, "", nil, true, testHashFunc)
 	valueHash, metadataBytes, err := qe.getPrivateDataValueHash("cc", "coll", "key")
-	assert.Nil(t, valueHash)
-	assert.Nil(t, metadataBytes)
-	assert.Error(t, err)
-	assert.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
+	require.Nil(t, valueHash)
+	require.Nil(t, metadataBytes)
+	require.Error(t, err)
+	require.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
 }
 func TestPvtPutNoCollection(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
@@ -70,10 +70,10 @@ func TestPvtPutNoCollection(t *testing.T) {
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
 	txsim, err := txMgr.NewTxSimulator("txid")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = txsim.SetPrivateDataMetadata("cc", "coll", "key", map[string][]byte{})
-	assert.Error(t, err)
-	assert.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
 }
 
 func TestNoCollectionValidationCheck(t *testing.T) {
@@ -82,8 +82,8 @@ func TestNoCollectionValidationCheck(t *testing.T) {
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
 	qe, err := txMgr.NewQueryExecutorNoCollChecks()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	valueHash, err := qe.GetPrivateDataHash("cc", "coll", "key")
-	assert.Nil(t, valueHash)
-	assert.NoError(t, err)
+	require.Nil(t, valueHash)
+	require.NoError(t, err)
 }

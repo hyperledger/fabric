@@ -22,7 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTxSimulatorWithNoExistingData(t *testing.T) {
@@ -40,8 +40,8 @@ func testTxSimulatorWithNoExistingData(t *testing.T, env testEnv) {
 	txMgr := env.getTxMgr()
 	s, _ := txMgr.NewTxSimulator("test_txid")
 	value, err := s.GetState("ns1", "key1")
-	assert.NoErrorf(t, err, "Error in GetState(): %s", err)
-	assert.Nil(t, value)
+	require.NoErrorf(t, err, "Error in GetState(): %s", err)
+	require.Nil(t, value)
 
 	s.SetState("ns1", "key1", []byte("value1"))
 	s.SetState("ns1", "key2", []byte("value2"))
@@ -49,11 +49,11 @@ func testTxSimulatorWithNoExistingData(t *testing.T, env testEnv) {
 	s.SetState("ns2", "key4", []byte("value4"))
 
 	value, _ = s.GetState("ns2", "key3")
-	assert.Nil(t, value)
+	require.Nil(t, value)
 
 	simulationResults, err := s.GetTxSimulationResults()
-	assert.NoError(t, err)
-	assert.Nil(t, simulationResults.PvtSimulationResults)
+	require.NoError(t, err)
+	require.Nil(t, simulationResults.PvtSimulationResults)
 }
 
 func TestTxSimulatorGetResults(t *testing.T) {
@@ -77,17 +77,17 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	simulator, _ := testEnv.getTxMgr().NewTxSimulator("test_txid1")
 	simulator.GetState("ns1", "key1")
 	_, err = simulator.GetPrivateData("ns1", "coll1", "key1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	simulator.SetState("ns1", "key1", []byte("value1"))
 	// get simulation results and verify that this contains rwset only for one namespace
 	simulationResults1, err := simulator.GetTxSimulationResults()
-	assert.NoError(t, err)
-	assert.Len(t, simulationResults1.PubSimulationResults.NsRwset, 1)
+	require.NoError(t, err)
+	require.Len(t, simulationResults1.PubSimulationResults.NsRwset, 1)
 	// clone freeze simulationResults1
 	buff1 := new(bytes.Buffer)
-	assert.NoError(t, gob.NewEncoder(buff1).Encode(simulationResults1))
+	require.NoError(t, gob.NewEncoder(buff1).Encode(simulationResults1))
 	frozenSimulationResults1 := &ledger.TxSimulationResults{}
-	assert.NoError(t, gob.NewDecoder(buff1).Decode(&frozenSimulationResults1))
+	require.NoError(t, gob.NewDecoder(buff1).Decode(&frozenSimulationResults1))
 
 	// use the same simulator after obtaining the simulation results by get/set keys in one more namespace "ns2"
 	simulator.GetState("ns2", "key2")
@@ -95,20 +95,20 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	simulator.SetState("ns2", "key2", []byte("value2"))
 	// get simulation results and verify that an error is raised when obtaining the simulation results more than once
 	_, err = simulator.GetTxSimulationResults()
-	assert.Error(t, err) // calling 'GetTxSimulationResults()' more than once should raise error
+	require.Error(t, err) // calling 'GetTxSimulationResults()' more than once should raise error
 	// Now, verify that the simulator operations did not have an effect on previously obtained results
-	assert.Equal(t, frozenSimulationResults1, simulationResults1)
+	require.Equal(t, frozenSimulationResults1, simulationResults1)
 
 	// Call 'Done' and all the data get/set operations after calling 'Done' should fail.
 	simulator.Done()
 	_, err = simulator.GetState("ns3", "key3")
-	assert.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
+	require.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
 	err = simulator.SetState("ns3", "key3", []byte("value3"))
-	assert.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
+	require.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
 	_, err = simulator.GetPrivateData("ns3", "coll3", "key3")
-	assert.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
+	require.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
 	err = simulator.SetPrivateData("ns3", "coll3", "key3", []byte("value3"))
-	assert.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
+	require.Errorf(t, err, "An error is expected when using simulator to get/set data after calling `Done` function()")
 }
 
 func TestTxSimulatorWithExistingData(t *testing.T) {
@@ -139,11 +139,11 @@ func testTxSimulatorWithExistingData(t *testing.T, env testEnv) {
 	// simulate tx2 that make changes to existing data
 	s2, _ := txMgr.NewTxSimulator("test_tx2")
 	value, _ := s2.GetState("ns1", "key1")
-	assert.Equal(t, []byte("value1"), value)
+	require.Equal(t, []byte("value1"), value)
 	s2.SetState("ns1", "key1", []byte("value1_1"))
 	s2.DeleteState("ns2", "key3")
 	value, _ = s2.GetState("ns1", "key1")
-	assert.Equal(t, []byte("value1"), value)
+	require.Equal(t, []byte("value1"), value)
 	s2.Done()
 	// validate and commit RWset for tx2
 	txRWSet2, _ := s2.GetTxSimulationResults()
@@ -152,16 +152,16 @@ func testTxSimulatorWithExistingData(t *testing.T, env testEnv) {
 	// simulate tx3
 	s3, _ := txMgr.NewTxSimulator("test_tx3")
 	value, _ = s3.GetState("ns1", "key1")
-	assert.Equal(t, []byte("value1_1"), value)
+	require.Equal(t, []byte("value1_1"), value)
 	value, _ = s3.GetState("ns2", "key3")
-	assert.Nil(t, value)
+	require.Nil(t, value)
 	s3.Done()
 
 	// verify the versions of keys in persistence
 	vv, _ := env.getVDB().GetState("ns1", "key1")
-	assert.Equal(t, version.NewHeight(2, 0), vv.Version)
+	require.Equal(t, version.NewHeight(2, 0), vv.Version)
 	vv, _ = env.getVDB().GetState("ns1", "key2")
-	assert.Equal(t, version.NewHeight(1, 0), vv.Version)
+	require.Equal(t, version.NewHeight(1, 0), vv.Version)
 }
 
 func TestTxValidation(t *testing.T) {
@@ -192,7 +192,7 @@ func testTxValidation(t *testing.T, env testEnv) {
 	// tx2: Read/Update ns1:key1, Delete ns2:key3.
 	s2, _ := txMgr.NewTxSimulator("test_tx2")
 	value, _ := s2.GetState("ns1", "key1")
-	assert.Equal(t, []byte("value1"), value)
+	require.Equal(t, []byte("value1"), value)
 
 	s2.SetState("ns1", "key1", []byte("value1_2"))
 	s2.DeleteState("ns2", "key3")
@@ -402,11 +402,11 @@ func testIterator(t *testing.T, env testEnv, numKeys int, startKeyNum int, endKe
 		k := kv.(*queryresult.KV).Key
 		v := kv.(*queryresult.KV).Value
 		t.Logf("Retrieved k=%s, v=%s at count=%d start=%s end=%s", k, v, count, startKey, endKey)
-		assert.Equal(t, createTestKey(keyNum), k)
-		assert.Equal(t, createTestValue(keyNum), v)
+		require.Equal(t, createTestKey(keyNum), k)
+		require.Equal(t, createTestValue(keyNum), v)
 		count++
 	}
-	assert.Equal(t, expectedCount, count)
+	require.Equal(t, expectedCount, count)
 }
 
 func TestIteratorPaging(t *testing.T) {
@@ -467,14 +467,14 @@ func testIteratorPaging(t *testing.T, env testEnv, numKeys int, startKey, endKey
 func testItrWithoutClose(t *testing.T, itr ledger.QueryResultsIterator, expectedKeys []string) {
 	for _, expectedKey := range expectedKeys {
 		queryResult, err := itr.Next()
-		assert.NoError(t, err, "An unexpected error was thrown during iterator Next()")
+		require.NoError(t, err, "An unexpected error was thrown during iterator Next()")
 		vkv := queryResult.(*queryresult.KV)
 		key := vkv.Key
-		assert.Equal(t, expectedKey, key)
+		require.Equal(t, expectedKey, key)
 	}
 	queryResult, err := itr.Next()
-	assert.NoError(t, err, "An unexpected error was thrown during iterator Next()")
-	assert.Nil(t, queryResult)
+	require.NoError(t, err, "An unexpected error was thrown during iterator Next()")
+	require.Nil(t, queryResult)
 }
 
 func TestIteratorWithDeletes(t *testing.T) {
@@ -514,9 +514,9 @@ func testIteratorWithDeletes(t *testing.T, env testEnv) {
 	itr, _ := queryExecuter.GetStateRangeScanIterator(cID, createTestKey(3), createTestKey(6))
 	defer itr.Close()
 	kv, _ := itr.Next()
-	assert.Equal(t, createTestKey(3), kv.(*queryresult.KV).Key)
+	require.Equal(t, createTestKey(3), kv.(*queryresult.KV).Key)
 	kv, _ = itr.Next()
-	assert.Equal(t, createTestKey(5), kv.(*queryresult.KV).Key)
+	require.Equal(t, createTestKey(5), kv.(*queryresult.KV).Key)
 }
 
 func TestTxValidationWithItr(t *testing.T) {
@@ -618,17 +618,17 @@ func testGetSetMultipeKeys(t *testing.T, env testEnv) {
 		multipleKeys = append(multipleKeys, k)
 	}
 	values, _ := qe.GetStateMultipleKeys(cID, multipleKeys)
-	assert.Len(t, values, 10)
+	require.Len(t, values, 10)
 	for i, v := range values {
-		assert.Equal(t, multipleKeyMap[multipleKeys[i]], v)
+		require.Equal(t, multipleKeyMap[multipleKeys[i]], v)
 	}
 
 	s2, _ := txMgr.NewTxSimulator("test_tx3")
 	defer s2.Done()
 	values, _ = s2.GetStateMultipleKeys(cID, multipleKeys[5:7])
-	assert.Len(t, values, 2)
+	require.Len(t, values, 2)
 	for i, v := range values {
-		assert.Equal(t, multipleKeyMap[multipleKeys[i+5]], v)
+		require.Equal(t, multipleKeyMap[multipleKeys[i+5]], v)
 	}
 }
 
@@ -699,7 +699,7 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 	queryString := "{\"selector\":{\"owner\": {\"$eq\": \"bob\"}},\"limit\": 10,\"skip\": 0}"
 
 	itr, err := queryExecuter.ExecuteQuery("ns1", queryString)
-	assert.NoError(t, err, "Error upon ExecuteQuery()")
+	require.NoError(t, err, "Error upon ExecuteQuery()")
 	counter := 0
 	for {
 		queryRecord, _ := itr.Next()
@@ -710,11 +710,11 @@ func testExecuteQuery(t *testing.T, env testEnv) {
 		assetResp := &Asset{}
 		json.Unmarshal(queryRecord.(*queryresult.KV).Value, &assetResp)
 		//Verify the owner retrieved matches
-		assert.Equal(t, "bob", assetResp.Owner)
+		require.Equal(t, "bob", assetResp.Owner)
 		counter++
 	}
 	//Ensure the query returns 3 documents
-	assert.Equal(t, 3, counter)
+	require.Equal(t, 3, counter)
 }
 
 // TestExecutePaginatedQuery is only tested on the CouchDB testEnv
@@ -764,7 +764,7 @@ func testExecutePaginatedQuery(t *testing.T, env testEnv) {
 	queryString := `{"selector":{"owner":{"$eq":"bob"}}}`
 
 	itr, err := queryExecuter.ExecuteQueryWithPagination("ns1", queryString, "", 2)
-	assert.NoError(t, err, "Error upon ExecuteQueryWithMetadata()")
+	require.NoError(t, err, "Error upon ExecuteQueryWithMetadata()")
 	counter := 0
 	for {
 		queryRecord, _ := itr.Next()
@@ -775,16 +775,16 @@ func testExecutePaginatedQuery(t *testing.T, env testEnv) {
 		assetResp := &Asset{}
 		json.Unmarshal(queryRecord.(*queryresult.KV).Value, &assetResp)
 		//Verify the owner retrieved matches
-		assert.Equal(t, "bob", assetResp.Owner)
+		require.Equal(t, "bob", assetResp.Owner)
 		counter++
 	}
 	//Ensure the query returns 2 documents
-	assert.Equal(t, 2, counter)
+	require.Equal(t, 2, counter)
 
 	bookmark := itr.GetBookmarkAndClose()
 
 	itr, err = queryExecuter.ExecuteQueryWithPagination("ns1", queryString, bookmark, 2)
-	assert.NoError(t, err, "Error upon ExecuteQuery()")
+	require.NoError(t, err, "Error upon ExecuteQuery()")
 	counter = 0
 	for {
 		queryRecord, _ := itr.Next()
@@ -795,11 +795,11 @@ func testExecutePaginatedQuery(t *testing.T, env testEnv) {
 		assetResp := &Asset{}
 		json.Unmarshal(queryRecord.(*queryresult.KV).Value, &assetResp)
 		//Verify the owner retrieved matches
-		assert.Equal(t, "bob", assetResp.Owner)
+		require.Equal(t, "bob", assetResp.Owner)
 		counter++
 	}
 	//Ensure the query returns 1 documents
-	assert.Equal(t, 1, counter)
+	require.Equal(t, 1, counter)
 }
 
 func TestValidateKey(t *testing.T) {
@@ -811,10 +811,10 @@ func TestValidateKey(t *testing.T) {
 		txSimulator, _ := testEnv.getTxMgr().NewTxSimulator("test_tx1")
 		err := txSimulator.SetState("ns1", nonUTF8Key, dummyValue)
 		if testEnv.getName() == levelDBtestEnvName {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		if testEnv.getName() == couchDBtestEnvName {
-			assert.Error(t, err)
+			require.Error(t, err)
 		}
 		testEnv.cleanup()
 	}
@@ -838,31 +838,31 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 
 	simulator, _ := txMgr.NewTxSimulator("txid1")
 	err := simulator.SetState("ns", "key", []byte("value"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = simulator.GetPrivateDataRangeScanIterator("ns1", "coll1", "startKey", "endKey")
 	_, ok := err.(*ErrUnsupportedTransaction)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	simulator, _ = txMgr.NewTxSimulator("txid2")
 	_, err = simulator.GetPrivateDataRangeScanIterator("ns1", "coll1", "startKey", "endKey")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = simulator.SetState("ns", "key", []byte("value"))
 	_, ok = err.(*ErrUnsupportedTransaction)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	simulator, _ = txMgr.NewTxSimulator("txid3")
 	err = simulator.SetState("ns", "key", []byte("value"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = simulator.GetStateRangeScanIteratorWithPagination("ns1", "startKey", "endKey", 2)
 	_, ok = err.(*ErrUnsupportedTransaction)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	simulator, _ = txMgr.NewTxSimulator("txid4")
 	_, err = simulator.GetStateRangeScanIteratorWithPagination("ns1", "startKey", "endKey", 2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = simulator.SetState("ns", "key", []byte("value"))
 	_, ok = err.(*ErrUnsupportedTransaction)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 }
 
@@ -898,17 +898,17 @@ func testTxSimulatorQueryUnsupportedTx(t *testing.T, env testEnv) {
 
 	simulator, _ := txMgr.NewTxSimulator("txid1")
 	err := simulator.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = simulator.ExecuteQueryWithPagination("ns1", queryString, "", 2)
 	_, ok := err.(*ErrUnsupportedTransaction)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	simulator, _ = txMgr.NewTxSimulator("txid2")
 	_, err = simulator.ExecuteQueryWithPagination("ns1", queryString, "", 2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = simulator.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
 	_, ok = err.(*ErrUnsupportedTransaction)
-	assert.True(t, ok)
+	require.True(t, ok)
 
 }
 
@@ -966,8 +966,8 @@ func TestConstructUniquePvtData(t *testing.T) {
 	}
 
 	uniquePvtData, err := constructUniquePvtData(blocksPvtData)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedUniquePvtData, uniquePvtData)
+	require.NoError(t, err)
+	require.Equal(t, expectedUniquePvtData, uniquePvtData)
 }
 
 func TestFindAndRemoveStalePvtData(t *testing.T) {
@@ -1025,9 +1025,9 @@ func TestFindAndRemoveStalePvtData(t *testing.T) {
 	expectedBatch.PvtUpdates.Put("ns2", "coll2", "key3", []byte("value_2_2_3"), version.NewHeight(10, 10))
 
 	err := uniquePvtData.findAndRemoveStalePvtData(db)
-	assert.NoError(t, err, "uniquePvtData.findAndRemoveStatePvtData resulted in an error")
+	require.NoError(t, err, "uniquePvtData.findAndRemoveStatePvtData resulted in an error")
 	batch = uniquePvtData.transformToUpdateBatch()
-	assert.Equal(t, expectedBatch.PvtUpdates, batch.PvtUpdates)
+	require.Equal(t, expectedBatch.PvtUpdates, batch.PvtUpdates)
 }
 
 func producePvtdata(t *testing.T, txNum uint64, nsColls []string, keys []string, values [][]byte) *ledger.TxPvtData {
@@ -1041,7 +1041,7 @@ func producePvtdata(t *testing.T, txNum uint64, nsColls []string, keys []string,
 		builder.AddToPvtAndHashedWriteSet(ns, coll, key, value)
 	}
 	simRes, err := builder.GetTxSimulationResults()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return &ledger.TxPvtData{
 		SeqInBlock: txNum,
 		WriteSet:   simRes.PvtSimulationResults,
@@ -1134,24 +1134,24 @@ func testValidationAndCommitOfOldPvtData(t *testing.T, env testEnv) {
 	}
 
 	err := txMgr.RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	vv, err := db.GetPrivateData("ns1", "coll1", "key1")
-	assert.NoError(t, err)
-	assert.Equal(t, anv1, vv.Value) // last updated value
+	require.NoError(t, err)
+	require.Equal(t, anv1, vv.Value) // last updated value
 
 	vv, err = db.GetPrivateData("ns1", "coll1", "key2")
-	assert.NoError(t, err)
-	assert.Nil(t, vv) // deleted
+	require.NoError(t, err)
+	require.Nil(t, vv) // deleted
 
 	vv, err = db.GetPrivateData("ns1", "coll2", "key3")
-	assert.NoError(t, err)
-	assert.Equal(t, v3, vv.Value)
-	assert.Equal(t, version.NewHeight(3, 2), vv.Version) // though we passed with version {1,2}, we should get {3,2} due to metadata update
+	require.NoError(t, err)
+	require.Equal(t, v3, vv.Value)
+	require.Equal(t, version.NewHeight(3, 2), vv.Version) // though we passed with version {1,2}, we should get {3,2} due to metadata update
 
 	vv, err = db.GetPrivateData("ns1", "coll2", "key4")
-	assert.NoError(t, err)
-	assert.Equal(t, v4, vv.Value)
+	require.NoError(t, err)
+	require.Equal(t, v4, vv.Value)
 }
 
 func TestTxSimulatorMissingPvtdata(t *testing.T) {
@@ -1176,7 +1176,7 @@ func TestTxSimulatorMissingPvtdata(t *testing.T) {
 	updateBatch.PvtUpdates.Put("ns1", "coll1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1))
 
-	assert.True(t, testPvtValueEqual(t, txMgr, "ns1", "coll1", "key1", []byte("value1")))
+	require.True(t, testPvtValueEqual(t, txMgr, "ns1", "coll1", "key1", []byte("value1")))
 
 	updateBatch = privacyenabledstate.NewUpdateBatch()
 	updateBatch.HashUpdates.Put("ns1", "coll1", util.ComputeStringHash("key1"), util.ComputeStringHash("value1"), version.NewHeight(2, 1))
@@ -1185,13 +1185,13 @@ func TestTxSimulatorMissingPvtdata(t *testing.T) {
 	updateBatch.PvtUpdates.Put("ns1", "coll3", "key3", []byte("value3"), version.NewHeight(2, 1))
 	db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(2, 1))
 
-	assert.False(t, testPvtKeyExist(t, txMgr, "ns1", "coll1", "key1"))
+	require.False(t, testPvtKeyExist(t, txMgr, "ns1", "coll1", "key1"))
 
-	assert.False(t, testPvtKeyExist(t, txMgr, "ns1", "coll2", "key2"))
+	require.False(t, testPvtKeyExist(t, txMgr, "ns1", "coll2", "key2"))
 
-	assert.True(t, testPvtValueEqual(t, txMgr, "ns1", "coll3", "key3", []byte("value3")))
+	require.True(t, testPvtValueEqual(t, txMgr, "ns1", "coll3", "key3", []byte("value3")))
 
-	assert.True(t, testPvtValueEqual(t, txMgr, "ns1", "coll4", "key4", nil))
+	require.True(t, testPvtValueEqual(t, txMgr, "ns1", "coll4", "key4", nil))
 }
 
 func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
@@ -1220,12 +1220,12 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	blkAndPvtdata := prepareNextBlockForTest(t, txMgr, bg, "txid-1",
 		map[string]string{"pubkey1": "pub-value1"}, map[string]string{"pvtkey1": "pvt-value1"}, true)
 	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// committing block 1
-	assert.NoError(t, txMgr.Commit())
+	require.NoError(t, txMgr.Commit())
 
 	// pvt data should not exist
-	assert.False(t, testPvtKeyExist(t, txMgr, "ns", "coll", "pvtkey1"))
+	require.False(t, testPvtKeyExist(t, txMgr, "ns", "coll", "pvtkey1"))
 
 	// committing pvt data of block 1
 	v1 := []byte("pvt-value1")
@@ -1236,29 +1236,29 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 		},
 	}
 	err = txMgr.RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// pvt data should exist
-	assert.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", v1))
+	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", v1))
 
 	// storing hashed data but the pvt key is missing
 	// stored pvt key would get expired and purged while committing block 4
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-2",
 		map[string]string{"pubkey2": "pub-value2"}, map[string]string{"pvtkey2": "pvt-value2"}, true)
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// committing block 2
-	assert.NoError(t, txMgr.Commit())
+	require.NoError(t, txMgr.Commit())
 
 	// pvt data should not exist
-	assert.False(t, testPvtKeyExist(t, txMgr, "ns", "coll", "pvtkey2"))
+	require.False(t, testPvtKeyExist(t, txMgr, "ns", "coll", "pvtkey2"))
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-3",
 		map[string]string{"pubkey3": "pub-value3"}, nil, false)
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// committing block 3
-	assert.NoError(t, txMgr.Commit())
+	require.NoError(t, txMgr.Commit())
 
 	// prepareForExpiringKey must have selected the pvtkey2 as it would
 	// get expired during next block commit
@@ -1273,19 +1273,19 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	}
 
 	err = txMgr.RemoveStaleAndCommitPvtDataOfOldBlocks(blocksPvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// pvt data should exist
-	assert.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey2", v2))
+	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey2", v2))
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-4",
 		map[string]string{"pubkey4": "pub-value4"}, nil, false)
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// committing block 4 and should purge pvtkey2
-	assert.NoError(t, txMgr.Commit())
+	require.NoError(t, txMgr.Commit())
 
-	assert.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey2", nil))
+	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey2", nil))
 }
 
 func testPvtKeyExist(t *testing.T, txMgr *LockBasedTxMgr, ns, coll, key string) bool {
@@ -1300,7 +1300,7 @@ func testPvtValueEqual(t *testing.T, txMgr *LockBasedTxMgr, ns, coll, key string
 	simulator, _ := txMgr.NewTxSimulator("tx-tmp")
 	defer simulator.Done()
 	pvtValue, err := simulator.GetPrivateData(ns, coll, key)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return bytes.Equal(pvtValue, value)
 }
 
@@ -1330,8 +1330,8 @@ func TestDeleteOnCursor(t *testing.T) {
 	itr2, _ := s2.GetStateRangeScanIterator(cID, createTestKey(1), createTestKey(5))
 	for i := 1; i <= 4; i++ {
 		kv, err := itr2.Next()
-		assert.NoError(t, err)
-		assert.NotNil(t, kv)
+		require.NoError(t, err)
+		require.NotNil(t, kv)
 		key := kv.(*queryresult.KV).Key
 		s2.DeleteState(cID, key)
 	}
@@ -1344,10 +1344,10 @@ func TestDeleteOnCursor(t *testing.T) {
 	s3, _ := txMgr.NewTxSimulator("test_tx3")
 	itr3, _ := s3.GetStateRangeScanIterator(cID, createTestKey(1), createTestKey(10))
 	kv, err := itr3.Next()
-	assert.NoError(t, err)
-	assert.NotNil(t, kv)
+	require.NoError(t, err)
+	require.NotNil(t, kv)
 	key := kv.(*queryresult.KV).Key
-	assert.Equal(t, "key_005", key)
+	require.Equal(t, "key_005", key)
 	itr3.Close()
 	s3.Done()
 }
@@ -1371,27 +1371,27 @@ func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	blkAndPvtdata := prepareNextBlockForTest(t, txMgr, bg, "txid-1",
 		map[string]string{"pubkey1": "pub-value1"}, map[string]string{"pvtkey1": "pvt-value1"}, false)
 	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata, true)
-	assert.NoError(t, err)
-	assert.NoError(t, txMgr.Commit())
+	require.NoError(t, err)
+	require.NoError(t, txMgr.Commit())
 
-	assert.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", []byte("pvt-value1")))
+	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", []byte("pvt-value1")))
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-2",
 
 		map[string]string{"pubkey1": "pub-value2"}, map[string]string{"pvtkey2": "pvt-value2"}, false)
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
-	assert.NoError(t, err)
-	assert.NoError(t, txMgr.Commit())
+	require.NoError(t, err)
+	require.NoError(t, txMgr.Commit())
 
-	assert.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", []byte("pvt-value1")))
+	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", []byte("pvt-value1")))
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-2",
 		map[string]string{"pubkey1": "pub-value3"}, map[string]string{"pvtkey3": "pvt-value3"}, false)
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
-	assert.NoError(t, err)
-	assert.NoError(t, txMgr.Commit())
+	require.NoError(t, err)
+	require.NoError(t, txMgr.Commit())
 
-	assert.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", nil))
+	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", nil))
 }
 
 func TestTxWithPubMetadata(t *testing.T) {
@@ -1483,8 +1483,8 @@ func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
 
 	blkAndPvtdata1 := prepareNextBlockForTestFromSimulator(t, bg, s1)
 	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
-	assert.NoError(t, err)
-	assert.NoError(t, txMgr.Commit())
+	require.NoError(t, err)
+	require.NoError(t, txMgr.Commit())
 
 	// Run query - key1 and key2 should return both value and metadata. Key3 should still be non-exsting in db
 	qe, _ := txMgr.NewQueryExecutor("test_tx2")
@@ -1502,8 +1502,8 @@ func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
 
 	blkAndPvtdata2 := prepareNextBlockForTestFromSimulator(t, bg, s2)
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata2, true)
-	assert.NoError(t, err)
-	assert.NoError(t, txMgr.Commit())
+	require.NoError(t, err)
+	require.NoError(t, txMgr.Commit())
 
 	// Run query - key1 should return updated metadata. Key2 should return 'nil' metadata
 	qe, _ = txMgr.NewQueryExecutor("test_tx4")
@@ -1551,24 +1551,24 @@ func prepareNextBlockForTestFromSimulatorWithMissingData(t *testing.T, bg *testu
 func checkTestQueryResults(t *testing.T, qe ledger.QueryExecutor, ns, key string,
 	expectedVal []byte, expectedMetadata map[string][]byte) {
 	committedVal, err := qe.GetState(ns, key)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedVal, committedVal)
+	require.NoError(t, err)
+	require.Equal(t, expectedVal, committedVal)
 
 	committedMetadata, err := qe.GetStateMetadata(ns, key)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedMetadata, committedMetadata)
+	require.NoError(t, err)
+	require.Equal(t, expectedMetadata, committedMetadata)
 	t.Logf("key=%s, value=%s, metadata=%s", key, committedVal, committedMetadata)
 }
 
 func checkPvtdataTestQueryResults(t *testing.T, qe ledger.QueryExecutor, ns, coll, key string,
 	expectedVal []byte, expectedMetadata map[string][]byte) {
 	committedVal, err := qe.GetPrivateData(ns, coll, key)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedVal, committedVal)
+	require.NoError(t, err)
+	require.Equal(t, expectedVal, committedVal)
 
 	committedMetadata, err := qe.GetPrivateDataMetadata(ns, coll, key)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedMetadata, committedMetadata)
+	require.NoError(t, err)
+	require.Equal(t, expectedMetadata, committedMetadata)
 	t.Logf("key=%s, value=%s, metadata=%s", key, committedVal, committedMetadata)
 }
 
@@ -1577,5 +1577,5 @@ func TestName(t *testing.T) {
 	testEnv.init(t, "testLedger", nil)
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
-	assert.Equal(t, "state", txMgr.Name())
+	require.Equal(t, "state", txMgr.Name())
 }
