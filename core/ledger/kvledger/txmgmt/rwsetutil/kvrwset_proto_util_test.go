@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetRawReads(t *testing.T) {
@@ -26,7 +26,7 @@ func TestSetRawReads(t *testing.T) {
 	}
 
 	SetRawReads(rqi, kvReads)
-	assert.Equal(t, expected, rqi)
+	require.Equal(t, expected, rqi)
 }
 
 func TestSetMerkelSummary(t *testing.T) {
@@ -40,5 +40,5 @@ func TestSetMerkelSummary(t *testing.T) {
 	}
 
 	SetMerkelSummary(rqi, merkleSummary)
-	assert.Equal(t, expected, rqi)
+	require.Equal(t, expected, rqi)
 }
