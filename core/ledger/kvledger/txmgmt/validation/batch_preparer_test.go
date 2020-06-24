@@ -28,7 +28,7 @@ import (
 	lutils "github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateAndPreparePvtBatch(t *testing.T) {
@@ -50,7 +50,7 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	// Get simulation results for tx1
 	tx1SimulationResults := testutilSampleTxSimulationResults(t, "key1")
 	res, err := tx1SimulationResults.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Add tx1 public rwset to the set of results
 	pubSimulationResults = append(pubSimulationResults, res)
@@ -63,7 +63,7 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	// Get simulation results for tx2
 	tx2SimulationResults := testutilSampleTxSimulationResults(t, "key2")
 	res, err = tx2SimulationResults.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Add tx2 public rwset to the set of results
 	pubSimulationResults = append(pubSimulationResults, res)
@@ -75,7 +75,7 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	// Get simulation results for tx3
 	tx3SimulationResults := testutilSampleTxSimulationResults(t, "key3")
 	res, err = tx3SimulationResults.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Add tx3 public rwset to the set of results
 	pubSimulationResults = append(pubSimulationResults, res)
@@ -90,22 +90,22 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	// Construct the expected preprocessed block from preprocessProtoBlock()
 	expectedPerProcessedBlock := &block{num: 10}
 	tx1TxRWSet, err := rwsetutil.TxRwSetFromProtoMsg(tx1SimulationResults.PubSimulationResults)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expectedPerProcessedBlock.txs = append(expectedPerProcessedBlock.txs, &transaction{indexInBlock: 0, id: "tx1", rwset: tx1TxRWSet})
 
 	tx2TxRWSet, err := rwsetutil.TxRwSetFromProtoMsg(tx2SimulationResults.PubSimulationResults)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expectedPerProcessedBlock.txs = append(expectedPerProcessedBlock.txs, &transaction{indexInBlock: 1, id: "tx2", rwset: tx2TxRWSet})
 
 	tx3TxRWSet, err := rwsetutil.TxRwSetFromProtoMsg(tx3SimulationResults.PubSimulationResults)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expectedPerProcessedBlock.txs = append(expectedPerProcessedBlock.txs, &transaction{indexInBlock: 2, id: "tx3", rwset: tx3TxRWSet})
 	alwaysValidKVFunc := func(key string, value []byte) error {
 		return nil
 	}
 	actualPreProcessedBlock, _, err := preprocessProtoBlock(nil, alwaysValidKVFunc, blk, false, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedPerProcessedBlock, actualPreProcessedBlock)
+	require.NoError(t, err)
+	require.Equal(t, expectedPerProcessedBlock, actualPreProcessedBlock)
 
 	// 2. Assuming that MVCC validation is performed on the preprocessedBlock, set the appropriate validation code
 	//    for each transaction and then call validateAndPreparePvtBatch() to get a validated private update batch.
@@ -120,17 +120,17 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	// Construct the expected private updates
 	expectedPvtUpdates := privacyenabledstate.NewPvtUpdateBatch()
 	tx1TxPvtRWSet, err := rwsetutil.TxPvtRwSetFromProtoMsg(tx1SimulationResults.PvtSimulationResults)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	addPvtRWSetToPvtUpdateBatch(tx1TxPvtRWSet, expectedPvtUpdates, version.NewHeight(uint64(10), uint64(0)))
 
 	actualPvtUpdates, err := validateAndPreparePvtBatch(mvccValidatedBlock, testDB, nil, pvtDataMap, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedPvtUpdates, actualPvtUpdates)
+	require.NoError(t, err)
+	require.Equal(t, expectedPvtUpdates, actualPvtUpdates)
 
 	expectedtxsFilter := []uint8{uint8(peer.TxValidationCode_VALID), uint8(peer.TxValidationCode_VALID), uint8(peer.TxValidationCode_INVALID_OTHER_REASON)}
 
 	postprocessProtoBlock(blk, mvccValidatedBlock)
-	assert.Equal(t, expectedtxsFilter, blk.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
+	require.Equal(t, expectedtxsFilter, blk.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 }
 
 func TestPreprocessProtoBlock(t *testing.T) {
@@ -141,21 +141,21 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	//_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gb := testutil.ConstructTestBlock(t, 10, 1, 1)
 	_, _, err := preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// bad envelope
 	gb = testutil.ConstructTestBlock(t, 11, 1, 1)
 	gb.Data = &common.BlockData{Data: [][]byte{{123}}}
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] =
 		txflags.NewWithValues(len(gb.Data.Data), peer.TxValidationCode_VALID)
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
-	assert.Error(t, err)
+	require.Error(t, err)
 	t.Log(err)
 	// bad payload
 	gb = testutil.ConstructTestBlock(t, 12, 1, 1)
 	envBytes, _ := protoutil.GetBytesEnvelope(&common.Envelope{Payload: []byte{123}})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
-	assert.Error(t, err)
+	require.Error(t, err)
 	t.Log(err)
 	// bad channel header
 	gb = testutil.ConstructTestBlock(t, 13, 1, 1)
@@ -165,7 +165,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	envBytes, _ = protoutil.GetBytesEnvelope(&common.Envelope{Payload: payloadBytes})
 	gb.Data = &common.BlockData{Data: [][]byte{envBytes}}
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
-	assert.Error(t, err)
+	require.Error(t, err)
 	t.Log(err)
 
 	// bad channel header with invalid filter set
@@ -179,7 +179,7 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	flags.SetFlag(0, peer.TxValidationCode_BAD_CHANNEL_HEADER)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = flags
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
-	assert.NoError(t, err) // invalid filter should take precedence
+	require.NoError(t, err) // invalid filter should take precedence
 
 	// new block
 	var blockNum uint64 = 15
@@ -197,12 +197,12 @@ func TestPreprocessProtoBlock(t *testing.T) {
 	logger = l
 
 	_, _, err = preprocessProtoBlock(nil, allwaysValidKVfunc, gb, false, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expected := fmt.Sprintf(
 		"Channel [%s]: Block [%d] Transaction index [%d] TxId [%s] marked as invalid by committer. Reason code [%s]",
 		"testchannelid", blockNum, 0, txid, peer.TxValidationCode_BAD_HEADER_EXTENSION,
 	)
-	assert.NotEmpty(t, recorder.MessagesContaining(expected))
+	require.NotEmpty(t, recorder.MessagesContaining(expected))
 }
 
 func TestPreprocessProtoBlockInvalidWriteset(t *testing.T) {
@@ -216,29 +216,29 @@ func TestPreprocessProtoBlockInvalidWriteset(t *testing.T) {
 	rwSetBuilder := rwsetutil.NewRWSetBuilder()
 	rwSetBuilder.AddToWriteSet("ns", "key", []byte("_invalidValue")) // bad value
 	simulation1, err := rwSetBuilder.GetTxSimulationResults()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	simulation1Bytes, err := simulation1.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	rwSetBuilder = rwsetutil.NewRWSetBuilder()
 	rwSetBuilder.AddToWriteSet("ns", "key", []byte("validValue")) // good value
 	simulation2, err := rwSetBuilder.GetTxSimulationResults()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	simulation2Bytes, err := simulation2.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	blk := testutil.ConstructBlock(t, 1, testutil.ConstructRandomBytes(t, 32),
 		[][]byte{simulation1Bytes, simulation2Bytes}, false) // block with two txs
 	txfilter := txflags.ValidationFlags(blk.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-	assert.True(t, txfilter.IsValid(0))
-	assert.True(t, txfilter.IsValid(1)) // both txs are valid initially at the time of block cutting
+	require.True(t, txfilter.IsValid(0))
+	require.True(t, txfilter.IsValid(1)) // both txs are valid initially at the time of block cutting
 
 	internalBlock, _, err := preprocessProtoBlock(nil, kvValidationFunc, blk, false, nil)
-	assert.NoError(t, err)
-	assert.False(t, txfilter.IsValid(0)) // tx at index 0 should be marked as invalid
-	assert.True(t, txfilter.IsValid(1))  // tx at index 1 should be marked as valid
-	assert.Len(t, internalBlock.txs, 1)
-	assert.Equal(t, internalBlock.txs[0].indexInBlock, 1)
+	require.NoError(t, err)
+	require.False(t, txfilter.IsValid(0)) // tx at index 0 should be marked as invalid
+	require.True(t, txfilter.IsValid(1))  // tx at index 1 should be marked as valid
+	require.Len(t, internalBlock.txs, 1)
+	require.Equal(t, internalBlock.txs[0].indexInBlock, 1)
 }
 
 func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
@@ -273,19 +273,19 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 
 	// invoke function and test results
 	err := incrementPvtdataVersionIfNeeded(metadataUpdates, pvtUpdateBatch, pubAndHashedUpdatesBatch, testDB)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t,
+	require.Equal(t,
 		&statedb.VersionedValue{Value: []byte("value1_set_by_tx1"), Version: version.NewHeight(2, 2)}, // key1 value should be same and version should be upgraded to (2,2)
 		pvtUpdateBatch.Get("ns", "coll1", "key1"),
 	)
 
-	assert.Equal(t,
+	require.Equal(t,
 		&statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(2, 4)}, // key2 entry should get added with value in the db and version (2,4)
 		pvtUpdateBatch.Get("ns", "coll2", "key2"),
 	)
 
-	assert.Equal(t,
+	require.Equal(t,
 		&statedb.VersionedValue{Value: []byte("value3_set_by_tx5"), Version: version.NewHeight(2, 5)}, // key3 should be unaffected because the tx6 was missing from pvt data
 		pvtUpdateBatch.Get("ns", "coll3", "key3"),
 	)
@@ -301,7 +301,7 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 
 	gb := testutil.ConstructTestBlocks(t, 1)[0]
 	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: gb}, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expectedTxStatInfo := []*TxStatInfo{
 		{
 			TxType:         common.HeaderType_CONFIG,
@@ -309,7 +309,7 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 		},
 	}
 	t.Logf("txStatsInfo=%s\n", spew.Sdump(txStatsInfo))
-	assert.Equal(t, expectedTxStatInfo, txStatsInfo)
+	require.Equal(t, expectedTxStatInfo, txStatsInfo)
 }
 
 func TestTXMgrContainsPostOrderWrites(t *testing.T) {
@@ -340,13 +340,13 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 			return nil
 		}
 	batch, _, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
-	assert.NoError(t, err)
-	assert.True(t, batch.PubUpdates.ContainsPostOrderWrites)
+	require.NoError(t, err)
+	require.True(t, batch.PubUpdates.ContainsPostOrderWrites)
 
 	// block with endorser txs
 	batch, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[1]}, true)
-	assert.NoError(t, err)
-	assert.False(t, batch.PubUpdates.ContainsPostOrderWrites)
+	require.NoError(t, err)
+	require.False(t, batch.PubUpdates.ContainsPostOrderWrites)
 
 	// test with block with invalid config tx
 	fakeTxProcessor.GenerateSimulationResultsStub =
@@ -355,8 +355,8 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 			return &ledger.InvalidTxError{Msg: "fake-message"}
 		}
 	batch, _, err = v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blocks[0]}, true)
-	assert.NoError(t, err)
-	assert.False(t, batch.PubUpdates.ContainsPostOrderWrites)
+	require.NoError(t, err)
+	require.False(t, batch.PubUpdates.ContainsPostOrderWrites)
 }
 
 func TestTxStatsInfo(t *testing.T) {
@@ -443,7 +443,7 @@ func TestTxStatsInfo(t *testing.T) {
 
 	// collect the validation stats for the block and check against the expected stats
 	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: blk}, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expectedTxStatInfo := []*TxStatInfo{
 		{
 			TxType:         common.HeaderType_ENDORSER_TRANSACTION,
@@ -467,7 +467,7 @@ func TestTxStatsInfo(t *testing.T) {
 		},
 	}
 	t.Logf("txStatsInfo=%s\n", spew.Sdump(txStatsInfo))
-	assert.Equal(t, expectedTxStatInfo, txStatsInfo)
+	require.Equal(t, expectedTxStatInfo, txStatsInfo)
 }
 
 func testutilSampleTxSimulationResults(t *testing.T, key string) *ledger.TxSimulationResults {
@@ -529,7 +529,7 @@ func testutilGenerateTxSimulationResults(t *testing.T, rwsetInfo *testRwset) *le
 		}
 	}
 	simulationResults, err := rwSetBuilder.GetTxSimulationResults()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return simulationResults
 }
 
@@ -539,9 +539,9 @@ func testutilGenerateTxSimulationResultsAsBytes(
 ) {
 	simulationRes := testutilGenerateTxSimulationResults(t, rwsetInfo)
 	pub, err := simulationRes.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	pvt, err := simulationRes.GetPvtSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return pub, pvt
 }
 
@@ -601,10 +601,10 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 	// Get simulation results for tx1
 	rwSetBuilder := rwsetutil.NewRWSetBuilder()
 	tx1SimulationResults, err := rwSetBuilder.GetTxSimulationResults()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Add tx1 public rwset to the set of results
 	res, err := tx1SimulationResults.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	pubSimulationResults = append(pubSimulationResults, res)
 	// Construct a block using a transaction simulation result
 	blk := testutil.ConstructBlockWithTxidHeaderType(
@@ -656,7 +656,7 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 	}
 
 	// Check result
-	assert.NoError(t, err2)
-	assert.Equal(t, expectedPreprocessedBlock, internalBlock)
-	assert.Equal(t, expectedTxStatInfo, txsStatInfo)
+	require.NoError(t, err2)
+	require.Equal(t, expectedPreprocessedBlock, internalBlock)
+	require.Equal(t, expectedTxStatInfo, txsStatInfo)
 }
