@@ -67,6 +67,8 @@ func newConfig(selfEndpoint string, externalEndpoint string, certs *common.TLSCe
 		SendBuffSize:               util.GetIntOrDefault("peer.gossip.sendBuffSize", comm.DefSendBuffSize),
 		MsgExpirationTimeout:       util.GetDurationOrDefault("peer.gossip.election.leaderAliveThreshold", election.DefLeaderAliveThreshold) * 10,
 		AliveTimeInterval:          util.GetDurationOrDefault("peer.gossip.aliveTimeInterval", discovery.DefAliveTimeInterval),
+		MaxConnectionAttempts:      util.GetIntOrDefault("peer.gossip.maxConnectionAttempts", discovery.DefMaxConnectionAttempts),
+		MsgExpirationFactor:        util.GetIntOrDefault("peer.gossip.msgExpirationFactor", discovery.DefMsgExpirationFactor),
 	}
 
 	conf.AliveExpirationTimeout = util.GetDurationOrDefault("peer.gossip.aliveExpirationTimeout", 5*conf.AliveTimeInterval)
@@ -80,7 +82,7 @@ func newConfig(selfEndpoint string, externalEndpoint string, certs *common.TLSCe
 func NewGossipComponent(peerIdentity []byte, endpoint string, s *grpc.Server,
 	secAdv api.SecurityAdvisor, cryptSvc api.MessageCryptoService,
 	secureDialOpts api.PeerSecureDialOpts, certs *common.TLSCertificates, gossipMetrics *metrics.GossipMetrics,
-	bootPeers ...string) (gossip.Gossip, error) {
+	anchorPeerTracker discovery.AnchorPeerTracker, bootPeers ...string) (gossip.Gossip, error) {
 
 	externalEndpoint := viper.GetString("peer.gossip.externalEndpoint")
 
@@ -89,7 +91,7 @@ func NewGossipComponent(peerIdentity []byte, endpoint string, s *grpc.Server,
 		return nil, errors.WithStack(err)
 	}
 	gossipInstance := gossip.NewGossipService(conf, s, secAdv, cryptSvc,
-		peerIdentity, secureDialOpts, gossipMetrics)
+		peerIdentity, secureDialOpts, gossipMetrics, anchorPeerTracker)
 
 	return gossipInstance, nil
 }

@@ -153,5 +153,6 @@ type Config struct {
 	AliveExpirationTimeout       time.Duration // Alive expiration timeout
 	AliveExpirationCheckInterval time.Duration // Alive expiration check interval
 	ReconnectInterval            time.Duration // Reconnect interval
-
+	MsgExpirationFactor          int           // MsgExpirationFactor is the expiration factor for alive message TTL
+	MaxConnectionAttempts        int           // MaxConnectionAttempts is the max number of attempts to connect to a peer (wait for alive ack)
 }

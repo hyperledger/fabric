@@ -125,10 +125,12 @@ func newGossipInstanceWithGRPCWithExternalEndpoint(id int, port int, gRPCServer 
 		AliveExpirationTimeout:       discoveryConfig.AliveExpirationTimeout,
 		AliveExpirationCheckInterval: discoveryConfig.AliveExpirationCheckInterval,
 		ReconnectInterval:            discoveryConfig.ReconnectInterval,
+		MaxConnectionAttempts:        discoveryConfig.MaxConnectionAttempts,
+		MsgExpirationFactor:          discoveryConfig.MsgExpirationFactor,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	g := NewGossipService(conf, gRPCServer.Server(), mcs, mcs, selfID,
-		secureDialOpts, metrics.NewGossipMetrics(&disabled.Provider{}))
+		secureDialOpts, metrics.NewGossipMetrics(&disabled.Provider{}), nil)
 	go func() {
 		gRPCServer.Start()
 	}()

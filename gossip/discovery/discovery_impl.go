@@ -27,15 +27,8 @@ const DefAliveTimeInterval = 5 * time.Second
 const DefAliveExpirationTimeout = 5 * DefAliveTimeInterval
 const DefAliveExpirationCheckInterval = DefAliveExpirationTimeout / 10
 const DefReconnectInterval = DefAliveExpirationTimeout
-const msgExpirationFactor = 20
-
-var maxConnectionAttempts = 120
-
-// SetMaxConnAttempts sets the maximum number of connection
-// attempts the peer would perform when invoking Connect()
-func SetMaxConnAttempts(attempts int) {
-	maxConnectionAttempts = attempts
-}
+const DefMsgExpirationFactor = 20
+const DefMaxConnectionAttempts = 120
 
 type timestamp struct {
 	incTime  time.Time
@@ -75,8 +68,11 @@ type gossipDiscoveryImpl struct {
 	aliveExpirationTimeout       time.Duration
 	aliveExpirationCheckInterval time.Duration
 	reconnectInterval            time.Duration
+	msgExpirationFactor          int
+	maxConnectionAttempts        int
 
-	bootstrapPeers []string
+	bootstrapPeers    []string
+	anchorPeerTracker AnchorPeerTracker
 }
 
 type DiscoveryConfig struct {
@@ -84,12 +80,14 @@ type DiscoveryConfig struct {
 	AliveExpirationTimeout       time.Duration
 	AliveExpirationCheckInterval time.Duration
 	ReconnectInterval            time.Duration
+	MaxConnectionAttempts        int
+	MsgExpirationFactor          int
 	BootstrapPeers               []string
 }
 
 // NewDiscoveryService returns a new discovery service with the comm module passed and the crypto service passed
 func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoService, disPol DisclosurePolicy,
-	config DiscoveryConfig) Discovery {
+	config DiscoveryConfig, anchorPeerTracker AnchorPeerTracker) Discovery {
 	d := &gossipDiscoveryImpl{
 		self:             self,
 		incTime:          uint64(time.Now().UnixNano()),
@@ -112,8 +110,11 @@ func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoServi
 		aliveExpirationTimeout:       config.AliveExpirationTimeout,
 		aliveExpirationCheckInterval: config.AliveExpirationCheckInterval,
 		reconnectInterval:            config.ReconnectInterval,
+		maxConnectionAttempts:        config.MaxConnectionAttempts,
+		msgExpirationFactor:          config.MsgExpirationFactor,
 
-		bootstrapPeers: config.BootstrapPeers,
+		bootstrapPeers:    config.BootstrapPeers,
+		anchorPeerTracker: anchorPeerTracker,
 	}
 
 	d.validateSelfConfig()
@@ -149,7 +150,7 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
 	d.logger.Debug("Entering", member)
 	defer d.logger.Debug("Exiting")
 	go func() {
-		for i := 0; i < maxConnectionAttempts && !d.toDie(); i++ {
+		for i := 0; i < d.maxConnectionAttempts && !d.toDie(); i++ {
 			id, err := id()
 			if err != nil {
 				if d.toDie() {
@@ -216,7 +217,7 @@ func (d *gossipDiscoveryImpl) validateSelfConfig() {
 
 func (d *gossipDiscoveryImpl) sendUntilAcked(peer *NetworkMember, message *proto.SignedGossipMessage) {
 	nonce := message.Nonce
-	for i := 0; i < maxConnectionAttempts && !d.toDie(); i++ {
+	for i := 0; i < d.maxConnectionAttempts && !d.toDie(); i++ {
 		sub := d.pubsub.Subscribe(fmt.Sprintf("%d", nonce), time.Second*5)
 		d.comm.SendToPeer(peer, message)
 		if _, timeoutErr := sub.Listen(); timeoutErr == nil {
@@ -1032,7 +1033,7 @@ type aliveMsgStore struct {
 func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 	policy := proto.NewGossipMessageComparator(0)
 	trigger := func(m interface{}) {}
-	aliveMsgTTL := d.aliveExpirationTimeout * msgExpirationFactor
+	aliveMsgTTL := d.aliveExpirationTimeout * time.Duration(d.msgExpirationFactor)
 	externalLock := func() { d.lock.Lock() }
 	externalUnlock := func() { d.lock.Unlock() }
 	callback := func(m interface{}) {
@@ -1044,8 +1045,10 @@ func newAliveMsgStore(d *gossipDiscoveryImpl) *aliveMsgStore {
 		id := membership.PkiId
 		endpoint := membership.Endpoint
 		internalEndpoint := msg.SecretEnvelope.InternalEndpoint()
-		if util.Contains(endpoint, d.bootstrapPeers) || util.Contains(internalEndpoint, d.bootstrapPeers) {
-			// Never remove a bootstrap peer
+		if util.Contains(endpoint, d.bootstrapPeers) || util.Contains(internalEndpoint, d.bootstrapPeers) ||
+			d.anchorPeerTracker.IsAnchorPeer(endpoint) || d.anchorPeerTracker.IsAnchorPeer(internalEndpoint) {
+			// Never remove a bootstrap peer or an anchor peer
+			d.logger.Debugf("Do not remove bootstrap or anchor peer endpoint %s from membership", endpoint)
 			return
 		}
 		d.logger.Infof("Removing member: Endpoint: %s, InternalEndpoint: %s, PKIID: %x", endpoint, internalEndpoint, id)

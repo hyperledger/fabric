@@ -95,7 +95,7 @@ type OrdererCapabilities struct {
 }
 
 // Peer defines a peer instance, it's owning organization, and the list of
-// channels that the peer shoudl be joined to.
+// channels that the peer should be joined to.
 type Peer struct {
 	Name         string         `yaml:"name,omitempty"`
 	Organization string         `yaml:"organization,omitempty"`
@@ -1025,11 +1025,12 @@ func (n *Network) OrdererGroupRunner() ifrit.Runner {
 
 // PeerRunner returns an ifrit.Runner for the specified peer. The runner can be
 // used to start and manage a peer process.
-func (n *Network) PeerRunner(p *Peer) *ginkgomon.Runner {
+func (n *Network) PeerRunner(p *Peer, env ...string) *ginkgomon.Runner {
 	cmd := n.peerCommand(
 		commands.NodeStart{PeerID: p.ID()},
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
 	)
+	cmd.Env = append(cmd.Env, env...)
 
 	return ginkgomon.New(ginkgomon.Config{
 		AnsiColorCode:     n.nextColor(),

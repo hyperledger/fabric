@@ -713,12 +713,14 @@ func newGossipInstance(port int, id int, gRPCServer *comm.GRPCServer, certs *gos
 		AliveExpirationTimeout:       discovery.DefAliveExpirationTimeout,
 		AliveExpirationCheckInterval: discovery.DefAliveExpirationCheckInterval,
 		ReconnectInterval:            discovery.DefReconnectInterval,
+		MaxConnectionAttempts:        discovery.DefMaxConnectionAttempts,
+		MsgExpirationFactor:          discovery.DefMsgExpirationFactor,
 	}
 	selfID := api.PeerIdentityType(conf.InternalEndpoint)
 	cryptoService := &naiveCryptoService{}
 	metrics := gossipMetrics.NewGossipMetrics(&disabled.Provider{})
 	gossip := gossip.NewGossipService(conf, gRPCServer.Server(), &orgCryptoService{}, cryptoService, selfID,
-		secureDialOpts, metrics)
+		secureDialOpts, metrics, nil)
 	go func() {
 		gRPCServer.Start()
 	}()
@@ -859,8 +861,15 @@ func TestChannelConfig(t *testing.T) {
 	grpcServer := grpc.NewServer()
 	endpoint, socket := getAvailablePort(t)
 
+	// Because gossipServiceInstance is initialized only once, we have to use the same identity
+	// if it is already initialized
+	orgIdentity := orgInChannelA
+	if gossipServiceInstance != nil {
+		orgIdentity = gossipServiceInstance.peerIdentity
+	}
+
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager())
-	error := InitGossipService(api.PeerIdentityType("IDENTITY"), &disabled.Provider{}, endpoint, grpcServer, nil,
+	error := InitGossipService(orgIdentity, &disabled.Provider{}, endpoint, grpcServer, nil,
 		&naiveCryptoService{}, secAdv, nil, false)
 	assert.NoError(t, error)
 	gService := GetGossipService().(*gossipServiceImpl)
@@ -878,13 +887,18 @@ func TestChannelConfig(t *testing.T) {
 	mc := &mockConfig{
 		sequence: 1,
 		appOrgs: map[string]channelconfig.ApplicationOrg{
-			string(orgInChannelA): &appGrp{
-				mspID:       string(orgInChannelA),
-				anchorPeers: []*peer.AnchorPeer{},
+			string(orgIdentity): &appGrp{
+				mspID:       string(orgIdentity),
+				anchorPeers: []*peer.AnchorPeer{{Host: "localhost", Port: 2001}},
 			},
 		},
 	}
+
 	gService.JoinChan(jcm, gossipCommon.ChainID("A"))
+	// use mock secAdv so that gService.secAdv.OrgByPeerIdentity can return the matched identity
+	gService.secAdv = &secAdvMock{}
 	gService.updateAnchors(mc)
-	assert.True(t, gService.amIinChannel(string(orgInChannelA), mc))
+	assert.True(t, gService.amIinChannel(string(orgIdentity), mc))
+	assert.True(t, gService.anchorPeerTracker.IsAnchorPeer("localhost:2001"))
+	assert.False(t, gService.anchorPeerTracker.IsAnchorPeer("localhost:5000"))
 }
