@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -67,7 +66,7 @@ func (env *LevelDBTestEnv) Init(t testing.TB) {
 		},
 		[]string{"lscc", "_lifecycle"},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	env.t = t
 	env.provider = dbProvider
 	env.dbPath = dbPath
@@ -86,7 +85,7 @@ func (env *LevelDBTestEnv) StopExternalResource() {
 // GetDBHandle implements corresponding function from interface TestEnv
 func (env *LevelDBTestEnv) GetDBHandle(id string) *DB {
 	db, err := env.provider.GetDBHandle(id, nil)
-	assert.NoError(env.t, err)
+	require.NoError(env.t, err)
 	return db
 }
 
@@ -178,7 +177,7 @@ func (env *CouchDBTestEnv) Init(t testing.TB) {
 		stateDBConfig,
 		[]string{"lscc", "_lifecycle"},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	env.provider = dbProvider
 	env.redoPath = redoPath
 	env.couchDBConfig = stateDBConfig.CouchDB
@@ -187,7 +186,7 @@ func (env *CouchDBTestEnv) Init(t testing.TB) {
 // GetDBHandle implements corresponding function from interface TestEnv
 func (env *CouchDBTestEnv) GetDBHandle(id string) *DB {
 	db, err := env.provider.GetDBHandle(id, &testmock.ChannelInfoProvider{})
-	assert.NoError(env.t, err)
+	require.NoError(env.t, err)
 	return db
 }
 
@@ -211,7 +210,7 @@ func (env *CouchDBTestEnv) DecodeDBValue(dbVal []byte) statedb.VersionedValue {
 // Cleanup implements corresponding function from interface TestEnv
 func (env *CouchDBTestEnv) Cleanup() {
 	if env.provider != nil {
-		assert.NoError(env.t, statecouchdb.DropApplicationDBs(env.couchDBConfig))
+		require.NoError(env.t, statecouchdb.DropApplicationDBs(env.couchDBConfig))
 	}
 	os.RemoveAll(env.redoPath)
 	env.bookkeeperTestEnv.Cleanup()
