@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStateListener(t *testing.T) {
@@ -48,9 +48,9 @@ func TestStateListener(t *testing.T) {
 	dummyBlock := protoutil.NewBlock(1, []byte("dummyHash"))
 	txmgr.current = &current{block: dummyBlock, batch: sampleBatch}
 	txmgr.invokeNamespaceListeners()
-	assert.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
-	assert.Equal(t, 1, ml2.HandleStateUpdatesCallCount())
-	assert.Equal(t, 0, ml3.HandleStateUpdatesCallCount())
+	require.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
+	require.Equal(t, 1, ml2.HandleStateUpdatesCallCount())
+	require.Equal(t, 0, ml3.HandleStateUpdatesCallCount())
 	expectedLedgerid, expectedStateUpdate, expectedHt :=
 		testLedgerid,
 		ledger.StateUpdates{
@@ -85,9 +85,9 @@ func TestStateListener(t *testing.T) {
 		uint64(1)
 	checkHandleStateUpdatesCallback(t, ml2, 0, expectedLedgerid, expectedStateUpdate, expectedHt)
 	txmgr.Commit()
-	assert.Equal(t, 1, ml1.StateCommitDoneCallCount())
-	assert.Equal(t, 1, ml2.StateCommitDoneCallCount())
-	assert.Equal(t, 0, ml3.StateCommitDoneCallCount())
+	require.Equal(t, 1, ml1.StateCommitDoneCallCount())
+	require.Equal(t, 1, ml2.StateCommitDoneCallCount())
+	require.Equal(t, 0, ml3.StateCommitDoneCallCount())
 
 	// Mimic commit of block 2 with updates only in ns4 namespace
 	// This should cause callback only to ml3
@@ -100,9 +100,9 @@ func TestStateListener(t *testing.T) {
 
 	txmgr.current = &current{block: protoutil.NewBlock(2, []byte("anotherDummyHash")), batch: sampleBatch}
 	txmgr.invokeNamespaceListeners()
-	assert.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
-	assert.Equal(t, 1, ml2.HandleStateUpdatesCallCount())
-	assert.Equal(t, 1, ml3.HandleStateUpdatesCallCount())
+	require.Equal(t, 1, ml1.HandleStateUpdatesCallCount())
+	require.Equal(t, 1, ml2.HandleStateUpdatesCallCount())
+	require.Equal(t, 1, ml3.HandleStateUpdatesCallCount())
 
 	expectedLedgerid, expectedStateUpdate, expectedHt =
 		testLedgerid,
@@ -128,9 +128,9 @@ func TestStateListener(t *testing.T) {
 	checkHandleStateUpdatesCallback(t, ml3, 0, expectedLedgerid, expectedStateUpdate, expectedHt)
 
 	txmgr.Commit()
-	assert.Equal(t, 1, ml1.StateCommitDoneCallCount())
-	assert.Equal(t, 1, ml2.StateCommitDoneCallCount())
-	assert.Equal(t, 1, ml3.StateCommitDoneCallCount())
+	require.Equal(t, 1, ml1.StateCommitDoneCallCount())
+	require.Equal(t, 1, ml2.StateCommitDoneCallCount())
+	require.Equal(t, 1, ml3.StateCommitDoneCallCount())
 }
 
 func TestStateListenerQueryExecutor(t *testing.T) {
@@ -166,25 +166,25 @@ func TestStateListenerQueryExecutor(t *testing.T) {
 
 	// Create next block
 	sim, err := txMgr.NewTxSimulator("tx1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sim.SetState(namespace, "key1", []byte("value1_new"))
 	sim.DeleteState(namespace, "key2")
 	sim.SetState(namespace, "key4", []byte("value4_new"))
 	sim.SetPrivateData(namespace, "coll", "key1", []byte("value1_new")) // change value for key1
 	sim.DeletePrivateData(namespace, "coll", "key2")                    // delete key2
 	simRes, err := sim.GetTxSimulationResults()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	simResBytes, err := simRes.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	block := testutil.ConstructBlock(t, 1, nil, [][]byte{simResBytes}, false)
 
 	// invoke ValidateAndPrepare function
 	_, _, err = txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block}, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// validate that the query executors passed to the state listener
 	trigger := sl.HandleStateUpdatesArgsForCall(0)
-	assert.NotNil(t, trigger)
+	require.NotNil(t, trigger)
 	expectedCommittedData := initialData
 	checkQueryExecutor(t, trigger.CommittedStateQueryExecutor, namespace, expectedCommittedData)
 	expectedCommittedPvtdata := initialPvtdata
@@ -208,59 +208,59 @@ func checkHandleStateUpdatesCallback(t *testing.T, ml *mock.StateListener, callN
 	expectedUpdates ledger.StateUpdates,
 	expectedCommitHt uint64) {
 	actualTrigger := ml.HandleStateUpdatesArgsForCall(callNumber)
-	assert.Equal(t, expectedLedgerid, actualTrigger.LedgerID)
+	require.Equal(t, expectedLedgerid, actualTrigger.LedgerID)
 	checkEqualUpdates(t, expectedUpdates, actualTrigger.StateUpdates)
-	assert.Equal(t, expectedCommitHt, actualTrigger.CommittingBlockNum)
+	require.Equal(t, expectedCommitHt, actualTrigger.CommittingBlockNum)
 }
 
 func checkEqualUpdates(t *testing.T, expected, actual ledger.StateUpdates) {
-	assert.Equal(t, len(expected), len(actual))
+	require.Equal(t, len(expected), len(actual))
 	for ns, e := range expected {
-		assert.ElementsMatch(t, e.PublicUpdates, actual[ns].PublicUpdates)
+		require.ElementsMatch(t, e.PublicUpdates, actual[ns].PublicUpdates)
 		checkEqualCollsUpdates(t, e.CollHashUpdates, actual[ns].CollHashUpdates)
 	}
 }
 
 func checkEqualCollsUpdates(t *testing.T, expected, actual map[string][]*kvrwset.KVWriteHash) {
-	assert.Equal(t, len(expected), len(actual))
+	require.Equal(t, len(expected), len(actual))
 	for coll, e := range expected {
-		assert.ElementsMatch(t, e, actual[coll])
+		require.ElementsMatch(t, e, actual[coll])
 	}
 }
 
 func checkQueryExecutor(t *testing.T, qe ledger.SimpleQueryExecutor, namespace string, expectedResults []*queryresult.KV) {
 	for _, kv := range expectedResults {
 		val, err := qe.GetState(namespace, kv.Key)
-		assert.NoError(t, err)
-		assert.Equal(t, kv.Value, val)
+		require.NoError(t, err)
+		require.Equal(t, kv.Value, val)
 	}
 
 	itr, err := qe.GetStateRangeScanIterator(namespace, "", "")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer itr.Close()
 
 	actualRes := []*queryresult.KV{}
 	for {
 		res, err := itr.Next()
 		if err != nil {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		if res == nil {
 			break
 		}
 		actualRes = append(actualRes, res.(*queryresult.KV))
 	}
-	assert.Equal(t, expectedResults, actualRes)
+	require.Equal(t, expectedResults, actualRes)
 }
 
 func checkQueryExecutorForPvtdataHashes(t *testing.T, qe ledger.SimpleQueryExecutor, namespace string, expectedPvtdata []*testutilPvtdata) {
 	for _, p := range expectedPvtdata {
 		valueHash, err := qe.GetPrivateDataHash(namespace, p.coll, p.key)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if p.value == nil {
-			assert.Nil(t, valueHash) // key does not exist
+			require.Nil(t, valueHash) // key does not exist
 		} else {
-			assert.Equal(t, util.ComputeHash(p.value), valueHash)
+			require.Equal(t, util.ComputeHash(p.value), valueHash)
 		}
 	}
 }
