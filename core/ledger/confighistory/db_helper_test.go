@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,13 +25,13 @@ func TestEncodeDecodeCompositeKey(t *testing.T) {
 	}
 	for _, k := range sampleKeys {
 		k1 := decodeCompositeKey(encodeCompositeKey(k.ns, k.key, k.blockNum))
-		assert.Equal(t, k, k1)
+		require.Equal(t, k, k1)
 	}
 }
 
 func TestCompareEncodedHeight(t *testing.T) {
-	assert.Equal(t, bytes.Compare(encodeBlockNum(20), encodeBlockNum(40)), 1)
-	assert.Equal(t, bytes.Compare(encodeBlockNum(40), encodeBlockNum(10)), -1)
+	require.Equal(t, bytes.Compare(encodeBlockNum(20), encodeBlockNum(40)), 1)
+	require.Equal(t, bytes.Compare(encodeBlockNum(40), encodeBlockNum(10)), -1)
 }
 
 func TestQueries(t *testing.T) {
@@ -116,15 +115,15 @@ func populateDBWithSampleData(t *testing.T, db *db, sampledata []*compositeKV) {
 	for _, data := range sampledata {
 		batch.add(data.ns, data.key, data.blockNum, data.value)
 	}
-	assert.NoError(t, db.writeBatch(batch, true))
+	require.NoError(t, db.writeBatch(batch, true))
 }
 
 func checkRecentEntryBelow(t *testing.T, testcase string, db *db, ns, key string, commitHt uint64, expectedOutput *compositeKV) {
 	t.Run(testcase,
 		func(t *testing.T) {
 			kv, err := db.mostRecentEntryBelow(commitHt, ns, key)
-			assert.NoError(t, err)
-			assert.Equal(t, expectedOutput, kv)
+			require.NoError(t, err)
+			require.Equal(t, expectedOutput, kv)
 		})
 }
 
@@ -132,12 +131,12 @@ func checkEntryAt(t *testing.T, testcase string, db *db, ns, key string, commitH
 	t.Run(testcase,
 		func(t *testing.T) {
 			kv, err := db.entryAt(commitHt, ns, key)
-			assert.NoError(t, err)
-			assert.Equal(t, expectedOutput, kv)
+			require.NoError(t, err)
+			require.Equal(t, expectedOutput, kv)
 		})
 }
 
 func deleteTestPath(t *testing.T, dbPath string) {
 	err := os.RemoveAll(dbPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
