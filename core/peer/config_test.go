@@ -7,7 +7,6 @@ package peer
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -38,31 +37,13 @@ func TestCacheConfigurationNegative(t *testing.T) {
 
 }
 
-func TestConfiguration(t *testing.T) {
-	// get the interface addresses
-	addresses, err := net.InterfaceAddrs()
-	if err != nil {
-		t.Fatal("Failed to get interface addresses")
-	}
-
-	var ips []string
-	for _, address := range addresses {
-		// eliminate loopback interfaces
-		if ip, ok := address.(*net.IPNet); ok && !ip.IP.IsLoopback() {
-			ips = append(ips, ip.IP.String()+":7051")
-			t.Logf("found interface address [%s]", ip.IP.String())
-		}
-	}
-
-	// There is a flake where sometimes this returns no IP address.
+func TestPeerAddress(t *testing.T) {
 	localIP, err := comm.GetLocalIP()
 	assert.NoError(t, err)
 
 	var tests = []struct {
 		name                string
 		settings            map[string]interface{}
-		validAddresses      []string
-		invalidAddresses    []string
 		expectedPeerAddress string
 	}{
 		{
@@ -70,10 +51,7 @@ func TestConfiguration(t *testing.T) {
 			settings: map[string]interface{}{
 				"peer.addressAutoDetect": false,
 				"peer.address":           "testing.com:7051",
-				"peer.id":                "testPeer",
 			},
-			validAddresses:      []string{"testing.com:7051"},
-			invalidAddresses:    ips,
 			expectedPeerAddress: "testing.com:7051",
 		},
 		{
@@ -81,10 +59,7 @@ func TestConfiguration(t *testing.T) {
 			settings: map[string]interface{}{
 				"peer.addressAutoDetect": true,
 				"peer.address":           "testing.com:7051",
-				"peer.id":                "testPeer",
 			},
-			validAddresses:      ips,
-			invalidAddresses:    []string{"testing.com:7051"},
 			expectedPeerAddress: net.JoinHostPort(localIP, "7051"),
 		},
 		{
@@ -92,10 +67,15 @@ func TestConfiguration(t *testing.T) {
 			settings: map[string]interface{}{
 				"peer.addressAutoDetect": false,
 				"peer.address":           "0.0.0.0:7051",
-				"peer.id":                "testPeer",
 			},
-			validAddresses:      []string{fmt.Sprintf("%s:7051", localIP)},
-			invalidAddresses:    []string{"0.0.0.0:7051"},
+			expectedPeerAddress: net.JoinHostPort(localIP, "7051"),
+		},
+		{
+			name: "test4",
+			settings: map[string]interface{}{
+				"peer.addressAutoDetect": true,
+				"peer.address":           "127.0.0.1:7051",
+			},
 			expectedPeerAddress: net.JoinHostPort(localIP, "7051"),
 		},
 	}
@@ -106,9 +86,9 @@ func TestConfiguration(t *testing.T) {
 			for k, v := range test.settings {
 				viper.Set(k, v)
 			}
-			// load Config file
-			_, err := GlobalConfig()
+			c, err := GlobalConfig()
 			assert.NoError(t, err, "GlobalConfig returned unexpected error")
+			assert.Equal(t, test.expectedPeerAddress, c.PeerAddress)
 		})
 	}
 }
