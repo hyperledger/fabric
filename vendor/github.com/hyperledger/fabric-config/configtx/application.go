@@ -434,9 +434,10 @@ func (a *ApplicationOrg) CreateMSPCRL(signingIdentity *SigningIdentity, certs ..
 	return msp.newMSPCRL(signingIdentity, certs...)
 }
 
-// newApplicationGroup returns the application component of the channel configuration.
+// newApplicationGroupTemplate returns the application component of the channel
+// configuration with only the names of the application organizations.
 // By default, it sets the mod_policy of all elements to "Admins".
-func newApplicationGroup(application Application) (*cb.ConfigGroup, error) {
+func newApplicationGroupTemplate(application Application) (*cb.ConfigGroup, error) {
 	var err error
 
 	applicationGroup := newConfigGroup()
@@ -462,6 +463,25 @@ func newApplicationGroup(application Application) (*cb.ConfigGroup, error) {
 
 	for _, org := range application.Organizations {
 		applicationGroup.Groups[org.Name] = newConfigGroup()
+	}
+
+	return applicationGroup, nil
+}
+
+// newApplicationGroup returns the application component of the channel
+// configuration with the entire configuration for application organizations.
+// By default, it sets the mod_policy of all elements to "Admins".
+func newApplicationGroup(application Application) (*cb.ConfigGroup, error) {
+	applicationGroup, err := newApplicationGroupTemplate(application)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, org := range application.Organizations {
+		applicationGroup.Groups[org.Name], err = newOrgConfigGroup(org)
+		if err != nil {
+			return nil, fmt.Errorf("org group '%s': %v", org.Name, err)
+		}
 	}
 
 	return applicationGroup, nil
