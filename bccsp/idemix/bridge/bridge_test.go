@@ -277,13 +277,13 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("panic on nil raw", func() {
 				key, err := User.NewPublicNymFromBytes(nil)
-				Expect(err).To(MatchError("failure [%!s(<nil>)]"))
+				Expect(err).To(MatchError("failure [runtime error: index out of range [0] with length 0]"))
 				Expect(key).To(BeNil())
 			})
 
 			It("failure unmarshalling invalid raw", func() {
 				key, err := User.NewPublicNymFromBytes([]byte{0, 1, 2, 3})
-				Expect(err).To(MatchError("failure [%!s(<nil>)]"))
+				Expect(err).To(MatchError("failure [runtime error: index out of range [2] with length 2]"))
 				Expect(key).To(BeNil())
 			})
 
