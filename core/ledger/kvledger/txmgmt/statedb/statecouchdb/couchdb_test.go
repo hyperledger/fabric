@@ -40,8 +40,8 @@ var assetJSON = []byte(`{"asset_name":"marble1","color":"blue","size":"35","owne
 func testConfig() *ledger.CouchDBConfig {
 	return &ledger.CouchDBConfig{
 		Address:               "",
-		Username:              "",
-		Password:              "",
+		Username:              "admin",
+		Password:              "adminpw",
 		MaxRetries:            3,
 		MaxRetriesOnStartup:   20,
 		RequestTimeout:        35 * time.Second,
@@ -52,8 +52,8 @@ func testConfig() *ledger.CouchDBConfig {
 func TestDBBadConnectionDef(t *testing.T) {
 	config := &ledger.CouchDBConfig{
 		Address:             badParseConnectURL,
-		Username:            "",
-		Password:            "",
+		Username:            "admin",
+		Password:            "adminpw",
 		MaxRetries:          3,
 		MaxRetriesOnStartup: 3,
 		RequestTimeout:      35 * time.Second,
@@ -114,8 +114,8 @@ func TestBadCouchDBInstance(t *testing.T) {
 	badCouchDBInstance := couchInstance{
 		conf: &ledger.CouchDBConfig{
 			Address:             badParseConnectURL,
-			Username:            "",
-			Password:            "",
+			Username:            "admin",
+			Password:            "adminpw",
 			MaxRetries:          3,
 			MaxRetriesOnStartup: 10,
 			RequestTimeout:      30 * time.Second,
@@ -319,8 +319,8 @@ func TestDBBadConnection(t *testing.T) {
 	//Limit the maxRetriesOnStartup to 3 in order to reduce time for the failure
 	config := &ledger.CouchDBConfig{
 		Address:             badConnectURL,
-		Username:            "",
-		Password:            "",
+		Username:            "admin",
+		Password:            "adminpw",
 		MaxRetries:          3,
 		MaxRetriesOnStartup: 3,
 		RequestTimeout:      35 * time.Second,
@@ -854,7 +854,6 @@ func TestCouchDBVersion(t *testing.T) {
 
 	err = checkCouchDBVersion("0.0.0.0")
 	require.Error(t, err, "Error should have been thrown for invalid version")
-
 }
 
 func TestIndexOperations(t *testing.T) {
