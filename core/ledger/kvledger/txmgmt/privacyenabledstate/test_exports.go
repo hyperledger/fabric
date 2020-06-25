@@ -156,8 +156,8 @@ func (env *CouchDBTestEnv) Init(t testing.TB) {
 			StateDatabase: "CouchDB",
 			CouchDB: &ledger.CouchDBConfig{
 				Address:             env.couchAddress,
-				Username:            "",
-				Password:            "",
+				Username:            "admin",
+				Password:            "adminpw",
 				MaxRetries:          3,
 				MaxRetriesOnStartup: 20,
 				RequestTimeout:      35 * time.Second,

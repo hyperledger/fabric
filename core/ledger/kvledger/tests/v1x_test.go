@@ -381,8 +381,8 @@ func startCouchDBWithV13Data(t *testing.T, ledgerFSRoot string) (*ledger.CouchDB
 	// set required config data to use state couchdb
 	couchdbConfig := &ledger.CouchDBConfig{
 		Address:             couchAddress,
-		Username:            "",
-		Password:            "",
+		Username:            "admin",
+		Password:            "adminpw",
 		MaxRetries:          3,
 		MaxRetriesOnStartup: 3,
 		RequestTimeout:      10 * time.Second,

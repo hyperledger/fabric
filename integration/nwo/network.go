@@ -1212,6 +1212,8 @@ func (n *Network) PeerRunner(p *Peer, env ...string) *ginkgomon.Runner {
 		commands.NodeStart{PeerID: p.ID()},
 		"",
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
+		fmt.Sprintf("CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin"),
+		fmt.Sprintf("CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw"),
 	)
 	cmd.Env = append(cmd.Env, env...)
 

@@ -52,8 +52,8 @@ func (env *testVDBEnv) init(t *testing.T, sysNamespaces []string) {
 	}
 	config := &ledger.CouchDBConfig{
 		Address:             env.couchDBEnv.couchAddress,
-		Username:            "",
-		Password:            "",
+		Username:            "admin",
+		Password:            "adminpw",
 		InternalQueryLimit:  1000,
 		MaxBatchUpdateSize:  1000,
 		MaxRetries:          3,
@@ -1122,6 +1122,8 @@ func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedE
 	defer os.RemoveAll(redoPath)
 	config := &ledger.CouchDBConfig{
 		Address:             vdbEnv.couchDBEnv.couchAddress,
+		Username:            "admin",
+		Password:            "adminpw",
 		MaxRetries:          3,
 		MaxRetriesOnStartup: 20,
 		RequestTimeout:      35 * time.Second,
