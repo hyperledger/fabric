@@ -154,7 +154,7 @@ github.com/hyperledger/fabric-chaincode-go/pkg/statebased
 github.com/hyperledger/fabric-chaincode-go/shim
 github.com/hyperledger/fabric-chaincode-go/shim/internal
 github.com/hyperledger/fabric-chaincode-go/shimtest
-# github.com/hyperledger/fabric-config v0.0.4
+# github.com/hyperledger/fabric-config v0.0.5
 ## explicit
 github.com/hyperledger/fabric-config/configtx
 github.com/hyperledger/fabric-config/configtx/internal/policydsl

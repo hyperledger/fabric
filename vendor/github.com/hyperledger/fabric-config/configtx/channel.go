@@ -142,3 +142,11 @@ func (c *ChannelGroup) RemoveCapability(capability string) error {
 
 	return nil
 }
+
+// RemoveLegacyOrdererAddresses removes the deprecated top level orderer addresses config key and value
+// from the channel config.
+// In fabric 1.4, top level orderer addresses were migrated to the org level orderer endpoints
+// While top-level orderer addresses are still supported, the organization value is preferred.
+func (c *ChannelGroup) RemoveLegacyOrdererAddresses() {
+	delete(c.channelGroup.Values, OrdererAddressesKey)
+}
