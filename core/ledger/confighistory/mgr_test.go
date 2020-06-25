@@ -191,7 +191,7 @@ func TestWithImplicitColls(t *testing.T) {
 	p, err := newDBProvider(dbPath)
 	require.NoError(t, err)
 
-	mgr := &mgr{
+	mgr := &Mgr{
 		ccInfoProvider: mockCCInfoProvider,
 		dbProvider:     p,
 	}
@@ -267,7 +267,7 @@ func TestWithImplicitColls(t *testing.T) {
 }
 
 type testEnvForSnapshot struct {
-	mgr             *mgr
+	mgr             *Mgr
 	retriever       *Retriever
 	testSnapshotDir string
 	cleanup         func()
@@ -281,7 +281,7 @@ func newTestEnvForSnapshot(t *testing.T) *testEnvForSnapshot {
 		os.RemoveAll(dbPath)
 		t.Fatalf("Failed to create new leveldb provider: %s", err)
 	}
-	mgr := &mgr{dbProvider: p}
+	mgr := &Mgr{dbProvider: p}
 	retriever := mgr.GetRetriever("ledger1", nil)
 
 	testSnapshotDir, err := ioutil.TempDir("", "confighistorysnapshot")

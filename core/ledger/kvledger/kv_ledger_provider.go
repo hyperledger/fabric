@@ -69,7 +69,7 @@ type Provider struct {
 	pvtdataStoreProvider *pvtdatastorage.Provider
 	dbProvider           *privacyenabledstate.DBProvider
 	historydbProvider    *history.DBProvider
-	configHistoryMgr     confighistory.Mgr
+	configHistoryMgr     *confighistory.Mgr
 	stateListeners       []ledger.StateListener
 	bookkeepingProvider  bookkeeping.Provider
 	initializer          *ledger.Initializer

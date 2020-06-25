@@ -29,44 +29,39 @@ const (
 	snapshotMetadataFileName  = "confighistory.metadata"
 )
 
-// Mgr should be registered as a state listener. The state listener builds the history and retriever helps in querying the history
-type Mgr interface {
-	ledger.StateListener
-	GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) *Retriever
-	Close()
-}
-
-type mgr struct {
+// Mgr manages the history of configurations such as chaincode's collection configurations.
+// It should be registered as a state listener. The state listener builds the history.
+type Mgr struct {
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider
 	dbProvider     *dbProvider
 }
 
 // NewMgr constructs an instance that implements interface `Mgr`
-func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) (Mgr, error) {
+func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) (*Mgr, error) {
 	p, err := newDBProvider(dbPath)
 	if err != nil {
 		return nil, err
 	}
-	return &mgr{ccInfoProvider, p}, nil
+	return &Mgr{ccInfoProvider, p}, nil
 }
 
 // Name returns the name of the listener
-func (m *mgr) Name() string {
+func (m *Mgr) Name() string {
 	return "collection configuration history listener"
 }
 
-func (m *mgr) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
+func (m *Mgr) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
 	// Noop
 	return nil
 }
 
 // InterestedInNamespaces implements function from the interface ledger.StateListener
-func (m *mgr) InterestedInNamespaces() []string {
+func (m *Mgr) InterestedInNamespaces() []string {
 	return m.ccInfoProvider.Namespaces()
 }
 
 // StateCommitDone implements function from the interface ledger.StateListener
-func (m *mgr) StateCommitDone(ledgerID string) {
+func (m *Mgr) StateCommitDone(ledgerID string) {
 	// Noop
 }
 
@@ -74,7 +69,7 @@ func (m *mgr) StateCommitDone(ledgerID string) {
 // In this implementation, the latest collection config package is retrieved via
 // ledger.DeployedChaincodeInfoProvider and is persisted as a separate entry in a separate db.
 // The composite key for the entry is a tuple of <blockNum, namespace, key>
-func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
+func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	updatedCCs, err := m.ccInfoProvider.UpdatedChaincodes(extractPublicUpdates(trigger.StateUpdates))
 	if err != nil {
 		return err
@@ -110,7 +105,7 @@ func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 }
 
 // GetRetriever returns an implementation of `ledger.ConfigHistoryRetriever` for the given ledger id.
-func (m *mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) *Retriever {
+func (m *Mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) *Retriever {
 	return &Retriever{
 		ledgerInfoRetriever:    ledgerInfoRetriever,
 		ledgerID:               ledgerID,
@@ -120,7 +115,7 @@ func (m *mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetrie
 }
 
 // Close implements the function in the interface 'Mgr'
-func (m *mgr) Close() {
+func (m *Mgr) Close() {
 	m.dbProvider.Close()
 }
 
