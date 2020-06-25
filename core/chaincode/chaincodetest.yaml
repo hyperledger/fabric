@@ -350,8 +350,7 @@ chaincode:
     #A value <= 0 turns keepalive off
     keepalive: 1
 
-    # system chaincodes whitelist. To add system chaincode "myscc" to the
-    # whitelist, add "myscc: enable" to the list
+    # enabled system chaincodes
     system:
         cscc: enable
         lscc: enable
