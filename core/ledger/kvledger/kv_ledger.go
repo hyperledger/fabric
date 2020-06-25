@@ -68,7 +68,7 @@ type lgrInitializer struct {
 	pvtdataStore             *pvtdatastorage.Store
 	stateDB                  *privacyenabledstate.DB
 	historyDB                *history.DB
-	configHistoryMgr         confighistory.Mgr
+	configHistoryMgr         *confighistory.Mgr
 	stateListeners           []ledger.StateListener
 	bookkeeperProvider       bookkeeping.Provider
 	ccInfoProvider           ledger.DeployedChaincodeInfoProvider
