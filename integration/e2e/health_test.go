@@ -87,7 +87,7 @@ var _ = Describe("Health", func() {
 			process = ginkgomon.Invoke(peerRunner)
 			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
-			authClient, _ = PeerOperationalClients(network, peer)
+			authClient, _ = nwo.PeerOperationalClients(network, peer)
 			healthURL = fmt.Sprintf("https://127.0.0.1:%d/healthz", network.PeerPort(peer, nwo.OperationsPort))
 		})
 
@@ -162,7 +162,7 @@ var _ = Describe("Health", func() {
 			Eventually(oProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			orderer := network.Orderers[0]
-			authClient, _ = OrdererOperationalClients(network, orderer)
+			authClient, _ = nwo.OrdererOperationalClients(network, orderer)
 			healthURL = fmt.Sprintf("https://127.0.0.1:%d/healthz", network.OrdererPort(orderer, nwo.OperationsPort))
 		})
 
