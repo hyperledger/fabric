@@ -65,7 +65,7 @@ service will then compute a descriptor comprised of two objects:
 The following is an example of a descriptor from the evaluation of a policy of
 ``AND(Org1, Org2)`` where there are two peers in each of the organizations.
 
-.. code-block:: JSON
+.. code-block:: none
 
    Layouts: [
         QuantitiesByGroup: {

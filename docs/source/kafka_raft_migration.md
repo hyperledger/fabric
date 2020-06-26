@@ -102,7 +102,7 @@ tutorial to pull, translate, and scope the configuration of **each channel,
 starting with the system channel**. The only field you should change during
 this step is in the channel configuration at `/Channel/Orderer/ConsensusType`.
 In a JSON representation of the channel configuration, this would be
-`.channel_group.groups.Orderer.values.ConsensusType​`.
+`.channel_group.groups.Orderer.values.ConsensusType`.
 
 The `ConsensusType` is represented by three values: `Type`, `Metadata`, and
 `State`, where:
@@ -154,9 +154,9 @@ service and then the ordering service nodes.
 The next step in the migration process is another channel configuration update
 for each channel. In this configuration update, switch the `Type` to `etcdraft`
 (for Raft) while keeping the `State` in `STATE_MAINTENANCE`, and fill in the
-`Metadata` configuration​. It is highly recommended that the `Metadata` configuration​ be
-identical​ on all channels. If you want to establish different consenter sets
-with different nodes, you will be able to reconfigure the `Metadata` configuration​
+`Metadata` configuration. It is highly recommended that the `Metadata` configuration be
+identical on all channels. If you want to establish different consenter sets
+with different nodes, you will be able to reconfigure the `Metadata` configuration
 after the system is restarted into `etcdraft` mode. Supplying an identical metadata
 object, and hence, an identical consenter set, means that when the nodes are
 restarted, if the system channel forms a quorum and can exit maintenance mode,
@@ -194,9 +194,9 @@ successfully.
 
 When a leader is elected, the log will show, for each channel:
 
-``` ​
-"Raft leader changed: 0 -> ​node-number​ ​channel=​channel-name​
-node=​node-number​ ​"
+```
+"Raft leader changed: 0 -> node-number channel=channel-name
+node=node-number "
 ```
 
 For example:
@@ -206,8 +206,8 @@ For example:
 INFO 047 Raft leader changed: 0 -> 1 channel=testchannel1 node=2
 ```
 
-In this example `​node 2​` reports that a leader was elected (the leader is
-​`node 1`​) by the cluster of channel `​testchannel1​`.
+In this example `node 2` reports that a leader was elected (the leader is
+`node 1`) by the cluster of channel `testchannel1`.
 
 ### Switch out of maintenance mode
 

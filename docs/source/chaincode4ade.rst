@@ -38,7 +38,7 @@ documentation of the Chaincode Shim API for different languages below:
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#Chaincode>`__
   - `Node.js <https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeInterface.html>`__
-  - `Java <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/Chaincode.html>`_
+  - `Java <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/Chaincode.html>`__
 
 In each language, the ``Invoke`` method is called by clients to submit transaction
 proposals. This method allows you to use the chaincode to read and write data on
@@ -56,7 +56,7 @@ The other interface in the chaincode "shim" APIs is the ``ChaincodeStubInterface
 
   - `Go <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStubInterface>`__
   - `Node.js <https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html>`__
-  - `Java <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/ChaincodeStub.html>`_
+  - `Java <https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/org/hyperledger/fabric/shim/ChaincodeStub.html>`__
 
 which is used to access and modify the ledger, and to make invocations between
 chaincodes.
@@ -75,7 +75,7 @@ Choosing a Location for the Code
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you haven't been doing programming in Go, you may want to make sure that
-you have :ref:`Go` installed and your system properly configured. We assume
+you have `Go <https://golang.org>`_ installed and your system properly configured. We assume
 you are using a version that supports modules.
 
 Now, you will want to create a directory for your chaincode application.

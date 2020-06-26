@@ -210,4 +210,4 @@ Set environment variable ``FABRIC_LOGGING_SPEC`` to ``DEBUG`` and set
 ``Kafka.Verbose`` to ``true`` in ``orderer.yaml`` .
 
 .. Licensed under Creative Commons Attribution 4.0 International License
-https://creativecommons.org/licenses/by/4.0/
+   https://creativecommons.org/licenses/by/4.0/
