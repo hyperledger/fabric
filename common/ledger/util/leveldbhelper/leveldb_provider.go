@@ -166,11 +166,11 @@ func (h *DBHandle) Delete(key []byte, sync bool) error {
 
 // DeleteAll deletes all the keys that belong to the channel (dbName).
 func (h *DBHandle) DeleteAll() error {
-	iter := h.GetIterator(nil, nil)
-	defer iter.Release()
-	if err := iter.Error(); err != nil {
-		return errors.Wrap(err, "internal leveldb error while obtaining db iterator")
+	iter, err := h.GetIterator(nil, nil)
+	if err != nil {
+		return err
 	}
+	defer iter.Release()
 
 	// use leveldb iterator directly to be more efficient
 	dbIter := iter.Iterator

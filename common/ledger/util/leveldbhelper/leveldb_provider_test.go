@@ -246,7 +246,8 @@ func TestDeleteAll(t *testing.T) {
 	}
 
 	for _, dbSetup := range expectedSetup {
-		itr := dbSetup.db.GetIterator(nil, nil)
+		itr, err := dbSetup.db.GetIterator(nil, nil)
+		require.NoError(t, err)
 		checkItrResults(t, itr, dbSetup.expectedKeys, dbSetup.expectedValues)
 		itr.Release()
 	}
@@ -282,7 +283,8 @@ func TestDeleteAll(t *testing.T) {
 	}
 
 	for _, result := range expectedResults {
-		itr := result.db.GetIterator(nil, nil)
+		itr, err := result.db.GetIterator(nil, nil)
+		require.NoError(t, err)
 		checkItrResults(t, itr, result.expectedKeys, result.expectedValues)
 		itr.Release()
 	}

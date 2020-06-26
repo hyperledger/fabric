@@ -220,7 +220,8 @@ func TestRemove(t *testing.T) {
 	exists, err := provider.Exists("ledger1")
 	require.NoError(t, err)
 	require.False(t, exists)
-	itr := provider.leveldbProvider.GetDBHandle("ledger1").GetIterator(nil, nil)
+	itr, err := provider.leveldbProvider.GetDBHandle("ledger1").GetIterator(nil, nil)
+	require.NoError(t, err)
 	defer itr.Release()
 	require.False(t, itr.Next())
 
