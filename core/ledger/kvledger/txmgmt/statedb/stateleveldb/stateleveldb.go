@@ -143,7 +143,10 @@ func (vdb *versionedDB) GetStateRangeScanIteratorWithPagination(namespace string
 	if endKey == "" {
 		dataEndKey[len(dataEndKey)-1] = lastKeyIndicator
 	}
-	dbItr := vdb.db.GetIterator(dataStartKey, dataEndKey)
+	dbItr, err := vdb.db.GetIterator(dataStartKey, dataEndKey)
+	if err != nil {
+		return nil, err
+	}
 	return newKVScanner(namespace, dbItr, pageSize), nil
 }
 
@@ -292,9 +295,9 @@ type fullDBScanner struct {
 }
 
 func newFullDBScanner(db *leveldbhelper.DBHandle, skipNamespace func(namespace string) bool) (*fullDBScanner, byte, error) {
-	dbItr := db.GetIterator(dataKeyPrefix, dataKeyStopper)
-	if err := dbItr.Error(); err != nil {
-		return nil, byte(0), errors.Wrap(err, "internal leveldb error while obtaining db iterator")
+	dbItr, err := db.GetIterator(dataKeyPrefix, dataKeyStopper)
+	if err != nil {
+		return nil, byte(0), err
 	}
 	return &fullDBScanner{
 			db:     db,

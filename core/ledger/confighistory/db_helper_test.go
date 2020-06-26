@@ -64,6 +64,13 @@ func TestQueries(t *testing.T) {
 	checkEntryAt(t, "testcase-query8", db, "ns1", "key1", 0, sampleData[4])
 	checkEntryAt(t, "testcase-query9", db, "ns1", "key1", 35, nil)
 	checkEntryAt(t, "testcase-query10", db, "ns1", "key1", 45, nil)
+
+	t.Run("test-iter-error-path", func(t *testing.T) {
+		provider.Close()
+		ckv, err := db.mostRecentEntryBelow(45, "ns1", "key1")
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.Nil(t, ckv)
+	})
 }
 
 func TestGetNamespaceIterator(t *testing.T) {
@@ -73,8 +80,8 @@ func TestGetNamespaceIterator(t *testing.T) {
 	defer deleteTestPath(t, testDBPath)
 
 	db := provider.getDB("ledger1")
-	nsItr1 := db.getNamespaceIterator("ns1")
-	require.NoError(t, nsItr1.Error())
+	nsItr1, err := db.getNamespaceIterator("ns1")
+	require.NoError(t, err)
 	defer nsItr1.Release()
 	verifyNsEntries(t, nsItr1, nil)
 
@@ -88,15 +95,23 @@ func TestGetNamespaceIterator(t *testing.T) {
 	}
 	populateDBWithSampleData(t, db, sampleData)
 
-	nsItr2 := db.getNamespaceIterator("ns1")
-	require.NoError(t, nsItr2.Error())
+	nsItr2, err := db.getNamespaceIterator("ns1")
+	require.NoError(t, err)
 	defer nsItr2.Release()
 	verifyNsEntries(t, nsItr2, sampleData[:3])
 
-	nsItr3 := db.getNamespaceIterator("ns2")
-	require.NoError(t, nsItr3.Error())
+	nsItr3, err := db.getNamespaceIterator("ns2")
+	require.NoError(t, err)
 	defer nsItr3.Release()
 	verifyNsEntries(t, nsItr3, sampleData[3:])
+
+	t.Run("test-iter-error-path", func(t *testing.T) {
+		provider.Close()
+		itr, err := db.getNamespaceIterator("ns1")
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.Nil(t, itr)
+	})
+
 }
 
 func verifyNsEntries(t *testing.T, nsItr *leveldbhelper.Iterator, expectedEntries []*compositeKV) {

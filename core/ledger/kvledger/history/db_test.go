@@ -23,6 +23,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -195,6 +196,15 @@ func TestHistory(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 4, count)
+
+	t.Run("test-iter-error-path", func(t *testing.T) {
+		env.testHistoryDBProvider.Close()
+		qhistory, err = env.testHistoryDB.NewQueryExecutor(store1)
+		itr, err = qhistory.GetHistoryForKey("ns1", "key7")
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.Nil(t, itr)
+
+	})
 }
 
 func TestHistoryForInvalidTran(t *testing.T) {

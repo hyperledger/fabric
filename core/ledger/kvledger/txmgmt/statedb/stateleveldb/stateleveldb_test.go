@@ -37,6 +37,14 @@ func TestIterator(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
 	commontests.TestIterator(t, env.DBProvider)
+	t.Run("test-iter-error-path", func(t *testing.T) {
+		db, err := env.DBProvider.GetDBHandle("testiterator", nil)
+		require.NoError(t, err)
+		env.DBProvider.Close()
+		itr, err := db.GetStateRangeScanIterator("ns1", "", "")
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.Nil(t, itr)
+	})
 }
 
 func TestDataKeyEncoding(t *testing.T) {

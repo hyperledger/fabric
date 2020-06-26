@@ -71,7 +71,8 @@ func TestIterator(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("range testCase %d", i),
 			func(t *testing.T) {
-				itr := db2.GetIterator(testCase.startKey, testCase.endKey)
+				itr, err := db2.GetIterator(testCase.startKey, testCase.endKey)
+				require.NoError(t, err)
 				defer itr.Release()
 				checkItrResults(t, itr, testCase.expectedKeys, testCase.expectedValues)
 			},
@@ -116,7 +117,8 @@ func TestIterator(t *testing.T) {
 		t.Run(
 			fmt.Sprintf("range with seek testCase %d", i),
 			func(t *testing.T) {
-				itr := db1.GetIterator(testCase.startKey, testCase.endKey)
+				itr, err := db1.GetIterator(testCase.startKey, testCase.endKey)
+				require.NoError(t, err)
 				defer itr.Release()
 				require.True(t, itr.Seek(testCase.seekToKey))
 				require.Equal(t, testCase.itrAtKeyAfterSeek, itr.Key())
@@ -125,34 +127,40 @@ func TestIterator(t *testing.T) {
 		)
 	}
 
-	itr := db1.GetIterator(nil, nil)
-	defer itr.Release()
-	require.True(t, itr.Seek([]byte(createTestKey(10))))
-	require.Equal(t, []byte(createTestKey(10)), itr.Key())
-	checkItrResults(t, itr, createTestKeys(11, 19), createTestValues("db1", 11, 19))
+	t.Run("test-first-prev", func(t *testing.T) {
+		itr, err := db1.GetIterator(nil, nil)
+		require.NoError(t, err)
+		defer itr.Release()
+		require.True(t, itr.Seek([]byte(createTestKey(10))))
+		require.Equal(t, []byte(createTestKey(10)), itr.Key())
+		checkItrResults(t, itr, createTestKeys(11, 19), createTestValues("db1", 11, 19))
 
-	require.True(t, itr.First())
-	require.True(t, itr.Seek([]byte(createTestKey(10))))
-	require.Equal(t, []byte(createTestKey(10)), itr.Key())
-	require.True(t, itr.Prev())
-	checkItrResults(t, itr, createTestKeys(10, 19), createTestValues("db1", 10, 19))
+		require.True(t, itr.First())
+		require.True(t, itr.Seek([]byte(createTestKey(10))))
+		require.Equal(t, []byte(createTestKey(10)), itr.Key())
+		require.True(t, itr.Prev())
+		checkItrResults(t, itr, createTestKeys(10, 19), createTestValues("db1", 10, 19))
 
-	require.True(t, itr.First())
-	require.False(t, itr.Seek([]byte(createTestKey(20))))
-	require.True(t, itr.First())
-	checkItrResults(t, itr, createTestKeys(1, 19), createTestValues("db1", 1, 19))
+		require.True(t, itr.First())
+		require.False(t, itr.Seek([]byte(createTestKey(20))))
+		require.True(t, itr.First())
+		checkItrResults(t, itr, createTestKeys(1, 19), createTestValues("db1", 1, 19))
 
-	require.True(t, itr.First())
-	require.False(t, itr.Prev())
-	checkItrResults(t, itr, createTestKeys(0, 19), createTestValues("db1", 0, 19))
+		require.True(t, itr.First())
+		require.False(t, itr.Prev())
+		checkItrResults(t, itr, createTestKeys(0, 19), createTestValues("db1", 0, 19))
 
-	require.True(t, itr.First())
-	require.True(t, itr.Last())
-	checkItrResults(t, itr, nil, nil)
-}
+		require.True(t, itr.First())
+		require.True(t, itr.Last())
+		checkItrResults(t, itr, nil, nil)
+	})
 
-func testRange(t *testing.T, start, end string, expectedKeys, expectedValues []string) {
-
+	t.Run("test-error-path", func(t *testing.T) {
+		env.provider.Close()
+		itr, err := db1.GetIterator(nil, nil)
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.Nil(t, itr)
+	})
 }
 
 func TestBatchedUpdates(t *testing.T) {

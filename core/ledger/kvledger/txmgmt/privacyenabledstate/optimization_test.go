@@ -20,7 +20,8 @@ func TestMetadataHintCorrectness(t *testing.T) {
 	defer bookkeepingTestEnv.Cleanup()
 	bookkeeper := bookkeepingTestEnv.TestProvider.GetDBHandle("ledger1", bookkeeping.MetadataPresenceIndicator)
 
-	metadataHint := newMetadataHint(bookkeeper)
+	metadataHint, err := newMetadataHint(bookkeeper)
+	require.NoError(t, err)
 	require.False(t, metadataHint.metadataEverUsedFor("ns1"))
 
 	updates := NewUpdateBatch()
@@ -42,13 +43,21 @@ func TestMetadataHintCorrectness(t *testing.T) {
 	})
 
 	t.Run("MetadataFromPersistence", func(t *testing.T) {
-		metadataHintFromPersistence := newMetadataHint(bookkeeper)
+		metadataHintFromPersistence, err := newMetadataHint(bookkeeper)
+		require.NoError(t, err)
 		require.True(t, metadataHintFromPersistence.metadataEverUsedFor("ns1"))
 		require.True(t, metadataHintFromPersistence.metadataEverUsedFor("ns2"))
 		require.True(t, metadataHintFromPersistence.metadataEverUsedFor("ns1_pvt"))
 		require.True(t, metadataHintFromPersistence.metadataEverUsedFor("ns2_pvt"))
 		require.False(t, metadataHintFromPersistence.metadataEverUsedFor("ns3"))
 		require.False(t, metadataHintFromPersistence.metadataEverUsedFor("ns4"))
+	})
+
+	t.Run("MetadataIterErrorPath", func(t *testing.T) {
+		bookkeepingTestEnv.TestProvider.Close()
+		metadataHint, err := newMetadataHint(bookkeeper)
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.Nil(t, metadataHint)
 	})
 }
 
@@ -58,7 +67,9 @@ func TestMetadataHintOptimizationSkippingGoingToDB(t *testing.T) {
 	bookkeeper := bookkeepingTestEnv.TestProvider.GetDBHandle("ledger1", bookkeeping.MetadataPresenceIndicator)
 
 	mockVersionedDB := &mock.VersionedDB{}
-	db, err := NewDB(mockVersionedDB, "testledger", newMetadataHint(bookkeeper))
+	metadatahint, err := newMetadataHint(bookkeeper)
+	require.NoError(t, err)
+	db, err := NewDB(mockVersionedDB, "testledger", metadatahint)
 	require.NoError(t, err)
 	updates := NewUpdateBatch()
 	updates.PubUpdates.PutValAndMetadata("ns1", "key", []byte("value"), []byte("metadata"), version.NewHeight(1, 1))

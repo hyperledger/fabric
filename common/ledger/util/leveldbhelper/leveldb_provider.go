@@ -227,7 +227,7 @@ func (h *DBHandle) WriteBatch(batch *UpdateBatch, sync bool) error {
 // GetIterator gets an handle to iterator. The iterator should be released after the use.
 // The resultset contains all the keys that are present in the db between the startKey (inclusive) and the endKey (exclusive).
 // A nil startKey represents the first available key and a nil endKey represent a logical key after the last available key
-func (h *DBHandle) GetIterator(startKey []byte, endKey []byte) *Iterator {
+func (h *DBHandle) GetIterator(startKey []byte, endKey []byte) (*Iterator, error) {
 	sKey := constructLevelKey(h.dbName, startKey)
 	eKey := constructLevelKey(h.dbName, endKey)
 	if endKey == nil {
@@ -235,7 +235,12 @@ func (h *DBHandle) GetIterator(startKey []byte, endKey []byte) *Iterator {
 		eKey[len(eKey)-1] = lastKeyIndicator
 	}
 	logger.Debugf("Getting iterator for range [%#v] - [%#v]", sKey, eKey)
-	return &Iterator{h.dbName, h.db.GetIterator(sKey, eKey)}
+	itr := h.db.GetIterator(sKey, eKey)
+	if err := itr.Error(); err != nil {
+		itr.Release()
+		return nil, errors.Wrapf(err, "internal leveldb error while obtaining db iterator")
+	}
+	return &Iterator{h.dbName, itr}, nil
 }
 
 // Close closes the DBHandle after its db data have been deleted

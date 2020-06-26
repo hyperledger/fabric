@@ -176,16 +176,14 @@ func (r *Retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*
 // extra bytes. Further, the collection config namespace is not expected to have
 // millions of entries.
 func (r *Retriever) ExportConfigHistory(dir string, newHashFunc snapshot.NewHashFunc) (map[string][]byte, error) {
-	nsItr := r.dbHandle.getNamespaceIterator(collectionConfigNamespace)
-	if err := nsItr.Error(); err != nil {
-		return nil, errors.Wrap(err, "internal leveldb error while obtaining db iterator")
-
+	nsItr, err := r.dbHandle.getNamespaceIterator(collectionConfigNamespace)
+	if err != nil {
+		return nil, err
 	}
 	defer nsItr.Release()
 
 	var numCollectionConfigs uint64 = 0
 	var dataFileWriter *snapshot.FileWriter
-	var err error
 	for nsItr.Next() {
 		if err := nsItr.Error(); err != nil {
 			return nil, errors.Wrap(err, "internal leveldb error while iterating for collection config history")
