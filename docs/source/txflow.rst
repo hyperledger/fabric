@@ -128,4 +128,4 @@ transaction flow in more detail.
 .. image:: images/flow-4.png
 
 .. Licensed under Creative Commons Attribution 4.0 International License
-https://creativecommons.org/licenses/by/4.0/
+   https://creativecommons.org/licenses/by/4.0/

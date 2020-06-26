@@ -104,7 +104,7 @@ For example:
 
 In addition to the specifying an endorsement policy from the CLI or SDK, a
 chaincode can also use policies in the channel configuration as endorsement
-policies. You can use the ``--channel-config-policy``flag to select a channel policy with
+policies. You can use the ``--channel-config-policy`` flag to select a channel policy with
 format used by the channel configuration and by ACLs.
 
 For example:

@@ -63,7 +63,7 @@ These need to be ``false`` and ``true`` respectively.
 
 The ``curl`` command that comes with Git and Docker Toolbox is old and
 does not handle properly the redirect used in
-:doc:`getting_started`. Make sure you have and use a newer version
+:doc:`../getting_started`. Make sure you have and use a newer version
 which can be downloaded from the `cURL downloads page
 <https://curl.haxx.se/download.html>`__
 

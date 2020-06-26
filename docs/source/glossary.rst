@@ -330,7 +330,7 @@ submit the read-only transaction, unless there is desire to log the read on the 
 for audit purpose. The invoke includes a channel identifier, the chaincode function to
 invoke, and an array of arguments.
 
-.. _Leader
+.. _Leader:
 
 Leader
 ------
@@ -383,7 +383,7 @@ process called **consensus**. The term **Distributed Ledger Technology**
 singular, but has many identical copies distributed across a set of network
 nodes (peers and the ordering service).
 
-.. _Log-entry
+.. _Log-entry:
 
 Log entry
 ---------

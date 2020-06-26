@@ -56,7 +56,7 @@ As a developer:
   bring a team to implement it, or join one of the teams working on an existing Epic.
   If you see an Epic that interests you on the
   `release roadmap <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`_,
-  contact the Epic assignee via the Jira work item or on `RocketChat <https://chat.hyperledger.org/>`_.
+  contact the Epic assignee via the Jira work item or on `RocketChat <https://chat.hyperledger.org/>`__.
 
 Getting a Linux Foundation account
 ----------------------------------
@@ -446,11 +446,9 @@ Related Topics
 .. toctree::
    :maxdepth: 1
 
-   MAINTAINERS
    jira_navigation
    dev-setup/devenv
    dev-setup/build
-   testing
    style-guides/go-style
 
 .. Licensed under Creative Commons Attribution 4.0 International License

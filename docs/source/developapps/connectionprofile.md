@@ -274,7 +274,7 @@ details of the network topology.
 This file is reproduced inline from the GitHub commercial paper
 [sample](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/commercial-paper/organization/magnetocorp/gateway/networkConnection.yaml).
 
-```yaml
+```
 1: ---
 2: #
 3: # [Required]. A connection profile contains information about a set of network

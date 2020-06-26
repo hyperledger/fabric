@@ -4,26 +4,25 @@ Hyperledger Fabric Model
 This section outlines the key design features woven into Hyperledger Fabric that
 fulfill its promise of a comprehensive, yet customizable, enterprise blockchain solution:
 
-* :ref:`Assets` --- Asset definitions enable the exchange of almost anything with
+* `Assets`_ --- Asset definitions enable the exchange of almost anything with
   monetary value over the network, from whole foods to antique cars to currency
   futures.
-* :ref:`Chaincode` --- Chaincode execution is partitioned from transaction ordering,
+* `Chaincode`_ --- Chaincode execution is partitioned from transaction ordering,
   limiting the required levels of trust and verification across node types, and
   optimizing network scalability and performance.
-* :ref:`Ledger-Features` --- The immutable, shared ledger encodes the entire
+* `Ledger Features`_ --- The immutable, shared ledger encodes the entire
   transaction history for each channel, and includes SQL-like query capability
   for efficient auditing and dispute resolution.
-* :ref:`Privacy` --- Channels and private data collections enable private and
+* `Privacy`_ --- Channels and private data collections enable private and
   confidential multi-lateral transactions that are usually required by
   competing businesses and regulated industries that exchange assets on a common
   network.
-* :ref:`Security-Membership-Services` --- Permissioned membership provides a
+* `Security & Membership Services`_ --- Permissioned membership provides a
   trusted blockchain network, where participants know that all transactions can
   be detected and traced by authorized regulators and auditors.
-* :ref:`Consensus` --- A unique approach to consensus enables the
+* `Consensus`_ --- A unique approach to consensus enables the
   flexibility and scalability needed for the enterprise.
 
-.. _Assets:
 
 Assets
 ------
@@ -36,7 +35,6 @@ Assets are represented in Hyperledger Fabric as a collection of
 key-value pairs, with state changes recorded as transactions on a :ref:`Channel`
 ledger.  Assets can be represented in binary and/or JSON form.
 
-.. _Chaincode:
 
 Chaincode
 ---------
@@ -48,7 +46,6 @@ the ledger's current state database and are initiated through a transaction prop
 results in a set of key-value writes (write set) that can be submitted to the network and applied to
 the ledger on all peers.
 
-.. _Ledger-Features:
 
 Ledger Features
 ---------------
@@ -78,7 +75,6 @@ Some features of a Fabric ledger:
 
 See the :doc:`ledger` topic for a deeper dive on the databases, storage structure, and "query-ability."
 
-.. _Privacy:
 
 Privacy
 -------
@@ -114,7 +110,6 @@ text.
 See the :doc:`private-data-arch` topic for more details on how to achieve
 privacy on your blockchain network.
 
-.. _Security-Membership-Services:
 
 Security & Membership Services
 ------------------------------
@@ -131,7 +126,6 @@ See the :doc:`msp` topic to better understand cryptographic
 implementations, and the sign, verify, authenticate approach used in
 Hyperledger Fabric.
 
-.. _Consensus:
 
 Consensus
 ---------
