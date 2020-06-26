@@ -29,8 +29,8 @@ peer:
     bootstrap: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
     endpoint: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
     externalEndpoint: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
-    useLeaderElection: true
-    orgLeader: false
+    useLeaderElection: false
+    orgLeader: true
     membershipTrackerInterval: 5s
     maxBlockCountToStore: 100
     maxPropagationBurstLatency: 10ms

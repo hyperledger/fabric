@@ -78,8 +78,16 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		//      peer1: leader
 		for _, peer := range network.Peers {
 			if peer.Organization == "Org1" {
+				if peer.Name == "peer0" {
+					core := network.ReadPeerConfig(peer)
+					core.Peer.Gossip.UseLeaderElection = true
+					core.Peer.Gossip.OrgLeader = false
+					network.WritePeerConfig(peer, core)
+				}
 				if peer.Name == "peer1" {
 					core := network.ReadPeerConfig(peer)
+					core.Peer.Gossip.UseLeaderElection = true
+					core.Peer.Gossip.OrgLeader = false
 					core.Peer.Gossip.Bootstrap = fmt.Sprintf("127.0.0.1:%d", network.ReservePort())
 					network.WritePeerConfig(peer, core)
 				}

@@ -97,14 +97,15 @@ peer:
         # Defines whenever peer will initialize dynamic algorithm for
         # "leader" selection, where leader is the peer to establish
         # connection with ordering service and use delivery protocol
-        # to pull ledger blocks from ordering service. It is recommended to
-        # use leader election for large networks of peers.
-        useLeaderElection: true
+        # to pull ledger blocks from ordering service.
+        useLeaderElection: false
         # Statically defines peer to be an organization "leader",
         # where this means that current peer will maintain connection
         # with ordering service and disseminate block across peers in
-        # its own organization
-        orgLeader: false
+        # its own organization. Multiple peers or all peers in an organization
+        # may be configured as org leaders, so that they all pull
+        # blocks directly from ordering service.
+        orgLeader: true
 
         # Interval for membershipTracker polling
         membershipTrackerInterval: 5s
