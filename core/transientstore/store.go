@@ -10,7 +10,6 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/transientstore"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
@@ -25,7 +24,7 @@ var (
 	emptyValue = []byte{}
 	nilByte    = byte('\x00')
 	// ErrStoreEmpty is used to indicate that there are no entries in transient store
-	ErrStoreEmpty = errors.New("Transient store is empty")
+	ErrStoreEmpty = errors.New("transient store is empty")
 )
 
 //////////////////////////////////////////////
@@ -65,7 +64,7 @@ type storeProvider struct {
 	dbProvider *leveldbhelper.Provider
 }
 
-// store holds an instance of a levelDB.
+// Store holds an instance of a levelDB.
 type Store struct {
 	db       *leveldbhelper.DBHandle
 	ledgerID string
@@ -294,35 +293,22 @@ func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 		return nil, err
 	}
 
-	txPvtRWSet := &rwset.TxPvtReadWriteSet{}
-	txPvtRWSetWithConfig := &transientstore.TxPvtReadWriteSetWithConfigInfo{}
-
-	var filteredTxPvtRWSet *rwset.TxPvtReadWriteSet
-	if dbVal[0] == nilByte {
-		// new proto, i.e., TxPvtReadWriteSetWithConfigInfo
-		if err := proto.Unmarshal(dbVal[1:], txPvtRWSetWithConfig); err != nil {
-			return nil, err
-		}
-
-		filteredTxPvtRWSet = trimPvtWSet(txPvtRWSetWithConfig.GetPvtRwset(), scanner.filter)
-		configs, err := trimPvtCollectionConfigs(txPvtRWSetWithConfig.CollectionConfigs, scanner.filter)
-		if err != nil {
-			return nil, err
-		}
-		txPvtRWSetWithConfig.CollectionConfigs = configs
-	} else {
-		// old proto, i.e., TxPvtReadWriteSet
-		if err := proto.Unmarshal(dbVal, txPvtRWSet); err != nil {
-			return nil, err
-		}
-		filteredTxPvtRWSet = trimPvtWSet(txPvtRWSet, scanner.filter)
+	rwsetWithConf := &transientstore.TxPvtReadWriteSetWithConfigInfo{}
+	if err := proto.Unmarshal(dbVal[1:], rwsetWithConf); err != nil {
+		return nil, err
 	}
-
-	txPvtRWSetWithConfig.PvtRwset = filteredTxPvtRWSet
+	rwsetWithConf.PvtRwset = trimPvtWSet(rwsetWithConf.PvtRwset, scanner.filter)
+	rwsetWithConf.CollectionConfigs, err = trimPvtCollectionConfigs(
+		rwsetWithConf.CollectionConfigs,
+		scanner.filter,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	return &EndorserPvtSimulationResults{
 		ReceivedAtBlockHeight:          blockHeight,
-		PvtSimulationResultsWithConfig: txPvtRWSetWithConfig,
+		PvtSimulationResultsWithConfig: rwsetWithConf,
 	}, nil
 }
 
