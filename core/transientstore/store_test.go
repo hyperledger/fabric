@@ -154,6 +154,62 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	assert.Equal(endorsersResults, actualEndorsersResults)
 }
 
+func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
+	testStore, cleanup := testStore(t)
+	defer cleanup()
+	assert := assert.New(t)
+	txid := "txid-1"
+	var receivedAtBlockHeight uint64 = 10
+	var err error
+
+	// Create and persist private simulation results with old proto for txid-1
+	samplePvtRWSet := samplePvtData(t)
+	err = testStore.persistOldProto(txid, receivedAtBlockHeight, samplePvtRWSet)
+	assert.NoError(err)
+
+	// Create and persist private simulation results with new proto for txid-1
+	samplePvtRWSetWithConfig := samplePvtDataWithConfigInfo(t)
+	err = testStore.Persist(txid, receivedAtBlockHeight, samplePvtRWSetWithConfig)
+	assert.NoError(err)
+
+	// Construct the expected results
+	var expectedEndorsersResults []*EndorserPvtSimulationResults
+
+	pvtRWSetWithConfigInfo := &transientstore.TxPvtReadWriteSetWithConfigInfo{
+		PvtRwset: samplePvtRWSet,
+	}
+
+	endorser0SimulationResults := &EndorserPvtSimulationResults{
+		ReceivedAtBlockHeight:          receivedAtBlockHeight,
+		PvtSimulationResultsWithConfig: pvtRWSetWithConfigInfo,
+	}
+	expectedEndorsersResults = append(expectedEndorsersResults, endorser0SimulationResults)
+
+	endorser1SimulationResults := &EndorserPvtSimulationResults{
+		ReceivedAtBlockHeight:          receivedAtBlockHeight,
+		PvtSimulationResultsWithConfig: samplePvtRWSetWithConfig,
+	}
+	expectedEndorsersResults = append(expectedEndorsersResults, endorser1SimulationResults)
+
+	// Retrieve simulation results of txid-1 from  store
+	iter, err := testStore.GetTxPvtRWSetByTxid(txid, nil)
+	assert.NoError(err)
+
+	var actualEndorsersResults []*EndorserPvtSimulationResults
+	for {
+		result, err := iter.Next()
+		assert.NoError(err)
+		if result == nil {
+			break
+		}
+		actualEndorsersResults = append(actualEndorsersResults, result)
+	}
+	iter.Close()
+	sortResults(expectedEndorsersResults)
+	sortResults(actualEndorsersResults)
+	assert.Equal(expectedEndorsersResults, actualEndorsersResults)
+}
+
 func TestTransientStorePurgeByTxids(t *testing.T) {
 	testStore, cleanup := testStore(t)
 	defer cleanup()
