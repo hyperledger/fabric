@@ -21,10 +21,11 @@ data meet some condition required for those signatures to be considered
 'valid'. This is useful for determining that the correct parties have
 agreed to a transaction, or change.
 
-For example a policy may define any of the following: \* Administrators
-from 2 out 5 possible different organizations must sign. \* Any member
-from any organization must sign. \* Two specific certificates must both
-sign.
+For example a policy may define any of the following:
+
+* Administrators from 2 out 5 possible different organizations must sign.
+* Any member from any organization must sign.
+* Two specific certificates must both sign.
 
 Of course these are only examples, and other more powerful rules can be
 constructed.
@@ -90,7 +91,7 @@ minimally as follows:
                     Writers
                     Admins
                 Groups:
-                    OrdereringOrganization1:
+                    OrderingOrganization1:
                         Policies:
                             Readers
                             Writers
