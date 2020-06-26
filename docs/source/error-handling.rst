@@ -12,7 +12,7 @@ Usage Instructions
 ------------------
 
 **github.com/pkg/errors** should be used in place of all calls to
-``fmt.Errorf()`` or ``errors.New()``. Using this package will generate a
+``fmt.Errorf()`` or ``errors.New()``. U sing this package will generate a
 call stack that will be appended to the error message.
 
 Using this package is simple and will only require easy tweaks to your code.
