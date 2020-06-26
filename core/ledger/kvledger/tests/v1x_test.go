@@ -241,7 +241,7 @@ func TestV13WithStateCouchdb(t *testing.T) {
 
 	couchdbConfig, cleanup := startCouchDBWithV13Data(t, ledgerFSRoot)
 	defer cleanup()
-	env.initializer.Config.StateDBConfig.StateDatabase = "CouchDB"
+	env.initializer.Config.StateDBConfig.StateDatabase = ledger.CouchDB
 	env.initializer.Config.StateDBConfig.CouchDB = couchdbConfig
 	env.initializer.HealthCheckRegistry = &mock.HealthCheckRegistry{}
 	env.initializer.ChaincodeLifecycleEventProvider = &mock.ChaincodeLifecycleEventProvider{}
@@ -293,7 +293,7 @@ func TestInitLedgerPanicWithV13Data(t *testing.T) {
 
 	couchdbConfig, cleanup := startCouchDBWithV13Data(t, ledgerFSRoot)
 	defer cleanup()
-	env.initializer.Config.StateDBConfig.StateDatabase = "CouchDB"
+	env.initializer.Config.StateDBConfig.StateDatabase = ledger.CouchDB
 	env.initializer.Config.StateDBConfig.CouchDB = couchdbConfig
 	env.initializer.HealthCheckRegistry = &mock.HealthCheckRegistry{}
 	env.initializer.ChaincodeLifecycleEventProvider = &mock.ChaincodeLifecycleEventProvider{}

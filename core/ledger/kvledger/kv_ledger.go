@@ -55,7 +55,7 @@ type kvLedger struct {
 	stats                  *ledgerStats
 	commitHash             []byte
 	hashProvider           ledger.HashProvider
-	snapshotsConfig        *ledger.SnapshotsConfig
+	config                 *ledger.Config
 	// isPvtDataStoreAheadOfBlockStore is read during missing pvtData
 	// reconciliation and may be updated during a regular block commit.
 	// Hence, we use atomic value to ensure consistent read.
@@ -76,7 +76,7 @@ type lgrInitializer struct {
 	stats                    *ledgerStats
 	customTxProcessors       map[common.HeaderType]ledger.CustomTxProcessor
 	hashProvider             ledger.HashProvider
-	snapshotsConfig          *ledger.SnapshotsConfig
+	config                   *ledger.Config
 }
 
 func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
@@ -88,7 +88,7 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 		pvtdataStore:    initializer.pvtdataStore,
 		historyDB:       initializer.historyDB,
 		hashProvider:    initializer.hashProvider,
-		snapshotsConfig: initializer.snapshotsConfig,
+		config:          initializer.config,
 		blockAPIsRWLock: &sync.RWMutex{},
 	}
 

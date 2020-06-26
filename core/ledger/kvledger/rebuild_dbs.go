@@ -26,7 +26,7 @@ func RebuildDBs(config *ledger.Config) error {
 	}
 	defer fileLock.Unlock()
 
-	if config.StateDBConfig.StateDatabase == "CouchDB" {
+	if config.StateDBConfig.StateDatabase == ledger.CouchDB {
 		if err := statecouchdb.DropApplicationDBs(config.StateDBConfig.CouchDB); err != nil {
 			return err
 		}

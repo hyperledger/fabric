@@ -227,7 +227,7 @@ func (p *Provider) initStateDBProvider() error {
 	if err != nil {
 		return err
 	}
-	stateDB := &privacyenabledstate.StateDBConfig{
+	stateDBConfig := &privacyenabledstate.StateDBConfig{
 		StateDBConfig: p.initializer.Config.StateDBConfig,
 		LevelDBPath:   StateDBPath(p.initializer.Config.RootFSPath),
 	}
@@ -236,7 +236,7 @@ func (p *Provider) initStateDBProvider() error {
 		p.bookkeepingProvider,
 		p.initializer.MetricsProvider,
 		p.initializer.HealthCheckRegistry,
-		stateDB,
+		stateDBConfig,
 		sysNamespaces,
 	)
 	return err
@@ -360,7 +360,7 @@ func (p *Provider) open(ledgerID string) (ledger.PeerLedger, error) {
 		stats:                    p.stats.ledgerStats(ledgerID),
 		customTxProcessors:       p.initializer.CustomTxProcessors,
 		hashProvider:             p.initializer.HashProvider,
-		snapshotsConfig:          p.initializer.Config.SnapshotsConfig,
+		config:                   p.initializer.Config,
 	}
 
 	l, err := newKVLedger(initializer)
