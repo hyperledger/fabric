@@ -181,17 +181,23 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 			network.JoinChannel(channelName, orderer, peer0Org1, peer1Org1)
 			network.UpdateChannelAnchors(orderer, channelName)
 
-			By("verifying membership on anchor peer peer0Org1")
+			By("verifying peer1Org1 discovers all the peers before testing membership change on it")
+			Eventually(nwo.DiscoverPeers(network, peer1Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
+				network.DiscoveredPeer(peer0Org1, "_lifecycle"),
+				network.DiscoveredPeer(peer1Org1, "_lifecycle"),
+			))
+
+			By("verifying membership change on peer1Org1 when an anchor peer in the same org is stopped and restarted")
+			expectedMsgFromExpirationCallback := fmt.Sprintf("Do not remove bootstrap or anchor peer endpoint %s from membership", peerEndpoints[peer0Org1.ID()])
+			assertPeerMembershipUpdate(network, peer1Org1, []*nwo.Peer{peer0Org1}, nwprocs, expectedMsgFromExpirationCallback)
+
+			By("verifying peer0Org1 discovers all the peers before testing membership change on it")
 			Eventually(nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
 				network.DiscoveredPeer(peer0Org1, "_lifecycle"),
 				network.DiscoveredPeer(peer1Org1, "_lifecycle"),
 			))
 
-			By("verifying peer membership when an anchor peer in the same org is stopped and restarted")
-			expectedMsgFromExpirationCallback := fmt.Sprintf("Do not remove bootstrap or anchor peer endpoint %s from membership", peerEndpoints[peer0Org1.ID()])
-			assertPeerMembershipUpdate(network, peer1Org1, []*nwo.Peer{peer0Org1}, nwprocs, expectedMsgFromExpirationCallback)
-
-			By("verifying peer membership when a non-anchor peer in the same org is stopped and restarted")
+			By("verifying membership change on peer0Org1 when a non-anchor peer in the same org is stopped and restarted")
 			expectedMsgFromExpirationCallback = fmt.Sprintf("Removing member: Endpoint: %s", peerEndpoints[peer1Org1.ID()])
 			assertPeerMembershipUpdate(network, peer0Org1, []*nwo.Peer{peer1Org1}, nwprocs, expectedMsgFromExpirationCallback)
 		})
