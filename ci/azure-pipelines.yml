@@ -27,22 +27,6 @@ jobs:
       - script: ./ci/scripts/evaluate_commits.sh
         name: SetJobTriggers
 
-  - job: DocBuild
-    condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.buildDoc'], 'true')
-    dependsOn: VerifyBuild
-    pool:
-      vmImage: ubuntu-18.04
-    container:
-      image: n42org/tox:3.4.0
-    steps:
-      - checkout: self
-        path: 'go/src/github.com/hyperledger/fabric'
-        displayName: Checkout Fabric Code
-      - script: tox -edocs
-        displayName: Build Documentation
-      - publish: 'docs/_build/html'
-        displayName: Publish Documentation Artifacts
-
   - job: UnitTests
     condition: eq(dependencies.VerifyBuild.outputs['SetJobTriggers.runTests'], 'true')
     dependsOn: VerifyBuild
@@ -73,4 +57,3 @@ jobs:
         displayName: Checkout Fabric Code
       - script: make integration-test
         displayName: Run Integration Tests
-
