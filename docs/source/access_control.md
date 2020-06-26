@@ -50,7 +50,7 @@ to be satisfied. For example:
 Policies:
   MyPolicy:
     Type: Signature
-    Rule: “Org1.Peer OR Org2.Peer”
+    Rule: "OR('Org1.peer', 'Org2.peer')"
 
 ```
 
