@@ -51,7 +51,7 @@ func BlockHeaderBytes(b *cb.BlockHeader) []byte {
 	if err != nil {
 		// Errors should only arise for types which cannot be encoded, since the
 		// BlockHeader type is known a-priori to contain only encodable types, an
-		// error here is fatal and should not be propogated
+		// error here is fatal and should not be propagated
 		panic(err)
 	}
 	return result

@@ -354,6 +354,59 @@ func TestGlobalConfigDefault(t *testing.T) {
 	assert.Equal(t, expectedConfig, coreConfig)
 }
 
+func TestPropagateEnvironment(t *testing.T) {
+	defer viper.Reset()
+	viper.Set("peer.address", "localhost:8080")
+	viper.Set("chaincode.externalBuilders", &[]ExternalBuilder{
+		{
+			Name:        "testName",
+			Environment: []string{"KEY=VALUE"},
+			Path:        "/testPath",
+		},
+		{
+			Name:                 "testName",
+			PropagateEnvironment: []string{"KEY=VALUE"},
+			Path:                 "/testPath",
+		},
+		{
+			Name:                 "testName",
+			Environment:          []string{"KEY=VALUE"},
+			PropagateEnvironment: []string{"KEY=VALUE2"},
+			Path:                 "/testPath",
+		},
+	})
+	coreConfig, err := GlobalConfig()
+	assert.NoError(t, err)
+
+	expectedConfig := &Config{
+		AuthenticationTimeWindow:      15 * time.Minute,
+		PeerAddress:                   "localhost:8080",
+		ValidatorPoolSize:             runtime.NumCPU(),
+		VMNetworkMode:                 "host",
+		DeliverClientKeepaliveOptions: comm.DefaultKeepaliveOptions,
+		ExternalBuilders: []ExternalBuilder{
+			{
+				Name:                 "testName",
+				Environment:          []string{"KEY=VALUE"},
+				PropagateEnvironment: []string{"KEY=VALUE"},
+				Path:                 "/testPath",
+			},
+			{
+				Name:                 "testName",
+				PropagateEnvironment: []string{"KEY=VALUE"},
+				Path:                 "/testPath",
+			},
+			{
+				Name:                 "testName",
+				Environment:          []string{"KEY=VALUE"},
+				PropagateEnvironment: []string{"KEY=VALUE2"},
+				Path:                 "/testPath",
+			},
+		},
+	}
+	assert.Equal(t, expectedConfig, coreConfig)
+}
+
 func TestMissingExternalBuilderPath(t *testing.T) {
 	defer viper.Reset()
 	viper.Set("peer.address", "localhost:8080")

@@ -344,7 +344,7 @@ var _ = Describe("externalbuilder", func() {
 		Describe("NewCommand", func() {
 			It("only propagates expected variables", func() {
 				var expectedEnv []string
-				for _, key := range externalbuilder.DefaultEnvWhitelist {
+				for _, key := range externalbuilder.DefaultPropagateEnvironment {
 					if val, ok := os.LookupEnv(key); ok {
 						expectedEnv = append(expectedEnv, fmt.Sprintf("%s=%s", key, val))
 					}

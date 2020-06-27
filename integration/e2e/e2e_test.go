@@ -113,7 +113,7 @@ var _ = Describe("EndToEnd", func() {
 			runArtifactsFilePath = filepath.Join(testDir, "run-artifacts.txt")
 			os.Setenv("RUN_ARTIFACTS_FILE", runArtifactsFilePath)
 			for i, e := range network.ExternalBuilders {
-				e.EnvironmentWhitelist = append(e.EnvironmentWhitelist, "RUN_ARTIFACTS_FILE")
+				e.PropagateEnvironment = append(e.PropagateEnvironment, "RUN_ARTIFACTS_FILE")
 				network.ExternalBuilders[i] = e
 			}
 
