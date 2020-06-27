@@ -115,7 +115,7 @@ peer:
         # see 'externalEndpoint'
         endpoint:
         # Maximum count of blocks stored in memory
-        maxBlockCountToStore: 100
+        maxBlockCountToStore: 10
         # Max time between consecutive message pushes(unit: millisecond)
         maxPropagationBurstLatency: 10ms
         # Max number of messages stored until a push is triggered to remote peers
@@ -242,9 +242,9 @@ peer:
             batchSize: 10
             # blockBufferSize reflects the size of the re-ordering buffer
             # which captures blocks and takes care to deliver them in order
-            # down to the ledger layer. The actually buffer size is bounded between
+            # down to the ledger layer. The actual buffer size is bounded between
             # 0 and 2*blockBufferSize, each channel maintains its own buffer
-            blockBufferSize: 100
+            blockBufferSize: 20
             # maxRetries maximum number of re-tries to ask
             # for single state transfer request
             maxRetries: 3

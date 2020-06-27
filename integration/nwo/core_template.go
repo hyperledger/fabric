@@ -32,7 +32,7 @@ peer:
     useLeaderElection: false
     orgLeader: true
     membershipTrackerInterval: 5s
-    maxBlockCountToStore: 100
+    maxBlockCountToStore: 10
     maxPropagationBurstLatency: 10ms
     maxPropagationBurstSize: 10
     propagateIterations: 1
@@ -75,7 +75,7 @@ peer:
        checkInterval: 10s
        responseTimeout: 3s
        batchSize: 10
-       blockBufferSize: 100
+       blockBufferSize: 20
        maxRetries: 3
   events:
     address: 127.0.0.1:{{ .PeerPort Peer "Events" }}

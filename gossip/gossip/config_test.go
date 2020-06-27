@@ -125,7 +125,7 @@ func TestGlobalConfigDefaults(t *testing.T) {
 		BindPort:                     int(port),
 		BootstrapPeers:               []string{"bootstrap1", "bootstrap2", "bootstrap3"},
 		ID:                           endpoint,
-		MaxBlockCountToStore:         100,
+		MaxBlockCountToStore:         10,
 		MaxPropagationBurstLatency:   10 * time.Millisecond,
 		MaxPropagationBurstSize:      10,
 		PropagateIterations:          1,

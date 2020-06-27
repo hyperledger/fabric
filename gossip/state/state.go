@@ -48,7 +48,7 @@ const (
 	defChannelBufferSize     = 100
 	defAntiEntropyMaxRetries = 3
 
-	defMaxBlockDistance = 100
+	defMaxBlockDistance = 20
 
 	blocking    = true
 	nonBlocking = false
