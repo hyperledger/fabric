@@ -71,7 +71,7 @@ peer:
         requiredPeerCount: 0
         maxPeerCount: 1
     state:
-       enabled: true
+       enabled: false
        checkInterval: 10s
        responseTimeout: 3s
        batchSize: 10

@@ -231,7 +231,7 @@ peer:
             # default value is true, i.e. state transfer is active
             # and takes care to sync up missing blocks allowing
             # lagging peer to catch up to speed with rest network
-            enabled: true
+            enabled: false
             # checkInterval interval to check whether peer is lagging behind enough to
             # request blocks via state transfer from another peer.
             checkInterval: 10s

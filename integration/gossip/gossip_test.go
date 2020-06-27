@@ -70,8 +70,8 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		os.RemoveAll(testDir)
 	})
 
-	It("syncs blocks from the peer when no orderer is available", func() {
-		//  modify peer config
+	It("syncs blocks from the peer via state transfer when no orderer is available", func() {
+		//  modify peer config to enable state transfer on all peers, and configure leaders as follows:
 		//  Org1: leader election
 		//  Org2: no leader election
 		//      peer0: follower
@@ -80,12 +80,14 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 			if peer.Organization == "Org1" {
 				if peer.Name == "peer0" {
 					core := network.ReadPeerConfig(peer)
+					core.Peer.Gossip.State.Enabled = true
 					core.Peer.Gossip.UseLeaderElection = true
 					core.Peer.Gossip.OrgLeader = false
 					network.WritePeerConfig(peer, core)
 				}
 				if peer.Name == "peer1" {
 					core := network.ReadPeerConfig(peer)
+					core.Peer.Gossip.State.Enabled = true
 					core.Peer.Gossip.UseLeaderElection = true
 					core.Peer.Gossip.OrgLeader = false
 					core.Peer.Gossip.Bootstrap = fmt.Sprintf("127.0.0.1:%d", network.ReservePort())
@@ -94,6 +96,7 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 			}
 			if peer.Organization == "Org2" {
 				core := network.ReadPeerConfig(peer)
+				core.Peer.Gossip.State.Enabled = true
 				core.Peer.Gossip.UseLeaderElection = false
 				core.Peer.Gossip.OrgLeader = peer.Name == "peer1"
 				network.WritePeerConfig(peer, core)

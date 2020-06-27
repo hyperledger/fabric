@@ -19,7 +19,7 @@ const (
 	DefStateMaxRetries      = 3
 	DefStateBlockBufferSize = 20
 	DefStateChannelSize     = 100
-	DefStateEnabled         = true
+	DefStateEnabled         = false
 )
 
 type StateConfig struct {
