@@ -429,7 +429,7 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(logger gutil.Logger, id int, 
 		StateMaxRetries:      DefStateMaxRetries,
 		StateBlockBufferSize: DefStateBlockBufferSize,
 		StateChannelSize:     DefStateChannelSize,
-		StateEnabled:         DefStateEnabled,
+		StateEnabled:         true,
 	}
 	sp := NewGossipStateProvider(logger, "testchannelid", servicesAdapater, coord, gossipMetrics.StateMetrics, blocking, stateConfig)
 	if sp == nil {
@@ -1394,7 +1394,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 		StateMaxRetries:      DefStateMaxRetries,
 		StateBlockBufferSize: DefStateBlockBufferSize,
 		StateChannelSize:     DefStateChannelSize,
-		StateEnabled:         DefStateEnabled,
+		StateEnabled:         true,
 	}
 	logger := flogging.MustGetLogger(gutil.StateLogger)
 	st := NewGossipStateProvider(logger, chainID, servicesAdapater, coord1, stateMetrics, blocking, stateConfig)
@@ -1640,7 +1640,7 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		StateMaxRetries:      DefStateMaxRetries,
 		StateBlockBufferSize: DefStateBlockBufferSize,
 		StateChannelSize:     DefStateChannelSize,
-		StateEnabled:         DefStateEnabled,
+		StateEnabled:         true,
 	}
 	logger := flogging.MustGetLogger(gutil.StateLogger)
 	peer1State := NewGossipStateProvider(logger, chainID, mediator, peers["peer1"].coord, stateMetrics, blocking, stateConfig)
