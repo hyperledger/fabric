@@ -72,7 +72,7 @@ var _ = Describe("Lifecycle", func() {
 			os.Setenv(envKey, termFile)
 			for i, e := range externalBuilders {
 				if e.Name == "binary" {
-					e.EnvironmentWhitelist = append(e.EnvironmentWhitelist, envKey)
+					e.PropagateEnvironment = append(e.PropagateEnvironment, envKey)
 					externalBuilders[i] = e
 				}
 			}

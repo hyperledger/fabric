@@ -549,7 +549,7 @@ chaincode:
     externalBuilders: []
         # - path: /path/to/directory
         #   name: descriptive-builder-name
-        #   environmentWhitelist:
+        #   propagateEnvironment:
         #      - ENVVAR_NAME_TO_PROPAGATE_FROM_PEER
         #      - GOPROXY
 
