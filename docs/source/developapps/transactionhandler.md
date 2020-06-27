@@ -78,7 +78,7 @@ CommercialPaperContract extends Contract {
 The form of a transaction handler definition is the similar for all handler
 types, but notice how the `afterTransaction(ctx, result)` also receives any
 result returned by the transaction. The [API
-documentation](https://hyperledger.github.io/fabric-chaincode-node/master/api/fabric-contract-api.Contract.html)
+documentation](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-contract-api.Contract.html)
 shows you the exact form of these handlers.
 
 ## Handler processing
