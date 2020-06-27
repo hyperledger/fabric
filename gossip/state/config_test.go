@@ -51,7 +51,7 @@ func TestGlobalConfigDefaults(t *testing.T) {
 		StateResponseTimeout: 3 * time.Second,
 		StateBatchSize:       uint64(10),
 		StateMaxRetries:      3,
-		StateBlockBufferSize: 100,
+		StateBlockBufferSize: 20,
 		StateChannelSize:     100,
 		StateEnabled:         true,
 	}

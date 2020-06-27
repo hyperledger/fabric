@@ -106,7 +106,7 @@ func newGossipInstanceWithGRPCWithExternalEndpoint(id int, port int, gRPCServer 
 	conf := &Config{
 		BootstrapPeers:               bootPeersWithPorts(boot...),
 		ID:                           fmt.Sprintf("p%d", id),
-		MaxBlockCountToStore:         100,
+		MaxBlockCountToStore:         10,
 		MaxPropagationBurstLatency:   time.Duration(500) * time.Millisecond,
 		MaxPropagationBurstSize:      20,
 		PropagateIterations:          1,
