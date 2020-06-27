@@ -24,9 +24,9 @@ import (
 )
 
 var (
-	// DefaultEnvWhitelist enumerates the list of environment variables that are
+	// DefaultPropagateEnvironment enumerates the list of environment variables that are
 	// implicitly propagated to external builder and launcher commands.
-	DefaultEnvWhitelist = []string{"LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"}
+	DefaultPropagateEnvironment = []string{"LD_LIBRARY_PATH", "LIBPATH", "PATH", "TMPDIR"}
 
 	logger = flogging.MustGetLogger("chaincode.externalbuilder")
 )
@@ -263,11 +263,11 @@ func SanitizeCCIDPath(ccid string) string {
 
 // A Builder is used to interact with an external chaincode builder and launcher.
 type Builder struct {
-	EnvWhitelist []string
-	Location     string
-	Logger       *flogging.FabricLogger
-	Name         string
-	MSPID        string
+	PropagateEnvironment []string
+	Location             string
+	Logger               *flogging.FabricLogger
+	Name                 string
+	MSPID                string
 }
 
 // CreateBuilders will construct builders from the peer configuration.
@@ -275,11 +275,11 @@ func CreateBuilders(builderConfs []peer.ExternalBuilder, mspid string) []*Builde
 	var builders []*Builder
 	for _, builderConf := range builderConfs {
 		builders = append(builders, &Builder{
-			Location:     builderConf.Path,
-			Name:         builderConf.Name,
-			EnvWhitelist: builderConf.EnvironmentWhitelist,
-			Logger:       logger.Named(builderConf.Name),
-			MSPID:        mspid,
+			Location:             builderConf.Path,
+			Name:                 builderConf.Name,
+			PropagateEnvironment: builderConf.PropagateEnvironment,
+			Logger:               logger.Named(builderConf.Name),
+			MSPID:                mspid,
 		})
 	}
 	return builders
@@ -397,11 +397,11 @@ func (b *Builder) runCommand(cmd *exec.Cmd) error {
 
 // NewCommand creates an exec.Cmd that is configured to prune the calling
 // environment down to the environment variables specified in the external
-// builder's EnvironmentWhitelist and the DefaultEnvWhitelist.
+// builder's PropagateEnvironment and the DefaultPropagateEnvironment.
 func (b *Builder) NewCommand(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
-	whitelist := appendDefaultWhitelist(b.EnvWhitelist)
-	for _, key := range whitelist {
+	propagationList := appendDefaultPropagateEnvironment(b.PropagateEnvironment)
+	for _, key := range propagationList {
 		if val, ok := os.LookupEnv(key); ok {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, val))
 		}
@@ -409,17 +409,17 @@ func (b *Builder) NewCommand(name string, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func appendDefaultWhitelist(envWhitelist []string) []string {
-	for _, variable := range DefaultEnvWhitelist {
-		if !contains(envWhitelist, variable) {
-			envWhitelist = append(envWhitelist, variable)
+func appendDefaultPropagateEnvironment(propagateEnvironment []string) []string {
+	for _, variable := range DefaultPropagateEnvironment {
+		if !contains(propagateEnvironment, variable) {
+			propagateEnvironment = append(propagateEnvironment, variable)
 		}
 	}
-	return envWhitelist
+	return propagateEnvironment
 }
 
-func contains(envWhiteList []string, key string) bool {
-	for _, variable := range envWhiteList {
+func contains(propagateEnvironment []string, key string) bool {
+	for _, variable := range propagateEnvironment {
 		if key == variable {
 			return true
 		}

@@ -203,7 +203,7 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 	network.ExternalBuilders = []fabricconfig.ExternalBuilder{{
 		Path:                 filepath.Join(cwd, "..", "externalbuilders", "binary"),
 		Name:                 "binary",
-		EnvironmentWhitelist: []string{"GOPROXY"},
+		PropagateEnvironment: []string{"GOPROXY"},
 	}}
 
 	if network.Templates == nil {

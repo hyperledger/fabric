@@ -37,7 +37,11 @@ import (
 // ExternalBuilder represents the configuration structure of
 // a chaincode external builder
 type ExternalBuilder struct {
-	EnvironmentWhitelist []string `yaml:"environmentWhitelist"`
+	// TODO: Remove Environment in 3.0
+	// Deprecated: Environment is retained for backwards compatibility.
+	// New deployments should use the new PropagateEnvironment field
+	Environment          []string `yaml:"environmentWhitelist"`
+	PropagateEnvironment []string `yaml:"propagateEnvironment"`
 	Name                 string   `yaml:"name"`
 	Path                 string   `yaml:"path"`
 }
@@ -276,15 +280,18 @@ func (c *Config) load() error {
 	if err != nil {
 		return err
 	}
-	for _, builder := range externalBuilders {
+	c.ExternalBuilders = externalBuilders
+	for builderIndex, builder := range c.ExternalBuilders {
 		if builder.Path == "" {
 			return fmt.Errorf("invalid external builder configuration, path attribute missing in one or more builders")
 		}
 		if builder.Name == "" {
 			return fmt.Errorf("external builder at path %s has no name attribute", builder.Path)
 		}
+		if builder.Environment != nil && builder.PropagateEnvironment == nil {
+			c.ExternalBuilders[builderIndex].PropagateEnvironment = builder.Environment
+		}
 	}
-	c.ExternalBuilders = externalBuilders
 
 	c.OperationsListenAddress = viper.GetString("operations.listenAddress")
 	c.OperationsTLSEnabled = viper.GetBool("operations.tls.enabled")
