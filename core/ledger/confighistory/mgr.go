@@ -16,11 +16,15 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 )
 
-var logger = flogging.MustGetLogger("confighistory")
+var (
+	logger                 = flogging.MustGetLogger("confighistory")
+	importConfigsBatchSize = 1024 * 1024
+)
 
 const (
 	collectionConfigNamespace = "lscc" // lscc namespace was introduced in version 1.2 and we continue to use this in order to be compatible with existing data
@@ -102,6 +106,56 @@ func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	}
 	dbHandle := m.dbProvider.getDB(trigger.LedgerID)
 	return dbHandle.writeBatch(batch, true)
+}
+
+func (m *Mgr) ImportConfigHistory(ledgerID string, dir string) error {
+	db := m.dbProvider.getDB(ledgerID)
+	empty, err := db.isEmpty()
+	if err != nil {
+		return err
+	}
+	if !empty {
+		return errors.New(fmt.Sprintf(
+			"config history for ledger [%s] exists. Incremental import is not supported. "+
+				"Remove the existing ledger data before retry",
+			ledgerID,
+		))
+	}
+
+	configMetadata, err := snapshot.OpenFile(filepath.Join(dir, snapshotMetadataFileName), snapshotFileFormat)
+	if err != nil {
+		return err
+	}
+	numCollectionConfigs, err := configMetadata.DecodeUVarInt()
+	if err != nil {
+		return err
+	}
+	collectionConfigData, err := snapshot.OpenFile(filepath.Join(dir, snapshotDataFileName), snapshotFileFormat)
+	if err != nil {
+		return err
+	}
+
+	batch := leveldbhelper.NewUpdateBatch()
+	currentBatchSize := 0
+	for i := uint64(0); i < numCollectionConfigs; i++ {
+		key, err := collectionConfigData.DecodeBytes()
+		if err != nil {
+			return err
+		}
+		val, err := collectionConfigData.DecodeBytes()
+		if err != nil {
+			return err
+		}
+		batch.Put(key, val)
+		currentBatchSize += len(key) + len(val)
+		if currentBatchSize >= importConfigsBatchSize {
+			if err := db.WriteBatch(batch, true); err != nil {
+				return err
+			}
+			batch = leveldbhelper.NewUpdateBatch()
+		}
+	}
+	return db.WriteBatch(batch, true)
 }
 
 // GetRetriever returns an implementation of `ledger.ConfigHistoryRetriever` for the given ledger id.
