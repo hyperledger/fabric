@@ -192,7 +192,7 @@ chaincode:
   externalBuilders: {{ range .ExternalBuilders }}
     - path: {{ .Path }}
       name: {{ .Name }}
-      environmentWhitelist: {{ range .EnvironmentWhitelist }}
+      propagateEnvironment: {{ range .PropagateEnvironment }}
          - {{ . }}
       {{- end }}
   {{- end }}
