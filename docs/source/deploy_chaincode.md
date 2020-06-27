@@ -91,7 +91,7 @@ module github.com/hyperledger/fabric-samples/chaincode/fabcar/go
 
 go 1.13
 
-require github.com/hyperledger/fabric-contract-api-go v0.0.0-20191118113407-4c6ff12b4f96
+require github.com/hyperledger/fabric-contract-api-go v1.1.0
 ```
 The `go.mod` file imports the Fabric contract API into the smart contract package. You can open `fabcar.go` in a text editor to see how the contract API is used to define the `SmartContract` type at the beginning of the smart contract:
 ```
@@ -193,7 +193,7 @@ async createCar(ctx, carNumber, make, model, color, owner) {
     console.info('============= END : Create Car ===========');
 }
 ```
-You can learn more about the JavaScript contract API by visiting the [API documentation](https://hyperledger.github.io/fabric-chaincode-node/{branch}/api/) and the [smart contract processing topic](developapps/smartcontract.html).
+You can learn more about the JavaScript contract API by visiting the [API documentation](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/) and the [smart contract processing topic](developapps/smartcontract.html).
 
 To install the smart contract dependencies, run the following command from the `fabcar/javascript` directory.
 ```
@@ -249,7 +249,7 @@ dependencies {
 ```
 The `build.gradle` file imports the Java chaincode shim into the smart contract package, which includes the contract class. You can find Fabcar smart contract in the `src` directory. You can navigate to the `FabCar.java` file and open it in a text editor to see how the contract class is used to create the transaction context for the functions defined that read and write data to the blockchain ledger.
 
-You can learn more about the Java chaincode shim and the contract class by visiting the [Java chaincode documentation](https://hyperledger.github.io/fabric-chaincode-java/{branch}/api/) and the [smart contract processing topic](developapps/smartcontract.html).
+You can learn more about the Java chaincode shim and the contract class by visiting the [Java chaincode documentation](https://hyperledger.github.io/fabric-chaincode-java/{BRANCH}/api/) and the [smart contract processing topic](developapps/smartcontract.html).
 
 To install the smart contract dependencies, run the following command from the `fabcar/java` directory.
 ```
