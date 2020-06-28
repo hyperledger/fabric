@@ -23,10 +23,10 @@ blockchain.
 
 **About FabCar**
 
-The FabCar sample demonstrates functionality to query `Car` (our sample business object) 
+The FabCar sample demonstrates how to query `Car` (our sample business object) 
 saved on the ledger, and how to update the ledger (add a new `Car` to the ledger). 
-It involves building two components:
-  1. Sample application: This will make calls to the blockchain network, invoking transactions
+It involves following two components:
+  1. Sample application: which makes calls to the blockchain network, invoking transactions
   implemented in the smart contracts.
   2. Smart contract itelf, implementing the transactions that involve interactions with the
   ledger.
@@ -118,7 +118,7 @@ put initial data on the ledger.
 
 Sample application
 ^^^^^^^^^^^^^^^^^^
-First component of FabCar, the sample application is available in following languages:
+First component of FabCar, the sample application, is available in following languages:
 * [Golang](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/go)
 * [Java](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/java)
 * [JavaScript](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/javascript)
