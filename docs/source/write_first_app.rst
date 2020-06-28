@@ -19,8 +19,18 @@ to invoke a smart contract which queries and updates the ledger with the smart
 contract API -- described in detail in :doc:`/developapps/smartcontract`.
 We will also use our sample programs and a deployed Certificate Authority to generate
 the X.509 certificates that an application needs to interact with a permissioned
-blockchain. The sample applications and the smart contract they invoke are
-collectively known as FabCar.
+blockchain. 
+
+**About FabCar**
+
+The FabCar sample demonstrates functionality to query `Car` (our sample business object) 
+saved on the ledger, and how to update the ledger (add a new `Car` to the ledger). 
+It involves building two components:
+  1. Sample application: This will make calls to the blockchain network, invoking transactions
+  implemented in the smart contracts.
+  2. Smart contract itelf, implementing the transactions that involve interactions with the
+  ledger.
+
 
 We’ll go through three principle steps:
 
@@ -106,10 +116,17 @@ script will also deploy and initialize the JavaScript version of the FabCar smar
 contract on the channel ``mychannel``, and then invoke the smart contract to
 put initial data on the ledger.
 
-Install the application
-^^^^^^^^^^^^^^^^^^^^^^^
+Sample application
+^^^^^^^^^^^^^^^^^^
+First component of FabCar, the sample application is available in following languages:
+* [Golang](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/go)
+* [Java](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/java)
+* [JavaScript](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/javascript)
+* [Typescript](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/typescript)
 
-From the ``fabcar`` directory inside ``fabric-samples``, navigate to the
+In this tutorial, we will explain the sample written in ``javascript`` for nodejs.
+
+From the ``fabric-samples/fabcar`` directory, navigate to the
 ``javascript`` folder.
 
 .. code:: bash
@@ -268,7 +285,7 @@ Once the program has an identity, it uses the Gateway class to connect to our ne
 
 ``ccpPath`` describes the path to the connection profile that our application will use
 to connect to our network. The connection profile was loaded from inside the
-``fabric-samples/test network`` directory and parsed as a JSON file:
+``fabric-samples/test-network`` directory and parsed as a JSON file:
 
 .. code:: bash
 
@@ -310,8 +327,13 @@ ledger.
 
 The FabCar smart contract
 -------------------------
+FabCar smart contract sample is available in following languages:
+* [Golang](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/go)
+* [Java](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/java)
+* [JavaScript](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/javascript)
+* [Typescript](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/typescript)
 
-Let's take a look at the transactions within the FabCar smart contract. Open a
+Let's take a look at the transactions within the FabCar smart contract written in JavaScript. Open a
 new terminal and navigate to the JavaScript version of the FabCar Smart contract
 inside the ``fabric-samples`` repository:
 
@@ -344,17 +366,18 @@ interacts with the ledger.
 
   async queryAllCars(ctx) {
 
-    const startKey = 'CAR0';
-    const endKey = 'CAR999';
+    const startKey = '';
+    const endKey = '';
 
     const iterator = await ctx.stub.getStateByRange(startKey, endKey);
 
 
-This code defines the range of cars that ``queryAllCars`` will retrieve from the
-ledger. Every car between ``CAR0`` and ``CAR999`` -- 1,000 cars in all, assuming
-every key has been tagged properly -- will be returned by the query. The
-remainder of the code iterates through the query results and packages them into
-JSON for the application.
+This code shows how to retrieve all cars from the ledger within a key range using
+``getStateByRange``. Giving empty startKey & endKey is interpreted as all the keys from beginning to end.
+As another example, if you use `` startKey = 'CAR0', endKey = 'CAR999'``, then ``getStateByRange``
+will retrieve cars with keys between ``CAR0``(inclusive) and ``CAR999``(exclusive) in lexical order. 
+The remainder of the code iterates through the query results and packages them into
+JSON for the sample application to use.
 
 Below is a representation of how an application would call different
 transactions in a smart contract. Each transaction uses a broad set of APIs such
