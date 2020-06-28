@@ -26,8 +26,10 @@ blockchain.
 The FabCar sample demonstrates how to query `Car` (our sample business object) 
 saved on the ledger, and how to update the ledger (add a new `Car` to the ledger). 
 It involves following two components:
+
   1. Sample application: which makes calls to the blockchain network, invoking transactions
   implemented in the smart contracts.
+
   2. Smart contract itelf, implementing the transactions that involve interactions with the
   ledger.
 
@@ -119,10 +121,11 @@ put initial data on the ledger.
 Sample application
 ^^^^^^^^^^^^^^^^^^
 First component of FabCar, the sample application, is available in following languages:
-* [Golang](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/go)
-* [Java](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/java)
-* [JavaScript](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/javascript)
-* [Typescript](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/typescript)
+
+- `Golang <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/go>`__
+- `Java <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/java>`__
+- `JavaScript <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/javascript>`__
+- `Typescript <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/fabcar/typescript>`__
 
 In this tutorial, we will explain the sample written in ``javascript`` for nodejs.
 
@@ -328,10 +331,11 @@ ledger.
 The FabCar smart contract
 -------------------------
 FabCar smart contract sample is available in following languages:
-* [Golang](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/go)
-* [Java](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/java)
-* [JavaScript](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/javascript)
-* [Typescript](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/typescript)
+
+- `Golang <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/go>`__
+- `Java <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/java>`__
+- `JavaScript <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/javascript>`__
+- `Typescript <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/typescript>`__
 
 Let's take a look at the transactions within the FabCar smart contract written in JavaScript. Open a
 new terminal and navigate to the JavaScript version of the FabCar Smart contract
@@ -374,8 +378,8 @@ interacts with the ledger.
 
 This code shows how to retrieve all cars from the ledger within a key range using
 ``getStateByRange``. Giving empty startKey & endKey is interpreted as all the keys from beginning to end.
-As another example, if you use `` startKey = 'CAR0', endKey = 'CAR999'``, then ``getStateByRange``
-will retrieve cars with keys between ``CAR0``(inclusive) and ``CAR999``(exclusive) in lexical order. 
+As another example, if you use ``startKey = 'CAR0', endKey = 'CAR999'`` , then ``getStateByRange``
+will retrieve cars with keys between ``CAR0`` (inclusive) and ``CAR999`` (exclusive) in lexical order. 
 The remainder of the code iterates through the query results and packages them into
 JSON for the sample application to use.
 
