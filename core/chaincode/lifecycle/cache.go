@@ -488,11 +488,13 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 			// name on this channel
 			for _, lc := range c.localChaincodes {
 				if ref, ok := lc.References[channelID][name]; ok {
-					if ref.InstallInfo == nil || localChaincode.Info == nil {
+					if ref.InstallInfo == nil {
 						continue
 					}
-					if ref.InstallInfo.PackageID == localChaincode.Info.PackageID {
-						continue
+					if localChaincode.Info != nil {
+						if ref.InstallInfo.PackageID == localChaincode.Info.PackageID {
+							continue
+						}
 					}
 
 					// remove existing local chaincode reference, which referred to a

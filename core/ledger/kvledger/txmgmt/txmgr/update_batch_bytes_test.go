@@ -12,7 +12,7 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
@@ -25,11 +25,11 @@ func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
 	updateBatch.PubUpdates.Delete("ns3", "key6", version.NewHeight(1, 6))
 
 	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
-	assert.NoError(t, err)
-	assert.True(t, len(bytes) > 0)
+	require.NoError(t, err)
+	require.True(t, len(bytes) > 0)
 	for i := 0; i < 100; i++ {
 		b, _ := deterministicBytesForPubAndHashUpdates(updateBatch)
-		assert.Equal(t, bytes, b)
+		require.Equal(t, bytes, b)
 	}
 
 	expectedUpdates := &Updates{
@@ -70,8 +70,8 @@ func TestUpdateBatchBytesBuilderOnlyPublicWrites(t *testing.T) {
 		},
 	}
 	expectedBytes, err := proto.Marshal(expectedUpdates)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedBytes, bytes)
+	require.NoError(t, err)
+	require.Equal(t, expectedBytes, bytes)
 }
 
 func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
@@ -85,11 +85,11 @@ func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
 	updateBatch.PubUpdates.Put("ns2", "key7", []byte("value7"), version.NewHeight(1, 7))
 
 	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
-	assert.NoError(t, err)
-	assert.True(t, len(bytes) > 0)
+	require.NoError(t, err)
+	require.True(t, len(bytes) > 0)
 	for i := 0; i < 100; i++ {
 		b, _ := deterministicBytesForPubAndHashUpdates(updateBatch)
-		assert.Equal(t, bytes, b)
+		require.Equal(t, bytes, b)
 	}
 
 	expectedUpdates := &Updates{
@@ -136,8 +136,8 @@ func TestUpdateBatchBytesBuilderPublicWritesAndColls(t *testing.T) {
 		},
 	}
 	expectedBytes, err := proto.Marshal(expectedUpdates)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedBytes, bytes)
+	require.NoError(t, err)
+	require.Equal(t, expectedBytes, bytes)
 }
 
 func TestUpdateBatchBytesBuilderOnlyChannelConfig(t *testing.T) {
@@ -145,9 +145,9 @@ func TestUpdateBatchBytesBuilderOnlyChannelConfig(t *testing.T) {
 	updateBatch.PubUpdates.Put("", "resourcesconfigtx.CHANNEL_CONFIG_KEY", []byte("value1"), version.NewHeight(1, 1))
 
 	bytes, err := deterministicBytesForPubAndHashUpdates(updateBatch)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expectedUpdates := &Updates{}
 	expectedBytes, err := proto.Marshal(expectedUpdates)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedBytes, bytes)
+	require.NoError(t, err)
+	require.Equal(t, expectedBytes, bytes)
 }

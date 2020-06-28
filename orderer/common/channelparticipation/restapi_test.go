@@ -17,10 +17,12 @@ import (
 	"path"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation/mocks"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/types"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +58,7 @@ func TestHTTPHandler_ServeHTTP_InvalidMethods(t *testing.T) {
 			req := httptest.NewRequest(method, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
 			h.ServeHTTP(resp, req)
 			checkErrorResponse(t, http.StatusMethodNotAllowed, fmt.Sprintf("invalid request method: %s", method), resp)
-			assert.Equal(t, "GET, POST, DELETE", resp.Header().Get("Allow"), "%s", method)
+			assert.Equal(t, "GET, POST, DELETE", resp.Result().Header.Get("Allow"), "%s", method)
 		}
 	})
 
@@ -67,7 +69,7 @@ func TestHTTPHandler_ServeHTTP_InvalidMethods(t *testing.T) {
 			req := httptest.NewRequest(method, channelparticipation.URLBaseV1Channels, nil)
 			h.ServeHTTP(resp, req)
 			checkErrorResponse(t, http.StatusMethodNotAllowed, fmt.Sprintf("invalid request method: %s", method), resp)
-			assert.Equal(t, "GET", resp.Header().Get("Allow"), "%s", method)
+			assert.Equal(t, "GET", resp.Result().Header.Get("Allow"), "%s", method)
 		}
 	})
 }
@@ -80,28 +82,21 @@ func TestHTTPHandler_ServeHTTP_ListErrors(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/oops", nil)
 		h.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusNotFound, resp.Code)
-	})
-
-	t.Run("missing channels collection", func(t *testing.T) {
-		resp := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1, nil)
-		h.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusNotFound, resp.Code)
+		assert.Equal(t, http.StatusNotFound, resp.Result().StatusCode)
 	})
 
 	t.Run("bad resource", func(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1+"oops", nil)
 		h.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusNotFound, resp.Code)
+		assert.Equal(t, http.StatusNotFound, resp.Result().StatusCode)
 	})
 
 	t.Run("bad channel ID", func(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/no/slash", nil)
 		h.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusNotFound, resp.Code)
+		assert.Equal(t, http.StatusNotFound, resp.Result().StatusCode)
 	})
 
 	t.Run("illegal character in channel ID", func(t *testing.T) {
@@ -136,8 +131,9 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
 		h.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusOK, resp.Code)
-		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
+		assert.Equal(t, http.StatusOK, resp.Result().StatusCode)
+		assert.Equal(t, "application/json", resp.Result().Header.Get("Content-Type"))
+		assert.Equal(t, "no-store", resp.Result().Header.Get("Cache-Control"))
 
 		listAll := &types.ChannelList{}
 		err := json.Unmarshal(resp.Body.Bytes(), listAll)
@@ -161,8 +157,9 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
 		h.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusOK, resp.Code)
-		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
+		assert.Equal(t, http.StatusOK, resp.Result().StatusCode)
+		assert.Equal(t, "application/json", resp.Result().Header.Get("Content-Type"))
+		assert.Equal(t, "no-store", resp.Result().Header.Get("Cache-Control"))
 
 		listAll := &types.ChannelList{}
 		err := json.Unmarshal(resp.Body.Bytes(), listAll)
@@ -181,8 +178,9 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels, nil)
 			req.Header.Set("Accept", accept)
 			h.ServeHTTP(resp, req)
-			assert.Equal(t, http.StatusOK, resp.Code, "Accept: %s", accept)
-			assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
+			assert.Equal(t, http.StatusOK, resp.Result().StatusCode, "Accept: %s", accept)
+			assert.Equal(t, "application/json", resp.Result().Header.Get("Content-Type"))
+			assert.Equal(t, "no-store", resp.Result().Header.Get("Cache-Control"))
 
 			listAll := &types.ChannelList{}
 			err := json.Unmarshal(resp.Body.Bytes(), listAll)
@@ -191,6 +189,14 @@ func TestHTTPHandler_ServeHTTP_ListAll(t *testing.T) {
 			assert.Nil(t, listAll.Channels)
 			assert.Nil(t, listAll.SystemChannel)
 		}
+	})
+
+	t.Run("redirect from base V1 URL", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1, nil)
+		h.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusFound, resp.Result().StatusCode)
+		assert.Equal(t, channelparticipation.URLBaseV1Channels, resp.Result().Header.Get("Location"))
 	})
 }
 
@@ -212,8 +218,9 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel", nil)
 		h.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusOK, resp.Code)
-		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
+		assert.Equal(t, http.StatusOK, resp.Result().StatusCode)
+		assert.Equal(t, "application/json", resp.Result().Header.Get("Content-Type"))
+		assert.Equal(t, "no-store", resp.Result().Header.Get("Cache-Control"))
 
 		infoResp := types.ChannelInfo{}
 		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
@@ -245,10 +252,10 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		fakeManager.JoinChannelReturns(info, nil)
 
 		resp := httptest.NewRecorder()
-		req := genJoinRequestFormData(t, []byte{})
+		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
 		h.ServeHTTP(resp, req)
-		assert.Equal(t, http.StatusCreated, resp.Code)
-		assert.Equal(t, "application/json", resp.Header().Get("Content-Type"))
+		assert.Equal(t, http.StatusCreated, resp.Result().StatusCode)
+		assert.Equal(t, "application/json", resp.Result().Header.Get("Content-Type"))
 
 		infoResp := types.ChannelInfo{}
 		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
@@ -260,27 +267,27 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		fakeManager, h := setup(config, t)
 		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrSystemChannelExists)
 		resp := httptest.NewRecorder()
-		req := genJoinRequestFormData(t, []byte{})
+		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: system channel exists", resp)
-		assert.Equal(t, "GET", resp.Header().Get("Allow"))
+		assert.Equal(t, "GET", resp.Result().Header.Get("Allow"))
 	})
 
 	t.Run("Error: Channel Exists", func(t *testing.T) {
 		fakeManager, h := setup(config, t)
 		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrChannelAlreadyExists)
 		resp := httptest.NewRecorder()
-		req := genJoinRequestFormData(t, []byte{})
+		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot join: channel already exists", resp)
-		assert.Equal(t, "GET, DELETE", resp.Header().Get("Allow"))
+		assert.Equal(t, "GET, DELETE", resp.Result().Header.Get("Allow"))
 	})
 
 	t.Run("Error: App Channels Exist", func(t *testing.T) {
 		fakeManager, h := setup(config, t)
 		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrAppChannelsAlreadyExists)
 		resp := httptest.NewRecorder()
-		req := genJoinRequestFormData(t, []byte{})
+		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusForbidden, "cannot join: application channels already exist", resp)
 	})
@@ -291,6 +298,14 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		req := genJoinRequestFormData(t, []byte{1, 2, 3, 4})
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "cannot unmarshal file part config-block into a block: proto: common.Block: illegal tag 0 (wire type 1)", resp)
+	})
+
+	t.Run("bad body - invalid join block", func(t *testing.T) {
+		_, h := setup(config, t)
+		resp := httptest.NewRecorder()
+		req := genJoinRequestFormData(t, []byte{})
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusBadRequest, "invalid join block: block is not a config block", resp)
 	})
 
 	t.Run("content type mismatch", func(t *testing.T) {
@@ -477,7 +492,7 @@ func TestHTTPHandler_ServeHTTP_Remove(t *testing.T) {
 			h.ServeHTTP(resp, req)
 
 			if testCase.expectedErr == nil {
-				assert.Equal(t, testCase.expectedCode, resp.Code)
+				assert.Equal(t, testCase.expectedCode, resp.Result().StatusCode)
 				assert.Equal(t, 0, resp.Body.Len(), "empty body")
 			} else {
 				checkErrorResponse(t, testCase.expectedCode, testCase.expectedErr.Error(), resp)
@@ -492,7 +507,7 @@ func TestHTTPHandler_ServeHTTP_Remove(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, path.Join(channelparticipation.URLBaseV1Channels, "my-channel"), nil)
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot remove: system channel exists", resp)
-		assert.Equal(t, "GET", resp.Header().Get("Allow"))
+		assert.Equal(t, "GET", resp.Result().Header.Get("Allow"))
 	})
 }
 
@@ -504,10 +519,9 @@ func setup(config localconfig.ChannelParticipation, t *testing.T) (*mocks.Channe
 }
 
 func checkErrorResponse(t *testing.T, expectedCode int, expectedErrMsg string, resp *httptest.ResponseRecorder) {
-	assert.Equal(t, expectedCode, resp.Code)
+	assert.Equal(t, expectedCode, resp.Result().StatusCode)
 
-	header := resp.Header()
-	headerArray, headerOK := header["Content-Type"]
+	headerArray, headerOK := resp.Result().Header["Content-Type"]
 	assert.True(t, headerOK)
 	require.Len(t, headerArray, 1)
 	assert.Equal(t, "application/json", headerArray[0])
@@ -532,4 +546,11 @@ func genJoinRequestFormData(t *testing.T, blockBytes []byte) *http.Request {
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	return req
+}
+
+func validBlockBytes(channelID string) []byte {
+	blockBytes := protoutil.MarshalOrPanic(blockWithGroups(map[string]*common.ConfigGroup{
+		"Application": {},
+	}, channelID))
+	return blockBytes
 }

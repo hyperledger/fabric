@@ -27,11 +27,12 @@ peer:
       timeout: 20s
   gossip:
     bootstrap: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
-    useLeaderElection: true
-    orgLeader: false
+    endpoint: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
+    externalEndpoint: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
+    useLeaderElection: false
+    orgLeader: true
     membershipTrackerInterval: 5s
-    endpoint:
-    maxBlockCountToStore: 100
+    maxBlockCountToStore: 10
     maxPropagationBurstLatency: 10ms
     maxPropagationBurstSize: 10
     propagateIterations: 1
@@ -52,7 +53,6 @@ peer:
     aliveTimeInterval: 5s
     aliveExpirationTimeout: 25s
     reconnectInterval: 25s
-    externalEndpoint: 127.0.0.1:{{ .PeerPort Peer "Listen" }}
     election:
       startupGracePeriod: 15s
       membershipSampleInterval: 1s
@@ -71,11 +71,11 @@ peer:
         requiredPeerCount: 0
         maxPeerCount: 1
     state:
-       enabled: true
+       enabled: false
        checkInterval: 10s
        responseTimeout: 3s
        batchSize: 10
-       blockBufferSize: 100
+       blockBufferSize: 20
        maxRetries: 3
   events:
     address: 127.0.0.1:{{ .PeerPort Peer "Events" }}

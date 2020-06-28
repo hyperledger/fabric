@@ -23,7 +23,9 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-const CouchDBDefaultImage = "couchdb:2.3"
+const CouchDBDefaultImage = "couchdb:3.1"
+const CouchDBUsername = "admin"
+const CouchDBPassword = "adminpw"
 
 // CouchDB manages the execution of an instance of a dockerized CounchDB
 // for tests.
@@ -96,7 +98,11 @@ func (c *CouchDB) Run(sigCh <-chan os.Signal, ready chan<- struct{}) error {
 			Name: c.Name,
 			Config: &docker.Config{
 				Image: c.Image,
-				Env:   []string{"_creator=" + c.creator},
+				Env: []string{
+					fmt.Sprintf("_creator=%s", c.creator),
+					fmt.Sprintf("COUCHDB_USER=%s", CouchDBUsername),
+					fmt.Sprintf("COUCHDB_PASSWORD=%s", CouchDBPassword),
+				},
 			},
 			HostConfig: hostConfig,
 		},
@@ -174,8 +180,8 @@ func endpointReady(ctx context.Context, url string) bool {
 
 func (c *CouchDB) ready(ctx context.Context, addr string) <-chan struct{} {
 	readyCh := make(chan struct{})
-	url := fmt.Sprintf("http://%s/", addr)
 	go func() {
+		url := fmt.Sprintf("http://%s:%s@%s/", CouchDBUsername, CouchDBPassword, addr)
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
 		for {

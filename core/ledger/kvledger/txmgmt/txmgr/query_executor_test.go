@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -62,11 +62,11 @@ func TestPvtdataResultsItr(t *testing.T) {
 	qe := newQueryExecutor(txMgr, "", nil, true, testHashFunc)
 
 	resItr, err := qe.GetPrivateDataRangeScanIterator("ns1", "coll1", "key1", "key3")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	testItr(t, resItr, "ns1", "coll1", []string{"key1", "key2"})
 
 	resItr, err = qe.GetPrivateDataRangeScanIterator("ns4", "coll1", "key1", "key3")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	testItr(t, resItr, "ns4", "coll1", []string{})
 }
 
@@ -78,12 +78,12 @@ func testItr(t *testing.T, itr commonledger.ResultsIterator, expectedNs string, 
 		pvtdataKV := queryResult.(*queryresult.KV)
 		ns := pvtdataKV.Namespace
 		key := pvtdataKV.Key
-		assert.Equal(t, expectedNs, ns)
-		assert.Equal(t, expectedKey, key)
+		require.Equal(t, expectedNs, ns)
+		require.Equal(t, expectedKey, key)
 	}
 	last, err := itr.Next()
-	assert.NoError(t, err)
-	assert.Nil(t, last)
+	require.NoError(t, err)
+	require.Nil(t, last)
 }
 
 func TestPrivateDataMetadataRetrievalByHash(t *testing.T) {
@@ -113,20 +113,20 @@ func testPrivateDataMetadataRetrievalByHash(t *testing.T, env testEnv) {
 	s1.Done()
 	blkAndPvtdata1 := prepareNextBlockForTestFromSimulator(t, bg, s1)
 	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
-	assert.NoError(t, err)
-	assert.NoError(t, txMgr.Commit())
+	require.NoError(t, err)
+	require.NoError(t, txMgr.Commit())
 
 	t.Run("query-helper-for-queryexecutor", func(t *testing.T) {
 		qe := newQueryExecutor(txMgr, "", nil, true, testHashFunc)
 		metadataRetrieved, err := qe.GetPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
-		assert.NoError(t, err)
-		assert.Equal(t, metadata1, metadataRetrieved)
+		require.NoError(t, err)
+		require.Equal(t, metadata1, metadataRetrieved)
 	})
 
 	t.Run("query-helper-for-txsimulator", func(t *testing.T) {
 		qe := newQueryExecutor(txMgr, "txid-1", rwsetutil.NewRWSetBuilder(), true, testHashFunc)
 		_, err = qe.GetPrivateDataMetadataByHash("ns", "coll", util.ComputeStringHash("key1"))
-		assert.EqualError(t, err, "retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
+		require.EqualError(t, err, "retrieving private data metadata by keyhash is not supported in simulation. This function is only available for query as yet")
 	})
 }
 
@@ -155,22 +155,22 @@ func testGetPvtdataHash(t *testing.T, env testEnv) {
 		util.ComputeStringHash("existing-value"),
 		version.NewHeight(1, 1),
 	)
-	assert.NoError(t, txMgr.db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 5)))
+	require.NoError(t, txMgr.db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 5)))
 
 	s, _ := txMgr.NewTxSimulator("test_tx1")
 	simulator := s.(*txSimulator)
 	hash, err := simulator.GetPrivateDataHash("ns", "coll", "non-existing-key")
-	assert.NoError(t, err)
-	assert.Nil(t, hash)
+	require.NoError(t, err)
+	require.Nil(t, hash)
 
 	hash, err = simulator.GetPrivateDataHash("ns", "coll", "existing-key")
-	assert.NoError(t, err)
-	assert.Equal(t, util.ComputeStringHash("existing-value"), hash)
+	require.NoError(t, err)
+	require.Equal(t, util.ComputeStringHash("existing-value"), hash)
 	simulator.Done()
 
 	simRes, err := simulator.GetTxSimulationResults()
-	assert.NoError(t, err)
-	assert.False(t, simRes.ContainsPvtWrites())
+	require.NoError(t, err)
+	require.False(t, simRes.ContainsPvtWrites())
 	txrwset, _ := rwsetutil.TxRwSetFromProtoMsg(simRes.PubSimulationResults)
 
 	expectedRwSet := &rwsetutil.TxRwSet{
@@ -198,7 +198,7 @@ func testGetPvtdataHash(t *testing.T, env testEnv) {
 			},
 		},
 	}
-	assert.Equal(t, expectedRwSet, txrwset)
+	require.Equal(t, expectedRwSet, txrwset)
 }
 
 func putPvtUpdates(t *testing.T, updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {

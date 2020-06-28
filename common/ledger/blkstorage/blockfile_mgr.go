@@ -24,7 +24,9 @@ import (
 )
 
 const (
-	blockfilePrefix = "blockfile_"
+	blockfilePrefix                   = "blockfile_"
+	bootstrappingSnapshotInfoFile     = "bootstrappingSnapshot.info"
+	bootstrappingSnapshotInfoTempFile = "bootstrappingSnapshotTemp.info"
 )
 
 var (
@@ -32,14 +34,15 @@ var (
 )
 
 type blockfileMgr struct {
-	rootDir           string
-	conf              *Conf
-	db                *leveldbhelper.DBHandle
-	index             *blockIndex
-	cpInfo            *checkpointInfo
-	cpInfoCond        *sync.Cond
-	currentFileWriter *blockfileWriter
-	bcInfo            atomic.Value
+	rootDir                   string
+	conf                      *Conf
+	db                        *leveldbhelper.DBHandle
+	index                     *blockIndex
+	blockfilesInfo            *blockfilesInfo
+	bootstrappingSnapshotInfo *BootstrappingSnapshotInfo
+	blkfilesInfoCond          *sync.Cond
+	currentFileWriter         *blockfileWriter
+	bcInfo                    atomic.Value
 }
 
 /*
@@ -47,7 +50,7 @@ Creates a new manager that will manage the files used for block persistence.
 This manager manages the file system FS including
   -- the directory where the files are stored
   -- the individual files where the blocks are stored
-  -- the checkpoint which tracks the latest file being persisted to
+  -- the blockfilesInfo which tracks the latest file being persisted to
   -- the index which tracks what block and transaction is in what file
 When a new blockfile manager is started (i.e. only on start-up), it checks
 if this start-up is the first time the system is coming up or is this a restart
@@ -69,12 +72,12 @@ At start up a new manager:
   *) Checks if the directory for storing files exists, if not creates the dir
   *) Checks if the key value database exists, if not creates one
        (will create a db dir)
-  *) Determines the checkpoint information (cpinfo) used for storage
-		-- Loads from db if exist, if not instantiate a new cpinfo
-		-- If cpinfo was loaded from db, compares to FS
-		-- If cpinfo and file system are not in sync, syncs cpInfo from FS
+  *) Determines the blockfilesInfo used for storage
+		-- Loads from db if exist, if not instantiate a new blockfilesInfo
+		-- If blockfilesInfo was loaded from db, compares to FS
+		-- If blockfilesInfo and file system are not in sync, syncs blockfilesInfo from FS
   *) Starts a new file writer
-		-- truncates file per cpinfo to remove any excess past last block
+		-- truncates file per blockfilesInfo to remove any excess past last block
   *) Determines the index information used to find tx and blocks in
   the file blkstorage
 		-- Instantiates a new blockIdxInfo
@@ -83,125 +86,157 @@ At start up a new manager:
 		-- If index and file system are not in sync, syncs index from the FS
   *)  Updates blockchain info used by the APIs
 */
-func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore *leveldbhelper.DBHandle) *blockfileMgr {
+func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore *leveldbhelper.DBHandle) (*blockfileMgr, error) {
 	logger.Debugf("newBlockfileMgr() initializing file-based block storage for ledger: %s ", id)
-	//Determine the root directory for the blockfile storage, if it does not exist create it
 	rootDir := conf.getLedgerBlockDir(id)
 	_, err := util.CreateDirIfMissing(rootDir)
 	if err != nil {
 		panic(fmt.Sprintf("Error creating block storage root dir [%s]: %s", rootDir, err))
 	}
-	// Instantiate the manager, i.e. blockFileMgr structure
 	mgr := &blockfileMgr{rootDir: rootDir, conf: conf, db: indexStore}
 
-	// cp = checkpointInfo, retrieve from the database the file suffix or number of where blocks were stored.
-	// It also retrieves the current size of that file and the last block number that was written to that file.
-	// At init checkpointInfo:latestFileChunkSuffixNum=[0], latestFileChunksize=[0], lastBlockNumber=[0]
-	cpInfo, err := mgr.loadCurrentInfo()
+	blockfilesInfo, err := mgr.loadBlkfilesInfo()
 	if err != nil {
 		panic(fmt.Sprintf("Could not get block file info for current block file from db: %s", err))
 	}
-	if cpInfo == nil {
+	if blockfilesInfo == nil {
 		logger.Info(`Getting block information from block storage`)
-		if cpInfo, err = constructCheckpointInfoFromBlockFiles(rootDir); err != nil {
-			panic(fmt.Sprintf("Could not build checkpoint info from block files: %s", err))
+		if blockfilesInfo, err = constructBlockfilesInfo(rootDir); err != nil {
+			panic(fmt.Sprintf("Could not build blockfilesInfo info from block files: %s", err))
 		}
-		logger.Debugf("Info constructed by scanning the blocks dir = %s", spew.Sdump(cpInfo))
+		logger.Debugf("Info constructed by scanning the blocks dir = %s", spew.Sdump(blockfilesInfo))
 	} else {
 		logger.Debug(`Synching block information from block storage (if needed)`)
-		syncCPInfoFromFS(rootDir, cpInfo)
+		syncBlockfilesInfoFromFS(rootDir, blockfilesInfo)
 	}
-	err = mgr.saveCurrentInfo(cpInfo, true)
+	err = mgr.saveBlkfilesInfo(blockfilesInfo, true)
 	if err != nil {
 		panic(fmt.Sprintf("Could not save next block file info to db: %s", err))
 	}
 
-	//Open a writer to the file identified by the number and truncate it to only contain the latest block
-	// that was completely saved (file system, index, cpinfo, etc)
-	currentFileWriter, err := newBlockfileWriter(deriveBlockfilePath(rootDir, cpInfo.latestFileChunkSuffixNum))
+	currentFileWriter, err := newBlockfileWriter(deriveBlockfilePath(rootDir, blockfilesInfo.latestFileNumber))
 	if err != nil {
 		panic(fmt.Sprintf("Could not open writer to current file: %s", err))
 	}
-	//Truncate the file to remove excess past last block
-	err = currentFileWriter.truncateFile(cpInfo.latestFileChunksize)
+	err = currentFileWriter.truncateFile(blockfilesInfo.latestFileSize)
 	if err != nil {
 		panic(fmt.Sprintf("Could not truncate current file to known size in db: %s", err))
 	}
-
-	// Create a new KeyValue store database handler for the blocks index in the keyvalue database
 	if mgr.index, err = newBlockIndex(indexConfig, indexStore); err != nil {
 		panic(fmt.Sprintf("error in block index: %s", err))
 	}
 
-	// Update the manager with the checkpoint info and the file writer
-	mgr.cpInfo = cpInfo
+	mgr.blockfilesInfo = blockfilesInfo
+	bsi, err := loadBootstrappingSnapshotInfo(rootDir)
+	if err != nil {
+		return nil, err
+	}
+	mgr.bootstrappingSnapshotInfo = bsi
 	mgr.currentFileWriter = currentFileWriter
-	// Create a checkpoint condition (event) variable, for the  goroutine waiting for
-	// or announcing the occurrence of an event.
-	mgr.cpInfoCond = sync.NewCond(&sync.Mutex{})
+	mgr.blkfilesInfoCond = sync.NewCond(&sync.Mutex{})
 
-	// init BlockchainInfo for external API's
-	bcInfo := &common.BlockchainInfo{
-		Height:            0,
-		CurrentBlockHash:  nil,
-		PreviousBlockHash: nil}
+	if err := mgr.syncIndex(); err != nil {
+		return nil, err
+	}
 
-	if !cpInfo.isChainEmpty {
-		//If start up is a restart of an existing storage, sync the index from block storage and update BlockchainInfo for external API's
-		mgr.syncIndex()
-		lastBlockHeader, err := mgr.retrieveBlockHeaderByNumber(cpInfo.lastBlockNumber)
+	bcInfo := &common.BlockchainInfo{}
+
+	if mgr.bootstrappingSnapshotInfo != nil {
+		bcInfo.Height = mgr.bootstrappingSnapshotInfo.LastBlockNum + 1
+		bcInfo.CurrentBlockHash = mgr.bootstrappingSnapshotInfo.LastBlockHash
+		bcInfo.PreviousBlockHash = mgr.bootstrappingSnapshotInfo.PreviousBlockHash
+	}
+
+	if !blockfilesInfo.noBlockFiles {
+		lastBlockHeader, err := mgr.retrieveBlockHeaderByNumber(blockfilesInfo.lastPersistedBlock)
 		if err != nil {
 			panic(fmt.Sprintf("Could not retrieve header of the last block form file: %s", err))
 		}
 		lastBlockHash := protoutil.BlockHeaderHash(lastBlockHeader)
 		previousBlockHash := lastBlockHeader.PreviousHash
 		bcInfo = &common.BlockchainInfo{
-			Height:            cpInfo.lastBlockNumber + 1,
+			Height:            blockfilesInfo.lastPersistedBlock + 1,
 			CurrentBlockHash:  lastBlockHash,
 			PreviousBlockHash: previousBlockHash}
 	}
 	mgr.bcInfo.Store(bcInfo)
-	return mgr
+	return mgr, nil
 }
 
-//cp = checkpointInfo, from the database gets the file suffix and the size of
-// the file of where the last block was written.  Also retrieves contains the
-// last block number that was written.  At init
-//checkpointInfo:latestFileChunkSuffixNum=[0], latestFileChunksize=[0], lastBlockNumber=[0]
-func syncCPInfoFromFS(rootDir string, cpInfo *checkpointInfo) {
-	logger.Debugf("Starting checkpoint=%s", cpInfo)
+func bootstrapFromSnapshottedTxIDs(
+	snapshotDir string,
+	snapshotInfo *SnapshotInfo,
+	conf *Conf,
+	indexStore *leveldbhelper.DBHandle,
+) error {
+	rootDir := conf.getLedgerBlockDir(snapshotInfo.LedgerID)
+	isEmpty, err := util.CreateDirIfMissing(rootDir)
+	if err != nil {
+		return err
+	}
+	if !isEmpty {
+		return errors.Errorf("dir %s not empty", rootDir)
+	}
+
+	bsi := &BootstrappingSnapshotInfo{
+		LastBlockNum:      snapshotInfo.LastBlockNum,
+		LastBlockHash:     snapshotInfo.LastBlockHash,
+		PreviousBlockHash: snapshotInfo.PreviousBlockHash,
+	}
+
+	bsiBytes, err := proto.Marshal(bsi)
+	if err != nil {
+		return err
+	}
+
+	if err := createAndSyncFileAtomically(
+		rootDir,
+		bootstrappingSnapshotInfoTempFile,
+		bootstrappingSnapshotInfoFile,
+		bsiBytes,
+	); err != nil {
+		return err
+	}
+	if err := importTxIDsFromSnapshot(snapshotDir, snapshotInfo.LastBlockNum, indexStore); err != nil {
+		return err
+	}
+	return nil
+}
+
+func syncBlockfilesInfoFromFS(rootDir string, blkfilesInfo *blockfilesInfo) {
+	logger.Debugf("Starting blockfilesInfo=%s", blkfilesInfo)
 	//Checks if the file suffix of where the last block was written exists
-	filePath := deriveBlockfilePath(rootDir, cpInfo.latestFileChunkSuffixNum)
+	filePath := deriveBlockfilePath(rootDir, blkfilesInfo.latestFileNumber)
 	exists, size, err := util.FileExists(filePath)
 	if err != nil {
 		panic(fmt.Sprintf("Error in checking whether file [%s] exists: %s", filePath, err))
 	}
 	logger.Debugf("status of file [%s]: exists=[%t], size=[%d]", filePath, exists, size)
 	//Test is !exists because when file number is first used the file does not exist yet
-	//checks that the file exists and that the size of the file is what is stored in cpinfo
+	//checks that the file exists and that the size of the file is what is stored in blockfilesInfo
 	//status of file [<blkstorage_location>/blocks/blockfile_000000]: exists=[false], size=[0]
-	if !exists || int(size) == cpInfo.latestFileChunksize {
-		// check point info is in sync with the file on disk
+	if !exists || int(size) == blkfilesInfo.latestFileSize {
+		// blockfilesInfo is in sync with the file on disk
 		return
 	}
-	//Scan the file system to verify that the checkpoint info stored in db is correct
+	//Scan the file system to verify that the blockfilesInfo stored in db is correct
 	_, endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(
-		rootDir, cpInfo.latestFileChunkSuffixNum, int64(cpInfo.latestFileChunksize))
+		rootDir, blkfilesInfo.latestFileNumber, int64(blkfilesInfo.latestFileSize))
 	if err != nil {
 		panic(fmt.Sprintf("Could not open current file for detecting last block in the file: %s", err))
 	}
-	cpInfo.latestFileChunksize = int(endOffsetLastBlock)
+	blkfilesInfo.latestFileSize = int(endOffsetLastBlock)
 	if numBlocks == 0 {
 		return
 	}
-	//Updates the checkpoint info for the actual last block number stored and it's end location
-	if cpInfo.isChainEmpty {
-		cpInfo.lastBlockNumber = uint64(numBlocks - 1)
+	//Updates the blockfilesInfo for the actual last block number stored and it's end location
+	if blkfilesInfo.noBlockFiles {
+		blkfilesInfo.lastPersistedBlock = uint64(numBlocks - 1)
 	} else {
-		cpInfo.lastBlockNumber += uint64(numBlocks)
+		blkfilesInfo.lastPersistedBlock += uint64(numBlocks)
 	}
-	cpInfo.isChainEmpty = false
-	logger.Debugf("Checkpoint after updates by scanning the last file segment:%s", cpInfo)
+	blkfilesInfo.noBlockFiles = false
+	logger.Debugf("blockfilesInfo after updates by scanning the last file segment:%s", blkfilesInfo)
 }
 
 func deriveBlockfilePath(rootDir string, suffixNum int) string {
@@ -213,24 +248,24 @@ func (mgr *blockfileMgr) close() {
 }
 
 func (mgr *blockfileMgr) moveToNextFile() {
-	cpInfo := &checkpointInfo{
-		latestFileChunkSuffixNum: mgr.cpInfo.latestFileChunkSuffixNum + 1,
-		latestFileChunksize:      0,
-		lastBlockNumber:          mgr.cpInfo.lastBlockNumber}
+	blkfilesInfo := &blockfilesInfo{
+		latestFileNumber:   mgr.blockfilesInfo.latestFileNumber + 1,
+		latestFileSize:     0,
+		lastPersistedBlock: mgr.blockfilesInfo.lastPersistedBlock}
 
 	nextFileWriter, err := newBlockfileWriter(
-		deriveBlockfilePath(mgr.rootDir, cpInfo.latestFileChunkSuffixNum))
+		deriveBlockfilePath(mgr.rootDir, blkfilesInfo.latestFileNumber))
 
 	if err != nil {
 		panic(fmt.Sprintf("Could not open writer to next file: %s", err))
 	}
 	mgr.currentFileWriter.close()
-	err = mgr.saveCurrentInfo(cpInfo, true)
+	err = mgr.saveBlkfilesInfo(blkfilesInfo, true)
 	if err != nil {
 		panic(fmt.Sprintf("Could not save next block file info to db: %s", err))
 	}
 	mgr.currentFileWriter = nextFileWriter
-	mgr.updateCheckpoint(cpInfo)
+	mgr.updateBlockfilesInfo(blkfilesInfo)
 }
 
 func (mgr *blockfileMgr) addBlock(block *common.Block) error {
@@ -259,7 +294,7 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 	blockHash := protoutil.BlockHeaderHash(block.Header)
 	//Get the location / offset where each transaction starts in the block and where the block ends
 	txOffsets := info.txOffsets
-	currentOffset := mgr.cpInfo.latestFileChunksize
+	currentOffset := mgr.blockfilesInfo.latestFileSize
 
 	blockBytesLen := len(blockBytes)
 	blockBytesEncodedLen := proto.EncodeVarint(uint64(blockBytesLen))
@@ -278,31 +313,31 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		err = mgr.currentFileWriter.append(blockBytes, true)
 	}
 	if err != nil {
-		truncateErr := mgr.currentFileWriter.truncateFile(mgr.cpInfo.latestFileChunksize)
+		truncateErr := mgr.currentFileWriter.truncateFile(mgr.blockfilesInfo.latestFileSize)
 		if truncateErr != nil {
 			panic(fmt.Sprintf("Could not truncate current file to known size after an error during block append: %s", err))
 		}
 		return errors.WithMessage(err, "error appending block to file")
 	}
 
-	//Update the checkpoint info with the results of adding the new block
-	currentCPInfo := mgr.cpInfo
-	newCPInfo := &checkpointInfo{
-		latestFileChunkSuffixNum: currentCPInfo.latestFileChunkSuffixNum,
-		latestFileChunksize:      currentCPInfo.latestFileChunksize + totalBytesToAppend,
-		isChainEmpty:             false,
-		lastBlockNumber:          block.Header.Number}
-	//save the checkpoint information in the database
-	if err = mgr.saveCurrentInfo(newCPInfo, false); err != nil {
-		truncateErr := mgr.currentFileWriter.truncateFile(currentCPInfo.latestFileChunksize)
+	//Update the blockfilesInfo with the results of adding the new block
+	currentBlkfilesInfo := mgr.blockfilesInfo
+	newBlkfilesInfo := &blockfilesInfo{
+		latestFileNumber:   currentBlkfilesInfo.latestFileNumber,
+		latestFileSize:     currentBlkfilesInfo.latestFileSize + totalBytesToAppend,
+		noBlockFiles:       false,
+		lastPersistedBlock: block.Header.Number}
+	//save the blockfilesInfo in the database
+	if err = mgr.saveBlkfilesInfo(newBlkfilesInfo, false); err != nil {
+		truncateErr := mgr.currentFileWriter.truncateFile(currentBlkfilesInfo.latestFileSize)
 		if truncateErr != nil {
-			panic(fmt.Sprintf("Error in truncating current file to known size after an error in saving checkpoint info: %s", err))
+			panic(fmt.Sprintf("Error in truncating current file to known size after an error in saving blockfiles info: %s", err))
 		}
-		return errors.WithMessage(err, "error saving current file info to db")
+		return errors.WithMessage(err, "error saving blockfiles file info to db")
 	}
 
 	//Index block file location pointer updated with file suffex and offset for the new block
-	blockFLP := &fileLocPointer{fileSuffixNum: newCPInfo.latestFileChunkSuffixNum}
+	blockFLP := &fileLocPointer{fileSuffixNum: newBlkfilesInfo.latestFileNumber}
 	blockFLP.offset = currentOffset
 	// shift the txoffset because we prepend length of bytes before block bytes
 	for _, txOffset := range txOffsets {
@@ -315,39 +350,54 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		return err
 	}
 
-	//update the checkpoint info (for storage) and the blockchain info (for APIs) in the manager
-	mgr.updateCheckpoint(newCPInfo)
+	//update the blockfilesInfo (for storage) and the blockchain info (for APIs) in the manager
+	mgr.updateBlockfilesInfo(newBlkfilesInfo)
 	mgr.updateBlockchainInfo(blockHash, block)
 	return nil
 }
 
 func (mgr *blockfileMgr) syncIndex() error {
-	var lastBlockIndexed uint64
-	var indexEmpty bool
-	var err error
-	//from the database, get the last block that was indexed
-	if lastBlockIndexed, err = mgr.index.getLastBlockIndexed(); err != nil {
-		if err != errIndexEmpty {
+	nextIndexableBlock := uint64(0)
+	lastBlockIndexed, err := mgr.index.getLastBlockIndexed()
+	if err != nil {
+		if err != errIndexSavePointKeyNotPresent {
 			return err
 		}
-		indexEmpty = true
+	} else {
+		nextIndexableBlock = lastBlockIndexed + 1
 	}
 
-	//initialize index to file number:zero, offset:zero and blockNum:0
+	if nextIndexableBlock == 0 && mgr.bootstrappedFromSnapshot() {
+		// This condition can happen only if there was a peer crash or failure during
+		// bootstrapping the ledger from a snapshot or the index is dropped/corrupted afterward
+		return errors.Errorf(
+			"cannot sync index with block files. blockstore is bootstrapped from a snapshot and first available block=[%d]",
+			mgr.firstPossibleBlockNumberInBlockFiles(),
+		)
+	}
+
+	if mgr.blockfilesInfo.noBlockFiles {
+		logger.Debug("No block files present. This happens when there has not been any blocks added to the ledger yet")
+		return nil
+	}
+
+	if nextIndexableBlock == mgr.blockfilesInfo.lastPersistedBlock+1 {
+		logger.Debug("Both the block files and indices are in sync.")
+		return nil
+	}
+
 	startFileNum := 0
 	startOffset := 0
 	skipFirstBlock := false
-	//get the last file that blocks were added to using the checkpoint info
-	endFileNum := mgr.cpInfo.latestFileChunkSuffixNum
-	startingBlockNum := uint64(0)
+	endFileNum := mgr.blockfilesInfo.latestFileNumber
 
-	//if the index stored in the db has value, update the index information with those values
-	if !indexEmpty {
-		if lastBlockIndexed == mgr.cpInfo.lastBlockNumber {
-			logger.Debug("Both the block files and indices are in sync.")
-			return nil
-		}
-		logger.Debugf("Last block indexed [%d], Last block present in block files [%d]", lastBlockIndexed, mgr.cpInfo.lastBlockNumber)
+	firstAvailableBlkNum, err := retrieveFirstBlockNumFromFile(mgr.rootDir, 0)
+	if err != nil {
+		return err
+	}
+
+	if nextIndexableBlock > firstAvailableBlkNum {
+		logger.Debugf("Last block indexed [%d], Last block present in block files [%d]", lastBlockIndexed, mgr.blockfilesInfo.lastPersistedBlock)
 		var flp *fileLocPointer
 		if flp, err = mgr.index.getBlockLocByBlockNum(lastBlockIndexed); err != nil {
 			return err
@@ -355,12 +405,9 @@ func (mgr *blockfileMgr) syncIndex() error {
 		startFileNum = flp.fileSuffixNum
 		startOffset = flp.locPointer.offset
 		skipFirstBlock = true
-		startingBlockNum = lastBlockIndexed + 1
-	} else {
-		logger.Debugf("No block indexed, Last block present in block files=[%d]", mgr.cpInfo.lastBlockNumber)
 	}
 
-	logger.Infof("Start building index from block [%d] to last block [%d]", startingBlockNum, mgr.cpInfo.lastBlockNumber)
+	logger.Infof("Start building index from block [%d] to last block [%d]", nextIndexableBlock, mgr.blockfilesInfo.lastPersistedBlock)
 
 	//open a blockstream to the file location that was stored in the index
 	var stream *blockStream
@@ -427,12 +474,12 @@ func (mgr *blockfileMgr) getBlockchainInfo() *common.BlockchainInfo {
 	return mgr.bcInfo.Load().(*common.BlockchainInfo)
 }
 
-func (mgr *blockfileMgr) updateCheckpoint(cpInfo *checkpointInfo) {
-	mgr.cpInfoCond.L.Lock()
-	defer mgr.cpInfoCond.L.Unlock()
-	mgr.cpInfo = cpInfo
-	logger.Debugf("Broadcasting about update checkpointInfo: %s", cpInfo)
-	mgr.cpInfoCond.Broadcast()
+func (mgr *blockfileMgr) updateBlockfilesInfo(blkfilesInfo *blockfilesInfo) {
+	mgr.blkfilesInfoCond.L.Lock()
+	defer mgr.blkfilesInfoCond.L.Unlock()
+	mgr.blockfilesInfo = blkfilesInfo
+	logger.Debugf("Broadcasting about update blockfilesInfo: %s", blkfilesInfo)
+	mgr.blkfilesInfoCond.Broadcast()
 }
 
 func (mgr *blockfileMgr) updateBlockchainInfo(latestBlockHash []byte, latestBlock *common.Block) {
@@ -461,7 +508,12 @@ func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*common.Block, 
 	if blockNum == math.MaxUint64 {
 		blockNum = mgr.getBlockchainInfo().Height - 1
 	}
-
+	if blockNum < mgr.firstPossibleBlockNumberInBlockFiles() {
+		return nil, errors.Errorf(
+			"cannot serve block [%d]. The ledger is bootstrapped from a snapshot. First available block = [%d]",
+			blockNum, mgr.firstPossibleBlockNumberInBlockFiles(),
+		)
+	}
 	loc, err := mgr.index.getBlockLocByBlockNum(blockNum)
 	if err != nil {
 		return nil, err
@@ -471,9 +523,12 @@ func (mgr *blockfileMgr) retrieveBlockByNumber(blockNum uint64) (*common.Block, 
 
 func (mgr *blockfileMgr) retrieveBlockByTxID(txID string) (*common.Block, error) {
 	logger.Debugf("retrieveBlockByTxID() - txID = [%s]", txID)
-
 	loc, err := mgr.index.getBlockLocByTxID(txID)
-
+	if err == errNilValue {
+		return nil, errors.Errorf(
+			"details for the TXID [%s] not available. Ledger bootstrapped from a snapshot. First available block = [%d]",
+			txID, mgr.firstPossibleBlockNumberInBlockFiles())
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -482,11 +537,23 @@ func (mgr *blockfileMgr) retrieveBlockByTxID(txID string) (*common.Block, error)
 
 func (mgr *blockfileMgr) retrieveTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
 	logger.Debugf("retrieveTxValidationCodeByTxID() - txID = [%s]", txID)
-	return mgr.index.getTxValidationCodeByTxID(txID)
+	validationCode, err := mgr.index.getTxValidationCodeByTxID(txID)
+	if err == errNilValue {
+		return peer.TxValidationCode(-1), errors.Errorf(
+			"details for the TXID [%s] not available. Ledger bootstrapped from a snapshot. First available block = [%d]",
+			txID, mgr.firstPossibleBlockNumberInBlockFiles())
+	}
+	return validationCode, err
 }
 
 func (mgr *blockfileMgr) retrieveBlockHeaderByNumber(blockNum uint64) (*common.BlockHeader, error) {
 	logger.Debugf("retrieveBlockHeaderByNumber() - blockNum = [%d]", blockNum)
+	if blockNum < mgr.firstPossibleBlockNumberInBlockFiles() {
+		return nil, errors.Errorf(
+			"cannot serve block [%d]. The ledger is bootstrapped from a snapshot. First available block = [%d]",
+			blockNum, mgr.firstPossibleBlockNumberInBlockFiles(),
+		)
+	}
 	loc, err := mgr.index.getBlockLocByBlockNum(blockNum)
 	if err != nil {
 		return nil, err
@@ -503,12 +570,23 @@ func (mgr *blockfileMgr) retrieveBlockHeaderByNumber(blockNum uint64) (*common.B
 }
 
 func (mgr *blockfileMgr) retrieveBlocks(startNum uint64) (*blocksItr, error) {
+	if startNum < mgr.firstPossibleBlockNumberInBlockFiles() {
+		return nil, errors.Errorf(
+			"cannot serve block [%d]. The ledger is bootstrapped from a snapshot. First available block = [%d]",
+			startNum, mgr.firstPossibleBlockNumberInBlockFiles(),
+		)
+	}
 	return newBlockItr(mgr, startNum), nil
 }
 
 func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*common.Envelope, error) {
 	logger.Debugf("retrieveTransactionByID() - txId = [%s]", txID)
 	loc, err := mgr.index.getTxLoc(txID)
+	if err == errNilValue {
+		return nil, errors.Errorf(
+			"details for the TXID [%s] not available. Ledger bootstrapped from a snapshot. First available block = [%d]",
+			txID, mgr.firstPossibleBlockNumberInBlockFiles())
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -517,6 +595,12 @@ func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*common.Envelope,
 
 func (mgr *blockfileMgr) retrieveTransactionByBlockNumTranNum(blockNum uint64, tranNum uint64) (*common.Envelope, error) {
 	logger.Debugf("retrieveTransactionByBlockNumTranNum() - blockNum = [%d], tranNum = [%d]", blockNum, tranNum)
+	if blockNum < mgr.firstPossibleBlockNumberInBlockFiles() {
+		return nil, errors.Errorf(
+			"cannot serve block [%d]. The ledger is bootstrapped from a snapshot. First available block = [%d]",
+			blockNum, mgr.firstPossibleBlockNumberInBlockFiles(),
+		)
+	}
 	loc, err := mgr.index.getTXLocByBlockNumTranNum(blockNum, tranNum)
 	if err != nil {
 		return nil, err
@@ -574,22 +658,22 @@ func (mgr *blockfileMgr) fetchRawBytes(lp *fileLocPointer) ([]byte, error) {
 	return b, nil
 }
 
-//Get the current checkpoint information that is stored in the database
-func (mgr *blockfileMgr) loadCurrentInfo() (*checkpointInfo, error) {
+//Get the current blockfilesInfo information that is stored in the database
+func (mgr *blockfileMgr) loadBlkfilesInfo() (*blockfilesInfo, error) {
 	var b []byte
 	var err error
 	if b, err = mgr.db.Get(blkMgrInfoKey); b == nil || err != nil {
 		return nil, err
 	}
-	i := &checkpointInfo{}
+	i := &blockfilesInfo{}
 	if err = i.unmarshal(b); err != nil {
 		return nil, err
 	}
-	logger.Debugf("loaded checkpointInfo:%s", i)
+	logger.Debugf("loaded blockfilesInfo:%s", i)
 	return i, nil
 }
 
-func (mgr *blockfileMgr) saveCurrentInfo(i *checkpointInfo, sync bool) error {
+func (mgr *blockfileMgr) saveBlkfilesInfo(i *blockfilesInfo, sync bool) error {
 	b, err := i.marshal()
 	if err != nil {
 		return err
@@ -598,6 +682,17 @@ func (mgr *blockfileMgr) saveCurrentInfo(i *checkpointInfo, sync bool) error {
 		return err
 	}
 	return nil
+}
+
+func (mgr *blockfileMgr) firstPossibleBlockNumberInBlockFiles() uint64 {
+	if mgr.bootstrappingSnapshotInfo == nil {
+		return 0
+	}
+	return mgr.bootstrappingSnapshotInfo.LastBlockNum + 1
+}
+
+func (mgr *blockfileMgr) bootstrappedFromSnapshot() bool {
+	return mgr.firstPossibleBlockNumberInBlockFiles() > 0
 }
 
 // scanForLastCompleteBlock scan a given block file and detects the last offset in the file
@@ -631,64 +726,64 @@ func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64)
 	return lastBlockBytes, blockStream.currentOffset, numBlocks, errRead
 }
 
-// checkpointInfo
-type checkpointInfo struct {
-	latestFileChunkSuffixNum int
-	latestFileChunksize      int
-	isChainEmpty             bool
-	lastBlockNumber          uint64
+// blockfilesInfo maintains the summary about the blockfiles
+type blockfilesInfo struct {
+	latestFileNumber   int
+	latestFileSize     int
+	noBlockFiles       bool
+	lastPersistedBlock uint64
 }
 
-func (i *checkpointInfo) marshal() ([]byte, error) {
+func (i *blockfilesInfo) marshal() ([]byte, error) {
 	buffer := proto.NewBuffer([]byte{})
 	var err error
-	if err = buffer.EncodeVarint(uint64(i.latestFileChunkSuffixNum)); err != nil {
-		return nil, errors.Wrapf(err, "error encoding the latestFileChunkSuffixNum [%d]", i.latestFileChunkSuffixNum)
+	if err = buffer.EncodeVarint(uint64(i.latestFileNumber)); err != nil {
+		return nil, errors.Wrapf(err, "error encoding the latestFileNumber [%d]", i.latestFileNumber)
 	}
-	if err = buffer.EncodeVarint(uint64(i.latestFileChunksize)); err != nil {
-		return nil, errors.Wrapf(err, "error encoding the latestFileChunksize [%d]", i.latestFileChunksize)
+	if err = buffer.EncodeVarint(uint64(i.latestFileSize)); err != nil {
+		return nil, errors.Wrapf(err, "error encoding the latestFileSize [%d]", i.latestFileSize)
 	}
-	if err = buffer.EncodeVarint(i.lastBlockNumber); err != nil {
-		return nil, errors.Wrapf(err, "error encoding the lastBlockNumber [%d]", i.lastBlockNumber)
+	if err = buffer.EncodeVarint(i.lastPersistedBlock); err != nil {
+		return nil, errors.Wrapf(err, "error encoding the lastPersistedBlock [%d]", i.lastPersistedBlock)
 	}
-	var chainEmptyMarker uint64
-	if i.isChainEmpty {
-		chainEmptyMarker = 1
+	var noBlockFilesMarker uint64
+	if i.noBlockFiles {
+		noBlockFilesMarker = 1
 	}
-	if err = buffer.EncodeVarint(chainEmptyMarker); err != nil {
-		return nil, errors.Wrapf(err, "error encoding chainEmptyMarker [%d]", chainEmptyMarker)
+	if err = buffer.EncodeVarint(noBlockFilesMarker); err != nil {
+		return nil, errors.Wrapf(err, "error encoding noBlockFiles [%d]", noBlockFilesMarker)
 	}
 	return buffer.Bytes(), nil
 }
 
-func (i *checkpointInfo) unmarshal(b []byte) error {
+func (i *blockfilesInfo) unmarshal(b []byte) error {
 	buffer := proto.NewBuffer(b)
 	var val uint64
-	var chainEmptyMarker uint64
+	var noBlockFilesMarker uint64
 	var err error
 
 	if val, err = buffer.DecodeVarint(); err != nil {
 		return err
 	}
-	i.latestFileChunkSuffixNum = int(val)
+	i.latestFileNumber = int(val)
 
 	if val, err = buffer.DecodeVarint(); err != nil {
 		return err
 	}
-	i.latestFileChunksize = int(val)
+	i.latestFileSize = int(val)
 
 	if val, err = buffer.DecodeVarint(); err != nil {
 		return err
 	}
-	i.lastBlockNumber = val
-	if chainEmptyMarker, err = buffer.DecodeVarint(); err != nil {
+	i.lastPersistedBlock = val
+	if noBlockFilesMarker, err = buffer.DecodeVarint(); err != nil {
 		return err
 	}
-	i.isChainEmpty = chainEmptyMarker == 1
+	i.noBlockFiles = noBlockFilesMarker == 1
 	return nil
 }
 
-func (i *checkpointInfo) String() string {
-	return fmt.Sprintf("latestFileChunkSuffixNum=[%d], latestFileChunksize=[%d], isChainEmpty=[%t], lastBlockNumber=[%d]",
-		i.latestFileChunkSuffixNum, i.latestFileChunksize, i.isChainEmpty, i.lastBlockNumber)
+func (i *blockfilesInfo) String() string {
+	return fmt.Sprintf("latestFileNumber=[%d], latestFileSize=[%d], noBlockFiles=[%t], lastPersistedBlock=[%d]",
+		i.latestFileNumber, i.latestFileSize, i.noBlockFiles, i.lastPersistedBlock)
 }

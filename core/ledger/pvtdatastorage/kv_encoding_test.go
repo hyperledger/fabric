@@ -11,14 +11,14 @@ import (
 	math "math"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDataKeyEncoding(t *testing.T) {
 	dataKey1 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns1", coll: "coll1", blkNum: 2}, txNum: 5}
 	datakey2, err := decodeDatakey(encodeDataKey(dataKey1))
-	assert.NoError(t, err)
-	assert.Equal(t, dataKey1, datakey2)
+	require.NoError(t, err)
+	require.Equal(t, dataKey1, datakey2)
 }
 
 func TestDatakeyRange(t *testing.T) {
@@ -44,10 +44,10 @@ func TestDatakeyRange(t *testing.T) {
 				txNum:     txNum,
 			},
 		)
-		assert.Equal(t, bytes.Compare(keyOfPreviousBlock, startKey), -1)
-		assert.Equal(t, bytes.Compare(keyOfBlock, startKey), 1)
-		assert.Equal(t, bytes.Compare(keyOfBlock, endKey), -1)
-		assert.Equal(t, bytes.Compare(keyOfNextBlock, endKey), 1)
+		require.Equal(t, bytes.Compare(keyOfPreviousBlock, startKey), -1)
+		require.Equal(t, bytes.Compare(keyOfBlock, startKey), 1)
+		require.Equal(t, bytes.Compare(keyOfBlock, endKey), -1)
+		require.Equal(t, bytes.Compare(keyOfNextBlock, endKey), 1)
 	}
 }
 
@@ -74,10 +74,10 @@ func TestEligibleMissingdataRange(t *testing.T) {
 				isEligible: true,
 			},
 		)
-		assert.Equal(t, bytes.Compare(keyOfNextBlock, startKey), -1)
-		assert.Equal(t, bytes.Compare(keyOfBlock, startKey), 1)
-		assert.Equal(t, bytes.Compare(keyOfBlock, endKey), -1)
-		assert.Equal(t, bytes.Compare(keyOfPreviousBlock, endKey), 1)
+		require.Equal(t, bytes.Compare(keyOfNextBlock, startKey), -1)
+		require.Equal(t, bytes.Compare(keyOfBlock, startKey), 1)
+		require.Equal(t, bytes.Compare(keyOfBlock, endKey), -1)
+		require.Equal(t, bytes.Compare(keyOfPreviousBlock, endKey), 1)
 	}
 }
 
@@ -103,7 +103,7 @@ func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 			decodedKey := decodeMissingDataKey(
 				encodeMissingDataKey(key),
 			)
-			assert.Equal(t, key, decodedKey)
+			require.Equal(t, key, decodedKey)
 		},
 	)
 
@@ -113,7 +113,7 @@ func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 			decodedKey := decodeMissingDataKey(
 				encodeMissingDataKey(key),
 			)
-			assert.Equal(t, key, decodedKey)
+			require.Equal(t, key, decodedKey)
 		},
 	)
 }

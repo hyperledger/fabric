@@ -198,7 +198,7 @@ func testEtcdRaftOSNNoTLSSingleListener(gt *GomegaWithT, tempDir, orderer string
 	gt.Expect(err).NotTo(HaveOccurred())
 	defer func() { gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit()) }()
 
-	expectedErr := "TLS is required for running ordering nodes of type etcdraft."
+	expectedErr := "TLS is required for running ordering nodes of cluster type."
 	gt.Eventually(ordererProcess.Err, time.Minute).Should(gbytes.Say(expectedErr))
 }
 

@@ -17,9 +17,9 @@ const (
 	DefStateResponseTimeout = 3 * time.Second
 	DefStateBatchSize       = 10
 	DefStateMaxRetries      = 3
-	DefStateBlockBufferSize = 100
+	DefStateBlockBufferSize = 20
 	DefStateChannelSize     = 100
-	DefStateEnabled         = true
+	DefStateEnabled         = false
 )
 
 type StateConfig struct {

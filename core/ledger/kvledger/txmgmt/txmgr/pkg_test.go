@@ -27,7 +27,7 @@ import (
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -91,7 +91,7 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 		env.dbInitialized = true
 	}
 	env.testDB = env.testDBEnv.GetDBHandle(testLedgerID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if btlPolicy == nil {
 		btlPolicy = btltestutil.SampleBTLPolicy(
 			map[[2]string]uint64{},
@@ -110,7 +110,7 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 		HashFunc:            testHashFunc,
 	}
 	env.txmgr, err = NewLockBasedTxMgr(txmgrInitializer)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 }
 
@@ -152,7 +152,7 @@ func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet *rwset.TxReadWriteSet) 
 	rwSetBytes, _ := proto.Marshal(txRWSet)
 	block := h.bg.NextBlock([][]byte{rwSetBytes})
 	_, _, err := h.txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block, PvtData: nil}, true)
-	assert.NoError(h.t, err)
+	require.NoError(h.t, err)
 	txsFltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
 	for i := 0; i < len(block.Data.Data); i++ {
@@ -160,16 +160,16 @@ func (h *txMgrTestHelper) validateAndCommitRWSet(txRWSet *rwset.TxReadWriteSet) 
 			invalidTxNum++
 		}
 	}
-	assert.Equal(h.t, 0, invalidTxNum)
+	require.Equal(h.t, 0, invalidTxNum)
 	err = h.txMgr.Commit()
-	assert.NoError(h.t, err)
+	require.NoError(h.t, err)
 }
 
 func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet *rwset.TxReadWriteSet) {
 	rwSetBytes, _ := proto.Marshal(txRWSet)
 	block := h.bg.NextBlock([][]byte{rwSetBytes})
 	_, _, err := h.txMgr.ValidateAndPrepare(&ledger.BlockAndPvtData{Block: block, PvtData: nil}, true)
-	assert.NoError(h.t, err)
+	require.NoError(h.t, err)
 	txsFltr := txflags.ValidationFlags(block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	invalidTxNum := 0
 	for i := 0; i < len(block.Data.Data); i++ {
@@ -177,7 +177,7 @@ func (h *txMgrTestHelper) checkRWsetInvalid(txRWSet *rwset.TxReadWriteSet) {
 			invalidTxNum++
 		}
 	}
-	assert.Equal(h.t, 1, invalidTxNum)
+	require.Equal(h.t, 1, invalidTxNum)
 }
 
 func populateCollConfigForTest(t *testing.T, txMgr *LockBasedTxMgr, nsColls []collConfigkey, ht *version.Height) {

@@ -222,7 +222,6 @@ func closeResponseBody(resp *http.Response) {
 
 //createDatabaseIfNotExist method provides function to create database
 func (dbclient *couchDatabase) createDatabaseIfNotExist() error {
-
 	logger.Debugf("[%s] Entering CreateDatabaseIfNotExist()", dbclient.dbName)
 
 	dbInfo, couchDBReturn, err := dbclient.getDatabaseInfo()
@@ -232,73 +231,46 @@ func (dbclient *couchDatabase) createDatabaseIfNotExist() error {
 		}
 	}
 
-	//If the dbInfo returns populated and status code is 200, then the database exists
-	if dbInfo != nil && couchDBReturn.StatusCode == 200 {
+	if dbInfo == nil || couchDBReturn.StatusCode == 404 {
+		logger.Debugf("[%s] Database does not exist.", dbclient.dbName)
 
-		//Apply database security if needed
+		connectURL, err := url.Parse(dbclient.couchInstance.url())
+		if err != nil {
+			logger.Errorf("URL parse error: %s", err)
+			return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.couchInstance.url())
+		}
+
+		//get the number of retries
+		maxRetries := dbclient.couchInstance.conf.MaxRetries
+
+		//process the URL with a PUT, creates the database
+		resp, _, err := dbclient.handleRequest(http.MethodPut, "CreateDatabaseIfNotExist", connectURL, nil, "", "", maxRetries, true, nil)
+		if err != nil {
+			// Check to see if the database exists
+			// Even though handleRequest() returned an error, the
+			// database may have been created and a false error
+			// returned due to a timeout or race condition.
+			// Do a final check to see if the database really got created.
+			dbInfo, couchDBReturn, dbInfoErr := dbclient.getDatabaseInfo()
+			if dbInfoErr != nil || dbInfo == nil || couchDBReturn.StatusCode == 404 {
+				return err
+			}
+		}
+		defer closeResponseBody(resp)
+		logger.Infof("Created state database %s", dbclient.dbName)
+	} else {
+		logger.Debugf("[%s] Database already exists", dbclient.dbName)
+	}
+
+	if dbclient.dbName != "_users" {
 		errSecurity := dbclient.applyDatabasePermissions()
 		if errSecurity != nil {
 			return errSecurity
 		}
-
-		logger.Debugf("[%s] Database already exists", dbclient.dbName)
-
-		logger.Debugf("[%s] Exiting CreateDatabaseIfNotExist()", dbclient.dbName)
-
-		return nil
 	}
-
-	logger.Debugf("[%s] Database does not exist.", dbclient.dbName)
-
-	connectURL, err := url.Parse(dbclient.couchInstance.url())
-	if err != nil {
-		logger.Errorf("URL parse error: %s", err)
-		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.couchInstance.url())
-	}
-
-	//get the number of retries
-	maxRetries := dbclient.couchInstance.conf.MaxRetries
-
-	//process the URL with a PUT, creates the database
-	resp, _, err := dbclient.handleRequest(http.MethodPut, "CreateDatabaseIfNotExist", connectURL, nil, "", "", maxRetries, true, nil)
-
-	if err != nil {
-
-		// Check to see if the database exists
-		// Even though handleRequest() returned an error, the
-		// database may have been created and a false error
-		// returned due to a timeout or race condition.
-		// Do a final check to see if the database really got created.
-		dbInfo, couchDBReturn, errDbInfo := dbclient.getDatabaseInfo()
-		//If there is no error, then the database exists,  return without an error
-		if errDbInfo == nil && dbInfo != nil && couchDBReturn.StatusCode == 200 {
-
-			errSecurity := dbclient.applyDatabasePermissions()
-			if errSecurity != nil {
-				return errSecurity
-			}
-
-			logger.Infof("[%s] Created state database", dbclient.dbName)
-			logger.Debugf("[%s] Exiting CreateDatabaseIfNotExist()", dbclient.dbName)
-			return nil
-		}
-
-		return err
-
-	}
-	defer closeResponseBody(resp)
-
-	errSecurity := dbclient.applyDatabasePermissions()
-	if errSecurity != nil {
-		return errSecurity
-	}
-
-	logger.Infof("Created state database %s", dbclient.dbName)
 
 	logger.Debugf("[%s] Exiting CreateDatabaseIfNotExist()", dbclient.dbName)
-
 	return nil
-
 }
 
 func (dbclient *couchDatabase) applyDatabasePermissions() error {
@@ -536,54 +508,6 @@ func (dbclient *couchDatabase) dropDatabase() (*dbOperationResponse, error) {
 	}
 
 	return dbResponse, errors.New("error dropping database")
-}
-
-// ensureFullCommit calls _ensure_full_commit for explicit fsync
-func (dbclient *couchDatabase) ensureFullCommit() (*dbOperationResponse, error) {
-	dbName := dbclient.dbName
-
-	logger.Debugf("[%s] Entering EnsureFullCommit()", dbName)
-
-	connectURL, err := url.Parse(dbclient.couchInstance.url())
-	if err != nil {
-		logger.Errorf("URL parse error: %s", err)
-		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.couchInstance.url())
-	}
-
-	//get the number of retries
-	maxRetries := dbclient.couchInstance.conf.MaxRetries
-
-	resp, _, err := dbclient.handleRequest(http.MethodPost, "EnsureFullCommit", connectURL, nil, "", "", maxRetries, true, nil, "_ensure_full_commit")
-	if err != nil {
-		logger.Errorf("Failed to invoke couchdb _ensure_full_commit. Error: %+v", err)
-		return nil, err
-	}
-	defer closeResponseBody(resp)
-
-	dbResponse := &dbOperationResponse{}
-	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
-	if decodeErr != nil {
-		return nil, errors.Wrap(decodeErr, "error decoding response body")
-	}
-
-	// check if we should warm indexes
-	if dbclient.couchInstance.conf.WarmIndexesAfterNBlocks > 0 {
-		// check to see if the number of blocks committed exceeds the threshold for index warming
-		if dbclient.indexWarmCounter >= dbclient.couchInstance.conf.WarmIndexesAfterNBlocks {
-			// use a go routine to launch WarmIndexAllIndexes()
-			go dbclient.runWarmIndexAllIndexes()
-			dbclient.indexWarmCounter = 0
-		}
-		dbclient.indexWarmCounter++
-	}
-
-	logger.Debugf("[%s] Exiting EnsureFullCommit()", dbclient.dbName)
-
-	if dbResponse.Ok {
-		return dbResponse, nil
-	}
-
-	return dbResponse, errors.New("error syncing database")
 }
 
 //saveDoc method provides a function to save a document, id and byte array

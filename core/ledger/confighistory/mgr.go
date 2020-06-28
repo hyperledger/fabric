@@ -16,11 +16,15 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 )
 
-var logger = flogging.MustGetLogger("confighistory")
+var (
+	logger                 = flogging.MustGetLogger("confighistory")
+	importConfigsBatchSize = 1024 * 1024
+)
 
 const (
 	collectionConfigNamespace = "lscc" // lscc namespace was introduced in version 1.2 and we continue to use this in order to be compatible with existing data
@@ -29,44 +33,39 @@ const (
 	snapshotMetadataFileName  = "confighistory.metadata"
 )
 
-// Mgr should be registered as a state listener. The state listener builds the history and retriever helps in querying the history
-type Mgr interface {
-	ledger.StateListener
-	GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) *Retriever
-	Close()
-}
-
-type mgr struct {
+// Mgr manages the history of configurations such as chaincode's collection configurations.
+// It should be registered as a state listener. The state listener builds the history.
+type Mgr struct {
 	ccInfoProvider ledger.DeployedChaincodeInfoProvider
 	dbProvider     *dbProvider
 }
 
 // NewMgr constructs an instance that implements interface `Mgr`
-func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) (Mgr, error) {
+func NewMgr(dbPath string, ccInfoProvider ledger.DeployedChaincodeInfoProvider) (*Mgr, error) {
 	p, err := newDBProvider(dbPath)
 	if err != nil {
 		return nil, err
 	}
-	return &mgr{ccInfoProvider, p}, nil
+	return &Mgr{ccInfoProvider, p}, nil
 }
 
 // Name returns the name of the listener
-func (m *mgr) Name() string {
+func (m *Mgr) Name() string {
 	return "collection configuration history listener"
 }
 
-func (m *mgr) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
+func (m *Mgr) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
 	// Noop
 	return nil
 }
 
 // InterestedInNamespaces implements function from the interface ledger.StateListener
-func (m *mgr) InterestedInNamespaces() []string {
+func (m *Mgr) InterestedInNamespaces() []string {
 	return m.ccInfoProvider.Namespaces()
 }
 
 // StateCommitDone implements function from the interface ledger.StateListener
-func (m *mgr) StateCommitDone(ledgerID string) {
+func (m *Mgr) StateCommitDone(ledgerID string) {
 	// Noop
 }
 
@@ -74,7 +73,7 @@ func (m *mgr) StateCommitDone(ledgerID string) {
 // In this implementation, the latest collection config package is retrieved via
 // ledger.DeployedChaincodeInfoProvider and is persisted as a separate entry in a separate db.
 // The composite key for the entry is a tuple of <blockNum, namespace, key>
-func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
+func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	updatedCCs, err := m.ccInfoProvider.UpdatedChaincodes(extractPublicUpdates(trigger.StateUpdates))
 	if err != nil {
 		return err
@@ -109,8 +108,58 @@ func (m *mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	return dbHandle.writeBatch(batch, true)
 }
 
+func (m *Mgr) ImportConfigHistory(ledgerID string, dir string) error {
+	db := m.dbProvider.getDB(ledgerID)
+	empty, err := db.isEmpty()
+	if err != nil {
+		return err
+	}
+	if !empty {
+		return errors.New(fmt.Sprintf(
+			"config history for ledger [%s] exists. Incremental import is not supported. "+
+				"Remove the existing ledger data before retry",
+			ledgerID,
+		))
+	}
+
+	configMetadata, err := snapshot.OpenFile(filepath.Join(dir, snapshotMetadataFileName), snapshotFileFormat)
+	if err != nil {
+		return err
+	}
+	numCollectionConfigs, err := configMetadata.DecodeUVarInt()
+	if err != nil {
+		return err
+	}
+	collectionConfigData, err := snapshot.OpenFile(filepath.Join(dir, snapshotDataFileName), snapshotFileFormat)
+	if err != nil {
+		return err
+	}
+
+	batch := leveldbhelper.NewUpdateBatch()
+	currentBatchSize := 0
+	for i := uint64(0); i < numCollectionConfigs; i++ {
+		key, err := collectionConfigData.DecodeBytes()
+		if err != nil {
+			return err
+		}
+		val, err := collectionConfigData.DecodeBytes()
+		if err != nil {
+			return err
+		}
+		batch.Put(key, val)
+		currentBatchSize += len(key) + len(val)
+		if currentBatchSize >= importConfigsBatchSize {
+			if err := db.WriteBatch(batch, true); err != nil {
+				return err
+			}
+			batch = leveldbhelper.NewUpdateBatch()
+		}
+	}
+	return db.WriteBatch(batch, true)
+}
+
 // GetRetriever returns an implementation of `ledger.ConfigHistoryRetriever` for the given ledger id.
-func (m *mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) *Retriever {
+func (m *Mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) *Retriever {
 	return &Retriever{
 		ledgerInfoRetriever:    ledgerInfoRetriever,
 		ledgerID:               ledgerID,
@@ -120,7 +169,7 @@ func (m *mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetrie
 }
 
 // Close implements the function in the interface 'Mgr'
-func (m *mgr) Close() {
+func (m *Mgr) Close() {
 	m.dbProvider.Close()
 }
 
@@ -181,16 +230,14 @@ func (r *Retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*
 // extra bytes. Further, the collection config namespace is not expected to have
 // millions of entries.
 func (r *Retriever) ExportConfigHistory(dir string, newHashFunc snapshot.NewHashFunc) (map[string][]byte, error) {
-	nsItr := r.dbHandle.getNamespaceIterator(collectionConfigNamespace)
-	if err := nsItr.Error(); err != nil {
-		return nil, errors.Wrap(err, "internal leveldb error while obtaining db iterator")
-
+	nsItr, err := r.dbHandle.getNamespaceIterator(collectionConfigNamespace)
+	if err != nil {
+		return nil, err
 	}
 	defer nsItr.Release()
 
 	var numCollectionConfigs uint64 = 0
 	var dataFileWriter *snapshot.FileWriter
-	var err error
 	for nsItr.Next() {
 		if err := nsItr.Error(); err != nil {
 			return nil, errors.Wrap(err, "internal leveldb error while iterating for collection config history")

@@ -52,9 +52,6 @@ We welcome contributions to the Hyperledger Fabric project in many forms.
 There’s always plenty to do! Check [the documentation on how to contribute to this project](http://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html)
 for the full details.
 
-## Testing
-Check [the documentation](testingInfo.rst) for information on the testing structure that the project follows.
-
 ## Community
 
 [Hyperledger Community](https://www.hyperledger.org/community)

@@ -41,7 +41,7 @@ var _ = Describe("RequireCert", func() {
 
 	It("delegates to the next handler when the first verified chain is not empty", func() {
 		chain.ServeHTTP(resp, req)
-		Expect(resp.Code).To(Equal(http.StatusOK))
+		Expect(resp.Result().StatusCode).To(Equal(http.StatusOK))
 		Expect(handler.ServeHTTPCallCount()).To(Equal(1))
 	})
 
@@ -52,7 +52,7 @@ var _ = Describe("RequireCert", func() {
 
 		It("responds with http.StatusUnauthorized", func() {
 			chain.ServeHTTP(resp, req)
-			Expect(resp.Code).To(Equal(http.StatusUnauthorized))
+			Expect(resp.Result().StatusCode).To(Equal(http.StatusUnauthorized))
 		})
 
 		It("does not call the next handler", func() {
@@ -68,7 +68,7 @@ var _ = Describe("RequireCert", func() {
 
 		It("responds with http.StatusUnauthorized", func() {
 			chain.ServeHTTP(resp, req)
-			Expect(resp.Code).To(Equal(http.StatusUnauthorized))
+			Expect(resp.Result().StatusCode).To(Equal(http.StatusUnauthorized))
 		})
 
 		It("does not call the next handler", func() {
@@ -84,7 +84,7 @@ var _ = Describe("RequireCert", func() {
 
 		It("responds with http.StatusUnauthorized", func() {
 			chain.ServeHTTP(resp, req)
-			Expect(resp.Code).To(Equal(http.StatusUnauthorized))
+			Expect(resp.Result().StatusCode).To(Equal(http.StatusUnauthorized))
 		})
 
 		It("does not call the next handler", func() {
@@ -100,7 +100,7 @@ var _ = Describe("RequireCert", func() {
 
 		It("responds with http.StatusUnauthorized", func() {
 			chain.ServeHTTP(resp, req)
-			Expect(resp.Code).To(Equal(http.StatusUnauthorized))
+			Expect(resp.Result().StatusCode).To(Equal(http.StatusUnauthorized))
 		})
 
 		It("does not call the next handler", func() {

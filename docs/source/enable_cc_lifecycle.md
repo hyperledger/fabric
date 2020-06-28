@@ -240,9 +240,9 @@ For this channel update to be approved, the policy for modifying the `Channel/Ap
 
 ## Enable new lifecycle in `core.yaml`
 
-If you follow [the recommended process](./upgrading_your_components.html#overview) for using a tool like `diff` to compare the new version of `core.yaml` packaged with the binaries with your old one, you will not need to whitelist `_lifecycle: enable` because the new `core.yaml` has added it under `chaincode/system`.
+If you follow [the recommended process](./upgrading_your_components.html#overview) for using a tool like `diff` to compare the new version of `core.yaml` packaged with the binaries with your old one, you will not need to add `_lifecycle: enable` to the list of enabled system chaincodes because the new `core.yaml` has added it under `chaincode/system`.
 
-However, if you are updating your old node YAML file directly, you will have to add `_lifecycle: enable` to the system chaincodes whitelist.
+However, if you are updating your old node YAML file directly, you will have to add `_lifecycle: enable` to the list of enabled system chaincodes.
 
 For more information about upgrading nodes, check out [Upgrading your components](./upgrading_your_components.html).
 

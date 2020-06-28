@@ -161,7 +161,10 @@ func (s *Store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) 
 	startKey := createTxidRangeStartKey(txid)
 	endKey := createTxidRangeEndKey(txid)
 
-	iter := s.db.GetIterator(startKey, endKey)
+	iter, err := s.db.GetIterator(startKey, endKey)
+	if err != nil {
+		return nil, err
+	}
 	return &RwsetScanner{txid, iter, filter}, nil
 }
 
@@ -179,7 +182,10 @@ func (s *Store) PurgeByTxids(txids []string) error {
 		startKey := createPurgeIndexByTxidRangeStartKey(txid)
 		endKey := createPurgeIndexByTxidRangeEndKey(txid)
 
-		iter := s.db.GetIterator(startKey, endKey)
+		iter, err := s.db.GetIterator(startKey, endKey)
+		if err != nil {
+			return err
+		}
 
 		// Get all txid and uuid from above result and remove it from transient store (both
 		// write set and the corresponding indexes.
@@ -224,7 +230,10 @@ func (s *Store) PurgeBelowHeight(maxBlockNumToRetain uint64) error {
 	// Do a range query with 0 as startKey and maxBlockNumToRetain-1 as endKey
 	startKey := createPurgeIndexByHeightRangeStartKey(0)
 	endKey := createPurgeIndexByHeightRangeEndKey(maxBlockNumToRetain - 1)
-	iter := s.db.GetIterator(startKey, endKey)
+	iter, err := s.db.GetIterator(startKey, endKey)
+	if err != nil {
+		return err
+	}
 
 	dbBatch := leveldbhelper.NewUpdateBatch()
 
@@ -263,7 +272,10 @@ func (s *Store) GetMinTransientBlkHt() (uint64, error) {
 	// the lowest block height remaining in transient store. An alternative approach
 	// is to explicitly store the minBlockHeight in the transientStore.
 	startKey := createPurgeIndexByHeightRangeStartKey(0)
-	iter := s.db.GetIterator(startKey, nil)
+	iter, err := s.db.GetIterator(startKey, nil)
+	if err != nil {
+		return 0, err
+	}
 	defer iter.Release()
 	// Fetch the minimum transient block height
 	if iter.Next() {

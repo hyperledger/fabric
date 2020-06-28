@@ -84,4 +84,7 @@ const (
 	SignaturePolicyType = "Signature"
 
 	ordererAdminsPolicyName = "/Channel/Orderer/Admins"
+
+	// OrdererAddressesKey is the key for the ConfigValue of OrdererAddresses.
+	OrdererAddressesKey = "OrdererAddresses"
 )

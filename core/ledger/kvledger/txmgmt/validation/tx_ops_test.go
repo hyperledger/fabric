@@ -15,11 +15,11 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statemetadata"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTxOps(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 
 	txops := txOps{}
 	key1 := compositeKey{"ns1", "", "key1"}
@@ -28,22 +28,22 @@ func TestTxOps(t *testing.T) {
 	key4 := compositeKey{"ns1", "coll4", "key4"}
 
 	txops.upsert(key1, []byte("key1-value1"))
-	assert.True(txops[key1].isOnlyUpsert())
+	require.True(txops[key1].isOnlyUpsert())
 
 	txops.upsert(key2, []byte("key2-value2"))
-	assert.True(txops[key2].isOnlyUpsert())
+	require.True(txops[key2].isOnlyUpsert())
 	txops.metadataUpdate(key2, []byte("key2-metadata"))
-	assert.False(txops[key2].isOnlyUpsert())
-	assert.True(txops[key2].isUpsertAndMetadataUpdate())
+	require.False(txops[key2].isOnlyUpsert())
+	require.True(txops[key2].isUpsertAndMetadataUpdate())
 
 	txops.upsert(key3, []byte("key3-value"))
-	assert.True(txops[key3].isOnlyUpsert())
+	require.True(txops[key3].isOnlyUpsert())
 	txops.metadataDelete(key3)
-	assert.False(txops[key3].isOnlyUpsert())
-	assert.True(txops[key3].isUpsertAndMetadataUpdate())
+	require.False(txops[key3].isOnlyUpsert())
+	require.True(txops[key3].isUpsertAndMetadataUpdate())
 
 	txops.delete(key4)
-	assert.True(txops[key4].isDelete())
+	require.True(txops[key4].isDelete())
 }
 
 func TestTxOpsPreparationValueUpdate(t *testing.T) {
@@ -79,8 +79,8 @@ func TestTxOpsPreparationValueUpdate(t *testing.T) {
 	)
 
 	txOps, err := prepareTxOps(rwset, version.NewHeight(1, 2), precedingUpdates, db)
-	assert.NoError(t, err)
-	assert.Len(t, txOps, 3)
+	require.NoError(t, err)
+	require.Len(t, txOps, 3)
 
 	ck1ExpectedKeyOps := &keyOps{ // finally, key1 should have only new value
 		flag:  upsertVal,
@@ -98,9 +98,9 @@ func TestTxOpsPreparationValueUpdate(t *testing.T) {
 		value: []byte("value3_new"),
 	}
 
-	assert.Equal(t, ck1ExpectedKeyOps, txOps[ck1])
-	assert.Equal(t, ck2ExpectedKeyOps, txOps[ck2])
-	assert.Equal(t, ck3ExpectedKeyOps, txOps[ck3])
+	require.Equal(t, ck1ExpectedKeyOps, txOps[ck1])
+	require.Equal(t, ck2ExpectedKeyOps, txOps[ck2])
+	require.Equal(t, ck3ExpectedKeyOps, txOps[ck3])
 }
 
 func TestTxOpsPreparationMetadataUpdates(t *testing.T) {
@@ -136,8 +136,8 @@ func TestTxOpsPreparationMetadataUpdates(t *testing.T) {
 	)
 
 	txOps, err := prepareTxOps(rwset, version.NewHeight(1, 2), precedingUpdates, db)
-	assert.NoError(t, err)
-	assert.Len(t, txOps, 2) // key3 should have been removed from the txOps because, the key3 does not exist and only metadata is being updated
+	require.NoError(t, err)
+	require.Len(t, txOps, 2) // key3 should have been removed from the txOps because, the key3 does not exist and only metadata is being updated
 
 	ck1ExpectedKeyOps := &keyOps{ // finally, key1 should have only existing value and new metadata
 		flag:     metadataUpdate,
@@ -151,8 +151,8 @@ func TestTxOpsPreparationMetadataUpdates(t *testing.T) {
 		metadata: testutilSerializedMetadata(t, map[string][]byte{"metadata2": []byte("metadata2_new")}),
 	}
 
-	assert.Equal(t, ck1ExpectedKeyOps, txOps[ck1])
-	assert.Equal(t, ck2ExpectedKeyOps, txOps[ck2])
+	require.Equal(t, ck1ExpectedKeyOps, txOps[ck1])
+	require.Equal(t, ck2ExpectedKeyOps, txOps[ck2])
 }
 
 func TestTxOpsPreparationMetadataDelete(t *testing.T) {
@@ -188,8 +188,8 @@ func TestTxOpsPreparationMetadataDelete(t *testing.T) {
 	)
 
 	txOps, err := prepareTxOps(rwset, version.NewHeight(1, 2), precedingUpdates, db)
-	assert.NoError(t, err)
-	assert.Len(t, txOps, 2) // key3 should have been removed from the txOps because, the key3 does not exist and only metadata is being updated
+	require.NoError(t, err)
+	require.Len(t, txOps, 2) // key3 should have been removed from the txOps because, the key3 does not exist and only metadata is being updated
 
 	ck1ExpectedKeyOps := &keyOps{ // finally, key1 should have only existing value and no metadata
 		flag:  metadataDelete,
@@ -201,8 +201,8 @@ func TestTxOpsPreparationMetadataDelete(t *testing.T) {
 		value: []byte("value2"),
 	}
 
-	assert.Equal(t, ck1ExpectedKeyOps, txOps[ck1])
-	assert.Equal(t, ck2ExpectedKeyOps, txOps[ck2])
+	require.Equal(t, ck1ExpectedKeyOps, txOps[ck1])
+	require.Equal(t, ck2ExpectedKeyOps, txOps[ck2])
 }
 
 func TestTxOpsPreparationMixedUpdates(t *testing.T) {
@@ -249,8 +249,8 @@ func TestTxOpsPreparationMixedUpdates(t *testing.T) {
 	)
 
 	txOps, err := prepareTxOps(rwset, version.NewHeight(1, 2), precedingUpdates, db)
-	assert.NoError(t, err)
-	assert.Len(t, txOps, 4)
+	require.NoError(t, err)
+	require.Len(t, txOps, 4)
 
 	ck1ExpectedKeyOps := &keyOps{ // finally, key1 should have only new value
 		flag:  upsertVal,
@@ -275,10 +275,10 @@ func TestTxOpsPreparationMixedUpdates(t *testing.T) {
 		metadata: testutilSerializedMetadata(t, map[string][]byte{"metadata4": []byte("metadata4")}),
 	}
 
-	assert.Equal(t, ck1ExpectedKeyOps, txOps[ck1])
-	assert.Equal(t, ck2ExpectedKeyOps, txOps[ck2])
-	assert.Equal(t, ck3ExpectedKeyOps, txOps[ck3])
-	assert.Equal(t, ck4ExpectedKeyOps, txOps[ck4])
+	require.Equal(t, ck1ExpectedKeyOps, txOps[ck1])
+	require.Equal(t, ck2ExpectedKeyOps, txOps[ck2])
+	require.Equal(t, ck3ExpectedKeyOps, txOps[ck3])
+	require.Equal(t, ck4ExpectedKeyOps, txOps[ck4])
 }
 
 func TestTxOpsPreparationPvtdataHashes(t *testing.T) {
@@ -336,8 +336,8 @@ func TestTxOpsPreparationPvtdataHashes(t *testing.T) {
 	)
 
 	txOps, err := prepareTxOps(rwset, version.NewHeight(1, 2), precedingUpdates, db)
-	assert.NoError(t, err)
-	assert.Len(t, txOps, 4)
+	require.NoError(t, err)
+	require.Len(t, txOps, 4)
 
 	ck1ExpectedKeyOps := &keyOps{ // finally, key1 should have only new value
 		flag:  upsertVal,
@@ -362,10 +362,10 @@ func TestTxOpsPreparationPvtdataHashes(t *testing.T) {
 		metadata: testutilSerializedMetadata(t, map[string][]byte{"metadata4": []byte("metadata4")}),
 	}
 
-	assert.Equal(t, ck1ExpectedKeyOps, txOps[ck1Hash])
-	assert.Equal(t, ck2ExpectedKeyOps, txOps[ck2Hash])
-	assert.Equal(t, ck3ExpectedKeyOps, txOps[ck3Hash])
-	assert.Equal(t, ck4ExpectedKeyOps, txOps[ck4Hash])
+	require.Equal(t, ck1ExpectedKeyOps, txOps[ck1Hash])
+	require.Equal(t, ck2ExpectedKeyOps, txOps[ck2Hash])
+	require.Equal(t, ck3ExpectedKeyOps, txOps[ck3Hash])
+	require.Equal(t, ck4ExpectedKeyOps, txOps[ck4Hash])
 }
 
 func testutilBuildRwset(t *testing.T,
@@ -396,6 +396,6 @@ func testutilSerializedMetadata(t *testing.T, metadataMap map[string][]byte) []b
 		metadataEntries = append(metadataEntries, &kvrwset.KVMetadataEntry{Name: metadataK, Value: metadataV})
 	}
 	metadataBytes, err := statemetadata.Serialize(metadataEntries)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return metadataBytes
 }

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package service
 
 import (
+	"fmt"
 	"sync"
 
 	gproto "github.com/hyperledger/fabric-protos-go/gossip"
@@ -159,20 +160,22 @@ func (p privateHandler) close() {
 	p.reconciler.Stop()
 }
 
+// GossipService handles the interaction between gossip service and peer
 type GossipService struct {
 	gossipSvc
-	privateHandlers map[string]privateHandler
-	chains          map[string]state.GossipStateProvider
-	leaderElection  map[string]election.LeaderElectionService
-	deliveryService map[string]deliverservice.DeliverService
-	deliveryFactory DeliveryServiceFactory
-	lock            sync.RWMutex
-	mcs             api.MessageCryptoService
-	peerIdentity    []byte
-	secAdv          api.SecurityAdvisor
-	metrics         *gossipmetrics.GossipMetrics
-	serviceConfig   *ServiceConfig
-	privdataConfig  *gossipprivdata.PrivdataConfig
+	privateHandlers   map[string]privateHandler
+	chains            map[string]state.GossipStateProvider
+	leaderElection    map[string]election.LeaderElectionService
+	deliveryService   map[string]deliverservice.DeliverService
+	deliveryFactory   DeliveryServiceFactory
+	lock              sync.RWMutex
+	mcs               api.MessageCryptoService
+	peerIdentity      []byte
+	secAdv            api.SecurityAdvisor
+	metrics           *gossipmetrics.GossipMetrics
+	serviceConfig     *ServiceConfig
+	privdataConfig    *gossipprivdata.PrivdataConfig
+	anchorPeerTracker *anchorPeerTracker
 }
 
 // This is an implementation of api.JoinChannelMessage.
@@ -197,6 +200,33 @@ func (jcm *joinChannelMessage) Members() []api.OrgIdentityType {
 // AnchorPeersOf returns the anchor peers of the given organization
 func (jcm *joinChannelMessage) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer {
 	return jcm.members2AnchorPeers[string(org)]
+}
+
+// anchorPeerTracker maintains anchor peer endpoints for all the channels.
+type anchorPeerTracker struct {
+	// allEndpoints contains anchor peer endpoints for all the channels,
+	// its key is channel name, value is map of anchor peer endpoints
+	allEndpoints map[string]map[string]struct{}
+	mutex        sync.RWMutex
+}
+
+// update overwrites the anchor peer endpoints for the channel
+func (t *anchorPeerTracker) update(channelName string, endpoints map[string]struct{}) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	t.allEndpoints[channelName] = endpoints
+}
+
+// IsAnchorPeer checks if an endpoint is an anchor peer in any channel
+func (t *anchorPeerTracker) IsAnchorPeer(endpoint string) bool {
+	t.mutex.RLock()
+	defer t.mutex.RUnlock()
+	for _, endpointsForChannel := range t.allEndpoints {
+		if _, ok := endpointsForChannel[endpoint]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 var logger = util.GetLogger(util.ServiceLogger, "")
@@ -224,6 +254,7 @@ func New(
 
 	logger.Infof("Initialize gossip with endpoint %s", endpoint)
 
+	anchorPeerTracker := &anchorPeerTracker{allEndpoints: map[string]map[string]struct{}{}}
 	gossipComponent := gossip.New(
 		gossipConfig,
 		s,
@@ -232,6 +263,7 @@ func New(
 		serializedIdentity,
 		secureDialOpts,
 		gossipMetrics,
+		anchorPeerTracker,
 	)
 
 	return &GossipService{
@@ -247,11 +279,12 @@ func New(
 			deliverGRPCClient:    deliverGRPCClient,
 			deliverServiceConfig: deliverServiceConfig,
 		},
-		peerIdentity:   serializedIdentity,
-		secAdv:         secAdv,
-		metrics:        gossipMetrics,
-		serviceConfig:  serviceConfig,
-		privdataConfig: privdataConfig,
+		peerIdentity:      serializedIdentity,
+		secAdv:            secAdv,
+		metrics:           gossipMetrics,
+		serviceConfig:     serviceConfig,
+		privdataConfig:    privdataConfig,
+		anchorPeerTracker: anchorPeerTracker,
 	}, nil
 }
 
@@ -410,6 +443,7 @@ func (g *GossipService) updateAnchors(config Config) {
 		return
 	}
 	jcm := &joinChannelMessage{seqNum: config.Sequence(), members2AnchorPeers: map[string][]api.AnchorPeer{}}
+	anchorPeerEndpoints := map[string]struct{}{}
 	for _, appOrg := range config.Organizations() {
 		logger.Debug(appOrg.MSPID(), "anchor peers:", appOrg.AnchorPeers())
 		jcm.members2AnchorPeers[appOrg.MSPID()] = []api.AnchorPeer{}
@@ -419,8 +453,10 @@ func (g *GossipService) updateAnchors(config Config) {
 				Port: int(ap.Port),
 			}
 			jcm.members2AnchorPeers[appOrg.MSPID()] = append(jcm.members2AnchorPeers[appOrg.MSPID()], anchorPeer)
+			anchorPeerEndpoints[fmt.Sprintf("%s:%d", ap.Host, ap.Port)] = struct{}{}
 		}
 	}
+	g.anchorPeerTracker.update(config.ChannelID(), anchorPeerEndpoints)
 
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for channelID", config.ChannelID())
