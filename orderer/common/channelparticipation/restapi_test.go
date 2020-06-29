@@ -206,15 +206,12 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 	require.NotNilf(t, h, "cannot create handler")
 
 	t.Run("channel exists", func(t *testing.T) {
-		info := types.ChannelInfo{
+		fakeManager.ChannelInfoReturns(types.ChannelInfo{
 			Name:            "app-channel",
-			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
 			ClusterRelation: "member",
 			Status:          "active",
 			Height:          3,
-		}
-
-		fakeManager.ChannelInfoReturns(info, nil)
+		}, nil)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel", nil)
 		h.ServeHTTP(resp, req)
@@ -225,7 +222,14 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 		infoResp := types.ChannelInfo{}
 		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
 		require.NoError(t, err, "cannot be unmarshaled")
-		assert.Equal(t, info, infoResp)
+		assert.Equal(t, types.ChannelInfo{
+			Name:            "app-channel",
+			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
+			ClusterRelation: "member",
+			Status:          "active",
+			Height:          3,
+		}, infoResp)
+
 	})
 
 	t.Run("channel does not exists", func(t *testing.T) {
@@ -242,14 +246,12 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 
 	t.Run("created ok", func(t *testing.T) {
 		fakeManager, h := setup(config, t)
-		info := types.ChannelInfo{
+		fakeManager.JoinChannelReturns(types.ChannelInfo{
 			Name:            "app-channel",
-			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
 			ClusterRelation: "member",
 			Status:          "active",
 			Height:          1,
-		}
-		fakeManager.JoinChannelReturns(info, nil)
+		}, nil)
 
 		resp := httptest.NewRecorder()
 		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
@@ -260,7 +262,13 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		infoResp := types.ChannelInfo{}
 		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
 		require.NoError(t, err, "cannot be unmarshaled")
-		assert.Equal(t, info, infoResp)
+		assert.Equal(t, types.ChannelInfo{
+			Name:            "app-channel",
+			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
+			ClusterRelation: "member",
+			Status:          "active",
+			Height:          1,
+		}, infoResp)
 	})
 
 	t.Run("Error: System Channel Exists", func(t *testing.T) {

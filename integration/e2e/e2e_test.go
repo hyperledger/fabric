@@ -970,7 +970,7 @@ func channelParticipationList(n *nwo.Network, o *nwo.Orderer, expectedChannels [
 		By("listing the details for channel " + channel.Name)
 		expectedChannelInfo := &channelInfo{
 			Name:            channel.Name,
-			URL:             "", // list single channel always returns empty URL
+			URL:             fmt.Sprintf("/participation/v1/channels/%s", channel.Name),
 			Status:          "active",
 			ClusterRelation: clusterRelation(n.Consensus.Type),
 		}
