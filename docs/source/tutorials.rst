@@ -43,7 +43,6 @@ Finally, we provide an introduction to how to write a basic smart contract,
    channel_update_tutorial
    config_update.md
    chaincode4ade
-   build_network
    videos
 
 .. Licensed under Creative Commons Attribution 4.0 International License
