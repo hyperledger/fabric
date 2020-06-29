@@ -561,7 +561,7 @@ func (p *puller) getPurgedCollections(members []discovery.NetworkMember, dig2Fil
 	for dig := range dig2Filter {
 		purged, err := p.purgedFilter(dig)
 		if err != nil {
-			logger.Debug("Failed to obtain purged filter for digest %v", dig, "error", err)
+			logger.Debugf("Failed to obtain purged filter for digest %v error %v", dig, err)
 			continue
 		}
 

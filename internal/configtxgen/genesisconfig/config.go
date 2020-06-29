@@ -443,7 +443,7 @@ func (c *configCache) load(config *viper.Viper, configPath string) (*TopLevel, e
 
 	conf := &TopLevel{}
 	serializedConf, ok := c.cache[configPath]
-	logger.Debug("Loading configuration from cache :%v", ok)
+	logger.Debugf("Loading configuration from cache: %t", ok)
 	if !ok {
 		err := viperutil.EnhancedExactUnmarshal(config, conf)
 		if err != nil {
