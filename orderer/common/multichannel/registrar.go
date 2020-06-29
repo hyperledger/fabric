@@ -420,6 +420,8 @@ func (r *Registrar) ChannelList() types.ChannelList {
 	return list
 }
 
+// ChannelInfo provides extended status information about a channel.
+// The URL field is empty, and is to be completed by the caller.
 func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
@@ -437,6 +439,8 @@ func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 	return info, nil
 }
 
+// JoinChannel instructs the orderer to create a channel and join it with the provided config block.
+// The URL field is empty, and is to be completed by the caller.
 func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppChannel bool) (types.ChannelInfo, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
@@ -488,6 +492,8 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 	return info, nil
 }
 
+// RemoveChannel instructs the orderer to remove a channel.
+// Depending on the removeStorage parameter, the storage resources are either removed or archived.
 func (r *Registrar) RemoveChannel(channelID string, removeStorage bool) error {
 	//TODO
 	return errors.New("Not implemented yet")

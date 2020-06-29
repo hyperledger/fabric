@@ -49,6 +49,7 @@ type ChannelManagement interface {
 	ChannelInfo(channelID string) (types.ChannelInfo, error)
 
 	// JoinChannel instructs the orderer to create a channel and join it with the provided config block.
+	// The URL field is empty, and is to be completed by the caller.
 	JoinChannel(channelID string, configBlock *cb.Block, isAppChannel bool) (types.ChannelInfo, error)
 
 	// RemoveChannel instructs the orderer to remove a channel.
@@ -136,6 +137,8 @@ func (h *HTTPHandler) serveListOne(resp http.ResponseWriter, req *http.Request) 
 		h.sendResponseJsonError(resp, http.StatusNotFound, err)
 		return
 	}
+	infoFull.URL = path.Join(URLBaseV1Channels, infoFull.Name)
+
 	resp.Header().Set("Cache-Control", "no-store")
 	h.sendResponseOK(resp, infoFull)
 }
@@ -176,14 +179,14 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	info, err := h.registrar.JoinChannel(channelID, block, isAppChannel)
-	if err == nil {
-		info.URL = path.Join(URLBaseV1Channels, info.Name)
-		h.logger.Debugf("Successfully joined channel: %s", info.URL)
-		h.sendResponseCreated(resp, info.URL, info)
+	if err != nil {
+		h.sendJoinError(err, resp)
 		return
 	}
+	info.URL = path.Join(URLBaseV1Channels, info.Name)
 
-	h.sendJoinError(err, resp)
+	h.logger.Debugf("Successfully joined channel: %s", info.URL)
+	h.sendResponseCreated(resp, info.URL, info)
 }
 
 // Expect a multipart/form-data with a single part, of type file, with key FormDataConfigBlockKey.
