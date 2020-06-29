@@ -141,25 +141,36 @@ func TestNew(t *testing.T) {
 func TestFindPKCS11LibEnvVars(t *testing.T) {
 	const (
 		dummy_PKCS11_LIB   = "/usr/lib/pkcs11"
-		dummy_PKCS11_PIN   = "98765432"
+		dummy_PKCS11_PIN   = "23456789"
 		dummy_PKCS11_LABEL = "testing"
 	)
 
 	// Set environment variables used for test and preserve
 	// original values for restoration after test completion
 	orig_PKCS11_LIB := os.Getenv("PKCS11_LIB")
-	os.Setenv("PKCS11_LIB", dummy_PKCS11_LIB)
-
 	orig_PKCS11_PIN := os.Getenv("PKCS11_PIN")
-	os.Setenv("PKCS11_PIN", dummy_PKCS11_PIN)
-
 	orig_PKCS11_LABEL := os.Getenv("PKCS11_LABEL")
-	os.Setenv("PKCS11_LABEL", dummy_PKCS11_LABEL)
 
-	lib, pin, label := FindPKCS11Lib()
-	assert.EqualValues(t, dummy_PKCS11_LIB, lib, "FindPKCS11Lib did not return expected library")
-	assert.EqualValues(t, dummy_PKCS11_PIN, pin, "FindPKCS11Lib did not return expected pin")
-	assert.EqualValues(t, dummy_PKCS11_LABEL, label, "FindPKCS11Lib did not return expected label")
+	t.Run("ExplicitEnvironment", func(t *testing.T) {
+		os.Setenv("PKCS11_LIB", dummy_PKCS11_LIB)
+		os.Setenv("PKCS11_PIN", dummy_PKCS11_PIN)
+		os.Setenv("PKCS11_LABEL", dummy_PKCS11_LABEL)
+
+		lib, pin, label := FindPKCS11Lib()
+		assert.EqualValues(t, dummy_PKCS11_LIB, lib, "FindPKCS11Lib did not return expected library")
+		assert.EqualValues(t, dummy_PKCS11_PIN, pin, "FindPKCS11Lib did not return expected pin")
+		assert.EqualValues(t, dummy_PKCS11_LABEL, label, "FindPKCS11Lib did not return expected label")
+	})
+
+	t.Run("MissingEnvironment", func(t *testing.T) {
+		os.Unsetenv("PKCS11_LIB")
+		os.Unsetenv("PKCS11_PIN")
+		os.Unsetenv("PKCS11_LABEL")
+
+		_, pin, label := FindPKCS11Lib()
+		assert.EqualValues(t, "98765432", pin, "FindPKCS11Lib did not return expected pin")
+		assert.EqualValues(t, "ForFabric", label, "FindPKCS11Lib did not return expected label")
+	})
 
 	os.Setenv("PKCS11_LIB", orig_PKCS11_LIB)
 	os.Setenv("PKCS11_PIN", orig_PKCS11_PIN)
