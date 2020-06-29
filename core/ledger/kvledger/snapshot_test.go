@@ -268,21 +268,6 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 	})
 }
 
-func TestFileUtilFunctionsErrors(t *testing.T) {
-	t.Run("syncDir-openfile", func(t *testing.T) {
-		err := syncDir("non-existent-dir")
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "error while opening dir:non-existent-dir")
-	})
-
-	t.Run("createAndSyncFile-openfile", func(t *testing.T) {
-		path, err := ioutil.TempDir("", "kvledger")
-		err = createAndSyncFile(path, []byte("dummy content"))
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "error while creating file:"+path)
-	})
-}
-
 func verifySnapshotOutput(
 	t *testing.T,
 	snapshotRootDir string,

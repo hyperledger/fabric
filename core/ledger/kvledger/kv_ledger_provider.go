@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -263,7 +264,7 @@ func (p *Provider) initSnapshotDir() error {
 	if err := os.MkdirAll(completedSnapshotsPath, 0755); err != nil {
 		return errors.Wrapf(err, "error while creating the dir: %s", completedSnapshotsPath)
 	}
-	return syncDir(snapshotsRootDir)
+	return fileutil.SyncDir(snapshotsRootDir)
 }
 
 // Create implements the corresponding method from interface ledger.PeerLedgerProvider

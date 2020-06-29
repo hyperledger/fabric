@@ -13,7 +13,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +21,7 @@ func TestConstructBlockfilesInfo(t *testing.T) {
 	conf := NewConf(testPath(), 0)
 	blkStoreDir := conf.getLedgerBlockDir(ledgerid)
 	env := newTestEnv(t, conf)
-	util.CreateDirIfMissing(blkStoreDir)
+	require.NoError(t, os.MkdirAll(blkStoreDir, 0755))
 	defer env.Cleanup()
 
 	// constructBlockfilesInfo on an empty block folder should return blockfileInfo with noBlockFiles: true

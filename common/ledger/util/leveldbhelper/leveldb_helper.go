@@ -12,7 +12,7 @@ import (
 	"syscall"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger/util"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -67,7 +67,7 @@ func (dbInst *DB) Open() {
 	dbPath := dbInst.conf.DBPath
 	var err error
 	var dirEmpty bool
-	if dirEmpty, err = util.CreateDirIfMissing(dbPath); err != nil {
+	if dirEmpty, err = fileutil.CreateDirIfMissing(dbPath); err != nil {
 		panic(fmt.Sprintf("Error creating dir if missing: %s", err))
 	}
 	dbOpts.ErrorIfMissing = !dirEmpty
@@ -200,7 +200,7 @@ func (f *FileLock) Lock() error {
 	dbOpts := &opt.Options{}
 	var err error
 	var dirEmpty bool
-	if dirEmpty, err = util.CreateDirIfMissing(f.filePath); err != nil {
+	if dirEmpty, err = fileutil.CreateDirIfMissing(f.filePath); err != nil {
 		panic(fmt.Sprintf("Error creating dir if missing: %s", err))
 	}
 	dbOpts.ErrorIfMissing = !dirEmpty

@@ -9,6 +9,7 @@ package blkstorage
 import (
 	"os"
 
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 )
 
@@ -49,6 +50,9 @@ func (w *blockfileWriter) open() error {
 	file, err := os.OpenFile(w.filePath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
 		return errors.Wrapf(err, "error opening block file writer for file %s", w.filePath)
+	}
+	if err := fileutil.SyncParentDir(w.filePath); err != nil {
+		return err
 	}
 	w.file = file
 	return nil

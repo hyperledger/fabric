@@ -11,10 +11,10 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
-	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 )
 
@@ -121,7 +121,7 @@ func (p *BlockStoreProvider) BootstrapFromSnapshottedTxIDs(
 
 // Exists tells whether the BlockStore with given id exists
 func (p *BlockStoreProvider) Exists(ledgerid string) (bool, error) {
-	exists, _, err := util.FileExists(p.conf.getLedgerBlockDir(ledgerid))
+	exists, err := fileutil.DirExists(p.conf.getLedgerBlockDir(ledgerid))
 	return exists, err
 }
 
@@ -145,12 +145,12 @@ func (p *BlockStoreProvider) Remove(ledgerid string) error {
 	if err := os.RemoveAll(p.conf.getLedgerBlockDir(ledgerid)); err != nil {
 		return err
 	}
-	return syncDir(p.conf.getChainsDir())
+	return fileutil.SyncDir(p.conf.getChainsDir())
 }
 
 // List lists the ids of the existing ledgers
 func (p *BlockStoreProvider) List() ([]string, error) {
-	return util.ListSubdirs(p.conf.getChainsDir())
+	return fileutil.ListSubdirs(p.conf.getChainsDir())
 }
 
 // Close closes the BlockStoreProvider
