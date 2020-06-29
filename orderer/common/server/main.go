@@ -40,7 +40,6 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
-	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/metadata"
@@ -237,10 +236,6 @@ func Main() {
 		tlsCallback,
 	)
 
-	opsSystem.RegisterHandler(
-		channelparticipation.URLBaseV1,
-		channelparticipation.NewHTTPHandler(conf.ChannelParticipation, manager),
-	)
 	if err = opsSystem.Start(); err != nil {
 		logger.Panicf("failed to start operations subsystem: %s", err)
 	}
