@@ -178,7 +178,7 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 	info, err := h.registrar.JoinChannel(channelID, block, isAppChannel)
 	if err == nil {
 		info.URL = path.Join(URLBaseV1Channels, info.Name)
-		h.logger.Debugf("Successfully joined channel: %s", info)
+		h.logger.Debugf("Successfully joined channel: %s", info.URL)
 		h.sendResponseCreated(resp, info.URL, info)
 		return
 	}

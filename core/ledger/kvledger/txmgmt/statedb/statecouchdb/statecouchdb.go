@@ -106,7 +106,6 @@ func readDataformatVersion(couchInstance *couchInstance) (string, error) {
 		return "", err
 	}
 	doc, _, err := db.readDoc(dataformatVersionDocID)
-	logger.Debugf("dataformatVersionDoc = %s", doc)
 	if err != nil || doc == nil {
 		return "", err
 	}
@@ -336,7 +335,7 @@ func (vdb *VersionedDB) LoadCommittedVersions(keys []*statedb.CompositeKey) erro
 
 	nsMetadataMap, err := vdb.retrieveMetadata(missingKeys)
 	logger.Debugf("missingKeys=%s", missingKeys)
-	logger.Debugf("nsMetadataMap=%s", nsMetadataMap)
+	logger.Debugf("nsMetadataMap=%v", nsMetadataMap)
 	if err != nil {
 		return err
 	}

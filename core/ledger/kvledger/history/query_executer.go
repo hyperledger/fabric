@@ -94,7 +94,7 @@ func (scanner *historyScanner) Close() {
 
 // getTxIDandKeyWriteValueFromTran inspects a transaction for writes to a given key
 func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string, key string) (commonledger.QueryResult, error) {
-	logger.Debugf("Entering getKeyModificationFromTran()\n", namespace, key)
+	logger.Debugf("Entering getKeyModificationFromTran %s:%s", namespace, key)
 
 	// extract action from the envelope
 	payload, err := protoutil.UnmarshalPayload(tranEnvelope.Payload)
