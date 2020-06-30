@@ -30,11 +30,11 @@ The chaincode package should be used to provide two pieces of information to the
 * provide chaincode endpoint information in a `connection.json` file placed in the release directory. The `bin/run` section describes the `connection.json` file
 
 There is plenty of flexibility to gathering the above information. The sample scripts in the [External builder and launcher sample scripts](#external-builder-and-launcher-sample-scripts) illustrate a simple approach to providing the information.
-As an example of flexibility, consider packaging couchdb index files (see [Add the index to your chaincode folder](couchdb_tutorial.html#add-the-index-to-your-chaincode-folder)). Sample scripts below describe an approach to packaging the files into code.tar.gz.
+As an example of flexibility, consider packaging couchdb index files (see [Add the index to your chaincode folder](couchdb_tutorial.html#add-the-index-to-your-chaincode-folder)). Sample scripts below describe an approach to packaging the files into myccpackage.tar.gz.
 
 ```
 tar cfz code.tar.gz connection.json metadata
-tar cfz $1-pkg.tgz metadata.json code.tar.gz
+tar cfz myccpackage.tgz metadata.json code.tar.gz
 ```
 
 ## Configuring a peer to process external chaincode
@@ -199,7 +199,11 @@ exit 1
 
 ## Writing chaincode to run as an external service
 
-Currently, the chaincode as an external service model is only supported by GO chaincode shim. In Fabric v2.0, the GO shim API adds a `ChaincodeServer` type that developers should use to create a chaincode server.  The `Invoke` and `Query` APIs are unaffected. Developers should write to the `shim.ChaincodeServer` API, then build the chaincode and run it in the external environment of choice. Here is a simple sample chaincode program to illustrate the pattern:
+Currently, the chaincode as an external service model is supported by Go chaincode shim and Node.js chaincode shim.
+
+### Go
+
+In Fabric v2.0, the Go shim API provides a `ChaincodeServer` type that developers should use to create a chaincode server.  The `Invoke` and `Query` APIs are unaffected. Developers should write to the `shim.ChaincodeServer` API, then build the chaincode and run it in the external environment of choice. Here is a simple sample chaincode program to illustrate the pattern:
 
 ```go
 
@@ -251,11 +255,56 @@ The key to running the chaincode as an external service is the use of `shim.Chai
 * **TLSProps** (TLSProperties) - TLSProps is the TLS properties passed to chaincode server
 * **KaOpts** (keepalive.ServerParameters) -  KaOpts keepalive options, sensible defaults provided if nil
 
-Then build the chaincode as suitable to your GO environment.
+Then build the chaincode as suitable to your Go environment.
+
+### Node.js
+
+`fabric-shim` package for Node.js chaincode provides the `shim.server` API to run chaincode as an external service. If you are using contract APIs, you may want to use the `server` command provided by `fabric-chaincode-node` CLI to run a contract in the external service mode.
+
+The following is a sample chaincode using `fabric-shim`:
+```javascript
+const shim = require('fabric-shim');
+
+class SimpleChaincode extends shim.ChaincodeInterface {
+        async Init(stub) {
+                // ... Init code
+        }
+        async Invoke(stub) {
+                // ... Invoke code
+        }
+}
+
+const server = shim.server(new SimpleChaincode(), {
+        ccid: "mycc:fcbf8724572d42e859a7dd9a7cd8e2efb84058292017df6e3d89178b64e6c831",
+        address: "0.0.0.0:9999"
+});
+
+server.start();
+```
+
+To run a chaincode with the `fabric-contract` API as an external service, simply use `fabric-chaincode-node server` instead of `fabric-chaincode-node start`. Here is a sample for `package.json`:
+```javascript
+{
+        "scripts": {
+                "start": "fabric-chaincode-node server"
+        },
+        ...
+}
+```
+
+When `fabric-chaincode-node server` is used, the following options should be set as either arguments or environment variables:
+* **CORE_CHAINCODE_ID (--chaincode-id)**: See **CCID** in the Go chaincode above.
+* **CORE_CHAINCODE_ADDRESS (--chaincode-address)**: See **Address** in the Go chaincode above.
+
+If TLS is enabled, the following additional options are required:
+* **CORE_CHAINCODE_TLS_CERT_FILE (--chaincode-tls-cert-file)**: path to a certificate
+* **CORE_CHAINCODE_TLS_KEY_FILE (--chaincode-tls-key-file)**: path to a private key
+
+When mutual TLS is enabled, **CORE_CHAINCODE_TLS_CLIENT_CACERT_FILE (--chaincode-tls-client-cacert-file)** option should be set to specify the path to the CA certificate for acceptable client certificates.
 
 ## Deploying the chaincode
 
-When the GO chaincode is ready for deployment, you can package the chaincode as explained in the [Packaging chaincode](#packaging-chaincode) section and deploy the chaincode as explained in the [Fabric chaincode lifecycle](./chaincode_lifecycle.html) concept topic.
+When the chaincode is ready for deployment, you can package the chaincode as explained in the [Packaging chaincode](#packaging-chaincode) section and deploy the chaincode as explained in the [Fabric chaincode lifecycle](./chaincode_lifecycle.html) concept topic.
 
 ## Running the chaincode as an external service
 
