@@ -149,7 +149,9 @@ You can now create the chaincode package using the [peer lifecycle chaincode pac
 peer lifecycle chaincode package fabcar.tar.gz --path ../chaincode/fabcar/go/ --lang golang --label fabcar_1
 ```
 
-This command will create a package named ``fabcar.tar.gz`` in your current directory. The `--lang` flag is used to specify the chaincode language and the `--path` flag provides the location of your smart contract code. The `--label` flag is used to specify a chaincode label that will identity your chaincode after it is installed. It is recommended that your label include the chaincode name and version.
+This command will create a package named ``fabcar.tar.gz`` in your current directory.
+The `--lang` flag is used to specify the chaincode language and the `--path` flag provides the location of your smart contract code. The path must be a fully qualified path or a path relative to your present working directory.
+The `--label` flag is used to specify a chaincode label that will identity your chaincode after it is installed. It is recommended that your label include the chaincode name and version.
 
 Now that we created the chaincode package, we can [install the chaincode](#install-the-chaincode-package) on the peers of the test network.
 
