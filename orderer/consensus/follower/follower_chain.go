@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package follower
 
 import (
+	"bytes"
+	"math"
 	"sync"
 	"time"
 
@@ -16,30 +18,52 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
 //TODO skeleton
 
-//go:generate mockery -dir . -name Support -case underscore -output mocks
+//go:generate counterfeiter -o mocks/support.go -fake-name Support . Support
 
 // Support defines the interfaces needed by the follower.Chain, out of the much wider consensus.ConsenterSupport.
 type Support interface {
 	consensus.ConsenterSupport // TODO prune what we don't need, keep only what we do need.
 }
 
+const (
+	defaultPullRetryMinInterval time.Duration = 10 * time.Millisecond
+	defaultPullRetryMaxInterval time.Duration = 30 * time.Second
+)
+
+// TimeAfter has the signature of time.After and allows tests to provide an alternative implementation to it.
+type TimeAfter func(d time.Duration) <-chan time.Time
+
 // Options contains all the configurations relevant to the chain.
 type Options struct {
-	Logger *flogging.FabricLogger
-	Cert   []byte
+	Logger               *flogging.FabricLogger
+	PullRetryMinInterval time.Duration
+	PullRetryMaxInterval time.Duration
+	Cert                 []byte
+	TimeAfter            TimeAfter // If nil, time.After is selected
 }
 
 // CreateBlockPuller is a function to create BlockPuller on demand.
 // It is passed into chain initializer so that tests could mock this.
 type CreateBlockPuller func() (ChannelPuller, error)
 
+//go:generate counterfeiter -o mocks/puller_creator.go -fake-name BlockPullerCreator . BlockPullerCreator
+type BlockPullerCreator interface {
+	CreateBlockPuller() (ChannelPuller, error)
+}
+
 // CreateChain is a function that creates a new consensus.Chain for this channel, to replace the current follower.Chain
 type CreateChain func()
+
+//go:generate counterfeiter -o mocks/chain_creator.go -fake-name ChainCreator . ChainCreator
+type ChainCreator interface {
+	CreateChain()
+}
 
 // Chain implements a component that allows the orderer to follow a specific channel when is not a cluster member,
 // that is, be a "follower" of the cluster. It also allows the orderer to perform "on-boarding" for channels for
@@ -71,9 +95,10 @@ type Chain struct {
 	stopChan chan struct{} // A 'closer' signals the go-routine to stop by closing this channel.
 	doneChan chan struct{} // The go-routine signals the 'closer' that it is done by closing this channel.
 
-	support Support
-	options Options
-	logger  *flogging.FabricLogger
+	support   Support
+	options   Options
+	logger    *flogging.FabricLogger
+	timeAfter TimeAfter // time.After by default, or an alternative form Options.
 
 	joinBlock  *common.Block // The join-block the follower was started with.
 	lastConfig *common.Block // The last config block from the ledger. Accessed only by the go-routine.
@@ -83,6 +108,8 @@ type Chain struct {
 
 	cryptoProvider bccsp.BCCSP
 	amIInChannel   cluster.SelfMembershipPredicate
+
+	retryInterval time.Duration // Accessed only by the go-routine.
 }
 
 // NewChain constructs a follower.Chain object.
@@ -102,10 +129,29 @@ func NewChain(
 		joinBlock:             joinBlock,
 		options:               options,
 		logger:                options.Logger.With("channel", support.ChannelID()),
+		timeAfter:             time.After,
 		createBlockPullerFunc: createBlockPullerFunc,
 		chainCreationCallback: chainCreationCallback,
 		cryptoProvider:        cryptoProvider,
 		amIInChannel:          amIInChannel,
+	}
+
+	if chain.options.PullRetryMinInterval <= 0 {
+		chain.options.PullRetryMinInterval = defaultPullRetryMinInterval
+	}
+	if chain.options.PullRetryMaxInterval <= 0 {
+		chain.options.PullRetryMaxInterval = defaultPullRetryMaxInterval
+	}
+	if chain.options.PullRetryMaxInterval > math.MaxInt64/2 {
+		chain.options.PullRetryMaxInterval = math.MaxInt64 / 2
+	}
+	if chain.options.PullRetryMinInterval > chain.options.PullRetryMaxInterval {
+		chain.options.PullRetryMaxInterval = chain.options.PullRetryMinInterval
+	}
+	chain.retryInterval = chain.options.PullRetryMinInterval
+
+	if chain.options.TimeAfter != nil {
+		chain.timeAfter = chain.options.TimeAfter
 	}
 
 	if joinBlock == nil {
@@ -199,12 +245,26 @@ func (c *Chain) StatusReport() (types.ClusterRelation, types.Status) {
 	return clusterRelation, status
 }
 
+func (c *Chain) IsRunning() bool {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	if c.started {
+		select {
+		case <-c.doneChan:
+			return false
+		default:
+			return true
+		}
+	}
+
+	return false
+}
+
 func (c *Chain) run() {
 	c.logger.Debug("The follower.Chain puller goroutine is starting")
-	pullRetryTicker := time.NewTicker(500 * time.Millisecond) // TODO move constant to options
 
 	defer func() {
-		pullRetryTicker.Stop()
 		close(c.doneChan)
 		c.logger.Debug("The follower.Chain puller goroutine is exiting")
 	}()
@@ -212,17 +272,41 @@ func (c *Chain) run() {
 	err := c.pull()
 
 	for err != nil {
-		c.logger.Debugf("Pull failed, going to try again in %v; error: %s", pullRetryTicker, err)
+		c.logger.Debugf("Pull failed, going to try again in %v; error: %s", c.retryInterval, err)
 
 		select {
 		case <-c.stopChan:
 			c.logger.Debug("Received a stop signal")
 			return
 
-		case <-pullRetryTicker.C:
+		case <-c.timeAfter(c.retryInterval):
 			err = c.pull()
 		}
+
+		if err != nil {
+			c.increaseRetryInterval()
+		}
 	}
+}
+
+func (c *Chain) increaseRetryInterval() {
+	if c.retryInterval == c.options.PullRetryMaxInterval {
+		return
+	}
+	//assuming this will never overflow int64, as PullRetryMaxInterval cannot be over MaxInt64/2
+	c.retryInterval = time.Duration(1.2 * float64(c.retryInterval))
+	if c.retryInterval > c.options.PullRetryMaxInterval {
+		c.retryInterval = c.options.PullRetryMaxInterval
+	}
+	c.logger.Debugf("retry interval increased to: %v", c.retryInterval)
+}
+
+func (c *Chain) resetRetryInterval() {
+	if c.retryInterval == c.options.PullRetryMinInterval {
+		return
+	}
+	c.retryInterval = c.options.PullRetryMinInterval
+	c.logger.Debugf("retry interval reset to: %v", c.retryInterval)
 }
 
 // pull blocks from other orderers, until the join block, or until a config block the indicates the orderer has become
@@ -258,8 +342,58 @@ func (c *Chain) pull() error {
 // pullUpToJoin pulls blocks up to the join-block height without inspecting membership on fetched config blocks.
 // It checks whether the chain was stopped between blocks.
 func (c *Chain) pullUpToJoin() error {
-	//TODO
-	return errors.New("not implemented yet: pull up to join block")
+	targetHeight := c.joinBlock.Header.Number + 1
+	firstBlockToPull := c.support.Height()
+	c.logger.Debugf("first block to pull: %d, target height: %d", firstBlockToPull, targetHeight)
+	if firstBlockToPull >= targetHeight {
+		c.logger.Infof("Target height (%d) is <= to our ledger height (%d), skipping pulling", targetHeight, firstBlockToPull)
+		return nil
+	}
+
+	puller, err := c.createBlockPullerFunc()
+	if err != nil {
+		c.logger.Errorf("Error creating block puller: %s", err)
+		return errors.Wrap(err, "error creating block puller")
+	}
+	defer puller.Close()
+
+	var actualPrevHash []byte
+	// Initialize the actual previous hash
+	if firstBlockToPull > 0 {
+		prevBlock := c.support.Block(firstBlockToPull - 1)
+		if prevBlock == nil {
+			return errors.Errorf("cannot retrieve previous block %d", firstBlockToPull-1)
+		}
+		actualPrevHash = protoutil.BlockHeaderHash(prevBlock.Header)
+	}
+
+	// Pull the rest of the blocks
+	for seq := firstBlockToPull; seq < targetHeight; seq++ {
+		select {
+		case <-c.stopChan:
+			c.logger.Warnf("Stopped before pulling all the blocks: pulled %d blocks from the range %d until %d",
+				seq-firstBlockToPull, firstBlockToPull, targetHeight-1)
+			return errors.New("stopped before pulling all the blocks")
+		default:
+			nextBlock := puller.PullBlock(seq)
+			if nextBlock == nil {
+				return errors.Wrapf(cluster.ErrRetryCountExhausted, "failed to pull block %d", seq)
+			}
+			reportedPrevHash := nextBlock.Header.PreviousHash
+			if (nextBlock.Header.Number > 0) && !bytes.Equal(reportedPrevHash, actualPrevHash) {
+				return errors.Errorf("block header mismatch on sequence %d, expected %x, got %x",
+					nextBlock.Header.Number, actualPrevHash, reportedPrevHash)
+			}
+			actualPrevHash = protoutil.BlockHeaderHash(nextBlock.Header)
+			if err = c.support.Append(nextBlock); err != nil {
+				return errors.Wrapf(err, "failed to append block %d to the ledger", nextBlock.Header.Number)
+			}
+			c.resetRetryInterval()
+		}
+	}
+
+	c.logger.Infof("Pulled blocks from %d until %d", firstBlockToPull, targetHeight-1)
+	return nil
 }
 
 // pullAfterJoin pulls blocks continuously, inspecting the fetched config blocks for membership.
@@ -267,5 +401,5 @@ func (c *Chain) pullUpToJoin() error {
 // It checks whether the chain was stopped between blocks.
 func (c *Chain) pullAfterJoin() error {
 	//TODO
-	return errors.New("not implemented yet: pull after join block")
+	return errors.New("not implemented yet: pull after join")
 }

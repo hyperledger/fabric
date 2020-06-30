@@ -298,6 +298,7 @@ func (c *Consenter) JoinChain(support consensus.ConsenterSupport, joinBlock *com
 
 	// A function that creates a block puller from the join block
 	createBlockPullerFunc := func() (follower.ChannelPuller, error) {
+		// A block puller with a custom block verifier that skips verifying the genesis block
 		return follower.BlockPullerFromJoinBlock(joinBlock, support, c.Dialer, c.OrdererConfig.General.Cluster, c.BCCSP)
 	}
 	// Check it once
@@ -321,7 +322,7 @@ func (c *Consenter) JoinChain(support consensus.ConsenterSupport, joinBlock *com
 			Cert:   c.Cert,
 		},
 		createBlockPullerFunc,
-		nil, // TODO plug in a method that creates an etcdraft.Chain
+		func() { c.CreateChain(support.ChannelID()) }, // A method that creates an etcdraft.Chain or a follower.Chain
 		c.BCCSP,
 		consenterCertificate.IsConsenterOfChannel,
 	)
