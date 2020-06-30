@@ -69,7 +69,7 @@ Using the new chaincode lifecycle
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For existing Fabric deployments, you can continue to use the prior chaincode
-lifecycle with Fabric v2.0. The new chaincode lifecycle will become effective
+lifecycle with Fabric v2.x. The new chaincode lifecycle will become effective
 only when the channel application capability is updated to v2.0.
 See the :doc:`chaincode_lifecycle` concept topic for an overview of the new
 chaincode lifecycle.
@@ -106,7 +106,7 @@ you may want to share private data across collections, where each collection
 may include a single organization, or perhaps a single organization along
 with a regulator or auditor.
 
-Several enhancements in Fabric v2.0 make these new private data patterns possible:
+Several enhancements in Fabric v2.x make these new private data patterns possible:
 
 * **Sharing and verifying private data** When private data is shared with a
   channel member who is not a member of a collection, or shared with another
@@ -127,7 +127,7 @@ Several enhancements in Fabric v2.0 make these new private data patterns possibl
 
 * **Implicit per-organization collections** If you’d like to utilize
   per-organization private data patterns, you don’t even need to define the
-  collections when deploying chaincode in Fabric v2.0.  Implicit
+  collections when deploying chaincode in Fabric v2.x.  Implicit
   organization-specific collections can be used without any upfront definition.
 
 To learn more about the new private data patterns, see the :doc:`private-data/private-data` (conceptual
@@ -203,7 +203,7 @@ components can be upgraded one at a time with no downtime.
 The upgrade docs have been significantly expanded and reworked, and now have a
 standalone home in the documentation: :doc:`upgrade`. Here you'll find documentation on
 :doc:`upgrading_your_components` and :doc:`updating_capabilities`, as well as a
-specific look  at the considerations for upgrading to v2.0, :doc:`upgrade_to_newest_version`.
+specific look  at the considerations for upgrading to v2.x, :doc:`upgrade_to_newest_version`.
 
 Release notes
 =============

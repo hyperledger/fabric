@@ -1,6 +1,6 @@
 # Enabling the new chaincode lifecycle
 
-Users upgrading from v1.4.x to v2.0 will have to edit their channel configurations to enable the new lifecycle features. This process involves a series of [channel configuration updates](./config_update.html) the relevant users will have to perform.
+Users upgrading from v1.4.x to v2.x will have to edit their channel configurations to enable the new lifecycle features. This process involves a series of [channel configuration updates](./config_update.html) the relevant users will have to perform.
 
 Note that the `Channel` and `Application` [capabilities](./capabilities_concept.html) of your application channels will have to be updated to `V2_0` for the new chaincode lifecycle to work. Check out [Considerations for getting to 2.0](./upgrade_to_newest_version.html#chaincode-lifecycle) for more information.
 
@@ -147,7 +147,7 @@ You will need to export the following variables:
 
 Once you have set the environment variables, navigate to [Step 1: Pull and translate the config](./config_update.html#step-1-pull-and-translate-the-config).
 
-Once you have a `modified_config.json`, add the lifecycle organization policy (as listed in `enable_lifecycle.json`) using this command:
+Then, add the lifecycle organization policy (as listed in `enable_lifecycle.json`) to a file called `modified_config.json` using this command:
 
 ```
 jq -s ".[0] * {\"channel_group\":{\"groups\":{\"Consortiums\":{\"groups\": {\"$CONSORTIUM_NAME\": {\"groups\": {\"$ORGNAME\": {\"policies\": .[1].${ORGNAME}Policies}}}}}}}}" config.json ./enable_lifecycle.json > modified_config.json
@@ -177,7 +177,7 @@ You will need to export the following variables:
 
 Once you have set the environment variables, navigate to [Step 1: Pull and translate the config](./config_update.html#step-1-pull-and-translate-the-config).
 
-Once you have a `modified_config.json`, add the lifecycle organization policy (as listed in `enable_lifecycle.json`) using this command:
+Then, add the lifecycle organization policy (as listed in `enable_lifecycle.json`) to a file called `modified_config.json` using this command:
 
 ```
 jq -s ".[0] * {\"channel_group\":{\"groups\":{\"Application\": {\"groups\": {\"$ORGNAME\": {\"policies\": .[1].${ORGNAME}Policies}}}}}}" config.json ./enable_lifecycle.json > modified_config.json
@@ -195,7 +195,7 @@ You can set the same environment you set when updating the peer organizations. N
 
 Once you have set the environment variables, navigate to [Step 1: Pull and translate the config](./config_update.html#step-1-pull-and-translate-the-config).
 
-Once you have a `modified_config.json`, add the channel endorsement policy (as listed in `enable_lifecycle.json`) using this command:
+Then, add the lifecycle organization policy (as listed in `enable_lifecycle.json`) to a file called `modified_config.json` using this command:
 
 ```
 jq -s '.[0] * {"channel_group":{"groups":{"Application": {"policies": .[1].appPolicies}}}}' config.json ./enable_lifecycle.json > modified_config.json
@@ -228,7 +228,7 @@ You can leave the same environment in place as when you previously edited applic
 
 Once you have the environment variables set, navigate to [Step 1: Pull and translate the config](./config_update.html#step-1-pull-and-translate-the-config).
 
-Once you have a `modified_config.json`, add the ACLs (as listed in `enable_lifecycle.json`) using this command:
+Then, add the ACLs (as listed in `enable_lifecycle.json`) and create a file called `modified_config.json` using this command:
 
 ```
 jq -s '.[0] * {"channel_group":{"groups":{"Application": {"values": {"ACLs": {"value": {"acls": .[1].acls}}}}}}}' config.json ./enable_lifecycle.json > modified_config.json
