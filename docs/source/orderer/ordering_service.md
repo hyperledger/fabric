@@ -213,7 +213,7 @@ implementation the node will be used in), check out [our documentation on standi
   up and manage than Kafka-based ordering services, and their design allows
   different organizations to contribute nodes to a distributed ordering service.
 
-* **Kafka** (deprecated in v2.0)
+* **Kafka** (deprecated in v2.x)
 
   Similar to Raft-based ordering, Apache Kafka is a CFT implementation that uses
   a "leader and follower" node configuration. Kafka utilizes a ZooKeeper
@@ -221,7 +221,7 @@ implementation the node will be used in), check out [our documentation on standi
   available since Fabric v1.0, but many users may find the additional
   administrative overhead of managing a Kafka cluster intimidating or undesirable.
 
-* **Solo** (deprecated in v2.0)
+* **Solo** (deprecated in v2.x)
 
   The Solo implementation of the ordering service is intended for test only and
   consists only of a single ordering node.  It has been deprecated and may be
@@ -292,7 +292,7 @@ Raft were driven by this. If you are interested in BFT, learning how to use
 Raft should ease the transition.
 
 For all of these reasons, support for Kafka-based ordering service is being
-deprecated in Fabric v2.0.
+deprecated in Fabric v2.x.
 
 Note: Similar to Solo and Kafka, a Raft ordering service can lose transactions
 after acknowledgement of receipt has been sent to a client. For example, if the
@@ -411,7 +411,7 @@ therefore receive block `180` from `L` and then make a `Deliver` request for
 blocks `101` to `180`. Blocks `180` to `196` would then be replicated to `R1`
 through the normal Raft protocol.
 
-### Kafka (deprecated in v2.0)
+### Kafka (deprecated in v2.x)
 
 The other crash fault tolerant ordering service supported by Fabric is an
 adaptation of a Kafka distributed streaming platform for use as a cluster of
