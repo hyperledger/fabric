@@ -120,6 +120,7 @@ var _ = Describe("EndToEnd", func() {
 				core.VM = nil
 				network.WritePeerConfig(peer, core)
 			}
+
 			network.Bootstrap()
 
 			networkRunner := network.NetworkGroupRunner()
