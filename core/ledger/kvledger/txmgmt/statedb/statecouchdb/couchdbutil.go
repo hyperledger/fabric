@@ -98,18 +98,16 @@ func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.P
 	return couchInstance, nil
 }
 
-//checkCouchDBVersion verifies CouchDB is at least 2.0.0
 func checkCouchDBVersion(version string) error {
-
-	//split the version into parts
-	majorVersion := strings.Split(version, ".")
-
-	//check to see that the major version number is at least 2
-	majorVersionInt, _ := strconv.Atoi(majorVersion[0])
-	if majorVersionInt < 2 {
-		return errors.Errorf("CouchDB must be at least version 2.0.0. Detected version %s", version)
+	couchVersion := strings.Split(version, ".")
+	majorVersion, _ := strconv.Atoi(couchVersion[0])
+	minorVersion, _ := strconv.Atoi(couchVersion[1])
+	if majorVersion < 2 {
+		return errors.Errorf("CouchDB v%s detected. CouchDB must be at least version 2.0.0", version)
 	}
-
+	if majorVersion != 3 || minorVersion < 1 {
+		logger.Warnf("CouchDB v%s detected. CouchDB versions before 3.1.0 are unsupported.", version)
+	}
 	return nil
 }
 
