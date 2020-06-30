@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package stateleveldb
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -134,16 +135,15 @@ func TestApplyUpdatesWithNilHeight(t *testing.T) {
 	commontests.TestApplyUpdatesWithNilHeight(t, env.DBProvider)
 }
 
-func TestFullScanIterator(t *testing.T) {
+func TestDataExportImport(t *testing.T) {
+	// smaller batch size for testing to cover the boundary case of writing the final batch
+	maxDataImportBatchSize = 10
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
-	commontests.TestFullScanIterator(
+	commontests.TestDataExportImport(
 		t,
 		env.DBProvider,
 		byte(1),
-		func(dbVal []byte) (*statedb.VersionedValue, error) {
-			return decodeValue(dbVal)
-		},
 	)
 }
 
@@ -192,4 +192,74 @@ func TestFullScanIteratorErrorPropagation(t *testing.T) {
 	itr.Close()
 	_, _, err = itr.Next()
 	require.Contains(t, err.Error(), "internal leveldb error while retrieving data from db iterator:")
+}
+
+func TestImportStateErrorPropagation(t *testing.T) {
+	var env *TestVDBEnv
+	var cleanup func()
+	var vdbProvider *VersionedDBProvider
+	var vdb *versionedDB
+
+	initEnv := func() {
+		env = NewTestVDBEnv(t)
+		vdbProvider = env.DBProvider
+		db, err := vdbProvider.GetDBHandle("TestImportStateErrorPropagation", nil)
+		require.NoError(t, err)
+		vdb = db.(*versionedDB)
+		cleanup = func() {
+			env.Cleanup()
+		}
+	}
+
+	t.Run("wrong-value-format", func(t *testing.T) {
+		initEnv()
+		defer cleanup()
+		err := vdb.ImportState(nil, fullScanIteratorValueFormat+byte(1))
+		require.EqualError(t, err, "value format [2] not supported. Expected value format [1]")
+	})
+
+	t.Run("error-reading-from-source", func(t *testing.T) {
+		initEnv()
+		defer cleanup()
+
+		err := vdb.ImportState(
+			&dummyFullScanIter{
+				err: errors.New("error while reading from source"),
+			},
+			fullScanIteratorValueFormat,
+		)
+
+		require.EqualError(t, err, "error while reading from source")
+	})
+
+	t.Run("error-writing-to-db", func(t *testing.T) {
+		initEnv()
+		defer cleanup()
+
+		vdbProvider.Close()
+		err := vdb.ImportState(
+			&dummyFullScanIter{
+				key: &statedb.CompositeKey{
+					Namespace: "ns",
+					Key:       "key",
+				},
+				value: []byte("value"),
+			},
+			fullScanIteratorValueFormat,
+		)
+		require.Contains(t, err.Error(), "error writing batch to leveldb")
+	})
+}
+
+type dummyFullScanIter struct {
+	err   error
+	key   *statedb.CompositeKey
+	value []byte
+}
+
+func (d *dummyFullScanIter) Next() (*statedb.CompositeKey, []byte, error) {
+	return d.key, d.value, d.err
+}
+
+func (d *dummyFullScanIter) Close() {
 }

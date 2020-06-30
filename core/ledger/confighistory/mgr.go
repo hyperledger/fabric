@@ -53,6 +53,7 @@ func (m *Mgr) Name() string {
 	return "collection configuration history listener"
 }
 
+// Initialize implements function from the interface ledger.StateListener
 func (m *Mgr) Initialize(ledgerID string, qe ledger.SimpleQueryExecutor) error {
 	// Noop
 	return nil
@@ -112,7 +113,7 @@ func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 // ledgerID from the snapshot files present in the dir
 func (m *Mgr) ImportConfigHistory(ledgerID string, dir string) error {
 	db := m.dbProvider.getDB(ledgerID)
-	empty, err := db.isEmpty()
+	empty, err := db.IsEmpty()
 	if err != nil {
 		return err
 	}
@@ -175,6 +176,7 @@ func (m *Mgr) Close() {
 	m.dbProvider.Close()
 }
 
+// Retriever helps consumer retrieve collection config history
 type Retriever struct {
 	ledgerInfoRetriever    LedgerInfoRetriever
 	ledgerID               string

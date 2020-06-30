@@ -72,6 +72,11 @@ type VersionedDB interface {
 	// about the value bytes returned by the Next function in the returned FullScanIterator.
 	// The intended use of this iterator is to generate the snapshot files for the statedb.
 	GetFullScanIterator(skipNamespace func(string) bool) (FullScanIterator, byte, error)
+	// ImportState is expected to be used for importing the state from a previously snapshotted state.
+	// The parameter itr provides access to the snapshotted state.
+	ImportState(itr FullScanIterator, dbValueFormat byte) error
+	// IsEmpty return true if the statedb does not have any content
+	IsEmpty() (bool, error)
 	// Open opens the db
 	Open() error
 	// Close closes the db

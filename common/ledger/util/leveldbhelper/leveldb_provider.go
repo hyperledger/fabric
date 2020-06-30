@@ -204,6 +204,21 @@ func (h *DBHandle) DeleteAll() error {
 	return nil
 }
 
+// IsEmpty returns true if no data exists for the DBHandle
+func (h *DBHandle) IsEmpty() (bool, error) {
+	itr, err := h.GetIterator(nil, nil)
+	if err != nil {
+		return false, err
+	}
+	defer itr.Release()
+
+	if err := itr.Error(); err != nil {
+		return false, errors.WithMessagef(itr.Error(), "internal leveldb error while obtaining next entry from iterator")
+	}
+
+	return !itr.Next(), nil
+}
+
 // NewUpdateBatch returns a new UpdateBatch that can be used to update the db
 func (h *DBHandle) NewUpdateBatch() *UpdateBatch {
 	return &UpdateBatch{

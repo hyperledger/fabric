@@ -1694,15 +1694,15 @@ func testRangeQueryWithPageSize(
 	require.Equal(t, expectedResults, results)
 }
 
-func TestFullScanIterator(t *testing.T) {
+func TestDataExportImport(t *testing.T) {
+	t.Skip("Skip this test until the import state function is implemented in statecouchdb")
 	vdbEnv.init(t, nil)
 	defer vdbEnv.cleanup()
 
-	commontests.TestFullScanIterator(
+	commontests.TestDataExportImport(
 		t,
 		vdbEnv.DBProvider,
 		byte(1),
-		constructVersionedValueForTest,
 	)
 }
 

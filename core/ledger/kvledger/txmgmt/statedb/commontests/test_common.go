@@ -983,13 +983,12 @@ func TestApplyUpdatesWithNilHeight(t *testing.T, dbProvider statedb.VersionedDBP
 	// (because batch2 calls ApplyUpdates with savepoint as nil)
 }
 
-func TestFullScanIterator(
+func TestDataExportImport(
 	t *testing.T,
 	dbProvider statedb.VersionedDBProvider,
-	valueFormat byte,
-	dbValueDeserializer func(b []byte) (*statedb.VersionedValue, error)) {
+	valueFormat byte) {
 
-	db, err := dbProvider.GetDBHandle("test-full-scan-iterator", nil)
+	sourceDB, err := dbProvider.GetDBHandle("sourceLedger", nil)
 	assert.NoError(t, err)
 
 	// generateSampleData returns a slice of KVs. The returned value contains five KVs for each of the namespaces
@@ -1014,43 +1013,56 @@ func TestFullScanIterator(
 		return sampleData
 	}
 
-	// add the sample data for four namespaces to the db
+	// add the sample data for five namespaces to the db
+	allNamesapces := stringset{"", "ns1", "ns2", "ns3", "ns4"}
 	batch := statedb.NewUpdateBatch()
-	for _, kv := range generateSampleData("", "ns1", "ns2", "ns3", "ns4") {
+	for _, kv := range generateSampleData(allNamesapces...) {
 		batch.PutValAndMetadata(kv.Namespace, kv.Key, kv.Value, kv.Metadata, kv.Version)
 	}
-	db.ApplyUpdates(batch, version.NewHeight(5, 5))
+	sourceDB.ApplyUpdates(batch, version.NewHeight(5, 5))
 
-	// verifyFullScanIterator verifies the output of the FullScanIterator with skipping zero or more namespaces
-	verifyFullScanIterator := func(skipNamespaces stringset) {
-		fullScanItr, valFormat, err := db.GetFullScanIterator(
+	// verifyExportImport uses FullScanIterator (with skipping zero or more namespaces)
+	// for exporting the data to import into another ledger instance and verifies the
+	// correctness of the imported data
+	verifyExportImport := func(destDBName string, skipNamespaces stringset) {
+		fullScanItr, valFormat, err := sourceDB.GetFullScanIterator(
 			func(ns string) bool {
 				return skipNamespaces.contains(ns)
 			},
 		)
 		require.NoError(t, err)
 		require.Equal(t, valueFormat, valFormat)
-		results := []*statedb.VersionedKV{}
-		for {
-			compositeKV, serializedVersionedValue, err := fullScanItr.Next()
+
+		destinationDB, err := dbProvider.GetDBHandle(destDBName, nil)
+		assert.NoError(t, err)
+
+		err = destinationDB.ImportState(fullScanItr, valFormat)
+		require.NoError(t, err)
+
+		for _, nsNotToBePresent := range skipNamespaces {
+			iter, err := destinationDB.GetStateRangeScanIterator(nsNotToBePresent, "", "")
 			require.NoError(t, err)
-			if compositeKV == nil {
-				break
-			}
-			versionedVal, err := dbValueDeserializer(serializedVersionedValue)
+			res, err := iter.Next()
 			require.NoError(t, err)
-			results = append(results, &statedb.VersionedKV{
-				CompositeKey:   *compositeKV,
-				VersionedValue: *versionedVal,
-			})
+			require.Nil(t, res)
 		}
 
-		expectedNamespacesInResults := stringset{"", "ns1", "ns2", "ns3", "ns4"}.minus(skipNamespaces)
-		expectedResults := []*statedb.VersionedKV{}
-		for _, ns := range expectedNamespacesInResults {
-			expectedResults = append(expectedResults, generateSampleData(ns)...)
+		expectedNamespacesInDestinationDB := allNamesapces.minus(skipNamespaces)
+		results := []*statedb.VersionedKV{}
+		for _, nsToBePresent := range expectedNamespacesInDestinationDB {
+			iter, err := destinationDB.GetStateRangeScanIterator(nsToBePresent, "", "")
+			require.NoError(t, err)
+			for {
+				res, err := iter.Next()
+				require.NoError(t, err)
+				if res == nil {
+					break
+				}
+				versionedKV := res.(*statedb.VersionedKV)
+				results = append(results, versionedKV)
+			}
 		}
-		require.Equal(t, expectedResults, results)
+		require.Equal(t, generateSampleData(expectedNamespacesInDestinationDB...), results)
 	}
 
 	testCases := []stringset{
@@ -1067,10 +1079,11 @@ func TestFullScanIterator(
 	}
 
 	for i, testCase := range testCases {
+		name := fmt.Sprintf("testCase %d", i)
 		t.Run(
-			fmt.Sprintf("testCase %d", i),
+			name,
 			func(t *testing.T) {
-				verifyFullScanIterator(testCase)
+				verifyExportImport(name, testCase)
 			},
 		)
 	}
@@ -1078,8 +1091,8 @@ func TestFullScanIterator(
 
 type stringset []string
 
-func (universe stringset) contains(str string) bool {
-	for _, element := range universe {
+func (s stringset) contains(str string) bool {
+	for _, element := range s {
 		if element == str {
 			return true
 		}
@@ -1087,9 +1100,9 @@ func (universe stringset) contains(str string) bool {
 	return false
 }
 
-func (universe stringset) minus(toMinus stringset) stringset {
+func (s stringset) minus(toMinus stringset) stringset {
 	var final stringset
-	for _, element := range universe {
+	for _, element := range s {
 		if toMinus.contains(element) {
 			continue
 		}
