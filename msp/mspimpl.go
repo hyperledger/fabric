@@ -847,6 +847,10 @@ func (msp *bccspmsp) IsWellFormed(identity *m.SerializedIdentity) error {
 		return err
 	}
 
+	if !isECDSASignedCert(cert) {
+		return nil
+	}
+
 	return isIdentitySignedInCanonicalForm(cert.Signature, identity.Mspid, identity.IdBytes)
 
 }
