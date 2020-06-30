@@ -91,7 +91,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 	blkNum := blockIdxInfo.blockNum
 	blkHash := blockIdxInfo.blockHash
 	txsfltr := txflags.ValidationFlags(blockIdxInfo.metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
-	batch := leveldbhelper.NewUpdateBatch()
+	batch := index.db.NewUpdateBatch()
 	flpBytes, err := flp.marshal()
 	if err != nil {
 		return err
@@ -343,7 +343,7 @@ func importTxIDsFromSnapshot(
 	lastBlockNumInSnapshot uint64,
 	db *leveldbhelper.DBHandle) error {
 
-	batch := leveldbhelper.NewUpdateBatch()
+	batch := db.NewUpdateBatch()
 	txIDsMetadata, err := snapshot.OpenFile(filepath.Join(snapshotDir, snapshotMetadataFileName), snapshotFileFormat)
 	if err != nil {
 		return err
@@ -369,7 +369,7 @@ func importTxIDsFromSnapshot(
 			if err := db.WriteBatch(batch, true); err != nil {
 				return err
 			}
-			batch = leveldbhelper.NewUpdateBatch()
+			batch = db.NewUpdateBatch()
 		}
 	}
 	batch.Put(indexSavePointKey, encodeBlockNum(lastBlockNumInSnapshot))

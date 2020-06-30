@@ -641,7 +641,7 @@ func TestPendingBatch(t *testing.T) {
 	require := require.New(t)
 	s := env.TestStore
 	existingLastBlockNum := uint64(25)
-	batch := leveldbhelper.NewUpdateBatch()
+	batch := s.db.NewUpdateBatch()
 	batch.Put(lastCommittedBlkkey, encodeLastCommittedBlockVal(existingLastBlockNum))
 	require.NoError(s.db.WriteBatch(batch, true))
 	s.lastCommittedBlock = existingLastBlockNum
@@ -651,7 +651,7 @@ func TestPendingBatch(t *testing.T) {
 	// assume that a block has been prepared in v142 and the peer was
 	// killed for upgrade. When the pvtdataStore is opened again with
 	// v2.0 peer, the pendingBatch should be marked as committed.
-	batch = leveldbhelper.NewUpdateBatch()
+	batch = s.db.NewUpdateBatch()
 
 	// store pvtData entries
 	dataKey := &dataKey{nsCollBlk{"ns-1", "coll-1", 26}, 1}
