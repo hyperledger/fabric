@@ -12,13 +12,15 @@ While this style guide will also refer to best practices using ReStructured Text
 
 If you just want to look at how things are formatted, you can navigate to the Fabric repo to look at the raw file by clicking on `Edit on Github` link in the upper right hand corner of the page. Then click the `Raw` tab. This will show you the formatting of the doc. **Do not attempt to edit the file on Github.** If you want to make a change, clone the repo and follow the instructions in [Contributing](./CONTRIBUTING.html) for creating pull requests.
 
-**Line lengths.**
+## Word choices
 
-If you look at the raw versions of the documentation, you will see that many topics conform to a line length of roughly 70 characters. This restriction is no longer necessary, so you are free to make lines as long as you want.
+**Avoid the use of the words "whitelist", "blacklist", "master", or "slave".**
+
+Unless the use of these words is absolutely necessary (for example, when quoting a section of code that uses them), do not use these words. Either be more explicit (for example, describing what "whitelisting" actually does) or find alternate words such as "allowlist" or "blocklist".
 
 **Tutorials should have a list of steps at the top.**
 
-A list of steps (with links to the corresponding sections) at the beginning of a tutorial helps users find particular steps they're interested in. For an example, check out [Use private data in Fabric](../private-data/private-data.html).
+A list of steps (with links to the corresponding sections) at the beginning of a tutorial helps users find particular steps they're interested in. For an example, check out [Use private data in Fabric](./private-data/private-data.html).
 
 **"Fabric", "Hyperledger Fabric" or "HLF"?**
 
@@ -27,6 +29,52 @@ The first usage should be “Hyperledger Fabric” and afterwards only “Fabric
 **Chaincode vs. Chaincodes?**
 
 One chaincode is a “chaincode”. If you’re talking about several chaincodes, use "chaincodes".
+
+**Smart contracts?**
+
+Colloquially, smart contracts are considered equivalent to chaincode, though at a technical level, it is more correct to say that a "smart contract" is the business logic inside of a chaincode, which encompasses the larger packaging and implementation.
+
+**JSON vs .json?**
+
+Use “JSON”. The same applies for any file format (for example, YAML).
+
+**curl vs cURL.**
+
+The tool is called “cURL”. The commands themselves are “curl” commands.
+
+**Fabric CA.**
+
+Do not call it "fabric-CA", "fabricCA", or FabricCA. It is the Fabric CA. The Fabric CA client binary can, however, be referred to as the `fabric-ca-client`.
+
+**Raft and RAFT.**
+
+"Raft" is not an acronym. Do not call it a "RAFT ordering service".
+
+**Referring to the reader.**
+
+It’s perfectly fine to use the “you” or “we”. Avoid using "I".
+
+**Ampersands (&).**
+
+Not a substitute for the word “and”. Avoid them unless you have a reason to use it (such as in a code snippet that includes it).
+
+**Acronyms.**
+
+The first usage of an acronym should be spelled out, unless it’s an acronym that’s in such wide usage this is unneeded. For example, “Software Development Kit (SDK)” on first usage. Then use “SDK” afterward.
+
+**Try to avoid using the same words too often.**
+
+If you can avoid using a word twice in one sentence, please do so. Not using it more than twice in a single paragraph is better. Of course sometimes it might not be possible to avoid this –-- a doc about the state database being used is likely to be replete with uses of the word “database” or “ledger”. But excessive usage of any particular word has a tendency to have a numbing effect on the reader.
+
+**How should files be named?**
+
+By using underscores between words. Also, tutorials should be named as such. For example, `identity_use_case_tutorial.md`. While not all files use this standard, new files should adhere to it.
+
+## Formatting and punctuation
+
+**Line lengths.**
+
+If you look at the raw versions of the documentation, you will see that many topics conform to a line length of roughly 70 characters. This restriction is no longer necessary, so you are free to make lines as long as you want.
 
 **When to bold?**
 
@@ -60,14 +108,6 @@ Number zero through nine are spelled out. One, two, three, four, etc. Numbers af
 
 Exceptions to this would be usages from code. In that case, use whatever’s in the code. And also examples like Org1. Don’t write it as OrgOne.
 
-**Try to avoid using the same words too often.**
-
-If you can avoid using a word twice in one sentence, please do so. Not using it more than twice in a single paragraph is better. Of course sometimes it might not be possible to avoid this –-- a doc about stateDB is likely to be replete with uses of the word “database” or “ledger”. But excessive usage of any particular word has a tendency to have a numbing effect on the reader.
-
-**How should files be named?**
-
-For example, `identity_use_case_tutorial.md`. While not all files use this standard, new files should adhere to it.
-
 **Capitalization rules for doc titles.**
 
 The standard rules for capitalization in sentences should be followed. In other words, unless a word is the first word in the title or a proper noun, do not capitalize its first letter. For example, "Understanding Identities in Fabric" should be "Understanding identities in Fabric". While not every doc follows this standard yet, it is the standard we're moving to and should be followed for new topics.
@@ -78,23 +118,7 @@ Headings inside of topics should follow the same standard.
 
 Yes, it’s better.
 
-For example: “I’d like to thank my parents, Ayn Rand and God”. Compared to: “I’d like to thank my parents, Ayn Rand, and God.”
-
-**JSON vs .json?**
-
-Use “JSON”. The same applies for any file format (for example, YAML).
-
-**Referring to the reader.**
-
-It’s perfectly fine to use the word “you” or “we”.
-
-**Ampersands (&).**
-
-Not a substitute for the word “and”. Avoid them unless you have a reason to use it (such as in a code snippet that includes it).
-
-**Acronyms.**
-
-The first usage of an acronym should be spelled out, unless it’s an acronym that’s in such wide usage this is unneeded. For example, “Software Development Kit (SDK)” on first usage. Then use “SDK” afterward.
+The classic example is, “I’d like to thank my parents, Ayn Rand and God”, as compared to: “I’d like to thank my parents, Ayn Rand, and God.”
 
 **Captions.**
 
@@ -132,19 +156,7 @@ Note that in Markdown, enumerated lists will not work if you separate the number
 
 **Linking.**
 
-When linking to another doc, use relative links, not direct links. When naming a link, do not just call it "link". Use a more creative and descriptive name. For accessibility reasons, the link name should also make it clear that it is a link. For example, check out [this link to Google](www.google.com).
-
-**curl vs cURL.**
-
-The tool is called “cURL”. The commands themselves are “curl” commands.
-
-**Fabric CA.**
-
-Do not call it "fabric-CA", "fabricCA", or FabricCA. It is the Fabric CA.
-
-**Raft and RAFT.**
-
-"Raft" is not an acronym. Do not call it a "RAFT ordering service".
+When linking to another doc, use relative links, not direct links. When naming a link, do not just call it "link". Use a more creative and descriptive name. For accessibility reasons, the link name should also make it clear that it is a link.
 
 **All docs have to end with a license statement.**
 
@@ -164,7 +176,7 @@ https://creativecommons.org/licenses/by/4.0/ -->
 
 **How many spaces for indentation?**
 
-Depends on the use case, I suppose. Frequently it’s necessary, especially in RST, to indent two spaces, especially in a code block. In a NOTE box in RST, you have to indent to the space after the colon after note, like this:
+This will depend on the use case. Frequently it’s necessary, especially in RST, to indent two spaces, especially in a code block. In a `.. note::` box in RST, you have to indent to the space after the colon after note, like this:
 
 ```
 .. note:: Some words and stuff etc etc etc (line continues until the 70 character limit line)
@@ -172,8 +184,6 @@ Depends on the use case, I suppose. Frequently it’s necessary, especially in R
 ```
 
 **When to use which type of heading.**
-
-Check out [this topic on headings](http://blender-manual-i18n.readthedocs.io/ja/latest/about/markup_style_guide.html?highlight=tooltip#headings).
 
 In RST, use this:
 
