@@ -20,7 +20,10 @@ import (
 	"github.com/hyperledger/fabric/orderer/mocks/util"
 )
 
-const Prefix = "VIPERUTIL"
+const (
+	testConfigName = "viperutil"
+	testEnvPrefix  = "VIPERUTIL"
+)
 
 func TestEnvSlice(t *testing.T) {
 	type testSlice struct {
@@ -29,19 +32,19 @@ func TestEnvSlice(t *testing.T) {
 		}
 	}
 
-	envVar := "VIPERUTIL_INNER_SLICE"
+	envVar := testEnvPrefix + "_INNER_SLICE"
 	envVal := "[a, b, c]"
 	os.Setenv(envVar, envVal)
 	defer os.Unsetenv(envVar)
 	config := New()
-	config.SetEnvPrefix(Prefix)
+	config.SetConfigName(testConfigName)
 
 	data := "---\nInner:\n    Slice: [d,e,f]"
 
 	err := config.ReadConfig(bytes.NewReader([]byte(data)))
 
 	if err != nil {
-		t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
+		t.Fatalf("Error reading %s plugin config: %s", testConfigName, err)
 	}
 
 	var uconf testSlice
@@ -324,18 +327,17 @@ func TestPEMBlocksFromFileEnv(t *testing.T) {
 	}{
 		{"Override", "---\nInner:\n  Multiple:\n    File: wrong_file"},
 		{"NoFileElement", "---\nInner:\n  Multiple:\n"},
-		// {"NoElementAtAll", "---\nInner:\n"}, test case for another time
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			envVar := "VIPERUTIL_INNER_MULTIPLE_FILE"
+			envVar := testEnvPrefix + "_INNER_MULTIPLE_FILE"
 			envVal := file.Name()
 			os.Setenv(envVar, envVal)
 			defer os.Unsetenv(envVar)
 			config := New()
-			config.SetEnvPrefix(Prefix)
+			config.SetConfigName(testConfigName)
 
 			if err := config.ReadConfig(bytes.NewReader([]byte(tc.data))); err != nil {
 				t.Fatalf("Error reading config: %v", err)
@@ -391,15 +393,15 @@ func TestStringFromFileEnv(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			envVar := "VIPERUTIL_INNER_SINGLE_FILE"
+			envVar := testEnvPrefix + "_INNER_SINGLE_FILE"
 			envVal := file.Name()
 			os.Setenv(envVar, envVal)
 			defer os.Unsetenv(envVar)
 			config := New()
-			config.SetEnvPrefix(Prefix)
+			config.SetConfigName(testConfigName)
 
 			if err = config.ReadConfig(bytes.NewReader([]byte(tc.data))); err != nil {
-				t.Fatalf("Error reading %s plugin config: %s", Prefix, err)
+				t.Fatalf("Error reading %s plugin config: %s", testConfigName, err)
 			}
 
 			var uconf stringFromFileConfig
@@ -453,9 +455,9 @@ BCCSP:
 `
 
 	config := New()
-	config.SetEnvPrefix("VIPERUTIL")
+	config.SetConfigName(testConfigName)
 
-	overrideVar := "VIPERUTIL_BCCSP_SW_SECURITY"
+	overrideVar := testEnvPrefix + "_BCCSP_SW_SECURITY"
 	os.Setenv(overrideVar, "1111")
 	defer os.Unsetenv(overrideVar)
 	if err := config.ReadConfig(strings.NewReader(yaml)); err != nil {

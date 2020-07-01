@@ -17,9 +17,6 @@ import (
 	coreconfig "github.com/hyperledger/fabric/core/config"
 )
 
-// Prefix for environment variables.
-const Prefix = "ORDERER"
-
 var logger = flogging.MustGetLogger("localconfig")
 
 // TopLevel directly corresponds to the orderer config YAML.
@@ -314,7 +311,6 @@ func (c *configCache) load() (*TopLevel, error) {
 
 	config := viperutil.New()
 	config.SetConfigName("orderer")
-	config.SetEnvPrefix(Prefix)
 
 	if err := config.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("Error reading configuration: %s", err)

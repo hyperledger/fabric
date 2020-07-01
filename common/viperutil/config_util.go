@@ -52,9 +52,6 @@ type ConfigParser struct {
 	configName  string
 	configFile  string
 
-	// env variable prefix
-	envPrefix string
-
 	// parsed config
 	config map[string]interface{}
 }
@@ -69,14 +66,12 @@ func New() *ConfigParser {
 // AddConfigPaths keeps a list of path to search the relevant
 // config file. Multiple paths can be provided.
 func (c *ConfigParser) AddConfigPaths(cfgPaths ...string) {
-	if len(cfgPaths) > 0 {
-		for _, p := range cfgPaths {
-			c.configPaths = append(c.configPaths, p)
-		}
-	}
+	c.configPaths = append(c.configPaths, cfgPaths...)
 }
 
-// SetConfigName initializes config file name. The extension is not included.
+// SetConfigName provides the configuration file name stem. The upper-cased
+// version of this value also serves as the environment variable override
+// prefix.
 func (c *ConfigParser) SetConfigName(in string) {
 	c.configName = in
 }
@@ -84,13 +79,6 @@ func (c *ConfigParser) SetConfigName(in string) {
 // ConfigFileUsed returns the used configFile.
 func (c *ConfigParser) ConfigFileUsed() string {
 	return c.configFile
-}
-
-// SetEnvPrefix initializes the envPrefix.
-// For example, if "peer" is set here, all environment variable
-// searches shall be prefixed with "PEER_"
-func (c *ConfigParser) SetEnvPrefix(in string) {
-	c.envPrefix = in
 }
 
 // Search for the existence of filename for all supported extensions
@@ -154,9 +142,10 @@ func (c *ConfigParser) ReadConfig(in io.Reader) error {
 // Get value for the key by searching environment variables.
 func (c *ConfigParser) getFromEnv(key string) string {
 	envKey := key
-	if c.envPrefix != "" {
-		envKey = strings.ToUpper(c.envPrefix + "_" + envKey)
+	if c.configName != "" {
+		envKey = c.configName + "_" + envKey
 	}
+	envKey = strings.ToUpper(envKey)
 	envKey = strings.ReplaceAll(envKey, ".", "_")
 	return os.Getenv(envKey)
 }
