@@ -10,7 +10,7 @@ github.com/BurntSushi/toml
 # github.com/DataDog/zstd v1.4.0
 ## explicit
 github.com/DataDog/zstd
-# github.com/Knetic/govaluate v3.0.0+incompatible
+# github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 ## explicit
 github.com/Knetic/govaluate
 # github.com/Microsoft/go-winio v0.4.12
@@ -22,22 +22,20 @@ github.com/Microsoft/hcsshim/osversion
 ## explicit
 github.com/Shopify/sarama
 github.com/Shopify/sarama/mocks
-# github.com/Shopify/toxiproxy v2.1.4+incompatible
-## explicit
 # github.com/VictoriaMetrics/fastcache v1.4.6
 ## explicit
 github.com/VictoriaMetrics/fastcache
-# github.com/VividCortex/gohistogram v1.0.0
-## explicit
-# github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
+# github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 github.com/alecthomas/template
 github.com/alecthomas/template/parse
-# github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf
+# github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4
 github.com/alecthomas/units
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash v1.1.0
 github.com/cespare/xxhash
+# github.com/cespare/xxhash/v2 v2.1.1
+github.com/cespare/xxhash/v2
 # github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc
 ## explicit
 github.com/containerd/continuity/pathdriver
@@ -86,10 +84,8 @@ github.com/dustin/go-humanize
 ## explicit
 github.com/eapache/go-resiliency/breaker
 # github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21
-## explicit
 github.com/eapache/go-xerial-snappy
 # github.com/eapache/queue v1.1.0
-## explicit
 github.com/eapache/queue
 # github.com/frankban/quicktest v1.9.0
 ## explicit
@@ -99,7 +95,7 @@ github.com/fsouza/go-dockerclient
 github.com/fsouza/go-dockerclient/internal/archive
 github.com/fsouza/go-dockerclient/internal/jsonmessage
 github.com/fsouza/go-dockerclient/internal/term
-# github.com/go-kit/kit v0.8.0
+# github.com/go-kit/kit v0.10.0
 ## explicit
 github.com/go-kit/kit/log
 github.com/go-kit/kit/metrics
@@ -108,7 +104,7 @@ github.com/go-kit/kit/metrics/internal/ratemap
 github.com/go-kit/kit/metrics/prometheus
 github.com/go-kit/kit/metrics/statsd
 github.com/go-kit/kit/util/conn
-# github.com/go-logfmt/logfmt v0.4.0
+# github.com/go-logfmt/logfmt v0.5.0
 github.com/go-logfmt/logfmt
 # github.com/gogo/protobuf v1.2.1
 github.com/gogo/protobuf/gogoproto
@@ -129,7 +125,7 @@ github.com/golang/snappy
 # github.com/gorilla/handlers v1.4.0
 ## explicit
 github.com/gorilla/handlers
-# github.com/gorilla/mux v1.7.2
+# github.com/gorilla/mux v1.7.3
 ## explicit
 github.com/gorilla/mux
 # github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
@@ -191,8 +187,6 @@ github.com/inconshreveable/mousetrap
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 ## explicit
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
-github.com/kr/logfmt
 # github.com/kr/pretty v0.2.0
 ## explicit
 github.com/kr/pretty
@@ -268,20 +262,21 @@ github.com/pierrec/lz4/internal/xxh32
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/prometheus/client_golang v1.1.0
+# github.com/prometheus/client_golang v1.3.0
 ## explicit
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
 github.com/prometheus/client_golang/prometheus/promhttp
-# github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4
+# github.com/prometheus/client_model v0.1.0
 github.com/prometheus/client_model/go
-# github.com/prometheus/common v0.6.0
+# github.com/prometheus/common v0.7.0
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
-# github.com/prometheus/procfs v0.0.3
+# github.com/prometheus/procfs v0.0.8
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
+github.com/prometheus/procfs/internal/util
 # github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 ## explicit
 github.com/rcrowley/go-metrics
@@ -363,7 +358,7 @@ go.uber.org/zap/zaptest/observer
 # golang.org/x/crypto v0.0.0-20200221231518-2aa609cf4a9d
 ## explicit
 golang.org/x/crypto/sha3
-# golang.org/x/net v0.0.0-20190620200207-3b0461eec859
+# golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
@@ -373,12 +368,11 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
-# golang.org/x/sys v0.0.0-20190801041406-cbf593c0f2f3 => golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380
+# golang.org/x/sys v0.0.0-20191220142924-d4481acd189f => golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # golang.org/x/text v0.3.2
-## explicit
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
