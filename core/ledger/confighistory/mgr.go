@@ -108,6 +108,8 @@ func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	return dbHandle.writeBatch(batch, true)
 }
 
+// ImportConfigHistory imports the collection config history associated with a given
+// ledgerID from the snapshot files present in the dir
 func (m *Mgr) ImportConfigHistory(ledgerID string, dir string) error {
 	db := m.dbProvider.getDB(ledgerID)
 	empty, err := db.isEmpty()
