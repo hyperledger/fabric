@@ -204,21 +204,20 @@ func (h *DBHandle) DeleteAll() error {
 	return nil
 }
 
+// NewUpdateBatch returns a new UpdateBatch that can be used to update the db
+func (h *DBHandle) NewUpdateBatch() *UpdateBatch {
+	return &UpdateBatch{
+		dbName: h.dbName,
+		Batch:  &leveldb.Batch{},
+	}
+}
+
 // WriteBatch writes a batch in an atomic way
 func (h *DBHandle) WriteBatch(batch *UpdateBatch, sync bool) error {
-	if len(batch.KVs) == 0 {
+	if batch == nil || batch.Len() == 0 {
 		return nil
 	}
-	levelBatch := &leveldb.Batch{}
-	for k, v := range batch.KVs {
-		key := constructLevelKey(h.dbName, []byte(k))
-		if v == nil {
-			levelBatch.Delete(key)
-		} else {
-			levelBatch.Put(key, v)
-		}
-	}
-	if err := h.db.WriteBatch(levelBatch, sync); err != nil {
+	if err := h.db.WriteBatch(batch.Batch, sync); err != nil {
 		return err
 	}
 	return nil
@@ -252,30 +251,21 @@ func (h *DBHandle) Close() {
 
 // UpdateBatch encloses the details of multiple `updates`
 type UpdateBatch struct {
-	KVs map[string][]byte
-}
-
-// NewUpdateBatch constructs an instance of a Batch
-func NewUpdateBatch() *UpdateBatch {
-	return &UpdateBatch{make(map[string][]byte)}
+	*leveldb.Batch
+	dbName string
 }
 
 // Put adds a KV
-func (batch *UpdateBatch) Put(key []byte, value []byte) {
+func (b *UpdateBatch) Put(key []byte, value []byte) {
 	if value == nil {
 		panic("Nil value not allowed")
 	}
-	batch.KVs[string(key)] = value
+	b.Batch.Put(constructLevelKey(b.dbName, key), value)
 }
 
 // Delete deletes a Key and associated value
-func (batch *UpdateBatch) Delete(key []byte) {
-	batch.KVs[string(key)] = nil
-}
-
-// Len returns the number of entries in the batch
-func (batch *UpdateBatch) Len() int {
-	return len(batch.KVs)
+func (b *UpdateBatch) Delete(key []byte) {
+	b.Batch.Delete(constructLevelKey(b.dbName, key))
 }
 
 // Iterator extends actual leveldb iterator
