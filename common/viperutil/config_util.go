@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package viperutil
 
 import (
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -184,15 +183,6 @@ func getKeysRecursively(base string, getenv envGetter, nodeKeys map[string]inter
 		}
 
 		switch val := val.(type) {
-		case string:
-			logger.Debugf("Found string value for %s", fqKey)
-			if val, ok := unmarshalJSON(val); ok {
-				logger.Debugf("Found real value for %s setting to map[string]string %v", fqKey, val)
-				result[key] = val
-				continue
-			}
-			result[key] = val
-
 		case map[string]interface{}:
 			logger.Debugf("Found map[string]interface{} value for %s", fqKey)
 			result[key] = getKeysRecursively(fqKey+".", getenv, val, subTypes[key])
@@ -211,17 +201,6 @@ func getKeysRecursively(base string, getenv envGetter, nodeKeys map[string]inter
 		}
 	}
 	return result
-}
-
-func unmarshalJSON(s string) (map[string]string, bool) {
-	// TODO(mjs): I think this code may be dead. Nothing fails when the JSON path
-	// is replaced with a panic.
-	mp := map[string]string{}
-	if err := json.Unmarshal([]byte(s), &mp); err != nil {
-		logger.Debugf("Unmarshal JSON: value cannot be unmarshalled: %s", err)
-		return nil, false
-	}
-	return mp, true
 }
 
 func toMapStringInterface(m map[interface{}]interface{}) map[string]interface{} {
