@@ -81,12 +81,6 @@ func (c *ConfigParser) SetConfigName(in string) {
 	c.configName = in
 }
 
-// SetConfigFile sets the full config file name.
-// In this case, configPaths search shall not be done.
-func (c *ConfigParser) SetConfigFile(in string) {
-	c.configFile = in
-}
-
 // ConfigFileUsed returns the used configFile.
 func (c *ConfigParser) ConfigFileUsed() string {
 	return c.configFile
