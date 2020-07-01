@@ -214,7 +214,8 @@ func TestLoadOverridesMap(t *testing.T) {
 		err := viper.ReadConfig(bytes.NewBuffer([]byte(config)))
 		require.NoError(t, err)
 		_, err = deliverservice.LoadOverridesMap()
-		require.EqualError(t, err, "could not unmarshal peer.deliveryclient.addressOverrides: '': source data must be an array or slice, got string")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "could not unmarshal peer.deliveryclient.addressOverrides:")
 	})
 
 	t.Run("EmptyYaml", func(t *testing.T) {

@@ -5,8 +5,6 @@ code.cloudfoundry.org/clock/fakeclock
 # github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
-# github.com/BurntSushi/toml v0.3.1
-github.com/BurntSushi/toml
 # github.com/DataDog/zstd v1.4.0
 ## explicit
 github.com/DataDog/zstd
@@ -93,6 +91,8 @@ github.com/eapache/go-xerial-snappy
 github.com/eapache/queue
 # github.com/frankban/quicktest v1.9.0
 ## explicit
+# github.com/fsnotify/fsnotify v1.4.7
+github.com/fsnotify/fsnotify
 # github.com/fsouza/go-dockerclient v1.4.1
 ## explicit
 github.com/fsouza/go-dockerclient
@@ -138,6 +138,18 @@ github.com/grpc-ecosystem/go-grpc-middleware
 # github.com/hashicorp/go-version v1.2.0
 ## explicit
 github.com/hashicorp/go-version
+# github.com/hashicorp/hcl v1.0.0
+## explicit
+github.com/hashicorp/hcl
+github.com/hashicorp/hcl/hcl/ast
+github.com/hashicorp/hcl/hcl/parser
+github.com/hashicorp/hcl/hcl/printer
+github.com/hashicorp/hcl/hcl/scanner
+github.com/hashicorp/hcl/hcl/strconv
+github.com/hashicorp/hcl/hcl/token
+github.com/hashicorp/hcl/json/parser
+github.com/hashicorp/hcl/json/scanner
+github.com/hashicorp/hcl/json/token
 # github.com/hpcloud/tail v1.0.0
 github.com/hpcloud/tail
 github.com/hpcloud/tail/ratelimiter
@@ -209,7 +221,7 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/miekg/pkcs11 v1.0.3
 ## explicit
 github.com/miekg/pkcs11
-# github.com/mitchellh/mapstructure v1.2.2
+# github.com/mitchellh/mapstructure v1.3.2
 ## explicit
 github.com/mitchellh/mapstructure
 # github.com/onsi/ginkgo v1.8.0
@@ -259,6 +271,9 @@ github.com/opencontainers/image-spec/specs-go/v1
 # github.com/opencontainers/runc v1.0.0-rc8
 ## explicit
 github.com/opencontainers/runc/libcontainer/user
+# github.com/pelletier/go-toml v1.8.0
+## explicit
+github.com/pelletier/go-toml
 # github.com/pierrec/lz4 v2.5.0+incompatible
 ## explicit
 github.com/pierrec/lz4
@@ -287,6 +302,10 @@ github.com/prometheus/procfs/internal/fs
 github.com/rcrowley/go-metrics
 # github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
+# github.com/spf13/afero v1.3.1
+## explicit
+github.com/spf13/afero
+github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.1
 ## explicit
 github.com/spf13/cast
@@ -299,7 +318,7 @@ github.com/spf13/jwalterweatherman
 # github.com/spf13/pflag v1.0.5
 ## explicit
 github.com/spf13/pflag
-# github.com/spf13/viper v0.0.0-20150908122457-1967d93db724
+# github.com/spf13/viper v1.1.1
 ## explicit
 github.com/spf13/viper
 # github.com/stretchr/objx v0.1.1
@@ -467,7 +486,7 @@ gopkg.in/cheggaaa/pb.v1
 gopkg.in/fsnotify.v1
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
-# gopkg.in/yaml.v2 v2.2.8
+# gopkg.in/yaml.v2 v2.3.0
 ## explicit
 gopkg.in/yaml.v2
 # golang.org/x/sys => golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380
