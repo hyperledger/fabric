@@ -158,6 +158,15 @@ func (m *Mgr) ImportConfigHistory(ledgerID string, dir string) error {
 	return db.WriteBatch(batch, true)
 }
 
+// Delete deletes all collection config entries associated with
+// a given ledgerID. Currently, the Delete method would be called
+// only when a failure occurs during an import from snapshot files.
+// Hence, we do not need synchronization with other methods on the Mgr.
+func (m *Mgr) Delete(ledgerID string) error {
+	db := m.dbProvider.getDB(ledgerID)
+	return db.DeleteAll()
+}
+
 // GetRetriever returns an implementation of `ledger.ConfigHistoryRetriever` for the given ledger id.
 func (m *Mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) *Retriever {
 	return &Retriever{

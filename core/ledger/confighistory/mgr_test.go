@@ -167,6 +167,22 @@ func TestMgr(t *testing.T) {
 		require.True(t, ok)
 		require.Equal(t, maxBlockNumberInLedger, typedErr.MaxBlockNumCommitted)
 	})
+
+	t.Run("delete all entries associated with a ledgerID", func(t *testing.T) {
+		db := mgr.dbProvider.getDB("ledgerid1")
+		empty, err := db.isEmpty()
+		require.NoError(t, err)
+		require.False(t, empty)
+
+		require.NoError(t, mgr.Delete("ledgerid1"))
+		empty, err = db.isEmpty()
+		require.NoError(t, err)
+		require.True(t, empty)
+
+		require.NoError(t, mgr.Delete("ledgerid1"))
+		mgr.dbProvider.Close()
+		require.EqualError(t, mgr.Delete("ledgerid1"), "internal leveldb error while obtaining db iterator: leveldb: closed")
+	})
 }
 
 func TestWithImplicitColls(t *testing.T) {
