@@ -113,7 +113,7 @@ func (r *rollbackMgr) deleteIndexEntriesRange(startBlkNum, endBlkNum uint64) err
 	// entries. However, if there is more than more than 1 channel, dropping of
 	// index would impact the time taken to recover the peer. We need to analyze
 	// a bit before making a decision on rollback vs drop of index. FAB-15672
-	batch := leveldbhelper.NewUpdateBatch()
+	batch := r.indexStore.db.NewUpdateBatch()
 	lp, err := r.indexStore.getBlockLocByBlockNum(startBlkNum)
 	if err != nil {
 		return err

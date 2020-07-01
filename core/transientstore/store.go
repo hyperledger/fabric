@@ -105,7 +105,7 @@ func (s *Store) Persist(txid string, blockHeight uint64,
 
 	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
 
-	dbBatch := leveldbhelper.NewUpdateBatch()
+	dbBatch := s.db.NewUpdateBatch()
 
 	// Create compositeKey with appropriate prefix, txid, uuid and blockHeight
 	// Due to the fact that the txid may have multiple private write sets persisted from different
@@ -175,7 +175,7 @@ func (s *Store) PurgeByTxids(txids []string) error {
 
 	logger.Debug("Purging private data from transient store for committed txids")
 
-	dbBatch := leveldbhelper.NewUpdateBatch()
+	dbBatch := s.db.NewUpdateBatch()
 
 	for _, txid := range txids {
 		// Construct startKey and endKey to do an range query
@@ -235,7 +235,7 @@ func (s *Store) PurgeBelowHeight(maxBlockNumToRetain uint64) error {
 		return err
 	}
 
-	dbBatch := leveldbhelper.NewUpdateBatch()
+	dbBatch := s.db.NewUpdateBatch()
 
 	// Get all txid and uuid from above result and remove it from transient store (both
 	// write set and the corresponding index.

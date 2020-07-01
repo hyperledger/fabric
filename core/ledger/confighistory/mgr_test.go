@@ -195,16 +195,17 @@ func TestWithImplicitColls(t *testing.T) {
 		ccInfoProvider: mockCCInfoProvider,
 		dbProvider:     p,
 	}
-
+	dbHandle := mgr.dbProvider.getDB("ledger1")
+	batch := dbHandle.newBatch()
 	// add explicit collections at height 20
-	batch, err := prepareDBBatch(
+	err = prepareDBBatch(
+		batch,
 		map[string]*peer.CollectionConfigPackage{
 			"chaincode1": collConfigPackage,
 		},
 		20,
 	)
 	require.NoError(t, err)
-	dbHandle := mgr.dbProvider.getDB("ledger1")
 	require.NoError(t, dbHandle.writeBatch(batch, true))
 
 	onlyImplicitCollections := testutilCreateCollConfigPkg(
@@ -342,7 +343,9 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		}
 
 		db := env.mgr.dbProvider.getDB(ledgerID)
-		batch, err := prepareDBBatch(
+		batch := db.newBatch()
+		err := prepareDBBatch(
+			batch,
 			map[string]*peer.CollectionConfigPackage{
 				"chaincode1": cc1CollConfigPackage,
 				"chaincode2": cc2CollConfigPackage,
@@ -353,7 +356,9 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, db.writeBatch(batch, true))
 
-		batch, err = prepareDBBatch(
+		batch = db.newBatch()
+		err = prepareDBBatch(
+			batch,
 			map[string]*peer.CollectionConfigPackage{
 				"chaincode1": cc1CollConfigPackageNew,
 				"chaincode2": cc2CollConfigPackageNew,
@@ -555,7 +560,9 @@ func TestExportConfigHistoryErrorCase(t *testing.T) {
 
 	db := env.mgr.dbProvider.getDB("ledger1")
 	cc1collConfigPackage := testutilCreateCollConfigPkg([]string{"Explicit-cc1-coll-1", "Explicit-cc1-coll-2"})
-	batch, err := prepareDBBatch(
+	batch := db.newBatch()
+	err := prepareDBBatch(
+		batch,
 		map[string]*peer.CollectionConfigPackage{
 			"chaincode1": cc1collConfigPackage,
 		},

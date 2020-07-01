@@ -34,7 +34,7 @@ func (h *metadataHint) metadataEverUsedFor(namespace string) bool {
 }
 
 func (h *metadataHint) setMetadataUsedFlag(updates *UpdateBatch) {
-	batch := leveldbhelper.NewUpdateBatch()
+	batch := h.bookkeeper.NewUpdateBatch()
 	for ns := range filterNamespacesThatHasMetadata(updates) {
 		if h.cache[ns] {
 			continue
