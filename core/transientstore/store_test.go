@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric-protos-go/transientstore"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/common/policydsl"
 	commonutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -672,7 +671,7 @@ func (s *Store) persistOldProto(txid string, blockHeight uint64,
 
 	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
 
-	dbBatch := leveldbhelper.NewUpdateBatch()
+	dbBatch := s.db.NewUpdateBatch()
 
 	// Create compositeKey with appropriate prefix, txid, uuid and blockHeight
 	// Due to the fact that the txid may have multiple private write sets persisted from different

@@ -52,8 +52,8 @@ func newDBProvider(dbPath string) (*dbProvider, error) {
 	return &dbProvider{Provider: p}, nil
 }
 
-func newBatch() *batch {
-	return &batch{leveldbhelper.NewUpdateBatch()}
+func (d *db) newBatch() *batch {
+	return &batch{d.DBHandle.NewUpdateBatch()}
 }
 
 func (p *dbProvider) getDB(id string) *db {
