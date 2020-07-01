@@ -70,7 +70,7 @@ func (d *DB) Commit(block *common.Block) error {
 	//Set the starting tranNo to 0
 	var tranNo uint64
 
-	dbBatch := leveldbhelper.NewUpdateBatch()
+	dbBatch := d.levelDB.NewUpdateBatch()
 
 	logger.Debugf("Channel [%s]: Updating history database for blockNo [%v] with [%d] transactions",
 		d.name, blockNo, len(block.Data.Data))

@@ -165,7 +165,7 @@ func verifyNsEntries(t *testing.T, nsItr *leveldbhelper.Iterator, expectedEntrie
 	require.Equal(t, expectedEntries, retrievedEntries)
 }
 func populateDBWithSampleData(t *testing.T, db *db, sampledata []*compositeKV) {
-	batch := newBatch()
+	batch := db.newBatch()
 	for _, data := range sampledata {
 		batch.add(data.ns, data.key, data.blockNum, data.value)
 	}

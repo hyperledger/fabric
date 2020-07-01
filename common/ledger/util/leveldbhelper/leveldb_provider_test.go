@@ -173,7 +173,7 @@ func TestBatchedUpdates(t *testing.T) {
 
 	dbs := []*DBHandle{db1, db2}
 	for _, db := range dbs {
-		batch := NewUpdateBatch()
+		batch := db.NewUpdateBatch()
 		batch.Put([]byte("key1"), []byte("value1"))
 		batch.Put([]byte("key2"), []byte("value2"))
 		batch.Put([]byte("key3"), []byte("value3"))
@@ -181,7 +181,7 @@ func TestBatchedUpdates(t *testing.T) {
 	}
 
 	for _, db := range dbs {
-		batch := NewUpdateBatch()
+		batch := db.NewUpdateBatch()
 		batch.Delete([]byte("key2"))
 		db.WriteBatch(batch, true)
 	}

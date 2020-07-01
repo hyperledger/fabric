@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/pkg/errors"
 )
@@ -100,11 +99,12 @@ func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	if len(updatedCollConfigs) == 0 {
 		return nil
 	}
-	batch, err := prepareDBBatch(updatedCollConfigs, trigger.CommittingBlockNum)
+	dbHandle := m.dbProvider.getDB(trigger.LedgerID)
+	batch := dbHandle.newBatch()
+	err = prepareDBBatch(batch, updatedCollConfigs, trigger.CommittingBlockNum)
 	if err != nil {
 		return err
 	}
-	dbHandle := m.dbProvider.getDB(trigger.LedgerID)
 	return dbHandle.writeBatch(batch, true)
 }
 
@@ -135,7 +135,7 @@ func (m *Mgr) ImportConfigHistory(ledgerID string, dir string) error {
 		return err
 	}
 
-	batch := leveldbhelper.NewUpdateBatch()
+	batch := db.NewUpdateBatch()
 	currentBatchSize := 0
 	for i := uint64(0); i < numCollectionConfigs; i++ {
 		key, err := collectionConfigData.DecodeBytes()
@@ -152,7 +152,7 @@ func (m *Mgr) ImportConfigHistory(ledgerID string, dir string) error {
 			if err := db.WriteBatch(batch, true); err != nil {
 				return err
 			}
-			batch = leveldbhelper.NewUpdateBatch()
+			batch = db.NewUpdateBatch()
 		}
 	}
 	return db.WriteBatch(batch, true)
@@ -294,18 +294,17 @@ func (r *Retriever) getImplicitCollection(chaincodeName string) ([]*peer.StaticC
 	return r.deployedCCInfoProvider.ImplicitCollections(r.ledgerID, chaincodeName, qe)
 }
 
-func prepareDBBatch(chaincodeCollConfigs map[string]*peer.CollectionConfigPackage, committingBlockNum uint64) (*batch, error) {
-	batch := newBatch()
+func prepareDBBatch(batch *batch, chaincodeCollConfigs map[string]*peer.CollectionConfigPackage, committingBlockNum uint64) error {
 	for ccName, collConfig := range chaincodeCollConfigs {
 		key := constructCollectionConfigKey(ccName)
 		var configBytes []byte
 		var err error
 		if configBytes, err = proto.Marshal(collConfig); err != nil {
-			return nil, errors.WithStack(err)
+			return errors.WithStack(err)
 		}
 		batch.add(collectionConfigNamespace, key, committingBlockNum, configBytes)
 	}
-	return batch, nil
+	return nil
 }
 
 func compositeKVToCollectionConfig(compositeKV *compositeKV) (*ledger.CollectionConfigInfo, error) {
