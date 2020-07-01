@@ -169,8 +169,6 @@ chaincode:
   golang:
     runtime: $(DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
     dynamicLink: false
-  car:
-    runtime: $(DOCKER_NS)/fabric-baseos:$(PROJECT_VERSION)
   java:
     runtime: $(DOCKER_NS)/fabric-javaenv:latest
   node:
