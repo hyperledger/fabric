@@ -9,13 +9,11 @@
 VERSION=2.1.1
 # if ca version not passed in, default to latest released version
 CA_VERSION=1.4.7
-# current version of thirdparty images (couchdb, kafka and zookeeper) released
-THIRDPARTY_IMAGE_VERSION=0.4.20
 ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
 MARCH=$(uname -m)
 
 printHelp() {
-    echo "Usage: bootstrap.sh [version [ca_version [thirdparty_version]]] [options]"
+    echo "Usage: bootstrap.sh [version [ca_version]] [options]"
     echo
     echo "options:"
     echo "-h : this help"
@@ -23,8 +21,8 @@ printHelp() {
     echo "-s : bypass fabric-samples repo clone"
     echo "-b : bypass download of platform-specific binaries"
     echo
-    echo "e.g. bootstrap.sh 2.1.1 1.4.7 0.4.20 -s"
-    echo "would download docker images and binaries for Fabric v2.1.1 and Fabric CA v1.4.7"
+    echo "e.g. bootstrap.sh 2.1.1 1.4.7 -s"
+    echo "will download docker images and binaries for Fabric v2.1.1 and Fabric CA v1.4.7"
 }
 
 # dockerPull() pulls docker images from fabric and chaincode repositories
@@ -121,10 +119,6 @@ pullDockerImages() {
         echo "===> Pulling fabric ca Image"
         CA_IMAGE=(ca)
         dockerPull "${CA_TAG}" "${CA_IMAGE[@]}"
-        echo "===> Pulling thirdparty docker images"
-        THIRDPARTY_IMAGES=(zookeeper kafka couchdb)
-        dockerPull "${THIRDPARTY_TAG}" "${THIRDPARTY_IMAGES[@]}"
-        echo
         echo "===> List out hyperledger docker images"
         docker images | grep hyperledger
     else
