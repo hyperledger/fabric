@@ -8,6 +8,7 @@ package e2e
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -67,7 +68,7 @@ func NewDatagramReader() *DatagramReader {
 	Expect(err).NotTo(HaveOccurred())
 	sock, err := net.ListenUDP("udp", udpAddr)
 	Expect(err).NotTo(HaveOccurred())
-	err = sock.SetReadBuffer(1024 * 1024)
+	err = sock.SetReadBuffer(2 * 1024 * 1024)
 	Expect(err).NotTo(HaveOccurred())
 
 	return &DatagramReader{
@@ -91,7 +92,7 @@ func (dr *DatagramReader) String() string {
 }
 
 func (dr *DatagramReader) Start() {
-	buf := make([]byte, 1024*1024)
+	buf := make([]byte, 2*1024*1024)
 	for {
 		select {
 		case <-dr.doneCh:
@@ -104,6 +105,7 @@ func (dr *DatagramReader) Start() {
 				dr.errCh <- err
 				return
 			}
+			fmt.Printf("!!!WTL read %d bytes\n", n)
 			_, err = dr.buffer.Write(buf[0:n])
 			if err != nil {
 				dr.errCh <- err

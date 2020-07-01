@@ -206,6 +206,8 @@ var _ = Describe("EndToEnd", func() {
 			CheckPeerStatsdMetrics(datagramReader.String(), "org1_peer0")
 			CheckPeerStatsdMetrics(datagramReader.String(), "org2_peer0")
 			CheckOrdererStatsdMetrics(datagramReader.String(), "ordererorg_orderer")
+			// TODO REMOVE ME
+			Expect("fail-fast").To(BeEmpty())
 
 			By("setting up a channel from a base profile")
 			additionalPeer := network.Peer("Org2", "peer0")
