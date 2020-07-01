@@ -372,6 +372,79 @@ func TestClose(t *testing.T) {
 	require.Equal(t, map[string]*DBHandle{}, p.dbHandles)
 }
 
+func TestIsEmpty(t *testing.T) {
+	var env *testDBProviderEnv
+	var db1, db2 *DBHandle
+
+	setup := func() {
+		env = newTestProviderEnv(t, testDBPath)
+		p := env.provider
+		db1 = p.GetDBHandle("db1")
+		db2 = p.GetDBHandle("db2")
+	}
+
+	cleanup := func() {
+		env.cleanup()
+	}
+
+	t.Run("both the dbs are empty", func(t *testing.T) {
+		setup()
+		defer cleanup()
+
+		empty, err := db1.IsEmpty()
+		require.NoError(t, err)
+		require.True(t, empty)
+
+		empty, err = db2.IsEmpty()
+		require.NoError(t, err)
+		require.True(t, empty)
+	})
+
+	t.Run("only one db is empty", func(t *testing.T) {
+		setup()
+		defer cleanup()
+
+		db1.Put([]byte("key"), []byte("value"), false)
+		empty, err := db1.IsEmpty()
+		require.NoError(t, err)
+		require.False(t, empty)
+
+		empty, err = db2.IsEmpty()
+		require.NoError(t, err)
+		require.True(t, empty)
+	})
+
+	t.Run("both the dbs contain data", func(t *testing.T) {
+		setup()
+		defer cleanup()
+
+		db1.Put([]byte("key"), []byte("value"), false)
+		db2.Put([]byte("key"), []byte("value"), false)
+
+		empty, err := db1.IsEmpty()
+		require.NoError(t, err)
+		require.False(t, empty)
+
+		empty, err = db2.IsEmpty()
+		require.NoError(t, err)
+		require.False(t, empty)
+	})
+
+	t.Run("iter error", func(t *testing.T) {
+		setup()
+		defer cleanup()
+
+		env.provider.Close()
+		empty, err := db1.IsEmpty()
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.False(t, empty)
+
+		empty, err = db2.IsEmpty()
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.False(t, empty)
+	})
+}
+
 func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists bool, expectedErr *dataformat.ErrFormatMismatch) {
 	assert.NoError(t, os.RemoveAll(testDBPath))
 	defer func() {

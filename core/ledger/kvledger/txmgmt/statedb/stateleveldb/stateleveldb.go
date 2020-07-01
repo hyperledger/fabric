@@ -27,6 +27,7 @@ var (
 	lastKeyIndicator            = byte(0x01)
 	savePointKey                = []byte{'s'}
 	fullScanIteratorValueFormat = byte(1)
+	maxDataImportBatchSize      = 4 * 1024 * 1024
 )
 
 // VersionedDBProvider implements interface VersionedDBProvider
@@ -218,6 +219,43 @@ func (vdb *versionedDB) GetLatestSavePoint() (*version.Height, error) {
 // is to generate the snapshot files for the stateleveldb
 func (vdb *versionedDB) GetFullScanIterator(skipNamespace func(string) bool) (statedb.FullScanIterator, byte, error) {
 	return newFullDBScanner(vdb.db, skipNamespace)
+}
+
+// ImportState implements method in VersionedDB interface. The function is expected to be used
+// for importing the state from a previously snapshotted state. The parameter itr provides access to
+// the snapshotted state.
+func (vdb *versionedDB) ImportState(itr statedb.FullScanIterator, dbValueFormat byte) error {
+	if dbValueFormat != fullScanIteratorValueFormat {
+		return errors.Errorf("value format [%x] not supported. Expected value format [%x]",
+			dbValueFormat, fullScanIteratorValueFormat)
+	}
+	dbBatch := vdb.db.NewUpdateBatch()
+	batchSize := 0
+	for {
+		compositeKey, dbValue, err := itr.Next()
+		if err != nil {
+			return err
+		}
+		if compositeKey == nil {
+			break
+		}
+		dataKey := encodeDataKey(compositeKey.Namespace, compositeKey.Key)
+		batchSize += len(dataKey) + len(dbValue)
+		dbBatch.Put(dataKey, dbValue)
+		if batchSize >= maxDataImportBatchSize {
+			if err := vdb.db.WriteBatch(dbBatch, true); err != nil {
+				return err
+			}
+			batchSize = 0
+			dbBatch.Reset()
+		}
+	}
+	return vdb.db.WriteBatch(dbBatch, true)
+}
+
+// IsEmpty return true if the statedb does not have any content
+func (vdb *versionedDB) IsEmpty() (bool, error) {
+	return vdb.db.IsEmpty()
 }
 
 func encodeDataKey(ns, key string) []byte {

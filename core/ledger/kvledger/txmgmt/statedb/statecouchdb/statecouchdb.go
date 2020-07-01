@@ -868,6 +868,18 @@ func (vdb *VersionedDB) GetFullScanIterator(skipNamespace func(string) bool) (st
 	return newDBsScanner(dbsToScan, vdb.couchInstance.internalQueryLimit(), toSkipKeysFromEmptyNs)
 }
 
+// ImportState implements method in VersionedDB interface. The function is expected to be used
+// for importing the state from a previously snapshotted state. The parameter itr provides access to
+// the snapshotted state.
+func (vdb *VersionedDB) ImportState(itr statedb.FullScanIterator, dbValueFormat byte) error {
+	return errors.New("Not yet implemented")
+}
+
+// IsEmpty return true if the statedb does not have any content
+func (vdb *VersionedDB) IsEmpty() (bool, error) {
+	return false, errors.New("Not yet implemented")
+}
+
 // applyAdditionalQueryOptions will add additional fields to the query required for query processing
 func applyAdditionalQueryOptions(queryString string, queryLimit int32, queryBookmark string) (string, error) {
 	const jsonQueryFields = "fields"
