@@ -86,17 +86,17 @@ var _ = Describe("EndToEnd", func() {
 
 	Describe("basic solo network with 2 orgs and no docker", func() {
 		var (
-			datagramReader       *DatagramReader
+			metricsReader        *MetricsReader
 			runArtifactsFilePath string
 		)
 
 		BeforeEach(func() {
-			datagramReader = NewDatagramReader()
-			go datagramReader.Start()
+			metricsReader = NewMetricsReader()
+			go metricsReader.Start()
 
 			network = nwo.New(nwo.BasicSolo(), testDir, nil, StartPort(), components)
 			network.MetricsProvider = "statsd"
-			network.StatsdEndpoint = datagramReader.Address()
+			network.StatsdEndpoint = metricsReader.Address()
 			network.ChannelParticipationEnabled = true
 			network.Profiles = append(network.Profiles, &nwo.Profile{
 				Name:          "TwoOrgsBaseProfileChannel",
@@ -131,8 +131,8 @@ var _ = Describe("EndToEnd", func() {
 		})
 
 		AfterEach(func() {
-			if datagramReader != nil {
-				datagramReader.Close()
+			if metricsReader != nil {
+				metricsReader.Close()
 			}
 
 			// Terminate the processes but defer the network cleanup to the outer
@@ -198,14 +198,14 @@ var _ = Describe("EndToEnd", func() {
 			RunQueryInvokeQuery(network, orderer, peer, "testchannel")
 			RunRespondWith(network, orderer, peer, "testchannel")
 
-			By("waiting for DeliverFiltered stats to be emitted")
+			By("evaluating statsd metrics")
 			metricsWriteInterval := 5 * time.Second
-			Eventually(datagramReader, 2*metricsWriteInterval).Should(gbytes.Say("stream_request_duration.protos_Deliver.DeliverFiltered."))
+			CheckPeerStatsdStreamMetrics(metricsReader, 2*metricsWriteInterval)
+			CheckPeerStatsdMetrics("org1_peer0", metricsReader, 2*metricsWriteInterval)
+			CheckPeerStatsdMetrics("org2_peer0", metricsReader, 2*metricsWriteInterval)
 
-			CheckPeerStatsdStreamMetrics(datagramReader.String())
-			CheckPeerStatsdMetrics(datagramReader.String(), "org1_peer0")
-			CheckPeerStatsdMetrics(datagramReader.String(), "org2_peer0")
-			CheckOrdererStatsdMetrics(datagramReader.String(), "ordererorg_orderer")
+			By("checking for orderer metrics")
+			CheckOrdererStatsdMetrics("ordererorg_orderer", metricsReader, 2*metricsWriteInterval)
 
 			By("setting up a channel from a base profile")
 			additionalPeer := network.Peer("Org2", "peer0")
@@ -687,43 +687,46 @@ func RunRespondWith(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 	Expect(sess.Err).To(gbytes.Say(`Error: endorsement failure during invoke.`))
 }
 
-func CheckPeerStatsdMetrics(contents, prefix string) {
+func CheckPeerStatsdMetrics(prefix string, mr *MetricsReader, timeout time.Duration) {
 	By("checking for peer statsd metrics")
-	Expect(contents).To(ContainSubstring(prefix + ".logging.entries_checked.info:"))
-	Expect(contents).To(ContainSubstring(prefix + ".logging.entries_written.info:"))
-	Expect(contents).To(ContainSubstring(prefix + ".go.mem.gc_completed_count:"))
-	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_requests_received.protos_Endorser.ProcessProposal:"))
-	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_requests_completed.protos_Endorser.ProcessProposal.OK:"))
-	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.unary_request_duration.protos_Endorser.ProcessProposal.OK:"))
-	Expect(contents).To(ContainSubstring(prefix + ".ledger.blockchain_height"))
-	Expect(contents).To(ContainSubstring(prefix + ".ledger.blockstorage_commit_time"))
-	Expect(contents).To(ContainSubstring(prefix + ".ledger.blockstorage_and_pvtdata_commit_time"))
+	Eventually(mr.String, timeout).Should(SatisfyAll(
+		ContainSubstring(prefix+".logging.entries_checked.info:"),
+		ContainSubstring(prefix+".logging.entries_written.info:"),
+		ContainSubstring(prefix+".go.mem.gc_completed_count:"),
+		ContainSubstring(prefix+".grpc.server.unary_requests_received.protos_Endorser.ProcessProposal:"),
+		ContainSubstring(prefix+".grpc.server.unary_requests_completed.protos_Endorser.ProcessProposal.OK:"),
+		ContainSubstring(prefix+".grpc.server.unary_request_duration.protos_Endorser.ProcessProposal.OK:"),
+		ContainSubstring(prefix+".ledger.blockchain_height"),
+		ContainSubstring(prefix+".ledger.blockstorage_commit_time"),
+		ContainSubstring(prefix+".ledger.blockstorage_and_pvtdata_commit_time"),
+	))
 }
 
-func CheckPeerStatsdStreamMetrics(contents string) {
+func CheckPeerStatsdStreamMetrics(mr *MetricsReader, timeout time.Duration) {
 	By("checking for stream metrics")
-	Expect(contents).To(ContainSubstring(".grpc.server.stream_requests_received.protos_Deliver.DeliverFiltered:"))
-	Expect(contents).To(ContainSubstring(".grpc.server.stream_requests_completed.protos_Deliver.DeliverFiltered.Unknown:"))
-	Expect(contents).To(ContainSubstring(".grpc.server.stream_request_duration.protos_Deliver.DeliverFiltered.Unknown:"))
-	Expect(contents).To(ContainSubstring(".grpc.server.stream_messages_received.protos_Deliver.DeliverFiltered"))
-	Expect(contents).To(ContainSubstring(".grpc.server.stream_messages_sent.protos_Deliver.DeliverFiltered"))
+	Eventually(mr.String, timeout).Should(SatisfyAll(
+		ContainSubstring(".grpc.server.stream_requests_received.protos_Deliver.DeliverFiltered:"),
+		ContainSubstring(".grpc.server.stream_requests_completed.protos_Deliver.DeliverFiltered.Unknown:"),
+		ContainSubstring(".grpc.server.stream_request_duration.protos_Deliver.DeliverFiltered.Unknown:"),
+		ContainSubstring(".grpc.server.stream_messages_received.protos_Deliver.DeliverFiltered"),
+		ContainSubstring(".grpc.server.stream_messages_sent.protos_Deliver.DeliverFiltered"),
+	))
 }
 
-func CheckOrdererStatsdMetrics(contents, prefix string) {
-	By("checking for AtomicBroadcast")
-	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_request_duration.orderer_AtomicBroadcast.Broadcast.OK"))
-	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_request_duration.orderer_AtomicBroadcast.Deliver."))
-
-	By("checking for orderer metrics")
-	Expect(contents).To(ContainSubstring(prefix + ".logging.entries_checked.info:"))
-	Expect(contents).To(ContainSubstring(prefix + ".logging.entries_written.info:"))
-	Expect(contents).To(ContainSubstring(prefix + ".go.mem.gc_completed_count:"))
-	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_requests_received.orderer_AtomicBroadcast.Deliver:"))
-	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_requests_completed.orderer_AtomicBroadcast.Deliver."))
-	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_messages_received.orderer_AtomicBroadcast.Deliver"))
-	Expect(contents).To(ContainSubstring(prefix + ".grpc.server.stream_messages_sent.orderer_AtomicBroadcast.Deliver"))
-	Expect(contents).To(ContainSubstring(prefix + ".ledger.blockchain_height"))
-	Expect(contents).To(ContainSubstring(prefix + ".ledger.blockstorage_commit_time"))
+func CheckOrdererStatsdMetrics(prefix string, mr *MetricsReader, timeout time.Duration) {
+	Eventually(mr.String, timeout).Should(SatisfyAll(
+		ContainSubstring(prefix+".grpc.server.stream_request_duration.orderer_AtomicBroadcast.Broadcast.OK"),
+		ContainSubstring(prefix+".grpc.server.stream_request_duration.orderer_AtomicBroadcast.Deliver."),
+		ContainSubstring(prefix+".logging.entries_checked.info:"),
+		ContainSubstring(prefix+".logging.entries_written.info:"),
+		ContainSubstring(prefix+".go.mem.gc_completed_count:"),
+		ContainSubstring(prefix+".grpc.server.stream_requests_received.orderer_AtomicBroadcast.Deliver:"),
+		ContainSubstring(prefix+".grpc.server.stream_requests_completed.orderer_AtomicBroadcast.Deliver."),
+		ContainSubstring(prefix+".grpc.server.stream_messages_received.orderer_AtomicBroadcast.Deliver"),
+		ContainSubstring(prefix+".grpc.server.stream_messages_sent.orderer_AtomicBroadcast.Deliver"),
+		ContainSubstring(prefix+".ledger.blockchain_height"),
+		ContainSubstring(prefix+".ledger.blockstorage_commit_time"),
+	))
 }
 
 func OrdererOperationalClients(network *nwo.Network, orderer *nwo.Orderer) (authClient, unauthClient *http.Client) {

@@ -107,8 +107,13 @@ Operations:
 Metrics:
   Provider: {{ .MetricsProvider }}
   Statsd:
+    {{- if .StatsdEndpoint }}
+    Network: tcp
+    Address: {{ .StatsdEndpoint }}
+    {{- else }}
     Network: udp
-    Address: {{ if .StatsdEndpoint }}{{ .StatsdEndpoint }}{{ else }}127.0.0.1:8125{{ end }}
+    Address: 127.0.0.1:8125
+    {{- end }}
     WriteInterval: 5s
     Prefix: {{ ReplaceAll (ToLower Orderer.ID) "." "_" }}
 {{- end }}
