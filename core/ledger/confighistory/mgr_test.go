@@ -453,55 +453,55 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		verifyExportedConfigHistory(t, env.testSnapshotDir, fileHashes, storedKVs)
 	})
 
-	t.Run("import confighistory error due to missing files", func(t *testing.T) {
+	t.Run("import confighistory with no data and metadata files", func(t *testing.T) {
 		env := newTestEnvForSnapshot(t)
 		defer env.cleanup()
-		setupWithSampleData(env, "ledger1")
-		retriever := env.mgr.GetRetriever("ledger1", nil)
-		_, err := retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
+		require.NoFileExists(t, filepath.Join(env.testSnapshotDir, snapshotDataFileName))
+		require.NoFileExists(t, filepath.Join(env.testSnapshotDir, snapshotMetadataFileName))
+		err := env.mgr.ImportConfigHistory("ledger1", env.testSnapshotDir)
 		require.NoError(t, err)
-
-		require.NoError(t, os.RemoveAll(filepath.Join(env.testSnapshotDir, snapshotDataFileName)))
-		err = env.mgr.ImportConfigHistory("ledger2", env.testSnapshotDir)
-		require.Contains(t, err.Error(), "confighistory.data: no such file or directory")
-
-		require.NoError(t, os.RemoveAll(filepath.Join(env.testSnapshotDir, snapshotMetadataFileName)))
-		err = env.mgr.ImportConfigHistory("ledger2", env.testSnapshotDir)
-		require.Contains(t, err.Error(), "confighistory.metadata: no such file or directory")
 	})
 
-	t.Run("import confighistory other error cases", func(t *testing.T) {
+	t.Run("import confighistory - ledger exists error", func(t *testing.T) {
 		env := newTestEnvForSnapshot(t)
 		defer env.cleanup()
 		setupWithSampleData(env, "ledger1")
-		err := env.mgr.ImportConfigHistory("ledger1", env.testSnapshotDir)
+		dataFileWriter, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotDataFileName), snapshotFileFormat, testNewHashFunc)
+		defer dataFileWriter.Close()
+		err = env.mgr.ImportConfigHistory("ledger1", env.testSnapshotDir)
 		expectedErrStr := "config history for ledger [ledger1] exists. Incremental import is not supported. Remove the existing ledger data before retry"
 		require.EqualError(t, err, expectedErrStr)
+	})
 
+	t.Run("import confighistory - EOF error", func(t *testing.T) {
+		env := newTestEnvForSnapshot(t)
+		defer env.cleanup()
 		dataFileWriter1, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotMetadataFileName), snapshotFileFormat, testNewHashFunc)
 		require.NoError(t, err)
 		defer dataFileWriter1.Close()
+		dataFileWriter2, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotDataFileName), snapshotFileFormat, testNewHashFunc)
+		defer dataFileWriter2.Close()
 		err = env.mgr.ImportConfigHistory("ledger2", env.testSnapshotDir)
 		require.Contains(t, err.Error(), "error while reading from the snapshot file")
 		require.Contains(t, err.Error(), "confighistory.metadata: EOF")
 
 		require.NoError(t, os.RemoveAll(filepath.Join(env.testSnapshotDir, snapshotMetadataFileName)))
-		dataFileWriter2, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotMetadataFileName), snapshotFileFormat, testNewHashFunc)
-		defer dataFileWriter2.Close()
-		require.NoError(t, dataFileWriter2.EncodeUVarint(10))
-		_, err = dataFileWriter2.Done()
-		require.NoError(t, err)
-		dataFileWriter3, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotDataFileName), snapshotFileFormat, testNewHashFunc)
-		require.NoError(t, err)
+		dataFileWriter3, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotMetadataFileName), snapshotFileFormat, testNewHashFunc)
 		defer dataFileWriter3.Close()
 		require.NoError(t, dataFileWriter3.EncodeUVarint(1))
 		_, err = dataFileWriter3.Done()
 		require.NoError(t, err)
 		err = env.mgr.ImportConfigHistory("ledger2", env.testSnapshotDir)
-		require.Contains(t, err.Error(), "error while reading from snapshot file")
+		require.Contains(t, err.Error(), "error while reading from the snapshot file")
 		require.Contains(t, err.Error(), "confighistory.data: EOF")
+	})
 
+	t.Run("import confighistory - leveldb iter error", func(t *testing.T) {
+		env := newTestEnvForSnapshot(t)
+		defer env.cleanup()
 		env.mgr.dbProvider.Close()
+		dataFileWriter, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotDataFileName), snapshotFileFormat, testNewHashFunc)
+		defer dataFileWriter.Close()
 		err = env.mgr.ImportConfigHistory("ledger2", env.testSnapshotDir)
 		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
 	})
