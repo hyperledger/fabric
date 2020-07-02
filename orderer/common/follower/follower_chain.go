@@ -320,8 +320,6 @@ func (c *Chain) pull() error {
 			return errors.Wrap(err, "failed to pull up to join block")
 		}
 
-		// TODO remove the join-block from the file repo
-
 		// The join block never returns an error. This is checked before the follower is started.
 		if isMem, _ := c.clusterConsenter.IsChannelMember(c.joinBlock); isMem {
 			c.setStatusReport(types.ClusterRelationMember, types.StatusActive)
