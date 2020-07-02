@@ -195,7 +195,7 @@ func (h *DBHandle) DeleteAll() error {
 			}
 			logger.Infof("Have removed %d entries for channel %s in leveldb %s", numKeys, h.dbName, h.db.conf.DBPath)
 			batchSize = 0
-			batch = &leveldb.Batch{}
+			batch.Reset()
 		}
 	}
 	if batch.Len() > 0 {

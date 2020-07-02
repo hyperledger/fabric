@@ -343,7 +343,6 @@ func importTxIDsFromSnapshot(
 	lastBlockNumInSnapshot uint64,
 	db *leveldbhelper.DBHandle) error {
 
-	batch := db.NewUpdateBatch()
 	txIDsMetadata, err := snapshot.OpenFile(filepath.Join(snapshotDir, snapshotMetadataFileName), snapshotFileFormat)
 	if err != nil {
 		return err
@@ -356,6 +355,8 @@ func importTxIDsFromSnapshot(
 	if err != nil {
 		return err
 	}
+
+	batch := db.NewUpdateBatch()
 	for i := uint64(0); i < numTxIDs; i++ {
 		txID, err := txIDsData.DecodeString()
 		if err != nil {
@@ -369,7 +370,7 @@ func importTxIDsFromSnapshot(
 			if err := db.WriteBatch(batch, true); err != nil {
 				return err
 			}
-			batch = db.NewUpdateBatch()
+			batch.Reset()
 		}
 	}
 	batch.Put(indexSavePointKey, encodeBlockNum(lastBlockNumInSnapshot))
