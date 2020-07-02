@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package externalbuilder_test
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -233,6 +234,27 @@ var _ = Describe("Instance", func() {
 					Expect(err).To(MatchError("chaincode tls root cert not provided"))
 				})
 			})
+		})
+	})
+
+	Describe("Duration", func() {
+		It("validates that marshalled Duration is unmarshalled correctly", func() {
+			validateUnmarshalling := func(d time.Duration) {
+				duration := externalbuilder.Duration{d}
+
+				marshalled, err := json.Marshal(duration)
+
+				var unmarshalled externalbuilder.Duration
+				err = json.Unmarshal(marshalled, &unmarshalled)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(unmarshalled).To(Equal(duration))
+			}
+
+			validateUnmarshalling(10 * time.Millisecond)
+			validateUnmarshalling(10 * time.Second)
+			validateUnmarshalling(10 * time.Minute)
+			validateUnmarshalling(10 * time.Hour)
 		})
 	})
 
