@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 )
 
@@ -112,6 +113,16 @@ func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 // ImportConfigHistory imports the collection config history associated with a given
 // ledgerID from the snapshot files present in the dir
 func (m *Mgr) ImportConfigHistory(ledgerID string, dir string) error {
+	exist, _, err := fileutil.FileExists(filepath.Join(dir, snapshotDataFileName))
+	if err != nil {
+		return err
+	}
+	if !exist {
+		// when the ledger being bootstapped never had a private data collection for
+		// any chaincode, the snapshot files associated with the confighistory store
+		// will not be present in the snapshot directory. Hence, we can return early
+		return nil
+	}
 	db := m.dbProvider.getDB(ledgerID)
 	empty, err := db.IsEmpty()
 	if err != nil {
