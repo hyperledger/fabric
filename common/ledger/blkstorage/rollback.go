@@ -22,6 +22,7 @@ type rollbackMgr struct {
 	dbProvider     *leveldbhelper.Provider
 	indexStore     *blockIndex
 	targetBlockNum uint64
+	reusableBatch  *leveldbhelper.UpdateBatch
 }
 
 // Rollback reverts changes made to the block store beyond a given block number.
@@ -70,6 +71,7 @@ func newRollbackMgr(blockStorageDir, ledgerID string, indexConfig *IndexConfig, 
 	}
 	indexDB := r.dbProvider.GetDBHandle(ledgerID)
 	r.indexStore, err = newBlockIndex(indexConfig, indexDB)
+	r.reusableBatch = r.indexStore.db.NewUpdateBatch()
 	return r, err
 }
 
@@ -113,7 +115,7 @@ func (r *rollbackMgr) deleteIndexEntriesRange(startBlkNum, endBlkNum uint64) err
 	// entries. However, if there is more than more than 1 channel, dropping of
 	// index would impact the time taken to recover the peer. We need to analyze
 	// a bit before making a decision on rollback vs drop of index. FAB-15672
-	batch := r.indexStore.db.NewUpdateBatch()
+	r.reusableBatch.Reset()
 	lp, err := r.indexStore.getBlockLocByBlockNum(startBlkNum)
 	if err != nil {
 		return err
@@ -135,12 +137,12 @@ func (r *rollbackMgr) deleteIndexEntriesRange(startBlkNum, endBlkNum uint64) err
 		if err != nil {
 			return err
 		}
-		addIndexEntriesToBeDeleted(batch, blockInfo, r.indexStore)
+		addIndexEntriesToBeDeleted(r.reusableBatch, blockInfo, r.indexStore)
 		numberOfBlocksToRetrieve--
 	}
 
-	batch.Put(indexSavePointKey, encodeBlockNum(startBlkNum-1))
-	return r.indexStore.db.WriteBatch(batch, true)
+	r.reusableBatch.Put(indexSavePointKey, encodeBlockNum(startBlkNum-1))
+	return r.indexStore.db.WriteBatch(r.reusableBatch, true)
 }
 
 func addIndexEntriesToBeDeleted(batch *leveldbhelper.UpdateBatch, blockInfo *serializedBlockInfo, indexStore *blockIndex) error {

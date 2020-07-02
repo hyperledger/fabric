@@ -155,7 +155,8 @@ func (m *Mgr) ImportConfigHistory(ledgerID string, dir string) error {
 			if err := db.WriteBatch(batch, true); err != nil {
 				return err
 			}
-			batch = db.NewUpdateBatch()
+			currentBatchSize = 0
+			batch.Reset()
 		}
 	}
 	return db.WriteBatch(batch, true)
