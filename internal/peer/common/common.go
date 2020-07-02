@@ -27,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -95,7 +94,6 @@ func init() {
 
 // InitConfig initializes viper config
 func InitConfig(cmdRoot string) error {
-
 	err := config.InitViper(nil, cmdRoot)
 	if err != nil {
 		return err
@@ -134,11 +132,8 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 	// Init the BCCSP
 	SetBCCSPKeystorePath()
 	bccspConfig := factory.GetDefaultOpts()
-	if config := viper.Get("peer.BCCSP"); config != nil {
-		err = mapstructure.WeakDecode(config, bccspConfig)
-		if err != nil {
-			return errors.WithMessage(err, "could not decode peer BCCSP configuration")
-		}
+	if err := viper.UnmarshalKey("peer.BCCSP", &bccspConfig); err != nil {
+		return errors.WithMessage(err, "could not decode peer BCCSP configuration")
 	}
 
 	err = mspmgmt.LoadLocalMspWithType(mspMgrConfigDir, bccspConfig, localMSPID, localMSPType)
@@ -150,10 +145,12 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 }
 
 // SetBCCSPKeystorePath sets the file keystore path for the SW BCCSP provider
-// to an absolute path relative to the config file
+// to an absolute path relative to the config file.
 func SetBCCSPKeystorePath() {
-	viper.Set("peer.BCCSP.SW.FileKeyStore.KeyStore",
-		config.GetPath("peer.BCCSP.SW.FileKeyStore.KeyStore"))
+	key := "peer.BCCSP.SW.FileKeyStore.KeyStore"
+	if ksPath := config.GetPath(key); ksPath != "" {
+		viper.Set(key, ksPath)
+	}
 }
 
 // GetDefaultSigner return a default Signer(Default/PEER) for cli
