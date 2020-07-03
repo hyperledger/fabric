@@ -105,7 +105,7 @@ are required:
 
    The ``msptype`` is set to ``idemix`` and the contents of the ``mspdir``
    directory (``crypto-config/peerOrganizations/org3.example.com/msp`` in this
-   example) contains the ``IssuerPublicKey`` and ``IssuerRevocationPublicKey``
+   example) contains the ``IssuerPublicKey`` and ``RevocationPublicKey`` (as renamed file copy of ``IssuerRevocationPublicKey``)
    files.
 
    Note that in this example, ``Org1Idemix`` represents the Idemix MSP for ``Org1``

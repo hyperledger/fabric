@@ -501,7 +501,7 @@ The command will reveal the MSP folder structure and configuration file:
 organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/
 └── msp
     ├── IssuerPublicKey
-    ├── IssuerRevocationPublicKey
+    ├── RevocationPublicKey
     ├── cacerts
     │   └── localhost-7054-ca-org1.pem
     ├── config.yaml
