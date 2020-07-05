@@ -465,12 +465,11 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			ordererCAKey, err := ioutil.ReadFile(ordererCAKeyPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			ordererCACertPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations", ordererDomain, "ca", fmt.Sprintf("ca.%s-cert.pem", ordererDomain))
+			ordererCACertPath := network.OrdererCACert(orderer)
 			ordererCACert, err := ioutil.ReadFile(ordererCACertPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			adminCertPath := fmt.Sprintf("Admin@%s-cert.pem", ordererDomain)
-			adminCertPath = filepath.Join(network.OrdererUserMSPDir(orderer, "Admin"), "signcerts", adminCertPath)
+			adminCertPath := network.OrdererUserCert(orderer, "Admin")
 
 			originalAdminCert, err := ioutil.ReadFile(adminCertPath)
 			Expect(err).NotTo(HaveOccurred())
@@ -487,8 +486,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			err = ioutil.WriteFile(ordererCACertPath, earlyCACert, 0600)
 			Expect(err).NotTo(HaveOccurred())
 
-			ordererCACertPath = filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
-				ordererDomain, "msp", "cacerts", fmt.Sprintf("ca.%s-cert.pem", ordererDomain))
+			ordererCACertPath = network.OrdererCACert(orderer)
 			err = ioutil.WriteFile(ordererCACertPath, earlyCACert, 0600)
 			Expect(err).NotTo(HaveOccurred())
 
