@@ -669,6 +669,31 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 	})
 }
 
+func TestRegistrar_RemoveChannel(t *testing.T) {
+	// system channel
+	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	genesisBlockSys := encoder.New(confSys).GenesisBlockForChannel("sys-channel")
+
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
+
+	t.Run("Reject removal of app channel when system channel exists", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "sys-channel", genesisBlockSys)
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChain)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter}
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		err = registrar.RemoveChannel("some-app-channel", false)
+		require.EqualError(t, err, "system channel exists")
+	})
+}
+
 func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
 	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
 		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)

@@ -523,6 +523,8 @@ func (r *Registrar) joinAsFollower(ledgerRes *ledgerResources, clusterConsenter 
 // RemoveChannel instructs the orderer to remove a channel.
 // Depending on the removeStorage parameter, the storage resources are either removed or archived.
 func (r *Registrar) RemoveChannel(channelID string, removeStorage bool) error {
-	//TODO
+	if r.SystemChannelID() != "" && channelID != r.SystemChannelID() {
+		return types.ErrSystemChannelExists
+	}
 	return errors.New("Not implemented yet")
 }
