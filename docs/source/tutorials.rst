@@ -38,6 +38,7 @@ Finally, we provide an introduction to how to write a basic smart contract,
    write_first_app
    tutorial/commercial_paper
    private_data_tutorial
+   secured_private_asset_transfer_tutorial.md
    couchdb_tutorial
    create_channel/create_channel_overview.md
    channel_update_tutorial
