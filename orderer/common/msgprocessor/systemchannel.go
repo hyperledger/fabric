@@ -333,7 +333,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 		for orgName := range configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups {
 			consortiumGroup, ok := systemChannelGroup.Groups[channelconfig.ConsortiumsGroupKey].Groups[consortium.Name].Groups[orgName]
 			if !ok {
-				return nil, fmt.Errorf("Attempted to include a member which is not in the consortium")
+				return nil, fmt.Errorf("Attempted to include member %s which is not in the consortium", orgName)
 			}
 			applicationGroup.Groups[orgName] = proto.Clone(consortiumGroup).(*cb.ConfigGroup)
 		}
