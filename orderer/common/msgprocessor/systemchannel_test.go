@@ -737,7 +737,7 @@ func TestNewChannelConfig(t *testing.T) {
 					),
 				}),
 			},
-			"Attempted to include a member which is not in the consortium",
+			"Attempted to include member BadOrgName which is not in the consortium",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
