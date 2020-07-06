@@ -1054,5 +1054,5 @@ The other option is to submit the update to every Admin on a channel and wait fo
 
 Once the config has been added to the ledger, it will be a best practice to pull it and convert it to JSON to check to make sure everything was added correctly. This will also serve as a useful copy of the latest config.
 
-<!--- Licensed under Creative Commons Attribution 4.0 International License
+<!--- Licensed under Creative Commons Attribution 4.0 Interne
 https://creativecommons.org/licenses/by/4.0/ -->
