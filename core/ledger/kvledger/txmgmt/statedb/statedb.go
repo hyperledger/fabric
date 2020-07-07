@@ -23,6 +23,8 @@ type VersionedDBProvider interface {
 	GetDBHandle(id string, namespaceProvider NamespaceProvider) (VersionedDB, error)
 	// Close closes all the VersionedDB instances and releases any resources held by VersionedDBProvider
 	Close()
+	// Drop drops the channel-specific ledger data
+	Drop(id string) error
 }
 
 // VersionedDB lists methods that a db is supposed to implement

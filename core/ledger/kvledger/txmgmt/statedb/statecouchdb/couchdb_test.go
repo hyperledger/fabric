@@ -148,7 +148,7 @@ func TestBadCouchDBInstance(t *testing.T) {
 	require.Error(t, err, "Error should have been thrown with verifyCouchConfig and invalid connection")
 
 	//Test dropDatabase with bad connection
-	_, err = badDB.dropDatabase()
+	err = badDB.dropDatabase()
 	require.Error(t, err, "Error should have been thrown with dropDatabase and invalid connection")
 
 	//Test readDoc with bad connection
@@ -561,7 +561,7 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 	require.Error(t, readerr, "Error should have been thrown when reading a document with an invalid ID")
 
 	//Drop the database
-	_, errdbdrop := db.dropDatabase()
+	errdbdrop := db.dropDatabase()
 	require.NoError(t, errdbdrop, "Error dropping database")
 
 	//Make sure an error is thrown for getting info for a missing database
@@ -733,8 +733,11 @@ func TestPrefixScan(t *testing.T) {
 	require.Equal(t, string(0)+string(10)+string(utf8.MaxRune-1), results[2].id)
 
 	//Drop the database
-	_, errdbdrop := db.dropDatabase()
+	errdbdrop := db.dropDatabase()
 	require.NoError(t, errdbdrop, "Error dropping database")
+
+	// Drop again is not an error
+	require.NoError(t, db.dropDatabase())
 
 	//Retrieve the info for the new database and make sure the name matches
 	_, _, errdbinfo := db.getDatabaseInfo()

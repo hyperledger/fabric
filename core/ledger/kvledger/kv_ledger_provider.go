@@ -343,10 +343,7 @@ func (p *Provider) open(ledgerID string) (ledger.PeerLedger, error) {
 	// Get the history database (index for history of values by key) for a chain/ledger
 	var historyDB *history.DB
 	if p.historydbProvider != nil {
-		historyDB, err = p.historydbProvider.GetDBHandle(ledgerID)
-		if err != nil {
-			return nil, err
-		}
+		historyDB = p.historydbProvider.GetDBHandle(ledgerID)
 	}
 
 	initializer := &lgrInitializer{

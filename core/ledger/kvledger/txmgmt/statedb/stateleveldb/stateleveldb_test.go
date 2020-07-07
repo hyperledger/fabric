@@ -251,6 +251,32 @@ func TestImportStateErrorPropagation(t *testing.T) {
 	})
 }
 
+func TestDrop(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+
+	checkDBsAfterDropFunc := func(channelName string) {
+		db, err := env.DBProvider.GetDBHandle(channelName, nil)
+		require.NoError(t, err)
+		empty, err := db.IsEmpty()
+		require.NoError(t, err)
+		require.True(t, empty)
+	}
+
+	commontests.TestDrop(t, env.DBProvider, checkDBsAfterDropFunc)
+}
+
+func TestDropErrorPath(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+
+	_, err := env.DBProvider.GetDBHandle("testdroperror", nil)
+	require.NoError(t, err)
+
+	env.DBProvider.Close()
+	require.EqualError(t, env.DBProvider.Drop("testdroperror"), "internal leveldb error while obtaining db iterator: leveldb: closed")
+}
+
 type dummyFullScanIter struct {
 	err   error
 	key   *statedb.CompositeKey

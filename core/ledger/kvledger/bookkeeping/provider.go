@@ -28,6 +28,8 @@ type Provider interface {
 	GetDBHandle(ledgerID string, cat Category) *leveldbhelper.DBHandle
 	// Close closes the BookkeeperProvider
 	Close()
+	// Drop drops channel-specific data from the config history db
+	Drop(ledgerID string) error
 }
 
 type provider struct {
@@ -45,10 +47,22 @@ func NewProvider(dbPath string) (Provider, error) {
 
 // GetDBHandle implements the function in the interface 'BookkeeperProvider'
 func (provider *provider) GetDBHandle(ledgerID string, cat Category) *leveldbhelper.DBHandle {
-	return provider.dbProvider.GetDBHandle(fmt.Sprintf(ledgerID+"/%d", cat))
+	return provider.dbProvider.GetDBHandle(dbName(ledgerID, cat))
 }
 
 // Close implements the function in the interface 'BookKeeperProvider'
 func (provider *provider) Close() {
 	provider.dbProvider.Close()
+}
+
+// Drop drops channel-specific data from the config history db
+func (provider *provider) Drop(ledgerID string) error {
+	if err := provider.dbProvider.Drop(dbName(ledgerID, PvtdataExpiry)); err != nil {
+		return err
+	}
+	return provider.dbProvider.Drop(dbName(ledgerID, MetadataPresenceIndicator))
+}
+
+func dbName(ledgerID string, cat Category) string {
+	return fmt.Sprintf(ledgerID+"/%d", cat)
 }

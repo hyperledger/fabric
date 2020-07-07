@@ -188,6 +188,11 @@ func (m *Mgr) Close() {
 	m.dbProvider.Close()
 }
 
+// Drop drops channel-specific data from the config history db
+func (m *Mgr) Drop(ledgerid string) error {
+	return m.dbProvider.Drop(ledgerid)
+}
+
 // Retriever helps consumer retrieve collection config history
 type Retriever struct {
 	ledgerInfoRetriever    LedgerInfoRetriever

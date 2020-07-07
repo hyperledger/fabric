@@ -113,6 +113,11 @@ func (p *DBProvider) Close() {
 	p.VersionedDBProvider.Close()
 }
 
+// Drop drops channel-specific data from the statedb
+func (p *DBProvider) Drop(ledgerid string) error {
+	return p.VersionedDBProvider.Drop(ledgerid)
+}
+
 // DB uses a single database to maintain both the public and private data
 type DB struct {
 	statedb.VersionedDB

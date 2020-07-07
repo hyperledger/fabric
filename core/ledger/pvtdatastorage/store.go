@@ -159,6 +159,11 @@ func (p *Provider) Close() {
 	p.dbProvider.Close()
 }
 
+// Drop drops channel-specific data from the pvtdata store
+func (p *Provider) Drop(ledgerid string) error {
+	return p.dbProvider.Drop(ledgerid)
+}
+
 //////// store functions  ////////////////
 //////////////////////////////////////////
 

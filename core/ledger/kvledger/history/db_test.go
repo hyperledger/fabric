@@ -408,6 +408,72 @@ func TestName(t *testing.T) {
 	require.Equal(t, "history", env.testHistoryDB.Name())
 }
 
+func TestDrop(t *testing.T) {
+	env := newTestHistoryEnv(t)
+	defer env.cleanup()
+	provider := env.testBlockStorageEnv.provider
+
+	// create ledger data for "ledger1" and "ledger2"
+	for _, ledgerid := range []string{"ledger1", "ledger2"} {
+		store, err := provider.Open(ledgerid)
+		require.NoError(t, err)
+		defer store.Shutdown()
+		bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
+		txid := util2.GenerateUUID()
+		simulator, err := env.txmgr.NewTxSimulator(txid)
+		require.NoError(t, err)
+		require.NoError(t, simulator.SetState("ns1", "key1", []byte("value1")))
+		require.NoError(t, simulator.SetState("ns2", "key2", []byte("value2")))
+		simulator.Done()
+		simRes, err := simulator.GetTxSimulationResults()
+		require.NoError(t, err)
+		pubSimResBytes, err := simRes.GetPubSimulationBytes()
+		require.NoError(t, err)
+		block1 := bg.NextBlock([][]byte{pubSimResBytes})
+
+		historydb := env.testHistoryDBProvider.GetDBHandle(ledgerid)
+		require.NoError(t, store.AddBlock(gb))
+		require.NoError(t, historydb.Commit(gb))
+		require.NoError(t, store.AddBlock(block1))
+		require.NoError(t, historydb.Commit(block1))
+
+		historydbQE, err := historydb.NewQueryExecutor(store)
+		require.NoError(t, err)
+		testutilVerifyResults(t, historydbQE, "ns1", "key1", []string{"value1"})
+		testutilVerifyResults(t, historydbQE, "ns2", "key2", []string{"value2"})
+
+		store.Shutdown()
+	}
+
+	require.NoError(t, env.testHistoryDBProvider.Drop("ledger1"))
+
+	// verify ledger1 historydb has no entries and ledger2 historydb remains same
+	historydb := env.testHistoryDBProvider.GetDBHandle("ledger1")
+	store, err := provider.Open("ledger1")
+	require.NoError(t, err)
+	historydbQE, err := historydb.NewQueryExecutor(store)
+	require.NoError(t, err)
+	testutilVerifyResults(t, historydbQE, "ns1", "key1", []string{})
+	testutilVerifyResults(t, historydbQE, "ns2", "key2", []string{})
+	empty, err := historydb.levelDB.IsEmpty()
+	require.NoError(t, err)
+	require.True(t, empty)
+
+	historydb2 := env.testHistoryDBProvider.GetDBHandle("ledger2")
+	store2, err := provider.Open("ledger2")
+	require.NoError(t, err)
+	historydbQE2, err := historydb2.NewQueryExecutor(store2)
+	require.NoError(t, err)
+	testutilVerifyResults(t, historydbQE2, "ns1", "key1", []string{"value1"})
+	testutilVerifyResults(t, historydbQE2, "ns2", "key2", []string{"value2"})
+
+	// drop again is not an error
+	require.NoError(t, env.testHistoryDBProvider.Drop("ledger1"))
+
+	env.testHistoryDBProvider.Close()
+	require.EqualError(t, env.testHistoryDBProvider.Drop("ledger2"), "internal leveldb error while obtaining db iterator: leveldb: closed")
+}
+
 // verify history results
 func testutilVerifyResults(t *testing.T, hqe ledger.HistoryQueryExecutor, ns, key string, expectedVals []string) {
 	itr, err := hqe.GetHistoryForKey(ns, key)

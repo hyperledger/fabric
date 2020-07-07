@@ -16,9 +16,31 @@ func TestProvider(t *testing.T) {
 	testEnv := NewTestEnv(t)
 	defer testEnv.Cleanup()
 	p := testEnv.TestProvider
-	db := p.GetDBHandle("TestLedger", PvtdataExpiry)
-	require.NoError(t, db.Put([]byte("key"), []byte("value"), true))
-	val, err := db.Get([]byte("key"))
+
+	pvtdataExpiryDB := p.GetDBHandle("TestLedger", PvtdataExpiry)
+	require.NoError(t, pvtdataExpiryDB.Put([]byte("key1"), []byte("value1"), true))
+	val, err := pvtdataExpiryDB.Get([]byte("key1"))
 	require.NoError(t, err)
-	require.Equal(t, []byte("value"), val)
+	require.Equal(t, []byte("value1"), val)
+
+	metadataIndicatorDB := p.GetDBHandle("TestLedger", MetadataPresenceIndicator)
+	require.NoError(t, metadataIndicatorDB.Put([]byte("key2"), []byte("value2"), true))
+	val, err = metadataIndicatorDB.Get([]byte("key2"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value2"), val)
+
+	require.NoError(t, p.Drop("TestLedger"))
+
+	val, err = pvtdataExpiryDB.Get([]byte("key1"))
+	require.NoError(t, err)
+	require.Nil(t, val)
+	val, err = metadataIndicatorDB.Get([]byte("key2"))
+	require.NoError(t, err)
+	require.Nil(t, val)
+
+	// drop again is not an error
+	require.NoError(t, p.Drop("TestLedger"))
+
+	p.Close()
+	require.EqualError(t, p.Drop("TestLedger"), "internal leveldb error while obtaining db iterator: leveldb: closed")
 }

@@ -315,7 +315,7 @@ func DropApplicationDBs(config *ledger.CouchDBConfig) error {
 		return err
 	}
 	for _, dbName := range dbNames {
-		if _, err = dropDB(couchInstance, dbName); err != nil {
+		if err = dropDB(couchInstance, dbName); err != nil {
 			couchdbLogger.Errorf("Error dropping CouchDB database %s", dbName)
 			return err
 		}
@@ -323,7 +323,7 @@ func DropApplicationDBs(config *ledger.CouchDBConfig) error {
 	return nil
 }
 
-func dropDB(couchInstance *couchInstance, dbName string) (*dbOperationResponse, error) {
+func dropDB(couchInstance *couchInstance, dbName string) error {
 	db := &couchDatabase{
 		couchInstance: couchInstance,
 		dbName:        dbName,

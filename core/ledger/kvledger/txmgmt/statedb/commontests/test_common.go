@@ -16,6 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// CheckDBsAfterDropFunc checks if the channel-specific dbs have been dropped
+type CheckDBsAfterDropFunc func(channelName string)
+
 // TestGetStateMultipleKeys tests read for given multiple keys
 func TestGetStateMultipleKeys(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	db, err := dbProvider.GetDBHandle("testgetmultiplekeys", nil)
@@ -88,6 +91,51 @@ func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	require.NoError(t, err)
 	require.Equal(t, savePoint, sp)
 
+}
+
+// TestDrop tests dropping channel-specific ledger data
+func TestDrop(t *testing.T, dbProvider statedb.VersionedDBProvider, checkDBsAfterDropFunc CheckDBsAfterDropFunc) {
+	channel1 := "testdrop-channel-1"
+	channel2 := "testdrop-channel-2"
+	namespaces := map[string]string{
+		channel1: "ns1",
+		channel2: "ns2",
+	}
+
+	vv1 := statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}
+	vv2 := statedb.VersionedValue{Value: []byte("value2"), Version: version.NewHeight(1, 2)}
+
+	for channelName, ns := range namespaces {
+		db, err := dbProvider.GetDBHandle(channelName, nil)
+		require.NoError(t, err)
+
+		batch := statedb.NewUpdateBatch()
+		batch.Put(ns, "key1", vv1.Value, vv1.Version)
+		batch.Put(ns, "key2", vv2.Value, vv2.Version)
+		savePoint := version.NewHeight(2, 2)
+		db.ApplyUpdates(batch, savePoint)
+
+		vv, err := db.GetState(ns, "key1")
+		require.Equal(t, &vv1, vv)
+		vv, err = db.GetState(ns, "key2")
+		require.Equal(t, &vv2, vv)
+	}
+
+	require.NoError(t, dbProvider.Drop(channel1))
+
+	// verify channel1 data are dropped
+	checkDBsAfterDropFunc(channel1)
+
+	// verify channel2 data remain as is
+	db2, err := dbProvider.GetDBHandle(channel2, nil)
+	require.NoError(t, err)
+	vv, err := db2.GetState("ns2", "key1")
+	require.Equal(t, &vv1, vv)
+	vv, err = db2.GetState("ns2", "key2")
+	require.Equal(t, &vv2, vv)
+
+	// drop again should not fail
+	require.NoError(t, dbProvider.Drop(channel1))
 }
 
 // TestMultiDBBasicRW tests basic read-write on multiple dbs
@@ -1086,6 +1134,27 @@ func TestDataExportImport(
 			},
 		)
 	}
+}
+
+// CreateTestData creates test data for the given namespace and number of keys.
+func CreateTestData(t *testing.T, db statedb.VersionedDB, ns string, numKeys int) []string {
+	batch := statedb.NewUpdateBatch()
+	expectedKeys := make([]string, numKeys)
+	for i := 0; i < numKeys; i++ {
+		expectedKeys[i] = fmt.Sprintf("key%d", i)
+		vv := statedb.VersionedValue{Value: []byte(fmt.Sprintf("value%d", i)), Version: version.NewHeight(1, uint64(i+1))}
+		batch.Put(ns, expectedKeys[i], vv.Value, vv.Version)
+	}
+	savePoint := version.NewHeight(1, uint64(numKeys))
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
+	itr, _ := db.GetStateRangeScanIterator(ns, "", "")
+	defer itr.Close()
+	for _, expectedKey := range expectedKeys {
+		queryResult, _ := itr.Next()
+		vkv := queryResult.(*statedb.VersionedKV)
+		require.Equal(t, expectedKey, vkv.Key)
+	}
+	return expectedKeys
 }
 
 type stringset []string
