@@ -60,7 +60,6 @@ func TestGetBCCSPFromOpts(t *testing.T) {
 		Pkcs11Opts: &pkcs11.PKCS11Opts{
 			SecLevel:   256,
 			HashFamily: "SHA2",
-			Ephemeral:  true,
 			Library:    lib,
 			Pin:        pin,
 			Label:      label,
