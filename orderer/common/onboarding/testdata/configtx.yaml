@@ -45,8 +45,6 @@ Application: &ApplicationDefaults
         qscc/GetTransactionByID: /Channel/Application/Readers
         qscc/GetBlockByTxID: /Channel/Application/Readers
         cscc/GetConfigBlock: /Channel/Application/Readers
-        cscc/GetConfigTree: /Channel/Application/Readers
-        cscc/SimulateConfigTreeUpdate: /Channel/Application/Readers
         peer/Propose: /Channel/Application/Writers
         peer/ChaincodeToChaincode: /Channel/Application/Readers
         event/Block: /Channel/Application/Readers
