@@ -86,7 +86,7 @@ func (u *publicAndHashUpdates) applyWriteSet(
 ) error {
 	u.publicUpdates.ContainsPostOrderWrites =
 		u.publicUpdates.ContainsPostOrderWrites || containsPostOrderWrites
-	txops, err := prepareTxOps(txRWSet, txHeight, u, db)
+	txops, err := prepareTxOps(txRWSet, u, db)
 	logger.Debugf("txops=%#v", txops)
 	if err != nil {
 		return err

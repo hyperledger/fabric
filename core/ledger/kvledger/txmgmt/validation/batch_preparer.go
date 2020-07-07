@@ -97,7 +97,6 @@ func (p *CommitBatchPreparer) ValidateAndPrepareBatch(blockAndPvtdata *ledger.Bl
 		p.db,
 		pubAndHashUpdates,
 		blockAndPvtdata.PvtData,
-		p.customTxProcessors,
 	); err != nil {
 		return nil, nil, err
 	}
@@ -124,7 +123,6 @@ func validateAndPreparePvtBatch(
 	db *privacyenabledstate.DB,
 	pubAndHashUpdates *publicAndHashUpdates,
 	pvtdata map[uint64]*ledger.TxPvtData,
-	customTxProcessors map[common.HeaderType]ledger.CustomTxProcessor,
 ) (*privacyenabledstate.PvtUpdateBatch, error) {
 
 	pvtUpdates := privacyenabledstate.NewPvtUpdateBatch()
