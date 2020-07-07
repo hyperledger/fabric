@@ -48,7 +48,7 @@ Application: &ApplicationDefaults
         cscc/GetConfigTree: /Channel/Application/Readers
         cscc/SimulateConfigTreeUpdate: /Channel/Application/Readers
         peer/Propose: /Channel/Application/Writers
-        peer/ChaincodeToChaincode: /Channel/Application/Readers
+        peer/ChaincodeToChaincode: /Channel/Application/Writers
         event/Block: /Channel/Application/Readers
         event/FilteredBlock: /Channel/Application/Readers
     Organizations:

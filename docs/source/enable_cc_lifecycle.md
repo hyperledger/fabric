@@ -116,10 +116,10 @@ Note that the `enable_lifecycle.json` uses sample values, for example `org1Polic
 			"policy_ref": "/Channel/Application/Writers"
 		},
 		"_lifecycle/QueryChaincodeDefinition": {
-			"policy_ref": "/Channel/Application/Readers"
+			"policy_ref": "/Channel/Application/Writers"
 		},
 		"_lifecycle/QueryChaincodeDefinitions": {
-			"policy_ref": "/Channel/Application/Readers"
+			"policy_ref": "/Channel/Application/Writers"
 		}
    }
 }

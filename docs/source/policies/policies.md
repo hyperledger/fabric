@@ -111,11 +111,11 @@ In that file, ACLs are expressed using the following format:
 
 ```
 # ACL policy for chaincode to chaincode invocation
-peer/ChaincodeToChaincode: /Channel/Application/Readers
+peer/ChaincodeToChaincode: /Channel/Application/Writers
 ```
 
 Where `peer/ChaincodeToChaincode` represents the resource being secured and
-`/Channel/Application/Readers` refers to the policy which must be satisfied for
+`/Channel/Application/Writers` refers to the policy which must be satisfied for
 the associated transaction to be considered valid.
 
 For a deeper dive into ACLS, refer to the topic in the Operations Guide on [ACLs](../access_control.html).
