@@ -49,7 +49,6 @@ func TestInitFactoriesInvalidArgs(t *testing.T) {
 func TestGetBCCSPFromOpts(t *testing.T) {
 	opts := GetDefaultOpts()
 	opts.SwOpts.FileKeystore = &FileKeystoreOpts{KeyStorePath: os.TempDir()}
-	opts.SwOpts.Ephemeral = false
 	csp, err := GetBCCSPFromOpts(opts)
 	assert.NoError(t, err)
 	assert.NotNil(t, csp)

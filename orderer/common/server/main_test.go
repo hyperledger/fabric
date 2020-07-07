@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -38,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
@@ -386,7 +386,6 @@ func TestLoadLocalMSP(t *testing.T) {
 						SwOpts: &factory.SwOpts{
 							HashFamily: "SHA2",
 							SecLevel:   256,
-							Ephemeral:  true,
 						},
 					},
 				},
@@ -917,7 +916,6 @@ func genesisConfig(t *testing.T, genesisFile string) *localconfig.TopLevel {
 				SwOpts: &factory.SwOpts{
 					HashFamily: "SHA2",
 					SecLevel:   256,
-					Ephemeral:  true,
 				},
 			},
 		},
