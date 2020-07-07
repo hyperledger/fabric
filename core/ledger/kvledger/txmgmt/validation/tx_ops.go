@@ -18,8 +18,9 @@ import (
 func prepareTxOps(rwset *rwsetutil.TxRwSet, txht *version.Height,
 	precedingUpdates *publicAndHashUpdates, db *privacyenabledstate.DB) (txOps, error) {
 	txops := txOps{}
-	txops.applyTxRwset(rwset)
-	//logger.Debugf("prepareTxOps() txops after applying raw rwset=%#v", spew.Sdump(txops))
+	if err := txops.applyTxRwset(rwset); err != nil {
+		return nil, err
+	}
 	for ck, keyop := range txops {
 		// check if the final state of the key, value and metadata, is already present in the transaction, then skip
 		// otherwise we need to retrieve latest state and merge in the current value or metadata update
@@ -62,7 +63,9 @@ func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 			txops.applyKVWrite(ns, "", kvWrite)
 		}
 		for _, kvMetadataWrite := range nsRWSet.KvRwSet.MetadataWrites {
-			txops.applyMetadata(ns, "", kvMetadataWrite)
+			if err := txops.applyMetadata(ns, "", kvMetadataWrite); err != nil {
+				return err
+			}
 		}
 
 		// apply collection level kvwrite and kvMetadataWrite
@@ -79,12 +82,14 @@ func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 			}
 
 			for _, metadataWrite := range collHashRWset.HashedRwSet.MetadataWrites {
-				txops.applyMetadata(ns, coll,
+				if err := txops.applyMetadata(ns, coll,
 					&kvrwset.KVMetadataWrite{
 						Key:     string(metadataWrite.KeyHash),
 						Entries: metadataWrite.Entries,
 					},
-				)
+				); err != nil {
+					return err
+				}
 			}
 		}
 	}
