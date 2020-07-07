@@ -123,7 +123,7 @@ func TestValidateAndPreparePvtBatch(t *testing.T) {
 	require.NoError(t, err)
 	addPvtRWSetToPvtUpdateBatch(tx1TxPvtRWSet, expectedPvtUpdates, version.NewHeight(uint64(10), uint64(0)))
 
-	actualPvtUpdates, err := validateAndPreparePvtBatch(mvccValidatedBlock, testDB, nil, pvtDataMap, nil)
+	actualPvtUpdates, err := validateAndPreparePvtBatch(mvccValidatedBlock, testDB, nil, pvtDataMap)
 	require.NoError(t, err)
 	require.Equal(t, expectedPvtUpdates, actualPvtUpdates)
 

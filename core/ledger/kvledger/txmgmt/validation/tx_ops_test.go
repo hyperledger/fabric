@@ -78,7 +78,7 @@ func TestTxOpsPreparationValueUpdate(t *testing.T) {
 		nil,
 	)
 
-	txOps, err := prepareTxOps(rwset, version.NewHeight(1, 2), precedingUpdates, db)
+	txOps, err := prepareTxOps(rwset, precedingUpdates, db)
 	require.NoError(t, err)
 	require.Len(t, txOps, 3)
 
@@ -135,7 +135,7 @@ func TestTxOpsPreparationMetadataUpdates(t *testing.T) {
 		},
 	)
 
-	txOps, err := prepareTxOps(rwset, version.NewHeight(1, 2), precedingUpdates, db)
+	txOps, err := prepareTxOps(rwset, precedingUpdates, db)
 	require.NoError(t, err)
 	require.Len(t, txOps, 2) // key3 should have been removed from the txOps because, the key3 does not exist and only metadata is being updated
 
@@ -187,7 +187,7 @@ func TestTxOpsPreparationMetadataDelete(t *testing.T) {
 		},
 	)
 
-	txOps, err := prepareTxOps(rwset, version.NewHeight(1, 2), precedingUpdates, db)
+	txOps, err := prepareTxOps(rwset, precedingUpdates, db)
 	require.NoError(t, err)
 	require.Len(t, txOps, 2) // key3 should have been removed from the txOps because, the key3 does not exist and only metadata is being updated
 
@@ -248,7 +248,7 @@ func TestTxOpsPreparationMixedUpdates(t *testing.T) {
 		},
 	)
 
-	txOps, err := prepareTxOps(rwset, version.NewHeight(1, 2), precedingUpdates, db)
+	txOps, err := prepareTxOps(rwset, precedingUpdates, db)
 	require.NoError(t, err)
 	require.Len(t, txOps, 4)
 
@@ -335,7 +335,7 @@ func TestTxOpsPreparationPvtdataHashes(t *testing.T) {
 		},
 	)
 
-	txOps, err := prepareTxOps(rwset, version.NewHeight(1, 2), precedingUpdates, db)
+	txOps, err := prepareTxOps(rwset, precedingUpdates, db)
 	require.NoError(t, err)
 	require.Len(t, txOps, 4)
 
