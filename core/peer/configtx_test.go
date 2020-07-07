@@ -58,10 +58,10 @@ func TestConfigTxErrorScenarios(t *testing.T) {
 	configTxProcessor := &ConfigTxProcessor{}
 	// wrong tx type
 	configEnvWrongTxType := &common.ConfigEnvelope{}
-	txEnvelope, err := protoutil.CreateSignedEnvelope(common.HeaderType_PEER_ADMIN_OPERATION, "channelID", nil, configEnvWrongTxType, 0, 0)
+	txEnvelope, err := protoutil.CreateSignedEnvelope(common.HeaderType_DELIVER_SEEK_INFO, "channelID", nil, configEnvWrongTxType, 0, 0)
 	require.NoError(t, err)
 	err = configTxProcessor.GenerateSimulationResults(txEnvelope, nil, false)
-	require.EqualError(t, err, "tx type [PEER_ADMIN_OPERATION] is not expected")
+	require.EqualError(t, err, "tx type [DELIVER_SEEK_INFO] is not expected")
 
 	// empty channelConfig
 	txEnvelope, err = protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, "channelID", nil, &common.ConfigEnvelope{}, 0, 0)
