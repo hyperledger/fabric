@@ -72,9 +72,6 @@ type PKCS11Opts struct {
 	SecLevel   int    `mapstructure:"security" json:"security"`
 	HashFamily string `mapstructure:"hash" json:"hash"`
 
-	// Keystore options
-	Ephemeral bool `mapstructure:"tempkeys,omitempty" json:"tempkeys,omitempty"`
-
 	// PKCS11 options
 	Library    string `mapstructure:"library" json:"library"`
 	Label      string `mapstructure:"label" json:"label"`
