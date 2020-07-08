@@ -150,6 +150,7 @@ type Network struct {
 	StatsdEndpoint              string
 	ClientAuthRequired          bool
 	ChannelParticipationEnabled bool
+	BootstrapMethod             string
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
@@ -184,6 +185,7 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 		PortsByBrokerID:   map[string]Ports{},
 		PortsByOrdererID:  map[string]Ports{},
 		PortsByPeerID:     map[string]Ports{},
+		BootstrapMethod:   "file",
 
 		Organizations: c.Organizations,
 		Consensus:     c.Consensus,

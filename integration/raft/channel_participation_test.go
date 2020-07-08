@@ -65,14 +65,11 @@ var _ = Describe("ChannelParticipation", func() {
 			raftConfig := nwo.BasicEtcdRaft()
 			network = nwo.New(raftConfig, testDir, client, StartPort(), components)
 			network.ChannelParticipationEnabled = true
+			network.BootstrapMethod = "none"
 			network.GenerateConfigTree()
-
-			orderer := network.Orderer("orderer")
-			ordererConfig := network.ReadOrdererConfig(orderer)
-			ordererConfig.General.BootstrapMethod = "none"
-			network.WriteOrdererConfig(orderer, ordererConfig)
 			network.Bootstrap()
 
+			orderer := network.Orderer("orderer")
 			ordererRunner = network.OrdererRunner(orderer)
 			ordererProcess = ifrit.Invoke(ordererRunner)
 			Eventually(ordererProcess.Ready, network.EventuallyTimeout).Should(BeClosed())

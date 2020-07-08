@@ -35,7 +35,7 @@ General:
     ServerMinInterval: 60s
     ServerInterval: 7200s
     ServerTimeout: 20s
-  BootstrapMethod: file
+  BootstrapMethod: {{ .BootstrapMethod}}
   BootstrapFile: {{ .RootDir }}/{{ .SystemChannel.Name }}_block.pb
   LocalMSPDir: {{ $w.OrdererLocalMSPDir Orderer }}
   LocalMSPID: {{ ($w.Organization Orderer.Organization).MSPID }}
