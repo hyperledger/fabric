@@ -39,7 +39,8 @@ func BasicSolo() *Config {
 			},
 		}},
 		Consensus: &Consensus{
-			Type: "solo",
+			Type:            "solo",
+			BootstrapMethod: "file",
 		},
 		SystemChannel: &SystemChannel{
 			Name:    "systemchannel",

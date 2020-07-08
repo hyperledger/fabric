@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
@@ -179,7 +180,7 @@ var _ = Describe("ConfigTx", func() {
 		currentBlockNumber := nwo.CurrentConfigBlockNumber(network, org2peer0, orderer, "testchannel")
 
 		By("submitting the channel config update")
-		resp, err := nwo.Broadcast(network, orderer, configUpdateEnvelope)
+		resp, err := ordererclient.Broadcast(network, orderer, configUpdateEnvelope)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -236,7 +237,7 @@ var _ = Describe("ConfigTx", func() {
 		currentBlockNumber = nwo.CurrentConfigBlockNumber(network, org2peer0, orderer, "testchannel")
 
 		By("submitting the channel config update")
-		resp, err = nwo.Broadcast(network, orderer, configUpdateEnvelope)
+		resp, err = ordererclient.Broadcast(network, orderer, configUpdateEnvelope)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -281,7 +282,7 @@ var _ = Describe("ConfigTx", func() {
 			currentBlockNumber = nwo.CurrentConfigBlockNumber(network, peer, orderer, "testchannel")
 
 			By("submitting the channel config update for " + peer.Organization)
-			resp, err = nwo.Broadcast(network, orderer, configUpdateEnvelope)
+			resp, err = ordererclient.Broadcast(network, orderer, configUpdateEnvelope)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 

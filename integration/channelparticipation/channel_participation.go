@@ -4,7 +4,7 @@ Copyright IBM Corp All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package nwo
+package channelparticipation
 
 import (
 	"bytes"
@@ -16,17 +16,18 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 )
 
-func ChannelParticipationJoin(n *Network, o *Orderer, channel string, block *common.Block, expectedChannelInfo ChannelInfo) {
+func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, expectedChannelInfo ChannelInfo) {
 	blockBytes, err := proto.Marshal(block)
 	Expect(err).NotTo(HaveOccurred())
-	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, OperationsPort))
+	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.OperationsPort))
 	req := generateJoinRequest(url, channel, blockBytes)
-	authClient, _ := OrdererOperationalClients(n, o)
+	authClient, _ := nwo.OrdererOperationalClients(n, o)
 
 	body := doBody(authClient, req)
 	c := &ChannelInfo{}
@@ -72,11 +73,11 @@ type channelInfoShort struct {
 	URL  string `json:"url"`
 }
 
-func ChannelParticipationList(n *Network, o *Orderer, expectedChannels []string, systemChannel ...string) {
-	authClient, unauthClient := OrdererOperationalClients(n, o)
-	listChannelsURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, OperationsPort))
+func List(n *nwo.Network, o *nwo.Orderer, expectedChannels []string, systemChannel ...string) {
+	authClient, unauthClient := nwo.OrdererOperationalClients(n, o)
+	listChannelsURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.OperationsPort))
 
-	body := GetBody(authClient, listChannelsURL)()
+	body := getBody(authClient, listChannelsURL)()
 	list := &channelList{}
 	err := json.Unmarshal([]byte(body), list)
 	Expect(err).NotTo(HaveOccurred())
@@ -89,6 +90,18 @@ func ChannelParticipationList(n *Network, o *Orderer, expectedChannels []string,
 	resp, err := unauthClient.Get(listChannelsURL)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+}
+
+func getBody(client *http.Client, url string) func() string {
+	return func() string {
+		resp, err := client.Get(url)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+		resp.Body.Close()
+		return string(bodyBytes)
+	}
 }
 
 func channelsMatcher(channels []string) types.GomegaMatcher {
@@ -124,11 +137,11 @@ type ChannelInfo struct {
 	Height          uint64 `json:"height"`
 }
 
-func ChannelParticipationListOne(n *Network, o *Orderer, expectedChannelInfo ChannelInfo) {
-	authClient, _ := OrdererOperationalClients(n, o)
-	listChannelURL := fmt.Sprintf("https://127.0.0.1:%d/%s", n.OrdererPort(o, OperationsPort), expectedChannelInfo.URL)
+func ListOne(n *nwo.Network, o *nwo.Orderer, expectedChannelInfo ChannelInfo) {
+	authClient, _ := nwo.OrdererOperationalClients(n, o)
+	listChannelURL := fmt.Sprintf("https://127.0.0.1:%d/%s", n.OrdererPort(o, nwo.OperationsPort), expectedChannelInfo.URL)
 
-	body := GetBody(authClient, listChannelURL)()
+	body := getBody(authClient, listChannelURL)()
 	c := &ChannelInfo{}
 	err := json.Unmarshal([]byte(body), c)
 	Expect(err).NotTo(HaveOccurred())

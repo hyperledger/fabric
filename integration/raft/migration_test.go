@@ -24,6 +24,7 @@ import (
 	protosraft "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -1150,19 +1151,19 @@ func assertBlockCreation(network *nwo.Network, orderer *nwo.Orderer, peer *nwo.P
 		signer = peer
 	}
 	env := CreateBroadcastEnvelope(network, signer, channelID, []byte("hola"))
-	resp, err := nwo.Broadcast(network, orderer, env)
+	resp, err := ordererclient.Broadcast(network, orderer, env)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
 	denv := CreateDeliverEnvelope(network, orderer, blkNum, channelID)
-	blk, err := nwo.Deliver(network, orderer, denv)
+	blk, err := ordererclient.Deliver(network, orderer, denv)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(blk).ToNot(BeNil())
 }
 
 func assertTxFailed(network *nwo.Network, orderer *nwo.Orderer, channelID string) {
 	env := CreateBroadcastEnvelope(network, orderer, channelID, []byte("hola"))
-	resp, err := nwo.Broadcast(network, orderer, env)
+	resp, err := ordererclient.Broadcast(network, orderer, env)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
 	Expect(resp.Info).To(Equal("normal transactions are rejected: maintenance mode"))

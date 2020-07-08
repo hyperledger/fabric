@@ -27,6 +27,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/integration/channelparticipation"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -93,7 +94,7 @@ var _ = Describe("EndToEnd", func() {
 			network = nwo.New(nwo.BasicSolo(), testDir, nil, StartPort(), components)
 			network.MetricsProvider = "statsd"
 			network.StatsdEndpoint = metricsReader.Address()
-			network.ChannelParticipationEnabled = true
+			network.Consensus.ChannelParticipationEnabled = true
 			network.Profiles = append(network.Profiles, &nwo.Profile{
 				Name:          "TwoOrgsBaseProfileChannel",
 				Consortium:    "SampleConsortium",
@@ -156,7 +157,7 @@ var _ = Describe("EndToEnd", func() {
 
 			By("setting up the channel")
 			network.CreateAndJoinChannel(orderer, "testchannel")
-			nwo.ChannelParticipationList(network, orderer, []string{"testchannel"}, "systemchannel")
+			channelparticipation.List(network, orderer, []string{"testchannel"}, "systemchannel")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			By("attempting to install unsupported chaincode without docker")
@@ -213,7 +214,7 @@ var _ = Describe("EndToEnd", func() {
 		BeforeEach(func() {
 			network = nwo.New(nwo.BasicKafka(), testDir, client, StartPort(), components)
 			network.MetricsProvider = "prometheus"
-			network.ChannelParticipationEnabled = true
+			network.Consensus.ChannelParticipationEnabled = true
 			network.GenerateConfigTree()
 			network.Bootstrap()
 
@@ -257,7 +258,7 @@ var _ = Describe("EndToEnd", func() {
 			orderer := network.Orderer("orderer")
 
 			network.CreateAndJoinChannel(orderer, "testchannel")
-			nwo.ChannelParticipationList(network, orderer, []string{"testchannel"}, "systemchannel")
+			channelparticipation.List(network, orderer, []string{"testchannel"}, "systemchannel")
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			// package, install, and approve by org1 - module chaincode
@@ -344,7 +345,7 @@ var _ = Describe("EndToEnd", func() {
 
 		BeforeEach(func() {
 			network = nwo.New(nwo.MultiChannelEtcdRaft(), testDir, client, StartPort(), components)
-			network.ChannelParticipationEnabled = true
+			network.Consensus.ChannelParticipationEnabled = true
 			network.GenerateConfigTree()
 			for _, peer := range network.Peers {
 				core := network.ReadPeerConfig(peer)
@@ -393,7 +394,7 @@ var _ = Describe("EndToEnd", func() {
 
 			By("Create second channel and deploy chaincode")
 			network.CreateAndJoinChannel(orderer, "testchannel2")
-			nwo.ChannelParticipationList(network, orderer, []string{"testchannel", "testchannel2"}, "systemchannel")
+			channelparticipation.List(network, orderer, []string{"testchannel", "testchannel2"}, "systemchannel")
 			peers := network.PeersWithChannel("testchannel2")
 			nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.ApproveChaincodeForMyOrg(network, "testchannel2", orderer, chaincode, peers...)

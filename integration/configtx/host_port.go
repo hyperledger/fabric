@@ -25,6 +25,12 @@ func OrdererHostPort(n *nwo.Network, o *nwo.Orderer) (string, int) {
 	return splitHostPort(n.OrdererAddress(o, nwo.ListenPort))
 }
 
+// OrdererClusterHostPort returns the host name and cluster port number for the
+// specified orderer.
+func OrdererClusterHostPort(n *nwo.Network, o *nwo.Orderer) (string, int) {
+	return splitHostPort(n.OrdererAddress(o, nwo.ClusterPort))
+}
+
 func splitHostPort(address string) (string, int) {
 	host, port, err := net.SplitHostPort(address)
 	Expect(err).NotTo(HaveOccurred())

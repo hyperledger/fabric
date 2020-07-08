@@ -26,6 +26,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/protoutil"
@@ -743,7 +744,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Broadcasting envelope to testchannel")
 			env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
-			resp, err := nwo.Broadcast(network, o1, env)
+			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -777,12 +778,12 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Ensuring orderer4 doesn't serve testchannel2 and testchannel3")
 			env = CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
-			resp, err = nwo.Broadcast(network, o4, env)
+			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
 
 			env = CreateBroadcastEnvelope(network, peer, "testchannel3", []byte("hello"))
-			resp, err = nwo.Broadcast(network, o4, env)
+			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
 
@@ -810,7 +811,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Submitting a transaction through orderer4")
 			env = CreateBroadcastEnvelope(network, peer, "testchannel2", []byte("hello"))
-			resp, err = nwo.Broadcast(network, o4, env)
+			resp, err = ordererclient.Broadcast(network, o4, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -1073,7 +1074,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}, []*nwo.Orderer{orderers[firstEvictedNode]}, peer, network)
 
 			env := CreateBroadcastEnvelope(network, orderers[secondEvictedNode], network.SystemChannel.Name, []byte("foo"))
-			resp, err := nwo.Broadcast(network, orderers[survivor], env)
+			resp, err := ordererclient.Broadcast(network, orderers[survivor], env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 		})
@@ -1141,7 +1142,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				By("Submitting tx")
 				env := CreateBroadcastEnvelope(network, o2, "testchannel", []byte("foo"))
-				resp, err := nwo.Broadcast(network, o2, env)
+				resp, err := ordererclient.Broadcast(network, o2, env)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -1365,7 +1366,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			}
 
 			env := CreateBroadcastEnvelope(network, orderers[4], network.SystemChannel.Name, []byte("hello"))
-			resp, err := nwo.Broadcast(network, orderers[4], env)
+			resp, err := ordererclient.Broadcast(network, orderers[4], env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 			blockSeq++

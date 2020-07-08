@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/integration/ordererclient"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -94,7 +95,7 @@ var _ = Describe("InstantiationPolicy", func() {
 				},
 			}
 
-			nwo.Broadcast(network, orderer, goodDeploy.Tx(PeerSigner(network, org1Peer)))
+			ordererclient.Broadcast(network, orderer, goodDeploy.Tx(PeerSigner(network, org1Peer)))
 
 			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", 2, org1Peer)
 
@@ -112,7 +113,7 @@ var _ = Describe("InstantiationPolicy", func() {
 				},
 			}
 
-			nwo.Broadcast(network, orderer, badDeploy.Tx(PeerSigner(network, org1Peer)))
+			ordererclient.Broadcast(network, orderer, badDeploy.Tx(PeerSigner(network, org1Peer)))
 
 			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", 3, org1Peer)
 			Expect(ListInstantiatedLegacy(network, org1Peer, "testchannel")).To(gbytes.Say("Name: fakecc, Version: goodip"))
@@ -129,7 +130,7 @@ var _ = Describe("InstantiationPolicy", func() {
 				},
 			}
 
-			nwo.Broadcast(network, orderer, badUpgrade.Tx(PeerSigner(network, org2Peer)))
+			ordererclient.Broadcast(network, orderer, badUpgrade.Tx(PeerSigner(network, org2Peer)))
 
 			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", 4, org1Peer)
 			Expect(ListInstantiatedLegacy(network, org1Peer, "testchannel")).NotTo(gbytes.Say("Name: fakecc, Version: wrongsubmitter"))
@@ -146,7 +147,7 @@ var _ = Describe("InstantiationPolicy", func() {
 				},
 			}
 
-			nwo.Broadcast(network, orderer, goodUpgrade.Tx(PeerSigner(network, org1Peer)))
+			ordererclient.Broadcast(network, orderer, goodUpgrade.Tx(PeerSigner(network, org1Peer)))
 
 			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", 5, org1Peer)
 			Expect(ListInstantiatedLegacy(network, org1Peer, "testchannel")).To(gbytes.Say("Name: fakecc, Version: rightsubmitter"))

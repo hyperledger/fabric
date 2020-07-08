@@ -53,7 +53,7 @@ func operationalClients(tlsDir string) (authClient, unauthClient *http.Client) {
 	return authenticatedClient, unauthenticatedClient
 }
 
-func GetBody(client *http.Client, url string) func() string {
+func getBody(client *http.Client, url string) func() string {
 	return func() string {
 		resp, err := client.Get(url)
 		Expect(err).NotTo(HaveOccurred())
