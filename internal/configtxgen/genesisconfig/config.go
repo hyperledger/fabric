@@ -170,7 +170,6 @@ type Kafka struct {
 var genesisDefaults = TopLevel{
 	Orderer: &Orderer{
 		OrdererType:  "solo",
-		Addresses:    []string{"127.0.0.1:7050"},
 		BatchTimeout: 2 * time.Second,
 		BatchSize: BatchSize{
 			MaxMessageCount:   500,
@@ -315,9 +314,6 @@ loop:
 		case ord.OrdererType == "":
 			logger.Infof("Orderer.OrdererType unset, setting to %v", genesisDefaults.Orderer.OrdererType)
 			ord.OrdererType = genesisDefaults.Orderer.OrdererType
-		case ord.Addresses == nil:
-			logger.Infof("Orderer.Addresses unset, setting to %s", genesisDefaults.Orderer.Addresses)
-			ord.Addresses = genesisDefaults.Orderer.Addresses
 		case ord.BatchTimeout == 0:
 			logger.Infof("Orderer.BatchTimeout unset, setting to %s", genesisDefaults.Orderer.BatchTimeout)
 			ord.BatchTimeout = genesisDefaults.Orderer.BatchTimeout
