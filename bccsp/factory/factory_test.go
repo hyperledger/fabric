@@ -62,7 +62,7 @@ BCCSP:
 	cfgVariations := []*FactoryOpts{
 		{},
 		{ProviderName: "SW"},
-		{ProviderName: "SW", SwOpts: &SwOpts{HashFamily: "SHA2", SecLevel: 256, Ephemeral: true}},
+		{ProviderName: "SW", SwOpts: &SwOpts{HashFamily: "SHA2", SecLevel: 256}},
 		yamlBCCSP,
 	}
 
