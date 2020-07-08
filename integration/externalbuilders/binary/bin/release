@@ -15,5 +15,10 @@ BLD="$1"
 RELEASE="$2"
 
 if [ -d "$BLD/metadata" ] ; then
-   cp -a "$BLD/metadata/"* "$RELEASE"
+    cp -a "$BLD/metadata/"* "$RELEASE"
+fi
+
+if [ -f "$BLD/connection.json" ]; then
+    mkdir -p "$RELEASE/chaincode/server"
+    cp "$BLD/connection.json" "$RELEASE/chaincode/server/"
 fi

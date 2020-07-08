@@ -17,7 +17,7 @@ ARTIFACTS=$2
 # when set, keep track of the artifacts directories to verify
 # proper cleanup in integration test
 if [ -n "${RUN_ARTIFACTS_FILE+1}" ]; then
-    echo $ARTIFACTS >> $RUN_ARTIFACTS_FILE
+    echo "$ARTIFACTS" >> "$RUN_ARTIFACTS_FILE"
 fi
 
 # shellcheck disable=SC2155
@@ -26,7 +26,8 @@ export CORE_PEER_TLS_ENABLED="true"
 export CORE_TLS_CLIENT_CERT_FILE="$ARTIFACTS/client.crt"
 export CORE_TLS_CLIENT_KEY_FILE="$ARTIFACTS/client.key"
 export CORE_PEER_TLS_ROOTCERT_FILE="$ARTIFACTS/root.crt"
-export CORE_PEER_LOCALMSPID="$(jq -r .mspid "$ARTIFACTS/chaincode.json")"
+CORE_PEER_LOCALMSPID="$(jq -r .mspid "$ARTIFACTS/chaincode.json")"
+export CORE_PEER_LOCALMSPID
 
 jq -r .client_cert "$ARTIFACTS/chaincode.json" > "$CORE_TLS_CLIENT_CERT_FILE"
 jq -r .client_key  "$ARTIFACTS/chaincode.json" > "$CORE_TLS_CLIENT_KEY_FILE"
@@ -34,6 +35,11 @@ jq -r .root_cert   "$ARTIFACTS/chaincode.json" > "$CORE_PEER_TLS_ROOTCERT_FILE"
 
 if [ -z "$(jq -r .client_cert "$ARTIFACTS/chaincode.json")" ]; then
     export CORE_PEER_TLS_ENABLED="false"
+fi
+
+if [ ! -x "$OUTPUT/chaincode" ]; then
+    >&2 echo "Expected executable chaincode at $OUTPUT/chaincode"
+    exit 1
 fi
 
 exec "$OUTPUT/chaincode" -peer.address="$(jq -r .peer_address "$ARTIFACTS/chaincode.json")"

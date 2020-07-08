@@ -134,7 +134,7 @@ func PackageAndInstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer)
 	// only create chaincode package if it doesn't already exist
 	if _, err := os.Stat(chaincode.PackageFile); os.IsNotExist(err) {
 		switch chaincode.Lang {
-		case "binary", "extcc":
+		case "binary":
 			PackageChaincodeBinary(chaincode)
 		default:
 			PackageChaincode(n, chaincode, peers[0])
