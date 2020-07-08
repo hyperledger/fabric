@@ -42,7 +42,6 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 	bccspConfig.SwOpts = &factory.SwOpts{
 		HashFamily: "SHA2",
 		SecLevel:   256,
-		Ephemeral:  true,
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
 	assert.NotNil(t, rtnConfig.SwOpts.FileKeystore)
@@ -77,7 +76,6 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 	bccspConfig.SwOpts = &factory.SwOpts{
 		HashFamily: "SHA2",
 		SecLevel:   256,
-		Ephemeral:  true,
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
 	assert.NotNil(t, rtnConfig.SwOpts.FileKeystore)

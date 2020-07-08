@@ -474,7 +474,6 @@ func TestLoadLocalMSP(t *testing.T) {
 						SwOpts: &factory.SwOpts{
 							HashFamily: "SHA2",
 							SecLevel:   256,
-							Ephemeral:  true,
 						},
 					},
 				},
@@ -1031,7 +1030,6 @@ func genesisConfig(t *testing.T, genesisFile string) *localconfig.TopLevel {
 				SwOpts: &factory.SwOpts{
 					HashFamily: "SHA2",
 					SecLevel:   256,
-					Ephemeral:  true,
 				},
 			},
 		},
