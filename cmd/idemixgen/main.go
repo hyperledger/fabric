@@ -84,7 +84,7 @@ func main() {
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigIssuerSecretKey), isk)
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigRevocationKey), pemEncodedRevocationSK)
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, msp.IdemixConfigFileIssuerPublicKey), ipk)
-		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey), pemEncodedRevocationPK)
+		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerRevocationPublicKey), pemEncodedRevocationPK)
 		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerPublicKey), ipk)
 
 	case genSignerConfig.FullCommand():
@@ -120,7 +120,7 @@ func main() {
 		// Write CA public info in case genCAInput != outputDir
 		if *genCAInput != *outputDir {
 			handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirMsp), 0770))
-			writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey), rpk)
+			writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerRevocationPublicKey), rpk)
 			writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerPublicKey), ipkRaw)
 		}
 
@@ -176,7 +176,7 @@ func readRevocationKey() *ecdsa.PrivateKey {
 }
 
 func readRevocationPublicKey() []byte {
-	path := filepath.Join(*genCAInput, msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey)
+	path := filepath.Join(*genCAInput, msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerRevocationPublicKey)
 	keyBytes, err := ioutil.ReadFile(path)
 	if err != nil {
 		handleError(errors.Wrapf(err, "failed to open revocation secret key file: %s", path))

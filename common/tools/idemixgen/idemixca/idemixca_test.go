@@ -95,7 +95,7 @@ func writeVerifierToFile(ipkBytes []byte, revpkBytes []byte) error {
 		return err
 	}
 
-	return ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirMsp, m.IdemixConfigFileRevocationPublicKey), revpkBytes, 0644)
+	return ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirMsp, m.IdemixConfigFileIssuerRevocationPublicKey), revpkBytes, 0644)
 }
 
 func writeSignerToFile(signerBytes []byte) error {

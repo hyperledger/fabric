@@ -380,11 +380,11 @@ func loadCertificateAt(dir, certificatePath string, ouType string) []byte {
 }
 
 const (
-	IdemixConfigDirMsp                  = "msp"
-	IdemixConfigDirUser                 = "user"
-	IdemixConfigFileIssuerPublicKey     = "IssuerPublicKey"
-	IdemixConfigFileRevocationPublicKey = "RevocationPublicKey"
-	IdemixConfigFileSigner              = "SignerConfig"
+	IdemixConfigDirMsp                        = "msp"
+	IdemixConfigDirUser                       = "user"
+	IdemixConfigFileIssuerPublicKey           = "IssuerPublicKey"
+	IdemixConfigFileIssuerRevocationPublicKey = "IssuerRevocationPublicKey"
+	IdemixConfigFileSigner                    = "SignerConfig"
 )
 
 // GetIdemixMspConfig returns the configuration for the Idemix MSP
@@ -394,7 +394,7 @@ func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
 		return nil, errors.Wrapf(err, "failed to read issuer public key file")
 	}
 
-	revocationPkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileRevocationPublicKey))
+	revocationPkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileIssuerRevocationPublicKey))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read revocation public key file")
 	}
