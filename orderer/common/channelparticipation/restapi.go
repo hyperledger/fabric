@@ -63,7 +63,6 @@ type HTTPHandler struct {
 	config    localconfig.ChannelParticipation
 	registrar ChannelManagement
 	router    *mux.Router
-	// TODO skeleton
 }
 
 func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelManagement) *HTTPHandler {
@@ -192,8 +191,11 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 // Expect a multipart/form-data with a single part, of type file, with key FormDataConfigBlockKey.
 func (h *HTTPHandler) multipartFormDataBodyToBlock(params map[string]string, req *http.Request, resp http.ResponseWriter) *cb.Block {
 	boundary := params["boundary"]
-	reader := multipart.NewReader(req.Body, boundary)
-	form, err := reader.ReadForm(100 * 1024 * 1024)
+	reader := multipart.NewReader(
+		http.MaxBytesReader(resp, req.Body, int64(h.config.MaxRequestBodySize)),
+		boundary,
+	)
+	form, err := reader.ReadForm(2 * int64(h.config.MaxRequestBodySize))
 	if err != nil {
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot read form from request body"))
 		return nil

@@ -242,7 +242,11 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 }
 
 func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
-	config := localconfig.ChannelParticipation{Enabled: true, RemoveStorage: false}
+	config := localconfig.ChannelParticipation{
+		Enabled:            true,
+		RemoveStorage:      false,
+		MaxRequestBodySize: 1024 * 1024,
+	}
 
 	t.Run("created ok", func(t *testing.T) {
 		fakeManager, h := setup(config, t)
@@ -392,6 +396,18 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "form contains too many parts", resp)
+	})
+
+	t.Run("body larger that MaxRequestBodySize", func(t *testing.T) {
+		config := localconfig.ChannelParticipation{
+			Enabled:            true,
+			MaxRequestBodySize: 1,
+		}
+		_, h := setup(config, t)
+		resp := httptest.NewRecorder()
+		req := genJoinRequestFormData(t, []byte{1, 2, 3, 4})
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusBadRequest, "cannot read form from request body: multipart: NextPart: http: request body too large", resp)
 	})
 }
 

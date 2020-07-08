@@ -358,6 +358,9 @@ ChannelParticipation:
     # Defines the default behavior of channel removal.
     RemoveStorage: false
 
+    # The maximum size of the request body when joining a channel.
+    MaxRequestBodySize: 1 MB
+
 
 ################################################################################
 #
