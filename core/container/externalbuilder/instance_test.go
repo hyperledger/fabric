@@ -15,14 +15,16 @@ import (
 	"time"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"github.com/onsi/gomega/types"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var _ = Describe("Instance", func() {
@@ -126,7 +128,7 @@ var _ = Describe("Instance", func() {
 
 			ccuserdata = &externalbuilder.ChaincodeServerUserData{
 				Address:            "ccaddress:12345",
-				DialTimeout:        externalbuilder.Duration{10 * time.Second},
+				DialTimeout:        externalbuilder.Duration(10 * time.Second),
 				TLSRequired:        true,
 				ClientAuthRequired: true,
 				ClientKey:          "fake-key",
@@ -178,7 +180,7 @@ var _ = Describe("Instance", func() {
 
 			Context("dial timeout not provided", func() {
 				It("returns default dial timeout without dialtimeout", func() {
-					ccuserdata.DialTimeout = externalbuilder.Duration{}
+					ccuserdata.DialTimeout = 0
 
 					ccinfo, err := ccuserdata.ChaincodeServerInfo(releaseDir)
 					Expect(err).NotTo(HaveOccurred())
@@ -238,24 +240,34 @@ var _ = Describe("Instance", func() {
 	})
 
 	Describe("Duration", func() {
-		It("validates that marshalled Duration is unmarshalled correctly", func() {
-			validateUnmarshalling := func(d time.Duration) {
-				duration := externalbuilder.Duration{d}
+		DescribeTable("Unmarshal",
+			func(input string, expected externalbuilder.Duration, errMatcher types.GomegaMatcher) {
+				var d externalbuilder.Duration
+				err := json.Unmarshal([]byte(input), &d)
+				Expect(err).To(errMatcher)
+			},
+			Entry("Number", `100`, externalbuilder.Duration(100), BeNil()),
+			Entry("Duration", `"1s"`, externalbuilder.Duration(time.Second), BeNil()),
+			Entry("List", `[1, 2, 3]`, externalbuilder.Duration(time.Second), MatchError("invalid duration")),
+			Entry("Nonsense", `"nonsense"`, externalbuilder.Duration(time.Second), MatchError("time: invalid duration nonsense")),
+		)
 
-				marshalled, err := json.Marshal(duration)
+		DescribeTable("Round Trip",
+			func(d time.Duration) {
+				marshalled, err := json.Marshal(externalbuilder.Duration(d))
+				Expect(err).NotTo(HaveOccurred())
 
 				var unmarshalled externalbuilder.Duration
 				err = json.Unmarshal(marshalled, &unmarshalled)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(unmarshalled).To(Equal(duration))
-			}
-
-			validateUnmarshalling(10 * time.Millisecond)
-			validateUnmarshalling(10 * time.Second)
-			validateUnmarshalling(10 * time.Minute)
-			validateUnmarshalling(10 * time.Hour)
-		})
+				Expect(unmarshalled).To(Equal(externalbuilder.Duration(d)))
+			},
+			Entry("10ms", 10*time.Millisecond),
+			Entry("10s", 10*time.Second),
+			Entry("10m", 10*time.Minute),
+			Entry("10h", 10*time.Hour),
+		)
 	})
 
 	Describe("Start", func() {

@@ -171,7 +171,7 @@ func generateChaincodeConfig(chaincodeAddress string) (externalbuilder.Chaincode
 
 	connData := externalbuilder.ChaincodeServerUserData{
 		Address:            chaincodeAddress,
-		DialTimeout:        externalbuilder.Duration{Duration: 10 * time.Second},
+		DialTimeout:        externalbuilder.Duration(10 * time.Second),
 		TLSRequired:        true,
 		ClientAuthRequired: true,
 		ClientKey:          string(clientPair.Key),

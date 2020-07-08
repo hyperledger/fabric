@@ -35,12 +35,10 @@ type Instance struct {
 }
 
 // Duration used for the DialTimeout property
-type Duration struct {
-	time.Duration
-}
+type Duration time.Duration
 
 func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.String())
+	return json.Marshal(time.Duration(d).String())
 }
 
 func (d *Duration) UnmarshalJSON(b []byte) error {
@@ -51,17 +49,18 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 
 	switch value := v.(type) {
 	case float64:
-		d.Duration = time.Duration(value)
-		return nil
+		*d = Duration(time.Duration(value))
 	case string:
-		var err error
-		if d.Duration, err = time.ParseDuration(value); err != nil {
+		dur, err := time.ParseDuration(value)
+		if err != nil {
 			return err
 		}
-		return nil
+		*d = Duration(dur)
 	default:
 		return errors.New("invalid duration")
 	}
+
+	return nil
 }
 
 // ChaincodeServerUserData holds "connection.json" information
@@ -82,10 +81,9 @@ func (c *ChaincodeServerUserData) ChaincodeServerInfo(cryptoDir string) (*ccintf
 	}
 	connInfo := &ccintf.ChaincodeServerInfo{Address: c.Address}
 
-	if c.DialTimeout == (Duration{}) {
+	connInfo.ClientConfig.Timeout = time.Duration(c.DialTimeout)
+	if connInfo.ClientConfig.Timeout == 0 {
 		connInfo.ClientConfig.Timeout = DialTimeout
-	} else {
-		connInfo.ClientConfig.Timeout = c.DialTimeout.Duration
 	}
 
 	// we can expose this if necessary
