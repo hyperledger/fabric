@@ -1237,6 +1237,15 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	}
 }
 
+func TestFetchStats(t *testing.T) {
+	fetchStats := fetchStats{
+		fromLocalCache:     1,
+		fromTransientStore: 2,
+		fromRemotePeer:     3,
+	}
+	assert.Equal(t, "(1 from local cache, 2 from transient store, 3 from other peers)", fetchStats.String())
+}
+
 func testRetrievePvtdataSuccess(t *testing.T,
 	scenario string,
 	ts testSupport,
