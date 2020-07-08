@@ -8,6 +8,7 @@ package raft
 
 import (
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -143,15 +144,15 @@ var _ = Describe("ChannelParticipation", func() {
 })
 
 func applicationChannelGenesisBlock(n *nwo.Network, o *nwo.Orderer, p *nwo.Peer, channel string) *common.Block {
-	ordererCACert := nwo.ParseCertificate(n.OrdererCACert(o))
-	ordererAdminCert := nwo.ParseCertificate(n.OrdererUserCert(o, "Admin"))
-	ordererTLSCert := nwo.ParseCertificate(filepath.Join(n.OrdererLocalTLSDir(o), "server.crt"))
+	ordererCACert := parseCertificate(n.OrdererCACert(o))
+	ordererAdminCert := parseCertificate(n.OrdererUserCert(o, "Admin"))
+	ordererTLSCert := parseCertificate(filepath.Join(n.OrdererLocalTLSDir(o), "server.crt"))
 	ordererOrg := n.Organization(o.Organization)
 	host, port := conftx.OrdererHostPort(n, o)
 
 	peerOrg := n.Organization(p.Organization)
-	peerCACert := nwo.ParseCertificate(n.PeerCACert(p))
-	peerAdminCert := nwo.ParseCertificate(n.PeerUserCert(p, "Admin"))
+	peerCACert := parseCertificate(n.PeerCACert(p))
+	peerAdminCert := parseCertificate(n.PeerUserCert(p, "Admin"))
 
 	channelConfig := configtx.Channel{
 		Orderer: configtx.Orderer{
@@ -302,4 +303,15 @@ func applicationChannelGenesisBlock(n *nwo.Network, o *nwo.Orderer, p *nwo.Peer,
 	Expect(err).NotTo(HaveOccurred())
 
 	return genesisBlock
+}
+
+// parseCertificate loads the PEM-encoded x509 certificate at the specified
+// path.
+func parseCertificate(path string) *x509.Certificate {
+	certBytes, err := ioutil.ReadFile(path)
+	Expect(err).NotTo(HaveOccurred())
+	pemBlock, _ := pem.Decode(certBytes)
+	cert, err := x509.ParseCertificate(pemBlock.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+	return cert
 }

@@ -7,6 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package configtx
 
 import (
+	"crypto"
+	"crypto/x509"
+	"encoding/pem"
 	"io/ioutil"
 	"os"
 	"syscall"
@@ -160,8 +163,8 @@ var _ = Describe("ConfigTx", func() {
 
 		By("creating a detached signature for the orderer")
 		signingIdentity := configtx.SigningIdentity{
-			Certificate: nwo.ParseCertificate(network.OrdererUserCert(orderer, "Admin")),
-			PrivateKey:  nwo.ParsePrivateKey(network.OrdererUserKey(orderer, "Admin")),
+			Certificate: parseCertificate(network.OrdererUserCert(orderer, "Admin")),
+			PrivateKey:  parsePrivateKey(network.OrdererUserKey(orderer, "Admin")),
 			MSPID:       network.Organization(orderer.Organization).MSPID,
 		}
 		signature, err := signingIdentity.CreateConfigSignature(configUpdate)
@@ -214,8 +217,8 @@ var _ = Describe("ConfigTx", func() {
 		signatures := make([]*common.ConfigSignature, len(testPeers))
 		for i, p := range testPeers {
 			signingIdentity := configtx.SigningIdentity{
-				Certificate: nwo.ParseCertificate(network.PeerUserCert(p, "Admin")),
-				PrivateKey:  nwo.ParsePrivateKey(network.PeerUserKey(p, "Admin")),
+				Certificate: parseCertificate(network.PeerUserCert(p, "Admin")),
+				PrivateKey:  parsePrivateKey(network.PeerUserKey(p, "Admin")),
 				MSPID:       network.Organization(p.Organization).MSPID,
 			}
 			signingIdentities[i] = signingIdentity
@@ -262,8 +265,8 @@ var _ = Describe("ConfigTx", func() {
 
 			By("creating a detached signature")
 			signingIdentity := configtx.SigningIdentity{
-				Certificate: nwo.ParseCertificate(network.PeerUserCert(peer, "Admin")),
-				PrivateKey:  nwo.ParsePrivateKey(network.PeerUserKey(peer, "Admin")),
+				Certificate: parseCertificate(network.PeerUserCert(peer, "Admin")),
+				PrivateKey:  parsePrivateKey(network.PeerUserKey(peer, "Admin")),
 				MSPID:       network.Organization(peer.Organization).MSPID,
 			}
 			signature, err := signingIdentity.CreateConfigSignature(configUpdate)
@@ -291,3 +294,24 @@ var _ = Describe("ConfigTx", func() {
 		}
 	})
 })
+
+// parsePrivateKey loads the PEM-encoded private key at the specified path.
+func parsePrivateKey(path string) crypto.PrivateKey {
+	pkBytes, err := ioutil.ReadFile(path)
+	Expect(err).NotTo(HaveOccurred())
+	pemBlock, _ := pem.Decode(pkBytes)
+	privateKey, err := x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+	return privateKey
+}
+
+// parseCertificate loads the PEM-encoded x509 certificate at the specified
+// path.
+func parseCertificate(path string) *x509.Certificate {
+	certBytes, err := ioutil.ReadFile(path)
+	Expect(err).NotTo(HaveOccurred())
+	pemBlock, _ := pem.Decode(certBytes)
+	cert, err := x509.ParseCertificate(pemBlock.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+	return cert
+}

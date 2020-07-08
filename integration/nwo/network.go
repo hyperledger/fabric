@@ -8,9 +8,6 @@ package nwo
 
 import (
 	"bytes"
-	"crypto"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -514,17 +511,6 @@ func (n *Network) OrdererCACert(o *Orderer) string {
 	)
 }
 
-// ParseCertificate loads the PEM-encoded x509 certificate at the
-// specified path.
-func ParseCertificate(path string) *x509.Certificate {
-	certBytes, err := ioutil.ReadFile(path)
-	Expect(err).NotTo(HaveOccurred())
-	pemBlock, _ := pem.Decode(certBytes)
-	cert, err := x509.ParseCertificate(pemBlock.Bytes)
-	Expect(err).NotTo(HaveOccurred())
-	return cert
-}
-
 // PeerUserKey returns the path to the private key for the specified user in
 // the peer organization.
 func (n *Network) PeerUserKey(p *Peer, user string) string {
@@ -561,16 +547,6 @@ func (n *Network) OrdererUserKey(o *Orderer, user string) string {
 	Expect(keys).To(HaveLen(1))
 
 	return filepath.Join(keystore, keys[0].Name())
-}
-
-// ParsePrivateKey loads the PEM-encoded private key at the specified path.
-func ParsePrivateKey(path string) crypto.PrivateKey {
-	pkBytes, err := ioutil.ReadFile(path)
-	Expect(err).NotTo(HaveOccurred())
-	pemBlock, _ := pem.Decode(pkBytes)
-	privateKey, err := x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
-	Expect(err).NotTo(HaveOccurred())
-	return privateKey
 }
 
 // peerLocalCryptoDir returns the path to the local crypto directory for the peer.
