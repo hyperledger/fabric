@@ -33,6 +33,7 @@ func TestWithRealConfigtx(t *testing.T) {
 func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 	t.Run("Without_Capability", func(t *testing.T) {
 		conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
+		conf.Orderer.Addresses = []string{"127.0.0.1:7050"}
 		conf.Capabilities = map[string]bool{"V1_3": true}
 
 		cg, err := encoder.NewChannelGroup(conf)

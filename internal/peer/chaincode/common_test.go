@@ -175,8 +175,7 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 	ordererEndpoints, err := common.GetOrdererEndpointOfChain(mockchain, signer, mockEndorserClient, cryptoProvider)
 	assert.NoError(t, err, "GetOrdererEndpointOfChain from genesis block")
 
-	assert.Equal(t, len(ordererEndpoints), 1)
-	assert.Equal(t, ordererEndpoints[0], "127.0.0.1:7050")
+	assert.Equal(t, len(ordererEndpoints), 0)
 }
 
 func TestGetOrdererEndpointFail(t *testing.T) {
