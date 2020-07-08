@@ -316,6 +316,8 @@ func (scanner *RwsetScanner) Next() (*EndorserPvtSimulationResults, error) {
 			return nil, err
 		}
 
+		// trim the tx rwset based on the current collection filter,
+		// nil will be returned to filteredTxPvtRWSet if the transient store txid entry does not contain the data for the collection
 		filteredTxPvtRWSet = trimPvtWSet(txPvtRWSetWithConfig.GetPvtRwset(), scanner.filter)
 		configs, err := trimPvtCollectionConfigs(txPvtRWSetWithConfig.CollectionConfigs, scanner.filter)
 		if err != nil {
