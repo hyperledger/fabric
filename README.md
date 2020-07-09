@@ -35,6 +35,7 @@ Unless specified otherwise, all releases will be upgradable from the prior minor
 Please visit our
 online documentation for
 information on getting started using and developing with the fabric, SDK and chaincode:
+- [v2.2](http://hyperledger-fabric.readthedocs.io/en/release-2.2/)
 - [v2.1](http://hyperledger-fabric.readthedocs.io/en/release-2.1/)
 - [v2.0](http://hyperledger-fabric.readthedocs.io/en/release-2.0/)
 - [v1.4](http://hyperledger-fabric.readthedocs.io/en/release-1.4/)
