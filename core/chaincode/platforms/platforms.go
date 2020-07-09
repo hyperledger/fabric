@@ -49,9 +49,12 @@ func (pw PackageWriterWrapper) Write(name string, payload []byte, tw *tar.Writer
 	return pw(name, payload, tw)
 }
 
+type BuildFunc func(util.DockerBuildOptions, *docker.Client) error
+
 type Registry struct {
 	Platforms     map[string]Platform
 	PackageWriter PackageWriter
+	DockerBuild   BuildFunc
 }
 
 var logger = flogging.MustGetLogger("chaincode.platform")
@@ -67,6 +70,7 @@ func NewRegistry(platformTypes ...Platform) *Registry {
 	return &Registry{
 		Platforms:     platforms,
 		PackageWriter: PackageWriterWrapper(writeBytesToPackage),
+		DockerBuild:   util.DockerBuild,
 	}
 }
 
@@ -133,7 +137,7 @@ func (r *Registry) StreamDockerBuild(ccType, path string, codePackage io.Reader,
 	buildOptions.InputStream = codePackage
 	buildOptions.OutputStream = output
 
-	err = util.DockerBuild(buildOptions, client)
+	err = r.DockerBuild(buildOptions, client)
 	if err != nil {
 		return errors.Wrap(err, "docker build failed")
 	}

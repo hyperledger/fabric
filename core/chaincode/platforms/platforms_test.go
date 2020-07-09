@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/spf13/viper"
 )
 
 var _ = Describe("Platforms", func() {
@@ -36,8 +35,6 @@ var _ = Describe("Platforms", func() {
 				"fakeType": fakePlatform,
 			},
 		}
-		viper.Set("chaincode.builder", "$(DOCKER_NS)/fabric-ccenv:$(PROJECT_VERSION)")
-		viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	})
 
 	Describe("GenerateDockerfile", func() {
@@ -82,6 +79,7 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 			tw = tar.NewWriter(buf)
 			pw = &mock.PackageWriter{}
 			registry.PackageWriter = pw
+			registry.DockerBuild = func(util.DockerBuildOptions, *docker.Client) error { return nil }
 			dockerClient, err := docker.NewClientFromEnv()
 			Expect(err).NotTo(HaveOccurred())
 			client = dockerClient
@@ -131,6 +129,14 @@ ENV CORE_CHAINCODE_BUILDLEVEL=%s`, metadata.Version, metadata.Version)
 					fakePlatform.DockerBuildOptionsReturns(util.DockerBuildOptions{}, errors.New("fake-error"))
 					err := registry.StreamDockerBuild("fakeType", "", nil, nil, tw, client)
 					Expect(err).To(MatchError("platform failed to create docker build options: fake-error"))
+				})
+			})
+
+			Context("when the docker build fails", func() {
+				It("returns an error", func() {
+					registry.DockerBuild = func(util.DockerBuildOptions, *docker.Client) error { return errors.New("kaboom") }
+					err := registry.StreamDockerBuild("fakeType", "", nil, nil, tw, client)
+					Expect(err).To(MatchError("docker build failed: kaboom"))
 				})
 			})
 		})
