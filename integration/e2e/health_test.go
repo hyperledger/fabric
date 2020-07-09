@@ -52,7 +52,7 @@ var _ = Describe("Health", func() {
 	AfterEach(func() {
 		if process != nil {
 			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait, network.EventuallyTimeout).Should(Receive())
+			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
 		if network != nil {
 			network.Cleanup()
@@ -169,16 +169,16 @@ var _ = Describe("Health", func() {
 		AfterEach(func() {
 			if zProcess != nil {
 				zProcess.Signal(syscall.SIGTERM)
-				Eventually(zProcess.Wait, network.EventuallyTimeout).Should(Receive())
+				Eventually(zProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 			}
 			if oProcess != nil {
 				oProcess.Signal(syscall.SIGTERM)
-				Eventually(oProcess.Wait, network.EventuallyTimeout).Should(Receive())
+				Eventually(oProcess.Wait(), network.EventuallyTimeout).Should(Receive())
 			}
 			for _, k := range kProcess {
 				if k != nil {
 					k.Signal(syscall.SIGTERM)
-					Eventually(k.Wait, network.EventuallyTimeout).Should(Receive())
+					Eventually(k.Wait(), network.EventuallyTimeout).Should(Receive())
 				}
 			}
 		})
@@ -194,7 +194,7 @@ var _ = Describe("Health", func() {
 				By("returning a 200 when one of the three brokers goes offline", func() {
 					k := kProcess[1]
 					k.Signal(syscall.SIGTERM)
-					Eventually(k.Wait, network.EventuallyTimeout).Should(Receive())
+					Eventually(k.Wait(), network.EventuallyTimeout).Should(Receive())
 
 					var statusCode int
 					var status *healthz.HealthStatus
@@ -208,7 +208,7 @@ var _ = Describe("Health", func() {
 				By("returning a 503 when two of the three brokers go offline", func() {
 					k := kProcess[0]
 					k.Signal(syscall.SIGTERM)
-					Eventually(k.Wait, network.EventuallyTimeout).Should(Receive())
+					Eventually(k.Wait(), network.EventuallyTimeout).Should(Receive())
 
 					var statusCode int
 					var status *healthz.HealthStatus
