@@ -153,10 +153,10 @@ Application: &ApplicationDefaults
         _lifecycle/CommitChaincodeDefinition: /Channel/Application/Writers
 
         # ACL policy for _lifecycle's "QueryChaincodeDefinition" function
-        _lifecycle/QueryChaincodeDefinition: /Channel/Application/Readers
+        _lifecycle/QueryChaincodeDefinition: /Channel/Application/Writers
 
         # ACL policy for _lifecycle's "QueryChaincodeDefinitions" function
-        _lifecycle/QueryChaincodeDefinitions: /Channel/Application/Readers
+        _lifecycle/QueryChaincodeDefinitions: /Channel/Application/Writers
 
         #---Lifecycle System Chaincode (lscc) function to policy mapping for access control---#
 
@@ -200,7 +200,7 @@ Application: &ApplicationDefaults
         peer/Propose: /Channel/Application/Writers
 
         # ACL policy for chaincode to chaincode invocation
-        peer/ChaincodeToChaincode: /Channel/Application/Readers
+        peer/ChaincodeToChaincode: /Channel/Application/Writers
 
         #---Events resource to policy mapping for access control###---#
 
