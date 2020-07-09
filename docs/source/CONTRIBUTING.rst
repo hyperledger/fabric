@@ -93,17 +93,17 @@ Contributing documentation
 --------------------------
 
 It's a good idea to make your first change a documentation change. It's quick
-and easy to do, checks that you have a correctly configured machine, (including
-the required pre-requisite software), and gets you familiar with the whole
-process.  Use the following sections to help you get started:
+and easy to do, ensures that you have a correctly configured machine, (including
+the required pre-requisite software), and gets you familiar with the
+contribution process.  Use the following topics to help you get started:
 
 .. toctree::
    :maxdepth: 1
 
+   advice_for_writers
    docs_guide
-   style_guide
    international_languages
-
+   style_guide
 
 Project Governance
 ------------------

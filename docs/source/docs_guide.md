@@ -1,17 +1,19 @@
-# Making a documentation change
+# Contributing documentation
 
 **Audience**: Anyone who would like to contribute to the Fabric documentation.
 
 This short guide describes how the Fabric documentation is structured, built and
-published, as well as a few conventions one should be aware of before making
-changes to the Fabric documentation.
+published, as well as a few conventions that help writers make changes to the
+Fabric documentation.
 
 In this topic, we're going to cover:
 * [An introduction to the documentation](#introduction)
-* [Repository structure](#repository-structure)
-* [Testing your changes](#testing-your-changes)
-* [Building the documentation locally](#building-locally)
-* [Building the documentation on GitHub and ReadTheDocs](#building-on-github)
+* [Repository folder structure](#repository-folders)
+* [International language folder structure](#international-folders)
+* [Making documentation changes](#making-changes)
+* [Building the documentation on your local machine](#building-locally)
+* [Building the documentation on GitHub with ReadTheDocs](#building-on-github)
+* [Getting your change approved](#making-a-pr)
 * [Making a change to Commands Reference](#commands-reference-updates)
 * [Adding a new CLI command](#adding-a-new-cli-command)
 
@@ -19,160 +21,240 @@ In this topic, we're going to cover:
 
 The Fabric documentation is written in a combination of
 [Markdown](https://www.markdownguide.org/) and
-[reStructuredText](http://docutils.sourceforge.net/rst.html), and as a new
-author you can use either or both.  We recommend you use Markdown as an easy and
-powerful way to get started; though if you have a background in Python, you may
-prefer to use RST.
+[reStructuredText](http://docutils.sourceforge.net/rst.html) source files. As a
+new author you can use either format. We recommend that you use Markdown as an
+easy and powerful way to get started. If you have a background in Python, you
+may prefer to use rST.
 
-As part of the build process, the documentation source files are converted to
-HTML using [Sphinx](http://www.sphinx-doc.org/en/stable/), and published
-[here](http://hyperledger-fabric.readthedocs.io). There is a GitHub hook for the
-main [Fabric repository](https://github.com/hyperledger/fabric) such that any
-new or changed content in `docs/source` will trigger a new build and subsequent
-publication of the doc.
-
-Translations of the fabric documentation are available in different languages:
-
-  * [Chinese documentation](https://hyperledger-fabric.readthedocs.io/zh_CN/latest/)
-  * [Malayalam
-    documentation](https://hyperledgerlabsml.readthedocs.io/en/latest/)
-  * Brazilian Portuguese documentation -- coming soon
-
-These are each built from their language-specific repository in the
-[Hyperledger Labs](https://github.com/hyperledger-labs) organization.
+During the documentation build process, the documentation source files are
+converted to HTML using [Sphinx](http://www.sphinx-doc.org/en/stable/). The
+generated HTML files are subsequently published on the [public documentation
+website](http://hyperledger-fabric.readthedocs.io). Users can select both
+different languages and different versions of the Fabric documentation.
 
 For example:
 
- * [Chinese language repository](https://github.com/hyperledger-labs/fabric-docs-cn)
- * [Malayalam language repository](https://github.com/hyperledger-labs/fabric-docs-ml)
- * Brazilian Portuguese language repository -- coming soon
+  * [Latest version of US English](https://hyperledger-fabric.readthedocs.io/en/latest/)
+  * [Latest version of Chinese](https://hyperledger-fabric.readthedocs.io/zh_CN/latest/)
+  * [Version 2.2 of US English](https://hyperledger-fabric.readthedocs.io/en/release-2.2/)
+  * [Version 1.4 of US English](https://hyperledger-fabric.readthedocs.io/en/release-1.4/)
 
-Once a language repository is nearly complete, it can contribute to the main
-Fabric publication site. For example, the Chinese language docs are available on
-the [main documentation
-site](https://hyperledger-fabric.readthedocs.io/zh_CN/latest/).
+For historical reasons, the US English source files live in the main [Fabric
+repository](https://github.com/hyperledger/fabric/), whereas all international
+language source files live in a single [Fabric i18n
+repository](https://github.com/hyperledger/fabric-docs-i18n). Different versions
+of the documentation are held within the appropriate GitHub release branch.
 
-## Repository structure
+## Repository folders
 
-In each of these repositories, the Fabric docs are always kept under the `/docs`
-top level folder.
+Both the US English and international language repositories have essentially the
+same structure, so let's start by examining the US English source files.
 
-```bash
-(docs) bash-3.2$ ls -l docs
-total 56
--rw-r--r--    1 user  staff   2107  4 Jun 09:42 Makefile
--rw-r--r--    1 user  staff    199  4 Jun 09:42 Pipfile
--rw-r--r--    1 user  staff  10924  4 Jun 09:42 Pipfile.lock
--rw-r--r--@   1 user  staff    288  4 Jun 14:50 README.md
-drwxr-xr-x    4 user  staff    128  4 Jun 10:10 build
-drwxr-xr-x    3 user  staff     96  4 Jun 09:42 custom_theme
--rw-r--r--    1 user  staff    283  4 Jun 09:42 requirements.txt
-drwxr-xr-x  103 user  staff   3296  4 Jun 12:32 source
-drwxr-xr-x   18 user  staff    576  4 Jun 09:42 wrappers
-```
-
-The files in this top level directory are largely configuration files for the
-build process.  All the documentation is contained within the `/source` folder:
+All files relating to documentation reside within the `fabric/docs/` folder:
 
 ```bash
-(docs) bash-3.2$ ls -l docs/source
-total 2576
--rw-r--r--   1 user  staff   20045  4 Jun 12:33 CONTRIBUTING.rst
--rw-r--r--   1 user  staff    1263  4 Jun 09:42 DCO1.1.txt
--rw-r--r--   1 user  staff   10559  4 Jun 09:42 Fabric-FAQ.rst
-drwxr-xr-x   4 user  staff     128  4 Jun 09:42 _static
-drwxr-xr-x   4 user  staff     128  4 Jun 09:42 _templates
--rw-r--r--   1 user  staff   10995  4 Jun 09:42 access_control.md
--rw-r--r--   1 user  staff     353  4 Jun 09:42 architecture.rst
--rw-r--r--   1 user  staff   11020  4 Jun 09:42 blockchain.rst
--rw-r--r--   1 user  staff   75552  4 Jun 09:42 build_network.rst
--rw-r--r--   1 user  staff    9115  4 Jun 09:42 capabilities_concept.md
--rw-r--r--   1 user  staff    2851  4 Jun 09:42 capability_requirements.rst
-...
+fabric/docs
+├── custom_theme
+├── source
+│   ├── _static
+│   ├── _templates
+│   ├── commands
+│   ├── create_channel
+│   ├── dev-setup
+│   ├── developapps
+│   ├── diagrams
+│   ...
+│   ├── orderer
+│   ├── peers
+│   ├── policies
+│   ├── private-data
+│   ├── smartcontract
+│   ├── style-guides
+│   └── tutorial
+└── wrappers
 ```
 
-These files and directories map directly to the documentation structure you see
-in the [published docs](https://hyperledger-fabric.readthedocs.io/en/latest/).
-Specifically, the table of contents has
-[`index.rst`](https://github.com/hyperledger/fabric/blob/master/docs/source/index.rst)
-as its root file, which links every other file in [`/docs/source`](https://github.com/hyperledger/fabric/tree/master/docs/source).
+The most important folders is `source/` becuase it holds the source language
+files. The documentation build process uses the `make` command to convert these
+source files to HTML, which are stored in the dynamically created `build/html/`
+folder:
 
-Spend some time navigating these directories and files to see how they are
-linked together.
+```bash
+fabric/docs
+├── build
+│   ├── html
+├── custom_theme
+├── source
+│   ├── _static
+│   ├── _templates
+│   ├── commands
+│   ├── create_channel
+│   ├── dev-setup
+│   ├── developapps
+│   ├── diagrams
+    ...
+```
 
-To update the documentation, you simply change one or more of these files using
-git, build the change locally to check it's OK, and then submit a Pull Request
-(PR) to the main Fabric repository. If the change is accepted by the
-maintainers, it will be merged into the main Fabric repository and become part
-of the documentation that is published.  It really is that easy!
+Spend a little time navigating the [docs
+folder](https://github.com/hyperledger/fabric/tree/master/docs) in the
+Hyperledger Fabric repository. Click on the following links to see how different
+source files map to their corresponding published topics.
 
-You can learn how to make a PR [here](./github/github.html), but before you do
-that, read on to see how to build your change locally first. Moreover, if you
-are new to git and GitHub, you will find the [Git
-book](https://git-scm.com/book/en/v2) invaluable.
+* [`/docs/source/index.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/index.rst) maps to [Hyperledger Fabric title page](https://hyperledger-fabric.readthedocs.io/en/master/)
 
-## Testing your changes
+* [`/docs/source/developapps/developing-applications.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/developapps/developing_applications.rst)
+  maps to [Developing
+  applications](https://hyperledger-fabric.readthedocs.io/en/master/developapps/developing_applications.html)
 
-You are strongly encouraged to test your changes to the documentation before you
-submit a PR. You should start by building the docs on your own machine, and
-subsequently push your changes to your own GitHub staging repo where they can
-populate your [ReadTheDocs](https://readthedocs.org/) publication website. Once
-you are happy with your change, you can submit it via a PR for inclusion in the
-main Fabric repository.
+* [`/docs/source/peers/peers.md`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/peers/peers.md)
+  maps to
+  [Peers](https://hyperledger-fabric.readthedocs.io/en/master/peers/peers.html)
 
-The following sections cover first how to build the docs locally, and then
-use your own Github fork to publish on ReadTheDocs.
+We'll see how to make changes to these files a little later.
+
+## International folders
+The international language repository,
+[`fabric-docs-i18n`](https://github.com/hyperledger/fabric-docs-i18n), follows
+almost exactly the same structure as the
+[`fabric`](https://github.com/hyperledger/fabric) repository which holds the US
+English files.  The difference is that each language is located within its own
+folder within `docs/locale/`:
+
+```bash
+fabric-docs-i18n/docs
+└── locale
+    ├── ja_JP
+    ├── ml_IN
+    ├── pt_BR
+    └── zh_CN
+```
+Examining any one of these folders shows a familiar structure:
+```bash
+locale/ml_IN
+├── custom_theme
+├── source
+│   ├── _static
+│   ├── _templates
+│   ├── commands
+│   ├── dev-setup
+│   ├── developapps
+│   ├── diagrams
+│   ...
+│   ├── orderer
+│   ├── peers
+│   ├── policies
+│   ├── private-data
+│   ├── smartcontract
+│   ├── style-guides
+│   └── tutorial
+└── wrappers
+```
+
+As we'll soon see, the similarity of the international language and US English
+folder structures means that the same instructions and commands can be used to
+manage different language translations.
+
+Again, spend some time examining the [international language
+repository](https://github.com/hyperledger/fabric-docs-i18n).
+
+## Making changes
+
+To update the documentation, you simply change one or more language source files
+in a local git feature branch, build the changes locally to check they're OK,
+and submit a Pull request (PR) to merge your branch with the appropriate Fabric
+repository branch. Once your PR has been reviewed and approved by the appropriate
+maintainers for the language, it will be merged into the repository and become
+part of the published documentation. It really is that easy!
+
+As well as being polite, it's a really good idea to test any documentation
+changes before you request to include it in a repository. The following sections
+show you how to:
+
+* Build and review a documentation change on your own machine.
+
+
+* Push these changes to your GitHub repository fork where they can populate your
+  personal [ReadTheDocs](https://readthedocs.org/) publication website for
+  collaborators to review.
+
+
+* Submit your documentation PR for inclusion in the `fabric` or
+  `fabric-docs-i18n` repository.
 
 ## Building locally
 
-Once you've cloned the Fabric [repository]() to your local machine, use these
-quick steps to build the Fabric documentation on your local machine. Note: you
-may need to adjust depending on your OS.
+Use these simple steps to build the documentation.
 
-Prereqs:
- - [Python 3.7](https://wiki.python.org/moin/BeginnersGuide/Download)
- - [Pipenv](https://docs.pipenv.org/en/latest/#install-pipenv-today)
+1. Create a fork of the appropriate
+[`fabric`](https://github.com/hyperledger/fabric) or
+[`fabric-i18n`](https://github.com/hyperledger/fabric-docs-i18n) repository to
+your GitHub account.
 
-```
-cd fabric/docs
-pipenv install
-pipenv shell
-make html
-```
+2. Install the following prerequisites; you may need to adjust depending on your
+   OS:
 
-This will generate all Fabric documentation html files in `docs/build/html`
-which you can then start browsing locally using your browser; simply navigate to
-the `index.html` file.
+   * [Python 3.7](https://wiki.python.org/moin/BeginnersGuide/Download)
+   * [Pipenv](https://docs.pipenv.org/en/latest/#install-pipenv-today)
 
-Make a small change to a file, and rebuild the documentation to verify that your
-change was built locally. Every time you make a change to the documentation you
-will of course need to rerun `make html`.
+3. For US English:
+   ```bash
+   cd $HOME/git
+   git clone git@github.com:hyperledger/fabric.git
+   cd fabric/docs
+   pipenv install
+   pipenv shell
+   make html
+   ```
 
-In addition, if you'd like, you may also run a local web server with the
-following commands (or equivalent depending on your OS):
+   For Malayalam (for example):
+   ```bash
+   cd $HOME/git
+   git clone git@github.com:hyperledger/fabric-docs-i18n.git
+   cd fabric-docs-18n/docs/locale/ml_IN
+   pipenv install
+   pipenv shell
+   make html
+   ```
 
-```
-sudo apt-get install apache2
-cd build/html
-sudo cp -r * /var/www/html/
-```
+   The `make` command generates documentation html files in the `build/html/`
+   folder which you can now view locally; simply navigate your browser to the
+   `build/html/index.html` file.
 
-You can then access the html files at `http://localhost/index.html`.
+4. Now make a small change to a file, and rebuild the documentation to verify
+   that your change was as expected. Every time you make a change to the
+   documentation you will of course need to rerun `make html`.
+
+5. If you'd like, you may also run a local web server with the following
+   commands (or equivalent depending on your OS):
+
+   ```bash
+   sudo apt-get install apache2
+   cd build/html
+   sudo cp -r * /var/www/html/
+   ```
+
+   You can then access the html files at `http://localhost/index.html`.
+
+6. You can learn how to make a PR [here](./github/github.html). Moreover, if you
+   are new to git or GitHub, you will find the [Git
+   book](https://git-scm.com/book/en/v2) invaluable.
 
 ## Building on GitHub
 
-It can often be helpful to use your fork of the Fabric repository to build the
-Fabric documentation in a public site, available to others. The following
-instructions show you how to use ReadTheDocs to do this.
+It is often helpful to use your fork of the Fabric repository to build the
+Fabric documentation so that others can review your changes before you submit
+them for approval. The following instructions show you how to use ReadTheDocs to
+do this.
 
-1. Go to http://readthedocs.org and sign up for an account.
+1. Go to [`http://readthedocs.org`](http://readthedocs.org) and sign up for an
+   account.
 2. Create a project. Your username will preface the URL and you may want to
    append `-fabric` to ensure that you can distinguish between this and other
    docs that you need to create for other projects. So for example:
    `YOURGITHUBID-fabric.readthedocs.io/en/latest`.
 3. Click `Admin`, click `Integrations`, click `Add integration`, choose `GitHub
    incoming webhook`, then click `Add integration`.
-4. Fork [Fabric on GitHub](https://github.com/hyperledger/fabric).
+4. Fork the [`fabric`](https://github.com/hyperledger/fabric) repository.
 5. From your fork, go to `Settings` in the upper right portion of the screen.
 6. Click `Webhooks`.
 7. Click `Add webhook`.
@@ -181,8 +263,34 @@ instructions show you how to use ReadTheDocs to do this.
    `Branch or tag deletion`.
 10. Click `Add webhook`.
 
-Now anytime you modify or add documentation content to your fork, this
-URL will automatically get updated with your changes!
+Use `fabric-docs-i18n` instead of `fabric` in the above instructions if you're
+building an international language translation.
+
+Now, anytime you modify or add documentation content to your fork, this URL will
+automatically get updated with your changes!
+
+## Making a PR
+
+You can submit your PR for inclusion using the following
+[instructions](./github/github.html#opening-a-pull-request-in-github).
+
+Before your PR can be included in the appropriate `fabric` or `fabric-docs-i18n`
+repository, it must be approved by an appropriate maintainer. For example, a
+Japanese translation must be approved by a Japanese maintainer, and so on. You
+can find the maintainers listed in the following `CODEOWNERS` files:
+
+* US English
+  [`CODEOWNERS`](https://github.com/hyperledger/fabric/blob/master/CODEOWNERS)
+  and their [maintainer GitHub
+  IDs](https://github.com/orgs/hyperledger/teams/fabric-core-doc-maintainers)
+* International language
+  [`CODEOWNERS`](https://github.com/hyperledger/fabric-docs-i18n/blob/master/CODEOWNERS)
+  and their [maintainer GitHub
+  IDs](https://github.com/orgs/hyperledger/teams/fabric-contributors)
+
+Both language repositories have a GitHub webhook defined so that, once approved,
+your newly merged content in the `docs/` folder will trigger an automatic build
+and publication of the updated documentation.
 
 ## Commands Reference updates
 
