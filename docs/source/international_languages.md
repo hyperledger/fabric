@@ -150,7 +150,7 @@ new language get started.
 
   This is your advert! Thanks to you, users can now see that the documentation
   is available in their language. It might not be complete yet, but its clear
-  you and your team are trying to achieve. Translating tis page will help you
+  you and your team are trying to achieve. Translating this page will help you
   recruit other translators.
 
 
