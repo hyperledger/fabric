@@ -1141,9 +1141,8 @@ func testFormatCheck(t *testing.T, dataFormat string, dataExists bool, expectedE
 		require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
 	}
 	if dataFormat == "" {
-		response, err := dropDB(dbProvider.couchInstance, fabricInternalDBName)
+		err := dropDB(dbProvider.couchInstance, fabricInternalDBName)
 		require.NoError(t, err)
-		require.True(t, response.Ok)
 	} else {
 		require.NoError(t, writeDataFormatVersion(dbProvider.couchInstance, dataFormat))
 	}
@@ -1873,4 +1872,39 @@ func verifyFullScanIterator(
 		results = append(results, &statedb.VersionedKV{CompositeKey: *ck, VersionedValue: *val})
 	}
 	require.Equal(t, expectedResult, results)
+}
+
+func TestDrop(t *testing.T) {
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
+
+	checkDBsAfterDropFunc := func(channelName string) {
+		appDBNames := RetrieveApplicationDBNames(t, vdbEnv.config)
+		for _, dbName := range appDBNames {
+			require.NotContains(t, dbName, channelName+"_")
+		}
+	}
+
+	commontests.TestDrop(t, vdbEnv.DBProvider, checkDBsAfterDropFunc)
+}
+
+func TestDropErrorPath(t *testing.T) {
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
+	channelName := "testdroperror"
+
+	_, err := vdbEnv.DBProvider.GetDBHandle(channelName, nil)
+	require.NoError(t, err)
+
+	vdbEnv.config.MaxRetries = 1
+	vdbEnv.config.MaxRetriesOnStartup = 1
+	vdbEnv.config.RequestTimeout = 1 * time.Second
+	origAddress := vdbEnv.config.Address
+	vdbEnv.config.Address = "127.0.0.1:1"
+	err = vdbEnv.DBProvider.Drop(channelName)
+	require.Contains(t, err.Error(), "connection refused")
+	vdbEnv.config.Address = origAddress
+
+	vdbEnv.DBProvider.Close()
+	require.EqualError(t, vdbEnv.DBProvider.Drop(channelName), "internal leveldb error while obtaining db iterator: leveldb: closed")
 }

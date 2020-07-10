@@ -44,17 +44,21 @@ func NewDBProvider(path string) (*DBProvider, error) {
 }
 
 // GetDBHandle gets the handle to a named database
-func (p *DBProvider) GetDBHandle(name string) (*DB, error) {
+func (p *DBProvider) GetDBHandle(name string) *DB {
 	return &DB{
-			levelDB: p.leveldbProvider.GetDBHandle(name),
-			name:    name,
-		},
-		nil
+		levelDB: p.leveldbProvider.GetDBHandle(name),
+		name:    name,
+	}
 }
 
 // Close closes the underlying db
 func (p *DBProvider) Close() {
 	p.leveldbProvider.Close()
+}
+
+// Drop drops channel-specific data from the history db
+func (p *DBProvider) Drop(channelName string) error {
+	return p.leveldbProvider.Drop(channelName)
 }
 
 // DB maintains and provides access to history data for a particular channel

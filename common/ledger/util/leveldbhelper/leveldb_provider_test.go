@@ -198,7 +198,7 @@ func TestBatchedUpdates(t *testing.T) {
 	}
 }
 
-func TestDeleteAll(t *testing.T) {
+func TestDrop(t *testing.T) {
 	env := newTestProviderEnv(t, testDBPath)
 	defer env.cleanup()
 	p := env.provider
@@ -206,15 +206,18 @@ func TestDeleteAll(t *testing.T) {
 	db1 := p.GetDBHandle("db1")
 	db2 := p.GetDBHandle("db2")
 	db3 := p.GetDBHandle("db3")
-	db4 := p.GetDBHandle("db4")
+
+	require.Contains(t, p.dbHandles, "db1")
+	require.Contains(t, p.dbHandles, "db2")
+	require.Contains(t, p.dbHandles, "db3")
+
 	for i := 0; i < 20; i++ {
 		db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false)
 		db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false)
-		db3.Put([]byte(createTestKey(i)), []byte(createTestValue("db3", i)), false)
 	}
-	// db4 is used to test remove when multiple batches are needed (each long key has 125 bytes)
+	// db3 is used to test remove when multiple batches are needed (each long key has 125 bytes)
 	for i := 0; i < 10000; i++ {
-		db4.Put([]byte(createTestLongKey(i)), []byte(createTestValue("db4", i)), false)
+		db3.Put([]byte(createTestLongKey(i)), []byte(createTestValue("db3", i)), false)
 	}
 
 	expectedSetup := []struct {
@@ -234,13 +237,8 @@ func TestDeleteAll(t *testing.T) {
 		},
 		{
 			db:             db3,
-			expectedKeys:   createTestKeys(0, 19),
-			expectedValues: createTestValues("db3", 0, 19),
-		},
-		{
-			db:             db4,
 			expectedKeys:   createTestLongKeys(0, 9999),
-			expectedValues: createTestValues("db4", 0, 9999),
+			expectedValues: createTestValues("db3", 0, 9999),
 		},
 	}
 
@@ -251,8 +249,12 @@ func TestDeleteAll(t *testing.T) {
 		itr.Release()
 	}
 
-	require.NoError(t, db1.DeleteAll())
-	require.NoError(t, db4.DeleteAll())
+	require.NoError(t, p.Drop("db1"))
+	require.NoError(t, p.Drop("db3"))
+
+	require.NotContains(t, p.dbHandles, "db1")
+	require.NotContains(t, p.dbHandles, "db3")
+	require.Contains(t, p.dbHandles, "db2")
 
 	expectedResults := []struct {
 		db             *DBHandle
@@ -271,11 +273,6 @@ func TestDeleteAll(t *testing.T) {
 		},
 		{
 			db:             db3,
-			expectedKeys:   createTestKeys(0, 19),
-			expectedValues: createTestValues("db3", 0, 19),
-		},
-		{
-			db:             db4,
 			expectedKeys:   nil,
 			expectedValues: nil,
 		},
@@ -290,7 +287,7 @@ func TestDeleteAll(t *testing.T) {
 
 	// negative test
 	p.Close()
-	require.EqualError(t, db2.DeleteAll(), "internal leveldb error while obtaining db iterator: leveldb: closed")
+	require.EqualError(t, db2.deleteAll(), "internal leveldb error while obtaining db iterator: leveldb: closed")
 }
 
 func TestFormatCheck(t *testing.T) {

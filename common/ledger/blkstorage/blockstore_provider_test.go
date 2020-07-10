@@ -193,7 +193,7 @@ func TestBlockStoreProvider(t *testing.T) {
 
 }
 
-func TestRemove(t *testing.T) {
+func TestDrop(t *testing.T) {
 	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
 
@@ -214,16 +214,16 @@ func TestRemove(t *testing.T) {
 	require.NoError(t, err)
 	require.ElementsMatch(t, storeNames, []string{"ledger1", "ledger2"})
 
-	require.NoError(t, provider.Remove("ledger1"))
+	require.NoError(t, provider.Drop("ledger1"))
 
 	// verify ledger1 block dir and block indexes are deleted
 	exists, err := provider.Exists("ledger1")
 	require.NoError(t, err)
 	require.False(t, exists)
-	itr, err := provider.leveldbProvider.GetDBHandle("ledger1").GetIterator(nil, nil)
+
+	empty, err := provider.leveldbProvider.GetDBHandle("ledger1").IsEmpty()
 	require.NoError(t, err)
-	defer itr.Release()
-	require.False(t, itr.Next())
+	require.True(t, empty)
 
 	// verify ledger2 ledger data are remained same
 	checkBlocks(t, blocks2, store2)
@@ -231,8 +231,8 @@ func TestRemove(t *testing.T) {
 	require.NoError(t, err)
 	require.ElementsMatch(t, storeNames, []string{"ledger2"})
 
-	// remove again should return no error
-	require.NoError(t, provider.Remove("ledger1"))
+	// drop again should return no error
+	require.NoError(t, provider.Drop("ledger1"))
 
 	// verify "ledger1" store can be opened again after remove, but it is an empty store
 	newstore1, err := provider.Open("ledger1")
@@ -243,7 +243,7 @@ func TestRemove(t *testing.T) {
 
 	// negative test
 	provider.Close()
-	require.EqualError(t, provider.Remove("ledger2"), "internal leveldb error while obtaining db iterator: leveldb: closed")
+	require.EqualError(t, provider.Drop("ledger2"), "internal leveldb error while obtaining db iterator: leveldb: closed")
 }
 
 func constructLedgerid(id int) string {

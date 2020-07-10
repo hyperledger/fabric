@@ -9,6 +9,7 @@ package privacyenabledstate
 import (
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,11 +29,13 @@ type TestEnv interface {
 	StartExternalResource()
 	Init(t testing.TB)
 	GetDBHandle(id string) *DB
+	GetProvider() *DBProvider
 	GetName() string
 	DBValueFormat() byte
 	DecodeDBValue(dbVal []byte) statedb.VersionedValue
 	Cleanup()
 	StopExternalResource()
+	CheckDBsAfterDrop(ledgerid string)
 }
 
 // Tests will be run against each environment in this array
@@ -89,6 +92,11 @@ func (env *LevelDBTestEnv) GetDBHandle(id string) *DB {
 	return db
 }
 
+// GetProvider returns DBProvider
+func (env *LevelDBTestEnv) GetProvider() *DBProvider {
+	return env.provider
+}
+
 // GetName implements corresponding function from interface TestEnv
 func (env *LevelDBTestEnv) GetName() string {
 	return "levelDBTestEnv"
@@ -111,6 +119,13 @@ func (env *LevelDBTestEnv) Cleanup() {
 	env.provider.Close()
 	env.bookkeeperTestEnv.Cleanup()
 	os.RemoveAll(env.dbPath)
+}
+
+// CheckDBsAfterDrop checks the ledgerid db is empty
+func (env *LevelDBTestEnv) CheckDBsAfterDrop(ledgerid string) {
+	empty, err := env.GetDBHandle(ledgerid).IsEmpty()
+	require.NoError(env.t, err)
+	require.True(env.t, empty)
 }
 
 ///////////// CouchDB Environment //////////////
@@ -190,6 +205,11 @@ func (env *CouchDBTestEnv) GetDBHandle(id string) *DB {
 	return db
 }
 
+// GetProvider returns DBProvider
+func (env *CouchDBTestEnv) GetProvider() *DBProvider {
+	return env.provider
+}
+
 // GetName implements corresponding function from interface TestEnv
 func (env *CouchDBTestEnv) GetName() string {
 	return "couchDBTestEnv"
@@ -215,4 +235,17 @@ func (env *CouchDBTestEnv) Cleanup() {
 	os.RemoveAll(env.redoPath)
 	env.bookkeeperTestEnv.Cleanup()
 	env.provider.Close()
+}
+
+// CheckDBsAfterDrop verifies couchDB databases have been dropped for the ledgerid
+func (env *CouchDBTestEnv) CheckDBsAfterDrop(ledgerid string) {
+	appDBNames := statecouchdb.RetrieveApplicationDBNames(env.t, env.couchDBConfig)
+	found := false
+	for _, dbName := range appDBNames {
+		if strings.HasPrefix(dbName, ledgerid+"_") {
+			found = true
+			break
+		}
+	}
+	require.False(env.t, found)
 }

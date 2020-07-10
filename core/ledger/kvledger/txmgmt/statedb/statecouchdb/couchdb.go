@@ -474,7 +474,7 @@ func (couchInstance *couchInstance) url() string {
 }
 
 //dropDatabase provides method to drop an existing database
-func (dbclient *couchDatabase) dropDatabase() (*dbOperationResponse, error) {
+func (dbclient *couchDatabase) dropDatabase() error {
 	dbName := dbclient.dbName
 
 	couchdbLogger.Debugf("[%s] Entering DropDatabase()", dbName)
@@ -482,35 +482,24 @@ func (dbclient *couchDatabase) dropDatabase() (*dbOperationResponse, error) {
 	connectURL, err := url.Parse(dbclient.couchInstance.url())
 	if err != nil {
 		couchdbLogger.Errorf("URL parse error: %s", err)
-		return nil, errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.couchInstance.url())
+		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.couchInstance.url())
 	}
 
 	//get the number of retries
 	maxRetries := dbclient.couchInstance.conf.MaxRetries
 
-	resp, _, err := dbclient.handleRequest(http.MethodDelete, "DropDatabase", connectURL, nil, "", "", maxRetries, true, nil)
-	if err != nil {
-		return nil, err
-	}
+	resp, couchdbReturn, err := dbclient.handleRequest(http.MethodDelete, "DropDatabase", connectURL, nil, "", "", maxRetries, true, nil)
 	defer closeResponseBody(resp)
-
-	dbResponse := &dbOperationResponse{}
-	decodeErr := json.NewDecoder(resp.Body).Decode(&dbResponse)
-	if decodeErr != nil {
-		return nil, errors.Wrap(decodeErr, "error decoding response body")
+	if couchdbReturn != nil && couchdbReturn.StatusCode == 404 {
+		couchdbLogger.Debugf("[%s] Exiting DropDatabase(), database does not exist", dbclient.dbName)
+		return nil
+	}
+	if err != nil {
+		return err
 	}
 
-	if dbResponse.Ok {
-		couchdbLogger.Debugf("[%s] Dropped database", dbclient.dbName)
-	}
-
-	couchdbLogger.Debugf("[%s] Exiting DropDatabase()", dbclient.dbName)
-
-	if dbResponse.Ok {
-		return dbResponse, nil
-	}
-
-	return dbResponse, errors.New("error dropping database")
+	couchdbLogger.Debugf("[%s] Exiting DropDatabase(), database dropped", dbclient.dbName)
+	return nil
 }
 
 //saveDoc method provides a function to save a document, id and byte array

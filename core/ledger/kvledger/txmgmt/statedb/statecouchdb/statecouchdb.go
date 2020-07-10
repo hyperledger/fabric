@@ -153,6 +153,49 @@ func (provider *VersionedDBProvider) Close() {
 	provider.redoLoggerProvider.close()
 }
 
+// Drop drops the couch dbs and redologger data for the channel.
+// It is not an error if a database does not exist.
+func (provider *VersionedDBProvider) Drop(dbName string) error {
+	metadataDBName := constructMetadataDBName(dbName)
+	couchDBDatabase := couchDatabase{couchInstance: provider.couchInstance, dbName: metadataDBName, indexWarmCounter: 1}
+	_, couchDBReturn, err := couchDBDatabase.getDatabaseInfo()
+	if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
+		// db does not exist
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	metadataDB, err := createCouchDatabase(provider.couchInstance, metadataDBName)
+	if err != nil {
+		return err
+	}
+	channelMetadata, err := readChannelMetadata(metadataDB)
+	if err != nil {
+		return err
+	}
+
+	for _, dbInfo := range channelMetadata.NamespaceDBsInfo {
+		// do not drop metadataDB until all other dbs are dropped
+		if dbInfo.DBName == metadataDBName {
+			continue
+		}
+		if err := dropDB(provider.couchInstance, dbInfo.DBName); err != nil {
+			logger.Errorw("Error dropping database", "channel", dbName, "namespace", dbInfo.Namespace, "error", err)
+			return err
+		}
+	}
+	if err := dropDB(provider.couchInstance, metadataDBName); err != nil {
+		logger.Errorw("Error dropping metatdataDB", "channel", dbName, "error", err)
+		return err
+	}
+
+	delete(provider.databases, dbName)
+
+	return provider.redoLoggerProvider.leveldbProvider.Drop(dbName)
+}
+
 // HealthCheck checks to see if the couch instance of the peer is healthy
 func (provider *VersionedDBProvider) HealthCheck(ctx context.Context) error {
 	return provider.couchInstance.healthCheck(ctx)
@@ -808,8 +851,12 @@ func (vdb *VersionedDB) initChannelMetadata(isNewDB bool, namespaceProvider stat
 
 // readChannelMetadata returns channel metadata stored in metadataDB
 func (vdb *VersionedDB) readChannelMetadata() (*channelMetadata, error) {
+	return readChannelMetadata(vdb.metadataDB)
+}
+
+func readChannelMetadata(metadataDB *couchDatabase) (*channelMetadata, error) {
 	var err error
-	couchDoc, _, err := vdb.metadataDB.readDoc(channelMetadataDocID)
+	couchDoc, _, err := metadataDB.readDoc(channelMetadataDocID)
 	if err != nil {
 		logger.Errorf("Failed to read db name mapping data %s", err.Error())
 		return nil, err

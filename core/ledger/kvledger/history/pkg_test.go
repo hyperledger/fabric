@@ -72,8 +72,7 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	require.NoError(t, err)
 	testHistoryDBProvider, err := NewDBProvider(testHistoryDBPath)
 	require.NoError(t, err)
-	testHistoryDB, err := testHistoryDBProvider.GetDBHandle("TestHistoryDB")
-	require.NoError(t, err)
+	testHistoryDB := testHistoryDBProvider.GetDBHandle("TestHistoryDB")
 
 	return &levelDBLockBasedHistoryEnv{
 		t,

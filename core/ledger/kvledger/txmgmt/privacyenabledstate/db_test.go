@@ -588,6 +588,64 @@ func generateLedgerID(t *testing.T) string {
 	return fmt.Sprintf("x%s", hex.EncodeToString(bytes))
 }
 
+func TestDrop(t *testing.T) {
+	for _, env := range testEnvs {
+		t.Run(env.GetName(), func(t *testing.T) {
+			testDrop(t, env)
+		})
+
+		t.Run("test-drop-error-propagation", func(t *testing.T) {
+			env.Init(t)
+			defer env.Cleanup()
+			ledgerid := generateLedgerID(t)
+			env.GetDBHandle(ledgerid)
+			env.GetProvider().Close()
+			require.EqualError(t, env.GetProvider().Drop(ledgerid), "internal leveldb error while obtaining db iterator: leveldb: closed")
+		})
+	}
+}
+
+func testDrop(t *testing.T, env TestEnv) {
+	env.Init(t)
+	defer env.Cleanup()
+	ledgerid := generateLedgerID(t)
+	db := env.GetDBHandle(ledgerid)
+
+	updates := NewUpdateBatch()
+	updates.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
+	putPvtUpdates(t, updates, "ns1", "coll1", "key1", []byte("pvt_value1"), version.NewHeight(1, 2))
+	db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(2, 2))
+
+	vv, err := db.GetState("ns1", "key1")
+	require.NoError(t, err)
+	require.Equal(t, &statedb.VersionedValue{Value: []byte("value1"), Version: version.NewHeight(1, 1)}, vv)
+
+	vv, err = db.GetPrivateData("ns1", "coll1", "key1")
+	require.NoError(t, err)
+	require.Equal(t, &statedb.VersionedValue{Value: []byte("pvt_value1"), Version: version.NewHeight(1, 2)}, vv)
+
+	vv, err = db.GetPrivateDataHash("ns1", "coll1", "key1")
+	require.NoError(t, err)
+	require.Equal(t, &statedb.VersionedValue{Value: util.ComputeStringHash("pvt_value1"), Version: version.NewHeight(1, 2)}, vv)
+
+	require.NoError(t, env.GetProvider().Drop(ledgerid))
+
+	// verify after dropping ledger data for ledgerid
+	env.CheckDBsAfterDrop(ledgerid)
+
+	vv, err = db.GetState("ns1", "key1")
+	require.NoError(t, err)
+	require.Nil(t, vv)
+
+	vv, err = db.GetPrivateData("ns1", "coll1", "key1")
+	require.NoError(t, err)
+	require.Nil(t, vv)
+
+	vv, err = db.GetPrivateDataHash("ns1", "coll1", "key1")
+	require.NoError(t, err)
+	require.Nil(t, vv)
+}
+
 //go:generate counterfeiter -o mock/channelinfo_provider.go -fake-name ChannelInfoProvider . channelInfoProviderWrapper
 
 // define this interface to break circular dependency

@@ -59,6 +59,12 @@ func (provider *VersionedDBProvider) Close() {
 	provider.dbProvider.Close()
 }
 
+// Drop drops channel-specific data from the state leveldb.
+// It is not an error if a database does not exist.
+func (provider *VersionedDBProvider) Drop(dbName string) error {
+	return provider.dbProvider.Drop(dbName)
+}
+
 // VersionedDB implements VersionedDB interface
 type versionedDB struct {
 	db     *leveldbhelper.DBHandle

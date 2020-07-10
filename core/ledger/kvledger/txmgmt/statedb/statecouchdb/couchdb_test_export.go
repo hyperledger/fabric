@@ -30,3 +30,12 @@ func IsEmpty(t testing.TB, config *ledger.CouchDBConfig) bool {
 	require.NoError(t, err)
 	return dbEmpty
 }
+
+// RetrieveApplicationDBNames retrieves application DB names
+func RetrieveApplicationDBNames(t testing.TB, config *ledger.CouchDBConfig) []string {
+	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
+	require.NoError(t, err)
+	appDBNames, err := couchInstance.retrieveApplicationDBNames()
+	require.NoError(t, err)
+	return appDBNames
+}

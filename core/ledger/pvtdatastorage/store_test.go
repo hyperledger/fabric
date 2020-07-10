@@ -712,6 +712,80 @@ func TestCollElgEnabled(t *testing.T) {
 	testCollElgEnabled(t, conf)
 }
 
+func TestDrop(t *testing.T) {
+	ledgerid := "testremove"
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns-1", "coll-1"}: 0,
+			{"ns-1", "coll-2"}: 0,
+			{"ns-2", "coll-1"}: 0,
+			{"ns-2", "coll-2"}: 0,
+		},
+	)
+
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
+	defer env.Cleanup()
+	require := require.New(t)
+	store := env.TestStore
+
+	testData := []*ledger.TxPvtData{
+		produceSamplePvtdata(t, 2, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+		produceSamplePvtdata(t, 4, []string{"ns-1:coll-1", "ns-1:coll-2", "ns-2:coll-1", "ns-2:coll-2"}),
+	}
+
+	// construct missing data for block 1
+	blk1MissingData := make(ledger.TxMissingPvtDataMap)
+
+	// eligible missing data in tx1
+	blk1MissingData.Add(1, "ns-1", "coll-1", true)
+	blk1MissingData.Add(1, "ns-1", "coll-2", true)
+	blk1MissingData.Add(1, "ns-2", "coll-1", true)
+	blk1MissingData.Add(1, "ns-2", "coll-2", true)
+
+	// no pvt data with block 0
+	require.NoError(store.Commit(0, nil, nil))
+
+	// pvt data with block 1 - commit
+	require.NoError(store.Commit(1, testData, blk1MissingData))
+
+	// pvt data retrieval for block 0 should return nil
+	var nilFilter ledger.PvtNsCollFilter
+	retrievedData, err := store.GetPvtDataByBlockNum(0, nilFilter)
+	require.NoError(err)
+	require.Nil(retrievedData)
+
+	// pvt data retrieval for block 1 should return full pvtdata
+	retrievedData, err = store.GetPvtDataByBlockNum(1, nilFilter)
+	require.NoError(err)
+	require.Equal(len(testData), len(retrievedData))
+	for i, data := range retrievedData {
+		require.Equal(data.SeqInBlock, testData[i].SeqInBlock)
+		require.True(proto.Equal(data.WriteSet, testData[i].WriteSet))
+	}
+
+	require.NoError(env.TestStoreProvider.Drop(ledgerid))
+
+	// pvt data should be removed
+	retrievedData, err = store.GetPvtDataByBlockNum(0, nilFilter)
+	require.NoError(err)
+	require.Nil(retrievedData)
+
+	retrievedData, err = store.GetPvtDataByBlockNum(1, nilFilter)
+	require.NoError(err)
+	require.Nil(retrievedData)
+
+	itr, err := env.TestStoreProvider.dbProvider.GetDBHandle(ledgerid).GetIterator(nil, nil)
+	require.NoError(err)
+	require.False(itr.Next())
+
+	// drop again is not an error
+	require.NoError(env.TestStoreProvider.Drop(ledgerid))
+
+	// negative test
+	env.TestStoreProvider.Close()
+	require.EqualError(env.TestStoreProvider.Drop(ledgerid), "internal leveldb error while obtaining db iterator: leveldb: closed")
+}
+
 func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	ledgerid := "TestCollElgEnabled"
 	btlPolicy := btltestutil.SampleBTLPolicy(
