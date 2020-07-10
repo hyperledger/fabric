@@ -253,7 +253,7 @@ used by tutorials to highlight Fabric features.
 After the **fabcar** chaincode definition has been committed to the channel, the
 script initializes the chaincode by invoking the `init` function and then invokes
 the chaincode to put an initial list of cars on the ledger. The script then
-queries the chaincode to verify the that the data was added. If the chaincode was
+queries the chaincode to verify that the data was added. If the chaincode was
 installed, deployed, and invoked correctly, you should see the following list of
 cars printed in your logs:
 ```
