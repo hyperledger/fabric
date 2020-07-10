@@ -426,7 +426,9 @@ func getIndexInfo(indexPath string) *indexInfo {
 		indexInfo.hasIndexForChaincode = true
 	case len(dirsDepth) > collectionDirDepth &&
 		dirsDepth[collectionDirDepth] == "collections" &&
-		dirsDepth[collectionIndexDirDepth] == "indexes":
+		len(dirsDepth) > collectionIndexDirDepth &&
+		dirsDepth[collectionIndexDirDepth] == "indexes" &&
+		len(dirsDepth) > collectionNameDepth:
 		indexInfo.hasIndexForCollection = true
 		indexInfo.collectionName = dirsDepth[collectionNameDepth]
 	}
