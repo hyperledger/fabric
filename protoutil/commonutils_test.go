@@ -16,7 +16,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/protoutil/fakes"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //go:generate counterfeiter -o fakes/signer_serializer.go --fake-name SignerSerializer . signerSerializer
@@ -58,13 +58,13 @@ func TestUnmarshalPayload(t *testing.T) {
 		Data: []byte("payload"),
 	})
 	payload, err := UnmarshalPayload(good)
-	assert.NoError(t, err, "Unexpected error unmarshaling payload")
-	assert.NotNil(t, payload, "Payload should not be nil")
+	require.NoError(t, err, "Unexpected error unmarshaling payload")
+	require.NotNil(t, payload, "Payload should not be nil")
 	payload = UnmarshalPayloadOrPanic(good)
-	assert.NotNil(t, payload, "Payload should not be nil")
+	require.NotNil(t, payload, "Payload should not be nil")
 
 	bad := []byte("bad payload")
-	assert.Panics(t, func() {
+	require.Panics(t, func() {
 		_ = UnmarshalPayloadOrPanic(bad)
 	}, "Expected panic unmarshaling malformed payload")
 
@@ -74,16 +74,16 @@ func TestUnmarshalSignatureHeader(t *testing.T) {
 	t.Run("invalid header", func(t *testing.T) {
 		sighdrBytes := []byte("invalid signature header")
 		_, err := UnmarshalSignatureHeader(sighdrBytes)
-		assert.Error(t, err, "Expected unmarshaling error")
+		require.Error(t, err, "Expected unmarshaling error")
 	})
 
 	t.Run("valid empty header", func(t *testing.T) {
 		sighdr := &cb.SignatureHeader{}
 		sighdrBytes := MarshalOrPanic(sighdr)
 		sighdr, err := UnmarshalSignatureHeader(sighdrBytes)
-		assert.NoError(t, err, "Unexpected error unmarshaling signature header")
-		assert.Nil(t, sighdr.Creator)
-		assert.Nil(t, sighdr.Nonce)
+		require.NoError(t, err, "Unexpected error unmarshaling signature header")
+		require.Nil(t, sighdr.Creator)
+		require.Nil(t, sighdr.Nonce)
 	})
 
 	t.Run("valid header", func(t *testing.T) {
@@ -93,9 +93,9 @@ func TestUnmarshalSignatureHeader(t *testing.T) {
 		}
 		sighdrBytes := MarshalOrPanic(sighdr)
 		sighdr, err := UnmarshalSignatureHeader(sighdrBytes)
-		assert.NoError(t, err, "Unexpected error unmarshaling signature header")
-		assert.Equal(t, []byte("creator"), sighdr.Creator)
-		assert.Equal(t, []byte("nonce"), sighdr.Nonce)
+		require.NoError(t, err, "Unexpected error unmarshaling signature header")
+		require.Equal(t, []byte("creator"), sighdr.Creator)
+		require.Equal(t, []byte("nonce"), sighdr.Nonce)
 	})
 }
 
@@ -103,7 +103,7 @@ func TestUnmarshalSignatureHeaderOrPanic(t *testing.T) {
 
 	t.Run("panic due to invalid header", func(t *testing.T) {
 		sighdrBytes := []byte("invalid signature header")
-		assert.Panics(t, func() {
+		require.Panics(t, func() {
 			UnmarshalSignatureHeaderOrPanic(sighdrBytes)
 		}, "Expected panic with invalid header")
 	})
@@ -112,8 +112,8 @@ func TestUnmarshalSignatureHeaderOrPanic(t *testing.T) {
 		sighdr := &cb.SignatureHeader{}
 		sighdrBytes := MarshalOrPanic(sighdr)
 		sighdr = UnmarshalSignatureHeaderOrPanic(sighdrBytes)
-		assert.Nil(t, sighdr.Creator)
-		assert.Nil(t, sighdr.Nonce)
+		require.Nil(t, sighdr.Creator)
+		require.Nil(t, sighdr.Nonce)
 	})
 }
 
@@ -121,13 +121,13 @@ func TestUnmarshalEnvelope(t *testing.T) {
 	var env *cb.Envelope
 	good, _ := proto.Marshal(&cb.Envelope{})
 	env, err := UnmarshalEnvelope(good)
-	assert.NoError(t, err, "Unexpected error unmarshaling envelope")
-	assert.NotNil(t, env, "Envelope should not be nil")
+	require.NoError(t, err, "Unexpected error unmarshaling envelope")
+	require.NotNil(t, env, "Envelope should not be nil")
 	env = UnmarshalEnvelopeOrPanic(good)
-	assert.NotNil(t, env, "Envelope should not be nil")
+	require.NotNil(t, env, "Envelope should not be nil")
 
 	bad := []byte("bad envelope")
-	assert.Panics(t, func() {
+	require.Panics(t, func() {
 		_ = UnmarshalEnvelopeOrPanic(bad)
 	}, "Expected panic unmarshaling malformed envelope")
 
@@ -137,13 +137,13 @@ func TestUnmarshalBlock(t *testing.T) {
 	var env *cb.Block
 	good, _ := proto.Marshal(&cb.Block{})
 	env, err := UnmarshalBlock(good)
-	assert.NoError(t, err, "Unexpected error unmarshaling block")
-	assert.NotNil(t, env, "Block should not be nil")
+	require.NoError(t, err, "Unexpected error unmarshaling block")
+	require.NotNil(t, env, "Block should not be nil")
 	env = UnmarshalBlockOrPanic(good)
-	assert.NotNil(t, env, "Block should not be nil")
+	require.NotNil(t, env, "Block should not be nil")
 
 	bad := []byte("bad block")
-	assert.Panics(t, func() {
+	require.Panics(t, func() {
 		_ = UnmarshalBlockOrPanic(bad)
 	}, "Expected panic unmarshaling malformed block")
 
@@ -154,14 +154,14 @@ func TestUnmarshalEnvelopeOfType(t *testing.T) {
 
 	env.Payload = []byte("bad payload")
 	_, err := UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, nil)
-	assert.Error(t, err, "Expected error unmarshaling malformed envelope")
+	require.Error(t, err, "Expected error unmarshaling malformed envelope")
 
 	payload, _ := proto.Marshal(&cb.Payload{
 		Header: nil,
 	})
 	env.Payload = payload
 	_, err = UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, nil)
-	assert.Error(t, err, "Expected error with missing payload header")
+	require.Error(t, err, "Expected error with missing payload header")
 
 	payload, _ = proto.Marshal(&cb.Payload{
 		Header: &cb.Header{
@@ -170,7 +170,7 @@ func TestUnmarshalEnvelopeOfType(t *testing.T) {
 	})
 	env.Payload = payload
 	_, err = UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, nil)
-	assert.Error(t, err, "Expected error for malformed channel header")
+	require.Error(t, err, "Expected error for malformed channel header")
 
 	chdr, _ := proto.Marshal(&cb.ChannelHeader{
 		Type: int32(cb.HeaderType_CHAINCODE_PACKAGE),
@@ -182,7 +182,7 @@ func TestUnmarshalEnvelopeOfType(t *testing.T) {
 	})
 	env.Payload = payload
 	_, err = UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, nil)
-	assert.Error(t, err, "Expected error for wrong channel header type")
+	require.Error(t, err, "Expected error for wrong channel header type")
 
 	chdr, _ = proto.Marshal(&cb.ChannelHeader{
 		Type: int32(cb.HeaderType_CONFIG),
@@ -195,7 +195,7 @@ func TestUnmarshalEnvelopeOfType(t *testing.T) {
 	})
 	env.Payload = payload
 	_, err = UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, &cb.ConfigEnvelope{})
-	assert.Error(t, err, "Expected error for malformed payload data")
+	require.Error(t, err, "Expected error for malformed payload data")
 
 	chdr, _ = proto.Marshal(&cb.ChannelHeader{
 		Type: int32(cb.HeaderType_CONFIG),
@@ -209,14 +209,14 @@ func TestUnmarshalEnvelopeOfType(t *testing.T) {
 	})
 	env.Payload = payload
 	_, err = UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, &cb.ConfigEnvelope{})
-	assert.NoError(t, err, "Unexpected error unmarshaling envelope")
+	require.NoError(t, err, "Unexpected error unmarshaling envelope")
 
 }
 
 func TestExtractEnvelopeNilData(t *testing.T) {
 	block := &cb.Block{}
 	_, err := ExtractEnvelope(block, 0)
-	assert.Error(t, err, "Nil data")
+	require.Error(t, err, "Nil data")
 }
 
 func TestExtractEnvelopeWrongIndex(t *testing.T) {
@@ -285,12 +285,12 @@ func TestUnmarshalChaincodeID(t *testing.T) {
 		Version: ccversion,
 	})
 	ccid, err := UnmarshalChaincodeID(ccidbytes)
-	assert.NoError(t, err)
-	assert.Equal(t, ccname, ccid.Name, "Expected ccid names to match")
-	assert.Equal(t, ccversion, ccid.Version, "Expected ccid versions to match")
+	require.NoError(t, err)
+	require.Equal(t, ccname, ccid.Name, "Expected ccid names to match")
+	require.Equal(t, ccversion, ccid.Version, "Expected ccid versions to match")
 
 	_, err = UnmarshalChaincodeID([]byte("bad chaincodeID"))
-	assert.Error(t, err, "Expected error marshaling malformed chaincode ID")
+	require.Error(t, err, "Expected error marshaling malformed chaincode ID")
 }
 
 func TestNewSignatureHeaderOrPanic(t *testing.T) {
@@ -300,13 +300,13 @@ func TestNewSignatureHeaderOrPanic(t *testing.T) {
 	id.SerializeReturnsOnCall(0, []byte("serialized"), nil)
 	id.SerializeReturnsOnCall(1, nil, errors.New("serialize failed"))
 	sigHeader = NewSignatureHeaderOrPanic(id)
-	assert.NotNil(t, sigHeader, "Signature header should not be nil")
+	require.NotNil(t, sigHeader, "Signature header should not be nil")
 
-	assert.Panics(t, func() {
+	require.Panics(t, func() {
 		_ = NewSignatureHeaderOrPanic(nil)
 	}, "Expected panic with nil signer")
 
-	assert.Panics(t, func() {
+	require.Panics(t, func() {
 		_ = NewSignatureHeaderOrPanic(id)
 	}, "Expected panic with signature header error")
 }
@@ -318,13 +318,13 @@ func TestSignOrPanic(t *testing.T) {
 	signer.SignReturnsOnCall(1, nil, errors.New("bad signature"))
 	sig := SignOrPanic(signer, msg)
 	// mock signer returns message to be signed
-	assert.Equal(t, msg, sig, "Signature does not match expected value")
+	require.Equal(t, msg, sig, "Signature does not match expected value")
 
-	assert.Panics(t, func() {
+	require.Panics(t, func() {
 		_ = SignOrPanic(nil, []byte("sign me"))
 	}, "Expected panic with nil signer")
 
-	assert.Panics(t, func() {
+	require.Panics(t, func() {
 		_ = SignOrPanic(signer, []byte("sign me"))
 	}, "Expected panic with sign error")
 }
@@ -368,18 +368,18 @@ func TestChannelHeader(t *testing.T) {
 			}),
 		},
 	}))
-	assert.NoError(t, err, "Channel header was present")
+	require.NoError(t, err, "Channel header was present")
 
 	_, err = ChannelHeader(makeEnvelope(&cb.Payload{
 		Header: &cb.Header{},
 	}))
-	assert.Error(t, err, "ChannelHeader was missing")
+	require.Error(t, err, "ChannelHeader was missing")
 
 	_, err = ChannelHeader(makeEnvelope(&cb.Payload{}))
-	assert.Error(t, err, "Header was missing")
+	require.Error(t, err, "Header was missing")
 
 	_, err = ChannelHeader(&cb.Envelope{})
-	assert.Error(t, err, "Payload was missing")
+	require.Error(t, err, "Payload was missing")
 }
 
 func TestIsConfigBlock(t *testing.T) {
@@ -411,7 +411,7 @@ func TestIsConfigBlock(t *testing.T) {
 	block := newBlock(env)
 
 	result := IsConfigBlock(block)
-	assert.True(t, result, "IsConfigBlock returns true for blocks with CONFIG envelope")
+	require.True(t, result, "IsConfigBlock returns true for blocks with CONFIG envelope")
 
 	// scenario 2: ORDERER_TRANSACTION envelope
 	envType = int32(cb.HeaderType_ORDERER_TRANSACTION)
@@ -419,7 +419,7 @@ func TestIsConfigBlock(t *testing.T) {
 	block = newBlock(env)
 
 	result = IsConfigBlock(block)
-	assert.True(t, result, "IsConfigBlock returns true for blocks with ORDERER_TRANSACTION envelope")
+	require.True(t, result, "IsConfigBlock returns true for blocks with ORDERER_TRANSACTION envelope")
 
 	// scenario 3: MESSAGE envelope
 	envType = int32(cb.HeaderType_MESSAGE)
@@ -427,7 +427,7 @@ func TestIsConfigBlock(t *testing.T) {
 	block = newBlock(env)
 
 	result = IsConfigBlock(block)
-	assert.False(t, result, "IsConfigBlock returns false for blocks with MESSAGE envelope")
+	require.False(t, result, "IsConfigBlock returns false for blocks with MESSAGE envelope")
 }
 
 func TestEnvelopeToConfigUpdate(t *testing.T) {
@@ -450,18 +450,18 @@ func TestEnvelopeToConfigUpdate(t *testing.T) {
 	env := makeEnv(MarshalOrPanic(configUpdateEnv))
 	result, err := EnvelopeToConfigUpdate(env)
 
-	assert.NoError(t, err, "EnvelopeToConfigUpdate runs without error for valid CONFIG_UPDATE envelope")
-	assert.Equal(t, configUpdateEnv, result, "Correct configUpdateEnvelope returned")
+	require.NoError(t, err, "EnvelopeToConfigUpdate runs without error for valid CONFIG_UPDATE envelope")
+	require.Equal(t, configUpdateEnv, result, "Correct configUpdateEnvelope returned")
 
 	// scenario 2: for invalid envelopes
 	env = makeEnv([]byte("test bytes"))
 	_, err = EnvelopeToConfigUpdate(env)
 
-	assert.Error(t, err, "EnvelopeToConfigUpdate fails with error for invalid CONFIG_UPDATE envelope")
+	require.Error(t, err, "EnvelopeToConfigUpdate fails with error for invalid CONFIG_UPDATE envelope")
 }
 
 func TestGetRandomNonce(t *testing.T) {
 	key1, err := getRandomNonce()
-	assert.NoErrorf(t, err, "error getting random bytes")
-	assert.Len(t, key1, crypto.NonceSize)
+	require.NoErrorf(t, err, "error getting random bytes")
+	require.Len(t, key1, crypto.NonceSize)
 }

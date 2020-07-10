@@ -10,27 +10,27 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFindAndExists(t *testing.T) {
 	v := NewTreeVertex("1", nil)
 	u := v.AddDescendant(NewTreeVertex("2", nil)).AddDescendant(NewTreeVertex("4", nil))
 	v.AddDescendant(NewTreeVertex("3", nil)).AddDescendant(NewTreeVertex("5", nil))
-	assert.Equal(t, u, v.Find("4"))
-	assert.True(t, v.Exists("4"))
-	assert.Nil(t, v.Find("10"))
-	assert.False(t, v.Exists("10"))
-	assert.Nil(t, u.Find("1"))
-	assert.False(t, u.Exists("1"))
-	assert.Equal(t, v, v.Find("1"))
-	assert.True(t, v.Exists("1"))
+	require.Equal(t, u, v.Find("4"))
+	require.True(t, v.Exists("4"))
+	require.Nil(t, v.Find("10"))
+	require.False(t, v.Exists("10"))
+	require.Nil(t, u.Find("1"))
+	require.False(t, u.Exists("1"))
+	require.Equal(t, v, v.Find("1"))
+	require.True(t, v.Exists("1"))
 }
 
 func TestIsLeaf(t *testing.T) {
 	v := NewTreeVertex("1", nil)
-	assert.True(t, v.AddDescendant(NewTreeVertex("2", nil)).IsLeaf())
-	assert.False(t, v.IsLeaf())
+	require.True(t, v.AddDescendant(NewTreeVertex("2", nil)).IsLeaf())
+	require.False(t, v.IsLeaf())
 }
 
 func TestBFS(t *testing.T) {
@@ -38,16 +38,16 @@ func TestBFS(t *testing.T) {
 	v.AddDescendant(NewTreeVertex("2", nil)).AddDescendant(NewTreeVertex("4", nil))
 	v.AddDescendant(NewTreeVertex("3", nil)).AddDescendant(NewTreeVertex("5", nil))
 	tree := v.ToTree()
-	assert.Equal(t, v, tree.Root)
+	require.Equal(t, v, tree.Root)
 	i := tree.BFS()
 	j := 1
 	for {
 		v := i.Next()
 		if v == nil {
-			assert.True(t, j == 6)
+			require.True(t, j == 6)
 			break
 		}
-		assert.Equal(t, fmt.Sprintf("%d", j), v.Id)
+		require.Equal(t, fmt.Sprintf("%d", j), v.Id)
 		j++
 	}
 }
@@ -59,12 +59,12 @@ func TestClone(t *testing.T) {
 
 	copy := v.Clone()
 	// They are different references
-	assert.False(t, copy == v)
+	require.False(t, copy == v)
 	// They are equal
-	assert.Equal(t, v, copy)
+	require.Equal(t, v, copy)
 
 	v.AddDescendant(NewTreeVertex("6", 6))
-	assert.NotEqual(t, v, copy)
+	require.NotEqual(t, v, copy)
 }
 
 func TestReplace(t *testing.T) {
@@ -86,11 +86,11 @@ func TestReplace(t *testing.T) {
 		},
 	})
 
-	assert.Equal(t, "r", v.Id)
-	assert.Equal(t, &TreeVertex{Id: "F", Descendants: []*TreeVertex{}}, v.Descendants[2])
-	assert.Equal(t, &TreeVertex{Id: "E", Descendants: []*TreeVertex{}}, v.Descendants[1])
-	assert.Equal(t, "D", v.Descendants[0].Id)
-	assert.Equal(t, []*TreeVertex{
+	require.Equal(t, "r", v.Id)
+	require.Equal(t, &TreeVertex{Id: "F", Descendants: []*TreeVertex{}}, v.Descendants[2])
+	require.Equal(t, &TreeVertex{Id: "E", Descendants: []*TreeVertex{}}, v.Descendants[1])
+	require.Equal(t, "D", v.Descendants[0].Id)
+	require.Equal(t, []*TreeVertex{
 		{Id: "a", Descendants: []*TreeVertex{}},
 		{Id: "b", Descendants: []*TreeVertex{}},
 		{Id: "c", Descendants: []*TreeVertex{}},

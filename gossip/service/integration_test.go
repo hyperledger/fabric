@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -169,12 +168,12 @@ func TestLeaderYield(t *testing.T) {
 	ds0.waitForDeliveryServiceActivation()
 	t.Log("p0 started its delivery service")
 	// Ensure it's a leader
-	assert.Equal(t, 0, getLeader())
+	require.Equal(t, 0, getLeader())
 	// Wait for p0 to lose its leadership
 	ds0.waitForDeliveryServiceTermination()
 	t.Log("p0 stopped its delivery service")
 	// Ensure p0 is not a leader
-	assert.NotEqual(t, 0, getLeader())
+	require.NotEqual(t, 0, getLeader())
 	// Wait for p1 to take over. It should take over before time reaches timeLimit
 	timeLimit := time.Now().Add(takeOverMaxTimeout)
 	for getLeader() != 1 && time.Now().Before(timeLimit) {

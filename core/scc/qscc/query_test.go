@@ -28,7 +28,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -110,15 +109,15 @@ func TestQueryGetChainInfo(t *testing.T) {
 	args := [][]byte{[]byte(GetChainInfo), []byte(chainid)}
 	prop := resetProvider(resources.Qscc_GetChainInfo, chainid, nil, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
-	assert.Equal(t, int32(shim.OK), res.Status, "GetChainInfo failed with err: %s", res.Message)
+	require.Equal(t, int32(shim.OK), res.Status, "GetChainInfo failed with err: %s", res.Message)
 
 	args = [][]byte{[]byte(GetChainInfo)}
 	res = stub.MockInvoke("2", args)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo should have failed because no channel id was provided")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo should have failed because no channel id was provided")
 
 	args = [][]byte{[]byte(GetChainInfo), []byte("fakechainid")}
 	res = stub.MockInvoke("3", args)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo should have failed because the channel id does not exist")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo should have failed because the channel id does not exist")
 }
 
 func TestQueryGetTransactionByID(t *testing.T) {
@@ -135,16 +134,16 @@ func TestQueryGetTransactionByID(t *testing.T) {
 	args := [][]byte{[]byte(GetTransactionByID), []byte(chainid), []byte("1")}
 	prop := resetProvider(resources.Qscc_GetTransactionByID, chainid, &peer2.SignedProposal{}, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetTransactionByID should have failed with invalid txid: 1")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetTransactionByID should have failed with invalid txid: 1")
 
 	args = [][]byte{[]byte(GetTransactionByID), []byte(chainid), []byte(nil)}
 	res = stub.MockInvoke("2", args)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetTransactionByID should have failed with invalid txid: nil")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetTransactionByID should have failed with invalid txid: nil")
 
 	// Test with wrong number of parameters
 	args = [][]byte{[]byte(GetTransactionByID), []byte(chainid)}
 	res = stub.MockInvoke("3", args)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetTransactionByID should have failed due to incorrect number of arguments")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetTransactionByID should have failed due to incorrect number of arguments")
 }
 
 func TestQueryGetBlockByNumber(t *testing.T) {
@@ -162,17 +161,17 @@ func TestQueryGetBlockByNumber(t *testing.T) {
 	args := [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte("0")}
 	prop := resetProvider(resources.Qscc_GetBlockByNumber, chainid, nil, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
-	assert.Equal(t, int32(shim.OK), res.Status, "GetBlockByNumber should have succeeded for block number: 0")
+	require.Equal(t, int32(shim.OK), res.Status, "GetBlockByNumber should have succeeded for block number: 0")
 
 	// block number 1 should not be present in the ledger
 	args = [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte("1")}
 	res = stub.MockInvoke("2", args)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByNumber should have failed with invalid number: 1")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByNumber should have failed with invalid number: 1")
 
 	// block number cannot be nil
 	args = [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte(nil)}
 	res = stub.MockInvoke("3", args)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByNumber should have failed with nil block number")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByNumber should have failed with nil block number")
 }
 
 func TestQueryGetBlockByHash(t *testing.T) {
@@ -189,11 +188,11 @@ func TestQueryGetBlockByHash(t *testing.T) {
 	args := [][]byte{[]byte(GetBlockByHash), []byte(chainid), []byte("0")}
 	prop := resetProvider(resources.Qscc_GetBlockByHash, chainid, &peer2.SignedProposal{}, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByHash should have failed with invalid hash: 0")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByHash should have failed with invalid hash: 0")
 
 	args = [][]byte{[]byte(GetBlockByHash), []byte(chainid), []byte(nil)}
 	res = stub.MockInvoke("2", args)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByHash should have failed with nil hash")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByHash should have failed with nil hash")
 }
 
 func TestQueryGetBlockByTxID(t *testing.T) {
@@ -210,7 +209,7 @@ func TestQueryGetBlockByTxID(t *testing.T) {
 	args := [][]byte{[]byte(GetBlockByTxID), []byte(chainid), []byte("")}
 	prop := resetProvider(resources.Qscc_GetBlockByTxID, chainid, &peer2.SignedProposal{}, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByTxID should have failed with blank txId.")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByTxID should have failed with blank txId.")
 }
 
 func TestFailingCC2CC(t *testing.T) {
@@ -224,8 +223,8 @@ func TestFailingCC2CC(t *testing.T) {
 		// Set the ACLProvider to have a failure
 		resetProvider(resources.Qscc_GetChainInfo, "testchannel", sProp, nil)
 		res := stub.MockInvokeWithSignedProposal("2", args, sProp)
-		assert.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
-		assert.Contains(t, res.Message, "Failed to identify the called chaincode: could not unmarshal proposal: proto: can't skip unknown wire type 7")
+		require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
+		require.Contains(t, res.Message, "Failed to identify the called chaincode: could not unmarshal proposal: proto: can't skip unknown wire type 7")
 	})
 
 	t.Run("DifferentInvokedCC", func(t *testing.T) {
@@ -245,8 +244,8 @@ func TestFailingCC2CC(t *testing.T) {
 		// Set the ACLProvider to have a failure
 		resetProvider(resources.Qscc_GetChainInfo, "testchannel", sProp, nil)
 		res := stub.MockInvokeWithSignedProposal("2", args, sProp)
-		assert.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
-		assert.Contains(t, res.Message, "Rejecting invoke of QSCC from another chaincode because of potential for deadlocks, original invocation for 'usercc'")
+		require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
+		require.Contains(t, res.Message, "Rejecting invoke of QSCC from another chaincode because of potential for deadlocks, original invocation for 'usercc'")
 	})
 }
 
@@ -280,8 +279,8 @@ func TestFailingAccessControl(t *testing.T) {
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetChainInfo, chainid, sProp, errors.New("Failed access control"))
 	res := stub.MockInvokeWithSignedProposal("2", args, sProp)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
-	assert.Contains(t, res.Message, "Failed access control")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
+	require.Contains(t, res.Message, "Failed access control")
 	// assert that the expectations were met
 	mockAclProvider.AssertExpectations(t)
 
@@ -301,8 +300,8 @@ func TestFailingAccessControl(t *testing.T) {
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByNumber, chainid, sProp, errors.New("Failed access control"))
 	res = stub.MockInvokeWithSignedProposal("2", args, sProp)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByNumber must fail: %s", res.Message)
-	assert.Contains(t, res.Message, "Failed access control")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByNumber must fail: %s", res.Message)
+	require.Contains(t, res.Message, "Failed access control")
 	// assert that the expectations were met
 	mockAclProvider.AssertExpectations(t)
 
@@ -322,8 +321,8 @@ func TestFailingAccessControl(t *testing.T) {
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByHash, chainid, sProp, errors.New("Failed access control"))
 	res = stub.MockInvokeWithSignedProposal("2", args, sProp)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByHash must fail: %s", res.Message)
-	assert.Contains(t, res.Message, "Failed access control")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByHash must fail: %s", res.Message)
+	require.Contains(t, res.Message, "Failed access control")
 	// assert that the expectations were met
 	mockAclProvider.AssertExpectations(t)
 
@@ -343,8 +342,8 @@ func TestFailingAccessControl(t *testing.T) {
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetBlockByTxID, chainid, sProp, errors.New("Failed access control"))
 	res = stub.MockInvokeWithSignedProposal("2", args, sProp)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByTxID must fail: %s", res.Message)
-	assert.Contains(t, res.Message, "Failed access control")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlockByTxID must fail: %s", res.Message)
+	require.Contains(t, res.Message, "Failed access control")
 	// assert that the expectations were met
 	mockAclProvider.AssertExpectations(t)
 
@@ -364,8 +363,8 @@ func TestFailingAccessControl(t *testing.T) {
 	// Set the ACLProvider to have a failure
 	resetProvider(resources.Qscc_GetTransactionByID, chainid, sProp, errors.New("Failed access control"))
 	res = stub.MockInvokeWithSignedProposal("2", args, sProp)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "Qscc_GetTransactionByID must fail: %s", res.Message)
-	assert.Contains(t, res.Message, "Failed access control")
+	require.Equal(t, int32(shim.ERROR), res.Status, "Qscc_GetTransactionByID must fail: %s", res.Message)
+	require.Contains(t, res.Message, "Failed access control")
 	// assert that the expectations were met
 	mockAclProvider.AssertExpectations(t)
 }
@@ -384,7 +383,7 @@ func TestQueryNonexistentFunction(t *testing.T) {
 	args := [][]byte{[]byte("GetBlocks"), []byte(chainid), []byte("arg1")}
 	prop := resetProvider("qscc/GetBlocks", chainid, &peer2.SignedProposal{}, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
-	assert.Equal(t, int32(shim.ERROR), res.Status, "GetBlocks should have failed because the function does not exist")
+	require.Equal(t, int32(shim.ERROR), res.Status, "GetBlocks should have failed because the function does not exist")
 }
 
 // TestQueryGeneratedBlock tests various queries for a newly generated block
@@ -406,13 +405,13 @@ func TestQueryGeneratedBlock(t *testing.T) {
 	args := [][]byte{[]byte(GetBlockByNumber), []byte(chainid), []byte("1")}
 	prop := resetProvider(resources.Qscc_GetBlockByNumber, chainid, nil, nil)
 	res := stub.MockInvokeWithSignedProposal("1", args, prop)
-	assert.Equal(t, int32(shim.OK), res.Status, "GetBlockByNumber should have succeeded for block number 1")
+	require.Equal(t, int32(shim.OK), res.Status, "GetBlockByNumber should have succeeded for block number 1")
 
 	// block number 1
 	args = [][]byte{[]byte(GetBlockByHash), []byte(chainid), protoutil.BlockHeaderHash(block1.Header)}
 	prop = resetProvider(resources.Qscc_GetBlockByHash, chainid, nil, nil)
 	res = stub.MockInvokeWithSignedProposal("2", args, prop)
-	assert.Equal(t, int32(shim.OK), res.Status, "GetBlockByHash should have succeeded for block 1 hash")
+	require.Equal(t, int32(shim.OK), res.Status, "GetBlockByHash should have succeeded for block 1 hash")
 
 	// drill into the block to find the transaction ids it contains
 	for _, d := range block1.Data.Data {
@@ -434,12 +433,12 @@ func TestQueryGeneratedBlock(t *testing.T) {
 					mockAclProvider.Reset()
 					prop = resetProvider(resources.Qscc_GetBlockByTxID, chainid, nil, nil)
 					res = stub.MockInvokeWithSignedProposal("3", args, prop)
-					assert.Equal(t, int32(shim.OK), res.Status, "GetBlockByTxId should have succeeded for txid: %s", chdr.TxId)
+					require.Equal(t, int32(shim.OK), res.Status, "GetBlockByTxId should have succeeded for txid: %s", chdr.TxId)
 
 					args = [][]byte{[]byte(GetTransactionByID), []byte(chainid), []byte(chdr.TxId)}
 					prop = resetProvider(resources.Qscc_GetTransactionByID, chainid, nil, nil)
 					res = stub.MockInvokeWithSignedProposal("4", args, prop)
-					assert.Equal(t, int32(shim.OK), res.Status, "GetTransactionById should have succeeded for txid: %s", chdr.TxId)
+					require.Equal(t, int32(shim.OK), res.Status, "GetTransactionById should have succeeded for txid: %s", chdr.TxId)
 				}
 			}
 		}
@@ -469,7 +468,7 @@ func addBlockForTesting(t *testing.T, chainid string, p *peer.Peer) *common.Bloc
 	pubSimResBytes2, _ := simRes2.GetPubSimulationBytes()
 
 	bcInfo, err := ledger.GetBlockchainInfo()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	block1 := testutil.ConstructBlock(t, 1, bcInfo.CurrentBlockHash, [][]byte{pubSimResBytes1, pubSimResBytes2}, false)
 	ledger.CommitLegacy(&ledger2.BlockAndPvtData{Block: block1}, &ledger2.CommitOptions{})
 	return block1

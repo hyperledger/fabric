@@ -24,7 +24,7 @@ import (
 
 	mocks2 "github.com/hyperledger/fabric/bccsp/mocks"
 	"github.com/hyperledger/fabric/bccsp/sw/mocks"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHash(t *testing.T) {
@@ -44,8 +44,8 @@ func TestHash(t *testing.T) {
 	}
 	csp := CSP{Hashers: hashers}
 	value, err := csp.Hash(expectetMsg, expectedOpts)
-	assert.Equal(t, expectetValue, value)
-	assert.Nil(t, err)
+	require.Equal(t, expectetValue, value)
+	require.Nil(t, err)
 
 	hashers = make(map[reflect.Type]Hasher)
 	hashers[reflect.TypeOf(&mocks2.HashOpts{})] = &mocks.Hasher{
@@ -56,8 +56,8 @@ func TestHash(t *testing.T) {
 	}
 	csp = CSP{Hashers: hashers}
 	value, err = csp.Hash(expectetMsg, expectedOpts)
-	assert.Nil(t, value)
-	assert.Contains(t, err.Error(), expectedErr.Error())
+	require.Nil(t, value)
+	require.Contains(t, err.Error(), expectedErr.Error())
 }
 
 func TestGetHash(t *testing.T) {
@@ -75,8 +75,8 @@ func TestGetHash(t *testing.T) {
 	}
 	csp := CSP{Hashers: hashers}
 	value, err := csp.GetHash(expectedOpts)
-	assert.Equal(t, expectetValue, value)
-	assert.Nil(t, err)
+	require.Equal(t, expectetValue, value)
+	require.Nil(t, err)
 
 	hashers = make(map[reflect.Type]Hasher)
 	hashers[reflect.TypeOf(&mocks2.HashOpts{})] = &mocks.Hasher{
@@ -86,8 +86,8 @@ func TestGetHash(t *testing.T) {
 	}
 	csp = CSP{Hashers: hashers}
 	value, err = csp.GetHash(expectedOpts)
-	assert.Nil(t, value)
-	assert.Contains(t, err.Error(), expectedErr.Error())
+	require.Nil(t, value)
+	require.Contains(t, err.Error(), expectedErr.Error())
 }
 
 func TestHasher(t *testing.T) {
@@ -97,13 +97,13 @@ func TestHasher(t *testing.T) {
 
 	msg := []byte("Hello World")
 	out, err := hasher.Hash(msg, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	h := sha256.New()
 	h.Write(msg)
 	out2 := h.Sum(nil)
-	assert.Equal(t, out, out2)
+	require.Equal(t, out, out2)
 
 	hf, err := hasher.GetHash(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, hf, sha256.New())
+	require.NoError(t, err)
+	require.Equal(t, hf, sha256.New())
 }

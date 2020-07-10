@@ -12,7 +12,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	cc "github.com/hyperledger/fabric/common/capabilities"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateNew(t *testing.T) {
@@ -28,8 +28,8 @@ func TestValidateNew(t *testing.T) {
 		}
 
 		err := cb.ValidateNew(nb)
-		assert.Error(t, err)
-		assert.Regexp(t, "current config has orderer section, but new config does not", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "current config has orderer section, but new config does not", err.Error())
 	})
 
 	t.Run("DisappearingApplicationConfig", func(t *testing.T) {
@@ -44,8 +44,8 @@ func TestValidateNew(t *testing.T) {
 		}
 
 		err := cb.ValidateNew(nb)
-		assert.Error(t, err)
-		assert.Regexp(t, "current config has application section, but new config does not", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "current config has application section, but new config does not", err.Error())
 	})
 
 	t.Run("DisappearingConsortiumsConfig", func(t *testing.T) {
@@ -60,8 +60,8 @@ func TestValidateNew(t *testing.T) {
 		}
 
 		err := cb.ValidateNew(nb)
-		assert.Error(t, err)
-		assert.Regexp(t, "current config has consortiums section, but new config does not", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "current config has consortiums section, but new config does not", err.Error())
 	})
 
 	t.Run("Prevent adding ConsortiumsConfig to standard channel", func(t *testing.T) {
@@ -76,7 +76,7 @@ func TestValidateNew(t *testing.T) {
 		}
 
 		err := cb.ValidateNew(nb)
-		assert.EqualError(t, err, "current config has no consortiums section, but new config does")
+		require.EqualError(t, err, "current config has no consortiums section, but new config does")
 	})
 
 	t.Run("ConsensusTypeChange", func(t *testing.T) {
@@ -113,8 +113,8 @@ func TestValidateNew(t *testing.T) {
 		}
 
 		err := currb.ValidateNew(newb)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "attempted to change consensus type from")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "attempted to change consensus type from")
 	})
 
 	t.Run("OrdererOrgMSPIDChange", func(t *testing.T) {
@@ -160,8 +160,8 @@ func TestValidateNew(t *testing.T) {
 		}
 
 		err := currb.ValidateNew(newb)
-		assert.Error(t, err)
-		assert.Regexp(t, "orderer org org3 attempted to change MSP ID from", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "orderer org org3 attempted to change MSP ID from", err.Error())
 	})
 
 	t.Run("ApplicationOrgMSPIDChange", func(t *testing.T) {
@@ -195,8 +195,8 @@ func TestValidateNew(t *testing.T) {
 		}
 
 		err := currb.ValidateNew(nb)
-		assert.Error(t, err)
-		assert.Regexp(t, "application org org3 attempted to change MSP ID from", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "application org org3 attempted to change MSP ID from", err.Error())
 	})
 
 	t.Run("ConsortiumOrgMSPIDChange", func(t *testing.T) {
@@ -240,8 +240,8 @@ func TestValidateNew(t *testing.T) {
 		}
 
 		err := currb.ValidateNew(nb)
-		assert.Error(t, err)
-		assert.Regexp(t, "consortium consortium1 org org3 attempted to change MSP ID from", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "consortium consortium1 org org3 attempted to change MSP ID from", err.Error())
 	})
 }
 
@@ -251,23 +251,23 @@ func TestValidateNewWithConsensusMigration(t *testing.T) {
 			b0 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_NORMAL)
 			b1 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_NORMAL)
 			err := b0.ValidateNew(b1)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			b2 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_MAINTENANCE)
 			err = b1.ValidateNew(b2)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			b3 := generateMigrationBundle(sysChan, "etcdraft", ab.ConsensusType_STATE_MAINTENANCE)
 			err = b2.ValidateNew(b3)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			b4 := generateMigrationBundle(sysChan, "etcdraft", ab.ConsensusType_STATE_NORMAL)
 			err = b3.ValidateNew(b4)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			b5 := generateMigrationBundle(sysChan, "etcdraft", ab.ConsensusType_STATE_NORMAL)
 			err = b4.ValidateNew(b5)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	})
 
@@ -276,11 +276,11 @@ func TestValidateNewWithConsensusMigration(t *testing.T) {
 			b1 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_NORMAL)
 			b2 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_MAINTENANCE)
 			err := b1.ValidateNew(b2)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			b3 := generateMigrationBundle(sysChan, "kafka", ab.ConsensusType_STATE_NORMAL)
 			err = b2.ValidateNew(b3)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	})
 }
@@ -322,15 +322,15 @@ func TestPrevalidation(t *testing.T) {
 	t.Run("NilConfig", func(t *testing.T) {
 		err := preValidate(nil)
 
-		assert.Error(t, err)
-		assert.Regexp(t, "channelconfig Config cannot be nil", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "channelconfig Config cannot be nil", err.Error())
 	})
 
 	t.Run("NilChannelGroup", func(t *testing.T) {
 		err := preValidate(&cb.Config{})
 
-		assert.Error(t, err)
-		assert.Regexp(t, "config must contain a channel group", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "config must contain a channel group", err.Error())
 	})
 
 	t.Run("BadChannelCapabilities", func(t *testing.T) {
@@ -345,8 +345,8 @@ func TestPrevalidation(t *testing.T) {
 			},
 		})
 
-		assert.Error(t, err)
-		assert.Regexp(t, "cannot enable channel capabilities without orderer support first", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "cannot enable channel capabilities without orderer support first", err.Error())
 	})
 
 	t.Run("BadApplicationCapabilities", func(t *testing.T) {
@@ -363,8 +363,8 @@ func TestPrevalidation(t *testing.T) {
 			},
 		})
 
-		assert.Error(t, err)
-		assert.Regexp(t, "cannot enable application capabilities without orderer support first", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "cannot enable application capabilities without orderer support first", err.Error())
 	})
 
 	t.Run("ValidCapabilities", func(t *testing.T) {
@@ -388,6 +388,6 @@ func TestPrevalidation(t *testing.T) {
 			},
 		})
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

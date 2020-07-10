@@ -12,22 +12,22 @@ import (
 
 	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInactiveChain(t *testing.T) {
 	err := errors.New("foo")
 	chain := &inactive.Chain{Err: err}
 
-	assert.Equal(t, err, chain.Order(nil, 0))
-	assert.Equal(t, err, chain.Configure(nil, 0))
-	assert.Equal(t, err, chain.WaitReady())
-	assert.NotPanics(t, chain.Start)
-	assert.NotPanics(t, chain.Halt)
+	require.Equal(t, err, chain.Order(nil, 0))
+	require.Equal(t, err, chain.Configure(nil, 0))
+	require.Equal(t, err, chain.WaitReady())
+	require.NotPanics(t, chain.Start)
+	require.NotPanics(t, chain.Halt)
 	_, open := <-chain.Errored()
-	assert.False(t, open)
+	require.False(t, open)
 
 	cRel, status := chain.StatusReport()
-	assert.Equal(t, types.ClusterRelationConfigTracker, cRel)
-	assert.Equal(t, types.StatusInactive, status)
+	require.Equal(t, types.ClusterRelationConfigTracker, cRel)
+	require.Equal(t, types.StatusInactive, status)
 }

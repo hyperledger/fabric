@@ -11,7 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFakeSetup(t *testing.T) {
@@ -21,7 +21,7 @@ func TestFakeSetup(t *testing.T) {
 	}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = mgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
 		t.Fatalf("GetDefaultSigningIdentity failed, err %s", err)

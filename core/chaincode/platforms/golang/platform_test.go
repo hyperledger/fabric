@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,7 +67,7 @@ func generateFakeCDS(ccname, path, file string, mode int64) (*pb.ChaincodeDeploy
 
 func TestName(t *testing.T) {
 	platform := &Platform{}
-	assert.Equal(t, "GOLANG", platform.Name())
+	require.Equal(t, "GOLANG", platform.Name())
 }
 
 func TestValidatePath(t *testing.T) {
@@ -89,9 +88,9 @@ func TestValidatePath(t *testing.T) {
 		platform := &Platform{}
 		err := platform.ValidatePath(tt.path)
 		if tt.succ {
-			assert.NoError(t, err, "expected %s to be a valid path", tt.path)
+			require.NoError(t, err, "expected %s to be a valid path", tt.path)
 		} else {
-			assert.Errorf(t, err, "expected %s to be an invalid path", tt.path)
+			require.Errorf(t, err, "expected %s to be an invalid path", tt.path)
 		}
 	}
 }
@@ -114,8 +113,8 @@ func TestNormalizePath(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			platform := &Platform{}
 			result, err := platform.NormalizePath(tt.path)
-			assert.NoError(t, err, "normalize path failed")
-			assert.Equalf(t, tt.result, result, "want result %s got %s", tt.result, result)
+			require.NoError(t, err, "normalize path failed")
+			require.Equalf(t, tt.result, result, "want result %s got %s", tt.result, result)
 		})
 	}
 }
@@ -149,14 +148,14 @@ func TestValidateCodePackage(t *testing.T) {
 
 	for _, tt := range tests {
 		cds, err := generateFakeCDS(tt.name, tt.path, tt.file, tt.mode)
-		assert.NoError(t, err, "failed to generate fake cds")
+		require.NoError(t, err, "failed to generate fake cds")
 
 		platform := &Platform{}
 		err = platform.ValidateCodePackage(cds.CodePackage)
 		if tt.successExpected {
-			assert.NoError(t, err, "expected success for path: %s, file: %s", tt.path, tt.file)
+			require.NoError(t, err, "expected success for path: %s, file: %s", tt.path, tt.file)
 		} else {
-			assert.Errorf(t, err, "expected error for path: %s, file: %s", tt.path, tt.file)
+			require.Errorf(t, err, "expected error for path: %s, file: %s", tt.path, tt.file)
 		}
 	}
 }
@@ -170,11 +169,11 @@ func Test_findSource(t *testing.T) {
 			Path:         "chaincodes/noop",
 		})
 		require.NoError(t, err, "failed to find source")
-		assert.Contains(t, source, "src/chaincodes/noop/chaincode.go")
-		assert.Contains(t, source, "META-INF/statedb/couchdb/indexes/indexOwner.json")
-		assert.NotContains(t, source, "src/chaincodes/noop/go.mod")
-		assert.NotContains(t, source, "src/chaincodes/noop/go.sum")
-		assert.Len(t, source, 2)
+		require.Contains(t, source, "src/chaincodes/noop/chaincode.go")
+		require.Contains(t, source, "META-INF/statedb/couchdb/indexes/indexOwner.json")
+		require.NotContains(t, source, "src/chaincodes/noop/go.mod")
+		require.NotContains(t, source, "src/chaincodes/noop/go.sum")
+		require.Len(t, source, 2)
 	})
 
 	t.Run("Module", func(t *testing.T) {
@@ -185,20 +184,20 @@ func Test_findSource(t *testing.T) {
 			Path:         "ccmodule",
 		})
 		require.NoError(t, err, "failed to find source")
-		assert.Len(t, source, 7)
-		assert.Contains(t, source, "META-INF/statedb/couchdb/indexes/indexOwner.json")
-		assert.Contains(t, source, "src/go.mod")
-		assert.Contains(t, source, "src/go.sum")
-		assert.Contains(t, source, "src/chaincode.go")
-		assert.Contains(t, source, "src/customlogger/customlogger.go")
-		assert.Contains(t, source, "src/nested/chaincode.go")
-		assert.Contains(t, source, "src/nested/META-INF/statedb/couchdb/indexes/nestedIndexOwner.json")
+		require.Len(t, source, 7)
+		require.Contains(t, source, "META-INF/statedb/couchdb/indexes/indexOwner.json")
+		require.Contains(t, source, "src/go.mod")
+		require.Contains(t, source, "src/go.sum")
+		require.Contains(t, source, "src/chaincode.go")
+		require.Contains(t, source, "src/customlogger/customlogger.go")
+		require.Contains(t, source, "src/nested/chaincode.go")
+		require.Contains(t, source, "src/nested/META-INF/statedb/couchdb/indexes/nestedIndexOwner.json")
 	})
 
 	t.Run("NonExistent", func(t *testing.T) {
 		_, err := findSource(&CodeDescriptor{Path: "acme.com/this/should/not/exist"})
-		assert.Error(t, err)
-		assert.True(t, os.IsNotExist(errors.Cause(err)))
+		require.Error(t, err)
+		require.True(t, os.IsNotExist(errors.Cause(err)))
 	})
 }
 
@@ -215,7 +214,7 @@ func tarContents(t *testing.T, payload []byte) []string {
 		if err == io.EOF {
 			break
 		}
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if header.Typeflag == tar.TypeReg {
 			files = append(files, header.Name)
@@ -233,10 +232,10 @@ func TestGopathDeploymentPayload(t *testing.T) {
 
 	t.Run("IncludesMetadata", func(t *testing.T) {
 		payload, err := platform.GetDeploymentPayload("chaincodes/noop")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		contents := tarContents(t, payload)
-		assert.Contains(t, contents, "META-INF/statedb/couchdb/indexes/indexOwner.json")
+		require.Contains(t, contents, "META-INF/statedb/couchdb/indexes/indexOwner.json")
 	})
 
 	var tests = []struct {
@@ -257,9 +256,9 @@ func TestGopathDeploymentPayload(t *testing.T) {
 		t.Run(tt.path, func(t *testing.T) {
 			_, err := platform.GetDeploymentPayload(tt.path)
 			if tt.succ {
-				assert.NoError(t, err, "expected success for path: %s", tt.path)
+				require.NoError(t, err, "expected success for path: %s", tt.path)
 			} else {
-				assert.Errorf(t, err, "expected error for path: %s", tt.path)
+				require.Errorf(t, err, "expected error for path: %s", tt.path)
 			}
 		})
 	}
@@ -270,9 +269,9 @@ func TestModuleDeploymentPayload(t *testing.T) {
 
 	t.Run("TopLevel", func(t *testing.T) {
 		dp, err := platform.GetDeploymentPayload("testdata/ccmodule")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		contents := tarContents(t, dp)
-		assert.ElementsMatch(t, contents, []string{
+		require.ElementsMatch(t, contents, []string{
 			"META-INF/statedb/couchdb/indexes/indexOwner.json", // top level metadata
 			"src/chaincode.go",
 			"src/customlogger/customlogger.go",
@@ -285,9 +284,9 @@ func TestModuleDeploymentPayload(t *testing.T) {
 
 	t.Run("NestedPackage", func(t *testing.T) {
 		dp, err := platform.GetDeploymentPayload("testdata/ccmodule/nested")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		contents := tarContents(t, dp)
-		assert.ElementsMatch(t, contents, []string{
+		require.ElementsMatch(t, contents, []string{
 			"META-INF/statedb/couchdb/indexes/nestedIndexOwner.json", // nested metadata
 			"src/META-INF/statedb/couchdb/indexes/indexOwner.json",
 			"src/chaincode.go",
@@ -335,14 +334,14 @@ func TestGenerateDockerFile(t *testing.T) {
 	viper.Set("chaincode.golang.runtime", "buildimage")
 	expected := "FROM buildimage\nADD binpackage.tar /usr/local/bin"
 	dockerfile, err := platform.GenerateDockerfile()
-	assert.NoError(t, err)
-	assert.Equal(t, expected, dockerfile)
+	require.NoError(t, err)
+	require.Equal(t, expected, dockerfile)
 
 	viper.Set("chaincode.golang.runtime", "another-buildimage")
 	expected = "FROM another-buildimage\nADD binpackage.tar /usr/local/bin"
 	dockerfile, err = platform.GenerateDockerfile()
-	assert.NoError(t, err)
-	assert.Equal(t, expected, dockerfile)
+	require.NoError(t, err)
+	require.Equal(t, expected, dockerfile)
 }
 
 func TestGetLDFlagsOpts(t *testing.T) {
@@ -361,7 +360,7 @@ func TestDockerBuildOptions(t *testing.T) {
 
 	t.Run("GOPROXY and GOSUMDB not set", func(t *testing.T) {
 		opts, err := platform.DockerBuildOptions("the-path")
-		assert.NoError(t, err, "unexpected error from DockerBuildOptions")
+		require.NoError(t, err, "unexpected error from DockerBuildOptions")
 
 		expectedOpts := util.DockerBuildOptions{
 			Cmd: `
@@ -385,7 +384,7 @@ echo Done!
 `,
 			Env: []string{"GOPROXY=https://proxy.golang.org"},
 		}
-		assert.Equal(t, expectedOpts, opts)
+		require.Equal(t, expectedOpts, opts)
 	})
 
 	t.Run("GOPROXY and GOSUMDB set", func(t *testing.T) {
@@ -402,7 +401,7 @@ echo Done!
 		os.Setenv("GOSUMDB", "the-gosumdb")
 
 		opts, err := platform.DockerBuildOptions("the-path")
-		assert.NoError(t, err, "unexpected error from DockerBuildOptions")
+		require.NoError(t, err, "unexpected error from DockerBuildOptions")
 
 		expectedOpts := util.DockerBuildOptions{
 			Cmd: `
@@ -426,54 +425,54 @@ echo Done!
 `,
 			Env: []string{"GOPROXY=the-goproxy", "GOSUMDB=the-gosumdb"},
 		}
-		assert.Equal(t, expectedOpts, opts)
+		require.Equal(t, expectedOpts, opts)
 	})
 }
 
 func TestDescribeCode(t *testing.T) {
 	abs, err := filepath.Abs(filepath.FromSlash("testdata/ccmodule"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Run("TopLevelModulePackage", func(t *testing.T) {
 		cd, err := DescribeCode("testdata/ccmodule")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		expected := &CodeDescriptor{
 			Source:       abs,
 			MetadataRoot: filepath.Join(abs, "META-INF"),
 			Path:         "ccmodule",
 			Module:       true,
 		}
-		assert.Equal(t, expected, cd)
+		require.Equal(t, expected, cd)
 	})
 
 	t.Run("NestedModulePackage", func(t *testing.T) {
 		cd, err := DescribeCode("testdata/ccmodule/nested")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		expected := &CodeDescriptor{
 			Source:       abs,
 			MetadataRoot: filepath.Join(abs, "nested", "META-INF"),
 			Path:         "ccmodule/nested",
 			Module:       true,
 		}
-		assert.Equal(t, expected, cd)
+		require.Equal(t, expected, cd)
 	})
 }
 
 func TestRegularFileExists(t *testing.T) {
 	t.Run("RegularFile", func(t *testing.T) {
 		ok, err := regularFileExists("testdata/ccmodule/go.mod")
-		assert.NoError(t, err)
-		assert.True(t, ok)
+		require.NoError(t, err)
+		require.True(t, ok)
 	})
 	t.Run("MissingFile", func(t *testing.T) {
 		ok, err := regularFileExists("testdata/missing.file")
-		assert.NoError(t, err)
-		assert.False(t, ok)
+		require.NoError(t, err)
+		require.False(t, ok)
 	})
 	t.Run("Directory", func(t *testing.T) {
 		ok, err := regularFileExists("testdata")
-		assert.NoError(t, err)
-		assert.False(t, ok)
+		require.NoError(t, err)
+		require.False(t, ok)
 	})
 }
 

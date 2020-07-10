@@ -10,14 +10,14 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInstantiateCmd(t *testing.T) {
 	mockCF, err := getMockChaincodeCmdFactory()
-	assert.NoError(t, err, "Error getting mock chaincode command factory")
+	require.NoError(t, err, "Error getting mock chaincode command factory")
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// basic function tests
 	var tests = []struct {
@@ -83,8 +83,8 @@ func TestInstantiateCmd(t *testing.T) {
 
 func checkError(t *testing.T, err error, expectedError bool, msg string) {
 	if expectedError {
-		assert.Error(t, err, msg)
+		require.Error(t, err, msg)
 	} else {
-		assert.NoError(t, err, msg)
+		require.NoError(t, err, msg)
 	}
 }

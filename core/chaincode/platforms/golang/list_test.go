@@ -13,14 +13,13 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_gopathDependencyPackageInfo(t *testing.T) {
 	t.Run("TestPeer", func(t *testing.T) {
 		deps, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "github.com/hyperledger/fabric/cmd/peer")
-		assert.NoError(t, err, "failed to get dependencyPackageInfo")
+		require.NoError(t, err, "failed to get dependencyPackageInfo")
 
 		var found bool
 		for _, pi := range deps {
@@ -29,23 +28,23 @@ func Test_gopathDependencyPackageInfo(t *testing.T) {
 				break
 			}
 		}
-		assert.True(t, found, "expected to find the peer package")
+		require.True(t, found, "expected to find the peer package")
 	})
 
 	t.Run("TestIncomplete", func(t *testing.T) {
 		_, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "github.com/hyperledger/fabric/core/chaincode/platforms/golang/testdata/src/chaincodes/BadImport")
-		assert.EqualError(t, err, "failed to calculate dependencies: incomplete package: bogus/package")
+		require.EqualError(t, err, "failed to calculate dependencies: incomplete package: bogus/package")
 	})
 
 	t.Run("TestFromGoroot", func(t *testing.T) {
 		deps, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "os")
-		assert.NoError(t, err)
-		assert.Empty(t, deps)
+		require.NoError(t, err)
+		require.Empty(t, deps)
 	})
 
 	t.Run("TestFailure", func(t *testing.T) {
 		_, err := gopathDependencyPackageInfo(runtime.GOOS, runtime.GOARCH, "./doesnotexist")
-		assert.EqualError(t, err, "listing deps for package ./doesnotexist failed: exit status 1")
+		require.EqualError(t, err, "listing deps for package ./doesnotexist failed: exit status 1")
 	})
 }
 
@@ -66,7 +65,7 @@ func TestPackageInfoFiles(t *testing.T) {
 		"file1.s", "file2.s",
 		"file1_ignored.go", "file2_ignored.go",
 	}
-	assert.Equal(t, expected, packageInfo.Files())
+	require.Equal(t, expected, packageInfo.Files())
 }
 
 func Test_listModuleInfo(t *testing.T) {
@@ -84,7 +83,7 @@ func Test_listModuleInfo(t *testing.T) {
 	require.NoError(t, err, "failed to get module working directory")
 
 	mi, err := listModuleInfo("GOPROXY=https://proxy.golang.org")
-	assert.NoError(t, err, "failed to get module info")
+	require.NoError(t, err, "failed to get module info")
 
 	expected := &ModuleInfo{
 		ModulePath: "ccmodule",
@@ -92,13 +91,13 @@ func Test_listModuleInfo(t *testing.T) {
 		Dir:        moduleDir,
 		GoMod:      filepath.Join(moduleDir, "go.mod"),
 	}
-	assert.Equal(t, expected, mi)
+	require.Equal(t, expected, mi)
 
 	err = os.Chdir("nested")
 	require.NoError(t, err, "failed to change to module directory")
 
 	mi, err = listModuleInfo("GOPROXY=https://proxy.golang.org")
-	assert.NoError(t, err, "failed to get module info")
+	require.NoError(t, err, "failed to get module info")
 
 	expected = &ModuleInfo{
 		ModulePath: "ccmodule",
@@ -106,7 +105,7 @@ func Test_listModuleInfo(t *testing.T) {
 		Dir:        moduleDir,
 		GoMod:      filepath.Join(moduleDir, "go.mod"),
 	}
-	assert.Equal(t, expected, mi)
+	require.Equal(t, expected, mi)
 }
 
 func Test_listModuleInfoFailure(t *testing.T) {
@@ -123,5 +122,5 @@ func Test_listModuleInfoFailure(t *testing.T) {
 	require.NoError(t, err, "failed to change to temporary directory")
 
 	_, err = listModuleInfo()
-	assert.EqualError(t, err, "'go list' failed with: go: cannot find main module; see 'go help modules': exit status 1")
+	require.EqualError(t, err, "'go list' failed with: go: cannot find main module; see 'go help modules': exit status 1")
 }

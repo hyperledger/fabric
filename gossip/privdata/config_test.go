@@ -12,7 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/privdata"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGlobalConfig(t *testing.T) {
@@ -36,7 +36,7 @@ func TestGlobalConfig(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, coreConfig, expectedConfig)
+	require.Equal(t, coreConfig, expectedConfig)
 }
 
 func TestGlobalConfigDefaults(t *testing.T) {
@@ -54,7 +54,7 @@ func TestGlobalConfigDefaults(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, coreConfig, expectedConfig)
+	require.Equal(t, coreConfig, expectedConfig)
 }
 
 func TestGlobalConfigPanic(t *testing.T) {
@@ -65,7 +65,7 @@ func TestGlobalConfigPanic(t *testing.T) {
 	viper.Set("peer.gossip.pvtData.reconciliationEnabled", true)
 	viper.Set("peer.gossip.pvtData.implicitCollectionDisseminationPolicy.requiredPeerCount", 2)
 	viper.Set("peer.gossip.pvtData.implicitCollectionDisseminationPolicy.maxPeerCount", 1)
-	assert.PanicsWithValue(
+	require.PanicsWithValue(
 		t,
 		"peer.gossip.pvtData.implicitCollectionDisseminationPolicy.maxPeerCount (1) cannot be less than requiredPeerCount (2)",
 		func() { privdata.GlobalConfig() },
@@ -73,7 +73,7 @@ func TestGlobalConfigPanic(t *testing.T) {
 	)
 
 	viper.Set("peer.gossip.pvtData.implicitCollectionDisseminationPolicy.requiredPeerCount", -1)
-	assert.PanicsWithValue(
+	require.PanicsWithValue(
 		t,
 		"peer.gossip.pvtData.implicitCollectionDisseminationPolicy.requiredPeerCount (-1) cannot be less than zero",
 		func() { privdata.GlobalConfig() },

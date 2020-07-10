@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIsConsenterOfChannel(t *testing.T) {
@@ -36,14 +36,14 @@ func TestIsConsenterOfChannel(t *testing.T) {
 		"BQUFBQUFBQUFBQUFBQUFBQUFBQUFCTUFvR0NDcUdTTTQ5QkFNQ0EwY0FNRVFDCklFckJZRFVzV0JwOHB0ZVFSaTZyNjNVelhJQi81Sn" +
 		"YxK0RlTkRIUHc3aDljQWlCakYrM3V5TzBvMEdRclB4MEUKUWptYlI5T3BVREN2LzlEUkNXWU9GZitkVlE9PQotLS0tLUVORCBDRVJUSU" +
 		"ZJQ0FURS0tLS0tCg==")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	validBlock := func() *common.Block {
 		b, err := ioutil.ReadFile(filepath.Join("testdata", "etcdraftgenesis.block"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		block := &common.Block{}
 		err = proto.Unmarshal(b, block)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return block
 	}
 	for _, testCase := range []struct {
@@ -87,7 +87,7 @@ func TestIsConsenterOfChannel(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			consenterCertificate := &ConsenterCertificate{
 				ConsenterCertificate: testCase.certificate,
@@ -95,9 +95,9 @@ func TestIsConsenterOfChannel(t *testing.T) {
 			}
 			err = consenterCertificate.IsConsenterOfChannel(testCase.configBlock)
 			if testCase.expectedError != "" {
-				assert.EqualError(t, err, testCase.expectedError)
+				require.EqualError(t, err, testCase.expectedError)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -139,7 +139,7 @@ func TestCheckConfigMetadata(t *testing.T) {
 			singleConsenter,
 		},
 	}
-	assert.Nil(t, CheckConfigMetadata(goodMetadata))
+	require.Nil(t, CheckConfigMetadata(goodMetadata))
 
 	// test variety of bad metadata
 	for _, testCase := range []struct {
@@ -279,7 +279,7 @@ func TestCheckConfigMetadata(t *testing.T) {
 		},
 	} {
 		err := CheckConfigMetadata(testCase.metadata)
-		assert.NotNil(t, err, testCase.description)
-		assert.Regexp(t, testCase.errRegex, err)
+		require.NotNil(t, err, testCase.description)
+		require.Regexp(t, testCase.errRegex, err)
 	}
 }

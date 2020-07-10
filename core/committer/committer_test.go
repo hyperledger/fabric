@@ -15,8 +15,8 @@ import (
 	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type mockLedger struct {
@@ -137,26 +137,26 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 	ledger.On("CommitLegacy", mock.Anything).Run(func(args mock.Arguments) {
 		b := args.Get(0).(*ledger2.BlockAndPvtData)
-		assert.Equal(t, uint64(1), b.Block.Header.GetNumber())
-		assert.Equal(t, gb.Header.DataHash, b.Block.Header.PreviousHash)
-		assert.Equal(t, block1.Header.DataHash, b.Block.Header.DataHash)
+		require.Equal(t, uint64(1), b.Block.Header.GetNumber())
+		require.Equal(t, gb.Header.DataHash, b.Block.Header.PreviousHash)
+		require.Equal(t, block1.Header.DataHash, b.Block.Header.DataHash)
 	}).Return(nil)
 
 	ledger.On("GetBlockByNumber", uint64(0)).Return(gb, nil)
 
 	committer := NewLedgerCommitter(ledger)
 	height, err := committer.LedgerHeight()
-	assert.Equal(t, uint64(1), height)
-	assert.NoError(t, err)
+	require.Equal(t, uint64(1), height)
+	require.NoError(t, err)
 
 	err = committer.CommitLegacy(&ledger2.BlockAndPvtData{Block: block1}, &ledger2.CommitOptions{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	height, err = committer.LedgerHeight()
-	assert.Equal(t, uint64(2), height)
-	assert.NoError(t, err)
+	require.Equal(t, uint64(2), height)
+	require.NoError(t, err)
 
 	blocks := committer.GetBlocks([]uint64{0})
-	assert.Equal(t, 1, len(blocks))
-	assert.NoError(t, err)
+	require.Equal(t, 1, len(blocks))
+	require.NoError(t, err)
 }

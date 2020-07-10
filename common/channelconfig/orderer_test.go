@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBatchSize(t *testing.T) {
@@ -19,33 +19,33 @@ func TestBatchSize(t *testing.T) {
 	validPreferredMaxBytes := uint32(500)
 
 	oc := &OrdererConfig{protos: &OrdererProtos{BatchSize: &ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes}}}
-	assert.NoError(t, oc.validateBatchSize(), "BatchSize was valid")
+	require.NoError(t, oc.validateBatchSize(), "BatchSize was valid")
 
 	oc = &OrdererConfig{protos: &OrdererProtos{BatchSize: &ab.BatchSize{MaxMessageCount: 0, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validPreferredMaxBytes}}}
-	assert.Error(t, oc.validateBatchSize(), "MaxMessageCount was zero")
+	require.Error(t, oc.validateBatchSize(), "MaxMessageCount was zero")
 
 	oc = &OrdererConfig{protos: &OrdererProtos{BatchSize: &ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: 0, PreferredMaxBytes: validPreferredMaxBytes}}}
-	assert.Error(t, oc.validateBatchSize(), "AbsoluteMaxBytes was zero")
+	require.Error(t, oc.validateBatchSize(), "AbsoluteMaxBytes was zero")
 
 	oc = &OrdererConfig{protos: &OrdererProtos{BatchSize: &ab.BatchSize{MaxMessageCount: validMaxMessageCount, AbsoluteMaxBytes: validAbsoluteMaxBytes, PreferredMaxBytes: validAbsoluteMaxBytes + 1}}}
-	assert.Error(t, oc.validateBatchSize(), "PreferredMaxBytes larger to AbsoluteMaxBytes")
+	require.Error(t, oc.validateBatchSize(), "PreferredMaxBytes larger to AbsoluteMaxBytes")
 }
 
 func TestBatchTimeout(t *testing.T) {
 	oc := &OrdererConfig{protos: &OrdererProtos{BatchTimeout: &ab.BatchTimeout{Timeout: "1s"}}}
-	assert.NoError(t, oc.validateBatchTimeout(), "Valid batch timeout")
+	require.NoError(t, oc.validateBatchTimeout(), "Valid batch timeout")
 
 	oc = &OrdererConfig{protos: &OrdererProtos{BatchTimeout: &ab.BatchTimeout{Timeout: "-1s"}}}
-	assert.Error(t, oc.validateBatchTimeout(), "Negative batch timeout")
+	require.Error(t, oc.validateBatchTimeout(), "Negative batch timeout")
 
 	oc = &OrdererConfig{protos: &OrdererProtos{BatchTimeout: &ab.BatchTimeout{Timeout: "0s"}}}
-	assert.Error(t, oc.validateBatchTimeout(), "Zero batch timeout")
+	require.Error(t, oc.validateBatchTimeout(), "Zero batch timeout")
 }
 
 func TestKafkaBrokers(t *testing.T) {
 	oc := &OrdererConfig{protos: &OrdererProtos{KafkaBrokers: &ab.KafkaBrokers{Brokers: []string{"127.0.0.1:9092", "foo.bar:9092"}}}}
-	assert.NoError(t, oc.validateKafkaBrokers(), "Valid kafka brokers")
+	require.NoError(t, oc.validateKafkaBrokers(), "Valid kafka brokers")
 
 	oc = &OrdererConfig{protos: &OrdererProtos{KafkaBrokers: &ab.KafkaBrokers{Brokers: []string{"127.0.0.1", "foo.bar", "127.0.0.1:-1", "localhost:65536", "foo.bar.:9092", ".127.0.0.1:9092", "-foo.bar:9092"}}}}
-	assert.Error(t, oc.validateKafkaBrokers(), "Invalid kafka brokers")
+	require.Error(t, oc.validateKafkaBrokers(), "Invalid kafka brokers")
 }

@@ -17,7 +17,7 @@ import (
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var invalidSignature = []byte("badsigned")
@@ -163,57 +163,57 @@ func TestNegatively(t *testing.T) {
 
 func TestNilSignaturePolicyEnvelope(t *testing.T) {
 	_, err := compile(nil, nil)
-	assert.Error(t, err, "Fail to compile")
+	require.Error(t, err, "Fail to compile")
 }
 
 func TestSignedByMspClient(t *testing.T) {
 	e := policydsl.SignedByMspClient("A")
-	assert.Equal(t, 1, len(e.Identities))
+	require.Equal(t, 1, len(e.Identities))
 
 	role := &mb.MSPRole{}
 	err := proto.Unmarshal(e.Identities[0].Principal, role)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, role.MspIdentifier, "A")
-	assert.Equal(t, role.Role, mb.MSPRole_CLIENT)
+	require.Equal(t, role.MspIdentifier, "A")
+	require.Equal(t, role.Role, mb.MSPRole_CLIENT)
 
 	e = policydsl.SignedByAnyClient([]string{"A"})
-	assert.Equal(t, 1, len(e.Identities))
+	require.Equal(t, 1, len(e.Identities))
 
 	role = &mb.MSPRole{}
 	err = proto.Unmarshal(e.Identities[0].Principal, role)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, role.MspIdentifier, "A")
-	assert.Equal(t, role.Role, mb.MSPRole_CLIENT)
+	require.Equal(t, role.MspIdentifier, "A")
+	require.Equal(t, role.Role, mb.MSPRole_CLIENT)
 }
 
 func TestSignedByMspPeer(t *testing.T) {
 	e := policydsl.SignedByMspPeer("A")
-	assert.Equal(t, 1, len(e.Identities))
+	require.Equal(t, 1, len(e.Identities))
 
 	role := &mb.MSPRole{}
 	err := proto.Unmarshal(e.Identities[0].Principal, role)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, role.MspIdentifier, "A")
-	assert.Equal(t, role.Role, mb.MSPRole_PEER)
+	require.Equal(t, role.MspIdentifier, "A")
+	require.Equal(t, role.Role, mb.MSPRole_PEER)
 
 	e = policydsl.SignedByAnyPeer([]string{"A"})
-	assert.Equal(t, 1, len(e.Identities))
+	require.Equal(t, 1, len(e.Identities))
 
 	role = &mb.MSPRole{}
 	err = proto.Unmarshal(e.Identities[0].Principal, role)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, role.MspIdentifier, "A")
-	assert.Equal(t, role.Role, mb.MSPRole_PEER)
+	require.Equal(t, role.MspIdentifier, "A")
+	require.Equal(t, role.Role, mb.MSPRole_PEER)
 }
 
 func TestReturnNil(t *testing.T) {
 	policy := policydsl.Envelope(policydsl.And(policydsl.SignedBy(-1), policydsl.SignedBy(-2)), signers)
 
 	spe, err := compile(policy.Rule, policy.Identities)
-	assert.Nil(t, spe)
-	assert.EqualError(t, err, "identity index out of range, requested -1, but identities length is 2")
+	require.Nil(t, spe)
+	require.EqualError(t, err, "identity index out of range, requested -1, but identities length is 2")
 }

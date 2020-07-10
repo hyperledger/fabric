@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,50 +57,50 @@ func TestValidatePath(t *testing.T) {
 	platform := java.Platform{}
 
 	err := platform.ValidatePath(spec.ChaincodeId.Path)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestValidateCodePackage(t *testing.T) {
 	platform := java.Platform{}
 	b, _ := generateMockPackegeBytes("src/pom.xml", 0100400)
-	assert.NoError(t, platform.ValidateCodePackage(b))
+	require.NoError(t, platform.ValidateCodePackage(b))
 
 	b, _ = generateMockPackegeBytes("src/pom.xml", 0100555)
-	assert.Error(t, platform.ValidateCodePackage(b))
+	require.Error(t, platform.ValidateCodePackage(b))
 
 	b, _ = generateMockPackegeBytes("src/build.gradle", 0100400)
-	assert.NoError(t, platform.ValidateCodePackage(b))
+	require.NoError(t, platform.ValidateCodePackage(b))
 
 	b, _ = generateMockPackegeBytes("src/build.xml", 0100400)
-	assert.Error(t, platform.ValidateCodePackage(b))
+	require.Error(t, platform.ValidateCodePackage(b))
 
 	b, _ = generateMockPackegeBytes("src/src/Main.java", 0100400)
-	assert.NoError(t, platform.ValidateCodePackage(b))
+	require.NoError(t, platform.ValidateCodePackage(b))
 
 	b, _ = generateMockPackegeBytes("src/build/Main.java", 0100400)
-	assert.Error(t, platform.ValidateCodePackage(b))
+	require.Error(t, platform.ValidateCodePackage(b))
 
 	b, _ = generateMockPackegeBytes("src/src/xyz/main.java", 0100400)
-	assert.NoError(t, platform.ValidateCodePackage(b))
+	require.NoError(t, platform.ValidateCodePackage(b))
 
 	b, _ = generateMockPackegeBytes("src/src/xyz/main.class", 0100400)
-	assert.Error(t, platform.ValidateCodePackage(b))
+	require.Error(t, platform.ValidateCodePackage(b))
 
 	b, _ = platform.GetDeploymentPayload(chaincodePathFolderGradle)
-	assert.NoError(t, platform.ValidateCodePackage(b))
+	require.NoError(t, platform.ValidateCodePackage(b))
 }
 
 func TestGetDeploymentPayload(t *testing.T) {
 	platform := java.Platform{}
 
 	_, err := platform.GetDeploymentPayload("")
-	assert.Contains(t, err.Error(), "ChaincodeSpec's path cannot be empty")
+	require.Contains(t, err.Error(), "ChaincodeSpec's path cannot be empty")
 
 	spec.ChaincodeId.Path = chaincodePathFolderGradle
 
 	payload, err := platform.GetDeploymentPayload(chaincodePathFolderGradle)
-	assert.NoError(t, err)
-	assert.NotZero(t, len(payload))
+	require.NoError(t, err)
+	require.NotZero(t, len(payload))
 
 	is := bytes.NewReader(payload)
 	gr, err := gzip.NewReader(is)
@@ -116,25 +115,25 @@ func TestGetDeploymentPayload(t *testing.T) {
 		if err == io.EOF {
 			break
 		}
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if strings.Contains(header.Name, ".class") {
-			assert.Fail(t, "Result package can't contain class file")
+			require.Fail(t, "Result package can't contain class file")
 		}
 		if strings.Contains(header.Name, "target/") {
-			assert.Fail(t, "Result package can't contain target folder")
+			require.Fail(t, "Result package can't contain target folder")
 		}
 		if strings.Contains(header.Name, "build/") {
-			assert.Fail(t, "Result package can't contain build folder")
+			require.Fail(t, "Result package can't contain build folder")
 		}
 		contents[header.Name] = true
 	}
 
 	// generated from observed behavior
-	assert.Contains(t, contents, "src/build.gradle")
-	assert.Contains(t, contents, "src/pom.xml")
-	assert.Contains(t, contents, "src/settings.gradle")
-	assert.Contains(t, contents, "src/src/main/java/example/ExampleCC.java")
+	require.Contains(t, contents, "src/build.gradle")
+	require.Contains(t, contents, "src/pom.xml")
+	require.Contains(t, contents, "src/settings.gradle")
+	require.Contains(t, contents, "src/src/main/java/example/ExampleCC.java")
 }
 
 func TestGenerateDockerfile(t *testing.T) {
@@ -147,7 +146,7 @@ func TestGenerateDockerfile(t *testing.T) {
 	}
 
 	dockerfile, err := platform.GenerateDockerfile()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var buf []string
 
@@ -156,20 +155,20 @@ func TestGenerateDockerfile(t *testing.T) {
 
 	dockerFileContents := strings.Join(buf, "\n")
 
-	assert.Equal(t, dockerFileContents, dockerfile)
+	require.Equal(t, dockerFileContents, dockerfile)
 }
 
 func TestDockerBuildOptions(t *testing.T) {
 	platform := java.Platform{}
 
 	opts, err := platform.DockerBuildOptions("path")
-	assert.NoError(t, err, "unexpected error from DockerBuildOptions")
+	require.NoError(t, err, "unexpected error from DockerBuildOptions")
 
 	expectedOpts := util.DockerBuildOptions{
 		Image: "hyperledger/fabric-javaenv:latest",
 		Cmd:   "./build.sh",
 	}
-	assert.Equal(t, expectedOpts, opts)
+	require.Equal(t, expectedOpts, opts)
 }
 
 func generateMockPackegeBytes(fileName string, mode int64) ([]byte, error) {

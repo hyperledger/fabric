@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestToPrincipalSet(t *testing.T) {
@@ -20,7 +20,7 @@ func TestToPrincipalSet(t *testing.T) {
 	cps = append(cps, NewComparablePrincipal(member("Org1MSP")))
 	cps = append(cps, NewComparablePrincipal(member("Org2MSP")))
 	expected := policies.PrincipalSet{member("Org1MSP"), member("Org2MSP")}
-	assert.Equal(t, expected, cps.ToPrincipalSet())
+	require.Equal(t, expected, cps.ToPrincipalSet())
 }
 
 func TestToPrincipalSets(t *testing.T) {
@@ -37,28 +37,28 @@ func TestToPrincipalSets(t *testing.T) {
 		{member("Org3MSP"), member("Org4MSP")},
 	}
 
-	assert.Equal(t, expected, ComparablePrincipalSets{cps, cps2}.ToPrincipalSets())
+	require.Equal(t, expected, ComparablePrincipalSets{cps, cps2}.ToPrincipalSets())
 }
 
 func TestNewComparablePrincipal(t *testing.T) {
 	mspID := "Org1MSP"
 
 	t.Run("Nil input", func(t *testing.T) {
-		assert.Nil(t, NewComparablePrincipal(nil))
+		require.Nil(t, NewComparablePrincipal(nil))
 	})
 
 	t.Run("Invalid principal type", func(t *testing.T) {
-		assert.Nil(t, NewComparablePrincipal(identity(mspID)))
+		require.Nil(t, NewComparablePrincipal(identity(mspID)))
 	})
 
 	t.Run("Invalid principal input", func(t *testing.T) {
 		member := member(mspID)
 		member.Principal = append(member.Principal, 0)
-		assert.Nil(t, NewComparablePrincipal(member))
+		require.Nil(t, NewComparablePrincipal(member))
 
 		ou := ou(mspID)
 		ou.Principal = append(ou.Principal, 0)
-		assert.Nil(t, NewComparablePrincipal(ou))
+		require.Nil(t, NewComparablePrincipal(ou))
 	})
 
 	t.Run("Role", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestNewComparablePrincipal(t *testing.T) {
 				Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: mspID}),
 			},
 		}
-		assert.Equal(t, expectedPrincipal, NewComparablePrincipal(member(mspID)))
+		require.Equal(t, expectedPrincipal, NewComparablePrincipal(member(mspID)))
 	})
 
 	t.Run("OU", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestNewComparablePrincipal(t *testing.T) {
 				Principal:               protoutil.MarshalOrPanic(&msp.OrganizationUnit{OrganizationalUnitIdentifier: "ou", MspIdentifier: mspID}),
 			},
 		}
-		assert.Equal(t, expectedPrincipal, NewComparablePrincipal(ou(mspID)))
+		require.Equal(t, expectedPrincipal, NewComparablePrincipal(ou(mspID)))
 	})
 }
 
@@ -98,52 +98,52 @@ func TestIsA(t *testing.T) {
 	ou2 := NewComparablePrincipal(ou("Org2MSP"))
 
 	t.Run("Nil input", func(t *testing.T) {
-		assert.False(t, member1.IsA(nil))
+		require.False(t, member1.IsA(nil))
 	})
 
 	t.Run("Incorrect state", func(t *testing.T) {
-		assert.False(t, (&ComparablePrincipal{}).IsA(member1))
+		require.False(t, (&ComparablePrincipal{}).IsA(member1))
 	})
 
 	t.Run("Same MSP ID", func(t *testing.T) {
-		assert.True(t, member1.IsA(NewComparablePrincipal(member("Org1MSP"))))
+		require.True(t, member1.IsA(NewComparablePrincipal(member("Org1MSP"))))
 	})
 
 	t.Run("A peer is also a member", func(t *testing.T) {
-		assert.True(t, peer1.IsA(member1))
+		require.True(t, peer1.IsA(member1))
 	})
 
 	t.Run("A member isn't a peer", func(t *testing.T) {
-		assert.False(t, member1.IsA(peer1))
+		require.False(t, member1.IsA(peer1))
 	})
 
 	t.Run("Different MSP IDs", func(t *testing.T) {
-		assert.False(t, member1.IsA(member2))
-		assert.False(t, peer2.IsA(peer1))
+		require.False(t, member1.IsA(member2))
+		require.False(t, peer2.IsA(peer1))
 	})
 
 	t.Run("An OU member is also a member", func(t *testing.T) {
-		assert.True(t, peer1.IsA(member1))
+		require.True(t, peer1.IsA(member1))
 	})
 
 	t.Run("A member isn't an OU member", func(t *testing.T) {
-		assert.False(t, member1.IsA(peer1))
+		require.False(t, member1.IsA(peer1))
 	})
 
 	t.Run("Same OU", func(t *testing.T) {
-		assert.True(t, ou1.IsA(NewComparablePrincipal(ou("Org1MSP"))))
+		require.True(t, ou1.IsA(NewComparablePrincipal(ou("Org1MSP"))))
 	})
 
 	t.Run("Different OU", func(t *testing.T) {
-		assert.False(t, ou1.IsA(ou2))
+		require.False(t, ou1.IsA(ou2))
 	})
 
 	t.Run("Same OU, different issuer", func(t *testing.T) {
-		assert.False(t, ou1.IsA(ou1ButDifferentIssuer))
+		require.False(t, ou1.IsA(ou1ButDifferentIssuer))
 	})
 
 	t.Run("OUs and Peers aren't the same", func(t *testing.T) {
-		assert.False(t, ou1.IsA(peer1))
+		require.False(t, ou1.IsA(peer1))
 	})
 }
 
@@ -152,16 +152,16 @@ func TestIsFound(t *testing.T) {
 	member2 := NewComparablePrincipal(member("Org2MSP"))
 	peer1 := NewComparablePrincipal(peer("Org1MSP"))
 
-	assert.True(t, member1.IsFound(member1, member2))
-	assert.False(t, member1.IsFound())
-	assert.False(t, member1.IsFound(member2, peer1))
-	assert.True(t, peer1.IsFound(member1, member2))
+	require.True(t, member1.IsFound(member1, member2))
+	require.False(t, member1.IsFound())
+	require.False(t, member1.IsFound(member2, peer1))
+	require.True(t, peer1.IsFound(member1, member2))
 }
 
 func TestNewComparablePrincipalSet(t *testing.T) {
 	t.Run("Invalid principal", func(t *testing.T) {
 		principals := []*msp.MSPPrincipal{member("Org1MSP"), identity("Org1MSP")}
-		assert.Nil(t, NewComparablePrincipalSet(policies.PrincipalSet(principals)))
+		require.Nil(t, NewComparablePrincipalSet(policies.PrincipalSet(principals)))
 	})
 
 	t.Run("Valid Principals", func(t *testing.T) {
@@ -170,7 +170,7 @@ func TestNewComparablePrincipalSet(t *testing.T) {
 		principals := []*msp.MSPPrincipal{member("Org1MSP"), peer("Org2MSP")}
 		cps := NewComparablePrincipalSet(policies.PrincipalSet(principals))
 		expected := ComparablePrincipalSet([]*ComparablePrincipal{member1, peer2})
-		assert.Equal(t, expected, cps)
+		require.Equal(t, expected, cps)
 	})
 }
 

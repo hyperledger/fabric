@@ -18,7 +18,7 @@ import (
 
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/protoutil/fakes"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetPayloads(t *testing.T) {
@@ -33,7 +33,7 @@ func TestGetPayloads(t *testing.T) {
 		Extension: ccActionBytes,
 	}
 	proposalResponseBytes, err := proto.Marshal(proposalResponsePayload)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ccActionPayload := &pb.ChaincodeActionPayload{
 		Action: &pb.ChaincodeEndorsedAction{
 			ProposalResponsePayload: proposalResponseBytes,
@@ -44,14 +44,14 @@ func TestGetPayloads(t *testing.T) {
 		Payload: ccActionPayloadBytes,
 	}
 	_, _, err = protoutil.GetPayloads(txAction)
-	assert.NoError(t, err, "Unexpected error getting payload bytes")
+	require.NoError(t, err, "Unexpected error getting payload bytes")
 	t.Logf("error1 [%s]", err)
 
 	// nil proposal response extension
 	proposalResponseBytes, err = proto.Marshal(&pb.ProposalResponsePayload{
 		Extension: nil,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ccActionPayloadBytes, _ = proto.Marshal(&pb.ChaincodeActionPayload{
 		Action: &pb.ChaincodeEndorsedAction{
 			ProposalResponsePayload: proposalResponseBytes,
@@ -61,7 +61,7 @@ func TestGetPayloads(t *testing.T) {
 		Payload: ccActionPayloadBytes,
 	}
 	_, _, err = protoutil.GetPayloads(txAction)
-	assert.Error(t, err, "Expected error with nil proposal response extension")
+	require.Error(t, err, "Expected error with nil proposal response extension")
 	t.Logf("error2 [%s]", err)
 
 	// malformed proposal response payload
@@ -74,7 +74,7 @@ func TestGetPayloads(t *testing.T) {
 		Payload: ccActionPayloadBytes,
 	}
 	_, _, err = protoutil.GetPayloads(txAction)
-	assert.Error(t, err, "Expected error with malformed proposal response payload")
+	require.Error(t, err, "Expected error with malformed proposal response payload")
 	t.Logf("error3 [%s]", err)
 
 	// malformed proposal response payload extension
@@ -90,7 +90,7 @@ func TestGetPayloads(t *testing.T) {
 		Payload: ccActionPayloadBytes,
 	}
 	_, _, err = protoutil.GetPayloads(txAction)
-	assert.Error(t, err, "Expected error with malformed proposal response extension")
+	require.Error(t, err, "Expected error with malformed proposal response extension")
 	t.Logf("error4 [%s]", err)
 
 	// nil proposal response payload extension
@@ -106,7 +106,7 @@ func TestGetPayloads(t *testing.T) {
 		Payload: ccActionPayloadBytes,
 	}
 	_, _, err = protoutil.GetPayloads(txAction)
-	assert.Error(t, err, "Expected error with nil proposal response extension")
+	require.Error(t, err, "Expected error with nil proposal response extension")
 	t.Logf("error5 [%s]", err)
 
 	// malformed transaction action payload
@@ -114,7 +114,7 @@ func TestGetPayloads(t *testing.T) {
 		Payload: []byte("bad payload"),
 	}
 	_, _, err = protoutil.GetPayloads(txAction)
-	assert.Error(t, err, "Expected error with malformed transaction action payload")
+	require.Error(t, err, "Expected error with malformed transaction action payload")
 	t.Logf("error6 [%s]", err)
 
 }
@@ -126,7 +126,7 @@ func TestCreateSignedTx(t *testing.T) {
 	signID := &fakes.SignerSerializer{}
 	signID.SerializeReturns([]byte("signer"), nil)
 	signerBytes, err := signID.Serialize()
-	assert.NoError(t, err, "Unexpected error serializing signing identity")
+	require.NoError(t, err, "Unexpected error serializing signing identity")
 
 	ccHeaderExtensionBytes := protoutil.MarshalOrPanic(&pb.ChaincodeHeaderExtension{})
 	chdrBytes := protoutil.MarshalOrPanic(&cb.ChannelHeader{
@@ -143,7 +143,7 @@ func TestCreateSignedTx(t *testing.T) {
 	})
 	prop.Header = headerBytes
 	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	assert.Error(t, err, "Expected error with malformed signature header")
+	require.Error(t, err, "Expected error with malformed signature header")
 
 	// set up the header bytes for the remaining tests
 	headerBytes, _ = proto.Marshal(&cb.Header{
@@ -183,7 +183,7 @@ func TestCreateSignedTx(t *testing.T) {
 	}
 	for i, nonMatchingTest := range nonMatchingTests {
 		_, err = protoutil.CreateSignedTx(prop, signID, nonMatchingTest.responses...)
-		assert.EqualErrorf(t, err, nonMatchingTest.expectedError, "Expected non-matching response error '%v' for test %d", nonMatchingTest.expectedError, i)
+		require.EqualErrorf(t, err, nonMatchingTest.expectedError, "Expected non-matching response error '%v' for test %d", nonMatchingTest.expectedError, i)
 	}
 
 	// no endorsement
@@ -194,7 +194,7 @@ func TestCreateSignedTx(t *testing.T) {
 		},
 	}}
 	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	assert.Error(t, err, "Expected error with no endorsements")
+	require.Error(t, err, "Expected error with no endorsements")
 
 	// success
 	responses = []*pb.ProposalResponse{{
@@ -205,7 +205,7 @@ func TestCreateSignedTx(t *testing.T) {
 		},
 	}}
 	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	assert.NoError(t, err, "Unexpected error creating signed transaction")
+	require.NoError(t, err, "Unexpected error creating signed transaction")
 	t.Logf("error: [%s]", err)
 
 	//
@@ -215,41 +215,41 @@ func TestCreateSignedTx(t *testing.T) {
 	responses = []*pb.ProposalResponse{}
 	// no proposal responses
 	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	assert.Error(t, err, "Expected error with no proposal responses")
+	require.Error(t, err, "Expected error with no proposal responses")
 
 	// missing proposal header
 	responses = append(responses, &pb.ProposalResponse{})
 	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	assert.Error(t, err, "Expected error with no proposal header")
+	require.Error(t, err, "Expected error with no proposal header")
 
 	// bad proposal payload
 	prop.Payload = []byte("bad payload")
 	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	assert.Error(t, err, "Expected error with malformed proposal payload")
+	require.Error(t, err, "Expected error with malformed proposal payload")
 
 	// bad payload header
 	prop.Header = []byte("bad header")
 	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	assert.Error(t, err, "Expected error with malformed proposal header")
+	require.Error(t, err, "Expected error with malformed proposal header")
 
 }
 
 func TestCreateSignedTxStatus(t *testing.T) {
 	serializedExtension, err := proto.Marshal(&pb.ChaincodeHeaderExtension{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	serializedChannelHeader, err := proto.Marshal(&cb.ChannelHeader{
 		Extension: serializedExtension,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	signingID := &fakes.SignerSerializer{}
 	signingID.SerializeReturns([]byte("signer"), nil)
 	serializedSigningID, err := signingID.Serialize()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	serializedSignatureHeader, err := proto.Marshal(&cb.SignatureHeader{
 		Creator: serializedSigningID,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	header := &cb.Header{
 		ChannelHeader:   serializedChannelHeader,
@@ -257,7 +257,7 @@ func TestCreateSignedTxStatus(t *testing.T) {
 	}
 
 	serializedHeader, err := proto.Marshal(header)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	proposal := &pb.Proposal{
 		Header: serializedHeader,
@@ -287,9 +287,9 @@ func TestCreateSignedTxStatus(t *testing.T) {
 
 			_, err := protoutil.CreateSignedTx(proposal, signingID, response)
 			if tc.expectedErr == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.EqualError(t, err, tc.expectedErr)
+				require.EqualError(t, err, tc.expectedErr)
 			}
 		})
 	}
@@ -305,21 +305,21 @@ func TestCreateSignedEnvelope(t *testing.T) {
 	id.SignReturnsOnCall(1, nil, errors.New("bad signature"))
 	env, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID,
 		id, msg, int32(1), uint64(1))
-	assert.NoError(t, err, "Unexpected error creating signed envelope")
-	assert.NotNil(t, env, "Envelope should not be nil")
+	require.NoError(t, err, "Unexpected error creating signed envelope")
+	require.NotNil(t, env, "Envelope should not be nil")
 	// mock sign returns the bytes to be signed
-	assert.Equal(t, []byte("goodsig"), env.Signature, "Unexpected signature returned")
+	require.Equal(t, []byte("goodsig"), env.Signature, "Unexpected signature returned")
 	payload := &cb.Payload{}
 	err = proto.Unmarshal(env.Payload, payload)
-	assert.NoError(t, err, "Failed to unmarshal payload")
+	require.NoError(t, err, "Failed to unmarshal payload")
 	data := &cb.ConfigEnvelope{}
 	err = proto.Unmarshal(payload.Data, data)
-	assert.NoError(t, err, "Expected payload data to be a config envelope")
-	assert.Equal(t, msg, data, "Payload data does not match expected value")
+	require.NoError(t, err, "Expected payload data to be a config envelope")
+	require.Equal(t, msg, data, "Payload data does not match expected value")
 
 	_, err = protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID,
 		id, &cb.ConfigEnvelope{}, int32(1), uint64(1))
-	assert.Error(t, err, "Expected sign error")
+	require.Error(t, err, "Expected sign error")
 }
 
 func TestCreateSignedEnvelopeNilSigner(t *testing.T) {
@@ -329,16 +329,16 @@ func TestCreateSignedEnvelopeNilSigner(t *testing.T) {
 
 	env, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, channelID,
 		nil, msg, int32(1), uint64(1))
-	assert.NoError(t, err, "Unexpected error creating signed envelope")
-	assert.NotNil(t, env, "Envelope should not be nil")
-	assert.Empty(t, env.Signature, "Signature should have been empty")
+	require.NoError(t, err, "Unexpected error creating signed envelope")
+	require.NotNil(t, env, "Envelope should not be nil")
+	require.Empty(t, env.Signature, "Signature should have been empty")
 	payload := &cb.Payload{}
 	err = proto.Unmarshal(env.Payload, payload)
-	assert.NoError(t, err, "Failed to unmarshal payload")
+	require.NoError(t, err, "Failed to unmarshal payload")
 	data := &cb.ConfigEnvelope{}
 	err = proto.Unmarshal(payload.Data, data)
-	assert.NoError(t, err, "Expected payload data to be a config envelope")
-	assert.Equal(t, msg, data, "Payload data does not match expected value")
+	require.NoError(t, err, "Expected payload data to be a config envelope")
+	require.Equal(t, msg, data, "Payload data does not match expected value")
 }
 
 func TestGetSignedProposal(t *testing.T) {
@@ -353,16 +353,16 @@ func TestGetSignedProposal(t *testing.T) {
 	prop := &pb.Proposal{}
 	propBytes, _ := proto.Marshal(prop)
 	signedProp, err = protoutil.GetSignedProposal(prop, signID)
-	assert.NoError(t, err, "Unexpected error getting signed proposal")
-	assert.Equal(t, propBytes, signedProp.ProposalBytes,
+	require.NoError(t, err, "Unexpected error getting signed proposal")
+	require.Equal(t, propBytes, signedProp.ProposalBytes,
 		"Proposal bytes did not match expected value")
-	assert.Equal(t, sig, signedProp.Signature,
+	require.Equal(t, sig, signedProp.Signature,
 		"Signature did not match expected value")
 
 	_, err = protoutil.GetSignedProposal(nil, signID)
-	assert.Error(t, err, "Expected error with nil proposal")
+	require.Error(t, err, "Expected error with nil proposal")
 	_, err = protoutil.GetSignedProposal(prop, nil)
-	assert.Error(t, err, "Expected error with nil signing identity")
+	require.Error(t, err, "Expected error with nil signing identity")
 
 }
 
@@ -383,16 +383,16 @@ func TestMockSignedEndorserProposalOrPanic(t *testing.T) {
 
 	signedProp, prop = protoutil.MockSignedEndorserProposalOrPanic(chainID, cs,
 		creator, sig)
-	assert.Equal(t, sig, signedProp.Signature,
+	require.Equal(t, sig, signedProp.Signature,
 		"Signature did not match expected result")
 	propBytes, _ := proto.Marshal(prop)
-	assert.Equal(t, propBytes, signedProp.ProposalBytes,
+	require.Equal(t, propBytes, signedProp.ProposalBytes,
 		"Proposal bytes do not match expected value")
 	err := proto.Unmarshal(prop.Payload, ccProposal)
-	assert.NoError(t, err, "Expected ChaincodeProposalPayload")
+	require.NoError(t, err, "Expected ChaincodeProposalPayload")
 	err = proto.Unmarshal(ccProposal.Input, cis)
-	assert.NoError(t, err, "Expected ChaincodeInvocationSpec")
-	assert.Equal(t, cs.ChaincodeId.Name, cis.ChaincodeSpec.ChaincodeId.Name,
+	require.NoError(t, err, "Expected ChaincodeInvocationSpec")
+	require.Equal(t, cs.ChaincodeId.Name, cis.ChaincodeSpec.ChaincodeId.Name,
 		"Chaincode name did not match expected value")
 }
 
@@ -409,15 +409,15 @@ func TestMockSignedEndorserProposal2OrPanic(t *testing.T) {
 
 	signedProp, prop = protoutil.MockSignedEndorserProposal2OrPanic(chainID,
 		&pb.ChaincodeSpec{}, signID)
-	assert.Equal(t, sig, signedProp.Signature,
+	require.Equal(t, sig, signedProp.Signature,
 		"Signature did not match expected result")
 	propBytes, _ := proto.Marshal(prop)
-	assert.Equal(t, propBytes, signedProp.ProposalBytes,
+	require.Equal(t, propBytes, signedProp.ProposalBytes,
 		"Proposal bytes do not match expected value")
 	err := proto.Unmarshal(prop.Payload, ccProposal)
-	assert.NoError(t, err, "Expected ChaincodeProposalPayload")
+	require.NoError(t, err, "Expected ChaincodeProposalPayload")
 	err = proto.Unmarshal(ccProposal.Input, cis)
-	assert.NoError(t, err, "Expected ChaincodeInvocationSpec")
+	require.NoError(t, err, "Expected ChaincodeInvocationSpec")
 }
 
 func TestGetBytesProposalPayloadForTx(t *testing.T) {
@@ -430,11 +430,11 @@ func TestGetBytesProposalPayloadForTx(t *testing.T) {
 	})
 
 	result, err := protoutil.GetBytesProposalPayloadForTx(input)
-	assert.NoError(t, err, "Unexpected error getting proposal payload")
-	assert.Equal(t, expected, result, "Payload does not match expected value")
+	require.NoError(t, err, "Unexpected error getting proposal payload")
+	require.Equal(t, expected, result, "Payload does not match expected value")
 
 	_, err = protoutil.GetBytesProposalPayloadForTx(nil)
-	assert.Error(t, err, "Expected error with nil proposal payload")
+	require.Error(t, err, "Expected error with nil proposal payload")
 }
 
 func TestGetProposalHash2(t *testing.T) {
@@ -445,11 +445,11 @@ func TestGetProposalHash2(t *testing.T) {
 		SignatureHeader: []byte("shdr"),
 	}
 	propHash, err := protoutil.GetProposalHash2(hdr, []byte("ccproppayload"))
-	assert.NoError(t, err, "Unexpected error getting hash2 for proposal")
-	assert.Equal(t, expectedHash, propHash, "Proposal hash did not match expected hash")
+	require.NoError(t, err, "Unexpected error getting hash2 for proposal")
+	require.Equal(t, expectedHash, propHash, "Proposal hash did not match expected hash")
 
 	_, err = protoutil.GetProposalHash2(&cb.Header{}, []byte("ccproppayload"))
-	assert.Error(t, err, "Expected error with nil arguments")
+	require.Error(t, err, "Expected error with nil arguments")
 }
 
 func TestGetProposalHash1(t *testing.T) {
@@ -463,14 +463,14 @@ func TestGetProposalHash1(t *testing.T) {
 	ccProposal, _ := proto.Marshal(&pb.ChaincodeProposalPayload{})
 
 	propHash, err := protoutil.GetProposalHash1(hdr, ccProposal)
-	assert.NoError(t, err, "Unexpected error getting hash for proposal")
-	assert.Equal(t, expectedHash, propHash, "Proposal hash did not match expected hash")
+	require.NoError(t, err, "Unexpected error getting hash for proposal")
+	require.Equal(t, expectedHash, propHash, "Proposal hash did not match expected hash")
 
 	_, err = protoutil.GetProposalHash1(hdr, []byte("ccproppayload"))
-	assert.Error(t, err, "Expected error with malformed chaincode proposal payload")
+	require.Error(t, err, "Expected error with malformed chaincode proposal payload")
 
 	_, err = protoutil.GetProposalHash1(&cb.Header{}, []byte("ccproppayload"))
-	assert.Error(t, err, "Expected error with nil arguments")
+	require.Error(t, err, "Expected error with nil arguments")
 }
 
 func TestCreateProposalResponseFailure(t *testing.T) {
@@ -490,15 +490,15 @@ func TestCreateProposalResponseFailure(t *testing.T) {
 		return
 	}
 
-	assert.Equal(t, int32(502), prespFailure.Response.Status)
+	require.Equal(t, int32(502), prespFailure.Response.Status)
 	// drilldown into the response to find the chaincode response
 	pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(prespFailure.Payload)
-	assert.NoError(t, err, "Error while unmarshaling proposal response payload: %s", err)
+	require.NoError(t, err, "Error while unmarshaling proposal response payload: %s", err)
 	ca, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
-	assert.NoError(t, err, "Error while unmarshaling chaincode action: %s", err)
+	require.NoError(t, err, "Error while unmarshaling chaincode action: %s", err)
 
-	assert.Equal(t, int32(502), ca.Response.Status)
-	assert.Equal(t, "Invalid function name", string(ca.Response.Payload))
+	require.Equal(t, int32(502), ca.Response.Status)
+	require.Equal(t, "Invalid function name", string(ca.Response.Payload))
 }
 
 func TestGetorComputeTxIDFromEnvelope(t *testing.T) {
@@ -506,16 +506,16 @@ func TestGetorComputeTxIDFromEnvelope(t *testing.T) {
 		txID := "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492"
 		envelopeBytes := createSampleTxEnvelopeBytes(txID)
 		actualTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(envelopeBytes)
-		assert.Nil(t, err)
-		assert.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
+		require.Nil(t, err)
+		require.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
 	})
 
 	t.Run("txID is not present in the envelope", func(t *testing.T) {
 		txID := ""
 		envelopeBytes := createSampleTxEnvelopeBytes(txID)
 		actualTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(envelopeBytes)
-		assert.Nil(t, err)
-		assert.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
+		require.Nil(t, err)
+		require.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
 
 	})
 }

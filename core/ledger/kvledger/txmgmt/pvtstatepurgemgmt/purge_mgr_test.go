@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -180,7 +180,7 @@ func TestKeyUpdateBeforeExpiryBlock(t *testing.T) {
 	putHashUpdates(block1Updates, "ns", "coll", "pvtkey", []byte("pvtvalue-1"), version.NewHeight(1, 1))
 	helper.commitUpdatesForTesting(1, block1Updates)
 	expInfo, _ := helper.purgeMgr.expKeeper.retrieve(3)
-	assert.Len(t, expInfo, 1)
+	require.Len(t, expInfo, 1)
 
 	// block-2 update: Update both hash and pvt data
 	block2Updates := privacyenabledstate.NewUpdateBatch()
@@ -308,67 +308,67 @@ func (h *testHelper) cleanup() {
 
 func (h *testHelper) commitUpdatesForTesting(blkNum uint64, updates *privacyenabledstate.UpdateBatch) {
 	h.purgeMgr.PrepareForExpiringKeys(blkNum)
-	assert.NoError(h.t, h.purgeMgr.UpdateExpiryInfo(updates.PvtUpdates, updates.HashUpdates))
-	assert.NoError(h.t, h.purgeMgr.AddExpiredEntriesToUpdateBatch(updates.PvtUpdates, updates.HashUpdates))
-	assert.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(blkNum, 1)))
+	require.NoError(h.t, h.purgeMgr.UpdateExpiryInfo(updates.PvtUpdates, updates.HashUpdates))
+	require.NoError(h.t, h.purgeMgr.AddExpiredEntriesToUpdateBatch(updates.PvtUpdates, updates.HashUpdates))
+	require.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, version.NewHeight(blkNum, 1)))
 	h.db.ClearCachedVersions()
 	h.purgeMgr.BlockCommitDone()
 }
 
 func (h *testHelper) commitPvtDataOfOldBlocksForTesting(updates *privacyenabledstate.UpdateBatch) {
-	assert.NoError(h.t, h.purgeMgr.UpdateExpiryInfoOfPvtDataOfOldBlocks(updates.PvtUpdates))
-	assert.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, nil))
+	require.NoError(h.t, h.purgeMgr.UpdateExpiryInfoOfPvtDataOfOldBlocks(updates.PvtUpdates))
+	require.NoError(h.t, h.db.ApplyPrivacyAwareUpdates(updates, nil))
 }
 
 func (h *testHelper) checkPvtdataExists(ns, coll, key string, value []byte) {
 	vv, hashVersion := h.fetchPvtdataFronDB(ns, coll, key)
-	assert.NotNil(h.t, vv)
-	assert.Equal(h.t, value, vv.Value)
-	assert.Equal(h.t, vv.Version, hashVersion)
+	require.NotNil(h.t, vv)
+	require.Equal(h.t, value, vv.Value)
+	require.Equal(h.t, vv.Version, hashVersion)
 }
 
 func (h *testHelper) checkPvtdataDoesNotExist(ns, coll, key string) {
 	vv, hashVersion := h.fetchPvtdataFronDB(ns, coll, key)
-	assert.Nil(h.t, vv)
-	assert.Nil(h.t, hashVersion)
+	require.Nil(h.t, vv)
+	require.Nil(h.t, hashVersion)
 }
 
 func (h *testHelper) checkOnlyPvtKeyExists(ns, coll, key string, value []byte) {
 	vv, hashVersion := h.fetchPvtdataFronDB(ns, coll, key)
-	assert.NotNil(h.t, vv)
-	assert.Nil(h.t, hashVersion)
-	assert.Equal(h.t, value, vv.Value)
+	require.NotNil(h.t, vv)
+	require.Nil(h.t, hashVersion)
+	require.Equal(h.t, value, vv.Value)
 }
 
 func (h *testHelper) checkOnlyPvtKeyDoesNotExist(ns, coll, key string) {
 	kv, err := h.db.GetPrivateData(ns, coll, key)
-	assert.Nil(h.t, err)
-	assert.Nil(h.t, kv)
+	require.Nil(h.t, err)
+	require.Nil(h.t, kv)
 }
 
 func (h *testHelper) checkOnlyKeyHashExists(ns, coll, key string) {
 	vv, hashVersion := h.fetchPvtdataFronDB(ns, coll, key)
-	assert.Nil(h.t, vv)
-	assert.NotNil(h.t, hashVersion)
+	require.Nil(h.t, vv)
+	require.NotNil(h.t, hashVersion)
 }
 
 func (h *testHelper) fetchPvtdataFronDB(ns, coll, key string) (kv *statedb.VersionedValue, hashVersion *version.Height) {
 	var err error
 	kv, err = h.db.GetPrivateData(ns, coll, key)
-	assert.NoError(h.t, err)
+	require.NoError(h.t, err)
 	hashVersion, err = h.db.GetKeyHashVersion(ns, coll, util.ComputeStringHash(key))
-	assert.NoError(h.t, err)
+	require.NoError(h.t, err)
 	return
 }
 
 func (h *testHelper) checkExpiryEntryExistsForBlockNum(expiringBlk uint64, expectedNumEntries int) {
 	expInfo, err := h.purgeMgr.expKeeper.retrieve(expiringBlk)
-	assert.NoError(h.t, err)
-	assert.Len(h.t, expInfo, expectedNumEntries)
+	require.NoError(h.t, err)
+	require.Len(h.t, expInfo, expectedNumEntries)
 }
 
 func (h *testHelper) checkNoExpiryEntryExistsForBlockNum(expiringBlk uint64) {
 	expInfo, err := h.purgeMgr.expKeeper.retrieve(expiringBlk)
-	assert.NoError(h.t, err)
-	assert.Len(h.t, expInfo, 0)
+	require.NoError(h.t, err)
+	require.Len(h.t, expInfo, 0)
 }

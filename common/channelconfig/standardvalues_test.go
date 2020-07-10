@@ -11,7 +11,7 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type foo struct {
@@ -39,63 +39,63 @@ type unexported struct {
 func TestSingle(t *testing.T) {
 	fooVal := &foo{}
 	sv, err := NewStandardValues(fooVal)
-	assert.NoError(t, err, "Valid non-nested structure provided")
-	assert.NotNil(t, fooVal.Msg1, "Should have initialized Msg1")
-	assert.NotNil(t, fooVal.Msg2, "Should have initialized Msg2")
+	require.NoError(t, err, "Valid non-nested structure provided")
+	require.NotNil(t, fooVal.Msg1, "Should have initialized Msg1")
+	require.NotNil(t, fooVal.Msg2, "Should have initialized Msg2")
 
 	msg1, err := sv.Deserialize("Msg1", protoutil.MarshalOrPanic(&cb.Envelope{}))
-	assert.NoError(t, err, "Should have found map entry")
-	assert.Equal(t, msg1, fooVal.Msg1, "Should be same entry")
+	require.NoError(t, err, "Should have found map entry")
+	require.Equal(t, msg1, fooVal.Msg1, "Should be same entry")
 
 	msg2, err := sv.Deserialize("Msg2", protoutil.MarshalOrPanic(&cb.Payload{}))
-	assert.NoError(t, err, "Should have found map entry")
-	assert.Equal(t, msg2, fooVal.Msg2, "Should be same entry")
+	require.NoError(t, err, "Should have found map entry")
+	require.Equal(t, msg2, fooVal.Msg2, "Should be same entry")
 }
 
 func TestPair(t *testing.T) {
 	fooVal := &foo{}
 	barVal := &bar{}
 	sv, err := NewStandardValues(fooVal, barVal)
-	assert.NoError(t, err, "Valid non-nested structure provided")
-	assert.NotNil(t, fooVal.Msg1, "Should have initialized Msg1")
-	assert.NotNil(t, fooVal.Msg2, "Should have initialized Msg2")
-	assert.NotNil(t, barVal.Msg3, "Should have initialized Msg3")
+	require.NoError(t, err, "Valid non-nested structure provided")
+	require.NotNil(t, fooVal.Msg1, "Should have initialized Msg1")
+	require.NotNil(t, fooVal.Msg2, "Should have initialized Msg2")
+	require.NotNil(t, barVal.Msg3, "Should have initialized Msg3")
 
 	msg1, err := sv.Deserialize("Msg1", protoutil.MarshalOrPanic(&cb.Envelope{}))
-	assert.NoError(t, err, "Should have found map entry")
-	assert.Equal(t, msg1, fooVal.Msg1, "Should be same entry")
+	require.NoError(t, err, "Should have found map entry")
+	require.Equal(t, msg1, fooVal.Msg1, "Should be same entry")
 
 	msg2, err := sv.Deserialize("Msg2", protoutil.MarshalOrPanic(&cb.Payload{}))
-	assert.NoError(t, err, "Should have found map entry")
-	assert.Equal(t, msg2, fooVal.Msg2, "Should be same entry")
+	require.NoError(t, err, "Should have found map entry")
+	require.Equal(t, msg2, fooVal.Msg2, "Should be same entry")
 
 	msg3, err := sv.Deserialize("Msg3", protoutil.MarshalOrPanic(&cb.Header{}))
-	assert.NoError(t, err, "Should have found map entry")
-	assert.Equal(t, msg3, barVal.Msg3, "Should be same entry")
+	require.NoError(t, err, "Should have found map entry")
+	require.Equal(t, msg3, barVal.Msg3, "Should be same entry")
 }
 
 func TestPairConflict(t *testing.T) {
 	_, err := NewStandardValues(&foo{}, &conflict{})
-	assert.Error(t, err, "Conflicting keys provided")
+	require.Error(t, err, "Conflicting keys provided")
 }
 
 func TestNonProtosStruct(t *testing.T) {
 	_, err := NewStandardValues(&nonProtos{})
-	assert.Error(t, err, "Structure with non-struct non-proto fields provided")
+	require.Error(t, err, "Structure with non-struct non-proto fields provided")
 }
 
 func TestUnexportedField(t *testing.T) {
 	_, err := NewStandardValues(&unexported{msg: nil})
-	assert.Error(t, err, "Structure with unexported fields")
+	require.Error(t, err, "Structure with unexported fields")
 }
 
 func TestNonPointerParam(t *testing.T) {
 	_, err := NewStandardValues(foo{})
-	assert.Error(t, err, "Parameter must be pointer")
+	require.Error(t, err, "Parameter must be pointer")
 }
 
 func TestPointerToNonStruct(t *testing.T) {
 	nonStruct := "foo"
 	_, err := NewStandardValues(&nonStruct)
-	assert.Error(t, err, "Pointer must be to a struct")
+	require.Error(t, err, "Pointer must be to a struct")
 }

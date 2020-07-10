@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/deliver/mock"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClose(t *testing.T) {
@@ -48,7 +48,7 @@ func TestClose(t *testing.T) {
 
 			blockledger.GetBlock(reader, 1)
 			if !testCase.isIteratorNil {
-				assert.Equal(t, testCase.expectedCloseCount, iterator.CloseCallCount())
+				require.Equal(t, testCase.expectedCloseCount, iterator.CloseCallCount())
 			}
 		})
 	}

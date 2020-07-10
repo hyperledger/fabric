@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func createTestTransactionEnvelope(channel string, response *peer.Response, simRes []byte) (*common.Envelope, error) {
@@ -52,7 +52,7 @@ func createTestProposalAndSignedProposal(channel string) (*peer.Proposal, error)
 
 func protoMarshal(t *testing.T, m proto.Message) []byte {
 	bytes, err := proto.Marshal(m)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return bytes
 }
 
@@ -93,7 +93,7 @@ func createTestEnvelope(t *testing.T, data []byte, header *common.Header, signer
 	payloadBytes := protoMarshal(t, payload)
 
 	signature, err := signer.Sign(payloadBytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return &common.Envelope{
 		Payload:   payloadBytes,
@@ -106,31 +106,31 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	simRes := []byte("simulation_result")
 
 	env, err := createTestTransactionEnvelope("testchannelid", response, simRes)
-	assert.Nil(t, err, "failed to create test transaction: %s", err)
-	assert.NotNil(t, env)
+	require.Nil(t, err, "failed to create test transaction: %s", err)
+	require.NotNil(t, env)
 
 	// get the payload from the envelope
 	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	assert.NoError(t, err, "GetPayload returns err %s", err)
+	require.NoError(t, err, "GetPayload returns err %s", err)
 
 	// validate the header
 	chdr, shdr, err := validateCommonHeader(payload.Header)
-	assert.NoError(t, err, "validateCommonHeader returns err %s", err)
+	require.NoError(t, err, "validateCommonHeader returns err %s", err)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// validate the signature in the envelope
 	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, chdr.ChannelId, cryptoProvider)
-	assert.NoError(t, err, "checkSignatureFromCreator returns err %s", err)
+	require.NoError(t, err, "checkSignatureFromCreator returns err %s", err)
 
 	// corrupt the creator
 	err = checkSignatureFromCreator([]byte("junk"), env.Signature, env.Payload, chdr.ChannelId, cryptoProvider)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "MSP error: could not deserialize")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "MSP error: could not deserialize")
 
 	// check nonexistent channel
 	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, "junkchannel", cryptoProvider)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "MSP error: channel doesn't exist")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "MSP error: channel doesn't exist")
 }

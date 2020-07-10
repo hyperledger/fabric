@@ -13,7 +13,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/protoext"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var digestMsg = &gossip.GossipMessage{
@@ -61,9 +61,9 @@ func TestUnmarshalV12Digests(t *testing.T) {
 		var err error
 		v13Envelope := &gossip.Envelope{}
 		v13Envelope.Payload, err = hex.DecodeString(msgBytes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		v13Digest, err := protoext.EnvelopeToGossipMessage(v13Envelope)
-		assert.NoError(t, err)
-		assert.True(t, proto.Equal(expectedMsg, v13Digest.GossipMessage))
+		require.NoError(t, err)
+		require.True(t, proto.Equal(expectedMsg, v13Digest.GossipMessage))
 	}
 }

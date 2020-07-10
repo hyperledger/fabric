@@ -9,7 +9,7 @@ package inquire
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -27,16 +27,16 @@ var (
 
 func TestString(t *testing.T) {
 	cps := ComparablePrincipalSet{member1, member2, NewComparablePrincipal(ou("Org3MSP"))}
-	assert.Equal(t, "[Org1MSP.MEMBER, Org2MSP.MEMBER, Org3MSP.ou]", cps.String())
+	require.Equal(t, "[Org1MSP.MEMBER, Org2MSP.MEMBER, Org3MSP.ou]", cps.String())
 }
 
 func TestClone(t *testing.T) {
 	cps := ComparablePrincipalSet{member1, member2}
 	clone := cps.Clone()
-	assert.Equal(t, cps, clone)
+	require.Equal(t, cps, clone)
 	// Nil out the first entry and ensure that it isn't reflected in the clone
 	cps[0] = nil
-	assert.False(t, cps[0] == clone[0])
+	require.False(t, cps[0] == clone[0])
 }
 
 func TestMergeInclusiveWithPlurality(t *testing.T) {
@@ -58,18 +58,18 @@ func TestMergeInclusiveWithPlurality(t *testing.T) {
 
 	merged := Merge(s1, s2)
 	expected := ComparablePrincipalSets{peers12member2, peers34}
-	assert.Equal(t, expected, merged)
+	require.Equal(t, expected, merged)
 
 	// Shuffle the order of principal sets and ensure the result is the same
 	s1 = ComparablePrincipalSets{peers34, members12}
 	s2 = ComparablePrincipalSets{members34, peers12}
 	merged = Merge(s1, s2)
-	assert.Equal(t, expected, merged)
+	require.Equal(t, expected, merged)
 
 	// Shuffle the order to the call
 	merged = Merge(s2, s1)
 	expected = ComparablePrincipalSets{peers34, peers12member2}
-	assert.Equal(t, expected, merged)
+	require.Equal(t, expected, merged)
 }
 
 func TestMergeExclusiveWithPlurality(t *testing.T) {
@@ -93,7 +93,7 @@ func TestMergeExclusiveWithPlurality(t *testing.T) {
 	s2 := ComparablePrincipalSets{members23, peers45}
 	merged := Merge(s1, s2)
 	expected := ComparablePrincipalSets{members1223, peers345, members122peers45, peers34members23}
-	assert.True(t, expected.IsEqual(merged))
+	require.True(t, expected.IsEqual(merged))
 }
 
 func TestMergePartialExclusiveWithPlurality(t *testing.T) {
@@ -118,7 +118,7 @@ func TestMergePartialExclusiveWithPlurality(t *testing.T) {
 	s2 := ComparablePrincipalSets{members23, peer3members44, peer4member5}
 	merged := Merge(s1, s2)
 	expected := ComparablePrincipalSets{members123, peers34member5}
-	assert.True(t, expected.IsEqual(merged))
+	require.True(t, expected.IsEqual(merged))
 }
 
 func TestMergeWithPlurality(t *testing.T) {
@@ -128,7 +128,7 @@ func TestMergeWithPlurality(t *testing.T) {
 	}
 	merged := pair.MergeWithPlurality()
 	expected := ComparablePrincipalSet{peer3, peer4, member5, member4}
-	assert.Equal(t, expected, merged)
+	require.Equal(t, expected, merged)
 }
 
 func TestMergeSubsetPrincipalSets(t *testing.T) {
@@ -136,24 +136,24 @@ func TestMergeSubsetPrincipalSets(t *testing.T) {
 	member1Or2 := ComparablePrincipalSets{ComparablePrincipalSet{member1}, ComparablePrincipalSet{member2}}
 	merged := Merge(member1And2, member1Or2)
 	expected := member1And2
-	assert.True(t, expected.IsEqual(merged))
+	require.True(t, expected.IsEqual(merged))
 }
 
 func TestEqual(t *testing.T) {
 	member1 := NewComparablePrincipal(member("Org1MSP"))
 	member2 := NewComparablePrincipal(member("Org2MSP"))
 	anotherMember1 := NewComparablePrincipal(member("Org1MSP"))
-	assert.False(t, member1.Equal(member2))
-	assert.True(t, member1.Equal(anotherMember1))
+	require.False(t, member1.Equal(member2))
+	require.True(t, member1.Equal(anotherMember1))
 }
 
 func TestIsSubset(t *testing.T) {
 	members12 := ComparablePrincipalSet{member1, member2, member2}
 	members321 := ComparablePrincipalSet{member3, member2, member1}
 	members13 := ComparablePrincipalSet{member1, member3}
-	assert.True(t, members12.IsSubset(members12))
-	assert.True(t, members12.IsSubset(members321))
-	assert.False(t, members12.IsSubset(members13))
+	require.True(t, members12.IsSubset(members12))
+	require.True(t, members12.IsSubset(members321))
+	require.False(t, members12.IsSubset(members13))
 }
 
 func TestReduce(t *testing.T) {
@@ -164,7 +164,7 @@ func TestReduce(t *testing.T) {
 	peers34 := ComparablePrincipalSet{peer3, peer4}
 	s := ComparablePrincipalSets{members12, peers34, members123, members123, members12peers45, peers45}
 	expected := ComparablePrincipalSets{members12, peers34, peers45}
-	assert.Equal(t, expected, s.Reduce())
+	require.Equal(t, expected, s.Reduce())
 }
 
 // IsEqual returns whether this ComparablePrincipalSets contains the elements of the given ComparablePrincipalSets

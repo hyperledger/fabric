@@ -16,7 +16,7 @@ import (
 	gmocks "github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetChannelConfigFunc(t *testing.T) {
@@ -24,14 +24,14 @@ func TestGetChannelConfigFunc(t *testing.T) {
 	f := func(cid string) channelconfig.Resources {
 		return r
 	}
-	assert.Equal(t, r, acl.ChannelConfigGetterFunc(f).GetChannelConfig("mychannel"))
+	require.Equal(t, r, acl.ChannelConfigGetterFunc(f).GetChannelConfig("mychannel"))
 }
 
 func TestConfigSequenceEmptyChannelName(t *testing.T) {
 	// If the channel name is empty, there is no config sequence,
 	// and we return 0
 	sup := acl.NewDiscoverySupport(nil, nil, nil)
-	assert.Equal(t, uint64(0), sup.ConfigSequence(""))
+	require.Equal(t, uint64(0), sup.ConfigSequence(""))
 }
 
 func TestConfigSequence(t *testing.T) {
@@ -75,12 +75,12 @@ func TestConfigSequence(t *testing.T) {
 
 			sup := acl.NewDiscoverySupport(&mocks.Verifier{}, &mocks.Evaluator{}, chConfig)
 			if test.shouldPanic {
-				assert.Panics(t, func() {
+				require.Panics(t, func() {
 					sup.ConfigSequence("mychannel")
 				})
 				return
 			}
-			assert.Equal(t, test.sequence, sup.ConfigSequence("mychannel"))
+			require.Equal(t, test.sequence, sup.ConfigSequence("mychannel"))
 		})
 	}
 }
@@ -95,13 +95,13 @@ func TestEligibleForService(t *testing.T) {
 	chConfig := &mocks.ChannelConfigGetter{}
 	sup := acl.NewDiscoverySupport(v, e, chConfig)
 	err := sup.EligibleForService("mychannel", protoutil.SignedData{})
-	assert.Equal(t, "verification failed", err.Error())
+	require.Equal(t, "verification failed", err.Error())
 	err = sup.EligibleForService("mychannel", protoutil.SignedData{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = sup.EligibleForService("", protoutil.SignedData{})
-	assert.Equal(t, "verification failed for local msp", err.Error())
+	require.Equal(t, "verification failed for local msp", err.Error())
 	err = sup.EligibleForService("", protoutil.SignedData{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestSatisfiesPrincipal(t *testing.T) {
@@ -166,9 +166,9 @@ func TestSatisfiesPrincipal(t *testing.T) {
 			test.before()
 			err := sup.SatisfiesPrincipal("mychannel", nil, nil)
 			if test.expectedErr != "" {
-				assert.Equal(t, test.expectedErr, err.Error())
+				require.Equal(t, test.expectedErr, err.Error())
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 
@@ -199,7 +199,7 @@ func TestChannelVerifier(t *testing.T) {
 			Identity:  []byte("Bob"),
 			Signature: []byte("msg"),
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Invalid channel", func(t *testing.T) {
@@ -208,8 +208,8 @@ func TestChannelVerifier(t *testing.T) {
 			Identity:  []byte("Bob"),
 			Signature: []byte("msg"),
 		})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "policy manager for channel notmychannel doesn't exist")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "policy manager for channel notmychannel doesn't exist")
 	})
 
 	t.Run("Writers policy cannot be retrieved", func(t *testing.T) {
@@ -219,8 +219,8 @@ func TestChannelVerifier(t *testing.T) {
 			Identity:  []byte("Bob"),
 			Signature: []byte("msg"),
 		})
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed obtaining channel application writers policy")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed obtaining channel application writers policy")
 	})
 
 }

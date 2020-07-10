@@ -17,7 +17,6 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,17 +24,17 @@ var testChannelID = "myuniquetestchainid"
 
 func TestNewBlock(t *testing.T) {
 	var block *cb.Block
-	assert.Nil(t, block.GetHeader())
-	assert.Nil(t, block.GetData())
-	assert.Nil(t, block.GetMetadata())
+	require.Nil(t, block.GetHeader())
+	require.Nil(t, block.GetData())
+	require.Nil(t, block.GetMetadata())
 
 	data := &cb.BlockData{
 		Data: [][]byte{{0, 1, 2}},
 	}
 	block = protoutil.NewBlock(uint64(0), []byte("datahash"))
-	assert.Equal(t, []byte("datahash"), block.Header.PreviousHash, "Incorrect previous hash")
-	assert.NotNil(t, block.GetData())
-	assert.NotNil(t, block.GetMetadata())
+	require.Equal(t, []byte("datahash"), block.Header.PreviousHash, "Incorrect previous hash")
+	require.NotNil(t, block.GetData())
+	require.NotNil(t, block.GetMetadata())
 	block.GetHeader().DataHash = protoutil.BlockDataHash(data)
 
 	asn1Bytes, err := asn1.Marshal(struct {
@@ -48,9 +47,9 @@ func TestNewBlock(t *testing.T) {
 		PreviousHash: []byte("datahash"),
 	})
 	headerHash := sha256.Sum256(asn1Bytes)
-	assert.NoError(t, err)
-	assert.Equal(t, asn1Bytes, protoutil.BlockHeaderBytes(block.Header), "Incorrect marshaled blockheader bytes")
-	assert.Equal(t, headerHash[:], protoutil.BlockHeaderHash(block.Header), "Incorrect blockheader hash")
+	require.NoError(t, err)
+	require.Equal(t, asn1Bytes, protoutil.BlockHeaderBytes(block.Header), "Incorrect marshaled blockheader bytes")
+	require.Equal(t, headerHash[:], protoutil.BlockHeaderHash(block.Header), "Incorrect blockheader hash")
 }
 
 func TestGoodBlockHeaderBytes(t *testing.T) {
@@ -73,16 +72,16 @@ func TestGoodBlockHeaderBytes(t *testing.T) {
 
 func TestGetChannelIDFromBlockBytes(t *testing.T) {
 	gb, err := configtxtest.MakeGenesisBlock(testChannelID)
-	assert.NoError(t, err, "Failed to create test configuration block")
+	require.NoError(t, err, "Failed to create test configuration block")
 	bytes, err := proto.Marshal(gb)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cid, err := protoutil.GetChannelIDFromBlockBytes(bytes)
-	assert.NoError(t, err)
-	assert.Equal(t, testChannelID, cid, "Failed to return expected chain ID")
+	require.NoError(t, err)
+	require.Equal(t, testChannelID, cid, "Failed to return expected chain ID")
 
 	// bad block bytes
 	_, err = protoutil.GetChannelIDFromBlockBytes([]byte("bad block"))
-	assert.Error(t, err, "Expected error with malformed block bytes")
+	require.Error(t, err, "Expected error with malformed block bytes")
 }
 
 func TestGetChannelIDFromBlock(t *testing.T) {
@@ -92,20 +91,20 @@ func TestGetChannelIDFromBlock(t *testing.T) {
 
 	// nil block
 	_, err = protoutil.GetChannelIDFromBlock(gb)
-	assert.Error(t, err, "Expected error getting channel id from nil block")
+	require.Error(t, err, "Expected error getting channel id from nil block")
 
 	gb, err = configtxtest.MakeGenesisBlock(testChannelID)
-	assert.NoError(t, err, "Failed to create test configuration block")
+	require.NoError(t, err, "Failed to create test configuration block")
 
 	cid, err = protoutil.GetChannelIDFromBlock(gb)
-	assert.NoError(t, err, "Failed to get chain ID from block")
-	assert.Equal(t, testChannelID, cid, "Failed to return expected chain ID")
+	require.NoError(t, err, "Failed to get chain ID from block")
+	require.Equal(t, testChannelID, cid, "Failed to return expected chain ID")
 
 	// missing data
 	badBlock := gb
 	badBlock.Data = nil
 	_, err = protoutil.GetChannelIDFromBlock(badBlock)
-	assert.Error(t, err, "Expected error with missing block data")
+	require.Error(t, err, "Expected error with missing block data")
 
 	// no envelope
 	badBlock = &cb.Block{
@@ -114,7 +113,7 @@ func TestGetChannelIDFromBlock(t *testing.T) {
 		},
 	}
 	_, err = protoutil.GetChannelIDFromBlock(badBlock)
-	assert.Error(t, err, "Expected error with no envelope in data")
+	require.Error(t, err, "Expected error with no envelope in data")
 
 	// bad payload
 	env, _ := proto.Marshal(&cb.Envelope{
@@ -126,7 +125,7 @@ func TestGetChannelIDFromBlock(t *testing.T) {
 		},
 	}
 	_, err = protoutil.GetChannelIDFromBlock(badBlock)
-	assert.Error(t, err, "Expected error - malformed payload")
+	require.Error(t, err, "Expected error - malformed payload")
 
 	// bad channel header
 	payload, _ := proto.Marshal(&cb.Payload{
@@ -143,7 +142,7 @@ func TestGetChannelIDFromBlock(t *testing.T) {
 		},
 	}
 	_, err = protoutil.GetChannelIDFromBlock(badBlock)
-	assert.Error(t, err, "Expected error with malformed channel header")
+	require.Error(t, err, "Expected error with malformed channel header")
 
 	// nil payload header
 	payload, _ = proto.Marshal(&cb.Payload{})
@@ -156,54 +155,54 @@ func TestGetChannelIDFromBlock(t *testing.T) {
 		},
 	}
 	_, err = protoutil.GetChannelIDFromBlock(badBlock)
-	assert.Error(t, err, "Expected error when payload header is nil")
+	require.Error(t, err, "Expected error when payload header is nil")
 }
 
 func TestGetBlockFromBlockBytes(t *testing.T) {
 	testChainID := "myuniquetestchainid"
 	gb, err := configtxtest.MakeGenesisBlock(testChainID)
-	assert.NoError(t, err, "Failed to create test configuration block")
+	require.NoError(t, err, "Failed to create test configuration block")
 	blockBytes, err := protoutil.Marshal(gb)
-	assert.NoError(t, err, "Failed to marshal block")
+	require.NoError(t, err, "Failed to marshal block")
 	_, err = protoutil.UnmarshalBlock(blockBytes)
-	assert.NoError(t, err, "to get block from block bytes")
+	require.NoError(t, err, "to get block from block bytes")
 
 	// bad block bytes
 	_, err = protoutil.UnmarshalBlock([]byte("bad block"))
-	assert.Error(t, err, "Expected error for malformed block bytes")
+	require.Error(t, err, "Expected error for malformed block bytes")
 }
 
 func TestGetMetadataFromBlock(t *testing.T) {
 	t.Run("new block", func(t *testing.T) {
 		block := protoutil.NewBlock(0, nil)
 		md, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
-		assert.NoError(t, err, "Unexpected error extracting metadata from new block")
-		assert.Nil(t, md.Value, "Expected metadata field value to be nil")
-		assert.Equal(t, 0, len(md.Value), "Expected length of metadata field value to be 0")
+		require.NoError(t, err, "Unexpected error extracting metadata from new block")
+		require.Nil(t, md.Value, "Expected metadata field value to be nil")
+		require.Equal(t, 0, len(md.Value), "Expected length of metadata field value to be 0")
 		md = protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
-		assert.NotNil(t, md, "Expected to get metadata from block")
+		require.NotNil(t, md, "Expected to get metadata from block")
 	})
 	t.Run("no metadata", func(t *testing.T) {
 		block := protoutil.NewBlock(0, nil)
 		block.Metadata = nil
 		_, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
-		assert.Error(t, err, "Expected error with nil metadata")
-		assert.Contains(t, err.Error(), "no metadata in block")
+		require.Error(t, err, "Expected error with nil metadata")
+		require.Contains(t, err.Error(), "no metadata in block")
 	})
 	t.Run("no metadata at index", func(t *testing.T) {
 		block := protoutil.NewBlock(0, nil)
 		block.Metadata.Metadata = [][]byte{{1, 2, 3}}
 		_, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_LAST_CONFIG)
-		assert.Error(t, err, "Expected error with nil metadata")
-		assert.Contains(t, err.Error(), "no metadata at index")
+		require.Error(t, err, "Expected error with nil metadata")
+		require.Contains(t, err.Error(), "no metadata at index")
 	})
 	t.Run("malformed metadata", func(t *testing.T) {
 		block := protoutil.NewBlock(0, nil)
 		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = []byte("bad metadata")
 		_, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
-		assert.Error(t, err, "Expected error with malformed metadata")
-		assert.Contains(t, err.Error(), "error unmarshaling metadata at index [ORDERER]")
-		assert.Panics(t, func() {
+		require.Error(t, err, "Expected error with malformed metadata")
+		require.Contains(t, err.Error(), "error unmarshaling metadata at index [ORDERER]")
+		require.Panics(t, func() {
 			_ = protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
 		}, "Expected panic with malformed metadata")
 	})
@@ -281,7 +280,7 @@ func TestInitBlockMeta(t *testing.T) {
 	block := &cb.Block{}
 	protoutil.InitBlockMetadata(block)
 	// should have 3 entries
-	assert.Equal(t, 5, len(block.Metadata.Metadata), "Expected block to have 5 metadata entries")
+	require.Equal(t, 5, len(block.Metadata.Metadata), "Expected block to have 5 metadata entries")
 
 	// block with a single entry
 	block = &cb.Block{
@@ -290,7 +289,7 @@ func TestInitBlockMeta(t *testing.T) {
 	block.Metadata.Metadata = append(block.Metadata.Metadata, []byte{})
 	protoutil.InitBlockMetadata(block)
 	// should have 3 entries
-	assert.Equal(t, 5, len(block.Metadata.Metadata), "Expected block to have 5 metadata entries")
+	require.Equal(t, 5, len(block.Metadata.Metadata), "Expected block to have 5 metadata entries")
 }
 
 func TestCopyBlockMetadata(t *testing.T) {
@@ -304,9 +303,9 @@ func TestCopyBlockMetadata(t *testing.T) {
 	protoutil.CopyBlockMetadata(srcBlock, dstBlock)
 
 	// check that the copy worked
-	assert.Equal(t, len(srcBlock.Metadata.Metadata), len(dstBlock.Metadata.Metadata),
+	require.Equal(t, len(srcBlock.Metadata.Metadata), len(dstBlock.Metadata.Metadata),
 		"Expected target block to have same number of metadata entries after copy")
-	assert.Equal(t, metadata, dstBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER],
+	require.Equal(t, metadata, dstBlock.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER],
 		"Unexpected metadata from target block")
 }
 
@@ -321,24 +320,24 @@ func TestGetLastConfigIndexFromBlock(t *testing.T) {
 			}),
 		})
 		result, err := protoutil.GetLastConfigIndexFromBlock(block)
-		assert.NoError(t, err, "Unexpected error returning last config index")
-		assert.Equal(t, index, result, "Unexpected last config index returned from block")
+		require.NoError(t, err, "Unexpected error returning last config index")
+		require.Equal(t, index, result, "Unexpected last config index returned from block")
 		result = protoutil.GetLastConfigIndexFromBlockOrPanic(block)
-		assert.Equal(t, index, result, "Unexpected last config index returned from block")
+		require.Equal(t, index, result, "Unexpected last config index returned from block")
 	})
 
 	t.Run("block with malformed signatures", func(t *testing.T) {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = []byte("apple")
 		_, err := protoutil.GetLastConfigIndexFromBlock(block)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to retrieve metadata: error unmarshaling metadata at index [SIGNATURES]")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to retrieve metadata: error unmarshaling metadata at index [SIGNATURES]")
 	})
 
 	t.Run("block with malformed orderer block metadata", func(t *testing.T) {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{Value: []byte("banana")})
 		_, err := protoutil.GetLastConfigIndexFromBlock(block)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to unmarshal orderer block metadata")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to unmarshal orderer block metadata")
 	})
 
 	// TODO: FAB-15864 remove the tests below when we stop supporting upgrade from
@@ -351,17 +350,17 @@ func TestGetLastConfigIndexFromBlock(t *testing.T) {
 			}),
 		})
 		result, err := protoutil.GetLastConfigIndexFromBlock(block)
-		assert.NoError(t, err, "Unexpected error returning last config index")
-		assert.Equal(t, index, result, "Unexpected last config index returned from block")
+		require.NoError(t, err, "Unexpected error returning last config index")
+		require.Equal(t, index, result, "Unexpected last config index returned from block")
 		result = protoutil.GetLastConfigIndexFromBlockOrPanic(block)
-		assert.Equal(t, index, result, "Unexpected last config index returned from block")
+		require.Equal(t, index, result, "Unexpected last config index returned from block")
 	})
 
 	t.Run("malformed metadata", func(t *testing.T) {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = []byte("bad metadata")
 		_, err := protoutil.GetLastConfigIndexFromBlock(block)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to retrieve metadata: error unmarshaling metadata at index [LAST_CONFIG]")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to retrieve metadata: error unmarshaling metadata at index [LAST_CONFIG]")
 	})
 
 	t.Run("malformed last config", func(t *testing.T) {
@@ -369,9 +368,9 @@ func TestGetLastConfigIndexFromBlock(t *testing.T) {
 			Value: []byte("bad last config"),
 		})
 		_, err := protoutil.GetLastConfigIndexFromBlock(block)
-		assert.Error(t, err, "Expected error with malformed last config metadata")
-		assert.Contains(t, err.Error(), "error unmarshaling LastConfig")
-		assert.Panics(t, func() {
+		require.Error(t, err, "Expected error with malformed last config metadata")
+		require.Contains(t, err.Error(), "error unmarshaling LastConfig")
+		require.Panics(t, func() {
 			_ = protoutil.GetLastConfigIndexFromBlockOrPanic(block)
 		}, "Expected panic with malformed last config metadata")
 	})

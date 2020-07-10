@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -35,7 +35,7 @@ func TestNameToLevel(t *testing.T) {
 	for _, tc := range tests {
 		for _, name := range tc.names {
 			t.Run(name, func(t *testing.T) {
-				assert.Equal(t, tc.level, flogging.NameToLevel(name))
+				require.Equal(t, tc.level, flogging.NameToLevel(name))
 			})
 		}
 	}
@@ -57,7 +57,7 @@ func TestIsValidLevel(t *testing.T) {
 	}
 	for _, name := range validNames {
 		t.Run(name, func(t *testing.T) {
-			assert.True(t, flogging.IsValidLevel(name))
+			require.True(t, flogging.IsValidLevel(name))
 		})
 	}
 
@@ -68,7 +68,7 @@ func TestIsValidLevel(t *testing.T) {
 	}
 	for _, name := range invalidNames {
 		t.Run(name, func(t *testing.T) {
-			assert.False(t, flogging.IsValidLevel(name))
+			require.False(t, flogging.IsValidLevel(name))
 		})
 	}
 }

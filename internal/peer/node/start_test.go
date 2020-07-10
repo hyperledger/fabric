@@ -22,7 +22,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -46,7 +46,7 @@ func TestStartCmd(t *testing.T) {
 
 	go func() {
 		cmd := startCmd()
-		assert.NoError(t, cmd.Execute(), "expected to successfully start command")
+		require.NoError(t, cmd.Execute(), "expected to successfully start command")
 	}()
 
 	grpcProbe := func(addr string) bool {
@@ -71,14 +71,14 @@ func TestHandlerMap(t *testing.T) {
   `
 	viper.SetConfigType("yaml")
 	err := viper.ReadConfig(bytes.NewBuffer([]byte(config1)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var libConf library.Config
 	err = mapstructure.Decode(viper.Get("peer.handlers"), &libConf)
-	assert.NoError(t, err)
-	assert.Len(t, libConf.AuthFilters, 2, "expected two filters")
-	assert.Equal(t, "/opt/lib/filter1.so", libConf.AuthFilters[0].Library)
-	assert.Equal(t, "filter2", libConf.AuthFilters[1].Name)
+	require.NoError(t, err)
+	require.Len(t, libConf.AuthFilters, 2, "expected two filters")
+	require.Equal(t, "/opt/lib/filter1.so", libConf.AuthFilters[0].Library)
+	require.Equal(t, "filter2", libConf.AuthFilters[1].Name)
 }
 
 func TestComputeChaincodeEndpoint(t *testing.T) {
@@ -145,11 +145,11 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			ccEndpoint, err := computeChaincodeEndpoint(tt.chaincodeAddress, tt.chaincodeListenAddress, tt.peerAddress)
 			if tt.expectedError != "" {
-				assert.EqualErrorf(t, err, tt.expectedError, "peerAddress: %q, ccListenAddr: %q, ccAddr: %q", tt.peerAddress, tt.chaincodeListenAddress, tt.chaincodeAddress)
+				require.EqualErrorf(t, err, tt.expectedError, "peerAddress: %q, ccListenAddr: %q, ccAddr: %q", tt.peerAddress, tt.chaincodeListenAddress, tt.chaincodeAddress)
 				return
 			}
-			assert.NoErrorf(t, err, "peerAddress: %q, ccListenAddr: %q, ccAddr: %q", tt.peerAddress, tt.chaincodeListenAddress, tt.chaincodeAddress)
-			assert.Equalf(t, tt.expectedEndpoint, ccEndpoint, "peerAddress: %q, ccListenAddr: %q, ccAddr: %q", tt.peerAddress, tt.chaincodeListenAddress, tt.chaincodeAddress)
+			require.NoErrorf(t, err, "peerAddress: %q, ccListenAddr: %q, ccAddr: %q", tt.peerAddress, tt.chaincodeListenAddress, tt.chaincodeAddress)
+			require.Equalf(t, tt.expectedEndpoint, ccEndpoint, "peerAddress: %q, ccListenAddr: %q, ccAddr: %q", tt.peerAddress, tt.chaincodeListenAddress, tt.chaincodeAddress)
 		})
 	}
 }
@@ -157,13 +157,13 @@ func TestComputeChaincodeEndpoint(t *testing.T) {
 func TestGetDockerHostConfig(t *testing.T) {
 	testutil.SetupTestConfig()
 	hostConfig := getDockerHostConfig()
-	assert.NotNil(t, hostConfig)
-	assert.Equal(t, "host", hostConfig.NetworkMode)
-	assert.Equal(t, "json-file", hostConfig.LogConfig.Type)
-	assert.Equal(t, "50m", hostConfig.LogConfig.Config["max-size"])
-	assert.Equal(t, "5", hostConfig.LogConfig.Config["max-file"])
-	assert.Equal(t, int64(1024*1024*1024*2), hostConfig.Memory)
-	assert.Equal(t, int64(0), hostConfig.CPUShares)
+	require.NotNil(t, hostConfig)
+	require.Equal(t, "host", hostConfig.NetworkMode)
+	require.Equal(t, "json-file", hostConfig.LogConfig.Type)
+	require.Equal(t, "50m", hostConfig.LogConfig.Config["max-size"])
+	require.Equal(t, "5", hostConfig.LogConfig.Config["max-file"])
+	require.Equal(t, int64(1024*1024*1024*2), hostConfig.Memory)
+	require.Equal(t, int64(0), hostConfig.CPUShares)
 }
 
 func TestResetLoop(t *testing.T) {
@@ -213,6 +213,6 @@ func TestResetLoop(t *testing.T) {
 	}
 
 	resetLoop(resetFilter, heights, ledgerIDs, getLedger.Spy, 1*time.Second)
-	assert.False(t, resetFilter.reject)
-	assert.Equal(t, 4, peerLedger.GetBlockchainInfoCallCount())
+	require.False(t, resetFilter.reject)
+	require.Equal(t, 4, peerLedger.GetBlockchainInfoCallCount())
 }

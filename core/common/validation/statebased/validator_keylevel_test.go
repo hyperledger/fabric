@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockPolicyEvaluator struct {
@@ -74,7 +74,7 @@ func rwsetBytes(t *testing.T, cc string) []byte {
 	rwsb.AddToWriteSet(cc, "key", []byte("value"))
 	rws := rwsb.GetTxReadWriteSet()
 	rwsetbytes, err := rws.ToProtoBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return rwsetbytes
 }
@@ -111,13 +111,13 @@ func TestKeylevelValidation(t *testing.T) {
 	}()
 
 	err := validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), endorsements)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pe.EvaluateRV = fmt.Errorf("policy evaluation error")
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), endorsements)
-	assert.Error(t, err)
-	assert.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
 }
 
 func TestKeylevelValidationPvtData(t *testing.T) {
@@ -138,7 +138,7 @@ func TestKeylevelValidationPvtData(t *testing.T) {
 	rwsbu.AddToPvtAndHashedWriteSet("cc", "coll", "key", []byte("value"))
 	rws := rwsbu.GetTxReadWriteSet()
 	rwsb, err := rws.ToProtoBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	prp := []byte("barf")
 	block := buildBlockWithTxs(buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")), buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")))
 
@@ -149,13 +149,13 @@ func TestKeylevelValidationPvtData(t *testing.T) {
 	}()
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pe.EvaluateRV = fmt.Errorf("policy evaluation error")
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.Error(t, err)
-	assert.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
 }
 
 func TestKeylevelValidationMetaUpdate(t *testing.T) {
@@ -176,7 +176,7 @@ func TestKeylevelValidationMetaUpdate(t *testing.T) {
 	rwsbu.AddToMetadataWriteSet("cc", "key", map[string][]byte{})
 	rws := rwsbu.GetTxReadWriteSet()
 	rwsb, err := rws.ToProtoBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	prp := []byte("barf")
 	block := buildBlockWithTxs(buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")), buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")))
 
@@ -187,13 +187,13 @@ func TestKeylevelValidationMetaUpdate(t *testing.T) {
 	}()
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pe.EvaluateRV = fmt.Errorf("policy evaluation error")
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.Error(t, err)
-	assert.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
 }
 
 func TestKeylevelValidationPvtMetaUpdate(t *testing.T) {
@@ -214,7 +214,7 @@ func TestKeylevelValidationPvtMetaUpdate(t *testing.T) {
 	rwsbu.AddToHashedMetadataWriteSet("cc", "coll", "key", map[string][]byte{})
 	rws := rwsbu.GetTxReadWriteSet()
 	rwsb, err := rws.ToProtoBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	prp := []byte("barf")
 	block := buildBlockWithTxs(buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")), buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")))
 
@@ -225,13 +225,13 @@ func TestKeylevelValidationPvtMetaUpdate(t *testing.T) {
 	}()
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pe.EvaluateRV = fmt.Errorf("policy evaluation error")
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.Error(t, err)
-	assert.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
 }
 
 func TestKeylevelValidationPolicyRetrievalFailure(t *testing.T) {
@@ -258,8 +258,8 @@ func TestKeylevelValidationPolicyRetrievalFailure(t *testing.T) {
 	}()
 
 	err := validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.Error(t, err)
-	assert.IsType(t, &errors.VSCCExecutionFailureError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &errors.VSCCExecutionFailureError{}, err)
 }
 
 func TestKeylevelValidationLedgerFailures(t *testing.T) {
@@ -279,7 +279,7 @@ func TestKeylevelValidationLedgerFailures(t *testing.T) {
 		validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("InvalidCollNameError", func(t *testing.T) {
@@ -289,7 +289,7 @@ func TestKeylevelValidationLedgerFailures(t *testing.T) {
 		validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("I/O error", func(t *testing.T) {
@@ -299,8 +299,8 @@ func TestKeylevelValidationLedgerFailures(t *testing.T) {
 		validator := NewKeyLevelValidator(NewV13Evaluator(&mockPolicyEvaluator{}, pm), pm)
 
 		err := validator.Validate("cc", 1, 0, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-		assert.Error(t, err)
-		assert.IsType(t, &errors.VSCCExecutionFailureError{}, err)
+		require.Error(t, err)
+		require.IsType(t, &errors.VSCCExecutionFailureError{}, err)
 	})
 }
 
@@ -324,7 +324,7 @@ func TestCCEPValidation(t *testing.T) {
 	rwsbu.AddToHashedReadSet("cc", "coll", "readpvtkey", nil)
 	rws := rwsbu.GetTxReadWriteSet()
 	rwsb, err := rws.ToProtoBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	prp := []byte("barf")
 	block := buildBlockWithTxs(buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")), buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")))
 
@@ -335,13 +335,13 @@ func TestCCEPValidation(t *testing.T) {
 	}()
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pe.EvaluateRV = fmt.Errorf("policy evaluation error")
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.Error(t, err)
-	assert.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
 }
 
 func TestCCEPValidationReads(t *testing.T) {
@@ -361,7 +361,7 @@ func TestCCEPValidationReads(t *testing.T) {
 	rwsbu.AddToReadSet("cc", "readkey", nil)
 	rws := rwsbu.GetTxReadWriteSet()
 	rwsb, err := rws.ToProtoBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	prp := []byte("barf")
 	block := buildBlockWithTxs(buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")), buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")))
 
@@ -372,13 +372,13 @@ func TestCCEPValidationReads(t *testing.T) {
 	}()
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pe.EvaluateRV = fmt.Errorf("policy evaluation error")
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.Error(t, err)
-	assert.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
 }
 
 func TestOnlySBEPChecked(t *testing.T) {
@@ -413,7 +413,7 @@ func TestOnlySBEPChecked(t *testing.T) {
 	}
 
 	err := validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// we also test with a read-write set that has a read as well as a write
 	rwsbu := rwsetutil.NewRWSetBuilder()
@@ -423,7 +423,7 @@ func TestOnlySBEPChecked(t *testing.T) {
 	rwsb, _ = rws.ToProtoBytes()
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestCCEPValidationPvtReads(t *testing.T) {
@@ -443,7 +443,7 @@ func TestCCEPValidationPvtReads(t *testing.T) {
 	rwsbu.AddToHashedReadSet("cc", "coll", "readpvtkey", nil)
 	rws := rwsbu.GetTxReadWriteSet()
 	rwsb, err := rws.ToProtoBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	prp := []byte("barf")
 	block := buildBlockWithTxs(buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")), buildTXWithRwset(rwsetUpdatingMetadataFor("cc", "key")))
 
@@ -454,13 +454,13 @@ func TestCCEPValidationPvtReads(t *testing.T) {
 	}()
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pe.EvaluateRV = fmt.Errorf("policy evaluation error")
 
 	err = validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.Error(t, err)
-	assert.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
 }
 
 func TestKeylevelValidationFailure(t *testing.T) {
@@ -489,6 +489,6 @@ func TestKeylevelValidationFailure(t *testing.T) {
 	}()
 
 	err := validator.Validate("cc", 1, 1, rwsb, prp, []byte("CCEP"), []*pb.Endorsement{})
-	assert.Error(t, err)
-	assert.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &errors.VSCCEndorsementPolicyError{}, err)
 }

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpgradeDBsCmd(t *testing.T) {
@@ -21,5 +21,5 @@ func TestUpgradeDBsCmd(t *testing.T) {
 	defer os.RemoveAll(testPath)
 
 	cmd := upgradeDBsCmd()
-	assert.NoError(t, cmd.Execute())
+	require.NoError(t, cmd.Execute())
 }

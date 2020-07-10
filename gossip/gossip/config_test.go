@@ -18,10 +18,9 @@ import (
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/hyperledger/fabric/gossip/gossip"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGlobalConfig(t *testing.T) {
@@ -59,12 +58,12 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.gossip.msgExpirationFactor", "10")
 
 	coreConfig, err := gossip.GlobalConfig(endpoint, nil, bootstrap...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, p, err := net.SplitHostPort(endpoint)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	port, err := strconv.ParseInt(p, 10, 64)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedConfig := &gossip.Config{
 		BindPort:                     int(port),
@@ -101,7 +100,7 @@ func TestGlobalConfig(t *testing.T) {
 		MsgExpirationFactor:          10,
 	}
 
-	assert.Equal(t, expectedConfig, coreConfig)
+	require.Equal(t, expectedConfig, coreConfig)
 
 }
 
@@ -114,12 +113,12 @@ func TestGlobalConfigDefaults(t *testing.T) {
 	viper.Set("peer.gossip.externalEndpoint", externalEndpoint)
 
 	coreConfig, err := gossip.GlobalConfig(endpoint, nil, bootstrap...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, p, err := net.SplitHostPort(endpoint)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	port, err := strconv.ParseInt(p, 10, 64)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedConfig := &gossip.Config{
 		BindPort:                     int(port),
@@ -156,5 +155,5 @@ func TestGlobalConfigDefaults(t *testing.T) {
 		MsgExpirationFactor:          20,
 	}
 
-	assert.Equal(t, expectedConfig, coreConfig)
+	require.Equal(t, expectedConfig, coreConfig)
 }

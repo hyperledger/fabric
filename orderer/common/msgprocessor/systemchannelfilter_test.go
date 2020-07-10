@@ -20,7 +20,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //go:generate counterfeiter -o mocks/metadata_validator.go --fake-name MetadataValidator . metadataValidator
@@ -166,12 +166,12 @@ func TestGoodProposal(t *testing.T) {
 	mv := &mocks.MetadataValidator{}
 
 	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
-	assert.Nil(t, err, "Error constructing configtx")
+	require.Nil(t, err, "Error constructing configtx")
 	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
 
 	wrapped := wrapConfigTx(ingressTx)
 
-	assert.NoError(t, NewSystemChannelFilter(mcc.ms, mcc, mv).Apply(wrapped), "Did not accept valid transaction")
+	require.NoError(t, NewSystemChannelFilter(mcc.ms, mcc, mv).Apply(wrapped), "Did not accept valid transaction")
 }
 
 func TestProposalRejectedByConfig(t *testing.T) {
@@ -182,16 +182,16 @@ func TestProposalRejectedByConfig(t *testing.T) {
 	mv := &mocks.MetadataValidator{}
 
 	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
-	assert.Nil(t, err, "Error constructing configtx")
+	require.Nil(t, err, "Error constructing configtx")
 	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
 
 	wrapped := wrapConfigTx(ingressTx)
 
 	err = NewSystemChannelFilter(mcc.ms, mcc, mv).Apply(wrapped)
 
-	assert.NotNil(t, err, "Did not accept valid transaction")
-	assert.Regexp(t, mcc.NewChannelConfigErr.Error(), err)
-	assert.Len(t, mcc.newChains, 0, "Proposal should not have created a new chain")
+	require.NotNil(t, err, "Did not accept valid transaction")
+	require.Regexp(t, mcc.NewChannelConfigErr.Error(), err)
+	require.Len(t, mcc.newChains, 0, "Proposal should not have created a new chain")
 }
 
 func TestNumChainsExceeded(t *testing.T) {
@@ -203,15 +203,15 @@ func TestNumChainsExceeded(t *testing.T) {
 	mv := &mocks.MetadataValidator{}
 
 	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
-	assert.Nil(t, err, "Error constructing configtx")
+	require.Nil(t, err, "Error constructing configtx")
 	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
 
 	wrapped := wrapConfigTx(ingressTx)
 
 	err = NewSystemChannelFilter(mcc.ms, mcc, mv).Apply(wrapped)
 
-	assert.NotNil(t, err, "Transaction had created too many channels")
-	assert.Regexp(t, "exceed maximimum number", err)
+	require.NotNil(t, err, "Transaction had created too many channels")
+	require.Regexp(t, "exceed maximimum number", err)
 }
 
 func TestMaintenanceMode(t *testing.T) {
@@ -222,13 +222,13 @@ func TestMaintenanceMode(t *testing.T) {
 	mv := &mocks.MetadataValidator{}
 
 	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
-	assert.Nil(t, err, "Error constructing configtx")
+	require.Nil(t, err, "Error constructing configtx")
 	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
 
 	wrapped := wrapConfigTx(ingressTx)
 
 	err = NewSystemChannelFilter(mcc.ms, mcc, mv).Apply(wrapped)
-	assert.EqualError(t, err, "channel creation is not permitted: maintenance mode")
+	require.EqualError(t, err, "channel creation is not permitted: maintenance mode")
 }
 
 func TestBadProposal(t *testing.T) {
@@ -237,7 +237,7 @@ func TestBadProposal(t *testing.T) {
 	sysFilter := NewSystemChannelFilter(mcc.ms, mcc, mv)
 	t.Run("BadPayload", func(t *testing.T) {
 		err := sysFilter.Apply(&cb.Envelope{Payload: []byte("garbage payload")})
-		assert.Regexp(t, "bad payload", err)
+		require.Regexp(t, "bad payload", err)
 	})
 
 	for _, tc := range []struct {
@@ -426,8 +426,8 @@ func TestBadProposal(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := sysFilter.Apply(&cb.Envelope{Payload: protoutil.MarshalOrPanic(tc.payload)})
-			assert.NotNil(t, err)
-			assert.Regexp(t, tc.regexp, err.Error())
+			require.NotNil(t, err)
+			require.Regexp(t, tc.regexp, err.Error())
 		})
 	}
 }
@@ -441,7 +441,7 @@ func TestFailedMetadataValidation(t *testing.T) {
 	mcc := newMockChainCreator()
 
 	configUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, nil, genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir()))
-	assert.NoError(t, err, "Error constructing configtx")
+	require.NoError(t, err, "Error constructing configtx")
 	ingressTx := makeConfigTxFromConfigUpdateTx(configUpdate)
 
 	wrapped := wrapConfigTx(ingressTx)
@@ -449,12 +449,12 @@ func TestFailedMetadataValidation(t *testing.T) {
 	err = NewSystemChannelFilter(mcc.ms, mcc, mv).Apply(wrapped)
 
 	// validate that the filter application returns error
-	assert.EqualError(t, err, "consensus metadata update for channel creation is invalid: bananas", "Transaction metadata validation fails")
+	require.EqualError(t, err, "consensus metadata update for channel creation is invalid: bananas", "Transaction metadata validation fails")
 
 	// validate arguments to ValidateConsensusMetadata
-	assert.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
+	require.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
 	om, nm, nc := mv.ValidateConsensusMetadataArgsForCall(0)
-	assert.True(t, nc)
-	assert.Equal(t, []byte("old consensus metadata"), om)
-	assert.Equal(t, []byte("new consensus metadata"), nm)
+	require.True(t, nc)
+	require.Equal(t, []byte("old consensus metadata"), om)
+	require.Equal(t, []byte("new consensus metadata"), nm)
 }

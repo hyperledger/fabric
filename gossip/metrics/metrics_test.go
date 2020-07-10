@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMetrics(t *testing.T) {
@@ -28,32 +28,32 @@ func TestMetrics(t *testing.T) {
 	gossipMetrics := NewGossipMetrics(provider)
 
 	// make sure all metrics were created
-	assert.NotNil(t, gossipMetrics)
+	require.NotNil(t, gossipMetrics)
 
-	assert.NotNil(t, gossipMetrics.StateMetrics)
-	assert.NotNil(t, gossipMetrics.StateMetrics.Height)
-	assert.NotNil(t, gossipMetrics.StateMetrics.CommitDuration)
-	assert.NotNil(t, gossipMetrics.StateMetrics.PayloadBufferSize)
+	require.NotNil(t, gossipMetrics.StateMetrics)
+	require.NotNil(t, gossipMetrics.StateMetrics.Height)
+	require.NotNil(t, gossipMetrics.StateMetrics.CommitDuration)
+	require.NotNil(t, gossipMetrics.StateMetrics.PayloadBufferSize)
 
-	assert.NotNil(t, gossipMetrics.ElectionMetrics)
-	assert.NotNil(t, gossipMetrics.ElectionMetrics.Declaration)
+	require.NotNil(t, gossipMetrics.ElectionMetrics)
+	require.NotNil(t, gossipMetrics.ElectionMetrics.Declaration)
 
-	assert.NotNil(t, gossipMetrics.CommMetrics)
-	assert.NotNil(t, gossipMetrics.CommMetrics.SentMessages)
-	assert.NotNil(t, gossipMetrics.CommMetrics.ReceivedMessages)
-	assert.NotNil(t, gossipMetrics.CommMetrics.BufferOverflow)
+	require.NotNil(t, gossipMetrics.CommMetrics)
+	require.NotNil(t, gossipMetrics.CommMetrics.SentMessages)
+	require.NotNil(t, gossipMetrics.CommMetrics.ReceivedMessages)
+	require.NotNil(t, gossipMetrics.CommMetrics.BufferOverflow)
 
-	assert.NotNil(t, gossipMetrics.MembershipMetrics)
-	assert.NotNil(t, gossipMetrics.MembershipMetrics.Total)
+	require.NotNil(t, gossipMetrics.MembershipMetrics)
+	require.NotNil(t, gossipMetrics.MembershipMetrics.Total)
 
-	assert.NotNil(t, gossipMetrics.PrivdataMetrics)
-	assert.NotNil(t, gossipMetrics.PrivdataMetrics.CommitPrivateDataDuration)
-	assert.NotNil(t, gossipMetrics.PrivdataMetrics.FetchDuration)
-	assert.NotNil(t, gossipMetrics.PrivdataMetrics.ListMissingPrivateDataDuration)
-	assert.NotNil(t, gossipMetrics.PrivdataMetrics.PurgeDuration)
-	assert.NotNil(t, gossipMetrics.PrivdataMetrics.ValidationDuration)
-	assert.NotNil(t, gossipMetrics.PrivdataMetrics.SendDuration)
-	assert.NotNil(t, gossipMetrics.PrivdataMetrics.ReconciliationDuration)
-	assert.NotNil(t, gossipMetrics.PrivdataMetrics.PullDuration)
-	assert.NotNil(t, gossipMetrics.PrivdataMetrics.RetrieveDuration)
+	require.NotNil(t, gossipMetrics.PrivdataMetrics)
+	require.NotNil(t, gossipMetrics.PrivdataMetrics.CommitPrivateDataDuration)
+	require.NotNil(t, gossipMetrics.PrivdataMetrics.FetchDuration)
+	require.NotNil(t, gossipMetrics.PrivdataMetrics.ListMissingPrivateDataDuration)
+	require.NotNil(t, gossipMetrics.PrivdataMetrics.PurgeDuration)
+	require.NotNil(t, gossipMetrics.PrivdataMetrics.ValidationDuration)
+	require.NotNil(t, gossipMetrics.PrivdataMetrics.SendDuration)
+	require.NotNil(t, gossipMetrics.PrivdataMetrics.ReconciliationDuration)
+	require.NotNil(t, gossipMetrics.PrivdataMetrics.PullDuration)
+	require.NotNil(t, gossipMetrics.PrivdataMetrics.RetrieveDuration)
 }

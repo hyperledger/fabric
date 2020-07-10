@@ -42,8 +42,8 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -184,7 +184,7 @@ func (ds *deliverServer) deliverBlocks(stream orderer.AtomicBroadcast_DeliverSer
 func loadPEM(cryptoPath, suffix string, t *testing.T) []byte {
 	ordererTLSPath := filepath.Join(cryptoPath, "ordererOrganizations", "example.com", "orderers", "127.0.0.1.example.com", "tls")
 	b, err := ioutil.ReadFile(filepath.Join(ordererTLSPath, suffix))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return b
 }
 
@@ -245,14 +245,14 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 
 	systemChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
 	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	applicationChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "testchannel", "SampleOrgChannel")
 	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	testchannelGB := &common.Block{}
-	assert.NoError(t, proto.Unmarshal(applicationChannelBlockBytes, testchannelGB))
+	require.NoError(t, proto.Unmarshal(applicationChannelBlockBytes, testchannelGB))
 	testchannelGB.Header.Number = 0
 
 	systemChannelGenesisBlock := &common.Block{
@@ -273,7 +273,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 	channelCreationBlock := channelCreationBlock("system", "testchannel", systemChannelGenesisBlock)
 
 	bootBlock := &common.Block{}
-	assert.NoError(t, proto.Unmarshal(systemChannelBlockBytes, bootBlock))
+	require.NoError(t, proto.Unmarshal(systemChannelBlockBytes, bootBlock))
 	bootBlock.Header.Number = 2
 	bootBlock.Header.PreviousHash = protoutil.BlockHeaderHash(channelCreationBlock.Header)
 	injectOrdererEndpoint(t, bootBlock, deliverServer.srv.Address())
@@ -327,7 +327,7 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 	vr.On("RetrieveVerifier", mock.Anything).Return(verifier)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r := &ReplicationInitiator{
 		verifierRetriever: vr,
@@ -475,15 +475,15 @@ func TestOnboardingChannelUnavailable(t *testing.T) {
 	r.ReplicateIfNeeded(bootBlock)
 
 	// Ensure all events were invoked
-	assert.True(t, probe)
-	assert.True(t, pullSystemChannel)
-	assert.True(t, pullAppChannel)
-	assert.True(t, failedPulling)
+	require.True(t, probe)
+	require.True(t, pullSystemChannel)
+	require.True(t, pullAppChannel)
+	require.True(t, failedPulling)
 
 	// Ensure system channel was fully pulled
-	assert.Len(t, blocksCommittedToSystemLedger, 3)
+	require.Len(t, blocksCommittedToSystemLedger, 3)
 	// But the application channel only contains 1 block (the genesis block)
-	assert.Len(t, blocksCommittedToApplicationLedger, 1)
+	require.Len(t, blocksCommittedToApplicationLedger, 1)
 }
 
 func TestReplicate(t *testing.T) {
@@ -508,7 +508,7 @@ func TestReplicate(t *testing.T) {
 
 	applicationChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "testchannel", "SampleOrgChannel")
 	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	caCert := loadPEM(cryptoPath, "ca.crt", t)
 	key := loadPEM(cryptoPath, "server.key", t)
@@ -517,22 +517,22 @@ func TestReplicate(t *testing.T) {
 	prepareTestCase := func() *deliverServer {
 		deliverServer := newServerNode(t, key, cert)
 
-		assert.NoError(t, proto.Unmarshal(applicationChannelBlockBytes, &bootBlock))
+		require.NoError(t, proto.Unmarshal(applicationChannelBlockBytes, &bootBlock))
 		bootBlock.Header.Number = 10
 		injectOrdererEndpoint(t, &bootBlock, deliverServer.srv.Address())
 
 		copyBlock := func(block *common.Block, seq uint64) common.Block {
 			res := common.Block{}
-			assert.NoError(t, proto.Unmarshal(protoutil.MarshalOrPanic(block), &res))
+			require.NoError(t, proto.Unmarshal(protoutil.MarshalOrPanic(block), &res))
 			res.Header.Number = seq
 			return res
 		}
 
 		bootBlockWithCorruptedPayload = copyBlock(&bootBlock, 100)
 		env := &common.Envelope{}
-		assert.NoError(t, proto.Unmarshal(bootBlockWithCorruptedPayload.Data.Data[0], env))
+		require.NoError(t, proto.Unmarshal(bootBlockWithCorruptedPayload.Data.Data[0], env))
 		payload := &common.Payload{}
-		assert.NoError(t, proto.Unmarshal(env.Payload, payload))
+		require.NoError(t, proto.Unmarshal(env.Payload, payload))
 		payload.Data = []byte{1, 2, 3}
 
 		deliverServer.blockResponses <- &orderer.DeliverResponse{
@@ -584,7 +584,7 @@ func TestReplicate(t *testing.T) {
 			zapHooks: []func(entry zapcore.Entry) error{
 				func(entry zapcore.Entry) error {
 					hooksActivated = true
-					assert.Equal(t, entry.Message, "Booted with a genesis block, replication isn't an option")
+					require.Equal(t, entry.Message, "Booted with a genesis block, replication isn't an option")
 					return nil
 				},
 			},
@@ -641,7 +641,7 @@ func TestReplicate(t *testing.T) {
 			zapHooks: []func(entry zapcore.Entry) error{
 				func(entry zapcore.Entry) error {
 					hooksActivated = true
-					assert.Equal(t, entry.Message, "Replication isn't needed")
+					require.Equal(t, entry.Message, "Replication isn't needed")
 					return nil
 				},
 			},
@@ -747,7 +747,7 @@ func TestReplicate(t *testing.T) {
 			vr.On("RetrieveVerifier", mock.Anything).Return(verifier)
 
 			cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			r := &ReplicationInitiator{
 				verifierRetriever: vr,
@@ -761,7 +761,7 @@ func TestReplicate(t *testing.T) {
 			}
 
 			if testCase.panicValue != "" {
-				assert.PanicsWithValue(t, testCase.panicValue, func() {
+				require.PanicsWithValue(t, testCase.panicValue, func() {
 					testCase.replicateFunc(r, testCase.bootBlock)
 				})
 				return
@@ -774,13 +774,13 @@ func TestReplicate(t *testing.T) {
 			testCase.replicateFunc(r, testCase.bootBlock)
 
 			// Ensure we ran the hooks for a test case that doesn't panic
-			assert.True(t, hooksActivated)
+			require.True(t, hooksActivated)
 			// Restore the flag for the next iteration
 			defer func() {
 				hooksActivated = false
 			}()
 
-			assert.Equal(t, testCase.shouldConnect, atomic.LoadInt32(&deliverServer.isConnected) == int32(1))
+			require.Equal(t, testCase.shouldConnect, atomic.LoadInt32(&deliverServer.isConnected) == int32(1))
 			verifier.AssertNumberOfCalls(t, "VerifyBlockSignature", testCase.verificationCount)
 		})
 	}
@@ -896,9 +896,9 @@ func TestInactiveChainReplicator(t *testing.T) {
 			for chain := range trackedChains {
 				replicatedChains = append(replicatedChains, chain)
 			}
-			assert.Equal(t, testCase.chainsExpectedToBeReplicated, replicatedChains)
+			require.Equal(t, testCase.chainsExpectedToBeReplicated, replicatedChains)
 			replicator.AssertNumberOfCalls(t, "ReplicateChains", testCase.ReplicateChainsExpectedCallCount)
-			assert.Equal(t, testCase.expectedRegisteredChains, registeredChains)
+			require.Equal(t, testCase.expectedRegisteredChains, registeredChains)
 		})
 	}
 }
@@ -909,21 +909,21 @@ func TestInactiveChainReplicatorChannels(t *testing.T) {
 		chains2CreationCallbacks: make(map[string]chainCreation),
 	}
 	icr.TrackChain("foo", &common.Block{}, func() {})
-	assert.Contains(t, icr.Channels(), cluster.ChannelGenesisBlock{ChannelName: "foo", GenesisBlock: &common.Block{}})
+	require.Contains(t, icr.Channels(), cluster.ChannelGenesisBlock{ChannelName: "foo", GenesisBlock: &common.Block{}})
 
 	icr.TrackChain("bar", nil, func() {})
-	assert.Contains(t, icr.Channels(), cluster.ChannelGenesisBlock{ChannelName: "bar", GenesisBlock: nil})
+	require.Contains(t, icr.Channels(), cluster.ChannelGenesisBlock{ChannelName: "bar", GenesisBlock: nil})
 
 	icr.Close()
 }
 
 func injectConsenterCertificate(t *testing.T, block *common.Block, tlsCert []byte) {
 	env, err := protoutil.ExtractEnvelope(block, 0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	consensus := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Values[channelconfig.ConsensusTypeKey]
 	consensus.Value = protoutil.MarshalOrPanic(&orderer.ConsensusType{
 		Type: "etcdraft",
@@ -947,11 +947,11 @@ func injectOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
 	ordererAddresses := channelconfig.OrdererAddressesValue([]string{endpoint})
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Replace the orderer addresses
 	confEnv.Config.ChannelGroup.Values[ordererAddresses.Key()].Value = protoutil.MarshalOrPanic(ordererAddresses.Value())
 	// And put it back into the block
@@ -967,10 +967,10 @@ func TestVerifierLoader(t *testing.T) {
 
 	systemChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
 	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	configBlock := &common.Block{}
-	assert.NoError(t, proto.Unmarshal(systemChannelBlockBytes, configBlock))
+	require.NoError(t, proto.Unmarshal(systemChannelBlockBytes, configBlock))
 
 	verifier := &cluster_mocks.BlockVerifier{}
 
@@ -1095,14 +1095,14 @@ func TestVerifierLoader(t *testing.T) {
 				f := func() {
 					verifierLoader.loadVerifiers()
 				}
-				assert.PanicsWithValue(t, testCase.expectedPanic, f)
+				require.PanicsWithValue(t, testCase.expectedPanic, f)
 			} else {
 				res := verifierLoader.loadVerifiers()
-				assert.Equal(t, testCase.expectedResult, res)
+				require.Equal(t, testCase.expectedResult, res)
 			}
 
-			assert.Equal(t, testCase.onFailureInvoked, onFailureInvoked)
-			assert.Empty(t, testCase.expectedLoggedMessages)
+			require.Equal(t, testCase.onFailureInvoked, onFailureInvoked)
+			require.Empty(t, testCase.expectedLoggedMessages)
 		})
 	}
 }
@@ -1113,20 +1113,20 @@ func TestValidateBootstrapBlock(t *testing.T) {
 
 	systemChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "system", "SampleSoloSystemChannel")
 	systemChannelBlockBytes, err := ioutil.ReadFile(systemChannelBlockPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	applicationChannelBlockPath := generateBootstrapBlock(t, tempDir, configtxgen, "mychannel", "SampleOrgChannel")
 	applicationChannelBlockBytes, err := ioutil.ReadFile(applicationChannelBlockPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	appBlock := &common.Block{}
-	assert.NoError(t, proto.Unmarshal(applicationChannelBlockBytes, appBlock))
+	require.NoError(t, proto.Unmarshal(applicationChannelBlockBytes, appBlock))
 
 	systemBlock := &common.Block{}
-	assert.NoError(t, proto.Unmarshal(systemChannelBlockBytes, systemBlock))
+	require.NoError(t, proto.Unmarshal(systemChannelBlockBytes, systemBlock))
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, testCase := range []struct {
 		description   string
@@ -1165,11 +1165,11 @@ func TestValidateBootstrapBlock(t *testing.T) {
 		t.Run(testCase.description, func(t *testing.T) {
 			err := ValidateBootstrapBlock(testCase.block, cryptoProvider)
 			if testCase.expectedError == "" {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				return
 			}
 
-			assert.EqualError(t, err, testCase.expectedError)
+			require.EqualError(t, err, testCase.expectedError)
 		})
 	}
 }
@@ -1230,14 +1230,14 @@ func TestCreateReplicator(t *testing.T) {
 	ledgerFactory.On("ChannelIDs").Return([]string{"mychannel"})
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	signer := &onboarding_mocks.SignerSerializer{}
 	r := NewReplicationInitiator(ledgerFactory, bootBlock, &localconfig.TopLevel{}, comm.SecureOptions{}, signer, cryptoProvider)
 
 	err = r.verifierRetriever.RetrieveVerifier("mychannel").VerifyBlockSignature(nil, nil)
-	assert.EqualError(t, err, "implicit policy evaluation failed - 0 sub-policies were satisfied, but this policy requires 1 of the 'Writers' sub-policies to be satisfied")
+	require.EqualError(t, err, "implicit policy evaluation failed - 0 sub-policies were satisfied, but this policy requires 1 of the 'Writers' sub-policies to be satisfied")
 
 	err = r.verifierRetriever.RetrieveVerifier("system").VerifyBlockSignature(nil, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

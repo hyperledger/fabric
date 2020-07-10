@@ -33,7 +33,6 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -976,11 +975,11 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	}
 
 	_, err = pdp.RetrievePvtdata(pvtdataToRetrieve)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	maxRetries := int(testConfig.PullRetryThreshold / pullRetrySleepInterval)
-	assert.Equal(t, fakeSleeper.SleepCallCount() <= maxRetries, true)
-	assert.Equal(t, fakeSleeper.SleepArgsForCall(0), pullRetrySleepInterval)
+	require.Equal(t, fakeSleeper.SleepCallCount() <= maxRetries, true)
+	require.Equal(t, fakeSleeper.SleepArgsForCall(0), pullRetrySleepInterval)
 }
 
 func TestSkipPullingAllInvalidTransactions(t *testing.T) {
@@ -1071,14 +1070,14 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 	pdp.fetcher = newFetcher
 
 	retrievedPvtdata, err := pdp.RetrievePvtdata(pvtdataToRetrieve)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	blockPvtdata := sortBlockPvtdata(retrievedPvtdata.GetBlockPvtdata())
-	assert.Equal(t, expectedBlockPvtdata, blockPvtdata)
+	require.Equal(t, expectedBlockPvtdata, blockPvtdata)
 
 	// Check sleep and fetch were never called
-	assert.Equal(t, fakeSleeper.SleepCallCount(), 0)
-	assert.Len(t, newFetcher.Calls, 0)
+	require.Equal(t, fakeSleeper.SleepCallCount(), 0)
+	require.Len(t, newFetcher.Calls, 0)
 }
 
 func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
@@ -1155,7 +1154,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 			defer iterator.Close()
 			res, err := iterator.Next()
 			require.NoError(t, err, fmt.Sprintf("Failed iterating, got err %s", err))
-			assert.NotNil(t, res)
+			require.NotNil(t, res)
 		}()
 	}
 
@@ -1205,9 +1204,9 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 			require.NoError(t, err, fmt.Sprintf("Failed iterating, got err %s", err))
 			// Check that only the fetched private write set was purged because we haven't reached a blockNum that's a multiple of 5 yet
 			if i == 9 {
-				assert.Nil(t, res)
+				require.Nil(t, res)
 			} else {
-				assert.NotNil(t, res)
+				require.NotNil(t, res)
 			}
 		}()
 	}
@@ -1229,9 +1228,9 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 			require.NoError(t, err, fmt.Sprintf("Failed iterating, got err %s", err))
 			// Check that the first 5 sets have been purged alongside the 9th set purged earlier
 			if i < 6 || i == 9 {
-				assert.Nil(t, res)
+				require.Nil(t, res)
 			} else {
-				assert.NotNil(t, res)
+				require.NotNil(t, res)
 			}
 		}()
 	}
@@ -1243,7 +1242,7 @@ func TestFetchStats(t *testing.T) {
 		fromTransientStore: 2,
 		fromRemotePeer:     3,
 	}
-	assert.Equal(t, "(1 from local cache, 2 from transient store, 3 from other peers)", fetchStats.String())
+	require.Equal(t, "(1 from local cache, 2 from transient store, 3 from other peers)", fetchStats.String())
 }
 
 func testRetrievePvtdataSuccess(t *testing.T,
@@ -1273,12 +1272,12 @@ func testRetrievePvtdataSuccess(t *testing.T,
 	require.NotNil(t, pdp, scenario)
 
 	retrievedPvtdata, err := pdp.RetrievePvtdata(pvtdataToRetrieve)
-	assert.NoError(t, err, scenario)
+	require.NoError(t, err, scenario)
 
 	// sometimes the collection private write sets are added out of order
 	// so we need to sort it to check equality with expected
 	blockPvtdata := sortBlockPvtdata(retrievedPvtdata.GetBlockPvtdata())
-	assert.Equal(t, expectedBlockPvtdata, blockPvtdata, scenario)
+	require.Equal(t, expectedBlockPvtdata, blockPvtdata, scenario)
 
 	// Test pvtdata is purged from store on Done() call
 	testPurged(t, scenario, retrievedPvtdata, store, pvtdataToRetrieve)
@@ -1312,7 +1311,7 @@ func testRetrievePvtdataFailure(t *testing.T,
 	require.NotNil(t, pdp, scenario)
 
 	_, err = pdp.RetrievePvtdata(pvtdataToRetrieve)
-	assert.EqualError(t, err, expectedErr, scenario)
+	require.EqualError(t, err, expectedErr, scenario)
 }
 
 func setupPrivateDataProvider(t *testing.T,
@@ -1379,7 +1378,7 @@ func testPurged(t *testing.T,
 			res, err := iterator.Next()
 			require.NoError(t, err, fmt.Sprintf("Failed iterating, got err %s", err))
 
-			assert.Nil(t, res, scenario)
+			require.Nil(t, res, scenario)
 		}()
 	}
 }

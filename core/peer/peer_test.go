@@ -38,7 +38,6 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
@@ -55,7 +54,7 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 
 	// Initialize gossip service
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
 
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
@@ -100,11 +99,11 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	ledgerMgr, err := constructLedgerMgrWithTestDefaults(filepath.Join(tempdir, "ledgersData"))
 	require.NoError(t, err, "failed to create ledger manager")
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	transientStoreProvider, err := transientstore.NewStoreProvider(
 		filepath.Join(tempdir, "transientstore"),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	peerInstance := &Peer{
 		GossipService:  gossipService,
 		StoreProvider:  transientStoreProvider,
@@ -154,7 +153,7 @@ func TestInitialize(t *testing.T) {
 		nil,
 		runtime.NumCPU(),
 	)
-	assert.Equal(t, peerInstance.server, server)
+	require.Equal(t, peerInstance.server, server)
 }
 
 func TestCreateChannel(t *testing.T) {
@@ -184,7 +183,7 @@ func TestCreateChannel(t *testing.T) {
 		t.Fatalf("failed to create chain %s", err)
 	}
 
-	assert.Equal(t, testChannelID, initArg)
+	require.Equal(t, testChannelID, initArg)
 
 	// Correct ledger
 	ledger := peerInstance.GetLedger(testChannelID)
@@ -194,9 +193,9 @@ func TestCreateChannel(t *testing.T) {
 
 	// Get config block from ledger
 	block, err = ConfigBlockFromLedger(ledger)
-	assert.NoError(t, err, "Failed to get config block from ledger")
-	assert.NotNil(t, block, "Config block should not be nil")
-	assert.Equal(t, uint64(0), block.Header.Number, "config block should have been block 0")
+	require.NoError(t, err, "Failed to get config block from ledger")
+	require.NotNil(t, block, "Config block should not be nil")
+	require.Equal(t, uint64(0), block.Header.Number, "config block should have been block 0")
 
 	// Bad ledger
 	ledger = peerInstance.GetLedger("BogusChain")
@@ -229,11 +228,11 @@ func TestDeliverSupportManager(t *testing.T) {
 	manager := &DeliverChainManager{Peer: peerInstance}
 
 	chainSupport := manager.GetChain("fake")
-	assert.Nil(t, chainSupport, "chain support should be nil")
+	require.Nil(t, chainSupport, "chain support should be nil")
 
 	peerInstance.channels = map[string]*Channel{"testchain": {}}
 	chainSupport = manager.GetChain("testchain")
-	assert.NotNil(t, chainSupport, "chain support should not be nil")
+	require.NotNil(t, chainSupport, "chain support should not be nil")
 }
 
 func constructLedgerMgrWithTestDefaults(ledgersDataDir string) (*ledgermgmt.LedgerMgr, error) {

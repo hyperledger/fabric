@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type A struct {
@@ -49,9 +49,9 @@ func TestFlattenStruct(t *testing.T) {
 
 	var x []string
 	flatten("", &x, reflect.ValueOf(d))
-	assert.Equal(t, 4, len(x), "expect 3 items")
-	assert.Equal(t, x[0], "B.A = I'm 'foo'")
-	assert.Equal(t, x[1], "B.i = 42")
-	assert.Equal(t, x[2], "B.X = \"bar \"")
-	assert.Equal(t, x[3], "c =")
+	require.Equal(t, 4, len(x), "expect 3 items")
+	require.Equal(t, x[0], "B.A = I'm 'foo'")
+	require.Equal(t, x[1], "B.i = 42")
+	require.Equal(t, x[2], "B.X = \"bar \"")
+	require.Equal(t, x[3], "c =")
 }

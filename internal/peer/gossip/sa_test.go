@@ -12,8 +12,8 @@ import (
 
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMspSecurityAdvisor_OrgByPeerIdentity(t *testing.T) {
@@ -25,8 +25,8 @@ func TestMspSecurityAdvisor_OrgByPeerIdentity(t *testing.T) {
 	}
 
 	advisor := NewSecurityAdvisor(dm)
-	assert.NotNil(t, advisor.OrgByPeerIdentity([]byte("Alice")))
-	assert.NotNil(t, advisor.OrgByPeerIdentity([]byte("Bob")))
-	assert.Nil(t, advisor.OrgByPeerIdentity([]byte("Charlie")))
-	assert.Nil(t, advisor.OrgByPeerIdentity(nil))
+	require.NotNil(t, advisor.OrgByPeerIdentity([]byte("Alice")))
+	require.NotNil(t, advisor.OrgByPeerIdentity([]byte("Bob")))
+	require.Nil(t, advisor.OrgByPeerIdentity([]byte("Charlie")))
+	require.Nil(t, advisor.OrgByPeerIdentity(nil))
 }

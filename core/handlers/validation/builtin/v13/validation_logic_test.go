@@ -37,8 +37,8 @@ import (
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 //go:generate counterfeiter -o mocks/state.go -fake-name State . vsState
@@ -395,19 +395,19 @@ func TestStateBasedValidationFailure(t *testing.T) {
 	// bad path: policy validation error
 	sbvm.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&commonerrors.VSCCEndorsementPolicyError{Err: fmt.Errorf("some sbe validation err")}).Once()
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.Error(t, err)
-	assert.IsType(t, &commonerrors.VSCCEndorsementPolicyError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &commonerrors.VSCCEndorsementPolicyError{}, err)
 
 	// bad path: execution error
 	sbvm.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&commonerrors.VSCCExecutionFailureError{Err: fmt.Errorf("some sbe validation err")}).Once()
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.Error(t, err)
-	assert.IsType(t, &commonerrors.VSCCExecutionFailureError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &commonerrors.VSCCExecutionFailureError{}, err)
 
 	// good path: signed by the right MSP
 	sbvm.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvoke(t *testing.T) {
@@ -417,18 +417,18 @@ func TestInvoke(t *testing.T) {
 	var err error
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{[]byte("a")}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, []byte("a"))
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// (still) broken Envelope
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{Payload: []byte("barf")})}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, []byte("a"))
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// (still) broken Envelope
 	e := protoutil.MarshalOrPanic(&common.Envelope{Payload: protoutil.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: []byte("barf")}})})
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{e}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, []byte("a"))
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	tx, err := createTx(false)
 	if err != nil {
@@ -449,18 +449,18 @@ func TestInvoke(t *testing.T) {
 	e = protoutil.MarshalOrPanic(&common.Envelope{Payload: protoutil.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{e}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// broken tx payload
 	e = protoutil.MarshalOrPanic(&common.Envelope{Payload: protoutil.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{e}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// good path: signed by the right MSP
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestRWSetTooBig(t *testing.T) {
@@ -484,9 +484,9 @@ func TestRWSetTooBig(t *testing.T) {
 	rwsetBuilder.AddToWriteSet("lscc", "spurious", []byte("spurious"))
 
 	sr, err := rwsetBuilder.GetTxSimulationResults()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	srBytes, err := sr.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, srBytes)
 	if err != nil {
 		t.Fatalf("createTx returned err %s", err)
@@ -505,7 +505,7 @@ func TestRWSetTooBig(t *testing.T) {
 
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "LSCC can only issue a single putState upon deploy")
+	require.EqualError(t, err, "LSCC can only issue a single putState upon deploy")
 }
 
 func TestValidateDeployFail(t *testing.T) {
@@ -538,7 +538,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "No read write set for lscc was found")
+	require.EqualError(t, err, "No read write set for lscc was found")
 
 	/************************/
 	/* test bogus write set */
@@ -547,9 +547,9 @@ func TestValidateDeployFail(t *testing.T) {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder.AddToWriteSet("lscc", ccname, []byte("barf"))
 	sr, err := rwsetBuilder.GetTxSimulationResults()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	resBogusBytes, err := sr.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, resBogusBytes)
 	if err != nil {
 		t.Fatalf("createTx returned err %s", err)
@@ -568,14 +568,14 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "unmarhsalling of ChaincodeData failed, error unexpected EOF")
+	require.EqualError(t, err, "unmarhsalling of ChaincodeData failed, error unexpected EOF")
 
 	/**********************/
 	/* test bad LSCC args */
 	/**********************/
 
 	res, err := createCCDataRWset(ccname, ccname, ccver, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err = createLSCCTxPutCds(ccname, ccver, lscc.DEPLOY, res, nil, false)
 	if err != nil {
@@ -595,14 +595,14 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "Wrong number of arguments for invocation lscc(deploy): expected at least 2, received 1")
+	require.EqualError(t, err, "Wrong number of arguments for invocation lscc(deploy): expected at least 2, received 1")
 
 	/**********************/
 	/* test bad LSCC args */
 	/**********************/
 
 	res, err = createCCDataRWset(ccname, ccname, ccver, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err = createLSCCTxPutCds(ccname, ccver, lscc.DEPLOY, res, []byte("barf"), true)
 	if err != nil {
@@ -622,14 +622,14 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "GetChaincodeDeploymentSpec error error unmarshaling ChaincodeDeploymentSpec: unexpected EOF")
+	require.EqualError(t, err, "GetChaincodeDeploymentSpec error error unmarshaling ChaincodeDeploymentSpec: unexpected EOF")
 
 	/***********************/
 	/* test bad cc version */
 	/***********************/
 
 	res, err = createCCDataRWset(ccname, ccname, ccver+".1", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
 	if err != nil {
@@ -649,7 +649,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, fmt.Sprintf("expected cc version %s, found %s", ccver, ccver+".1"))
+	require.EqualError(t, err, fmt.Sprintf("expected cc version %s, found %s", ccver, ccver+".1"))
 
 	/*************/
 	/* bad rwset */
@@ -673,14 +673,14 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "txRWSet.FromProtoBytes error unexpected EOF")
+	require.EqualError(t, err, "txRWSet.FromProtoBytes error unexpected EOF")
 
 	/********************/
 	/* test bad cc name */
 	/********************/
 
 	res, err = createCCDataRWset(ccname+".badbad", ccname, ccver, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
 	if err != nil {
@@ -699,14 +699,14 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, fmt.Sprintf("expected key %s, found %s", ccname, ccname+".badbad"))
+	require.EqualError(t, err, fmt.Sprintf("expected key %s, found %s", ccname, ccname+".badbad"))
 
 	/**********************/
 	/* test bad cc name 2 */
 	/**********************/
 
 	res, err = createCCDataRWset(ccname, ccname+".badbad", ccver, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
 	if err != nil {
@@ -725,7 +725,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, fmt.Sprintf("expected cc name %s, found %s", ccname, ccname+".badbad"))
+	require.EqualError(t, err, fmt.Sprintf("expected cc name %s, found %s", ccname, ccname+".badbad"))
 
 	/************************/
 	/* test suprious writes */
@@ -742,9 +742,9 @@ func TestValidateDeployFail(t *testing.T) {
 	rwsetBuilder.AddToWriteSet("lscc", ccname, cdbytes)
 	rwsetBuilder.AddToWriteSet("bogusbogus", "key", []byte("val"))
 	sr, err = rwsetBuilder.GetTxSimulationResults()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	srBytes, err := sr.GetPubSimulationBytes()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, srBytes)
 	if err != nil {
 		t.Fatalf("createTx returned err %s", err)
@@ -762,7 +762,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, fmt.Sprintf("LSCC invocation is attempting to write to namespace bogusbogus"))
+	require.EqualError(t, err, fmt.Sprintf("LSCC invocation is attempting to write to namespace bogusbogus"))
 }
 
 func TestAlreadyDeployed(t *testing.T) {
@@ -778,7 +778,7 @@ func TestAlreadyDeployed(t *testing.T) {
 	state["lscc"][ccname] = []byte{}
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, simresres)
 	if err != nil {
@@ -803,7 +803,7 @@ func TestAlreadyDeployed(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(bl, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "Chaincode mycc is already instantiated")
+	require.EqualError(t, err, "Chaincode mycc is already instantiated")
 }
 
 func TestValidateDeployNoLedger(t *testing.T) {
@@ -819,9 +819,9 @@ func TestValidateDeployNoLedger(t *testing.T) {
 	ccver := "1"
 
 	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	res, err := createCCDataRWset(ccname, ccname, ccver, defaultPolicy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
 	if err != nil {
@@ -846,7 +846,7 @@ func TestValidateDeployNoLedger(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "could not retrieve QueryExecutor for channel testchannelid, error failed obtaining query executor")
+	require.EqualError(t, err, "could not retrieve QueryExecutor for channel testchannelid, error failed obtaining query executor")
 }
 
 func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
@@ -859,13 +859,13 @@ func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 	ccver := "1"
 
 	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	res, err := createCCDataRWset(ccname, ccname, ccver, defaultPolicy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a ChaincodeDeploymentSpec with nil ChaincodeSpec for negative test
 	cdsBytes, err := proto.Marshal(&peer.ChaincodeDeploymentSpec{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// ChaincodeDeploymentSpec/ChaincodeSpec are derived from cdsBytes (i.e., cis.ChaincodeSpec.Input.Args[2])
 	cis := &peer.ChaincodeInvocationSpec{
@@ -879,15 +879,15 @@ func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 	}
 
 	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, sid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ccid := &peer.ChaincodeID{Name: ccname, Version: ccver}
 
 	presp, err := protoutil.CreateProposalResponse(prop.Header, prop.Payload, &peer.Response{Status: 200}, res, nil, ccid, id)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	env, err := protoutil.CreateSignedTx(prop, id, presp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// good path: signed by the right MSP
 	policy, err := getSignedByMSPMemberPolicy(mspid)
@@ -902,7 +902,7 @@ func TestValidateDeployNOKNilChaincodeSpec(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "VSCC error: invocation of lscc(deploy) does not have appropriate arguments")
+	require.EqualError(t, err, "VSCC error: invocation of lscc(deploy) does not have appropriate arguments")
 }
 
 func TestValidateDeployOK(t *testing.T) {
@@ -915,9 +915,9 @@ func TestValidateDeployOK(t *testing.T) {
 	ccver := "1"
 
 	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	res, err := createCCDataRWset(ccname, ccname, ccver, defaultPolicy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
 	if err != nil {
@@ -942,7 +942,7 @@ func TestValidateDeployOK(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestValidateDeployNOK(t *testing.T) {
@@ -967,7 +967,7 @@ func TestValidateDeployNOK(t *testing.T) {
 	v := newValidationInstance(state)
 
 	policy, err := getSignedByMSPAdminPolicy(mspid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
@@ -978,7 +978,7 @@ func TestValidateDeployNOK(t *testing.T) {
 
 func testChaincodeDeployNOK(t *testing.T, ccName, ccVersion, errMsg string, v *Validator, policy []byte) {
 	res, err := createCCDataRWset(ccName, ccName, ccVersion, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccName, ccVersion, lscc.DEPLOY, res)
 	if err != nil {
@@ -992,7 +992,7 @@ func testChaincodeDeployNOK(t *testing.T, ccName, ccVersion, errMsg string, v *V
 
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, errMsg)
+	require.EqualError(t, err, errMsg)
 }
 
 func TestValidateDeployWithCollection(t *testing.T) {
@@ -1034,13 +1034,13 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	// Test 1: Deploy chaincode with a valid collection configs --> success
 	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2}}
 	ccpBytes, err := proto.Marshal(ccp)
-	assert.NoError(t, err)
-	assert.NotNil(t, ccpBytes)
+	require.NoError(t, err)
+	require.NotNil(t, ccpBytes)
 
 	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	res, err := createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTxWithCollection(ccname, ccver, lscc.DEPLOY, res, defaultPolicy, ccpBytes)
 	if err != nil {
@@ -1065,17 +1065,17 @@ func TestValidateDeployWithCollection(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test 2: Deploy the chaincode with duplicate collection configs --> no error as the
 	// peer is not in V1_2Validation mode
 	ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2, coll1}}
 	ccpBytes, err = proto.Marshal(ccp)
-	assert.NoError(t, err)
-	assert.NotNil(t, ccpBytes)
+	require.NoError(t, err)
+	require.NotNil(t, ccpBytes)
 
 	res, err = createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err = createLSCCTxWithCollection(ccname, ccver, lscc.DEPLOY, res, defaultPolicy, ccpBytes)
 	if err != nil {
@@ -1094,7 +1094,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test 3: Once the V1_2Validation is enabled, validation should fail due to duplicate collection configs
 	capabilities = &mocks.Capabilities{}
@@ -1109,7 +1109,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "collection-name: mycollection1 -- found duplicate collection configuration")
+	require.EqualError(t, err, "collection-name: mycollection1 -- found duplicate collection configuration")
 }
 
 func TestValidateDeployWithPolicies(t *testing.T) {
@@ -1126,7 +1126,7 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 	/*********************************************/
 
 	res, err := createCCDataRWset(ccname, ccname, ccver, policydsl.MarshaledAcceptAllPolicy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
 	if err != nil {
@@ -1151,14 +1151,14 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	/********************************************/
 	/* test 2: failure with a reject-all policy */
 	/********************************************/
 
 	res, err = createCCDataRWset(ccname, ccname, ccver, policydsl.MarshaledRejectAllPolicy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err = createLSCCTx(ccname, ccver, lscc.DEPLOY, res)
 	if err != nil {
@@ -1183,7 +1183,7 @@ func TestValidateDeployWithPolicies(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "chaincode instantiation policy violated, error signature set did not satisfy policy")
+	require.EqualError(t, err, "chaincode instantiation policy violated, error signature set did not satisfy policy")
 }
 
 func TestInvalidUpgrade(t *testing.T) {
@@ -1196,7 +1196,7 @@ func TestInvalidUpgrade(t *testing.T) {
 	ccver := "2"
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.UPGRADE, simresres)
 	if err != nil {
@@ -1221,7 +1221,7 @@ func TestInvalidUpgrade(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "Upgrading non-existent chaincode mycc")
+	require.EqualError(t, err, "Upgrading non-existent chaincode mycc")
 }
 
 func TestValidateUpgradeOK(t *testing.T) {
@@ -1251,7 +1251,7 @@ func TestValidateUpgradeOK(t *testing.T) {
 	state["lscc"][ccname] = cdbytes
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.UPGRADE, simresres)
 	if err != nil {
@@ -1270,7 +1270,7 @@ func TestValidateUpgradeOK(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(bl, "lscc", 0, 0, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvalidateUpgradeBadVersion(t *testing.T) {
@@ -1300,7 +1300,7 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	state["lscc"][ccname] = cdbytes
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.UPGRADE, simresres)
 	if err != nil {
@@ -1319,7 +1319,7 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(bl, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, fmt.Sprintf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", ccver))
+	require.EqualError(t, err, fmt.Sprintf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", ccver))
 }
 
 func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bool) {
@@ -1379,13 +1379,13 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 	// Note: We might change V1_2Validation with CollectionUpdate capability
 	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2}}
 	ccpBytes, err := proto.Marshal(ccp)
-	assert.NoError(t, err)
-	assert.NotNil(t, ccpBytes)
+	require.NoError(t, err)
+	require.NotNil(t, ccpBytes)
 
 	defaultPolicy, err := getSignedByMSPAdminPolicy(mspid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	res, err := createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTxWithCollection(ccname, ccver, lscc.UPGRADE, res, defaultPolicy, ccpBytes)
 	if err != nil {
@@ -1405,9 +1405,9 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 	}
 	err = v.Validate(bl, "lscc", 0, 0, policy)
 	if V1_2Validation {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	} else {
-		assert.Error(t, err, "LSCC can only issue a single putState upon deploy/upgrade")
+		require.Error(t, err, "LSCC can only issue a single putState upon deploy/upgrade")
 	}
 
 	state["lscc"][privdata.BuildCollectionKVSKey(ccname)] = ccpBytes
@@ -1422,11 +1422,11 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 		// V1_2Validation mode --> error
 		ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
-		assert.NoError(t, err)
-		assert.NotNil(t, ccpBytes)
+		require.NoError(t, err)
+		require.NotNil(t, ccpBytes)
 
 		res, err = createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		tx, err = createLSCCTxWithCollection(ccname, ccver, lscc.UPGRADE, res, defaultPolicy, ccpBytes)
 		if err != nil {
@@ -1445,7 +1445,7 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 			Header: &common.BlockHeader{},
 		}
 		err = v.Validate(bl, "lscc", 0, 0, policy)
-		assert.Error(t, err, "Some existing collection configurations are missing in the new collection configuration package")
+		require.Error(t, err, "Some existing collection configurations are missing in the new collection configuration package")
 
 		ccver = "3"
 
@@ -1453,11 +1453,11 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 		// V1_2Validation mode --> error
 		ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
-		assert.NoError(t, err)
-		assert.NotNil(t, ccpBytes)
+		require.NoError(t, err)
+		require.NotNil(t, ccpBytes)
 
 		res, err = createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		tx, err = createLSCCTxWithCollection(ccname, ccver, lscc.UPGRADE, res, defaultPolicy, ccpBytes)
 		if err != nil {
@@ -1476,18 +1476,18 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 			Header: &common.BlockHeader{},
 		}
 		err = v.Validate(bl, "lscc", 0, 0, policy)
-		assert.Error(t, err, "existing collection named mycollection2 is missing in the new collection configuration package")
+		require.Error(t, err, "existing collection named mycollection2 is missing in the new collection configuration package")
 
 		ccver = "3"
 
 		// Test 4: valid collection config config and peer in V1_2Validation mode --> success
 		ccp = &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2, coll3}}
 		ccpBytes, err = proto.Marshal(ccp)
-		assert.NoError(t, err)
-		assert.NotNil(t, ccpBytes)
+		require.NoError(t, err)
+		require.NotNil(t, ccpBytes)
 
 		res, err = createCCDataRWsetWithCollection(ccname, ccname, ccver, defaultPolicy, ccpBytes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		tx, err = createLSCCTxWithCollection(ccname, ccver, lscc.UPGRADE, res, defaultPolicy, ccpBytes)
 		if err != nil {
@@ -1506,7 +1506,7 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 			Header: &common.BlockHeader{},
 		}
 		err = v.Validate(bl, "lscc", 0, 0, policy)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -1543,7 +1543,7 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 	state["lscc"][ccname] = cdbytes
 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.UPGRADE, simresres)
 	if err != nil {
@@ -1562,7 +1562,7 @@ func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(bl, "lscc", 0, 0, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestValidateUpgradeWithNewFailAllIP(t *testing.T) {
@@ -1623,7 +1623,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, 
 	simresres, err := createCCDataRWset(ccname, ccname, ccver,
 		policydsl.MarshaledRejectAllPolicy, // here's where we specify the IP of the upgraded cc
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.UPGRADE, simresres)
 	if err != nil {
@@ -1649,10 +1649,10 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, 
 	}
 	if expecterr {
 		err = v.Validate(bl, "lscc", 0, 0, policy)
-		assert.Error(t, err)
+		require.Error(t, err)
 	} else {
 		err = v.Validate(bl, "lscc", 0, 0, policy)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -1682,7 +1682,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 
 	ccver = "2"
 	simresres, err := createCCDataRWset(ccname, ccname, ccver, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := createLSCCTx(ccname, ccver, lscc.UPGRADE, simresres)
 	if err != nil {
@@ -1707,7 +1707,7 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 	err = v.Validate(bl, "lscc", 0, 0, policy)
-	assert.EqualError(t, err, "chaincode instantiation policy violated, error signature set did not satisfy policy")
+	require.EqualError(t, err, "chaincode instantiation policy violated, error signature set did not satisfy policy")
 }
 
 var id msp.SigningIdentity
@@ -1757,8 +1757,8 @@ func testValidateCollection(t *testing.T, v *Validator, collectionConfigs []*pee
 ) error {
 	ccp := &peer.CollectionConfigPackage{Config: collectionConfigs}
 	ccpBytes, err := proto.Marshal(ccp)
-	assert.NoError(t, err)
-	assert.NotNil(t, ccpBytes)
+	require.NoError(t, err)
+	require.NotNil(t, ccpBytes)
 
 	lsccargs := [][]byte{nil, nil, nil, nil, nil, ccpBytes}
 	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: cdRWSet.Name}, {Key: privdata.BuildCollectionKVSKey(cdRWSet.Name), Value: ccpBytes}}}
@@ -1788,36 +1788,36 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	// Test 1: More than two entries in the rwset -> error
 	rwset := &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: "b"}, {Key: "c"}}}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, nil, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "LSCC can only issue one or two putState upon deploy")
+	require.EqualError(t, err, "LSCC can only issue one or two putState upon deploy")
 
 	// Test 2: Invalid key for the collection config package -> error
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: "b"}}}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, nil, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "invalid key for the collection of chaincode mycc:1.0; expected 'mycc~collection', received 'b'")
+	require.EqualError(t, err, "invalid key for the collection of chaincode mycc:1.0; expected 'mycc~collection', received 'b'")
 
 	// Test 3: No collection config package -> success
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}}}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, nil, lsccFunc, ac, chid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	lsccargs := [][]byte{nil, nil, nil, nil, nil, nil}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test 4: Valid key for the collection config package -> success
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: privdata.BuildCollectionKVSKey(ccid)}}}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test 5: Collection configuration of the lscc args doesn't match the rwset
 	lsccargs = [][]byte{nil, nil, nil, nil, nil, []byte("barf")}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "collection configuration arguments supplied for chaincode mycc:1.0 do not match the configuration in the lscc writeset")
+	require.EqualError(t, err, "collection configuration arguments supplied for chaincode mycc:1.0 do not match the configuration in the lscc writeset")
 
 	// Test 6: Invalid collection config package -> error
 	rwset = &kvrwset.KVRWSet{Writes: []*kvrwset.KVWrite{{Key: ccid}, {Key: privdata.BuildCollectionKVSKey("mycc"), Value: []byte("barf")}}}
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "invalid collection configuration supplied for chaincode mycc:1.0")
+	require.EqualError(t, err, "invalid collection configuration supplied for chaincode mycc:1.0")
 
 	// Test 7: Valid collection config package -> success
 	collName1 := "mycollection1"
@@ -1833,11 +1833,11 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	coll2 := createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2}, cdRWSet, lsccFunc, ac, chid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test 8: Duplicate collections in the collection config package -> success as the peer is in v1.1 validation mode
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll1}, cdRWSet, lsccFunc, ac, chid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test 9: requiredPeerCount > maximumPeerCount -> success as the peer is in v1.1 validation mode
 	collName3 := "mycollection3"
@@ -1846,7 +1846,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	blockToLive = 10000
 	coll3 := createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Enable v1.2 validation mode
 	ac = capabilities.NewApplicationProvider(map[string]*common.Capability{
@@ -1855,7 +1855,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 
 	// Test 10: Duplicate collections in the collection config package -> error
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll1}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "collection-name: mycollection1 -- found duplicate collection configuration")
+	require.EqualError(t, err, "collection-name: mycollection1 -- found duplicate collection configuration")
 
 	// Test 11: requiredPeerCount < 0 -> error
 	requiredPeerCount = -2
@@ -1863,7 +1863,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	blockToLive = 10000
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "collection-name: mycollection3 -- requiredPeerCount (1) cannot be less than zero (-2)",
+	require.EqualError(t, err, "collection-name: mycollection3 -- requiredPeerCount (1) cannot be less than zero (-2)",
 		collName3, maximumPeerCount, requiredPeerCount)
 
 	// Test 11: requiredPeerCount > maximumPeerCount -> error
@@ -1872,7 +1872,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	blockToLive = 10000
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "collection-name: mycollection3 -- maximum peer count (1) cannot be less than the required peer count (2)")
+	require.EqualError(t, err, "collection-name: mycollection3 -- maximum peer count (1) cannot be less than the required peer count (2)")
 
 	// Test 12: AND concatenation of orgs in access policy -> error
 	requiredPeerCount = 1
@@ -1880,15 +1880,15 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	policyEnvelope = policydsl.Envelope(policydsl.And(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	coll3 = createCollectionConfig(collName3, policyEnvelope, requiredPeerCount, maximumPeerCount, blockToLive)
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "collection-name: mycollection3 -- error in member org policy: signature policy is not an OR concatenation, NOutOf 2")
+	require.EqualError(t, err, "collection-name: mycollection3 -- error in member org policy: signature policy is not an OR concatenation, NOutOf 2")
 
 	// Test 13: deploy with existing collection config on the ledger -> error
 	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	state["lscc"][privdata.BuildCollectionKVSKey(ccid)] = ccpBytes
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "collection data should not exist for chaincode mycc:1.0")
+	require.EqualError(t, err, "collection data should not exist for chaincode mycc:1.0")
 }
 
 func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
@@ -1924,36 +1924,36 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 
 	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1, coll2}}
 	ccpBytes, err := proto.Marshal(ccp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test 1: no existing collection config package -> success
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	state["lscc"][privdata.BuildCollectionKVSKey(ccid)] = ccpBytes
 
 	// Test 2: exactly same as the existing collection config package -> success
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2}, cdRWSet, lsccFunc, ac, chid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test 3: missing one existing collection (check based on the length) -> error
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "the following existing collections are missing in the new collection configuration package: [mycollection2]")
+	require.EqualError(t, err, "the following existing collections are missing in the new collection configuration package: [mycollection2]")
 
 	// Test 4: missing one existing collection (check based on the collection names) -> error
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "the following existing collections are missing in the new collection configuration package: [mycollection2]")
+	require.EqualError(t, err, "the following existing collections are missing in the new collection configuration package: [mycollection2]")
 
 	// Test 5: adding a new collection along with the existing collections -> success
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	newBlockToLive := blockToLive + 1
 	coll2 = createCollectionConfig(collName2, policyEnvelope, requiredPeerCount, maximumPeerCount, newBlockToLive)
 
 	// Test 6: modify the BlockToLive in an existing collection -> error
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
-	assert.EqualError(t, err, "the BlockToLive in the following existing collections must not be modified: [mycollection2]")
+	require.EqualError(t, err, "the BlockToLive in the following existing collections must not be modified: [mycollection2]")
 }
 
 var mockMSPIDGetter = func(cid string) []string {
@@ -2027,16 +2027,16 @@ func TestInValidCollectionName(t *testing.T) {
 	inValidNames := []string{"collection.1", "collection%2", ""}
 
 	for _, name := range validNames {
-		assert.NoError(t, validateCollectionName(name), "Testing for name = "+name)
+		require.NoError(t, validateCollectionName(name), "Testing for name = "+name)
 	}
 	for _, name := range inValidNames {
-		assert.Error(t, validateCollectionName(name), "Testing for name = "+name)
+		require.Error(t, validateCollectionName(name), "Testing for name = "+name)
 	}
 }
 
 func TestNoopTranslator_Translate(t *testing.T) {
 	tr := &noopTranslator{}
 	res, err := tr.Translate([]byte("Nel mezzo del cammin di nostra vita"))
-	assert.NoError(t, err)
-	assert.Equal(t, res, []byte("Nel mezzo del cammin di nostra vita"))
+	require.NoError(t, err)
+	require.Equal(t, res, []byte("Nel mezzo del cammin di nostra vita"))
 }

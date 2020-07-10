@@ -11,7 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetMissingPvtDataAfterRollback(t *testing.T) {
@@ -68,7 +68,7 @@ func TestGetMissingPvtDataAfterRollback(t *testing.T) {
 	h.verifyLedgerHeight(5)
 	env.closeLedgerMgmt()
 	err := kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "ledger1", 2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	env.initLedgerMgmt()
 
 	h = env.newTestHelperOpenLgr("ledger1", t)
@@ -81,13 +81,13 @@ func TestGetMissingPvtDataAfterRollback(t *testing.T) {
 	h.verifyMissingPvtDataSameAs(5, nil)
 
 	// recommit block 3
-	assert.NoError(t, h.lgr.CommitLegacy(blk3, &ledger.CommitOptions{}))
+	require.NoError(t, h.lgr.CommitLegacy(blk3, &ledger.CommitOptions{}))
 	// when the pvtdata store is ahead of blockstore,
 	// missing pvtdata info for block 2 would not be returned.
 	h.verifyMissingPvtDataSameAs(5, nil)
 
 	// recommit block 4
-	assert.NoError(t, h.lgr.CommitLegacy(blk4, &ledger.CommitOptions{}))
+	require.NoError(t, h.lgr.CommitLegacy(blk4, &ledger.CommitOptions{}))
 	// once the pvtdata store and blockstore becomes equal,
 	// missing pvtdata info for block 2 would be returned.
 	h.verifyMissingPvtDataSameAs(5, expectedMissingPvtDataInfo)

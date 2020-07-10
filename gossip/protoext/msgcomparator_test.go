@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/protoext"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAliveMessageNoActionTaken(t *testing.T) {
@@ -60,7 +60,7 @@ func TestAliveMessageNoActionTaken(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, comparator(sMsg1, sMsg2), common.MessageNoAction)
+	require.Equal(t, comparator(sMsg1, sMsg2), common.MessageNoAction)
 }
 
 func TestStateInfoMessageNoActionTaken(t *testing.T) {
@@ -86,7 +86,7 @@ func TestStateInfoMessageNoActionTaken(t *testing.T) {
 
 	// We only should compare comparable messages, e.g. message from same peer
 	// In any other cases no invalidation should be taken.
-	assert.Equal(t, comparator(sMsg1, sMsg2), common.MessageNoAction)
+	require.Equal(t, comparator(sMsg1, sMsg2), common.MessageNoAction)
 }
 
 func TestStateInfoMessagesInvalidation(t *testing.T) {
@@ -121,16 +121,16 @@ func TestStateInfoMessagesInvalidation(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, comparator(sMsg1, sMsg2), common.MessageInvalidated)
+	require.Equal(t, comparator(sMsg1, sMsg2), common.MessageInvalidated)
 
-	assert.Equal(t, comparator(sMsg1, sMsg3), common.MessageInvalidated)
-	assert.Equal(t, comparator(sMsg3, sMsg1), common.MessageInvalidates)
+	require.Equal(t, comparator(sMsg1, sMsg3), common.MessageInvalidated)
+	require.Equal(t, comparator(sMsg3, sMsg1), common.MessageInvalidates)
 
-	assert.Equal(t, comparator(sMsg1, sMsg4), common.MessageInvalidated)
-	assert.Equal(t, comparator(sMsg4, sMsg1), common.MessageInvalidates)
+	require.Equal(t, comparator(sMsg1, sMsg4), common.MessageInvalidated)
+	require.Equal(t, comparator(sMsg4, sMsg1), common.MessageInvalidates)
 
-	assert.Equal(t, comparator(sMsg3, sMsg4), common.MessageInvalidated)
-	assert.Equal(t, comparator(sMsg4, sMsg3), common.MessageInvalidates)
+	require.Equal(t, comparator(sMsg3, sMsg4), common.MessageInvalidated)
+	require.Equal(t, comparator(sMsg4, sMsg3), common.MessageInvalidates)
 }
 
 func TestAliveMessageInvalidation(t *testing.T) {
@@ -199,10 +199,10 @@ func TestAliveMessageInvalidation(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, comparator(sMsg1, sMsg2), common.MessageInvalidated)
-	assert.Equal(t, comparator(sMsg2, sMsg1), common.MessageInvalidates)
-	assert.Equal(t, comparator(sMsg1, sMsg3), common.MessageInvalidated)
-	assert.Equal(t, comparator(sMsg3, sMsg1), common.MessageInvalidates)
+	require.Equal(t, comparator(sMsg1, sMsg2), common.MessageInvalidated)
+	require.Equal(t, comparator(sMsg2, sMsg1), common.MessageInvalidates)
+	require.Equal(t, comparator(sMsg1, sMsg3), common.MessageInvalidated)
+	require.Equal(t, comparator(sMsg3, sMsg1), common.MessageInvalidates)
 }
 
 func TestDataMessageInvalidation(t *testing.T) {
@@ -238,10 +238,10 @@ func TestDataMessageInvalidation(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, comparator(sMsg1, sMsg1Clone), common.MessageInvalidated)
-	assert.Equal(t, comparator(sMsg1, sMsg3), common.MessageNoAction)
-	assert.Equal(t, comparator(sMsg1, sMsg4), common.MessageInvalidated)
-	assert.Equal(t, comparator(sMsg4, sMsg1), common.MessageInvalidates)
+	require.Equal(t, comparator(sMsg1, sMsg1Clone), common.MessageInvalidated)
+	require.Equal(t, comparator(sMsg1, sMsg3), common.MessageNoAction)
+	require.Equal(t, comparator(sMsg1, sMsg4), common.MessageInvalidated)
+	require.Equal(t, comparator(sMsg4, sMsg1), common.MessageInvalidates)
 }
 
 func TestIdentityMessagesInvalidation(t *testing.T) {
@@ -289,8 +289,8 @@ func TestIdentityMessagesInvalidation(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, comparator(msg1, msg2), common.MessageInvalidated)
-	assert.Equal(t, comparator(msg1, msg3), common.MessageNoAction)
+	require.Equal(t, comparator(msg1, msg2), common.MessageInvalidated)
+	require.Equal(t, comparator(msg1, msg3), common.MessageNoAction)
 }
 
 func TestLeadershipMessagesNoAction(t *testing.T) {
@@ -312,7 +312,7 @@ func TestLeadershipMessagesNoAction(t *testing.T) {
 	}
 
 	// If message with different pkid's no action should be taken
-	assert.Equal(t, comparator(msg1, msg2), common.MessageNoAction)
+	require.Equal(t, comparator(msg1, msg2), common.MessageNoAction)
 }
 
 func TestLeadershipMessagesInvalidation(t *testing.T) {
@@ -342,12 +342,12 @@ func TestLeadershipMessagesInvalidation(t *testing.T) {
 	}
 
 	// If message with different pkid's no action should be taken
-	assert.Equal(t, comparator(msg1, msg2), common.MessageInvalidated)
-	assert.Equal(t, comparator(msg2, msg1), common.MessageInvalidates)
-	assert.Equal(t, comparator(msg1, msg3), common.MessageInvalidated)
-	assert.Equal(t, comparator(msg3, msg1), common.MessageInvalidates)
-	assert.Equal(t, comparator(msg2, msg3), common.MessageInvalidated)
-	assert.Equal(t, comparator(msg3, msg2), common.MessageInvalidates)
+	require.Equal(t, comparator(msg1, msg2), common.MessageInvalidated)
+	require.Equal(t, comparator(msg2, msg1), common.MessageInvalidates)
+	require.Equal(t, comparator(msg1, msg3), common.MessageInvalidated)
+	require.Equal(t, comparator(msg3, msg1), common.MessageInvalidates)
+	require.Equal(t, comparator(msg2, msg3), common.MessageInvalidated)
+	require.Equal(t, comparator(msg3, msg2), common.MessageInvalidates)
 }
 
 func stateInfoMessage(incNum uint64, seqNum uint64, pkid []byte, mac []byte) *gossip.GossipMessage_StateInfo {

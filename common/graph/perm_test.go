@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPermute(t *testing.T) {
@@ -40,7 +40,7 @@ func TestPermute(t *testing.T) {
 	// For a sub-tree with r-(D,F) we have 9 combinations from the same logic
 	// For a sub-tree with r-(E,F) we have 9 combinations too
 	// Total 27 combinations
-	assert.Equal(t, 27, len(permutations))
+	require.Equal(t, 27, len(permutations))
 
 	listCombination := func(i Iterator) []string {
 		var traversal []string
@@ -56,11 +56,11 @@ func TestPermute(t *testing.T) {
 
 	// First combination is a left most traversal on the combination graph
 	expectedScan := []string{"r", "D", "E", "A", "B", "a", "b"}
-	assert.Equal(t, expectedScan, listCombination(permutations[0].BFS()))
+	require.Equal(t, expectedScan, listCombination(permutations[0].BFS()))
 
 	// Last combination is a right most traversal on the combination graph
 	expectedScan = []string{"r", "E", "F", "b", "c", "2", "3"}
-	assert.Equal(t, expectedScan, listCombination(permutations[26].BFS()))
+	require.Equal(t, expectedScan, listCombination(permutations[26].BFS()))
 }
 
 func TestPermuteTooManyCombinations(t *testing.T) {
@@ -70,5 +70,5 @@ func TestPermuteTooManyCombinations(t *testing.T) {
 		root.AddDescendant(NewTreeVertex(fmt.Sprintf("%d", i), nil))
 	}
 	permutations := root.ToTree().Permute(501)
-	assert.Len(t, permutations, 501)
+	require.Len(t, permutations, 501)
 }

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNoUpdate(t *testing.T) {
@@ -25,7 +25,7 @@ func TestNoUpdate(t *testing.T) {
 		ChannelGroup: updated,
 	})
 
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestMissingGroup(t *testing.T) {
@@ -33,14 +33,14 @@ func TestMissingGroup(t *testing.T) {
 	t.Run("MissingOriginal", func(t *testing.T) {
 		_, err := Compute(&cb.Config{}, &cb.Config{ChannelGroup: group})
 
-		assert.Error(t, err)
-		assert.Regexp(t, "no channel group included for original config", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "no channel group included for original config", err.Error())
 	})
 	t.Run("MissingOriginal", func(t *testing.T) {
 		_, err := Compute(&cb.Config{ChannelGroup: group}, &cb.Config{})
 
-		assert.Error(t, err)
-		assert.Regexp(t, "no channel group included for updated config", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "no channel group included for updated config", err.Error())
 	})
 }
 
@@ -59,7 +59,7 @@ func TestGroupModPolicyUpdate(t *testing.T) {
 		ChannelGroup: updated,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
 		Version:  original.Version,
@@ -68,7 +68,7 @@ func TestGroupModPolicyUpdate(t *testing.T) {
 		Values:   map[string]*cb.ConfigValue{},
 	}
 
-	assert.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
 		Version:   original.Version + 1,
@@ -78,7 +78,7 @@ func TestGroupModPolicyUpdate(t *testing.T) {
 		ModPolicy: updated.ModPolicy,
 	}
 
-	assert.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
 }
 
 func TestGroupPolicyModification(t *testing.T) {
@@ -119,7 +119,7 @@ func TestGroupPolicyModification(t *testing.T) {
 		ChannelGroup: updated,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
 		Version:  original.Version,
@@ -128,7 +128,7 @@ func TestGroupPolicyModification(t *testing.T) {
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	assert.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version,
@@ -144,7 +144,7 @@ func TestGroupPolicyModification(t *testing.T) {
 		Groups: map[string]*cb.ConfigGroup{},
 	}
 
-	assert.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
 }
 
 func TestGroupValueModification(t *testing.T) {
@@ -179,7 +179,7 @@ func TestGroupValueModification(t *testing.T) {
 		ChannelGroup: updated,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
 		Version:  original.Version,
@@ -188,7 +188,7 @@ func TestGroupValueModification(t *testing.T) {
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	assert.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version,
@@ -202,7 +202,7 @@ func TestGroupValueModification(t *testing.T) {
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	assert.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
 }
 
 func TestGroupGroupsModification(t *testing.T) {
@@ -233,7 +233,7 @@ func TestGroupGroupsModification(t *testing.T) {
 		ChannelGroup: updated,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
 		Version: original.Version,
@@ -249,7 +249,7 @@ func TestGroupGroupsModification(t *testing.T) {
 		Values:   map[string]*cb.ConfigValue{},
 	}
 
-	assert.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version,
@@ -265,7 +265,7 @@ func TestGroupGroupsModification(t *testing.T) {
 		Values:   map[string]*cb.ConfigValue{},
 	}
 
-	assert.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
 }
 
 func TestGroupValueAddition(t *testing.T) {
@@ -297,7 +297,7 @@ func TestGroupValueAddition(t *testing.T) {
 		ChannelGroup: updated,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
 		Version: original.Version,
@@ -310,7 +310,7 @@ func TestGroupValueAddition(t *testing.T) {
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	assert.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version + 1,
@@ -327,7 +327,7 @@ func TestGroupValueAddition(t *testing.T) {
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	assert.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
 }
 
 func TestGroupPolicySwap(t *testing.T) {
@@ -362,7 +362,7 @@ func TestGroupPolicySwap(t *testing.T) {
 		ChannelGroup: updated,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
 		Version:  original.Version,
@@ -371,7 +371,7 @@ func TestGroupPolicySwap(t *testing.T) {
 		Groups:   map[string]*cb.ConfigGroup{},
 	}
 
-	assert.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version + 1,
@@ -387,7 +387,7 @@ func TestGroupPolicySwap(t *testing.T) {
 		Groups: map[string]*cb.ConfigGroup{},
 	}
 
-	assert.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
 }
 
 func TestComplex(t *testing.T) {
@@ -448,7 +448,7 @@ func TestComplex(t *testing.T) {
 		ChannelGroup: updated,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
 		Version: original.Version,
@@ -465,7 +465,7 @@ func TestComplex(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version + 1,
@@ -496,7 +496,7 @@ func TestComplex(t *testing.T) {
 		Values: map[string]*cb.ConfigValue{},
 	}
 
-	assert.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
 }
 
 func TestTwiceNestedModification(t *testing.T) {
@@ -539,7 +539,7 @@ func TestTwiceNestedModification(t *testing.T) {
 		ChannelGroup: updated,
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedReadSet := &cb.ConfigGroup{
 		Version: original.Version,
@@ -560,7 +560,7 @@ func TestTwiceNestedModification(t *testing.T) {
 		Values:   map[string]*cb.ConfigValue{},
 	}
 
-	assert.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
+	require.Equal(t, expectedReadSet, cu.ReadSet, "Mismatched read set")
 
 	expectedWriteSet := &cb.ConfigGroup{
 		Version: original.Version,
@@ -586,5 +586,5 @@ func TestTwiceNestedModification(t *testing.T) {
 		Values:   map[string]*cb.ConfigValue{},
 	}
 
-	assert.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
+	require.Equal(t, expectedWriteSet, cu.WriteSet, "Mismatched write set")
 }

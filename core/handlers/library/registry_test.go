@@ -11,7 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/handlers/auth"
 	"github.com/hyperledger/fabric/core/handlers/decoration"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInitRegistry(t *testing.T) {
@@ -19,18 +19,18 @@ func TestInitRegistry(t *testing.T) {
 		AuthFilters: []*HandlerConfig{{Name: "DefaultAuth"}},
 		Decorators:  []*HandlerConfig{{Name: "DefaultDecorator"}},
 	})
-	assert.NotNil(t, r)
+	require.NotNil(t, r)
 	authHandlers := r.Lookup(Auth)
-	assert.NotNil(t, authHandlers)
+	require.NotNil(t, authHandlers)
 	filters, isAuthFilters := authHandlers.([]auth.Filter)
-	assert.True(t, isAuthFilters)
-	assert.Len(t, filters, 1)
+	require.True(t, isAuthFilters)
+	require.Len(t, filters, 1)
 
 	decorationHandlers := r.Lookup(Decoration)
-	assert.NotNil(t, decorationHandlers)
+	require.NotNil(t, decorationHandlers)
 	decorators, isDecorators := decorationHandlers.([]decoration.Decorator)
-	assert.True(t, isDecorators)
-	assert.Len(t, decorators, 1)
+	require.True(t, isDecorators)
+	require.Len(t, decorators, 1)
 }
 
 func TestLoadCompiledInvalid(t *testing.T) {

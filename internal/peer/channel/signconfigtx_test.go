@@ -14,7 +14,7 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSignConfigtx(t *testing.T) {
@@ -48,7 +48,7 @@ func TestSignConfigtx(t *testing.T) {
 	args := []string{"-f", configtxFile}
 	cmd.SetArgs(args)
 
-	assert.NoError(t, cmd.Execute())
+	require.NoError(t, cmd.Execute())
 }
 
 func TestSignConfigtxMissingConfigTxFlag(t *testing.T) {
@@ -70,7 +70,7 @@ func TestSignConfigtxMissingConfigTxFlag(t *testing.T) {
 
 	cmd.SetArgs([]string{})
 
-	assert.Error(t, cmd.Execute())
+	require.Error(t, cmd.Execute())
 }
 
 func TestSignConfigtxChannelMissingConfigTxFile(t *testing.T) {
@@ -93,5 +93,5 @@ func TestSignConfigtxChannelMissingConfigTxFile(t *testing.T) {
 	args := []string{"-f", "Non-existent"}
 	cmd.SetArgs(args)
 
-	assert.Error(t, cmd.Execute())
+	require.Error(t, cmd.Execute())
 }

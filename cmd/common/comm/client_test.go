@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,14 +27,14 @@ func TestTLSClient(t *testing.T) {
 			Certificate: loadFileOrDie(filepath.Join("testdata", "server", "cert.pem")),
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	go srv.Start()
 	defer srv.Stop()
 	conf := Config{
 		PeerCACertPath: filepath.Join("testdata", "server", "ca.pem"),
 	}
 	cl, err := NewClient(conf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, port, _ := net.SplitHostPort(srv.Address())
 	dial := cl.NewDialer(net.JoinHostPort("localhost", port))
 	conn, err := dial()
@@ -49,22 +48,22 @@ func TestDialBadEndpoint(t *testing.T) {
 		Timeout:        100 * time.Millisecond,
 	}
 	cl, err := NewClient(conf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	dial := cl.NewDialer("non_existent_host.xyz.blabla:9999")
 	_, err = dial()
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestNonTLSClient(t *testing.T) {
 	srv, err := comm.NewGRPCServer("127.0.0.1:", comm.ServerConfig{
 		SecOpts: comm.SecureOptions{},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	go srv.Start()
 	defer srv.Stop()
 	conf := Config{}
 	cl, err := NewClient(conf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, port, _ := net.SplitHostPort(srv.Address())
 	dial := cl.NewDialer(net.JoinHostPort("127.0.0.1", port))
 	conn, err := dial()
@@ -77,8 +76,8 @@ func TestClientBadConfig(t *testing.T) {
 		PeerCACertPath: filepath.Join("testdata", "server", "non_existent_file"),
 	}
 	cl, err := NewClient(conf)
-	assert.Nil(t, cl)
-	assert.Contains(t, err.Error(), "open testdata/server/non_existent_file: no such file or directory")
+	require.Nil(t, cl)
+	require.Contains(t, err.Error(), "open testdata/server/non_existent_file: no such file or directory")
 
 	conf = Config{
 		PeerCACertPath: filepath.Join("testdata", "server", "ca.pem"),
@@ -86,8 +85,8 @@ func TestClientBadConfig(t *testing.T) {
 		CertPath:       "non_existent_file",
 	}
 	cl, err = NewClient(conf)
-	assert.Nil(t, cl)
-	assert.Contains(t, err.Error(), "open non_existent_file: no such file or directory")
+	require.Nil(t, cl)
+	require.Contains(t, err.Error(), "open non_existent_file: no such file or directory")
 
 	conf = Config{
 		PeerCACertPath: filepath.Join("testdata", "server", "ca.pem"),
@@ -95,8 +94,8 @@ func TestClientBadConfig(t *testing.T) {
 		CertPath:       "non_existent_file",
 	}
 	cl, err = NewClient(conf)
-	assert.Nil(t, cl)
-	assert.Contains(t, err.Error(), "open non_existent_file: no such file or directory")
+	require.Nil(t, cl)
+	require.Contains(t, err.Error(), "open non_existent_file: no such file or directory")
 }
 
 func loadFileOrDie(path string) []byte {

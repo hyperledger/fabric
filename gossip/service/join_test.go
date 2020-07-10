@@ -23,8 +23,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 type secAdvMock struct {
@@ -178,7 +178,7 @@ func TestJoinChannelConfig(t *testing.T) {
 	select {
 	case <-time.After(time.Second):
 	case <-failChan:
-		assert.Fail(t, "Joined a badly configured channel")
+		require.Fail(t, "Joined a badly configured channel")
 	}
 
 	succChan := make(chan struct{}, 1)
@@ -194,7 +194,7 @@ func TestJoinChannelConfig(t *testing.T) {
 	})
 	select {
 	case <-time.After(time.Second):
-		assert.Fail(t, "Didn't join a channel (should have done so within the time period)")
+		require.Fail(t, "Didn't join a channel (should have done so within the time period)")
 	case <-succChan:
 
 	}
@@ -212,10 +212,10 @@ func TestJoinChannelNoAnchorPeers(t *testing.T) {
 		defer joinChanCalled.Done()
 		jcm := args.Get(0).(api.JoinChannelMessage)
 		channel := args.Get(1).(common.ChannelID)
-		assert.Len(t, jcm.Members(), 2)
-		assert.Contains(t, jcm.Members(), api.OrgIdentityType("Org0"))
-		assert.Contains(t, jcm.Members(), api.OrgIdentityType("Org1"))
-		assert.Equal(t, "A", string(channel))
+		require.Len(t, jcm.Members(), 2)
+		require.Contains(t, jcm.Members(), api.OrgIdentityType("Org0"))
+		require.Contains(t, jcm.Members(), api.OrgIdentityType("Org1"))
+		require.Equal(t, "A", string(channel))
 	})
 
 	anchorPeerTracker := &anchorPeerTracker{allEndpoints: map[string]map[string]struct{}{}}
@@ -225,8 +225,8 @@ func TestJoinChannelNoAnchorPeers(t *testing.T) {
 	appOrg1 := &appOrgMock{id: "Org1"}
 
 	// Make sure the ApplicationOrgs really have no anchor peers
-	assert.Empty(t, appOrg0.AnchorPeers())
-	assert.Empty(t, appOrg1.AnchorPeers())
+	require.Empty(t, appOrg0.AnchorPeers())
+	require.Empty(t, appOrg1.AnchorPeers())
 
 	g.updateAnchors(&configMock{
 		orgs2AppOrgs: map[string]channelconfig.ApplicationOrg{

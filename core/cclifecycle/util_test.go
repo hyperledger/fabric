@@ -17,8 +17,8 @@ import (
 	"github.com/hyperledger/fabric/core/cclifecycle/mocks"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChaincodeInspection(t *testing.T) {
@@ -127,11 +127,11 @@ func TestChaincodeInspection(t *testing.T) {
 			query.On("GetState", mock.Anything, mock.Anything).Return(cc2Bytes, nil).Once()
 			ccInfo, err := cc.DeployedChaincodes(query, test.filter, false, test.queriedChaincodes...)
 			if test.queryErr != nil {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
-			assert.Equal(t, test.expected, ccInfo)
+			require.Equal(t, test.expected, ccInfo)
 		})
 	}
 }

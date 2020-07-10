@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStaticStatusReporter(t *testing.T) {
@@ -22,6 +22,6 @@ func TestStaticStatusReporter(t *testing.T) {
 
 	var sr consensus.StatusReporter = staticSR // make sure it implements this interface
 	cRel, status := sr.StatusReport()
-	assert.Equal(t, types.ClusterRelationNone, cRel)
-	assert.Equal(t, types.StatusActive, status)
+	require.Equal(t, types.ClusterRelationNone, cRel)
+	require.Equal(t, types.StatusActive, status)
 }

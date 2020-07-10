@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpgradeCmd(t *testing.T) {
@@ -41,7 +41,7 @@ func TestUpgradeCmd(t *testing.T) {
 	channelID = ""
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cmd := upgradeCmd(mockCF, cryptoProvider)
 	addFlags(cmd)
 
@@ -49,13 +49,13 @@ func TestUpgradeCmd(t *testing.T) {
 		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
-	assert.Error(t, err, "'peer chaincode upgrade' command should have failed without -C flag")
+	require.Error(t, err, "'peer chaincode upgrade' command should have failed without -C flag")
 
 	args = []string{"-C", "mychannel", "-n", "mychaincode", "-p", "mychaincodepath",
 		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
-	assert.NoError(t, err, "'peer chaincode upgrade' command failed")
+	require.NoError(t, err, "'peer chaincode upgrade' command failed")
 }
 
 func TestUpgradeCmdEndorseFail(t *testing.T) {
@@ -77,7 +77,7 @@ func TestUpgradeCmdEndorseFail(t *testing.T) {
 	}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cmd := upgradeCmd(mockCF, cryptoProvider)
 	addFlags(cmd)
 
@@ -115,7 +115,7 @@ func TestUpgradeCmdSendTXFail(t *testing.T) {
 	}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cmd := upgradeCmd(mockCF, cryptoProvider)
 	addFlags(cmd)
 
@@ -145,13 +145,13 @@ func TestUpgradeCmdWithNilCF(t *testing.T) {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("%v", r)
 		}
-		assert.NoError(t, err, "'peer chaincode upgrade' command should have failed without a panic")
+		require.NoError(t, err, "'peer chaincode upgrade' command should have failed without a panic")
 	}()
 
 	channelID = ""
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cmd := upgradeCmd(nil, cryptoProvider)
 	addFlags(cmd)
 
@@ -159,5 +159,5 @@ func TestUpgradeCmdWithNilCF(t *testing.T) {
 		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
-	assert.Error(t, err, "'peer chaincode upgrade' command should have failed without a panic")
+	require.Error(t, err, "'peer chaincode upgrade' command should have failed without a panic")
 }

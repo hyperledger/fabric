@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -33,10 +33,10 @@ func TestInvokeCmd(t *testing.T) {
 
 	resetFlags()
 	mockCF, err := getMockChaincodeCmdFactory()
-	assert.NoError(t, err, "Error getting mock chaincode command factory")
+	require.NoError(t, err, "Error getting mock chaincode command factory")
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Error case 0: no channelID specified
 	cmd := invokeCmd(mockCF, cryptoProvider)
@@ -44,7 +44,7 @@ func TestInvokeCmd(t *testing.T) {
 	args := []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
-	assert.Error(t, err, "'peer chaincode invoke' command should have returned error when called without -C flag")
+	require.Error(t, err, "'peer chaincode invoke' command should have returned error when called without -C flag")
 
 	// Success case
 	cmd = invokeCmd(mockCF, cryptoProvider)
@@ -52,7 +52,7 @@ func TestInvokeCmd(t *testing.T) {
 	args = []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}", "-C", "mychannel"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
-	assert.NoError(t, err, "Run chaincode invoke cmd error")
+	require.NoError(t, err, "Run chaincode invoke cmd error")
 
 	// set timeout for error cases
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
@@ -84,7 +84,7 @@ func TestInvokeCmd(t *testing.T) {
 	args = []string{"-n", "example02", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}", "-C", "mychannel"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Error case 2: getEndorserClient returns error
 	t.Logf("Start error case 2: getEndorserClient returns error")
@@ -92,7 +92,7 @@ func TestInvokeCmd(t *testing.T) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Error case 3: getDeliverClient returns error
 	t.Logf("Start error case 3: getDeliverClient returns error")
@@ -100,7 +100,7 @@ func TestInvokeCmd(t *testing.T) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Error case 4 : getPeerDeliverClient returns error
 	t.Logf("Start error case 4: getPeerDeliverClient returns error")
@@ -108,7 +108,7 @@ func TestInvokeCmd(t *testing.T) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Error case 5: getDefaultSignerFnc returns error
 	t.Logf("Start error case 5: getDefaultSignerFnc returns error")
@@ -122,7 +122,7 @@ func TestInvokeCmd(t *testing.T) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
-	assert.Error(t, err)
+	require.Error(t, err)
 	common.GetDefaultSignerFnc = common.GetDefaultSigner
 
 	// Error case 6: getOrdererEndpointOfChainFnc returns error
@@ -134,7 +134,7 @@ func TestInvokeCmd(t *testing.T) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Error case 7: getBroadcastClient returns error
 	t.Logf("Start error case 7: getBroadcastClient returns error")
@@ -145,7 +145,7 @@ func TestInvokeCmd(t *testing.T) {
 		return nil, errors.New("error")
 	}
 	err = cmd.Execute()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Success case
 	t.Logf("Start success case")
@@ -153,15 +153,15 @@ func TestInvokeCmd(t *testing.T) {
 		return mockCF.BroadcastClient, nil
 	}
 	err = cmd.Execute()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvokeCmdSimulateESCCPluginResponse(t *testing.T) {
 	defer resetFlags()
 	mockCF, err := getMockChaincodeCmdFactory()
-	assert.NoError(t, err, "Error getting mock chaincode command factory")
+	require.NoError(t, err, "Error getting mock chaincode command factory")
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// success case - simulate an ESCC plugin that endorses a chaincode response
 	// with status greater than shim.ERRORTHRESHOLD or even shim.ERROR
@@ -186,25 +186,25 @@ func TestInvokeCmdSimulateESCCPluginResponse(t *testing.T) {
 	cmd.SetArgs(args)
 
 	err = cmd.Execute()
-	assert.NoError(t, err, "Run chaincode invoke cmd error")
+	require.NoError(t, err, "Run chaincode invoke cmd error")
 
-	assert.NotEmpty(t, recorder.MessagesContaining("Chaincode invoke successful"), "missing invoke success log record")
-	assert.NotEmpty(t, recorder.MessagesContaining("result: <nil>"), "missing result log record")
+	require.NotEmpty(t, recorder.MessagesContaining("Chaincode invoke successful"), "missing invoke success log record")
+	require.NotEmpty(t, recorder.MessagesContaining("result: <nil>"), "missing result log record")
 }
 
 func TestInvokeCmdEndorsementError(t *testing.T) {
 	defer resetFlags()
 	mockCF, err := getMockChaincodeCmdFactoryWithErr()
-	assert.NoError(t, err, "Error getting mock chaincode command factory")
+	require.NoError(t, err, "Error getting mock chaincode command factory")
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cmd := invokeCmd(mockCF, cryptoProvider)
 	addFlags(cmd)
 	args := []string{"-n", "example02", "-C", "mychannel", "-c", "{\"Args\": [\"invoke\",\"a\",\"b\",\"10\"]}"}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
-	assert.Error(t, err, "Expected error executing invoke command")
+	require.Error(t, err, "Expected error executing invoke command")
 }
 
 func TestInvokeCmdEndorsementFailure(t *testing.T) {
@@ -212,11 +212,11 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 	ccRespStatus := [2]int32{502, 400}
 	ccRespPayload := [][]byte{[]byte("Invalid function name"), []byte("Incorrect parameters")}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for i := 0; i < 2; i++ {
 		mockCF, err := getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus[i], ccRespPayload[i])
-		assert.NoError(t, err, "Error getting mock chaincode command factory")
+		require.NoError(t, err, "Error getting mock chaincode command factory")
 
 		cmd := invokeCmd(mockCF, cryptoProvider)
 		addFlags(cmd)
@@ -224,9 +224,9 @@ func TestInvokeCmdEndorsementFailure(t *testing.T) {
 		cmd.SetArgs(args)
 
 		err = cmd.Execute()
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "endorsement failure during invoke")
-		assert.Contains(t, err.Error(), fmt.Sprintf("response: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "endorsement failure during invoke")
+		require.Contains(t, err.Error(), fmt.Sprintf("response: status:%d payload:\"%s\"", ccRespStatus[i], ccRespPayload[i]))
 	}
 }
 

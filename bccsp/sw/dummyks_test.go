@@ -19,14 +19,14 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/mocks"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewDummyKeyStore(t *testing.T) {
 	t.Parallel()
 
 	ks := NewDummyKeyStore()
-	assert.NotNil(t, ks)
+	require.NotNil(t, ks)
 }
 
 func TestDummyKeyStore_GetKey(t *testing.T) {
@@ -34,14 +34,14 @@ func TestDummyKeyStore_GetKey(t *testing.T) {
 
 	ks := NewDummyKeyStore()
 	_, err := ks.GetKey([]byte{0, 1, 2, 3, 4})
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestDummyKeyStore_ReadOnly(t *testing.T) {
 	t.Parallel()
 
 	ks := NewDummyKeyStore()
-	assert.True(t, ks.ReadOnly())
+	require.True(t, ks.ReadOnly())
 }
 
 func TestDummyKeyStore_StoreKey(t *testing.T) {
@@ -49,5 +49,5 @@ func TestDummyKeyStore_StoreKey(t *testing.T) {
 
 	ks := NewDummyKeyStore()
 	err := ks.StoreKey(&mocks.MockKey{})
-	assert.Error(t, err)
+	require.Error(t, err)
 }

@@ -9,12 +9,12 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTxPvtData(t *testing.T) {
 	txPvtData := &TxPvtData{}
-	assert.False(t, txPvtData.Has("ns", "coll"))
+	require.False(t, txPvtData.Has("ns", "coll"))
 
 	txPvtData.WriteSet = &rwset.TxPvtReadWriteSet{
 		DataModel: rwset.TxReadWriteSet_KV,
@@ -35,18 +35,18 @@ func TestTxPvtData(t *testing.T) {
 		},
 	}
 
-	assert.True(t, txPvtData.Has("ns", "coll-1"))
-	assert.True(t, txPvtData.Has("ns", "coll-2"))
-	assert.False(t, txPvtData.Has("ns", "coll-3"))
-	assert.False(t, txPvtData.Has("ns1", "coll-1"))
+	require.True(t, txPvtData.Has("ns", "coll-1"))
+	require.True(t, txPvtData.Has("ns", "coll-2"))
+	require.False(t, txPvtData.Has("ns", "coll-3"))
+	require.False(t, txPvtData.Has("ns1", "coll-1"))
 }
 
 func TestPvtNsCollFilter(t *testing.T) {
 	filter := NewPvtNsCollFilter()
 	filter.Add("ns", "coll-1")
 	filter.Add("ns", "coll-2")
-	assert.True(t, filter.Has("ns", "coll-1"))
-	assert.True(t, filter.Has("ns", "coll-2"))
-	assert.False(t, filter.Has("ns", "coll-3"))
-	assert.False(t, filter.Has("ns1", "coll-3"))
+	require.True(t, filter.Has("ns", "coll-1"))
+	require.True(t, filter.Has("ns", "coll-2"))
+	require.False(t, filter.Has("ns", "coll-3"))
+	require.False(t, filter.Has("ns1", "coll-3"))
 }

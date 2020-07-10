@@ -23,8 +23,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/identity"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -140,11 +140,11 @@ func TestCertRevocation(t *testing.T) {
 	defer pm.Stop()
 	testCertificateUpdate(t, true, cStore)
 	// Should have asked for an identity for the first time
-	assert.Len(t, askedForIdentity, 1)
+	require.Len(t, askedForIdentity, 1)
 	// Drain channel
 	<-askedForIdentity
 	// Now it's 0
-	assert.Len(t, askedForIdentity, 0)
+	require.Len(t, askedForIdentity, 0)
 
 	sentHello := false
 	l := sync.Mutex{}
@@ -181,9 +181,9 @@ func TestCertRevocation(t *testing.T) {
 	select {
 	case <-time.After(time.Second * 5):
 	case <-askedForIdentity:
-		assert.Fail(t, "Shouldn't have asked for an identity, because we already have it")
+		require.Fail(t, "Shouldn't have asked for an identity, because we already have it")
 	}
-	assert.Len(t, askedForIdentity, 0)
+	require.Len(t, askedForIdentity, 0)
 	// Revoke the identity
 	cs.revoke(common.PKIidType("B"))
 	cStore.suspectPeers(func(id api.PeerIdentityType) bool {
@@ -196,7 +196,7 @@ func TestCertRevocation(t *testing.T) {
 
 	select {
 	case <-time.After(time.Second * 5):
-		assert.Fail(t, "Didn't ask for identity, but should have. Looks like identity hasn't expired")
+		require.Fail(t, "Didn't ask for identity, but should have. Looks like identity hasn't expired")
 	case <-askedForIdentity:
 	}
 }
@@ -250,7 +250,7 @@ func TestCertExpiration(t *testing.T) {
 		select {
 		case <-identitiesGotViaPull:
 		case <-time.After(time.Second * 15):
-			assert.Fail(t, "Didn't detect an identity gossiped via pull in a timely manner")
+			require.Fail(t, "Didn't detect an identity gossiped via pull in a timely manner")
 			return
 		}
 	}
@@ -274,16 +274,16 @@ func testCertificateUpdate(t *testing.T, shouldSucceed bool, certStore *certStor
 	responseChan := make(chan *proto.GossipMessage, 1)
 	hello.On("Respond", mock.Anything).Run(func(arg mock.Arguments) {
 		msg := arg.Get(0).(*proto.GossipMessage)
-		assert.NotNil(t, msg.GetDataDig())
+		require.NotNil(t, msg.GetDataDig())
 		responseChan <- msg
 	})
 	certStore.handleMessage(hello)
 	select {
 	case msg := <-responseChan:
 		if shouldSucceed {
-			assert.Len(t, msg.GetDataDig().Digests, 2, "Valid identity hasn't entered the certStore")
+			require.Len(t, msg.GetDataDig().Digests, 2, "Valid identity hasn't entered the certStore")
 		} else {
-			assert.Len(t, msg.GetDataDig().Digests, 1, "Mismatched identity has been injected into certStore")
+			require.Len(t, msg.GetDataDig().Digests, 1, "Mismatched identity has been injected into certStore")
 		}
 	case <-time.After(time.Second):
 		t.Fatal("Didn't respond with a digest message in a timely manner")

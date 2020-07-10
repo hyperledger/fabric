@@ -16,7 +16,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMissingBlockFile(t *testing.T) {
@@ -29,7 +29,7 @@ func TestMissingBlockFile(t *testing.T) {
 	args := []string{}
 	cmd.SetArgs(args)
 
-	assert.Error(t, cmd.Execute(), "expected join command to fail due to missing blockfilepath")
+	require.Error(t, cmd.Execute(), "expected join command to fail due to missing blockfilepath")
 }
 
 func TestJoin(t *testing.T) {
@@ -39,13 +39,13 @@ func TestJoin(t *testing.T) {
 	resetFlags()
 
 	dir, err := ioutil.TempDir("/tmp", "jointest")
-	assert.NoError(t, err, "Could not create the directory %s", dir)
+	require.NoError(t, err, "Could not create the directory %s", dir)
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
 	err = ioutil.WriteFile(mockblockfile, []byte(""), 0644)
-	assert.NoError(t, err, "Could not write to the file %s", mockblockfile)
+	require.NoError(t, err, "Could not write to the file %s", mockblockfile)
 	defer os.RemoveAll(dir)
 	signer, err := common.GetDefaultSigner()
-	assert.NoError(t, err, "Get default signer error: %v", err)
+	require.NoError(t, err, "Get default signer error: %v", err)
 
 	mockResponse := &pb.ProposalResponse{
 		Response:    &pb.Response{Status: 200},
@@ -66,7 +66,7 @@ func TestJoin(t *testing.T) {
 	args := []string{"-b", mockblockfile}
 	cmd.SetArgs(args)
 
-	assert.NoError(t, cmd.Execute(), "expected join command to succeed")
+	require.NoError(t, cmd.Execute(), "expected join command to succeed")
 }
 
 func TestJoinNonExistentBlock(t *testing.T) {
@@ -101,8 +101,8 @@ func TestJoinNonExistentBlock(t *testing.T) {
 	cmd.SetArgs(args)
 
 	err = cmd.Execute()
-	assert.Error(t, err, "expected join command to fail")
-	assert.IsType(t, GBFileNotFoundErr(err.Error()), err, "expected error type of GBFileNotFoundErr")
+	require.Error(t, err, "expected join command to fail")
+	require.IsType(t, GBFileNotFoundErr(err.Error()), err, "expected error type of GBFileNotFoundErr")
 }
 
 func TestBadProposalResponse(t *testing.T) {
@@ -115,7 +115,7 @@ func TestBadProposalResponse(t *testing.T) {
 	ioutil.WriteFile(mockblockfile, []byte(""), 0644)
 	defer os.Remove(mockblockfile)
 	signer, err := common.GetDefaultSigner()
-	assert.NoError(t, err, "Get default signer error: %v", err)
+	require.NoError(t, err, "Get default signer error: %v", err)
 
 	mockResponse := &pb.ProposalResponse{
 		Response:    &pb.Response{Status: 500},
@@ -138,8 +138,8 @@ func TestBadProposalResponse(t *testing.T) {
 	cmd.SetArgs(args)
 
 	err = cmd.Execute()
-	assert.Error(t, err, "expected join command to fail")
-	assert.IsType(t, ProposalFailedErr(err.Error()), err, "expected error type of ProposalFailedErr")
+	require.Error(t, err, "expected join command to fail")
+	require.IsType(t, ProposalFailedErr(err.Error()), err, "expected error type of ProposalFailedErr")
 }
 
 func TestJoinNilCF(t *testing.T) {
@@ -150,7 +150,7 @@ func TestJoinNilCF(t *testing.T) {
 	resetFlags()
 
 	dir, err := ioutil.TempDir("/tmp", "jointest")
-	assert.NoError(t, err, "Could not create the directory %s", dir)
+	require.NoError(t, err, "Could not create the directory %s", dir)
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
 	defer os.RemoveAll(dir)
 	viper.Set("peer.client.connTimeout", 10*time.Millisecond)
@@ -160,6 +160,6 @@ func TestJoinNilCF(t *testing.T) {
 	cmd.SetArgs(args)
 
 	err = cmd.Execute()
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "endorser client failed to connect to")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "endorser client failed to connect to")
 }

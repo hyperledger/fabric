@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging/metrics"
 	commonmetrics "github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -23,10 +23,10 @@ func TestNewObserver(t *testing.T) {
 	provider.NewCounterStub = func(c commonmetrics.CounterOpts) commonmetrics.Counter {
 		switch c.Name {
 		case "entries_checked":
-			assert.Equal(t, metrics.CheckedCountOpts, c)
+			require.Equal(t, metrics.CheckedCountOpts, c)
 			return checkedCounter
 		case "entries_written":
-			assert.Equal(t, metrics.WriteCountOpts, c)
+			require.Equal(t, metrics.WriteCountOpts, c)
 			return writtenCounter
 		default:
 			return nil
@@ -38,8 +38,8 @@ func TestNewObserver(t *testing.T) {
 		WrittenCounter: writtenCounter,
 	}
 	m := metrics.NewObserver(provider)
-	assert.Equal(t, expectedObserver, m)
-	assert.Equal(t, 2, provider.NewCounterCallCount())
+	require.Equal(t, expectedObserver, m)
+	require.Equal(t, 2, provider.NewCounterCallCount())
 }
 
 func TestCheck(t *testing.T) {
@@ -51,11 +51,11 @@ func TestCheck(t *testing.T) {
 	checkedEntry := &zapcore.CheckedEntry{}
 	m.Check(entry, checkedEntry)
 
-	assert.Equal(t, 1, counter.WithCallCount())
-	assert.Equal(t, []string{"level", "debug"}, counter.WithArgsForCall(0))
+	require.Equal(t, 1, counter.WithCallCount())
+	require.Equal(t, []string{"level", "debug"}, counter.WithArgsForCall(0))
 
-	assert.Equal(t, 1, counter.AddCallCount())
-	assert.Equal(t, float64(1), counter.AddArgsForCall(0))
+	require.Equal(t, 1, counter.AddCallCount())
+	require.Equal(t, float64(1), counter.AddArgsForCall(0))
 }
 
 func TestWrite(t *testing.T) {
@@ -66,9 +66,9 @@ func TestWrite(t *testing.T) {
 	entry := zapcore.Entry{Level: zapcore.DebugLevel}
 	m.WriteEntry(entry, nil)
 
-	assert.Equal(t, 1, counter.WithCallCount())
-	assert.Equal(t, []string{"level", "debug"}, counter.WithArgsForCall(0))
+	require.Equal(t, 1, counter.WithCallCount())
+	require.Equal(t, []string{"level", "debug"}, counter.WithArgsForCall(0))
 
-	assert.Equal(t, 1, counter.AddCallCount())
-	assert.Equal(t, float64(1), counter.AddArgsForCall(0))
+	require.Equal(t, 1, counter.AddCallCount())
+	require.Equal(t, float64(1), counter.AddArgsForCall(0))
 }

@@ -12,7 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLedgerConfig(t *testing.T) {
@@ -156,7 +156,7 @@ func TestLedgerConfig(t *testing.T) {
 				viper.Set(k, v)
 			}
 			conf := ledgerConfig()
-			assert.EqualValues(t, _test.expected, conf)
+			require.EqualValues(t, _test.expected, conf)
 		})
 	}
 }

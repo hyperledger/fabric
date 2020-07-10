@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -39,14 +39,14 @@ func buildPlugin(t *testing.T, dest, pkg string) {
 	}
 	cmd.Args = append(cmd.Args, pkg)
 	output, err := cmd.CombinedOutput()
-	assert.NoError(t, err, "Could not build plugin: "+string(output))
+	require.NoError(t, err, "Could not build plugin: "+string(output))
 }
 
 func TestLoadAuthPlugin(t *testing.T) {
 	endorser := &mockEndorserServer{}
 
 	testDir, err := ioutil.TempDir("", "")
-	assert.NoError(t, err, "Could not create temp directory for plugins")
+	require.NoError(t, err, "Could not create temp directory for plugins")
 	defer os.Remove(testDir)
 
 	pluginPath := filepath.Join(testDir, "authplugin.so")
@@ -54,11 +54,11 @@ func TestLoadAuthPlugin(t *testing.T) {
 
 	testReg := registry{}
 	testReg.loadPlugin(pluginPath, Auth)
-	assert.Len(t, testReg.filters, 1, "Expected filter to be registered")
+	require.Len(t, testReg.filters, 1, "Expected filter to be registered")
 
 	testReg.filters[0].Init(endorser)
 	testReg.filters[0].ProcessProposal(context.TODO(), nil)
-	assert.True(t, endorser.invoked, "Expected filter to invoke endorser on invoke")
+	require.True(t, endorser.invoked, "Expected filter to invoke endorser on invoke")
 }
 
 func TestLoadDecoratorPlugin(t *testing.T) {
@@ -66,7 +66,7 @@ func TestLoadDecoratorPlugin(t *testing.T) {
 	testInput := &peer.ChaincodeInput{Args: [][]byte{[]byte("test")}}
 
 	testDir, err := ioutil.TempDir("", "")
-	assert.NoError(t, err, "Could not create temp directory for plugins")
+	require.NoError(t, err, "Could not create temp directory for plugins")
 	defer os.Remove(testDir)
 
 	pluginPath := filepath.Join(testDir, "decoratorplugin.so")
@@ -74,15 +74,15 @@ func TestLoadDecoratorPlugin(t *testing.T) {
 
 	testReg := registry{}
 	testReg.loadPlugin(pluginPath, Decoration)
-	assert.Len(t, testReg.decorators, 1, "Expected decorator to be registered")
+	require.Len(t, testReg.decorators, 1, "Expected decorator to be registered")
 
 	decoratedInput := testReg.decorators[0].Decorate(testProposal, testInput)
-	assert.True(t, proto.Equal(decoratedInput, testInput), "Expected chaincode input to remain unchanged")
+	require.True(t, proto.Equal(decoratedInput, testInput), "Expected chaincode input to remain unchanged")
 }
 
 func TestEndorsementPlugin(t *testing.T) {
 	testDir, err := ioutil.TempDir("", "")
-	assert.NoError(t, err, "Could not create temp directory for plugins")
+	require.NoError(t, err, "Could not create temp directory for plugins")
 	defer os.Remove(testDir)
 
 	pluginPath := filepath.Join(testDir, "endorsementplugin.so")
@@ -92,18 +92,18 @@ func TestEndorsementPlugin(t *testing.T) {
 	testReg.loadPlugin(pluginPath, Endorsement, "escc")
 	mapping := testReg.Lookup(Endorsement).(map[string]endorsement.PluginFactory)
 	factory := mapping["escc"]
-	assert.NotNil(t, factory)
+	require.NotNil(t, factory)
 	instance := factory.New()
-	assert.NotNil(t, instance)
-	assert.NoError(t, instance.Init())
+	require.NotNil(t, instance)
+	require.NoError(t, instance.Init())
 	_, output, err := instance.Endorse([]byte{1, 2, 3}, nil)
-	assert.NoError(t, err)
-	assert.Equal(t, []byte{1, 2, 3}, output)
+	require.NoError(t, err)
+	require.Equal(t, []byte{1, 2, 3}, output)
 }
 
 func TestValidationPlugin(t *testing.T) {
 	testDir, err := ioutil.TempDir("", "")
-	assert.NoError(t, err, "Could not create temp directory for plugins")
+	require.NoError(t, err, "Could not create temp directory for plugins")
 	defer os.Remove(testDir)
 
 	pluginPath := filepath.Join(testDir, "validationplugin.so")
@@ -113,12 +113,12 @@ func TestValidationPlugin(t *testing.T) {
 	testReg.loadPlugin(pluginPath, Validation, "vscc")
 	mapping := testReg.Lookup(Validation).(map[string]validation.PluginFactory)
 	factory := mapping["vscc"]
-	assert.NotNil(t, factory)
+	require.NotNil(t, factory)
 	instance := factory.New()
-	assert.NotNil(t, instance)
-	assert.NoError(t, instance.Init())
+	require.NotNil(t, instance)
+	require.NoError(t, instance.Init())
 	err = instance.Validate(nil, "", 0, 0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestLoadPluginInvalidPath(t *testing.T) {

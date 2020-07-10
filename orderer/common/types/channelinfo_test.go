@@ -11,22 +11,22 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/orderer/common/types"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestErrorResponse(t *testing.T) {
 	errResp := types.ErrorResponse{Error: "oops"}
 
 	buff, err := json.Marshal(errResp)
-	assert.NoError(t, err)
-	assert.Equal(t, `{"error":"oops"}`, string(buff))
+	require.NoError(t, err)
+	require.Equal(t, `{"error":"oops"}`, string(buff))
 
 	buff2 := []byte(`{"error":"oops again"}`)
 	errResp2 := types.ErrorResponse{}
 	err = json.Unmarshal(buff2, &errResp2)
-	assert.NoError(t, err)
-	assert.NotNil(t, errResp2)
-	assert.Equal(t, "oops again", errResp2.Error)
+	require.NoError(t, err)
+	require.NotNil(t, errResp2)
+	require.Equal(t, "oops again", errResp2.Error)
 }
 
 func TestChannelInfoShort(t *testing.T) {
@@ -36,29 +36,29 @@ func TestChannelInfoShort(t *testing.T) {
 	}
 
 	buff, err := json.Marshal(info)
-	assert.NoError(t, err)
-	assert.Equal(t, `{"name":"my-channel","url":"/api/v1/channels/my-channel"}`, string(buff))
+	require.NoError(t, err)
+	require.Equal(t, `{"name":"my-channel","url":"/api/v1/channels/my-channel"}`, string(buff))
 
 	buff2 := []byte(`{"name":"my-channel2","url":"/api/v1/channels/my-channel2"}`)
 	var info2 types.ChannelInfoShort
 	err = json.Unmarshal(buff2, &info2)
-	assert.NoError(t, err)
-	assert.NotNil(t, info2)
-	assert.Equal(t, "my-channel2", info2.Name)
-	assert.Equal(t, "/api/v1/channels/my-channel2", info2.URL)
+	require.NoError(t, err)
+	require.NotNil(t, info2)
+	require.Equal(t, "my-channel2", info2.Name)
+	require.Equal(t, "/api/v1/channels/my-channel2", info2.URL)
 
 	buff3 := []byte(`{"name":"my-channel2","url":"/api/v1/channels/my-channel3","oops"}`)
 	var info3 types.ChannelInfoShort
 	err = json.Unmarshal(buff3, &info3)
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestChannelList(t *testing.T) {
 	list := types.ChannelList{SystemChannel: nil, Channels: nil}
 
 	buff, err := json.Marshal(list)
-	assert.NoError(t, err)
-	assert.Equal(t, `{"systemChannel":null,"channels":null}`, string(buff))
+	require.NoError(t, err)
+	require.Equal(t, `{"systemChannel":null,"channels":null}`, string(buff))
 
 	list.SystemChannel = &types.ChannelInfoShort{Name: "s", URL: "/api/channels/s"}
 	list.Channels = []types.ChannelInfoShort{
@@ -67,8 +67,8 @@ func TestChannelList(t *testing.T) {
 	}
 
 	buff, err = json.Marshal(list)
-	assert.NoError(t, err)
-	assert.Equal(t, `{"systemChannel":{"name":"s","url":"/api/channels/s"},"channels":[{"name":"a","url":"/api/channels/a"},{"name":"b","url":"/api/channels/b"}]}`, string(buff))
+	require.NoError(t, err)
+	require.Equal(t, `{"systemChannel":{"name":"s","url":"/api/channels/s"},"channels":[{"name":"a","url":"/api/channels/a"},{"name":"b","url":"/api/channels/b"}]}`, string(buff))
 }
 
 func TestChannelInfo(t *testing.T) {
@@ -81,11 +81,11 @@ func TestChannelInfo(t *testing.T) {
 	}
 
 	buff, err := json.Marshal(info)
-	assert.NoError(t, err)
-	assert.Equal(t, `{"name":"a","url":"/api/channels/a","clusterRelation":"follower","status":"active","height":1152921504606846976}`, string(buff))
+	require.NoError(t, err)
+	require.Equal(t, `{"name":"a","url":"/api/channels/a","clusterRelation":"follower","status":"active","height":1152921504606846976}`, string(buff))
 
 	var info2 types.ChannelInfo
 	err = json.Unmarshal(buff, &info2)
-	assert.NoError(t, err)
-	assert.Equal(t, info.Height, info2.Height)
+	require.NoError(t, err)
+	require.Equal(t, info.Height, info2.Height)
 }

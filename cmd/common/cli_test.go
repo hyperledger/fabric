@@ -16,7 +16,7 @@ import (
 
 	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCLI(t *testing.T) {
@@ -39,7 +39,7 @@ func TestCLI(t *testing.T) {
 		}
 		// Else, the command was executed - so ensure it was executed
 		// with the expected config
-		assert.Equal(t, Config{
+		require.Equal(t, Config{
 			SignerConfig: signer.Config{
 				MSPID:        "SampleOrg",
 				KeyPath:      "key.pem",
@@ -56,9 +56,9 @@ func TestCLI(t *testing.T) {
 		// Overwrite user home directory with testdata
 		dir := filepath.Join("testdata", "non_existent_config")
 		cli.Run([]string{"test", "--configFile", filepath.Join(dir, "config.yaml")})
-		assert.Contains(t, testBuff.String(), fmt.Sprint("Failed loading config open ", dir))
-		assert.Contains(t, testBuff.String(), "config.yaml: no such file or directory")
-		assert.True(t, exited)
+		require.Contains(t, testBuff.String(), fmt.Sprint("Failed loading config open ", dir))
+		require.Contains(t, testBuff.String(), "config.yaml: no such file or directory")
+		require.True(t, exited)
 	})
 
 	t.Run("Loading a valid config and the command succeeds", func(t *testing.T) {
@@ -69,8 +69,8 @@ func TestCLI(t *testing.T) {
 		dir := filepath.Join("testdata", "valid_config")
 		// Ensure that a valid config results in running our command
 		cli.Run([]string{"test", "--configFile", filepath.Join(dir, "config.yaml")})
-		assert.True(t, testCmdInvoked)
-		assert.False(t, exited)
+		require.True(t, testCmdInvoked)
+		require.False(t, exited)
 	})
 
 	t.Run("Loading a valid config but the command fails", func(t *testing.T) {
@@ -85,9 +85,9 @@ func TestCLI(t *testing.T) {
 		dir := filepath.Join("testdata", "valid_config")
 		// Ensure that a valid config results in running our command
 		cli.Run([]string{"test", "--configFile", filepath.Join(dir, "config.yaml")})
-		assert.True(t, testCmdInvoked)
-		assert.True(t, exited)
-		assert.Contains(t, testBuff.String(), "something went wrong")
+		require.True(t, testCmdInvoked)
+		require.True(t, exited)
+		require.Contains(t, testBuff.String(), "something went wrong")
 	})
 
 	t.Run("Saving a config", func(t *testing.T) {
@@ -106,14 +106,14 @@ func TestCLI(t *testing.T) {
 		os.Create(userKey)
 
 		cli.Run([]string{saveConfigCommand, "--MSP=SampleOrg", userCertFlag, userKeyFlag})
-		assert.Contains(t, testBuff.String(), "--configFile must be used to specify the configuration file")
+		require.Contains(t, testBuff.String(), "--configFile must be used to specify the configuration file")
 		testBuff.Reset()
 		// Persist the config
 		cli.Run([]string{saveConfigCommand, "--MSP=SampleOrg", userCertFlag, userKeyFlag, "--configFile", filepath.Join(dir, "config.yaml")})
 
 		// Run a different command and ensure the config was successfully persisted
 		cli.Command("assert", "", func(conf Config) error {
-			assert.Equal(t, Config{
+			require.Equal(t, Config{
 				SignerConfig: signer.Config{
 					MSPID:        "SampleOrg",
 					KeyPath:      userKey,

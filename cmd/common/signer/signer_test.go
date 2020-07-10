@@ -17,7 +17,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSigner(t *testing.T) {
@@ -28,14 +28,14 @@ func TestSigner(t *testing.T) {
 	}
 
 	signer, err := NewSigner(conf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	msg := []byte("foo")
 	sig, err := signer.Sign(msg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	r, s, err := utils.UnmarshalECDSASignature(sig)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ecdsa.Verify(&signer.key.PublicKey, util.ComputeSHA256(msg), r, s)
 }
 
@@ -47,16 +47,16 @@ ZsQXrlIqlmNalfYPX+NDDELqlpXQBeEqnA==
 -----END EC PRIVATE KEY-----`
 
 	pemBlock, _ := pem.Decode([]byte(key))
-	assert.NotNil(t, pemBlock)
+	require.NotNil(t, pemBlock)
 
 	ecPK, err := x509.ParseECPrivateKey(pemBlock.Bytes)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ec1, err := x509.MarshalECPrivateKey(ecPK)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pkcs8, err := x509.MarshalPKCS8PrivateKey(ecPK)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, testCase := range []struct {
 		description string
@@ -73,12 +73,12 @@ ZsQXrlIqlmNalfYPX+NDDELqlpXQBeEqnA==
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
 			tmpFile, err := ioutil.TempFile("", "key")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			defer os.Remove(tmpFile.Name())
 
 			err = ioutil.WriteFile(tmpFile.Name(), []byte(testCase.keyBytes), 0600)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			signer, err := NewSigner(Config{
 				MSPID:        "MSPID",
@@ -86,8 +86,8 @@ ZsQXrlIqlmNalfYPX+NDDELqlpXQBeEqnA==
 				KeyPath:      tmpFile.Name(),
 			})
 
-			assert.NoError(t, err)
-			assert.NotNil(t, signer)
+			require.NoError(t, err)
+			require.NotNil(t, signer)
 		})
 	}
 }
@@ -99,8 +99,8 @@ func TestSignerBadConfig(t *testing.T) {
 	}
 
 	signer, err := NewSigner(conf)
-	assert.EqualError(t, err, "open testdata/signer/non_existent_cert: no such file or directory")
-	assert.Nil(t, signer)
+	require.EqualError(t, err, "open testdata/signer/non_existent_cert: no such file or directory")
+	require.Nil(t, signer)
 
 	conf = Config{
 		MSPID:        "SampleOrg",
@@ -109,8 +109,8 @@ func TestSignerBadConfig(t *testing.T) {
 	}
 
 	signer, err = NewSigner(conf)
-	assert.EqualError(t, err, "open testdata/signer/non_existent_cert: no such file or directory")
-	assert.Nil(t, signer)
+	require.EqualError(t, err, "open testdata/signer/non_existent_cert: no such file or directory")
+	require.Nil(t, signer)
 
 	conf = Config{
 		MSPID:        "SampleOrg",
@@ -119,8 +119,8 @@ func TestSignerBadConfig(t *testing.T) {
 	}
 
 	signer, err = NewSigner(conf)
-	assert.EqualError(t, err, "failed to decode PEM block from testdata/signer/broken_private_key")
-	assert.Nil(t, signer)
+	require.EqualError(t, err, "failed to decode PEM block from testdata/signer/broken_private_key")
+	require.Nil(t, signer)
 
 	conf = Config{
 		MSPID:        "SampleOrg",
@@ -129,6 +129,6 @@ func TestSignerBadConfig(t *testing.T) {
 	}
 
 	signer, err = NewSigner(conf)
-	assert.EqualError(t, err, "failed to parse private key: x509: failed to parse EC private key: asn1: syntax error: sequence truncated")
-	assert.Nil(t, signer)
+	require.EqualError(t, err, "failed to parse private key: x509: failed to parse EC private key: asn1: syntax error: sequence truncated")
+	require.Nil(t, signer)
 }

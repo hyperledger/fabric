@@ -12,18 +12,18 @@ import (
 	"encoding/pem"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadCert(t *testing.T) {
 	pair, err := newCertKeyPair(false, false, "", nil, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, pair)
+	require.NoError(t, err)
+	require.NotNil(t, pair)
 	tlsCertPair, err := tls.X509KeyPair(pair.Cert, pair.Key)
-	assert.NoError(t, err)
-	assert.NotNil(t, tlsCertPair)
+	require.NoError(t, err)
+	require.NotNil(t, tlsCertPair)
 	block, _ := pem.Decode(pair.Cert)
 	cert, err := x509.ParseCertificate(block.Bytes)
-	assert.NoError(t, err)
-	assert.NotNil(t, cert)
+	require.NoError(t, err)
+	require.NotNil(t, cert)
 }

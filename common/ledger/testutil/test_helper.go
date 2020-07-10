@@ -23,7 +23,7 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var signer msp.SigningIdentity
@@ -74,7 +74,7 @@ type signingIdentity interface {
 // NewBlockGenerator instantiates new BlockGenerator for testing
 func NewBlockGenerator(t *testing.T, ledgerID string, signTxs bool) (*BlockGenerator, *common.Block) {
 	gb, err := test.MakeGenesisBlock(ledgerID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	gb.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txflags.NewWithValues(len(gb.Data.Data), pb.TxValidationCode_VALID)
 	return &BlockGenerator{1, protoutil.BlockHeaderHash(gb.GetHeader()), signTxs, t}, gb
 }

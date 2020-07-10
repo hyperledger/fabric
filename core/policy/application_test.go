@@ -17,8 +17,8 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestComponentIntegrationSignaturePolicyEnv(t *testing.T) {
@@ -48,7 +48,7 @@ func TestComponentIntegrationSignaturePolicyEnv(t *testing.T) {
 		Data:      []byte("batti"),
 		Signature: []byte("lei"),
 	}})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestEvaluator(t *testing.T) {
@@ -68,14 +68,14 @@ func TestEvaluator(t *testing.T) {
 	// SCENARIO: bad policy argument
 
 	err := ev.Evaluate([]byte("bad bad"), nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to unmarshal ApplicationPolicy bytes")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to unmarshal ApplicationPolicy bytes")
 
 	// SCENARIO: bad policy type
 
 	err = ev.Evaluate([]byte{}, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported policy type")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported policy type")
 
 	// SCENARIO: signature policy supplied - good and bad path
 
@@ -87,15 +87,15 @@ func TestEvaluator(t *testing.T) {
 	})
 	spp.On("NewPolicy", spenv).Return(okEval, nil).Once()
 	err = ev.Evaluate(mspenv, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	spp.On("NewPolicy", spenv).Return(nokEval, nil).Once()
 	err = ev.Evaluate(mspenv, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "bad bad")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "bad bad")
 	spp.On("NewPolicy", spenv).Return(nil, errors.New("bad policy")).Once()
 	err = ev.Evaluate(mspenv, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "bad policy")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "bad policy")
 
 	// SCENARIO: channel ref policy supplied - good and bad path
 
@@ -107,30 +107,30 @@ func TestEvaluator(t *testing.T) {
 	})
 	cpp.On("NewPolicy", chrefstr).Return(okEval, nil).Once()
 	err = ev.Evaluate(chrefstrEnv, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cpp.On("NewPolicy", chrefstr).Return(nokEval, nil).Once()
 	err = ev.Evaluate(chrefstrEnv, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "bad bad")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "bad bad")
 	cpp.On("NewPolicy", chrefstr).Return(nil, errors.New("bad policy")).Once()
 	err = ev.Evaluate(chrefstrEnv, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "bad policy")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "bad policy")
 }
 
 func TestChannelPolicyReference(t *testing.T) {
 	mcpmg := &mocks.ChannelPolicyManagerGetter{}
 	mcpmg.On("Manager", "channel").Return(nil, false).Once()
 	ape, err := New(nil, "channel", mcpmg)
-	assert.Error(t, err)
-	assert.Nil(t, ape)
-	assert.Contains(t, err.Error(), "failed to retrieve policy manager for channel")
+	require.Error(t, err)
+	require.Nil(t, ape)
+	require.Contains(t, err.Error(), "failed to retrieve policy manager for channel")
 
 	mm := &mocks.PolicyManager{}
 	mcpmg.On("Manager", "channel").Return(mm, true).Once()
 	ape, err = New(nil, "channel", mcpmg)
-	assert.NoError(t, err)
-	assert.NotNil(t, ape)
+	require.NoError(t, err)
+	require.NotNil(t, ape)
 
 	mcpmg.On("Manager", "channel").Return(mm, true)
 
@@ -138,10 +138,10 @@ func TestChannelPolicyReference(t *testing.T) {
 	mp.On("EvaluateSignedData", mock.Anything).Return(nil)
 	mm.On("GetPolicy", "As the sun breaks above the ground").Return(mp, true)
 	err = ape.evaluateChannelConfigPolicyReference("As the sun breaks above the ground", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mm.On("GetPolicy", "An old man stands on the hill").Return(nil, false)
 	err = ape.evaluateChannelConfigPolicyReference("An old man stands on the hill", nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to retrieve policy for reference")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to retrieve policy for reference")
 }
