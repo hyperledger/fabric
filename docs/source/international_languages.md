@@ -90,6 +90,8 @@ as spoken in Mexico:
    ```bash
    cp -R pt_BR/ es_MX/
    ```
+   Alternatively, you could copy the `docs/` folder from the `fabric`
+   repository.
 
 1. Customize the `README.md` file for your new language using [this
    example](https://github.com/hyperledger/fabric-docs-i18n/tree/master/docs/locale/pt_BR/README.md).
@@ -183,6 +185,18 @@ You can now request, via the [`i18n rocket
 channel`](https://chat.hyperledger.org/channel/i18n), that your translation is
 included on the documentation website.
 
+## Translation tools
+
+When translating topics from US English to your international language, it's
+often helpful to use an online tool to generate a first pass of the translation,
+which you then correct in a second pass review.
+
+Language workgroups have found the following tools helpful:
+
+* [`DocTranslator`](https://www.onlinedoctranslator.com/)
+
+* [`TexTra`](https://mt-auto-minhon-mlt.ucri.jgn-x.jp/)
+
 ## Suggested next topics
 
 Once you have published the mandatory initial set of topics on the documentation
@@ -220,7 +234,6 @@ order of translation in your workgroup.
   v2.x](https://hyperledger-fabric.readthedocs.io/en/latest/whatsnew.html)
 
   This topic covers the latest features in Hyperledger Fabric.
-
 
 
 Finally, we wish you good luck, and thank you for your contribution to
