@@ -214,23 +214,23 @@ func (g *Node) SuspectPeers(isSuspected api.PeerSuspector) {
 
 func (g *Node) learnAnchorPeers(channel string, orgOfAnchorPeers api.OrgIdentityType, anchorPeers []api.AnchorPeer) {
 	if len(anchorPeers) == 0 {
-		g.logger.Info("No configured anchor peers of", string(orgOfAnchorPeers), "for channel", channel, "to learn about")
+		g.logger.Infof("No configured anchor peers of %s for channel %s to learn about", string(orgOfAnchorPeers), channel)
 		return
 	}
-	g.logger.Info("Learning about the configured anchor peers of", string(orgOfAnchorPeers), "for channel", channel, ":", anchorPeers)
+	g.logger.Infof("Learning about the configured anchor peers of %s for channel %s: %v", string(orgOfAnchorPeers), channel, anchorPeers)
 	for _, ap := range anchorPeers {
 		if ap.Host == "" {
-			g.logger.Warning("Got empty hostname, skipping connecting to anchor peer", ap)
+			g.logger.Warningf("Got empty hostname for channel %s, skipping connecting to anchor peer %v", channel, ap)
 			continue
 		}
 		if ap.Port == 0 {
-			g.logger.Warning("Got invalid port (0), skipping connecting to anchor peer", ap)
+			g.logger.Warningf("Got invalid port (0) for channel %s, skipping connecting to anchor peer %v", channel, ap)
 			continue
 		}
 		endpoint := net.JoinHostPort(ap.Host, fmt.Sprintf("%d", ap.Port))
 		// Skip connecting to self
 		if g.selfNetworkMember().Endpoint == endpoint || g.selfNetworkMember().InternalEndpoint == endpoint {
-			g.logger.Info("Anchor peer with same endpoint, skipping connecting to myself")
+			g.logger.Infof("Anchor peer for channel %s with same endpoint, skipping connecting to myself", channel)
 			continue
 		}
 
@@ -242,12 +242,12 @@ func (g *Node) learnAnchorPeers(channel string, orgOfAnchorPeers api.OrgIdentity
 		identifier := func() (*discovery.PeerIdentification, error) {
 			remotePeerIdentity, err := g.comm.Handshake(&comm.RemotePeer{Endpoint: endpoint})
 			if err != nil {
-				g.logger.Warningf("Deep probe of %s failed: %s", endpoint, err)
+				g.logger.Warningf("Deep probe of %s for channel %s failed: %s", endpoint, channel, err)
 				return nil, err
 			}
 			isAnchorPeerInMyOrg := bytes.Equal(g.selfOrg, g.secAdvisor.OrgByPeerIdentity(remotePeerIdentity))
 			if bytes.Equal(orgOfAnchorPeers, g.selfOrg) && !isAnchorPeerInMyOrg {
-				err := errors.Errorf("Anchor peer %s isn't in our org, but is claimed to be", endpoint)
+				err := errors.Errorf("Anchor peer %s for channel %s isn't in our org, but is claimed to be", endpoint, channel)
 				g.logger.Warningf("%s", err)
 				return nil, err
 			}
