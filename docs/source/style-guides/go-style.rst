@@ -33,7 +33,7 @@ Two matching libraries are commonly used in our tests. When modifying code,
 please use the matching library that has already been chosen for the package.
 
   - `gomega <https://onsi.github.io/gomega/>`__
-  - `testify/assert <https://godoc.org/github.com/stretchr/testify/assert>`__
+  - `testify/require <https://godoc.org/github.com/stretchr/testify/require>`__
 
 Any fixtures or data required by tests should generated or placed under version
 control. When fixtures are generated, they must be placed in a temporary

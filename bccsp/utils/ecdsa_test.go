@@ -13,98 +13,98 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnmarshalECDSASignature(t *testing.T) {
 	_, _, err := UnmarshalECDSASignature(nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed unmashalling signature [")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed unmashalling signature [")
 
 	_, _, err = UnmarshalECDSASignature([]byte{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed unmashalling signature [")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed unmashalling signature [")
 
 	_, _, err = UnmarshalECDSASignature([]byte{0})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed unmashalling signature [")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed unmashalling signature [")
 
 	sigma, err := MarshalECDSASignature(big.NewInt(-1), big.NewInt(1))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, _, err = UnmarshalECDSASignature(sigma)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid signature, R must be larger than zero")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid signature, R must be larger than zero")
 
 	sigma, err = MarshalECDSASignature(big.NewInt(0), big.NewInt(1))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, _, err = UnmarshalECDSASignature(sigma)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid signature, R must be larger than zero")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid signature, R must be larger than zero")
 
 	sigma, err = MarshalECDSASignature(big.NewInt(1), big.NewInt(0))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, _, err = UnmarshalECDSASignature(sigma)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid signature, S must be larger than zero")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid signature, S must be larger than zero")
 
 	sigma, err = MarshalECDSASignature(big.NewInt(1), big.NewInt(-1))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, _, err = UnmarshalECDSASignature(sigma)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid signature, S must be larger than zero")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid signature, S must be larger than zero")
 
 	sigma, err = MarshalECDSASignature(big.NewInt(1), big.NewInt(1))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	R, S, err := UnmarshalECDSASignature(sigma)
-	assert.NoError(t, err)
-	assert.Equal(t, big.NewInt(1), R)
-	assert.Equal(t, big.NewInt(1), S)
+	require.NoError(t, err)
+	require.Equal(t, big.NewInt(1), R)
+	require.Equal(t, big.NewInt(1), S)
 }
 
 func TestIsLowS(t *testing.T) {
 	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	lowS, err := IsLowS(&lowLevelKey.PublicKey, big.NewInt(0))
-	assert.NoError(t, err)
-	assert.True(t, lowS)
+	require.NoError(t, err)
+	require.True(t, lowS)
 
 	s := new(big.Int)
 	s = s.Set(GetCurveHalfOrdersAt(elliptic.P256()))
 
 	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.True(t, lowS)
+	require.NoError(t, err)
+	require.True(t, lowS)
 
 	s = s.Add(s, big.NewInt(1))
 	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.False(t, lowS)
+	require.NoError(t, err)
+	require.False(t, lowS)
 	s, err = ToLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.True(t, lowS)
+	require.NoError(t, err)
+	require.True(t, lowS)
 }
 
 func TestSignatureToLowS(t *testing.T) {
 	lowLevelKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	s := new(big.Int)
 	s = s.Set(GetCurveHalfOrdersAt(elliptic.P256()))
 	s = s.Add(s, big.NewInt(1))
 
 	lowS, err := IsLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.False(t, lowS)
+	require.NoError(t, err)
+	require.False(t, lowS)
 	sigma, err := MarshalECDSASignature(big.NewInt(1), s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sigma2, err := SignatureToLowS(&lowLevelKey.PublicKey, sigma)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, s, err = UnmarshalECDSASignature(sigma2)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	lowS, err = IsLowS(&lowLevelKey.PublicKey, s)
-	assert.NoError(t, err)
-	assert.True(t, lowS)
+	require.NoError(t, err)
+	require.True(t, lowS)
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateJoinBlock(t *testing.T) {
@@ -96,9 +96,9 @@ func TestValidateJoinBlock(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			isAppChannel, err := channelparticipation.ValidateJoinBlock(test.channelID, test.joinBlock)
-			assert.Equal(t, isAppChannel, test.expectedIsAppChannel)
+			require.Equal(t, isAppChannel, test.expectedIsAppChannel)
 			if test.expectedErr != nil {
-				assert.EqualError(t, err, test.expectedErr.Error())
+				require.EqualError(t, err, test.expectedErr.Error())
 			}
 		})
 	}

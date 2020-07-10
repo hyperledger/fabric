@@ -12,7 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRollbackKVLedger(t *testing.T) {
@@ -27,27 +27,27 @@ func TestRollbackKVLedger(t *testing.T) {
 	dataHelper.populateLedger(h)
 	dataHelper.verifyLedgerContent(h)
 	bcInfo, err := h.lgr.GetBlockchainInfo()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	env.closeLedgerMgmt()
 
 	// Rollback the testLedger (invalid rollback params)
 	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "noLedger", 0)
-	assert.Equal(t, "ledgerID [noLedger] does not exist", err.Error())
+	require.Equal(t, "ledgerID [noLedger] does not exist", err.Error())
 	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "testLedger", bcInfo.Height)
 	expectedErr := fmt.Sprintf("target block number [%d] should be less than the biggest block number [%d]",
 		bcInfo.Height, bcInfo.Height-1)
-	assert.Equal(t, expectedErr, err.Error())
+	require.Equal(t, expectedErr, err.Error())
 
 	// Rollback the testLedger (valid rollback params)
 	targetBlockNum := bcInfo.Height - 3
 	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "testLedger", targetBlockNum)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	rebuildable := rebuildableStatedb + rebuildableBookkeeper + rebuildableConfigHistory + rebuildableHistoryDB
 	env.verifyRebuilableDoesNotExist(rebuildable)
 	env.initLedgerMgmt()
 	preResetHt, err := kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, []string{"testLedger"})
-	assert.NoError(t, err)
-	assert.Equal(t, bcInfo.Height, preResetHt["testLedger"])
+	require.NoError(t, err)
+	require.Equal(t, bcInfo.Height, preResetHt["testLedger"])
 	t.Logf("preResetHt = %#v", preResetHt)
 
 	h = env.newTestHelperOpenLgr("testLedger", t)
@@ -56,10 +56,10 @@ func TestRollbackKVLedger(t *testing.T) {
 	for _, b := range dataHelper.submittedData["testLedger"].Blocks[targetBlockNumIndex+1:] {
 		// if the pvtData is already present in the pvtdata store, the ledger (during commit) should be
 		// able to fetch them if not passed along with the block.
-		assert.NoError(t, h.lgr.CommitLegacy(b, &ledger.CommitOptions{FetchPvtDataFromLedger: true}))
+		require.NoError(t, h.lgr.CommitLegacy(b, &ledger.CommitOptions{FetchPvtDataFromLedger: true}))
 	}
 	actualBcInfo, err := h.lgr.GetBlockchainInfo()
-	assert.Equal(t, bcInfo, actualBcInfo)
+	require.Equal(t, bcInfo, actualBcInfo)
 	dataHelper.verifyLedgerContent(h)
 	// TODO: extend integration test with BTL support for pvtData. FAB-15704
 }
@@ -114,7 +114,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 
 	// rebuild statedb and bookkeeper
 	err := kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "ledger1", 4)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB
 	env.verifyRebuilableDoesNotExist(rebuildable)
 

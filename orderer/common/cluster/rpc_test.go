@@ -21,8 +21,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/cluster/mocks"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -227,9 +227,9 @@ func TestSend(t *testing.T) {
 			}
 
 			if testCase.stepReturns[1] == nil && testCase.remoteError == nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.EqualError(t, err, testCase.expectedErr)
+				require.EqualError(t, err, testCase.expectedErr)
 			}
 
 			if testCase.remoteError == nil && testCase.expectedErr == "" && isSend {
@@ -239,8 +239,8 @@ func TestSend(t *testing.T) {
 				err := testCase.method(rpc)
 				<-sent
 
-				assert.NoError(t, err)
-				assert.Equal(t, 2, int(atomic.LoadUint32(&sendCalls)))
+				require.NoError(t, err)
+				require.Equal(t, 2, int(atomic.LoadUint32(&sendCalls)))
 				client.AssertNumberOfCalls(t, "Step", 1)
 			}
 		})
@@ -295,8 +295,8 @@ func TestRPCGarbageCollection(t *testing.T) {
 	// Wait for the message to arrive
 	sent.Wait()
 	// Ensure the stream is initialized in the mapping
-	assert.Len(t, mapping[cluster.SubmitOperation], 1)
-	assert.Equal(t, uint64(1), mapping[cluster.SubmitOperation][1].ID)
+	require.Len(t, mapping[cluster.SubmitOperation], 1)
+	require.Equal(t, uint64(1), mapping[cluster.SubmitOperation][1].ID)
 	// And the underlying gRPC stream indeed had Send invoked on it.
 	stream.AssertNumberOfCalls(t, "Send", 1)
 
@@ -304,8 +304,8 @@ func TestRPCGarbageCollection(t *testing.T) {
 	remote.Abort()
 
 	// The stream still exists, as it is not cleaned yet.
-	assert.Len(t, mapping[cluster.SubmitOperation], 1)
-	assert.Equal(t, uint64(1), mapping[cluster.SubmitOperation][1].ID)
+	require.Len(t, mapping[cluster.SubmitOperation], 1)
+	require.Equal(t, uint64(1), mapping[cluster.SubmitOperation][1].ID)
 
 	// Prepare for the next transmission.
 	defineMocks(2)
@@ -313,6 +313,6 @@ func TestRPCGarbageCollection(t *testing.T) {
 	// Send a message to a different node.
 	rpc.SendSubmit(2, &orderer.SubmitRequest{Channel: "mychannel"})
 	// The mapping should be now cleaned from the previous stream.
-	assert.Len(t, mapping[cluster.SubmitOperation], 1)
-	assert.Equal(t, uint64(2), mapping[cluster.SubmitOperation][2].ID)
+	require.Len(t, mapping[cluster.SubmitOperation], 1)
+	require.Equal(t, uint64(2), mapping[cluster.SubmitOperation][2].ID)
 }

@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/internal/configtxlator/metadata"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetVersionInfo(t *testing.T) {
@@ -22,5 +22,5 @@ func TestGetVersionInfo(t *testing.T) {
 	expected := fmt.Sprintf("%s:\n Version: %s\n Commit SHA: %s\n Go version: %s\n OS/Arch: %s",
 		metadata.ProgramName, metadata.Version, testSHA, runtime.Version(),
 		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH))
-	assert.Equal(t, expected, metadata.GetVersionInfo())
+	require.Equal(t, expected, metadata.GetVersionInfo())
 }

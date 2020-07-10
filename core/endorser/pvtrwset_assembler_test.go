@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAssemblePvtRWSet(t *testing.T) {
@@ -65,17 +65,17 @@ func TestAssemblePvtRWSet(t *testing.T) {
 	}
 
 	pvtReadWriteSetWithConfigInfo, err := AssemblePvtRWSet("", privData, nil, mockDeployedCCInfoProvider)
-	assert.NoError(t, err)
-	assert.NotNil(t, pvtReadWriteSetWithConfigInfo)
-	assert.NotNil(t, pvtReadWriteSetWithConfigInfo.PvtRwset)
+	require.NoError(t, err)
+	require.NotNil(t, pvtReadWriteSetWithConfigInfo)
+	require.NotNil(t, pvtReadWriteSetWithConfigInfo.PvtRwset)
 	configPackages := pvtReadWriteSetWithConfigInfo.CollectionConfigs
-	assert.NotNil(t, configPackages)
+	require.NotNil(t, configPackages)
 	configs, found := configPackages["myCC"]
-	assert.True(t, found)
-	assert.Equal(t, 1, len(configs.Config))
-	assert.NotNil(t, configs.Config[0])
-	assert.NotNil(t, configs.Config[0].GetStaticCollectionConfig())
-	assert.Equal(t, "mycollection-1", configs.Config[0].GetStaticCollectionConfig().Name)
-	assert.Equal(t, 1, len(pvtReadWriteSetWithConfigInfo.PvtRwset.NsPvtRwset))
+	require.True(t, found)
+	require.Equal(t, 1, len(configs.Config))
+	require.NotNil(t, configs.Config[0])
+	require.NotNil(t, configs.Config[0].GetStaticCollectionConfig())
+	require.Equal(t, "mycollection-1", configs.Config[0].GetStaticCollectionConfig().Name)
+	require.Equal(t, 1, len(pvtReadWriteSetWithConfigInfo.PvtRwset.NsPvtRwset))
 
 }

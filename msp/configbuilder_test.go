@@ -14,7 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetupBCCSPKeystoreConfig(t *testing.T) {
@@ -22,11 +22,11 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 
 	// Case 1 : Check with empty FactoryOpts
 	rtnConfig := SetupBCCSPKeystoreConfig(nil, keystoreDir)
-	assert.NotNil(t, rtnConfig)
-	assert.Equal(t, rtnConfig.ProviderName, "SW")
-	assert.NotNil(t, rtnConfig.SwOpts)
-	assert.NotNil(t, rtnConfig.SwOpts.FileKeystore)
-	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.NotNil(t, rtnConfig)
+	require.Equal(t, rtnConfig.ProviderName, "SW")
+	require.NotNil(t, rtnConfig.SwOpts)
+	require.NotNil(t, rtnConfig.SwOpts.FileKeystore)
+	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
 
 	// Case 2 : Check with 'SW' as default provider
 	// Case 2-1 : without SwOpts
@@ -34,9 +34,9 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 		ProviderName: "SW",
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	assert.NotNil(t, rtnConfig.SwOpts)
-	assert.NotNil(t, rtnConfig.SwOpts.FileKeystore)
-	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.NotNil(t, rtnConfig.SwOpts)
+	require.NotNil(t, rtnConfig.SwOpts.FileKeystore)
+	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
 
 	// Case 2-2 : without SwOpts.FileKeystore
 	bccspConfig.SwOpts = &factory.SwOpts{
@@ -44,8 +44,8 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 		SecLevel:   256,
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	assert.NotNil(t, rtnConfig.SwOpts.FileKeystore)
-	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.NotNil(t, rtnConfig.SwOpts.FileKeystore)
+	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
 
 	// Case 2-3 : without SwOpts.FileKeystore.KeyStorePath
 	bccspConfig.SwOpts = &factory.SwOpts{
@@ -54,7 +54,7 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 		FileKeystore: &factory.FileKeystoreOpts{},
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
 
 	// Case 2-4 : with empty SwOpts.FileKeystore.KeyStorePath
 	bccspConfig.SwOpts = &factory.SwOpts{
@@ -63,14 +63,14 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 		FileKeystore: &factory.FileKeystoreOpts{KeyStorePath: ""},
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
 
 	// Case 3 : Check with 'PKCS11' as default provider
 	// Case 3-1 : without SwOpts
 	bccspConfig.ProviderName = "PKCS11"
 	bccspConfig.SwOpts = nil
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	assert.Nil(t, rtnConfig.SwOpts)
+	require.Nil(t, rtnConfig.SwOpts)
 
 	// Case 3-2 : without SwOpts.FileKeystore
 	bccspConfig.SwOpts = &factory.SwOpts{
@@ -78,60 +78,60 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 		SecLevel:   256,
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	assert.NotNil(t, rtnConfig.SwOpts.FileKeystore)
-	assert.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.NotNil(t, rtnConfig.SwOpts.FileKeystore)
+	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
 }
 
 func TestGetLocalMspConfig(t *testing.T) {
 	mspDir := configtest.GetDevMspDir()
 	_, err := GetLocalMspConfig(mspDir, nil, "SampleOrg")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetLocalMspConfigFails(t *testing.T) {
 	_, err := GetLocalMspConfig("/tmp/", nil, "SampleOrg")
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestGetPemMaterialFromDirWithFile(t *testing.T) {
 	tempFile, err := ioutil.TempFile("", "fabric-msp-test")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = tempFile.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.Remove(tempFile.Name())
 
 	_, err = getPemMaterialFromDir(tempFile.Name())
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestGetPemMaterialFromDirWithSymlinks(t *testing.T) {
 	mspDir := configtest.GetDevMspDir()
 	tempDir, err := ioutil.TempDir("", "fabric-msp-test")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
 	dirSymlinkName := filepath.Join(tempDir, "..data")
 	err = os.Symlink(filepath.Join(mspDir, "signcerts"), dirSymlinkName)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fileSymlinkTarget := filepath.Join("..data", "peer.pem")
 	fileSymlinkName := filepath.Join(tempDir, "peer.pem")
 	err = os.Symlink(fileSymlinkTarget, fileSymlinkName)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	pemdataSymlink, err := getPemMaterialFromDir(tempDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expected, err := getPemMaterialFromDir(filepath.Join(mspDir, "signcerts"))
-	assert.NoError(t, err)
-	assert.Equal(t, pemdataSymlink, expected)
+	require.NoError(t, err)
+	require.Equal(t, pemdataSymlink, expected)
 }
 
 func TestReadFileUtils(t *testing.T) {
 	// test that reading a file with an empty path doesn't crash
 	_, err := readPemFile("")
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// test that reading an existing file which is not a PEM file doesn't crash
 	_, err = readPemFile("/dev/null")
-	assert.Error(t, err)
+	require.Error(t, err)
 }

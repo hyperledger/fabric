@@ -13,7 +13,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetChannelInfo(t *testing.T) {
@@ -26,7 +26,7 @@ func TestGetChannelInfo(t *testing.T) {
 		PreviousBlockHash: []byte("PreviousBlockHash"),
 	}
 	mockPayload, err := proto.Marshal(mockBlockchainInfo)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mockResponse := &pb.ProposalResponse{
 		Response: &pb.Response{
@@ -37,7 +37,7 @@ func TestGetChannelInfo(t *testing.T) {
 	}
 
 	signer, err := common.GetDefaultSigner()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mockCF := &ChannelCmdFactory{
 		EndorserClient:   common.GetMockEndorserClient(mockResponse, nil),
@@ -51,7 +51,7 @@ func TestGetChannelInfo(t *testing.T) {
 	args := []string{"-c", mockChannel}
 	cmd.SetArgs(args)
 
-	assert.NoError(t, cmd.Execute())
+	require.NoError(t, cmd.Execute())
 }
 
 func TestGetChannelInfoMissingChannelID(t *testing.T) {
@@ -73,5 +73,5 @@ func TestGetChannelInfoMissingChannelID(t *testing.T) {
 
 	cmd.SetArgs([]string{})
 
-	assert.Error(t, cmd.Execute())
+	require.Error(t, cmd.Execute())
 }

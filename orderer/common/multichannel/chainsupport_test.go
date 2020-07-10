@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //go:generate counterfeiter -o mocks/policy.go --fake-name Policy . policy
@@ -42,14 +42,14 @@ func TestChainSupportBlock(t *testing.T) {
 	iterator.NextReturns(&common.Block{Header: &common.BlockHeader{Number: 99}}, common.Status_SUCCESS)
 	ledger.IteratorReturns(iterator, 99)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cs := &ChainSupport{
 		ledgerResources: &ledgerResources{ReadWriter: ledger},
 		BCCSP:           cryptoProvider,
 	}
 
-	assert.Nil(t, cs.Block(100))
-	assert.Equal(t, uint64(99), cs.Block(99).Header.Number)
+	require.Nil(t, cs.Block(100))
+	require.Equal(t, uint64(99), cs.Block(99).Header.Number)
 }
 
 type mutableResourcesMock struct {
@@ -85,7 +85,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 		Resources: mockResources,
 	}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cs := &ChainSupport{
 		ledgerResources: &ledgerResources{
 			configResources: &configResources{
@@ -100,25 +100,25 @@ func TestVerifyBlockSignature(t *testing.T) {
 	// and thus policy cannot be found
 	mockPolicyManager.GetPolicyReturns(nil, false)
 	err = cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil)
-	assert.EqualError(t, err, "policy /Channel/Orderer/BlockValidation wasn't found")
+	require.EqualError(t, err, "policy /Channel/Orderer/BlockValidation wasn't found")
 
 	mockPolicyManager.GetPolicyReturns(mockPolicy, true)
 	// Scenario II: Policy manager finds policy, but it evaluates
 	// to error.
 	mockPolicy.EvaluateSignedDataReturns(errors.New("invalid signature"))
 	err = cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil)
-	assert.EqualError(t, err, "block verification failed: invalid signature")
+	require.EqualError(t, err, "block verification failed: invalid signature")
 
 	// Scenario III: Policy manager finds policy, and it evaluates to success
 	mockPolicy.EvaluateSignedDataReturns(nil)
-	assert.NoError(t, cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil))
+	require.NoError(t, cs.VerifyBlockSignature([]*protoutil.SignedData{}, nil))
 
 	// Scenario IV: A bad config envelope is passed
 	err = cs.VerifyBlockSignature([]*protoutil.SignedData{}, &common.ConfigEnvelope{})
-	assert.EqualError(t, err, "channelconfig Config cannot be nil")
+	require.EqualError(t, err, "channelconfig Config cannot be nil")
 
 	// Scenario V: A valid config envelope is passed
-	assert.NoError(t, cs.VerifyBlockSignature([]*protoutil.SignedData{}, testConfigEnvelope(t)))
+	require.NoError(t, cs.VerifyBlockSignature([]*protoutil.SignedData{}, testConfigEnvelope(t)))
 
 }
 
@@ -139,7 +139,7 @@ func TestConsensusMetadataValidation(t *testing.T) {
 		newConsensusMetadataVal: newConsensusMetadata,
 	}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mv := &msgprocessormocks.MetadataValidator{}
 	cs := &ChainSupport{
 		ledgerResources: &ledgerResources{
@@ -154,30 +154,30 @@ func TestConsensusMetadataValidation(t *testing.T) {
 
 	// case 1: valid consensus metadata update
 	_, err = cs.ProposeConfigUpdate(&common.Envelope{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// validate arguments to ValidateConsensusMetadata
-	assert.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
+	require.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
 	om, nm, nc := mv.ValidateConsensusMetadataArgsForCall(0)
-	assert.False(t, nc)
-	assert.Equal(t, oldConsensusMetadata, om)
-	assert.Equal(t, newConsensusMetadata, nm)
+	require.False(t, nc)
+	require.Equal(t, oldConsensusMetadata, om)
+	require.Equal(t, newConsensusMetadata, nm)
 
 	// case 2: invalid consensus metadata update
 	mv.ValidateConsensusMetadataReturns(errors.New("bananas"))
 	_, err = cs.ProposeConfigUpdate(&common.Envelope{})
-	assert.EqualError(t, err, "consensus metadata update for channel config update is invalid: bananas")
+	require.EqualError(t, err, "consensus metadata update for channel config update is invalid: bananas")
 }
 
 func testConfigEnvelope(t *testing.T) *common.ConfigEnvelope {
 	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	group, err := encoder.NewChannelGroup(conf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	group.Groups["Orderer"].Values["ConsensusType"].Value, err = proto.Marshal(&orderer.ConsensusType{
 		Metadata: []byte("new consensus metadata"),
 	})
-	assert.NoError(t, err)
-	assert.NotNil(t, group)
+	require.NoError(t, err)
+	require.NotNil(t, group)
 	return &common.ConfigEnvelope{
 		Config: &common.Config{
 			ChannelGroup: group,

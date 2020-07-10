@@ -15,58 +15,58 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewDeserializersManager(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	assert.NotNil(t, NewDeserializersManager(cryptoProvider))
+	require.NoError(t, err)
+	require.NotNil(t, NewDeserializersManager(cryptoProvider))
 }
 
 func TestMspDeserializersManager_Deserialize(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	m := NewDeserializersManager(cryptoProvider)
 
 	i, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	raw, err := i.Serialize()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	i2, err := m.Deserialize(raw)
-	assert.NoError(t, err)
-	assert.NotNil(t, i2)
-	assert.NotNil(t, i2.IdBytes)
-	assert.Equal(t, m.GetLocalMSPIdentifier(), i2.Mspid)
+	require.NoError(t, err)
+	require.NotNil(t, i2)
+	require.NotNil(t, i2.IdBytes)
+	require.Equal(t, m.GetLocalMSPIdentifier(), i2.Mspid)
 }
 
 func TestMspDeserializersManager_GetChannelDeserializers(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	m := NewDeserializersManager(cryptoProvider)
 
 	deserializers := m.GetChannelDeserializers()
-	assert.NotNil(t, deserializers)
+	require.NotNil(t, deserializers)
 }
 
 func TestMspDeserializersManager_GetLocalDeserializer(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	m := NewDeserializersManager(cryptoProvider)
 
 	i, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	raw, err := i.Serialize()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	i2, err := m.GetLocalDeserializer().DeserializeIdentity(raw)
-	assert.NoError(t, err)
-	assert.NotNil(t, i2)
-	assert.Equal(t, m.GetLocalMSPIdentifier(), i2.GetMSPIdentifier())
+	require.NoError(t, err)
+	require.NotNil(t, i2)
+	require.Equal(t, m.GetLocalMSPIdentifier(), i2.GetMSPIdentifier())
 }
 
 func TestMain(m *testing.M) {

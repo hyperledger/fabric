@@ -13,18 +13,18 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // committer helps in cutting a block and commits the block (with pvt data) to the ledger
 type committer struct {
 	lgr    ledger.PeerLedger
 	blkgen *blkGenerator
-	assert *assert.Assertions
+	assert *require.Assertions
 }
 
 func newCommitter(lgr ledger.PeerLedger, t *testing.T) *committer {
-	return &committer{lgr, newBlockGenerator(lgr, t), assert.New(t)}
+	return &committer{lgr, newBlockGenerator(lgr, t), require.New(t)}
 }
 
 // cutBlockAndCommitLegacy cuts the next block from the given 'txAndPvtdata' and commits the block (with pvt data) to the ledger
@@ -63,17 +63,17 @@ func (c *committer) copyOfBlockAndPvtdata(blk *ledger.BlockAndPvtData) *ledger.B
 type blkGenerator struct {
 	lastNum  uint64
 	lastHash []byte
-	assert   *assert.Assertions
+	assert   *require.Assertions
 }
 
 // newBlockGenerator constructs a 'blkGenerator' and initializes the 'blkGenerator'
 // from the last block available in the ledger so that the next block can be populated
 // with the correct block number and previous block hash
 func newBlockGenerator(lgr ledger.PeerLedger, t *testing.T) *blkGenerator {
-	assert := assert.New(t)
+	require := require.New(t)
 	info, err := lgr.GetBlockchainInfo()
-	assert.NoError(err)
-	return &blkGenerator{info.Height - 1, info.CurrentBlockHash, assert}
+	require.NoError(err)
+	return &blkGenerator{info.Height - 1, info.CurrentBlockHash, require}
 }
 
 // nextBlockAndPvtdata cuts the next block

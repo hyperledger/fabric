@@ -15,19 +15,19 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/mock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 )
 
 func TestNew(t *testing.T) {
 	logging, err := flogging.New(flogging.Config{})
-	assert.NoError(t, err)
-	assert.Equal(t, zapcore.InfoLevel, logging.DefaultLevel())
+	require.NoError(t, err)
+	require.Equal(t, zapcore.InfoLevel, logging.DefaultLevel())
 
 	_, err = flogging.New(flogging.Config{
 		LogSpec: "::=borken=::",
 	})
-	assert.EqualError(t, err, "invalid logging specification '::=borken=::': bad segment '=borken='")
+	require.EqualError(t, err, "invalid logging specification '::=borken=::': bad segment '=borken='")
 }
 
 func TestNewWithEnvironment(t *testing.T) {
@@ -38,13 +38,13 @@ func TestNewWithEnvironment(t *testing.T) {
 
 	os.Setenv("FABRIC_LOGGING_SPEC", "fatal")
 	logging, err := flogging.New(flogging.Config{})
-	assert.NoError(t, err)
-	assert.Equal(t, zapcore.FatalLevel, logging.DefaultLevel())
+	require.NoError(t, err)
+	require.Equal(t, zapcore.FatalLevel, logging.DefaultLevel())
 
 	os.Unsetenv("FABRIC_LOGGING_SPEC")
 	logging, err = flogging.New(flogging.Config{})
-	assert.NoError(t, err)
-	assert.Equal(t, zapcore.InfoLevel, logging.DefaultLevel())
+	require.NoError(t, err)
+	require.Equal(t, zapcore.InfoLevel, logging.DefaultLevel())
 }
 
 //go:generate counterfeiter -o mock/write_syncer.go -fake-name WriteSyncer . writeSyncer
@@ -59,24 +59,24 @@ func TestLoggingSetWriter(t *testing.T) {
 	logging, err := flogging.New(flogging.Config{
 		Writer: w,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	old := logging.SetWriter(ws)
 	logging.SetWriter(w)
 	original := logging.SetWriter(ws)
 
-	assert.Exactly(t, old, original)
+	require.Exactly(t, old, original)
 	_, err = logging.Write([]byte("hello"))
-	assert.NoError(t, err)
-	assert.Equal(t, 1, ws.WriteCallCount())
-	assert.Equal(t, []byte("hello"), ws.WriteArgsForCall(0))
+	require.NoError(t, err)
+	require.Equal(t, 1, ws.WriteCallCount())
+	require.Equal(t, []byte("hello"), ws.WriteArgsForCall(0))
 
 	err = logging.Sync()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ws.SyncReturns(errors.New("welp"))
 	err = logging.Sync()
-	assert.EqualError(t, err, "welp")
+	require.EqualError(t, err, "welp")
 }
 
 func TestNamedLogger(t *testing.T) {
@@ -92,8 +92,8 @@ func TestNamedLogger(t *testing.T) {
 
 		logger.Info("from eugene")
 		logger2.Info("from george")
-		assert.Contains(t, buf.String(), "from eugene")
-		assert.NotContains(t, buf.String(), "from george")
+		require.Contains(t, buf.String(), "from eugene")
+		require.NotContains(t, buf.String(), "from george")
 	})
 
 	t.Run("named logger where parent logger isn't enabled", func(t *testing.T) {
@@ -102,8 +102,8 @@ func TestNamedLogger(t *testing.T) {
 		flogging.ActivateSpec("foo=fatal:foo.bar=error")
 		logger.Error("from foo")
 		logger2.Error("from bar")
-		assert.NotContains(t, buf.String(), "from foo")
-		assert.Contains(t, buf.String(), "from bar")
+		require.NotContains(t, buf.String(), "from foo")
+		require.Contains(t, buf.String(), "from bar")
 	})
 }
 
@@ -112,7 +112,7 @@ func TestInvalidLoggerName(t *testing.T) {
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
 			msg := fmt.Sprintf("invalid logger name: %s", name)
-			assert.PanicsWithValue(t, msg, func() { flogging.MustGetLogger(name) })
+			require.PanicsWithValue(t, msg, func() { flogging.MustGetLogger(name) })
 		})
 	}
 }
@@ -125,34 +125,34 @@ func TestCheck(t *testing.T) {
 	// set observer
 	l.SetObserver(observer)
 	l.Check(e, nil)
-	assert.Equal(t, 1, observer.CheckCallCount())
+	require.Equal(t, 1, observer.CheckCallCount())
 	e, ce := observer.CheckArgsForCall(0)
-	assert.Equal(t, e, zapcore.Entry{})
-	assert.Nil(t, ce)
+	require.Equal(t, e, zapcore.Entry{})
+	require.Nil(t, ce)
 
 	l.WriteEntry(e, nil)
-	assert.Equal(t, 1, observer.WriteEntryCallCount())
+	require.Equal(t, 1, observer.WriteEntryCallCount())
 	e, f := observer.WriteEntryArgsForCall(0)
-	assert.Equal(t, e, zapcore.Entry{})
-	assert.Nil(t, f)
+	require.Equal(t, e, zapcore.Entry{})
+	require.Nil(t, f)
 
 	//	remove observer
 	l.SetObserver(nil)
 	l.Check(zapcore.Entry{}, nil)
-	assert.Equal(t, 1, observer.CheckCallCount())
+	require.Equal(t, 1, observer.CheckCallCount())
 }
 
 func TestLoggerCoreCheck(t *testing.T) {
 	logging, err := flogging.New(flogging.Config{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	logger := logging.ZapLogger("foo")
 
 	err = logging.ActivateSpec("info")
-	assert.NoError(t, err)
-	assert.False(t, logger.Core().Enabled(zapcore.DebugLevel), "debug should not be enabled at info level")
+	require.NoError(t, err)
+	require.False(t, logger.Core().Enabled(zapcore.DebugLevel), "debug should not be enabled at info level")
 
 	err = logging.ActivateSpec("debug")
-	assert.NoError(t, err)
-	assert.True(t, logger.Core().Enabled(zapcore.DebugLevel), "debug should now be enabled at debug level")
+	require.NoError(t, err)
+	require.True(t, logger.Core().Enabled(zapcore.DebugLevel), "debug should now be enabled at debug level")
 }

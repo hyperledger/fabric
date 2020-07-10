@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/fabenc"
 	"github.com/hyperledger/fabric/common/flogging/mock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
@@ -24,7 +24,7 @@ import (
 
 func TestFabricLoggerEncoding(t *testing.T) {
 	formatters, err := fabenc.ParseFormat("%{color}[%{module}] %{shortfunc} -> %{level:.4s}%{color:reset} %{message}")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	enc := fabenc.NewFormatEncoder(formatters...)
 
 	buf := &bytes.Buffer{}
@@ -34,15 +34,15 @@ func TestFabricLoggerEncoding(t *testing.T) {
 
 	buf.Reset()
 	fl.Info("string value", 0, 1.23, struct{}{})
-	assert.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m string value 0 1.23 {} extra=field\n", buf.String())
+	require.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m string value 0 1.23 {} extra=field\n", buf.String())
 
 	buf.Reset()
 	fl.Infof("string %s, %d, %.3f, %v", "strval", 0, 1.23, struct{}{})
-	assert.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m string strval, 0, 1.230, {} extra=field\n", buf.String())
+	require.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m string strval, 0, 1.230, {} extra=field\n", buf.String())
 
 	buf.Reset()
 	fl.Infow("this is a message", "int", 0, "float", 1.23, "struct", struct{}{})
-	assert.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m this is a message extra=field int=0 float=1.23 struct={}\n", buf.String())
+	require.Equal(t, "\x1b[34m[test] TestFabricLoggerEncoding -> INFO\x1b[0m this is a message extra=field int=0 float=1.23 struct={}\n", buf.String())
 }
 
 func TestFabricLogger(t *testing.T) {
@@ -251,29 +251,29 @@ func TestFabricLogger(t *testing.T) {
 			fl := flogging.NewFabricLogger(zap.New(core)).Named("lname")
 
 			if tc.panics {
-				assert.Panics(t, func() { tc.f(fl) })
+				require.Panics(t, func() { tc.f(fl) })
 			} else {
 				tc.f(fl)
 			}
 
 			err := fl.Sync()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			entries := logs.All()
-			assert.Len(t, entries, 1)
+			require.Len(t, entries, 1)
 			entry := entries[0]
 
-			assert.Equal(t, tc.level, entry.Level)
-			assert.Equal(t, tc.message, entry.Message)
-			assert.Equal(t, tc.fields, entry.Context)
-			assert.Equal(t, "lname", entry.LoggerName)
+			require.Equal(t, tc.level, entry.Level)
+			require.Equal(t, tc.message, entry.Message)
+			require.Equal(t, tc.fields, entry.Context)
+			require.Equal(t, "lname", entry.LoggerName)
 		})
 	}
 }
 
 func TestIsEnabledFor(t *testing.T) {
 	formatters, err := fabenc.ParseFormat("%{color}[%{module}] %{shortfunc} -> %{level:.4s}%{color:reset} %{message}")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	enc := fabenc.NewFormatEncoder(formatters...)
 
 	enablerCallCount := 0
@@ -286,9 +286,9 @@ func TestIsEnabledFor(t *testing.T) {
 	zl := zap.New(core).Named("test")
 	fl := flogging.NewFabricLogger(zl)
 
-	assert.True(t, fl.IsEnabledFor(zapcore.ErrorLevel))
-	assert.False(t, fl.IsEnabledFor(zapcore.PanicLevel))
-	assert.Equal(t, 2, enablerCallCount)
+	require.True(t, fl.IsEnabledFor(zapcore.ErrorLevel))
+	require.False(t, fl.IsEnabledFor(zapcore.PanicLevel))
+	require.Equal(t, 2, enablerCallCount)
 }
 
 func logCaller(l grpclog.Logger, msg string)   { l.Println(msg) }
@@ -297,7 +297,7 @@ func callWrapper(l grpclog.Logger, msg string) { logCaller(l, msg) }
 func TestGRPCLogger(t *testing.T) {
 	// ensure it includes the name as module, logs at debug level, and the caller with appropriate skip level
 	formatters, err := fabenc.ParseFormat("%{module} %{level} %{shortfunc} %{message}")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	enc := fabenc.NewFormatEncoder(formatters...)
 
 	buf := &bytes.Buffer{}
@@ -307,7 +307,7 @@ func TestGRPCLogger(t *testing.T) {
 	gl := flogging.NewGRPCLogger(zl)
 
 	callWrapper(gl, "message")
-	assert.Equal(t, "grpc DEBUG TestGRPCLogger message\n", buf.String())
+	require.Equal(t, "grpc DEBUG TestGRPCLogger message\n", buf.String())
 }
 
 // FAB-15432
@@ -322,7 +322,7 @@ func TestEnabledLevelCheck(t *testing.T) {
 		LogSpec: "info",
 		Writer:  buf,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fakeObserver := &mock.Observer{}
 	logging.SetObserver(fakeObserver)
@@ -331,8 +331,8 @@ func TestEnabledLevelCheck(t *testing.T) {
 	fabricLogger := flogging.NewFabricLogger(logger)
 
 	fabricLogger.Debug("debug message")
-	assert.Equal(t, 0, fakeObserver.CheckCallCount(), "Check should not have been called")
+	require.Equal(t, 0, fakeObserver.CheckCallCount(), "Check should not have been called")
 
 	fabricLogger.Info("info message")
-	assert.Equal(t, 1, fakeObserver.CheckCallCount(), "Check should have been called")
+	require.Equal(t, 1, fakeObserver.CheckCallCount(), "Check should have been called")
 }

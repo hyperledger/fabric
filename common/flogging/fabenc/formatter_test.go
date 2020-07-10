@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/common/flogging/fabenc"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -76,15 +76,15 @@ func TestParseFormat(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf(tc.desc), func(t *testing.T) {
 			formatters, err := fabenc.ParseFormat(tc.spec)
-			assert.NoError(t, err)
-			assert.Equal(t, tc.formatters, formatters)
+			require.NoError(t, err)
+			require.Equal(t, tc.formatters, formatters)
 		})
 	}
 }
 
 func TestParseFormatError(t *testing.T) {
 	_, err := fabenc.ParseFormat("%{color:bad}")
-	assert.EqualError(t, err, "invalid color option: bad")
+	require.EqualError(t, err, "invalid color option: bad")
 }
 
 func TestNewFormatter(t *testing.T) {
@@ -117,10 +117,10 @@ func TestNewFormatter(t *testing.T) {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			f, err := fabenc.NewFormatter(tc.verb, tc.format)
 			if tc.errorMsg == "" {
-				assert.NoError(t, err)
-				assert.Equal(t, tc.formatter, f)
+				require.NoError(t, err)
+				require.Equal(t, tc.formatter, f)
 			} else {
-				assert.EqualError(t, err, tc.errorMsg)
+				require.EqualError(t, err, tc.errorMsg)
 			}
 		})
 	}
@@ -156,7 +156,7 @@ func TestColorFormatter(t *testing.T) {
 			buf := &bytes.Buffer{}
 			entry := zapcore.Entry{Level: tc.level}
 			tc.f.Format(buf, entry, nil)
-			assert.Equal(t, tc.formatted, buf.String())
+			require.Equal(t, tc.formatted, buf.String())
 		})
 	}
 }
@@ -181,7 +181,7 @@ func TestLevelFormatter(t *testing.T) {
 			buf := &bytes.Buffer{}
 			entry := zapcore.Entry{Level: tc.level}
 			fabenc.LevelFormatter{FormatVerb: "%s"}.Format(buf, entry, nil)
-			assert.Equal(t, tc.formatted, buf.String())
+			require.Equal(t, tc.formatted, buf.String())
 		})
 	}
 }
@@ -191,7 +191,7 @@ func TestMessageFormatter(t *testing.T) {
 	entry := zapcore.Entry{Message: "some message text \n\n"}
 	f := fabenc.MessageFormatter{FormatVerb: "%s"}
 	f.Format(buf, entry, nil)
-	assert.Equal(t, "some message text ", buf.String())
+	require.Equal(t, "some message text ", buf.String())
 }
 
 func TestModuleFormatter(t *testing.T) {
@@ -199,7 +199,7 @@ func TestModuleFormatter(t *testing.T) {
 	entry := zapcore.Entry{LoggerName: "logger/name"}
 	f := fabenc.ModuleFormatter{FormatVerb: "%s"}
 	f.Format(buf, entry, nil)
-	assert.Equal(t, "logger/name", buf.String())
+	require.Equal(t, "logger/name", buf.String())
 }
 
 func TestSequenceFormatter(t *testing.T) {
@@ -233,22 +233,22 @@ func TestSequenceFormatter(t *testing.T) {
 
 	finished.Wait()
 	for i := 1; i <= 100; i++ {
-		assert.Contains(t, results, strconv.Itoa(i))
+		require.Contains(t, results, strconv.Itoa(i))
 	}
 }
 
 func TestShortFuncFormatter(t *testing.T) {
 	callerpc, _, _, ok := runtime.Caller(0)
-	assert.True(t, ok)
+	require.True(t, ok)
 	buf := &bytes.Buffer{}
 	entry := zapcore.Entry{Caller: zapcore.EntryCaller{PC: callerpc}}
 	fabenc.ShortFuncFormatter{FormatVerb: "%s"}.Format(buf, entry, nil)
-	assert.Equal(t, "TestShortFuncFormatter", buf.String())
+	require.Equal(t, "TestShortFuncFormatter", buf.String())
 
 	buf = &bytes.Buffer{}
 	entry = zapcore.Entry{Caller: zapcore.EntryCaller{PC: 0}}
 	fabenc.ShortFuncFormatter{FormatVerb: "%s"}.Format(buf, entry, nil)
-	assert.Equal(t, "(unknown)", buf.String())
+	require.Equal(t, "(unknown)", buf.String())
 }
 
 func TestTimeFormatter(t *testing.T) {
@@ -256,7 +256,7 @@ func TestTimeFormatter(t *testing.T) {
 	entry := zapcore.Entry{Time: time.Date(1975, time.August, 15, 12, 0, 0, 333, time.UTC)}
 	f := fabenc.TimeFormatter{Layout: time.RFC3339Nano}
 	f.Format(buf, entry, nil)
-	assert.Equal(t, "1975-08-15T12:00:00.000000333Z", buf.String())
+	require.Equal(t, "1975-08-15T12:00:00.000000333Z", buf.String())
 }
 
 func TestMultiFormatter(t *testing.T) {
@@ -312,6 +312,6 @@ func TestMultiFormatter(t *testing.T) {
 
 		buf := &bytes.Buffer{}
 		mf.Format(buf, entry, fields)
-		assert.Equal(t, tc.expected, buf.String())
+		require.Equal(t, tc.expected, buf.String())
 	}
 }

@@ -12,8 +12,8 @@ import (
 
 	"github.com/hyperledger/fabric/core/committer/txvalidator"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRouter(t *testing.T) {
@@ -37,7 +37,7 @@ func TestRouter(t *testing.T) {
 		mv14.On("Validate", mock.Anything).Return(errors.New("uh uh")).Once()
 
 		err := r.Validate(nil)
-		assert.EqualError(t, err, "uh uh")
+		require.EqualError(t, err, "uh uh")
 	})
 
 	t.Run("v20 validator returns an error", func(t *testing.T) {
@@ -45,7 +45,7 @@ func TestRouter(t *testing.T) {
 		mv20.On("Validate", mock.Anything).Return(errors.New("uh uh")).Once()
 
 		err := r.Validate(nil)
-		assert.EqualError(t, err, "uh uh")
+		require.EqualError(t, err, "uh uh")
 	})
 
 	t.Run("v14 validator returns an error", func(t *testing.T) {
@@ -53,7 +53,7 @@ func TestRouter(t *testing.T) {
 		mv14.On("Validate", mock.Anything).Return(nil).Once()
 
 		err := r.Validate(nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("v20 validator returns an error", func(t *testing.T) {
@@ -61,6 +61,6 @@ func TestRouter(t *testing.T) {
 		mv20.On("Validate", mock.Anything).Return(nil).Once()
 
 		err := r.Validate(nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

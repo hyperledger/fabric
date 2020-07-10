@@ -28,7 +28,7 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega/gexec"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func blockWithPayload() *common.Block {
@@ -71,20 +71,20 @@ func TestMSPIDMapping(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	cryptogen, err := gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.Remove(cryptogen)
 
 	idemixgen, err := gexec.Build("github.com/hyperledger/fabric/cmd/idemixgen")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.Remove(idemixgen)
 
 	cryptoConfigDir := filepath.Join(dir, "crypto-config")
 	b, err := exec.Command(cryptogen, "generate", fmt.Sprintf("--output=%s", cryptoConfigDir)).CombinedOutput()
-	assert.NoError(t, err, string(b))
+	require.NoError(t, err, string(b))
 
 	idemixConfigDir := filepath.Join(dir, "crypto-config", "idemix")
 	b, err = exec.Command(idemixgen, "ca-keygen", fmt.Sprintf("--output=%s", idemixConfigDir)).CombinedOutput()
-	assert.NoError(t, err, string(b))
+	require.NoError(t, err, string(b))
 
 	profileConfig := genesisconfig.Load("TwoOrgsChannel", "testdata/")
 	ordererConfig := genesisconfig.Load("TwoOrgsOrdererGenesis", "testdata/")
@@ -116,7 +116,7 @@ func TestMSPIDMapping(t *testing.T) {
 
 	cs := config.NewDiscoverySupport(fakeBlockGetter)
 	res, err := cs.Config("mychannel")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	actualKeys := make(map[string]struct{})
 	for key := range res.Orderers {
@@ -134,7 +134,7 @@ func TestMSPIDMapping(t *testing.T) {
 		"Org1MSP":    {},
 		"Org2MSP":    {},
 	}
-	assert.Equal(t, expected, actualKeys)
+	require.Equal(t, expected, actualKeys)
 }
 
 func TestSupportGreenPath(t *testing.T) {
@@ -143,17 +143,17 @@ func TestSupportGreenPath(t *testing.T) {
 
 	cs := config.NewDiscoverySupport(fakeBlockGetter)
 	res, err := cs.Config("test")
-	assert.Nil(t, res)
-	assert.Equal(t, "could not get last config block for channel test", err.Error())
+	require.Nil(t, res)
+	require.Equal(t, "could not get last config block for channel test", err.Error())
 
 	block, err := test.MakeGenesisBlock("test")
-	assert.NoError(t, err)
-	assert.NotNil(t, block)
+	require.NoError(t, err)
+	require.NotNil(t, block)
 
 	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(1, block)
 	res, err = cs.Config("test")
-	assert.NoError(t, err)
-	assert.NotNil(t, res)
+	require.NoError(t, err)
+	require.NotNil(t, res)
 }
 
 func TestSupportBadConfig(t *testing.T) {
@@ -164,8 +164,8 @@ func TestSupportBadConfig(t *testing.T) {
 		Data: &common.BlockData{},
 	})
 	res, err := cs.Config("test")
-	assert.Contains(t, err.Error(), "no transactions in block")
-	assert.Nil(t, res)
+	require.Contains(t, err.Error(), "no transactions in block")
+	require.Nil(t, res)
 
 	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(1, &common.Block{
 		Data: &common.BlockData{
@@ -173,18 +173,18 @@ func TestSupportBadConfig(t *testing.T) {
 		},
 	})
 	res, err = cs.Config("test")
-	assert.Contains(t, err.Error(), "failed unmarshaling envelope")
-	assert.Nil(t, res)
+	require.Contains(t, err.Error(), "failed unmarshaling envelope")
+	require.Nil(t, res)
 
 	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(2, blockWithPayload())
 	res, err = cs.Config("test")
-	assert.Contains(t, err.Error(), "failed unmarshaling payload")
-	assert.Nil(t, res)
+	require.Contains(t, err.Error(), "failed unmarshaling payload")
+	require.Nil(t, res)
 
 	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(3, blockWithConfigEnvelope())
 	res, err = cs.Config("test")
-	assert.Contains(t, err.Error(), "failed unmarshaling config envelope")
-	assert.Nil(t, res)
+	require.Contains(t, err.Error(), "failed unmarshaling config envelope")
+	require.Nil(t, res)
 }
 
 func TestValidateConfigEnvelope(t *testing.T) {
@@ -298,7 +298,7 @@ func TestValidateConfigEnvelope(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			err := config.ValidateConfigEnvelope(test.ce)
-			assert.Contains(t, test.containsError, err.Error())
+			require.Contains(t, test.containsError, err.Error())
 		})
 	}
 
@@ -307,7 +307,7 @@ func TestValidateConfigEnvelope(t *testing.T) {
 func TestOrdererEndpoints(t *testing.T) {
 	t.Run("Global endpoints", func(t *testing.T) {
 		block, err := test.MakeGenesisBlock("mychannel")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		fakeBlockGetter := &mocks.ConfigBlockGetter{}
 		cs := config.NewDiscoverySupport(fakeBlockGetter)
@@ -317,15 +317,15 @@ func TestOrdererEndpoints(t *testing.T) {
 		injectGlobalOrdererEndpoint(t, block, "globalEndpoint:7050")
 
 		res, err := cs.Config("test")
-		assert.NoError(t, err)
-		assert.Equal(t, map[string]*discovery.Endpoints{
+		require.NoError(t, err)
+		require.Equal(t, map[string]*discovery.Endpoints{
 			"SampleOrg": {Endpoint: []*discovery.Endpoint{{Host: "globalEndpoint", Port: 7050}}},
 		}, res.Orderers)
 	})
 
 	t.Run("Per org endpoints alongside global endpoints", func(t *testing.T) {
 		block, err := test.MakeGenesisBlock("mychannel")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		fakeBlockGetter := &mocks.ConfigBlockGetter{}
 		cs := config.NewDiscoverySupport(fakeBlockGetter)
@@ -336,8 +336,8 @@ func TestOrdererEndpoints(t *testing.T) {
 		injectAdditionalEndpointPair(t, block, "endpointWithoutAPortName", "aBadOrg")
 
 		res, err := cs.Config("test")
-		assert.NoError(t, err)
-		assert.Equal(t, map[string]*discovery.Endpoints{
+		require.NoError(t, err)
+		require.Equal(t, map[string]*discovery.Endpoints{
 			"SampleOrg":  {Endpoint: []*discovery.Endpoint{{Host: "127.0.0.1", Port: 7050}}},
 			"anotherOrg": {Endpoint: []*discovery.Endpoint{{Host: "perOrgEndpoint", Port: 7050}}},
 			"aBadOrg":    {},
@@ -346,7 +346,7 @@ func TestOrdererEndpoints(t *testing.T) {
 
 	t.Run("Per org endpoints without global endpoints", func(t *testing.T) {
 		block, err := test.MakeGenesisBlock("mychannel")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		fakeBlockGetter := &mocks.ConfigBlockGetter{}
 		cs := config.NewDiscoverySupport(fakeBlockGetter)
@@ -358,8 +358,8 @@ func TestOrdererEndpoints(t *testing.T) {
 		injectAdditionalEndpointPair(t, block, "endpointWithoutAPortName", "aBadOrg")
 
 		res, err := cs.Config("test")
-		assert.NoError(t, err)
-		assert.Equal(t, map[string]*discovery.Endpoints{
+		require.NoError(t, err)
+		require.Equal(t, map[string]*discovery.Endpoints{
 			"SampleOrg": {Endpoint: []*discovery.Endpoint{{Host: "perOrgEndpoint", Port: 7050}}},
 			"aBadOrg":   {},
 		}, res.Orderers)
@@ -369,10 +369,10 @@ func TestOrdererEndpoints(t *testing.T) {
 func removeGlobalEndpoints(t *testing.T, block *common.Block) {
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	payload := protoutil.UnmarshalPayloadOrPanic(env.Payload)
 	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Remove the orderer addresses
 	delete(confEnv.Config.ChannelGroup.Values, channelconfig.OrdererAddressesKey)
 	// And put it back into the block
@@ -385,11 +385,11 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint str
 	ordererAddresses := channelconfig.OrdererAddressesValue([]string{endpoint})
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Replace the orderer addresses
 	confEnv.Config.ChannelGroup.Values[ordererAddresses.Key()] = &common.ConfigValue{
 		Value:     protoutil.MarshalOrPanic(ordererAddresses.Value()),
@@ -412,11 +412,11 @@ func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint str
 func injectAdditionalEndpointPair(t *testing.T, block *common.Block, endpoint string, orgName string) {
 	// Unwrap the layers until we reach the orderer addresses
 	env, err := protoutil.ExtractEnvelope(block, 0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	ordererGrp := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
 	// Get the first orderer org config
 	var firstOrdererConfig *common.ConfigGroup
@@ -430,11 +430,11 @@ func injectAdditionalEndpointPair(t *testing.T, block *common.Block, endpoint st
 	// Reach the FabricMSPConfig buried in it.
 	mspConfig := &msp.MSPConfig{}
 	err = proto.Unmarshal(secondOrdererConfig.Values[channelconfig.MSPKey].Value, mspConfig)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fabricConfig := &msp.FabricMSPConfig{}
 	err = proto.Unmarshal(mspConfig.Config, fabricConfig)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Rename it.
 	fabricConfig.Name = orgName

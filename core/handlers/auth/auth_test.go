@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChainFilters(t *testing.T) {
@@ -25,18 +25,18 @@ func TestChainFilters(t *testing.T) {
 	firstFilter := ChainFilters(endorser, filters...)
 	firstFilter.ProcessProposal(context.Background(), initialProposal)
 	for i := 0; i < iterations; i++ {
-		assert.Equal(t, uint32(i), filters[i].(*mockAuthFilter).sequence,
+		require.Equal(t, uint32(i), filters[i].(*mockAuthFilter).sequence,
 			"Expected filters to be invoked in the provided sequence")
 	}
 
-	assert.Equal(t, uint32(iterations), endorser.sequence,
+	require.Equal(t, uint32(iterations), endorser.sequence,
 		"Expected endorser to be invoked after filters")
 
 	// Test with no filters
 	binary.BigEndian.PutUint32(initialProposal.ProposalBytes, 0)
 	firstFilter = ChainFilters(endorser)
 	firstFilter.ProcessProposal(context.Background(), initialProposal)
-	assert.Equal(t, uint32(0), endorser.sequence,
+	require.Equal(t, uint32(0), endorser.sequence,
 		"Expected endorser to be invoked first")
 }
 

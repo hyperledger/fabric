@@ -9,7 +9,7 @@ package bookkeeping
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProvider(t *testing.T) {
@@ -17,8 +17,8 @@ func TestProvider(t *testing.T) {
 	defer testEnv.Cleanup()
 	p := testEnv.TestProvider
 	db := p.GetDBHandle("TestLedger", PvtdataExpiry)
-	assert.NoError(t, db.Put([]byte("key"), []byte("value"), true))
+	require.NoError(t, db.Put([]byte("key"), []byte("value"), true))
 	val, err := db.Get([]byte("key"))
-	assert.NoError(t, err)
-	assert.Equal(t, []byte("value"), val)
+	require.NoError(t, err)
+	require.Equal(t, []byte("value"), val)
 }

@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSignedDataToKey(t *testing.T) {
@@ -28,9 +28,9 @@ func TestSignedDataToKey(t *testing.T) {
 		Identity:  []byte{4, 5, 6},
 		Signature: []byte{7, 8, 9},
 	})
-	assert.NoError(t, err1)
-	assert.NoError(t, err2)
-	assert.NotEqual(t, key1, key2)
+	require.NoError(t, err1)
+	require.NoError(t, err2)
+	require.NotEqual(t, key1, key2)
 }
 
 type mockAcSupport struct {
@@ -116,11 +116,11 @@ func TestCacheUsage(t *testing.T) {
 		t.Run("Not cached test", func(t *testing.T) {
 			err := cache.EligibleForService(tst.channel, tst.sd)
 			if tst.expectedErr == nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Equal(t, tst.expectedErr.Error(), err.Error())
+				require.Equal(t, tst.expectedErr.Error(), err.Error())
 			}
-			assert.True(t, invoked)
+			require.True(t, invoked)
 			// Reset invoked to false for next test
 			invoked = false
 		})
@@ -131,11 +131,11 @@ func TestCacheUsage(t *testing.T) {
 		t.Run("Cached test", func(t *testing.T) {
 			err := cache.EligibleForService(tst.channel, tst.sd)
 			if tst.expectedErr == nil {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.Equal(t, tst.expectedErr.Error(), err.Error())
+				require.Equal(t, tst.expectedErr.Error(), err.Error())
 			}
-			assert.False(t, invoked)
+			require.False(t, invoked)
 		})
 	}
 }
@@ -150,7 +150,7 @@ func TestCacheMarshalFailure(t *testing.T) {
 		asBytes = asn1.Marshal
 	}()
 	err := cache.EligibleForService("mychannel", protoutil.SignedData{})
-	assert.Contains(t, err.Error(), "failed marshaling ASN1")
+	require.Contains(t, err.Error(), "failed marshaling ASN1")
 }
 
 func TestCacheConfigChange(t *testing.T) {
@@ -167,19 +167,19 @@ func TestCacheConfigChange(t *testing.T) {
 	as.On("EligibleForService", "mychannel", sd).Return(nil).Once()
 	as.On("ConfigSequence", "mychannel").Return(uint64(0)).Times(2)
 	err := cache.EligibleForService("mychannel", sd)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Scenario II: The identity is still authorized, and config hasn't changed yet.
 	// Result should be cached
 	as.On("ConfigSequence", "mychannel").Return(uint64(0)).Once()
 	err = cache.EligibleForService("mychannel", sd)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Scenario III: A config change occurred, cache should be disregarded
 	as.On("ConfigSequence", "mychannel").Return(uint64(1)).Times(2)
 	as.On("EligibleForService", "mychannel", sd).Return(errors.New("unauthorized")).Once()
 	err = cache.EligibleForService("mychannel", sd)
-	assert.Contains(t, err.Error(), "unauthorized")
+	require.Contains(t, err.Error(), "unauthorized")
 }
 
 func TestCachePurgeCache(t *testing.T) {
@@ -197,7 +197,7 @@ func TestCachePurgeCache(t *testing.T) {
 		// At first, all identities are eligible of the service
 		as.On("EligibleForService", "mychannel", sd).Return(nil).Once()
 		err := cache.EligibleForService("mychannel", sd)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// Now, ensure that at least 1 of the identities was evicted from the cache, but not all
@@ -214,7 +214,7 @@ func TestCachePurgeCache(t *testing.T) {
 			evicted++
 		}
 	}
-	assert.True(t, evicted > 0 && evicted < 4, "evicted: %d, but expected between 1 and 3 evictions", evicted)
+	require.True(t, evicted > 0 && evicted < 4, "evicted: %d, but expected between 1 and 3 evictions", evicted)
 }
 
 func TestCacheConcurrentConfigUpdate(t *testing.T) {
@@ -257,7 +257,7 @@ func TestCacheConcurrentConfigUpdate(t *testing.T) {
 	go func() {
 		defer firstRequestFinished.Done()
 		firstResult := cache.EligibleForService("mychannel", sd)
-		assert.NoError(t, firstResult)
+		require.NoError(t, firstResult)
 	}()
 	firstRequestInvoked.Wait()
 	// Second request returns that the identity isn't authorized
@@ -266,13 +266,13 @@ func TestCacheConcurrentConfigUpdate(t *testing.T) {
 	secondRequestFinished.Done()
 	// Wait for first request to return
 	firstRequestFinished.Wait()
-	assert.Contains(t, secondResult.Error(), "unauthorized")
+	require.Contains(t, secondResult.Error(), "unauthorized")
 
 	// Now make another request and ensure that the second request's result (an-authorized) was cached,
 	// even though it finished before the first request.
 	as.On("ConfigSequence", "mychannel").Return(uint64(1)).Once()
 	cachedResult := cache.EligibleForService("mychannel", sd)
-	assert.Contains(t, cachedResult.Error(), "unauthorized")
+	require.Contains(t, cachedResult.Error(), "unauthorized")
 }
 
 func defaultConfig() authCacheConfig {

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -31,8 +31,16 @@ func TestServerKeepaliveOptions(t *testing.T) {
 		grpc.KeepaliveEnforcementPolicy(kep),
 	}
 	opts := ServerKeepaliveOptions(DefaultKeepaliveOptions)
-	assert.ObjectsAreEqual(expectedOpts, opts)
 
+	// Unable to test equality of options since the option methods return
+	// functions and each instance is a different func.
+	// Unable to test the equality of applying the options to the server
+	// implementation because the server embeds channels.
+	// Fallback to a sanity check.
+	require.Len(t, opts, len(expectedOpts))
+	for i := range opts {
+		require.IsType(t, expectedOpts[i], opts[i])
+	}
 }
 
 func TestClientKeepaliveOptions(t *testing.T) {
@@ -45,8 +53,14 @@ func TestClientKeepaliveOptions(t *testing.T) {
 	}
 	expectedOpts := []grpc.DialOption{grpc.WithKeepaliveParams(kap)}
 	opts := ClientKeepaliveOptions(DefaultKeepaliveOptions)
-	assert.ObjectsAreEqual(expectedOpts, opts)
 
+	// Unable to test equality of options since the option methods return
+	// functions and each instance is a different func.
+	// Fallback to a sanity check.
+	require.Len(t, opts, len(expectedOpts))
+	for i := range opts {
+		require.IsType(t, expectedOpts[i], opts[i])
+	}
 }
 
 func TestClientConfigClone(t *testing.T) {
@@ -64,7 +78,7 @@ func TestClientConfigClone(t *testing.T) {
 	clone := origin.Clone()
 
 	// Same content, different inner fields references.
-	assert.Equal(t, origin, clone)
+	require.Equal(t, origin, clone)
 
 	// We change the contents of the fields and ensure it doesn't
 	// propagate across instances.
@@ -103,6 +117,6 @@ func TestClientConfigClone(t *testing.T) {
 		AsyncConnect: true,
 	}
 
-	assert.Equal(t, expectedOriginState, origin)
-	assert.Equal(t, expectedCloneState, clone)
+	require.Equal(t, expectedOriginState, origin)
+	require.Equal(t, expectedCloneState, clone)
 }

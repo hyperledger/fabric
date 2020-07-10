@@ -37,8 +37,8 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -288,7 +288,7 @@ func createGRPCServer(t *testing.T) *comm.GRPCServer {
 			Key:         serverKey,
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return s
 }
 
@@ -303,7 +303,7 @@ func createConnector(t *testing.T, certificate tls.Certificate, targetPort int) 
 	addr := fmt.Sprintf("localhost:%d", targetPort)
 	return func() (*grpc.ClientConn, error) {
 		conn, err := grpc.Dial(addr, grpc.WithBlock(), grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if err != nil {
 			panic(err)
 		}
@@ -370,7 +370,7 @@ func TestClient(t *testing.T) {
 	clientCert := loadFileOrPanic(filepath.Join("testdata", "client", "cert.pem"))
 	clientKey := loadFileOrPanic(filepath.Join("testdata", "client", "key.pem"))
 	clientTLSCert, err := tls.X509KeyPair(clientCert, clientKey)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	server := createGRPCServer(t)
 	sup := &mockSupport{}
 	service := createDiscoveryService(sup)
@@ -394,39 +394,39 @@ func TestClient(t *testing.T) {
 	req := NewRequest()
 	req.OfChannel("mychannel").AddPeersQuery().AddConfigQuery().AddLocalPeersQuery().AddEndorsersQuery(interest("mycc"))
 	r, err := cl.Send(ctx, req, authInfo)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Run("Channel mismatch", func(t *testing.T) {
 		// Check behavior for channels that we didn't query for.
 		fakeChannel := r.ForChannel("fakeChannel")
 		peers, err := fakeChannel.Peers()
-		assert.Equal(t, ErrNotFound, err)
-		assert.Nil(t, peers)
+		require.Equal(t, ErrNotFound, err)
+		require.Nil(t, peers)
 
 		endorsers, err := fakeChannel.Endorsers(ccCall("mycc"), NoFilter)
-		assert.Equal(t, ErrNotFound, err)
-		assert.Nil(t, endorsers)
+		require.Equal(t, ErrNotFound, err)
+		require.Nil(t, endorsers)
 
 		conf, err := fakeChannel.Config()
-		assert.Equal(t, ErrNotFound, err)
-		assert.Nil(t, conf)
+		require.Equal(t, ErrNotFound, err)
+		require.Nil(t, conf)
 	})
 
 	t.Run("Peer membership query", func(t *testing.T) {
 		// Check response for the correct channel
 		mychannel := r.ForChannel("mychannel")
 		conf, err := mychannel.Config()
-		assert.NoError(t, err)
-		assert.Equal(t, expectedConf.Msps, conf.Msps)
-		assert.Equal(t, expectedConf.Orderers, conf.Orderers)
+		require.NoError(t, err)
+		require.Equal(t, expectedConf.Msps, conf.Msps)
+		require.Equal(t, expectedConf.Orderers, conf.Orderers)
 		peers, err := mychannel.Peers()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// We should see all peers as provided above
-		assert.Len(t, peers, 8)
+		require.Len(t, peers, 8)
 		// Check response for peers when doing a local query
 		peers, err = r.ForLocal().Peers()
-		assert.NoError(t, err)
-		assert.Len(t, peers, len(peerIdentities))
+		require.NoError(t, err)
+		require.Len(t, peers, len(peerIdentities))
 	})
 
 	t.Run("Endorser query without chaincode installed", func(t *testing.T) {
@@ -435,8 +435,8 @@ func TestClient(t *testing.T) {
 		// However, since we didn't provide any chaincodes to these peers - the server shouldn't
 		// be able to construct the descriptor.
 		// Just check that the appropriate error is returned, and nothing crashes.
-		assert.Contains(t, err.Error(), "failed constructing descriptor for chaincode")
-		assert.Nil(t, endorsers)
+		require.Contains(t, err.Error(), "failed constructing descriptor for chaincode")
+		require.Nil(t, endorsers)
 	})
 
 	t.Run("Endorser query with chaincodes installed", func(t *testing.T) {
@@ -445,18 +445,18 @@ func TestClient(t *testing.T) {
 		req = NewRequest()
 		req.OfChannel("mychannel").AddPeersQuery().AddEndorsersQuery(interest("mycc"))
 		r, err = cl.Send(ctx, req, authInfo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		mychannel := r.ForChannel("mychannel")
 		peers, err := mychannel.Peers()
-		assert.NoError(t, err)
-		assert.Len(t, peers, 8)
+		require.NoError(t, err)
+		require.Len(t, peers, 8)
 
 		// We should get a valid endorsement descriptor from the service
 		endorsers, err := mychannel.Endorsers(ccCall("mycc"), NoFilter)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// The combinations of endorsers should be in the expected combinations
-		assert.Contains(t, expectedOrgCombinations, getMSPs(endorsers))
+		require.Contains(t, expectedOrgCombinations, getMSPs(endorsers))
 	})
 
 	t.Run("Endorser query with cc2cc and collections", func(t *testing.T) {
@@ -467,19 +467,19 @@ func TestClient(t *testing.T) {
 		myccAndmycc2[1].CollectionNames = append(myccAndmycc2[1].CollectionNames, "col")
 		req.OfChannel("mychannel").AddEndorsersQuery(cc2ccInterests(myccAndmycc2, myccOnly)...)
 		r, err = cl.Send(ctx, req, authInfo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		mychannel := r.ForChannel("mychannel")
 
 		// Check the endorsers for the non cc2cc call
 		endorsers, err := mychannel.Endorsers(ccCall("mycc"), NoFilter)
-		assert.NoError(t, err)
-		assert.Contains(t, expectedOrgCombinations, getMSPs(endorsers))
+		require.NoError(t, err)
+		require.Contains(t, expectedOrgCombinations, getMSPs(endorsers))
 		// Check the endorsers for the cc2cc call with collections
 		call := ccCall("mycc", "mycc2")
 		call[1].CollectionNames = append(call[1].CollectionNames, "col")
 		endorsers, err = mychannel.Endorsers(call, NoFilter)
-		assert.NoError(t, err)
-		assert.Contains(t, expectedOrgCombinations2, getMSPs(endorsers))
+		require.NoError(t, err)
+		require.Contains(t, expectedOrgCombinations2, getMSPs(endorsers))
 	})
 
 	t.Run("Peer membership query with collections and chaincodes", func(t *testing.T) {
@@ -488,15 +488,15 @@ func TestClient(t *testing.T) {
 		interest[0].CollectionNames = append(interest[0].CollectionNames, "col")
 		req = NewRequest().OfChannel("mychannel").AddPeersQuery(interest...)
 		r, err = cl.Send(ctx, req, authInfo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		mychannel := r.ForChannel("mychannel")
 		peers, err := mychannel.Peers(interest...)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// We should see all peers that aren't in ORG A since it's not part of the collection
 		for _, p := range peers {
-			assert.NotEqual(t, "A", p.MSPID)
+			require.NotEqual(t, "A", p.MSPID)
 		}
-		assert.Len(t, peers, 6)
+		require.Len(t, peers, 6)
 	})
 
 	t.Run("Endorser query with PrioritiesByHeight selector", func(t *testing.T) {
@@ -504,20 +504,20 @@ func TestClient(t *testing.T) {
 		req = NewRequest()
 		req.OfChannel("mychannel").AddEndorsersQuery(interest("mycc3"))
 		r, err = cl.Send(ctx, req, authInfo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		mychannel := r.ForChannel("mychannel")
 
 		// acceptablePeers are the ones at the highest ledger height for each org
 		acceptablePeers := []string{"p5", "p9", "p11", "p15"}
 		used := make(map[string]struct{})
 		endorsers, err := mychannel.Endorsers(ccCall("mycc3"), NewFilter(PrioritiesByHeight, NoExclusion))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		names := getNames(endorsers)
-		assert.Subset(t, acceptablePeers, names)
+		require.Subset(t, acceptablePeers, names)
 		for _, name := range names {
 			used[name] = struct{}{}
 		}
-		assert.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
+		require.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
 	})
 
 	t.Run("Endorser query with custom filter", func(t *testing.T) {
@@ -525,7 +525,7 @@ func TestClient(t *testing.T) {
 		req = NewRequest()
 		req.OfChannel("mychannel").AddEndorsersQuery(interest("mycc3"))
 		r, err = cl.Send(ctx, req, authInfo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		mychannel := r.ForChannel("mychannel")
 
 		threshold := uint64(3) // Use peers within 3 of the max height of the org peers
@@ -534,27 +534,27 @@ func TestClient(t *testing.T) {
 
 		for i := 0; i < 90; i++ {
 			endorsers, err := mychannel.Endorsers(ccCall("mycc3"), &ledgerHeightFilter{threshold: threshold})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			names := getNames(endorsers)
-			assert.Subset(t, acceptablePeers, names)
+			require.Subset(t, acceptablePeers, names)
 			for _, name := range names {
 				used[name] = struct{}{}
 			}
 		}
-		assert.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
+		require.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
 
 		threshold = 0 // only use the peers at the highest ledger height (same as using the PrioritiesByHeight selector)
 		acceptablePeers = []string{"p5", "p9", "p11", "p15"}
 		used = make(map[string]struct{})
 		endorsers, err := mychannel.Endorsers(ccCall("mycc3"), &ledgerHeightFilter{threshold: threshold})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		names := getNames(endorsers)
-		assert.Subset(t, acceptablePeers, names)
+		require.Subset(t, acceptablePeers, names)
 		for _, name := range names {
 			used[name] = struct{}{}
 		}
 		t.Logf("Used peers: %#v\n", used)
-		assert.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
+		require.Equalf(t, len(acceptablePeers), len(used), "expecting each endorser to be returned at least once")
 	})
 }
 
@@ -572,8 +572,8 @@ func TestUnableToSign(t *testing.T) {
 	req := NewRequest()
 	req = req.OfChannel("mychannel")
 	resp, err := cl.Send(ctx, req, authInfo)
-	assert.Nil(t, resp)
-	assert.Contains(t, err.Error(), "not enough entropy")
+	require.Nil(t, resp)
+	require.Contains(t, err.Error(), "not enough entropy")
 }
 
 func TestUnableToConnect(t *testing.T) {
@@ -590,8 +590,8 @@ func TestUnableToConnect(t *testing.T) {
 	req := NewRequest()
 	req = req.OfChannel("mychannel")
 	resp, err := cl.Send(ctx, req, auth)
-	assert.Nil(t, resp)
-	assert.Contains(t, err.Error(), "unable to connect")
+	require.Nil(t, resp)
+	require.Contains(t, err.Error(), "unable to connect")
 }
 
 func TestBadResponses(t *testing.T) {
@@ -616,16 +616,16 @@ func TestBadResponses(t *testing.T) {
 	req := NewRequest()
 	req.OfChannel("mychannel").AddPeersQuery().AddConfigQuery().AddEndorsersQuery(interest("mycc"))
 	r, err := cl.Send(ctx, req, auth)
-	assert.Contains(t, err.Error(), "foo")
-	assert.Nil(t, r)
+	require.Contains(t, err.Error(), "foo")
+	require.Nil(t, r)
 
 	// Scenario II: discovery service sends back an empty response
 	svc.On("Discover").Return(&discovery.Response{}, nil).Once()
 	req = NewRequest()
 	req.OfChannel("mychannel").AddPeersQuery().AddConfigQuery().AddEndorsersQuery(interest("mycc"))
 	r, err = cl.Send(ctx, req, auth)
-	assert.Equal(t, "Sent 3 queries but received 0 responses back", err.Error())
-	assert.Nil(t, r)
+	require.Equal(t, "Sent 3 queries but received 0 responses back", err.Error())
+	require.Nil(t, r)
 
 	// Scenario III: discovery service sends back a layout for the wrong chaincode
 	svc.On("Discover").Return(&discovery.Response{
@@ -646,8 +646,8 @@ func TestBadResponses(t *testing.T) {
 	req = NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery(interest("mycc"))
 	r, err = cl.Send(ctx, req, auth)
-	assert.Nil(t, r)
-	assert.Contains(t, err.Error(), "expected chaincode mycc but got endorsement descriptor for notmycc")
+	require.Nil(t, r)
+	require.Contains(t, err.Error(), "expected chaincode mycc but got endorsement descriptor for notmycc")
 
 	// Scenario IV: discovery service sends back a layout that has empty envelopes
 	svc.On("Discover").Return(&discovery.Response{
@@ -660,8 +660,8 @@ func TestBadResponses(t *testing.T) {
 	req = NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery(interest("mycc"))
 	r, err = cl.Send(ctx, req, auth)
-	assert.Contains(t, err.Error(), "received empty envelope(s) for endorsers for chaincode mycc")
-	assert.Nil(t, r)
+	require.Contains(t, err.Error(), "received empty envelope(s) for endorsers for chaincode mycc")
+	require.Nil(t, r)
 
 	// Scenario V: discovery service sends back a layout that has a group that requires more
 	// members than are present.
@@ -675,11 +675,11 @@ func TestBadResponses(t *testing.T) {
 	req = NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery(interest("mycc"))
 	r, err = cl.Send(ctx, req, auth)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mychannel := r.ForChannel("mychannel")
 	endorsers, err := mychannel.Endorsers(ccCall("mycc"), NoFilter)
-	assert.Nil(t, endorsers)
-	assert.Contains(t, err.Error(), "no endorsement combination can be satisfied")
+	require.Nil(t, endorsers)
+	require.Contains(t, err.Error(), "no endorsement combination can be satisfied")
 
 	// Scenario VI: discovery service sends back a layout that has a group that doesn't have a matching peer set
 	svc.On("Discover").Return(&discovery.Response{
@@ -692,24 +692,24 @@ func TestBadResponses(t *testing.T) {
 	req = NewRequest()
 	req.OfChannel("mychannel").AddEndorsersQuery(interest("mycc"))
 	r, err = cl.Send(ctx, req, auth)
-	assert.Contains(t, err.Error(), "group B isn't mapped to endorsers, but exists in a layout")
-	assert.Empty(t, r)
+	require.Contains(t, err.Error(), "group B isn't mapped to endorsers, but exists in a layout")
+	require.Empty(t, r)
 }
 
 func TestAddEndorsersQueryInvalidInput(t *testing.T) {
 	_, err := NewRequest().AddEndorsersQuery()
-	assert.Contains(t, err.Error(), "no chaincode interests given")
+	require.Contains(t, err.Error(), "no chaincode interests given")
 
 	_, err = NewRequest().AddEndorsersQuery(nil)
-	assert.Contains(t, err.Error(), "chaincode interest is nil")
+	require.Contains(t, err.Error(), "chaincode interest is nil")
 
 	_, err = NewRequest().AddEndorsersQuery(&discovery.ChaincodeInterest{})
-	assert.Contains(t, err.Error(), "invocation chain should not be empty")
+	require.Contains(t, err.Error(), "invocation chain should not be empty")
 
 	_, err = NewRequest().AddEndorsersQuery(&discovery.ChaincodeInterest{
 		Chaincodes: []*discovery.ChaincodeCall{{}},
 	})
-	assert.Contains(t, err.Error(), "chaincode name should not be empty")
+	require.Contains(t, err.Error(), "chaincode name should not be empty")
 }
 
 func TestValidateAliveMessage(t *testing.T) {
@@ -717,44 +717,44 @@ func TestValidateAliveMessage(t *testing.T) {
 	msg, _ := protoext.EnvelopeToGossipMessage(am)
 
 	// Scenario I: Valid alive message
-	assert.NoError(t, validateAliveMessage(msg))
+	require.NoError(t, validateAliveMessage(msg))
 
 	// Scenario II: Nullify timestamp
 	msg.GetAliveMsg().Timestamp = nil
 	err := validateAliveMessage(msg)
-	assert.Equal(t, "timestamp is nil", err.Error())
+	require.Equal(t, "timestamp is nil", err.Error())
 
 	// Scenario III: Nullify membership
 	msg.GetAliveMsg().Membership = nil
 	err = validateAliveMessage(msg)
-	assert.Equal(t, "membership is empty", err.Error())
+	require.Equal(t, "membership is empty", err.Error())
 
 	// Scenario IV: Nullify the entire alive message part
 	msg.Content = nil
 	err = validateAliveMessage(msg)
-	assert.Equal(t, "message isn't an alive message", err.Error())
+	require.Equal(t, "message isn't an alive message", err.Error())
 }
 
 func TestValidateStateInfoMessage(t *testing.T) {
 	si := stateInfoWithHeight(100)
 
 	// Scenario I: Valid state info message
-	assert.NoError(t, validateStateInfoMessage(si))
+	require.NoError(t, validateStateInfoMessage(si))
 
 	// Scenario II: Nullify properties
 	si.GetStateInfo().Properties = nil
 	err := validateStateInfoMessage(si)
-	assert.Equal(t, "properties is nil", err.Error())
+	require.Equal(t, "properties is nil", err.Error())
 
 	// Scenario III: Nullify timestamp
 	si.GetStateInfo().Timestamp = nil
 	err = validateStateInfoMessage(si)
-	assert.Equal(t, "timestamp is nil", err.Error())
+	require.Equal(t, "timestamp is nil", err.Error())
 
 	// Scenario IV: Nullify the state info message part
 	si.Content = nil
 	err = validateStateInfoMessage(si)
-	assert.Equal(t, "message isn't a stateInfo message", err.Error())
+	require.Equal(t, "message isn't a stateInfo message", err.Error())
 }
 
 func TestString(t *testing.T) {
@@ -768,7 +768,7 @@ func TestString(t *testing.T) {
 		CollectionNames: []string{"c3", "c4"},
 	})
 	expected := `[{"name":"foo","collection_names":["c1","c2"]},{"name":"bar","collection_names":["c3","c4"]}]`
-	assert.Equal(t, expected, ic.String())
+	require.Equal(t, expected, ic.String())
 }
 
 func getMSP(peer *Peer) string {

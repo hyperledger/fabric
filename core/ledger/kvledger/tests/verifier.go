@@ -17,7 +17,7 @@ import (
 	protopeer "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // verifier provides functions that help tests with less verbose code for querying the ledger
@@ -25,12 +25,12 @@ import (
 // For the straight forward functions, tests can call them directly on the ledger
 type verifier struct {
 	lgr    ledger.PeerLedger
-	assert *assert.Assertions
+	assert *require.Assertions
 	t      *testing.T
 }
 
 func newVerifier(lgr ledger.PeerLedger, t *testing.T) *verifier {
-	return &verifier{lgr, assert.New(t), t}
+	return &verifier{lgr, require.New(t), t}
 }
 
 func (v *verifier) verifyLedgerHeight(expectedHt uint64) {
@@ -161,7 +161,7 @@ type expectedCollConfInfo struct {
 
 type retrievedBlockAndPvtdata struct {
 	*ledger.BlockAndPvtData
-	assert *assert.Assertions
+	assert *require.Assertions
 }
 
 func (r *retrievedBlockAndPvtdata) sameAs(expectedBlockAndPvtdata *ledger.BlockAndPvtData) {

@@ -18,7 +18,7 @@ import (
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // SampleValidationPlugin is an example for a validation plugin,
@@ -59,7 +59,7 @@ func (p *SampleValidationPlugin) Validate(block *common.Block, namespace string,
 	txData := block.Data.Data[0]
 	txn := &MarshaledSignedData{}
 	err := proto.Unmarshal(txData, txn)
-	assert.NoError(p.t, err)
+	require.NoError(p.t, err)
 
 	// Check if the chaincode is instantiated
 	state, err := p.sf.FetchState()
@@ -86,8 +86,8 @@ func (p *SampleValidationPlugin) Validate(block *common.Block, namespace string,
 	}
 
 	identifier := identity.GetIdentityIdentifier()
-	assert.Equal(p.t, "SampleOrg", identifier.Mspid)
-	assert.Equal(p.t, "foo", identifier.Id)
+	require.Equal(p.t, "SampleOrg", identifier.Mspid)
+	require.Equal(p.t, "foo", identifier.Id)
 
 	sd := &protoutil.SignedData{
 		Signature: txn.Signature,

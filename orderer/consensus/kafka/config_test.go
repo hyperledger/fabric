@@ -13,7 +13,7 @@ import (
 	"github.com/Shopify/sarama"
 	localconfig "github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/mocks/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBrokerConfig(t *testing.T) {
@@ -35,7 +35,7 @@ func TestBrokerConfig(t *testing.T) {
 
 	t.Run("New", func(t *testing.T) {
 		producer, err := sarama.NewSyncProducer([]string{mockBroker.Addr()}, mockBrokerConfig)
-		assert.NoError(t, err, "Failed to create producer with given config:", err)
+		require.NoError(t, err, "Failed to create producer with given config:", err)
 		producer.Close()
 	})
 
@@ -51,8 +51,8 @@ func TestBrokerConfig(t *testing.T) {
 
 		for i := 0; i < 10; i++ {
 			assignedPartition, _, err := producer.SendMessage(&sarama.ProducerMessage{Topic: mockChannel2.topic()})
-			assert.NoError(t, err, "Failed to send message:", err)
-			assert.Equal(t, differentPartition, assignedPartition, "Message wasn't posted to the right partition - expected %d, got %v", differentPartition, assignedPartition)
+			require.NoError(t, err, "Failed to send message:", err)
+			require.Equal(t, differentPartition, assignedPartition, "Message wasn't posted to the right partition - expected %d, got %v", differentPartition, assignedPartition)
 		}
 	})
 
@@ -74,7 +74,7 @@ func TestBrokerConfig(t *testing.T) {
 				Topic: mockChannel1.topic(),
 				Value: sarama.ByteEncoder(make([]byte, tc.size)),
 			})
-			assert.Equal(t, tc.err, err)
+			require.Equal(t, tc.err, err)
 		})
 	}
 }
@@ -95,12 +95,12 @@ func TestBrokerConfigTLSConfigEnabled(t *testing.T) {
 			mockLocalConfig.Kafka.Version,
 			defaultPartition)
 
-		assert.True(t, testBrokerConfig.Net.TLS.Enable)
-		assert.NotNil(t, testBrokerConfig.Net.TLS.Config)
-		assert.Len(t, testBrokerConfig.Net.TLS.Config.Certificates, 1)
-		assert.Len(t, testBrokerConfig.Net.TLS.Config.RootCAs.Subjects(), 1)
-		assert.Equal(t, uint16(0), testBrokerConfig.Net.TLS.Config.MaxVersion)
-		assert.Equal(t, uint16(tls.VersionTLS12), testBrokerConfig.Net.TLS.Config.MinVersion)
+		require.True(t, testBrokerConfig.Net.TLS.Enable)
+		require.NotNil(t, testBrokerConfig.Net.TLS.Config)
+		require.Len(t, testBrokerConfig.Net.TLS.Config.Certificates, 1)
+		require.Len(t, testBrokerConfig.Net.TLS.Config.RootCAs.Subjects(), 1)
+		require.Equal(t, uint16(0), testBrokerConfig.Net.TLS.Config.MaxVersion)
+		require.Equal(t, uint16(tls.VersionTLS12), testBrokerConfig.Net.TLS.Config.MinVersion)
 	})
 
 	t.Run("Disabled", func(t *testing.T) {
@@ -115,8 +115,8 @@ func TestBrokerConfigTLSConfigEnabled(t *testing.T) {
 			mockLocalConfig.Kafka.Version,
 			defaultPartition)
 
-		assert.False(t, testBrokerConfig.Net.TLS.Enable)
-		assert.Zero(t, testBrokerConfig.Net.TLS.Config)
+		require.False(t, testBrokerConfig.Net.TLS.Enable)
+		require.Zero(t, testBrokerConfig.Net.TLS.Config)
 	})
 }
 
@@ -125,7 +125,7 @@ func TestBrokerConfigTLSConfigBadCert(t *testing.T) {
 	caPublicKey, _, _ := util.GenerateMockPublicPrivateKeyPairPEM(true)
 
 	t.Run("BadPrivateKey", func(t *testing.T) {
-		assert.Panics(t, func() {
+		require.Panics(t, func() {
 			newBrokerConfig(localconfig.TLS{
 				Enabled:     true,
 				PrivateKey:  privateKey,
@@ -139,7 +139,7 @@ func TestBrokerConfigTLSConfigBadCert(t *testing.T) {
 		})
 	})
 	t.Run("BadPublicKey", func(t *testing.T) {
-		assert.Panics(t, func() {
+		require.Panics(t, func() {
 			newBrokerConfig(localconfig.TLS{
 				Enabled:     true,
 				PrivateKey:  "TRASH",
@@ -153,7 +153,7 @@ func TestBrokerConfigTLSConfigBadCert(t *testing.T) {
 		})
 	})
 	t.Run("BadRootCAs", func(t *testing.T) {
-		assert.Panics(t, func() {
+		require.Panics(t, func() {
 			newBrokerConfig(localconfig.TLS{
 				Enabled:     true,
 				PrivateKey:  privateKey,

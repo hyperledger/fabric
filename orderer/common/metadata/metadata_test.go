@@ -13,7 +13,7 @@ import (
 
 	common "github.com/hyperledger/fabric/common/metadata"
 	"github.com/hyperledger/fabric/orderer/common/metadata"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetVersionInfo(t *testing.T) {
@@ -24,5 +24,5 @@ func TestGetVersionInfo(t *testing.T) {
 		runtime.Version(),
 		fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
 	)
-	assert.Equal(t, expected, metadata.GetVersionInfo())
+	require.Equal(t, expected, metadata.GetVersionInfo())
 }

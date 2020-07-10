@@ -13,7 +13,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/mitchellh/mapstructure"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadGoodConfig(t *testing.T) {
@@ -21,9 +21,9 @@ func TestLoadGoodConfig(t *testing.T) {
 	defer cleanup()
 	cc := &configCache{}
 	cfg, err := cc.load()
-	assert.NoError(t, err)
-	assert.NotNil(t, cfg, "Could not load config")
-	assert.Nil(t, err, "Load good config returned unexpected error")
+	require.NoError(t, err)
+	require.NotNil(t, cfg, "Could not load config")
+	require.Nil(t, err, "Load good config returned unexpected error")
 }
 
 func TestMissingConfigValueOverridden(t *testing.T) {
@@ -32,9 +32,9 @@ func TestMissingConfigValueOverridden(t *testing.T) {
 		defer cleanup()
 		cc := &configCache{}
 		cfg, err := cc.load()
-		assert.NotNil(t, cfg, "Could not load config")
-		assert.NoError(t, err, "Load good config returned unexpected error")
-		assert.Nil(t, cfg.Kafka.TLS.ClientRootCAs)
+		require.NotNil(t, cfg, "Could not load config")
+		require.NoError(t, err, "Load good config returned unexpected error")
+		require.Nil(t, cfg.Kafka.TLS.ClientRootCAs)
 	})
 
 	t.Run("when the value is missing and is overridden", func(t *testing.T) {
@@ -43,9 +43,9 @@ func TestMissingConfigValueOverridden(t *testing.T) {
 		defer cleanup()
 		cache := &configCache{}
 		cfg, err := cache.load()
-		assert.NotNil(t, cfg, "Could not load config")
-		assert.NoError(t, err, "Load good config returned unexpected error")
-		assert.NotNil(t, cfg.Kafka.TLS.ClientRootCAs)
+		require.NotNil(t, cfg, "Could not load config")
+		require.NoError(t, err, "Load good config returned unexpected error")
+		require.NotNil(t, cfg.Kafka.TLS.ClientRootCAs)
 	})
 }
 
@@ -56,18 +56,18 @@ func TestLoadCached(t *testing.T) {
 	// Load the initial config, update the environment, and load again.
 	// With the caching behavior, the update should not be reflected
 	initial, err := Load()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	os.Setenv("ORDERER_KAFKA_RETRY_SHORTINTERVAL", "120s")
 	updated, err := Load()
-	assert.NoError(t, err)
-	assert.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)
+	require.NoError(t, err)
+	require.Equal(t, initial, updated, "expected %#v to equal %#v", updated, initial)
 
 	// Change the configuration we got back and load again.
 	// The new value should not contain the update to the initial
 	initial.General.LocalMSPDir = "/test/bad/mspDir"
 	updated, err = Load()
-	assert.NoError(t, err)
-	assert.NotEqual(t, initial, updated, "expected %#v to not equal %#v", updated, initial)
+	require.NoError(t, err)
+	require.NotEqual(t, initial, updated, "expected %#v to not equal %#v", updated, initial)
 }
 
 func TestLoadMissingConfigFile(t *testing.T) {
@@ -78,23 +78,23 @@ func TestLoadMissingConfigFile(t *testing.T) {
 
 	cc := &configCache{}
 	cfg, err := cc.load()
-	assert.Nil(t, cfg, "Loaded missing config file")
-	assert.NotNil(t, err, "Loaded missing config file without error")
+	require.Nil(t, cfg, "Loaded missing config file")
+	require.NotNil(t, err, "Loaded missing config file without error")
 }
 
 func TestLoadMalformedConfigFile(t *testing.T) {
 	name, err := ioutil.TempDir("", "hyperledger_fabric")
-	assert.Nil(t, err, "Error creating temp dir: %s", err)
+	require.Nil(t, err, "Error creating temp dir: %s", err)
 	defer func() {
 		err = os.RemoveAll(name)
-		assert.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
+		require.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
 	}()
 
 	// Create a malformed orderer.yaml file in temp dir
 	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
-	assert.Nil(t, err, "Error creating file: %s", err)
+	require.Nil(t, err, "Error creating file: %s", err)
 	f.WriteString("General: 42")
-	assert.NoError(t, f.Close(), "Error closing file")
+	require.NoError(t, f.Close(), "Error closing file")
 
 	envVar1 := "FABRIC_CFG_PATH"
 	envVal1 := name
@@ -103,8 +103,8 @@ func TestLoadMalformedConfigFile(t *testing.T) {
 
 	cc := &configCache{}
 	cfg, err := cc.load()
-	assert.Nil(t, cfg, "Loaded missing config file")
-	assert.NotNil(t, err, "Loaded missing config file without error")
+	require.Nil(t, cfg, "Loaded missing config file")
+	require.NotNil(t, err, "Loaded missing config file without error")
 }
 
 // TestEnvInnerVar verifies that with the Unmarshal function that
@@ -125,13 +125,13 @@ func TestEnvInnerVar(t *testing.T) {
 
 	cc := &configCache{}
 	config, err := cc.load()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.NotNil(t, config, "Could not load config")
-	assert.Equal(t, config.General.ListenPort, envVal1, "Environmental override of inner config test 1 did not work")
+	require.NotNil(t, config, "Could not load config")
+	require.Equal(t, config.General.ListenPort, envVal1, "Environmental override of inner config test 1 did not work")
 
 	v2, _ := time.ParseDuration(envVal2)
-	assert.Equal(t, config.Kafka.Retry.ShortInterval, v2, "Environmental override of inner config test 2 did not work")
+	require.Equal(t, config.Kafka.Retry.ShortInterval, v2, "Environmental override of inner config test 2 did not work")
 }
 
 func TestKafkaTLSConfig(t *testing.T) {
@@ -149,9 +149,9 @@ func TestKafkaTLSConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			uconf := &TopLevel{Kafka: Kafka{TLS: tc.tls}}
 			if tc.shouldPanic {
-				assert.Panics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should panic")
+				require.Panics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should panic")
 			} else {
-				assert.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should not panic")
+				require.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should not panic")
 			}
 		})
 	}
@@ -173,9 +173,9 @@ func TestKafkaSASLPlain(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			uconf := &TopLevel{Kafka: Kafka{SASLPlain: tc.sasl}}
 			if tc.shouldPanic {
-				assert.Panics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should panic")
+				require.Panics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should panic")
 			} else {
-				assert.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should not panic")
+				require.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should not panic")
 			}
 		})
 	}
@@ -187,16 +187,16 @@ func TestClusterDefaults(t *testing.T) {
 
 	cc := &configCache{}
 	cfg, err := cc.load()
-	assert.NoError(t, err)
-	assert.Equal(t, cfg.General.Cluster.ReplicationMaxRetries, Defaults.General.Cluster.ReplicationMaxRetries)
+	require.NoError(t, err)
+	require.Equal(t, cfg.General.Cluster.ReplicationMaxRetries, Defaults.General.Cluster.ReplicationMaxRetries)
 }
 
 func TestConsensusConfig(t *testing.T) {
 	name, err := ioutil.TempDir("", "hyperledger_fabric")
-	assert.Nil(t, err, "Error creating temp dir: %s", err)
+	require.Nil(t, err, "Error creating temp dir: %s", err)
 	defer func() {
 		err = os.RemoveAll(name)
-		assert.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
+		require.Nil(t, os.RemoveAll(name), "Error removing temp dir: %s", err)
 	}()
 
 	content := `---
@@ -207,9 +207,9 @@ Consensus:
 `
 
 	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
-	assert.Nil(t, err, "Error creating file: %s", err)
+	require.Nil(t, err, "Error creating file: %s", err)
 	f.WriteString(content)
-	assert.NoError(t, f.Close(), "Error closing file")
+	require.NoError(t, f.Close(), "Error closing file")
 
 	envVar1 := "FABRIC_CFG_PATH"
 	envVal1 := name
@@ -218,11 +218,11 @@ Consensus:
 
 	cc := &configCache{}
 	conf, err := cc.load()
-	assert.NoError(t, err, "Load good config returned unexpected error")
-	assert.NotNil(t, conf, "Could not load config")
+	require.NoError(t, err, "Load good config returned unexpected error")
+	require.NotNil(t, conf, "Could not load config")
 
 	consensus := conf.Consensus
-	assert.IsType(t, map[string]interface{}{}, consensus, "Expected Consensus to be of type map[string]interface{}")
+	require.IsType(t, map[string]interface{}{}, consensus, "Expected Consensus to be of type map[string]interface{}")
 
 	foo := &struct {
 		Foo   string
@@ -231,9 +231,9 @@ Consensus:
 		}
 	}{}
 	err = mapstructure.Decode(consensus, foo)
-	assert.NoError(t, err, "Failed to decode Consensus to struct")
-	assert.Equal(t, foo.Foo, "bar")
-	assert.Equal(t, foo.Hello.World, 42)
+	require.NoError(t, err, "Failed to decode Consensus to struct")
+	require.Equal(t, foo.Foo, "bar")
+	require.Equal(t, foo.Hello.World, 42)
 }
 
 func TestConnectionTimeout(t *testing.T) {
@@ -242,9 +242,9 @@ func TestConnectionTimeout(t *testing.T) {
 		defer cleanup()
 		cc := &configCache{}
 		cfg, err := cc.load()
-		assert.NotNil(t, cfg, "Could not load config")
-		assert.NoError(t, err, "Load good config returned unexpected error")
-		assert.Equal(t, cfg.General.ConnectionTimeout, time.Duration(0))
+		require.NotNil(t, cfg, "Could not load config")
+		require.NoError(t, err, "Load good config returned unexpected error")
+		require.Equal(t, cfg.General.ConnectionTimeout, time.Duration(0))
 	})
 
 	t.Run("with connection timeout overridden", func(t *testing.T) {
@@ -255,9 +255,9 @@ func TestConnectionTimeout(t *testing.T) {
 
 		cc := &configCache{}
 		cfg, err := cc.load()
-		assert.NotNil(t, cfg, "Could not load config")
-		assert.NoError(t, err, "Load good config returned unexpected error")
-		assert.Equal(t, cfg.General.ConnectionTimeout, 10*time.Second)
+		require.NotNil(t, cfg, "Could not load config")
+		require.NoError(t, err, "Load good config returned unexpected error")
+		require.Equal(t, cfg.General.ConnectionTimeout, 10*time.Second)
 	})
 }
 
@@ -267,7 +267,7 @@ func TestChannelParticipationDefaults(t *testing.T) {
 
 	cc := &configCache{}
 	cfg, err := cc.load()
-	assert.NoError(t, err)
-	assert.Equal(t, cfg.ChannelParticipation.Enabled, Defaults.ChannelParticipation.Enabled)
-	assert.Equal(t, cfg.ChannelParticipation.RemoveStorage, Defaults.ChannelParticipation.RemoveStorage)
+	require.NoError(t, err)
+	require.Equal(t, cfg.ChannelParticipation.Enabled, Defaults.ChannelParticipation.Enabled)
+	require.Equal(t, cfg.ChannelParticipation.RemoveStorage, Defaults.ChannelParticipation.RemoveStorage)
 }

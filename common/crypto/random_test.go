@@ -9,17 +9,17 @@ package crypto
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetRandomBytes(t *testing.T) {
 	_, err := GetRandomBytes(10)
 
-	assert.NoError(t, err, "GetRandomBytes fails")
+	require.NoError(t, err, "GetRandomBytes fails")
 }
 
 func TestGetRandomNonce(t *testing.T) {
 	_, err := GetRandomNonce()
 
-	assert.NoError(t, err, "GetRandomNonce fails")
+	require.NoError(t, err, "GetRandomNonce fails")
 }

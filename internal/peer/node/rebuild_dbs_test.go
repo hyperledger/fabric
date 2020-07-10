@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRebuildDBsCmd(t *testing.T) {
@@ -35,22 +35,22 @@ func TestRebuildDBsCmd(t *testing.T) {
 
 	dbPaths := []string{bookkeeperDBPath, configHistoryDBPath, historyDBPath, stateDBPath, blockstoreIndexDBPath}
 	for _, dbPath := range dbPaths {
-		assert.NoError(t, os.MkdirAll(dbPath, 0755))
-		assert.NoError(t, ioutil.WriteFile(path.Join(dbPath, "dummyfile.txt"), []byte("this is a dummy file for test"), 0644))
+		require.NoError(t, os.MkdirAll(dbPath, 0755))
+		require.NoError(t, ioutil.WriteFile(path.Join(dbPath, "dummyfile.txt"), []byte("this is a dummy file for test"), 0644))
 	}
 
 	// check dbs exist before upgrade
 	for _, dbPath := range dbPaths {
 		_, err := os.Stat(dbPath)
-		assert.False(t, os.IsNotExist(err))
+		require.False(t, os.IsNotExist(err))
 	}
 
 	cmd := rebuildDBsCmd()
-	assert.NoError(t, cmd.Execute())
+	require.NoError(t, cmd.Execute())
 
 	// check dbs do not exist after upgrade
 	for _, dbPath := range dbPaths {
 		_, err := os.Stat(dbPath)
-		assert.True(t, os.IsNotExist(err))
+		require.True(t, os.IsNotExist(err))
 	}
 }

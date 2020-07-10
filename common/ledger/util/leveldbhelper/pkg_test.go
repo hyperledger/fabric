@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testDBPath = "/tmp/fabric/ledgertests/util/leveldbhelper"
@@ -49,12 +49,12 @@ func (dbEnv *testDBEnv) cleanup() {
 	if dbEnv.db != nil {
 		dbEnv.db.Close()
 	}
-	assert.NoError(dbEnv.t, os.RemoveAll(dbEnv.path))
+	require.NoError(dbEnv.t, os.RemoveAll(dbEnv.path))
 }
 
 func (providerEnv *testDBProviderEnv) cleanup() {
 	if providerEnv.provider != nil {
 		providerEnv.provider.Close()
 	}
-	assert.NoError(providerEnv.t, os.RemoveAll(providerEnv.path))
+	require.NoError(providerEnv.t, os.RemoveAll(providerEnv.path))
 }

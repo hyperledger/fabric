@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/idemix"
 	m "github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testDir = filepath.Join(os.TempDir(), "idemixca-test")
@@ -28,17 +28,17 @@ func TestIdemixCa(t *testing.T) {
 	cleanup()
 
 	isk, ipkBytes, err := GenerateIssuerKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	revocationkey, err := idemix.GenerateLongTermRevocationKey()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ipk := &idemix.IssuerPublicKey{}
 	err = proto.Unmarshal(ipkBytes, ipk)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	encodedRevocationPK, err := x509.MarshalPKIXPublicKey(revocationkey.Public())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	pemEncodedRevocationPK := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: encodedRevocationPK})
 
 	writeVerifierToFile(ipkBytes, pemEncodedRevocationPK)
@@ -46,26 +46,26 @@ func TestIdemixCa(t *testing.T) {
 	key := &idemix.IssuerKey{Isk: isk, Ipk: ipk}
 
 	conf, err := GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.MEMBER), "OU1", "enrollmentid1", 1, key, revocationkey)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cleanupSigner()
-	assert.NoError(t, writeSignerToFile(conf))
-	assert.NoError(t, setupMSP())
+	require.NoError(t, writeSignerToFile(conf))
+	require.NoError(t, setupMSP())
 
 	conf, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "enrollmentid2", 1234, key, revocationkey)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cleanupSigner()
-	assert.NoError(t, writeSignerToFile(conf))
-	assert.NoError(t, setupMSP())
+	require.NoError(t, writeSignerToFile(conf))
+	require.NoError(t, setupMSP())
 
 	// Without the verifier dir present, setup should give an error
 	cleanupVerifier()
-	assert.Error(t, setupMSP())
+	require.Error(t, setupMSP())
 
 	_, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "", "enrollmentid", 1, key, revocationkey)
-	assert.EqualError(t, err, "the OU attribute value is empty")
+	require.EqualError(t, err, "the OU attribute value is empty")
 
 	_, err = GenerateSignerConfig(m.GetRoleMaskFromIdemixRole(m.ADMIN), "OU1", "", 1, key, revocationkey)
-	assert.EqualError(t, err, "the enrollment id value is empty")
+	require.EqualError(t, err, "the enrollment id value is empty")
 }
 
 func cleanup() error {

@@ -11,25 +11,25 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChannelV10(t *testing.T) {
 	cp := NewChannelProvider(map[string]*cb.Capability{})
-	assert.NoError(t, cp.Supported())
-	assert.True(t, cp.MSPVersion() == msp.MSPv1_0)
-	assert.False(t, cp.ConsensusTypeMigration())
-	assert.False(t, cp.OrgSpecificOrdererEndpoints())
+	require.NoError(t, cp.Supported())
+	require.True(t, cp.MSPVersion() == msp.MSPv1_0)
+	require.False(t, cp.ConsensusTypeMigration())
+	require.False(t, cp.OrgSpecificOrdererEndpoints())
 }
 
 func TestChannelV11(t *testing.T) {
 	cp := NewChannelProvider(map[string]*cb.Capability{
 		ChannelV1_1: {},
 	})
-	assert.NoError(t, cp.Supported())
-	assert.True(t, cp.MSPVersion() == msp.MSPv1_1)
-	assert.False(t, cp.ConsensusTypeMigration())
-	assert.False(t, cp.OrgSpecificOrdererEndpoints())
+	require.NoError(t, cp.Supported())
+	require.True(t, cp.MSPVersion() == msp.MSPv1_1)
+	require.False(t, cp.ConsensusTypeMigration())
+	require.False(t, cp.OrgSpecificOrdererEndpoints())
 }
 
 func TestChannelV13(t *testing.T) {
@@ -37,18 +37,18 @@ func TestChannelV13(t *testing.T) {
 		ChannelV1_1: {},
 		ChannelV1_3: {},
 	})
-	assert.NoError(t, cp.Supported())
-	assert.True(t, cp.MSPVersion() == msp.MSPv1_3)
-	assert.False(t, cp.ConsensusTypeMigration())
-	assert.False(t, cp.OrgSpecificOrdererEndpoints())
+	require.NoError(t, cp.Supported())
+	require.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	require.False(t, cp.ConsensusTypeMigration())
+	require.False(t, cp.OrgSpecificOrdererEndpoints())
 
 	cp = NewChannelProvider(map[string]*cb.Capability{
 		ChannelV1_3: {},
 	})
-	assert.NoError(t, cp.Supported())
-	assert.True(t, cp.MSPVersion() == msp.MSPv1_3)
-	assert.False(t, cp.ConsensusTypeMigration())
-	assert.False(t, cp.OrgSpecificOrdererEndpoints())
+	require.NoError(t, cp.Supported())
+	require.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	require.False(t, cp.ConsensusTypeMigration())
+	require.False(t, cp.OrgSpecificOrdererEndpoints())
 }
 
 func TestChannelV142(t *testing.T) {
@@ -56,18 +56,18 @@ func TestChannelV142(t *testing.T) {
 		ChannelV1_3:   {},
 		ChannelV1_4_2: {},
 	})
-	assert.NoError(t, cp.Supported())
-	assert.True(t, cp.MSPVersion() == msp.MSPv1_3)
-	assert.True(t, cp.ConsensusTypeMigration())
-	assert.True(t, cp.OrgSpecificOrdererEndpoints())
+	require.NoError(t, cp.Supported())
+	require.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	require.True(t, cp.ConsensusTypeMigration())
+	require.True(t, cp.OrgSpecificOrdererEndpoints())
 
 	cp = NewChannelProvider(map[string]*cb.Capability{
 		ChannelV1_4_2: {},
 	})
-	assert.NoError(t, cp.Supported())
-	assert.True(t, cp.MSPVersion() == msp.MSPv1_3)
-	assert.True(t, cp.ConsensusTypeMigration())
-	assert.True(t, cp.OrgSpecificOrdererEndpoints())
+	require.NoError(t, cp.Supported())
+	require.True(t, cp.MSPVersion() == msp.MSPv1_3)
+	require.True(t, cp.ConsensusTypeMigration())
+	require.True(t, cp.OrgSpecificOrdererEndpoints())
 }
 
 func TestChannelV143(t *testing.T) {
@@ -76,28 +76,28 @@ func TestChannelV143(t *testing.T) {
 		ChannelV1_4_2: {},
 		ChannelV1_4_3: {},
 	})
-	assert.NoError(t, cp.Supported())
-	assert.True(t, cp.MSPVersion() == msp.MSPv1_4_3)
-	assert.True(t, cp.ConsensusTypeMigration())
-	assert.True(t, cp.OrgSpecificOrdererEndpoints())
+	require.NoError(t, cp.Supported())
+	require.True(t, cp.MSPVersion() == msp.MSPv1_4_3)
+	require.True(t, cp.ConsensusTypeMigration())
+	require.True(t, cp.OrgSpecificOrdererEndpoints())
 
 	cp = NewChannelProvider(map[string]*cb.Capability{
 		ChannelV1_4_3: {},
 	})
-	assert.NoError(t, cp.Supported())
-	assert.True(t, cp.MSPVersion() == msp.MSPv1_4_3)
-	assert.True(t, cp.ConsensusTypeMigration())
-	assert.True(t, cp.OrgSpecificOrdererEndpoints())
+	require.NoError(t, cp.Supported())
+	require.True(t, cp.MSPVersion() == msp.MSPv1_4_3)
+	require.True(t, cp.ConsensusTypeMigration())
+	require.True(t, cp.OrgSpecificOrdererEndpoints())
 }
 
 func TestChannelV20(t *testing.T) {
 	cp := NewChannelProvider(map[string]*cb.Capability{
 		ChannelV2_0: {},
 	})
-	assert.NoError(t, cp.Supported())
-	assert.True(t, cp.MSPVersion() == msp.MSPv1_4_3)
-	assert.True(t, cp.ConsensusTypeMigration())
-	assert.True(t, cp.OrgSpecificOrdererEndpoints())
+	require.NoError(t, cp.Supported())
+	require.True(t, cp.MSPVersion() == msp.MSPv1_4_3)
+	require.True(t, cp.ConsensusTypeMigration())
+	require.True(t, cp.OrgSpecificOrdererEndpoints())
 }
 
 func TestChannelNotSupported(t *testing.T) {
@@ -106,5 +106,5 @@ func TestChannelNotSupported(t *testing.T) {
 		ChannelV1_3:           {},
 		"Bogus_Not_Supported": {},
 	})
-	assert.EqualError(t, cp.Supported(), "Channel capability Bogus_Not_Supported is required but not supported")
+	require.EqualError(t, cp.Supported(), "Channel capability Bogus_Not_Supported is required but not supported")
 }

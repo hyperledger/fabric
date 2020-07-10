@@ -21,8 +21,8 @@ import (
 	gdisc "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfig(t *testing.T) {
@@ -33,9 +33,9 @@ func TestConfig(t *testing.T) {
 			AuthCacheMaxSize:             42,
 		}
 		service := NewService(conf, &mockSupport{})
-		assert.Equal(t, trueOfFalse, service.auth.conf.enabled)
-		assert.Equal(t, 42, service.auth.conf.maxCacheSize)
-		assert.Equal(t, 0.5, service.auth.conf.purgeRetentionRatio)
+		require.Equal(t, trueOfFalse, service.auth.conf.enabled)
+		require.Equal(t, 42, service.auth.conf.maxCacheSize)
+		require.Equal(t, 0.5, service.auth.conf.purgeRetentionRatio)
 	}
 }
 
@@ -80,29 +80,29 @@ func TestService(t *testing.T) {
 
 	// Scenario I: Channel does not exist
 	resp, err := service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
-	assert.Equal(t, wrapResult(&discovery.Error{Content: "access denied"}), resp)
+	require.NoError(t, err)
+	require.Equal(t, wrapResult(&discovery.Error{Content: "access denied"}), resp)
 
 	// Scenario II: Channel does not exist
 	req.Queries[0].Channel = "channelWithAccessDenied"
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
-	assert.Equal(t, wrapResult(&discovery.Error{Content: "access denied"}), resp)
+	require.NoError(t, err)
+	require.Equal(t, wrapResult(&discovery.Error{Content: "access denied"}), resp)
 
 	// Scenario III: Request with nil query
 	req.Queries[0].Channel = "channelWithAccessGranted"
 	req.Queries[0].Query = nil
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
-	assert.Contains(t, resp.Results[0].GetError().Content, "unknown or missing request type")
+	require.NoError(t, err)
+	require.Contains(t, resp.Results[0].GetError().Content, "unknown or missing request type")
 
 	// Scenario IV: Request payload is invalid
 	signedRequest := toSignedRequest(req)
 	// Corrupt the payload by appending a zero byte at its end
 	signedRequest.Payload = append(signedRequest.Payload, 0)
 	resp, err = service.Discover(ctx, signedRequest)
-	assert.Nil(t, resp)
-	assert.Contains(t, err.Error(), "failed parsing request")
+	require.Nil(t, resp)
+	require.Contains(t, err.Error(), "failed parsing request")
 
 	// Scenario V: Request a CC query with no chaincodes at all
 	req.Queries[0].Query = &discovery.Query_CcQuery{
@@ -113,8 +113,8 @@ func TestService(t *testing.T) {
 		},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
-	assert.Contains(t, resp.Results[0].GetError().Content, "chaincode interest must contain at least one chaincode")
+	require.NoError(t, err)
+	require.Contains(t, resp.Results[0].GetError().Content, "chaincode interest must contain at least one chaincode")
 
 	// Scenario VI: Request a CC query with no interests at all
 	req.Queries[0].Query = &discovery.Query_CcQuery{
@@ -122,8 +122,8 @@ func TestService(t *testing.T) {
 			Interests: []*discovery.ChaincodeInterest{}},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
-	assert.Contains(t, resp.Results[0].GetError().Content, "chaincode query must have at least one chaincode interest")
+	require.NoError(t, err)
+	require.Contains(t, resp.Results[0].GetError().Content, "chaincode query must have at least one chaincode interest")
 
 	// Scenario VII: Request a CC query with a chaincode name that is empty
 	req.Queries[0].Query = &discovery.Query_CcQuery{
@@ -135,8 +135,8 @@ func TestService(t *testing.T) {
 			}}},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
-	assert.Contains(t, resp.Results[0].GetError().Content, "chaincode name in interest cannot be empty")
+	require.NoError(t, err)
+	require.Contains(t, resp.Results[0].GetError().Content, "chaincode name in interest cannot be empty")
 
 	// Scenario VIII: Request with a CC query where one chaincode is unavailable
 	req.Queries[0].Query = &discovery.Query_CcQuery{
@@ -153,9 +153,9 @@ func TestService(t *testing.T) {
 	}
 
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
-	assert.Contains(t, resp.Results[0].GetError().Content, "failed constructing descriptor")
-	assert.Contains(t, resp.Results[0].GetError().Content, "unknownCC")
+	require.NoError(t, err)
+	require.Contains(t, resp.Results[0].GetError().Content, "failed constructing descriptor")
+	require.Contains(t, resp.Results[0].GetError().Content, "unknownCC")
 
 	// Scenario IX: Request with a CC query where all are available
 	req.Queries[0].Query = &discovery.Query_CcQuery{
@@ -174,11 +174,11 @@ func TestService(t *testing.T) {
 		},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expected := wrapResult(&discovery.ChaincodeQueryResult{
 		Content: []*discovery.EndorsementDescriptor{ed1, ed2, ed3},
 	})
-	assert.Equal(t, expected, resp)
+	require.Equal(t, expected, resp)
 
 	// Scenario X: Request with a config query
 	mockSup.On("Config", mock.Anything).Return(nil, errors.New("failed fetching config")).Once()
@@ -186,8 +186,8 @@ func TestService(t *testing.T) {
 		ConfigQuery: &discovery.ConfigQuery{},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
-	assert.Contains(t, resp.Results[0].GetError().Content, "failed fetching config for channel channelWithAccessGranted")
+	require.NoError(t, err)
+	require.Contains(t, resp.Results[0].GetError().Content, "failed fetching config for channel channelWithAccessGranted")
 
 	// Scenario XI: Request with a config query
 	mockSup.On("Config", mock.Anything).Return(&discovery.ConfigResult{}, nil).Once()
@@ -195,8 +195,8 @@ func TestService(t *testing.T) {
 		ConfigQuery: &discovery.ConfigQuery{},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
-	assert.NotNil(t, resp.Results[0].GetConfigResult())
+	require.NoError(t, err)
+	require.NotNil(t, resp.Results[0].GetConfigResult())
 
 	// Scenario XII: Request with a membership query
 	// Peers in membership view: { p0, p1, p2, p3}
@@ -242,7 +242,7 @@ func TestService(t *testing.T) {
 		},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expectedChannelResponse := &discovery.PeerMembershipResult{
 		PeersByOrg: map[string]*discovery.Peers{
 			"O2": {
@@ -294,18 +294,18 @@ func TestService(t *testing.T) {
 		},
 	}
 
-	assert.Len(t, resp.Results, 3)
-	assert.Len(t, resp.Results[0].GetMembers().PeersByOrg, 2)
-	assert.Len(t, resp.Results[1].GetMembers().PeersByOrg, 2)
-	assert.Equal(t, "an error occurred", resp.Results[2].GetError().Content)
+	require.Len(t, resp.Results, 3)
+	require.Len(t, resp.Results[0].GetMembers().PeersByOrg, 2)
+	require.Len(t, resp.Results[1].GetMembers().PeersByOrg, 2)
+	require.Equal(t, "an error occurred", resp.Results[2].GetError().Content)
 
 	for org, responsePeers := range resp.Results[0].GetMembers().PeersByOrg {
 		err := peers(expectedChannelResponse.PeersByOrg[org].Peers).compare(peers(responsePeers.Peers))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	for org, responsePeers := range resp.Results[1].GetMembers().PeersByOrg {
 		err := peers(expectedLocalResponse.PeersByOrg[org].Peers).compare(peers(responsePeers.Peers))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	// Scenario XIII: The client is eligible for channel queries but not for channel-less
@@ -320,8 +320,8 @@ func TestService(t *testing.T) {
 		},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
-	assert.NoError(t, err)
-	assert.Contains(t, resp.Results[0].GetError().Content, "unknown or missing request type")
+	require.NoError(t, err)
+	require.Contains(t, resp.Results[0].GetError().Content, "unknown or missing request type")
 }
 
 func TestValidateStructure(t *testing.T) {
@@ -332,20 +332,20 @@ func TestValidateStructure(t *testing.T) {
 
 	// Scenario I: Nil request
 	res, err := validateStructure(context.Background(), nil, false, extractHash)
-	assert.Nil(t, res)
-	assert.Equal(t, "nil request", err.Error())
+	require.Nil(t, res)
+	require.Equal(t, "nil request", err.Error())
 
 	// Scenario II: Malformed envelope
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: []byte{1, 2, 3},
 	}, false, extractHash)
-	assert.Nil(t, res)
-	assert.Contains(t, err.Error(), "failed parsing request")
+	require.Nil(t, res)
+	require.Contains(t, err.Error(), "failed parsing request")
 
 	// Scenario III: Empty request
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{}, false, extractHash)
-	assert.Nil(t, res)
-	assert.Equal(t, "access denied, no authentication info in request", err.Error())
+	require.Nil(t, res)
+	require.Equal(t, "access denied, no authentication info in request", err.Error())
 
 	// Scenario IV: request without a client identity
 	req := &discovery.Request{
@@ -355,8 +355,8 @@ func TestValidateStructure(t *testing.T) {
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
 	}, false, extractHash)
-	assert.Nil(t, res)
-	assert.Equal(t, "access denied, client identity wasn't supplied", err.Error())
+	require.Nil(t, res)
+	require.Equal(t, "access denied, client identity wasn't supplied", err.Error())
 
 	// Scenario V: request with a client identity, should succeed because no TLS is used
 	req = &discovery.Request{
@@ -368,9 +368,9 @@ func TestValidateStructure(t *testing.T) {
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
 	}, false, extractHash)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Ensure returned request is as before serialization to bytes
-	assert.True(t, proto.Equal(req, res))
+	require.True(t, proto.Equal(req, res))
 
 	// Scenario VI: request with a client identity but with TLS enabled but client doesn't send a TLS cert
 	req = &discovery.Request{
@@ -382,8 +382,8 @@ func TestValidateStructure(t *testing.T) {
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
 	}, true, extractHash)
-	assert.Nil(t, res)
-	assert.Equal(t, "client didn't send a TLS certificate", err.Error())
+	require.Nil(t, res)
+	require.Equal(t, "client didn't send a TLS certificate", err.Error())
 
 	// Scenario VII: request with a client identity and with TLS enabled but the TLS cert hash doesn't match
 	// the computed one
@@ -400,8 +400,8 @@ func TestValidateStructure(t *testing.T) {
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
 	}, true, extractHash)
-	assert.Nil(t, res)
-	assert.Equal(t, "client claimed TLS hash doesn't match computed TLS hash from gRPC stream", err.Error())
+	require.Nil(t, res)
+	require.Equal(t, "client claimed TLS hash doesn't match computed TLS hash from gRPC stream", err.Error())
 
 	// Scenario VIII: request with a client identity and with TLS enabled and the TLS cert hash doesn't match
 	// the computed one
@@ -418,8 +418,8 @@ func TestValidateStructure(t *testing.T) {
 	res, err = validateStructure(context.Background(), &discovery.SignedRequest{
 		Payload: b,
 	}, true, extractHash)
-	assert.NoError(t, err)
-	assert.NotNil(t, res)
+	require.NoError(t, err)
+	require.NotNil(t, res)
 }
 
 func TestValidateCCQuery(t *testing.T) {
@@ -428,7 +428,7 @@ func TestValidateCCQuery(t *testing.T) {
 			nil,
 		},
 	})
-	assert.Equal(t, "chaincode interest is nil", err.Error())
+	require.Equal(t, "chaincode interest is nil", err.Error())
 }
 
 func wrapResult(responses ...interface{}) *discovery.Response {

@@ -11,7 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/protoext"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMembershipResponseToString(t *testing.T) {
@@ -20,7 +20,7 @@ func TestMembershipResponseToString(t *testing.T) {
 		Dead:  envelopes(),
 	}
 	output := "MembershipResponse with Alive: 1, Dead: 1"
-	assert.Equal(t, output, protoext.MembershipResponseToString(mr))
+	require.Equal(t, output, protoext.MembershipResponseToString(mr))
 }
 
 func TestMembershipRequestToString(t *testing.T) {
@@ -67,7 +67,7 @@ func TestMembershipRequestToString(t *testing.T) {
 	}
 
 	output := "Membership Request with self information of GossipMessage: Channel: A, nonce: 5, tag: UNDEFINED Block message: {Data: 5 bytes, seq: 3}, Envelope: 18 bytes, Signature: 3 bytes Secret payload: 6 bytes, Secret Signature: 3 bytes "
-	assert.Equal(t, output, protoext.MembershipRequestToString(mr))
+	require.Equal(t, output, protoext.MembershipRequestToString(mr))
 
 	mr1 := &gossip.MembershipRequest{
 		SelfInformation: &gossip.Envelope{
@@ -80,14 +80,14 @@ func TestMembershipRequestToString(t *testing.T) {
 		},
 		Known: [][]byte{},
 	}
-	assert.Equal(t, "", protoext.MembershipRequestToString(mr1))
+	require.Equal(t, "", protoext.MembershipRequestToString(mr1))
 
 	mr2 := &gossip.MembershipRequest{
 		SelfInformation: nil,
 		Known:           [][]byte{},
 	}
 
-	assert.Equal(t, "", protoext.MembershipRequestToString(mr2))
+	require.Equal(t, "", protoext.MembershipRequestToString(mr2))
 }
 
 func TestToStringMember(t *testing.T) {
@@ -97,7 +97,7 @@ func TestToStringMember(t *testing.T) {
 		PkiId:    []byte{15},
 	}
 	output := "Membership: Endpoint:localhost PKI-id:0f"
-	assert.Equal(t, output, protoext.MemberToString(member))
+	require.Equal(t, output, protoext.MemberToString(member))
 }
 
 func TestToStringAliveMessage(t *testing.T) {
@@ -114,7 +114,7 @@ func TestToStringAliveMessage(t *testing.T) {
 		Identity: []byte("peerID1"),
 	}
 	output1 := "Alive Message:Membership: Endpoint:localhost PKI-id:11Identity:Timestamp:inc_num:1 seq_num:1 "
-	assert.Equal(t, output1, protoext.AliveMessageToString(am1))
+	require.Equal(t, output1, protoext.AliveMessageToString(am1))
 	am2 := &gossip.AliveMessage{
 		Membership: nil,
 		Timestamp: &gossip.PeerTime{
@@ -124,7 +124,7 @@ func TestToStringAliveMessage(t *testing.T) {
 		Identity: []byte("peerID1"),
 	}
 	output2 := "nil Membership"
-	assert.Equal(t, output2, protoext.AliveMessageToString(am2))
+	require.Equal(t, output2, protoext.AliveMessageToString(am2))
 }
 
 func TestToStringStateInfoPullRequest(t *testing.T) {
@@ -134,7 +134,7 @@ func TestToStringStateInfoPullRequest(t *testing.T) {
 	}
 
 	output := "state_info_pull_req: Channel MAC:11"
-	assert.Equal(t, output, protoext.StateInfoPullRequestToString(sipr))
+	require.Equal(t, output, protoext.StateInfoPullRequestToString(sipr))
 }
 
 func TestToStringStateInfo(t *testing.T) {
@@ -148,7 +148,7 @@ func TestToStringStateInfo(t *testing.T) {
 		Properties:  nil,
 	}
 	output := "state_info_message: Timestamp:inc_num:1 seq_num:1 PKI-id:11 channel MAC:11 properties:<nil>"
-	assert.Equal(t, output, protoext.StateInfoToString(si))
+	require.Equal(t, output, protoext.StateInfoToString(si))
 }
 
 func TestToStringDataDigest(t *testing.T) {
@@ -158,14 +158,14 @@ func TestToStringDataDigest(t *testing.T) {
 		MsgType: gossip.PullMsgType_BLOCK_MSG,
 	}
 	output1 := "data_dig: nonce: 0 , Msg_type: BLOCK_MSG, digests: [msg1 msg2 msg3]"
-	assert.Equal(t, output1, protoext.DataDigestToString(dig1))
+	require.Equal(t, output1, protoext.DataDigestToString(dig1))
 	dig2 := &gossip.DataDigest{
 		Nonce:   0,
 		Digests: [][]byte{[]byte("msg1"), []byte("msg2"), []byte("msg3")},
 		MsgType: gossip.PullMsgType_IDENTITY_MSG,
 	}
 	output2 := "data_dig: nonce: 0 , Msg_type: IDENTITY_MSG, digests: [6d736731 6d736732 6d736733]"
-	assert.Equal(t, output2, protoext.DataDigestToString(dig2))
+	require.Equal(t, output2, protoext.DataDigestToString(dig2))
 }
 
 func TestToStringDataRequest(t *testing.T) {
@@ -175,14 +175,14 @@ func TestToStringDataRequest(t *testing.T) {
 		MsgType: gossip.PullMsgType_BLOCK_MSG,
 	}
 	output1 := "data request: nonce: 0 , Msg_type: BLOCK_MSG, digests: [msg1 msg2 msg3]"
-	assert.Equal(t, output1, protoext.DataRequestToString(dataReq1))
+	require.Equal(t, output1, protoext.DataRequestToString(dataReq1))
 	dataReq2 := &gossip.DataRequest{
 		Nonce:   0,
 		Digests: [][]byte{[]byte("msg1"), []byte("msg2"), []byte("msg3")},
 		MsgType: gossip.PullMsgType_IDENTITY_MSG,
 	}
 	output2 := "data request: nonce: 0 , Msg_type: IDENTITY_MSG, digests: [6d736731 6d736732 6d736733]"
-	assert.Equal(t, output2, protoext.DataRequestToString(dataReq2))
+	require.Equal(t, output2, protoext.DataRequestToString(dataReq2))
 }
 
 func TestToStringLeadershipMessage(t *testing.T) {
@@ -195,7 +195,7 @@ func TestToStringLeadershipMessage(t *testing.T) {
 		IsDeclaration: true,
 	}
 	output := "Leadership Message: PKI-id:11 Timestamp:inc_num:1 seq_num:1 Is Declaration true"
-	assert.Equal(t, output, protoext.LeadershipMessageToString(lm))
+	require.Equal(t, output, protoext.LeadershipMessageToString(lm))
 }
 
 func TestRemotePvtDataResponseToString(t *testing.T) {
@@ -206,5 +206,5 @@ func TestRemotePvtDataResponseToString(t *testing.T) {
 	}
 
 	output := `[tx_id:"tx-id"  with 1 elements]`
-	assert.Equal(t, output, protoext.RemovePvtDataResponseToString(res))
+	require.Equal(t, output, protoext.RemovePvtDataResponseToString(res))
 }

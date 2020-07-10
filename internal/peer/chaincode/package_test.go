@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/msp"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -92,7 +92,7 @@ func createSignedCDSPackage(t *testing.T, args []string, sign bool) error {
 	p := newPackagerForTest(t, sign)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cmd := packageCmd(nil, mockCDSFactory, p, cryptoProvider)
 	addFlags(cmd)
 
@@ -215,7 +215,7 @@ func newPackagerForTest(t *testing.T /*pr PlatformRegistry, w Writer,*/, sign bo
 		t.Fatal("error creating mock ChaincodeCmdFactory", err)
 	}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	p := &Packager{
 		ChaincodeCmdFactory: mockCF,

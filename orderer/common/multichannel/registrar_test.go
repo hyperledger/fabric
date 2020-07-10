@@ -34,7 +34,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -109,9 +108,9 @@ func testMessageOrderAndRetrieval(maxMessageCount uint32, chainID string, chainS
 	it, _ := lr.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: 1}}})
 	defer it.Close()
 	block, status := it.Next()
-	assert.Equal(t, cb.Status_SUCCESS, status, "Could not retrieve block")
+	require.Equal(t, cb.Status_SUCCESS, status, "Could not retrieve block")
 	for i := uint32(0); i < maxMessageCount; i++ {
-		assert.True(t, proto.Equal(messages[i], protoutil.ExtractEnvelopeOrPanic(block, int(i))), "Block contents wrong at index %d", i)
+		require.True(t, proto.Equal(messages[i], protoutil.ExtractEnvelopeOrPanic(block, int(i))), "Block contents wrong at index %d", i)
 	}
 }
 
@@ -144,7 +143,7 @@ func TestConfigTx(t *testing.T) {
 		rl.Append(block)
 
 		pctx := configTx(rl)
-		assert.True(t, proto.Equal(pctx, ctx), "Did not select most recent config transaction")
+		require.True(t, proto.Equal(pctx, ctx), "Did not select most recent config transaction")
 	})
 }
 
@@ -154,7 +153,7 @@ func TestNewRegistrar(t *testing.T) {
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// This test checks to make sure the orderer can come up if it cannot find any chains
 	t.Run("No chains", func(t *testing.T) {
@@ -169,16 +168,16 @@ func TestNewRegistrar(t *testing.T) {
 		consenters["etcdraft"] = &mockConsenter{}
 
 		var manager *Registrar
-		assert.NotPanics(t, func() {
+		require.NotPanics(t, func() {
 			manager = NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 			manager.Initialize(consenters)
 		}, "Should not panic when starting without a system channel")
 		require.NotNil(t, manager)
 		list := manager.ChannelList()
-		assert.Equal(t, types.ChannelList{}, list)
+		require.Equal(t, types.ChannelList{}, list)
 		info, err := manager.ChannelInfo("my-channel")
-		assert.EqualError(t, err, types.ErrChannelNotExist.Error())
-		assert.Equal(t, types.ChannelInfo{}, info)
+		require.EqualError(t, err, types.ErrChannelNotExist.Error())
+		require.Equal(t, types.ChannelInfo{}, info)
 	})
 
 	// This test checks to make sure that the orderer refuses to come up if there are multiple system channels
@@ -192,16 +191,16 @@ func TestNewRegistrar(t *testing.T) {
 
 		for _, id := range []string{"foo", "bar"} {
 			rl, err := lf.GetOrCreate(id)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = rl.Append(encoder.New(confSys).GenesisBlockForChannel(id))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		consenters := make(map[string]consensus.Consenter)
 		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
 
-		assert.Panics(t, func() {
+		require.Panics(t, func() {
 			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider).Initialize(consenters)
 		}, "Two system channels should have caused panic")
 	})
@@ -221,15 +220,15 @@ func TestNewRegistrar(t *testing.T) {
 		manager.Initialize(consenters)
 
 		chainSupport := manager.GetChain("Fake")
-		assert.Nilf(t, chainSupport, "Should not have found a chain that was not created")
+		require.Nilf(t, chainSupport, "Should not have found a chain that was not created")
 
 		chainSupport = manager.GetChain("testchannelid")
-		assert.NotNilf(t, chainSupport, "Should have gotten chain which was initialized by ledger")
+		require.NotNilf(t, chainSupport, "Should have gotten chain which was initialized by ledger")
 
 		list := manager.ChannelList()
 		require.NotNil(t, list.SystemChannel)
 
-		assert.Equal(
+		require.Equal(
 			t,
 			types.ChannelList{
 				SystemChannel: &types.ChannelInfoShort{Name: "testchannelid", URL: ""},
@@ -238,8 +237,8 @@ func TestNewRegistrar(t *testing.T) {
 		)
 
 		info, err := manager.ChannelInfo("testchannelid")
-		assert.NoError(t, err)
-		assert.Equal(t,
+		require.NoError(t, err)
+		require.Equal(t,
 			types.ChannelInfo{Name: "testchannelid", URL: "", ClusterRelation: "none", Status: "active", Height: 1},
 			info,
 		)
@@ -254,7 +253,7 @@ func TestCreateChain(t *testing.T) {
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Run("Create chain", func(t *testing.T) {
 		tmpdir, err := ioutil.TempDir("", "registrar_test-")
@@ -270,20 +269,20 @@ func TestCreateChain(t *testing.T) {
 		manager.Initialize(consenters)
 
 		ledger, err := lf.GetOrCreate("mychannel")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		genesisBlock := encoder.New(confSys).GenesisBlockForChannel("mychannel")
 		ledger.Append(genesisBlock)
 
 		// Before creating the chain, it doesn't exist
-		assert.Nil(t, manager.GetChain("mychannel"))
+		require.Nil(t, manager.GetChain("mychannel"))
 		// After creating the chain, it exists
 		manager.CreateChain("mychannel")
 		chain := manager.GetChain("mychannel")
-		assert.NotNil(t, chain)
+		require.NotNil(t, chain)
 
 		list := manager.ChannelList()
-		assert.Equal(
+		require.Equal(
 			t,
 			types.ChannelList{
 				SystemChannel: &types.ChannelInfoShort{Name: "testchannelid", URL: ""},
@@ -292,15 +291,15 @@ func TestCreateChain(t *testing.T) {
 		)
 
 		info, err := manager.ChannelInfo("testchannelid")
-		assert.NoError(t, err)
-		assert.Equal(t,
+		require.NoError(t, err)
+		require.Equal(t,
 			types.ChannelInfo{Name: "testchannelid", URL: "", ClusterRelation: types.ClusterRelationMember, Status: types.StatusActive, Height: 1},
 			info,
 		)
 
 		info, err = manager.ChannelInfo("mychannel")
-		assert.NoError(t, err)
-		assert.Equal(t,
+		require.NoError(t, err)
+		require.Equal(t,
 			types.ChannelInfo{Name: "mychannel", URL: "", ClusterRelation: types.ClusterRelationMember, Status: types.StatusActive, Height: 1},
 			info,
 		)
@@ -308,12 +307,12 @@ func TestCreateChain(t *testing.T) {
 		// A subsequent creation, replaces the chain.
 		manager.CreateChain("mychannel")
 		chain2 := manager.GetChain("mychannel")
-		assert.NotNil(t, chain2)
+		require.NotNil(t, chain2)
 		// They are not the same
-		assert.NotEqual(t, chain, chain2)
+		require.NotEqual(t, chain, chain2)
 		// The old chain is halted
 		_, ok := <-chain.Chain.(*mockChainCluster).queue
-		assert.False(t, ok)
+		require.False(t, ok)
 
 		// The new chain is not halted: Close the channel to prove that.
 		close(chain2.Chain.(*mockChainCluster).queue)
@@ -338,22 +337,22 @@ func TestCreateChain(t *testing.T) {
 		orglessChannelConf := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
 		orglessChannelConf.Application.Organizations = nil
 		envConfigUpdate, err := encoder.MakeChannelCreationTransaction(newChainID, mockCrypto(), orglessChannelConf)
-		assert.NoError(t, err, "Constructing chain creation tx")
+		require.NoError(t, err, "Constructing chain creation tx")
 
 		res, err := manager.NewChannelConfig(envConfigUpdate)
-		assert.NoError(t, err, "Constructing initial channel config")
+		require.NoError(t, err, "Constructing initial channel config")
 
 		configEnv, err := res.ConfigtxValidator().ProposeConfigUpdate(envConfigUpdate)
-		assert.NoError(t, err, "Proposing initial update")
-		assert.Equal(t, expectedLastConfigSeq, configEnv.GetConfig().Sequence, "Sequence of config envelope for new channel should always be set to %d", expectedLastConfigSeq)
+		require.NoError(t, err, "Proposing initial update")
+		require.Equal(t, expectedLastConfigSeq, configEnv.GetConfig().Sequence, "Sequence of config envelope for new channel should always be set to %d", expectedLastConfigSeq)
 
 		ingressTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, newChainID, mockCrypto(), configEnv, msgVersion, epoch)
-		assert.NoError(t, err, "Creating ingresstx")
+		require.NoError(t, err, "Creating ingresstx")
 
 		wrapped := wrapConfigTx(ingressTx)
 
 		chainSupport := manager.GetChain(manager.SystemChannelID())
-		assert.NotNilf(t, chainSupport, "Could not find system channel")
+		require.NotNilf(t, chainSupport, "Could not find system channel")
 
 		chainSupport.Configure(wrapped, 0)
 		func() {
@@ -367,7 +366,7 @@ func TestCreateChain(t *testing.T) {
 				t.Fatalf("Should have had only one message in the orderer transaction block")
 			}
 
-			assert.True(t, proto.Equal(wrapped, protoutil.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Orderer config block contains wrong transaction")
+			require.True(t, proto.Equal(wrapped, protoutil.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Orderer config block contains wrong transaction")
 		}()
 
 		chainSupport = manager.GetChain(newChainID)
@@ -394,7 +393,7 @@ func TestCreateChain(t *testing.T) {
 			t.Fatalf("Should have had only one message in the new genesis block")
 		}
 
-		assert.True(t, proto.Equal(ingressTx, protoutil.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Genesis block contains wrong transaction")
+		require.True(t, proto.Equal(ingressTx, protoutil.UnmarshalEnvelopeOrPanic(block.Data.Data[0])), "Genesis block contains wrong transaction")
 
 		block, status = it.Next()
 		if status != cb.Status_SUCCESS {
@@ -407,10 +406,10 @@ func TestCreateChain(t *testing.T) {
 		}
 
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		rcs, err := newChainSupport(manager, chainSupport.ledgerResources, consenters, mockCrypto(), blockcutter.NewMetrics(&disabled.Provider{}), cryptoProvider)
-		assert.NoError(t, err)
-		assert.Equal(t, expectedLastConfigSeq, rcs.lastConfigSeq, "On restart, incorrect lastConfigSeq")
+		require.NoError(t, err)
+		require.Equal(t, expectedLastConfigSeq, rcs.lastConfigSeq, "On restart, incorrect lastConfigSeq")
 	})
 }
 
@@ -430,15 +429,15 @@ func TestResourcesCheck(t *testing.T) {
 		mockResources.ChannelConfigReturns(mockChannel)
 
 		err := checkResources(mockResources)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("MissingOrdererConfigPanic", func(t *testing.T) {
 		mockResources.OrdererConfigReturns(nil, false)
 
 		err := checkResources(mockResources)
-		assert.Error(t, err)
-		assert.Regexp(t, "config does not contain orderer config", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "config does not contain orderer config", err.Error())
 	})
 
 	t.Run("MissingOrdererCapability", func(t *testing.T) {
@@ -446,8 +445,8 @@ func TestResourcesCheck(t *testing.T) {
 		mockOrdererCaps.SupportedReturns(errors.New("An error"))
 
 		err := checkResources(mockResources)
-		assert.Error(t, err)
-		assert.Regexp(t, "config requires unsupported orderer capabilities:", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "config requires unsupported orderer capabilities:", err.Error())
 
 		// reset
 		mockOrdererCaps.SupportedReturns(nil)
@@ -457,14 +456,14 @@ func TestResourcesCheck(t *testing.T) {
 		mockChannelCaps.SupportedReturns(errors.New("An error"))
 
 		err := checkResources(mockResources)
-		assert.Error(t, err)
-		assert.Regexp(t, "config requires unsupported channel capabilities:", err.Error())
+		require.Error(t, err)
+		require.Regexp(t, "config requires unsupported channel capabilities:", err.Error())
 	})
 
 	t.Run("MissingOrdererConfigPanic", func(t *testing.T) {
 		mockResources.OrdererConfigReturns(nil, false)
 
-		assert.Panics(t, func() {
+		require.Panics(t, func() {
 			checkResourcesOrPanic(mockResources)
 		})
 	})
@@ -477,7 +476,7 @@ func TestBroadcastChannelSupport(t *testing.T) {
 	genesisBlockSys := encoder.New(confSys).GenesisBlock()
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Run("Rejection", func(t *testing.T) {
 		tmpdir, err := ioutil.TempDir("", "registrar_test-")
@@ -491,7 +490,7 @@ func TestBroadcastChannelSupport(t *testing.T) {
 		randomValue := 1
 		configTx := makeConfigTx("testchannelid", randomValue)
 		_, _, _, err = registrar.BroadcastChannelSupport(configTx)
-		assert.Error(t, err, "Messages of type HeaderType_CONFIG should return an error.")
+		require.Error(t, err, "Messages of type HeaderType_CONFIG should return an error.")
 	})
 
 	t.Run("No system channel", func(t *testing.T) {
@@ -508,8 +507,8 @@ func TestBroadcastChannelSupport(t *testing.T) {
 		registrar.Initialize(mockConsenters)
 		configTx := makeConfigTxFull("testchannelid", 1)
 		_, _, _, err = registrar.BroadcastChannelSupport(configTx)
-		assert.Error(t, err)
-		assert.Equal(t, "channel creation request not allowed because the orderer system channel is not defined", err.Error())
+		require.Error(t, err)
+		require.Equal(t, "channel creation request not allowed because the orderer system channel is not defined", err.Error())
 	})
 }
 
@@ -523,7 +522,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 	genesisBlockApp := encoder.New(confApp).GenesisBlockForChannel("my-channel")
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Run("Reject join when system channel exists", func(t *testing.T) {
 		tmpdir, err := ioutil.TempDir("", "registrar_test-")
@@ -536,8 +535,8 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		registrar.Initialize(mockConsenters)
 
 		info, err := registrar.JoinChannel("some-app-channel", &cb.Block{}, true)
-		assert.EqualError(t, err, "system channel exists")
-		assert.Equal(t, types.ChannelInfo{}, info)
+		require.EqualError(t, err, "system channel exists")
+		require.Equal(t, types.ChannelInfo{}, info)
 	})
 
 	t.Run("Reject join when channel exists", func(t *testing.T) {
@@ -554,18 +553,18 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		registrar.Initialize(mockConsenters)
 
 		ledger, err := ledgerFactory.GetOrCreate("my-channel")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		ledger.Append(genesisBlockApp)
 
 		// Before creating the chain, it doesn't exist
-		assert.Nil(t, registrar.GetChain("my-channel"))
+		require.Nil(t, registrar.GetChain("my-channel"))
 		// After creating the chain, it exists
 		registrar.CreateChain("my-channel")
-		assert.NotNil(t, registrar.GetChain("my-channel"))
+		require.NotNil(t, registrar.GetChain("my-channel"))
 
 		info, err := registrar.JoinChannel("my-channel", &cb.Block{}, true)
-		assert.EqualError(t, err, "channel already exists")
-		assert.Equal(t, types.ChannelInfo{}, info)
+		require.EqualError(t, err, "channel already exists")
+		require.Equal(t, types.ChannelInfo{}, info)
 	})
 
 	t.Run("Reject system channel join when app channels exist", func(t *testing.T) {
@@ -582,18 +581,18 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		registrar.Initialize(mockConsenters)
 
 		ledger, err := ledgerFactory.GetOrCreate("my-channel")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		ledger.Append(genesisBlockApp)
 
 		// Before creating the chain, it doesn't exist
-		assert.Nil(t, registrar.GetChain("my-channel"))
+		require.Nil(t, registrar.GetChain("my-channel"))
 		// After creating the chain, it exists
 		registrar.CreateChain("my-channel")
-		assert.NotNil(t, registrar.GetChain("my-channel"))
+		require.NotNil(t, registrar.GetChain("my-channel"))
 
 		info, err := registrar.JoinChannel("sys-channel", &cb.Block{}, false)
-		assert.EqualError(t, err, "application channels already exist")
-		assert.Equal(t, types.ChannelInfo{}, info)
+		require.EqualError(t, err, "application channels already exist")
+		require.Equal(t, types.ChannelInfo{}, info)
 	})
 
 	t.Run("no etcdraft consenter without system channel", func(t *testing.T) {
@@ -609,7 +608,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		config.General.GenesisFile = ""
 		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
 
-		assert.Panics(t, func() { registrar.Initialize(mockConsenters) })
+		require.Panics(t, func() { registrar.Initialize(mockConsenters) })
 	})
 
 	t.Run("Join app channel as member without on boarding", func(t *testing.T) {
@@ -637,13 +636,13 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		registrar.Initialize(mockConsenters)
 
 		// Before join the chain, it doesn't exist
-		assert.Nil(t, registrar.GetChain("my-raft-channel"))
+		require.Nil(t, registrar.GetChain("my-raft-channel"))
 
 		info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
-		assert.NoError(t, err)
-		assert.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 0x1}, info)
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 0x1}, info)
 		// After creating the chain, it exists
-		assert.NotNil(t, registrar.GetChain("my-raft-channel"))
+		require.NotNil(t, registrar.GetChain("my-raft-channel"))
 	})
 }
 

@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMembershipInfoProvider(t *testing.T) {
@@ -32,35 +32,35 @@ func TestMembershipInfoProvider(t *testing.T) {
 	// verify membership provider pass simple check returns true
 	membershipProvider := NewMembershipInfoProvider(mspID, emptyPeerSelfSignedData, identityDeserializer)
 	res, err := membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
-	assert.True(t, res)
-	assert.Nil(t, err)
+	require.True(t, res)
+	require.Nil(t, err)
 
 	// verify membership provider fall back to default access policy evaluation returns false
 	membershipProvider = NewMembershipInfoProvider(mspID, peerSelfSignedData, identityDeserializer)
 	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
-	assert.False(t, res)
-	assert.Nil(t, err)
+	require.False(t, res)
+	require.Nil(t, err)
 
 	// verify membership provider returns false and nil when collection policy config is nil
 	res, err = membershipProvider.AmMemberOf("test1", nil)
-	assert.False(t, res)
-	assert.Nil(t, err)
+	require.False(t, res)
+	require.Nil(t, err)
 
 	// verify membership provider returns false and nil when collection policy config is invalid
 	res, err = membershipProvider.AmMemberOf("test1", getBadAccessPolicy([]string{"signer0"}, 1))
-	assert.False(t, res)
-	assert.Nil(t, err)
+	require.False(t, res)
+	require.Nil(t, err)
 
 	// verify membership provider with empty mspID and fall back to default access policy evaluation returns true
 	membershipProvider = NewMembershipInfoProvider("", peerSelfSignedData, identityDeserializer)
 	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer0", "peer1"}))
-	assert.True(t, res)
-	assert.Nil(t, err)
+	require.True(t, res)
+	require.Nil(t, err)
 
 	// verify membership provider with empty mspID and fall back to default access policy evaluation returns false
 	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
-	assert.False(t, res)
-	assert.Nil(t, err)
+	require.False(t, res)
+	require.Nil(t, err)
 }
 
 func getAccessPolicy(signers []string) *peer.CollectionPolicyConfig {

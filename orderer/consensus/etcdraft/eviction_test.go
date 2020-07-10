@@ -19,7 +19,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -234,7 +234,7 @@ func TestEvictionSuspector(t *testing.T) {
 			}
 
 			if testCase.expectedPanic != "" {
-				assert.PanicsWithValue(t, testCase.expectedPanic, runTestCase)
+				require.PanicsWithValue(t, testCase.expectedPanic, runTestCase)
 			} else {
 				runTestCase()
 				// Run the test case again.
@@ -245,8 +245,8 @@ func TestEvictionSuspector(t *testing.T) {
 				runTestCase()
 			}
 
-			assert.True(t, foundExpectedLog, "expected to find %s but didn't", testCase.expectedLog)
-			assert.Equal(t, testCase.expectedCommittedBlockCount, len(committedBlocks))
+			require.True(t, foundExpectedLog, "expected to find %s but didn't", testCase.expectedLog)
+			require.Equal(t, testCase.expectedCommittedBlockCount, len(committedBlocks))
 		})
 	}
 }

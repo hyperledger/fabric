@@ -14,13 +14,13 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMSPConfigManager(t *testing.T) {
 	mspDir := configtest.GetDevMspDir()
 	conf, err := msp.GetLocalMspConfig(mspDir, nil, "SampleOrg")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// test success:
 
@@ -30,38 +30,38 @@ func TestMSPConfigManager(t *testing.T) {
 		mspCH := NewMSPConfigHandler(ver, factory.GetDefault())
 
 		_, err = mspCH.ProposeMSP(conf)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		mgr, err := mspCH.CreateMSPManager()
-		assert.NoError(t, err)
-		assert.NotNil(t, mgr)
+		require.NoError(t, err)
+		require.NotNil(t, mgr)
 
 		msps, err := mgr.GetMSPs()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if len(msps) == 0 {
 			t.Fatalf("There are no MSPS in the manager")
 		}
 
 		for _, mspInst := range msps {
-			assert.Equal(t, mspInst.GetVersion(), msp.MSPVersion(ver))
+			require.Equal(t, mspInst.GetVersion(), msp.MSPVersion(ver))
 		}
 	}
 }
 
 func TestMSPConfigFailure(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mspCH := NewMSPConfigHandler(msp.MSPv1_0, cryptoProvider)
 
 	// begin/propose/commit
 	t.Run("Bad proto", func(t *testing.T) {
 		_, err := mspCH.ProposeMSP(&mspprotos.MSPConfig{Config: []byte("BARF!")})
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("Bad MSP Type", func(t *testing.T) {
 		_, err := mspCH.ProposeMSP(&mspprotos.MSPConfig{Type: int32(10)})
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }

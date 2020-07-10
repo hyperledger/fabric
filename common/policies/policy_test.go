@@ -21,7 +21,7 @@ import (
 	mspi "github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 )
 
@@ -59,21 +59,21 @@ func TestUnnestedManager(t *testing.T) {
 	}
 
 	m, err := NewManagerImpl("test", defaultProviders(), config)
-	assert.NoError(t, err)
-	assert.NotNil(t, m)
+	require.NoError(t, err)
+	require.NotNil(t, m)
 
 	_, ok := m.Manager([]string{"subGroup"})
-	assert.False(t, ok, "Should not have found a subgroup manager")
+	require.False(t, ok, "Should not have found a subgroup manager")
 
 	r, ok := m.Manager([]string{})
-	assert.True(t, ok, "Should have found the root manager")
-	assert.Equal(t, m, r)
+	require.True(t, ok, "Should have found the root manager")
+	require.Equal(t, m, r)
 
-	assert.Len(t, m.Policies, len(config.Policies))
+	require.Len(t, m.Policies, len(config.Policies))
 
 	for policyName := range config.Policies {
 		_, ok := m.GetPolicy(policyName)
-		assert.True(t, ok, "Should have found policy %s", policyName)
+		require.True(t, ok, "Should have found policy %s", policyName)
 	}
 }
 
@@ -112,87 +112,87 @@ func TestNestedManager(t *testing.T) {
 	}
 
 	m, err := NewManagerImpl("nest0", defaultProviders(), config)
-	assert.NoError(t, err)
-	assert.NotNil(t, m)
+	require.NoError(t, err)
+	require.NotNil(t, m)
 
 	r, ok := m.Manager([]string{})
-	assert.True(t, ok, "Should have found the root manager")
-	assert.Equal(t, m, r)
+	require.True(t, ok, "Should have found the root manager")
+	require.Equal(t, m, r)
 
 	n1, ok := m.Manager([]string{"nest1"})
-	assert.True(t, ok)
+	require.True(t, ok)
 	n2a, ok := m.Manager([]string{"nest1", "nest2a"})
-	assert.True(t, ok)
+	require.True(t, ok)
 	n2b, ok := m.Manager([]string{"nest1", "nest2b"})
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	n2as, ok := n1.Manager([]string{"nest2a"})
-	assert.True(t, ok)
-	assert.Equal(t, n2a, n2as)
+	require.True(t, ok)
+	require.Equal(t, n2a, n2as)
 	n2bs, ok := n1.Manager([]string{"nest2b"})
-	assert.True(t, ok)
-	assert.Equal(t, n2b, n2bs)
+	require.True(t, ok)
+	require.Equal(t, n2b, n2bs)
 
 	absPrefix := PathSeparator + "nest0" + PathSeparator
 	for policyName := range config.Policies {
 		_, ok := m.GetPolicy(policyName)
-		assert.True(t, ok, "Should have found policy %s", policyName)
+		require.True(t, ok, "Should have found policy %s", policyName)
 
 		absName := absPrefix + policyName
 		_, ok = m.GetPolicy(absName)
-		assert.True(t, ok, "Should have found absolute policy %s", absName)
+		require.True(t, ok, "Should have found absolute policy %s", absName)
 	}
 
 	for policyName := range config.Groups["nest1"].Policies {
 		_, ok := n1.GetPolicy(policyName)
-		assert.True(t, ok, "Should have found policy %s", policyName)
+		require.True(t, ok, "Should have found policy %s", policyName)
 
 		relPathFromBase := "nest1" + PathSeparator + policyName
 		_, ok = m.GetPolicy(relPathFromBase)
-		assert.True(t, ok, "Should have found policy %s", policyName)
+		require.True(t, ok, "Should have found policy %s", policyName)
 
 		for i, abs := range []Manager{n1, m} {
 			absName := absPrefix + relPathFromBase
 			_, ok = abs.GetPolicy(absName)
-			assert.True(t, ok, "Should have found absolutely policy for manager %d", i)
+			require.True(t, ok, "Should have found absolutely policy for manager %d", i)
 		}
 	}
 
 	for policyName := range config.Groups["nest1"].Groups["nest2a"].Policies {
 		_, ok := n2a.GetPolicy(policyName)
-		assert.True(t, ok, "Should have found policy %s", policyName)
+		require.True(t, ok, "Should have found policy %s", policyName)
 
 		relPathFromN1 := "nest2a" + PathSeparator + policyName
 		_, ok = n1.GetPolicy(relPathFromN1)
-		assert.True(t, ok, "Should have found policy %s", policyName)
+		require.True(t, ok, "Should have found policy %s", policyName)
 
 		relPathFromBase := "nest1" + PathSeparator + relPathFromN1
 		_, ok = m.GetPolicy(relPathFromBase)
-		assert.True(t, ok, "Should have found policy %s", policyName)
+		require.True(t, ok, "Should have found policy %s", policyName)
 
 		for i, abs := range []Manager{n2a, n1, m} {
 			absName := absPrefix + relPathFromBase
 			_, ok = abs.GetPolicy(absName)
-			assert.True(t, ok, "Should have found absolutely policy for manager %d", i)
+			require.True(t, ok, "Should have found absolutely policy for manager %d", i)
 		}
 	}
 
 	for policyName := range config.Groups["nest1"].Groups["nest2b"].Policies {
 		_, ok := n2b.GetPolicy(policyName)
-		assert.True(t, ok, "Should have found policy %s", policyName)
+		require.True(t, ok, "Should have found policy %s", policyName)
 
 		relPathFromN1 := "nest2b" + PathSeparator + policyName
 		_, ok = n1.GetPolicy(relPathFromN1)
-		assert.True(t, ok, "Should have found policy %s", policyName)
+		require.True(t, ok, "Should have found policy %s", policyName)
 
 		relPathFromBase := "nest1" + PathSeparator + relPathFromN1
 		_, ok = m.GetPolicy(relPathFromBase)
-		assert.True(t, ok, "Should have found policy %s", policyName)
+		require.True(t, ok, "Should have found policy %s", policyName)
 
 		for i, abs := range []Manager{n2b, n1, m} {
 			absName := absPrefix + relPathFromBase
 			_, ok = abs.GetPolicy(absName)
-			assert.True(t, ok, "Should have found absolutely policy for manager %d", i)
+			require.True(t, ok, "Should have found absolutely policy for manager %d", i)
 		}
 	}
 }
@@ -214,8 +214,8 @@ func TestPrincipalUniqueSet(t *testing.T) {
 	addPrincipal(3)
 
 	for principal, plurality := range principalSet.UniqueSet() {
-		assert.Equal(t, int(principal.PrincipalClassification), plurality)
-		assert.Equal(t, fmt.Sprintf("%d", plurality), string(principal.Principal))
+		require.Equal(t, int(principal.PrincipalClassification), plurality)
+		require.Equal(t, fmt.Sprintf("%d", plurality), string(principal.Principal))
 	}
 
 	v := reflect.Indirect(reflect.ValueOf(msp.MSPPrincipal{}))
@@ -224,7 +224,7 @@ func TestPrincipalUniqueSet(t *testing.T) {
 	// XXX This is a rather brittle check and brittle way to fix the test
 	// There seems to be an assumption that the number of fields in the proto
 	// struct matches the number of fields in the proto message
-	assert.Equal(t, 5, v.NumField())
+	require.Equal(t, 5, v.NumField())
 }
 
 func TestPrincipalSetContainingOnly(t *testing.T) {
@@ -248,8 +248,8 @@ func TestPrincipalSetContainingOnly(t *testing.T) {
 
 	principalSets = principalSets.ContainingOnly(between20And30)
 
-	assert.Len(t, principalSets, 1)
-	assert.True(t, principalSets[0].ContainingOnly(between20And30))
+	require.Len(t, principalSets, 1)
+	require.True(t, principalSets[0].ContainingOnly(between20And30))
 }
 
 func TestSignatureSetToValidIdentities(t *testing.T) {
@@ -276,15 +276,15 @@ func TestSignatureSetToValidIdentities(t *testing.T) {
 	fIDDs.DeserializeIdentityReturns(fID, nil)
 
 	ids := SignatureSetToValidIdentities(sd, fIDDs)
-	assert.Len(t, ids, 1)
-	assert.NotNil(t, ids[0].GetIdentifier())
-	assert.Equal(t, "id", ids[0].GetIdentifier().Id)
-	assert.Equal(t, "mspid", ids[0].GetIdentifier().Mspid)
+	require.Len(t, ids, 1)
+	require.NotNil(t, ids[0].GetIdentifier())
+	require.Equal(t, "id", ids[0].GetIdentifier().Id)
+	require.Equal(t, "mspid", ids[0].GetIdentifier().Mspid)
 	data, sig := fID.VerifyArgsForCall(0)
-	assert.Equal(t, []byte("data1"), data)
-	assert.Equal(t, []byte("signature1"), sig)
+	require.Equal(t, []byte("data1"), data)
+	require.Equal(t, []byte("signature1"), sig)
 	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
-	assert.Equal(t, []byte("identity1"), sidBytes)
+	require.Equal(t, []byte("identity1"), sidBytes)
 }
 
 func TestSignatureSetToValidIdentitiesDeserializeErr(t *testing.T) {
@@ -298,14 +298,14 @@ func TestSignatureSetToValidIdentitiesDeserializeErr(t *testing.T) {
 
 	// generate actual x509 certificate
 	ca, err := tlsgen.NewCA()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	client1, err := ca.NewClientCertKeyPair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	id := &msp.SerializedIdentity{
 		IdBytes: client1.Cert,
 	}
 	idBytes, err := proto.Marshal(id)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tests := []struct {
 		spec                     string
@@ -335,7 +335,7 @@ func TestSignatureSetToValidIdentitiesDeserializeErr(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.spec, func(t *testing.T) {
 			ids := SignatureSetToValidIdentities(tc.signedData, fakeIdentityDeserializer)
-			assert.Len(t, ids, 0)
+			require.Len(t, ids, 0)
 			assertLogContains(t, recorder, tc.expectedLogEntryContains...)
 		})
 	}
@@ -360,17 +360,17 @@ func TestSignatureSetToValidIdentitiesVerifyErr(t *testing.T) {
 	fIDDs.DeserializeIdentityReturns(fID, nil)
 
 	ids := SignatureSetToValidIdentities(sd, fIDDs)
-	assert.Len(t, ids, 0)
+	require.Len(t, ids, 0)
 	data, sig := fID.VerifyArgsForCall(0)
-	assert.Equal(t, []byte("data1"), data)
-	assert.Equal(t, []byte("signature1"), sig)
+	require.Equal(t, []byte("data1"), data)
+	require.Equal(t, []byte("signature1"), sig)
 	sidBytes := fIDDs.DeserializeIdentityArgsForCall(0)
-	assert.Equal(t, []byte("identity1"), sidBytes)
+	require.Equal(t, []byte("identity1"), sidBytes)
 }
 
 func assertLogContains(t *testing.T, r *floggingtest.Recorder, ss ...string) {
 	defer r.Reset()
 	for _, s := range ss {
-		assert.NotEmpty(t, r.EntriesContaining(s))
+		require.NotEmpty(t, r.EntriesContaining(s))
 	}
 }

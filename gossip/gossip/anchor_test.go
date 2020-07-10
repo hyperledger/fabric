@@ -23,7 +23,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/protoext"
 	utilgossip "github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -200,18 +200,18 @@ func TestAnchorPeer(t *testing.T) {
 		if index != 0 {
 			return
 		}
-		assert.NotNil(t, m.GetConn())
+		require.NotNil(t, m.GetConn())
 	}
 
 	memReqWithInternalEndpoint := func(t *testing.T, index int, m *receivedMsg) {
 		if m.GetMemReq() == nil {
 			return
 		}
-		assert.True(t, index > 0)
+		require.True(t, index > 0)
 		req := m.GetMemReq()
 		am, err := protoext.EnvelopeToGossipMessage(req.SelfInformation)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, protoext.InternalEndpoint(am.GetSecretEnvelope()))
+		require.NoError(t, err)
+		require.NotEmpty(t, protoext.InternalEndpoint(am.GetSecretEnvelope()))
 		m.respond(memResp(m.Nonce, fmt.Sprintf("127.0.0.1:%d", port3)))
 	}
 
@@ -219,11 +219,11 @@ func TestAnchorPeer(t *testing.T) {
 		if m.GetMemReq() == nil {
 			return
 		}
-		assert.True(t, index > 0)
+		require.True(t, index > 0)
 		req := m.GetMemReq()
 		am, err := protoext.EnvelopeToGossipMessage(req.SelfInformation)
-		assert.NoError(t, err)
-		assert.Nil(t, am.GetSecretEnvelope())
+		require.NoError(t, err)
+		require.Nil(t, am.GetSecretEnvelope())
 		m.respond(memResp(m.Nonce, fmt.Sprintf("127.0.0.1:%d", port4)))
 	}
 
@@ -293,11 +293,11 @@ func TestBootstrapPeerMisConfiguration(t *testing.T) {
 	onlyHandshakes := func(t *testing.T, index int, m *receivedMsg) {
 		// Ensure all messages sent are connection establishment messages
 		// that are probing attempts
-		assert.NotNil(t, m.GetConn())
+		require.NotNil(t, m.GetConn())
 		// If the logic we test in this test- fails,
 		// the first message would be a membership request,
 		// so this assertion would capture it and print a corresponding failure
-		assert.Nil(t, m.GetMemReq())
+		require.Nil(t, m.GetMemReq())
 	}
 	// Initialize a peer mock that would wait for 3 messages sent to it
 	bs1 := newPeerMockWithGRPC(port1, grpc1, cert1, 3, t, onlyHandshakes)
@@ -328,12 +328,12 @@ func TestBootstrapPeerMisConfiguration(t *testing.T) {
 	select {
 	case <-got3Handshakes:
 	case <-time.After(time.Second * 15):
-		assert.Fail(t, "Didn't detect 3 handshake attempts to the bootstrap peer from orgB")
+		require.Fail(t, "Didn't detect 3 handshake attempts to the bootstrap peer from orgB")
 	}
 
 	select {
 	case <-membershipRequestsSent:
 	case <-time.After(time.Second * 15):
-		assert.Fail(t, "Bootstrap peer didn't receive a membership request from the peer within a timely manner")
+		require.Fail(t, "Bootstrap peer didn't receive a membership request from the peer within a timely manner")
 	}
 }

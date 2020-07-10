@@ -10,7 +10,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/peer"
 )
 
@@ -27,10 +27,10 @@ func (*addr) String() string {
 
 func TestExtractAddress(t *testing.T) {
 	ctx := context.Background()
-	assert.Zero(t, ExtractRemoteAddress(ctx))
+	require.Zero(t, ExtractRemoteAddress(ctx))
 
 	ctx = peer.NewContext(ctx, &peer.Peer{
 		Addr: &addr{},
 	})
-	assert.Equal(t, "1.2.3.4:5000", ExtractRemoteAddress(ctx))
+	require.Equal(t, "1.2.3.4:5000", ExtractRemoteAddress(ctx))
 }

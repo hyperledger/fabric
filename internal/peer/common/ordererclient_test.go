@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func initOrdererTestEnv(t *testing.T) (cleanup func()) {
@@ -27,7 +27,7 @@ func initOrdererTestEnv(t *testing.T) (cleanup func()) {
 
 	return func() {
 		err := os.Unsetenv("FABRIC_CFG_PATH")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		viper.Reset()
 	}
 }
@@ -37,45 +37,45 @@ func TestNewOrdererClientFromEnv(t *testing.T) {
 	defer cleanup()
 
 	oClient, err := common.NewOrdererClientFromEnv()
-	assert.NoError(t, err)
-	assert.NotNil(t, oClient)
+	require.NoError(t, err)
+	require.NotNil(t, oClient)
 
 	viper.Set("orderer.tls.enabled", true)
 	oClient, err = common.NewOrdererClientFromEnv()
-	assert.NoError(t, err)
-	assert.NotNil(t, oClient)
+	require.NoError(t, err)
+	require.NotNil(t, oClient)
 
 	viper.Set("orderer.tls.enabled", true)
 	viper.Set("orderer.tls.clientAuthRequired", true)
 	oClient, err = common.NewOrdererClientFromEnv()
-	assert.NoError(t, err)
-	assert.NotNil(t, oClient)
+	require.NoError(t, err)
+	require.NotNil(t, oClient)
 
 	// bad key file
 	badKeyFile := filepath.Join("certs", "bad.key")
 	viper.Set("orderer.tls.clientKey.file", badKeyFile)
 	oClient, err = common.NewOrdererClientFromEnv()
-	assert.Contains(t, err.Error(), "failed to create OrdererClient from config")
-	assert.Nil(t, oClient)
+	require.Contains(t, err.Error(), "failed to create OrdererClient from config")
+	require.Nil(t, oClient)
 
 	// bad cert file path
 	viper.Set("orderer.tls.clientCert.file", "./nocert.crt")
 	oClient, err = common.NewOrdererClientFromEnv()
-	assert.Contains(t, err.Error(), "unable to load orderer.tls.clientCert.file")
-	assert.Contains(t, err.Error(), "failed to load config for OrdererClient")
-	assert.Nil(t, oClient)
+	require.Contains(t, err.Error(), "unable to load orderer.tls.clientCert.file")
+	require.Contains(t, err.Error(), "failed to load config for OrdererClient")
+	require.Nil(t, oClient)
 
 	// bad key file path
 	viper.Set("orderer.tls.clientKey.file", "./nokey.key")
 	oClient, err = common.NewOrdererClientFromEnv()
-	assert.Contains(t, err.Error(), "unable to load orderer.tls.clientKey.file")
-	assert.Nil(t, oClient)
+	require.Contains(t, err.Error(), "unable to load orderer.tls.clientKey.file")
+	require.Nil(t, oClient)
 
 	// bad ca path
 	viper.Set("orderer.tls.rootcert.file", "noroot.crt")
 	oClient, err = common.NewOrdererClientFromEnv()
-	assert.Contains(t, err.Error(), "unable to load orderer.tls.rootcert.file")
-	assert.Nil(t, oClient)
+	require.Contains(t, err.Error(), "unable to load orderer.tls.rootcert.file")
+	require.Nil(t, oClient)
 }
 
 func TestOrdererClient(t *testing.T) {
@@ -99,11 +99,11 @@ func TestOrdererClient(t *testing.T) {
 		t.Fatalf("failed to create OrdererClient for test: %v", err)
 	}
 	bc, err := oClient.Broadcast()
-	assert.NoError(t, err)
-	assert.NotNil(t, bc)
+	require.NoError(t, err)
+	require.NotNil(t, bc)
 	dc, err := oClient.Deliver()
-	assert.NoError(t, err)
-	assert.NotNil(t, dc)
+	require.NoError(t, err)
+	require.NotNil(t, dc)
 }
 
 func TestOrdererClientTimeout(t *testing.T) {
@@ -116,7 +116,7 @@ func TestOrdererClientTimeout(t *testing.T) {
 			t.Fatalf("failed to create OrdererClient for test: %v", err)
 		}
 		_, err = oClient.Broadcast()
-		assert.Contains(t, err.Error(), "orderer client failed to connect")
+		require.Contains(t, err.Error(), "orderer client failed to connect")
 	})
 	t.Run("OrdererClient.Deliver() timeout", func(t *testing.T) {
 		cleanup := initOrdererTestEnv(t)
@@ -127,6 +127,6 @@ func TestOrdererClientTimeout(t *testing.T) {
 			t.Fatalf("failed to create OrdererClient for test: %v", err)
 		}
 		_, err = oClient.Deliver()
-		assert.Contains(t, err.Error(), "orderer client failed to connect")
+		require.Contains(t, err.Error(), "orderer client failed to connect")
 	})
 }

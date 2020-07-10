@@ -24,7 +24,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/kafka/mock"
 	mockmultichannel "github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 //go:generate counterfeiter -o mock/orderer_config.go --fake-name OrdererConfig . ordererConfig
@@ -113,7 +113,7 @@ func TestHandleChain(t *testing.T) {
 
 	mockMetadata := &cb.Metadata{Value: protoutil.MarshalOrPanic(&ab.KafkaMetadata{LastOffsetPersisted: newestOffset - 1})}
 	_, err := consenter.HandleChain(mockSupport, mockMetadata)
-	assert.NoError(t, err, "Expected the HandleChain call to return without errors")
+	require.NoError(t, err, "Expected the HandleChain call to return without errors")
 }
 
 // Test helper functions and mock objects defined here

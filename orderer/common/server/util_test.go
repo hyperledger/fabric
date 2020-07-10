@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	config "github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateLedgerFactory(t *testing.T) {
@@ -50,7 +50,7 @@ func TestCreateLedgerFactory(t *testing.T) {
 			conf.FileLedger.Location = tc.ledgerDir
 			conf.FileLedger.Prefix = tc.ledgerDirPrefix
 			lf, ld, err := createLedgerFactory(conf, &disabled.Provider{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer func() {
 				if ld != "" {
 					os.RemoveAll(ld)

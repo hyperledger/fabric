@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -28,32 +28,32 @@ var sampleAPIsProvider = map[string]*pb.APIResource{
 
 func TestGreenAPIsPath(t *testing.T) {
 	ag := newAPIsProvider(sampleAPIsProvider)
-	assert.NotNil(t, ag)
+	require.NotNil(t, ag)
 
 	t.Run("PresentAPIs", func(t *testing.T) {
-		assert.Equal(t, "/Channel/Application/"+sampleAPI1PolicyRef, ag.PolicyRefForAPI(sampleAPI1Name))
-		assert.Equal(t, sampleAPI2PolicyRef, ag.PolicyRefForAPI(sampleAPI2Name))
+		require.Equal(t, "/Channel/Application/"+sampleAPI1PolicyRef, ag.PolicyRefForAPI(sampleAPI1Name))
+		require.Equal(t, sampleAPI2PolicyRef, ag.PolicyRefForAPI(sampleAPI2Name))
 	})
 
 	t.Run("MissingAPIs", func(t *testing.T) {
-		assert.Empty(t, ag.PolicyRefForAPI("missing"))
+		require.Empty(t, ag.PolicyRefForAPI("missing"))
 	})
 }
 
 func TestNilACLs(t *testing.T) {
 	ccg := newAPIsProvider(nil)
 
-	assert.NotNil(t, ccg)
-	assert.NotNil(t, ccg.aclPolicyRefs)
-	assert.Empty(t, ccg.aclPolicyRefs)
+	require.NotNil(t, ccg)
+	require.NotNil(t, ccg.aclPolicyRefs)
+	require.Empty(t, ccg.aclPolicyRefs)
 }
 
 func TestEmptyACLs(t *testing.T) {
 	ccg := newAPIsProvider(map[string]*pb.APIResource{})
 
-	assert.NotNil(t, ccg)
-	assert.NotNil(t, ccg.aclPolicyRefs)
-	assert.Empty(t, ccg.aclPolicyRefs)
+	require.NotNil(t, ccg)
+	require.NotNil(t, ccg.aclPolicyRefs)
+	require.Empty(t, ccg.aclPolicyRefs)
 }
 
 func TestEmptyPolicyRef(t *testing.T) {
@@ -63,9 +63,9 @@ func TestEmptyPolicyRef(t *testing.T) {
 
 	ccg := newAPIsProvider(ars)
 
-	assert.NotNil(t, ccg)
-	assert.NotNil(t, ccg.aclPolicyRefs)
-	assert.Empty(t, ccg.aclPolicyRefs)
+	require.NotNil(t, ccg)
+	require.NotNil(t, ccg.aclPolicyRefs)
+	require.Empty(t, ccg.aclPolicyRefs)
 
 	ars = map[string]*pb.APIResource{
 		"unsetAPI": {PolicyRef: ""},
@@ -74,9 +74,9 @@ func TestEmptyPolicyRef(t *testing.T) {
 
 	ccg = newAPIsProvider(ars)
 
-	assert.NotNil(t, ccg)
-	assert.NotNil(t, ccg.aclPolicyRefs)
-	assert.NotEmpty(t, ccg.aclPolicyRefs)
-	assert.NotContains(t, ccg.aclPolicyRefs, sampleAPI1Name)
+	require.NotNil(t, ccg)
+	require.NotNil(t, ccg.aclPolicyRefs)
+	require.NotEmpty(t, ccg.aclPolicyRefs)
+	require.NotContains(t, ccg.aclPolicyRefs, sampleAPI1Name)
 
 }

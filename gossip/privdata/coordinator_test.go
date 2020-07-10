@@ -43,7 +43,6 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -147,8 +146,8 @@ func (f *fetcherMock) fetch(dig2src dig2sources) (*privdatacommon.FetchedPvtData
 			uniqueEndorsements[string(endorsement.Endorser)] = struct{}{}
 		}
 	}
-	assert.True(f.t, digests(f.expectedDigests).Equal(digests(dig2src.keys())))
-	assert.Equal(f.t, len(f.expectedEndorsers), len(uniqueEndorsements))
+	require.True(f.t, digests(f.expectedDigests).Equal(digests(dig2src.keys())))
+	require.Equal(f.t, len(f.expectedEndorsers), len(uniqueEndorsements))
 	args := f.Called(dig2src)
 	if args.Get(1) == nil {
 		return args.Get(0).(*privdatacommon.FetchedPvtDataContainer), nil
@@ -387,7 +386,7 @@ func TestPvtDataCollections_FailOnEmptyPayload(t *testing.T) {
 	}
 
 	_, err := collection.Marshal()
-	assertion := assert.New(t)
+	assertion := require.New(t)
 	assertion.Error(err, "Expected to fail since second item has nil payload")
 	assertion.Equal("Mallformed private data payload, rwset index 1 is nil", fmt.Sprintf("%s", err))
 }
@@ -401,7 +400,7 @@ func TestPvtDataCollections_FailMarshalingWriteSet(t *testing.T) {
 	}
 
 	_, err := collection.Marshal()
-	assertion := assert.New(t)
+	assertion := require.New(t)
 	assertion.Error(err, "Expected to fail since first item has nil writeset")
 	assertion.Contains(fmt.Sprintf("%s", err), "Could not marshal private rwset index 0")
 }
@@ -456,7 +455,7 @@ func TestPvtDataCollections_Marshal(t *testing.T) {
 
 	bytes, err := collection.Marshal()
 
-	assertion := assert.New(t)
+	assertion := require.New(t)
 	assertion.NoError(err)
 	assertion.NotNil(bytes)
 	assertion.Equal(2, len(bytes))
@@ -485,7 +484,7 @@ func TestPvtDataCollections_Unmarshal(t *testing.T) {
 
 	bytes, err := collection.Marshal()
 
-	assertion := assert.New(t)
+	assertion := require.New(t)
 	assertion.NoError(err)
 	assertion.NotNil(bytes)
 	assertion.Equal(1, len(bytes))
@@ -619,7 +618,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 				iterator.Close()
 				return
 			}
-			assert.Nil(t, res)
+			require.Nil(t, res)
 			iterator.Close()
 		}
 	}
@@ -649,8 +648,8 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Block.Metadata is nil or Block.Metadata lacks a Tx filter bitmap")
 
 	// Scenario II: Validator has an error while validating the block
 	block = bf.create()
@@ -664,8 +663,8 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed validating block")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed validating block")
 
 	// Scenario III: Block we got contains an inadequate length of Tx filter in the metadata
 	block = bf.withMetadataSize(100).create()
@@ -679,9 +678,9 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "block data size")
-	assert.Contains(t, err.Error(), "is different from Tx filter size")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "block data size")
+	require.Contains(t, err.Error(), "is different from Tx filter size")
 
 	// Scenario IV: The second transaction in the block we got is invalid, and we have no private data for that.
 	// As the StorePvtDataOfInvalidTx is set of false, if the coordinator would try to fetch private data, the
@@ -689,7 +688,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	// in this test.
 	var commitHappened bool
 	assertCommitHappened := func() {
-		assert.True(t, commitHappened)
+		require.True(t, commitHappened)
 		commitHappened = false
 	}
 	digKeys := []privdatacommon.DigKey{
@@ -710,12 +709,12 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		commitHappened = true
 		// Only the first transaction's private data is passed to the ledger
-		assert.Len(t, privateDataPassed2Ledger, 1)
-		assert.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
+		require.Len(t, privateDataPassed2Ledger, 1)
+		require.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
 		// The private data passed to the ledger contains "ns1" and has 2 collections in it
-		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
-		assert.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
-		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
+		require.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
 	}).Return(nil)
 	block = bf.withInvalidTxns(1).AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
@@ -734,7 +733,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 	// Ensure the 2nd transaction which is invalid and wasn't committed - is still purged.
 	// This is so that if we get a transaction via dissemination from an endorser, we purge it
@@ -747,7 +746,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	// it should not store the pvtData of invalid transaction in the ledger instead a missing entry.
 	testConfig.SkipPullingInvalidTransactions = true
 	assertCommitHappened = func() {
-		assert.True(t, commitHappened)
+		require.True(t, commitHappened)
 		commitHappened = false
 	}
 	committer = &mocks.Committer{}
@@ -756,23 +755,23 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		commitHappened = true
 		// Only the first transaction's private data is passed to the ledger
 		privateDataPassed2Ledger := blockAndPvtData.PvtData
-		assert.Len(t, privateDataPassed2Ledger, 1)
-		assert.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
+		require.Len(t, privateDataPassed2Ledger, 1)
+		require.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
 		// The private data passed to the ledger contains "ns1" and has 2 collections in it
-		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
-		assert.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
-		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
+		require.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
 
 		missingPrivateDataPassed2Ledger := blockAndPvtData.MissingPvtData
-		assert.Len(t, missingPrivateDataPassed2Ledger, 1)
-		assert.Len(t, missingPrivateDataPassed2Ledger[1], 1)
-		assert.Equal(t, missingPrivateDataPassed2Ledger[1][0].Namespace, "ns2")
-		assert.Equal(t, missingPrivateDataPassed2Ledger[1][0].Collection, "c1")
-		assert.Equal(t, missingPrivateDataPassed2Ledger[1][0].IsEligible, true)
+		require.Len(t, missingPrivateDataPassed2Ledger, 1)
+		require.Len(t, missingPrivateDataPassed2Ledger[1], 1)
+		require.Equal(t, missingPrivateDataPassed2Ledger[1][0].Namespace, "ns2")
+		require.Equal(t, missingPrivateDataPassed2Ledger[1][0].Collection, "c1")
+		require.Equal(t, missingPrivateDataPassed2Ledger[1][0].IsEligible, true)
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
-		assert.Equal(t, expectedCommitOpts, commitOpts)
+		require.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 
 	block = bf.withInvalidTxns(1).AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
@@ -796,7 +795,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 	assertPurged("tx1", "tx2")
 
@@ -811,24 +810,24 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		// pvtData of both transactions must be present though the second transaction
 		// is invalid.
 		privateDataPassed2Ledger := blockAndPvtData.PvtData
-		assert.Len(t, privateDataPassed2Ledger, 2)
-		assert.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
-		assert.Equal(t, 1, int(privateDataPassed2Ledger[1].SeqInBlock))
+		require.Len(t, privateDataPassed2Ledger, 2)
+		require.Equal(t, 0, int(privateDataPassed2Ledger[0].SeqInBlock))
+		require.Equal(t, 1, int(privateDataPassed2Ledger[1].SeqInBlock))
 		// The private data passed to the ledger for tx1 contains "ns1" and has 2 collections in it
-		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
-		assert.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
-		assert.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset, 1)
+		require.Equal(t, "ns1", privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].Namespace)
+		require.Len(t, privateDataPassed2Ledger[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 2)
 		// The private data passed to the ledger for tx2 contains "ns2" and has 1 collection in it
-		assert.Len(t, privateDataPassed2Ledger[1].WriteSet.NsPvtRwset, 1)
-		assert.Equal(t, "ns2", privateDataPassed2Ledger[1].WriteSet.NsPvtRwset[0].Namespace)
-		assert.Len(t, privateDataPassed2Ledger[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 1)
+		require.Len(t, privateDataPassed2Ledger[1].WriteSet.NsPvtRwset, 1)
+		require.Equal(t, "ns2", privateDataPassed2Ledger[1].WriteSet.NsPvtRwset[0].Namespace)
+		require.Len(t, privateDataPassed2Ledger[1].WriteSet.NsPvtRwset[0].CollectionPvtRwset, 1)
 
 		missingPrivateDataPassed2Ledger := blockAndPvtData.MissingPvtData
-		assert.Len(t, missingPrivateDataPassed2Ledger, 0)
+		require.Len(t, missingPrivateDataPassed2Ledger, 0)
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
-		assert.Equal(t, expectedCommitOpts, commitOpts)
+		require.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 
 	fetcher = &fetcherMock{t: t}
@@ -864,21 +863,21 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 	assertPurged("tx1", "tx2")
 
 	// Scenario VII: Block doesn't contain a header
 	block.Header = nil
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Block header is nil")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Block header is nil")
 
 	// Scenario VIII: Block doesn't contain Data
 	block.Data = nil
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Block data is empty")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Block data is empty")
 }
 
 func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
@@ -939,7 +938,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 				iterator.Close()
 				return
 			}
-			assert.Nil(t, res)
+			require.Nil(t, res)
 			iterator.Close()
 		}
 	}
@@ -950,13 +949,13 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
-		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
 			flattenTxPvtDataMap(expectedPvtData)))
 		commitHappened = true
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
-		assert.Equal(t, expectedCommitOpts, commitOpts)
+		require.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 
 	hash := util2.ComputeSHA256([]byte("rws-original"))
@@ -1006,7 +1005,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 
 	coordinator.StoreBlock(block, nil)
 	// Assert blocks was eventually committed
-	assert.True(t, commitHappened)
+	require.True(t, commitHappened)
 
 	// Assert transaction has been purged
 	assertPurged("tx1")
@@ -1033,19 +1032,19 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 
 	var commitHappened bool
 	assertCommitHappened := func() {
-		assert.True(t, commitHappened)
+		require.True(t, commitHappened)
 		commitHappened = false
 	}
 	committer := &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
-		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
 			flattenTxPvtDataMap(expectedCommittedPrivateData1)))
 		commitHappened = true
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
-		assert.Equal(t, expectedCommitOpts, commitOpts)
+		require.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 
 	store := newTransientStore(t)
@@ -1107,7 +1106,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 	assertPurgeTxs := func() bool {
 		return assertPurged("tx1", "tx2")
@@ -1135,7 +1134,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	})
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1").addRWSet().addNSRWSet("ns2", "c1").create()
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 	assertPurgeTxs = func() bool {
 		return assertPurged("tx1", "tx2")
@@ -1180,7 +1179,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	}, nil)
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1").create()
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 	assertPurgeTxs = func() bool {
 		return assertPurged("tx1", "tx2")
@@ -1192,7 +1191,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2", "c3").
 		addRWSet().addNSRWSet("ns2", "c1", "c3").addRWSet().addNSRWSet("ns1", "c4").create()
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 	assertPurgeTxs = func() bool {
 		return assertPurged("tx1", "tx2")
@@ -1214,8 +1213,8 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, nil)
-	assert.Error(t, err)
-	assert.Equal(t, "test error", err.Error())
+	require.Error(t, err)
+	require.Equal(t, "test error", err.Error())
 
 	fmt.Println("Scenario VI")
 	// Scenario VI: Block didn't get with any private data alongside it, and the transient store
@@ -1243,13 +1242,13 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	committer = &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
-		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
 			flattenTxPvtDataMap(expectedCommittedPrivateData2)))
 		commitHappened = true
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
-		assert.Equal(t, expectedCommitOpts, commitOpts)
+		require.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	coordinator = NewCoordinator(mspID, Support{
@@ -1261,7 +1260,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 	assertPurgeTxs = func() bool {
 		return assertPurged("tx3")
@@ -1283,13 +1282,13 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	committer = &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
-		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
 			flattenTxPvtDataMap(expectedCommittedPrivateData2)))
 		commitHappened = true
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
-		assert.Equal(t, expectedCommitOpts, commitOpts)
+		require.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	coordinator = NewCoordinator(mspID, Support{
@@ -1303,7 +1302,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns3", "c3").create()
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 	// In any case, all transactions in the block are purged from the transient store
 	assertPurgeTxs = func() bool {
@@ -1330,16 +1329,16 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 
 	var commitHappened bool
 	assertCommitHappened := func() {
-		assert.True(t, commitHappened)
+		require.True(t, commitHappened)
 		commitHappened = false
 	}
 	committer := &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
-		assert.Equal(t, ledger.TxPvtDataMap{}, privateDataPassed2Ledger)
+		require.Equal(t, ledger.TxPvtDataMap{}, privateDataPassed2Ledger)
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: true}
-		assert.Equal(t, expectedCommitOpts, commitOpts)
+		require.Equal(t, expectedCommitOpts, commitOpts)
 		commitHappened = true
 	}).Return(nil)
 
@@ -1380,7 +1379,7 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, nil, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 }
 
@@ -1404,24 +1403,24 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
 	var commitHappened bool
 	assertCommitHappened := func() {
-		assert.True(t, commitHappened)
+		require.True(t, commitHappened)
 		commitHappened = false
 	}
 	committer := &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
 		privateDataPassed2Ledger := blockAndPrivateData.PvtData
-		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
 			flattenTxPvtDataMap(expectedCommittedPrivateData2)))
 		missingPrivateData := blockAndPrivateData.MissingPvtData
 		expectedMissingPvtData := make(ledger.TxMissingPvtDataMap)
 		expectedMissingPvtData.Add(0, "ns3", "c2", true)
-		assert.Equal(t, expectedMissingPvtData, missingPrivateData)
+		require.Equal(t, expectedMissingPvtData, missingPrivateData)
 		commitHappened = true
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
-		assert.Equal(t, expectedCommitOpts, commitOpts)
+		require.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 
 	store := newTransientStore(t)
@@ -1441,7 +1440,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 				iterator.Close()
 				return
 			}
-			assert.Nil(t, res)
+			require.Nil(t, res)
 			iterator.Close()
 		}
 	}
@@ -1495,7 +1494,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 	assertPurged("tx1")
 }
@@ -1522,24 +1521,24 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 
 	var commitHappened bool
 	assertCommitHappened := func() {
-		assert.True(t, commitHappened)
+		require.True(t, commitHappened)
 		commitHappened = false
 	}
 	committer := &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
 		privateDataPassed2Ledger := blockAndPrivateData.PvtData
-		assert.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
+		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
 			flattenTxPvtDataMap(expectedCommittedPrivateData3)))
 		missingPrivateData := blockAndPrivateData.MissingPvtData
 		expectedMissingPvtData := make(ledger.TxMissingPvtDataMap)
 		expectedMissingPvtData.Add(0, "ns3", "c2", false)
-		assert.Equal(t, expectedMissingPvtData, missingPrivateData)
+		require.Equal(t, expectedMissingPvtData, missingPrivateData)
 		commitHappened = true
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
-		assert.Equal(t, expectedCommitOpts, commitOpts)
+		require.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
@@ -1569,7 +1568,7 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, nil, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 }
 
@@ -1636,17 +1635,17 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	expectedPrivData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c2").create()
 	block2, returnedPrivateData, err := coordinator.GetPvtDataAndBlockByNum(1, peerSelfSignedData)
-	assert.NoError(t, err)
-	assert.Equal(t, block, block2)
-	assert.Equal(t, expectedPrivData, []*ledger.TxPvtData(returnedPrivateData))
+	require.NoError(t, err)
+	require.Equal(t, block, block2)
+	require.Equal(t, expectedPrivData, []*ledger.TxPvtData(returnedPrivateData))
 
 	// Bad path - error occurs when trying to retrieve the block and private data
 	committer.Mock = mock.Mock{}
 	committer.On("GetPvtDataAndBlockByNum", mock.Anything).Return(nil, errors.New("uh oh"))
 	block2, returnedPrivateData, err = coordinator.GetPvtDataAndBlockByNum(1, peerSelfSignedData)
-	assert.Nil(t, block2)
-	assert.Empty(t, returnedPrivateData)
-	assert.Error(t, err)
+	require.Nil(t, block2)
+	require.Empty(t, returnedPrivateData)
+	require.Error(t, err)
 }
 
 func TestPurgeBelowHeight(t *testing.T) {
@@ -1751,7 +1750,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 	}
 	require.Eventually(t, assertPurgedBlocks, 2*time.Second, 100*time.Millisecond)
 	err := coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// test first 6 blocks were purged
 	assertPurgedBlocks = func() bool {
 		return assertPurged(true)
@@ -1793,7 +1792,7 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 		PvtRwset:          pvtData[0].WriteSet,
 		CollectionConfigs: make(map[string]*peer.CollectionConfigPackage),
 	}, uint64(5))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestContainsWrites(t *testing.T) {
@@ -1801,15 +1800,15 @@ func TestContainsWrites(t *testing.T) {
 	col := &rwsetutil.CollHashedRwSet{
 		CollectionName: "col1",
 	}
-	assert.False(t, containsWrites("tx", "ns", col))
+	require.False(t, containsWrites("tx", "ns", col))
 
 	// Scenario II: No writes in collection
 	col.HashedRwSet = &kvrwset.HashedRWSet{}
-	assert.False(t, containsWrites("tx", "ns", col))
+	require.False(t, containsWrites("tx", "ns", col))
 
 	// Scenario III: Some writes in collection
 	col.HashedRwSet.HashedWrites = append(col.HashedRwSet.HashedWrites, &kvrwset.KVWriteHash{})
-	assert.True(t, containsWrites("tx", "ns", col))
+	require.True(t, containsWrites("tx", "ns", col))
 }
 
 func TestIgnoreReadOnlyColRWSets(t *testing.T) {
@@ -1838,21 +1837,21 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
 	var commitHappened bool
 	assertCommitHappened := func() {
-		assert.True(t, commitHappened)
+		require.True(t, commitHappened)
 		commitHappened = false
 	}
 	committer := &mocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
 		// Ensure there is no private data to commit
-		assert.Empty(t, blockAndPrivateData.PvtData)
+		require.Empty(t, blockAndPrivateData.PvtData)
 		// Ensure there is no missing private data
-		assert.Empty(t, blockAndPrivateData.MissingPvtData)
+		require.Empty(t, blockAndPrivateData.MissingPvtData)
 		commitHappened = true
 
 		commitOpts := args.Get(1).(*ledger.CommitOptions)
 		expectedCommitOpts := &ledger.CommitOptions{FetchPvtDataFromLedger: false}
-		assert.Equal(t, expectedCommitOpts, commitOpts)
+		require.Equal(t, expectedCommitOpts, commitOpts)
 	}).Return(nil)
 
 	store := newTransientStore(t)
@@ -1888,7 +1887,7 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	// We pass a nil private data slice to indicate no pre-images though the block contains
 	// private data reads.
 	err = coordinator.StoreBlock(block, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertCommitHappened()
 }
 
@@ -1970,32 +1969,32 @@ func TestCoordinatorMetrics(t *testing.T) {
 		CapabilityProvider: capabilityProvider,
 	}, store.store, peerSelfSignedData, metrics, testConfig, idDeserializerFactory)
 	err = coordinator.StoreBlock(block, pvtData)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// make sure all coordinator metrics were reported
 
-	assert.Equal(t,
+	require.Equal(t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeValidationDuration.WithArgsForCall(0),
 	)
-	assert.True(t, testMetricProvider.FakeValidationDuration.ObserveArgsForCall(0) > 0)
-	assert.Equal(t,
+	require.True(t, testMetricProvider.FakeValidationDuration.ObserveArgsForCall(0) > 0)
+	require.Equal(t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeListMissingPrivateDataDuration.WithArgsForCall(0),
 	)
-	assert.True(t, testMetricProvider.FakeListMissingPrivateDataDuration.ObserveArgsForCall(0) > 0)
-	assert.Equal(t,
+	require.True(t, testMetricProvider.FakeListMissingPrivateDataDuration.ObserveArgsForCall(0) > 0)
+	require.Equal(t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeFetchDuration.WithArgsForCall(0),
 	)
 	// fetch duration metric only reported when fetching from remote peer
-	assert.True(t, testMetricProvider.FakeFetchDuration.ObserveArgsForCall(0) > 0)
-	assert.Equal(t,
+	require.True(t, testMetricProvider.FakeFetchDuration.ObserveArgsForCall(0) > 0)
+	require.Equal(t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeCommitPrivateDataDuration.WithArgsForCall(0),
 	)
-	assert.True(t, testMetricProvider.FakeCommitPrivateDataDuration.ObserveArgsForCall(0) > 0)
-	assert.Equal(t,
+	require.True(t, testMetricProvider.FakeCommitPrivateDataDuration.ObserveArgsForCall(0) > 0)
+	require.Equal(t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakePurgeDuration.WithArgsForCall(0),
 	)
@@ -2003,5 +2002,5 @@ func TestCoordinatorMetrics(t *testing.T) {
 	purgeDuration := func() bool {
 		return testMetricProvider.FakePurgeDuration.ObserveArgsForCall(0) > 0
 	}
-	assert.Eventually(t, purgeDuration, 2*time.Second, 100*time.Millisecond)
+	require.Eventually(t, purgeDuration, 2*time.Second, 100*time.Millisecond)
 }

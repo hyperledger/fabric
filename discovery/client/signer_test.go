@@ -15,7 +15,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -32,9 +32,9 @@ func TestSameMessage(t *testing.T) {
 	ms := NewMemoizeSigner(sign, 10)
 	for i := 0; i < 5; i++ {
 		sig, err := ms.Sign([]byte{1, 2, 3})
-		assert.NoError(t, err)
-		assert.Equal(t, []byte{1, 2, 3}, sig)
-		assert.Equal(t, 1, signedInvokedCount)
+		require.NoError(t, err)
+		require.Equal(t, []byte{1, 2, 3}, sig)
+		require.Equal(t, 1, signedInvokedCount)
 	}
 }
 
@@ -55,8 +55,8 @@ func TestDifferentMessages(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				sig, err := ms.Sign([]byte{byte(i)})
-				assert.NoError(t, err)
-				assert.Equal(t, []byte{byte(i)}, sig)
+				require.NoError(t, err)
+				require.Equal(t, []byte{byte(i)}, sig)
 			}()
 		}
 		wg.Wait()
@@ -64,11 +64,11 @@ func TestDifferentMessages(t *testing.T) {
 
 	// Query once
 	parallelSignRange(0, n)
-	assert.Equal(t, uint32(n), atomic.LoadUint32(&signedInvokedCount))
+	require.Equal(t, uint32(n), atomic.LoadUint32(&signedInvokedCount))
 
 	// Query twice
 	parallelSignRange(0, n)
-	assert.Equal(t, uint32(n), atomic.LoadUint32(&signedInvokedCount))
+	require.Equal(t, uint32(n), atomic.LoadUint32(&signedInvokedCount))
 
 	// Query thrice on a disjoint range
 	for i := n + 1; i < 2*n; i++ {
@@ -78,7 +78,7 @@ func TestDifferentMessages(t *testing.T) {
 
 	// Ensure that some of the early messages 0-n were purged from memory
 	parallelSignRange(0, n)
-	assert.True(t, oldSignedInvokedCount < atomic.LoadUint32(&signedInvokedCount))
+	require.True(t, oldSignedInvokedCount < atomic.LoadUint32(&signedInvokedCount))
 }
 
 func TestFailure(t *testing.T) {
@@ -88,19 +88,19 @@ func TestFailure(t *testing.T) {
 
 	ms := NewMemoizeSigner(sign, 1)
 	_, err := ms.Sign([]byte{1, 2, 3})
-	assert.Equal(t, "something went wrong", err.Error())
+	require.Equal(t, "something went wrong", err.Error())
 }
 
 func TestNotSavingInMem(t *testing.T) {
 	sign := func(_ []byte) ([]byte, error) {
 		b := make([]byte, 30)
 		_, err := io.ReadFull(rand.Reader, b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return b, nil
 	}
 	ms := NewMemoizeSigner(sign, 0)
 	sig1, _ := ms.sign(([]byte)("aa"))
 	sig2, _ := ms.sign(([]byte)("aa"))
-	assert.NotEqual(t, sig1, sig2)
+	require.NotEqual(t, sig1, sig2)
 
 }

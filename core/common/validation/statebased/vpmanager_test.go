@@ -22,7 +22,7 @@ import (
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockState struct {
@@ -110,9 +110,9 @@ func TestSimple(t *testing.T) {
 	}
 
 	sp, err := pm.GetValidationParameterForKey("cc", "coll", "key", 0, 0)
-	assert.NoError(t, err)
-	assert.Equal(t, protoutil.MarshalOrPanic(spe), sp)
-	assert.True(t, ms.DoneCalled())
+	require.NoError(t, err)
+	require.Equal(t, protoutil.MarshalOrPanic(spe), sp)
+	require.True(t, ms.DoneCalled())
 }
 
 func rwsetUpdatingMetadataFor(cc, key string) []byte {
@@ -172,7 +172,7 @@ func runFunctions(t *testing.T, seed int64, funcs ...func()) {
 	for _, i := range r.Perm(len(funcs)) {
 		iLcl := i
 		go func() {
-			assert.NotPanics(t, funcs[iLcl], "assert failure occurred with seed %d", seed)
+			require.NotPanics(t, funcs[iLcl], "assert failure occurred with seed %d", seed)
 			c <- struct{}{}
 		}()
 	}
@@ -215,10 +215,10 @@ func TestTranslatorBadPolicy(t *testing.T) {
 
 	sp := <-resC
 	err := <-errC
-	assert.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	assert.Contains(t, err.Error(), "could not translate policy for cc:key: you shall not pass", "assert failure occurred with seed %d", seed)
-	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
-	assert.Nil(t, sp, "assert failure occurred with seed %d", seed)
+	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
+	require.Contains(t, err.Error(), "could not translate policy for cc:key: you shall not pass", "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
 }
 
 func TestTranslatorBadPolicyPvt(t *testing.T) {
@@ -255,10 +255,10 @@ func TestTranslatorBadPolicyPvt(t *testing.T) {
 
 	sp := <-resC
 	err := <-errC
-	assert.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	assert.Contains(t, err.Error(), "could not translate policy for cc:coll:6b6579: you shall not pass", "assert failure occurred with seed %d", seed)
-	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
-	assert.Nil(t, sp, "assert failure occurred with seed %d", seed)
+	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
+	require.Contains(t, err.Error(), "could not translate policy for cc:coll:6b6579: you shall not pass", "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
 }
 
 func TestDependencyNoConflict(t *testing.T) {
@@ -299,9 +299,9 @@ func TestDependencyNoConflict(t *testing.T) {
 
 	sp := <-resC
 	err := <-errC
-	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
-	assert.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
-	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+	require.NoError(t, err, "assert failure occurred with seed %d", seed)
+	require.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestDependencyConflict(t *testing.T) {
@@ -343,9 +343,9 @@ func TestDependencyConflict(t *testing.T) {
 
 	sp := <-resC
 	err := <-errC
-	assert.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	assert.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
-	assert.Nil(t, sp, "assert failure occurred with seed %d", seed)
+	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
+	require.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
+	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
 }
 
 func TestMultipleDependencyNoConflict(t *testing.T) {
@@ -392,9 +392,9 @@ func TestMultipleDependencyNoConflict(t *testing.T) {
 
 	sp := <-resC
 	err := <-errC
-	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
-	assert.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
-	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+	require.NoError(t, err, "assert failure occurred with seed %d", seed)
+	require.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestMultipleDependencyConflict(t *testing.T) {
@@ -442,9 +442,9 @@ func TestMultipleDependencyConflict(t *testing.T) {
 
 	sp := <-resC
 	err := <-errC
-	assert.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	assert.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
-	assert.Nil(t, sp, "assert failure occurred with seed %d", seed)
+	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
+	require.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
+	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
 }
 
 func TestPvtDependencyNoConflict(t *testing.T) {
@@ -480,9 +480,9 @@ func TestPvtDependencyNoConflict(t *testing.T) {
 
 	sp := <-resC
 	err := <-errC
-	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
-	assert.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
-	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+	require.NoError(t, err, "assert failure occurred with seed %d", seed)
+	require.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestPvtDependencyConflict(t *testing.T) {
@@ -518,10 +518,10 @@ func TestPvtDependencyConflict(t *testing.T) {
 
 	sp := <-resC
 	err := <-errC
-	assert.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	assert.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
-	assert.True(t, len(err.Error()) > 0, "assert failure occurred with seed %d", seed)
-	assert.Nil(t, sp, "assert failure occurred with seed %d", seed)
+	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
+	require.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
+	require.True(t, len(err.Error()) > 0, "assert failure occurred with seed %d", seed)
+	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
 }
 
 func TestBlockValidationTerminatesBeforeNewBlock(t *testing.T) {
@@ -545,7 +545,7 @@ func TestBlockValidationTerminatesBeforeNewBlock(t *testing.T) {
 	panickingFunc := func() {
 		pm.ExtractValidationParameterDependency(1, 0, rwsetBytes)
 	}
-	assert.Panics(t, panickingFunc)
+	require.Panics(t, panickingFunc)
 }
 
 func TestLedgerErrors(t *testing.T) {
@@ -580,7 +580,7 @@ func TestLedgerErrors(t *testing.T) {
 		})
 
 	err := <-errC
-	assert.Errorf(t, err, "assert failure occurred with seed %d", seed)
+	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
 
 	ms.FetchStateErr = nil
 
@@ -597,7 +597,7 @@ func TestLedgerErrors(t *testing.T) {
 		})
 
 	err = <-errC
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	cc, coll, key = "cc", "coll", "key"
 
@@ -616,8 +616,8 @@ func TestLedgerErrors(t *testing.T) {
 		})
 
 	err = <-errC
-	assert.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestBadRwsetIsNoDependency(t *testing.T) {
@@ -653,9 +653,9 @@ func TestBadRwsetIsNoDependency(t *testing.T) {
 
 	sp := <-resC
 	err := <-errC
-	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
-	assert.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
-	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+	require.NoError(t, err, "assert failure occurred with seed %d", seed)
+	require.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestWritesIntoDifferentNamespaces(t *testing.T) {
@@ -691,9 +691,9 @@ func TestWritesIntoDifferentNamespaces(t *testing.T) {
 
 	sp := <-resC
 	err := <-errC
-	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
-	assert.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
-	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+	require.NoError(t, err, "assert failure occurred with seed %d", seed)
+	require.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestCombinedCalls(t *testing.T) {
@@ -744,16 +744,16 @@ func TestCombinedCalls(t *testing.T) {
 
 	sp := <-res1C
 	err := <-err1C
-	assert.NoError(t, err, "assert failure occurred with seed %d", seed)
-	assert.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
+	require.NoError(t, err, "assert failure occurred with seed %d", seed)
+	require.Equal(t, protoutil.MarshalOrPanic(spe), sp, "assert failure occurred with seed %d", seed)
 
 	sp = <-res2C
 	err = <-err2C
-	assert.Errorf(t, err, "assert failure occurred with seed %d", seed)
-	assert.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
-	assert.Nil(t, sp, "assert failure occurred with seed %d", seed)
+	require.Errorf(t, err, "assert failure occurred with seed %d", seed)
+	require.IsType(t, &ValidationParameterUpdatedError{}, err, "assert failure occurred with seed %d", seed)
+	require.Nil(t, sp, "assert failure occurred with seed %d", seed)
 
-	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }
 
 func TestForRaces(t *testing.T) {
@@ -789,12 +789,12 @@ func TestForRaces(t *testing.T) {
 			runtime.Gosched()
 
 			sp, err := pm.GetValidationParameterForKey(cc, coll, key, 1, 2)
-			assert.Equal(t, protoutil.MarshalOrPanic(spe), sp)
-			assert.NoError(t, err)
+			require.Equal(t, protoutil.MarshalOrPanic(spe), sp)
+			require.NoError(t, err)
 		}
 	}
 
 	runFunctions(t, seed, funcArray...)
 
-	assert.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
+	require.True(t, ms.DoneCalled(), "assert failure occurred with seed %d", seed)
 }

@@ -21,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/comm/testpb"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
@@ -29,19 +29,19 @@ import (
 
 func TestExtractCertificateHashFromContext(t *testing.T) {
 	t.Parallel()
-	assert.Nil(t, comm.ExtractCertificateHashFromContext(context.Background()))
+	require.Nil(t, comm.ExtractCertificateHashFromContext(context.Background()))
 
 	p := &peer.Peer{}
 	ctx := peer.NewContext(context.Background(), p)
-	assert.Nil(t, comm.ExtractCertificateHashFromContext(ctx))
+	require.Nil(t, comm.ExtractCertificateHashFromContext(ctx))
 
 	p.AuthInfo = &nonTLSConnection{}
 	ctx = peer.NewContext(context.Background(), p)
-	assert.Nil(t, comm.ExtractCertificateHashFromContext(ctx))
+	require.Nil(t, comm.ExtractCertificateHashFromContext(ctx))
 
 	p.AuthInfo = credentials.TLSInfo{}
 	ctx = peer.NewContext(context.Background(), p)
-	assert.Nil(t, comm.ExtractCertificateHashFromContext(ctx))
+	require.Nil(t, comm.ExtractCertificateHashFromContext(ctx))
 
 	p.AuthInfo = credentials.TLSInfo{
 		State: tls.ConnectionState{
@@ -53,7 +53,7 @@ func TestExtractCertificateHashFromContext(t *testing.T) {
 	ctx = peer.NewContext(context.Background(), p)
 	h := sha256.New()
 	h.Write([]byte{1, 2, 3})
-	assert.Equal(t, h.Sum(nil), comm.ExtractCertificateHashFromContext(ctx))
+	require.Equal(t, h.Sum(nil), comm.ExtractCertificateHashFromContext(ctx))
 }
 
 type nonTLSConnection struct {
@@ -65,7 +65,7 @@ func (*nonTLSConnection) AuthType() string {
 
 func TestBindingInspectorBadInit(t *testing.T) {
 	t.Parallel()
-	assert.Panics(t, func() {
+	require.Panics(t, func() {
 		comm.NewBindingInspector(false, nil)
 	})
 }
@@ -75,10 +75,10 @@ func TestNoopBindingInspector(t *testing.T) {
 	extract := func(msg proto.Message) []byte {
 		return nil
 	}
-	assert.Nil(t, comm.NewBindingInspector(false, extract)(context.Background(), &common.Envelope{}))
+	require.Nil(t, comm.NewBindingInspector(false, extract)(context.Background(), &common.Envelope{}))
 	err := comm.NewBindingInspector(false, extract)(context.Background(), nil)
-	assert.Error(t, err)
-	assert.Equal(t, "message is nil", err.Error())
+	require.Error(t, err)
+	require.Equal(t, "message is nil", err.Error())
 }
 
 func TestBindingInspector(t *testing.T) {
@@ -106,23 +106,23 @@ func TestBindingInspector(t *testing.T) {
 
 	// Scenario I: Invalid header sent
 	err = srv.newInspection(t).inspectBinding(nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "client didn't include its TLS cert hash")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "client didn't include its TLS cert hash")
 
 	// Scenario II: invalid channel header
 	ch, _ := proto.Marshal(protoutil.MakeChannelHeader(common.HeaderType_CONFIG, 0, "test", 0))
 	// Corrupt channel header
 	ch = append(ch, 0)
 	err = srv.newInspection(t).inspectBinding(envelopeWithChannelHeader(ch))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "client didn't include its TLS cert hash")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "client didn't include its TLS cert hash")
 
 	// Scenario III: No TLS cert hash in envelope
 	chanHdr := protoutil.MakeChannelHeader(common.HeaderType_CONFIG, 0, "test", 0)
 	ch, _ = proto.Marshal(chanHdr)
 	err = srv.newInspection(t).inspectBinding(envelopeWithChannelHeader(ch))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "client didn't include its TLS cert hash")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "client didn't include its TLS cert hash")
 
 	// Scenario IV: Client sends its TLS cert hash as needed, but doesn't use mutual TLS
 	cert, _ := tls.X509KeyPair([]byte(selfSignedCertPEM), []byte(selfSignedKeyPEM))
@@ -131,24 +131,24 @@ func TestBindingInspector(t *testing.T) {
 	chanHdr.TlsCertHash = h.Sum(nil)
 	ch, _ = proto.Marshal(chanHdr)
 	err = srv.newInspection(t).inspectBinding(envelopeWithChannelHeader(ch))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "client didn't send a TLS certificate")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "client didn't send a TLS certificate")
 
 	// Scenario V: Client uses mutual TLS but sends the wrong TLS cert hash
 	chanHdr.TlsCertHash = []byte{1, 2, 3}
 	chHdrWithWrongTLSCertHash, _ := proto.Marshal(chanHdr)
 	err = srv.newInspection(t).withMutualTLS().inspectBinding(envelopeWithChannelHeader(chHdrWithWrongTLSCertHash))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "claimed TLS cert hash is [1 2 3] but actual TLS cert hash is")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "claimed TLS cert hash is [1 2 3] but actual TLS cert hash is")
 
 	// Scenario VI: Client uses mutual TLS and also sends the correct TLS cert hash
 	err = srv.newInspection(t).withMutualTLS().inspectBinding(envelopeWithChannelHeader(ch))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetLocalIP(t *testing.T) {
 	ip, err := comm.GetLocalIP()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	t.Log(ip)
 }
 
@@ -210,7 +210,7 @@ func (is *inspectingServer) newInspection(t *testing.T) *inspection {
 
 func (ins *inspection) withMutualTLS() *inspection {
 	cert, err := tls.X509KeyPair([]byte(selfSignedCertPEM), []byte(selfSignedKeyPEM))
-	assert.NoError(ins.t, err)
+	require.NoError(ins.t, err)
 	ins.tlsConfig.Certificates = []tls.Certificate{cert}
 	ins.creds = credentials.NewTLS(ins.tlsConfig)
 	return ins
@@ -221,10 +221,10 @@ func (ins *inspection) inspectBinding(envelope *common.Envelope) error {
 	ctx, c := context.WithTimeout(ctx, time.Second*3)
 	defer c()
 	conn, err := grpc.DialContext(ctx, ins.server.addr, grpc.WithTransportCredentials(ins.creds), grpc.WithBlock())
-	assert.NoError(ins.t, err)
+	require.NoError(ins.t, err)
 	defer conn.Close()
 	_, err = testpb.NewTestServiceClient(conn).EmptyCall(context.Background(), &testpb.Empty{})
-	assert.NoError(ins.t, err)
+	require.NoError(ins.t, err)
 	return ins.server.inspect(envelope)
 }
 

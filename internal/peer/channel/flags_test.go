@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOrdererFlags(t *testing.T) {
@@ -29,13 +29,13 @@ func TestOrdererFlags(t *testing.T) {
 		Use: "test",
 		Run: func(cmd *cobra.Command, args []string) {
 			t.Logf("rootcert: %s", viper.GetString("orderer.tls.rootcert.file"))
-			assert.Equal(t, ca, viper.GetString("orderer.tls.rootcert.file"))
-			assert.Equal(t, key, viper.GetString("orderer.tls.clientKey.file"))
-			assert.Equal(t, cert, viper.GetString("orderer.tls.clientCert.file"))
-			assert.Equal(t, endpoint, viper.GetString("orderer.address"))
-			assert.Equal(t, sn, viper.GetString("orderer.tls.serverhostoverride"))
-			assert.Equal(t, true, viper.GetBool("orderer.tls.enabled"))
-			assert.Equal(t, true, viper.GetBool("orderer.tls.clientAuthRequired"))
+			require.Equal(t, ca, viper.GetString("orderer.tls.rootcert.file"))
+			require.Equal(t, key, viper.GetString("orderer.tls.clientKey.file"))
+			require.Equal(t, cert, viper.GetString("orderer.tls.clientCert.file"))
+			require.Equal(t, endpoint, viper.GetString("orderer.address"))
+			require.Equal(t, sn, viper.GetString("orderer.tls.serverhostoverride"))
+			require.Equal(t, true, viper.GetBool("orderer.tls.enabled"))
+			require.Equal(t, true, viper.GetBool("orderer.tls.clientAuthRequired"))
 		},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			common.SetOrdererEnv(cmd, args)
@@ -50,15 +50,15 @@ func TestOrdererFlags(t *testing.T) {
 		"--certfile", cert, "--orderer", endpoint, "--tls", "--clientauth",
 		"--ordererTLSHostnameOverride", sn})
 	err := runCmd.Execute()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// check env one more time
 	t.Logf("address: %s", viper.GetString("orderer.address"))
-	assert.Equal(t, ca, viper.GetString("orderer.tls.rootcert.file"))
-	assert.Equal(t, key, viper.GetString("orderer.tls.clientKey.file"))
-	assert.Equal(t, cert, viper.GetString("orderer.tls.clientCert.file"))
-	assert.Equal(t, endpoint, viper.GetString("orderer.address"))
-	assert.Equal(t, sn, viper.GetString("orderer.tls.serverhostoverride"))
-	assert.Equal(t, true, viper.GetBool("orderer.tls.enabled"))
-	assert.Equal(t, true, viper.GetBool("orderer.tls.clientAuthRequired"))
+	require.Equal(t, ca, viper.GetString("orderer.tls.rootcert.file"))
+	require.Equal(t, key, viper.GetString("orderer.tls.clientKey.file"))
+	require.Equal(t, cert, viper.GetString("orderer.tls.clientCert.file"))
+	require.Equal(t, endpoint, viper.GetString("orderer.address"))
+	require.Equal(t, sn, viper.GetString("orderer.tls.serverhostoverride"))
+	require.Equal(t, true, viper.GetBool("orderer.tls.enabled"))
+	require.Equal(t, true, viper.GetBool("orderer.tls.clientAuthRequired"))
 }

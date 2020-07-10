@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInterface(t *testing.T) {
@@ -24,61 +24,61 @@ func TestInterface(t *testing.T) {
 
 func TestChannelConfig(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cc, err := NewChannelConfig(
 		&cb.ConfigGroup{Groups: map[string]*cb.ConfigGroup{"UnknownGroupKey": {}}},
 		cryptoProvider,
 	)
-	assert.Error(t, err)
-	assert.Nil(t, cc)
+	require.Error(t, err)
+	require.Nil(t, cc)
 }
 
 func TestHashingAlgorithm(t *testing.T) {
 	cc := &ChannelConfig{protos: &ChannelProtos{HashingAlgorithm: &cb.HashingAlgorithm{}}}
-	assert.Error(t, cc.validateHashingAlgorithm(), "Must supply hashing algorithm")
+	require.Error(t, cc.validateHashingAlgorithm(), "Must supply hashing algorithm")
 
 	cc = &ChannelConfig{protos: &ChannelProtos{HashingAlgorithm: &cb.HashingAlgorithm{Name: "MD5"}}}
-	assert.Error(t, cc.validateHashingAlgorithm(), "Bad hashing algorithm supplied")
+	require.Error(t, cc.validateHashingAlgorithm(), "Bad hashing algorithm supplied")
 
 	cc = &ChannelConfig{protos: &ChannelProtos{HashingAlgorithm: &cb.HashingAlgorithm{Name: bccsp.SHA256}}}
-	assert.NoError(t, cc.validateHashingAlgorithm(), "Allowed hashing algorith SHA256 supplied")
+	require.NoError(t, cc.validateHashingAlgorithm(), "Allowed hashing algorith SHA256 supplied")
 
-	assert.Equal(t, reflect.ValueOf(util.ComputeSHA256).Pointer(), reflect.ValueOf(cc.HashingAlgorithm()).Pointer(),
+	require.Equal(t, reflect.ValueOf(util.ComputeSHA256).Pointer(), reflect.ValueOf(cc.HashingAlgorithm()).Pointer(),
 		"Unexpected hashing algorithm returned")
 
 	cc = &ChannelConfig{protos: &ChannelProtos{HashingAlgorithm: &cb.HashingAlgorithm{Name: bccsp.SHA3_256}}}
-	assert.NoError(t, cc.validateHashingAlgorithm(), "Allowed hashing algorith SHA3_256 supplied")
+	require.NoError(t, cc.validateHashingAlgorithm(), "Allowed hashing algorith SHA3_256 supplied")
 
-	assert.Equal(t, reflect.ValueOf(util.ComputeSHA3256).Pointer(), reflect.ValueOf(cc.HashingAlgorithm()).Pointer(),
+	require.Equal(t, reflect.ValueOf(util.ComputeSHA3256).Pointer(), reflect.ValueOf(cc.HashingAlgorithm()).Pointer(),
 		"Unexpected hashing algorithm returned")
 }
 
 func TestBlockDataHashingStructure(t *testing.T) {
 	cc := &ChannelConfig{protos: &ChannelProtos{BlockDataHashingStructure: &cb.BlockDataHashingStructure{}}}
-	assert.Error(t, cc.validateBlockDataHashingStructure(), "Must supply block data hashing structure")
+	require.Error(t, cc.validateBlockDataHashingStructure(), "Must supply block data hashing structure")
 
 	cc = &ChannelConfig{protos: &ChannelProtos{BlockDataHashingStructure: &cb.BlockDataHashingStructure{Width: 7}}}
-	assert.Error(t, cc.validateBlockDataHashingStructure(), "Invalid Merkle tree width supplied")
+	require.Error(t, cc.validateBlockDataHashingStructure(), "Invalid Merkle tree width supplied")
 
 	var width uint32 = math.MaxUint32
 	cc = &ChannelConfig{protos: &ChannelProtos{BlockDataHashingStructure: &cb.BlockDataHashingStructure{Width: width}}}
-	assert.NoError(t, cc.validateBlockDataHashingStructure(), "Valid Merkle tree width supplied")
+	require.NoError(t, cc.validateBlockDataHashingStructure(), "Valid Merkle tree width supplied")
 
-	assert.Equal(t, width, cc.BlockDataHashingStructureWidth(), "Unexpected width returned")
+	require.Equal(t, width, cc.BlockDataHashingStructureWidth(), "Unexpected width returned")
 }
 
 func TestOrdererAddresses(t *testing.T) {
 	cc := &ChannelConfig{protos: &ChannelProtos{OrdererAddresses: &cb.OrdererAddresses{}}}
-	assert.Error(t, cc.validateOrdererAddresses(), "Must supply orderer addresses")
+	require.Error(t, cc.validateOrdererAddresses(), "Must supply orderer addresses")
 
 	cc = &ChannelConfig{protos: &ChannelProtos{OrdererAddresses: &cb.OrdererAddresses{Addresses: []string{"127.0.0.1:7050"}}}}
-	assert.NoError(t, cc.validateOrdererAddresses(), "Invalid orderer address supplied")
+	require.NoError(t, cc.validateOrdererAddresses(), "Invalid orderer address supplied")
 
-	assert.Equal(t, "127.0.0.1:7050", cc.OrdererAddresses()[0], "Unexpected orderer address returned")
+	require.Equal(t, "127.0.0.1:7050", cc.OrdererAddresses()[0], "Unexpected orderer address returned")
 }
 
 func TestConsortiumName(t *testing.T) {
 	cc := &ChannelConfig{protos: &ChannelProtos{Consortium: &cb.Consortium{Name: "TestConsortium"}}}
-	assert.Equal(t, "TestConsortium", cc.ConsortiumName(), "Unexpected consortium name returned")
+	require.Equal(t, "TestConsortium", cc.ConsortiumName(), "Unexpected consortium name returned")
 }

@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateConfigTx(t *testing.T) {
@@ -45,7 +45,7 @@ func TestValidateConfigTx(t *testing.T) {
 		}),
 	}
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	updateResult.Signature, _ = signer.Sign(updateResult.Payload)
 	_, txResult := ValidateTransaction(updateResult, cryptoProvider)
 	if txResult != peer.TxValidationCode_VALID {

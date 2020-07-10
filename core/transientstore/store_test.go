@@ -22,7 +22,6 @@ import (
 	commonutil "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,7 +64,7 @@ func (env *testEnv) initTestEnv(t *testing.T) {
 var env testEnv
 
 func TestPurgeIndexKeyCodingEncoding(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	blkHts := []uint64{0, 10, 20000}
 	txids := []string{"txid", ""}
 	uuids := []string{"uuid", ""}
@@ -77,10 +76,10 @@ func TestPurgeIndexKeyCodingEncoding(t *testing.T) {
 					t.Logf("Running test case [%s]", testCase)
 					purgeIndexKey := createCompositeKeyForPurgeIndexByHeight(blkHt, txid, uuid)
 					txid1, uuid1, blkHt1, err := splitCompositeKeyOfPurgeIndexByHeight(purgeIndexKey)
-					assert.NoError(err)
-					assert.Equal(txid, txid1)
-					assert.Equal(uuid, uuid1)
-					assert.Equal(blkHt, blkHt1)
+					require.NoError(err)
+					require.Equal(txid, txid1)
+					require.Equal(uuid, uuid1)
+					require.Equal(blkHt, blkHt1)
 				})
 			}
 		}
@@ -88,7 +87,7 @@ func TestPurgeIndexKeyCodingEncoding(t *testing.T) {
 }
 
 func TestRWSetKeyCodingEncoding(t *testing.T) {
-	assert := assert.New(t)
+	require := require.New(t)
 	blkHts := []uint64{0, 10, 20000}
 	txids := []string{"txid", ""}
 	uuids := []string{"uuid", ""}
@@ -100,9 +99,9 @@ func TestRWSetKeyCodingEncoding(t *testing.T) {
 					t.Logf("Running test case [%s]", testCase)
 					rwsetKey := createCompositeKeyForPvtRWSet(txid, uuid, blkHt)
 					uuid1, blkHt1, err := splitCompositeKeyOfPvtRWSet(rwsetKey)
-					assert.NoError(err)
-					assert.Equal(uuid, uuid1)
-					assert.Equal(blkHt, blkHt1)
+					require.NoError(err)
+					require.Equal(uuid, uuid1)
+					require.Equal(blkHt, blkHt1)
 				})
 			}
 		}
@@ -113,7 +112,7 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	env.initTestEnv(t)
 	defer env.cleanup()
 	testStore := env.store
-	assert := assert.New(t)
+	require := require.New(t)
 	txid := "txid-1"
 	samplePvtRWSetWithConfig := samplePvtDataWithConfigInfo(t)
 
@@ -139,17 +138,17 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	for i := 0; i < len(endorsersResults); i++ {
 		err = testStore.Persist(txid, endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResultsWithConfig)
-		assert.NoError(err)
+		require.NoError(err)
 	}
 
 	// Retrieve simulation results of txid-1 from  store
 	iter, err := testStore.GetTxPvtRWSetByTxid(txid, nil)
-	assert.NoError(err)
+	require.NoError(err)
 
 	var actualEndorsersResults []*EndorserPvtSimulationResults
 	for {
 		result, err := iter.Next()
-		assert.NoError(err)
+		require.NoError(err)
 		if result == nil {
 			break
 		}
@@ -158,14 +157,14 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 	iter.Close()
 	sortResults(endorsersResults)
 	sortResults(actualEndorsersResults)
-	assert.Equal(endorsersResults, actualEndorsersResults)
+	require.Equal(endorsersResults, actualEndorsersResults)
 }
 
 func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 	env.initTestEnv(t)
 	defer env.cleanup()
 	testStore := env.store
-	assert := assert.New(t)
+	require := require.New(t)
 	txid := "txid-1"
 	var receivedAtBlockHeight uint64 = 10
 	var err error
@@ -173,12 +172,12 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 	// Create and persist private simulation results with old proto for txid-1
 	samplePvtRWSet := samplePvtData(t)
 	err = testStore.persistOldProto(txid, receivedAtBlockHeight, samplePvtRWSet)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Create and persist private simulation results with new proto for txid-1
 	samplePvtRWSetWithConfig := samplePvtDataWithConfigInfo(t)
 	err = testStore.Persist(txid, receivedAtBlockHeight, samplePvtRWSetWithConfig)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Construct the expected results
 	var expectedEndorsersResults []*EndorserPvtSimulationResults
@@ -201,12 +200,12 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 
 	// Retrieve simulation results of txid-1 from  store
 	iter, err := testStore.GetTxPvtRWSetByTxid(txid, nil)
-	assert.NoError(err)
+	require.NoError(err)
 
 	var actualEndorsersResults []*EndorserPvtSimulationResults
 	for {
 		result, err := iter.Next()
-		assert.NoError(err)
+		require.NoError(err)
 		if result == nil {
 			break
 		}
@@ -215,14 +214,14 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 	iter.Close()
 	sortResults(expectedEndorsersResults)
 	sortResults(actualEndorsersResults)
-	assert.Equal(expectedEndorsersResults, actualEndorsersResults)
+	require.Equal(expectedEndorsersResults, actualEndorsersResults)
 }
 
 func TestTransientStorePurgeByTxids(t *testing.T) {
 	env.initTestEnv(t)
 	defer env.cleanup()
 	testStore := env.store
-	assert := assert.New(t)
+	require := require.New(t)
 
 	var txids []string
 	var endorsersResults []*EndorserPvtSimulationResults
@@ -278,12 +277,12 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	for i := 0; i < len(txids); i++ {
 		err = testStore.Persist(txids[i], endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResultsWithConfig)
-		assert.NoError(err)
+		require.NoError(err)
 	}
 
 	// Retrieve simulation results of txid-2 from  store
 	iter, err := testStore.GetTxPvtRWSetByTxid("txid-2", nil)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Expected results for txid-2
 	var expectedEndorsersResults []*EndorserPvtSimulationResults
@@ -293,7 +292,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	var actualEndorsersResults []*EndorserPvtSimulationResults
 	for {
 		result, err := iter.Next()
-		assert.NoError(err)
+		require.NoError(err)
 		if result == nil {
 			break
 		}
@@ -306,32 +305,32 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	sortResults(expectedEndorsersResults)
 	sortResults(actualEndorsersResults)
 
-	assert.Equal(len(expectedEndorsersResults), len(actualEndorsersResults))
+	require.Equal(len(expectedEndorsersResults), len(actualEndorsersResults))
 	for i, expected := range expectedEndorsersResults {
-		assert.Equal(expected.ReceivedAtBlockHeight, actualEndorsersResults[i].ReceivedAtBlockHeight)
-		assert.True(proto.Equal(expected.PvtSimulationResultsWithConfig, actualEndorsersResults[i].PvtSimulationResultsWithConfig))
+		require.Equal(expected.ReceivedAtBlockHeight, actualEndorsersResults[i].ReceivedAtBlockHeight)
+		require.True(proto.Equal(expected.PvtSimulationResultsWithConfig, actualEndorsersResults[i].PvtSimulationResultsWithConfig))
 	}
 
 	// Remove all private write set of txid-2 and txid-3
 	toRemoveTxids := []string{"txid-2", "txid-3"}
 	err = testStore.PurgeByTxids(toRemoveTxids)
-	assert.NoError(err)
+	require.NoError(err)
 
 	for _, txid := range toRemoveTxids {
 
 		// Check whether private write sets of txid-2 are removed
 		var expectedEndorsersResults *EndorserPvtSimulationResults = nil
 		iter, err = testStore.GetTxPvtRWSetByTxid(txid, nil)
-		assert.NoError(err)
+		require.NoError(err)
 		// Should return nil, nil
 		result, err := iter.Next()
-		assert.NoError(err)
-		assert.Equal(expectedEndorsersResults, result)
+		require.NoError(err)
+		require.Equal(expectedEndorsersResults, result)
 	}
 
 	// Retrieve simulation results of txid-1 from store
 	iter, err = testStore.GetTxPvtRWSetByTxid("txid-1", nil)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Expected results for txid-1
 	expectedEndorsersResults = nil
@@ -342,7 +341,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	actualEndorsersResults = nil
 	for {
 		result, err := iter.Next()
-		assert.NoError(err)
+		require.NoError(err)
 		if result == nil {
 			break
 		}
@@ -355,38 +354,38 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 	sortResults(expectedEndorsersResults)
 	sortResults(actualEndorsersResults)
 
-	assert.Equal(len(expectedEndorsersResults), len(actualEndorsersResults))
+	require.Equal(len(expectedEndorsersResults), len(actualEndorsersResults))
 	for i, expected := range expectedEndorsersResults {
-		assert.Equal(expected.ReceivedAtBlockHeight, actualEndorsersResults[i].ReceivedAtBlockHeight)
-		assert.True(proto.Equal(expected.PvtSimulationResultsWithConfig, actualEndorsersResults[i].PvtSimulationResultsWithConfig))
+		require.Equal(expected.ReceivedAtBlockHeight, actualEndorsersResults[i].ReceivedAtBlockHeight)
+		require.True(proto.Equal(expected.PvtSimulationResultsWithConfig, actualEndorsersResults[i].PvtSimulationResultsWithConfig))
 	}
 
 	toRemoveTxids = []string{"txid-1"}
 	err = testStore.PurgeByTxids(toRemoveTxids)
-	assert.NoError(err)
+	require.NoError(err)
 
 	for _, txid := range toRemoveTxids {
 
 		// Check whether private write sets of txid-1 are removed
 		var expectedEndorsersResults *EndorserPvtSimulationResults = nil
 		iter, err = testStore.GetTxPvtRWSetByTxid(txid, nil)
-		assert.NoError(err)
+		require.NoError(err)
 		// Should return nil, nil
 		result, err := iter.Next()
-		assert.NoError(err)
-		assert.Equal(expectedEndorsersResults, result)
+		require.NoError(err)
+		require.Equal(expectedEndorsersResults, result)
 	}
 
 	// There should be no entries in the  store
 	_, err = testStore.GetMinTransientBlkHt()
-	assert.Equal(err, ErrStoreEmpty)
+	require.Equal(err, ErrStoreEmpty)
 }
 
 func TestTransientStorePurgeBelowHeight(t *testing.T) {
 	env.initTestEnv(t)
 	defer env.cleanup()
 	testStore := env.store
-	assert := assert.New(t)
+	require := require.New(t)
 
 	txid := "txid-1"
 	samplePvtRWSetWithConfig := samplePvtDataWithConfigInfo(t)
@@ -434,17 +433,17 @@ func TestTransientStorePurgeBelowHeight(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		err = testStore.Persist(txid, endorsersResults[i].ReceivedAtBlockHeight,
 			endorsersResults[i].PvtSimulationResultsWithConfig)
-		assert.NoError(err)
+		require.NoError(err)
 	}
 
 	// Retain results generate at block height greater than or equal to 12
 	minTransientBlkHtToRetain := uint64(12)
 	err = testStore.PurgeBelowHeight(minTransientBlkHtToRetain)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Retrieve simulation results of txid-1 from  store
 	iter, err := testStore.GetTxPvtRWSetByTxid(txid, nil)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// Expected results for txid-1
 	var expectedEndorsersResults []*EndorserPvtSimulationResults
@@ -456,7 +455,7 @@ func TestTransientStorePurgeBelowHeight(t *testing.T) {
 	var actualEndorsersResults []*EndorserPvtSimulationResults
 	for {
 		result, err := iter.Next()
-		assert.NoError(err)
+		require.NoError(err)
 		if result == nil {
 			break
 		}
@@ -469,33 +468,33 @@ func TestTransientStorePurgeBelowHeight(t *testing.T) {
 	sortResults(expectedEndorsersResults)
 	sortResults(actualEndorsersResults)
 
-	assert.Equal(len(expectedEndorsersResults), len(actualEndorsersResults))
+	require.Equal(len(expectedEndorsersResults), len(actualEndorsersResults))
 	for i, expected := range expectedEndorsersResults {
-		assert.Equal(expected.ReceivedAtBlockHeight, actualEndorsersResults[i].ReceivedAtBlockHeight)
-		assert.True(proto.Equal(expected.PvtSimulationResultsWithConfig, actualEndorsersResults[i].PvtSimulationResultsWithConfig))
+		require.Equal(expected.ReceivedAtBlockHeight, actualEndorsersResults[i].ReceivedAtBlockHeight)
+		require.True(proto.Equal(expected.PvtSimulationResultsWithConfig, actualEndorsersResults[i].PvtSimulationResultsWithConfig))
 	}
 
 	// Get the minimum block height remaining in transient store
 	var actualMinTransientBlkHt uint64
 	actualMinTransientBlkHt, err = testStore.GetMinTransientBlkHt()
-	assert.NoError(err)
-	assert.Equal(minTransientBlkHtToRetain, actualMinTransientBlkHt)
+	require.NoError(err)
+	require.Equal(minTransientBlkHtToRetain, actualMinTransientBlkHt)
 
 	// Retain results at block height greater than or equal to 15
 	minTransientBlkHtToRetain = uint64(15)
 	err = testStore.PurgeBelowHeight(minTransientBlkHtToRetain)
-	assert.NoError(err)
+	require.NoError(err)
 
 	// There should be no entries in the  store
 	actualMinTransientBlkHt, err = testStore.GetMinTransientBlkHt()
-	assert.Equal(err, ErrStoreEmpty)
-	assert.Equal(uint64(0), actualMinTransientBlkHt)
+	require.Equal(err, ErrStoreEmpty)
+	require.Equal(uint64(0), actualMinTransientBlkHt)
 
 	// Retain results at block height greater than or equal to 15
 	minTransientBlkHtToRetain = uint64(15)
 	err = testStore.PurgeBelowHeight(minTransientBlkHtToRetain)
 	// Should not return any error
-	assert.NoError(err)
+	require.NoError(err)
 }
 
 func TestTransientStoreRetrievalWithFilter(t *testing.T) {
@@ -516,13 +515,13 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	filter.Add("ns-2", "coll-2")
 
 	itr, err := testStore.GetTxPvtRWSetByTxid(testTxid, filter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var actualRes []*EndorserPvtSimulationResults
 	for {
 		res, err := itr.Next()
 		if res == nil || err != nil {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			break
 		}
 		actualRes = append(actualRes, res)
@@ -533,14 +532,14 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	expectedSimulationRes.GetPvtRwset().NsPvtRwset[0].CollectionPvtRwset = expectedSimulationRes.GetPvtRwset().NsPvtRwset[0].CollectionPvtRwset[0:1]
 	expectedSimulationRes.GetPvtRwset().NsPvtRwset[1].CollectionPvtRwset = expectedSimulationRes.GetPvtRwset().NsPvtRwset[1].CollectionPvtRwset[1:]
 	expectedSimulationRes.CollectionConfigs, err = trimPvtCollectionConfigs(expectedSimulationRes.CollectionConfigs, filter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	for ns, colName := range map[string]string{"ns-1": "coll-1", "ns-2": "coll-2"} {
 		config := expectedSimulationRes.CollectionConfigs[ns]
-		assert.NotNil(t, config)
+		require.NotNil(t, config)
 		ns1Config := config.Config
-		assert.Equal(t, len(ns1Config), 1)
+		require.Equal(t, len(ns1Config), 1)
 		ns1ColConfig := ns1Config[0].GetStaticCollectionConfig()
-		assert.NotNil(t, ns1ColConfig.Name, colName)
+		require.NotNil(t, ns1ColConfig.Name, colName)
 	}
 
 	var expectedRes []*EndorserPvtSimulationResults
@@ -552,10 +551,10 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 	// expectedRes and actualRes.
 	sortResults(expectedRes)
 	sortResults(actualRes)
-	assert.Equal(t, len(expectedRes), len(actualRes))
+	require.Equal(t, len(expectedRes), len(actualRes))
 	for i, expected := range expectedRes {
-		assert.Equal(t, expected.ReceivedAtBlockHeight, actualRes[i].ReceivedAtBlockHeight)
-		assert.True(t, proto.Equal(expected.PvtSimulationResultsWithConfig, actualRes[i].PvtSimulationResultsWithConfig))
+		require.Equal(t, expected.ReceivedAtBlockHeight, actualRes[i].ReceivedAtBlockHeight)
+		require.True(t, proto.Equal(expected.PvtSimulationResultsWithConfig, actualRes[i].PvtSimulationResultsWithConfig))
 	}
 
 }

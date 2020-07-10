@@ -26,7 +26,7 @@ import (
 
 	mocks2 "github.com/hyperledger/fabric/bccsp/mocks"
 	"github.com/hyperledger/fabric/bccsp/sw/mocks"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestKeyImport(t *testing.T) {
@@ -46,8 +46,8 @@ func TestKeyImport(t *testing.T) {
 	}
 	csp := CSP{KeyImporters: keyImporters}
 	value, err := csp.KeyImport(expectedRaw, expectedOpts)
-	assert.Nil(t, value)
-	assert.Contains(t, err.Error(), expectedErr.Error())
+	require.Nil(t, value)
+	require.Contains(t, err.Error(), expectedErr.Error())
 
 	keyImporters = make(map[reflect.Type]KeyImporter)
 	keyImporters[reflect.TypeOf(&mocks2.KeyDerivOpts{})] = &mocks.KeyImporter{
@@ -58,8 +58,8 @@ func TestKeyImport(t *testing.T) {
 	}
 	csp = CSP{KeyImporters: keyImporters}
 	value, err = csp.KeyImport(expectedRaw, expectedOpts)
-	assert.Equal(t, expectetValue, value)
-	assert.Nil(t, err)
+	require.Equal(t, expectetValue, value)
+	require.Nil(t, err)
 }
 
 func TestAES256ImportKeyOptsKeyImporter(t *testing.T) {
@@ -68,20 +68,20 @@ func TestAES256ImportKeyOptsKeyImporter(t *testing.T) {
 	ki := aes256ImportKeyOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
 
 	_, err = ki.KeyImport(nil, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
 
 	_, err = ki.KeyImport([]byte(nil), &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. It must not be nil.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. It must not be nil.")
 
 	_, err = ki.KeyImport([]byte{0}, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid Key Length [")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid Key Length [")
 }
 
 func TestHMACImportKeyOptsKeyImporter(t *testing.T) {
@@ -90,16 +90,16 @@ func TestHMACImportKeyOptsKeyImporter(t *testing.T) {
 	ki := hmacImportKeyOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
 
 	_, err = ki.KeyImport(nil, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
 
 	_, err = ki.KeyImport([]byte(nil), &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. It must not be nil.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. It must not be nil.")
 }
 
 func TestECDSAPKIXPublicKeyImportOptsKeyImporter(t *testing.T) {
@@ -108,28 +108,28 @@ func TestECDSAPKIXPublicKeyImportOptsKeyImporter(t *testing.T) {
 	ki := ecdsaPKIXPublicKeyImportOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
 
 	_, err = ki.KeyImport(nil, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
 
 	_, err = ki.KeyImport([]byte(nil), &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw. It must not be nil.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw. It must not be nil.")
 
 	_, err = ki.KeyImport([]byte{0}, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed converting PKIX to ECDSA public key [")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Failed converting PKIX to ECDSA public key [")
 
 	k, err := rsa.GenerateKey(rand.Reader, 512)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	raw, err := x509.MarshalPKIXPublicKey(&k.PublicKey)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = ki.KeyImport(raw, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed casting to ECDSA public key. Invalid raw material.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Failed casting to ECDSA public key. Invalid raw material.")
 }
 
 func TestECDSAPrivateKeyImportOptsKeyImporter(t *testing.T) {
@@ -138,27 +138,27 @@ func TestECDSAPrivateKeyImportOptsKeyImporter(t *testing.T) {
 	ki := ecdsaPrivateKeyImportOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
 
 	_, err = ki.KeyImport(nil, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected byte array.")
 
 	_, err = ki.KeyImport([]byte(nil), &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw. It must not be nil.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw. It must not be nil.")
 
 	_, err = ki.KeyImport([]byte{0}, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed converting PKIX to ECDSA public key")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Failed converting PKIX to ECDSA public key")
 
 	k, err := rsa.GenerateKey(rand.Reader, 512)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	raw := x509.MarshalPKCS1PrivateKey(k)
 	_, err = ki.KeyImport(raw, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed casting to ECDSA private key. Invalid raw material.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Failed casting to ECDSA private key. Invalid raw material.")
 }
 
 func TestECDSAGoPublicKeyImportOptsKeyImporter(t *testing.T) {
@@ -167,12 +167,12 @@ func TestECDSAGoPublicKeyImportOptsKeyImporter(t *testing.T) {
 	ki := ecdsaGoPublicKeyImportOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected *ecdsa.PublicKey.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected *ecdsa.PublicKey.")
 
 	_, err = ki.KeyImport(nil, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected *ecdsa.PublicKey.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected *ecdsa.PublicKey.")
 }
 
 func TestX509PublicKeyImportOptsKeyImporter(t *testing.T) {
@@ -181,16 +181,16 @@ func TestX509PublicKeyImportOptsKeyImporter(t *testing.T) {
 	ki := x509PublicKeyImportOptsKeyImporter{}
 
 	_, err := ki.KeyImport("Hello World", &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected *x509.Certificate.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected *x509.Certificate.")
 
 	_, err = ki.KeyImport(nil, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw material. Expected *x509.Certificate.")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw material. Expected *x509.Certificate.")
 
 	cert := &x509.Certificate{}
 	cert.PublicKey = "Hello world"
 	_, err = ki.KeyImport(cert, &mocks2.KeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Certificate's public key type not recognized. Supported keys: [ECDSA]")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Certificate's public key type not recognized. Supported keys: [ECDSA]")
 }

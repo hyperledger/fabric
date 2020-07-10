@@ -22,7 +22,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var pullInterval time.Duration
@@ -242,8 +242,8 @@ func TestFilter(t *testing.T) {
 
 	waitUntilOrFail(t, func() bool { return inst2.items.Exists(uint64(0)) })
 	waitUntilOrFail(t, func() bool { return inst2.items.Exists(uint64(2)) })
-	assert.False(t, inst2.items.Exists(uint64(1)))
-	assert.False(t, inst2.items.Exists(uint64(3)))
+	require.False(t, inst2.items.Exists(uint64(1)))
+	require.False(t, inst2.items.Exists(uint64(3)))
 }
 
 func TestAddAndRemove(t *testing.T) {
@@ -309,10 +309,10 @@ func TestAddAndRemove(t *testing.T) {
 	wg.Wait()
 
 	// Ensure instance 2 got new message
-	assert.True(t, inst2.items.Exists(uint64(10)), "Instance 2 should have receive message 10 but didn't")
+	require.True(t, inst2.items.Exists(uint64(10)), "Instance 2 should have receive message 10 but didn't")
 
 	// Ensure instance 2 doesn't have message 0
-	assert.False(t, inst2.items.Exists(uint64(0)), "Instance 2 has message 0 but shouldn't have")
+	require.False(t, inst2.items.Exists(uint64(0)), "Instance 2 has message 0 but shouldn't have")
 }
 
 func TestDigestsFilters(t *testing.T) {
@@ -332,10 +332,10 @@ func TestDigestsFilters(t *testing.T) {
 		}
 		for i := range itemIds {
 			seqNum, err := strconv.ParseUint(itemIds[i], 10, 64)
-			assert.NoError(t, err, "Can't parse seq number")
-			assert.True(t, seqNum >= 2, "Digest with wrong ( ", seqNum, " ) seqNum passed")
+			require.NoError(t, err, "Can't parse seq number")
+			require.True(t, seqNum >= 2, "Digest with wrong ( ", seqNum, " ) seqNum passed")
 		}
-		assert.Len(t, itemIds, 2, "Not correct number of seqNum passed")
+		require.Len(t, itemIds, 2, "Not correct number of seqNum passed")
 		atomic.StoreInt32(&inst1ReceivedDigest, int32(1))
 	})
 
@@ -373,7 +373,7 @@ func TestHandleMessage(t *testing.T) {
 			return
 		}
 		atomic.StoreInt32(&inst1ReceivedDigest, int32(1))
-		assert.True(t, len(itemIds) == 3)
+		require.True(t, len(itemIds) == 3)
 	})
 
 	inst1.mediator.RegisterMsgHook(ResponseMsgType, func(_ []string, items []*protoext.SignedGossipMessage, msg protoext.ReceivedMessage) {
@@ -381,7 +381,7 @@ func TestHandleMessage(t *testing.T) {
 			return
 		}
 		atomic.StoreInt32(&inst1ReceivedResponse, int32(1))
-		assert.True(t, len(items) == 3)
+		require.True(t, len(items) == 3)
 	})
 
 	// inst1 sends hello to inst2
@@ -397,9 +397,9 @@ func TestHandleMessage(t *testing.T) {
 
 	// inst2 is expected to send response to inst1
 	waitUntilOrFail(t, func() bool { return atomic.LoadInt32(&inst1ReceivedResponse) == int32(1) })
-	assert.True(t, inst1.items.Exists(uint64(0)))
-	assert.True(t, inst1.items.Exists(uint64(1)))
-	assert.True(t, inst1.items.Exists(uint64(2)))
+	require.True(t, inst1.items.Exists(uint64(0)))
+	require.True(t, inst1.items.Exists(uint64(1)))
+	require.True(t, inst1.items.Exists(uint64(2)))
 }
 
 func waitUntilOrFail(t *testing.T, pred func() bool) {
@@ -412,7 +412,7 @@ func waitUntilOrFail(t *testing.T, pred func() bool) {
 		time.Sleep(timeoutInterval / 1000)
 	}
 	util.PrintStackTrace()
-	assert.Fail(t, "Timeout expired!")
+	require.Fail(t, "Timeout expired!")
 }
 
 func dataMsg(seqNum int) *protoext.SignedGossipMessage {
@@ -505,7 +505,7 @@ func TestFormattedDigests(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			assert.Equal(t, tt.expected, formattedDigests(tt.dataRequest))
+			require.Equal(t, tt.expected, formattedDigests(tt.dataRequest))
 		})
 	}
 }

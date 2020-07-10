@@ -22,8 +22,8 @@ import (
 	"github.com/hyperledger/fabric/msp"
 	. "github.com/hyperledger/fabric/msp/mocks"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateWithPlugin(t *testing.T) {
@@ -43,7 +43,7 @@ func TestValidateWithPlugin(t *testing.T) {
 
 	// Scenario I: The plugin isn't found because the map wasn't populated with anything yet
 	err := v.ValidateWithPlugin(ctx)
-	assert.Contains(t, err.Error(), "plugin with name vscc wasn't found")
+	require.Contains(t, err.Error(), "plugin with name vscc wasn't found")
 
 	// Scenario II: The plugin initialization fails
 	factory := &mocks.PluginFactory{}
@@ -52,7 +52,7 @@ func TestValidateWithPlugin(t *testing.T) {
 	factory.On("New").Return(plugin)
 	pm["vscc"] = factory
 	err = v.ValidateWithPlugin(ctx)
-	assert.Contains(t, err.(*validation.ExecutionFailureError).Error(), "failed initializing plugin: foo")
+	require.Contains(t, err.(*validation.ExecutionFailureError).Error(), "failed initializing plugin: foo")
 
 	// Scenario III: The plugin initialization succeeds but an execution error occurs.
 	// The plugin should pass the error as is.
@@ -62,13 +62,13 @@ func TestValidateWithPlugin(t *testing.T) {
 	}
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(validationErr).Once()
 	err = v.ValidateWithPlugin(ctx)
-	assert.Equal(t, validationErr, err)
+	require.Equal(t, validationErr, err)
 
 	// Scenario IV: The plugin initialization succeeds and the validation passes
 	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	err = v.ValidateWithPlugin(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestSamplePlugin(t *testing.T) {
@@ -121,5 +121,5 @@ func TestSamplePlugin(t *testing.T) {
 		},
 		Channel: "mychannel",
 	}
-	assert.NoError(t, v.ValidateWithPlugin(ctx))
+	require.NoError(t, v.ValidateWithPlugin(ctx))
 }

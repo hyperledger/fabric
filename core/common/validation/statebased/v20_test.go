@@ -15,8 +15,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func Test0(t *testing.T) {
@@ -43,8 +43,8 @@ func Test0(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
 
 func Test1(t *testing.T) {
@@ -74,8 +74,8 @@ func Test1(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
 
 func Test1Multiple(t *testing.T) {
@@ -106,7 +106,7 @@ func Test1Multiple(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func Test1NoErr(t *testing.T) {
@@ -136,8 +136,8 @@ func Test1NoErr(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
 
 func Test1Err1(t *testing.T) {
@@ -167,8 +167,8 @@ func Test1Err1(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
 
 func Test1Err2(t *testing.T) {
@@ -198,8 +198,8 @@ func Test1Err2(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCExecutionFailureError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCExecutionFailureError{})
 }
 
 func Test1Meta(t *testing.T) {
@@ -229,8 +229,8 @@ func Test1Meta(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
 
 func Test1MetaMultiple(t *testing.T) {
@@ -261,7 +261,7 @@ func Test1MetaMultiple(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func Test2(t *testing.T) {
@@ -292,8 +292,8 @@ func Test2(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
 
 func Test3(t *testing.T) {
@@ -326,8 +326,8 @@ func Test3(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
 
 func Test3Meta(t *testing.T) {
@@ -360,8 +360,8 @@ func Test3Meta(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
 
 func Test4(t *testing.T) {
@@ -395,8 +395,8 @@ func Test4(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
 
 func Test4Multiple(t *testing.T) {
@@ -430,7 +430,7 @@ func Test4Multiple(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func Test4Err(t *testing.T) {
@@ -462,8 +462,8 @@ func Test4Err(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCExecutionFailureError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCExecutionFailureError{})
 }
 
 func Test5(t *testing.T) {
@@ -498,8 +498,8 @@ func Test5(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }
 
 func Test6(t *testing.T) {
@@ -532,8 +532,8 @@ func Test6(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCExecutionFailureError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCExecutionFailureError{})
 }
 
 func Test7(t *testing.T) {
@@ -566,6 +566,6 @@ func Test7(t *testing.T) {
 	rws := rwsb.GetTxReadWriteSet()
 
 	err := ev.Evaluate(1, 1, rws.NsRwSets, cc, []*protoutil.SignedData{{}})
-	assert.Error(t, err)
-	assert.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
+	require.Error(t, err)
+	require.IsType(t, err, &verr.VSCCEndorsementPolicyError{})
 }

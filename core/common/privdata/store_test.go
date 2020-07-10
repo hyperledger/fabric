@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // local interfaces to avoid import cycles
@@ -34,10 +34,10 @@ func TestNewSimpleCollectionStore(t *testing.T) {
 	mockCCInfoProvider := &mock.ChaincodeInfoProvider{}
 
 	cs := NewSimpleCollectionStore(mockQueryExecutorFactory, mockCCInfoProvider)
-	assert.NotNil(t, cs)
-	assert.Exactly(t, mockQueryExecutorFactory, cs.qeFactory)
-	assert.Exactly(t, mockCCInfoProvider, cs.ccInfoProvider)
-	assert.NotNil(t, cs.idDeserializerFactory)
+	require.NotNil(t, cs)
+	require.Exactly(t, mockQueryExecutorFactory, cs.qeFactory)
+	require.Exactly(t, mockCCInfoProvider, cs.ccInfoProvider)
+	require.NotNil(t, cs.idDeserializerFactory)
 }
 
 func TestCollectionStore(t *testing.T) {
@@ -55,24 +55,24 @@ func TestCollectionStore(t *testing.T) {
 
 	mockQueryExecutorFactory.NewQueryExecutorReturns(nil, errors.New("new-query-executor-failed"))
 	_, err := cs.RetrieveCollection(CollectionCriteria{})
-	assert.Contains(t, err.Error(), "could not retrieve query executor for collection criteria")
+	require.Contains(t, err.Error(), "could not retrieve query executor for collection criteria")
 
 	mockQueryExecutorFactory.NewQueryExecutorReturns(&mock.QueryExecutor{}, nil)
 	_, err = cs.retrieveCollectionConfigPackage(CollectionCriteria{Namespace: "non-existing-chaincode"}, nil)
-	assert.EqualError(t, err, "Chaincode [non-existing-chaincode] does not exist")
+	require.EqualError(t, err, "Chaincode [non-existing-chaincode] does not exist")
 
 	_, err = cs.RetrieveCollection(CollectionCriteria{})
-	assert.Contains(t, err.Error(), "could not be found")
+	require.Contains(t, err.Error(), "could not be found")
 
 	ccr := CollectionCriteria{Channel: "ch", Namespace: "cc", Collection: "mycollection"}
 	mockCCInfoProvider.CollectionInfoReturns(nil, errors.New("collection-info-error"))
 	_, err = cs.RetrieveCollection(ccr)
-	assert.EqualError(t, err, "collection-info-error")
+	require.EqualError(t, err, "collection-info-error")
 
 	scc := &peer.StaticCollectionConfig{Name: "mycollection"}
 	mockCCInfoProvider.CollectionInfoReturns(scc, nil)
 	_, err = cs.RetrieveCollection(ccr)
-	assert.Contains(t, err.Error(), "error setting up collection for collection criteria")
+	require.Contains(t, err.Error(), "error setting up collection for collection criteria")
 
 	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
@@ -87,12 +87,12 @@ func TestCollectionStore(t *testing.T) {
 
 	mockCCInfoProvider.CollectionInfoReturns(scc, nil)
 	c, err := cs.RetrieveCollection(ccr)
-	assert.NoError(t, err)
-	assert.NotNil(t, c)
+	require.NoError(t, err)
+	require.NotNil(t, c)
 
 	ca, err := cs.RetrieveCollectionAccessPolicy(ccr)
-	assert.NoError(t, err)
-	assert.NotNil(t, ca)
+	require.NoError(t, err)
+	require.NotNil(t, ca)
 
 	scc = &peer.StaticCollectionConfig{
 		Name:             "mycollection",
@@ -113,21 +113,21 @@ func TestCollectionStore(t *testing.T) {
 	mockCCInfoProvider.AllCollectionsConfigPkgReturns(ccp, nil)
 
 	ccc, err := cs.RetrieveCollectionConfigPackage(ccr)
-	assert.NoError(t, err)
-	assert.NotNil(t, ccc)
+	require.NoError(t, err)
+	require.NotNil(t, ccc)
 
 	signedProp, _ := protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer0"), []byte("msg1"))
 	readP, writeP, err := cs.RetrieveReadWritePermission(ccr, signedProp, &mock.QueryExecutor{})
-	assert.NoError(t, err)
-	assert.True(t, readP)
-	assert.True(t, writeP)
+	require.NoError(t, err)
+	require.True(t, readP)
+	require.True(t, writeP)
 
 	// only signer0 and signer1 are the members
 	signedProp, _ = protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer2"), []byte("msg1"))
 	readP, writeP, err = cs.RetrieveReadWritePermission(ccr, signedProp, &mock.QueryExecutor{})
-	assert.NoError(t, err)
-	assert.False(t, readP)
-	assert.False(t, writeP)
+	require.NoError(t, err)
+	require.False(t, readP)
+	require.False(t, writeP)
 
 	scc = &peer.StaticCollectionConfig{
 		Name:             "mycollection",
@@ -140,7 +140,7 @@ func TestCollectionStore(t *testing.T) {
 	// only signer0 and signer1 are the members
 	signedProp, _ = protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("signer2"), []byte("msg1"))
 	readP, writeP, err = cs.RetrieveReadWritePermission(ccr, signedProp, &mock.QueryExecutor{})
-	assert.NoError(t, err)
-	assert.True(t, readP)
-	assert.True(t, writeP)
+	require.NoError(t, err)
+	require.True(t, readP)
+	require.True(t, writeP)
 }

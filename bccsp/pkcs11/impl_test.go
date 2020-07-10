@@ -31,7 +31,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -128,14 +128,14 @@ func TestNew(t *testing.T) {
 
 	// Test for nil keystore
 	_, err := New(opts, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid bccsp.KeyStore instance. It must be different from nil")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid bccsp.KeyStore instance. It must be different from nil")
 
 	// Test for invalid PKCS11 loadLib
 	opts.Library = ""
 	_, err = New(opts, currentKS)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed initializing PKCS11 library")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Failed initializing PKCS11 library")
 }
 
 func TestFindPKCS11LibEnvVars(t *testing.T) {
@@ -157,9 +157,9 @@ func TestFindPKCS11LibEnvVars(t *testing.T) {
 		os.Setenv("PKCS11_LABEL", dummy_PKCS11_LABEL)
 
 		lib, pin, label := FindPKCS11Lib()
-		assert.EqualValues(t, dummy_PKCS11_LIB, lib, "FindPKCS11Lib did not return expected library")
-		assert.EqualValues(t, dummy_PKCS11_PIN, pin, "FindPKCS11Lib did not return expected pin")
-		assert.EqualValues(t, dummy_PKCS11_LABEL, label, "FindPKCS11Lib did not return expected label")
+		require.EqualValues(t, dummy_PKCS11_LIB, lib, "FindPKCS11Lib did not return expected library")
+		require.EqualValues(t, dummy_PKCS11_PIN, pin, "FindPKCS11Lib did not return expected pin")
+		require.EqualValues(t, dummy_PKCS11_LABEL, label, "FindPKCS11Lib did not return expected label")
 	})
 
 	t.Run("MissingEnvironment", func(t *testing.T) {
@@ -168,8 +168,8 @@ func TestFindPKCS11LibEnvVars(t *testing.T) {
 		os.Unsetenv("PKCS11_LABEL")
 
 		_, pin, label := FindPKCS11Lib()
-		assert.EqualValues(t, "98765432", pin, "FindPKCS11Lib did not return expected pin")
-		assert.EqualValues(t, "ForFabric", label, "FindPKCS11Lib did not return expected label")
+		require.EqualValues(t, "98765432", pin, "FindPKCS11Lib did not return expected pin")
+		require.EqualValues(t, "ForFabric", label, "FindPKCS11Lib did not return expected label")
 	})
 
 	os.Setenv("PKCS11_LIB", orig_PKCS11_LIB)
@@ -558,12 +558,12 @@ func TestECDSASign(t *testing.T) {
 	}
 
 	_, err = currentBCCSP.Sign(nil, digest, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid Key. It must not be nil")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid Key. It must not be nil")
 
 	_, err = currentBCCSP.Sign(k, nil, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid digest. Cannot be empty")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid digest. Cannot be empty")
 }
 
 func TestECDSAVerify(t *testing.T) {
@@ -606,16 +606,16 @@ func TestECDSAVerify(t *testing.T) {
 	}
 
 	_, err = currentBCCSP.Verify(nil, signature, digest, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid Key. It must not be nil")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid Key. It must not be nil")
 
 	_, err = currentBCCSP.Verify(pk, nil, digest, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid signature. Cannot be empty")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid signature. Cannot be empty")
 
 	_, err = currentBCCSP.Verify(pk, signature, nil, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid digest. Cannot be empty")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid digest. Cannot be empty")
 
 	// Import the exported public key
 	pkRaw, err := pk.Bytes()

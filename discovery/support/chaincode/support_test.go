@@ -15,7 +15,7 @@ import (
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policies/inquire"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockMetadataRetriever struct {
@@ -84,9 +84,9 @@ func TestSupport(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			sup := NewDiscoverySupport(&mockMetadataRetriever{res: test.input})
 			res := sup.PoliciesByChaincode("", "", test.collNames...)
-			assert.Equal(t, len(res), len(test.expectedReturn))
+			require.Equal(t, len(res), len(test.expectedReturn))
 			for i := 0; i < len(test.expectedReturn); i++ {
-				assert.Equal(t, res[i].SatisfiedBy(), test.expectedReturn[i].SatisfiedBy())
+				require.Equal(t, res[i].SatisfiedBy(), test.expectedReturn[i].SatisfiedBy())
 			}
 		})
 	}

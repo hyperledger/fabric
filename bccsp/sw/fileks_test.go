@@ -16,14 +16,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInvalidStoreKey(t *testing.T) {
 	t.Parallel()
 
 	tempDir, err := ioutil.TempDir("", "bccspks")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
 	ks, err := NewFileBasedKeyStore(nil, filepath.Join(tempDir, "bccspks"), false)
@@ -59,20 +59,20 @@ func TestInvalidStoreKey(t *testing.T) {
 
 func TestBigKeyFile(t *testing.T) {
 	ksPath, err := ioutil.TempDir("", "bccspks")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.RemoveAll(ksPath)
 
 	ks, err := NewFileBasedKeyStore(nil, ksPath, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Generate a key for keystore to find
 	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cspKey := &ecdsaPrivateKey{privKey}
 	ski := cspKey.SKI()
 	rawKey, err := privateKeyToPEM(privKey, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Large padding array, of some values PEM parser will NOOP
 	bigBuff := make([]byte, 1<<17)
@@ -85,56 +85,56 @@ func TestBigKeyFile(t *testing.T) {
 	ioutil.WriteFile(filepath.Join(ksPath, "bigfile.pem"), bigBuff, 0666)
 
 	_, err = ks.GetKey(ski)
-	assert.Error(t, err)
+	require.Error(t, err)
 	expected := fmt.Sprintf("key with SKI %x not found in %s", ski, ksPath)
-	assert.EqualError(t, err, expected)
+	require.EqualError(t, err, expected)
 
 	// 1k, so that the key would be found
 	ioutil.WriteFile(filepath.Join(ksPath, "smallerfile.pem"), bigBuff[0:1<<10], 0666)
 
 	_, err = ks.GetKey(ski)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestReInitKeyStore(t *testing.T) {
 	ksPath, err := ioutil.TempDir("", "bccspks")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.RemoveAll(ksPath)
 
 	ks, err := NewFileBasedKeyStore(nil, ksPath, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	fbKs, isFileBased := ks.(*fileBasedKeyStore)
-	assert.True(t, isFileBased)
+	require.True(t, isFileBased)
 	err = fbKs.Init(nil, ksPath, false)
-	assert.EqualError(t, err, "keystore is already initialized")
+	require.EqualError(t, err, "keystore is already initialized")
 }
 func TestDirExists(t *testing.T) {
 	r, err := dirExists("")
-	assert.False(t, r)
-	assert.NoError(t, err)
+	require.False(t, r)
+	require.NoError(t, err)
 
 	r, err = dirExists(os.TempDir())
-	assert.NoError(t, err)
-	assert.Equal(t, true, r)
+	require.NoError(t, err)
+	require.Equal(t, true, r)
 
 	r, err = dirExists(filepath.Join(os.TempDir(), "7rhf90239vhev90"))
-	assert.NoError(t, err)
-	assert.Equal(t, false, r)
+	require.NoError(t, err)
+	require.Equal(t, false, r)
 }
 
 func TestDirEmpty(t *testing.T) {
 	_, err := dirEmpty("")
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	path := filepath.Join(os.TempDir(), "7rhf90239vhev90")
 	defer os.Remove(path)
 	os.Mkdir(path, os.ModePerm)
 
 	r, err := dirEmpty(path)
-	assert.NoError(t, err)
-	assert.Equal(t, true, r)
+	require.NoError(t, err)
+	require.Equal(t, true, r)
 
 	r, err = dirEmpty(os.TempDir())
-	assert.NoError(t, err)
-	assert.Equal(t, false, r)
+	require.NoError(t, err)
+	require.Equal(t, false, r)
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"github.com/hyperledger/fabric/orderer/consensus/follower/mocks"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,51 +43,51 @@ func TestFollowerNewChain(t *testing.T) {
 
 	t.Run("with join block, not in channel", func(t *testing.T) {
 		chain, err := follower.NewChain(mockSupport, joinBlockAppRaft, options, nil, nil, nil, iAmNotInChannel)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = chain.Order(nil, 0)
-		assert.EqualError(t, err, "orderer is a follower of channel my-channel")
+		require.EqualError(t, err, "orderer is a follower of channel my-channel")
 		err = chain.Configure(nil, 0)
-		assert.EqualError(t, err, "orderer is a follower of channel my-channel")
+		require.EqualError(t, err, "orderer is a follower of channel my-channel")
 		err = chain.WaitReady()
-		assert.EqualError(t, err, "orderer is a follower of channel my-channel")
+		require.EqualError(t, err, "orderer is a follower of channel my-channel")
 		_, open := <-chain.Errored()
-		assert.False(t, open)
+		require.False(t, open)
 
 		cRel, status := chain.StatusReport()
-		assert.Equal(t, types.ClusterRelationFollower, cRel)
-		assert.Equal(t, types.StatusOnBoarding, status)
+		require.Equal(t, types.ClusterRelationFollower, cRel)
+		require.Equal(t, types.StatusOnBoarding, status)
 	})
 
 	t.Run("with join block, in channel", func(t *testing.T) {
 		chain, err := follower.NewChain(mockSupport, joinBlockAppRaft, options, nil, nil, nil, iAmInChannel)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
-		assert.Equal(t, types.ClusterRelationMember, cRel)
-		assert.Equal(t, types.StatusOnBoarding, status)
+		require.Equal(t, types.ClusterRelationMember, cRel)
+		require.Equal(t, types.StatusOnBoarding, status)
 
-		assert.NotPanics(t, chain.Start)
-		assert.NotPanics(t, chain.Start)
-		assert.NotPanics(t, chain.Halt)
-		assert.NotPanics(t, chain.Halt)
-		assert.NotPanics(t, chain.Start)
+		require.NotPanics(t, chain.Start)
+		require.NotPanics(t, chain.Start)
+		require.NotPanics(t, chain.Halt)
+		require.NotPanics(t, chain.Halt)
+		require.NotPanics(t, chain.Start)
 	})
 
 	t.Run("bad join block", func(t *testing.T) {
 		chain, err := follower.NewChain(mockSupport, &common.Block{}, options, nil, nil, nil, nil)
-		assert.EqualError(t, err, "block header is nil")
-		assert.Nil(t, chain)
+		require.EqualError(t, err, "block header is nil")
+		require.Nil(t, chain)
 		chain, err = follower.NewChain(mockSupport, &common.Block{Header: &common.BlockHeader{}}, options, nil, nil, nil, nil)
-		assert.EqualError(t, err, "block data is nil")
-		assert.Nil(t, chain)
+		require.EqualError(t, err, "block data is nil")
+		require.Nil(t, chain)
 	})
 
 	t.Run("without join block", func(t *testing.T) {
 		chain, err := follower.NewChain(mockSupport, nil, options, nil, nil, nil, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
-		assert.Equal(t, types.ClusterRelationFollower, cRel)
-		assert.True(t, status == types.StatusActive)
+		require.Equal(t, types.ClusterRelationFollower, cRel)
+		require.True(t, status == types.StatusActive)
 	})
 }

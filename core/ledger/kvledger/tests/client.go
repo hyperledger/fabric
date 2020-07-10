@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // client helps in a transction simulation. The client keeps accumlating the results of each simulated transaction
@@ -27,11 +27,11 @@ type client struct {
 	lgrID          string
 	simulatedTrans []*txAndPvtdata // accumulates the results of transactions simulations
 	missingPvtData ledger.TxMissingPvtDataMap
-	assert         *assert.Assertions
+	assert         *require.Assertions
 }
 
 func newClient(lgr ledger.PeerLedger, lgrID string, t *testing.T) *client {
-	return &client{lgr, lgrID, nil, make(ledger.TxMissingPvtDataMap), assert.New(t)}
+	return &client{lgr, lgrID, nil, make(ledger.TxMissingPvtDataMap), require.New(t)}
 }
 
 // simulateDataTx takes a simulation logic and wraps it between
@@ -137,7 +137,7 @@ func (c *client) currentCommitHash() []byte {
 type simulator struct {
 	ledger.TxSimulator
 	txid   string
-	assert *assert.Assertions
+	assert *require.Assertions
 }
 
 func (s *simulator) getState(ns, key string) string {

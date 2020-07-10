@@ -17,31 +17,31 @@ import (
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestX509CertExpiresAt(t *testing.T) {
 	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "cert.pem"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: certBytes,
 	}
 	serializedIdentity, err := proto.Marshal(sId)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expirationTime := ExpiresAt(serializedIdentity)
-	assert.Equal(t, time.Date(2027, 8, 17, 12, 19, 48, 0, time.UTC), expirationTime)
+	require.Equal(t, time.Date(2027, 8, 17, 12, 19, 48, 0, time.UTC), expirationTime)
 }
 
 func TestX509InvalidCertExpiresAt(t *testing.T) {
 	certBytes, err := ioutil.ReadFile(filepath.Join("testdata", "badCert.pem"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: certBytes,
 	}
 	serializedIdentity, err := proto.Marshal(sId)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expirationTime := ExpiresAt(serializedIdentity)
-	assert.True(t, expirationTime.IsZero())
+	require.True(t, expirationTime.IsZero())
 }
 
 func TestIdemixIdentityExpiresAt(t *testing.T) {
@@ -51,24 +51,24 @@ func TestIdemixIdentityExpiresAt(t *testing.T) {
 		Ou:   []byte("OU1"),
 	}
 	idemixBytes, err := proto.Marshal(idemixId)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	sId := &msp.SerializedIdentity{
 		IdBytes: idemixBytes,
 	}
 	serializedIdentity, err := proto.Marshal(sId)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	expirationTime := ExpiresAt(serializedIdentity)
-	assert.True(t, expirationTime.IsZero())
+	require.True(t, expirationTime.IsZero())
 }
 
 func TestInvalidIdentityExpiresAt(t *testing.T) {
 	expirationTime := ExpiresAt([]byte{1, 2, 3})
-	assert.True(t, expirationTime.IsZero())
+	require.True(t, expirationTime.IsZero())
 }
 
 func TestTrackExpiration(t *testing.T) {
 	ca, err := tlsgen.NewCA()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	now := time.Now()
 	expirationTime := certExpirationTime(ca.CertBytes())
@@ -81,7 +81,7 @@ func TestTrackExpiration(t *testing.T) {
 	twoDaysBeforeExpiration := now.Add(timeUntil2DaysBeforeExpiration)
 
 	tlsCert, err := ca.NewServerCertKeyPair("127.0.0.1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	signingIdentity := protoutil.MarshalOrPanic(&msp.SerializedIdentity{
 		IdBytes: tlsCert.Cert,
@@ -157,9 +157,9 @@ func TestTrackExpiration(t *testing.T) {
 			}()
 
 			fakeTimeAfter := func(duration time.Duration, f func()) *time.Timer {
-				assert.NotEmpty(t, testCase.expectedWarn)
+				require.NotEmpty(t, testCase.expectedWarn)
 				threeWeeks := 3 * 7 * 24 * time.Hour
-				assert.Equal(t, threeWeeks, duration)
+				require.Equal(t, threeWeeks, duration)
 				f()
 				return nil
 			}
@@ -173,9 +173,9 @@ func TestTrackExpiration(t *testing.T) {
 				fakeTimeAfter)
 
 			if testCase.expectedWarn != "" {
-				assert.Equal(t, testCase.expectedWarn, formattedWarning)
+				require.Equal(t, testCase.expectedWarn, formattedWarning)
 			} else {
-				assert.Empty(t, formattedWarning)
+				require.Empty(t, formattedWarning)
 			}
 		})
 	}

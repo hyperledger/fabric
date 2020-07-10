@@ -16,7 +16,7 @@ import (
 
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCacheConfigurationNegative(t *testing.T) {
@@ -24,22 +24,22 @@ func TestCacheConfigurationNegative(t *testing.T) {
 	viper.Set("peer.addressAutoDetect", true)
 	viper.Set("peer.address", "testing.com")
 	_, err := GlobalConfig()
-	assert.Error(t, err, "Expected error for bad configuration")
+	require.Error(t, err, "Expected error for bad configuration")
 
 	viper.Set("peer.addressAutoDetect", false)
 	viper.Set("peer.address", "")
 	_, err = GlobalConfig()
-	assert.Error(t, err, "Expected error for bad configuration")
+	require.Error(t, err, "Expected error for bad configuration")
 
 	viper.Set("peer.address", "wrongAddress")
 	_, err = GlobalConfig()
-	assert.Error(t, err, "Expected error for bad configuration")
+	require.Error(t, err, "Expected error for bad configuration")
 
 }
 
 func TestPeerAddress(t *testing.T) {
 	localIP, err := comm.GetLocalIP()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var tests = []struct {
 		name                string
@@ -87,8 +87,8 @@ func TestPeerAddress(t *testing.T) {
 				viper.Set(k, v)
 			}
 			c, err := GlobalConfig()
-			assert.NoError(t, err, "GlobalConfig returned unexpected error")
-			assert.Equal(t, test.expectedPeerAddress, c.PeerAddress)
+			require.NoError(t, err, "GlobalConfig returned unexpected error")
+			require.Equal(t, test.expectedPeerAddress, c.PeerAddress)
 		})
 	}
 }
@@ -98,20 +98,20 @@ func TestGetServerConfig(t *testing.T) {
 	viper.Set("peer.tls.enabled", false)
 	viper.Set("peer.connectiontimeout", "7s")
 	sc, _ := GetServerConfig()
-	assert.Equal(t, false, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be false")
-	assert.Equal(t, sc.ConnectionTimeout, 7*time.Second, "ServerConfig.ConnectionTimeout should be 7 seconds")
+	require.Equal(t, false, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be false")
+	require.Equal(t, sc.ConnectionTimeout, 7*time.Second, "ServerConfig.ConnectionTimeout should be 7 seconds")
 
 	// keepalive options
-	assert.Equal(t, comm.DefaultKeepaliveOptions, sc.KaOpts, "ServerConfig.KaOpts should be set to default values")
+	require.Equal(t, comm.DefaultKeepaliveOptions, sc.KaOpts, "ServerConfig.KaOpts should be set to default values")
 	viper.Set("peer.keepalive.interval", "60m")
 	sc, _ = GetServerConfig()
-	assert.Equal(t, time.Duration(60)*time.Minute, sc.KaOpts.ServerInterval, "ServerConfig.KaOpts.ServerInterval should be set to 60 min")
+	require.Equal(t, time.Duration(60)*time.Minute, sc.KaOpts.ServerInterval, "ServerConfig.KaOpts.ServerInterval should be set to 60 min")
 	viper.Set("peer.keepalive.timeout", "30s")
 	sc, _ = GetServerConfig()
-	assert.Equal(t, time.Duration(30)*time.Second, sc.KaOpts.ServerTimeout, "ServerConfig.KaOpts.ServerTimeout should be set to 30 sec")
+	require.Equal(t, time.Duration(30)*time.Second, sc.KaOpts.ServerTimeout, "ServerConfig.KaOpts.ServerTimeout should be set to 30 sec")
 	viper.Set("peer.keepalive.minInterval", "2m")
 	sc, _ = GetServerConfig()
-	assert.Equal(t, time.Duration(2)*time.Minute, sc.KaOpts.ServerMinInterval, "ServerConfig.KaOpts.ServerMinInterval should be set to 2 min")
+	require.Equal(t, time.Duration(2)*time.Minute, sc.KaOpts.ServerMinInterval, "ServerConfig.KaOpts.ServerMinInterval should be set to 2 min")
 
 	// good config with TLS
 	viper.Set("peer.tls.enabled", true)
@@ -119,24 +119,24 @@ func TestGetServerConfig(t *testing.T) {
 	viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
 	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org1-cert.pem"))
 	sc, _ = GetServerConfig()
-	assert.Equal(t, true, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be true")
-	assert.Equal(t, false, sc.SecOpts.RequireClientCert, "ServerConfig.SecOpts.RequireClientCert should be false")
+	require.Equal(t, true, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be true")
+	require.Equal(t, false, sc.SecOpts.RequireClientCert, "ServerConfig.SecOpts.RequireClientCert should be false")
 	viper.Set("peer.tls.clientAuthRequired", true)
 	viper.Set("peer.tls.clientRootCAs.files", []string{
 		filepath.Join("testdata", "Org1-cert.pem"),
 		filepath.Join("testdata", "Org2-cert.pem"),
 	})
 	sc, _ = GetServerConfig()
-	assert.Equal(t, true, sc.SecOpts.RequireClientCert, "ServerConfig.SecOpts.RequireClientCert should be true")
-	assert.Equal(t, 2, len(sc.SecOpts.ClientRootCAs), "ServerConfig.SecOpts.ClientRootCAs should contain 2 entries")
+	require.Equal(t, true, sc.SecOpts.RequireClientCert, "ServerConfig.SecOpts.RequireClientCert should be true")
+	require.Equal(t, 2, len(sc.SecOpts.ClientRootCAs), "ServerConfig.SecOpts.ClientRootCAs should contain 2 entries")
 
 	// bad config with TLS
 	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org11-cert.pem"))
 	_, err := GetServerConfig()
-	assert.Error(t, err, "GetServerConfig should return error with bad root cert path")
+	require.Error(t, err, "GetServerConfig should return error with bad root cert path")
 	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org11-cert.pem"))
 	_, err = GetServerConfig()
-	assert.Error(t, err, "GetServerConfig should return error with bad tls cert path")
+	require.Error(t, err, "GetServerConfig should return error with bad tls cert path")
 
 	// disable TLS for remaining tests
 	viper.Set("peer.tls.enabled", false)
@@ -151,19 +151,19 @@ func TestGetClientCertificate(t *testing.T) {
 
 	// neither client nor server key pairs set - expect error
 	_, err := GetClientCertificate()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	viper.Set("peer.tls.key.file", "")
 	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org1-server1-cert.pem"))
 	// missing server key file - expect error
 	_, err = GetClientCertificate()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
 	viper.Set("peer.tls.cert.file", "")
 	// missing server cert file - expect error
 	_, err = GetClientCertificate()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// set server TLS settings to ensure we get the client TLS settings
 	// when they are set properly
@@ -173,13 +173,13 @@ func TestGetClientCertificate(t *testing.T) {
 	// peer.tls.clientCert.file not set - expect error
 	viper.Set("peer.tls.clientKey.file", filepath.Join("testdata", "Org2-server1-key.pem"))
 	_, err = GetClientCertificate()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// peer.tls.clientKey.file not set - expect error
 	viper.Set("peer.tls.clientKey.file", "")
 	viper.Set("peer.tls.clientCert.file", filepath.Join("testdata", "Org2-server1-cert.pem"))
 	_, err = GetClientCertificate()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// client auth required and clientKey/clientCert set
 	expected, err := tls.LoadX509KeyPair(
@@ -191,8 +191,8 @@ func TestGetClientCertificate(t *testing.T) {
 	}
 	viper.Set("peer.tls.clientKey.file", filepath.Join("testdata", "Org2-server1-key.pem"))
 	cert, err := GetClientCertificate()
-	assert.NoError(t, err)
-	assert.Equal(t, expected, cert)
+	require.NoError(t, err)
+	require.Equal(t, expected, cert)
 
 	// client auth required and clientKey/clientCert not set - expect
 	// client cert to be the server cert
@@ -206,14 +206,14 @@ func TestGetClientCertificate(t *testing.T) {
 		t.Fatalf("Failed to load test certificate (%s)", err)
 	}
 	cert, err = GetClientCertificate()
-	assert.NoError(t, err)
-	assert.Equal(t, expected, cert)
+	require.NoError(t, err)
+	require.Equal(t, expected, cert)
 }
 
 func TestGlobalConfig(t *testing.T) {
 	defer viper.Reset()
 	cwd, err := os.Getwd()
-	assert.NoError(t, err, "failed to get current working directory")
+	require.NoError(t, err, "failed to get current working directory")
 	viper.SetConfigFile(filepath.Join(cwd, "core.yaml"))
 
 	//Capture the configuration from viper
@@ -272,7 +272,7 @@ func TestGlobalConfig(t *testing.T) {
 	})
 
 	coreConfig, err := GlobalConfig()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedConfig := &Config{
 		LocalMSPID:                            "SampleOrg",
@@ -333,7 +333,7 @@ func TestGlobalConfig(t *testing.T) {
 		DockerCA:   filepath.Join(cwd, "test/vm/tls/ca/file"),
 	}
 
-	assert.Equal(t, coreConfig, expectedConfig)
+	require.Equal(t, coreConfig, expectedConfig)
 }
 
 func TestGlobalConfigDefault(t *testing.T) {
@@ -341,7 +341,7 @@ func TestGlobalConfigDefault(t *testing.T) {
 	viper.Set("peer.address", "localhost:8080")
 
 	coreConfig, err := GlobalConfig()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedConfig := &Config{
 		AuthenticationTimeWindow:      15 * time.Minute,
@@ -351,7 +351,7 @@ func TestGlobalConfigDefault(t *testing.T) {
 		DeliverClientKeepaliveOptions: comm.DefaultKeepaliveOptions,
 	}
 
-	assert.Equal(t, expectedConfig, coreConfig)
+	require.Equal(t, expectedConfig, coreConfig)
 }
 
 func TestPropagateEnvironment(t *testing.T) {
@@ -376,7 +376,7 @@ func TestPropagateEnvironment(t *testing.T) {
 		},
 	})
 	coreConfig, err := GlobalConfig()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedConfig := &Config{
 		AuthenticationTimeWindow:      15 * time.Minute,
@@ -404,7 +404,7 @@ func TestPropagateEnvironment(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, expectedConfig, coreConfig)
+	require.Equal(t, expectedConfig, coreConfig)
 }
 
 func TestMissingExternalBuilderPath(t *testing.T) {
@@ -416,7 +416,7 @@ func TestMissingExternalBuilderPath(t *testing.T) {
 		},
 	})
 	_, err := GlobalConfig()
-	assert.EqualError(t, err, "invalid external builder configuration, path attribute missing in one or more builders")
+	require.EqualError(t, err, "invalid external builder configuration, path attribute missing in one or more builders")
 }
 
 func TestMissingExternalBuilderName(t *testing.T) {
@@ -428,5 +428,5 @@ func TestMissingExternalBuilderName(t *testing.T) {
 		},
 	})
 	_, err := GlobalConfig()
-	assert.EqualError(t, err, "external builder at path relative/plugin_dir has no name attribute")
+	require.EqualError(t, err, "external builder at path relative/plugin_dir has no name attribute")
 }

@@ -15,7 +15,7 @@ import (
 
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -55,7 +55,7 @@ func TestSize(t *testing.T) {
 	msgStore.Add(0)
 	msgStore.Add(1)
 	msgStore.Add(2)
-	assert.Equal(t, 3, msgStore.Size())
+	require.Equal(t, 3, msgStore.Size())
 }
 
 func TestNewMessagesInvalidates(t *testing.T) {
@@ -63,12 +63,12 @@ func TestNewMessagesInvalidates(t *testing.T) {
 	msgStore := NewMessageStore(compareInts, func(m interface{}) {
 		invalidated = append(invalidated, m.(int))
 	})
-	assert.True(t, msgStore.Add(0))
+	require.True(t, msgStore.Add(0))
 	for i := 1; i < 10; i++ {
-		assert.True(t, msgStore.Add(i))
-		assert.Equal(t, i-1, invalidated[len(invalidated)-1])
-		assert.Equal(t, 1, msgStore.Size())
-		assert.Equal(t, i, msgStore.Get()[0].(int))
+		require.True(t, msgStore.Add(i))
+		require.Equal(t, i-1, invalidated[len(invalidated)-1])
+		require.Equal(t, 1, msgStore.Size())
+		require.Equal(t, i, msgStore.Get()[0].(int))
 	}
 }
 
@@ -91,18 +91,18 @@ func TestMessagesGet(t *testing.T) {
 	}
 
 	for _, num2Search := range expected {
-		assert.True(t, contains(msgStore.Get(), num2Search), "Value %v not found in array", num2Search)
+		require.True(t, contains(msgStore.Get(), num2Search), "Value %v not found in array", num2Search)
 	}
 
 }
 
 func TestNewMessagesInvalidated(t *testing.T) {
 	msgStore := NewMessageStore(compareInts, Noop)
-	assert.True(t, msgStore.Add(10))
+	require.True(t, msgStore.Add(10))
 	for i := 9; i >= 0; i-- {
-		assert.False(t, msgStore.Add(i))
-		assert.Equal(t, 1, msgStore.Size())
-		assert.Equal(t, 10, msgStore.Get()[0].(int))
+		require.False(t, msgStore.Add(i))
+		require.Equal(t, 1, msgStore.Size())
+		require.Equal(t, 10, msgStore.Get()[0].(int))
 	}
 }
 
@@ -150,46 +150,46 @@ func TestExpiration(t *testing.T) {
 	})
 
 	for i := 0; i < 10; i++ {
-		assert.True(t, msgStore.Add(i), "Adding", i)
+		require.True(t, msgStore.Add(i), "Adding", i)
 	}
 
-	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
+	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
 
 	time.Sleep(time.Second * 2)
 
 	for i := 0; i < 10; i++ {
-		assert.False(t, msgStore.CheckValid(i))
-		assert.False(t, msgStore.Add(i))
+		require.False(t, msgStore.CheckValid(i))
+		require.False(t, msgStore.Add(i))
 	}
 
 	for i := 10; i < 20; i++ {
-		assert.True(t, msgStore.CheckValid(i))
-		assert.True(t, msgStore.Add(i))
-		assert.False(t, msgStore.CheckValid(i))
+		require.True(t, msgStore.CheckValid(i))
+		require.True(t, msgStore.Add(i))
+		require.False(t, msgStore.CheckValid(i))
 	}
-	assert.Equal(t, 20, msgStore.Size(), "Wrong number of items in store - second batch")
+	require.Equal(t, 20, msgStore.Size(), "Wrong number of items in store - second batch")
 
 	time.Sleep(time.Second * 2)
 
 	for i := 0; i < 20; i++ {
-		assert.False(t, msgStore.Add(i))
+		require.False(t, msgStore.Add(i))
 	}
 
-	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration")
-	assert.Equal(t, 10, len(expired), "Wrong number of expired msgs - after first batch expiration")
+	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration")
+	require.Equal(t, 10, len(expired), "Wrong number of expired msgs - after first batch expiration")
 
 	time.Sleep(time.Second * 4)
 
-	assert.Equal(t, 0, msgStore.Size(), "Wrong number of items in store - after second batch expiration")
-	assert.Equal(t, 20, len(expired), "Wrong number of expired msgs - after second batch expiration")
+	require.Equal(t, 0, msgStore.Size(), "Wrong number of items in store - after second batch expiration")
+	require.Equal(t, 20, len(expired), "Wrong number of expired msgs - after second batch expiration")
 
 	for i := 0; i < 10; i++ {
-		assert.True(t, msgStore.CheckValid(i))
-		assert.True(t, msgStore.Add(i))
-		assert.False(t, msgStore.CheckValid(i))
+		require.True(t, msgStore.CheckValid(i))
+		require.True(t, msgStore.Add(i))
+		require.False(t, msgStore.CheckValid(i))
 	}
 
-	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after second batch expiration and first banch re-added")
+	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after second batch expiration and first banch re-added")
 
 }
 
@@ -211,9 +211,9 @@ func TestExpirationConcurrency(t *testing.T) {
 
 	lock.Lock()
 	for i := 0; i < 10; i++ {
-		assert.True(t, msgStore.Add(i), "Adding", i)
+		require.True(t, msgStore.Add(i), "Adding", i)
 	}
-	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
+	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
 	lock.Unlock()
 
 	time.Sleep(time.Second * 2)
@@ -222,22 +222,22 @@ func TestExpirationConcurrency(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	for i := 0; i < 10; i++ {
-		assert.False(t, msgStore.Add(i))
+		require.False(t, msgStore.Add(i))
 	}
 
-	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration, external lock taken")
-	assert.Equal(t, 0, len(expired), "Wrong number of expired msgs - after first batch expiration, external lock taken")
+	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration, external lock taken")
+	require.Equal(t, 0, len(expired), "Wrong number of expired msgs - after first batch expiration, external lock taken")
 	lock.Unlock()
 
 	time.Sleep(time.Second * 1)
 
 	lock.Lock()
 	for i := 0; i < 10; i++ {
-		assert.False(t, msgStore.Add(i))
+		require.False(t, msgStore.Add(i))
 	}
 
-	assert.Equal(t, 0, msgStore.Size(), "Wrong number of items in store - after first batch expiration, expiration should run")
-	assert.Equal(t, 10, len(expired), "Wrong number of expired msgs - after first batch expiration, expiration should run")
+	require.Equal(t, 0, msgStore.Size(), "Wrong number of items in store - after first batch expiration, expiration should run")
+	require.Equal(t, 10, len(expired), "Wrong number of expired msgs - after first batch expiration, expiration should run")
 
 	lock.Unlock()
 }
@@ -251,17 +251,17 @@ func TestStop(t *testing.T) {
 	})
 
 	for i := 0; i < 10; i++ {
-		assert.True(t, msgStore.Add(i), "Adding", i)
+		require.True(t, msgStore.Add(i), "Adding", i)
 	}
 
-	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
+	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - first batch")
 
 	msgStore.Stop()
 
 	time.Sleep(time.Second * 4)
 
-	assert.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration, but store was stopped, so no expiration")
-	assert.Equal(t, 0, len(expired), "Wrong number of expired msgs - after first batch expiration, but store was stopped, so no expiration")
+	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after first batch expiration, but store was stopped, so no expiration")
+	require.Equal(t, 0, len(expired), "Wrong number of expired msgs - after first batch expiration, but store was stopped, so no expiration")
 
 	msgStore.Stop()
 }
@@ -272,26 +272,26 @@ func TestPurge(t *testing.T) {
 		purged <- o.(int)
 	})
 	for i := 0; i < 10; i++ {
-		assert.True(t, msgStore.Add(i))
+		require.True(t, msgStore.Add(i))
 	}
 	// Purge all numbers greater than 9 - shouldn't do anything
 	msgStore.Purge(func(o interface{}) bool {
 		return o.(int) > 9
 	})
-	assert.Len(t, msgStore.Get(), 10)
+	require.Len(t, msgStore.Get(), 10)
 	// Purge all even numbers
 	msgStore.Purge(func(o interface{}) bool {
 		return o.(int)%2 == 0
 	})
 	// Ensure only odd numbers are left
-	assert.Len(t, msgStore.Get(), 5)
+	require.Len(t, msgStore.Get(), 5)
 	for _, o := range msgStore.Get() {
-		assert.Equal(t, 1, o.(int)%2)
+		require.Equal(t, 1, o.(int)%2)
 	}
 	close(purged)
 	i := 0
 	for n := range purged {
-		assert.Equal(t, i, n)
+		require.Equal(t, i, n)
 		i += 2
 	}
 }

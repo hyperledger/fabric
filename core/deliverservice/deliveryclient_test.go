@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/peer/blocksprovider"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -76,12 +75,12 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 		select {
 		case <-finalized:
 		case <-time.After(time.Second):
-			assert.FailNow(t, "finalizer should have executed")
+			require.FailNow(t, "finalizer should have executed")
 		}
 
 		bp, ok := ds.blockProviders["channel-id"]
 		require.True(t, ok, "map entry must exist")
-		assert.Equal(t, "76f7a03f8dfdb0ef7c4b28b3901fe163c730e906c70e4cdf887054ad5f608bed", fmt.Sprintf("%x", bp.TLSCertHash))
+		require.Equal(t, "76f7a03f8dfdb0ef7c4b28b3901fe163c730e906c70e4cdf887054ad5f608bed", fmt.Sprintf("%x", bp.TLSCertHash))
 	})
 
 	t.Run("Green Path without mutual TLS", func(t *testing.T) {
@@ -106,12 +105,12 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 		select {
 		case <-finalized:
 		case <-time.After(time.Second):
-			assert.FailNow(t, "finalizer should have executed")
+			require.FailNow(t, "finalizer should have executed")
 		}
 
 		bp, ok := ds.blockProviders["channel-id"]
 		require.True(t, ok, "map entry must exist")
-		assert.Nil(t, bp.TLSCertHash)
+		require.Nil(t, bp.TLSCertHash)
 	})
 
 	t.Run("Exists", func(t *testing.T) {
@@ -124,7 +123,7 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 		require.NoError(t, err)
 
 		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
-		assert.EqualError(t, err, "Delivery service - block provider already exists for channel-id found, can't start delivery")
+		require.EqualError(t, err, "Delivery service - block provider already exists for channel-id found, can't start delivery")
 	})
 
 	t.Run("Stopping", func(t *testing.T) {
@@ -136,7 +135,7 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 		ds.Stop()
 
 		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
-		assert.EqualError(t, err, "Delivery service is stopping cannot join a new channel channel-id")
+		require.EqualError(t, err, "Delivery service is stopping cannot join a new channel channel-id")
 	})
 }
 
@@ -153,14 +152,14 @@ func TestStopDeliverForChannel(t *testing.T) {
 			},
 		}
 		err := ds.StopDeliverForChannel("a")
-		assert.NoError(t, err)
-		assert.Len(t, ds.blockProviders, 1)
+		require.NoError(t, err)
+		require.Len(t, ds.blockProviders, 1)
 		_, ok := ds.blockProviders["a"]
-		assert.False(t, ok)
+		require.False(t, ok)
 		select {
 		case <-doneA:
 		default:
-			assert.Fail(t, "should have stopped the blocksprovider")
+			require.Fail(t, "should have stopped the blocksprovider")
 		}
 	})
 
@@ -177,7 +176,7 @@ func TestStopDeliverForChannel(t *testing.T) {
 
 		ds.Stop()
 		err := ds.StopDeliverForChannel("a")
-		assert.EqualError(t, err, "Delivery service is stopping, cannot stop delivery for channel a")
+		require.EqualError(t, err, "Delivery service is stopping, cannot stop delivery for channel a")
 	})
 
 	t.Run("Non-existent", func(t *testing.T) {
@@ -192,7 +191,7 @@ func TestStopDeliverForChannel(t *testing.T) {
 		}
 
 		err := ds.StopDeliverForChannel("c")
-		assert.EqualError(t, err, "Delivery service - no block provider for c found, can't stop delivery")
+		require.EqualError(t, err, "Delivery service - no block provider for c found, can't stop delivery")
 	})
 }
 
@@ -206,23 +205,23 @@ func TestStop(t *testing.T) {
 			DoneC: make(chan struct{}),
 		},
 	}
-	assert.False(t, ds.stopping)
+	require.False(t, ds.stopping)
 	for _, bp := range ds.blockProviders {
 		select {
 		case <-bp.DoneC:
-			assert.Fail(t, "block providers should not be closed")
+			require.Fail(t, "block providers should not be closed")
 		default:
 		}
 	}
 
 	ds.Stop()
-	assert.True(t, ds.stopping)
-	assert.Len(t, ds.blockProviders, 2)
+	require.True(t, ds.stopping)
+	require.Len(t, ds.blockProviders, 2)
 	for _, bp := range ds.blockProviders {
 		select {
 		case <-bp.DoneC:
 		default:
-			assert.Fail(t, "block providers should te closed")
+			require.Fail(t, "block providers should te closed")
 		}
 	}
 

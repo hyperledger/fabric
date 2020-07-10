@@ -23,8 +23,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 var pkiID2MSPID = map[string]string{
@@ -52,8 +52,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		for _, endorsers := range desc.EndorsersByGroups {
 			for _, p := range endorsers.Peers {
 				res[string(p.Identity)] = struct{}{}
-				assert.Equal(t, string(p.Identity), string(p.MembershipInfo.Payload))
-				assert.Equal(t, string(p.Identity), string(p.StateInfo.Payload))
+				require.Equal(t, string(p.Identity), string(p.MembershipInfo.Payload))
+				require.Equal(t, string(p.Identity), string(p.StateInfo.Payload))
 			}
 		}
 		return res
@@ -104,8 +104,8 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.Nil(t, desc)
-		assert.Equal(t, "policy not found", err.Error())
+		require.Nil(t, desc)
+		require.Equal(t, "policy not found", err.Error())
 	})
 
 	t.Run("NotEnoughPeers", func(t *testing.T) {
@@ -128,8 +128,8 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.Nil(t, desc)
-		assert.Equal(t, err.Error(), "no peer combination can satisfy the endorsement policy")
+		require.Nil(t, desc)
+		require.Equal(t, err.Error(), "no peer combination can satisfy the endorsement policy")
 	})
 
 	t.Run("DisjointViews", func(t *testing.T) {
@@ -155,11 +155,11 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.NoError(t, err)
-		assert.NotNil(t, desc)
-		assert.Len(t, desc.Layouts, 1)
-		assert.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
-		assert.Equal(t, map[string]struct{}{
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 1)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"): {},
 			peerIdentityString("p6"): {},
 		}, extractPeers(desc))
@@ -188,12 +188,12 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.NoError(t, err)
-		assert.NotNil(t, desc)
-		assert.Len(t, desc.Layouts, 2)
-		assert.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
-		assert.Len(t, desc.Layouts[1].QuantitiesByGroup, 1)
-		assert.Equal(t, map[string]struct{}{
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 2)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Len(t, desc.Layouts[1].QuantitiesByGroup, 1)
+		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"):  {},
 			peerIdentityString("p6"):  {},
 			peerIdentityString("p12"): {},
@@ -221,8 +221,8 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.Nil(t, desc)
-		assert.Equal(t, "required chaincodes are not installed on sufficient peers", err.Error())
+		require.Nil(t, desc)
+		require.Equal(t, "required chaincodes are not installed on sufficient peers", err.Error())
 
 		// Scenario VI: Policy is found, there are enough peers to satisfy policy combinations,
 		// but some peers have the wrong chaincode version, and some don't even have it installed.
@@ -246,8 +246,8 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.Nil(t, desc)
-		assert.Equal(t, "required chaincodes are not installed on sufficient peers", err.Error())
+		require.Nil(t, desc)
+		require.Equal(t, "required chaincodes are not installed on sufficient peers", err.Error())
 	})
 
 	t.Run("NoChaincodeMetadataFromLedger", func(t *testing.T) {
@@ -268,8 +268,8 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.Nil(t, desc)
-		assert.Equal(t, "No metadata was found for chaincode chaincode in channel test", err.Error())
+		require.Nil(t, desc)
+		require.Equal(t, "No metadata was found for chaincode chaincode in channel test", err.Error())
 	})
 
 	t.Run("Collections", func(t *testing.T) {
@@ -305,11 +305,11 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.NoError(t, err)
-		assert.NotNil(t, desc)
-		assert.Len(t, desc.Layouts, 1)
-		assert.Len(t, desc.Layouts[0].QuantitiesByGroup, 1)
-		assert.Equal(t, map[string]struct{}{
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 1)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 1)
+		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p12"): {},
 		}, extractPeers(desc))
 	})
@@ -373,11 +373,11 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.NoError(t, err)
-		assert.NotNil(t, desc)
-		assert.Len(t, desc.Layouts, 1)
-		assert.Len(t, desc.Layouts[0].QuantitiesByGroup, 4)
-		assert.Equal(t, map[string]struct{}{
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 1)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 4)
+		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p4"):  {},
 			peerIdentityString("p6"):  {},
 			peerIdentityString("p10"): {},
@@ -439,11 +439,11 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.NoError(t, err)
-		assert.NotNil(t, desc)
-		assert.Len(t, desc.Layouts, 1)
-		assert.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
-		assert.Equal(t, map[string]struct{}{
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 1)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"): {},
 			peerIdentityString("p1"): {},
 		}, extractPeers(desc))
@@ -489,11 +489,11 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.NoError(t, err)
-		assert.NotNil(t, desc)
-		assert.Len(t, desc.Layouts, 1)
-		assert.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
-		assert.Equal(t, map[string]struct{}{
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 1)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p6"):  {},
 			peerIdentityString("p12"): {},
 		}, extractPeers(desc))
@@ -542,11 +542,11 @@ func TestPeersForEndorsement(t *testing.T) {
 				},
 			},
 		})
-		assert.NoError(t, err)
-		assert.NotNil(t, desc)
-		assert.Len(t, desc.Layouts, 1)
-		assert.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
-		assert.Equal(t, map[string]struct{}{
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 1)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Equal(t, map[string]struct{}{
 			peerIdentityString("p0"): {},
 			peerIdentityString("p6"): {},
 		}, extractPeers(desc))
@@ -673,30 +673,30 @@ func TestPeersAuthorizedByCriteria(t *testing.T) {
 
 			analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
 			actualMembers, err := analyzer.PeersAuthorizedByCriteria(common.ChannelID("mychannel"), tst.arguments)
-			assert.NoError(t, err)
-			assert.Equal(t, tst.expected, actualMembers)
+			require.NoError(t, err)
+			require.Equal(t, tst.expected, actualMembers)
 		})
 	}
 }
 
 func TestPop(t *testing.T) {
 	slice := []inquire.ComparablePrincipalSets{{}, {}}
-	assert.Len(t, slice, 2)
+	require.Len(t, slice, 2)
 	_, slice, err := popComparablePrincipalSets(slice)
-	assert.NoError(t, err)
-	assert.Len(t, slice, 1)
+	require.NoError(t, err)
+	require.Len(t, slice, 1)
 	_, slice, err = popComparablePrincipalSets(slice)
-	assert.NoError(t, err)
-	assert.Len(t, slice, 0)
+	require.NoError(t, err)
+	require.Len(t, slice, 0)
 	_, _, err = popComparablePrincipalSets(slice)
-	assert.Error(t, err)
-	assert.Equal(t, "no principal sets remained after filtering", err.Error())
+	require.Error(t, err)
+	require.Equal(t, "no principal sets remained after filtering", err.Error())
 }
 
 func TestMergePrincipalSetsNilInput(t *testing.T) {
 	_, err := mergePrincipalSets(nil)
-	assert.Error(t, err)
-	assert.Equal(t, "no principal sets remained after filtering", err.Error())
+	require.Error(t, err)
+	require.Equal(t, "no principal sets remained after filtering", err.Error())
 }
 
 func TestComputePrincipalSetsNoPolicies(t *testing.T) {
@@ -707,8 +707,8 @@ func TestComputePrincipalSetsNoPolicies(t *testing.T) {
 	}
 	ea := &endorsementAnalyzer{}
 	_, err := ea.computePrincipalSets(common.ChannelID("mychannel"), interest)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "no principal sets remained after filtering")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no principal sets remained after filtering")
 }
 
 func TestLoadMetadataAndFiltersCollectionNotPresentInConfig(t *testing.T) {
@@ -745,7 +745,7 @@ func TestLoadMetadataAndFiltersCollectionNotPresentInConfig(t *testing.T) {
 		interest:         interest,
 	})
 
-	assert.Equal(t, "collection bar doesn't exist in collection config for chaincode mycc", err.Error())
+	require.Equal(t, "collection bar doesn't exist in collection config for chaincode mycc", err.Error())
 }
 
 func TestLoadMetadataAndFiltersInvalidCollectionData(t *testing.T) {
@@ -771,8 +771,8 @@ func TestLoadMetadataAndFiltersInvalidCollectionData(t *testing.T) {
 		fetch:            mdf,
 		interest:         interest,
 	})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "collection col1 doesn't exist in collection config for chaincode mycc")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "collection col1 doesn't exist in collection config for chaincode mycc")
 }
 
 type peerSet []*peerInfo

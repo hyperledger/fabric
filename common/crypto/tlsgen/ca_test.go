@@ -14,16 +14,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 func createTLSService(t *testing.T, ca CA, host string) *grpc.Server {
 	keyPair, err := ca.NewServerCertKeyPair(host)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	cert, err := tls.X509KeyPair(keyPair.Cert, keyPair.Key)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	tlsConf := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		ClientAuth:   tls.RequireAndVerifyClientCert,
@@ -38,19 +38,19 @@ func TestTLSCA(t *testing.T) {
 	// and corresponding keys that are signed by itself
 
 	ca, err := NewCA()
-	assert.NoError(t, err)
-	assert.NotNil(t, ca)
+	require.NoError(t, err)
+	require.NotNil(t, ca)
 
 	srv := createTLSService(t, ca, "127.0.0.1")
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	go srv.Serve(listener)
 	defer srv.Stop()
 	defer listener.Close()
 
 	probeTLS := func(kp *CertKeyPair) error {
 		cert, err := tls.X509KeyPair(kp.Cert, kp.Key)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		tlsCfg := &tls.Config{
 			RootCAs:      x509.NewCertPool(),
 			Certificates: []tls.Certificate{cert},
@@ -70,15 +70,15 @@ func TestTLSCA(t *testing.T) {
 	// Good path - use a cert key pair generated from the CA
 	// that the TLS server started with
 	kp, err := ca.NewClientCertKeyPair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = probeTLS(kp)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Bad path - use a cert key pair generated from a foreign CA
 	foreignCA, _ := NewCA()
 	kp, err = foreignCA.NewClientCertKeyPair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = probeTLS(kp)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "context deadline exceeded")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "context deadline exceeded")
 }

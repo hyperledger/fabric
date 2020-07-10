@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/gossip/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -26,7 +26,7 @@ func TestBatchingEmitterAddAndSize(t *testing.T) {
 	emitter.Add(1)
 	emitter.Add(2)
 	emitter.Add(3)
-	assert.Equal(t, 3, emitter.Size())
+	require.Equal(t, 3, emitter.Size())
 }
 
 func TestBatchingEmitterStop(t *testing.T) {
@@ -41,7 +41,7 @@ func TestBatchingEmitterStop(t *testing.T) {
 	time.Sleep(time.Duration(100) * time.Millisecond)
 	emitter.Stop()
 	time.Sleep(time.Duration(1000) * time.Millisecond)
-	assert.True(t, atomic.LoadInt32(&disseminationAttempts) < int32(5))
+	require.True(t, atomic.LoadInt32(&disseminationAttempts) < int32(5))
 }
 
 func TestBatchingEmitterExpiration(t *testing.T) {
@@ -57,8 +57,8 @@ func TestBatchingEmitterExpiration(t *testing.T) {
 
 	emitter.Add(1)
 	time.Sleep(time.Duration(500) * time.Millisecond)
-	assert.Equal(t, int32(10), atomic.LoadInt32(&disseminationAttempts), "Inadequate amount of dissemination attempts detected")
-	assert.Equal(t, 0, emitter.Size())
+	require.Equal(t, int32(10), atomic.LoadInt32(&disseminationAttempts), "Inadequate amount of dissemination attempts detected")
+	require.Equal(t, 0, emitter.Size())
 }
 
 func TestBatchingEmitterCounter(t *testing.T) {
@@ -91,10 +91,10 @@ func TestBatchingEmitterCounter(t *testing.T) {
 	emitter.Stop()
 
 	lock.Lock()
-	assert.Equal(t, 0, counters[4])
-	assert.Equal(t, 1, counters[3])
-	assert.Equal(t, 2, counters[2])
-	assert.Equal(t, 3, counters[1])
+	require.Equal(t, 0, counters[4])
+	require.Equal(t, 1, counters[3])
+	require.Equal(t, 2, counters[2])
+	require.Equal(t, 3, counters[1])
 	lock.Unlock()
 }
 
@@ -110,5 +110,5 @@ func TestBatchingEmitterBurstSizeCap(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		emitter.Add(i)
 	}
-	assert.Equal(t, int32(5), atomic.LoadInt32(&disseminationAttempts))
+	require.Equal(t, int32(5), atomic.LoadInt32(&disseminationAttempts))
 }

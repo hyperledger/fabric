@@ -17,8 +17,8 @@ import (
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/state/mocks"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMetrics(t *testing.T) {
@@ -56,7 +56,7 @@ func TestMetrics(t *testing.T) {
 		SeqNum: 100,
 		Data:   protoutil.MarshalOrPanic(protoutil.NewBlock(100, []byte{})),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// update the ledger height to prepare for the pop operation
 	mc.On("LedgerHeight", mock.Anything).Return(uint64(101), nil)
@@ -66,28 +66,28 @@ func TestMetrics(t *testing.T) {
 	committedDurationWG.Wait()
 
 	// ensure the right height was reported
-	assert.Equal(t,
+	require.Equal(t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakeHeightGauge.WithArgsForCall(0),
 	)
-	assert.EqualValues(t,
+	require.EqualValues(t,
 		101,
 		testMetricProvider.FakeHeightGauge.SetArgsForCall(0),
 	)
 
 	// after push or pop payload buffer size should be reported
-	assert.Equal(t,
+	require.Equal(t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakePayloadBufferSizeGauge.WithArgsForCall(0),
 	)
-	assert.Equal(t,
+	require.Equal(t,
 		[]string{"channel", "testchannelid"},
 		testMetricProvider.FakePayloadBufferSizeGauge.WithArgsForCall(1),
 	)
 	// both 0 and 1 as size can be reported, depends on timing
 	size := testMetricProvider.FakePayloadBufferSizeGauge.SetArgsForCall(0)
-	assert.True(t, size == 1 || size == 0)
+	require.True(t, size == 1 || size == 0)
 	size = testMetricProvider.FakePayloadBufferSizeGauge.SetArgsForCall(1)
-	assert.True(t, size == 1 || size == 0)
+	require.True(t, size == 1 || size == 0)
 
 }

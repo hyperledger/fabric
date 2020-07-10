@@ -24,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"github.com/hyperledger/fabric/orderer/consensus/follower/mocks"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +44,7 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 	}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Run("good", func(t *testing.T) {
 		mockSupport.ChannelIDReturns(channelID)
@@ -56,8 +55,8 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 			localconfig.Cluster{},
 			cryptoProvider,
 		)
-		assert.NoError(t, err)
-		assert.NotNil(t, bp)
+		require.NoError(t, err)
+		require.NotNil(t, bp)
 	})
 
 	t.Run("dialer is nil", func(t *testing.T) {
@@ -69,8 +68,8 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 			localconfig.Cluster{},
 			cryptoProvider,
 		)
-		assert.EqualError(t, err, "base dialer is nil")
-		assert.Nil(t, bp)
+		require.EqualError(t, err, "base dialer is nil")
+		require.Nil(t, bp)
 	})
 
 	t.Run("dialer has bad cert", func(t *testing.T) {
@@ -86,8 +85,8 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 			localconfig.Cluster{},
 			cryptoProvider,
 		)
-		assert.EqualError(t, err, "client certificate isn't in PEM format: not-a-certificate")
-		assert.Nil(t, bp)
+		require.EqualError(t, err, "client certificate isn't in PEM format: not-a-certificate")
+		require.Nil(t, bp)
 	})
 
 	t.Run("bad join block", func(t *testing.T) {
@@ -99,8 +98,8 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 			localconfig.Cluster{},
 			cryptoProvider,
 		)
-		assert.EqualError(t, err, "error extracting endpoints from config block: block data is nil")
-		assert.Nil(t, bp)
+		require.EqualError(t, err, "error extracting endpoints from config block: block data is nil")
+		require.Nil(t, bp)
 	})
 }
 

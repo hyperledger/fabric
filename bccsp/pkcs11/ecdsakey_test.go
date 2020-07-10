@@ -13,23 +13,23 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestX509PublicKeyImportOptsKeyImporter(t *testing.T) {
 	ki := currentBCCSP
 
 	_, err := ki.KeyImport("Hello World", &bccsp.X509PublicKeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "[X509PublicKeyImportOpts] Invalid raw material. Expected *x509.Certificate")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "[X509PublicKeyImportOpts] Invalid raw material. Expected *x509.Certificate")
 
 	_, err = ki.KeyImport(nil, &bccsp.X509PublicKeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Invalid raw. Cannot be nil")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid raw. Cannot be nil")
 
 	cert := &x509.Certificate{}
 	cert.PublicKey = "Hello world"
 	_, err = ki.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Certificate's public key type not recognized. Supported keys: [ECDSA]")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Certificate's public key type not recognized. Supported keys: [ECDSA]")
 }

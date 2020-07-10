@@ -22,18 +22,18 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/mocks/common/multichannel"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEndpointconfigFromFromSupport(t *testing.T) {
 	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	goodConfigBlock := &common.Block{}
-	assert.NoError(t, proto.Unmarshal(blockBytes, goodConfigBlock))
+	require.NoError(t, proto.Unmarshal(blockBytes, goodConfigBlock))
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, testCase := range []struct {
 		name            string
@@ -101,25 +101,25 @@ func TestEndpointconfigFromFromSupport(t *testing.T) {
 
 			certs, err := etcdraft.EndpointconfigFromSupport(cs, cryptoProvider)
 			if testCase.expectedError == "" {
-				assert.NotNil(t, certs)
-				assert.NoError(t, err)
+				require.NotNil(t, certs)
+				require.NoError(t, err)
 				return
 			}
-			assert.EqualError(t, err, testCase.expectedError)
-			assert.Nil(t, certs)
+			require.EqualError(t, err, testCase.expectedError)
+			require.Nil(t, certs)
 		})
 	}
 }
 
 func TestNewBlockPuller(t *testing.T) {
 	ca, err := tlsgen.NewCA()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	blockBytes, err := ioutil.ReadFile("testdata/mychannel.block")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	goodConfigBlock := &common.Block{}
-	assert.NoError(t, proto.Unmarshal(blockBytes, goodConfigBlock))
+	require.NoError(t, proto.Unmarshal(blockBytes, goodConfigBlock))
 
 	lastBlock := &common.Block{
 		Metadata: &common.BlockMetadata{
@@ -146,11 +146,11 @@ func TestNewBlockPuller(t *testing.T) {
 	}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	bp, err := etcdraft.NewBlockPuller(cs, dialer, localconfig.Cluster{}, cryptoProvider)
-	assert.NoError(t, err)
-	assert.NotNil(t, bp)
+	require.NoError(t, err)
+	require.NotNil(t, bp)
 
 	// From here on, we test failures.
 	for _, testCase := range []struct {
@@ -180,8 +180,8 @@ func TestNewBlockPuller(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			testCase.dialer.Config.SecOpts.Certificate = testCase.certificate
 			bp, err := etcdraft.NewBlockPuller(testCase.cs, testCase.dialer, localconfig.Cluster{}, cryptoProvider)
-			assert.Nil(t, bp)
-			assert.EqualError(t, err, testCase.expectedError)
+			require.Nil(t, bp)
+			require.EqualError(t, err, testCase.expectedError)
 		})
 	}
 }
@@ -206,6 +206,6 @@ func TestLedgerBlockPuller(t *testing.T) {
 		BlockPuller:    puller,
 	}
 
-	assert.Equal(t, genesisBlock, lbp.PullBlock(0))
-	assert.Equal(t, notGenesisBlock, lbp.PullBlock(1))
+	require.Equal(t, genesisBlock, lbp.PullBlock(0))
+	require.Equal(t, notGenesisBlock, lbp.PullBlock(1))
 }

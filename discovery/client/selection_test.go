@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/protoext"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestShuffle(t *testing.T) {
@@ -34,8 +34,8 @@ func TestShuffle(t *testing.T) {
 		return true
 	}
 
-	assert.True(t, isHeightAscending(endorsers))
-	assert.False(t, isHeightAscending(endorsers.Shuffle()))
+	require.True(t, isHeightAscending(endorsers))
+	require.False(t, isHeightAscending(endorsers.Shuffle()))
 }
 
 func TestExclusionAndPriority(t *testing.T) {
@@ -53,7 +53,7 @@ func TestExclusionAndPriority(t *testing.T) {
 	})
 
 	givenPeers := Endorsers{newPeer(3), newPeer(5), newPeer(1), newPeer(4), newPeer(2), newPeer(3)}
-	assert.Equal(t, []int{5, 4, 3, 3, 2}, heights(givenPeers.Filter(excludeFirst).Sort(PrioritiesByHeight)))
+	require.Equal(t, []int{5, 4, 3, 3, 2}, heights(givenPeers.Filter(excludeFirst).Sort(PrioritiesByHeight)))
 }
 
 func TestExcludeEndpoints(t *testing.T) {
@@ -83,14 +83,14 @@ func TestExcludeEndpoints(t *testing.T) {
 	}
 
 	s := ExcludeHosts("p1", "s2")
-	assert.True(t, s.Exclude(p1))
-	assert.True(t, s.Exclude(p2))
-	assert.False(t, s.Exclude(p3))
+	require.True(t, s.Exclude(p1))
+	require.True(t, s.Exclude(p2))
+	require.False(t, s.Exclude(p3))
 
 	s = NoExclusion
-	assert.False(t, s.Exclude(p1))
-	assert.False(t, s.Exclude(p2))
-	assert.False(t, s.Exclude(p3))
+	require.False(t, s.Exclude(p1))
+	require.False(t, s.Exclude(p2))
+	require.False(t, s.Exclude(p3))
 }
 
 func TestNoPriorities(t *testing.T) {
@@ -102,7 +102,7 @@ func TestNoPriorities(t *testing.T) {
 	p2 := Peer{
 		StateInfoMessage: s2,
 	}
-	assert.Equal(t, Priority(0), NoPriorities.Compare(p1, p2))
+	require.Equal(t, Priority(0), NoPriorities.Compare(p1, p2))
 }
 
 func TestPrioritiesByHeight(t *testing.T) {
@@ -144,7 +144,7 @@ func TestPrioritiesByHeight(t *testing.T) {
 				StateInfoMessage: s2,
 			}
 			p := PrioritiesByHeight.Compare(p1, p2)
-			assert.Equal(t, test.expected, p)
+			require.Equal(t, test.expected, p)
 		})
 	}
 

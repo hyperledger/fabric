@@ -26,8 +26,8 @@ import (
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 //go:generate counterfeiter -o mocks/capabilities.go -fake-name Capabilities . capabilities
@@ -155,19 +155,19 @@ func TestStateBasedValidationFailure(t *testing.T) {
 	// bad path: policy validation error
 	sbvm.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&commonerrors.VSCCEndorsementPolicyError{Err: fmt.Errorf("some sbe validation err")}).Once()
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.Error(t, err)
-	assert.IsType(t, &commonerrors.VSCCEndorsementPolicyError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &commonerrors.VSCCEndorsementPolicyError{}, err)
 
 	// bad path: execution error
 	sbvm.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&commonerrors.VSCCExecutionFailureError{Err: fmt.Errorf("some sbe validation err")}).Once()
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.Error(t, err)
-	assert.IsType(t, &commonerrors.VSCCExecutionFailureError{}, err)
+	require.Error(t, err)
+	require.IsType(t, &commonerrors.VSCCExecutionFailureError{}, err)
 
 	// good path: signed by the right MSP
 	sbvm.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvoke(t *testing.T) {
@@ -177,18 +177,18 @@ func TestInvoke(t *testing.T) {
 	var err error
 	b := &common.Block{Data: &common.BlockData{Data: [][]byte{[]byte("a")}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, []byte("a"))
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// (still) broken Envelope
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{Payload: []byte("barf")})}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, []byte("a"))
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// (still) broken Envelope
 	e := protoutil.MarshalOrPanic(&common.Envelope{Payload: protoutil.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: []byte("barf")}})})
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{e}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, []byte("a"))
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	tx, err := createTx(false)
 	if err != nil {
@@ -209,34 +209,34 @@ func TestInvoke(t *testing.T) {
 	e = protoutil.MarshalOrPanic(&common.Envelope{Payload: protoutil.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{e}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// broken tx payload
 	e = protoutil.MarshalOrPanic(&common.Envelope{Payload: protoutil.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{Type: int32(common.HeaderType_ORDERER_TRANSACTION)})}})})
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{e}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// good path: signed by the right MSP
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "foo", 0, 0, policy)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestToApplicationPolicyTranslator_Translate(t *testing.T) {
 	tr := &toApplicationPolicyTranslator{}
 	res, err := tr.Translate(nil)
-	assert.NoError(t, err)
-	assert.Nil(t, res)
+	require.NoError(t, err)
+	require.Nil(t, res)
 
 	res, err = tr.Translate([]byte("barf"))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "could not unmarshal signature policy envelope: unexpected EOF")
-	assert.Nil(t, res)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not unmarshal signature policy envelope: unexpected EOF")
+	require.Nil(t, res)
 
 	res, err = tr.Translate(protoutil.MarshalOrPanic(policydsl.SignedByMspMember("the right honourable member for Ipswich")))
-	assert.NoError(t, err)
-	assert.Equal(t, res, protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
+	require.NoError(t, err)
+	require.Equal(t, res, protoutil.MarshalOrPanic(&peer.ApplicationPolicy{
 		Type: &peer.ApplicationPolicy_SignaturePolicy{
 			SignaturePolicy: policydsl.SignedByMspMember("the right honourable member for Ipswich"),
 		},

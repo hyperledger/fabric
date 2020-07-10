@@ -12,11 +12,11 @@ import (
 
 	"github.com/hyperledger/fabric/common/semaphore"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewSemaphorePanic(t *testing.T) {
-	assert.PanicsWithValue(t, "permits must be greater than 0", func() { semaphore.New(0) })
+	require.PanicsWithValue(t, "permits must be greater than 0", func() { semaphore.New(0) })
 }
 
 func TestSemaphoreAcquireBlocking(t *testing.T) {
@@ -70,5 +70,5 @@ func TestSemaphoreTryAcquireBufferFull(t *testing.T) {
 
 func TestSemaphoreReleaseTooMany(t *testing.T) {
 	sema := semaphore.New(1)
-	assert.PanicsWithValue(t, "semaphore buffer is empty", func() { sema.Release() })
+	require.PanicsWithValue(t, "semaphore buffer is empty", func() { sema.Release() })
 }

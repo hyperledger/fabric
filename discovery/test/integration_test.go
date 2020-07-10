@@ -59,7 +59,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
@@ -147,84 +147,84 @@ func TestGreenPath(t *testing.T) {
 	req, err := req.AddPeersQuery().AddPeersQuery(col1).AddPeersQuery(nonExistentCollection).AddConfigQuery().AddEndorsersQuery(cc2cc, ccWithCollection)
 
 	t.Run("Local peer query", func(t *testing.T) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		res, err := admin.Send(context.Background(), req, admin.AuthInfo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		returnedPeers, err := res.ForLocal().Peers()
-		assert.NoError(t, err)
-		assert.True(t, peersToTestPeers(returnedPeers).Equal(testPeers.withoutStateInfo()))
+		require.NoError(t, err)
+		require.True(t, peersToTestPeers(returnedPeers).Equal(testPeers.withoutStateInfo()))
 	})
 
 	t.Run("Channel peer queries", func(t *testing.T) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		res, err := client.Send(context.Background(), req, client.AuthInfo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		returnedPeers, err := res.ForChannel("mychannel").Peers()
-		assert.NoError(t, err)
-		assert.True(t, peersToTestPeers(returnedPeers).Equal(testPeers))
+		require.NoError(t, err)
+		require.True(t, peersToTestPeers(returnedPeers).Equal(testPeers))
 
 		returnedPeers, err = res.ForChannel("mychannel").Peers(col1)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Ensure only peers from Org1 are returned
 		for _, p := range returnedPeers {
-			assert.Equal(t, "Org1MSP", p.MSPID)
+			require.Equal(t, "Org1MSP", p.MSPID)
 		}
 
 		// Ensure that the client handles correctly errors returned from the server
 		// in case of a bad request
 		_, err = res.ForChannel("mychannel").Peers(nonExistentCollection)
-		assert.EqualError(t, err, "collection col3 doesn't exist in collection config for chaincode cc2")
+		require.EqualError(t, err, "collection col3 doesn't exist in collection config for chaincode cc2")
 	})
 
 	t.Run("Endorser chaincode to chaincode", func(t *testing.T) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		res, err := client.Send(context.Background(), req, client.AuthInfo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		endorsers, err := res.ForChannel("mychannel").Endorsers(cc2cc.Chaincodes, disc.NoFilter)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		endorsersByMSP := map[string][]string{}
 
 		for _, endorser := range endorsers {
 			endorsersByMSP[endorser.MSPID] = append(endorsersByMSP[endorser.MSPID], string(endorser.Identity))
 		}
 		// For cc2cc we expect 2 peers from Org1MSP and 1 from Org2MSP
-		assert.Equal(t, 2, len(endorsersByMSP["Org1MSP"]))
-		assert.Equal(t, 1, len(endorsersByMSP["Org2MSP"]))
+		require.Equal(t, 2, len(endorsersByMSP["Org1MSP"]))
+		require.Equal(t, 1, len(endorsersByMSP["Org2MSP"]))
 	})
 
 	t.Run("Endorser chaincode with collection", func(t *testing.T) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		res, err := client.Send(context.Background(), req, client.AuthInfo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		endorsersByMSP := map[string][]string{}
 		for _, endorser := range endorsers {
 			endorsersByMSP[endorser.MSPID] = append(endorsersByMSP[endorser.MSPID], string(endorser.Identity))
 		}
-		assert.Equal(t, 1, len(endorsersByMSP["Org1MSP"]))
-		assert.Equal(t, 1, len(endorsersByMSP["Org2MSP"]))
+		require.Equal(t, 1, len(endorsersByMSP["Org1MSP"]))
+		require.Equal(t, 1, len(endorsersByMSP["Org2MSP"]))
 	})
 
 	t.Run("Config query", func(t *testing.T) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		res, err := client.Send(context.Background(), req, client.AuthInfo)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		conf, err := res.ForChannel("mychannel").Config()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		// Ensure MSP Configs are exactly as they appear in the config block
 		for mspID, mspConfig := range conf.Msps {
 			expectedConfig := service.sup.mspConfigs[mspID]
-			assert.Equal(t, expectedConfig, mspConfig)
+			require.Equal(t, expectedConfig, mspConfig)
 		}
 		// Ensure orderer endpoints are as they appear in the config block
 		for mspID, endpoints := range conf.Orderers {
-			assert.Equal(t, "OrdererMSP", mspID)
+			require.Equal(t, "OrdererMSP", mspID)
 			endpoints := endpoints.Endpoint
-			assert.Len(t, endpoints, 1)
-			assert.Equal(t, "orderer.example.com", endpoints[0].Host)
-			assert.Equal(t, uint32(7050), endpoints[0].Port)
+			require.Len(t, endpoints, 1)
+			require.Equal(t, "orderer.example.com", endpoints[0].Host)
+			require.Equal(t, uint32(7050), endpoints[0].Port)
 		}
 	})
 }
@@ -247,13 +247,13 @@ func TestEndorsementComputationFailure(t *testing.T) {
 		},
 	}
 	req, err := disc.NewRequest().OfChannel("mychannel").AddEndorsersQuery(ccWithCollection)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	res, err := client.Send(context.Background(), req, client.AuthInfo)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
-	assert.Empty(t, endorsers)
-	assert.Contains(t, err.Error(), "failed constructing descriptor")
+	require.Empty(t, endorsers)
+	require.Contains(t, err.Error(), "failed constructing descriptor")
 }
 
 func TestLedgerFailure(t *testing.T) {
@@ -273,13 +273,13 @@ func TestLedgerFailure(t *testing.T) {
 		},
 	}
 	req, err := disc.NewRequest().OfChannel("mychannel").AddEndorsersQuery(ccWithCollection)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	res, err := client.Send(context.Background(), req, client.AuthInfo)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	endorsers, err := res.ForChannel("mychannel").Endorsers(ccWithCollection.Chaincodes, disc.NoFilter)
-	assert.Empty(t, endorsers)
-	assert.Contains(t, err.Error(), "failed constructing descriptor")
+	require.Empty(t, endorsers)
+	require.Contains(t, err.Error(), "failed constructing descriptor")
 }
 
 func TestRevocation(t *testing.T) {
@@ -290,21 +290,21 @@ func TestRevocation(t *testing.T) {
 
 	req := disc.NewRequest().OfChannel("mychannel").AddPeersQuery()
 	res, err := client.Send(context.Background(), req, client.AuthInfo)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Record number of times we deserialized the identity
 	firstCount := atomic.LoadUint32(&service.sup.deserializeIdentityCount)
 
 	// Do the same query again
 	peers, err := res.ForChannel("mychannel").Peers()
-	assert.NotEmpty(t, peers)
-	assert.NoError(t, err)
+	require.NotEmpty(t, peers)
+	require.NoError(t, err)
 
 	_, err = client.Send(context.Background(), req, client.AuthInfo)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// The amount of times deserializeIdentity was called should not have changed
 	// because requests should have hit the cache
 	secondCount := atomic.LoadUint32(&service.sup.deserializeIdentityCount)
-	assert.Equal(t, firstCount, secondCount)
+	require.Equal(t, firstCount, secondCount)
 
 	// Now, increment the config sequence
 	oldSeq := service.sup.sequenceWrapper.Sequence()
@@ -317,16 +317,16 @@ func TestRevocation(t *testing.T) {
 
 	// Send the query for the third time
 	res, err = client.Send(context.Background(), req, client.AuthInfo)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// The cache should have been purged, thus deserializeIdentity should have been
 	// called an additional time
 	thirdCount := atomic.LoadUint32(&service.sup.deserializeIdentityCount)
-	assert.NotEqual(t, thirdCount, secondCount)
+	require.NotEqual(t, thirdCount, secondCount)
 
 	// We should be denied access
 	peers, err = res.ForChannel("mychannel").Peers()
-	assert.Empty(t, peers)
-	assert.Contains(t, err.Error(), "access denied")
+	require.Empty(t, peers)
+	require.Contains(t, err.Error(), "access denied")
 }
 
 type client struct {
@@ -426,9 +426,9 @@ func createSupport(t *testing.T, dir string, lsccMetadataManager *lsccMetadataMa
 	channelVerifier := discacl.NewChannelVerifier(policies.ChannelApplicationWriters, polMgr)
 
 	org1Admin, err := policydsl.FromString("OR('Org1MSP.admin')")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	org1AdminPolicy, _, err := cauthdsl.NewPolicyProvider(org1MSP).NewPolicy(protoutil.MarshalOrPanic(org1Admin))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	acl := discacl.NewDiscoverySupport(channelVerifier, org1AdminPolicy, chConfig)
 
 	gSup := &mocks.GossipSupport{}
@@ -459,10 +459,10 @@ func createSupport(t *testing.T, dir string, lsccMetadataManager *lsccMetadataMa
 
 func createClientAndService(t *testing.T, testdir string) (*client, *client, *service) {
 	ca, err := tlsgen.NewCA()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	serverKeyPair, err := ca.NewServerCertKeyPair("127.0.0.1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a server on an ephemeral port
 	gRPCServer, err := comm.NewGRPCServer("127.0.0.1:", comm.ServerConfig{
@@ -484,11 +484,11 @@ func createClientAndService(t *testing.T, testdir string) (*client, *client, *se
 
 	RegisterDiscoveryServer(gRPCServer.Server(), svc)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	go gRPCServer.Start()
 
 	clientKeyPair, err := ca.NewClientCertKeyPair()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	dialer, err := comm.NewGRPCClient(comm.ClientConfig{
 		Timeout: time.Second * 3,
@@ -499,10 +499,10 @@ func createClientAndService(t *testing.T, testdir string) (*client, *client, *se
 			ServerRootCAs: [][]byte{ca.CertBytes()},
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	conn, err := dialer.NewConnection(gRPCServer.Address())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	userSigner := createUserSigner(t)
 	wrapperUserClient := &client{AuthInfo: &AuthInfo{
@@ -528,11 +528,11 @@ func createUserSigner(t *testing.T) *signer {
 	certPath := filepath.Join(identityDir, "signcerts", "User1@org1.example.com-cert.pem")
 	keyPath := filepath.Join(identityDir, "keystore")
 	keys, err := ioutil.ReadDir(keyPath)
-	assert.NoError(t, err)
-	assert.Len(t, keys, 1)
+	require.NoError(t, err)
+	require.Len(t, keys, 1)
 	keyPath = filepath.Join(keyPath, keys[0].Name())
 	signer, err := newSigner("Org1MSP", certPath, keyPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return signer
 }
 
@@ -541,25 +541,25 @@ func createAdminSigner(t *testing.T) *signer {
 	certPath := filepath.Join(identityDir, "signcerts", "Admin@org1.example.com-cert.pem")
 	keyPath := filepath.Join(identityDir, "keystore")
 	keys, err := ioutil.ReadDir(keyPath)
-	assert.NoError(t, err)
-	assert.Len(t, keys, 1)
+	require.NoError(t, err)
+	require.Len(t, keys, 1)
 	keyPath = filepath.Join(keyPath, keys[0].Name())
 	signer, err := newSigner("Org1MSP", certPath, keyPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return signer
 }
 
 func createMSP(t *testing.T, dir, mspID string) (msp.MSP, *msprotos.FabricMSPConfig) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	channelMSP, err := msp.New(
 		&msp.BCCSPNewOpts{NewBaseOpts: msp.NewBaseOpts{Version: msp.MSPv1_4_3}},
 		cryptoProvider,
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mspConf, err := msp.GetVerifyingMspConfig(dir, mspID, "bccsp")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	fabConf := &msprotos.FabricMSPConfig{}
 	proto.Unmarshal(mspConf.Config, fabConf)
@@ -608,9 +608,9 @@ func createChannelConfigGetter(s *sequenceWrapper, mspMgr msp.MSPManager) discac
 
 func createPolicyManagerGetter(t *testing.T, mspMgr msp.MSPManager) *mocks.ChannelPolicyManagerGetter {
 	org1Org2Members, err := policydsl.FromString("OR('Org1MSP.client', 'Org2MSP.client')")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	org1Org2MembersPolicy, _, err := cauthdsl.NewPolicyProvider(mspMgr).NewPolicy(protoutil.MarshalOrPanic(org1Org2Members))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	polMgr := &mocks.ChannelPolicyManagerGetter{}
 	policyMgr := &mocks.PolicyManager{}

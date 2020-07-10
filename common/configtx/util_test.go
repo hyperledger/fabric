@@ -12,7 +12,7 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestValidConfigID checks that the constraints on channel IDs are enforced properly
@@ -121,20 +121,20 @@ func TestUnmarshalConfig(t *testing.T) {
 
 	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
 		_, err := UnmarshalConfig(goodConfigBytes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("GoodUnmarshalOrpanic", func(t *testing.T) {
-		assert.NotPanics(t, func() { UnmarshalConfigOrPanic(goodConfigBytes) })
+		require.NotPanics(t, func() { UnmarshalConfigOrPanic(goodConfigBytes) })
 	})
 
 	t.Run("BadUnmarshalNormal", func(t *testing.T) {
 		_, err := UnmarshalConfig(badConfigBytes)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("BadUnmarshalOrpanic", func(t *testing.T) {
-		assert.Panics(t, func() { UnmarshalConfigOrPanic(badConfigBytes) })
+		require.Panics(t, func() { UnmarshalConfigOrPanic(badConfigBytes) })
 	})
 }
 
@@ -144,20 +144,20 @@ func TestUnmarshalConfigEnvelope(t *testing.T) {
 
 	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
 		_, err := UnmarshalConfigEnvelope(goodConfigEnvelopeBytes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("GoodUnmarshalOrpanic", func(t *testing.T) {
-		assert.NotPanics(t, func() { UnmarshalConfigEnvelopeOrPanic(goodConfigEnvelopeBytes) })
+		require.NotPanics(t, func() { UnmarshalConfigEnvelopeOrPanic(goodConfigEnvelopeBytes) })
 	})
 
 	t.Run("BadUnmarshalNormal", func(t *testing.T) {
 		_, err := UnmarshalConfigEnvelope(badConfigEnvelopeBytes)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("BadUnmarshalOrpanic", func(t *testing.T) {
-		assert.Panics(t, func() { UnmarshalConfigEnvelopeOrPanic(badConfigEnvelopeBytes) })
+		require.Panics(t, func() { UnmarshalConfigEnvelopeOrPanic(badConfigEnvelopeBytes) })
 	})
 }
 
@@ -167,20 +167,20 @@ func TestUnmarshalConfigUpdate(t *testing.T) {
 
 	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
 		_, err := UnmarshalConfigUpdate(goodConfigUpdateBytes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("GoodUnmarshalOrpanic", func(t *testing.T) {
-		assert.NotPanics(t, func() { UnmarshalConfigUpdateOrPanic(goodConfigUpdateBytes) })
+		require.NotPanics(t, func() { UnmarshalConfigUpdateOrPanic(goodConfigUpdateBytes) })
 	})
 
 	t.Run("BadUnmarshalNormal", func(t *testing.T) {
 		_, err := UnmarshalConfigUpdate(badConfigUpdateBytes)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("BadUnmarshalOrpanic", func(t *testing.T) {
-		assert.Panics(t, func() { UnmarshalConfigUpdateOrPanic(badConfigUpdateBytes) })
+		require.Panics(t, func() { UnmarshalConfigUpdateOrPanic(badConfigUpdateBytes) })
 	})
 }
 
@@ -190,19 +190,19 @@ func TestUnmarshalConfigUpdateEnvelope(t *testing.T) {
 
 	t.Run("GoodUnmarshalNormal", func(t *testing.T) {
 		_, err := UnmarshalConfigUpdateEnvelope(goodConfigUpdateEnvelopeBytes)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("GoodUnmarshalOrpanic", func(t *testing.T) {
-		assert.NotPanics(t, func() { UnmarshalConfigUpdateEnvelopeOrPanic(goodConfigUpdateEnvelopeBytes) })
+		require.NotPanics(t, func() { UnmarshalConfigUpdateEnvelopeOrPanic(goodConfigUpdateEnvelopeBytes) })
 	})
 
 	t.Run("BadUnmarshalNormal", func(t *testing.T) {
 		_, err := UnmarshalConfigUpdateEnvelope(badConfigUpdateEnvelopeBytes)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("BadUnmarshalOrpanic", func(t *testing.T) {
-		assert.Panics(t, func() { UnmarshalConfigUpdateEnvelopeOrPanic(badConfigUpdateEnvelopeBytes) })
+		require.Panics(t, func() { UnmarshalConfigUpdateEnvelopeOrPanic(badConfigUpdateEnvelopeBytes) })
 	})
 }

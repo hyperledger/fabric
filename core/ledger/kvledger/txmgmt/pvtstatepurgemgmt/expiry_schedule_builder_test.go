@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBuildExpirySchedule(t *testing.T) {
@@ -34,7 +34,7 @@ func TestBuildExpirySchedule(t *testing.T) {
 	putPvtAndHashUpdates(t, updates, "ns3", "coll4", "pvtkey4", []byte("pvtvalue4"), version.NewHeight(4, 1))
 
 	listExpinfo, err := buildExpirySchedule(btlPolicy, updates.PvtUpdates, updates.HashUpdates)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	t.Logf("listExpinfo=%s", spew.Sdump(listExpinfo))
 
 	pvtdataKeys1 := newPvtdataKeys()
@@ -52,8 +52,8 @@ func TestBuildExpirySchedule(t *testing.T) {
 		{expiryInfoKey: &expiryInfoKey{expiryBlk: 7, committingBlk: 3}, pvtdataKeys: pvtdataKeys3},
 	}
 
-	assert.Len(t, listExpinfo, 3)
-	assert.ElementsMatch(t, expectedListExpInfo, listExpinfo)
+	require.Len(t, listExpinfo, 3)
+	require.ElementsMatch(t, expectedListExpInfo, listExpinfo)
 }
 
 func TestBuildExpiryScheduleWithMissingPvtdata(t *testing.T) {
@@ -86,7 +86,7 @@ func TestBuildExpiryScheduleWithMissingPvtdata(t *testing.T) {
 	deleteHashUpdates(updates, "ns3", "coll5", "pvtkey6", version.NewHeight(50, 6))
 
 	listExpinfo, err := buildExpirySchedule(btlPolicy, updates.PvtUpdates, updates.HashUpdates)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	t.Logf("listExpinfo=%s", spew.Sdump(listExpinfo))
 
 	pvtdataKeys1 := newPvtdataKeys()
@@ -102,8 +102,8 @@ func TestBuildExpiryScheduleWithMissingPvtdata(t *testing.T) {
 		{expiryInfoKey: &expiryInfoKey{expiryBlk: 54, committingBlk: 50}, pvtdataKeys: pvtdataKeys3},
 	}
 
-	assert.Len(t, listExpinfo, 3)
-	assert.ElementsMatch(t, expectedListExpInfo, listExpinfo)
+	require.Len(t, listExpinfo, 3)
+	require.ElementsMatch(t, expectedListExpInfo, listExpinfo)
 }
 
 func putPvtAndHashUpdates(t *testing.T, updates *privacyenabledstate.UpdateBatch, ns, coll, key string, value []byte, ver *version.Height) {

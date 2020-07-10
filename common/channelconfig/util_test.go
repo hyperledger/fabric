@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,9 +33,9 @@ import (
 // low code coverage count, so here they are.
 
 func basicTest(t *testing.T, sv *StandardConfigValue) {
-	assert.NotNil(t, sv)
-	assert.NotEmpty(t, sv.Key())
-	assert.NotNil(t, sv.Value())
+	require.NotNil(t, sv)
+	require.NotEmpty(t, sv.Key())
+	require.NotNil(t, sv.Value())
 }
 
 func TestUtilsBasic(t *testing.T) {
@@ -286,32 +285,32 @@ func createCfgBlockWithUnsupportedCapabilities(t *testing.T) *cb.Block {
 
 func TestValidateCapabilities(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test config block with valid capabilities requirement
 	cfgBlock := createCfgBlockWithSupportedCapabilities(t)
 	err = ValidateCapabilities(cfgBlock, cryptoProvider)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Test config block with invalid capabilities requirement
 	cfgBlock = createCfgBlockWithUnsupportedCapabilities(t)
 	err = ValidateCapabilities(cfgBlock, cryptoProvider)
-	assert.EqualError(t, err, "Channel capability INCOMPATIBLE_CAPABILITIES is required but not supported")
+	require.EqualError(t, err, "Channel capability INCOMPATIBLE_CAPABILITIES is required but not supported")
 }
 
 func TestExtractMSPIDsForApplicationOrgs(t *testing.T) {
 	// load test_configblock.json that contains the application group
 	// and other properties needed to build channel config and extract MSPIDs
 	blockData, err := ioutil.ReadFile("testdata/test_configblock.json")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	block := &common.Block{}
 	protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	mspids, err := ExtractMSPIDsForApplicationOrgs(block, cryptoProvider)
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, mspids, []string{"Org1MSP", "Org2MSP"})
+	require.NoError(t, err)
+	require.ElementsMatch(t, mspids, []string{"Org1MSP", "Org2MSP"})
 }
 
 func TestMarshalEtcdRaftMetadata(t *testing.T) {
@@ -339,11 +338,11 @@ func TestMarshalEtcdRaftMetadata(t *testing.T) {
 	}
 	packed, err := MarshalEtcdRaftMetadata(md)
 	require.Nil(t, err, "marshalling should succeed")
-	assert.NotNil(t, packed)
+	require.NotNil(t, packed)
 
 	packed, err = MarshalEtcdRaftMetadata(md)
 	require.Nil(t, err, "marshalling should succeed a second time because we did not mutate ourselves")
-	assert.NotNil(t, packed)
+	require.NotNil(t, packed)
 
 	unpacked := &etcdraft.ConfigMetadata{}
 	require.Nil(t, proto.Unmarshal(packed, unpacked), "unmarshalling should succeed")

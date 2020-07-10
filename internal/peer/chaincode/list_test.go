@@ -15,7 +15,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestChaincodeListCmd(t *testing.T) {
@@ -48,7 +48,7 @@ func TestChaincodeListCmd(t *testing.T) {
 	}
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cmd := listCmd(mockCF, cryptoProvider)
 
@@ -68,7 +68,7 @@ func TestChaincodeListCmd(t *testing.T) {
 		args := []string{"--instantiated"}
 		cmd.SetArgs(args)
 		err = cmd.Execute()
-		assert.Error(t, err, "Run chaincode list cmd to get instantiated chaincodes should fail if invoked without -C flag")
+		require.Error(t, err, "Run chaincode list cmd to get instantiated chaincodes should fail if invoked without -C flag")
 	})
 
 	t.Run("get instantiated chaincodes - no channel", func(t *testing.T) {
@@ -77,7 +77,7 @@ func TestChaincodeListCmd(t *testing.T) {
 		args := []string{"--instantiated"}
 		cmd.SetArgs(args)
 		err = cmd.Execute()
-		assert.Error(t, err, "Run chaincode list cmd to get instantiated chaincodes should fail if invoked without -C flag")
+		require.Error(t, err, "Run chaincode list cmd to get instantiated chaincodes should fail if invoked without -C flag")
 	})
 
 	t.Run("get instantiated chaincodes - success", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestChaincodeListCmd(t *testing.T) {
 		args := []string{"--installed", "--instantiated"}
 		cmd.SetArgs(args)
 		err = cmd.Execute()
-		assert.Error(t, err, "Run chaincode list cmd to get instantiated/installed chaincodes should fail if invoked without -C flag")
+		require.Error(t, err, "Run chaincode list cmd to get instantiated/installed chaincodes should fail if invoked without -C flag")
 	})
 
 	t.Run("both --installed and --instantiated set - no channel", func(t *testing.T) {
@@ -107,8 +107,8 @@ func TestChaincodeListCmd(t *testing.T) {
 		cmd.SetArgs(args)
 		expectErr := fmt.Errorf("must explicitly specify \"--installed\" or \"--instantiated\"")
 		err = cmd.Execute()
-		assert.Error(t, err)
-		assert.Equal(t, expectErr.Error(), err.Error())
+		require.Error(t, err)
+		require.Equal(t, expectErr.Error(), err.Error())
 	})
 
 	t.Run("neither --installed nor --instantiated set", func(t *testing.T) {
@@ -118,8 +118,8 @@ func TestChaincodeListCmd(t *testing.T) {
 
 		expectErr := fmt.Errorf("must explicitly specify \"--installed\" or \"--instantiated\"")
 		err = cmd.Execute()
-		assert.Error(t, err)
-		assert.Equal(t, expectErr.Error(), err.Error())
+		require.Error(t, err)
+		require.Equal(t, expectErr.Error(), err.Error())
 	})
 }
 
@@ -147,15 +147,15 @@ func TestChaincodeListFailure(t *testing.T) {
 	resetFlags()
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Get instantiated chaincodes
 	instantiatedChaincodesCmd := listCmd(mockCF, cryptoProvider)
 	args := []string{"--instantiated", "-C", "mychannel"}
 	instantiatedChaincodesCmd.SetArgs(args)
 	err = instantiatedChaincodesCmd.Execute()
-	assert.Error(t, err)
-	assert.Regexp(t, "bad response: 500 - error message", err.Error())
+	require.Error(t, err)
+	require.Regexp(t, "bad response: 500 - error message", err.Error())
 }
 
 func TestString(t *testing.T) {
@@ -172,5 +172,5 @@ func TestString(t *testing.T) {
 			Vscc:    "vscc",
 		},
 	}
-	assert.Equal(t, "Name: ccName, Version: 1.0, Input: input, Escc: escc, Vscc: vscc, Id: 0102030405", ccInf.String())
+	require.Equal(t, "Name: ccName, Version: 1.0, Input: input, Escc: escc, Vscc: vscc, Id: 0102030405", ccInf.String())
 }

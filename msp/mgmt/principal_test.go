@@ -22,40 +22,40 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewLocalMSPPrincipalGetter(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
-	assert.NotNil(t, NewLocalMSPPrincipalGetter(cryptoProvider))
+	require.NoError(t, err)
+	require.NotNil(t, NewLocalMSPPrincipalGetter(cryptoProvider))
 }
 
 func TestLocalMSPPrincipalGetter_Get(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	m := NewDeserializersManager(cryptoProvider)
 	g := NewLocalMSPPrincipalGetter(cryptoProvider)
 
 	_, err = g.Get("")
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	p, err := g.Get(Admins)
-	assert.NoError(t, err)
-	assert.NotNil(t, p)
-	assert.Equal(t, msp.MSPPrincipal_ROLE, p.PrincipalClassification)
+	require.NoError(t, err)
+	require.NotNil(t, p)
+	require.Equal(t, msp.MSPPrincipal_ROLE, p.PrincipalClassification)
 	role := &msp.MSPRole{}
 	proto.Unmarshal(p.Principal, role)
-	assert.Equal(t, m.GetLocalMSPIdentifier(), role.MspIdentifier)
-	assert.Equal(t, msp.MSPRole_ADMIN, role.Role)
+	require.Equal(t, m.GetLocalMSPIdentifier(), role.MspIdentifier)
+	require.Equal(t, msp.MSPRole_ADMIN, role.Role)
 
 	p, err = g.Get(Members)
-	assert.NoError(t, err)
-	assert.NotNil(t, p)
-	assert.Equal(t, msp.MSPPrincipal_ROLE, p.PrincipalClassification)
+	require.NoError(t, err)
+	require.NotNil(t, p)
+	require.Equal(t, msp.MSPPrincipal_ROLE, p.PrincipalClassification)
 	role = &msp.MSPRole{}
 	proto.Unmarshal(p.Principal, role)
-	assert.Equal(t, m.GetLocalMSPIdentifier(), role.MspIdentifier)
-	assert.Equal(t, msp.MSPRole_MEMBER, role.Role)
+	require.Equal(t, m.GetLocalMSPIdentifier(), role.MspIdentifier)
+	require.Equal(t, msp.MSPRole_MEMBER, role.Role)
 }

@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -69,11 +69,11 @@ func newTestHistoryEnv(t *testing.T) *levelDBLockBasedHistoryEnv {
 	}
 	txMgr, err := txmgr.NewLockBasedTxMgr(txmgrInitializer)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	testHistoryDBProvider, err := NewDBProvider(testHistoryDBPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	testHistoryDB, err := testHistoryDBProvider.GetDBHandle("TestHistoryDB")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return &levelDBLockBasedHistoryEnv{
 		t,
@@ -122,7 +122,7 @@ func newBlockStorageTestEnv(t testing.TB) *testBlockStoreEnv {
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}
 
 	p, err := blkstorage.NewProvider(conf, indexConfig, &disabled.Provider{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return &testBlockStoreEnv{t, p, testPath}
 }
 
