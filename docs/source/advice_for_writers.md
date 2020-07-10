@@ -67,7 +67,7 @@ Each workgroup has a list of members and their contact information.
 
 Hyperledger Fabric has many other collaboration mechanisms such as mailing
 lists, contributor meetings and maintainer meetings. Find out about these and
-more [here](contributing.html).
+more [here](./contributing.html).
 
 Good luck getting started and thanks for your contribution.
 

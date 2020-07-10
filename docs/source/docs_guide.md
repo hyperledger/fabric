@@ -272,7 +272,16 @@ automatically get updated with your changes!
 ## Making a PR
 
 You can submit your PR for inclusion using the following
-[instructions](./github/github.html#opening-a-pull-request-in-github).
+[instructions](./github/github.html).
+
+Pay special attention to signing your commit with the `-s` option:
+
+```bash
+git commit -s -m "My Doc change"
+```
+
+This states that your changes conform to the [Developer Certificate of
+Origin](https://en.wikipedia.org/wiki/Developer_Certificate_of_Origin).
 
 Before your PR can be included in the appropriate `fabric` or `fabric-docs-i18n`
 repository, it must be approved by an appropriate maintainer. For example, a
