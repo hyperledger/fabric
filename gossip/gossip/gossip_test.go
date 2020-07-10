@@ -33,7 +33,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
 	corecomm "github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var timeout = time.Second * time.Duration(180)
@@ -786,7 +786,7 @@ func TestDissemination(t *testing.T) {
 	t.Log("Metadata dissemination took", time.Since(t2))
 
 	for i := 0; i < n; i++ {
-		assert.Equal(t, msgsCount2Send, receivedMessages[i])
+		require.Equal(t, msgsCount2Send, receivedMessages[i])
 	}
 
 	// Sending leadership messages
@@ -815,7 +815,7 @@ func TestDissemination(t *testing.T) {
 	t.Log("Leadership message dissemination took", time.Since(t3))
 
 	for i := 0; i < n; i++ {
-		assert.Equal(t, 1, receivedLeadershipMessages[i])
+		require.Equal(t, 1, receivedLeadershipMessages[i])
 	}
 
 	t.Log("Stopping peers")
@@ -997,14 +997,14 @@ func TestMembershipRequestSpoofing(t *testing.T) {
 	case <-time.After(time.Second):
 		break
 	case <-g1ToG2:
-		assert.Fail(t, "Received response from g1 but shouldn't have")
+		require.Fail(t, "Received response from g1 but shouldn't have")
 	}
 
 	// Now send the same message from g3 to g1
 	g3.Send(spoofedMemReq.GossipMessage, &comm.RemotePeer{Endpoint: endpoint0, PKIID: common.PKIidType(endpoint0)})
 	select {
 	case <-time.After(time.Second):
-		assert.Fail(t, "Didn't receive a message back from g1 on time")
+		require.Fail(t, "Didn't receive a message back from g1 on time")
 	case <-g1ToG3:
 		break
 	}
@@ -1106,11 +1106,11 @@ func TestDataLeakage(t *testing.T) {
 	for i, channel := range channels {
 		for j := 0; j < 3; j++ {
 			instanceIndex := (n/2)*i + j
-			assert.Len(t, peers[instanceIndex].PeersOfChannel(channel), 2)
+			require.Len(t, peers[instanceIndex].PeersOfChannel(channel), 2)
 			if i == 0 {
-				assert.Equal(t, uint64(1), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.LedgerHeight)
+				require.Equal(t, uint64(1), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.LedgerHeight)
 			} else {
-				assert.Equal(t, uint64(2), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.LedgerHeight)
+				require.Equal(t, uint64(2), peers[instanceIndex].PeersOfChannel(channel)[0].Properties.LedgerHeight)
 			}
 		}
 	}
@@ -1124,7 +1124,7 @@ func TestDataLeakage(t *testing.T) {
 				go func(instanceIndex int, channel common.ChannelID) {
 					incMsgChan, _ := peers[instanceIndex].Accept(acceptData, false)
 					msg := <-incMsgChan
-					assert.Equal(t, []byte(channel), []byte(msg.Channel))
+					require.Equal(t, []byte(channel), []byte(msg.Channel))
 					wg.Done()
 				}(instanceIndex, channel)
 			}
@@ -1258,35 +1258,35 @@ func TestSendByCriteria(t *testing.T) {
 		Timeout: time.Second * 1,
 		MinAck:  1,
 	}
-	assert.NoError(t, g1.SendByCriteria(msg, criteria))
+	require.NoError(t, g1.SendByCriteria(msg, criteria))
 
 	// We send without specifying a timeout
 	criteria = SendCriteria{
 		MaxPeers: 100,
 	}
 	err := g1.SendByCriteria(msg, criteria)
-	assert.Error(t, err)
-	assert.Equal(t, "Timeout should be specified", err.Error())
+	require.Error(t, err)
+	require.Equal(t, "Timeout should be specified", err.Error())
 
 	// We send without specifying a minimum acknowledge threshold
 	criteria.Timeout = time.Second * 3
 	err = g1.SendByCriteria(msg, criteria)
 	// Should work, because minAck is 0 (not specified)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We send without specifying a channel
 	criteria.Channel = common.ChannelID("B")
 	err = g1.SendByCriteria(msg, criteria)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "but no such channel exists")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "but no such channel exists")
 
 	// We send to peers from the channel, but we expect 10 acknowledgements.
 	// It should immediately return because we don't know about 10 peers so no point in even trying
 	criteria.Channel = common.ChannelID("A")
 	criteria.MinAck = 10
 	err = g1.SendByCriteria(msg, criteria)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Requested to send to at least 10 peers, but know only of")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Requested to send to at least 10 peers, but know only of")
 
 	// We send to a minimum of 3 peers with acknowledgement, while no peer acknowledges the messages.
 	// Wait until g1 sees the rest of the peers in the channel
@@ -1295,9 +1295,9 @@ func TestSendByCriteria(t *testing.T) {
 	}, "waiting until g1 sees the rest of the peers in the channel")
 	criteria.MinAck = 3
 	err = g1.SendByCriteria(msg, criteria)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "timed out")
-	assert.Contains(t, err.Error(), "3")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "timed out")
+	require.Contains(t, err.Error(), "3")
 
 	// We retry the test above, but this time the peers acknowledge
 	// Peers now ack
@@ -1316,7 +1316,7 @@ func TestSendByCriteria(t *testing.T) {
 	go ack(ackChan3)
 	go ack(ackChan4)
 	err = g1.SendByCriteria(msg, criteria)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// We send to 3 peers, but 2 out of 3 peers acknowledge with an error
 	nack := func(c <-chan protoext.ReceivedMessage) {
@@ -1327,8 +1327,8 @@ func TestSendByCriteria(t *testing.T) {
 	go nack(ackChan3)
 	go nack(ackChan4)
 	err = g1.SendByCriteria(msg, criteria)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "uh oh")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "uh oh")
 
 	// We try to send to either g2 or g3, but neither would ack us, so we would fail.
 	// However - what we actually check in this test is that we send to peers according to the
@@ -1348,9 +1348,9 @@ func TestSendByCriteria(t *testing.T) {
 	criteria.MinAck = 1
 	go failOnAckRequest(ackChan4, 3)
 	err = g1.SendByCriteria(msg, criteria)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "timed out")
-	assert.Contains(t, err.Error(), "2")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "timed out")
+	require.Contains(t, err.Error(), "2")
 	// Finally, ack the lost messages, to cleanup for the next test
 	ack(ackChan2)
 	ack(ackChan3)
@@ -1378,11 +1378,11 @@ func TestSendByCriteria(t *testing.T) {
 		atomic.AddUint32(&messagesSent, 1)
 	})
 	err = g1.SendByCriteria(msg, criteria)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "timed out")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "timed out")
 	// Check how many messages were sent.
 	// Only 1 should have been sent
-	assert.Equal(t, uint32(1), atomic.LoadUint32(&messagesSent))
+	require.Equal(t, uint32(1), atomic.LoadUint32(&messagesSent))
 }
 
 func TestIdentityExpiration(t *testing.T) {
@@ -1532,7 +1532,7 @@ func waitForTestCompletion(stopFlag *int32, t *testing.T) {
 		return
 	}
 	util.PrintStackTrace()
-	assert.Fail(t, "Didn't stop within a timely manner")
+	require.Fail(t, "Didn't stop within a timely manner")
 }
 
 func stopPeers(peers []*gossipGRPC) {
@@ -1557,7 +1557,7 @@ func waitUntilOrFail(t *testing.T, pred func() bool, context string) {
 		time.Sleep(timeout / 1000)
 	}
 	util.PrintStackTrace()
-	assert.Failf(t, "Timeout expired, while %s", context)
+	require.Failf(t, "Timeout expired, while %s", context)
 }
 
 func waitUntilOrFailBlocking(t *testing.T, f func(), context string) {
@@ -1573,7 +1573,7 @@ func waitUntilOrFailBlocking(t *testing.T, f func(), context string) {
 		return
 	}
 	util.PrintStackTrace()
-	assert.Failf(t, "Timeout expired, while %s", context)
+	require.Failf(t, "Timeout expired, while %s", context)
 }
 
 func checkPeersMembership(t *testing.T, peers []*gossipGRPC, n int) func() bool {
@@ -1583,8 +1583,8 @@ func checkPeersMembership(t *testing.T, peers []*gossipGRPC, n int) func() bool 
 				return false
 			}
 			for _, p := range peer.Peers() {
-				assert.NotNil(t, p.InternalEndpoint)
-				assert.NotEmpty(t, p.Endpoint)
+				require.NotNil(t, p.InternalEndpoint)
+				require.NotEmpty(t, p.Endpoint)
 			}
 		}
 		return true
@@ -1623,11 +1623,11 @@ func TestMembershipMetrics(t *testing.T) {
 
 	// assert channel membership metrics reported with 0 as value
 	wg0.Wait()
-	assert.Equal(t,
+	require.Equal(t,
 		[]string{"channel", "A"},
 		testMetricProvider.FakeTotalGauge.WithArgsForCall(0),
 	)
-	assert.EqualValues(t, 0,
+	require.EqualValues(t, 0,
 		testMetricProvider.FakeTotalGauge.SetArgsForCall(0),
 	)
 
