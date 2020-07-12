@@ -77,10 +77,7 @@ func testMain(m *testing.M) int {
 	}
 
 	if strings.Contains(lib, "softhsm") {
-		tests = append(tests, []testConfig{
-			{256, "SHA2", true, false},
-			{256, "SHA2", true, true},
-		}...)
+		tests = append(tests, testConfig{256, "SHA2", true, true})
 	}
 
 	opts := PKCS11Opts{
