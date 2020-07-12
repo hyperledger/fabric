@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -371,4 +372,33 @@ func TestBCCSPDecodeHookOverride(t *testing.T) {
 	require.NotNil(t, tc.BCCSP)
 	require.NotNil(t, tc.BCCSP.SW)
 	require.Equal(t, 1111, tc.BCCSP.SW.Security)
+}
+
+func TestDurationDecode(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected time.Duration
+	}{
+		{"", 0},
+		{"100", 100 * time.Nanosecond},
+		{"1s", time.Second},
+		{"1m", time.Minute},
+		{"1m1s", 61 * time.Second},
+		{"90s", 90 * time.Second},
+	}
+	for _, tt := range tests {
+		t.Run(tt.expected.String(), func(t *testing.T) {
+			yaml := fmt.Sprintf("---\nDuration: %s\n", tt.input)
+
+			config := New()
+			config.SetConfigName(testConfigName)
+			err := config.ReadConfig(strings.NewReader(yaml))
+			require.NoError(t, err, "error reading config")
+
+			var conf struct{ Duration time.Duration }
+			err = config.EnhancedExactUnmarshal(&conf)
+			require.NoError(t, err, "failed to unmarshal")
+			require.Equal(t, tt.expected, conf.Duration)
+		})
+	}
 }

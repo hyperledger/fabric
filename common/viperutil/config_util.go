@@ -18,7 +18,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Shopify/sarama"
 	version "github.com/hashicorp/go-version"
@@ -215,18 +214,9 @@ func toMapStringInterface(m map[interface{}]interface{}) map[string]interface{} 
 	return result
 }
 
-// customDecodeHook adds the additional functions of parsing durations from strings
-// as well as parsing strings of the format "[thing1, thing2, thing3]" into string slices
-// Note that whitespace around slice elements is removed
+// customDecodeHook parses strings of the format "[thing1, thing2, thing3]"
+// into string slices. Note that whitespace around slice elements is removed.
 func customDecodeHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
-	durationHook := mapstructure.StringToTimeDurationHookFunc()
-	dur, err := mapstructure.DecodeHookExec(durationHook, f, t, data)
-	if err == nil {
-		if _, ok := dur.(time.Duration); ok {
-			return dur, nil
-		}
-	}
-
 	if f.Kind() != reflect.String {
 		return data, nil
 	}
@@ -444,6 +434,7 @@ func (c *ConfigParser) EnhancedExactUnmarshal(output interface{}) error {
 		WeaklyTypedInput: true,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			bccspHook,
+			mapstructure.StringToTimeDurationHookFunc(),
 			customDecodeHook,
 			byteSizeDecodeHook,
 			stringFromFileDecodeHook,
