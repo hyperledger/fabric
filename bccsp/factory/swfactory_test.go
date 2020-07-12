@@ -37,7 +37,7 @@ func TestSWFactoryGetInvalidArgs(t *testing.T) {
 	require.Error(t, err, "Invalid config. It must not be nil.")
 
 	opts := &FactoryOpts{
-		SwOpts: &SwOpts{},
+		SW: &SwOpts{},
 	}
 	_, err = f.Get(opts)
 	require.Error(t, err, "CSP:500 - Failed initializing configuration at [0,]")
@@ -47,9 +47,9 @@ func TestSWFactoryGet(t *testing.T) {
 	f := &SWFactory{}
 
 	opts := &FactoryOpts{
-		SwOpts: &SwOpts{
-			SecLevel:   256,
-			HashFamily: "SHA2",
+		SW: &SwOpts{
+			Security: 256,
+			Hash:     "SHA2",
 		},
 	}
 	csp, err := f.Get(opts)
@@ -57,9 +57,9 @@ func TestSWFactoryGet(t *testing.T) {
 	require.NotNil(t, csp)
 
 	opts = &FactoryOpts{
-		SwOpts: &SwOpts{
-			SecLevel:     256,
-			HashFamily:   "SHA2",
+		SW: &SwOpts{
+			Security:     256,
+			Hash:         "SHA2",
 			FileKeystore: &FileKeystoreOpts{KeyStorePath: os.TempDir()},
 		},
 	}

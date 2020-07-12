@@ -47,9 +47,9 @@ type DeliverServiceConfig struct {
 }
 
 type AddressOverride struct {
-	From        string `mapstructure:"from"`
-	To          string `mapstructure:"to"`
-	CACertsFile string `mapstructure:"caCertsFile"`
+	From        string
+	To          string
+	CACertsFile string
 }
 
 // GlobalConfig obtains a set of configuration from viper, build and returns the config struct.

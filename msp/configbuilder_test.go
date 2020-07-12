@@ -23,63 +23,63 @@ func TestSetupBCCSPKeystoreConfig(t *testing.T) {
 	// Case 1 : Check with empty FactoryOpts
 	rtnConfig := SetupBCCSPKeystoreConfig(nil, keystoreDir)
 	require.NotNil(t, rtnConfig)
-	require.Equal(t, rtnConfig.ProviderName, "SW")
-	require.NotNil(t, rtnConfig.SwOpts)
-	require.NotNil(t, rtnConfig.SwOpts.FileKeystore)
-	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.Equal(t, rtnConfig.Default, "SW")
+	require.NotNil(t, rtnConfig.SW)
+	require.NotNil(t, rtnConfig.SW.FileKeystore)
+	require.Equal(t, rtnConfig.SW.FileKeystore.KeyStorePath, keystoreDir)
 
 	// Case 2 : Check with 'SW' as default provider
 	// Case 2-1 : without SwOpts
 	bccspConfig := &factory.FactoryOpts{
-		ProviderName: "SW",
+		Default: "SW",
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	require.NotNil(t, rtnConfig.SwOpts)
-	require.NotNil(t, rtnConfig.SwOpts.FileKeystore)
-	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.NotNil(t, rtnConfig.SW)
+	require.NotNil(t, rtnConfig.SW.FileKeystore)
+	require.Equal(t, rtnConfig.SW.FileKeystore.KeyStorePath, keystoreDir)
 
 	// Case 2-2 : without SwOpts.FileKeystore
-	bccspConfig.SwOpts = &factory.SwOpts{
-		HashFamily: "SHA2",
-		SecLevel:   256,
+	bccspConfig.SW = &factory.SwOpts{
+		Hash:     "SHA2",
+		Security: 256,
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	require.NotNil(t, rtnConfig.SwOpts.FileKeystore)
-	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.NotNil(t, rtnConfig.SW.FileKeystore)
+	require.Equal(t, rtnConfig.SW.FileKeystore.KeyStorePath, keystoreDir)
 
 	// Case 2-3 : without SwOpts.FileKeystore.KeyStorePath
-	bccspConfig.SwOpts = &factory.SwOpts{
-		HashFamily:   "SHA2",
-		SecLevel:     256,
+	bccspConfig.SW = &factory.SwOpts{
+		Hash:         "SHA2",
+		Security:     256,
 		FileKeystore: &factory.FileKeystoreOpts{},
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.Equal(t, rtnConfig.SW.FileKeystore.KeyStorePath, keystoreDir)
 
 	// Case 2-4 : with empty SwOpts.FileKeystore.KeyStorePath
-	bccspConfig.SwOpts = &factory.SwOpts{
-		HashFamily:   "SHA2",
-		SecLevel:     256,
+	bccspConfig.SW = &factory.SwOpts{
+		Hash:         "SHA2",
+		Security:     256,
 		FileKeystore: &factory.FileKeystoreOpts{KeyStorePath: ""},
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.Equal(t, rtnConfig.SW.FileKeystore.KeyStorePath, keystoreDir)
 
 	// Case 3 : Check with 'PKCS11' as default provider
 	// Case 3-1 : without SwOpts
-	bccspConfig.ProviderName = "PKCS11"
-	bccspConfig.SwOpts = nil
+	bccspConfig.Default = "PKCS11"
+	bccspConfig.SW = nil
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	require.Nil(t, rtnConfig.SwOpts)
+	require.Nil(t, rtnConfig.SW)
 
 	// Case 3-2 : without SwOpts.FileKeystore
-	bccspConfig.SwOpts = &factory.SwOpts{
-		HashFamily: "SHA2",
-		SecLevel:   256,
+	bccspConfig.SW = &factory.SwOpts{
+		Hash:     "SHA2",
+		Security: 256,
 	}
 	rtnConfig = SetupBCCSPKeystoreConfig(bccspConfig, keystoreDir)
-	require.NotNil(t, rtnConfig.SwOpts.FileKeystore)
-	require.Equal(t, rtnConfig.SwOpts.FileKeystore.KeyStorePath, keystoreDir)
+	require.NotNil(t, rtnConfig.SW.FileKeystore)
+	require.Equal(t, rtnConfig.SW.FileKeystore.KeyStorePath, keystoreDir)
 }
 
 func TestGetLocalMspConfig(t *testing.T) {

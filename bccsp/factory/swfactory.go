@@ -37,11 +37,11 @@ func (f *SWFactory) Name() string {
 // Get returns an instance of BCCSP using Opts.
 func (f *SWFactory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 	// Validate arguments
-	if config == nil || config.SwOpts == nil {
+	if config == nil || config.SW == nil {
 		return nil, errors.New("Invalid config. It must not be nil.")
 	}
 
-	swOpts := config.SwOpts
+	swOpts := config.SW
 
 	var ks bccsp.KeyStore
 	switch {
@@ -56,18 +56,18 @@ func (f *SWFactory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 		ks = sw.NewDummyKeyStore()
 	}
 
-	return sw.NewWithParams(swOpts.SecLevel, swOpts.HashFamily, ks)
+	return sw.NewWithParams(swOpts.Security, swOpts.Hash, ks)
 }
 
 // SwOpts contains options for the SWFactory
 type SwOpts struct {
 	// Default algorithms when not specified (Deprecated?)
-	SecLevel     int               `mapstructure:"security" json:"security" yaml:"Security"`
-	HashFamily   string            `mapstructure:"hash" json:"hash" yaml:"Hash"`
-	FileKeystore *FileKeystoreOpts `mapstructure:"filekeystore,omitempty" json:"filekeystore,omitempty" yaml:"FileKeyStore"`
+	Security     int               `json:"security" yaml:"Security"`
+	Hash         string            `json:"hash" yaml:"Hash"`
+	FileKeystore *FileKeystoreOpts `json:"filekeystore,omitempty" yaml:"FileKeyStore,omitempty"`
 }
 
 // Pluggable Keystores, could add JKS, P12, etc..
 type FileKeystoreOpts struct {
-	KeyStorePath string `mapstructure:"keystore" yaml:"KeyStore"`
+	KeyStorePath string `yaml:"KeyStore"`
 }

@@ -137,15 +137,15 @@ func SetupBCCSPKeystoreConfig(bccspConfig *factory.FactoryOpts, keystoreDir stri
 		bccspConfig = factory.GetDefaultOpts()
 	}
 
-	if bccspConfig.ProviderName == "SW" || bccspConfig.SwOpts != nil {
-		if bccspConfig.SwOpts == nil {
-			bccspConfig.SwOpts = factory.GetDefaultOpts().SwOpts
+	if bccspConfig.Default == "SW" || bccspConfig.SW != nil {
+		if bccspConfig.SW == nil {
+			bccspConfig.SW = factory.GetDefaultOpts().SW
 		}
 
 		// Only override the KeyStorePath if it was left empty
-		if bccspConfig.SwOpts.FileKeystore == nil ||
-			bccspConfig.SwOpts.FileKeystore.KeyStorePath == "" {
-			bccspConfig.SwOpts.FileKeystore = &factory.FileKeystoreOpts{KeyStorePath: keystoreDir}
+		if bccspConfig.SW.FileKeystore == nil ||
+			bccspConfig.SW.FileKeystore.KeyStorePath == "" {
+			bccspConfig.SW.FileKeystore = &factory.FileKeystoreOpts{KeyStorePath: keystoreDir}
 		}
 	}
 
