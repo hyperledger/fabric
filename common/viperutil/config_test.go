@@ -369,6 +369,6 @@ func TestBCCSPDecodeHookOverride(t *testing.T) {
 	err = config.EnhancedExactUnmarshal(&tc)
 	require.NoError(t, err, "failed to unmarshal")
 	require.NotNil(t, tc.BCCSP)
-	require.NotNil(t, tc.BCCSP.SwOpts)
-	require.Equal(t, 1111, tc.BCCSP.SwOpts.SecLevel)
+	require.NotNil(t, tc.BCCSP.SW)
+	require.Equal(t, 1111, tc.BCCSP.SW.Security)
 }

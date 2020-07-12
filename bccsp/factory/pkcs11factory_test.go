@@ -30,7 +30,7 @@ func TestPKCS11FactoryGetInvalidArgs(t *testing.T) {
 	require.Error(t, err, "Invalid config. It must not be nil.")
 
 	opts := &FactoryOpts{
-		Pkcs11Opts: &pkcs11.PKCS11Opts{},
+		PKCS11: &pkcs11.PKCS11Opts{},
 	}
 	_, err = f.Get(opts)
 	require.Error(t, err, "CSP:500 - Failed initializing configuration at [0,]")
@@ -41,12 +41,12 @@ func TestPKCS11FactoryGet(t *testing.T) {
 	lib, pin, label := pkcs11.FindPKCS11Lib()
 
 	opts := &FactoryOpts{
-		Pkcs11Opts: &pkcs11.PKCS11Opts{
-			SecLevel:   256,
-			HashFamily: "SHA2",
-			Library:    lib,
-			Pin:        pin,
-			Label:      label,
+		PKCS11: &pkcs11.PKCS11Opts{
+			Security: 256,
+			Hash:     "SHA2",
+			Library:  lib,
+			Pin:      pin,
+			Label:    label,
 		},
 	}
 	csp, err := f.Get(opts)
@@ -54,12 +54,12 @@ func TestPKCS11FactoryGet(t *testing.T) {
 	require.NotNil(t, csp)
 
 	opts = &FactoryOpts{
-		Pkcs11Opts: &pkcs11.PKCS11Opts{
-			SecLevel:   256,
-			HashFamily: "SHA2",
-			Library:    lib,
-			Pin:        pin,
-			Label:      label,
+		PKCS11: &pkcs11.PKCS11Opts{
+			Security: 256,
+			Hash:     "SHA2",
+			Library:  lib,
+			Pin:      pin,
+			Label:    label,
 		},
 	}
 	csp, err = f.Get(opts)
@@ -67,12 +67,12 @@ func TestPKCS11FactoryGet(t *testing.T) {
 	require.NotNil(t, csp)
 
 	opts = &FactoryOpts{
-		Pkcs11Opts: &pkcs11.PKCS11Opts{
-			SecLevel:   256,
-			HashFamily: "SHA2",
-			Library:    lib,
-			Pin:        pin,
-			Label:      label,
+		PKCS11: &pkcs11.PKCS11Opts{
+			Security: 256,
+			Hash:     "SHA2",
+			Library:  lib,
+			Pin:      pin,
+			Label:    label,
 		},
 	}
 	csp, err = f.Get(opts)
@@ -85,12 +85,12 @@ func TestPKCS11FactoryGetEmptyKeyStorePath(t *testing.T) {
 	lib, pin, label := pkcs11.FindPKCS11Lib()
 
 	opts := &FactoryOpts{
-		Pkcs11Opts: &pkcs11.PKCS11Opts{
-			SecLevel:   256,
-			HashFamily: "SHA2",
-			Library:    lib,
-			Pin:        pin,
-			Label:      label,
+		PKCS11: &pkcs11.PKCS11Opts{
+			Security: 256,
+			Hash:     "SHA2",
+			Library:  lib,
+			Pin:      pin,
+			Label:    label,
 		},
 	}
 	csp, err := f.Get(opts)
@@ -98,12 +98,12 @@ func TestPKCS11FactoryGetEmptyKeyStorePath(t *testing.T) {
 	require.NotNil(t, csp)
 
 	opts = &FactoryOpts{
-		Pkcs11Opts: &pkcs11.PKCS11Opts{
-			SecLevel:   256,
-			HashFamily: "SHA2",
-			Library:    lib,
-			Pin:        pin,
-			Label:      label,
+		PKCS11: &pkcs11.PKCS11Opts{
+			Security: 256,
+			Hash:     "SHA2",
+			Library:  lib,
+			Pin:      pin,
+			Label:    label,
 		},
 	}
 	csp, err = f.Get(opts)

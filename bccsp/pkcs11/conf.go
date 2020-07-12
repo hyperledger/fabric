@@ -69,13 +69,13 @@ func (conf *config) setSecurityLevelSHA3(level int) (err error) {
 // PKCS11Opts contains options for the P11Factory
 type PKCS11Opts struct {
 	// Default algorithms when not specified (Deprecated?)
-	SecLevel   int    `mapstructure:"security" json:"security"`
-	HashFamily string `mapstructure:"hash" json:"hash"`
+	Security int    `json:"security"`
+	Hash     string `json:"hash"`
 
 	// PKCS11 options
-	Library    string `mapstructure:"library" json:"library"`
-	Label      string `mapstructure:"label" json:"label"`
-	Pin        string `mapstructure:"pin" json:"pin"`
-	SoftVerify bool   `mapstructure:"softwareverify,omitempty" json:"softwareverify,omitempty"`
-	Immutable  bool   `mapstructure:"immutable,omitempty" json:"immutable,omitempty"`
+	Library        string `json:"library"`
+	Label          string `json:"label"`
+	Pin            string `json:"pin"`
+	SoftwareVerify bool   `json:"softwareverify,omitempty"`
+	Immutable      bool   `json:"immutable,omitempty"`
 }

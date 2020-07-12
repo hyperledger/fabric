@@ -16,13 +16,13 @@ import (
 
 func TestInitFactories(t *testing.T) {
 	err := initFactories(&FactoryOpts{
-		ProviderName: "SW",
-		SwOpts:       &SwOpts{},
+		Default: "SW",
+		SW:      &SwOpts{},
 	})
 	require.EqualError(t, err, "Failed initializing BCCSP: Could not initialize BCCSP SW [Failed initializing configuration at [0,]: Hash Family not supported []]")
 
 	err = initFactories(&FactoryOpts{
-		ProviderName: "PKCS11",
+		Default: "PKCS11",
 	})
 	require.EqualError(t, err, "Could not find default `PKCS11` BCCSP")
 }

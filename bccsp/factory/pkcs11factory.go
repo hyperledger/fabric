@@ -31,11 +31,11 @@ func (f *PKCS11Factory) Name() string {
 // Get returns an instance of BCCSP using Opts.
 func (f *PKCS11Factory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 	// Validate arguments
-	if config == nil || config.Pkcs11Opts == nil {
+	if config == nil || config.PKCS11 == nil {
 		return nil, errors.New("Invalid config. It must not be nil.")
 	}
 
-	p11Opts := config.Pkcs11Opts
+	p11Opts := config.PKCS11
 	ks := sw.NewDummyKeyStore()
 
 	return pkcs11.New(*p11Opts, ks)

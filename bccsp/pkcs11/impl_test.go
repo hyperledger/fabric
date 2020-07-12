@@ -92,9 +92,9 @@ func testMain(m *testing.M) int {
 	for _, config := range tests {
 		currentTestConfig = config
 
-		opts.HashFamily = config.hashFamily
-		opts.SecLevel = config.securityLevel
-		opts.SoftVerify = config.softVerify
+		opts.Hash = config.hashFamily
+		opts.Security = config.securityLevel
+		opts.SoftwareVerify = config.softVerify
 		opts.Immutable = config.immutable
 		fmt.Printf("Immutable = [%v]\n", opts.Immutable)
 		currentBCCSP, err = New(opts, keyStore)
@@ -114,12 +114,12 @@ func testMain(m *testing.M) int {
 
 func TestNew(t *testing.T) {
 	opts := PKCS11Opts{
-		HashFamily: "SHA2",
-		SecLevel:   256,
-		SoftVerify: false,
-		Library:    "lib",
-		Label:      "ForFabric",
-		Pin:        "98765432",
+		Hash:           "SHA2",
+		Security:       256,
+		SoftwareVerify: false,
+		Library:        "lib",
+		Label:          "ForFabric",
+		Pin:            "98765432",
 	}
 
 	// Setup PKCS11 library and provide initial set of values
@@ -180,14 +180,14 @@ func TestFindPKCS11LibEnvVars(t *testing.T) {
 func TestInvalidNewParameter(t *testing.T) {
 	lib, pin, label := FindPKCS11Lib()
 	opts := PKCS11Opts{
-		Library:    lib,
-		Label:      label,
-		Pin:        pin,
-		SoftVerify: true,
+		Library:        lib,
+		Label:          label,
+		Pin:            pin,
+		SoftwareVerify: true,
 	}
 
-	opts.HashFamily = "SHA2"
-	opts.SecLevel = 0
+	opts.Hash = "SHA2"
+	opts.Security = 0
 	r, err := New(opts, currentKS)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
@@ -196,8 +196,8 @@ func TestInvalidNewParameter(t *testing.T) {
 		t.Fatal("Return value should be equal to nil in this case")
 	}
 
-	opts.HashFamily = "SHA8"
-	opts.SecLevel = 256
+	opts.Hash = "SHA8"
+	opts.Security = 256
 	r, err = New(opts, currentKS)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
@@ -206,8 +206,8 @@ func TestInvalidNewParameter(t *testing.T) {
 		t.Fatal("Return value should be equal to nil in this case")
 	}
 
-	opts.HashFamily = "SHA2"
-	opts.SecLevel = 256
+	opts.Hash = "SHA2"
+	opts.Security = 256
 	r, err = New(opts, nil)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
@@ -216,8 +216,8 @@ func TestInvalidNewParameter(t *testing.T) {
 		t.Fatal("Return value should be equal to nil in this case")
 	}
 
-	opts.HashFamily = "SHA3"
-	opts.SecLevel = 0
+	opts.Hash = "SHA3"
+	opts.Security = 0
 	r, err = New(opts, nil)
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")

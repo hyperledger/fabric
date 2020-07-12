@@ -20,10 +20,6 @@ import (
 var logger = flogging.MustGetLogger("localconfig")
 
 // TopLevel directly corresponds to the orderer config YAML.
-// Note, for non 1-1 mappings, you may append
-// something like `mapstructure:"weirdFoRMat"` to
-// modify the default mapping, see the "Unmarshal"
-// section of https://github.com/spf13/viper for more info.
 type TopLevel struct {
 	General              General
 	FileLedger           FileLedger
