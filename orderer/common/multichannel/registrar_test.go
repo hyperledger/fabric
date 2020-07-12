@@ -73,6 +73,12 @@ type signerSerializer interface {
 	identity.SignerSerializer
 }
 
+//go:generate counterfeiter -o mocks/consenter.go --fake-name Consenter . consenter
+type consenter interface {
+	consensus.Consenter
+	consensus.ClusterConsenter
+}
+
 func mockCrypto() *mocks.SignerSerializer {
 	return &mocks.SignerSerializer{}
 }
@@ -164,12 +170,11 @@ func TestNewRegistrar(t *testing.T) {
 		lf, err := fileledger.New(tmpdir, &disabled.Provider{})
 		require.NoError(t, err)
 
-		consenters := make(map[string]consensus.Consenter)
-		consenters["etcdraft"] = &mockConsenter{}
+		consenters := map[string]consensus.Consenter{"etcdraft": &mocks.Consenter{}}
 
 		var manager *Registrar
 		require.NotPanics(t, func() {
-			manager = NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+			manager = NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 			manager.Initialize(consenters)
 		}, "Should not panic when starting without a system channel")
 		require.NotNil(t, manager)
@@ -197,11 +202,12 @@ func TestNewRegistrar(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		consenters := make(map[string]consensus.Consenter)
-		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChain)
+		consenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter}
 
 		require.Panics(t, func() {
-			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider).Initialize(consenters)
+			NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil).Initialize(consenters)
 		}, "Two system channels should have caused panic")
 	})
 
@@ -213,10 +219,11 @@ func TestNewRegistrar(t *testing.T) {
 
 		lf, rl := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
-		consenters := make(map[string]consensus.Consenter)
-		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChain)
+		consenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter}
 
-		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		manager.Initialize(consenters)
 
 		chainSupport := manager.GetChain("Fake")
@@ -262,10 +269,11 @@ func TestCreateChain(t *testing.T) {
 
 		lf, _ := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
-		consenters := make(map[string]consensus.Consenter)
-		consenters[confSys.Orderer.OrdererType] = &mockConsenter{cluster: true}
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChainCluster)
+		consenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter}
 
-		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		manager.Initialize(consenters)
 
 		ledger, err := lf.GetOrCreate("mychannel")
@@ -329,10 +337,11 @@ func TestCreateChain(t *testing.T) {
 
 		lf, rl := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
 
-		consenters := make(map[string]consensus.Consenter)
-		consenters[confSys.Orderer.OrdererType] = &mockConsenter{}
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChain)
+		consenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter}
 
-		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		manager.Initialize(consenters)
 		orglessChannelConf := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
 		orglessChannelConf.Application.Organizations = nil
@@ -484,8 +493,10 @@ func TestBroadcastChannelSupport(t *testing.T) {
 		defer os.RemoveAll(tmpdir)
 
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
-		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
-		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChain)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter}
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
 		randomValue := 1
 		configTx := makeConfigTx("testchannelid", randomValue)
@@ -499,11 +510,13 @@ func TestBroadcastChannelSupport(t *testing.T) {
 		defer os.RemoveAll(tmpdir)
 
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
-		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}, "etcdraft": &mockConsenter{}}
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChain)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter, "etcdraft": &mocks.Consenter{}}
 		config := localconfig.TopLevel{}
 		config.General.BootstrapMethod = "none"
 		config.General.GenesisFile = ""
-		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
 		configTx := makeConfigTxFull("testchannelid", 1)
 		_, _, _, err = registrar.BroadcastChannelSupport(configTx)
@@ -530,8 +543,10 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		defer os.RemoveAll(tmpdir)
 
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "sys-channel", genesisBlockSys)
-		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}}
-		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChain)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter}
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
 
 		info, err := registrar.JoinChannel("some-app-channel", &cb.Block{}, true)
@@ -545,11 +560,13 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		defer os.RemoveAll(tmpdir)
 
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
-		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}, "etcdraft": &mockConsenter{}}
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChain)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter, "etcdraft": &mocks.Consenter{}}
 		config := localconfig.TopLevel{}
 		config.General.BootstrapMethod = "none"
 		config.General.GenesisFile = ""
-		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
 
 		ledger, err := ledgerFactory.GetOrCreate("my-channel")
@@ -573,11 +590,13 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		defer os.RemoveAll(tmpdir)
 
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
-		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}, "etcdraft": &mockConsenter{}}
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChain)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter, "etcdraft": &mocks.Consenter{}}
 		config := localconfig.TopLevel{}
 		config.General.BootstrapMethod = "none"
 		config.General.GenesisFile = ""
-		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
 
 		ledger, err := ledgerFactory.GetOrCreate("my-channel")
@@ -601,12 +620,12 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		defer os.RemoveAll(tmpdir)
 
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
-		mockConsenters := map[string]consensus.Consenter{"not-raft": &mockConsenter{}}
+		mockConsenters := map[string]consensus.Consenter{"not-raft": &mocks.Consenter{}}
 
 		config := localconfig.TopLevel{}
 		config.General.BootstrapMethod = "none"
 		config.General.GenesisFile = ""
-		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 
 		require.Panics(t, func() { registrar.Initialize(mockConsenters) })
 	})
@@ -628,11 +647,15 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		require.NotNil(t, genesisBlockAppRaft)
 
 		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
-		mockConsenters := map[string]consensus.Consenter{confAppRaft.Orderer.OrdererType: &mockConsenter{cluster: true}}
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChainCluster)
+		consenter.IsChannelMemberReturns(true, nil)
+		mockConsenters := map[string]consensus.Consenter{confAppRaft.Orderer.OrdererType: consenter}
+
 		config := localconfig.TopLevel{}
 		config.General.BootstrapMethod = "none"
 		config.General.GenesisFile = ""
-		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
 
 		// Before join the chain, it doesn't exist

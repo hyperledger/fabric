@@ -20,10 +20,10 @@ import (
 
 //go:generate counterfeiter -o mocks/block_puller_support.go -fake-name BlockPullerSupport . BlockPullerSupport
 
+// TODO refactor get rid of support: break this in two - "signature-verifier" & "signer"
 type BlockPullerSupport interface {
 	cluster.BlockVerifier
 	identity.SignerSerializer
-	ChannelID() string
 }
 
 //go:generate counterfeiter -o mocks/channel_puller.go -fake-name ChannelPuller . ChannelPuller
@@ -39,6 +39,7 @@ type ChannelPuller interface {
 // This block puller is used for on-boarding, when join-block.Number >= ledger.Height().
 func BlockPullerFromJoinBlock(
 	joinBlock *common.Block,
+	channelID string,
 	support BlockPullerSupport,
 	baseDialer *cluster.PredicateDialer,
 	clusterConfig localconfig.Cluster,
@@ -49,7 +50,7 @@ func BlockPullerFromJoinBlock(
 	}
 
 	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
-		return cluster.VerifyBlocks(blocks, support)
+		return cluster.VerifyBlocks(blocks, support) // TODO refactor get rid of support: pass a "signature-verifier"
 	}
 
 	stdDialer := &cluster.StandardDialer{
@@ -72,14 +73,14 @@ func BlockPullerFromJoinBlock(
 
 	bp := &cluster.BlockPuller{
 		VerifyBlockSequence: verifyBlockSequence,
-		Logger:              flogging.MustGetLogger("orderer.common.cluster.puller").With("channel", support.ChannelID()),
+		Logger:              flogging.MustGetLogger("orderer.common.cluster.puller").With("channel", channelID),
 		RetryTimeout:        clusterConfig.ReplicationRetryTimeout,
 		MaxTotalBufferBytes: clusterConfig.ReplicationBufferSize,
 		FetchTimeout:        clusterConfig.ReplicationPullTimeout,
 		Endpoints:           endpoints,
-		Signer:              support,
+		Signer:              support, //TODO refactor get rid of support: pass a "signer"
 		TLSCert:             der.Bytes,
-		Channel:             support.ChannelID(),
+		Channel:             channelID,
 		Dialer:              stdDialer,
 	}
 

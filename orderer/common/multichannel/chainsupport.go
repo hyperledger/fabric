@@ -77,16 +77,16 @@ func newChainSupport(
 	// Set up the block writer
 	cs.BlockWriter = newBlockWriter(lastBlock, registrar, cs)
 
-	// Set up the consenter
+	// Set up the clusterConsenter
 	consenterType := ledgerResources.SharedConfig().ConsensusType()
 	consenter, ok := consenters[consenterType]
 	if !ok {
-		return nil, errors.Errorf("error retrieving consenter of type: %s", consenterType)
+		return nil, errors.Errorf("error retrieving clusterConsenter of type: %s", consenterType)
 	}
 
 	cs.Chain, err = consenter.HandleChain(cs, metadata)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating consenter for channel: %s", cs.ChannelID())
+		return nil, errors.Wrapf(err, "error creating clusterConsenter for channel: %s", cs.ChannelID())
 	}
 
 	cs.MetadataValidator, ok = cs.Chain.(consensus.MetadataValidator)
@@ -104,69 +104,7 @@ func newChainSupport(
 	return cs, nil
 }
 
-func newChainSupportForJoin(
-	joinBlock *cb.Block,
-	registrar *Registrar,
-	ledgerResources *ledgerResources,
-	consenters map[string]consensus.Consenter,
-	signer identity.SignerSerializer,
-	blockcutterMetrics *blockcutter.Metrics,
-	bccsp bccsp.BCCSP,
-) (*ChainSupport, error) {
-
-	if joinBlock.Header.Number == 0 {
-		err := ledgerResources.Append(joinBlock)
-		if err != nil {
-			return nil, errors.Wrap(err, "error appending join block to the ledger")
-		}
-		return newChainSupport(registrar, ledgerResources, consenters, signer, blockcutterMetrics, bccsp)
-	}
-
-	// Construct limited support needed as a parameter for additional support
-	cs := &ChainSupport{
-		ledgerResources:  ledgerResources,
-		SignerSerializer: signer,
-		cutter: blockcutter.NewReceiverImpl(
-			ledgerResources.ConfigtxValidator().ChannelID(),
-			ledgerResources,
-			blockcutterMetrics,
-		),
-		BCCSP: bccsp,
-	}
-
-	// Set up the msgprocessor
-	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, registrar.config), bccsp)
-	// No BlockWriter, this will be created when the chain gets converted from follower.Chain to etcdraft.Chain
-	cs.BlockWriter = nil //TODO change embedding of BlockWriter struct to interface, and put here a NoOp implementation or one that panics if used
-
-	// Get the consenter
-	consenterType := ledgerResources.SharedConfig().ConsensusType()
-	consenter, ok := consenters[consenterType]
-	if !ok {
-		return nil, errors.Errorf("error retrieving consenter of type: %s", consenterType)
-	}
-
-	var err error
-	cs.Chain, err = consenter.JoinChain(cs, joinBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	cs.MetadataValidator, ok = cs.Chain.(consensus.MetadataValidator)
-	if !ok {
-		cs.MetadataValidator = consensus.NoOpMetadataValidator{}
-	}
-
-	cs.StatusReporter, ok = cs.Chain.(consensus.StatusReporter)
-	if !ok { // Non-cluster types: solo, kafka
-		cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: types.ClusterRelationNone, Status: types.StatusActive}
-	}
-
-	logger.Debugf("[channel: %s] Done creating channel support resources for join", cs.ChannelID())
-
-	return cs, nil
-}
-
+// TODO Move this method and associated test to ledgerResources struct, to it can be shared with the FollowerResources struct.
 // Block returns a block with the following number,
 // or nil if such a block doesn't exist.
 func (cs *ChainSupport) Block(number uint64) *cb.Block {
@@ -239,6 +177,7 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 	return env, nil
 }
 
+// TODO Move this method and associated test to ledgerResources struct, to it can be shared with the FollowerResources struct.
 // ChannelID passes through to the underlying configtx.Validator
 func (cs *ChainSupport) ChannelID() string {
 	return cs.ConfigtxValidator().ChannelID()
@@ -260,6 +199,7 @@ func (cs *ChainSupport) Append(block *cb.Block) error {
 	return cs.ledgerResources.ReadWriter.Append(block)
 }
 
+// TODO Move this method and associated test to ledgerResources struct, to it can be shared with the FollowerResources struct.
 // VerifyBlockSignature verifies a signature of a block.
 // It has an optional argument of a configuration envelope
 // which would make the block verification to use validation rules
