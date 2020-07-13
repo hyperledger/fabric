@@ -27,7 +27,7 @@ import (
 // TestEnv provides the bookkeeper provider env for testing
 type TestEnv struct {
 	t            testing.TB
-	TestProvider Provider
+	TestProvider *Provider
 	dbPath       string
 }
 

@@ -39,7 +39,7 @@ type expiryInfoKey struct {
 	expiryBlk     uint64
 }
 
-func newExpiryKeeper(ledgerid string, provider bookkeeping.Provider) *expiryKeeper {
+func newExpiryKeeper(ledgerid string, provider *bookkeeping.Provider) *expiryKeeper {
 	return &expiryKeeper{provider.GetDBHandle(ledgerid, bookkeeping.PvtdataExpiry)}
 }
 

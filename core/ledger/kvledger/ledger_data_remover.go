@@ -19,7 +19,7 @@ type ledgerDataRemover struct {
 	blkStoreProvider     *blkstorage.BlockStoreProvider
 	statedbProvider      *privacyenabledstate.DBProvider
 	configHistoryMgr     *confighistory.Mgr
-	bookkeepingProvider  bookkeeping.Provider
+	bookkeepingProvider  *bookkeeping.Provider
 	historydbProvider    *history.DBProvider
 	pvtdataStoreProvider *pvtdatastorage.Provider
 }

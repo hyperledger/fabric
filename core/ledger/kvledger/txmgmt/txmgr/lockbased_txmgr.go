@@ -93,7 +93,7 @@ type Initializer struct {
 	DB                  *privacyenabledstate.DB
 	StateListeners      []ledger.StateListener
 	BtlPolicy           pvtdatapolicy.BTLPolicy
-	BookkeepingProvider bookkeeping.Provider
+	BookkeepingProvider *bookkeeping.Provider
 	CCInfoProvider      ledger.DeployedChaincodeInfoProvider
 	CustomTxProcessors  map[common.HeaderType]ledger.CustomTxProcessor
 	HashFunc            rwsetutil.HashFunc

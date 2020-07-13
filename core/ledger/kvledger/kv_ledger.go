@@ -51,7 +51,7 @@ type kvLedger struct {
 	txmgr                  *txmgr.LockBasedTxMgr
 	historyDB              *history.DB
 	configHistoryRetriever *confighistory.Retriever
-	bookkeepingProvider    bookkeeping.Provider
+	bookkeepingProvider    *bookkeeping.Provider
 	blockAPIsRWLock        *sync.RWMutex
 	stats                  *ledgerStats
 	commitHash             []byte
@@ -71,7 +71,7 @@ type lgrInitializer struct {
 	historyDB                *history.DB
 	configHistoryMgr         *confighistory.Mgr
 	stateListeners           []ledger.StateListener
-	bookkeeperProvider       bookkeeping.Provider
+	bookkeeperProvider       *bookkeeping.Provider
 	ccInfoProvider           ledger.DeployedChaincodeInfoProvider
 	ccLifecycleEventProvider ledger.ChaincodeLifecycleEventProvider
 	stats                    *ledgerStats

@@ -45,7 +45,7 @@ type keyAndVersion struct {
 }
 
 // InstantiatePurgeMgr instantiates a PurgeMgr.
-func InstantiatePurgeMgr(ledgerid string, db *privacyenabledstate.DB, btlPolicy pvtdatapolicy.BTLPolicy, bookkeepingProvider bookkeeping.Provider) (*PurgeMgr, error) {
+func InstantiatePurgeMgr(ledgerid string, db *privacyenabledstate.DB, btlPolicy pvtdatapolicy.BTLPolicy, bookkeepingProvider *bookkeeping.Provider) (*PurgeMgr, error) {
 	return &PurgeMgr{
 		btlPolicy: btlPolicy,
 		db:        db,

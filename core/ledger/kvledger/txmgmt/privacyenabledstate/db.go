@@ -48,12 +48,12 @@ type StateDBConfig struct {
 type DBProvider struct {
 	VersionedDBProvider statedb.VersionedDBProvider
 	HealthCheckRegistry ledger.HealthCheckRegistry
-	bookkeepingProvider bookkeeping.Provider
+	bookkeepingProvider *bookkeeping.Provider
 }
 
 // NewDBProvider constructs an instance of DBProvider
 func NewDBProvider(
-	bookkeeperProvider bookkeeping.Provider,
+	bookkeeperProvider *bookkeeping.Provider,
 	metricsProvider metrics.Provider,
 	healthCheckRegistry ledger.HealthCheckRegistry,
 	stateDBConf *StateDBConfig,
