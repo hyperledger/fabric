@@ -20,6 +20,8 @@ const (
 	PvtdataExpiry Category = iota
 	// MetadataPresenceIndicator maintains the bookkeeping about whether metadata is ever set for a namespace
 	MetadataPresenceIndicator
+	// SnapshotRequest maintains the information for snapshot requests
+	SnapshotRequest
 )
 
 // Provider provides handle to different bookkeepers for the given ledger
@@ -57,10 +59,12 @@ func (provider *provider) Close() {
 
 // Drop drops channel-specific data from the config history db
 func (provider *provider) Drop(ledgerID string) error {
-	if err := provider.dbProvider.Drop(dbName(ledgerID, PvtdataExpiry)); err != nil {
-		return err
+	for _, cat := range []Category{PvtdataExpiry, MetadataPresenceIndicator, SnapshotRequest} {
+		if err := provider.dbProvider.Drop(dbName(ledgerID, cat)); err != nil {
+			return err
+		}
 	}
-	return provider.dbProvider.Drop(dbName(ledgerID, MetadataPresenceIndicator))
+	return nil
 }
 
 func dbName(ledgerID string, cat Category) string {

@@ -29,12 +29,21 @@ func TestProvider(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("value2"), val)
 
+	snapshotRequestDB := p.GetDBHandle("TestLedger", SnapshotRequest)
+	require.NoError(t, snapshotRequestDB.Put([]byte("key3"), []byte("value3"), true))
+	val, err = snapshotRequestDB.Get([]byte("key3"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("value3"), val)
+
 	require.NoError(t, p.Drop("TestLedger"))
 
 	val, err = pvtdataExpiryDB.Get([]byte("key1"))
 	require.NoError(t, err)
 	require.Nil(t, val)
 	val, err = metadataIndicatorDB.Get([]byte("key2"))
+	require.NoError(t, err)
+	require.Nil(t, val)
+	val, err = snapshotRequestDB.Get([]byte("key3"))
 	require.NoError(t, err)
 	require.Nil(t, val)
 

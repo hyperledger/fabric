@@ -51,6 +51,7 @@ type kvLedger struct {
 	txmgr                  *txmgr.LockBasedTxMgr
 	historyDB              *history.DB
 	configHistoryRetriever *confighistory.Retriever
+	bookkeepingProvider    bookkeeping.Provider
 	blockAPIsRWLock        *sync.RWMutex
 	stats                  *ledgerStats
 	commitHash             []byte
@@ -83,13 +84,14 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 	ledgerID := initializer.ledgerID
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	l := &kvLedger{
-		ledgerID:        ledgerID,
-		blockStore:      initializer.blockStore,
-		pvtdataStore:    initializer.pvtdataStore,
-		historyDB:       initializer.historyDB,
-		hashProvider:    initializer.hashProvider,
-		config:          initializer.config,
-		blockAPIsRWLock: &sync.RWMutex{},
+		ledgerID:            ledgerID,
+		blockStore:          initializer.blockStore,
+		pvtdataStore:        initializer.pvtdataStore,
+		historyDB:           initializer.historyDB,
+		bookkeepingProvider: initializer.bookkeeperProvider,
+		hashProvider:        initializer.hashProvider,
+		config:              initializer.config,
+		blockAPIsRWLock:     &sync.RWMutex{},
 	}
 
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, initializer.ccInfoProvider})
