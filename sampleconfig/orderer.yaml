@@ -148,19 +148,13 @@ General:
 #
 #   SECTION: File Ledger
 #
-#   - This section applies to the configuration of the file or json ledgers.
+#   - This section applies to the configuration of the file ledger.
 #
 ################################################################################
 FileLedger:
 
     # Location: The directory to store the blocks in.
-    # NOTE: If this is unset, a new temporary location will be chosen every time
-    # the orderer is restarted, using the prefix specified by Prefix.
     Location: /var/hyperledger/production/orderer
-
-    # The prefix to use when generating a ledger directory in temporary space.
-    # Otherwise, this value is ignored.
-    Prefix: hyperledger-fabric-ordererledger
 
 ################################################################################
 #

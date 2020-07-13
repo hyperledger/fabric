@@ -53,7 +53,6 @@ General:
     TimeWindow: 15m
 FileLedger:
   Location: {{ .OrdererDir Orderer }}/system
-  Prefix: hyperledger-fabric-ordererledger
 {{ if eq .Consensus.Type "kafka" -}}
 Kafka:
   Retry:
