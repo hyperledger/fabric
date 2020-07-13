@@ -168,7 +168,7 @@ func (env *CouchDBTestEnv) Init(t testing.TB) {
 
 	stateDBConfig := &StateDBConfig{
 		StateDBConfig: &ledger.StateDBConfig{
-			StateDatabase: "CouchDB",
+			StateDatabase: ledger.CouchDB,
 			CouchDB: &ledger.CouchDBConfig{
 				Address:             env.couchAddress,
 				Username:            "admin",

@@ -236,7 +236,7 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 
 	if initializer.Config.StateDBConfig == nil {
 		initializer.Config.StateDBConfig = &ledger.StateDBConfig{
-			StateDatabase: "goleveldb",
+			StateDatabase: ledger.GoLevelDB,
 		}
 	}
 

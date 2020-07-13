@@ -48,7 +48,7 @@ func newChainsMgr(mgrConf *ChainMgrConf, batchConf *BatchConf, initOp chainInitO
 		if !set {
 			panic("environment variable 'useCouchDB' is set to true but 'COUCHDB_ADDR' is not set")
 		}
-		ledgermgmtInitializer.Config.StateDBConfig.StateDatabase = "CouchDB"
+		ledgermgmtInitializer.Config.StateDBConfig.StateDatabase = ledger.CouchDB
 		ledgermgmtInitializer.Config.StateDBConfig.CouchDB = &ledger.CouchDBConfig{
 			Address:            couchdbAddr,
 			RedoLogPath:        filepath.Join(dataDir, "couchdbRedologs"),

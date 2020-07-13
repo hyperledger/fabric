@@ -47,12 +47,18 @@ func TestGenerateSnapshot(t *testing.T) {
 	kvlgr := lgr.(*kvLedger)
 	require.NoError(t, kvlgr.generateSnapshot())
 	verifySnapshotOutput(t,
-		snapshotRootDir,
-		kvlgr.ledgerID,
-		1,
-		protoutil.BlockHeaderHash(genesisBlk.Header),
-		kvlgr.commitHash,
-		"txids.data", "txids.metadata",
+		&expectedSnapshotOutput{
+			snapshotRootDir:   snapshotRootDir,
+			ledgerID:          kvlgr.ledgerID,
+			ledgerHeight:      1,
+			lastBlockHash:     protoutil.BlockHeaderHash(genesisBlk.Header),
+			previousBlockHash: genesisBlk.Header.PreviousHash,
+			lastCommitHash:    kvlgr.commitHash,
+			stateDBType:       simpleKeyValueDB,
+			expectedBinaryFiles: []string{
+				"txids.data", "txids.metadata",
+			},
+		},
 	)
 
 	// add block-1 only with public state data and generate the snapshot
@@ -63,13 +69,19 @@ func TestGenerateSnapshot(t *testing.T) {
 	require.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata1, &ledger.CommitOptions{}))
 	require.NoError(t, kvlgr.generateSnapshot())
 	verifySnapshotOutput(t,
-		snapshotRootDir,
-		kvlgr.ledgerID,
-		2,
-		protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header),
-		kvlgr.commitHash,
-		"txids.data", "txids.metadata",
-		"public_state.data", "public_state.metadata",
+		&expectedSnapshotOutput{
+			snapshotRootDir:   snapshotRootDir,
+			ledgerID:          kvlgr.ledgerID,
+			ledgerHeight:      2,
+			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header),
+			previousBlockHash: blockAndPvtdata1.Block.Header.PreviousHash,
+			lastCommitHash:    kvlgr.commitHash,
+			stateDBType:       simpleKeyValueDB,
+			expectedBinaryFiles: []string{
+				"txids.data", "txids.metadata",
+				"public_state.data", "public_state.metadata",
+			},
+		},
 	)
 
 	// add block-2 only with public and private data and generate the snapshot
@@ -80,14 +92,20 @@ func TestGenerateSnapshot(t *testing.T) {
 	require.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata2, &ledger.CommitOptions{}))
 	require.NoError(t, kvlgr.generateSnapshot())
 	verifySnapshotOutput(t,
-		snapshotRootDir,
-		kvlgr.ledgerID,
-		3,
-		protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header),
-		kvlgr.commitHash,
-		"txids.data", "txids.metadata",
-		"public_state.data", "public_state.metadata",
-		"private_state_hashes.data", "private_state_hashes.metadata",
+		&expectedSnapshotOutput{
+			snapshotRootDir:   snapshotRootDir,
+			ledgerID:          kvlgr.ledgerID,
+			ledgerHeight:      3,
+			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header),
+			previousBlockHash: blockAndPvtdata2.Block.Header.PreviousHash,
+			lastCommitHash:    kvlgr.commitHash,
+			stateDBType:       simpleKeyValueDB,
+			expectedBinaryFiles: []string{
+				"txids.data", "txids.metadata",
+				"public_state.data", "public_state.metadata",
+				"private_state_hashes.data", "private_state_hashes.metadata",
+			},
+		},
 	)
 
 	// add dummy entry in collection config history and commit block-3 and generate the snapshot
@@ -99,15 +117,42 @@ func TestGenerateSnapshot(t *testing.T) {
 	require.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata3, &ledger.CommitOptions{}))
 	require.NoError(t, kvlgr.generateSnapshot())
 	verifySnapshotOutput(t,
-		snapshotRootDir,
-		kvlgr.ledgerID,
-		4,
-		protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
-		kvlgr.commitHash,
-		"txids.data", "txids.metadata",
-		"public_state.data", "public_state.metadata",
-		"private_state_hashes.data", "private_state_hashes.metadata",
-		"confighistory.data", "confighistory.metadata",
+		&expectedSnapshotOutput{
+			snapshotRootDir:   snapshotRootDir,
+			ledgerID:          kvlgr.ledgerID,
+			ledgerHeight:      4,
+			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
+			previousBlockHash: blockAndPvtdata3.Block.Header.PreviousHash,
+			lastCommitHash:    kvlgr.commitHash,
+			stateDBType:       simpleKeyValueDB,
+			expectedBinaryFiles: []string{
+				"txids.data", "txids.metadata",
+				"public_state.data", "public_state.metadata",
+				"private_state_hashes.data", "private_state_hashes.metadata",
+				"confighistory.data", "confighistory.metadata",
+			},
+		},
+	)
+}
+
+func TestSnapshotDBTypeCouchDB(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+	defer provider.Close()
+	lgr, err := provider.open("testLedger")
+	require.NoError(t, err)
+	kvlgr := lgr.(*kvLedger)
+
+	// artificially set the db type
+	kvlgr.config.StateDBConfig.StateDatabase = ledger.CouchDB
+	require.NoError(t, kvlgr.generateSnapshot())
+	verifySnapshotOutput(t,
+		&expectedSnapshotOutput{
+			snapshotRootDir: conf.SnapshotsConfig.RootDir,
+			ledgerID:        kvlgr.ledgerID,
+			stateDBType:     ledger.CouchDB,
+		},
 	)
 }
 
@@ -268,27 +313,33 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 	})
 }
 
+type expectedSnapshotOutput struct {
+	snapshotRootDir     string
+	ledgerID            string
+	ledgerHeight        uint64
+	lastBlockHash       []byte
+	previousBlockHash   []byte
+	lastCommitHash      []byte
+	stateDBType         string
+	expectedBinaryFiles []string
+}
+
 func verifySnapshotOutput(
 	t *testing.T,
-	snapshotRootDir string,
-	ledgerID string,
-	ledgerHeight uint64,
-	lastBlockHash []byte,
-	lastCommitHash []byte,
-	expectedBinaryFiles ...string,
+	o *expectedSnapshotOutput,
 ) {
-	inProgressSnapshotsPath := InProgressSnapshotsPath(snapshotRootDir)
+	inProgressSnapshotsPath := InProgressSnapshotsPath(o.snapshotRootDir)
 	f, err := ioutil.ReadDir(inProgressSnapshotsPath)
 	require.NoError(t, err)
 	require.Len(t, f, 0)
 
-	snapshotDir := SnapshotDirForLedgerHeight(snapshotRootDir, ledgerID, ledgerHeight)
+	snapshotDir := SnapshotDirForLedgerHeight(o.snapshotRootDir, o.ledgerID, o.ledgerHeight)
 	files, err := ioutil.ReadDir(snapshotDir)
 	require.NoError(t, err)
-	require.Len(t, files, len(expectedBinaryFiles)+2) // + 2 JSON files
+	require.Len(t, files, len(o.expectedBinaryFiles)+2) // + 2 JSON files
 
 	filesAndHashes := map[string]string{}
-	for _, f := range expectedBinaryFiles {
+	for _, f := range o.expectedBinaryFiles {
 		c, err := ioutil.ReadFile(filepath.Join(snapshotDir, f))
 		require.NoError(t, err)
 		filesAndHashes[f] = hex.EncodeToString(util.ComputeSHA256(c))
@@ -299,12 +350,19 @@ func verifySnapshotOutput(
 	mJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, snapshotMetadataFileName))
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(mJSON, m))
+
+	previousBlockHashHex := ""
+	if o.previousBlockHash != nil {
+		previousBlockHashHex = hex.EncodeToString(o.previousBlockHash)
+	}
 	require.Equal(t,
 		&snapshotSignableMetadata{
-			ChannelName:        ledgerID,
-			ChannelHeight:      ledgerHeight,
-			LastBlockHashInHex: hex.EncodeToString(lastBlockHash),
-			FilesAndHashes:     filesAndHashes,
+			ChannelName:            o.ledgerID,
+			ChannelHeight:          o.ledgerHeight,
+			LastBlockHashInHex:     hex.EncodeToString(o.lastBlockHash),
+			PreviousBlockHashInHex: previousBlockHashHex,
+			StateDBType:            o.stateDBType,
+			FilesAndHashes:         filesAndHashes,
 		},
 		m,
 	)
@@ -317,7 +375,7 @@ func verifySnapshotOutput(
 	require.Equal(t,
 		&snapshotAdditionalInfo{
 			SnapshotHashInHex:        hex.EncodeToString(util.ComputeSHA256(mJSON)),
-			LastBlockCommitHashInHex: hex.EncodeToString(lastCommitHash),
+			LastBlockCommitHashInHex: hex.EncodeToString(o.lastCommitHash),
 		},
 		mh,
 	)

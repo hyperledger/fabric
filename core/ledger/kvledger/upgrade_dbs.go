@@ -30,7 +30,7 @@ func UpgradeDBs(config *ledger.Config) error {
 
 	logger.Infof("Ledger data folder from config = [%s]", rootFSPath)
 
-	if config.StateDBConfig.StateDatabase == "CouchDB" {
+	if config.StateDBConfig.StateDatabase == ledger.CouchDB {
 		if err := statecouchdb.DropApplicationDBs(config.StateDBConfig.CouchDB); err != nil {
 			return err
 		}

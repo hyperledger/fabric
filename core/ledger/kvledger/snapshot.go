@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 )
@@ -23,16 +24,19 @@ const (
 	snapshotMetadataFileName     = "_snapshot_signable_metadata.json"
 	snapshotMetadataHashFileName = "_snapshot_additional_info.json"
 	jsonFileIndent               = "    "
+	simpleKeyValueDB             = "SimpleKeyValueDB"
 )
 
 // snapshotSignableMetadata is used to build a JSON that represents a unique snapshot and
 // can be signed by the peer. Hashsum of the resultant JSON is intended to be used as a single
 // hash of the snapshot, if need be.
 type snapshotSignableMetadata struct {
-	ChannelName        string            `json:"channel_name"`
-	ChannelHeight      uint64            `json:"channel_height"`
-	LastBlockHashInHex string            `json:"last_block_hash"`
-	FilesAndHashes     map[string]string `json:"snapshot_files_raw_hashes"`
+	ChannelName            string            `json:"channel_name"`
+	ChannelHeight          uint64            `json:"channel_height"`
+	LastBlockHashInHex     string            `json:"last_block_hash"`
+	PreviousBlockHashInHex string            `json:"previous_block_hash"`
+	FilesAndHashes         map[string]string `json:"snapshot_files_raw_hashes"`
+	StateDBType            string            `json:"state_db_type"`
 }
 
 type snapshotAdditionalInfo struct {
@@ -43,7 +47,7 @@ type snapshotAdditionalInfo struct {
 // generateSnapshot generates a snapshot. This function should be invoked when commit on the kvledger are paused
 // after committing the last block fully and further the commits should not be resumed till this function finishes
 func (l *kvLedger) generateSnapshot() error {
-	snapshotsRootDir := l.snapshotsConfig.RootDir
+	snapshotsRootDir := l.config.SnapshotsConfig.RootDir
 	bcInfo, err := l.GetBlockchainInfo()
 	if err != nil {
 		return err
@@ -87,7 +91,7 @@ func (l *kvLedger) generateSnapshot() error {
 	if err := fileutil.SyncParentDir(slgr); err != nil {
 		return err
 	}
-	slgrht := SnapshotDirForLedgerHeight(l.snapshotsConfig.RootDir, l.ledgerID, bcInfo.Height)
+	slgrht := SnapshotDirForLedgerHeight(snapshotsRootDir, l.ledgerID, bcInfo.Height)
 	if err := os.Rename(snapshotTempDir, slgrht); err != nil {
 		return errors.Wrapf(err, "error while renaming dir [%s] to [%s]:", snapshotTempDir, slgrht)
 	}
@@ -114,12 +118,19 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	if err != nil {
 		return err
 	}
+
+	stateDBType := l.config.StateDBConfig.StateDatabase
+	if stateDBType != ledger.CouchDB {
+		stateDBType = simpleKeyValueDB
+	}
 	metadata, err := json.MarshalIndent(
 		&snapshotSignableMetadata{
-			ChannelName:        l.ledgerID,
-			ChannelHeight:      bcInfo.Height,
-			LastBlockHashInHex: hex.EncodeToString(bcInfo.CurrentBlockHash),
-			FilesAndHashes:     filesAndHashes,
+			ChannelName:            l.ledgerID,
+			ChannelHeight:          bcInfo.Height,
+			LastBlockHashInHex:     hex.EncodeToString(bcInfo.CurrentBlockHash),
+			PreviousBlockHashInHex: hex.EncodeToString(bcInfo.PreviousBlockHash),
+			FilesAndHashes:         filesAndHashes,
+			StateDBType:            stateDBType,
 		},
 		"",
 		jsonFileIndent,

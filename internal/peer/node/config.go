@@ -65,7 +65,7 @@ func ledgerConfig() *ledger.Config {
 		},
 	}
 
-	if conf.StateDBConfig.StateDatabase == "CouchDB" {
+	if conf.StateDBConfig.StateDatabase == ledger.CouchDB {
 		conf.StateDBConfig.CouchDB = &ledger.CouchDBConfig{
 			Address:                 viper.GetString("ledger.state.couchDBConfig.couchDBAddress"),
 			Username:                viper.GetString("ledger.state.couchDBConfig.username"),
