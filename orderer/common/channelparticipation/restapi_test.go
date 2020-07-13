@@ -52,23 +52,24 @@ func TestHTTPHandler_ServeHTTP_InvalidMethods(t *testing.T) {
 	invalidMethods := []string{http.MethodConnect, http.MethodHead, http.MethodOptions, http.MethodPatch, http.MethodPut, http.MethodTrace}
 
 	t.Run("on /channels/ch-id", func(t *testing.T) {
-		for _, method := range invalidMethods {
+		invalidMethodsExt := append(invalidMethods, http.MethodPost)
+		for _, method := range invalidMethodsExt {
 			resp := httptest.NewRecorder()
 			req := httptest.NewRequest(method, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
 			h.ServeHTTP(resp, req)
 			checkErrorResponse(t, http.StatusMethodNotAllowed, fmt.Sprintf("invalid request method: %s", method), resp)
-			require.Equal(t, "GET, POST, DELETE", resp.Result().Header.Get("Allow"), "%s", method)
+			require.Equal(t, "GET, DELETE", resp.Result().Header.Get("Allow"), "%s", method)
 		}
 	})
 
 	t.Run("on /channels", func(t *testing.T) {
-		invalidMethodsExt := append(invalidMethods, http.MethodDelete, http.MethodPost)
+		invalidMethodsExt := append(invalidMethods, http.MethodDelete)
 		for _, method := range invalidMethodsExt {
 			resp := httptest.NewRecorder()
 			req := httptest.NewRequest(method, channelparticipation.URLBaseV1Channels, nil)
 			h.ServeHTTP(resp, req)
 			checkErrorResponse(t, http.StatusMethodNotAllowed, fmt.Sprintf("invalid request method: %s", method), resp)
-			require.Equal(t, "GET", resp.Result().Header.Get("Allow"), "%s", method)
+			require.Equal(t, "GET, POST", resp.Result().Header.Get("Allow"), "%s", method)
 		}
 	})
 }
@@ -322,19 +323,10 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 	t.Run("content type mismatch", func(t *testing.T) {
 		_, h := setup(config, t)
 		resp := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), nil)
+		req := httptest.NewRequest(http.MethodPost, channelparticipation.URLBaseV1Channels, nil)
 		req.Header.Set("Content-Type", "text/plain")
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "unsupported Content-Type: [text/plain]", resp)
-	})
-
-	t.Run("bad channel-id", func(t *testing.T) {
-		_, h := setup(config, t)
-		resp := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-ID"), nil)
-		req.Header.Set("Content-Type", "multipart/form-data")
-		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusBadRequest, "invalid channel ID: 'ch-ID' contains illegal characters", resp)
 	})
 
 	t.Run("form-data: bad form - no boundary", func(t *testing.T) {
@@ -349,7 +341,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		err = writer.Close()
 		require.NoError(t, err)
 
-		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), joinBody)
+		req := httptest.NewRequest(http.MethodPost, channelparticipation.URLBaseV1Channels, joinBody)
 		req.Header.Set("Content-Type", "multipart/form-data") //missing boundary
 
 		h.ServeHTTP(resp, req)
@@ -368,7 +360,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		err = writer.Close()
 		require.NoError(t, err)
 
-		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), joinBody)
+		req := httptest.NewRequest(http.MethodPost, channelparticipation.URLBaseV1Channels, joinBody)
 		req.Header.Set("Content-Type", writer.FormDataContentType())
 
 		h.ServeHTTP(resp, req)
@@ -390,7 +382,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		err = writer.Close()
 		require.NoError(t, err)
 
-		req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), joinBody)
+		req := httptest.NewRequest(http.MethodPost, channelparticipation.URLBaseV1Channels, joinBody)
 		req.Header.Set("Content-Type", writer.FormDataContentType())
 
 		h.ServeHTTP(resp, req)
@@ -565,7 +557,7 @@ func genJoinRequestFormData(t *testing.T, blockBytes []byte) *http.Request {
 	err = writer.Close()
 	require.NoError(t, err)
 
-	req := httptest.NewRequest(http.MethodPost, path.Join(channelparticipation.URLBaseV1Channels, "ch-id"), joinBody)
+	req := httptest.NewRequest(http.MethodPost, channelparticipation.URLBaseV1Channels, joinBody)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	return req

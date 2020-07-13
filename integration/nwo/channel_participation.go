@@ -24,7 +24,7 @@ import (
 func ChannelParticipationJoin(n *Network, o *Orderer, channel string, block *common.Block, expectedChannelInfo ChannelInfo) {
 	blockBytes, err := proto.Marshal(block)
 	Expect(err).NotTo(HaveOccurred())
-	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, OperationsPort), channel)
+	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, OperationsPort))
 	req := generateJoinRequest(url, channel, blockBytes)
 	authClient, _ := OrdererOperationalClients(n, o)
 
