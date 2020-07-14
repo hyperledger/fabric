@@ -369,6 +369,7 @@ func (c *Chain) Start() {
 	c.periodicChecker = &PeriodicCheck{
 		Logger:        c.logger,
 		Report:        es.confirmSuspicion,
+		ReportCleared: es.clearSuspicion,
 		CheckInterval: interval,
 		Condition:     c.suspectEviction,
 	}
