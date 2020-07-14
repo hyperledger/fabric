@@ -72,7 +72,7 @@ type Provider struct {
 	historydbProvider    *history.DBProvider
 	configHistoryMgr     *confighistory.Mgr
 	stateListeners       []ledger.StateListener
-	bookkeepingProvider  bookkeeping.Provider
+	bookkeepingProvider  *bookkeeping.Provider
 	initializer          *ledger.Initializer
 	collElgNotifier      *collElgNotifier
 	stats                *stats
