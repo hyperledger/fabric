@@ -21,13 +21,20 @@ func TestCreateLedgerFactory(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
 	testCases := []struct {
-		name            string
-		ledgerDir       string
-		ledgerDirPrefix string
-		expectPanic     bool
+		name        string
+		ledgerDir   string
+		expectPanic bool
 	}{
-		{"FilewithPathSet", filepath.Join(os.TempDir(), "test-dir"), "", false},
-		{"FilewithPathUnset", "", "test-prefix", false},
+		{
+			name:        "PathSet",
+			ledgerDir:   filepath.Join(os.TempDir(), "test-dir"),
+			expectPanic: false,
+		},
+		{
+			name:        "PathUnset",
+			ledgerDir:   "",
+			expectPanic: true,
+		},
 	}
 
 	conf, err := config.Load()
@@ -37,27 +44,15 @@ func TestCreateLedgerFactory(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			defer func() {
-				r := recover()
-				if tc.expectPanic && r == nil {
-					t.Fatal("Should have panicked")
-				}
-				if !tc.expectPanic && r != nil {
-					t.Fatal("Should not have panicked")
-				}
-			}()
-
 			conf.FileLedger.Location = tc.ledgerDir
-			conf.FileLedger.Prefix = tc.ledgerDirPrefix
-			lf, ld, err := createLedgerFactory(conf, &disabled.Provider{})
-			require.NoError(t, err)
-			defer func() {
-				if ld != "" {
-					os.RemoveAll(ld)
-					t.Log("Removed temp dir:", ld)
-				}
-			}()
-			lf.ChannelIDs()
+			if tc.expectPanic {
+				require.PanicsWithValue(t, "Orderer.FileLedger.Location must be set", func() { createLedgerFactory(conf, &disabled.Provider{}) })
+			} else {
+				lf, err := createLedgerFactory(conf, &disabled.Provider{})
+				require.NoError(t, err)
+				defer os.RemoveAll(tc.ledgerDir)
+				require.Equal(t, []string{}, lf.ChannelIDs())
+			}
 		})
 	}
 }

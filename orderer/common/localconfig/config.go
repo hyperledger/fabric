@@ -110,7 +110,6 @@ type Profile struct {
 // FileLedger contains configuration for the file-based ledger.
 type FileLedger struct {
 	Location string
-	Prefix   string
 }
 
 // Kafka contains configuration for the Kafka-based orderer.
@@ -236,7 +235,6 @@ var Defaults = TopLevel{
 	},
 	FileLedger: FileLedger{
 		Location: "/var/hyperledger/production/orderer",
-		Prefix:   "hyperledger-fabric-ordererledger",
 	},
 	Kafka: Kafka{
 		Retry: Retry{
@@ -432,10 +430,6 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.General.Authentication.TimeWindow == 0:
 			logger.Infof("General.Authentication.TimeWindow unset, setting to %s", Defaults.General.Authentication.TimeWindow)
 			c.General.Authentication.TimeWindow = Defaults.General.Authentication.TimeWindow
-
-		case c.FileLedger.Prefix == "":
-			logger.Infof("FileLedger.Prefix unset, setting to %s", Defaults.FileLedger.Prefix)
-			c.FileLedger.Prefix = Defaults.FileLedger.Prefix
 
 		case c.Kafka.Retry.ShortInterval == 0:
 			logger.Infof("Kafka.Retry.ShortInterval unset, setting to %v", Defaults.Kafka.Retry.ShortInterval)
