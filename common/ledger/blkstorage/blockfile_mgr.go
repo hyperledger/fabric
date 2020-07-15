@@ -164,12 +164,13 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore
 }
 
 func bootstrapFromSnapshottedTxIDs(
+	ledgerID string,
 	snapshotDir string,
 	snapshotInfo *SnapshotInfo,
 	conf *Conf,
 	indexStore *leveldbhelper.DBHandle,
 ) error {
-	rootDir := conf.getLedgerBlockDir(snapshotInfo.LedgerID)
+	rootDir := conf.getLedgerBlockDir(ledgerID)
 	isEmpty, err := fileutil.CreateDirIfMissing(rootDir)
 	if err != nil {
 		return err

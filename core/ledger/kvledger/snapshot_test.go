@@ -11,10 +11,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
@@ -22,12 +25,14 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	lgr "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGenerateSnapshot(t *testing.T) {
+func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
 	snapshotRootDir := conf.SnapshotsConfig.RootDir
@@ -46,7 +51,7 @@ func TestGenerateSnapshot(t *testing.T) {
 
 	// add the genesis block and generate the snapshot
 	blkGenerator, genesisBlk := testutil.NewBlockGenerator(t, "testLedgerid", false)
-	lgr, err := provider.Create(genesisBlk)
+	lgr, err := provider.CreateFromGenesisBlock(genesisBlk)
 	require.NoError(t, err)
 	defer lgr.Close()
 	kvlgr := lgr.(*kvLedger)
@@ -68,7 +73,11 @@ func TestGenerateSnapshot(t *testing.T) {
 
 	// add block-1 only with public state data and generate the snapshot
 	blockAndPvtdata1 := prepareNextBlockForTest(t, kvlgr, blkGenerator, "SimulateForBlk1",
-		map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
+		map[string]string{
+			"key1": "value1.1",
+			"key2": "value2.1",
+			"key3": "value3.1",
+		},
 		nil,
 	)
 	require.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata1, &ledger.CommitOptions{}))
@@ -91,8 +100,16 @@ func TestGenerateSnapshot(t *testing.T) {
 
 	// add block-2 only with public and private data and generate the snapshot
 	blockAndPvtdata2 := prepareNextBlockForTest(t, kvlgr, blkGenerator, "SimulateForBlk2",
-		map[string]string{"key1": "value1.2", "key2": "value2.2", "key3": "value3.2"},
-		map[string]string{"key1": "pvtValue1.2", "key2": "pvtValue2.2", "key3": "pvtValue3.2"},
+		map[string]string{
+			"key1": "value1.2",
+			"key2": "value2.2",
+			"key3": "value3.2",
+		},
+		map[string]string{
+			"key1": "pvtValue1.2",
+			"key2": "pvtValue2.2",
+			"key3": "pvtValue3.2",
+		},
 	)
 	require.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata2, &ledger.CommitOptions{}))
 	require.NoError(t, kvlgr.generateSnapshot())
@@ -114,9 +131,24 @@ func TestGenerateSnapshot(t *testing.T) {
 	)
 
 	// add dummy entry in collection config history and commit block-3 and generate the snapshot
-	addDummyEntryInCollectionConfigHistory(t, provider, kvlgr.ledgerID)
+	collConfigPkg := &peer.CollectionConfigPackage{
+		Config: []*peer.CollectionConfig{
+			{
+				Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
+						Name: "coll1",
+					},
+				},
+			},
+		},
+	}
+	addDummyEntryInCollectionConfigHistory(t, provider, kvlgr.ledgerID, "ns", 2, collConfigPkg)
 	blockAndPvtdata3 := prepareNextBlockForTest(t, kvlgr, blkGenerator, "SimulateForBlk3",
-		map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
+		map[string]string{
+			"key1": "value1.3",
+			"key2": "value2.3",
+			"key3": "value3.3",
+		},
 		nil,
 	)
 	require.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata3, &ledger.CommitOptions{}))
@@ -138,6 +170,36 @@ func TestGenerateSnapshot(t *testing.T) {
 			},
 		},
 	)
+
+	snapshotDir := SnapshotDirForLedgerHeight(snapshotRootDir, kvlgr.ledgerID, 4)
+
+	t.Run("create-ledger-from-snapshot", func(t *testing.T) {
+		createdLedger := testCreateLedgerFromSnapshot(t, snapshotDir)
+		verifyCreatedLedger(t,
+			provider,
+			createdLedger,
+			&expectedLegderState{
+				ledgerHeight:      4,
+				currentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
+				previousBlockHash: blockAndPvtdata3.Block.Header.PreviousHash,
+				lastCommitHash:    kvlgr.commitHash,
+				namespace:         "ns",
+				publicState: map[string]string{
+					"key1": "value1.3",
+					"key2": "value2.3",
+					"key3": "value3.3",
+				},
+				collectionConfig: map[uint64]*peer.CollectionConfigPackage{
+					2: collConfigPkg,
+				},
+			},
+		)
+	})
+
+	t.Run("create-ledger-from-snapshot-error-paths", func(t *testing.T) {
+		testCreateLedgerFromSnapshotErrorPaths(t, snapshotDir)
+	})
+
 }
 
 func TestSnapshotDBTypeCouchDB(t *testing.T) {
@@ -145,7 +207,7 @@ func TestSnapshotDBTypeCouchDB(t *testing.T) {
 	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
-	lgr, err := provider.open("testLedger")
+	lgr, err := provider.open("testLedger", nil)
 	require.NoError(t, err)
 	kvlgr := lgr.(*kvLedger)
 
@@ -188,7 +250,8 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 
 	// add a file in each of the above folders
 	for _, dir := range [2]string{inProgressSnapshotsPath, completedSnapshotsPath} {
-		ioutil.WriteFile(filepath.Join(dir, "testFile"), []byte("some junk data"), 0644)
+		err := ioutil.WriteFile(filepath.Join(dir, "testFile"), []byte("some junk data"), 0644)
+		require.NoError(t, err)
 		f, err := ioutil.ReadDir(dir)
 		require.NoError(t, err)
 		require.Len(t, f, 1)
@@ -252,7 +315,7 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 
 	// create a ledger
 	_, genesisBlk := testutil.NewBlockGenerator(t, "testLedgerid", false)
-	lgr, err := provider.Create(genesisBlk)
+	lgr, err := provider.CreateFromGenesisBlock(genesisBlk)
 	require.NoError(t, err)
 	kvlgr := lgr.(*kvLedger)
 
@@ -318,6 +381,243 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 	})
 }
 
+func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir string) {
+	var provider *Provider
+	var snapshotDirForTest string
+	var cleanup func()
+
+	var metadata *snapshotMetadata
+	var signableMetadataFile string
+	var additionalMetadataFile string
+
+	init := func(t *testing.T) {
+		conf, cleanupFunc := testConfig(t)
+		// make a copy of originalSnapshotDir
+		snapshotDirForTest = filepath.Join(conf.RootFSPath, "snapshot")
+		require.NoError(t, os.MkdirAll(snapshotDirForTest, 0700))
+		files, err := ioutil.ReadDir(originalSnapshotDir)
+		require.NoError(t, err)
+		for _, f := range files {
+			content, err := ioutil.ReadFile(filepath.Join(originalSnapshotDir, f.Name()))
+			require.NoError(t, err)
+			err = ioutil.WriteFile(filepath.Join(snapshotDirForTest, f.Name()), content, 0600)
+			require.NoError(t, err)
+		}
+
+		metadataJSONs, err := loadSnapshotMetadataJSONs(snapshotDirForTest)
+		require.NoError(t, err)
+		metadata, err = metadataJSONs.toMetadata()
+		require.NoError(t, err)
+
+		signableMetadataFile = filepath.Join(snapshotDirForTest, snapshotSignableMetadataFileName)
+		additionalMetadataFile = filepath.Join(snapshotDirForTest, snapshotAdditionalMetadataFileName)
+
+		provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+		cleanup = func() {
+			provider.Close()
+			cleanupFunc()
+		}
+	}
+
+	overwriteModifiedSignableMetadata := func() {
+		signaleMetadataJSON, err := metadata.snapshotSignableMetadata.toJSON()
+		require.NoError(t, err)
+		require.NoError(t, ioutil.WriteFile(signableMetadataFile, signaleMetadataJSON, 0600))
+
+		metadata.snapshotAdditionalMetadata.SnapshotHashInHex = computeHashForTest(t, provider, signaleMetadataJSON)
+		additionalMetadataJSON, err := metadata.snapshotAdditionalMetadata.toJSON()
+		require.NoError(t, err)
+		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, additionalMetadataJSON, 0600))
+	}
+
+	overwriteDataFile := func(fileName string, content []byte) {
+		filePath := filepath.Join(snapshotDirForTest, fileName)
+		require.NoError(t, ioutil.WriteFile(filePath, content, 0600))
+		metadata.snapshotSignableMetadata.FilesAndHashes[fileName] = computeHashForTest(t, provider, content)
+		overwriteModifiedSignableMetadata()
+	}
+
+	t.Run("singable-metadata-file-missing", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		require.NoError(t, os.Remove(filepath.Join(snapshotDirForTest, snapshotSignableMetadataFileName)))
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.EqualError(t,
+			err,
+			fmt.Sprintf(
+				"error while loading metadata: open %s/_snapshot_signable_metadata.json: no such file or directory",
+				snapshotDirForTest,
+			),
+		)
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("additional-metadata-file-missing", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		require.NoError(t, os.Remove(filepath.Join(snapshotDirForTest, snapshotAdditionalMetadataFileName)))
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.EqualError(t,
+			err,
+			fmt.Sprintf("error while loading metadata: open %s/_snapshot_additional_metadata.json: no such file or directory", snapshotDirForTest),
+		)
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("singable-metadata-file-invalid-json", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte(""), 0600))
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.EqualError(t,
+			err,
+			"error while unmarshaling metadata: error while unmarshaling signable metadata: unexpected end of JSON input",
+		)
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("additional-metadata-file-invalid-json", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, []byte(""), 0600))
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.EqualError(t,
+			err,
+			"error while unmarshaling metadata: error while unmarshaling additional metadata: unexpected end of JSON input",
+		)
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("snapshot-hash-mismatch", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte("{}"), 0600))
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.Contains(t,
+			err.Error(),
+			"error while verifying snapshot: hash mismatch for file [_snapshot_signable_metadata.json]",
+		)
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("datafile-missing", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		err := os.Remove(filepath.Join(snapshotDirForTest, "txids.data"))
+		require.NoError(t, err)
+
+		_, err = provider.CreateFromSnapshot(snapshotDirForTest)
+		require.EqualError(t, err,
+			fmt.Sprintf(
+				"error while verifying snapshot: open %s/txids.data: no such file or directory",
+				snapshotDirForTest,
+			),
+		)
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("datafile-hash-mismatch", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		err := ioutil.WriteFile(filepath.Join(snapshotDirForTest, "txids.data"), []byte("random content"), 0600)
+		require.NoError(t, err)
+
+		_, err = provider.CreateFromSnapshot(snapshotDirForTest)
+		require.Contains(t, err.Error(), "error while verifying snapshot: hash mismatch for file [txids.data]")
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("hex-decoding-error-for-lastBlkHash", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		metadata.snapshotSignableMetadata.LastBlockHashInHex = "invalid-hex"
+		overwriteModifiedSignableMetadata()
+
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.Contains(t, err.Error(), "error while decoding last block hash")
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("hex-decoding-error-for-previousBlkHash", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		metadata.snapshotSignableMetadata.PreviousBlockHashInHex = "invalid-hex"
+		overwriteModifiedSignableMetadata()
+
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.Contains(t, err.Error(), "error while decoding previous block hash")
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("idStore-returns-error", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		provider.idStore.close()
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.Contains(t, err.Error(), "error while creating ledger id")
+	})
+
+	t.Run("blkstore-provider-returns-error", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		overwriteDataFile("txids.data", []byte(""))
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.Contains(t, err.Error(), "error while importing data into block store")
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("config-history-mgr-returns-error", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		overwriteDataFile("confighistory.data", []byte(""))
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.Contains(t, err.Error(), "error while importing data into config history Mgr")
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("statedb-provider-returns-error", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		overwriteDataFile("public_state.data", []byte(""))
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.Contains(t, err.Error(), "error while importing data into state db")
+		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
+	})
+
+	t.Run("error-while-deleting-partially-created-ledger", func(t *testing.T) {
+		init(t)
+		defer cleanup()
+
+		provider.historydbProvider.Close()
+
+		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		require.Contains(t, err.Error(), "error while preparing history db")
+		require.Contains(t, err.Error(), "error while deleting data from ledger")
+		verifyLedgerIDExists(t, provider, metadata.ChannelName, msgs.Status_UNDER_CONSTRUCTION)
+	})
+}
+
+func computeHashForTest(t *testing.T, provider *Provider, content []byte) string {
+	hasher, err := provider.initializer.HashProvider.GetHash(snapshotHashOpts)
+	require.NoError(t, err)
+	_, err = hasher.Write(content)
+	require.NoError(t, err)
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
 type expectedSnapshotOutput struct {
 	snapshotRootDir     string
 	ledgerID            string
@@ -352,7 +652,7 @@ func verifySnapshotOutput(
 
 	// verify the contents of the file snapshot_metadata.json
 	m := &snapshotSignableMetadata{}
-	mJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, snapshotMetadataFileName))
+	mJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, snapshotSignableMetadataFileName))
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(mJSON, m))
 
@@ -373,12 +673,12 @@ func verifySnapshotOutput(
 	)
 
 	// verify the contents of the file snapshot_metadata_hash.json
-	mh := &snapshotAdditionalInfo{}
-	mhJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, snapshotMetadataHashFileName))
+	mh := &snapshotAdditionalMetadata{}
+	mhJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, snapshotAdditionalMetadataFileName))
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(mhJSON, mh))
 	require.Equal(t,
-		&snapshotAdditionalInfo{
+		&snapshotAdditionalMetadata{
 			SnapshotHashInHex:        hex.EncodeToString(util.ComputeSHA256(mJSON)),
 			LastBlockCommitHashInHex: hex.EncodeToString(o.lastCommitHash),
 		},
@@ -386,7 +686,75 @@ func verifySnapshotOutput(
 	)
 }
 
-func addDummyEntryInCollectionConfigHistory(t *testing.T, provider *Provider, ledgerID string) {
+func testCreateLedgerFromSnapshot(t *testing.T, snapshotDir string) *kvLedger {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	p := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+	destLedger, err := p.CreateFromSnapshot(snapshotDir)
+	require.NoError(t, err)
+	return destLedger.(*kvLedger)
+}
+
+type expectedLegderState struct {
+	ledgerHeight      uint64
+	currentBlockHash  []byte
+	previousBlockHash []byte
+	lastCommitHash    []byte
+	namespace         string
+	publicState       map[string]string
+	collectionConfig  map[uint64]*peer.CollectionConfigPackage
+}
+
+func verifyCreatedLedger(t *testing.T,
+	p *Provider,
+	l *kvLedger,
+	e *expectedLegderState,
+) {
+
+	verifyLedgerIDExists(t, p, l.ledgerID, msgs.Status_ACTIVE)
+
+	destBCInfo, err := l.GetBlockchainInfo()
+	require.NoError(t, err)
+	require.Equal(t,
+		&common.BlockchainInfo{
+			Height:            e.ledgerHeight,
+			CurrentBlockHash:  e.currentBlockHash,
+			PreviousBlockHash: e.previousBlockHash,
+		},
+		destBCInfo,
+	)
+
+	statedbSavepoint, err := l.txmgr.GetLastSavepoint()
+	require.NoError(t, err)
+	require.Equal(t, version.NewHeight(e.ledgerHeight-1, math.MaxUint64), statedbSavepoint)
+
+	historydbSavepoint, err := l.historyDB.GetLastSavepoint()
+	require.NoError(t, err)
+	require.Equal(t, version.NewHeight(e.ledgerHeight-1, math.MaxUint64), historydbSavepoint)
+
+	qe, err := l.txmgr.NewQueryExecutor("dummyTxId")
+	require.NoError(t, err)
+	defer qe.Done()
+	for k, v := range e.publicState {
+		val, err := qe.GetState(e.namespace, k)
+		require.NoError(t, err)
+		require.Equal(t, v, string(val))
+	}
+	for h, collConfigPkg := range e.collectionConfig {
+		collConfigInfo, err := l.configHistoryRetriever.CollectionConfigAt(h, e.namespace)
+		require.NoError(t, err)
+		require.True(t, proto.Equal(collConfigPkg, collConfigInfo.CollectionConfig))
+	}
+}
+
+func addDummyEntryInCollectionConfigHistory(
+	t *testing.T,
+	provider *Provider,
+	ledgerID string,
+	namespace string,
+	committingBlockNumber uint64,
+	collectionConfig *peer.CollectionConfigPackage,
+) {
 	// configure mock to cause data entry in collection config history
 	ccInfoProviderMock := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
 	ccInfoProviderMock.UpdatedChaincodesReturns(
@@ -400,26 +768,17 @@ func addDummyEntryInCollectionConfigHistory(t *testing.T, provider *Provider, le
 
 	ccInfoProviderMock.ChaincodeInfoReturns(
 		&ledger.DeployedChaincodeInfo{
-			Name: "ns",
-			ExplicitCollectionConfigPkg: &peer.CollectionConfigPackage{
-				Config: []*peer.CollectionConfig{
-					{
-						Payload: &peer.CollectionConfig_StaticCollectionConfig{
-							StaticCollectionConfig: &peer.StaticCollectionConfig{
-								Name: "coll1",
-							},
-						},
-					},
-				},
-			},
+			Name:                        namespace,
+			ExplicitCollectionConfigPkg: collectionConfig,
 		},
 		nil,
 	)
 	provider.configHistoryMgr.HandleStateUpdates(
 		&ledger.StateUpdateTrigger{
-			LedgerID: ledgerID,
+			LedgerID:           ledgerID,
+			CommittingBlockNum: committingBlockNumber,
 			StateUpdates: map[string]*ledger.KVStateUpdates{
-				"ns": {},
+				namespace: {},
 			},
 		},
 	)

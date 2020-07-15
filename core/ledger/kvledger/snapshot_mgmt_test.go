@@ -128,7 +128,7 @@ func TestSnapshotRequests(t *testing.T) {
 	ledgerID := "testsnapshotrequests"
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
 	gbHash := protoutil.BlockHeaderHash(gb.Header)
-	l, err := provider.Create(gb)
+	l, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer l.Close()
 	kvledger := l.(*kvLedger)
@@ -238,7 +238,7 @@ func TestSnapshotRequestsErrorPaths(t *testing.T) {
 	ledgerID := "testsnapshotrequestserrorpaths"
 	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
 	gbHash := protoutil.BlockHeaderHash(gb.Header)
-	l, err := provider.Create(gb)
+	l, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer l.Close()
 

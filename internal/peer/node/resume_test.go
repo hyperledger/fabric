@@ -33,6 +33,6 @@ func TestResumeCmd(t *testing.T) {
 		args := []string{"-c", "ch_r"}
 		cmd.SetArgs(args)
 		err := cmd.Execute()
-		require.EqualError(t, err, "LedgerID does not exist")
+		require.EqualError(t, err, "cannot update ledger status, ledger [ch_r] does not exist")
 	})
 }

@@ -115,10 +115,11 @@ func TestMgrQueries(t *testing.T) {
 			// for each ledgerid and commitHeight combination, construct a unique collConfigPackage and induce a stateUpdate
 			collConfigPackage := sampleCollectionConfigPackage(ledgerid, committingBlockNum)
 			testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(mockCCInfoProvider, chaincodeName, collConfigPackage)
-			mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
+			err = mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
 				LedgerID:           ledgerid,
 				CommittingBlockNum: committingBlockNum},
 			)
+			require.NoError(t, err)
 		}
 	}
 
@@ -478,7 +479,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		require.NoError(t, err)
 
 		importConfigsBatchSize = 100
-		require.NoError(t, env.mgr.ImportConfigHistory("ledger2", env.testSnapshotDir))
+		require.NoError(t, env.mgr.ImportFromSnapshot("ledger2", env.testSnapshotDir))
 		dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
 			info: &common.BlockchainInfo{Height: 1000},
 			qe:   &mock.QueryExecutor{},
@@ -498,7 +499,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		require.NoError(t, err)
 
 		importConfigsBatchSize = 100
-		require.NoError(t, env.mgr.ImportConfigHistory("ledger2", env.testSnapshotDir))
+		require.NoError(t, env.mgr.ImportFromSnapshot("ledger2", env.testSnapshotDir))
 		require.NoError(t, os.RemoveAll(filepath.Join(env.testSnapshotDir, snapshotDataFileName)))
 		require.NoError(t, os.RemoveAll(filepath.Join(env.testSnapshotDir, snapshotMetadataFileName)))
 
@@ -513,7 +514,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		defer env.cleanup()
 		require.NoFileExists(t, filepath.Join(env.testSnapshotDir, snapshotDataFileName))
 		require.NoFileExists(t, filepath.Join(env.testSnapshotDir, snapshotMetadataFileName))
-		err := env.mgr.ImportConfigHistory("ledger1", env.testSnapshotDir)
+		err := env.mgr.ImportFromSnapshot("ledger1", env.testSnapshotDir)
 		require.NoError(t, err)
 	})
 
@@ -522,8 +523,9 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		defer env.cleanup()
 		setupWithSampleData(env, "ledger1")
 		dataFileWriter, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotDataFileName), snapshotFileFormat, testNewHashFunc)
+		require.NoError(t, err)
 		defer dataFileWriter.Close()
-		err = env.mgr.ImportConfigHistory("ledger1", env.testSnapshotDir)
+		err = env.mgr.ImportFromSnapshot("ledger1", env.testSnapshotDir)
 		expectedErrStr := "config history for ledger [ledger1] exists. Incremental import is not supported. Remove the existing ledger data before retry"
 		require.EqualError(t, err, expectedErrStr)
 	})
@@ -535,18 +537,20 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		require.NoError(t, err)
 		defer dataFileWriter1.Close()
 		dataFileWriter2, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotDataFileName), snapshotFileFormat, testNewHashFunc)
+		require.NoError(t, err)
 		defer dataFileWriter2.Close()
-		err = env.mgr.ImportConfigHistory("ledger2", env.testSnapshotDir)
+		err = env.mgr.ImportFromSnapshot("ledger2", env.testSnapshotDir)
 		require.Contains(t, err.Error(), "error while reading from the snapshot file")
 		require.Contains(t, err.Error(), "confighistory.metadata: EOF")
 
 		require.NoError(t, os.RemoveAll(filepath.Join(env.testSnapshotDir, snapshotMetadataFileName)))
 		dataFileWriter3, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotMetadataFileName), snapshotFileFormat, testNewHashFunc)
+		require.NoError(t, err)
 		defer dataFileWriter3.Close()
 		require.NoError(t, dataFileWriter3.EncodeUVarint(1))
 		_, err = dataFileWriter3.Done()
 		require.NoError(t, err)
-		err = env.mgr.ImportConfigHistory("ledger2", env.testSnapshotDir)
+		err = env.mgr.ImportFromSnapshot("ledger2", env.testSnapshotDir)
 		require.Contains(t, err.Error(), "error while reading from the snapshot file")
 		require.Contains(t, err.Error(), "confighistory.data: EOF")
 	})
@@ -556,8 +560,9 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		defer env.cleanup()
 		env.mgr.dbProvider.Close()
 		dataFileWriter, err := snapshot.CreateFile(filepath.Join(env.testSnapshotDir, snapshotDataFileName), snapshotFileFormat, testNewHashFunc)
+		require.NoError(t, err)
 		defer dataFileWriter.Close()
-		err = env.mgr.ImportConfigHistory("ledger2", env.testSnapshotDir)
+		err = env.mgr.ImportFromSnapshot("ledger2", env.testSnapshotDir)
 		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
 	})
 }

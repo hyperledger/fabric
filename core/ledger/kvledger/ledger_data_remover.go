@@ -46,9 +46,11 @@ func (r *ledgerDataRemover) Drop(ledgerID string) error {
 		return err
 	}
 
-	if err = r.historydbProvider.Drop(ledgerID); err != nil {
-		logger.Errorw("failed to drop ledger data from historyDB", "channel", ledgerID, "error", err)
-		return err
+	if r.historydbProvider != nil {
+		if err = r.historydbProvider.Drop(ledgerID); err != nil {
+			logger.Errorw("failed to drop ledger data from historyDB", "channel", ledgerID, "error", err)
+			return err
+		}
 	}
 
 	if err = r.pvtdataStoreProvider.Drop(ledgerID); err != nil {
@@ -60,6 +62,5 @@ func (r *ledgerDataRemover) Drop(ledgerID string) error {
 		logger.Errorw("failed to drop ledger data from blockstore", "channel", ledgerID, "error", err)
 		return err
 	}
-
 	return nil
 }

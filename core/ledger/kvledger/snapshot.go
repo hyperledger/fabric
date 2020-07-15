@@ -7,24 +7,30 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"bufio"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"hash"
+	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 
+	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 )
 
 const (
-	snapshotMetadataFileName     = "_snapshot_signable_metadata.json"
-	snapshotMetadataHashFileName = "_snapshot_additional_info.json"
-	jsonFileIndent               = "    "
-	simpleKeyValueDB             = "SimpleKeyValueDB"
+	snapshotSignableMetadataFileName   = "_snapshot_signable_metadata.json"
+	snapshotAdditionalMetadataFileName = "_snapshot_additional_metadata.json"
+	jsonFileIndent                     = "    "
+	simpleKeyValueDB                   = "SimpleKeyValueDB"
 )
 
 // snapshotSignableMetadata is used to build a JSON that represents a unique snapshot and
@@ -39,9 +45,43 @@ type snapshotSignableMetadata struct {
 	StateDBType            string            `json:"state_db_type"`
 }
 
-type snapshotAdditionalInfo struct {
+func (m *snapshotSignableMetadata) toJSON() ([]byte, error) {
+	return json.MarshalIndent(m, "", jsonFileIndent)
+}
+
+type snapshotAdditionalMetadata struct {
 	SnapshotHashInHex        string `json:"snapshot_hash"`
 	LastBlockCommitHashInHex string `json:"last_block_commit_hash"`
+}
+
+func (m *snapshotAdditionalMetadata) toJSON() ([]byte, error) {
+	return json.MarshalIndent(m, "", jsonFileIndent)
+}
+
+type snapshotMetadata struct {
+	*snapshotSignableMetadata
+	*snapshotAdditionalMetadata
+}
+
+type snapshotMetadataJSONs struct {
+	signableMetadata   string
+	additionalMetadata string
+}
+
+func (j *snapshotMetadataJSONs) toMetadata() (*snapshotMetadata, error) {
+	metadata := &snapshotSignableMetadata{}
+	if err := json.Unmarshal([]byte(j.signableMetadata), metadata); err != nil {
+		return nil, errors.Wrap(err, "error while unmarshaling signable metadata")
+	}
+
+	additionalMetadata := &snapshotAdditionalMetadata{}
+	if err := json.Unmarshal([]byte(j.additionalMetadata), additionalMetadata); err != nil {
+		return nil, errors.Wrap(err, "error while unmarshaling additional metadata")
+	}
+	return &snapshotMetadata{
+		snapshotSignableMetadata:   metadata,
+		snapshotAdditionalMetadata: additionalMetadata,
+	}, nil
 }
 
 // generateSnapshot generates a snapshot. This function should be invoked when commit on the kvledger are paused
@@ -123,22 +163,20 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	if stateDBType != ledger.CouchDB {
 		stateDBType = simpleKeyValueDB
 	}
-	metadata, err := json.MarshalIndent(
-		&snapshotSignableMetadata{
-			ChannelName:            l.ledgerID,
-			ChannelHeight:          bcInfo.Height,
-			LastBlockHashInHex:     hex.EncodeToString(bcInfo.CurrentBlockHash),
-			PreviousBlockHashInHex: hex.EncodeToString(bcInfo.PreviousBlockHash),
-			FilesAndHashes:         filesAndHashes,
-			StateDBType:            stateDBType,
-		},
-		"",
-		jsonFileIndent,
-	)
+	signableMetadata := &snapshotSignableMetadata{
+		ChannelName:            l.ledgerID,
+		ChannelHeight:          bcInfo.Height,
+		LastBlockHashInHex:     hex.EncodeToString(bcInfo.CurrentBlockHash),
+		PreviousBlockHashInHex: hex.EncodeToString(bcInfo.PreviousBlockHash),
+		FilesAndHashes:         filesAndHashes,
+		StateDBType:            stateDBType,
+	}
+
+	signableMetadataBytes, err := signableMetadata.toJSON()
 	if err != nil {
 		return errors.Wrap(err, "error while marshelling snapshot metadata to JSON")
 	}
-	if err := fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotMetadataFileName), metadata, 0444); err != nil {
+	if err := fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotSignableMetadataFileName), signableMetadataBytes, 0444); err != nil {
 		return err
 	}
 
@@ -147,19 +185,189 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	if err != nil {
 		return err
 	}
-	if _, err := hash.Write(metadata); err != nil {
+	if _, err := hash.Write(signableMetadataBytes); err != nil {
 		return err
 	}
-	metadataAdditionalInfo, err := json.MarshalIndent(
-		&snapshotAdditionalInfo{
-			SnapshotHashInHex:        hex.EncodeToString(hash.Sum(nil)),
-			LastBlockCommitHashInHex: hex.EncodeToString(l.commitHash),
-		},
-		"",
-		jsonFileIndent,
-	)
-	if err != nil {
-		return errors.Wrap(err, "error while marshalling snapshot additional info to JSON")
+
+	additionalMetadata := &snapshotAdditionalMetadata{
+		SnapshotHashInHex:        hex.EncodeToString(hash.Sum(nil)),
+		LastBlockCommitHashInHex: hex.EncodeToString(l.commitHash),
 	}
-	return fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotMetadataHashFileName), metadataAdditionalInfo, 0444)
+
+	additionalMetadataBytes, err := additionalMetadata.toJSON()
+	if err != nil {
+		return errors.Wrap(err, "error while marshalling snapshot additional metadata to JSON")
+	}
+	return fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotAdditionalMetadataFileName), additionalMetadataBytes, 0444)
+}
+
+// CreateFromSnapshot implements the corresponding method from interface ledger.PeerLedgerProvider
+// This function creates a new ledger from the supplied snapshot. If a failure happens during this
+// process, the partially created ledger is deleted
+func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, error) {
+	metadataJSONs, err := loadSnapshotMetadataJSONs(snapshotDir)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "error while loading metadata")
+	}
+
+	metadata, err := metadataJSONs.toMetadata()
+	if err != nil {
+		return nil, errors.WithMessagef(err, "error while unmarshaling metadata")
+	}
+
+	if err := verifySnapshot(snapshotDir, metadata, p.initializer.HashProvider); err != nil {
+		return nil, errors.WithMessagef(err, "error while verifying snapshot")
+	}
+
+	ledgerID := metadata.ChannelName
+	lastBlockNum := metadata.ChannelHeight - 1
+
+	lastBlkHash, err := hex.DecodeString(metadata.LastBlockHashInHex)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error while decoding last block hash")
+	}
+	previousBlkHash, err := hex.DecodeString(metadata.PreviousBlockHashInHex)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error while decoding previous block hash")
+	}
+
+	snapshotInfo := &blkstorage.SnapshotInfo{
+		LastBlockNum:      lastBlockNum,
+		LastBlockHash:     lastBlkHash,
+		PreviousBlockHash: previousBlkHash,
+	}
+
+	if err = p.idStore.createLedgerID(
+		ledgerID,
+		&msgs.LedgerMetadata{
+			Status: msgs.Status_UNDER_CONSTRUCTION,
+			BootSnapshotMetadata: &msgs.BootSnapshotMetadata{
+				SingableMetadata:   metadataJSONs.signableMetadata,
+				AdditionalMetadata: metadataJSONs.additionalMetadata,
+			},
+		},
+	); err != nil {
+		return nil, errors.WithMessagef(err, "error while creating ledger id")
+	}
+
+	savepoint := version.NewHeight(lastBlockNum, math.MaxUint64)
+
+	if err = p.blkStoreProvider.ImportFromSnapshot(ledgerID, snapshotDir, snapshotInfo); err != nil {
+		return nil,
+			p.deleteUnderConstructionLedger(
+				nil,
+				ledgerID,
+				errors.WithMessage(err, "error while importing data into block store"),
+			)
+	}
+
+	if err = p.configHistoryMgr.ImportFromSnapshot(metadata.ChannelName, snapshotDir); err != nil {
+		return nil,
+			p.deleteUnderConstructionLedger(
+				nil,
+				ledgerID,
+				errors.WithMessage(err, "error while importing data into config history Mgr"),
+			)
+	}
+
+	if err = p.dbProvider.ImportFromSnapshot(ledgerID, savepoint, snapshotDir); err != nil {
+		return nil,
+			p.deleteUnderConstructionLedger(
+				nil,
+				ledgerID,
+				errors.WithMessage(err, "error while importing data into state db"),
+			)
+	}
+
+	if p.historydbProvider != nil {
+		if err := p.historydbProvider.MarkStartingSavepoint(ledgerID, savepoint); err != nil {
+			return nil,
+				p.deleteUnderConstructionLedger(
+					nil,
+					ledgerID,
+					errors.WithMessage(err, "error while preparing history db"),
+				)
+		}
+	}
+
+	lgr, err := p.open(ledgerID, metadata)
+	if err != nil {
+		return nil,
+			p.deleteUnderConstructionLedger(
+				lgr,
+				ledgerID,
+				errors.WithMessage(err, "error while opening ledger"),
+			)
+	}
+
+	if err = p.idStore.updateLedgerStatus(ledgerID, msgs.Status_ACTIVE); err != nil {
+		return nil,
+			p.deleteUnderConstructionLedger(
+				lgr,
+				ledgerID,
+				errors.WithMessage(err, "error while updating the ledger status to Status_ACTIVE"),
+			)
+	}
+	return lgr, nil
+}
+
+func loadSnapshotMetadataJSONs(snapshotDir string) (*snapshotMetadataJSONs, error) {
+	signableMetdataFilePath := filepath.Join(snapshotDir, snapshotSignableMetadataFileName)
+	signableMetadataBytes, err := ioutil.ReadFile(signableMetdataFilePath)
+	if err != nil {
+		return nil, err
+	}
+	additionalMetadataFilePath := filepath.Join(snapshotDir, snapshotAdditionalMetadataFileName)
+	additionalMetadataBytes, err := ioutil.ReadFile(additionalMetadataFilePath)
+	if err != nil {
+		return nil, err
+	}
+	return &snapshotMetadataJSONs{
+		signableMetadata:   string(signableMetadataBytes),
+		additionalMetadata: string(additionalMetadataBytes),
+	}, nil
+}
+
+func verifySnapshot(snapshotDir string, snapshotMetadata *snapshotMetadata, hashProvider ledger.HashProvider) error {
+	if err := verifyFileHash(
+		snapshotDir,
+		snapshotSignableMetadataFileName,
+		snapshotMetadata.SnapshotHashInHex,
+		hashProvider,
+	); err != nil {
+		return err
+	}
+
+	filesAndHashes := snapshotMetadata.FilesAndHashes
+	for f, h := range filesAndHashes {
+		if err := verifyFileHash(snapshotDir, f, h, hashProvider); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func verifyFileHash(dir, file string, expectedHashInHex string, hashProvider ledger.HashProvider) error {
+	hashImpl, err := hashProvider.GetHash(snapshotHashOpts)
+	if err != nil {
+		return err
+	}
+
+	filePath := filepath.Join(dir, file)
+	f, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = io.Copy(hashImpl, bufio.NewReader(f))
+	if err != nil {
+		return err
+	}
+	hashInHex := hex.EncodeToString(hashImpl.Sum(nil))
+	if hashInHex != expectedHashInHex {
+		return errors.Errorf("hash mismatch for file [%s]. Expected hash = [%s], Actual hash = [%s]",
+			file, expectedHashInHex, hashInHex,
+		)
+	}
+	return nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	protoutil "github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 )
 
 var logger = flogging.MustGetLogger("history")
@@ -41,6 +42,13 @@ func NewDBProvider(path string) (*DBProvider, error) {
 	return &DBProvider{
 		leveldbProvider: levelDBProvider,
 	}, nil
+}
+
+// MarkStartingSavepoint creates historydb to be used for a ledger that is created from a snapshot
+func (p *DBProvider) MarkStartingSavepoint(name string, savepoint *version.Height) error {
+	db := p.GetDBHandle(name)
+	err := db.levelDB.Put(savePointKey, savepoint.ToBytes(), true)
+	return errors.WithMessagef(err, "error while writing the starting save point for ledger [%s]", name)
 }
 
 // GetDBHandle gets the handle to a named database

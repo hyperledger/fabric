@@ -112,7 +112,7 @@ func (m *Mgr) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 
 // ImportConfigHistory imports the collection config history associated with a given
 // ledgerID from the snapshot files present in the dir
-func (m *Mgr) ImportConfigHistory(ledgerID string, dir string) error {
+func (m *Mgr) ImportFromSnapshot(ledgerID string, dir string) error {
 	exist, _, err := fileutil.FileExists(filepath.Join(dir, snapshotDataFileName))
 	if err != nil {
 		return err

@@ -38,7 +38,6 @@ type IndexConfig struct {
 
 // SnapshotInfo captures some of the details about the snapshot
 type SnapshotInfo struct {
-	LedgerID          string
 	LastBlockNum      uint64
 	LastBlockHash     []byte
 	PreviousBlockHash []byte
@@ -106,14 +105,17 @@ func (p *BlockStoreProvider) Open(ledgerid string) (*BlockStore, error) {
 	return newBlockStore(ledgerid, p.conf, p.indexConfig, indexStoreHandle, p.stats)
 }
 
-// BootstrapFromSnapshottedTxIDs initializes blockstore from a previously generated snapshot
+// ImportFromSnapshot initializes blockstore from a previously generated snapshot
 // Any failure during bootstrapping the blockstore may leave the partial loaded data
 // on disk. The consumer, such as peer is expected to keep track of failures and cleanup the
 // data explicitly.
-func (p *BlockStoreProvider) BootstrapFromSnapshottedTxIDs(
-	snapshotDir string, snapshotInfo *SnapshotInfo) error {
-	indexStoreHandle := p.leveldbProvider.GetDBHandle(snapshotInfo.LedgerID)
-	if err := bootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo, p.conf, indexStoreHandle); err != nil {
+func (p *BlockStoreProvider) ImportFromSnapshot(
+	ledgerID string,
+	snapshotDir string,
+	snapshotInfo *SnapshotInfo,
+) error {
+	indexStoreHandle := p.leveldbProvider.GetDBHandle(ledgerID)
+	if err := bootstrapFromSnapshottedTxIDs(ledgerID, snapshotDir, snapshotInfo, p.conf, indexStoreHandle); err != nil {
 		return err
 	}
 	return nil

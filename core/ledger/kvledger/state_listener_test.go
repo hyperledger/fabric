@@ -44,7 +44,7 @@ func TestStateListener(t *testing.T) {
 	}
 
 	bg, gb := testutil.NewBlockGenerator(t, channelid, false)
-	lgr, err := provider.Create(gb)
+	lgr, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	// Simulate tx1
 	sim1, err := lgr.NewTxSimulator("test_tx_1")

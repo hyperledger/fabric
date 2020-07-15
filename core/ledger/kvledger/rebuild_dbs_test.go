@@ -24,7 +24,7 @@ func TestRebuildDBs(t *testing.T) {
 	numLedgers := 3
 	for i := 0; i < numLedgers; i++ {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
-		provider.Create(genesisBlock)
+		provider.CreateFromGenesisBlock(genesisBlock)
 	}
 
 	// rebuild should fail when provider is still open

@@ -28,7 +28,7 @@ type testBlockDetails struct {
 	validationCodes []peer.TxValidationCode
 }
 
-func TestBootstrapFromSnapshot(t *testing.T) {
+func TestImportFromSnapshot(t *testing.T) {
 	var testDir string
 	var env *testEnv
 	var blocksDetailsBeforeSnapshot, blocksDetailsAfterSnapshot []*testBlockDetails
@@ -99,7 +99,6 @@ func TestBootstrapFromSnapshot(t *testing.T) {
 		lastBlockInSnapshot := blocksBeforeSnapshot[len(blocksBeforeSnapshot)-1]
 
 		snapshotInfo = &SnapshotInfo{
-			LedgerID:          bootstrappedLedgerName,
 			LastBlockHash:     protoutil.BlockHeaderHash(lastBlockInSnapshot.Header),
 			LastBlockNum:      lastBlockInSnapshot.Header.Number,
 			PreviousBlockHash: lastBlockInSnapshot.Header.PreviousHash,
@@ -108,7 +107,7 @@ func TestBootstrapFromSnapshot(t *testing.T) {
 		// bootstrap another blockstore from the snapshot and verify its APIs
 		importTxIDsBatchSize = uint64(2) // smaller batch size for testing
 
-		err = env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
+		err = env.provider.ImportFromSnapshot(bootstrappedLedgerName, snapshotDir, snapshotInfo)
 		require.NoError(t, err)
 		bootstrappedBlockStore, err = env.provider.Open(bootstrappedLedgerName)
 		require.NoError(t, err)
@@ -305,6 +304,8 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 	defer func() {
 		env.Cleanup()
 	}()
+
+	ledgerID := "bootstrappedLedger"
 	snapshotDir := filepath.Join(testPath, "snapshot")
 	metadataFile := filepath.Join(snapshotDir, snapshotMetadataFileName)
 	dataFile := filepath.Join(snapshotDir, snapshotDataFileName)
@@ -312,7 +313,6 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 	bootstrappingSnapshotInfoFile := filepath.Join(ledgerDir, bootstrappingSnapshotInfoFile)
 
 	snapshotInfo := &SnapshotInfo{
-		LedgerID:          "bootstrappedLedger",
 		LastBlockHash:     []byte("LastBlockHash"),
 		LastBlockNum:      5,
 		PreviousBlockHash: []byte("PreviousBlockHash"),
@@ -343,14 +343,14 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 
 	t.Run("metadata-file-missing", func(t *testing.T) {
 		cleanupDirs()
-		err := env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
+		err := env.provider.ImportFromSnapshot(ledgerID, snapshotDir, snapshotInfo)
 		require.Contains(t, err.Error(), "error while opening the snapshot file: "+metadataFile)
 	})
 
 	t.Run("bootstapping-more-than-once", func(t *testing.T) {
 		cleanupDirs()
-		env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
-		err := env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
+		env.provider.ImportFromSnapshot(ledgerID, snapshotDir, snapshotInfo)
+		err := env.provider.ImportFromSnapshot(ledgerID, snapshotDir, snapshotInfo)
 		require.EqualError(t, err, "dir "+ledgerDir+" not empty")
 	})
 
@@ -359,14 +359,14 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 		mf, err := snapshot.CreateFile(metadataFile, snapshotFileFormat, testNewHashFunc)
 		require.NoError(t, err)
 		require.NoError(t, mf.Close())
-		err = env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
+		err = env.provider.ImportFromSnapshot(ledgerID, snapshotDir, snapshotInfo)
 		require.Contains(t, err.Error(), "error while reading from the snapshot file: "+metadataFile)
 	})
 
 	t.Run("data-file-missing", func(t *testing.T) {
 		cleanupDirs()
 		createSnapshotMetadataFile(1)
-		err := env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
+		err := env.provider.ImportFromSnapshot(ledgerID, snapshotDir, snapshotInfo)
 		require.Contains(t, err.Error(), "error while opening the snapshot file: "+dataFile)
 	})
 
@@ -374,7 +374,7 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 		cleanupDirs()
 		createSnapshotMetadataFile(2)
 		createSnapshotDataFile("single-tx-id")
-		err := env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
+		err := env.provider.ImportFromSnapshot(ledgerID, snapshotDir, snapshotInfo)
 		require.Contains(t, err.Error(), "error while reading from snapshot file: "+dataFile)
 	})
 
@@ -386,7 +386,7 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 		defer func() {
 			env = newTestEnv(t, NewConf(testPath, 0))
 		}()
-		err := env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
+		err := env.provider.ImportFromSnapshot(ledgerID, snapshotDir, snapshotInfo)
 		require.Contains(t, err.Error(), "error writing batch to leveldb")
 	})
 
@@ -394,12 +394,12 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 		cleanupDirs()
 		createSnapshotMetadataFile(1)
 		createSnapshotDataFile("single-tx-id")
-		err := env.provider.BootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo)
+		err := env.provider.ImportFromSnapshot(ledgerID, snapshotDir, snapshotInfo)
 		require.NoError(t, err)
 		env.provider.Close()
 		env = newTestEnv(t, NewConf(testPath, 0))
 		require.NoError(t, ioutil.WriteFile(bootstrappingSnapshotInfoFile, []byte("junk-data"), 0644))
-		_, err = env.provider.Open(snapshotInfo.LedgerID)
+		_, err = env.provider.Open(ledgerID)
 		require.Contains(t, err.Error(), "error while unmarshalling bootstrappingSnapshotInfo")
 	})
 

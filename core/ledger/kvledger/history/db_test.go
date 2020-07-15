@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/stretchr/testify/require"
 )
@@ -92,6 +93,33 @@ func TestSavepoint(t *testing.T) {
 	require.NoError(t, err, "Error upon historyDatabase.ShouldRecover()")
 	require.True(t, status)
 	require.Equal(t, uint64(3), blockNum)
+}
+
+func TestMarkStartingSavepoint(t *testing.T) {
+	t.Run("normal-case", func(t *testing.T) {
+		env := newTestHistoryEnv(t)
+		defer env.cleanup()
+
+		p := env.testHistoryDBProvider
+		require.NoError(t, p.MarkStartingSavepoint("testLedger", version.NewHeight(25, 30)))
+
+		db := p.GetDBHandle("testLedger")
+		height, err := db.GetLastSavepoint()
+		require.NoError(t, err)
+		require.Equal(t, version.NewHeight(25, 30), height)
+	})
+
+	t.Run("error-case", func(t *testing.T) {
+		env := newTestHistoryEnv(t)
+		defer env.cleanup()
+		p := env.testHistoryDBProvider
+		p.Close()
+		err := p.MarkStartingSavepoint("testLedger", version.NewHeight(25, 30))
+		require.Contains(t,
+			err.Error(),
+			"error while writing the starting save point for ledger [testLedger]",
+		)
+	})
 }
 
 func TestHistory(t *testing.T) {

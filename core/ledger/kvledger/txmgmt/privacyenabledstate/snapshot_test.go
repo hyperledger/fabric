@@ -180,7 +180,7 @@ func testSnapshotWithSampleData(t *testing.T, env TestEnv,
 
 	// import snapshot in a fresh db and verify the imported state
 	destinationDBName := generateLedgerID(t)
-	err = env.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+	err = env.GetProvider().ImportFromSnapshot(
 		destinationDBName, version.NewHeight(10, 10), snapshotDirSrcDB)
 	require.NoError(t, err)
 	destinationDB := env.GetDBHandle(destinationDBName)
@@ -468,7 +468,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			dataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(dataFile))
 			require.NoError(t, os.MkdirAll(dataFile, 0700))
-			err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), fmt.Sprintf("the supplied path [%s] is a dir", dataFile))
 		})
@@ -480,7 +480,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			dataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(dataFile))
 			require.NoError(t, ioutil.WriteFile(dataFile, []byte(""), 0600))
-			err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), fmt.Sprintf("error while opening data file: error while reading from the snapshot file: %s", dataFile))
 		})
@@ -492,7 +492,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			dataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(dataFile))
 			require.NoError(t, ioutil.WriteFile(dataFile, []byte{0x00}, 0600))
-			err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.EqualError(t, err, "error while opening data file: unexpected data format: 0")
 		})
@@ -506,7 +506,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, err)
 			require.NoError(t, os.Remove(dataFile))
 			require.NoError(t, ioutil.WriteFile(dataFile, contents[0:1], 0600))
-			err = dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err = dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), "error while reading dbvalue-format")
 		})
@@ -523,7 +523,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			fileContentWithUnxepectedDBValueFormat := append([]byte{snapshotFileFormat}, buf.Bytes()...)
 			require.NoError(t, ioutil.WriteFile(dataFile, fileContentWithUnxepectedDBValueFormat, 0600))
 
-			err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.EqualError(t, err, "dbValueFormat is expected of length  one byte. Found [18] length")
 		})
@@ -541,7 +541,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			fileContentWithMissingKeyLen = append(fileContentWithMissingKeyLen, buf.Bytes()...)
 			require.NoError(t, ioutil.WriteFile(dataFile, fileContentWithMissingKeyLen, 0600))
 
-			err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), "error while reading key from datafile")
 		})
@@ -560,7 +560,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			fileContentWithWrongKeyLen = append(fileContentWithWrongKeyLen, buf.Bytes()...)
 			require.NoError(t, ioutil.WriteFile(dataFile, fileContentWithWrongKeyLen, 0600))
 
-			err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), "error while reading value from datafile")
 		})
@@ -574,7 +574,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 
 			metadataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(metadataFile))
-			err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), "error while opening the snapshot file: "+metadataFile)
 		})
@@ -589,7 +589,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			fileContentWithMissingNumRows := []byte{snapshotFileFormat}
 			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingNumRows, 0600))
 
-			err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), "error while reading num-rows in metadata")
 		})
@@ -607,7 +607,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			fileContentWithMissingCCName = append(fileContentWithMissingCCName, buf.Bytes()...)
 			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingCCName, 0600))
 
-			err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), "error while reading namespace name")
 		})
@@ -626,7 +626,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			fileContentWithMissingCCName = append(fileContentWithMissingCCName, buf.Bytes()...)
 			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingCCName, 0600))
 
-			err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), fmt.Sprintf("error while reading num entries for the namespace [%s]", "my-chaincode"))
 		})
@@ -637,7 +637,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 		defer cleanup()
 
 		dbEnv.provider.Close()
-		err := dbEnv.GetProvider().BootstapDBFromPubStateAndPvtStateHashes(
+		err := dbEnv.GetProvider().ImportFromSnapshot(
 			generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 
 		require.Contains(t, err.Error(), "error writing batch to leveldb")
