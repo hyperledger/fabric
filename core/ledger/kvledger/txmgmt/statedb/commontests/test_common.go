@@ -1066,7 +1066,7 @@ func TestDataExportImport(
 	for _, kv := range generateSampleData(allNamesapces...) {
 		batch.PutValAndMetadata(kv.Namespace, kv.Key, kv.Value, kv.Metadata, kv.Version)
 	}
-	sourceDB.ApplyUpdates(batch, version.NewHeight(5, 5))
+	require.NoError(t, sourceDB.ApplyUpdates(batch, version.NewHeight(5, 5)))
 
 	// verifyExportImport uses FullScanIterator (with skipping zero or more namespaces)
 	// for exporting the data to import into another ledger instance and verifies the
@@ -1080,10 +1080,10 @@ func TestDataExportImport(
 		require.NoError(t, err)
 		require.Equal(t, valueFormat, valFormat)
 
-		destinationDB, err := dbProvider.GetDBHandle(destDBName, nil)
+		err = dbProvider.BootstrapDBFromState(destDBName, version.NewHeight(10, 10), fullScanItr, valFormat)
 		require.NoError(t, err)
 
-		err = destinationDB.ImportState(fullScanItr, valFormat)
+		destinationDB, err := dbProvider.GetDBHandle(destDBName, nil)
 		require.NoError(t, err)
 
 		for _, nsNotToBePresent := range skipNamespaces {
@@ -1110,6 +1110,9 @@ func TestDataExportImport(
 			}
 		}
 		require.Equal(t, generateSampleData(expectedNamespacesInDestinationDB...), results)
+		retrievedSavepoint, err := destinationDB.GetLatestSavePoint()
+		require.NoError(t, err)
+		require.Equal(t, version.NewHeight(10, 10), retrievedSavepoint)
 	}
 
 	testCases := []stringset{

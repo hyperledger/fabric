@@ -111,12 +111,12 @@ func (p *BlockStoreProvider) Open(ledgerid string) (*BlockStore, error) {
 // on disk. The consumer, such as peer is expected to keep track of failures and cleanup the
 // data explicitly.
 func (p *BlockStoreProvider) BootstrapFromSnapshottedTxIDs(
-	snapshotDir string, snapshotInfo *SnapshotInfo) (*BlockStore, error) {
+	snapshotDir string, snapshotInfo *SnapshotInfo) error {
 	indexStoreHandle := p.leveldbProvider.GetDBHandle(snapshotInfo.LedgerID)
 	if err := bootstrapFromSnapshottedTxIDs(snapshotDir, snapshotInfo, p.conf, indexStoreHandle); err != nil {
-		return nil, err
+		return err
 	}
-	return newBlockStore(snapshotInfo.LedgerID, p.conf, p.indexConfig, indexStoreHandle, p.stats)
+	return nil
 }
 
 // Exists tells whether the BlockStore with given id exists

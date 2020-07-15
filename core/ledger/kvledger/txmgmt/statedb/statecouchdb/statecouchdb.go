@@ -147,6 +147,11 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string, nsProvider state
 	return vdb, nil
 }
 
+func (provider *VersionedDBProvider) BootstrapDBFromState(
+	dbName string, savepoint *version.Height, itr statedb.FullScanIterator, dbValueFormat byte) error {
+	return errors.New("Not yet implemented")
+}
+
 // Close closes the underlying db instance
 func (provider *VersionedDBProvider) Close() {
 	// No close needed on Couch
@@ -913,18 +918,6 @@ func (vdb *VersionedDB) GetFullScanIterator(skipNamespace func(string) bool) (st
 		channelMetadataDocID: true,
 	}
 	return newDBsScanner(dbsToScan, vdb.couchInstance.internalQueryLimit(), toSkipKeysFromEmptyNs)
-}
-
-// ImportState implements method in VersionedDB interface. The function is expected to be used
-// for importing the state from a previously snapshotted state. The parameter itr provides access to
-// the snapshotted state.
-func (vdb *VersionedDB) ImportState(itr statedb.FullScanIterator, dbValueFormat byte) error {
-	return errors.New("Not yet implemented")
-}
-
-// IsEmpty return true if the statedb does not have any content
-func (vdb *VersionedDB) IsEmpty() (bool, error) {
-	return false, errors.New("Not yet implemented")
 }
 
 // applyAdditionalQueryOptions will add additional fields to the query required for query processing

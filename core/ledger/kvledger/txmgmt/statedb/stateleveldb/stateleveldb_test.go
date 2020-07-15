@@ -67,14 +67,14 @@ func TestQueryOnLevelDB(t *testing.T) {
 	defer env.Cleanup()
 	db, err := env.DBProvider.GetDBHandle("testquery", nil)
 	require.NoError(t, err)
-	db.Open()
+	require.NoError(t, db.Open())
 	defer db.Close()
 	batch := statedb.NewUpdateBatch()
 	jsonValue1 := `{"asset_name": "marble1","color": "blue","size": 1,"owner": "tom"}`
 	batch.Put("ns1", "key1", []byte(jsonValue1), version.NewHeight(1, 1))
 
 	savePoint := version.NewHeight(2, 22)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
 	// query for owner=jerry, use namespace "ns1"
 	// As queries are not supported in levelDB, call to ExecuteQuery()
@@ -198,14 +198,10 @@ func TestImportStateErrorPropagation(t *testing.T) {
 	var env *TestVDBEnv
 	var cleanup func()
 	var vdbProvider *VersionedDBProvider
-	var vdb *versionedDB
 
 	initEnv := func() {
 		env = NewTestVDBEnv(t)
 		vdbProvider = env.DBProvider
-		db, err := vdbProvider.GetDBHandle("TestImportStateErrorPropagation", nil)
-		require.NoError(t, err)
-		vdb = db.(*versionedDB)
 		cleanup = func() {
 			env.Cleanup()
 		}
@@ -214,7 +210,12 @@ func TestImportStateErrorPropagation(t *testing.T) {
 	t.Run("wrong-value-format", func(t *testing.T) {
 		initEnv()
 		defer cleanup()
-		err := vdb.ImportState(nil, fullScanIteratorValueFormat+byte(1))
+		err := vdbProvider.BootstrapDBFromState(
+			"test-db",
+			version.NewHeight(2, 2),
+			&dummyFullScanIter{},
+			fullScanIteratorValueFormat+byte(1),
+		)
 		require.EqualError(t, err, "value format [2] not supported. Expected value format [1]")
 	})
 
@@ -222,7 +223,9 @@ func TestImportStateErrorPropagation(t *testing.T) {
 		initEnv()
 		defer cleanup()
 
-		err := vdb.ImportState(
+		err := vdbProvider.BootstrapDBFromState(
+			"test-db",
+			version.NewHeight(2, 2),
 			&dummyFullScanIter{
 				err: errors.New("error while reading from source"),
 			},
@@ -237,7 +240,7 @@ func TestImportStateErrorPropagation(t *testing.T) {
 		defer cleanup()
 
 		vdbProvider.Close()
-		err := vdb.ImportState(
+		err := vdbProvider.BootstrapDBFromState("test-db", version.NewHeight(2, 2),
 			&dummyFullScanIter{
 				key: &statedb.CompositeKey{
 					Namespace: "ns",
@@ -256,9 +259,7 @@ func TestDrop(t *testing.T) {
 	defer env.Cleanup()
 
 	checkDBsAfterDropFunc := func(channelName string) {
-		db, err := env.DBProvider.GetDBHandle(channelName, nil)
-		require.NoError(t, err)
-		empty, err := db.IsEmpty()
+		empty, err := env.DBProvider.dbProvider.GetDBHandle(channelName).IsEmpty()
 		require.NoError(t, err)
 		require.True(t, empty)
 	}
