@@ -45,18 +45,20 @@ var (
 // kvLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
 type kvLedger struct {
-	ledgerID               string
-	blockStore             *blkstorage.BlockStore
-	pvtdataStore           *pvtdatastorage.Store
-	txmgr                  *txmgr.LockBasedTxMgr
-	historyDB              *history.DB
-	configHistoryRetriever *confighistory.Retriever
-	bookkeepingProvider    *bookkeeping.Provider
-	blockAPIsRWLock        *sync.RWMutex
-	stats                  *ledgerStats
-	commitHash             []byte
-	hashProvider           ledger.HashProvider
-	config                 *ledger.Config
+	ledgerID                  string
+	blockStore                *blkstorage.BlockStore
+	pvtdataStore              *pvtdatastorage.Store
+	txmgr                     *txmgr.LockBasedTxMgr
+	historyDB                 *history.DB
+	configHistoryRetriever    *confighistory.Retriever
+	snapshotRequestBookkeeper *snapshotRequestBookkeeper
+	blockAPIsRWLock           *sync.RWMutex
+	snapshotGenerationRWLock  sync.RWMutex
+	snapshotRequestLock       sync.Mutex
+	stats                     *ledgerStats
+	commitHash                []byte
+	hashProvider              ledger.HashProvider
+	config                    *ledger.Config
 	// isPvtDataStoreAheadOfBlockStore is read during missing pvtData
 	// reconciliation and may be updated during a regular block commit.
 	// Hence, we use atomic value to ensure consistent read.
@@ -84,14 +86,13 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 	ledgerID := initializer.ledgerID
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	l := &kvLedger{
-		ledgerID:            ledgerID,
-		blockStore:          initializer.blockStore,
-		pvtdataStore:        initializer.pvtdataStore,
-		historyDB:           initializer.historyDB,
-		bookkeepingProvider: initializer.bookkeeperProvider,
-		hashProvider:        initializer.hashProvider,
-		config:              initializer.config,
-		blockAPIsRWLock:     &sync.RWMutex{},
+		ledgerID:        ledgerID,
+		blockStore:      initializer.blockStore,
+		pvtdataStore:    initializer.pvtdataStore,
+		historyDB:       initializer.historyDB,
+		hashProvider:    initializer.hashProvider,
+		config:          initializer.config,
+		blockAPIsRWLock: &sync.RWMutex{},
 	}
 
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, initializer.ccInfoProvider})
@@ -152,6 +153,16 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 		return nil, err
 	}
 	l.configHistoryRetriever = initializer.configHistoryMgr.GetRetriever(ledgerID, l)
+
+	dbHandle := initializer.bookkeeperProvider.GetDBHandle(l.ledgerID, bookkeeping.SnapshotRequest)
+	l.snapshotRequestBookkeeper, err = newSnapshotRequestBookkeeper(dbHandle)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = l.recoverMissingSnapshot(); err != nil {
+		return nil, err
+	}
 
 	l.stats = initializer.stats
 	return l, nil
@@ -446,7 +457,43 @@ func (l *kvLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error
 }
 
 // CommitLegacy commits the block and the corresponding pvt data in an atomic operation
+// and then generates a snapshot if there is a snapshot request matching the block height.
+// It locks snapshotGenerationRWLock to synchronize between commit and snapshot generation
+// as well as commit and snapshot request submission/cancellation.
 func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
+	l.snapshotGenerationRWLock.Lock()
+	err := l.commit(pvtdataAndBlock, commitOpts)
+	smallestRequestHeight := l.snapshotRequestBookkeeper.smallestRequestHeight
+	l.snapshotGenerationRWLock.Unlock()
+
+	if err != nil {
+		return err
+	}
+
+	// generates a snapshot if the block height matches smallest request height.
+	// It locks snapshotGenerationRWLock with RLock to synchronizes between commit
+	// and snapshot generation and meanwhile allow snapshot request submission/cancellation.
+	// It starts a go-routine to call generateSnapshot and holds the snapshotGenerationRWLock
+	// until generateSnapshot is finished.
+	blockHeight := pvtdataAndBlock.Block.Header.Number + 1
+	if smallestRequestHeight == blockHeight {
+		l.snapshotGenerationRWLock.RLock()
+		go func() {
+			defer l.snapshotGenerationRWLock.RUnlock()
+			if err := l.generateSnapshot(); err != nil {
+				logger.Errorw("Failed to generate snapshot", "height", blockHeight, "error", err)
+			}
+			if err := l.deleteSnapshotRequest(blockHeight); err != nil {
+				logger.Errorw("Failed to delete snapshot request", "height", blockHeight, "error", err)
+			}
+		}()
+	}
+
+	return nil
+}
+
+// commit commits the block and the corresponding pvt data in an atomic operation.
+func (l *kvLedger) commit(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	var err error
 	block := pvtdataAndBlock.Block
 	blockNo := pvtdataAndBlock.Block.Header.Number
@@ -480,6 +527,11 @@ func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitO
 	elapsedBlockProcessing := time.Since(startBlockProcessing)
 
 	startBlockstorageAndPvtdataCommit := time.Now()
+
+	logger.Debugf("[%s] Committing pvtdata and block [%d] to storage", l.ledgerID, blockNo)
+	l.blockAPIsRWLock.Lock()
+	defer l.blockAPIsRWLock.Unlock()
+
 	logger.Debugf("[%s] Adding CommitHash to the block [%d]", l.ledgerID, blockNo)
 	// we need to ensure that only after a genesis block, commitHash is computed
 	// and added to the block. In other words, only after joining a new channel
@@ -488,9 +540,6 @@ func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitO
 		l.addBlockCommitHash(pvtdataAndBlock.Block, updateBatchBytes)
 	}
 
-	logger.Debugf("[%s] Committing pvtdata and block [%d] to storage", l.ledgerID, blockNo)
-	l.blockAPIsRWLock.Lock()
-	defer l.blockAPIsRWLock.Unlock()
 	if err = l.commitToPvtAndBlockStore(pvtdataAndBlock); err != nil {
 		return err
 	}
