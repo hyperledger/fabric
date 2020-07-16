@@ -31,10 +31,15 @@ func TestGenerateSnapshot(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
 	snapshotRootDir := conf.SnapshotsConfig.RootDir
+	nsCollBtlConfs := []*nsCollBtlConfig{
+		{
+			namespace: "ns",
+			btlConfig: map[string]uint64{"coll": 0},
+		},
+	}
 	provider := testutilNewProviderWithCollectionConfig(
 		t,
-		"ns",
-		map[string]uint64{"coll": 0},
+		nsCollBtlConfs,
 		conf,
 	)
 	defer provider.Close()

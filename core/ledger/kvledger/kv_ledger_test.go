@@ -258,10 +258,15 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 func TestKVLedgerDBRecovery(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
+	nsCollBtlConfs := []*nsCollBtlConfig{
+		{
+			namespace: "ns",
+			btlConfig: map[string]uint64{"coll": 0},
+		},
+	}
 	provider1 := testutilNewProviderWithCollectionConfig(
 		t,
-		"ns",
-		map[string]uint64{"coll": 0},
+		nsCollBtlConfs,
 		conf,
 	)
 	defer provider1.Close()
@@ -328,8 +333,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// StateDB and HistoryDB should be recovered before returning from NewKVLedger call
 	provider2 := testutilNewProviderWithCollectionConfig(
 		t,
-		"ns",
-		map[string]uint64{"coll": 0},
+		nsCollBtlConfs,
 		conf,
 	)
 	defer provider2.Close()
@@ -385,8 +389,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// history DB should be recovered before returning from NewKVLedger call
 	provider3 := testutilNewProviderWithCollectionConfig(
 		t,
-		"ns",
-		map[string]uint64{"coll": 0},
+		nsCollBtlConfs,
 		conf,
 	)
 	defer provider3.Close()
@@ -443,8 +446,7 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// state DB should be recovered before returning from NewKVLedger call
 	provider4 := testutilNewProviderWithCollectionConfig(
 		t,
-		"ns",
-		map[string]uint64{"coll": 0},
+		nsCollBtlConfs,
 		conf,
 	)
 	defer provider4.Close()

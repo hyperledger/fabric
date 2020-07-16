@@ -119,7 +119,9 @@ func (v *rangeQueryHashValidator) validate() (bool, error) {
 			return equals, nil
 		}
 		versionedKV := result.(*statedb.VersionedKV)
-		v.resultsHelper.AddResult(rwsetutil.NewKVRead(versionedKV.Key, versionedKV.Version))
+		if err := v.resultsHelper.AddResult(rwsetutil.NewKVRead(versionedKV.Key, versionedKV.Version)); err != nil {
+			return false, err
+		}
 		merkle := v.resultsHelper.GetMerkleSummary()
 
 		if merkle.MaxLevel < inMerkle.MaxLevel {

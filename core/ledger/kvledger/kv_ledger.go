@@ -316,9 +316,7 @@ func (l *kvLedger) syncStateDBWithOldBlkPvtdata() error {
 		return err
 	}
 
-	l.pvtdataStore.ResetLastUpdatedOldBlocksList()
-
-	return nil
+	return l.pvtdataStore.ResetLastUpdatedOldBlocksList()
 }
 
 func (l *kvLedger) filterYetToCommitBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {

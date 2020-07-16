@@ -781,7 +781,9 @@ func (s *Store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 		for _, missingDataKey := range missingDataKeys {
 			batch.Delete(encodeMissingDataKey(missingDataKey))
 		}
-		s.db.WriteBatch(batch, false)
+		if err := s.db.WriteBatch(batch, false); err != nil {
+			return err
+		}
 	}
 	logger.Infof("[%s] - [%d] Entries purged from private data storage till block number [%d]", s.ledgerid, len(expiryEntries), maxBlkNum)
 	return nil
