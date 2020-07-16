@@ -9,7 +9,6 @@ package privacyenabledstate
 import (
 	"io/ioutil"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -35,7 +34,6 @@ type TestEnv interface {
 	DecodeDBValue(dbVal []byte) statedb.VersionedValue
 	Cleanup()
 	StopExternalResource()
-	CheckDBsAfterDrop(ledgerid string)
 }
 
 // Tests will be run against each environment in this array
@@ -119,13 +117,6 @@ func (env *LevelDBTestEnv) Cleanup() {
 	env.provider.Close()
 	env.bookkeeperTestEnv.Cleanup()
 	os.RemoveAll(env.dbPath)
-}
-
-// CheckDBsAfterDrop checks the ledgerid db is empty
-func (env *LevelDBTestEnv) CheckDBsAfterDrop(ledgerid string) {
-	empty, err := env.GetDBHandle(ledgerid).IsEmpty()
-	require.NoError(env.t, err)
-	require.True(env.t, empty)
 }
 
 ///////////// CouchDB Environment //////////////
@@ -235,17 +226,4 @@ func (env *CouchDBTestEnv) Cleanup() {
 	os.RemoveAll(env.redoPath)
 	env.bookkeeperTestEnv.Cleanup()
 	env.provider.Close()
-}
-
-// CheckDBsAfterDrop verifies couchDB databases have been dropped for the ledgerid
-func (env *CouchDBTestEnv) CheckDBsAfterDrop(ledgerid string) {
-	appDBNames := statecouchdb.RetrieveApplicationDBNames(env.t, env.couchDBConfig)
-	found := false
-	for _, dbName := range appDBNames {
-		if strings.HasPrefix(dbName, ledgerid+"_") {
-			found = true
-			break
-		}
-	}
-	require.False(env.t, found)
 }

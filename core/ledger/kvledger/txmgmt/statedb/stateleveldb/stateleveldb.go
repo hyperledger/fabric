@@ -54,6 +54,15 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string, namespaceProvide
 	return newVersionedDB(provider.dbProvider.GetDBHandle(dbName), dbName), nil
 }
 
+func (provider *VersionedDBProvider) BootstrapDBFromState(
+	dbName string, savepoint *version.Height, itr statedb.FullScanIterator, dbValueFormat byte) error {
+	vdb := newVersionedDB(provider.dbProvider.GetDBHandle(dbName), dbName)
+	if err := vdb.importState(itr, savepoint, dbValueFormat); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Close closes the underlying db
 func (provider *VersionedDBProvider) Close() {
 	provider.dbProvider.Close()
@@ -227,10 +236,13 @@ func (vdb *versionedDB) GetFullScanIterator(skipNamespace func(string) bool) (st
 	return newFullDBScanner(vdb.db, skipNamespace)
 }
 
-// ImportState implements method in VersionedDB interface. The function is expected to be used
+// importState implements method in VersionedDB interface. The function is expected to be used
 // for importing the state from a previously snapshotted state. The parameter itr provides access to
 // the snapshotted state.
-func (vdb *versionedDB) ImportState(itr statedb.FullScanIterator, dbValueFormat byte) error {
+func (vdb *versionedDB) importState(itr statedb.FullScanIterator, savepoint *version.Height, dbValueFormat byte) error {
+	if itr == nil {
+		return vdb.db.Put(savePointKey, savepoint.ToBytes(), true)
+	}
 	if dbValueFormat != fullScanIteratorValueFormat {
 		return errors.Errorf("value format [%x] not supported. Expected value format [%x]",
 			dbValueFormat, fullScanIteratorValueFormat)
@@ -256,6 +268,7 @@ func (vdb *versionedDB) ImportState(itr statedb.FullScanIterator, dbValueFormat 
 			dbBatch.Reset()
 		}
 	}
+	dbBatch.Put(savePointKey, savepoint.ToBytes())
 	return vdb.db.WriteBatch(dbBatch, true)
 }
 

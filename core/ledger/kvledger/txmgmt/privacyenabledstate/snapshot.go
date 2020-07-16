@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
@@ -107,8 +108,8 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 }
 
 // ImportPubStateAndPvtStateHashes imports the public state and private state hashes from the corresponding
-// files in the snapshotdir
-func (s *DB) ImportPubStateAndPvtStateHashes(snapshotDir string) error {
+// files in the snapshotDir
+func (p *DBProvider) BootstapDBFromPubStateAndPvtStateHashes(dbname string, savepoint *version.Height, snapshotDir string) error {
 	worldStateSnapshotReader, dbValueFormat, err := newWorldStateSnapshotReader(snapshotDir)
 	if err != nil {
 		return err
@@ -116,9 +117,9 @@ func (s *DB) ImportPubStateAndPvtStateHashes(snapshotDir string) error {
 	defer worldStateSnapshotReader.Close()
 
 	if worldStateSnapshotReader.pubState == nil && worldStateSnapshotReader.pvtStateHashes == nil {
-		return nil
+		return p.VersionedDBProvider.BootstrapDBFromState(dbname, savepoint, nil, byte(0))
 	}
-	return s.VersionedDB.ImportState(worldStateSnapshotReader, dbValueFormat)
+	return p.VersionedDBProvider.BootstrapDBFromState(dbname, savepoint, worldStateSnapshotReader, dbValueFormat)
 }
 
 // snapshotWriter generates two files, a data file and a metadata file. The datafile contains a series of tuples <key, dbValue>
