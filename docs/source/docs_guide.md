@@ -213,7 +213,7 @@ your GitHub account.
    cd fabric-docs-18n/docs/locale/ml_IN
    pipenv install
    pipenv shell
-   make html
+   make -e SPHINXOPTS="-D language='ml'" html
    ```
 
    The `make` command generates documentation html files in the `build/html/`
