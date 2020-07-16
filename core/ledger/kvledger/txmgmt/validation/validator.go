@@ -102,7 +102,9 @@ func (v *validator) validateAndPrepareBatch(blk *block, doMVCCValidation bool) (
 		if validationCode == peer.TxValidationCode_VALID {
 			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator. ContainsPostOrderWrites [%t]", blk.num, tx.indexInBlock, tx.id, tx.containsPostOrderWrites)
 			committingTxHeight := version.NewHeight(blk.num, uint64(tx.indexInBlock))
-			updates.applyWriteSet(tx.rwset, committingTxHeight, v.db, tx.containsPostOrderWrites)
+			if err := updates.applyWriteSet(tx.rwset, committingTxHeight, v.db, tx.containsPostOrderWrites); err != nil {
+				return nil, err
+			}
 		} else {
 			logger.Warningf("Block [%d] Transaction index [%d] TxId [%s] marked as invalid by state validator. Reason code [%s]",
 				blk.num, tx.indexInBlock, tx.id, validationCode.String())
@@ -228,7 +230,9 @@ func (v *validator) validateRangeQuery(ns string, rangeQueryInfo *kvrwset.RangeQ
 		logger.Debug(`Hashing results are not present in the range query info hence, initiating raw KVReads based validation`)
 		qv = &rangeQueryResultsValidator{}
 	}
-	qv.init(rangeQueryInfo, combinedItr)
+	if err := qv.init(rangeQueryInfo, combinedItr); err != nil {
+		return false, err
+	}
 	return qv.validate()
 }
 
