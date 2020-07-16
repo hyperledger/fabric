@@ -35,6 +35,17 @@ type Factory struct {
 		result1 blockledger.ReadWriter
 		result2 error
 	}
+	RemoveStub        func(string) error
+	removeMutex       sync.RWMutex
+	removeArgsForCall []struct {
+		arg1 string
+	}
+	removeReturns struct {
+		result1 error
+	}
+	removeReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -177,6 +188,66 @@ func (fake *Factory) GetOrCreateReturnsOnCall(i int, result1 blockledger.ReadWri
 	}{result1, result2}
 }
 
+func (fake *Factory) Remove(arg1 string) error {
+	fake.removeMutex.Lock()
+	ret, specificReturn := fake.removeReturnsOnCall[len(fake.removeArgsForCall)]
+	fake.removeArgsForCall = append(fake.removeArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("Remove", []interface{}{arg1})
+	fake.removeMutex.Unlock()
+	if fake.RemoveStub != nil {
+		return fake.RemoveStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.removeReturns
+	return fakeReturns.result1
+}
+
+func (fake *Factory) RemoveCallCount() int {
+	fake.removeMutex.RLock()
+	defer fake.removeMutex.RUnlock()
+	return len(fake.removeArgsForCall)
+}
+
+func (fake *Factory) RemoveCalls(stub func(string) error) {
+	fake.removeMutex.Lock()
+	defer fake.removeMutex.Unlock()
+	fake.RemoveStub = stub
+}
+
+func (fake *Factory) RemoveArgsForCall(i int) string {
+	fake.removeMutex.RLock()
+	defer fake.removeMutex.RUnlock()
+	argsForCall := fake.removeArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *Factory) RemoveReturns(result1 error) {
+	fake.removeMutex.Lock()
+	defer fake.removeMutex.Unlock()
+	fake.RemoveStub = nil
+	fake.removeReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *Factory) RemoveReturnsOnCall(i int, result1 error) {
+	fake.removeMutex.Lock()
+	defer fake.removeMutex.Unlock()
+	fake.RemoveStub = nil
+	if fake.removeReturnsOnCall == nil {
+		fake.removeReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.removeReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *Factory) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -186,6 +257,8 @@ func (fake *Factory) Invocations() map[string][][]interface{} {
 	defer fake.closeMutex.RUnlock()
 	fake.getOrCreateMutex.RLock()
 	defer fake.getOrCreateMutex.RUnlock()
+	fake.removeMutex.RLock()
+	defer fake.removeMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

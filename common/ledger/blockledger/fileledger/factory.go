@@ -14,8 +14,10 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 )
 
+//go:generate counterfeiter -o mock/block_store_provider.go --fake-name BlockStoreProvider . blockStoreProvider
 type blockStoreProvider interface {
 	Open(ledgerid string) (*blkstorage.BlockStore, error)
+	Drop(ledgerid string) error
 	List() ([]string, error)
 	Close()
 }
@@ -26,39 +28,55 @@ type fileLedgerFactory struct {
 	mutex              sync.Mutex
 }
 
-// GetOrCreate gets an existing ledger (if it exists) or creates it if it does not
-func (flf *fileLedgerFactory) GetOrCreate(chainID string) (blockledger.ReadWriter, error) {
-	flf.mutex.Lock()
-	defer flf.mutex.Unlock()
+// GetOrCreate gets an existing ledger (if it exists) or creates it
+// if it does not.
+func (f *fileLedgerFactory) GetOrCreate(channelID string) (blockledger.ReadWriter, error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 
-	key := chainID
 	// check cache
-	ledger, ok := flf.ledgers[key]
+	ledger, ok := f.ledgers[channelID]
 	if ok {
 		return ledger, nil
 	}
 	// open fresh
-	blockStore, err := flf.blkstorageProvider.Open(key)
+	blockStore, err := f.blkstorageProvider.Open(channelID)
 	if err != nil {
 		return nil, err
 	}
 	ledger = NewFileLedger(blockStore)
-	flf.ledgers[key] = ledger
+	f.ledgers[channelID] = ledger
 	return ledger, nil
 }
 
-// ChannelIDs returns the channel IDs the factory is aware of
-func (flf *fileLedgerFactory) ChannelIDs() []string {
-	channelIDs, err := flf.blkstorageProvider.List()
+// Remove removes an existing ledger and its indexes. This operation
+// is blocking.
+func (f *fileLedgerFactory) Remove(channelID string) error {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	err := f.blkstorageProvider.Drop(channelID)
+	if err != nil {
+		return err
+	}
+
+	delete(f.ledgers, channelID)
+
+	return nil
+}
+
+// ChannelIDs returns the channel IDs the factory is aware of.
+func (f *fileLedgerFactory) ChannelIDs() []string {
+	channelIDs, err := f.blkstorageProvider.List()
 	if err != nil {
 		logger.Panic(err)
 	}
 	return channelIDs
 }
 
-// Close releases all resources acquired by the factory
-func (flf *fileLedgerFactory) Close() {
-	flf.blkstorageProvider.Close()
+// Close releases all resources acquired by the factory.
+func (f *fileLedgerFactory) Close() {
+	f.blkstorageProvider.Close()
 }
 
 // New creates a new ledger factory
