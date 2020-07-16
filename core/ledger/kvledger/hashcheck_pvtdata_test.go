@@ -16,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
-	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +23,38 @@ import (
 func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
-	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+	nsCollBtlConfs := []*nsCollBtlConfig{
+		{
+			namespace: "ns-1",
+			btlConfig: map[string]uint64{
+				"coll-1": 0,
+				"coll-2": 0,
+			},
+		},
+		{
+			namespace: "ns-2",
+			btlConfig: map[string]uint64{
+				"coll-2": 0,
+			},
+		},
+		{
+			namespace: "ns-4",
+			btlConfig: map[string]uint64{
+				"coll-2": 0,
+			},
+		},
+		{
+			namespace: "ns-6",
+			btlConfig: map[string]uint64{
+				"coll-2": 0,
+			},
+		},
+	}
+	provider := testutilNewProviderWithCollectionConfig(
+		t,
+		nsCollBtlConfs,
+		conf,
+	)
 	defer provider.Close()
 
 	_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
