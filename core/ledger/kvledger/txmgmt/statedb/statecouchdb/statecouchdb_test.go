@@ -63,6 +63,7 @@ func (env *testVDBEnv) init(t *testing.T, sysNamespaces []string) {
 		UserCacheSizeMBs:    8,
 	}
 
+	disableKeepAlive = true
 	dbProvider, err := NewVersionedDBProvider(config, &disabled.Provider{}, sysNamespaces)
 	if err != nil {
 		t.Fatalf("Error creating CouchDB Provider: %s", err)
@@ -90,7 +91,7 @@ func (env *testVDBEnv) cleanup() {
 		env.DBProvider.Close()
 	}
 	env.couchDBEnv.cleanup(env.config)
-	os.RemoveAll(env.config.RedoLogPath)
+	require.NoError(env.t, os.RemoveAll(env.config.RedoLogPath))
 }
 
 // testVDBEnv provides a couch db for testing
@@ -1694,15 +1695,199 @@ func testRangeQueryWithPageSize(
 }
 
 func TestDataExportImport(t *testing.T) {
-	t.Skip("Skip this test until the import state function is implemented in statecouchdb")
-	vdbEnv.init(t, nil)
-	defer vdbEnv.cleanup()
+	t.Run("export-import", func(t *testing.T) {
+		vdbEnv.init(t, nil)
+		defer vdbEnv.cleanup()
 
-	commontests.TestDataExportImport(
-		t,
-		vdbEnv.DBProvider,
-		byte(1),
-	)
+		for _, size := range []int{10, 2 * 1024 * 1024} {
+			maxDataImportBatchMemorySize = size
+			commontests.TestDataExportImport(t, vdbEnv.DBProvider, fullScanIteratorValueFormat)
+		}
+	})
+
+	t.Run("nil-iterator", func(t *testing.T) {
+		vdbEnv.init(t, nil)
+		defer vdbEnv.cleanup()
+
+		require.NoError(
+			t,
+			vdbEnv.DBProvider.BootstrapDBFromState("testdb", nil, nil, fullScanIteratorValueFormat),
+		)
+	})
+
+	t.Run("error-couchdb-connection", func(t *testing.T) {
+		vdbEnv.init(t, nil)
+		configBackup := *vdbEnv.config
+		defer func() {
+			vdbEnv.config = &configBackup
+			vdbEnv.cleanup()
+		}()
+
+		vdbEnv.config.MaxRetries = 1
+		vdbEnv.config.MaxRetriesOnStartup = 1
+		vdbEnv.config.RequestTimeout = 1 * time.Second
+		vdbEnv.config.Address = "127.0.0.1:1"
+		require.Contains(
+			t,
+			vdbEnv.DBProvider.BootstrapDBFromState("testdb", nil, nil, byte(0)).Error(),
+			"error while creating the metadata database for channel testdb: http error calling couchdb",
+		)
+	})
+
+	t.Run("error-wrong-format", func(t *testing.T) {
+		vdbEnv.init(t, nil)
+		defer vdbEnv.cleanup()
+
+		require.EqualError(
+			t,
+			vdbEnv.DBProvider.BootstrapDBFromState("testdb", nil, &dummyFullScanIter{}, byte(2)),
+			"value format [2] not supported. Expected value format [1]",
+		)
+	})
+
+	t.Run("error-reading-from-iter", func(t *testing.T) {
+		vdbEnv.init(t, nil)
+		defer vdbEnv.cleanup()
+
+		itr := &dummyFullScanIter{
+			err: errors.New("error while reading from source"),
+		}
+		require.EqualError(
+			t,
+			vdbEnv.DBProvider.BootstrapDBFromState("testdb", nil, itr, fullScanIteratorValueFormat),
+			"error while reading from source",
+		)
+	})
+
+	t.Run("error-while-decoding", func(t *testing.T) {
+		vdbEnv.init(t, nil)
+		defer vdbEnv.cleanup()
+
+		itr := &dummyFullScanIter{
+			key: &statedb.CompositeKey{
+				Namespace: "ns1",
+				Key:       "key1",
+			},
+			value: []byte("random"),
+		}
+		require.EqualError(
+			t,
+			vdbEnv.DBProvider.BootstrapDBFromState("testdb", nil, itr, fullScanIteratorValueFormat),
+			"error while decoding the encoded ValueVersionMetadata of key key1: unexpected EOF",
+		)
+	})
+
+	t.Run("error-creating-database", func(t *testing.T) {
+		vdbEnv.init(t, nil)
+		configBackup := *vdbEnv.config
+		defer func() {
+			vdbEnv.config = &configBackup
+			vdbEnv.cleanup()
+		}()
+
+		vdb, err := vdbEnv.DBProvider.GetDBHandle("testdb", nil)
+		require.NoError(t, err)
+		nsDB, err := vdb.(*VersionedDB).getNamespaceDBHandle("ns")
+		require.NoError(t, err)
+
+		vdbEnv.config.MaxRetries = 1
+		vdbEnv.config.MaxRetriesOnStartup = 1
+		vdbEnv.config.RequestTimeout = 1 * time.Second
+		vdbEnv.config.Address = "127.0.0.1:1"
+
+		// creating database for the first encountered namespace
+		s := &snapshotImporter{
+			vdb: vdb.(*VersionedDB),
+			itr: &dummyFullScanIter{
+				key: &statedb.CompositeKey{
+					Namespace: "ns1",
+				},
+			},
+			valueFormat: fullScanIteratorValueFormat,
+		}
+		require.Contains(
+			t,
+			s.importState().Error(),
+			"error while creating database for the namespace ns1",
+		)
+
+		// creating database as next namespace
+		// does not match the current namespace
+		s = &snapshotImporter{
+			vdb: vdb.(*VersionedDB),
+			itr: &dummyFullScanIter{
+				key: &statedb.CompositeKey{
+					Namespace: "ns2",
+				},
+			},
+			currentNsDB: nsDB,
+			currentNs:   "ns",
+			valueFormat: fullScanIteratorValueFormat,
+		}
+		require.Contains(
+			t,
+			s.importState().Error(),
+			"error while creating database for the namespace ns2",
+		)
+	})
+
+	t.Run("error-while-storing", func(t *testing.T) {
+		vdbEnv.init(t, nil)
+		configBackup := *vdbEnv.config
+		defer func() {
+			vdbEnv.config = &configBackup
+			vdbEnv.cleanup()
+		}()
+
+		vdb, err := vdbEnv.DBProvider.GetDBHandle("testdb", nil)
+		require.NoError(t, err)
+		ns1DB, err := vdb.(*VersionedDB).getNamespaceDBHandle("ns1")
+		require.NoError(t, err)
+
+		vdbEnv.config.MaxRetries = 1
+		vdbEnv.config.MaxRetriesOnStartup = 1
+		vdbEnv.config.RequestTimeout = 1 * time.Second
+		vdbEnv.config.Address = "127.0.0.1:1"
+
+		// same namespace but the pending doc limit reached
+		s := &snapshotImporter{
+			vdb: vdb.(*VersionedDB),
+			itr: &dummyFullScanIter{
+				key: &statedb.CompositeKey{
+					Namespace: "ns1",
+				},
+			},
+			currentNsDB:      ns1DB,
+			currentNs:        "ns1",
+			pendingDocsBatch: []*couchDoc{{}, {}},
+			batchMemorySize:  4 * 1024 * 1024,
+			valueFormat:      fullScanIteratorValueFormat,
+		}
+		require.Contains(
+			t,
+			s.importState().Error(),
+			"error while storing 3 states associated with namespace ns1",
+		)
+
+		// next namespace does not match the current namespace
+		s = &snapshotImporter{
+			vdb: vdb.(*VersionedDB),
+			itr: &dummyFullScanIter{
+				key: &statedb.CompositeKey{
+					Namespace: "ns2",
+				},
+			},
+			currentNsDB:      ns1DB,
+			currentNs:        "ns1",
+			pendingDocsBatch: []*couchDoc{{}, {}},
+			valueFormat:      fullScanIteratorValueFormat,
+		}
+		require.Contains(
+			t,
+			s.importState().Error(),
+			"error while storing 2 states associated with namespace ns1",
+		)
+	})
 }
 
 func constructVersionedValueForTest(dbVal []byte) (*statedb.VersionedValue, error) {
@@ -1907,4 +2092,17 @@ func TestDropErrorPath(t *testing.T) {
 
 	vdbEnv.DBProvider.Close()
 	require.EqualError(t, vdbEnv.DBProvider.Drop(channelName), "internal leveldb error while obtaining db iterator: leveldb: closed")
+}
+
+type dummyFullScanIter struct {
+	err   error
+	key   *statedb.CompositeKey
+	value []byte
+}
+
+func (d *dummyFullScanIter) Next() (*statedb.CompositeKey, []byte, error) {
+	return d.key, d.value, d.err
+}
+
+func (d *dummyFullScanIter) Close() {
 }

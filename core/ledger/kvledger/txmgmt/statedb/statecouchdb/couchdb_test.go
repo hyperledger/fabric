@@ -1666,3 +1666,53 @@ func TestCouchDocKey(t *testing.T) {
 	_, err = doc.key()
 	require.Error(t, err)
 }
+
+func TestCouchDocLength(t *testing.T) {
+	testData := []struct {
+		description    string
+		doc            *couchDoc
+		expectedLength int
+	}{
+		{
+			description: "doc has a json value and attachments",
+			doc: &couchDoc{
+				jsonValue: []byte("7length"),
+				attachments: []*attachmentInfo{
+					{
+						Name:            "5leng",
+						ContentType:     "3le",
+						AttachmentBytes: []byte("8length."),
+					},
+					{
+						AttachmentBytes: []byte("8length."),
+					},
+					{},
+				},
+			},
+			expectedLength: 31, //7 + 5 + 3 + 8 + 8
+		},
+		{
+			description: "doc has only json value",
+			doc: &couchDoc{
+				jsonValue: []byte("7length"),
+			},
+			expectedLength: 7,
+		},
+		{
+			description:    "doc is empty",
+			doc:            &couchDoc{},
+			expectedLength: 0,
+		},
+		{
+			description:    "doc is nil",
+			doc:            nil,
+			expectedLength: 0,
+		},
+	}
+
+	for _, tData := range testData {
+		t.Run(tData.description, func(t *testing.T) {
+			require.Equal(t, tData.expectedLength, tData.doc.len())
+		})
+	}
+}

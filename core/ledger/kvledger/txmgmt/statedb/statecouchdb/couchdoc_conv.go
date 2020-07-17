@@ -185,6 +185,43 @@ func keyValToCouchDoc(kv *keyValue) (*couchDoc, error) {
 	return couchDoc, nil
 }
 
+func snapshotValueToCouchDoc(key string, content []byte) (*couchDoc, error) {
+	v, err := decodeValueVersionMetadata(content)
+	if err != nil {
+		return nil, errors.WithMessagef(
+			err,
+			"error while decoding the encoded ValueVersionMetadata of key %s",
+			key,
+		)
+	}
+
+	jsonDoc := make(jsonValue)
+	var attachment *attachmentInfo
+	if err := json.Unmarshal(v.Value, &jsonDoc); err != nil {
+		// if the v.Value is binary rather than a JSON,
+		// the json unmarshal would result in an error
+		attachment = &attachmentInfo{
+			Name:            binaryWrapper,
+			ContentType:     "application/octet-stream",
+			AttachmentBytes: v.Value,
+		}
+	}
+
+	jsonDoc[versionField] = string(v.VersionAndMetadata)
+	jsonDoc[idField] = key
+	doc, err := jsonDoc.toBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	return &couchDoc{
+		jsonValue: doc,
+		attachments: []*attachmentInfo{
+			attachment,
+		},
+	}, nil
+}
+
 // couchSavepointData data for couchdb
 type couchSavepointData struct {
 	BlockNum uint64 `json:"BlockNum"`

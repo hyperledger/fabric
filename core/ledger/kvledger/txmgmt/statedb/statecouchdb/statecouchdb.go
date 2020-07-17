@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -37,6 +38,10 @@ const (
 	// dataformatVersionDocID is used as a key for maintaining version of the data format (maintained in fabric internal db)
 	dataformatVersionDocID      = "dataformatVersion"
 	fullScanIteratorValueFormat = byte(1)
+)
+
+var (
+	maxDataImportBatchMemorySize = 2 * 1024 * 1024
 )
 
 // VersionedDBProvider implements interface VersionedDBProvider
@@ -149,7 +154,35 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string, nsProvider state
 
 func (provider *VersionedDBProvider) BootstrapDBFromState(
 	dbName string, savepoint *version.Height, itr statedb.FullScanIterator, dbValueFormat byte) error {
-	return errors.New("Not yet implemented")
+	metadataDB, err := createCouchDatabase(provider.couchInstance, constructMetadataDBName(dbName))
+	if err != nil {
+		return errors.WithMessagef(err, "error while creating the metadata database for channel %s", dbName)
+	}
+
+	vdb := &VersionedDB{
+		chainName:     dbName,
+		couchInstance: provider.couchInstance,
+		metadataDB:    metadataDB,
+		channelMetadata: &channelMetadata{
+			ChannelName:      dbName,
+			NamespaceDBsInfo: make(map[string]*namespaceDBInfo),
+		},
+		namespaceDBs: make(map[string]*couchDatabase),
+	}
+	if err := vdb.writeChannelMetadata(); err != nil {
+		return errors.WithMessage(err, "error while writing channel metadata")
+	}
+
+	s := &snapshotImporter{
+		vdb:         vdb,
+		itr:         itr,
+		valueFormat: dbValueFormat,
+	}
+	if err := s.importState(); err != nil {
+		return err
+	}
+
+	return vdb.recordSavepoint(savepoint)
 }
 
 // Close closes the underlying db instance
@@ -1207,4 +1240,89 @@ func (s *dbsScanner) Close() {
 		return
 	}
 	s.resultItr.Close()
+}
+
+type snapshotImporter struct {
+	vdb              *VersionedDB
+	itr              statedb.FullScanIterator
+	valueFormat      byte
+	currentNs        string
+	currentNsDB      *couchDatabase
+	pendingDocsBatch []*couchDoc
+	batchMemorySize  int
+}
+
+func (s *snapshotImporter) importState() error {
+	if s.itr == nil {
+		return nil
+	}
+	if s.valueFormat != fullScanIteratorValueFormat {
+		return fmt.Errorf("value format [%x] not supported. Expected value format [%x]",
+			s.valueFormat, fullScanIteratorValueFormat)
+	}
+
+	for {
+		compositeKey, value, err := s.itr.Next()
+		if err != nil {
+			return err
+		}
+		if compositeKey == nil {
+			break
+		}
+
+		switch {
+		case s.currentNsDB == nil:
+			if err := s.createDBForNamespace(compositeKey.Namespace); err != nil {
+				return err
+			}
+		case s.currentNs != compositeKey.Namespace:
+			if err := s.storePendingDocs(); err != nil {
+				return err
+			}
+			if err := s.createDBForNamespace(compositeKey.Namespace); err != nil {
+				return err
+			}
+		}
+
+		doc, err := snapshotValueToCouchDoc(compositeKey.Key, value)
+		if err != nil {
+			return err
+		}
+		s.pendingDocsBatch = append(s.pendingDocsBatch, doc)
+		s.batchMemorySize += doc.len()
+
+		if s.batchMemorySize >= maxDataImportBatchMemorySize ||
+			len(s.pendingDocsBatch) == s.vdb.couchInstance.maxBatchUpdateSize() {
+			if err := s.storePendingDocs(); err != nil {
+				return err
+			}
+		}
+	}
+
+	return s.storePendingDocs()
+}
+
+func (s *snapshotImporter) createDBForNamespace(ns string) error {
+	s.currentNs = ns
+	var err error
+	s.currentNsDB, err = s.vdb.getNamespaceDBHandle(ns)
+	return errors.WithMessagef(err, "error while creating database for the namespace %s", ns)
+}
+
+func (s *snapshotImporter) storePendingDocs() error {
+	if len(s.pendingDocsBatch) == 0 {
+		return nil
+	}
+
+	if err := s.currentNsDB.insertDocuments(s.pendingDocsBatch); err != nil {
+		return errors.WithMessagef(
+			err,
+			"error while storing %d states associated with namespace %s",
+			len(s.pendingDocsBatch), s.currentNs,
+		)
+	}
+	s.batchMemorySize = 0
+	s.pendingDocsBatch = nil
+
+	return nil
 }

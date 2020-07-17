@@ -146,6 +146,13 @@ type attachmentInfo struct {
 	AttachmentBytes []byte `json:"data"`
 }
 
+func (a *attachmentInfo) len() int {
+	if a == nil {
+		return 0
+	}
+	return len(a.Name) + len(a.ContentType) + len(a.AttachmentBytes)
+}
+
 //fileDetails defines the structure needed to send an attachment to couchdb
 type fileDetails struct {
 	Follows     bool   `json:"follows"`
@@ -211,7 +218,17 @@ func (d *couchDoc) key() (string, error) {
 		return "", err
 	}
 	return m[idField].(string), nil
+}
 
+func (d *couchDoc) len() int {
+	if d == nil {
+		return 0
+	}
+	size := len(d.jsonValue)
+	for _, a := range d.attachments {
+		size += a.len()
+	}
+	return size
 }
 
 // closeResponseBody discards the body and then closes it to enable returning it to
@@ -1457,6 +1474,23 @@ func (dbclient *couchDatabase) batchRetrieveDocumentMetadata(keys []string) ([]*
 
 	return docMetadataArray, nil
 
+}
+
+func (dbClient *couchDatabase) insertDocuments(docs []*couchDoc) error {
+	responses, err := dbClient.batchUpdateDocuments(docs)
+	if err != nil {
+		return errors.WithMessage(err, "error while updating docs in bulk")
+	}
+
+	for i, resp := range responses {
+		if resp.Ok {
+			continue
+		}
+		if _, err := dbClient.saveDoc(resp.ID, "", docs[i]); err != nil {
+			return errors.WithMessagef(err, "error while storing doc with ID %s", resp.ID)
+		}
+	}
+	return nil
 }
 
 //batchUpdateDocuments - batch method to batch update documents

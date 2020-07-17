@@ -1035,25 +1035,33 @@ func TestDataExportImport(
 	dbProvider statedb.VersionedDBProvider,
 	valueFormat byte) {
 
-	sourceDB, err := dbProvider.GetDBHandle("sourceLedger", nil)
+	sourceDB, err := dbProvider.GetDBHandle("source_ledger", nil)
 	require.NoError(t, err)
 
 	// generateSampleData returns a slice of KVs. The returned value contains five KVs for each of the namespaces
 	generateSampleData := func(namespaces ...string) []*statedb.VersionedKV {
 		sampleData := []*statedb.VersionedKV{}
 		for _, ns := range namespaces {
-			for i := 0; i < 5; i++ {
+			for i := 0; i < 6; i++ {
 				sampleKV := &statedb.VersionedKV{
 					CompositeKey: statedb.CompositeKey{
 						Namespace: ns,
 						Key:       fmt.Sprintf("key-%d", i),
 					},
 					VersionedValue: statedb.VersionedValue{
-						Value:    []byte(fmt.Sprintf("value-for-key-%d-for-%s", i, ns)),
 						Version:  version.NewHeight(1, 1),
 						Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-%s", i, ns)),
 					},
 				}
+				switch {
+				case i < 3:
+					binaryVal := fmt.Sprintf("value-for-key-%d-for-%s", i, ns)
+					sampleKV.VersionedValue.Value = []byte(binaryVal)
+				default:
+					jsonVal := fmt.Sprintf(`{"color":"blue,"marble":"m%d", "namespace":"%s"}`, i, ns)
+					sampleKV.VersionedValue.Value = []byte(jsonVal)
+				}
+
 				sampleData = append(sampleData, sampleKV)
 			}
 		}
@@ -1086,30 +1094,34 @@ func TestDataExportImport(
 		destinationDB, err := dbProvider.GetDBHandle(destDBName, nil)
 		require.NoError(t, err)
 
-		for _, nsNotToBePresent := range skipNamespaces {
-			iter, err := destinationDB.GetStateRangeScanIterator(nsNotToBePresent, "", "")
-			require.NoError(t, err)
-			res, err := iter.Next()
-			require.NoError(t, err)
-			require.Nil(t, res)
-		}
+		fullScanItr, valFormat, err = destinationDB.GetFullScanIterator(
+			func(ns string) bool {
+				return false
+			},
+		)
+		require.NoError(t, err)
+		require.Equal(t, valueFormat, valFormat)
 
 		expectedNamespacesInDestinationDB := allNamesapces.minus(skipNamespaces)
-		results := []*statedb.VersionedKV{}
-		for _, nsToBePresent := range expectedNamespacesInDestinationDB {
-			iter, err := destinationDB.GetStateRangeScanIterator(nsToBePresent, "", "")
+		actualResults := []*statedb.VersionedKV{}
+		for {
+			ck, _, err := fullScanItr.Next()
 			require.NoError(t, err)
-			for {
-				res, err := iter.Next()
-				require.NoError(t, err)
-				if res == nil {
-					break
-				}
-				versionedKV := res.(*statedb.VersionedKV)
-				results = append(results, versionedKV)
+			if ck == nil {
+				break
 			}
+			vv, err := destinationDB.GetState(ck.Namespace, ck.Key)
+			require.NoError(t, err)
+			actualResults = append(
+				actualResults,
+				&statedb.VersionedKV{
+					CompositeKey:   *ck,
+					VersionedValue: *vv,
+				},
+			)
 		}
-		require.Equal(t, generateSampleData(expectedNamespacesInDestinationDB...), results)
+
+		require.Equal(t, generateSampleData(expectedNamespacesInDestinationDB...), actualResults)
 		retrievedSavepoint, err := destinationDB.GetLatestSavePoint()
 		require.NoError(t, err)
 		require.Equal(t, version.NewHeight(10, 10), retrievedSavepoint)
@@ -1129,7 +1141,7 @@ func TestDataExportImport(
 	}
 
 	for i, testCase := range testCases {
-		name := fmt.Sprintf("testCase %d", i)
+		name := fmt.Sprintf("test_case_%d", i)
 		t.Run(
 			name,
 			func(t *testing.T) {

@@ -35,6 +35,7 @@ var maxLength = 238
 var chainNameAllowedLength = 50
 var namespaceNameAllowedLength = 50
 var collectionNameAllowedLength = 50
+var disableKeepAlive bool
 
 func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.Provider) (*couchInstance, error) {
 	// make sure the address is valid
@@ -69,6 +70,7 @@ func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.P
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		DisableKeepAlives:     disableKeepAlive,
 	}
 
 	client.Transport = transport
