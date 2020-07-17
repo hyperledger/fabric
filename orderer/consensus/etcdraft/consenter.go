@@ -8,6 +8,8 @@ package etcdraft
 
 import (
 	"bytes"
+	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/protoutil"
 	"path"
 	"reflect"
 	"time"
@@ -25,7 +27,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -165,26 +166,9 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 				c.CreateChain(support.ChannelID())
 			})
 			return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
-		} else {
-			// There is no system channel, follow this application channel.
-			//TODO fully construct a follower chain
-			consenterCertificate := &ConsenterCertificate{
-				ConsenterCertificate: c.Cert,
-				CryptoProvider:       c.BCCSP,
-			}
-			return follower.NewChain(
-				support,
-				nil, // We already have a ledger, we are past on-boarding
-				follower.Options{
-					Logger: c.Logger,
-					Cert:   c.Cert,
-				},
-				nil, // TODO plug a method that creates a block puller from support, as the join block is nil
-				nil, // TODO plug in a method that creates an etcdraft.Chain
-				c.BCCSP,
-				consenterCertificate.IsConsenterOfChannel,
-			)
 		}
+
+		return nil, errors.Wrap(err, "without a system channel, a follower should have been created")
 	}
 
 	var evictionSuspicion time.Duration
@@ -266,65 +250,45 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		},
 		func() {
 			c.Logger.Warning("Start a follower.Chain: not yet implemented")
-			//TODO start follower.Chain
+			//TODO plug a function pointer to start follower.Chain
 		},
 		nil,
 	)
 }
 
-func (c *Consenter) JoinChain(support consensus.ConsenterSupport, joinBlock *common.Block) (consensus.Chain, error) {
-	// Check the join block before we create a follower.Chain.
-	// Note that 'support' is built from the join-block and not from the tip of the ledger.
+func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
+	if joinBlock == nil {
+		return false, errors.New("nil block")
+	}
+	envelopeConfig, err := protoutil.ExtractEnvelope(joinBlock, 0)
+	if err != nil {
+		return false, err
+	}
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, c.BCCSP)
+	if err != nil {
+		return false, err
+	}
+	oc, exists := bundle.OrdererConfig()
+	if !exists {
+		return false, errors.New("no orderer config in bundle")
+	}
 	configMetadata := &etcdraft.ConfigMetadata{}
-	err := proto.Unmarshal(support.SharedConfig().ConsensusMetadata(), configMetadata)
-	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling etcdraft.ConfigMetadata")
+	if err := proto.Unmarshal(oc.ConsensusMetadata(), configMetadata); err != nil {
+		return false, err
+	}
+	if err := CheckConfigMetadata(configMetadata); err != nil {
+		return false, err
 	}
 
-	err = CheckConfigMetadata(configMetadata)
-	if err != nil {
-		c.Logger.Errorf("Error checking config metadata: %v; err: %s", configMetadata, err)
-		return nil, errors.Wrap(err, "error checking etcdraft.ConfigMetadata")
+	member := false
+	for _, consenter := range configMetadata.Consenters {
+		if bytes.Equal(c.Cert, consenter.ServerTlsCert) || bytes.Equal(c.Cert, consenter.ClientTlsCert) {
+			member = true
+			break
+		}
 	}
 
-	consenterCertificate := &ConsenterCertificate{
-		ConsenterCertificate: c.Cert,
-		CryptoProvider:       c.BCCSP,
-	}
-	errIsOf := consenterCertificate.IsConsenterOfChannel(joinBlock)
-	if errIsOf != nil && errIsOf != cluster.ErrNotInChannel {
-		return nil, errors.Wrap(errIsOf, "error checking if the consenter is a member of the channel using the join-block")
-	}
-
-	// A function that creates a block puller from the join block
-	createBlockPullerFunc := func() (follower.ChannelPuller, error) {
-		return follower.BlockPullerFromJoinBlock(joinBlock, support, c.Dialer, c.OrdererConfig.General.Cluster, c.BCCSP)
-	}
-	// Check it once
-	puller, errBP := createBlockPullerFunc()
-	if errBP != nil {
-		return nil, errors.Wrap(errBP, "error creating a block puller from join-block")
-	}
-	defer puller.Close()
-
-	clusterRel := "follower"
-	if errIsOf == nil {
-		clusterRel = "member"
-	}
-	c.Logger.Infof("Joining channel: %s, join-block number: %d, orderer is a %s of the cluster", support.ChannelID(), joinBlock.Header.Number, clusterRel)
-
-	return follower.NewChain(
-		support,
-		joinBlock,
-		follower.Options{
-			Logger: c.Logger,
-			Cert:   c.Cert,
-		},
-		createBlockPullerFunc,
-		nil, // TODO plug in a method that creates an etcdraft.Chain
-		c.BCCSP,
-		consenterCertificate.IsConsenterOfChannel,
-	)
+	return member, nil
 }
 
 // ReadBlockMetadata attempts to read raft metadata from block metadata, if available.

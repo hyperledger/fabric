@@ -21,9 +21,9 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/follower"
+	"github.com/hyperledger/fabric/orderer/common/follower/mocks"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/consensus/follower"
-	"github.com/hyperledger/fabric/orderer/consensus/follower/mocks"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,9 +47,9 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("good", func(t *testing.T) {
-		mockSupport.ChannelIDReturns(channelID)
 		bp, err := follower.BlockPullerFromJoinBlock(
 			joinBlockAppRaft,
+			channelID,
 			mockSupport,
 			dialer,
 			localconfig.Cluster{},
@@ -60,9 +60,9 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 	})
 
 	t.Run("dialer is nil", func(t *testing.T) {
-		mockSupport.ChannelIDReturns(channelID)
 		bp, err := follower.BlockPullerFromJoinBlock(
 			joinBlockAppRaft,
+			channelID,
 			mockSupport,
 			nil,
 			localconfig.Cluster{},
@@ -73,13 +73,13 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 	})
 
 	t.Run("dialer has bad cert", func(t *testing.T) {
-		mockSupport.ChannelIDReturns(channelID)
 		badDialer := &cluster.PredicateDialer{
 			Config: dialer.Config.Clone(),
 		}
 		badDialer.Config.SecOpts.Certificate = []byte("not-a-certificate")
 		bp, err := follower.BlockPullerFromJoinBlock(
 			joinBlockAppRaft,
+			channelID,
 			mockSupport,
 			badDialer,
 			localconfig.Cluster{},
@@ -90,9 +90,9 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 	})
 
 	t.Run("bad join block", func(t *testing.T) {
-		mockSupport.ChannelIDReturns(channelID)
 		bp, err := follower.BlockPullerFromJoinBlock(
 			&cb.Block{Header: &cb.BlockHeader{}},
+			channelID,
 			mockSupport,
 			dialer,
 			localconfig.Cluster{},

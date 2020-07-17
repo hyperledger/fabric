@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	"errors"
 	"fmt"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -23,33 +22,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
 )
-
-type mockConsenter struct {
-	cluster bool
-}
-
-func (mc *mockConsenter) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
-	chain := &mockChain{
-		queue:    make(chan *cb.Envelope),
-		cutter:   support.BlockCutter(),
-		support:  support,
-		metadata: metadata,
-		done:     make(chan struct{}),
-	}
-
-	if mc.cluster {
-		clusterChain := &mockChainCluster{}
-		clusterChain.mockChain = chain
-		return clusterChain, nil
-	}
-
-	return chain, nil
-}
-
-func (mc *mockConsenter) JoinChain(support consensus.ConsenterSupport, joinBlock *cb.Block) (consensus.Chain, error) {
-	//TODO
-	return nil, errors.New("not implemented")
-}
 
 type mockChainCluster struct {
 	*mockChain
@@ -220,4 +192,28 @@ func makeNormalTx(chainID string, i int) *cb.Envelope {
 	return &cb.Envelope{
 		Payload: protoutil.MarshalOrPanic(payload),
 	}
+}
+
+func handleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
+	chain := &mockChain{
+		queue:    make(chan *cb.Envelope),
+		cutter:   support.BlockCutter(),
+		support:  support,
+		metadata: metadata,
+		done:     make(chan struct{}),
+	}
+
+	return chain, nil
+}
+
+func handleChainCluster(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
+	chain := &mockChain{
+		queue:    make(chan *cb.Envelope),
+		cutter:   support.BlockCutter(),
+		support:  support,
+		metadata: metadata,
+		done:     make(chan struct{}),
+	}
+
+	return &mockChainCluster{mockChain: chain}, nil
 }

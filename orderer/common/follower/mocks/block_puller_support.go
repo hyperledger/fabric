@@ -5,21 +5,11 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/orderer/consensus/follower"
+	"github.com/hyperledger/fabric/orderer/common/follower"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
 type BlockPullerSupport struct {
-	ChannelIDStub        func() string
-	channelIDMutex       sync.RWMutex
-	channelIDArgsForCall []struct {
-	}
-	channelIDReturns struct {
-		result1 string
-	}
-	channelIDReturnsOnCall map[int]struct {
-		result1 string
-	}
 	SerializeStub        func() ([]byte, error)
 	serializeMutex       sync.RWMutex
 	serializeArgsForCall []struct {
@@ -59,58 +49,6 @@ type BlockPullerSupport struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
-}
-
-func (fake *BlockPullerSupport) ChannelID() string {
-	fake.channelIDMutex.Lock()
-	ret, specificReturn := fake.channelIDReturnsOnCall[len(fake.channelIDArgsForCall)]
-	fake.channelIDArgsForCall = append(fake.channelIDArgsForCall, struct {
-	}{})
-	fake.recordInvocation("ChannelID", []interface{}{})
-	fake.channelIDMutex.Unlock()
-	if fake.ChannelIDStub != nil {
-		return fake.ChannelIDStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.channelIDReturns
-	return fakeReturns.result1
-}
-
-func (fake *BlockPullerSupport) ChannelIDCallCount() int {
-	fake.channelIDMutex.RLock()
-	defer fake.channelIDMutex.RUnlock()
-	return len(fake.channelIDArgsForCall)
-}
-
-func (fake *BlockPullerSupport) ChannelIDCalls(stub func() string) {
-	fake.channelIDMutex.Lock()
-	defer fake.channelIDMutex.Unlock()
-	fake.ChannelIDStub = stub
-}
-
-func (fake *BlockPullerSupport) ChannelIDReturns(result1 string) {
-	fake.channelIDMutex.Lock()
-	defer fake.channelIDMutex.Unlock()
-	fake.ChannelIDStub = nil
-	fake.channelIDReturns = struct {
-		result1 string
-	}{result1}
-}
-
-func (fake *BlockPullerSupport) ChannelIDReturnsOnCall(i int, result1 string) {
-	fake.channelIDMutex.Lock()
-	defer fake.channelIDMutex.Unlock()
-	fake.ChannelIDStub = nil
-	if fake.channelIDReturnsOnCall == nil {
-		fake.channelIDReturnsOnCall = make(map[int]struct {
-			result1 string
-		})
-	}
-	fake.channelIDReturnsOnCall[i] = struct {
-		result1 string
-	}{result1}
 }
 
 func (fake *BlockPullerSupport) Serialize() ([]byte, error) {
@@ -305,8 +243,6 @@ func (fake *BlockPullerSupport) VerifyBlockSignatureReturnsOnCall(i int, result1
 func (fake *BlockPullerSupport) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.channelIDMutex.RLock()
-	defer fake.channelIDMutex.RUnlock()
 	fake.serializeMutex.RLock()
 	defer fake.serializeMutex.RUnlock()
 	fake.signMutex.RLock()

@@ -11,6 +11,8 @@ package multichannel
 
 import (
 	"fmt"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/follower"
 	"sync"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -96,18 +98,21 @@ type ledgerResources struct {
 // Registrar serves as a point of access and control for the individual channel resources.
 type Registrar struct {
 	config localconfig.TopLevel
-	lock   sync.RWMutex
-	chains map[string]*ChainSupport
+
+	lock            sync.RWMutex
+	chains          map[string]*ChainSupport
+	followers       map[string]*follower.Chain
+	systemChannelID string
+	systemChannel   *ChainSupport
 
 	consenters         map[string]consensus.Consenter
 	ledgerFactory      blockledger.Factory
 	signer             identity.SignerSerializer
 	blockcutterMetrics *blockcutter.Metrics
-	systemChannelID    string
-	systemChannel      *ChainSupport
 	templator          msgprocessor.ChannelConfigTemplator
 	callbacks          []channelconfig.BundleActor
 	bccsp              bccsp.BCCSP
+	clusterDialer      *cluster.PredicateDialer
 }
 
 // ConfigBlock retrieves the last configuration block from the given ledger.
@@ -137,16 +142,18 @@ func NewRegistrar(
 	signer identity.SignerSerializer,
 	metricsProvider metrics.Provider,
 	bccsp bccsp.BCCSP,
-	callbacks ...channelconfig.BundleActor,
-) *Registrar {
+	clusterDialer *cluster.PredicateDialer,
+	callbacks ...channelconfig.BundleActor) *Registrar {
 	r := &Registrar{
 		config:             config,
 		chains:             make(map[string]*ChainSupport),
+		followers:          make(map[string]*follower.Chain),
 		ledgerFactory:      ledgerFactory,
 		signer:             signer,
 		blockcutterMetrics: blockcutter.NewMetrics(metricsProvider),
 		callbacks:          callbacks,
 		bccsp:              bccsp,
+		clusterDialer:      clusterDialer,
 	}
 
 	return r
@@ -234,7 +241,7 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 	if r.systemChannelID == "" {
 		logger.Infof("Registrar initializing without a system channel, number of application channels: %d", len(r.chains))
 		if _, etcdRaftFound := r.consenters["etcdraft"]; !etcdRaftFound {
-			logger.Panicf("Error initializing without a system channel: failed to find an etcdraft consenter")
+			logger.Panicf("Error initializing without a system channel: failed to find an etcdraft clusterConsenter")
 		}
 	}
 }
@@ -426,17 +433,21 @@ func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	info := types.ChannelInfo{}
-	cs, ok := r.chains[channelID]
-	if !ok {
-		return info, types.ErrChannelNotExist
+	info := types.ChannelInfo{Name: channelID}
+
+	if c, ok := r.chains[channelID]; ok {
+		info.Height = c.Height()
+		info.ClusterRelation, info.Status = c.StatusReport()
+		return info, nil
 	}
 
-	info.Name = channelID
-	info.Height = cs.Height()
-	info.ClusterRelation, info.Status = cs.StatusReport()
+	if f, ok := r.followers[channelID]; ok {
+		info.Height = f.Height()
+		info.ClusterRelation, info.Status = f.StatusReport()
+		return info, nil
+	}
 
-	return info, nil
+	return types.ChannelInfo{}, types.ErrChannelNotExist
 }
 
 // JoinChannel instructs the orderer to create a channel and join it with the provided config block.
@@ -449,8 +460,11 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 		return types.ChannelInfo{}, types.ErrSystemChannelExists
 	}
 
-	_, ok := r.chains[channelID]
-	if ok {
+	if _, ok := r.chains[channelID]; ok {
+		return types.ChannelInfo{}, types.ErrChannelAlreadyExists
+	}
+
+	if _, ok := r.followers[channelID]; ok {
 		return types.ChannelInfo{}, types.ErrChannelAlreadyExists
 	}
 
@@ -464,31 +478,97 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 	}
 
 	//TODO save the join-block in the file repo to make this action crash tolerant.
+	//TODO remove join block & ledger if things go bad below
 
-	ledgerResources, err := r.newLedgerResources(configEnv)
+	ledgerRes, err := r.newLedgerResources(configEnv)
 	if err != nil {
-		//TODO remove join block
 		return types.ChannelInfo{}, errors.Wrap(err, "failed creating ledger resources")
 	}
 
-	joinSupport, err := newChainSupportForJoin(configBlock, r, ledgerResources, r.consenters, r.signer, r.blockcutterMetrics, r.bccsp)
+	ordererConfig, _ := ledgerRes.OrdererConfig()
+	consenter, foundConsenter := r.consenters[ordererConfig.ConsensusType()]
+	if !foundConsenter {
+		return types.ChannelInfo{}, errors.Errorf("failed to find a consenter for consensus type: %s", ordererConfig.ConsensusType())
+	}
+
+	clusterConsenter, ok := consenter.(consensus.ClusterConsenter)
+	if !ok {
+		return types.ChannelInfo{}, errors.New("clusterConsenter is not a consensus.ClusterConsenter")
+	}
+	isMember, err := clusterConsenter.IsChannelMember(configBlock)
 	if err != nil {
-		//TODO remove join block, clean ledger resources
-		return types.ChannelInfo{}, errors.Wrap(err, "failed creating chain support for join")
+		return types.ChannelInfo{}, errors.Wrap(err, "failed to determine cluster membership from join-block ")
+	}
+
+	if configBlock.Header.Number == 0 && isMember {
+		return r.joinAsMember(ledgerRes, configBlock, channelID)
+	}
+
+	return r.joinAsFollower(ledgerRes, clusterConsenter, configBlock, channelID)
+}
+
+func (r *Registrar) joinAsMember(ledgerRes *ledgerResources, configBlock *cb.Block, channelID string) (types.ChannelInfo, error) {
+	err := ledgerRes.Append(configBlock)
+	if err != nil {
+		return types.ChannelInfo{}, errors.Wrap(err, "error appending join block to the ledger")
+	}
+	chain, err := newChainSupport(
+		r,
+		ledgerRes,
+		r.consenters,
+		r.signer,
+		r.blockcutterMetrics,
+		r.bccsp,
+	)
+	if err != nil {
+		return types.ChannelInfo{}, errors.Wrap(err, "error creating chain")
 	}
 
 	info := types.ChannelInfo{
 		Name:   channelID,
 		URL:    "",
-		Height: ledgerResources.Height(),
+		Height: ledgerRes.Height(),
 	}
-	info.ClusterRelation, info.Status = joinSupport.StatusReport()
+	info.ClusterRelation, info.Status = chain.StatusReport()
 
-	logger.Infof("Joining new channel %s", channelID)
+	r.chains[channelID] = chain
+	chain.start()
 
-	r.chains[channelID] = joinSupport
-	joinSupport.start()
+	logger.Infof("Joining channel: %v", info)
+	return info, nil
+}
 
+func (r *Registrar) joinAsFollower(ledgerRes *ledgerResources, clusterConsenter consensus.ClusterConsenter, joinBlock *cb.Block, channelID string) (types.ChannelInfo, error) {
+	// TODO refactor get rid of support
+	// The resources the follower needs: ledger & config,  membership detector, signer & block-verifier
+	fRes := NewFollowerResources(ledgerRes, r.signer, r.bccsp)
+
+	// A function that creates a block puller from the join block
+	createBlockPullerFunc := func() (follower.ChannelPuller, error) {
+		// TODO refactor get rid of support
+		return follower.BlockPullerFromJoinBlock(joinBlock, channelID, fRes, r.clusterDialer, r.config.General.Cluster, r.bccsp)
+	}
+
+	fChain, err := follower.NewChain(nil, clusterConsenter, joinBlock, follower.Options{
+		Logger: flogging.MustGetLogger("orderer.commmon.follower").With("channel", channelID),
+		Cert:   nil,
+	}, createBlockPullerFunc, nil, r.bccsp)
+
+	if err != nil {
+		return types.ChannelInfo{}, errors.Wrapf(err, "failed to create follower for channel %s", channelID)
+	}
+
+	info := types.ChannelInfo{
+		Name:   channelID,
+		URL:    "",
+		Height: ledgerRes.Height(),
+	}
+	info.ClusterRelation, info.Status = fChain.StatusReport()
+
+	r.followers[channelID] = fChain
+	fChain.Start()
+
+	logger.Infof("Joining channel: %v", info)
 	return info, nil
 }
 

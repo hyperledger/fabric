@@ -7,25 +7,35 @@ SPDX-License-Identifier: Apache-2.0
 package follower
 
 import (
+	"github.com/hyperledger/fabric/orderer/consensus"
 	"sync"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/types"
-	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/pkg/errors"
 )
 
 //TODO skeleton
 
-//go:generate mockery -dir . -name Support -case underscore -output mocks
+//go:generate mockery -dir . -name LedgerResources -case underscore -output mocks
 
-// Support defines the interfaces needed by the follower.Chain, out of the much wider consensus.ConsenterSupport.
-type Support interface {
-	consensus.ConsenterSupport // TODO prune what we don't need, keep only what we do need.
+// LedgerResources defines dome the interfaces of ledger & config resources needed by the follower.Chain.
+type LedgerResources interface {
+	// ChannelID The channel ID.
+	ChannelID() string
+
+	// Block returns a block with the given number,
+	// or nil if such a block doesn't exist.
+	Block(number uint64) *common.Block
+
+	// Height returns the number of blocks in the chain this channel is associated with.
+	Height() uint64
+
+	// Append appends a new block to the ledger in its raw form.
+	Append(block *common.Block) error
 }
 
 // Options contains all the configurations relevant to the chain.
@@ -42,7 +52,7 @@ type CreateBlockPuller func() (ChannelPuller, error)
 type CreateChain func()
 
 // Chain implements a component that allows the orderer to follow a specific channel when is not a cluster member,
-// that is, be a "follower" of the cluster. It also allows the orderer to perform "on-boarding" for channels for
+// that is, be a "follower" of the cluster. It also allows the orderer to perform "on-boarding" for
 // channels it is joining as a member, with a join-block.
 //
 // When an orderer is following a channel, it means that the current orderer is not a member of the consenters set
@@ -71,9 +81,10 @@ type Chain struct {
 	stopChan chan struct{} // A 'closer' signals the go-routine to stop by closing this channel.
 	doneChan chan struct{} // The go-routine signals the 'closer' that it is done by closing this channel.
 
-	support Support
-	options Options
-	logger  *flogging.FabricLogger
+	ledgerResources  LedgerResources            // ledger & config resources
+	clusterConsenter consensus.ClusterConsenter // detects whether a block indicates channel membership
+	options          Options
+	logger           *flogging.FabricLogger
 
 	joinBlock  *common.Block // The join-block the follower was started with.
 	lastConfig *common.Block // The last config block from the ledger. Accessed only by the go-routine.
@@ -82,34 +93,33 @@ type Chain struct {
 	chainCreationCallback CreateChain       // A method that creates a new consensus.Chain for this channel, to replace the current follower.Chain
 
 	cryptoProvider bccsp.BCCSP
-	amIInChannel   cluster.SelfMembershipPredicate
 }
 
 // NewChain constructs a follower.Chain object.
-func NewChain(
-	support Support,
-	joinBlock *common.Block,
-	options Options,
-	createBlockPullerFunc CreateBlockPuller, // A method that creates a block puller on demand
-	chainCreationCallback func(),
-	cryptoProvider bccsp.BCCSP,
-	amIInChannel cluster.SelfMembershipPredicate,
-) (*Chain, error) {
+func NewChain(ledgerResources LedgerResources, clusterConsenter consensus.ClusterConsenter, joinBlock *common.Block, options Options, createBlockPullerFunc CreateBlockPuller, chainCreationCallback func(), cryptoProvider bccsp.BCCSP) (*Chain, error) {
+
+	// Check the block puller creation function once before we start the follower.
+	puller, errBP := createBlockPullerFunc()
+	if errBP != nil {
+		return nil, errors.Wrap(errBP, "error creating a block puller from join-block")
+	}
+	defer puller.Close()
+
 	chain := &Chain{
 		stopChan:              make(chan (struct{})),
 		doneChan:              make(chan (struct{})),
-		support:               support,
+		ledgerResources:       ledgerResources,
+		clusterConsenter:      clusterConsenter,
 		joinBlock:             joinBlock,
 		options:               options,
-		logger:                options.Logger.With("channel", support.ChannelID()),
+		logger:                options.Logger.With("channel", ledgerResources.ChannelID()),
 		createBlockPullerFunc: createBlockPullerFunc,
 		chainCreationCallback: chainCreationCallback,
 		cryptoProvider:        cryptoProvider,
-		amIInChannel:          amIInChannel,
 	}
 
 	if joinBlock == nil {
-		chain.logger.Infof("Created with a nil join-block, ledger height: %d", support.Height())
+		chain.logger.Infof("Created with a nil join-block, ledger height: %d", ledgerResources.Height())
 	} else {
 		if joinBlock.Header == nil {
 			return nil, errors.New("block header is nil")
@@ -118,28 +128,10 @@ func NewChain(
 			return nil, errors.New("block data is nil")
 		}
 
-		chain.logger.Infof("Created with join-block number: %d, ledger height: %d", joinBlock.Header.Number, support.Height())
+		chain.logger.Infof("Created with join-block number: %d, ledger height: %d", joinBlock.Header.Number, ledgerResources.Height())
 	}
 
 	return chain, nil
-}
-
-func (c *Chain) Order(_ *common.Envelope, _ uint64) error {
-	return errors.Errorf("orderer is a follower of channel %s", c.support.ChannelID())
-}
-
-func (c *Chain) Configure(_ *common.Envelope, _ uint64) error {
-	return errors.Errorf("orderer is a follower of channel %s", c.support.ChannelID())
-}
-
-func (c *Chain) WaitReady() error {
-	return errors.Errorf("orderer is a follower of channel %s", c.support.ChannelID())
-}
-
-func (*Chain) Errored() <-chan struct{} {
-	closedChannel := make(chan struct{})
-	close(closedChannel)
-	return closedChannel
 }
 
 func (c *Chain) Start() {
@@ -186,17 +178,22 @@ func (c *Chain) StatusReport() (types.ClusterRelation, types.Status) {
 
 	clusterRelation := types.ClusterRelationFollower
 	if c.joinBlock != nil {
-		if err := c.amIInChannel(c.joinBlock); err == nil {
+		isMem, _ := c.clusterConsenter.IsChannelMember(c.joinBlock)
+		if isMem {
 			clusterRelation = types.ClusterRelationMember
 		}
 	}
 
 	status := types.StatusActive
-	if (c.joinBlock != nil) && (c.joinBlock.Header.Number >= c.support.Height()) {
+	if (c.joinBlock != nil) && (c.joinBlock.Header.Number >= c.ledgerResources.Height()) {
 		status = types.StatusOnBoarding
 	}
 
 	return clusterRelation, status
+}
+
+func (c *Chain) Height() uint64 {
+	return c.ledgerResources.Height()
 }
 
 func (c *Chain) run() {
@@ -243,7 +240,7 @@ func (c *Chain) pull() error {
 		}
 	}
 
-	// Trigger creation of a new chain. This will regenerate 'support' from the tip of the ledger, and will
+	// Trigger creation of a new chain. This will regenerate 'resources' from the tip of the ledger, and will
 	// start either a follower.Chain or an etcdraft.Chain, depending on whether the orderer is a follower or a
 	// member of the cluster.
 	c.halt()
