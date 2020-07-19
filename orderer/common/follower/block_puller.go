@@ -29,6 +29,7 @@ type ChannelPuller interface {
 
 // BlockPullerFromJoinBlock creates a new block puller from a join-block.
 // This block puller is used for on-boarding, when join-block.Number >= ledger.Height().
+// This block puller can fetch the genesis block and skip verifying it.
 func BlockPullerFromJoinBlock(
 	joinBlock *common.Block,
 	channelID string,
@@ -43,6 +44,20 @@ func BlockPullerFromJoinBlock(
 	}
 
 	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
+		if len(blocks) == 0 {
+			return errors.New("buffer is empty")
+		}
+		if blocks[0] == nil {
+			return errors.New("first block is nil")
+		}
+		if blocks[0].Header == nil {
+			return errors.New("first block header is nil")
+		}
+		if blocks[0].Header.Number == 0 {
+			blocksAfterGenesis := blocks[1:]
+			return cluster.VerifyBlocks(blocksAfterGenesis, blockVerifier)
+		}
+
 		return cluster.VerifyBlocks(blocks, blockVerifier)
 	}
 

@@ -75,16 +75,16 @@ func newChainSupport(
 	// Set up the block writer
 	cs.BlockWriter = newBlockWriter(lastBlock, registrar, cs)
 
-	// Set up the clusterConsenter
+	// Set up the consenter
 	consenterType := ledgerResources.SharedConfig().ConsensusType()
 	consenter, ok := consenters[consenterType]
 	if !ok {
-		return nil, errors.Errorf("error retrieving clusterConsenter of type: %s", consenterType)
+		return nil, errors.Errorf("error retrieving consenter of type: %s", consenterType)
 	}
 
 	cs.Chain, err = consenter.HandleChain(cs, metadata)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating clusterConsenter for channel: %s", cs.ChannelID())
+		return nil, errors.Wrapf(err, "error creating consenter for channel: %s", cs.ChannelID())
 	}
 
 	cs.MetadataValidator, ok = cs.Chain.(consensus.MetadataValidator)
