@@ -40,61 +40,6 @@ const (
 
 var logger = flogging.MustGetLogger("orderer.commmon.multichannel")
 
-// checkResources makes sure that the channel config is compatible with this binary and logs sanity checks
-func checkResources(res channelconfig.Resources) error {
-	channelconfig.LogSanityChecks(res)
-	oc, ok := res.OrdererConfig()
-	if !ok {
-		return errors.New("config does not contain orderer config")
-	}
-	if err := oc.Capabilities().Supported(); err != nil {
-		return errors.Wrapf(err, "config requires unsupported orderer capabilities: %s", err)
-	}
-	if err := res.ChannelConfig().Capabilities().Supported(); err != nil {
-		return errors.Wrapf(err, "config requires unsupported channel capabilities: %s", err)
-	}
-	return nil
-}
-
-// checkResourcesOrPanic invokes checkResources and panics if an error is returned
-func checkResourcesOrPanic(res channelconfig.Resources) {
-	if err := checkResources(res); err != nil {
-		logger.Panicf("[channel %s] %s", res.ConfigtxValidator().ChannelID(), err)
-	}
-}
-
-type mutableResources interface {
-	channelconfig.Resources
-	Update(*channelconfig.Bundle)
-}
-
-type configResources struct {
-	mutableResources
-	bccsp bccsp.BCCSP
-}
-
-func (cr *configResources) CreateBundle(channelID string, config *cb.Config) (*channelconfig.Bundle, error) {
-	return channelconfig.NewBundle(channelID, config, cr.bccsp)
-}
-
-func (cr *configResources) Update(bndl *channelconfig.Bundle) {
-	checkResourcesOrPanic(bndl)
-	cr.mutableResources.Update(bndl)
-}
-
-func (cr *configResources) SharedConfig() channelconfig.Orderer {
-	oc, ok := cr.OrdererConfig()
-	if !ok {
-		logger.Panicf("[channel %s] has no orderer configuration", cr.ConfigtxValidator().ChannelID())
-	}
-	return oc
-}
-
-type ledgerResources struct {
-	*configResources
-	blockledger.ReadWriter
-}
-
 // Registrar serves as a point of access and control for the individual channel resources.
 type Registrar struct {
 	config localconfig.TopLevel
@@ -539,20 +484,23 @@ func (r *Registrar) joinAsMember(ledgerRes *ledgerResources, configBlock *cb.Blo
 }
 
 func (r *Registrar) joinAsFollower(ledgerRes *ledgerResources, clusterConsenter consensus.ClusterConsenter, joinBlock *cb.Block, channelID string) (types.ChannelInfo, error) {
-	// TODO refactor get rid of support
-	// The resources the follower needs: ledger & config,  membership detector, signer & block-verifier
-	fRes := NewFollowerResources(ledgerRes, r.signer, r.bccsp)
-
 	// A function that creates a block puller from the join block
 	createBlockPullerFunc := func() (follower.ChannelPuller, error) {
-		// TODO refactor get rid of support
-		return follower.BlockPullerFromJoinBlock(joinBlock, channelID, fRes, r.clusterDialer, r.config.General.Cluster, r.bccsp)
+		return follower.BlockPullerFromJoinBlock(joinBlock, channelID, r.signer, ledgerRes, r.clusterDialer, r.config.General.Cluster, r.bccsp)
 	}
 
-	fChain, err := follower.NewChain(nil, clusterConsenter, joinBlock, follower.Options{
-		Logger: flogging.MustGetLogger("orderer.commmon.follower").With("channel", channelID),
-		Cert:   nil,
-	}, createBlockPullerFunc, nil, r.bccsp)
+	fChain, err := follower.NewChain(
+		ledgerRes,
+		clusterConsenter,
+		joinBlock,
+		follower.Options{
+			Logger: flogging.MustGetLogger("orderer.commmon.follower").With("channel", channelID),
+			Cert:   nil,
+		},
+		createBlockPullerFunc,
+		nil,
+		r.bccsp,
+	)
 
 	if err != nil {
 		return types.ChannelInfo{}, errors.Wrapf(err, "failed to create follower for channel %s", channelID)

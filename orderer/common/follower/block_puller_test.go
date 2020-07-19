@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/follower"
 	"github.com/hyperledger/fabric/orderer/common/follower/mocks"
@@ -27,13 +28,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//go:generate counterfeiter -o mocks/block_verifier.go --fake-name BlockVerifier . blockVerifier
+
+type blockVerifier interface {
+	cluster.BlockVerifier
+}
+
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
+
+type signerSerializer interface {
+	identity.SignerSerializer
+}
+
 func TestBlockPullerFromJoinBlock(t *testing.T) {
 	tlsCA, _ := tlsgen.NewCA()
 	channelID := "my-raft-channel"
 	joinBlockAppRaft := generateJoinBlock(t, tlsCA, channelID, 10)
 	require.NotNil(t, joinBlockAppRaft)
 
-	mockSupport := &mocks.BlockPullerSupport{}
+	mockVerifier := &mocks.BlockVerifier{}
+	mockSigner := &mocks.SignerSerializer{}
 
 	dialer := &cluster.PredicateDialer{
 		Config: comm.ClientConfig{
@@ -47,27 +61,13 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("good", func(t *testing.T) {
-		bp, err := follower.BlockPullerFromJoinBlock(
-			joinBlockAppRaft,
-			channelID,
-			mockSupport,
-			dialer,
-			localconfig.Cluster{},
-			cryptoProvider,
-		)
+		bp, err := follower.BlockPullerFromJoinBlock(joinBlockAppRaft, channelID, mockSigner, mockVerifier, dialer, localconfig.Cluster{}, cryptoProvider)
 		require.NoError(t, err)
 		require.NotNil(t, bp)
 	})
 
 	t.Run("dialer is nil", func(t *testing.T) {
-		bp, err := follower.BlockPullerFromJoinBlock(
-			joinBlockAppRaft,
-			channelID,
-			mockSupport,
-			nil,
-			localconfig.Cluster{},
-			cryptoProvider,
-		)
+		bp, err := follower.BlockPullerFromJoinBlock(joinBlockAppRaft, channelID, mockSigner, mockVerifier, nil, localconfig.Cluster{}, cryptoProvider)
 		require.EqualError(t, err, "base dialer is nil")
 		require.Nil(t, bp)
 	})
@@ -77,27 +77,13 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 			Config: dialer.Config.Clone(),
 		}
 		badDialer.Config.SecOpts.Certificate = []byte("not-a-certificate")
-		bp, err := follower.BlockPullerFromJoinBlock(
-			joinBlockAppRaft,
-			channelID,
-			mockSupport,
-			badDialer,
-			localconfig.Cluster{},
-			cryptoProvider,
-		)
+		bp, err := follower.BlockPullerFromJoinBlock(joinBlockAppRaft, channelID, mockSigner, mockVerifier, badDialer, localconfig.Cluster{}, cryptoProvider)
 		require.EqualError(t, err, "client certificate isn't in PEM format: not-a-certificate")
 		require.Nil(t, bp)
 	})
 
 	t.Run("bad join block", func(t *testing.T) {
-		bp, err := follower.BlockPullerFromJoinBlock(
-			&cb.Block{Header: &cb.BlockHeader{}},
-			channelID,
-			mockSupport,
-			dialer,
-			localconfig.Cluster{},
-			cryptoProvider,
-		)
+		bp, err := follower.BlockPullerFromJoinBlock(&cb.Block{Header: &cb.BlockHeader{}}, channelID, mockSigner, mockVerifier, dialer, localconfig.Cluster{}, cryptoProvider)
 		require.EqualError(t, err, "error extracting endpoints from config block: block data is nil")
 		require.Nil(t, bp)
 	})
