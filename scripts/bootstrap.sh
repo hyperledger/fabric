@@ -51,16 +51,23 @@ cloneSamplesRepo() {
     # version to the binaries and docker images to be downloaded
     if [ -d first-network ]; then
         # if we are in the fabric-samples repo, checkout corresponding version
-        echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
-        git checkout v${VERSION}
+        echo "==> Already in fabric-samples repo"
     elif [ -d fabric-samples ]; then
         # if fabric-samples repo already cloned and in current directory,
-        # cd fabric-samples and checkout corresponding version
-        echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
-        cd fabric-samples && git checkout v${VERSION}
+        # cd fabric-samples
+        echo "===> Changing directory to fabric-samples"
+        cd fabric-samples
     else
-        echo "===> Cloning hyperledger/fabric-samples repo and checkout v${VERSION}"
-        git clone -b master https://github.com/hyperledger/fabric-samples.git && cd fabric-samples && git checkout v${VERSION}
+        echo "===> Cloning hyperledger/fabric-samples repo"
+        git clone -b master https://github.com/hyperledger/fabric-samples.git && cd fabric-samples
+    fi
+
+    if GIT_DIR=.git git rev-parse v${VERSION} >/dev/null 2>&1; then
+        echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
+        git checkout -q v${VERSION}
+    else
+        echo "fabric-samples v${VERSION} does not exist, defaulting master"
+        git checkout -q master
     fi
 }
 
