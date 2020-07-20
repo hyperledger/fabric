@@ -18,14 +18,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-//go:generate counterfeiter -o mocks/block_puller_support.go -fake-name BlockPullerSupport . BlockPullerSupport
-
-// TODO refactor get rid of support: break this in two - "signature-verifier" & "signer"
-type BlockPullerSupport interface {
-	cluster.BlockVerifier
-	identity.SignerSerializer
-}
-
 //go:generate counterfeiter -o mocks/channel_puller.go -fake-name ChannelPuller . ChannelPuller
 
 // ChannelPuller pulls blocks for a channel
@@ -40,7 +32,8 @@ type ChannelPuller interface {
 func BlockPullerFromJoinBlock(
 	joinBlock *common.Block,
 	channelID string,
-	support BlockPullerSupport,
+	signer identity.SignerSerializer,
+	blockVerifier cluster.BlockVerifier,
 	baseDialer *cluster.PredicateDialer,
 	clusterConfig localconfig.Cluster,
 	bccsp bccsp.BCCSP,
@@ -50,7 +43,7 @@ func BlockPullerFromJoinBlock(
 	}
 
 	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
-		return cluster.VerifyBlocks(blocks, support) // TODO refactor get rid of support: pass a "signature-verifier"
+		return cluster.VerifyBlocks(blocks, blockVerifier)
 	}
 
 	stdDialer := &cluster.StandardDialer{
@@ -78,7 +71,7 @@ func BlockPullerFromJoinBlock(
 		MaxTotalBufferBytes: clusterConfig.ReplicationBufferSize,
 		FetchTimeout:        clusterConfig.ReplicationPullTimeout,
 		Endpoints:           endpoints,
-		Signer:              support, //TODO refactor get rid of support: pass a "signer"
+		Signer:              signer,
 		TLSCert:             der.Bytes,
 		Channel:             channelID,
 		Dialer:              stdDialer,
