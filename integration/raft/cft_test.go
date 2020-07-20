@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -107,7 +108,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("performing operation with orderer1")
 			env := CreateBroadcastEnvelope(network, o1, network.SystemChannel.Name, []byte("foo"))
-			resp, err := nwo.Broadcast(network, o1, env)
+			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -122,7 +123,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Eventually(o2Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Current active nodes in cluster are: \\[2 3\\]"))
 
 			By("broadcasting envelope to running orderer")
-			resp, err = nwo.Broadcast(network, o2, env)
+			resp, err = ordererclient.Broadcast(network, o2, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -136,7 +137,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			findLeader([]*ginkgomon.Runner{o1Runner})
 
 			By("broadcasting envelope to restarted orderer")
-			resp, err = nwo.Broadcast(network, o1, env)
+			resp, err = ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -182,7 +183,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			env := CreateBroadcastEnvelope(network, o2, channelID, make([]byte, 2000))
 			for i := 1; i <= 4; i++ { // 4 < MaxSnapshotFiles(5), so that no snapshot is pruned
 				// Note that MaxMessageCount is 1 be default, so every tx results in a new block
-				resp, err := nwo.Broadcast(network, o2, env)
+				resp, err := ordererclient.Broadcast(network, o2, env)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -228,7 +229,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Asserting cluster is still functional")
 			env = CreateBroadcastEnvelope(network, o1, channelID, make([]byte, 1000))
-			resp, err := nwo.Broadcast(network, o1, env)
+			resp, err := ordererclient.Broadcast(network, o1, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
@@ -340,7 +341,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			// This should fail because current leader steps down
 			// and there is no leader at this point of time
 			env := CreateBroadcastEnvelope(network, leader, network.SystemChannel.Name, []byte("foo"))
-			resp, err := nwo.Broadcast(network, leader, env)
+			resp, err := ordererclient.Broadcast(network, leader, env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
 		})
@@ -529,7 +530,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			channelCreateTxn := createConfigTx(updateTransaction, network.SystemChannel.Name, network, orderer, peer)
 
 			By("Updating channel config and failing")
-			p, err := nwo.Broadcast(network, orderer, channelCreateTxn)
+			p, err := ordererclient.Broadcast(network, orderer, channelCreateTxn)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(p.Status).To(Equal(common.Status_BAD_REQUEST))
 			Expect(p.Info).To(ContainSubstring("identity expired"))
@@ -538,7 +539,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			denv := CreateDeliverEnvelope(network, orderer, 0, network.SystemChannel.Name)
 			Expect(denv).NotTo(BeNil())
 
-			block, err := nwo.Deliver(network, orderer, denv)
+			block, err := ordererclient.Deliver(network, orderer, denv)
 			Expect(err).To(HaveOccurred())
 			Expect(block).To(BeNil())
 			Eventually(runner.Err(), time.Minute, time.Second).Should(gbytes.Say("client identity expired"))
@@ -556,7 +557,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			findLeader([]*ginkgomon.Runner{runner})
 
 			By("Updating channel config and succeeding")
-			p, err = nwo.Broadcast(network, orderer, channelCreateTxn)
+			p, err = ordererclient.Broadcast(network, orderer, channelCreateTxn)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(p.Status).To(Equal(common.Status_SUCCESS))
 

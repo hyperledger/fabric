@@ -11,6 +11,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/integration/ordererclient"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +23,7 @@ func FetchBlock(n *nwo.Network, o *nwo.Orderer, seq uint64, channel string) *com
 	var blk *common.Block
 	Eventually(func() error {
 		var err error
-		blk, err = nwo.Deliver(n, o, denv)
+		blk, err = ordererclient.Deliver(n, o, denv)
 		return err
 	}, n.EventuallyTimeout).ShouldNot(HaveOccurred())
 

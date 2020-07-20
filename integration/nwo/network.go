@@ -66,9 +66,11 @@ type Consortium struct {
 // Consensus indicates the orderer types and how many broker and zookeeper
 // instances.
 type Consensus struct {
-	Type       string `yaml:"type,omitempty"`
-	Brokers    int    `yaml:"brokers,omitempty"`
-	ZooKeepers int    `yaml:"zookeepers,omitempty"`
+	Type                        string `yaml:"type,omitempty"`
+	BootstrapMethod             string `yaml:"bootstrap_method,omitempty"`
+	Brokers                     int    `yaml:"brokers,omitempty"`
+	ZooKeepers                  int    `yaml:"zookeepers,omitempty"`
+	ChannelParticipationEnabled bool   `yaml:"channel_participation_enabled,omitempty"`
 }
 
 // The SystemChannel declares the name of the network system channel and its
@@ -138,18 +140,17 @@ type Profile struct {
 
 // Network holds information about a fabric network.
 type Network struct {
-	RootDir                     string
-	StartPort                   uint16
-	Components                  *Components
-	DockerClient                *docker.Client
-	ExternalBuilders            []fabricconfig.ExternalBuilder
-	NetworkID                   string
-	EventuallyTimeout           time.Duration
-	SessionCreateInterval       time.Duration
-	MetricsProvider             string
-	StatsdEndpoint              string
-	ClientAuthRequired          bool
-	ChannelParticipationEnabled bool
+	RootDir               string
+	StartPort             uint16
+	Components            *Components
+	DockerClient          *docker.Client
+	ExternalBuilders      []fabricconfig.ExternalBuilder
+	NetworkID             string
+	EventuallyTimeout     time.Duration
+	SessionCreateInterval time.Duration
+	MetricsProvider       string
+	StatsdEndpoint        string
+	ClientAuthRequired    bool
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports

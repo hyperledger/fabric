@@ -4,7 +4,7 @@ Copyright IBM Corp All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package nwo
+package ordererclient
 
 import (
 	"context"
@@ -14,18 +14,19 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/pkg/errors"
 )
 
 // Broadcast sends given env to Broadcast API of specified orderer.
-func Broadcast(n *Network, o *Orderer, env *common.Envelope) (*orderer.BroadcastResponse, error) {
+func Broadcast(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*orderer.BroadcastResponse, error) {
 	gRPCclient, err := createOrdererGRPCClient(n, o)
 	if err != nil {
 		return nil, err
 	}
 
-	addr := n.OrdererAddress(o, ListenPort)
+	addr := n.OrdererAddress(o, nwo.ListenPort)
 	conn, err := gRPCclient.NewConnection(addr)
 	if err != nil {
 		return nil, err
@@ -51,13 +52,13 @@ func Broadcast(n *Network, o *Orderer, env *common.Envelope) (*orderer.Broadcast
 }
 
 // Deliver sends given env to Deliver API of specified orderer.
-func Deliver(n *Network, o *Orderer, env *common.Envelope) (*common.Block, error) {
+func Deliver(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*common.Block, error) {
 	gRPCclient, err := createOrdererGRPCClient(n, o)
 	if err != nil {
 		return nil, err
 	}
 
-	addr := n.OrdererAddress(o, ListenPort)
+	addr := n.OrdererAddress(o, nwo.ListenPort)
 	conn, err := gRPCclient.NewConnection(addr)
 	if err != nil {
 		return nil, err
@@ -87,7 +88,7 @@ func Deliver(n *Network, o *Orderer, env *common.Envelope) (*common.Block, error
 	return blk, nil
 }
 
-func createOrdererGRPCClient(n *Network, o *Orderer) (*comm.GRPCClient, error) {
+func createOrdererGRPCClient(n *nwo.Network, o *nwo.Orderer) (*comm.GRPCClient, error) {
 	config := comm.ClientConfig{}
 	config.Timeout = 5 * time.Second
 
