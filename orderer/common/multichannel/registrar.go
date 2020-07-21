@@ -408,10 +408,6 @@ func (r *Registrar) ChannelList() types.ChannelList {
 
 	list := types.ChannelList{}
 
-	if len(r.chains) == 0 {
-		return list
-	}
-
 	if r.systemChannelID != "" {
 		list.SystemChannel = &types.ChannelInfoShort{Name: r.systemChannelID}
 	}
@@ -555,13 +551,10 @@ func (r *Registrar) joinAsFollower(ledgerRes *ledgerResources, clusterConsenter 
 		joinBlock,
 		follower.Options{
 			Logger: flogging.MustGetLogger("orderer.commmon.follower").With("channel", channelID),
-			Cert:   nil,
 		},
 		createBlockPullerFunc,
 		createChainFunc,
-		nil, // TODO pass also method that creates a new follower.Chain from the tip of the ledger
-		r.bccsp,
-	)
+		r.bccsp)
 
 	if err != nil {
 		return types.ChannelInfo{}, errors.Wrapf(err, "failed to create follower for channel %s", channelID)
