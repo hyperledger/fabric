@@ -194,7 +194,7 @@ func (r *Replicator) PullChannel(channel string) error {
 		r.Logger.Panicf("Failed to create a ledger for channel %s: %v", channel, err)
 	}
 
-	endpoint, latestHeight, _ := latestHeightAndEndpoint(puller)
+	endpoint, latestHeight, _ := LatestHeightAndEndpoint(puller)
 	if endpoint == "" {
 		return errors.Errorf("failed obtaining the latest block for channel %s", channel)
 	}
@@ -468,7 +468,7 @@ func Participant(puller ChainPuller, analyzeLastConfBlock SelfMembershipPredicat
 
 // PullLastConfigBlock pulls the last configuration block, or returns an error on failure.
 func PullLastConfigBlock(puller ChainPuller) (*common.Block, error) {
-	endpoint, latestHeight, err := latestHeightAndEndpoint(puller)
+	endpoint, latestHeight, err := LatestHeightAndEndpoint(puller)
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +494,7 @@ func PullLastConfigBlock(puller ChainPuller) (*common.Block, error) {
 	return lastConfigBlock, nil
 }
 
-func latestHeightAndEndpoint(puller ChainPuller) (string, uint64, error) {
+func LatestHeightAndEndpoint(puller ChainPuller) (string, uint64, error) {
 	var maxHeight uint64
 	var mostUpToDateEndpoint string
 	heightsByEndpoints, err := puller.HeightsByEndpoints()

@@ -408,10 +408,6 @@ func (r *Registrar) ChannelList() types.ChannelList {
 
 	list := types.ChannelList{}
 
-	if len(r.chains) == 0 {
-		return list
-	}
-
 	if r.systemChannelID != "" {
 		list.SystemChannel = &types.ChannelInfoShort{Name: r.systemChannelID}
 	}
