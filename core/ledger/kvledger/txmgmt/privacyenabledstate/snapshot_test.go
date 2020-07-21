@@ -31,9 +31,6 @@ var (
 
 func TestSnapshot(t *testing.T) {
 	for _, env := range testEnvs {
-		if _, ok := env.(*LevelDBTestEnv); !ok {
-			continue
-		}
 		t.Run(env.GetName(), func(t *testing.T) {
 			testSanpshot(t, env)
 		})
@@ -85,25 +82,55 @@ func testSanpshot(t *testing.T, env TestEnv) {
 		derivePvtDataNs("ns3", "coll1"),
 	)
 
-	t.Run("no-data", func(t *testing.T) {
-		testSnapshotWithSampleData(t, env, nil, nil, nil)
-	})
+	testCases := []struct {
+		description    string
+		publicState    []*statedb.VersionedKV
+		pvtStateHashes []*statedb.VersionedKV
+		pvtState       []*statedb.VersionedKV
+	}{
+		{
+			description:    "no-data",
+			publicState:    nil,
+			pvtStateHashes: nil,
+			pvtState:       nil,
+		},
+		{
+			description:    "only-public-data",
+			publicState:    samplePublicState,
+			pvtStateHashes: nil,
+			pvtState:       nil,
+		},
+		{
+			description:    "only-pvtdatahashes",
+			publicState:    nil,
+			pvtStateHashes: samplePvtStateHashes,
+			pvtState:       nil,
+		},
+		{
+			description:    "public-and-pvtdatahashes",
+			publicState:    samplePublicState,
+			pvtStateHashes: samplePvtStateHashes,
+			pvtState:       nil,
+		},
+		{
+			description:    "public-and-pvtdatahashes-and-pvtdata",
+			publicState:    samplePublicState,
+			pvtStateHashes: samplePvtStateHashes,
+			pvtState:       samplePvtState,
+		},
+	}
 
-	t.Run("only-public-data", func(t *testing.T) {
-		testSnapshotWithSampleData(t, env, samplePublicState, nil, nil)
-	})
-
-	t.Run("only-pvtdatahashes", func(t *testing.T) {
-		testSnapshotWithSampleData(t, env, nil, samplePvtStateHashes, nil)
-	})
-
-	t.Run("public-and-pvtdatahashes", func(t *testing.T) {
-		testSnapshotWithSampleData(t, env, samplePublicState, samplePvtStateHashes, nil)
-	})
-
-	t.Run("public-and-pvtdatahashes-and-pvtdata", func(t *testing.T) {
-		testSnapshotWithSampleData(t, env, samplePublicState, samplePvtStateHashes, samplePvtState)
-	})
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			testSnapshotWithSampleData(
+				t,
+				env,
+				testCase.publicState,
+				testCase.pvtStateHashes,
+				testCase.pvtState,
+			)
+		})
+	}
 }
 
 func testSnapshotWithSampleData(t *testing.T, env TestEnv,
