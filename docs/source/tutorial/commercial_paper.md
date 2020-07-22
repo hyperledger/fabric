@@ -606,7 +606,7 @@ separate terminal window for her, and in `fabric-samples` locate the MagnetoCorp
 (isabella)$ cd commercial-paper/organization/magnetocorp/application/
 (isabella)$ ls
 
-enrollUser.js		issue.js		package.json
+addToWallet.js		enrollUser.js		issue.js		package.json
 ```
 
 `addToWallet.js` is the program that Isabella is going to use to load her
