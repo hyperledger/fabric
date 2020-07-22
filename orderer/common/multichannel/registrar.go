@@ -106,7 +106,13 @@ func NewRegistrar(
 
 func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 	r.consenters = consenters
+
+	//TODO reconcile existing channel ledgers with join blocks
 	existingChannels := r.ledgerFactory.ChannelIDs()
+
+	// TODO first scan for and initialize the system channel, if it exists.
+	// TODO then initialize application channels, by creating either consensus.Chain or follower.Chain.
+	// TODO start all channels
 
 	for _, channelID := range existingChannels {
 		rl, err := r.ledgerFactory.GetOrCreate(channelID)
@@ -288,7 +294,7 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources,
 	}, nil
 }
 
-// CreateChain makes the Registrar create a chain with the given name.
+// CreateChain makes the Registrar create a consensus.Chain with the given name.
 func (r *Registrar) CreateChain(chainName string) {
 	lf, err := r.ledgerFactory.GetOrCreate(chainName)
 	if err != nil {
@@ -307,6 +313,10 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	r.createNewChain(configtx)
+}
+
+func (r *Registrar) createNewChain(configtx *cb.Envelope) {
 	ledgerResources, err := r.newLedgerResources(configtx)
 	if err != nil {
 		logger.Panicf("Error creating ledger resources: %s", err)
@@ -328,12 +338,33 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 	cs.start()
 }
 
+// SwitchFollowerToChain creates a consensus.Chain from the tip of the ledger, and removes the follower.
+// It is called when a follower detects a config block that indicates cluster membership and halts, transferring
+// execution to the consensus.Chain.
+func (r *Registrar) SwitchFollowerToChain(chainName string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	lf, err := r.ledgerFactory.GetOrCreate(chainName)
+	if err != nil {
+		logger.Panicf("Failed obtaining ledger factory for %s: %v", chainName, err)
+	}
+
+	if _, chainExists := r.chains[chainName]; chainExists {
+		logger.Panicf("Programming error, chain already exists: %s", chainName)
+	}
+
+	delete(r.followers, chainName)
+	logger.Debugf("Removed follower for channel %s", chainName)
+	r.createNewChain(configTx(lf))
+}
+
 // ChannelsCount returns the count of the current total number of channels.
 func (r *Registrar) ChannelsCount() int {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
 
-	return len(r.chains)
+	return len(r.chains) + len(r.followers)
 }
 
 // NewChannelConfig produces a new template channel configuration based on the system channel's current config.
@@ -366,6 +397,9 @@ func (r *Registrar) ChannelList() types.ChannelList {
 		if name == r.systemChannelID {
 			continue
 		}
+		list.Channels = append(list.Channels, types.ChannelInfoShort{Name: name})
+	}
+	for name := range r.followers {
 		list.Channels = append(list.Channels, types.ChannelInfoShort{Name: name})
 	}
 
@@ -423,7 +457,7 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 	}
 
 	//TODO save the join-block in the file repo to make this action crash tolerant.
-	//TODO remove join block & ledger if things go bad below
+	//TODO remove join block & ledger if things go bad below, (using defer that identifies an error?)
 
 	ledgerRes, err := r.newLedgerResources(configEnv)
 	if err != nil {
@@ -488,6 +522,10 @@ func (r *Registrar) joinAsFollower(ledgerRes *ledgerResources, clusterConsenter 
 	createBlockPullerFunc := func() (follower.ChannelPuller, error) {
 		return follower.BlockPullerFromJoinBlock(joinBlock, channelID, r.signer, ledgerRes, r.clusterDialer, r.config.General.Cluster, r.bccsp)
 	}
+	// A function that creates and starts a consensus.Chain from the tip of the ledger, and removes the follower.
+	createChainFunc := func() {
+		r.SwitchFollowerToChain(channelID)
+	}
 
 	fChain, err := follower.NewChain(
 		ledgerRes,
@@ -498,7 +536,8 @@ func (r *Registrar) joinAsFollower(ledgerRes *ledgerResources, clusterConsenter 
 			Cert:   nil,
 		},
 		createBlockPullerFunc,
-		nil,
+		createChainFunc,
+		nil, // TODO pass also method that creates a new follower.Chain from the tip of the ledger
 		r.bccsp,
 	)
 
