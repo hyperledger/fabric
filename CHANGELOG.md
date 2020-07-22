@@ -1,3 +1,22 @@
+## v1.4.8
+Wed Jul 22 09:23:53 EDT 2020
+
+* [112c6d9](https://github.com/hyperledger/fabric/commit/112c6d9) Add release notes for v1.4.8
+* [ae1395b](https://github.com/hyperledger/fabric/commit/ae1395b) Tag built docker images with BASE_VERSION and TWO_DIGIT_VERSION
+* [81f32de](https://github.com/hyperledger/fabric/commit/81f32de) Fix latest tag on ccenv
+* [caf5b56](https://github.com/hyperledger/fabric/commit/caf5b56) Raft: Check suspect info once per suspect interval (#1602)
+* [66349cc](https://github.com/hyperledger/fabric/commit/66349cc) Print channel name in learnAnchorPeers
+* [a7eb1f7](https://github.com/hyperledger/fabric/commit/a7eb1f7) [FAB-18043](https://jira.hyperledger.org/browse/FAB-18043) Correct the code comments (#1530)
+* [34294ad](https://github.com/hyperledger/fabric/commit/34294ad) Only canonize ECDSA signatures in MSP:IsWellFormed (#1495)
+* [c2ea18f](https://github.com/hyperledger/fabric/commit/c2ea18f) Bump Go to 1.13.12 and Third-Party Images to 0.4.21 (#1492)
+* [d34fd05](https://github.com/hyperledger/fabric/commit/d34fd05) Fix wrong link sampleconfig
+* [4a193ed](https://github.com/hyperledger/fabric/commit/4a193ed) Set http header entries before writing header
+* [9d2258c](https://github.com/hyperledger/fabric/commit/9d2258c) Update gotools mockery path for release-1.4 (#1417)
+* [65e7353](https://github.com/hyperledger/fabric/commit/65e7353) [FAB-17161](https://jira.hyperledger.org/browse/FAB-17161) improve error message
+* [52ee947](https://github.com/hyperledger/fabric/commit/52ee947) Fix the installed binary list in the document
+* [877cadd](https://github.com/hyperledger/fabric/commit/877cadd) [DocUpdate] configtxlator decode/common.ConfigUpdate
+* [38b40b5](https://github.com/hyperledger/fabric/commit/38b40b5) Prepare for Fabric v1.4.8 release
+
 ## v1.4.7
 Thu May 14 12:56:18 EDT 2020
 
