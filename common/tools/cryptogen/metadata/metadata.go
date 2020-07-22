@@ -14,7 +14,7 @@ import (
 // package-scoped variables
 
 // Package version
-const Version = "1.4.8"
+const Version = "1.4.9"
 
 var CommitSHA string
 
