@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/follower"
 )
 
@@ -35,6 +36,11 @@ type ChannelPuller struct {
 	}
 	pullBlockReturnsOnCall map[int]struct {
 		result1 *common.Block
+	}
+	UpdateEndpointsStub        func([]cluster.EndpointCriteria)
+	updateEndpointsMutex       sync.RWMutex
+	updateEndpointsArgsForCall []struct {
+		arg1 []cluster.EndpointCriteria
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -178,6 +184,42 @@ func (fake *ChannelPuller) PullBlockReturnsOnCall(i int, result1 *common.Block) 
 	}{result1}
 }
 
+func (fake *ChannelPuller) UpdateEndpoints(arg1 []cluster.EndpointCriteria) {
+	var arg1Copy []cluster.EndpointCriteria
+	if arg1 != nil {
+		arg1Copy = make([]cluster.EndpointCriteria, len(arg1))
+		copy(arg1Copy, arg1)
+	}
+	fake.updateEndpointsMutex.Lock()
+	fake.updateEndpointsArgsForCall = append(fake.updateEndpointsArgsForCall, struct {
+		arg1 []cluster.EndpointCriteria
+	}{arg1Copy})
+	fake.recordInvocation("UpdateEndpoints", []interface{}{arg1Copy})
+	fake.updateEndpointsMutex.Unlock()
+	if fake.UpdateEndpointsStub != nil {
+		fake.UpdateEndpointsStub(arg1)
+	}
+}
+
+func (fake *ChannelPuller) UpdateEndpointsCallCount() int {
+	fake.updateEndpointsMutex.RLock()
+	defer fake.updateEndpointsMutex.RUnlock()
+	return len(fake.updateEndpointsArgsForCall)
+}
+
+func (fake *ChannelPuller) UpdateEndpointsCalls(stub func([]cluster.EndpointCriteria)) {
+	fake.updateEndpointsMutex.Lock()
+	defer fake.updateEndpointsMutex.Unlock()
+	fake.UpdateEndpointsStub = stub
+}
+
+func (fake *ChannelPuller) UpdateEndpointsArgsForCall(i int) []cluster.EndpointCriteria {
+	fake.updateEndpointsMutex.RLock()
+	defer fake.updateEndpointsMutex.RUnlock()
+	argsForCall := fake.updateEndpointsArgsForCall[i]
+	return argsForCall.arg1
+}
+
 func (fake *ChannelPuller) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -187,6 +229,8 @@ func (fake *ChannelPuller) Invocations() map[string][][]interface{} {
 	defer fake.heightsByEndpointsMutex.RUnlock()
 	fake.pullBlockMutex.RLock()
 	defer fake.pullBlockMutex.RUnlock()
+	fake.updateEndpointsMutex.RLock()
+	defer fake.updateEndpointsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

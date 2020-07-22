@@ -45,12 +45,22 @@ type LedgerResources interface {
 // TimeAfter has the signature of time.After and allows tests to provide an alternative implementation to it.
 type TimeAfter func(d time.Duration) <-chan time.Time
 
-// CreateBlockPuller is a function to create BlockPuller on demand.
-// It is passed into chain initializer so that tests could mock this.
-type CreateBlockPuller func() (ChannelPuller, error)
+//go:generate counterfeiter -o mocks/block_puller_factory.go -fake-name BlockPullerFactory . BlockPullerFactory
 
-// CreateChain is a function that creates a new consensus.Chain for this channel, to replace the current follower.Chain
-type CreateChain func()
+// BlockPullerFactory creates a ChannelPuller on demand, and exposes a method to update the a block signature verifier
+// linked to that ChannelPuller.
+type BlockPullerFactory interface {
+	BlockPuller(configBlock *common.Block) (ChannelPuller, error)
+	UpdateVerifierFromConfigBlock(configBlock *common.Block) error
+}
+
+//go:generate counterfeiter -o mocks/chain_creator.go -fake-name ChainCreator . ChainCreator
+
+// ChainCreator defines a function that creates a new consensus.Chain for this channel, to replace the current
+// follower.Chain. This interface is meant to be implemented by the multichannel.Registrar.
+type ChainCreator interface {
+	SwitchFollowerToChain(chainName string)
+}
 
 // Chain implements a component that allows the orderer to follow a specific channel when is not a cluster member,
 // that is, be a "follower" of the cluster. It also allows the orderer to perform "on-boarding" for
@@ -94,8 +104,11 @@ type Chain struct {
 	lastConfig  *common.Block // The last config block from the ledger. Accessed only by the go-routine.
 	firstHeight uint64        // The first ledger height
 
-	createBlockPullerFunc CreateBlockPuller // A function that creates a block puller on demand // TODO change to interface
-	chainCreationCallback CreateChain       // A method that creates a new consensus.Chain for this channel, to replace the current follower.Chain // TODO change to interface
+	// Creates a block puller on demand, and allows the update of the block signature verifier with each incoming
+	// config block.
+	blockPullerFactory BlockPullerFactory
+	// Creates a new consensus.Chain for this channel, to replace the current follower.Chain.
+	chainCreator ChainCreator
 
 	cryptoProvider bccsp.BCCSP   // Cryptographic services
 	blockPuller    ChannelPuller // A block puller instance that is recreated every time a config is pulled.
@@ -107,44 +120,42 @@ func NewChain(
 	clusterConsenter consensus.ClusterConsenter,
 	joinBlock *common.Block,
 	options Options,
-	createBlockPullerFunc CreateBlockPuller,
-	chainCreationCallback CreateChain,
+	blockPullerFactory BlockPullerFactory,
+	chainCreator ChainCreator,
 	cryptoProvider bccsp.BCCSP,
 ) (*Chain, error) {
-	// Check the block puller creation function once before we start the follower.
-	puller, errBP := createBlockPullerFunc()
-	if errBP != nil {
-		return nil, errors.Wrap(errBP, "error creating a block puller from join-block")
-	}
-	defer puller.Close()
-
 	options.applyDefaults()
 
 	chain := &Chain{
-		stopChan:              make(chan (struct{})),
-		doneChan:              make(chan (struct{})),
-		cRel:                  types.ClusterRelationFollower,
-		status:                types.StatusOnBoarding,
-		ledgerResources:       ledgerResources,
-		clusterConsenter:      clusterConsenter,
-		joinBlock:             joinBlock,
-		firstHeight:           ledgerResources.Height(),
-		options:               options,
-		logger:                options.Logger.With("channel", ledgerResources.ChannelID()),
-		timeAfter:             options.TimeAfter,
-		createBlockPullerFunc: createBlockPullerFunc,
-		chainCreationCallback: chainCreationCallback,
-		cryptoProvider:        cryptoProvider,
+		stopChan:           make(chan (struct{})),
+		doneChan:           make(chan (struct{})),
+		cRel:               types.ClusterRelationFollower,
+		status:             types.StatusOnBoarding,
+		ledgerResources:    ledgerResources,
+		clusterConsenter:   clusterConsenter,
+		joinBlock:          joinBlock,
+		firstHeight:        ledgerResources.Height(),
+		options:            options,
+		logger:             options.Logger.With("channel", ledgerResources.ChannelID()),
+		timeAfter:          options.TimeAfter,
+		blockPullerFactory: blockPullerFactory,
+		chainCreator:       chainCreator,
+		cryptoProvider:     cryptoProvider,
+	}
+
+	if ledgerResources.Height() > 0 {
+		if err := chain.loadLastConfig(); err != nil {
+			return nil, err
+		}
+		blockPullerFactory.UpdateVerifierFromConfigBlock(chain.lastConfig)
 	}
 
 	if joinBlock == nil {
 		chain.status = types.StatusActive
-		if err := chain.loadLastConfig(); err != nil {
-			return nil, err
-		}
 		if isMem, _ := chain.clusterConsenter.IsChannelMember(chain.lastConfig); isMem {
 			chain.cRel = types.ClusterRelationMember
 		}
+
 		chain.logger.Infof("Created with a nil join-block, ledger height: %d", chain.firstHeight)
 	} else {
 		if joinBlock.Header == nil {
@@ -153,6 +164,14 @@ func NewChain(
 		if joinBlock.Data == nil {
 			return nil, errors.New("block data is nil")
 		}
+
+		// Check the block puller creation function once before we start the follower. This ensures we can extract
+		// the endpoints from the join-block.
+		puller, err := blockPullerFactory.BlockPuller(joinBlock)
+		if err != nil {
+			return nil, errors.Wrap(err, "error creating a block puller from join-block")
+		}
+		puller.Close()
 
 		if chain.joinBlock.Header.Number < chain.ledgerResources.Height() {
 			chain.status = types.StatusActive
@@ -163,13 +182,8 @@ func NewChain(
 
 		chain.logger.Infof("Created with join-block number: %d, ledger height: %d", joinBlock.Header.Number, chain.firstHeight)
 	}
-	chain.logger.Debugf("Options are: %v", chain.options)
 
-	if chain.chainCreationCallback == nil {
-		chain.chainCreationCallback = func() {
-			chain.logger.Warnf("No-Op: chain creation callback is nil")
-		}
-	}
+	chain.logger.Debugf("Options are: %v", chain.options)
 
 	return chain, nil
 }
@@ -257,6 +271,7 @@ func (c *Chain) run() {
 	}()
 
 	if err := c.pull(); err != nil {
+
 		c.logger.Warnf("Pull failed, error: %s", err)
 		// TODO set the status to StatusError
 	}
@@ -311,9 +326,9 @@ func (c *Chain) pull() error {
 		if isMem, _ := c.clusterConsenter.IsChannelMember(c.joinBlock); isMem {
 			c.setStatusReport(types.ClusterRelationMember, types.StatusActive)
 			// Trigger creation of a new consensus.Chain.
-			c.logger.Info("On-boarding finished successfully, invoking chain creation callback")
+			c.logger.Info("On-boarding finished successfully, going to switch from follower to a consensus.Chain")
 			c.halt()
-			c.chainCreationCallback()
+			c.chainCreator.SwitchFollowerToChain(c.ledgerResources.ChannelID())
 			return nil
 		}
 
@@ -333,9 +348,9 @@ func (c *Chain) pull() error {
 	}
 
 	// Trigger creation of a new consensus.Chain.
-	c.logger.Info("Block pulling finished successfully, invoking chain creation callback")
+	c.logger.Info("Block pulling finished successfully, going to switch from follower to a consensus.Chain")
 	c.halt()
-	c.chainCreationCallback()
+	c.chainCreator.SwitchFollowerToChain(c.ledgerResources.ChannelID())
 
 	return nil
 }
@@ -345,17 +360,20 @@ func (c *Chain) pull() error {
 func (c *Chain) pullUpToJoin() error {
 	targetHeight := c.joinBlock.Header.Number + 1
 	if c.ledgerResources.Height() >= targetHeight {
-		c.logger.Infof("Target height according to join block (%d) is <= to our ledger height (%d), no need to pull up to join block", targetHeight, c.ledgerResources.Height())
+		c.logger.Infof("Target height according to join block (%d) is <= to our ledger height (%d), no need to pull up to join block",
+			targetHeight, c.ledgerResources.Height())
 		return nil
 	}
 
 	var err error
-	c.blockPuller, err = c.createBlockPullerFunc() // TODO replace with a factory that has a join block as input
-	if err != nil {                                //This should never happen since we check the join-block before we start.
+	// Block puller created with endpoints from the join-block.
+	c.blockPuller, err = c.blockPullerFactory.BlockPuller(c.joinBlock)
+	if err != nil { //This should never happen since we check the join-block before we start.
 		return errors.Wrapf(err, "error creating block puller")
 	}
 	defer c.blockPuller.Close()
-
+	// Since we created the block-puller with the join-block, do not update the endpoints from the
+	// config blocks that precede it.
 	err = c.pullUntilLatestWithRetry(targetHeight, false)
 	if err != nil {
 		return err
@@ -372,7 +390,7 @@ func (c *Chain) pullUpToJoin() error {
 func (c *Chain) pullAfterJoin() error {
 	var err error
 
-	c.blockPuller, err = c.createBlockPullerFunc() // TODO replace with a factory that has last config block as input
+	c.blockPuller, err = c.blockPullerFactory.BlockPuller(c.lastConfig)
 	if err != nil {
 		return errors.Wrap(err, "error creating block puller")
 	}
@@ -431,11 +449,11 @@ func (c *Chain) pullAfterJoin() error {
 // pullUntilLatestWithRetry is given a target-height and exits without an error when it reaches that target.
 // It return with an error only if the chain is stopped.
 // On internal pull errors it employs exponential back-off and retries.
-func (c *Chain) pullUntilLatestWithRetry(latestNetworkHeight uint64, inspectConfig bool) error {
-	//Pull until latest
+// When parameter updateEndpoints is true, the block-puller's endpoints are updated with every incoming config.
+func (c *Chain) pullUntilLatestWithRetry(latestNetworkHeight uint64, updateEndpoints bool) error {
 	retryInterval := c.options.PullRetryMinInterval
 	for {
-		numPulled, errPull := c.pullUntilTarget(latestNetworkHeight, inspectConfig)
+		numPulled, errPull := c.pullUntilTarget(latestNetworkHeight, updateEndpoints)
 		if numPulled > 0 {
 			c.resetRetryInterval(&retryInterval, c.options.PullRetryMinInterval) // On any progress, reset retry interval.
 		}
@@ -461,7 +479,9 @@ func (c *Chain) pullUntilLatestWithRetry(latestNetworkHeight uint64, inspectConf
 
 // pullUntilTarget is given a target-height and exits without an error when it reaches that target.
 // It may return with an error before the target, always returning the number of blocks pulled.
-func (c *Chain) pullUntilTarget(targetHeight uint64, inspectConfig bool) (uint64, error) {
+// When parameter updateEndpoints is true, the block-puller's endpoints are updated with every incoming config.
+// The block-puller-factory which holds the block signature verifier is updated on every incoming config.
+func (c *Chain) pullUntilTarget(targetHeight uint64, updateEndpoints bool) (uint64, error) {
 	firstBlockToPull := c.ledgerResources.Height()
 	if firstBlockToPull >= targetHeight {
 		c.logger.Debugf("Target height (%d) is <= to our ledger height (%d), skipping pulling", targetHeight, firstBlockToPull)
@@ -500,14 +520,18 @@ func (c *Chain) pullUntilTarget(targetHeight uint64, inspectConfig bool) (uint64
 				return n, errors.Wrapf(err, "failed to append block %d to the ledger", nextBlock.Header.Number)
 			}
 
-			if inspectConfig && protoutil.IsConfigBlock(nextBlock) {
+			if protoutil.IsConfigBlock(nextBlock) {
 				c.logger.Debugf("Pulled blocks from %d to %d, last block is config", firstBlockToPull, nextBlock.Header.Number)
 				c.lastConfig = nextBlock
-				// Re-create the block puller to apply the new config, which may update the endpoints.
-				c.blockPuller.Close()
-				var err error
-				if c.blockPuller, err = c.createBlockPullerFunc(); err != nil { // TODO replace with a factory that has a config block as input
-					return n, errors.Wrapf(err, "failed to re-create block puller from last config,  block number: %d", nextBlock.Header.Number)
+				if err := c.blockPullerFactory.UpdateVerifierFromConfigBlock(nextBlock); err != nil {
+					return n, errors.Wrapf(err, "failed to update verifier from last config,  block number: %d", nextBlock.Header.Number)
+				}
+				if updateEndpoints {
+					endpoints, err := cluster.EndpointconfigFromConfigBlock(nextBlock, c.cryptoProvider)
+					if err != nil {
+						return n, errors.Wrapf(err, "failed to extract endpoints from last config,  block number: %d", nextBlock.Header.Number)
+					}
+					c.blockPuller.UpdateEndpoints(endpoints)
 				}
 			}
 		}
@@ -518,6 +542,9 @@ func (c *Chain) pullUntilTarget(targetHeight uint64, inspectConfig bool) (uint64
 
 func (c *Chain) loadLastConfig() error {
 	height := c.ledgerResources.Height()
+	if height == 0 {
+		return errors.New("ledger is empty")
+	}
 	lastBlock := c.ledgerResources.Block(height - 1)
 	index, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
 	if err != nil {

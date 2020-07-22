@@ -272,6 +272,14 @@ func (r *Registrar) GetChain(chainID string) *ChainSupport {
 	return r.chains[chainID]
 }
 
+// GetFollower retrieves the follower.Chain if it exists.
+func (r *Registrar) GetFollower(chainID string) *follower.Chain {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	return r.followers[chainID]
+}
+
 func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources, error) {
 	payload, err := protoutil.UnmarshalPayload(configTx.Payload)
 	if err != nil {
@@ -346,7 +354,9 @@ func (r *Registrar) createNewChain(configtx *cb.Envelope) {
 
 	// If we have no blocks, we need to create the genesis block ourselves.
 	if ledgerResources.Height() == 0 {
-		ledgerResources.Append(blockledger.CreateNextBlock(ledgerResources, []*cb.Envelope{configtx}))
+		if err := ledgerResources.Append(blockledger.CreateNextBlock(ledgerResources, []*cb.Envelope{configtx})); err != nil {
+			logger.Panicf("Error appending genesis block to ledger: %s", err)
+		}
 	}
 	cs, err := newChainSupport(r, ledgerResources, r.consenters, r.signer, r.blockcutterMetrics, r.bccsp)
 	if err != nil {
@@ -501,7 +511,14 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 		return r.joinAsMember(ledgerRes, configBlock, channelID)
 	}
 
-	return r.joinAsFollower(ledgerRes, clusterConsenter, configBlock, channelID)
+	fChain, info, err := r.createFollower(ledgerRes, clusterConsenter, configBlock, channelID)
+	if err != nil {
+		return info, errors.Wrap(err, "failed to create follower")
+	}
+
+	fChain.Start()
+	logger.Infof("Joining channel: %v", info)
+	return info, err
 }
 
 func (r *Registrar) joinAsMember(ledgerRes *ledgerResources, configBlock *cb.Block, channelID string) (types.ChannelInfo, error) {
@@ -535,14 +552,18 @@ func (r *Registrar) joinAsMember(ledgerRes *ledgerResources, configBlock *cb.Blo
 	return info, nil
 }
 
-func (r *Registrar) joinAsFollower(ledgerRes *ledgerResources, clusterConsenter consensus.ClusterConsenter, joinBlock *cb.Block, channelID string) (types.ChannelInfo, error) {
-	// A function that creates a block puller from the join block
-	createBlockPullerFunc := func() (follower.ChannelPuller, error) {
-		return follower.BlockPullerFromJoinBlock(joinBlock, channelID, r.signer, ledgerRes, r.clusterDialer, r.config.General.Cluster, r.bccsp)
-	}
-	// A function that creates and starts a consensus.Chain from the tip of the ledger, and removes the follower.
-	createChainFunc := func() {
-		r.SwitchFollowerToChain(channelID)
+// createFollower created a follower.Chain, puts it in the map, but does not start it.
+func (r *Registrar) createFollower(
+	ledgerRes *ledgerResources,
+	clusterConsenter consensus.ClusterConsenter,
+	joinBlock *cb.Block,
+	channelID string,
+) (*follower.Chain, types.ChannelInfo, error) {
+	logger := flogging.MustGetLogger("orderer.commmon.follower").With("channel", channelID)
+	blockPullerCreator, err := follower.NewBlockPullerCreator(
+		channelID, logger, r.signer, r.clusterDialer, r.config.General.Cluster, r.bccsp)
+	if err != nil {
+		return nil, types.ChannelInfo{}, errors.Wrapf(err, "failed to create BlockPullerFactory for channel %s", channelID)
 	}
 
 	fChain, err := follower.NewChain(
@@ -550,14 +571,15 @@ func (r *Registrar) joinAsFollower(ledgerRes *ledgerResources, clusterConsenter 
 		clusterConsenter,
 		joinBlock,
 		follower.Options{
-			Logger: flogging.MustGetLogger("orderer.commmon.follower").With("channel", channelID),
+			Logger: logger,
 		},
-		createBlockPullerFunc,
-		createChainFunc,
-		r.bccsp)
+		blockPullerCreator,
+		r,
+		r.bccsp,
+	)
 
 	if err != nil {
-		return types.ChannelInfo{}, errors.Wrapf(err, "failed to create follower for channel %s", channelID)
+		return nil, types.ChannelInfo{}, errors.Wrapf(err, "failed to create follower for channel %s", channelID)
 	}
 
 	info := types.ChannelInfo{
@@ -568,10 +590,9 @@ func (r *Registrar) joinAsFollower(ledgerRes *ledgerResources, clusterConsenter 
 	info.ClusterRelation, info.Status = fChain.StatusReport()
 
 	r.followers[channelID] = fChain
-	fChain.Start()
 
-	logger.Infof("Joining channel: %v", info)
-	return info, nil
+	logger.Debugf("Created follower.Chain: %v", info)
+	return fChain, info, nil
 }
 
 // RemoveChannel instructs the orderer to remove a channel.

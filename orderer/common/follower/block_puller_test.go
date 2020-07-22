@@ -8,12 +8,15 @@ package follower_test
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"path"
+	"sync/atomic"
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -25,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/follower"
 	"github.com/hyperledger/fabric/orderer/common/follower/mocks"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,16 +44,22 @@ type signerSerializer interface {
 	identity.SignerSerializer
 }
 
-func TestBlockPullerFromJoinBlock(t *testing.T) {
-	tlsCA, _ := tlsgen.NewCA()
-	channelID := "my-raft-channel"
-	joinBlockAppRaft := generateJoinBlock(t, tlsCA, channelID, 10)
-	require.NotNil(t, joinBlockAppRaft)
+var (
+	channelID  string
+	mockSigner *mocks.SignerSerializer
+	tlsCA      tlsgen.CA
+	dialer     *cluster.PredicateDialer
+	cryptoProv bccsp.BCCSP
+)
 
-	mockVerifier := &mocks.BlockVerifier{}
-	mockSigner := &mocks.SignerSerializer{}
+func setupBlockPullerTest(t *testing.T) {
+	channelID = "my-raft-channel"
+	mockSigner = &mocks.SignerSerializer{}
 
-	dialer := &cluster.PredicateDialer{
+	var err error
+	tlsCA, err = tlsgen.NewCA()
+	require.NoError(t, err)
+	dialer = &cluster.PredicateDialer{
 		Config: comm.ClientConfig{
 			SecOpts: comm.SecureOptions{
 				Certificate: tlsCA.CertBytes(),
@@ -57,19 +67,23 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 		},
 	}
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	cryptoProv, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
+}
+
+func TestNewBlockPullerFactory(t *testing.T) {
+	setupBlockPullerTest(t)
 
 	t.Run("good", func(t *testing.T) {
-		bp, err := follower.BlockPullerFromJoinBlock(joinBlockAppRaft, channelID, mockSigner, mockVerifier, dialer, localconfig.Cluster{}, cryptoProvider)
+		bpf, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)
 		require.NoError(t, err)
-		require.NotNil(t, bp)
+		require.NotNil(t, bpf)
 	})
 
 	t.Run("dialer is nil", func(t *testing.T) {
-		bp, err := follower.BlockPullerFromJoinBlock(joinBlockAppRaft, channelID, mockSigner, mockVerifier, nil, localconfig.Cluster{}, cryptoProvider)
-		require.EqualError(t, err, "base dialer is nil")
-		require.Nil(t, bp)
+		require.Panics(t, func() {
+			follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, nil, localconfig.Cluster{}, cryptoProv)
+		})
 	})
 
 	t.Run("dialer has bad cert", func(t *testing.T) {
@@ -77,15 +91,77 @@ func TestBlockPullerFromJoinBlock(t *testing.T) {
 			Config: dialer.Config.Clone(),
 		}
 		badDialer.Config.SecOpts.Certificate = []byte("not-a-certificate")
-		bp, err := follower.BlockPullerFromJoinBlock(joinBlockAppRaft, channelID, mockSigner, mockVerifier, badDialer, localconfig.Cluster{}, cryptoProvider)
+		bpf, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, badDialer, localconfig.Cluster{}, cryptoProv)
 		require.EqualError(t, err, "client certificate isn't in PEM format: not-a-certificate")
-		require.Nil(t, bp)
+		require.Nil(t, bpf)
+	})
+}
+
+func TestBlockPullerFactory_BlockPuller(t *testing.T) {
+	setupBlockPullerTest(t)
+
+	factory, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)
+	require.NotNil(t, factory)
+	require.NoError(t, err)
+
+	t.Run("good", func(t *testing.T) {
+		joinBlockAppRaft := generateJoinBlock(t, tlsCA, channelID, 10)
+		require.NotNil(t, joinBlockAppRaft)
+		bp, err := factory.BlockPuller(joinBlockAppRaft)
+		require.NoError(t, err)
+		require.NotNil(t, bp)
 	})
 
 	t.Run("bad join block", func(t *testing.T) {
-		bp, err := follower.BlockPullerFromJoinBlock(&cb.Block{Header: &cb.BlockHeader{}}, channelID, mockSigner, mockVerifier, dialer, localconfig.Cluster{}, cryptoProvider)
+		bp, err := factory.BlockPuller(&cb.Block{Header: &cb.BlockHeader{}})
 		require.EqualError(t, err, "error extracting endpoints from config block: block data is nil")
 		require.Nil(t, bp)
+	})
+}
+
+func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
+	// replaces cluster.VerifyBlocks, count blocks
+	var numBlocks int32
+	altVerifyBlocks := func(blockBuff []*cb.Block, signatureVerifier cluster.BlockVerifier) error { // replaces cluster.VerifyBlocks, count invocations
+		assert.NotNil(t, signatureVerifier)
+		atomic.StoreInt32(&numBlocks, int32(len(blockBuff)))
+		return nil
+	}
+
+	t.Run("skip genesis block", func(t *testing.T) {
+		setupBlockPullerTest(t)
+		atomic.StoreInt32(&numBlocks, 0)
+		creator, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)
+		require.NotNil(t, creator)
+		require.NoError(t, err)
+		creator.ClusterVerifyBlocks = altVerifyBlocks
+		blocks := []*cb.Block{
+			generateJoinBlock(t, tlsCA, channelID, 0),
+			protoutil.NewBlock(1, []byte{}),
+			protoutil.NewBlock(2, []byte{})}
+
+		err = creator.VerifyBlockSequence(blocks, "")
+		require.NoError(t, err)
+		assert.Equal(t, int32(2), atomic.LoadInt32(&numBlocks))
+	})
+
+	t.Run("verify all blocks in slice", func(t *testing.T) {
+		setupBlockPullerTest(t)
+		atomic.StoreInt32(&numBlocks, 0)
+		creator, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)
+		require.NotNil(t, creator)
+		require.NoError(t, err)
+		creator.ClusterVerifyBlocks = altVerifyBlocks
+
+		blocks := []*cb.Block{protoutil.NewBlock(4, []byte{}), protoutil.NewBlock(5, []byte{}), protoutil.NewBlock(6, []byte{})}
+
+		err = creator.VerifyBlockSequence(blocks, "")
+		require.EqualError(t, err, "nil block signature verifier")
+
+		creator.UpdateVerifierFromConfigBlock(generateJoinBlock(t, tlsCA, channelID, 0))
+		err = creator.VerifyBlockSequence(blocks, "")
+		require.NoError(t, err)
+		assert.Equal(t, int32(3), atomic.LoadInt32(&numBlocks))
 	})
 }
 
