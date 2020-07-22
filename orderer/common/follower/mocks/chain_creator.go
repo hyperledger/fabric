@@ -3,45 +3,94 @@ package mocks
 
 import (
 	"sync"
+
+	"github.com/hyperledger/fabric/orderer/common/follower"
 )
 
 type ChainCreator struct {
-	CreateChainStub        func()
-	createChainMutex       sync.RWMutex
-	createChainArgsForCall []struct {
+	SwitchFollowerStub        func(string)
+	switchFollowerMutex       sync.RWMutex
+	switchFollowerArgsForCall []struct {
+		arg1 string
+	}
+	SwitchFollowerToChainStub        func(string)
+	switchFollowerToChainMutex       sync.RWMutex
+	switchFollowerToChainArgsForCall []struct {
+		arg1 string
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChainCreator) CreateChain() {
-	fake.createChainMutex.Lock()
-	fake.createChainArgsForCall = append(fake.createChainArgsForCall, struct {
-	}{})
-	fake.recordInvocation("CreateChain", []interface{}{})
-	fake.createChainMutex.Unlock()
-	if fake.CreateChainStub != nil {
-		fake.CreateChainStub()
+func (fake *ChainCreator) SwitchFollower(arg1 string) {
+	fake.switchFollowerMutex.Lock()
+	fake.switchFollowerArgsForCall = append(fake.switchFollowerArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("SwitchFollower", []interface{}{arg1})
+	fake.switchFollowerMutex.Unlock()
+	if fake.SwitchFollowerStub != nil {
+		fake.SwitchFollowerStub(arg1)
 	}
 }
 
-func (fake *ChainCreator) CreateChainCallCount() int {
-	fake.createChainMutex.RLock()
-	defer fake.createChainMutex.RUnlock()
-	return len(fake.createChainArgsForCall)
+func (fake *ChainCreator) SwitchFollowerCallCount() int {
+	fake.switchFollowerMutex.RLock()
+	defer fake.switchFollowerMutex.RUnlock()
+	return len(fake.switchFollowerArgsForCall)
 }
 
-func (fake *ChainCreator) CreateChainCalls(stub func()) {
-	fake.createChainMutex.Lock()
-	defer fake.createChainMutex.Unlock()
-	fake.CreateChainStub = stub
+func (fake *ChainCreator) SwitchFollowerCalls(stub func(string)) {
+	fake.switchFollowerMutex.Lock()
+	defer fake.switchFollowerMutex.Unlock()
+	fake.SwitchFollowerStub = stub
+}
+
+func (fake *ChainCreator) SwitchFollowerArgsForCall(i int) string {
+	fake.switchFollowerMutex.RLock()
+	defer fake.switchFollowerMutex.RUnlock()
+	argsForCall := fake.switchFollowerArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *ChainCreator) SwitchFollowerToChain(arg1 string) {
+	fake.switchFollowerToChainMutex.Lock()
+	fake.switchFollowerToChainArgsForCall = append(fake.switchFollowerToChainArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("SwitchFollowerToChain", []interface{}{arg1})
+	fake.switchFollowerToChainMutex.Unlock()
+	if fake.SwitchFollowerToChainStub != nil {
+		fake.SwitchFollowerToChainStub(arg1)
+	}
+}
+
+func (fake *ChainCreator) SwitchFollowerToChainCallCount() int {
+	fake.switchFollowerToChainMutex.RLock()
+	defer fake.switchFollowerToChainMutex.RUnlock()
+	return len(fake.switchFollowerToChainArgsForCall)
+}
+
+func (fake *ChainCreator) SwitchFollowerToChainCalls(stub func(string)) {
+	fake.switchFollowerToChainMutex.Lock()
+	defer fake.switchFollowerToChainMutex.Unlock()
+	fake.SwitchFollowerToChainStub = stub
+}
+
+func (fake *ChainCreator) SwitchFollowerToChainArgsForCall(i int) string {
+	fake.switchFollowerToChainMutex.RLock()
+	defer fake.switchFollowerToChainMutex.RUnlock()
+	argsForCall := fake.switchFollowerToChainArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *ChainCreator) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.createChainMutex.RLock()
-	defer fake.createChainMutex.RUnlock()
+	fake.switchFollowerMutex.RLock()
+	defer fake.switchFollowerMutex.RUnlock()
+	fake.switchFollowerToChainMutex.RLock()
+	defer fake.switchFollowerToChainMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
@@ -60,3 +109,5 @@ func (fake *ChainCreator) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ follower.ChainCreator = new(ChainCreator)

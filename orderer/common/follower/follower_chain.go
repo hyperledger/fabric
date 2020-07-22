@@ -42,17 +42,27 @@ type LedgerResources interface {
 // TimeAfter has the signature of time.After and allows tests to provide an alternative implementation to it.
 type TimeAfter func(d time.Duration) <-chan time.Time
 
-// CreateBlockPuller is a function to create BlockPuller on demand.
-// It is passed into chain initializer so that tests could mock this.
-type CreateBlockPuller func() (ChannelPuller, error)
-
-// CreateChain is a function that creates a new consensus.Chain for this channel, to replace the current follower.Chain
-type CreateChain func()
+// CreateChain is a function that creates a new consensus.Chain for this channel, to replace the current follower.Chain.
+type CreateChain func(channelName string)
 
 // CreateFollower is a function that creates a new follower.Chain for this channel, to replace the current
 // follower.Chain. This happens when on-boarding ends (ledger reached join-block), and a new follower needs to be
 // created to pull blocks after the join block.
-type CreateFollower func()
+type CreateFollower func(channelName string)
+
+//go:generate counterfeiter -o mocks/chain_creator.go -fake-name ChainCreator . ChainCreator
+
+// ChainCreator defines methods for the replacement of the current follower.Chain by either a consensus.Chain
+// or a follower.Chain. Implemented by the multichannel.Registrar.
+type ChainCreator interface {
+	// SwitchFollowerToChain is a function that creates a new consensus.Chain for this channel, to replace the current
+	// follower.Chain. This happens when the follower detects a config block that indicates channel membership.
+	SwitchFollowerToChain(chainName string)
+	// SwitchFollower is a function that creates a new follower.Chain for this channel, to replace the current
+	// follower.Chain. This happens when on-boarding ends (ledger reached join-block), and a new follower needs to be
+	// created to pull blocks after the join block.
+	SwitchFollower(chainName string)
+}
 
 // Chain implements a component that allows the orderer to follow a specific channel when is not a cluster member,
 // that is, be a "follower" of the cluster. It also allows the orderer to perform "on-boarding" for
@@ -94,9 +104,8 @@ type Chain struct {
 	lastConfig  *common.Block // The last config block from the ledger. Accessed only by the go-routine.
 	firstHeight uint64        // The first ledger height
 
-	createBlockPullerFunc    CreateBlockPuller // A function that creates a block puller on demand
-	chainCreationCallback    CreateChain       // A method that creates a new consensus.Chain for this channel, to replace the current follower.Chain
-	followerCreationCallback CreateFollower    // A method that creates a new follower.Chain for this channel, to replace the current follower.Chain
+	blockPullerFactory BlockPullerFactory // Creates a block puller on demand
+	chainCreator       ChainCreator       // Creates consensus.Chain or a follower.Chain
 
 	cryptoProvider bccsp.BCCSP
 
@@ -104,40 +113,32 @@ type Chain struct {
 }
 
 // NewChain constructs a follower.Chain object.
-func NewChain(
-	ledgerResources LedgerResources,
-	clusterConsenter consensus.ClusterConsenter,
-	joinBlock *common.Block,
-	options Options,
-	createBlockPullerFunc CreateBlockPuller,
-	chainCreationCallback CreateChain,
-	followerCreationCallback CreateFollower,
-	cryptoProvider bccsp.BCCSP,
-) (*Chain, error) {
+func NewChain(ledgerResources LedgerResources, clusterConsenter consensus.ClusterConsenter, joinBlock *common.Block, options Options, blockPullerFactory BlockPullerFactory, chainMananger ChainCreator, cryptoProvider bccsp.BCCSP) (*Chain, error) {
 	// Check the block puller creation function once before we start the follower.
-	puller, errBP := createBlockPullerFunc()
-	if errBP != nil {
-		return nil, errors.Wrap(errBP, "error creating a block puller from join-block")
+	if joinBlock != nil {
+		puller, errBP := blockPullerFactory.BlockPuller(joinBlock)
+		if errBP != nil {
+			return nil, errors.Wrap(errBP, "error creating a block puller from join-block")
+		}
+		defer puller.Close()
 	}
-	defer puller.Close()
 
 	options.applyDefaults(joinBlock != nil)
 
 	chain := &Chain{
-		stopChan:                 make(chan (struct{})),
-		doneChan:                 make(chan (struct{})),
-		ledgerResources:          ledgerResources,
-		clusterConsenter:         clusterConsenter,
-		joinBlock:                joinBlock,
-		firstHeight:              ledgerResources.Height(),
-		options:                  options,
-		logger:                   options.Logger.With("channel", ledgerResources.ChannelID()),
-		timeAfter:                options.TimeAfter,
-		createBlockPullerFunc:    createBlockPullerFunc,
-		chainCreationCallback:    chainCreationCallback,
-		followerCreationCallback: followerCreationCallback,
-		cryptoProvider:           cryptoProvider,
-		retryInterval:            options.PullRetryMinInterval,
+		stopChan:           make(chan (struct{})),
+		doneChan:           make(chan (struct{})),
+		ledgerResources:    ledgerResources,
+		clusterConsenter:   clusterConsenter,
+		joinBlock:          joinBlock,
+		firstHeight:        ledgerResources.Height(),
+		options:            options,
+		logger:             options.Logger.With("channel", ledgerResources.ChannelID()),
+		timeAfter:          options.TimeAfter,
+		blockPullerFactory: blockPullerFactory,
+		chainCreator:       chainMananger,
+		cryptoProvider:     cryptoProvider,
+		retryInterval:      options.PullRetryMinInterval,
 	}
 
 	if joinBlock == nil {
@@ -153,18 +154,6 @@ func NewChain(
 		chain.logger.Infof("Created with join-block number: %d, ledger height: %d", joinBlock.Header.Number, chain.firstHeight)
 	}
 	chain.logger.Debugf("Options are: %v", chain.options)
-
-	if chain.chainCreationCallback == nil {
-		chain.chainCreationCallback = func() {
-			chain.logger.Warnf("No-Op: chain creation callback is nil")
-		}
-	}
-
-	if chain.followerCreationCallback == nil {
-		chain.followerCreationCallback = func() {
-			chain.logger.Warnf("No-Op: follower creation callback is nil")
-		}
-	}
 
 	return chain, nil
 }
@@ -321,14 +310,14 @@ func (c *Chain) pull() error {
 	if c.joinBlock != nil {
 		if isMem, _ := c.clusterConsenter.IsChannelMember(c.joinBlock); isMem {
 			c.logger.Info("On-boarding finished successfully, invoking chain creation callback")
-			c.chainCreationCallback()
+			c.chainCreator.SwitchFollowerToChain(c.ledgerResources.ChannelID())
 		} else {
 			c.logger.Info("On-boarding finished successfully, invoking follower creation callback")
-			c.followerCreationCallback()
+			c.chainCreator.SwitchFollower(c.ledgerResources.ChannelID())
 		}
 	} else {
 		c.logger.Info("Block pulling finished successfully, invoking chain creation callback")
-		c.chainCreationCallback()
+		c.chainCreator.SwitchFollowerToChain(c.ledgerResources.ChannelID())
 	}
 
 	return nil
@@ -345,7 +334,7 @@ func (c *Chain) pullUpToJoin() error {
 		return nil
 	}
 
-	puller, err := c.createBlockPullerFunc()
+	puller, err := c.blockPullerFactory.BlockPuller(c.joinBlock)
 	if err != nil {
 		c.logger.Errorf("Error creating block puller: %s", err)
 		return errors.Wrap(err, "error creating block puller")
@@ -427,9 +416,9 @@ func (c *Chain) pullAfterJoin() error {
 
 // pullUntilNextConfig will return the next config block or an error.
 func (c *Chain) pullUntilNextConfig() (*common.Block, error) {
-	// This puller is built from the tip of the ledger. When we get a new config block we exit the method. That will
+	// This puller is built from the last config. When we get a new config block we exit the method. That will
 	// destroy the puller. Next time we enter, a new puller is built, taking in the new config.
-	puller, err := c.createBlockPullerFunc()
+	puller, err := c.blockPullerFactory.BlockPuller(c.lastConfig)
 	if err != nil {
 		c.logger.Errorf("Error creating block puller: %s", err)
 		return nil, errors.Wrap(err, "error creating block puller")

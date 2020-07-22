@@ -808,6 +808,14 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 	})
 }
 
+func TestRegistrar_SwitchFollowerToChain(t *testing.T) {
+	//TODO
+}
+
+func TestRegistrar_SwitchFollower(t *testing.T) {
+	//TODO
+}
+
 func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
 	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
 		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)

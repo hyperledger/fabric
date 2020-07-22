@@ -4,19 +4,21 @@ package mocks
 import (
 	"sync"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/orderer/common/follower"
 )
 
-type BlockPullerCreator struct {
-	CreateBlockPullerStub        func() (follower.ChannelPuller, error)
-	createBlockPullerMutex       sync.RWMutex
-	createBlockPullerArgsForCall []struct {
+type BlockPullerFactory struct {
+	BlockPullerStub        func(*common.Block) (follower.ChannelPuller, error)
+	blockPullerMutex       sync.RWMutex
+	blockPullerArgsForCall []struct {
+		arg1 *common.Block
 	}
-	createBlockPullerReturns struct {
+	blockPullerReturns struct {
 		result1 follower.ChannelPuller
 		result2 error
 	}
-	createBlockPullerReturnsOnCall map[int]struct {
+	blockPullerReturnsOnCall map[int]struct {
 		result1 follower.ChannelPuller
 		result2 error
 	}
@@ -24,66 +26,74 @@ type BlockPullerCreator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *BlockPullerCreator) CreateBlockPuller() (follower.ChannelPuller, error) {
-	fake.createBlockPullerMutex.Lock()
-	ret, specificReturn := fake.createBlockPullerReturnsOnCall[len(fake.createBlockPullerArgsForCall)]
-	fake.createBlockPullerArgsForCall = append(fake.createBlockPullerArgsForCall, struct {
-	}{})
-	fake.recordInvocation("CreateBlockPuller", []interface{}{})
-	fake.createBlockPullerMutex.Unlock()
-	if fake.CreateBlockPullerStub != nil {
-		return fake.CreateBlockPullerStub()
+func (fake *BlockPullerFactory) BlockPuller(arg1 *common.Block) (follower.ChannelPuller, error) {
+	fake.blockPullerMutex.Lock()
+	ret, specificReturn := fake.blockPullerReturnsOnCall[len(fake.blockPullerArgsForCall)]
+	fake.blockPullerArgsForCall = append(fake.blockPullerArgsForCall, struct {
+		arg1 *common.Block
+	}{arg1})
+	fake.recordInvocation("BlockPuller", []interface{}{arg1})
+	fake.blockPullerMutex.Unlock()
+	if fake.BlockPullerStub != nil {
+		return fake.BlockPullerStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.createBlockPullerReturns
+	fakeReturns := fake.blockPullerReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *BlockPullerCreator) CreateBlockPullerCallCount() int {
-	fake.createBlockPullerMutex.RLock()
-	defer fake.createBlockPullerMutex.RUnlock()
-	return len(fake.createBlockPullerArgsForCall)
+func (fake *BlockPullerFactory) BlockPullerCallCount() int {
+	fake.blockPullerMutex.RLock()
+	defer fake.blockPullerMutex.RUnlock()
+	return len(fake.blockPullerArgsForCall)
 }
 
-func (fake *BlockPullerCreator) CreateBlockPullerCalls(stub func() (follower.ChannelPuller, error)) {
-	fake.createBlockPullerMutex.Lock()
-	defer fake.createBlockPullerMutex.Unlock()
-	fake.CreateBlockPullerStub = stub
+func (fake *BlockPullerFactory) BlockPullerCalls(stub func(*common.Block) (follower.ChannelPuller, error)) {
+	fake.blockPullerMutex.Lock()
+	defer fake.blockPullerMutex.Unlock()
+	fake.BlockPullerStub = stub
 }
 
-func (fake *BlockPullerCreator) CreateBlockPullerReturns(result1 follower.ChannelPuller, result2 error) {
-	fake.createBlockPullerMutex.Lock()
-	defer fake.createBlockPullerMutex.Unlock()
-	fake.CreateBlockPullerStub = nil
-	fake.createBlockPullerReturns = struct {
+func (fake *BlockPullerFactory) BlockPullerArgsForCall(i int) *common.Block {
+	fake.blockPullerMutex.RLock()
+	defer fake.blockPullerMutex.RUnlock()
+	argsForCall := fake.blockPullerArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *BlockPullerFactory) BlockPullerReturns(result1 follower.ChannelPuller, result2 error) {
+	fake.blockPullerMutex.Lock()
+	defer fake.blockPullerMutex.Unlock()
+	fake.BlockPullerStub = nil
+	fake.blockPullerReturns = struct {
 		result1 follower.ChannelPuller
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *BlockPullerCreator) CreateBlockPullerReturnsOnCall(i int, result1 follower.ChannelPuller, result2 error) {
-	fake.createBlockPullerMutex.Lock()
-	defer fake.createBlockPullerMutex.Unlock()
-	fake.CreateBlockPullerStub = nil
-	if fake.createBlockPullerReturnsOnCall == nil {
-		fake.createBlockPullerReturnsOnCall = make(map[int]struct {
+func (fake *BlockPullerFactory) BlockPullerReturnsOnCall(i int, result1 follower.ChannelPuller, result2 error) {
+	fake.blockPullerMutex.Lock()
+	defer fake.blockPullerMutex.Unlock()
+	fake.BlockPullerStub = nil
+	if fake.blockPullerReturnsOnCall == nil {
+		fake.blockPullerReturnsOnCall = make(map[int]struct {
 			result1 follower.ChannelPuller
 			result2 error
 		})
 	}
-	fake.createBlockPullerReturnsOnCall[i] = struct {
+	fake.blockPullerReturnsOnCall[i] = struct {
 		result1 follower.ChannelPuller
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *BlockPullerCreator) Invocations() map[string][][]interface{} {
+func (fake *BlockPullerFactory) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.createBlockPullerMutex.RLock()
-	defer fake.createBlockPullerMutex.RUnlock()
+	fake.blockPullerMutex.RLock()
+	defer fake.blockPullerMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
@@ -91,7 +101,7 @@ func (fake *BlockPullerCreator) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *BlockPullerCreator) recordInvocation(key string, args []interface{}) {
+func (fake *BlockPullerFactory) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
