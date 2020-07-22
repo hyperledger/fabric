@@ -11,8 +11,7 @@ package multichannel
 
 import (
 	"fmt"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/common/follower"
+	"path/filepath"
 	"sync"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -25,6 +24,9 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/filerepo"
+	"github.com/hyperledger/fabric/orderer/common/follower"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/types"
@@ -58,6 +60,8 @@ type Registrar struct {
 	callbacks          []channelconfig.BundleActor
 	bccsp              bccsp.BCCSP
 	clusterDialer      *cluster.PredicateDialer
+
+	joinBlockFileRepo *filerepo.Repo
 }
 
 // ConfigBlock retrieves the last configuration block from the given ledger.
@@ -101,7 +105,25 @@ func NewRegistrar(
 		clusterDialer:      clusterDialer,
 	}
 
+	if config.ChannelParticipation.Enabled {
+		r.initializeJoinBlockFileRepo()
+	}
+
 	return r
+}
+
+// initialize the channel participation API joinblock file repo. This creates
+// the fileRepoDir on the filesystem if it does not already exist.
+func (r *Registrar) initializeJoinBlockFileRepo() {
+	fileRepoDir := filepath.Join(r.config.FileLedger.Location, "filerepo")
+	logger.Infof("Channel Participation API enabled, registrar initializing with file repo %s", fileRepoDir)
+
+	joinBlockFileRepo, err := filerepo.New(fileRepoDir, "joinblock")
+	if err != nil {
+		logger.Panicf("Error initializing join block file repo: %s", err)
+	}
+
+	r.joinBlockFileRepo = joinBlockFileRepo
 }
 
 func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
