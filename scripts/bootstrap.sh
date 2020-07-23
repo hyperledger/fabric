@@ -104,12 +104,8 @@ pullDockerImages() {
     if [ "${NODOCKER}" == 0 ]; then
         FABRIC_IMAGES=(peer orderer ccenv tools)
         case "$VERSION" in
-        1.*)
-            FABRIC_IMAGES+=(javaenv)
-            shift
-            ;;
         2.*)
-            FABRIC_IMAGES+=(nodeenv baseos javaenv)
+            FABRIC_IMAGES+=(baseos)
             shift
             ;;
         esac
