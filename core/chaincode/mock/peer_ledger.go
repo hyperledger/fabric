@@ -11,6 +11,17 @@ import (
 )
 
 type PeerLedger struct {
+	CancelSnapshotRequestStub        func(uint64) error
+	cancelSnapshotRequestMutex       sync.RWMutex
+	cancelSnapshotRequestArgsForCall []struct {
+		arg1 uint64
+	}
+	cancelSnapshotRequestReturns struct {
+		result1 error
+	}
+	cancelSnapshotRequestReturnsOnCall map[int]struct {
+		result1 error
+	}
 	CloseStub        func()
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
@@ -39,6 +50,17 @@ type PeerLedger struct {
 	commitPvtDataOfOldBlocksReturnsOnCall map[int]struct {
 		result1 []*ledger.PvtdataHashMismatch
 		result2 error
+	}
+	DeleteSnapshotStub        func(uint64) error
+	deleteSnapshotMutex       sync.RWMutex
+	deleteSnapshotArgsForCall []struct {
+		arg1 uint64
+	}
+	deleteSnapshotReturns struct {
+		result1 error
+	}
+	deleteSnapshotReturnsOnCall map[int]struct {
+		result1 error
 	}
 	DoesPvtDataInfoExistStub        func(uint64) (bool, error)
 	doesPvtDataInfoExistMutex       sync.RWMutex
@@ -195,6 +217,18 @@ type PeerLedger struct {
 		result1 peer.TxValidationCode
 		result2 error
 	}
+	ListSnapshotsStub        func() ([]string, error)
+	listSnapshotsMutex       sync.RWMutex
+	listSnapshotsArgsForCall []struct {
+	}
+	listSnapshotsReturns struct {
+		result1 []string
+		result2 error
+	}
+	listSnapshotsReturnsOnCall map[int]struct {
+		result1 []string
+		result2 error
+	}
 	NewHistoryQueryExecutorStub        func() (ledger.HistoryQueryExecutor, error)
 	newHistoryQueryExecutorMutex       sync.RWMutex
 	newHistoryQueryExecutorArgsForCall []struct {
@@ -232,8 +266,91 @@ type PeerLedger struct {
 		result1 ledger.TxSimulator
 		result2 error
 	}
+	PendingSnapshotRequestsStub        func() ([]uint64, error)
+	pendingSnapshotRequestsMutex       sync.RWMutex
+	pendingSnapshotRequestsArgsForCall []struct {
+	}
+	pendingSnapshotRequestsReturns struct {
+		result1 []uint64
+		result2 error
+	}
+	pendingSnapshotRequestsReturnsOnCall map[int]struct {
+		result1 []uint64
+		result2 error
+	}
+	SubmitSnapshotRequestStub        func(uint64) error
+	submitSnapshotRequestMutex       sync.RWMutex
+	submitSnapshotRequestArgsForCall []struct {
+		arg1 uint64
+	}
+	submitSnapshotRequestReturns struct {
+		result1 error
+	}
+	submitSnapshotRequestReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *PeerLedger) CancelSnapshotRequest(arg1 uint64) error {
+	fake.cancelSnapshotRequestMutex.Lock()
+	ret, specificReturn := fake.cancelSnapshotRequestReturnsOnCall[len(fake.cancelSnapshotRequestArgsForCall)]
+	fake.cancelSnapshotRequestArgsForCall = append(fake.cancelSnapshotRequestArgsForCall, struct {
+		arg1 uint64
+	}{arg1})
+	fake.recordInvocation("CancelSnapshotRequest", []interface{}{arg1})
+	fake.cancelSnapshotRequestMutex.Unlock()
+	if fake.CancelSnapshotRequestStub != nil {
+		return fake.CancelSnapshotRequestStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.cancelSnapshotRequestReturns
+	return fakeReturns.result1
+}
+
+func (fake *PeerLedger) CancelSnapshotRequestCallCount() int {
+	fake.cancelSnapshotRequestMutex.RLock()
+	defer fake.cancelSnapshotRequestMutex.RUnlock()
+	return len(fake.cancelSnapshotRequestArgsForCall)
+}
+
+func (fake *PeerLedger) CancelSnapshotRequestCalls(stub func(uint64) error) {
+	fake.cancelSnapshotRequestMutex.Lock()
+	defer fake.cancelSnapshotRequestMutex.Unlock()
+	fake.CancelSnapshotRequestStub = stub
+}
+
+func (fake *PeerLedger) CancelSnapshotRequestArgsForCall(i int) uint64 {
+	fake.cancelSnapshotRequestMutex.RLock()
+	defer fake.cancelSnapshotRequestMutex.RUnlock()
+	argsForCall := fake.cancelSnapshotRequestArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *PeerLedger) CancelSnapshotRequestReturns(result1 error) {
+	fake.cancelSnapshotRequestMutex.Lock()
+	defer fake.cancelSnapshotRequestMutex.Unlock()
+	fake.CancelSnapshotRequestStub = nil
+	fake.cancelSnapshotRequestReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *PeerLedger) CancelSnapshotRequestReturnsOnCall(i int, result1 error) {
+	fake.cancelSnapshotRequestMutex.Lock()
+	defer fake.cancelSnapshotRequestMutex.Unlock()
+	fake.CancelSnapshotRequestStub = nil
+	if fake.cancelSnapshotRequestReturnsOnCall == nil {
+		fake.cancelSnapshotRequestReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.cancelSnapshotRequestReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *PeerLedger) Close() {
@@ -386,6 +503,66 @@ func (fake *PeerLedger) CommitPvtDataOfOldBlocksReturnsOnCall(i int, result1 []*
 		result1 []*ledger.PvtdataHashMismatch
 		result2 error
 	}{result1, result2}
+}
+
+func (fake *PeerLedger) DeleteSnapshot(arg1 uint64) error {
+	fake.deleteSnapshotMutex.Lock()
+	ret, specificReturn := fake.deleteSnapshotReturnsOnCall[len(fake.deleteSnapshotArgsForCall)]
+	fake.deleteSnapshotArgsForCall = append(fake.deleteSnapshotArgsForCall, struct {
+		arg1 uint64
+	}{arg1})
+	fake.recordInvocation("DeleteSnapshot", []interface{}{arg1})
+	fake.deleteSnapshotMutex.Unlock()
+	if fake.DeleteSnapshotStub != nil {
+		return fake.DeleteSnapshotStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.deleteSnapshotReturns
+	return fakeReturns.result1
+}
+
+func (fake *PeerLedger) DeleteSnapshotCallCount() int {
+	fake.deleteSnapshotMutex.RLock()
+	defer fake.deleteSnapshotMutex.RUnlock()
+	return len(fake.deleteSnapshotArgsForCall)
+}
+
+func (fake *PeerLedger) DeleteSnapshotCalls(stub func(uint64) error) {
+	fake.deleteSnapshotMutex.Lock()
+	defer fake.deleteSnapshotMutex.Unlock()
+	fake.DeleteSnapshotStub = stub
+}
+
+func (fake *PeerLedger) DeleteSnapshotArgsForCall(i int) uint64 {
+	fake.deleteSnapshotMutex.RLock()
+	defer fake.deleteSnapshotMutex.RUnlock()
+	argsForCall := fake.deleteSnapshotArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *PeerLedger) DeleteSnapshotReturns(result1 error) {
+	fake.deleteSnapshotMutex.Lock()
+	defer fake.deleteSnapshotMutex.Unlock()
+	fake.DeleteSnapshotStub = nil
+	fake.deleteSnapshotReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *PeerLedger) DeleteSnapshotReturnsOnCall(i int, result1 error) {
+	fake.deleteSnapshotMutex.Lock()
+	defer fake.deleteSnapshotMutex.Unlock()
+	fake.DeleteSnapshotStub = nil
+	if fake.deleteSnapshotReturnsOnCall == nil {
+		fake.deleteSnapshotReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.deleteSnapshotReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *PeerLedger) DoesPvtDataInfoExist(arg1 uint64) (bool, error) {
@@ -1127,6 +1304,61 @@ func (fake *PeerLedger) GetTxValidationCodeByTxIDReturnsOnCall(i int, result1 pe
 	}{result1, result2}
 }
 
+func (fake *PeerLedger) ListSnapshots() ([]string, error) {
+	fake.listSnapshotsMutex.Lock()
+	ret, specificReturn := fake.listSnapshotsReturnsOnCall[len(fake.listSnapshotsArgsForCall)]
+	fake.listSnapshotsArgsForCall = append(fake.listSnapshotsArgsForCall, struct {
+	}{})
+	fake.recordInvocation("ListSnapshots", []interface{}{})
+	fake.listSnapshotsMutex.Unlock()
+	if fake.ListSnapshotsStub != nil {
+		return fake.ListSnapshotsStub()
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.listSnapshotsReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *PeerLedger) ListSnapshotsCallCount() int {
+	fake.listSnapshotsMutex.RLock()
+	defer fake.listSnapshotsMutex.RUnlock()
+	return len(fake.listSnapshotsArgsForCall)
+}
+
+func (fake *PeerLedger) ListSnapshotsCalls(stub func() ([]string, error)) {
+	fake.listSnapshotsMutex.Lock()
+	defer fake.listSnapshotsMutex.Unlock()
+	fake.ListSnapshotsStub = stub
+}
+
+func (fake *PeerLedger) ListSnapshotsReturns(result1 []string, result2 error) {
+	fake.listSnapshotsMutex.Lock()
+	defer fake.listSnapshotsMutex.Unlock()
+	fake.ListSnapshotsStub = nil
+	fake.listSnapshotsReturns = struct {
+		result1 []string
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *PeerLedger) ListSnapshotsReturnsOnCall(i int, result1 []string, result2 error) {
+	fake.listSnapshotsMutex.Lock()
+	defer fake.listSnapshotsMutex.Unlock()
+	fake.ListSnapshotsStub = nil
+	if fake.listSnapshotsReturnsOnCall == nil {
+		fake.listSnapshotsReturnsOnCall = make(map[int]struct {
+			result1 []string
+			result2 error
+		})
+	}
+	fake.listSnapshotsReturnsOnCall[i] = struct {
+		result1 []string
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *PeerLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
 	fake.newHistoryQueryExecutorMutex.Lock()
 	ret, specificReturn := fake.newHistoryQueryExecutorReturnsOnCall[len(fake.newHistoryQueryExecutorArgsForCall)]
@@ -1300,15 +1532,134 @@ func (fake *PeerLedger) NewTxSimulatorReturnsOnCall(i int, result1 ledger.TxSimu
 	}{result1, result2}
 }
 
+func (fake *PeerLedger) PendingSnapshotRequests() ([]uint64, error) {
+	fake.pendingSnapshotRequestsMutex.Lock()
+	ret, specificReturn := fake.pendingSnapshotRequestsReturnsOnCall[len(fake.pendingSnapshotRequestsArgsForCall)]
+	fake.pendingSnapshotRequestsArgsForCall = append(fake.pendingSnapshotRequestsArgsForCall, struct {
+	}{})
+	fake.recordInvocation("PendingSnapshotRequests", []interface{}{})
+	fake.pendingSnapshotRequestsMutex.Unlock()
+	if fake.PendingSnapshotRequestsStub != nil {
+		return fake.PendingSnapshotRequestsStub()
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.pendingSnapshotRequestsReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *PeerLedger) PendingSnapshotRequestsCallCount() int {
+	fake.pendingSnapshotRequestsMutex.RLock()
+	defer fake.pendingSnapshotRequestsMutex.RUnlock()
+	return len(fake.pendingSnapshotRequestsArgsForCall)
+}
+
+func (fake *PeerLedger) PendingSnapshotRequestsCalls(stub func() ([]uint64, error)) {
+	fake.pendingSnapshotRequestsMutex.Lock()
+	defer fake.pendingSnapshotRequestsMutex.Unlock()
+	fake.PendingSnapshotRequestsStub = stub
+}
+
+func (fake *PeerLedger) PendingSnapshotRequestsReturns(result1 []uint64, result2 error) {
+	fake.pendingSnapshotRequestsMutex.Lock()
+	defer fake.pendingSnapshotRequestsMutex.Unlock()
+	fake.PendingSnapshotRequestsStub = nil
+	fake.pendingSnapshotRequestsReturns = struct {
+		result1 []uint64
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *PeerLedger) PendingSnapshotRequestsReturnsOnCall(i int, result1 []uint64, result2 error) {
+	fake.pendingSnapshotRequestsMutex.Lock()
+	defer fake.pendingSnapshotRequestsMutex.Unlock()
+	fake.PendingSnapshotRequestsStub = nil
+	if fake.pendingSnapshotRequestsReturnsOnCall == nil {
+		fake.pendingSnapshotRequestsReturnsOnCall = make(map[int]struct {
+			result1 []uint64
+			result2 error
+		})
+	}
+	fake.pendingSnapshotRequestsReturnsOnCall[i] = struct {
+		result1 []uint64
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *PeerLedger) SubmitSnapshotRequest(arg1 uint64) error {
+	fake.submitSnapshotRequestMutex.Lock()
+	ret, specificReturn := fake.submitSnapshotRequestReturnsOnCall[len(fake.submitSnapshotRequestArgsForCall)]
+	fake.submitSnapshotRequestArgsForCall = append(fake.submitSnapshotRequestArgsForCall, struct {
+		arg1 uint64
+	}{arg1})
+	fake.recordInvocation("SubmitSnapshotRequest", []interface{}{arg1})
+	fake.submitSnapshotRequestMutex.Unlock()
+	if fake.SubmitSnapshotRequestStub != nil {
+		return fake.SubmitSnapshotRequestStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.submitSnapshotRequestReturns
+	return fakeReturns.result1
+}
+
+func (fake *PeerLedger) SubmitSnapshotRequestCallCount() int {
+	fake.submitSnapshotRequestMutex.RLock()
+	defer fake.submitSnapshotRequestMutex.RUnlock()
+	return len(fake.submitSnapshotRequestArgsForCall)
+}
+
+func (fake *PeerLedger) SubmitSnapshotRequestCalls(stub func(uint64) error) {
+	fake.submitSnapshotRequestMutex.Lock()
+	defer fake.submitSnapshotRequestMutex.Unlock()
+	fake.SubmitSnapshotRequestStub = stub
+}
+
+func (fake *PeerLedger) SubmitSnapshotRequestArgsForCall(i int) uint64 {
+	fake.submitSnapshotRequestMutex.RLock()
+	defer fake.submitSnapshotRequestMutex.RUnlock()
+	argsForCall := fake.submitSnapshotRequestArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *PeerLedger) SubmitSnapshotRequestReturns(result1 error) {
+	fake.submitSnapshotRequestMutex.Lock()
+	defer fake.submitSnapshotRequestMutex.Unlock()
+	fake.SubmitSnapshotRequestStub = nil
+	fake.submitSnapshotRequestReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *PeerLedger) SubmitSnapshotRequestReturnsOnCall(i int, result1 error) {
+	fake.submitSnapshotRequestMutex.Lock()
+	defer fake.submitSnapshotRequestMutex.Unlock()
+	fake.SubmitSnapshotRequestStub = nil
+	if fake.submitSnapshotRequestReturnsOnCall == nil {
+		fake.submitSnapshotRequestReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.submitSnapshotRequestReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *PeerLedger) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.cancelSnapshotRequestMutex.RLock()
+	defer fake.cancelSnapshotRequestMutex.RUnlock()
 	fake.closeMutex.RLock()
 	defer fake.closeMutex.RUnlock()
 	fake.commitLegacyMutex.RLock()
 	defer fake.commitLegacyMutex.RUnlock()
 	fake.commitPvtDataOfOldBlocksMutex.RLock()
 	defer fake.commitPvtDataOfOldBlocksMutex.RUnlock()
+	fake.deleteSnapshotMutex.RLock()
+	defer fake.deleteSnapshotMutex.RUnlock()
 	fake.doesPvtDataInfoExistMutex.RLock()
 	defer fake.doesPvtDataInfoExistMutex.RUnlock()
 	fake.getBlockByHashMutex.RLock()
@@ -1333,12 +1684,18 @@ func (fake *PeerLedger) Invocations() map[string][][]interface{} {
 	defer fake.getTransactionByIDMutex.RUnlock()
 	fake.getTxValidationCodeByTxIDMutex.RLock()
 	defer fake.getTxValidationCodeByTxIDMutex.RUnlock()
+	fake.listSnapshotsMutex.RLock()
+	defer fake.listSnapshotsMutex.RUnlock()
 	fake.newHistoryQueryExecutorMutex.RLock()
 	defer fake.newHistoryQueryExecutorMutex.RUnlock()
 	fake.newQueryExecutorMutex.RLock()
 	defer fake.newQueryExecutorMutex.RUnlock()
 	fake.newTxSimulatorMutex.RLock()
 	defer fake.newTxSimulatorMutex.RUnlock()
+	fake.pendingSnapshotRequestsMutex.RLock()
+	defer fake.pendingSnapshotRequestsMutex.RUnlock()
+	fake.submitSnapshotRequestMutex.RLock()
+	defer fake.submitSnapshotRequestMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
