@@ -1132,12 +1132,12 @@ func (tm *testMetrics) initialize() {
 func TestMetrics(t *testing.T) {
 	for _, testCase := range []struct {
 		name        string
-		runTest     func(node1, node2 *clusterNode, testMetrics *testMetrics)
+		runTest     func(t *testing.T, node1, node2 *clusterNode, testMetrics *testMetrics)
 		testMetrics *testMetrics
 	}{
 		{
 			name: "EgressQueueOccupancy",
-			runTest: func(node1, node2 *clusterNode, testMetrics *testMetrics) {
+			runTest: func(t *testing.T, node1, node2 *clusterNode, testMetrics *testMetrics) {
 				assertBiDiCommunication(t, node1, node2, testReq)
 				require.Equal(t, []string{"host", node2.nodeInfo.Endpoint, "msg_type", "transaction", "channel", testChannel},
 					testMetrics.egressQueueLength.WithArgsForCall(0))
@@ -1165,7 +1165,7 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "EgressStreamsCount",
-			runTest: func(node1, node2 *clusterNode, testMetrics *testMetrics) {
+			runTest: func(t *testing.T, node1, node2 *clusterNode, testMetrics *testMetrics) {
 				assertBiDiCommunication(t, node1, node2, testReq)
 				require.Equal(t, 1, testMetrics.egressStreamCount.SetCallCount())
 				require.Equal(t, 1, testMetrics.egressStreamCount.WithCallCount())
@@ -1179,7 +1179,7 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "EgressTLSConnCount",
-			runTest: func(node1, node2 *clusterNode, testMetrics *testMetrics) {
+			runTest: func(t *testing.T, node1, node2 *clusterNode, testMetrics *testMetrics) {
 				assertBiDiCommunication(t, node1, node2, testReq)
 				require.Equal(t, []string{"channel", testChannel}, testMetrics.egressStreamCount.WithArgsForCall(0))
 
@@ -1193,7 +1193,7 @@ func TestMetrics(t *testing.T) {
 		},
 		{
 			name: "EgressWorkerSize",
-			runTest: func(node1, node2 *clusterNode, testMetrics *testMetrics) {
+			runTest: func(t *testing.T, node1, node2 *clusterNode, testMetrics *testMetrics) {
 				assertBiDiCommunication(t, node1, node2, testReq)
 				require.Equal(t, []string{"channel", testChannel}, testMetrics.egressStreamCount.WithArgsForCall(0))
 
@@ -1205,18 +1205,17 @@ func TestMetrics(t *testing.T) {
 			},
 		},
 		{
-			name: "MgSendTime",
-			runTest: func(node1, node2 *clusterNode, testMetrics *testMetrics) {
+			name: "MsgSendTime",
+			runTest: func(t *testing.T, node1, node2 *clusterNode, testMetrics *testMetrics) {
 				assertBiDiCommunication(t, node1, node2, testReq)
-				require.Equal(t, []string{"host", node2.nodeInfo.Endpoint, "channel", testChannel},
-					testMetrics.msgSendTime.WithArgsForCall(0))
-
+				require.Eventually(t, func() bool { return testMetrics.msgSendTime.ObserveCallCount() > 0 }, time.Second, 10*time.Millisecond)
 				require.Equal(t, 1, testMetrics.msgSendTime.ObserveCallCount())
+				require.Equal(t, []string{"host", node2.nodeInfo.Endpoint, "channel", testChannel}, testMetrics.msgSendTime.WithArgsForCall(0))
 			},
 		},
 		{
 			name: "MsgDropCount",
-			runTest: func(node1, node2 *clusterNode, testMetrics *testMetrics) {
+			runTest: func(t *testing.T, node1, node2 *clusterNode, testMetrics *testMetrics) {
 				blockRecv := make(chan struct{})
 				wasReported := func() bool {
 					select {
@@ -1277,7 +1276,7 @@ func TestMetrics(t *testing.T) {
 			node1.c.Configure(testChannel2, configForNode1)
 			node2.c.Configure(testChannel2, configForNode2)
 
-			testCase.runTest(node1, node2, testCase.testMetrics)
+			testCase.runTest(t, node1, node2, testCase.testMetrics)
 		})
 	}
 }
@@ -1357,7 +1356,7 @@ func TestCertExpirationWarningEgress(t *testing.T) {
 }
 
 func assertBiDiCommunicationForChannel(t *testing.T, node1, node2 *clusterNode, msgToSend *orderer.SubmitRequest, channel string) {
-	for _, tst := range []struct {
+	establish := []struct {
 		label    string
 		sender   *clusterNode
 		receiver *clusterNode
@@ -1365,26 +1364,26 @@ func assertBiDiCommunicationForChannel(t *testing.T, node1, node2 *clusterNode, 
 	}{
 		{label: "1->2", sender: node1, target: node2.nodeInfo.ID, receiver: node2},
 		{label: "2->1", sender: node2, target: node1.nodeInfo.ID, receiver: node1},
-	} {
-		t.Run(tst.label, func(t *testing.T) {
-			stub, err := tst.sender.c.Remote(channel, tst.target)
-			require.NoError(t, err)
+	}
+	for _, estab := range establish {
+		t.Log(estab.label)
+		stub, err := estab.sender.c.Remote(channel, estab.target)
+		require.NoError(t, err)
 
-			stream := assertEventualEstablishStream(t, stub)
+		stream := assertEventualEstablishStream(t, stub)
 
-			var wg sync.WaitGroup
-			wg.Add(1)
-			tst.receiver.handler.On("OnSubmit", channel, tst.sender.nodeInfo.ID, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
-				req := args.Get(2).(*orderer.SubmitRequest)
-				require.True(t, proto.Equal(req, msgToSend))
-				wg.Done()
-			})
-
-			err = stream.Send(wrapSubmitReq(msgToSend))
-			require.NoError(t, err)
-
-			wg.Wait()
+		var wg sync.WaitGroup
+		wg.Add(1)
+		estab.receiver.handler.On("OnSubmit", channel, estab.sender.nodeInfo.ID, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+			req := args.Get(2).(*orderer.SubmitRequest)
+			require.True(t, proto.Equal(req, msgToSend))
+			wg.Done()
 		})
+
+		err = stream.Send(wrapSubmitReq(msgToSend))
+		require.NoError(t, err)
+
+		wg.Wait()
 	}
 }
 
