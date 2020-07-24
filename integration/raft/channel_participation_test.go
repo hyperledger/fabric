@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package raft
 
 import (
+	"crypto"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -102,7 +103,7 @@ var _ = Describe("ChannelParticipation", func() {
 			Eventually(sess.Err, network.EventuallyTimeout).Should(gbytes.Say("channel creation request not allowed because the orderer system channel is not defined"))
 		})
 
-		It("joins application channels using the channel participation API from genesis block", func() {
+		It("joins application channels from genesis block and removes a channel using the channel participation API", func() {
 			orderer1 := network.Orderer("orderer1")
 			orderer2 := network.Orderer("orderer2")
 			orderer3 := network.Orderer("orderer3")
@@ -114,7 +115,7 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
-			expectedChannelInfo := channelparticipation.ChannelInfo{
+			expectedChannelInfoPT := channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -124,43 +125,89 @@ var _ = Describe("ChannelParticipation", func() {
 
 			for _, o := range orderers {
 				By("joining " + o.Name + " to channel as a member")
-				channelparticipation.Join(network, o, "participation-trophy", genesisBlock, expectedChannelInfo)
-				channelparticipation.ListOne(network, o, expectedChannelInfo)
+				channelparticipation.Join(network, o, "participation-trophy", genesisBlock, expectedChannelInfoPT)
+				channelparticipation.ListOne(network, o, expectedChannelInfoPT)
 			}
 
 			By("waiting for the leader to be ready")
-			findLeader(ordererRunners)
+			leader := findLeader(ordererRunners)
 
 			By("ensuring the channel is usable by submitting a transaction to each orderer")
 			env := CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello"))
-			expectedBlockNum := 1
 			for _, o := range orderers {
+				By("submitting transaction to " + o.Name)
+				expectedChannelInfoPT.Height++
 				resp, err := ordererclient.Broadcast(network, o, env)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
-				expectedChannelHeight := map[string]int{"participation-trophy": expectedBlockNum}
-				assertBlockReception(expectedChannelHeight, orderers, peer, network)
+				expectedBlockNumPerChannel := map[string]int{"participation-trophy": int(expectedChannelInfoPT.Height - 1)}
+				assertBlockReception(expectedBlockNumPerChannel, orderers, peer, network)
 
 				By("checking the channel height")
-				expectedChannelInfo.Height = uint64(expectedBlockNum + 1)
-				channelparticipation.ListOne(network, o, expectedChannelInfo)
-				expectedBlockNum++
+				channelparticipation.ListOne(network, o, expectedChannelInfoPT)
 			}
 
 			By("joining orderer1 to another channel as a member")
 			genesisBlock2 := applicationChannelGenesisBlock(network, []*nwo.Orderer{orderer1}, peer, "another-participation-trophy")
-			expectedChannelInfo = channelparticipation.ChannelInfo{
+			expectedChannelInfoAPT := channelparticipation.ChannelInfo{
 				Name:            "another-participation-trophy",
 				URL:             "/participation/v1/channels/another-participation-trophy",
 				Status:          "active",
 				ClusterRelation: "member",
 				Height:          1,
 			}
-			channelparticipation.Join(network, orderer1, "another-participation-trophy", genesisBlock2, expectedChannelInfo)
-			channelparticipation.ListOne(network, orderer1, expectedChannelInfo)
+			channelparticipation.Join(network, orderer1, "another-participation-trophy", genesisBlock2, expectedChannelInfoAPT)
+			channelparticipation.ListOne(network, orderer1, expectedChannelInfoAPT)
 
-			By("listing all channels")
+			By("listing all channels for orderer1")
 			channelparticipation.List(network, orderer1, []string{"participation-trophy", "another-participation-trophy"})
+
+			By("removing orderer1 from the consenter set")
+			channelConfig := nwo.GetConfig(network, peer, orderer2, "participation-trophy")
+			c := configtx.New(channelConfig)
+			host, port := conftx.OrdererClusterHostPort(network, orderer1)
+			tlsCert := parseCertificate(filepath.Join(network.OrdererLocalTLSDir(orderer1), "server.crt"))
+			consenter := orderer.Consenter{
+				Address: orderer.EtcdAddress{
+					Host: host,
+					Port: port,
+				},
+				ClientTLSCert: tlsCert,
+				ServerTLSCert: tlsCert,
+			}
+			err := c.Orderer().RemoveConsenter(consenter)
+			Expect(err).NotTo(HaveOccurred())
+			computeSignSubmitConfigUpdate(network, orderer2, peer, c, "participation-trophy")
+
+			// remove orderer1 from the orderer runners
+			ordererRunners = ordererRunners[1:]
+			if leader == 1 {
+				By("waiting for the new leader to be ready")
+				newLeader := findLeader(ordererRunners)
+				Expect(newLeader).NotTo(Equal(leader))
+			}
+
+			By("removing orderer1 from a channel")
+			channelparticipation.Remove(network, orderer1, "participation-trophy")
+
+			By("listing all channels for orderer1")
+			channelparticipation.List(network, orderer1, []string{"another-participation-trophy"})
+
+			By("ensuring the channel is still usable by submitting a transaction to each remaining consenter for the channel")
+			env = CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello"))
+			orderers = []*nwo.Orderer{orderer2, orderer3}
+			for _, o := range orderers {
+				By("submitting transaction to " + o.Name)
+				expectedChannelInfoPT.Height++
+				resp, err := ordererclient.Broadcast(network, o, env)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+				expectedBlockNumPerChannel := map[string]int{"participation-trophy": int(expectedChannelInfoPT.Height - 1)}
+				assertBlockReception(expectedBlockNumPerChannel, orderers, peer, network)
+
+				By("checking the channel height")
+				channelparticipation.ListOne(network, o, expectedChannelInfoPT)
+			}
 		})
 	})
 })
@@ -270,6 +317,16 @@ func parseCertificate(path string) *x509.Certificate {
 	return cert
 }
 
+// parsePrivateKey loads the PEM-encoded private key at the specified path.
+func parsePrivateKey(path string) crypto.PrivateKey {
+	pkBytes, err := ioutil.ReadFile(path)
+	Expect(err).NotTo(HaveOccurred())
+	pemBlock, _ := pem.Decode(pkBytes)
+	privateKey, err := x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
+	Expect(err).NotTo(HaveOccurred())
+	return privateKey
+}
+
 func ordererOrganizationsAndConsenters(n *nwo.Network, orderers []*nwo.Orderer) ([]configtx.Organization, []orderer.Consenter) {
 	ordererOrgsMap := map[string]*configtx.Organization{}
 	consenters := make([]orderer.Consenter, len(orderers))
@@ -350,4 +407,31 @@ func configtxOrganization(org *nwo.Organization, rootCert, adminCert, tlsRootCer
 	}
 
 	return orgConfig
+}
+
+func computeSignSubmitConfigUpdate(n *nwo.Network, o *nwo.Orderer, p *nwo.Peer, c configtx.ConfigTx, channel string) {
+	configUpdate, err := c.ComputeMarshaledUpdate(channel)
+	Expect(err).NotTo(HaveOccurred())
+
+	signingIdentity := configtx.SigningIdentity{
+		Certificate: parseCertificate(n.OrdererUserCert(o, "Admin")),
+		PrivateKey:  parsePrivateKey(n.OrdererUserKey(o, "Admin")),
+		MSPID:       n.Organization(o.Organization).MSPID,
+	}
+	signature, err := signingIdentity.CreateConfigSignature(configUpdate)
+	Expect(err).NotTo(HaveOccurred())
+
+	configUpdateEnvelope, err := configtx.NewEnvelope(configUpdate, signature)
+	Expect(err).NotTo(HaveOccurred())
+	err = signingIdentity.SignEnvelope(configUpdateEnvelope)
+	Expect(err).NotTo(HaveOccurred())
+
+	currentBlockNumber := nwo.CurrentConfigBlockNumber(n, p, o, channel)
+
+	resp, err := ordererclient.Broadcast(n, o, configUpdateEnvelope)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+
+	ccb := func() uint64 { return nwo.CurrentConfigBlockNumber(n, p, o, channel) }
+	Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
 }

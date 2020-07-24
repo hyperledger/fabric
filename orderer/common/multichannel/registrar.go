@@ -640,6 +640,8 @@ func (r *Registrar) removeMember(channelID string, cs *ChainSupport) error {
 func (r *Registrar) removeFollower(channelID string, follower *follower.Chain) error {
 	follower.Halt()
 
+	// TODO if follower is onboarding, remove the joinblock from file repo
+
 	err := r.ledgerFactory.Remove(channelID)
 	if err != nil {
 		return errors.Errorf("error removing ledger for channel %s", channelID)
