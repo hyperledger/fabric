@@ -831,27 +831,154 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 }
 
 func TestRegistrar_RemoveChannel(t *testing.T) {
-	// system channel
-	confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
-	genesisBlockSys := encoder.New(confSys).GenesisBlockForChannel("sys-channel")
-
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	t.Run("Reject removal of app channel when system channel exists", func(t *testing.T) {
-		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+	consenter := &mocks.Consenter{}
+	consenter.HandleChainCalls(handleChain)
+	mockConsenters := map[string]consensus.Consenter{"etcdraft": &mocks.Consenter{}, "solo": consenter}
+
+	t.Run("when system channel exists", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "remove-channel")
 		require.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
+		confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+		genesisBlockSys := encoder.New(confSys).GenesisBlockForChannel("system-channel")
 
-		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "sys-channel", genesisBlockSys)
-		consenter := &mocks.Consenter{}
-		consenter.HandleChainCalls(handleChain)
-		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter}
+		// create ledger with system channel named "sys-channel"
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "system-channel", genesisBlockSys)
 		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
 
-		err = registrar.RemoveChannel("some-app-channel", false)
-		require.EqualError(t, err, "system channel exists")
+		t.Run("reject removal of app channel", func(t *testing.T) {
+			err = registrar.RemoveChannel("some-app-channel", false)
+			require.EqualError(t, err, "system channel exists")
+		})
+
+		// TODO FAB-17965
+		t.Run("rejects removal of system channel (temporarily)", func(t *testing.T) {
+			err = registrar.RemoveChannel("system-channel", false)
+			require.EqualError(t, err, "not yet implemented")
+		})
+	})
+
+	t.Run("reject app channel removal", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "remove-channel")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		// create ledger without a system channel
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		confApp := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+		confApp.Consortiums = nil
+		confApp.Consortium = ""
+		genesisBlockApp := encoder.New(confApp).GenesisBlockForChannel("my-non-raft-channel")
+		ledger, err := ledgerFactory.GetOrCreate("my-non-raft-channel")
+		require.NoError(t, err)
+		ledger.Append(genesisBlockApp)
+
+		registrar.CreateChain("my-non-raft-channel")
+		require.NotNil(t, registrar.GetChain("my-non-raft-channel"))
+
+		t.Run("when channel id does not exist", func(t *testing.T) {
+			err = registrar.RemoveChannel("some-raft-channel", false)
+			require.EqualError(t, err, "channel does not exist")
+		})
+
+		t.Run("when channel id is blank", func(t *testing.T) {
+			err = registrar.RemoveChannel("", false)
+			require.EqualError(t, err, "channel does not exist")
+		})
+	})
+
+	t.Run("remove channel successfully", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "remove-channel")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		tlsCA, err := tlsgen.NewCA()
+		require.NoError(t, err)
+
+		confAppRaft := genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
+		confAppRaft.Consortiums = nil
+		confAppRaft.Consortium = ""
+		generateCertificates(t, confAppRaft, tlsCA, tmpdir)
+		bootstrapper, err := encoder.NewBootstrapper(confAppRaft)
+		require.NoError(t, err, "cannot create bootstrapper")
+
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
+		consenter.HandleChainCalls(handleChainCluster)
+		consenter.IsChannelMemberReturnsOnCall(0, true, nil)
+		consenter.IsChannelMemberReturnsOnCall(1, false, nil)
+		mockConsenters := map[string]consensus.Consenter{confAppRaft.Orderer.OrdererType: consenter}
+
+		config := localconfig.TopLevel{
+			General: localconfig.General{
+				BootstrapMethod: "none",
+			},
+		}
+		dialer := &cluster.PredicateDialer{
+			Config: comm.ClientConfig{
+				SecOpts: comm.SecureOptions{
+					Certificate: tlsCA.CertBytes(),
+				},
+			},
+		}
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+
+		t.Run("as a member", func(t *testing.T) {
+			genesisBlockAppRaft := bootstrapper.GenesisBlockForChannel("my-raft-channel")
+			require.NotNil(t, genesisBlockAppRaft)
+
+			// Before joining the channel, it doesn't exist in the registrar or the ledger
+			require.Nil(t, registrar.GetChain("my-raft-channel"))
+			require.NotContains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+
+			info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
+			require.NoError(t, err)
+			require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 1}, info)
+			// After joining the channel, it exists in the registrar and the ledger
+			require.NotNil(t, registrar.GetChain("my-raft-channel"))
+			require.Contains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+
+			err = registrar.RemoveChannel("my-raft-channel", false)
+			require.NoError(t, err)
+
+			// After removing the channel, it no longer exists in the registrar or the ledger
+			require.Nil(t, registrar.GetChain("my-raft-channel"))
+			require.NotContains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+		})
+
+		t.Run("as a follower", func(t *testing.T) {
+			genesisBlockAppRaft := bootstrapper.GenesisBlockForChannel("my-follower-raft-channel")
+			require.NotNil(t, genesisBlockAppRaft)
+
+			// Before joining the channel, it doesn't exist in the registrar or the ledger
+			require.Nil(t, registrar.GetChain("my-follower-raft-channel"))
+			require.NotContains(t, ledgerFactory.ChannelIDs(), "my-follower-raft-channel")
+
+			info, err := registrar.JoinChannel("my-follower-raft-channel", genesisBlockAppRaft, true)
+			require.NoError(t, err)
+			require.Equal(t, types.ChannelInfo{Name: "my-follower-raft-channel", URL: "", ClusterRelation: "follower", Status: "onboarding", Height: 0}, info)
+
+			// After joining the channel, it exists in the registrar and the ledger
+			info, err = registrar.ChannelInfo("my-follower-raft-channel")
+			require.NoError(t, err)
+			require.Equal(t, types.ChannelInfo{Name: "my-follower-raft-channel", URL: "", ClusterRelation: "follower", Status: "onboarding", Height: 0}, info)
+			require.Contains(t, ledgerFactory.ChannelIDs(), "my-follower-raft-channel")
+
+			err = registrar.RemoveChannel("my-follower-raft-channel", false)
+			require.NoError(t, err)
+
+			// After removing the channel, it no longer exists in the registrar or the ledger
+			_, err = registrar.ChannelInfo("my-follower-raft-channel")
+			require.EqualError(t, err, "channel does not exist")
+			require.NotContains(t, ledgerFactory.ChannelIDs(), "my-follower-raft-channel")
+		})
 	})
 }
 

@@ -598,8 +598,56 @@ func (r *Registrar) createFollower(
 // RemoveChannel instructs the orderer to remove a channel.
 // Depending on the removeStorage parameter, the storage resources are either removed or archived.
 func (r *Registrar) RemoveChannel(channelID string, removeStorage bool) error {
-	if r.SystemChannelID() != "" && channelID != r.SystemChannelID() {
-		return types.ErrSystemChannelExists
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if r.systemChannelID != "" {
+		if channelID != r.systemChannelID {
+			return types.ErrSystemChannelExists
+		}
+		// TODO FAB-17965
+		return errors.New("not yet implemented")
 	}
-	return errors.New("Not implemented yet")
+
+	cs, ok := r.chains[channelID]
+	if ok {
+		return r.removeMember(channelID, cs)
+	}
+
+	follower, ok := r.followers[channelID]
+	if ok {
+		return r.removeFollower(channelID, follower)
+	}
+
+	return types.ErrChannelNotExist
+}
+
+func (r *Registrar) removeMember(channelID string, cs *ChainSupport) error {
+	cs.Halt()
+
+	err := r.ledgerFactory.Remove(channelID)
+	if err != nil {
+		return errors.Errorf("error removing ledger for channel %s", channelID)
+	}
+
+	delete(r.chains, channelID)
+
+	logger.Infof("Removed channel: %s", channelID)
+
+	return nil
+}
+
+func (r *Registrar) removeFollower(channelID string, follower *follower.Chain) error {
+	follower.Halt()
+
+	err := r.ledgerFactory.Remove(channelID)
+	if err != nil {
+		return errors.Errorf("error removing ledger for channel %s", channelID)
+	}
+
+	delete(r.followers, channelID)
+
+	logger.Infof("Removed channel: %s", channelID)
+
+	return nil
 }
