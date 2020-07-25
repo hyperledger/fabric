@@ -45,18 +45,18 @@ var (
 // kvLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
 type kvLedger struct {
-	ledgerID               string
-	blockStore             *blkstorage.BlockStore
-	pvtdataStore           *pvtdatastorage.Store
-	txmgr                  *txmgr.LockBasedTxMgr
-	historyDB              *history.DB
-	configHistoryRetriever *confighistory.Retriever
-	bookkeepingProvider    *bookkeeping.Provider
-	blockAPIsRWLock        *sync.RWMutex
-	stats                  *ledgerStats
-	commitHash             []byte
-	hashProvider           ledger.HashProvider
-	config                 *ledger.Config
+	ledgerID                  string
+	blockStore                *blkstorage.BlockStore
+	pvtdataStore              *pvtdatastorage.Store
+	txmgr                     *txmgr.LockBasedTxMgr
+	historyDB                 *history.DB
+	configHistoryRetriever    *confighistory.Retriever
+	snapshotRequestBookkeeper *snapshotRequestBookkeeper
+	blockAPIsRWLock           *sync.RWMutex
+	stats                     *ledgerStats
+	commitHash                []byte
+	hashProvider              ledger.HashProvider
+	config                    *ledger.Config
 	// isPvtDataStoreAheadOfBlockStore is read during missing pvtData
 	// reconciliation and may be updated during a regular block commit.
 	// Hence, we use atomic value to ensure consistent read.
@@ -84,14 +84,13 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 	ledgerID := initializer.ledgerID
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	l := &kvLedger{
-		ledgerID:            ledgerID,
-		blockStore:          initializer.blockStore,
-		pvtdataStore:        initializer.pvtdataStore,
-		historyDB:           initializer.historyDB,
-		bookkeepingProvider: initializer.bookkeeperProvider,
-		hashProvider:        initializer.hashProvider,
-		config:              initializer.config,
-		blockAPIsRWLock:     &sync.RWMutex{},
+		ledgerID:        ledgerID,
+		blockStore:      initializer.blockStore,
+		pvtdataStore:    initializer.pvtdataStore,
+		historyDB:       initializer.historyDB,
+		hashProvider:    initializer.hashProvider,
+		config:          initializer.config,
+		blockAPIsRWLock: &sync.RWMutex{},
 	}
 
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, initializer.ccInfoProvider})
@@ -152,6 +151,12 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 		return nil, err
 	}
 	l.configHistoryRetriever = initializer.configHistoryMgr.GetRetriever(ledgerID, l)
+
+	dbHandle := initializer.bookkeeperProvider.GetDBHandle(l.ledgerID, bookkeeping.SnapshotRequest)
+	l.snapshotRequestBookkeeper, err = newSnapshotRequestBookkeeper(dbHandle)
+	if err != nil {
+		return nil, err
+	}
 
 	l.stats = initializer.stats
 	return l, nil

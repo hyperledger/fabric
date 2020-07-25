@@ -9,6 +9,8 @@ package kvledger
 import (
 	"math"
 
+	"github.com/hyperledger/fabric/common/ledger/util"
+	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/pkg/errors"
 )
 
@@ -59,4 +61,133 @@ func (l *kvLedger) ListSnapshots() ([]string, error) {
 // returns an error if no such a snapshot exists
 func (l *kvLedger) DeleteSnapshot(height uint64) error {
 	return errors.Errorf("not implemented")
+}
+
+// snapshotRequestBookkeeper manages snapshot requests in a leveldb and maintains smallest height for pending snapshot requests
+type snapshotRequestBookkeeper struct {
+	dbHandle              *leveldbhelper.DBHandle
+	smallestRequestHeight uint64
+}
+
+func newSnapshotRequestBookkeeper(dbHandle *leveldbhelper.DBHandle) (*snapshotRequestBookkeeper, error) {
+	bk := &snapshotRequestBookkeeper{dbHandle: dbHandle}
+
+	var err error
+	if bk.smallestRequestHeight, err = bk.smallestRequest(); err != nil {
+		return nil, err
+	}
+
+	return bk, nil
+}
+
+// add adds the given height to the bookkeeper db and returns an error if the height already exists
+func (k *snapshotRequestBookkeeper) add(height uint64) error {
+	key := encodeSnapshotRequestKey(height)
+
+	exists, err := k.exist(height)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return errors.Errorf("duplicate snapshot request for height %d", height)
+	}
+
+	if err := k.dbHandle.Put(key, []byte{}, true); err != nil {
+		return err
+	}
+
+	if height < k.smallestRequestHeight {
+		k.smallestRequestHeight = height
+	}
+
+	return nil
+}
+
+// delete deletes the given height from the bookkeeper db and returns an error if the height does not exist
+func (k *snapshotRequestBookkeeper) delete(height uint64) error {
+	exists, err := k.exist(height)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errors.Errorf("no snapshot request exists for height %d", height)
+	}
+
+	if err = k.dbHandle.Delete(encodeSnapshotRequestKey(height), true); err != nil {
+		return err
+	}
+
+	if k.smallestRequestHeight != height {
+		return nil
+	}
+
+	if k.smallestRequestHeight, err = k.smallestRequest(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (k *snapshotRequestBookkeeper) list() ([]uint64, error) {
+	requestedHeights := []uint64{}
+	itr, err := k.dbHandle.GetIterator(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer itr.Release()
+
+	for {
+		hasMore := itr.Next()
+		if err = itr.Error(); err != nil {
+			return nil, errors.Wrapf(err, "internal leveldb error while iterating for snapshot requests")
+		}
+		if !hasMore {
+			break
+		}
+		height, _, err := decodeSnapshotRequestKey(itr.Key())
+		if err != nil {
+			return nil, err
+		}
+		requestedHeights = append(requestedHeights, height)
+	}
+
+	return requestedHeights, nil
+}
+
+func (k *snapshotRequestBookkeeper) exist(height uint64) (bool, error) {
+	val, err := k.dbHandle.Get(encodeSnapshotRequestKey(height))
+	if err != nil {
+		return false, err
+	}
+	exists := val != nil
+	return exists, nil
+}
+
+func (k *snapshotRequestBookkeeper) smallestRequest() (uint64, error) {
+	itr, err := k.dbHandle.GetIterator(nil, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer itr.Release()
+
+	hasMore := itr.Next()
+	if err = itr.Error(); err != nil {
+		return 0, errors.Wrapf(err, "internal leveldb error while iterating for snapshot requests")
+	}
+	if !hasMore {
+		return defaultSmallestHeight, nil
+	}
+	smallestRequestHeight, _, err := decodeSnapshotRequestKey(itr.Key())
+	if err != nil {
+		return 0, err
+	}
+	return smallestRequestHeight, nil
+}
+
+func encodeSnapshotRequestKey(height uint64) []byte {
+	return append(snapshotRequestKeyPrefix, util.EncodeOrderPreservingVarUint64(height)...)
+}
+
+func decodeSnapshotRequestKey(key []byte) (uint64, int, error) {
+	return util.DecodeOrderPreservingVarUint64(key[len(snapshotRequestKeyPrefix):])
 }
