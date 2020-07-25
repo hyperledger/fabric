@@ -8,12 +8,12 @@ package channelconfig
 
 import (
 	"fmt"
+	"hash"
 	"math"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/capabilities"
-	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
 )
@@ -40,20 +40,6 @@ const (
 	CapabilitiesKey = "Capabilities"
 )
 
-// ChannelValues gives read only access to the channel configuration
-type ChannelValues interface {
-	// HashingAlgorithm returns the default algorithm to be used when hashing
-	// such as computing block hashes, and CreationPolicy digests
-	HashingAlgorithm() func(input []byte) []byte
-
-	// BlockDataHashingStructureWidth returns the width to use when constructing the
-	// Merkle tree to compute the BlockData hash
-	BlockDataHashingStructureWidth() uint32
-
-	// OrdererAddresses returns the list of valid orderer addresses to connect to to invoke Broadcast/Deliver
-	OrdererAddresses() []string
-}
-
 // ChannelProtos is where the proposed configuration is unmarshaled into
 type ChannelProtos struct {
 	HashingAlgorithm          *cb.HashingAlgorithm
@@ -67,13 +53,14 @@ type ChannelProtos struct {
 type ChannelConfig struct {
 	protos *ChannelProtos
 
-	hashingAlgorithm func(input []byte) []byte
+	hashingAlgorithm hash.Hash
 
 	mspManager msp.MSPManager
 
 	appConfig         *ApplicationConfig
 	ordererConfig     *OrdererConfig
 	consortiumsConfig *ConsortiumsConfig
+	bccsp             *bccsp.BCCSP
 }
 
 // NewChannelConfig creates a new ChannelConfig
@@ -86,13 +73,13 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 		return nil, errors.Wrap(err, "failed to deserialize values")
 	}
 
-	capabilities := cc.Capabilities()
+	channelCapabilities := cc.Capabilities()
 
-	if err := cc.Validate(capabilities); err != nil {
+	if err := cc.Validate(channelCapabilities); err != nil {
 		return nil, err
 	}
 
-	mspConfigHandler := NewMSPConfigHandler(capabilities.MSPVersion(), bccsp)
+	mspConfigHandler := NewMSPConfigHandler(channelCapabilities.MSPVersion(), bccsp)
 
 	var err error
 	for groupName, group := range channelGroup.Groups {
@@ -100,7 +87,7 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 		case ApplicationGroupKey:
 			cc.appConfig, err = NewApplicationConfig(group, mspConfigHandler)
 		case OrdererGroupKey:
-			cc.ordererConfig, err = NewOrdererConfig(group, mspConfigHandler, capabilities)
+			cc.ordererConfig, err = NewOrdererConfig(group, mspConfigHandler, channelCapabilities)
 		case ConsortiumsGroupKey:
 			cc.consortiumsConfig, err = NewConsortiumsConfig(group, mspConfigHandler)
 		default:
@@ -115,6 +102,7 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 		return nil, err
 	}
 
+	cc.bccsp = &bccsp
 	return cc, nil
 }
 
@@ -139,7 +127,7 @@ func (cc *ChannelConfig) ConsortiumsConfig() *ConsortiumsConfig {
 }
 
 // HashingAlgorithm returns a function pointer to the chain hashing algorithm
-func (cc *ChannelConfig) HashingAlgorithm() func(input []byte) []byte {
+func (cc *ChannelConfig) HashingAlgorithm() hash.Hash {
 	return cc.hashingAlgorithm
 }
 
@@ -185,15 +173,13 @@ func (cc *ChannelConfig) Validate(channelCapabilities ChannelCapabilities) error
 }
 
 func (cc *ChannelConfig) validateHashingAlgorithm() error {
-	switch cc.protos.HashingAlgorithm.Name {
-	case bccsp.SHA256:
-		cc.hashingAlgorithm = util.ComputeSHA256
-	case bccsp.SHA3_256:
-		cc.hashingAlgorithm = util.ComputeSHA3256
-	default:
-		return fmt.Errorf("Unknown hashing algorithm type: %s", cc.protos.HashingAlgorithm.Name)
+	csp := *cc.bccsp
+	var opts = &bccsp.SimpleHashOpts{AlgorithmIdentifier: cc.protos.HashingAlgorithm.Name}
+	h, err := csp.GetHash(opts)
+	if err != nil {
+		return err
 	}
-
+	cc.hashingAlgorithm = h
 	return nil
 }
 

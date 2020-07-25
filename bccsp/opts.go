@@ -264,3 +264,11 @@ func (opts *X509PublicKeyImportOpts) Algorithm() string {
 func (opts *X509PublicKeyImportOpts) Ephemeral() bool {
 	return opts.Temporary
 }
+
+type SimpleHashOpts struct {
+	// The hash algorithm identifier
+	AlgorithmIdentifier string
+}
+func (opts *SimpleHashOpts) Algorithm() string{
+	return opts.AlgorithmIdentifier
+}

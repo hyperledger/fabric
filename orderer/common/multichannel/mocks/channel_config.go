@@ -2,6 +2,7 @@
 package mocks
 
 import (
+	"hash"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -156,7 +157,7 @@ func (fake *ChannelConfig) CapabilitiesReturnsOnCall(i int, result1 channelconfi
 	}{result1}
 }
 
-func (fake *ChannelConfig) HashingAlgorithm() func(input []byte) []byte {
+func (fake *ChannelConfig) HashingAlgorithm() hash.Hash {
 	fake.hashingAlgorithmMutex.Lock()
 	ret, specificReturn := fake.hashingAlgorithmReturnsOnCall[len(fake.hashingAlgorithmArgsForCall)]
 	fake.hashingAlgorithmArgsForCall = append(fake.hashingAlgorithmArgsForCall, struct {

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package channelconfig
 
 import (
+	"hash"
 	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -61,7 +62,7 @@ type Application interface {
 type Channel interface {
 	// HashingAlgorithm returns the default algorithm to be used when hashing
 	// such as computing block hashes, and CreationPolicy digests
-	HashingAlgorithm() func(input []byte) []byte
+	HashingAlgorithm() hash.Hash
 
 	// BlockDataHashingStructureWidth returns the width to use when constructing the
 	// Merkle tree to compute the BlockData hash
