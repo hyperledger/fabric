@@ -126,11 +126,11 @@ func configurePeerPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nw
 
 		By("Updating the peer signcerts")
 
-		newOrdererPemCert := buildCert(network, caBytes, orgCAPath, peerCSR, peerSerial, peerPubKey)
+		newOrdererPemCert := buildCert(caBytes, orgCAPath, peerCSR, peerSerial, peerPubKey)
 		updateMSPFolder(network.PeerLocalMSPDir(peer), fmt.Sprintf("peer.%s-cert.pem", domain), newOrdererPemCert)
 
 		By("Updating the peer admin user signcerts")
-		newAdminPemCert := buildCert(network, caBytes, orgCAPath, adminCSR, adminSerial, adminPubKey)
+		newAdminPemCert := buildCert(caBytes, orgCAPath, adminCSR, adminSerial, adminPubKey)
 
 		orgAdminMSPPath := network.PeerUserMSPDir(peer, "Admin")
 		updateMSPFolder(orgAdminMSPPath, fmt.Sprintf("Admin@%s-cert.pem", domain), newAdminPemCert)
@@ -152,12 +152,12 @@ func configureOrdererPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network 
 
 	By("Updating the orderer signcerts")
 
-	newOrdererPemCert := buildCert(network, caBytes, orgCAPath, ordererCSR, ordererSerial, ordererPubKey)
+	newOrdererPemCert := buildCert(caBytes, orgCAPath, ordererCSR, ordererSerial, ordererPubKey)
 
 	updateMSPFolder(network.OrdererLocalMSPDir(orderer), fmt.Sprintf("orderer.%s-cert.pem", domain), newOrdererPemCert)
 
 	By("Updating the orderer admin user signcerts")
-	newAdminPemCert := buildCert(network, caBytes, orgCAPath, adminCSR, adminSerial, adminPubKey)
+	newAdminPemCert := buildCert(caBytes, orgCAPath, adminCSR, adminSerial, adminPubKey)
 
 	orgAdminMSPPath := network.OrdererUserMSPDir(orderer, "Admin")
 	updateMSPFolder(orgAdminMSPPath, fmt.Sprintf("Admin@%s-cert.pem", domain), newAdminPemCert)
@@ -231,7 +231,7 @@ func createCSR(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, org, ou string) (*ecd
 	return pubKey, csr, serialNumber
 }
 
-func buildCert(network *nwo.Network, caBytes []byte, org1CAPath string, csr *x509.CertificateRequest, serialNumber *big.Int, pubKey *ecdsa.PublicKey) []byte {
+func buildCert(caBytes []byte, org1CAPath string, csr *x509.CertificateRequest, serialNumber *big.Int, pubKey *ecdsa.PublicKey) []byte {
 	pemBlock, _ := pem.Decode(caBytes)
 	Expect(pemBlock).NotTo(BeNil())
 
