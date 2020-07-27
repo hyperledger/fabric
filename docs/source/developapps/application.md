@@ -347,7 +347,7 @@ control soon after the smart contract completes, but that's not the case. Under
 the covers, the SDK manages the entire consensus process, and notifies the
 application when it is complete according to the `strategy` connectionOption. If
 you're interested in what the SDK does under the covers, read the detailed
-[transaction flow](../../txflow.html).
+[transaction flow](../txflow.html).
 
 That’s it! In this topic you’ve understood how to call a smart contract from a
 sample application by examining how MagnetoCorp's application issues a new
