@@ -45,18 +45,18 @@ var (
 // kvLedger provides an implementation of `ledger.PeerLedger`.
 // This implementation provides a key-value based data model
 type kvLedger struct {
-	ledgerID                  string
-	blockStore                *blkstorage.BlockStore
-	pvtdataStore              *pvtdatastorage.Store
-	txmgr                     *txmgr.LockBasedTxMgr
-	historyDB                 *history.DB
-	configHistoryRetriever    *confighistory.Retriever
-	snapshotRequestBookkeeper *snapshotRequestBookkeeper
-	blockAPIsRWLock           *sync.RWMutex
-	stats                     *ledgerStats
-	commitHash                []byte
-	hashProvider              ledger.HashProvider
-	config                    *ledger.Config
+	ledgerID               string
+	blockStore             *blkstorage.BlockStore
+	pvtdataStore           *pvtdatastorage.Store
+	txmgr                  *txmgr.LockBasedTxMgr
+	historyDB              *history.DB
+	configHistoryRetriever *confighistory.Retriever
+	snapshotMgr            *snapshotMgr
+	blockAPIsRWLock        *sync.RWMutex
+	stats                  *ledgerStats
+	commitHash             []byte
+	hashProvider           ledger.HashProvider
+	config                 *ledger.Config
 	// isPvtDataStoreAheadOfBlockStore is read during missing pvtData
 	// reconciliation and may be updated during a regular block commit.
 	// Hence, we use atomic value to ensure consistent read.
@@ -152,9 +152,7 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 	}
 	l.configHistoryRetriever = initializer.configHistoryMgr.GetRetriever(ledgerID, l)
 
-	dbHandle := initializer.bookkeeperProvider.GetDBHandle(l.ledgerID, bookkeeping.SnapshotRequest)
-	l.snapshotRequestBookkeeper, err = newSnapshotRequestBookkeeper(dbHandle)
-	if err != nil {
+	if err := l.initSnapshotMgr(initializer); err != nil {
 		return nil, err
 	}
 
@@ -182,6 +180,35 @@ func (l *kvLedger) initTxMgr(initializer *txmgr.Initializer) error {
 		}
 	}
 	return err
+}
+
+func (l *kvLedger) initSnapshotMgr(initializer *lgrInitializer) error {
+	dbHandle := initializer.bookkeeperProvider.GetDBHandle(l.ledgerID, bookkeeping.SnapshotRequest)
+	bookkeeper, err := newSnapshotRequestBookkeeper(dbHandle)
+	if err != nil {
+		return err
+	}
+
+	l.snapshotMgr = &snapshotMgr{
+		snapshotRequestBookkeeper: bookkeeper,
+		events:                    make(chan *event),
+		commitProceed:             make(chan struct{}),
+		requestResponses:          make(chan *requestResponse),
+	}
+
+	bcInfo, err := l.blockStore.GetBlockchainInfo()
+	if err != nil {
+		return err
+	}
+
+	// start a goroutine to synchronize commit, snapshot generation, and snapshot submission/cancellation,
+	go l.processSnapshotMgmtEvents(bcInfo.Height)
+
+	if err = l.recoverSnapshot(bcInfo.Height); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (l *kvLedger) lastPersistedCommitHash() ([]byte, error) {
@@ -448,8 +475,26 @@ func (l *kvLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error
 	return nil, nil
 }
 
-// CommitLegacy commits the block and the corresponding pvt data in an atomic operation
+// CommitLegacy commits the block and the corresponding pvt data in an atomic operation.
+// It synchronizes commit, snapshot generation and snapshot requests via events and commitProceed channels.
+// Before committing a block, it sends a commitStart event and waits for a message from commitProceed.
+// After the block is committed, it sends a commitDone event.
+// Refer to processEvents function to understand how the channels and events work together to handle synchronization.
 func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
+	postCommitBlockHeight := pvtdataAndBlock.Block.Header.Number + 1
+	l.snapshotMgr.events <- &event{commitStart, postCommitBlockHeight}
+	<-l.snapshotMgr.commitProceed
+
+	if err := l.commit(pvtdataAndBlock, commitOpts); err != nil {
+		return err
+	}
+
+	l.snapshotMgr.events <- &event{commitDone, postCommitBlockHeight}
+	return nil
+}
+
+// commit commits the block and the corresponding pvt data in an atomic operation.
+func (l *kvLedger) commit(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
 	var err error
 	block := pvtdataAndBlock.Block
 	blockNo := pvtdataAndBlock.Block.Header.Number
