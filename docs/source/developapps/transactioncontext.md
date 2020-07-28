@@ -208,11 +208,13 @@ The APIs in the stub fall into the following categories:
 
   <br>
 
-* **Event APIs** are used to manage event processing in a smart contract.
+* **Event APIs** are used to set an event during the processing of a smart contract.
 
     * [setEvent()](https://hyperledger.github.io/fabric-chaincode-node/{BRANCH}/api/fabric-shim.ChaincodeStub.html#setEvent__anchor)
 
-      Smart contracts use this API to add user events to a transaction response.
+      Smart contracts use this API to add an event to a transaction response.
+      Note that only a single event can be created in a transaction, and must
+      originate from the outer-most contract when contracts invoke each other via `invokeChaincode`.
       See interaction point **(5)**. These events are ultimately recorded on the
       blockchain and sent to listening applications at interaction point
       **(11)**.
