@@ -8,16 +8,40 @@ package kvledger
 
 import (
 	"math"
+	"os"
 
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/pkg/errors"
 )
 
+const (
+	commitStart   = "commitStart"
+	commitDone    = "commitDone"
+	requestAdd    = "requestAdd"
+	requestCancel = "requestCancel"
+	snapshotDone  = "snapshotDone"
+)
+
 var (
 	snapshotRequestKeyPrefix        = []byte("s")
 	defaultSmallestHeight    uint64 = math.MaxUint64
 )
+
+type snapshotMgr struct {
+	snapshotRequestBookkeeper *snapshotRequestBookkeeper
+	events                    chan *event
+	commitProceed             chan struct{}
+	requestResponses          chan *requestResponse
+}
+
+type event struct {
+	typ    string
+	height uint64
+}
+type requestResponse struct {
+	err error
+}
 
 // SubmitSnapshotRequest submits a snapshot request for the specified height.
 // The request will be stored in the ledger until the ledger's block height is equal to
@@ -26,7 +50,9 @@ var (
 // It returns an error if the specified height is smaller than the ledger's block height
 // or the requested height already exists.
 func (l *kvLedger) SubmitSnapshotRequest(height uint64) error {
-	return errors.New("not implemented")
+	l.snapshotMgr.events <- &event{requestAdd, height}
+	response := <-l.snapshotMgr.requestResponses
+	return response.err
 }
 
 // CancelSnapshotRequest cancels the previously submitted request.
@@ -36,13 +62,14 @@ func (l *kvLedger) SubmitSnapshotRequest(height uint64) error {
 // It also locks snapshotGenerationRWLock to synchronize with commit before getting
 // blockchain info so that it will not cancel a under-processing request.
 func (l *kvLedger) CancelSnapshotRequest(height uint64) error {
-	return errors.New("not implemented")
+	l.snapshotMgr.events <- &event{requestCancel, height}
+	response := <-l.snapshotMgr.requestResponses
+	return response.err
 }
 
 // PendingSnapshotRequests returns a list of heights for the pending (or under processing) snapshot requests.
 func (l *kvLedger) PendingSnapshotRequests() ([]uint64, error) {
-	return nil, errors.New("not implemented")
-
+	return l.snapshotMgr.snapshotRequestBookkeeper.list()
 }
 
 // ListSnapshots returns the information for available snapshots.
@@ -61,6 +88,154 @@ func (l *kvLedger) ListSnapshots() ([]string, error) {
 // returns an error if no such a snapshot exists
 func (l *kvLedger) DeleteSnapshot(height uint64) error {
 	return errors.Errorf("not implemented")
+}
+
+// processSnapshotMgmtEvents handles each event in the events channel and performs synchronization acorss
+// block commits, snapshot generation, and snapshot request submission/cancellation.
+// It should be started in a separate goroutine when the ledger is created/opened.
+// There are 3 unbuffered channels and 5 events working together to process events one by one
+// and perform synchronization.
+// - events: a channel receiving all the events
+// - commitProceed: a channel indicating if commit can be proceeded. Commit is blocked if a snapshot generation is in progress.
+// - requestResponses: a channel returning the response for snapshot request submission/cancellation.
+// The 5 events are:
+// - commitStart: sent before committing a block
+// - commitDone: sent after a block is committed
+// - snapshotDone: sent when a snapshot generation is finished, regardless of success or failure
+// - requestAdd: sent when a snapshot request is submitted
+// - requestCancel: sent when a snapshot request is cancelled
+func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedHeight uint64) {
+	// toStartCommitHeight is updated when a commitStart event is received
+	toStartCommitHeight := lastCommittedHeight
+	// committedHeight is updated when a commitDone event is received
+	committedHeight := lastCommittedHeight
+	// snapshotInProgress is set to true before a generateSnapshot is called when processing commitDone or requestAdd event
+	// and set to false when snapshotDone event is received
+	snapshotInProgress := false
+
+	events := l.snapshotMgr.events
+	commitProceed := l.snapshotMgr.commitProceed
+	requestResponses := l.snapshotMgr.requestResponses
+
+	for {
+		e := <-events
+		logger.Debugw("event received", "type", e.typ, "height", e.height, "snapshotInProgress=", snapshotInProgress)
+		switch e.typ {
+		case commitStart:
+			// toStartCommitHeight is updated to be the new block height before the block is committed;
+			// therefore, before commitDone event, toStartCommitHeight is equal to committedHeight + 1.
+			// In other words, if toStartCommitHeight is not equal to committedHeight, it means that a commit is in progress.
+			toStartCommitHeight = e.height
+			if snapshotInProgress {
+				logger.Infow("commit waiting on snapshot to be generated", "snapshotHeight", committedHeight)
+				continue
+			}
+			// no in-progress snapshot, let commit proceed
+			commitProceed <- struct{}{}
+
+		case commitDone:
+			committedHeight = e.height
+			if committedHeight != l.snapshotMgr.snapshotRequestBookkeeper.smallestRequestHeight {
+				continue
+			}
+			snapshotInProgress = true
+			requestedHeight := committedHeight
+			go func() {
+				if err := l.generateSnapshot(); err != nil {
+					logger.Errorw("Failed to generate snapshot", "height", requestedHeight, "error", err)
+				}
+				events <- &event{snapshotDone, requestedHeight}
+			}()
+
+		case snapshotDone:
+			requestedHeight := e.height
+			logger.Debugw("snapshot is generated", "height", requestedHeight, "toStartCommitHeight", toStartCommitHeight, "committedHeight", committedHeight)
+			if err := l.snapshotMgr.snapshotRequestBookkeeper.delete(requestedHeight); err != nil {
+				logger.Errorw("Failed to delete snapshot request, the pending snapshot requests (if any) may not be processed", "height", requestedHeight, "error", err)
+			}
+			if toStartCommitHeight != committedHeight {
+				// there is an in-progress commit, write to commitProceed channel to unblock commit
+				commitProceed <- struct{}{}
+			}
+			snapshotInProgress = false
+
+		case requestAdd:
+			requestedHeight := e.height
+			if requestedHeight == 0 {
+				requestedHeight = toStartCommitHeight
+			}
+			if requestedHeight < toStartCommitHeight {
+				requestResponses <- &requestResponse{errors.Errorf("requested snapshot height %d cannot be less than the current block height %d", requestedHeight, toStartCommitHeight)}
+				continue
+			}
+			if requestedHeight == committedHeight {
+				// this is a corner case where no block has been committed since last snapshot was generated.
+				exists, err := l.snapshotExists(requestedHeight)
+				if err != nil {
+					requestResponses <- &requestResponse{err}
+					continue
+				}
+				if exists {
+					requestResponses <- &requestResponse{errors.Errorf("snapshot already generated for block height %d", requestedHeight)}
+					continue
+				}
+			}
+			if err := l.snapshotMgr.snapshotRequestBookkeeper.add(requestedHeight); err != nil {
+				requestResponses <- &requestResponse{err}
+				continue
+			}
+			if toStartCommitHeight == committedHeight && requestedHeight == committedHeight {
+				snapshotInProgress = true
+				go func() {
+					if err := l.generateSnapshot(); err != nil {
+						logger.Errorw("Failed to generate snapshot", "height", requestedHeight, "error", err)
+					}
+					events <- &event{snapshotDone, requestedHeight}
+				}()
+				requestResponses <- &requestResponse{}
+				continue
+			}
+			// there is an in-progress commit or the requested height is higher than block height,
+			// we will evaluate the request at commitDone event
+			requestResponses <- &requestResponse{}
+
+		case requestCancel:
+			requestedHeight := e.height
+			if snapshotInProgress && requestedHeight == committedHeight {
+				requestResponses <- &requestResponse{errors.Errorf("cannot cancel the snapshot request because it is under processing")}
+				continue
+			}
+			requestResponses <- &requestResponse{l.snapshotMgr.snapshotRequestBookkeeper.delete(requestedHeight)}
+		}
+	}
+}
+
+func (l *kvLedger) recoverSnapshot(height uint64) error {
+	if height != l.snapshotMgr.snapshotRequestBookkeeper.smallestRequestHeight {
+		return nil
+	}
+	exists, err := l.snapshotExists(height)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		// send commitDone event to generate the missing snapshot
+		l.snapshotMgr.events <- &event{typ: commitDone, height: height}
+	}
+	return nil
+}
+
+// snapshotExists checks if the snapshot for the given height exists
+func (l *kvLedger) snapshotExists(height uint64) (bool, error) {
+	snapshotDir := SnapshotDirForLedgerHeight(l.config.SnapshotsConfig.RootDir, l.ledgerID, height)
+	stat, err := os.Stat(snapshotDir)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return stat != nil, nil
 }
 
 // snapshotRequestBookkeeper manages snapshot requests in a leveldb and maintains smallest height for pending snapshot requests
