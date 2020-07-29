@@ -127,6 +127,7 @@ func (csp *impl) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err
 		return nil, false, err
 	}
 	defer csp.returnSession(session)
+
 	isPriv = true
 	_, err = findKeyPairFromSKI(p11lib, session, ski, privateKeyType)
 	if err != nil {
@@ -136,27 +137,27 @@ func (csp *impl) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err
 
 	publicKey, err := findKeyPairFromSKI(p11lib, session, ski, publicKeyType)
 	if err != nil {
-		return nil, false, fmt.Errorf("Public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
+		return nil, false, fmt.Errorf("public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
 	}
 
 	ecpt, marshaledOid, err := ecPoint(p11lib, session, *publicKey)
 	if err != nil {
-		return nil, false, fmt.Errorf("Public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
+		return nil, false, fmt.Errorf("public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
 	}
 
 	curveOid := new(asn1.ObjectIdentifier)
 	_, err = asn1.Unmarshal(marshaledOid, curveOid)
 	if err != nil {
-		return nil, false, fmt.Errorf("Failed Unmarshaling Curve OID [%s]\n%s", err.Error(), hex.EncodeToString(marshaledOid))
+		return nil, false, fmt.Errorf("failed Unmarshaling Curve OID [%s]\n%s", err.Error(), hex.EncodeToString(marshaledOid))
 	}
 
 	curve := namedCurveFromOID(*curveOid)
 	if curve == nil {
-		return nil, false, fmt.Errorf("Cound not recognize Curve from OID")
+		return nil, false, fmt.Errorf("could not recognize Curve from OID")
 	}
 	x, y := elliptic.Unmarshal(curve, ecpt)
 	if x == nil {
-		return nil, false, fmt.Errorf("Failed Unmarshaling Public Key")
+		return nil, false, fmt.Errorf("failed Unmarshaling Public Key")
 	}
 
 	pubKey = &ecdsa.PublicKey{Curve: curve, X: x, Y: y}
