@@ -110,6 +110,7 @@ type Profile struct {
 // FileLedger contains configuration for the file-based ledger.
 type FileLedger struct {
 	Location string
+	Prefix   string // For compatibility only. This setting is no longer supported.
 }
 
 // Kafka contains configuration for the Kafka-based orderer.
