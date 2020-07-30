@@ -229,6 +229,43 @@ func TestSnapshotRequests(t *testing.T) {
 	require.Eventually(t, requestsUpdated, time.Minute, 100*time.Millisecond)
 }
 
+func TestSnapshotMgrShutdown(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+	defer provider.Close()
+
+	ledgerID := "testsnapshotmgrshutdown"
+	_, gb := testutil.NewBlockGenerator(t, ledgerID, false)
+	l, err := provider.Create(gb)
+	require.NoError(t, err)
+	kvledger := l.(*kvLedger)
+
+	// close ledger to shutdown snapshotMgr
+	l.Close()
+
+	// verify snapshotMgr.stopped and channels are stopped
+	require.True(t, kvledger.snapshotMgr.stopped)
+	require.PanicsWithError(
+		t,
+		"send on closed channel",
+		func() { kvledger.snapshotMgr.events <- &event{typ: commitStart, height: 1} },
+	)
+	require.PanicsWithError(
+		t,
+		"send on closed channel",
+		func() { kvledger.snapshotMgr.commitProceed <- struct{}{} },
+	)
+	require.PanicsWithError(
+		t,
+		"send on closed channel",
+		func() { kvledger.snapshotMgr.requestResponses <- &requestResponse{} },
+	)
+
+	// close ledger again is fine
+	l.Close()
+}
+
 func TestSnapshotRequestsErrorPaths(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()

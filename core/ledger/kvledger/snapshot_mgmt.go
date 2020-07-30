@@ -9,6 +9,7 @@ package kvledger
 import (
 	"math"
 	"os"
+	"sync"
 
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
@@ -16,11 +17,12 @@ import (
 )
 
 const (
-	commitStart   = "commitStart"
-	commitDone    = "commitDone"
-	requestAdd    = "requestAdd"
-	requestCancel = "requestCancel"
-	snapshotDone  = "snapshotDone"
+	commitStart         = "commitStart"
+	commitDone          = "commitDone"
+	requestAdd          = "requestAdd"
+	requestCancel       = "requestCancel"
+	snapshotDone        = "snapshotDone"
+	snapshotMgrShutdown = "snapshotMgrShutdown"
 )
 
 var (
@@ -33,6 +35,8 @@ type snapshotMgr struct {
 	events                    chan *event
 	commitProceed             chan struct{}
 	requestResponses          chan *requestResponse
+	stopped                   bool
+	shutdownLock              sync.Mutex
 }
 
 type event struct {
@@ -104,6 +108,8 @@ func (l *kvLedger) DeleteSnapshot(height uint64) error {
 // - snapshotDone: sent when a snapshot generation is finished, regardless of success or failure
 // - requestAdd: sent when a snapshot request is submitted
 // - requestCancel: sent when a snapshot request is cancelled
+// In addition, the snapshotMgrShutdown event is sent when snapshotMgr shutdown is called. Upon receiving this event,
+// this function will return immediately.
 func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedHeight uint64) {
 	// toStartCommitHeight is updated when a commitStart event is received
 	toStartCommitHeight := lastCommittedHeight
@@ -192,11 +198,7 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedHeight uint64) {
 					}
 					events <- &event{snapshotDone, requestedHeight}
 				}()
-				requestResponses <- &requestResponse{}
-				continue
 			}
-			// there is an in-progress commit or the requested height is higher than block height,
-			// we will evaluate the request at commitDone event
 			requestResponses <- &requestResponse{}
 
 		case requestCancel:
@@ -206,6 +208,9 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedHeight uint64) {
 				continue
 			}
 			requestResponses <- &requestResponse{l.snapshotMgr.snapshotRequestBookkeeper.delete(requestedHeight)}
+
+		case snapshotMgrShutdown:
+			return
 		}
 	}
 }
@@ -236,6 +241,25 @@ func (l *kvLedger) snapshotExists(height uint64) (bool, error) {
 		return false, err
 	}
 	return stat != nil, nil
+}
+
+// shutdown sends a snapshotMgrShutdown event and close all the channels, which is called
+// when the ledger is closed. For simplicity, this function does not consider in-progress commit
+// or snapshot generation. The caller should make sure there is no in-progress commit or
+// snapshot generation. Otherwise, it may cause panic because the channels have been closed.
+func (m *snapshotMgr) shutdown() {
+	m.shutdownLock.Lock()
+	defer m.shutdownLock.Unlock()
+
+	if m.stopped {
+		return
+	}
+
+	m.stopped = true
+	m.events <- &event{typ: snapshotMgrShutdown}
+	close(m.events)
+	close(m.commitProceed)
+	close(m.requestResponses)
 }
 
 // snapshotRequestBookkeeper manages snapshot requests in a leveldb and maintains smallest height for pending snapshot requests
