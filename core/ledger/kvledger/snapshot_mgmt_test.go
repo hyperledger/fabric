@@ -237,7 +237,7 @@ func TestSnapshotMgrShutdown(t *testing.T) {
 
 	ledgerID := "testsnapshotmgrshutdown"
 	_, gb := testutil.NewBlockGenerator(t, ledgerID, false)
-	l, err := provider.Create(gb)
+	l, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	kvledger := l.(*kvLedger)
 
