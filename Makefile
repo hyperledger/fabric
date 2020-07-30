@@ -129,6 +129,14 @@ license:
 trailing-spaces:
 	@scripts/check_trailingspaces.sh
 
+.PHONY: docs
+docs:
+	@docker run -v $$(pwd):/docs hyperledger-fabric.jfrog.io/fabric-tox sh -c 'cd /docs && tox -e docs'
+
+.PHONY: docs-linkcheck
+docs-linkcheck:
+	@docker run -v $$(pwd):/docs hyperledger-fabric.jfrog.io/fabric-tox sh -c 'cd /docs && tox -e docs-linkcheck'
+
 .PHONY: gotools
 gotools: gotools-install
 

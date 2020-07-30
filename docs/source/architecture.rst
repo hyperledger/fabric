@@ -4,7 +4,7 @@ Architecture Reference
 .. toctree::
    :maxdepth: 1
 
-   Hyperledger Fabric CA's User Guide <http://hyperledger-fabric-ca.readthedocs.io/en/latest>
+   Hyperledger Fabric CA's User Guide <https://hyperledger-fabric-ca.readthedocs.io/en/latest/>
    fabric-sdks
    txflow
    discovery-overview

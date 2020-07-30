@@ -1,0 +1,38 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: $(SourceBranchName)-$(Date:yyyyMMdd)$(Rev:.rrr)
+trigger: none
+pr:
+  - master
+  - release-2.*
+
+stages:
+  - stage: DocBuild
+    dependsOn: []
+    jobs:
+      - job: DocBuild
+        pool:
+          vmImage: ubuntu-18.04
+        steps:
+          - checkout: self
+            path: 'fabric'
+            displayName: Checkout Fabric Code
+          - script: make docs
+            displayName: Build Documentation
+          - publish: 'docs/_build/html'
+            displayName: Publish Documentation Artifacts
+
+  - stage: LinkCheck
+    dependsOn: []
+    jobs:
+      - job: LinkCheck
+        pool:
+          vmImage: ubuntu-18.04
+        steps:
+          - checkout: self
+            path: 'fabric'
+            displayName: Checkout Fabric Code
+          - script: make docs-linkcheck
+            displayName: Check for Broken Links

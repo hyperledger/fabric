@@ -70,10 +70,10 @@ Hyperledger Fabric states have multiple properties, making them vectors rather
 than scalars.*
 
 Notice how each individual paper starts with the empty state, which is
-technically a [`nil`](https://en.wikipedia.org/wiki/Null_(SQL)) state for the
-paper, as it doesn't exist! See how paper `00001` is brought into existence by
-the **issue** transaction, and how it is subsequently updated as a result of the
-**buy** and **redeem** transactions.
+technically a `nil` state for the paper, as it doesn't exist! See how 
+paper `00001` is brought into existence by the **issue** transaction, 
+and how it is subsequently updated as a result of the **buy** and **redeem** 
+transactions.
 
 Notice how each state is self-describing; each property has a name and a value.
 Although all our commercial papers currently have the same properties, this need

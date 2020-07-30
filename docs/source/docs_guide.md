@@ -96,19 +96,19 @@ fabric/docs
 ```
 
 Spend a little time navigating the [docs
-folder](https://github.com/hyperledger/fabric/tree/master/docs) in the
+folder](https://github.com/hyperledger/fabric/tree/{BRANCH}/docs) in the
 Hyperledger Fabric repository. Click on the following links to see how different
 source files map to their corresponding published topics.
 
-* [`/docs/source/index.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/index.rst) maps to [Hyperledger Fabric title page](https://hyperledger-fabric.readthedocs.io/en/master/)
+* [`/docs/source/index.rst`](https://raw.githubusercontent.com/hyperledger/fabric/{BRANCH}/docs/source/index.rst) maps to [Hyperledger Fabric title page](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/)
 
-* [`/docs/source/developapps/developing-applications.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/developapps/developing_applications.rst)
+* [`/docs/source/developapps/developing-applications.rst`](https://raw.githubusercontent.com/hyperledger/fabric/{BRANCH}/docs/source/developapps/developing_applications.rst)
   maps to [Developing
-  applications](https://hyperledger-fabric.readthedocs.io/en/master/developapps/developing_applications.html)
+  applications](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/developapps/developing_applications.html)
 
-* [`/docs/source/peers/peers.md`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/peers/peers.md)
+* [`/docs/source/peers/peers.md`](https://raw.githubusercontent.com/hyperledger/fabric/{BRANCH}/docs/source/peers/peers.md)
   maps to
-  [Peers](https://hyperledger-fabric.readthedocs.io/en/master/peers/peers.html)
+  [Peers](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/peers/peers.html)
 
 We'll see how to make changes to these files a little later.
 
@@ -190,46 +190,36 @@ Use these simple steps to build the documentation.
 [`fabric-i18n`](https://github.com/hyperledger/fabric-docs-i18n) repository to
 your GitHub account.
 
-2. Install the following prerequisites; you may need to adjust depending on your
-   OS:
-
-   * [Python 3.7](https://wiki.python.org/moin/BeginnersGuide/Download)
-   * [Pipenv](https://docs.pipenv.org/en/latest/#install-pipenv-today)
+2. Install Docker
 
 3. For US English:
    ```bash
-   cd $HOME/git
    git clone git@github.com:hyperledger/fabric.git
-   cd fabric/docs
-   pipenv install
-   pipenv shell
-   make html
+   cd fabric
+   make docs
    ```
 
    For Malayalam (for example):
    ```bash
-   cd $HOME/git
    git clone git@github.com:hyperledger/fabric-docs-i18n.git
    cd fabric-docs-18n/docs/locale/ml_IN
-   pipenv install
-   pipenv shell
-   make -e SPHINXOPTS="-D language='ml'" html
+   make -e SPHINXOPTS="-D language='ml'" docs
    ```
 
-   The `make` command generates documentation html files in the `build/html/`
+   The `make` command generates documentation html files in the `docs/_build/html`
    folder which you can now view locally; simply navigate your browser to the
-   `build/html/index.html` file.
+   `docs/_build/html/index.html` file.
 
 4. Now make a small change to a file, and rebuild the documentation to verify
    that your change was as expected. Every time you make a change to the
-   documentation you will of course need to rerun `make html`.
+   documentation you will of course need to rerun `make docs`.
 
 5. If you'd like, you may also run a local web server with the following
    commands (or equivalent depending on your OS):
 
    ```bash
    sudo apt-get install apache2
-   cd build/html
+   cd docs/_build/html
    sudo cp -r * /var/www/html/
    ```
 

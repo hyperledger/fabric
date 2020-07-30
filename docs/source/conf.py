@@ -19,6 +19,7 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
+import re
 import sys
 sys.path.insert(0, os.path.abspath('.'))
 
@@ -26,7 +27,8 @@ sys.path.insert(0, os.path.abspath('.'))
 import sphinx_rtd_theme
 
 placeholder_replacements = {
-    "{BRANCH}" : "master"
+    "{BRANCH}" : "master",
+    "{BRANCH_DOC}": "latest" # Used to target the correct ReadTheDocs distribution version
 }
 
 # -- General configuration ------------------------------------------------
@@ -218,3 +220,11 @@ linkcheck_anchors = False
 
 # Increase the linkcheck timeout to 5 seconds
 linkcheck_timeout = 5
+
+def entire_domain(host):
+    return r"http.?://" + re.escape(host) + r"($|/.*)"
+
+linkcheck_ignore = [
+    # Skip github.com until proper rate-limiting or authenticated requests are available: https://github.com/sphinx-doc/sphinx/issues/7388
+    entire_domain("github.com")
+]

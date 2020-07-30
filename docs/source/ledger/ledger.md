@@ -27,7 +27,7 @@ In this topic, we're going to cover:
 A ledger contains the current state of a business as a journal of transactions.
 The earliest European and Chinese ledgers date from almost 1000 years ago, and
 the Sumerians had [stone
-ledgers](http://www.sciencephoto.com/media/686227/view/accounting-ledger-sumerian-cuneiform)
+ledgers](https://www.sciencephoto.com/media/686227/view/accounting-ledger-sumerian-cuneiform)
 4000 years ago -- but let's start with a more up-to-date example!
 
 You're probably used to looking at your bank account. What's most important to

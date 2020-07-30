@@ -18,8 +18,7 @@ approved by channel members, and then deployed when the chaincode definition
 is committed to the channel. The collection file needs to be the same for all
 channel members. If you are using the peer CLI to approve and commit the
 chaincode definition, use the ``--collections-config`` flag to specify the path
-to the collection definition file. If you are using the Fabric SDK for Node.js,
-visit `How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-chaincode-lifecycle.html>`_.
+to the collection definition file.
 To use the `previous lifecycle process <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_ to deploy a private data collection,
 use the ``--collections-config`` flag when `instantiating your chaincode <https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html#peer-chaincode-instantiate>`_.
 

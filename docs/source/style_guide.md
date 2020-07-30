@@ -6,9 +6,9 @@ While this style guide will also refer to best practices using ReStructured Text
 
 **When in doubt, use the docs themselves for guidance on how to format things.**
 
-* [For RST formatting](http://hyperledger-fabric.readthedocs.io/en/release-1.4/channel_update_tutorial.html).
+* [For RST formatting](http://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/channel_update_tutorial.html).
 
-* [For Markdown formatting](http://hyperledger-fabric.readthedocs.io/en/release-1.4/peers/peers.html).
+* [For Markdown formatting](http://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/peers/peers.html).
 
 If you just want to look at how things are formatted, you can navigate to the Fabric repo to look at the raw file by clicking on `Edit on Github` link in the upper right hand corner of the page. Then click the `Raw` tab. This will show you the formatting of the doc. **Do not attempt to edit the file on Github.** If you want to make a change, clone the repo and follow the instructions in [Contributing](./CONTRIBUTING.html) for creating pull requests.
 

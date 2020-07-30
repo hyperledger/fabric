@@ -119,7 +119,7 @@ Once you have gathered all of the certificates and MSPs you need, you're almost 
 Create a peer
 ~~~~~~~~~~~~~
 
-Before you can create a peer, you will need to customize the configuration file for the peer. In Fabric, this file is called ``core.yaml``. You can find a sample ``core.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml>`_.
+Before you can create a peer, you will need to customize the configuration file for the peer. In Fabric, this file is called ``core.yaml``. You can find a sample ``core.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/{BRANCH}/sampleconfig/core.yaml>`_.
 
 As you can see in the file, there are quite a number of parameters you either have the option to set or will need to set for your node to work properly. In general, if you do not have the need to change a tuning value, leave it alone. You will, however, likely need to adjust the various addresses, specify the database type you want to use, as well as to specify where the MSP for the node is located.
 
@@ -156,7 +156,7 @@ Create an ordering node
 
 Unlike the creation of a peer, you will need to create a genesis block (or reference a block that has already been created, if adding an ordering node to an existing ordering service) and specify the path to it before launching the ordering node.
 
-In Fabric, this configuration file for ordering nodes is called ``orderer.yaml``. You can find a sample ``orderer.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/master/sampleconfig/orderer.yaml>`__. Note that ``orderer.yaml`` is different than the "genesis block" of an ordering service. This block, which includes the initial configuration of the orderer system channel, must be created before an ordering node is created because it is used to bootstrap the node.
+In Fabric, this configuration file for ordering nodes is called ``orderer.yaml``. You can find a sample ``orderer.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/{BRANCH}/sampleconfig/orderer.yaml>`__. Note that ``orderer.yaml`` is different than the "genesis block" of an ordering service. This block, which includes the initial configuration of the orderer system channel, must be created before an ordering node is created because it is used to bootstrap the node.
 
 As with the peer, you will see that there are quite a number of parameters you either have the option to set or will need to set for your node to work properly. In general, if you do not have the need to change a tuning value, leave it alone.
 

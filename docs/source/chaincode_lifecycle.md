@@ -148,7 +148,7 @@ consistent across organizations:
   endorse a transaction.
 - **Collection Configuration:** The path to a private data collection definition
   file associated with your chaincode. For more information about private data
-  collections, see the [Private Data architecture reference](https://hyperledger-fabric.readthedocs.io/en/{BRANCH}/private-data-arch.html).
+  collections, see the [Private Data architecture reference](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/private-data-arch.html).
 - **ESCC/VSCC Plugins:** The name of a custom endorsement or validation
   plugin to be used by this chaincode.
 - **Initialization:** If you use the low level APIs provided by the Fabric Chaincode
