@@ -228,12 +228,14 @@ func TestGenerateSignCertificate(t *testing.T) {
 	require.Contains(t, cert.Subject.OrganizationalUnit, ous[1])
 
 	// make sure sans are correctly set
-	sans := []string{testName2, testIP}
+	sans := []string{testName2, testName3, testIP}
 	cert, err = rootCA.SignCertificate(certDir, testName, nil, sans, &priv.PublicKey,
 		x509.KeyUsageDigitalSignature, []x509.ExtKeyUsage{})
 	require.NoError(t, err)
 	require.Contains(t, cert.DNSNames, testName2)
+	require.Contains(t, cert.DNSNames, testName3)
 	require.Contains(t, cert.IPAddresses, net.ParseIP(testIP).To4())
+	require.Equal(t, len(cert.DNSNames), 2)
 
 	// check to make sure the signed public key was stored
 	pemFile := filepath.Join(certDir, testName+"-cert.pem")

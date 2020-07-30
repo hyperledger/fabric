@@ -147,7 +147,7 @@ func (ca *CA) SignCertificate(
 		if ip != nil {
 			template.IPAddresses = append(template.IPAddresses, ip)
 		} else {
-			template.DNSNames = append(template.DNSNames, alternateNames...)
+			template.DNSNames = append(template.DNSNames, san)
 		}
 	}
 
