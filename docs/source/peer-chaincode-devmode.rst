@@ -14,6 +14,23 @@ single running instance can be accessed from multiple channels.
 
 All commands are executed from the ``fabric`` folder.
 
+Setup environment
+-----------------
+Build binaries for orderer, peer and configtxgen.
+::
+    make orderer; make peer; make configtxgen;
+::
+
+Setup PATH environment variable to include orderer and peer binaries.
+::
+    export PATH=$(pwd)/.build/bin:$PATH
+::
+
+Setup FABRIC_CFG_PATH to point at sampleconfig.
+::
+    export FABRIC_CFG_PATH=$(pwd)/sampleconfig
+::
+
 Start the orderer
 -----------------
 
@@ -66,7 +83,7 @@ Start the chaincode
 
     cd examples/chaincode/go/example02/cmd
     go build -o example02
-    CORE_CHAINCODE_LOGLEVEL=debug CORE_PEER_ADDRESS=127.0.0.1:7052 CORE_CHAINCODE_ID_NAME=mycc:0 ./example02
+    CORE_CHAINCODE_LOGLEVEL=debug CORE_PEER_TLS_ENABLED=false CORE_CHAINCODE_ID_NAME=mycc ./example02 -peer.address 127.0.0.1:7052
 
 The chaincode is started with peer and chaincode logs indicating successful registration with the peer.
 Note that at this stage the chaincode is not associated with any channel. This is done in subsequent steps
