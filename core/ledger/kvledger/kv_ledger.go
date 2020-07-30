@@ -769,10 +769,14 @@ func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, err
 	return l, nil
 }
 
-// Close closes `KVLedger`
+// Close closes `KVLedger`.
+// Currently this function is only used by test code. The caller should make sure no in-progress commit
+// or snapshot generation before calling this function. Otherwise, the ledger may have unknown behavior
+// and cause panic.
 func (l *kvLedger) Close() {
 	l.blockStore.Shutdown()
 	l.txmgr.Shutdown()
+	l.snapshotMgr.shutdown()
 }
 
 type blocksItr struct {
