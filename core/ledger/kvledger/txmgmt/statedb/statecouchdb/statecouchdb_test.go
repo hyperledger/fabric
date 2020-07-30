@@ -1888,6 +1888,17 @@ func TestDataExportImport(t *testing.T) {
 	})
 }
 
+func TestVersionFromSnapshotValue(t *testing.T) {
+	vdbEnv.init(t, nil)
+	defer vdbEnv.cleanup()
+
+	commontests.TestVersionFromSnapshotValue(
+		t,
+		vdbEnv.DBProvider,
+		VersionFromSnapshotValue,
+	)
+}
+
 func constructVersionedValueForTest(dbVal []byte) (*statedb.VersionedValue, error) {
 	v, err := decodeValueVersionMetadata(dbVal)
 	if err != nil {

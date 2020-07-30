@@ -19,10 +19,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger"
 	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -136,7 +138,7 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 			{
 				Payload: &peer.CollectionConfig_StaticCollectionConfig{
 					StaticCollectionConfig: &peer.StaticCollectionConfig{
-						Name: "coll1",
+						Name: "coll",
 					},
 				},
 			},
@@ -785,4 +787,84 @@ func addDummyEntryInCollectionConfigHistory(
 			},
 		),
 	)
+}
+
+func TestMostRecentCollectionConfigFetcher(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+
+	ledgerID := "test-ledger"
+	chaincodeName := "test-chaincode"
+
+	implicitCollectionName := implicitcollection.NameForOrg("test-org")
+	implicitCollection := &pb.StaticCollectionConfig{
+		Name: implicitCollectionName,
+	}
+	mockDeployedCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
+	mockDeployedCCInfoProvider.GenerateImplicitCollectionForOrgReturns(implicitCollection)
+
+	provider := testutilNewProvider(conf, t, mockDeployedCCInfoProvider)
+	explicitCollectionName := "explicit-coll"
+	explicitCollection := &pb.StaticCollectionConfig{
+		Name: explicitCollectionName,
+	}
+	testutilPersistExplicitCollectionConfig(
+		t,
+		provider,
+		mockDeployedCCInfoProvider,
+		ledgerID,
+		chaincodeName,
+		testutilCollConfigPkg(
+			[]*pb.StaticCollectionConfig{
+				explicitCollection,
+			},
+		),
+		10,
+	)
+
+	fetcher := &mostRecentCollectionConfigFetcher{
+		DeployedChaincodeInfoProvider: mockDeployedCCInfoProvider,
+		Retriever:                     provider.configHistoryMgr.GetRetriever(ledgerID),
+	}
+
+	testcases := []struct {
+		name                 string
+		lookupCollectionName string
+		expectedOutput       *pb.StaticCollectionConfig
+	}{
+		{
+			name:                 "lookup-implicit-collection",
+			lookupCollectionName: implicitCollectionName,
+			expectedOutput:       implicitCollection,
+		},
+
+		{
+			name:                 "lookup-explicit-collection",
+			lookupCollectionName: explicitCollectionName,
+			expectedOutput:       explicitCollection,
+		},
+
+		{
+			name:                 "lookup-non-existing-explicit-collection",
+			lookupCollectionName: "non-existing-explicit-collection",
+			expectedOutput:       nil,
+		},
+	}
+
+	for _, testcase := range testcases {
+		t.Run(
+			testcase.name,
+			func(t *testing.T) {
+				config, err := fetcher.CollectionInfo(chaincodeName, testcase.lookupCollectionName)
+				require.NoError(t, err)
+				require.True(t, proto.Equal(testcase.expectedOutput, config))
+			},
+		)
+	}
+
+	t.Run("explicit-collection-lookup-causes-error", func(t *testing.T) {
+		provider.configHistoryMgr.Close()
+		_, err := fetcher.CollectionInfo(chaincodeName, explicitCollectionName)
+		require.Contains(t, err.Error(), "error while fetching most recent collection config")
+	})
 }

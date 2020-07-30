@@ -46,9 +46,10 @@ type StateDBConfig struct {
 // DBProvider encapsulates other providers such as VersionedDBProvider and
 // BookeepingProvider which are required to create DB for a channel
 type DBProvider struct {
-	VersionedDBProvider statedb.VersionedDBProvider
-	HealthCheckRegistry ledger.HealthCheckRegistry
-	bookkeepingProvider *bookkeeping.Provider
+	VersionedDBProvider      statedb.VersionedDBProvider
+	HealthCheckRegistry      ledger.HealthCheckRegistry
+	bookkeepingProvider      *bookkeeping.Provider
+	versionFromSnapshotValue versionFromSnapshotValueFunc
 }
 
 // NewDBProvider constructs an instance of DBProvider
@@ -61,19 +62,27 @@ func NewDBProvider(
 ) (*DBProvider, error) {
 
 	var vdbProvider statedb.VersionedDBProvider
+	var versionFromSnapshotValue func(snapshotValue []byte) ([]byte, error)
 	var err error
 
 	if stateDBConf != nil && stateDBConf.StateDatabase == ledger.CouchDB {
 		if vdbProvider, err = statecouchdb.NewVersionedDBProvider(stateDBConf.CouchDB, metricsProvider, sysNamespaces); err != nil {
 			return nil, err
 		}
+		versionFromSnapshotValue = statecouchdb.VersionFromSnapshotValue
 	} else {
 		if vdbProvider, err = stateleveldb.NewVersionedDBProvider(stateDBConf.LevelDBPath); err != nil {
 			return nil, err
 		}
+		versionFromSnapshotValue = stateleveldb.VersionFromSnapshotValue
 	}
 
-	dbProvider := &DBProvider{vdbProvider, healthCheckRegistry, bookkeeperProvider}
+	dbProvider := &DBProvider{
+		VersionedDBProvider:      vdbProvider,
+		HealthCheckRegistry:      healthCheckRegistry,
+		bookkeepingProvider:      bookkeeperProvider,
+		versionFromSnapshotValue: versionFromSnapshotValue,
+	}
 
 	err = dbProvider.RegisterHealthChecker()
 	if err != nil {
@@ -352,6 +361,14 @@ func derivePvtDataNs(namespace, collection string) string {
 
 func deriveHashedDataNs(namespace, collection string) string {
 	return namespace + nsJoiner + hashDataPrefix + collection
+}
+
+func decodeHashedDataNsColl(hashedDataNs string) (string, string, error) {
+	strs := strings.Split(hashedDataNs, nsJoiner+hashDataPrefix)
+	if len(strs) != 2 {
+		return "", "", errors.Errorf("not a valid hashedDataNs [%s]", hashedDataNs)
+	}
+	return strs[0], strs[1], nil
 }
 
 func isPvtdataNs(namespace string) bool {
