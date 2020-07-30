@@ -99,7 +99,7 @@ func (m *LedgerMgr) CreateLedger(id string, genesisBlock *common.Block) (ledger.
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	logger.Infof("Creating ledger [%s] with genesis block", id)
-	l, err := m.ledgerProvider.Create(genesisBlock)
+	l, err := m.ledgerProvider.CreateFromGenesisBlock(genesisBlock)
 	if err != nil {
 		return nil, err
 	}

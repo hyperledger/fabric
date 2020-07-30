@@ -46,7 +46,7 @@ func testGenerateSampleRWSet(t *testing.T) []byte {
 
 	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gbHash := protoutil.BlockHeaderHash(gb.Header)
-	ledger, err := provider.Create(gb)
+	ledger, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer ledger.Close()
 

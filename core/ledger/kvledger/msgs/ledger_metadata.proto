@@ -14,9 +14,17 @@ package msgs;
 enum Status {
     ACTIVE = 0;
     INACTIVE = 1;
+    UNDER_CONSTRUCTION = 2;
+}
+
+// BootSnapshotMetadata captures the metadata of the snapshot that was used to bootstrap the ledger
+message BootSnapshotMetadata {
+    string singableMetadata = 1; // signable metadata of bootstrapping snapshot in json string
+    string additionalMetadata = 2; // additional metadata of bootstrapping snapshot in json string
 }
 
 // LedgerMetadata specifies the metadata of a ledger
 message LedgerMetadata {
     Status status = 1;
+    BootSnapshotMetadata boot_snapshot_metadata =2;
 }

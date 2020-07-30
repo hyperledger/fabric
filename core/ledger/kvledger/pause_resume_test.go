@@ -9,9 +9,9 @@ package kvledger
 import (
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +30,7 @@ func TestPauseAndResume(t *testing.T) {
 	for i := 0; i < numLedgers; i++ {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
 		genesisBlocks[i] = genesisBlock
-		provider.Create(genesisBlock)
+		provider.CreateFromGenesisBlock(genesisBlock)
 	}
 	activeLedgerIDs, err = provider.List()
 	require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestPauseAndResume(t *testing.T) {
 
 	// open paused channel should fail
 	_, err = provider.Open(constructTestLedgerID(3))
-	require.Equal(t, ErrInactiveLedger, err)
+	require.EqualError(t, err, "cannot open ledger [ledger_000003], ledger status is [INACTIVE]")
 }
 
 func TestPauseAndResumeErrors(t *testing.T) {
@@ -79,9 +79,9 @@ func TestPauseAndResumeErrors(t *testing.T) {
 
 	ledgerID := constructTestLedgerID(0)
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(ledgerID)
-	provider.Create(genesisBlock)
+	provider.CreateFromGenesisBlock(genesisBlock)
 	// purposely set an invalid metatdata
-	provider.idStore.db.Put(provider.idStore.encodeLedgerKey(ledgerID, metadataKeyPrefix), []byte("invalid"), true)
+	provider.idStore.db.Put(metadataKey(ledgerID), []byte("invalid"), true)
 
 	// fail if provider is open (e.g., peer is up running)
 	err := PauseChannel(conf.RootFSPath, constructTestLedgerID(0))
@@ -121,23 +121,14 @@ func assertLedgerStatus(t *testing.T, provider *Provider, genesisBlocks []*commo
 	}
 
 	for i := 0; i < numLedgers; i++ {
-		active, exists, err := s.ledgerIDActive(constructTestLedgerID(i))
+		m, err := s.getLedgerMetadata(constructTestLedgerID(i))
 		require.NoError(t, err)
-		if !contains(pausedLedgers, i) {
-			require.True(t, active)
-			require.True(t, exists)
+		require.NotNil(t, m)
+		if contains(pausedLedgers, i) {
+			require.Equal(t, msgs.Status_INACTIVE, m.GetStatus())
 		} else {
-			require.False(t, active)
-			require.True(t, exists)
+			require.Equal(t, msgs.Status_ACTIVE, m.GetStatus())
 		}
-
-		// every channel (paused or non-paused) should have an entry for genesis block
-		gbBytes, err := s.db.Get(s.encodeLedgerKey(constructTestLedgerID(i), ledgerKeyPrefix))
-		require.NoError(t, err)
-		gb := &common.Block{}
-		require.NoError(t, proto.Unmarshal(gbBytes, gb))
-		require.True(t, proto.Equal(gb, genesisBlocks[i]), "proto messages are not equal")
-
 	}
 }
 

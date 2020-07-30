@@ -59,7 +59,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 
 	_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	gbHash := protoutil.BlockHeaderHash(gb.Header)
-	lg, _ := provider.Create(gb)
+	lg, _ := provider.CreateFromGenesisBlock(gb)
 	defer lg.Close()
 
 	// construct pvtData and pubRwSet (i.e., hashed rw set)

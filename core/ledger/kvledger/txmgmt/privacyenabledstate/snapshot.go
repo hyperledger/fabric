@@ -109,7 +109,7 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 
 // ImportPubStateAndPvtStateHashes imports the public state and private state hashes from the corresponding
 // files in the snapshotDir
-func (p *DBProvider) BootstapDBFromPubStateAndPvtStateHashes(dbname string, savepoint *version.Height, snapshotDir string) error {
+func (p *DBProvider) ImportFromSnapshot(dbname string, savepoint *version.Height, snapshotDir string) error {
 	worldStateSnapshotReader, dbValueFormat, err := newWorldStateSnapshotReader(snapshotDir)
 	if err != nil {
 		return err

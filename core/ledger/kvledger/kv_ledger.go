@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -46,6 +47,7 @@ var (
 // This implementation provides a key-value based data model
 type kvLedger struct {
 	ledgerID               string
+	bootSnapshotMetadata   *snapshotMetadata
 	blockStore             *blkstorage.BlockStore
 	pvtdataStore           *pvtdatastorage.Store
 	txmgr                  *txmgr.LockBasedTxMgr
@@ -57,6 +59,7 @@ type kvLedger struct {
 	commitHash             []byte
 	hashProvider           ledger.HashProvider
 	config                 *ledger.Config
+
 	// isPvtDataStoreAheadOfBlockStore is read during missing pvtData
 	// reconciliation and may be updated during a regular block commit.
 	// Hence, we use atomic value to ensure consistent read.
@@ -65,6 +68,7 @@ type kvLedger struct {
 
 type lgrInitializer struct {
 	ledgerID                 string
+	bootSnapshotMetadata     *snapshotMetadata
 	blockStore               *blkstorage.BlockStore
 	pvtdataStore             *pvtdatastorage.Store
 	stateDB                  *privacyenabledstate.DB
@@ -84,13 +88,14 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 	ledgerID := initializer.ledgerID
 	logger.Debugf("Creating KVLedger ledgerID=%s: ", ledgerID)
 	l := &kvLedger{
-		ledgerID:        ledgerID,
-		blockStore:      initializer.blockStore,
-		pvtdataStore:    initializer.pvtdataStore,
-		historyDB:       initializer.historyDB,
-		hashProvider:    initializer.hashProvider,
-		config:          initializer.config,
-		blockAPIsRWLock: &sync.RWMutex{},
+		ledgerID:             ledgerID,
+		bootSnapshotMetadata: initializer.bootSnapshotMetadata,
+		blockStore:           initializer.blockStore,
+		pvtdataStore:         initializer.pvtdataStore,
+		historyDB:            initializer.historyDB,
+		hashProvider:         initializer.hashProvider,
+		config:               initializer.config,
+		blockAPIsRWLock:      &sync.RWMutex{},
 	}
 
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(&collectionInfoRetriever{ledgerID, l, initializer.ccInfoProvider})
@@ -221,6 +226,14 @@ func (l *kvLedger) lastPersistedCommitHash() ([]byte, error) {
 		return nil, nil
 	}
 
+	if l.bootSnapshotMetadata != nil && l.bootSnapshotMetadata.ChannelHeight == bcInfo.Height {
+		logger.Debugw(
+			"Ledger is starting first time after creation from a snapshot. Retrieveing last commit hash from boot snapshot metadata",
+			"ledger", l.ledgerID,
+		)
+		return hex.DecodeString(l.bootSnapshotMetadata.LastBlockCommitHashInHex)
+	}
+
 	logger.Debugf("Fetching block [%d] to retrieve the currentCommitHash", bcInfo.Height-1)
 	block, err := l.GetBlockByNumber(bcInfo.Height - 1)
 	if err != nil {
@@ -270,57 +283,65 @@ func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
 		logger.Debug("Block storage is empty.")
 		return nil
 	}
-	lastAvailableBlockNum := info.Height - 1
+	lastBlockInBlockStore := info.Height - 1
 	recoverables := []recoverable{l.txmgr}
 	if l.historyDB != nil {
 		recoverables = append(recoverables, l.historyDB)
 	}
 	recoverers := []*recoverer{}
 	for _, recoverable := range recoverables {
-		recoverFlag, firstBlockNum, err := recoverable.ShouldRecover(lastAvailableBlockNum)
+		// nextRequiredBlock is nothing but the nextBlockNum expected by the state DB.
+		// In other words, the nextRequiredBlock is nothing but the height of stateDB.
+		recoverFlag, nextRequiredBlock, err := recoverable.ShouldRecover(lastBlockInBlockStore)
 		if err != nil {
 			return err
 		}
 
-		// During ledger reset/rollback, the state database must be dropped. If the state database
-		// uses goleveldb, the reset/rollback code itself drop the DB. If it uses couchDB, the
-		// DB must be dropped manually. Hence, we compare (only for the stateDB) the height
-		// of the state DB and block store to ensure that the state DB is dropped.
+		if l.bootSnapshotMetadata != nil {
+			lastBlockInSnapshot := l.bootSnapshotMetadata.ChannelHeight - 1
+			if nextRequiredBlock <= lastBlockInSnapshot {
+				return errors.Errorf(
+					"recovery for DB [%s] not possible. Ledger [%s] is created from a snapshot. Last block in snapshot = [%d], DB needs block [%d] onward",
+					recoverable.Name(),
+					l.ledgerID,
+					lastBlockInSnapshot,
+					nextRequiredBlock,
+				)
+			}
+		}
 
-		// firstBlockNum is nothing but the nextBlockNum expected by the state DB.
-		// In other words, the firstBlockNum is nothing but the height of stateDB.
-		if firstBlockNum > lastAvailableBlockNum+1 {
+		if nextRequiredBlock > lastBlockInBlockStore+1 {
 			dbName := recoverable.Name()
 			return fmt.Errorf("the %s database [height=%d] is ahead of the block store [height=%d]. "+
 				"This is possible when the %s database is not dropped after a ledger reset/rollback. "+
 				"The %s database can safely be dropped and will be rebuilt up to block store height upon the next peer start.",
-				dbName, firstBlockNum, lastAvailableBlockNum+1, dbName, dbName)
+				dbName, nextRequiredBlock, lastBlockInBlockStore+1, dbName, dbName)
 		}
 		if recoverFlag {
-			recoverers = append(recoverers, &recoverer{firstBlockNum, recoverable})
+			recoverers = append(recoverers, &recoverer{nextRequiredBlock, recoverable})
 		}
 	}
 	if len(recoverers) == 0 {
 		return nil
 	}
 	if len(recoverers) == 1 {
-		return l.recommitLostBlocks(recoverers[0].firstBlockNum, lastAvailableBlockNum, recoverers[0].recoverable)
+		return l.recommitLostBlocks(recoverers[0].nextRequiredBlock, lastBlockInBlockStore, recoverers[0].recoverable)
 	}
 
 	// both dbs need to be recovered
-	if recoverers[0].firstBlockNum > recoverers[1].firstBlockNum {
+	if recoverers[0].nextRequiredBlock > recoverers[1].nextRequiredBlock {
 		// swap (put the lagger db at 0 index)
 		recoverers[0], recoverers[1] = recoverers[1], recoverers[0]
 	}
-	if recoverers[0].firstBlockNum != recoverers[1].firstBlockNum {
+	if recoverers[0].nextRequiredBlock != recoverers[1].nextRequiredBlock {
 		// bring the lagger db equal to the other db
-		if err := l.recommitLostBlocks(recoverers[0].firstBlockNum, recoverers[1].firstBlockNum-1,
+		if err := l.recommitLostBlocks(recoverers[0].nextRequiredBlock, recoverers[1].nextRequiredBlock-1,
 			recoverers[0].recoverable); err != nil {
 			return err
 		}
 	}
 	// get both the db upto block storage
-	return l.recommitLostBlocks(recoverers[1].firstBlockNum, lastAvailableBlockNum,
+	return l.recommitLostBlocks(recoverers[1].nextRequiredBlock, lastBlockInBlockStore,
 		recoverers[0].recoverable, recoverers[1].recoverable)
 }
 
@@ -532,7 +553,7 @@ func (l *kvLedger) commit(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *l
 	// we need to ensure that only after a genesis block, commitHash is computed
 	// and added to the block. In other words, only after joining a new channel
 	// or peer reset, the commitHash would be added to the block
-	if block.Header.Number == 1 || l.commitHash != nil {
+	if block.Header.Number == 1 || len(l.commitHash) != 0 {
 		l.addBlockCommitHash(pvtdataAndBlock.Block, updateBatchBytes)
 	}
 

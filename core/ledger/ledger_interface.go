@@ -128,10 +128,12 @@ type SnapshotsConfig struct {
 
 // PeerLedgerProvider provides handle to ledger instances
 type PeerLedgerProvider interface {
-	// Create creates a new ledger with the given genesis block.
+	// CreateFromGenesisBlock creates a new ledger with the given genesis block.
 	// This function guarantees that the creation of ledger and committing the genesis block would an atomic action
 	// The chain id retrieved from the genesis block is treated as a ledger id
-	Create(genesisBlock *common.Block) (PeerLedger, error)
+	CreateFromGenesisBlock(genesisBlock *common.Block) (PeerLedger, error)
+	// CreateFromSnapshot creates a new ledger from a snapshot
+	CreateFromSnapshot(snapshotDir string) (PeerLedger, error)
 	// Open opens an already created ledger
 	Open(ledgerID string) (PeerLedger, error)
 	// Exists tells whether the ledger with given id exists
