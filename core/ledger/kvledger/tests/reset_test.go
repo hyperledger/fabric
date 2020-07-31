@@ -215,5 +215,5 @@ func TestResetLedgerWithoutDroppingDBs(t *testing.T) {
 	// populateLedger() stores 8 block in total
 	require.EqualError(t, err, "the state database [height=9] is ahead of the block store [height=1]. "+
 		"This is possible when the state database is not dropped after a ledger reset/rollback. "+
-		"The state database can safely be dropped and will be rebuilt up to block store height upon the next peer start.")
+		"The state database can safely be dropped and will be rebuilt up to block store height upon the next peer start")
 }

@@ -18,6 +18,8 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
+// PurgeMgr keeps track of the expiry of private data and the private data hashes based on block-to-live
+// parameter specified in the corresponding collection config
 type PurgeMgr struct {
 	btlPolicy pvtdatapolicy.BTLPolicy
 	db        *privacyenabledstate.DB
@@ -73,7 +75,7 @@ func (p *PurgeMgr) WaitForPrepareToFinish() {
 	p.lock.Unlock()
 }
 
-// UpdateExpirtyInfoPvtDataOfOldBlocks updates the existing expiry entries in the expiryKeeper with the given pvtUpdates
+// UpdateExpiryInfoOfPvtDataOfOldBlocks updates the existing expiry entries in the expiryKeeper with the given pvtUpdates
 func (p *PurgeMgr) UpdateExpiryInfoOfPvtDataOfOldBlocks(pvtUpdates *privacyenabledstate.PvtUpdateBatch) error {
 	builder := newExpiryScheduleBuilder(p.btlPolicy)
 	pvtUpdateCompositeKeyMap := pvtUpdates.ToCompositeKeyMap()
@@ -139,6 +141,9 @@ func (p *PurgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.Pvt
 	}
 }
 
+// UpdateExpiryInfo persists the expiry information for the private data and private data hashes
+// This function is expected to be invoked before the updates are applied to the statedb for the block
+// commit
 func (p *PurgeMgr) UpdateExpiryInfo(
 	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
 	hashedUpdates *privacyenabledstate.HashedUpdateBatch) error {

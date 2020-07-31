@@ -437,7 +437,9 @@ func (itr *resultsItr) Next() (commonledger.QueryResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	itr.updateRangeQueryInfo(queryResult)
+	if err := itr.updateRangeQueryInfo(queryResult); err != nil {
+		return nil, err
+	}
 	if queryResult == nil {
 		return nil, nil
 	}
@@ -459,9 +461,9 @@ func (itr *resultsItr) GetBookmarkAndClose() string {
 //                                  because, we do not know if the caller is again going to invoke Next() or not.
 //                            or b) the last key that was supplied in the original query (if the iterator is exhausted)
 // 2) The ItrExhausted - set to true if the iterator is going to return nil as a result of the Next() call
-func (itr *resultsItr) updateRangeQueryInfo(queryResult statedb.QueryResult) {
+func (itr *resultsItr) updateRangeQueryInfo(queryResult statedb.QueryResult) error {
 	if itr.rwSetBuilder == nil {
-		return
+		return nil
 	}
 
 	if queryResult == nil {
@@ -469,13 +471,16 @@ func (itr *resultsItr) updateRangeQueryInfo(queryResult statedb.QueryResult) {
 		// So, set the endKey to the actual endKey supplied in the query
 		itr.rangeQueryInfo.ItrExhausted = true
 		itr.rangeQueryInfo.EndKey = itr.endKey
-		return
+		return nil
 	}
 	versionedKV := queryResult.(*statedb.VersionedKV)
-	itr.rangeQueryResultsHelper.AddResult(rwsetutil.NewKVRead(versionedKV.Key, versionedKV.Version))
+	if err := itr.rangeQueryResultsHelper.AddResult(rwsetutil.NewKVRead(versionedKV.Key, versionedKV.Version)); err != nil {
+		return err
+	}
 	// Set the end key to the latest key retrieved by the caller.
 	// Because, the caller may actually not invoke the Next() function again
 	itr.rangeQueryInfo.EndKey = versionedKV.Key
+	return nil
 }
 
 // Close implements method in interface ledger.ResultsIterator

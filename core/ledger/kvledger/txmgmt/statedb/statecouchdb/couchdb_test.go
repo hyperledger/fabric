@@ -433,7 +433,7 @@ func testDBCreateDatabaseAndPersist(t *testing.T, config *ledger.CouchDBConfig) 
 
 	//Unmarshal the document to Asset structure
 	assetResp = &Asset{}
-	json.Unmarshal(dbGetResp.jsonValue, &assetResp)
+	require.NoError(t, json.Unmarshal(dbGetResp.jsonValue, &assetResp))
 
 	//Assert that the update was saved and retrieved
 	require.Equal(t, "bob", assetResp.Owner)
@@ -1470,13 +1470,13 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	for _, revdoc := range batchRevs {
 		if revdoc.ID == "marble01" {
 			//update the json with the rev and add to the batch
-			marble01Doc := addRevisionAndDeleteStatus(revdoc.Rev, byteJSON01, false)
+			marble01Doc := addRevisionAndDeleteStatus(t, revdoc.Rev, byteJSON01, false)
 			batchUpdateDocs = append(batchUpdateDocs, &couchDoc{jsonValue: marble01Doc, attachments: attachments1})
 		}
 
 		if revdoc.ID == "marble03" {
 			//update the json with the rev and add to the batch
-			marble03Doc := addRevisionAndDeleteStatus(revdoc.Rev, byteJSON03, false)
+			marble03Doc := addRevisionAndDeleteStatus(t, revdoc.Rev, byteJSON03, false)
 			batchUpdateDocs = append(batchUpdateDocs, &couchDoc{jsonValue: marble03Doc, attachments: attachments3})
 		}
 	}
@@ -1506,12 +1506,12 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 	for _, revdoc := range batchRevs {
 		if revdoc.ID == "marble02" {
 			//update the json with the rev and add to the batch
-			marble02Doc := addRevisionAndDeleteStatus(revdoc.Rev, byteJSON02, true)
+			marble02Doc := addRevisionAndDeleteStatus(t, revdoc.Rev, byteJSON02, true)
 			batchUpdateDocs = append(batchUpdateDocs, &couchDoc{jsonValue: marble02Doc, attachments: attachments1})
 		}
 		if revdoc.ID == "marble04" {
 			//update the json with the rev and add to the batch
-			marble04Doc := addRevisionAndDeleteStatus(revdoc.Rev, byteJSON04, true)
+			marble04Doc := addRevisionAndDeleteStatus(t, revdoc.Rev, byteJSON04, true)
 			batchUpdateDocs = append(batchUpdateDocs, &couchDoc{jsonValue: marble04Doc, attachments: attachments3})
 		}
 	}
@@ -1542,12 +1542,12 @@ func testBatchBatchOperations(t *testing.T, config *ledger.CouchDBConfig) {
 }
 
 //addRevisionAndDeleteStatus adds keys for version and chaincodeID to the JSON value
-func addRevisionAndDeleteStatus(revision string, value []byte, deleted bool) []byte {
+func addRevisionAndDeleteStatus(t *testing.T, revision string, value []byte, deleted bool) []byte {
 
 	//create a version mapping
 	jsonMap := make(map[string]interface{})
 
-	json.Unmarshal(value, &jsonMap)
+	require.NoError(t, json.Unmarshal(value, &jsonMap))
 
 	//add the revision
 	if revision != "" {

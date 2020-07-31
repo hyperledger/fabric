@@ -107,7 +107,7 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 	return snapshotFilesInfo, nil
 }
 
-// ImportPubStateAndPvtStateHashes imports the public state and private state hashes from the corresponding
+// ImportFromSnapshot imports the public state and private state hashes from the corresponding
 // files in the snapshotDir
 func (p *DBProvider) ImportFromSnapshot(dbname string, savepoint *version.Height, snapshotDir string) error {
 	worldStateSnapshotReader, dbValueFormat, err := newWorldStateSnapshotReader(snapshotDir)
@@ -117,9 +117,9 @@ func (p *DBProvider) ImportFromSnapshot(dbname string, savepoint *version.Height
 	defer worldStateSnapshotReader.Close()
 
 	if worldStateSnapshotReader.pubState == nil && worldStateSnapshotReader.pvtStateHashes == nil {
-		return p.VersionedDBProvider.BootstrapDBFromState(dbname, savepoint, nil, byte(0))
+		return p.VersionedDBProvider.ImportFromSnapshot(dbname, savepoint, nil, byte(0))
 	}
-	return p.VersionedDBProvider.BootstrapDBFromState(dbname, savepoint, worldStateSnapshotReader, dbValueFormat)
+	return p.VersionedDBProvider.ImportFromSnapshot(dbname, savepoint, worldStateSnapshotReader, dbValueFormat)
 }
 
 // snapshotWriter generates two files, a data file and a metadata file. The datafile contains a series of tuples <key, dbValue>

@@ -202,9 +202,5 @@ func (d *DB) CommitLostBlock(blockAndPvtdata *ledger.BlockAndPvtData) error {
 	} else {
 		logger.Debugf("Recommitting block [%d] to history database", block.Header.Number)
 	}
-
-	if err := d.Commit(block); err != nil {
-		return err
-	}
-	return nil
+	return d.Commit(block)
 }

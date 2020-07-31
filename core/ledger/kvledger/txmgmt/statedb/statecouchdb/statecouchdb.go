@@ -152,7 +152,8 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string, nsProvider state
 	return vdb, nil
 }
 
-func (provider *VersionedDBProvider) BootstrapDBFromState(
+// ImportFromSnapshot loads the public state and pvtdata hashes from the snapshot files previously generated
+func (provider *VersionedDBProvider) ImportFromSnapshot(
 	dbName string, savepoint *version.Height, itr statedb.FullScanIterator, dbValueFormat byte) error {
 	metadataDB, err := createCouchDatabase(provider.couchInstance, constructMetadataDBName(dbName))
 	if err != nil {

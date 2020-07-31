@@ -210,7 +210,7 @@ func TestImportStateErrorPropagation(t *testing.T) {
 	t.Run("wrong-value-format", func(t *testing.T) {
 		initEnv()
 		defer cleanup()
-		err := vdbProvider.BootstrapDBFromState(
+		err := vdbProvider.ImportFromSnapshot(
 			"test-db",
 			version.NewHeight(2, 2),
 			&dummyFullScanIter{},
@@ -223,7 +223,7 @@ func TestImportStateErrorPropagation(t *testing.T) {
 		initEnv()
 		defer cleanup()
 
-		err := vdbProvider.BootstrapDBFromState(
+		err := vdbProvider.ImportFromSnapshot(
 			"test-db",
 			version.NewHeight(2, 2),
 			&dummyFullScanIter{
@@ -240,7 +240,7 @@ func TestImportStateErrorPropagation(t *testing.T) {
 		defer cleanup()
 
 		vdbProvider.Close()
-		err := vdbProvider.BootstrapDBFromState("test-db", version.NewHeight(2, 2),
+		err := vdbProvider.ImportFromSnapshot("test-db", version.NewHeight(2, 2),
 			&dummyFullScanIter{
 				key: &statedb.CompositeKey{
 					Namespace: "ns",

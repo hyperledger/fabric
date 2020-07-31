@@ -300,11 +300,7 @@ func (s *Store) CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPv
 
 	// (4) commit the update batch to the pvtStore
 	logger.Debug("Committing the update batch to pvtdatastore")
-	if err := s.commitBatch(batch); err != nil {
-		return err
-	}
-
-	return nil
+	return s.commitBatch(batch)
 }
 
 func constructDataEntriesFromBlocksPvtData(blocksPvtData map[uint64][]*ledger.TxPvtData) []*dataEntry {
@@ -502,12 +498,7 @@ func addUpdatedMissingDataEntriesToUpdateBatch(batch *leveldbhelper.UpdateBatch,
 }
 
 func (s *Store) commitBatch(batch *leveldbhelper.UpdateBatch) error {
-	// commit the batch to the store
-	if err := s.db.WriteBatch(batch, true); err != nil {
-		return err
-	}
-
-	return nil
+	return s.db.WriteBatch(batch, true)
 }
 
 // TODO FAB-16293 -- GetLastUpdatedOldBlocksPvtData() can be removed either in v2.0 or in v2.1.

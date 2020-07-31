@@ -60,13 +60,13 @@ func testRangeQuery(t *testing.T, testcase string, stateData *statedb.UpdateBatc
 		db, err := testDBEnv.DBProvider.GetDBHandle("TestDB", nil)
 		require.NoError(t, err)
 		if stateData != nil {
-			db.ApplyUpdates(stateData, savepoint)
+			require.NoError(t, db.ApplyUpdates(stateData, savepoint))
 		}
 
 		itr, err := db.GetStateRangeScanIterator(ns, rqi.StartKey, rqi.EndKey)
 		require.NoError(t, err)
 		qv := &rangeQueryResultsValidator{}
-		qv.init(rqi, itr)
+		require.NoError(t, qv.init(rqi, itr))
 		isValid, err := qv.validate()
 		require.NoError(t, err)
 		require.Equal(t, expectedResult, isValid)

@@ -255,7 +255,9 @@ func (s *DB) ApplyPrivacyAwareUpdates(updates *UpdateBatch, height *version.Heig
 	combinedUpdates := updates.PubUpdates
 	addPvtUpdates(combinedUpdates, updates.PvtUpdates)
 	addHashedUpdates(combinedUpdates, updates.HashUpdates, !s.BytesKeySupported())
-	s.metadataHint.setMetadataUsedFlag(updates)
+	if err := s.metadataHint.setMetadataUsedFlag(updates); err != nil {
+		return err
+	}
 	return s.VersionedDB.ApplyUpdates(combinedUpdates.UpdateBatch, height)
 }
 

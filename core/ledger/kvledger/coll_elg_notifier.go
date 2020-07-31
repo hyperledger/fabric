@@ -82,7 +82,7 @@ func (n *collElgNotifier) HandleStateUpdates(trigger *ledger.StateUpdateTrigger)
 		}
 	}
 	if len(nsCollMap) > 0 {
-		n.invokeLedgerSpecificNotifier(trigger.LedgerID, trigger.CommittingBlockNum, nsCollMap)
+		return n.invokeLedgerSpecificNotifier(trigger.LedgerID, trigger.CommittingBlockNum, nsCollMap)
 	}
 	return nil
 }
@@ -91,9 +91,9 @@ func (n *collElgNotifier) registerListener(ledgerID string, listener collElgList
 	n.listeners[ledgerID] = listener
 }
 
-func (n *collElgNotifier) invokeLedgerSpecificNotifier(ledgerID string, commtingBlk uint64, nsCollMap map[string][]string) {
+func (n *collElgNotifier) invokeLedgerSpecificNotifier(ledgerID string, commtingBlk uint64, nsCollMap map[string][]string) error {
 	listener := n.listeners[ledgerID]
-	listener.ProcessCollsEligibilityEnabled(commtingBlk, nsCollMap)
+	return listener.ProcessCollsEligibilityEnabled(commtingBlk, nsCollMap)
 }
 
 // elgEnabledCollNames returns the names of the collections for which the peer is not eligible as per 'existingPkg' and is eligible as per 'postCommitPkg'

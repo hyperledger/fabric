@@ -162,6 +162,7 @@ func (txRwSet *TxRwSet) toProtoMsg() (*rwset.TxReadWriteSet, error) {
 	return protoMsg, nil
 }
 
+// TxRwSetFromProtoMsg transforms the proto message into a struct for ease of use
 func TxRwSetFromProtoMsg(protoMsg *rwset.TxReadWriteSet) (*TxRwSet, error) {
 	txRwSet := &TxRwSet{}
 	var nsRwSet *NsRwSet
@@ -232,6 +233,7 @@ func collHashedRwSetFromProtoMsg(protoMsg *rwset.CollectionHashedReadWriteSet) (
 	return colHashedRwSet, nil
 }
 
+// NumCollections returns the number of collections present in the TxRwSet
 func (txRwSet *TxRwSet) NumCollections() int {
 	if txRwSet == nil {
 		return 0
@@ -262,6 +264,7 @@ func (txPvtRwSet *TxPvtRwSet) toProtoMsg() (*rwset.TxPvtReadWriteSet, error) {
 	return protoMsg, nil
 }
 
+// TxPvtRwSetFromProtoMsg transforms the proto message into a struct for ease of use
 func TxPvtRwSetFromProtoMsg(protoMsg *rwset.TxPvtReadWriteSet) (*TxPvtRwSet, error) {
 	txPvtRwset := &TxPvtRwSet{}
 	var nsPvtRwSet *NsPvtRwSet
