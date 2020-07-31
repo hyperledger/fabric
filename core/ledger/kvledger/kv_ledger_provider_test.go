@@ -66,7 +66,8 @@ func testLedgerProvider(t *testing.T, enableHistoryDB bool) {
 	for i := 0; i < numLedgers; i++ {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
 		genesisBlocks[i] = genesisBlock
-		provider.CreateFromGenesisBlock(genesisBlock)
+		_, err := provider.CreateFromGenesisBlock(genesisBlock)
+		require.NoError(t, err)
 	}
 	existingLedgerIDs, err = provider.List()
 	require.NoError(t, err)

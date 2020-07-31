@@ -272,10 +272,7 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(reconciledPv
 
 	// (6) commit the pvt data to the stateDB
 	logger.Debug("Committing updates to state database")
-	if err := txmgr.db.ApplyPrivacyAwareUpdates(batch, nil); err != nil {
-		return err
-	}
-	return nil
+	return txmgr.db.ApplyPrivacyAwareUpdates(batch, nil)
 }
 
 type uniquePvtDataMap map[privacyenabledstate.HashedCompositeKey]*privacyenabledstate.PvtKVWrite

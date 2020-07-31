@@ -193,7 +193,7 @@ func TestGetStateFromCache(t *testing.T) {
 	vv2 := &statedb.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
 	batch.PutValAndMetadata("lscc", "key1", vv2.Value, vv2.Metadata, vv2.Version)
 	savePoint := version.NewHeight(1, 2)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 	// Note that the ApplyUpdates() updates only the existing entry in the cache. Currently, the
 	// cache has only ns, key1 but we are storing lscc, key1. Hence, no changes would happen in the cache.
 	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "lscc", "key1")
@@ -256,7 +256,7 @@ func TestGetVersionFromCache(t *testing.T) {
 	vv2 := &statedb.VersionedValue{Value: []byte("value2"), Metadata: []byte("meta2"), Version: version.NewHeight(1, 2)}
 	batch.PutValAndMetadata("lscc", "key1", vv2.Value, vv2.Metadata, vv2.Version)
 	savePoint := version.NewHeight(1, 2)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 	// Note that the ApplyUpdates() updates only the existing entry in the cache. Currently, the
 	// cache has only ns, key1 but we are storing lscc, key1. Hence, no changes would happen in the cache.
 	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "lscc", "key1")
@@ -311,7 +311,7 @@ func TestGetMultipleStatesFromCache(t *testing.T) {
 	vv4 := &statedb.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 1)}
 	batch.PutValAndMetadata("ns", "key4", vv4.Value, vv4.Metadata, vv4.Version)
 	savePoint := version.NewHeight(1, 2)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
 	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns", "key3")
 	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns", "key4")
@@ -360,7 +360,7 @@ func TestCacheUpdatesAfterCommit(t *testing.T) {
 	batch.PutValAndMetadata("ns2", "key1", vv3.Value, vv3.Metadata, vv3.Version)
 	batch.PutValAndMetadata("ns2", "key2", vv4.Value, vv4.Metadata, vv4.Version)
 	savePoint := version.NewHeight(1, 5)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
 	// key1, key2 in ns1 and ns2 would not be in cache
 	testDoesNotExistInCache(t, vdbEnv.cache, chainID, "ns1", "key1")
@@ -401,7 +401,7 @@ func TestCacheUpdatesAfterCommit(t *testing.T) {
 	batch.Delete("ns2", "key2", vv4Update.Version)
 	batch.PutValAndMetadata("ns2", "key3", vv5.Value, vv5.Metadata, vv5.Version)
 	savePoint = version.NewHeight(2, 5)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
 	// cache should have only the update key1 and key2 in ns1
 	cacheValue, err := vdbEnv.cache.getState(chainID, "ns1", "key1")
@@ -561,7 +561,7 @@ func TestInvalidJSONFields(t *testing.T) {
 	db, err := vdbEnv.DBProvider.GetDBHandle("testinvalidfields", nil)
 	require.NoError(t, err)
 
-	db.Open()
+	require.NoError(t, db.Open())
 	defer db.Close()
 
 	batch := statedb.NewUpdateBatch()
@@ -616,7 +616,7 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 
 	db, err := vdbEnv.DBProvider.GetDBHandle("testinit", nil)
 	require.NoError(t, err)
-	db.Open()
+	require.NoError(t, db.Open())
 	defer db.Close()
 	batch := statedb.NewUpdateBatch()
 
@@ -656,7 +656,7 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	batch.Put("ns2", "key10", []byte(jsonValue10), version.NewHeight(1, 21))
 
 	savePoint := version.NewHeight(2, 22)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
 	indexData := map[string][]byte{
 		"META-INF/statedb/couchdb/indexes/indexColorSortName.json":                                               []byte(`{"index":{"fields":[{"color":"desc"}]},"ddoc":"indexColorSortName","name":"indexColorSortName","type":"json"}`),
@@ -714,7 +714,7 @@ func TestIndexDeploymentWithOrderAndBadSyntax(t *testing.T) {
 	defer vdbEnv.cleanup()
 	db, err := vdbEnv.DBProvider.GetDBHandle(channelName, nil)
 	require.NoError(t, err)
-	db.Open()
+	require.NoError(t, db.Open())
 	defer db.Close()
 
 	batch := statedb.NewUpdateBatch()
@@ -790,7 +790,7 @@ func TestPaginatedQuery(t *testing.T) {
 
 	db, err := vdbEnv.DBProvider.GetDBHandle("testpaginatedquery", nil)
 	require.NoError(t, err)
-	db.Open()
+	require.NoError(t, db.Open())
 	defer db.Close()
 
 	batch := statedb.NewUpdateBatch()
@@ -879,7 +879,7 @@ func TestPaginatedQuery(t *testing.T) {
 	batch.Put("ns1", "key40", []byte(jsonValue40), version.NewHeight(1, 4))
 
 	savePoint := version.NewHeight(2, 22)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
 	indexData := map[string][]byte{
 		"META-INF/statedb/couchdb/indexes/indexSizeSortName.json": []byte(`{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`),
@@ -896,7 +896,7 @@ func TestPaginatedQuery(t *testing.T) {
 		t.Fatalf("Couchdb state impl is expected to implement interface `statedb.IndexCapable`")
 	}
 
-	indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData)
+	require.NoError(t, indexCapable.ProcessIndexesForChaincodeDeploy("ns1", indexData))
 	// Sleep to allow time for index creation
 	time.Sleep(100 * time.Millisecond)
 	// Create a query with a sort
@@ -992,7 +992,7 @@ func TestRangeScanWithCouchInternalDocsPresent(t *testing.T) {
 	require.NoError(t, err)
 	couchDatabse, err := db.(*VersionedDB).getNamespaceDBHandle("ns")
 	require.NoError(t, err)
-	db.Open()
+	require.NoError(t, db.Open())
 	defer db.Close()
 	_, err = couchDatabse.createIndex(`{
 		"index" : {"fields" : ["asset_name"]},
@@ -1018,7 +1018,7 @@ func TestRangeScanWithCouchInternalDocsPresent(t *testing.T) {
 		batch.Put("ns", keySmallerThanDesignDoc, []byte(jsonValue), version.NewHeight(1, uint64(i)))
 		batch.Put("ns", keyGreaterThanDesignDoc, []byte(jsonValue), version.NewHeight(1, uint64(i)))
 	}
-	db.ApplyUpdates(batch, version.NewHeight(2, 2))
+	require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(2, 2)))
 	require.NoError(t, err)
 
 	// The Keys in db are in this order
@@ -1038,7 +1038,7 @@ func TestRangeScanWithCouchInternalDocsPresent(t *testing.T) {
 	require.NoError(t, err)
 	assertQueryResults(t, s.resultsInfo.results, []string{"Key-1", "Key-2"})
 	require.Equal(t, "Key-3", s.queryDefinition.startKey)
-	s.getNextStateRangeScanResults()
+	require.NoError(t, s.getNextStateRangeScanResults())
 	assertQueryResults(t, s.resultsInfo.results, []string{"Key-3", "key-1"})
 	require.Equal(t, "key-2", s.queryDefinition.startKey)
 
@@ -1231,7 +1231,7 @@ func TestLoadCommittedVersion(t *testing.T) {
 	vv := &statedb.VersionedValue{Value: []byte("value4"), Metadata: []byte("meta4"), Version: version.NewHeight(1, 4)}
 	batch.PutValAndMetadata("ns2", "key2", vv.Value, vv.Metadata, vv.Version)
 	savePoint := version.NewHeight(2, 2)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
 	// version cache should be empty
 	ver, ok := db.(*VersionedDB).GetCachedVersion("ns1", "key1")
@@ -1298,7 +1298,7 @@ func TestMissingRevisionRetrievalFromDB(t *testing.T) {
 	batch.Put("ns1", "key2", vv2.Value, vv2.Version)
 	batch.Put("ns1", "key3", vv3.Value, vv3.Version)
 	savePoint := version.NewHeight(2, 5)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
 	// retrieve the versions of key1, key2, and key3
 	revisions := make(map[string]string)
@@ -1312,7 +1312,7 @@ func TestMissingRevisionRetrievalFromDB(t *testing.T) {
 	batch.Put("ns1", "key1", vv4.Value, vv4.Version)
 	batch.Put("ns1", "key2", vv5.Value, vv5.Version)
 	savePoint = version.NewHeight(3, 5)
-	db.ApplyUpdates(batch, savePoint)
+	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
 	// for key3, the revision should be the same but not for key1 and key2
 	newRevisions := make(map[string]string)
@@ -1597,7 +1597,7 @@ func TestRangeQueryWithInternalLimitAndPageSize(t *testing.T) {
 	for _, d := range sampleData {
 		batch.PutValAndMetadata(d.Namespace, d.Key, d.Value, d.Metadata, d.Version)
 	}
-	db.ApplyUpdates(batch, version.NewHeight(1, 1))
+	require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
 
 	defaultLimit := vdbEnv.config.InternalQueryLimit
 
@@ -1711,7 +1711,7 @@ func TestDataExportImport(t *testing.T) {
 
 		require.NoError(
 			t,
-			vdbEnv.DBProvider.BootstrapDBFromState("testdb", nil, nil, fullScanIteratorValueFormat),
+			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, nil, fullScanIteratorValueFormat),
 		)
 	})
 
@@ -1729,7 +1729,7 @@ func TestDataExportImport(t *testing.T) {
 		vdbEnv.config.Address = "127.0.0.1:1"
 		require.Contains(
 			t,
-			vdbEnv.DBProvider.BootstrapDBFromState("testdb", nil, nil, byte(0)).Error(),
+			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, nil, byte(0)).Error(),
 			"error while creating the metadata database for channel testdb: http error calling couchdb",
 		)
 	})
@@ -1740,7 +1740,7 @@ func TestDataExportImport(t *testing.T) {
 
 		require.EqualError(
 			t,
-			vdbEnv.DBProvider.BootstrapDBFromState("testdb", nil, &dummyFullScanIter{}, byte(2)),
+			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, &dummyFullScanIter{}, byte(2)),
 			"value format [2] not supported. Expected value format [1]",
 		)
 	})
@@ -1754,7 +1754,7 @@ func TestDataExportImport(t *testing.T) {
 		}
 		require.EqualError(
 			t,
-			vdbEnv.DBProvider.BootstrapDBFromState("testdb", nil, itr, fullScanIteratorValueFormat),
+			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, itr, fullScanIteratorValueFormat),
 			"error while reading from source",
 		)
 	})
@@ -1772,7 +1772,7 @@ func TestDataExportImport(t *testing.T) {
 		}
 		require.EqualError(
 			t,
-			vdbEnv.DBProvider.BootstrapDBFromState("testdb", nil, itr, fullScanIteratorValueFormat),
+			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, itr, fullScanIteratorValueFormat),
 			"error while decoding the encoded ValueVersionMetadata of key key1: unexpected EOF",
 		)
 	})
@@ -1944,7 +1944,7 @@ func TestFullScanIteratorDeterministicJSONOutput(t *testing.T) {
 	for _, d := range sampleDataWithSortedJSON {
 		batch.PutValAndMetadata(d.Namespace, d.Key, d.Value, d.Metadata, d.Version)
 	}
-	db.ApplyUpdates(batch, version.NewHeight(1, 1))
+	require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
 
 	retrieveOnlyNs1 := func(ns string) bool {
 		return ns != "ns1"
@@ -1961,7 +1961,7 @@ func TestFullScanIteratorDeterministicJSONOutput(t *testing.T) {
 	for _, d := range sampleDataWithUnsortedJSON {
 		batch.PutValAndMetadata(d.Namespace, d.Key, d.Value, d.Metadata, d.Version)
 	}
-	db.ApplyUpdates(batch, version.NewHeight(1, 1))
+	require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
 
 	retrieveOnlyNs2 := func(ns string) bool {
 		return ns != "ns2"
@@ -2008,7 +2008,7 @@ func TestFullScanIteratorSkipInternalKeys(t *testing.T) {
 	for _, d := range sampleData {
 		batch.PutValAndMetadata(d.Namespace, d.Key, d.Value, d.Metadata, d.Version)
 	}
-	db.ApplyUpdates(batch, version.NewHeight(1, 1))
+	require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
 
 	retrieveOnlyNs1 := func(ns string) bool {
 		return ns != "ns1"
@@ -2024,7 +2024,7 @@ func TestFullScanIteratorSkipInternalKeys(t *testing.T) {
 	for _, d := range sampleData {
 		batch.PutValAndMetadata(d.Namespace, d.Key, d.Value, d.Metadata, d.Version)
 	}
-	db.ApplyUpdates(batch, version.NewHeight(1, 1))
+	require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 1)))
 
 	retrieveOnlyEmptyNs := func(ns string) bool {
 		return ns != ""

@@ -28,7 +28,7 @@ func TestCombinedIterator(t *testing.T) {
 	batch.Put("ns", "key4", []byte("value4"), version.NewHeight(1, 1))
 	batch.Put("ns", "key6", []byte("value6"), version.NewHeight(1, 1))
 	batch.Put("ns", "key8", []byte("value8"), version.NewHeight(1, 1))
-	db.ApplyUpdates(batch, version.NewHeight(1, 5))
+	require.NoError(t, db.ApplyUpdates(batch, version.NewHeight(1, 5)))
 
 	// prepare batch1
 	batch1 := statedb.NewUpdateBatch()

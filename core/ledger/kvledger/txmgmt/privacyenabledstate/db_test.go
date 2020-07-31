@@ -643,12 +643,7 @@ func testDrop(t *testing.T, env TestEnv) {
 	require.Nil(t, vv)
 }
 
-//go:generate counterfeiter -o mock/channelinfo_provider.go -fake-name ChannelInfoProvider . channelInfoProviderWrapper
-
-// define this interface to break circular dependency
-type channelInfoProviderWrapper interface {
-	channelInfoProvider
-}
+//go:generate counterfeiter -o mock/channelinfo_provider.go -fake-name ChannelInfoProvider . channelInfoProvider
 
 func TestPossibleNamespaces(t *testing.T) {
 	namespacesAndCollections := map[string][]string{

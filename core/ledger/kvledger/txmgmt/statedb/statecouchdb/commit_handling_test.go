@@ -37,7 +37,7 @@ func TestGetRevision(t *testing.T) {
 			Key:       "key-in-both-db-cache",
 		},
 	}
-	db.LoadCommittedVersions(keys)
+	require.NoError(t, db.LoadCommittedVersions(keys))
 	// change cache reivision number for test purpose. (makes sure only read from cache but not db)
 	db.committedDataCache.setVerAndRev("ns", "key-in-both-db-cache", version.NewHeight(1, 2), "revision-db-number")
 

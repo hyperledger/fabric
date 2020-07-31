@@ -54,7 +54,9 @@ func TestCCEventMgmt(t *testing.T) {
 	cc3ExpectedEvent := &mockEvent{cc3Def, cc3DBArtifactsTar}
 
 	// Deploy cc3 on chain1 - handler1 and handler3 should receive event because cc3 is being deployed only on chain1
-	eventMgr.HandleChaincodeDeploy("channel1", []*ChaincodeDefinition{cc3Def})
+	require.NoError(t,
+		eventMgr.HandleChaincodeDeploy("channel1", []*ChaincodeDefinition{cc3Def}),
+	)
 	eventMgr.ChaincodeDeployDone("channel1")
 	require.Contains(t, handler1.eventsRecieved, cc3ExpectedEvent)
 	require.NotContains(t, handler2.eventsRecieved, cc3ExpectedEvent)
@@ -64,7 +66,9 @@ func TestCCEventMgmt(t *testing.T) {
 	require.Equal(t, 1, handler3.doneRecievedCount)
 
 	// Deploy cc3 on chain2 as well and this time handler2 should also receive event
-	eventMgr.HandleChaincodeDeploy("channel2", []*ChaincodeDefinition{cc3Def})
+	require.NoError(t,
+		eventMgr.HandleChaincodeDeploy("channel2", []*ChaincodeDefinition{cc3Def}),
+	)
 	eventMgr.ChaincodeDeployDone("channel2")
 	require.Contains(t, handler2.eventsRecieved, cc3ExpectedEvent)
 	require.Equal(t, 1, handler1.doneRecievedCount)
@@ -72,7 +76,9 @@ func TestCCEventMgmt(t *testing.T) {
 	require.Equal(t, 2, handler3.doneRecievedCount)
 
 	// Install CC2 - handler1 and handler 3 should receive event because cc2 is deployed only on chain1 and not on chain2
-	eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar)
+	require.NoError(t,
+		eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar),
+	)
 	eventMgr.ChaincodeInstallDone(true)
 	require.Contains(t, handler1.eventsRecieved, cc2ExpectedEvent)
 	require.NotContains(t, handler2.eventsRecieved, cc2ExpectedEvent)
@@ -84,7 +90,9 @@ func TestCCEventMgmt(t *testing.T) {
 	// setting cc2Def as a new lifecycle definition should cause install not to trigger event
 	mockProvider.setChaincodeDeployed("channel1", cc2Def, false)
 	handler1.eventsRecieved = []*mockEvent{}
-	eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar)
+	require.NoError(t,
+		eventMgr.HandleChaincodeInstall(cc2Def, cc2DBArtifactsTar),
+	)
 	eventMgr.ChaincodeInstallDone(true)
 	require.NotContains(t, handler1.eventsRecieved, cc2ExpectedEvent)
 }
@@ -139,10 +147,12 @@ func TestLSCCListener(t *testing.T) {
 
 	// test1 regular deploy lscc event gets sent to handler
 	t.Run("DeployEvent", func(t *testing.T) {
-		lsccStateListener.HandleStateUpdates(
-			&ledger.StateUpdateTrigger{
-				LedgerID: channelName,
-			},
+		require.NoError(t,
+			lsccStateListener.HandleStateUpdates(
+				&ledger.StateUpdateTrigger{
+					LedgerID: channelName,
+				},
+			),
 		)
 		// processes legacy event
 		require.Contains(t, handler1.eventsRecieved, &mockEvent{cc1Def, ccDBArtifactsTar})

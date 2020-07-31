@@ -40,9 +40,9 @@ func TestExpiryKeeper(t *testing.T) {
 	expinfo4 := &expiryInfo{&expiryInfoKey{committingBlk: 5, expiryBlk: 17}, buildPvtdataKeysForTest(4, 4)}
 
 	// Insert entries for keys at committingBlk 3
-	expiryKeeper.update([]*expiryInfo{expinfo1, expinfo2}, nil)
+	require.NoError(t, expiryKeeper.update([]*expiryInfo{expinfo1, expinfo2}, nil))
 	// Insert entries for keys at committingBlk 4 and 5
-	expiryKeeper.update([]*expiryInfo{expinfo3, expinfo4}, nil)
+	require.NoError(t, expiryKeeper.update([]*expiryInfo{expinfo3, expinfo4}, nil))
 
 	// Retrieve entries by expiring block 13, 15, and 17
 	listExpinfo1, _ := expiryKeeper.retrieve(13)
@@ -63,7 +63,9 @@ func TestExpiryKeeper(t *testing.T) {
 	require.True(t, proto.Equal(expinfo4.pvtdataKeys, listExpinfo3[0].pvtdataKeys))
 
 	// Clear entries for keys expiring at block 13 and 15 and again retrieve by expiring block 13, 15, and 17
-	expiryKeeper.update(nil, []*expiryInfoKey{expinfo1.expiryInfoKey, expinfo2.expiryInfoKey, expinfo3.expiryInfoKey})
+	require.NoError(t,
+		expiryKeeper.update(nil, []*expiryInfoKey{expinfo1.expiryInfoKey, expinfo2.expiryInfoKey, expinfo3.expiryInfoKey}),
+	)
 	listExpinfo4, _ := expiryKeeper.retrieve(13)
 	require.Nil(t, listExpinfo4)
 

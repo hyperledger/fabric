@@ -39,11 +39,6 @@ var couchdbLogger = flogging.MustGetLogger("couchdb")
 //time between retry attempts in milliseconds
 const retryWaitTime = 125
 
-// dbOperationResponse is body for successful database calls.
-type dbOperationResponse struct {
-	Ok bool
-}
-
 // dbInfo is body for database information.
 type dbInfo struct {
 	DbName string `json:"db_name"`

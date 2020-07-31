@@ -291,7 +291,7 @@ func createTestOrgGroups(t *testing.T) map[string]*cb.ConfigGroup {
 	blockData, err := ioutil.ReadFile("testdata/test_configblock.json")
 	require.NoError(t, err)
 	block := &common.Block{}
-	protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block)
+	require.NoError(t, protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block))
 	config := getConfigFromBlock(block)
 	return config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups
 }

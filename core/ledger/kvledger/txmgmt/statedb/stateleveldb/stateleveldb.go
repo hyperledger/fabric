@@ -54,13 +54,11 @@ func (provider *VersionedDBProvider) GetDBHandle(dbName string, namespaceProvide
 	return newVersionedDB(provider.dbProvider.GetDBHandle(dbName), dbName), nil
 }
 
-func (provider *VersionedDBProvider) BootstrapDBFromState(
+// ImportFromSnapshot loads the public state and pvtdata hashes from the snapshot files previously generated
+func (provider *VersionedDBProvider) ImportFromSnapshot(
 	dbName string, savepoint *version.Height, itr statedb.FullScanIterator, dbValueFormat byte) error {
 	vdb := newVersionedDB(provider.dbProvider.GetDBHandle(dbName), dbName)
-	if err := vdb.importState(itr, savepoint, dbValueFormat); err != nil {
-		return err
-	}
-	return nil
+	return vdb.importState(itr, savepoint, dbValueFormat)
 }
 
 // Close closes the underlying db
@@ -205,10 +203,7 @@ func (vdb *versionedDB) ApplyUpdates(batch *statedb.UpdateBatch, height *version
 		dbBatch.Put(savePointKey, height.ToBytes())
 	}
 	// Setting snyc to true as a precaution, false may be an ok optimization after further testing.
-	if err := vdb.db.WriteBatch(dbBatch, true); err != nil {
-		return err
-	}
-	return nil
+	return vdb.db.WriteBatch(dbBatch, true)
 }
 
 // GetLatestSavePoint implements method in VersionedDB interface

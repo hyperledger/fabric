@@ -178,10 +178,7 @@ func (s *txSimulator) checkWritePrecondition(key string, value []byte) error {
 		return err
 	}
 	s.writePerformed = true
-	if err := s.queryExecutor.txmgr.db.ValidateKeyValue(key, value); err != nil {
-		return err
-	}
-	return nil
+	return s.queryExecutor.txmgr.db.ValidateKeyValue(key, value)
 }
 
 func (s *txSimulator) checkBeforePvtdataQueries() error {

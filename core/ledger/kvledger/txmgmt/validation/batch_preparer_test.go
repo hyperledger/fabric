@@ -252,7 +252,7 @@ func TestIncrementPvtdataVersionIfNeeded(t *testing.T) {
 	updateBatch.PvtUpdates.Put("ns", "coll2", "key2", []byte("value2"), version.NewHeight(1, 2))
 	updateBatch.PvtUpdates.Put("ns", "coll3", "key3", []byte("value3"), version.NewHeight(1, 3))
 	updateBatch.PvtUpdates.Put("ns", "col4", "key4", []byte("value4"), version.NewHeight(1, 4))
-	testDB.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 4))
+	require.NoError(t, testDB.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 4)))
 
 	// for the current block, mimic the resultant hashed updates
 	hashUpdates := privacyenabledstate.NewHashedUpdateBatch()
@@ -334,7 +334,8 @@ func TestTXMgrContainsPostOrderWrites(t *testing.T) {
 		func(txEnvelop *common.Envelope, s ledger.TxSimulator, initializingLedger bool) error {
 			rwSetBuilder := rwsetutil.NewRWSetBuilder()
 			rwSetBuilder.AddToWriteSet("ns1", "key1", []byte("value1"))
-			rwSetBuilder.GetTxSimulationResults()
+			_, err := rwSetBuilder.GetTxSimulationResults()
+			require.NoError(t, err)
 			s.(*mocklgr.TxSimulator).GetTxSimulationResultsReturns(
 				rwSetBuilder.GetTxSimulationResults())
 			return nil

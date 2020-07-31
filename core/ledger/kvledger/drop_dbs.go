@@ -31,10 +31,7 @@ func dropDBs(rootFSPath string) error {
 	if err := dropBookkeeperDB(rootFSPath); err != nil {
 		return err
 	}
-	if err := dropHistoryDB(rootFSPath); err != nil {
-		return err
-	}
-	return nil
+	return dropHistoryDB(rootFSPath)
 }
 
 func dropStateLevelDB(rootFSPath string) error {

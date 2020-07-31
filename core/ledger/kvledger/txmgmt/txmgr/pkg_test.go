@@ -216,7 +216,7 @@ func testutilPopulateDB(
 	for _, p := range pvtdataHashes {
 		updates.HashUpdates.Put(ns, p.coll, util.ComputeStringHash(p.key), util.ComputeHash(p.value), version)
 	}
-	txMgr.db.ApplyPrivacyAwareUpdates(updates, version)
+	require.NoError(t, txMgr.db.ApplyPrivacyAwareUpdates(updates, version))
 }
 
 type testutilPvtdata struct {

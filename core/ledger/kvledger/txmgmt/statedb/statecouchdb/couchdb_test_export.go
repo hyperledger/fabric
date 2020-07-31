@@ -19,7 +19,7 @@ import (
 func StartCouchDB(t *testing.T, binds []string) (addr string, stopCouchDBFunc func()) {
 	couchDB := &runner.CouchDB{Binds: binds}
 	require.NoError(t, couchDB.Start())
-	return couchDB.Address(), func() { couchDB.Stop() }
+	return couchDB.Address(), func() { require.NoError(t, couchDB.Stop()) }
 }
 
 // IsEmpty returns whether or not the couchdb is empty

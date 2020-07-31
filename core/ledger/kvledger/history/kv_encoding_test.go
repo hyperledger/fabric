@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var strKeySep = string(compositeKeySep)
-
 func TestCompositeKeyConstruction(t *testing.T) {
 	type keyComponents struct {
 		ns, key         string

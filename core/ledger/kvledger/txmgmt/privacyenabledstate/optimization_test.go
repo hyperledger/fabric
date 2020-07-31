@@ -31,7 +31,7 @@ func TestMetadataHintCorrectness(t *testing.T) {
 	updates.HashUpdates.PutValAndMetadata("ns1_pvt", "key", "coll", []byte("value"), []byte("metadata"), version.NewHeight(1, 1))
 	updates.HashUpdates.PutValAndMetadata("ns2_pvt", "key", "coll", []byte("value"), []byte("metadata"), version.NewHeight(1, 3))
 	updates.HashUpdates.PutValAndMetadata("ns3_pvt", "key", "coll", []byte("value"), nil, version.NewHeight(1, 3))
-	metadataHint.setMetadataUsedFlag(updates)
+	require.NoError(t, metadataHint.setMetadataUsedFlag(updates))
 
 	t.Run("MetadataAddedInCurrentSession", func(t *testing.T) {
 		require.True(t, metadataHint.metadataEverUsedFor("ns1"))

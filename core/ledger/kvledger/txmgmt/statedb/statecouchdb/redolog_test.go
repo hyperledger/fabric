@@ -104,7 +104,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 	vdb := db.(*VersionedDB)
 	batch1 := statedb.NewUpdateBatch()
 	batch1.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
-	vdb.ApplyUpdates(batch1, version.NewHeight(1, 1))
+	require.NoError(t, vdb.ApplyUpdates(batch1, version.NewHeight(1, 1)))
 
 	// make redolog one block ahead than statedb - upon restart the redolog should get applied
 	commitToRedologAndRestart("value2", version.NewHeight(2, 1))
@@ -121,7 +121,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 	// A nil height should cause skipping the writing of redo-record
 	db, _ = vdbEnv.DBProvider.GetDBHandle("testcouchdbredologger", nil)
 	vdb = db.(*VersionedDB)
-	vdb.ApplyUpdates(batch1, nil)
+	require.NoError(t, vdb.ApplyUpdates(batch1, nil))
 	record, err := vdb.redoLogger.load()
 	require.NoError(t, err)
 	require.Equal(t, version.NewHeight(1, 5), record.Version)
@@ -132,7 +132,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 	vdb = db.(*VersionedDB)
 	batchWithNoGeneratedWrites := batch1
 	batchWithNoGeneratedWrites.ContainsPostOrderWrites = false
-	vdb.ApplyUpdates(batchWithNoGeneratedWrites, version.NewHeight(2, 5))
+	require.NoError(t, vdb.ApplyUpdates(batchWithNoGeneratedWrites, version.NewHeight(2, 5)))
 	record, err = vdb.redoLogger.load()
 	require.NoError(t, err)
 	require.Equal(t, version.NewHeight(1, 5), record.Version)
@@ -143,7 +143,7 @@ func TestCouchdbRedoLogger(t *testing.T) {
 	vdb = db.(*VersionedDB)
 	batchWithGeneratedWrites := batch1
 	batchWithGeneratedWrites.ContainsPostOrderWrites = true
-	vdb.ApplyUpdates(batchWithNoGeneratedWrites, version.NewHeight(3, 4))
+	require.NoError(t, vdb.ApplyUpdates(batchWithNoGeneratedWrites, version.NewHeight(3, 4)))
 	record, err = vdb.redoLogger.load()
 	require.NoError(t, err)
 	require.Equal(t, version.NewHeight(3, 4), record.Version)

@@ -49,7 +49,7 @@ func TestCollElgNotifier(t *testing.T) {
 	}
 	collElgNotifier.registerListener("testLedger", mockCollElgListener)
 
-	collElgNotifier.HandleStateUpdates(&ledger.StateUpdateTrigger{
+	err := collElgNotifier.HandleStateUpdates(&ledger.StateUpdateTrigger{
 		LedgerID:           "testLedger",
 		CommittingBlockNum: uint64(500),
 		StateUpdates: map[string]*ledger.KVStateUpdates{
@@ -63,6 +63,7 @@ func TestCollElgNotifier(t *testing.T) {
 			},
 		},
 	})
+	require.NoError(t, err)
 
 	// event triggered should only contain "coll3" as this is the only collection
 	// for which peer became from ineligile to eligible by upgrade tx

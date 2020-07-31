@@ -208,12 +208,7 @@ func (l *kvLedger) initSnapshotMgr(initializer *lgrInitializer) error {
 
 	// start a goroutine to synchronize commit, snapshot generation, and snapshot submission/cancellation,
 	go l.processSnapshotMgmtEvents(bcInfo.Height)
-
-	if err = l.recoverSnapshot(bcInfo.Height); err != nil {
-		return err
-	}
-
-	return nil
+	return l.recoverSnapshot(bcInfo.Height)
 }
 
 func (l *kvLedger) lastPersistedCommitHash() ([]byte, error) {
@@ -270,10 +265,7 @@ func (l *kvLedger) recoverDBs() error {
 	if err := l.syncStateAndHistoryDBWithBlockstore(); err != nil {
 		return err
 	}
-	if err := l.syncStateDBWithOldBlkPvtdata(); err != nil {
-		return err
-	}
-	return nil
+	return l.syncStateDBWithOldBlkPvtdata()
 }
 
 func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
@@ -314,7 +306,7 @@ func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
 			dbName := recoverable.Name()
 			return fmt.Errorf("the %s database [height=%d] is ahead of the block store [height=%d]. "+
 				"This is possible when the %s database is not dropped after a ledger reset/rollback. "+
-				"The %s database can safely be dropped and will be rebuilt up to block store height upon the next peer start.",
+				"The %s database can safely be dropped and will be rebuilt up to block store height upon the next peer start",
 				dbName, nextRequiredBlock, lastBlockInBlockStore+1, dbName, dbName)
 		}
 		if recoverFlag {
