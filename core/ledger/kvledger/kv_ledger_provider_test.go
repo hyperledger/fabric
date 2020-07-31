@@ -126,7 +126,8 @@ func TestGetActiveLedgerIDsIteratorError(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
-		provider.CreateFromGenesisBlock(genesisBlock)
+		_, err := provider.CreateFromGenesisBlock(genesisBlock)
+		require.NoError(t, err)
 	}
 
 	// close provider to trigger db error
@@ -143,12 +144,13 @@ func TestLedgerMetataDataUnmarshalError(t *testing.T) {
 
 	ledgerID := constructTestLedgerID(0)
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(ledgerID)
-	provider.CreateFromGenesisBlock(genesisBlock)
+	_, err := provider.CreateFromGenesisBlock(genesisBlock)
+	require.NoError(t, err)
 
 	// put invalid bytes for the metatdata key
-	provider.idStore.db.Put(metadataKey(ledgerID), []byte("invalid"), true)
+	require.NoError(t, provider.idStore.db.Put(metadataKey(ledgerID), []byte("invalid"), true))
 
-	_, err := provider.List()
+	_, err = provider.List()
 	require.EqualError(t, err, "error unmarshalling ledger metadata: unexpected EOF")
 
 	_, err = provider.Open(ledgerID)
@@ -297,9 +299,11 @@ func testDeletionOfUnderConstructionLedgersAtStart(t *testing.T, enableHistoryDB
 
 	switch mimicCrashAfterLedgerCreation {
 	case false:
-		idStore.createLedgerID(ledgerID, &msgs.LedgerMetadata{
-			Status: msgs.Status_UNDER_CONSTRUCTION,
-		})
+		require.NoError(t,
+			idStore.createLedgerID(ledgerID, &msgs.LedgerMetadata{
+				Status: msgs.Status_UNDER_CONSTRUCTION,
+			}),
+		)
 	case true:
 		genesisBlock, err := configtxtest.MakeGenesisBlock(ledgerID)
 		require.NoError(t, err)
@@ -310,7 +314,9 @@ func testDeletionOfUnderConstructionLedgersAtStart(t *testing.T, enableHistoryDB
 		require.Equal(t, msgs.Status_ACTIVE, m.Status)
 		// mimic a situation that a crash happens after ledger creation but before changing the UNDER_CONSTRUCTION status
 		// to Status_ACTIVE
-		provider.idStore.updateLedgerStatus(ledgerID, msgs.Status_UNDER_CONSTRUCTION)
+		require.NoError(t,
+			provider.idStore.updateLedgerStatus(ledgerID, msgs.Status_UNDER_CONSTRUCTION),
+		)
 	}
 	provider.Close()
 	// construct a new provider to invoke recovery
@@ -440,25 +446,25 @@ func TestLedgerBackup(t *testing.T) {
 
 	txid := util.GenerateUUID()
 	simulator, _ := ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key1", []byte("value1"))
-	simulator.SetState("ns1", "key2", []byte("value2"))
-	simulator.SetState("ns1", "key3", []byte("value3"))
+	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value1")))
+	require.NoError(t, simulator.SetState("ns1", "key2", []byte("value2")))
+	require.NoError(t, simulator.SetState("ns1", "key3", []byte("value3")))
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
+	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{}))
 
 	txid = util.GenerateUUID()
 	simulator, _ = ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key1", []byte("value4"))
-	simulator.SetState("ns1", "key2", []byte("value5"))
-	simulator.SetState("ns1", "key3", []byte("value6"))
+	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value4")))
+	require.NoError(t, simulator.SetState("ns1", "key2", []byte("value5")))
+	require.NoError(t, simulator.SetState("ns1", "key3", []byte("value6")))
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
+	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{}))
 
 	ledger.Close()
 	provider.Close()

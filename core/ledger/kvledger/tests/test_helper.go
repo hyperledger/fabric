@@ -56,7 +56,7 @@ func (h *testhelper) cutBlockAndCommitLegacy() *ledger.BlockAndPvtData {
 	return h.committer.cutBlockAndCommitLegacy(h.simulatedTrans, h.missingPvtData)
 }
 
-func (h *testhelper) cutBlockAndCommitExpectError() (*ledger.BlockAndPvtData, error) {
+func (h *testhelper) cutBlockAndCommitExpectError() *ledger.BlockAndPvtData {
 	defer func() {
 		h.simulatedTrans = nil
 		h.missingPvtData = make(ledger.TxMissingPvtDataMap)

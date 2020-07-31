@@ -30,7 +30,8 @@ func TestPauseAndResume(t *testing.T) {
 	for i := 0; i < numLedgers; i++ {
 		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
 		genesisBlocks[i] = genesisBlock
-		provider.CreateFromGenesisBlock(genesisBlock)
+		_, err := provider.CreateFromGenesisBlock(genesisBlock)
+		require.NoError(t, err)
 	}
 	activeLedgerIDs, err = provider.List()
 	require.NoError(t, err)
@@ -79,12 +80,13 @@ func TestPauseAndResumeErrors(t *testing.T) {
 
 	ledgerID := constructTestLedgerID(0)
 	genesisBlock, _ := configtxtest.MakeGenesisBlock(ledgerID)
-	provider.CreateFromGenesisBlock(genesisBlock)
+	_, err := provider.CreateFromGenesisBlock(genesisBlock)
+	require.NoError(t, err)
 	// purposely set an invalid metatdata
-	provider.idStore.db.Put(metadataKey(ledgerID), []byte("invalid"), true)
+	require.NoError(t, provider.idStore.db.Put(metadataKey(ledgerID), []byte("invalid"), true))
 
 	// fail if provider is open (e.g., peer is up running)
-	err := PauseChannel(conf.RootFSPath, constructTestLedgerID(0))
+	err = PauseChannel(conf.RootFSPath, constructTestLedgerID(0))
 	require.Error(t, err, "as another peer node command is executing, wait for that command to complete its execution or terminate it before retrying")
 
 	err = ResumeChannel(conf.RootFSPath, constructTestLedgerID(0))

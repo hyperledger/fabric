@@ -192,7 +192,7 @@ func TestQueryResultHelper_Hash_FirstLevelSkipNeededInDone(t *testing.T) {
 func buildTestResults(t *testing.T, enableHashing bool, maxDegree int, kvReads []*kvrwset.KVRead) ([]*kvrwset.KVRead, *kvrwset.QueryReadsMerkleSummary) {
 	helper, _ := NewRangeQueryResultsHelper(enableHashing, uint32(maxDegree), testHashFunc)
 	for _, kvRead := range kvReads {
-		helper.AddResult(kvRead)
+		require.NoError(t, helper.AddResult(kvRead))
 	}
 	r, h, err := helper.Done()
 	require.NoError(t, err)

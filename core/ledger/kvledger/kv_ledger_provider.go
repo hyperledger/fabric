@@ -119,10 +119,9 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 		return nil, err
 	}
 	p.initLedgerStatistics()
-	p.deleteUnderConstructionLedgers()
-	// if err := p.deleteUnderConstructionLedgers(); err != nil {
-	// 	return nil, err
-	// }
+	if err := p.deleteUnderConstructionLedgers(); err != nil {
+		return nil, err
+	}
 	if err := p.initSnapshotDir(); err != nil {
 		return nil, err
 	}

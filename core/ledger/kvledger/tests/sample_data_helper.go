@@ -104,9 +104,9 @@ func (d *sampleDataHelper) populateLedger(h *testhelper) {
 	// blk7 contains one data txs
 	txdata7 := h.simulateDataTx("txid7", func(s *simulator) {
 		s.setState("cc1", "key1", d.sampleVal("value13", lgrid))
-		s.DeleteState("cc1", "key2")
+		require.NoError(d.t, s.DeleteState("cc1", "key2"))
 		s.setPvtdata("cc1", "coll1", "key3", d.sampleVal("value14", lgrid))
-		s.DeletePrivateData("cc1", "coll1", "key4")
+		require.NoError(d.t, s.DeletePrivateData("cc1", "coll1", "key4"))
 	})
 	h.simulatedTrans = nil
 

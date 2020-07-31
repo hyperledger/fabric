@@ -321,7 +321,7 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 	batch.PubUpdates.Put("ns1", "key7", []byte("value7"), version.NewHeight(1, 6))
 	batch.PubUpdates.Put("ns1", "key8", []byte("value8"), version.NewHeight(1, 7))
 	batch.PubUpdates.Put("ns1", "key9", []byte("value9"), version.NewHeight(1, 8))
-	(db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 8)))
+	require.NoError(t, db.ApplyPrivacyAwareUpdates(batch, version.NewHeight(1, 8)))
 
 	testValidator := &validator{db: db, hashFunc: testHashFunc}
 
