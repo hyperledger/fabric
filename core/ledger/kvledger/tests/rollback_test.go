@@ -59,6 +59,7 @@ func TestRollbackKVLedger(t *testing.T) {
 		require.NoError(t, h.lgr.CommitLegacy(b, &ledger.CommitOptions{FetchPvtDataFromLedger: true}))
 	}
 	actualBcInfo, err := h.lgr.GetBlockchainInfo()
+	require.NoError(t, err)
 	require.Equal(t, bcInfo, actualBcInfo)
 	dataHelper.verifyLedgerContent(h)
 	// TODO: extend integration test with BTL support for pvtData. FAB-15704

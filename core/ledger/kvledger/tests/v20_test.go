@@ -32,7 +32,7 @@ func TestV20SampleLedger(t *testing.T) {
 
 	// rebuild and verify again
 	env.closeLedgerMgmt()
-	kvledger.RebuildDBs(env.initializer.Config)
+	require.NoError(t, kvledger.RebuildDBs(env.initializer.Config))
 	env.initLedgerMgmt()
 	h1 = env.newTestHelperOpenLgr("testchannel", t)
 	dataHelper.verify(h1)

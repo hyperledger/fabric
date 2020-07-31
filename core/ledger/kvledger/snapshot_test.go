@@ -773,13 +773,15 @@ func addDummyEntryInCollectionConfigHistory(
 		},
 		nil,
 	)
-	provider.configHistoryMgr.HandleStateUpdates(
-		&ledger.StateUpdateTrigger{
-			LedgerID:           ledgerID,
-			CommittingBlockNum: committingBlockNumber,
-			StateUpdates: map[string]*ledger.KVStateUpdates{
-				namespace: {},
+	require.NoError(t,
+		provider.configHistoryMgr.HandleStateUpdates(
+			&ledger.StateUpdateTrigger{
+				LedgerID:           ledgerID,
+				CommittingBlockNum: committingBlockNumber,
+				StateUpdates: map[string]*ledger.KVStateUpdates{
+					namespace: {},
+				},
 			},
-		},
+		),
 	)
 }

@@ -166,6 +166,9 @@ func constructUnsignedTxEnv(
 			},
 			ss,
 		)
+		if err != nil {
+			return nil, "", err
+		}
 	} else {
 		// if txid is set, we should not generate a txid instead reuse the given txid
 		var nonce []byte

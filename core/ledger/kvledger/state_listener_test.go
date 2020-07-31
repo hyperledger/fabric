@@ -49,22 +49,24 @@ func TestStateListener(t *testing.T) {
 	// Simulate tx1
 	sim1, err := lgr.NewTxSimulator("test_tx_1")
 	require.NoError(t, err)
-	sim1.GetState(namespace, "key1")
-	sim1.SetState(namespace, "key1", []byte("value1"))
-	sim1.SetState(namespace, "key2", []byte("value2"))
+	_, err = sim1.GetState(namespace, "key1")
+	require.NoError(t, err)
+	require.NoError(t, sim1.SetState(namespace, "key1", []byte("value1")))
+	require.NoError(t, sim1.SetState(namespace, "key2", []byte("value2")))
 	sim1.Done()
 
 	// Simulate tx2 - this has a conflict with tx1 because it reads "key1"
 	sim2, err := lgr.NewTxSimulator("test_tx_2")
 	require.NoError(t, err)
-	sim2.GetState(namespace, "key1")
-	sim2.SetState(namespace, "key3", []byte("value3"))
+	_, err = sim2.GetState(namespace, "key1")
+	require.NoError(t, err)
+	require.NoError(t, sim2.SetState(namespace, "key3", []byte("value3")))
 	sim2.Done()
 
 	// Simulate tx3 - this neighter conflicts with tx1 nor with tx2
 	sim3, err := lgr.NewTxSimulator("test_tx_3")
 	require.NoError(t, err)
-	sim3.SetState(namespace, "key4", []byte("value4"))
+	require.NoError(t, sim3.SetState(namespace, "key4", []byte("value4")))
 	sim3.Done()
 
 	// commit tx1 and this should cause mock listener to receive the state changes made by tx1

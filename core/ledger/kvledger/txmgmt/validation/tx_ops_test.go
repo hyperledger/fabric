@@ -319,7 +319,7 @@ func TestTxOpsPreparationPvtdataHashes(t *testing.T) {
 		testutilSerializedMetadata(t, map[string][]byte{"metadata4": []byte("metadata4")}),
 		version.NewHeight(1, 4))
 
-	(db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) //write the above initial state to db
+	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) //write the above initial state to db
 
 	precedingUpdates := newPubAndHashUpdates()
 	rwset := testutilBuildRwset( // A sample rwset {key1:only value update, key2: value and metadata update, key3: only metadata update, key4: only value update}

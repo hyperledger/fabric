@@ -68,14 +68,14 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 	txid := util.GenerateUUID()
 	simulator, _ := ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key1", []byte("value1"))
-	simulator.SetState("ns1", "key2", []byte("value2"))
-	simulator.SetState("ns1", "key3", []byte("value3"))
+	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value1")))
+	require.NoError(t, simulator.SetState("ns1", "key2", []byte("value2")))
+	require.NoError(t, simulator.SetState("ns1", "key3", []byte("value3")))
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
+	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{}))
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := protoutil.BlockHeaderHash(block1.Header)
@@ -85,14 +85,14 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 
 	txid = util.GenerateUUID()
 	simulator, _ = ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key1", []byte("value4"))
-	simulator.SetState("ns1", "key2", []byte("value5"))
-	simulator.SetState("ns1", "key3", []byte("value6"))
+	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value4")))
+	require.NoError(t, simulator.SetState("ns1", "key2", []byte("value5")))
+	require.NoError(t, simulator.SetState("ns1", "key3", []byte("value6")))
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
+	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{}))
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := protoutil.BlockHeaderHash(block2.Header)
@@ -161,14 +161,14 @@ func TestAddCommitHash(t *testing.T) {
 
 	txid := util.GenerateUUID()
 	simulator, _ := ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key1", []byte("value1"))
-	simulator.SetState("ns1", "key2", []byte("value2"))
-	simulator.SetState("ns1", "key3", []byte("value3"))
+	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value1")))
+	require.NoError(t, simulator.SetState("ns1", "key2", []byte("value2")))
+	require.NoError(t, simulator.SetState("ns1", "key3", []byte("value3")))
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
+	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{}))
 
 	commitHash, err = ledger.(*kvLedger).lastPersistedCommitHash()
 	require.NoError(t, err)
@@ -179,7 +179,7 @@ func TestAddCommitHash(t *testing.T) {
 	// commitHash should not be added to the block
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
 	ledger.(*kvLedger).commitHash = nil
-	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
+	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{}))
 
 	commitHash, err = ledger.(*kvLedger).lastPersistedCommitHash()
 	require.NoError(t, err)
@@ -208,9 +208,9 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 
 	txid := util.GenerateUUID()
 	simulator, _ := ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key1", []byte("value1"))
-	simulator.SetPrivateData("ns1", "coll1", "key2", []byte("value2"))
-	simulator.SetPrivateData("ns1", "coll2", "key2", []byte("value3"))
+	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value1")))
+	require.NoError(t, simulator.SetPrivateData("ns1", "coll1", "key2", []byte("value2")))
+	require.NoError(t, simulator.SetPrivateData("ns1", "coll2", "key2", []byte("value3")))
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
@@ -225,14 +225,14 @@ func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
 
 	txid = util.GenerateUUID()
 	simulator, _ = ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key1", []byte("value4"))
-	simulator.SetState("ns1", "key2", []byte("value5"))
-	simulator.SetState("ns1", "key3", []byte("value6"))
+	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value4")))
+	require.NoError(t, simulator.SetState("ns1", "key2", []byte("value5")))
+	require.NoError(t, simulator.SetState("ns1", "key3", []byte("value6")))
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
+	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{}))
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := protoutil.BlockHeaderHash(block2.Header)
@@ -483,16 +483,16 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 
 	txid := util.GenerateUUID()
 	simulator, _ := ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key4", []byte("value1"))
-	simulator.SetState("ns1", "key5", []byte("value2"))
-	simulator.SetState("ns1", "key6", []byte("{\"shipmentID\":\"161003PKC7300\",\"customsInvoice\":{\"methodOfTransport\":\"GROUND\",\"invoiceNumber\":\"00091622\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
-	simulator.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"AIR MAYBE\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
+	require.NoError(t, simulator.SetState("ns1", "key4", []byte("value1")))
+	require.NoError(t, simulator.SetState("ns1", "key5", []byte("value2")))
+	require.NoError(t, simulator.SetState("ns1", "key6", []byte("{\"shipmentID\":\"161003PKC7300\",\"customsInvoice\":{\"methodOfTransport\":\"GROUND\",\"invoiceNumber\":\"00091622\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")))
+	require.NoError(t, simulator.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"AIR MAYBE\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")))
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
 
-	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{})
+	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{}))
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block1Hash := protoutil.BlockHeaderHash(block1.Header)
@@ -502,11 +502,11 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	simulationResults := [][]byte{}
 	txid = util.GenerateUUID()
 	simulator, _ = ledger.NewTxSimulator(txid)
-	simulator.SetState("ns1", "key4", []byte("value3"))
-	simulator.SetState("ns1", "key5", []byte("{\"shipmentID\":\"161003PKC7500\",\"customsInvoice\":{\"methodOfTransport\":\"AIR FREIGHT\",\"invoiceNumber\":\"00091623\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
-	simulator.SetState("ns1", "key6", []byte("value4"))
-	simulator.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"GROUND\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
-	simulator.SetState("ns1", "key8", []byte("{\"shipmentID\":\"161003PKC7700\",\"customsInvoice\":{\"methodOfTransport\":\"SHIP\",\"invoiceNumber\":\"00091625\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
+	require.NoError(t, simulator.SetState("ns1", "key4", []byte("value3")))
+	require.NoError(t, simulator.SetState("ns1", "key5", []byte("{\"shipmentID\":\"161003PKC7500\",\"customsInvoice\":{\"methodOfTransport\":\"AIR FREIGHT\",\"invoiceNumber\":\"00091623\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")))
+	require.NoError(t, simulator.SetState("ns1", "key6", []byte("value4")))
+	require.NoError(t, simulator.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"GROUND\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")))
+	require.NoError(t, simulator.SetState("ns1", "key8", []byte("{\"shipmentID\":\"161003PKC7700\",\"customsInvoice\":{\"methodOfTransport\":\"SHIP\",\"invoiceNumber\":\"00091625\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")))
 	simulator.Done()
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
@@ -514,16 +514,16 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	//add a 2nd transaction
 	txid2 := util.GenerateUUID()
 	simulator2, _ := ledger.NewTxSimulator(txid2)
-	simulator2.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"TRAIN\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
-	simulator2.SetState("ns1", "key9", []byte("value5"))
-	simulator2.SetState("ns1", "key10", []byte("{\"shipmentID\":\"261003PKC8000\",\"customsInvoice\":{\"methodOfTransport\":\"DONKEY\",\"invoiceNumber\":\"00091626\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}"))
+	require.NoError(t, simulator2.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"TRAIN\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")))
+	require.NoError(t, simulator2.SetState("ns1", "key9", []byte("value5")))
+	require.NoError(t, simulator2.SetState("ns1", "key10", []byte("{\"shipmentID\":\"261003PKC8000\",\"customsInvoice\":{\"methodOfTransport\":\"DONKEY\",\"invoiceNumber\":\"00091626\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")))
 	simulator2.Done()
 	simRes2, _ := simulator2.GetTxSimulationResults()
 	pubSimBytes2, _ := simRes2.GetPubSimulationBytes()
 	simulationResults = append(simulationResults, pubSimBytes2)
 
 	block2 := bg.NextBlock(simulationResults)
-	ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{})
+	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{}))
 
 	bcInfo, _ = ledger.GetBlockchainInfo()
 	block2Hash := protoutil.BlockHeaderHash(block2.Header)
@@ -695,7 +695,7 @@ func TestCrashAfterPvtdataStoreCommit(t *testing.T) {
 		pvtdataAtCrash = append(pvtdataAtCrash, p)
 	}
 	// call Commit on pvt data store and mimic a crash before committing the block to block store
-	lgr.(*kvLedger).pvtdataStore.Commit(blockNumAtCrash, pvtdataAtCrash, nil)
+	require.NoError(t, lgr.(*kvLedger).pvtdataStore.Commit(blockNumAtCrash, pvtdataAtCrash, nil))
 
 	// Now, assume that peer fails here before committing the block to blockstore.
 	lgr.Close()
@@ -895,7 +895,7 @@ func TestCommitToPvtAndBlockstoreError(t *testing.T) {
 
 	lastBlkAndPvtData := sampleData[9] // block 10
 	// Add the block directly to blockstore
-	kvlgr.blockStore.AddBlock(lastBlkAndPvtData.Block)
+	require.NoError(t, kvlgr.blockStore.AddBlock(lastBlkAndPvtData.Block))
 	// Adding the same block should cause passing on the error caused by the block storgae
 	err = kvlgr.commitToPvtAndBlockStore(lastBlkAndPvtData)
 	require.EqualError(t, err, "block number should have been 11 but was 10")
@@ -985,10 +985,10 @@ func prepareNextBlockForTest(t *testing.T, l lgr.PeerLedger, bg *testutil.BlockG
 	simulator, _ := l.NewTxSimulator(txid)
 	//simulating transaction
 	for k, v := range pubKVs {
-		simulator.SetState("ns", k, []byte(v))
+		require.NoError(t, simulator.SetState("ns", k, []byte(v)))
 	}
 	for k, v := range pvtKVs {
-		simulator.SetPrivateData("ns", "coll", k, []byte(v))
+		require.NoError(t, simulator.SetPrivateData("ns", "coll", k, []byte(v)))
 	}
 	simulator.Done()
 	simRes, _ := simulator.GetTxSimulationResults()
