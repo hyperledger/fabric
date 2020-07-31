@@ -53,7 +53,7 @@ the binaries and images.
 .. code:: bash
 
   curl -sSL http://bit.ly/2ysbOFE | bash -s -- <fabric_version> <fabric-ca_version> <thirdparty_version>
-  curl -sSL http://bit.ly/2ysbOFE | bash -s -- 1.4.8 1.4.7 0.4.21
+  curl -sSL http://bit.ly/2ysbOFE | bash -s -- 1.4.8 1.4.8 0.4.21
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle

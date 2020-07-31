@@ -8,7 +8,7 @@
 # if version not passed in, default to latest released version
 export VERSION=1.4.8
 # if ca version not passed in, default to latest released version
-export CA_VERSION=1.4.7
+export CA_VERSION=1.4.8
 # current version of thirdparty images (couchdb, kafka and zookeeper) released
 export THIRDPARTY_IMAGE_VERSION=0.4.21
 export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
