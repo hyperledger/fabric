@@ -75,6 +75,7 @@ import (
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/cscc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
+	"github.com/hyperledger/fabric/core/scc/opt_scc"
 	"github.com/hyperledger/fabric/core/scc/qscc"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/discovery"
@@ -598,6 +599,16 @@ func serve(args []string) error {
 		"_lifecycle": {},
 	}
 
+	optSCCInsts := []scc.SelfDescribingSysCC{}
+	for _, ff := range opt_scc.ListFactoryFuncs() {
+		osi := ff(aclProvider, peerInstance)
+		if osi == nil {
+			logger.Panic("Optional SCC factory function returning nil SCC")
+		}
+		optSCCInsts = append(optSCCInsts, osi)
+		builtinSCCs[osi.Name()] = struct{}{}
+	}
+
 	lsccInst := &lscc.SCC{
 		BuiltinSCCs: builtinSCCs,
 		Support: &lscc.SupportImpl{
@@ -748,7 +759,7 @@ func serve(args []string) error {
 	}
 
 	// deploy system chaincodes
-	for _, cc := range []scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC} {
+	for _, cc := range append([]scc.SelfDescribingSysCC{lsccInst, csccInst, qsccInst, lifecycleSCC}, optSCCInsts...) {
 		if enabled, ok := chaincodeConfig.SCCAllowlist[cc.Name()]; !ok || !enabled {
 			logger.Infof("not deploying chaincode %s as it is not enabled", cc.Name())
 			continue
