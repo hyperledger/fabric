@@ -190,6 +190,7 @@ with a link to the full release change log.
 * `Fabric CA v1.4.5 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.5>`_.
 * `Fabric CA v1.4.6 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.6>`_.
 * `Fabric CA v1.4.7 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.7>`_.
+* `Fabric CA v1.4.8 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.8>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
