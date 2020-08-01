@@ -235,7 +235,7 @@ are satisfied, that ALL are satisfied, or that a MAJORITY are satisfied. This
 format lends itself to much better, more natural defaults, so that each
 organization can decide what it means for a valid endorsement.
 
-Further granularity and control can be achieved if you include [`NodeOUs`](msp.html#organizational-units) in your
+Further granularity and control can be achieved if you include [NodeOUs](../msp.html#organizational-units) in your
 organization definition. Organization Units (OUs) are defined in the Fabric CA
 client configuration file and can be associated with an identity when it is
 created. In Fabric, `NodeOUs` provide a way to classify identities in a digital
