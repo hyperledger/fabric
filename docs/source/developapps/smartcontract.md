@@ -43,7 +43,7 @@ gives the opportunity to use one of JavaScript, TypeScript, Java or any other la
 that can run on one of these supported runtimes.
 
 In Java and TypeScript, annotations or decorators are used to provide information about
-the smart contract and it's structure. This allows for a richer development experience ---
+the smart contract and its structure. This allows for a richer development experience ---
 for example, author information or return types can be enforced. Within JavaScript,
 conventions must be followed, therefore, there are limitations around what can be
 determined automatically.
