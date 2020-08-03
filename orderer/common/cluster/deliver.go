@@ -281,7 +281,8 @@ func (p *BlockPuller) probeEndpoints(minRequestedSequence uint64) *endpointInfoB
 			defer wg.Done()
 			ei, err := p.probeEndpoint(endpoint, minRequestedSequence)
 			if err != nil {
-				p.Logger.Warningf("Received error of type '%v' from %s", err, endpoint)
+				p.Logger.Warningf("Received error of type '%v' from %s", err, endpoint.Endpoint)
+				p.Logger.Debugf("%s's TLSRootCAs are %s", endpoint.Endpoint, endpoint.TLSRootCAs)
 				if err == ErrForbidden {
 					atomic.StoreUint32(&forbiddenErr, 1)
 				}
