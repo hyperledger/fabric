@@ -84,27 +84,51 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	// Parse algorithm
 	switch opts.(type) {
 	case *bccsp.ECDSAKeyGenOpts:
-		ski, pub, err := csp.generateECKey(csp.conf.ellipticCurve, opts.Ephemeral())
+		ski, privHandle, pubHandle, pubKey, err := csp.generateECKey(csp.conf.ellipticCurve, opts.Ephemeral())
 		if err != nil {
 			return nil, errors.Wrapf(err, "Failed generating ECDSA key")
 		}
-		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
+		k = &ecdsaPrivateKey{
+			ski: ski,
+			pub: ecdsaPublicKey{
+				ski:    ski,
+				pub:    pubKey,
+				handle: pubHandle,
+			},
+			handle: privHandle,
+		}
 
 	case *bccsp.ECDSAP256KeyGenOpts:
-		ski, pub, err := csp.generateECKey(oidNamedCurveP256, opts.Ephemeral())
+		ski, privHandle, pubHandle, pubKey, err := csp.generateECKey(oidNamedCurveP256, opts.Ephemeral())
 		if err != nil {
 			return nil, errors.Wrapf(err, "Failed generating ECDSA P256 key")
 		}
 
-		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
+		k = &ecdsaPrivateKey{
+			ski: ski,
+			pub: ecdsaPublicKey{
+				ski:    ski,
+				pub:    pubKey,
+				handle: pubHandle,
+			},
+			handle: privHandle,
+		}
 
 	case *bccsp.ECDSAP384KeyGenOpts:
-		ski, pub, err := csp.generateECKey(oidNamedCurveP384, opts.Ephemeral())
+		ski, privHandle, pubHandle, pubKey, err := csp.generateECKey(oidNamedCurveP384, opts.Ephemeral())
 		if err != nil {
 			return nil, errors.Wrapf(err, "Failed generating ECDSA P384 key")
 		}
 
-		k = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pub}}
+		k = &ecdsaPrivateKey{
+			ski: ski,
+			pub: ecdsaPublicKey{
+				ski:    ski,
+				pub:    pubKey,
+				handle: pubHandle,
+			},
+			handle: privHandle,
+		}
 
 	default:
 		return csp.BCCSP.KeyGen(opts)
@@ -151,14 +175,28 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 // GetKey returns the key this CSP associates to
 // the Subject Key Identifier ski.
 func (csp *impl) GetKey(ski []byte) (bccsp.Key, error) {
-	pubKey, isPriv, err := csp.getECKey(ski)
-	if err == nil {
-		if isPriv {
-			return &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pubKey}}, nil
-		}
-		return &ecdsaPublicKey{ski, pubKey}, nil
+	privHandle, pubHandle, pubKey, err := csp.getECKey(ski)
+	if err != nil {
+		logger.Warnf("Key not found using PKCS11: %v", err)
+		return csp.BCCSP.GetKey(ski)
 	}
-	return csp.BCCSP.GetKey(ski)
+	if privHandle > 0 {
+		return &ecdsaPrivateKey{
+				ski: ski,
+				pub: ecdsaPublicKey{
+					ski:    ski,
+					pub:    pubKey,
+					handle: pubHandle,
+				},
+				handle: privHandle,
+			},
+			nil
+	}
+	return &ecdsaPublicKey{
+		ski:    ski,
+		pub:    pubKey,
+		handle: pubHandle,
+	}, nil
 }
 
 // Sign signs digest using key k.
@@ -179,7 +217,7 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte
 	// Check key type
 	switch key := k.(type) {
 	case *ecdsaPrivateKey:
-		return csp.signECDSA(*key, digest, opts)
+		return csp.signECDSA(key, digest, opts)
 	default:
 		return csp.BCCSP.Sign(key, digest, opts)
 	}

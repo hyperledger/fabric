@@ -120,47 +120,46 @@ func (csp *impl) returnSession(session pkcs11.SessionHandle) {
 }
 
 // Look for an EC key by SKI, stored in CKA_ID
-func (csp *impl) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err error) {
+func (csp *impl) getECKey(ski []byte) (privHandle, pubHandle pkcs11.ObjectHandle, pubKey *ecdsa.PublicKey, err error) {
 	p11lib := csp.ctx
 	session, err := csp.getSession()
 	if err != nil {
-		return nil, false, err
+		return privHandle, pubHandle, nil, err
 	}
 	defer csp.returnSession(session)
-	isPriv = true
-	_, err = findKeyPairFromSKI(p11lib, session, ski, privateKeyType)
+
+	privHandle, err = findKeyPairFromSKI(p11lib, session, ski, privateKeyType)
 	if err != nil {
-		isPriv = false
 		logger.Debugf("Private key not found [%s] for SKI [%s], looking for Public key", err, hex.EncodeToString(ski))
 	}
 
-	publicKey, err := findKeyPairFromSKI(p11lib, session, ski, publicKeyType)
+	pubHandle, err = findKeyPairFromSKI(p11lib, session, ski, publicKeyType)
 	if err != nil {
-		return nil, false, fmt.Errorf("Public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
+		return privHandle, pubHandle, nil, fmt.Errorf("public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
 	}
 
-	ecpt, marshaledOid, err := ecPoint(p11lib, session, *publicKey)
+	ecpt, marshaledOid, err := ecPoint(p11lib, session, pubHandle)
 	if err != nil {
-		return nil, false, fmt.Errorf("Public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
+		return privHandle, pubHandle, nil, fmt.Errorf("public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
 	}
 
 	curveOid := new(asn1.ObjectIdentifier)
 	_, err = asn1.Unmarshal(marshaledOid, curveOid)
 	if err != nil {
-		return nil, false, fmt.Errorf("Failed Unmarshaling Curve OID [%s]\n%s", err.Error(), hex.EncodeToString(marshaledOid))
+		return privHandle, pubHandle, nil, fmt.Errorf("failed Unmarshaling Curve OID [%s]\n%s", err.Error(), hex.EncodeToString(marshaledOid))
 	}
 
 	curve := namedCurveFromOID(*curveOid)
 	if curve == nil {
-		return nil, false, fmt.Errorf("Cound not recognize Curve from OID")
+		return privHandle, pubHandle, nil, fmt.Errorf("could not recognize Curve from OID")
 	}
 	x, y := elliptic.Unmarshal(curve, ecpt)
 	if x == nil {
-		return nil, false, fmt.Errorf("Failed Unmarshaling Public Key")
+		return privHandle, pubHandle, nil, fmt.Errorf("failed Unmarshaling Public Key")
 	}
 
 	pubKey = &ecdsa.PublicKey{Curve: curve, X: x, Y: y}
-	return pubKey, isPriv, nil
+	return privHandle, pubHandle, pubKey, nil
 }
 
 // RFC 5480, 2.1.1.1. Named Curve
@@ -199,11 +198,17 @@ func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
 	return nil
 }
 
-func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski []byte, pubKey *ecdsa.PublicKey, err error) {
+func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (
+	ski []byte,
+	privHandle,
+	pubHandle pkcs11.ObjectHandle,
+	pubKey *ecdsa.PublicKey,
+	err error,
+) {
 	p11lib := csp.ctx
 	session, err := csp.getSession()
 	if err != nil {
-		return nil, nil, err
+		return nil, privHandle, pubHandle, nil, err
 	}
 	defer csp.returnSession(session)
 
@@ -213,7 +218,7 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 
 	marshaledOID, err := asn1.Marshal(curve)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not marshal OID [%s]", err.Error())
+		return nil, privHandle, pubHandle, nil, fmt.Errorf("Could not marshal OID [%s]", err.Error())
 	}
 
 	pubkeyT := []*pkcs11.Attribute{
@@ -241,17 +246,20 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 	}
 
-	pub, prv, err := p11lib.GenerateKeyPair(session,
+	pubHandle, privHandle, err = p11lib.GenerateKeyPair(
+		session,
 		[]*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_EC_KEY_PAIR_GEN, nil)},
-		pubkeyT, prvkeyT)
+		pubkeyT,
+		prvkeyT,
+	)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: keypair generate failed [%s]", err)
+		return nil, privHandle, pubHandle, nil, fmt.Errorf("P11: keypair generate failed [%s]", err)
 	}
 
-	ecpt, _, err := ecPoint(p11lib, session, pub)
+	ecpt, _, err := ecPoint(p11lib, session, pubHandle)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error querying EC-point: [%s]", err)
+		return nil, privHandle, pubHandle, nil, fmt.Errorf("Error querying EC-point: [%s]", err)
 	}
 	hash := sha256.Sum256(ecpt)
 	ski = hash[:]
@@ -263,14 +271,14 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 	}
 
 	logger.Infof("Generated new P11 key, SKI %x\n", ski)
-	err = p11lib.SetAttributeValue(session, pub, setskiT)
+	err = p11lib.SetAttributeValue(session, pubHandle, setskiT)
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[public] failed [%s]", err)
+		return nil, privHandle, pubHandle, nil, fmt.Errorf("P11: set-ID-to-SKI[public] failed [%s]", err)
 	}
 
-	err = p11lib.SetAttributeValue(session, prv, setskiT)
+	err = p11lib.SetAttributeValue(session, privHandle, setskiT)
 	if err != nil {
-		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[private] failed [%s]", err)
+		return nil, privHandle, pubHandle, nil, fmt.Errorf("P11: set-ID-to-SKI[private] failed [%s]", err)
 	}
 
 	//Set CKA_Modifible to false for both public key and private keys
@@ -279,46 +287,46 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 			pkcs11.NewAttribute(pkcs11.CKA_MODIFIABLE, false),
 		}
 
-		_, pubCopyerror := p11lib.CopyObject(session, pub, setCKAModifiable)
+		pubHandle, pubCopyerror := p11lib.CopyObject(session, pubHandle, setCKAModifiable)
 		if pubCopyerror != nil {
-			return nil, nil, fmt.Errorf("P11: Public Key copy failed with error [%s] . Please contact your HSM vendor", pubCopyerror)
+			return nil, privHandle, pubHandle, nil, fmt.Errorf("P11: Public Key copy failed with error [%s] . Please contact your HSM vendor", pubCopyerror)
 		}
 
-		pubKeyDestroyError := p11lib.DestroyObject(session, pub)
+		pubKeyDestroyError := p11lib.DestroyObject(session, pubHandle)
 		if pubKeyDestroyError != nil {
-			return nil, nil, fmt.Errorf("P11: Public Key destroy failed with error [%s]. Please contact your HSM vendor", pubCopyerror)
+			return nil, privHandle, pubHandle, nil, fmt.Errorf("P11: Public Key destroy failed with error [%s]. Please contact your HSM vendor", pubCopyerror)
 		}
 
-		_, prvCopyerror := p11lib.CopyObject(session, prv, setCKAModifiable)
+		privHandle, prvCopyerror := p11lib.CopyObject(session, privHandle, setCKAModifiable)
 		if prvCopyerror != nil {
-			return nil, nil, fmt.Errorf("P11: Private Key copy failed with error [%s]. Please contact your HSM vendor", prvCopyerror)
+			return nil, privHandle, pubHandle, nil, fmt.Errorf("P11: Private Key copy failed with error [%s]. Please contact your HSM vendor", prvCopyerror)
 		}
-		prvKeyDestroyError := p11lib.DestroyObject(session, prv)
+		prvKeyDestroyError := p11lib.DestroyObject(session, privHandle)
 		if pubKeyDestroyError != nil {
-			return nil, nil, fmt.Errorf("P11: Private Key destroy failed with error [%s]. Please contact your HSM vendor", prvKeyDestroyError)
+			return nil, privHandle, pubHandle, nil, fmt.Errorf("P11: Private Key destroy failed with error [%s]. Please contact your HSM vendor", prvKeyDestroyError)
 		}
 	}
 
 	nistCurve := namedCurveFromOID(curve)
 	if curve == nil {
-		return nil, nil, fmt.Errorf("Cound not recognize Curve from OID")
+		return nil, privHandle, pubHandle, nil, fmt.Errorf("Cound not recognize Curve from OID")
 	}
 	x, y := elliptic.Unmarshal(nistCurve, ecpt)
 	if x == nil {
-		return nil, nil, fmt.Errorf("Failed Unmarshaling Public Key")
+		return nil, privHandle, pubHandle, nil, fmt.Errorf("Failed Unmarshaling Public Key")
 	}
 
 	pubGoKey := &ecdsa.PublicKey{Curve: nistCurve, X: x, Y: y}
 
 	if logger.IsEnabledFor(zapcore.DebugLevel) {
-		listAttrs(p11lib, session, prv)
-		listAttrs(p11lib, session, pub)
+		listAttrs(p11lib, session, privHandle)
+		listAttrs(p11lib, session, pubHandle)
 	}
 
-	return ski, pubGoKey, nil
+	return ski, privHandle, pubHandle, pubGoKey, nil
 }
 
-func (csp *impl) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err error) {
+func (csp *impl) signP11ECDSA(handle pkcs11.ObjectHandle, msg []byte) (R, S *big.Int, err error) {
 	p11lib := csp.ctx
 	session, err := csp.getSession()
 	if err != nil {
@@ -326,12 +334,11 @@ func (csp *impl) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err error)
 	}
 	defer csp.returnSession(session)
 
-	privateKey, err := findKeyPairFromSKI(p11lib, session, ski, privateKeyType)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Private key not found [%s]", err)
-	}
-
-	err = p11lib.SignInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)}, *privateKey)
+	err = p11lib.SignInit(
+		session,
+		[]*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)},
+		handle,
+	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Sign-initialize  failed [%s]", err)
 	}
@@ -351,7 +358,7 @@ func (csp *impl) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err error)
 	return R, S, nil
 }
 
-func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize int) (bool, error) {
+func (csp *impl) verifyP11ECDSA(handle pkcs11.ObjectHandle, msg []byte, R, S *big.Int, byteSize int) (bool, error) {
 	p11lib := csp.ctx
 	session, err := csp.getSession()
 	if err != nil {
@@ -361,11 +368,6 @@ func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize 
 
 	logger.Debugf("Verify ECDSA\n")
 
-	publicKey, err := findKeyPairFromSKI(p11lib, session, ski, publicKeyType)
-	if err != nil {
-		return false, fmt.Errorf("Public key not found [%s]", err)
-	}
-
 	r := R.Bytes()
 	s := S.Bytes()
 
@@ -374,8 +376,13 @@ func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize 
 	copy(sig[byteSize-len(r):byteSize], r)
 	copy(sig[2*byteSize-len(s):], s)
 
-	err = p11lib.VerifyInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)},
-		*publicKey)
+	err = p11lib.VerifyInit(
+		session,
+		[]*pkcs11.Mechanism{
+			pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil),
+		},
+		handle,
+	)
 	if err != nil {
 		return false, fmt.Errorf("PKCS11: Verify-initialize [%s]", err)
 	}
@@ -397,7 +404,12 @@ const (
 	privateKeyType
 )
 
-func findKeyPairFromSKI(mod *pkcs11.Ctx, session pkcs11.SessionHandle, ski []byte, keyType keyType) (*pkcs11.ObjectHandle, error) {
+func findKeyPairFromSKI(
+	mod *pkcs11.Ctx,
+	session pkcs11.SessionHandle,
+	ski []byte,
+	keyType keyType,
+) (pkcs11.ObjectHandle, error) {
 	ktype := pkcs11.CKO_PUBLIC_KEY
 	if keyType == privateKeyType {
 		ktype = pkcs11.CKO_PRIVATE_KEY
@@ -408,23 +420,23 @@ func findKeyPairFromSKI(mod *pkcs11.Ctx, session pkcs11.SessionHandle, ski []byt
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
 	}
 	if err := mod.FindObjectsInit(session, template); err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// single session instance, assume one hit only
 	objs, _, err := mod.FindObjects(session, 1)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	if err = mod.FindObjectsFinal(session); err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	if len(objs) == 0 {
-		return nil, fmt.Errorf("Key not found [%s]", hex.Dump(ski))
+		return 0, fmt.Errorf("Key not found [%s]", hex.Dump(ski))
 	}
 
-	return &objs[0], nil
+	return objs[0], nil
 }
 
 // Fairly straightforward EC-point query, other than opencryptoki
