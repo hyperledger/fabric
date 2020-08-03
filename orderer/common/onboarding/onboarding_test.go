@@ -79,14 +79,19 @@ func TestMain(m *testing.M) {
 }
 
 //go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
-
 type signerSerializer interface {
 	identity.SignerSerializer
 }
 
 //go:generate counterfeiter -o mocks/read_writer.go --fake-name ReadWriter . readWriter
+type readWriter interface {
+	blockledger.ReadWriter
+}
 
-type readWriter interface{ blockledger.ReadWriter }
+//go:generate counterfeiter -o mocks/factory.go --fake-name Factory . factory
+type factory interface {
+	blockledger.Factory
+}
 
 func copyYamlFiles(src, dst string) {
 	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml"} {
@@ -989,7 +994,7 @@ func TestVerifierLoader(t *testing.T) {
 	}{
 		{
 			description:          "obtaining ledger fails",
-			ledgerGetOrCreateErr: errors.New("IO error"),
+			ledgerGetOrCreateErr: errors.New("oops"),
 			expectedPanic:        "Failed obtaining ledger for channel mychannel",
 		},
 		{
@@ -1068,8 +1073,8 @@ func TestVerifierLoader(t *testing.T) {
 			ledger.IteratorReturns(iterator, 1)
 
 			ledgerFactory := &onboarding_mocks.Factory{}
-			ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, testCase.ledgerGetOrCreateErr)
-			ledgerFactory.On("ChannelIDs").Return([]string{"mychannel"})
+			ledgerFactory.GetOrCreateReturns(ledger, testCase.ledgerGetOrCreateErr)
+			ledgerFactory.ChannelIDsReturns([]string{"mychannel"})
 
 			verifierFactory := &cluster_mocks.VerifierFactory{}
 			verifierFactory.On("VerifierFromConfig", mock.Anything, "mychannel").Return(verifier, testCase.verifierFromConfigErr)
@@ -1226,8 +1231,8 @@ func TestCreateReplicator(t *testing.T) {
 	ledger.IteratorReturns(iterator, 1)
 
 	ledgerFactory := &onboarding_mocks.Factory{}
-	ledgerFactory.On("GetOrCreate", "mychannel").Return(ledger, nil)
-	ledgerFactory.On("ChannelIDs").Return([]string{"mychannel"})
+	ledgerFactory.GetOrCreateReturns(ledger, nil)
+	ledgerFactory.ChannelIDsReturns([]string{"mychannel"})
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)

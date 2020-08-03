@@ -332,21 +332,6 @@ func (dc *InactiveChainReplicator) listInactiveChains() []string {
 	return chains
 }
 
-//go:generate mockery -dir . -name Factory -case underscore  -output mocks/
-
-// Factory retrieves or creates new ledgers by chainID
-type Factory interface {
-	// GetOrCreate gets an existing ledger (if it exists)
-	// or creates it if it does not
-	GetOrCreate(chainID string) (blockledger.ReadWriter, error)
-
-	// ChannelIDs returns the channel IDs the Factory is aware of
-	ChannelIDs() []string
-
-	// Close releases all resources acquired by the factory
-	Close()
-}
-
 type blockGetter struct {
 	ledger blockledger.Reader
 }
