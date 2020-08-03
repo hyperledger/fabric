@@ -946,7 +946,7 @@ func TestECDSALowS(t *testing.T) {
 
 	// Ensure that signature with high-S are rejected.
 	for {
-		R, S, err = currentBCCSP.(*impl).signP11ECDSA(k.(*ecdsaPrivateKey).handle, digest)
+		R, S, err = currentBCCSP.(*impl).signP11ECDSA(k.SKI(), digest)
 		if err != nil {
 			t.Fatalf("Failed generating signature [%s]", err)
 		}
