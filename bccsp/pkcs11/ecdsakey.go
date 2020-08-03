@@ -21,12 +21,15 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/miekg/pkcs11"
+
 	"github.com/hyperledger/fabric/bccsp"
 )
 
 type ecdsaPrivateKey struct {
-	ski []byte
-	pub ecdsaPublicKey
+	ski    []byte
+	pub    ecdsaPublicKey
+	handle pkcs11.ObjectHandle
 }
 
 // Bytes converts this key to its byte representation,
@@ -59,8 +62,9 @@ func (k *ecdsaPrivateKey) PublicKey() (bccsp.Key, error) {
 }
 
 type ecdsaPublicKey struct {
-	ski []byte
-	pub *ecdsa.PublicKey
+	ski    []byte
+	pub    *ecdsa.PublicKey
+	handle pkcs11.ObjectHandle
 }
 
 // Bytes converts this key to its byte representation,
