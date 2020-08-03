@@ -163,7 +163,7 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 func (csp *impl) GetKey(ski []byte) (bccsp.Key, error) {
 	pubKey, isPriv, err := csp.getECKey(ski)
 	if err != nil {
-		logger.Warnf("Key not found using PKCS11: %v", err)
+		logger.Debugf("Key not found using PKCS11: %v", err)
 		return csp.BCCSP.GetKey(ski)
 	}
 	if isPriv {
