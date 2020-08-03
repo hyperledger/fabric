@@ -123,18 +123,22 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 		oid = oidNamedCurveP384
 	}
 
-	_, privHandle, pubHandle, pubKey, err := currentBCCSP.(*impl).generateECKey(oid, true)
+	key, pubKey, err := currentBCCSP.(*impl).generateECKey(oid, true)
 	if err != nil {
 		t.Fatalf("Failed generating Key [%s]", err)
 	}
 
-	R, S, err := currentBCCSP.(*impl).signP11ECDSA(privHandle, hash1)
+	R, S, err := currentBCCSP.(*impl).signP11ECDSA(key, hash1)
 
 	if err != nil {
 		t.Fatalf("Failed signing message [%s]", err)
 	}
 
-	pass, err := currentBCCSP.(*impl).verifyP11ECDSA(pubHandle, hash1, R, S, currentTestConfig.securityLevel/8)
+	_, _, err = currentBCCSP.(*impl).signP11ECDSA(nil, hash1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Private key not found")
+
+	pass, err := currentBCCSP.(*impl).verifyP11ECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 1 [%s]", err)
 	}
@@ -147,7 +151,7 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 		t.Fatal("Signature should match with software verification!")
 	}
 
-	pass, err = currentBCCSP.(*impl).verifyP11ECDSA(pubHandle, hash2, R, S, currentTestConfig.securityLevel/8)
+	pass, err = currentBCCSP.(*impl).verifyP11ECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
 	if err != nil {
 		t.Fatalf("Error verifying message 2 [%s]", err)
 	}
