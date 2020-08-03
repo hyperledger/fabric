@@ -21,9 +21,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/miekg/pkcs11"
-
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/miekg/pkcs11"
 )
 
 type ecdsaPrivateKey struct {
