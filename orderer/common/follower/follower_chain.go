@@ -8,26 +8,21 @@ package follower
 
 import (
 	"bytes"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/consensus"
-	"github.com/hyperledger/fabric/protoutil"
-	"math"
 	"sync"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/types"
+	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
-//TODO skeleton
-
-const (
-	defaultPullRetryMinInterval time.Duration = 50 * time.Millisecond
-	defaultPullRetryMaxInterval time.Duration = 60 * time.Second
-)
+// ErrChainStopped is returned when the chain is stopped during execution.
+var ErrChainStopped = errors.New("chain stopped")
 
 //go:generate counterfeiter -o mocks/ledger_resources.go -fake-name LedgerResources . LedgerResources
 
@@ -50,26 +45,12 @@ type LedgerResources interface {
 // TimeAfter has the signature of time.After and allows tests to provide an alternative implementation to it.
 type TimeAfter func(d time.Duration) <-chan time.Time
 
-// Options contains all the configurations relevant to the chain.
-type Options struct {
-	Logger               *flogging.FabricLogger
-	PullRetryMinInterval time.Duration
-	PullRetryMaxInterval time.Duration
-	Cert                 []byte
-	TimeAfter            TimeAfter // If nil, time.After is selected
-}
-
 // CreateBlockPuller is a function to create BlockPuller on demand.
 // It is passed into chain initializer so that tests could mock this.
 type CreateBlockPuller func() (ChannelPuller, error)
 
 // CreateChain is a function that creates a new consensus.Chain for this channel, to replace the current follower.Chain
 type CreateChain func()
-
-// CreateFollower is a function that creates a new follower.Chain for this channel, to replace the current
-// follower.Chain. This happens when on-boarding ends (ledger reached join-block), and a new follower needs to be
-// created to pull blocks after the join block.
-type CreateFollower func()
 
 // Chain implements a component that allows the orderer to follow a specific channel when is not a cluster member,
 // that is, be a "follower" of the cluster. It also allows the orderer to perform "on-boarding" for
@@ -95,29 +76,29 @@ type CreateFollower func()
 // i.e. the follower is performing on-boarding for an etcdraft.Chain. Otherwise, the follower return clusterRelation
 // "follower".
 type Chain struct {
-	mutex    sync.Mutex    // Protects the start/stop flags & channels, all the rest are immutable or accessed only by the go-routine.
+	mutex    sync.Mutex    // Protects the start/stop flags & channels, cRel & status. All the rest are immutable or accessed only by the go-routine.
 	started  bool          // Start once.
 	stopped  bool          // Stop once.
 	stopChan chan struct{} // A 'closer' signals the go-routine to stop by closing this channel.
 	doneChan chan struct{} // The go-routine signals the 'closer' that it is done by closing this channel.
+	cRel     types.ClusterRelation
+	status   types.Status
 
 	ledgerResources  LedgerResources            // ledger & config resources
 	clusterConsenter consensus.ClusterConsenter // detects whether a block indicates channel membership
 	options          Options
 	logger           *flogging.FabricLogger
-	timeAfter        TimeAfter // time.After by default, or an alternative form Options.
+	timeAfter        TimeAfter // time.After by default, or an alternative from Options.
 
 	joinBlock   *common.Block // The join-block the follower was started with.
 	lastConfig  *common.Block // The last config block from the ledger. Accessed only by the go-routine.
 	firstHeight uint64        // The first ledger height
 
-	createBlockPullerFunc    CreateBlockPuller // A function that creates a block puller on demand
-	chainCreationCallback    CreateChain       // A method that creates a new consensus.Chain for this channel, to replace the current follower.Chain
-	followerCreationCallback CreateFollower    // A method that creates a new follower.Chain for this channel, to replace the current follower.Chain
+	createBlockPullerFunc CreateBlockPuller // A function that creates a block puller on demand // TODO change to interface
+	chainCreationCallback CreateChain       // A method that creates a new consensus.Chain for this channel, to replace the current follower.Chain // TODO change to interface
 
-	cryptoProvider bccsp.BCCSP
-
-	retryInterval time.Duration // Accessed only by the go-routine.
+	cryptoProvider bccsp.BCCSP   // Cryptographic services
+	blockPuller    ChannelPuller // A block puller instance that is recreated every time a config is pulled.
 }
 
 // NewChain constructs a follower.Chain object.
@@ -128,7 +109,6 @@ func NewChain(
 	options Options,
 	createBlockPullerFunc CreateBlockPuller,
 	chainCreationCallback CreateChain,
-	followerCreationCallback CreateFollower,
 	cryptoProvider bccsp.BCCSP,
 ) (*Chain, error) {
 	// Check the block puller creation function once before we start the follower.
@@ -138,41 +118,33 @@ func NewChain(
 	}
 	defer puller.Close()
 
+	options.applyDefaults()
+
 	chain := &Chain{
-		stopChan:                 make(chan (struct{})),
-		doneChan:                 make(chan (struct{})),
-		ledgerResources:          ledgerResources,
-		clusterConsenter:         clusterConsenter,
-		joinBlock:                joinBlock,
-		firstHeight:              ledgerResources.Height(),
-		options:                  options,
-		logger:                   options.Logger.With("channel", ledgerResources.ChannelID()),
-		timeAfter:                time.After,
-		createBlockPullerFunc:    createBlockPullerFunc,
-		chainCreationCallback:    chainCreationCallback,
-		followerCreationCallback: followerCreationCallback,
-		cryptoProvider:           cryptoProvider,
-	}
-
-	if chain.options.PullRetryMinInterval <= 0 {
-		chain.options.PullRetryMinInterval = defaultPullRetryMinInterval
-	}
-	if chain.options.PullRetryMaxInterval <= 0 {
-		chain.options.PullRetryMaxInterval = defaultPullRetryMaxInterval
-	}
-	if chain.options.PullRetryMaxInterval > math.MaxInt64/2 {
-		chain.options.PullRetryMaxInterval = math.MaxInt64 / 2
-	}
-	if chain.options.PullRetryMinInterval > chain.options.PullRetryMaxInterval {
-		chain.options.PullRetryMaxInterval = chain.options.PullRetryMinInterval
-	}
-	chain.retryInterval = chain.options.PullRetryMinInterval
-
-	if chain.options.TimeAfter != nil {
-		chain.timeAfter = chain.options.TimeAfter
+		stopChan:              make(chan (struct{})),
+		doneChan:              make(chan (struct{})),
+		cRel:                  types.ClusterRelationFollower,
+		status:                types.StatusOnBoarding,
+		ledgerResources:       ledgerResources,
+		clusterConsenter:      clusterConsenter,
+		joinBlock:             joinBlock,
+		firstHeight:           ledgerResources.Height(),
+		options:               options,
+		logger:                options.Logger.With("channel", ledgerResources.ChannelID()),
+		timeAfter:             options.TimeAfter,
+		createBlockPullerFunc: createBlockPullerFunc,
+		chainCreationCallback: chainCreationCallback,
+		cryptoProvider:        cryptoProvider,
 	}
 
 	if joinBlock == nil {
+		chain.status = types.StatusActive
+		if err := chain.loadLastConfig(); err != nil {
+			return nil, err
+		}
+		if isMem, _ := chain.clusterConsenter.IsChannelMember(chain.lastConfig); isMem {
+			chain.cRel = types.ClusterRelationMember
+		}
 		chain.logger.Infof("Created with a nil join-block, ledger height: %d", chain.firstHeight)
 	} else {
 		if joinBlock.Header == nil {
@@ -182,18 +154,20 @@ func NewChain(
 			return nil, errors.New("block data is nil")
 		}
 
+		if chain.joinBlock.Header.Number < chain.ledgerResources.Height() {
+			chain.status = types.StatusActive
+		}
+		if isMem, _ := chain.clusterConsenter.IsChannelMember(chain.joinBlock); isMem {
+			chain.cRel = types.ClusterRelationMember
+		}
+
 		chain.logger.Infof("Created with join-block number: %d, ledger height: %d", joinBlock.Header.Number, chain.firstHeight)
 	}
+	chain.logger.Debugf("Options are: %v", chain.options)
 
 	if chain.chainCreationCallback == nil {
 		chain.chainCreationCallback = func() {
 			chain.logger.Warnf("No-Op: chain creation callback is nil")
-		}
-	}
-
-	if chain.followerCreationCallback == nil {
-		chain.followerCreationCallback = func() {
-			chain.logger.Warnf("No-Op: follower creation callback is nil")
 		}
 	}
 
@@ -216,6 +190,7 @@ func (c *Chain) Start() {
 	c.logger.Info("Started")
 }
 
+// Halt signals the Chain to stop and waits for the internal go-routine to exit.
 func (c *Chain) Halt() {
 	c.halt()
 
@@ -242,20 +217,15 @@ func (c *Chain) StatusReport() (types.ClusterRelation, types.Status) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	clusterRelation := types.ClusterRelationFollower
-	if c.joinBlock != nil {
-		isMem, _ := c.clusterConsenter.IsChannelMember(c.joinBlock)
-		if isMem {
-			clusterRelation = types.ClusterRelationMember
-		}
-	}
+	return c.cRel, c.status
+}
 
-	status := types.StatusActive
-	if (c.joinBlock != nil) && (c.joinBlock.Header.Number >= c.ledgerResources.Height()) {
-		status = types.StatusOnBoarding
-	}
+func (c *Chain) setStatusReport(clusterRelation types.ClusterRelation, status types.Status) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	return clusterRelation, status
+	c.cRel = clusterRelation
+	c.status = status
 }
 
 func (c *Chain) Height() uint64 {
@@ -286,81 +256,86 @@ func (c *Chain) run() {
 		c.logger.Debug("The follower.Chain puller goroutine is exiting")
 	}()
 
-	err := c.pull()
-
-	for err != nil {
-		c.logger.Debugf("Pull failed, going to try again in %v; error: %s", c.retryInterval, err)
-
-		select {
-		case <-c.stopChan:
-			c.logger.Debug("Received a stop signal")
-			return
-
-		case <-c.timeAfter(c.retryInterval):
-			err = c.pull()
-		}
-
-		if err != nil {
-			c.increaseRetryInterval()
-		}
+	if err := c.pull(); err != nil {
+		c.logger.Warnf("Pull failed, error: %s", err)
+		// TODO set the status to StatusError
 	}
 }
 
-func (c *Chain) increaseRetryInterval() {
-	if c.retryInterval == c.options.PullRetryMaxInterval {
+func (c *Chain) increaseRetryInterval(retryInterval *time.Duration, upperLimit time.Duration) {
+	if *retryInterval == upperLimit {
 		return
 	}
-	//assuming this will never overflow int64, as PullRetryMaxInterval cannot be over MaxInt64/2
-	c.retryInterval = time.Duration(1.5 * float64(c.retryInterval))
-	if c.retryInterval > c.options.PullRetryMaxInterval {
-		c.retryInterval = c.options.PullRetryMaxInterval
+	//assuming this will never overflow int64, as upperLimit cannot be over MaxInt64/2
+	*retryInterval = time.Duration(1.5 * float64(*retryInterval))
+	if *retryInterval > upperLimit {
+		*retryInterval = upperLimit
 	}
-	c.logger.Debugf("retry interval increased to: %v", c.retryInterval)
+	c.logger.Debugf("retry interval increased to: %v", *retryInterval)
 }
 
-func (c *Chain) resetRetryInterval() {
-	if c.retryInterval == c.options.PullRetryMinInterval {
+func (c *Chain) resetRetryInterval(retryInterval *time.Duration, lowerLimit time.Duration) {
+	if *retryInterval == lowerLimit {
 		return
 	}
-	c.retryInterval = c.options.PullRetryMinInterval
-	c.logger.Debugf("retry interval reset to: %v", c.retryInterval)
+	*retryInterval = lowerLimit
+	c.logger.Debugf("retry interval reset to: %v", *retryInterval)
 }
 
-// pull blocks from other orderers, until the join block, or until a config block the indicates the orderer has become
-// a member pf the cluster. When the follower.Chain's job is done, this method halts, triggers the creation of a new
-// consensus.Chain, and returns nil.
+func (c *Chain) decreaseRetryInterval(retryInterval *time.Duration, lowerLimit time.Duration) {
+	if *retryInterval == lowerLimit {
+		return
+	}
+
+	*retryInterval = *retryInterval - lowerLimit
+	if *retryInterval < lowerLimit {
+		*retryInterval = lowerLimit
+	}
+	c.logger.Debugf("retry interval decreased to: %v", *retryInterval)
+}
+
+// pull blocks from other orderers until a config block indicates the orderer has become a member of the cluster.
+// When the follower.Chain's job is done, this method halts, triggers the creation of a new consensus.Chain,
+// and returns nil. The method returns an error only when the chain is stopped or due to unrecoverable errors.
 func (c *Chain) pull() error {
+	var err error
 	if c.joinBlock != nil {
-		err := c.pullUpToJoin()
+		err = c.pullUpToJoin()
 		if err != nil {
 			return errors.Wrap(err, "failed to pull up to join block")
 		}
 
 		// TODO remove the join-block from the file repo
-	} else {
-		err := c.pullAfterJoin()
-		if err != nil {
-			return errors.Wrap(err, "failed to pull after join block")
-		}
-	}
 
-	// Trigger creation of a new chain. This will regenerate 'ledgerResources' from the tip of the ledger, and will
-	// start either a follower.Chain or an etcdraft.Chain, depending on whether the orderer is a follower or a
-	// member of the cluster.
-	c.halt()
-
-	if c.joinBlock != nil {
+		// The join block never returns an error. This is checked before the follower is started.
 		if isMem, _ := c.clusterConsenter.IsChannelMember(c.joinBlock); isMem {
+			c.setStatusReport(types.ClusterRelationMember, types.StatusActive)
+			// Trigger creation of a new consensus.Chain.
 			c.logger.Info("On-boarding finished successfully, invoking chain creation callback")
+			c.halt()
 			c.chainCreationCallback()
-		} else {
-			c.logger.Info("On-boarding finished successfully, invoking follower creation callback")
-			c.followerCreationCallback()
+			return nil
 		}
-	} else {
-		c.logger.Info("Block pulling finished successfully, invoking chain creation callback")
-		c.chainCreationCallback()
+
+		c.setStatusReport(types.ClusterRelationFollower, types.StatusActive)
+		c.joinBlock = nil
+		err = c.loadLastConfig()
+		if err != nil {
+			return errors.Wrap(err, "failed to load last config block")
+		}
+
+		c.logger.Info("On-boarding finished successfully, continuing to pull blocks after join-block")
 	}
+
+	err = c.pullAfterJoin()
+	if err != nil {
+		return errors.Wrap(err, "failed to pull after join block")
+	}
+
+	// Trigger creation of a new consensus.Chain.
+	c.logger.Info("Block pulling finished successfully, invoking chain creation callback")
+	c.halt()
+	c.chainCreationCallback()
 
 	return nil
 }
@@ -369,53 +344,21 @@ func (c *Chain) pull() error {
 // It checks whether the chain was stopped between blocks.
 func (c *Chain) pullUpToJoin() error {
 	targetHeight := c.joinBlock.Header.Number + 1
-	firstBlockToPull := c.ledgerResources.Height()
-	c.logger.Debugf("first block to pull: %d, target height: %d", firstBlockToPull, targetHeight)
-	if firstBlockToPull >= targetHeight {
-		c.logger.Infof("Target height (%d) is <= to our ledger height (%d), skipping pulling", targetHeight, firstBlockToPull)
+	if c.ledgerResources.Height() >= targetHeight {
+		c.logger.Infof("Target height according to join block (%d) is <= to our ledger height (%d), no need to pull up to join block", targetHeight, c.ledgerResources.Height())
 		return nil
 	}
 
-	puller, err := c.createBlockPullerFunc()
+	var err error
+	c.blockPuller, err = c.createBlockPullerFunc() // TODO replace with a factory that has a join block as input
+	if err != nil {                                //This should never happen since we check the join-block before we start.
+		return errors.Wrapf(err, "error creating block puller")
+	}
+	defer c.blockPuller.Close()
+
+	err = c.pullUntilLatestWithRetry(targetHeight, false)
 	if err != nil {
-		c.logger.Errorf("Error creating block puller: %s", err)
-		return errors.Wrap(err, "error creating block puller")
-	}
-	defer puller.Close()
-
-	var actualPrevHash []byte
-	// Initialize the actual previous hash
-	if firstBlockToPull > 0 {
-		prevBlock := c.ledgerResources.Block(firstBlockToPull - 1)
-		if prevBlock == nil {
-			return errors.Errorf("cannot retrieve previous block %d", firstBlockToPull-1)
-		}
-		actualPrevHash = protoutil.BlockHeaderHash(prevBlock.Header)
-	}
-
-	// Pull the rest of the blocks
-	for seq := firstBlockToPull; seq < targetHeight; seq++ {
-		select {
-		case <-c.stopChan:
-			c.logger.Warnf("Stopped before pulling all the blocks: pulled %d blocks from the range %d until %d",
-				seq-firstBlockToPull, firstBlockToPull, targetHeight-1)
-			return errors.New("stopped before pulling all the blocks")
-		default:
-			nextBlock := puller.PullBlock(seq)
-			if nextBlock == nil {
-				return errors.Wrapf(cluster.ErrRetryCountExhausted, "failed to pull block %d", seq)
-			}
-			reportedPrevHash := nextBlock.Header.PreviousHash
-			if (nextBlock.Header.Number > 0) && !bytes.Equal(reportedPrevHash, actualPrevHash) {
-				return errors.Errorf("block header mismatch on sequence %d, expected %x, got %x",
-					nextBlock.Header.Number, actualPrevHash, reportedPrevHash)
-			}
-			actualPrevHash = protoutil.BlockHeaderHash(nextBlock.Header)
-			if err = c.ledgerResources.Append(nextBlock); err != nil {
-				return errors.Wrapf(err, "failed to append block %d to the ledger", nextBlock.Header.Number)
-			}
-			c.resetRetryInterval()
-		}
+		return err
 	}
 
 	c.logger.Infof("Pulled blocks from %d until %d", c.firstHeight, targetHeight-1)
@@ -423,9 +366,167 @@ func (c *Chain) pullUpToJoin() error {
 }
 
 // pullAfterJoin pulls blocks continuously, inspecting the fetched config blocks for membership.
+// On every config block, it renews the BlockPuller, to take in the new configuration.
 // It will exit with 'nil' if it detects a config block that indicates the orderer is a member of the cluster.
 // It checks whether the chain was stopped between blocks.
 func (c *Chain) pullAfterJoin() error {
-	//TODO
-	return errors.New("not implemented yet: pull after join block")
+	var err error
+
+	c.blockPuller, err = c.createBlockPullerFunc() // TODO replace with a factory that has last config block as input
+	if err != nil {
+		return errors.Wrap(err, "error creating block puller")
+	}
+	defer c.blockPuller.Close()
+
+	heightPollInterval := c.options.HeightPollMinInterval
+	for {
+		// Check membership
+		isMember, errMem := c.clusterConsenter.IsChannelMember(c.lastConfig)
+		if errMem != nil {
+			return errors.Wrap(err, "failed to determine channel membership from last config")
+		}
+		if isMember {
+			c.setStatusReport(types.ClusterRelationMember, types.StatusActive)
+			return nil
+		}
+
+		// Poll for latest network height to advance beyond ledger height.
+		var latestNetworkHeight uint64
+	heightPollLoop:
+		for {
+			endpoint, networkHeight, errHeight := cluster.LatestHeightAndEndpoint(c.blockPuller)
+			if errHeight != nil {
+				c.logger.Errorf("Failed to get latest height and endpoint, error: %s", errHeight)
+			} else {
+				c.logger.Debugf("Orderer endpoint %s has the biggest ledger height: %d", endpoint, networkHeight)
+			}
+
+			if networkHeight > c.ledgerResources.Height() {
+				// On success, slowly decrease the polling interval
+				c.decreaseRetryInterval(&heightPollInterval, c.options.HeightPollMinInterval)
+				latestNetworkHeight = networkHeight
+				break heightPollLoop
+			}
+
+			c.logger.Debugf("My height: %d, latest network height: %d; going to wait %v for latest height to grow",
+				c.ledgerResources.Height(), networkHeight, heightPollInterval)
+			select {
+			case <-c.stopChan:
+				c.logger.Debug("Received a stop signal")
+				return ErrChainStopped
+			case <-c.timeAfter(heightPollInterval):
+				// Exponential back-off, to avoid calling LatestHeightAndEndpoint too often.
+				c.increaseRetryInterval(&heightPollInterval, c.options.HeightPollMaxInterval)
+			}
+		}
+
+		// Pull to latest height or chain stop signal
+		err = c.pullUntilLatestWithRetry(latestNetworkHeight, true)
+		if err != nil {
+			return err
+		}
+	}
+}
+
+// pullUntilLatestWithRetry is given a target-height and exits without an error when it reaches that target.
+// It return with an error only if the chain is stopped.
+// On internal pull errors it employs exponential back-off and retries.
+func (c *Chain) pullUntilLatestWithRetry(latestNetworkHeight uint64, inspectConfig bool) error {
+	//Pull until latest
+	retryInterval := c.options.PullRetryMinInterval
+	for {
+		numPulled, errPull := c.pullUntilTarget(latestNetworkHeight, inspectConfig)
+		if numPulled > 0 {
+			c.resetRetryInterval(&retryInterval, c.options.PullRetryMinInterval) // On any progress, reset retry interval.
+		}
+		if errPull == nil {
+			c.logger.Debugf("Pulled %d blocks until latest network height: %d", numPulled, latestNetworkHeight)
+			break
+		}
+
+		c.logger.Debugf("Error while trying to pull to latest height: %d; going to try again in %v",
+			latestNetworkHeight, retryInterval)
+		select {
+		case <-c.stopChan:
+			c.logger.Debug("Received a stop signal")
+			return ErrChainStopped
+		case <-c.timeAfter(retryInterval):
+			// Exponential back-off on successive errors w/o progress.
+			c.increaseRetryInterval(&retryInterval, c.options.PullRetryMaxInterval)
+		}
+	}
+
+	return nil
+}
+
+// pullUntilTarget is given a target-height and exits without an error when it reaches that target.
+// It may return with an error before the target, always returning the number of blocks pulled.
+func (c *Chain) pullUntilTarget(targetHeight uint64, inspectConfig bool) (uint64, error) {
+	firstBlockToPull := c.ledgerResources.Height()
+	if firstBlockToPull >= targetHeight {
+		c.logger.Debugf("Target height (%d) is <= to our ledger height (%d), skipping pulling", targetHeight, firstBlockToPull)
+		return 0, nil
+	}
+
+	var actualPrevHash []byte
+	// Initialize the actual previous hash
+	if firstBlockToPull > 0 {
+		prevBlock := c.ledgerResources.Block(firstBlockToPull - 1)
+		if prevBlock == nil {
+			return 0, errors.Errorf("cannot retrieve previous block %d", firstBlockToPull-1)
+		}
+		actualPrevHash = protoutil.BlockHeaderHash(prevBlock.Header)
+	}
+
+	// Pull until the latest height
+	for seq := firstBlockToPull; seq < targetHeight; seq++ {
+		n := seq - firstBlockToPull
+		select {
+		case <-c.stopChan:
+			c.logger.Debug("Received a stop signal")
+			return n, ErrChainStopped
+		default:
+			nextBlock := c.blockPuller.PullBlock(seq)
+			if nextBlock == nil {
+				return n, errors.Wrapf(cluster.ErrRetryCountExhausted, "failed to pull block %d", seq)
+			}
+			reportedPrevHash := nextBlock.Header.PreviousHash
+			if (nextBlock.Header.Number > 0) && !bytes.Equal(reportedPrevHash, actualPrevHash) {
+				return n, errors.Errorf("block header mismatch on sequence %d, expected %x, got %x",
+					nextBlock.Header.Number, actualPrevHash, reportedPrevHash)
+			}
+			actualPrevHash = protoutil.BlockHeaderHash(nextBlock.Header)
+			if err := c.ledgerResources.Append(nextBlock); err != nil {
+				return n, errors.Wrapf(err, "failed to append block %d to the ledger", nextBlock.Header.Number)
+			}
+
+			if inspectConfig && protoutil.IsConfigBlock(nextBlock) {
+				c.logger.Debugf("Pulled blocks from %d to %d, last block is config", firstBlockToPull, nextBlock.Header.Number)
+				c.lastConfig = nextBlock
+				// Re-create the block puller to apply the new config, which may update the endpoints.
+				c.blockPuller.Close()
+				var err error
+				if c.blockPuller, err = c.createBlockPullerFunc(); err != nil { // TODO replace with a factory that has a config block as input
+					return n, errors.Wrapf(err, "failed to re-create block puller from last config,  block number: %d", nextBlock.Header.Number)
+				}
+			}
+		}
+	}
+	c.logger.Debugf("Pulled blocks from %d to %d", firstBlockToPull, targetHeight)
+	return targetHeight - firstBlockToPull, nil
+}
+
+func (c *Chain) loadLastConfig() error {
+	height := c.ledgerResources.Height()
+	lastBlock := c.ledgerResources.Block(height - 1)
+	index, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
+	if err != nil {
+		return errors.Wrap(err, "chain does have appropriately encoded last config in its latest block")
+	}
+	lastConfig := c.ledgerResources.Block(index)
+	if lastConfig == nil {
+		return errors.Wrapf(err, "could not retrieve config block from index %d", index)
+	}
+	c.lastConfig = lastConfig
+	return nil
 }
