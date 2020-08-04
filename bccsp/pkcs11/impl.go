@@ -152,13 +152,14 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 // the Subject Key Identifier ski.
 func (csp *impl) GetKey(ski []byte) (bccsp.Key, error) {
 	pubKey, isPriv, err := csp.getECKey(ski)
-	if err == nil {
-		if isPriv {
-			return &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pubKey}}, nil
-		}
-		return &ecdsaPublicKey{ski, pubKey}, nil
+	if err != nil {
+		logger.Debugf("Key not found using PKCS11: %v", err)
+		return csp.BCCSP.GetKey(ski)
 	}
-	return csp.BCCSP.GetKey(ski)
+	if isPriv {
+		return &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pubKey}}, nil
+	}
+	return &ecdsaPublicKey{ski, pubKey}, nil
 }
 
 // Sign signs digest using key k.
