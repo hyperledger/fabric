@@ -20,10 +20,11 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-// HashingAlgorithm is encoded into the configuration transaction as  a configuration item of type Chain
-// with a Key of "HashingAlgorithm" and a Value of  HashingAlgorithm as marshaled protobuf bytes
+// HashingAlgorithm is encoded into the configuration transaction as a
+// configuration item of type Chain with a Key of "HashingAlgorithm" and a
+// Value of HashingAlgorithm as marshaled protobuf bytes
 type HashingAlgorithm struct {
-	// Currently supported algorithms are: SHAKE256
+	// SHA256 is currently the only supported and tested algorithm.
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
