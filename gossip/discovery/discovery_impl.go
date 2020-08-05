@@ -230,16 +230,7 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 		return
 	}
 	var peers2SendTo []*NetworkMember
-	m, err := d.createMembershipRequest(true)
-	if err != nil {
-		d.logger.Warningf("Failed creating membership request: %+v", errors.WithStack(err))
-		return
-	}
-	memReq, err := protoext.NoopSign(m)
-	if err != nil {
-		d.logger.Warningf("Failed creating SignedGossipMessage: %+v", errors.WithStack(err))
-		return
-	}
+
 	d.lock.RLock()
 
 	n := d.aliveMembership.Size()
@@ -265,6 +256,22 @@ func (d *gossipDiscoveryImpl) InitiateSync(peerNum int) {
 	}
 
 	d.lock.RUnlock()
+
+	if len(peers2SendTo) == 0 {
+		d.logger.Debugf("No peers to send to, aborting membership sync")
+		return
+	}
+
+	m, err := d.createMembershipRequest(true)
+	if err != nil {
+		d.logger.Warningf("Failed creating membership request: %+v", errors.WithStack(err))
+		return
+	}
+	memReq, err := protoext.NoopSign(m)
+	if err != nil {
+		d.logger.Warningf("Failed creating SignedGossipMessage: %+v", errors.WithStack(err))
+		return
+	}
 
 	for _, netMember := range peers2SendTo {
 		d.comm.SendToPeer(netMember, memReq)
@@ -755,6 +762,10 @@ func (d *gossipDiscoveryImpl) periodicalSendAlive() {
 	for !d.toDie() {
 		d.logger.Debug("Sleeping", d.aliveTimeInterval)
 		time.Sleep(d.aliveTimeInterval)
+		if d.aliveMembership.Size() == 0 {
+			d.logger.Debugf("Empty membership, no one to send a heartbeat to")
+			continue
+		}
 		msg, err := d.createSignedAliveMessage(true)
 		if err != nil {
 			d.logger.Warningf("Failed creating alive message: %+v", errors.WithStack(err))
