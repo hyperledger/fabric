@@ -72,7 +72,7 @@ var _ = Describe("Metadata Validation", func() {
 	})
 
 	JustBeforeEach(func() {
-		c := newChain(10*time.Second, channelID, dataDir, 1, meta, consenters, cryptoProvider, support)
+		c := newChain(10*time.Second, channelID, dataDir, 1, meta, consenters, cryptoProvider, support, nil)
 		c.init()
 		chain = c.Chain
 		chain.ActiveNodes.Store([]uint64{1, 2, 3})
