@@ -67,6 +67,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
+	"github.com/hyperledger/fabric/core/ledger/snapshotgrpc"
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/policy"
@@ -871,6 +872,10 @@ func serve(args []string) error {
 	auth := authHandler.ChainFilters(serverEndorser, authFilters...)
 	// Register the Endorser server
 	pb.RegisterEndorserServer(peerServer.Server(), auth)
+
+	// register the snapshot server
+	snapshotSvc := &snapshotgrpc.SnapshotService{LedgerGetter: peerInstance}
+	pb.RegisterSnapshotServer(peerServer.Server(), snapshotSvc)
 
 	go func() {
 		var grpcErr error
