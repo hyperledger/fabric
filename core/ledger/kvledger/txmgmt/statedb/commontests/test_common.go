@@ -251,10 +251,9 @@ func TestIterator(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 func testItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
 	defer itr.Close()
 	for _, expectedKey := range expectedKeys {
-		queryResult, _ := itr.Next()
-		vkv := queryResult.(*statedb.VersionedKV)
-		key := vkv.Key
-		require.Equal(t, expectedKey, key)
+		queryResult, err := itr.Next()
+		require.NoError(t, err)
+		require.Equal(t, expectedKey, queryResult.Key)
 	}
 	_, err := itr.Next()
 	require.NoError(t, err)
@@ -313,8 +312,8 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult1, err := itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult1)
-	versionedQueryRecord := queryResult1.(*statedb.VersionedKV)
-	stringRecord := string(versionedQueryRecord.Value)
+
+	stringRecord := string(queryResult1.Value)
 	bFoundRecord := strings.Contains(stringRecord, "jerry")
 	require.True(t, bFoundRecord)
 
@@ -331,8 +330,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult1, err = itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult1)
-	versionedQueryRecord = queryResult1.(*statedb.VersionedKV)
-	stringRecord = string(versionedQueryRecord.Value)
+	stringRecord = string(queryResult1.Value)
 	bFoundRecord = strings.Contains(stringRecord, "jerry")
 	require.True(t, bFoundRecord)
 
@@ -371,8 +369,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult1, err = itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult1)
-	versionedQueryRecord = queryResult1.(*statedb.VersionedKV)
-	stringRecord = string(versionedQueryRecord.Value)
+	stringRecord = string(queryResult1.Value)
 	bFoundRecord = strings.Contains(stringRecord, "jerry")
 	require.True(t, bFoundRecord)
 
@@ -389,8 +386,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult1, err = itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult1)
-	versionedQueryRecord = queryResult1.(*statedb.VersionedKV)
-	stringRecord = string(versionedQueryRecord.Value)
+	stringRecord = string(queryResult1.Value)
 	bFoundRecord = strings.Contains(stringRecord, "jerry")
 	require.True(t, bFoundRecord)
 
@@ -416,8 +412,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult1, err = itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult1)
-	versionedQueryRecord = queryResult1.(*statedb.VersionedKV)
-	stringRecord = string(versionedQueryRecord.Value)
+	stringRecord = string(queryResult1.Value)
 	bFoundRecord = strings.Contains(stringRecord, "fred")
 	require.True(t, bFoundRecord)
 
@@ -434,8 +429,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult1, err = itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult1)
-	versionedQueryRecord = queryResult1.(*statedb.VersionedKV)
-	stringRecord = string(versionedQueryRecord.Value)
+	stringRecord = string(queryResult1.Value)
 	bFoundRecord = strings.Contains(stringRecord, "fred")
 	require.True(t, bFoundRecord)
 
@@ -461,8 +455,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult1, err = itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult1)
-	versionedQueryRecord = queryResult1.(*statedb.VersionedKV)
-	stringRecord = string(versionedQueryRecord.Value)
+	stringRecord = string(queryResult1.Value)
 	bFoundRecord = strings.Contains(stringRecord, "green")
 	require.True(t, bFoundRecord)
 
@@ -470,8 +463,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult2, err = itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult2)
-	versionedQueryRecord = queryResult2.(*statedb.VersionedKV)
-	stringRecord = string(versionedQueryRecord.Value)
+	stringRecord = string(queryResult2.Value)
 	bFoundRecord = strings.Contains(stringRecord, "green")
 	require.True(t, bFoundRecord)
 
@@ -488,8 +480,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult1, err = itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult1)
-	versionedQueryRecord = queryResult1.(*statedb.VersionedKV)
-	stringRecord = string(versionedQueryRecord.Value)
+	stringRecord = string(queryResult1.Value)
 	bFoundRecord = strings.Contains(stringRecord, "green")
 	require.True(t, bFoundRecord)
 
@@ -497,8 +488,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult2, err = itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult2)
-	versionedQueryRecord = queryResult2.(*statedb.VersionedKV)
-	stringRecord = string(versionedQueryRecord.Value)
+	stringRecord = string(queryResult2.Value)
 	bFoundRecord = strings.Contains(stringRecord, "green")
 	require.True(t, bFoundRecord)
 
@@ -525,8 +515,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult1, err = itr.Next()
 	require.NoError(t, err)
 	require.NotNil(t, queryResult1)
-	versionedQueryRecord = queryResult1.(*statedb.VersionedKV)
-	stringRecord = string(versionedQueryRecord.Value)
+	stringRecord = string(queryResult1.Value)
 	bFoundRecord = strings.Contains(stringRecord, "joe")
 	require.True(t, bFoundRecord)
 	bFoundRecord = strings.Contains(stringRecord, "1000007")
@@ -1008,9 +997,7 @@ func TestItrWithoutClose(t *testing.T, itr statedb.ResultsIterator, expectedKeys
 	for _, expectedKey := range expectedKeys {
 		queryResult, err := itr.Next()
 		require.NoError(t, err, "An unexpected error was thrown during iterator Next()")
-		vkv := queryResult.(*statedb.VersionedKV)
-		key := vkv.Key
-		require.Equal(t, expectedKey, key)
+		require.Equal(t, expectedKey, queryResult.Key)
 	}
 	queryResult, err := itr.Next()
 	require.NoError(t, err, "An unexpected error was thrown during iterator Next()")
@@ -1175,9 +1162,9 @@ func CreateTestData(t *testing.T, db statedb.VersionedDB, ns string, numKeys int
 	itr, _ := db.GetStateRangeScanIterator(ns, "", "")
 	defer itr.Close()
 	for _, expectedKey := range expectedKeys {
-		queryResult, _ := itr.Next()
-		vkv := queryResult.(*statedb.VersionedKV)
-		require.Equal(t, expectedKey, vkv.Key)
+		queryResult, err := itr.Next()
+		require.NoError(t, err)
+		require.Equal(t, expectedKey, queryResult.Key)
 	}
 	return expectedKeys
 }
