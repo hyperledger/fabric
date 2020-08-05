@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics/mocks"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -187,6 +188,7 @@ func (m *receivedMsg) GetConnectionInfo() *protoext.ConnectionInfo {
 }
 
 type gossipAdapterMock struct {
+	signCallCount uint32
 	mock.Mock
 	sync.RWMutex
 }
@@ -198,6 +200,7 @@ func (ga *gossipAdapterMock) On(methodName string, arguments ...interface{}) *mo
 }
 
 func (ga *gossipAdapterMock) Sign(msg *proto.GossipMessage) (*protoext.SignedGossipMessage, error) {
+	atomic.AddUint32(&ga.signCallCount, 1)
 	return protoext.NoopSign(msg)
 }
 
@@ -220,12 +223,14 @@ func (ga *gossipAdapterMock) DeMultiplex(msg interface{}) {
 
 func (ga *gossipAdapterMock) GetMembership() []discovery.NetworkMember {
 	args := ga.Called()
-	arg := args.Get(0)
-	if f, isFunc := arg.(func() []discovery.NetworkMember); isFunc {
+	val := args.Get(0)
+	if f, isFunc := val.(func() []discovery.NetworkMember); isFunc {
 		return f()
-	} else {
-		return arg.([]discovery.NetworkMember)
 	}
+
+	members := val.([]discovery.NetworkMember)
+
+	return members
 }
 
 // Lookup returns a network member, or nil if not found
@@ -361,6 +366,7 @@ func TestMsgStoreNotExpire(t *testing.T) {
 	// Receive StateInfo messages from other peers
 	gc.HandleMessage(&receivedMsg{PKIID: pkiID2, msg: createStateInfoMsg(1, pkiID2, channelA)})
 	gc.HandleMessage(&receivedMsg{PKIID: pkiID3, msg: createStateInfoMsg(1, pkiID3, channelA)})
+	time.Sleep(adapter.GetConf().PublishStateInfoInterval * 2)
 
 	simulateStateInfoRequest := func(pkiID []byte, outChan chan *protoext.SignedGossipMessage) {
 		sentMessages := make(chan *proto.GossipMessage, 1)
@@ -501,8 +507,14 @@ func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
 	cs := &cryptoService{}
 	cs.On("VerifyBlock", mock.Anything).Return(nil)
 
+	peerA := discovery.NetworkMember{
+		PKIid:            pkiIDInOrg1,
+		Endpoint:         "a",
+		InternalEndpoint: "a",
+	}
+
 	adapter := new(gossipAdapterMock)
-	configureAdapter(adapter)
+	configureAdapter(adapter, peerA)
 	adapter.On("Send", mock.Anything, mock.Anything)
 	adapter.On("Gossip", mock.Anything).Run(func(arg mock.Arguments) {
 		if atomic.LoadInt32(&receivedMsg) == int32(1) {
@@ -1072,6 +1084,55 @@ func TestChannelBadBlocks(t *testing.T) {
 	cs.On("VerifyBlock", mock.Anything).Return(errors.New("Bad signature"))
 	gc.HandleMessage(&receivedMsg{msg: createDataMsg(4, channelA), PKIID: pkiIDInOrg1})
 	require.Len(t, receivedMessages, 0)
+}
+
+func TestNoGossipOrSigningWhenEmptyMembership(t *testing.T) {
+	t.Parallel()
+
+	var gossipedWG sync.WaitGroup
+	gossipedWG.Add(1)
+
+	var emptyMembership []discovery.NetworkMember
+	nonEmptyMembership := []discovery.NetworkMember{{PKIid: pkiIDInOrg1}}
+
+	var dynamicMembership atomic.Value
+	dynamicMembership.Store(nonEmptyMembership)
+
+	cs := &cryptoService{}
+	adapter := new(gossipAdapterMock)
+	// Override configuration and disable outgoing state info requests
+	conf := conf
+	conf.PublishStateInfoInterval = time.Second
+	conf.RequestStateInfoInterval = time.Hour
+	conf.TimeForMembershipTracker = time.Hour
+	adapter.On("GetConf").Return(conf)
+	adapter.On("GetOrgOfPeer", pkiIDInOrg1).Return(orgInChannelA)
+	adapter.On("Gossip", mock.Anything).Run(func(arg mock.Arguments) {
+		gossipedWG.Done()
+	})
+	adapter.On("GetMembership").Return(func() []discovery.NetworkMember {
+		return dynamicMembership.Load().([]discovery.NetworkMember)
+	})
+
+	gc := NewGossipChannel(pkiIDInOrg1, orgInChannelA, cs, channelA, adapter, &joinChanMsg{}, disabledMetrics, nil)
+	// We have signed only once at creation time
+	assert.Equal(t, uint32(1), atomic.LoadUint32(&adapter.signCallCount))
+	defer gc.Stop()
+	gc.UpdateLedgerHeight(1)
+
+	// The first time we have membership, so we should gossip and sign
+	gossipedWG.Wait()
+	// So far we have signed twice: Once at creation time, and once before we gossiped
+	assert.Equal(t, uint32(2), atomic.LoadUint32(&adapter.signCallCount))
+
+	// Membership is now empty
+	dynamicMembership.Store(emptyMembership)
+	// Set the required conditions for gossiping and signing
+	gc.UpdateLedgerHeight(2)
+	// Wait some time and ensure we do not sign because membership is now empty
+	time.Sleep(conf.PublishStateInfoInterval * 3)
+	// We haven't signed anything
+	assert.Equal(t, uint32(2), atomic.LoadUint32(&adapter.signCallCount))
 }
 
 func TestChannelPulledBadBlocks(t *testing.T) {
@@ -1698,16 +1759,20 @@ func TestChannelGetPeers(t *testing.T) {
 func TestOnDemandGossip(t *testing.T) {
 	// Scenario: update the metadata and ensure only 1 dissemination
 	// takes place when membership is not empty
+	peerA := discovery.NetworkMember{
+		PKIid:            pkiIDInOrg1,
+		Endpoint:         "a",
+		InternalEndpoint: "a",
+	}
 
 	cs := &cryptoService{}
 
 	adapter := new(gossipAdapterMock)
-	configureAdapter(adapter)
+	configureAdapter(adapter, peerA)
 
 	adapter.ExpectedCalls = append(adapter.ExpectedCalls[:1], adapter.ExpectedCalls[2:]...)
 	var lock sync.RWMutex
 	var membershipKnown bool
-	var signal bool
 	adapter.On("GetMembership").Return(func() []discovery.NetworkMember {
 		lock.RLock()
 		defer lock.RUnlock()
@@ -1718,12 +1783,13 @@ func TestOnDemandGossip(t *testing.T) {
 	})
 
 	gossipedEvents := make(chan struct{})
+
+	conf := conf
+	conf.PublishStateInfoInterval = time.Millisecond * 200
+	adapter.On("GetConf").Return(conf)
 	adapter.On("Gossip", mock.Anything).Run(func(mock.Arguments) {
 		lock.Lock()
 		defer lock.Unlock()
-		if signal {
-			membershipKnown = true
-		}
 		gossipedEvents <- struct{}{}
 	})
 	adapter.On("Forward", mock.Anything)
@@ -1736,22 +1802,23 @@ func TestOnDemandGossip(t *testing.T) {
 		require.Fail(t, "Should not have gossiped because metadata has not been updated yet")
 	case <-time.After(time.Millisecond * 500):
 	}
-	gc.UpdateLedgerHeight(0)
+
+	gc.UpdateLedgerHeight(1)
+	lock.Lock()
+	membershipKnown = true
+	lock.Unlock()
+
 	select {
 	case <-gossipedEvents:
 	case <-time.After(time.Second):
 		require.Fail(t, "Didn't gossip within a timely manner")
 	}
-	select {
-	case <-gossipedEvents:
-	case <-time.After(time.Second):
-		require.Fail(t, "Should have gossiped a second time, because membership is empty")
-	}
-
-	lock.Lock()
-	signal = true
-	lock.Unlock()
-
+	gc.UpdateLedgerHeight(2)
+	adapter.On("Gossip", mock.Anything).Run(func(mock.Arguments) {
+		gossipedEvents <- struct{}{}
+	})
+	adapter.On("Forward", mock.Anything)
+	gc.(*gossipChannel).Adapter = adapter
 	select {
 	case <-gossipedEvents:
 	case <-time.After(time.Second):
@@ -1762,7 +1829,7 @@ func TestOnDemandGossip(t *testing.T) {
 		require.Fail(t, "Should not have gossiped a fourth time, because dirty flag should have been turned off")
 	case <-time.After(time.Millisecond * 500):
 	}
-	gc.UpdateLedgerHeight(1)
+	gc.UpdateLedgerHeight(3)
 	select {
 	case <-gossipedEvents:
 	case <-time.After(time.Second):
