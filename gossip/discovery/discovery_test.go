@@ -102,6 +102,7 @@ type dummyCommModule struct {
 	shouldGossip      bool
 	disableComm       bool
 	mock              *mock.Mock
+	signCount         uint32
 }
 
 type gossipInstance struct {
@@ -138,6 +139,7 @@ func (comm *dummyCommModule) recordValidation(validatedMessages chan *proto.Sign
 }
 
 func (comm *dummyCommModule) SignMessage(am *proto.GossipMessage, internalEndpoint string) *proto.Envelope {
+	atomic.AddUint32(&comm.signCount, 1)
 	am.NoopSign()
 
 	secret := &proto.Secret{
@@ -561,6 +563,18 @@ func TestConnect(t *testing.T) {
 	for firstSentSelfMsg := range firstSentMemReqMsgs {
 		assert.Nil(t, firstSentSelfMsg.Envelope.SecretEnvelope)
 	}
+}
+
+func TestNoSigningIfNoMembership(t *testing.T) {
+	t.Parallel()
+
+	inst := createDiscoveryInstance(8931, "foreveralone", nil)
+	defer inst.Stop()
+	time.Sleep(defaultTestConfig.AliveTimeInterval * 10)
+	assert.Zero(t, atomic.LoadUint32(&inst.comm.signCount))
+
+	inst.InitiateSync(10000)
+	assert.Zero(t, atomic.LoadUint32(&inst.comm.signCount))
 }
 
 func TestValidation(t *testing.T) {
@@ -1587,22 +1601,27 @@ func TestMemRespDisclosurePol(t *testing.T) {
 	pol := func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter) {
 		assert.Equal(t, remotePeer.InternalEndpoint, remotePeer.Endpoint)
 		return func(_ *proto.SignedGossipMessage) bool {
-				return remotePeer.Endpoint == "localhost:7880"
+				return remotePeer.Endpoint != "localhost:7879"
 			}, func(m *proto.SignedGossipMessage) *proto.Envelope {
 				return m.Envelope
 			}
 	}
+
+	wasMembershipResponseReceived := func(msg *proto.SignedGossipMessage) {
+		assert.Nil(t, msg.GetMemRes())
+	}
+
 	d1 := createDiscoveryInstanceThatGossips(7878, "d1", []string{}, true, pol, defaultTestConfig)
 	defer d1.Stop()
-	d2 := createDiscoveryInstanceThatGossips(7879, "d2", []string{"localhost:7878"}, true, noopPolicy, defaultTestConfig)
+	d2 := createDiscoveryInstanceThatGossipsWithInterceptors(7879, "d2", []string{"localhost:7878"}, true, noopPolicy, wasMembershipResponseReceived, defaultTestConfig)
 	defer d2.Stop()
-	d3 := createDiscoveryInstanceThatGossips(7880, "d3", []string{"localhost:7878"}, true, noopPolicy, defaultTestConfig)
+	d3 := createDiscoveryInstanceThatGossips(7880, "d3", []string{"localhost:7878"}, true, pol, defaultTestConfig)
 	defer d3.Stop()
-	// Both d1 and d3 know each other, and also about d2
-	assertMembership(t, []*gossipInstance{d1, d3}, 2)
-	// d2 doesn't know about any one because the bootstrap peer is ignoring it due to custom policy
-	assertMembership(t, []*gossipInstance{d2}, 0)
-	assert.Zero(t, d2.receivedMsgCount())
+
+	// all peers know each other
+	assertMembership(t, []*gossipInstance{d1, d2, d3}, 2)
+	// d2 received some messages, but we asserted that none of them are membership responses.
+	assert.NotZero(t, d2.receivedMsgCount())
 	assert.NotZero(t, d2.sentMsgCount())
 }
 
