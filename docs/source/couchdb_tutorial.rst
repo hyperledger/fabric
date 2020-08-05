@@ -28,9 +28,9 @@ and for more information on the Fabric ledger refer to the `Ledger <ledger/ledge
 topic. Follow the tutorial below for details on how to leverage CouchDB in your
 blockchain network.
 
-Throughout this tutorial, we will use the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__
+Throughout this tutorial, we will use the `Asset transfer ledger queries sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-ledger-queries/chaincode-go>`__
 as our use case to demonstrate how to use CouchDB with Fabric and will deploy
-Marbles to the Fabric test network. You should have completed the task
+ledger queries to the Fabric test network. You should have completed the task
 :doc:`install`.
 
 Why CouchDB?
@@ -101,31 +101,32 @@ in a query, CouchDB requires an index of the sorted fields.
    includes a sort specification, then an index on that field is required;
    otherwise, the query will fail and an error will be thrown.
 
-To demonstrate building an index, we will use the data from the `Marbles
-sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__.
-In this example, the Marbles data structure is defined as:
+To demonstrate building an index, we will use the data from the `Asset transfer ledger queries
+sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__.
+In this example, the Asset data structure is defined as:
 
 .. code:: javascript
 
-  type marble struct {
-	   ObjectType string `json:"docType"` //docType is used to distinguish the various types of objects in state database
-	   Name       string `json:"name"`    //the field tags are needed to keep case from bouncing around
-	   Color      string `json:"color"`
-           Size       int    `json:"size"`
-           Owner      string `json:"owner"`
-  }
+    type Asset struct {
+            DocType        string `json:"docType"` //docType is used to distinguish the various types of objects in state database
+            ID             string `json:"ID"`      //the field tags are needed to keep case from bouncing around
+            Color          string `json:"color"`
+            Size           int    `json:"size"`
+            Owner          string `json:"owner"`
+            AppraisedValue int    `json:"appraisedValue"`
+    }
 
 
-In this structure, the attributes (``docType``, ``name``, ``color``, ``size``,
-``owner``) define the ledger data associated with the asset. The attribute
+In this structure, the attributes (``docType``, ``ID``, ``color``, ``size``,
+``owner``, ``appraisedValue``) define the ledger data associated with the asset. The attribute
 ``docType`` is a pattern used in the chaincode to differentiate different data
 types that may need to be queried separately. When using CouchDB, it
 recommended to include this ``docType`` attribute to distinguish each type of
 document in the chaincode namespace. (Each chaincode is represented as its own
 CouchDB database, that is, each chaincode has its own namespace for keys.)
 
-With respect to the Marbles data structure, ``docType`` is used to identify
-that this document/asset is a marble asset. Potentially there could be other
+With respect to the Asset data structure, ``docType`` is used to identify
+that this document/asset is an asset. Potentially there could be other
 documents/assets in the chaincode database. The documents in the database are
 searchable against all of these attribute values.
 
@@ -164,7 +165,7 @@ document.
          index to use on a query.
 
 
-Here is another example of an index definition from the Marbles sample with
+Here is another example of an index definition from the Asset transfer ledger queries sample with
 the index name ``indexOwner`` using multiple fields ``docType`` and ``owner``
 and includes the ``ddoc`` attribute:
 
@@ -245,7 +246,7 @@ chaincode using the :doc:`commands/peerlifecycle` command. The JSON index files
 must be located under the path ``META-INF/statedb/couchdb/indexes`` which is
 located inside the directory where the chaincode resides.
 
-The `Marbles sample <https://github.com/hyperledger/fabric-samples/tree/{BRANCH}/chaincode/marbles02/go>`__  below illustrates how the index
+The `Asset transfer ledger queries sample <https://github.com/hyperledger/fabric-samples/tree/{BRANCH}/asset-transfer-ledger-queries/chaincode-go>`__  below illustrates how the index
 is packaged with the chaincode.
 
 .. image:: images/couchdb_tutorial_pkg_example.png
@@ -266,7 +267,7 @@ Start the network
 :guilabel:`Try it yourself`
 
 
-We will bring up the Fabric test network and use it to deploy the marbles
+We will bring up the Fabric test network and use it to deploy the asset transfer ledger queries
 chaincode. Use the following command to navigate to the `test-network` directory
 in the Fabric samples:
 
@@ -288,9 +289,9 @@ following commands:
 
 .. code:: bash
 
-    cd ../chaincode/marbles02/go
+    cd ../asset-transfer-ledger-queries/chaincode-go
     GO111MODULE=on go mod vendor
-    cd ../../../test-network
+    cd ../../test-network
 
 From the `test-network` directory, deploy the test network with CouchDB with the
 following command:
@@ -305,148 +306,15 @@ It will also create one ordering node and a single channel named
 
 .. _cdb-install-deploy:
 
-Install and define the Chaincode
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Deploy the smart contract
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Client applications interact with the blockchain ledger through chaincode.
-Therefore we need to install a chaincode on every peer that will execute and
-endorse our transactions. However, before we can interact with our chaincode,
-the members of the channel need to agree on a chaincode definition that
-establishes chaincode governance. In the previous section, we demonstrated how
-to add the index to the chaincode folder so that the index is deployed with
-the chaincode.
+You can use the test network script to deploy the asset transfer ledger queries smart contract to the channel. Run the following command to deploy the smart contract to `mychannel`:
+```
+./network.sh deployCC -ccn ledger -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
+```
 
-The chaincode needs to be packaged before it can be installed on our peers.
-We can use the `peer lifecycle chaincode package <commands/peerlifecycle.html#peer-lifecycle-chaincode-package>`__ command
-to package the marbles chaincode.
-
-:guilabel:`Try it yourself`
-
-1. After you start the test network, copy and paste the following environment
-variables in your CLI to interact with the network as the Org1 admin. Make sure
-that you are in the `test-network` directory.
-
-.. code:: bash
-
-    export PATH=${PWD}/../bin:$PATH
-    export FABRIC_CFG_PATH=${PWD}/../config/
-    export CORE_PEER_TLS_ENABLED=true
-    export CORE_PEER_LOCALMSPID="Org1MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    export CORE_PEER_ADDRESS=localhost:7051
-
-2. Use the following command to package the marbles chaincode:
-
-.. code:: bash
-
-    peer lifecycle chaincode package marbles.tar.gz --path ../chaincode/marbles02/go --lang golang --label marbles_1
-
-This command will create a chaincode package named marbles.tar.gz.
-
-3. Use the following command to install the chaincode package onto the peer
-``peer0.org1.example.com``:
-
-.. code:: bash
-
-    peer lifecycle chaincode install marbles.tar.gz
-
-A successful install command will return the chaincode identifier, similar to
-the response below:
-
-.. code:: bash
-
-    2019-04-22 18:47:38.312 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nJmarbles_1:0907c1f3d3574afca69946e1b6132691d58c2f5c5703df7fc3b692861e92ecd3\022\tmarbles_1" >
-    2019-04-22 18:47:38.312 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: marbles_1:0907c1f3d3574afca69946e1b6132691d58c2f5c5703df7fc3b692861e92ecd3
-
-After installing the chaincode on ``peer0.org1.example.com``, we need to approve
-a chaincode definition for Org1.
-
-4. Use the following command to query your peer for the package ID of the
-installed chaincode.
-
-.. code:: bash
-
-    peer lifecycle chaincode queryinstalled
-
-The command will return the same package identifier as the install command.
-You should see output similar to the following:
-
-.. code:: bash
-
-    Installed chaincodes on peer:
-    Package ID: marbles_1:60ec9430b221140a45b96b4927d1c3af736c1451f8d432e2a869bdbf417f9787, Label: marbles_1
-
-5. Declare the package ID as an environment variable. Paste the package ID of
-marbles_1 returned by the ``peer lifecycle chaincode queryinstalled`` command
-into the command below. The package ID may not be the same for all users, so
-you need to complete this step using the package ID returned from your console.
-
-.. code:: bash
-
-    export CC_PACKAGE_ID=marbles_1:60ec9430b221140a45b96b4927d1c3af736c1451f8d432e2a869bdbf417f9787
-
-6. Use the following command to approve a definition of the marbles chaincode
-for Org1.
-
-.. code:: bash
-
-    export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marbles --version 1.0 --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA
-
-When the command completes successfully you should see something similar to :
-
-.. code:: bash
-
-    2020-01-07 16:24:20.886 EST [chaincodeCmd] ClientWait -> INFO 001 txid [560cb830efa1272c85d2f41a473483a25f3b12715d55e22a69d55abc46581415] committed with status (VALID) at
-
-We need a majority of organizations to approve a chaincode definition before
-it can be committed to the channel. This implies that we need Org2 to approve
-the chaincode definition as well. Because we do not need Org2 to endorse the
-chaincode and did not install the package on any Org2 peers, we do not need to
-provide a packageID as part of the chaincode definition.
-
-7. Use the CLI to operate as the Org2 admin. Copy and paste the following block
-of commands as a group into the peer container and run them all at once.
-
-.. code:: bash
-
-    export CORE_PEER_LOCALMSPID="Org2MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
-    export CORE_PEER_ADDRESS=localhost:9051
-
-8. Use the following command to approve the chaincode definition for Org2:
-
-.. code:: bash
-
-    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marbles --version 1.0 --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --sequence 1 --tls --cafile $ORDERER_CA
-
-9. We can now use the `peer lifecycle chaincode commit <commands/peerlifecycle.html#peer-lifecycle-chaincode-commit>`__ command
-to commit the chaincode definition to the channel:
-
-.. code:: bash
-
-    export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-    export ORG1_CA=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-    export ORG2_CA=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-    peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marbles --version 1.0 --sequence 1 --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $ORG1_CA --peerAddresses localhost:9051 --tlsRootCertFiles $ORG2_CA
-
-When the commit transaction completes successfully you should see something
-similar to:
-
-.. code:: bash
-
-    2019-04-22 18:57:34.274 UTC [chaincodeCmd] ClientWait -> INFO 001 txid [3da8b0bb8e128b5e1b6e4884359b5583dff823fce2624f975c69df6bce614614] committed with status (VALID) at peer0.org2.example.com:9051
-    2019-04-22 18:57:34.709 UTC [chaincodeCmd] ClientWait -> INFO 002 txid [3da8b0bb8e128b5e1b6e4884359b5583dff823fce2624f975c69df6bce614614] committed with status (VALID) at peer0.org1.example.com:7051
-
-10. Because the marbles chaincode contains an initialization function, we need to
-use the `peer chaincode invoke <commands/peerchaincode.html?%20chaincode%20instantiate#peer-chaincode-invoke>`__ command
-to invoke ``Init()`` before we can use other functions in the chaincode:
-
-.. code:: bash
-
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marbles --isInit --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $ORG1_CA -c '{"Args":["Init"]}'
+Note that we are using the `-ccep` flag to deploy the smart contract with an endorsement policy of `"OR('Org1MSP.peer','Org2MSP.peer')"`. This allows either organization to create an asset without receiving an endorsement from the other organization.
 
 Verify index was deployed
 -------------------------
@@ -471,11 +339,11 @@ You should see a result that looks like the following:
 
 ::
 
-   [couchdb] CreateIndex -> INFO 0be Created CouchDB index [indexOwner] in state database [mychannel_marbles] using design document [_design/indexOwnerDoc]
+   [couchdb] createIndex -> INFO 072 Created CouchDB index [indexOwner] in state database [mychannel_ledger] using design document [_design/indexOwnerDoc]
 
-.. note:: If you installed Marbles on a different peer than ``peer0.org1.example.com``,
+.. note:: If you installed asset transfer ledger queries on a different peer than ``peer0.org1.example.com``,
           you may need to replace it with the name of a different peer where
-          Marbles was installed.
+          asset transfer ledger queries was installed.
 
 .. _cdb-query:
 
@@ -502,10 +370,10 @@ Build the query in chaincode
 ----------------------------
 
 You can perform complex rich queries against the data on the ledger using
-queries defined within your chaincode. The `marbles02 sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__
+queries defined within your chaincode. The `Asset transfer ledger queries sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-trnasfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__
 includes two rich query functions:
 
-  * **queryMarbles** --
+  * **ReadAsset** --
 
       Example of an **ad hoc rich query**. This is a query
       where a (selector) string can be passed into the function. This query
@@ -514,12 +382,12 @@ includes two rich query functions:
       to `CouchDB selector syntax <http://docs.couchdb.org/en/latest/api/database/find.html#find-selectors>`__.
 
 
-  * **queryMarblesByOwner** --
+  * **QueryAssetsByOwner** --
 
       Example of a **parameterized query** where the
       query logic is baked into the chaincode. In this case the function accepts
-      a single argument, the marble owner. It then queries the state database for
-      JSON documents matching the docType of “marble” and the owner id using the
+      a single argument, the asset owner. It then queries the state database for
+      JSON documents matching the docType of “asset” and the owner id using the
       JSON query syntax.
 
 
@@ -528,13 +396,13 @@ Run the query using the peer command
 
 In absence of a client application, we can use the peer command to test the
 queries defined in the chaincode. We will customize the `peer chaincode query <commands/peerchaincode.html?%20chaincode%20query#peer-chaincode-query>`__
-command to use the Marbles index ``indexOwner`` and query for all marbles owned
-by "tom" using the ``queryMarbles`` function.
+command to use the Assets index ``indexOwner`` and query for all assets owned
+by "tom" using the ``ReadAsset`` function.
 
 :guilabel:`Try it yourself`
 
 Before querying the database, we should add some data. Run the following
-command as Org1 to create a marble owned by "tom":
+command as Org1 to create a asset owned by "tom":
 
 .. code:: bash
 
@@ -542,7 +410,7 @@ command as Org1 to create a marble owned by "tom":
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     export CORE_PEER_ADDRESS=localhost:7051
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marbles -c '{"Args":["initMarble","marble1","blue","35","tom"]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset1","blue","5","tom","35"]}'
 
 After an index has been deployed when the chaincode is initialized, it will
 automatically be utilized by chaincode queries. CouchDB can determine which
@@ -555,39 +423,27 @@ including the ``use_index`` keyword:
 .. code:: bash
 
    // Rich Query with index name explicitly specified:
-   peer chaincode query -C mychannel -n marbles -c '{"Args":["queryMarbles", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}"]}'
+   peer chaincode query -C mychannel -n ledger -c '{"Args":["QueryAssets", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}"]}'
 
 Delving into the query command above, there are three arguments of interest:
 
-*  ``queryMarbles``
+*  ``QueryAssets``
 
-  Name of the function in the Marbles chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim>`__
+  Name of the function in the Assets chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim>`__
   ``shim.ChaincodeStubInterface`` is used to access and modify the ledger. The
   ``getQueryResultForQueryString()`` passes the queryString to the shim API ``getQueryResult()``.
 
 .. code:: bash
 
-  func (t *SimpleChaincode) queryMarbles(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+    func (t *SimpleChaincode) QueryAssets(ctx contractapi.TransactionContextInterface, queryString string) ([]*Asset, error) {
+            return getQueryResultForQueryString(ctx, queryString)
+    }
 
-	  //   0
-	  // "queryString"
-	   if len(args) < 1 {
-		   return shim.Error("Incorrect number of arguments. Expecting 1")
-	   }
 
-	   queryString := args[0]
-
-	   queryResults, err := getQueryResultForQueryString(stub, queryString)
-	   if err != nil {
-		 return shim.Error(err.Error())
-	   }
-	   return shim.Success(queryResults)
-  }
-
-*  ``{"selector":{"docType":"marble","owner":"tom"}``
+*  ``{"selector":{"docType":"asset","owner":"tom"}``
 
   This is an example of an **ad hoc selector** string which finds all documents
-  of type ``marble`` where the ``owner`` attribute has a value of ``tom``.
+  of type ``asset`` where the ``owner`` attribute has a value of ``tom``.
 
 
 *  ``"use_index":["_design/indexOwnerDoc", "indexOwner"]``
@@ -605,7 +461,7 @@ The query runs successfully and the index is leveraged with the following result
 
 .. code:: json
 
-  Query Result: [{"Key":"marble1", "Record":{"color":"blue","docType":"marble","name":"marble1","owner":"tom","size":35}}]
+  Query Result: [{"docType":"asset","ID":"asset1","color":"blue","size":5,"owner":"tom","appraisedValue":35}]
 
 .. _cdb-best:
 
@@ -636,15 +492,15 @@ when writing your queries:
   full index scan such as ``$or``, ``$in`` and ``$regex``.
 
 In the previous section of this tutorial, you issued the following query against
-the marbles chaincode:
+the assets chaincode:
 
 .. code:: bash
 
   // Example one: query fully supported by the index
   export CHANNEL_NAME=mychannel
-  peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarbles", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"indexOwnerDoc\", \"indexOwner\"]}"]}'
+  peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssets", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"indexOwnerDoc\", \"indexOwner\"]}"]}'
 
-The marbles chaincode was installed with the ``indexOwnerDoc`` index:
+The asset transfer ledger queries chaincode was installed with the ``indexOwnerDoc`` index:
 
 .. code:: json
 
@@ -665,7 +521,7 @@ previous example.
 .. code:: bash
 
   // Example two: query fully supported by the index with additional data
-  peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarbles", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\",\"color\":\"red\"}, \"use_index\":[\"/indexOwnerDoc\", \"indexOwner\"]}"]}'
+  peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssets", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\",\"color\":\"blue\"}, \"use_index\":[\"/indexOwnerDoc\", \"indexOwner\"]}"]}'
 
 A query that does not include all fields in the index will have to scan the full
 database instead. For example, the query below searches for the owner, without
@@ -676,7 +532,7 @@ index.
 .. code:: bash
 
   // Example three: query not supported by the index
-  peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarbles", "{\"selector\":{\"owner\":\"tom\"}, \"use_index\":[\"indexOwnerDoc\", \"indexOwner\"]}"]}'
+  peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssets", "{\"selector\":{\"owner\":\"tom\"}, \"use_index\":[\"indexOwnerDoc\", \"indexOwner\"]}"]}'
 
 In general, more complex queries will have a longer response time, and have a
 lower chance of being supported by an index. Operators such as ``$or``, ``$in``,
@@ -684,12 +540,12 @@ and ``$regex`` will often cause the query to scan the full index or not use the
 index at all.
 
 As an example, the query below contains an ``$or`` term that will search for every
-marble and every item owned by tom.
+asset and every item owned by tom.
 
 .. code:: bash
 
   // Example four: query with $or supported by the index
-  peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarbles", "{\"selector\":{\"$or\":[{\"docType\":\"marble\"},{\"owner\":\"tom\"}]}, \"use_index\":[\"indexOwnerDoc\", \"indexOwner\"]}"]}'
+  peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssets", "{\"selector\":{\"$or\":[{\"docType\":\"asset\"},{\"owner\":\"tom\"}]}, \"use_index\":[\"indexOwnerDoc\", \"indexOwner\"]}"]}'
 
 This query will still use the index because it searches for fields that are
 included in ``indexOwnerDoc``. However, the ``$or`` condition in the query
@@ -701,9 +557,9 @@ Below is an example of a complex query that is not supported by the index.
 .. code:: bash
 
   // Example five: Query with $or not supported by the index
-  peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarbles", "{\"selector\":{\"$or\":[{\"docType\":\"marble\",\"owner\":\"tom\"},{\"color\":\"yellow\"}]}, \"use_index\":[\"indexOwnerDoc\", \"indexOwner\"]}"]}'
+  peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssets", "{\"selector\":{\"$or\":[{\"docType\":\"asset\",\"owner\":\"tom\"},{\"color\":\"yellow\"}]}, \"use_index\":[\"indexOwnerDoc\", \"indexOwner\"]}"]}'
 
-The query searches for all marbles owned by tom or any other items that are
+The query searches for all assets owned by tom or any other items that are
 yellow. This query will not use the index because it will need to search the
 entire table to meet the ``$or`` condition. Depending the amount of data on your
 ledger, this query will take a long time to respond or may timeout.
@@ -740,11 +596,11 @@ chaincode that executes the query until no more results are returned. For more i
 this `topic on pagination with CouchDB <couchdb_as_state_database.html#couchdb-pagination>`__.
 
 
-We will use the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__
-function ``queryMarblesWithPagination`` to  demonstrate how
+We will use the `Asset transfer ledger queries sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__
+function ``QueryAssetsWithPagination`` to  demonstrate how
 pagination can be implemented in chaincode and the client application.
 
-* **queryMarblesWithPagination** --
+* **QueryAssetsWithPagination** --
 
     Example of an **ad hoc rich query with pagination**. This is a query
     where a (selector) string can be passed into the function similar to the
@@ -752,9 +608,9 @@ pagination can be implemented in chaincode and the client application.
     well as a ``bookmark``.
 
 In order to demonstrate pagination, more data is required. This example assumes
-that you have already added marble1 from above. Run the following commands in
-the peer container to create four more marbles owned by "tom", to create a
-total of five marbles owned by "tom":
+that you have already added asset1 from above. Run the following commands in
+the peer container to create four more assets owned by "tom", to create a
+total of five assets owned by "tom":
 
 :guilabel:`Try it yourself`
 
@@ -764,51 +620,36 @@ total of five marbles owned by "tom":
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     export CORE_PEER_ADDRESS=localhost:7051
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marbles -c '{"Args":["initMarble","marble2","yellow","35","tom"]}'
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marbles -c '{"Args":["initMarble","marble3","green","20","tom"]}'
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marbles -c '{"Args":["initMarble","marble4","purple","20","tom"]}'
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marbles -c '{"Args":["initMarble","marble5","blue","40","tom"]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset2","yellow","5","tom","35"]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset3","green","6","tom","20"]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset4","purple","7","tom","20"]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset5","blue","8","tom","40"]}'
 
 In addition to the arguments for the query in the previous example,
-queryMarblesWithPagination adds ``pagesize`` and ``bookmark``. ``PageSize``
+QueryAssetsWithPagination adds ``pagesize`` and ``bookmark``. ``PageSize``
 specifies the number of records to return per query.  The ``bookmark`` is an
 "anchor" telling couchDB where to begin the page. (Each page of results returns
 a unique bookmark.)
 
-*  ``queryMarblesWithPagination``
+*  ``QueryAssetsWithPagination``
 
-  Name of the function in the Marbles chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim>`__
+  Name of the function in the Assets chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim>`__
   ``shim.ChaincodeStubInterface`` is used to access and modify the ledger. The
   ``getQueryResultForQueryStringWithPagination()`` passes the queryString along
   with the pagesize and bookmark to the shim API ``GetQueryResultWithPagination()``.
 
 .. code:: bash
 
-  func (t *SimpleChaincode) queryMarblesWithPagination(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+    func (t *SimpleChaincode) QueryAssetsWithPagination(
+            ctx contractapi.TransactionContextInterface,
+            queryString,
+            bookmark string,
+            pageSize int) ([]*Asset, error) {
 
-  	//   0
-  	// "queryString"
-  	if len(args) < 3 {
-  		return shim.Error("Incorrect number of arguments. Expecting 3")
-  	}
+            return getQueryResultForQueryStringWithPagination(ctx, queryString, int32(pageSize), bookmark)
+    }
 
-  	queryString := args[0]
-  	//return type of ParseInt is int64
-  	pageSize, err := strconv.ParseInt(args[1], 10, 32)
-  	if err != nil {
-  		return shim.Error(err.Error())
-  	}
-  	bookmark := args[2]
-
-  	queryResults, err := getQueryResultForQueryStringWithPagination(stub, queryString, int32(pageSize), bookmark)
-  	if err != nil {
-  		return shim.Error(err.Error())
-  	}
-  	return shim.Success(queryResults)
-  }
-
-
-The following example is a peer command which calls queryMarblesWithPagination
+The following example is a peer command which calls QueryAssetsWithPagination
 with a pageSize of ``3`` and no bookmark specified.
 
 .. tip:: When no bookmark is specified, the query starts with the "first"
@@ -819,25 +660,24 @@ with a pageSize of ``3`` and no bookmark specified.
 .. code:: bash
 
   // Rich Query with index name explicitly specified and a page size of 3:
-  peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarblesWithPagination", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","3",""]}'
+  peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","","3"]}'
 
 The following response is received (carriage returns added for clarity), three
-of the five marbles are returned because the ``pagsize`` was set to ``3``:
+of the five assets are returned because the ``pagsize`` was set to ``3``:
 
 .. code:: bash
 
-  [{"Key":"marble1", "Record":{"color":"blue","docType":"marble","name":"marble1","owner":"tom","size":35}},
-   {"Key":"marble2", "Record":{"color":"yellow","docType":"marble","name":"marble2","owner":"tom","size":35}},
-   {"Key":"marble3", "Record":{"color":"green","docType":"marble","name":"marble3","owner":"tom","size":20}}]
-  [{"ResponseMetadata":{"RecordsCount":"3",
-  "Bookmark":"g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkGoOkOWDSOSANIFk2iCyIyVySn5uVBQAGEhRz"}}]
+  [{"docType":"asset","ID":"asset1","color":"blue","size":5,"owner":"tom","appraisedValue":35},
+  {"docType":"asset","ID":"asset2","color":"yellow","size":5,"owner":"tom","appraisedValue":35},
+  {"docType":"asset","ID":"asset3","color":"green","size":6,"owner":"tom","appraisedValue":20}]
+
 
 .. note::  Bookmarks are uniquely generated by CouchDB for each query and
            represent a placeholder in the result set. Pass the
            returned bookmark on the subsequent iteration of the query to
            retrieve the next set of results.
 
-The following is a peer command to call queryMarblesWithPagination with a
+The following is a peer command to call QueryAssetsWithPagination with a
 pageSize of ``3``. Notice this time, the query includes the bookmark returned
 from the previous query.
 
@@ -845,26 +685,26 @@ from the previous query.
 
 .. code:: bash
 
-  peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarblesWithPagination", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","3","g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkGoOkOWDSOSANIFk2iCyIyVySn5uVBQAGEhRz"]}'
+  peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkGoOkOWDSOSANIFk2iCyIyVySn5uVBQAGEhRz","3"]}'
 
 The following response is received (carriage returns added for clarity).  The
 last two records are retrieved:
 
 .. code:: bash
 
-  [{"Key":"marble4", "Record":{"color":"purple","docType":"marble","name":"marble4","owner":"tom","size":20}},
-   {"Key":"marble5", "Record":{"color":"blue","docType":"marble","name":"marble5","owner":"tom","size":40}}]
+  [{"Key":"asset4", "Record":{"color":"purple","docType":"asset","name":"asset4","size":"7","owner":"tom","appraisedValue":20}},
+   {"Key":"asset5", "Record":{"color":"blue","docType":"asset","name":"asset5","size":"8","owner":"tom","appraisedValue":40}}]
   [{"ResponseMetadata":{"RecordsCount":"2",
   "Bookmark":"g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkmoKkOWDSOSANIFk2iCyIyVySn5uVBQAGYhR1"}}]
 
-The final command is a peer command to call queryMarblesWithPagination with
+The final command is a peer command to call QueryAssetsWithPagination with
 a pageSize of ``3`` and with the bookmark from the previous query.
 
 :guilabel:`Try it yourself`
 
 .. code:: bash
 
-    peer chaincode query -C $CHANNEL_NAME -n marbles -c '{"Args":["queryMarblesWithPagination", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","3","g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkmoKkOWDSOSANIFk2iCyIyVySn5uVBQAGYhR1"]}'
+    peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkmoKkOWDSOSANIFk2iCyIyVySn5uVBQAGYhR1","3"]}'
 
 The following response is received (carriage returns added for clarity).
 No records are returned, indicating that all pages have been retrieved:
@@ -877,7 +717,7 @@ No records are returned, indicating that all pages have been retrieved:
 
 For an example of how a client application can iterate over
 the result sets using pagination, search for the ``getQueryResultForQueryStringWithPagination``
-function in the `Marbles sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__.
+function in the `Asset transfer ledger queries sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__.
 
 .. _cdb-update-index:
 
@@ -912,13 +752,13 @@ line curl utility to create and update indexes.
 .. note:: The Fauxton interface is a web UI for the creation, update, and
           deployment of indexes to CouchDB. If you want to try out this
           interface, there is an example of the format of the Fauxton version
-          of the index in Marbles sample. If you have deployed the test network
+          of the index in Assets sample. If you have deployed the test network
           with CouchDB, the Fauxton interface can be loaded by opening a browser
           and navigating to ``http://localhost:5984/_utils``.
 
 Alternatively, if you prefer not use the Fauxton UI, the following is an example
 of a curl command which can be used to create the index on the database
-``mychannel_marbles``:
+``mychannel_ledger``:
 
 .. code:: bash
 
@@ -928,7 +768,7 @@ of a curl command which can be used to create the index on the database
           "{\"index\":{\"fields\":[\"docType\",\"owner\"]},
             \"name\":\"indexOwner\",
             \"ddoc\":\"indexOwnerDoc\",
-            \"type\":\"json\"}" http://hostname:port/mychannel_marbles/_index
+            \"type\":\"json\"}" http://hostname:port/mychannel_ledger/_index
 
 .. note:: If you are using the test network configured with CouchDB, replace
     hostname:port with ``localhost:5984``.
@@ -953,7 +793,7 @@ To delete the index used in this tutorial, the curl command would be:
 
 .. code:: bash
 
-   curl -X DELETE http://localhost:5984/mychannel_marbles/_index/indexOwnerDoc/json/indexOwner -H  "accept: */*" -H  "Host: localhost:5984"
+   curl -X DELETE http://localhost:5984/mychannel_ledger/_index/indexOwnerDoc/json/indexOwner -H  "accept: */*" -H  "Host: localhost:5984"
 
 
 
