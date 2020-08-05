@@ -8,6 +8,7 @@ package simple
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
@@ -59,6 +60,9 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	fmt.Println("ex02 Invoke")
+	if os.Getenv("DEVMODE_ENABLED") != "" {
+		fmt.Println("invoking in devmode")
+	}
 	function, args := stub.GetFunctionAndParameters()
 	switch function {
 	case "invoke":
