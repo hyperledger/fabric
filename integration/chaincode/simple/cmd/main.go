@@ -15,6 +15,10 @@ import (
 )
 
 func main() {
+	if os.Getenv("DEVMODE_ENABLED") != "" {
+		fmt.Println("starting up in devmode...")
+	}
+
 	err := shim.Start(&simple.SimpleChaincode{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Exiting Simple chaincode: %s", err)

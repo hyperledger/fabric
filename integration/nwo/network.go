@@ -99,6 +99,7 @@ type OrdererCapabilities struct {
 type Peer struct {
 	Name         string         `yaml:"name,omitempty"`
 	Organization string         `yaml:"organization,omitempty"`
+	DevMode      bool           `yaml:"devmode,omitempty"`
 	Channels     []*PeerChannel `yaml:"channels,omitempty"`
 }
 
@@ -142,6 +143,7 @@ type Network struct {
 	EventuallyTimeout time.Duration
 	MetricsProvider   string
 	StatsdEndpoint    string
+	TLSEnabled        bool
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
@@ -186,6 +188,7 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 		Profiles:      c.Profiles,
 		Consortiums:   c.Consortiums,
 		Templates:     c.Templates,
+		TLSEnabled:    true, // set TLS enabled by default
 	}
 
 	if network.Templates == nil {
@@ -1027,7 +1030,7 @@ func (n *Network) OrdererGroupRunner() ifrit.Runner {
 // used to start and manage a peer process.
 func (n *Network) PeerRunner(p *Peer) *ginkgomon.Runner {
 	cmd := n.peerCommand(
-		commands.NodeStart{PeerID: p.ID()},
+		commands.NodeStart{PeerID: p.ID(), DevMode: p.DevMode},
 		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
 	)
 
@@ -1064,7 +1067,7 @@ func (n *Network) NetworkGroupRunner() ifrit.Runner {
 func (n *Network) peerCommand(command Command, env ...string) *exec.Cmd {
 	cmd := NewCommand(n.Components.Peer(), command)
 	cmd.Env = append(cmd.Env, env...)
-	if ConnectsToOrderer(command) {
+	if ConnectsToOrderer(command) && n.TLSEnabled {
 		cmd.Args = append(cmd.Args, "--tls")
 		cmd.Args = append(cmd.Args, "--cafile", n.CACertsBundlePath())
 	}
