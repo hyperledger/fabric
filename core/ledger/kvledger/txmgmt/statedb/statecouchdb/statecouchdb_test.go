@@ -1658,8 +1658,7 @@ func testRangeQueryWithInternalLimit(
 			itr.Close()
 			break
 		}
-		kv := result.(*statedb.VersionedKV)
-		results = append(results, kv)
+		results = append(results, result)
 	}
 	require.Equal(t, expectedResults, results)
 }
@@ -1679,8 +1678,7 @@ func testRangeQueryWithPageSize(
 		result, err := itr.Next()
 		require.NoError(t, err)
 		if result != nil {
-			kv := result.(*statedb.VersionedKV)
-			results = append(results, kv)
+			results = append(results, result)
 			continue
 		}
 		nextStartKey := itr.GetBookmarkAndClose()

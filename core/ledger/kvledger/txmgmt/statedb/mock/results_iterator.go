@@ -12,16 +12,16 @@ type ResultsIterator struct {
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
 	}
-	NextStub        func() (statedb.QueryResult, error)
+	NextStub        func() (*statedb.VersionedKV, error)
 	nextMutex       sync.RWMutex
 	nextArgsForCall []struct {
 	}
 	nextReturns struct {
-		result1 statedb.QueryResult
+		result1 *statedb.VersionedKV
 		result2 error
 	}
 	nextReturnsOnCall map[int]struct {
-		result1 statedb.QueryResult
+		result1 *statedb.VersionedKV
 		result2 error
 	}
 	invocations      map[string][][]interface{}
@@ -51,7 +51,7 @@ func (fake *ResultsIterator) CloseCalls(stub func()) {
 	fake.CloseStub = stub
 }
 
-func (fake *ResultsIterator) Next() (statedb.QueryResult, error) {
+func (fake *ResultsIterator) Next() (*statedb.VersionedKV, error) {
 	fake.nextMutex.Lock()
 	ret, specificReturn := fake.nextReturnsOnCall[len(fake.nextArgsForCall)]
 	fake.nextArgsForCall = append(fake.nextArgsForCall, struct {
@@ -74,34 +74,34 @@ func (fake *ResultsIterator) NextCallCount() int {
 	return len(fake.nextArgsForCall)
 }
 
-func (fake *ResultsIterator) NextCalls(stub func() (statedb.QueryResult, error)) {
+func (fake *ResultsIterator) NextCalls(stub func() (*statedb.VersionedKV, error)) {
 	fake.nextMutex.Lock()
 	defer fake.nextMutex.Unlock()
 	fake.NextStub = stub
 }
 
-func (fake *ResultsIterator) NextReturns(result1 statedb.QueryResult, result2 error) {
+func (fake *ResultsIterator) NextReturns(result1 *statedb.VersionedKV, result2 error) {
 	fake.nextMutex.Lock()
 	defer fake.nextMutex.Unlock()
 	fake.NextStub = nil
 	fake.nextReturns = struct {
-		result1 statedb.QueryResult
+		result1 *statedb.VersionedKV
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *ResultsIterator) NextReturnsOnCall(i int, result1 statedb.QueryResult, result2 error) {
+func (fake *ResultsIterator) NextReturnsOnCall(i int, result1 *statedb.VersionedKV, result2 error) {
 	fake.nextMutex.Lock()
 	defer fake.nextMutex.Unlock()
 	fake.NextStub = nil
 	if fake.nextReturnsOnCall == nil {
 		fake.nextReturnsOnCall = make(map[int]struct {
-			result1 statedb.QueryResult
+			result1 *statedb.VersionedKV
 			result2 error
 		})
 	}
 	fake.nextReturnsOnCall[i] = struct {
-		result1 statedb.QueryResult
+		result1 *statedb.VersionedKV
 		result2 error
 	}{result1, result2}
 }

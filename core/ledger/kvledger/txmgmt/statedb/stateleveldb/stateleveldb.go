@@ -299,7 +299,7 @@ func newKVScanner(namespace string, dbItr iterator.Iterator, requestedLimit int3
 	return &kvScanner{namespace, dbItr, requestedLimit, 0}
 }
 
-func (scanner *kvScanner) Next() (statedb.QueryResult, error) {
+func (scanner *kvScanner) Next() (*statedb.VersionedKV, error) {
 	if scanner.requestedLimit > 0 && scanner.totalRecordsReturned >= scanner.requestedLimit {
 		return nil, nil
 	}

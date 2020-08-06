@@ -165,15 +165,13 @@ type resultsItr struct {
 
 // Next implements method in interface ledger.ResultsIterator
 func (itr *resultsItr) Next() (commonledger.QueryResult, error) {
-	queryResult, err := itr.dbItr.Next()
+	versionedKV, err := itr.dbItr.Next()
 	if err != nil {
 		return nil, err
 	}
-	// itr.updateRangeQueryInfo(queryResult)
-	if queryResult == nil {
+	if versionedKV == nil {
 		return nil, nil
 	}
-	versionedKV := queryResult.(*statedb.VersionedKV)
 	return &queryresult.KV{Namespace: versionedKV.Namespace, Key: versionedKV.Key, Value: versionedKV.Value}, nil
 }
 

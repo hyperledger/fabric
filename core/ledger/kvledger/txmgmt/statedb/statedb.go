@@ -144,7 +144,7 @@ type VersionedKV struct {
 
 // ResultsIterator iterates over query results
 type ResultsIterator interface {
-	Next() (QueryResult, error)
+	Next() (*VersionedKV, error)
 	Close()
 }
 
@@ -153,9 +153,6 @@ type QueryResultsIterator interface {
 	ResultsIterator
 	GetBookmarkAndClose() string
 }
-
-// QueryResult - a general interface for supporting different types of query results. Actual types differ for different queries
-type QueryResult interface{}
 
 type nsUpdates struct {
 	M map[string]*VersionedValue
@@ -303,7 +300,7 @@ func newNsIterator(ns string, startKey string, endKey string, batch *UpdateBatch
 }
 
 // Next gives next key and versioned value. It returns a nil when exhausted
-func (itr *nsIterator) Next() (QueryResult, error) {
+func (itr *nsIterator) Next() (*VersionedKV, error) {
 	if itr.nextIndex >= itr.lastIndex {
 		return nil, nil
 	}

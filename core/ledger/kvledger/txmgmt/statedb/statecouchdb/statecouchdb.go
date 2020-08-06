@@ -1038,7 +1038,7 @@ func newQueryScanner(namespace string, db *couchDatabase, query string, internal
 	return scanner, nil
 }
 
-func (scanner *queryScanner) Next() (statedb.QueryResult, error) {
+func (scanner *queryScanner) Next() (*statedb.VersionedKV, error) {
 	doc, err := scanner.next()
 	if err != nil {
 		return nil, err

@@ -165,30 +165,6 @@ type VersionedDB struct {
 		result1 *version.Height
 		result2 error
 	}
-	ImportStateStub        func(statedb.FullScanIterator, byte) error
-	importStateMutex       sync.RWMutex
-	importStateArgsForCall []struct {
-		arg1 statedb.FullScanIterator
-		arg2 byte
-	}
-	importStateReturns struct {
-		result1 error
-	}
-	importStateReturnsOnCall map[int]struct {
-		result1 error
-	}
-	IsEmptyStub        func() (bool, error)
-	isEmptyMutex       sync.RWMutex
-	isEmptyArgsForCall []struct {
-	}
-	isEmptyReturns struct {
-		result1 bool
-		result2 error
-	}
-	isEmptyReturnsOnCall map[int]struct {
-		result1 bool
-		result2 error
-	}
 	OpenStub        func() error
 	openMutex       sync.RWMutex
 	openArgsForCall []struct {
@@ -930,122 +906,6 @@ func (fake *VersionedDB) GetVersionReturnsOnCall(i int, result1 *version.Height,
 	}{result1, result2}
 }
 
-func (fake *VersionedDB) ImportState(arg1 statedb.FullScanIterator, arg2 byte) error {
-	fake.importStateMutex.Lock()
-	ret, specificReturn := fake.importStateReturnsOnCall[len(fake.importStateArgsForCall)]
-	fake.importStateArgsForCall = append(fake.importStateArgsForCall, struct {
-		arg1 statedb.FullScanIterator
-		arg2 byte
-	}{arg1, arg2})
-	fake.recordInvocation("ImportState", []interface{}{arg1, arg2})
-	fake.importStateMutex.Unlock()
-	if fake.ImportStateStub != nil {
-		return fake.ImportStateStub(arg1, arg2)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.importStateReturns
-	return fakeReturns.result1
-}
-
-func (fake *VersionedDB) ImportStateCallCount() int {
-	fake.importStateMutex.RLock()
-	defer fake.importStateMutex.RUnlock()
-	return len(fake.importStateArgsForCall)
-}
-
-func (fake *VersionedDB) ImportStateCalls(stub func(statedb.FullScanIterator, byte) error) {
-	fake.importStateMutex.Lock()
-	defer fake.importStateMutex.Unlock()
-	fake.ImportStateStub = stub
-}
-
-func (fake *VersionedDB) ImportStateArgsForCall(i int) (statedb.FullScanIterator, byte) {
-	fake.importStateMutex.RLock()
-	defer fake.importStateMutex.RUnlock()
-	argsForCall := fake.importStateArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
-}
-
-func (fake *VersionedDB) ImportStateReturns(result1 error) {
-	fake.importStateMutex.Lock()
-	defer fake.importStateMutex.Unlock()
-	fake.ImportStateStub = nil
-	fake.importStateReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *VersionedDB) ImportStateReturnsOnCall(i int, result1 error) {
-	fake.importStateMutex.Lock()
-	defer fake.importStateMutex.Unlock()
-	fake.ImportStateStub = nil
-	if fake.importStateReturnsOnCall == nil {
-		fake.importStateReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.importStateReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *VersionedDB) IsEmpty() (bool, error) {
-	fake.isEmptyMutex.Lock()
-	ret, specificReturn := fake.isEmptyReturnsOnCall[len(fake.isEmptyArgsForCall)]
-	fake.isEmptyArgsForCall = append(fake.isEmptyArgsForCall, struct {
-	}{})
-	fake.recordInvocation("IsEmpty", []interface{}{})
-	fake.isEmptyMutex.Unlock()
-	if fake.IsEmptyStub != nil {
-		return fake.IsEmptyStub()
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.isEmptyReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *VersionedDB) IsEmptyCallCount() int {
-	fake.isEmptyMutex.RLock()
-	defer fake.isEmptyMutex.RUnlock()
-	return len(fake.isEmptyArgsForCall)
-}
-
-func (fake *VersionedDB) IsEmptyCalls(stub func() (bool, error)) {
-	fake.isEmptyMutex.Lock()
-	defer fake.isEmptyMutex.Unlock()
-	fake.IsEmptyStub = stub
-}
-
-func (fake *VersionedDB) IsEmptyReturns(result1 bool, result2 error) {
-	fake.isEmptyMutex.Lock()
-	defer fake.isEmptyMutex.Unlock()
-	fake.IsEmptyStub = nil
-	fake.isEmptyReturns = struct {
-		result1 bool
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *VersionedDB) IsEmptyReturnsOnCall(i int, result1 bool, result2 error) {
-	fake.isEmptyMutex.Lock()
-	defer fake.isEmptyMutex.Unlock()
-	fake.IsEmptyStub = nil
-	if fake.isEmptyReturnsOnCall == nil {
-		fake.isEmptyReturnsOnCall = make(map[int]struct {
-			result1 bool
-			result2 error
-		})
-	}
-	fake.isEmptyReturnsOnCall[i] = struct {
-		result1 bool
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *VersionedDB) Open() error {
 	fake.openMutex.Lock()
 	ret, specificReturn := fake.openReturnsOnCall[len(fake.openArgsForCall)]
@@ -1191,10 +1051,6 @@ func (fake *VersionedDB) Invocations() map[string][][]interface{} {
 	defer fake.getStateRangeScanIteratorWithPaginationMutex.RUnlock()
 	fake.getVersionMutex.RLock()
 	defer fake.getVersionMutex.RUnlock()
-	fake.importStateMutex.RLock()
-	defer fake.importStateMutex.RUnlock()
-	fake.isEmptyMutex.RLock()
-	defer fake.isEmptyMutex.RUnlock()
 	fake.openMutex.RLock()
 	defer fake.openMutex.RUnlock()
 	fake.validateKeyValueMutex.RLock()
