@@ -15,6 +15,7 @@ import (
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -285,13 +286,12 @@ func (c *Cache) HandleStateUpdates(trigger *ledger.StateUpdateTrigger) error {
 	// if the channel cache does not yet exist, there are no interesting hashes, so skip
 	if ok {
 		for collection, privateUpdates := range updates.CollHashUpdates {
-			matches := ImplicitCollectionMatcher.FindStringSubmatch(collection)
-			if len(matches) != 2 {
-				// This is not an implicit collection
+			isImplicitCollection, mspID := implicitcollection.MspIDIfImplicitCollection(collection)
+			if !isImplicitCollection {
 				continue
 			}
 
-			if matches[1] != c.MyOrgMSPID {
+			if mspID != c.MyOrgMSPID {
 				// This is not our implicit collection
 				continue
 			}
@@ -440,7 +440,7 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 
 	orgState := &PrivateQueryExecutorShim{
 		Namespace:  LifecycleNamespace,
-		Collection: ImplicitCollectionNameForOrg(c.MyOrgMSPID),
+		Collection: implicitcollection.NameForOrg(c.MyOrgMSPID),
 		State:      qe,
 	}
 

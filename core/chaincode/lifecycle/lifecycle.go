@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policydsl"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/core/container"
 	"github.com/hyperledger/fabric/protoutil"
@@ -652,7 +653,7 @@ func (ef *ExternalFunctions) QueryOrgApprovals(name string, cd *ChaincodeDefinit
 			return nil, errors.WithMessagef(err, "serialization check failed for key %s", privateName)
 		}
 
-		org := OrgFromImplicitCollectionName(orgState.CollectionName())
+		_, org := implicitcollection.MspIDIfImplicitCollection(orgState.CollectionName())
 		approvals[org] = match
 	}
 
