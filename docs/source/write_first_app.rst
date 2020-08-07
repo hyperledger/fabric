@@ -19,7 +19,7 @@ to invoke a smart contract which queries and updates the ledger with the smart
 contract API -- described in detail in :doc:`/developapps/smartcontract`.
 We will also use our sample programs and a deployed Certificate Authority to generate
 the X.509 certificates that an application needs to interact with a permissioned
-blockchain. 
+blockchain.
 
 **About Asset Transfer**
 
@@ -28,14 +28,14 @@ a new asset, query a single asset based on an asset ID, update an existing asset
 It involves the following two components:
 
   1. Sample application: which makes calls to the blockchain network, invoking transactions
-  implemented in the chaincode (smart contract). The application is located in the following directory:
+  implemented in the chaincode (smart contract). The application is located in the following ``fabric-samples`` directory:
 
   .. code:: bash
 
     asset-transfer-basic/application-javascript
 
   2. Smart contract itself, implementing the transactions that involve interactions with the
-  ledger. The smart contract (chaincode) is located in the following directory:
+  ledger. The smart contract (chaincode) is located in the following ``fabric-samples`` directory:
 
   .. code:: bash
 
@@ -102,7 +102,7 @@ Launch the network
 ^^^^^^^^^^^^^^^^^^
 
 .. note:: This tutorial demonstrates the JavaScript versions of the Asset Transfer
-          smart contract and application, but the ``fabric-samples`` repo also
+          smart contract and application, but the ``fabric-samples`` repository also
           contains Go, Java and TypeScript versions of this sample smart contract. To try the
           Go, Java or TypeScript versions, change the ``javascript`` argument
           for ``./network.sh deployCC -ccl javascript`` below to either ``go``, ``java`` or ``typescript``
@@ -111,11 +111,17 @@ Launch the network
           javascript application calling typescript chaincode functions, etc.)
 
 Navigate to the ``test-network`` subdirectory within your local clone of the
-``fabric-samples`` repo.
+``fabric-samples`` repository.
 
 .. code:: bash
 
   cd fabric-samples/test-network
+
+If you already have a test network running, bring it down to ensure the environment is clean.
+
+.. code:: bash
+
+  ./network.sh down
 
 Launch the Fabric test network using the ``network.sh`` shell script.
 
@@ -123,9 +129,9 @@ Launch the Fabric test network using the ``network.sh`` shell script.
 
   ./network.sh up createChannel -c mychannel -ca
 
-This command will deploy the Fabric test network with two peers, three certificate authorities (Orderer, Org1, Org2),
-and an ordering service. Instead of using the cryptogen tool, we bring up the test network using Certificate Authorities, 
-hence the ``-ca`` flag. Additionally, the org admin user registration is bootstrapped when the Certificate Authority is started.  
+This command will deploy the Fabric test network with two peers, an ordering service, and three certificate authorities (Orderer, Org1, Org2).
+Instead of using the cryptogen tool, we bring up the test network using Certificate Authorities,
+hence the ``-ca`` flag. Additionally, the org admin user registration is bootstrapped when the Certificate Authority is started.
 In a later step, we will show how the sample application completes the admin enrollment.
 
 Next, let's deploy the chaincode by calling the ``./network.sh`` script with the chaincode name and language options.
@@ -143,16 +149,16 @@ If the chaincode is successfully deployed, the end of the output in your termina
 
   Committed chaincode definition for chaincode 'basic' on channel 'mychannel':
   Version: 1.0, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc, Approvals: [Org1MSP: true, Org2MSP: true]
-  ===================== Query chaincode definition successful on peer0.org2 on channel 'mychannel' ===================== 
+  ===================== Query chaincode definition successful on peer0.org2 on channel 'mychannel' =====================
 
   ===================== Chaincode initialization is not required =====================
 
 
 Sample application
 ^^^^^^^^^^^^^^^^^^
-First component of Asset Transfer, the sample application, is available in javascript:
+Next, let's prepare the sample Asset Transfer Javascript application that will be used to interact with the deployed chaincode.
 
-- `JavaScript <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-basic/application-javascript>`__
+- `JavaScript application <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-basic/application-javascript>`__
 
 Open a new terminal, and navigate to the ``application-javascript`` folder.
 
@@ -168,13 +174,13 @@ It may take up to a minute to complete:
 
   npm install
 
-This process is installing the key application dependencies defined in
-``package.json``. The most important of which is the ``fabric-network`` class;
+This process is installing the key application dependencies defined in the application's
+``package.json``. The most important of which is the ``fabric-network`` Node.js module;
 it enables an application to use identities, wallets, and gateways to connect to
 channels, submit transactions, and wait for notifications. This tutorial also
-uses the ``fabric-ca-client`` class to enroll users with their respective
+uses the ``fabric-ca-client`` module to enroll users with their respective
 certificate authorities, generating a valid identity which is then used by
-``fabric-network`` class methods.
+the ``fabric-network`` module to interact with the blockchain network.
 
 Once ``npm install`` completes, everything is in place to run the application.
 Let's take a look at the sample JavaScript application files we will be using
@@ -188,8 +194,7 @@ You should see the following:
 
 .. code:: bash
 
-  app.js                  node_modules            package.json
-  enrollAdmin.js          package-lock.json       registerUser.js
+  app.js                  node_modules            package.json       package-lock.json
 
 .. note:: The first part of the following section involves communication with the Certificate
           Authority. You may find it useful to stream the CA logs when running
@@ -223,34 +228,24 @@ First, the application enrolls the admin user
 
 In the sample application code below, you will see that after getting reference to the
 common connection profile path, making sure the connection profile exists, and specifying where to create the wallet,
-``enrollAdmin.EnrollAdminUser()`` is executed and the admin credentials are generated from the Certificate Authority.
+``enrollAdmin()`` is executed and the admin credentials are generated from the Certificate Authority.
 
 .. code:: bash
 
-    ...
-    // pre-requisites:
-    // fabric-sample test-network setup with two peers and an ordering service,
-    // the companion chaincode is deployed, approved and committed on the channel mychannel
-    async function main() {
-        try {
-            // load the network configuration
-            const ccpPath = path.resolve(__dirname, '..', '..', 'test-network', 'organizations', 'peerOrganizations', 'org1.example.com', 'connection-org1.json');
-            const fileExists = fs.existsSync(ccpPath);
-            if (!fileExists) {
-                throw new Error(`no such file or directory: ${ccpPath}`);
-            }
-            const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+  async function main() {
+    try {
+      // build an in memory object with the network configuration (also known as a connection profile)
+      const ccp = buildCCP();
 
-            // Create a new file system based wallet for managing identities.
-            const walletPath = path.join(__dirname, 'wallet');
-            const wallet = await Wallets.newFileSystemWallet(walletPath);
-            console.log(`Wallet path: ${walletPath}`);
+      // build an instance of the fabric ca services client based on
+      // the information in the network configuration
+      const caClient = buildCAClient(FabricCAServices, ccp);
 
+      // setup the wallet to hold the credentials of the application user
+      const wallet = await buildWallet(Wallets, walletPath);
 
-            // Steps:
-            // Note: Steps 1 & 2 need to done only once in an app-server per blockchain network
-            // 1. register & enroll admin user with CA, stores admin identity in local wallet
-            await enrollAdmin.EnrollAdminUser();
+      // in a real application this would be done on an administrative flow, and only once
+      await enrollAdmin(caClient, wallet);
 
 This command stores the CA administrator's credentials in the ``wallet`` directory.
 You can find administrator's certificate and private key in the ``wallet/admin.id``
@@ -260,7 +255,7 @@ file.
           have to delete the ``wallet`` folder and its identities prior to re-running the javascript application
           or you will get an error. This happens because the Certificate Authority and its database are taken down
           when the test-network is taken down but the original wallet still remains in the application-javascript directory
-          so it must be deleted.  When you re-run the sample javascript application, a new wallet and credentials will 
+          so it must be deleted.  When you re-run the sample javascript application, a new wallet and credentials will
           be generated.
 
 
@@ -270,25 +265,31 @@ If you scroll back up to the beginning of the output in your terminal, it should
 
   Wallet path: /Users/<your_username>/fabric-samples/asset-transfer-basic/application-javascript/wallet
   Successfully enrolled admin user and imported it into the wallet
-  
+
 Because the admin registration step is bootstrapped when the Certificate Authority
-is started, we only need to enroll the admin.  As for the app user, we need the application
-to register and enroll the user in the next step.
+is started, we only need to enroll the admin.
+
+.. note:: Since the Fabric CA interactions are common across the samples, enrollAdmin() and the other CA
+          related functions are included in the ``fabric-samples/test-application/javascript/CAUtil.js``
+          common utility.
+
+As for the app user, we need the application to register and enroll the user in the next step.
 
 
 Second, the application registers and enrolls an application user
 -----------------------------------------------------------------
 
-Our ``admin`` is used to work with the Certificate Authority. Now that we have the administrator's
-credentials in a wallet, the application registers and enrolls an app user which will be used
-to interact with the blockchain. The section of the application code is shown below.
+Now that we have the administrator's credentials in a wallet, the application uses the ``admin``
+user to register and enroll an app user which will be used
+to interact with the blockchain network. The section of the application code is shown below.
 
 .. code:: bash
 
-  // 2. register & enroll application user with CA, which is used as client identify to make chaincode calls, stores app user identity in local wallet
-        await registerUser.RegisterAppUser();
+  // in a real application this would be done only when a new user was required to be added
+  // and would be part of an administrative flow
+  await registerUser(caClient, wallet, userId, 'org1.department1');
 
-Similar to the admin enrollment, this program uses a CSR to enroll ``appUser`` and
+Similar to the admin enrollment, this function uses a CSR to register and enroll ``appUser`` and
 store its credentials alongside those of ``admin`` in the wallet. We now have
 identities for two separate users --- ``admin`` and ``appUser`` --- that can be
 used by our application.
@@ -300,57 +301,74 @@ similar to this:
 
   Successfully registered and enrolled user appUser and imported it into the wallet
 
-Third, how the sample application interacts with the chaincode
------------------------------------------------------------
+Third, the sample application prepares a connection to the channel and smart contract
+-------------------------------------------------------------------------------------
 
 In the prior steps, the application generated the admin and app user credentials and placed them in the wallet.
 If the credentials exist and have the correct permissions attributes associated with them, the sample application user
-will be able to call chaincode functionality from the sample application after getting reference to the channel name and contract name.
+will be able to call chaincode functions after getting reference to the channel name and contract name.
 
 .. note:: Our connection configuration specifies only the peer from your own Org.
           We tell node client sdk to use the service discovery (running on the peer),
           which fetches other peers that are currently online, metadata like relevant endorsement policies
           and any static information it would have otherwise needed to communicate with the rest of the nodes.
           The ``asLocalhost`` set to ``true`` tells it to connect as localhost, since our client is running on same network as the other fabric nodes.
-          In deployments where you are not running the client on the same network as the other fabric nodes, 
-          the ``asLocalhost`` option would be set to ``false``. 
+          In deployments where you are not running the client on the same network as the other fabric nodes,
+          the ``asLocalhost`` option would be set to ``false``.
 
 You will notice that in the following lines of application code, the application is getting reference
 to the Contract using the contract name and channel name via Gateway:
 
 .. code:: bash
 
-    //3. Prepare to call chaincode using fabric javascript node sdk
-    // Create a new gateway for connecting to our peer node.
-        const gateway = new Gateway();
-        await gateway.connect(ccp, {
-            wallet,
-            identity: registerUser.ApplicationUserId,
-            discovery: {enabled: true, asLocalhost: true}
-        });
-        try {
-            // Get the network (channel) our contract is deployed to.
-            const network = await gateway.getNetwork(myChannel);
+  // Create a new gateway instance for interacting with the fabric network.
+  // In a real application this would be done as the backend server session is setup for
+  // a user that has been verified.
+  const gateway = new Gateway();
 
-            // Get the contract from the network.
-            const contract = network.getContract(myChaincodeName);
+  try {
+    // setup the gateway instance
+    // The user will now be able to create connections to the fabric network and be able to
+    // submit transactions and query. All transactions submitted by this gateway will be
+    // signed by this user using the credentials stored in the wallet.
+    await gateway.connect(ccp, {
+      wallet,
+      identity: userId,
+      discovery: {enabled: true, asLocalhost: true} // using asLocalhost as this gateway is using a fabric network deployed locally
+    });
 
-Fourth, initializing the ledger with some data we can work with
----------------------------------------------------------------
+    // Build a network instance based on the channel where the smart contract is deployed
+    const network = await gateway.getNetwork(channelName);
+
+    // Get the contract from the network.
+    const contract = network.getContract(chaincodeName);
+
+Fourth, the application initializes the ledger with some sample data
+--------------------------------------------------------------------
 
 Now that we are at the point where we are actually having the sample application submit transactions, let’s
-go through them in sequence, look at the snippets of the application code and the corresponding
-chaincode, and what the terminal output looks like.
+go through them in sequence. The application code snippets and invoked chaincode snippets
+are provided for each called function, as well as the terminal output.
 
-Sample application -- ``'InitLedger'``
+The submitTransaction() function is used to invoke the chaincode ``InitLedger`` function to populate the
+ledger with some sample data. Under the covers, the submitTransaction() function will use service discovery
+to find a set of required endorsing peers for the chaincode, invoke the chaincode
+on the required number of peers, gather the chaincode endorsed results from those peers,
+and finally submit the transaction to the ordering service.
+
+Sample application ``'InitLedger'`` call
 
 .. code:: bash
 
-    //4. Init a set of asset data on the channel using chaincode 'InitLedger'
-    console.log('Submit Transaction: InitLedger creates the initial set of assets on the ledger.');
-    await contract.submitTransaction('InitLedger');
+  // Initialize a set of asset data on the channel using the chaincode 'InitLedger' function.
+  // This type of transaction would only be run once by an application the first time it was started after it
+  // deployed the first time. Any updates to the chaincode deployed later would likely not need to run
+  // an "init" type function.
+  console.log('\n--> Submit Transaction: InitLedger, function creates the initial set of assets on the ledger');
+  await contract.submitTransaction('InitLedger');
+  console.log('*** Result: committed');
 
-Chaincode -- ``'InitLedger'``
+Chaincode ``'InitLedger'`` function
 
 .. code:: bash
 
@@ -411,10 +429,11 @@ The terminal output entry should look similar to below:
 
 .. code:: bash
 
-  Submit Transaction: InitLedger creates the initial set of assets on the ledger.
+  Submit Transaction: InitLedger, function creates the initial set of assets on the ledger
 
-Fifth, the rest of the transaction submission sequence from the sample application
-----------------------------------------------------------------------------------
+
+Fifth, the application invokes each of the chaincode functions
+--------------------------------------------------------------
 
 First, a word about querying the ledger.
 
@@ -435,17 +454,21 @@ This can be very helpful when looking for all assets that match certain keywords
 with particular values; all assets with a particular owner, for example.
 
 Below, the sample application is just getting all the assets that we populated in the prior
-step when we initialized the ledger with data.
+step when we initialized the ledger with data. The evaluateTransaction() function is
+used when you'd like to query a single peer, without submitting a transaction to
+the ordering service.
 
-Sample application -- ``'GetAllAssets'``
+Sample application ``'GetAllAssets'`` call
 
 .. code:: bash
 
-  // GetAllAssets returns all the current assets on the ledger
-     let result = await contract.evaluateTransaction('GetAllAssets');
-     console.log(`Evaluate Transaction: GetAllAssets, result: ${prettyJSONString(result.toString())}`);
+  // Let's try a query type operation (function).
+  // This will be sent to just one peer and the results will be shown.
+  console.log('\n--> Evaluate Transaction: GetAllAssets, function returns all the current assets on the ledger');
+  let result = await contract.evaluateTransaction('GetAllAssets');
+  console.log(`*** Result: ${prettyJSONString(result.toString())}`);
 
-Chaincode -- ``'GetAllAssets'``
+Chaincode ``'GetAllAssets'`` function
 
 .. code:: bash
 
@@ -470,12 +493,12 @@ Chaincode -- ``'GetAllAssets'``
         return JSON.stringify(allResults);
     }
 
-
 The terminal output should look like this:
 
 .. code:: json
 
-    Evaluate Transaction: GetAllAssets, result: [
+    Evaluate Transaction: GetAllAssets, function returns all the current assets on the ledger
+    Result: [
     {
       "Key": "asset1",
       "Record": {
@@ -544,24 +567,20 @@ The terminal output should look like this:
     }
   ]
 
-In the next part of the sequence, the sample application submits a transaction to create 'asset13'
-and then immediately evaluates (query) for 'asset13'.
+Next, the sample application submits a transaction to create 'asset13'.
 
-Sample application -- ``'CreateAsset'`` and ``'ReadAsset'``
+Sample application ``'CreateAsset'`` call
 
 .. code:: bash
 
-  console.log('\n***********************');
-  console.log('Submit Transaction: CreateAsset asset13');
-  //CreateAsset creates an asset with ID asset13, color yellow, owner Tom, size 5 and appraisedValue of 1300
+  // Now let's try to submit a transaction.
+  // This will be sent to both peers and if both peers endorse the transaction, the endorsed proposal will be sent
+  // to the orderer to be committed by each of the peer's to the channel ledger.
+  console.log('\n--> Submit Transaction: CreateAsset, creates new asset with ID, color, owner, size, and appraisedValue arguments');
   await contract.submitTransaction('CreateAsset', 'asset13', 'yellow', '5', 'Tom', '1300');
+  console.log('*** Result: committed');
 
-  console.log('Evaluate Transaction: ReadAsset asset13');
-  // ReadAsset returns an asset with given assetID
-  result = await contract.evaluateTransaction('ReadAsset', 'asset13');
-  console.log(`  result: ${prettyJSONString(result.toString())}`);
-
-Chaincode -- ``'CreateAsset'`` and ``'ReadAsset'``
+Chaincode ``'CreateAsset'`` function
 
 .. code:: bash
 
@@ -577,29 +596,11 @@ Chaincode -- ``'CreateAsset'`` and ``'ReadAsset'``
     return ctx.stub.putState(id, Buffer.from(JSON.stringify(asset)));
   }
 
-  // ReadAsset returns the asset stored in the world state with given id.
-  async ReadAsset(ctx, id) {
-    const assetJSON = await ctx.stub.getState(id); // get the asset from chaincode state
-    if (!assetJSON || assetJSON.length === 0) {
-        throw new Error(`The asset ${id} does not exist`);
-    }
-    return assetJSON.toString();
-  }
-
 Terminal output:
 
 .. code:: bash
 
-  ***********************
-  Submit Transaction: CreateAsset asset13
-  Evaluate Transaction: ReadAsset asset13
-    result: {
-    "ID": "asset13",
-    "Color": "yellow",
-    "Size": "5",
-    "Owner": "Tom",
-    "AppraisedValue": "1300"
-  }
+  Submit Transaction: CreateAsset, creates new asset with ID, color, owner, size, and appraisedValue arguments
 
 .. note:: In the application and chaincode snippets above, it is important
           to note that the sample application submits the ``'CreateAsset'``
@@ -612,6 +613,42 @@ Terminal output:
 
           type: ID (string), Color (string), Size (int), Owner (string), AppraisedValue (int).
 
+The sample application then evaluates a query for 'asset13'.
+
+Sample application ``'ReadAsset'`` call
+
+  .. code:: bash
+
+  console.log('\n--> Evaluate Transaction: ReadAsset, function returns an asset with a given assetID');
+  result = await contract.evaluateTransaction('ReadAsset', 'asset13');
+  console.log(`*** Result: ${prettyJSONString(result.toString())}`);
+
+Chaincode ``'ReadAsset'`` function
+
+  .. code:: bash
+
+    // ReadAsset returns the asset stored in the world state with given id.
+    async ReadAsset(ctx, id) {
+      const assetJSON = await ctx.stub.getState(id); // get the asset from chaincode state
+      if (!assetJSON || assetJSON.length === 0) {
+          throw new Error(`The asset ${id} does not exist`);
+      }
+      return assetJSON.toString();
+    }
+
+  Terminal output:
+
+  .. code:: bash
+
+  Evaluate Transaction: ReadAsset, function returns an asset with a given assetID
+  Result: {
+    "ID": "asset13",
+    "Color": "yellow",
+    "Size": "5",
+    "Owner": "Tom",
+    "AppraisedValue": "1300"
+  }
+
 
 In the next part of the sequence, the sample application evaluates to see if
 ``asset1`` exists, which will return a boolean value of true, because we populated
@@ -620,25 +657,25 @@ that the original appraised value of ``asset1`` was ``300``.
 The application then submits a transaction to update ``asset1`` with a new appraised value, and
 then immediately evaluates to read ``asset1`` from the ledger to show the new appraised value of ``350``.
 
-Sample application -- ``'AssetExists'``, ``'UpdateAsset'``, and ``'ReadAsset'``
+Sample application ``'AssetExists'``, ``'UpdateAsset'``, and ``'ReadAsset'`` calls
 
 .. code:: bash
 
-  // AssetExists returns 'true' if an asset with given assetID exist
+  console.log('\n--> Evaluate Transaction: AssetExists, function returns "true" if an asset with given assetID exist');
   result = await contract.evaluateTransaction('AssetExists', 'asset1');
-  console.log(`  result: ${prettyJSONString(result.toString())}`);
+  console.log(`*** Result: ${prettyJSONString(result.toString())}`);
 
-  console.log('Submit Transaction: UpdateAsset asset1, new AppraisedValue : 350');
-  // UpdateAsset updates an existing asset with new properties. Same args as CreateAsset
+  console.log('\n--> Submit Transaction: UpdateAsset asset1, change the appraisedValue to 350');
   await contract.submitTransaction('UpdateAsset', 'asset1', 'blue', '5', 'Tomoko', '350');
+  console.log('*** Result: committed');
 
-  console.log('Evaluate Transaction: ReadAsset asset1');
+  console.log('\n--> Evaluate Transaction: ReadAsset, function returns "asset1" attributes');
   result = await contract.evaluateTransaction('ReadAsset', 'asset1');
-  console.log(`  result: ${prettyJSONString(result.toString())}`);
+  console.log(`*** Result: ${prettyJSONString(result.toString())}`);
 
-Chaincode -- ``'AssetExists'``, ``'UpdateAsset'``, and ``'ReadAsset'``
+Chaincode ``'AssetExists'``, ``'UpdateAsset'``, and ``'ReadAsset'`` functions
 
-.. code:: bash 
+.. code:: bash
 
  // AssetExists returns true when asset with given ID exists in world state.
     async AssetExists(ctx, id) {
@@ -675,12 +712,13 @@ Terminal Output:
 
 .. code:: bash
 
-  ***********************
-  Evaluate Transaction: AssetExists asset1
-    result: true
-  Submit Transaction: UpdateAsset asset1, new AppraisedValue : 350
-  Evaluate Transaction: ReadAsset asset1
-    result: {
+  Evaluate Transaction: AssetExists, function returns "true" if an asset with given assetID exist
+  Result: true
+
+  Submit Transaction: UpdateAsset asset1, change the appraisedValue to 350
+
+  Evaluate Transaction: ReadAsset, function returns "asset1" attributes
+  Result: {
     "ID": "asset1",
     "Color": "blue",
     "Size": "5",
@@ -689,24 +727,26 @@ Terminal Output:
   }
 
 In this part of the sequence, the sample application attempts to submit
-a ``'UdpateAsset'`` transaction for an asset that we know does not exist (``asset70``).
+an ``'UdpateAsset'`` transaction for an asset that we know does not exist (``asset70``).
 We expect that we will get an error because you cannot update an asset that does not exist,
 which is why it is a good idea to check if an asset exists prior to attempting an
 asset update or deletion.
 
-Sample application -- ``'UpdateAsset'``
+Sample application ``'UpdateAsset'`` call
 
 .. code:: bash
 
-   try {
-        console.log('\nSubmit Transaction: UpdateAsset asset70');
-        //Non existing asset asset70 should throw Error
-        await contract.submitTransaction('UpdateAsset', 'asset70', 'blue', '5', 'Tomoko', '300');
-    } catch (error) {
-        console.log(`Expected an error on UpdateAsset of non-existing Asset: ${error}`);
-    }
+  try {
+    // How about we try a transactions where the executing chaincode throws an error
+    // Notice how the submitTransaction will throw an error containing the error thrown by the chaincode
+    console.log('\n--> Submit Transaction: UpdateAsset asset70, asset70 does not exist and should return an error');
+    await contract.submitTransaction('UpdateAsset', 'asset70', 'blue', '5', 'Tomoko', '300');
+    console.log('******** FAILED to return an error');
+  } catch (error) {
+    console.log(`*** Successfully caught the error: \n    ${error}`);
+  }
 
-Chaincode -- ``'UpdateAsset'``
+Chaincode ``'UpdateAsset'`` function
 
 .. code:: bash
 
@@ -745,19 +785,19 @@ In this final part of the sample application transaction sequence, the applicati
 submits a transaction to transfer an existing asset to a new owner and then reads the
 asset back from the ledger to display the new owner ``Tom``.
 
-Sample application -- ``'TransferAsset'``, and ``'ReadAsset'``
+Sample application ``'TransferAsset'``, and ``'ReadAsset'`` calls
 
 .. code:: bash
 
-  console.log('Submit Transaction: TransferAsset asset1 from owner Tomoko > owner Tom');
-  // TransferAsset transfers an asset with given ID to new owner Tom
+  console.log('\n--> Submit Transaction: TransferAsset asset1, transfer to new owner of Tom');
   await contract.submitTransaction('TransferAsset', 'asset1', 'Tom');
+  console.log('*** Result: committed');
 
-  console.log('Evaluate Transaction: ReadAsset asset1');
+  console.log('\n--> Evaluate Transaction: ReadAsset, function returns "asset1" attributes');
   result = await contract.evaluateTransaction('ReadAsset', 'asset1');
-  console.log(`  result: ${prettyJSONString(result.toString())}`);
+  console.log(`*** Result: ${prettyJSONString(result.toString())}`);
 
-Chaincode -- ``'TransferAsset'``, and ``'ReadAsset'``
+Chaincode ``'TransferAsset'``, and ``'ReadAsset'`` functions
 
 .. code:: bash
 
@@ -781,10 +821,9 @@ Terminal output:
 
 .. code:: bash
 
-  ***********************
-  Submit Transaction: TransferAsset asset1 from owner Tomoko > owner Tom
-  Evaluate Transaction: ReadAsset asset1
-    result: {
+  Submit Transaction: TransferAsset asset1, transfer to new owner of Tom
+  Evaluate Transaction: ReadAsset, function returns "asset1" attributes
+  Result: {
     "ID": "asset1",
     "Color": "blue",
     "Size": "5",
@@ -874,16 +913,17 @@ the ledger.
 ``submitTransaction`` is much more sophisticated than ``evaluateTransaction``.
 Rather than interacting with a single peer, the SDK will send the
 ``submitTransaction`` proposal to every required organization's peer in the
-blockchain network. Each of these peers will execute the requested smart
-contract using this proposal, to generate a transaction response which it signs
-and returns to the SDK. The SDK collects all the signed transaction responses
-into a single transaction, which it then sends to the orderer. The orderer
-collects and sequences transactions from every application into a block of
-transactions. It then distributes these blocks to every peer in the network,
+blockchain network based on the chaincode's endorsement policy.
+Each of these peers will execute the requested smart
+contract using this proposal, to generate a transaction response which it endorses (signs)
+and returns to the SDK. The SDK collects all the endorsed transaction responses
+into a single transaction, which it then submits to the orderer. The orderer
+collects and sequences transactions from various application clients into a block of
+transactions. These blocks are distributed to every peer in the network,
 where every transaction is validated and committed. Finally, the SDK is
-notified, allowing it to return control to the application.
+notified via an event, allowing it to return control to the application.
 
-.. note:: ``submitTransaction`` also includes a listener that checks to make
+.. note:: ``submitTransaction`` includes an event listener that checks to make
           sure the transaction has been validated and committed to the ledger.
           Applications should either utilize a commit listener, or
           leverage an API like ``submitTransaction`` that does this for you.
@@ -908,7 +948,7 @@ is valid and performed in an agreed and consistent order.
 .. image:: tutorial/write_first_app.diagram.2.png
 
 The asset-transfer ('basic') smart contract
--------------------------
+-------------------------------------------
 The smart contract sample is available in the following languages:
 
 - `Golang <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-basic/chaincode-go>`__
