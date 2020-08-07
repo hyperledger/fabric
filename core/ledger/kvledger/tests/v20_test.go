@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/stretchr/testify/require"
 )
@@ -113,7 +113,7 @@ func (d *v20SampleDataHelper) marbleCollConf1(ccName string) []*collConf {
 	collConfigs = append(collConfigs, &collConf{name: "collectionMarbles", btl: 1000000, members: []string{"Org1MSP", "Org2MSP"}})
 	collConfigs = append(collConfigs, &collConf{name: "collectionMarblePrivateDetails", btl: 1000000, members: []string{"Org2MSP", "Org3MSP"}})
 	for _, mspID := range d.mspIDsInChannelConfig() {
-		collConfigs = append(collConfigs, &collConf{name: lifecycle.ImplicitCollectionNameForOrg(mspID), btl: 0, members: []string{mspID}})
+		collConfigs = append(collConfigs, &collConf{name: implicitcollection.NameForOrg(mspID), btl: 0, members: []string{mspID}})
 	}
 	return collConfigs
 }
@@ -124,7 +124,7 @@ func (d *v20SampleDataHelper) marbleCollConf2(ccName string) []*collConf {
 	collConfigs = append(collConfigs, &collConf{name: "collectionMarbles", btl: 1000000, members: []string{"Org2MSP", "Org3MSP"}})
 	collConfigs = append(collConfigs, &collConf{name: "collectionMarblePrivateDetails", btl: 1000000, members: []string{"Org1MSP", "Org2MSP", "Org3MSP"}})
 	for _, mspID := range d.mspIDsInChannelConfig() {
-		collConfigs = append(collConfigs, &collConf{name: lifecycle.ImplicitCollectionNameForOrg(mspID), btl: 0, members: []string{mspID}})
+		collConfigs = append(collConfigs, &collConf{name: implicitcollection.NameForOrg(mspID), btl: 0, members: []string{mspID}})
 	}
 	return collConfigs
 }
