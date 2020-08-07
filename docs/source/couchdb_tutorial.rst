@@ -2,7 +2,7 @@
 Using CouchDB
 =============
 
-This tutorial will describe the steps required to use the CouchDB as the state
+This tutorial will describe the steps required to use CouchDB as the state
 database with Hyperledger Fabric. By now, you should be familiar with Fabric
 concepts and have explored some of the samples and tutorials.
 
@@ -29,19 +29,19 @@ topic. Follow the tutorial below for details on how to leverage CouchDB in your
 blockchain network.
 
 Throughout this tutorial, we will use the `Asset transfer ledger queries sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-ledger-queries/chaincode-go>`__
-as our use case to demonstrate how to use CouchDB with Fabric and will deploy
-ledger queries to the Fabric test network. You should have completed the task
+as our use case to demonstrate how to use CouchDB with Fabric, including the
+execution of JSON queries against the state database. You should have completed the task
 :doc:`install`.
 
 Why CouchDB?
 ~~~~~~~~~~~~
 
-Fabric supports two types of peer databases. LevelDB is the default state
+Fabric supports two types of peer state databases. LevelDB is the default state
 database embedded in the peer node. LevelDB stores chaincode data as simple
 key-value pairs and only supports key, key range, and composite key queries.
 CouchDB is an optional, alternate state database that allows you to model data
 on the ledger as JSON and issue rich queries against data values rather than
-the keys. CouchDB also allows you to deploy indexes with your chaincode to make
+the keys. The CouchDB support also allows you to deploy indexes with your chaincode to make
 queries more efficient and enable you to query large datasets.
 
 In order to leverage the benefits of CouchDB, namely content-based JSON
@@ -69,8 +69,8 @@ FABRIC_CFG_PATH:
 
 * For Docker deployments, ``core.yaml`` is pre-configured and located in the peer
   container ``FABRIC_CFG_PATH`` folder. However, when using Docker environments,
-  you typically pass environment variables by editing the
-  ``docker-compose-couch.yaml``  to override the core.yaml
+  you can pass environment variables to override the core.yaml properties, for
+  example ``CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS`` to set the CouchDB address.
 
 * For native binary deployments, ``core.yaml`` is included with the release artifact
   distribution.
@@ -92,12 +92,12 @@ indexes are built for frequently occurring query criteria allowing the data to
 be queried more efficiently. To leverage the major benefit of CouchDB -- the
 ability to perform rich queries against JSON data -- indexes are not required,
 but they are strongly recommended for performance. Also, if sorting is required
-in a query, CouchDB requires an index of the sorted fields.
+in a query, CouchDB requires an index that includes the sorted fields.
 
 .. note::
 
-   Rich queries that do not have an index will work but may throw a warning
-   in the CouchDB log that the index was not found. However, if a rich query
+   JSON queries that do not have an index may work but will throw a warning
+   in the peer log that the index was not found. However, if a rich query
    includes a sort specification, then an index on that field is required;
    otherwise, the query will fail and an error will be thrown.
 
@@ -119,16 +119,14 @@ In this example, the Asset data structure is defined as:
 
 In this structure, the attributes (``docType``, ``ID``, ``color``, ``size``,
 ``owner``, ``appraisedValue``) define the ledger data associated with the asset. The attribute
-``docType`` is a pattern used in the chaincode to differentiate different data
-types that may need to be queried separately. When using CouchDB, it
-recommended to include this ``docType`` attribute to distinguish each type of
-document in the chaincode namespace. (Each chaincode is represented as its own
-CouchDB database, that is, each chaincode has its own namespace for keys.)
+``docType`` is a pattern that can be used in chaincode to differentiate different data
+types within the chaincode namespace that may need to be queried separately. When using CouchDB,
+each chaincode is represented as its own CouchDB database, that is, each chaincode has its own namespace for keys.
 
 With respect to the Asset data structure, ``docType`` is used to identify
-that this document/asset is an asset. Potentially there could be other
-documents/assets in the chaincode database. The documents in the database are
-searchable against all of these attribute values.
+that this JSON document represents an asset. Potentially there could be other
+JSON document types in the chaincode namespace. Any of the JSON fields can be
+used in CouchDB JSON queries.
 
 When defining an index for use in chaincode queries, each one must be defined
 in its own text file with the extension `*.json` and the index definition must
@@ -136,9 +134,9 @@ be formatted in the CouchDB index JSON format.
 
 To define an index, three pieces of information are required:
 
-  * `fields`: these are the frequently queried fields
+  * `fields`: these are the fields to query
   * `name`: name of the index
-  * `type`: always json in this context
+  * `type`: always "json" in this context
 
 For example, a simple index named ``foo-index`` for a field named ``foo``.
 
@@ -154,7 +152,7 @@ For example, a simple index named ``foo-index`` for a field named ``foo``.
 
 Optionally the design document  attribute ``ddoc`` can be specified on the index
 definition. A `design document <http://guide.couchdb.org/draft/design.html>`__ is
-CouchDB construct designed to contain indexes. Indexes can be grouped into
+a CouchDB construct designed to contain indexes. Indexes can be grouped into
 design documents for efficiency but CouchDB recommends one index per design
 document.
 
@@ -188,8 +186,8 @@ constructed with one or more attributes specified in the list of fields and
 any combination of attributes can be specified. An attribute can exist in
 multiple indexes for the same docType. In the following example, ``index1``
 only includes the attribute ``owner``, ``index2`` includes the attributes
-``owner and color`` and ``index3`` includes the attributes ``owner, color and
-size``. Also, notice each index definition has its own ``ddoc`` value, following
+``owner`` and ``color``, and ``index3`` includes the attributes ``owner``, ``color``, and
+``size``. Also, notice each index definition has its own ``ddoc`` value, following
 the CouchDB recommended practice.
 
 .. code:: json
@@ -241,8 +239,8 @@ Add the index to your chaincode folder
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Once you finalize an index, you need to package it with your chaincode for
-deployment by placing it in the appropriate metadata folder. You can install the
-chaincode using the :doc:`commands/peerlifecycle` command. The JSON index files
+deployment by placing it in the appropriate metadata folder. You can package and install the
+chaincode using the :doc:`commands/peerlifecycle` commands. The JSON index files
 must be located under the path ``META-INF/statedb/couchdb/indexes`` which is
 located inside the directory where the chaincode resides.
 
@@ -254,7 +252,7 @@ is packaged with the chaincode.
   :align: center
   :alt: Marbles Chaincode Index Package
 
-This sample includes one index named indexOwnerDoc:
+This sample includes one index named indexOwnerDoc, to support queries by asset owner:
 
 .. code:: json
 
@@ -301,20 +299,23 @@ following command:
     ./network.sh up createChannel -s couchdb
 
 This will create two fabric peer nodes that use CouchDB as the state database.
-It will also create one ordering node and a single channel named
-``mychannel``.
+It will also create one ordering node and a single channel named ``mychannel``.
 
 .. _cdb-install-deploy:
 
 Deploy the smart contract
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You can use the test network script to deploy the asset transfer ledger queries smart contract to the channel. Run the following command to deploy the smart contract to `mychannel`:
-```
-./network.sh deployCC -ccn ledger -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
-```
+You can use the test network script to deploy the asset transfer ledger queries smart contract to the channel.
+Run the following command to deploy the smart contract to `mychannel`:
 
-Note that we are using the `-ccep` flag to deploy the smart contract with an endorsement policy of `"OR('Org1MSP.peer','Org2MSP.peer')"`. This allows either organization to create an asset without receiving an endorsement from the other organization.
+.. code:: bash
+
+  ./network.sh deployCC -ccn ledger -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
+
+Note that we are using the `-ccep` flag to deploy the smart contract with an endorsement policy of
+`"OR('Org1MSP.peer','Org2MSP.peer')"`. This allows either organization to create an asset without
+receiving an endorsement from the other organization.
 
 Verify index was deployed
 -------------------------
@@ -341,10 +342,6 @@ You should see a result that looks like the following:
 
    [couchdb] createIndex -> INFO 072 Created CouchDB index [indexOwner] in state database [mychannel_ledger] using design document [_design/indexOwnerDoc]
 
-.. note:: If you installed asset transfer ledger queries on a different peer than ``peer0.org1.example.com``,
-          you may need to replace it with the name of a different peer where
-          asset transfer ledger queries was installed.
-
 .. _cdb-query:
 
 Query the CouchDB State Database
@@ -352,7 +349,7 @@ Query the CouchDB State Database
 
 Now that the index has been defined in the JSON file and deployed alongside the
 chaincode, chaincode functions can execute JSON queries against the CouchDB
-state database, and thereby peer commands can invoke the chaincode functions.
+state database.
 
 Specifying an index name on a query is optional. If not specified, and an index
 already exists for the fields being queried, the existing index will be
@@ -363,30 +360,31 @@ automatically used.
          less optimal index. Also CouchDB may not use an index at all and you
          may not realize it, at the low volumes during testing. Only upon
          higher volumes you may realize slow performance because CouchDB is not
-         using an index and you assumed it was.
+         using an index.
 
 
 Build the query in chaincode
 ----------------------------
 
-You can perform complex rich queries against the data on the ledger using
-queries defined within your chaincode. The `Asset transfer ledger queries sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-trnasfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__
-includes two rich query functions:
+You can perform JSON queries against the data on the ledger using
+queries defined within your chaincode. The `Asset transfer ledger queries sample
+<https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__
+includes two JSON query functions:
 
-  * **ReadAsset** --
+  * **QueryAssets**
 
-      Example of an **ad hoc rich query**. This is a query
-      where a (selector) string can be passed into the function. This query
+      Example of an **ad hoc JSON query**. This is a query
+      where a selector JSON query string can be passed into the function. This query
       would be useful to client applications that need to dynamically build
-      their own selectors at runtime. For more information on selectors refer
+      their own queries at runtime. For more information on query selectors refer
       to `CouchDB selector syntax <http://docs.couchdb.org/en/latest/api/database/find.html#find-selectors>`__.
 
 
-  * **QueryAssetsByOwner** --
+  * **QueryAssetsByOwner**
 
       Example of a **parameterized query** where the
-      query logic is baked into the chaincode. In this case the function accepts
-      a single argument, the asset owner. It then queries the state database for
+      query is defined in the chaincode but allows a query parameter to be passed in.
+      In this case the function accepts a single argument, the asset owner. It then queries the state database for
       JSON documents matching the docType of “asset” and the owner id using the
       JSON query syntax.
 
@@ -395,9 +393,9 @@ Run the query using the peer command
 ------------------------------------
 
 In absence of a client application, we can use the peer command to test the
-queries defined in the chaincode. We will customize the `peer chaincode query <commands/peerchaincode.html?%20chaincode%20query#peer-chaincode-query>`__
+queries defined in the chaincode. We will use the `peer chaincode query <commands/peerchaincode.html?%20chaincode%20query#peer-chaincode-query>`__
 command to use the Assets index ``indexOwner`` and query for all assets owned
-by "tom" using the ``ReadAsset`` function.
+by "tom" using the ``QueryAssets`` function.
 
 :guilabel:`Try it yourself`
 
@@ -412,13 +410,7 @@ command as Org1 to create a asset owned by "tom":
     export CORE_PEER_ADDRESS=localhost:7051
     peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset1","blue","5","tom","35"]}'
 
-After an index has been deployed when the chaincode is initialized, it will
-automatically be utilized by chaincode queries. CouchDB can determine which
-index to use based on the fields being queried. If an index exists for the
-query criteria it will be used. However the recommended approach is to
-specify the ``use_index`` keyword on the query. The peer command below is an
-example of how to specify the index explicitly in the selector syntax by
-including the ``use_index`` keyword:
+Next, query for all assets owned by tom:
 
 .. code:: bash
 
@@ -429,9 +421,9 @@ Delving into the query command above, there are three arguments of interest:
 
 *  ``QueryAssets``
 
-  Name of the function in the Assets chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim>`__
-  ``shim.ChaincodeStubInterface`` is used to access and modify the ledger. The
-  ``getQueryResultForQueryString()`` passes the queryString to the shim API ``getQueryResult()``.
+  Name of the function in the Assets chaincode. As you can see in the chaincode function
+  below, QueryAssets() calls ``getQueryResultForQueryString()``, which then passes the
+  queryString to the ``getQueryResult()`` shim API that executes the JSON query against the state database.
 
 .. code:: bash
 
@@ -442,7 +434,7 @@ Delving into the query command above, there are three arguments of interest:
 
 *  ``{"selector":{"docType":"asset","owner":"tom"}``
 
-  This is an example of an **ad hoc selector** string which finds all documents
+  This is an example of an **ad hoc selector** string which query for all documents
   of type ``asset`` where the ``owner`` attribute has a value of ``tom``.
 
 
@@ -461,7 +453,7 @@ The query runs successfully and the index is leveraged with the following result
 
 .. code:: json
 
-  Query Result: [{"docType":"asset","ID":"asset1","color":"blue","size":5,"owner":"tom","appraisedValue":35}]
+  [{"docType":"asset","ID":"asset1","color":"blue","size":5,"owner":"tom","appraisedValue":35}]
 
 .. _cdb-best:
 
@@ -469,15 +461,15 @@ Use best practices for queries and indexes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Queries that use indexes will complete faster, without having to scan the full
-database in couchDB. Understanding indexes will allow you to write your queries
+database in CouchDB. Understanding indexes will allow you to write your queries
 for better performance and help your application handle larger amounts
-of data or blocks on your network.
+of data.
 
 It is also important to plan the indexes you install with your chaincode. You
 should install only a few indexes per chaincode that support most of your queries.
 Adding too many indexes, or using an excessive number of fields in an index, will
 degrade the performance of your network. This is because the indexes are updated
-after each block is committed. The more indexes need to be updated through
+after each block is committed. The more indexes that need to be updated through
 "index warming", the longer it will take for transactions to complete.
 
 The examples in this section will help demonstrate how queries use indexes and
@@ -488,7 +480,7 @@ when writing your queries:
   for the index to be used.
 * More complex queries will have a lower performance and will be less likely to
   use an index.
-* You should try to avoid operators that will result in a full table scan or a
+* You should avoid operators that will result in a full table scan or a
   full index scan such as ``$or``, ``$in`` and ``$regex``.
 
 In the previous section of this tutorial, you issued the following query against
@@ -513,7 +505,7 @@ full database. Fully supported queries such as this one will return faster than
 other queries from your chaincode.
 
 If you add extra fields to the query above, it will still use the index.
-However, the query will additionally have to scan the indexed data for the
+However, the query will additionally have to scan the database for the
 extra fields, resulting in a longer response time. As an example, the query
 below will still use the index, but will take a longer time to return than the
 previous example.
@@ -602,8 +594,8 @@ pagination can be implemented in chaincode and the client application.
 
 * **QueryAssetsWithPagination** --
 
-    Example of an **ad hoc rich query with pagination**. This is a query
-    where a (selector) string can be passed into the function similar to the
+    Example of an **ad hoc JSON query with pagination**. This is a query
+    where a selector string can be passed into the function similar to the
     above example.  In this case, a ``pageSize`` is also included with the query as
     well as a ``bookmark``.
 
@@ -633,10 +625,10 @@ a unique bookmark.)
 
 *  ``QueryAssetsWithPagination``
 
-  Name of the function in the Assets chaincode. Notice a `shim <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim>`__
-  ``shim.ChaincodeStubInterface`` is used to access and modify the ledger. The
-  ``getQueryResultForQueryStringWithPagination()`` passes the queryString along
-  with the pagesize and bookmark to the shim API ``GetQueryResultWithPagination()``.
+  As you can see in the chaincode function below, QueryAssetsWithPagination() calls
+  ``getQueryResultForQueryStringWithPagination()``, which then passes the
+  queryString as well as the bookmark and pagesize to the ``GetQueryResultWithPagination()``
+  shim API that executes the paginated JSON query against the state database.
 
 .. code:: bash
 
@@ -660,7 +652,7 @@ with a pageSize of ``3`` and no bookmark specified.
 .. code:: bash
 
   // Rich Query with index name explicitly specified and a page size of 3:
-  peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","","3"]}'
+  peer chaincode query -C mychannel -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","","3"]}'
 
 The following response is received (carriage returns added for clarity), three
 of the five assets are returned because the ``pagsize`` was set to ``3``:
