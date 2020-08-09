@@ -114,11 +114,18 @@ func (p *BlockPuller) HeightsByEndpoints() (map[string]uint64, error) {
 
 func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
 	var reConnected bool
-	for p.isDisconnected() {
+
+	for retriesLeft := p.MaxPullBlockRetries; p.isDisconnected(); retriesLeft-- {
 		reConnected = true
 		p.connectToSomeEndpoint(seq)
 		if p.isDisconnected() {
+			p.Logger.Debugf("Failed to connect to some endpoint, going to try again in %v", p.RetryTimeout)
 			time.Sleep(p.RetryTimeout)
+		}
+		if retriesLeft == 0 && p.MaxPullBlockRetries > 0 {
+			p.Logger.Errorf("Failed to connect to some endpoint, attempts exhausted(%d), seq: %d, endpoints: %v",
+				p.MaxPullBlockRetries, seq, p.Endpoints)
+			return nil
 		}
 	}
 
@@ -126,6 +133,7 @@ func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
 	if block != nil {
 		return block
 	}
+
 	// Else, buffer is empty. So we need to pull blocks
 	// to re-fill it.
 	if err := p.pullBlocks(seq, reConnected); err != nil {
