@@ -512,3 +512,168 @@ func TestFailuresWhileReconcilingMissingPvtData(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, "failed get missing pvt data for recent blocks", err.Error())
 }
+
+func TestConstructUnreconciledMissingData(t *testing.T) {
+	requestedMissingData := func() privdatacommon.Dig2CollectionConfig {
+		return privdatacommon.Dig2CollectionConfig{
+			privdatacommon.DigKey{
+				TxId:       "tx1",
+				Namespace:  "ns1",
+				Collection: "coll1",
+				BlockSeq:   1,
+				SeqInBlock: 1,
+			}: nil,
+			privdatacommon.DigKey{
+				TxId:       "tx1",
+				Namespace:  "ns2",
+				Collection: "coll2",
+				BlockSeq:   1,
+				SeqInBlock: 1,
+			}: nil,
+			privdatacommon.DigKey{
+				TxId:       "tx1",
+				Namespace:  "ns3",
+				Collection: "coll3",
+				BlockSeq:   1,
+				SeqInBlock: 3,
+			}: nil,
+			privdatacommon.DigKey{
+				TxId:       "tx2",
+				Namespace:  "ns4",
+				Collection: "coll4",
+				BlockSeq:   4,
+				SeqInBlock: 4,
+			}: nil,
+		}
+	}
+
+	testCases := []struct {
+		description                     string
+		fetchedData                     []*gossip2.PvtDataElement
+		expectedUnreconciledMissingData ledger.MissingPvtDataInfo
+	}{
+		{
+			description: "none-reconciled",
+			fetchedData: nil,
+			expectedUnreconciledMissingData: ledger.MissingPvtDataInfo{
+				1: ledger.MissingBlockPvtdataInfo{
+					1: []*ledger.MissingCollectionPvtDataInfo{
+						{
+							Namespace:  "ns1",
+							Collection: "coll1",
+						},
+						{
+							Namespace:  "ns2",
+							Collection: "coll2",
+						},
+					},
+					3: []*ledger.MissingCollectionPvtDataInfo{
+						{
+							Namespace:  "ns3",
+							Collection: "coll3",
+						},
+					},
+				},
+				4: ledger.MissingBlockPvtdataInfo{
+					4: []*ledger.MissingCollectionPvtDataInfo{
+						{
+							Namespace:  "ns4",
+							Collection: "coll4",
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "all-reconciled",
+			fetchedData: []*gossip2.PvtDataElement{
+				{
+					Digest: &gossip2.PvtDataDigest{
+						TxId:       "tx1",
+						Namespace:  "ns1",
+						Collection: "coll1",
+						BlockSeq:   1,
+						SeqInBlock: 1,
+					},
+				},
+				{
+					Digest: &gossip2.PvtDataDigest{
+						TxId:       "tx1",
+						Namespace:  "ns2",
+						Collection: "coll2",
+						BlockSeq:   1,
+						SeqInBlock: 1,
+					},
+				},
+				{
+					Digest: &gossip2.PvtDataDigest{
+						TxId:       "tx1",
+						Namespace:  "ns3",
+						Collection: "coll3",
+						BlockSeq:   1,
+						SeqInBlock: 3,
+					},
+				},
+				{
+					Digest: &gossip2.PvtDataDigest{
+						TxId:       "tx2",
+						Namespace:  "ns4",
+						Collection: "coll4",
+						BlockSeq:   4,
+						SeqInBlock: 4,
+					},
+				},
+			},
+			expectedUnreconciledMissingData: nil,
+		},
+		{
+			description: "some-unreconciled",
+			fetchedData: []*gossip2.PvtDataElement{
+				{
+					Digest: &gossip2.PvtDataDigest{
+						TxId:       "tx1",
+						Namespace:  "ns1",
+						Collection: "coll1",
+						BlockSeq:   1,
+						SeqInBlock: 1,
+					},
+				},
+				{
+					Digest: &gossip2.PvtDataDigest{
+						TxId:       "tx1",
+						Namespace:  "ns3",
+						Collection: "coll3",
+						BlockSeq:   1,
+						SeqInBlock: 3,
+					},
+				},
+				{
+					Digest: &gossip2.PvtDataDigest{
+						TxId:       "tx2",
+						Namespace:  "ns4",
+						Collection: "coll4",
+						BlockSeq:   4,
+						SeqInBlock: 4,
+					},
+				},
+			},
+			expectedUnreconciledMissingData: ledger.MissingPvtDataInfo{
+				1: ledger.MissingBlockPvtdataInfo{
+					1: []*ledger.MissingCollectionPvtDataInfo{
+						{
+							Namespace:  "ns2",
+							Collection: "coll2",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.description, func(t *testing.T) {
+			unreconciledData := constructUnreconciledMissingData(requestedMissingData(), testCase.fetchedData)
+			require.Equal(t, testCase.expectedUnreconciledMissingData, unreconciledData)
+		})
+	}
+}
