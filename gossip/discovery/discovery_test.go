@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/gossip/msgstore"
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -1582,6 +1583,7 @@ func TestAliveMsgStore(t *testing.T) {
 
 func TestMemRespDisclosurePol(t *testing.T) {
 	pol := func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter) {
+		assert.Equal(t, remotePeer.InternalEndpoint, remotePeer.Endpoint)
 		return func(_ *protoext.SignedGossipMessage) bool {
 				return remotePeer.Endpoint == "localhost:7880"
 			}, func(m *protoext.SignedGossipMessage) *proto.Envelope {
