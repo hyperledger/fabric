@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package configtx
 
 import (
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"errors"
 	"fmt"
 
@@ -41,6 +39,13 @@ type ConsortiumGroup struct {
 type ConsortiumOrg struct {
 	orgGroup *cb.ConfigGroup
 	name     string
+}
+
+// MSP returns an OrganizationMSP object that can be used to configure the organization's MSP.
+func (c *ConsortiumOrg) MSP() *OrganizationMSP {
+	return &OrganizationMSP{
+		configGroup: c.orgGroup,
+	}
 }
 
 // Consortiums returns the consortiums group from the updated config.
@@ -159,26 +164,9 @@ func (c *ConsortiumOrg) Configuration() (Organization, error) {
 	return org, err
 }
 
-// MSP returns the MSP configuration for an existing consortium
-// org in a config transaction.
-func (c *ConsortiumOrg) MSP() (MSP, error) {
-	return getMSPConfig(c.orgGroup)
-}
-
-// CreateMSPCRL creates a CRL that revokes the provided certificates
-// for the specified consortium org signed by the provided SigningIdentity.
-func (c *ConsortiumOrg) CreateMSPCRL(signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
-	msp, err := c.MSP()
-	if err != nil {
-		return nil, fmt.Errorf("retrieving consortium org msp: %s", err)
-	}
-
-	return msp.newMSPCRL(signingIdentity, certs...)
-}
-
 // SetMSP updates the MSP config for the specified consortium org group.
 func (c *ConsortiumOrg) SetMSP(updatedMSP MSP) error {
-	currentMSP, err := c.MSP()
+	currentMSP, err := c.MSP().Configuration()
 	if err != nil {
 		return fmt.Errorf("retrieving msp: %v", err)
 	}

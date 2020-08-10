@@ -14,6 +14,7 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -73,6 +74,392 @@ type MSP struct {
 
 // YEAR is a time duration for a standard 365 day year.
 const YEAR = 365 * 24 * time.Hour
+
+// OrganizationMSP encapsulates the configuration functions used to modify an organization MSP.
+type OrganizationMSP struct {
+	configGroup *cb.ConfigGroup
+}
+
+// Configuration returns the MSP value for a organization in the updated config.
+func (m *OrganizationMSP) Configuration() (MSP, error) {
+	return getMSPConfig(m.configGroup)
+}
+
+// AddAdminCert adds an administator identity to the organization MSP.
+func (m *OrganizationMSP) AddAdminCert(cert *x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	for _, c := range msp.Admins {
+		if c.Equal(cert) {
+			return nil
+		}
+	}
+
+	msp.Admins = append(msp.Admins, cert)
+
+	return msp.setConfig(m.configGroup)
+}
+
+// RemoveAdminCert removes an administator identity from the organization MSP.
+func (m *OrganizationMSP) RemoveAdminCert(cert *x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	certs := msp.Admins[:]
+	for i, c := range msp.Admins {
+		if c.Equal(cert) {
+			certs = append(certs[:i], certs[i+1:]...)
+			break
+		}
+	}
+
+	msp.Admins = certs
+
+	return msp.setConfig(m.configGroup)
+}
+
+// AddRootCert adds a root certificate trusted by the organization MSP.
+func (m *OrganizationMSP) AddRootCert(cert *x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	for _, c := range msp.RootCerts {
+		if c.Equal(cert) {
+			return nil
+		}
+	}
+
+	msp.RootCerts = append(msp.RootCerts, cert)
+
+	err = msp.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	return msp.setConfig(m.configGroup)
+}
+
+// RemoveRootCert removes a trusted root certificate from the organization MSP.
+func (m *OrganizationMSP) RemoveRootCert(cert *x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	certs := msp.RootCerts[:]
+	for i, c := range msp.RootCerts {
+		if c.Equal(cert) {
+			certs = append(certs[:i], certs[i+1:]...)
+			break
+		}
+	}
+
+	msp.RootCerts = certs
+
+	err = msp.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	return msp.setConfig(m.configGroup)
+}
+
+// AddIntermediateCert adds an intermediate certificate trusted by the organization MSP.
+func (m *OrganizationMSP) AddIntermediateCert(cert *x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	for _, c := range msp.IntermediateCerts {
+		if c.Equal(cert) {
+			return nil
+		}
+	}
+
+	msp.IntermediateCerts = append(msp.IntermediateCerts, cert)
+
+	err = msp.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	return msp.setConfig(m.configGroup)
+}
+
+// RemoveIntermediateCert removes a trusted intermediate certificate from the organization MSP.
+func (m *OrganizationMSP) RemoveIntermediateCert(cert *x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	certs := msp.IntermediateCerts[:]
+	for i, c := range msp.IntermediateCerts {
+		if c.Equal(cert) {
+			certs = append(certs[:i], certs[i+1:]...)
+			break
+		}
+	}
+
+	msp.IntermediateCerts = certs
+
+	err = msp.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	return msp.setConfig(m.configGroup)
+}
+
+// AddOUIdentifier adds a custom organizational unit identifier to the organization MSP.
+func (m *OrganizationMSP) AddOUIdentifier(ou membership.OUIdentifier) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	for _, o := range msp.OrganizationalUnitIdentifiers {
+		if reflect.DeepEqual(o, ou) {
+			return nil
+		}
+	}
+
+	msp.OrganizationalUnitIdentifiers = append(msp.OrganizationalUnitIdentifiers, ou)
+
+	return msp.setConfig(m.configGroup)
+}
+
+// RemoveOUIdentifier removes an existing organizational unit identifier from the organization MSP.
+func (m *OrganizationMSP) RemoveOUIdentifier(ou membership.OUIdentifier) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	ous := msp.OrganizationalUnitIdentifiers[:]
+	for i, o := range msp.OrganizationalUnitIdentifiers {
+		if reflect.DeepEqual(o, ou) {
+			ous = append(ous[:i], ous[i+1:]...)
+			break
+		}
+	}
+
+	msp.OrganizationalUnitIdentifiers = ous
+
+	return msp.setConfig(m.configGroup)
+}
+
+// SetCryptoConfig sets the configuration for the cryptographic algorithms for the organization MSP.
+func (m *OrganizationMSP) SetCryptoConfig(cryptoConfig membership.CryptoConfig) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	msp.CryptoConfig = cryptoConfig
+
+	return msp.setConfig(m.configGroup)
+}
+
+// AddTLSRootCert adds a TLS root certificate trusted by the organization MSP.
+func (m *OrganizationMSP) AddTLSRootCert(cert *x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	for _, c := range msp.TLSRootCerts {
+		if c.Equal(cert) {
+			return nil
+		}
+	}
+
+	msp.TLSRootCerts = append(msp.TLSRootCerts, cert)
+
+	err = msp.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	return msp.setConfig(m.configGroup)
+}
+
+// RemoveTLSRootCert removes a trusted TLS root certificate from the organization MSP.
+func (m *OrganizationMSP) RemoveTLSRootCert(cert *x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	certs := msp.TLSRootCerts[:]
+	for i, c := range msp.TLSRootCerts {
+		if c.Equal(cert) {
+			certs = append(certs[:i], certs[i+1:]...)
+			break
+		}
+	}
+
+	msp.TLSRootCerts = certs
+
+	err = msp.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	return msp.setConfig(m.configGroup)
+}
+
+// AddTLSIntermediateCert adds a TLS intermediate cert trusted by the organization MSP.
+func (m *OrganizationMSP) AddTLSIntermediateCert(cert *x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	for _, c := range msp.TLSIntermediateCerts {
+		if c.Equal(cert) {
+			return nil
+		}
+	}
+
+	msp.TLSIntermediateCerts = append(msp.TLSIntermediateCerts, cert)
+
+	err = msp.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	return msp.setConfig(m.configGroup)
+}
+
+// RemoveTLSIntermediateCert removes a trusted TLS intermediate cert from the organization MSP.
+func (m *OrganizationMSP) RemoveTLSIntermediateCert(cert *x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	certs := msp.TLSIntermediateCerts[:]
+	for i, c := range msp.TLSIntermediateCerts {
+		if c.Equal(cert) {
+			certs = append(certs[:i], certs[i+1:]...)
+			break
+		}
+	}
+
+	msp.TLSIntermediateCerts = certs
+
+	err = msp.validateCACerts()
+	if err != nil {
+		return err
+	}
+
+	return msp.setConfig(m.configGroup)
+}
+
+// SetClientOUIdentifier sets the NodeOUs client ou identifier for the organization MSP.
+func (m *OrganizationMSP) SetClientOUIdentifier(clientOU membership.OUIdentifier) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	msp.NodeOUs.ClientOUIdentifier = clientOU
+
+	return msp.setConfig(m.configGroup)
+}
+
+// SetPeerOUIdentifier sets the NodeOUs peer ou identifier for the organization MSP.
+func (m *OrganizationMSP) SetPeerOUIdentifier(peerOU membership.OUIdentifier) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	msp.NodeOUs.PeerOUIdentifier = peerOU
+
+	return msp.setConfig(m.configGroup)
+}
+
+// SetAdminOUIdentifier sets the NodeOUs admin ou identifier for the organization MSP.
+func (m *OrganizationMSP) SetAdminOUIdentifier(adminOU membership.OUIdentifier) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	msp.NodeOUs.AdminOUIdentifier = adminOU
+
+	return msp.setConfig(m.configGroup)
+}
+
+// SetOrdererOUIdentifier sets the NodeOUs orderer ou identifier for the organization MSP.
+func (m *OrganizationMSP) SetOrdererOUIdentifier(ordererOU membership.OUIdentifier) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	msp.NodeOUs.OrdererOUIdentifier = ordererOU
+
+	return msp.setConfig(m.configGroup)
+}
+
+// SetEnableNodeOUs sets the NodeOUs recognition, if NodeOUs recognition is enabled then an msp identity
+// that does not contain exactly one of the fabric Node OU Identifiers will be considered invalid.
+func (m *OrganizationMSP) SetEnableNodeOUs(isEnabled bool) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	msp.NodeOUs.Enable = isEnabled
+
+	return msp.setConfig(m.configGroup)
+}
+
+// AddCRL adds a CRL to the identity revocation list for the organization MSP.
+func (m *OrganizationMSP) AddCRL(crl *pkix.CertificateList) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	msp.RevocationList = append(msp.RevocationList, crl)
+
+	return msp.setConfig(m.configGroup)
+}
+
+// AddCRLFromSigningIdentity creates a CRL from the provided signing identity and associated certs and then adds the CRL to
+// the identity revocation list for the organization MSP.
+func (m *OrganizationMSP) AddCRLFromSigningIdentity(signingIdentity *SigningIdentity, certs ...*x509.Certificate) error {
+	msp, err := getMSPConfig(m.configGroup)
+	if err != nil {
+		return err
+	}
+
+	crl, err := msp.CreateMSPCRL(signingIdentity, certs...)
+	if err != nil {
+		return err
+	}
+	msp.RevocationList = append(msp.RevocationList, crl)
+
+	return msp.setConfig(m.configGroup)
+}
+
+// CreateMSPCRL creates a CRL that revokes the provided certificates
+// for the specified organization's msp signed by the provided SigningIdentity.
+func (m *MSP) CreateMSPCRL(signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
+	return m.newMSPCRL(signingIdentity, certs...)
+}
 
 // newMSPCRL creates a CRL that revokes the provided certificates for the specified org
 // signed by the provided SigningIdentity. If any of the provided certs were
@@ -137,6 +524,20 @@ func (m *MSP) isCACert(signingCert *x509.Certificate) error {
 		}
 	}
 	return fmt.Errorf("signing cert is not a root/intermediate cert for this MSP: %s", m.Name)
+}
+
+func (m *MSP) setConfig(configGroup *cb.ConfigGroup) error {
+	mspConfig, err := newMSPConfig(*m)
+	if err != nil {
+		return fmt.Errorf("new msp config: %v", err)
+	}
+
+	err = setValue(configGroup, mspValue(mspConfig), AdminsPolicyKey)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // getMSPConfig parses the MSP value in a config group returns
