@@ -1145,3 +1145,34 @@ func TestBlockPullerMaxRetriesExhausted(t *testing.T) {
 	dialer.assertAllConnectionsClosed(t)
 	require.True(t, exhaustedRetryAttemptsLogged)
 }
+
+func TestBlockPullerToBadEndpoint(t *testing.T) {
+	// Scenario: The block puller does not get stuck in an endless loop if it cannot connect to any endpoint.
+	dialer := newCountingDialer()
+	bp := newBlockPuller(dialer, "10.10.10.10:666") // Nobody is there
+
+	var exhaustedRetryAttemptsLogged bool
+	var couldNotConnectLogged bool
+
+	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		if entry.Message == "Failed pulling block [1]: retry count exhausted(2)" {
+			exhaustedRetryAttemptsLogged = true
+		}
+		if entry.Message == "Failed to connect to some endpoint, attempts exhausted(2), seq: 1, endpoints: [{\"CAs\":null,\"Endpoint\":\"10.10.10.10:666\"}]" {
+			couldNotConnectLogged = true
+		}
+		return nil
+	}))
+
+	bp.MaxPullBlockRetries = 2
+	// We don't expect to timeout in this test, so make the timeout large
+	// to prevent flakes due to CPU starvation.
+	bp.FetchTimeout = time.Hour
+
+	require.Nil(t, bp.PullBlock(uint64(1)))
+
+	bp.Close()
+	dialer.assertAllConnectionsClosed(t)
+	require.True(t, exhaustedRetryAttemptsLogged)
+	require.True(t, couldNotConnectLogged)
+}
