@@ -881,10 +881,10 @@ func constructPvtdataMap(pvtdata []*ledger.TxPvtData) ledger.TxPvtDataMap {
 }
 
 func constructPvtDataAndMissingData(blockAndPvtData *ledger.BlockAndPvtData) ([]*ledger.TxPvtData,
-	ledger.TxMissingPvtDataMap) {
+	ledger.TxMissingPvtData) {
 
 	var pvtData []*ledger.TxPvtData
-	missingPvtData := make(ledger.TxMissingPvtDataMap)
+	missingPvtData := make(ledger.TxMissingPvtData)
 
 	numTxs := uint64(len(blockAndPvtData.Block.Data.Data))
 

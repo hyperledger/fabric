@@ -102,7 +102,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 	}
 
 	// construct a missingData list for block1
-	missingData := make(ledger.TxMissingPvtDataMap)
+	missingData := make(ledger.TxMissingPvtData)
 	missingData.Add(3, "ns-1", "coll-1", true)
 	missingData.Add(3, "ns-1", "coll-2", true)
 	missingData.Add(6, "ns-6", "coll-2", true)

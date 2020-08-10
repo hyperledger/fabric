@@ -58,7 +58,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	}
 
 	// construct missing data for block 1
-	blk1MissingData := make(ledger.TxMissingPvtDataMap)
+	blk1MissingData := make(ledger.TxMissingPvtData)
 
 	// eligible missing data in tx1
 	blk1MissingData.Add(1, "ns-1", "coll-1", true)
@@ -72,7 +72,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 	blk1MissingData.Add(4, "ns-4", "coll-2", false)
 
 	// construct missing data for block 2
-	blk2MissingData := make(ledger.TxMissingPvtDataMap)
+	blk2MissingData := make(ledger.TxMissingPvtData)
 	// eligible missing data in tx1
 	blk2MissingData.Add(1, "ns-1", "coll-1", true)
 	blk2MissingData.Add(1, "ns-1", "coll-2", true)
@@ -217,7 +217,7 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 	}
 
 	// CONSTRUCT MISSING DATA FOR BLOCK 1
-	blk1MissingData := make(ledger.TxMissingPvtDataMap)
+	blk1MissingData := make(ledger.TxMissingPvtData)
 
 	// eligible missing data in tx1
 	blk1MissingData.Add(1, "ns-1", "coll-1", true)
@@ -231,7 +231,7 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 	blk1MissingData.Add(2, "ns-3", "coll-2", true)
 
 	// CONSTRUCT MISSING DATA FOR BLOCK 2
-	blk2MissingData := make(ledger.TxMissingPvtDataMap)
+	blk2MissingData := make(ledger.TxMissingPvtData)
 	// eligible missing data in tx1
 	blk2MissingData.Add(1, "ns-1", "coll-1", true)
 	blk2MissingData.Add(1, "ns-1", "coll-2", true)
@@ -398,7 +398,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	store := env.TestStore
 
 	// construct missing data for block 1
-	blk1MissingData := make(ledger.TxMissingPvtDataMap)
+	blk1MissingData := make(ledger.TxMissingPvtData)
 	// eligible missing data in tx1
 	blk1MissingData.Add(1, "ns-1", "coll-1", true)
 	blk1MissingData.Add(1, "ns-1", "coll-2", true)
@@ -407,7 +407,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 	blk1MissingData.Add(4, "ns-3", "coll-2", false)
 
 	// construct missing data for block 2
-	blk2MissingData := make(ledger.TxMissingPvtDataMap)
+	blk2MissingData := make(ledger.TxMissingPvtData)
 	// eligible missing data in tx1
 	blk2MissingData.Add(1, "ns-1", "coll-1", true)
 	blk2MissingData.Add(1, "ns-1", "coll-2", true)
@@ -527,7 +527,7 @@ func TestStorePurge(t *testing.T) {
 	require.NoError(s.Commit(0, nil, nil))
 
 	// construct missing data for block 1
-	blk1MissingData := make(ledger.TxMissingPvtDataMap)
+	blk1MissingData := make(ledger.TxMissingPvtData)
 	// eligible missing data in tx1
 	blk1MissingData.Add(1, "ns-1", "coll-1", true)
 	blk1MissingData.Add(1, "ns-1", "coll-2", true)
@@ -734,7 +734,7 @@ func TestDrop(t *testing.T) {
 	}
 
 	// construct missing data for block 1
-	blk1MissingData := make(ledger.TxMissingPvtDataMap)
+	blk1MissingData := make(ledger.TxMissingPvtData)
 
 	// eligible missing data in tx1
 	blk1MissingData.Add(1, "ns-1", "coll-1", true)
@@ -807,7 +807,7 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	require.NoError(testStore.Commit(0, nil, nil))
 
 	// construct and commit block 1
-	blk1MissingData := make(ledger.TxMissingPvtDataMap)
+	blk1MissingData := make(ledger.TxMissingPvtData)
 	blk1MissingData.Add(1, "ns-1", "coll-1", true)
 	blk1MissingData.Add(1, "ns-2", "coll-1", true)
 	blk1MissingData.Add(4, "ns-1", "coll-2", false)
@@ -818,7 +818,7 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 	require.NoError(testStore.Commit(1, testDataForBlk1, blk1MissingData))
 
 	// construct and commit block 2
-	blk2MissingData := make(ledger.TxMissingPvtDataMap)
+	blk2MissingData := make(ledger.TxMissingPvtData)
 	// ineligible missing data in tx1
 	blk2MissingData.Add(1, "ns-1", "coll-2", false)
 	blk2MissingData.Add(1, "ns-2", "coll-2", false)

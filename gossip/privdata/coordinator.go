@@ -169,7 +169,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	blockAndPvtData := &ledger.BlockAndPvtData{
 		Block:          block,
 		PvtData:        make(ledger.TxPvtDataMap),
-		MissingPvtData: make(ledger.TxMissingPvtDataMap),
+		MissingPvtData: make(ledger.TxMissingPvtData),
 	}
 
 	exist, err := c.DoesPvtDataInfoExistInLedger(block.Header.Number)

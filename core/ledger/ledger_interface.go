@@ -361,16 +361,16 @@ type MissingPvtData struct {
 	IsEligible bool
 }
 
-// TxMissingPvtDataMap is a map from txNum to the list of
+// TxMissingPvtData is a map from txNum to the list of
 // missing pvtData
-type TxMissingPvtDataMap map[uint64][]*MissingPvtData
+type TxMissingPvtData map[uint64][]*MissingPvtData
 
 // BlockAndPvtData encapsulates the block and a map that contains the tuples <seqInBlock, *TxPvtData>
 // The map is expected to contain the entries only for the transactions that has associated pvt data
 type BlockAndPvtData struct {
 	Block          *common.Block
 	PvtData        TxPvtDataMap
-	MissingPvtData TxMissingPvtDataMap
+	MissingPvtData TxMissingPvtData
 }
 
 // ReconciledPvtdata contains the private data for a block for reconciliation
@@ -380,7 +380,7 @@ type ReconciledPvtdata struct {
 }
 
 // Add adds a given missing private data in the MissingPrivateDataList
-func (txMissingPvtData TxMissingPvtDataMap) Add(txNum uint64, ns, coll string, isEligible bool) {
+func (txMissingPvtData TxMissingPvtData) Add(txNum uint64, ns, coll string, isEligible bool) {
 	txMissingPvtData[txNum] = append(txMissingPvtData[txNum], &MissingPvtData{ns, coll, isEligible})
 }
 
@@ -411,7 +411,7 @@ type CollectionPvtdataInfo struct {
 // private data for use at commit time
 type BlockPvtdata struct {
 	PvtData        TxPvtDataMap
-	MissingPvtData TxMissingPvtDataMap
+	MissingPvtData TxMissingPvtData
 }
 
 // CommitOptions encapsulates options associated with a block commit.

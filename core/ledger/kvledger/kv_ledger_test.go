@@ -922,7 +922,7 @@ func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerat
 	blockAndpvtdata[3].PvtData = samplePvtData(t, []uint64{4, 6})
 
 	// txNum 4, 5 in block 5 has missing pvt data but txNum 5 is invalid
-	missingData := make(ledger.TxMissingPvtDataMap)
+	missingData := make(ledger.TxMissingPvtData)
 	missingData.Add(4, "ns-4", "coll-4", true)
 	missingData.Add(5, "ns-5", "coll-5", true)
 	blockAndpvtdata[5].MissingPvtData = missingData

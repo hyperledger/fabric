@@ -144,7 +144,7 @@ func TestRetrievePvtdata(t *testing.T) {
 						},
 					},
 				},
-				MissingPvtData: ledger.TxMissingPvtDataMap{},
+				MissingPvtData: ledger.TxMissingPvtData{},
 			},
 		},
 		{
@@ -211,7 +211,7 @@ func TestRetrievePvtdata(t *testing.T) {
 			},
 			expectedBlockPvtdata: &ledger.BlockPvtdata{
 				PvtData: ledger.TxPvtDataMap{},
-				MissingPvtData: ledger.TxMissingPvtDataMap{
+				MissingPvtData: ledger.TxMissingPvtData{
 					1: []*ledger.MissingPvtData{
 						{
 							Namespace:  "ns1",
@@ -313,7 +313,7 @@ func TestRetrievePvtdata(t *testing.T) {
 						},
 					},
 				},
-				MissingPvtData: ledger.TxMissingPvtDataMap{},
+				MissingPvtData: ledger.TxMissingPvtData{},
 			},
 		},
 		{
@@ -441,7 +441,7 @@ func TestRetrievePvtdata(t *testing.T) {
 						},
 					},
 				},
-				MissingPvtData: ledger.TxMissingPvtDataMap{},
+				MissingPvtData: ledger.TxMissingPvtData{},
 			},
 		},
 		{
@@ -505,7 +505,7 @@ func TestRetrievePvtdata(t *testing.T) {
 						},
 					},
 				},
-				MissingPvtData: ledger.TxMissingPvtDataMap{},
+				MissingPvtData: ledger.TxMissingPvtData{},
 			},
 		},
 		{
@@ -583,7 +583,7 @@ func TestRetrievePvtdata(t *testing.T) {
 						},
 					},
 				},
-				MissingPvtData: ledger.TxMissingPvtDataMap{},
+				MissingPvtData: ledger.TxMissingPvtData{},
 			},
 		},
 		{
@@ -622,7 +622,7 @@ func TestRetrievePvtdata(t *testing.T) {
 			},
 			expectedBlockPvtdata: &ledger.BlockPvtdata{
 				PvtData: ledger.TxPvtDataMap{},
-				MissingPvtData: ledger.TxMissingPvtDataMap{
+				MissingPvtData: ledger.TxMissingPvtData{
 					1: []*ledger.MissingPvtData{
 						{
 							Namespace:  "ns1",
@@ -710,7 +710,7 @@ func TestRetrievePvtdata(t *testing.T) {
 						},
 					},
 				},
-				MissingPvtData: ledger.TxMissingPvtDataMap{},
+				MissingPvtData: ledger.TxMissingPvtData{},
 			},
 		},
 		{
@@ -808,7 +808,7 @@ func TestRetrievePvtdata(t *testing.T) {
 					},
 				},
 				// Only tx3 is missing since we skip pulling invalid tx from peers
-				MissingPvtData: ledger.TxMissingPvtDataMap{
+				MissingPvtData: ledger.TxMissingPvtData{
 					3: []*ledger.MissingPvtData{
 						{
 							Namespace:  "ns1",
@@ -1032,7 +1032,7 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 	expectedDigKeys := []privdatacommon.DigKey{}
 	expectedBlockPvtdata := &ledger.BlockPvtdata{
 		PvtData: ledger.TxPvtDataMap{},
-		MissingPvtData: ledger.TxMissingPvtDataMap{
+		MissingPvtData: ledger.TxMissingPvtData{
 			1: []*ledger.MissingPvtData{
 				{
 					Namespace:  "ns1",
