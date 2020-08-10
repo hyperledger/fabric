@@ -342,8 +342,8 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg proto.ReceivedMessage) {
 		}
 
 		var internalEndpoint string
-		if m.Envelope.SecretEnvelope != nil {
-			internalEndpoint = m.Envelope.SecretEnvelope.InternalEndpoint()
+		if memReq.SelfInformation.SecretEnvelope != nil {
+			internalEndpoint = memReq.SelfInformation.SecretEnvelope.InternalEndpoint()
 		}
 
 		// Sending a membership response to a peer may block this routine
