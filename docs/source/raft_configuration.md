@@ -317,6 +317,12 @@ monitor:
    they can be shared with the consenter set. If this value begins to climb, this
    node may not be able to participate in consensus (which could lead to a
    service interruption for this node and possibly the network).
+* `consensus_etcdraft_cluster_size` and `consensus_etcdraft_active_nodes`: these
+   channel metrics help track the "active" nodes (which, as it sounds, are the nodes that
+   are currently contributing to the cluster, as compared to the total number of
+   nodes in the cluster). If the number of active nodes falls below a majority of
+   the nodes in the cluster, quorum will be lost and the ordering service will
+   stop processing blocks on the channel.
 
 ## Troubleshooting
 
