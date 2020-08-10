@@ -1563,6 +1563,7 @@ func TestAliveMsgStore(t *testing.T) {
 func TestMemRespDisclosurePol(t *testing.T) {
 	t.Parallel()
 	pol := func(remotePeer *NetworkMember) (Sieve, EnvelopeFilter) {
+		assert.Equal(t, remotePeer.InternalEndpoint, remotePeer.Endpoint)
 		return func(_ *proto.SignedGossipMessage) bool {
 				return remotePeer.Endpoint == "localhost:7880"
 			}, func(m *proto.SignedGossipMessage) *proto.Envelope {
