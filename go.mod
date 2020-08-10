@@ -35,7 +35,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hyperledger/fabric-amcl v0.0.0-20200128223036-d1aa2665426a
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20200128192331-2d899240a7ed
-	github.com/hyperledger/fabric-config v0.0.5
+	github.com/hyperledger/fabric-config v0.0.7
 	github.com/hyperledger/fabric-lib-go v1.0.0
 	github.com/hyperledger/fabric-protos-go v0.0.0-20200804194919-0c472b9cf543
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
