@@ -339,8 +339,8 @@ func (d *gossipDiscoveryImpl) handleMsgFromComm(msg protoext.ReceivedMessage) {
 		}
 
 		var internalEndpoint string
-		if m.Envelope.SecretEnvelope != nil {
-			internalEndpoint = protoext.InternalEndpoint(m.Envelope.SecretEnvelope)
+		if memReq.SelfInformation.SecretEnvelope != nil {
+			internalEndpoint = protoext.InternalEndpoint(memReq.SelfInformation.SecretEnvelope)
 		}
 
 		// Sending a membership response to a peer may block this routine
