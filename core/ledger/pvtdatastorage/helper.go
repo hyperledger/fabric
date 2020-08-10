@@ -72,7 +72,6 @@ func prepareMissingDataEntries(committingBlk uint64, missingPvtData ledger.TxMis
 // and missing private.
 func prepareExpiryEntries(committingBlk uint64, dataEntries []*dataEntry, missingDataEntries map[missingDataKey]*bitset.BitSet,
 	btlPolicy pvtdatapolicy.BTLPolicy) ([]*expiryEntry, error) {
-
 	var expiryEntries []*expiryEntry
 	mapByExpiringBlk := make(map[uint64]*ExpiryData)
 
@@ -152,7 +151,6 @@ func deriveKeys(expiryEntry *expiryEntry) (dataKeys []*dataKey, missingDataKeys 
 				&missingDataKey{nsCollBlk{ns, coll, expiryEntry.key.committingBlk}, true})
 			missingDataKeys = append(missingDataKeys,
 				&missingDataKey{nsCollBlk{ns, coll, expiryEntry.key.committingBlk}, false})
-
 		}
 	}
 	return
