@@ -67,6 +67,11 @@ func (p *BlockPuller) Clone() *BlockPuller {
 // Close makes the BlockPuller close the connection and stream
 // with the remote endpoint, and wipe the internal block buffer.
 func (p *BlockPuller) Close() {
+	p.disconnect()
+	p.blockBuff = nil
+}
+
+func (p *BlockPuller) disconnect() {
 	if p.cancelStream != nil {
 		p.cancelStream()
 	}
@@ -78,7 +83,6 @@ func (p *BlockPuller) Close() {
 	p.conn = nil
 	p.endpoint = ""
 	p.latestSeq = 0
-	p.blockBuff = nil
 }
 
 // PullBlock blocks until a block with the given sequence is fetched
@@ -112,7 +116,21 @@ func (p *BlockPuller) HeightsByEndpoints() (map[string]uint64, error) {
 	return res, endpointsInfo.err
 }
 
+// UpdateEndpoints assigns the new endpoints and disconnects from the current one.
+func (p *BlockPuller) UpdateEndpoints(endpoints []EndpointCriteria) {
+	p.Logger.Debugf("Updating endpoints: %v", endpoints)
+	p.Endpoints = endpoints
+	//TODO FAB-18121 Disconnect only if the currently connected endpoint was dropped or has changes in its TLSRootCAs
+	p.disconnect()
+}
+
 func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
+
+	block := p.popBlock(seq)
+	if block != nil {
+		return block
+	}
+
 	var reConnected bool
 
 	for retriesLeft := p.MaxPullBlockRetries; p.isDisconnected(); retriesLeft-- {
@@ -127,11 +145,6 @@ func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
 				p.MaxPullBlockRetries, seq, p.Endpoints)
 			return nil
 		}
-	}
-
-	block := p.popBlock(seq)
-	if block != nil {
-		return block
 	}
 
 	// Else, buffer is empty. So we need to pull blocks

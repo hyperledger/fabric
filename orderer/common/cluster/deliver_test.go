@@ -1187,3 +1187,155 @@ func TestBlockPullerToBadEndpoint(t *testing.T) {
 	require.True(t, exhaustedRetryAttemptsLogged)
 	require.True(t, couldNotConnectLogged)
 }
+
+func TestBlockPuller_UpdateEndpoint(t *testing.T) {
+	t.Run("HeightsByEndpoints are changing", func(t *testing.T) {
+		// Scenario: We ask for the latest block from a set of ordering nodes.
+		// We then add an endpoint and remove an endpoint, update the puller's endpoints, and ask again.
+		osn1 := newClusterNode(t)
+		defer osn1.stop()
+		osn2 := newClusterNode(t)
+		defer osn2.stop()
+		osn3 := newClusterNode(t)
+		defer osn3.stop()
+
+		dialer := newCountingDialer()
+		bp := newBlockPuller(dialer, osn1.srv.Address(), osn2.srv.Address(), osn3.srv.Address())
+
+		// The first seek request asks for the latest block from some ordering node
+		osn1.addExpectProbeAssert()
+		osn2.addExpectProbeAssert()
+		osn3.addExpectProbeAssert()
+
+		osn1.enqueueResponse(3)
+		osn2.enqueueResponse(4)
+		osn3.enqueueResponse(5)
+
+		res, err := bp.HeightsByEndpoints()
+		require.NoError(t, err)
+		expected := map[string]uint64{
+			osn1.srv.Address(): 4,
+			osn2.srv.Address(): 5,
+			osn3.srv.Address(): 6,
+		}
+		require.Equal(t, expected, res)
+
+		osn4 := newClusterNode(t)
+		defer osn4.stop()
+
+		bp.UpdateEndpoints(endpointCriteriaFromEndpoints(osn2.srv.Address(), osn3.srv.Address(), osn4.srv.Address()))
+
+		osn2.addExpectProbeAssert()
+		osn3.addExpectProbeAssert()
+		osn4.addExpectProbeAssert()
+
+		osn2.enqueueResponse(44)
+		osn3.enqueueResponse(55)
+		osn4.enqueueResponse(66)
+
+		res, err = bp.HeightsByEndpoints()
+		require.NoError(t, err)
+		expected = map[string]uint64{
+			osn2.srv.Address(): 45,
+			osn3.srv.Address(): 56,
+			osn4.srv.Address(): 67,
+		}
+		require.Equal(t, expected, res)
+
+		bp.Close()
+		dialer.assertAllConnectionsClosed(t)
+	})
+
+	t.Run("switch pulling between endpoints", func(t *testing.T) {
+		// Scenario:
+		// The block puller is expected to pull blocks 1 to 2 from osn1.
+		// After block 2 the endpoints are updated to osn2.
+		// The block puller is expected to pull blocks 3 to 4 from osn2.
+
+		osn1 := newClusterNode(t)
+		defer osn1.stop()
+
+		osn1.enqueueResponse(2)
+		osn1.addExpectProbeAssert()
+		// We send blocks 1 and 2
+		osn1.addExpectPullAssert(1)
+		osn1.enqueueResponse(1)
+		osn1.enqueueResponse(2)
+
+		dialer := newCountingDialer()
+		bp := newBlockPuller(dialer, osn1.srv.Address())
+
+		require.Equal(t, uint64(1), bp.PullBlock(uint64(1)).Header.Number)
+		require.Equal(t, uint64(2), bp.PullBlock(uint64(2)).Header.Number)
+
+		osn2 := newClusterNode(t)
+		defer osn2.stop()
+
+		osn2.enqueueResponse(4)
+		osn2.addExpectProbeAssert()
+		// We send blocks 1 and 2
+		osn2.addExpectPullAssert(3)
+		osn2.enqueueResponse(3)
+		osn2.enqueueResponse(4)
+
+		// This will disconnect
+		bp.UpdateEndpoints(endpointCriteriaFromEndpoints(osn2.srv.Address()))
+
+		require.Equal(t, uint64(3), bp.PullBlock(uint64(3)).Header.Number)
+		require.Equal(t, uint64(4), bp.PullBlock(uint64(4)).Header.Number)
+
+		bp.Close()
+		dialer.assertAllConnectionsClosed(t)
+	})
+	t.Run("update to a bad endpoint", func(t *testing.T) {
+		// Scenario:
+		// The block puller is expected to pull blocks 1 to 3. The target orderer delivers only blocks 1,2.
+		// The puller pulls blocks 1 & 2 into the buffer. After block 1 the endpoints are updated to a bad endpoint.
+		// The puller gets block 2 from the buffer. It should attempt to re-connect until the attempt number is exhausted,
+		// after which it gives up, and nil is returned.
+
+		osn := newClusterNode(t)
+
+		osn.enqueueResponse(2)
+		osn.addExpectProbeAssert()
+		// We send blocks 1 and 2
+		osn.addExpectPullAssert(1)
+		osn.enqueueResponse(1)
+		osn.enqueueResponse(2)
+
+		dialer := newCountingDialer()
+		bp := newBlockPuller(dialer, osn.srv.Address())
+
+		var exhaustedRetryAttemptsLogged bool
+		var couldNotConnectLogged bool
+		bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+			if entry.Message == "Failed pulling block [3]: retry count exhausted(2)" {
+				exhaustedRetryAttemptsLogged = true
+			}
+			if entry.Message ==
+				"Failed to connect to some endpoint, attempts exhausted(2), seq: 3, endpoints: [{\"CAs\":null,\"Endpoint\":\"10.10.10.10:666\"}]" {
+				couldNotConnectLogged = true
+			}
+			return nil
+		}))
+
+		bp.MaxPullBlockRetries = 2
+		// We don't expect to timeout in this test, so make the timeout large
+		// to prevent flakes due to CPU starvation.
+		bp.FetchTimeout = time.Second
+
+		require.Equal(t, uint64(1), bp.PullBlock(uint64(1)).Header.Number)
+		osn.stop()
+		// This will disconnect
+		bp.UpdateEndpoints(endpointCriteriaFromEndpoints("10.10.10.10:666"))
+		// Block 2 from the buffer
+		require.Equal(t, uint64(2), bp.PullBlock(uint64(2)).Header.Number)
+		// Block 3 will never arrive
+		require.Nil(t, bp.PullBlock(uint64(3)))
+
+		bp.Close()
+		dialer.assertAllConnectionsClosed(t)
+		require.True(t, exhaustedRetryAttemptsLogged)
+		require.True(t, couldNotConnectLogged)
+	})
+}
