@@ -54,10 +54,13 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 
 	sessions := make(chan pkcs11.SessionHandle, sessionCacheSize)
 	csp := &impl{
-		BCCSP:      swCSP,
-		conf:       conf,
-		ctx:        ctx,
-		sessions:   sessions,
+		BCCSP:    swCSP,
+		conf:     conf,
+		ctx:      ctx,
+		sessions: sessions,
+		p11Keys: &keyCache{
+			p11Keys: make(map[string]p11Key),
+		},
 		slot:       slot,
 		pin:        pin,
 		lib:        lib,
@@ -75,6 +78,7 @@ type impl struct {
 
 	ctx      *pkcs11.Ctx
 	sessions chan pkcs11.SessionHandle
+	p11Keys  *keyCache
 	slot     uint
 	pin      string
 
