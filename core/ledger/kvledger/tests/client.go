@@ -26,12 +26,12 @@ type client struct {
 	lgr            ledger.PeerLedger
 	lgrID          string
 	simulatedTrans []*txAndPvtdata // accumulates the results of transactions simulations
-	missingPvtData ledger.TxMissingPvtDataMap
+	missingPvtData ledger.TxMissingPvtData
 	assert         *require.Assertions
 }
 
 func newClient(lgr ledger.PeerLedger, lgrID string, t *testing.T) *client {
-	return &client{lgr, lgrID, nil, make(ledger.TxMissingPvtDataMap), require.New(t)}
+	return &client{lgr, lgrID, nil, make(ledger.TxMissingPvtData), require.New(t)}
 }
 
 // simulateDataTx takes a simulation logic and wraps it between

@@ -1413,7 +1413,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
 			flattenTxPvtDataMap(expectedCommittedPrivateData2)))
 		missingPrivateData := blockAndPrivateData.MissingPvtData
-		expectedMissingPvtData := make(ledger.TxMissingPvtDataMap)
+		expectedMissingPvtData := make(ledger.TxMissingPvtData)
 		expectedMissingPvtData.Add(0, "ns3", "c2", true)
 		require.Equal(t, expectedMissingPvtData, missingPrivateData)
 		commitHappened = true
@@ -1531,7 +1531,7 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
 			flattenTxPvtDataMap(expectedCommittedPrivateData3)))
 		missingPrivateData := blockAndPrivateData.MissingPvtData
-		expectedMissingPvtData := make(ledger.TxMissingPvtDataMap)
+		expectedMissingPvtData := make(ledger.TxMissingPvtData)
 		expectedMissingPvtData.Add(0, "ns3", "c2", false)
 		require.Equal(t, expectedMissingPvtData, missingPrivateData)
 		commitHappened = true

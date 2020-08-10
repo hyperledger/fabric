@@ -1564,7 +1564,7 @@ func prepareNextBlockForTestFromSimulatorWithMissingData(t *testing.T, bg *testu
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block := bg.NextBlock([][]byte{pubSimBytes})
-	missingData := make(ledger.TxMissingPvtDataMap)
+	missingData := make(ledger.TxMissingPvtData)
 	missingData.Add(txNum, ns, coll, isEligible)
 	return &ledger.BlockAndPvtData{Block: block, MissingPvtData: missingData}
 }

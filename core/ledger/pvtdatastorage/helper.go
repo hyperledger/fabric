@@ -16,7 +16,7 @@ import (
 )
 
 func prepareStoreEntries(blockNum uint64, pvtData []*ledger.TxPvtData, btlPolicy pvtdatapolicy.BTLPolicy,
-	missingPvtData ledger.TxMissingPvtDataMap) (*storeEntries, error) {
+	missingPvtData ledger.TxMissingPvtData) (*storeEntries, error) {
 	dataEntries := prepareDataEntries(blockNum, pvtData)
 
 	missingDataEntries := prepareMissingDataEntries(blockNum, missingPvtData)
@@ -48,7 +48,7 @@ func prepareDataEntries(blockNum uint64, pvtData []*ledger.TxPvtData) []*dataEnt
 	return dataEntries
 }
 
-func prepareMissingDataEntries(committingBlk uint64, missingPvtData ledger.TxMissingPvtDataMap) map[missingDataKey]*bitset.BitSet {
+func prepareMissingDataEntries(committingBlk uint64, missingPvtData ledger.TxMissingPvtData) map[missingDataKey]*bitset.BitSet {
 	missingDataEntries := make(map[missingDataKey]*bitset.BitSet)
 
 	for txNum, missingData := range missingPvtData {

@@ -32,7 +32,7 @@ func newCommitter(lgr ledger.PeerLedger, t *testing.T) *committer {
 // A copy is returned instead of the actual one because, ledger makes some changes to the submitted block before commit
 // (such as setting the metadata) and the test code would want to have the exact copy of the block that was submitted to
 // the ledger
-func (c *committer) cutBlockAndCommitLegacy(trans []*txAndPvtdata, missingPvtData ledger.TxMissingPvtDataMap) *ledger.BlockAndPvtData {
+func (c *committer) cutBlockAndCommitLegacy(trans []*txAndPvtdata, missingPvtData ledger.TxMissingPvtData) *ledger.BlockAndPvtData {
 	blk := c.blkgen.nextBlockAndPvtdata(trans, missingPvtData)
 	blkCopy := c.copyOfBlockAndPvtdata(blk)
 	c.assert.NoError(
@@ -41,7 +41,7 @@ func (c *committer) cutBlockAndCommitLegacy(trans []*txAndPvtdata, missingPvtDat
 	return blkCopy
 }
 
-func (c *committer) cutBlockAndCommitExpectError(trans []*txAndPvtdata, missingPvtData ledger.TxMissingPvtDataMap) *ledger.BlockAndPvtData {
+func (c *committer) cutBlockAndCommitExpectError(trans []*txAndPvtdata, missingPvtData ledger.TxMissingPvtData) *ledger.BlockAndPvtData {
 	blk := c.blkgen.nextBlockAndPvtdata(trans, missingPvtData)
 	blkCopy := c.copyOfBlockAndPvtdata(blk)
 	err := c.lgr.CommitLegacy(blk, &ledger.CommitOptions{})
@@ -77,7 +77,7 @@ func newBlockGenerator(lgr ledger.PeerLedger, t *testing.T) *blkGenerator {
 }
 
 // nextBlockAndPvtdata cuts the next block
-func (g *blkGenerator) nextBlockAndPvtdata(trans []*txAndPvtdata, missingPvtData ledger.TxMissingPvtDataMap) *ledger.BlockAndPvtData {
+func (g *blkGenerator) nextBlockAndPvtdata(trans []*txAndPvtdata, missingPvtData ledger.TxMissingPvtData) *ledger.BlockAndPvtData {
 	block := protoutil.NewBlock(g.lastNum+1, g.lastHash)
 	blockPvtdata := make(map[uint64]*ledger.TxPvtData)
 	for i, tran := range trans {

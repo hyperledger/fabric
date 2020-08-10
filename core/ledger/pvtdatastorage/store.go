@@ -213,7 +213,7 @@ func (s *Store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 // missing private data --- `eligible` denotes that the missing private data belongs to a collection
 // for which this peer is a member; `ineligible` denotes that the missing private data belong to a
 // collection for which this peer is not a member.
-func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtDataMap) error {
+func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtData) error {
 	expectedBlockNum := s.nextBlockNum()
 	if expectedBlockNum != blockNum {
 		return &ErrIllegalArgs{fmt.Sprintf("Expected block number=%d, received block number=%d", expectedBlockNum, blockNum)}

@@ -445,7 +445,7 @@ func (pdp *PvtdataProvider) populateFromRemotePeers(pvtdata rwsetByKeys, pvtdata
 func (pdp *PvtdataProvider) prepareBlockPvtdata(pvtdata rwsetByKeys, pvtdataRetrievalInfo *pvtdataRetrievalInfo) *ledger.BlockPvtdata {
 	blockPvtdata := &ledger.BlockPvtdata{
 		PvtData:        make(ledger.TxPvtDataMap),
-		MissingPvtData: make(ledger.TxMissingPvtDataMap),
+		MissingPvtData: make(ledger.TxMissingPvtData),
 	}
 
 	for seqInBlock, nsRWS := range pvtdata.bySeqsInBlock() {
