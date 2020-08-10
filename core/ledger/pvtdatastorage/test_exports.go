@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func pvtDataConf() *PrivateDataConfig {
@@ -43,18 +44,16 @@ func NewTestStoreEnv(
 	ledgerid string,
 	btlPolicy pvtdatapolicy.BTLPolicy,
 	conf *PrivateDataConfig) *StoreEnv {
-
 	storeDir, err := ioutil.TempDir("", "pdstore")
 	if err != nil {
 		t.Fatalf("Failed to create private data storage directory: %s", err)
 	}
-	assert := assert.New(t)
 	conf.StorePath = storeDir
 	testStoreProvider, err := NewProvider(conf)
-	assert.NoError(err)
+	require.NoError(t, err)
 	testStore, err := testStoreProvider.OpenStore(ledgerid)
 	testStore.Init(btlPolicy)
-	assert.NoError(err)
+	require.NoError(t, err)
 	return &StoreEnv{t, testStoreProvider, testStore, ledgerid, btlPolicy, conf}
 }
 
@@ -71,5 +70,7 @@ func (env *StoreEnv) CloseAndReopen() {
 
 // Cleanup cleansup the  store env after testing
 func (env *StoreEnv) Cleanup() {
-	os.RemoveAll(env.conf.StorePath)
+	if err := os.RemoveAll(env.conf.StorePath); err != nil {
+		env.t.Errorf("error while removing path %s, %v", env.conf.StorePath, err)
+	}
 }
