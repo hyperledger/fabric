@@ -17,7 +17,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
@@ -52,11 +51,7 @@ func TestWithNoCollectionConfig(t *testing.T) {
 		CommittingBlockNum: 50},
 	)
 	require.NoError(t, err)
-	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
-		info: &common.BlockchainInfo{Height: 100},
-		qe:   &mock.QueryExecutor{},
-	}
-	retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+	retriever := mgr.GetRetriever("ledger1")
 	collConfig, err := retriever.MostRecentCollectionConfigBelow(90, "chaincode1")
 	require.NoError(t, err)
 	require.Nil(t, collConfig)
@@ -81,11 +76,7 @@ func TestWithEmptyCollectionConfig(t *testing.T) {
 		CommittingBlockNum: 50},
 	)
 	require.NoError(t, err)
-	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
-		info: &common.BlockchainInfo{Height: 100},
-		qe:   &mock.QueryExecutor{},
-	}
-	retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+	retriever := mgr.GetRetriever("ledger1")
 	collConfig, err := retriever.MostRecentCollectionConfigBelow(90, "chaincode1")
 	require.NoError(t, err)
 	require.Nil(t, collConfig)
@@ -101,11 +92,6 @@ func TestMgrQueries(t *testing.T) {
 	mgr, err := NewMgr(dbPath, mockCCInfoProvider)
 	require.NoError(t, err)
 	chaincodeName := "chaincode1"
-	maxBlockNumberInLedger := uint64(2000)
-	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
-		info: &common.BlockchainInfo{Height: maxBlockNumberInLedger + 1},
-		qe:   &mock.QueryExecutor{},
-	}
 	configCommittingBlockNums := []uint64{5, 10, 15, 100}
 	ledgerIds := []string{"ledgerid1", "ledger2"}
 
@@ -129,7 +115,7 @@ func TestMgrQueries(t *testing.T) {
 		// should be configuration committed at 'V'
 		m := map[uint64]uint64{math.MaxUint64: 100, 1000: 100, 50: 15, 12: 10, 7: 5}
 		for _, ledgerid := range ledgerIds {
-			retriever := mgr.GetRetriever(ledgerid, dummyLedgerInfoRetriever)
+			retriever := mgr.GetRetriever(ledgerid)
 			for testHeight, expectedHeight := range m {
 				retrievedConfig, err := retriever.MostRecentCollectionConfigBelow(testHeight, chaincodeName)
 				require.NoError(t, err)
@@ -143,31 +129,6 @@ func TestMgrQueries(t *testing.T) {
 			require.Nil(t, retrievedConfig)
 		}
 	})
-
-	t.Run("test-api-CollectionConfigAt()", func(t *testing.T) {
-		for _, ledgerid := range ledgerIds {
-			retriever := mgr.GetRetriever(ledgerid, dummyLedgerInfoRetriever)
-			for _, commitHeight := range configCommittingBlockNums {
-				retrievedConfig, err := retriever.CollectionConfigAt(commitHeight, chaincodeName)
-				require.NoError(t, err)
-				expectedConfig := sampleCollectionConfigPackage(ledgerid, commitHeight)
-				require.Equal(t, expectedConfig, retrievedConfig.CollectionConfig)
-				require.Equal(t, commitHeight, retrievedConfig.CommittingBlockNum)
-			}
-		}
-	})
-
-	t.Run("test-api-CollectionConfigAt-BoundaryCases()", func(t *testing.T) {
-		retriever := mgr.GetRetriever("ledgerid1", dummyLedgerInfoRetriever)
-		retrievedConfig, err := retriever.CollectionConfigAt(4, chaincodeName)
-		require.NoError(t, err)
-		require.Nil(t, retrievedConfig)
-
-		_, err = retriever.CollectionConfigAt(5000, chaincodeName)
-		typedErr, ok := err.(*ledger.ErrCollectionConfigNotYetAvailable)
-		require.True(t, ok)
-		require.Equal(t, maxBlockNumberInLedger, typedErr.MaxBlockNumCommitted)
-	})
 }
 
 func TestDrop(t *testing.T) {
@@ -178,11 +139,6 @@ func TestDrop(t *testing.T) {
 	mgr, err := NewMgr(dbPath, mockCCInfoProvider)
 	require.NoError(t, err)
 	chaincodeName := "chaincode1"
-	maxBlockNumberInLedger := uint64(2000)
-	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
-		info: &common.BlockchainInfo{Height: maxBlockNumberInLedger + 1},
-		qe:   &mock.QueryExecutor{},
-	}
 	configCommittingBlockNums := []uint64{5, 10, 15, 100}
 	ledgerIds := []string{"ledger1", "ledger2"}
 
@@ -199,7 +155,7 @@ func TestDrop(t *testing.T) {
 	// remove ledger1 and verify ledger1 entries are deleted and ledger2 returns collection config as is
 	require.NoError(t, mgr.Drop("ledger1"))
 
-	retriever1 := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+	retriever1 := mgr.GetRetriever("ledger1")
 	retrievedConfig, err := retriever1.MostRecentCollectionConfigBelow(math.MaxUint64, chaincodeName)
 	require.NoError(t, err)
 	require.Nil(t, retrievedConfig)
@@ -207,7 +163,7 @@ func TestDrop(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, empty)
 
-	retriever2 := mgr.GetRetriever("ledger2", dummyLedgerInfoRetriever)
+	retriever2 := mgr.GetRetriever("ledger2")
 	m := map[uint64]uint64{math.MaxUint64: 100, 1000: 100, 50: 15, 12: 10, 7: 5}
 	for testHeight, expectedHeight := range m {
 		retrievedConfig, err = retriever2.MostRecentCollectionConfigBelow(testHeight, chaincodeName)
@@ -264,34 +220,20 @@ func TestWithImplicitColls(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, dbHandle.writeBatch(batch, true))
 
-	onlyImplicitCollections := testutilCreateCollConfigPkg(
-		[]string{"Implicit-coll-1", "Implicit-coll-2"},
-	)
-
 	explicitAndImplicitCollections := testutilCreateCollConfigPkg(
-		[]string{"Explicit-coll-1", "Explicit-coll-2", "Implicit-coll-1", "Implicit-coll-2"},
+		[]string{"Explicit-coll-1", "Explicit-coll-2"},
 	)
-
-	dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
-		info: &common.BlockchainInfo{Height: 1000},
-		qe:   &mock.QueryExecutor{},
-	}
 
 	t.Run("CheckQueryExecutorCalls", func(t *testing.T) {
-		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+		retriever := mgr.GetRetriever("ledger1")
 		// function MostRecentCollectionConfigBelow calls Done on query executor
 		_, err := retriever.MostRecentCollectionConfigBelow(50, "chaincode1")
 		require.NoError(t, err)
-		require.Equal(t, 1, dummyLedgerInfoRetriever.qe.DoneCallCount())
-		// function CollectionConfigAt calls Done on query executor
-		_, err = retriever.CollectionConfigAt(50, "chaincode1")
-		require.NoError(t, err)
-		require.Equal(t, 2, dummyLedgerInfoRetriever.qe.DoneCallCount())
 	})
 
 	t.Run("MostRecentCollectionConfigBelow50", func(t *testing.T) {
 		// explicit collections added at height 20 should be merged with the implicit collections
-		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+		retriever := mgr.GetRetriever("ledger1")
 		retrievedConfig, err := retriever.MostRecentCollectionConfigBelow(50, "chaincode1")
 		require.NoError(t, err)
 		require.True(t, proto.Equal(retrievedConfig.CollectionConfig, explicitAndImplicitCollections))
@@ -299,28 +241,11 @@ func TestWithImplicitColls(t *testing.T) {
 
 	t.Run("MostRecentCollectionConfigBelow10", func(t *testing.T) {
 		// No explicit collections below height 10, should return only implicit collections
-		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
+		retriever := mgr.GetRetriever("ledger1")
 		retrievedConfig, err := retriever.MostRecentCollectionConfigBelow(10, "chaincode1")
 		require.NoError(t, err)
-		require.True(t, proto.Equal(retrievedConfig.CollectionConfig, onlyImplicitCollections))
+		require.Nil(t, retrievedConfig)
 	})
-
-	t.Run("CollectionConfigAt50", func(t *testing.T) {
-		// No explicit collections at height 50, should return only implicit collections
-		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
-		retrievedConfig, err := retriever.CollectionConfigAt(50, "chaincode1")
-		require.NoError(t, err)
-		require.True(t, proto.Equal(retrievedConfig.CollectionConfig, onlyImplicitCollections))
-	})
-
-	t.Run("CollectionConfigAt20", func(t *testing.T) {
-		// Explicit collections at height 20, should be merged with implicit collections
-		retriever := mgr.GetRetriever("ledger1", dummyLedgerInfoRetriever)
-		retrievedConfig, err := retriever.CollectionConfigAt(20, "chaincode1")
-		require.NoError(t, err)
-		require.True(t, proto.Equal(retrievedConfig.CollectionConfig, explicitAndImplicitCollections))
-	})
-
 }
 
 type testEnvForSnapshot struct {
@@ -449,7 +374,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 	t.Run("confighistory is empty", func(t *testing.T) {
 		env := newTestEnvForSnapshot(t)
 		defer env.cleanup()
-		retriever := env.mgr.GetRetriever("ledger1", nil)
+		retriever := env.mgr.GetRetriever("ledger1")
 		fileHashes, err := retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 		require.Empty(t, fileHashes)
@@ -463,7 +388,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		env := newTestEnvForSnapshot(t)
 		defer env.cleanup()
 		storedKVs, _ := setupWithSampleData(env, "ledger1")
-		retriever := env.mgr.GetRetriever("ledger1", nil)
+		retriever := env.mgr.GetRetriever("ledger1")
 		fileHashes, err := retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 		verifyExportedConfigHistory(t, env.testSnapshotDir, fileHashes, storedKVs)
@@ -474,18 +399,14 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		env := newTestEnvForSnapshot(t)
 		defer env.cleanup()
 		_, ccConfigInfo := setupWithSampleData(env, "ledger1")
-		retriever := env.mgr.GetRetriever("ledger1", nil)
+		retriever := env.mgr.GetRetriever("ledger1")
 		_, err := retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 
 		importConfigsBatchSize = 100
 		require.NoError(t, env.mgr.ImportFromSnapshot("ledger2", env.testSnapshotDir))
-		dummyLedgerInfoRetriever := &dummyLedgerInfoRetriever{
-			info: &common.BlockchainInfo{Height: 1000},
-			qe:   &mock.QueryExecutor{},
-		}
 
-		retriever = env.mgr.GetRetriever("ledger2", dummyLedgerInfoRetriever)
+		retriever = env.mgr.GetRetriever("ledger2")
 		verifyImportedConfigHistory(t, retriever, ccConfigInfo)
 	})
 
@@ -494,7 +415,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		env := newTestEnvForSnapshot(t)
 		defer env.cleanup()
 		storedKVs, _ := setupWithSampleData(env, "ledger1")
-		retriever := env.mgr.GetRetriever("ledger1", nil)
+		retriever := env.mgr.GetRetriever("ledger1")
 		_, err := retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 
@@ -503,7 +424,7 @@ func TestExportAndImportConfigHistory(t *testing.T) {
 		require.NoError(t, os.RemoveAll(filepath.Join(env.testSnapshotDir, snapshotDataFileName)))
 		require.NoError(t, os.RemoveAll(filepath.Join(env.testSnapshotDir, snapshotMetadataFileName)))
 
-		retriever = env.mgr.GetRetriever("ledger2", nil)
+		retriever = env.mgr.GetRetriever("ledger2")
 		fileHashes, err := retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 		verifyExportedConfigHistory(t, env.testSnapshotDir, fileHashes, storedKVs)
@@ -611,12 +532,7 @@ func verifyExportedConfigHistory(t *testing.T, dir string, fileHashes map[string
 func verifyImportedConfigHistory(t *testing.T, retriever *Retriever, expectedCCConfigInfo map[string][]*ledger.CollectionConfigInfo) {
 	for chaincodeName, ccConfigInfos := range expectedCCConfigInfo {
 		for _, expectedCCConfig := range ccConfigInfos {
-			ccConfig, err := retriever.CollectionConfigAt(expectedCCConfig.CommittingBlockNum, chaincodeName)
-			require.NoError(t, err)
-			require.True(t, proto.Equal(expectedCCConfig.CollectionConfig, ccConfig.CollectionConfig))
-			require.Equal(t, expectedCCConfig.CommittingBlockNum, ccConfig.CommittingBlockNum)
-
-			ccConfig, err = retriever.MostRecentCollectionConfigBelow(expectedCCConfig.CommittingBlockNum+1, chaincodeName)
+			ccConfig, err := retriever.MostRecentCollectionConfigBelow(expectedCCConfig.CommittingBlockNum+1, chaincodeName)
 			require.NoError(t, err)
 			require.True(t, proto.Equal(expectedCCConfig.CollectionConfig, ccConfig.CollectionConfig))
 			require.Equal(t, expectedCCConfig.CommittingBlockNum, ccConfig.CommittingBlockNum)
@@ -646,7 +562,7 @@ func TestExportConfigHistoryErrorCase(t *testing.T) {
 	_, err = os.Create(dataFilePath)
 	require.NoError(t, err)
 
-	retriever := env.mgr.GetRetriever("ledger1", nil)
+	retriever := env.mgr.GetRetriever("ledger1")
 	_, err = retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 	require.Contains(t, err.Error(), "error while creating the snapshot file: "+dataFilePath)
 	os.RemoveAll(env.testSnapshotDir)
@@ -705,17 +621,4 @@ func testutilCreateCollConfigPkg(collNames []string) *peer.CollectionConfigPacka
 		)
 	}
 	return pkg
-}
-
-type dummyLedgerInfoRetriever struct {
-	info *common.BlockchainInfo
-	qe   *mock.QueryExecutor
-}
-
-func (d *dummyLedgerInfoRetriever) GetBlockchainInfo() (*common.BlockchainInfo, error) {
-	return d.info, nil
-}
-
-func (d *dummyLedgerInfoRetriever) NewQueryExecutor() (ledger.QueryExecutor, error) {
-	return d.qe, nil
 }
