@@ -772,10 +772,16 @@ func TestBlockPullerNoOrdererAliveAtStartup(t *testing.T) {
 }
 
 func TestBlockPullerFailures(t *testing.T) {
+	// This test case is flaky, so let's add some logs for the next time it fails.
+	flogging.ActivateSpec("debug")
+	defer flogging.ActivateSpec("info")
+	testLogger := flogging.MustGetLogger("test.debug")
+
 	// Scenario: Single ordering node is faulty, but later
 	// on it recovers.
 	failureError := errors.New("oops, something went wrong")
 	failStream := func(osn *deliverServer, _ *cluster.BlockPuller) {
+		testLogger.Info("failStream")
 		osn.Lock()
 		osn.err = failureError
 		osn.Unlock()
@@ -783,6 +789,7 @@ func TestBlockPullerFailures(t *testing.T) {
 
 	badSigErr := errors.New("bad signature")
 	malformBlockSignatureAndRecreateOSNBuffer := func(osn *deliverServer, bp *cluster.BlockPuller) {
+		testLogger.Info("FailFunc of: failure at verifying pulled block")
 		bp.VerifyBlockSequence = func(_ []*common.Block, _ string) error {
 			close(osn.blocks())
 			// After failing once, recover and remove the bad signature error.
@@ -807,11 +814,13 @@ func TestBlockPullerFailures(t *testing.T) {
 	recover := func(osn *deliverServer, bp *cluster.BlockPuller) func(entry zapcore.Entry) error {
 		return func(entry zapcore.Entry) error {
 			if osn.isFaulty() && strings.Contains(entry.Message, failureError.Error()) {
+				testLogger.Info("recover osn.err")
 				osn.Lock()
 				osn.err = nil
 				osn.Unlock()
 			}
 			if strings.Contains(entry.Message, "Failed verifying") {
+				testLogger.Info("recover verifier")
 				bp.VerifyBlockSequence = noopBlockVerifierf
 			}
 			return nil
@@ -869,6 +878,7 @@ func TestBlockPullerFailures(t *testing.T) {
 			name:       "failure at verifying pulled block",
 			logTrigger: "Sending request for block [1]",
 			beforeFunc: func(osn *deliverServer, bp *cluster.BlockPuller) {
+				testLogger.Infof("BeforeFunc of: %s", "failure at verifying pulled block")
 				// The first seek request asks for the latest block and succeeds
 				osn.addExpectProbeAssert()
 				osn.enqueueResponse(3)
@@ -886,6 +896,7 @@ func TestBlockPullerFailures(t *testing.T) {
 	} {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
+			testLogger.Infof("Starting test case: %s", testCase.name)
 			osn := newClusterNode(t)
 			defer osn.stop()
 
