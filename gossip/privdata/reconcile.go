@@ -316,3 +316,28 @@ func (r *Reconciler) groupRwsetByBlock(elements []*protosgossip.PvtDataElement) 
 	}
 	return rwSetByBlockByKeys
 }
+
+func constructUnreconciledMissingData(requestedMissingData privdatacommon.Dig2CollectionConfig, fetchedData []*protosgossip.PvtDataElement) ledger.MissingPvtDataInfo {
+	fetchedDataKeys := make(map[privdatacommon.DigKey]struct{})
+	for _, pvtData := range fetchedData {
+		key := privdatacommon.DigKey{
+			TxId:       pvtData.Digest.TxId,
+			Namespace:  pvtData.Digest.Namespace,
+			Collection: pvtData.Digest.Collection,
+			BlockSeq:   pvtData.Digest.BlockSeq,
+			SeqInBlock: pvtData.Digest.SeqInBlock,
+		}
+		fetchedDataKeys[key] = struct{}{}
+	}
+
+	var unreconciledMissingDataInfo ledger.MissingPvtDataInfo
+	for key := range requestedMissingData {
+		if _, ok := fetchedDataKeys[key]; !ok {
+			if unreconciledMissingDataInfo == nil {
+				unreconciledMissingDataInfo = make(ledger.MissingPvtDataInfo)
+			}
+			unreconciledMissingDataInfo.Add(key.BlockSeq, key.SeqInBlock, key.Namespace, key.Collection)
+		}
+	}
+	return unreconciledMissingDataInfo
+}
