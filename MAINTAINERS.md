@@ -28,6 +28,7 @@ Maintainers
 | Nikhil Gupta | [nikhil550][nikhil550] | nikhilgupta | <negupta@us.ibm.com>
 | Anthony O'Dowd | [odowdaibm][odowdaibm] | odowdaibm | <a_o-dowd@uk.ibm.com>
 | Pam Andrejko | [pamandrejko][pamandrejko] | pandrejko | <pama@ibm.com>
+| Erin Hughes  | [erin-hughes][erin-hughes] |  erin-hughes |<Erin.Hughes@ibm.com>
 
 **Release Managers**
 
