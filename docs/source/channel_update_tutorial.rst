@@ -93,6 +93,7 @@ material for all organizations:
 
 .. code:: bash
 
+  cd addOrg3
   ./addOrg3.sh down
 
 After the network is brought down, bring it back up again:
@@ -554,24 +555,24 @@ chaincode by approving the chaincode definition.
           `Adding an org to a channel tutorial <https://hyperledger-fabric.readthedocs.io/en/release-1.4/channel_update_tutorial.html>`__.
 
 Before we install a chaincode as Org3, we can use the ``./network.sh`` script to
-deploy the Fabcar chaincode on the channel. Open a new terminal outside the
+deploy the Basic chaincode on the channel. Open a new terminal outside the
 Org3CLI container and navigate to the ``test-network`` directory. You can then use
-use the ``test-network`` script to deploy the Fabcar chaincode:
+use the ``test-network`` script to deploy the Basic chaincode:
 
 .. code:: bash
 
   cd fabric-samples/test-network
-  ./network.sh deployCC
+  ./network.sh deployCC -ccn basic -ccl go 
 
-The script will install the Fabcar chaincode on the Org1 and Org2 peers, approve
+The script will install the Basic chaincode on the Org1 and Org2 peers, approve
 the chaincode definition for Org1 and Org2, and then commit the chaincode
 definition to the channel. Once the chaincode definition has been committed to
-the channel, the Fabcar chaincode is initialized and invoked to put initial data
+the channel, the Basic chaincode is initialized and invoked to put initial data
 on the ledger. The commands below assume that we are still using the channel
 ``mychannel``.
 
 After the chaincode has been to deployed we can use the following steps to use
-invoke Fabcar chaincode as Org3. These steps can be completed from the
+invoke Basic chaincode as Org3. These steps can be completed from the
 ``test-network`` directory, without having to exec into Org3CLI container. Copy
 and paste the following environment variables in your terminal in order to interact
 with the network as the Org3 admin:
@@ -586,23 +587,23 @@ with the network as the Org3 admin:
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp
     export CORE_PEER_ADDRESS=localhost:11051
 
-The first step is to package the Fabcar chaincode:
+The first step is to package the Basic chaincode:
 
 .. code:: bash
 
-    peer lifecycle chaincode package fabcar.tar.gz --path ../chaincode/fabcar/go/ --lang golang --label fabcar_1
+    peer lifecycle chaincode package basic.tar.gz --path ../asset-transfer-basic/chaincode-go/ --lang golang --label basic_1
 
-This command will create a chaincode package named ``fabcar.tar.gz``, which we can
+This command will create a chaincode package named ``basic.tar.gz``, which we can
 install on the Org3 peer. Modify the command accordingly if the channel is running a
 chaincode written in Java or Node.js. Issue the following command to install the
 chaincode package ``peer0.org3.example.com``:
 
 .. code:: bash
 
-    peer lifecycle chaincode install fabcar.tar.gz
+    peer lifecycle chaincode install basic.tar.gz
 
 
-The next step is to approve the chaincode definition of Fabcar as Org3. Org3
+The next step is to approve the chaincode definition of Basic as Org3. Org3
 needs to approve the same definition that Org1 and Org2 approved and committed
 to the channel. In order to invoke the chaincode, Org3 needs to include the
 package identifier in the chaincode definition. You can find the package
@@ -617,7 +618,7 @@ You should see output similar to the following:
 .. code:: bash
 
       Get installed chaincodes on peer:
-      Package ID: fabcar_1:25f28c212da84a8eca44d14cf12549d8f7b674a0d8288245561246fa90f7ab03, Label: fabcar_1
+      Package ID: basic_1:5443b5b557efd3faece8723883d28d6f7026c0bf12245de109b89c5c4fe64887, Label: basic_1
 
 We are going to need the package ID in a future command, so lets go ahead and
 save it as an environment variable. Paste the package ID returned by the
@@ -627,16 +628,16 @@ using the package ID returned from your console.
 
 .. code:: bash
 
-   export CC_PACKAGE_ID=fabcar_1:25f28c212da84a8eca44d14cf12549d8f7b674a0d8288245561246fa90f7ab03
+   export CC_PACKAGE_ID=basic_1:5443b5b557efd3faece8723883d28d6f7026c0bf12245de109b89c5c4fe64887
 
-Use the following command to approve a definition of the Fabcar chaincode
+Use the following command to approve a definition of the basic chaincode
 for Org3:
 
 .. code:: bash
 
     # use the --package-id flag to provide the package identifier
     # use the --init-required flag to request the ``Init`` function be invoked to initialize the chaincode
-    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name fabcar --version 1 --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem --channelID mychannel --name basic --version 1.0 --package-id $CC_PACKAGE_ID --sequence 1
 
 
 You can use the ``peer lifecycle chaincode querycommitted`` command to check if
@@ -646,16 +647,16 @@ channel.
 .. code:: bash
 
     # use the --name flag to select the chaincode whose definition you want to query
-    peer lifecycle chaincode querycommitted --channelID mychannel --name fabcar --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    peer lifecycle chaincode querycommitted --channelID mychannel --name basic --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
 A successful command will return information about the committed definition:
 
 .. code:: bash
 
-    Committed chaincode definition for chaincode 'fabcar' on channel 'mychannel':
-    Version: 1, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc, Approvals: [Org1MSP: true, Org2MSP: true, Org3MSP: true]
+    Committed chaincode definition for chaincode 'basic' on channel 'mychannel':
+    Version: 1.0, Sequence: 1, Endorsement Plugin: escc, Validation Plugin: vscc, Approvals: [Org1MSP: true, Org2MSP: true, Org3MSP: true]
 
-Org3 can use the Fabcar chaincode after it approves the chaincode definition
+Org3 can use the basic chaincode after it approves the chaincode definition
 that was committed to the channel. The chaincode definition uses the default endorsement
 policy, which requires a majority of organizations on the channel endorse a transaction.
 This implies that if an organization is added to or removed from the channel, the
@@ -663,28 +664,34 @@ endorsement policy will be updated automatically. We previously needed endorseme
 from Org1 and Org2 (2 out of 2). Now we need endorsements from two organizations
 out of Org1, Org2, and Org3 (2 out of 3).
 
+Populate the ledger with some sample assets.
+
+.. code:: bash
+
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n basic --peerAddresses localhost:11051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt -c '{"function":"InitLedger","Args":[]}'
+
 You can query the chaincode to ensure that it has started on the Org3 peer. Note
 that you may need to wait for the chaincode container to start.
 
 .. code:: bash
 
-    peer chaincode query -C mychannel -n fabcar -c '{"Args":["queryAllCars"]}'
+    peer chaincode query -C mychannel -n basic -c '{"Args":["GetAllAssets"]}'
 
-You should see the initial list of cars that were added to the ledger as a
+You should see the initial list of assets that were added to the ledger as a
 response.
 
-Now, invoke the chaincode to add a new car to the ledger. In the command below,
+Now, invoke the chaincode to add a new asset to the ledger. In the command below,
 we target a peer in Org1 and Org3 to collect a sufficient number of endorsements.
 
 .. code:: bash
 
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n fabcar --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:11051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt -c '{"function":"createCar","Args":["CAR11","Honda","Accord","Black","Tom"]}'
+  peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:11051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt -c '{"function":"CreateAsset","Args":["asset7","black","5","Tom","320"]}'
 
-We can query again to see the new car, "CAR11" on the our the ledger:
+We can query again to see the new asset, "asset7" on the our the ledger:
 
 .. code:: bash
 
-    peer chaincode query -C mychannel -n fabcar -c '{"Args":["queryCar","CAR11"]}'
+    peer chaincode query -C mychannel -n basic -c '{"Args":["ReadAsset","asset7"]}'
 
 
 Conclusion
