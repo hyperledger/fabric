@@ -530,7 +530,6 @@ type KVStateUpdates struct {
 
 // ConfigHistoryRetriever allow retrieving history of collection configs
 type ConfigHistoryRetriever interface {
-	CollectionConfigAt(blockNum uint64, chaincodeName string) (*CollectionConfigInfo, error)
 	MostRecentCollectionConfigBelow(blockNum uint64, chaincodeName string) (*CollectionConfigInfo, error)
 }
 

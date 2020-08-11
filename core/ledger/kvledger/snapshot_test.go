@@ -740,9 +740,10 @@ func verifyCreatedLedger(t *testing.T,
 		require.NoError(t, err)
 		require.Equal(t, v, string(val))
 	}
-	for h, collConfigPkg := range e.collectionConfig {
-		collConfigInfo, err := l.configHistoryRetriever.CollectionConfigAt(h, e.namespace)
+	for committingBlock, collConfigPkg := range e.collectionConfig {
+		collConfigInfo, err := l.configHistoryRetriever.MostRecentCollectionConfigBelow(committingBlock+1, e.namespace)
 		require.NoError(t, err)
+		require.Equal(t, committingBlock, collConfigInfo.CommittingBlockNum)
 		require.True(t, proto.Equal(collConfigPkg, collConfigInfo.CollectionConfig))
 	}
 }

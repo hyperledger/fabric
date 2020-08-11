@@ -52,7 +52,7 @@ type kvLedger struct {
 	pvtdataStore           *pvtdatastorage.Store
 	txmgr                  *txmgr.LockBasedTxMgr
 	historyDB              *history.DB
-	configHistoryRetriever *confighistory.Retriever
+	configHistoryRetriever *collectionConfigHistoryRetriever
 	snapshotMgr            *snapshotMgr
 	blockAPIsRWLock        *sync.RWMutex
 	stats                  *ledgerStats
@@ -155,7 +155,11 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 	if err := l.recoverDBs(); err != nil {
 		return nil, err
 	}
-	l.configHistoryRetriever = initializer.configHistoryMgr.GetRetriever(ledgerID, l)
+	l.configHistoryRetriever = &collectionConfigHistoryRetriever{
+		Retriever:                     initializer.configHistoryMgr.GetRetriever(ledgerID),
+		DeployedChaincodeInfoProvider: txmgrInitializer.CCInfoProvider,
+		ledger:                        l,
+	}
 
 	if err := l.initSnapshotMgr(initializer); err != nil {
 		return nil, err
@@ -824,6 +828,52 @@ func (r *collectionInfoRetriever) CollectionInfo(chaincodeName, collectionName s
 	}
 	defer qe.Done()
 	return r.infoProvider.CollectionInfo(r.ledgerID, chaincodeName, collectionName, qe)
+}
+
+type collectionConfigHistoryRetriever struct {
+	*confighistory.Retriever
+	ledger.DeployedChaincodeInfoProvider
+
+	ledger *kvLedger
+}
+
+func (r *collectionConfigHistoryRetriever) MostRecentCollectionConfigBelow(
+	blockNum uint64,
+	chaincodeName string,
+) (*ledger.CollectionConfigInfo, error) {
+	explicitCollections, err := r.Retriever.MostRecentCollectionConfigBelow(blockNum, chaincodeName)
+	if err != nil {
+		return nil, errors.WithMessage(err, "error while retrieving explicit collections")
+	}
+	qe, err := r.ledger.NewQueryExecutor()
+	if err != nil {
+		return nil, err
+	}
+	defer qe.Done()
+	implicitCollections, err := r.ImplicitCollections(r.ledger.ledgerID, chaincodeName, qe)
+	if err != nil {
+		return nil, errors.WithMessage(err, "error while retrieving implicit collections")
+	}
+
+	combinedCollections := explicitCollections
+	if combinedCollections == nil {
+		if implicitCollections == nil {
+			return nil, nil
+		}
+		combinedCollections = &ledger.CollectionConfigInfo{
+			CollectionConfig: &peer.CollectionConfigPackage{},
+		}
+	}
+
+	for _, c := range implicitCollections {
+		cc := &peer.CollectionConfig{}
+		cc.Payload = &peer.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: c}
+		combinedCollections.CollectionConfig.Config = append(
+			combinedCollections.CollectionConfig.Config,
+			cc,
+		)
+	}
+	return combinedCollections, nil
 }
 
 type ccEventListenerAdaptor struct {

@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -174,12 +173,10 @@ func (m *Mgr) ImportFromSnapshot(ledgerID string, dir string) error {
 }
 
 // GetRetriever returns an implementation of `ledger.ConfigHistoryRetriever` for the given ledger id.
-func (m *Mgr) GetRetriever(ledgerID string, ledgerInfoRetriever LedgerInfoRetriever) *Retriever {
+func (m *Mgr) GetRetriever(ledgerID string) *Retriever {
 	return &Retriever{
-		ledgerInfoRetriever:    ledgerInfoRetriever,
-		ledgerID:               ledgerID,
-		deployedCCInfoProvider: m.ccInfoProvider,
-		dbHandle:               m.dbProvider.getDB(ledgerID),
+		ledgerID: ledgerID,
+		dbHandle: m.dbProvider.getDB(ledgerID),
 	}
 }
 
@@ -195,47 +192,17 @@ func (m *Mgr) Drop(ledgerid string) error {
 
 // Retriever helps consumer retrieve collection config history
 type Retriever struct {
-	ledgerInfoRetriever    LedgerInfoRetriever
-	ledgerID               string
-	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
-	dbHandle               *db
+	ledgerID string
+	dbHandle *db
 }
 
 // MostRecentCollectionConfigBelow implements function from the interface ledger.ConfigHistoryRetriever
 func (r *Retriever) MostRecentCollectionConfigBelow(blockNum uint64, chaincodeName string) (*ledger.CollectionConfigInfo, error) {
 	compositeKV, err := r.dbHandle.mostRecentEntryBelow(blockNum, collectionConfigNamespace, constructCollectionConfigKey(chaincodeName))
-	if err != nil {
+	if err != nil || compositeKV == nil {
 		return nil, err
 	}
-	implicitColls, err := r.getImplicitCollection(chaincodeName)
-	if err != nil {
-		return nil, err
-	}
-
-	return constructCollectionConfigInfo(compositeKV, implicitColls)
-}
-
-// CollectionConfigAt implements function from the interface ledger.ConfigHistoryRetriever
-func (r *Retriever) CollectionConfigAt(blockNum uint64, chaincodeName string) (*ledger.CollectionConfigInfo, error) {
-	info, err := r.ledgerInfoRetriever.GetBlockchainInfo()
-	if err != nil {
-		return nil, err
-	}
-	maxCommittedBlockNum := info.Height - 1
-	if maxCommittedBlockNum < blockNum {
-		return nil, &ledger.ErrCollectionConfigNotYetAvailable{MaxBlockNumCommitted: maxCommittedBlockNum,
-			Msg: fmt.Sprintf("The maximum block number committed [%d] is less than the requested block number [%d]", maxCommittedBlockNum, blockNum)}
-	}
-
-	compositeKV, err := r.dbHandle.entryAt(blockNum, collectionConfigNamespace, constructCollectionConfigKey(chaincodeName))
-	if err != nil {
-		return nil, err
-	}
-	implicitColls, err := r.getImplicitCollection(chaincodeName)
-	if err != nil {
-		return nil, err
-	}
-	return constructCollectionConfigInfo(compositeKV, implicitColls)
+	return compositeKVToCollectionConfig(compositeKV)
 }
 
 // ExportConfigHistory exports configuration history from the confighistoryDB to
@@ -306,15 +273,6 @@ func (r *Retriever) ExportConfigHistory(dir string, newHashFunc snapshot.NewHash
 	}, nil
 }
 
-func (r *Retriever) getImplicitCollection(chaincodeName string) ([]*peer.StaticCollectionConfig, error) {
-	qe, err := r.ledgerInfoRetriever.NewQueryExecutor()
-	if err != nil {
-		return nil, err
-	}
-	defer qe.Done()
-	return r.deployedCCInfoProvider.ImplicitCollections(r.ledgerID, chaincodeName, qe)
-}
-
 func prepareDBBatch(batch *batch, chaincodeCollConfigs map[string]*peer.CollectionConfigPackage, committingBlockNum uint64) error {
 	for ccName, collConfig := range chaincodeCollConfigs {
 		key := constructCollectionConfigKey(ccName)
@@ -349,41 +307,4 @@ func extractPublicUpdates(stateUpdates ledger.StateUpdates) map[string][]*kvrwse
 		m[ns] = updates.PublicUpdates
 	}
 	return m
-}
-
-func constructCollectionConfigInfo(
-	compositeKV *compositeKV,
-	implicitColls []*peer.StaticCollectionConfig,
-) (*ledger.CollectionConfigInfo, error) {
-	var collConf *ledger.CollectionConfigInfo
-	var err error
-
-	if compositeKV == nil && len(implicitColls) == 0 {
-		return nil, nil
-	}
-
-	collConf = &ledger.CollectionConfigInfo{
-		CollectionConfig: &peer.CollectionConfigPackage{},
-	}
-	if compositeKV != nil {
-		if collConf, err = compositeKVToCollectionConfig(compositeKV); err != nil {
-			return nil, err
-		}
-	}
-
-	for _, implicitColl := range implicitColls {
-		cc := &peer.CollectionConfig{}
-		cc.Payload = &peer.CollectionConfig_StaticCollectionConfig{StaticCollectionConfig: implicitColl}
-		collConf.CollectionConfig.Config = append(
-			collConf.CollectionConfig.Config,
-			cc,
-		)
-	}
-	return collConf, nil
-}
-
-// LedgerInfoRetriever retrieves the relevant info from ledger
-type LedgerInfoRetriever interface {
-	GetBlockchainInfo() (*common.BlockchainInfo, error)
-	NewQueryExecutor() (ledger.QueryExecutor, error)
 }

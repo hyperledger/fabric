@@ -26,6 +26,7 @@ import (
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -903,6 +904,224 @@ func TestCommitToPvtAndBlockstoreError(t *testing.T) {
 	pvtStoreCommitHt, err := kvlgr.pvtdataStore.LastCommittedBlockHeight()
 	require.NoError(t, err)
 	require.Equal(t, uint64(11), pvtStoreCommitHt)
+}
+
+func TestCollectionConfigHistoryRetriever(t *testing.T) {
+	var cleanup func()
+	ledgerID := "testLedger"
+	chaincodeName := "testChaincode"
+
+	var provider *Provider
+	var mockDeployedCCInfoProvider *mock.DeployedChaincodeInfoProvider
+	var lgr ledger.PeerLedger
+
+	init := func() {
+		var err error
+		conf, cleanupFunc := testConfig(t)
+		mockDeployedCCInfoProvider = &mock.DeployedChaincodeInfoProvider{}
+		provider = testutilNewProvider(conf, t, mockDeployedCCInfoProvider)
+		ledgerID := "testLedger"
+		_, gb := testutil.NewBlockGenerator(t, ledgerID, false)
+		lgr, err = provider.CreateFromGenesisBlock(gb)
+		require.NoError(t, err)
+		cleanup = func() {
+			lgr.Close()
+			provider.Close()
+			cleanupFunc()
+		}
+	}
+
+	testcases := []struct {
+		name                        string
+		implicitCollConfigs         []*pb.StaticCollectionConfig
+		explicitCollConfigs         *pb.CollectionConfigPackage
+		explicitCollConfigsBlockNum uint64
+		expectedOutput              *ledger.CollectionConfigInfo
+	}{
+		{
+			name: "both-implicit-and-explicit-coll-configs-exist",
+			implicitCollConfigs: []*pb.StaticCollectionConfig{
+				{
+					Name: "implicit-coll",
+				},
+			},
+			explicitCollConfigs: testutilCollConfigPkg(
+				[]*pb.StaticCollectionConfig{
+					{
+						Name: "explicit-coll",
+					},
+				},
+			),
+			explicitCollConfigsBlockNum: 25,
+
+			expectedOutput: &ledger.CollectionConfigInfo{
+				CollectionConfig: testutilCollConfigPkg(
+					[]*peer.StaticCollectionConfig{
+						{
+							Name: "explicit-coll",
+						},
+						{
+							Name: "implicit-coll",
+						},
+					},
+				),
+				CommittingBlockNum: 25,
+			},
+		},
+
+		{
+			name: "only-implicit-coll-configs-exist",
+			implicitCollConfigs: []*pb.StaticCollectionConfig{
+				{
+					Name: "implicit-coll",
+				},
+			},
+			explicitCollConfigs: nil,
+			expectedOutput: &ledger.CollectionConfigInfo{
+				CollectionConfig: testutilCollConfigPkg(
+					[]*peer.StaticCollectionConfig{
+						{
+							Name: "implicit-coll",
+						},
+					},
+				),
+			},
+		},
+
+		{
+			name: "only-explicit-coll-configs-exist",
+			explicitCollConfigs: testutilCollConfigPkg(
+				[]*pb.StaticCollectionConfig{
+					{
+						Name: "explicit-coll",
+					},
+				},
+			),
+			explicitCollConfigsBlockNum: 25,
+			expectedOutput: &ledger.CollectionConfigInfo{
+				CollectionConfig: testutilCollConfigPkg(
+					[]*peer.StaticCollectionConfig{
+						{
+							Name: "explicit-coll",
+						},
+					},
+				),
+				CommittingBlockNum: 25,
+			},
+		},
+
+		{
+			name:           "no-coll-configs-exist",
+			expectedOutput: nil,
+		},
+	}
+
+	for _, testcase := range testcases {
+		t.Run(
+			testcase.name,
+			func(t *testing.T) {
+				init()
+				defer cleanup()
+				// setup mock for implicit collections
+				mockDeployedCCInfoProvider.ImplicitCollectionsReturns(testcase.implicitCollConfigs, nil)
+				// setup mock so that it causes persisting the explicit collections in collection config history mgr
+				if testcase.explicitCollConfigs != nil {
+					testutilPersistExplicitCollectionConfig(
+						t,
+						provider,
+						mockDeployedCCInfoProvider,
+						ledgerID,
+						chaincodeName,
+						testcase.explicitCollConfigs,
+						testcase.explicitCollConfigsBlockNum,
+					)
+				}
+
+				r, err := lgr.GetConfigHistoryRetriever()
+				require.NoError(t, err)
+
+				actualOutput, err := r.MostRecentCollectionConfigBelow(testcase.explicitCollConfigsBlockNum+1, chaincodeName)
+				require.NoError(t, err)
+				require.Equal(t, testcase.expectedOutput, actualOutput)
+			},
+		)
+	}
+
+	t.Run("implicit-collection-retrieval-causes-error", func(t *testing.T) {
+		init()
+		defer cleanup()
+
+		mockDeployedCCInfoProvider.ImplicitCollectionsReturns(nil, errors.New("cannot-serve-implicit-collections"))
+		r, err := lgr.GetConfigHistoryRetriever()
+		require.NoError(t, err)
+
+		_, err = r.MostRecentCollectionConfigBelow(50, chaincodeName)
+		require.EqualError(t, err, "error while retrieving implicit collections: cannot-serve-implicit-collections")
+	})
+
+	t.Run("explicit-collection-retrieval-causes-error", func(t *testing.T) {
+		init()
+		defer cleanup()
+		provider.configHistoryMgr.Close()
+
+		r, err := lgr.GetConfigHistoryRetriever()
+		require.NoError(t, err)
+
+		_, err = r.MostRecentCollectionConfigBelow(50, chaincodeName)
+		require.Contains(t, err.Error(), "error while retrieving explicit collections")
+	})
+}
+
+func testutilPersistExplicitCollectionConfig(
+	t *testing.T,
+	provider *Provider,
+	mockDeployedCCInfoProvider *mock.DeployedChaincodeInfoProvider,
+	ledgerID string,
+	chaincodeName string,
+	collConfigPkg *pb.CollectionConfigPackage,
+	committingBlockNum uint64,
+) {
+	mockDeployedCCInfoProvider.UpdatedChaincodesReturns(
+		[]*ledger.ChaincodeLifecycleInfo{
+			{
+				Name: chaincodeName,
+			},
+		},
+		nil,
+	)
+	mockDeployedCCInfoProvider.ChaincodeInfoReturns(
+		&ledger.DeployedChaincodeInfo{
+			Name:                        chaincodeName,
+			ExplicitCollectionConfigPkg: collConfigPkg,
+		},
+		nil,
+	)
+	err := provider.configHistoryMgr.HandleStateUpdates(
+		&ledger.StateUpdateTrigger{
+			LedgerID:           ledgerID,
+			CommittingBlockNum: committingBlockNum,
+		},
+	)
+	require.NoError(t, err)
+}
+
+func testutilCollConfigPkg(colls []*pb.StaticCollectionConfig) *pb.CollectionConfigPackage {
+	if len(colls) == 0 {
+		return nil
+	}
+	pkg := &peer.CollectionConfigPackage{
+		Config: []*peer.CollectionConfig{},
+	}
+	for _, coll := range colls {
+		pkg.Config = append(pkg.Config,
+			&peer.CollectionConfig{
+				Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: coll,
+				},
+			},
+		)
+	}
+	return pkg
 }
 
 func sampleDataWithPvtdataForSelectiveTx(t *testing.T, bg *testutil.BlockGenerator) []*ledger.BlockAndPvtData {
