@@ -206,7 +206,7 @@ func (r *FileReader) decodeBytes() ([]byte, error) {
 	if len(r.reusableByteSlice) < size {
 		r.reusableByteSlice = make([]byte, size)
 	}
-	if _, err := r.bufReader.Read(r.reusableByteSlice[0:size]); err != nil {
+	if _, err := io.ReadFull(r.bufReader, r.reusableByteSlice[0:size]); err != nil {
 		return nil, errors.Wrapf(err, "error while reading from snapshot file: %s", r.file.Name())
 	}
 	return r.reusableByteSlice[0:size], nil

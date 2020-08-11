@@ -100,6 +100,33 @@ func TestFileCreateAndRead(t *testing.T) {
 	require.Equal(t, []byte{}, b)
 }
 
+func TestFileCreateAndLargeValue(t *testing.T) {
+	testDir := testPath(t)
+	defer os.RemoveAll(testDir)
+
+	// create file and encode some data
+	fileWriter, err := CreateFile(path.Join(testDir, "dataFile"), byte(5), testNewHashFunc)
+	require.NoError(t, err)
+	defer fileWriter.Close()
+	largeData := make([]byte, 20*1024)
+	largeData[0] = byte(1)
+	largeData[len(largeData)-1] = byte(2)
+	err = fileWriter.EncodeBytes(largeData)
+	require.NoError(t, err)
+	_, err = fileWriter.Done()
+	require.NoError(t, err)
+
+	fileReader, err := OpenFile(path.Join(testDir, "dataFile"), byte(5))
+	require.NoError(t, err)
+	defer fileReader.Close()
+
+	bytesRead, err := fileReader.DecodeBytes()
+	require.NoError(t, err)
+	require.Equal(t, 20*1024, len(bytesRead))
+	require.Equal(t, byte(1), bytesRead[0])
+	require.Equal(t, byte(2), bytesRead[len(bytesRead)-1])
+}
+
 func TestFileCreatorErrorPropagation(t *testing.T) {
 	testPath := testPath(t)
 	defer os.RemoveAll(testPath)
