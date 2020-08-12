@@ -50,6 +50,7 @@ type impl struct {
 
 	cacheLock   sync.RWMutex
 	handleCache map[string]pkcs11.ObjectHandle
+	keyCache    map[string]bccsp.Key
 }
 
 // New WithParams returns a new instance of the software-based BCCSP
@@ -79,6 +80,7 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 		sessions:    map[pkcs11.SessionHandle]struct{}{},
 		handleCache: map[string]pkcs11.ObjectHandle{},
 		softVerify:  opts.SoftVerify,
+		keyCache:    map[string]bccsp.Key{},
 		immutable:   opts.Immutable,
 	}
 
@@ -200,18 +202,39 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 	}
 }
 
+func (csp *impl) cacheKey(ski []byte, key bccsp.Key) {
+	csp.cacheLock.Lock()
+	csp.keyCache[hex.EncodeToString(ski)] = key
+	csp.cacheLock.Unlock()
+}
+
+func (csp *impl) cachedKey(ski []byte) (bccsp.Key, bool) {
+	csp.cacheLock.RLock()
+	defer csp.cacheLock.RUnlock()
+	key, ok := csp.keyCache[hex.EncodeToString(ski)]
+	return key, ok
+}
+
 // GetKey returns the key this CSP associates to
 // the Subject Key Identifier ski.
 func (csp *impl) GetKey(ski []byte) (bccsp.Key, error) {
+	if key, ok := csp.cachedKey(ski); ok {
+		return key, nil
+	}
+
 	pubKey, isPriv, err := csp.getECKey(ski)
 	if err != nil {
 		logger.Debugf("Key not found using PKCS11: %v", err)
 		return csp.BCCSP.GetKey(ski)
 	}
+
+	var key bccsp.Key = &ecdsaPublicKey{ski, pubKey}
 	if isPriv {
-		return &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pubKey}}, nil
+		key = &ecdsaPrivateKey{ski, ecdsaPublicKey{ski, pubKey}}
 	}
-	return &ecdsaPublicKey{ski, pubKey}, nil
+
+	csp.cacheKey(ski, key)
+	return key, nil
 }
 
 // Sign signs digest using key k.
@@ -337,7 +360,7 @@ func (csp *impl) closeSession(session pkcs11.SessionHandle) {
 	// purge the handle cache if the last session closes
 	delete(csp.sessions, session)
 	if len(csp.sessions) == 0 {
-		csp.clearHandleCache()
+		csp.clearCaches()
 	}
 }
 
@@ -646,10 +669,11 @@ func (csp *impl) cacheHandle(keyType keyType, ski []byte, handle pkcs11.ObjectHa
 	csp.handleCache[cacheKey] = handle
 }
 
-func (csp *impl) clearHandleCache() {
+func (csp *impl) clearCaches() {
 	csp.cacheLock.Lock()
 	defer csp.cacheLock.Unlock()
 	csp.handleCache = map[string]pkcs11.ObjectHandle{}
+	csp.keyCache = map[string]bccsp.Key{}
 }
 
 func (csp *impl) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte, keyType keyType) (pkcs11.ObjectHandle, error) {
