@@ -1352,7 +1352,7 @@ func TestPKCS11GetSession(t *testing.T) {
 	}
 }
 
-func TestCaching(t *testing.T) {
+func TestSessionHandleCaching(t *testing.T) {
 	defer func(s int) { sessionCacheSize = s }(sessionCacheSize)
 	opts := PKCS11Opts{
 		Hash:           "SHA2",
@@ -1488,6 +1488,61 @@ func TestCaching(t *testing.T) {
 		require.Empty(t, pi.sessions, "expected sessions to be empty")
 		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
 	})
+}
+
+func TestKeyCache(t *testing.T) {
+	defer func(s int) { sessionCacheSize = s }(sessionCacheSize)
+	sessionCacheSize = 1
+
+	opts := PKCS11Opts{
+		Hash:           "SHA2",
+		Security:       256,
+		SoftwareVerify: false,
+	}
+	opts.Library, opts.Pin, opts.Label = FindPKCS11Lib()
+
+	provider, err := New(opts, currentKS)
+	require.NoError(t, err)
+	pi := provider.(*impl)
+	defer pi.ctx.Destroy()
+
+	require.Empty(t, pi.keyCache)
+
+	_, err = pi.GetKey([]byte("nonsense-key"))
+	require.Error(t, err) // message comes from software keystore
+	require.Empty(t, pi.keyCache)
+
+	k, err := pi.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+	require.NoError(t, err)
+	_, ok := pi.cachedKey(k.SKI())
+	require.False(t, ok, "created keys are not (currently) cached")
+
+	key, err := pi.GetKey(k.SKI())
+	require.NoError(t, err)
+	cached, ok := pi.cachedKey(k.SKI())
+	require.True(t, ok, "key should be cached")
+	require.Same(t, key, cached, "key from cache should be what was found")
+
+	// Kill all valid cached sessions
+	pi.slot = ^uint(0)
+	sess, err := pi.getSession()
+	require.NoError(t, err)
+	require.Len(t, pi.sessions, 1, "should have one active session")
+	require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
+	pi.returnSession(pkcs11.SessionHandle(^uint(0)))
+	require.Len(t, pi.sessions, 1, "should have one active session")
+	require.Len(t, pi.sessPool, 1, "sessionPool should be empty")
+
+	_, ok = pi.cachedKey(k.SKI())
+	require.True(t, ok, "key should remain in cache due to active sessions")
+
+	// Force caches to be cleared
+	pi.returnSession(sess)
+	require.Empty(t, pi.sessions, "sessions should be empty")
+	require.Empty(t, pi.keyCache, "key cache should be empty")
+
+	_, ok = pi.cachedKey(k.SKI())
+	require.False(t, ok, "key should not be in cache")
 }
 
 func TestPKCS11ECKeySignVerify(t *testing.T) {
