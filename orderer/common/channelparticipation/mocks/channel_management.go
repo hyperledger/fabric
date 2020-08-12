@@ -4,16 +4,25 @@ package mocks
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/orderer/common/channelparticipation"
 	"github.com/hyperledger/fabric/orderer/common/types"
 )
 
 type ChannelManagement struct {
-	ChannelInfoStub        func(string) (types.ChannelInfo, error)
+	ChannelListStub        func() types.ChannelList
+	channelListMutex       sync.RWMutex
+	channelListArgsForCall []struct{}
+	channelListReturns     struct {
+		result1 types.ChannelList
+	}
+	channelListReturnsOnCall map[int]struct {
+		result1 types.ChannelList
+	}
+	ChannelInfoStub        func(channelID string) (types.ChannelInfo, error)
 	channelInfoMutex       sync.RWMutex
 	channelInfoArgsForCall []struct {
-		arg1 string
+		channelID string
 	}
 	channelInfoReturns struct {
 		result1 types.ChannelInfo
@@ -23,22 +32,12 @@ type ChannelManagement struct {
 		result1 types.ChannelInfo
 		result2 error
 	}
-	ChannelListStub        func() types.ChannelList
-	channelListMutex       sync.RWMutex
-	channelListArgsForCall []struct {
-	}
-	channelListReturns struct {
-		result1 types.ChannelList
-	}
-	channelListReturnsOnCall map[int]struct {
-		result1 types.ChannelList
-	}
-	JoinChannelStub        func(string, *common.Block, bool) (types.ChannelInfo, error)
+	JoinChannelStub        func(channelID string, configBlock *cb.Block, isAppChannel bool) (types.ChannelInfo, error)
 	joinChannelMutex       sync.RWMutex
 	joinChannelArgsForCall []struct {
-		arg1 string
-		arg2 *common.Block
-		arg3 bool
+		channelID    string
+		configBlock  *cb.Block
+		isAppChannel bool
 	}
 	joinChannelReturns struct {
 		result1 types.ChannelInfo
@@ -48,11 +47,10 @@ type ChannelManagement struct {
 		result1 types.ChannelInfo
 		result2 error
 	}
-	RemoveChannelStub        func(string, bool) error
+	RemoveChannelStub        func(channelID string) error
 	removeChannelMutex       sync.RWMutex
 	removeChannelArgsForCall []struct {
-		arg1 string
-		arg2 bool
+		channelID string
 	}
 	removeChannelReturns struct {
 		result1 error
@@ -64,22 +62,61 @@ type ChannelManagement struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChannelManagement) ChannelInfo(arg1 string) (types.ChannelInfo, error) {
+func (fake *ChannelManagement) ChannelList() types.ChannelList {
+	fake.channelListMutex.Lock()
+	ret, specificReturn := fake.channelListReturnsOnCall[len(fake.channelListArgsForCall)]
+	fake.channelListArgsForCall = append(fake.channelListArgsForCall, struct{}{})
+	fake.recordInvocation("ChannelList", []interface{}{})
+	fake.channelListMutex.Unlock()
+	if fake.ChannelListStub != nil {
+		return fake.ChannelListStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fake.channelListReturns.result1
+}
+
+func (fake *ChannelManagement) ChannelListCallCount() int {
+	fake.channelListMutex.RLock()
+	defer fake.channelListMutex.RUnlock()
+	return len(fake.channelListArgsForCall)
+}
+
+func (fake *ChannelManagement) ChannelListReturns(result1 types.ChannelList) {
+	fake.ChannelListStub = nil
+	fake.channelListReturns = struct {
+		result1 types.ChannelList
+	}{result1}
+}
+
+func (fake *ChannelManagement) ChannelListReturnsOnCall(i int, result1 types.ChannelList) {
+	fake.ChannelListStub = nil
+	if fake.channelListReturnsOnCall == nil {
+		fake.channelListReturnsOnCall = make(map[int]struct {
+			result1 types.ChannelList
+		})
+	}
+	fake.channelListReturnsOnCall[i] = struct {
+		result1 types.ChannelList
+	}{result1}
+}
+
+func (fake *ChannelManagement) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 	fake.channelInfoMutex.Lock()
 	ret, specificReturn := fake.channelInfoReturnsOnCall[len(fake.channelInfoArgsForCall)]
 	fake.channelInfoArgsForCall = append(fake.channelInfoArgsForCall, struct {
-		arg1 string
-	}{arg1})
-	fake.recordInvocation("ChannelInfo", []interface{}{arg1})
+		channelID string
+	}{channelID})
+	fake.recordInvocation("ChannelInfo", []interface{}{channelID})
 	fake.channelInfoMutex.Unlock()
 	if fake.ChannelInfoStub != nil {
-		return fake.ChannelInfoStub(arg1)
+		return fake.ChannelInfoStub(channelID)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.channelInfoReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fake.channelInfoReturns.result1, fake.channelInfoReturns.result2
 }
 
 func (fake *ChannelManagement) ChannelInfoCallCount() int {
@@ -88,22 +125,13 @@ func (fake *ChannelManagement) ChannelInfoCallCount() int {
 	return len(fake.channelInfoArgsForCall)
 }
 
-func (fake *ChannelManagement) ChannelInfoCalls(stub func(string) (types.ChannelInfo, error)) {
-	fake.channelInfoMutex.Lock()
-	defer fake.channelInfoMutex.Unlock()
-	fake.ChannelInfoStub = stub
-}
-
 func (fake *ChannelManagement) ChannelInfoArgsForCall(i int) string {
 	fake.channelInfoMutex.RLock()
 	defer fake.channelInfoMutex.RUnlock()
-	argsForCall := fake.channelInfoArgsForCall[i]
-	return argsForCall.arg1
+	return fake.channelInfoArgsForCall[i].channelID
 }
 
 func (fake *ChannelManagement) ChannelInfoReturns(result1 types.ChannelInfo, result2 error) {
-	fake.channelInfoMutex.Lock()
-	defer fake.channelInfoMutex.Unlock()
 	fake.ChannelInfoStub = nil
 	fake.channelInfoReturns = struct {
 		result1 types.ChannelInfo
@@ -112,8 +140,6 @@ func (fake *ChannelManagement) ChannelInfoReturns(result1 types.ChannelInfo, res
 }
 
 func (fake *ChannelManagement) ChannelInfoReturnsOnCall(i int, result1 types.ChannelInfo, result2 error) {
-	fake.channelInfoMutex.Lock()
-	defer fake.channelInfoMutex.Unlock()
 	fake.ChannelInfoStub = nil
 	if fake.channelInfoReturnsOnCall == nil {
 		fake.channelInfoReturnsOnCall = make(map[int]struct {
@@ -127,76 +153,23 @@ func (fake *ChannelManagement) ChannelInfoReturnsOnCall(i int, result1 types.Cha
 	}{result1, result2}
 }
 
-func (fake *ChannelManagement) ChannelList() types.ChannelList {
-	fake.channelListMutex.Lock()
-	ret, specificReturn := fake.channelListReturnsOnCall[len(fake.channelListArgsForCall)]
-	fake.channelListArgsForCall = append(fake.channelListArgsForCall, struct {
-	}{})
-	fake.recordInvocation("ChannelList", []interface{}{})
-	fake.channelListMutex.Unlock()
-	if fake.ChannelListStub != nil {
-		return fake.ChannelListStub()
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.channelListReturns
-	return fakeReturns.result1
-}
-
-func (fake *ChannelManagement) ChannelListCallCount() int {
-	fake.channelListMutex.RLock()
-	defer fake.channelListMutex.RUnlock()
-	return len(fake.channelListArgsForCall)
-}
-
-func (fake *ChannelManagement) ChannelListCalls(stub func() types.ChannelList) {
-	fake.channelListMutex.Lock()
-	defer fake.channelListMutex.Unlock()
-	fake.ChannelListStub = stub
-}
-
-func (fake *ChannelManagement) ChannelListReturns(result1 types.ChannelList) {
-	fake.channelListMutex.Lock()
-	defer fake.channelListMutex.Unlock()
-	fake.ChannelListStub = nil
-	fake.channelListReturns = struct {
-		result1 types.ChannelList
-	}{result1}
-}
-
-func (fake *ChannelManagement) ChannelListReturnsOnCall(i int, result1 types.ChannelList) {
-	fake.channelListMutex.Lock()
-	defer fake.channelListMutex.Unlock()
-	fake.ChannelListStub = nil
-	if fake.channelListReturnsOnCall == nil {
-		fake.channelListReturnsOnCall = make(map[int]struct {
-			result1 types.ChannelList
-		})
-	}
-	fake.channelListReturnsOnCall[i] = struct {
-		result1 types.ChannelList
-	}{result1}
-}
-
-func (fake *ChannelManagement) JoinChannel(arg1 string, arg2 *common.Block, arg3 bool) (types.ChannelInfo, error) {
+func (fake *ChannelManagement) JoinChannel(channelID string, configBlock *cb.Block, isAppChannel bool) (types.ChannelInfo, error) {
 	fake.joinChannelMutex.Lock()
 	ret, specificReturn := fake.joinChannelReturnsOnCall[len(fake.joinChannelArgsForCall)]
 	fake.joinChannelArgsForCall = append(fake.joinChannelArgsForCall, struct {
-		arg1 string
-		arg2 *common.Block
-		arg3 bool
-	}{arg1, arg2, arg3})
-	fake.recordInvocation("JoinChannel", []interface{}{arg1, arg2, arg3})
+		channelID    string
+		configBlock  *cb.Block
+		isAppChannel bool
+	}{channelID, configBlock, isAppChannel})
+	fake.recordInvocation("JoinChannel", []interface{}{channelID, configBlock, isAppChannel})
 	fake.joinChannelMutex.Unlock()
 	if fake.JoinChannelStub != nil {
-		return fake.JoinChannelStub(arg1, arg2, arg3)
+		return fake.JoinChannelStub(channelID, configBlock, isAppChannel)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.joinChannelReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fake.joinChannelReturns.result1, fake.joinChannelReturns.result2
 }
 
 func (fake *ChannelManagement) JoinChannelCallCount() int {
@@ -205,22 +178,13 @@ func (fake *ChannelManagement) JoinChannelCallCount() int {
 	return len(fake.joinChannelArgsForCall)
 }
 
-func (fake *ChannelManagement) JoinChannelCalls(stub func(string, *common.Block, bool) (types.ChannelInfo, error)) {
-	fake.joinChannelMutex.Lock()
-	defer fake.joinChannelMutex.Unlock()
-	fake.JoinChannelStub = stub
-}
-
-func (fake *ChannelManagement) JoinChannelArgsForCall(i int) (string, *common.Block, bool) {
+func (fake *ChannelManagement) JoinChannelArgsForCall(i int) (string, *cb.Block, bool) {
 	fake.joinChannelMutex.RLock()
 	defer fake.joinChannelMutex.RUnlock()
-	argsForCall := fake.joinChannelArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+	return fake.joinChannelArgsForCall[i].channelID, fake.joinChannelArgsForCall[i].configBlock, fake.joinChannelArgsForCall[i].isAppChannel
 }
 
 func (fake *ChannelManagement) JoinChannelReturns(result1 types.ChannelInfo, result2 error) {
-	fake.joinChannelMutex.Lock()
-	defer fake.joinChannelMutex.Unlock()
 	fake.JoinChannelStub = nil
 	fake.joinChannelReturns = struct {
 		result1 types.ChannelInfo
@@ -229,8 +193,6 @@ func (fake *ChannelManagement) JoinChannelReturns(result1 types.ChannelInfo, res
 }
 
 func (fake *ChannelManagement) JoinChannelReturnsOnCall(i int, result1 types.ChannelInfo, result2 error) {
-	fake.joinChannelMutex.Lock()
-	defer fake.joinChannelMutex.Unlock()
 	fake.JoinChannelStub = nil
 	if fake.joinChannelReturnsOnCall == nil {
 		fake.joinChannelReturnsOnCall = make(map[int]struct {
@@ -244,23 +206,21 @@ func (fake *ChannelManagement) JoinChannelReturnsOnCall(i int, result1 types.Cha
 	}{result1, result2}
 }
 
-func (fake *ChannelManagement) RemoveChannel(arg1 string, arg2 bool) error {
+func (fake *ChannelManagement) RemoveChannel(channelID string) error {
 	fake.removeChannelMutex.Lock()
 	ret, specificReturn := fake.removeChannelReturnsOnCall[len(fake.removeChannelArgsForCall)]
 	fake.removeChannelArgsForCall = append(fake.removeChannelArgsForCall, struct {
-		arg1 string
-		arg2 bool
-	}{arg1, arg2})
-	fake.recordInvocation("RemoveChannel", []interface{}{arg1, arg2})
+		channelID string
+	}{channelID})
+	fake.recordInvocation("RemoveChannel", []interface{}{channelID})
 	fake.removeChannelMutex.Unlock()
 	if fake.RemoveChannelStub != nil {
-		return fake.RemoveChannelStub(arg1, arg2)
+		return fake.RemoveChannelStub(channelID)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.removeChannelReturns
-	return fakeReturns.result1
+	return fake.removeChannelReturns.result1
 }
 
 func (fake *ChannelManagement) RemoveChannelCallCount() int {
@@ -269,22 +229,13 @@ func (fake *ChannelManagement) RemoveChannelCallCount() int {
 	return len(fake.removeChannelArgsForCall)
 }
 
-func (fake *ChannelManagement) RemoveChannelCalls(stub func(string, bool) error) {
-	fake.removeChannelMutex.Lock()
-	defer fake.removeChannelMutex.Unlock()
-	fake.RemoveChannelStub = stub
-}
-
-func (fake *ChannelManagement) RemoveChannelArgsForCall(i int) (string, bool) {
+func (fake *ChannelManagement) RemoveChannelArgsForCall(i int) string {
 	fake.removeChannelMutex.RLock()
 	defer fake.removeChannelMutex.RUnlock()
-	argsForCall := fake.removeChannelArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return fake.removeChannelArgsForCall[i].channelID
 }
 
 func (fake *ChannelManagement) RemoveChannelReturns(result1 error) {
-	fake.removeChannelMutex.Lock()
-	defer fake.removeChannelMutex.Unlock()
 	fake.RemoveChannelStub = nil
 	fake.removeChannelReturns = struct {
 		result1 error
@@ -292,8 +243,6 @@ func (fake *ChannelManagement) RemoveChannelReturns(result1 error) {
 }
 
 func (fake *ChannelManagement) RemoveChannelReturnsOnCall(i int, result1 error) {
-	fake.removeChannelMutex.Lock()
-	defer fake.removeChannelMutex.Unlock()
 	fake.RemoveChannelStub = nil
 	if fake.removeChannelReturnsOnCall == nil {
 		fake.removeChannelReturnsOnCall = make(map[int]struct {
@@ -308,10 +257,10 @@ func (fake *ChannelManagement) RemoveChannelReturnsOnCall(i int, result1 error) 
 func (fake *ChannelManagement) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.channelInfoMutex.RLock()
-	defer fake.channelInfoMutex.RUnlock()
 	fake.channelListMutex.RLock()
 	defer fake.channelListMutex.RUnlock()
+	fake.channelInfoMutex.RLock()
+	defer fake.channelInfoMutex.RUnlock()
 	fake.joinChannelMutex.RLock()
 	defer fake.joinChannelMutex.RUnlock()
 	fake.removeChannelMutex.RLock()

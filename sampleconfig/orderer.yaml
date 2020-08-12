@@ -348,10 +348,6 @@ ChannelParticipation:
     # Channel participation API is enabled.
     Enabled: false
 
-    # Permanently remove storage resources when a channel is removed.
-    # Defines the default behavior of channel removal.
-    RemoveStorage: false
-
     # The maximum size of the request body when joining a channel.
     MaxRequestBodySize: 1 MB
 

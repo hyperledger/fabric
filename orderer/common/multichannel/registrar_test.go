@@ -869,13 +869,13 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		registrar.Initialize(mockConsenters)
 
 		t.Run("reject removal of app channel", func(t *testing.T) {
-			err = registrar.RemoveChannel("some-app-channel", false)
+			err = registrar.RemoveChannel("some-app-channel")
 			require.EqualError(t, err, "system channel exists")
 		})
 
 		// TODO FAB-17965
 		t.Run("rejects removal of system channel (temporarily)", func(t *testing.T) {
-			err = registrar.RemoveChannel("system-channel", false)
+			err = registrar.RemoveChannel("system-channel")
 			require.EqualError(t, err, "not yet implemented")
 		})
 	})
@@ -902,12 +902,12 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		require.NotNil(t, registrar.GetChain("my-non-raft-channel"))
 
 		t.Run("when channel id does not exist", func(t *testing.T) {
-			err = registrar.RemoveChannel("some-raft-channel", false)
+			err = registrar.RemoveChannel("some-raft-channel")
 			require.EqualError(t, err, "channel does not exist")
 		})
 
 		t.Run("when channel id is blank", func(t *testing.T) {
-			err = registrar.RemoveChannel("", false)
+			err = registrar.RemoveChannel("")
 			require.EqualError(t, err, "channel does not exist")
 		})
 	})
@@ -969,7 +969,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 			require.NotNil(t, registrar.GetChain("my-raft-channel"))
 			require.Contains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
 
-			err = registrar.RemoveChannel("my-raft-channel", false)
+			err = registrar.RemoveChannel("my-raft-channel")
 			require.NoError(t, err)
 
 			// After removing the channel, it no longer exists in the registrar or the ledger
@@ -996,7 +996,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 			require.Equal(t, types.ChannelInfo{Name: "my-follower-raft-channel", URL: "", ClusterRelation: "follower", Status: "onboarding", Height: 0}, info)
 			require.Contains(t, ledgerFactory.ChannelIDs(), "my-follower-raft-channel")
 
-			err = registrar.RemoveChannel("my-follower-raft-channel", false)
+			err = registrar.RemoveChannel("my-follower-raft-channel")
 			require.NoError(t, err)
 
 			// After removing the channel, it no longer exists in the registrar or the ledger

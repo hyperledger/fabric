@@ -596,8 +596,7 @@ func (r *Registrar) createFollower(
 }
 
 // RemoveChannel instructs the orderer to remove a channel.
-// Depending on the removeStorage parameter, the storage resources are either removed or archived.
-func (r *Registrar) RemoveChannel(channelID string, removeStorage bool) error {
+func (r *Registrar) RemoveChannel(channelID string) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
