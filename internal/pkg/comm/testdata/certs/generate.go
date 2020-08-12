@@ -158,6 +158,7 @@ func genClientCertificateECDSA(name string, signKey *ecdsa.PrivateKey, signCert 
 	subject.CommonName = name
 
 	template.Subject = subject
+	template.DNSNames = []string{name}
 
 	_, err = genCertificateECDSA(name, &template, signCert, &key.PublicKey, signKey)
 
@@ -191,6 +192,7 @@ func genCertificateAuthorityECDSA(name string) (*ecdsa.PrivateKey, *x509.Certifi
 
 	template.Subject = subject
 	template.SubjectKeyId = []byte{1, 2, 3, 4}
+	template.DNSNames = []string{name}
 
 	x509Cert, err := genCertificateECDSA(name, &template, &template, &key.PublicKey, key)
 
@@ -224,6 +226,7 @@ func genIntermediateCertificateAuthorityECDSA(name string, signKey *ecdsa.Privat
 
 	template.Subject = subject
 	template.SubjectKeyId = []byte{1, 2, 3, 4}
+	template.DNSNames = []string{name}
 
 	x509Cert, err := genCertificateECDSA(name, &template, signCert, &key.PublicKey, signKey)
 
