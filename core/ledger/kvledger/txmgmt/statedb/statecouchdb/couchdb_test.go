@@ -707,9 +707,9 @@ func TestPrefixScan(t *testing.T) {
 
 	//Save documents
 	for i := 0; i < 20; i++ {
-		id1 := string(0) + string(i) + string(0)
-		id2 := string(0) + string(i) + string(1)
-		id3 := string(0) + string(i) + string(utf8.MaxRune-1)
+		id1 := string(rune(0)) + string(rune(i)) + string(rune(0))
+		id2 := string(rune(0)) + string(rune(i)) + string(rune(1))
+		id3 := string(rune(0)) + string(rune(i)) + string(utf8.MaxRune-1)
 		_, saveerr := db.saveDoc(id1, "", &couchDoc{jsonValue: assetJSON, attachments: nil})
 		require.NoError(t, saveerr, "Error when trying to save a document")
 		_, saveerr = db.saveDoc(id2, "", &couchDoc{jsonValue: assetJSON, attachments: nil})
@@ -718,7 +718,7 @@ func TestPrefixScan(t *testing.T) {
 		require.NoError(t, saveerr, "Error when trying to save a document")
 
 	}
-	startKey := string(0) + string(10)
+	startKey := string(rune(0)) + string(rune(10))
 	endKey := startKey + string(utf8.MaxRune)
 	_, _, geterr := db.readDoc(endKey)
 	require.NoError(t, geterr, "Error when trying to get lastkey")
@@ -728,9 +728,9 @@ func TestPrefixScan(t *testing.T) {
 	require.NotNil(t, resultsPtr)
 	results := resultsPtr
 	require.Equal(t, 3, len(results))
-	require.Equal(t, string(0)+string(10)+string(0), results[0].id)
-	require.Equal(t, string(0)+string(10)+string(1), results[1].id)
-	require.Equal(t, string(0)+string(10)+string(utf8.MaxRune-1), results[2].id)
+	require.Equal(t, string(rune(0))+string(rune(10))+string(rune(0)), results[0].id)
+	require.Equal(t, string(rune(0))+string(rune(10))+string(rune(1)), results[1].id)
+	require.Equal(t, string(rune(0))+string(rune(10))+string(utf8.MaxRune-1), results[2].id)
 
 	//Drop the database
 	errdbdrop := db.dropDatabase()

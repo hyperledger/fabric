@@ -854,7 +854,7 @@ func (n *Network) bootstrapIdemix() {
 			CAInput:          output,
 			Output:           userOutput,
 			OrgUnit:          org.Domain,
-			EnrollmentID:     "User" + string(1),
+			EnrollmentID:     "User1",
 			RevocationHandle: fmt.Sprintf("1%d%d", 1, j),
 		})
 		Expect(err).NotTo(HaveOccurred())
