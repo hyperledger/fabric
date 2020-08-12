@@ -32,6 +32,19 @@ var (
 	sessionCacheSize = 10
 )
 
+type impl struct {
+	bccsp.BCCSP
+
+	slot     uint
+	pin      string
+	ctx      *pkcs11.Ctx
+	sessions chan pkcs11.SessionHandle
+
+	conf       *config
+	softVerify bool
+	immutable  bool
+}
+
 // New WithParams returns a new instance of the software-based BCCSP
 // set at the passed security level, hash family and KeyStore.
 func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
@@ -42,55 +55,58 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 		return nil, errors.Wrapf(err, "Failed initializing configuration")
 	}
 
-	// Check KeyStore
-	if keyStore == nil {
-		return nil, errors.New("Invalid bccsp.KeyStore instance. It must be different from nil")
-	}
-
 	swCSP, err := sw.NewWithParams(opts.SecLevel, opts.HashFamily, keyStore)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed initializing fallback SW BCCSP")
 	}
 
-	lib := opts.Library
-	pin := opts.Pin
-	label := opts.Label
-	ctx, slot, session, err := loadLib(lib, pin, label)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed initializing PKCS11 library %s %s",
-			lib, label)
-	}
-
-	sessions := make(chan pkcs11.SessionHandle, sessionCacheSize)
 	csp := &impl{
 		BCCSP:      swCSP,
 		conf:       conf,
-		ctx:        ctx,
-		sessions:   sessions,
-		slot:       slot,
-		pin:        pin,
-		lib:        lib,
+		sessions:   make(chan pkcs11.SessionHandle, sessionCacheSize),
 		softVerify: opts.SoftVerify,
 		immutable:  opts.Immutable,
 	}
-	csp.returnSession(*session)
-	return csp, nil
+
+	return csp.initialize(opts)
 }
 
-type impl struct {
-	bccsp.BCCSP
+func (csp *impl) initialize(opts PKCS11Opts) (*impl, error) {
+	if opts.Library == "" {
+		return nil, fmt.Errorf("pkcs11: library path not provided")
+	}
 
-	conf *config
+	ctx := pkcs11.New(opts.Library)
+	if ctx == nil {
+		return nil, fmt.Errorf("pkcs11: instantiation failed for %s", opts.Library)
+	}
 
-	ctx      *pkcs11.Ctx
-	sessions chan pkcs11.SessionHandle
-	slot     uint
-	pin      string
+	ctx.Initialize()
+	slots, err := ctx.GetSlotList(true)
+	if err != nil {
+		return nil, errors.Wrap(err, "pkcs11: get slot list")
+	}
 
-	lib        string
-	softVerify bool
-	//Immutable flag makes object immutable
-	immutable bool
+	for _, s := range slots {
+		info, err := ctx.GetTokenInfo(s)
+		if err != nil || opts.Label != info.Label {
+			continue
+		}
+
+		csp.ctx = ctx
+		csp.slot = s
+		csp.pin = opts.Pin
+
+		session, err := createSession(ctx, s, opts.Pin)
+		if err != nil {
+			return nil, err
+		}
+
+		csp.returnSession(session)
+		return csp, nil
+	}
+
+	return nil, errors.Errorf("pkcs11: could not find token with label %s", opts.Label)
 }
 
 // KeyGen generates a key using opts.
@@ -240,74 +256,6 @@ func (csp *impl) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts
 // The opts argument should be appropriate for the primitive used.
 func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) ([]byte, error) {
 	return csp.BCCSP.Decrypt(k, ciphertext, opts)
-}
-
-// FindPKCS11Lib IS ONLY USED FOR TESTING
-// This is a convenience function. Useful to self-configure, for tests where
-// usual configuration is not available.
-func FindPKCS11Lib() (lib, pin, label string) {
-	if lib = os.Getenv("PKCS11_LIB"); lib == "" {
-		possibilities := []string{
-			"/usr/lib/softhsm/libsofthsm2.so",                  //Debian
-			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so", //Ubuntu
-		}
-		for _, path := range possibilities {
-			if _, err := os.Stat(path); !os.IsNotExist(err) {
-				lib = path
-				break
-			}
-		}
-	}
-	if pin = os.Getenv("PKCS11_PIN"); pin == "" {
-		pin = "98765432"
-	}
-	if label = os.Getenv("PKCS11_LABEL"); label == "" {
-		label = "ForFabric"
-	}
-
-	return lib, pin, label
-}
-
-func loadLib(lib, pin, label string) (*pkcs11.Ctx, uint, *pkcs11.SessionHandle, error) {
-	var slot uint
-	logger.Debugf("Loading pkcs11 library [%s]\n", lib)
-	if lib == "" {
-		return nil, slot, nil, fmt.Errorf("No PKCS11 library default")
-	}
-
-	ctx := pkcs11.New(lib)
-	if ctx == nil {
-		return nil, slot, nil, fmt.Errorf("Instantiate failed [%s]", lib)
-	}
-
-	ctx.Initialize()
-	slots, err := ctx.GetSlotList(true)
-	if err != nil {
-		return nil, slot, nil, fmt.Errorf("Could not get Slot List [%s]", err)
-	}
-	found := false
-	for _, s := range slots {
-		info, errToken := ctx.GetTokenInfo(s)
-		if errToken != nil {
-			continue
-		}
-		logger.Debugf("Looking for %s, found label %s\n", label, info.Label)
-		if label == info.Label {
-			found = true
-			slot = s
-			break
-		}
-	}
-	if !found {
-		return nil, slot, nil, fmt.Errorf("could not find token with label %s", label)
-	}
-
-	session, err := createSession(ctx, slot, pin)
-	if err != nil {
-		return nil, slot, nil, err
-	}
-
-	return ctx, slot, &session, nil
 }
 
 func (csp *impl) getSession() (session pkcs11.SessionHandle, err error) {
@@ -792,4 +740,30 @@ func nextIDCtr() *big.Int {
 	idCtr = new(big.Int).Add(idCtr, bigone)
 	idMutex.Unlock()
 	return idCtr
+}
+
+// FindPKCS11Lib IS ONLY USED FOR TESTING
+// This is a convenience function. Useful to self-configure, for tests where
+// usual configuration is not available.
+func FindPKCS11Lib() (lib, pin, label string) {
+	if lib = os.Getenv("PKCS11_LIB"); lib == "" {
+		possibilities := []string{
+			"/usr/lib/softhsm/libsofthsm2.so",                  //Debian
+			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so", //Ubuntu
+		}
+		for _, path := range possibilities {
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				lib = path
+				break
+			}
+		}
+	}
+	if pin = os.Getenv("PKCS11_PIN"); pin == "" {
+		pin = "98765432"
+	}
+	if label = os.Getenv("PKCS11_LABEL"); label == "" {
+		label = "ForFabric"
+	}
+
+	return lib, pin, label
 }
