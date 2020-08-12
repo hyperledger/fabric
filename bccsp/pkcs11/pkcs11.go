@@ -27,6 +27,8 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+const createSessionRetries = 10
+
 var (
 	logger           = flogging.MustGetLogger("bccsp_p11")
 	sessionCacheSize = 10
@@ -35,14 +37,19 @@ var (
 type impl struct {
 	bccsp.BCCSP
 
-	slot     uint
-	pin      string
-	ctx      *pkcs11.Ctx
-	sessions chan pkcs11.SessionHandle
-
+	slot       uint
+	pin        string
+	ctx        *pkcs11.Ctx
 	conf       *config
 	softVerify bool
 	immutable  bool
+
+	sessLock sync.Mutex
+	sessPool chan pkcs11.SessionHandle
+	sessions map[pkcs11.SessionHandle]struct{}
+
+	cacheLock   sync.RWMutex
+	handleCache map[string]pkcs11.ObjectHandle
 }
 
 // New WithParams returns a new instance of the software-based BCCSP
@@ -60,12 +67,19 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 		return nil, errors.Wrapf(err, "Failed initializing fallback SW BCCSP")
 	}
 
+	var sessPool chan pkcs11.SessionHandle
+	if sessionCacheSize > 0 {
+		sessPool = make(chan pkcs11.SessionHandle, sessionCacheSize)
+	}
+
 	csp := &impl{
-		BCCSP:      swCSP,
-		conf:       conf,
-		sessions:   make(chan pkcs11.SessionHandle, sessionCacheSize),
-		softVerify: opts.SoftwareVerify,
-		immutable:  opts.Immutable,
+		BCCSP:       swCSP,
+		conf:        conf,
+		sessPool:    sessPool,
+		sessions:    map[pkcs11.SessionHandle]struct{}{},
+		handleCache: map[string]pkcs11.ObjectHandle{},
+		softVerify:  opts.SoftwareVerify,
+		immutable:   opts.Immutable,
 	}
 
 	return csp.initialize(opts)
@@ -80,8 +94,13 @@ func (csp *impl) initialize(opts PKCS11Opts) (*impl, error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("pkcs11: instantiation failed for %s", opts.Library)
 	}
+	if err := ctx.Initialize(); err != nil {
+		logger.Debugf("initialize failed: %v", err)
+	}
 
-	ctx.Initialize()
+	csp.ctx = ctx
+	csp.pin = opts.Pin
+
 	slots, err := ctx.GetSlotList(true)
 	if err != nil {
 		return nil, errors.Wrap(err, "pkcs11: get slot list")
@@ -93,11 +112,9 @@ func (csp *impl) initialize(opts PKCS11Opts) (*impl, error) {
 			continue
 		}
 
-		csp.ctx = ctx
 		csp.slot = s
-		csp.pin = opts.Pin
 
-		session, err := createSession(ctx, s, opts.Pin)
+		session, err := csp.createSession()
 		if err != nil {
 			return nil, err
 		}
@@ -261,30 +278,31 @@ func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpt
 func (csp *impl) getSession() (session pkcs11.SessionHandle, err error) {
 	for {
 		select {
-		case session = <-csp.sessions:
+		case session = <-csp.sessPool:
 			if _, err = csp.ctx.GetSessionInfo(session); err == nil {
 				logger.Debugf("Reusing existing pkcs11 session %d on slot %d\n", session, csp.slot)
 				return session, nil
 			}
 
 			logger.Warningf("Get session info failed [%s], closing existing session and getting a new session\n", err)
-			csp.ctx.CloseSession(session)
+			csp.closeSession(session)
 
 		default:
 			// cache is empty (or completely in use), create a new session
-			return createSession(csp.ctx, csp.slot, csp.pin)
+			return csp.createSession()
 		}
 	}
 }
 
-func createSession(ctx *pkcs11.Ctx, slot uint, pin string) (pkcs11.SessionHandle, error) {
+func (csp *impl) createSession() (pkcs11.SessionHandle, error) {
 	var sess pkcs11.SessionHandle
 	var err error
-	// attempt 10 times to open a session with a 100ms delay after each attempt
-	for i := 0; i < 10; i++ {
-		sess, err = ctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
+
+	// attempt to open a session with a 100ms delay after each attempt
+	for i := 0; i < createSessionRetries; i++ {
+		sess, err = csp.ctx.OpenSession(csp.slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 		if err == nil {
-			logger.Debugf("Created new pkcs11 session %d on slot %d\n", sess, slot)
+			logger.Debugf("Created new pkcs11 session %d on slot %d\n", sess, csp.slot)
 			break
 		}
 
@@ -295,20 +313,41 @@ func createSession(ctx *pkcs11.Ctx, slot uint, pin string) (pkcs11.SessionHandle
 		return 0, errors.Wrap(err, "OpenSession failed")
 	}
 
-	err = ctx.Login(sess, pkcs11.CKU_USER, pin)
+	err = csp.ctx.Login(sess, pkcs11.CKU_USER, csp.pin)
 	if err != nil && err != pkcs11.Error(pkcs11.CKR_USER_ALREADY_LOGGED_IN) {
-		return sess, errors.Wrap(err, "Login failed")
+		csp.ctx.CloseSession(sess)
+		return 0, errors.Wrap(err, "Login failed")
 	}
+
+	csp.sessLock.Lock()
+	csp.sessions[sess] = struct{}{}
+	csp.sessLock.Unlock()
+
 	return sess, nil
+}
+
+func (csp *impl) closeSession(session pkcs11.SessionHandle) {
+	if err := csp.ctx.CloseSession(session); err != nil {
+		logger.Debug("CloseSession failed", err)
+	}
+
+	csp.sessLock.Lock()
+	defer csp.sessLock.Unlock()
+
+	// purge the handle cache if the last session closes
+	delete(csp.sessions, session)
+	if len(csp.sessions) == 0 {
+		csp.clearHandleCache()
+	}
 }
 
 func (csp *impl) returnSession(session pkcs11.SessionHandle) {
 	select {
-	case csp.sessions <- session:
+	case csp.sessPool <- session:
 		// returned session back to session cache
 	default:
 		// have plenty of sessions in cache, dropping
-		csp.ctx.CloseSession(session)
+		csp.closeSession(session)
 	}
 }
 
@@ -332,7 +371,7 @@ func (csp *impl) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err
 		return nil, false, fmt.Errorf("public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
 	}
 
-	ecpt, marshaledOid, err := csp.ecPoint(session, *publicKey)
+	ecpt, marshaledOid, err := csp.ecPoint(session, publicKey)
 	if err != nil {
 		return nil, false, fmt.Errorf("public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
 	}
@@ -523,7 +562,7 @@ func (csp *impl) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err error)
 		return nil, nil, fmt.Errorf("Private key not found [%s]", err)
 	}
 
-	err = csp.ctx.SignInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)}, *privateKey)
+	err = csp.ctx.SignInit(session, []*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)}, privateKey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Sign-initialize  failed [%s]", err)
 	}
@@ -568,7 +607,7 @@ func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize 
 	err = csp.ctx.VerifyInit(
 		session,
 		[]*pkcs11.Mechanism{pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil)},
-		*publicKey,
+		publicKey,
 	)
 	if err != nil {
 		return false, fmt.Errorf("PKCS11: Verify-initialize [%s]", err)
@@ -591,7 +630,35 @@ const (
 	privateKeyType
 )
 
-func (csp *impl) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte, keyType keyType) (*pkcs11.ObjectHandle, error) {
+func (csp *impl) cachedHandle(keyType keyType, ski []byte) (pkcs11.ObjectHandle, bool) {
+	cacheKey := hex.EncodeToString(append([]byte{byte(keyType)}, ski...))
+	csp.cacheLock.RLock()
+	defer csp.cacheLock.RUnlock()
+
+	handle, ok := csp.handleCache[cacheKey]
+	return handle, ok
+}
+
+func (csp *impl) cacheHandle(keyType keyType, ski []byte, handle pkcs11.ObjectHandle) {
+	cacheKey := hex.EncodeToString(append([]byte{byte(keyType)}, ski...))
+	csp.cacheLock.Lock()
+	defer csp.cacheLock.Unlock()
+
+	csp.handleCache[cacheKey] = handle
+}
+
+func (csp *impl) clearHandleCache() {
+	csp.cacheLock.Lock()
+	defer csp.cacheLock.Unlock()
+	csp.handleCache = map[string]pkcs11.ObjectHandle{}
+}
+
+func (csp *impl) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte, keyType keyType) (pkcs11.ObjectHandle, error) {
+	// check for cached handle
+	if handle, ok := csp.cachedHandle(keyType, ski); ok {
+		return handle, nil
+	}
+
 	ktype := pkcs11.CKO_PUBLIC_KEY
 	if keyType == privateKeyType {
 		ktype = pkcs11.CKO_PRIVATE_KEY
@@ -602,23 +669,25 @@ func (csp *impl) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte, ke
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
 	}
 	if err := csp.ctx.FindObjectsInit(session, template); err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	// single session instance, assume one hit only
 	objs, _, err := csp.ctx.FindObjects(session, 1)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	if err = csp.ctx.FindObjectsFinal(session); err != nil {
-		return nil, err
+		return 0, err
 	}
-
 	if len(objs) == 0 {
-		return nil, fmt.Errorf("Key not found [%s]", hex.Dump(ski))
+		return 0, fmt.Errorf("Key not found [%s]", hex.Dump(ski))
 	}
 
-	return &objs[0], nil
+	// cache the found handle
+	csp.cacheHandle(keyType, ski, objs[0])
+
+	return objs[0], nil
 }
 
 // Fairly straightforward EC-point query, other than opencryptoki

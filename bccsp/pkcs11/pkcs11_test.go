@@ -1352,6 +1352,144 @@ func TestPKCS11GetSession(t *testing.T) {
 	}
 }
 
+func TestCaching(t *testing.T) {
+	defer func(s int) { sessionCacheSize = s }(sessionCacheSize)
+	opts := PKCS11Opts{
+		Hash:           "SHA2",
+		Security:       256,
+		SoftwareVerify: false,
+	}
+	opts.Library, opts.Pin, opts.Label = FindPKCS11Lib()
+
+	verifyHandleCache := func(t *testing.T, pi *impl, sess pkcs11.SessionHandle, k bccsp.Key) {
+		pubHandle, err := pi.findKeyPairFromSKI(sess, k.SKI(), publicKeyType)
+		require.NoError(t, err)
+		h, ok := pi.cachedHandle(publicKeyType, k.SKI())
+		require.True(t, ok)
+		require.Equal(t, h, pubHandle)
+
+		privHandle, err := pi.findKeyPairFromSKI(sess, k.SKI(), privateKeyType)
+		require.NoError(t, err)
+		h, ok = pi.cachedHandle(privateKeyType, k.SKI())
+		require.True(t, ok)
+		require.Equal(t, h, privHandle)
+	}
+
+	t.Run("SessionCacheDisabled", func(t *testing.T) {
+		sessionCacheSize = 0
+
+		provider, err := New(opts, currentKS)
+		require.NoError(t, err)
+		pi := provider.(*impl)
+		defer pi.ctx.Destroy()
+
+		require.Nil(t, pi.sessPool, "sessPool channel should be nil")
+		require.Empty(t, pi.sessions, "sessions set should be empty")
+		require.Empty(t, pi.handleCache, "handleCache should be empty")
+
+		sess1, err := pi.getSession()
+		require.NoError(t, err)
+		require.Len(t, pi.sessions, 1, "expected one open session")
+
+		sess2, err := pi.getSession()
+		require.NoError(t, err)
+		require.Len(t, pi.sessions, 2, "expected two open sessions")
+
+		// Generate a key
+		k, err := pi.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+		require.NoError(t, err)
+		verifyHandleCache(t, pi, sess1, k)
+		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+
+		pi.returnSession(sess1)
+		require.Len(t, pi.sessions, 1, "expected one open session")
+		verifyHandleCache(t, pi, sess1, k)
+		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+
+		pi.returnSession(sess2)
+		require.Empty(t, pi.sessions, "expected sessions to be empty")
+		require.Empty(t, pi.handleCache, "expected handles to be cleared")
+
+		pi.slot = ^uint(0) // break OpenSession
+		_, err = pi.getSession()
+		require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
+		require.Empty(t, pi.sessions, "expected sessions to be empty")
+	})
+
+	t.Run("SessionCacheEnabled", func(t *testing.T) {
+		sessionCacheSize = 1
+
+		provider, err := New(opts, currentKS)
+		require.NoError(t, err)
+		pi := provider.(*impl)
+		defer pi.ctx.Destroy()
+
+		require.NotNil(t, pi.sessPool, "sessPool channel should not be nil")
+		require.Equal(t, 1, cap(pi.sessPool))
+		require.Len(t, pi.sessions, 1, "sessions should contain login session")
+		require.Len(t, pi.sessPool, 1, "sessionPool should hold login session")
+		require.Empty(t, pi.handleCache, "handleCache should be empty")
+
+		sess1, err := pi.getSession()
+		require.NoError(t, err)
+		require.Len(t, pi.sessions, 1, "expected one open session (sess1 from login)")
+		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
+
+		sess2, err := pi.getSession()
+		require.NoError(t, err)
+		require.Len(t, pi.sessions, 2, "expected two open sessions (sess1 and sess2)")
+		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
+
+		// Generate a key
+		k, err := pi.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+		require.NoError(t, err)
+		verifyHandleCache(t, pi, sess1, k)
+		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+
+		pi.returnSession(sess1)
+		require.Len(t, pi.sessions, 2, "expected two open sessions (sess2 in-use, sess1 cached)")
+		require.Len(t, pi.sessPool, 1, "sessionPool should have one handle (sess1)")
+		verifyHandleCache(t, pi, sess1, k)
+		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+
+		pi.returnSession(sess2)
+		require.Len(t, pi.sessions, 1, "expected one cached session (sess1)")
+		require.Len(t, pi.sessPool, 1, "sessionPool should have one handle (sess1)")
+		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+
+		sess1, err = pi.getSession()
+		require.NoError(t, err)
+		require.Len(t, pi.sessions, 1, "expected one open session (sess1)")
+		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
+		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+
+		pi.slot = ^uint(0) // break OpenSession
+		_, err = pi.getSession()
+		require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
+		require.Len(t, pi.sessions, 1, "expected one active session (sess1)")
+		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
+		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+
+		// Return a busted session that should be cached
+		pi.returnSession(pkcs11.SessionHandle(^uint(0)))
+		require.Len(t, pi.sessions, 1, "expected one active session (sess1)")
+		require.Len(t, pi.sessPool, 1, "sessionPool should contain busted session")
+		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+
+		// Return sess1 that should be discarded
+		pi.returnSession(sess1)
+		require.Len(t, pi.sessions, 0, "expected sess1 to be removed")
+		require.Len(t, pi.sessPool, 1, "sessionPool should contain busted session")
+		require.Empty(t, pi.handleCache, "expected handles to be purged on removal of last tracked session")
+
+		// Try to get broken session from cache
+		_, err = pi.getSession()
+		require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
+		require.Empty(t, pi.sessions, "expected sessions to be empty")
+		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
+	})
+}
+
 func TestPKCS11ECKeySignVerify(t *testing.T) {
 	msg1 := []byte("This is my very authentic message")
 	msg2 := []byte("This is my very unauthentic message")
@@ -1371,7 +1509,6 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 	}
 
 	R, S, err := currentBCCSP.(*impl).signP11ECDSA(key, hash1)
-
 	if err != nil {
 		t.Fatalf("Failed signing message [%s]", err)
 	}
