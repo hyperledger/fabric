@@ -133,7 +133,7 @@ func TestNew(t *testing.T) {
 	opts.Library = ""
 	_, err = New(opts, currentKS)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Failed initializing PKCS11 library")
+	require.Contains(t, err.Error(), "pkcs11: library path not provided")
 }
 
 func TestFindPKCS11LibEnvVars(t *testing.T) {
@@ -1251,27 +1251,27 @@ func TestKeyGenFailures(t *testing.T) {
 	require.Contains(t, err.Error(), "Invalid Opts parameter. It must not be nil")
 }
 
-func TestLoadLib(t *testing.T) {
+func TestInitialize(t *testing.T) {
 	// Setup PKCS11 library and provide initial set of values
 	lib, pin, label := FindPKCS11Lib()
 
 	// Test for no specified PKCS11 library
-	_, _, _, err := loadLib("", pin, label)
+	_, err := (&impl{}).initialize(PKCS11Opts{Library: "", Pin: pin, Label: label})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "No PKCS11 library default")
+	require.Contains(t, err.Error(), "pkcs11: library path not provided")
 
 	// Test for invalid PKCS11 library
-	_, _, _, err = loadLib("badLib", pin, label)
+	_, err = (&impl{}).initialize(PKCS11Opts{Library: "badLib", Pin: pin, Label: label})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Instantiate failed")
+	require.Contains(t, err.Error(), "pkcs11: instantiation failed for badLib")
 
 	// Test for invalid label
-	_, _, _, err = loadLib(lib, pin, "badLabel")
+	_, err = (&impl{}).initialize(PKCS11Opts{Library: lib, Pin: pin, Label: "badLabel"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not find token with label")
 
 	// Test for no pin
-	_, _, _, err = loadLib(lib, "", label)
+	_, err = (&impl{}).initialize(PKCS11Opts{Library: lib, Pin: "", Label: label})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Login failed: pkcs11")
 }
