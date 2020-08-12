@@ -3,6 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package pkcs11
 
 import (
@@ -23,7 +24,6 @@ import (
 	"syscall"
 	"time"
 
-	docker "github.com/fsouza/go-dockerclient"
 	bpkcs11 "github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
@@ -33,13 +33,11 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-var _ = Describe("Configures PKCS#11 for peer and orderer", func() {
+var _ = Describe("PKCS11 enabled network", func() {
 	var (
 		tempDir string
 		network *nwo.Network
-		client  *docker.Client
 		process ifrit.Process
-		orderer *nwo.Orderer
 	)
 
 	BeforeEach(func() {
@@ -47,68 +45,81 @@ var _ = Describe("Configures PKCS#11 for peer and orderer", func() {
 		tempDir, err = ioutil.TempDir("", "p11")
 		Expect(err).NotTo(HaveOccurred())
 
-		client, err = docker.NewClientFromEnv()
-		Expect(err).NotTo(HaveOccurred())
-
-		network = nwo.New(nwo.BasicSolo(), tempDir, client, BasePort(), components)
+		network = nwo.New(nwo.BasicSolo(), tempDir, nil, BasePort(), components)
 		network.GenerateConfigTree()
-
-		orderer = network.Orderer("orderer")
-
-		lib, pin, label := bpkcs11.FindPKCS11Lib()
-		myBCCSP := &fabricconfig.BCCSP{
-			Default: "PKCS11",
-			PKCS11: &fabricconfig.PKCS11{
-				Security: 256,
-				Hash:     "SHA2",
-				Pin:      pin,
-				Label:    label,
-				Library:  lib,
-			},
-		}
-
-		By("Updating bccsp peer config")
-		for _, peer := range network.Peers {
-			peerConfig := network.ReadPeerConfig(peer)
-			peerConfig.Peer.BCCSP = myBCCSP
-			network.WritePeerConfig(peer, peerConfig)
-		}
-
-		By("Updating bccsp orderer config")
-		ordererConfig := network.ReadOrdererConfig(orderer)
-		ordererConfig.General.BCCSP = myBCCSP
-		network.WriteOrdererConfig(orderer, ordererConfig)
-
 		network.Bootstrap()
 
-		ctx, sess := setupPKCS11Ctx(lib, label, pin)
-		Expect(err).NotTo(HaveOccurred())
-		defer ctx.CloseSession(sess)
+		By("configuring PKCS11 artifacts")
+		setupPKCS11(network)
 
-		configurePeerPKCS11(ctx, sess, network)
-		configureOrdererPKCS11(ctx, sess, network)
-
-		By("Starting fabric processes")
+		By("starting fabric processes")
 		networkRunner := network.NetworkGroupRunner()
 		process = ifrit.Invoke(networkRunner)
 		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 	})
 
 	AfterEach(func() {
-		process.Signal(syscall.SIGTERM)
-		Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-
-		if network != nil {
-			network.Cleanup()
+		if process != nil {
+			process.Signal(syscall.SIGTERM)
+			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
+		network.Cleanup()
 		os.RemoveAll(tempDir)
 	})
 
-	It("Creates and join channel successfully", func() {
+	It("executes transactions against a basic solo network", func() {
+		chaincode := nwo.Chaincode{
+			Name:    "mycc",
+			Version: "0.0",
+			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Ctor:    `{"Args":["init","a","100","b","200"]}`,
+			Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
+		}
+
 		orderer := network.Orderer("orderer")
 		network.CreateAndJoinChannels(orderer)
+
+		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.PeersWithChannel("testchannel")...)
+		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+		runQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
 	})
 })
+
+func setupPKCS11(network *nwo.Network) {
+	lib, pin, label := bpkcs11.FindPKCS11Lib()
+
+	By("establishing a PKCS11 session")
+	ctx, sess := setupPKCS11Ctx(lib, label, pin)
+	defer ctx.Destroy()
+	defer ctx.CloseSession(sess)
+
+	configurePeerPKCS11(ctx, sess, network)
+	configureOrdererPKCS11(ctx, sess, network)
+
+	bccspConfig := &fabricconfig.BCCSP{
+		Default: "PKCS11",
+		PKCS11: &fabricconfig.PKCS11{
+			Security: 256,
+			Hash:     "SHA2",
+			Pin:      pin,
+			Label:    label,
+			Library:  lib,
+		},
+	}
+
+	By("updating bccsp peer config")
+	for _, peer := range network.Peers {
+		peerConfig := network.ReadPeerConfig(peer)
+		peerConfig.Peer.BCCSP = bccspConfig
+		network.WritePeerConfig(peer, peerConfig)
+	}
+
+	By("updating bccsp orderer config")
+	orderer := network.Orderer("orderer")
+	ordererConfig := network.ReadOrdererConfig(orderer)
+	ordererConfig.General.BCCSP = bccspConfig
+	network.WriteOrdererConfig(orderer, ordererConfig)
+}
 
 func configurePeerPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nwo.Network) {
 	for _, peer := range network.Peers {
@@ -116,6 +127,7 @@ func configurePeerPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nw
 
 		peerPubKey, peerCSR, peerSerial := createCSR(ctx, sess, orgName, "peer")
 		adminPubKey, adminCSR, adminSerial := createCSR(ctx, sess, orgName, "admin")
+		userPubKey, userCSR, userSerial := createCSR(ctx, sess, orgName, "client")
 
 		domain := network.Organization(orgName).Domain
 
@@ -125,15 +137,18 @@ func configurePeerPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nw
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Updating the peer signcerts")
-
 		newOrdererPemCert := buildCert(caBytes, orgCAPath, peerCSR, peerSerial, peerPubKey)
 		updateMSPFolder(network.PeerLocalMSPDir(peer), fmt.Sprintf("peer.%s-cert.pem", domain), newOrdererPemCert)
 
 		By("Updating the peer admin user signcerts")
 		newAdminPemCert := buildCert(caBytes, orgCAPath, adminCSR, adminSerial, adminPubKey)
-
 		orgAdminMSPPath := network.PeerUserMSPDir(peer, "Admin")
 		updateMSPFolder(orgAdminMSPPath, fmt.Sprintf("Admin@%s-cert.pem", domain), newAdminPemCert)
+
+		By("Updating the peer user1 signcerts")
+		newUserPemCert := buildCert(caBytes, orgCAPath, userCSR, userSerial, userPubKey)
+		orgUserMSPPath := network.PeerUserMSPDir(peer, "User1")
+		updateMSPFolder(orgUserMSPPath, fmt.Sprintf("User1@%s-cert.pem", domain), newUserPemCert)
 	}
 }
 
@@ -151,14 +166,11 @@ func configureOrdererPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network 
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Updating the orderer signcerts")
-
 	newOrdererPemCert := buildCert(caBytes, orgCAPath, ordererCSR, ordererSerial, ordererPubKey)
-
 	updateMSPFolder(network.OrdererLocalMSPDir(orderer), fmt.Sprintf("orderer.%s-cert.pem", domain), newOrdererPemCert)
 
 	By("Updating the orderer admin user signcerts")
 	newAdminPemCert := buildCert(caBytes, orgCAPath, adminCSR, adminSerial, adminPubKey)
-
 	orgAdminMSPPath := network.OrdererUserMSPDir(orderer, "Admin")
 	updateMSPFolder(orgAdminMSPPath, fmt.Sprintf("Admin@%s-cert.pem", domain), newAdminPemCert)
 }

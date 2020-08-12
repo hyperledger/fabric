@@ -12,8 +12,11 @@ import (
 
 	bpkcs11 "github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 )
 
 func TestPKCS11(t *testing.T) {
@@ -47,4 +50,40 @@ var _ = SynchronizedAfterSuite(func() {
 
 func BasePort() int {
 	return 40000 + 1000*GinkgoParallelNode()
+}
+
+func runQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channel string) {
+	By("querying the chaincode")
+	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+		ChannelID: channel,
+		Name:      "mycc",
+		Ctor:      `{"Args":["query","a"]}`,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Expect(sess).To(gbytes.Say("100"))
+
+	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
+		ChannelID: channel,
+		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
+		Name:      "mycc",
+		Ctor:      `{"Args":["invoke","a","b","10"]}`,
+		PeerAddresses: []string{
+			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org2", "peer0"), nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
+
+	sess, err = n.PeerUserSession(peer, "User1", commands.ChaincodeQuery{
+		ChannelID: channel,
+		Name:      "mycc",
+		Ctor:      `{"Args":["query","a"]}`,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Expect(sess).To(gbytes.Say("90"))
 }
