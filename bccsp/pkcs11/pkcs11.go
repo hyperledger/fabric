@@ -278,29 +278,28 @@ func (csp *impl) getSession() (session pkcs11.SessionHandle, err error) {
 }
 
 func createSession(ctx *pkcs11.Ctx, slot uint, pin string) (pkcs11.SessionHandle, error) {
-	var s pkcs11.SessionHandle
+	var sess pkcs11.SessionHandle
 	var err error
 	// attempt 10 times to open a session with a 100ms delay after each attempt
 	for i := 0; i < 10; i++ {
-		s, err = ctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
-		if err != nil {
-			logger.Warningf("OpenSession failed, retrying [%s]\n", err)
-		} else {
+		sess, err = ctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
+		if err == nil {
+			logger.Debugf("Created new pkcs11 session %d on slot %d\n", sess, slot)
 			break
 		}
+
+		logger.Warningf("OpenSession failed, retrying [%s]\n", err)
 		time.Sleep(100 * time.Millisecond)
 	}
 	if err != nil {
 		return 0, errors.Wrap(err, "OpenSession failed")
 	}
-	logger.Debugf("Created new pkcs11 session %+v on slot %d\n", s, slot)
-	session := s
 
-	err = ctx.Login(session, pkcs11.CKU_USER, pin)
+	err = ctx.Login(sess, pkcs11.CKU_USER, pin)
 	if err != nil && err != pkcs11.Error(pkcs11.CKR_USER_ALREADY_LOGGED_IN) {
-		return session, errors.Wrap(err, "Login failed")
+		return sess, errors.Wrap(err, "Login failed")
 	}
-	return session, nil
+	return sess, nil
 }
 
 func (csp *impl) returnSession(session pkcs11.SessionHandle) {
@@ -323,13 +322,13 @@ func (csp *impl) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err
 	defer csp.returnSession(session)
 
 	isPriv = true
-	_, err = findKeyPairFromSKI(p11lib, session, ski, privateKeyType)
+	_, err = csp.findKeyPairFromSKI(session, ski, privateKeyType)
 	if err != nil {
 		isPriv = false
 		logger.Debugf("Private key not found [%s] for SKI [%s], looking for Public key", err, hex.EncodeToString(ski))
 	}
 
-	publicKey, err := findKeyPairFromSKI(p11lib, session, ski, publicKeyType)
+	publicKey, err := csp.findKeyPairFromSKI(session, ski, publicKeyType)
 	if err != nil {
 		return nil, false, fmt.Errorf("public key not found [%s] for SKI [%s]", err, hex.EncodeToString(ski))
 	}
@@ -521,7 +520,7 @@ func (csp *impl) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err error)
 	}
 	defer csp.returnSession(session)
 
-	privateKey, err := findKeyPairFromSKI(p11lib, session, ski, privateKeyType)
+	privateKey, err := csp.findKeyPairFromSKI(session, ski, privateKeyType)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Private key not found [%s]", err)
 	}
@@ -556,7 +555,7 @@ func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize 
 
 	logger.Debugf("Verify ECDSA\n")
 
-	publicKey, err := findKeyPairFromSKI(p11lib, session, ski, publicKeyType)
+	publicKey, err := csp.findKeyPairFromSKI(session, ski, publicKeyType)
 	if err != nil {
 		return false, fmt.Errorf("Public key not found [%s]", err)
 	}
@@ -592,7 +591,7 @@ const (
 	privateKeyType
 )
 
-func findKeyPairFromSKI(mod *pkcs11.Ctx, session pkcs11.SessionHandle, ski []byte, keyType keyType) (*pkcs11.ObjectHandle, error) {
+func (csp *impl) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte, keyType keyType) (*pkcs11.ObjectHandle, error) {
 	ktype := pkcs11.CKO_PUBLIC_KEY
 	if keyType == privateKeyType {
 		ktype = pkcs11.CKO_PRIVATE_KEY
@@ -602,16 +601,16 @@ func findKeyPairFromSKI(mod *pkcs11.Ctx, session pkcs11.SessionHandle, ski []byt
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, ktype),
 		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
 	}
-	if err := mod.FindObjectsInit(session, template); err != nil {
+	if err := csp.ctx.FindObjectsInit(session, template); err != nil {
 		return nil, err
 	}
 
 	// single session instance, assume one hit only
-	objs, _, err := mod.FindObjects(session, 1)
+	objs, _, err := csp.ctx.FindObjects(session, 1)
 	if err != nil {
 		return nil, err
 	}
-	if err = mod.FindObjectsFinal(session); err != nil {
+	if err = csp.ctx.FindObjectsFinal(session); err != nil {
 		return nil, err
 	}
 
