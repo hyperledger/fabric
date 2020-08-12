@@ -98,6 +98,11 @@ func newFactory(dir string) blockledger.Factory {
 
 func newLedgerAndFactory(dir string, chainID string, genesisBlockSys *cb.Block) (blockledger.Factory, blockledger.ReadWriter) {
 	rlf := newFactory(dir)
+	rl := newLedger(rlf, chainID, genesisBlockSys)
+	return rlf, rl
+}
+
+func newLedger(rlf blockledger.Factory, chainID string, genesisBlockSys *cb.Block) blockledger.ReadWriter {
 	rl, err := rlf.GetOrCreate(chainID)
 	if err != nil {
 		panic(err)
@@ -109,7 +114,7 @@ func newLedgerAndFactory(dir string, chainID string, genesisBlockSys *cb.Block) 
 			panic(err)
 		}
 	}
-	return rlf, rl
+	return rl
 }
 
 func testMessageOrderAndRetrieval(maxMessageCount uint32, chainID string, chainSupport *ChainSupport, lr blockledger.ReadWriter, t *testing.T) {
@@ -634,8 +639,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		setup(t)
 		defer cleanup()
 
-		ledgerFactory.Close()
-		ledgerFactory, _ = newLedgerAndFactory(tmpdir, "sys-raft-channel", genesisBlockSysRaft)
+		newLedger(ledgerFactory, "sys-raft-channel", genesisBlockSysRaft)
 
 		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
@@ -669,7 +673,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 	t.Run("Reject system channel join when app channels exist", func(t *testing.T) {
 		setup(t)
-		defer os.RemoveAll(tmpdir)
+		defer cleanup()
 
 		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
@@ -691,7 +695,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 	t.Run("no etcdraft consenter without system channel will panic", func(t *testing.T) {
 		setup(t)
-		defer os.RemoveAll(tmpdir)
+		defer cleanup()
 
 		mockConsenters = map[string]consensus.Consenter{"not-raft": &mocks.Consenter{}}
 		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
@@ -700,7 +704,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 	t.Run("Join app channel as member without on-boarding", func(t *testing.T) {
 		setup(t)
-		defer os.RemoveAll(tmpdir)
+		defer cleanup()
 
 		consenter.IsChannelMemberReturns(true, nil)
 		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
@@ -727,7 +731,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 	t.Run("Join app channel as member with on-boarding", func(t *testing.T) {
 		setup(t)
-		defer os.RemoveAll(tmpdir)
+		defer cleanup()
 
 		genesisBlockAppRaft.Header.Number = 10
 		consenter.IsChannelMemberReturns(true, nil)
@@ -756,7 +760,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 	t.Run("Join app channel as follower, with on-boarding", func(t *testing.T) {
 		setup(t)
-		defer os.RemoveAll(tmpdir)
+		defer cleanup()
 
 		genesisBlockAppRaft.Header.Number = 10
 		consenter.IsChannelMemberReturns(false, nil)
@@ -776,6 +780,49 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		info, err = registrar.ChannelInfo("my-raft-channel")
 		require.NoError(t, err)
 		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "follower", Status: "onboarding", Height: 0x0}, info)
+		channelList := registrar.ChannelList()
+		require.Equal(t, 1, len(channelList.Channels))
+		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
+		require.Nil(t, channelList.SystemChannel)
+	})
+
+	t.Run("Join app channel then switch to chain", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		consenter.IsChannelMemberReturns(false, nil)
+
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+
+		// Before join the chain, it doesn't exist
+		require.Nil(t, registrar.GetChain("my-raft-channel"))
+		require.Nil(t, registrar.GetFollower("my-raft-channel"))
+
+		genesisBlockAppRaft.Header.Number = 1
+		info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "follower", Status: "onboarding", Height: 0x0}, info)
+
+		// After creating the follower.Chain, it not in the chains map, it is in the followers map.
+		require.Nil(t, registrar.GetChain("my-raft-channel"))
+		fChain := registrar.GetFollower("my-raft-channel")
+		require.NotNil(t, fChain)
+		fChain.Halt()
+
+		// Let's assume the follower appended a block
+		genesisBlockAppRaft.Header.Number = 0
+		newLedger(ledgerFactory, "my-raft-channel", genesisBlockAppRaft)
+
+		// Now Switch => a chain is created and the follower removed
+		require.NotPanics(t, func() { registrar.SwitchFollowerToChain("my-raft-channel") })
+		// Now the chain is in the chains map, the follower is gone
+		require.NotNil(t, registrar.GetChain("my-raft-channel"))
+		require.Nil(t, registrar.GetFollower("my-raft-channel"))
+		// ChannelInfo() and ChannelList() are still working fine
+		info, err = registrar.ChannelInfo("my-raft-channel")
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 0x1}, info)
 		channelList := registrar.ChannelList()
 		require.Equal(t, 1, len(channelList.Channels))
 		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)

@@ -31,21 +31,6 @@ type clusterConsenter interface {
 	consensus.ClusterConsenter
 }
 
-//go:generate counterfeiter -o mocks/puller_creator.go -fake-name BlockPullerCreator . blockPullerCreator
-type blockPullerCreator interface {
-	CreateBlockPuller() (follower.ChannelPuller, error)
-}
-
-//go:generate counterfeiter -o mocks/chain_creator.go -fake-name ChainCreator . chainCreator
-type chainCreator interface {
-	CreateChain()
-}
-
-//go:generate counterfeiter -o mocks/follower_creator.go -fake-name FollowerCreator . followerCreator
-type followerCreator interface {
-	CreateFollower()
-}
-
 //go:generate counterfeiter -o mocks/time_after.go -fake-name TimeAfter . timeAfter
 type timeAfter interface {
 	After(d time.Duration) <-chan time.Time
@@ -60,7 +45,7 @@ var (
 	remoteBlockchain     *memoryBlockChain
 	ledgerResources      *mocks.LedgerResources
 	mockClusterConsenter *mocks.ClusterConsenter
-	pullerCreator        *mocks.BlockPullerCreator
+	pullerFactory        *mocks.BlockPullerFactory
 	puller               *mocks.ChannelPuller
 	mockChainCreator     *mocks.ChainCreator
 	options              follower.Options
@@ -84,9 +69,9 @@ func globalSetup(t *testing.T) {
 
 	mockClusterConsenter = &mocks.ClusterConsenter{}
 
-	pullerCreator = &mocks.BlockPullerCreator{}
+	pullerFactory = &mocks.BlockPullerFactory{}
 	puller = &mocks.ChannelPuller{}
-	pullerCreator.CreateBlockPullerReturns(puller, nil)
+	pullerFactory.BlockPullerReturns(puller, nil)
 
 	mockChainCreator = &mocks.ChainCreator{}
 
@@ -117,11 +102,11 @@ func TestFollowerNewChain(t *testing.T) {
 	joinBlockAppRaft := makeConfigBlock(10, []byte{}, 0)
 	require.NotNil(t, joinBlockAppRaft)
 
-	t.Run("with join block, not in channel", func(t *testing.T) {
+	t.Run("with join block, not in channel, empty ledger", func(t *testing.T) {
 		globalSetup(t)
-		ledgerResources.HeightReturns(5)
+		ledgerResources.HeightReturns(0)
 		mockClusterConsenter.IsChannelMemberReturns(false, nil)
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerCreator.CreateBlockPuller, nil, nil)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, nil)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -129,11 +114,11 @@ func TestFollowerNewChain(t *testing.T) {
 		require.Equal(t, types.StatusOnBoarding, status)
 	})
 
-	t.Run("with join block, in channel", func(t *testing.T) {
+	t.Run("with join block, in channel, empty ledger", func(t *testing.T) {
 		globalSetup(t)
-		ledgerResources.HeightReturns(5)
+		ledgerResources.HeightReturns(0)
 		mockClusterConsenter.IsChannelMemberReturns(true, nil)
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerCreator.CreateBlockPuller, nil, nil)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, nil)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -149,10 +134,10 @@ func TestFollowerNewChain(t *testing.T) {
 
 	t.Run("bad join block", func(t *testing.T) {
 		globalSetup(t)
-		chain, err := follower.NewChain(ledgerResources, nil, &common.Block{}, options, pullerCreator.CreateBlockPuller, nil, nil)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, &common.Block{}, options, pullerFactory, mockChainCreator, nil)
 		require.EqualError(t, err, "block header is nil")
 		require.Nil(t, chain)
-		chain, err = follower.NewChain(ledgerResources, nil, &common.Block{Header: &common.BlockHeader{}}, options, pullerCreator.CreateBlockPuller, nil, nil)
+		chain, err = follower.NewChain(ledgerResources, mockClusterConsenter, &common.Block{Header: &common.BlockHeader{}}, options, pullerFactory, mockChainCreator, nil)
 		require.EqualError(t, err, "block data is nil")
 		require.Nil(t, chain)
 	})
@@ -161,7 +146,7 @@ func TestFollowerNewChain(t *testing.T) {
 		globalSetup(t)
 		localBlockchain.fill(5)
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerCreator.CreateBlockPuller, nil, nil)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, nil)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -184,11 +169,11 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		ledgerResources.AppendCalls(localBlockchain.Append)
 
 		puller.PullBlockCalls(func(i uint64) *common.Block { return remoteBlockchain.Block(i) })
-		pullerCreator.CreateBlockPullerReturns(puller, nil)
+		pullerFactory.BlockPullerReturns(puller, nil)
 
 		wgChain = sync.WaitGroup{}
 		wgChain.Add(1)
-		mockChainCreator.CreateChainCalls(wgChain.Done)
+		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() })
 
 		wgChain = sync.WaitGroup{}
 		wgChain.Add(1)
@@ -198,7 +183,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		setup()
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
 		assert.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -214,12 +199,12 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 2, pullerCreator.CreateBlockPullerCallCount())
+		assert.Equal(t, 2, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 11, ledgerResources.AppendCallCount())
 		for i := uint64(0); i <= joinNum; i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
-		assert.Equal(t, 1, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
 	t.Run("existing half chain until join block, member", func(t *testing.T) {
 		setup()
@@ -228,7 +213,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		assert.True(t, joinBlockAppRaft.Header.Number > ledgerResources.Height())
 		assert.True(t, ledgerResources.Height() > 0)
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
 		assert.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -244,12 +229,12 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 2, pullerCreator.CreateBlockPullerCallCount())
+		assert.Equal(t, 2, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 6, ledgerResources.AppendCallCount())
 		for i := uint64(0); i <= joinNum; i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
-		assert.Equal(t, 1, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
 	t.Run("no need to pull, member", func(t *testing.T) {
 		setup()
@@ -257,7 +242,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		localBlockchain.fill(joinNum + 1) //No gap between the ledger and the join block
 		assert.True(t, joinBlockAppRaft.Header.Number < ledgerResources.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
 		assert.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -273,17 +258,17 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 1, pullerCreator.CreateBlockPullerCallCount())
+		assert.Equal(t, 1, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 0, ledgerResources.AppendCallCount())
 
-		assert.Equal(t, 1, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
 	t.Run("overcome pull failures, member", func(t *testing.T) {
 		setup()
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
 
 		failPull := 10
-		pullerCreator = &mocks.BlockPullerCreator{}
+		pullerFactory = &mocks.BlockPullerFactory{}
 		puller = &mocks.ChannelPuller{}
 		puller.PullBlockCalls(func(i uint64) *common.Block {
 			if i%2 == 1 && failPull > 0 {
@@ -293,10 +278,10 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 			failPull = 10
 			return remoteBlockchain.Block(i)
 		})
-		pullerCreator.CreateBlockPullerReturns(puller, nil)
+		pullerFactory.BlockPullerReturns(puller, nil)
 		options.TimeAfter = timeAfterCount.After
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
 		assert.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -312,12 +297,12 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 2, pullerCreator.CreateBlockPullerCallCount())
+		assert.Equal(t, 2, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 11, ledgerResources.AppendCallCount())
 		for i := uint64(0); i <= joinNum; i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
-		assert.Equal(t, 1, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 		assert.Equal(t, 50, timeAfterCount.AfterCallCount())
 		assert.Equal(t, int64(5000), atomic.LoadInt64(&maxDelay))
 	})
@@ -343,7 +328,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 				return m, nil
 			},
 		)
-		pullerCreator.CreateBlockPullerReturns(puller, nil)
+		pullerFactory.BlockPullerReturns(puller, nil)
 
 		wgChain = sync.WaitGroup{}
 		wgChain.Add(1)
@@ -352,7 +337,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 	t.Run("No config in the middle", func(t *testing.T) {
 		setup()
 		ledgerResources.AppendCalls(func(block *common.Block) error {
-			localBlockchain.Append(block)
+			_ = localBlockchain.Append(block)
 			//Stop when we catch-up with latest
 			if remoteBlockchain.Height() == localBlockchain.Height() {
 				wgChain.Done()
@@ -361,7 +346,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		})
 		assert.Equal(t, joinNum+1, localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider)
 		assert.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -377,18 +362,18 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationFollower, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 2, pullerCreator.CreateBlockPullerCallCount())
+		assert.Equal(t, 1, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 10, ledgerResources.AppendCallCount())
 		assert.Equal(t, uint64(21), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
-		assert.Equal(t, 0, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
 	t.Run("No config in the middle, latest height increasing", func(t *testing.T) {
 		setup()
 		ledgerResources.AppendCalls(func(block *common.Block) error {
-			localBlockchain.Append(block)
+			_ = localBlockchain.Append(block)
 			if remoteBlockchain.Height() == localBlockchain.Height() {
 				if remoteBlockchain.Height() < 50 {
 					remoteBlockchain.fill(10)
@@ -401,7 +386,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		})
 		assert.Equal(t, joinNum+1, localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider)
 
 		assert.NoError(t, err)
 
@@ -418,13 +403,13 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationFollower, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 2, pullerCreator.CreateBlockPullerCallCount())
+		assert.Equal(t, 1, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 40, ledgerResources.AppendCallCount())
 		assert.Equal(t, uint64(51), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
-		assert.Equal(t, 0, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
 	t.Run("No config in the middle, latest height increasing slowly", func(t *testing.T) {
 		setup()
@@ -444,7 +429,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 			},
 		)
 		ledgerResources.AppendCalls(func(block *common.Block) error {
-			localBlockchain.Append(block)
+			_ = localBlockchain.Append(block)
 			if remoteBlockchain.Height() == localBlockchain.Height() {
 				if remoteBlockchain.Height() < 50 {
 					remoteBlockchain.fill(10)
@@ -457,7 +442,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		})
 		assert.Equal(t, joinNum+1, localBlockchain.Height())
 		options.TimeAfter = timeAfterCount.After
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider)
 
 		assert.NoError(t, err)
 
@@ -476,20 +461,20 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationFollower, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 2, pullerCreator.CreateBlockPullerCallCount())
+		assert.Equal(t, 1, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 40, ledgerResources.AppendCallCount())
 		assert.Equal(t, uint64(51), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
-		assert.Equal(t, 0, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 		assert.True(t, puller.HeightsByEndpointsCallCount() >= 30)
 		assert.Equal(t, int64(10000), atomic.LoadInt64(&maxDelay))
 	})
 	t.Run("Configs in the middle, latest height increasing", func(t *testing.T) {
 		setup()
 		ledgerResources.AppendCalls(func(block *common.Block) error {
-			localBlockchain.Append(block)
+			_ = localBlockchain.Append(block)
 
 			if remoteBlockchain.Height() == localBlockchain.Height() {
 				if remoteBlockchain.Height() < 50 {
@@ -504,10 +489,10 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 			}
 			return nil
 		})
-		mockChainCreator.CreateChainCalls(wgChain.Done) //Stop when a new chain is created
+		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() }) //Stop when a new chain is created
 		assert.Equal(t, joinNum+1, localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider)
 		assert.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -523,18 +508,18 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 6, pullerCreator.CreateBlockPullerCallCount(), "after finding a config, block puller is created")
+		assert.Equal(t, 1, pullerFactory.BlockPullerCallCount(), "after finding a config, block puller is created")
 		assert.Equal(t, 50, ledgerResources.AppendCallCount())
 		assert.Equal(t, uint64(61), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
-		assert.Equal(t, 1, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
 	t.Run("Overcome puller errors, configs in the middle, latest height increasing", func(t *testing.T) {
 		setup()
 		ledgerResources.AppendCalls(func(block *common.Block) error {
-			localBlockchain.Append(block)
+			_ = localBlockchain.Append(block)
 
 			if remoteBlockchain.Height() == localBlockchain.Height() {
 				if remoteBlockchain.Height() < 50 {
@@ -549,7 +534,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 			}
 			return nil
 		})
-		mockChainCreator.CreateChainCalls(wgChain.Done) //Stop when a new chain is created
+		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() }) //Stop when a new chain is created
 		assert.Equal(t, joinNum+1, localBlockchain.Height())
 
 		failPull := 10
@@ -576,11 +561,11 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 				return m, nil
 			},
 		)
-		pullerCreator.CreateBlockPullerReturns(puller, nil)
+		pullerFactory.BlockPullerReturns(puller, nil)
 
 		options.TimeAfter = timeAfterCount.After
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider)
 
 		assert.NoError(t, err)
 
@@ -597,15 +582,15 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 6, pullerCreator.CreateBlockPullerCallCount(), "after finding a config, or error, block puller is created")
+		assert.Equal(t, 1, pullerFactory.BlockPullerCallCount(), "after finding a config, or error, block puller is created")
 		assert.Equal(t, 50, ledgerResources.AppendCallCount())
 		assert.Equal(t, uint64(61), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
 
-		assert.Equal(t, 1, mockChainCreator.CreateChainCallCount())
-		assert.Equal(t, 255, timeAfterCount.AfterCallCount())
+		assert.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
+		assert.Equal(t, 259, timeAfterCount.AfterCallCount())
 		assert.Equal(t, int64(5000), atomic.LoadInt64(&maxDelay))
 	})
 }
@@ -631,7 +616,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 				return m, nil
 			},
 		)
-		pullerCreator.CreateBlockPullerReturns(puller, nil)
+		pullerFactory.BlockPullerReturns(puller, nil)
 
 		wgChain = sync.WaitGroup{}
 		wgChain.Add(1)
@@ -640,7 +625,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 	t.Run("No config in the middle", func(t *testing.T) {
 		setup()
 		ledgerResources.AppendCalls(func(block *common.Block) error {
-			localBlockchain.Append(block)
+			_ = localBlockchain.Append(block)
 			//Stop when we catch-up with latest
 			if remoteBlockchain.Height() == localBlockchain.Height() {
 				wgChain.Done()
@@ -649,7 +634,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		})
 		assert.Equal(t, uint64(0), localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
 		assert.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -665,18 +650,18 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationFollower, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 3, pullerCreator.CreateBlockPullerCallCount())
+		assert.Equal(t, 3, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 21, ledgerResources.AppendCallCount())
 		assert.Equal(t, uint64(21), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
-		assert.Equal(t, 0, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
 	t.Run("No config in the middle, latest height increasing", func(t *testing.T) {
 		setup()
 		ledgerResources.AppendCalls(func(block *common.Block) error {
-			localBlockchain.Append(block)
+			_ = localBlockchain.Append(block)
 			if remoteBlockchain.Height() == localBlockchain.Height() {
 				if remoteBlockchain.Height() < 50 {
 					remoteBlockchain.fill(10)
@@ -689,7 +674,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		})
 		assert.Equal(t, uint64(0), localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
 
 		assert.NoError(t, err)
 
@@ -706,20 +691,20 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationFollower, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 3, pullerCreator.CreateBlockPullerCallCount())
+		assert.Equal(t, 3, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 51, ledgerResources.AppendCallCount())
 		assert.Equal(t, uint64(51), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
-		assert.Equal(t, 0, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 0, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
 	t.Run("Configs in the middle, latest height increasing", func(t *testing.T) {
 		setup()
 		localBlockchain.fill(5)
 		localBlockchain.appendConfig(0)
 		ledgerResources.AppendCalls(func(block *common.Block) error {
-			localBlockchain.Append(block)
+			_ = localBlockchain.Append(block)
 
 			if remoteBlockchain.Height() == localBlockchain.Height() {
 				if remoteBlockchain.Height() < 50 {
@@ -734,10 +719,10 @@ func TestFollowerPullPastJoin(t *testing.T) {
 			}
 			return nil
 		})
-		mockChainCreator.CreateChainCalls(wgChain.Done) //Stop when a new chain is created
+		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() }) //Stop when a new chain is created
 		assert.Equal(t, uint64(6), localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
 		assert.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -753,18 +738,18 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 7, pullerCreator.CreateBlockPullerCallCount(), "after finding a config, block puller is created")
+		assert.Equal(t, 3, pullerFactory.BlockPullerCallCount(), "after finding a config, block puller is created")
 		assert.Equal(t, 55, ledgerResources.AppendCallCount())
 		assert.Equal(t, uint64(61), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
-		assert.Equal(t, 1, mockChainCreator.CreateChainCallCount())
+		assert.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 	})
 	t.Run("Overcome puller errors, configs in the middle, latest height increasing", func(t *testing.T) {
 		setup()
 		ledgerResources.AppendCalls(func(block *common.Block) error {
-			localBlockchain.Append(block)
+			_ = localBlockchain.Append(block)
 
 			if remoteBlockchain.Height() == localBlockchain.Height() {
 				if remoteBlockchain.Height() < 50 {
@@ -779,7 +764,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 			}
 			return nil
 		})
-		mockChainCreator.CreateChainCalls(wgChain.Done) //Stop when a new chain is created
+		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() }) //Stop when a new chain is created
 		assert.Equal(t, uint64(0), localBlockchain.Height())
 
 		failPull := 10
@@ -806,11 +791,11 @@ func TestFollowerPullPastJoin(t *testing.T) {
 				return m, nil
 			},
 		)
-		pullerCreator.CreateBlockPullerReturns(puller, nil)
+		pullerFactory.BlockPullerReturns(puller, nil)
 
 		options.TimeAfter = timeAfterCount.After
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerCreator.CreateBlockPuller, mockChainCreator.CreateChain, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
 
 		assert.NoError(t, err)
 
@@ -827,15 +812,15 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 7, pullerCreator.CreateBlockPullerCallCount(), "after finding a config, or error, block puller is created")
+		assert.Equal(t, 3, pullerFactory.BlockPullerCallCount(), "after finding a config, or error, block puller is created")
 		assert.Equal(t, 61, ledgerResources.AppendCallCount())
 		assert.Equal(t, uint64(61), localBlockchain.Height())
 		for i := uint64(0); i < localBlockchain.Height(); i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
 
-		assert.Equal(t, 1, mockChainCreator.CreateChainCallCount())
-		assert.Equal(t, 305, timeAfterCount.AfterCallCount())
+		assert.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
+		assert.Equal(t, 309, timeAfterCount.AfterCallCount())
 		assert.Equal(t, int64(5000), atomic.LoadInt64(&maxDelay))
 	})
 }
