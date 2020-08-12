@@ -65,22 +65,22 @@ func loadLib(lib, pin, label string) (*pkcs11.Ctx, uint, *pkcs11.SessionHandle, 
 }
 
 func (csp *impl) getSession() (session pkcs11.SessionHandle, err error) {
-	select {
-	case session = <-csp.sessions:
-		_, err = csp.ctx.GetSessionInfo(session)
-		if err != nil {
+	for {
+		select {
+		case session = <-csp.sessions:
+			if _, err = csp.ctx.GetSessionInfo(session); err == nil {
+				logger.Debugf("Reusing existing pkcs11 session %d on slot %d\n", session, csp.slot)
+				return session, nil
+			}
+
 			logger.Warningf("Get session info failed [%s], closing existing session and getting a new session\n", err)
 			csp.ctx.CloseSession(session)
-			session, err = createSession(csp.ctx, csp.slot, csp.pin)
-		} else {
-			logger.Debugf("Reusing existing pkcs11 session %+v on slot %d\n", session, csp.slot)
-		}
 
-	default:
-		// cache is empty (or completely in use), create a new session
-		session, err = createSession(csp.ctx, csp.slot, csp.pin)
+		default:
+			// cache is empty (or completely in use), create a new session
+			return createSession(csp.ctx, csp.slot, csp.pin)
+		}
 	}
-	return session, err
 }
 
 func createSession(ctx *pkcs11.Ctx, slot uint, pin string) (pkcs11.SessionHandle, error) {

@@ -103,11 +103,28 @@ func TestPKCS11GetSession(t *testing.T) {
 	_, err := currentBCCSP.(*impl).getSession()
 	require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
 
+	// Load cache with bad sessions
+	for i := 0; i < sessionCacheSize; i++ {
+		currentBCCSP.(*impl).returnSession(pkcs11.SessionHandle(^uint(0)))
+	}
+
+	// Fix OpenSession so non-cached sessions can be opened
+	currentBCCSP.(*impl).slot = oldSlot
+
+	// Request a session, return, and re-acquire. The pool should be emptied
+	// before creating a new session so when returned, it should be the only
+	// session in the cache.
+	sess, err := currentBCCSP.(*impl).getSession()
+	require.NoError(t, err)
+	currentBCCSP.(*impl).returnSession(sess)
+	sess2, err := currentBCCSP.(*impl).getSession()
+	require.NoError(t, err)
+	require.Equal(t, sess, sess2, "expected to get back the same session")
+
 	// Cleanup
 	for _, session := range sessions {
 		currentBCCSP.(*impl).returnSession(session)
 	}
-	currentBCCSP.(*impl).slot = oldSlot
 }
 
 func TestPKCS11ECKeySignVerify(t *testing.T) {
