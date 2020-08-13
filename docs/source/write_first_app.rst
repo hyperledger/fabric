@@ -340,8 +340,15 @@ to the Contract using the contract name and channel name via Gateway:
     // Build a network instance based on the channel where the smart contract is deployed
     const network = await gateway.getNetwork(channelName);
 
+
     // Get the contract from the network.
     const contract = network.getContract(chaincodeName);
+
+When a chaincode package includes multiple smart contracts, on the `getContract() API <https://hyperledger.github.io/fabric-sdk-node/release-2.2/module-fabric-network.Network.html#getContract>`__ you can specify both the name of the chaincode package and a specific smart contract to target. For example:
+
+.. code:: bash
+
+  const contract = await network.getContract('chaincodeName', 'smartContractName');
 
 Fourth, the application initializes the ledger with some sample data
 --------------------------------------------------------------------
