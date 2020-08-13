@@ -145,12 +145,11 @@ file that it needs to ingest.
 
 The above command creates a JSON file -- ``org3.json`` -- and writes it to the
 ``test-network/organizations/peerOrganizations/org3.example.com`` folder. The
-organization definition contains the policy definitions for Org3, as well as three
-important certificates encoded in base64 format:
+organization definition contains the policy definitions for Org3, the NodeOU definitions
+for Org3, and two important certificates encoded in base64 format:
 
   * a CA root cert, used to establish the organizations root of trust
   * a TLS root cert, used by the gossip protocol to identify Org3 for block dissemination and service discovery
-  * The admin user certificate (which will be needed to act as the admin of Org3 later on)
 
 We will add Org3 to the channel by appending this organization definition to
 the channel configuration.
@@ -496,9 +495,7 @@ Configuring Leader Election
 
 .. note:: This section is included as a general reference for understanding
           the leader election settings when adding organizations to a network
-          after the initial channel configuration has completed. This sample
-          defaults to dynamic leader election, which is set for all peers in the
-          network.
+          after the initial channel configuration has completed.
 
 Newly joining peers are bootstrapped with the genesis block, which does not
 contain information about the organization that is being added in the channel
@@ -508,8 +505,8 @@ until they get the configuration transaction which added the organization to the
 channel. Newly added peers must therefore have one of the following
 configurations so that they receive blocks from the ordering service:
 
-1. To utilize static leader mode, configure the peer to be an organization
-leader:
+1. To ensure that peers always receive blocks directly from the ordering service,
+configure the peer to be an organization leader:
 
 ::
 
@@ -517,11 +514,11 @@ leader:
     CORE_PEER_GOSSIP_ORGLEADER=true
 
 
-.. note:: This configuration must be the same for all new peers added to the
-          channel.
+.. note:: This configuration is the default starting in Fabric v2.2 and must be the
+          same for all new peers added to the channel.
 
-2. To utilize dynamic leader election, configure the peer to use leader
-election:
+2. To eventually utilize dynamic leader election within the organization,
+configure the peer to use leader election:
 
 ::
 
@@ -529,7 +526,7 @@ election:
     CORE_PEER_GOSSIP_ORGLEADER=false
 
 
-.. note:: Because peers of the newly added organization won't be able to form
+.. note:: Because peers of the newly added organization won't initially be able to form
           membership view, this option will be similar to the static
           configuration, as each peer will start proclaiming itself to be a
           leader. However, once they get updated with the configuration
@@ -562,7 +559,7 @@ use the ``test-network`` script to deploy the Basic chaincode:
 .. code:: bash
 
   cd fabric-samples/test-network
-  ./network.sh deployCC -ccn basic -ccl go 
+  ./network.sh deployCC -ccn basic -ccl go
 
 The script will install the Basic chaincode on the Org1 and Org2 peers, approve
 the chaincode definition for Org1 and Org2, and then commit the chaincode
@@ -664,14 +661,14 @@ endorsement policy will be updated automatically. We previously needed endorseme
 from Org1 and Org2 (2 out of 2). Now we need endorsements from two organizations
 out of Org1, Org2, and Org3 (2 out of 3).
 
-Populate the ledger with some sample assets.
+Populate the ledger with some sample assets. We'll get endorsements from the Org2 peer
+and the new Org3 peer so that the endorsement policy is satisfied.
 
 .. code:: bash
 
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n basic --peerAddresses localhost:11051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt -c '{"function":"InitLedger","Args":[]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n basic --peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt --peerAddresses localhost:11051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt -c '{"function":"InitLedger","Args":[]}'
 
-You can query the chaincode to ensure that it has started on the Org3 peer. Note
-that you may need to wait for the chaincode container to start.
+You can query the chaincode to ensure that the Org3 peer committed the data.
 
 .. code:: bash
 
@@ -679,19 +676,6 @@ that you may need to wait for the chaincode container to start.
 
 You should see the initial list of assets that were added to the ledger as a
 response.
-
-Now, invoke the chaincode to add a new asset to the ledger. In the command below,
-we target a peer in Org1 and Org3 to collect a sufficient number of endorsements.
-
-.. code:: bash
-
-  peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:11051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt -c '{"function":"CreateAsset","Args":["asset7","black","5","Tom","320"]}'
-
-We can query again to see the new asset, "asset7" on the our the ledger:
-
-.. code:: bash
-
-    peer chaincode query -C mychannel -n basic -c '{"Args":["ReadAsset","asset7"]}'
 
 
 Conclusion
