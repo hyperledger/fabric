@@ -66,6 +66,18 @@ Here is an example of the `peer chaincode invoke` command:
     successfully. The transaction will then be added to a block and, finally, validated
     or invalidated by each peer on the channel.
 
+Here is an example of how to format the `peer chaincode invoke` command when the chaincode package includes multiple smart contracts.
+
+  * If you are using the [contract-api](https://www.npmjs.com/package/fabric-contract-api), the name you pass to `super("MyContract")` can be used as a prefix.
+
+    ```
+    peer chaincode invoke -C $CHANNEL_NAME -n $CHAINCODE_NAME -c '{ "Args": ["MyContract:methodName", "{}"] }'
+
+    peer chaincode invoke -C $CHANNEL_NAME -n $CHAINCODE_NAME -c '{ "Args": ["MyOtherContract:methodName", "{}"] }'
+
+    ```
+
+
 ### peer chaincode list example
 
 Here are some examples of the `peer chaincode list ` command:
