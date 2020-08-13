@@ -754,7 +754,7 @@ func (l *kvLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.Reconcil
 
 	logger.Debugf("[%s:] Committing pvtData of [%d] old blocks to the pvtdatastore", l.ledgerID, len(reconciledPvtdata))
 
-	err = l.pvtdataStore.CommitPvtDataOfOldBlocks(hashVerifiedPvtData)
+	err = l.pvtdataStore.CommitPvtDataOfOldBlocks(hashVerifiedPvtData, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -139,25 +139,38 @@ func getOrCreateExpiryData(mapByExpiringBlk map[uint64]*ExpiryData, expiringBlk 
 }
 
 // deriveKeys constructs dataKeys and missingDataKey from an expiryEntry
-func deriveKeys(expiryEntry *expiryEntry) (dataKeys []*dataKey, missingDataKeys []*missingDataKey) {
+func deriveKeys(expiryEntry *expiryEntry) ([]*dataKey, []*missingDataKey) {
+	var dataKeys []*dataKey
+	var missingDataKeys []*missingDataKey
+
 	for ns, colls := range expiryEntry.value.Map {
-		// 1. constructs dataKeys of expired existing pvt data
 		for coll, txNums := range colls.Map {
 			for _, txNum := range txNums.List {
 				dataKeys = append(dataKeys,
-					&dataKey{nsCollBlk{ns, coll, expiryEntry.key.committingBlk}, txNum})
+					&dataKey{
+						nsCollBlk: nsCollBlk{
+							ns:     ns,
+							coll:   coll,
+							blkNum: expiryEntry.key.committingBlk,
+						},
+						txNum: txNum,
+					})
 			}
 		}
-		// 2. constructs missingDataKeys of expired missing pvt data
+
 		for coll := range colls.MissingDataMap {
-			// one key for eligible entries and another for ieligible entries
 			missingDataKeys = append(missingDataKeys,
-				&missingDataKey{nsCollBlk{ns, coll, expiryEntry.key.committingBlk}, true})
-			missingDataKeys = append(missingDataKeys,
-				&missingDataKey{nsCollBlk{ns, coll, expiryEntry.key.committingBlk}, false})
+				&missingDataKey{
+					nsCollBlk: nsCollBlk{
+						ns:     ns,
+						coll:   coll,
+						blkNum: expiryEntry.key.committingBlk,
+					},
+				})
 		}
 	}
-	return
+
+	return dataKeys, missingDataKeys
 }
 
 func passesFilter(dataKey *dataKey, filter ledger.PvtNsCollFilter) bool {

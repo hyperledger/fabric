@@ -10,6 +10,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/pkg/errors"
 	"github.com/willf/bitset"
 )
 
@@ -21,91 +22,169 @@ import (
 //     from the above created data entries
 // (2) create a db update batch from the update entries
 // (3) commit the update batch to the pvtStore
-func (s *Store) CommitPvtDataOfOldBlocks(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
+func (s *Store) CommitPvtDataOfOldBlocks(
+	blocksPvtData map[uint64][]*ledger.TxPvtData,
+	deprioritizedMissingData ledger.MissingPvtDataInfo,
+) error {
+	s.purgerLock.Lock()
+	defer s.purgerLock.Unlock()
+
 	if s.isLastUpdatedOldBlocksSet {
 		return &ErrIllegalCall{`The lastUpdatedOldBlocksList is set. It means that the
 		stateDB may not be in sync with the pvtStore`}
 	}
 
-	oldBlkDataProccessor := &oldBlockDataProcessor{
+	p := &oldBlockDataProcessor{
 		Store: s,
+		entries: &entriesForPvtDataOfOldBlocks{
+			dataEntries:                     make(map[dataKey]*rwset.CollectionPvtReadWriteSet),
+			expiryEntries:                   make(map[expiryKey]*ExpiryData),
+			prioritizedMissingDataEntries:   make(map[nsCollBlk]*bitset.BitSet),
+			deprioritizedMissingDataEntries: make(map[nsCollBlk]*bitset.BitSet),
+		},
 	}
 
-	logger.Debugf("Constructing pvtdatastore entries for pvtData of [%d] old blocks", len(blocksPvtData))
-	entries, err := oldBlkDataProccessor.constructEntries(blocksPvtData)
+	if err := p.prepareDataAndExpiryEntries(blocksPvtData); err != nil {
+		return err
+	}
+
+	if err := p.prepareMissingDataEntriesToReflectReconciledData(); err != nil {
+		return err
+	}
+
+	if err := p.prepareMissingDataEntriesToReflectPriority(deprioritizedMissingData); err != nil {
+		return err
+	}
+
+	batch, err := p.constructDBUpdateBatch()
 	if err != nil {
 		return err
 	}
-
-	logger.Debug("Constructing update batch from pvtdatastore entries")
-	batch := s.db.NewUpdateBatch()
-	if err := entries.addToUpdateBatch(batch); err != nil {
-		return err
-	}
-
-	logger.Debug("Committing the update batch to pvtdatastore")
 	return s.db.WriteBatch(batch, true)
 }
 
 type oldBlockDataProcessor struct {
 	*Store
+	entries *entriesForPvtDataOfOldBlocks
 }
 
-func (p *oldBlockDataProcessor) constructEntries(blocksPvtData map[uint64][]*ledger.TxPvtData) (*entriesForPvtDataOfOldBlocks, error) {
+func (p *oldBlockDataProcessor) prepareDataAndExpiryEntries(blocksPvtData map[uint64][]*ledger.TxPvtData) error {
 	var dataEntries []*dataEntry
+	var expData *ExpiryData
+
 	for blkNum, pvtData := range blocksPvtData {
 		dataEntries = append(dataEntries, prepareDataEntries(blkNum, pvtData)...)
 	}
 
-	entries := &entriesForPvtDataOfOldBlocks{
-		dataEntries:        make(map[dataKey]*rwset.CollectionPvtReadWriteSet),
-		expiryEntries:      make(map[expiryKey]*ExpiryData),
-		missingDataEntries: make(map[nsCollBlk]*bitset.BitSet),
-	}
-
 	for _, dataEntry := range dataEntries {
-		var expData *ExpiryData
 		nsCollBlk := dataEntry.key.nsCollBlk
 		txNum := dataEntry.key.txNum
 
-		expKey, err := p.constructExpiryKeyFromDataEntry(dataEntry)
+		expKey, err := p.constructExpiryKey(dataEntry)
 		if err != nil {
-			return nil, err
-		}
-		if !neverExpires(expKey.expiringBlk) {
-			if expData, err = p.getExpiryDataFromEntriesOrStore(entries, expKey); err != nil {
-				return nil, err
-			}
-			if expData == nil {
-				// data entry is already expired
-				// and purged (a rare scenario)
-				continue
-			}
-			expData.addPresentData(nsCollBlk.ns, nsCollBlk.coll, txNum)
+			return err
 		}
 
-		var missingData *bitset.BitSet
-		if missingData, err = p.getMissingDataFromEntriesOrStore(entries, nsCollBlk); err != nil {
-			return nil, err
-		}
-		if missingData == nil {
-			// data entry is already expired
-			// and purged (a rare scenario)
+		if neverExpires(expKey.expiringBlk) {
+			p.entries.dataEntries[*dataEntry.key] = dataEntry.value
 			continue
 		}
-		missingData.Clear(uint(txNum))
 
-		entries.add(dataEntry, expKey, expData, missingData)
+		if expData, err = p.getExpiryData(expKey); err != nil {
+			return err
+		}
+		if expData == nil {
+			// if expiryData is not available, it means that
+			// the pruge scheduler removed these entries and the
+			// associated data entry is no longer needed. Note
+			// that the associated missingData entry would also
+			// be not present. Hence, we can skip this data entry.
+			continue
+		}
+		expData.addPresentData(nsCollBlk.ns, nsCollBlk.coll, txNum)
+
+		p.entries.dataEntries[*dataEntry.key] = dataEntry.value
+		p.entries.expiryEntries[expKey] = expData
 	}
-	return entries, nil
+	return nil
 }
 
-func (p *oldBlockDataProcessor) constructExpiryKeyFromDataEntry(dataEntry *dataEntry) (expiryKey, error) {
+func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectReconciledData() error {
+	for dataKey := range p.entries.dataEntries {
+		key := dataKey.nsCollBlk
+		txNum := uint(dataKey.txNum)
+
+		prioMissingData, err := p.getMissingDataFromPrioritizedList(key)
+		if err != nil {
+			return err
+		}
+		if prioMissingData != nil && prioMissingData.Test(txNum) {
+			p.entries.prioritizedMissingDataEntries[key] = prioMissingData.Clear(txNum)
+			continue
+		}
+
+		deprioMissingData, err := p.getMissingDataFromDeprioritizedList(key)
+		if err != nil {
+			return err
+		}
+		if deprioMissingData != nil && deprioMissingData.Test(txNum) {
+			p.entries.deprioritizedMissingDataEntries[key] = deprioMissingData.Clear(txNum)
+		}
+		// if the missing data entry is already purged by the purge scheduler, we would
+		// get nil missingData from both prioritized and deprioritized list
+	}
+
+	return nil
+}
+
+func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectPriority(deprioritizedList ledger.MissingPvtDataInfo) error {
+	for blkNum, blkMissingData := range deprioritizedList {
+		for txNum, txMissingData := range blkMissingData {
+			for _, nsColl := range txMissingData {
+				key := nsCollBlk{
+					ns:     nsColl.Namespace,
+					coll:   nsColl.Collection,
+					blkNum: blkNum,
+				}
+				txNum := uint(txNum)
+
+				prioMissingData, err := p.getMissingDataFromPrioritizedList(key)
+				if err != nil {
+					return err
+				}
+				if prioMissingData == nil {
+					// we would reach here when either of the following happens:
+					//   (1) when the purge scheduler already removed the respective
+					//       missing data entry.
+					//   (2) when the missing data info is already persistent in the
+					//       deprioritized list. Currently, we do not have different
+					//       levels of deprioritized list.
+					// In both of the above case, we can continue to the next entry.
+					continue
+				}
+				p.entries.prioritizedMissingDataEntries[key] = prioMissingData.Clear(txNum)
+
+				deprioMissingData, err := p.getMissingDataFromDeprioritizedList(key)
+				if err != nil {
+					return err
+				}
+				if deprioMissingData == nil {
+					deprioMissingData = &bitset.BitSet{}
+				}
+				p.entries.deprioritizedMissingDataEntries[key] = deprioMissingData.Set(txNum)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (p *oldBlockDataProcessor) constructExpiryKey(dataEntry *dataEntry) (expiryKey, error) {
 	// get the expiryBlk number to construct the expiryKey
 	nsCollBlk := dataEntry.key.nsCollBlk
 	expiringBlk, err := p.btlPolicy.GetExpiringBlock(nsCollBlk.ns, nsCollBlk.coll, nsCollBlk.blkNum)
 	if err != nil {
-		return expiryKey{}, err
+		return expiryKey{}, errors.WithMessagef(err, "error while constructing expiry data key")
 	}
 
 	return expiryKey{
@@ -114,115 +193,140 @@ func (p *oldBlockDataProcessor) constructExpiryKeyFromDataEntry(dataEntry *dataE
 	}, nil
 }
 
-func (p *oldBlockDataProcessor) getExpiryDataFromEntriesOrStore(entries *entriesForPvtDataOfOldBlocks, expiryKey expiryKey) (*ExpiryData, error) {
-	if expiryData, ok := entries.expiryEntries[expiryKey]; ok {
+func (p *oldBlockDataProcessor) getExpiryData(expKey expiryKey) (*ExpiryData, error) {
+	if expiryData, ok := p.entries.expiryEntries[expKey]; ok {
 		return expiryData, nil
 	}
 
-	expiryData, err := p.getExpiryDataOfExpiryKey(&expiryKey)
+	expData, err := p.db.Get(encodeExpiryKey(&expKey))
 	if err != nil {
 		return nil, err
 	}
-	return expiryData, nil
+	if expData == nil {
+		return nil, errors.Wrap(err, "error while getting expiry data from the store")
+	}
+	return decodeExpiryValue(expData)
 }
 
-func (p *oldBlockDataProcessor) getMissingDataFromEntriesOrStore(entries *entriesForPvtDataOfOldBlocks, nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
-	if missingData, ok := entries.missingDataEntries[nsCollBlk]; ok {
+func (p *oldBlockDataProcessor) getMissingDataFromPrioritizedList(nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
+	missingData, ok := p.entries.prioritizedMissingDataEntries[nsCollBlk]
+	if ok {
 		return missingData, nil
 	}
 
-	missingDataKey := &missingDataKey{
-		nsCollBlk:  nsCollBlk,
-		isEligible: true,
+	return p.getMissingDataBitmapFromStore(elgPrioritizedMissingDataGroup, nsCollBlk)
+}
+
+func (p *oldBlockDataProcessor) getMissingDataFromDeprioritizedList(nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
+	missingData, ok := p.entries.deprioritizedMissingDataEntries[nsCollBlk]
+	if ok {
+		return missingData, nil
 	}
-	missingData, err := p.getBitmapOfMissingDataKey(missingDataKey)
+
+	return p.getMissingDataBitmapFromStore(elgDeprioritizedMissingDataGroup, nsCollBlk)
+}
+
+func (p *oldBlockDataProcessor) getMissingDataBitmapFromStore(group []byte, nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
+	key := encodeElgMissingDataKey(
+		group,
+		&missingDataKey{
+			nsCollBlk: nsCollBlk,
+		},
+	)
+
+	missingData, err := p.db.Get(key)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error while getting missing data bitmap from the store")
 	}
-	return missingData, nil
+	if missingData == nil {
+		return nil, nil
+	}
+
+	return decodeMissingDataValue(missingData)
+}
+
+func (p *oldBlockDataProcessor) constructDBUpdateBatch() (*leveldbhelper.UpdateBatch, error) {
+	batch := p.db.NewUpdateBatch()
+
+	if err := p.entries.addDataEntriesTo(batch); err != nil {
+		return nil, errors.WithMessage(err, "error while adding data entries to the update batch")
+	}
+
+	if err := p.entries.addExpiryEntriesTo(batch); err != nil {
+		return nil, errors.WithMessage(err, "error while adding expiry entries to the update batch")
+	}
+
+	if err := p.entries.addMissingDataEntriesTo(batch); err != nil {
+		return nil, errors.WithMessage(err, "error while adding missing data entries to the update batch")
+	}
+
+	return batch, nil
 }
 
 type entriesForPvtDataOfOldBlocks struct {
-	dataEntries        map[dataKey]*rwset.CollectionPvtReadWriteSet
-	expiryEntries      map[expiryKey]*ExpiryData
-	missingDataEntries map[nsCollBlk]*bitset.BitSet
+	dataEntries                     map[dataKey]*rwset.CollectionPvtReadWriteSet
+	expiryEntries                   map[expiryKey]*ExpiryData
+	prioritizedMissingDataEntries   map[nsCollBlk]*bitset.BitSet
+	deprioritizedMissingDataEntries map[nsCollBlk]*bitset.BitSet
 }
 
-func (e *entriesForPvtDataOfOldBlocks) add(datEntry *dataEntry, expKey expiryKey, expData *ExpiryData, missingData *bitset.BitSet) {
-	dataKey := dataKey{
-		nsCollBlk: datEntry.key.nsCollBlk,
-		txNum:     datEntry.key.txNum,
-	}
-	e.dataEntries[dataKey] = datEntry.value
-
-	if expData != nil {
-		e.expiryEntries[expKey] = expData
-	}
-
-	e.missingDataEntries[dataKey.nsCollBlk] = missingData
-}
-
-func (e *entriesForPvtDataOfOldBlocks) addToUpdateBatch(batch *leveldbhelper.UpdateBatch) error {
-	if err := e.addDataEntriesToUpdateBatch(batch); err != nil {
-		return err
-	}
-
-	if err := e.addExpiryEntriesToUpdateBatch(batch); err != nil {
-		return err
-	}
-
-	return e.addMissingDataEntriesToUpdateBatch(batch)
-}
-
-func (e *entriesForPvtDataOfOldBlocks) addDataEntriesToUpdateBatch(batch *leveldbhelper.UpdateBatch) error {
+func (e *entriesForPvtDataOfOldBlocks) addDataEntriesTo(batch *leveldbhelper.UpdateBatch) error {
 	var key, val []byte
 	var err error
 
 	for dataKey, pvtData := range e.dataEntries {
 		key = encodeDataKey(&dataKey)
 		if val, err = encodeDataValue(pvtData); err != nil {
-			return err
+			return errors.Wrap(err, "error while encoding data value")
 		}
 		batch.Put(key, val)
 	}
 	return nil
 }
 
-func (e *entriesForPvtDataOfOldBlocks) addExpiryEntriesToUpdateBatch(batch *leveldbhelper.UpdateBatch) error {
+func (e *entriesForPvtDataOfOldBlocks) addExpiryEntriesTo(batch *leveldbhelper.UpdateBatch) error {
 	var key, val []byte
 	var err error
 
 	for expiryKey, expiryData := range e.expiryEntries {
 		key = encodeExpiryKey(&expiryKey)
 		if val, err = encodeExpiryValue(expiryData); err != nil {
-			return err
+			return errors.Wrap(err, "error while encoding expiry value")
 		}
 		batch.Put(key, val)
 	}
 	return nil
 }
 
-func (e *entriesForPvtDataOfOldBlocks) addMissingDataEntriesToUpdateBatch(batch *leveldbhelper.UpdateBatch) error {
+func (e *entriesForPvtDataOfOldBlocks) addMissingDataEntriesTo(batch *leveldbhelper.UpdateBatch) error {
 	var key, val []byte
 	var err error
 
-	for nsCollBlk, missingData := range e.missingDataEntries {
-		key = encodeMissingDataKey(
-			&missingDataKey{
-				nsCollBlk:  nsCollBlk,
-				isEligible: true,
-			},
-		)
+	entries := map[string]map[nsCollBlk]*bitset.BitSet{
+		string(elgPrioritizedMissingDataGroup):   e.prioritizedMissingDataEntries,
+		string(elgDeprioritizedMissingDataGroup): e.deprioritizedMissingDataEntries,
+	}
 
-		if missingData.None() {
-			batch.Delete(key)
-			continue
-		}
+	for group, missingDataList := range entries {
+		for nsCollBlk, missingData := range missingDataList {
+			key = encodeElgMissingDataKey(
+				[]byte(group),
+				&missingDataKey{
+					nsCollBlk:  nsCollBlk,
+					isEligible: true,
+				},
+			)
 
-		if val, err = encodeMissingDataValue(missingData); err != nil {
-			return err
+			if missingData.None() {
+				batch.Delete(key)
+				continue
+			}
+
+			if val, err = encodeMissingDataValue(missingData); err != nil {
+				return errors.Wrap(err, "error while encoding missing data bitmap")
+			}
+			batch.Put(key, val)
 		}
-		batch.Put(key, val)
 	}
 	return nil
 }

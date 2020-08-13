@@ -19,29 +19,30 @@ import (
 )
 
 var (
-	pendingCommitKey               = []byte{0}
-	lastCommittedBlkkey            = []byte{1}
-	pvtDataKeyPrefix               = []byte{2}
-	expiryKeyPrefix                = []byte{3}
-	eligibleMissingDataKeyPrefix   = []byte{4}
-	ineligibleMissingDataKeyPrefix = []byte{5}
-	collElgKeyPrefix               = []byte{6}
-	lastUpdatedOldBlocksKey        = []byte{7}
+	pendingCommitKey                 = []byte{0}
+	lastCommittedBlkkey              = []byte{1}
+	pvtDataKeyPrefix                 = []byte{2}
+	expiryKeyPrefix                  = []byte{3}
+	elgPrioritizedMissingDataGroup   = []byte{4}
+	inelgMissingDataGroup            = []byte{5}
+	collElgKeyPrefix                 = []byte{6}
+	lastUpdatedOldBlocksKey          = []byte{7}
+	elgDeprioritizedMissingDataGroup = []byte{8}
 
 	nilByte    = byte(0)
 	emptyValue = []byte{}
 )
 
-func getDataKeysForRangeScanByBlockNum(blockNum uint64) (startKey, endKey []byte) {
-	startKey = append(pvtDataKeyPrefix, version.NewHeight(blockNum, 0).ToBytes()...)
-	endKey = append(pvtDataKeyPrefix, version.NewHeight(blockNum+1, 0).ToBytes()...)
-	return
+func getDataKeysForRangeScanByBlockNum(blockNum uint64) ([]byte, []byte) {
+	startKey := append(pvtDataKeyPrefix, version.NewHeight(blockNum, 0).ToBytes()...)
+	endKey := append(pvtDataKeyPrefix, version.NewHeight(blockNum+1, 0).ToBytes()...)
+	return startKey, endKey
 }
 
-func getExpiryKeysForRangeScan(minBlkNum, maxBlkNum uint64) (startKey, endKey []byte) {
-	startKey = append(expiryKeyPrefix, version.NewHeight(minBlkNum, 0).ToBytes()...)
-	endKey = append(expiryKeyPrefix, version.NewHeight(maxBlkNum+1, 0).ToBytes()...)
-	return
+func getExpiryKeysForRangeScan(minBlkNum, maxBlkNum uint64) ([]byte, []byte) {
+	startKey := append(expiryKeyPrefix, version.NewHeight(minBlkNum, 0).ToBytes()...)
+	endKey := append(expiryKeyPrefix, version.NewHeight(maxBlkNum+1, 0).ToBytes()...)
+	return startKey, endKey
 }
 
 func encodeLastCommittedBlockVal(blockNum uint64) []byte {
@@ -107,47 +108,45 @@ func decodeDataValue(datavalueBytes []byte) (*rwset.CollectionPvtReadWriteSet, e
 	return collPvtdata, err
 }
 
-func encodeMissingDataKey(key *missingDataKey) []byte {
-	if key.isEligible {
-		// When missing pvtData reconciler asks for missing data info,
-		// it is necessary to pass the missing pvtdata info associated with
-		// the most recent block so that missing pvtdata in the state db can
-		// be fixed sooner to reduce the "private data matching public hash version
-		// is not available" error during endorserments. In order to give priority
-		// to missing pvtData in the most recent block, we use reverse order
-		// preserving encoding for the missing data key. This simplifies the
-		// implementation of GetMissingPvtDataInfoForMostRecentBlocks().
-		keyBytes := append(eligibleMissingDataKeyPrefix, encodeReverseOrderVarUint64(key.blkNum)...)
-		keyBytes = append(keyBytes, []byte(key.ns)...)
-		keyBytes = append(keyBytes, nilByte)
-		return append(keyBytes, []byte(key.coll)...)
-	}
-
-	keyBytes := append(ineligibleMissingDataKeyPrefix, []byte(key.ns)...)
-	keyBytes = append(keyBytes, nilByte)
-	keyBytes = append(keyBytes, []byte(key.coll)...)
-	keyBytes = append(keyBytes, nilByte)
-	return append(keyBytes, []byte(encodeReverseOrderVarUint64(key.blkNum))...)
+func encodeElgMissingDataKey(group []byte, key *missingDataKey) []byte {
+	// When missing pvtData reconciler asks for missing data info,
+	// it is necessary to pass the missing pvtdata info associated with
+	// the most recent block so that missing pvtdata in the state db can
+	// be fixed sooner to reduce the "private data matching public hash version
+	// is not available" error during endorserments. In order to give priority
+	// to missing pvtData in the most recent block, we use reverse order
+	// preserving encoding for the missing data key. This simplifies the
+	// implementation of GetMissingPvtDataInfoForMostRecentBlocks().
+	encKey := append(group, encodeReverseOrderVarUint64(key.blkNum)...)
+	encKey = append(encKey, []byte(key.ns)...)
+	encKey = append(encKey, nilByte)
+	return append(encKey, []byte(key.coll)...)
 }
 
-func decodeMissingDataKey(keyBytes []byte) *missingDataKey {
+func decodeElgMissingDataKey(keyBytes []byte) *missingDataKey {
 	key := &missingDataKey{nsCollBlk: nsCollBlk{}}
-	if keyBytes[0] == eligibleMissingDataKeyPrefix[0] {
-		blkNum, numBytesConsumed := decodeReverseOrderVarUint64(keyBytes[1:])
+	blkNum, numBytesConsumed := decodeReverseOrderVarUint64(keyBytes[1:])
+	splittedKey := bytes.Split(keyBytes[numBytesConsumed+1:], []byte{nilByte})
+	key.ns = string(splittedKey[0])
+	key.coll = string(splittedKey[1])
+	key.blkNum = blkNum
+	return key
+}
 
-		splittedKey := bytes.Split(keyBytes[numBytesConsumed+1:], []byte{nilByte})
-		key.ns = string(splittedKey[0])
-		key.coll = string(splittedKey[1])
-		key.blkNum = blkNum
-		key.isEligible = true
-		return key
-	}
+func encodeInelgMissingDataKey(key *missingDataKey) []byte {
+	encKey := append(inelgMissingDataGroup, []byte(key.ns)...)
+	encKey = append(encKey, nilByte)
+	encKey = append(encKey, []byte(key.coll)...)
+	encKey = append(encKey, nilByte)
+	return append(encKey, []byte(encodeReverseOrderVarUint64(key.blkNum))...)
+}
 
+func decodeInelgMissingDataKey(keyBytes []byte) *missingDataKey {
+	key := &missingDataKey{nsCollBlk: nsCollBlk{}}
 	splittedKey := bytes.SplitN(keyBytes[1:], []byte{nilByte}, 3) //encoded bytes for blknum may contain empty bytes
 	key.ns = string(splittedKey[0])
 	key.coll = string(splittedKey[1])
 	key.blkNum, _ = decodeReverseOrderVarUint64(splittedKey[2])
-	key.isEligible = false
 	return key
 }
 
@@ -184,27 +183,28 @@ func decodeCollElgVal(b []byte) (*CollElgInfo, error) {
 	return m, nil
 }
 
-func createRangeScanKeysForEligibleMissingDataEntries(blkNum uint64) (startKey, endKey []byte) {
-	startKey = append(eligibleMissingDataKeyPrefix, encodeReverseOrderVarUint64(blkNum)...)
-	endKey = append(eligibleMissingDataKeyPrefix, encodeReverseOrderVarUint64(0)...)
+func createRangeScanKeysForElgMissingData(blkNum uint64, group []byte) ([]byte, []byte) {
+	startKey := append(group, encodeReverseOrderVarUint64(blkNum)...)
+	endKey := append(group, encodeReverseOrderVarUint64(0)...)
 
 	return startKey, endKey
 }
 
-func createRangeScanKeysForIneligibleMissingData(maxBlkNum uint64, ns, coll string) (startKey, endKey []byte) {
-	startKey = encodeMissingDataKey(
+func createRangeScanKeysForInelgMissingData(maxBlkNum uint64, ns, coll string) ([]byte, []byte) {
+	startKey := encodeInelgMissingDataKey(
 		&missingDataKey{
 			nsCollBlk:  nsCollBlk{ns: ns, coll: coll, blkNum: maxBlkNum},
 			isEligible: false,
 		},
 	)
-	endKey = encodeMissingDataKey(
+	endKey := encodeInelgMissingDataKey(
 		&missingDataKey{
 			nsCollBlk:  nsCollBlk{ns: ns, coll: coll, blkNum: 0},
 			isEligible: false,
 		},
 	)
-	return
+
+	return startKey, endKey
 }
 
 func createRangeScanKeysForCollElg() (startKey, endKey []byte) {
@@ -212,16 +212,16 @@ func createRangeScanKeysForCollElg() (startKey, endKey []byte) {
 		encodeCollElgKey(0)
 }
 
-func datakeyRange(blockNum uint64) (startKey, endKey []byte) {
-	startKey = append(pvtDataKeyPrefix, version.NewHeight(blockNum, 0).ToBytes()...)
-	endKey = append(pvtDataKeyPrefix, version.NewHeight(blockNum, math.MaxUint64).ToBytes()...)
-	return
+func datakeyRange(blockNum uint64) ([]byte, []byte) {
+	startKey := append(pvtDataKeyPrefix, version.NewHeight(blockNum, 0).ToBytes()...)
+	endKey := append(pvtDataKeyPrefix, version.NewHeight(blockNum, math.MaxUint64).ToBytes()...)
+	return startKey, endKey
 }
 
-func eligibleMissingdatakeyRange(blkNum uint64) (startKey, endKey []byte) {
-	startKey = append(eligibleMissingDataKeyPrefix, encodeReverseOrderVarUint64(blkNum)...)
-	endKey = append(eligibleMissingDataKeyPrefix, encodeReverseOrderVarUint64(blkNum-1)...)
-	return
+func eligibleMissingdatakeyRange(blkNum uint64) ([]byte, []byte) {
+	startKey := append(elgPrioritizedMissingDataGroup, encodeReverseOrderVarUint64(blkNum)...)
+	endKey := append(elgPrioritizedMissingDataGroup, encodeReverseOrderVarUint64(blkNum-1)...)
+	return startKey, endKey
 }
 
 // encodeReverseOrderVarUint64 returns a byte-representation for a uint64 number such that
