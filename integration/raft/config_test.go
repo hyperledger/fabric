@@ -648,7 +648,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			extendNetwork(network)
 			certificateRotations := refreshOrdererPEMs(network)
 
-			expectedBlockHeightsPerChannel := []map[string]int{
+			expectedBlockNumPerChannel := []map[string]int{
 				{"systemchannel": 2, "testchannel": 1},
 				{"systemchannel": 3, "testchannel": 2},
 				{"systemchannel": 4, "testchannel": 3},
@@ -672,7 +672,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				}
 
 				By("Waiting for all orderers to sync")
-				assertBlockReception(expectedBlockHeightsPerChannel[i*2], orderers, peer, network)
+				assertBlockReception(expectedBlockNumPerChannel[i*2], orderers, peer, network)
 
 				By("Killing the orderer")
 				ordererProcesses[i].Signal(syscall.SIGTERM)
@@ -685,7 +685,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(ordererProcesses[i].Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 				By("And waiting for it to stabilize")
-				assertBlockReception(expectedBlockHeightsPerChannel[i*2], orderers, peer, network)
+				assertBlockReception(expectedBlockNumPerChannel[i*2], orderers, peer, network)
 
 				By("Removing the previous certificate of the old orderer")
 				for _, channelName := range []string{"systemchannel", "testchannel"} {
@@ -693,7 +693,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				}
 
 				By("Waiting for all orderers to sync")
-				assertBlockReception(expectedBlockHeightsPerChannel[i*2+1], orderers, peer, network)
+				assertBlockReception(expectedBlockNumPerChannel[i*2+1], orderers, peer, network)
 			}
 
 			By("Creating testchannel2")
@@ -1316,7 +1316,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			blockSeq := 0 // there's only one block in channel - genesis
+			blockNum := 0 // there's only one block in channel - genesis
 			for _, i := range []int{4, 5, 6} {
 				By(fmt.Sprintf("Adding orderer%d", i+1))
 				ordererCertificatePath := filepath.Join(network.OrdererLocalTLSDir(orderers[i]), "server.crt")
@@ -1329,7 +1329,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 					Host:          "127.0.0.1",
 					Port:          uint32(network.OrdererPort(orderers[i], nwo.ClusterPort)),
 				})
-				blockSeq++
+				blockNum++
 
 				// Get the last config block of the system channel
 				configBlock := nwo.GetConfigBlock(network, peer, orderers[0], "systemchannel")
@@ -1342,7 +1342,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 				By(fmt.Sprintf("Checking that orderer%d has onboarded the network", i+1))
 				assertBlockReception(map[string]int{
-					"systemchannel": blockSeq,
+					"systemchannel": blockNum,
 				}, []*nwo.Orderer{orderers[i]}, peer, network)
 			}
 
@@ -1369,10 +1369,10 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			resp, err := ordererclient.Broadcast(network, orderers[4], env)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
-			blockSeq++
+			blockNum++
 
 			assertBlockReception(map[string]int{
-				"systemchannel": blockSeq,
+				"systemchannel": blockNum,
 			}, []*nwo.Orderer{orderers[1], orderers[2], orderers[4], orderers[5], orderers[6]}, peer, network) // alive orderers: 2, 3, 5, 6, 7
 
 			By("Killing orderer[2,3]")
@@ -1393,7 +1393,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			By("Making sure 4/7 orderers form quorum and serve request")
 			assertBlockReception(map[string]int{
-				"systemchannel": blockSeq,
+				"systemchannel": blockNum,
 			}, []*nwo.Orderer{orderers[3], orderers[4], orderers[5], orderers[6]}, peer, network) // alive orderers: 4, 5, 6, 7
 		})
 	})
@@ -1657,16 +1657,17 @@ func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
 	return serverCertChanges
 }
 
-// assertBlockReception asserts that the given orderers have expected heights for the given channel--> height mapping
-func assertBlockReception(expectedHeightsPerChannel map[string]int, orderers []*nwo.Orderer, p *nwo.Peer, n *nwo.Network) {
-	for channelName, blockSeq := range expectedHeightsPerChannel {
+// assertBlockReception asserts that the given orderers have the expected
+// newest block number for the specified channels
+func assertBlockReception(expectedBlockNumPerChannel map[string]int, orderers []*nwo.Orderer, p *nwo.Peer, n *nwo.Network) {
+	for channelName, blockNum := range expectedBlockNumPerChannel {
 		for _, orderer := range orderers {
-			waitForBlockReception(orderer, p, n, channelName, blockSeq)
+			waitForBlockReception(orderer, p, n, channelName, blockNum)
 		}
 	}
 }
 
-func waitForBlockReception(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string, blockSeq int) {
+func waitForBlockReception(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string, blockNum int) {
 	c := commands.ChannelFetch{
 		ChannelID:  channelName,
 		Block:      "newest",
@@ -1681,7 +1682,7 @@ func waitForBlockReception(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Net
 			return fmt.Sprintf("exit code is %d: %s", sess.ExitCode(), string(sess.Err.Contents()))
 		}
 		sessErr := string(sess.Err.Contents())
-		expected := fmt.Sprintf("Received block: %d", blockSeq)
+		expected := fmt.Sprintf("Received block: %d", blockNum)
 		if strings.Contains(sessErr, expected) {
 			return ""
 		}

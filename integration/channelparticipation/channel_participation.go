@@ -147,3 +147,15 @@ func ListOne(n *nwo.Network, o *nwo.Orderer, expectedChannelInfo ChannelInfo) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(*c).To(Equal(expectedChannelInfo))
 }
+
+func Remove(n *nwo.Network, o *nwo.Orderer, channel string) {
+	authClient, _ := nwo.OrdererOperationalClients(n, o)
+	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.OperationsPort), channel)
+
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	Expect(err).NotTo(HaveOccurred())
+
+	resp, err := authClient.Do(req)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+}
