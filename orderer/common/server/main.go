@@ -483,8 +483,17 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig
 		serverRootCAs = append(serverRootCAs, rootCACert)
 	}
 
+	timeShift := conf.General.TLS.TLSHandshakeTimeShift
+	// XXX since this is a backport, release-2.1 is unlikely to see
+	// any new consensus plugin types, so hardcoding to 'etcdraft'
+	// note, this is only for a debug message and has no functional
+	// input. The parm is gone in master.
+	if reuseGrpcListener := reuseListener(conf, "etcdraft"); !reuseGrpcListener {
+		timeShift = conf.General.Cluster.TLSHandshakeTimeShift
+	}
+
 	cc.SecOpts = comm.SecureOptions{
-		TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
+		TimeShift:         timeShift,
 		RequireClientCert: true,
 		CipherSuites:      comm.DefaultTLSCipherSuites,
 		ServerRootCAs:     serverRootCAs,
@@ -501,6 +510,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 	secureOpts := comm.SecureOptions{
 		UseTLS:            conf.General.TLS.Enabled,
 		RequireClientCert: conf.General.TLS.ClientAuthRequired,
+		TimeShift:         conf.General.TLS.TLSHandshakeTimeShift,
 	}
 	// check to see if TLS is enabled
 	if secureOpts.UseTLS {
