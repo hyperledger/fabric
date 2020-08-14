@@ -12,13 +12,18 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -76,6 +81,61 @@ func TestLedgerMgmt(t *testing.T) {
 	_, err = ledgerMgr.OpenLedger(ledgerID)
 	require.NoError(t, err)
 	ledgerMgr.Close()
+}
+
+// TestCreateLedgerFromSnapshot first creates a ledger using a genesis block and generates a snapshot.
+// After it, it tests creating ledger from the snapshot.
+func TestCreateLedgerFromSnapshot(t *testing.T) {
+	testDir, err := ioutil.TempDir("", "createledgerfromsnapshot")
+	require.NoError(t, err)
+	initializer, err := constructDefaultInitializer(testDir)
+	require.NoError(t, err)
+	ledgerMgr := NewLedgerMgr(initializer)
+	defer func() {
+		os.RemoveAll(testDir)
+	}()
+
+	channelID := "testcreatefromsnapshot"
+	_, gb := testutil.NewBlockGenerator(t, channelID, false)
+	l, err := ledgerMgr.CreateLedger(channelID, gb)
+	require.NoError(t, err)
+
+	// submit a snapshot request, wait until it is generated (request removed from pending requests)
+	require.NoError(t, l.SubmitSnapshotRequest(0))
+	snapshotDir := kvledger.SnapshotDirForLedgerHeight(initializer.Config.SnapshotsConfig.RootDir, channelID, 1)
+	snapshotGenerated := func() bool {
+		pendingRequests, err := l.PendingSnapshotRequests()
+		require.NoError(t, err)
+		return len(pendingRequests) == 0
+	}
+	require.Eventually(t, snapshotGenerated, 30*time.Second, 100*time.Millisecond)
+
+	ledgerMgr.Close()
+
+	// re-create the ledger from snapshot under the same rootdir should return error because the ledger already exists
+	ledgerMgr = NewLedgerMgr(initializer)
+	_, _, err = ledgerMgr.CreateLedgerFromSnapshot(snapshotDir)
+	require.EqualError(t, err, "error while creating ledger id: ledger [testcreatefromsnapshot] already exists with state [ACTIVE]")
+
+	// re-create the ledger from snapshot under a different root dir should work because the idStore is empty
+	testDir2, err := ioutil.TempDir("", "createledgerfromsnapshot2")
+	require.NoError(t, err)
+	initializer2, err := constructDefaultInitializer(testDir2)
+	require.NoError(t, err)
+
+	ledgerMgr2 := NewLedgerMgr(initializer2)
+	defer func() {
+		ledgerMgr2.Close()
+		os.RemoveAll(testDir2)
+	}()
+
+	l2, cid, err := ledgerMgr2.CreateLedgerFromSnapshot(snapshotDir)
+	require.NoError(t, err)
+	require.Equal(t, channelID, cid)
+	bcInfo, _ := l2.GetBlockchainInfo()
+	require.Equal(t, &common.BlockchainInfo{
+		Height: 1, CurrentBlockHash: protoutil.BlockHeaderHash(gb.Header), PreviousBlockHash: nil,
+	}, bcInfo)
 }
 
 func TestChaincodeInfoProvider(t *testing.T) {

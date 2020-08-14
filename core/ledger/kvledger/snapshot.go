@@ -209,19 +209,19 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 // CreateFromSnapshot implements the corresponding method from interface ledger.PeerLedgerProvider
 // This function creates a new ledger from the supplied snapshot. If a failure happens during this
 // process, the partially created ledger is deleted
-func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, error) {
+func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, string, error) {
 	metadataJSONs, err := loadSnapshotMetadataJSONs(snapshotDir)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "error while loading metadata")
+		return nil, "", errors.WithMessagef(err, "error while loading metadata")
 	}
 
 	metadata, err := metadataJSONs.toMetadata()
 	if err != nil {
-		return nil, errors.WithMessagef(err, "error while unmarshaling metadata")
+		return nil, "", errors.WithMessagef(err, "error while unmarshaling metadata")
 	}
 
 	if err := verifySnapshot(snapshotDir, metadata, p.initializer.HashProvider); err != nil {
-		return nil, errors.WithMessagef(err, "error while verifying snapshot")
+		return nil, "", errors.WithMessagef(err, "error while verifying snapshot")
 	}
 
 	ledgerID := metadata.ChannelName
@@ -230,11 +230,11 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, er
 
 	lastBlkHash, err := hex.DecodeString(metadata.LastBlockHashInHex)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error while decoding last block hash")
+		return nil, "", errors.Wrapf(err, "error while decoding last block hash")
 	}
 	previousBlkHash, err := hex.DecodeString(metadata.PreviousBlockHashInHex)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error while decoding previous block hash")
+		return nil, "", errors.Wrapf(err, "error while decoding previous block hash")
 	}
 
 	snapshotInfo := &blkstorage.SnapshotInfo{
@@ -253,27 +253,25 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, er
 			},
 		},
 	); err != nil {
-		return nil, errors.WithMessagef(err, "error while creating ledger id")
+		return nil, "", errors.WithMessagef(err, "error while creating ledger id")
 	}
 
 	savepoint := version.NewHeight(lastBlockNum, math.MaxUint64)
 
 	if err = p.blkStoreProvider.ImportFromSnapshot(ledgerID, snapshotDir, snapshotInfo); err != nil {
-		return nil,
-			p.deleteUnderConstructionLedger(
-				nil,
-				ledgerID,
-				errors.WithMessage(err, "error while importing data into block store"),
-			)
+		return nil, "", p.deleteUnderConstructionLedger(
+			nil,
+			ledgerID,
+			errors.WithMessage(err, "error while importing data into block store"),
+		)
 	}
 
 	if err = p.configHistoryMgr.ImportFromSnapshot(metadata.ChannelName, snapshotDir); err != nil {
-		return nil,
-			p.deleteUnderConstructionLedger(
-				nil,
-				ledgerID,
-				errors.WithMessage(err, "error while importing data into config history Mgr"),
-			)
+		return nil, "", p.deleteUnderConstructionLedger(
+			nil,
+			ledgerID,
+			errors.WithMessage(err, "error while importing data into config history Mgr"),
+		)
 	}
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(
 		&mostRecentCollectionConfigFetcher{
@@ -284,44 +282,40 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, er
 	purgeMgrBuilder := pvtstatepurgemgmt.NewPurgeMgrBuilder(ledgerID, btlPolicy, p.bookkeepingProvider)
 
 	if err = p.dbProvider.ImportFromSnapshot(ledgerID, savepoint, snapshotDir, purgeMgrBuilder); err != nil {
-		return nil,
-			p.deleteUnderConstructionLedger(
-				nil,
-				ledgerID,
-				errors.WithMessage(err, "error while importing data into state db"),
-			)
+		return nil, "", p.deleteUnderConstructionLedger(
+			nil,
+			ledgerID,
+			errors.WithMessage(err, "error while importing data into state db"),
+		)
 	}
 
 	if p.historydbProvider != nil {
 		if err := p.historydbProvider.MarkStartingSavepoint(ledgerID, savepoint); err != nil {
-			return nil,
-				p.deleteUnderConstructionLedger(
-					nil,
-					ledgerID,
-					errors.WithMessage(err, "error while preparing history db"),
-				)
+			return nil, "", p.deleteUnderConstructionLedger(
+				nil,
+				ledgerID,
+				errors.WithMessage(err, "error while preparing history db"),
+			)
 		}
 	}
 
 	lgr, err := p.open(ledgerID, metadata)
 	if err != nil {
-		return nil,
-			p.deleteUnderConstructionLedger(
-				lgr,
-				ledgerID,
-				errors.WithMessage(err, "error while opening ledger"),
-			)
+		return nil, "", p.deleteUnderConstructionLedger(
+			lgr,
+			ledgerID,
+			errors.WithMessage(err, "error while opening ledger"),
+		)
 	}
 
 	if err = p.idStore.updateLedgerStatus(ledgerID, msgs.Status_ACTIVE); err != nil {
-		return nil,
-			p.deleteUnderConstructionLedger(
-				lgr,
-				ledgerID,
-				errors.WithMessage(err, "error while updating the ledger status to Status_ACTIVE"),
-			)
+		return nil, "", p.deleteUnderConstructionLedger(
+			lgr,
+			ledgerID,
+			errors.WithMessage(err, "error while updating the ledger status to Status_ACTIVE"),
+		)
 	}
-	return lgr, nil
+	return lgr, ledgerID, nil
 }
 
 func loadSnapshotMetadataJSONs(snapshotDir string) (*snapshotMetadataJSONs, error) {
