@@ -65,6 +65,11 @@ type Store struct {
 	isLastUpdatedOldBlocksSet bool
 }
 
+type Initializer struct {
+	CreatedFromSnapshot bool
+	LastBlockInSnapshot uint64
+}
+
 type blkTranNumKey []byte
 
 type dataEntry struct {
@@ -123,7 +128,7 @@ func NewProvider(conf *PrivateDataConfig) (*Provider, error) {
 }
 
 // OpenStore returns a handle to a store
-func (p *Provider) OpenStore(ledgerid string) (*Store, error) {
+func (p *Provider) OpenStore(ledgerid string, initializer *Initializer) (*Store, error) {
 	dbHandle := p.dbProvider.GetDBHandle(ledgerid)
 	s := &Store{
 		db:              dbHandle,
@@ -136,7 +141,7 @@ func (p *Provider) OpenStore(ledgerid string) (*Store, error) {
 			procComplete: make(chan bool, 1),
 		},
 	}
-	if err := s.initState(); err != nil {
+	if err := s.initState(initializer); err != nil {
 		return nil, err
 	}
 	s.launchCollElgProc()
@@ -158,7 +163,7 @@ func (p *Provider) Drop(ledgerid string) error {
 //////// store functions  ////////////////
 //////////////////////////////////////////
 
-func (s *Store) initState() error {
+func (s *Store) initState(initializer *Initializer) error {
 	var err error
 	var blist lastUpdatedOldBlocksList
 	if s.isEmpty, s.lastCommittedBlock, err = s.getLastCommittedBlockNum(); err != nil {
@@ -191,6 +196,11 @@ func (s *Store) initState() error {
 	if len(blist) > 0 {
 		s.isLastUpdatedOldBlocksSet = true
 	} // false if not set
+
+	if s.isEmpty && initializer.CreatedFromSnapshot {
+		s.isEmpty = false
+		s.lastCommittedBlock = initializer.LastBlockInSnapshot
+	}
 
 	return nil
 }

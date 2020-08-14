@@ -334,7 +334,12 @@ func (p *Provider) open(ledgerID string, bootSnapshotMetadata *snapshotMetadata)
 		return nil, err
 	}
 
-	pvtdataStore, err := p.pvtdataStoreProvider.OpenStore(ledgerID)
+	storeInitializer := &pvtdatastorage.Initializer{CreatedFromSnapshot: false}
+	if bootSnapshotMetadata != nil {
+		storeInitializer.CreatedFromSnapshot = true
+		storeInitializer.LastBlockInSnapshot = bootSnapshotMetadata.ChannelHeight - 1
+	}
+	pvtdataStore, err := p.pvtdataStoreProvider.OpenStore(ledgerID, storeInitializer)
 	if err != nil {
 		return nil, err
 	}

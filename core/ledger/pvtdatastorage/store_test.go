@@ -28,10 +28,22 @@ func TestMain(m *testing.M) {
 }
 
 func TestEmptyStore(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestEmptyStore", nil, pvtDataConf())
+	env := NewTestStoreEnv(t, "TestEmptyStore", nil, pvtDataConf(), &Initializer{})
 	defer env.Cleanup()
 	store := env.TestStore
 	require.True(t, store.isEmpty)
+}
+
+func TestStoreCreatedFromSnapshot(t *testing.T) {
+	initializer := &Initializer{
+		CreatedFromSnapshot: true,
+		LastBlockInSnapshot: 100,
+	}
+	env := NewTestStoreEnv(t, "TestStoreCreatedFromSnapshot", nil, pvtDataConf(), initializer)
+	defer env.Cleanup()
+	store := env.TestStore
+	require.False(t, store.isEmpty)
+	require.Equal(t, initializer.LastBlockInSnapshot, store.lastCommittedBlock)
 }
 
 func TestStoreBasicCommitAndRetrieval(t *testing.T) {
@@ -47,7 +59,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 		},
 	)
 
-	env := NewTestStoreEnv(t, "TestStoreBasicCommitAndRetrieval", btlPolicy, pvtDataConf())
+	env := NewTestStoreEnv(t, "TestStoreBasicCommitAndRetrieval", btlPolicy, pvtDataConf(), &Initializer{})
 	defer env.Cleanup()
 	store := env.TestStore
 	testData := []*ledger.TxPvtData{
@@ -154,7 +166,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 }
 
 func TestStoreIteratorError(t *testing.T) {
-	env := NewTestStoreEnv(t, "TestStoreIteratorError", nil, pvtDataConf())
+	env := NewTestStoreEnv(t, "TestStoreIteratorError", nil, pvtDataConf(), &Initializer{})
 	defer env.Cleanup()
 	store := env.TestStore
 	require.NoError(t, store.Commit(0, nil, nil))
@@ -203,7 +215,7 @@ func TestExpiryDataNotIncluded(t *testing.T) {
 			{"ns-3", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf(), &Initializer{})
 	defer env.Cleanup()
 	store := env.TestStore
 
@@ -327,7 +339,7 @@ func TestStorePurge(t *testing.T) {
 			{"ns-3", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf(), &Initializer{})
 	defer env.Cleanup()
 	s := env.TestStore
 
@@ -426,7 +438,7 @@ func TestStoreState(t *testing.T) {
 			{"ns-1", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, "TestStoreState", btlPolicy, pvtDataConf())
+	env := NewTestStoreEnv(t, "TestStoreState", btlPolicy, pvtDataConf(), &Initializer{})
 	defer env.Cleanup()
 	store := env.TestStore
 	testData := []*ledger.TxPvtData{
@@ -443,7 +455,7 @@ func TestPendingBatch(t *testing.T) {
 			{"ns-1", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, "TestPendingBatch", btlPolicy, pvtDataConf())
+	env := NewTestStoreEnv(t, "TestPendingBatch", btlPolicy, pvtDataConf(), &Initializer{})
 	defer env.Cleanup()
 	s := env.TestStore
 	existingLastBlockNum := uint64(25)
@@ -529,7 +541,7 @@ func TestDrop(t *testing.T) {
 		},
 	)
 
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf(), &Initializer{})
 	defer env.Cleanup()
 	store := env.TestStore
 
@@ -601,7 +613,7 @@ func testCollElgEnabled(t *testing.T, conf *PrivateDataConfig) {
 			{"ns-2", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy, conf)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, conf, &Initializer{})
 	defer env.Cleanup()
 	testStore := env.TestStore
 

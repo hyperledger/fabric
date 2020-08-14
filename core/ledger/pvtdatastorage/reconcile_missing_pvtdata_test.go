@@ -28,7 +28,7 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 			{"ns-4", "coll-2"}: 0,
 		},
 	)
-	env := NewTestStoreEnv(t, "TestCommitPvtDataOfOldBlocks", btlPolicy, pvtDataConf())
+	env := NewTestStoreEnv(t, "TestCommitPvtDataOfOldBlocks", btlPolicy, pvtDataConf(), &Initializer{})
 	defer env.Cleanup()
 	store := env.TestStore
 
