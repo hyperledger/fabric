@@ -21,28 +21,50 @@ type Orderer struct {
 type General struct {
 	LedgerType     string                 `yaml:"LedgerType,omitempty"`
 	ListenAddress  string                 `yaml:"ListenAddress,omitempty"`
-	ListenPort     int                    `yaml:"ListenPort,omitempty"`
+	ListenPort     uint16                 `yaml:"ListenPort,omitempty"`
 	TLS            *OrdererTLS            `yaml:"TLS,omitempty"`
 	Keepalive      *OrdererKeepalive      `yaml:"Keepalive,omitempty"`
 	GenesisMethod  string                 `yaml:"GenesisMethod,omitempty"`
 	GenesisProfile string                 `yaml:"GenesisProfile,omitempty"`
-	GenesisFile    string                 `yaml:"GenesisFile,omitempty"`
+	GenesisFile    string                 `yaml:"GenesisFile,omitempty"` // will be replaced by the BootstrapFile
 	LocalMSPDir    string                 `yaml:"LocalMSPDir,omitempty"`
 	LocalMSPID     string                 `yaml:"LocalMSPID,omitempty"`
 	Profile        *OrdererProfile        `yaml:"Profile,omitempty"`
 	BCCSP          *BCCSP                 `yaml:"BCCSP,omitempty"`
 	Authentication *OrdererAuthentication `yaml:"Authentication,omitempty"`
+	Cluster        *Cluster               `yaml:"Cluster,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
 
+type Cluster struct {
+	ListenAddress                        string        `yaml:"ListenAddress,omitempty"`
+	ListenPort                           uint16        `yaml:"ListenPort,omitempty"`
+	ServerCertificate                    string        `yaml:"ServerCertificate,omitempty"`
+	ServerPrivateKey                     string        `yaml:"ServerPrivateKey,omitempty"`
+	ClientCertificate                    string        `yaml:"ClientCertificate,omitempty"`
+	ClientPrivateKey                     string        `yaml:"ClientPrivateKey,omitempty"`
+	RootCAs                              []string      `yaml:"RootCAs,omitempty"`
+	DialTimeout                          time.Duration `yaml:"DialTimeout,omitempty"`
+	RPCTimeout                           time.Duration `yaml:"RPCTimeout,omitempty"`
+	ReplicationBufferSize                int           `yaml:"ReplicationBufferSize,omitempty"`
+	ReplicationPullTimeout               time.Duration `yaml:"ReplicationPullTimeout,omitempty"`
+	ReplicationRetryTimeout              time.Duration `yaml:"ReplicationRetryTimeout,omitempty"`
+	ReplicationBackgroundRefreshInterval time.Duration `yaml:"ReplicationBackgroundRefreshInterval,omitempty"`
+	ReplicationMaxRetries                int           `yaml:"ReplicationMaxRetries,omitempty"`
+	SendBufferSize                       int           `yaml:"SendBufferSize,omitempty"`
+	CertExpirationWarningThreshold       time.Duration `yaml:"CertExpirationWarningThreshold,omitempty"`
+	TLSHandshakeTimeShift                time.Duration `yaml:"TLSHandshakeTimeShift,omitempty"`
+}
+
 type OrdererTLS struct {
-	Enabled            bool     `yaml:"Enabled"`
-	PrivateKey         string   `yaml:"PrivateKey,omitempty"`
-	Certificate        string   `yaml:"Certificate,omitempty"`
-	RootCAs            []string `yaml:"RootCAs,omitempty"`
-	ClientAuthRequired bool     `yaml:"ClientAuthRequired"`
-	ClientRootCAs      []string `yaml:"ClientRootCAs,omitempty"`
+	Enabled               bool          `yaml:"Enabled"`
+	PrivateKey            string        `yaml:"PrivateKey,omitempty"`
+	Certificate           string        `yaml:"Certificate,omitempty"`
+	RootCAs               []string      `yaml:"RootCAs,omitempty"`
+	ClientAuthRequired    bool          `yaml:"ClientAuthRequired"`
+	ClientRootCAs         []string      `yaml:"ClientRootCAs,omitempty"`
+	TLSHandshakeTimeShift time.Duration `yaml:"TLSHandshakeTimeShift,omitempty"`
 }
 
 type OrdererSASLPlain struct {
