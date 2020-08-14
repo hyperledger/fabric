@@ -421,19 +421,15 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			Eventually(o2Proc.Wait(), network.EventuallyTimeout).Should(Receive())
 			Eventually(o3Proc.Wait(), network.EventuallyTimeout).Should(Receive())
 
-			By("Launching orderers again")
 			o1Runner = network.OrdererRunner(o1)
 			o2Runner = network.OrdererRunner(o2)
 			o3Runner = network.OrdererRunner(o3)
 
-			for i, runner := range []*ginkgomon.Runner{o1Runner, o2Runner, o3Runner} {
-				// Switch between the general port and the cluster listener port
-				runner.Command.Env = append(runner.Command.Env, "ORDERER_GENERAL_CLUSTER_TLSHANDSHAKETIMESHIFT=90s")
-				tlsCertPath := filepath.Join(network.OrdererLocalTLSDir(network.Orderers[i]), "server.crt")
-				tlsKeyPath := filepath.Join(network.OrdererLocalTLSDir(network.Orderers[i]), "server.key")
-				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERCERTIFICATE=%s", tlsCertPath))
-				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_SERVERPRIVATEKEY=%s", tlsKeyPath))
-				runner.Command.Env = append(runner.Command.Env, fmt.Sprintf("ORDERER_GENERAL_CLUSTER_ROOTCAS=%s", ordererTLSCACertPath))
+			By("Launching orderers with a clustered timeshift")
+			for _, orderer := range []*nwo.Orderer{o1, o2, o3} {
+				ordererConfig := network.ReadOrdererConfig(orderer)
+				ordererConfig.General.Cluster.TLSHandshakeTimeShift = 5 * time.Minute
+				network.WriteOrdererConfig(orderer, ordererConfig)
 			}
 
 			o1Proc = ifrit.Invoke(o1Runner)
@@ -447,6 +443,74 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("Waiting for a leader to be elected")
 			findLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner})
 
+			By("Killing orderers")
+			o1Proc.Signal(syscall.SIGTERM)
+			o2Proc.Signal(syscall.SIGTERM)
+			o3Proc.Signal(syscall.SIGTERM)
+			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+			Eventually(o2Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+			Eventually(o3Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+
+			o1Runner = network.OrdererRunner(o1)
+			o2Runner = network.OrdererRunner(o2)
+			o3Runner = network.OrdererRunner(o3)
+
+			By("Launching orderers again without a general timeshift re-using the cluster port")
+			for _, orderer := range []*nwo.Orderer{o1, o2, o3} {
+				ordererConfig := network.ReadOrdererConfig(orderer)
+				ordererConfig.General.ListenPort = ordererConfig.General.Cluster.ListenPort
+				ordererConfig.General.TLS.Certificate = ordererConfig.General.Cluster.ServerCertificate
+				ordererConfig.General.TLS.PrivateKey = ordererConfig.General.Cluster.ServerPrivateKey
+				ordererConfig.General.Cluster.TLSHandshakeTimeShift = 0
+				ordererConfig.General.Cluster.ListenPort = 0
+				ordererConfig.General.Cluster.ListenAddress = ""
+				ordererConfig.General.Cluster.ServerCertificate = ""
+				ordererConfig.General.Cluster.ServerPrivateKey = ""
+				network.WriteOrdererConfig(orderer, ordererConfig)
+			}
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			By("Waiting for TLS handshakes to fail")
+			Eventually(o1Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("tls: bad certificate"))
+			Eventually(o2Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("tls: bad certificate"))
+			Eventually(o3Runner.Err(), network.EventuallyTimeout).Should(gbytes.Say("tls: bad certificate"))
+
+			By("Killing orderers")
+			o1Proc.Signal(syscall.SIGTERM)
+			o2Proc.Signal(syscall.SIGTERM)
+			o3Proc.Signal(syscall.SIGTERM)
+			Eventually(o1Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+			Eventually(o2Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+			Eventually(o3Proc.Wait(), network.EventuallyTimeout).Should(Receive())
+
+			o1Runner = network.OrdererRunner(o1)
+			o2Runner = network.OrdererRunner(o2)
+			o3Runner = network.OrdererRunner(o3)
+
+			By("Launching orderers again with a general timeshift re-using the cluster port")
+			for _, orderer := range []*nwo.Orderer{o1, o2, o3} {
+				ordererConfig := network.ReadOrdererConfig(orderer)
+				ordererConfig.General.TLS.TLSHandshakeTimeShift = 5 * time.Minute
+				network.WriteOrdererConfig(orderer, ordererConfig)
+			}
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			By("Waiting for a leader to be elected")
+			findLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner})
 		})
 	})
 
