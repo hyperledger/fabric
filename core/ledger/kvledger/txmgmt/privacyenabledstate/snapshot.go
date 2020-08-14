@@ -25,6 +25,8 @@ const (
 	pvtStateHashesMetadataFileName = "private_state_hashes.metadata"
 )
 
+type versionFromSnapshotValueFunc func(snapshotValue []byte) ([]byte, error)
+
 // ExportPubStateAndPvtStateHashes generates four files in the specified dir. The files, public_state.data and public_state.metadata
 // contains the exported public state and the files private_state_hashes.data and private_state_hashes.data contain the exported private state hashes.
 // The file format for public state and the private state hashes are the same. The data files contains a series of tuple <key,value> and the metadata
@@ -109,8 +111,17 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 
 // ImportFromSnapshot imports the public state and private state hashes from the corresponding
 // files in the snapshotDir
-func (p *DBProvider) ImportFromSnapshot(dbname string, savepoint *version.Height, snapshotDir string) error {
-	worldStateSnapshotReader, dbValueFormat, err := newWorldStateSnapshotReader(snapshotDir)
+func (p *DBProvider) ImportFromSnapshot(
+	dbname string,
+	savepoint *version.Height,
+	snapshotDir string,
+	pvtdataHashesConsumers ...SnapshotPvtdataHashesConsumer,
+) error {
+	worldStateSnapshotReader, dbValueFormat, err := newWorldStateSnapshotReader(
+		snapshotDir,
+		pvtdataHashesConsumers,
+		p.versionFromSnapshotValue,
+	)
 	if err != nil {
 		return err
 	}
@@ -230,9 +241,16 @@ func (w *snapshotWriter) close() {
 type worldStateSnapshotReader struct {
 	pubState       *snapshotReader
 	pvtStateHashes *snapshotReader
+
+	pvtdataHashesConsumers []SnapshotPvtdataHashesConsumer
+	versionExtractorFunc   versionFromSnapshotValueFunc
 }
 
-func newWorldStateSnapshotReader(dir string) (*worldStateSnapshotReader, byte, error) {
+func newWorldStateSnapshotReader(
+	dir string,
+	pvtdataHashesConsumers []SnapshotPvtdataHashesConsumer,
+	versionExtractorFunc versionFromSnapshotValueFunc,
+) (*worldStateSnapshotReader, byte, error) {
 	var pubState *snapshotReader
 	var pvtStateHashes *snapshotReader
 	var dbValueFormat byte
@@ -260,8 +278,10 @@ func newWorldStateSnapshotReader(dir string) (*worldStateSnapshotReader, byte, e
 	}
 
 	return &worldStateSnapshotReader{
-		pubState:       pubState,
-		pvtStateHashes: pvtStateHashes,
+		pubState:               pubState,
+		pvtStateHashes:         pvtStateHashes,
+		pvtdataHashesConsumers: pvtdataHashesConsumers,
+		versionExtractorFunc:   versionExtractorFunc,
 	}, dbValueFormat, nil
 }
 
@@ -269,10 +289,38 @@ func (r *worldStateSnapshotReader) Next() (*statedb.CompositeKey, []byte, error)
 	if r.pubState != nil && r.pubState.hasMore() {
 		return r.pubState.Next()
 	}
+
 	if r.pvtStateHashes != nil && r.pvtStateHashes.hasMore() {
-		return r.pvtStateHashes.Next()
+		ck, snapshotValue, err := r.pvtStateHashes.Next()
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := r.invokePvtdataHashesConsumers(ck, snapshotValue); err != nil {
+			return nil, nil, err
+		}
+		return ck, snapshotValue, err
 	}
 	return nil, nil, nil
+}
+
+func (r *worldStateSnapshotReader) invokePvtdataHashesConsumers(ck *statedb.CompositeKey, snapshotValue []byte) error {
+	if len(r.pvtdataHashesConsumers) == 0 {
+		return nil
+	}
+	ns, coll, err := decodeHashedDataNsColl(ck.Namespace)
+	if err != nil {
+		return err
+	}
+	version, err := r.versionExtractorFunc(snapshotValue)
+	if err != nil {
+		return err
+	}
+	for _, l := range r.pvtdataHashesConsumers {
+		if err := l.ConsumeSnapshotData(ns, coll, []byte(ck.Key), version); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *worldStateSnapshotReader) Close() {
@@ -418,4 +466,8 @@ func (c *cursor) canMove() bool {
 
 func (c *cursor) currentNamespace() string {
 	return c.metadata[c.currentRow].namespace
+}
+
+type SnapshotPvtdataHashesConsumer interface {
+	ConsumeSnapshotData(namespace, coll string, keyHash []byte, version []byte) error
 }

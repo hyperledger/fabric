@@ -1148,6 +1148,37 @@ func TestDataExportImport(
 	}
 }
 
+func TestVersionFromSnapshotValue(t *testing.T,
+	dbProvider statedb.VersionedDBProvider,
+	versionExtractionFunc func(snapshotVal []byte) (versionBytes []byte, err error),
+) {
+	stateDB, err := dbProvider.GetDBHandle("source_ledger", nil)
+	require.NoError(t, err)
+	batch := statedb.NewUpdateBatch()
+	batch.PutValAndMetadata("ns1", "key1", []byte("value1"), []byte("metadata1"), version.NewHeight(5, 5))
+	batch.PutValAndMetadata("ns2", "key2", []byte("value2"), []byte("metadata2"), version.NewHeight(10, 10))
+	require.NoError(t, stateDB.ApplyUpdates(batch, version.NewHeight(15, 15)))
+
+	iter, _, err := stateDB.GetFullScanIterator(
+		func(string) bool { return false },
+	)
+	require.NoError(t, err)
+	defer iter.Close()
+
+	nextVersion := func() *version.Height {
+		_, snapshotVal, err := iter.Next()
+		require.NoError(t, err)
+		versionBytes, err := versionExtractionFunc(snapshotVal)
+		require.NoError(t, err)
+		ver, _, err := version.NewHeightFromBytes(versionBytes)
+		require.NoError(t, err)
+		return ver
+	}
+
+	require.Equal(t, version.NewHeight(5, 5), nextVersion())
+	require.Equal(t, version.NewHeight(10, 10), nextVersion())
+}
+
 // CreateTestData creates test data for the given namespace and number of keys.
 func CreateTestData(t *testing.T, db statedb.VersionedDB, ns string, numKeys int) []string {
 	batch := statedb.NewUpdateBatch()

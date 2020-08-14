@@ -8,6 +8,7 @@ package privacyenabledstate
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"hash"
 	"io/ioutil"
@@ -19,6 +20,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/require"
 )
@@ -641,5 +643,82 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 
 		require.Contains(t, err.Error(), "error writing batch to leveldb")
+	})
+}
+
+//go:generate counterfeiter -o mock/snapshot_pvtdatahashes_consumer.go -fake-name SnapshotPvtdataHashesConsumer . snapshotPvtdataHashesConsumer
+type snapshotPvtdataHashesConsumer interface {
+	SnapshotPvtdataHashesConsumer
+}
+
+func TestSnapshotImportPvtdataHashesConsumer(t *testing.T) {
+	var dbEnv *LevelDBTestEnv
+	var snapshotDir string
+
+	init := func() {
+		var err error
+		dbEnv = &LevelDBTestEnv{}
+		dbEnv.Init(t)
+		snapshotDir, err = ioutil.TempDir("", "testsnapshot")
+
+		t.Cleanup(func() {
+			dbEnv.Cleanup()
+			os.RemoveAll(snapshotDir)
+		})
+
+		require.NoError(t, err)
+		db := dbEnv.GetDBHandle(generateLedgerID(t))
+		updateBatch := NewUpdateBatch()
+		updateBatch.PubUpdates.Put("ns-1", "key-1", []byte("value-1"), version.NewHeight(1, 1))
+		updateBatch.HashUpdates.Put("ns-1", "coll-1", []byte("key-hash-1"), []byte("value-hash-1"), version.NewHeight(1, 1))
+		require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1)))
+		snapshotDir, err = ioutil.TempDir("", "testsnapshot")
+		require.NoError(t, err)
+		_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
+		require.NoError(t, err)
+	}
+
+	t.Run("snapshot-import-invokes-consumer", func(t *testing.T) {
+		init()
+		consumers := []*mock.SnapshotPvtdataHashesConsumer{
+			{},
+			{},
+		}
+		err := dbEnv.GetProvider().ImportFromSnapshot(
+			generateLedgerID(t),
+			version.NewHeight(10, 10),
+			snapshotDir,
+			consumers[0],
+			consumers[1],
+		)
+		require.NoError(t, err)
+		for _, c := range consumers {
+			callCounts := c.ConsumeSnapshotDataCallCount()
+			require.Equal(t, 1, callCounts)
+
+			callArgNs, callArgsColl, callArgsKeyHash, callArgsVer := c.ConsumeSnapshotDataArgsForCall(0)
+			require.Equal(t, "ns-1", callArgNs)
+			require.Equal(t, "coll-1", callArgsColl)
+			require.Equal(t, []byte("key-hash-1"), callArgsKeyHash)
+			require.Equal(t, version.NewHeight(1, 1).ToBytes(), callArgsVer)
+		}
+	})
+
+	t.Run("snapshot-import-propages-error-from-consumer", func(t *testing.T) {
+		init()
+		consumers := []*mock.SnapshotPvtdataHashesConsumer{
+			{},
+			{},
+		}
+		consumers[1].ConsumeSnapshotDataReturns(errors.New("cannot-consume"))
+
+		err := dbEnv.GetProvider().ImportFromSnapshot(
+			generateLedgerID(t),
+			version.NewHeight(10, 10),
+			snapshotDir,
+			consumers[0],
+			consumers[1],
+		)
+		require.EqualError(t, err, "cannot-consume")
 	})
 }

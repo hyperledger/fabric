@@ -18,10 +18,15 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/confighistory"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/pvtstatepurgemgmt"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 )
@@ -220,7 +225,8 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, er
 	}
 
 	ledgerID := metadata.ChannelName
-	lastBlockNum := metadata.ChannelHeight - 1
+	height := metadata.ChannelHeight
+	lastBlockNum := height - 1
 
 	lastBlkHash, err := hex.DecodeString(metadata.LastBlockHashInHex)
 	if err != nil {
@@ -269,8 +275,15 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, er
 				errors.WithMessage(err, "error while importing data into config history Mgr"),
 			)
 	}
+	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(
+		&mostRecentCollectionConfigFetcher{
+			DeployedChaincodeInfoProvider: p.initializer.DeployedChaincodeInfoProvider,
+			Retriever:                     p.configHistoryMgr.GetRetriever(ledgerID),
+		},
+	)
+	purgeMgrBuilder := pvtstatepurgemgmt.NewPurgeMgrBuilder(ledgerID, btlPolicy, p.bookkeepingProvider)
 
-	if err = p.dbProvider.ImportFromSnapshot(ledgerID, savepoint, snapshotDir); err != nil {
+	if err = p.dbProvider.ImportFromSnapshot(ledgerID, savepoint, snapshotDir, purgeMgrBuilder); err != nil {
 		return nil,
 			p.deleteUnderConstructionLedger(
 				nil,
@@ -370,4 +383,29 @@ func verifyFileHash(dir, file string, expectedHashInHex string, hashProvider led
 		)
 	}
 	return nil
+}
+
+type mostRecentCollectionConfigFetcher struct {
+	*confighistory.Retriever
+	ledger.DeployedChaincodeInfoProvider
+}
+
+func (c *mostRecentCollectionConfigFetcher) CollectionInfo(chaincodeName, collectionName string) (*peer.StaticCollectionConfig, error) {
+	isImplicitCollection, mspID := implicitcollection.MspIDIfImplicitCollection(collectionName)
+	if isImplicitCollection {
+		return c.GenerateImplicitCollectionForOrg(mspID), nil
+	}
+
+	explicitCollections, err := c.MostRecentCollectionConfigBelow(math.MaxUint64, chaincodeName)
+	if err != nil || explicitCollections == nil || explicitCollections.CollectionConfig == nil {
+		return nil, errors.WithMessage(err, "error while fetching most recent collection config")
+	}
+
+	for _, c := range explicitCollections.CollectionConfig.Config {
+		stateCollectionConfig := c.GetStaticCollectionConfig()
+		if stateCollectionConfig.Name == collectionName {
+			return stateCollectionConfig, nil
+		}
+	}
+	return nil, nil
 }

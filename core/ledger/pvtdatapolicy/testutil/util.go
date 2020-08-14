@@ -22,3 +22,16 @@ func SampleBTLPolicy(m map[[2]string]uint64) pvtdatapolicy.BTLPolicy {
 	}
 	return pvtdatapolicy.ConstructBTLPolicy(ccInfoRetriever)
 }
+
+type ErrorCausingBTLPolicy struct {
+	Err error
+}
+
+func (p *ErrorCausingBTLPolicy) GetBTL(namesapce string, collection string) (uint64, error) {
+	return 0, p.Err
+
+}
+
+func (p *ErrorCausingBTLPolicy) GetExpiringBlock(namesapce string, collection string, committingBlock uint64) (uint64, error) {
+	return 0, p.Err
+}

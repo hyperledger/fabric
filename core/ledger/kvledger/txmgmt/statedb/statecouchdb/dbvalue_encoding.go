@@ -60,3 +60,19 @@ func decodeValueVersionMetadata(encodedMsg []byte) (*ValueVersionMetadata, error
 	}
 	return val, nil
 }
+
+func VersionFromSnapshotValue(snapshotValue []byte) ([]byte, error) {
+	v, err := decodeValueVersionMetadata(snapshotValue)
+	if err != nil {
+		return nil, err
+	}
+	versionAndMetadataBytes, err := base64.StdEncoding.DecodeString(string(v.VersionAndMetadata))
+	if err != nil {
+		return nil, err
+	}
+	versionAndMetadata := &VersionAndMetadata{}
+	if err = proto.Unmarshal(versionAndMetadataBytes, versionAndMetadata); err != nil {
+		return nil, err
+	}
+	return versionAndMetadata.Version, nil
+}

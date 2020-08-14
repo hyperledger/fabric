@@ -254,6 +254,16 @@ func TestImportStateErrorPropagation(t *testing.T) {
 	})
 }
 
+func TestVersionFromSnapshotValue(t *testing.T) {
+	env := NewTestVDBEnv(t)
+	defer env.Cleanup()
+	commontests.TestVersionFromSnapshotValue(
+		t,
+		env.DBProvider,
+		VersionFromSnapshotValue,
+	)
+}
+
 func TestDrop(t *testing.T) {
 	env := NewTestVDBEnv(t)
 	defer env.Cleanup()
