@@ -492,8 +492,13 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig
 		serverRootCAs = append(serverRootCAs, rootCACert)
 	}
 
+	timeShift := conf.General.TLS.TLSHandshakeTimeShift
+	if reuseGrpcListener := reuseListener(conf); !reuseGrpcListener {
+		timeShift = conf.General.Cluster.TLSHandshakeTimeShift
+	}
+
 	cc.SecOpts = comm.SecureOptions{
-		TimeShift:         conf.General.Cluster.TLSHandshakeTimeShift,
+		TimeShift:         timeShift,
 		RequireClientCert: true,
 		CipherSuites:      comm.DefaultTLSCipherSuites,
 		ServerRootCAs:     serverRootCAs,
@@ -510,6 +515,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 	secureOpts := comm.SecureOptions{
 		UseTLS:            conf.General.TLS.Enabled,
 		RequireClientCert: conf.General.TLS.ClientAuthRequired,
+		TimeShift:         conf.General.TLS.TLSHandshakeTimeShift,
 	}
 	// check to see if TLS is enabled
 	if secureOpts.UseTLS {
