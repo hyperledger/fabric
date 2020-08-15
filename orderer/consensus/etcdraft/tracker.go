@@ -66,9 +66,9 @@ func (t *Tracker) Check(status *raft.Status) {
 		return
 	}
 
-	// consider active nodes to be stable if it holds for 3 iterations, to avoid glitch
+	// consider active nodes to be stable if it holds for 5 iterations, to avoid glitch
 	// in this value when the recent status is reset on leader election intervals
-	if t.counter < 3 {
+	if t.counter < 5 {
 		t.counter++
 		return
 	}
