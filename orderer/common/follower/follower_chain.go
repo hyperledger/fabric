@@ -63,7 +63,7 @@ type ChainCreator interface {
 }
 
 // Chain implements a component that allows the orderer to follow a specific channel when is not a cluster member,
-// that is, be a "follower" of the cluster. It also allows the orderer to perform "on-boarding" for
+// that is, be a "follower" of the cluster. It also allows the orderer to perform "onboarding" for
 // channels it is joining as a member, with a join-block.
 //
 // When an orderer is following a channel, it means that the current orderer is not a member of the consenters set
@@ -71,7 +71,7 @@ type ChainCreator interface {
 // blocks as they are pulled and if it discovers that it was introduced into the consenters set, it will trigger the
 // creation of a regular etcdraft.Chain, that is, turn into a "member" of the cluster.
 //
-// A follower is also used to on-board a channel when joining as a member with a join-block that has number >0. In this
+// A follower is also used to onboard a channel when joining as a member with a join-block that has number >0. In this
 // mode the follower will pull blocks up until join-block.number, and then will trigger the creation of a regular
 // etcdraft.Chain.
 //
@@ -83,7 +83,7 @@ type ChainCreator interface {
 // pulls blocks equal or above the join-block number.
 //
 // The follower return clusterRelation "member" when the join-block indicates the orderer is in the consenters set,
-// i.e. the follower is performing on-boarding for an etcdraft.Chain. Otherwise, the follower return clusterRelation
+// i.e. the follower is performing onboarding for an etcdraft.Chain. Otherwise, the follower return clusterRelation
 // "follower".
 type Chain struct {
 	mutex    sync.Mutex    // Protects the start/stop flags & channels, cRel & status. All the rest are immutable or accessed only by the go-routine.
@@ -326,7 +326,7 @@ func (c *Chain) pull() error {
 		if isMem, _ := c.clusterConsenter.IsChannelMember(c.joinBlock); isMem {
 			c.setStatusReport(types.ClusterRelationMember, types.StatusActive)
 			// Trigger creation of a new consensus.Chain.
-			c.logger.Info("On-boarding finished successfully, going to switch from follower to a consensus.Chain")
+			c.logger.Info("Onboarding finished successfully, going to switch from follower to a consensus.Chain")
 			c.halt()
 			c.chainCreator.SwitchFollowerToChain(c.ledgerResources.ChannelID())
 			return nil
@@ -339,7 +339,7 @@ func (c *Chain) pull() error {
 			return errors.Wrap(err, "failed to load last config block")
 		}
 
-		c.logger.Info("On-boarding finished successfully, continuing to pull blocks after join-block")
+		c.logger.Info("Onboarding finished successfully, continuing to pull blocks after join-block")
 	}
 
 	err = c.pullAfterJoin()
