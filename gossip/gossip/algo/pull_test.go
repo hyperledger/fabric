@@ -187,7 +187,7 @@ func TestPullEngine_Stop(t *testing.T) {
 	inst2.setNextPeerSelection([]string{"p1"})
 	go func() {
 		for i := 0; i < 100; i++ {
-			inst1.Add(string(i))
+			inst1.Add(strconv.Itoa(i))
 			time.Sleep(time.Duration(10) * time.Millisecond)
 		}
 	}()
@@ -210,7 +210,7 @@ func TestPullEngineAll2AllWithIncrementalSpawning(t *testing.T) {
 
 	for i := 0; i < instanceCount; i++ {
 		inst := newPushPullTestInstance(fmt.Sprintf("p%d", i+1), peers)
-		inst.Add(string(i + 1))
+		inst.Add(strconv.Itoa(i + 1))
 		time.Sleep(time.Duration(50) * time.Millisecond)
 	}
 	for i := 0; i < instanceCount; i++ {
