@@ -85,7 +85,7 @@ peer:
     keepalive:
       minInterval: 60s
   tls:
-    enabled:  true
+    enabled: {{ .TLSEnabled }}
     clientAuthRequired: {{ .ClientAuthRequired }}
     cert:
       file: {{ .PeerLocalTLSDir Peer }}/server.crt
@@ -217,7 +217,7 @@ ledger:
 operations:
   listenAddress: 127.0.0.1:{{ .PeerPort Peer "Operations" }}
   tls:
-    enabled: true
+    enabled: {{ .TLSEnabled }}
     cert:
       file: {{ .PeerLocalTLSDir Peer }}/server.crt
     key:
