@@ -249,7 +249,7 @@ var _ = Describe("Instance", func() {
 			Entry("Number", `100`, externalbuilder.Duration(100), BeNil()),
 			Entry("Duration", `"1s"`, externalbuilder.Duration(time.Second), BeNil()),
 			Entry("List", `[1, 2, 3]`, externalbuilder.Duration(time.Second), MatchError("invalid duration")),
-			Entry("Nonsense", `"nonsense"`, externalbuilder.Duration(time.Second), MatchError("time: invalid duration nonsense")),
+			Entry("Nonsense", `"nonsense"`, externalbuilder.Duration(time.Second), MatchError(MatchRegexp(`time: invalid duration "?nonsense"?`))),
 		)
 
 		DescribeTable("Round Trip",
