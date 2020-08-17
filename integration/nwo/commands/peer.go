@@ -6,10 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 
 package commands
 
-import "strconv"
+import (
+	"strconv"
+)
 
 type NodeStart struct {
-	PeerID string
+	PeerID  string
+	DevMode bool
 }
 
 func (n NodeStart) SessionName() string {
@@ -17,9 +20,11 @@ func (n NodeStart) SessionName() string {
 }
 
 func (n NodeStart) Args() []string {
-	return []string{
-		"node", "start",
+	args := []string{"node", "start"}
+	if n.DevMode {
+		args = append(args, "--peer-chaincodedev")
 	}
+	return args
 }
 
 type NodeReset struct {

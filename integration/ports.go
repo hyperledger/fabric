@@ -24,6 +24,7 @@ const (
 
 const (
 	ConfigBasePort TestPortRange = basePort + portsPerSuite*iota
+	DevModePort
 	DiscoveryBasePort
 	E2EBasePort
 	GossipBasePort
