@@ -322,7 +322,7 @@ evaluate the signature, and the ``Role`` is set to either ``MEMBER``,
 2. ``ADMIN`` matches certificates enumerated as admin in the MSP definition.
 3. ``CLIENT`` (``PEER``) matches certificates that carry the client (peer) Organizational unit.
 
-(see `MSP Documentation <http://hyperledger-fabric.readthedocs.io/en/latest/msp.html>`_)
+(see `MSP Documentation <http://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/msp.html>`_)
 
 Constructing an ImplicitMetaPolicy
 ----------------------------------
