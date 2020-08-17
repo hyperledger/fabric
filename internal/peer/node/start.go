@@ -616,6 +616,7 @@ func serve(args []string) error {
 		Resources:   lifecycleResources,
 		Cache:       lifecycleCache,
 		BuiltinSCCs: builtinSCCs,
+		UserRunsCC:  userRunsCC,
 	}
 
 	containerRuntime := &chaincode.ContainerRuntime{
