@@ -10,7 +10,7 @@ import "github.com/hyperledger/fabric/common/metrics"
 
 //gendoc:ignore
 
-// This should be ignored by doc generation because of the gendoc:ignore statement above.
+// This should be ignored by doc generation because of the directive above.
 
 var (
 	Ignored = metrics.CounterOpts{
