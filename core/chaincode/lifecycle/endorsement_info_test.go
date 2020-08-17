@@ -190,6 +190,40 @@ var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 				Expect(err).To(MatchError("could not get current sequence for chaincode 'name' on channel '': could not get state for key namespaces/fields/name/Sequence: invalid channel-less operation"))
 			})
 		})
+
+		Context("when running chaincode in devmode", func() {
+			BeforeEach(func() {
+				testInfo.InstallInfo = nil
+				cei.UserRunsCC = true
+			})
+
+			It("set chaincode installInfo to {chaincodeName}:{chaincodeVersion}", func() {
+				info, ok, err := cei.CachedChaincodeInfo("channel-id", "name", fakeQueryExecutor)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(ok).To(BeTrue())
+				Expect(info).To(Equal(&lifecycle.LocalChaincodeInfo{
+					Definition: &lifecycle.ChaincodeDefinition{
+						Sequence: 7,
+						EndorsementInfo: &lb.ChaincodeEndorsementInfo{
+							Version:           "version",
+							EndorsementPlugin: "endorsement-plugin",
+						},
+						ValidationInfo: &lb.ChaincodeValidationInfo{
+							ValidationPlugin:    "validation-plugin",
+							ValidationParameter: []byte("validation-parameter"),
+						},
+					},
+					InstallInfo: &lifecycle.ChaincodeInstallInfo{
+						PackageID: "name:version",
+					},
+					Approved: true,
+				}))
+				Expect(fakeCache.ChaincodeInfoCallCount()).To(Equal(1))
+				channelID, chaincodeName := fakeCache.ChaincodeInfoArgsForCall(0)
+				Expect(channelID).To(Equal("channel-id"))
+				Expect(chaincodeName).To(Equal("name"))
+			})
+		})
 	})
 
 	Describe("ChaincodeEndorsementInfo", func() {
