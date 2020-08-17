@@ -87,12 +87,17 @@ signerconfig:
 
 When the peer runs with TLS enabled, the discovery service on the peer
 requires the client to connect to it with mutual TLS, which means it
-needs to supply a TLS certificate. The peer is configured by default to
-request (but not to verify) client TLS certificates, so supplying a TLS
-certificate isn't needed (unless the peer's `tls.clientAuthRequired` is
-set to `true`).
+expects the client to authenticate using a TLS certificate. 
 
-When the discovery CLI's config file has a certificate path for
+However, the peer is configured by default to
+request (and verify if given, but not require) client TLS certificates. 
+Therefore, unless the peer's `tls.clientAuthRequired` is
+set to `true` (in which case it mandates client-side TLS authentication),
+TLS connections can be established to the peer but will be rejected in the 
+discovery application layer. To that end, the discovery CLI provides a 
+TLS certificate on its own if the user doesn't explicitly set one.
+
+More concretely, when the discovery CLI's config file has a certificate path for
 `peercacertpath`, but the `certpath` and `keypath` aren't configured as
 in the above - the discovery CLI generates a self-signed TLS certificate
 and uses this to connect to the peer.
