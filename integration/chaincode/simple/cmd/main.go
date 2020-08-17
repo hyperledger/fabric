@@ -62,6 +62,10 @@ func main() {
 		}
 	}()
 
+	if os.Getenv("DEVMODE_ENABLED") != "" {
+		fmt.Println("starting up in devmode...")
+	}
+
 	var err error
 	select {
 	case err = <-startErrChan:
