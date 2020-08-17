@@ -9,7 +9,6 @@ package lifecycle
 import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/scc"
-
 	"github.com/pkg/errors"
 )
 
@@ -46,6 +45,7 @@ type ChaincodeEndorsementInfoSource struct {
 	Cache       ChaincodeInfoCache
 	LegacyImpl  Lifecycle
 	BuiltinSCCs scc.BuiltinSCCs
+	UserRunsCC  bool
 }
 
 func (cei *ChaincodeEndorsementInfoSource) CachedChaincodeInfo(channelID, chaincodeName string, qe ledger.SimpleQueryExecutor) (*LocalChaincodeInfo, bool, error) {
@@ -90,6 +90,12 @@ func (cei *ChaincodeEndorsementInfoSource) CachedChaincodeInfo(channelID, chainc
 	}
 
 	if chaincodeInfo.InstallInfo == nil {
+		if cei.UserRunsCC {
+			chaincodeInfo.InstallInfo = &ChaincodeInstallInfo{
+				PackageID: chaincodeName + ":" + chaincodeInfo.Definition.EndorsementInfo.Version,
+			}
+			return chaincodeInfo, true, nil
+		}
 		return nil, false, errors.Errorf("chaincode definition for '%s' exists, but chaincode is not installed", chaincodeName)
 	}
 
@@ -128,6 +134,10 @@ func (cei *ChaincodeEndorsementInfoSource) ChaincodeEndorsementInfo(channelID, c
 	}
 	if !ok {
 		return cei.LegacyImpl.ChaincodeEndorsementInfo(channelID, chaincodeName, qe)
+	}
+
+	if chaincodeInfo.InstallInfo == nil {
+		chaincodeInfo.InstallInfo = &ChaincodeInstallInfo{}
 	}
 
 	return &ChaincodeEndorsementInfo{
