@@ -94,7 +94,7 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 
 // CreateLedger creates a new ledger with the given genesis block.
 // This function guarantees that the creation of ledger and committing the genesis block would an atomic action
-// The chain id retrieved from the genesis block is treated as a ledger id
+// The channel id retrieved from the genesis block is treated as a ledger id
 func (m *LedgerMgr) CreateLedger(id string, genesisBlock *common.Block) (ledger.PeerLedger, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -110,6 +110,26 @@ func (m *LedgerMgr) CreateLedger(id string, genesisBlock *common.Block) (ledger.
 		id:         id,
 		PeerLedger: l,
 	}, nil
+}
+
+// CreateLedgerFromSnapshot creates a new ledger with the given snapshot and returns the ledger and channel id.
+// This function guarantees that the creation of ledger and all ledger dbs would be an atomic action.
+// The channel id retrieved from the snapshot metadata is treated as a ledger id
+func (m *LedgerMgr) CreateLedgerFromSnapshot(snapshotDir string) (ledger.PeerLedger, string, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	logger.Infof("Creating ledger from snapshot at %s", snapshotDir)
+	l, cid, err := m.ledgerProvider.CreateFromSnapshot(snapshotDir)
+	if err != nil {
+		return nil, "", err
+	}
+	m.openedLedgers[cid] = l
+	logger.Infof("Created ledger [%s] from snapshot", cid)
+	return &closableLedger{
+		ledgerMgr:  m,
+		id:         cid,
+		PeerLedger: l,
+	}, cid, nil
 }
 
 // OpenLedger returns a ledger for the given id

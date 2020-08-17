@@ -176,7 +176,7 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 	snapshotDir := SnapshotDirForLedgerHeight(snapshotRootDir, kvlgr.ledgerID, 4)
 
 	t.Run("create-ledger-from-snapshot", func(t *testing.T) {
-		createdLedger := testCreateLedgerFromSnapshot(t, snapshotDir)
+		createdLedger := testCreateLedgerFromSnapshot(t, snapshotDir, kvlgr.ledgerID)
 		verifyCreatedLedger(t,
 			provider,
 			createdLedger,
@@ -444,7 +444,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		defer cleanup()
 
 		require.NoError(t, os.Remove(filepath.Join(snapshotDirForTest, snapshotSignableMetadataFileName)))
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
 			fmt.Sprintf(
@@ -460,7 +460,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		defer cleanup()
 
 		require.NoError(t, os.Remove(filepath.Join(snapshotDirForTest, snapshotAdditionalMetadataFileName)))
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
 			fmt.Sprintf("error while loading metadata: open %s/_snapshot_additional_metadata.json: no such file or directory", snapshotDirForTest),
@@ -473,7 +473,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		defer cleanup()
 
 		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte(""), 0600))
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
 			"error while unmarshaling metadata: error while unmarshaling signable metadata: unexpected end of JSON input",
@@ -486,7 +486,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		defer cleanup()
 
 		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, []byte(""), 0600))
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
 			"error while unmarshaling metadata: error while unmarshaling additional metadata: unexpected end of JSON input",
@@ -499,7 +499,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		defer cleanup()
 
 		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte("{}"), 0600))
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t,
 			err.Error(),
 			"error while verifying snapshot: hash mismatch for file [_snapshot_signable_metadata.json]",
@@ -514,7 +514,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		err := os.Remove(filepath.Join(snapshotDirForTest, "txids.data"))
 		require.NoError(t, err)
 
-		_, err = provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err = provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t, err,
 			fmt.Sprintf(
 				"error while verifying snapshot: open %s/txids.data: no such file or directory",
@@ -531,7 +531,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		err := ioutil.WriteFile(filepath.Join(snapshotDirForTest, "txids.data"), []byte("random content"), 0600)
 		require.NoError(t, err)
 
-		_, err = provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err = provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t, err.Error(), "error while verifying snapshot: hash mismatch for file [txids.data]")
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
@@ -543,7 +543,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		metadata.snapshotSignableMetadata.LastBlockHashInHex = "invalid-hex"
 		overwriteModifiedSignableMetadata()
 
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t, err.Error(), "error while decoding last block hash")
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
@@ -555,7 +555,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		metadata.snapshotSignableMetadata.PreviousBlockHashInHex = "invalid-hex"
 		overwriteModifiedSignableMetadata()
 
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t, err.Error(), "error while decoding previous block hash")
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
@@ -565,7 +565,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		defer cleanup()
 
 		provider.idStore.close()
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t, err.Error(), "error while creating ledger id")
 	})
 
@@ -574,7 +574,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		defer cleanup()
 
 		overwriteDataFile("txids.data", []byte(""))
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t, err.Error(), "error while importing data into block store")
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
@@ -584,7 +584,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		defer cleanup()
 
 		overwriteDataFile("confighistory.data", []byte(""))
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t, err.Error(), "error while importing data into config history Mgr")
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
@@ -594,7 +594,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		defer cleanup()
 
 		overwriteDataFile("public_state.data", []byte(""))
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t, err.Error(), "error while importing data into state db")
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
@@ -605,7 +605,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 
 		provider.historydbProvider.Close()
 
-		_, err := provider.CreateFromSnapshot(snapshotDirForTest)
+		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t, err.Error(), "error while preparing history db")
 		require.Contains(t, err.Error(), "error while deleting data from ledger")
 		verifyLedgerIDExists(t, provider, metadata.ChannelName, msgs.Status_UNDER_CONSTRUCTION)
@@ -688,12 +688,13 @@ func verifySnapshotOutput(
 	)
 }
 
-func testCreateLedgerFromSnapshot(t *testing.T, snapshotDir string) *kvLedger {
+func testCreateLedgerFromSnapshot(t *testing.T, snapshotDir string, expectedChannelID string) *kvLedger {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
 	p := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
-	destLedger, err := p.CreateFromSnapshot(snapshotDir)
+	destLedger, channelID, err := p.CreateFromSnapshot(snapshotDir)
 	require.NoError(t, err)
+	require.Equal(t, expectedChannelID, channelID)
 	return destLedger.(*kvLedger)
 }
 
