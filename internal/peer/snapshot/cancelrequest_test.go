@@ -22,7 +22,7 @@ func TestCancelRequestCmd(t *testing.T) {
 	mockSnapshotClient := &mock.SnapshotClient{}
 	mockSnapshotClient.CancelReturns(&empty.Empty{}, nil)
 	buffer := gbytes.NewBuffer()
-	mockClient := &Client{mockSnapshotClient, mockSigner, buffer}
+	mockClient := &client{mockSnapshotClient, mockSigner, buffer}
 
 	resetFlags()
 	cmd := cancelRequestCmd(mockClient, nil)

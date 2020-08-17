@@ -17,15 +17,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Client holds client side dependency for the snapshot commands
-type Client struct {
-	SnapshotClient pb.SnapshotClient
-	Signer         common.Signer
-	Writer         io.Writer
+// client holds client side dependency for the snapshot commands
+type client struct {
+	snapshotClient pb.SnapshotClient
+	signer         common.Signer
+	writer         io.Writer
 }
 
-// NewClient creates a client instance
-func NewClient(cryptoProvider bccsp.BCCSP) (*Client, error) {
+// newClient creates a client instance
+func newClient(cryptoProvider bccsp.BCCSP) (*client, error) {
 	if err := validatePeerConnectionParameters(); err != nil {
 		return nil, err
 	}
@@ -40,10 +40,10 @@ func NewClient(cryptoProvider bccsp.BCCSP) (*Client, error) {
 		return nil, errors.WithMessage(err, "failed to retrieve default signer")
 	}
 
-	return &Client{
-		Signer:         signer,
-		SnapshotClient: snapshotClient,
-		Writer:         os.Stdout,
+	return &client{
+		signer:         signer,
+		snapshotClient: snapshotClient,
+		writer:         os.Stdout,
 	}, nil
 }
 

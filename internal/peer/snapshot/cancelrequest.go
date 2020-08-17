@@ -17,13 +17,13 @@ import (
 )
 
 // cancelRequestCmd returns the cobra command for snapshot cancelrequest command
-func cancelRequestCmd(client *Client, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func cancelRequestCmd(cl *client, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	snapshotCancelRequestCmd := &cobra.Command{
 		Use:   "cancelrequest",
 		Short: "Cancel a request for a snapshot at the specified block.",
 		Long:  "Cancel a request for a snapshot at the specified block.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cancelRequest(cmd, client, cryptoProvider)
+			return cancelRequest(cmd, cl, cryptoProvider)
 		},
 	}
 
@@ -38,7 +38,7 @@ func cancelRequestCmd(client *Client, cryptoProvider bccsp.BCCSP) *cobra.Command
 	return snapshotCancelRequestCmd
 }
 
-func cancelRequest(cmd *cobra.Command, client *Client, cryptoProvider bccsp.BCCSP) error {
+func cancelRequest(cmd *cobra.Command, cl *client, cryptoProvider bccsp.BCCSP) error {
 	if err := validateCancelRequest(); err != nil {
 		return err
 	}
@@ -47,9 +47,9 @@ func cancelRequest(cmd *cobra.Command, client *Client, cryptoProvider bccsp.BCCS
 	cmd.SilenceUsage = true
 
 	// create a client if not provided
-	if client == nil {
+	if cl == nil {
 		var err error
-		client, err = NewClient(cryptoProvider)
+		cl, err = newClient(cryptoProvider)
 		if err != nil {
 			return err
 		}
@@ -59,17 +59,17 @@ func cancelRequest(cmd *cobra.Command, client *Client, cryptoProvider bccsp.BCCS
 		ChannelId: channelID,
 		Height:    blockNumber,
 	}
-	signedRequest, err := signSnapshotRequest(client.Signer, request)
+	signedRequest, err := signSnapshotRequest(cl.signer, request)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.SnapshotClient.Cancel(context.Background(), signedRequest)
+	_, err = cl.snapshotClient.Cancel(context.Background(), signedRequest)
 	if err != nil {
 		return errors.WithMessage(err, "failed to cancel the request")
 	}
 
-	fmt.Fprint(client.Writer, "Snapshot request cancelled successfully\n")
+	fmt.Fprint(cl.writer, "Snapshot request cancelled successfully\n")
 	return nil
 }
 
