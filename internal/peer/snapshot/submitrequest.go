@@ -17,13 +17,13 @@ import (
 )
 
 // submitRequestCmd returns the cobra command for snapshot submitrequest command
-func submitRequestCmd(client *Client, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func submitRequestCmd(cl *client, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	snapshotSubmitRequestCmd := &cobra.Command{
 		Use:   "submitrequest",
 		Short: "Submit a request for a snapshot at the specified block.",
 		Long:  "Submit a request for a snapshot at the specified block. When the blockNumber parameter is set to 0 or not provided, it will submit a request for the last committed block.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return submitRequest(cmd, client, cryptoProvider)
+			return submitRequest(cmd, cl, cryptoProvider)
 		},
 	}
 
@@ -38,7 +38,7 @@ func submitRequestCmd(client *Client, cryptoProvider bccsp.BCCSP) *cobra.Command
 	return snapshotSubmitRequestCmd
 }
 
-func submitRequest(cmd *cobra.Command, client *Client, cryptoProvider bccsp.BCCSP) error {
+func submitRequest(cmd *cobra.Command, cl *client, cryptoProvider bccsp.BCCSP) error {
 	if err := validateSubmitRequest(); err != nil {
 		return err
 	}
@@ -47,9 +47,9 @@ func submitRequest(cmd *cobra.Command, client *Client, cryptoProvider bccsp.BCCS
 	cmd.SilenceUsage = true
 
 	// create a client if not provided
-	if client == nil {
+	if cl == nil {
 		var err error
-		client, err = NewClient(cryptoProvider)
+		cl, err = newClient(cryptoProvider)
 		if err != nil {
 			return err
 		}
@@ -59,17 +59,17 @@ func submitRequest(cmd *cobra.Command, client *Client, cryptoProvider bccsp.BCCS
 		ChannelId: channelID,
 		Height:    blockNumber,
 	}
-	signedRequest, err := signSnapshotRequest(client.Signer, request)
+	signedRequest, err := signSnapshotRequest(cl.signer, request)
 	if err != nil {
 		return err
 	}
 
-	_, err = client.SnapshotClient.Generate(context.Background(), signedRequest)
+	_, err = cl.snapshotClient.Generate(context.Background(), signedRequest)
 	if err != nil {
 		return errors.WithMessage(err, "failed to submit the request")
 	}
 
-	fmt.Fprint(client.Writer, "Snapshot request submitted successfully\n")
+	fmt.Fprint(cl.writer, "Snapshot request submitted successfully\n")
 	return nil
 }
 

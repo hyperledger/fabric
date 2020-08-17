@@ -22,7 +22,7 @@ func TestSubmitRequestCmd(t *testing.T) {
 	mockSnapshotClient := &mock.SnapshotClient{}
 	mockSnapshotClient.GenerateReturns(&empty.Empty{}, nil)
 	buffer := gbytes.NewBuffer()
-	mockClient := &Client{mockSnapshotClient, mockSigner, buffer}
+	mockClient := &client{mockSnapshotClient, mockSigner, buffer}
 
 	resetFlags()
 	cmd := submitRequestCmd(mockClient, nil)
@@ -32,7 +32,7 @@ func TestSubmitRequestCmd(t *testing.T) {
 
 	// use a new buffer to verify new command execution
 	buffer2 := gbytes.NewBuffer()
-	mockClient.Writer = buffer2
+	mockClient.writer = buffer2
 	resetFlags()
 	cmd = submitRequestCmd(mockClient, nil)
 	cmd.SetArgs([]string{"-C", "mychannel", "-b", "100"})

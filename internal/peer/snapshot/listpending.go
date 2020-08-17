@@ -17,13 +17,13 @@ import (
 )
 
 // listPendingCmd returns the cobra command for snapshot listpending command
-func listPendingCmd(client *Client, cryptoProvider bccsp.BCCSP) *cobra.Command {
+func listPendingCmd(cl *client, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	snapshotGenerateRequestCmd := &cobra.Command{
 		Use:   "listpending",
 		Short: "List pending requests for snapshots.",
 		Long:  "List pending requests for snapshots.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return listPending(cmd, client, cryptoProvider)
+			return listPending(cmd, cl, cryptoProvider)
 		},
 	}
 	flagList := []string{
@@ -36,7 +36,7 @@ func listPendingCmd(client *Client, cryptoProvider bccsp.BCCSP) *cobra.Command {
 	return snapshotGenerateRequestCmd
 }
 
-func listPending(cmd *cobra.Command, client *Client, cryptoProvider bccsp.BCCSP) error {
+func listPending(cmd *cobra.Command, cl *client, cryptoProvider bccsp.BCCSP) error {
 	if err := validateListPending(); err != nil {
 		return err
 	}
@@ -45,9 +45,9 @@ func listPending(cmd *cobra.Command, client *Client, cryptoProvider bccsp.BCCSP)
 	cmd.SilenceUsage = true
 
 	// create a client if not provided
-	if client == nil {
+	if cl == nil {
 		var err error
-		client, err = NewClient(cryptoProvider)
+		cl, err = newClient(cryptoProvider)
 		if err != nil {
 			return err
 		}
@@ -56,17 +56,17 @@ func listPending(cmd *cobra.Command, client *Client, cryptoProvider bccsp.BCCSP)
 	query := &pb.SnapshotQuery{
 		ChannelId: channelID,
 	}
-	signedRequest, err := signSnapshotRequest(client.Signer, query)
+	signedRequest, err := signSnapshotRequest(cl.signer, query)
 	if err != nil {
 		return err
 	}
 
-	resp, err := client.SnapshotClient.QueryPendings(context.Background(), signedRequest)
+	resp, err := cl.snapshotClient.QueryPendings(context.Background(), signedRequest)
 	if err != nil {
 		return errors.WithMessage(err, "failed to list pending requests")
 	}
 
-	fmt.Fprintf(client.Writer, "Successfully got pending snapshot requests: %v\n", resp.Heights)
+	fmt.Fprintf(cl.writer, "Successfully got pending snapshot requests: %v\n", resp.Heights)
 	return nil
 }
 

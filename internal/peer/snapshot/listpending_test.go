@@ -22,7 +22,7 @@ func TestListPendingCmd(t *testing.T) {
 	mockSnapshotClient := &mock.SnapshotClient{}
 	mockSnapshotClient.QueryPendingsReturns(&pb.QueryPendingSnapshotsResponse{Heights: []uint64{100, 200}}, nil)
 	buffer := gbytes.NewBuffer()
-	mockClient := &Client{mockSnapshotClient, mockSigner, buffer}
+	mockClient := &client{mockSnapshotClient, mockSigner, buffer}
 
 	resetFlags()
 	cmd := listPendingCmd(mockClient, nil)

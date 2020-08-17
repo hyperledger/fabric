@@ -73,12 +73,7 @@ func attachFlags(cmd *cobra.Command, names []string) {
 	}
 }
 
-// Signer defines the interface needed for signing messages
-type Signer interface {
-	Sign(msg []byte) ([]byte, error)
-}
-
-func signSnapshotRequest(signer Signer, request proto.Message) (*pb.SignedSnapshotRequest, error) {
+func signSnapshotRequest(signer common.Signer, request proto.Message) (*pb.SignedSnapshotRequest, error) {
 	requestBytes := protoutil.MarshalOrPanic(request)
 	signature, err := signer.Sign(requestBytes)
 	if err != nil {
