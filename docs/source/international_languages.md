@@ -148,7 +148,7 @@ Before your new language can be published to the documentation website, you must
 translate the following topics.  These topics help users and translators of your
 new language get started.
 
-* [Fabric front page](https://hyperledger-fabric.readthedocs.io/zh_CN/latest/)
+* [Fabric front page](https://hyperledger-fabric.readthedocs.io/zh_CN/{BRANCH_DOC}/)
 
   This is your advert! Thanks to you, users can now see that the documentation
   is available in their language. It might not be complete yet, but its clear
@@ -156,21 +156,21 @@ new language get started.
   recruit other translators.
 
 
-* [Introduction](https://hyperledger-fabric.readthedocs.io/en/latest/whatis.html)
+* [Introduction](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/whatis.html)
 
   This short topic gives a high level overview of Fabric, and because it's
   probably one of the first topics a new user will look at, it's important that
   it's translated.
 
 
-* [Contributions Welcome!](https://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html)
+* [Contributions Welcome!](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/CONTRIBUTING.html)
 
   This topic is vital -- it helps contributors understand **what**, **why** and
   **how** of contributing to Fabric. You need to translate this topic so that
   others can help you collaborate in your translation.
 
 
-* [Glossary](https://hyperledger-fabric.readthedocs.io/en/latest/glossary.html)
+* [Glossary](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/glossary.html)
 
   Translating this topic provides the essential reference material that helps
   other language translators make progress; in short, it allows your workgroup
@@ -179,7 +179,7 @@ new language get started.
 Once this set of topics have been translated, and you've created a language
 workgroup, your translation can be published on the documentation website. For
 example, the Chinese language docs are available
-[here](https://hyperledger-fabric.readthedocs.io/zh_CN/latest/).
+[here](https://hyperledger-fabric.readthedocs.io/zh_CN/{BRANCH_DOC}/).
 
 You can now request, via the [`i18n rocket
 channel`](https://chat.hyperledger.org/channel/i18n), that your translation is
@@ -204,34 +204,34 @@ website, you are encouraged to translate these topics, in order. If you choose
 to adopt another order, that's fine; you still will find it helpful to agree an
 order of translation in your workgroup.
 
-* [Key concepts](https://hyperledger-fabric.readthedocs.io/en/latest/key_concepts.html)
+* [Key concepts](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/key_concepts.html)
 
     For solution architects, application architects, systems architects, developers,
     academics and students alike, this topic provides a comprehensive conceptual
     understanding of Fabric.
 
 
-* [Getting started](https://hyperledger-fabric.readthedocs.io/en/latest/getting_started.html)
+* [Getting started](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/getting_started.html)
 
   For developers who want to get hands-on with Fabric, this topic provides key
   instructions to help install, build a sample network and get hands-on with
   Fabric.
 
 
-* [Developing applications](https://hyperledger-fabric.readthedocs.io/en/latest/developapps/developing_applications.html)
+* [Developing applications](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/developapps/developing_applications.html)
 
   This topic helps developers write smart contracts and applications; these
   are the core elements of any solution that uses Fabric.
 
 
-* [Tutorials](https://hyperledger-fabric.readthedocs.io/en/latest/tutorials.html)
+* [Tutorials](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/tutorials.html)
 
   A set of hands-on tutorials to help developers and administrators try out
   specific Fabric features and capabilities.
 
 
 * [What's new in Hyperledger Fabric
-  v2.x](https://hyperledger-fabric.readthedocs.io/en/latest/whatsnew.html)
+  v2.x](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/whatsnew.html)
 
   This topic covers the latest features in Hyperledger Fabric.
 

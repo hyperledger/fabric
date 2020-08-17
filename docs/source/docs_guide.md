@@ -34,8 +34,8 @@ different languages and different versions of the Fabric documentation.
 
 For example:
 
-  * [Latest version of US English](https://hyperledger-fabric.readthedocs.io/en/latest/)
-  * [Latest version of Chinese](https://hyperledger-fabric.readthedocs.io/zh_CN/latest/)
+  * [Latest version of US English](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/)
+  * [Latest version of Chinese](https://hyperledger-fabric.readthedocs.io/zh_CN/{BRANCH_DOC}/)
   * [Version 2.2 of US English](https://hyperledger-fabric.readthedocs.io/en/release-2.2/)
   * [Version 1.4 of US English](https://hyperledger-fabric.readthedocs.io/en/release-1.4/)
 
@@ -100,15 +100,15 @@ folder](https://github.com/hyperledger/fabric/tree/master/docs) in the
 Hyperledger Fabric repository. Click on the following links to see how different
 source files map to their corresponding published topics.
 
-* [`/docs/source/index.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/index.rst) maps to [Hyperledger Fabric title page](https://hyperledger-fabric.readthedocs.io/en/master/)
+* [`/docs/source/index.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/index.rst) maps to [Hyperledger Fabric title page](https://hyperledger-fabric.readthedocs.io/en/{BRANCH}/)
 
 * [`/docs/source/developapps/developing-applications.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/developapps/developing_applications.rst)
   maps to [Developing
-  applications](https://hyperledger-fabric.readthedocs.io/en/master/developapps/developing_applications.html)
+  applications](https://hyperledger-fabric.readthedocs.io/en/{BRANCH}/developapps/developing_applications.html)
 
 * [`/docs/source/peers/peers.md`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/peers/peers.md)
   maps to
-  [Peers](https://hyperledger-fabric.readthedocs.io/en/master/peers/peers.html)
+  [Peers](https://hyperledger-fabric.readthedocs.io/en/{BRANCH}/peers/peers.html)
 
 We'll see how to make changes to these files a little later.
 
@@ -251,7 +251,7 @@ do this.
 2. Create a project. Your username will preface the URL and you may want to
    append `-fabric` to ensure that you can distinguish between this and other
    docs that you need to create for other projects. So for example:
-   `YOURGITHUBID-fabric.readthedocs.io/en/latest`.
+   `YOURGITHUBID-fabric.readthedocs.io/en/{BRANCH_DOC}`.
 3. Click `Admin`, click `Integrations`, click `Add integration`, choose `GitHub
    incoming webhook`, then click `Add integration`.
 4. Fork the [`fabric`](https://github.com/hyperledger/fabric) repository.
@@ -304,7 +304,7 @@ and publication of the updated documentation.
 ## Commands Reference updates
 
 Updating content in the [Commands
-Reference](https://hyperledger-fabric.readthedocs.io/en/latest/command_ref.html)
+Reference](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/command_ref.html)
 topic requires additional steps. Because the information in the Commands
 Reference topic is generated content, you cannot simply update the associated
 markdown files.

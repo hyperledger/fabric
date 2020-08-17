@@ -26,7 +26,8 @@ sys.path.insert(0, os.path.abspath('.'))
 import sphinx_rtd_theme
 
 placeholder_replacements = {
-    "{BRANCH}" : "master"
+    "{BRANCH}" : "master",
+    "{BRANCH_DOC}" : "latest" # Used to target the correct ReadTheDocs distribution version
 }
 
 # -- General configuration ------------------------------------------------
