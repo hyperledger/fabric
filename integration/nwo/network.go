@@ -814,7 +814,6 @@ func hostIPv4Addrs() []net.IP {
 // bootstrapIdemix creates the idemix-related crypto material
 func (n *Network) bootstrapIdemix() {
 	for j, org := range n.IdemixOrgs() {
-
 		output := n.IdemixOrgMSPDir(org)
 		// - ca-keygen
 		sess, err := n.Idemixgen(commands.CAKeyGen{
@@ -825,13 +824,13 @@ func (n *Network) bootstrapIdemix() {
 
 		// - signerconfig
 		usersOutput := filepath.Join(n.IdemixOrgMSPDir(org), "users")
-		userOutput := filepath.Join(usersOutput, fmt.Sprintf("User%d@%s", 1, org.Domain))
+		userOutput := filepath.Join(usersOutput, "User1@"+org.Domain)
 		sess, err = n.Idemixgen(commands.SignerConfig{
 			CAInput:          output,
 			Output:           userOutput,
 			OrgUnit:          org.Domain,
-			EnrollmentID:     "User" + string(1),
-			RevocationHandle: fmt.Sprintf("1%d%d", 1, j),
+			EnrollmentID:     "User1",
+			RevocationHandle: fmt.Sprintf("11%d", j),
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
