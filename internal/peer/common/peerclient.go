@@ -190,3 +190,30 @@ func GetPeerDeliverClient(address, tlsRootCertFile string) (pb.DeliverClient, er
 	}
 	return peerClient.PeerDeliver()
 }
+
+// SnapshotClient returns a client for the snapshot service
+func (pc *PeerClient) SnapshotClient() (pb.SnapshotClient, error) {
+	conn, err := pc.CommonClient.NewConnection(pc.Address, comm.ServerNameOverride(pc.sn))
+	if err != nil {
+		return nil, errors.WithMessagef(err, "snapshot client failed to connect to %s", pc.Address)
+	}
+	return pb.NewSnapshotClient(conn), nil
+}
+
+// GetSnapshotClient returns a new snapshot client. If both the address and
+// tlsRootCertFile are not provided, the target values for the client are taken
+// from the configuration settings for "peer.address" and
+// "peer.tls.rootcert.file"
+func GetSnapshotClient(address, tlsRootCertFile string) (pb.SnapshotClient, error) {
+	var peerClient *PeerClient
+	var err error
+	if address != "" {
+		peerClient, err = NewPeerClientForAddress(address, tlsRootCertFile)
+	} else {
+		peerClient, err = NewPeerClientFromEnv()
+	}
+	if err != nil {
+		return nil, err
+	}
+	return peerClient.SnapshotClient()
+}
