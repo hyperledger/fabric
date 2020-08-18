@@ -619,9 +619,9 @@ Sample application ``'ReadAsset'`` call
 
   .. code:: bash
 
-  console.log('\n--> Evaluate Transaction: ReadAsset, function returns an asset with a given assetID');
-  result = await contract.evaluateTransaction('ReadAsset', 'asset13');
-  console.log(`*** Result: ${prettyJSONString(result.toString())}`);
+    console.log('\n--> Evaluate Transaction: ReadAsset, function returns an asset with a given assetID');
+    result = await contract.evaluateTransaction('ReadAsset', 'asset13');
+    console.log(`*** Result: ${prettyJSONString(result.toString())}`);
 
 Chaincode ``'ReadAsset'`` function
 
@@ -640,14 +640,14 @@ Chaincode ``'ReadAsset'`` function
 
   .. code:: bash
 
-  Evaluate Transaction: ReadAsset, function returns an asset with a given assetID
-  Result: {
-    "ID": "asset13",
-    "Color": "yellow",
-    "Size": "5",
-    "Owner": "Tom",
-    "AppraisedValue": "1300"
-  }
+    Evaluate Transaction: ReadAsset, function returns an asset with a given assetID
+    Result: {
+      "ID": "asset13",
+      "Color": "yellow",
+      "Size": "5",
+      "Owner": "Tom",
+      "AppraisedValue": "1300"
+    }
 
 
 In the next part of the sequence, the sample application evaluates to see if
@@ -849,20 +849,26 @@ connect to the network:
 
   const { Gateway, Wallets } = require('fabric-network');
 
-First, the program uses the Wallet class to get our application user from our file system.
+First, the program sets up the gateway connection with the userId stored in the wallet and
+specifies discovery options.
 
 .. code:: bash
 
-  const identity = await wallet.get(registerUser.ApplicationUserId);
+  // setup the gateway instance
+  // The user will now be able to create connections to the fabric network and be able to
+  // submit transactions and query. All transactions submitted by this gateway will be
+  // signed by this user using the credentials stored in the wallet.
+  await gateway.connect(ccp, {
+    wallet,
+    identity: userId,
+    discovery: {enabled: true, asLocalhost: true} // using asLocalhost as this gateway is using a fabric network deployed locally
+  });
 
-Once the program has an identity, it uses the Gateway class to connect to our network.
+Note at the top of the sample application code we require external utility files to build the CAClient,
+registerUser, enrollAdmin, buildCCP (common connection profile), and buildWallet.
+These utility programs are located in ``AppUtil.js`` in the ``test-application/javascript`` directory.
 
-.. code:: bash
-
-  const gateway = new Gateway();
-  await gateway.connect(ccp, { wallet, identity: registerUser.ApplicationUserID, discovery: { enabled: true, asLocalhost: true } });
-
-``ccpPath`` describes the path to the connection profile that our application will use
+In ``AppUtil.js``, ``ccpPath`` describes the path to the connection profile that our application will use
 to connect to our network. The connection profile was loaded from inside the
 ``fabric-samples/test-network`` directory and parsed as a JSON file:
 
@@ -881,19 +887,20 @@ near the top of the sample application to account for the channel name and the c
 
 .. code:: bash
 
-  const myChannel = 'mychannel';
-  const myChaincodeName = 'basic';
+  const channelName = 'mychannel';
+  const chaincodeName = 'basic';
 
 .. code:: bash
 
-  const network = await gateway.getNetwork('myChannel');
+  const network = await gateway.getNetwork(channelName);
 
 Within this channel, we can access the asset-transfer ('basic') smart contract to interact
 with the ledger:
 
 .. code:: bash
 
-  const contract = network.getContract(myChaincodeName);
+  const contract = network.getContract(chaincodeName);
+
 
 Within asset-transfer ('basic') there are many different **transactions**, and our application
 initially uses the ``InitLedger`` transaction to populate the ledger world state with
