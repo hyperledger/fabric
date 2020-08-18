@@ -87,7 +87,7 @@ automatically create a file in this format.
   chaincode language, code path, and package label. You can see an example of
   a metadata file below:
   ```
-  {"Path":"fabric-samples/chaincode/fabcar/go","Type":"golang","Label":"fabcarv1"}
+  {"Path":"fabric-samples/asset-transfer-basic/chaincode-go","Type":"golang","Label":"basicv1"}
   ```
 
 ![Packaging the chaincode](lifecycle/Lifecycle-package.png)

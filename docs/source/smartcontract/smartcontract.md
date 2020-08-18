@@ -112,26 +112,24 @@ organizations in that network. It means that only administrators need to worry
 about chaincode; everyone else can think in terms of smart contracts.
 
 At the heart of a smart contract is a set of `transaction` definitions. For
-example, look at fabcar.js
-[here](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/fabcar/javascript/lib/fabcar.js#L93),
-where you can see a smart contract transaction that creates a new car:
+example, look at assetTransfer.js
+[here](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-basic/chaincode-javascript/lib/assetTransfer.js#L67),
+where you can see a smart contract transaction that creates a new asset:
 
 ```javascript
-async createCar(ctx, carNumber, make, model, color, owner) {
-
-    const car = {
-        color,
-        docType: 'car',
-        make,
-        model,
-        owner,
-    };
-
-    await ctx.stub.putState(carNumber, Buffer.from(JSON.stringify(car)));
-}
+    async CreateAsset(ctx, id, color, size, owner, appraisedValue) {
+        const asset = {
+            ID: id,
+            Color: color,
+            Size: size,
+            Owner: owner,
+            AppraisedValue: appraisedValue,
+        };
+        return ctx.stub.putState(id, Buffer.from(JSON.stringify(asset)));
+    }
 ```
 
-You can learn more about the **Fabcar** smart contract in the [Writing your
+You can learn more about the **Basic** smart contract in the [Writing your
 first application](../write_first_app.html) tutorial.
 
 A smart contract can describe an almost infinite array of business use cases
