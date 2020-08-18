@@ -323,7 +323,7 @@ func extractSysChanLastConfig(lf blockledger.Factory, bootstrapBlock *cb.Block) 
 		logger.Panicf("Failed getting system channel ledger: %v", err)
 	}
 	height := systemChannelLedger.Height()
-	lastConfigBlock := multichannel.ConfigBlock(systemChannelLedger)
+	lastConfigBlock := multichannel.ConfigBlockOrPanic(systemChannelLedger)
 	logger.Infof("System channel: name=%s, height=%d, last config block number=%d",
 		systemChannelName, height, lastConfigBlock.Header.Number)
 	return lastConfigBlock
@@ -338,7 +338,7 @@ func extractSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) *cb.Block {
 		if err != nil {
 			logger.Panicf("Failed getting channel %v's ledger: %v", cID, err)
 		}
-		channelConfigBlock := multichannel.ConfigBlock(channelLedger)
+		channelConfigBlock := multichannel.ConfigBlockOrPanic(channelLedger)
 
 		err = onboarding.ValidateBootstrapBlock(channelConfigBlock, bccsp)
 		if err == nil {
@@ -767,7 +767,7 @@ func initializeEtcdraftConsenter(
 		logger.Panicf("Failed obtaining system channel (%s) ledger: %v", systemChannelName, err)
 	}
 	getConfigBlock := func() *cb.Block {
-		return multichannel.ConfigBlock(systemLedger)
+		return multichannel.ConfigBlockOrPanic(systemLedger)
 	}
 
 	icr := onboarding.NewInactiveChainReplicator(ri, getConfigBlock, ri.RegisterChain, conf.General.Cluster.ReplicationBackgroundRefreshInterval)
