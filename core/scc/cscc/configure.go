@@ -77,9 +77,10 @@ var cnflogger = flogging.MustGetLogger("cscc")
 
 // These are function names from Invoke first parameter
 const (
-	JoinChain      string = "JoinChain"
-	GetConfigBlock string = "GetConfigBlock"
-	GetChannels    string = "GetChannels"
+	JoinChain           string = "JoinChain"
+	JoinChainBySnapshot string = "JoinChainBySnapshot"
+	GetConfigBlock      string = "GetConfigBlock"
+	GetChannels         string = "GetChannels"
 )
 
 // Init is mostly useless from an SCC perspective
@@ -174,6 +175,16 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 		}
 
 		return e.joinChain(cid, block, e.deployedCCInfoProvider, e.legacyLifecycle, e.newLifecycle)
+	case JoinChainBySnapshot:
+		if len(args[1]) == 0 {
+			return shim.Error("Cannot join the channel, no snapshot directory provided")
+		}
+		// check policy
+		if err = e.aclProvider.CheckACL(resources.Cscc_JoinChain, "", sp); err != nil {
+			return shim.Error(fmt.Sprintf("access denied for [%s]: [%s]", fname, err))
+		}
+		snapshotDir := string(args[1])
+		return e.JoinChainBySnapshot(snapshotDir, e.deployedCCInfoProvider, e.legacyLifecycle, e.newLifecycle)
 	case GetConfigBlock:
 		// 2. check policy
 		if err = e.aclProvider.CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
@@ -243,6 +254,20 @@ func (e *PeerConfiger) joinChain(
 	nr plugindispatcher.CollectionAndLifecycleResources,
 ) pb.Response {
 	if err := e.peer.CreateChannel(channelID, block, deployedCCInfoProvider, lr, nr); err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(nil)
+}
+
+// JohnChainBySnapshot will join the channel by the specified snapshot.
+func (e *PeerConfiger) JoinChainBySnapshot(
+	snapshotDir string,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	lr plugindispatcher.LifecycleResources,
+	nr plugindispatcher.CollectionAndLifecycleResources,
+) pb.Response {
+	if err := e.peer.CreateChannelFromSnaphotshot(snapshotDir, deployedCCInfoProvider, lr, nr); err != nil {
 		return shim.Error(err.Error())
 	}
 
