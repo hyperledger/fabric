@@ -18,7 +18,7 @@ In this topic, we're going to cover:
 * [How blocks are stored in a blockchain](#blocks)
 * [Transactions](#transactions)
 * [World state database options](#world-state-database-options)
-* [The **Fabcar** example ledger](#example-ledger-fabcar)
+* [The **Basic** example ledger](#example-ledger-basic-asset-transfer)
 * [Ledgers and namespaces](#namespaces)
 * [Ledgers and channels](#channels)
 
@@ -330,23 +330,23 @@ graph store, or a temporal database.  This provides great flexibility in the
 types of ledger states that can be efficiently accessed, allowing Hyperledger
 Fabric to address many different types of problems.
 
-## Example Ledger: fabcar
+## Example Ledger: Basic Asset Transfer 
 
 As we end this topic on the ledger, let's have a look at a sample ledger. If
-you've run the [fabcar sample application](../write_first_app.html), then you've
+you've run the [basic asset transfer sample application](../write_first_app.html), then you've
 created this ledger.
 
-The fabcar sample app creates a set of 10 cars each with a unique identity; a
-different color, make, model and owner. Here's what the ledger looks like after
-the first four cars have been created.
+The basic sample app creates a set of 6 assets each with a unique identity; a
+different color, size, owner, and appraised value. Here's what the ledger looks like after
+the first four assets have been created.
 
 ![ledger.transaction](./ledger.diagram.6.png) *The ledger, L, comprises a world
-state, W and a blockchain, B. W contains four states with keys: CAR0, CAR1, CAR2
-and CAR3. B contains two blocks, 0 and 1. Block 1 contains four transactions:
+state, W and a blockchain, B. W contains four states with keys: ASSET1, ASSET2, ASSET3,
+and ASSET4. B contains two blocks, 0 and 1. Block 1 contains four transactions:
 T1, T2, T3, T4.*
 
-We can see that the world state contains states that correspond to CAR0, CAR1,
-CAR2 and CAR3. CAR0 has a value which indicates that it is a blue Toyota Prius,
+We can see that the world state contains states that correspond to ASSET1,
+ASSET2, ASSET3, and ASSET4. ASSET1 has a value which indicates that it is a blue with size 5,
 currently owned by Tomoko, and we can see similar states and values for the
 other cars. Moreover, we can see that all car states are at version number 0,
 indicating that this is their starting version number -- they have not been
@@ -355,7 +355,7 @@ updated since they were created.
 We can also see that the blockchain contains two blocks.  Block 0 is the genesis
 block, though it does not contain any transactions that relate to cars. Block 1
 however, contains transactions T1, T2, T3, T4 and these correspond to
-transactions that created the initial states for CAR0 to CAR3 in the world
+transactions that created the initial states for ASSET1 to ASSET4 in the world
 state. We can see that block 1 is linked to block 0.
 
 We have not shown the other fields in the blocks or transactions, specifically
