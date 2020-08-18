@@ -32,7 +32,6 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
-	"github.com/tedsuo/ifrit/grouper"
 )
 
 var _ = Describe("Kafka2RaftMigration", func() {
@@ -692,14 +691,14 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("Launching the fourth orderer")
 			o4Runner := network.OrdererRunner(o4)
-			o4Process := ifrit.Invoke(grouper.Member{Name: o4.ID(), Runner: o4Runner})
+			o4Process := ifrit.Invoke(o4Runner)
 
 			defer func() {
 				o4Process.Signal(syscall.SIGTERM)
 				Eventually(o4Process.Wait(), network.EventuallyTimeout).Should(Receive())
 			}()
 
-			Eventually(o4Process.Ready()).Should(BeClosed())
+			Eventually(o4Process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 
 			By("Waiting for the orderer to figure out it was migrated")
 			Eventually(o4Runner.Err(), time.Minute, time.Second).Should(gbytes.Say("This node was migrated from Kafka to Raft, skipping activation of Kafka chain"))
