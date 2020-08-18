@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package privacyenabledstate
 
 import (
+	"encoding/base64"
 	"hash"
 	"path/filepath"
 
@@ -121,6 +122,7 @@ func (p *DBProvider) ImportFromSnapshot(
 		snapshotDir,
 		pvtdataHashesConsumers,
 		p.versionFromSnapshotValue,
+		!p.VersionedDBProvider.BytesKeySupported(),
 	)
 	if err != nil {
 		return err
@@ -244,12 +246,14 @@ type worldStateSnapshotReader struct {
 
 	pvtdataHashesConsumers []SnapshotPvtdataHashesConsumer
 	versionExtractorFunc   versionFromSnapshotValueFunc
+	keyHashesBase64Encoded bool
 }
 
 func newWorldStateSnapshotReader(
 	dir string,
 	pvtdataHashesConsumers []SnapshotPvtdataHashesConsumer,
 	versionExtractorFunc versionFromSnapshotValueFunc,
+	keyHashesBase64Encoded bool,
 ) (*worldStateSnapshotReader, byte, error) {
 	var pubState *snapshotReader
 	var pvtStateHashes *snapshotReader
@@ -282,6 +286,7 @@ func newWorldStateSnapshotReader(
 		pvtStateHashes:         pvtStateHashes,
 		pvtdataHashesConsumers: pvtdataHashesConsumers,
 		versionExtractorFunc:   versionExtractorFunc,
+		keyHashesBase64Encoded: keyHashesBase64Encoded,
 	}, dbValueFormat, nil
 }
 
@@ -315,8 +320,17 @@ func (r *worldStateSnapshotReader) invokePvtdataHashesConsumers(ck *statedb.Comp
 	if err != nil {
 		return err
 	}
+
+	keyHash := []byte(ck.Key)
+	if r.keyHashesBase64Encoded {
+		keyHash, err = base64.StdEncoding.DecodeString(ck.Key)
+		if err != nil {
+			return err
+		}
+	}
+
 	for _, l := range r.pvtdataHashesConsumers {
-		if err := l.ConsumeSnapshotData(ns, coll, []byte(ck.Key), version); err != nil {
+		if err := l.ConsumeSnapshotData(ns, coll, keyHash, version); err != nil {
 			return err
 		}
 	}

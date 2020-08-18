@@ -511,9 +511,8 @@ func TestUtilityFunctions(t *testing.T) {
 	db, err := vdbEnv.DBProvider.GetDBHandle("testutilityfunctions", nil)
 	require.NoError(t, err)
 
-	// BytesKeySupported should be false for CouchDB
-	byteKeySupported := db.BytesKeySupported()
-	require.False(t, byteKeySupported)
+	require.False(t, vdbEnv.DBProvider.BytesKeySupported())
+	require.False(t, db.BytesKeySupported())
 
 	// ValidateKeyValue should return nil for a valid key and value
 	err = db.ValidateKeyValue("testKey", []byte("Some random bytes"))

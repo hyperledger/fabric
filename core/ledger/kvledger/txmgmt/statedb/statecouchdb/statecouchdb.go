@@ -186,6 +186,11 @@ func (provider *VersionedDBProvider) ImportFromSnapshot(
 	return vdb.recordSavepoint(savepoint)
 }
 
+// BytesKeySupported returns true if a db created supports bytes as a key
+func (provider *VersionedDBProvider) BytesKeySupported() bool {
+	return false
+}
+
 // Close closes the underlying db instance
 func (provider *VersionedDBProvider) Close() {
 	// No close needed on Couch
