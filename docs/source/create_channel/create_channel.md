@@ -362,24 +362,32 @@ Blockchain info: {"height":3,"currentBlockHash":"eBpwWKTNUgnXGpaY2ojF4xeP3bWdjlP
 
 ## Deploy a chaincode to the new channel
 
-We can confirm that the channel was created successfully by deploying a chaincode to the channel. We can use the `network.sh` script to deploy the Fabcar chaincode to any test network channel. Deploy a chaincode to our new channel using the following command:
+We can confirm that the channel was created successfully by deploying a chaincode to the channel. We can use the `network.sh` script to deploy the Basic asset transfer chaincode to any test network channel. Deploy a chaincode to our new channel using the following command:
 ```
-./network.sh deployCC -c channel1
+./network.sh deployCC --ccn basic -c channel1 --cci InitLedger 
 ```
 
-After you run the command, you should see the chaincode being deployed to the channel in your logs. The chaincode is invoked to add data to the channel ledger and then queried.
+After you run the command, you should see the chaincode being deployed to the channel in your logs. The chaincode is invoked to add data to the channel ledger.
+
 ```
-[{"Key":"CAR0","Record":{"make":"Toyota","model":"Prius","colour":"blue","owner":"Tomoko"}},
-{"Key":"CAR1","Record":{"make":"Ford","model":"Mustang","colour":"red","owner":"Brad"}},
-{"Key":"CAR2","Record":{"make":"Hyundai","model":"Tucson","colour":"green","owner":"Jin Soo"}},
-{"Key":"CAR3","Record":{"make":"Volkswagen","model":"Passat","colour":"yellow","owner":"Max"}},
-{"Key":"CAR4","Record":{"make":"Tesla","model":"S","colour":"black","owner":"Adriana"}},
-{"Key":"CAR5","Record":{"make":"Peugeot","model":"205","colour":"purple","owner":"Michel"}},
-{"Key":"CAR6","Record":{"make":"Chery","model":"S22L","colour":"white","owner":"Aarav"}},
-{"Key":"CAR7","Record":{"make":"Fiat","model":"Punto","colour":"violet","owner":"Pari"}},
-{"Key":"CAR8","Record":{"make":"Tata","model":"Nano","colour":"indigo","owner":"Valeria"}},
-{"Key":"CAR9","Record":{"make":"Holden","model":"Barina","colour":"brown","owner":"Shotaro"}}]
-===================== Query successful on peer0.org1 on channel 'channel1' =====================
+2020-08-18 09:23:53.741 EDT [chaincodeCmd] chaincodeInvokeOrQuery -> INFO 001 Chaincode invoke successful. result: status:200
+===================== Invoke transaction successful on peer0.org1 peer0.org2 on channel 'channel1' =====================
+```
+
+We can confirm the data was added with the below query.
+
+```
+peer chaincode query -C channel1 -n basic -c '{"Args":["getAllAssets"]}'
+```
+
+After you run the query, you should see the assets that were added to the channel ledger.
+```
+[{"ID":"asset1","color":"blue","size":5,"owner":"Tomoko","appraisedValue":300},
+{"ID":"asset2","color":"red","size":5,"owner":"Brad","appraisedValue":400},
+{"ID":"asset3","color":"green","size":10,"owner":"Jin Soo","appraisedValue":500},
+{"ID":"asset4","color":"yellow","size":10,"owner":"Max","appraisedValue":600},
+{"ID":"asset5","color":"black","size":15,"owner":"Adriana","appraisedValue":700},
+{"ID":"asset6","color":"white","size":15,"owner":"Michel","appraisedValue":800}]
 ```
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
