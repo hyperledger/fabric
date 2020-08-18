@@ -1150,7 +1150,7 @@ func TestDataExportImport(
 
 func TestVersionFromSnapshotValue(t *testing.T,
 	dbProvider statedb.VersionedDBProvider,
-	versionExtractionFunc func(snapshotVal []byte) (versionBytes []byte, err error),
+	versionExtractionFunc func(snapshotVal []byte) (version *version.Height, err error),
 ) {
 	stateDB, err := dbProvider.GetDBHandle("source_ledger", nil)
 	require.NoError(t, err)
@@ -1168,11 +1168,9 @@ func TestVersionFromSnapshotValue(t *testing.T,
 	nextVersion := func() *version.Height {
 		_, snapshotVal, err := iter.Next()
 		require.NoError(t, err)
-		versionBytes, err := versionExtractionFunc(snapshotVal)
+		version, err := versionExtractionFunc(snapshotVal)
 		require.NoError(t, err)
-		ver, _, err := version.NewHeightFromBytes(versionBytes)
-		require.NoError(t, err)
-		return ver
+		return version
 	}
 
 	require.Equal(t, version.NewHeight(5, 5), nextVersion())

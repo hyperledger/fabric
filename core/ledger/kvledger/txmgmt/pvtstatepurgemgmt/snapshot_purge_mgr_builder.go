@@ -32,13 +32,8 @@ func NewPurgeMgrBuilder(
 
 // ConsumeSnapshotData implements the function in the interface privacuenabledstate.SnapshotPvtdataHashesConsumer.
 // This is intended to be invoked for populating the expiry data in the purge manager for the keyhashses
-func (b *PurgeMgrBuilder) ConsumeSnapshotData(namespace, coll string, keyHash []byte, versionBytes []byte) error {
-	ver, _, err := version.NewHeightFromBytes(versionBytes)
-	if err != nil {
-		return errors.WithMessage(err, "invalid version bytes")
-	}
-
-	committingBlk := ver.BlockNum
+func (b *PurgeMgrBuilder) ConsumeSnapshotData(namespace, coll string, keyHash []byte, version *version.Height) error {
+	committingBlk := version.BlockNum
 	expiringBlock, err := b.btlPolicy.GetExpiringBlock(namespace, coll, committingBlk)
 	if err != nil {
 		return errors.WithMessage(err, "error from btlpolicy")
