@@ -16,5 +16,4 @@ for image in peer orderer ccenv tools; do
 
   ./manifest-tool push from-args --platforms linux/amd64 --template "hyperledger/fabric-${image}:amd64-${RELEASE}" --target "hyperledger/fabric-${image}:${RELEASE}"
   ./manifest-tool push from-args --platforms linux/amd64 --template "hyperledger/fabric-${image}:amd64-${RELEASE}" --target "hyperledger/fabric-${image}:$(sed 's/..$//' <<< ${RELEASE})"
-  ./manifest-tool push from-args --platforms linux/amd64 --template "hyperledger/fabric-${image}:amd64-${RELEASE}" --target "hyperledger/fabric-${image}:latest"
 done
