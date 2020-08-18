@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.abspath('.'))
 import sphinx_rtd_theme
 
 placeholder_replacements = {
-    "{BRANCH}" : "master"
+    "{BRANCH}" : "release-2.2"
 }
 
 # -- General configuration ------------------------------------------------
