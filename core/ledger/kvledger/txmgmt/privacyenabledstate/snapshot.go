@@ -25,7 +25,7 @@ const (
 	pvtStateHashesMetadataFileName = "private_state_hashes.metadata"
 )
 
-type versionFromSnapshotValueFunc func(snapshotValue []byte) ([]byte, error)
+type versionFromSnapshotValueFunc func(snapshotValue []byte) (*version.Height, error)
 
 // ExportPubStateAndPvtStateHashes generates four files in the specified dir. The files, public_state.data and public_state.metadata
 // contains the exported public state and the files private_state_hashes.data and private_state_hashes.data contain the exported private state hashes.
@@ -469,5 +469,5 @@ func (c *cursor) currentNamespace() string {
 }
 
 type SnapshotPvtdataHashesConsumer interface {
-	ConsumeSnapshotData(namespace, coll string, keyHash []byte, version []byte) error
+	ConsumeSnapshotData(namespace, coll string, keyHash []byte, version *version.Height) error
 }

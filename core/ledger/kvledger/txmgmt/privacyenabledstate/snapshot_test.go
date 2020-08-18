@@ -700,7 +700,7 @@ func TestSnapshotImportPvtdataHashesConsumer(t *testing.T) {
 			require.Equal(t, "ns-1", callArgNs)
 			require.Equal(t, "coll-1", callArgsColl)
 			require.Equal(t, []byte("key-hash-1"), callArgsKeyHash)
-			require.Equal(t, version.NewHeight(1, 1).ToBytes(), callArgsVer)
+			require.Equal(t, version.NewHeight(1, 1), callArgsVer)
 		}
 	})
 

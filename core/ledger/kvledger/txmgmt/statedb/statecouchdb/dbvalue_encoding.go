@@ -61,7 +61,7 @@ func decodeValueVersionMetadata(encodedMsg []byte) (*ValueVersionMetadata, error
 	return val, nil
 }
 
-func VersionFromSnapshotValue(snapshotValue []byte) ([]byte, error) {
+func VersionFromSnapshotValue(snapshotValue []byte) (*version.Height, error) {
 	v, err := decodeValueVersionMetadata(snapshotValue)
 	if err != nil {
 		return nil, err
@@ -74,5 +74,6 @@ func VersionFromSnapshotValue(snapshotValue []byte) ([]byte, error) {
 	if err = proto.Unmarshal(versionAndMetadataBytes, versionAndMetadata); err != nil {
 		return nil, err
 	}
-	return versionAndMetadata.Version, nil
+	version, _, err := version.NewHeightFromBytes(versionAndMetadata.Version)
+	return version, err
 }

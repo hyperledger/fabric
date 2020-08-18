@@ -62,7 +62,7 @@ func NewDBProvider(
 ) (*DBProvider, error) {
 
 	var vdbProvider statedb.VersionedDBProvider
-	var versionFromSnapshotValue func(snapshotValue []byte) ([]byte, error)
+	var versionFromSnapshotValue versionFromSnapshotValueFunc
 	var err error
 
 	if stateDBConf != nil && stateDBConf.StateDatabase == ledger.CouchDB {
