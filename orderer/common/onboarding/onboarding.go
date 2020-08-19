@@ -109,6 +109,7 @@ func (ri *ReplicationInitiator) ReplicateIfNeeded(bootstrapBlock *common.Block) 
 
 func (ri *ReplicationInitiator) createReplicator(bootstrapBlock *common.Block, filter func(string) bool) *cluster.Replicator {
 	consenterCert := &etcdraft.ConsenterCertificate{
+		Logger:               ri.logger,
 		ConsenterCertificate: ri.secOpts.Certificate,
 		CryptoProvider:       ri.cryptoProvider,
 	}

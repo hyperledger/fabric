@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"bytes"
 	"crypto/x509"
 	"encoding/pem"
 	"time"
@@ -19,6 +18,8 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
+	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -269,6 +270,7 @@ func validateCert(pemData []byte, certRole string) error {
 type ConsenterCertificate struct {
 	ConsenterCertificate []byte
 	CryptoProvider       bccsp.BCCSP
+	Logger               *flogging.FabricLogger
 }
 
 // type ConsenterCertificate []byte
@@ -277,8 +279,8 @@ type ConsenterCertificate struct {
 // by inspecting the given configuration block.
 // It returns nil if true, else returns an error.
 func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Block) error {
-	if configBlock == nil {
-		return errors.New("nil block")
+	if configBlock == nil || configBlock.Header == nil {
+		return errors.New("nil block or nil header")
 	}
 	envelopeConfig, err := protoutil.ExtractEnvelope(configBlock, 0)
 	if err != nil {
@@ -297,11 +299,38 @@ func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Blo
 		return err
 	}
 
+	bl, _ := pem.Decode(conCert.ConsenterCertificate)
+	if bl == nil {
+		return errors.Errorf("my consenter certificate %s is not a valid PEM", string(conCert.ConsenterCertificate))
+	}
+
+	myCertDER := bl.Bytes
+
+	var failedMatches []string
 	for _, consenter := range m.Consenters {
-		if bytes.Equal(conCert.ConsenterCertificate, consenter.ServerTlsCert) || bytes.Equal(conCert.ConsenterCertificate, consenter.ClientTlsCert) {
+		candidateBlock, _ := pem.Decode(consenter.ServerTlsCert)
+		if candidateBlock == nil {
+			return errors.Errorf("candidate server certificate %s is not a valid PEM", string(consenter.ServerTlsCert))
+		}
+		sameServerCertErr := crypto.CertificatesWithSamePublicKey(myCertDER, candidateBlock.Bytes)
+
+		candidateBlock, _ = pem.Decode(consenter.ClientTlsCert)
+		if candidateBlock == nil {
+			return errors.Errorf("candidate client certificate %s is not a valid PEM", string(consenter.ClientTlsCert))
+		}
+		sameClientCertErr := crypto.CertificatesWithSamePublicKey(myCertDER, candidateBlock.Bytes)
+
+		if sameServerCertErr == nil || sameClientCertErr == nil {
 			return nil
 		}
+		conCert.Logger.Debugf("I am not %s:%d because %s, %s", consenter.Host, consenter.Port, sameServerCertErr, sameClientCertErr)
+		failedMatches = append(failedMatches, string(consenter.ClientTlsCert))
 	}
+	conCert.Logger.Debugf("Failed matching our certificate %s against certificates encoded in config block %d: %v",
+		string(conCert.ConsenterCertificate),
+		configBlock.Header.Number,
+		failedMatches)
+
 	return cluster.ErrNotInChannel
 }
 
