@@ -8,7 +8,6 @@ package etcdraft_test
 
 import (
 	"encoding/pem"
-	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"io/ioutil"
 	"os"
 	"path"
@@ -28,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
+	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
@@ -35,6 +35,10 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+)
+
+var (
+	certAsPEM []byte
 )
 
 //go:generate counterfeiter -o mocks/orderer_capabilities.go --fake-name OrdererCapabilities . ordererCapabilities
@@ -51,17 +55,21 @@ type ordererConfig interface {
 
 var _ = Describe("Consenter", func() {
 	var (
-		certAsPEM   []byte
 		chainGetter *mocks.ChainGetter
 		support     *consensusmocks.FakeConsenterSupport
 		dataDir     string
 		snapDir     string
 		walDir      string
-		err         error
 	)
 
 	BeforeEach(func() {
-		certAsPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("cert bytes")})
+		ca, err := tlsgen.NewCA()
+		Expect(err).NotTo(HaveOccurred())
+		kp, err := ca.NewClientCertKeyPair()
+		Expect(err).NotTo(HaveOccurred())
+		if certAsPEM == nil {
+			certAsPEM = kp.Cert
+		}
 		chainGetter = &mocks.ChainGetter{}
 		support = &consensusmocks.FakeConsenterSupport{}
 		dataDir, err = ioutil.TempDir("", "snap-")
@@ -160,8 +168,7 @@ var _ = Describe("Consenter", func() {
 	})
 
 	It("successfully constructs a Chain", func() {
-		// We append a line feed to our cert, just to ensure that we can still consume it and ignore.
-		certAsPEMWithLineFeed := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("cert bytes")})
+		certAsPEMWithLineFeed := certAsPEM
 		certAsPEMWithLineFeed = append(certAsPEMWithLineFeed, []byte("\n")...)
 		m := &etcdraftproto.ConfigMetadata{
 			Consenters: []*etcdraftproto.Consenter{
@@ -207,7 +214,7 @@ var _ = Describe("Consenter", func() {
 
 	It("successfully constructs a Chain without a system channel", func() {
 		// We append a line feed to our cert, just to ensure that we can still consume it and ignore.
-		certAsPEMWithLineFeed := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("cert bytes")})
+		certAsPEMWithLineFeed := certAsPEM
 		certAsPEMWithLineFeed = append(certAsPEMWithLineFeed, []byte("\n")...)
 		m := &etcdraftproto.ConfigMetadata{
 			Consenters: []*etcdraftproto.Consenter{
@@ -392,7 +399,6 @@ func newConsenter(chainGetter *mocks.ChainGetter) *consenter {
 	communicator.On("Configure", mock.Anything, mock.Anything)
 	icr := &mocks.InactiveChainRegistry{}
 	icr.On("TrackChain", "foo", mock.Anything, mock.Anything)
-	certAsPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: []byte("cert bytes")})
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	Expect(err).NotTo(HaveOccurred())

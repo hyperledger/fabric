@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"bytes"
-	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"path"
 	"reflect"
 	"time"
@@ -19,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
@@ -26,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/follower"
 	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
@@ -119,7 +119,7 @@ func (c *Consenter) detectSelfID(consenters map[uint64]*etcdraft.Consenter) (uin
 			return 0, err
 		}
 
-		if bytes.Equal(thisNodeCertAsDER, certAsDER) {
+		if crypto.CertificatesWithSamePublicKey(thisNodeCertAsDER, certAsDER) == nil {
 			return nodeID, nil
 		}
 	}
@@ -343,16 +343,27 @@ func New(
 
 func createComm(clusterDialer *cluster.PredicateDialer, c *Consenter, config localconfig.Cluster, p metrics.Provider) *cluster.Comm {
 	metrics := cluster.NewMetrics(p)
+	logger := flogging.MustGetLogger("orderer.common.cluster")
+
+	compareCert := cluster.CachePublicKeyComparisons(func(a, b []byte) bool {
+		err := crypto.CertificatesWithSamePublicKey(a, b)
+		if err != nil && err != crypto.ErrPubKeyMismatch {
+			crypto.LogNonPubKeyMismatchErr(logger.Errorf, err, a, b)
+		}
+		return err == nil
+	})
+
 	comm := &cluster.Comm{
 		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
 		CertExpWarningThreshold:          config.CertExpirationWarningThreshold,
 		SendBufferSize:                   config.SendBufferSize,
-		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
+		Logger:                           logger,
 		Chan2Members:                     make(map[string]cluster.MemberMapping),
 		Connections:                      cluster.NewConnectionStore(clusterDialer, metrics.EgressTLSConnectionCount),
 		Metrics:                          metrics,
 		ChanExt:                          c,
 		H:                                c,
+		CompareCertificate:               compareCert,
 	}
 	c.Communication = comm
 	return comm

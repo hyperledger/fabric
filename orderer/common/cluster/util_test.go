@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cluster_test
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -37,6 +38,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -1186,4 +1188,42 @@ qz8bY+s6AiBvO0aOfE8M4ibjmRE4vSXo0+gkOIJKqZcmiRdnJSr8Xw==
 	actual := fmt.Sprint(epc)
 	expected := `{"CAs":[{"Expired":false,"Issuer":"self","Subject":"SERIALNUMBER=65764076798709079104397911007043976879"},{"Expired":true,"Issuer":"SERIALNUMBER=65764076798709079104397911007043976879","Subject":"SERIALNUMBER=187004237184026939685179573732217690720"}],"Endpoint":"orderer.example.com:7050"}`
 	assert.Equal(t, expected, actual)
+}
+
+func TestComparisonMemoizer(t *testing.T) {
+	var invocations int
+
+	m := &cluster.ComparisonMemoizer{
+		MaxEntries: 5,
+		F: func(a, b []byte) bool {
+			invocations++
+			return bytes.Equal(a, b)
+		},
+	}
+
+	// Warm-up cache
+	for i := 0; i < 5; i++ {
+		notSame := m.Compare([]byte{byte(i)}, []byte{1, 2, 3})
+		require.False(t, notSame)
+		require.Equal(t, i+1, invocations)
+	}
+
+	// Ensure lookups are cached
+	for i := 0; i < 5; i++ {
+		notSame := m.Compare([]byte{byte(i)}, []byte{1, 2, 3})
+		require.False(t, notSame)
+		require.Equal(t, 5, invocations)
+	}
+
+	// Put a new entry which will cause a cache miss
+	same := m.Compare([]byte{5}, []byte{5})
+	require.True(t, same)
+	require.Equal(t, 6, invocations)
+
+	// Keep adding more and more elements to the cache and ensure it stays smaller than its size
+	for i := 0; i < 20; i++ {
+		odd := m.Compare([]byte{byte(1)}, []byte{byte(i % 2)})
+		require.Equal(t, i%2 != 0, odd)
+		require.LessOrEqual(t, m.Size(), int(m.MaxEntries))
+	}
 }

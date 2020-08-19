@@ -21,6 +21,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
@@ -266,6 +267,10 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 
 	tstSrv.freezeCond.L = &tstSrv.lock
 
+	compareCert := cluster.CachePublicKeyComparisons(func(a, b []byte) bool {
+		return crypto.CertificatesWithSamePublicKey(a, b) == nil
+	})
+
 	tstSrv.c = &cluster.Comm{
 		CertExpWarningThreshold: time.Hour,
 		SendBufferSize:          1,
@@ -275,6 +280,7 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 		ChanExt:                 channelExtractor,
 		Connections:             cluster.NewConnectionStore(dialer, tlsConnGauge),
 		Metrics:                 cluster.NewMetrics(metrics),
+		CompareCertificate:      compareCert,
 	}
 
 	orderer.RegisterClusterServer(gRPCServer.Server(), tstSrv)
