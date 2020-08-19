@@ -7,10 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package onboarding
 
 import (
-	"github.com/hyperledger/fabric-config/protolator"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/hyperledger/fabric-config/protolator"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -109,6 +110,7 @@ func (ri *ReplicationInitiator) ReplicateIfNeeded(bootstrapBlock *common.Block) 
 
 func (ri *ReplicationInitiator) createReplicator(bootstrapBlock *common.Block, filter func(string) bool) *cluster.Replicator {
 	consenterCert := &etcdraft.ConsenterCertificate{
+		Logger:               ri.logger,
 		ConsenterCertificate: ri.secOpts.Certificate,
 		CryptoProvider:       ri.cryptoProvider,
 	}

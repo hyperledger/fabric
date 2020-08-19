@@ -10,10 +10,11 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
-	"github.com/hyperledger/fabric/orderer/common/types"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hyperledger/fabric/orderer/common/types"
 
 	"code.cloudfoundry.org/clock"
 	"github.com/golang/protobuf/proto"
@@ -1341,6 +1342,7 @@ func (c *Chain) suspectEviction() bool {
 
 func (c *Chain) newEvictionSuspector() *evictionSuspector {
 	consenterCertificate := &ConsenterCertificate{
+		Logger:               c.logger,
 		ConsenterCertificate: c.opts.Cert,
 		CryptoProvider:       c.CryptoProvider,
 	}
