@@ -652,12 +652,16 @@ type snapshotPvtdataHashesConsumer interface {
 }
 
 func TestSnapshotImportPvtdataHashesConsumer(t *testing.T) {
-	var dbEnv *LevelDBTestEnv
+	for _, dbEnv := range testEnvs {
+		testSnapshotImportPvtdataHashesConsumer(t, dbEnv)
+	}
+}
+
+func testSnapshotImportPvtdataHashesConsumer(t *testing.T, dbEnv TestEnv) {
 	var snapshotDir string
 
 	init := func() {
 		var err error
-		dbEnv = &LevelDBTestEnv{}
 		dbEnv.Init(t)
 		snapshotDir, err = ioutil.TempDir("", "testsnapshot")
 
@@ -678,7 +682,7 @@ func TestSnapshotImportPvtdataHashesConsumer(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	t.Run("snapshot-import-invokes-consumer", func(t *testing.T) {
+	t.Run("snapshot-import-invokes-consumer-"+dbEnv.GetName(), func(t *testing.T) {
 		init()
 		consumers := []*mock.SnapshotPvtdataHashesConsumer{
 			{},
@@ -704,7 +708,7 @@ func TestSnapshotImportPvtdataHashesConsumer(t *testing.T) {
 		}
 	})
 
-	t.Run("snapshot-import-propages-error-from-consumer", func(t *testing.T) {
+	t.Run("snapshot-import-propages-error-from-consumer-"+dbEnv.GetName(), func(t *testing.T) {
 		init()
 		consumers := []*mock.SnapshotPvtdataHashesConsumer{
 			{},

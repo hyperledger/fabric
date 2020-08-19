@@ -103,9 +103,8 @@ func TestUtilityFunctions(t *testing.T) {
 	db, err := env.DBProvider.GetDBHandle("testutilityfunctions", nil)
 	require.NoError(t, err)
 
-	// BytesKeySupported should be true for goleveldb
-	byteKeySupported := db.BytesKeySupported()
-	require.True(t, byteKeySupported)
+	require.True(t, env.DBProvider.BytesKeySupported())
+	require.True(t, db.BytesKeySupported())
 
 	// ValidateKeyValue should return nil for a valid key and value
 	require.NoError(t, db.ValidateKeyValue("testKey", []byte("testValue")), "leveldb should accept all key-values")

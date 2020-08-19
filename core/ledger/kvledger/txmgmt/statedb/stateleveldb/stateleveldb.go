@@ -61,6 +61,11 @@ func (provider *VersionedDBProvider) ImportFromSnapshot(
 	return vdb.importState(itr, savepoint, dbValueFormat)
 }
 
+// BytesKeySupported returns true if a db created supports bytes as a key
+func (provider *VersionedDBProvider) BytesKeySupported() bool {
+	return true
+}
+
 // Close closes the underlying db
 func (provider *VersionedDBProvider) Close() {
 	provider.dbProvider.Close()
