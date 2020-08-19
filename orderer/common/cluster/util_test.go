@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package cluster_test
 
 import (
+	"bytes"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -36,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -1152,4 +1154,42 @@ func injectAdditionalTLSCAEndpointPair(t *testing.T, block *common.Block, endpoi
 	payload.Data = utils.MarshalOrPanic(confEnv)
 	env.Payload = utils.MarshalOrPanic(payload)
 	block.Data.Data[0] = utils.MarshalOrPanic(env)
+}
+
+func TestComparisonMemoizer(t *testing.T) {
+	var invocations int
+
+	m := &cluster.ComparisonMemoizer{
+		MaxEntries: 5,
+		F: func(a, b []byte) bool {
+			invocations++
+			return bytes.Equal(a, b)
+		},
+	}
+
+	// Warm-up cache
+	for i := 0; i < 5; i++ {
+		notSame := m.Compare([]byte{byte(i)}, []byte{1, 2, 3})
+		require.False(t, notSame)
+		require.Equal(t, i+1, invocations)
+	}
+
+	// Ensure lookups are cached
+	for i := 0; i < 5; i++ {
+		notSame := m.Compare([]byte{byte(i)}, []byte{1, 2, 3})
+		require.False(t, notSame)
+		require.Equal(t, 5, invocations)
+	}
+
+	// Put a new entry which will cause a cache miss
+	same := m.Compare([]byte{5}, []byte{5})
+	require.True(t, same)
+	require.Equal(t, 6, invocations)
+
+	// Keep adding more and more elements to the cache and ensure it stays smaller than its size
+	for i := 0; i < 20; i++ {
+		odd := m.Compare([]byte{byte(1)}, []byte{byte(i % 2)})
+		require.Equal(t, i%2 != 0, odd)
+		require.True(t, m.Size() <= int(m.MaxEntries))
+	}
 }

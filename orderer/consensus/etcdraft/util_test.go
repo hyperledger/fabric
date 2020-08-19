@@ -30,6 +30,7 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -74,7 +75,13 @@ func TestIsConsenterOfChannel(t *testing.T) {
 		"BQUFBQUFBQUFBQUFBQUFBQUFBQUFCTUFvR0NDcUdTTTQ5QkFNQ0EwY0FNRVFDCklFckJZRFVzV0JwOHB0ZVFSaTZyNjNVelhJQi81Sn" +
 		"YxK0RlTkRIUHc3aDljQWlCakYrM3V5TzBvMEdRclB4MEUKUWptYlI5T3BVREN2LzlEUkNXWU9GZitkVlE9PQotLS0tLUVORCBDRVJUSU" +
 		"ZJQ0FURS0tLS0tCg==")
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
+	ca, err := tlsgen.NewCA()
+	require.NoError(t, err)
+
+	kp, err := ca.NewClientCertKeyPair()
+	require.NoError(t, err)
 
 	validBlock := func() *common.Block {
 		b, err := ioutil.ReadFile(filepath.Join("testdata", "etcdraftgenesis.block"))
@@ -92,18 +99,24 @@ func TestIsConsenterOfChannel(t *testing.T) {
 	}{
 		{
 			name:          "nil block",
-			expectedError: "nil block",
+			expectedError: "nil block or nil header",
+		},
+		{
+			name:          "nil header",
+			expectedError: "nil block or nil header",
+			configBlock:   &common.Block{},
 		},
 		{
 			name:          "no block data",
 			expectedError: "block data is nil",
-			configBlock:   &common.Block{},
+			configBlock:   &common.Block{Header: &common.BlockHeader{}},
 		},
 		{
 			name: "invalid envelope inside block",
 			expectedError: "failed to unmarshal payload from envelope:" +
 				" error unmarshaling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
 			configBlock: &common.Block{
+				Header: &common.BlockHeader{},
 				Data: &common.BlockData{
 					Data: [][]byte{utils.MarshalOrPanic(&common.Envelope{
 						Payload: []byte{1, 2, 3},
@@ -114,7 +127,7 @@ func TestIsConsenterOfChannel(t *testing.T) {
 		{
 			name:          "valid config block with cert mismatch",
 			configBlock:   validBlock(),
-			certificate:   certInsideConfigBlock[2:],
+			certificate:   kp.Cert,
 			expectedError: cluster.ErrNotInChannel.Error(),
 		},
 		{
@@ -124,7 +137,11 @@ func TestIsConsenterOfChannel(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			err := ConsenterCertificate(testCase.certificate).IsConsenterOfChannel(testCase.configBlock)
+			consenterCertificate := &ConsenterCertificate{
+				Logger:               flogging.MustGetLogger("test"),
+				ConsenterCertificate: testCase.certificate,
+			}
+			err = consenterCertificate.IsConsenterOfChannel(testCase.configBlock)
 			if testCase.expectedError != "" {
 				assert.EqualError(t, err, testCase.expectedError)
 			} else {

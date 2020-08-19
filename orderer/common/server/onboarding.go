@@ -49,7 +49,10 @@ func (ri *replicationInitiator) replicateIfNeeded(bootstrapBlock *common.Block) 
 }
 
 func (ri *replicationInitiator) createReplicator(bootstrapBlock *common.Block, filter func(string) bool) *cluster.Replicator {
-	consenterCert := etcdraft.ConsenterCertificate(ri.secOpts.Certificate)
+	consenterCert := &etcdraft.ConsenterCertificate{
+		Logger:               ri.logger,
+		ConsenterCertificate: ri.secOpts.Certificate,
+	}
 	systemChannelName, err := utils.GetChainIDFromBlock(bootstrapBlock)
 	if err != nil {
 		ri.logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)

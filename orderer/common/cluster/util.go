@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -50,27 +51,47 @@ func (cbc ConnByCertMap) Remove(cert []byte) {
 	delete(cbc, string(cert))
 }
 
+// Size returns the size of the connections by certificate mapping
 func (cbc ConnByCertMap) Size() int {
 	return len(cbc)
 }
 
+// CertificateComparator returns whether some relation holds for two given certificates
+type CertificateComparator func([]byte, []byte) bool
+
 // MemberMapping defines NetworkMembers by their ID
-type MemberMapping map[uint64]*Stub
+// and enables to lookup stubs by a certificate
+type MemberMapping struct {
+	id2stub       map[uint64]*Stub
+	SamePublicKey CertificateComparator
+}
+
+// Foreach applies the given function on all stubs in the mapping
+func (mp *MemberMapping) Foreach(f func(id uint64, stub *Stub)) {
+	for id, stub := range mp.id2stub {
+		f(id, stub)
+	}
+}
 
 // Put inserts the given stub to the MemberMapping
-func (mp MemberMapping) Put(stub *Stub) {
-	mp[stub.ID] = stub
+func (mp *MemberMapping) Put(stub *Stub) {
+	mp.id2stub[stub.ID] = stub
+}
+
+// Remove removes the stub with the given ID from the MemberMapping
+func (mp *MemberMapping) Remove(ID uint64) {
+	delete(mp.id2stub, ID)
 }
 
 // ByID retrieves the Stub with the given ID from the MemberMapping
 func (mp MemberMapping) ByID(ID uint64) *Stub {
-	return mp[ID]
+	return mp.id2stub[ID]
 }
 
 // LookupByClientCert retrieves a Stub with the given client certificate
 func (mp MemberMapping) LookupByClientCert(cert []byte) *Stub {
-	for _, stub := range mp {
-		if bytes.Equal(stub.ClientTLSCert, cert) {
+	for _, stub := range mp.id2stub {
+		if mp.SamePublicKey(stub.ClientTLSCert, cert) {
 			return stub
 		}
 	}
@@ -81,7 +102,7 @@ func (mp MemberMapping) LookupByClientCert(cert []byte) *Stub {
 // represented as strings
 func (mp MemberMapping) ServerCertificates() StringSet {
 	res := make(StringSet)
-	for _, member := range mp {
+	for _, member := range mp.id2stub {
 		res[string(member.ServerTLSCert)] = struct{}{}
 	}
 	return res
@@ -659,4 +680,93 @@ func (exp *certificateExpirationCheck) checkExpiration(currentTime time.Time, ch
 	exp.alert("Certificate of %s from %s for channel %s expires in less than %v",
 		exp.nodeName, exp.endpoint, channel, timeLeft)
 	exp.lastWarning = currentTime
+}
+
+// CachePublicKeyComparisons creates CertificateComparator that caches invocations based on input arguments.
+// The given CertificateComparator must be a stateless function.
+func CachePublicKeyComparisons(f CertificateComparator) CertificateComparator {
+	m := &ComparisonMemoizer{
+		MaxEntries: 4096,
+		F:          f,
+	}
+	return m.Compare
+}
+
+// ComparisonMemoizer speeds up comparison computations by caching past invocations of a stateless function
+type ComparisonMemoizer struct {
+	// Configuration
+	F          func(a, b []byte) bool
+	MaxEntries uint16
+	// Internal state
+	cache map[arguments]bool
+	lock  sync.RWMutex
+	once  sync.Once
+	rand  *rand.Rand
+}
+
+type arguments struct {
+	a, b string
+}
+
+// Size returns the number of computations the ComparisonMemoizer currently caches.
+func (cm *ComparisonMemoizer) Size() int {
+	cm.lock.RLock()
+	defer cm.lock.RUnlock()
+	return len(cm.cache)
+}
+
+// Compare compares the given two byte slices.
+// It may return previous computations for the given two arguments,
+// otherwise it will compute the function F and cache the result.
+func (cm *ComparisonMemoizer) Compare(a, b []byte) bool {
+	cm.once.Do(cm.setup)
+	key := arguments{
+		a: string(a),
+		b: string(b),
+	}
+
+	cm.lock.RLock()
+	result, exists := cm.cache[key]
+	cm.lock.RUnlock()
+
+	if exists {
+		return result
+	}
+
+	result = cm.F(a, b)
+
+	cm.lock.Lock()
+	defer cm.lock.Unlock()
+
+	cm.shrinkIfNeeded()
+	cm.cache[key] = result
+
+	return result
+}
+
+func (cm *ComparisonMemoizer) shrinkIfNeeded() {
+	for {
+		currentSize := uint16(len(cm.cache))
+		if currentSize < cm.MaxEntries {
+			return
+		}
+		cm.shrink()
+	}
+}
+
+func (cm *ComparisonMemoizer) shrink() {
+	// Shrink the cache by 25% by removing every fourth element (on average)
+	for key := range cm.cache {
+		if cm.rand.Int()%4 != 0 {
+			continue
+		}
+		delete(cm.cache, key)
+	}
+}
+
+func (cm *ComparisonMemoizer) setup() {
+	cm.lock.Lock()
+	defer cm.lock.Unlock()
+	cm.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	cm.cache = make(map[arguments]bool)
 }
