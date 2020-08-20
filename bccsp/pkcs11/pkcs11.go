@@ -21,6 +21,7 @@ import (
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/miekg/pkcs11"
 	"github.com/pkg/errors"
@@ -260,6 +261,20 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte
 	}
 }
 
+func (csp *impl) signECDSA(k ecdsaPrivateKey, digest []byte) ([]byte, error) {
+	r, s, err := csp.signP11ECDSA(k.ski, digest)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err = utils.ToLowS(k.pub.pub, s)
+	if err != nil {
+		return nil, err
+	}
+
+	return utils.MarshalECDSASignature(r, s)
+}
+
 // Verify verifies signature against key k and digest
 func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
 	// Validate arguments
@@ -282,6 +297,28 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 	default:
 		return csp.BCCSP.Verify(k, signature, digest, opts)
 	}
+}
+
+func (csp *impl) verifyECDSA(k ecdsaPublicKey, signature, digest []byte) (bool, error) {
+	r, s, err := utils.UnmarshalECDSASignature(signature)
+	if err != nil {
+		return false, fmt.Errorf("Failed unmashalling signature [%s]", err)
+	}
+
+	lowS, err := utils.IsLowS(k.pub, s)
+	if err != nil {
+		return false, err
+	}
+
+	if !lowS {
+		return false, fmt.Errorf("Invalid S. Must be smaller than half the order [%s][%s]", s, utils.GetCurveHalfOrdersAt(k.pub.Curve))
+	}
+
+	if csp.softVerify {
+		return ecdsa.Verify(k.pub, digest, r, s), nil
+	}
+
+	return csp.verifyP11ECDSA(k.ski, digest, r, s, k.pub.Curve.Params().BitSize/8)
 }
 
 // Encrypt encrypts plaintext using key k.
