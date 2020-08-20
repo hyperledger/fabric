@@ -49,17 +49,16 @@ func newKeyStore(t *testing.T) (bccsp.KeyStore, func()) {
 	return ks, func() { os.RemoveAll(tempDir) }
 }
 
-func newImpl(t *testing.T, opts PKCS11Opts) (*impl, func()) {
+func newProvider(t *testing.T, opts PKCS11Opts) (*Provider, func()) {
 	ks, ksCleanup := newKeyStore(t)
-	provider, err := New(opts, ks)
+	csp, err := New(opts, ks)
 	require.NoError(t, err)
 
-	pi := provider.(*impl)
 	cleanup := func() {
-		pi.ctx.Destroy()
+		csp.ctx.Destroy()
 		ksCleanup()
 	}
-	return pi, cleanup
+	return csp, cleanup
 }
 
 func TestNew(t *testing.T) {
@@ -70,40 +69,37 @@ func TestNew(t *testing.T) {
 		opts := defaultOptions()
 		opts.createSessionRetryDelay = 0
 
-		provider, err := New(opts, ks)
+		csp, err := New(opts, ks)
 		require.NoError(t, err)
-		require.NotNil(t, provider)
-		pi := provider.(*impl)
-		defer func() { pi.ctx.Destroy() }()
+		defer func() { csp.ctx.Destroy() }()
 
 		curve, err := curveForSecurityLevel(opts.Security)
 		require.NoError(t, err)
 
-		require.NotNil(t, pi.BCCSP)
-		require.Equal(t, opts.Pin, pi.pin)
-		require.NotNil(t, pi.ctx)
-		require.True(t, curve.Equal(pi.curve))
-		require.Equal(t, opts.SoftwareVerify, pi.softVerify)
-		require.Equal(t, opts.Immutable, pi.immutable)
-		require.Equal(t, defaultCreateSessionRetries, pi.createSessionRetries)
-		require.Equal(t, defaultCreateSessionRetryDelay, pi.createSessionRetryDelay)
-		require.Equal(t, defaultSessionCacheSize, cap(pi.sessPool))
+		require.NotNil(t, csp.BCCSP)
+		require.Equal(t, opts.Pin, csp.pin)
+		require.NotNil(t, csp.ctx)
+		require.True(t, curve.Equal(csp.curve))
+		require.Equal(t, opts.SoftwareVerify, csp.softVerify)
+		require.Equal(t, opts.Immutable, csp.immutable)
+		require.Equal(t, defaultCreateSessionRetries, csp.createSessionRetries)
+		require.Equal(t, defaultCreateSessionRetryDelay, csp.createSessionRetryDelay)
+		require.Equal(t, defaultSessionCacheSize, cap(csp.sessPool))
 	})
+
 	t.Run("ConditionalOverride", func(t *testing.T) {
 		opts := defaultOptions()
 		opts.createSessionRetries = 3
 		opts.createSessionRetryDelay = time.Second
 		opts.sessionCacheSize = -1
 
-		provider, err := New(opts, ks)
+		csp, err := New(opts, ks)
 		require.NoError(t, err)
-		require.NotNil(t, provider)
-		pi := provider.(*impl)
-		defer func() { pi.ctx.Destroy() }()
+		defer func() { csp.ctx.Destroy() }()
 
-		require.Equal(t, 3, pi.createSessionRetries)
-		require.Equal(t, time.Second, pi.createSessionRetryDelay)
-		require.Nil(t, pi.sessPool)
+		require.Equal(t, 3, csp.createSessionRetries)
+		require.Equal(t, time.Second, csp.createSessionRetryDelay)
+		require.Nil(t, csp.sessPool)
 	})
 }
 
@@ -182,13 +178,13 @@ func TestFindPKCS11LibEnvVars(t *testing.T) {
 }
 
 func TestInvalidSKI(t *testing.T) {
-	pi, cleanup := newImpl(t, defaultOptions())
+	csp, cleanup := newProvider(t, defaultOptions())
 	defer cleanup()
 
-	_, err := pi.GetKey(nil)
+	_, err := csp.GetKey(nil)
 	require.EqualError(t, err, "Failed getting key for SKI [[]]: invalid SKI. Cannot be of zero length")
 
-	_, err = pi.GetKey([]byte{0, 1, 2, 3, 4, 5, 6})
+	_, err = csp.GetKey([]byte{0, 1, 2, 3, 4, 5, 6})
 	require.Error(t, err)
 	require.True(t, strings.HasPrefix(err.Error(), "Failed getting key for SKI [[0 1 2 3 4 5 6]]: "))
 }
@@ -212,10 +208,10 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			opts := defaultOptions()
 			opts.Immutable = tt.immutable
-			pi, cleanup := newImpl(t, opts)
+			csp, cleanup := newProvider(t, opts)
 			defer cleanup()
 
-			k, err := pi.KeyGen(tt.opts)
+			k, err := csp.KeyGen(tt.opts)
 			require.NoError(t, err)
 			require.True(t, k.Private(), "key should be private")
 			require.False(t, k.Symmetric(), "key should be asymmetric")
@@ -231,15 +227,15 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, pk)
 
-			sess, err := pi.getSession()
+			sess, err := csp.getSession()
 			require.NoError(t, err)
-			defer pi.returnSession(sess)
+			defer csp.returnSession(sess)
 
 			for _, kt := range []keyType{publicKeyType, privateKeyType} {
-				handle, err := pi.findKeyPairFromSKI(sess, k.SKI(), kt)
+				handle, err := csp.findKeyPairFromSKI(sess, k.SKI(), kt)
 				require.NoError(t, err)
 
-				attr, err := pi.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_TOKEN}})
+				attr, err := csp.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_TOKEN}})
 				require.NoError(t, err)
 				require.Len(t, attr, 1)
 
@@ -249,7 +245,7 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 					require.Equal(t, []byte{1}, attr[0].Value)
 				}
 
-				attr, err = pi.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_MODIFIABLE}})
+				attr, err = csp.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_MODIFIABLE}})
 				require.NoError(t, err)
 				require.Len(t, attr, 1)
 
@@ -264,22 +260,22 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 }
 
 func TestKeyGenMissingOpts(t *testing.T) {
-	pi, cleanup := newImpl(t, defaultOptions())
+	csp, cleanup := newProvider(t, defaultOptions())
 	defer cleanup()
 
-	_, err := pi.KeyGen(bccsp.KeyGenOpts(nil))
+	_, err := csp.KeyGen(bccsp.KeyGenOpts(nil))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Invalid Opts parameter. It must not be nil")
 }
 
 func TestECDSAGetKeyBySKI(t *testing.T) {
-	pi, cleanup := newImpl(t, defaultOptions())
+	csp, cleanup := newProvider(t, defaultOptions())
 	defer cleanup()
 
-	k, err := pi.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
 
-	k2, err := pi.GetKey(k.SKI())
+	k2, err := csp.GetKey(k.SKI())
 	require.NoError(t, err)
 
 	require.True(t, k2.Private(), "key should be private")
@@ -288,10 +284,10 @@ func TestECDSAGetKeyBySKI(t *testing.T) {
 }
 
 func TestECDSAPublicKeyFromPrivateKey(t *testing.T) {
-	pi, cleanup := newImpl(t, defaultOptions())
+	csp, cleanup := newProvider(t, defaultOptions())
 	defer cleanup()
 
-	k, err := pi.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
 
 	pk, err := k.PublicKey()
@@ -306,53 +302,53 @@ func TestECDSAPublicKeyFromPrivateKey(t *testing.T) {
 }
 
 func TestECDSASign(t *testing.T) {
-	pi, cleanup := newImpl(t, defaultOptions())
+	csp, cleanup := newProvider(t, defaultOptions())
 	defer cleanup()
 
-	k, err := pi.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
 
-	digest, err := pi.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
+	digest, err := csp.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
 	require.NoError(t, err)
 
-	signature, err := pi.Sign(k, digest, nil)
+	signature, err := csp.Sign(k, digest, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, signature, "signature must not be empty")
 
 	t.Run("NoKey", func(t *testing.T) {
-		_, err := pi.Sign(nil, digest, nil)
+		_, err := csp.Sign(nil, digest, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid Key. It must not be nil")
 	})
 
 	t.Run("BadSKI", func(t *testing.T) {
-		_, err := pi.Sign(&ecdsaPrivateKey{ski: []byte("bad-ski")}, digest, nil)
+		_, err := csp.Sign(&ecdsaPrivateKey{ski: []byte("bad-ski")}, digest, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Private key not found")
 	})
 
 	t.Run("MissingDigest", func(t *testing.T) {
-		_, err = pi.Sign(k, nil, nil)
+		_, err = csp.Sign(k, nil, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid digest. Cannot be empty")
 	})
 }
 
 func TestECDSAVerify(t *testing.T) {
-	pi, cleanup := newImpl(t, defaultOptions())
+	csp, cleanup := newProvider(t, defaultOptions())
 	defer cleanup()
 
-	k, err := pi.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
 	pk, err := k.PublicKey()
 	require.NoError(t, err)
 
-	digest, err := pi.Hash([]byte("Hello, World."), &bccsp.SHAOpts{})
+	digest, err := csp.Hash([]byte("Hello, World."), &bccsp.SHAOpts{})
 	require.NoError(t, err)
-	otherDigest, err := pi.Hash([]byte("Bye, World."), &bccsp.SHAOpts{})
+	otherDigest, err := csp.Hash([]byte("Bye, World."), &bccsp.SHAOpts{})
 	require.NoError(t, err)
 
-	signature, err := pi.Sign(k, digest, nil)
+	signature, err := csp.Sign(k, digest, nil)
 	require.NoError(t, err)
 
 	tests := map[string]bool{
@@ -363,59 +359,59 @@ func TestECDSAVerify(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			opts := defaultOptions()
 			opts.SoftwareVerify = softVerify
-			pi, cleanup := newImpl(t, opts)
+			csp, cleanup := newProvider(t, opts)
 			defer cleanup()
 
-			valid, err := pi.Verify(k, signature, digest, nil)
+			valid, err := csp.Verify(k, signature, digest, nil)
 			require.NoError(t, err)
 			require.True(t, valid, "signature should be valid from private key")
 
-			valid, err = pi.Verify(pk, signature, digest, nil)
+			valid, err = csp.Verify(pk, signature, digest, nil)
 			require.NoError(t, err)
 			require.True(t, valid, "signature should be valid from public key")
 
-			valid, err = pi.Verify(k, signature, otherDigest, nil)
+			valid, err = csp.Verify(k, signature, otherDigest, nil)
 			require.NoError(t, err)
 			require.False(t, valid, "signature should be valid from private key")
 
-			valid, err = pi.Verify(pk, signature, otherDigest, nil)
+			valid, err = csp.Verify(pk, signature, otherDigest, nil)
 			require.NoError(t, err)
 			require.False(t, valid, "signature should not be valid from public key")
 		})
 	}
 
 	t.Run("MissingKey", func(t *testing.T) {
-		_, err := pi.Verify(nil, signature, digest, nil)
+		_, err := csp.Verify(nil, signature, digest, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid Key. It must not be nil")
 	})
 
 	t.Run("MissingSignature", func(t *testing.T) {
-		_, err := pi.Verify(pk, nil, digest, nil)
+		_, err := csp.Verify(pk, nil, digest, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid signature. Cannot be empty")
 	})
 
 	t.Run("MissingDigest", func(t *testing.T) {
-		_, err = pi.Verify(pk, signature, nil, nil)
+		_, err = csp.Verify(pk, signature, nil, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid digest. Cannot be empty")
 	})
 }
 
 func TestECDSALowS(t *testing.T) {
-	pi, cleanup := newImpl(t, defaultOptions())
+	csp, cleanup := newProvider(t, defaultOptions())
 	defer cleanup()
 
-	k, err := pi.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
 
-	digest, err := pi.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
+	digest, err := csp.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
 	require.NoError(t, err)
 
 	// Ensure that signature with low-S are generated
 	t.Run("GeneratesLowS", func(t *testing.T) {
-		signature, err := pi.Sign(k, digest, nil)
+		signature, err := csp.Sign(k, digest, nil)
 		require.NoError(t, err)
 
 		_, S, err := utils.UnmarshalECDSASignature(signature)
@@ -425,7 +421,7 @@ func TestECDSALowS(t *testing.T) {
 			t.Fatal("Invalid signature. It must have low-S")
 		}
 
-		valid, err := pi.Verify(k, signature, digest, nil)
+		valid, err := csp.Verify(k, signature, digest, nil)
 		require.NoError(t, err)
 		require.True(t, valid, "signature should be valid")
 	})
@@ -433,13 +429,13 @@ func TestECDSALowS(t *testing.T) {
 	// Ensure that signature with high-S are rejected.
 	t.Run("RejectsHighS", func(t *testing.T) {
 		for {
-			R, S, err := pi.signP11ECDSA(k.SKI(), digest)
+			R, S, err := csp.signP11ECDSA(k.SKI(), digest)
 			require.NoError(t, err)
 			if S.Cmp(utils.GetCurveHalfOrdersAt(k.(*ecdsaPrivateKey).pub.pub.Curve)) > 0 {
 				sig, err := utils.MarshalECDSASignature(R, S)
 				require.NoError(t, err)
 
-				valid, err := pi.Verify(k, sig, digest, nil)
+				valid, err := csp.Verify(k, sig, digest, nil)
 				require.Error(t, err, "verification must fail for a signature with high-S")
 				require.False(t, valid, "signature must not be valid with high-S")
 				return
@@ -453,25 +449,25 @@ func TestInitialize(t *testing.T) {
 	lib, pin, label := FindPKCS11Lib()
 
 	t.Run("MissingLibrary", func(t *testing.T) {
-		_, err := (&impl{}).initialize(PKCS11Opts{Library: "", Pin: pin, Label: label})
+		_, err := (&Provider{}).initialize(PKCS11Opts{Library: "", Pin: pin, Label: label})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "pkcs11: library path not provided")
 	})
 
 	t.Run("BadLibraryPath", func(t *testing.T) {
-		_, err := (&impl{}).initialize(PKCS11Opts{Library: "badLib", Pin: pin, Label: label})
+		_, err := (&Provider{}).initialize(PKCS11Opts{Library: "badLib", Pin: pin, Label: label})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "pkcs11: instantiation failed for badLib")
 	})
 
 	t.Run("BadLabel", func(t *testing.T) {
-		_, err := (&impl{}).initialize(PKCS11Opts{Library: lib, Pin: pin, Label: "badLabel"})
+		_, err := (&Provider{}).initialize(PKCS11Opts{Library: lib, Pin: pin, Label: "badLabel"})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find token with label")
 	})
 
 	t.Run("MissingPin", func(t *testing.T) {
-		_, err := (&impl{}).initialize(PKCS11Opts{Library: lib, Pin: "", Label: label})
+		_, err := (&Provider{}).initialize(PKCS11Opts{Library: lib, Pin: "", Label: label})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Login failed: pkcs11")
 	})
@@ -522,72 +518,72 @@ func TestCurveForSecurityLevel(t *testing.T) {
 func TestPKCS11GetSession(t *testing.T) {
 	opts := defaultOptions()
 	opts.sessionCacheSize = 5
-	pi, cleanup := newImpl(t, opts)
+	csp, cleanup := newProvider(t, opts)
 	defer cleanup()
 
 	sessionCacheSize := opts.sessionCacheSize
 	var sessions []pkcs11.SessionHandle
 	for i := 0; i < 3*sessionCacheSize; i++ {
-		session, err := pi.getSession()
+		session, err := csp.getSession()
 		require.NoError(t, err)
 		sessions = append(sessions, session)
 	}
 
 	// Return all sessions, should leave sessionCacheSize cached
 	for _, session := range sessions {
-		pi.returnSession(session)
+		csp.returnSession(session)
 	}
 
 	// Lets break OpenSession, so non-cached session cannot be opened
-	oldSlot := pi.slot
-	pi.slot = ^uint(0)
+	oldSlot := csp.slot
+	csp.slot = ^uint(0)
 
 	// Should be able to get sessionCacheSize cached sessions
 	sessions = nil
 	for i := 0; i < sessionCacheSize; i++ {
-		session, err := pi.getSession()
+		session, err := csp.getSession()
 		require.NoError(t, err)
 		sessions = append(sessions, session)
 	}
 
-	_, err := pi.getSession()
+	_, err := csp.getSession()
 	require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
 
 	// Load cache with bad sessions
 	for i := 0; i < sessionCacheSize; i++ {
-		pi.returnSession(pkcs11.SessionHandle(^uint(0)))
+		csp.returnSession(pkcs11.SessionHandle(^uint(0)))
 	}
 
 	// Fix OpenSession so non-cached sessions can be opened
-	pi.slot = oldSlot
+	csp.slot = oldSlot
 
 	// Request a session, return, and re-acquire. The pool should be emptied
 	// before creating a new session so when returned, it should be the only
 	// session in the cache.
-	sess, err := pi.getSession()
+	sess, err := csp.getSession()
 	require.NoError(t, err)
-	pi.returnSession(sess)
-	sess2, err := pi.getSession()
+	csp.returnSession(sess)
+	sess2, err := csp.getSession()
 	require.NoError(t, err)
 	require.Equal(t, sess, sess2, "expected to get back the same session")
 
 	// Cleanup
 	for _, session := range sessions {
-		pi.returnSession(session)
+		csp.returnSession(session)
 	}
 }
 
 func TestSessionHandleCaching(t *testing.T) {
-	verifyHandleCache := func(t *testing.T, pi *impl, sess pkcs11.SessionHandle, k bccsp.Key) {
-		pubHandle, err := pi.findKeyPairFromSKI(sess, k.SKI(), publicKeyType)
+	verifyHandleCache := func(t *testing.T, csp *Provider, sess pkcs11.SessionHandle, k bccsp.Key) {
+		pubHandle, err := csp.findKeyPairFromSKI(sess, k.SKI(), publicKeyType)
 		require.NoError(t, err)
-		h, ok := pi.cachedHandle(publicKeyType, k.SKI())
+		h, ok := csp.cachedHandle(publicKeyType, k.SKI())
 		require.True(t, ok)
 		require.Equal(t, h, pubHandle)
 
-		privHandle, err := pi.findKeyPairFromSKI(sess, k.SKI(), privateKeyType)
+		privHandle, err := csp.findKeyPairFromSKI(sess, k.SKI(), privateKeyType)
 		require.NoError(t, err)
-		h, ok = pi.cachedHandle(privateKeyType, k.SKI())
+		h, ok = csp.cachedHandle(privateKeyType, k.SKI())
 		require.True(t, ok)
 		require.Equal(t, h, privHandle)
 	}
@@ -596,179 +592,179 @@ func TestSessionHandleCaching(t *testing.T) {
 		opts := defaultOptions()
 		opts.sessionCacheSize = -1
 
-		pi, cleanup := newImpl(t, opts)
+		csp, cleanup := newProvider(t, opts)
 		defer cleanup()
 
-		require.Nil(t, pi.sessPool, "sessPool channel should be nil")
-		require.Empty(t, pi.sessions, "sessions set should be empty")
-		require.Empty(t, pi.handleCache, "handleCache should be empty")
+		require.Nil(t, csp.sessPool, "sessPool channel should be nil")
+		require.Empty(t, csp.sessions, "sessions set should be empty")
+		require.Empty(t, csp.handleCache, "handleCache should be empty")
 
-		sess1, err := pi.getSession()
+		sess1, err := csp.getSession()
 		require.NoError(t, err)
-		require.Len(t, pi.sessions, 1, "expected one open session")
+		require.Len(t, csp.sessions, 1, "expected one open session")
 
-		sess2, err := pi.getSession()
+		sess2, err := csp.getSession()
 		require.NoError(t, err)
-		require.Len(t, pi.sessions, 2, "expected two open sessions")
+		require.Len(t, csp.sessions, 2, "expected two open sessions")
 
 		// Generate a key
-		k, err := pi.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+		k, err := csp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
 		require.NoError(t, err)
-		verifyHandleCache(t, pi, sess1, k)
-		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+		verifyHandleCache(t, csp, sess1, k)
+		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
 
-		pi.returnSession(sess1)
-		require.Len(t, pi.sessions, 1, "expected one open session")
-		verifyHandleCache(t, pi, sess1, k)
-		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+		csp.returnSession(sess1)
+		require.Len(t, csp.sessions, 1, "expected one open session")
+		verifyHandleCache(t, csp, sess1, k)
+		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
 
-		pi.returnSession(sess2)
-		require.Empty(t, pi.sessions, "expected sessions to be empty")
-		require.Empty(t, pi.handleCache, "expected handles to be cleared")
+		csp.returnSession(sess2)
+		require.Empty(t, csp.sessions, "expected sessions to be empty")
+		require.Empty(t, csp.handleCache, "expected handles to be cleared")
 
-		pi.slot = ^uint(0) // break OpenSession
-		_, err = pi.getSession()
+		csp.slot = ^uint(0) // break OpenSession
+		_, err = csp.getSession()
 		require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
-		require.Empty(t, pi.sessions, "expected sessions to be empty")
+		require.Empty(t, csp.sessions, "expected sessions to be empty")
 	})
 
 	t.Run("SessionCacheEnabled", func(t *testing.T) {
 		opts := defaultOptions()
 		opts.sessionCacheSize = 1
 
-		pi, cleanup := newImpl(t, opts)
+		csp, cleanup := newProvider(t, opts)
 		defer cleanup()
 
-		require.NotNil(t, pi.sessPool, "sessPool channel should not be nil")
-		require.Equal(t, 1, cap(pi.sessPool))
-		require.Len(t, pi.sessions, 1, "sessions should contain login session")
-		require.Len(t, pi.sessPool, 1, "sessionPool should hold login session")
-		require.Empty(t, pi.handleCache, "handleCache should be empty")
+		require.NotNil(t, csp.sessPool, "sessPool channel should not be nil")
+		require.Equal(t, 1, cap(csp.sessPool))
+		require.Len(t, csp.sessions, 1, "sessions should contain login session")
+		require.Len(t, csp.sessPool, 1, "sessionPool should hold login session")
+		require.Empty(t, csp.handleCache, "handleCache should be empty")
 
-		sess1, err := pi.getSession()
+		sess1, err := csp.getSession()
 		require.NoError(t, err)
-		require.Len(t, pi.sessions, 1, "expected one open session (sess1 from login)")
-		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
+		require.Len(t, csp.sessions, 1, "expected one open session (sess1 from login)")
+		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
 
-		sess2, err := pi.getSession()
+		sess2, err := csp.getSession()
 		require.NoError(t, err)
-		require.Len(t, pi.sessions, 2, "expected two open sessions (sess1 and sess2)")
-		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
+		require.Len(t, csp.sessions, 2, "expected two open sessions (sess1 and sess2)")
+		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
 
 		// Generate a key
-		k, err := pi.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+		k, err := csp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
 		require.NoError(t, err)
-		verifyHandleCache(t, pi, sess1, k)
-		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+		verifyHandleCache(t, csp, sess1, k)
+		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
 
-		pi.returnSession(sess1)
-		require.Len(t, pi.sessions, 2, "expected two open sessions (sess2 in-use, sess1 cached)")
-		require.Len(t, pi.sessPool, 1, "sessionPool should have one handle (sess1)")
-		verifyHandleCache(t, pi, sess1, k)
-		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+		csp.returnSession(sess1)
+		require.Len(t, csp.sessions, 2, "expected two open sessions (sess2 in-use, sess1 cached)")
+		require.Len(t, csp.sessPool, 1, "sessionPool should have one handle (sess1)")
+		verifyHandleCache(t, csp, sess1, k)
+		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
 
-		pi.returnSession(sess2)
-		require.Len(t, pi.sessions, 1, "expected one cached session (sess1)")
-		require.Len(t, pi.sessPool, 1, "sessionPool should have one handle (sess1)")
-		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+		csp.returnSession(sess2)
+		require.Len(t, csp.sessions, 1, "expected one cached session (sess1)")
+		require.Len(t, csp.sessPool, 1, "sessionPool should have one handle (sess1)")
+		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
 
-		sess1, err = pi.getSession()
+		sess1, err = csp.getSession()
 		require.NoError(t, err)
-		require.Len(t, pi.sessions, 1, "expected one open session (sess1)")
-		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
-		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+		require.Len(t, csp.sessions, 1, "expected one open session (sess1)")
+		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
+		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
 
-		pi.slot = ^uint(0) // break OpenSession
-		_, err = pi.getSession()
+		csp.slot = ^uint(0) // break OpenSession
+		_, err = csp.getSession()
 		require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
-		require.Len(t, pi.sessions, 1, "expected one active session (sess1)")
-		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
-		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+		require.Len(t, csp.sessions, 1, "expected one active session (sess1)")
+		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
+		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
 
 		// Return a busted session that should be cached
-		pi.returnSession(pkcs11.SessionHandle(^uint(0)))
-		require.Len(t, pi.sessions, 1, "expected one active session (sess1)")
-		require.Len(t, pi.sessPool, 1, "sessionPool should contain busted session")
-		require.Len(t, pi.handleCache, 2, "expected two handles in handle cache")
+		csp.returnSession(pkcs11.SessionHandle(^uint(0)))
+		require.Len(t, csp.sessions, 1, "expected one active session (sess1)")
+		require.Len(t, csp.sessPool, 1, "sessionPool should contain busted session")
+		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
 
 		// Return sess1 that should be discarded
-		pi.returnSession(sess1)
-		require.Len(t, pi.sessions, 0, "expected sess1 to be removed")
-		require.Len(t, pi.sessPool, 1, "sessionPool should contain busted session")
-		require.Empty(t, pi.handleCache, "expected handles to be purged on removal of last tracked session")
+		csp.returnSession(sess1)
+		require.Len(t, csp.sessions, 0, "expected sess1 to be removed")
+		require.Len(t, csp.sessPool, 1, "sessionPool should contain busted session")
+		require.Empty(t, csp.handleCache, "expected handles to be purged on removal of last tracked session")
 
 		// Try to get broken session from cache
-		_, err = pi.getSession()
+		_, err = csp.getSession()
 		require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
-		require.Empty(t, pi.sessions, "expected sessions to be empty")
-		require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
+		require.Empty(t, csp.sessions, "expected sessions to be empty")
+		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
 	})
 }
 
 func TestKeyCache(t *testing.T) {
 	opts := defaultOptions()
 	opts.sessionCacheSize = 1
-	pi, cleanup := newImpl(t, opts)
+	csp, cleanup := newProvider(t, opts)
 	defer cleanup()
 
-	require.Empty(t, pi.keyCache)
+	require.Empty(t, csp.keyCache)
 
-	_, err := pi.GetKey([]byte("nonsense-key"))
+	_, err := csp.GetKey([]byte("nonsense-key"))
 	require.Error(t, err) // message comes from software keystore
-	require.Empty(t, pi.keyCache)
+	require.Empty(t, csp.keyCache)
 
-	k, err := pi.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+	k, err := csp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
 	require.NoError(t, err)
-	_, ok := pi.cachedKey(k.SKI())
+	_, ok := csp.cachedKey(k.SKI())
 	require.False(t, ok, "created keys are not (currently) cached")
 
-	key, err := pi.GetKey(k.SKI())
+	key, err := csp.GetKey(k.SKI())
 	require.NoError(t, err)
-	cached, ok := pi.cachedKey(k.SKI())
+	cached, ok := csp.cachedKey(k.SKI())
 	require.True(t, ok, "key should be cached")
 	require.Same(t, key, cached, "key from cache should be what was found")
 
 	// Kill all valid cached sessions
-	pi.slot = ^uint(0)
-	sess, err := pi.getSession()
+	csp.slot = ^uint(0)
+	sess, err := csp.getSession()
 	require.NoError(t, err)
-	require.Len(t, pi.sessions, 1, "should have one active session")
-	require.Len(t, pi.sessPool, 0, "sessionPool should be empty")
+	require.Len(t, csp.sessions, 1, "should have one active session")
+	require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
 
-	pi.returnSession(pkcs11.SessionHandle(^uint(0)))
-	require.Len(t, pi.sessions, 1, "should have one active session")
-	require.Len(t, pi.sessPool, 1, "sessionPool should be empty")
+	csp.returnSession(pkcs11.SessionHandle(^uint(0)))
+	require.Len(t, csp.sessions, 1, "should have one active session")
+	require.Len(t, csp.sessPool, 1, "sessionPool should be empty")
 
-	_, ok = pi.cachedKey(k.SKI())
+	_, ok = csp.cachedKey(k.SKI())
 	require.True(t, ok, "key should remain in cache due to active sessions")
 
 	// Force caches to be cleared
-	pi.returnSession(sess)
-	require.Empty(t, pi.sessions, "sessions should be empty")
-	require.Empty(t, pi.keyCache, "key cache should be empty")
+	csp.returnSession(sess)
+	require.Empty(t, csp.sessions, "sessions should be empty")
+	require.Empty(t, csp.keyCache, "key cache should be empty")
 
-	_, ok = pi.cachedKey(k.SKI())
+	_, ok = csp.cachedKey(k.SKI())
 	require.False(t, ok, "key should not be in cache")
 }
 
 // This helps verify that we're delegating to the software provider.
 // This is not intended to test the software provider implementation.
 func TestDelegation(t *testing.T) {
-	pi, cleanup := newImpl(t, defaultOptions())
+	csp, cleanup := newProvider(t, defaultOptions())
 	defer cleanup()
 
-	k, err := pi.KeyGen(&bccsp.AES256KeyGenOpts{})
+	k, err := csp.KeyGen(&bccsp.AES256KeyGenOpts{})
 	require.NoError(t, err)
 
 	t.Run("KeyGen", func(t *testing.T) {
-		k, err := pi.KeyGen(&bccsp.AES256KeyGenOpts{})
+		k, err := csp.KeyGen(&bccsp.AES256KeyGenOpts{})
 		require.NoError(t, err)
 		require.True(t, k.Private())
 		require.True(t, k.Symmetric())
 	})
 
 	t.Run("KeyDeriv", func(t *testing.T) {
-		k, err := pi.KeyDeriv(k, &bccsp.HMACDeriveKeyOpts{Arg: []byte{1}})
+		k, err := csp.KeyDeriv(k, &bccsp.HMACDeriveKeyOpts{Arg: []byte{1}})
 		require.NoError(t, err)
 		require.True(t, k.Private())
 	})
@@ -778,46 +774,46 @@ func TestDelegation(t *testing.T) {
 		_, err := rand.Read(raw)
 		require.NoError(t, err)
 
-		k, err := pi.KeyImport(raw, &bccsp.AES256ImportKeyOpts{})
+		k, err := csp.KeyImport(raw, &bccsp.AES256ImportKeyOpts{})
 		require.NoError(t, err)
 		require.True(t, k.Private())
 	})
 
 	t.Run("GetKey", func(t *testing.T) {
-		k, err := pi.GetKey(k.SKI())
+		k, err := csp.GetKey(k.SKI())
 		require.NoError(t, err)
 		require.True(t, k.Private())
 	})
 
 	t.Run("Hash", func(t *testing.T) {
-		digest, err := pi.Hash([]byte("message"), &bccsp.SHA3_384Opts{})
+		digest, err := csp.Hash([]byte("message"), &bccsp.SHA3_384Opts{})
 		require.NoError(t, err)
 		require.NotEmpty(t, digest)
 	})
 
 	t.Run("GetHash", func(t *testing.T) {
-		h, err := pi.GetHash(&bccsp.SHA256Opts{})
+		h, err := csp.GetHash(&bccsp.SHA256Opts{})
 		require.NoError(t, err)
 		require.Equal(t, sha256.New(), h)
 	})
 
 	t.Run("Sign", func(t *testing.T) {
-		_, err := pi.Sign(k, []byte("message"), nil)
+		_, err := csp.Sign(k, []byte("message"), nil)
 		require.EqualError(t, err, "Unsupported 'SignKey' provided [*sw.aesPrivateKey]")
 	})
 
 	t.Run("Verify", func(t *testing.T) {
-		_, err := pi.Verify(k, []byte("signature"), []byte("digest"), nil)
+		_, err := csp.Verify(k, []byte("signature"), []byte("digest"), nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Unsupported 'VerifyKey' provided")
 	})
 
 	t.Run("EncryptDecrypt", func(t *testing.T) {
 		msg := []byte("message")
-		ct, err := pi.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
+		ct, err := csp.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
 		require.NoError(t, err)
 
-		pt, err := pi.Decrypt(k, ct, &bccsp.AESCBCPKCS7ModeOpts{})
+		pt, err := csp.Decrypt(k, ct, &bccsp.AESCBCPKCS7ModeOpts{})
 		require.NoError(t, err)
 		require.Equal(t, msg, pt)
 	})
