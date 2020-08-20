@@ -48,8 +48,8 @@ func TestSnapshot(t *testing.T) {
 	// test generate, cancel and query bindings
 	var signedRequest *pb.SignedSnapshotRequest
 	testData := []uint64{100, 50, 200}
-	for _, height := range testData {
-		signedRequest = createSignedRequest(ledgerID, height)
+	for _, blockNumber := range testData {
+		signedRequest = createSignedRequest(ledgerID, blockNumber)
 		_, err = snapshotSvc.Generate(context.Background(), signedRequest)
 		require.NoError(t, err)
 	}
@@ -58,18 +58,18 @@ func TestSnapshot(t *testing.T) {
 	_, err = snapshotSvc.Cancel(context.Background(), signedRequest)
 	require.NoError(t, err)
 
-	expectedResponse := &pb.QueryPendingSnapshotsResponse{Heights: []uint64{50, 200}}
+	expectedResponse := &pb.QueryPendingSnapshotsResponse{BlockNumbers: []uint64{50, 200}}
 	signedQuery := createSignedQuery(ledgerID)
 	resp, err := snapshotSvc.QueryPendings(context.Background(), signedQuery)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, resp)
 
-	// test error propagation from ledger, generate height=50 should return an error
+	// test error propagation from ledger, generate blockNumber=50 should return an error
 	signedRequest = createSignedRequest(ledgerID, 50)
 	_, err = snapshotSvc.Generate(context.Background(), signedRequest)
 	require.EqualError(t, err, "duplicate snapshot request for height 50")
 
-	// test error propagation from ledger, cancel height=100 again should return an error
+	// test error propagation from ledger, cancel blockNumber=100 again should return an error
 	signedRequest = createSignedRequest(ledgerID, 100)
 	_, err = snapshotSvc.Cancel(context.Background(), signedRequest)
 	require.EqualError(t, err, "no snapshot request exists for height 100")
@@ -103,7 +103,7 @@ func TestSnapshot(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			signedRequest = test.signedRequest
 			if signedRequest == nil {
-				// create a SignedQuery for all requests because height does not matter in these error tests
+				// create a SignedQuery for all requests because blockNumber does not matter in these error tests
 				signedRequest = createSignedQuery(test.channelID)
 			}
 			_, err := snapshotSvc.Generate(context.Background(), signedRequest)
@@ -131,10 +131,10 @@ func TestSnapshot(t *testing.T) {
 	)
 }
 
-func createSignedRequest(channelID string, height uint64) *pb.SignedSnapshotRequest {
+func createSignedRequest(channelID string, blockNumber uint64) *pb.SignedSnapshotRequest {
 	request := &pb.SnapshotRequest{
-		ChannelId: channelID,
-		Height:    height,
+		ChannelId:   channelID,
+		BlockNumber: blockNumber,
 	}
 	return &pb.SignedSnapshotRequest{
 		Request: protoutil.MarshalOrPanic(request),

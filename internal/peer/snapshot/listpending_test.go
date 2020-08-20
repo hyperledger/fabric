@@ -20,7 +20,7 @@ func TestListPendingCmd(t *testing.T) {
 	mockSigner := &mock.Signer{}
 	mockSigner.SignReturns([]byte("snapshot-request-signature"), nil)
 	mockSnapshotClient := &mock.SnapshotClient{}
-	mockSnapshotClient.QueryPendingsReturns(&pb.QueryPendingSnapshotsResponse{Heights: []uint64{100, 200}}, nil)
+	mockSnapshotClient.QueryPendingsReturns(&pb.QueryPendingSnapshotsResponse{BlockNumbers: []uint64{100, 200}}, nil)
 	buffer := gbytes.NewBuffer()
 	mockClient := &client{mockSnapshotClient, mockSigner, buffer}
 

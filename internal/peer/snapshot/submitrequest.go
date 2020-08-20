@@ -56,8 +56,8 @@ func submitRequest(cmd *cobra.Command, cl *client, cryptoProvider bccsp.BCCSP) e
 	}
 
 	request := &pb.SnapshotRequest{
-		ChannelId: channelID,
-		Height:    blockNumber,
+		ChannelId:   channelID,
+		BlockNumber: blockNumber,
 	}
 	signedRequest, err := signSnapshotRequest(cl.signer, request)
 	if err != nil {
