@@ -45,7 +45,6 @@ var (
 type testConfig struct {
 	securityLevel int
 	hashFamily    string
-	softVerify    bool
 	immutable     bool
 }
 
@@ -69,16 +68,16 @@ func testMain(m *testing.M) int {
 	currentKS = keyStore
 
 	lib, pin, label := FindPKCS11Lib()
-	tests := []testConfig{
-		{securityLevel: 256, hashFamily: "SHA2", softVerify: true, immutable: false},
-		{securityLevel: 256, hashFamily: "SHA3", softVerify: false, immutable: false},
-		{securityLevel: 384, hashFamily: "SHA2", softVerify: false, immutable: false},
-		{securityLevel: 384, hashFamily: "SHA3", softVerify: false, immutable: false},
-		{securityLevel: 384, hashFamily: "SHA3", softVerify: true, immutable: false},
+	var tests []testConfig
+	tests = []testConfig{
+		{securityLevel: 256, hashFamily: "SHA2", immutable: false},
+		{securityLevel: 256, hashFamily: "SHA3", immutable: false},
+		{securityLevel: 384, hashFamily: "SHA2", immutable: false},
+		{securityLevel: 384, hashFamily: "SHA3", immutable: false},
 	}
 
 	if strings.Contains(lib, "softhsm") {
-		tests = append(tests, testConfig{securityLevel: 256, hashFamily: "SHA2", softVerify: true, immutable: true})
+		tests = append(tests, testConfig{securityLevel: 256, hashFamily: "SHA2", immutable: true})
 	}
 
 	opts := PKCS11Opts{
@@ -92,7 +91,6 @@ func testMain(m *testing.M) int {
 
 		opts.Hash = config.hashFamily
 		opts.Security = config.securityLevel
-		opts.SoftwareVerify = config.softVerify
 		opts.Immutable = config.immutable
 
 		provider, err := New(opts, keyStore)
@@ -370,6 +368,8 @@ func TestECDSASign(t *testing.T) {
 func TestECDSAVerify(t *testing.T) {
 	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
+	pk, err := k.PublicKey()
+	require.NoError(t, err)
 
 	digest, err := currentBCCSP.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
 	require.NoError(t, err)
@@ -377,16 +377,24 @@ func TestECDSAVerify(t *testing.T) {
 	signature, err := currentBCCSP.Sign(k, digest, nil)
 	require.NoError(t, err)
 
-	valid, err := currentBCCSP.Verify(k, signature, digest, nil)
-	require.NoError(t, err)
-	require.True(t, valid, "signature should be valid from private key")
+	tests := map[string]bool{
+		"WithSoftVerify":    true,
+		"WithoutSoftVerify": false,
+	}
+	for name, softVerify := range tests {
+		t.Run(name, func(t *testing.T) {
+			defer func(s bool) { currentBCCSP.softVerify = s }(currentBCCSP.softVerify)
+			currentBCCSP.softVerify = softVerify
 
-	pk, err := k.PublicKey()
-	require.NoError(t, err)
+			valid, err := currentBCCSP.Verify(k, signature, digest, nil)
+			require.NoError(t, err)
+			require.True(t, valid, "signature should be valid from private key")
 
-	valid, err = currentBCCSP.Verify(pk, signature, digest, nil)
-	require.NoError(t, err)
-	require.True(t, valid, "signature should be valid from public key")
+			valid, err = currentBCCSP.Verify(pk, signature, digest, nil)
+			require.NoError(t, err)
+			require.True(t, valid, "signature should be valid from public key")
+		})
+	}
 
 	t.Run("MissingKey", func(t *testing.T) {
 		_, err := currentBCCSP.Verify(nil, signature, digest, nil)
@@ -416,7 +424,7 @@ func TestECDSAVerify(t *testing.T) {
 		pk2, err := currentBCCSP.GetKey(pk.SKI())
 		require.NoError(t, err)
 
-		valid, err = currentBCCSP.Verify(pk2, signature, digest, nil)
+		valid, err := currentBCCSP.Verify(pk2, signature, digest, nil)
 		require.NoError(t, err)
 		require.True(t, valid, "signature should be valid from public key")
 	})

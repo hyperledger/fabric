@@ -181,7 +181,6 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 	}
 
 	switch opts.(type) {
-
 	case *bccsp.X509PublicKeyImportOpts:
 		x509Cert, ok := raw.(*x509.Certificate)
 		if !ok {
@@ -648,7 +647,7 @@ func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize 
 	}
 	defer csp.returnSession(session)
 
-	logger.Debugf("Verify ECDSA\n")
+	logger.Debugf("Verify ECDSA")
 
 	publicKey, err := csp.findKeyPairFromSKI(session, ski, publicKeyType)
 	if err != nil {
