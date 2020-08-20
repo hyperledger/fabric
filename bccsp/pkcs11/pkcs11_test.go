@@ -70,26 +70,24 @@ func testMain(m *testing.M) int {
 	lib, pin, label := FindPKCS11Lib()
 	var tests []testConfig
 	tests = []testConfig{
-		{securityLevel: 256, hashFamily: "SHA2", immutable: false},
-		{securityLevel: 256, hashFamily: "SHA3", immutable: false},
-		{securityLevel: 384, hashFamily: "SHA2", immutable: false},
-		{securityLevel: 384, hashFamily: "SHA3", immutable: false},
+		{securityLevel: 256, immutable: false},
+		{securityLevel: 384, immutable: false},
 	}
 
 	if strings.Contains(lib, "softhsm") {
-		tests = append(tests, testConfig{securityLevel: 256, hashFamily: "SHA2", immutable: true})
+		tests = append(tests, testConfig{securityLevel: 256, immutable: true})
 	}
 
 	opts := PKCS11Opts{
 		Library: lib,
 		Label:   label,
 		Pin:     pin,
+		Hash:    "SHA2",
 	}
 
 	for _, config := range tests {
 		currentTestConfig = config
 
-		opts.Hash = config.hashFamily
 		opts.Security = config.securityLevel
 		opts.Immutable = config.immutable
 
@@ -191,7 +189,7 @@ func TestInvalidNewParameter(t *testing.T) {
 	opts.Hash = "SHA8"
 	opts.Security = 256
 	_, err = New(opts, currentKS)
-	require.EqualError(t, err, "Failed initializing configuration: Hash Family not supported [SHA8]")
+	require.EqualError(t, err, "Failed initializing fallback SW BCCSP: Failed initializing configuration at [256,SHA8]: Hash Family not supported [SHA8]")
 
 	opts.Hash = "SHA2"
 	opts.Security = 256
