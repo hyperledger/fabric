@@ -254,6 +254,57 @@ remote origin:
 Again, the pull request will be updated accordingly and CI checks
 will be re-triggered.
 
+Cherry-picking your PR to other branches
+----------------------------------------
+
+After your PR is merged into the master branch, you need to consider whether it should be backported to earlier branches.
+If the content is a new feature designated for the next release, obviously backporting is not appropriate. But if it is a fix or
+update to an existing topic, don't forget to cherry-pick the PR back to earlier branches as needed.
+When in doubt, consult the maintainer that merged the PR for advice.
+Both parties should consider the backport and either party can trigger it.
+You can use the GitHub cherry-pick command, or an easier option is to paste the following command as a comment in your PR after it is merged:
+
+.. code::
+
+   @Mergifyio backport release-2.0
+
+Replace ``2.0`` with the branch that you want to backport to. If there are no merge conflicts,
+a new PR is automatically generated in that branch that still requires the normal approval process to be merged.
+Remember to add a comment to the original PR for each branch that you want to backport to.
+
+If there are merge conflicts, use the GitHub ``cherry-pick`` command instead, by providing the ``SHA`` from the commit in the master branch.
+
+- The following example shows how to cherry-pick a commit from the master branch into the release-2.0 branch:
+
+.. code::
+
+  git checkout release-2.0
+
+- If your branch is behind, run the following command to pull in the latest changes and push them to your local branch:
+
+.. code::
+
+  git pull upstream release-2.0
+  git push origin release-2.0
+
+- Create a new local branch to cherry-pick the content to and then cherry-pick the content by providing the SHA from the master branch.
+
+.. code::
+
+  git checkout -b <my2.0branch>
+  git cherry-pick <SHA from master branch>
+
+- Resolve any merge conflicts and then push to your local branch.
+
+.. code::
+
+  git push origin <my2.0branch> 
+
+- Now go to your browser and create a PR off of your local branch to the release-2.0 branch.
+
+Your change has been cherry-picked back to the release-2.0 branch and can be approved and merged following the normal process.
+
+
 Cleaning Up Local And Remote Feature branches
 ---------------------------------------------
 
