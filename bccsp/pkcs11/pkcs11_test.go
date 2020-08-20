@@ -13,12 +13,12 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -27,74 +27,119 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	currentKS    bccsp.KeyStore
-	currentBCCSP *impl
-)
-
-func TestMain(m *testing.M) {
-	os.Exit(testMain(m))
+func defaultOptions() PKCS11Opts {
+	lib, pin, label := FindPKCS11Lib()
+	return PKCS11Opts{
+		Library:                 lib,
+		Label:                   label,
+		Pin:                     pin,
+		Hash:                    "SHA2",
+		Security:                256,
+		SoftwareVerify:          false,
+		createSessionRetryDelay: time.Millisecond,
+	}
 }
 
-func testMain(m *testing.M) int {
-	tmpDir, err := ioutil.TempDir("", "pkcs11_ks")
-	if err != nil {
-		fmt.Printf("Failed to create keystore directory [%s]\n", err)
-		return -1
-	}
-	defer os.RemoveAll(tmpDir)
+func newKeyStore(t *testing.T) (bccsp.KeyStore, func()) {
+	tempDir, err := ioutil.TempDir("", "pkcs11_ks")
+	require.NoError(t, err)
+	ks, err := sw.NewFileBasedKeyStore(nil, tempDir, false)
+	require.NoError(t, err)
 
-	keyStore, err := sw.NewFileBasedKeyStore(nil, tmpDir, false)
-	if err != nil {
-		fmt.Printf("Failed initiliazing KeyStore [%s]\n", err)
-		return -1
-	}
-	currentKS = keyStore
+	return ks, func() { os.RemoveAll(tempDir) }
+}
 
-	lib, pin, label := FindPKCS11Lib()
-	opts := PKCS11Opts{
-		Library:   lib,
-		Label:     label,
-		Pin:       pin,
-		Hash:      "SHA2",
-		Immutable: false,
-		Security:  256,
-	}
+func newImpl(t *testing.T, opts PKCS11Opts) (*impl, func()) {
+	ks, ksCleanup := newKeyStore(t)
+	provider, err := New(opts, ks)
+	require.NoError(t, err)
 
-	provider, err := New(opts, keyStore)
-	if err != nil {
-		fmt.Printf("Failed initiliazing BCCSP at [%+v] \n%s\n", opts, err)
-		return -1
+	pi := provider.(*impl)
+	cleanup := func() {
+		pi.ctx.Destroy()
+		ksCleanup()
 	}
-	currentBCCSP = provider.(*impl)
-
-	return m.Run()
+	return pi, cleanup
 }
 
 func TestNew(t *testing.T) {
-	opts := PKCS11Opts{
-		Hash:           "SHA2",
-		Security:       256,
-		SoftwareVerify: false,
-		Library:        "lib",
-		Label:          "ForFabric",
-		Pin:            "98765432",
-	}
+	ks, cleanup := newKeyStore(t)
+	defer cleanup()
 
-	// Setup PKCS11 library and provide initial set of values
-	lib, _, _ := FindPKCS11Lib()
-	opts.Library = lib
+	t.Run("DefaultConfig", func(t *testing.T) {
+		opts := defaultOptions()
+		opts.createSessionRetryDelay = 0
 
-	// Test for nil keystore
-	_, err := New(opts, nil)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Invalid bccsp.KeyStore instance. It must be different from nil")
+		provider, err := New(opts, ks)
+		require.NoError(t, err)
+		require.NotNil(t, provider)
+		pi := provider.(*impl)
+		defer func() { pi.ctx.Destroy() }()
 
-	// Test for invalid PKCS11 loadLib
-	opts.Library = ""
-	_, err = New(opts, currentKS)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "pkcs11: library path not provided")
+		curve, err := curveForSecurityLevel(opts.Security)
+		require.NoError(t, err)
+
+		require.NotNil(t, pi.BCCSP)
+		require.Equal(t, opts.Pin, pi.pin)
+		require.NotNil(t, pi.ctx)
+		require.True(t, curve.Equal(pi.curve))
+		require.Equal(t, opts.SoftwareVerify, pi.softVerify)
+		require.Equal(t, opts.Immutable, pi.immutable)
+		require.Equal(t, defaultCreateSessionRetries, pi.createSessionRetries)
+		require.Equal(t, defaultCreateSessionRetryDelay, pi.createSessionRetryDelay)
+		require.Equal(t, defaultSessionCacheSize, cap(pi.sessPool))
+	})
+	t.Run("ConditionalOverride", func(t *testing.T) {
+		opts := defaultOptions()
+		opts.createSessionRetries = 3
+		opts.createSessionRetryDelay = time.Second
+		opts.sessionCacheSize = -1
+
+		provider, err := New(opts, ks)
+		require.NoError(t, err)
+		require.NotNil(t, provider)
+		pi := provider.(*impl)
+		defer func() { pi.ctx.Destroy() }()
+
+		require.Equal(t, 3, pi.createSessionRetries)
+		require.Equal(t, time.Second, pi.createSessionRetryDelay)
+		require.Nil(t, pi.sessPool)
+	})
+}
+
+func TestInvalidNewParameter(t *testing.T) {
+	ks, cleanup := newKeyStore(t)
+	defer cleanup()
+
+	t.Run("BadSecurityLevel", func(t *testing.T) {
+		opts := defaultOptions()
+		opts.Security = 0
+
+		_, err := New(opts, ks)
+		require.EqualError(t, err, "Failed initializing configuration: Security level not supported [0]")
+	})
+
+	t.Run("BadHashFamily", func(t *testing.T) {
+		opts := defaultOptions()
+		opts.Hash = "SHA8"
+
+		_, err := New(opts, ks)
+		require.EqualError(t, err, "Failed initializing fallback SW BCCSP: Failed initializing configuration at [256,SHA8]: Hash Family not supported [SHA8]")
+	})
+
+	t.Run("BadKeyStore", func(t *testing.T) {
+		_, err := New(defaultOptions(), nil)
+		require.EqualError(t, err, "Failed initializing fallback SW BCCSP: Invalid bccsp.KeyStore instance. It must be different from nil.")
+	})
+
+	t.Run("MissingLibrary", func(t *testing.T) {
+		opts := defaultOptions()
+		opts.Library = ""
+
+		_, err := New(opts, ks)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "pkcs11: library path not provided")
+	})
 }
 
 func TestFindPKCS11LibEnvVars(t *testing.T) {
@@ -136,66 +181,41 @@ func TestFindPKCS11LibEnvVars(t *testing.T) {
 	os.Setenv("PKCS11_LABEL", orig_PKCS11_LABEL)
 }
 
-func TestInvalidNewParameter(t *testing.T) {
-	lib, pin, label := FindPKCS11Lib()
-	opts := PKCS11Opts{
-		Library:        lib,
-		Label:          label,
-		Pin:            pin,
-		SoftwareVerify: true,
-	}
-
-	opts.Hash = "SHA2"
-	opts.Security = 0
-	_, err := New(opts, currentKS)
-	require.EqualError(t, err, "Failed initializing configuration: Security level not supported [0]")
-
-	opts.Hash = "SHA8"
-	opts.Security = 256
-	_, err = New(opts, currentKS)
-	require.EqualError(t, err, "Failed initializing fallback SW BCCSP: Failed initializing configuration at [256,SHA8]: Hash Family not supported [SHA8]")
-
-	opts.Hash = "SHA2"
-	opts.Security = 256
-	_, err = New(opts, nil)
-	require.EqualError(t, err, "Failed initializing fallback SW BCCSP: Invalid bccsp.KeyStore instance. It must be different from nil.")
-
-	opts.Hash = "SHA3"
-	opts.Security = 0
-	_, err = New(opts, nil)
-	require.EqualError(t, err, "Failed initializing configuration: Security level not supported [0]")
-}
-
 func TestInvalidSKI(t *testing.T) {
-	_, err := currentBCCSP.GetKey(nil)
+	pi, cleanup := newImpl(t, defaultOptions())
+	defer cleanup()
+
+	_, err := pi.GetKey(nil)
 	require.EqualError(t, err, "Failed getting key for SKI [[]]: invalid SKI. Cannot be of zero length")
 
-	_, err = currentBCCSP.GetKey([]byte{0, 1, 2, 3, 4, 5, 6})
+	_, err = pi.GetKey([]byte{0, 1, 2, 3, 4, 5, 6})
 	require.Error(t, err)
 	require.True(t, strings.HasPrefix(err.Error(), "Failed getting key for SKI [[0 1 2 3 4 5 6]]: "))
 }
 
 func TestKeyGenECDSAOpts(t *testing.T) {
 	tests := map[string]struct {
-		opts      bccsp.KeyGenOpts
-		immutable bool
 		curve     elliptic.Curve
+		immutable bool
+		opts      bccsp.KeyGenOpts
 	}{
-		"Default":             {&bccsp.ECDSAKeyGenOpts{Temporary: false}, false, namedCurveFromOID(currentBCCSP.ellipticCurve)},
-		"P256":                {&bccsp.ECDSAP256KeyGenOpts{Temporary: false}, false, elliptic.P256()},
-		"P384":                {&bccsp.ECDSAP384KeyGenOpts{Temporary: false}, false, elliptic.P384()},
-		"Immutable":           {&bccsp.ECDSAP384KeyGenOpts{Temporary: false}, true, elliptic.P384()},
-		"Ephemeral/Default":   {&bccsp.ECDSAKeyGenOpts{Temporary: true}, false, namedCurveFromOID(currentBCCSP.ellipticCurve)},
-		"Ephemeral/P256":      {&bccsp.ECDSAP256KeyGenOpts{Temporary: true}, false, elliptic.P256()},
-		"Ephemeral/P384":      {&bccsp.ECDSAP384KeyGenOpts{Temporary: true}, false, elliptic.P384()},
-		"Ephemeral/Immutable": {&bccsp.ECDSAP384KeyGenOpts{Temporary: false}, true, elliptic.P384()},
+		"Default":             {elliptic.P256(), false, &bccsp.ECDSAKeyGenOpts{Temporary: false}},
+		"P256":                {elliptic.P256(), false, &bccsp.ECDSAP256KeyGenOpts{Temporary: false}},
+		"P384":                {elliptic.P384(), false, &bccsp.ECDSAP384KeyGenOpts{Temporary: false}},
+		"Immutable":           {elliptic.P384(), true, &bccsp.ECDSAP384KeyGenOpts{Temporary: false}},
+		"Ephemeral/Default":   {elliptic.P256(), false, &bccsp.ECDSAKeyGenOpts{Temporary: true}},
+		"Ephemeral/P256":      {elliptic.P256(), false, &bccsp.ECDSAP256KeyGenOpts{Temporary: true}},
+		"Ephemeral/P384":      {elliptic.P384(), false, &bccsp.ECDSAP384KeyGenOpts{Temporary: true}},
+		"Ephemeral/Immutable": {elliptic.P384(), true, &bccsp.ECDSAP384KeyGenOpts{Temporary: false}},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
-			defer func(i bool) { currentBCCSP.immutable = i }(currentBCCSP.immutable)
-			currentBCCSP.immutable = tt.immutable
+			opts := defaultOptions()
+			opts.Immutable = tt.immutable
+			pi, cleanup := newImpl(t, opts)
+			defer cleanup()
 
-			k, err := currentBCCSP.KeyGen(tt.opts)
+			k, err := pi.KeyGen(tt.opts)
 			require.NoError(t, err)
 			require.True(t, k.Private(), "key should be private")
 			require.False(t, k.Symmetric(), "key should be asymmetric")
@@ -211,15 +231,15 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, pk)
 
-			sess, err := currentBCCSP.getSession()
+			sess, err := pi.getSession()
 			require.NoError(t, err)
-			defer currentBCCSP.returnSession(sess)
+			defer pi.returnSession(sess)
 
 			for _, kt := range []keyType{publicKeyType, privateKeyType} {
-				handle, err := currentBCCSP.findKeyPairFromSKI(sess, k.SKI(), kt)
+				handle, err := pi.findKeyPairFromSKI(sess, k.SKI(), kt)
 				require.NoError(t, err)
 
-				attr, err := currentBCCSP.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_TOKEN}})
+				attr, err := pi.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_TOKEN}})
 				require.NoError(t, err)
 				require.Len(t, attr, 1)
 
@@ -229,7 +249,7 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 					require.Equal(t, []byte{1}, attr[0].Value)
 				}
 
-				attr, err = currentBCCSP.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_MODIFIABLE}})
+				attr, err = pi.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_MODIFIABLE}})
 				require.NoError(t, err)
 				require.Len(t, attr, 1)
 
@@ -244,16 +264,22 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 }
 
 func TestKeyGenMissingOpts(t *testing.T) {
-	_, err := currentBCCSP.KeyGen(bccsp.KeyGenOpts(nil))
+	pi, cleanup := newImpl(t, defaultOptions())
+	defer cleanup()
+
+	_, err := pi.KeyGen(bccsp.KeyGenOpts(nil))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Invalid Opts parameter. It must not be nil")
 }
 
 func TestECDSAGetKeyBySKI(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	pi, cleanup := newImpl(t, defaultOptions())
+	defer cleanup()
+
+	k, err := pi.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
 
-	k2, err := currentBCCSP.GetKey(k.SKI())
+	k2, err := pi.GetKey(k.SKI())
 	require.NoError(t, err)
 
 	require.True(t, k2.Private(), "key should be private")
@@ -262,7 +288,10 @@ func TestECDSAGetKeyBySKI(t *testing.T) {
 }
 
 func TestECDSAPublicKeyFromPrivateKey(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	pi, cleanup := newImpl(t, defaultOptions())
+	defer cleanup()
+
+	k, err := pi.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
 
 	pk, err := k.PublicKey()
@@ -277,47 +306,53 @@ func TestECDSAPublicKeyFromPrivateKey(t *testing.T) {
 }
 
 func TestECDSASign(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	pi, cleanup := newImpl(t, defaultOptions())
+	defer cleanup()
+
+	k, err := pi.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
 
-	digest, err := currentBCCSP.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
+	digest, err := pi.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
 	require.NoError(t, err)
 
-	signature, err := currentBCCSP.Sign(k, digest, nil)
+	signature, err := pi.Sign(k, digest, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, signature, "signature must not be empty")
 
 	t.Run("NoKey", func(t *testing.T) {
-		_, err := currentBCCSP.Sign(nil, digest, nil)
+		_, err := pi.Sign(nil, digest, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid Key. It must not be nil")
 	})
 
 	t.Run("BadSKI", func(t *testing.T) {
-		_, err := currentBCCSP.Sign(&ecdsaPrivateKey{ski: []byte("bad-ski")}, digest, nil)
+		_, err := pi.Sign(&ecdsaPrivateKey{ski: []byte("bad-ski")}, digest, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Private key not found")
 	})
 
 	t.Run("MissingDigest", func(t *testing.T) {
-		_, err = currentBCCSP.Sign(k, nil, nil)
+		_, err = pi.Sign(k, nil, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid digest. Cannot be empty")
 	})
 }
 
 func TestECDSAVerify(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	pi, cleanup := newImpl(t, defaultOptions())
+	defer cleanup()
+
+	k, err := pi.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
 	pk, err := k.PublicKey()
 	require.NoError(t, err)
 
-	digest, err := currentBCCSP.Hash([]byte("Hello, World."), &bccsp.SHAOpts{})
+	digest, err := pi.Hash([]byte("Hello, World."), &bccsp.SHAOpts{})
 	require.NoError(t, err)
-	otherDigest, err := currentBCCSP.Hash([]byte("Bye, World."), &bccsp.SHAOpts{})
+	otherDigest, err := pi.Hash([]byte("Bye, World."), &bccsp.SHAOpts{})
 	require.NoError(t, err)
 
-	signature, err := currentBCCSP.Sign(k, digest, nil)
+	signature, err := pi.Sign(k, digest, nil)
 	require.NoError(t, err)
 
 	tests := map[string]bool{
@@ -326,56 +361,61 @@ func TestECDSAVerify(t *testing.T) {
 	}
 	for name, softVerify := range tests {
 		t.Run(name, func(t *testing.T) {
-			defer func(s bool) { currentBCCSP.softVerify = s }(currentBCCSP.softVerify)
-			currentBCCSP.softVerify = softVerify
+			opts := defaultOptions()
+			opts.SoftwareVerify = softVerify
+			pi, cleanup := newImpl(t, opts)
+			defer cleanup()
 
-			valid, err := currentBCCSP.Verify(k, signature, digest, nil)
+			valid, err := pi.Verify(k, signature, digest, nil)
 			require.NoError(t, err)
 			require.True(t, valid, "signature should be valid from private key")
 
-			valid, err = currentBCCSP.Verify(pk, signature, digest, nil)
+			valid, err = pi.Verify(pk, signature, digest, nil)
 			require.NoError(t, err)
 			require.True(t, valid, "signature should be valid from public key")
 
-			valid, err = currentBCCSP.Verify(k, signature, otherDigest, nil)
+			valid, err = pi.Verify(k, signature, otherDigest, nil)
 			require.NoError(t, err)
 			require.False(t, valid, "signature should be valid from private key")
 
-			valid, err = currentBCCSP.Verify(pk, signature, otherDigest, nil)
+			valid, err = pi.Verify(pk, signature, otherDigest, nil)
 			require.NoError(t, err)
 			require.False(t, valid, "signature should not be valid from public key")
 		})
 	}
 
 	t.Run("MissingKey", func(t *testing.T) {
-		_, err := currentBCCSP.Verify(nil, signature, digest, nil)
+		_, err := pi.Verify(nil, signature, digest, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid Key. It must not be nil")
 	})
 
 	t.Run("MissingSignature", func(t *testing.T) {
-		_, err := currentBCCSP.Verify(pk, nil, digest, nil)
+		_, err := pi.Verify(pk, nil, digest, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid signature. Cannot be empty")
 	})
 
 	t.Run("MissingDigest", func(t *testing.T) {
-		_, err = currentBCCSP.Verify(pk, signature, nil, nil)
+		_, err = pi.Verify(pk, signature, nil, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid digest. Cannot be empty")
 	})
 }
 
 func TestECDSALowS(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	pi, cleanup := newImpl(t, defaultOptions())
+	defer cleanup()
+
+	k, err := pi.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	require.NoError(t, err)
 
-	digest, err := currentBCCSP.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
+	digest, err := pi.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
 	require.NoError(t, err)
 
 	// Ensure that signature with low-S are generated
 	t.Run("GeneratesLowS", func(t *testing.T) {
-		signature, err := currentBCCSP.Sign(k, digest, nil)
+		signature, err := pi.Sign(k, digest, nil)
 		require.NoError(t, err)
 
 		_, S, err := utils.UnmarshalECDSASignature(signature)
@@ -385,7 +425,7 @@ func TestECDSALowS(t *testing.T) {
 			t.Fatal("Invalid signature. It must have low-S")
 		}
 
-		valid, err := currentBCCSP.Verify(k, signature, digest, nil)
+		valid, err := pi.Verify(k, signature, digest, nil)
 		require.NoError(t, err)
 		require.True(t, valid, "signature should be valid")
 	})
@@ -393,13 +433,13 @@ func TestECDSALowS(t *testing.T) {
 	// Ensure that signature with high-S are rejected.
 	t.Run("RejectsHighS", func(t *testing.T) {
 		for {
-			R, S, err := currentBCCSP.signP11ECDSA(k.SKI(), digest)
+			R, S, err := pi.signP11ECDSA(k.SKI(), digest)
 			require.NoError(t, err)
 			if S.Cmp(utils.GetCurveHalfOrdersAt(k.(*ecdsaPrivateKey).pub.pub.Curve)) > 0 {
 				sig, err := utils.MarshalECDSASignature(R, S)
 				require.NoError(t, err)
 
-				valid, err := currentBCCSP.Verify(k, sig, digest, nil)
+				valid, err := pi.Verify(k, sig, digest, nil)
 				require.Error(t, err, "verification must fail for a signature with high-S")
 				require.False(t, valid, "signature must not be valid with high-S")
 				return
@@ -480,63 +520,64 @@ func TestCurveForSecurityLevel(t *testing.T) {
 }
 
 func TestPKCS11GetSession(t *testing.T) {
+	opts := defaultOptions()
+	opts.sessionCacheSize = 5
+	pi, cleanup := newImpl(t, opts)
+	defer cleanup()
+
+	sessionCacheSize := opts.sessionCacheSize
 	var sessions []pkcs11.SessionHandle
 	for i := 0; i < 3*sessionCacheSize; i++ {
-		session, err := currentBCCSP.getSession()
+		session, err := pi.getSession()
 		require.NoError(t, err)
 		sessions = append(sessions, session)
 	}
 
 	// Return all sessions, should leave sessionCacheSize cached
 	for _, session := range sessions {
-		currentBCCSP.returnSession(session)
+		pi.returnSession(session)
 	}
 
 	// Lets break OpenSession, so non-cached session cannot be opened
-	oldSlot := currentBCCSP.slot
-	currentBCCSP.slot = ^uint(0)
+	oldSlot := pi.slot
+	pi.slot = ^uint(0)
 
 	// Should be able to get sessionCacheSize cached sessions
 	sessions = nil
 	for i := 0; i < sessionCacheSize; i++ {
-		session, err := currentBCCSP.getSession()
+		session, err := pi.getSession()
 		require.NoError(t, err)
 		sessions = append(sessions, session)
 	}
 
-	_, err := currentBCCSP.getSession()
+	_, err := pi.getSession()
 	require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
 
 	// Load cache with bad sessions
 	for i := 0; i < sessionCacheSize; i++ {
-		currentBCCSP.returnSession(pkcs11.SessionHandle(^uint(0)))
+		pi.returnSession(pkcs11.SessionHandle(^uint(0)))
 	}
 
 	// Fix OpenSession so non-cached sessions can be opened
-	currentBCCSP.slot = oldSlot
+	pi.slot = oldSlot
 
 	// Request a session, return, and re-acquire. The pool should be emptied
 	// before creating a new session so when returned, it should be the only
 	// session in the cache.
-	sess, err := currentBCCSP.getSession()
+	sess, err := pi.getSession()
 	require.NoError(t, err)
-	currentBCCSP.returnSession(sess)
-	sess2, err := currentBCCSP.getSession()
+	pi.returnSession(sess)
+	sess2, err := pi.getSession()
 	require.NoError(t, err)
 	require.Equal(t, sess, sess2, "expected to get back the same session")
 
 	// Cleanup
 	for _, session := range sessions {
-		currentBCCSP.returnSession(session)
+		pi.returnSession(session)
 	}
 }
 
 func TestSessionHandleCaching(t *testing.T) {
-	defer func(s int) { sessionCacheSize = s }(sessionCacheSize)
-
-	opts := PKCS11Opts{Hash: "SHA2", Security: 256, SoftwareVerify: false}
-	opts.Library, opts.Pin, opts.Label = FindPKCS11Lib()
-
 	verifyHandleCache := func(t *testing.T, pi *impl, sess pkcs11.SessionHandle, k bccsp.Key) {
 		pubHandle, err := pi.findKeyPairFromSKI(sess, k.SKI(), publicKeyType)
 		require.NoError(t, err)
@@ -552,12 +593,11 @@ func TestSessionHandleCaching(t *testing.T) {
 	}
 
 	t.Run("SessionCacheDisabled", func(t *testing.T) {
-		sessionCacheSize = 0
+		opts := defaultOptions()
+		opts.sessionCacheSize = -1
 
-		provider, err := New(opts, currentKS)
-		require.NoError(t, err)
-		pi := provider.(*impl)
-		defer pi.ctx.Destroy()
+		pi, cleanup := newImpl(t, opts)
+		defer cleanup()
 
 		require.Nil(t, pi.sessPool, "sessPool channel should be nil")
 		require.Empty(t, pi.sessions, "sessions set should be empty")
@@ -593,12 +633,11 @@ func TestSessionHandleCaching(t *testing.T) {
 	})
 
 	t.Run("SessionCacheEnabled", func(t *testing.T) {
-		sessionCacheSize = 1
+		opts := defaultOptions()
+		opts.sessionCacheSize = 1
 
-		provider, err := New(opts, currentKS)
-		require.NoError(t, err)
-		pi := provider.(*impl)
-		defer pi.ctx.Destroy()
+		pi, cleanup := newImpl(t, opts)
+		defer cleanup()
 
 		require.NotNil(t, pi.sessPool, "sessPool channel should not be nil")
 		require.Equal(t, 1, cap(pi.sessPool))
@@ -667,20 +706,14 @@ func TestSessionHandleCaching(t *testing.T) {
 }
 
 func TestKeyCache(t *testing.T) {
-	defer func(s int) { sessionCacheSize = s }(sessionCacheSize)
-
-	sessionCacheSize = 1
-	opts := PKCS11Opts{Hash: "SHA2", Security: 256, SoftwareVerify: false}
-	opts.Library, opts.Pin, opts.Label = FindPKCS11Lib()
-
-	provider, err := New(opts, currentKS)
-	require.NoError(t, err)
-	pi := provider.(*impl)
-	defer pi.ctx.Destroy()
+	opts := defaultOptions()
+	opts.sessionCacheSize = 1
+	pi, cleanup := newImpl(t, opts)
+	defer cleanup()
 
 	require.Empty(t, pi.keyCache)
 
-	_, err = pi.GetKey([]byte("nonsense-key"))
+	_, err := pi.GetKey([]byte("nonsense-key"))
 	require.Error(t, err) // message comes from software keystore
 	require.Empty(t, pi.keyCache)
 
@@ -721,18 +754,21 @@ func TestKeyCache(t *testing.T) {
 // This helps verify that we're delegating to the software provider.
 // This is not intended to test the software provider implementation.
 func TestDelegation(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.AES256KeyGenOpts{})
+	pi, cleanup := newImpl(t, defaultOptions())
+	defer cleanup()
+
+	k, err := pi.KeyGen(&bccsp.AES256KeyGenOpts{})
 	require.NoError(t, err)
 
 	t.Run("KeyGen", func(t *testing.T) {
-		k, err := currentBCCSP.KeyGen(&bccsp.AES256KeyGenOpts{})
+		k, err := pi.KeyGen(&bccsp.AES256KeyGenOpts{})
 		require.NoError(t, err)
 		require.True(t, k.Private())
 		require.True(t, k.Symmetric())
 	})
 
 	t.Run("KeyDeriv", func(t *testing.T) {
-		k, err := currentBCCSP.KeyDeriv(k, &bccsp.HMACDeriveKeyOpts{Arg: []byte{1}})
+		k, err := pi.KeyDeriv(k, &bccsp.HMACDeriveKeyOpts{Arg: []byte{1}})
 		require.NoError(t, err)
 		require.True(t, k.Private())
 	})
@@ -742,46 +778,46 @@ func TestDelegation(t *testing.T) {
 		_, err := rand.Read(raw)
 		require.NoError(t, err)
 
-		k, err := currentBCCSP.KeyImport(raw, &bccsp.AES256ImportKeyOpts{})
+		k, err := pi.KeyImport(raw, &bccsp.AES256ImportKeyOpts{})
 		require.NoError(t, err)
 		require.True(t, k.Private())
 	})
 
 	t.Run("GetKey", func(t *testing.T) {
-		k, err := currentBCCSP.GetKey(k.SKI())
+		k, err := pi.GetKey(k.SKI())
 		require.NoError(t, err)
 		require.True(t, k.Private())
 	})
 
 	t.Run("Hash", func(t *testing.T) {
-		digest, err := currentBCCSP.Hash([]byte("message"), &bccsp.SHA3_384Opts{})
+		digest, err := pi.Hash([]byte("message"), &bccsp.SHA3_384Opts{})
 		require.NoError(t, err)
 		require.NotEmpty(t, digest)
 	})
 
 	t.Run("GetHash", func(t *testing.T) {
-		h, err := currentBCCSP.GetHash(&bccsp.SHA256Opts{})
+		h, err := pi.GetHash(&bccsp.SHA256Opts{})
 		require.NoError(t, err)
 		require.Equal(t, sha256.New(), h)
 	})
 
 	t.Run("Sign", func(t *testing.T) {
-		_, err := currentBCCSP.Sign(k, []byte("message"), nil)
+		_, err := pi.Sign(k, []byte("message"), nil)
 		require.EqualError(t, err, "Unsupported 'SignKey' provided [*sw.aesPrivateKey]")
 	})
 
 	t.Run("Verify", func(t *testing.T) {
-		_, err := currentBCCSP.Verify(k, []byte("signature"), []byte("digest"), nil)
+		_, err := pi.Verify(k, []byte("signature"), []byte("digest"), nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Unsupported 'VerifyKey' provided")
 	})
 
 	t.Run("EncryptDecrypt", func(t *testing.T) {
 		msg := []byte("message")
-		ct, err := currentBCCSP.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
+		ct, err := pi.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
 		require.NoError(t, err)
 
-		pt, err := currentBCCSP.Decrypt(k, ct, &bccsp.AESCBCPKCS7ModeOpts{})
+		pt, err := pi.Decrypt(k, ct, &bccsp.AESCBCPKCS7ModeOpts{})
 		require.NoError(t, err)
 		require.Equal(t, msg, pt)
 	})

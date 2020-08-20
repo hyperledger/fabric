@@ -6,6 +6,14 @@ SPDX-License-Identifier: Apache-2.0
 
 package pkcs11
 
+import "time"
+
+const (
+	defaultCreateSessionRetries    = 10
+	defaultCreateSessionRetryDelay = 100 * time.Millisecond
+	defaultSessionCacheSize        = 10
+)
+
 // PKCS11Opts contains options for the P11Factory
 type PKCS11Opts struct {
 	// Default algorithms when not specified (Deprecated?)
@@ -18,4 +26,8 @@ type PKCS11Opts struct {
 	Pin            string `json:"pin"`
 	SoftwareVerify bool   `json:"softwareverify,omitempty"`
 	Immutable      bool   `json:"immutable,omitempty"`
+
+	sessionCacheSize        int
+	createSessionRetries    int
+	createSessionRetryDelay time.Duration
 }
