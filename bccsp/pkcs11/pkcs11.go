@@ -198,7 +198,6 @@ func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.K
 
 	default:
 		return csp.BCCSP.KeyImport(raw, opts)
-
 	}
 }
 
@@ -255,7 +254,7 @@ func (csp *impl) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte
 	// Check key type
 	switch key := k.(type) {
 	case *ecdsaPrivateKey:
-		return csp.signECDSA(*key, digest, opts)
+		return csp.signECDSA(*key, digest)
 	default:
 		return csp.BCCSP.Sign(key, digest, opts)
 	}
@@ -277,9 +276,9 @@ func (csp *impl) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Signer
 	// Check key type
 	switch key := k.(type) {
 	case *ecdsaPrivateKey:
-		return csp.verifyECDSA(key.pub, signature, digest, opts)
+		return csp.verifyECDSA(key.pub, signature, digest)
 	case *ecdsaPublicKey:
-		return csp.verifyECDSA(*key, signature, digest, opts)
+		return csp.verifyECDSA(*key, signature, digest)
 	default:
 		return csp.BCCSP.Verify(k, signature, digest, opts)
 	}
