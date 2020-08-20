@@ -99,6 +99,7 @@ func (creator *BlockPullerCreator) BlockPuller(configBlock *common.Block) (Chann
 		Logger:              flogging.MustGetLogger("orderer.common.cluster.puller").With("channel", creator.channelID),
 		RetryTimeout:        creator.clusterConfig.ReplicationRetryTimeout,
 		MaxTotalBufferBytes: creator.clusterConfig.ReplicationBufferSize,
+		MaxPullBlockRetries: uint64(creator.clusterConfig.ReplicationMaxRetries),
 		FetchTimeout:        creator.clusterConfig.ReplicationPullTimeout,
 		Endpoints:           endpoints,
 		Signer:              creator.signer,

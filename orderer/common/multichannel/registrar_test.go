@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -613,9 +614,18 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		cryptoProvider, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 
-		config = localconfig.TopLevel{}
-		config.General.BootstrapMethod = "none"
-		config.General.GenesisFile = ""
+		config = localconfig.TopLevel{
+			General: localconfig.General{
+				BootstrapMethod: "none",
+				GenesisFile:     "",
+				Cluster: localconfig.Cluster{
+					ReplicationBufferSize:   1,
+					ReplicationPullTimeout:  time.Microsecond,
+					ReplicationRetryTimeout: time.Microsecond,
+					ReplicationMaxRetries:   2,
+				},
+			},
+		}
 		dialer = &cluster.PredicateDialer{
 			Config: comm.ClientConfig{
 				SecOpts: comm.SecureOptions{
@@ -756,6 +766,10 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		require.Equal(t, 1, len(channelList.Channels))
 		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
 		require.Nil(t, channelList.SystemChannel)
+
+		fChain := registrar.GetFollower("my-raft-channel")
+		require.NotNil(t, fChain)
+		fChain.Halt()
 	})
 
 	t.Run("Join app channel as follower, with on-boarding", func(t *testing.T) {
@@ -784,6 +798,10 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		require.Equal(t, 1, len(channelList.Channels))
 		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
 		require.Nil(t, channelList.SystemChannel)
+
+		fChain := registrar.GetFollower("my-raft-channel")
+		require.NotNil(t, fChain)
+		fChain.Halt()
 	})
 
 	t.Run("Join app channel then switch to chain", func(t *testing.T) {
@@ -918,6 +936,12 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		config := localconfig.TopLevel{
 			General: localconfig.General{
 				BootstrapMethod: "none",
+				Cluster: localconfig.Cluster{
+					ReplicationBufferSize:   1,
+					ReplicationPullTimeout:  time.Microsecond,
+					ReplicationRetryTimeout: time.Microsecond,
+					ReplicationMaxRetries:   2,
+				},
 			},
 		}
 		dialer := &cluster.PredicateDialer{
@@ -966,6 +990,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 			require.Equal(t, types.ChannelInfo{Name: "my-follower-raft-channel", URL: "", ClusterRelation: "follower", Status: "onboarding", Height: 0}, info)
 
 			// After joining the channel, it exists in the registrar and the ledger
+			require.NotNil(t, registrar.GetFollower("my-follower-raft-channel"))
 			info, err = registrar.ChannelInfo("my-follower-raft-channel")
 			require.NoError(t, err)
 			require.Equal(t, types.ChannelInfo{Name: "my-follower-raft-channel", URL: "", ClusterRelation: "follower", Status: "onboarding", Height: 0}, info)
@@ -975,6 +1000,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 			require.NoError(t, err)
 
 			// After removing the channel, it no longer exists in the registrar or the ledger
+			require.Nil(t, registrar.GetFollower("my-follower-raft-channel"))
 			_, err = registrar.ChannelInfo("my-follower-raft-channel")
 			require.EqualError(t, err, "channel does not exist")
 			require.NotContains(t, ledgerFactory.ChannelIDs(), "my-follower-raft-channel")
