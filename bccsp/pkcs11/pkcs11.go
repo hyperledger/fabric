@@ -27,22 +27,20 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const createSessionRetries = 10
-
-var (
-	logger           = flogging.MustGetLogger("bccsp_p11")
-	sessionCacheSize = 10
-)
+var logger = flogging.MustGetLogger("bccsp_p11")
 
 type impl struct {
 	bccsp.BCCSP
 
-	slot          uint
-	pin           string
-	ctx           *pkcs11.Ctx
-	ellipticCurve asn1.ObjectIdentifier
-	softVerify    bool
-	immutable     bool
+	slot       uint
+	pin        string
+	ctx        *pkcs11.Ctx
+	curve      asn1.ObjectIdentifier
+	softVerify bool
+	immutable  bool
+
+	createSessionRetries    int
+	createSessionRetryDelay time.Duration
 
 	sessLock sync.Mutex
 	sessPool chan pkcs11.SessionHandle
@@ -66,20 +64,32 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 		return nil, errors.Wrapf(err, "Failed initializing fallback SW BCCSP")
 	}
 
+	if opts.sessionCacheSize == 0 {
+		opts.sessionCacheSize = defaultSessionCacheSize
+	}
+	if opts.createSessionRetries == 0 {
+		opts.createSessionRetries = defaultCreateSessionRetries
+	}
+	if opts.createSessionRetryDelay == 0 {
+		opts.createSessionRetryDelay = defaultCreateSessionRetryDelay
+	}
+
 	var sessPool chan pkcs11.SessionHandle
-	if sessionCacheSize > 0 {
-		sessPool = make(chan pkcs11.SessionHandle, sessionCacheSize)
+	if opts.sessionCacheSize > 0 {
+		sessPool = make(chan pkcs11.SessionHandle, opts.sessionCacheSize)
 	}
 
 	csp := &impl{
-		BCCSP:         swCSP,
-		ellipticCurve: curve,
-		sessPool:      sessPool,
-		sessions:      map[pkcs11.SessionHandle]struct{}{},
-		handleCache:   map[string]pkcs11.ObjectHandle{},
-		keyCache:      map[string]bccsp.Key{},
-		softVerify:    opts.SoftwareVerify,
-		immutable:     opts.Immutable,
+		BCCSP:                   swCSP,
+		curve:                   curve,
+		createSessionRetries:    opts.createSessionRetries,
+		createSessionRetryDelay: opts.createSessionRetryDelay,
+		sessPool:                sessPool,
+		sessions:                map[pkcs11.SessionHandle]struct{}{},
+		handleCache:             map[string]pkcs11.ObjectHandle{},
+		keyCache:                map[string]bccsp.Key{},
+		softVerify:              opts.SoftwareVerify,
+		immutable:               opts.Immutable,
 	}
 
 	return csp.initialize(opts)
@@ -136,7 +146,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	// Parse algorithm
 	switch opts.(type) {
 	case *bccsp.ECDSAKeyGenOpts:
-		ski, pub, err := csp.generateECKey(csp.ellipticCurve, opts.Ephemeral())
+		ski, pub, err := csp.generateECKey(csp.curve, opts.Ephemeral())
 		if err != nil {
 			return nil, errors.Wrapf(err, "Failed generating ECDSA key")
 		}
@@ -307,7 +317,7 @@ func (csp *impl) createSession() (pkcs11.SessionHandle, error) {
 	var err error
 
 	// attempt to open a session with a 100ms delay after each attempt
-	for i := 0; i < createSessionRetries; i++ {
+	for i := 0; i < csp.createSessionRetries; i++ {
 		sess, err = csp.ctx.OpenSession(csp.slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 		if err == nil {
 			logger.Debugf("Created new pkcs11 session %d on slot %d\n", sess, csp.slot)
@@ -315,7 +325,7 @@ func (csp *impl) createSession() (pkcs11.SessionHandle, error) {
 		}
 
 		logger.Warningf("OpenSession failed, retrying [%s]\n", err)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(csp.createSessionRetryDelay)
 	}
 	if err != nil {
 		return 0, errors.Wrap(err, "OpenSession failed")
