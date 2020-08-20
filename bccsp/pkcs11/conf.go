@@ -6,27 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 
 package pkcs11
 
-import (
-	"encoding/asn1"
-	"fmt"
-)
-
-type config struct {
-	ellipticCurve asn1.ObjectIdentifier
-}
-
-func (conf *config) setSecurityLevel(securityLevel int) error {
-	switch securityLevel {
-	case 256:
-		conf.ellipticCurve = oidNamedCurveP256
-	case 384:
-		conf.ellipticCurve = oidNamedCurveP384
-	default:
-		return fmt.Errorf("Security level not supported [%d]", securityLevel)
-	}
-	return nil
-}
-
 // PKCS11Opts contains options for the P11Factory
 type PKCS11Opts struct {
 	// Default algorithms when not specified (Deprecated?)

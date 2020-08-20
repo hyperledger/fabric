@@ -796,6 +796,29 @@ func TestNamedCurveFromOID(t *testing.T) {
 	}
 }
 
+func TestCurveForSecurityLevel(t *testing.T) {
+	tests := map[int]struct {
+		expectedErr string
+		curve       asn1.ObjectIdentifier
+	}{
+		256: {curve: oidNamedCurveP256},
+		384: {curve: oidNamedCurveP384},
+		512: {expectedErr: "Security level not supported [512]"},
+	}
+
+	for level, tt := range tests {
+		t.Run(strconv.Itoa(level), func(t *testing.T) {
+			curve, err := curveForSecurityLevel(level)
+			if tt.expectedErr != "" {
+				require.EqualError(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.curve, curve)
+		})
+	}
+}
+
 func TestPKCS11GetSession(t *testing.T) {
 	var sessions []pkcs11.SessionHandle
 	for i := 0; i < 3*sessionCacheSize; i++ {
