@@ -66,7 +66,7 @@ func listPending(cmd *cobra.Command, cl *client, cryptoProvider bccsp.BCCSP) err
 		return errors.WithMessage(err, "failed to list pending requests")
 	}
 
-	fmt.Fprintf(cl.writer, "Successfully got pending snapshot requests: %v\n", resp.Heights)
+	fmt.Fprintf(cl.writer, "Successfully got pending snapshot requests: %v\n", resp.BlockNumbers)
 	return nil
 }
 

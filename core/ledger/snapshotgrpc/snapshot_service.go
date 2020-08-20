@@ -38,7 +38,7 @@ func (s *SnapshotService) Generate(ctx context.Context, signedRequest *pb.Signed
 		return nil, err
 	}
 
-	if err := lgr.SubmitSnapshotRequest(request.Height); err != nil {
+	if err := lgr.SubmitSnapshotRequest(request.BlockNumber); err != nil {
 		return nil, err
 	}
 
@@ -57,7 +57,7 @@ func (s *SnapshotService) Cancel(ctx context.Context, signedRequest *pb.SignedSn
 		return nil, err
 	}
 
-	if err := lgr.CancelSnapshotRequest(request.Height); err != nil {
+	if err := lgr.CancelSnapshotRequest(request.BlockNumber); err != nil {
 		return nil, err
 	}
 
@@ -81,7 +81,7 @@ func (s *SnapshotService) QueryPendings(ctx context.Context, signedRequest *pb.S
 		return nil, err
 	}
 
-	return &pb.QueryPendingSnapshotsResponse{Heights: result}, nil
+	return &pb.QueryPendingSnapshotsResponse{BlockNumbers: result}, nil
 }
 
 func (s *SnapshotService) getLedger(channelID string) (ledger.PeerLedger, error) {
