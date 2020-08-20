@@ -49,20 +49,26 @@ Usage:
       restart - restart the network
 
     Flags:
+    Used with network.sh up, network.sh createChannel:
     -ca <use CAs> -  create Certificate Authorities to generate the crypto material
     -c <channel name> - channel name to use (defaults to "mychannel")
     -s <dbtype> - the database backend to use: goleveldb (default) or couchdb
     -r <max retry> - CLI times out after certain number of attempts (defaults to 5)
     -d <delay> - delay duration in seconds (defaults to 3)
-    -ccn <name> - the short name of the chaincode to deploy: basic (default),ledger, private, secured
-    -ccl <language> - the programming language of the chaincode to deploy: go (default), java, javascript, typescript
-    -ccv <version>  - chaincode version. 1.0 (default)
-    -ccs <sequence>  - chaincode definition sequence. Must be an integer, 1 (default), 2, 3, etc
-    -ccp <path>  - Optional, chaincode path. Path to the chaincode. When provided the -ccn will be used as the deployed name and not the short name of the known chaincodes.
-    -cci <fcn name>  - Optional, chaincode init required function to invoke. When provided this function will be invoked after deployment of the chaincode and will define the chaincode as initialization required.
     -i <imagetag> - the tag to be used to launch the network (defaults to "latest")
     -cai <ca_imagetag> - the image tag to be used for CA (defaults to "latest")
     -verbose - verbose mode
+    Used with network.sh deployCC
+    -c <channel name> - deploy chaincode to channel
+    -ccn <name> - the short name of the chaincode to deploy: basic (default),ledger, private, sbe, secured
+    -ccl <language> - the programming language of the chaincode to deploy: go (default), java, javascript, typescript
+    -ccv <version>  - chaincode version. 1.0 (default)
+    -ccs <sequence>  - chaincode definition sequence. Must be an integer, 1 (default), 2, 3, etc
+    -ccp <path>  - Optional, path to the chaincode. When provided the -ccn will be used as the deployed name and not the short name of the known chaincodes.
+    -ccep <policy>  - Optional, chaincode endorsement policy, using signature policy syntax. The default policy requires an endorsement from Org1 and Org2
+    -cccg <collection-config>  - Optional, path to a private data collections configuration file
+    -cci <fcn name>  - Optional, chaincode init required function to invoke. When provided this function will be invoked after deployment of the chaincode and will define the chaincode as initialization required.
+
     -h - print this message
 
  Possible Mode and flag combinations
@@ -78,6 +84,7 @@ Usage:
    network.sh up createChannel -ca -c mychannel -s couchdb -i 2.0.0
    network.sh createChannel -c channelName
    network.sh deployCC -ccn basic -ccl javascript
+   network.sh deployCC -ccn mychaincode -ccp ./user/mychaincode -ccv 1 -ccl javascript
 ```
 
 From inside the `test-network` directory, run the following command to remove
