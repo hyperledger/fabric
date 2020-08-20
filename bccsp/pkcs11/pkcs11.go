@@ -38,12 +38,12 @@ var (
 type impl struct {
 	bccsp.BCCSP
 
-	slot       uint
-	pin        string
-	ctx        *pkcs11.Ctx
-	conf       *config
-	softVerify bool
-	immutable  bool
+	slot          uint
+	pin           string
+	ctx           *pkcs11.Ctx
+	ellipticCurve asn1.ObjectIdentifier
+	softVerify    bool
+	immutable     bool
 
 	sessLock sync.Mutex
 	sessPool chan pkcs11.SessionHandle
@@ -57,9 +57,7 @@ type impl struct {
 // New WithParams returns a new instance of the software-based BCCSP
 // set at the passed security level, hash family and KeyStore.
 func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
-	// Init config
-	conf := &config{}
-	err := conf.setSecurityLevel(opts.Security)
+	curve, err := curveForSecurityLevel(opts.Security)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed initializing configuration")
 	}
@@ -75,14 +73,14 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 	}
 
 	csp := &impl{
-		BCCSP:       swCSP,
-		conf:        conf,
-		sessPool:    sessPool,
-		sessions:    map[pkcs11.SessionHandle]struct{}{},
-		handleCache: map[string]pkcs11.ObjectHandle{},
-		keyCache:    map[string]bccsp.Key{},
-		softVerify:  opts.SoftwareVerify,
-		immutable:   opts.Immutable,
+		BCCSP:         swCSP,
+		ellipticCurve: curve,
+		sessPool:      sessPool,
+		sessions:      map[pkcs11.SessionHandle]struct{}{},
+		handleCache:   map[string]pkcs11.ObjectHandle{},
+		keyCache:      map[string]bccsp.Key{},
+		softVerify:    opts.SoftwareVerify,
+		immutable:     opts.Immutable,
 	}
 
 	return csp.initialize(opts)
@@ -139,7 +137,7 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	// Parse algorithm
 	switch opts.(type) {
 	case *bccsp.ECDSAKeyGenOpts:
-		ski, pub, err := csp.generateECKey(csp.conf.ellipticCurve, opts.Ephemeral())
+		ski, pub, err := csp.generateECKey(csp.ellipticCurve, opts.Ephemeral())
 		if err != nil {
 			return nil, errors.Wrapf(err, "Failed generating ECDSA key")
 		}
@@ -487,6 +485,17 @@ func namedCurveFromOID(oid asn1.ObjectIdentifier) elliptic.Curve {
 		return elliptic.P521()
 	}
 	return nil
+}
+
+func curveForSecurityLevel(securityLevel int) (asn1.ObjectIdentifier, error) {
+	switch securityLevel {
+	case 256:
+		return oidNamedCurveP256, nil
+	case 384:
+		return oidNamedCurveP384, nil
+	default:
+		return nil, fmt.Errorf("Security level not supported [%d]", securityLevel)
+	}
 }
 
 func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski []byte, pubKey *ecdsa.PublicKey, err error) {
