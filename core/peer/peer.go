@@ -224,6 +224,26 @@ func (p *Peer) CreateChannel(
 	return nil
 }
 
+// CreateChannelFromSnapshot create a channel from the specified snapshot.
+func (p *Peer) CreateChannelFromSnaphotshot(
+	snapshotDir string,
+	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
+	legacyLifecycleValidation plugindispatcher.LifecycleResources,
+	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
+) error {
+	l, cid, err := p.LedgerMgr.CreateLedgerFromSnapshot(snapshotDir)
+	if err != nil {
+		return errors.WithMessagef(err, "cannot create ledger from snapshot %s", snapshotDir)
+	}
+
+	if err := p.createChannel(cid, l, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
+		return err
+	}
+
+	p.initChannel(cid)
+	return nil
+}
+
 // retrievePersistedChannelConfig retrieves the persisted channel config from statedb
 func retrievePersistedChannelConfig(ledger ledger.PeerLedger) (*common.Config, error) {
 	qe, err := ledger.NewQueryExecutor()

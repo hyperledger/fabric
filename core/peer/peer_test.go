@@ -221,6 +221,58 @@ func TestCreateChannel(t *testing.T) {
 	}
 }
 
+func TestCreateChannelBySnapshot(t *testing.T) {
+	peerInstance, cleanup := NewTestPeer(t)
+	defer cleanup()
+
+	var initArg string
+	peerInstance.Initialize(
+		func(cid string) { initArg = cid },
+		nil,
+		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
+		&ledgermocks.DeployedChaincodeInfoProvider{},
+		nil,
+		nil,
+		runtime.NumCPU(),
+	)
+
+	testChannelID := "createchannelbysnapshot"
+
+	// create a temp dir to store snapshot
+	tempdir, err := ioutil.TempDir("", testChannelID)
+	require.NoError(t, err)
+	defer os.Remove(tempdir)
+
+	snapshotDir := ledgermgmttest.CreateSnapshotWithGenesisBlock(t, tempdir, testChannelID, &ConfigTxProcessor{})
+	err = peerInstance.CreateChannelFromSnaphotshot(snapshotDir, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+	require.NoError(t, err)
+
+	require.Equal(t, testChannelID, initArg)
+
+	// verify ledger created
+	ledger := peerInstance.GetLedger(testChannelID)
+	require.NotNil(t, ledger)
+
+	bcInfo, err := ledger.GetBlockchainInfo()
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), bcInfo.GetHeight())
+
+	// Bad ledger
+	ledger = peerInstance.GetLedger("BogusChain")
+	require.Nil(t, ledger)
+
+	// Correct PolicyManager
+	pmgr := peerInstance.GetPolicyManager(testChannelID)
+	require.NotNil(t, pmgr)
+
+	// Bad PolicyManager
+	pmgr = peerInstance.GetPolicyManager("BogusChain")
+	require.Nil(t, pmgr)
+
+	channels := peerInstance.GetChannelsInfo()
+	require.Equal(t, 1, len(channels))
+}
+
 func TestDeliverSupportManager(t *testing.T) {
 	peerInstance, cleanup := NewTestPeer(t)
 	defer cleanup()
