@@ -51,7 +51,7 @@ func TestV11v12(t *testing.T) {
 	p, err := NewProvider(conf)
 	require.NoError(t, err)
 	defer p.Close()
-	s, err := p.OpenStore(ledgerid)
+	s, err := p.OpenStore(ledgerid, &Initializer{})
 	require.NoError(t, err)
 	s.Init(btlPolicy)
 

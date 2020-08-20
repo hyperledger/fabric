@@ -65,6 +65,11 @@ type Store struct {
 	isLastUpdatedOldBlocksSet bool
 }
 
+type Initializer struct {
+	CreatedFromSnapshot bool
+	LastBlockInSnapshot uint64
+}
+
 type blkTranNumKey []byte
 
 type dataEntry struct {
@@ -123,7 +128,7 @@ func NewProvider(conf *PrivateDataConfig) (*Provider, error) {
 }
 
 // OpenStore returns a handle to a store
-func (p *Provider) OpenStore(ledgerid string) (*Store, error) {
+func (p *Provider) OpenStore(ledgerid string, initializer *Initializer) (*Store, error) {
 	dbHandle := p.dbProvider.GetDBHandle(ledgerid)
 	s := &Store{
 		db:              dbHandle,
@@ -138,6 +143,11 @@ func (p *Provider) OpenStore(ledgerid string) (*Store, error) {
 	}
 	if err := s.initState(); err != nil {
 		return nil, err
+	}
+	// TODO: workaround that will be removed when snapshot import is implemented for pvtdata store
+	if s.isEmpty && initializer.CreatedFromSnapshot {
+		s.isEmpty = false
+		s.lastCommittedBlock = initializer.LastBlockInSnapshot
 	}
 	s.launchCollElgProc()
 	logger.Debugf("Pvtdata store opened. Initial state: isEmpty [%t], lastCommittedBlock [%d]",
