@@ -43,7 +43,7 @@ func TestInitFactoriesInvalidArgs(t *testing.T) {
 		Default: "PKCS11",
 		PKCS11:  &pkcs11.PKCS11Opts{},
 	})
-	require.EqualError(t, err, "Failed initializing PKCS11.BCCSP: Could not initialize BCCSP PKCS11 [Failed initializing configuration: Hash Family not supported []]")
+	require.EqualError(t, err, "Failed initializing PKCS11.BCCSP: Could not initialize BCCSP PKCS11 [Failed initializing configuration: Security level not supported [0]]")
 }
 
 func TestGetBCCSPFromOpts(t *testing.T) {

@@ -59,7 +59,7 @@ type impl struct {
 func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 	// Init config
 	conf := &config{}
-	err := conf.setSecurityLevel(opts.Security, opts.Hash)
+	err := conf.setSecurityLevel(opts.Security)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed initializing configuration")
 	}
