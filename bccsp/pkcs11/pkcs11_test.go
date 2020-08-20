@@ -736,44 +736,6 @@ func TestAES256KeyGenSKI(t *testing.T) {
 	require.Equalf(t, k.SKI(), k2.SKI(), "expected %x but got %x", k.SKI(), k2.SKI())
 }
 
-func TestSHA(t *testing.T) {
-	for i := 0; i < 100; i++ {
-		b, err := sw.GetRandomBytes(i)
-		require.NoError(t, err)
-
-		h1, err := currentBCCSP.Hash(b, &bccsp.SHAOpts{})
-		require.NoError(t, err)
-
-		var h hash.Hash
-		switch currentTestConfig.hashFamily {
-		case "SHA2":
-			switch currentTestConfig.securityLevel {
-			case 256:
-				h = sha256.New()
-			case 384:
-				h = sha512.New384()
-			default:
-				t.Fatalf("Invalid security level [%d]", currentTestConfig.securityLevel)
-			}
-		case "SHA3":
-			switch currentTestConfig.securityLevel {
-			case 256:
-				h = sha3.New256()
-			case 384:
-				h = sha3.New384()
-			default:
-				t.Fatalf("Invalid security level [%d]", currentTestConfig.securityLevel)
-			}
-		default:
-			t.Fatalf("Invalid hash family [%s]", currentTestConfig.hashFamily)
-		}
-
-		h.Write(b)
-		h2 := h.Sum(nil)
-		require.Equalf(t, h2, h1, "hashing %x, expected %x but got %x", b, h2, h1)
-	}
-}
-
 func TestKeyGenFailures(t *testing.T) {
 	_, err := currentBCCSP.KeyGen(bccsp.KeyGenOpts(nil))
 	require.Error(t, err)
