@@ -5,48 +5,32 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package pkcs11
 
 import (
-	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/sha512"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/asn1"
 	"fmt"
-	"hash"
 	"io/ioutil"
-	"math/big"
-	"net"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/miekg/pkcs11"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/sha3"
 )
 
 var (
-	currentKS         bccsp.KeyStore
-	currentBCCSP      *impl
-	currentTestConfig testConfig
+	currentKS    bccsp.KeyStore
+	currentBCCSP *impl
 )
-
-type testConfig struct {
-	securityLevel int
-	hashFamily    string
-	immutable     bool
-}
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
@@ -68,43 +52,23 @@ func testMain(m *testing.M) int {
 	currentKS = keyStore
 
 	lib, pin, label := FindPKCS11Lib()
-	var tests []testConfig
-	tests = []testConfig{
-		{securityLevel: 256, immutable: false},
-		{securityLevel: 384, immutable: false},
-	}
-
-	if strings.Contains(lib, "softhsm") {
-		tests = append(tests, testConfig{securityLevel: 256, immutable: true})
-	}
-
 	opts := PKCS11Opts{
-		Library: lib,
-		Label:   label,
-		Pin:     pin,
-		Hash:    "SHA2",
+		Library:   lib,
+		Label:     label,
+		Pin:       pin,
+		Hash:      "SHA2",
+		Immutable: false,
+		Security:  256,
 	}
 
-	for _, config := range tests {
-		currentTestConfig = config
-
-		opts.Security = config.securityLevel
-		opts.Immutable = config.immutable
-
-		provider, err := New(opts, keyStore)
-		if err != nil {
-			fmt.Printf("Failed initiliazing BCCSP at [%+v] \n%s\n", opts, err)
-			return -1
-		}
-		currentBCCSP = provider.(*impl)
-
-		ret := m.Run()
-		if ret != 0 {
-			fmt.Printf("Failed testing at [%+v]\n", opts)
-			return -1
-		}
+	provider, err := New(opts, keyStore)
+	if err != nil {
+		fmt.Printf("Failed initiliazing BCCSP at [%+v] \n%s\n", opts, err)
+		return -1
 	}
-	return 0
+	currentBCCSP = provider.(*impl)
+
+	return m.Run()
 }
 
 func TestNew(t *testing.T) {
@@ -213,14 +177,24 @@ func TestInvalidSKI(t *testing.T) {
 
 func TestKeyGenECDSAOpts(t *testing.T) {
 	tests := map[string]struct {
-		opts  bccsp.KeyGenOpts
-		curve elliptic.Curve
+		opts      bccsp.KeyGenOpts
+		immutable bool
+		curve     elliptic.Curve
 	}{
-		"P256": {&bccsp.ECDSAP256KeyGenOpts{Temporary: false}, elliptic.P256()},
-		"P384": {&bccsp.ECDSAP384KeyGenOpts{Temporary: false}, elliptic.P384()},
+		"Default":             {&bccsp.ECDSAKeyGenOpts{Temporary: false}, false, namedCurveFromOID(currentBCCSP.ellipticCurve)},
+		"P256":                {&bccsp.ECDSAP256KeyGenOpts{Temporary: false}, false, elliptic.P256()},
+		"P384":                {&bccsp.ECDSAP384KeyGenOpts{Temporary: false}, false, elliptic.P384()},
+		"Immutable":           {&bccsp.ECDSAP384KeyGenOpts{Temporary: false}, true, elliptic.P384()},
+		"Ephemeral/Default":   {&bccsp.ECDSAKeyGenOpts{Temporary: true}, false, namedCurveFromOID(currentBCCSP.ellipticCurve)},
+		"Ephemeral/P256":      {&bccsp.ECDSAP256KeyGenOpts{Temporary: true}, false, elliptic.P256()},
+		"Ephemeral/P384":      {&bccsp.ECDSAP384KeyGenOpts{Temporary: true}, false, elliptic.P384()},
+		"Ephemeral/Immutable": {&bccsp.ECDSAP384KeyGenOpts{Temporary: false}, true, elliptic.P384()},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
+			defer func(i bool) { currentBCCSP.immutable = i }(currentBCCSP.immutable)
+			currentBCCSP.immutable = tt.immutable
+
 			k, err := currentBCCSP.KeyGen(tt.opts)
 			require.NoError(t, err)
 			require.True(t, k.Private(), "key should be private")
@@ -228,72 +202,51 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 
 			ecdsaKey := k.(*ecdsaPrivateKey).pub
 			require.Equal(t, tt.curve, ecdsaKey.pub.Curve, "wrong curve")
-		})
-	}
-}
 
-func TestKeyGenAESOpts(t *testing.T) {
-	tests := map[string]struct {
-		opts bccsp.KeyGenOpts
-	}{
-		"AES128": {&bccsp.AES128KeyGenOpts{Temporary: false}},
-		"AES192": {&bccsp.AES192KeyGenOpts{Temporary: false}},
-		"AES256": {&bccsp.AES256KeyGenOpts{Temporary: false}},
-	}
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			k, err := currentBCCSP.KeyGen(tt.opts)
+			raw, err := k.Bytes()
+			require.EqualError(t, err, "Not supported.")
+			require.Empty(t, raw, "result should be empty")
+
+			pk, err := k.PublicKey()
 			require.NoError(t, err)
-			require.True(t, k.Private(), "key should be private")
-			require.True(t, k.Symmetric(), "key should be symmetric")
-		})
-	}
-}
+			require.NotNil(t, pk)
 
-func TestHashOpts(t *testing.T) {
-	tests := map[string]struct {
-		opts bccsp.HashOpts
-		h    hash.Hash
-	}{
-		"SHA256":   {&bccsp.SHA256Opts{}, sha256.New()},
-		"SHA384":   {&bccsp.SHA384Opts{}, sha512.New384()},
-		"SHA3_256": {&bccsp.SHA3_256Opts{}, sha3.New256()},
-		"SHA3_384": {&bccsp.SHA3_384Opts{}, sha3.New384()},
-	}
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
-			msg := []byte("abcd")
-
-			digest, err := currentBCCSP.Hash(msg, tt.opts)
+			sess, err := currentBCCSP.getSession()
 			require.NoError(t, err)
+			defer currentBCCSP.returnSession(sess)
 
-			tt.h.Write(msg)
-			require.Equalf(t, tt.h.Sum(nil), digest, "expected %x got %x", tt.h.Sum(nil), digest)
+			for _, kt := range []keyType{publicKeyType, privateKeyType} {
+				handle, err := currentBCCSP.findKeyPairFromSKI(sess, k.SKI(), kt)
+				require.NoError(t, err)
+
+				attr, err := currentBCCSP.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_TOKEN}})
+				require.NoError(t, err)
+				require.Len(t, attr, 1)
+
+				if tt.opts.Ephemeral() {
+					require.Equal(t, []byte{0}, attr[0].Value)
+				} else {
+					require.Equal(t, []byte{1}, attr[0].Value)
+				}
+
+				attr, err = currentBCCSP.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_MODIFIABLE}})
+				require.NoError(t, err)
+				require.Len(t, attr, 1)
+
+				if tt.immutable {
+					require.Equal(t, []byte{0}, attr[0].Value)
+				} else {
+					require.Equal(t, []byte{1}, attr[0].Value)
+				}
+			}
 		})
 	}
 }
 
-func TestECDSAKeyGenEphemeral(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: true})
-	require.NoError(t, err)
-	require.True(t, k.Private(), "key should be private")
-	require.False(t, k.Symmetric(), "key should be asymmetric")
-
-	raw, err := k.Bytes()
-	require.EqualError(t, err, "Not supported.")
-	require.Empty(t, raw, "result should be empty")
-
-	pk, err := k.PublicKey()
-	require.NoError(t, err)
-	require.NotNil(t, pk)
-}
-
-func TestECDSAKeyGenNonEphemeral(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-	require.True(t, k.Private(), "key should be private")
-	require.False(t, k.Symmetric(), "key should be asymmetric")
-	require.NotEmpty(t, k.SKI(), "SKI must not be empty")
+func TestKeyGenMissingOpts(t *testing.T) {
+	_, err := currentBCCSP.KeyGen(bccsp.KeyGenOpts(nil))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Invalid Opts parameter. It must not be nil")
 }
 
 func TestECDSAGetKeyBySKI(t *testing.T) {
@@ -316,27 +269,11 @@ func TestECDSAPublicKeyFromPrivateKey(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, pk.Private(), "key should be public")
 	require.False(t, pk.Symmetric(), "key should be asymmetric")
-}
-
-func TestECDSAPublicKeyBytes(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-
-	pk, err := k.PublicKey()
-	require.NoError(t, err)
+	require.Equal(t, k.SKI(), pk.SKI(), "SKI should be the same")
 
 	raw, err := pk.Bytes()
 	require.NoError(t, err)
 	require.NotEmpty(t, raw, "marshaled ECDSA public key must not be empty")
-}
-
-func TestECDSAPublicKeySKI(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-
-	pk, err := k.PublicKey()
-	require.NoError(t, err)
-	require.NotEmpty(t, pk.SKI(), "SKI must not be empty")
 }
 
 func TestECDSASign(t *testing.T) {
@@ -350,10 +287,16 @@ func TestECDSASign(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, signature, "signature must not be empty")
 
-	t.Run("MissingKey", func(t *testing.T) {
+	t.Run("NoKey", func(t *testing.T) {
 		_, err := currentBCCSP.Sign(nil, digest, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid Key. It must not be nil")
+	})
+
+	t.Run("BadSKI", func(t *testing.T) {
+		_, err := currentBCCSP.Sign(&ecdsaPrivateKey{ski: []byte("bad-ski")}, digest, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Private key not found")
 	})
 
 	t.Run("MissingDigest", func(t *testing.T) {
@@ -369,7 +312,9 @@ func TestECDSAVerify(t *testing.T) {
 	pk, err := k.PublicKey()
 	require.NoError(t, err)
 
-	digest, err := currentBCCSP.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
+	digest, err := currentBCCSP.Hash([]byte("Hello, World."), &bccsp.SHAOpts{})
+	require.NoError(t, err)
+	otherDigest, err := currentBCCSP.Hash([]byte("Bye, World."), &bccsp.SHAOpts{})
 	require.NoError(t, err)
 
 	signature, err := currentBCCSP.Sign(k, digest, nil)
@@ -391,6 +336,14 @@ func TestECDSAVerify(t *testing.T) {
 			valid, err = currentBCCSP.Verify(pk, signature, digest, nil)
 			require.NoError(t, err)
 			require.True(t, valid, "signature should be valid from public key")
+
+			valid, err = currentBCCSP.Verify(k, signature, otherDigest, nil)
+			require.NoError(t, err)
+			require.False(t, valid, "signature should be valid from private key")
+
+			valid, err = currentBCCSP.Verify(pk, signature, otherDigest, nil)
+			require.NoError(t, err)
+			require.False(t, valid, "signature should not be valid from public key")
 		})
 	}
 
@@ -411,182 +364,6 @@ func TestECDSAVerify(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Invalid digest. Cannot be empty")
 	})
-
-	t.Run("ImportedKey", func(t *testing.T) {
-		pkRaw, err := pk.Bytes()
-		require.NoError(t, err)
-
-		_, err = currentBCCSP.KeyImport(pkRaw, &bccsp.ECDSAPKIXPublicKeyImportOpts{Temporary: false})
-		require.NoError(t, err)
-
-		pk2, err := currentBCCSP.GetKey(pk.SKI())
-		require.NoError(t, err)
-
-		valid, err := currentBCCSP.Verify(pk2, signature, digest, nil)
-		require.NoError(t, err)
-		require.True(t, valid, "signature should be valid from public key")
-	})
-}
-
-func TestECDSAKeyImportFromExportedKey(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-
-	// Export the public key
-	pk, err := k.PublicKey()
-	require.NoError(t, err)
-	pkRaw, err := pk.Bytes()
-	require.NoError(t, err)
-
-	// Import the exported public key
-	pk2, err := currentBCCSP.KeyImport(pkRaw, &bccsp.ECDSAPKIXPublicKeyImportOpts{Temporary: false})
-	require.NoError(t, err)
-
-	// Sign and verify with the imported public key
-	digest, err := currentBCCSP.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
-	require.NoError(t, err)
-
-	signature, err := currentBCCSP.Sign(k, digest, nil)
-	require.NoError(t, err)
-
-	valid, err := currentBCCSP.Verify(pk2, signature, digest, nil)
-	require.NoError(t, err)
-	require.True(t, valid, "signature should be valid from public key")
-}
-
-func TestECDSAKeyImportFromECDSAPublicKey(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-
-	// Export the public key
-	pk, err := k.PublicKey()
-	require.NoError(t, err)
-
-	pkRaw, err := pk.Bytes()
-	require.NoError(t, err)
-
-	pub, err := x509.ParsePKIXPublicKey(pkRaw)
-	require.NoError(t, err)
-
-	// Import the ecdsa.PublicKey
-	pk2, err := currentBCCSP.KeyImport(pub, &bccsp.ECDSAGoPublicKeyImportOpts{Temporary: false})
-	require.NoError(t, err)
-
-	// Sign and verify with the imported public key
-	digest, err := currentBCCSP.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
-	require.NoError(t, err)
-
-	signature, err := currentBCCSP.Sign(k, digest, nil)
-	require.NoError(t, err)
-
-	valid, err := currentBCCSP.Verify(pk2, signature, digest, nil)
-	require.NoError(t, err)
-	require.True(t, valid, "signature should be valid from public key")
-}
-
-func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
-	template := x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject: pkix.Name{
-			CommonName:   "test.example.com",
-			Organization: []string{"Σ Acme Co"},
-			Country:      []string{"US"},
-			ExtraNames: []pkix.AttributeTypeAndValue{
-				{Type: []int{2, 5, 4, 42}, Value: "Gopher"},
-				{Type: []int{2, 5, 4, 6}, Value: "NL"}, // This should override the Country, above.
-			},
-		},
-		NotBefore:          time.Now().Add(-1 * time.Hour),
-		NotAfter:           time.Now().Add(1 * time.Hour),
-		SignatureAlgorithm: x509.ECDSAWithSHA256,
-		SubjectKeyId:       []byte{1, 2, 3, 4},
-		KeyUsage:           x509.KeyUsageCertSign,
-		ExtKeyUsage: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageClientAuth,
-			x509.ExtKeyUsageServerAuth,
-		},
-		UnknownExtKeyUsage: []asn1.ObjectIdentifier{
-			[]int{1, 2, 3},
-			[]int{2, 59, 1},
-		},
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-		OCSPServer:            []string{"http://ocurrentBCCSP.example.com"},
-		IssuingCertificateURL: []string{"http://crt.example.com/ca1.crt"},
-		DNSNames:              []string{"test.example.com"},
-		EmailAddresses:        []string{"gopher@golang.org"},
-		IPAddresses: []net.IP{
-			net.IPv4(127, 0, 0, 1).To4(),
-			net.ParseIP("2001:4860:0:2001::68"),
-		},
-		PolicyIdentifiers: []asn1.ObjectIdentifier{
-			[]int{1, 2, 3},
-		},
-		PermittedDNSDomains: []string{
-			".example.com",
-			"example.com",
-		},
-		CRLDistributionPoints: []string{
-			"http://crl1.example.com/ca1.crl",
-			"http://crl2.example.com/ca1.crl",
-		},
-		ExtraExtensions: []pkix.Extension{
-			{Id: []int{1, 2, 3, 4}, Value: []byte("extra extension")},
-		},
-	}
-
-	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-
-	cryptoSigner, err := signer.New(currentBCCSP, k)
-	require.NoError(t, err)
-
-	// Export the public key
-	pk, err := k.PublicKey()
-	require.NoError(t, err)
-	pkRaw, err := pk.Bytes()
-	require.NoError(t, err)
-	pub, err := x509.ParsePKIXPublicKey(pkRaw)
-	require.NoError(t, err)
-
-	// Generate a self-signed certificate
-	certRaw, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, cryptoSigner)
-	require.NoError(t, err)
-	cert, err := x509.ParseCertificate(certRaw)
-	require.NoError(t, err)
-
-	// Import the certificate's public key
-	pk2, err := currentBCCSP.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: false})
-	require.NoError(t, err)
-
-	// Sign and verify with the imported public key
-	digest, err := currentBCCSP.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
-	require.NoError(t, err)
-	signature, err := currentBCCSP.Sign(k, digest, nil)
-	require.NoError(t, err)
-
-	valid, err := currentBCCSP.Verify(pk2, signature, digest, nil)
-	require.NoError(t, err)
-	require.True(t, valid, "signature should be valid from public key")
-}
-
-func TestECDSASignatureEncoding(t *testing.T) {
-	tests := []struct {
-		v []byte
-	}{
-		{[]byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0xff, 0xf1}},
-		{[]byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x02, 0x00, 0x01}},
-		{[]byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x01}},
-		{[]byte{0x30, 0x07, 0x02, 0x01, 0x8F, 0x02, 0x81, 0x01, 0x8F}},
-		{[]byte{0x30, 0x0A, 0x02, 0x01, 0x8F, 0x02, 0x05, 0x00, 0x00, 0x00, 0x00, 0x8F}},
-	}
-	for i, tt := range tests {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			_, err := asn1.Unmarshal(tt.v, &utils.ECDSASignature{})
-			require.Errorf(t, err, "unmarshal for %x should fail", tt.v)
-			require.True(t, strings.HasPrefix(err.Error(), "asn1: structure error: "))
-		})
-	}
 }
 
 func TestECDSALowS(t *testing.T) {
@@ -629,123 +406,6 @@ func TestECDSALowS(t *testing.T) {
 			}
 		}
 	})
-}
-
-func TestAESKeyGen(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-	require.True(t, k.Private(), "key should be private")
-	require.True(t, k.Symmetric(), "key should be symmetric")
-
-	pk, err := k.PublicKey()
-	require.EqualError(t, err, "Cannot call this method on a symmetric key.")
-	require.Nil(t, pk)
-}
-
-func TestAESEncryptDecrypt(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-
-	msg := []byte("Hello World")
-
-	ct, err := currentBCCSP.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
-	require.NoError(t, err)
-	require.NotEmpty(t, ct, "ciphertext must not be empty")
-
-	pt, err := currentBCCSP.Decrypt(k, ct, bccsp.AESCBCPKCS7ModeOpts{})
-	require.NoError(t, err)
-	require.Equalf(t, msg, pt, "expected %x but got %x", msg, pt)
-}
-
-func TestHMACTruncated256KeyDerivOverAES256Key(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-
-	hmacedKey, err := currentBCCSP.KeyDeriv(k, &bccsp.HMACTruncated256AESDeriveKeyOpts{Temporary: false, Arg: []byte{1}})
-	require.NoError(t, err)
-	require.True(t, hmacedKey.Private(), "HMACed key should be private")
-	require.True(t, hmacedKey.Symmetric(), "HMACed key should be symmetric")
-
-	raw, err := hmacedKey.Bytes()
-	require.EqualError(t, err, "Not supported.")
-	require.Empty(t, raw)
-
-	msg := []byte("Hello World")
-
-	ct, err := currentBCCSP.Encrypt(hmacedKey, msg, &bccsp.AESCBCPKCS7ModeOpts{})
-	require.NoError(t, err)
-	pt, err := currentBCCSP.Decrypt(hmacedKey, ct, bccsp.AESCBCPKCS7ModeOpts{})
-	require.NoError(t, err)
-
-	require.Equalf(t, msg, pt, "expected %x but got %x", msg, pt)
-}
-
-func TestHMACKeyDerivOverAES256Key(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-
-	hmacedKey, err := currentBCCSP.KeyDeriv(k, &bccsp.HMACDeriveKeyOpts{Temporary: false, Arg: []byte{1}})
-	require.NoError(t, err)
-	require.True(t, hmacedKey.Private(), "HMACed key should be private")
-	require.True(t, hmacedKey.Symmetric(), "HMACed key should be symmetric")
-
-	raw, err := hmacedKey.Bytes()
-	require.NoError(t, err)
-	require.NotEmpty(t, raw)
-}
-
-func TestAES256KeyImport(t *testing.T) {
-	raw, err := sw.GetRandomBytes(32)
-	require.NoError(t, err)
-
-	k, err := currentBCCSP.KeyImport(raw, &bccsp.AES256ImportKeyOpts{Temporary: false})
-	require.NoError(t, err)
-	require.True(t, k.Private(), "imported key should be private")
-	require.True(t, k.Symmetric(), "imported key should be symmetric")
-
-	raw, err = k.Bytes()
-	require.EqualError(t, err, "Not supported.")
-	require.Empty(t, raw)
-
-	msg := []byte("Hello World")
-
-	ct, err := currentBCCSP.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
-	require.NoError(t, err)
-	pt, err := currentBCCSP.Decrypt(k, ct, bccsp.AESCBCPKCS7ModeOpts{})
-	require.NoError(t, err)
-
-	require.Equalf(t, msg, pt, "expected %x but got %x", msg, pt)
-}
-
-func TestAES256KeyImportBadPaths(t *testing.T) {
-	t.Run("MissingKey", func(t *testing.T) {
-		_, err := currentBCCSP.KeyImport(nil, &bccsp.AES256ImportKeyOpts{Temporary: false})
-		require.EqualError(t, err, "Invalid raw. Cannot be nil")
-	})
-
-	t.Run("InvalidKey", func(t *testing.T) {
-		_, err := currentBCCSP.KeyImport([]byte{1}, &bccsp.AES256ImportKeyOpts{Temporary: false})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "Invalid Key Length")
-	})
-}
-
-func TestAES256KeyGenSKI(t *testing.T) {
-	k, err := currentBCCSP.KeyGen(&bccsp.AESKeyGenOpts{Temporary: false})
-	require.NoError(t, err)
-
-	k2, err := currentBCCSP.GetKey(k.SKI())
-	require.NoError(t, err)
-	require.True(t, k2.Private(), "key should be private")
-	require.True(t, k2.Symmetric(), "key should be symmetric")
-
-	require.Equalf(t, k.SKI(), k2.SKI(), "expected %x but got %x", k.SKI(), k2.SKI())
-}
-
-func TestKeyGenFailures(t *testing.T) {
-	_, err := currentBCCSP.KeyGen(bccsp.KeyGenOpts(nil))
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Invalid Opts parameter. It must not be nil")
 }
 
 func TestInitialize(t *testing.T) {
@@ -1058,40 +718,71 @@ func TestKeyCache(t *testing.T) {
 	require.False(t, ok, "key should not be in cache")
 }
 
-func TestPKCS11ECKeySignVerify(t *testing.T) {
-	hash1, err := currentBCCSP.Hash([]byte("authentic"), &bccsp.SHAOpts{})
-	require.NoError(t, err)
-	hash2, err := currentBCCSP.Hash([]byte("unauthentic"), &bccsp.SHAOpts{})
-	require.NoError(t, err)
-
-	var oid asn1.ObjectIdentifier
-	if currentTestConfig.securityLevel == 256 {
-		oid = oidNamedCurveP256
-	} else if currentTestConfig.securityLevel == 384 {
-		oid = oidNamedCurveP384
-	}
-
-	key, pubKey, err := currentBCCSP.generateECKey(oid, true)
+// This helps verify that we're delegating to the software provider.
+// This is not intended to test the software provider implementation.
+func TestDelegation(t *testing.T) {
+	k, err := currentBCCSP.KeyGen(&bccsp.AES256KeyGenOpts{})
 	require.NoError(t, err)
 
-	R, S, err := currentBCCSP.signP11ECDSA(key, hash1)
-	require.NoError(t, err)
+	t.Run("KeyGen", func(t *testing.T) {
+		k, err := currentBCCSP.KeyGen(&bccsp.AES256KeyGenOpts{})
+		require.NoError(t, err)
+		require.True(t, k.Private())
+		require.True(t, k.Symmetric())
+	})
 
-	_, _, err = currentBCCSP.signP11ECDSA(nil, hash1)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Private key not found")
+	t.Run("KeyDeriv", func(t *testing.T) {
+		k, err := currentBCCSP.KeyDeriv(k, &bccsp.HMACDeriveKeyOpts{Arg: []byte{1}})
+		require.NoError(t, err)
+		require.True(t, k.Private())
+	})
 
-	pass, err := currentBCCSP.verifyP11ECDSA(key, hash1, R, S, currentTestConfig.securityLevel/8)
-	require.NoError(t, err)
-	require.True(t, pass, "signature should match")
+	t.Run("KeyImport", func(t *testing.T) {
+		raw := make([]byte, 32)
+		_, err := rand.Read(raw)
+		require.NoError(t, err)
 
-	pass = ecdsa.Verify(pubKey, hash1, R, S)
-	require.True(t, pass, "signature should match with software verification")
+		k, err := currentBCCSP.KeyImport(raw, &bccsp.AES256ImportKeyOpts{})
+		require.NoError(t, err)
+		require.True(t, k.Private())
+	})
 
-	pass, err = currentBCCSP.verifyP11ECDSA(key, hash2, R, S, currentTestConfig.securityLevel/8)
-	require.NoError(t, err)
-	require.False(t, pass, "signature should not match")
+	t.Run("GetKey", func(t *testing.T) {
+		k, err := currentBCCSP.GetKey(k.SKI())
+		require.NoError(t, err)
+		require.True(t, k.Private())
+	})
 
-	pass = ecdsa.Verify(pubKey, hash2, R, S)
-	require.False(t, pass, "signature should not match with software verification")
+	t.Run("Hash", func(t *testing.T) {
+		digest, err := currentBCCSP.Hash([]byte("message"), &bccsp.SHA3_384Opts{})
+		require.NoError(t, err)
+		require.NotEmpty(t, digest)
+	})
+
+	t.Run("GetHash", func(t *testing.T) {
+		h, err := currentBCCSP.GetHash(&bccsp.SHA256Opts{})
+		require.NoError(t, err)
+		require.Equal(t, sha256.New(), h)
+	})
+
+	t.Run("Sign", func(t *testing.T) {
+		_, err := currentBCCSP.Sign(k, []byte("message"), nil)
+		require.EqualError(t, err, "Unsupported 'SignKey' provided [*sw.aesPrivateKey]")
+	})
+
+	t.Run("Verify", func(t *testing.T) {
+		_, err := currentBCCSP.Verify(k, []byte("signature"), []byte("digest"), nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Unsupported 'VerifyKey' provided")
+	})
+
+	t.Run("EncryptDecrypt", func(t *testing.T) {
+		msg := []byte("message")
+		ct, err := currentBCCSP.Encrypt(k, msg, &bccsp.AESCBCPKCS7ModeOpts{})
+		require.NoError(t, err)
+
+		pt, err := currentBCCSP.Decrypt(k, ct, &bccsp.AESCBCPKCS7ModeOpts{})
+		require.NoError(t, err)
+		require.Equal(t, msg, pt)
+	})
 }

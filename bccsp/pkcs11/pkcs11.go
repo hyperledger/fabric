@@ -10,7 +10,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/asn1"
 	"encoding/hex"
 	"fmt"
@@ -166,39 +165,6 @@ func (csp *impl) KeyGen(opts bccsp.KeyGenOpts) (k bccsp.Key, err error) {
 	return k, nil
 }
 
-// KeyImport imports a key from its raw representation using opts.
-// The opts argument should be appropriate for the primitive used.
-func (csp *impl) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
-	// Validate arguments
-	if raw == nil {
-		return nil, errors.New("Invalid raw. Cannot be nil")
-	}
-
-	if opts == nil {
-		return nil, errors.New("Invalid Opts parameter. It must not be nil")
-	}
-
-	switch opts.(type) {
-	case *bccsp.X509PublicKeyImportOpts:
-		x509Cert, ok := raw.(*x509.Certificate)
-		if !ok {
-			return nil, errors.New("[X509PublicKeyImportOpts] Invalid raw material. Expected *x509.Certificate")
-		}
-
-		pk := x509Cert.PublicKey
-
-		switch pk.(type) {
-		case *ecdsa.PublicKey:
-			return csp.KeyImport(pk, &bccsp.ECDSAGoPublicKeyImportOpts{Temporary: opts.Ephemeral()})
-		default:
-			return nil, errors.New("Certificate's public key type not recognized. Supported keys: [ECDSA]")
-		}
-
-	default:
-		return csp.BCCSP.KeyImport(raw, opts)
-	}
-}
-
 func (csp *impl) cacheKey(ski []byte, key bccsp.Key) {
 	csp.cacheLock.Lock()
 	csp.keyCache[hex.EncodeToString(ski)] = key
@@ -306,7 +272,6 @@ func (csp *impl) verifyECDSA(k ecdsaPublicKey, signature, digest []byte) (bool, 
 	if err != nil {
 		return false, err
 	}
-
 	if !lowS {
 		return false, fmt.Errorf("Invalid S. Must be smaller than half the order [%s][%s]", s, utils.GetCurveHalfOrdersAt(k.pub.Curve))
 	}
@@ -316,19 +281,6 @@ func (csp *impl) verifyECDSA(k ecdsaPublicKey, signature, digest []byte) (bool, 
 	}
 
 	return csp.verifyP11ECDSA(k.ski, digest, r, s, k.pub.Curve.Params().BitSize/8)
-}
-
-// Encrypt encrypts plaintext using key k.
-// The opts argument should be appropriate for the primitive used.
-func (csp *impl) Encrypt(k bccsp.Key, plaintext []byte, opts bccsp.EncrypterOpts) ([]byte, error) {
-	// TODO: Add PKCS11 support for encryption, when fabric starts requiring it
-	return csp.BCCSP.Encrypt(k, plaintext, opts)
-}
-
-// Decrypt decrypts ciphertext using key k.
-// The opts argument should be appropriate for the primitive used.
-func (csp *impl) Decrypt(k bccsp.Key, ciphertext []byte, opts bccsp.DecrypterOpts) ([]byte, error) {
-	return csp.BCCSP.Decrypt(k, ciphertext, opts)
 }
 
 func (csp *impl) getSession() (session pkcs11.SessionHandle, err error) {
@@ -572,7 +524,7 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 		return nil, nil, fmt.Errorf("P11: set-ID-to-SKI[private] failed [%s]", err)
 	}
 
-	//Set CKA_Modifible to false for both public key and private keys
+	// Set CKA_Modifible to false for both public key and private keys
 	if csp.immutable {
 		setCKAModifiable := []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_MODIFIABLE, false),
