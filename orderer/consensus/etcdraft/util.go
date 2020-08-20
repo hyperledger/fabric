@@ -271,8 +271,6 @@ type ConsenterCertificate struct {
 	CryptoProvider       bccsp.BCCSP
 }
 
-// type ConsenterCertificate []byte
-
 // IsConsenterOfChannel returns whether the caller is a consenter of a channel
 // by inspecting the given configuration block.
 // It returns nil if true, else returns an error.
