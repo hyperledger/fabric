@@ -5,7 +5,7 @@ This deployment guide is a high level overview of the proper sequence for settin
 
 The process for deploying a Fabric network is complex and presumes an understanding of Public Key Infrastructure and managing distributed systems. If you are a smart contract or application developer, you should not need this level of expertise in deploying a production level Fabric network. However, you might need to be aware of how networks are deployed in order to develop effective smart contracts and applications.
 
-If all you need is a development environment to test chaincode, smart contracts, and applications against, check out :doc:`test_network`. It includes two organizations, each owning one peer, and a single ordering service organization that owns a single ordering node. **This test network is not meant to provide a blueprint for deploying production components, and should not be used as such, as it makes assumptions and decisions that production deployments will not make.**
+If all you need is a development environment to test chaincode, smart contracts, and applications against, check out :doc:`test_network`. The network you'll deploy will include two organizations, each owning one peer, and a single ordering service organization that owns a single ordering node. **This test network is not meant to provide a blueprint for deploying production components, and should not be used as such, as it makes assumptions and decisions that production deployments will not make.**
 
 The guide will give you an overview of the steps of setting up production components and a production network:
 
@@ -22,7 +22,7 @@ The guide will give you an overview of the steps of setting up production compon
 Step one: Decide on your network configuration
 ----------------------------------------------
 
-The structure of a blockchain network must be dictated by the use case. These fundamental business decisions will vary according to your use case, but let's consider a few scenarios.
+The structure of a blockchain network will be dictated by the use case it's serving. There are too many options to give definitive guidance on every point, but let's consider a few scenarios.
 
 In contrast to development environments or proofs of concept, security, resource management, and high availability become a priority when operating in production. How many nodes do you need to satisfy high availability, and in what data centers do you wish to deploy them in to satisfy both the needs of disaster recovery and data residency? How will you ensure that your private keys and roots of trust remain secure?
 
@@ -32,19 +32,19 @@ In addition to the above, here is a sampling of the decisions you will need to m
   As part of the overall decisions you have to make about your peers (how many, how many on each channel, and so on) and about your ordering service (how many nodes, who will own them), you also have to decide on how the CAs for your organization will be deployed. Production networks should be using Transport Layer Security (TLS), which will require setting up a TLS CA and using it to generate TLS certficates. This TLS CA will need to be deployed before your enrollment CA. We'll discuss this more in :ref:`dg-step-three-set-up-your-cas`.
 
 * **Use Organizational Units or not?**
-  Some organizations might find it necessary to establish Organizational Units to create a separation between certain identities and MSPs created by a single CA.
+  Some organizations might find it necessary to establish Organizational Units to create a separation between certain identities and MSPs created by a single CA (for example, a manufacturer might want one organizational unit for its shipping department and another for its quality control department). Note that this is separate from the concept of the "Node OU", in which identities can have roles coded into them (for example, "admin" or "peer").
 
 * **Database type.**
-  Some channels in a network might require all data to be modeled in a way :doc:`couchdb_as_state_database` can understand, while other networks, prioritizing speed, might decide that all peers will use LevelDB. Note that channels should not have peers that use both CouchDB and LevelDB on them, as the two database types model data slightly differently.
+  Some channels in a network might require all data to be modeled in a way :doc:`couchdb_as_state_database` can understand, while other networks, prioritizing speed, might decide that all peers will use LevelDB. Note that channels should not have peers that use both CouchDB and LevelDB on them, as CouchDB imposes some data restrictions on keys and values. Keys and values that are valid in LevelDB may not be valid in CouchDB.
 
 * **Channels and private data.**
-  Some networks might decide that :doc:`channels` are the best way to ensure privacy and isolation for certain transactions. Others might decide that a single channel, along with :doc:`private-data/private-data`, better serves their need for privacy.
+  Some networks might decide that :doc:`channels` are the best way to ensure privacy and isolation for certain transactions. Others might decide that fewer channels, supplemented where necessary with :doc:`private-data/private-data` collections, better serves their privacy needs.
 
 * **Container orchestration.**
-  Different users might also make different decisions about their container orchestration, creating separate containers for their peer process, logging for the peer, CouchDB, gRPC communications, and chaincode, while other users might decide to combine some of these processes.
+  Different users might also make different decisions about their container orchestration, creating separate containers for their peer process, logging, CouchDB, gRPC communications, and chaincode, while other users might decide to combine some of these processes.
 
 * **Chaincode deployment method.**
-  Users now have the option to deploy their chaincode using either the built in build and run support, a customized build and run using the :doc:`cc_launcher`, or using an :doc:`cc_service`.
+  Users have the option to deploy their chaincode using either the built in build and run support, a customized build and run using the :doc:`cc_launcher`, or using an :doc:`cc_service`.
 
 * **Using firewalls.**
   In a production deployment, components belonging to one organization might need access to components from other organizations, necessitating the use of firewalls and advanced networking configuration. For example, applications using the Fabric SDK require access to all endorsing peers from all organizations and the ordering services for all channels. Similarly, peers need access to the ordering service on the channels that they are receiving new blocks from.
@@ -53,17 +53,16 @@ However and wherever your components are deployed, you will need a high degree o
 
 This deployment guide will not go through every iteration and potential network configuration, but does give common guidelines and rules to consider.
 
-
 .. _dg-step-two-set-up-a-cluster-for-your-resources:
 
 Step two: Set up a cluster for your resources
 ---------------------------------------------
 
-Generally speaking, Fabric is agnostic to the method used to deploy and manage it. It is possible, for example, to deploy and manage a peer from a laptop. For a number of reasons, this is likely to be unadvisable, but there is nothing in Fabric that prohibits it.
+Generally speaking, Fabric is agnostic to the methods used to deploy and manage it. It is possible, for example, to deploy and manage a peer on a laptop. For a number of reasons, this is likely to be unadvisable, but there is nothing in Fabric that prohibits it.
 
 As long as you have the ability to deploy containers, whether locally (or behind a firewall), or in a cloud, it should be possible to stand up components and connect them to each other. However, Kubernetes features a number of helpful tools that have made it a popular container management platform for deploying and managing Fabric networks. For more information about Kubernetes, check out `the Kubernetes documentation <https://kubernetes.io/docs>`_. This topic will mostly limit its scope to the binaries and provide instructions that can be applied when using a Docker deployment or Kubernetes.
 
-However and wherever you choose to deploy your components, you will need to make sure you have enough resources for the components to run effectively. The sizes you need will largely depend on your use case. If you plan to join a single peer to several high volume channels, it will need much more CPU and memory than a peer a user plans to join to a single channel. As a rough estimate, plan to dedicate approximately three times the resources to a peer as you plan to allocate to a single ordering node (as you will see below, it is recommended to deploy at least three and optimally five nodes in an ordering service). Similarly, you should need approximately a tenth of the resources for a CA as you will for a peer. You will also need to add storage to your cluster (some cloud providers may provide storage) as you cannot configure Persistent Volumes and Persistent Volume Claims without storage being set up with your cloud provider first.
+However and wherever you choose to deploy your components, you will need to make sure you have enough resources for the components to run effectively. The sizes you need will largely depend on your use case. If you plan to join a single peer to several high volume channels, it will need much more CPU and memory than if you only plan to join to a single channel. As a rough estimate, plan to dedicate approximately three times the resources to a peer as you plan to allocate to a single ordering node (as you will see below, it is recommended to deploy at least three and optimally five nodes in an ordering service). Similarly, you should need approximately a tenth of the resources for a CA as you will for a peer. You will also need to add storage to your cluster (some cloud providers may provide storage) as you cannot configure Persistent Volumes and Persistent Volume Claims without storage being set up with your cloud provider first.
 
 By deploying a proof of concept network and testing it under load, you will have a better sense of the resources you will require.
 
@@ -93,6 +92,14 @@ While all of the non-TLS certificates associated with an organization can be cre
 
 For an example of how to setup an organization CA and a TLS CA and enroll their admin identity, check out the `Fabric CA Deployment Guide <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-deploy.html>`__.  The deploy guide uses the Fabric CA client to register and enroll the identities that are required when setting up CAs.
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Deploy a Production CA
+
+   Planning for a CA <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-deploy-topology.html>
+   Checklist for a production CA server <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-config.html>
+   CA deployment steps <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/cadeploy.html>
+
 .. _dg-step-four-use-the-ca-to-create-identities-and-msps:
 
 Step four: Use the CA to create identities and MSPs
@@ -100,7 +107,7 @@ Step four: Use the CA to create identities and MSPs
 
 After you have created your CAs, you can use them to create the certificates for the identities and components related to your organization (which is represented by an MSP). For each organization, you will need to, at a minimum:
 
-* **Register and enroll an admin identity and create an MSP**. After the CA that will be associated with an organization has been created, it can be used to first register an identity and then enroll it. In the first step, a username and password for the identity is assigned by the admin of the CA. Attributes and affiliations can also be given to the identity (for example, a ``role`` of ``admin``, which is necessary for organization admins). After the identity has been registered, it can be enrolled by using the username and password. The CA will generate two certificates for this identity --- a public certificate (also known as a "signcert" or "public cert") known to the other members of the network, and the private key (stored in the ``keystore`` folder) used to sign actions taken by the identity. The CA will also generate a set of folders called an "MSP" containing the public certificate of the CA issuing the certificate and the root of trust for the CA (this may or may not be the same CA). This MSP can be thought of as defining the organization associated with the identity of the admin. In cases where the admin of the org will also be an admin of a node (which will be typical), **you must create the org admin identity before creating the local MSP of a node, since the certificate of the node admin must be used when creating the local MSP**.
+* **Register and enroll an admin identity and create an MSP**. After the CA that will be associated with an organization has been created, it can be used to first register a user and then enroll an identity (producing the certificate pair used by all entities on the network). In the first step, a username and password for the identity is assigned by the admin of the CA. Attributes and affiliations can also be given to the identity (for example, a ``role`` of ``admin``, which is necessary for organization admins). After the identity has been registered, it can be enrolled by using the username and password. The CA will generate two certificates for this identity --- a public certificate (also known as a "signcert" or "public cert") known to the other members of the network, and the private key (stored in the ``keystore`` folder) used to sign actions taken by the identity. The CA will also generate a set of folders called an "MSP" containing the public certificate of the CA issuing the certificate and the root of trust for the CA (this may or may not be the same CA). This MSP can be thought of as defining the organization associated with the identity of the admin. In cases where the admin of the org will also be an admin of a node (which will be typical), **you must create the org admin identity before creating the local MSP of a node, since the certificate of the node admin must be used when creating the local MSP**.
 * **Register and enroll node identities**. Just as an org admin identity is registered and enrolled, the identity of a node must be registered and enrolled with both an enrollment CA and a TLS CA (the latter generates certificates that are used to secure communications). Instead of giving a node a role of ``admin`` or ``user`` when registering it with the enrollment CA, give it a role of ``peer`` or ``orderer``. As with the admin, attributes and affiliations for this identity can also be assigned. The MSP structure for a node is known as a "local MSP", since the permissions assigned to the identities are only relevant at the local (node) level. This MSP is created when the node identity is created, and is used when bootstrapping the node.
 
 For more conceptual information about identities and permissions in a Fabric-based blockchain network, see :doc:`identity/identity` and :doc:`membership/membership`.
@@ -109,21 +116,14 @@ For more information about how to use a CA to register and enroll identities, in
 
 .. _dg-step-five-deploy-nodes:
 
-Step five: Deploy nodes
------------------------
+Step five: Deploy peers and ordering nodes
+------------------------------------------
 
 Once you have gathered all of the certificates and MSPs you need, you're almost ready to create a node. As discussed above, there are a number of valid ways to deploy nodes.
 
-.. _dg-create-a-peer:
+Before any node can be deployed, its configuration file must be customized. For the peer, this file is called ``core.yaml``, while the configuration file for ordering nodes is called ``orderer.yaml``.
 
-Create a peer
-~~~~~~~~~~~~~
-
-Before you can create a peer, you will need to customize the configuration file for the peer. In Fabric, this file is called ``core.yaml``. You can find a sample ``core.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml>`_.
-
-As you can see in the file, there are quite a number of parameters you either have the option to set or will need to set for your node to work properly. In general, if you do not have the need to change a tuning value, leave it alone. You will, however, likely need to adjust the various addresses, specify the database type you want to use, as well as to specify where the MSP for the node is located.
-
-You have two main options for tuning your configuration.
+You have three main options for tuning your configuration.
 
 1. Edit the YAML file bundled with the binaries.
 2. Use environment variable overrides when deploying.
@@ -131,42 +131,51 @@ You have two main options for tuning your configuration.
 
 Option 1 has the advantage of persisting your changes whenever you bring down and bring back up the node. The downside is that you will have to port the options you customized to the new YAML when upgrading to a new binary version (you should use the latest YAML when upgrading to a new version).
 
-Either way, here are some values in ``core.yaml`` you must review.
+.. note:: You can extrapolate environment variables from the parameters in the relevant YAML file by using all capital letters, underscores between the relevant phrases, and a prefix. For example, the peer configuration variable called ``peer.localMSPid`` (which is the ``localMSPid`` variable inside the ``peer`` configuration section) in ``core.yaml`` would be rendered as an environment variable called ``CORE_PEER_LOCALMSPID``, while the ordering service environment variable ``General.LocalMSPID`` in the ``General`` section of the ``orderer.yaml`` configuration file would be rendered as an environment variable called ``ORDERER_GENERAL_LOCALMSPID``.
 
-* ``peer.localMspID``: this is the name of the local MSP of your peer organization. This MSP is where your peer organization admins will be listed as well as the peer organization's root CA and TLS CA certificates.
+.. _dg-create-a-peer:
 
-* ``peer.mspConfigPath``: the place where the local MSP for the peer is located. Note that it is a best practice to mount this volume external to your container. This ensures that even if the container is stopped (for example, during a maintenance cycle) that the MSPs are not lost and have to be recreated.
+Creating a peer
+~~~~~~~~~~~~~~~
 
-* ``peer.address``: represents the endpoint to other peers in the same organization, an important consideration when establishing gossip communication within an organization.
+If you’ve read through the key concept topic on :doc:`peers/peers`, you should have a good idea of the role peers play in a network and the nature of their interactions with other network components. Peers are owned by organizations that are members of a channel (for this reason, these organizations are sometimes called "peer organizations"). They connect to the ordering service and to other peers, have smart contracts installed on them, and are where ledgers are stored.
 
-* ``peer.tls``: When you set the ``enabled`` value to ``true`` (as should be done in a production network), you will have to specify the locations of the relevant TLS certificates. Note that all of the nodes in a network (both the peers and the ordering nodes) must either all have TLS enabled or not enabled. For production networks, it is highly recommended to enable TLS. As with your MSP, it is a best practice to mount this volume external to your container.
+These roles are important to understand before you create a peer, as they will influence your customization and deployment decisions. For a look at the various decisions you will need to make, check out :doc:`deploypeer/peerplan`.
 
-* ``ledger``: users have a number of decisions to make about their ledger, including the state database type (LevelDB or CouchDB, for example), and its location (specified in ``fileSystemPath``). Note that for CouchDB, it is a best practice to operate your state database external to the peer (for example, in a separate container), as you will be better able to allocate specific resources to the database this way. For latency and security reasons, it is a best practice to have the CouchDB container on the same server as the peer. Access to the CouchDB container should be restricted to only the peer container.
+The configuration values in a peer's ``core.yaml`` file must be customized or overridden with environment variables. You can find the default ``core.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml>`_. This configuration file is bundled with the peer image and is also included with the downloadable binaries. For information about how to download the production ``core.yaml`` along with the peer image, check out :doc:`deploypeer/peerdeploy`.
 
-* ``gossip``: there are a number of configuration options to think about when setting up :doc:`gossip`, including the ``externalEndpoint`` (which makes peers discoverable to peers owned by other organizations) as well as the ``bootstrap`` address (which identifies a peer in the peer's own organization).
+While there are many parameters in the default ``core.yaml``, you will only need to customize a small percentage of them. In general, if you do not have the need to change a tuning value, keep the default value.
 
-* ``chaincode.externalBuilders``: this field is important to set when using :doc:`cc_service`.
+Among the parameters in ``core.yaml``, there are:
+
+* **Identifiers**: these include not just the paths to the relevant local MSP and Transport Layer Security (TLS) certificates, but also the name (known as the "peer ID") of the peer and the MSP ID of the organization that owns the peer.
+
+* **Addresses and paths**: because peers are not entities unto themselves but interact with other peers and components, you must specify a series of addresses in the configuration. These include addresses where the peer itself can be found by other components as well as the addresses where, for example, chaincodes can be found (if you are employing external chaincodes). Similarly, you will need to specify the location of your ledger (as well as your state database type) and the path to your external builders (again, if you intend to employ external chaincodes). These include **Operations and metrics**, which allow you to set up methods for monitoring the health and performance of your peer through the configuration of endpoints.
+
+* **Gossip**: components in Fabric networks communicate with each other using the "gossip" protocol. Through this protocol, they can be discovered by the discovery service and disseminate blocks and private data to each other. Note that gossip communications are secured using TLS.
+
+For more information about ``core.yaml`` and its specific parameters, check out :doc:`deploypeer/peerchecklist`.
 
 When you're comfortable with how your peer has been configured, how your volumes are mounted, and your backend configuration, you can run the command to launch the peer (this command will depend on your backend configuration).
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Deploying a Production Peer
+
+   deploypeer/peerplan
+   deploypeer/peerchecklist
+   deploypeer/peerdeploy
+
 .. _dg-create-an-ordering-node:
 
-Create an ordering node
-~~~~~~~~~~~~~~~~~~~~~~~
+Creating an ordering node
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Unlike the creation of a peer, you will need to create a genesis block (or reference a block that has already been created, if adding an ordering node to an existing ordering service) and specify the path to it before launching the ordering node.
 
 In Fabric, this configuration file for ordering nodes is called ``orderer.yaml``. You can find a sample ``orderer.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/master/sampleconfig/orderer.yaml>`_. Note that ``orderer.yaml`` is different than the "genesis block" of an ordering service. This block, which includes the initial configuration of the orderer system channel, must be created before an ordering node is created because it is used to bootstrap the node.
 
 As with the peer, you will see that there are quite a number of parameters you either have the option to set or will need to set for your node to work properly. In general, if you do not have the need to change a tuning value, leave it alone.
-
-You have two main options for tuning your configuration.
-
-1. Edit the YAML file bundled with the binaries.
-2. Use environment variable overrides when deploying.
-3. Specify flags on CLI commands.
-
-Option 1 has the advantage of persisting your changes whenever you bring down and bring back up the node. The downside is that you will have to port the options you customized to the new YAML when upgrading to a new binary version (you should use the latest YAML when upgrading to a new version).
 
 Either way, here are some values in ``orderer.yaml`` you must review. You will notice that some of these fields are the same as those in ``core.yaml`` only with different names.
 
@@ -196,14 +205,6 @@ Blockchain networks are all about connection, so once you've deployed nodes, you
 Part of the process of connecting nodes and creating channels will involve modifying policies to fit the use cases of business networks. For more information about policies, check out :doc:`policies/policies`.
 
 One of the common tasks in a Fabric will be the editing of existing channels. For a tutorial about that process, check out :doc:`config_update`. One popular channel update is to add an org to an existing channel. For a tutorial about that specific process, check out :doc:`channel_update_tutorial`. For information about upgrading nodes after they have been deployed, check out :doc:`upgrading_your_components`.
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Deploying a Production CA
-
-   Planning for a CA <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-deploy-topology.html>
-   Checklist for a production CA server <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-config.html>
-   CA deployment steps <https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/cadeploy.html>
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
