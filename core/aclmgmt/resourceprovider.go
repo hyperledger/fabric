@@ -181,3 +181,12 @@ func (rp *resourceProvider) CheckACL(resName string, channelID string, idinfo in
 
 	return rp.defaultProvider.CheckACL(resName, channelID, idinfo)
 }
+
+// CheckACLNoChannel implements the ACLProvider interface function
+func (rp *resourceProvider) CheckACLNoChannel(resName string, idinfo interface{}) error {
+	if !rp.enforceDefaultBehavior(resName, "", idinfo) {
+		return fmt.Errorf("cannot override peer type policy for channeless ACL check")
+	}
+
+	return rp.defaultProvider.CheckACLNoChannel(resName, idinfo)
+}

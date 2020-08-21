@@ -162,31 +162,72 @@ func TestPolicyChecker(t *testing.T) {
 		&mocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
 	)
 
-	// Validate Alice signatures against channel A's readers
-	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
-	policyManagerGetter.Managers["A"].(*mocks.MockChannelPolicyManager).MockPolicy.(*mocks.MockPolicy).Deserializer.(*mocks.MockIdentityDeserializer).Msg = sProp.ProposalBytes
-	sProp.Signature = sProp.ProposalBytes
-	err := pc.CheckPolicy("A", "readers", sProp)
-	require.NoError(t, err)
+	t.Run("CheckPolicy", func(t *testing.T) {
+		// Validate Alice signatures against channel A's readers
+		sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+		policyManagerGetter.Managers["A"].(*mocks.MockChannelPolicyManager).MockPolicy.(*mocks.MockPolicy).Deserializer.(*mocks.MockIdentityDeserializer).Msg = sProp.ProposalBytes
+		sProp.Signature = sProp.ProposalBytes
+		err := pc.CheckPolicy("A", "readers", sProp)
+		require.NoError(t, err)
 
-	// Proposal from Alice for channel A should fail against channel B, where Alice is not involved
-	err = pc.CheckPolicy("B", "readers", sProp)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Failed evaluating policy on signed data during check policy on channel [B] with policy [readers]: [Invalid Identity]")
+		// Proposal from Alice for channel A should fail against channel B, where Alice is not involved
+		err = pc.CheckPolicy("B", "readers", sProp)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Failed evaluating policy on signed data during check policy on channel [B] with policy [readers]: [Invalid Identity]")
 
-	// Proposal from Alice for channel A should fail against channel C, where Alice is involved but signature is not valid
-	err = pc.CheckPolicy("C", "readers", sProp)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Failed evaluating policy on signed data during check policy on channel [C] with policy [readers]: [Invalid Signature]")
+		// Proposal from Alice for channel A should fail against channel C, where Alice is involved but signature is not valid
+		err = pc.CheckPolicy("C", "readers", sProp)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Failed evaluating policy on signed data during check policy on channel [C] with policy [readers]: [Invalid Signature]")
+	})
 
-	// Alice is a member of the local MSP, policy check must succeed
-	identityDeserializer.Msg = sProp.ProposalBytes
-	err = pc.CheckPolicyNoChannel(mgmt.Members, sProp)
-	require.NoError(t, err)
+	t.Run("CheckPolicyNoChannel", func(t *testing.T) {
+		sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+		sProp.Signature = sProp.ProposalBytes
 
-	sProp, _ = protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Bob"), []byte("msg2"))
-	// Bob is not a member of the local MSP, policy check must fail
-	err = pc.CheckPolicyNoChannel(mgmt.Members, sProp)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "Failed deserializing proposal creator during channelless check policy with policy [Members]: [Invalid Identity]")
+		// Alice is a member of the local MSP, policy check must succeed
+		identityDeserializer.Msg = sProp.ProposalBytes
+		err := pc.CheckPolicyNoChannel(mgmt.Members, sProp)
+		require.NoError(t, err)
+
+		sProp, _ = protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Bob"), []byte("msg2"))
+		// Bob is not a member of the local MSP, policy check must fail
+		err = pc.CheckPolicyNoChannel(mgmt.Members, sProp)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Failed deserializing proposal creator during channelless check policy with policy [Members]: [Invalid Identity]")
+	})
+
+	t.Run("CheckPolicyNoChannel", func(t *testing.T) {
+		signedData := &protoutil.SignedData{
+			Identity:  []byte("Alice"),
+			Data:      []byte("msg1"),
+			Signature: []byte("msg1"), // for testing only, signature is same as data to pass MockIdentity.Verify
+		}
+
+		// Alice is a member of the local MSP, policy check must succeed
+		identityDeserializer.Msg = signedData.Data
+		err := pc.CheckPolicyNoChannelBySignedData(mgmt.Admins, []*protoutil.SignedData{signedData})
+		require.NoError(t, err)
+
+		// CheckPolicyNoChannelBySignedData iterates each signed data and returns an error if any data is invalid
+		// Bob is not a member of the local MSP, policy check must fail when deserializing the identity
+		signedData2 := &protoutil.SignedData{
+			Identity:  []byte("Bob"),
+			Data:      []byte("msg2"),
+			Signature: []byte("msg2"),
+		}
+		err = pc.CheckPolicyNoChannelBySignedData(mgmt.Admins, []*protoutil.SignedData{signedData, signedData2})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed deserializing signed data identity during channelless check policy with policy [Admins]: [Invalid Identity]")
+
+		// policy name cannot be empty
+		err = pc.CheckPolicyNoChannelBySignedData("", []*protoutil.SignedData{signedData})
+		require.EqualError(t, err, "invalid policy name during channelless check policy. Name must be different from nil.")
+
+		// signed data cannot be nil or empty
+		err = pc.CheckPolicyNoChannelBySignedData(mgmt.Admins, nil)
+		require.EqualError(t, err, "no signed data during channelless check policy with policy [Admins]")
+		err = pc.CheckPolicyNoChannelBySignedData(mgmt.Admins, []*protoutil.SignedData{})
+		require.EqualError(t, err, "no signed data during channelless check policy with policy [Admins]")
+	})
 }

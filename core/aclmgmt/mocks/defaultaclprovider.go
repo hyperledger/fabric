@@ -19,6 +19,18 @@ type DefaultACLProvider struct {
 	checkACLReturnsOnCall map[int]struct {
 		result1 error
 	}
+	CheckACLNoChannelStub        func(string, interface{}) error
+	checkACLNoChannelMutex       sync.RWMutex
+	checkACLNoChannelArgsForCall []struct {
+		arg1 string
+		arg2 interface{}
+	}
+	checkACLNoChannelReturns struct {
+		result1 error
+	}
+	checkACLNoChannelReturnsOnCall map[int]struct {
+		result1 error
+	}
 	IsPtypePolicyStub        func(string) bool
 	isPtypePolicyMutex       sync.RWMutex
 	isPtypePolicyArgsForCall []struct {
@@ -96,6 +108,67 @@ func (fake *DefaultACLProvider) CheckACLReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
+func (fake *DefaultACLProvider) CheckACLNoChannel(arg1 string, arg2 interface{}) error {
+	fake.checkACLNoChannelMutex.Lock()
+	ret, specificReturn := fake.checkACLNoChannelReturnsOnCall[len(fake.checkACLNoChannelArgsForCall)]
+	fake.checkACLNoChannelArgsForCall = append(fake.checkACLNoChannelArgsForCall, struct {
+		arg1 string
+		arg2 interface{}
+	}{arg1, arg2})
+	fake.recordInvocation("CheckACLNoChannel", []interface{}{arg1, arg2})
+	fake.checkACLNoChannelMutex.Unlock()
+	if fake.CheckACLNoChannelStub != nil {
+		return fake.CheckACLNoChannelStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.checkACLNoChannelReturns
+	return fakeReturns.result1
+}
+
+func (fake *DefaultACLProvider) CheckACLNoChannelCallCount() int {
+	fake.checkACLNoChannelMutex.RLock()
+	defer fake.checkACLNoChannelMutex.RUnlock()
+	return len(fake.checkACLNoChannelArgsForCall)
+}
+
+func (fake *DefaultACLProvider) CheckACLNoChannelCalls(stub func(string, interface{}) error) {
+	fake.checkACLNoChannelMutex.Lock()
+	defer fake.checkACLNoChannelMutex.Unlock()
+	fake.CheckACLNoChannelStub = stub
+}
+
+func (fake *DefaultACLProvider) CheckACLNoChannelArgsForCall(i int) (string, interface{}) {
+	fake.checkACLNoChannelMutex.RLock()
+	defer fake.checkACLNoChannelMutex.RUnlock()
+	argsForCall := fake.checkACLNoChannelArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *DefaultACLProvider) CheckACLNoChannelReturns(result1 error) {
+	fake.checkACLNoChannelMutex.Lock()
+	defer fake.checkACLNoChannelMutex.Unlock()
+	fake.CheckACLNoChannelStub = nil
+	fake.checkACLNoChannelReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *DefaultACLProvider) CheckACLNoChannelReturnsOnCall(i int, result1 error) {
+	fake.checkACLNoChannelMutex.Lock()
+	defer fake.checkACLNoChannelMutex.Unlock()
+	fake.CheckACLNoChannelStub = nil
+	if fake.checkACLNoChannelReturnsOnCall == nil {
+		fake.checkACLNoChannelReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.checkACLNoChannelReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *DefaultACLProvider) IsPtypePolicy(arg1 string) bool {
 	fake.isPtypePolicyMutex.Lock()
 	ret, specificReturn := fake.isPtypePolicyReturnsOnCall[len(fake.isPtypePolicyArgsForCall)]
@@ -161,6 +234,8 @@ func (fake *DefaultACLProvider) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.checkACLMutex.RLock()
 	defer fake.checkACLMutex.RUnlock()
+	fake.checkACLNoChannelMutex.RLock()
+	defer fake.checkACLNoChannelMutex.RUnlock()
 	fake.isPtypePolicyMutex.RLock()
 	defer fake.isPtypePolicyMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

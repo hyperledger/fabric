@@ -30,6 +30,11 @@ func (m *MockACLProvider) CheckACL(resName string, channelID string, idinfo inte
 	return args.Error(0)
 }
 
+func (m *MockACLProvider) CheckACLNoChannel(resName string, idinfo interface{}) error {
+	args := m.mock.Called(resName, idinfo)
+	return args.Error(0)
+}
+
 func (m *MockACLProvider) GenerateSimulationResults(txEnvelop *common.Envelope, simulator ledger.TxSimulator, initializingLedger bool) error {
 	return nil
 }

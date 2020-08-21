@@ -47,6 +47,18 @@ type PolicyChecker struct {
 	checkPolicyNoChannelReturnsOnCall map[int]struct {
 		result1 error
 	}
+	CheckPolicyNoChannelBySignedDataStub        func(string, []*protoutil.SignedData) error
+	checkPolicyNoChannelBySignedDataMutex       sync.RWMutex
+	checkPolicyNoChannelBySignedDataArgsForCall []struct {
+		arg1 string
+		arg2 []*protoutil.SignedData
+	}
+	checkPolicyNoChannelBySignedDataReturns struct {
+		result1 error
+	}
+	checkPolicyNoChannelBySignedDataReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -241,6 +253,72 @@ func (fake *PolicyChecker) CheckPolicyNoChannelReturnsOnCall(i int, result1 erro
 	}{result1}
 }
 
+func (fake *PolicyChecker) CheckPolicyNoChannelBySignedData(arg1 string, arg2 []*protoutil.SignedData) error {
+	var arg2Copy []*protoutil.SignedData
+	if arg2 != nil {
+		arg2Copy = make([]*protoutil.SignedData, len(arg2))
+		copy(arg2Copy, arg2)
+	}
+	fake.checkPolicyNoChannelBySignedDataMutex.Lock()
+	ret, specificReturn := fake.checkPolicyNoChannelBySignedDataReturnsOnCall[len(fake.checkPolicyNoChannelBySignedDataArgsForCall)]
+	fake.checkPolicyNoChannelBySignedDataArgsForCall = append(fake.checkPolicyNoChannelBySignedDataArgsForCall, struct {
+		arg1 string
+		arg2 []*protoutil.SignedData
+	}{arg1, arg2Copy})
+	fake.recordInvocation("CheckPolicyNoChannelBySignedData", []interface{}{arg1, arg2Copy})
+	fake.checkPolicyNoChannelBySignedDataMutex.Unlock()
+	if fake.CheckPolicyNoChannelBySignedDataStub != nil {
+		return fake.CheckPolicyNoChannelBySignedDataStub(arg1, arg2)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.checkPolicyNoChannelBySignedDataReturns
+	return fakeReturns.result1
+}
+
+func (fake *PolicyChecker) CheckPolicyNoChannelBySignedDataCallCount() int {
+	fake.checkPolicyNoChannelBySignedDataMutex.RLock()
+	defer fake.checkPolicyNoChannelBySignedDataMutex.RUnlock()
+	return len(fake.checkPolicyNoChannelBySignedDataArgsForCall)
+}
+
+func (fake *PolicyChecker) CheckPolicyNoChannelBySignedDataCalls(stub func(string, []*protoutil.SignedData) error) {
+	fake.checkPolicyNoChannelBySignedDataMutex.Lock()
+	defer fake.checkPolicyNoChannelBySignedDataMutex.Unlock()
+	fake.CheckPolicyNoChannelBySignedDataStub = stub
+}
+
+func (fake *PolicyChecker) CheckPolicyNoChannelBySignedDataArgsForCall(i int) (string, []*protoutil.SignedData) {
+	fake.checkPolicyNoChannelBySignedDataMutex.RLock()
+	defer fake.checkPolicyNoChannelBySignedDataMutex.RUnlock()
+	argsForCall := fake.checkPolicyNoChannelBySignedDataArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
+}
+
+func (fake *PolicyChecker) CheckPolicyNoChannelBySignedDataReturns(result1 error) {
+	fake.checkPolicyNoChannelBySignedDataMutex.Lock()
+	defer fake.checkPolicyNoChannelBySignedDataMutex.Unlock()
+	fake.CheckPolicyNoChannelBySignedDataStub = nil
+	fake.checkPolicyNoChannelBySignedDataReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *PolicyChecker) CheckPolicyNoChannelBySignedDataReturnsOnCall(i int, result1 error) {
+	fake.checkPolicyNoChannelBySignedDataMutex.Lock()
+	defer fake.checkPolicyNoChannelBySignedDataMutex.Unlock()
+	fake.CheckPolicyNoChannelBySignedDataStub = nil
+	if fake.checkPolicyNoChannelBySignedDataReturnsOnCall == nil {
+		fake.checkPolicyNoChannelBySignedDataReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.checkPolicyNoChannelBySignedDataReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *PolicyChecker) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -250,6 +328,8 @@ func (fake *PolicyChecker) Invocations() map[string][][]interface{} {
 	defer fake.checkPolicyBySignedDataMutex.RUnlock()
 	fake.checkPolicyNoChannelMutex.RLock()
 	defer fake.checkPolicyNoChannelMutex.RUnlock()
+	fake.checkPolicyNoChannelBySignedDataMutex.RLock()
+	defer fake.checkPolicyNoChannelBySignedDataMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

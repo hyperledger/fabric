@@ -874,7 +874,7 @@ func serve(args []string) error {
 	pb.RegisterEndorserServer(peerServer.Server(), auth)
 
 	// register the snapshot server
-	snapshotSvc := &snapshotgrpc.SnapshotService{LedgerGetter: peerInstance}
+	snapshotSvc := &snapshotgrpc.SnapshotService{LedgerGetter: peerInstance, ACLProvider: aclProvider}
 	pb.RegisterSnapshotServer(peerServer.Server(), snapshotSvc)
 
 	go func() {
