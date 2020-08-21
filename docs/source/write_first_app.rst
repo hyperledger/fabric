@@ -740,7 +740,7 @@ Terminal Output:
   }
 
 In this part of the sequence, the sample application attempts to submit
-an ``'UdpateAsset'`` transaction for an asset that we know does not exist (``asset70``).
+an ``'UpdateAsset'`` transaction for an asset that we know does not exist (``asset70``).
 We expect that we will get an error because you cannot update an asset that does not exist,
 which is why it is a good idea to check if an asset exists prior to attempting an
 asset update or deletion.
