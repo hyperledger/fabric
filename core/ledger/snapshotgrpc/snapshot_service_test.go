@@ -67,12 +67,12 @@ func TestSnapshot(t *testing.T) {
 	// test error propagation from ledger, generate blockNumber=50 should return an error
 	signedRequest = createSignedRequest(ledgerID, 50)
 	_, err = snapshotSvc.Generate(context.Background(), signedRequest)
-	require.EqualError(t, err, "duplicate snapshot request for height 50")
+	require.EqualError(t, err, "duplicate snapshot request for block number 50")
 
 	// test error propagation from ledger, cancel blockNumber=100 again should return an error
 	signedRequest = createSignedRequest(ledgerID, 100)
 	_, err = snapshotSvc.Cancel(context.Background(), signedRequest)
-	require.EqualError(t, err, "no snapshot request exists for height 100")
+	require.EqualError(t, err, "no snapshot request exists for block number 100")
 
 	// common error tests for all requests
 	var tests = []struct {

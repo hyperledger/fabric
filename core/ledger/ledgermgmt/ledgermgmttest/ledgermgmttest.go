@@ -79,8 +79,8 @@ func CreateSnapshotWithGenesisBlock(t *testing.T, testDir string, ledgerID strin
 	l, err := ledgerMgr.CreateLedger(ledgerID, gb)
 	require.NoError(t, err)
 
-	require.NoError(t, l.SubmitSnapshotRequest(1))
-	snapshotDir := kvledger.SnapshotDirForLedgerHeight(initializer.Config.SnapshotsConfig.RootDir, ledgerID, 1)
+	require.NoError(t, l.SubmitSnapshotRequest(0))
+	snapshotDir := kvledger.SnapshotDirForLedgerBlockNum(initializer.Config.SnapshotsConfig.RootDir, ledgerID, 0)
 	snapshotGenerated := func() bool {
 		pendingRequests, err := l.PendingSnapshotRequests()
 		require.NoError(t, err)

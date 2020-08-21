@@ -62,7 +62,7 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 		&expectedSnapshotOutput{
 			snapshotRootDir:   snapshotRootDir,
 			ledgerID:          kvlgr.ledgerID,
-			ledgerHeight:      1,
+			lastBlockNumber:   0,
 			lastBlockHash:     protoutil.BlockHeaderHash(genesisBlk.Header),
 			previousBlockHash: genesisBlk.Header.PreviousHash,
 			lastCommitHash:    kvlgr.commitHash,
@@ -88,7 +88,7 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 		&expectedSnapshotOutput{
 			snapshotRootDir:   snapshotRootDir,
 			ledgerID:          kvlgr.ledgerID,
-			ledgerHeight:      2,
+			lastBlockNumber:   1,
 			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header),
 			previousBlockHash: blockAndPvtdata1.Block.Header.PreviousHash,
 			lastCommitHash:    kvlgr.commitHash,
@@ -119,7 +119,7 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 		&expectedSnapshotOutput{
 			snapshotRootDir:   snapshotRootDir,
 			ledgerID:          kvlgr.ledgerID,
-			ledgerHeight:      3,
+			lastBlockNumber:   2,
 			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header),
 			previousBlockHash: blockAndPvtdata2.Block.Header.PreviousHash,
 			lastCommitHash:    kvlgr.commitHash,
@@ -159,7 +159,7 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 		&expectedSnapshotOutput{
 			snapshotRootDir:   snapshotRootDir,
 			ledgerID:          kvlgr.ledgerID,
-			ledgerHeight:      4,
+			lastBlockNumber:   3,
 			lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
 			previousBlockHash: blockAndPvtdata3.Block.Header.PreviousHash,
 			lastCommitHash:    kvlgr.commitHash,
@@ -173,7 +173,7 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 		},
 	)
 
-	snapshotDir := SnapshotDirForLedgerHeight(snapshotRootDir, kvlgr.ledgerID, 4)
+	snapshotDir := SnapshotDirForLedgerBlockNum(snapshotRootDir, kvlgr.ledgerID, 3)
 
 	t.Run("create-ledger-from-snapshot", func(t *testing.T) {
 		createdLedger := testCreateLedgerFromSnapshot(t, snapshotDir, kvlgr.ledgerID)
@@ -181,8 +181,8 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 			provider,
 			createdLedger,
 			&expectedLegderState{
-				ledgerHeight:      4,
-				currentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
+				lastBlockNumber:   3,
+				lastBlockHash:     protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
 				previousBlockHash: blockAndPvtdata3.Block.Header.PreviousHash,
 				lastCommitHash:    kvlgr.commitHash,
 				namespace:         "ns",
@@ -206,11 +206,15 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 
 func TestSnapshotDBTypeCouchDB(t *testing.T) {
 	conf, cleanup := testConfig(t)
+	fmt.Printf("snapshotRootDir %s\n", conf.SnapshotsConfig.RootDir)
 	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
-	lgr, err := provider.open("testLedger", nil)
+
+	_, genesisBlk := testutil.NewBlockGenerator(t, "testLedgerid", false)
+	lgr, err := provider.CreateFromGenesisBlock(genesisBlk)
 	require.NoError(t, err)
+	defer lgr.Close()
 	kvlgr := lgr.(*kvLedger)
 
 	// artificially set the db type
@@ -221,15 +225,18 @@ func TestSnapshotDBTypeCouchDB(t *testing.T) {
 			snapshotRootDir: conf.SnapshotsConfig.RootDir,
 			ledgerID:        kvlgr.ledgerID,
 			stateDBType:     ledger.CouchDB,
+			lastBlockHash:   protoutil.BlockHeaderHash(genesisBlk.Header),
+			expectedBinaryFiles: []string{
+				"txids.data", "txids.metadata",
+			},
 		},
 	)
 }
-
 func TestSnapshotDirPaths(t *testing.T) {
 	require.Equal(t, "/peerFSPath/snapshotRootDir/underConstruction", InProgressSnapshotsPath("/peerFSPath/snapshotRootDir"))
 	require.Equal(t, "/peerFSPath/snapshotRootDir/completed", CompletedSnapshotsPath("/peerFSPath/snapshotRootDir"))
 	require.Equal(t, "/peerFSPath/snapshotRootDir/completed/myLedger", SnapshotsDirForLedger("/peerFSPath/snapshotRootDir", "myLedger"))
-	require.Equal(t, "/peerFSPath/snapshotRootDir/completed/myLedger/2000", SnapshotDirForLedgerHeight("/peerFSPath/snapshotRootDir", "myLedger", 2000))
+	require.Equal(t, "/peerFSPath/snapshotRootDir/completed/myLedger/2000", SnapshotDirForLedgerBlockNum("/peerFSPath/snapshotRootDir", "myLedger", 2000))
 }
 
 func TestSnapshotDirPathsCreation(t *testing.T) {
@@ -371,7 +378,7 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 
 	t.Run("renaming to the final snapshot dir returns error", func(t *testing.T) {
 		closeAndReopenLedgerProvider()
-		snapshotFinalDir := SnapshotDirForLedgerHeight(conf.SnapshotsConfig.RootDir, "testLedgerid", 1)
+		snapshotFinalDir := SnapshotDirForLedgerBlockNum(conf.SnapshotsConfig.RootDir, "testLedgerid", 0)
 		require.NoError(t, os.MkdirAll(snapshotFinalDir, 0744))
 		defer os.RemoveAll(snapshotFinalDir)
 		require.NoError(t, ioutil.WriteFile( // make a non-empty snapshotFinalDir to trigger failure on rename
@@ -623,7 +630,7 @@ func computeHashForTest(t *testing.T, provider *Provider, content []byte) string
 type expectedSnapshotOutput struct {
 	snapshotRootDir     string
 	ledgerID            string
-	ledgerHeight        uint64
+	lastBlockNumber     uint64
 	lastBlockHash       []byte
 	previousBlockHash   []byte
 	lastCommitHash      []byte
@@ -640,7 +647,7 @@ func verifySnapshotOutput(
 	require.NoError(t, err)
 	require.Len(t, f, 0)
 
-	snapshotDir := SnapshotDirForLedgerHeight(o.snapshotRootDir, o.ledgerID, o.ledgerHeight)
+	snapshotDir := SnapshotDirForLedgerBlockNum(o.snapshotRootDir, o.ledgerID, o.lastBlockNumber)
 	files, err := ioutil.ReadDir(snapshotDir)
 	require.NoError(t, err)
 	require.Len(t, files, len(o.expectedBinaryFiles)+2) // + 2 JSON files
@@ -665,7 +672,7 @@ func verifySnapshotOutput(
 	require.Equal(t,
 		&snapshotSignableMetadata{
 			ChannelName:            o.ledgerID,
-			ChannelHeight:          o.ledgerHeight,
+			LastBlockNumber:        o.lastBlockNumber,
 			LastBlockHashInHex:     hex.EncodeToString(o.lastBlockHash),
 			PreviousBlockHashInHex: previousBlockHashHex,
 			StateDBType:            o.stateDBType,
@@ -699,8 +706,8 @@ func testCreateLedgerFromSnapshot(t *testing.T, snapshotDir string, expectedChan
 }
 
 type expectedLegderState struct {
-	ledgerHeight      uint64
-	currentBlockHash  []byte
+	lastBlockNumber   uint64
+	lastBlockHash     []byte
 	previousBlockHash []byte
 	lastCommitHash    []byte
 	namespace         string
@@ -720,8 +727,8 @@ func verifyCreatedLedger(t *testing.T,
 	require.NoError(t, err)
 	require.Equal(t,
 		&common.BlockchainInfo{
-			Height:            e.ledgerHeight,
-			CurrentBlockHash:  e.currentBlockHash,
+			Height:            e.lastBlockNumber + 1,
+			CurrentBlockHash:  e.lastBlockHash,
 			PreviousBlockHash: e.previousBlockHash,
 		},
 		destBCInfo,
@@ -729,11 +736,11 @@ func verifyCreatedLedger(t *testing.T,
 
 	statedbSavepoint, err := l.txmgr.GetLastSavepoint()
 	require.NoError(t, err)
-	require.Equal(t, version.NewHeight(e.ledgerHeight-1, math.MaxUint64), statedbSavepoint)
+	require.Equal(t, version.NewHeight(e.lastBlockNumber, math.MaxUint64), statedbSavepoint)
 
 	historydbSavepoint, err := l.historyDB.GetLastSavepoint()
 	require.NoError(t, err)
-	require.Equal(t, version.NewHeight(e.ledgerHeight-1, math.MaxUint64), historydbSavepoint)
+	require.Equal(t, version.NewHeight(e.lastBlockNumber, math.MaxUint64), historydbSavepoint)
 
 	qe, err := l.txmgr.NewQueryExecutor("dummyTxId")
 	require.NoError(t, err)
