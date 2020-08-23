@@ -38,6 +38,9 @@ func TestCancelRequestCmd(t *testing.T) {
 	mockSigner.SignReturns(nil, fmt.Errorf("fake-sign-error"))
 	require.EqualError(t, cmd.Execute(), "fake-sign-error")
 
+	mockSigner.SerializeReturns(nil, fmt.Errorf("fake-serialize-error"))
+	require.EqualError(t, cmd.Execute(), "fake-serialize-error")
+
 	resetFlags()
 	cmd.SetArgs([]string{"-b", "100"})
 	require.EqualError(t, cmd.Execute(), "the required parameter 'channelID' is empty. Rerun the command with -C flag")

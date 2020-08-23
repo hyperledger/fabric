@@ -8,6 +8,7 @@ package snapshot
 
 import (
 	"github.com/golang/protobuf/proto"
+	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -82,5 +83,22 @@ func signSnapshotRequest(signer common.Signer, request proto.Message) (*pb.Signe
 	return &pb.SignedSnapshotRequest{
 		Request:   requestBytes,
 		Signature: signature,
+	}, nil
+}
+
+func createSignatureHeader(signer common.Signer) (*cb.SignatureHeader, error) {
+	creator, err := signer.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
+	nonce, err := protoutil.CreateNonce()
+	if err != nil {
+		return nil, err
+	}
+
+	return &cb.SignatureHeader{
+		Creator: creator,
+		Nonce:   nonce,
 	}, nil
 }

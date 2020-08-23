@@ -53,8 +53,14 @@ func listPending(cmd *cobra.Command, cl *client, cryptoProvider bccsp.BCCSP) err
 		}
 	}
 
+	signatureHdr, err := createSignatureHeader(cl.signer)
+	if err != nil {
+		return err
+	}
+
 	query := &pb.SnapshotQuery{
-		ChannelId: channelID,
+		SignatureHeader: signatureHdr,
+		ChannelId:       channelID,
 	}
 	signedRequest, err := signSnapshotRequest(cl.signer, query)
 	if err != nil {
