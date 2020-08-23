@@ -102,7 +102,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 
 	// submit a snapshot request, wait until it is generated (request removed from pending requests)
 	require.NoError(t, l.SubmitSnapshotRequest(0))
-	snapshotDir := kvledger.SnapshotDirForLedgerHeight(initializer.Config.SnapshotsConfig.RootDir, channelID, 1)
+	snapshotDir := kvledger.SnapshotDirForLedgerBlockNum(initializer.Config.SnapshotsConfig.RootDir, channelID, 0)
 	snapshotGenerated := func() bool {
 		pendingRequests, err := l.PendingSnapshotRequests()
 		require.NoError(t, err)
@@ -155,7 +155,8 @@ func TestChaincodeInfoProvider(t *testing.T) {
 	}()
 
 	gb, _ := test.MakeGenesisBlock("ledger1")
-	ledgerMgr.CreateLedger("ledger1", gb)
+	_, err = ledgerMgr.CreateLedger("ledger1", gb)
+	require.NoError(t, err)
 
 	mockDeployedCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
 	mockDeployedCCInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {

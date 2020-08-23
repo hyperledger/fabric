@@ -32,22 +32,22 @@ func TestSnapshotRequestBookKeeper(t *testing.T) {
 	bookkeeper, err := newSnapshotRequestBookkeeper(dbHandle)
 	require.NoError(t, err)
 
-	// add requests and verify smallestRequestHeight
+	// add requests and verify smallestRequest
 	require.NoError(t, bookkeeper.add(100))
-	require.Equal(t, uint64(100), bookkeeper.smallestRequestHeight)
+	require.Equal(t, uint64(100), bookkeeper.smallestRequestBlockNum)
 
 	require.NoError(t, bookkeeper.add(15))
-	require.Equal(t, uint64(15), bookkeeper.smallestRequestHeight)
+	require.Equal(t, uint64(15), bookkeeper.smallestRequestBlockNum)
 
 	require.NoError(t, bookkeeper.add(50))
-	require.Equal(t, uint64(15), bookkeeper.smallestRequestHeight)
+	require.Equal(t, uint64(15), bookkeeper.smallestRequestBlockNum)
 
-	requestHeights, err := bookkeeper.list()
+	requestBlockNums, err := bookkeeper.list()
 	require.NoError(t, err)
-	require.ElementsMatch(t, requestHeights, []uint64{15, 50, 100})
+	require.ElementsMatch(t, requestBlockNums, []uint64{15, 50, 100})
 
-	for _, height := range []uint64{15, 50, 100} {
-		exist, err := bookkeeper.exist(height)
+	for _, blockNumber := range []uint64{15, 50, 100} {
+		exist, err := bookkeeper.exist(blockNumber)
 		require.NoError(t, err)
 		require.True(t, exist)
 	}
@@ -65,25 +65,25 @@ func TestSnapshotRequestBookKeeper(t *testing.T) {
 	bookkeeper2, err := newSnapshotRequestBookkeeper(dbHandle2)
 	require.NoError(t, err)
 
-	requestHeights, err = bookkeeper2.list()
+	requestBlockNums, err = bookkeeper2.list()
 	require.NoError(t, err)
-	require.ElementsMatch(t, requestHeights, []uint64{15, 50, 100})
+	require.ElementsMatch(t, requestBlockNums, []uint64{15, 50, 100})
 
-	require.Equal(t, uint64(15), bookkeeper2.smallestRequestHeight)
+	require.Equal(t, uint64(15), bookkeeper2.smallestRequestBlockNum)
 
-	// delete requests and verify smallest request height
+	// delete requests and verify smallest request
 	require.NoError(t, bookkeeper2.delete(100))
-	require.Equal(t, uint64(15), bookkeeper2.smallestRequestHeight)
+	require.Equal(t, uint64(15), bookkeeper2.smallestRequestBlockNum)
 
 	require.NoError(t, bookkeeper2.delete(15))
-	require.Equal(t, uint64(50), bookkeeper2.smallestRequestHeight)
+	require.Equal(t, uint64(50), bookkeeper2.smallestRequestBlockNum)
 
 	require.NoError(t, bookkeeper2.delete(50))
-	require.Equal(t, defaultSmallestHeight, bookkeeper2.smallestRequestHeight)
+	require.Equal(t, defaultSmallestBlockNumber, bookkeeper2.smallestRequestBlockNum)
 
-	requestHeights, err = bookkeeper2.list()
+	requestBlockNums, err = bookkeeper2.list()
 	require.NoError(t, err)
-	require.ElementsMatch(t, requestHeights, []uint64{})
+	require.ElementsMatch(t, requestBlockNums, []uint64{})
 }
 
 func TestSnapshotRequestBookKeeperErrorPaths(t *testing.T) {
@@ -97,8 +97,8 @@ func TestSnapshotRequestBookKeeperErrorPaths(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, bookkeeper2.add(20))
-	require.EqualError(t, bookkeeper2.add(20), "duplicate snapshot request for height 20")
-	require.EqualError(t, bookkeeper2.delete(100), "no snapshot request exists for height 100")
+	require.EqualError(t, bookkeeper2.add(20), "duplicate snapshot request for block number 20")
+	require.EqualError(t, bookkeeper2.delete(100), "no snapshot request exists for block number 100")
 
 	provider.Close()
 
@@ -134,10 +134,10 @@ func TestSnapshotRequests(t *testing.T) {
 	kvledger := l.(*kvLedger)
 
 	// Test 1: submit requests in parallel and verify PendingSnapshotRequest
-	for _, height := range []uint64{100, 5, 3, 10, 30} {
-		go func(requestedHeight uint64) {
-			require.NoError(t, l.SubmitSnapshotRequest(requestedHeight))
-		}(height)
+	for _, blockNumber := range []uint64{100, 5, 3, 10, 30} {
+		go func(blockNumber uint64) {
+			require.NoError(t, l.SubmitSnapshotRequest(blockNumber))
+		}(blockNumber)
 	}
 	// wait until all requests are submitted
 	requestsUpdated := func() bool {
@@ -148,10 +148,10 @@ func TestSnapshotRequests(t *testing.T) {
 	require.Eventually(t, requestsUpdated, time.Minute, 100*time.Millisecond)
 
 	// Test 2: cancel requests in parallel and verify PendingSnapshotRequest
-	for _, height := range []uint64{3, 30} {
-		go func(requestedHeight uint64) {
-			require.NoError(t, l.CancelSnapshotRequest(requestedHeight))
-		}(height)
+	for _, blockNumber := range []uint64{3, 30} {
+		go func(blockNumber uint64) {
+			require.NoError(t, l.CancelSnapshotRequest(blockNumber))
+		}(blockNumber)
 	}
 	// wait until all requests are cancelled
 	requestsUpdated = func() bool {
@@ -161,13 +161,13 @@ func TestSnapshotRequests(t *testing.T) {
 	}
 	require.Eventually(t, requestsUpdated, time.Minute, 100*time.Millisecond)
 
-	// Test 3: commit blocks and verify snapshots are generated for height=5 and height=10
+	// Test 3: commit blocks and verify snapshots are generated for blocknumber=5 and blocknumber=10
 	lastBlock := testutilCommitBlocks(t, l, bg, 10, gbHash)
-	// verify snapshot has been generated for height=5
+	// verify snapshot has been generated for blocknumber=5
 	exists, err := kvledger.snapshotExists(5)
 	require.NoError(t, err)
 	require.True(t, exists)
-	// verify snapshot is eventually generated height=10
+	// verify snapshot is eventually generated blocknumber=10
 	snapshotExists := func() bool {
 		exists, err := kvledger.snapshotExists(10)
 		require.NoError(t, err)
@@ -175,10 +175,11 @@ func TestSnapshotRequests(t *testing.T) {
 	}
 	require.Eventually(t, snapshotExists, time.Minute, 100*time.Millisecond)
 
-	// Test 4: commit blocks and submit a request at height=0 to trigger snapshot generation
+	// Test 4: commit blocks and submit a request with default value (blocknumber=0) to trigger snapshot generation
+	// for the latest committed block
 	lastBlock = testutilCommitBlocks(t, l, bg, 20, protoutil.BlockHeaderHash(lastBlock.Header))
 	require.NoError(t, l.SubmitSnapshotRequest(0))
-	// wait until snapshot is generated for height=20
+	// wait until snapshot is generated for blocknumber=20
 	snapshotExists = func() bool {
 		exists, err := kvledger.snapshotExists(20)
 		require.NoError(t, err)
@@ -195,7 +196,7 @@ func TestSnapshotRequests(t *testing.T) {
 	require.Eventually(t, requestsUpdated, time.Minute, 100*time.Millisecond)
 
 	// prepare to test recoverSnapshot when a ledger is reopened
-	// commit blocks to height 25 and add a request at height 25 to the leveldb directly
+	// commit blocks upto block number 25 and add a request for block number 25 to the leveldb directly
 	// snapshot should not be generated and will be recovered after the ledger is reopened
 	testutilCommitBlocks(t, l, bg, 25, protoutil.BlockHeaderHash(lastBlock.Header))
 	require.NoError(t, kvledger.snapshotMgr.snapshotRequestBookkeeper.dbHandle.Put(encodeSnapshotRequestKey(25), []byte{}, true))
@@ -212,7 +213,7 @@ func TestSnapshotRequests(t *testing.T) {
 	require.NoError(t, err)
 	kvledger2 := l2.(*kvLedger)
 
-	// Test 5: verify snapshot height=25 is recovered and pending snapshot requests are correct
+	// Test 5: verify snapshot for blocknumber=25 is generated at startup time and pending snapshot requests are correct
 	snapshotExists = func() bool {
 		exists, err := kvledger2.snapshotExists(25)
 		require.NoError(t, err)
@@ -249,7 +250,7 @@ func TestSnapshotMgrShutdown(t *testing.T) {
 	require.PanicsWithError(
 		t,
 		"send on closed channel",
-		func() { kvledger.snapshotMgr.events <- &event{typ: commitStart, height: 1} },
+		func() { kvledger.snapshotMgr.events <- &event{typ: commitStart, blockNumber: 1} },
 	)
 	require.PanicsWithError(
 		t,
@@ -279,11 +280,11 @@ func TestSnapshotRequestsErrorPaths(t *testing.T) {
 	require.NoError(t, err)
 	defer l.Close()
 
-	// commit blocks and submit a request for the block height so that a snapshot is generated
+	// commit blocks and submit a request
 	testutilCommitBlocks(t, l, bg, 5, gbHash)
 	require.NoError(t, l.SubmitSnapshotRequest(5))
 
-	// wait until snapshot height=5 is generated
+	// wait until snapshot blocknumber=5 is generated
 	kvledger := l.(*kvLedger)
 	snapshotExists := func() bool {
 		exists, err := kvledger.snapshotExists(5)
@@ -293,14 +294,14 @@ func TestSnapshotRequestsErrorPaths(t *testing.T) {
 	require.Eventually(t, snapshotExists, time.Minute, 100*time.Millisecond)
 
 	// verify various error paths
-	require.EqualError(t, l.SubmitSnapshotRequest(5), "snapshot already generated for block height 5")
+	require.EqualError(t, l.SubmitSnapshotRequest(5), "snapshot already generated for block number 5")
 
-	require.EqualError(t, l.SubmitSnapshotRequest(3), "requested snapshot height 3 cannot be less than the current block height 5")
+	require.EqualError(t, l.SubmitSnapshotRequest(3), "requested snapshot for block number 3 cannot be less than the last committed block number 5")
 
 	require.NoError(t, l.SubmitSnapshotRequest(20))
-	require.EqualError(t, l.SubmitSnapshotRequest(20), "duplicate snapshot request for height 20")
+	require.EqualError(t, l.SubmitSnapshotRequest(20), "duplicate snapshot request for block number 20")
 
-	require.EqualError(t, l.CancelSnapshotRequest(100), "no snapshot request exists for height 100")
+	require.EqualError(t, l.CancelSnapshotRequest(100), "no snapshot request exists for block number 100")
 
 	provider.Close()
 
@@ -329,13 +330,13 @@ func equal(slice1 []uint64, slice2 []uint64) bool {
 	return true
 }
 
-func testutilCommitBlocks(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockGenerator, newBlockHeight uint64, previousBlockHash []byte) *common.Block {
+func testutilCommitBlocks(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockGenerator, finalBlockNum uint64, previousBlockHash []byte) *common.Block {
 	bcInfo, err := l.GetBlockchainInfo()
 	require.NoError(t, err)
 	startBlockNum := bcInfo.Height
 
 	var block *common.Block
-	for i := startBlockNum; i < newBlockHeight; i++ {
+	for i := startBlockNum; i <= finalBlockNum; i++ {
 		txid := util.GenerateUUID()
 		simulator, err := l.NewTxSimulator(txid)
 		require.NoError(t, err)

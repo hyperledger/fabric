@@ -16,18 +16,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+type eventType string
+
 const (
-	commitStart         = "commitStart"
-	commitDone          = "commitDone"
-	requestAdd          = "requestAdd"
-	requestCancel       = "requestCancel"
-	snapshotDone        = "snapshotDone"
-	snapshotMgrShutdown = "snapshotMgrShutdown"
+	commitStart         eventType = "commitStart"
+	commitDone          eventType = "commitDone"
+	requestAdd          eventType = "requestAdd"
+	requestCancel       eventType = "requestCancel"
+	snapshotDone        eventType = "snapshotDone"
+	snapshotMgrShutdown eventType = "snapshotMgrShutdown"
 )
 
-var (
-	snapshotRequestKeyPrefix        = []byte("s")
-	defaultSmallestHeight    uint64 = math.MaxUint64
+type nextBlockCommitStatus int
+
+const (
+	idle nextBlockCommitStatus = iota
+	blocked
+	inProcess
 )
 
 type snapshotMgr struct {
@@ -40,57 +45,46 @@ type snapshotMgr struct {
 }
 
 type event struct {
-	typ    string
-	height uint64
+	typ         eventType
+	blockNumber uint64
 }
 type requestResponse struct {
 	err error
 }
 
-// SubmitSnapshotRequest submits a snapshot request for the specified height.
-// The request will be stored in the ledger until the ledger's block height is equal to
-// the specified height and the snapshot generation is completed.
-// When height is 0, it will generate a snapshot at the current block height.
-// It returns an error if the specified height is smaller than the ledger's block height
-// or the requested height already exists.
-func (l *kvLedger) SubmitSnapshotRequest(height uint64) error {
-	l.snapshotMgr.events <- &event{requestAdd, height}
+// SubmitSnapshotRequest submits a snapshot request for the specified block number.
+// The request will be stored in the ledger until the ledger commits the given block number
+// and the snapshot generation is completed.
+// When block number is 0, it will generate a snapshot at the last committed block.
+// It returns an error if the specified block number is smaller than the last committed block number
+// or the requested block number already exists.
+func (l *kvLedger) SubmitSnapshotRequest(blockNumber uint64) error {
+	l.snapshotMgr.events <- &event{requestAdd, blockNumber}
 	response := <-l.snapshotMgr.requestResponses
 	return response.err
 }
 
 // CancelSnapshotRequest cancels the previously submitted request.
 // It returns an error if such a request does not exist or is under processing.
-// It locks snapshotRequestLock to synchronize among concurrent SubmitSnapshotRequest
-// and CancelSnapshotRequest calls.
-// It also locks snapshotGenerationRWLock to synchronize with commit before getting
-// blockchain info so that it will not cancel a under-processing request.
-func (l *kvLedger) CancelSnapshotRequest(height uint64) error {
-	l.snapshotMgr.events <- &event{requestCancel, height}
+func (l *kvLedger) CancelSnapshotRequest(blockNumber uint64) error {
+	l.snapshotMgr.events <- &event{requestCancel, blockNumber}
 	response := <-l.snapshotMgr.requestResponses
 	return response.err
 }
 
-// PendingSnapshotRequests returns a list of heights for the pending (or under processing) snapshot requests.
+// PendingSnapshotRequests returns a list of block numbers for the pending (or under processing) snapshot requests.
 func (l *kvLedger) PendingSnapshotRequests() ([]uint64, error) {
 	return l.snapshotMgr.snapshotRequestBookkeeper.list()
 }
 
 // ListSnapshots returns the information for available snapshots.
-// It returns a list of strings representing the following JSON object:
-// type snapshotSignableMetadata struct {
-//    ChannelName        string            `json:"channel_name"`
-//    ChannelHeight      uint64            `json:"channel_height"`
-//    LastBlockHashInHex string            `json:"last_block_hash"`
-//    FilesAndHashes     map[string]string `json:"snapshot_files_raw_hashes"`
-// }
 func (l *kvLedger) ListSnapshots() ([]string, error) {
 	return nil, errors.Errorf("not implemented")
 }
 
 // DeleteSnapshot deletes the snapshot files except for the metadata file and
 // returns an error if no such a snapshot exists
-func (l *kvLedger) DeleteSnapshot(height uint64) error {
+func (l *kvLedger) DeleteSnapshot(blockNumber uint64) error {
 	return errors.Errorf("not implemented")
 }
 
@@ -110,11 +104,8 @@ func (l *kvLedger) DeleteSnapshot(height uint64) error {
 // - requestCancel: sent when a snapshot request is cancelled
 // In addition, the snapshotMgrShutdown event is sent when snapshotMgr shutdown is called. Upon receiving this event,
 // this function will return immediately.
-func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedHeight uint64) {
-	// toStartCommitHeight is updated when a commitStart event is received
-	toStartCommitHeight := lastCommittedHeight
-	// committedHeight is updated when a commitDone event is received
-	committedHeight := lastCommittedHeight
+func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
+	committerStatus := idle
 	// snapshotInProgress is set to true before a generateSnapshot is called when processing commitDone or requestAdd event
 	// and set to false when snapshotDone event is received
 	snapshotInProgress := false
@@ -125,89 +116,97 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedHeight uint64) {
 
 	for {
 		e := <-events
-		logger.Debugw("event received", "type", e.typ, "height", e.height, "snapshotInProgress=", snapshotInProgress)
+		logger.Debugw("event received", "type", e.typ, "blockNumber", e.blockNumber, "snapshotInProgress=", snapshotInProgress)
 		switch e.typ {
 		case commitStart:
-			// toStartCommitHeight is updated to be the new block height before the block is committed;
-			// therefore, before commitDone event, toStartCommitHeight is equal to committedHeight + 1.
-			// In other words, if toStartCommitHeight is not equal to committedHeight, it means that a commit is in progress.
-			toStartCommitHeight = e.height
+			committerStatus = blocked
 			if snapshotInProgress {
-				logger.Infow("commit waiting on snapshot to be generated", "snapshotHeight", committedHeight)
+				logger.Infow("commit waiting on snapshot to be generated", "lastCommittedBlockNumber", lastCommittedBlockNumber)
 				continue
 			}
 			// no in-progress snapshot, let commit proceed
+			committerStatus = inProcess
 			commitProceed <- struct{}{}
 
 		case commitDone:
-			committedHeight = e.height
-			if committedHeight != l.snapshotMgr.snapshotRequestBookkeeper.smallestRequestHeight {
+			lastCommittedBlockNumber = e.blockNumber
+			committerStatus = idle
+			if lastCommittedBlockNumber != l.snapshotMgr.snapshotRequestBookkeeper.smallestRequestBlockNum {
 				continue
 			}
 			snapshotInProgress = true
-			requestedHeight := committedHeight
 			go func() {
 				if err := l.generateSnapshot(); err != nil {
-					logger.Errorw("Failed to generate snapshot", "height", requestedHeight, "error", err)
+					logger.Errorw("Failed to generate snapshot", "lastCommittedBlockNumber", lastCommittedBlockNumber, "error", err)
 				}
-				events <- &event{snapshotDone, requestedHeight}
+				events <- &event{snapshotDone, lastCommittedBlockNumber}
 			}()
 
 		case snapshotDone:
-			requestedHeight := e.height
-			logger.Debugw("snapshot is generated", "height", requestedHeight, "toStartCommitHeight", toStartCommitHeight, "committedHeight", committedHeight)
-			if err := l.snapshotMgr.snapshotRequestBookkeeper.delete(requestedHeight); err != nil {
-				logger.Errorw("Failed to delete snapshot request, the pending snapshot requests (if any) may not be processed", "height", requestedHeight, "error", err)
+			requestedBlockNum := e.blockNumber
+			logger.Debugw("snapshot is generated", "requestedBlockNum", requestedBlockNum, "lastCommittedBlockNumber", lastCommittedBlockNumber)
+			if err := l.snapshotMgr.snapshotRequestBookkeeper.delete(e.blockNumber); err != nil {
+				logger.Errorw("Failed to delete snapshot request, the pending snapshot requests (if any) may not be processed", "requestedBlockNum", requestedBlockNum, "error", err)
 			}
-			if toStartCommitHeight != committedHeight {
-				// there is an in-progress commit, write to commitProceed channel to unblock commit
+			if committerStatus == blocked {
+				// write to commitProceed channel to unblock commit
+				committerStatus = inProcess
 				commitProceed <- struct{}{}
 			}
 			snapshotInProgress = false
 
 		case requestAdd:
-			requestedHeight := e.height
-			if requestedHeight == 0 {
-				requestedHeight = toStartCommitHeight
+			leastAcceptableBlockNum := lastCommittedBlockNumber
+			if committerStatus != idle {
+				leastAcceptableBlockNum = +1
 			}
-			if requestedHeight < toStartCommitHeight {
-				requestResponses <- &requestResponse{errors.Errorf("requested snapshot height %d cannot be less than the current block height %d", requestedHeight, toStartCommitHeight)}
+
+			requestedBlockNum := e.blockNumber
+			if requestedBlockNum == 0 {
+				requestedBlockNum = leastAcceptableBlockNum
+			}
+
+			if requestedBlockNum < leastAcceptableBlockNum {
+				requestResponses <- &requestResponse{errors.Errorf("requested snapshot for block number %d cannot be less than the last committed block number %d", requestedBlockNum, leastAcceptableBlockNum)}
 				continue
 			}
-			if requestedHeight == committedHeight {
+
+			if requestedBlockNum == lastCommittedBlockNumber {
 				// this is a corner case where no block has been committed since last snapshot was generated.
-				exists, err := l.snapshotExists(requestedHeight)
+				exists, err := l.snapshotExists(requestedBlockNum)
 				if err != nil {
 					requestResponses <- &requestResponse{err}
 					continue
 				}
 				if exists {
-					requestResponses <- &requestResponse{errors.Errorf("snapshot already generated for block height %d", requestedHeight)}
+					requestResponses <- &requestResponse{errors.Errorf("snapshot already generated for block number %d", requestedBlockNum)}
 					continue
 				}
 			}
-			if err := l.snapshotMgr.snapshotRequestBookkeeper.add(requestedHeight); err != nil {
+
+			if err := l.snapshotMgr.snapshotRequestBookkeeper.add(requestedBlockNum); err != nil {
 				requestResponses <- &requestResponse{err}
 				continue
 			}
-			if toStartCommitHeight == committedHeight && requestedHeight == committedHeight {
+
+			if committerStatus == idle && requestedBlockNum == lastCommittedBlockNumber {
 				snapshotInProgress = true
 				go func() {
 					if err := l.generateSnapshot(); err != nil {
-						logger.Errorw("Failed to generate snapshot", "height", requestedHeight, "error", err)
+						logger.Errorw("Failed to generate snapshot", "requestedBlockNum", requestedBlockNum, "error", err)
 					}
-					events <- &event{snapshotDone, requestedHeight}
+					events <- &event{snapshotDone, requestedBlockNum}
 				}()
 			}
 			requestResponses <- &requestResponse{}
 
 		case requestCancel:
-			requestedHeight := e.height
-			if snapshotInProgress && requestedHeight == committedHeight {
+			requestedBlockNum := e.blockNumber
+			if snapshotInProgress && requestedBlockNum == lastCommittedBlockNumber {
 				requestResponses <- &requestResponse{errors.Errorf("cannot cancel the snapshot request because it is under processing")}
 				continue
 			}
-			requestResponses <- &requestResponse{l.snapshotMgr.snapshotRequestBookkeeper.delete(requestedHeight)}
+			requestResponses <- &requestResponse{l.snapshotMgr.snapshotRequestBookkeeper.delete(requestedBlockNum)}
 
 		case snapshotMgrShutdown:
 			return
@@ -215,24 +214,24 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedHeight uint64) {
 	}
 }
 
-func (l *kvLedger) recoverSnapshot(height uint64) error {
-	if height != l.snapshotMgr.snapshotRequestBookkeeper.smallestRequestHeight {
+func (l *kvLedger) regenrateMissedSnapshot(blockNumber uint64) error {
+	if blockNumber != l.snapshotMgr.snapshotRequestBookkeeper.smallestRequestBlockNum {
 		return nil
 	}
-	exists, err := l.snapshotExists(height)
+	exists, err := l.snapshotExists(blockNumber)
 	if err != nil {
 		return err
 	}
 	if !exists {
 		// send commitDone event to generate the missing snapshot
-		l.snapshotMgr.events <- &event{typ: commitDone, height: height}
+		l.snapshotMgr.events <- &event{typ: commitDone, blockNumber: blockNumber}
 	}
 	return nil
 }
 
-// snapshotExists checks if the snapshot for the given height exists
-func (l *kvLedger) snapshotExists(height uint64) (bool, error) {
-	snapshotDir := SnapshotDirForLedgerHeight(l.config.SnapshotsConfig.RootDir, l.ledgerID, height)
+// snapshotExists checks if the snapshot for the given block number exists
+func (l *kvLedger) snapshotExists(blockNum uint64) (bool, error) {
+	snapshotDir := SnapshotDirForLedgerBlockNum(l.config.SnapshotsConfig.RootDir, l.ledgerID, blockNum)
 	stat, err := os.Stat(snapshotDir)
 	if os.IsNotExist(err) {
 		return false, nil
@@ -262,65 +261,65 @@ func (m *snapshotMgr) shutdown() {
 	close(m.requestResponses)
 }
 
-// snapshotRequestBookkeeper manages snapshot requests in a leveldb and maintains smallest height for pending snapshot requests
+// snapshotRequestBookkeeper manages snapshot requests in a leveldb and maintains smallest block number for pending snapshot requests
 type snapshotRequestBookkeeper struct {
-	dbHandle              *leveldbhelper.DBHandle
-	smallestRequestHeight uint64
+	dbHandle                *leveldbhelper.DBHandle
+	smallestRequestBlockNum uint64
 }
 
 func newSnapshotRequestBookkeeper(dbHandle *leveldbhelper.DBHandle) (*snapshotRequestBookkeeper, error) {
 	bk := &snapshotRequestBookkeeper{dbHandle: dbHandle}
 
 	var err error
-	if bk.smallestRequestHeight, err = bk.smallestRequest(); err != nil {
+	if bk.smallestRequestBlockNum, err = bk.smallestRequest(); err != nil {
 		return nil, err
 	}
 
 	return bk, nil
 }
 
-// add adds the given height to the bookkeeper db and returns an error if the height already exists
-func (k *snapshotRequestBookkeeper) add(height uint64) error {
-	key := encodeSnapshotRequestKey(height)
+// add adds the given block number to the bookkeeper db and returns an error if the block number already exists
+func (k *snapshotRequestBookkeeper) add(blockNumber uint64) error {
+	key := encodeSnapshotRequestKey(blockNumber)
 
-	exists, err := k.exist(height)
+	exists, err := k.exist(blockNumber)
 	if err != nil {
 		return err
 	}
 	if exists {
-		return errors.Errorf("duplicate snapshot request for height %d", height)
+		return errors.Errorf("duplicate snapshot request for block number %d", blockNumber)
 	}
 
 	if err := k.dbHandle.Put(key, []byte{}, true); err != nil {
 		return err
 	}
 
-	if height < k.smallestRequestHeight {
-		k.smallestRequestHeight = height
+	if blockNumber < k.smallestRequestBlockNum {
+		k.smallestRequestBlockNum = blockNumber
 	}
 
 	return nil
 }
 
-// delete deletes the given height from the bookkeeper db and returns an error if the height does not exist
-func (k *snapshotRequestBookkeeper) delete(height uint64) error {
-	exists, err := k.exist(height)
+// delete deletes the given block number from the bookkeeper db and returns an error if the block number does not exist
+func (k *snapshotRequestBookkeeper) delete(blockNumber uint64) error {
+	exists, err := k.exist(blockNumber)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		return errors.Errorf("no snapshot request exists for height %d", height)
+		return errors.Errorf("no snapshot request exists for block number %d", blockNumber)
 	}
 
-	if err = k.dbHandle.Delete(encodeSnapshotRequestKey(height), true); err != nil {
+	if err = k.dbHandle.Delete(encodeSnapshotRequestKey(blockNumber), true); err != nil {
 		return err
 	}
 
-	if k.smallestRequestHeight != height {
+	if k.smallestRequestBlockNum != blockNumber {
 		return nil
 	}
 
-	if k.smallestRequestHeight, err = k.smallestRequest(); err != nil {
+	if k.smallestRequestBlockNum, err = k.smallestRequest(); err != nil {
 		return err
 	}
 
@@ -328,7 +327,7 @@ func (k *snapshotRequestBookkeeper) delete(height uint64) error {
 }
 
 func (k *snapshotRequestBookkeeper) list() ([]uint64, error) {
-	requestedHeights := []uint64{}
+	requestedBlockNumbers := []uint64{}
 	itr, err := k.dbHandle.GetIterator(nil, nil)
 	if err != nil {
 		return nil, err
@@ -343,24 +342,26 @@ func (k *snapshotRequestBookkeeper) list() ([]uint64, error) {
 		if !hasMore {
 			break
 		}
-		height, _, err := decodeSnapshotRequestKey(itr.Key())
+		blockNumber, _, err := decodeSnapshotRequestKey(itr.Key())
 		if err != nil {
 			return nil, err
 		}
-		requestedHeights = append(requestedHeights, height)
+		requestedBlockNumbers = append(requestedBlockNumbers, blockNumber)
 	}
 
-	return requestedHeights, nil
+	return requestedBlockNumbers, nil
 }
 
-func (k *snapshotRequestBookkeeper) exist(height uint64) (bool, error) {
-	val, err := k.dbHandle.Get(encodeSnapshotRequestKey(height))
+func (k *snapshotRequestBookkeeper) exist(blockNumber uint64) (bool, error) {
+	val, err := k.dbHandle.Get(encodeSnapshotRequestKey(blockNumber))
 	if err != nil {
 		return false, err
 	}
 	exists := val != nil
 	return exists, nil
 }
+
+const defaultSmallestBlockNumber uint64 = math.MaxUint64
 
 func (k *snapshotRequestBookkeeper) smallestRequest() (uint64, error) {
 	itr, err := k.dbHandle.GetIterator(nil, nil)
@@ -374,17 +375,21 @@ func (k *snapshotRequestBookkeeper) smallestRequest() (uint64, error) {
 		return 0, errors.Wrapf(err, "internal leveldb error while iterating for snapshot requests")
 	}
 	if !hasMore {
-		return defaultSmallestHeight, nil
+		return defaultSmallestBlockNumber, nil
 	}
-	smallestRequestHeight, _, err := decodeSnapshotRequestKey(itr.Key())
+	smallestBlockNumber, _, err := decodeSnapshotRequestKey(itr.Key())
 	if err != nil {
 		return 0, err
 	}
-	return smallestRequestHeight, nil
+	return smallestBlockNumber, nil
 }
 
-func encodeSnapshotRequestKey(height uint64) []byte {
-	return append(snapshotRequestKeyPrefix, util.EncodeOrderPreservingVarUint64(height)...)
+var (
+	snapshotRequestKeyPrefix = []byte("s")
+)
+
+func encodeSnapshotRequestKey(blockNumber uint64) []byte {
+	return append(snapshotRequestKeyPrefix, util.EncodeOrderPreservingVarUint64(blockNumber)...)
 }
 
 func decodeSnapshotRequestKey(key []byte) (uint64, int, error) {

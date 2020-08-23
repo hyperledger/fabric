@@ -209,10 +209,15 @@ func (l *kvLedger) initSnapshotMgr(initializer *lgrInitializer) error {
 	if err != nil {
 		return err
 	}
+	lastCommittedBlock := bcInfo.Height - 1
 
 	// start a goroutine to synchronize commit, snapshot generation, and snapshot submission/cancellation,
-	go l.processSnapshotMgmtEvents(bcInfo.Height)
-	return l.recoverSnapshot(bcInfo.Height)
+	go l.processSnapshotMgmtEvents(lastCommittedBlock)
+
+	if bcInfo.Height != 0 {
+		return l.regenrateMissedSnapshot(lastCommittedBlock)
+	}
+	return nil
 }
 
 func (l *kvLedger) lastPersistedCommitHash() ([]byte, error) {
@@ -225,7 +230,7 @@ func (l *kvLedger) lastPersistedCommitHash() ([]byte, error) {
 		return nil, nil
 	}
 
-	if l.bootSnapshotMetadata != nil && l.bootSnapshotMetadata.ChannelHeight == bcInfo.Height {
+	if l.bootSnapshotMetadata != nil && l.bootSnapshotMetadata.LastBlockNumber == bcInfo.Height-1 {
 		logger.Debugw(
 			"Ledger is starting first time after creation from a snapshot. Retrieveing last commit hash from boot snapshot metadata",
 			"ledger", l.ledgerID,
@@ -294,7 +299,7 @@ func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
 		}
 
 		if l.bootSnapshotMetadata != nil {
-			lastBlockInSnapshot := l.bootSnapshotMetadata.ChannelHeight - 1
+			lastBlockInSnapshot := l.bootSnapshotMetadata.LastBlockNumber
 			if nextRequiredBlock <= lastBlockInSnapshot {
 				return errors.Errorf(
 					"recovery for DB [%s] not possible. Ledger [%s] is created from a snapshot. Last block in snapshot = [%d], DB needs block [%d] onward",
@@ -498,15 +503,15 @@ func (l *kvLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error
 // After the block is committed, it sends a commitDone event.
 // Refer to processEvents function to understand how the channels and events work together to handle synchronization.
 func (l *kvLedger) CommitLegacy(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *ledger.CommitOptions) error {
-	postCommitBlockHeight := pvtdataAndBlock.Block.Header.Number + 1
-	l.snapshotMgr.events <- &event{commitStart, postCommitBlockHeight}
+	blockNumber := pvtdataAndBlock.Block.Header.Number
+	l.snapshotMgr.events <- &event{commitStart, blockNumber}
 	<-l.snapshotMgr.commitProceed
 
 	if err := l.commit(pvtdataAndBlock, commitOpts); err != nil {
 		return err
 	}
 
-	l.snapshotMgr.events <- &event{commitDone, postCommitBlockHeight}
+	l.snapshotMgr.events <- &event{commitDone, blockNumber}
 	return nil
 }
 

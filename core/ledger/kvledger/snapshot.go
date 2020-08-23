@@ -43,7 +43,7 @@ const (
 // hash of the snapshot, if need be.
 type snapshotSignableMetadata struct {
 	ChannelName            string            `json:"channel_name"`
-	ChannelHeight          uint64            `json:"channel_height"`
+	LastBlockNumber        uint64            `json:"last_block_number"`
 	LastBlockHashInHex     string            `json:"last_block_hash"`
 	PreviousBlockHashInHex string            `json:"previous_block_hash"`
 	FilesAndHashes         map[string]string `json:"snapshot_files_raw_hashes"`
@@ -97,9 +97,10 @@ func (l *kvLedger) generateSnapshot() error {
 	if err != nil {
 		return err
 	}
+	lastBlockNum := bcInfo.Height - 1
 	snapshotTempDir, err := ioutil.TempDir(
 		InProgressSnapshotsPath(snapshotsRootDir),
-		fmt.Sprintf("%s-%d-", l.ledgerID, bcInfo.Height),
+		fmt.Sprintf("%s-%d-", l.ledgerID, lastBlockNum),
 	)
 	if err != nil {
 		return errors.Wrapf(err, "error while creating temp dir [%s]", snapshotTempDir)
@@ -136,7 +137,7 @@ func (l *kvLedger) generateSnapshot() error {
 	if err := fileutil.SyncParentDir(slgr); err != nil {
 		return err
 	}
-	slgrht := SnapshotDirForLedgerHeight(snapshotsRootDir, l.ledgerID, bcInfo.Height)
+	slgrht := SnapshotDirForLedgerBlockNum(snapshotsRootDir, l.ledgerID, lastBlockNum)
 	if err := os.Rename(snapshotTempDir, slgrht); err != nil {
 		return errors.Wrapf(err, "error while renaming dir [%s] to [%s]:", snapshotTempDir, slgrht)
 	}
@@ -170,7 +171,7 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	}
 	signableMetadata := &snapshotSignableMetadata{
 		ChannelName:            l.ledgerID,
-		ChannelHeight:          bcInfo.Height,
+		LastBlockNumber:        bcInfo.Height - 1,
 		LastBlockHashInHex:     hex.EncodeToString(bcInfo.CurrentBlockHash),
 		PreviousBlockHashInHex: hex.EncodeToString(bcInfo.PreviousBlockHash),
 		FilesAndHashes:         filesAndHashes,
@@ -225,8 +226,7 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 	}
 
 	ledgerID := metadata.ChannelName
-	height := metadata.ChannelHeight
-	lastBlockNum := height - 1
+	lastBlockNum := metadata.LastBlockNumber
 
 	lastBlkHash, err := hex.DecodeString(metadata.LastBlockHashInHex)
 	if err != nil {
