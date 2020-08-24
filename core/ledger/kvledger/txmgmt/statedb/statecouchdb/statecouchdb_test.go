@@ -1558,17 +1558,17 @@ func TestRangeQueryWithInternalLimitAndPageSize(t *testing.T) {
 		sampleData := []*statedb.VersionedKV{}
 		ver := version.NewHeight(1, 1)
 		sampleKV := &statedb.VersionedKV{
-			CompositeKey:   statedb.CompositeKey{Namespace: "ns1", Key: string('\u0000')},
-			VersionedValue: statedb.VersionedValue{Value: []byte("v0"), Version: ver, Metadata: []byte("m0")},
+			CompositeKey:   &statedb.CompositeKey{Namespace: "ns1", Key: string('\u0000')},
+			VersionedValue: &statedb.VersionedValue{Value: []byte("v0"), Version: ver, Metadata: []byte("m0")},
 		}
 		sampleData = append(sampleData, sampleKV)
 		for i := 0; i < 10; i++ {
 			sampleKV = &statedb.VersionedKV{
-				CompositeKey: statedb.CompositeKey{
+				CompositeKey: &statedb.CompositeKey{
 					Namespace: "ns1",
 					Key:       fmt.Sprintf("key-%d", i),
 				},
-				VersionedValue: statedb.VersionedValue{
+				VersionedValue: &statedb.VersionedValue{
 					Value:    []byte(fmt.Sprintf("value-for-key-%d-for-ns1", i)),
 					Version:  ver,
 					Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-ns1", i)),
@@ -1577,8 +1577,15 @@ func TestRangeQueryWithInternalLimitAndPageSize(t *testing.T) {
 			sampleData = append(sampleData, sampleKV)
 		}
 		sampleKV = &statedb.VersionedKV{
-			CompositeKey:   statedb.CompositeKey{Namespace: "ns1", Key: string(utf8.MaxRune)},
-			VersionedValue: statedb.VersionedValue{Value: []byte("v1"), Version: ver, Metadata: []byte("m1")},
+			CompositeKey: &statedb.CompositeKey{
+				Namespace: "ns1",
+				Key:       string(utf8.MaxRune),
+			},
+			VersionedValue: &statedb.VersionedValue{
+				Value:    []byte("v1"),
+				Version:  ver,
+				Metadata: []byte("m1"),
+			},
 		}
 		sampleData = append(sampleData, sampleKV)
 		return sampleData
@@ -1920,11 +1927,11 @@ func TestFullScanIteratorDeterministicJSONOutput(t *testing.T) {
 		ver := version.NewHeight(1, 1)
 		for i := 0; i < 10; i++ {
 			sampleKV := &statedb.VersionedKV{
-				CompositeKey: statedb.CompositeKey{
+				CompositeKey: &statedb.CompositeKey{
 					Namespace: ns,
 					Key:       fmt.Sprintf("key-%d", i),
 				},
-				VersionedValue: statedb.VersionedValue{
+				VersionedValue: &statedb.VersionedValue{
 					Version:  ver,
 					Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-ns1", i)),
 				},
@@ -1988,11 +1995,11 @@ func TestFullScanIteratorSkipInternalKeys(t *testing.T) {
 		ver := version.NewHeight(1, 1)
 		for i := 0; i < len(keys); i++ {
 			sampleKV := &statedb.VersionedKV{
-				CompositeKey: statedb.CompositeKey{
+				CompositeKey: &statedb.CompositeKey{
 					Namespace: ns,
 					Key:       keys[i],
 				},
-				VersionedValue: statedb.VersionedValue{
+				VersionedValue: &statedb.VersionedValue{
 					Value:    []byte(fmt.Sprintf("value-for-%s-for-ns1", keys[i])),
 					Version:  ver,
 					Metadata: []byte(fmt.Sprintf("metadata-for-%s-for-ns1", keys[i])),
@@ -2062,7 +2069,7 @@ func verifyFullScanIterator(
 		}
 		val, err := constructVersionedValueForTest(valBytes)
 		require.NoError(t, err)
-		results = append(results, &statedb.VersionedKV{CompositeKey: *ck, VersionedValue: *val})
+		results = append(results, &statedb.VersionedKV{CompositeKey: ck, VersionedValue: val})
 	}
 	require.Equal(t, expectedResult, results)
 }

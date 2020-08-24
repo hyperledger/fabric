@@ -96,19 +96,40 @@ func TestUpdateBatchIterator(t *testing.T) {
 	batch.Put("ns2", "key4", []byte("value4"), version.NewHeight(2, 1))
 
 	checkItrResults(t, batch.GetRangeScanIterator("ns1", "key2", "key3"), []*VersionedKV{
-		{CompositeKey{"ns1", "key2"}, VersionedValue{[]byte("value2"), nil, version.NewHeight(1, 2)}},
+		{
+			&CompositeKey{"ns1", "key2"},
+			&VersionedValue{[]byte("value2"), nil, version.NewHeight(1, 2)},
+		},
 	})
 
 	checkItrResults(t, batch.GetRangeScanIterator("ns2", "key0", "key8"), []*VersionedKV{
-		{CompositeKey{"ns2", "key4"}, VersionedValue{[]byte("value4"), nil, version.NewHeight(2, 1)}},
-		{CompositeKey{"ns2", "key5"}, VersionedValue{[]byte("value5"), nil, version.NewHeight(2, 2)}},
-		{CompositeKey{"ns2", "key6"}, VersionedValue{[]byte("value6"), nil, version.NewHeight(2, 3)}},
+		{
+			&CompositeKey{"ns2", "key4"},
+			&VersionedValue{[]byte("value4"), nil, version.NewHeight(2, 1)},
+		},
+		{
+			&CompositeKey{"ns2", "key5"},
+			&VersionedValue{[]byte("value5"), nil, version.NewHeight(2, 2)},
+		},
+		{
+			&CompositeKey{"ns2", "key6"},
+			&VersionedValue{[]byte("value6"), nil, version.NewHeight(2, 3)},
+		},
 	})
 
 	checkItrResults(t, batch.GetRangeScanIterator("ns2", "", ""), []*VersionedKV{
-		{CompositeKey{"ns2", "key4"}, VersionedValue{[]byte("value4"), nil, version.NewHeight(2, 1)}},
-		{CompositeKey{"ns2", "key5"}, VersionedValue{[]byte("value5"), nil, version.NewHeight(2, 2)}},
-		{CompositeKey{"ns2", "key6"}, VersionedValue{[]byte("value6"), nil, version.NewHeight(2, 3)}},
+		{
+			&CompositeKey{"ns2", "key4"},
+			&VersionedValue{[]byte("value4"), nil, version.NewHeight(2, 1)},
+		},
+		{
+			&CompositeKey{"ns2", "key5"},
+			&VersionedValue{[]byte("value5"), nil, version.NewHeight(2, 2)},
+		},
+		{
+			&CompositeKey{"ns2", "key6"},
+			&VersionedValue{[]byte("value6"), nil, version.NewHeight(2, 3)},
+		},
 	})
 
 	checkItrResults(t, batch.GetRangeScanIterator("non-existing-ns", "", ""), nil)

@@ -140,8 +140,8 @@ func (vv *VersionedValue) IsDelete() bool {
 
 // VersionedKV encloses key and corresponding VersionedValue
 type VersionedKV struct {
-	CompositeKey
-	VersionedValue
+	*CompositeKey
+	*VersionedValue
 }
 
 // ResultsIterator iterates over query results
@@ -309,7 +309,10 @@ func (itr *nsIterator) Next() (*VersionedKV, error) {
 	key := itr.sortedKeys[itr.nextIndex]
 	vv := itr.nsUpdates.M[key]
 	itr.nextIndex++
-	return &VersionedKV{CompositeKey{itr.ns, key}, VersionedValue{vv.Value, vv.Metadata, vv.Version}}, nil
+	return &VersionedKV{
+		&CompositeKey{itr.ns, key},
+		&VersionedValue{vv.Value, vv.Metadata, vv.Version},
+	}, nil
 }
 
 // Close implements the method from QueryResult interface

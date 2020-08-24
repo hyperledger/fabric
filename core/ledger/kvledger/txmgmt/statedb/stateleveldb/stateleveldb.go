@@ -324,10 +324,12 @@ func (scanner *kvScanner) Next() (*statedb.VersionedKV, error) {
 
 	scanner.totalRecordsReturned++
 	return &statedb.VersionedKV{
-		CompositeKey: statedb.CompositeKey{Namespace: scanner.namespace, Key: key},
-		// TODO remove dereferrencing below by changing the type of the field
-		// `VersionedValue` in `statedb.VersionedKV` to a pointer
-		VersionedValue: *vv}, nil
+		CompositeKey: &statedb.CompositeKey{
+			Namespace: scanner.namespace,
+			Key:       key,
+		},
+		VersionedValue: vv,
+	}, nil
 }
 
 func (scanner *kvScanner) Close() {
