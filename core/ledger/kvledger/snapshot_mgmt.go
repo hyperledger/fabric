@@ -116,12 +116,12 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 
 	for {
 		e := <-events
-		logger.Debugw("event received", "type", e.typ, "blockNumber", e.blockNumber, "snapshotInProgress=", snapshotInProgress)
+		logger.Debugw("event received", "channelID", l.ledgerID, "type", e.typ, "blockNumber", e.blockNumber, "snapshotInProgress=", snapshotInProgress)
 		switch e.typ {
 		case commitStart:
 			committerStatus = blocked
 			if snapshotInProgress {
-				logger.Infow("commit waiting on snapshot to be generated", "lastCommittedBlockNumber", lastCommittedBlockNumber)
+				logger.Infow("commit waiting on snapshot to be generated", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber)
 				continue
 			}
 			// no in-progress snapshot, let commit proceed
@@ -136,17 +136,19 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 			}
 			snapshotInProgress = true
 			go func() {
+				logger.Infow("Generating snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber)
 				if err := l.generateSnapshot(); err != nil {
-					logger.Errorw("Failed to generate snapshot", "lastCommittedBlockNumber", lastCommittedBlockNumber, "error", err)
+					logger.Errorw("Failed to generate snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber, "error", err)
+				} else {
+					logger.Infow("Generated snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber)
 				}
 				events <- &event{snapshotDone, lastCommittedBlockNumber}
 			}()
 
 		case snapshotDone:
 			requestedBlockNum := e.blockNumber
-			logger.Debugw("snapshot is generated", "requestedBlockNum", requestedBlockNum, "lastCommittedBlockNumber", lastCommittedBlockNumber)
 			if err := l.snapshotMgr.snapshotRequestBookkeeper.delete(e.blockNumber); err != nil {
-				logger.Errorw("Failed to delete snapshot request, the pending snapshot requests (if any) may not be processed", "requestedBlockNum", requestedBlockNum, "error", err)
+				logger.Errorw("Failed to delete snapshot request, the pending snapshot requests (if any) may not be processed", "channelID", l.ledgerID, "requestedBlockNum", requestedBlockNum, "error", err)
 			}
 			if committerStatus == blocked {
 				// write to commitProceed channel to unblock commit
@@ -192,8 +194,11 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 			if committerStatus == idle && requestedBlockNum == lastCommittedBlockNumber {
 				snapshotInProgress = true
 				go func() {
+					logger.Infow("Generating snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber)
 					if err := l.generateSnapshot(); err != nil {
-						logger.Errorw("Failed to generate snapshot", "requestedBlockNum", requestedBlockNum, "error", err)
+						logger.Errorw("Failed to generate snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber, "error", err)
+					} else {
+						logger.Infow("Generated snapshot", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber)
 					}
 					events <- &event{snapshotDone, requestedBlockNum}
 				}()
