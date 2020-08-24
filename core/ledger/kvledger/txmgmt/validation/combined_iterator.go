@@ -141,8 +141,15 @@ func (itr *combinedIterator) serveEndKeyIfNeeded() (*statedb.VersionedKV, error)
 		return nil, nil
 	}
 	vkv := &statedb.VersionedKV{
-		CompositeKey:   statedb.CompositeKey{Namespace: itr.ns, Key: itr.endKey},
-		VersionedValue: statedb.VersionedValue{Value: vv.Value, Version: vv.Version}}
+		CompositeKey: &statedb.CompositeKey{
+			Namespace: itr.ns,
+			Key:       itr.endKey,
+		},
+		VersionedValue: &statedb.VersionedValue{
+			Value:   vv.Value,
+			Version: vv.Version,
+		},
+	}
 
 	if isDelete(vkv) {
 		return nil, nil

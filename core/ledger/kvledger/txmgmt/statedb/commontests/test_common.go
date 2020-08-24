@@ -1041,11 +1041,11 @@ func TestDataExportImport(
 		for _, ns := range namespaces {
 			for i := 0; i < 6; i++ {
 				sampleKV := &statedb.VersionedKV{
-					CompositeKey: statedb.CompositeKey{
+					CompositeKey: &statedb.CompositeKey{
 						Namespace: ns,
 						Key:       fmt.Sprintf("key-%d", i),
 					},
-					VersionedValue: statedb.VersionedValue{
+					VersionedValue: &statedb.VersionedValue{
 						Version:  version.NewHeight(1, 1),
 						Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-%s", i, ns)),
 					},
@@ -1112,8 +1112,8 @@ func TestDataExportImport(
 			actualResults = append(
 				actualResults,
 				&statedb.VersionedKV{
-					CompositeKey:   *ck,
-					VersionedValue: *vv,
+					CompositeKey:   ck,
+					VersionedValue: vv,
 				},
 			)
 		}

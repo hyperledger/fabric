@@ -108,6 +108,12 @@ func checkItrResults(t *testing.T, testName string, itr statedb.ResultsIterator,
 
 func constructVersionedKV(ns string, key string, value []byte, version *version.Height) *statedb.VersionedKV {
 	return &statedb.VersionedKV{
-		CompositeKey:   statedb.CompositeKey{Namespace: ns, Key: key},
-		VersionedValue: statedb.VersionedValue{Value: value, Version: version}}
+		CompositeKey: &statedb.CompositeKey{
+			Namespace: ns,
+			Key:       key,
+		},
+		VersionedValue: &statedb.VersionedValue{
+			Value:   value,
+			Version: version},
+	}
 }

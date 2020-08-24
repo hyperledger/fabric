@@ -46,11 +46,11 @@ func testSanpshot(t *testing.T, env TestEnv) {
 		for _, ns := range namespaces {
 			for i := 0; i < 5; i++ {
 				sampleKV := &statedb.VersionedKV{
-					CompositeKey: statedb.CompositeKey{
+					CompositeKey: &statedb.CompositeKey{
 						Namespace: ns,
 						Key:       fmt.Sprintf("key-%d", i),
 					},
-					VersionedValue: statedb.VersionedValue{
+					VersionedValue: &statedb.VersionedValue{
 						Value:    []byte(fmt.Sprintf("value-for-key-%d-for-%s", i, ns)),
 						Version:  version.NewHeight(1, 1),
 						Metadata: []byte(fmt.Sprintf("metadata-for-key-%d-for-%s", i, ns)),
@@ -244,7 +244,7 @@ func verifyImportedSnapshot(t *testing.T,
 	for _, pub := range expectedPublicState {
 		vv, err := db.GetState(pub.Namespace, pub.Key)
 		require.NoError(t, err)
-		require.Equal(t, &pub.VersionedValue, vv)
+		require.Equal(t, pub.VersionedValue, vv)
 	}
 
 	for _, pvtdataHashes := range expectedPvtStateHashes {
@@ -253,7 +253,7 @@ func verifyImportedSnapshot(t *testing.T,
 		coll := nsColl[1]
 		vv, err := db.GetValueHash(ns, coll, []byte(pvtdataHashes.Key))
 		require.NoError(t, err)
-		require.Equal(t, &pvtdataHashes.VersionedValue, vv)
+		require.Equal(t, pvtdataHashes.VersionedValue, vv)
 	}
 
 	for _, ptvdata := range notExpectedPvtState {

@@ -1057,11 +1057,11 @@ func (scanner *queryScanner) Next() (*statedb.VersionedKV, error) {
 	}
 	scanner.resultsInfo.totalRecordsReturned++
 	return &statedb.VersionedKV{
-		CompositeKey: statedb.CompositeKey{
+		CompositeKey: &statedb.CompositeKey{
 			Namespace: scanner.namespace,
 			Key:       kv.key,
 		},
-		VersionedValue: *kv.VersionedValue,
+		VersionedValue: kv.VersionedValue,
 	}, nil
 }
 

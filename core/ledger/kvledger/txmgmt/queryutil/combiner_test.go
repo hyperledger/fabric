@@ -176,8 +176,8 @@ func TestGetRangeScanError(t *testing.T) {
 	itr1 := &statedbmock.ResultsIterator{}
 	itr1.NextReturns(
 		&statedb.VersionedKV{
-			CompositeKey:   statedb.CompositeKey{Namespace: "ns", Key: "dummyKey"},
-			VersionedValue: statedb.VersionedValue{Value: []byte("dummyVal")},
+			CompositeKey:   &statedb.CompositeKey{Namespace: "ns", Key: "dummyKey"},
+			VersionedValue: &statedb.VersionedValue{Value: []byte("dummyVal")},
 		},
 		nil,
 	)
@@ -199,8 +199,8 @@ func TestGetRangeScanUnderlyingIteratorReturnsError(t *testing.T) {
 	itr1 := &statedbmock.ResultsIterator{}
 	itr1.NextReturns(
 		&statedb.VersionedKV{
-			CompositeKey:   statedb.CompositeKey{Namespace: "ns", Key: "dummyKey"},
-			VersionedValue: statedb.VersionedValue{Value: []byte("dummyVal")},
+			CompositeKey:   &statedb.CompositeKey{Namespace: "ns", Key: "dummyKey"},
+			VersionedValue: &statedb.VersionedValue{Value: []byte("dummyVal")},
 		},
 		nil,
 	)
