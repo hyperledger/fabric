@@ -34,7 +34,12 @@ func TestPurgeMgrBuilder(t *testing.T) {
 	purgeMgrBuilder := NewPurgeMgrBuilder(ledgerID, btlPolicy, bookkeepingProvider)
 
 	require.NoError(t,
-		purgeMgrBuilder.ConsumeSnapshotData("ns1", "never-expiring-collection", []byte("key-hash-3"), version.NewHeight(5, 1)),
+		purgeMgrBuilder.ConsumeSnapshotData(
+			"ns1",
+			"never-expiring-collection",
+			[]byte("key-hash-3"),
+			[]byte("value-hash-3"),
+			version.NewHeight(5, 1)),
 	)
 	expiry, err := purgeMgrBuilder.expKeeper.retrieveByExpiryKey(
 		&expiryInfoKey{
@@ -47,14 +52,31 @@ func TestPurgeMgrBuilder(t *testing.T) {
 
 	// add data that expires at block-7
 	require.NoError(t,
-		purgeMgrBuilder.ConsumeSnapshotData("ns1", "coll1", []byte("key-hash-1"), version.NewHeight(5, 1)),
+		purgeMgrBuilder.ConsumeSnapshotData(
+			"ns1",
+			"coll1",
+			[]byte("key-hash-1"),
+			[]byte("value-hash-1"),
+			version.NewHeight(5, 1),
+		),
 	)
 	require.NoError(t,
-		purgeMgrBuilder.ConsumeSnapshotData("ns1", "coll1", []byte("key-hash-2"), version.NewHeight(5, 1)),
+		purgeMgrBuilder.ConsumeSnapshotData(
+			"ns1", "coll1",
+			[]byte("key-hash-2"),
+			[]byte("value-hash-2"),
+			version.NewHeight(5, 1),
+		),
 	)
 	// add data that expires at block-8
 	require.NoError(t,
-		purgeMgrBuilder.ConsumeSnapshotData("ns2", "coll2", []byte("key-hash-2"), version.NewHeight(5, 1)),
+		purgeMgrBuilder.ConsumeSnapshotData(
+			"ns2",
+			"coll2",
+			[]byte("key-hash-2"),
+			[]byte("value-hash-2"),
+			version.NewHeight(5, 1),
+		),
 	)
 
 	purgeMgr, err := InstantiatePurgeMgr(ledgerID, nil, btlPolicy, bookkeepingProvider)
@@ -168,7 +190,13 @@ func TestPurgeMgrBuilderErrorsPropagation(t *testing.T) {
 			Err: errors.New("btl-error"),
 		}
 		purgeMgrBuilder := NewPurgeMgrBuilder("test-ledger", btlPolicy, bookkeepingProvider)
-		err := purgeMgrBuilder.ConsumeSnapshotData("ns", "coll", []byte("key-hash"), version.NewHeight(1, 1))
+		err := purgeMgrBuilder.ConsumeSnapshotData(
+			"ns",
+			"coll",
+			[]byte("key-hash"),
+			[]byte("value-hash"),
+			version.NewHeight(1, 1),
+		)
 		require.EqualError(t, err, "error from btlpolicy: btl-error")
 	})
 
@@ -176,7 +204,13 @@ func TestPurgeMgrBuilderErrorsPropagation(t *testing.T) {
 		init()
 		bookkeepingProvider.Close()
 		purgeMgrBuilder := NewPurgeMgrBuilder("test-ledger", btlPolicy, bookkeepingProvider)
-		err := purgeMgrBuilder.ConsumeSnapshotData("ns", "coll", []byte("key-hash"), version.NewHeight(1, 1))
+		err := purgeMgrBuilder.ConsumeSnapshotData(
+			"ns",
+			"coll",
+			[]byte("key-hash"),
+			[]byte("value-hash"),
+			version.NewHeight(1, 1),
+		)
 		require.Contains(t, err.Error(), "error from bookkeeper")
 	})
 }

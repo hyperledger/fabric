@@ -46,10 +46,9 @@ type StateDBConfig struct {
 // DBProvider encapsulates other providers such as VersionedDBProvider and
 // BookeepingProvider which are required to create DB for a channel
 type DBProvider struct {
-	VersionedDBProvider      statedb.VersionedDBProvider
-	HealthCheckRegistry      ledger.HealthCheckRegistry
-	bookkeepingProvider      *bookkeeping.Provider
-	versionFromSnapshotValue versionFromSnapshotValueFunc
+	VersionedDBProvider statedb.VersionedDBProvider
+	HealthCheckRegistry ledger.HealthCheckRegistry
+	bookkeepingProvider *bookkeeping.Provider
 }
 
 // NewDBProvider constructs an instance of DBProvider
@@ -62,26 +61,22 @@ func NewDBProvider(
 ) (*DBProvider, error) {
 
 	var vdbProvider statedb.VersionedDBProvider
-	var versionFromSnapshotValue versionFromSnapshotValueFunc
 	var err error
 
 	if stateDBConf != nil && stateDBConf.StateDatabase == ledger.CouchDB {
 		if vdbProvider, err = statecouchdb.NewVersionedDBProvider(stateDBConf.CouchDB, metricsProvider, sysNamespaces); err != nil {
 			return nil, err
 		}
-		versionFromSnapshotValue = statecouchdb.VersionFromSnapshotValue
 	} else {
 		if vdbProvider, err = stateleveldb.NewVersionedDBProvider(stateDBConf.LevelDBPath); err != nil {
 			return nil, err
 		}
-		versionFromSnapshotValue = stateleveldb.VersionFromSnapshotValue
 	}
 
 	dbProvider := &DBProvider{
-		VersionedDBProvider:      vdbProvider,
-		HealthCheckRegistry:      healthCheckRegistry,
-		bookkeepingProvider:      bookkeeperProvider,
-		versionFromSnapshotValue: versionFromSnapshotValue,
+		VersionedDBProvider: vdbProvider,
+		HealthCheckRegistry: healthCheckRegistry,
+		bookkeepingProvider: bookkeeperProvider,
 	}
 
 	err = dbProvider.RegisterHealthChecker()

@@ -16,9 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	testmock "github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate/mock"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/stateleveldb"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -30,8 +28,6 @@ type TestEnv interface {
 	GetDBHandle(id string) *DB
 	GetProvider() *DBProvider
 	GetName() string
-	DBValueFormat() byte
-	DecodeDBValue(dbVal []byte) statedb.VersionedValue
 	Cleanup()
 	StopExternalResource()
 }
@@ -98,18 +94,6 @@ func (env *LevelDBTestEnv) GetProvider() *DBProvider {
 // GetName implements corresponding function from interface TestEnv
 func (env *LevelDBTestEnv) GetName() string {
 	return "levelDBTestEnv"
-}
-
-// DBValueFormat returns the format used by the stateleveldb for dbvalue
-func (env *LevelDBTestEnv) DBValueFormat() byte {
-	return stateleveldb.TestEnvDBValueformat
-}
-
-// DecodeDBValue decodes the dbvalue bytes for tests
-func (env *LevelDBTestEnv) DecodeDBValue(dbVal []byte) statedb.VersionedValue {
-	vv, err := stateleveldb.TestEnvDBValueDecoder(dbVal)
-	require.NoError(env.t, err)
-	return *vv
 }
 
 // Cleanup implements corresponding function from interface TestEnv
@@ -204,18 +188,6 @@ func (env *CouchDBTestEnv) GetProvider() *DBProvider {
 // GetName implements corresponding function from interface TestEnv
 func (env *CouchDBTestEnv) GetName() string {
 	return "couchDBTestEnv"
-}
-
-// DBValueFormat returns the format used by the stateleveldb for dbvalue
-// Not yet implemented
-func (env *CouchDBTestEnv) DBValueFormat() byte {
-	return byte(0) //To be implemented
-}
-
-// DecodeDBValue decodes the dbvalue bytes for tests
-// Not yet implemented
-func (env *CouchDBTestEnv) DecodeDBValue(dbVal []byte) statedb.VersionedValue {
-	return statedb.VersionedValue{} //To be implemented
 }
 
 // Cleanup implements corresponding function from interface TestEnv

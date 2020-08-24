@@ -142,7 +142,6 @@ func TestDataExportImport(t *testing.T) {
 	commontests.TestDataExportImport(
 		t,
 		env.DBProvider,
-		byte(1),
 	)
 }
 
@@ -173,7 +172,7 @@ func TestFullScanIteratorErrorPropagation(t *testing.T) {
 
 	// error from function GetFullScanIterator
 	vdbProvider.Close()
-	_, _, err := vdb.GetFullScanIterator(
+	_, err := vdb.GetFullScanIterator(
 		func(string) bool {
 			return false
 		},
@@ -182,14 +181,14 @@ func TestFullScanIteratorErrorPropagation(t *testing.T) {
 
 	// error from function Next
 	reInitEnv()
-	itr, _, err := vdb.GetFullScanIterator(
+	itr, err := vdb.GetFullScanIterator(
 		func(string) bool {
 			return false
 		},
 	)
 	require.NoError(t, err)
 	itr.Close()
-	_, _, err = itr.Next()
+	_, err = itr.Next()
 	require.Contains(t, err.Error(), "internal leveldb error while retrieving data from db iterator:")
 }
 
@@ -206,18 +205,6 @@ func TestImportStateErrorPropagation(t *testing.T) {
 		}
 	}
 
-	t.Run("wrong-value-format", func(t *testing.T) {
-		initEnv()
-		defer cleanup()
-		err := vdbProvider.ImportFromSnapshot(
-			"test-db",
-			version.NewHeight(2, 2),
-			&dummyFullScanIter{},
-			fullScanIteratorValueFormat+byte(1),
-		)
-		require.EqualError(t, err, "value format [2] not supported. Expected value format [1]")
-	})
-
 	t.Run("error-reading-from-source", func(t *testing.T) {
 		initEnv()
 		defer cleanup()
@@ -228,7 +215,6 @@ func TestImportStateErrorPropagation(t *testing.T) {
 			&dummyFullScanIter{
 				err: errors.New("error while reading from source"),
 			},
-			fullScanIteratorValueFormat,
 		)
 
 		require.EqualError(t, err, "error while reading from source")
@@ -241,26 +227,20 @@ func TestImportStateErrorPropagation(t *testing.T) {
 		vdbProvider.Close()
 		err := vdbProvider.ImportFromSnapshot("test-db", version.NewHeight(2, 2),
 			&dummyFullScanIter{
-				key: &statedb.CompositeKey{
-					Namespace: "ns",
-					Key:       "key",
+				kv: &statedb.VersionedKV{
+					CompositeKey: &statedb.CompositeKey{
+						Namespace: "ns",
+						Key:       "key",
+					},
+					VersionedValue: &statedb.VersionedValue{
+						Value:   []byte("value"),
+						Version: version.NewHeight(1, 1),
+					},
 				},
-				value: []byte("value"),
 			},
-			fullScanIteratorValueFormat,
 		)
 		require.Contains(t, err.Error(), "error writing batch to leveldb")
 	})
-}
-
-func TestVersionFromSnapshotValue(t *testing.T) {
-	env := NewTestVDBEnv(t)
-	defer env.Cleanup()
-	commontests.TestVersionFromSnapshotValue(
-		t,
-		env.DBProvider,
-		VersionFromSnapshotValue,
-	)
 }
 
 func TestDrop(t *testing.T) {
@@ -288,13 +268,12 @@ func TestDropErrorPath(t *testing.T) {
 }
 
 type dummyFullScanIter struct {
-	err   error
-	key   *statedb.CompositeKey
-	value []byte
+	err error
+	kv  *statedb.VersionedKV
 }
 
-func (d *dummyFullScanIter) Next() (*statedb.CompositeKey, []byte, error) {
-	return d.key, d.value, d.err
+func (d *dummyFullScanIter) Next() (*statedb.VersionedKV, error) {
+	return d.kv, d.err
 }
 
 func (d *dummyFullScanIter) Close() {

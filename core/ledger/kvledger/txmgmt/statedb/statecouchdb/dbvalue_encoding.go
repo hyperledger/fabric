@@ -44,36 +44,3 @@ func decodeVersionAndMetadata(encodedstr string) (*version.Height, []byte, error
 	}
 	return ver, versionAndMetadata.Metadata, nil
 }
-
-func encodeValueVersionMetadata(value, versionAndMetadata []byte) ([]byte, error) {
-	val := &ValueVersionMetadata{
-		Value:              value,
-		VersionAndMetadata: versionAndMetadata,
-	}
-	return proto.Marshal(val)
-}
-
-func decodeValueVersionMetadata(encodedMsg []byte) (*ValueVersionMetadata, error) {
-	val := &ValueVersionMetadata{}
-	if err := proto.Unmarshal(encodedMsg, val); err != nil {
-		return nil, err
-	}
-	return val, nil
-}
-
-func VersionFromSnapshotValue(snapshotValue []byte) (*version.Height, error) {
-	v, err := decodeValueVersionMetadata(snapshotValue)
-	if err != nil {
-		return nil, err
-	}
-	versionAndMetadataBytes, err := base64.StdEncoding.DecodeString(string(v.VersionAndMetadata))
-	if err != nil {
-		return nil, err
-	}
-	versionAndMetadata := &VersionAndMetadata{}
-	if err = proto.Unmarshal(versionAndMetadataBytes, versionAndMetadata); err != nil {
-		return nil, err
-	}
-	version, _, err := version.NewHeightFromBytes(versionAndMetadata.Version)
-	return version, err
-}

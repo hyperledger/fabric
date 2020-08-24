@@ -11,7 +11,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,12 +39,3 @@ func (env *TestVDBEnv) Cleanup() {
 	env.DBProvider.Close()
 	os.RemoveAll(env.dbPath)
 }
-
-var (
-	// TestEnvDBValueformat exports the constant to be used used for tests
-	TestEnvDBValueformat = fullScanIteratorValueFormat
-	// TestEnvDBValueDecoder exports the function for decoding the dbvalue bytes
-	TestEnvDBValueDecoder = func(dbValue []byte) (*statedb.VersionedValue, error) {
-		return decodeValue(dbValue)
-	}
-)
