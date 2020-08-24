@@ -161,14 +161,10 @@ func (r *Reconciler) reconcile() error {
 			logger.Error("reconciliation error when trying to fetch missing items from different peers:", err)
 			return err
 		}
-		if len(fetchedData.AvailableElements) == 0 {
-			logger.Warning("missing private data is not available on other peers")
-			return nil
-		}
 
 		pvtDataToCommit := r.preparePvtDataToCommit(fetchedData.AvailableElements)
-		// commit missing private data that was reconciled and log mismatched
-		pvtdataHashMismatch, err := r.CommitPvtDataOfOldBlocks(pvtDataToCommit)
+		unreconciled := constructUnreconciledMissingData(dig2collectionCfg, fetchedData.AvailableElements)
+		pvtdataHashMismatch, err := r.CommitPvtDataOfOldBlocks(pvtDataToCommit, unreconciled)
 		if err != nil {
 			return errors.Wrap(err, "failed to commit private data")
 		}

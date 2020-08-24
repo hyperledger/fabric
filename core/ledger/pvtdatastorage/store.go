@@ -31,7 +31,7 @@ var (
 	// from other peers. A chance for eligible deprioritized missing data
 	// would be given after giving deprioritizedMissingDataPeriodicity number
 	// of chances to the eligible prioritized missing data
-	deprioritizedMissingDataPeriodicity = 1000
+	deprioritizedMissingDataPeriodicity = 100
 )
 
 // Provider provides handle to specific 'Store' that in turn manages
@@ -438,10 +438,12 @@ func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 
 	if s.iterSinceDeprioMissingDataAccess == deprioritizedMissingDataPeriodicity {
 		s.iterSinceDeprioMissingDataAccess = 0
+		logger.Debug("fetching missing pvtdata entries from the deprioritized list")
 		return s.getMissingData(elgDeprioritizedMissingDataGroup, maxBlock)
 	}
 
 	s.iterSinceDeprioMissingDataAccess++
+	logger.Debug("fetching missing pvtdata entries from the prioritized list")
 	return s.getMissingData(elgPrioritizedMissingDataGroup, maxBlock)
 }
 
