@@ -1347,6 +1347,7 @@ func (c *Chain) suspectEviction() bool {
 
 func (c *Chain) newEvictionSuspector() *evictionSuspector {
 	consenterCertificate := &ConsenterCertificate{
+		Logger:               c.logger,
 		ConsenterCertificate: c.opts.Cert,
 		CryptoProvider:       c.CryptoProvider,
 	}
