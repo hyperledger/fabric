@@ -314,6 +314,7 @@ func serve(args []string) error {
 		serverConfig.SecOpts.Certificate,
 		cs.GetClientCertificate().Certificate,
 		signingIdentityBytes,
+		expirationLogger.Infof,
 		expirationLogger.Warnf, // This can be used to piggyback a metric event in the future
 		time.Now(),
 		time.AfterFunc,
