@@ -35,6 +35,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
+	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode/accesscontrol"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
@@ -218,7 +219,7 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 			GetMSPIDs: peerInstance.GetMSPIDs,
 		},
 		SCCProvider:      &lscc.PeerShim{Peer: peerInstance},
-		ACLProvider:      mockAclProvider,
+		ACLProvider:      &aclmocks.DefaultACLProvider{},
 		GetMSPIDs:        peerInstance.GetMSPIDs,
 		PolicyChecker:    newPolicyChecker(peerInstance),
 		BCCSP:            cryptoProvider,

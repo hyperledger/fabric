@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
+	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
@@ -105,6 +106,29 @@ func TestForceDefaultsForPType(t *testing.T) {
 	rp := &resourceProvider{defaultProvider: defAclProvider}
 	err := rp.CheckACL("aptype", "somechannel", struct{}{})
 	require.NoError(t, err)
+}
+
+func TestCheckACLNoChannel(t *testing.T) {
+	// use mocked objects to test good path
+	mockDefAclProvider := &mocks.DefaultACLProvider{}
+	mockDefAclProvider.CheckACLNoChannelReturns(nil)
+	mockDefAclProvider.IsPtypePolicyReturns(true)
+	rp := &resourceProvider{defaultProvider: mockDefAclProvider}
+	err := rp.CheckACLNoChannel("aptype", struct{}{})
+	require.NoError(t, err)
+
+	// error paths
+	defAclProvider := &defaultACLProviderImpl{
+		pResourcePolicyMap: map[string]string{"aptype": mgmt.Admins},
+	}
+	rp = &resourceProvider{defaultProvider: defAclProvider}
+	err = rp.CheckACLNoChannel("nontype", struct{}{})
+	require.Error(t, err, "cannot override peer type policy for channeless ACL check")
+
+	rp = &resourceProvider{defaultProvider: defAclProvider}
+	err = rp.CheckACLNoChannel("aptype", struct{}{})
+	require.EqualError(t, err, "Unknown id on channelless checkACL aptype")
+
 }
 
 func init() {

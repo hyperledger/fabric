@@ -8,9 +8,11 @@ package snapshotgrpc
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -21,16 +23,19 @@ import (
 )
 
 //go:generate counterfeiter -o mock/ledger_getter.go -fake-name LedgerGetter . ledgerGetter
+//go:generate counterfeiter -o mock/acl_provider.go -fake-name ACLProvider . aclProvider
 
 type ledgerGetter interface {
 	LedgerGetter
 }
 
+type aclProvider interface {
+	ACLProvider
+}
+
 func TestSnapshot(t *testing.T) {
 	testDir, err := ioutil.TempDir("", "snapshotgrpc")
-	if err != nil {
-		t.Fatalf("Failed to create ledger directory: %s", err)
-	}
+	require.NoError(t, err)
 
 	ledgerID := "testsnapshot"
 	ledgermgmtInitializer := ledgermgmttest.NewInitializer(testDir)
@@ -43,7 +48,9 @@ func TestSnapshot(t *testing.T) {
 
 	fakeLedgerGetter := &mock.LedgerGetter{}
 	fakeLedgerGetter.GetLedgerReturns(lgr)
-	snapshotSvc := &SnapshotService{fakeLedgerGetter}
+	fakeACLProvider := &mock.ACLProvider{}
+	fakeACLProvider.CheckACLNoChannelReturns(nil)
+	snapshotSvc := &SnapshotService{LedgerGetter: fakeLedgerGetter, ACLProvider: fakeACLProvider}
 
 	// test generate, cancel and query bindings
 	var signedRequest *pb.SignedSnapshotRequest
@@ -87,37 +94,51 @@ func TestSnapshot(t *testing.T) {
 			errMsg:        "failed to unmarshal snapshot request: proto: can't skip unknown wire type 4",
 		},
 		{
-			name:      "missing channel ID",
-			channelID: "",
-			errMsg:    "missing channel ID",
+			name:          "missing channel ID",
+			channelID:     "",
+			signedRequest: createSignedQuery(""),
+			errMsg:        "missing channel ID",
 		},
 		{
-			name:      "cannot find ledger",
-			channelID: ledgerID,
-			errMsg:    "cannot find ledger for channel " + ledgerID,
+			name:          "missing signature header",
+			channelID:     "",
+			signedRequest: &pb.SignedSnapshotRequest{Request: protoutil.MarshalOrPanic(&pb.SnapshotQuery{})},
+			errMsg:        "missing signature header",
+		},
+		{
+			name:          "cannot find ledger",
+			channelID:     ledgerID,
+			signedRequest: createSignedQuery(ledgerID),
+			errMsg:        "cannot find ledger for channel " + ledgerID,
 		},
 	}
 
 	fakeLedgerGetter.GetLedgerReturns(nil)
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			signedRequest = test.signedRequest
-			if signedRequest == nil {
-				// create a SignedQuery for all requests because blockNumber does not matter in these error tests
-				signedRequest = createSignedQuery(test.channelID)
-			}
-			_, err := snapshotSvc.Generate(context.Background(), signedRequest)
+			_, err := snapshotSvc.Generate(context.Background(), test.signedRequest)
 			require.EqualError(t, err, test.errMsg)
-			_, err = snapshotSvc.Cancel(context.Background(), signedRequest)
+			_, err = snapshotSvc.Cancel(context.Background(), test.signedRequest)
 			require.EqualError(t, err, test.errMsg)
-			_, err = snapshotSvc.QueryPendings(context.Background(), signedRequest)
+			_, err = snapshotSvc.QueryPendings(context.Background(), test.signedRequest)
 			require.EqualError(t, err, test.errMsg)
 		})
 	}
 
+	// test error propagation of CheckACLNoChannel
+	fakeACLProvider.CheckACLNoChannelReturns(fmt.Errorf("fake-check-acl-error"))
+	signedRequest = createSignedQuery(ledgerID)
+	_, err = snapshotSvc.Generate(context.Background(), signedRequest)
+	require.EqualError(t, err, "fake-check-acl-error")
+	_, err = snapshotSvc.Cancel(context.Background(), signedRequest)
+	require.EqualError(t, err, "fake-check-acl-error")
+	_, err = snapshotSvc.QueryPendings(context.Background(), signedRequest)
+	require.EqualError(t, err, "fake-check-acl-error")
+
 	// verify panic from generate/cancel after ledger is closed
 	lgr.Close()
 	fakeLedgerGetter.GetLedgerReturns(lgr)
+	fakeACLProvider.CheckACLNoChannelReturns(nil)
 
 	require.PanicsWithError(
 		t,
@@ -132,20 +153,32 @@ func TestSnapshot(t *testing.T) {
 }
 
 func createSignedRequest(channelID string, blockNumber uint64) *pb.SignedSnapshotRequest {
+	sigHeader := &common.SignatureHeader{
+		Creator: []byte("creator"),
+		Nonce:   []byte("nonce-ignored"),
+	}
 	request := &pb.SnapshotRequest{
-		ChannelId:   channelID,
-		BlockNumber: blockNumber,
+		SignatureHeader: sigHeader,
+		ChannelId:       channelID,
+		BlockNumber:     blockNumber,
 	}
 	return &pb.SignedSnapshotRequest{
-		Request: protoutil.MarshalOrPanic(request),
+		Request:   protoutil.MarshalOrPanic(request),
+		Signature: []byte("dummy-signatures"),
 	}
 }
 
 func createSignedQuery(channelID string) *pb.SignedSnapshotRequest {
+	sigHeader := &common.SignatureHeader{
+		Creator: []byte("creator"),
+		Nonce:   []byte("nonce-ignored"),
+	}
 	query := &pb.SnapshotQuery{
-		ChannelId: channelID,
+		SignatureHeader: sigHeader,
+		ChannelId:       channelID,
 	}
 	return &pb.SignedSnapshotRequest{
-		Request: protoutil.MarshalOrPanic(query),
+		Request:   protoutil.MarshalOrPanic(query),
+		Signature: []byte("dummy-signatures"),
 	}
 }

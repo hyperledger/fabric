@@ -27,6 +27,14 @@ func (am *aclMgmtImpl) CheckACL(resName string, channelID string, idinfo interfa
 	return am.rescfgProvider.CheckACL(resName, channelID, idinfo)
 }
 
+// CheckACLNoChannel checks the ACL for the resource for the local MSP
+// using the idinfo. idinfo is an object such as SignedProposal
+// from which an id can be extracted for testing against a policy.
+func (am *aclMgmtImpl) CheckACLNoChannel(resName string, idinfo interface{}) error {
+	//use the resource based config provider (which will in turn default to 1.0 provider)
+	return am.rescfgProvider.CheckACLNoChannel(resName, idinfo)
+}
+
 //ACLProvider consists of two providers, supplied one and a default one (1.0 ACL management
 //using ChannelReaders and ChannelWriters). If supplied provider is nil, a resource based
 //ACL provider is created.

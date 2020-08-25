@@ -23,6 +23,11 @@ const (
 	Lifecycle_QueryChaincodeDefinitions          = "_lifecycle/QueryChaincodeDefinitions"
 	Lifecycle_CheckCommitReadiness               = "_lifecycle/CheckCommitReadiness"
 
+	// snapshot resources
+	Snapshot_submitrequest = "snapshot/submitrequest"
+	Snapshot_cancelrequest = "snapshot/cancelrequest"
+	Snapshot_listpending   = "snapshot/listpending"
+
 	//Lscc resources
 	Lscc_Install                   = "lscc/Install"
 	Lscc_Deploy                    = "lscc/Deploy"
