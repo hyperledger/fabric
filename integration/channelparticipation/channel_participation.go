@@ -137,15 +137,15 @@ type ChannelInfo struct {
 	Height          uint64 `json:"height"`
 }
 
-func ListOne(n *nwo.Network, o *nwo.Orderer, expectedChannelInfo ChannelInfo) {
+func ListOne(n *nwo.Network, o *nwo.Orderer, channel string) ChannelInfo {
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
-	listChannelURL := fmt.Sprintf("https://127.0.0.1:%d/%s", n.OrdererPort(o, nwo.OperationsPort), expectedChannelInfo.URL)
+	listChannelURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.OperationsPort), channel)
 
 	body := getBody(authClient, listChannelURL)()
 	c := &ChannelInfo{}
 	err := json.Unmarshal([]byte(body), c)
 	Expect(err).NotTo(HaveOccurred())
-	Expect(*c).To(Equal(expectedChannelInfo))
+	return *c
 }
 
 func Remove(n *nwo.Network, o *nwo.Orderer, channel string) {
