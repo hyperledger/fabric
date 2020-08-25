@@ -71,7 +71,8 @@ var _ = Describe("ChannelParticipation", func() {
 			ordererRunner := network.OrdererRunner(o)
 			ordererProcess := ifrit.Invoke(ordererRunner)
 			Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Registrar initializing without a system channel, number of application channels: 0"))
+			Eventually(ordererRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say(
+				"Registrar initializing without a system channel, number of application channels: 0, with 0 consensus.Chain\\(s\\) and 0 follower.Chain\\(s\\)"))
 			ordererProcesses = append(ordererProcesses, ordererProcess)
 			ordererRunners = append(ordererRunners, ordererRunner)
 		}
