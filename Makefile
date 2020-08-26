@@ -22,6 +22,7 @@
 #   - docker-tag-latest - re-tags the images made by 'make docker' with the :latest tag
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
+#   - docs - builds the documentation in html format
 #   - gotools - installs go tools like golint
 #   - help-docs - generate the command reference docs
 #   - idemixgen - builds a native idemixgen binary
@@ -319,3 +320,7 @@ unit-test-clean:
 .PHONY: filename-spaces
 spaces:
 	@scripts/check_file_name_spaces.sh
+
+.PHONY: docs
+docs:
+	@docker run --rm -v $$(pwd):/docs n42org/tox:3.4.0 sh -c 'cd /docs && tox -e docs'

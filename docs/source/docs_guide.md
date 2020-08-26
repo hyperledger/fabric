@@ -193,27 +193,20 @@ your GitHub account.
 2. Install the following prerequisites; you may need to adjust depending on your
    OS:
 
-   * [Python 3.7](https://wiki.python.org/moin/BeginnersGuide/Download)
-   * [Pipenv](https://docs.pipenv.org/en/latest/#install-pipenv-today)
+   * [Docker](https://docs.docker.com/get-docker/)
 
 3. For US English:
    ```bash
-   cd $HOME/git
    git clone git@github.com:hyperledger/fabric.git
-   cd fabric/docs
-   pipenv install
-   pipenv shell
-   make html
+   cd fabric
+   make docs
    ```
 
-   For Malayalam (for example):
+   For International Languages (Malayalam as an example):
    ```bash
-   cd $HOME/git
    git clone git@github.com:hyperledger/fabric-docs-i18n.git
-   cd fabric-docs-18n/docs/locale/ml_IN
-   pipenv install
-   pipenv shell
-   make -e SPHINXOPTS="-D language='ml'" html
+   cd fabric
+   make docs-lang-ml_IN
    ```
 
    The `make` command generates documentation html files in the `build/html/`
@@ -222,7 +215,7 @@ your GitHub account.
 
 4. Now make a small change to a file, and rebuild the documentation to verify
    that your change was as expected. Every time you make a change to the
-   documentation you will of course need to rerun `make html`.
+   documentation you will of course need to rerun `make docs`.
 
 5. If you'd like, you may also run a local web server with the following
    commands (or equivalent depending on your OS):

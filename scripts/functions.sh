@@ -34,6 +34,7 @@ function filterExcludedAndGeneratedFiles {
         '(^|/)vendor\/'
         '(^|/)Pipfile$'
         '(^|/)Pipfile\.lock$'
+        '(^|/)tox\.ini$'
     )
 
     local filter
