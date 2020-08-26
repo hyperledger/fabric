@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/protos/msp"
 	"github.com/hyperledger/fabric/protos/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestX509CertExpiresAt(t *testing.T) {
@@ -93,73 +95,90 @@ func TestTrackExpiration(t *testing.T) {
 		IdBytes: tlsCert.Cert,
 	})
 
-	shouldNotBeInvoked := func(format string, args ...interface{}) {
+	warnShouldNotBeInvoked := func(format string, args ...interface{}) {
 		t.Fatalf(format, args...)
 	}
 
 	var formattedWarning string
-	shouldBeInvoked := func(format string, args ...interface{}) {
+	warnShouldBeInvoked := func(format string, args ...interface{}) {
 		formattedWarning = fmt.Sprintf(format, args...)
 	}
 
+	var formattedInfo string
+	infoShouldBeInvoked := func(format string, args ...interface{}) {
+		formattedInfo = fmt.Sprintf(format, args...)
+	}
+
 	for _, testCase := range []struct {
-		description     string
-		tls             bool
-		serverCert      []byte
-		clientCertChain [][]byte
-		sIDBytes        []byte
-		warn            crypto.WarnFunc
-		now             time.Time
-		expectedWarn    string
+		description        string
+		tls                bool
+		serverCert         []byte
+		clientCertChain    [][]byte
+		sIDBytes           []byte
+		info               crypto.MessageFunc
+		warn               crypto.MessageFunc
+		now                time.Time
+		expectedInfoPrefix string
+		expectedWarn       string
 	}{
 		{
 			description: "No TLS, enrollment cert isn't valid logs a warning",
-			warn:        shouldNotBeInvoked,
+			warn:        warnShouldNotBeInvoked,
 			sIDBytes:    []byte{1, 2, 3},
 		},
 		{
-			description:  "No TLS, enrollment cert expires soon",
-			sIDBytes:     signingIdentity,
-			warn:         shouldBeInvoked,
-			now:          monthBeforeExpiration,
-			expectedWarn: "The enrollment certificate will expire within one week",
+			description:        "No TLS, enrollment cert expires soon",
+			sIDBytes:           signingIdentity,
+			info:               infoShouldBeInvoked,
+			warn:               warnShouldBeInvoked,
+			now:                monthBeforeExpiration,
+			expectedInfoPrefix: "The enrollment certificate will expire on",
+			expectedWarn:       "The enrollment certificate will expire within one week",
 		},
 		{
-			description:  "TLS, server cert expires soon",
-			warn:         shouldBeInvoked,
-			now:          monthBeforeExpiration,
-			tls:          true,
-			serverCert:   tlsCert.Cert,
-			expectedWarn: "The server TLS certificate will expire within one week",
+			description:        "TLS, server cert expires soon",
+			info:               infoShouldBeInvoked,
+			warn:               warnShouldBeInvoked,
+			now:                monthBeforeExpiration,
+			tls:                true,
+			serverCert:         tlsCert.Cert,
+			expectedInfoPrefix: "The server TLS certificate will expire on",
+			expectedWarn:       "The server TLS certificate will expire within one week",
 		},
 		{
-			description:  "TLS, server cert expires really soon",
-			warn:         shouldBeInvoked,
-			now:          twoDaysBeforeExpiration,
-			tls:          true,
-			serverCert:   tlsCert.Cert,
-			expectedWarn: "The server TLS certificate expires within 2 days and 12 hours",
+			description:        "TLS, server cert expires really soon",
+			info:               infoShouldBeInvoked,
+			warn:               warnShouldBeInvoked,
+			now:                twoDaysBeforeExpiration,
+			tls:                true,
+			serverCert:         tlsCert.Cert,
+			expectedInfoPrefix: "The server TLS certificate will expire on",
+			expectedWarn:       "The server TLS certificate expires within 2 days and 12 hours",
 		},
 		{
 			description:  "TLS, server cert has expired",
-			warn:         shouldBeInvoked,
+			info:         infoShouldBeInvoked,
+			warn:         warnShouldBeInvoked,
 			now:          expirationTime.Add(time.Hour),
 			tls:          true,
 			serverCert:   tlsCert.Cert,
 			expectedWarn: "The server TLS certificate has expired",
 		},
 		{
-			description:     "TLS, client cert expires soon",
-			warn:            shouldBeInvoked,
-			now:             monthBeforeExpiration,
-			tls:             true,
-			clientCertChain: [][]byte{tlsCert.Cert},
-			expectedWarn:    "The client TLS certificate will expire within one week",
+			description:        "TLS, client cert expires soon",
+			info:               infoShouldBeInvoked,
+			warn:               warnShouldBeInvoked,
+			now:                monthBeforeExpiration,
+			tls:                true,
+			clientCertChain:    [][]byte{tlsCert.Cert},
+			expectedInfoPrefix: "The client TLS certificate will expire on",
+			expectedWarn:       "The client TLS certificate will expire within one week",
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
 			defer func() {
 				formattedWarning = ""
+				formattedInfo = ""
 			}()
 
 			fakeTimeAfter := func(duration time.Duration, f func()) *time.Timer {
@@ -174,15 +193,23 @@ func TestTrackExpiration(t *testing.T) {
 				testCase.serverCert,
 				testCase.clientCertChain,
 				testCase.sIDBytes,
+				testCase.info,
 				testCase.warn,
 				testCase.now,
 				fakeTimeAfter)
+
+			if testCase.expectedInfoPrefix != "" {
+				require.True(t, strings.HasPrefix(formattedInfo, testCase.expectedInfoPrefix))
+			} else {
+				require.Empty(t, formattedInfo)
+			}
 
 			if testCase.expectedWarn != "" {
 				assert.Equal(t, testCase.expectedWarn, formattedWarning)
 			} else {
 				assert.Empty(t, formattedWarning)
 			}
+
 		})
 	}
 }
