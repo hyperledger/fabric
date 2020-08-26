@@ -8,13 +8,14 @@ import (
 )
 
 type SnapshotPvtdataHashesConsumer struct {
-	ConsumeSnapshotDataStub        func(string, string, []byte, *version.Height) error
+	ConsumeSnapshotDataStub        func(string, string, []byte, []byte, *version.Height) error
 	consumeSnapshotDataMutex       sync.RWMutex
 	consumeSnapshotDataArgsForCall []struct {
 		arg1 string
 		arg2 string
 		arg3 []byte
-		arg4 *version.Height
+		arg4 []byte
+		arg5 *version.Height
 	}
 	consumeSnapshotDataReturns struct {
 		result1 error
@@ -26,11 +27,16 @@ type SnapshotPvtdataHashesConsumer struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *SnapshotPvtdataHashesConsumer) ConsumeSnapshotData(arg1 string, arg2 string, arg3 []byte, arg4 *version.Height) error {
+func (fake *SnapshotPvtdataHashesConsumer) ConsumeSnapshotData(arg1 string, arg2 string, arg3 []byte, arg4 []byte, arg5 *version.Height) error {
 	var arg3Copy []byte
 	if arg3 != nil {
 		arg3Copy = make([]byte, len(arg3))
 		copy(arg3Copy, arg3)
+	}
+	var arg4Copy []byte
+	if arg4 != nil {
+		arg4Copy = make([]byte, len(arg4))
+		copy(arg4Copy, arg4)
 	}
 	fake.consumeSnapshotDataMutex.Lock()
 	ret, specificReturn := fake.consumeSnapshotDataReturnsOnCall[len(fake.consumeSnapshotDataArgsForCall)]
@@ -38,12 +44,13 @@ func (fake *SnapshotPvtdataHashesConsumer) ConsumeSnapshotData(arg1 string, arg2
 		arg1 string
 		arg2 string
 		arg3 []byte
-		arg4 *version.Height
-	}{arg1, arg2, arg3Copy, arg4})
-	fake.recordInvocation("ConsumeSnapshotData", []interface{}{arg1, arg2, arg3Copy, arg4})
+		arg4 []byte
+		arg5 *version.Height
+	}{arg1, arg2, arg3Copy, arg4Copy, arg5})
+	fake.recordInvocation("ConsumeSnapshotData", []interface{}{arg1, arg2, arg3Copy, arg4Copy, arg5})
 	fake.consumeSnapshotDataMutex.Unlock()
 	if fake.ConsumeSnapshotDataStub != nil {
-		return fake.ConsumeSnapshotDataStub(arg1, arg2, arg3, arg4)
+		return fake.ConsumeSnapshotDataStub(arg1, arg2, arg3, arg4, arg5)
 	}
 	if specificReturn {
 		return ret.result1
@@ -58,17 +65,17 @@ func (fake *SnapshotPvtdataHashesConsumer) ConsumeSnapshotDataCallCount() int {
 	return len(fake.consumeSnapshotDataArgsForCall)
 }
 
-func (fake *SnapshotPvtdataHashesConsumer) ConsumeSnapshotDataCalls(stub func(string, string, []byte, *version.Height) error) {
+func (fake *SnapshotPvtdataHashesConsumer) ConsumeSnapshotDataCalls(stub func(string, string, []byte, []byte, *version.Height) error) {
 	fake.consumeSnapshotDataMutex.Lock()
 	defer fake.consumeSnapshotDataMutex.Unlock()
 	fake.ConsumeSnapshotDataStub = stub
 }
 
-func (fake *SnapshotPvtdataHashesConsumer) ConsumeSnapshotDataArgsForCall(i int) (string, string, []byte, *version.Height) {
+func (fake *SnapshotPvtdataHashesConsumer) ConsumeSnapshotDataArgsForCall(i int) (string, string, []byte, []byte, *version.Height) {
 	fake.consumeSnapshotDataMutex.RLock()
 	defer fake.consumeSnapshotDataMutex.RUnlock()
 	argsForCall := fake.consumeSnapshotDataArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4, argsForCall.arg5
 }
 
 func (fake *SnapshotPvtdataHashesConsumer) ConsumeSnapshotDataReturns(result1 error) {

@@ -45,12 +45,3 @@ func testEncodeDecodeOfVersionAndMetadata(t *testing.T, v *statedb.VersionedValu
 	require.Equal(t, v.Version, ver)
 	require.Equal(t, v.Metadata, metadata)
 }
-
-func TestEncodeDecodeOfValueVersionMetadata(t *testing.T) {
-	val := &ValueVersionMetadata{Value: []byte("val1"), VersionAndMetadata: []byte("metadata1")}
-	encodedVal, err := encodeValueVersionMetadata([]byte("val1"), []byte("metadata1"))
-	require.NoError(t, err)
-	decodedVal, err := decodeValueVersionMetadata(encodedVal)
-	require.NoError(t, err)
-	require.Equal(t, val, decodedVal)
-}

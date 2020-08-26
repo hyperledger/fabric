@@ -1705,7 +1705,7 @@ func TestDataExportImport(t *testing.T) {
 
 		for _, size := range []int{10, 2 * 1024 * 1024} {
 			maxDataImportBatchMemorySize = size
-			commontests.TestDataExportImport(t, vdbEnv.DBProvider, fullScanIteratorValueFormat)
+			commontests.TestDataExportImport(t, vdbEnv.DBProvider)
 		}
 	})
 
@@ -1715,7 +1715,7 @@ func TestDataExportImport(t *testing.T) {
 
 		require.NoError(
 			t,
-			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, nil, fullScanIteratorValueFormat),
+			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, nil),
 		)
 	})
 
@@ -1733,19 +1733,8 @@ func TestDataExportImport(t *testing.T) {
 		vdbEnv.config.Address = "127.0.0.1:1"
 		require.Contains(
 			t,
-			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, nil, byte(0)).Error(),
+			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, nil).Error(),
 			"error while creating the metadata database for channel testdb: http error calling couchdb",
-		)
-	})
-
-	t.Run("error-wrong-format", func(t *testing.T) {
-		vdbEnv.init(t, nil)
-		defer vdbEnv.cleanup()
-
-		require.EqualError(
-			t,
-			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, &dummyFullScanIter{}, byte(2)),
-			"value format [2] not supported. Expected value format [1]",
 		)
 	})
 
@@ -1758,26 +1747,8 @@ func TestDataExportImport(t *testing.T) {
 		}
 		require.EqualError(
 			t,
-			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, itr, fullScanIteratorValueFormat),
+			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, itr),
 			"error while reading from source",
-		)
-	})
-
-	t.Run("error-while-decoding", func(t *testing.T) {
-		vdbEnv.init(t, nil)
-		defer vdbEnv.cleanup()
-
-		itr := &dummyFullScanIter{
-			key: &statedb.CompositeKey{
-				Namespace: "ns1",
-				Key:       "key1",
-			},
-			value: []byte("random"),
-		}
-		require.EqualError(
-			t,
-			vdbEnv.DBProvider.ImportFromSnapshot("testdb", nil, itr, fullScanIteratorValueFormat),
-			"error while decoding the encoded ValueVersionMetadata of key key1: unexpected EOF",
 		)
 	})
 
@@ -1803,11 +1774,12 @@ func TestDataExportImport(t *testing.T) {
 		s := &snapshotImporter{
 			vdb: vdb.(*VersionedDB),
 			itr: &dummyFullScanIter{
-				key: &statedb.CompositeKey{
-					Namespace: "ns1",
+				kv: &statedb.VersionedKV{
+					CompositeKey: &statedb.CompositeKey{
+						Namespace: "ns1",
+					},
 				},
 			},
-			valueFormat: fullScanIteratorValueFormat,
 		}
 		require.Contains(
 			t,
@@ -1820,13 +1792,14 @@ func TestDataExportImport(t *testing.T) {
 		s = &snapshotImporter{
 			vdb: vdb.(*VersionedDB),
 			itr: &dummyFullScanIter{
-				key: &statedb.CompositeKey{
-					Namespace: "ns2",
+				kv: &statedb.VersionedKV{
+					CompositeKey: &statedb.CompositeKey{
+						Namespace: "ns2",
+					},
 				},
 			},
 			currentNsDB: nsDB,
 			currentNs:   "ns",
-			valueFormat: fullScanIteratorValueFormat,
 		}
 		require.Contains(
 			t,
@@ -1857,15 +1830,20 @@ func TestDataExportImport(t *testing.T) {
 		s := &snapshotImporter{
 			vdb: vdb.(*VersionedDB),
 			itr: &dummyFullScanIter{
-				key: &statedb.CompositeKey{
-					Namespace: "ns1",
+				kv: &statedb.VersionedKV{
+					CompositeKey: &statedb.CompositeKey{
+						Namespace: "ns1",
+					},
+					VersionedValue: &statedb.VersionedValue{
+						Value:   []byte("random"),
+						Version: version.NewHeight(1, 1),
+					},
 				},
 			},
 			currentNsDB:      ns1DB,
 			currentNs:        "ns1",
 			pendingDocsBatch: []*couchDoc{{}, {}},
 			batchMemorySize:  4 * 1024 * 1024,
-			valueFormat:      fullScanIteratorValueFormat,
 		}
 		require.Contains(
 			t,
@@ -1877,14 +1855,19 @@ func TestDataExportImport(t *testing.T) {
 		s = &snapshotImporter{
 			vdb: vdb.(*VersionedDB),
 			itr: &dummyFullScanIter{
-				key: &statedb.CompositeKey{
-					Namespace: "ns2",
+				kv: &statedb.VersionedKV{
+					CompositeKey: &statedb.CompositeKey{
+						Namespace: "ns2",
+					},
+					VersionedValue: &statedb.VersionedValue{
+						Value:   []byte("random"),
+						Version: version.NewHeight(1, 1),
+					},
 				},
 			},
 			currentNsDB:      ns1DB,
 			currentNs:        "ns1",
 			pendingDocsBatch: []*couchDoc{{}, {}},
-			valueFormat:      fullScanIteratorValueFormat,
 		}
 		require.Contains(
 			t,
@@ -1892,33 +1875,6 @@ func TestDataExportImport(t *testing.T) {
 			"error while storing 2 states associated with namespace ns1",
 		)
 	})
-}
-
-func TestVersionFromSnapshotValue(t *testing.T) {
-	vdbEnv.init(t, nil)
-	defer vdbEnv.cleanup()
-
-	commontests.TestVersionFromSnapshotValue(
-		t,
-		vdbEnv.DBProvider,
-		VersionFromSnapshotValue,
-	)
-}
-
-func constructVersionedValueForTest(dbVal []byte) (*statedb.VersionedValue, error) {
-	v, err := decodeValueVersionMetadata(dbVal)
-	if err != nil {
-		return nil, err
-	}
-	ver, meta, err := decodeVersionAndMetadata(string(v.VersionAndMetadata))
-	if err != nil {
-		return nil, err
-	}
-	return &statedb.VersionedValue{
-		Value:    v.Value,
-		Version:  ver,
-		Metadata: meta,
-	}, nil
 }
 
 func TestFullScanIteratorDeterministicJSONOutput(t *testing.T) {
@@ -1964,9 +1920,8 @@ func TestFullScanIteratorDeterministicJSONOutput(t *testing.T) {
 	retrieveOnlyNs1 := func(ns string) bool {
 		return ns != "ns1"
 	}
-	dbItr, format, err := db.GetFullScanIterator(retrieveOnlyNs1)
+	dbItr, err := db.GetFullScanIterator(retrieveOnlyNs1)
 	require.NoError(t, err)
-	require.Equal(t, fullScanIteratorValueFormat, format)
 	require.NotNil(t, dbItr)
 	verifyFullScanIterator(t, dbItr, sampleDataWithSortedJSON)
 
@@ -1982,9 +1937,8 @@ func TestFullScanIteratorDeterministicJSONOutput(t *testing.T) {
 		return ns != "ns2"
 	}
 	sampleDataWithSortedJSON = generateSampleData("ns2", true)
-	dbItr, format, err = db.GetFullScanIterator(retrieveOnlyNs2)
+	dbItr, err = db.GetFullScanIterator(retrieveOnlyNs2)
 	require.NoError(t, err)
-	require.Equal(t, fullScanIteratorValueFormat, format)
 	require.NotNil(t, dbItr)
 	verifyFullScanIterator(t, dbItr, sampleDataWithSortedJSON)
 }
@@ -2028,9 +1982,8 @@ func TestFullScanIteratorSkipInternalKeys(t *testing.T) {
 	retrieveOnlyNs1 := func(ns string) bool {
 		return ns != "ns1"
 	}
-	dbItr, format, err := db.GetFullScanIterator(retrieveOnlyNs1)
+	dbItr, err := db.GetFullScanIterator(retrieveOnlyNs1)
 	require.NoError(t, err)
-	require.Equal(t, fullScanIteratorValueFormat, format)
 	require.NotNil(t, dbItr)
 	verifyFullScanIterator(t, dbItr, sampleData)
 
@@ -2048,9 +2001,8 @@ func TestFullScanIteratorSkipInternalKeys(t *testing.T) {
 	// as it is an empty namespace
 	keys = []string{"key-1", "key-2", "key-3", "key-4", "key-5"}
 	sampleData = generateSampleData("", keys)
-	dbItr, format, err = db.GetFullScanIterator(retrieveOnlyEmptyNs)
+	dbItr, err = db.GetFullScanIterator(retrieveOnlyEmptyNs)
 	require.NoError(t, err)
-	require.Equal(t, fullScanIteratorValueFormat, format)
 	require.NotNil(t, dbItr)
 	verifyFullScanIterator(t, dbItr, sampleData)
 }
@@ -2062,14 +2014,13 @@ func verifyFullScanIterator(
 ) {
 	results := []*statedb.VersionedKV{}
 	for {
-		ck, valBytes, err := dbIter.Next()
+		kv, err := dbIter.Next()
 		require.NoError(t, err)
-		if ck == nil {
+		if kv == nil {
 			break
 		}
-		val, err := constructVersionedValueForTest(valBytes)
 		require.NoError(t, err)
-		results = append(results, &statedb.VersionedKV{CompositeKey: ck, VersionedValue: val})
+		results = append(results, kv)
 	}
 	require.Equal(t, expectedResult, results)
 }
@@ -2110,13 +2061,12 @@ func TestDropErrorPath(t *testing.T) {
 }
 
 type dummyFullScanIter struct {
-	err   error
-	key   *statedb.CompositeKey
-	value []byte
+	err error
+	kv  *statedb.VersionedKV
 }
 
-func (d *dummyFullScanIter) Next() (*statedb.CompositeKey, []byte, error) {
-	return d.key, d.value, d.err
+func (d *dummyFullScanIter) Next() (*statedb.VersionedKV, error) {
+	return d.kv, d.err
 }
 
 func (d *dummyFullScanIter) Close() {

@@ -29,11 +29,11 @@ const (
 type versionFromSnapshotValueFunc func(snapshotValue []byte) (*version.Height, error)
 
 // ExportPubStateAndPvtStateHashes generates four files in the specified dir. The files, public_state.data and public_state.metadata
-// contains the exported public state and the files private_state_hashes.data and private_state_hashes.data contain the exported private state hashes.
-// The file format for public state and the private state hashes are the same. The data files contains a series of tuple <key,value> and the metadata
-// files contains a series of tuple <namespace, num entries for the namespace in the data file>.
+// contains the exported public state and the files private_state_hashes.data and private_state_hashes.metadata contain the exported private state hashes.
+// The file format for public state and the private state hashes are the same. The data files contains a series serialized proto message SnapshotRecord
+// and the metadata files contains a series of tuple <namespace, num entries for the namespace in the data file>.
 func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.NewHashFunc) (map[string][]byte, error) {
-	itr, dbValueFormat, err := s.GetFullScanIterator(isPvtdataNs)
+	itr, err := s.GetFullScanIterator(isPvtdataNs)
 	if err != nil {
 		return nil, err
 	}
@@ -42,21 +42,37 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 	var pubStateWriter *snapshotWriter
 	var pvtStateHashesWriter *snapshotWriter
 	for {
-		compositeKey, dbValue, err := itr.Next()
+		kv, err := itr.Next()
 		if err != nil {
 			return nil, err
 		}
-		if compositeKey == nil {
+		if kv == nil {
 			break
 		}
+
+		namespace := kv.Namespace
+		snapshotRecord := &SnapshotRecord{
+			Key:      []byte(kv.Key),
+			Value:    kv.Value,
+			Metadata: kv.Metadata,
+			Version:  kv.Version.ToBytes(),
+		}
+
 		switch {
-		case isHashedDataNs(compositeKey.Namespace):
+		case isHashedDataNs(namespace):
+			if !s.BytesKeySupported() {
+				key, err := base64.StdEncoding.DecodeString(kv.Key)
+				if err != nil {
+					return nil, err
+				}
+				snapshotRecord.Key = key
+			}
+
 			if pvtStateHashesWriter == nil { // encountered first time the pvt state hash element
 				pvtStateHashesWriter, err = newSnapshotWriter(
 					dir,
 					pvtStateHashesFileName,
 					pvtStateHashesMetadataFileName,
-					dbValueFormat,
 					newHashFunc,
 				)
 				if err != nil {
@@ -64,7 +80,7 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 				}
 				defer pvtStateHashesWriter.close()
 			}
-			if err := pvtStateHashesWriter.addData(compositeKey, dbValue); err != nil {
+			if err := pvtStateHashesWriter.addData(namespace, snapshotRecord); err != nil {
 				return nil, err
 			}
 		default:
@@ -73,7 +89,6 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 					dir,
 					pubStateDataFileName,
 					pubStateMetadataFileName,
-					dbValueFormat,
 					newHashFunc,
 				)
 				if err != nil {
@@ -81,7 +96,7 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 				}
 				defer pubStateWriter.close()
 			}
-			if err := pubStateWriter.addData(compositeKey, dbValue); err != nil {
+			if err := pubStateWriter.addData(namespace, snapshotRecord); err != nil {
 				return nil, err
 			}
 		}
@@ -110,31 +125,6 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 	return snapshotFilesInfo, nil
 }
 
-// ImportFromSnapshot imports the public state and private state hashes from the corresponding
-// files in the snapshotDir
-func (p *DBProvider) ImportFromSnapshot(
-	dbname string,
-	savepoint *version.Height,
-	snapshotDir string,
-	pvtdataHashesConsumers ...SnapshotPvtdataHashesConsumer,
-) error {
-	worldStateSnapshotReader, dbValueFormat, err := newWorldStateSnapshotReader(
-		snapshotDir,
-		pvtdataHashesConsumers,
-		p.versionFromSnapshotValue,
-		!p.VersionedDBProvider.BytesKeySupported(),
-	)
-	if err != nil {
-		return err
-	}
-	defer worldStateSnapshotReader.Close()
-
-	if worldStateSnapshotReader.pubState == nil && worldStateSnapshotReader.pvtStateHashes == nil {
-		return p.VersionedDBProvider.ImportFromSnapshot(dbname, savepoint, nil, byte(0))
-	}
-	return p.VersionedDBProvider.ImportFromSnapshot(dbname, savepoint, worldStateSnapshotReader, dbValueFormat)
-}
-
 // snapshotWriter generates two files, a data file and a metadata file. The datafile contains a series of tuples <key, dbValue>
 // and the metadata file contains a series of tuples <namesapce, number-of-tuples-in-the-data-file-that-belong-to-this-namespace>
 type snapshotWriter struct {
@@ -145,7 +135,6 @@ type snapshotWriter struct {
 
 func newSnapshotWriter(
 	dir, dataFileName, metadataFileName string,
-	dbValueFormat byte,
 	newHash func() (hash.Hash, error),
 ) (*snapshotWriter, error) {
 
@@ -165,9 +154,6 @@ func newSnapshotWriter(
 	if err != nil {
 		return nil, err
 	}
-	if err = dataFile.EncodeBytes([]byte{dbValueFormat}); err != nil {
-		return nil, err
-	}
 
 	metadataFile, err = snapshot.CreateFile(metadataFilePath, snapshotFileFormat, newHash)
 	if err != nil {
@@ -180,12 +166,12 @@ func newSnapshotWriter(
 		nil
 }
 
-func (w *snapshotWriter) addData(ck *statedb.CompositeKey, dbValue []byte) error {
-	if len(w.metadata) == 0 || w.metadata[len(w.metadata)-1].namespace != ck.Namespace {
+func (w *snapshotWriter) addData(namespace string, snapshotRecord *SnapshotRecord) error {
+	if len(w.metadata) == 0 || w.metadata[len(w.metadata)-1].namespace != namespace {
 		// new namespace begins
 		w.metadata = append(w.metadata,
 			&metadataRow{
-				namespace: ck.Namespace,
+				namespace: namespace,
 				kvCounts:  1,
 			},
 		)
@@ -193,10 +179,7 @@ func (w *snapshotWriter) addData(ck *statedb.CompositeKey, dbValue []byte) error
 		w.metadata[len(w.metadata)-1].kvCounts++
 	}
 
-	if err := w.dataFile.EncodeString(ck.Key); err != nil {
-		return err
-	}
-	return w.dataFile.EncodeBytes(dbValue)
+	return w.dataFile.EncodeProtoMessage(snapshotRecord)
 }
 
 func (w *snapshotWriter) done() ([]byte, []byte, error) {
@@ -237,6 +220,30 @@ func (w *snapshotWriter) close() {
 	w.metadataFile.Close()
 }
 
+// ImportFromSnapshot imports the public state and private state hashes from the corresponding
+// files in the snapshotDir
+func (p *DBProvider) ImportFromSnapshot(
+	dbname string,
+	savepoint *version.Height,
+	snapshotDir string,
+	pvtdataHashesConsumers ...SnapshotPvtdataHashesConsumer,
+) error {
+	worldStateSnapshotReader, err := newWorldStateSnapshotReader(
+		snapshotDir,
+		pvtdataHashesConsumers,
+		!p.VersionedDBProvider.BytesKeySupported(),
+	)
+	if err != nil {
+		return err
+	}
+	defer worldStateSnapshotReader.Close()
+
+	if worldStateSnapshotReader.pubState == nil && worldStateSnapshotReader.pvtStateHashes == nil {
+		return p.VersionedDBProvider.ImportFromSnapshot(dbname, savepoint, nil)
+	}
+	return p.VersionedDBProvider.ImportFromSnapshot(dbname, savepoint, worldStateSnapshotReader)
+}
+
 // worldStateSnapshotReader encapsulates the two snapshotReaders - one for the public state and another for the
 // pvtstate hashes. worldStateSnapshotReader also implements the interface statedb.FullScanIterator. In the Next()
 // function, it returns the public state data and then the pvtstate hashes
@@ -244,93 +251,120 @@ type worldStateSnapshotReader struct {
 	pubState       *snapshotReader
 	pvtStateHashes *snapshotReader
 
-	pvtdataHashesConsumers []SnapshotPvtdataHashesConsumer
-	versionExtractorFunc   versionFromSnapshotValueFunc
-	keyHashesBase64Encoded bool
+	pvtdataHashesConsumers    []SnapshotPvtdataHashesConsumer
+	encodeKeyHashesWithBase64 bool
 }
 
 func newWorldStateSnapshotReader(
 	dir string,
 	pvtdataHashesConsumers []SnapshotPvtdataHashesConsumer,
-	versionExtractorFunc versionFromSnapshotValueFunc,
-	keyHashesBase64Encoded bool,
-) (*worldStateSnapshotReader, byte, error) {
+	encodeKeyHashesWithBase64 bool,
+) (*worldStateSnapshotReader, error) {
 	var pubState *snapshotReader
 	var pvtStateHashes *snapshotReader
-	var dbValueFormat byte
 	var err error
 
-	r, f, err := newSnapshotReader(dir, pubStateDataFileName, pubStateMetadataFileName)
+	pubState, err = newSnapshotReader(
+		dir, pubStateDataFileName, pubStateMetadataFileName,
+	)
 	if err != nil {
-		return nil, byte(0), err
-	}
-	if r != nil {
-		pubState = r
-		dbValueFormat = f
+		return nil, err
 	}
 
-	r, f, err = newSnapshotReader(dir, pvtStateHashesFileName, pvtStateHashesMetadataFileName)
+	pvtStateHashes, err = newSnapshotReader(
+		dir, pvtStateHashesFileName, pvtStateHashesMetadataFileName,
+	)
 	if err != nil {
 		if pubState != nil {
 			pubState.Close()
 		}
-		return nil, byte(0), err
-	}
-	if r != nil {
-		pvtStateHashes = r
-		dbValueFormat = f // dbValueFormat would be same in both the public state files and the pvt state hashes files
+		return nil, err
 	}
 
 	return &worldStateSnapshotReader{
-		pubState:               pubState,
-		pvtStateHashes:         pvtStateHashes,
-		pvtdataHashesConsumers: pvtdataHashesConsumers,
-		versionExtractorFunc:   versionExtractorFunc,
-		keyHashesBase64Encoded: keyHashesBase64Encoded,
-	}, dbValueFormat, nil
+		pubState:                  pubState,
+		pvtStateHashes:            pvtStateHashes,
+		pvtdataHashesConsumers:    pvtdataHashesConsumers,
+		encodeKeyHashesWithBase64: encodeKeyHashesWithBase64,
+	}, nil
 }
 
-func (r *worldStateSnapshotReader) Next() (*statedb.CompositeKey, []byte, error) {
+func (r *worldStateSnapshotReader) Next() (*statedb.VersionedKV, error) {
 	if r.pubState != nil && r.pubState.hasMore() {
-		return r.pubState.Next()
+		namespace, snapshotRecord, err := r.pubState.Next()
+		if err != nil {
+			return nil, err
+		}
+		version, _, err := version.NewHeightFromBytes(snapshotRecord.Version)
+		if err != nil {
+			return nil, errors.WithMessage(err, "error while decoding version")
+		}
+		return &statedb.VersionedKV{
+			CompositeKey: &statedb.CompositeKey{
+				Namespace: namespace,
+				Key:       string(snapshotRecord.Key),
+			},
+			VersionedValue: &statedb.VersionedValue{
+				Value:    snapshotRecord.Value,
+				Metadata: snapshotRecord.Metadata,
+				Version:  version,
+			},
+		}, nil
 	}
 
 	if r.pvtStateHashes != nil && r.pvtStateHashes.hasMore() {
-		ck, snapshotValue, err := r.pvtStateHashes.Next()
+		namespace, snapshotRecord, err := r.pvtStateHashes.Next()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		if err := r.invokePvtdataHashesConsumers(ck, snapshotValue); err != nil {
-			return nil, nil, err
+		version, _, err := version.NewHeightFromBytes(snapshotRecord.Version)
+		if err != nil {
+			return nil, errors.WithMessage(err, "error while decoding version")
 		}
-		return ck, snapshotValue, err
+		if err := r.invokePvtdataHashesConsumers(
+			namespace, snapshotRecord.Key, snapshotRecord.Value, version,
+		); err != nil {
+			return nil, err
+		}
+
+		keyHash := snapshotRecord.Key
+		if r.encodeKeyHashesWithBase64 {
+			keyHash = []byte(base64.StdEncoding.EncodeToString(keyHash))
+		}
+		return &statedb.VersionedKV{
+			CompositeKey: &statedb.CompositeKey{
+				Namespace: namespace,
+				Key:       string(keyHash),
+			},
+			VersionedValue: &statedb.VersionedValue{
+				Value:    snapshotRecord.Value,
+				Metadata: snapshotRecord.Metadata,
+				Version:  version,
+			},
+		}, nil
 	}
-	return nil, nil, nil
+	return nil, nil
 }
 
-func (r *worldStateSnapshotReader) invokePvtdataHashesConsumers(ck *statedb.CompositeKey, snapshotValue []byte) error {
+func (r *worldStateSnapshotReader) invokePvtdataHashesConsumers(
+	namespace string,
+	keyHash []byte,
+	valueHash []byte,
+	version *version.Height,
+) error {
 	if len(r.pvtdataHashesConsumers) == 0 {
 		return nil
 	}
-	ns, coll, err := decodeHashedDataNsColl(ck.Namespace)
-	if err != nil {
-		return err
-	}
-	version, err := r.versionExtractorFunc(snapshotValue)
-	if err != nil {
-		return err
-	}
 
-	keyHash := []byte(ck.Key)
-	if r.keyHashesBase64Encoded {
-		keyHash, err = base64.StdEncoding.DecodeString(ck.Key)
-		if err != nil {
-			return err
-		}
+	ns, coll, err := decodeHashedDataNsColl(namespace)
+	if err != nil {
+		return err
 	}
 
 	for _, l := range r.pvtdataHashesConsumers {
-		if err := l.ConsumeSnapshotData(ns, coll, keyHash, version); err != nil {
+		if err := l.ConsumeSnapshotData(
+			ns, coll, keyHash, valueHash, version,
+		); err != nil {
 			return err
 		}
 	}
@@ -351,12 +385,12 @@ type snapshotReader struct {
 	cursor   *cursor
 }
 
-func newSnapshotReader(dir, dataFileName, metadataFileName string) (*snapshotReader, byte, error) {
+func newSnapshotReader(dir, dataFileName, metadataFileName string) (*snapshotReader, error) {
 	dataFilePath := filepath.Join(dir, dataFileName)
 	metadataFilePath := filepath.Join(dir, metadataFileName)
 	exist, _, err := fileutil.FileExists(dataFilePath)
 	if err != nil || !exist {
-		return nil, byte(0), err
+		return nil, err
 	}
 
 	var dataFile, metadataFile *snapshot.FileReader
@@ -369,30 +403,22 @@ func newSnapshotReader(dir, dataFileName, metadataFileName string) (*snapshotRea
 	}()
 
 	if dataFile, err = snapshot.OpenFile(dataFilePath, snapshotFileFormat); err != nil {
-		return nil, byte(0), errors.WithMessage(err, "error while opening data file")
+		return nil, errors.WithMessage(err, "error while opening data file")
 	}
 	if metadataFile, err = snapshot.OpenFile(metadataFilePath, snapshotFileFormat); err != nil {
-		return nil, byte(0), errors.WithMessage(err, "error while opening metadata file")
-	}
-	dbValueFormat, err := dataFile.DecodeBytes()
-	if err != nil {
-		return nil, byte(0), errors.WithMessage(err, "error while reading dbvalue-format")
-	}
-	if len(dbValueFormat) != 1 {
-		err = errors.Errorf("dbValueFormat is expected of length  one byte. Found [%d] length", len(dbValueFormat))
-		return nil, byte(0), err
+		return nil, errors.WithMessage(err, "error while opening metadata file")
 	}
 
 	metadata, err := readMetadata(metadataFile)
 	if err != nil {
-		return nil, byte(0), err
+		return nil, err
 	}
 	return &snapshotReader{
 		dataFile: dataFile,
 		cursor: &cursor{
 			metadata: metadata,
 		},
-	}, dbValueFormat[0], nil
+	}, nil
 }
 
 func readMetadata(metadataFile *snapshot.FileReader) ([]*metadataRow, error) {
@@ -418,23 +444,16 @@ func readMetadata(metadataFile *snapshot.FileReader) ([]*metadataRow, error) {
 	return metadata, nil
 }
 
-func (r *snapshotReader) Next() (*statedb.CompositeKey, []byte, error) {
+func (r *snapshotReader) Next() (string, *SnapshotRecord, error) {
 	if !r.cursor.move() {
-		return nil, nil, nil
+		return "", nil, nil
 	}
 
-	key, err := r.dataFile.DecodeString()
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "error while reading key from datafile")
+	snapshotRecord := &SnapshotRecord{}
+	if err := r.dataFile.DecodeProtoMessage(snapshotRecord); err != nil {
+		return "", nil, errors.WithMessage(err, "error while retrieving record from snapshot file")
 	}
-	dbValue, err := r.dataFile.DecodeBytes()
-	if err != nil {
-		return nil, nil, errors.WithMessage(err, "error while reading value from datafile")
-	}
-	return &statedb.CompositeKey{
-		Namespace: r.cursor.currentNamespace(),
-		Key:       key,
-	}, dbValue, nil
+	return r.cursor.currentNamespace(), snapshotRecord, nil
 }
 
 func (r *snapshotReader) Close() {
@@ -483,5 +502,5 @@ func (c *cursor) currentNamespace() string {
 }
 
 type SnapshotPvtdataHashesConsumer interface {
-	ConsumeSnapshotData(namespace, coll string, keyHash []byte, version *version.Height) error
+	ConsumeSnapshotData(namespace, coll string, keyHash []byte, valueHash []byte, version *version.Height) error
 }

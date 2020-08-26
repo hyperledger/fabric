@@ -42,13 +42,3 @@ func decodeValue(encodedValue []byte) (*statedb.VersionedValue, error) {
 	}
 	return &statedb.VersionedValue{Version: ver, Value: val, Metadata: metadata}, nil
 }
-
-func VersionFromSnapshotValue(snapshotValue []byte) (*version.Height, error) {
-	dbValue := &DBValue{}
-	err := proto.Unmarshal(snapshotValue, dbValue)
-	if err != nil {
-		return nil, err
-	}
-	version, _, err := version.NewHeightFromBytes(dbValue.Version)
-	return version, err
-}
