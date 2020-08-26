@@ -175,6 +175,7 @@ func Main() {
 		serverConfig.SecOpts.Certificate,
 		[][]byte{clusterClientConfig.SecOpts.Certificate},
 		identityBytes,
+		expirationLogger.Infof,
 		expirationLogger.Warnf, // This can be used to piggyback a metric event in the future
 		time.Now(),
 		time.AfterFunc)
