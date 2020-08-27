@@ -858,6 +858,7 @@ func TestInactiveChainReplicator(t *testing.T) {
 					return nil
 				},
 				quitChan:     make(chan struct{}),
+				doneChan:     make(chan struct{}),
 				scheduleChan: scheduler,
 			}
 
@@ -891,7 +892,7 @@ func TestInactiveChainReplicator(t *testing.T) {
 				scheduler <- time.Time{}
 				// trigger to replicate a second time
 				scheduler <- time.Time{}
-				icr.stop()
+				icr.Stop()
 			}()
 			icr.Run()
 			replicatorStopped.Wait()

@@ -8,7 +8,6 @@ package follower_test
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"path"
@@ -31,12 +30,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
-
-//go:generate counterfeiter -o mocks/block_verifier.go --fake-name BlockVerifier . blockVerifier
-
-type blockVerifier interface {
-	cluster.BlockVerifier
-}
 
 //go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . signerSerializer
 
@@ -123,7 +116,7 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 	// replaces cluster.VerifyBlocks, count blocks
 	var numBlocks int32
 	altVerifyBlocks := func(blockBuff []*cb.Block, signatureVerifier cluster.BlockVerifier) error { // replaces cluster.VerifyBlocks, count invocations
-		assert.NotNil(t, signatureVerifier)
+		require.NotNil(t, signatureVerifier)
 		atomic.StoreInt32(&numBlocks, int32(len(blockBuff)))
 		return nil
 	}
@@ -142,7 +135,7 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 
 		err = creator.VerifyBlockSequence(blocks, "")
 		require.NoError(t, err)
-		assert.Equal(t, int32(2), atomic.LoadInt32(&numBlocks))
+		require.Equal(t, int32(2), atomic.LoadInt32(&numBlocks))
 	})
 
 	t.Run("verify all blocks in slice", func(t *testing.T) {
@@ -161,7 +154,7 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 		creator.UpdateVerifierFromConfigBlock(generateJoinBlock(t, tlsCA, channelID, 0))
 		err = creator.VerifyBlockSequence(blocks, "")
 		require.NoError(t, err)
-		assert.Equal(t, int32(3), atomic.LoadInt32(&numBlocks))
+		require.Equal(t, int32(3), atomic.LoadInt32(&numBlocks))
 	})
 }
 
