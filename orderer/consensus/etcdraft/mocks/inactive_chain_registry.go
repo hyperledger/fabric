@@ -13,6 +13,11 @@ type InactiveChainRegistry struct {
 	mock.Mock
 }
 
+// Stop provides a mock function with given fields:
+func (_m *InactiveChainRegistry) Stop() {
+	_m.Called()
+}
+
 // TrackChain provides a mock function with given fields: chainName, genesisBlock, createChain
 func (_m *InactiveChainRegistry) TrackChain(chainName string, genesisBlock *common.Block, createChain func()) {
 	_m.Called(chainName, genesisBlock, createChain)

@@ -126,6 +126,14 @@ func (r *Registrar) initializeJoinBlockFileRepo() {
 }
 
 func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
+	r.init(consenters)
+
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	r.startChannels()
+}
+
+func (r *Registrar) init(consenters map[string]consensus.Consenter) {
 	r.consenters = consenters
 
 	// Discover and load join-blocks. If there is a join-block, there must be a ledger; if there is none, create it.
@@ -142,16 +150,11 @@ func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
 
 	// Initialize application channels, by creating either a consensus.Chain or a follower.Chain.
 	r.initAppChannels(existingChannels, channelsWithJoinBlock)
-
-	r.startChannels()
 }
 
 // startChannels starts internal go-routines in chains and followers.
 // Since these go-routines may call-back on the Registrar, this must be protected with a lock.
 func (r *Registrar) startChannels() {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
 	for _, chainSupport := range r.chains {
 		chainSupport.start()
 	}
@@ -765,22 +768,22 @@ func (r *Registrar) createFollower(
 func (r *Registrar) RemoveChannel(channelID string) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-
 	if r.systemChannelID != "" {
 		if channelID != r.systemChannelID {
 			return types.ErrSystemChannelExists
 		}
-		// TODO FAB-17965
-		return errors.New("not yet implemented")
+		return r.removeSystemChannel()
 	}
 
 	cs, ok := r.chains[channelID]
 	if ok {
+		cs.Halt()
 		return r.removeMember(channelID, cs)
 	}
 
 	fChain, ok := r.followers[channelID]
 	if ok {
+		fChain.Halt()
 		return r.removeFollower(channelID, fChain)
 	}
 
@@ -788,8 +791,6 @@ func (r *Registrar) RemoveChannel(channelID string) error {
 }
 
 func (r *Registrar) removeMember(channelID string, cs *ChainSupport) error {
-	cs.Halt()
-
 	err := r.ledgerFactory.Remove(channelID)
 	if err != nil {
 		return errors.Errorf("error removing ledger for channel %s", channelID)
@@ -803,8 +804,6 @@ func (r *Registrar) removeMember(channelID string, cs *ChainSupport) error {
 }
 
 func (r *Registrar) removeFollower(channelID string, follower *follower.Chain) error {
-	follower.Halt()
-
 	// TODO if follower is onboarding, remove the joinblock from file repo
 
 	err := r.ledgerFactory.Remove(channelID)
@@ -851,4 +850,62 @@ func (r *Registrar) loadJoinBlocks() map[string]*cb.Block {
 	}
 
 	return channelToBlockMap
+}
+
+func (r *Registrar) removeSystemChannel() error {
+	systemChannelID := r.systemChannelID
+	consensusType := r.systemChannel.SharedConfig().ConsensusType()
+	if consensusType != "etcdraft" {
+		return errors.Errorf("cannot remove %s system channel: %s", consensusType, systemChannelID)
+	}
+
+	// halt the inactive chain registry
+	consenter := r.consenters["etcdraft"].(consensus.ClusterConsenter)
+	consenter.RemoveInactiveChainRegistry()
+
+	// halt the system channel and remove it from the chains map
+	r.systemChannel.Halt()
+	delete(r.chains, systemChannelID)
+
+	// halt all application channels
+	for channel, cs := range r.chains {
+		cs.Halt()
+
+		rl, err := r.ledgerFactory.GetOrCreate(channel)
+		if err != nil {
+			return errors.Wrapf(err, "could not retrieve ledger for channel: %s", channel)
+		}
+		configBlock := ConfigBlockOrPanic(rl)
+		isChannelMember, err := consenter.IsChannelMember(configBlock)
+		if err != nil {
+			return errors.Wrapf(err, "failed to determine channel membership for channel: %s", channel)
+		}
+		if !isChannelMember {
+			logger.Debugf("Not a member of channel %s, removing it", channel)
+			err := r.removeMember(channel, cs)
+			if err != nil {
+				return errors.Wrapf(err, "failed to remove channel: %s", channel)
+			}
+		}
+	}
+
+	// remove system channel resources
+	err := r.ledgerFactory.Remove(systemChannelID)
+	if err != nil {
+		return errors.Errorf("error removing ledger for system channel %s", r.systemChannelID)
+	}
+
+	// remove system channel references
+	r.systemChannel = nil
+	r.systemChannelID = ""
+
+	// reintialize the registrar to recreate every channel
+	r.init(r.consenters)
+
+	// restart every channel
+	r.startChannels()
+
+	logger.Infof("Removed system channel: %s", systemChannelID)
+
+	return nil
 }

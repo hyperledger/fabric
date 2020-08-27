@@ -40,6 +40,9 @@ type InactiveChainRegistry interface {
 	// TrackChain tracks a chain with the given name, and calls the given callback
 	// when this chain should be created.
 	TrackChain(chainName string, genesisBlock *common.Block, createChain func())
+	// Stop stops the InactiveChainRegistry. This is used when removing the
+	// system channel.
+	Stop()
 }
 
 //go:generate mockery -dir . -name ChainManager -case underscore -output mocks
@@ -275,6 +278,13 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 	}
 
 	return member, nil
+}
+
+// RemoveInactiveChainRegistry stops and removes the inactive chain registry.
+// This is used when removing the system channel.
+func (c *Consenter) RemoveInactiveChainRegistry() {
+	c.InactiveChainRegistry.Stop()
+	c.InactiveChainRegistry = nil
 }
 
 // ReadBlockMetadata attempts to read raft metadata from block metadata, if available.

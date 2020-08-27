@@ -36,6 +36,10 @@ type Consenter struct {
 		result1 bool
 		result2 error
 	}
+	RemoveInactiveChainRegistryStub        func()
+	removeInactiveChainRegistryMutex       sync.RWMutex
+	removeInactiveChainRegistryArgsForCall []struct {
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -167,6 +171,29 @@ func (fake *Consenter) IsChannelMemberReturnsOnCall(i int, result1 bool, result2
 	}{result1, result2}
 }
 
+func (fake *Consenter) RemoveInactiveChainRegistry() {
+	fake.removeInactiveChainRegistryMutex.Lock()
+	fake.removeInactiveChainRegistryArgsForCall = append(fake.removeInactiveChainRegistryArgsForCall, struct {
+	}{})
+	fake.recordInvocation("RemoveInactiveChainRegistry", []interface{}{})
+	fake.removeInactiveChainRegistryMutex.Unlock()
+	if fake.RemoveInactiveChainRegistryStub != nil {
+		fake.RemoveInactiveChainRegistryStub()
+	}
+}
+
+func (fake *Consenter) RemoveInactiveChainRegistryCallCount() int {
+	fake.removeInactiveChainRegistryMutex.RLock()
+	defer fake.removeInactiveChainRegistryMutex.RUnlock()
+	return len(fake.removeInactiveChainRegistryArgsForCall)
+}
+
+func (fake *Consenter) RemoveInactiveChainRegistryCalls(stub func()) {
+	fake.removeInactiveChainRegistryMutex.Lock()
+	defer fake.removeInactiveChainRegistryMutex.Unlock()
+	fake.RemoveInactiveChainRegistryStub = stub
+}
+
 func (fake *Consenter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -174,6 +201,8 @@ func (fake *Consenter) Invocations() map[string][][]interface{} {
 	defer fake.handleChainMutex.RUnlock()
 	fake.isChannelMemberMutex.RLock()
 	defer fake.isChannelMemberMutex.RUnlock()
+	fake.removeInactiveChainRegistryMutex.RLock()
+	defer fake.removeInactiveChainRegistryMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
