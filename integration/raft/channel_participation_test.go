@@ -12,8 +12,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -367,6 +369,147 @@ var _ = Describe("ChannelParticipation", func() {
 		})
 	})
 
+	Describe("three node etcdraft network with a system channel", func() {
+		startOrderer := func(o *nwo.Orderer) {
+			ordererRunner := network.OrdererRunner(o)
+			ordererProcess := ifrit.Invoke(ordererRunner)
+			Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			ordererProcesses = append(ordererProcesses, ordererProcess)
+			ordererRunners = append(ordererRunners, ordererRunner)
+		}
+
+		restartOrderer := func(o *nwo.Orderer, index int) {
+			ordererProcesses[index].Signal(syscall.SIGKILL)
+			Eventually(ordererProcesses[index].Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
+			ordererRunner := network.OrdererRunner(o)
+			ordererProcess := ifrit.Invoke(ordererRunner)
+			Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			ordererProcesses[index] = ordererProcess
+			ordererRunners[index] = ordererRunner
+		}
+
+		BeforeEach(func() {
+			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+		})
+
+		It("joins channels using the legacy channel creation mechanism and then removes the system channel to transition to the channel participation API", func() {
+			orderer1 := network.Orderer("orderer1")
+			orderer2 := network.Orderer("orderer2")
+			orderer3 := network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{orderer1, orderer2, orderer3}
+			peer := network.Peer("Org1", "peer0")
+			for _, o := range orderers {
+				startOrderer(o)
+			}
+
+			findLeader(ordererRunners)
+
+			By("creating an application channel using system channel")
+			network.CreateChannel("testchannel", orderer1, peer)
+
+			By("broadcasting envelopes to each orderer")
+			for _, o := range orderers {
+				env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
+				resp, err := ordererclient.Broadcast(network, o, env)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			}
+
+			By("enabling the channel participation API on each orderer")
+			network.Consensus.ChannelParticipationEnabled = true
+			network.Consensus.BootstrapMethod = "none"
+			for i, o := range orderers {
+				network.GenerateOrdererConfig(o)
+				restartOrderer(o, i)
+			}
+
+			By("finding the leader (once for system channel and once for application channel)")
+			findLeader(ordererRunners)
+			findLeader(ordererRunners)
+
+			By("listing the channels")
+			expectedChannelInfo := channelparticipation.ChannelInfo{
+				Name:            "testchannel",
+				URL:             "/participation/v1/channels/testchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          4,
+			}
+			for _, o := range orderers {
+				By("listing single channel")
+				Eventually(func() channelparticipation.ChannelInfo {
+					return channelparticipation.ListOne(network, o, "testchannel")
+				}, network.EventuallyTimeout).Should(Equal(expectedChannelInfo))
+				By("listing all channels")
+				channelparticipation.List(network, o, []string{"testchannel"}, "systemchannel")
+			}
+
+			By("putting the system channel into maintenance mode")
+			channelConfig := nwo.GetConfig(network, peer, orderer2, "systemchannel")
+			c := configtx.New(channelConfig)
+			err := c.Orderer().SetConsensusState(orderer.ConsensusStateMaintenance)
+			Expect(err).NotTo(HaveOccurred())
+			computeSignSubmitConfigUpdate(network, orderer2, peer, c, "systemchannel")
+
+			By("removing the system channel with the channel participation API")
+			for _, o := range orderers {
+				channelparticipation.Remove(network, o, "systemchannel")
+			}
+			By("finding the leader")
+			findLeader(ordererRunners)
+
+			By("listing the channels again")
+			for _, o := range orderers {
+				channelparticipation.List(network, o, []string{"testchannel"})
+			}
+
+			By("broadcasting envelopes to each orderer")
+			for _, o := range orderers {
+				env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
+				resp, err := ordererclient.Broadcast(network, o, env)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			}
+
+			By("using the channel participation API to join a new channel")
+			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
+			expectedChannelInfoPT := channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          1,
+			}
+
+			for _, o := range orderers {
+				By("joining " + o.Name + " to channel as a member")
+				channelparticipation.Join(network, o, "participation-trophy", genesisBlock, expectedChannelInfoPT)
+				channelInfo := channelparticipation.ListOne(network, o, "participation-trophy")
+				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+			}
+
+			By("waiting for the leader to be ready")
+			findLeader(ordererRunners)
+
+			By("ensuring the channel is usable by submitting a transaction to each member")
+			env := CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello"))
+			for _, o := range orderers {
+				By("submitting transaction to " + o.Name)
+				expectedChannelInfoPT.Height++
+				resp, err := ordererclient.Broadcast(network, o, env)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+				expectedBlockNumPerChannel := map[string]int{"participation-trophy": int(expectedChannelInfoPT.Height - 1)}
+				assertBlockReception(expectedBlockNumPerChannel, orderers, peer, network)
+
+				By("checking the channel height")
+				channelInfo := channelparticipation.ListOne(network, o, "participation-trophy")
+				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+			}
+		})
+	})
 })
 
 func applicationChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, p *nwo.Peer, channel string) *common.Block {
@@ -593,5 +736,28 @@ func consenterChannelConfig(n *nwo.Network, o *nwo.Orderer) orderer.Consenter {
 		},
 		ClientTLSCert: tlsCert,
 		ServerTLSCert: tlsCert,
+	}
+}
+
+func setOrdererLogSpec(n *nwo.Network, logSpec string, orderers ...*nwo.Orderer) {
+	for _, o := range orderers {
+		oClient, _ := nwo.OrdererOperationalClients(n, o)
+		logspecURL := fmt.Sprintf("https://127.0.0.1:%d/logspec", n.OrdererPort(o, nwo.OperationsPort))
+		logSpecJSON := fmt.Sprintf(`{"spec":"%s"}`, logSpec)
+		updateReq, err := http.NewRequest(http.MethodPut, logspecURL, strings.NewReader(logSpecJSON))
+		Expect(err).NotTo(HaveOccurred())
+
+		resp, err := oClient.Do(updateReq)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+		resp.Body.Close()
+
+		resp, err = oClient.Get(logspecURL)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		resp.Body.Close()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(bodyBytes)).To(MatchJSON(logSpecJSON))
 	}
 }
