@@ -105,7 +105,7 @@ func createSession(ctx *pkcs11.Ctx, slot uint, pin string) pkcs11.SessionHandle 
 		time.Sleep(100 * time.Millisecond)
 	}
 	if err != nil {
-		logger.Fatalf("OpenSession failed [%s]", err)
+		logger.Panicf("OpenSession failed [%s]", err)
 	}
 	logger.Debugf("Created new pkcs11 session %+v on slot %d\n", s, slot)
 	session := s
@@ -233,15 +233,11 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 		// Generate using the SKI process and then make keypair immutable according to csp.immutable
 		keylabel = fmt.Sprintf("BCP%s", nextIDCtr().Text(16))
 		updateSKI = true
-	} else if csp.altId != "" && csp.immutable {
+	} else if csp.altId != "" {
 		// Generate the key pair using AltID process.
 		// No need to worry about immutable since AltID is used with Write-Once HSMs
 		keylabel = csp.altId
 		updateSKI = false
-	} else if csp.altId != "" && !csp.immutable {
-		// Raise an error since AltID is used with Write-Once HSMs
-		// So cannot make support AltID with immutable = false.
-		return nil, nil, fmt.Errorf("Cannot generate a mutable key using AltID.")
 	}
 
 	marshaledOID, err := asn1.Marshal(curve)
