@@ -91,10 +91,6 @@ func TestOIDFromNamedCurve(t *testing.T) {
 }
 
 func TestAlternateLabelGeneration(t *testing.T) {
-	if currentTestConfig.altId == "" {
-		t.Skip("Skipping TestAlternateLabelGeneration since AltId is not set for this test run.")
-	}
-
 	// We generate a unique Alt ID for the test
 	uniqueAltId := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
 	fakeSKI := []byte("FakeSKI")
@@ -218,8 +214,8 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 	}
 
 	msg1 := []byte("This is my very authentic message")
-	msg2 := []byte("This is my very unauthentic message")
 	hash1, _ := currentBCCSP.Hash(msg1, &bccsp.SHAOpts{})
+	msg2 := []byte("This is my very unauthentic message")
 	hash2, _ := currentBCCSP.Hash(msg2, &bccsp.SHAOpts{})
 
 	var oid asn1.ObjectIdentifier
@@ -270,4 +266,5 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 	if pass != false {
 		t.Fatal("Signature should not match with software verification!")
 	}
+
 }
