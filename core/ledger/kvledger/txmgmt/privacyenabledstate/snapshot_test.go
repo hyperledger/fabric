@@ -266,6 +266,68 @@ func verifyImportedSnapshot(t *testing.T,
 	}
 }
 
+func TestSnapshotImportMetadtaHintImport(t *testing.T) {
+	env := &LevelDBTestEnv{}
+	env.Init(t)
+	defer env.Cleanup()
+
+	sourceDB := env.GetDBHandle(generateLedgerID(t))
+	updateBatch := NewUpdateBatch()
+	updateBatch.PubUpdates.PutValAndMetadata(
+		"ns-with-no-metadata",
+		"key",
+		[]byte("value"),
+		nil,
+		version.NewHeight(1, 1),
+	)
+	updateBatch.PubUpdates.PutValAndMetadata(
+		"ns-with-metadata",
+		"key",
+		[]byte("value"),
+		[]byte("metadata"),
+		version.NewHeight(1, 1),
+	)
+	updateBatch.HashUpdates.PutValHashAndMetadata(
+		"ns-with-no-metadata-in-hashes",
+		"coll",
+		[]byte("Key"),
+		[]byte("Value"),
+		nil,
+		version.NewHeight(1, 1),
+	)
+	updateBatch.HashUpdates.PutValHashAndMetadata(
+		"ns-with-metadata-in-hashes",
+		"coll",
+		[]byte("Key"),
+		[]byte("Value"),
+		[]byte("metadata"),
+		version.NewHeight(1, 1),
+	)
+	err := sourceDB.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(2, 2))
+	require.NoError(t, err)
+
+	// export snapshot files from statedb
+	snapshotDir, err := ioutil.TempDir("", "testsnapshot")
+	require.NoError(t, err)
+	defer func() {
+		os.RemoveAll(snapshotDir)
+	}()
+	_, err = sourceDB.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
+	require.NoError(t, err)
+
+	// import snapshot in a fresh db
+	destinationDBName := generateLedgerID(t)
+	err = env.GetProvider().ImportFromSnapshot(
+		destinationDBName, version.NewHeight(10, 10), snapshotDir)
+	require.NoError(t, err)
+	destinationDB := env.GetDBHandle(destinationDBName)
+	h := destinationDB.metadataHint
+	require.False(t, h.metadataEverUsedFor("ns-with-no-metadata"))
+	require.True(t, h.metadataEverUsedFor("ns-with-metadata"))
+	require.False(t, h.metadataEverUsedFor("ns-with-no-metadata-in-hashes"))
+	require.True(t, h.metadataEverUsedFor("ns-with-metadata-in-hashes"))
+}
+
 func sha256ForFileForTest(t *testing.T, file string) []byte {
 	data, err := ioutil.ReadFile(file)
 	require.NoError(t, err)
@@ -447,7 +509,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 		dbEnv.Init(t)
 		db := dbEnv.GetDBHandle(generateLedgerID(t))
 		updateBatch := NewUpdateBatch()
-		updateBatch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 1))
+		updateBatch.PubUpdates.PutValAndMetadata("ns1", "key1", []byte("value1"), []byte("metadata"), version.NewHeight(1, 1))
 		updateBatch.HashUpdates.Put("ns1", "coll1", []byte("key1"), []byte("value1"), version.NewHeight(1, 1))
 		require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1)))
 		snapshotDir, err = ioutil.TempDir("", "testsnapshot")
@@ -614,6 +676,17 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 
 		require.Contains(t, err.Error(), "error writing batch to leveldb")
+	})
+
+	t.Run("error_writing_to_metadata_hint_db", func(t *testing.T) {
+		init()
+		defer cleanup()
+
+		dbEnv.provider.bookkeepingProvider.Close()
+		err := dbEnv.GetProvider().ImportFromSnapshot(
+			generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
+
+		require.Contains(t, err.Error(), "error while writing to metadata-hint db")
 	})
 }
 

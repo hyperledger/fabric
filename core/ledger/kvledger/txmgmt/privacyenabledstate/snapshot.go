@@ -13,6 +13,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/bookkeeping"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
@@ -25,8 +26,6 @@ const (
 	pvtStateHashesFileName         = "private_state_hashes.data"
 	pvtStateHashesMetadataFileName = "private_state_hashes.metadata"
 )
-
-type versionFromSnapshotValueFunc func(snapshotValue []byte) (*version.Height, error)
 
 // ExportPubStateAndPvtStateHashes generates four files in the specified dir. The files, public_state.data and public_state.metadata
 // contains the exported public state and the files private_state_hashes.data and private_state_hashes.metadata contain the exported private state hashes.
@@ -241,7 +240,26 @@ func (p *DBProvider) ImportFromSnapshot(
 	if worldStateSnapshotReader.pubState == nil && worldStateSnapshotReader.pvtStateHashes == nil {
 		return p.VersionedDBProvider.ImportFromSnapshot(dbname, savepoint, nil)
 	}
-	return p.VersionedDBProvider.ImportFromSnapshot(dbname, savepoint, worldStateSnapshotReader)
+
+	if err := p.VersionedDBProvider.ImportFromSnapshot(dbname, savepoint, worldStateSnapshotReader); err != nil {
+		return err
+	}
+
+	metadataHinter := &metadataHint{
+		bookkeeper: p.bookkeepingProvider.GetDBHandle(
+			dbname,
+			bookkeeping.MetadataPresenceIndicator,
+		),
+	}
+
+	err = metadataHinter.importNamespacesThatUseMetadata(
+		worldStateSnapshotReader.namespacesThatUseMetadata,
+	)
+
+	if err != nil {
+		return errors.WithMessage(err, "error while writing to metadata-hint db")
+	}
+	return nil
 }
 
 // worldStateSnapshotReader encapsulates the two snapshotReaders - one for the public state and another for the
@@ -253,6 +271,7 @@ type worldStateSnapshotReader struct {
 
 	pvtdataHashesConsumers    []SnapshotPvtdataHashesConsumer
 	encodeKeyHashesWithBase64 bool
+	namespacesThatUseMetadata map[string]struct{}
 }
 
 func newWorldStateSnapshotReader(
@@ -286,6 +305,7 @@ func newWorldStateSnapshotReader(
 		pvtStateHashes:            pvtStateHashes,
 		pvtdataHashesConsumers:    pvtdataHashesConsumers,
 		encodeKeyHashesWithBase64: encodeKeyHashesWithBase64,
+		namespacesThatUseMetadata: map[string]struct{}{},
 	}, nil
 }
 
@@ -295,10 +315,16 @@ func (r *worldStateSnapshotReader) Next() (*statedb.VersionedKV, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		version, _, err := version.NewHeightFromBytes(snapshotRecord.Version)
 		if err != nil {
 			return nil, errors.WithMessage(err, "error while decoding version")
 		}
+
+		if len(snapshotRecord.Metadata) != 0 {
+			r.namespacesThatUseMetadata[namespace] = struct{}{}
+		}
+
 		return &statedb.VersionedKV{
 			CompositeKey: &statedb.CompositeKey{
 				Namespace: namespace,
@@ -317,12 +343,23 @@ func (r *worldStateSnapshotReader) Next() (*statedb.VersionedKV, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		version, _, err := version.NewHeightFromBytes(snapshotRecord.Version)
 		if err != nil {
 			return nil, errors.WithMessage(err, "error while decoding version")
 		}
+
+		ns, coll, err := decodeHashedDataNsColl(namespace)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(snapshotRecord.Metadata) != 0 {
+			r.namespacesThatUseMetadata[ns] = struct{}{}
+		}
+
 		if err := r.invokePvtdataHashesConsumers(
-			namespace, snapshotRecord.Key, snapshotRecord.Value, version,
+			ns, coll, snapshotRecord.Key, snapshotRecord.Value, version,
 		); err != nil {
 			return nil, err
 		}
@@ -331,6 +368,7 @@ func (r *worldStateSnapshotReader) Next() (*statedb.VersionedKV, error) {
 		if r.encodeKeyHashesWithBase64 {
 			keyHash = []byte(base64.StdEncoding.EncodeToString(keyHash))
 		}
+
 		return &statedb.VersionedKV{
 			CompositeKey: &statedb.CompositeKey{
 				Namespace: namespace,
@@ -347,18 +385,14 @@ func (r *worldStateSnapshotReader) Next() (*statedb.VersionedKV, error) {
 }
 
 func (r *worldStateSnapshotReader) invokePvtdataHashesConsumers(
-	namespace string,
+	ns string,
+	coll string,
 	keyHash []byte,
 	valueHash []byte,
 	version *version.Height,
 ) error {
 	if len(r.pvtdataHashesConsumers) == 0 {
 		return nil
-	}
-
-	ns, coll, err := decodeHashedDataNsColl(namespace)
-	if err != nil {
-		return err
 	}
 
 	for _, l := range r.pvtdataHashesConsumers {
