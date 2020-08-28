@@ -292,7 +292,10 @@ can find the maintainers listed in the following `CODEOWNERS` files:
 
 Both language repositories have a GitHub webhook defined so that, once approved,
 your newly merged content in the `docs/` folder will trigger an automatic build
-and publication of the updated documentation.
+and publication of the updated documentation.  
+
+**Note:** Documentation maintainers are not able to to merge documentation PRs by clicking the `Merge pull request` button. Instead, if you are a documentation maintainer and have approved the PR, simply add the label `doc-merge` to the PR and a `Mergify` bot that runs every minute will merge the PR.
+
 
 ## Commands Reference updates
 
