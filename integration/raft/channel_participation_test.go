@@ -254,7 +254,119 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 		})
+
+		It("join application channel with join-block as member via channel participation api", func() {
+			orderer1 := network.Orderer("orderer1")
+			orderer2 := network.Orderer("orderer2")
+			orderer3 := network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{orderer1, orderer2}
+			members := []*nwo.Orderer{orderer1, orderer2}
+			peer := network.Peer("Org1", "peer0")
+
+			By("starting two orderers")
+			for _, o := range orderers {
+				startOrderer(o)
+				channelparticipation.List(network, o, nil)
+			}
+
+			genesisBlock := applicationChannelGenesisBlock(network, members, peer, "participation-trophy")
+			expectedChannelInfoPT := channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          1,
+			}
+
+			for _, o := range members {
+				By("joining " + o.Name + " to channel as a member")
+				channelparticipation.Join(network, o, "participation-trophy", genesisBlock, expectedChannelInfoPT)
+				channelInfo := channelparticipation.ListOne(network, o, "participation-trophy")
+				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+			}
+
+			By("waiting for the leader to be ready")
+			memberRunners := []*ginkgomon.Runner{ordererRunners[0], ordererRunners[1]}
+			leader := findLeader(memberRunners)
+
+			By("ensuring the channel is usable by submitting a transaction to each member")
+			env := CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello"))
+			for i, o := range members {
+				By("submitting transaction to " + o.Name)
+				i++
+				expectedChannelInfoPT.Height++
+				resp, err := ordererclient.Broadcast(network, o, env)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+				expectedBlockNumPerChannel := map[string]int{"participation-trophy": i}
+				assertBlockReception(expectedBlockNumPerChannel, members, peer, network)
+
+				By("checking the channel height")
+				channelInfo := channelparticipation.ListOne(network, o, "participation-trophy")
+				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+			}
+
+			By("submitting a channel config update")
+			channelConfig := nwo.GetConfig(network, peer, orderer1, "participation-trophy")
+			c := configtx.New(channelConfig)
+			err := c.Orderer().AddCapability("V1_1")
+			Expect(err).NotTo(HaveOccurred())
+			computeSignSubmitConfigUpdate(network, orderer1, peer, c, "participation-trophy")
+			expectedChannelInfoPT.Height++
+
+			currentBlockNumber := nwo.CurrentConfigBlockNumber(network, peer, orderer1, "participation-trophy")
+			Expect(currentBlockNumber).To(BeNumerically(">", 1))
+
+			By("starting third orderer")
+			startOrderer(orderer3)
+			channelparticipation.List(network, orderer3, nil)
+
+			By("adding orderer3 to the consenters set")
+			channelConfig = nwo.GetConfig(network, peer, orderer2, "participation-trophy")
+			c = configtx.New(channelConfig)
+			err = c.Orderer().AddConsenter(consenterChannelConfig(network, orderer3))
+			Expect(err).NotTo(HaveOccurred())
+			computeSignSubmitConfigUpdate(network, orderer2, peer, c, "participation-trophy")
+			expectedChannelInfoPT.Height++
+
+			By("joining orderer3 to the channel as a member")
+			// make sure we can join using a config block from one of the other orderers
+			configBlockPT := nwo.GetConfigBlock(network, peer, orderer2, "participation-trophy")
+			expectedChannelInfoMember := channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "onboarding",
+				ClusterRelation: "member",
+				Height:          0,
+			}
+			channelparticipation.Join(network, orderer3, "participation-trophy", configBlockPT, expectedChannelInfoMember)
+
+			By("ensuring orderer3 completes onboarding successfully")
+			expectedChannelInfoMember.Status = "active"
+			expectedChannelInfoMember.Height = expectedChannelInfoPT.Height
+			Eventually(func() channelparticipation.ChannelInfo {
+				return channelparticipation.ListOne(network, orderer3, "participation-trophy")
+			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoMember))
+
+			// make sure orderer3 finds the leader
+			newLeader := findLeader([]*ginkgomon.Runner{ordererRunners[2]})
+			Expect(newLeader).To(Equal(leader))
+
+			By("submitting transaction to orderer3 to ensure it is active")
+			env = CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello-again"))
+			expectedChannelInfoPT.Height++
+			resp, err := ordererclient.Broadcast(network, orderer3, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			expectedBlockNumPerChannel := map[string]int{"participation-trophy": 5}
+			assertBlockReception(expectedBlockNumPerChannel, orderers, peer, network)
+
+			By("checking the channel height")
+			channelInfo := channelparticipation.ListOne(network, orderer3, "participation-trophy")
+			Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+		})
 	})
+
 })
 
 func applicationChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, p *nwo.Peer, channel string) *common.Block {
