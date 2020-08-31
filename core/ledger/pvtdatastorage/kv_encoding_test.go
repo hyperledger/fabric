@@ -56,8 +56,7 @@ func TestEligibleMissingDataRange(t *testing.T) {
 	startKey, endKey := eligibleMissingdatakeyRange(blockNum)
 	var txNum uint64
 	for txNum = 0; txNum < 100; txNum++ {
-		keyOfBlock := encodeElgMissingDataKey(
-			elgPrioritizedMissingDataGroup,
+		keyOfBlock := encodeElgPrioMissingDataKey(
 			&missingDataKey{
 				nsCollBlk: nsCollBlk{
 					ns:     "ns",
@@ -66,8 +65,7 @@ func TestEligibleMissingDataRange(t *testing.T) {
 				},
 			},
 		)
-		keyOfPreviousBlock := encodeElgMissingDataKey(
-			elgPrioritizedMissingDataGroup,
+		keyOfPreviousBlock := encodeElgPrioMissingDataKey(
 			&missingDataKey{
 				nsCollBlk: nsCollBlk{
 					ns:     "ns",
@@ -76,8 +74,7 @@ func TestEligibleMissingDataRange(t *testing.T) {
 				},
 			},
 		)
-		keyOfNextBlock := encodeElgMissingDataKey(
-			elgPrioritizedMissingDataGroup,
+		keyOfNextBlock := encodeElgPrioMissingDataKey(
 			&missingDataKey{
 				nsCollBlk: nsCollBlk{
 					ns:     "ns",
@@ -121,7 +118,7 @@ func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 	t.Run("eligiblePrioritizedKey",
 		func(t *testing.T) {
 			decodedKey := decodeElgMissingDataKey(
-				encodeElgMissingDataKey(elgPrioritizedMissingDataGroup, key),
+				encodeElgPrioMissingDataKey(key),
 			)
 			require.Equal(t, key, decodedKey)
 		},
@@ -130,7 +127,7 @@ func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 	t.Run("eligibleDeprioritizedKey",
 		func(t *testing.T) {
 			decodedKey := decodeElgMissingDataKey(
-				encodeElgMissingDataKey(elgDeprioritizedMissingDataGroup, key),
+				encodeElgDeprioMissingDataKey(key),
 			)
 			require.Equal(t, key, decodedKey)
 		},

@@ -292,9 +292,10 @@ func TestCommitPvtDataOfOldBlocksWithBTL(t *testing.T) {
 	}
 
 	for _, k := range keys {
-		bitmap, err := p.getMissingDataBitmapFromStore(elgDeprioritizedMissingDataGroup, k)
+		encKey := encodeElgPrioMissingDataKey(&missingDataKey{k})
+		missingData, err := p.db.Get(encKey)
 		require.NoError(t, err)
-		require.Nil(t, bitmap)
+		require.Nil(t, missingData)
 	}
 }
 

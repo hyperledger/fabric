@@ -14,6 +14,13 @@ import (
 	"github.com/willf/bitset"
 )
 
+type elgMissingDataGroup int
+
+const (
+	prioritized elgMissingDataGroup = iota
+	deprioritized
+)
+
 // CommitPvtDataOfOldBlocks commits the pvtData (i.e., previously missing data) of old blockp.
 // The parameter `blocksPvtData` refers a list of old block's pvtdata which are missing in the pvtstore.
 // Given a list of old block's pvtData, `CommitPvtDataOfOldBlocks` performs the following three
@@ -24,10 +31,12 @@ import (
 // (3) commit the update batch to the pvtStore
 func (s *Store) CommitPvtDataOfOldBlocks(
 	blocksPvtData map[uint64][]*ledger.TxPvtData,
-	deprioritizedMissingData ledger.MissingPvtDataInfo,
+	unreconciledMissingData ledger.MissingPvtDataInfo,
 ) error {
 	s.purgerLock.Lock()
 	defer s.purgerLock.Unlock()
+
+	deprioritizedMissingData := unreconciledMissingData
 
 	if s.isLastUpdatedOldBlocksSet {
 		return &ErrIllegalCall{`The lastUpdatedOldBlocksList is set. It means that the
@@ -90,7 +99,7 @@ func (p *oldBlockDataProcessor) prepareDataAndExpiryEntries(blocksPvtData map[ui
 			continue
 		}
 
-		if expData, err = p.getExpiryData(expKey); err != nil {
+		if expData, err = p.getExpiryDataFromEntriesOrStore(expKey); err != nil {
 			return err
 		}
 		if expData == nil {
@@ -114,7 +123,7 @@ func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectReconciledData
 		key := dataKey.nsCollBlk
 		txNum := uint(dataKey.txNum)
 
-		prioMissingData, err := p.getMissingDataFromPrioritizedList(key)
+		prioMissingData, err := p.getMissingDataFromEntriesOrStore(prioritized, key)
 		if err != nil {
 			return err
 		}
@@ -123,15 +132,13 @@ func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectReconciledData
 			continue
 		}
 
-		deprioMissingData, err := p.getMissingDataFromDeprioritizedList(key)
+		deprioMissingData, err := p.getMissingDataFromEntriesOrStore(deprioritized, key)
 		if err != nil {
 			return err
 		}
 		if deprioMissingData != nil && deprioMissingData.Test(txNum) {
 			p.entries.deprioritizedMissingDataEntries[key] = deprioMissingData.Clear(txNum)
 		}
-		// if the missing data entry is already purged by the purge scheduler, we would
-		// get nil missingData from both prioritized and deprioritized list
 	}
 
 	return nil
@@ -148,7 +155,7 @@ func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectPriority(depri
 				}
 				txNum := uint(txNum)
 
-				prioMissingData, err := p.getMissingDataFromPrioritizedList(key)
+				prioMissingData, err := p.getMissingDataFromEntriesOrStore(prioritized, key)
 				if err != nil {
 					return err
 				}
@@ -164,7 +171,7 @@ func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectPriority(depri
 				}
 				p.entries.prioritizedMissingDataEntries[key] = prioMissingData.Clear(txNum)
 
-				deprioMissingData, err := p.getMissingDataFromDeprioritizedList(key)
+				deprioMissingData, err := p.getMissingDataFromEntriesOrStore(deprioritized, key)
 				if err != nil {
 					return err
 				}
@@ -193,7 +200,7 @@ func (p *oldBlockDataProcessor) constructExpiryKey(dataEntry *dataEntry) (expiry
 	}, nil
 }
 
-func (p *oldBlockDataProcessor) getExpiryData(expKey expiryKey) (*ExpiryData, error) {
+func (p *oldBlockDataProcessor) getExpiryDataFromEntriesOrStore(expKey expiryKey) (*ExpiryData, error) {
 	if expiryData, ok := p.entries.expiryEntries[expKey]; ok {
 		return expiryData, nil
 	}
@@ -203,36 +210,38 @@ func (p *oldBlockDataProcessor) getExpiryData(expKey expiryKey) (*ExpiryData, er
 		return nil, err
 	}
 	if expData == nil {
-		return nil, errors.Wrap(err, "error while getting expiry data from the store")
+		return nil, nil
 	}
+
 	return decodeExpiryValue(expData)
 }
 
-func (p *oldBlockDataProcessor) getMissingDataFromPrioritizedList(nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
-	missingData, ok := p.entries.prioritizedMissingDataEntries[nsCollBlk]
-	if ok {
-		return missingData, nil
+func (p *oldBlockDataProcessor) getMissingDataFromEntriesOrStore(group elgMissingDataGroup, nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
+	switch group {
+	case prioritized:
+		missingData, ok := p.entries.prioritizedMissingDataEntries[nsCollBlk]
+		if ok {
+			return missingData, nil
+		}
+	case deprioritized:
+		missingData, ok := p.entries.deprioritizedMissingDataEntries[nsCollBlk]
+		if ok {
+			return missingData, nil
+		}
 	}
 
-	return p.getMissingDataBitmapFromStore(elgPrioritizedMissingDataGroup, nsCollBlk)
-}
-
-func (p *oldBlockDataProcessor) getMissingDataFromDeprioritizedList(nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
-	missingData, ok := p.entries.deprioritizedMissingDataEntries[nsCollBlk]
-	if ok {
-		return missingData, nil
+	missingKey := &missingDataKey{
+		nsCollBlk: nsCollBlk,
 	}
 
-	return p.getMissingDataBitmapFromStore(elgDeprioritizedMissingDataGroup, nsCollBlk)
-}
+	var key []byte
 
-func (p *oldBlockDataProcessor) getMissingDataBitmapFromStore(group []byte, nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
-	key := encodeElgMissingDataKey(
-		group,
-		&missingDataKey{
-			nsCollBlk: nsCollBlk,
-		},
-	)
+	switch group {
+	case prioritized:
+		key = encodeElgPrioMissingDataKey(missingKey)
+	case deprioritized:
+		key = encodeElgDeprioMissingDataKey(missingKey)
+	}
 
 	missingData, err := p.db.Get(key)
 	if err != nil {
@@ -303,19 +312,21 @@ func (e *entriesForPvtDataOfOldBlocks) addMissingDataEntriesTo(batch *leveldbhel
 	var err error
 
 	entries := map[string]map[nsCollBlk]*bitset.BitSet{
-		string(elgPrioritizedMissingDataGroup):   e.prioritizedMissingDataEntries,
-		string(elgDeprioritizedMissingDataGroup): e.deprioritizedMissingDataEntries,
+		"prioritized":   e.prioritizedMissingDataEntries,
+		"deprioritized": e.deprioritizedMissingDataEntries,
 	}
 
 	for group, missingDataList := range entries {
 		for nsCollBlk, missingData := range missingDataList {
-			key = encodeElgMissingDataKey(
-				[]byte(group),
-				&missingDataKey{
-					nsCollBlk:  nsCollBlk,
-					isEligible: true,
-				},
-			)
+			missingKey := &missingDataKey{
+				nsCollBlk: nsCollBlk,
+			}
+			switch group {
+			case "prioritized":
+				key = encodeElgPrioMissingDataKey(missingKey)
+			case "deprioritized":
+				key = encodeElgDeprioMissingDataKey(missingKey)
+			}
 
 			if missingData.None() {
 				batch.Delete(key)

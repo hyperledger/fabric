@@ -21,7 +21,18 @@ import (
 	"github.com/willf/bitset"
 )
 
-var logger = flogging.MustGetLogger("pvtdatastorage")
+var (
+	logger = flogging.MustGetLogger("pvtdatastorage")
+	// The missing data entries are classified into three categories:
+	// (1) eligible prioritized
+	// (2) eligible deprioritized
+	// (3) ineligible
+	// The reconciler would fetch the eligible prioritized missing data
+	// from other peers. A chance for eligible deprioritized missing data
+	// would be given after giving deprioritizedMissingDataPeriodicity number
+	// of chances to the eligible prioritized missing data
+	deprioritizedMissingDataPeriodicity = 1000
+)
 
 // Provider provides handle to specific 'Store' that in turn manages
 // private write sets for a ledger
@@ -64,8 +75,7 @@ type Store struct {
 	// recovery operation.
 	isLastUpdatedOldBlocksSet bool
 
-	iterSinceDeprioMissingDataAccess    int
-	deprioritizedMissingDataPeriodicity int
+	iterSinceDeprioMissingDataAccess int
 }
 
 type blkTranNumKey []byte
@@ -97,13 +107,13 @@ type dataKey struct {
 
 type missingDataKey struct {
 	nsCollBlk
-	isEligible bool
 }
 
 type storeEntries struct {
-	dataEntries        []*dataEntry
-	expiryEntries      []*expiryEntry
-	missingDataEntries map[missingDataKey]*bitset.BitSet
+	dataEntries             []*dataEntry
+	expiryEntries           []*expiryEntry
+	elgMissingDataEntries   map[missingDataKey]*bitset.BitSet
+	inelgMissingDataEntries map[missingDataKey]*bitset.BitSet
 }
 
 // lastUpdatedOldBlocksList keeps the list of last updated blocks
@@ -143,7 +153,6 @@ func (p *Provider) OpenStore(ledgerid string) (*Store, error) {
 		return nil, err
 	}
 	s.launchCollElgProc()
-	s.deprioritizedMissingDataPeriodicity = 1000
 	logger.Debugf("Pvtdata store opened. Initial state: isEmpty [%t], lastCommittedBlock [%d]",
 		s.isEmpty, s.lastCommittedBlock)
 	return s, nil
@@ -239,13 +248,18 @@ func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtD
 		batch.Put(key, val)
 	}
 
-	for missingDataKey, missingDataValue := range storeEntries.missingDataEntries {
-		switch {
-		case missingDataKey.isEligible:
-			key = encodeElgMissingDataKey(elgPrioritizedMissingDataGroup, &missingDataKey)
-		default:
-			key = encodeInelgMissingDataKey(&missingDataKey)
+	for missingDataKey, missingDataValue := range storeEntries.elgMissingDataEntries {
+		key = encodeElgPrioMissingDataKey(&missingDataKey)
+
+		if val, err = encodeMissingDataValue(missingDataValue); err != nil {
+			return err
 		}
+		batch.Put(key, val)
+	}
+
+	for missingDataKey, missingDataValue := range storeEntries.inelgMissingDataEntries {
+		key = encodeInelgMissingDataKey(&missingDataKey)
+
 		if val, err = encodeMissingDataValue(missingDataValue); err != nil {
 			return err
 		}
@@ -412,7 +426,7 @@ func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 		return nil, nil
 	}
 
-	if s.iterSinceDeprioMissingDataAccess == s.deprioritizedMissingDataPeriodicity {
+	if s.iterSinceDeprioMissingDataAccess == deprioritizedMissingDataPeriodicity {
 		s.iterSinceDeprioMissingDataAccess = 0
 		return s.getMissingData(elgDeprioritizedMissingDataGroup, maxBlock)
 	}
@@ -548,10 +562,10 @@ func (s *Store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 
 		for _, missingDataKey := range missingDataKeys {
 			batch.Delete(
-				encodeElgMissingDataKey(elgPrioritizedMissingDataGroup, missingDataKey),
+				encodeElgPrioMissingDataKey(missingDataKey),
 			)
 			batch.Delete(
-				encodeElgMissingDataKey(elgDeprioritizedMissingDataGroup, missingDataKey),
+				encodeElgDeprioMissingDataKey(missingDataKey),
 			)
 			batch.Delete(
 				encodeInelgMissingDataKey(missingDataKey),
@@ -648,12 +662,11 @@ func (s *Store) processCollElgEvents() error {
 				for collItr.Next() { // each entry
 					originalKey, originalVal := collItr.Key(), collItr.Value()
 					modifiedKey := decodeInelgMissingDataKey(originalKey)
-					modifiedKey.isEligible = true
 					batch.Delete(originalKey)
 					copyVal := make([]byte, len(originalVal))
 					copy(copyVal, originalVal)
 					batch.Put(
-						encodeElgMissingDataKey(elgPrioritizedMissingDataGroup, modifiedKey),
+						encodeElgPrioMissingDataKey(modifiedKey),
 						copyVal,
 					)
 					collEntriesConverted++

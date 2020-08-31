@@ -19,17 +19,19 @@ func prepareStoreEntries(blockNum uint64, pvtData []*ledger.TxPvtData, btlPolicy
 	missingPvtData ledger.TxMissingPvtData) (*storeEntries, error) {
 	dataEntries := prepareDataEntries(blockNum, pvtData)
 
-	missingDataEntries := prepareMissingDataEntries(blockNum, missingPvtData)
+	elgMissingDataEntries, inelgMissingDataEntries := prepareMissingDataEntries(blockNum, missingPvtData)
 
-	expiryEntries, err := prepareExpiryEntries(blockNum, dataEntries, missingDataEntries, btlPolicy)
+	expiryEntries, err := prepareExpiryEntries(blockNum, dataEntries, elgMissingDataEntries, inelgMissingDataEntries, btlPolicy)
 	if err != nil {
 		return nil, err
 	}
 
 	return &storeEntries{
-		dataEntries:        dataEntries,
-		expiryEntries:      expiryEntries,
-		missingDataEntries: missingDataEntries}, nil
+		dataEntries:             dataEntries,
+		expiryEntries:           expiryEntries,
+		elgMissingDataEntries:   elgMissingDataEntries,
+		inelgMissingDataEntries: inelgMissingDataEntries,
+	}, nil
 }
 
 func prepareDataEntries(blockNum uint64, pvtData []*ledger.TxPvtData) []*dataEntry {
@@ -48,13 +50,29 @@ func prepareDataEntries(blockNum uint64, pvtData []*ledger.TxPvtData) []*dataEnt
 	return dataEntries
 }
 
-func prepareMissingDataEntries(committingBlk uint64, missingPvtData ledger.TxMissingPvtData) map[missingDataKey]*bitset.BitSet {
-	missingDataEntries := make(map[missingDataKey]*bitset.BitSet)
+func prepareMissingDataEntries(
+	committingBlk uint64,
+	missingPvtData ledger.TxMissingPvtData,
+) (map[missingDataKey]*bitset.BitSet, map[missingDataKey]*bitset.BitSet) {
+	elgMissingDataEntries := make(map[missingDataKey]*bitset.BitSet)
+	inelgMissingDataEntries := make(map[missingDataKey]*bitset.BitSet)
+
+	var missingDataEntries map[missingDataKey]*bitset.BitSet
 
 	for txNum, missingData := range missingPvtData {
 		for _, nsColl := range missingData {
-			key := missingDataKey{nsCollBlk{nsColl.Namespace, nsColl.Collection, committingBlk},
-				nsColl.IsEligible}
+			key := missingDataKey{
+				nsCollBlk{
+					ns:     nsColl.Namespace,
+					coll:   nsColl.Collection,
+					blkNum: committingBlk,
+				},
+			}
+
+			missingDataEntries = elgMissingDataEntries
+			if !nsColl.IsEligible {
+				missingDataEntries = inelgMissingDataEntries
+			}
 
 			if _, ok := missingDataEntries[key]; !ok {
 				missingDataEntries[key] = &bitset.BitSet{}
@@ -65,25 +83,29 @@ func prepareMissingDataEntries(committingBlk uint64, missingPvtData ledger.TxMis
 		}
 	}
 
-	return missingDataEntries
+	return elgMissingDataEntries, inelgMissingDataEntries
 }
 
 // prepareExpiryEntries returns expiry entries for both private data which is present in the committingBlk
 // and missing private.
-func prepareExpiryEntries(committingBlk uint64, dataEntries []*dataEntry, missingDataEntries map[missingDataKey]*bitset.BitSet,
+func prepareExpiryEntries(committingBlk uint64, dataEntries []*dataEntry, elgMissingDataEntries, inelgMissingDataEntries map[missingDataKey]*bitset.BitSet,
 	btlPolicy pvtdatapolicy.BTLPolicy) ([]*expiryEntry, error) {
 	var expiryEntries []*expiryEntry
 	mapByExpiringBlk := make(map[uint64]*ExpiryData)
 
-	// 1. prepare expiryData for non-missing data
 	for _, dataEntry := range dataEntries {
 		if err := prepareExpiryEntriesForPresentData(mapByExpiringBlk, dataEntry.key, btlPolicy); err != nil {
 			return nil, err
 		}
 	}
 
-	// 2. prepare expiryData for missing data
-	for missingDataKey := range missingDataEntries {
+	for missingDataKey := range elgMissingDataEntries {
+		if err := prepareExpiryEntriesForMissingData(mapByExpiringBlk, &missingDataKey, btlPolicy); err != nil {
+			return nil, err
+		}
+	}
+
+	for missingDataKey := range inelgMissingDataEntries {
 		if err := prepareExpiryEntriesForMissingData(mapByExpiringBlk, &missingDataKey, btlPolicy); err != nil {
 			return nil, err
 		}

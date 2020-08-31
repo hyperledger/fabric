@@ -108,7 +108,7 @@ func decodeDataValue(datavalueBytes []byte) (*rwset.CollectionPvtReadWriteSet, e
 	return collPvtdata, err
 }
 
-func encodeElgMissingDataKey(group []byte, key *missingDataKey) []byte {
+func encodeElgPrioMissingDataKey(key *missingDataKey) []byte {
 	// When missing pvtData reconciler asks for missing data info,
 	// it is necessary to pass the missing pvtdata info associated with
 	// the most recent block so that missing pvtdata in the state db can
@@ -117,7 +117,14 @@ func encodeElgMissingDataKey(group []byte, key *missingDataKey) []byte {
 	// to missing pvtData in the most recent block, we use reverse order
 	// preserving encoding for the missing data key. This simplifies the
 	// implementation of GetMissingPvtDataInfoForMostRecentBlocks().
-	encKey := append(group, encodeReverseOrderVarUint64(key.blkNum)...)
+	encKey := append(elgPrioritizedMissingDataGroup, encodeReverseOrderVarUint64(key.blkNum)...)
+	encKey = append(encKey, []byte(key.ns)...)
+	encKey = append(encKey, nilByte)
+	return append(encKey, []byte(key.coll)...)
+}
+
+func encodeElgDeprioMissingDataKey(key *missingDataKey) []byte {
+	encKey := append(elgDeprioritizedMissingDataGroup, encodeReverseOrderVarUint64(key.blkNum)...)
 	encKey = append(encKey, []byte(key.ns)...)
 	encKey = append(encKey, nilByte)
 	return append(encKey, []byte(key.coll)...)
@@ -193,14 +200,20 @@ func createRangeScanKeysForElgMissingData(blkNum uint64, group []byte) ([]byte, 
 func createRangeScanKeysForInelgMissingData(maxBlkNum uint64, ns, coll string) ([]byte, []byte) {
 	startKey := encodeInelgMissingDataKey(
 		&missingDataKey{
-			nsCollBlk:  nsCollBlk{ns: ns, coll: coll, blkNum: maxBlkNum},
-			isEligible: false,
+			nsCollBlk: nsCollBlk{
+				ns:     ns,
+				coll:   coll,
+				blkNum: maxBlkNum,
+			},
 		},
 	)
 	endKey := encodeInelgMissingDataKey(
 		&missingDataKey{
-			nsCollBlk:  nsCollBlk{ns: ns, coll: coll, blkNum: 0},
-			isEligible: false,
+			nsCollBlk: nsCollBlk{
+				ns:     ns,
+				coll:   coll,
+				blkNum: 0,
+			},
 		},
 	)
 

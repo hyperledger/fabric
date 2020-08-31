@@ -245,7 +245,7 @@ func TestGetMissingDataInfo(t *testing.T) {
 		},
 	}
 
-	store.deprioritizedMissingDataPeriodicity = 10
+	deprioritizedMissingDataPeriodicity = 10
 	for i := 1; i <= 55; i++ {
 		if i%11 == 0 {
 			// after ever 10 iterations of accessing the prioritized list, the
@@ -426,22 +426,22 @@ func TestStorePurge(t *testing.T) {
 	ns2Coll2 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-2", coll: "coll-2", blkNum: 1}, txNum: 2}
 
 	// eligible missingData entries for ns-1:coll-1, ns-1:coll-2 (neverExpires) should exist in store
-	ns1Coll1elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}, isEligible: true}
-	ns1Coll2elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}, isEligible: true}
+	ns1Coll1elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}}
+	ns1Coll2elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}}
 
 	// ineligible missingData entries for ns-3:col-1, ns-3:coll-2 (neverExpires) should exist in store
-	ns3Coll1inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-1", blkNum: 1}, isEligible: false}
-	ns3Coll2inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-2", blkNum: 1}, isEligible: false}
+	ns3Coll1inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-1", blkNum: 1}}
+	ns3Coll2inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-2", blkNum: 1}}
 
 	testWaitForPurgerRoutineToFinish(s)
 	require.True(t, testDataKeyExists(t, s, ns1Coll1))
 	require.True(t, testDataKeyExists(t, s, ns2Coll2))
 
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll1elgMD, false))
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll2elgMD, false))
+	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll1elgMD))
+	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll2elgMD))
 
-	require.True(t, testMissingDataKeyExists(t, s, ns3Coll1inelgMD, false))
-	require.True(t, testMissingDataKeyExists(t, s, ns3Coll2inelgMD, false))
+	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll1inelgMD))
+	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll2inelgMD))
 
 	deprioritizedList := ledger.MissingPvtDataInfo{
 		1: ledger.MissingBlockPvtdataInfo{
@@ -466,14 +466,14 @@ func TestStorePurge(t *testing.T) {
 	require.True(t, testDataKeyExists(t, s, ns1Coll1))
 	require.True(t, testDataKeyExists(t, s, ns2Coll2))
 	// eligible missingData entries for ns-1:coll-1, ns-1:coll-2 (neverExpires) should exist in store
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll1elgMD, false))
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll2elgMD, false))
+	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll1elgMD))
+	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll2elgMD))
 	// some transactions which miss ns-1:coll-1 and ns-1:coll-2 has be moved to deprioritizedList list
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll1elgMD, true))
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll2elgMD, true))
+	require.True(t, testElgDeprioMissingDataKeyExists(t, s, ns1Coll1elgMD))
+	require.True(t, testElgDeprioMissingDataKeyExists(t, s, ns1Coll2elgMD))
 	// ineligible missingData entries for ns-3:col-1, ns-3:coll-2 (neverExpires) should exist in store
-	require.True(t, testMissingDataKeyExists(t, s, ns3Coll1inelgMD, false))
-	require.True(t, testMissingDataKeyExists(t, s, ns3Coll2inelgMD, false))
+	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll1inelgMD))
+	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll2inelgMD))
 
 	// write pvt data for block 4
 	require.NoError(t, s.Commit(4, nil, nil))
@@ -483,13 +483,13 @@ func TestStorePurge(t *testing.T) {
 	require.False(t, testDataKeyExists(t, s, ns1Coll1))
 	require.True(t, testDataKeyExists(t, s, ns2Coll2))
 	// eligible missingData entries for ns-1:coll-1 should have expired and ns-1:coll-2 (neverExpires) should exist in store
-	require.False(t, testMissingDataKeyExists(t, s, ns1Coll1elgMD, false))
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll2elgMD, false))
-	require.False(t, testMissingDataKeyExists(t, s, ns1Coll1elgMD, true))
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll2elgMD, true))
+	require.False(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll1elgMD))
+	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll2elgMD))
+	require.False(t, testElgDeprioMissingDataKeyExists(t, s, ns1Coll1elgMD))
+	require.True(t, testElgDeprioMissingDataKeyExists(t, s, ns1Coll2elgMD))
 	// ineligible missingData entries for ns-3:col-1 should have expired and ns-3:coll-2 (neverExpires) should exist in store
-	require.False(t, testMissingDataKeyExists(t, s, ns3Coll1inelgMD, false))
-	require.True(t, testMissingDataKeyExists(t, s, ns3Coll2inelgMD, false))
+	require.False(t, testInelgMissingDataKeyExists(t, s, ns3Coll1inelgMD))
+	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll2inelgMD))
 
 	// write pvt data for block 5
 	require.NoError(t, s.Commit(5, nil, nil))
@@ -779,16 +779,24 @@ func testDataKeyExists(t *testing.T, s *Store, dataKey *dataKey) bool {
 	return len(val) != 0
 }
 
-func testMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missingDataKey, deprioritized bool) bool {
-	var key []byte
-	switch {
-	case missingDataKey.isEligible && !deprioritized:
-		key = encodeElgMissingDataKey(elgPrioritizedMissingDataGroup, missingDataKey)
-	case missingDataKey.isEligible && deprioritized:
-		key = encodeElgMissingDataKey(elgDeprioritizedMissingDataGroup, missingDataKey)
-	default:
-		key = encodeInelgMissingDataKey(missingDataKey)
-	}
+func testElgPrioMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missingDataKey) bool {
+	key := encodeElgPrioMissingDataKey(missingDataKey)
+
+	val, err := s.db.Get(key)
+	require.NoError(t, err)
+	return len(val) != 0
+}
+
+func testElgDeprioMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missingDataKey) bool {
+	key := encodeElgDeprioMissingDataKey(missingDataKey)
+
+	val, err := s.db.Get(key)
+	require.NoError(t, err)
+	return len(val) != 0
+}
+func testInelgMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missingDataKey) bool {
+	key := encodeInelgMissingDataKey(missingDataKey)
+
 	val, err := s.db.Get(key)
 	require.NoError(t, err)
 	return len(val) != 0
