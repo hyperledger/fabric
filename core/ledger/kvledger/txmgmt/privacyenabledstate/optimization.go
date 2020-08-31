@@ -45,6 +45,14 @@ func (h *metadataHint) setMetadataUsedFlag(updates *UpdateBatch) error {
 	return h.bookkeeper.WriteBatch(batch, true)
 }
 
+func (h *metadataHint) importNamespacesThatUseMetadata(namespaces map[string]struct{}) error {
+	batch := h.bookkeeper.NewUpdateBatch()
+	for ns := range namespaces {
+		batch.Put([]byte(ns), []byte{})
+	}
+	return h.bookkeeper.WriteBatch(batch, true)
+}
+
 func filterNamespacesThatHasMetadata(updates *UpdateBatch) map[string]bool {
 	namespaces := map[string]bool{}
 	pubUpdates, hashUpdates := updates.PubUpdates, updates.HashUpdates
