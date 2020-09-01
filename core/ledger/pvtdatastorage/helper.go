@@ -69,8 +69,10 @@ func prepareMissingDataEntries(
 				},
 			}
 
-			missingDataEntries = elgMissingDataEntries
-			if !nsColl.IsEligible {
+			switch nsColl.IsEligible {
+			case true:
+				missingDataEntries = elgMissingDataEntries
+			default:
 				missingDataEntries = inelgMissingDataEntries
 			}
 

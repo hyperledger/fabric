@@ -245,7 +245,12 @@ func TestGetMissingDataInfo(t *testing.T) {
 		},
 	}
 
+	defaultVal := deprioritizedMissingDataPeriodicity
 	deprioritizedMissingDataPeriodicity = 10
+	defer func() {
+		deprioritizedMissingDataPeriodicity = defaultVal
+	}()
+
 	for i := 1; i <= 55; i++ {
 		if i%11 == 0 {
 			// after ever 10 iterations of accessing the prioritized list, the

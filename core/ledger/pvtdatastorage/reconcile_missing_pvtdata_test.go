@@ -275,9 +275,6 @@ func TestCommitPvtDataOfOldBlocksWithBTL(t *testing.T) {
 		}
 	}
 	// deprioritized list should not be present
-	p := &oldBlockDataProcessor{
-		Store: store,
-	}
 	keys := []nsCollBlk{
 		{
 			ns:     "ns-1",
@@ -292,56 +289,50 @@ func TestCommitPvtDataOfOldBlocksWithBTL(t *testing.T) {
 	}
 
 	for _, k := range keys {
-		encKey := encodeElgPrioMissingDataKey(&missingDataKey{k})
-		missingData, err := p.db.Get(encKey)
+		encKey := encodeElgDeprioMissingDataKey(&missingDataKey{k})
+		missingData, err := store.db.Get(encKey)
 		require.NoError(t, err)
 		require.Nil(t, missingData)
 	}
 }
 
 func TestCommitPvtDataOfOldBlocksWithDeprioritization(t *testing.T) {
-	sampleDataForTest := func() (map[uint64]*pvtDataForTest, ledger.MissingPvtDataInfo) {
-		blockTxPvtDataInfo := []*blockTxPvtDataInfoForTest{
-			{
-				blkNum: 1,
-				txNum:  1,
-				pvtDataMissing: map[string][]string{
-					"ns-1": {"coll-1"},
-					"ns-2": {"coll-1"},
-				},
+	blockTxPvtDataInfo := []*blockTxPvtDataInfoForTest{
+		{
+			blkNum: 1,
+			txNum:  1,
+			pvtDataMissing: map[string][]string{
+				"ns-1": {"coll-1"},
+				"ns-2": {"coll-1"},
 			},
-			{
-				blkNum: 1,
-				txNum:  2,
-				pvtDataMissing: map[string][]string{
-					"ns-1": {"coll-1"},
-					"ns-2": {"coll-1"},
-				},
+		},
+		{
+			blkNum: 1,
+			txNum:  2,
+			pvtDataMissing: map[string][]string{
+				"ns-1": {"coll-1"},
+				"ns-2": {"coll-1"},
 			},
-			{
-				blkNum: 2,
-				txNum:  1,
-				pvtDataMissing: map[string][]string{
-					"ns-1": {"coll-1"},
-					"ns-2": {"coll-1"},
-				},
+		},
+		{
+			blkNum: 2,
+			txNum:  1,
+			pvtDataMissing: map[string][]string{
+				"ns-1": {"coll-1"},
+				"ns-2": {"coll-1"},
 			},
-			{
-				blkNum: 2,
-				txNum:  2,
-				pvtDataMissing: map[string][]string{
-					"ns-1": {"coll-1"},
-					"ns-2": {"coll-1"},
-				},
+		},
+		{
+			blkNum: 2,
+			txNum:  2,
+			pvtDataMissing: map[string][]string{
+				"ns-1": {"coll-1"},
+				"ns-2": {"coll-1"},
 			},
-		}
-
-		blocksPvtData, missingDataSummary := constructPvtDataForTest(t, blockTxPvtDataInfo)
-
-		return blocksPvtData, missingDataSummary
+		},
 	}
 
-	_, missingDataSummary := sampleDataForTest()
+	blocksPvtData, missingDataSummary := constructPvtDataForTest(t, blockTxPvtDataInfo)
 
 	tests := []struct {
 		name                        string
@@ -426,8 +417,6 @@ func TestCommitPvtDataOfOldBlocksWithDeprioritization(t *testing.T) {
 			defer env.Cleanup()
 			store := env.TestStore
 
-			blocksPvtData, missingDataSummary := sampleDataForTest()
-
 			// COMMIT BLOCK 0 WITH NO DATA
 			require.NoError(t, store.Commit(0, nil, nil))
 			require.NoError(t, store.Commit(1, blocksPvtData[1].pvtData, blocksPvtData[1].missingDataInfo))
@@ -490,10 +479,10 @@ func TestCommitPvtDataOfOldBlocksWithDeprioritization(t *testing.T) {
 				},
 			}
 
-			blocksPvtData, _ = constructPvtDataForTest(t, oldBlockTxPvtDataInfo)
+			pvtDataOfOldBlocks, _ := constructPvtDataForTest(t, oldBlockTxPvtDataInfo)
 			oldBlocksPvtData := map[uint64][]*ledger.TxPvtData{
-				1: blocksPvtData[1].pvtData,
-				2: blocksPvtData[2].pvtData,
+				1: pvtDataOfOldBlocks[1].pvtData,
+				2: pvtDataOfOldBlocks[2].pvtData,
 			}
 			require.NoError(t, store.CommitPvtDataOfOldBlocks(oldBlocksPvtData, nil))
 

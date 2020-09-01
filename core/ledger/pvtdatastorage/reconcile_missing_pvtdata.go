@@ -265,8 +265,12 @@ func (p *oldBlockDataProcessor) constructDBUpdateBatch() (*leveldbhelper.UpdateB
 		return nil, errors.WithMessage(err, "error while adding expiry entries to the update batch")
 	}
 
-	if err := p.entries.addMissingDataEntriesTo(batch); err != nil {
-		return nil, errors.WithMessage(err, "error while adding missing data entries to the update batch")
+	if err := p.entries.addElgPrioMissingDataEntriesTo(batch); err != nil {
+		return nil, errors.WithMessage(err, "error while adding eligible prioritized missing data entries to the update batch")
+	}
+
+	if err := p.entries.addElgDeprioMissingDataEntriesTo(batch); err != nil {
+		return nil, errors.WithMessage(err, "error while adding eligible deprioritized missing data entries to the update batch")
 	}
 
 	return batch, nil
@@ -307,37 +311,48 @@ func (e *entriesForPvtDataOfOldBlocks) addExpiryEntriesTo(batch *leveldbhelper.U
 	return nil
 }
 
-func (e *entriesForPvtDataOfOldBlocks) addMissingDataEntriesTo(batch *leveldbhelper.UpdateBatch) error {
+func (e *entriesForPvtDataOfOldBlocks) addElgPrioMissingDataEntriesTo(batch *leveldbhelper.UpdateBatch) error {
 	var key, val []byte
 	var err error
 
-	entries := map[string]map[nsCollBlk]*bitset.BitSet{
-		"prioritized":   e.prioritizedMissingDataEntries,
-		"deprioritized": e.deprioritizedMissingDataEntries,
-	}
-
-	for group, missingDataList := range entries {
-		for nsCollBlk, missingData := range missingDataList {
-			missingKey := &missingDataKey{
-				nsCollBlk: nsCollBlk,
-			}
-			switch group {
-			case "prioritized":
-				key = encodeElgPrioMissingDataKey(missingKey)
-			case "deprioritized":
-				key = encodeElgDeprioMissingDataKey(missingKey)
-			}
-
-			if missingData.None() {
-				batch.Delete(key)
-				continue
-			}
-
-			if val, err = encodeMissingDataValue(missingData); err != nil {
-				return errors.Wrap(err, "error while encoding missing data bitmap")
-			}
-			batch.Put(key, val)
+	for nsCollBlk, missingData := range e.prioritizedMissingDataEntries {
+		missingKey := &missingDataKey{
+			nsCollBlk: nsCollBlk,
 		}
+		key = encodeElgPrioMissingDataKey(missingKey)
+
+		if missingData.None() {
+			batch.Delete(key)
+			continue
+		}
+
+		if val, err = encodeMissingDataValue(missingData); err != nil {
+			return errors.Wrap(err, "error while encoding missing data bitmap")
+		}
+		batch.Put(key, val)
+	}
+	return nil
+}
+
+func (e *entriesForPvtDataOfOldBlocks) addElgDeprioMissingDataEntriesTo(batch *leveldbhelper.UpdateBatch) error {
+	var key, val []byte
+	var err error
+
+	for nsCollBlk, missingData := range e.deprioritizedMissingDataEntries {
+		missingKey := &missingDataKey{
+			nsCollBlk: nsCollBlk,
+		}
+		key = encodeElgDeprioMissingDataKey(missingKey)
+
+		if missingData.None() {
+			batch.Delete(key)
+			continue
+		}
+
+		if val, err = encodeMissingDataValue(missingData); err != nil {
+			return errors.Wrap(err, "error while encoding missing data bitmap")
+		}
+		batch.Put(key, val)
 	}
 	return nil
 }
