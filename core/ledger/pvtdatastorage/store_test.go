@@ -191,6 +191,77 @@ func TestStoreIteratorError(t *testing.T) {
 	})
 }
 
+func TestGetMissingDataInfo(t *testing.T) {
+	ledgerid := "TestGetMissingDataInfoFromPrioDeprioList"
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{"ns-1", "coll-1"}: 0,
+			{"ns-1", "coll-2"}: 0,
+		},
+	)
+	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
+	defer env.Cleanup()
+	store := env.TestStore
+
+	// construct missing data for block 1
+	blk1MissingData := make(ledger.TxMissingPvtDataMap)
+	blk1MissingData.Add(1, "ns-1", "coll-1", true)
+	blk1MissingData.Add(1, "ns-1", "coll-2", true)
+
+	require.NoError(t, store.Commit(0, nil, nil))
+	require.NoError(t, store.Commit(1, nil, blk1MissingData))
+
+	deprioritizedList := ledger.MissingPvtDataInfo{
+		1: ledger.MissingBlockPvtdataInfo{
+			1: {
+				{
+					Namespace:  "ns-1",
+					Collection: "coll-2",
+				},
+			},
+		},
+	}
+	require.NoError(t, store.CommitPvtDataOfOldBlocks(nil, deprioritizedList))
+
+	expectedPrioMissingDataInfo := ledger.MissingPvtDataInfo{
+		1: ledger.MissingBlockPvtdataInfo{
+			1: {
+				{
+					Namespace:  "ns-1",
+					Collection: "coll-1",
+				},
+			},
+		},
+	}
+
+	expectedDeprioMissingDataInfo := ledger.MissingPvtDataInfo{
+		1: ledger.MissingBlockPvtdataInfo{
+			1: {
+				{
+					Namespace:  "ns-1",
+					Collection: "coll-2",
+				},
+			},
+		},
+	}
+
+	defaultVal := deprioritizedMissingDataPeriodicity
+	deprioritizedMissingDataPeriodicity = 10
+	defer func() {
+		deprioritizedMissingDataPeriodicity = defaultVal
+	}()
+
+	for i := 1; i <= 55; i++ {
+		if i%11 == 0 {
+			// after ever 10 iterations of accessing the prioritized list, the
+			// deprioritized list would be accessed
+			assertMissingDataInfo(t, store, expectedDeprioMissingDataInfo, 2)
+			continue
+		}
+		assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
+	}
+}
+
 func TestExpiryDataNotIncluded(t *testing.T) {
 	ledgerid := "TestExpiryDataNotIncluded"
 	btlPolicy := btltestutil.SampleBTLPolicy(
@@ -339,6 +410,9 @@ func TestStorePurge(t *testing.T) {
 	// eligible missing data in tx1
 	blk1MissingData.Add(1, "ns-1", "coll-1", true)
 	blk1MissingData.Add(1, "ns-1", "coll-2", true)
+	// eligible missing data in tx3
+	blk1MissingData.Add(3, "ns-1", "coll-1", true)
+	blk1MissingData.Add(3, "ns-1", "coll-2", true)
 	// ineligible missing data in tx4
 	blk1MissingData.Add(4, "ns-3", "coll-1", false)
 	blk1MissingData.Add(4, "ns-3", "coll-2", false)
@@ -357,22 +431,38 @@ func TestStorePurge(t *testing.T) {
 	ns2Coll2 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-2", coll: "coll-2", blkNum: 1}, txNum: 2}
 
 	// eligible missingData entries for ns-1:coll-1, ns-1:coll-2 (neverExpires) should exist in store
-	ns1Coll1elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}, isEligible: true}
-	ns1Coll2elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}, isEligible: true}
+	ns1Coll1elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}}
+	ns1Coll2elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}}
 
 	// ineligible missingData entries for ns-3:col-1, ns-3:coll-2 (neverExpires) should exist in store
-	ns3Coll1inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-1", blkNum: 1}, isEligible: false}
-	ns3Coll2inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-2", blkNum: 1}, isEligible: false}
+	ns3Coll1inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-1", blkNum: 1}}
+	ns3Coll2inelgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-3", coll: "coll-2", blkNum: 1}}
 
 	testWaitForPurgerRoutineToFinish(s)
 	require.True(t, testDataKeyExists(t, s, ns1Coll1))
 	require.True(t, testDataKeyExists(t, s, ns2Coll2))
 
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll1elgMD))
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll2elgMD))
+	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll1elgMD))
+	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll2elgMD))
 
-	require.True(t, testMissingDataKeyExists(t, s, ns3Coll1inelgMD))
-	require.True(t, testMissingDataKeyExists(t, s, ns3Coll2inelgMD))
+	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll1inelgMD))
+	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll2inelgMD))
+
+	deprioritizedList := ledger.MissingPvtDataInfo{
+		1: ledger.MissingBlockPvtdataInfo{
+			3: {
+				{
+					Namespace:  "ns-1",
+					Collection: "coll-1",
+				},
+				{
+					Namespace:  "ns-1",
+					Collection: "coll-2",
+				},
+			},
+		},
+	}
+	require.NoError(t, s.CommitPvtDataOfOldBlocks(nil, deprioritizedList))
 
 	// write pvt data for block 3
 	require.NoError(t, s.Commit(3, nil, nil))
@@ -381,11 +471,14 @@ func TestStorePurge(t *testing.T) {
 	require.True(t, testDataKeyExists(t, s, ns1Coll1))
 	require.True(t, testDataKeyExists(t, s, ns2Coll2))
 	// eligible missingData entries for ns-1:coll-1, ns-1:coll-2 (neverExpires) should exist in store
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll1elgMD))
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll2elgMD))
+	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll1elgMD))
+	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll2elgMD))
+	// some transactions which miss ns-1:coll-1 and ns-1:coll-2 has be moved to deprioritizedList list
+	require.True(t, testElgDeprioMissingDataKeyExists(t, s, ns1Coll1elgMD))
+	require.True(t, testElgDeprioMissingDataKeyExists(t, s, ns1Coll2elgMD))
 	// ineligible missingData entries for ns-3:col-1, ns-3:coll-2 (neverExpires) should exist in store
-	require.True(t, testMissingDataKeyExists(t, s, ns3Coll1inelgMD))
-	require.True(t, testMissingDataKeyExists(t, s, ns3Coll2inelgMD))
+	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll1inelgMD))
+	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll2inelgMD))
 
 	// write pvt data for block 4
 	require.NoError(t, s.Commit(4, nil, nil))
@@ -395,11 +488,13 @@ func TestStorePurge(t *testing.T) {
 	require.False(t, testDataKeyExists(t, s, ns1Coll1))
 	require.True(t, testDataKeyExists(t, s, ns2Coll2))
 	// eligible missingData entries for ns-1:coll-1 should have expired and ns-1:coll-2 (neverExpires) should exist in store
-	require.False(t, testMissingDataKeyExists(t, s, ns1Coll1elgMD))
-	require.True(t, testMissingDataKeyExists(t, s, ns1Coll2elgMD))
+	require.False(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll1elgMD))
+	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll2elgMD))
+	require.False(t, testElgDeprioMissingDataKeyExists(t, s, ns1Coll1elgMD))
+	require.True(t, testElgDeprioMissingDataKeyExists(t, s, ns1Coll2elgMD))
 	// ineligible missingData entries for ns-3:col-1 should have expired and ns-3:coll-2 (neverExpires) should exist in store
-	require.False(t, testMissingDataKeyExists(t, s, ns3Coll1inelgMD))
-	require.True(t, testMissingDataKeyExists(t, s, ns3Coll2inelgMD))
+	require.False(t, testInelgMissingDataKeyExists(t, s, ns3Coll1inelgMD))
+	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll2inelgMD))
 
 	// write pvt data for block 5
 	require.NoError(t, s.Commit(5, nil, nil))
@@ -616,9 +711,25 @@ func testDataKeyExists(t *testing.T, s *Store, dataKey *dataKey) bool {
 	return len(val) != 0
 }
 
-func testMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missingDataKey) bool {
-	dataKeyBytes := encodeMissingDataKey(missingDataKey)
-	val, err := s.db.Get(dataKeyBytes)
+func testElgPrioMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missingDataKey) bool {
+	key := encodeElgPrioMissingDataKey(missingDataKey)
+
+	val, err := s.db.Get(key)
+	require.NoError(t, err)
+	return len(val) != 0
+}
+
+func testElgDeprioMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missingDataKey) bool {
+	key := encodeElgDeprioMissingDataKey(missingDataKey)
+
+	val, err := s.db.Get(key)
+	require.NoError(t, err)
+	return len(val) != 0
+}
+func testInelgMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missingDataKey) bool {
+	key := encodeInelgMissingDataKey(missingDataKey)
+
+	val, err := s.db.Get(key)
 	require.NoError(t, err)
 	return len(val) != 0
 }
