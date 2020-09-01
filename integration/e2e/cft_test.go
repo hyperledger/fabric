@@ -398,7 +398,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 
 			By("Expiring orderer TLS certificates")
 			for filePath, certPEM := range serverTLSCerts {
-				expiredCert, earlyMadeCACert := expireCertificate(certPEM, ordererTLSCACert, ordererTLSCAKey)
+				expiredCert, earlyMadeCACert := expireCertificate(certPEM, ordererTLSCACert, ordererTLSCAKey, time.Now())
 				err = ioutil.WriteFile(filePath, expiredCert, 600)
 				Expect(err).NotTo(HaveOccurred())
 
@@ -530,6 +530,82 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			By("Waiting for a leader to be elected")
 			findLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner})
 		})
+
+		It("disregards certificate renewal if only the validity period changed", func() {
+			config := nwo.MultiNodeEtcdRaft()
+			config.Channels = append(config.Channels, &nwo.Channel{Name: "foo", Profile: "TwoOrgsChannel"})
+			config.Channels = append(config.Channels, &nwo.Channel{Name: "bar", Profile: "TwoOrgsChannel"})
+			network = nwo.New(config, testDir, client, 33000, components)
+
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			peer = network.Peer("Org1", "peer0")
+
+			o1 := network.Orderer("orderer1")
+			o2 := network.Orderer("orderer2")
+			o3 := network.Orderer("orderer3")
+
+			orderers := []*nwo.Orderer{o1, o2, o3}
+
+			o1Runner := network.OrdererRunner(o1)
+			o2Runner := network.OrdererRunner(o2)
+			o3Runner := network.OrdererRunner(o3)
+			ordererRunners := []*ginkgomon.Runner{o1Runner, o2Runner, o3Runner}
+
+			o1Proc = ifrit.Invoke(o1Runner)
+			o2Proc = ifrit.Invoke(o2Runner)
+			o3Proc = ifrit.Invoke(o3Runner)
+			ordererProcesses := []ifrit.Process{o1Proc, o2Proc, o3Proc}
+
+			Eventually(o1Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o2Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
+
+			By("Waiting for them to elect a leader")
+			findLeader(ordererRunners)
+
+			By("Creating a channel")
+			network.CreateChannel("foo", o1, peer)
+
+			assertBlockReception(map[string]int{
+				"foo":           0,
+				"systemchannel": 1,
+			}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+
+			By("Killing all orderers")
+			for i := range orderers {
+				ordererProcesses[i].Signal(syscall.SIGTERM)
+				Eventually(ordererProcesses[i].Wait(), network.EventuallyTimeout).Should(Receive())
+			}
+
+			By("Renewing the certificates for all orderers")
+			renewOrdererCertificates(network, o1, o2, o3)
+
+			By("Starting the orderers again")
+			for i := range orderers {
+				ordererRunner := network.OrdererRunner(orderers[i])
+				ordererRunners[i] = ordererRunner
+				ordererProcesses[i] = ifrit.Invoke(ordererRunner)
+				Eventually(ordererProcesses[0].Ready(), network.EventuallyTimeout).Should(BeClosed())
+			}
+
+			o1Proc = ordererProcesses[0]
+			o2Proc = ordererProcesses[1]
+			o3Proc = ordererProcesses[2]
+
+			By("Waiting for them to elect a leader once again")
+			findLeader(ordererRunners)
+
+			By("Creating a channel again")
+			network.CreateChannel("bar", o1, peer)
+
+			assertBlockReception(map[string]int{
+				"foo":           0,
+				"bar":           0,
+				"systemchannel": 2,
+			}, []*nwo.Orderer{o1, o2, o3}, peer, network)
+		})
 	})
 
 	When("admin certificate expires", func() {
@@ -560,7 +636,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			originalAdminCert, err := ioutil.ReadFile(adminCertPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			expiredAdminCert, earlyCACert := expireCertificate(originalAdminCert, ordererCACert, ordererCAKey)
+			expiredAdminCert, earlyCACert := expireCertificate(originalAdminCert, ordererCACert, ordererCAKey, time.Now())
 			err = ioutil.WriteFile(adminCertPath, expiredAdminCert, 600)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -741,7 +817,34 @@ func findLeader(ordererRunners []*ginkgomon.Runner) int {
 	return firstLeader
 }
 
-func expireCertificate(certPEM, caCertPEM, caKeyPEM []byte) (expiredcertPEM []byte, earlyMadeCACertPEM []byte) {
+func renewOrdererCertificates(network *nwo.Network, o1, o2, o3 *nwo.Orderer) {
+	ordererDomain := network.Organization(o1.Organization).Domain
+	ordererTLSCACertPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
+		ordererDomain, "tlsca", fmt.Sprintf("tlsca.%s-cert.pem", ordererDomain))
+	ordererTLSCACert, err := ioutil.ReadFile(ordererTLSCACertPath)
+	Expect(err).NotTo(HaveOccurred())
+
+	ordererTLSCAKeyPath := filepath.Join(network.RootDir, "crypto", "ordererOrganizations",
+		ordererDomain, "tlsca", privateKeyFileName(ordererTLSCACert))
+
+	ordererTLSCAKey, err := ioutil.ReadFile(ordererTLSCAKeyPath)
+	Expect(err).NotTo(HaveOccurred())
+
+	serverTLSCerts := make(map[string][]byte)
+	for _, orderer := range []*nwo.Orderer{o1, o2, o3} {
+		tlsCertPath := filepath.Join(network.OrdererLocalTLSDir(orderer), "server.crt")
+		serverTLSCerts[tlsCertPath], err = ioutil.ReadFile(tlsCertPath)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	for filePath, certPEM := range serverTLSCerts {
+		renewedCert, _ := expireCertificate(certPEM, ordererTLSCACert, ordererTLSCAKey, time.Now().Add(time.Hour))
+		err = ioutil.WriteFile(filePath, renewedCert, 0600)
+		Expect(err).NotTo(HaveOccurred())
+	}
+}
+
+func expireCertificate(certPEM, caCertPEM, caKeyPEM []byte, expirationTime time.Time) (expiredcertPEM []byte, earlyMadeCACertPEM []byte) {
 	keyAsDER, _ := pem.Decode(caKeyPEM)
 	caKeyWithoutType, err := x509.ParsePKCS8PrivateKey(keyAsDER.Bytes)
 	Expect(err).NotTo(HaveOccurred())
@@ -762,7 +865,7 @@ func expireCertificate(certPEM, caCertPEM, caKeyPEM []byte) (expiredcertPEM []by
 	// As well as the CA certificate
 	caCert.NotBefore = time.Now().Add((-1) * time.Hour)
 	// The certificate expires now
-	cert.NotAfter = time.Now()
+	cert.NotAfter = expirationTime
 
 	// The CA signs the certificate
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, caCert, cert.PublicKey, caKey)

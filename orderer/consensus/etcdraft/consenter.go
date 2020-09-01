@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"bytes"
 	"path"
 	"reflect"
 	"time"
 
 	"code.cloudfoundry.org/clock"
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/common/viperutil"
@@ -116,7 +116,7 @@ func (c *Consenter) detectSelfID(consenters map[uint64]*etcdraft.Consenter) (uin
 			return 0, err
 		}
 
-		if bytes.Equal(thisNodeCertAsDER, certAsDER) {
+		if crypto.CertificatesWithSamePublicKey(thisNodeCertAsDER, certAsDER) == nil {
 			return nodeID, nil
 		}
 	}
@@ -301,16 +301,27 @@ func New(
 
 func createComm(clusterDialer *cluster.PredicateDialer, c *Consenter, config localconfig.Cluster, p metrics.Provider) *cluster.Comm {
 	metrics := cluster.NewMetrics(p)
+	logger := flogging.MustGetLogger("orderer.common.cluster")
+
+	compareCert := cluster.CachePublicKeyComparisons(func(a, b []byte) bool {
+		err := crypto.CertificatesWithSamePublicKey(a, b)
+		if err != nil && err != crypto.ErrPubKeyMismatch {
+			crypto.LogNonPubKeyMismatchErr(logger.Errorf, err, a, b)
+		}
+		return err == nil
+	})
+
 	comm := &cluster.Comm{
 		MinimumExpirationWarningInterval: cluster.MinimumExpirationWarningInterval,
 		CertExpWarningThreshold:          config.CertExpirationWarningThreshold,
 		SendBufferSize:                   config.SendBufferSize,
-		Logger:                           flogging.MustGetLogger("orderer.common.cluster"),
+		Logger:                           logger,
 		Chan2Members:                     make(map[string]cluster.MemberMapping),
 		Connections:                      cluster.NewConnectionStore(clusterDialer, metrics.EgressTLSConnectionCount),
 		Metrics:                          metrics,
 		ChanExt:                          c,
 		H:                                c,
+		CompareCertificate:               compareCert,
 	}
 	c.Communication = comm
 	return comm

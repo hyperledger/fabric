@@ -1328,8 +1328,13 @@ func (c *Chain) suspectEviction() bool {
 }
 
 func (c *Chain) newEvictionSuspector() *evictionSuspector {
+	consenterCertificate := &ConsenterCertificate{
+		Logger:               c.logger,
+		ConsenterCertificate: c.opts.Cert,
+	}
+
 	return &evictionSuspector{
-		amIInChannel:               ConsenterCertificate(c.opts.Cert).IsConsenterOfChannel,
+		amIInChannel:               consenterCertificate.IsConsenterOfChannel,
 		evictionSuspicionThreshold: c.opts.EvictionSuspicion,
 		writeBlock:                 c.support.Append,
 		createPuller:               c.createPuller,

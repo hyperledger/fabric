@@ -7,11 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package cluster
 
 import (
-	"bytes"
 	"crypto/x509"
 	"sync"
 	"sync/atomic"
 
+	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -59,10 +59,12 @@ func NewConnectionStore(dialer SecureDialer, tlsConnectionCount metrics.Gauge) *
 // itself with the given TLS certificate
 func (c *ConnectionStore) verifyHandshake(endpoint string, certificate []byte) RemoteVerifier {
 	return func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-		if bytes.Equal(certificate, rawCerts[0]) {
+		err := crypto.CertificatesWithSamePublicKey(certificate, rawCerts[0])
+		if err == nil {
 			return nil
 		}
-		return errors.Errorf("certificate presented by %s doesn't match any authorized certificate", endpoint)
+		return errors.Errorf("public key of server certificate presented by %s doesn't match the expected public key",
+			endpoint)
 	}
 }
 
