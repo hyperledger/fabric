@@ -79,7 +79,7 @@ func (e *env) cleanup() {
 	os.RemoveAll(e.initializer.Config.RootFSPath)
 }
 
-func (e *env) closeAllLedgersAndDrop(flags rebuildable) {
+func (e *env) closeAllLedgersAndRemoveDirContents(flags rebuildable) {
 	if e.ledgerMgr != nil {
 		e.ledgerMgr.Close()
 	}
@@ -89,38 +89,38 @@ func (e *env) closeAllLedgersAndDrop(flags rebuildable) {
 		indexPath := e.getBlockIndexDBPath()
 		logger.Infof("Deleting blockstore indexdb path [%s]", indexPath)
 		e.verifyNonEmptyDirExists(indexPath)
-		e.assert.NoError(os.RemoveAll(indexPath))
+		e.assert.NoError(fileutil.RemoveContents(indexPath))
 	}
 
 	if flags&rebuildableStatedb == rebuildableStatedb {
 		statedbPath := e.getLevelstateDBPath()
 		logger.Infof("Deleting statedb path [%s]", statedbPath)
 		e.verifyNonEmptyDirExists(statedbPath)
-		e.assert.NoError(os.RemoveAll(statedbPath))
+		e.assert.NoError(fileutil.RemoveContents(statedbPath))
 	}
 
 	if flags&rebuildableConfigHistory == rebuildableConfigHistory {
 		configHistoryPath := e.getConfigHistoryDBPath()
 		logger.Infof("Deleting configHistory db path [%s]", configHistoryPath)
 		e.verifyNonEmptyDirExists(configHistoryPath)
-		e.assert.NoError(os.RemoveAll(configHistoryPath))
+		e.assert.NoError(fileutil.RemoveContents(configHistoryPath))
 	}
 
 	if flags&rebuildableBookkeeper == rebuildableBookkeeper {
 		bookkeeperPath := e.getBookkeeperDBPath()
 		logger.Infof("Deleting bookkeeper db path [%s]", bookkeeperPath)
 		e.verifyNonEmptyDirExists(bookkeeperPath)
-		e.assert.NoError(os.RemoveAll(bookkeeperPath))
+		e.assert.NoError(fileutil.RemoveContents(bookkeeperPath))
 	}
 
 	if flags&rebuildableHistoryDB == rebuildableHistoryDB {
 		historyPath := e.getHistoryDBPath()
 		logger.Infof("Deleting history db path [%s]", historyPath)
 		e.verifyNonEmptyDirExists(historyPath)
-		e.assert.NoError(os.RemoveAll(historyPath))
+		e.assert.NoError(fileutil.RemoveContents(historyPath))
 	}
 
-	e.verifyRebuilableDoesNotExist(flags)
+	e.verifyRebuilableDirEmpty(flags)
 }
 
 func (e *env) verifyRebuilablesExist(flags rebuildable) {
@@ -141,21 +141,21 @@ func (e *env) verifyRebuilablesExist(flags rebuildable) {
 	}
 }
 
-func (e *env) verifyRebuilableDoesNotExist(flags rebuildable) {
+func (e *env) verifyRebuilableDirEmpty(flags rebuildable) {
 	if flags&rebuildableStatedb == rebuildableStatedb {
-		e.verifyDirDoesNotExist(e.getLevelstateDBPath())
+		e.verifyDirEmpty(e.getLevelstateDBPath())
 	}
 	if flags&rebuildableBlockIndex == rebuildableBlockIndex {
-		e.verifyDirDoesNotExist(e.getBlockIndexDBPath())
+		e.verifyDirEmpty(e.getBlockIndexDBPath())
 	}
 	if flags&rebuildableConfigHistory == rebuildableConfigHistory {
-		e.verifyDirDoesNotExist(e.getConfigHistoryDBPath())
+		e.verifyDirEmpty(e.getConfigHistoryDBPath())
 	}
 	if flags&rebuildableBookkeeper == rebuildableBookkeeper {
-		e.verifyDirDoesNotExist(e.getBookkeeperDBPath())
+		e.verifyDirEmpty(e.getBookkeeperDBPath())
 	}
 	if flags&rebuildableHistoryDB == rebuildableHistoryDB {
-		e.verifyDirDoesNotExist(e.getHistoryDBPath())
+		e.verifyDirEmpty(e.getHistoryDBPath())
 	}
 }
 
@@ -165,10 +165,10 @@ func (e *env) verifyNonEmptyDirExists(path string) {
 	e.assert.False(empty)
 }
 
-func (e *env) verifyDirDoesNotExist(path string) {
-	exists, _, err := fileutil.FileExists(path)
+func (e *env) verifyDirEmpty(path string) {
+	empty, err := fileutil.DirEmpty(path)
 	e.assert.NoError(err)
-	e.assert.False(exists)
+	e.assert.True(empty)
 }
 
 func (e *env) initLedgerMgmt() {

@@ -145,3 +145,22 @@ func ListSubdirs(dirPath string) ([]string, error) {
 	}
 	return subdirs, nil
 }
+
+// RemoveContents removes all the files and subdirs under the specified directory.
+// It returns nil if the specified directory does not exist.
+func RemoveContents(dir string) error {
+	contents, err := ioutil.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return errors.Wrapf(err, "error reading directory %s", dir)
+	}
+
+	for _, c := range contents {
+		if err = os.RemoveAll(filepath.Join(dir, c.Name())); err != nil {
+			return errors.Wrapf(err, "error removing %s under directory %s", c.Name(), dir)
+		}
+	}
+	return SyncDir(dir)
+}
