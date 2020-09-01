@@ -21,7 +21,7 @@ func TestDataKeyEncoding(t *testing.T) {
 	require.Equal(t, dataKey1, datakey2)
 }
 
-func TestDatakeyRange(t *testing.T) {
+func TestDataKeyRange(t *testing.T) {
 	blockNum := uint64(20)
 	startKey, endKey := datakeyRange(blockNum)
 	var txNum uint64
@@ -51,27 +51,36 @@ func TestDatakeyRange(t *testing.T) {
 	}
 }
 
-func TestEligibleMissingdataRange(t *testing.T) {
+func TestEligibleMissingDataRange(t *testing.T) {
 	blockNum := uint64(20)
 	startKey, endKey := eligibleMissingdatakeyRange(blockNum)
 	var txNum uint64
 	for txNum = 0; txNum < 100; txNum++ {
-		keyOfBlock := encodeMissingDataKey(
+		keyOfBlock := encodeElgPrioMissingDataKey(
 			&missingDataKey{
-				nsCollBlk:  nsCollBlk{ns: "ns", coll: "coll", blkNum: blockNum},
-				isEligible: true,
+				nsCollBlk: nsCollBlk{
+					ns:     "ns",
+					coll:   "coll",
+					blkNum: blockNum,
+				},
 			},
 		)
-		keyOfPreviousBlock := encodeMissingDataKey(
+		keyOfPreviousBlock := encodeElgPrioMissingDataKey(
 			&missingDataKey{
-				nsCollBlk:  nsCollBlk{ns: "ns", coll: "coll", blkNum: blockNum - 1},
-				isEligible: true,
+				nsCollBlk: nsCollBlk{
+					ns:     "ns",
+					coll:   "coll",
+					blkNum: blockNum - 1,
+				},
 			},
 		)
-		keyOfNextBlock := encodeMissingDataKey(
+		keyOfNextBlock := encodeElgPrioMissingDataKey(
 			&missingDataKey{
-				nsCollBlk:  nsCollBlk{ns: "ns", coll: "coll", blkNum: blockNum + 1},
-				isEligible: true,
+				nsCollBlk: nsCollBlk{
+					ns:     "ns",
+					coll:   "coll",
+					blkNum: blockNum + 1,
+				},
 			},
 		)
 		require.Equal(t, bytes.Compare(keyOfNextBlock, startKey), -1)
@@ -99,19 +108,26 @@ func testEncodeDecodeMissingdataKey(t *testing.T, blkNum uint64) {
 
 	t.Run("ineligibileKey",
 		func(t *testing.T) {
-			key.isEligible = false
-			decodedKey := decodeMissingDataKey(
-				encodeMissingDataKey(key),
+			decodedKey := decodeInelgMissingDataKey(
+				encodeInelgMissingDataKey(key),
 			)
 			require.Equal(t, key, decodedKey)
 		},
 	)
 
-	t.Run("ineligibileKey",
+	t.Run("eligiblePrioritizedKey",
 		func(t *testing.T) {
-			key.isEligible = true
-			decodedKey := decodeMissingDataKey(
-				encodeMissingDataKey(key),
+			decodedKey := decodeElgMissingDataKey(
+				encodeElgPrioMissingDataKey(key),
+			)
+			require.Equal(t, key, decodedKey)
+		},
+	)
+
+	t.Run("eligibleDeprioritizedKey",
+		func(t *testing.T) {
+			decodedKey := decodeElgMissingDataKey(
+				encodeElgDeprioMissingDataKey(key),
 			)
 			require.Equal(t, key, decodedKey)
 		},
