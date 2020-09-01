@@ -13,7 +13,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path"
-	"strconv"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -30,7 +29,6 @@ const (
 	URLBaseV1              = "/participation/v1/"
 	URLBaseV1Channels      = URLBaseV1 + "channels"
 	FormDataConfigBlockKey = "config-block"
-	RemoveStorageQueryKey  = "removeStorage"
 
 	channelIDKey        = "channelID"
 	urlWithChannelIDKey = URLBaseV1Channels + "/{" + channelIDKey + "}"
@@ -53,8 +51,7 @@ type ChannelManagement interface {
 	JoinChannel(channelID string, configBlock *cb.Block, isAppChannel bool) (types.ChannelInfo, error)
 
 	// RemoveChannel instructs the orderer to remove a channel.
-	// Depending on the removeStorage parameter, the storage resources are either removed or archived.
-	RemoveChannel(channelID string, removeStorage bool) error
+	RemoveChannel(channelID string) error
 }
 
 // HTTPHandler handles all the HTTP requests to the channel participation API.
@@ -266,7 +263,6 @@ func (h *HTTPHandler) sendJoinError(err error, resp http.ResponseWriter) {
 }
 
 // Remove a channel
-// Expecting an optional query: "removeStorage=true" or "removeStorage=false".
 func (h *HTTPHandler) serveRemove(resp http.ResponseWriter, req *http.Request) {
 	_, err := negotiateContentType(req) // Only application/json responses for now
 	if err != nil {
@@ -279,12 +275,7 @@ func (h *HTTPHandler) serveRemove(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	removeStorage, err := h.extractRemoveStorageQuery(req, resp)
-	if err != nil {
-		return
-	}
-
-	err = h.registrar.RemoveChannel(channelID, removeStorage)
+	err = h.registrar.RemoveChannel(channelID)
 	if err == nil {
 		h.logger.Debugf("Successfully removed channel: %s", channelID)
 		resp.WriteHeader(http.StatusNoContent)
@@ -301,35 +292,6 @@ func (h *HTTPHandler) serveRemove(resp http.ResponseWriter, req *http.Request) {
 	default:
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot remove"))
 	}
-}
-
-func (h *HTTPHandler) extractRemoveStorageQuery(req *http.Request, resp http.ResponseWriter) (bool, error) {
-	removeStorage := h.config.RemoveStorage
-	queryVal := req.URL.Query()
-	if len(queryVal) > 1 {
-		err := errors.New("cannot remove: too many query keys")
-		h.sendResponseJsonError(resp, http.StatusBadRequest, err)
-		return false, err
-	}
-	if values, ok := queryVal[RemoveStorageQueryKey]; ok {
-		var err error
-		if len(values) != 1 {
-			err = errors.New("cannot remove: too many query parameters")
-			h.sendResponseJsonError(resp, http.StatusBadRequest, err)
-			return false, err
-		}
-
-		removeStorage, err = strconv.ParseBool(values[0])
-		if err != nil {
-			h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot remove: invalid query parameter"))
-			return false, err
-		}
-	} else if len(queryVal) > 0 {
-		err := errors.New("cannot remove: invalid query key")
-		h.sendResponseJsonError(resp, http.StatusBadRequest, err)
-		return false, err
-	}
-	return removeStorage, nil
 }
 
 func (h *HTTPHandler) serveBadContentType(resp http.ResponseWriter, req *http.Request) {

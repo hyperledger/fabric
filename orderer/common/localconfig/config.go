@@ -202,7 +202,6 @@ type Statsd struct {
 // Channel participation uses the same ListenAddress and TLS settings of the Operations service.
 type ChannelParticipation struct {
 	Enabled            bool
-	RemoveStorage      bool // Whether to permanently remove storage on channel removal.
 	MaxRequestBodySize uint32
 }
 
@@ -282,7 +281,6 @@ var Defaults = TopLevel{
 	},
 	ChannelParticipation: ChannelParticipation{
 		Enabled:            false,
-		RemoveStorage:      false,
 		MaxRequestBodySize: 1024 * 1024,
 	},
 }
