@@ -150,150 +150,211 @@ func TestCommitPvtDataOfOldBlocks(t *testing.T) {
 }
 
 func TestCommitPvtDataOfOldBlocksWithBTL(t *testing.T) {
-	btlPolicy := btltestutil.SampleBTLPolicy(
-		map[[2]string]uint64{
-			{"ns-1", "coll-1"}: 1,
-			{"ns-2", "coll-1"}: 1,
-		},
-	)
-	env := NewTestStoreEnv(t, "TestCommitPvtDataOfOldBlocksWithBTL", btlPolicy, pvtDataConf())
-	defer env.Cleanup()
-	store := env.TestStore
-
-	blockTxPvtDataInfo := []*blockTxPvtDataInfoForTest{
-		{
-			blkNum: 1,
-			txNum:  1,
-			pvtDataMissing: map[string][]string{
-				"ns-1": {"coll-1"},
-				"ns-2": {"coll-1"},
-			},
-		},
-		{
-			blkNum: 1,
-			txNum:  2,
-			pvtDataMissing: map[string][]string{
-				"ns-1": {"coll-1"},
-				"ns-2": {"coll-1"},
-			},
-		},
-		{
-			blkNum: 1,
-			txNum:  3,
-			pvtDataMissing: map[string][]string{
-				"ns-1": {"coll-1"},
-				"ns-2": {"coll-1"},
-			},
-		},
-	}
-
-	blocksPvtData, missingDataSummary := constructPvtDataForTest(t, blockTxPvtDataInfo)
-
-	require.NoError(t, store.Commit(0, nil, nil))
-	require.NoError(t, store.Commit(1, blocksPvtData[1].pvtData, blocksPvtData[1].missingDataInfo))
-
-	assertMissingDataInfo(t, store, missingDataSummary, 1)
-
-	// COMMIT BLOCK 2 & 3 WITH NO PVTDATA
-	require.NoError(t, store.Commit(2, nil, nil))
-	require.NoError(t, store.Commit(3, nil, nil))
-
-	// in block 1, ns-1:coll-1 and ns-2:coll-2 should have expired but not purged.
-	// hence, the commit of pvtdata of block 1 transaction 1 should create entries
-	// in the store
-	oldBlockTxPvtDataInfo := []*blockTxPvtDataInfoForTest{
-		{
-			blkNum: 1,
-			txNum:  1,
-			pvtDataPresent: map[string][]string{
-				"ns-1": {"coll-1"},
-				"ns-2": {"coll-1"},
-			},
-		},
-	}
-
-	blocksPvtData, _ = constructPvtDataForTest(t, oldBlockTxPvtDataInfo)
-	oldBlocksPvtData := map[uint64][]*ledger.TxPvtData{
-		1: blocksPvtData[1].pvtData,
-	}
-	require.NoError(t, store.CommitPvtDataOfOldBlocks(oldBlocksPvtData, nil))
-
-	for _, b := range blocksPvtData {
-		for _, dkey := range b.dataKeys {
-			require.True(t, testDataKeyExists(t, store, dkey))
-		}
-	}
-	// as all missing data are expired, get missing info would return nil though
-	// it is not purged yet
-	assertMissingDataInfo(t, store, make(ledger.MissingPvtDataInfo), 1)
-
-	// while committing the next block, all entries related to expiry data are purged
-	require.NoError(t, store.Commit(4, nil, nil))
-
-	testWaitForPurgerRoutineToFinish(store)
-	for _, b := range blocksPvtData {
-		for _, dkey := range b.dataKeys {
-			require.False(t, testDataKeyExists(t, store, dkey))
-		}
-	}
-
-	// in block 1, ns-1:coll-1 and ns-2:coll-2 should have expired and purged.
-	// hence, the commit of pvtdata of block 1 transaction 2 should not create
-	// entries in the store
-	oldBlockTxPvtDataInfo = []*blockTxPvtDataInfoForTest{
-		{
-			blkNum: 1,
-			txNum:  2,
-			pvtDataPresent: map[string][]string{
-				"ns-1": {"coll-1"},
-				"ns-2": {"coll-1"},
-			},
-		},
-	}
-	oldBlocksPvtData = map[uint64][]*ledger.TxPvtData{
-		1: blocksPvtData[1].pvtData,
-	}
-	deprioritizedList := ledger.MissingPvtDataInfo{
-		1: ledger.MissingBlockPvtdataInfo{
-			3: {
-				{
-					Namespace:  "ns-1",
-					Collection: "coll-1",
-				},
-				{
-					Namespace:  "ns-2",
-					Collection: "coll-1",
+	setup := func(store *Store) {
+		blockTxPvtDataInfo := []*blockTxPvtDataInfoForTest{
+			{
+				blkNum: 1,
+				txNum:  1,
+				pvtDataMissing: map[string][]string{
+					"ns-1": {"coll-1"},
+					"ns-2": {"coll-1"},
 				},
 			},
-		},
-	}
-	require.NoError(t, store.CommitPvtDataOfOldBlocks(oldBlocksPvtData, deprioritizedList))
-
-	for _, b := range blocksPvtData {
-		for _, dkey := range b.dataKeys {
-			require.False(t, testDataKeyExists(t, store, dkey))
+			{
+				blkNum: 1,
+				txNum:  2,
+				pvtDataMissing: map[string][]string{
+					"ns-1": {"coll-1"},
+					"ns-2": {"coll-1"},
+				},
+			},
+			{
+				blkNum: 1,
+				txNum:  3,
+				pvtDataMissing: map[string][]string{
+					"ns-1": {"coll-1"},
+					"ns-2": {"coll-1"},
+				},
+			},
 		}
-	}
-	// deprioritized list should not be present
-	keys := []nsCollBlk{
-		{
-			ns:     "ns-1",
-			coll:   "coll-1",
-			blkNum: 1,
-		},
-		{
-			ns:     "ns-2",
-			coll:   "coll-1",
-			blkNum: 1,
-		},
+
+		blocksPvtData, missingDataSummary := constructPvtDataForTest(t, blockTxPvtDataInfo)
+
+		require.NoError(t, store.Commit(0, nil, nil))
+		require.NoError(t, store.Commit(1, blocksPvtData[1].pvtData, blocksPvtData[1].missingDataInfo))
+
+		assertMissingDataInfo(t, store, missingDataSummary, 1)
+
+		// COMMIT BLOCK 2 & 3 WITH NO PVTDATA
+		require.NoError(t, store.Commit(2, nil, nil))
+		require.NoError(t, store.Commit(3, nil, nil))
 	}
 
-	for _, k := range keys {
-		encKey := encodeElgDeprioMissingDataKey(&missingDataKey{k})
-		missingData, err := store.db.Get(encKey)
-		require.NoError(t, err)
-		require.Nil(t, missingData)
-	}
+	t.Run("expired but not purged", func(t *testing.T) {
+		btlPolicy := btltestutil.SampleBTLPolicy(
+			map[[2]string]uint64{
+				{"ns-1", "coll-1"}: 1,
+				{"ns-2", "coll-1"}: 1,
+			},
+		)
+		env := NewTestStoreEnv(t, "TestCommitPvtDataOfOldBlocksWithBTL", btlPolicy, pvtDataConf())
+		defer env.Cleanup()
+		store := env.TestStore
+
+		setup(store)
+		// in block 1, ns-1:coll-1 and ns-2:coll-2 should have expired but not purged.
+		// hence, the commit of pvtdata of block 1 transaction 1 should create entries
+		// in the store
+		oldBlockTxPvtDataInfo := []*blockTxPvtDataInfoForTest{
+			{
+				blkNum: 1,
+				txNum:  1,
+				pvtDataPresent: map[string][]string{
+					"ns-1": {"coll-1"},
+					"ns-2": {"coll-1"},
+				},
+			},
+		}
+
+		blocksPvtData, _ := constructPvtDataForTest(t, oldBlockTxPvtDataInfo)
+		oldBlocksPvtData := map[uint64][]*ledger.TxPvtData{
+			1: blocksPvtData[1].pvtData,
+		}
+		deprioritizedList := ledger.MissingPvtDataInfo{
+			1: ledger.MissingBlockPvtdataInfo{
+				2: {
+					{
+						Namespace:  "ns-1",
+						Collection: "coll-1",
+					},
+					{
+						Namespace:  "ns-2",
+						Collection: "coll-1",
+					},
+				},
+			},
+		}
+		require.NoError(t, store.CommitPvtDataOfOldBlocks(oldBlocksPvtData, deprioritizedList))
+
+		for _, b := range blocksPvtData {
+			for _, dkey := range b.dataKeys {
+				require.True(t, testDataKeyExists(t, store, dkey))
+			}
+		}
+		// as all missing data are expired, get missing info would return nil though
+		// it is not purged yet
+		assertMissingDataInfo(t, store, make(ledger.MissingPvtDataInfo), 1)
+
+		// deprioritized list should be present
+		tests := []struct {
+			key            nsCollBlk
+			expectedBitmap *bitset.BitSet
+		}{
+			{
+				key: nsCollBlk{
+					ns:     "ns-1",
+					coll:   "coll-1",
+					blkNum: 1,
+				},
+				expectedBitmap: constructBitSetForTest(2),
+			},
+			{
+				key: nsCollBlk{
+					ns:     "ns-2",
+					coll:   "coll-1",
+					blkNum: 1,
+				},
+				expectedBitmap: constructBitSetForTest(2),
+			},
+		}
+
+		for _, tt := range tests {
+			encKey := encodeElgDeprioMissingDataKey(&missingDataKey{tt.key})
+			missingData, err := store.db.Get(encKey)
+			require.NoError(t, err)
+
+			expectedMissingData, err := encodeMissingDataValue(tt.expectedBitmap)
+			require.NoError(t, err)
+			require.Equal(t, expectedMissingData, missingData)
+		}
+	})
+
+	t.Run("expired and purged", func(t *testing.T) {
+		btlPolicy := btltestutil.SampleBTLPolicy(
+			map[[2]string]uint64{
+				{"ns-1", "coll-1"}: 1,
+				{"ns-2", "coll-1"}: 1,
+			},
+		)
+		env := NewTestStoreEnv(t, "TestCommitPvtDataOfOldBlocksWithBTL", btlPolicy, pvtDataConf())
+		defer env.Cleanup()
+		store := env.TestStore
+
+		setup(store)
+		require.NoError(t, store.Commit(4, nil, nil))
+
+		testWaitForPurgerRoutineToFinish(store)
+
+		// in block 1, ns-1:coll-1 and ns-2:coll-2 should have expired and purged.
+		// hence, the commit of pvtdata of block 1 transaction 2 should not create
+		// entries in the store
+		oldBlockTxPvtDataInfo := []*blockTxPvtDataInfoForTest{
+			{
+				blkNum: 1,
+				txNum:  2,
+				pvtDataPresent: map[string][]string{
+					"ns-1": {"coll-1"},
+					"ns-2": {"coll-1"},
+				},
+			},
+		}
+		blocksPvtData, _ := constructPvtDataForTest(t, oldBlockTxPvtDataInfo)
+		oldBlocksPvtData := map[uint64][]*ledger.TxPvtData{
+			1: blocksPvtData[1].pvtData,
+		}
+		deprioritizedList := ledger.MissingPvtDataInfo{
+			1: ledger.MissingBlockPvtdataInfo{
+				3: {
+					{
+						Namespace:  "ns-1",
+						Collection: "coll-1",
+					},
+					{
+						Namespace:  "ns-2",
+						Collection: "coll-1",
+					},
+				},
+			},
+		}
+		require.NoError(t, store.CommitPvtDataOfOldBlocks(oldBlocksPvtData, deprioritizedList))
+
+		for _, b := range blocksPvtData {
+			for _, dkey := range b.dataKeys {
+				require.False(t, testDataKeyExists(t, store, dkey))
+			}
+		}
+
+		// deprioritized list should not be present
+		keys := []nsCollBlk{
+			{
+				ns:     "ns-1",
+				coll:   "coll-1",
+				blkNum: 1,
+			},
+			{
+				ns:     "ns-2",
+				coll:   "coll-1",
+				blkNum: 1,
+			},
+		}
+
+		for _, k := range keys {
+			encKey := encodeElgDeprioMissingDataKey(&missingDataKey{k})
+			missingData, err := store.db.Get(encKey)
+			require.NoError(t, err)
+			require.Nil(t, missingData)
+		}
+	})
 }
 
 func TestCommitPvtDataOfOldBlocksWithDeprioritization(t *testing.T) {

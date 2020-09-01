@@ -57,8 +57,6 @@ func prepareMissingDataEntries(
 	elgMissingDataEntries := make(map[missingDataKey]*bitset.BitSet)
 	inelgMissingDataEntries := make(map[missingDataKey]*bitset.BitSet)
 
-	var missingDataEntries map[missingDataKey]*bitset.BitSet
-
 	for txNum, missingData := range missingPvtData {
 		for _, nsColl := range missingData {
 			key := missingDataKey{
@@ -71,17 +69,16 @@ func prepareMissingDataEntries(
 
 			switch nsColl.IsEligible {
 			case true:
-				missingDataEntries = elgMissingDataEntries
+				if _, ok := elgMissingDataEntries[key]; !ok {
+					elgMissingDataEntries[key] = &bitset.BitSet{}
+				}
+				elgMissingDataEntries[key].Set(uint(txNum))
 			default:
-				missingDataEntries = inelgMissingDataEntries
+				if _, ok := inelgMissingDataEntries[key]; !ok {
+					inelgMissingDataEntries[key] = &bitset.BitSet{}
+				}
+				inelgMissingDataEntries[key].Set(uint(txNum))
 			}
-
-			if _, ok := missingDataEntries[key]; !ok {
-				missingDataEntries[key] = &bitset.BitSet{}
-			}
-			bitmap := missingDataEntries[key]
-
-			bitmap.Set(uint(txNum))
 		}
 	}
 

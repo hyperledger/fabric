@@ -123,7 +123,7 @@ func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectReconciledData
 		key := dataKey.nsCollBlk
 		txNum := uint(dataKey.txNum)
 
-		prioMissingData, err := p.getMissingDataFromEntriesOrStore(prioritized, key)
+		prioMissingData, err := p.getPrioMissingDataFromEntriesOrStore(key)
 		if err != nil {
 			return err
 		}
@@ -132,7 +132,7 @@ func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectReconciledData
 			continue
 		}
 
-		deprioMissingData, err := p.getMissingDataFromEntriesOrStore(deprioritized, key)
+		deprioMissingData, err := p.getDeprioMissingDataFromEntriesOrStore(key)
 		if err != nil {
 			return err
 		}
@@ -155,7 +155,7 @@ func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectPriority(depri
 				}
 				txNum := uint(txNum)
 
-				prioMissingData, err := p.getMissingDataFromEntriesOrStore(prioritized, key)
+				prioMissingData, err := p.getPrioMissingDataFromEntriesOrStore(key)
 				if err != nil {
 					return err
 				}
@@ -171,7 +171,7 @@ func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectPriority(depri
 				}
 				p.entries.prioritizedMissingDataEntries[key] = prioMissingData.Clear(txNum)
 
-				deprioMissingData, err := p.getMissingDataFromEntriesOrStore(deprioritized, key)
+				deprioMissingData, err := p.getDeprioMissingDataFromEntriesOrStore(key)
 				if err != nil {
 					return err
 				}
@@ -216,42 +216,48 @@ func (p *oldBlockDataProcessor) getExpiryDataFromEntriesOrStore(expKey expiryKey
 	return decodeExpiryValue(expData)
 }
 
-func (p *oldBlockDataProcessor) getMissingDataFromEntriesOrStore(group elgMissingDataGroup, nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
-	switch group {
-	case prioritized:
-		missingData, ok := p.entries.prioritizedMissingDataEntries[nsCollBlk]
-		if ok {
-			return missingData, nil
-		}
-	case deprioritized:
-		missingData, ok := p.entries.deprioritizedMissingDataEntries[nsCollBlk]
-		if ok {
-			return missingData, nil
-		}
+func (p *oldBlockDataProcessor) getPrioMissingDataFromEntriesOrStore(nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
+	missingData, ok := p.entries.prioritizedMissingDataEntries[nsCollBlk]
+	if ok {
+		return missingData, nil
 	}
 
 	missingKey := &missingDataKey{
 		nsCollBlk: nsCollBlk,
 	}
+	key := encodeElgPrioMissingDataKey(missingKey)
 
-	var key []byte
-
-	switch group {
-	case prioritized:
-		key = encodeElgPrioMissingDataKey(missingKey)
-	case deprioritized:
-		key = encodeElgDeprioMissingDataKey(missingKey)
-	}
-
-	missingData, err := p.db.Get(key)
+	encMissingData, err := p.db.Get(key)
 	if err != nil {
 		return nil, errors.Wrap(err, "error while getting missing data bitmap from the store")
 	}
-	if missingData == nil {
+	if encMissingData == nil {
 		return nil, nil
 	}
 
-	return decodeMissingDataValue(missingData)
+	return decodeMissingDataValue(encMissingData)
+}
+
+func (p *oldBlockDataProcessor) getDeprioMissingDataFromEntriesOrStore(nsCollBlk nsCollBlk) (*bitset.BitSet, error) {
+	missingData, ok := p.entries.deprioritizedMissingDataEntries[nsCollBlk]
+	if ok {
+		return missingData, nil
+	}
+
+	missingKey := &missingDataKey{
+		nsCollBlk: nsCollBlk,
+	}
+	key := encodeElgDeprioMissingDataKey(missingKey)
+
+	encMissingData, err := p.db.Get(key)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while getting missing data bitmap from the store")
+	}
+	if encMissingData == nil {
+		return nil, nil
+	}
+
+	return decodeMissingDataValue(encMissingData)
 }
 
 func (p *oldBlockDataProcessor) constructDBUpdateBatch() (*leveldbhelper.UpdateBatch, error) {
