@@ -6,11 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package kvledger
 
-import (
-	"os"
-
-	"github.com/pkg/errors"
-)
+import "github.com/hyperledger/fabric/internal/fileutil"
 
 func dropDBs(rootFSPath string) error {
 	// During block commits to stateDB, the transaction manager updates the bookkeeperDB and one of the
@@ -39,26 +35,24 @@ func dropDBs(rootFSPath string) error {
 
 func dropStateLevelDB(rootFSPath string) error {
 	stateLeveldbPath := StateDBPath(rootFSPath)
-	logger.Infof("Dropping StateLevelDB at location [%s] ...if present", stateLeveldbPath)
-	return os.RemoveAll(stateLeveldbPath)
+	logger.Infof("Dropping all contents in StateLevelDB at location [%s] ...if present", stateLeveldbPath)
+	return fileutil.RemoveContents(stateLeveldbPath)
 }
 
 func dropConfigHistoryDB(rootFSPath string) error {
 	configHistoryDBPath := ConfigHistoryDBPath(rootFSPath)
-	logger.Infof("Dropping ConfigHistoryDB at location [%s]", configHistoryDBPath)
-	err := os.RemoveAll(configHistoryDBPath)
-	return errors.Wrapf(err, "error removing the ConfigHistoryDB located at %s", configHistoryDBPath)
+	logger.Infof("Dropping all contents in ConfigHistoryDB at location [%s] ...if present", configHistoryDBPath)
+	return fileutil.RemoveContents(configHistoryDBPath)
 }
 
 func dropBookkeeperDB(rootFSPath string) error {
 	bookkeeperDBPath := BookkeeperDBPath(rootFSPath)
-	logger.Infof("Dropping BookkeeperDB at location [%s]", bookkeeperDBPath)
-	err := os.RemoveAll(bookkeeperDBPath)
-	return errors.Wrapf(err, "error removing the BookkeeperDB located at %s", bookkeeperDBPath)
+	logger.Infof("Dropping all contents in BookkeeperDB at location [%s] ...if present", bookkeeperDBPath)
+	return fileutil.RemoveContents(bookkeeperDBPath)
 }
 
 func dropHistoryDB(rootFSPath string) error {
 	historyDBPath := HistoryDBPath(rootFSPath)
-	logger.Infof("Dropping HistoryDB at location [%s] ...if present", historyDBPath)
-	return os.RemoveAll(historyDBPath)
+	logger.Infof("Dropping all contents under in HistoryDB at location [%s] ...if present", historyDBPath)
+	return fileutil.RemoveContents(historyDBPath)
 }

@@ -14,6 +14,7 @@ import (
 	"strconv"
 
 	"github.com/hyperledger/fabric/common/ledger/util"
+	"github.com/hyperledger/fabric/internal/fileutil"
 )
 
 // ResetBlockStore drops the block storage index and truncates the blocks files for all channels/ledgers to genesis blocks
@@ -56,8 +57,8 @@ func ResetBlockStore(blockStorageDir string) error {
 func DeleteBlockStoreIndex(blockStorageDir string) error {
 	conf := &Conf{blockStorageDir: blockStorageDir}
 	indexDir := conf.getIndexDir()
-	logger.Infof("Dropping the index dir [%s]... if present", indexDir)
-	return os.RemoveAll(indexDir)
+	logger.Infof("Dropping all contents under the index dir [%s]... if present", indexDir)
+	return fileutil.RemoveContents(indexDir)
 }
 
 func resetToGenesisBlk(ledgerDir string) error {
