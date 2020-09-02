@@ -100,15 +100,15 @@ folder](https://github.com/hyperledger/fabric/tree/master/docs) in the
 Hyperledger Fabric repository. Click on the following links to see how different
 source files map to their corresponding published topics.
 
-* [`/docs/source/index.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/index.rst) maps to [Hyperledger Fabric title page](https://hyperledger-fabric.readthedocs.io/en/{BRANCH}/)
+* [`/docs/source/index.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/index.rst) maps to [Hyperledger Fabric title page](https://hyperledger-fabric.readthedocs.io/en/{RTD_TAG}/)
 
 * [`/docs/source/developapps/developing-applications.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/developapps/developing_applications.rst)
   maps to [Developing
-  applications](https://hyperledger-fabric.readthedocs.io/en/{BRANCH}/developapps/developing_applications.html)
+  applications](https://hyperledger-fabric.readthedocs.io/en/{RTD_TAG}/developapps/developing_applications.html)
 
 * [`/docs/source/peers/peers.md`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/peers/peers.md)
   maps to
-  [Peers](https://hyperledger-fabric.readthedocs.io/en/{BRANCH}/peers/peers.html)
+  [Peers](https://hyperledger-fabric.readthedocs.io/en/{RTD_TAG}/peers/peers.html)
 
 We'll see how to make changes to these files a little later.
 
