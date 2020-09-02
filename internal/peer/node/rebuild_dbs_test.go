@@ -13,10 +13,12 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRebuildDBsCmd(t *testing.T) {
@@ -50,7 +52,8 @@ func TestRebuildDBsCmd(t *testing.T) {
 
 	// check dbs do not exist after upgrade
 	for _, dbPath := range dbPaths {
-		_, err := os.Stat(dbPath)
-		assert.True(t, os.IsNotExist(err))
+		empty, err := util.DirEmpty(dbPath)
+		require.NoError(t, err)
+		require.True(t, empty)
 	}
 }
