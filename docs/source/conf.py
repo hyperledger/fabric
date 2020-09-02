@@ -20,13 +20,19 @@
 #
 import os
 import sys
+import sphinx_rtd_theme
+from os import environ
+
 sys.path.insert(0, os.path.abspath('.'))
 
-
-import sphinx_rtd_theme
+rtd_tag = 'release-2.2'
+if environ.get('READTHEDOCS_VERSION') is not None:
+    rtd_tag = os.environ['READTHEDOCS_VERSION']
 
 placeholder_replacements = {
-    "{BRANCH}" : "release-2.2"
+    "{BRANCH}" : "release-2.2",
+    "{BRANCH_DOC}" : "latest", # Used to target the correct ReadTheDocs distribution version
+    "{RTD_TAG}": rtd_tag
 }
 
 # -- General configuration ------------------------------------------------
