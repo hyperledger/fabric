@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/pkg/errors"
 )
@@ -39,26 +41,43 @@ func dropDBs(rootFSPath string) error {
 
 func dropStateLevelDB(rootFSPath string) error {
 	stateLeveldbPath := StateDBPath(rootFSPath)
-	logger.Infof("Dropping StateLevelDB at location [%s] ...if present", stateLeveldbPath)
-	return os.RemoveAll(stateLeveldbPath)
+	logger.Infof("Dropping all contents in StateLevelDB at location [%s] ...if present", stateLeveldbPath)
+	return RemoveContents(stateLeveldbPath)
 }
 
 func dropConfigHistoryDB(rootFSPath string) error {
 	configHistoryDBPath := ConfigHistoryDBPath(rootFSPath)
-	logger.Infof("Dropping ConfigHistoryDB at location [%s]", configHistoryDBPath)
-	err := os.RemoveAll(configHistoryDBPath)
-	return errors.Wrapf(err, "error removing the ConfigHistoryDB located at %s", configHistoryDBPath)
+	logger.Infof("Dropping all contents in ConfigHistoryDB at location [%s] ...if present", configHistoryDBPath)
+	return RemoveContents(configHistoryDBPath)
 }
 
 func dropBookkeeperDB(rootFSPath string) error {
 	bookkeeperDBPath := BookkeeperDBPath(rootFSPath)
-	logger.Infof("Dropping BookkeeperDB at location [%s]", bookkeeperDBPath)
-	err := os.RemoveAll(bookkeeperDBPath)
-	return errors.Wrapf(err, "error removing the BookkeeperDB located at %s", bookkeeperDBPath)
+	logger.Infof("Dropping all contents in BookkeeperDB at location [%s] ...if present", bookkeeperDBPath)
+	return RemoveContents(bookkeeperDBPath)
 }
 
 func dropHistoryDB(rootFSPath string) error {
 	historyDBPath := HistoryDBPath(rootFSPath)
-	logger.Infof("Dropping HistoryDB at location [%s] ...if present", historyDBPath)
-	return os.RemoveAll(historyDBPath)
+	logger.Infof("Dropping all contents under in HistoryDB at location [%s] ...if present", historyDBPath)
+	return RemoveContents(historyDBPath)
+}
+
+// RemoveContents removes all the files and subdirs under the specified directory.
+// It returns nil if the specified directory does not exist.
+func RemoveContents(dir string) error {
+	contents, err := ioutil.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return errors.Wrapf(err, "error reading directory %s", dir)
+	}
+
+	for _, c := range contents {
+		if err = os.RemoveAll(filepath.Join(dir, c.Name())); err != nil {
+			return errors.Wrapf(err, "error removing %s under directory %s", c.Name(), dir)
+		}
+	}
+	return syncDir(dir)
 }
