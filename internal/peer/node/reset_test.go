@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/config"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -38,6 +39,7 @@ func TestResetCmd(t *testing.T) {
 	_, err := os.Stat(historyDBPath)
 	require.False(t, os.IsNotExist(err))
 	require.NoError(t, cmd.Execute())
-	_, err = os.Stat(historyDBPath)
-	require.True(t, os.IsNotExist(err))
+	empty, err := fileutil.DirEmpty(historyDBPath)
+	require.NoError(t, err)
+	require.True(t, empty)
 }

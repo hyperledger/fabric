@@ -43,7 +43,7 @@ func TestRollbackKVLedger(t *testing.T) {
 	err = kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "testLedger", targetBlockNum)
 	require.NoError(t, err)
 	rebuildable := rebuildableStatedb + rebuildableBookkeeper + rebuildableConfigHistory + rebuildableHistoryDB
-	env.verifyRebuilableDoesNotExist(rebuildable)
+	env.verifyRebuilableDirEmpty(rebuildable)
 	env.initLedgerMgmt()
 	preResetHt, err := kvledger.LoadPreResetHeight(env.initializer.Config.RootFSPath, []string{"testLedger"})
 	require.NoError(t, err)
@@ -117,7 +117,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 	err := kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "ledger1", 4)
 	require.NoError(t, err)
 	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB
-	env.verifyRebuilableDoesNotExist(rebuildable)
+	env.verifyRebuilableDirEmpty(rebuildable)
 
 	env.initLedgerMgmt()
 	h = env.newTestHelperOpenLgr("ledger1", t)

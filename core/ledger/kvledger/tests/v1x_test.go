@@ -40,8 +40,9 @@ func TestV11(t *testing.T) {
 	require.NoError(t, testutil.Unzip("testdata/v11/sample_ledgers/ledgersData.zip", ledgerFSRoot, false))
 
 	require.NoError(t, kvledger.UpgradeDBs(env.initializer.Config))
-	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB | rebuildableBlockIndex
-	env.verifyRebuilableDoesNotExist(rebuildable)
+	// do not include bookkeeper and confighistory dbs since the v11 ledger doesn't have these dbs
+	rebuildable := rebuildableStatedb | rebuildableHistoryDB | rebuildableBlockIndex
+	env.verifyRebuilableDirEmpty(rebuildable)
 
 	env.initLedgerMgmt()
 
@@ -54,7 +55,7 @@ func TestV11(t *testing.T) {
 	// rebuild and verify again
 	env.ledgerMgr.Close()
 	require.NoError(t, kvledger.RebuildDBs(env.initializer.Config))
-	env.verifyRebuilableDoesNotExist(rebuildable)
+	env.verifyRebuilableDirEmpty(rebuildable)
 	env.initLedgerMgmt()
 
 	h1, h2 = env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
@@ -171,8 +172,9 @@ func testV11CommitHashes(t *testing.T,
 	require.NoError(t, testutil.Unzip(v11DataPath, ledgerFSRoot, false))
 
 	require.NoError(t, kvledger.UpgradeDBs(env.initializer.Config))
-	rebuildable := rebuildableStatedb | rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB | rebuildableBlockIndex
-	env.verifyRebuilableDoesNotExist(rebuildable)
+	// do not include bookkeeper and confighistory dbs since the v11 ledger doesn't have these dbs
+	rebuildable := rebuildableStatedb | rebuildableHistoryDB | rebuildableBlockIndex
+	env.verifyRebuilableDirEmpty(rebuildable)
 
 	env.initLedgerMgmt()
 	h := env.newTestHelperOpenLgr("ledger1", t)
@@ -249,7 +251,7 @@ func TestV13WithStateCouchdb(t *testing.T) {
 	require.NoError(t, kvledger.UpgradeDBs(env.initializer.Config))
 	require.True(t, statecouchdb.IsEmpty(t, couchdbConfig))
 	rebuildable := rebuildableBookkeeper | rebuildableConfigHistory | rebuildableHistoryDB | rebuildableBlockIndex
-	env.verifyRebuilableDoesNotExist(rebuildable)
+	env.verifyRebuilableDirEmpty(rebuildable)
 
 	env.initLedgerMgmt()
 
@@ -262,7 +264,7 @@ func TestV13WithStateCouchdb(t *testing.T) {
 	env.ledgerMgr.Close()
 	require.NoError(t, kvledger.RebuildDBs(env.initializer.Config))
 	require.True(t, statecouchdb.IsEmpty(t, couchdbConfig))
-	env.verifyRebuilableDoesNotExist(rebuildable)
+	env.verifyRebuilableDirEmpty(rebuildable)
 	env.initLedgerMgmt()
 
 	h1, h2 = env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)

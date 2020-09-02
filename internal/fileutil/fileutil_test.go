@@ -307,6 +307,40 @@ func TestSyncDir(t *testing.T) {
 	})
 }
 
+func TestRemoveContents(t *testing.T) {
+	t.Run("non-empty-dir", func(t *testing.T) {
+		testPath := testPath(t)
+		defer os.RemoveAll(testPath)
+
+		// create files and a non-empty subdir under testPath to test RemoveContents
+		require.NoError(t, CreateAndSyncFile(filepath.Join(testPath, "file1"), []byte("test-removecontents"), 0644))
+		require.NoError(t, CreateAndSyncFile(filepath.Join(testPath, "file2"), []byte("test-removecontents"), 0644))
+		require.NoError(t, os.MkdirAll(filepath.Join(testPath, "non-empty-dir", "some-random-dir"), 0755))
+		require.NoError(t, ioutil.WriteFile(filepath.Join(testPath, "non-empty-dir", "some-random-file"), []byte("test-subdir-removecontents"), 0644))
+
+		require.NoError(t, RemoveContents(testPath))
+		empty, err := DirEmpty(testPath)
+		require.NoError(t, err)
+		require.True(t, empty)
+	})
+
+	t.Run("empty-dir", func(t *testing.T) {
+		testPath := testPath(t)
+		defer os.RemoveAll(testPath)
+
+		require.NoError(t, RemoveContents(testPath))
+		empty, err := DirEmpty(testPath)
+		require.NoError(t, err)
+		require.True(t, empty)
+	})
+
+	t.Run("non-existent-dir", func(t *testing.T) {
+		testPath := testPath(t)
+		defer os.RemoveAll(testPath)
+		require.NoError(t, RemoveContents(filepath.Join(testPath, "non-existent-dir")))
+	})
+}
+
 func testPath(t *testing.T) string {
 	path, err := ioutil.TempDir("", "fileutiltest-")
 	require.NoError(t, err)

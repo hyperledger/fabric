@@ -7,12 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,16 +38,21 @@ func TestRebuildDBs(t *testing.T) {
 
 	// verify blockstoreIndex, configHistory, history, state, bookkeeper dbs are deleted
 	rootFSPath := conf.RootFSPath
-	_, err = os.Stat(filepath.Join(BlockStorePath(rootFSPath), "index"))
-	require.Equal(t, os.IsNotExist(err), true)
-	_, err = os.Stat(ConfigHistoryDBPath(rootFSPath))
-	require.Equal(t, os.IsNotExist(err), true)
-	_, err = os.Stat(HistoryDBPath(rootFSPath))
-	require.Equal(t, os.IsNotExist(err), true)
-	_, err = os.Stat(StateDBPath(rootFSPath))
-	require.Equal(t, os.IsNotExist(err), true)
-	_, err = os.Stat(BookkeeperDBPath(rootFSPath))
-	require.Equal(t, os.IsNotExist(err), true)
+	empty, err := fileutil.DirEmpty(filepath.Join(BlockStorePath(rootFSPath), "index"))
+	require.NoError(t, err)
+	require.True(t, empty)
+	empty, err = fileutil.DirEmpty(ConfigHistoryDBPath(rootFSPath))
+	require.NoError(t, err)
+	require.True(t, empty)
+	empty, err = fileutil.DirEmpty(HistoryDBPath(rootFSPath))
+	require.NoError(t, err)
+	require.True(t, empty)
+	empty, err = fileutil.DirEmpty(StateDBPath(rootFSPath))
+	require.NoError(t, err)
+	require.True(t, empty)
+	empty, err = fileutil.DirEmpty(BookkeeperDBPath(rootFSPath))
+	require.NoError(t, err)
+	require.True(t, empty)
 
 	// rebuild again should be successful
 	err = RebuildDBs(conf)
