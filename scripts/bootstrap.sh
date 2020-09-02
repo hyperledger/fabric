@@ -49,19 +49,31 @@ dockerPull() {
 cloneSamplesRepo() {
     # clone (if needed) hyperledger/fabric-samples and checkout corresponding
     # version to the binaries and docker images to be downloaded
-    if [ -d first-network ]; then
+    if [ -d test-network ]; then
         # if we are in the fabric-samples repo, checkout corresponding version
-        echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
-        git checkout v${VERSION}
+        echo "Fabric-Samples already exists, skipping clone"
+        checkout
     elif [ -d fabric-samples ]; then
         # if fabric-samples repo already cloned and in current directory,
         # cd fabric-samples and checkout corresponding version
-        echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
-        cd fabric-samples && git checkout v${VERSION}
+        echo "Fabric-Samples already exists, skipping clone"
+        cd fabric-samples && checkout
     else
-        echo "===> Cloning hyperledger/fabric-samples repo and checkout v${VERSION}"
-        git clone -b master https://github.com/hyperledger/fabric-samples.git && cd fabric-samples && git checkout v${VERSION}
+        echo "===> Cloning hyperledger/fabric-samples repo"
+        git clone -b master https://github.com/hyperledger/fabric-samples.git
+        cd fabric-samples && checkout
+
     fi
+}
+
+checkout() {
+  if [ -n "$(git ls-remote --tags https://github.com/hyperledger/fabric-samples refs/tags/v${VERSION})" ]; then
+    echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
+    git checkout v${VERSION}
+  else
+    echo "The tag ${VERSION} does not exist, defaulting to the master branch"
+    git checkout master
+  fi
 }
 
 # This will download the .tar.gz
