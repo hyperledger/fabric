@@ -98,18 +98,26 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 func (m *LedgerMgr) CreateLedger(id string, genesisBlock *common.Block) (ledger.PeerLedger, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	logger.Infof("Creating ledger [%s] with genesis block", id)
-	l, err := m.ledgerProvider.Create(genesisBlock)
-	if err != nil {
-		return nil, err
+	logger.Infof("Checking if ledger [%s] with genesis block had created", id)
+	if _, ok := m.openedLedgers[id]; ok {
+		logger.Errorf("Ledger had created [%s] with genesis block", id)
+		return nil, errors.Errorf("Ledger had created [%s] with genesis block", id)
+
+	} else {
+		logger.Infof("Creating ledger [%s] with genesis block", id)
+		l, err := m.ledgerProvider.Create(genesisBlock)
+		if err != nil {
+			return nil, err
+		}
+		m.openedLedgers[id] = l
+		logger.Infof("Created ledger [%s] with genesis block", id)
+		return &closableLedger{
+			ledgerMgr:  m,
+			id:         id,
+			PeerLedger: l,
+		}, nil
+
 	}
-	m.openedLedgers[id] = l
-	logger.Infof("Created ledger [%s] with genesis block", id)
-	return &closableLedger{
-		ledgerMgr:  m,
-		id:         id,
-		PeerLedger: l,
-	}, nil
 }
 
 // OpenLedger returns a ledger for the given id
