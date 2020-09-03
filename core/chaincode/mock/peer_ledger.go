@@ -27,10 +27,11 @@ type PeerLedger struct {
 	commitLegacyReturnsOnCall map[int]struct {
 		result1 error
 	}
-	CommitPvtDataOfOldBlocksStub        func([]*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error)
+	CommitPvtDataOfOldBlocksStub        func([]*ledger.ReconciledPvtdata, ledger.MissingPvtDataInfo) ([]*ledger.PvtdataHashMismatch, error)
 	commitPvtDataOfOldBlocksMutex       sync.RWMutex
 	commitPvtDataOfOldBlocksArgsForCall []struct {
 		arg1 []*ledger.ReconciledPvtdata
+		arg2 ledger.MissingPvtDataInfo
 	}
 	commitPvtDataOfOldBlocksReturns struct {
 		result1 []*ledger.PvtdataHashMismatch
@@ -320,7 +321,7 @@ func (fake *PeerLedger) CommitLegacyReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *PeerLedger) CommitPvtDataOfOldBlocks(arg1 []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error) {
+func (fake *PeerLedger) CommitPvtDataOfOldBlocks(arg1 []*ledger.ReconciledPvtdata, arg2 ledger.MissingPvtDataInfo) ([]*ledger.PvtdataHashMismatch, error) {
 	var arg1Copy []*ledger.ReconciledPvtdata
 	if arg1 != nil {
 		arg1Copy = make([]*ledger.ReconciledPvtdata, len(arg1))
@@ -330,11 +331,12 @@ func (fake *PeerLedger) CommitPvtDataOfOldBlocks(arg1 []*ledger.ReconciledPvtdat
 	ret, specificReturn := fake.commitPvtDataOfOldBlocksReturnsOnCall[len(fake.commitPvtDataOfOldBlocksArgsForCall)]
 	fake.commitPvtDataOfOldBlocksArgsForCall = append(fake.commitPvtDataOfOldBlocksArgsForCall, struct {
 		arg1 []*ledger.ReconciledPvtdata
-	}{arg1Copy})
-	fake.recordInvocation("CommitPvtDataOfOldBlocks", []interface{}{arg1Copy})
+		arg2 ledger.MissingPvtDataInfo
+	}{arg1Copy, arg2})
+	fake.recordInvocation("CommitPvtDataOfOldBlocks", []interface{}{arg1Copy, arg2})
 	fake.commitPvtDataOfOldBlocksMutex.Unlock()
 	if fake.CommitPvtDataOfOldBlocksStub != nil {
-		return fake.CommitPvtDataOfOldBlocksStub(arg1)
+		return fake.CommitPvtDataOfOldBlocksStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -349,17 +351,17 @@ func (fake *PeerLedger) CommitPvtDataOfOldBlocksCallCount() int {
 	return len(fake.commitPvtDataOfOldBlocksArgsForCall)
 }
 
-func (fake *PeerLedger) CommitPvtDataOfOldBlocksCalls(stub func([]*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error)) {
+func (fake *PeerLedger) CommitPvtDataOfOldBlocksCalls(stub func([]*ledger.ReconciledPvtdata, ledger.MissingPvtDataInfo) ([]*ledger.PvtdataHashMismatch, error)) {
 	fake.commitPvtDataOfOldBlocksMutex.Lock()
 	defer fake.commitPvtDataOfOldBlocksMutex.Unlock()
 	fake.CommitPvtDataOfOldBlocksStub = stub
 }
 
-func (fake *PeerLedger) CommitPvtDataOfOldBlocksArgsForCall(i int) []*ledger.ReconciledPvtdata {
+func (fake *PeerLedger) CommitPvtDataOfOldBlocksArgsForCall(i int) ([]*ledger.ReconciledPvtdata, ledger.MissingPvtDataInfo) {
 	fake.commitPvtDataOfOldBlocksMutex.RLock()
 	defer fake.commitPvtDataOfOldBlocksMutex.RUnlock()
 	argsForCall := fake.commitPvtDataOfOldBlocksArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *PeerLedger) CommitPvtDataOfOldBlocksReturns(result1 []*ledger.PvtdataHashMismatch, result2 error) {
