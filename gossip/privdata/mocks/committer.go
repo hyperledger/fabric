@@ -30,13 +30,13 @@ func (_m *Committer) CommitLegacy(blockAndPvtData *ledger.BlockAndPvtData, commi
 	return r0
 }
 
-// CommitPvtDataOfOldBlocks provides a mock function with given fields: reconciledPvtdata
-func (_m *Committer) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error) {
-	ret := _m.Called(reconciledPvtdata)
+// CommitPvtDataOfOldBlocks provides a mock function with given fields: reconciledPvtdata, unreconciled
+func (_m *Committer) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata, unreconciled ledger.MissingPvtDataInfo) ([]*ledger.PvtdataHashMismatch, error) {
+	ret := _m.Called(reconciledPvtdata, unreconciled)
 
 	var r0 []*ledger.PvtdataHashMismatch
-	if rf, ok := ret.Get(0).(func([]*ledger.ReconciledPvtdata) []*ledger.PvtdataHashMismatch); ok {
-		r0 = rf(reconciledPvtdata)
+	if rf, ok := ret.Get(0).(func([]*ledger.ReconciledPvtdata, ledger.MissingPvtDataInfo) []*ledger.PvtdataHashMismatch); ok {
+		r0 = rf(reconciledPvtdata, unreconciled)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*ledger.PvtdataHashMismatch)
@@ -44,8 +44,8 @@ func (_m *Committer) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.Reconc
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]*ledger.ReconciledPvtdata) error); ok {
-		r1 = rf(reconciledPvtdata)
+	if rf, ok := ret.Get(1).(func([]*ledger.ReconciledPvtdata, ledger.MissingPvtDataInfo) error); ok {
+		r1 = rf(reconciledPvtdata, unreconciled)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -14,13 +14,6 @@ import (
 	"github.com/willf/bitset"
 )
 
-type elgMissingDataGroup int
-
-const (
-	prioritized elgMissingDataGroup = iota
-	deprioritized
-)
-
 // CommitPvtDataOfOldBlocks commits the pvtData (i.e., previously missing data) of old blockp.
 // The parameter `blocksPvtData` refers a list of old block's pvtdata which are missing in the pvtstore.
 // Given a list of old block's pvtData, `CommitPvtDataOfOldBlocks` performs the following three
