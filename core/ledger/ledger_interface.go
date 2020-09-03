@@ -708,8 +708,13 @@ func (cdef *ChaincodeDefinition) String() string {
 	return fmt.Sprintf("Name=%s, Version=%s, Hash=%#v", cdef.Name, cdef.Version, cdef.Hash)
 }
 
+// ChaincodeLifecycleEventProvider enables ledger to create indexes in the statedb
 type ChaincodeLifecycleEventProvider interface {
-	RegisterListener(channelID string, listener ChaincodeLifecycleEventListener)
+	// RegisterListener is used by ledger to receive a callback alongwith dbArtifacts when a chaincode becomes invocable on the peer
+	// In addition, if needsExistingChaincodesDefinitions is true, the provider calls back the listener with existing invocable chaincodes
+	// This parameter is used when we create a ledger from a snapshot so that we can create indexes for the existing invocable chaincodes
+	// already defined in the imported ledger data
+	RegisterListener(channelID string, listener ChaincodeLifecycleEventListener, needsExistingChaincodesDefinitions bool) error
 }
 
 // CustomTxProcessor allows to generate simulation results during commit time for custom transactions.

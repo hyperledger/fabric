@@ -30,9 +30,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var couchDBAddress string
+var stopCouchDBFunc func()
+
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,valimpl,confighistory,pvtstatepurgemgmt=debug")
-	os.Exit(m.Run())
+	exitCode := m.Run()
+	if couchDBAddress != "" {
+		couchDBAddress = ""
+		stopCouchDBFunc()
+	}
+	os.Exit(exitCode)
 }
 
 func TestKVLedgerNilHistoryDBProvider(t *testing.T) {

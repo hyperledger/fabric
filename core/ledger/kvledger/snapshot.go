@@ -299,7 +299,7 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 		}
 	}
 
-	lgr, err := p.open(ledgerID, metadata)
+	lgr, err := p.open(ledgerID, metadata, true)
 	if err != nil {
 		return nil, "", p.deleteUnderConstructionLedger(
 			lgr,
