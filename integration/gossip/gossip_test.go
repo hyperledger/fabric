@@ -125,6 +125,14 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		basePeerForTransactions := peer0Org1
 		nwo.DeployChaincodeLegacy(network, channelName, orderer, chaincode, basePeerForTransactions)
 
+		By("verifying peer0Org1 discovers all the peers and the legacy chaincode before starting the tests")
+		Eventually(nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
+			network.DiscoveredPeer(peer0Org1, "_lifecycle", "mycc"),
+			network.DiscoveredPeer(peer1Org1, "_lifecycle"),
+			network.DiscoveredPeer(peer0Org2, "_lifecycle"),
+			network.DiscoveredPeer(peer1Org2, "_lifecycle"),
+		))
+
 		By("STATE TRANSFER TEST 1: newly joined peers should receive blocks from the peers that are already up")
 
 		// Note, a better test would be to bring orderer down before joining the two peers.
@@ -142,6 +150,14 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		basePeerForTransactions = peer1Org1
 		nwo.InstallChaincodeLegacy(network, chaincode, basePeerForTransactions)
 
+		By("verifying peer0Org1 discovers all the peers and the additional legacy chaincode installed on peer1Org1")
+		Eventually(nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
+			network.DiscoveredPeer(peer0Org1, "_lifecycle", "mycc"),
+			network.DiscoveredPeer(peer1Org1, "_lifecycle", "mycc"),
+			network.DiscoveredPeer(peer0Org2, "_lifecycle"),
+			network.DiscoveredPeer(peer1Org2, "_lifecycle"),
+		))
+
 		By("stopping peer0Org1 (currently elected leader in Org1) and peer1Org2 (static leader in Org2)")
 		stopPeers(nwprocs, peer0Org1, peer1Org2)
 
@@ -152,6 +168,15 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 		// This effectively tests leader election as well, since the newly elected leader in Org1 (peer1Org1) will be the only peer
 		// that receives blocks from orderer and will therefore serve as the provider of blocks to all other peers.
 		sendTransactionsAndSyncUpPeers(nwprocs, orderer, basePeerForTransactions, channelName, peer0Org1, peer1Org2)
+
+		By("verifying peer0Org1 can still discover all the peers and the legacy chaincode after it has been restarted")
+		Eventually(nwo.DiscoverPeers(network, peer0Org1, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
+			network.DiscoveredPeer(peer0Org1, "_lifecycle", "mycc"),
+			network.DiscoveredPeer(peer1Org1, "_lifecycle", "mycc"),
+			network.DiscoveredPeer(peer0Org2, "_lifecycle"),
+			network.DiscoveredPeer(peer1Org2, "_lifecycle"),
+		))
+
 	})
 
 	When("gossip connection is lost and restored", func() {
