@@ -59,7 +59,7 @@ type Committer interface {
 	// If hashes for some of the private data supplied in this function does not match
 	// the corresponding hash present in the block, the unmatched private data is not
 	// committed and instead the mismatch inforation is returned back
-	CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata) ([]*ledger.PvtdataHashMismatch, error)
+	CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.ReconciledPvtdata, unreconciled ledger.MissingPvtDataInfo) ([]*ledger.PvtdataHashMismatch, error)
 
 	// GetMissingPvtDataTracker return the MissingPvtDataTracker
 	GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, error)
