@@ -367,6 +367,10 @@ func serve(args []string) error {
 		LegacyDeployedCCInfoProvider: &lscc.DeployedCCInfoProvider{},
 	}
 
+	// Configure CC package storage before ccInfoFSImpl.ListInstalledChaincodes() gets called
+	lsccInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "chaincodes")
+	ccprovider.SetChaincodesPath(lsccInstallPath)
+
 	ccInfoFSImpl := &ccprovider.CCInfoFSImpl{GetHasher: factory.GetDefault()}
 
 	// legacyMetadataManager collects metadata information from the legacy
@@ -464,10 +468,6 @@ func serve(args []string) error {
 	defer gossipService.Stop()
 
 	peerInstance.GossipService = gossipService
-
-	// Configure CC package storage
-	lsccInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "chaincodes")
-	ccprovider.SetChaincodesPath(lsccInstallPath)
 
 	if err := lifecycleCache.InitializeLocalChaincodes(); err != nil {
 		return errors.WithMessage(err, "could not initialize local chaincodes")
