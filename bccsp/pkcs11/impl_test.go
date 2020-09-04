@@ -134,7 +134,7 @@ func TestNew(t *testing.T) {
 	opts.Library = ""
 	_, err = New(opts, currentKS)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Failed initializing PKCS11 library")
+	assert.Contains(t, err.Error(), "pkcs11: library path not provided")
 }
 
 func TestFindPKCS11LibEnvVars(t *testing.T) {
