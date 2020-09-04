@@ -16,7 +16,7 @@ configured to connect to other running fabric nodes.
 **Note:** These instructions have been verified to work against the
 latest stable Docker images and the pre-compiled setup utilities within the
 supplied tar file. If you run these commands with images or tools from the
-current master branch, it is possible that you will encounter errors.
+current latest branch, it is possible that you will encounter errors.
 
 ## Before you begin
 
