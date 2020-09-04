@@ -431,7 +431,7 @@ func (c *Chain) Halt() {
 }
 
 // halt stops the chain and calls the haltCallback function, which allows the
-// chain to transfer responsbility to a follower or inactive chain when a chain
+// chain to transfer responsibility to a follower or inactive chain when a chain
 // discovers it is no longer a member of a channel
 func (c *Chain) halt() {
 	c.Halt()

@@ -1050,6 +1050,59 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
 		require.Nil(t, channelList.SystemChannel)
 	})
+
+	t.Run("Join app channel as member, then switch to follower", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		consenter.IsChannelMemberReturns(true, nil)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+
+		// Before join the chain, it doesn't exist
+		require.Nil(t, registrar.GetChain("my-raft-channel"))
+
+		info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 0x1}, info)
+		// After creating the chain, it exists
+		cs := registrar.GetChain("my-raft-channel")
+		require.NotNil(t, cs)
+
+		// ChannelInfo() and ChannelList() are working fine
+		info, err = registrar.ChannelInfo("my-raft-channel")
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 0x1}, info)
+		channelList := registrar.ChannelList()
+		require.Equal(t, 1, len(channelList.Channels))
+		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
+		require.Nil(t, channelList.SystemChannel)
+
+		// Let's assume the chain appended another config block
+		genesisBlockAppRaft.Header.PreviousHash = protoutil.BlockHeaderHash(genesisBlockAppRaft.Header)
+		genesisBlockAppRaft.Header.Number = 1
+		require.NoError(t, cs.Append(genesisBlockAppRaft))
+		consenter.IsChannelMemberReturns(false, nil)
+		require.Equal(t, uint64(2), cs.Height())
+
+		//Now halt and switch, as if the orderer was evicted
+		cs.Halt()
+		require.NotPanics(t, func() { registrar.SwitchChainToFollower("my-raft-channel") })
+		// Now the follower is in the followers map, the chain is gone
+		fChain := registrar.GetFollower("my-raft-channel")
+		require.NotNil(t, fChain)
+		require.Nil(t, registrar.GetChain("my-raft-channel"))
+		// ChannelInfo() and ChannelList() are still working fine
+		info, err = registrar.ChannelInfo("my-raft-channel")
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "follower", Status: "active", Height: 0x2}, info)
+		channelList = registrar.ChannelList()
+		require.Equal(t, 1, len(channelList.Channels))
+		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
+		require.Nil(t, channelList.SystemChannel)
+		fChain.Halt()
+		require.False(t, fChain.IsRunning())
+	})
 }
 
 func TestRegistrar_RemoveChannel(t *testing.T) {

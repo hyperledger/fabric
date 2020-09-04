@@ -62,12 +62,13 @@ type Config struct {
 
 // Consenter implements etcdraft consenter
 type Consenter struct {
-	CreateChain           func(chainName string)
+	CreateChain           func(chainName string) //TODO FAB-18204 convert function pointers to interface
+	SwitchToFollower      func(chainName string) //TODO FAB-18204 convert function pointers to interface
 	InactiveChainRegistry InactiveChainRegistry
 	Dialer                *cluster.PredicateDialer
 	Communication         cluster.Communicator
 	*Dispatcher
-	Chains         ChainGetter
+	Chains         ChainGetter //TODO FAB-18204 use a single interface for multichannel.Registrar functions
 	Logger         *flogging.FabricLogger
 	EtcdRaftConfig Config
 	OrdererConfig  localconfig.TopLevel
@@ -221,25 +222,19 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		StreamsByType: cluster.NewStreamsByType(),
 	}
 
-	// when we have a system channel
+	var haltCallback func() // called after the etcdraft.Chain halts when it detects eviction form the cluster.
 	if c.InactiveChainRegistry != nil {
-		return NewChain(
-			support,
-			opts,
-			c.Communication,
-			rpc,
-			c.BCCSP,
-			func() (BlockPuller, error) {
-				return NewBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, c.BCCSP)
-			},
-			func() {
-				c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.CreateChain(support.ChannelID()) })
-			},
-			nil,
-		)
+		// when we have a system channel, we use the InactiveChainRegistry to track membership upon eviction.
+		c.Logger.Info("With system channel: after eviction InactiveChainRegistry.TrackChain will be called")
+		haltCallback = func() {
+			c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.CreateChain(support.ChannelID()) })
+		}
+	} else {
+		// when we do NOT have a system channel, we switch to a follower.Chain upon eviction.
+		c.Logger.Info("Without system channel: after eviction Registrar.SwitchToFollower will be called")
+		haltCallback = func() { c.SwitchToFollower(support.ChannelID()) }
 	}
 
-	// when we do NOT have a system channel
 	return NewChain(
 		support,
 		opts,
@@ -249,10 +244,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		func() (BlockPuller, error) {
 			return NewBlockPuller(support, c.Dialer, c.OrdererConfig.General.Cluster, c.BCCSP)
 		},
-		func() {
-			c.Logger.Warning("Start a follower.Chain: not yet implemented")
-			//TODO plug a function pointer to start follower.Chain
-		},
+		haltCallback,
 		nil,
 	)
 }
@@ -337,6 +329,7 @@ func New(
 
 	consenter := &Consenter{
 		CreateChain:           r.CreateChain,
+		SwitchToFollower:      r.SwitchChainToFollower,
 		Cert:                  srvConf.SecOpts.Certificate,
 		Logger:                logger,
 		Chains:                r,
