@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/miekg/pkcs11"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestKeyGenFailures(t *testing.T) {
@@ -50,7 +51,7 @@ func TestLoadLib(t *testing.T) {
 	// Test for no pin
 	_, _, _, err = loadLib(lib, "", label)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "No PIN set")
+	assert.Contains(t, err.Error(), "Login failed: pkcs11")
 }
 
 func TestOIDFromNamedCurve(t *testing.T) {
@@ -105,7 +106,8 @@ func TestAlternateLabelGeneration(t *testing.T) {
 	testBCCSP, err := New(opts, currentKS)
 
 	p11lib := testBCCSP.(*impl).ctx
-	session := testBCCSP.(*impl).getSession()
+	session, err := testBCCSP.(*impl).getSession()
+	require.NoError(t, err)
 	defer testBCCSP.(*impl).returnSession(session)
 
 	// Passing fake SKI to ensure that the look up fails if the uniqueAltId is not used
@@ -163,7 +165,9 @@ func TestNamedCurveFromOID(t *testing.T) {
 func TestPKCS11GetSession(t *testing.T) {
 	var sessions []pkcs11.SessionHandle
 	for i := 0; i < 3*sessionCacheSize; i++ {
-		sessions = append(sessions, currentBCCSP.(*impl).getSession())
+		session, err := currentBCCSP.(*impl).getSession()
+		require.NoError(t, err)
+		sessions = append(sessions, session)
 	}
 
 	// Return all sessions, should leave sessionCacheSize cached
@@ -178,13 +182,14 @@ func TestPKCS11GetSession(t *testing.T) {
 
 	// Should be able to get sessionCacheSize cached sessions
 	for i := 0; i < sessionCacheSize; i++ {
-		sessions = append(sessions, currentBCCSP.(*impl).getSession())
+		session, err := currentBCCSP.(*impl).getSession()
+		require.NoError(t, err)
+		sessions = append(sessions, session)
 	}
 
 	// This one should fail
-	assert.Panics(t, func() {
-		currentBCCSP.(*impl).getSession()
-	}, "Should not been able to create another session")
+	_, err := currentBCCSP.(*impl).getSession()
+	assert.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
 
 	// Cleanup
 	for _, session := range sessions {
