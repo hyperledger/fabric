@@ -1427,6 +1427,37 @@ var _ = Describe("Chain", func() {
 			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 		})
 
+		It("remove leader by reconfiguring cluster, but Halt before eviction", func() {
+			network.elect(1)
+
+			// trigger status dissemination
+			Eventually(func() int {
+				c1.clock.Increment(interval)
+				return c2.fakeFields.fakeActiveNodes.SetCallCount()
+			}, LongEventualTimeout).Should(Equal(2))
+			Expect(c2.fakeFields.fakeActiveNodes.SetArgsForCall(1)).To(Equal(float64(2)))
+
+			By("Configuring cluster to remove node")
+			Expect(c1.Configure(configEnv, 0)).To(Succeed())
+			Eventually(c2.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
+			c1.clock.WaitForNWatchersAndIncrement((ELECTION_TICK-1)*interval, 2)
+			c1.Halt()
+
+			Eventually(func() <-chan raft.SoftState {
+				c2.clock.Increment(interval)
+				return c2.observe
+			}, LongEventualTimeout).Should(Receive(StateEqual(2, raft.StateLeader)))
+
+			By("Asserting leader can still serve requests as single-node cluster")
+			c2.cutter.CutNext = true
+			Expect(c2.Order(env, 0)).To(Succeed())
+			Eventually(c2.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+
+			By("Asserting the haltCallback is not called when Halt is called before eviction")
+			c1.clock.Increment(interval)
+			Eventually(fakeHaltCallbacker.HaltCallbackCallCount).Should(Equal(0))
+		})
+
 		It("can remove leader by reconfiguring cluster even if leadership transfer fails", func() {
 			network.elect(1)
 
