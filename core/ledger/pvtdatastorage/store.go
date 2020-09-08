@@ -777,6 +777,7 @@ func (s *Store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 			batch.Delete(encodeMissingDataKey(missingDataKey))
 		}
 		s.db.WriteBatch(batch, false)
+		batch.Reset()
 	}
 	logger.Infof("[%s] - [%d] Entries purged from private data storage till block number [%d]", s.ledgerid, len(expiryEntries), maxBlkNum)
 	return nil
@@ -870,7 +871,7 @@ func (s *Store) processCollElgEvents() error {
 					collEntriesConverted++
 					if batch.Len() > s.maxBatchSize {
 						s.db.WriteBatch(batch, true)
-						batch = s.db.NewUpdateBatch()
+						batch.Reset()
 						sleepTime := time.Duration(s.batchesInterval)
 						logger.Infof("Going to sleep for %d milliseconds between batches. Entries for [ns=%s, coll=%s] converted so far = %d",
 							sleepTime, ns, coll, collEntriesConverted)
