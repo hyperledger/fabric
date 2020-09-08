@@ -415,26 +415,35 @@ func (c *Chain) Errored() <-chan struct{} {
 
 // Halt stops the chain.
 func (c *Chain) Halt() {
+	c.stop()
+}
+
+func (c *Chain) stop() bool {
 	select {
 	case <-c.startC:
 	default:
-		c.logger.Warnf("Attempted to halt a chain that has not started")
-		return
+		c.logger.Warn("Attempted to halt a chain that has not started")
+		return false
 	}
 
 	select {
 	case c.haltC <- struct{}{}:
 	case <-c.doneC:
-		return
+		return false
 	}
 	<-c.doneC
+
+	return true
 }
 
 // halt stops the chain and calls the haltCallback function, which allows the
 // chain to transfer responsibility to a follower or inactive chain when a chain
-// discovers it is no longer a member of a channel
+// discovers it is no longer a member of a channel.
 func (c *Chain) halt() {
-	c.Halt()
+	if stopped := c.stop(); !stopped {
+		c.logger.Info("This node was stopped, the haltCallback will not be called")
+		return
+	}
 	if c.haltCallback != nil {
 		c.haltCallback()
 	}
