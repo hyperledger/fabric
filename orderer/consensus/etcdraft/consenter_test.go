@@ -256,10 +256,14 @@ var _ = Describe("Consenter", func() {
 		consenter.EtcdRaftConfig.SnapDir = snapDir
 		// consenter.EtcdRaftConfig.EvictionSuspicion is missing
 		var defaultSuspicionFallback bool
+		var trackChainCallback bool
 		consenter.Metrics = newFakeMetrics(newFakeMetricsFields())
 		consenter.Logger = consenter.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
 			if strings.Contains(entry.Message, "EvictionSuspicion not set, defaulting to 10m0s") {
 				defaultSuspicionFallback = true
+			}
+			if strings.Contains(entry.Message, "With system channel: after eviction InactiveChainRegistry.TrackChain will be called") {
+				trackChainCallback = true
 			}
 			return nil
 		}))
@@ -270,6 +274,7 @@ var _ = Describe("Consenter", func() {
 
 		Expect(chain.Start).NotTo(Panic())
 		Expect(defaultSuspicionFallback).To(BeTrue())
+		Expect(trackChainCallback).To(BeTrue())
 	})
 
 	It("successfully constructs a Chain without a system channel", func() {
@@ -306,10 +311,14 @@ var _ = Describe("Consenter", func() {
 
 		// consenter.EtcdRaftConfig.EvictionSuspicion is missing
 		var defaultSuspicionFallback bool
+		var switchToFollowerCallback bool
 		consenter.Metrics = newFakeMetrics(newFakeMetricsFields())
 		consenter.Logger = consenter.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
 			if strings.Contains(entry.Message, "EvictionSuspicion not set, defaulting to 10m0s") {
 				defaultSuspicionFallback = true
+			}
+			if strings.Contains(entry.Message, "Without system channel: after eviction Registrar.SwitchToFollower will be called") {
+				switchToFollowerCallback = true
 			}
 			return nil
 		}))
@@ -320,6 +329,7 @@ var _ = Describe("Consenter", func() {
 
 		Expect(chain.Start).NotTo(Panic())
 		Expect(defaultSuspicionFallback).To(BeTrue())
+		Expect(switchToFollowerCallback).To(BeTrue())
 		Expect(chain.Halt).NotTo(Panic())
 	})
 

@@ -516,6 +516,45 @@ func (r *Registrar) SwitchFollowerToChain(chainName string) {
 	logger.Infof("Created and started channel %s", cs.ChannelID())
 }
 
+// SwitchChainToFollower creates a follower.Chain from the tip of the ledger and removes the consensus.Chain.
+// It is called when an etcdraft.Chain detects it was evicted from the cluster (i.e. removed from the consenters set)
+// and halts, transferring execution to the follower.Chain.
+func (r *Registrar) SwitchChainToFollower(channelName string) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if _, chainExists := r.chains[channelName]; !chainExists {
+		logger.Infof("Channel %s consenter was removed", channelName)
+		return
+	}
+
+	if _, followerExists := r.followers[channelName]; followerExists {
+		logger.Panicf("Programming error, both a follower.Chain and a consensus.Chain exist, channel: %s", channelName)
+	}
+
+	rl, err := r.ledgerFactory.GetOrCreate(channelName)
+	if err != nil {
+		logger.Panicf("Failed obtaining ledger factory for %s: %v", channelName, err)
+	}
+
+	configBlock := ConfigBlockOrPanic(rl)
+	ledgerRes, clusterConsenter, err := r.initLedgerResourcesClusterConsenter(configBlock)
+	if err != nil {
+		logger.Panicf("Error initializing ledgerResources & clusterConsenter: %s", err)
+	}
+
+	delete(r.chains, channelName)
+	logger.Debugf("Removed consensus.Chain for channel %s", channelName)
+
+	fChain, _, err := r.createFollower(ledgerRes, clusterConsenter, nil, channelName)
+	if err != nil {
+		logger.Panicf("Failed to create follower.Chain for channel '%s', error: %s", channelName, err)
+	}
+	fChain.Start()
+
+	logger.Infof("Created and started a follower.Chain for channel %s", channelName)
+}
+
 // ChannelsCount returns the count of the current total number of channels.
 func (r *Registrar) ChannelsCount() int {
 	r.lock.RLock()
