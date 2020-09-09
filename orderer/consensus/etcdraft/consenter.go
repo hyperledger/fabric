@@ -25,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/hyperledger/fabric/protoutil"
@@ -43,14 +42,13 @@ type InactiveChainRegistry interface {
 	TrackChain(chainName string, genesisBlock *common.Block, createChain func())
 }
 
-//go:generate mockery -dir . -name ChainGetter -case underscore -output mocks
+//go:generate mockery -dir . -name ChainManager -case underscore -output mocks
 
-// ChainGetter obtains instances of ChainSupport for the given channel
-type ChainGetter interface {
-	// GetChain obtains the ChainSupport for the given channel.
-	// Returns nil, false when the ChainSupport for the given channel
-	// isn't found.
-	GetChain(chainID string) *multichannel.ChainSupport
+// ChainManager defines the methods from multichannel.Registrar needed by the Consenter.
+type ChainManager interface {
+	GetConsensusChain(channelID string) consensus.Chain
+	CreateChain(channelID string)
+	SwitchChainToFollower(channelID string)
 }
 
 // Config contains etcdraft configurations
@@ -62,13 +60,11 @@ type Config struct {
 
 // Consenter implements etcdraft consenter
 type Consenter struct {
-	CreateChain           func(chainName string) //TODO FAB-18204 convert function pointers to interface
-	SwitchToFollower      func(chainName string) //TODO FAB-18204 convert function pointers to interface
+	ChainManager          ChainManager
 	InactiveChainRegistry InactiveChainRegistry
 	Dialer                *cluster.PredicateDialer
 	Communication         cluster.Communicator
 	*Dispatcher
-	Chains         ChainGetter //TODO FAB-18204 use a single interface for multichannel.Registrar functions
 	Logger         *flogging.FabricLogger
 	EtcdRaftConfig Config
 	OrdererConfig  localconfig.TopLevel
@@ -93,17 +89,14 @@ func (c *Consenter) TargetChannel(message proto.Message) string {
 // ReceiverByChain returns the MessageReceiver for the given channelID or nil
 // if not found.
 func (c *Consenter) ReceiverByChain(channelID string) MessageReceiver {
-	cs := c.Chains.GetChain(channelID)
-	if cs == nil {
+	chain := c.ChainManager.GetConsensusChain(channelID)
+	if chain == nil {
 		return nil
 	}
-	if cs.Chain == nil {
-		c.Logger.Panicf("Programming error - Chain %s is nil although it exists in the mapping", channelID)
-	}
-	if etcdRaftChain, isEtcdRaftChain := cs.Chain.(*Chain); isEtcdRaftChain {
+	if etcdRaftChain, isEtcdRaftChain := chain.(*Chain); isEtcdRaftChain {
 		return etcdRaftChain
 	}
-	c.Logger.Warningf("Chain %s is of type %v and not etcdraft.Chain", channelID, reflect.TypeOf(cs.Chain))
+	c.Logger.Warningf("Chain %s is of type %v and not etcdraft.Chain", channelID, reflect.TypeOf(chain))
 	return nil
 }
 
@@ -165,7 +158,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		if c.InactiveChainRegistry != nil {
 			// There is a system channel, use the InactiveChainRegistry to track the future config updates of application channel.
 			c.InactiveChainRegistry.TrackChain(support.ChannelID(), support.Block(0), func() {
-				c.CreateChain(support.ChannelID())
+				c.ChainManager.CreateChain(support.ChannelID())
 			})
 			return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
 		}
@@ -227,12 +220,12 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		// when we have a system channel, we use the InactiveChainRegistry to track membership upon eviction.
 		c.Logger.Info("With system channel: after eviction InactiveChainRegistry.TrackChain will be called")
 		haltCallback = func() {
-			c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.CreateChain(support.ChannelID()) })
+			c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.ChainManager.CreateChain(support.ChannelID()) })
 		}
 	} else {
 		// when we do NOT have a system channel, we switch to a follower.Chain upon eviction.
 		c.Logger.Info("Without system channel: after eviction Registrar.SwitchToFollower will be called")
-		haltCallback = func() { c.SwitchToFollower(support.ChannelID()) }
+		haltCallback = func() { c.ChainManager.SwitchChainToFollower(support.ChannelID()) }
 	}
 
 	return NewChain(
@@ -314,7 +307,7 @@ func New(
 	conf *localconfig.TopLevel,
 	srvConf comm.ServerConfig,
 	srv *comm.GRPCServer,
-	r *multichannel.Registrar,
+	registrar ChainManager,
 	icr InactiveChainRegistry,
 	metricsProvider metrics.Provider,
 	bccsp bccsp.BCCSP,
@@ -328,11 +321,9 @@ func New(
 	}
 
 	consenter := &Consenter{
-		CreateChain:           r.CreateChain,
-		SwitchToFollower:      r.SwitchChainToFollower,
+		ChainManager:          registrar,
 		Cert:                  srvConf.SecOpts.Certificate,
 		Logger:                logger,
-		Chains:                r,
 		EtcdRaftConfig:        cfg,
 		OrdererConfig:         *conf,
 		Dialer:                clusterDialer,

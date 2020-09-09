@@ -28,14 +28,15 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	clustermocks "github.com/hyperledger/fabric/orderer/common/cluster/mocks"
-	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
+	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -59,7 +60,7 @@ type ordererConfig interface {
 
 var _ = Describe("Consenter", func() {
 	var (
-		chainGetter        *mocks.ChainGetter
+		chainManager       *mocks.ChainManager
 		support            *consensusmocks.FakeConsenterSupport
 		dataDir            string
 		snapDir            string
@@ -76,7 +77,7 @@ var _ = Describe("Consenter", func() {
 		if certAsPEM == nil {
 			certAsPEM = kp.Cert
 		}
-		chainGetter = &mocks.ChainGetter{}
+		chainManager = &mocks.ChainManager{}
 		support = &consensusmocks.FakeConsenterSupport{}
 		dataDir, err = ioutil.TempDir("", "consenter-")
 		Expect(err).NotTo(HaveOccurred())
@@ -113,17 +114,17 @@ var _ = Describe("Consenter", func() {
 
 	When("the consenter is extracting the channel", func() {
 		It("extracts successfully from step requests", func() {
-			consenter := newConsenter(chainGetter)
+			consenter := newConsenter(chainManager)
 			ch := consenter.TargetChannel(&orderer.ConsensusRequest{Channel: "mychannel"})
 			Expect(ch).To(BeIdenticalTo("mychannel"))
 		})
 		It("extracts successfully from submit requests", func() {
-			consenter := newConsenter(chainGetter)
+			consenter := newConsenter(chainManager)
 			ch := consenter.TargetChannel(&orderer.SubmitRequest{Channel: "mychannel"})
 			Expect(ch).To(BeIdenticalTo("mychannel"))
 		})
 		It("returns an empty string for the rest of the messages", func() {
-			consenter := newConsenter(chainGetter)
+			consenter := newConsenter(chainManager)
 			ch := consenter.TargetChannel(&common.Block{})
 			Expect(ch).To(BeEmpty())
 		})
@@ -132,7 +133,7 @@ var _ = Describe("Consenter", func() {
 	When("the consenter is asked about join-block membership", func() {
 		table.DescribeTable("identifies a bad block",
 			func(block *common.Block, errExpected string) {
-				consenter := newConsenter(chainGetter)
+				consenter := newConsenter(chainManager)
 				isMem, err := consenter.IsChannelMember(block)
 				Expect(isMem).To(BeFalse())
 				Expect(err).To(MatchError(errExpected))
@@ -162,7 +163,7 @@ var _ = Describe("Consenter", func() {
 		})
 
 		It("identifies a member block", func() {
-			consenter := newConsenter(chainGetter)
+			consenter := newConsenter(chainManager)
 			for i := 0; i < len(serverCertificates); i++ {
 				consenter.Cert = serverCertificates[i]
 				isMem, err := consenter.IsChannelMember(genesisBlockApp)
@@ -172,7 +173,7 @@ var _ = Describe("Consenter", func() {
 		})
 
 		It("identifies a non-member block", func() {
-			consenter := newConsenter(chainGetter)
+			consenter := newConsenter(chainManager)
 			consenter.Cert = certAsPEM
 			isMem, err := consenter.IsChannelMember(genesisBlockApp)
 			Expect(isMem).To(BeFalse())
@@ -183,47 +184,32 @@ var _ = Describe("Consenter", func() {
 	When("the consenter is asked for a chain", func() {
 		cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		chainInstance := &etcdraft.Chain{CryptoProvider: cryptoProvider}
-		cs := &multichannel.ChainSupport{
-			Chain: chainInstance,
-			BCCSP: cryptoProvider,
-		}
 		BeforeEach(func() {
-			chainGetter.On("GetChain", "mychannel").Return(cs)
-			chainGetter.On("GetChain", "badChainObject").Return(&multichannel.ChainSupport{})
-			chainGetter.On("GetChain", "notmychannel").Return(nil)
-			chainGetter.On("GetChain", "notraftchain").Return(&multichannel.ChainSupport{
-				Chain: &multichannel.ChainSupport{},
-			})
+			chainManager.On("GetConsensusChain", "mychannel").Return(chainInstance)
+			chainManager.On("GetConsensusChain", "notmychannel").Return(nil)
+			chainManager.On("GetConsensusChain", "notraftchain").Return(&inactive.Chain{Err: errors.New("not a raft chain")})
 		})
-		It("calls the chain getter and returns the reference when it is found", func() {
-			consenter := newConsenter(chainGetter)
+		It("calls the chain manager and returns the reference when it is found", func() {
+			consenter := newConsenter(chainManager)
 			Expect(consenter).NotTo(BeNil())
 
 			chain := consenter.ReceiverByChain("mychannel")
 			Expect(chain).NotTo(BeNil())
 			Expect(chain).To(BeIdenticalTo(chainInstance))
 		})
-		It("calls the chain getter and returns nil when it's not found", func() {
-			consenter := newConsenter(chainGetter)
+		It("calls the chain manager and returns nil when it's not found", func() {
+			consenter := newConsenter(chainManager)
 			Expect(consenter).NotTo(BeNil())
 
 			chain := consenter.ReceiverByChain("notmychannel")
 			Expect(chain).To(BeNil())
 		})
-		It("calls the chain getter and returns nil when it's not a raft chain", func() {
-			consenter := newConsenter(chainGetter)
+		It("calls the chain manager and returns nil when it's not a raft chain", func() {
+			consenter := newConsenter(chainManager)
 			Expect(consenter).NotTo(BeNil())
 
 			chain := consenter.ReceiverByChain("notraftchain")
 			Expect(chain).To(BeNil())
-		})
-		It("calls the chain getter and panics when the chain has a bad internal state", func() {
-			consenter := newConsenter(chainGetter)
-			Expect(consenter).NotTo(BeNil())
-
-			Expect(func() {
-				consenter.ReceiverByChain("badChainObject")
-			}).To(Panic())
 		})
 	})
 
@@ -251,7 +237,7 @@ var _ = Describe("Consenter", func() {
 		)
 		support.SharedConfigReturns(mockOrderer)
 
-		consenter := newConsenter(chainGetter)
+		consenter := newConsenter(chainManager)
 		consenter.EtcdRaftConfig.WALDir = walDir
 		consenter.EtcdRaftConfig.SnapDir = snapDir
 		// consenter.EtcdRaftConfig.EvictionSuspicion is missing
@@ -302,7 +288,7 @@ var _ = Describe("Consenter", func() {
 		)
 		support.SharedConfigReturns(mockOrderer)
 
-		consenter := newConsenter(chainGetter)
+		consenter := newConsenter(chainManager)
 		consenter.EtcdRaftConfig.WALDir = walDir
 		consenter.EtcdRaftConfig.SnapDir = snapDir
 		//without a system channel, the InactiveChainRegistry is nil
@@ -357,7 +343,7 @@ var _ = Describe("Consenter", func() {
 		support.SharedConfigReturns(mockOrderer)
 		support.ChannelIDReturns("foo")
 
-		consenter := newConsenter(chainGetter)
+		consenter := newConsenter(chainManager)
 
 		chain, err := consenter.HandleChain(support, &common.Metadata{})
 		Expect(chain).To(Not(BeNil()))
@@ -382,7 +368,7 @@ var _ = Describe("Consenter", func() {
 		)
 		support.SharedConfigReturns(mockOrderer)
 
-		consenter := newConsenter(chainGetter)
+		consenter := newConsenter(chainManager)
 
 		chain, err := consenter.HandleChain(support, nil)
 		Expect(chain).To(BeNil())
@@ -412,7 +398,7 @@ var _ = Describe("Consenter", func() {
 		mockOrderer.CapabilitiesReturns(&mocks.OrdererCapabilities{})
 		support.SharedConfigReturns(mockOrderer)
 
-		consenter := newConsenter(chainGetter)
+		consenter := newConsenter(chainManager)
 
 		chain, err := consenter.HandleChain(support, nil)
 		Expect(chain).To(BeNil())
@@ -443,7 +429,7 @@ var _ = Describe("Consenter", func() {
 		support.SharedConfigReturns(mockOrderer)
 		support.ChannelIDReturns("foo")
 
-		consenter := newConsenter(chainGetter)
+		consenter := newConsenter(chainManager)
 		//without a system channel, the InactiveChainRegistry is nil
 		consenter.InactiveChainRegistry = nil
 		consenter.icr = nil
@@ -459,7 +445,7 @@ type consenter struct {
 	icr *mocks.InactiveChainRegistry
 }
 
-func newConsenter(chainGetter *mocks.ChainGetter) *consenter {
+func newConsenter(chainManager *mocks.ChainManager) *consenter {
 	communicator := &clustermocks.Communicator{}
 	ca, err := tlsgen.NewCA()
 	Expect(err).NotTo(HaveOccurred())
@@ -471,11 +457,11 @@ func newConsenter(chainGetter *mocks.ChainGetter) *consenter {
 	Expect(err).NotTo(HaveOccurred())
 
 	c := &etcdraft.Consenter{
+		ChainManager:          chainManager,
 		InactiveChainRegistry: icr,
 		Communication:         communicator,
 		Cert:                  certAsPEM,
 		Logger:                flogging.MustGetLogger("test"),
-		Chains:                chainGetter,
 		Dispatcher: &etcdraft.Dispatcher{
 			Logger:        flogging.MustGetLogger("test"),
 			ChainSelector: &mocks.ReceiverGetter{},

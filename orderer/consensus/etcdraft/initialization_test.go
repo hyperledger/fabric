@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
-	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
 	"github.com/stretchr/testify/require"
@@ -33,7 +32,9 @@ func TestNewEtcdRaftConsenter(t *testing.T) {
 			SecOpts: comm.SecureOptions{
 				Certificate: []byte{1, 2, 3},
 			},
-		}, srv, &multichannel.Registrar{},
+		},
+		srv,
+		&mocks.ChainManager{},
 		&mocks.InactiveChainRegistry{},
 		&disabled.Provider{},
 		cryptoProvider,
@@ -43,7 +44,7 @@ func TestNewEtcdRaftConsenter(t *testing.T) {
 	require.Equal(t, []byte{1, 2, 3}, consenter.Cert)
 	// Assert that all dependencies for the consenter were populated
 	require.NotNil(t, consenter.Communication)
-	require.NotNil(t, consenter.Chains)
+	require.NotNil(t, consenter.ChainManager)
 	require.NotNil(t, consenter.ChainSelector)
 	require.NotNil(t, consenter.Dispatcher)
 	require.NotNil(t, consenter.Logger)
@@ -63,7 +64,9 @@ func TestNewEtcdRaftConsenterNoSystemChannel(t *testing.T) {
 			SecOpts: comm.SecureOptions{
 				Certificate: []byte{1, 2, 3},
 			},
-		}, srv, &multichannel.Registrar{},
+		},
+		srv,
+		&mocks.ChainManager{},
 		nil, // without a system channel we have InactiveChainRegistry == nil
 		&disabled.Provider{},
 		cryptoProvider,
@@ -73,7 +76,7 @@ func TestNewEtcdRaftConsenterNoSystemChannel(t *testing.T) {
 	require.Equal(t, []byte{1, 2, 3}, consenter.Cert)
 	// Assert that all dependencies for the consenter were populated
 	require.NotNil(t, consenter.Communication)
-	require.NotNil(t, consenter.Chains)
+	require.NotNil(t, consenter.ChainManager)
 	require.NotNil(t, consenter.ChainSelector)
 	require.NotNil(t, consenter.Dispatcher)
 	require.NotNil(t, consenter.Logger)
