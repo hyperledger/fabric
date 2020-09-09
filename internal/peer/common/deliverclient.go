@@ -163,7 +163,6 @@ type ordererDeliverService struct {
 
 // NewDeliverClientForOrderer creates a new DeliverClient from an OrdererClient
 func NewDeliverClientForOrderer(channelID string, signer identity.SignerSerializer, bestEffort bool) (*DeliverClient, error) {
-	var tlsCertHash []byte
 	oc, err := NewOrdererClientFromEnv()
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create deliver client for orderer")
@@ -174,6 +173,7 @@ func NewDeliverClientForOrderer(channelID string, signer identity.SignerSerializ
 		return nil, errors.WithMessage(err, "failed to create deliver client for orderer")
 	}
 	// check for client certificate and create hash if present
+	var tlsCertHash []byte
 	if len(oc.Certificate().Certificate) > 0 {
 		tlsCertHash = util.ComputeSHA256(oc.Certificate().Certificate[0])
 	}
