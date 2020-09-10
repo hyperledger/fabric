@@ -386,6 +386,19 @@ func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader
 	return chdr, isConfig, cs, nil
 }
 
+// GetConsensusChain retrieves the consensus.Chain of the channel, if it exists.
+func (r *Registrar) GetConsensusChain(chainID string) consensus.Chain {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	cs, exists := r.chains[chainID]
+	if !exists {
+		return nil
+	}
+
+	return cs.Chain
+}
+
 // GetChain retrieves the chain support for a chain if it exists.
 func (r *Registrar) GetChain(chainID string) *ChainSupport {
 	r.lock.RLock()
