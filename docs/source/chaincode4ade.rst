@@ -1,5 +1,5 @@
 Writing Your First Chaincode
-========================
+============================
 
 What is Chaincode?
 ------------------
@@ -54,7 +54,7 @@ by implementing a asset-transfer chaincode application that manages simple "asse
 .. _Asset Transfer Chaincode:
 
 Asset Transfer Chaincode
-----------------------
+------------------------
 Our application is a basic sample chaincode to initialize a ledger with assets, create, read, update, and delete assets, check to see
 if an asset exists, and transfer assets from one owner to another.
 
