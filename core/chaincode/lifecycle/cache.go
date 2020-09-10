@@ -588,8 +588,26 @@ func (c *Cache) update(initializing bool, channelID string, dirtyChaincodes map[
 }
 
 // RegisterListener registers an event listener for receiving an event when a chaincode becomes invokable
-func (c *Cache) RegisterListener(channelID string, listener ledger.ChaincodeLifecycleEventListener) {
-	c.eventBroker.RegisterListener(channelID, listener)
+func (c *Cache) RegisterListener(
+	channelID string,
+	listener ledger.ChaincodeLifecycleEventListener,
+	needsExistingChaincodesDefinitions bool,
+) error {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	channelChaincodes, ok := c.definedChaincodes[channelID]
+	if !ok {
+		return errors.Errorf("unknown channel '%s'", channelID)
+	}
+
+	if needsExistingChaincodesDefinitions {
+		c.eventBroker.RegisterListener(channelID, listener, channelChaincodes.Chaincodes)
+	} else {
+		c.eventBroker.RegisterListener(channelID, listener, nil)
+	}
+
+	return nil
 }
 
 func (c *Cache) InitializeMetadata(channel string) {

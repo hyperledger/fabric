@@ -68,6 +68,7 @@ type kvLedger struct {
 
 type lgrInitializer struct {
 	ledgerID                 string
+	initializingFromSnapshot bool
 	bootSnapshotMetadata     *snapshotMetadata
 	blockStore               *blkstorage.BlockStore
 	pvtdataStore             *pvtdatastorage.Store
@@ -148,7 +149,11 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 	logger.Debugf("Register state db for chaincode lifecycle events: %t", ccEventListener != nil)
 	if ccEventListener != nil {
 		cceventmgmt.GetMgr().Register(ledgerID, ccEventListener)
-		initializer.ccLifecycleEventProvider.RegisterListener(ledgerID, &ccEventListenerAdaptor{ccEventListener})
+		initializer.ccLifecycleEventProvider.RegisterListener(
+			ledgerID,
+			&ccEventListenerAdaptor{ccEventListener},
+			initializer.initializingFromSnapshot,
+		)
 	}
 
 	//Recover both state DB and history DB if they are out of sync with block storage

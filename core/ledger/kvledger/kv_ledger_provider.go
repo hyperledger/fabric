@@ -276,7 +276,7 @@ func (p *Provider) CreateFromGenesisBlock(genesisBlock *common.Block) (ledger.Pe
 		return nil, err
 	}
 
-	lgr, err := p.open(ledgerID, nil)
+	lgr, err := p.open(ledgerID, nil, false)
 	if err != nil {
 		return nil, p.deleteUnderConstructionLedger(lgr, ledgerID, err)
 	}
@@ -324,10 +324,10 @@ func (p *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 	if err != nil {
 		return nil, err
 	}
-	return p.open(ledgerID, bootSnapshotMetadata)
+	return p.open(ledgerID, bootSnapshotMetadata, false)
 }
 
-func (p *Provider) open(ledgerID string, bootSnapshotMetadata *snapshotMetadata) (ledger.PeerLedger, error) {
+func (p *Provider) open(ledgerID string, bootSnapshotMetadata *snapshotMetadata, initializingFromSnapshot bool) (ledger.PeerLedger, error) {
 	// Get the block store for a chain/ledger
 	blockStore, err := p.blkStoreProvider.Open(ledgerID)
 	if err != nil {
@@ -375,6 +375,7 @@ func (p *Provider) open(ledgerID string, bootSnapshotMetadata *snapshotMetadata)
 		hashProvider:             p.initializer.HashProvider,
 		config:                   p.initializer.Config,
 		bootSnapshotMetadata:     bootSnapshotMetadata,
+		initializingFromSnapshot: initializingFromSnapshot,
 	}
 
 	l, err := newKVLedger(initializer)

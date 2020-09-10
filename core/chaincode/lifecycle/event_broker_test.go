@@ -49,7 +49,7 @@ var _ = Describe("EventBroker", func() {
 			},
 			References: make(map[string]map[string]*lifecycle.CachedChaincodeDefinition),
 		}
-		eventBroker.RegisterListener("channel-1", fakeListener)
+		eventBroker.RegisterListener("channel-1", fakeListener, nil)
 		pkgParser.ParseReturns(&persistence.ChaincodePackage{
 			DBArtifacts: []byte("db-artifacts"),
 		}, nil)

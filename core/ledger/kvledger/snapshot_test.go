@@ -15,9 +15,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -27,8 +29,10 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger"
 	lgr "github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
@@ -232,6 +236,110 @@ func TestSnapshotDBTypeCouchDB(t *testing.T) {
 		},
 	)
 }
+
+func TestSnapshotCouchDBIndexCreation(t *testing.T) {
+	setup := func() (string, *ledger.CouchDBConfig, *Provider) {
+		conf, cleanup := testConfig(t)
+		t.Cleanup(cleanup)
+
+		snapshotRootDir := conf.SnapshotsConfig.RootDir
+		provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+		t.Cleanup(provider.Close)
+
+		// add the genesis block and generate the snapshot
+		blkGenerator, genesisBlk := testutil.NewBlockGenerator(t, "test_ledger", false)
+		lgr, err := provider.CreateFromGenesisBlock(genesisBlk)
+		require.NoError(t, err)
+		t.Cleanup(lgr.Close)
+		kvlgr := lgr.(*kvLedger)
+
+		blockAndPvtdata := prepareNextBlockForTest(t, kvlgr, blkGenerator, "SimulateForBlk1",
+			map[string]string{
+				"key1": `{"asset_name": "marble1", "color": "blue", "size": 1, "owner": "tom"}`,
+				"key2": `{"asset_name": "marble2", "color": "red", "size": 2, "owner": "jerry"}`,
+			},
+			nil,
+		)
+		require.NoError(t, kvlgr.CommitLegacy(blockAndPvtdata, &ledger.CommitOptions{}))
+		require.NoError(t, kvlgr.generateSnapshot())
+		snapshotDir := SnapshotDirForLedgerBlockNum(snapshotRootDir, kvlgr.ledgerID, 1)
+
+		cceventmgmt.Initialize(nil)
+		if couchDBAddress == "" {
+			couchDBAddress, stopCouchDBFunc = statecouchdb.StartCouchDB(t, nil)
+		}
+		couchDBConfig := &ledger.CouchDBConfig{
+			Address:             couchDBAddress,
+			Username:            "admin",
+			Password:            "adminpw",
+			MaxRetries:          3,
+			MaxRetriesOnStartup: 3,
+			RequestTimeout:      10 * time.Second,
+			InternalQueryLimit:  1000,
+			RedoLogPath:         filepath.Join(conf.RootFSPath, "couchdbRedoLogs"),
+		}
+
+		destConf, destCleanup := testConfig(t)
+		t.Cleanup(destCleanup)
+		destConf.StateDBConfig = &ledger.StateDBConfig{
+			StateDatabase: ledger.CouchDB,
+			CouchDB:       couchDBConfig,
+		}
+		destinationProvider := testutilNewProvider(destConf, t, &mock.DeployedChaincodeInfoProvider{})
+		ccLifecycleEventProvider := destinationProvider.initializer.ChaincodeLifecycleEventProvider.(*mock.ChaincodeLifecycleEventProvider)
+		ccLifecycleEventProvider.RegisterListenerStub = func(
+			channelID string,
+			listener ledger.ChaincodeLifecycleEventListener,
+			callback bool) error {
+			if callback {
+				err := listener.HandleChaincodeDeploy(
+					&ledger.ChaincodeDefinition{
+						Name: "ns",
+					},
+					testutil.CreateTarBytesForTest(
+						[]*testutil.TarFileEntry{
+							{
+								Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json",
+								Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`,
+							},
+						},
+					),
+				)
+				require.NoError(t, err)
+			}
+			return nil
+		}
+		return snapshotDir, couchDBConfig, destinationProvider
+	}
+
+	t.Run("create_indexes_on_couchdb", func(t *testing.T) {
+		snapshotDir, couchDBConfig, provider := setup()
+		defer func() {
+			require.NoError(t, statecouchdb.DropApplicationDBs(couchDBConfig))
+		}()
+		lgr, _, err := provider.CreateFromSnapshot(snapshotDir)
+		require.NoError(t, err)
+		qe, err := lgr.NewQueryExecutor()
+		require.NoError(t, err)
+		defer qe.Done()
+		iter, err := qe.ExecuteQuery("ns", `{"selector":{"owner":"tom"}, "sort": [{"size": "desc"}]}`)
+		require.NoError(t, err)
+		defer iter.Close()
+		actualResults := []*queryresult.KV{}
+		for {
+			queryResults, err := iter.Next()
+			require.NoError(t, err)
+			if queryResults == nil {
+				break
+			}
+			actualResults = append(actualResults, queryResults.(*queryresult.KV))
+		}
+		require.Len(t, actualResults, 1)
+		_, err = qe.ExecuteQuery("ns", `{"selector":{"owner":"tom"}, "sort": [{"color": "desc"}]}`)
+		require.Contains(t, err.Error(), "No index exists for this sort")
+	})
+}
+
 func TestSnapshotDirPaths(t *testing.T) {
 	require.Equal(t, "/peerFSPath/snapshotRootDir/underConstruction", InProgressSnapshotsPath("/peerFSPath/snapshotRootDir"))
 	require.Equal(t, "/peerFSPath/snapshotRootDir/completed", CompletedSnapshotsPath("/peerFSPath/snapshotRootDir"))
