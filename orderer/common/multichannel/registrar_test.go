@@ -1250,6 +1250,79 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		fChain.Halt()
 		require.False(t, fChain.IsRunning())
 	})
+
+	t.Run("Join system channel without on-boarding", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		consenter.IsChannelMemberReturns(true, nil)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		// Before join the chain, it doesn't exist
+		require.Nil(t, registrar.GetChain("sys-raft-channel"))
+
+		info, err := registrar.JoinChannel("sys-raft-channel", genesisBlockSysRaft, false)
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "member", Status: "inactive", Height: 0x1}, info)
+		// After creating the chain, it exists
+		cs := registrar.GetChain("sys-raft-channel")
+		require.NotNil(t, cs)
+
+		// join-block exists
+		joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "sys-raft-channel.joinblock")
+		_, err = os.Stat(joinBlockPath)
+		require.NoError(t, err)
+
+		// ChannelInfo() and ChannelList() are working fine
+		info, err = registrar.ChannelInfo("sys-raft-channel")
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "member", Status: "inactive", Height: 0x1}, info)
+		channelList := registrar.ChannelList()
+		require.Equal(t, 0, len(channelList.Channels))
+		require.NotNil(t, channelList.SystemChannel)
+		require.Equal(t, "sys-raft-channel", channelList.SystemChannel.Name)
+		ledgerRW, err := ledgerFactory.GetOrCreate("sys-raft-channel")
+		require.NoError(t, err)
+		require.Equal(t, uint64(1), ledgerRW.Height(), "block was appended")
+	})
+
+	t.Run("Join system channel with on-boarding", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		consenter.IsChannelMemberReturns(true, nil)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		// Before join the chain, it doesn't exist
+		require.Nil(t, registrar.GetChain("sys-raft-channel"))
+
+		genesisBlockSysRaft.Header.Number = 7
+		info, err := registrar.JoinChannel("sys-raft-channel", genesisBlockSysRaft, false)
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "member", Status: "inactive", Height: 0x0}, info)
+		// After creating the chain, it exists
+		cs := registrar.GetChain("sys-raft-channel")
+		require.NotNil(t, cs)
+
+		// join-block exists
+		joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "sys-raft-channel.joinblock")
+		_, err = os.Stat(joinBlockPath)
+		require.NoError(t, err)
+
+		// ChannelInfo() and ChannelList() are working fine
+		info, err = registrar.ChannelInfo("sys-raft-channel")
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "member", Status: "inactive", Height: 0x0}, info)
+		channelList := registrar.ChannelList()
+		require.Equal(t, 0, len(channelList.Channels))
+		require.NotNil(t, channelList.SystemChannel)
+		require.Equal(t, "sys-raft-channel", channelList.SystemChannel.Name)
+		ledgerRW, err := ledgerFactory.GetOrCreate("sys-raft-channel")
+		require.NoError(t, err)
+		require.Equal(t, uint64(0), ledgerRW.Height(), "block was not appended")
+	})
 }
 
 func TestRegistrar_RemoveChannel(t *testing.T) {
