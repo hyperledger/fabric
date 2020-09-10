@@ -86,7 +86,7 @@ type DiscoveryConfig struct {
 
 // NewDiscoveryService returns a new discovery service with the comm module passed and the crypto service passed
 func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoService, disPol DisclosurePolicy,
-	config DiscoveryConfig, anchorPeerTracker AnchorPeerTracker) Discovery {
+	config DiscoveryConfig, anchorPeerTracker AnchorPeerTracker, logger util.Logger) Discovery {
 	d := &gossipDiscoveryImpl{
 		self:             self,
 		incTime:          uint64(time.Now().UnixNano()),
@@ -100,7 +100,7 @@ func NewDiscoveryService(self NetworkMember, comm CommService, crypt CryptoServi
 		comm:             comm,
 		lock:             &sync.RWMutex{},
 		toDieChan:        make(chan struct{}),
-		logger:           util.GetLogger(util.DiscoveryLogger, self.InternalEndpoint),
+		logger:           logger,
 		disclosurePolicy: disPol,
 		pubsub:           util.NewPubSub(),
 
