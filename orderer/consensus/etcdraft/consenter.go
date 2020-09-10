@@ -287,6 +287,13 @@ func (c *Consenter) RemoveInactiveChainRegistry() {
 	c.InactiveChainRegistry = nil
 }
 
+func (c *Consenter) SetInactiveChainRegistry(icr consensus.InactiveChainRegistry) {
+	if c.InactiveChainRegistry != nil {
+		c.Logger.Panic("InactiveChainRegistry exists")
+	}
+	c.InactiveChainRegistry = icr //TODO atomic access to InactiveChainRegistry?
+}
+
 // ReadBlockMetadata attempts to read raft metadata from block metadata, if available.
 // otherwise, it reads raft metadata from config metadata supplied.
 func ReadBlockMetadata(blockMetadata *common.Metadata, configMetadata *etcdraft.ConfigMetadata) (*etcdraft.BlockMetadata, error) {

@@ -26,6 +26,15 @@ type Consenter interface {
 	HandleChain(support ConsenterSupport, metadata *cb.Metadata) (Chain, error)
 }
 
+// InactiveChainTracker registers and tracks chains that are inactive.
+type InactiveChainRegistry interface {
+	// TrackChain tracks a chain with the given name, and calls the given callback
+	// when this chain should be created.
+	TrackChain(chainName string, genesisBlock *cb.Block, createChain func())
+	//Stop stops the inactive chain replicator. This is used when removing the system channel.
+	Stop()
+}
+
 // ClusterConsenter defines methods implemented by cluster-type consenters.
 type ClusterConsenter interface {
 	// IsChannelMember inspects the join block and detects whether it implies that this orderer is a member of the
@@ -33,6 +42,8 @@ type ClusterConsenter interface {
 	// also inspects the consensus type metadata for validity. It returns an error if membership cannot be determined
 	// due to errors processing the block.
 	IsChannelMember(joinBlock *cb.Block) (bool, error)
+
+	SetInactiveChainRegistry(inactiveChainRegistry InactiveChainRegistry)
 	// RemoveInactiveChainRegistry stops and removes the inactive chain registry.
 	// This is used when removing the system channel.
 	RemoveInactiveChainRegistry()

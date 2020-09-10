@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -179,4 +180,27 @@ func (cs *ChainSupport) Sequence() uint64 {
 // unlike WriteBlock that also mutates its metadata.
 func (cs *ChainSupport) Append(block *cb.Block) error {
 	return cs.ledgerResources.ReadWriter.Append(block)
+}
+
+func newOnBoardingChainSupport(
+	registrar *Registrar,
+	ledgerResources *ledgerResources,
+	signer identity.SignerSerializer,
+	bccsp bccsp.BCCSP,
+) (*ChainSupport, error) {
+	// Construct limited support needed as a parameter for additional support
+	cs := &ChainSupport{
+		ledgerResources:  ledgerResources,
+		SignerSerializer: signer,
+		BCCSP:            bccsp,
+	}
+
+	// Set up the msgprocessor
+	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, registrar.config), bccsp)
+	cs.Chain = &inactive.Chain{Err: errors.New("system channel is onboarding")}
+	cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: types.ClusterRelationMember, Status: types.StatusOnBoarding}
+
+	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChannelID())
+
+	return cs, nil
 }

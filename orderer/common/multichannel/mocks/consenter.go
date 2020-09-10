@@ -40,6 +40,11 @@ type Consenter struct {
 	removeInactiveChainRegistryMutex       sync.RWMutex
 	removeInactiveChainRegistryArgsForCall []struct {
 	}
+	SetInactiveChainRegistryStub        func(consensus.InactiveChainRegistry)
+	setInactiveChainRegistryMutex       sync.RWMutex
+	setInactiveChainRegistryArgsForCall []struct {
+		arg1 consensus.InactiveChainRegistry
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -194,6 +199,37 @@ func (fake *Consenter) RemoveInactiveChainRegistryCalls(stub func()) {
 	fake.RemoveInactiveChainRegistryStub = stub
 }
 
+func (fake *Consenter) SetInactiveChainRegistry(arg1 consensus.InactiveChainRegistry) {
+	fake.setInactiveChainRegistryMutex.Lock()
+	fake.setInactiveChainRegistryArgsForCall = append(fake.setInactiveChainRegistryArgsForCall, struct {
+		arg1 consensus.InactiveChainRegistry
+	}{arg1})
+	fake.recordInvocation("SetInactiveChainRegistry", []interface{}{arg1})
+	fake.setInactiveChainRegistryMutex.Unlock()
+	if fake.SetInactiveChainRegistryStub != nil {
+		fake.SetInactiveChainRegistryStub(arg1)
+	}
+}
+
+func (fake *Consenter) SetInactiveChainRegistryCallCount() int {
+	fake.setInactiveChainRegistryMutex.RLock()
+	defer fake.setInactiveChainRegistryMutex.RUnlock()
+	return len(fake.setInactiveChainRegistryArgsForCall)
+}
+
+func (fake *Consenter) SetInactiveChainRegistryCalls(stub func(consensus.InactiveChainRegistry)) {
+	fake.setInactiveChainRegistryMutex.Lock()
+	defer fake.setInactiveChainRegistryMutex.Unlock()
+	fake.SetInactiveChainRegistryStub = stub
+}
+
+func (fake *Consenter) SetInactiveChainRegistryArgsForCall(i int) consensus.InactiveChainRegistry {
+	fake.setInactiveChainRegistryMutex.RLock()
+	defer fake.setInactiveChainRegistryMutex.RUnlock()
+	argsForCall := fake.setInactiveChainRegistryArgsForCall[i]
+	return argsForCall.arg1
+}
+
 func (fake *Consenter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -203,6 +239,8 @@ func (fake *Consenter) Invocations() map[string][][]interface{} {
 	defer fake.isChannelMemberMutex.RUnlock()
 	fake.removeInactiveChainRegistryMutex.RLock()
 	defer fake.removeInactiveChainRegistryMutex.RUnlock()
+	fake.setInactiveChainRegistryMutex.RLock()
+	defer fake.setInactiveChainRegistryMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

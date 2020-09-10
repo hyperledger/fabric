@@ -4,7 +4,7 @@
 package file
 
 import (
-	"io"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"io/ioutil"
 	"os"
 
@@ -14,19 +14,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+const filePermPrivateRW os.FileMode = 0600
+
 type fileBootstrapper struct {
 	GenesisBlockFile string
 }
 
 // New returns a new static bootstrap helper.
 func New(fileName string) bootstrap.Helper {
-	return &fileBootstrapper{
-		GenesisBlockFile: fileName,
-	}
-}
-
-// NewReplacer returns a new bootstrap replacer.
-func NewReplacer(fileName string) bootstrap.Replacer {
 	return &fileBootstrapper{
 		GenesisBlockFile: fileName,
 	}
@@ -47,75 +42,15 @@ func (b *fileBootstrapper) GenesisBlock() *cb.Block {
 	return genesisBlock
 } // GenesisBlock
 
-// ReplaceGenesisBlockFile creates a backup of the genesis block file, and then replaces
-// it with the content of the given block.
-// This is used during consensus-type migration in order to generate a bootstrap file that
-// specifies the new consensus-type.
-func (b *fileBootstrapper) ReplaceGenesisBlockFile(block *cb.Block) error {
-	buff, marshalErr := proto.Marshal(block)
-	if marshalErr != nil {
-		return errors.Wrap(marshalErr, "could not marshal block into a []byte")
+func (b *fileBootstrapper) SaveBlock(block *cb.Block) error {
+	blockBytes, err := proto.Marshal(block)
+	if err != nil {
+		return errors.Wrapf(err, "failed to marshal block")
 	}
-
-	genFileStat, statErr := os.Stat(b.GenesisBlockFile)
-	if statErr != nil {
-		return errors.Wrapf(statErr, "could not get the os.Stat of the genesis block file: %s", b.GenesisBlockFile)
-	}
-
-	if !genFileStat.Mode().IsRegular() {
-		return errors.Errorf("genesis block file: %s, is not a regular file", b.GenesisBlockFile)
-	}
-
-	backupFile := b.GenesisBlockFile + ".bak"
-	if err := backupGenesisFile(b.GenesisBlockFile, backupFile); err != nil {
-		return errors.Wrapf(err, "could not copy genesis block file (%s) into backup file: %s",
-			b.GenesisBlockFile, backupFile)
-	}
-
-	if err := ioutil.WriteFile(b.GenesisBlockFile, buff, genFileStat.Mode()); err != nil {
-		return errors.Wrapf(err, "could not write new genesis block into file: %s; use backup if necessary: %s",
-			b.GenesisBlockFile, backupFile)
-	}
-
-	return nil
-}
-
-func backupGenesisFile(src, dst string) error {
-	source, err := os.Open(src)
+	err = fileutil.CreateAndSyncFile(b.GenesisBlockFile, blockBytes, filePermPrivateRW)
 	if err != nil {
 		return err
 	}
-	defer source.Close()
-
-	destination, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer destination.Close()
-
-	_, err = io.Copy(destination, source)
-	return err
-}
-
-func (b *fileBootstrapper) CheckReadWrite() error {
-	genFileStat, statErr := os.Stat(b.GenesisBlockFile)
-	if statErr != nil {
-		return errors.Wrapf(statErr, "could not get the os.Stat of the genesis block file: %s", b.GenesisBlockFile)
-	}
-
-	if !genFileStat.Mode().IsRegular() {
-		return errors.Errorf("genesis block file: %s, is not a regular file", b.GenesisBlockFile)
-	}
-
-	genFile, openErr := os.OpenFile(b.GenesisBlockFile, os.O_RDWR, genFileStat.Mode().Perm())
-	if openErr != nil {
-		if os.IsPermission(openErr) {
-			return errors.Wrapf(openErr, "genesis block file: %s, cannot be opened for read-write, check permissions", b.GenesisBlockFile)
-		} else {
-			return errors.Wrapf(openErr, "genesis block file: %s, cannot be opened for read-write", b.GenesisBlockFile)
-		}
-	}
-	genFile.Close()
 
 	return nil
 }

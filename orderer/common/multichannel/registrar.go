@@ -23,11 +23,13 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/filerepo"
 	"github.com/hyperledger/fabric/orderer/common/follower"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
@@ -664,6 +666,11 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 		return types.ChannelInfo{}, err
 	}
 
+	if !isAppChannel {
+		info, err := r.joinSystemChannel(ledgerRes, clusterConsenter, configBlock, channelID)
+		return info, err
+	}
+
 	//TODO save the join-block in the file repo to make this action crash tolerant.
 	//TODO remove join block & ledger if things go bad below, (using defer that identifies an error?)
 
@@ -762,6 +769,102 @@ func (r *Registrar) createFollower(
 
 	logger.Debugf("Created follower.Chain: %v", info)
 	return fChain, info, nil
+}
+
+func (r *Registrar) joinSystemChannel(
+	ledgerRes *ledgerResources,
+	clusterConsenter consensus.ClusterConsenter,
+	configBlock *cb.Block,
+	channelID string,
+) (types.ChannelInfo, error) {
+	logger.Infof("Joining system channel '%s', with config block number: %d", channelID, configBlock.Header.Number)
+
+	if configBlock.Header.Number == 0 {
+		if err := ledgerRes.Append(configBlock); err != nil {
+			return types.ChannelInfo{}, errors.Wrap(err, "error appending config block to the ledger")
+		}
+	} else {
+		// Save the config block to the bootstrap file, such that if the orderer crashes before on-boarding of the
+		// system channel is complete, it could be resumed by restarting the orderer with BootstrapMethod == "file".
+		if r.config.General.BootstrapFile == "" {
+			return types.ChannelInfo{}, errors.New("missing boostrap file path")
+		}
+		bootstrapHelper := file.New(r.config.General.BootstrapFile)
+		if err := bootstrapHelper.SaveBlock(configBlock); err != nil {
+			return types.ChannelInfo{}, errors.Wrap(err, "error saving config block to boostrap file")
+		}
+	}
+
+	var repInitiator *onboarding.ReplicationInitiator
+	repInitiator = onboarding.NewReplicationInitiator(r.ledgerFactory, configBlock, &r.config, r.clusterDialer.Config.SecOpts, r.signer, r.bccsp)
+	// Create a new InactiveChainReplicator
+	getConfigBlock := func() *cb.Block {
+		return ConfigBlockOrPanic(ledgerRes)
+	}
+	icr := onboarding.NewInactiveChainReplicator(
+		repInitiator,
+		getConfigBlock,
+		repInitiator.RegisterChain,
+		r.config.General.Cluster.ReplicationBackgroundRefreshInterval,
+	)
+
+	// This closure will complete the initialization of the registrar after the asynch onboarding or immediately.
+	completeInit := func() {
+		repInitiator.ChannelLister = icr
+		clusterConsenter.SetInactiveChainRegistry(icr)
+		go icr.Run()
+
+		logger.Infof("Completed onboarding for system channel: %s", channelID)
+
+		r.init(r.consenters)
+		r.startChannels()
+
+		logger.Infof("Re-initialized registrar after joining system channel: '%s', number of channels: %d", channelID, len(r.chains))
+	}
+
+	if configBlock.Header.Number > 0 {
+		logger.Infof("Going to replicate system channel: '%s', and the chains it refers to", channelID)
+		// This is a degenerate ChainSupport holding an inactive.Chain, that will respond to a GET request but nothing more.
+		cs, err := newOnBoardingChainSupport(r, ledgerRes, r.signer, r.bccsp)
+		if err != nil {
+			return types.ChannelInfo{}, errors.Wrap(err, "error creating onboarding chain support")
+		}
+		r.chains[channelID] = cs
+		r.systemChannel = cs
+		r.systemChannelID = channelID
+		info := types.ChannelInfo{
+			Name:            channelID,
+			URL:             "",
+			Height:          ledgerRes.Height(),
+			ClusterRelation: types.ClusterRelationMember,
+			Status:          types.StatusOnBoarding,
+		}
+		// Replicate and complete the initialization asynchronously
+		go func() {
+			//This call is blocking and may take a long time, so we execute it asynchronously.
+			repInitiator.ReplicateIfNeeded(configBlock)
+
+			r.lock.Lock()
+			defer r.lock.Unlock()
+
+			completeInit()
+		}()
+
+		return info, nil
+	}
+
+	completeInit()
+
+	info := types.ChannelInfo{
+		Name:   channelID,
+		URL:    "",
+		Height: ledgerRes.Height(),
+	}
+	info.ClusterRelation, info.Status = r.systemChannel.StatusReport()
+
+	logger.Infof("Created system channel: %v", info)
+
+	return info, nil
 }
 
 // RemoveChannel instructs the orderer to remove a channel.

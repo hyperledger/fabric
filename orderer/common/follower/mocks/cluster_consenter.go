@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/orderer/consensus"
 )
 
 type ClusterConsenter struct {
@@ -24,6 +25,11 @@ type ClusterConsenter struct {
 	RemoveInactiveChainRegistryStub        func()
 	removeInactiveChainRegistryMutex       sync.RWMutex
 	removeInactiveChainRegistryArgsForCall []struct {
+	}
+	SetInactiveChainRegistryStub        func(consensus.InactiveChainRegistry)
+	setInactiveChainRegistryMutex       sync.RWMutex
+	setInactiveChainRegistryArgsForCall []struct {
+		arg1 consensus.InactiveChainRegistry
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
@@ -92,6 +98,37 @@ func (fake *ClusterConsenter) IsChannelMemberReturnsOnCall(i int, result1 bool, 
 	}{result1, result2}
 }
 
+func (fake *ClusterConsenter) SetInactiveChainRegistry(arg1 consensus.InactiveChainRegistry) {
+	fake.setInactiveChainRegistryMutex.Lock()
+	fake.setInactiveChainRegistryArgsForCall = append(fake.setInactiveChainRegistryArgsForCall, struct {
+		arg1 consensus.InactiveChainRegistry
+	}{arg1})
+	fake.recordInvocation("SetInactiveChainRegistry", []interface{}{arg1})
+	fake.setInactiveChainRegistryMutex.Unlock()
+	if fake.SetInactiveChainRegistryStub != nil {
+		fake.SetInactiveChainRegistryStub(arg1)
+	}
+}
+
+func (fake *ClusterConsenter) SetInactiveChainRegistryCallCount() int {
+	fake.setInactiveChainRegistryMutex.RLock()
+	defer fake.setInactiveChainRegistryMutex.RUnlock()
+	return len(fake.setInactiveChainRegistryArgsForCall)
+}
+
+func (fake *ClusterConsenter) SetInactiveChainRegistryCalls(stub func(consensus.InactiveChainRegistry)) {
+	fake.setInactiveChainRegistryMutex.Lock()
+	defer fake.setInactiveChainRegistryMutex.Unlock()
+	fake.SetInactiveChainRegistryStub = stub
+}
+
+func (fake *ClusterConsenter) SetInactiveChainRegistryArgsForCall(i int) consensus.InactiveChainRegistry {
+	fake.setInactiveChainRegistryMutex.RLock()
+	defer fake.setInactiveChainRegistryMutex.RUnlock()
+	argsForCall := fake.setInactiveChainRegistryArgsForCall[i]
+	return argsForCall.arg1
+}
+
 func (fake *ClusterConsenter) RemoveInactiveChainRegistry() {
 	fake.removeInactiveChainRegistryMutex.Lock()
 	fake.removeInactiveChainRegistryArgsForCall = append(fake.removeInactiveChainRegistryArgsForCall, struct {
@@ -122,6 +159,8 @@ func (fake *ClusterConsenter) Invocations() map[string][][]interface{} {
 	defer fake.isChannelMemberMutex.RUnlock()
 	fake.removeInactiveChainRegistryMutex.RLock()
 	defer fake.removeInactiveChainRegistryMutex.RUnlock()
+	fake.setInactiveChainRegistryMutex.RLock()
+	defer fake.setInactiveChainRegistryMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value
