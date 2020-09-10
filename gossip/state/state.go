@@ -41,12 +41,7 @@ type GossipStateProvider interface {
 }
 
 const (
-	defAntiEntropyInterval             = 10 * time.Second
-	defAntiEntropyStateResponseTimeout = 3 * time.Second
-	defAntiEntropyBatchSize            = 10
-
-	defChannelBufferSize     = 100
-	defAntiEntropyMaxRetries = 3
+	defAntiEntropyBatchSize = 10
 
 	defMaxBlockDistance = 20
 
