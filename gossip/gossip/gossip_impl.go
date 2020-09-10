@@ -130,8 +130,10 @@ func NewGossipService(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 		MsgExpirationFactor:          conf.MsgExpirationFactor,
 		BootstrapPeers:               conf.BootstrapPeers,
 	}
-	g.disc = discovery.NewDiscoveryService(g.selfNetworkMember(), g.discAdapter, g.disSecAdap, g.disclosurePolicy,
-		discoveryConfig, anchorPeerTracker)
+	self := g.selfNetworkMember()
+	logger := util.GetLogger(util.DiscoveryLogger, self.InternalEndpoint)
+	g.disc = discovery.NewDiscoveryService(self, g.discAdapter, g.disSecAdap, g.disclosurePolicy,
+		discoveryConfig, anchorPeerTracker, logger)
 	g.logger.Infof("Creating gossip service with self membership of %s", g.selfNetworkMember())
 
 	g.certPuller = g.createCertStorePuller()
