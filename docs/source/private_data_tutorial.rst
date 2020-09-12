@@ -16,19 +16,36 @@ stores and their use cases. For more information, check out :doc:`private-data/p
 The tutorial will take you through the following steps to practice defining,
 configuring and using private data with Fabric:
 
+#. :ref:`pd-use-case`
 #. :ref:`pd-build-json`
 #. :ref:`pd-read-write-private-data`
 #. :ref:`pd-install-define_cc`
+#. :ref:`pd-register-identities`
 #. :ref:`pd-store-private-data`
 #. :ref:`pd-query-authorized`
-#. :ref:`pd-query-unauthorized`
 #. :ref:`pd-purge`
+#. :ref:`pd-transfer-asset`
 #. :ref:`pd-indexes`
 #. :ref:`pd-ref-material`
 
-This tutorial will deploy the `marbles private data sample <https://github.com/hyperledger/fabric-samples/tree/{BRANCH}/chaincode/marbles02_private>`__
+This tutorial will deploy the `asset transfer private data sample <https://github.com/hyperledger/fabric-samples/tree/master/asset-transfer-private-data/chaincode-go>`__
 to the Fabric test network to demonstrate how to create, deploy, and use a collection of
-private data. You should have completed the task :doc:`install`.
+private data.
+You should have completed the task :doc:`install`.
+
+.. _pd-use-case:
+
+Asset transfer private data sample use case
+-------------------------------------------
+This sample demonstrates the use of three private data collections, ``assetCollection``, ``Org1MSPPrivateCollection`` & ``Org2MSPPrivateCollection`` to transfer an asset between Org1 and Org2, using following use case:
+
+A member of Org1 creates a new asset, henceforth referred as owner. The public details of the asset,
+including the owner, are stored in the private data collection named ``assetCollection``. The asset is also created with an appraised
+value supplied by the owner. The appraised value is used by each participant to agree to the transfer of the asset, and is only stored in owner organization's collection. In our case, the initial appraisal value agreed by the owner is stored in the ``Org1MSPPrivateCollection``.
+
+To purchase the asset, the buyer needs to agree to the same appraised value as the asset owner. In this step, the buyer (a member of Org2) creates an agreement to trade and agree to an appraisal value using smart contract function ``'AgreeToTransfer'``. This value is stored in ``Org2MSPPrivateCollection`` collection.
+
+Now, the asset owner can transfer the asset to the buyer using smart contract function ``'TransferAsset'``, which checks for the conditions that must be met for transfer to succeed.
 
 .. _pd-build-json:
 
@@ -71,13 +88,18 @@ A collection definition is composed of the following properties:
   enforce that only clients belonging to one of the collection member organizations
   are allowed read access to private data.
 
-To illustrate usage of private data, the marbles private data example contains
-two private data collection definitions: ``collectionMarbles``
-and ``collectionMarblePrivateDetails``. The ``policy`` property in the
-``collectionMarbles`` definition allows all members of  the channel (Org1 and
+- ``memberOnlyWrite``: a value of ``true`` indicates that peers automatically
+  enforce that only clients belonging to one of the collection member organizations
+  are allowed write access to private data.
+
+To illustrate usage of private data, the asset transfer private data example contains
+three private data collection definitions: ``assetCollection``, ``Org1MSPPrivateCollection``,
+and ``Org2MSPPrivateCollection``. The ``policy`` property in the
+``assetCollection`` definition allows all members of the channel (Org1 and
 Org2) to have the private data in a private database. The
-``collectionMarblesPrivateDetails`` collection allows only members of Org1 to
-have the private data in their private database.
+``Org1MSPPrivateCollection`` collection allows only members of Org1 to
+have the private data in their private database, and the ``Org2MSPPrivateCollection``
+collection allows only members of Org2 to have the private data in their private database.
 
 For more information on building a policy definition refer to the :doc:`endorsement-policies`
 topic.
@@ -87,23 +109,39 @@ topic.
  // collections_config.json
 
  [
-   {
-        "name": "collectionMarbles",
-        "policy": "OR('Org1MSP.member', 'Org2MSP.member')",
-        "requiredPeerCount": 0,
-        "maxPeerCount": 3,
-        "blockToLive":1000000,
-        "memberOnlyRead": true
-   },
-
-   {
-        "name": "collectionMarblePrivateDetails",
-        "policy": "OR('Org1MSP.member')",
-        "requiredPeerCount": 0,
-        "maxPeerCount": 3,
-        "blockToLive":3,
-        "memberOnlyRead": true
-   }
+    {
+    "name": "assetCollection",
+    "policy": "OR('Org1MSP.member', 'Org2MSP.member')",
+    "requiredPeerCount": 1,
+    "maxPeerCount": 1,
+    "blockToLive":1000000,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": true
+    },
+    {
+    "name": "Org1MSPPrivateCollection",
+    "policy": "OR('Org1MSP.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive":3,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": false,
+    "endorsementPolicy": {
+        "signaturePolicy": "OR('Org1MSP.member')"
+    }
+    },
+    {
+    "name": "Org2MSPPrivateCollection",
+    "policy": "OR('Org2MSP.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive":3,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": false,
+    "endorsementPolicy": {
+        "signaturePolicy": "OR('Org2MSP.member')"
+    }
+    }
  ]
 
 The data to be secured by these policies is mapped in chaincode and will be
@@ -119,58 +157,69 @@ Read and Write private data using chaincode APIs
 ------------------------------------------------
 
 The next step in understanding how to privatize data on a channel is to build
-the data definition in the chaincode. The marbles private data sample divides
-the private data into two separate data definitions according to how the data will
+the data definition in the chaincode. The asset transfer private data sample divides
+the private data into three separate data definitions according to how the data will
 be accessed.
 
 .. code-block:: GO
 
  // Peers in Org1 and Org2 will have this private data in a side database
- type marble struct {
-   ObjectType string `json:"docType"`
-   Name       string `json:"name"`
-   Color      string `json:"color"`
-   Size       int    `json:"size"`
-   Owner      string `json:"owner"`
+ type Asset struct {
+	Type  string `json:"objectType"` //Type is used to distinguish the various types of objects in state database
+	ID    string `json:"assetID"`
+	Color string `json:"color"`
+	Size  int    `json:"size"`
+	Owner string `json:"owner"`
  }
+
+ // AssetPrivateDetails describes details that are private to owners
 
  // Only peers in Org1 will have this private data in a side database
- type marblePrivateDetails struct {
-   ObjectType string `json:"docType"`
-   Name       string `json:"name"`
-   Price      int    `json:"price"`
+ type AssetPrivateDetails struct {
+	ID             string `json:"assetID"`
+	AppraisedValue int    `json:"appraisedValue"`
  }
 
-Specifically access to the private data will be restricted as follows:
+ // Only peers in Org2 will have this private data in a side database
+ type AssetPrivateDetails struct {
+	ID             string `json:"assetID"`
+	AppraisedValue int    `json:"appraisedValue"`
+ }
 
-- ``name, color, size, and owner`` will be visible to all members of the channel (Org1 and Org2)
-- ``price`` only visible to members of Org1
+Specifically, access to the private data will be restricted as follows:
 
-Thus two different sets of private data are defined in the marbles private data
+- ``objectType, color, size, and owner`` are stored in ``assetCollection`` and hence will be visible to members of the channel per the definition in the collection policy (Org1 and Org2).
+- ``AppraisedValue`` of an asset is stored in collection Org1MSPPrivateCollection or Org2MSPPrivateCollection , depending on the owner of the asset.  The value is only accessible to members of the respective collection.
+
+
+
+The storing of private data is illustrated in the asset transfer private data
 sample. The mapping of this data to the collection policy which restricts its
 access is controlled by chaincode APIs. Specifically, reading and writing
 private data using a collection definition is performed by calling ``GetPrivateData()``
 and ``PutPrivateData()``, which can be found `here <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStub>`_.
 
-The following diagram illustrates the private data model used by the marbles
-private data sample.
+The following diagram illustrates the private data model used by the asset transfer
+private data sample. Note that Org3 is only shown in the diagram below for context to illustrate that
+if there were any other organizations on the channel, they would not have access to *any*
+of the private data collections where they are not defined in the private data collection policy configuration.
 
 .. image:: images/SideDB-org1-org2.png
-
 
 Reading collection data
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use the chaincode API ``GetPrivateData()`` to query private data in the
 database.  ``GetPrivateData()`` takes two arguments, the **collection name**
-and the data key. Recall the collection  ``collectionMarbles`` allows members of
+and the data key. Recall the collection  ``assetCollection`` allows members of
 Org1 and Org2 to have the private data in a side database, and the collection
-``collectionMarblePrivateDetails`` allows only members of Org1 to have the
-private data in a side database. For implementation details refer to the
-following two `marbles private data functions <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02_private/go/marbles_chaincode_private.go>`__:
+``Org1MSPPrivateCollection`` allows only members of Org1 to have their
+private data in a side database and ``Org2MSPPrivateCollection`` allows members
+of Org2 to have their private data in a side database.
+For implementation details refer to the following two `asset transfer private data functions <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-private-data/chaincode-go/chaincode/asset_queries.go>`__:
 
- * **readMarble** for querying the values of the ``name, color, size and owner`` attributes
- * **readMarblePrivateDetails** for querying the values of the ``price`` attribute
+ * **ReadAsset** for querying the values of the ``assetID, color, size and owner`` attributes.
+ * **ReadAssetPrivateDetails** for querying the values of the ``appraisedValue`` attribute.
 
 When we issue the database queries using the peer commands later in this tutorial,
 we will call these two functions.
@@ -180,62 +229,147 @@ Writing private data
 
 Use the chaincode API ``PutPrivateData()`` to store the private data
 into the private database. The API also requires the name of the collection.
-Since the marbles private data sample includes two different collections, it is called
-twice in the chaincode:
+Note that the asset transfer private data sample includes three different private data collections, but it is called
+twice in the chaincode (in this scenario acting as Org1). The third collection (``Org2MSPPrivateCollection``) would be used if we were acting as Org2, but
+would still only be called twice in the chaincode as it would replace ``Org1MSPPrivateCollection``:
 
-1. Write the private data ``name, color, size and owner`` using the
-   collection named ``collectionMarbles``.
-2. Write the private data ``price`` using the collection named
-   ``collectionMarblePrivateDetails``.
+1. Write the private data ``assetID, color, size and owner`` using the
+   collection named ``assetCollection``.
+2. Write the private data ``appraisedValue`` using the collection named
+   ``Org1MSPPrivateCollection``.
 
-For example, in the following snippet of the ``initMarble`` function,
+For example, in the following snippet of the ``CreateAsset`` function,
 ``PutPrivateData()`` is called twice, once for each set of private data.
 
 .. code-block:: GO
 
-  // ==== Create marble object, marshal to JSON, and save to state ====
-	marble := &marble{
-		ObjectType: "marble",
-		Name:       marbleInput.Name,
-		Color:      marbleInput.Color,
-		Size:       marbleInput.Size,
-		Owner:      marbleInput.Owner,
-	}
-	marbleJSONasBytes, err := json.Marshal(marble)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
+  // CreateAsset creates a new asset by placing the main asset details in the assetCollection
+  // that can be read by both organizations. The appraisal value is stored in the owner's org specific collection.
+  func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface) error {
 
-	// === Save marble to state ===
-	err = stub.PutPrivateData("collectionMarbles", marbleInput.Name, marbleJSONasBytes)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
+        // Get new asset from transient map
+        transientMap, err := ctx.GetStub().GetTransient()
+        if err != nil {
+            return fmt.Errorf("error getting transient: %v", err)
+        }
 
-	// ==== Create marble private details object with price, marshal to JSON, and save to state ====
-	marblePrivateDetails := &marblePrivateDetails{
-		ObjectType: "marblePrivateDetails",
-		Name:       marbleInput.Name,
-		Price:      marbleInput.Price,
-	}
-	marblePrivateDetailsBytes, err := json.Marshal(marblePrivateDetails)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-	err = stub.PutPrivateData("collectionMarblePrivateDetails", marbleInput.Name, marblePrivateDetailsBytes)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
+        // Asset properties are private, therefore they get passed in transient field, instead of func args
+        transientAssetJSON, ok := transientMap["asset_properties"]
+        if !ok {
+            //log error to stdout
+            return fmt.Errorf("asset not found in the transient map input")
+        }
 
+        type assetTransientInput struct {
+            Type           string `json:"objectType"` //Type is used to distinguish the various types of objects in state database
+            ID             string `json:"assetID"`
+            Color          string `json:"color"`
+            Size           int    `json:"size"`
+            AppraisedValue int    `json:"appraisedValue"`
+        }
 
-To summarize, the policy definition above for our ``collection.json``
+        var assetInput assetTransientInput
+        err = json.Unmarshal(transientAssetJSON, &assetInput)
+        if err != nil {
+            return fmt.Errorf("failed to unmarshal JSON: %v", err)
+        }
+
+        if len(assetInput.Type) == 0 {
+            return fmt.Errorf("objectType field must be a non-empty string")
+        }
+        if len(assetInput.ID) == 0 {
+            return fmt.Errorf("assetID field must be a non-empty string")
+        }
+        if len(assetInput.Color) == 0 {
+            return fmt.Errorf("color field must be a non-empty string")
+        }
+        if assetInput.Size <= 0 {
+            return fmt.Errorf("size field must be a positive integer")
+        }
+        if assetInput.AppraisedValue <= 0 {
+            return fmt.Errorf("appraisedValue field must be a positive integer")
+        }
+
+        // Check if asset already exists
+        assetAsBytes, err := ctx.GetStub().GetPrivateData(assetCollection, assetInput.ID)
+        if err != nil {
+            return fmt.Errorf("failed to get asset: %v", err)
+        } else if assetAsBytes != nil {
+            fmt.Println("Asset already exists: " + assetInput.ID)
+            return fmt.Errorf("this asset already exists: " + assetInput.ID)
+        }
+
+        // Get ID of submitting client identity
+        clientID, err := ctx.GetClientIdentity().GetID()
+        if err != nil {
+            return fmt.Errorf("failed to get verified OrgID: %v", err)
+        }
+
+        // Verify that the client is submitting request to peer in their organization
+        // This is to ensure that a client from another org doesn't attempt to read or
+        // write private data from this peer.
+        err = verifyClientOrgMatchesPeerOrg(ctx)
+        if err != nil {
+            return fmt.Errorf("CreateAsset cannot be performed: Error %v", err)
+        }
+
+        // Make submitting client the owner
+        asset := Asset{
+            Type:  assetInput.Type,
+            ID:    assetInput.ID,
+            Color: assetInput.Color,
+            Size:  assetInput.Size,
+            Owner: clientID,
+        }
+        assetJSONasBytes, err := json.Marshal(asset)
+        if err != nil {
+            return fmt.Errorf("failed to marshal asset into JSON: %v", err)
+        }
+
+        // Save asset to private data collection
+        // Typical logger, logs to stdout/file in the fabric managed docker container, running this chaincode
+        // Look for container name like dev-peer0.org1.example.com-{chaincodename_version}-xyz
+        log.Printf("CreateAsset Put: collection %v, ID %v", assetCollection, assetInput.ID)
+        err = ctx.GetStub().PutPrivateData(assetCollection, assetInput.ID, assetJSONasBytes)
+        if err != nil {
+            return fmt.Errorf("failed to put asset into private data collecton: %v", err)
+        }
+
+        // Save asset details to collection visible to owning organization
+        assetPrivateDetails := AssetPrivateDetails{
+            ID:             assetInput.ID,
+            AppraisedValue: assetInput.AppraisedValue,
+        }
+
+        assetPrivateDetailsAsBytes, err := json.Marshal(assetPrivateDetails) // marshal asset details to JSON
+        if err != nil {
+            return fmt.Errorf("failed to marshal into JSON: %v", err)
+        }
+
+        // Get collection name for this organization.
+        orgCollection, err := getCollectionName(ctx)
+        if err != nil {
+            return fmt.Errorf("failed to infer private collection name for the org: %v", err)
+        }
+
+        // Put asset appraised value into owner's org specific private data collection
+        log.Printf("Put: collection %v, ID %v", orgCollection, assetInput.ID)
+        err = ctx.GetStub().PutPrivateData(orgCollection, assetInput.ID, assetPrivateDetailsAsBytes)
+        if err != nil {
+            return fmt.Errorf("failed to put asset private details: %v", err)
+        }
+        return nil
+    }
+
+To summarize, the policy definition above for our ``collections_config.json``
 allows all peers in Org1 and Org2 to store and transact
-with the marbles private data ``name, color, size, owner`` in their
+with the asset transfer private data ``assetID, color, size, owner`` in their
 private database. But only peers in Org1 can store and transact with
-the ``price`` private data in its private database.
+the ``appraisedValue`` key data in the Org1 collection ``Org1MSPPrivateCollection`` and only peers
+in Org2 can store and transact with the ``appraisedValue`` key data in the Org2 collection ``Org2MSPPrivateCollection``.
 
 As an additional data privacy benefit, since a collection is being used,
-only the private data hashes go through orderer, not the private data itself,
+only the private data *hashes* go through orderer, not the private data itself,
 keeping private data confidential from orderer.
 
 Start the network
@@ -246,7 +380,7 @@ private data.
 
 :guilabel:`Try it yourself`
 
-Before installing, defining, and using the marbles private data chaincode below,
+Before installing, defining, and using the asset transfer private data chaincode below,
 we need to start the Fabric test network. For the sake of this tutorial, we want
 to operate from a known initial state. The following command will kill any active
 or stale Docker containers and remove previously generated artifacts.
@@ -264,29 +398,29 @@ following commands:
 
 .. code:: bash
 
-    cd ../chaincode/marbles02_private/go
+    cd ../asset-transfer-private-data/chaincode-go/
     GO111MODULE=on go mod vendor
-    cd ../../../test-network
+    cd ../../test-network
 
 
 If you've already run through this tutorial, you'll also want to delete the
-underlying Docker containers for the marbles private data chaincode. Let's run
+underlying Docker containers for the asset transfer private data chaincode. Let's run
 the following commands to clean up previous environments:
 
 .. code:: bash
 
-   docker rm -f $(docker ps -a | awk '($2 ~ /dev-peer.*.marblesp.*/) {print $1}')
-   docker rmi -f $(docker images | awk '($1 ~ /dev-peer.*.marblesp.*/) {print $3}')
+   docker rm -f $(docker ps -a | awk '($2 ~ /dev-peer.*.privatev1.*/) {print $1}')
+   docker rmi -f $(docker images | awk '($1 ~ /dev-peer.*.privatev1.*/) {print $3}')
 
 From the ``test-network`` directory, you can use the following command to start
-up the Fabric test network with CouchDB:
+up the Fabric test network with Certificate Authorities and CouchDB:
 
 .. code:: bash
 
-   ./network.sh up createChannel -s couchdb
+   ./network.sh up createChannel -ca -s couchdb
 
 This command will deploy a Fabric network consisting of a single channel named
-``mychannel`` with two organizations (each maintaining one peer node) and an
+``mychannel`` with two organizations (each maintaining one peer node), certificate authorities, and an
 ordering service while using CouchDB as the state database. Either LevelDB or
 CouchDB may be used with collections. CouchDB was chosen to demonstrate how to
 use indexes with private data.
@@ -313,7 +447,7 @@ on the channel using :doc:`commands/peerlifecycle`.
 
 The chaincode needs to be packaged before it can be installed on our peers.
 We can use the `peer lifecycle chaincode package <commands/peerlifecycle.html#peer-lifecycle-chaincode-package>`__ command
-to package the marbles chaincode.
+to package the private chaincode.
 
 The test network includes two organizations, Org1 and Org2, with one peer each.
 Therefore, the chaincode package has to be installed on two peers:
@@ -322,7 +456,7 @@ Therefore, the chaincode package has to be installed on two peers:
 - peer0.org2.example.com
 
 After the chaincode is packaged, we can use the `peer lifecycle chaincode install <commands/peerlifecycle.html#peer-lifecycle-chaincode-install>`__
-command to install the Marbles chaincode on each peer.
+command to install the private chaincode on each peer.
 
 :guilabel:`Try it yourself`
 
@@ -340,28 +474,28 @@ the Org1 admin. Make sure that you are in the `test-network` directory.
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     export CORE_PEER_ADDRESS=localhost:7051
 
-1. Use the following command to package the marbles private data chaincode.
+1. Use the following command to package the private data chaincode.
 
 .. code:: bash
 
-    peer lifecycle chaincode package marblesp.tar.gz --path ../chaincode/marbles02_private/go/ --lang golang --label marblespv1
+    peer lifecycle chaincode package private.tar.gz --path ../asset-transfer-private-data/chaincode-go/ --lang golang --label privatev1
 
-This command will create a chaincode package named marblesp.tar.gz.
+This command will create a chaincode package named private.tar.gz.
 
 2. Use the following command to install the chaincode package onto the peer
 ``peer0.org1.example.com``.
 
 .. code:: bash
 
-    peer lifecycle chaincode install marblesp.tar.gz
+    peer lifecycle chaincode install private.tar.gz
 
 A successful install command will return the chaincode identifier, similar to
 the response below:
 
 .. code:: bash
 
-    2019-04-22 19:09:04.336 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nKmarblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd\022\nmarblespv1" >
-    2019-04-22 19:09:04.336 UTC [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: marblespv1:57f5353b2568b79cb5384b5a8458519a47186efc4fcadb98280f5eae6d59c1cd
+    2020-09-12 06:25:51.242 CDT [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nJprivatev1:c10ad5913bd3166c1bcc294bb378ecef5f815b516b717f98d8a68ff2f6f4eee9\022\tprivatev1" > 
+    2020-09-12 06:25:51.242 CDT [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: privatev1:c10ad5913bd3166c1bcc294bb378ecef5f815b516b717f98d8a68ff2f6f4eee9
 
 3. Now use the CLI as the Org2 admin. Copy and paste the following block of
 commands as a group and run them all at once:
@@ -377,7 +511,7 @@ commands as a group and run them all at once:
 
 .. code:: bash
 
-    peer lifecycle chaincode install marblesp.tar.gz
+    peer lifecycle chaincode install private.tar.gz
 
 
 Approve the chaincode definition
@@ -388,7 +522,7 @@ definition for their organization. Since both organizations are going to use the
 chaincode in this tutorial, we need to approve the chaincode definition for both
 Org1 and Org2 using the `peer lifecycle chaincode approveformyorg <commands/peerlifecycle.html#peer-lifecycle-chaincode-approveformyorg>`__
 command. The chaincode definition also includes the private data collection
-definition that accompanies the ``marbles02_private`` sample. We will provide
+definition that accompanies the ``asset transfer`` sample. We will provide
 the path to the collections JSON file using the ``--collections-config`` flag.
 
 :guilabel:`Try it yourself`
@@ -409,16 +543,16 @@ You should see output similar to the following:
 .. code:: bash
 
     Installed chaincodes on peer:
-    Package ID: marblespv1:f8c8e06bfc27771028c4bbc3564341887881e29b92a844c66c30bac0ff83966e, Label: marblespv1
+    Package ID: privatev1:c10ad5913bd3166c1bcc294bb378ecef5f815b516b717f98d8a68ff2f6f4eee9, Label: privatev1
 
 2. Declare the package ID as an environment variable. Paste the package ID of
-marblespv1 returned by the ``peer lifecycle chaincode queryinstalled`` into
+privatev1 returned by the ``peer lifecycle chaincode queryinstalled`` into
 the command below. The package ID may not be the same for all users, so you
 need to complete this step using the package ID returned from your console.
 
 .. code:: bash
 
-    export CC_PACKAGE_ID=marblespv1:f8c8e06bfc27771028c4bbc3564341887881e29b92a844c66c30bac0ff83966e
+    export CC_PACKAGE_ID=privatev1:c10ad5913bd3166c1bcc294bb378ecef5f815b516b717f98d8a68ff2f6f4eee9
 
 3. Make sure we are running the CLI as Org1. Copy and paste the following block
 of commands as a group into the peer container and run them all at once:
@@ -430,20 +564,20 @@ of commands as a group into the peer container and run them all at once:
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     export CORE_PEER_ADDRESS=localhost:7051
 
-4. Use the following command to approve a definition of the marbles private data
+4. Use the following command to approve a definition of the asset transfer private data
 chaincode for Org1. This command includes a path to the collection definition
 file.
 
 .. code:: bash
 
     export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marblesp --version 1.0 --collections-config ../chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA
+    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name private --version 1.0 --collections-config ../asset-transfer-private-data/chaincode-go/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA
 
 When the command completes successfully you should see something similar to:
 
 .. code:: bash
 
-    2020-01-03 17:26:55.022 EST [chaincodeCmd] ClientWait -> INFO 001 txid [06c9e86ca68422661e09c15b8e6c23004710ea280efda4bf54d501e655bafa9b] committed with status (VALID) at
+    2020-09-12 06:33:36.879 CDT [chaincodeCmd] ClientWait -> INFO 001 txid [842e70c59da37a28d8358ec3275d75acff2050714d8c02797642beba81392e5e] committed with status (VALID) at
 
 5. Now use the CLI to switch to Org2. Copy and paste the following block of commands
 as a group into the peer container and run them all at once.
@@ -459,7 +593,7 @@ as a group into the peer container and run them all at once.
 
 .. code:: bash
 
-    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marblesp --version 1.0 --collections-config ../chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA
+    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name private --version 1.0 --collections-config ../asset-transfer-private-data/chaincode-go/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA
 
 Commit the chaincode definition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -473,13 +607,11 @@ command to commit the chaincode definition. This command will also deploy the
 collection definition to the channel.
 
 We are ready to use the chaincode after the chaincode definition has been
-committed to the channel. Because the marbles private data chaincode contains an
-initiation function, we need to use the `peer chaincode invoke <commands/peerchaincode.html?%20chaincode%20instantiate#peer-chaincode-instantiate>`__ command
-to invoke ``Init()`` before we can use other functions in the chaincode.
+committed to the channel. 
 
 :guilabel:`Try it yourself`
 
-1. Run the following commands to commit the definition of the marbles private
+1. Run the following commands to commit the definition of the asset transfer private
 data chaincode to the channel ``mychannel``.
 
 .. code:: bash
@@ -487,7 +619,7 @@ data chaincode to the channel ``mychannel``.
     export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
     export ORG1_CA=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
     export ORG2_CA=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-    peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marblesp --version 1.0 --sequence 1 --collections-config ../chaincode/marbles02_private/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $ORG1_CA --peerAddresses localhost:9051 --tlsRootCertFiles $ORG2_CA
+    peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name private --version 1.0 --sequence 1 --collections-config ../asset-transfer-private-data/chaincode-go/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $ORG1_CA --peerAddresses localhost:9051 --tlsRootCertFiles $ORG2_CA
 
 
 When the commit transaction completes successfully you should see something
@@ -495,8 +627,74 @@ similar to:
 
 .. code:: bash
 
-    2020-01-06 16:24:46.104 EST [chaincodeCmd] ClientWait -> INFO 001 txid [4a0d0f5da43eb64f7cbfd72ea8a8df18c328fb250cb346077d91166d86d62d46] committed with status (VALID) at localhost:9051
-    2020-01-06 16:24:46.184 EST [chaincodeCmd] ClientWait -> INFO 002 txid [4a0d0f5da43eb64f7cbfd72ea8a8df18c328fb250cb346077d91166d86d62d46] committed with status (VALID) at localhost:7051
+    2020-09-12 06:40:35.126 CDT [chaincodeCmd] ClientWait -> INFO 001 txid [701468d079f8deded428a67f84e9bda6f6dcc894b006ee27a4d47b1dafdf5621] committed with status (VALID) at localhost:7051
+    2020-09-12 06:40:35.162 CDT [chaincodeCmd] ClientWait -> INFO 002 txid [701468d079f8deded428a67f84e9bda6f6dcc894b006ee27a4d47b1dafdf5621] committed with status (VALID) at localhost:9051
+
+.. _pd-register-identities:
+
+Register identities
+-------------------
+The private data transfer smart contract supports ownership by individual identities that belong to the network. In our scenario, the owner of the asset will be a member of Org1, while the buyer will belong to Org2. To highlight the connection between the `GetClientIdentity().GetID()` API and the information within a user's certificate, we will register two new identities using the Org1 and Org2 Certificate Authorities (CA's), and then use the CA's to generate each identity's certificate and private key.
+
+First, we need to set the following environment variables to use the Fabric CA client:
+
+.. code :: bash
+
+    export PATH=${PWD}/../bin:${PWD}:$PATH
+    export FABRIC_CFG_PATH=$PWD/../config/
+
+We will use the Org1 CA to create the identity asset owner. Set the Fabric CA client home to the MSP of the Org1 CA admin (this identity was generated by the test network script):
+
+.. code:: bash
+
+    export FABRIC_CA_CLIENT_HOME=${PWD}/organizations/peerOrganizations/org1.example.com/
+
+You can register a new owner client identity using the `fabric-ca-client` tool:
+
+.. code:: bash
+
+    fabric-ca-client register --caname ca-org1 --id.name owner --id.secret ownerpw --id.type client --tls.certfiles ${PWD}/organizations/fabric-ca/org1/tls-cert.pem
+
+
+You can now generate the identity certificates and MSP folder by providing the enroll name and secret to the enroll command:
+
+.. code:: bash
+
+    fabric-ca-client enroll -u https://owner:ownerpw@localhost:7054 --caname ca-org1 -M ${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp --tls.certfiles ${PWD}/organizations/fabric-ca/org1/tls-cert.pem
+
+
+Run the command below to copy the Node OU configuration file into the owner identity MSP folder.
+
+.. code:: bash
+
+    cp ${PWD}/organizations/peerOrganizations/org1.example.com/msp/config.yaml ${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp/config.yaml
+
+
+We can now use the Org2 CA to create the buyer identity. Set the Fabric CA client home the Org2 CA admin:
+
+.. code:: bash
+
+    export FABRIC_CA_CLIENT_HOME=${PWD}/organizations/peerOrganizations/org2.example.com/
+
+You can register a new owner client identity using the `fabric-ca-client` tool:
+
+.. code:: bash
+
+    fabric-ca-client register --caname ca-org2 --id.name buyer --id.secret buyerpw --id.type client --tls.certfiles ${PWD}/organizations/fabric-ca/org2/tls-cert.pem
+
+
+We can now enroll to generate the identity MSP folder:
+
+.. code:: bash
+
+    fabric-ca-client enroll -u https://buyer:buyerpw@localhost:8054 --caname ca-org2 -M ${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp --tls.certfiles ${PWD}/organizations/fabric-ca/org2/tls-cert.pem
+
+
+Run the command below to copy the Node OU configuration file into the buyer identity MSP folder.
+
+.. code:: bash
+
+    cp ${PWD}/organizations/peerOrganizations/org2.example.com/msp/config.yaml ${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp/config.yaml
 
 .. _pd-store-private-data:
 
@@ -504,8 +702,8 @@ Store private data
 ------------------
 
 Acting as a member of Org1, who is authorized to transact with all of the private data
-in the marbles private data sample, switch back to an Org1 peer and
-submit a request to add a marble:
+in the asset transfer private data sample, switch back to an Org1 peer and
+submit a request to create an asset:
 
 :guilabel:`Try it yourself`
 
@@ -516,14 +714,14 @@ directory:
 
     export CORE_PEER_LOCALMSPID="Org1MSP"
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp
     export CORE_PEER_ADDRESS=localhost:7051
 
-Invoke the marbles ``initMarble`` function which
-creates a marble with private data ---  name ``marble1`` owned by ``tom`` with a color
-``blue``, size ``35`` and price of ``99``. Recall that private data **price**
-will be stored separately from the private data **name, owner, color, size**.
-For this reason, the ``initMarble`` function calls the ``PutPrivateData()`` API
+Invoke the asset transfer (private) ``CreateAsset`` function which
+creates an asset with private data ---  assetID ``asset1`` with a color
+``green``, size ``20`` and appraisedValue of ``100``. Recall that private data **appraisedValue**
+will be stored separately from the private data **assetID, color, size**.
+For this reason, the ``CreateAsset`` function calls the ``PutPrivateData()`` API
 twice to persist the private data, once for each collection. Also note that
 the private data is passed using the ``--transient`` flag. Inputs passed
 as transient data will not be persisted in the transaction in order to keep
@@ -532,10 +730,12 @@ using CLI it must be base64 encoded. We use an environment variable
 to capture the base64 encoded value, and use ``tr`` command to strip off the
 problematic newline characters that linux base64 command adds.
 
+Run the following command to define the asset properties:
+
 .. code:: bash
 
-    export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
+    export ASSET_PROPERTIES=$(echo -n "{\"objectType\":\"asset\",\"assetID\":\"asset1\",\"color\":\"green\",\"size\":20,\"appraisedValue\":100}" | base64 | tr -d \\n)
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
 
 You should see results similar to:
 
@@ -543,117 +743,129 @@ You should see results similar to:
 
     [chaincodeCmd] chaincodeInvokeOrQuery->INFO 001 Chaincode invoke successful. result: status:200
 
+Note that command above only targets the Org1 peer. The ``CreateAsset`` transaction writes to two collections, ``assetCollection`` and ``Org1MSPPrivateCollection``.
+The ``Org1MSPPrivateCollection`` requires an endorsement from the Org1 peer in order to write to the collection, while the ``assetCollection`` inherits the endorsement policy of the chaincode, ``"OR('Org1MSP.peer','Org2MSP.peer')"``.
+An endorsement from the Org1 peer can meet both endorsement policies and is able to create an asset without an endorsement from Org2.
+
 .. _pd-query-authorized:
 
 Query the private data as an authorized peer
 --------------------------------------------
 
 Our collection definition allows all members of Org1 and Org2
-to have the ``name, color, size, owner`` private data in their side database,
-but only peers in Org1 can have the ``price`` private data in their side
+to have the ``assetID, color, size, and owner`` private data in their side database,
+but only peers in Org1 can have Org1's opinion of their ``appraisedValue`` private data in their side
 database. As an authorized peer in Org1, we will query both sets of private data.
 
-The first ``query`` command calls the ``readMarble`` function which passes
-``collectionMarbles`` as an argument.
+The first ``query`` command calls the ``ReadAsset`` function which passes
+``assetCollection`` as an argument.
 
 .. code-block:: GO
 
-   // ===============================================
-   // readMarble - read a marble from chaincode state
-   // ===============================================
+   // ReadAsset reads the information from collection
+   func (s *SmartContract) ReadAsset(ctx contractapi.TransactionContextInterface, assetID string) (*Asset, error) {
 
-   func (t *SimpleChaincode) readMarble(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-   	var name, jsonResp string
-   	var err error
-   	if len(args) != 1 {
-   		return shim.Error("Incorrect number of arguments. Expecting name of the marble to query")
-   	}
+        log.Printf("ReadAsset: collection %v, ID %v", assetCollection, assetID)
+        assetJSON, err := ctx.GetStub().GetPrivateData(assetCollection, assetID) //get the asset from chaincode state
+        if err != nil {
+            return nil, fmt.Errorf("failed to read asset: %v", err)
+        }
 
-   	name = args[0]
-   	valAsbytes, err := stub.GetPrivateData("collectionMarbles", name) //get the marble from chaincode state
+        //No Asset found, return empty response
+        if assetJSON == nil {
+            log.Printf("%v does not exist in collection %v", assetID, assetCollection)
+            return nil, nil
+        }
 
-   	if err != nil {
-   		jsonResp = "{\"Error\":\"Failed to get state for " + name + "\"}"
-   		return shim.Error(jsonResp)
-   	} else if valAsbytes == nil {
-   		jsonResp = "{\"Error\":\"Marble does not exist: " + name + "\"}"
-   		return shim.Error(jsonResp)
-   	}
+        var asset *Asset
+        err = json.Unmarshal(assetJSON, &asset)
+        if err != nil {
+            return nil, fmt.Errorf("failed to unmarshal JSON: %v", err)
+        }
 
-   	return shim.Success(valAsbytes)
-   }
+        return asset, nil
 
-The second ``query`` command calls the ``readMarblePrivateDetails``
-function which passes ``collectionMarblePrivateDetails`` as an argument.
+    }
+
+The second ``query`` command calls the ``ReadAssetPrivateDetails``
+function which passes ``Org1MSPPrivateDetails`` as an argument.
 
 .. code-block:: GO
 
-   // ===============================================
-   // readMarblePrivateDetails - read a marble private details from chaincode state
-   // ===============================================
+   // ReadAssetPrivateDetails reads the asset private details in organization specific collection
+   func (s *SmartContract) ReadAssetPrivateDetails(ctx contractapi.TransactionContextInterface, collection string, assetID string) (*AssetPrivateDetails, error) {
+        log.Printf("ReadAssetPrivateDetails: collection %v, ID %v", collection, assetID)
+        assetDetailsJSON, err := ctx.GetStub().GetPrivateData(collection, assetID) // Get the asset from chaincode state
+        if err != nil {
+            return nil, fmt.Errorf("failed to read asset details: %v", err)
+        }
+        if assetDetailsJSON == nil {
+            log.Printf("AssetPrivateDetails for %v does not exist in collection %v", assetID, collection)
+            return nil, nil
+        }
 
-   func (t *SimpleChaincode) readMarblePrivateDetails(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-   	var name, jsonResp string
-   	var err error
+        var assetDetails *AssetPrivateDetails
+        err = json.Unmarshal(assetDetailsJSON, &assetDetails)
+        if err != nil {
+            return nil, fmt.Errorf("failed to unmarshal JSON: %v", err)
+        }
 
-   	if len(args) != 1 {
-   		return shim.Error("Incorrect number of arguments. Expecting name of the marble to query")
-   	}
-
-   	name = args[0]
-   	valAsbytes, err := stub.GetPrivateData("collectionMarblePrivateDetails", name) //get the marble private details from chaincode state
-
-   	if err != nil {
-   		jsonResp = "{\"Error\":\"Failed to get private details for " + name + ": " + err.Error() + "\"}"
-   		return shim.Error(jsonResp)
-   	} else if valAsbytes == nil {
-   		jsonResp = "{\"Error\":\"Marble private details does not exist: " + name + "\"}"
-   		return shim.Error(jsonResp)
-   	}
-   	return shim.Success(valAsbytes)
-   }
+        return assetDetails, nil
+    }
 
 Now :guilabel:`Try it yourself`
 
-Query for the ``name, color, size and owner`` private data of ``marble1`` as a member of Org1.
-Note that since queries do not get recorded on the ledger, there is no need to pass
-the marble name as a transient input.
+We can read the main details of the asset that was created by using the `ReadAsset` function
+to query the `assetCollection` collection as Org1:
 
 .. code:: bash
 
-    peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarble","marble1"]}'
+    peer chaincode query -C mychannel -n private -c '{"function":"ReadAsset","Args":["asset1"]}'
+
+When successful, the command will return the following result:
+
+.. code:: bash
+
+    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw=="}
+
+The `"owner"` of the asset is the identity that created the asset by invoking the smart contract. The `GetClientIdentity().GetID()` API reads the common name and issuer of the identity certificate.
+You can see that information by decoding the owner string out of base64 format:
+
+.. code:: bash
+
+    echo eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw== | base64 --decode
+
+The result will show the common name and issuer of the owner certificate:
+
+.. code:: bash
+
+    x509::CN=org1admin,OU=admin,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org1.example.com,O=org1.example.com,L=Durham,ST=North Carolina,C=US    
+
+
+Query for the ``appraisedValue`` private data of ``asset1`` as a member of Org1.
+
+.. code:: bash
+
+    peer chaincode query -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
 
 You should see the following result:
 
 .. code:: bash
 
-    {"color":"blue","docType":"marble","name":"marble1","owner":"tom","size":35}
+    {"assetID":"asset1","appraisedValue":100}
 
-Query for the ``price`` private data of ``marble1`` as a member of Org1.
-
-.. code:: bash
-
-    peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
-
-You should see the following result:
-
-.. code:: bash
-
-    {"docType":"marblePrivateDetails","name":"marble1","price":99}
-
-.. _pd-query-unauthorized:
 
 Query the private data as an unauthorized peer
-----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Now we will switch to a member of Org2. Org2 has the marbles private data
-``name, color, size, owner`` in its side database, but does not store the
-marbles ``price`` data. We will query for both sets of private data.
+Now we will switch to a member of Org2. Org2 has the asset transfer private data
+``assetID, color, size, owner`` in its side database as defined in the assetCollection policy, but does not store the
+asset ``appraisedValue`` data for Org1. We will query for both sets of private data.
 
 Switch to a peer in Org2
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Run the following commands to operate as the Org2 admin and query the Org2 peer.
+Run the following commands to operate as an Org2 member and query the Org2 peer.
 
 :guilabel:`Try it yourself`
 
@@ -661,33 +873,33 @@ Run the following commands to operate as the Org2 admin and query the Org2 peer.
 
     export CORE_PEER_LOCALMSPID="Org2MSP"
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp
     export CORE_PEER_ADDRESS=localhost:9051
 
 Query private data Org2 is authorized to
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Peers in Org2 should have the first set of marbles private data (``name,
+Peers in Org2 should have the first set of asset transfer private data (``assetID,
 color, size and owner``) in their side database and can access it using the
-``readMarble()`` function which is called with the ``collectionMarbles``
+``ReadAsset()`` function which is called with the ``assetCollection``
 argument.
 
 :guilabel:`Try it yourself`
 
 .. code:: bash
 
-    peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarble","marble1"]}'
+    peer chaincode query -C mychannel -n private -c '{"function":"ReadAsset","Args":["asset1"]}'
 
-You should see something similar to the following result:
+When successful, should see something similar to the following result:
 
 .. code:: json
 
-    {"docType":"marble","name":"marble1","color":"blue","size":35,"owner":"tom"}
+    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw=="}
 
 Query private data Org2 is not authorized to
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Peers in Org2 do not have the marbles ``price`` private data in their side database.
+Peers in Org2 do not have the Org1 asset1 ``appraisedValue`` private data in their side database.
 When they try to query for this data, they get back a hash of the key matching
 the public state but will not have the private state.
 
@@ -695,16 +907,15 @@ the public state but will not have the private state.
 
 .. code:: bash
 
-    peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
+    peer chaincode query -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
 
 You should see a result similar to:
 
 .. code:: json
 
-    Error: endorsement failure during query. response: status:500
-    message:"{\"Error\":\"Failed to get private details for marble1:
-    GET_STATE failed: transaction ID: d9c437d862de66755076aeebe79e7727791981606ae1cb685642c93f102b03e5:
-    tx creator does not have read access permission on privatedata in chaincodeName:marblesp collectionName: collectionMarblePrivateDetails\"}"
+    Error: endorsement failure during query. response: status:500 message:"failed to 
+    read asset details: GET_STATE failed: transaction ID: d23e4bc0538c3abfb7a6bd4323fd5f52306e2723be56460fc6da0e5acaee6b23: tx
+    creator does not have read access permission on privatedata in chaincodeName:private collectionName: Org1MSPPrivateCollection"
 
 Members of Org2 will only be able to see the public hash of the private data.
 
@@ -719,39 +930,37 @@ a certain set number of blocks, leaving behind only hash of the data that serves
 as immutable evidence of the transaction.
 
 There may be private data including personal or confidential
-information, such as the pricing data in our example, that the transacting
+information, such as the ``appraisedValue`` data in our example, that the transacting
 parties don't want disclosed to other organizations on the channel. Thus, it
 has a limited lifespan, and can be purged after existing unchanged on the
 blockchain for a designated number of blocks using the ``blockToLive`` property
 in the collection definition.
 
-Our ``collectionMarblePrivateDetails`` definition has a ``blockToLive``
-property value of three meaning this data will live on the side database for
+Our ``Org1MSPPrivateCollection`` definition has a ``blockToLive``
+property value of ``3`` meaning this data will live on the side database for
 three blocks and then after that it will get purged. Tying all of the pieces
-together, recall this collection definition  ``collectionMarblePrivateDetails``
-is associated with the ``price`` private data in the  ``initMarble()`` function
+together, recall this collection definition  ``Org1MSPPrivateCollection``
+is associated with the ``appraisedValue`` private data in the  ``CreateAsset()`` function
 when it calls the ``PutPrivateData()`` API and passes the
-``collectionMarblePrivateDetails`` as an argument.
+``AssetPrivateDetails`` as an argument.
 
-We will step through adding blocks to the chain, and then watch the price
-information get purged by issuing four new transactions (Create a new marble,
-followed by three marble transfers) which adds four new blocks to the chain.
-After the fourth transaction (third marble transfer), we will verify that the
-price private data is purged.
+As we continue with the tutorial by invoking chaincode that adds blocks to the chain, the ``appraisedValue``
+information will get purged when we issue the fourth new transaction from the block where we initially created ``asset1``
+because you will recall our ``blockToLive`` is set to ``3`` for the ``Org1MSPPrivateCollection`` definition.
+
+.. _pd-transfer-asset:
+
+Transfer the Asset
+------------------
+
+Let's see what it takes to transfer ``asset1`` to Org2. In this case, Org2 needs to agree
+to buy the asset from Org1, and they need to agree on the ``appraisedValue``. You may be wondering how they can
+agree if Org1 keeps their opinion of the ``appraisedValue`` in their private side database. For the answer
+to this, lets continue.
 
 :guilabel:`Try it yourself`
 
-Switch back to Org1 using the following commands. Copy and paste the following code
-block and run it inside your peer container:
-
-.. code :: bash
-
-    export CORE_PEER_LOCALMSPID="Org1MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    export CORE_PEER_ADDRESS=localhost:7051
-
-Open a new terminal window and view the private data logs for this peer by
+Since we need to keep track of how many blocks we add to see if our private data gets purged, open a new terminal window and view the private data logs for this peer by
 running the following command. Note the highest block number.
 
 .. code:: bash
@@ -759,29 +968,47 @@ running the following command. Note the highest block number.
     docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
 
 
-Back in the peer container, query for the **marble1** price data by running the
-following command. (A Query does not create a new transaction on the ledger
-since no data is transacted).
+Switch back to the terminal with our peer CLI. Now that we are operating
+as a member of Org2, we can demonstrate that the asset appraisal is not stored
+in Org2MSPPrivateCollection, on the Org2 peer:
 
 .. code:: bash
 
-    peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
 
-You should see results similar to:
+The empty response shows that the asset1 private details do not exist in buyer (Org2) private collection.
 
-.. code:: bash
-
-    {"docType":"marblePrivateDetails","name":"marble1","price":99}
-
-The ``price`` data is still in the private data ledger.
-
-Create a new **marble2** by issuing the following command. This transaction
-creates a new block on the chain.
+Nor can a member of Org2, read the Org1 private data collection:
 
 .. code:: bash
 
-    export MARBLE=$(echo -n "{\"name\":\"marble2\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["InitMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
+
+By setting `"memberOnlyRead": true` in the collection configuration file, we specify that only members of Org1 can read data from the collection. An Org2 member who tries to read the collection would only get the following response:
+
+.. code:: bash
+
+    Error: endorsement failure during query. response: status:500 message:"failed to read from asset details GET_STATE failed: transaction ID: 10d39a7d0b340455a19ca4198146702d68d884d41a0e60936f1599c1ddb9c99d: tx creator does not have read access permission on privatedata in chaincodeName:private collectionName: Org1MSPPrivateCollection"
+
+To transfer an asset, the buyer (recipient) needs to agree to the same ``appraisedValue`` as the asset owner, by calling chaincode function `AgreeToTransfer`. The agreed value will be stored in the `Org2MSPDetailsCollection` collection on the Org2 peer. Run the following command to agree to the appraised value of 100, as Org2:
+
+.. code:: bash
+
+    export ASSET_VALUE=$(echo -n "{\"assetID\":\"asset1\",\"appraisedValue\":100}" | base64 | tr -d \\n)
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"AgreeToTransfer","Args":[]}' --transient "{\"asset_value\":\"$ASSET_VALUE\"}"
+
+
+The buyer can now query the value they agreed to in the Org2 private data collection:
+
+.. code:: bash
+
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
+
+The invoke will return the following value:
+
+.. code:: bash
+
+    {"assetID":"asset1","appraisedValue":100}
 
 Switch back to the Terminal window and view the private data logs for this peer
 again. You should see the block height increase by 1.
@@ -790,105 +1017,71 @@ again. You should see the block height increase by 1.
 
     docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
 
-Back in the peer container, query for the **marble1** price data again by
-running the following command:
+Back in the peer container, let's transfer the asset to Org2. Let's go back to acting as Org1:
 
 .. code:: bash
 
-    peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
+    export CORE_PEER_LOCALMSPID="Org1MSP"
+    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp
+    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    export CORE_PEER_ADDRESS=localhost:7051
 
-The private data has not been purged, therefore the results are unchanged from
-previous query:
-
-.. code:: bash
-
-    {"docType":"marblePrivateDetails","name":"marble1","price":99}
-
-Transfer marble2 to "joe" by running the following command. This transaction
-will add a second new block on the chain.
+Now that buyer has agreed to buy the asset for appraised value, the owner
+from Org1 can read the data added by `AgreeToTransfer` to see buyer identity:
 
 .. code:: bash
 
-    export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"joe\"}" | base64 | tr -d \\n)
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["TransferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
-
-Switch back to the Terminal window and view the private data logs for this peer
-again. You should see the block height increase by 1.
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadTransferAgreement","Args":["asset1"]}'
 
 .. code:: bash
 
-    docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
+    {"assetID":"asset1","buyerID":"eDUwOTo6Q049YnV5ZXIsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1IdXJzbGV5LFNUPUhhbXBzaGlyZSxDPVVL"}
 
-Back in the peer container, query for the marble1 price data by running the
-following command:
-
-.. code:: bash
-
-    peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
-
-You should still be able to see the price private data.
+The owner from Org1 can now transfer the asset to Org2. To transfer the asset, the owner needs to pass the MSP ID of the new asset owner Org. The transfer
+function will read the client ID of the interested buyer user from the transfer agreement:
 
 .. code:: bash
 
-    {"docType":"marblePrivateDetails","name":"marble1","price":99}
+    export ASSET_OWNER=$(echo -n "{\"assetID\":\"asset1\",\"buyerMSP\":\"Org2MSP\"}" | base64 | tr -d \\n)
 
-Transfer marble2 to "tom" by running the following command. This transaction
-will create a third new block on the chain.
-
-.. code:: bash
-
-    export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"tom\"}" | base64 | tr -d \\n)
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["TransferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
-
-Switch back to the Terminal window and view the private data logs for this peer
-again. You should see the block height increase by 1.
+The owner of the asset needs to initiate the transfer:
 
 .. code:: bash
 
-    docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"TransferAsset","Args":[]}' --transient "{\"asset_owner\":\"$ASSET_OWNER\"}" --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 
-Back in the peer container, query for the marble1 price data by running the
-following command:
-
-.. code:: bash
-
-    peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
-
-You should still be able to see the price data.
+You can ReadAsset `asset1` to see the results of the transfer:
 
 .. code:: bash
 
-    {"docType":"marblePrivateDetails","name":"marble1","price":99}
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAsset","Args":["asset1"]}'
 
-Finally, transfer marble2 to "jerry" by running the following command. This
-transaction will create a fourth new block on the chain. The ``price`` private
-data should be purged after this transaction.
+The results will show that the buyer identity now owns the asset:
 
 .. code:: bash
 
-    export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"jerry\"}" | base64 | tr -d \\n)
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["TransferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
+    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049YnV5ZXIsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1IdXJzbGV5LFNUPUhhbXBzaGlyZSxDPVVL"}
 
-Switch back to the Terminal window and view the private data logs for this peer
-again. You should see the block height increase by 1.
+You can base64 decode the `"owner"` to see that it is the buyer identity:
 
 .. code:: bash
 
-    docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
-
-Back in the peer container, query for the marble1 price data by running the following command:
+   echo eDUwOTo6Q049YnV5ZXIsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1IdXJzbGV5LFNUPUhhbXBzaGlyZSxDPVVL | base64 --decode
 
 .. code:: bash
 
-    peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
+    x509::CN=buyer,OU=client,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org2.example.com,O=org2.example.com,L=Hursley,ST=Hampshire,C=UK
 
-Because the price data has been purged, you should no longer be able to see it.
-You should see something similar to:
+You can also confirm that transfer removed the private details from the Org1 collection:
 
 .. code:: bash
 
-    Error: endorsement failure during query. response: status:500
-    message:"{\"Error\":\"Marble private details does not exist: marble1\"}"
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
+
+Your query will return empty result, since the asset private data is removed from the Org1 private data collection.
+If you go back and look at the block height in your logs, you will see that the private data did not get purged from Org1
+due to hitting the fourth block (we only increased by two blocks in transferring the asset to Org2), but rather
+because when the asset transfer occurred, Org1 did not meet the ``read`` policy of the ``Org2MSPPrivateCollection``.
 
 .. _pd-indexes:
 
@@ -897,7 +1090,7 @@ Using indexes with private data
 
 Indexes can also be applied to private data collections, by packaging indexes in
 the ``META-INF/statedb/couchdb/collections/<collection_name>/indexes`` directory
-alongside the chaincode. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02_private/go/META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexOwner.json>`__ .
+alongside the chaincode. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}//asset-transfer-private-data/chaincode-go/META-INF/statedb/couchdb/collections/assetCollection/indexes/indexOwner.json>`__ .
 
 For deployment of chaincode to production environments, it is recommended
 to define any indexes alongside chaincode so that the chaincode and supporting
