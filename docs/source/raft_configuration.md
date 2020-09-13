@@ -258,6 +258,9 @@ little as a few months, so check with your issuer. Before the expiration date,
 you will need to rotate these certificates on the node itself and every channel
 the node is joined to, including the system channel.
 
+**Note:** In case the public key of the TLS certificate remains the same, 
+there is no need to issue channel configuration updates.
+
 For each channel the node participates in:
 
   1. Update the channel configuration with the new certificates.
