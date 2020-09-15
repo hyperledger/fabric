@@ -500,7 +500,6 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool, 
 		}
 
 		broadcastClient, err = common.GetBroadcastClientFnc()
-
 		if err != nil {
 			return nil, errors.WithMessage(err, "error getting broadcast client")
 		}
