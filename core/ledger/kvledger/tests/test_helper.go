@@ -64,6 +64,10 @@ func (h *testhelper) cutBlockAndCommitExpectError() *ledger.BlockAndPvtData {
 	return h.committer.cutBlockAndCommitExpectError(h.simulatedTrans, h.missingPvtData)
 }
 
+func (h *testhelper) commitPvtDataOfOldBlocks(blocksPvtData []*ledger.ReconciledPvtdata, unreconciled ledger.MissingPvtDataInfo) ([]*ledger.PvtdataHashMismatch, error) {
+	return h.lgr.CommitPvtDataOfOldBlocks(blocksPvtData, unreconciled)
+}
+
 // assertError is a helper function that can be called as assertError(f()) where 'f' is some other function
 // this function assumes that the last return type of function 'f' is of type 'error'
 func (h *testhelper) assertError(output ...interface{}) {
