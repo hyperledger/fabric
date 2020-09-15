@@ -245,21 +245,14 @@ func TestGetMissingDataInfo(t *testing.T) {
 		},
 	}
 
-	defaultVal := deprioritizedMissingDataPeriodicity
-	deprioritizedMissingDataPeriodicity = 10
-	defer func() {
-		deprioritizedMissingDataPeriodicity = defaultVal
-	}()
+	assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
 
-	for i := 1; i <= 55; i++ {
-		if i%11 == 0 {
-			// after ever 10 iterations of accessing the prioritized list, the
-			// deprioritized list would be accessed
-			assertMissingDataInfo(t, store, expectedDeprioMissingDataInfo, 2)
-			continue
-		}
-		assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
-	}
+	store.accessDeprioMissingDataAfter = time.Now()
+	expectedNextAccessDeprioMissingDataTime := time.Now().Add(store.deprioritizedDataReconcilerInterval)
+	assertMissingDataInfo(t, store, expectedDeprioMissingDataInfo, 2)
+
+	require.True(t, store.accessDeprioMissingDataAfter.After(expectedNextAccessDeprioMissingDataTime))
+	assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
 }
 
 func TestExpiryDataNotIncluded(t *testing.T) {

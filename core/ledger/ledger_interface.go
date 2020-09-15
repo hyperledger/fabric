@@ -113,6 +113,14 @@ type PrivateDataConfig struct {
 	// PurgeInterval is the number of blocks to wait until purging expired
 	// private data entries.
 	PurgeInterval int
+	// The missing data entries are classified into three categories:
+	// (1) eligible prioritized
+	// (2) eligible deprioritized
+	// (3) ineligible
+	// The reconciler would fetch the eligible prioritized missing data
+	// from other peers. A chance for eligible deprioritized missing data
+	// would be given after every DeprioritizedDataReconcilerInterval
+	DeprioritizedDataReconcilerInterval time.Duration
 }
 
 // HistoryDBConfig is a structure used to configure the transaction history database.
