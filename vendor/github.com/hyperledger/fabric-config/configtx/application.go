@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package configtx
 
 import (
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"errors"
 	"fmt"
 
@@ -37,6 +35,13 @@ type ApplicationGroup struct {
 type ApplicationOrg struct {
 	orgGroup *cb.ConfigGroup
 	name     string
+}
+
+// MSP returns an OrganizationMSP object that can be used to configure the organization's MSP.
+func (a *ApplicationOrg) MSP() *OrganizationMSP {
+	return &OrganizationMSP{
+		configGroup: a.orgGroup,
+	}
 }
 
 // Application returns the application group the updated config.
@@ -378,16 +383,10 @@ func (a *ApplicationGroup) RemoveACLs(acls []string) error {
 	return nil
 }
 
-// MSP returns the MSP configuration for an existing application
-// org in the updated config of a config transaction.
-func (a *ApplicationOrg) MSP() (MSP, error) {
-	return getMSPConfig(a.orgGroup)
-}
-
 // SetMSP updates the MSP config for the specified application
 // org group.
 func (a *ApplicationOrg) SetMSP(updatedMSP MSP) error {
-	currentMSP, err := a.MSP()
+	currentMSP, err := a.MSP().Configuration()
 	if err != nil {
 		return fmt.Errorf("retrieving msp: %v", err)
 	}
@@ -421,17 +420,6 @@ func (a *ApplicationOrg) setMSPConfig(updatedMSP MSP) error {
 	}
 
 	return nil
-}
-
-// CreateMSPCRL creates a CRL that revokes the provided certificates
-// for the specified application org signed by the provided SigningIdentity.
-func (a *ApplicationOrg) CreateMSPCRL(signingIdentity *SigningIdentity, certs ...*x509.Certificate) (*pkix.CertificateList, error) {
-	msp, err := a.MSP()
-	if err != nil {
-		return nil, fmt.Errorf("retrieving application org msp: %s", err)
-	}
-
-	return msp.newMSPCRL(signingIdentity, certs...)
 }
 
 // newApplicationGroupTemplate returns the application component of the channel
