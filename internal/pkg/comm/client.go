@@ -79,8 +79,7 @@ func (client *GRPCClient) parseSecureOptions(opts SecureOptions) error {
 			err := AddPemToCertPool(certBytes, client.tlsConfig.RootCAs)
 			if err != nil {
 				commLogger.Debugf("error adding root certificate: %v", err)
-				return errors.WithMessage(err,
-					"error adding root certificate")
+				return errors.WithMessage(err, "error adding root certificate")
 			}
 		}
 	}
@@ -91,14 +90,12 @@ func (client *GRPCClient) parseSecureOptions(opts SecureOptions) error {
 			cert, err := tls.X509KeyPair(opts.Certificate,
 				opts.Key)
 			if err != nil {
-				return errors.WithMessage(err, "failed to "+
-					"load client certificate")
+				return errors.WithMessage(err, "failed to load client certificate")
 			}
 			client.tlsConfig.Certificates = append(
 				client.tlsConfig.Certificates, cert)
 		} else {
-			return errors.New("both Key and Certificate " +
-				"are required when using mutual TLS")
+			return errors.New("both Key and Certificate are required when using mutual TLS")
 		}
 	}
 
