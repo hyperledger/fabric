@@ -225,7 +225,7 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 		initializer.MetricsProvider = &disabled.Provider{}
 	}
 
-	if initializer.Config == nil {
+	if initializer.Config == nil || initializer.Config.RootFSPath == "" {
 		rootPath, err := ioutil.TempDir("/tmp", "ledgersData")
 		if err != nil {
 			t.Fatalf("Failed to create root directory: %s", err)

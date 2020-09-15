@@ -8,9 +8,13 @@ package tests
 
 import (
 	"testing"
+	"time"
 
+	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/stretchr/testify/require"
 )
 
@@ -116,5 +120,59 @@ func TestGetMissingPvtData(t *testing.T) {
 		// once the pvtdata store and blockstore becomes equal,
 		// missing pvtdata info for block 2 would be returned.
 		h.verifyMissingPvtDataSameAs(5, expectedMissingPvtDataInfo)
+	})
+
+	t.Run("get deprioritized missing data", func(t *testing.T) {
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		require.NoError(t, err)
+
+		initializer := &ledgermgmt.Initializer{
+			Config: &ledger.Config{
+				PrivateDataConfig: &ledger.PrivateDataConfig{
+					MaxBatchSize:                        5000,
+					BatchesInterval:                     1000,
+					PurgeInterval:                       100,
+					DeprioritizedDataReconcilerInterval: 120 * time.Minute,
+				},
+			},
+			HashProvider: cryptoProvider,
+			EbMetadataProvider: &externalbuilder.MetadataProvider{
+				DurablePath: "testdata",
+			},
+		}
+		env := newEnvWithInitializer(t, initializer)
+		defer env.cleanup()
+		env.initLedgerMgmt()
+		h := env.newTestHelperCreateLgr("ledger1", t)
+
+		blk, expectedMissingPvtDataInfo := setup(h)
+
+		// verify missing pvtdata info
+		require.Equal(t, uint64(2), blk.Block.Header.Number)
+		h.verifyBlockAndPvtDataSameAs(2, blk)
+		h.verifyMissingPvtDataSameAs(int(2), expectedMissingPvtDataInfo)
+
+		h.commitPvtDataOfOldBlocks(nil, expectedMissingPvtDataInfo)
+		for i := 0; i < 5; i++ {
+			h.verifyMissingPvtDataSameAs(int(2), ledger.MissingPvtDataInfo{})
+		}
+
+		env.closeLedgerMgmt()
+		env.initializer.Config.PrivateDataConfig.DeprioritizedDataReconcilerInterval = 0 * time.Second
+		env.initLedgerMgmt()
+
+		h = env.newTestHelperOpenLgr("ledger1", t)
+		for i := 0; i < 5; i++ {
+			h.verifyMissingPvtDataSameAs(int(2), expectedMissingPvtDataInfo)
+		}
+
+		env.closeLedgerMgmt()
+		env.initializer.Config.PrivateDataConfig.DeprioritizedDataReconcilerInterval = 120 * time.Minute
+		env.initLedgerMgmt()
+
+		h = env.newTestHelperOpenLgr("ledger1", t)
+		for i := 0; i < 5; i++ {
+			h.verifyMissingPvtDataSameAs(int(2), ledger.MissingPvtDataInfo{})
+		}
 	})
 }
