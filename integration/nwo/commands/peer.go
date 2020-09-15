@@ -8,6 +8,7 @@ package commands
 
 import (
 	"strconv"
+	"time"
 )
 
 type NodeStart struct {
@@ -135,11 +136,12 @@ func (c ChannelJoin) Args() []string {
 }
 
 type ChannelFetch struct {
-	ChannelID  string
-	Block      string
-	Orderer    string
-	OutputFile string
-	ClientAuth bool
+	ChannelID             string
+	Block                 string
+	Orderer               string
+	OutputFile            string
+	ClientAuth            bool
+	TLSHandshakeTimeShift time.Duration
 }
 
 func (c ChannelFetch) SessionName() string {
@@ -149,15 +151,10 @@ func (c ChannelFetch) SessionName() string {
 func (c ChannelFetch) Args() []string {
 	args := []string{
 		"channel", "fetch", c.Block,
-	}
-	if c.ChannelID != "" {
-		args = append(args, "--channelID", c.ChannelID)
-	}
-	if c.Orderer != "" {
-		args = append(args, "--orderer", c.Orderer)
-	}
-	if c.OutputFile != "" {
-		args = append(args, c.OutputFile)
+		"--channelID", c.ChannelID,
+		"--orderer", c.Orderer,
+		"--tlsHandshakeTimeShift", c.TLSHandshakeTimeShift.String(),
+		c.OutputFile,
 	}
 	if c.ClientAuth {
 		args = append(args, "--clientauth")
@@ -747,10 +744,11 @@ func (s SignConfigTx) Args() []string {
 }
 
 type ChannelUpdate struct {
-	ChannelID  string
-	Orderer    string
-	File       string
-	ClientAuth bool
+	ChannelID             string
+	Orderer               string
+	File                  string
+	ClientAuth            bool
+	TLSHandshakeTimeShift time.Duration
 }
 
 func (c ChannelUpdate) SessionName() string {
@@ -763,6 +761,7 @@ func (c ChannelUpdate) Args() []string {
 		"--channelID", c.ChannelID,
 		"--orderer", c.Orderer,
 		"--file", c.File,
+		"--tlsHandshakeTimeShift", c.TLSHandshakeTimeShift.String(),
 	}
 	if c.ClientAuth {
 		args = append(args, "--clientauth")
