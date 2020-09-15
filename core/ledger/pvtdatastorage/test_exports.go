@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
@@ -19,9 +20,10 @@ import (
 func pvtDataConf() *PrivateDataConfig {
 	return &PrivateDataConfig{
 		PrivateDataConfig: &ledger.PrivateDataConfig{
-			BatchesInterval: 1000,
-			MaxBatchSize:    5000,
-			PurgeInterval:   2,
+			BatchesInterval:                     1000,
+			MaxBatchSize:                        5000,
+			PurgeInterval:                       2,
+			DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 		},
 		StorePath: "",
 	}

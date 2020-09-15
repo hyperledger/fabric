@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -428,9 +429,10 @@ func TestLedgerBackup(t *testing.T) {
 		RootFSPath:    originalPath,
 		StateDBConfig: &lgr.StateDBConfig{},
 		PrivateDataConfig: &lgr.PrivateDataConfig{
-			MaxBatchSize:    5000,
-			BatchesInterval: 1000,
-			PurgeInterval:   100,
+			MaxBatchSize:                        5000,
+			BatchesInterval:                     1000,
+			PurgeInterval:                       100,
+			DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 		},
 		HistoryDBConfig: &lgr.HistoryDBConfig{
 			Enabled: true,
@@ -481,9 +483,10 @@ func TestLedgerBackup(t *testing.T) {
 		RootFSPath:    restorePath,
 		StateDBConfig: &lgr.StateDBConfig{},
 		PrivateDataConfig: &lgr.PrivateDataConfig{
-			MaxBatchSize:    5000,
-			BatchesInterval: 1000,
-			PurgeInterval:   100,
+			MaxBatchSize:                        5000,
+			BatchesInterval:                     1000,
+			PurgeInterval:                       100,
+			DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 		},
 		HistoryDBConfig: &lgr.HistoryDBConfig{
 			Enabled: true,
@@ -571,9 +574,10 @@ func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
 		RootFSPath:    path,
 		StateDBConfig: &lgr.StateDBConfig{},
 		PrivateDataConfig: &lgr.PrivateDataConfig{
-			MaxBatchSize:    5000,
-			BatchesInterval: 1000,
-			PurgeInterval:   100,
+			MaxBatchSize:                        5000,
+			BatchesInterval:                     1000,
+			PurgeInterval:                       100,
+			DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 		},
 		HistoryDBConfig: &lgr.HistoryDBConfig{
 			Enabled: true,
