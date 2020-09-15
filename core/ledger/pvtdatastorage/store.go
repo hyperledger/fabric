@@ -23,15 +23,6 @@ import (
 
 var (
 	logger = flogging.MustGetLogger("pvtdatastorage")
-	// The missing data entries are classified into three categories:
-	// (1) eligible prioritized
-	// (2) eligible deprioritized
-	// (3) ineligible
-	// The reconciler would fetch the eligible prioritized missing data
-	// from other peers. A chance for eligible deprioritized missing data
-	// would be given after giving deprioritizedMissingDataPeriodicity number
-	// of chances to the eligible prioritized missing data
-	deprioritizedMissingDataPeriodicity = 100
 )
 
 // Provider provides handle to specific 'Store' that in turn manages
@@ -75,7 +66,8 @@ type Store struct {
 	// recovery operation.
 	isLastUpdatedOldBlocksSet bool
 
-	iterSinceDeprioMissingDataAccess int
+	deprioritizedDataReconcilerInterval time.Duration
+	accessDeprioMissingDataAfter        time.Time
 }
 
 type blkTranNumKey []byte
@@ -139,11 +131,13 @@ func NewProvider(conf *PrivateDataConfig) (*Provider, error) {
 func (p *Provider) OpenStore(ledgerid string) (*Store, error) {
 	dbHandle := p.dbProvider.GetDBHandle(ledgerid)
 	s := &Store{
-		db:              dbHandle,
-		ledgerid:        ledgerid,
-		batchesInterval: p.pvtData.BatchesInterval,
-		maxBatchSize:    p.pvtData.MaxBatchSize,
-		purgeInterval:   uint64(p.pvtData.PurgeInterval),
+		db:                                  dbHandle,
+		ledgerid:                            ledgerid,
+		batchesInterval:                     p.pvtData.BatchesInterval,
+		maxBatchSize:                        p.pvtData.MaxBatchSize,
+		purgeInterval:                       uint64(p.pvtData.PurgeInterval),
+		deprioritizedDataReconcilerInterval: p.pvtData.DeprioritizedDataReconcilerInterval,
+		accessDeprioMissingDataAfter:        time.Now().Add(p.pvtData.DeprioritizedDataReconcilerInterval),
 		collElgProcSync: &collElgProcSync{
 			notification: make(chan bool, 1),
 			procComplete: make(chan bool, 1),
@@ -421,13 +415,12 @@ func (s *Store) GetMissingPvtDataInfoForMostRecentBlocks(maxBlock int) (ledger.M
 		return nil, nil
 	}
 
-	if s.iterSinceDeprioMissingDataAccess == deprioritizedMissingDataPeriodicity {
-		s.iterSinceDeprioMissingDataAccess = 0
+	if time.Now().After(s.accessDeprioMissingDataAfter) {
+		s.accessDeprioMissingDataAfter = time.Now().Add(s.deprioritizedDataReconcilerInterval)
 		logger.Debug("fetching missing pvtdata entries from the deprioritized list")
 		return s.getMissingData(elgDeprioritizedMissingDataGroup, maxBlock)
 	}
 
-	s.iterSinceDeprioMissingDataAccess++
 	logger.Debug("fetching missing pvtdata entries from the prioritized list")
 	return s.getMissingData(elgPrioritizedMissingDataGroup, maxBlock)
 }
