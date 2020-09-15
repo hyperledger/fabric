@@ -113,6 +113,13 @@ var _ = Describe("LSCC", func() {
 				Expect(err).To(MatchError("chaincode chaincode-data-name not found"))
 			})
 		})
+
+		When("the queryexecutor is nil", func() {
+			It("returns an error", func() {
+				_, err := l.ChaincodeContainerInfo("chaincode-data-name", nil)
+				Expect(err).To(MatchError("could not get container info for chaincode chaincode-data-name without a ledger context\n"))
+			})
+		})
 	})
 
 	Describe("ChaincodeDefinition", func() {
@@ -162,6 +169,13 @@ var _ = Describe("LSCC", func() {
 			It("wraps and returns the error", func() {
 				_, err := l.ChaincodeDefinition("cc-name", fakeQueryExecutor)
 				Expect(err).To(MatchError(MatchRegexp("chaincode cc-name has bad definition: proto:.*")))
+			})
+		})
+
+		When("the queryexecutor is nil", func() {
+			It("returns an error", func() {
+				_, err := l.ChaincodeDefinition("cc-name", nil)
+				Expect(err).To(MatchError("could not get definition for chaincode cc-name without a ledger context\n"))
 			})
 		})
 	})
