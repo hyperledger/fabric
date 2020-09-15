@@ -27,3 +27,7 @@ func MspIDIfImplicitCollection(collectionName string) (isImplicitCollection bool
 	}
 	return true, collectionName[len(prefix):]
 }
+
+func IsImplicitCollection(collectionName string) bool {
+	return strings.HasPrefix(collectionName, prefix)
+}

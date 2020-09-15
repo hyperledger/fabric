@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policydsl"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
@@ -61,6 +62,14 @@ func TestMembershipInfoProvider(t *testing.T) {
 	res, err = membershipProvider.AmMemberOf("test1", getAccessPolicy([]string{"peer2", "peer3"}))
 	require.False(t, res)
 	require.Nil(t, err)
+}
+
+func TestMyImplicitCollectionName(t *testing.T) {
+	require.Equal(
+		t,
+		implicitcollection.NameForOrg("my_org"),
+		NewMembershipInfoProvider("my_org", protoutil.SignedData{}, nil).MyImplicitCollectionName(),
+	)
 }
 
 func getAccessPolicy(signers []string) *peer.CollectionPolicyConfig {

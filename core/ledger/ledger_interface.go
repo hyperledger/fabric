@@ -681,6 +681,8 @@ type ChaincodeLifecycleDetails struct {
 type MembershipInfoProvider interface {
 	// AmMemberOf checks whether the current peer is a member of the given collection
 	AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (bool, error)
+	// MyImplicitCollectionName returns the name of the implicit collection for the current peer
+	MyImplicitCollectionName() string
 }
 
 type HealthCheckRegistry interface {

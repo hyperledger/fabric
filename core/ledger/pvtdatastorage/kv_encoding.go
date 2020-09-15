@@ -28,6 +28,7 @@ var (
 	collElgKeyPrefix                 = []byte{6}
 	lastUpdatedOldBlocksKey          = []byte{7}
 	elgDeprioritizedMissingDataGroup = []byte{8}
+	bootKVHashesKeyPrefix            = []byte{9}
 
 	nilByte    = byte(0)
 	emptyValue = []byte{}
@@ -85,7 +86,7 @@ func decodeExpiryKey(expiryKeyBytes []byte) (*expiryKey, error) {
 func decodeExpiryValue(expiryValueBytes []byte) (*ExpiryData, error) {
 	expiryData := &ExpiryData{}
 	err := proto.Unmarshal(expiryValueBytes, expiryData)
-	return expiryData, err
+	return expiryData, errors.Wrap(err, "error while decoding expiry value")
 }
 
 func decodeDatakey(datakeyBytes []byte) (*dataKey, error) {
@@ -164,7 +165,7 @@ func encodeMissingDataValue(bitmap *bitset.BitSet) ([]byte, error) {
 func decodeMissingDataValue(bitmapBytes []byte) (*bitset.BitSet, error) {
 	bitmap := &bitset.BitSet{}
 	if err := bitmap.UnmarshalBinary(bitmapBytes); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error while decoding missing data value")
 	}
 	return bitmap, nil
 }
@@ -188,6 +189,29 @@ func decodeCollElgVal(b []byte) (*CollElgInfo, error) {
 		return nil, errors.WithStack(err)
 	}
 	return m, nil
+}
+
+func encodeBootKVHashesKey(key *bootKVHashesKey) []byte {
+	k := append(bootKVHashesKeyPrefix, version.NewHeight(key.blkNum, key.txNum).ToBytes()...)
+	k = append(k, []byte(key.ns)...)
+	k = append(k, nilByte)
+	return append(k, []byte(key.coll)...)
+}
+
+func encodeBootKVHashesVal(val *BootKVHashes) ([]byte, error) {
+	b, err := proto.Marshal(val)
+	if err != nil {
+		return nil, errors.Wrap(err, "error while marshalling BootKVHashes")
+	}
+	return b, nil
+}
+
+func decodeBootKVHashesVal(b []byte) (*BootKVHashes, error) {
+	val := &BootKVHashes{}
+	if err := proto.Unmarshal(b, val); err != nil {
+		return nil, errors.Wrap(err, "error while unmarshalling bytes for BootKVHashes")
+	}
+	return val, nil
 }
 
 func createRangeScanKeysForElgMissingData(blkNum uint64, group []byte) ([]byte, []byte) {
