@@ -64,6 +64,10 @@ the binaries and images.
 	  the un-shortened URL:
 	  https://raw.githubusercontent.com/hyperledger/fabric/{BRANCH}/scripts/bootstrap.sh
 
+.. note:: For additional use pattern you can use the -h flag to view the help and available commands for the 
+          Fabric-Samples bootstrap script. For example:
+          ``curl -sSL https://bit.ly/2ysbOFE | bash -s -- -h``
+
 The command above downloads and executes a bash script
 that will download and extract all of the platform-specific binaries you
 will need to set up your network and place them into the cloned repo you
