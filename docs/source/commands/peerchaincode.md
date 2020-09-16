@@ -94,6 +94,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
       --transient string                    Transient map of arguments in JSON encoding
 ```
 
@@ -129,6 +130,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
       --transient string                    Transient map of arguments in JSON encoding
 ```
 
@@ -160,6 +162,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
       --transient string                    Transient map of arguments in JSON encoding
 ```
 
@@ -189,6 +192,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
       --transient string                    Transient map of arguments in JSON encoding
 ```
 
@@ -220,6 +224,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
       --transient string                    Transient map of arguments in JSON encoding
 ```
 
@@ -251,6 +256,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
       --transient string                    Transient map of arguments in JSON encoding
 ```
 
@@ -274,6 +280,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
       --transient string                    Transient map of arguments in JSON encoding
 ```
 
@@ -310,6 +317,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
       --transient string                    Transient map of arguments in JSON encoding
 ```
 
@@ -476,7 +484,7 @@ upgrades the chaincode named `mycc` at version `1.0` on channel
 
     ```
     export ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-    peer chaincode upgrade -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C mychannel -n mycc -v 1.2 -c '{"Args":["init","a","100","b","200"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
+    peer chaincode upgrade -o orderer.example.com:7050 --tls --cafile $ORDERER_CA -C mychannel -n mycc -v 1.2 -c '{"Args":["init","a","100","b","200","c","300"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
     .
     .
     .
@@ -500,7 +508,7 @@ upgrades the chaincode named `mycc` at version `1.0` on channel
     network with TLS disabled:
 
     ```
-    peer chaincode upgrade -o orderer.example.com:7050 -C mychannel -n mycc -v 1.2 -c '{"Args":["init","a","100","b","200"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
+    peer chaincode upgrade -o orderer.example.com:7050 -C mychannel -n mycc -v 1.2 -c '{"Args":["init","a","100","b","200","c","300"]}' -P "AND ('Org1MSP.peer','Org2MSP.peer')"
     .
     .
     .

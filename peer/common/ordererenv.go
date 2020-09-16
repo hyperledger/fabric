@@ -23,6 +23,7 @@ var (
 	certFile                   string
 	ordererTLSHostnameOverride string
 	connTimeout                time.Duration
+	tlsHandshakeTimeShift      time.Duration
 )
 
 // SetOrdererEnv adds orderer-specific settings to the global Viper environment
@@ -51,6 +52,7 @@ func SetOrdererEnv(cmd *cobra.Command, args []string) {
 	viper.Set("orderer.tls.enabled", tlsEnabled)
 	viper.Set("orderer.tls.clientAuthRequired", clientAuth)
 	viper.Set("orderer.client.connTimeout", connTimeout)
+	viper.Set("orderer.tls.handshakeTimeShift", tlsHandshakeTimeShift)
 }
 
 // AddOrdererFlags adds flags for orderer-related commands
@@ -73,4 +75,6 @@ func AddOrdererFlags(cmd *cobra.Command) {
 		"", "", "The hostname override to use when validating the TLS connection to the orderer.")
 	flags.DurationVarP(&connTimeout, "connTimeout",
 		"", 3*time.Second, "Timeout for client to connect")
+	flags.DurationVarP(&tlsHandshakeTimeShift, "tlsHandshakeTimeShift", "", 0,
+		"The amount of time to shift backwards for certificate expiration checks during TLS handshakes")
 }
