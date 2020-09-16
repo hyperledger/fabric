@@ -150,11 +150,15 @@ func (creator *BlockPullerCreator) VerifyBlockSequence(blocks []*common.Block, _
 			return errors.Wrap(err, "failed to construct a block signature verifier from genesis block")
 		}
 		blocksAfterGenesis := blocks[1:]
+		if len(blocksAfterGenesis) == 0 {
+			return nil
+		}
 		return creator.ClusterVerifyBlocks(blocksAfterGenesis, creator.blockSigVerifier)
 	}
 
 	if creator.blockSigVerifier == nil {
 		return errors.New("nil block signature verifier")
 	}
+
 	return creator.ClusterVerifyBlocks(blocks, creator.blockSigVerifier)
 }
