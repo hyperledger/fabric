@@ -72,8 +72,9 @@ Flags:
   -h, --help                                help for chaincode
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
   -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
 
 Use "peer lifecycle chaincode [command] --help" for more information about a command.
 ```
@@ -102,8 +103,9 @@ Global Flags:
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
   -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
 ```
 
 
@@ -127,8 +129,9 @@ Global Flags:
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
   -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
 ```
 
 
@@ -153,8 +156,9 @@ Global Flags:
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
   -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
 ```
 
 
@@ -180,8 +184,9 @@ Global Flags:
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
   -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
 ```
 
 
@@ -218,8 +223,9 @@ Global Flags:
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
   -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
 ```
 
 
@@ -247,8 +253,9 @@ Global Flags:
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
   -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
 ```
 
 
@@ -283,8 +290,9 @@ Global Flags:
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
   -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
 ```
 
 
@@ -320,8 +328,9 @@ Global Flags:
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
   -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
 ```
 
 
@@ -348,8 +357,9 @@ Global Flags:
       --connTimeout duration                Timeout for client to connect (default 3s)
       --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
   -o, --orderer string                      Ordering service endpoint
-      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer.
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
 ```
 
 
