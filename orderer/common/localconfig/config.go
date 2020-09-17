@@ -201,7 +201,9 @@ type Statsd struct {
 // ChannelParticipation provides the channel participation API configuration for the orderer.
 // Channel participation uses the same ListenAddress and TLS settings of the Operations service.
 type ChannelParticipation struct {
-	Enabled            bool
+	Enabled bool
+	// Deprecated: RemoveStorage should be removed in 3.0, currently a no-op
+	RemoveStorage      bool
 	MaxRequestBodySize uint32
 }
 
