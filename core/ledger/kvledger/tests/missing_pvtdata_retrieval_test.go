@@ -73,11 +73,6 @@ func TestGetMissingPvtData(t *testing.T) {
 
 		blk, expectedMissingPvtDataInfo := setup(h)
 
-		// verify missing pvtdata info
-		require.Equal(t, uint64(2), blk.Block.Header.Number)
-		h.verifyBlockAndPvtDataSameAs(2, blk)
-		h.verifyMissingPvtDataSameAs(int(2), expectedMissingPvtDataInfo)
-
 		// commit block 3
 		h.simulateDataTx("", func(s *simulator) {
 			s.setPvtdata("cc1", "coll1", "key4", "value4")
@@ -145,12 +140,7 @@ func TestGetMissingPvtData(t *testing.T) {
 		env.initLedgerMgmt()
 		h := env.newTestHelperCreateLgr("ledger1", t)
 
-		blk, expectedMissingPvtDataInfo := setup(h)
-
-		// verify missing pvtdata info
-		require.Equal(t, uint64(2), blk.Block.Header.Number)
-		h.verifyBlockAndPvtDataSameAs(2, blk)
-		h.verifyMissingPvtDataSameAs(int(2), expectedMissingPvtDataInfo)
+		_, expectedMissingPvtDataInfo := setup(h)
 
 		h.commitPvtDataOfOldBlocks(nil, expectedMissingPvtDataInfo)
 		for i := 0; i < 5; i++ {
@@ -163,7 +153,7 @@ func TestGetMissingPvtData(t *testing.T) {
 
 		h = env.newTestHelperOpenLgr("ledger1", t)
 		for i := 0; i < 5; i++ {
-			h.verifyMissingPvtDataSameAs(int(2), expectedMissingPvtDataInfo)
+			h.verifyMissingPvtDataSameAs(2, expectedMissingPvtDataInfo)
 		}
 
 		env.closeLedgerMgmt()
@@ -172,7 +162,7 @@ func TestGetMissingPvtData(t *testing.T) {
 
 		h = env.newTestHelperOpenLgr("ledger1", t)
 		for i := 0; i < 5; i++ {
-			h.verifyMissingPvtDataSameAs(int(2), ledger.MissingPvtDataInfo{})
+			h.verifyMissingPvtDataSameAs(2, ledger.MissingPvtDataInfo{})
 		}
 	})
 }
