@@ -53,7 +53,7 @@ func GenerateLocalMSP(
 	mspDir := filepath.Join(baseDir, "msp")
 	tlsDir := filepath.Join(baseDir, "tls")
 
-	err := createFolderStructure(mspDir, true)
+	err := CreateFolderStructure(mspDir, true)
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func GenerateVerifyingMSP(
 ) error {
 
 	// create folder structure and write artifacts to proper locations
-	err := createFolderStructure(baseDir, false)
+	err := CreateFolderStructure(baseDir, false)
 	if err != nil {
 		return err
 	}
@@ -249,7 +249,7 @@ func GenerateVerifyingMSP(
 	return nil
 }
 
-func createFolderStructure(rootDir string, local bool) error {
+func CreateFolderStructure(rootDir string, local bool) error {
 
 	var folders []string
 	// create admincerts, cacerts, keystore and signcerts folders

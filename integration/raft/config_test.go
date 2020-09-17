@@ -8,6 +8,8 @@ package raft
 
 import (
 	"bytes"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -207,7 +209,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			exitCode := network.CreateChannelExitCode(channel, orderer, org1Peer0, org1Peer0, org2Peer0, orderer)
 			Expect(exitCode).NotTo(Equal(0))
 			Consistently(process.Wait).ShouldNot(Receive()) // malformed tx should not crash orderer
-			Expect(runner.Err()).To(gbytes.Say(`invalid new config metdadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
+			Expect(runner.Err()).To(gbytes.Say(`invalid new config metadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 
 			By("Submitting channel config update with illegal value")
 			channel = network.SystemChannel.Name
@@ -235,7 +237,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			sess := nwo.UpdateOrdererConfigSession(network, orderer, channel, config, updatedConfig, org1Peer0, orderer)
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(sess.Err).To(gbytes.Say(`invalid new config metdadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
+			Expect(sess.Err).To(gbytes.Say(`invalid new config metadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 		})
 	})
 
@@ -423,6 +425,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 			client, err := ca.NewClientCertKeyPair()
 			Expect(err).NotTo(HaveOccurred())
+			pemBlock, _ := pem.Decode(client.Cert)
+			certX509, err := x509.ParseCertificate(pemBlock.Bytes)
+			Expect(err).NotTo(HaveOccurred())
 
 			current, updated := consenterAdder(
 				network,
@@ -438,7 +443,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			)
 			sess = nwo.UpdateOrdererConfigSession(network, orderer, network.SystemChannel.Name, current, updated, peer, orderer)
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'systemchannel': consensus metadata update for channel config update is invalid: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", client.TLSCert.SerialNumber)))
+			Expect(sess.Err).To(MatchError(ContainSubstring(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'systemchannel': consensus metadata update for channel config update is invalid: invalid new config metadata: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", certX509.SerialNumber))))
 		})
 	})
 

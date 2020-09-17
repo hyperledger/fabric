@@ -265,8 +265,13 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 	if err := proto.Unmarshal(oc.ConsensusMetadata(), configMetadata); err != nil {
 		return false, err
 	}
-	if err := CheckConfigMetadata(configMetadata); err != nil {
-		return false, err
+
+	verifyOpts, err := createX509VerifyOptions(oc, nil)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to create x509 verify options from orderer config")
+	}
+	if err := VerifyConfigMetadata(configMetadata, verifyOpts); err != nil {
+		return false, errors.Wrapf(err, "failed to validate config metadata of ordering config")
 	}
 
 	member := false

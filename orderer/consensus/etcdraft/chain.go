@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -1288,27 +1289,33 @@ func (c *Chain) newConfigMetadata(block *common.Block) *etcdraft.ConfigMetadata 
 
 // ValidateConsensusMetadata determines the validity of a
 // ConsensusMetadata update during config updates on the channel.
-func (c *Chain) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []byte, newChannel bool) error {
+func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig channelconfig.Orderer, newChannel bool) error {
 	// metadata was not updated
-	if newMetadataBytes == nil {
+	if newOrdererConfig == nil {
 		return nil
 	}
-	if oldMetadataBytes == nil {
-		c.logger.Panic("Programming Error: ValidateConsensusMetadata called with nil old metadata")
+	if oldOrdererConfig == nil {
+		c.logger.Panic("Programming Error: ValidateConsensusMetadata called with nil old channel config")
+		return nil
 	}
 
 	oldMetadata := &etcdraft.ConfigMetadata{}
-	if err := proto.Unmarshal(oldMetadataBytes, oldMetadata); err != nil {
+	if err := proto.Unmarshal(oldOrdererConfig.ConsensusMetadata(), oldMetadata); err != nil {
 		c.logger.Panicf("Programming Error: Failed to unmarshal old etcdraft consensus metadata: %v", err)
 	}
+
 	newMetadata := &etcdraft.ConfigMetadata{}
-	if err := proto.Unmarshal(newMetadataBytes, newMetadata); err != nil {
+	if err := proto.Unmarshal(newOrdererConfig.ConsensusMetadata(), newMetadata); err != nil {
 		return errors.Wrap(err, "failed to unmarshal new etcdraft metadata configuration")
 	}
 
-	err := CheckConfigMetadata(newMetadata)
+	verifyOpts, err := createX509VerifyOptions(oldOrdererConfig, newOrdererConfig)
 	if err != nil {
-		return errors.Wrap(err, "invalid new config metdadata")
+		return errors.Wrapf(err, "failed to create x509 verify options from old and new orderer config")
+	}
+
+	if err := VerifyConfigMetadata(newMetadata, verifyOpts); err != nil {
+		return errors.Wrap(err, "invalid new config metadata")
 	}
 
 	if newChannel {
