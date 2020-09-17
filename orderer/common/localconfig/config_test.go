@@ -269,4 +269,5 @@ func TestChannelParticipationDefaults(t *testing.T) {
 	cfg, err := cc.load()
 	require.NoError(t, err)
 	require.Equal(t, cfg.ChannelParticipation.Enabled, Defaults.ChannelParticipation.Enabled)
+	require.Equal(t, cfg.ChannelParticipation.MaxRequestBodySize, Defaults.ChannelParticipation.MaxRequestBodySize)
 }

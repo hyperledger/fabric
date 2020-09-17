@@ -106,7 +106,8 @@ func NewRegistrar(
 	}
 
 	if config.ChannelParticipation.Enabled {
-		err := r.initializeJoinBlockFileRepo()
+		var err error
+		r.joinBlockFileRepo, err = InitJoinBlockFileRepo(&r.config)
 		if err != nil {
 			logger.Panicf("Error initializing joinblock file repo: %s", err)
 		}
@@ -115,20 +116,17 @@ func NewRegistrar(
 	return r
 }
 
-// initialize the channel participation API joinblock file repo. This creates
+// InitJoinBlockFileRepo initialize the channel participation API joinblock file repo. This creates
 // the fileRepoDir on the filesystem if it does not already exist.
-func (r *Registrar) initializeJoinBlockFileRepo() error {
-	fileRepoDir := filepath.Join(r.config.FileLedger.Location, "filerepo")
+func InitJoinBlockFileRepo(config *localconfig.TopLevel) (*filerepo.Repo, error) {
+	fileRepoDir := filepath.Join(config.FileLedger.Location, "filerepo")
 	logger.Infof("Channel Participation API enabled, registrar initializing with file repo %s", fileRepoDir)
 
 	joinBlockFileRepo, err := filerepo.New(fileRepoDir, "joinblock")
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	r.joinBlockFileRepo = joinBlockFileRepo
-
-	return nil
+	return joinBlockFileRepo, nil
 }
 
 func (r *Registrar) Initialize(consenters map[string]consensus.Consenter) {
@@ -698,6 +696,11 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 		}
 	}()
 
+	if !isAppChannel {
+		info, err := r.joinSystemChannel(ledgerRes, clusterConsenter, configBlock, channelID)
+		return info, err
+	}
+
 	isMember, err := clusterConsenter.IsChannelMember(configBlock)
 	if err != nil {
 		return types.ChannelInfo{}, errors.Wrap(err, "failed to determine cluster membership from join-block")
@@ -795,6 +798,44 @@ func (r *Registrar) createFollower(
 
 	logger.Debugf("Created follower.Chain: %v", info)
 	return fChain, info, nil
+}
+
+// Assumes the system channel join-block is saved to the file repo.
+func (r *Registrar) joinSystemChannel(
+	ledgerRes *ledgerResources,
+	clusterConsenter consensus.ClusterConsenter,
+	configBlock *cb.Block,
+	channelID string,
+) (types.ChannelInfo, error) {
+	logger.Infof("Joining system channel '%s', with config block number: %d", channelID, configBlock.Header.Number)
+
+	if configBlock.Header.Number == 0 {
+		if err := ledgerRes.Append(configBlock); err != nil {
+			return types.ChannelInfo{}, errors.Wrap(err, "error appending config block to the ledger")
+		}
+	}
+
+	// This is a degenerate ChainSupport holding an inactive.Chain, that will respond to a GET request with the info
+	// returned below. This is an indication to the user/admin that the orderer needs a restart, and prevent
+	// conflicting channel participation API actions on the orderer.
+	cs, err := newOnBoardingChainSupport(ledgerRes, r.config, r.bccsp)
+	if err != nil {
+		return types.ChannelInfo{}, errors.Wrap(err, "error creating onboarding chain support")
+	}
+	r.chains[channelID] = cs
+	r.systemChannel = cs
+	r.systemChannelID = channelID
+
+	info := types.ChannelInfo{
+		Name:   channelID,
+		URL:    "",
+		Height: ledgerRes.Height(),
+	}
+	info.ClusterRelation, info.Status = r.systemChannel.StatusReport()
+
+	logger.Infof("System channel creation pending: server requires restart! ChannelInfo: %v", info)
+
+	return info, nil
 }
 
 // RemoveChannel instructs the orderer to remove a channel.

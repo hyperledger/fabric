@@ -5,6 +5,8 @@ package server
 
 import (
 	"fmt"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/orderer/common/filerepo"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -295,6 +297,101 @@ func TestExtractBootstrapBlock(t *testing.T) {
 		b := extractBootstrapBlock(tt.config)
 		require.Truef(t, proto.Equal(tt.block, b), "wanted %v, got %v", tt.block, b)
 	}
+}
+
+func TestInitSystemChannelWithJoinBlock(t *testing.T) {
+	configPathCleanup := configtest.SetDevFabricConfigPath(t)
+	defer configPathCleanup()
+	genesisFile := produceGenesisFile(t, genesisconfig.SampleSingleMSPSoloProfile, "testchannelid")
+	defer os.Remove(genesisFile)
+
+	var (
+		config         *localconfig.TopLevel
+		cryptoProvider bccsp.BCCSP
+		ledgerFactory  blockledger.Factory
+		fileRepo       *filerepo.Repo
+		genesisBytes   []byte
+	)
+
+	setup := func() func() {
+		fileLedgerLocation, err := ioutil.TempDir("", "main_test-")
+		require.NoError(t, err)
+
+		config = &localconfig.TopLevel{
+			General: localconfig.General{
+				BootstrapMethod: "none",
+			},
+			FileLedger: localconfig.FileLedger{
+				Location: fileLedgerLocation,
+			},
+			ChannelParticipation: localconfig.ChannelParticipation{Enabled: true},
+		}
+
+		cryptoProvider, err = sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		require.NoError(t, err)
+
+		ledgerFactory, err = createLedgerFactory(config, &disabled.Provider{})
+		require.NoError(t, err)
+
+		fileRepo, err = multichannel.InitJoinBlockFileRepo(config)
+		require.NoError(t, err)
+		require.NotNil(t, fileRepo)
+
+		genesisBytes, err = ioutil.ReadFile(genesisFile)
+		require.NoError(t, err)
+		require.NotNil(t, genesisBytes)
+
+		return func() {
+			os.RemoveAll(fileLedgerLocation)
+		}
+	}
+
+	t.Run("No join-block", func(t *testing.T) {
+		cleanup := setup()
+		defer cleanup()
+
+		bootstrapBlock := initSystemChannelWithJoinBlock(config, cryptoProvider, ledgerFactory)
+		require.Nil(t, bootstrapBlock)
+		ledger, err := ledgerFactory.GetOrCreate("testchannelid")
+		require.NoError(t, err)
+		require.Equal(t, uint64(0), ledger.Height())
+	})
+
+	t.Run("With genesis join-block", func(t *testing.T) {
+		cleanup := setup()
+		defer cleanup()
+
+		err := fileRepo.Save("testchannelid", genesisBytes)
+		require.NoError(t, err)
+		bootstrapBlock := initSystemChannelWithJoinBlock(config, cryptoProvider, ledgerFactory)
+		require.NotNil(t, bootstrapBlock)
+		ledger, err := ledgerFactory.GetOrCreate("testchannelid")
+		require.NoError(t, err)
+		require.Equal(t, uint64(1), ledger.Height())
+		// Again, ledger already exists
+		bootstrapBlock = initSystemChannelWithJoinBlock(config, cryptoProvider, ledgerFactory)
+		require.NotNil(t, bootstrapBlock)
+		ledger, err = ledgerFactory.GetOrCreate("testchannelid")
+		require.NoError(t, err)
+		require.Equal(t, uint64(1), ledger.Height())
+	})
+
+	t.Run("With non-genesis join-block", func(t *testing.T) {
+		cleanup := setup()
+		defer cleanup()
+
+		block := protoutil.UnmarshalBlockOrPanic(genesisBytes)
+		block.Header.Number = 7
+		configBlockBytes := protoutil.MarshalOrPanic(block)
+		err := fileRepo.Save("testchannelid", configBlockBytes)
+		require.NoError(t, err)
+		bootstrapBlock := initSystemChannelWithJoinBlock(config, cryptoProvider, ledgerFactory)
+		require.NotNil(t, bootstrapBlock)
+		ledger, err := ledgerFactory.GetOrCreate("testchannelid")
+		require.NoError(t, err)
+		require.Equal(t, uint64(0), ledger.Height())
+	})
+
 }
 
 func TestExtractSysChanLastConfig(t *testing.T) {
