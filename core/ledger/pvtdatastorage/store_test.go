@@ -192,67 +192,109 @@ func TestStoreIteratorError(t *testing.T) {
 }
 
 func TestGetMissingDataInfo(t *testing.T) {
-	ledgerid := "TestGetMissingDataInfoFromPrioDeprioList"
-	btlPolicy := btltestutil.SampleBTLPolicy(
-		map[[2]string]uint64{
-			{"ns-1", "coll-1"}: 0,
-			{"ns-1", "coll-2"}: 0,
-		},
-	)
-	env := NewTestStoreEnv(t, ledgerid, btlPolicy, pvtDataConf())
-	defer env.Cleanup()
-	store := env.TestStore
+	setup := func(ledgerid string, c *PrivateDataConfig) *Store {
+		btlPolicy := btltestutil.SampleBTLPolicy(
+			map[[2]string]uint64{
+				{"ns-1", "coll-1"}: 0,
+				{"ns-1", "coll-2"}: 0,
+			},
+		)
 
-	// construct missing data for block 1
-	blk1MissingData := make(ledger.TxMissingPvtData)
-	blk1MissingData.Add(1, "ns-1", "coll-1", true)
-	blk1MissingData.Add(1, "ns-1", "coll-2", true)
+		env := NewTestStoreEnv(t, ledgerid, btlPolicy, c)
+		t.Cleanup(
+			func() {
+				defer env.Cleanup()
+			},
+		)
+		store := env.TestStore
 
-	require.NoError(t, store.Commit(0, nil, nil))
-	require.NoError(t, store.Commit(1, nil, blk1MissingData))
+		// construct missing data for block 1
+		blk1MissingData := make(ledger.TxMissingPvtData)
+		blk1MissingData.Add(1, "ns-1", "coll-1", true)
+		blk1MissingData.Add(1, "ns-1", "coll-2", true)
 
-	deprioritizedList := ledger.MissingPvtDataInfo{
-		1: ledger.MissingBlockPvtdataInfo{
-			1: {
-				{
-					Namespace:  "ns-1",
-					Collection: "coll-2",
+		require.NoError(t, store.Commit(0, nil, nil))
+		require.NoError(t, store.Commit(1, nil, blk1MissingData))
+
+		deprioritizedList := ledger.MissingPvtDataInfo{
+			1: ledger.MissingBlockPvtdataInfo{
+				1: {
+					{
+						Namespace:  "ns-1",
+						Collection: "coll-2",
+					},
 				},
 			},
-		},
-	}
-	require.NoError(t, store.CommitPvtDataOfOldBlocks(nil, deprioritizedList))
+		}
+		require.NoError(t, store.CommitPvtDataOfOldBlocks(nil, deprioritizedList))
 
-	expectedPrioMissingDataInfo := ledger.MissingPvtDataInfo{
-		1: ledger.MissingBlockPvtdataInfo{
-			1: {
-				{
-					Namespace:  "ns-1",
-					Collection: "coll-1",
+		return env.TestStore
+	}
+
+	t.Run("always access deprioritized missing data", func(t *testing.T) {
+		conf := pvtDataConf()
+		conf.DeprioritizedDataReconcilerInterval = 0
+		store := setup("testGetMissingDataInfoFromDeprioList", conf)
+
+		expectedDeprioMissingDataInfo := ledger.MissingPvtDataInfo{
+			1: ledger.MissingBlockPvtdataInfo{
+				1: {
+					{
+						Namespace:  "ns-1",
+						Collection: "coll-2",
+					},
 				},
 			},
-		},
-	}
+		}
 
-	expectedDeprioMissingDataInfo := ledger.MissingPvtDataInfo{
-		1: ledger.MissingBlockPvtdataInfo{
-			1: {
-				{
-					Namespace:  "ns-1",
-					Collection: "coll-2",
+		for i := 0; i < 2; i++ {
+			assertMissingDataInfo(t, store, expectedDeprioMissingDataInfo, 2)
+		}
+	})
+
+	t.Run("change the deprioritized missing data access time", func(t *testing.T) {
+		conf := pvtDataConf()
+		conf.DeprioritizedDataReconcilerInterval = 300 * time.Minute
+		store := setup("testGetMissingDataInfoFromPrioAndDeprioList", conf)
+
+		expectedPrioMissingDataInfo := ledger.MissingPvtDataInfo{
+			1: ledger.MissingBlockPvtdataInfo{
+				1: {
+					{
+						Namespace:  "ns-1",
+						Collection: "coll-1",
+					},
 				},
 			},
-		},
-	}
+		}
 
-	assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
+		expectedDeprioMissingDataInfo := ledger.MissingPvtDataInfo{
+			1: ledger.MissingBlockPvtdataInfo{
+				1: {
+					{
+						Namespace:  "ns-1",
+						Collection: "coll-2",
+					},
+				},
+			},
+		}
 
-	store.accessDeprioMissingDataAfter = time.Now()
-	expectedNextAccessDeprioMissingDataTime := time.Now().Add(store.deprioritizedDataReconcilerInterval)
-	assertMissingDataInfo(t, store, expectedDeprioMissingDataInfo, 2)
+		for i := 0; i < 3; i++ {
+			assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
+		}
 
-	require.True(t, store.accessDeprioMissingDataAfter.After(expectedNextAccessDeprioMissingDataTime))
-	assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
+		store.accessDeprioMissingDataAfter = time.Now().Add(-time.Second)
+		lesserThanNextAccessTime := time.Now().Add(store.deprioritizedDataReconcilerInterval).Add(-2 * time.Second)
+		greaterThanNextAccessTime := time.Now().Add(store.deprioritizedDataReconcilerInterval).Add(2 * time.Second)
+		assertMissingDataInfo(t, store, expectedDeprioMissingDataInfo, 2)
+
+		require.True(t, store.accessDeprioMissingDataAfter.After(lesserThanNextAccessTime))
+		require.False(t, store.accessDeprioMissingDataAfter.After(greaterThanNextAccessTime))
+		for i := 0; i < 3; i++ {
+			assertMissingDataInfo(t, store, expectedPrioMissingDataInfo, 2)
+		}
+	})
+
 }
 
 func TestExpiryDataNotIncluded(t *testing.T) {
