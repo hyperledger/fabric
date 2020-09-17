@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package node
 
 import (
-	"fmt"
 	"path/filepath"
 	"time"
 
@@ -45,7 +44,6 @@ func ledgerConfig() *ledger.Config {
 	deprioritizedDataReconcilerInterval := 60 * time.Minute
 	if viper.IsSet("ledger.pvtdataStore.deprioritizedDataReconcilerInterval") {
 		deprioritizedDataReconcilerInterval = viper.GetDuration("ledger.pvtdataStore.deprioritizedDataReconcilerInterval")
-		fmt.Println(deprioritizedDataReconcilerInterval)
 	}
 
 	rootFSPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData")
