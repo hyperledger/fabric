@@ -76,5 +76,5 @@ func AddOrdererFlags(cmd *cobra.Command) {
 	flags.DurationVarP(&connTimeout, "connTimeout",
 		"", 3*time.Second, "Timeout for client to connect")
 	flags.DurationVarP(&tlsHandshakeTimeShift, "tlsHandshakeTimeShift", "", 0,
-		"The amount of time to shift backwards for certificate expiration checks during TLS handshakes")
+		"The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint")
 }
