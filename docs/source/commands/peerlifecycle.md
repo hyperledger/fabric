@@ -74,7 +74,7 @@ Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
 
 Use "peer lifecycle chaincode [command] --help" for more information about a command.
 ```
@@ -105,7 +105,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
 ```
 
 
@@ -131,7 +131,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
 ```
 
 
@@ -158,7 +158,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
 ```
 
 
@@ -186,7 +186,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
 ```
 
 
@@ -225,7 +225,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
 ```
 
 
@@ -255,7 +255,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
 ```
 
 
@@ -292,7 +292,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
 ```
 
 
@@ -330,7 +330,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
 ```
 
 
@@ -359,7 +359,7 @@ Global Flags:
   -o, --orderer string                      Ordering service endpoint
       --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
       --tls                                 Use TLS when communicating with the orderer endpoint
-      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
 ```
 
 
