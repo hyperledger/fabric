@@ -88,7 +88,7 @@ In addition to the standard :doc:`prereqs` for Fabric, this tutorial leverages t
 
   .. code:: bash
 
-    sudo apt install build-essentials
+    sudo apt install build-essential
 
 Set up the blockchain network
 -----------------------------
