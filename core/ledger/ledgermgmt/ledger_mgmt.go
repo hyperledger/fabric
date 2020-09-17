@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 )
 
@@ -31,9 +32,13 @@ var ErrLedgerMgmtNotInitialized = errors.New("ledger mgmt should be initialized 
 
 // LedgerMgr manages ledgers for all channels
 type LedgerMgr struct {
-	lock               sync.Mutex
-	openedLedgers      map[string]ledger.PeerLedger
-	ledgerProvider     ledger.PeerLedgerProvider
+	creationLock           sync.Mutex
+	createFromSnapshotInfo string
+
+	lock           sync.Mutex
+	openedLedgers  map[string]ledger.PeerLedger
+	ledgerProvider ledger.PeerLedgerProvider
+
 	ebMetadataProvider MetadataProvider
 }
 
@@ -93,9 +98,17 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 }
 
 // CreateLedger creates a new ledger with the given genesis block.
-// This function guarantees that the creation of ledger and committing the genesis block would an atomic action
-// The channel id retrieved from the genesis block is treated as a ledger id
+// This function guarantees that the creation of ledger and committing the genesis block would an atomic action.
+// The channel id retrieved from the genesis block is treated as a ledger id.
+// It returns an error if another ledger is being created from a snapshot.
 func (m *LedgerMgr) CreateLedger(id string, genesisBlock *common.Block) (ledger.PeerLedger, error) {
+	m.creationLock.Lock()
+	defer m.creationLock.Unlock()
+
+	if m.createFromSnapshotInfo != "" {
+		return nil, errors.Errorf("a ledger is being created from a snapshot at %s. Call ledger creation again after it is done.", m.createFromSnapshotInfo)
+	}
+
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	logger.Infof("Creating ledger [%s] with genesis block", id)
@@ -112,10 +125,40 @@ func (m *LedgerMgr) CreateLedger(id string, genesisBlock *common.Block) (ledger.
 	}, nil
 }
 
-// CreateLedgerFromSnapshot creates a new ledger with the given snapshot and returns the ledger and channel id.
-// This function guarantees that the creation of ledger and all ledger dbs would be an atomic action.
-// The channel id retrieved from the snapshot metadata is treated as a ledger id
-func (m *LedgerMgr) CreateLedgerFromSnapshot(snapshotDir string) (ledger.PeerLedger, string, error) {
+// CreateLedgerFromSnapshot creates a new ledger with the given snapshot and executes the callback function
+// after the ledger is created. This function launches to goroutine to create the ledger and call the callback func.
+// All ledger dbs would be created in an atomic action. The channel id retrieved from the snapshot metadata
+// is treated as a ledger id. It returns an error if another ledger is being created from a snapshot.
+func (m *LedgerMgr) CreateLedgerFromSnapshot(snapshotDir string, channelCallback func(ledger.PeerLedger, string)) error {
+	// verify snapshotDir exists and is not empty
+	empty, err := fileutil.DirEmpty(snapshotDir)
+	if err != nil {
+		return err
+	}
+	if empty {
+		return errors.Errorf("snapshot dir %s is empty", snapshotDir)
+	}
+
+	if err := m.setCreateFromSnapshotInfo(snapshotDir); err != nil {
+		return err
+	}
+
+	go func() {
+		defer m.unsetCreateFromSnapshotInfo()
+
+		ledger, cid, err := m.createFromSnapshot(snapshotDir)
+		if err != nil {
+			logger.Errorw("Error creating ledger from snapshot", "snapshotDir", snapshotDir, "error", err)
+			return
+		}
+
+		channelCallback(ledger, cid)
+	}()
+
+	return nil
+}
+
+func (m *LedgerMgr) createFromSnapshot(snapshotDir string) (ledger.PeerLedger, string, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	logger.Infof("Creating ledger from snapshot at %s", snapshotDir)
@@ -130,6 +173,28 @@ func (m *LedgerMgr) CreateLedgerFromSnapshot(snapshotDir string) (ledger.PeerLed
 		id:         cid,
 		PeerLedger: l,
 	}, cid, nil
+}
+
+// setCreateFromSnapshotInfo sets createFromSnapshotInfo to the snapshotDir to indicate
+// a CreateLedgerrFromSnapshot is running so that other CreateLedger or CreateLedgerFromSnapshot
+// calls will not be allowed.
+func (m *LedgerMgr) setCreateFromSnapshotInfo(snapshotDir string) error {
+	m.creationLock.Lock()
+	defer m.creationLock.Unlock()
+	if m.createFromSnapshotInfo != "" {
+		return errors.Errorf("a ledger is being created from a snapshot at %s. Call ledger creation again after it is done.", m.createFromSnapshotInfo)
+	}
+	m.createFromSnapshotInfo = snapshotDir
+	return nil
+}
+
+// unsetCreateFromSnapshotInfo sets createFromSnapshotInfo to empty string to indicate
+// no CreateLedgerrFromSnapshot is running so that other CreateLedger or CreateLedgerFromSnapshot
+// calls will be allowed.
+func (m *LedgerMgr) unsetCreateFromSnapshotInfo() {
+	m.creationLock.Lock()
+	defer m.creationLock.Unlock()
+	m.createFromSnapshotInfo = ""
 }
 
 // OpenLedger returns a ledger for the given id
@@ -159,6 +224,14 @@ func (m *LedgerMgr) GetLedgerIDs() ([]string, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	return m.ledgerProvider.List()
+}
+
+// GetCreateFromSnapshotInfo returns the snapshot dir if a ledger is being created from a snapshot.
+// Otherwise, it returns an empty string.
+func (m *LedgerMgr) GetCreateFromSnapshotInfo() string {
+	m.creationLock.Lock()
+	defer m.creationLock.Unlock()
+	return m.createFromSnapshotInfo
 }
 
 // Close closes all the opened ledgers and any resources held for ledger management

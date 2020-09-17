@@ -13,7 +13,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -226,8 +228,13 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	defer cleanup()
 
 	var initArg string
+	var initLock sync.Mutex
 	peerInstance.Initialize(
-		func(cid string) { initArg = cid },
+		func(cid string) {
+			initLock.Lock()
+			initArg = cid
+			initLock.Unlock()
+		},
 		nil,
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		&ledgermocks.DeployedChaincodeInfoProvider{},
@@ -244,10 +251,16 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	defer os.Remove(tempdir)
 
 	snapshotDir := ledgermgmttest.CreateSnapshotWithGenesisBlock(t, tempdir, testChannelID, &ConfigTxProcessor{})
-	err = peerInstance.CreateChannelFromSnaphotshot(snapshotDir, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+	err = peerInstance.CreateChannelFromSnapshot(snapshotDir, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 	require.NoError(t, err)
 
-	require.Equal(t, testChannelID, initArg)
+	// wait until channel init func is called
+	checkChannelInit := func() bool {
+		initLock.Lock()
+		defer initLock.Unlock()
+		return initArg == testChannelID
+	}
+	require.Eventually(t, checkChannelInit, time.Minute, time.Second)
 
 	// verify ledger created
 	ledger := peerInstance.GetLedger(testChannelID)
