@@ -51,6 +51,9 @@ func TestQueries(t *testing.T) {
 		{&compositeKey{ns: "ns1", key: "key1", blockNum: 20}, []byte("val1_20")},
 		{&compositeKey{ns: "ns1", key: "key1", blockNum: 10}, []byte("val1_10")},
 		{&compositeKey{ns: "ns1", key: "key1", blockNum: 0}, []byte("val1_0")},
+		{&compositeKey{ns: "ns2", key: "key2", blockNum: 200}, []byte("val200")},
+		{&compositeKey{ns: "ns3", key: "key3", blockNum: 300}, []byte("val300")},
+		{&compositeKey{ns: "ns3", key: "key4", blockNum: 400}, []byte("val400")},
 	}
 	populateDBWithSampleData(t, db, sampleData)
 	// access most recent entry below ht=[45] - expected item is the one committed at ht = 40
@@ -58,12 +61,15 @@ func TestQueries(t *testing.T) {
 	checkRecentEntryBelow(t, "testcase-query3", db, "ns1", "key1", 35, sampleData[1])
 	checkRecentEntryBelow(t, "testcase-query4", db, "ns1", "key1", 30, sampleData[2])
 	checkRecentEntryBelow(t, "testcase-query5", db, "ns1", "key1", 10, sampleData[4])
+	checkRecentEntryBelow(t, "testcase-query6", db, "ns2", "key2", 2000, sampleData[5])
+	checkRecentEntryBelow(t, "testcase-query7", db, "ns2", "key2", 200, nil)
+	checkRecentEntryBelow(t, "testcase-query8", db, "ns3", "key3", 299, nil)
 
-	checkEntryAt(t, "testcase-query6", db, "ns1", "key1", 40, sampleData[0])
-	checkEntryAt(t, "testcase-query7", db, "ns1", "key1", 30, sampleData[1])
-	checkEntryAt(t, "testcase-query8", db, "ns1", "key1", 0, sampleData[4])
-	checkEntryAt(t, "testcase-query9", db, "ns1", "key1", 35, nil)
-	checkEntryAt(t, "testcase-query10", db, "ns1", "key1", 45, nil)
+	checkEntryAt(t, "testcase-query9", db, "ns1", "key1", 40, sampleData[0])
+	checkEntryAt(t, "testcase-query10", db, "ns1", "key1", 30, sampleData[1])
+	checkEntryAt(t, "testcase-query11", db, "ns1", "key1", 0, sampleData[4])
+	checkEntryAt(t, "testcase-query12", db, "ns1", "key1", 35, nil)
+	checkEntryAt(t, "testcase-query13", db, "ns1", "key1", 45, nil)
 
 	t.Run("test-iter-error-path", func(t *testing.T) {
 		provider.Close()
