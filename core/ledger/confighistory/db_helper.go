@@ -75,8 +75,11 @@ func (d *db) mostRecentEntryBelow(blockNum uint64, ns, key string) (*compositeKV
 	if blockNum == 0 {
 		return nil, errors.New("blockNum should be greater than 0")
 	}
+
 	startKey := encodeCompositeKey(ns, key, blockNum-1)
-	itr, err := d.GetIterator(startKey, nil)
+	stopKey := append(encodeCompositeKey(ns, key, 0), byte(0))
+
+	itr, err := d.GetIterator(startKey, stopKey)
 	if err != nil {
 		return nil, err
 	}
