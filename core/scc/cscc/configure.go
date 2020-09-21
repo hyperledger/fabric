@@ -267,7 +267,7 @@ func (e *PeerConfiger) JoinChainBySnapshot(
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
 ) pb.Response {
-	if err := e.peer.CreateChannelFromSnaphotshot(snapshotDir, deployedCCInfoProvider, lr, nr); err != nil {
+	if err := e.peer.CreateChannelFromSnapshot(snapshotDir, deployedCCInfoProvider, lr, nr); err != nil {
 		return shim.Error(err.Error())
 	}
 
