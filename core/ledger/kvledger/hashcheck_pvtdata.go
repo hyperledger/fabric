@@ -10,27 +10,47 @@ import (
 	"bytes"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
 // constructValidAndInvalidPvtData computes the valid pvt data and hash mismatch list
-// from a received pvt data list of old blocks.
-func constructValidAndInvalidPvtData(reconciledPvtdata []*ledger.ReconciledPvtdata, blockStore *blkstorage.BlockStore) (
+// from a received pvt data list of old blocks. The reconciled data elements that belong
+// to a block which is not available in the blockstore (i.e., the block is prior to or equal
+// to the lastBlockInBootSnapshot), the boot KV hashes in the private data store are used for
+// verifying the hashes. Further, in this case, the write-set of a collection is trimmed in order
+// to remove the key-values that were not present in the snapshot (most likely because, they
+//	were over-written in a later version)
+func constructValidAndInvalidPvtData(
+	reconciledPvtdata []*ledger.ReconciledPvtdata,
+	blockStore *blkstorage.BlockStore,
+	pvtdataStore *pvtdatastorage.Store,
+	lastBlockInBootSnapshot uint64,
+) (
 	map[uint64][]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
 ) {
-	// for each block, for each transaction, retrieve the txEnvelope to
-	// compare the hash of pvtRwSet in the block and the hash of the received
-	// txPvtData. On a mismatch, add an entry to hashMismatch list.
+	// for each block, for each transaction, verify the hash of pvtRwSet
+	// present in the received data txPvtData.
+	// On a mismatch, add an entry to hashMismatch list.
 	// On a match, add the pvtData to the validPvtData list
 	validPvtData := make(map[uint64][]*ledger.TxPvtData)
 	var invalidPvtData []*ledger.PvtdataHashMismatch
 
 	for _, pvtdata := range reconciledPvtdata {
-		validData, invalidData, err := findValidAndInvalidPvtdata(pvtdata, blockStore)
+		var validData []*ledger.TxPvtData
+		var invalidData []*ledger.PvtdataHashMismatch
+		var err error
+
+		if pvtdata.BlockNum <= lastBlockInBootSnapshot {
+			validData, invalidData, err = verifyHashesAndTrimWriteSetViaBootKVHashes(pvtdata, pvtdataStore)
+		} else {
+			validData, invalidData, err = verifyHashesFromBlockStore(pvtdata, blockStore)
+		}
 		if err != nil {
 			return nil, nil, err
 		}
@@ -42,7 +62,7 @@ func constructValidAndInvalidPvtData(reconciledPvtdata []*ledger.ReconciledPvtda
 	return validPvtData, invalidPvtData, nil
 }
 
-func findValidAndInvalidPvtdata(reconciledPvtdata *ledger.ReconciledPvtdata, blockStore *blkstorage.BlockStore) (
+func verifyHashesFromBlockStore(reconciledPvtdata *ledger.ReconciledPvtdata, blockStore *blkstorage.BlockStore) (
 	[]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
 ) {
 	var validPvtData []*ledger.TxPvtData
@@ -163,13 +183,109 @@ func findInvalidNsPvtData(nsRwset *rwset.NsPvtReadWriteSet, txRWSet *rwsetutil.T
 
 		if !bytes.Equal(util.ComputeSHA256(collPvtRwset.Rwset), rwsetHash) {
 			invalidPvtData = append(invalidPvtData, &ledger.PvtdataHashMismatch{
-				BlockNum:     blkNum,
-				TxNum:        txNum,
-				Namespace:    ns,
-				Collection:   coll,
-				ExpectedHash: rwsetHash})
+				BlockNum:   blkNum,
+				TxNum:      txNum,
+				Namespace:  ns,
+				Collection: coll})
 			invalidNsColl = append(invalidNsColl, &nsColl{ns, coll})
 		}
 	}
 	return invalidPvtData, invalidNsColl
+}
+
+func verifyHashesAndTrimWriteSetViaBootKVHashes(reconciledPvtdata *ledger.ReconciledPvtdata, pvtdataStore *pvtdatastorage.Store) (
+	[]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
+) {
+	var validPvtData []*ledger.TxPvtData
+	var invalidPvtData []*ledger.PvtdataHashMismatch
+
+	blkNum := reconciledPvtdata.BlockNum
+
+	for txNum, txData := range reconciledPvtdata.WriteSets { // Tx loop
+		reconTx, err := rwsetutil.TxPvtRwSetFromProtoMsg(txData.WriteSet)
+		if err != nil {
+			continue
+		}
+
+		trimmedTx := &rwsetutil.TxPvtRwSet{}
+
+		for _, reconNS := range reconTx.NsPvtRwSet { // Ns Loop
+			trimmedNs := &rwsetutil.NsPvtRwSet{
+				NameSpace: reconNS.NameSpace,
+			}
+
+			for _, reconColl := range reconNS.CollPvtRwSets { // coll loop
+				if reconColl.KvRwSet == nil || len(reconColl.KvRwSet.Writes) == 0 {
+					continue
+				}
+
+				expectedKVHashes, err := pvtdataStore.FetchBootKVHashes(blkNum, txNum, reconNS.NameSpace, reconColl.CollectionName)
+				if err != nil {
+					return nil, nil, err
+				}
+				if len(expectedKVHashes) == 0 {
+					continue
+				}
+
+				filteredInKVs := []*kvrwset.KVWrite{}
+				anyKVHashMismatch := false
+				numKVsRecieved := 0
+
+				for _, reconKV := range reconColl.KvRwSet.Writes {
+					reconKeyHash := util.ComputeSHA256([]byte(reconKV.Key))
+					reconValHash := util.ComputeSHA256(reconKV.Value)
+
+					expectedValHash, ok := expectedKVHashes[string(reconKeyHash)]
+					if ok {
+						numKVsRecieved++
+						if bytes.Equal(expectedValHash, reconValHash) {
+							filteredInKVs = append(filteredInKVs, reconKV)
+						} else {
+							anyKVHashMismatch = true
+							break
+						}
+					}
+				}
+
+				if anyKVHashMismatch || numKVsRecieved < len(expectedKVHashes) {
+					invalidPvtData = append(invalidPvtData,
+						&ledger.PvtdataHashMismatch{
+							BlockNum:   blkNum,
+							TxNum:      txNum,
+							Namespace:  reconNS.NameSpace,
+							Collection: reconColl.CollectionName,
+						},
+					)
+					continue
+				}
+
+				trimmedNs.CollPvtRwSets = append(trimmedNs.CollPvtRwSets,
+					&rwsetutil.CollPvtRwSet{
+						CollectionName: reconColl.CollectionName,
+						KvRwSet: &kvrwset.KVRWSet{
+							Writes: filteredInKVs,
+						},
+					},
+				)
+			} // end coll loop
+
+			if len(trimmedNs.CollPvtRwSets) > 0 {
+				trimmedTx.NsPvtRwSet = append(trimmedTx.NsPvtRwSet, trimmedNs)
+			}
+		} // end Ns loop
+
+		if len(trimmedTx.NsPvtRwSet) > 0 {
+			trimmedTxProto, err := trimmedTx.ToProtoMsg()
+			if err != nil {
+				return nil, nil, err
+			}
+			validPvtData = append(validPvtData,
+				&ledger.TxPvtData{
+					SeqInBlock: txNum,
+					WriteSet:   trimmedTxProto,
+				},
+			)
+		}
+	} // end Tx loop
+	return validPvtData, invalidPvtData, nil
 }

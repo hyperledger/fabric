@@ -15,7 +15,7 @@ import (
 
 type Mgr struct {
 	*confighistory.Mgr
-	mockCCInfoProvider *mock.DeployedChaincodeInfoProvider
+	MockCCInfoProvider *mock.DeployedChaincodeInfoProvider
 }
 
 func NewMgr(dbPath string) (*Mgr, error) {
@@ -26,13 +26,13 @@ func NewMgr(dbPath string) (*Mgr, error) {
 	}
 	return &Mgr{
 		Mgr:                configHistory,
-		mockCCInfoProvider: mockCCInfoProvider,
+		MockCCInfoProvider: mockCCInfoProvider,
 	}, nil
 }
 
 func (m *Mgr) Setup(ledgerID, namespace string, configHistory map[uint64][]*peer.StaticCollectionConfig) error {
 	for committingBlk, config := range configHistory {
-		m.mockCCInfoProvider.UpdatedChaincodesReturns(
+		m.MockCCInfoProvider.UpdatedChaincodesReturns(
 			[]*ledger.ChaincodeLifecycleInfo{
 				{
 					Name: namespace,
@@ -40,7 +40,7 @@ func (m *Mgr) Setup(ledgerID, namespace string, configHistory map[uint64][]*peer
 			}, nil,
 		)
 
-		m.mockCCInfoProvider.ChaincodeInfoReturns(
+		m.MockCCInfoProvider.ChaincodeInfoReturns(
 			&ledger.DeployedChaincodeInfo{
 				Name:                        namespace,
 				ExplicitCollectionConfigPkg: BuildCollConfigPkg(config),

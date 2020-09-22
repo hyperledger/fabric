@@ -752,7 +752,14 @@ func (l *kvLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.Reconcil
 	logger.Debugf("[%s:] Comparing pvtData of [%d] old blocks against the hashes in transaction's rwset to find valid and invalid data",
 		l.ledgerID, len(reconciledPvtdata))
 
-	hashVerifiedPvtData, hashMismatches, err := constructValidAndInvalidPvtData(reconciledPvtdata, l.blockStore)
+	lastBlockInBootstrapSnapshot := uint64(0)
+	if l.bootSnapshotMetadata != nil {
+		lastBlockInBootstrapSnapshot = l.bootSnapshotMetadata.LastBlockNumber
+	}
+
+	hashVerifiedPvtData, hashMismatches, err := constructValidAndInvalidPvtData(
+		reconciledPvtdata, l.blockStore, l.pvtdataStore, lastBlockInBootstrapSnapshot,
+	)
 	if err != nil {
 		return nil, err
 	}

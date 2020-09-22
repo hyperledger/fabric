@@ -138,7 +138,7 @@ func (b *RWSetBuilder) GetTxSimulationResults() (*ledger.TxSimulationResults, er
 
 	// Populate the collection-level hashes into pub rwset and compute the proto bytes for pvt rwset
 	if pvtData != nil {
-		if pvtDataProto, err = pvtData.toProtoMsg(); err != nil {
+		if pvtDataProto, err = pvtData.ToProtoMsg(); err != nil {
 			return nil, err
 		}
 		for _, ns := range pvtDataProto.NsPvtRwset {
