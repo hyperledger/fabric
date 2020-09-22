@@ -103,7 +103,8 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 		require.NoError(t, ledgerMgr.CreateLedgerFromSnapshot(snapshotDir, callback))
 
 		ledgerCreated := func() bool {
-			return ledgerMgr.GetCreateFromSnapshotInfo() == ""
+			status := ledgerMgr.JoinBySnapshotStatus()
+			return !status.InProgress && status.BootstrappingSnapshotDir == ""
 		}
 
 		require.Eventually(t, ledgerCreated, time.Minute, time.Second)
@@ -149,10 +150,11 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 		require.NoError(t, ledgerMgr.CreateLedgerFromSnapshot(newSnapshotDir, callback))
 
 		// wait until CreateFromSnapshot is done
-		createLedgerIsDone := func() bool {
-			return ledgerMgr.GetCreateFromSnapshotInfo() == ""
+		ledgerCreated := func() bool {
+			status := ledgerMgr.JoinBySnapshotStatus()
+			return !status.InProgress && status.BootstrappingSnapshotDir == ""
 		}
-		require.Eventually(t, createLedgerIsDone, time.Minute, time.Second)
+		require.Eventually(t, ledgerCreated, time.Minute, time.Second)
 
 		// callback should not be called and ledger should not be generated
 		require.Equal(t, 0, callbackCounter)
@@ -228,7 +230,8 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 
 	waitCh <- struct{}{}
 	ledgerCreated := func() bool {
-		return ledgerMgr2.GetCreateFromSnapshotInfo() == ""
+		status := ledgerMgr.JoinBySnapshotStatus()
+		return !status.InProgress && status.BootstrappingSnapshotDir == ""
 	}
 	require.Eventually(t, ledgerCreated, time.Minute, time.Second)
 
@@ -245,7 +248,8 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 
 	// wait until ledger is created from snapshotDir2
 	ledgerCreated = func() bool {
-		return ledgerMgr2.GetCreateFromSnapshotInfo() == ""
+		status := ledgerMgr2.JoinBySnapshotStatus()
+		return !status.InProgress && status.BootstrappingSnapshotDir == ""
 	}
 	require.Eventually(t, ledgerCreated, time.Minute, time.Second)
 

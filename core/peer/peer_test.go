@@ -13,11 +13,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -228,12 +228,11 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	defer cleanup()
 
 	var initArg string
-	var initLock sync.Mutex
+	waitCh := make(chan struct{})
 	peerInstance.Initialize(
 		func(cid string) {
-			initLock.Lock()
+			<-waitCh
 			initArg = cid
-			initLock.Unlock()
 		},
 		nil,
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
@@ -254,13 +253,20 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	err = peerInstance.CreateChannelFromSnapshot(snapshotDir, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 	require.NoError(t, err)
 
-	// wait until channel init func is called
-	checkChannelInit := func() bool {
-		initLock.Lock()
-		defer initLock.Unlock()
-		return initArg == testChannelID
+	expectedStatus := &pb.JoinBySnapshotStatus{InProgress: true, BootstrappingSnapshotDir: snapshotDir}
+	require.Equal(t, expectedStatus, peerInstance.JoinBySnaphotStatus())
+
+	// write a msg to waitCh to unblock channel init func
+	waitCh <- struct{}{}
+
+	// wait until ledger creation is done
+	ledgerCreationDone := func() bool {
+		return !peerInstance.JoinBySnaphotStatus().InProgress
 	}
-	require.Eventually(t, checkChannelInit, time.Minute, time.Second)
+	require.Eventually(t, ledgerCreationDone, time.Minute, time.Second)
+
+	// verify channel init func is called
+	require.Equal(t, testChannelID, initArg)
 
 	// verify ledger created
 	ledger := peerInstance.GetLedger(testChannelID)
@@ -269,6 +275,9 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	bcInfo, err := ledger.GetBlockchainInfo()
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), bcInfo.GetHeight())
+
+	expectedStatus = &pb.JoinBySnapshotStatus{InProgress: false, BootstrappingSnapshotDir: ""}
+	require.Equal(t, expectedStatus, peerInstance.JoinBySnaphotStatus())
 
 	// Bad ledger
 	ledger = peerInstance.GetLedger("BogusChain")
