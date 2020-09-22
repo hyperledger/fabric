@@ -58,6 +58,8 @@ func (s *Store) CommitPvtDataOfOldBlocks(
 		return err
 	}
 
+	p.prepareBootKVHashesDeletions()
+
 	batch, err := p.constructDBUpdateBatch()
 	if err != nil {
 		return err
@@ -179,6 +181,24 @@ func (p *oldBlockDataProcessor) prepareMissingDataEntriesToReflectPriority(depri
 	return nil
 }
 
+func (p *oldBlockDataProcessor) prepareBootKVHashesDeletions() {
+	if !p.bootsnapshotInfo.createdFromSnapshot {
+		return
+	}
+	for dataKey := range p.entries.dataEntries {
+		if dataKey.blkNum <= p.bootsnapshotInfo.lastBlockInSnapshot {
+			p.entries.bootKVHashesDeletions = append(p.entries.bootKVHashesDeletions,
+				&bootKVHashesKey{
+					blkNum: dataKey.blkNum,
+					txNum:  dataKey.txNum,
+					ns:     dataKey.ns,
+					coll:   dataKey.coll,
+				},
+			)
+		}
+	}
+}
+
 func (p *oldBlockDataProcessor) constructExpiryKey(dataEntry *dataEntry) (expiryKey, error) {
 	// get the expiryBlk number to construct the expiryKey
 	nsCollBlk := dataEntry.key.nsCollBlk
@@ -272,6 +292,8 @@ func (p *oldBlockDataProcessor) constructDBUpdateBatch() (*leveldbhelper.UpdateB
 		return nil, errors.WithMessage(err, "error while adding eligible deprioritized missing data entries to the update batch")
 	}
 
+	p.entries.addBootKVHashDeletionsTo(batch)
+
 	return batch, nil
 }
 
@@ -280,6 +302,7 @@ type entriesForPvtDataOfOldBlocks struct {
 	expiryEntries                   map[expiryKey]*ExpiryData
 	prioritizedMissingDataEntries   map[nsCollBlk]*bitset.BitSet
 	deprioritizedMissingDataEntries map[nsCollBlk]*bitset.BitSet
+	bootKVHashesDeletions           []*bootKVHashesKey
 }
 
 func (e *entriesForPvtDataOfOldBlocks) addDataEntriesTo(batch *leveldbhelper.UpdateBatch) error {
@@ -354,4 +377,10 @@ func (e *entriesForPvtDataOfOldBlocks) addElgDeprioMissingDataEntriesTo(batch *l
 		batch.Put(key, val)
 	}
 	return nil
+}
+
+func (e *entriesForPvtDataOfOldBlocks) addBootKVHashDeletionsTo(batch *leveldbhelper.UpdateBatch) {
+	for _, k := range e.bootKVHashesDeletions {
+		batch.Delete(encodeBootKVHashesKey(k))
+	}
 }

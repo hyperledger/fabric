@@ -52,7 +52,7 @@ func NewTestStoreEnv(
 	conf.StorePath = storeDir
 	testStoreProvider, err := NewProvider(conf)
 	require.NoError(t, err)
-	testStore, err := testStoreProvider.OpenStore(ledgerid, &Initializer{})
+	testStore, err := testStoreProvider.OpenStore(ledgerid)
 	testStore.Init(btlPolicy)
 	require.NoError(t, err)
 	return &StoreEnv{t, testStoreProvider, testStore, ledgerid, btlPolicy, conf}
@@ -64,7 +64,7 @@ func (env *StoreEnv) CloseAndReopen() {
 	env.TestStoreProvider.Close()
 	env.TestStoreProvider, err = NewProvider(env.conf)
 	require.NoError(env.t, err)
-	env.TestStore, err = env.TestStoreProvider.OpenStore(env.ledgerid, &Initializer{})
+	env.TestStore, err = env.TestStoreProvider.OpenStore(env.ledgerid)
 	env.TestStore.Init(env.btlPolicy)
 	require.NoError(env.t, err)
 }

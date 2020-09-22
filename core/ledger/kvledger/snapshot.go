@@ -273,15 +273,28 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 			errors.WithMessage(err, "error while importing data into config history Mgr"),
 		)
 	}
+
+	configHistoryRetiever := p.configHistoryMgr.GetRetriever(ledgerID)
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(
 		&mostRecentCollectionConfigFetcher{
 			DeployedChaincodeInfoProvider: p.initializer.DeployedChaincodeInfoProvider,
-			Retriever:                     p.configHistoryMgr.GetRetriever(ledgerID),
+			Retriever:                     configHistoryRetiever,
 		},
 	)
 	purgeMgrBuilder := pvtstatepurgemgmt.NewPurgeMgrBuilder(ledgerID, btlPolicy, p.bookkeepingProvider)
 
-	if err = p.dbProvider.ImportFromSnapshot(ledgerID, savepoint, snapshotDir, purgeMgrBuilder); err != nil {
+	snapshotDataImporter, err := p.pvtdataStoreProvider.SnapshotDataImporterFor(
+		ledgerID, lastBlockNum, p.initializer.MembershipInfoProvider, configHistoryRetiever,
+	)
+	if err != nil {
+		return nil, "", p.deleteUnderConstructionLedger(
+			nil,
+			ledgerID,
+			errors.WithMessage(err, "error while getting pvtdata hashes consumer for pvtdata store"),
+		)
+	}
+
+	if err = p.dbProvider.ImportFromSnapshot(ledgerID, savepoint, snapshotDir, purgeMgrBuilder, snapshotDataImporter); err != nil {
 		return nil, "", p.deleteUnderConstructionLedger(
 			nil,
 			ledgerID,

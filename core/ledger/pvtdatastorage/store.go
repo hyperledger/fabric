@@ -17,7 +17,9 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/confighistory"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
+	"github.com/pkg/errors"
 	"github.com/willf/bitset"
 )
 
@@ -53,8 +55,10 @@ type Store struct {
 
 	isEmpty            bool
 	lastCommittedBlock uint64
-	purgerLock         sync.Mutex
-	collElgProcSync    *collElgProcSync
+	bootsnapshotInfo   *bootsnapshotInfo
+
+	purgerLock      sync.Mutex
+	collElgProcSync *collElgProcSync
 	// After committing the pvtdata of old blocks,
 	// the `isLastUpdatedOldBlocksSet` is set to true.
 	// Once the stateDB is updated with these pvtdata,
@@ -70,9 +74,9 @@ type Store struct {
 	accessDeprioMissingDataAfter        time.Time
 }
 
-type Initializer struct {
-	CreatedFromSnapshot bool
-	LastBlockInSnapshot uint64
+type bootsnapshotInfo struct {
+	createdFromSnapshot bool
+	lastBlockInSnapshot uint64
 }
 
 type blkTranNumKey []byte
@@ -139,8 +143,34 @@ func NewProvider(conf *PrivateDataConfig) (*Provider, error) {
 	}, nil
 }
 
+// SnapshotDataImporterFor returns an implementation of interface privacyenabledstate.SnapshotPvtdataHashesConsumer
+// The returned struct is expected to be registered for receiving the pvtdata hashes from snapshot and loads the data
+// into pvtdata store.
+func (p *Provider) SnapshotDataImporterFor(
+	ledgerID string,
+	lastBlockInSnapshot uint64,
+	membershipProvider ledger.MembershipInfoProvider,
+	configHistoryRetriever *confighistory.Retriever,
+) (*SnapshotDataImporter, error) {
+
+	db := p.dbProvider.GetDBHandle(ledgerID)
+	batch := db.NewUpdateBatch()
+	batch.Put(lastBlockInBootSnapshotKey, encodeLastBlockInBootSnapshotVal(lastBlockInSnapshot))
+	batch.Put(lastCommittedBlkkey, encodeLastCommittedBlockVal(lastBlockInSnapshot))
+	if err := db.WriteBatch(batch, true); err != nil {
+		return nil, errors.WithMessage(err, "error while writing snapshot info to db")
+	}
+
+	return newSnapshotDataImporter(
+		ledgerID,
+		p.dbProvider.GetDBHandle(ledgerID),
+		membershipProvider,
+		configHistoryRetriever,
+	), nil
+}
+
 // OpenStore returns a handle to a store
-func (p *Provider) OpenStore(ledgerid string, initializer *Initializer) (*Store, error) {
+func (p *Provider) OpenStore(ledgerid string) (*Store, error) {
 	dbHandle := p.dbProvider.GetDBHandle(ledgerid)
 	s := &Store{
 		db:                                  dbHandle,
@@ -157,11 +187,6 @@ func (p *Provider) OpenStore(ledgerid string, initializer *Initializer) (*Store,
 	}
 	if err := s.initState(); err != nil {
 		return nil, err
-	}
-	// TODO: workaround that will be removed when snapshot import is implemented for pvtdata store
-	if s.isEmpty && initializer.CreatedFromSnapshot {
-		s.isEmpty = false
-		s.lastCommittedBlock = initializer.LastBlockInSnapshot
 	}
 	s.launchCollElgProc()
 	logger.Debugf("Pvtdata store opened. Initial state: isEmpty [%t], lastCommittedBlock [%d]",
@@ -184,8 +209,11 @@ func (p *Provider) Drop(ledgerid string) error {
 
 func (s *Store) initState() error {
 	var err error
-	var blist lastUpdatedOldBlocksList
 	if s.isEmpty, s.lastCommittedBlock, err = s.getLastCommittedBlockNum(); err != nil {
+		return err
+	}
+
+	if s.bootsnapshotInfo, err = s.fetchBootSnapshotInfo(); err != nil {
 		return err
 	}
 
@@ -209,6 +237,7 @@ func (s *Store) initState() error {
 		s.lastCommittedBlock = committingBlockNum
 	}
 
+	var blist lastUpdatedOldBlocksList
 	if blist, err = s.getLastUpdatedOldBlocksList(); err != nil {
 		return err
 	}
@@ -521,6 +550,35 @@ func (s *Store) getMissingData(group []byte, maxBlock int) (ledger.MissingPvtDat
 	return missingPvtDataInfo, nil
 }
 
+// FetchBootKVHashes returns the KVHashes from the data that was loaded from a snapshot at the time of
+// bootstrapping. This funciton returns an error if the supplied blkNum is greater than the last block
+// number in the booting snapshot
+func (s *Store) FetchBootKVHashes(blkNum, txNum uint64, ns, coll string) (map[string][]byte, error) {
+	if s.bootsnapshotInfo.createdFromSnapshot && blkNum > s.bootsnapshotInfo.lastBlockInSnapshot {
+		return nil, errors.New(
+			"unexpected call. Boot KV Hashes are persisted only for the data imported from snapshot",
+		)
+	}
+	encVal, err := s.db.Get(
+		encodeBootKVHashesKey(
+			&bootKVHashesKey{
+				blkNum: blkNum,
+				txNum:  txNum,
+				ns:     ns,
+				coll:   coll,
+			},
+		),
+	)
+	if encVal == nil || err != nil {
+		return nil, err
+	}
+	bootKVHashes, err := decodeBootKVHashesVal(encVal)
+	if err != nil {
+		return nil, err
+	}
+	return bootKVHashes.toMap(), nil
+}
+
 // ProcessCollsEligibilityEnabled notifies the store when the peer becomes eligible to receive data for an
 // existing collection. Parameter 'committingBlk' refers to the block number that contains the corresponding
 // collection upgrade transaction and the parameter 'nsCollMap' contains the collections for which the peer
@@ -687,7 +745,9 @@ func (s *Store) processCollElgEvents() error {
 					)
 					collEntriesConverted++
 					if batch.Len() > s.maxBatchSize {
-						s.db.WriteBatch(batch, true)
+						if err := s.db.WriteBatch(batch, true); err != nil {
+							return err
+						}
 						batch.Reset()
 						sleepTime := time.Duration(s.batchesInterval)
 						logger.Infof("Going to sleep for %d milliseconds between batches. Entries for [ns=%s, coll=%s] converted so far = %d",
@@ -706,7 +766,9 @@ func (s *Store) processCollElgEvents() error {
 		batch.Delete(collElgKey) // delete the collection eligibility event key as well
 	} // event loop
 
-	s.db.WriteBatch(batch, true)
+	if err := s.db.WriteBatch(batch, true); err != nil {
+		return err
+	}
 	logger.Debugf("Converted [%d] ineligible missing data entries to eligible", totalEntriesConverted)
 	return nil
 }
@@ -745,6 +807,26 @@ func (s *Store) getLastCommittedBlockNum() (bool, uint64, error) {
 		return true, 0, err
 	}
 	return false, decodeLastCommittedBlockVal(v), nil
+}
+
+func (s *Store) fetchBootSnapshotInfo() (*bootsnapshotInfo, error) {
+	v, err := s.db.Get(lastBlockInBootSnapshotKey)
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		return &bootsnapshotInfo{}, nil
+	}
+
+	lastBlkInSnapshot, err := decodeLastBlockInBootSnapshotVal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return &bootsnapshotInfo{
+		createdFromSnapshot: true,
+		lastBlockInSnapshot: lastBlkInSnapshot,
+	}, nil
 }
 
 type collElgProcSync struct {

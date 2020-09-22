@@ -29,6 +29,7 @@ var (
 	lastUpdatedOldBlocksKey          = []byte{7}
 	elgDeprioritizedMissingDataGroup = []byte{8}
 	bootKVHashesKeyPrefix            = []byte{9}
+	lastBlockInBootSnapshotKey       = []byte{'a'}
 
 	nilByte    = byte(0)
 	emptyValue = []byte{}
@@ -212,6 +213,18 @@ func decodeBootKVHashesVal(b []byte) (*BootKVHashes, error) {
 		return nil, errors.Wrap(err, "error while unmarshalling bytes for BootKVHashes")
 	}
 	return val, nil
+}
+
+func encodeLastBlockInBootSnapshotVal(blockNum uint64) []byte {
+	return proto.EncodeVarint(blockNum)
+}
+
+func decodeLastBlockInBootSnapshotVal(blockNumBytes []byte) (uint64, error) {
+	s, n := proto.DecodeVarint(blockNumBytes)
+	if n == 0 {
+		return 0, errors.New("unexpected bytes for interpreting as varint")
+	}
+	return s, nil
 }
 
 func createRangeScanKeysForElgMissingData(blkNum uint64, group []byte) ([]byte, []byte) {
