@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/VictoriaMetrics/fastcache"
@@ -50,6 +51,25 @@ func TestGetPutState(t *testing.T) {
 
 	// test PutState
 	expectedValue1 := &CacheValue{Value: []byte("value1")}
+	require.NoError(t, cache.putState("ch1", "ns1", "k1", expectedValue1))
+
+	v, err = cache.getState("ch1", "ns1", "k1")
+	require.NoError(t, err)
+	require.True(t, proto.Equal(expectedValue1, v))
+}
+
+func TestGetPutStateWithBigPayload(t *testing.T) {
+	cache := newCache(32, sysNamespaces)
+
+	// test GetState
+	v, err := cache.getState("ch1", "ns1", "k1")
+	require.NoError(t, err)
+	require.Nil(t, v)
+
+	// test PutState with BigPayload
+	token := make([]byte, fastCacheValueSizeLimit+1)
+	rand.Read(token)
+	expectedValue1 := &CacheValue{Value: token}
 	require.NoError(t, cache.putState("ch1", "ns1", "k1", expectedValue1))
 
 	v, err = cache.getState("ch1", "ns1", "k1")
