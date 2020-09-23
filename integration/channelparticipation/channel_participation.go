@@ -26,7 +26,7 @@ func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, e
 	blockBytes, err := proto.Marshal(block)
 	Expect(err).NotTo(HaveOccurred())
 	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.OperationsPort))
-	req := generateJoinRequest(url, channel, blockBytes)
+	req := GenerateJoinRequest(url, channel, blockBytes)
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
 
 	body := doBody(authClient, req)
@@ -36,7 +36,7 @@ func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, e
 	Expect(*c).To(Equal(expectedChannelInfo))
 }
 
-func generateJoinRequest(url, channel string, blockBytes []byte) *http.Request {
+func GenerateJoinRequest(url, channel string, blockBytes []byte) *http.Request {
 	joinBody := new(bytes.Buffer)
 	writer := multipart.NewWriter(joinBody)
 	part, err := writer.CreateFormFile("config-block", fmt.Sprintf("%s.block", channel))
