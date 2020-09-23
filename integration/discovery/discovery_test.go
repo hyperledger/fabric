@@ -84,7 +84,6 @@ var _ = Describe("DiscoveryService", func() {
 
 		orderer = network.Orderer("orderer")
 		network.CreateAndJoinChannel(orderer, "testchannel")
-		network.UpdateChannelAnchors(orderer, "testchannel")
 
 		org1Peer0 = network.Peer("Org1", "peer0")
 		org2Peer0 = network.Peer("Org2", "peer0")
@@ -102,10 +101,46 @@ var _ = Describe("DiscoveryService", func() {
 		os.RemoveAll(testDir)
 	})
 
+	It("discovers network configuration even without anchor peers present", func() {
+		chaincodeWhenNoAnchorPeers := nwo.Chaincode{
+			Name:    "noanchorpeersjustyet",
+			Version: "1.0",
+			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Ctor:    `{"Args":["init","a","100","b","200"]}`,
+			Policy:  `OR ('Org1MSP.member')`,
+		}
+		By("Deploying chaincode before anchor peers are defined in the channel")
+		nwo.DeployChaincodeLegacy(network, "testchannel", orderer, chaincodeWhenNoAnchorPeers, org1Peer0)
+
+		endorsersForChaincodeBeforeAnchorPeersExist := commands.Endorsers{
+			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
+			UserKey:   network.PeerUserKey(org1Peer0, "User1"),
+			MSPID:     network.Organization(org1Peer0.Organization).MSPID,
+			Server:    network.PeerAddress(org1Peer0, nwo.ListenPort),
+			Channel:   "testchannel",
+			Chaincode: chaincodeWhenNoAnchorPeers.Name,
+		}
+		discoveryQuery := discoverEndorsers(network, endorsersForChaincodeBeforeAnchorPeersExist)
+		Eventually(discoveryQuery, network.EventuallyTimeout).Should(BeEquivalentTo(
+			[]ChaincodeEndorsers{
+				{
+					Chaincode: chaincodeWhenNoAnchorPeers.Name,
+					EndorsersByGroups: map[string][]nwo.DiscoveredPeer{
+						"G0": {network.DiscoveredPeer(org1Peer0)},
+					},
+					Layouts: []*discovery.Layout{
+						{
+							QuantitiesByGroup: map[string]uint32{"G0": 1},
+						},
+					},
+				},
+			},
+		))
+	})
+
 	It("discovers network configuration, endorsers, and peer membership", func() {
-		//
-		// discovering network configuration information
-		//
+		By("Updating anchor peers")
+		network.UpdateChannelAnchors(orderer, "testchannel")
 
 		By("retrieving the configuration")
 		config := commands.Config{
