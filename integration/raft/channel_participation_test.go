@@ -9,17 +9,18 @@ package raft
 import (
 	"crypto"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-config/configtx/orderer"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -446,6 +447,13 @@ var _ = Describe("ChannelParticipation", func() {
 				channelparticipation.List(network, o, []string{"testchannel"}, "systemchannel")
 			}
 
+			By("attempting to join a channel when the system channel is present")
+			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
+			channelparticipationJoinFailure(network, orderers[0], "participation-trophy", genesisBlock, http.StatusMethodNotAllowed, "cannot join: system channel exists")
+
+			By("attempting to remove a channel when the system channel is present")
+			channelparticipationRemoveFailure(network, orderers[0], "testchannel", http.StatusMethodNotAllowed, "cannot remove: system channel exists")
+
 			By("putting the system channel into maintenance mode")
 			channelConfig := nwo.GetConfig(network, peer, orderer2, "systemchannel")
 			c := configtx.New(channelConfig)
@@ -474,7 +482,6 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			By("using the channel participation API to join a new channel")
-			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
@@ -739,25 +746,40 @@ func consenterChannelConfig(n *nwo.Network, o *nwo.Orderer) orderer.Consenter {
 	}
 }
 
-func setOrdererLogSpec(n *nwo.Network, logSpec string, orderers ...*nwo.Orderer) {
-	for _, o := range orderers {
-		oClient, _ := nwo.OrdererOperationalClients(n, o)
-		logspecURL := fmt.Sprintf("https://127.0.0.1:%d/logspec", n.OrdererPort(o, nwo.OperationsPort))
-		logSpecJSON := fmt.Sprintf(`{"spec":"%s"}`, logSpec)
-		updateReq, err := http.NewRequest(http.MethodPut, logspecURL, strings.NewReader(logSpecJSON))
-		Expect(err).NotTo(HaveOccurred())
+type errorResponse struct {
+	Error string `json:"error"`
+}
 
-		resp, err := oClient.Do(updateReq)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
-		resp.Body.Close()
+func channelparticipationJoinFailure(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, expectedStatus int, expectedError string) {
+	blockBytes, err := proto.Marshal(block)
+	Expect(err).NotTo(HaveOccurred())
+	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.OperationsPort))
+	req := channelparticipation.GenerateJoinRequest(url, channel, blockBytes)
+	authClient, _ := nwo.OrdererOperationalClients(n, o)
 
-		resp, err = oClient.Get(logspecURL)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.StatusCode).To(Equal(http.StatusOK))
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
-		Expect(err).NotTo(HaveOccurred())
-		Expect(string(bodyBytes)).To(MatchJSON(logSpecJSON))
-	}
+	doBodyFailure(authClient, req, expectedStatus, expectedError)
+}
+
+func doBodyFailure(client *http.Client, req *http.Request, expectedStatus int, expectedError string) {
+	resp, err := client.Do(req)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(resp.StatusCode).To(Equal(expectedStatus))
+	body, err := ioutil.ReadAll(resp.Body)
+	Expect(err).NotTo(HaveOccurred())
+	resp.Body.Close()
+
+	errorResponse := &errorResponse{}
+	err = json.Unmarshal(body, errorResponse)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(errorResponse.Error).To(Equal(expectedError))
+}
+
+func channelparticipationRemoveFailure(n *nwo.Network, o *nwo.Orderer, channel string, expectedStatus int, expectedError string) {
+	authClient, _ := nwo.OrdererOperationalClients(n, o)
+	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.OperationsPort), channel)
+
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	Expect(err).NotTo(HaveOccurred())
+
+	doBodyFailure(authClient, req, expectedStatus, expectedError)
 }
