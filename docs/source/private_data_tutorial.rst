@@ -23,8 +23,8 @@ configuring and using private data with Fabric:
 #. :ref:`pd-register-identities`
 #. :ref:`pd-store-private-data`
 #. :ref:`pd-query-authorized`
-#. :ref:`pd-purge`
 #. :ref:`pd-transfer-asset`
+#. :ref:`pd-purge`
 #. :ref:`pd-indexes`
 #. :ref:`pd-ref-material`
 
@@ -37,31 +37,30 @@ You should have completed the task :doc:`install`.
 
 Asset transfer private data sample use case
 -------------------------------------------
+
 This sample demonstrates the use of three private data collections, ``assetCollection``, ``Org1MSPPrivateCollection`` & ``Org2MSPPrivateCollection`` to transfer an asset between Org1 and Org2, using following use case:
 
 A member of Org1 creates a new asset, henceforth referred as owner. The public details of the asset,
 including the owner, are stored in the private data collection named ``assetCollection``. The asset is also created with an appraised
 value supplied by the owner. The appraised value is used by each participant to agree to the transfer of the asset, and is only stored in owner organization's collection. In our case, the initial appraisal value agreed by the owner is stored in the ``Org1MSPPrivateCollection``.
 
-To purchase the asset, the buyer needs to agree to the same appraised value as the asset owner. In this step, the buyer (a member of Org2) creates an agreement to trade and agree to an appraisal value using smart contract function ``'AgreeToTransfer'``. This value is stored in ``Org2MSPPrivateCollection`` collection.
+To purchase the asset, the buyer needs to agree to the same appraised value as the asset owner. In this step, the buyer (a member of Org2) creates an agreement to trade and agree to an appraisal value using smart contract function ``'AgreeToTransfer'``. This value is stored in ``Org2MSPPrivateCollection`` collection. Now, the asset owner can transfer the asset to the buyer using smart contract function ``'TransferAsset'``, which checks for the conditions that must be met for transfer to succeed.
 
-Now, the asset owner can transfer the asset to the buyer using smart contract function ``'TransferAsset'``, which checks for the conditions that must be met for transfer to succeed.
+Before we go through the transfer scenario, we will discuss how organizations can use private data collections in Fabric.
 
 .. _pd-build-json:
 
 Build a collection definition JSON file
 ---------------------------------------
 
-The first step in privatizing data on a channel is to build a collection
-definition which defines access to the private data.
+Before a set of organizations can transact using private data, all organizations
+on channel need to build a collection file that defines the private
+data collections associated with each chaincode. Data that is stored in a private
+data collection is only distributed to the peers of certain organizations instead
+of all members of the channel. The collection definition file describes all of the
+private data collections that organizations can read and write to from a chaincode.
 
-The collection definition describes who can persist data, how many peers the
-data is distributed to, how many peers are required to disseminate the private
-data, and how long the private data is persisted in the private database. Later,
-we will demonstrate how chaincode APIs ``PutPrivateData`` and ``GetPrivateData``
-are used to map the collection to the private data being secured.
-
-A collection definition is composed of the following properties:
+Each collection is defined by the following properties:
 
 .. _blockToLive:
 
@@ -92,7 +91,19 @@ A collection definition is composed of the following properties:
   enforce that only clients belonging to one of the collection member organizations
   are allowed write access to private data.
 
-To illustrate usage of private data, the asset transfer private data example contains
+- ``endorsementPolicy``: defines the endorsement policy that needs to be met in
+  order to write to the private data collection. The collection level endorsement policy
+  overrides to chaincode level policy. For more information on building a policy
+  definition refer to the :doc:`endorsement-policies` topic.
+
+The same collection definition file needs to be deployed by all organizations that
+use the chaincode, even if the organization does not belong to any collections. In
+addition to the collections that are explicitly defined in a collection file,
+each organization has access to an implicit collection on their peers that can only
+be read by their organization. For an example that uses implicit data collections,
+see the :doc:`secured_asset_transfer/secured_private_asset_transfer_tutorial`.
+
+To illustrate the use of private data, the asset transfer private data example contains
 three private data collection definitions: ``assetCollection``, ``Org1MSPPrivateCollection``,
 and ``Org2MSPPrivateCollection``. The ``policy`` property in the
 ``assetCollection`` definition allows all members of the channel (Org1 and
@@ -100,9 +111,6 @@ Org2) to have the private data in a private database. The
 ``Org1MSPPrivateCollection`` collection allows only members of Org1 to
 have the private data in their private database, and the ``Org2MSPPrivateCollection``
 collection allows only members of Org2 to have the private data in their private database.
-
-For more information on building a policy definition refer to the :doc:`endorsement-policies`
-topic.
 
 .. code:: json
 
@@ -193,23 +201,22 @@ Specifically, access to the private data will be restricted as follows:
 
 
 
-The storing of private data is illustrated in the asset transfer private data
-sample. The mapping of this data to the collection policy which restricts its
-access is controlled by chaincode APIs. Specifically, reading and writing
-private data using a collection definition is performed by calling ``GetPrivateData()``
-and ``PutPrivateData()``, which can be found `here <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStub>`_.
+All of the data that is created by the asset transfer private data sample smart
+contract is stored in private data. The smart contract uses the Fabric chaincode API
+to read and write private data to private data collections using the ``GetPrivateData()``
+and ``PutPrivateData()`` functions. You can find more information about those functions `here <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStub>`_.
 
-The following diagram illustrates the private data model used by the asset transfer
-private data sample. Note that Org3 is only shown in the diagram below for context to illustrate that
-if there were any other organizations on the channel, they would not have access to *any*
-of the private data collections where they are not defined in the private data collection policy configuration.
+The following diagram illustrates the private data model used by the private data
+sample. Note that Org3 is only shown in the diagram to illustrate that if
+there were any other organizations on the channel, they would not have access to *any*
+of the private data collections that were defined in the configuration.
 
 .. image:: images/SideDB-org1-org2.png
 
 Reading collection data
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use the chaincode API ``GetPrivateData()`` to query private data in the
+The smart contract uses the chaincode API ``GetPrivateData()`` to query private data in the
 database.  ``GetPrivateData()`` takes two arguments, the **collection name**
 and the data key. Recall the collection  ``assetCollection`` allows members of
 Org1 and Org2 to have the private data in a side database, and the collection
@@ -227,16 +234,18 @@ we will call these two functions.
 Writing private data
 ~~~~~~~~~~~~~~~~~~~~
 
-Use the chaincode API ``PutPrivateData()`` to store the private data
+The smart contract uses the chaincode API ``PutPrivateData()`` to store the private data
 into the private database. The API also requires the name of the collection.
 Note that the asset transfer private data sample includes three different private data collections, but it is called
-twice in the chaincode (in this scenario acting as Org1). The third collection (``Org2MSPPrivateCollection``) would be used if we were acting as Org2, but
-would still only be called twice in the chaincode as it would replace ``Org1MSPPrivateCollection``:
+twice in the chaincode (in this scenario acting as Org1).
 
 1. Write the private data ``assetID, color, size and owner`` using the
    collection named ``assetCollection``.
 2. Write the private data ``appraisedValue`` using the collection named
    ``Org1MSPPrivateCollection``.
+
+If we were acting as Org2, we would replace ``Org1MSPPrivateCollection`` with
+````Org2MSPPrivateCollection``.
 
 For example, in the following snippet of the ``CreateAsset`` function,
 ``PutPrivateData()`` is called twice, once for each set of private data.
@@ -380,7 +389,7 @@ private data.
 
 :guilabel:`Try it yourself`
 
-Before installing, defining, and using the asset transfer private data chaincode below,
+Before installing, defining, and using the private data smart contract,
 we need to start the Fabric test network. For the sake of this tutorial, we want
 to operate from a known initial state. The following command will kill any active
 or stale Docker containers and remove previously generated artifacts.
@@ -391,26 +400,6 @@ environments:
 
    cd fabric-samples/test-network
    ./network.sh down
-
-If you have not run through the tutorial before, you will need to vendor the
-chaincode dependencies before we can deploy it to the network. Run the
-following commands:
-
-.. code:: bash
-
-    cd ../asset-transfer-private-data/chaincode-go/
-    GO111MODULE=on go mod vendor
-    cd ../../test-network
-
-
-If you've already run through this tutorial, you'll also want to delete the
-underlying Docker containers for the asset transfer private data chaincode. Let's run
-the following commands to clean up previous environments:
-
-.. code:: bash
-
-   docker rm -f $(docker ps -a | awk '($2 ~ /dev-peer.*.privatev1.*/) {print $1}')
-   docker rmi -f $(docker images | awk '($1 ~ /dev-peer.*.privatev1.*/) {print $3}')
 
 From the ``test-network`` directory, you can use the following command to start
 up the Fabric test network with Certificate Authorities and CouchDB:
@@ -434,201 +423,44 @@ use indexes with private data.
 
 .. _pd-install-define_cc:
 
-Install and define a chaincode with a collection
--------------------------------------------------
+Deploy the private data smart contract to the channel
+-----------------------------------------------------
 
-Client applications interact with the blockchain ledger through chaincode.
-Therefore we need to install a chaincode on every peer that will execute and
-endorse our transactions. However, before we can interact with our chaincode,
-the members of the channel need to agree on a chaincode definition that
-establishes chaincode governance, including the private data collection
-configuration. We are going to package, install, and then define the chaincode
-on the channel using :doc:`commands/peerlifecycle`.
-
-The chaincode needs to be packaged before it can be installed on our peers.
-We can use the `peer lifecycle chaincode package <commands/peerlifecycle.html#peer-lifecycle-chaincode-package>`__ command
-to package the private chaincode.
-
-The test network includes two organizations, Org1 and Org2, with one peer each.
-Therefore, the chaincode package has to be installed on two peers:
-
-- peer0.org1.example.com
-- peer0.org2.example.com
-
-After the chaincode is packaged, we can use the `peer lifecycle chaincode install <commands/peerlifecycle.html#peer-lifecycle-chaincode-install>`__
-command to install the private chaincode on each peer.
-
-:guilabel:`Try it yourself`
-
-Assuming you have started the test network, copy and paste the following
-environment variables in your CLI to interact with the network and operate as
-the Org1 admin. Make sure that you are in the `test-network` directory.
+We can now use the test network script to deploy the smart contract to the channel.
+Run the following command from the test network directory.
 
 .. code:: bash
 
-    export PATH=${PWD}/../bin:$PATH
-    export FABRIC_CFG_PATH=$PWD/../config/
-    export CORE_PEER_TLS_ENABLED=true
-    export CORE_PEER_LOCALMSPID="Org1MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    export CORE_PEER_ADDRESS=localhost:7051
+   ./network.sh deployCC -ccn private -ccep "OR('Org1MSP.peer','Org2MSP.peer')" -cccg ../asset-transfer-private-data/chaincode-go/collections_config.json
 
-1. Use the following command to package the private data chaincode.
+Note that we need to pass the path to the private data collection definition file
+to the command. As part of deploying the chaincode to the channel, both organizations
+on the channel must pass identical private data collection definitions as part
+of the :doc:`chaincode_lifecycle`. We are also deploying the smart contract
+with a chaincode level endorsement policy of ``"OR('Org1MSP.peer','Org2MSP.peer')"``.
+This allows Org1 and Org2 to create an asset without receiving an endorsement from
+the other organization. You can see the steps required to deploy the chaincode
+printed in your logs after you issue the command above.
 
-.. code:: bash
-
-    peer lifecycle chaincode package private.tar.gz --path ../asset-transfer-private-data/chaincode-go/ --lang golang --label privatev1
-
-This command will create a chaincode package named private.tar.gz.
-
-2. Use the following command to install the chaincode package onto the peer
-``peer0.org1.example.com``.
-
-.. code:: bash
-
-    peer lifecycle chaincode install private.tar.gz
-
-A successful install command will return the chaincode identifier, similar to
-the response below:
-
-.. code:: bash
-
-    2020-09-12 06:25:51.242 CDT [cli.lifecycle.chaincode] submitInstallProposal -> INFO 001 Installed remotely: response:<status:200 payload:"\nJprivatev1:c10ad5913bd3166c1bcc294bb378ecef5f815b516b717f98d8a68ff2f6f4eee9\022\tprivatev1" > 
-    2020-09-12 06:25:51.242 CDT [cli.lifecycle.chaincode] submitInstallProposal -> INFO 002 Chaincode code package identifier: privatev1:c10ad5913bd3166c1bcc294bb378ecef5f815b516b717f98d8a68ff2f6f4eee9
-
-3. Now use the CLI as the Org2 admin. Copy and paste the following block of
-commands as a group and run them all at once:
-
-.. code:: bash
-
-    export CORE_PEER_LOCALMSPID="Org2MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
-    export CORE_PEER_ADDRESS=localhost:9051
-
-4. Run the following command to install the chaincode on the Org2 peer:
-
-.. code:: bash
-
-    peer lifecycle chaincode install private.tar.gz
-
-
-Approve the chaincode definition
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Each channel member that wants to use the chaincode needs to approve a chaincode
-definition for their organization. Since both organizations are going to use the
-chaincode in this tutorial, we need to approve the chaincode definition for both
-Org1 and Org2 using the `peer lifecycle chaincode approveformyorg <commands/peerlifecycle.html#peer-lifecycle-chaincode-approveformyorg>`__
-command. The chaincode definition also includes the private data collection
-definition that accompanies the ``asset transfer`` sample. We will provide
-the path to the collections JSON file using the ``--collections-config`` flag.
-
-:guilabel:`Try it yourself`
-
-Run the following commands from the ``test-network`` directory to approve a
-definition for Org1 and Org2.
-
-1. Use the following command to query your peer for the package ID of the
-installed chaincode.
-
-.. code:: bash
-
-    peer lifecycle chaincode queryinstalled
-
-The command will return the same package identifier as the install command.
-You should see output similar to the following:
-
-.. code:: bash
-
-    Installed chaincodes on peer:
-    Package ID: privatev1:c10ad5913bd3166c1bcc294bb378ecef5f815b516b717f98d8a68ff2f6f4eee9, Label: privatev1
-
-2. Declare the package ID as an environment variable. Paste the package ID of
-privatev1 returned by the ``peer lifecycle chaincode queryinstalled`` into
-the command below. The package ID may not be the same for all users, so you
-need to complete this step using the package ID returned from your console.
-
-.. code:: bash
-
-    export CC_PACKAGE_ID=privatev1:c10ad5913bd3166c1bcc294bb378ecef5f815b516b717f98d8a68ff2f6f4eee9
-
-3. Make sure we are running the CLI as Org1. Copy and paste the following block
-of commands as a group into the peer container and run them all at once:
-
-.. code :: bash
-
-    export CORE_PEER_LOCALMSPID="Org1MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    export CORE_PEER_ADDRESS=localhost:7051
-
-4. Use the following command to approve a definition of the asset transfer private data
-chaincode for Org1. This command includes a path to the collection definition
-file.
-
-.. code:: bash
-
-    export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-    peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name private --version 1.0 --collections-config ../asset-transfer-private-data/chaincode-go/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA
-
-When the command completes successfully you should see something similar to:
-
-.. code:: bash
-
-    2020-09-12 06:33:36.879 CDT [chaincodeCmd] ClientWait -> INFO 001 txid [842e70c59da37a28d8358ec3275d75acff2050714d8c02797642beba81392e5e] committed with status (VALID) at
-
-5. Now use the CLI to switch to Org2. Copy and paste the following block of commands
-as a group into the peer container and run them all at once.
-
-.. code:: bash
-
-    export CORE_PEER_LOCALMSPID="Org2MSP"
-    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
-    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
-    export CORE_PEER_ADDRESS=localhost:9051
-
-6. You can now approve the chaincode definition for Org2:
+When both organizations approve the chaincode defition using the
+`peer lifecycle chaincode approveformyorg <commands/peerlifecycle.html#peer-lifecycle-chaincode-approveformyorg>`__
+command, the chaincode definition includes the path to the private data collection
+definition using the ``--collections-config`` flag. You can see the following `approveformyorg`
+command printed in your terminal:
 
 .. code:: bash
 
     peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name private --version 1.0 --collections-config ../asset-transfer-private-data/chaincode-go/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA
 
-Commit the chaincode definition
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Once a sufficient number of organizations (in this case, a majority) have
-approved a chaincode definition, one organization can commit the definition to
-the channel.
-
-Use the `peer lifecycle chaincode commit <commands/peerlifecycle.html#peer-lifecycle-chaincode-commit>`__
-command to commit the chaincode definition. This command will also deploy the
-collection definition to the channel.
-
-We are ready to use the chaincode after the chaincode definition has been
-committed to the channel. 
-
-:guilabel:`Try it yourself`
-
-1. Run the following commands to commit the definition of the asset transfer private
-data chaincode to the channel ``mychannel``.
+After channel members agree to the private data collection as part of the chaincode
+definition, the data collection is committed to the channel using the `peer lifecycle chaincode commit <commands/peerlifecycle.html#peer-lifecycle-chaincode-commit>`__
+command. If you look for the commit command in your logs, you can see that it uses
+the same ``--collections-config`` flag to provide the path to the collection definition.
 
 .. code:: bash
 
-    export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
-    export ORG1_CA=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-    export ORG2_CA=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
     peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name private --version 1.0 --sequence 1 --collections-config ../asset-transfer-private-data/chaincode-go/collections_config.json --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $ORG1_CA --peerAddresses localhost:9051 --tlsRootCertFiles $ORG2_CA
 
-
-When the commit transaction completes successfully you should see something
-similar to:
-
-.. code:: bash
-
-    2020-09-12 06:40:35.126 CDT [chaincodeCmd] ClientWait -> INFO 001 txid [701468d079f8deded428a67f84e9bda6f6dcc894b006ee27a4d47b1dafdf5621] committed with status (VALID) at localhost:7051
-    2020-09-12 06:40:35.162 CDT [chaincodeCmd] ClientWait -> INFO 002 txid [701468d079f8deded428a67f84e9bda6f6dcc894b006ee27a4d47b1dafdf5621] committed with status (VALID) at localhost:9051
 
 .. _pd-register-identities:
 
@@ -698,28 +530,29 @@ Run the command below to copy the Node OU configuration file into the buyer iden
 
 .. _pd-store-private-data:
 
-Store private data
-------------------
+Create an asset in private data
+-------------------------------
 
-Acting as a member of Org1, who is authorized to transact with all of the private data
-in the asset transfer private data sample, switch back to an Org1 peer and
-submit a request to create an asset:
+Now that we have created the identity of the asset owner, we can invoke the
+private data smart contract to create a new asset. Copy and paste the following
+set of commands into your CLI in the `test-network` directory:
 
 :guilabel:`Try it yourself`
 
-Copy and paste the following set of commands into your CLI in the `test-network`
-directory:
 
 .. code :: bash
 
+    export PATH=${PWD}/../bin:$PATH
+    export FABRIC_CFG_PATH=$PWD/../config/
+    export CORE_PEER_TLS_ENABLED=true
     export CORE_PEER_LOCALMSPID="Org1MSP"
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp
     export CORE_PEER_ADDRESS=localhost:7051
 
-Invoke the asset transfer (private) ``CreateAsset`` function which
-creates an asset with private data ---  assetID ``asset1`` with a color
-``green``, size ``20`` and appraisedValue of ``100``. Recall that private data **appraisedValue**
+
+We will use the ``CreateAsset`` function to create an asset that is stored in private
+data ---  assetID ``asset1`` with a color ``green``, size ``20`` and appraisedValue of ``100``. Recall that private data **appraisedValue**
 will be stored separately from the private data **assetID, color, size**.
 For this reason, the ``CreateAsset`` function calls the ``PutPrivateData()`` API
 twice to persist the private data, once for each collection. Also note that
@@ -730,7 +563,7 @@ using CLI it must be base64 encoded. We use an environment variable
 to capture the base64 encoded value, and use ``tr`` command to strip off the
 problematic newline characters that linux base64 command adds.
 
-Run the following command to define the asset properties:
+Run the following command to create the asset:
 
 .. code:: bash
 
@@ -828,7 +661,7 @@ When successful, the command will return the following result:
 
     {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw=="}
 
-The `"owner"` of the asset is the identity that created the asset by invoking the smart contract. The `GetClientIdentity().GetID()` API reads the common name and issuer of the identity certificate.
+The `"owner"` of the asset is the identity that created the asset by invoking the smart contract. The private data smart contract uses the ``GetClientIdentity().GetID()`` API to read the common name and issuer of the identity certificate.
 You can see that information by decoding the owner string out of base64 format:
 
 .. code:: bash
@@ -839,8 +672,7 @@ The result will show the common name and issuer of the owner certificate:
 
 .. code:: bash
 
-    x509::CN=org1admin,OU=admin,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org1.example.com,O=org1.example.com,L=Durham,ST=North Carolina,C=US    
-
+    x509::CN=org1admin,OU=admin,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org1.example.com,O=org1.example.com,L=Durham,ST=North Carolina,C=US
 
 Query for the ``appraisedValue`` private data of ``asset1`` as a member of Org1.
 
@@ -856,9 +688,9 @@ You should see the following result:
 
 
 Query the private data as an unauthorized peer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------------------
 
-Now we will switch to a member of Org2. Org2 has the asset transfer private data
+Now we will operate a member of Org2. Org2 has the asset transfer private data
 ``assetID, color, size, owner`` in its side database as defined in the assetCollection policy, but does not store the
 asset ``appraisedValue`` data for Org1. We will query for both sets of private data.
 
@@ -913,40 +745,11 @@ You should see a result similar to:
 
 .. code:: json
 
-    Error: endorsement failure during query. response: status:500 message:"failed to 
+    Error: endorsement failure during query. response: status:500 message:"failed to
     read asset details: GET_STATE failed: transaction ID: d23e4bc0538c3abfb7a6bd4323fd5f52306e2723be56460fc6da0e5acaee6b23: tx
     creator does not have read access permission on privatedata in chaincodeName:private collectionName: Org1MSPPrivateCollection"
 
 Members of Org2 will only be able to see the public hash of the private data.
-
-.. _pd-purge:
-
-Purge Private Data
-------------------
-
-For use cases where private data only needs to be on the ledger until it can be
-replicated into an off-chain database, it is possible to "purge" the data after
-a certain set number of blocks, leaving behind only hash of the data that serves
-as immutable evidence of the transaction.
-
-There may be private data including personal or confidential
-information, such as the ``appraisedValue`` data in our example, that the transacting
-parties don't want disclosed to other organizations on the channel. Thus, it
-has a limited lifespan, and can be purged after existing unchanged on the
-blockchain for a designated number of blocks using the ``blockToLive`` property
-in the collection definition.
-
-Our ``Org1MSPPrivateCollection`` definition has a ``blockToLive``
-property value of ``3`` meaning this data will live on the side database for
-three blocks and then after that it will get purged. Tying all of the pieces
-together, recall this collection definition  ``Org1MSPPrivateCollection``
-is associated with the ``appraisedValue`` private data in the  ``CreateAsset()`` function
-when it calls the ``PutPrivateData()`` API and passes the
-``AssetPrivateDetails`` as an argument.
-
-As we continue with the tutorial by invoking chaincode that adds blocks to the chain, the ``appraisedValue``
-information will get purged when we issue the fourth new transaction from the block where we initially created ``asset1``
-because you will recall our ``blockToLive`` is set to ``3`` for the ``Org1MSPPrivateCollection`` definition.
 
 .. _pd-transfer-asset:
 
@@ -984,13 +787,13 @@ Nor can a member of Org2, read the Org1 private data collection:
 
     peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
 
-By setting `"memberOnlyRead": true` in the collection configuration file, we specify that only members of Org1 can read data from the collection. An Org2 member who tries to read the collection would only get the following response:
+By setting ``"memberOnlyRead": true`` in the collection configuration file, we specify that only members of Org1 can read data from the collection. An Org2 member who tries to read the collection would only get the following response:
 
 .. code:: bash
 
     Error: endorsement failure during query. response: status:500 message:"failed to read from asset details GET_STATE failed: transaction ID: 10d39a7d0b340455a19ca4198146702d68d884d41a0e60936f1599c1ddb9c99d: tx creator does not have read access permission on privatedata in chaincodeName:private collectionName: Org1MSPPrivateCollection"
 
-To transfer an asset, the buyer (recipient) needs to agree to the same ``appraisedValue`` as the asset owner, by calling chaincode function `AgreeToTransfer`. The agreed value will be stored in the `Org2MSPDetailsCollection` collection on the Org2 peer. Run the following command to agree to the appraised value of 100, as Org2:
+To transfer an asset, the buyer (recipient) needs to agree to the same ``appraisedValue`` as the asset owner, by calling chaincode function ``AgreeToTransfer``. The agreed value will be stored in the ``Org2MSPDetailsCollection`` collection on the Org2 peer. Run the following command to agree to the appraised value of 100, as Org2:
 
 .. code:: bash
 
@@ -1050,7 +853,7 @@ The owner of the asset needs to initiate the transfer:
 
     peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"TransferAsset","Args":[]}' --transient "{\"asset_owner\":\"$ASSET_OWNER\"}" --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
 
-You can ReadAsset `asset1` to see the results of the transfer:
+You can ReadAsset ``asset1`` to see the results of the transfer:
 
 .. code:: bash
 
@@ -1083,6 +886,80 @@ If you go back and look at the block height in your logs, you will see that the 
 due to hitting the fourth block (we only increased by two blocks in transferring the asset to Org2), but rather
 because when the asset transfer occurred, Org1 did not meet the ``read`` policy of the ``Org2MSPPrivateCollection``.
 
+
+.. _pd-purge:
+
+Purge Private Data
+------------------
+
+For use cases where private data only needs to be persisted for a short period of time,
+it is possible to "purge" the data after a certain set number of blocks, leaving
+behind only a hash of the data that serves as immutable evidence of the transaction.
+An organization could decide to purge private data if the data contained sensitive
+information that was used by another transaction, but is not longer needed, or
+if the data is being replicated into an off-chain database.
+
+The ``appraisedValue`` data in our example contains a private agreement that
+the organization may want to expire after a certain period of time. Thus, it
+has a limited lifespan, and can be purged after existing unchanged on the
+blockchain for a designated number of blocks using the ``blockToLive`` property
+in the collection definition.
+
+The ``Org2MSPPrivateCollection`` definition has a ``blockToLive``
+property value of ``3``, meaning this data will live on the side database for
+three blocks and then after that it will get purged. If we create additional
+blocks on the channel, the appraisedValue agreed to by Org2 will eventually
+get purged. We can create 3 new blocks to demonstrate:
+
+
+:guilabel:`Try it yourself`
+
+Swtich to a user from Org2:
+
+.. code:: bash
+
+    export CORE_PEER_LOCALMSPID="Org2MSP"
+    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp
+    export CORE_PEER_ADDRESS=localhost:9051
+
+We can still query the appraisedValue in the ``Org2MSPPrivateCollection``:
+
+.. code:: bash
+
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
+
+You should see the value printed in your logs:
+
+.. code:: bash
+
+    {"assetID":"asset1","appraisedValue":100}
+
+Now create three new assets to create three new blocks:
+
+.. code:: bash
+
+    export ASSET_PROPERTIES=$(echo -n "{\"objectType\":\"asset\",\"assetID\":\"asset2\",\"color\":\"blue\",\"size\":30,\"appraisedValue\":100}" | base64 | tr -d \\n)
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
+
+.. code:: bash
+
+    export ASSET_PROPERTIES=$(echo -n "{\"objectType\":\"asset\",\"assetID\":\"asset3\",\"color\":\"red\",\"size\":25,\"appraisedValue\":100}" | base64 | tr -d \\n)
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
+
+.. code:: bash
+
+    export ASSET_PROPERTIES=$(echo -n "{\"objectType\":\"asset\",\"assetID\":\"asset4\",\"color\":\"orange\",\"size\":15,\"appraisedValue\":100}" | base64 | tr -d \\n)
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
+
+The appraisedValue has now been purged from the private data collection. Issue the
+query again to see that the response is empty.
+
+.. code:: bash
+
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
+
+
 .. _pd-indexes:
 
 Using indexes with private data
@@ -1099,6 +976,7 @@ installed on a peer and instantiated on a channel. The associated indexes are
 automatically deployed upon chaincode instantiation on the channel when
 the  ``--collections-config`` flag is specified pointing to the location of
 the collection JSON file.
+
 
 
 .. _pd-ref-material:
