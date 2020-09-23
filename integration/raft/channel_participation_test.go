@@ -256,6 +256,20 @@ var _ = Describe("ChannelParticipation", func() {
 				channelInfo = channelparticipation.ListOne(network, o, "participation-trophy")
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
+
+			By("attempting to join with an invalid block")
+			channelparticipationJoinFailure(network, orderer3, "nice-try", &common.Block{}, http.StatusBadRequest, "invalid join block: block is not a config block")
+
+			By("attempting to join a channel that already exists")
+			channelparticipationJoinFailure(network, orderer3, "participation-trophy", genesisBlock, http.StatusMethodNotAllowed, "cannot join: channel already exists")
+
+			By("attempting to join system channel when app channels already exist")
+			systemChannelBlockBytes, err := ioutil.ReadFile(network.OutputBlockPath(network.SystemChannel.Name))
+			Expect(err).NotTo(HaveOccurred())
+			systemChannelBlock := &common.Block{}
+			err = proto.Unmarshal(systemChannelBlockBytes, systemChannelBlock)
+			Expect(err).NotTo(HaveOccurred())
+			channelparticipationJoinFailure(network, orderer3, "systemchannel", systemChannelBlock, http.StatusForbidden, "cannot join: application channels already exist")
 		})
 
 		It("join application channel with join-block as member via channel participation api", func() {
