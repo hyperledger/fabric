@@ -9,6 +9,7 @@ package privdata
 import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 )
@@ -20,11 +21,17 @@ type MembershipProvider struct {
 	mspID                       string
 	selfSignedData              protoutil.SignedData
 	IdentityDeserializerFactory func(chainID string) msp.IdentityDeserializer
+	myImplicitCollectionName    string
 }
 
 // NewMembershipInfoProvider returns MembershipProvider
 func NewMembershipInfoProvider(mspID string, selfSignedData protoutil.SignedData, identityDeserializerFunc func(chainID string) msp.IdentityDeserializer) *MembershipProvider {
-	return &MembershipProvider{mspID: mspID, selfSignedData: selfSignedData, IdentityDeserializerFactory: identityDeserializerFunc}
+	return &MembershipProvider{
+		mspID:                       mspID,
+		selfSignedData:              selfSignedData,
+		IdentityDeserializerFactory: identityDeserializerFunc,
+		myImplicitCollectionName:    implicitcollection.NameForOrg(mspID),
+	}
 }
 
 // AmMemberOf checks whether the current peer is a member of the given collection config.
@@ -55,4 +62,8 @@ func (m *MembershipProvider) AmMemberOf(channelName string, collectionPolicyConf
 	}
 
 	return true, nil
+}
+
+func (m *MembershipProvider) MyImplicitCollectionName() string {
+	return m.myImplicitCollectionName
 }

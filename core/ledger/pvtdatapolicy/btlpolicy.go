@@ -79,11 +79,15 @@ func (p *LSCCBasedBTLPolicy) GetExpiringBlock(namesapce string, collection strin
 	if err != nil {
 		return 0, err
 	}
+	return ComputeExpiringBlock(namesapce, collection, committingBlock, btl), nil
+}
+
+func ComputeExpiringBlock(namesapce, collection string, committingBlock, btl uint64) uint64 {
 	expiryBlk := committingBlock + btl + uint64(1)
 	if expiryBlk <= committingBlock { // committingBlk + btl overflows uint64-max
 		expiryBlk = math.MaxUint64
 	}
-	return expiryBlk, nil
+	return expiryBlk
 }
 
 type collectionInfoProvider interface {

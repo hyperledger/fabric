@@ -106,6 +106,13 @@ type missingDataKey struct {
 	nsCollBlk
 }
 
+type bootKVHashesKey struct {
+	blkNum uint64
+	txNum  uint64
+	ns     string
+	coll   string
+}
+
 type storeEntries struct {
 	dataEntries             []*dataEntry
 	expiryEntries           []*expiryEntry
@@ -559,7 +566,7 @@ func (s *Store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 	batch := s.db.NewUpdateBatch()
 	for _, expiryEntry := range expiryEntries {
 		batch.Delete(encodeExpiryKey(expiryEntry.key))
-		dataKeys, missingDataKeys := deriveKeys(expiryEntry)
+		dataKeys, missingDataKeys, bootKVHashesKeys := deriveKeys(expiryEntry)
 
 		for _, dataKey := range dataKeys {
 			batch.Delete(encodeDataKey(dataKey))
@@ -575,6 +582,10 @@ func (s *Store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 			batch.Delete(
 				encodeInelgMissingDataKey(missingDataKey),
 			)
+		}
+
+		for _, bootKVHashesKey := range bootKVHashesKeys {
+			batch.Delete(encodeBootKVHashesKey(bootKVHashesKey))
 		}
 
 		if err := s.db.WriteBatch(batch, false); err != nil {
