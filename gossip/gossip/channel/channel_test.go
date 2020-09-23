@@ -1145,6 +1145,14 @@ func TestNoGossipOrSigningWhenEmptyMembership(t *testing.T) {
 	time.Sleep(conf.PublishStateInfoInterval * 3)
 	// We haven't signed anything
 	assert.Equal(t, uint32(2), atomic.LoadUint32(&adapter.signCallCount))
+
+	assert.Empty(t, gc.Self().GetStateInfo().Properties.Chaincodes)
+	gossipedWG.Add(1)
+	// Now, update chaincodes and check our chaincode information was indeed updated
+	gc.UpdateChaincodes([]*proto.Chaincode{{Name: "mycc"}})
+	// We should have signed regardless!
+	assert.Equal(t, uint32(3), atomic.LoadUint32(&adapter.signCallCount))
+	assert.Equal(t, "mycc", gc.Self().GetStateInfo().Properties.Chaincodes[0].Name)
 }
 
 func TestChannelPulledBadBlocks(t *testing.T) {

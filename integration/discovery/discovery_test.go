@@ -65,7 +65,6 @@ var _ = Describe("DiscoveryService", func() {
 
 		orderer = network.Orderer("orderer")
 		network.CreateAndJoinChannel(orderer, "testchannel")
-		network.UpdateChannelAnchors(orderer, "testchannel")
 	})
 
 	AfterEach(func() {
@@ -79,10 +78,51 @@ var _ = Describe("DiscoveryService", func() {
 		os.RemoveAll(testDir)
 	})
 
-	It("discovers channel information", func() {
+	It("discovers network configuration even without anchor peers present", func() {
+		org1Peer0 := network.Peer("org1", "peer0")
+		chaincodeWhenNoAnchorPeers := nwo.Chaincode{
+			Name:    "noanchorpeersjustyet",
+			Version: "1.0",
+			Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
+			Ctor:    `{"Args":["init","a","100","b","200"]}`,
+			Policy:  `OR ('Org1MSP.member')`,
+		}
+		By("Deploying chaincode before anchor peers are defined in the channel")
+		nwo.DeployChaincode(network, "testchannel", orderer, chaincodeWhenNoAnchorPeers, org1Peer0)
+
+		endorsersForChaincodeBeforeAnchorPeersExist := commands.Endorsers{
+			UserCert:  network.PeerUserCert(org1Peer0, "User1"),
+			UserKey:   network.PeerUserKey(org1Peer0, "User1"),
+			MSPID:     network.Organization(org1Peer0.Organization).MSPID,
+			Server:    network.PeerAddress(org1Peer0, nwo.ListenPort),
+			Channel:   "testchannel",
+			Chaincode: chaincodeWhenNoAnchorPeers.Name,
+		}
+		discoveryQuery := discoverEndorsers(network, endorsersForChaincodeBeforeAnchorPeersExist)
+		Eventually(discoveryQuery, network.EventuallyTimeout).Should(BeEquivalentTo(
+			[]ChaincodeEndorsers{
+				{
+					Chaincode: chaincodeWhenNoAnchorPeers.Name,
+					EndorsersByGroups: map[string][]nwo.DiscoveredPeer{
+						"G0": {network.DiscoveredPeer(org1Peer0)},
+					},
+					Layouts: []*discovery.Layout{
+						{
+							QuantitiesByGroup: map[string]uint32{"G0": 1},
+						},
+					},
+				},
+			},
+		))
+	})
+
+	It("discovers network configuration, endorsers, and peer membership", func() {
 		org1Peer0 := network.Peer("org1", "peer0")
 		org2Peer0 := network.Peer("org2", "peer0")
 		org3Peer0 := network.Peer("org3", "peer0")
+
+		By("Updating anchor peers")
+		network.UpdateChannelAnchors(orderer, "testchannel")
 
 		By("discovering endorsers when missing chaincode")
 		endorsers := commands.Endorsers{
@@ -199,6 +239,8 @@ var _ = Describe("DiscoveryService", func() {
 
 	It("discovers peer membership", func() {
 		org1Peer0 := network.Peer("org1", "peer0")
+
+		network.UpdateChannelAnchors(orderer, "testchannel")
 
 		By("discovering peers")
 		Eventually(nwo.DiscoverPeers(network, org1Peer0, "User1", "testchannel"), network.EventuallyTimeout).Should(ConsistOf(
