@@ -65,12 +65,14 @@ func (c *cache) getState(chainID, namespace, key string) (*CacheValue, error) {
 	}
 
 	cacheKey := constructCacheKey(chainID, namespace, key)
-	valBytes := cache.GetBig(nil, cacheKey)
-	if valBytes == nil {
-		valBytes = cache.Get(nil, cacheKey)
-		if valBytes == nil {
-			return nil, nil
+	var valBytes []byte
+	if cache.Has(cacheKey) {
+		valBytes = cache.GetBig(nil, cacheKey)
+		if cap(valBytes) < fastCacheValueSizeLimit {
+			valBytes = cache.Get(nil, cacheKey)
 		}
+	} else {
+		return nil, nil
 	}
 
 	cacheValue := &CacheValue{}
@@ -130,8 +132,7 @@ func (c *cache) UpdateStates(chainID string, updates cacheUpdates) error {
 				cache.Del(cacheKey)
 				continue
 			}
-			oldValBig := cache.GetBig(nil, cacheKey)
-			if oldVal := cache.Get(nil, cacheKey); oldVal != nil || oldValBig != nil {
+			if cache.Has(cacheKey) {
 				newValBytes, err := proto.Marshal(newVal)
 				if err != nil {
 					return err
@@ -162,6 +163,9 @@ func (c *cache) getCache(namespace string) *fastcache.Cache {
 
 func setImplicitValue(c *fastcache.Cache, cacheKey []byte, value []byte) {
 	if cap(value) > fastCacheValueSizeLimit {
+		if c.Has(cacheKey) {
+			c.Del(cacheKey)
+		}
 		c.SetBig(cacheKey, value)
 	} else {
 		c.Set(cacheKey, value)
