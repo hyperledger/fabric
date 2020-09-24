@@ -303,14 +303,7 @@ func (csp *Provider) getSession() (session pkcs11.SessionHandle, err error) {
 	for {
 		select {
 		case session = <-csp.sessPool:
-			if _, err = csp.ctx.GetSessionInfo(session); err == nil {
-				logger.Debugf("Reusing existing pkcs11 session %d on slot %d\n", session, csp.slot)
-				return session, nil
-			}
-
-			logger.Warningf("Get session info failed [%s], closing existing session and getting a new session\n", err)
-			csp.closeSession(session)
-
+			return
 		default:
 			// cache is empty (or completely in use), create a new session
 			return csp.createSession()
