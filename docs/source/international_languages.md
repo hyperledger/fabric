@@ -139,8 +139,7 @@ as spoken in Mexico:
    Once you've been added to this list, you can add others translators from your
    workgroup.
 
-1. On the [`i18n rocket channel`](https://chat.hyperledger.org/channel/i18n)
-   request adding collaborators if you want to able to assign issues. They need to become members of the community by asking core repo maintainers to add those translators to the [`Hyperledger Github Organization`](https://github.com/orgs/hyperledger/teamsr)
+   Also request adding collaborators if you want to be able to assign issues. They need to become members of the community by asking core repo maintainers to add those translators to the [`Hyperledger Github Organization`](https://github.com/orgs/hyperledger/teams)
 
 Congratulations! A community of translators can now translate your newly-created
 language in the `fabric-docs-i18n` repository.
