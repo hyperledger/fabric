@@ -517,10 +517,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			findLeader([]*ginkgomon.Runner{o1Runner, o2Runner, o3Runner})
 
 			By("submitting config updates to orderers with expired TLS certs to replace the expired certs")
+			timeShift := 5 * time.Minute
 			for _, o := range orderers {
-				timeShift := 5 * time.Minute
-				configBlock := fetchConfigBlock(network, peer, o, nwo.ClusterPort, network.SystemChannel.Name, timeShift)
-				channelConfig := configFromBlock(configBlock)
+				channelConfig := fetchConfig(network, peer, o, nwo.ClusterPort, network.SystemChannel.Name, timeShift)
 				c := conftx.New(channelConfig)
 				err = c.Orderer().RemoveConsenter(consenterChannelConfig(network, o))
 				Expect(err).NotTo(HaveOccurred())
@@ -966,30 +965,45 @@ func configFromBlock(block *common.Block) *common.Config {
 	return configEnv.Config
 }
 
-func fetchConfigBlock(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, port nwo.PortName, channel string, tlsHandshakeTimeShift time.Duration) *common.Block {
-	tempDir, err := ioutil.TempDir(n.RootDir, "fetchConfigBlock")
+func fetchConfig(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, port nwo.PortName, channel string, tlsHandshakeTimeShift time.Duration) *common.Config {
+	tempDir, err := ioutil.TempDir(n.RootDir, "fetchConfig")
 	Expect(err).NotTo(HaveOccurred())
 	defer os.RemoveAll(tempDir)
 
 	output := filepath.Join(tempDir, "config_block.pb")
-	sess, err := n.OrdererAdminSession(orderer, peer, commands.ChannelFetch{
-		ChannelID:             channel,
-		Block:                 "config",
-		Orderer:               n.OrdererAddress(orderer, port),
-		OutputFile:            output,
-		ClientAuth:            n.ClientAuthRequired,
-		TLSHandshakeTimeShift: tlsHandshakeTimeShift,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Received block: "))
-
+	fetchConfigBlock(n, peer, orderer, port, n.SystemChannel.Name, output, tlsHandshakeTimeShift)
 	configBlock := nwo.UnmarshalBlockFromFile(output)
-	return configBlock
+	return configFromBlock(configBlock)
+}
+
+func fetchConfigBlock(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, port nwo.PortName, channel, output string, tlsHandshakeTimeShift time.Duration) {
+	fetch := func() int {
+		sess, err := n.OrdererAdminSession(orderer, peer, commands.ChannelFetch{
+			ChannelID:             channel,
+			Block:                 "config",
+			Orderer:               n.OrdererAddress(orderer, port),
+			OutputFile:            output,
+			ClientAuth:            n.ClientAuthRequired,
+			TLSHandshakeTimeShift: tlsHandshakeTimeShift,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		code := sess.Wait(n.EventuallyTimeout).ExitCode()
+		if code == 0 {
+			Expect(sess.Err).To(gbytes.Say("Received block: "))
+		}
+		return code
+	}
+	Eventually(fetch, n.EventuallyTimeout).Should(Equal(0))
 }
 
 func currentConfigBlockNumber(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, port nwo.PortName, channel string, tlsHandshakeTimeShift time.Duration) uint64 {
-	configBlock := fetchConfigBlock(n, peer, orderer, port, channel, tlsHandshakeTimeShift)
+	tempDir, err := ioutil.TempDir(n.RootDir, "currentConfigBlock")
+	Expect(err).NotTo(HaveOccurred())
+	defer os.RemoveAll(tempDir)
+
+	output := filepath.Join(tempDir, "config_block.pb")
+	fetchConfigBlock(n, peer, orderer, port, channel, output, tlsHandshakeTimeShift)
+	configBlock := nwo.UnmarshalBlockFromFile(output)
 	return configBlock.Header.Number
 }
 
