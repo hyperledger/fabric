@@ -12,8 +12,7 @@ import (
 )
 
 var (
-	keySep                  = []byte{0x00}
-	fastCacheValueSizeLimit = 64 * 1024
+	keySep = []byte{0x00}
 )
 
 // cache holds both the system and user cache
@@ -65,17 +64,12 @@ func (c *cache) getState(chainID, namespace, key string) (*CacheValue, error) {
 	}
 
 	cacheKey := constructCacheKey(chainID, namespace, key)
-	var valBytes []byte
-	if cache.Has(cacheKey) {
-		valBytes = cache.GetBig(nil, cacheKey)
-		if cap(valBytes) < fastCacheValueSizeLimit {
-			valBytes = cache.Get(nil, cacheKey)
-		}
-	} else {
+
+	if !cache.Has(cacheKey) {
 		return nil, nil
 	}
-
 	cacheValue := &CacheValue{}
+	valBytes := cache.Get(nil, cacheKey)
 	if err := proto.Unmarshal(valBytes, cacheValue); err != nil {
 		return nil, err
 	}
@@ -91,10 +85,16 @@ func (c *cache) putState(chainID, namespace, key string, cacheValue *CacheValue)
 
 	cacheKey := constructCacheKey(chainID, namespace, key)
 	valBytes, err := proto.Marshal(cacheValue)
+
 	if err != nil {
 		return err
 	}
-	setImplicitValue(cache, cacheKey, valBytes)
+
+	if cache.Has(cacheKey) {
+		cache.Del(cacheKey)
+	}
+
+	cache.Set(cacheKey, valBytes)
 	return nil
 }
 
@@ -137,7 +137,8 @@ func (c *cache) UpdateStates(chainID string, updates cacheUpdates) error {
 				if err != nil {
 					return err
 				}
-				setImplicitValue(cache, cacheKey, newValBytes)
+				cache.Del(cacheKey)
+				cache.Set(cacheKey, newValBytes)
 			}
 		}
 	}
@@ -159,17 +160,6 @@ func (c *cache) getCache(namespace string) *fastcache.Cache {
 		}
 	}
 	return c.usrCache
-}
-
-func setImplicitValue(c *fastcache.Cache, cacheKey []byte, value []byte) {
-	if cap(value) > fastCacheValueSizeLimit {
-		if c.Has(cacheKey) {
-			c.Del(cacheKey)
-		}
-		c.SetBig(cacheKey, value)
-	} else {
-		c.Set(cacheKey, value)
-	}
 }
 
 func constructCacheKey(chainID, namespace, key string) []byte {
