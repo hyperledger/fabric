@@ -89,7 +89,12 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 		require.NoError(t, err)
 		bcInfo, _ := l.GetBlockchainInfo()
 		require.Equal(t, &common.BlockchainInfo{
-			Height: 1, CurrentBlockHash: protoutil.BlockHeaderHash(gb.Header), PreviousBlockHash: nil,
+			Height:            1,
+			CurrentBlockHash:  protoutil.BlockHeaderHash(gb.Header),
+			PreviousBlockHash: nil,
+			BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
+				LastBlockInSnapshot: 0,
+			},
 		}, bcInfo)
 	})
 
