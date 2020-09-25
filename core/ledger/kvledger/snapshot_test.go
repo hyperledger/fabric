@@ -838,6 +838,9 @@ func verifyCreatedLedger(t *testing.T,
 			Height:            e.lastBlockNumber + 1,
 			CurrentBlockHash:  e.lastBlockHash,
 			PreviousBlockHash: e.previousBlockHash,
+			BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
+				LastBlockInSnapshot: e.lastBlockNumber,
+			},
 		},
 		destBCInfo,
 	)

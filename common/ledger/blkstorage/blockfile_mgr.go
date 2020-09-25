@@ -145,6 +145,8 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore
 		bcInfo.Height = mgr.bootstrappingSnapshotInfo.LastBlockNum + 1
 		bcInfo.CurrentBlockHash = mgr.bootstrappingSnapshotInfo.LastBlockHash
 		bcInfo.PreviousBlockHash = mgr.bootstrappingSnapshotInfo.PreviousBlockHash
+		bcInfo.BootstrappingSnapshotInfo = &common.BootstrappingSnapshotInfo{}
+		bcInfo.BootstrappingSnapshotInfo.LastBlockInSnapshot = mgr.bootstrappingSnapshotInfo.LastBlockNum
 	}
 
 	if !blockfilesInfo.noBlockFiles {
@@ -152,12 +154,10 @@ func newBlockfileMgr(id string, conf *Conf, indexConfig *IndexConfig, indexStore
 		if err != nil {
 			panic(fmt.Sprintf("Could not retrieve header of the last block form file: %s", err))
 		}
-		lastBlockHash := protoutil.BlockHeaderHash(lastBlockHeader)
-		previousBlockHash := lastBlockHeader.PreviousHash
-		bcInfo = &common.BlockchainInfo{
-			Height:            blockfilesInfo.lastPersistedBlock + 1,
-			CurrentBlockHash:  lastBlockHash,
-			PreviousBlockHash: previousBlockHash}
+		// update bcInfo with lastPersistedBlock
+		bcInfo.Height = blockfilesInfo.lastPersistedBlock + 1
+		bcInfo.CurrentBlockHash = protoutil.BlockHeaderHash(lastBlockHeader)
+		bcInfo.PreviousBlockHash = lastBlockHeader.PreviousHash
 	}
 	mgr.bcInfo.Store(bcInfo)
 	return mgr, nil
@@ -490,9 +490,11 @@ func (mgr *blockfileMgr) updateBlockfilesInfo(blkfilesInfo *blockfilesInfo) {
 func (mgr *blockfileMgr) updateBlockchainInfo(latestBlockHash []byte, latestBlock *common.Block) {
 	currentBCInfo := mgr.getBlockchainInfo()
 	newBCInfo := &common.BlockchainInfo{
-		Height:            currentBCInfo.Height + 1,
-		CurrentBlockHash:  latestBlockHash,
-		PreviousBlockHash: latestBlock.Header.PreviousHash}
+		Height:                    currentBCInfo.Height + 1,
+		CurrentBlockHash:          latestBlockHash,
+		PreviousBlockHash:         latestBlock.Header.PreviousHash,
+		BootstrappingSnapshotInfo: currentBCInfo.BootstrappingSnapshotInfo,
+	}
 
 	mgr.bcInfo.Store(newBCInfo)
 }
