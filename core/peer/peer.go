@@ -478,6 +478,11 @@ func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 	return nil
 }
 
+// JoinBySnaphotStatus queries ledger mgr to get the status of joinbysnapshot
+func (p *Peer) JoinBySnaphotStatus() *pb.JoinBySnapshotStatus {
+	return p.LedgerMgr.JoinBySnapshotStatus()
+}
+
 // initChannel takes care to initialize channel after peer joined, for example deploys system CCs
 func (p *Peer) initChannel(cid string) {
 	if p.channelInitializer != nil {

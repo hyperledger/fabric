@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
@@ -32,8 +33,8 @@ var ErrLedgerMgmtNotInitialized = errors.New("ledger mgmt should be initialized 
 
 // LedgerMgr manages ledgers for all channels
 type LedgerMgr struct {
-	creationLock           sync.Mutex
-	createFromSnapshotInfo string
+	creationLock         sync.Mutex
+	joinBySnapshotStatus *pb.JoinBySnapshotStatus
 
 	lock           sync.Mutex
 	openedLedgers  map[string]ledger.PeerLedger
@@ -84,9 +85,10 @@ func NewLedgerMgr(initializer *Initializer) *LedgerMgr {
 		panic(fmt.Sprintf("Error in instantiating ledger provider: %+v", err))
 	}
 	ledgerMgr := &LedgerMgr{
-		openedLedgers:      make(map[string]ledger.PeerLedger),
-		ledgerProvider:     provider,
-		ebMetadataProvider: initializer.EbMetadataProvider,
+		joinBySnapshotStatus: &pb.JoinBySnapshotStatus{},
+		openedLedgers:        make(map[string]ledger.PeerLedger),
+		ledgerProvider:       provider,
+		ebMetadataProvider:   initializer.EbMetadataProvider,
 	}
 	// TODO remove the following package level init
 	cceventmgmt.Initialize(&chaincodeInfoProviderImpl{
@@ -105,8 +107,8 @@ func (m *LedgerMgr) CreateLedger(id string, genesisBlock *common.Block) (ledger.
 	m.creationLock.Lock()
 	defer m.creationLock.Unlock()
 
-	if m.createFromSnapshotInfo != "" {
-		return nil, errors.Errorf("a ledger is being created from a snapshot at %s. Call ledger creation again after it is done.", m.createFromSnapshotInfo)
+	if m.joinBySnapshotStatus.InProgress {
+		return nil, errors.Errorf("a ledger is being created from a snapshot at %s. Call ledger creation again after it is done.", m.joinBySnapshotStatus.BootstrappingSnapshotDir)
 	}
 
 	m.lock.Lock()
@@ -139,12 +141,12 @@ func (m *LedgerMgr) CreateLedgerFromSnapshot(snapshotDir string, channelCallback
 		return errors.Errorf("snapshot dir %s is empty", snapshotDir)
 	}
 
-	if err := m.setCreateFromSnapshotInfo(snapshotDir); err != nil {
+	if err := m.setJoinBySnapshotStatus(snapshotDir); err != nil {
 		return err
 	}
 
 	go func() {
-		defer m.unsetCreateFromSnapshotInfo()
+		defer m.resetJoinBySnapshotStatus()
 
 		ledger, cid, err := m.createFromSnapshot(snapshotDir)
 		if err != nil {
@@ -175,26 +177,26 @@ func (m *LedgerMgr) createFromSnapshot(snapshotDir string) (ledger.PeerLedger, s
 	}, cid, nil
 }
 
-// setCreateFromSnapshotInfo sets createFromSnapshotInfo to the snapshotDir to indicate
-// a CreateLedgerrFromSnapshot is running so that other CreateLedger or CreateLedgerFromSnapshot
-// calls will not be allowed.
-func (m *LedgerMgr) setCreateFromSnapshotInfo(snapshotDir string) error {
+// setJoinBySnapshotStatus sets joinBySnapshotStatus to indicate a CreateLedgerFromSnapshot is in-progress
+// so that other CreateLedger or CreateLedgerFromSnapshot calls will not be allowed.
+func (m *LedgerMgr) setJoinBySnapshotStatus(snapshotDir string) error {
 	m.creationLock.Lock()
 	defer m.creationLock.Unlock()
-	if m.createFromSnapshotInfo != "" {
-		return errors.Errorf("a ledger is being created from a snapshot at %s. Call ledger creation again after it is done.", m.createFromSnapshotInfo)
+	if m.joinBySnapshotStatus.InProgress {
+		return errors.Errorf("a ledger is being created from a snapshot at %s. Call ledger creation again after it is done.", m.joinBySnapshotStatus.BootstrappingSnapshotDir)
 	}
-	m.createFromSnapshotInfo = snapshotDir
+	m.joinBySnapshotStatus.InProgress = true
+	m.joinBySnapshotStatus.BootstrappingSnapshotDir = snapshotDir
 	return nil
 }
 
-// unsetCreateFromSnapshotInfo sets createFromSnapshotInfo to empty string to indicate
-// no CreateLedgerrFromSnapshot is running so that other CreateLedger or CreateLedgerFromSnapshot
-// calls will be allowed.
-func (m *LedgerMgr) unsetCreateFromSnapshotInfo() {
+// resetJoinBySnapshotStatus resets joinBySnapshotStatus to indicate no CreateLedgerFromSnapshot is in-progress
+// so that other CreateLedger or CreateLedgerFromSnapshot calls will be allowed.
+func (m *LedgerMgr) resetJoinBySnapshotStatus() {
 	m.creationLock.Lock()
 	defer m.creationLock.Unlock()
-	m.createFromSnapshotInfo = ""
+	m.joinBySnapshotStatus.InProgress = false
+	m.joinBySnapshotStatus.BootstrappingSnapshotDir = ""
 }
 
 // OpenLedger returns a ledger for the given id
@@ -226,12 +228,16 @@ func (m *LedgerMgr) GetLedgerIDs() ([]string, error) {
 	return m.ledgerProvider.List()
 }
 
-// GetCreateFromSnapshotInfo returns the snapshot dir if a ledger is being created from a snapshot.
-// Otherwise, it returns an empty string.
-func (m *LedgerMgr) GetCreateFromSnapshotInfo() string {
+// JoinBySnapshotStatus returns the status of joinbysnapshot which includes
+// ledger creation and channel callback.
+func (m *LedgerMgr) JoinBySnapshotStatus() *pb.JoinBySnapshotStatus {
 	m.creationLock.Lock()
 	defer m.creationLock.Unlock()
-	return m.createFromSnapshotInfo
+	// return a copy of joinBySnapshotStatus to the caller
+	return &pb.JoinBySnapshotStatus{
+		InProgress:               m.joinBySnapshotStatus.InProgress,
+		BootstrappingSnapshotDir: m.joinBySnapshotStatus.BootstrappingSnapshotDir,
+	}
 }
 
 // Close closes all the opened ledgers and any resources held for ledger management

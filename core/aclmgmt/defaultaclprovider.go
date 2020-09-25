@@ -92,6 +92,8 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	//--------------- CSCC resources -----------
 	//p resources (implemented by the chaincode currently)
 	d.pResourcePolicyMap[resources.Cscc_JoinChain] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Cscc_JoinChainBySnapshot] = mgmt.Admins
+	d.pResourcePolicyMap[resources.Cscc_JoinBySnapshotStatus] = mgmt.Admins
 	d.pResourcePolicyMap[resources.Cscc_GetChannels] = mgmt.Members
 
 	//c resources

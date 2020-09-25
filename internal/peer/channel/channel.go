@@ -56,6 +56,7 @@ func Cmd(cf *ChannelCmdFactory) *cobra.Command {
 	channelCmd.AddCommand(fetchCmd(cf))
 	channelCmd.AddCommand(joinCmd(cf))
 	channelCmd.AddCommand(joinBySnapshotCmd(cf))
+	channelCmd.AddCommand(joinBySnapshotStatusCmd(cf))
 	channelCmd.AddCommand(listCmd(cf))
 	channelCmd.AddCommand(updateCmd(cf))
 	channelCmd.AddCommand(signconfigtxCmd(cf))
@@ -101,8 +102,8 @@ func attachFlags(cmd *cobra.Command, names []string) {
 
 var channelCmd = &cobra.Command{
 	Use:   "channel",
-	Short: "Operate a channel: create|fetch|join|joinbysnapshot|list|update|signconfigtx|getinfo.",
-	Long:  "Operate a channel: create|fetch|join|joinbysnapshot|list|update|signconfigtx|getinfo.",
+	Short: "Operate a channel: create|fetch|join|joinbysnapshot|joinbysnapshotstatus|list|update|signconfigtx|getinfo.",
+	Long:  "Operate a channel: create|fetch|join|joinbysnapshot|joinbysnapshotstatus|list|update|signconfigtx|getinfo.",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		common.InitCmd(cmd, args)
 		common.SetOrdererEnv(cmd, args)

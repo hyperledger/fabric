@@ -402,17 +402,26 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 	res := cscc.Invoke(mockStub)
 	require.Equal(t, int32(shim.OK), res.Status)
 
-	// verify get channels
-	channelCreated := func() bool {
-		mockStub.GetArgsReturns([][]byte{[]byte(GetChannels)})
-		res = cscc.Invoke(mockStub)
-		require.Equal(t, int32(shim.OK), res.Status)
-
-		cqr := &pb.ChannelQueryResponse{}
-		require.NoError(t, proto.Unmarshal(res.Payload, cqr))
-		return len(cqr.GetChannels()) == 1 && cqr.GetChannels()[0].GetChannelId() == channelID
+	// wait until ledger creation is done
+	ledgerCreationDone := func() bool {
+		resp := cscc.joinBySnapshotStatus()
+		require.Equal(t, shim.OK, int(resp.Status))
+		status := &pb.JoinBySnapshotStatus{}
+		err := proto.Unmarshal(resp.Payload, status)
+		require.NoError(t, err)
+		return !status.InProgress
 	}
-	require.Eventually(t, channelCreated, time.Minute, time.Second)
+	require.Eventually(t, ledgerCreationDone, time.Minute, time.Second)
+
+	// verify get channels
+	mockStub.GetArgsReturns([][]byte{[]byte(GetChannels)})
+	res = cscc.Invoke(mockStub)
+	require.Equal(t, int32(shim.OK), res.Status)
+
+	cqr := &pb.ChannelQueryResponse{}
+	require.NoError(t, proto.Unmarshal(res.Payload, cqr))
+	require.Equal(t, 1, len(cqr.GetChannels()))
+	require.Equal(t, channelID, cqr.GetChannels()[0].GetChannelId())
 
 	// verify ledger is created
 	lgr := cscc.peer.GetLedger(channelID)

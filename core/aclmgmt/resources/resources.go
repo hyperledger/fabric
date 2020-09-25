@@ -47,9 +47,11 @@ const (
 	Qscc_GetBlockByTxID     = "qscc/GetBlockByTxID"
 
 	//Cscc resources
-	Cscc_JoinChain      = "cscc/JoinChain"
-	Cscc_GetConfigBlock = "cscc/GetConfigBlock"
-	Cscc_GetChannels    = "cscc/GetChannels"
+	Cscc_JoinChain            = "cscc/JoinChain"
+	Cscc_JoinChainBySnapshot  = "cscc/JoinChainBySnapshot"
+	Cscc_JoinBySnapshotStatus = "cscc/JoinBySnapshotStatus"
+	Cscc_GetConfigBlock       = "cscc/GetConfigBlock"
+	Cscc_GetChannels          = "cscc/GetChannels"
 
 	//Peer resources
 	Peer_Propose              = "peer/Propose"
