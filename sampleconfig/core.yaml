@@ -563,8 +563,6 @@ chaincode:
     system:
         cscc: enable
         lscc: enable
-        escc: enable
-        vscc: enable
         qscc: enable
 
     # System chaincode plugins:
