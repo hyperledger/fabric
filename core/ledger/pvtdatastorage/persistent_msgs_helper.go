@@ -63,6 +63,14 @@ func (e *ExpiryData) addBootKVHash(ns, coll string, txNum uint64) {
 	txNums.List = append(txNums.List, txNum)
 }
 
+func (h *BootKVHashes) toMap() map[string][]byte {
+	m := make(map[string][]byte, len(h.List))
+	for _, kv := range h.List {
+		m[string(kv.KeyHash)] = kv.ValueHash
+	}
+	return m
+}
+
 func newCollElgInfo(nsCollMap map[string][]string) *CollElgInfo {
 	m := &CollElgInfo{NsCollMap: map[string]*CollNames{}}
 	for ns, colls := range nsCollMap {

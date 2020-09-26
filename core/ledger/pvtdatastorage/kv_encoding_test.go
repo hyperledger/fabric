@@ -165,3 +165,19 @@ func TestDecodingAppendedValues(t *testing.T) {
 		}
 	}
 }
+
+func TestEncodingDecodingLastBlockInSnapshotVal(t *testing.T) {
+	t.Run("basic-coding-encoding", func(t *testing.T) {
+		for i := uint64(0); i < 100; i++ {
+			encoded := encodeLastBlockInBootSnapshotVal(i)
+			decoded, err := decodeLastBlockInBootSnapshotVal(encoded)
+			require.NoError(t, err)
+			require.Equal(t, i, decoded)
+		}
+	})
+
+	t.Run("error-case", func(t *testing.T) {
+		_, err := decodeLastBlockInBootSnapshotVal([]byte{0xff})
+		require.EqualError(t, err, "unexpected bytes for interpreting as varint")
+	})
+}
