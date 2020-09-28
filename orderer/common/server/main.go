@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/fabhttp"
 	"github.com/hyperledger/fabric/common/flogging"
 	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
 	"github.com/hyperledger/fabric/common/grpclogging"
@@ -246,6 +247,7 @@ func Main() {
 	opsSystem.RegisterHandler(
 		channelparticipation.URLBaseV1,
 		channelparticipation.NewHTTPHandler(conf.ChannelParticipation, manager),
+		conf.Operations.TLS.Enabled,
 	)
 	if err = opsSystem.Start(); err != nil {
 		logger.Panicf("failed to start operations subsystem: %s", err)
@@ -848,8 +850,17 @@ func initializeEtcdraftConsenter(
 
 func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics) *operations.System {
 	return operations.NewSystem(operations.Options{
-		Logger:        flogging.MustGetLogger("orderer.operations"),
-		ListenAddress: ops.ListenAddress,
+		Options: fabhttp.Options{
+			Logger:        flogging.MustGetLogger("orderer.operations"),
+			ListenAddress: ops.ListenAddress,
+			TLS: fabhttp.TLS{
+				Enabled:            ops.TLS.Enabled,
+				CertFile:           ops.TLS.Certificate,
+				KeyFile:            ops.TLS.PrivateKey,
+				ClientCertRequired: ops.TLS.ClientAuthRequired,
+				ClientCACertFiles:  ops.TLS.ClientRootCAs,
+			},
+		},
 		Metrics: operations.MetricsOptions{
 			Provider: metrics.Provider,
 			Statsd: &operations.Statsd{
@@ -858,13 +869,6 @@ func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics
 				WriteInterval: metrics.Statsd.WriteInterval,
 				Prefix:        metrics.Statsd.Prefix,
 			},
-		},
-		TLS: operations.TLS{
-			Enabled:            ops.TLS.Enabled,
-			CertFile:           ops.TLS.Certificate,
-			KeyFile:            ops.TLS.PrivateKey,
-			ClientCertRequired: ops.TLS.ClientAuthRequired,
-			ClientCACertFiles:  ops.TLS.ClientRootCAs,
 		},
 		Version: metadata.Version,
 	})

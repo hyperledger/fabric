@@ -4,7 +4,7 @@ Copyright IBM Corp All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package operations_test
+package fabhttp_test
 
 import (
 	"crypto/tls"
@@ -13,13 +13,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hyperledger/fabric/core/operations"
+	"github.com/hyperledger/fabric/common/fabhttp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("TLS", func() {
-	var opsTLS operations.TLS
+	var httpTLS fabhttp.TLS
 	var tempDir string
 
 	BeforeEach(func() {
@@ -29,7 +29,7 @@ var _ = Describe("TLS", func() {
 
 		generateCertificates(tempDir)
 
-		opsTLS = operations.TLS{
+		httpTLS = fabhttp.TLS{
 			Enabled:            true,
 			CertFile:           filepath.Join(tempDir, "server-cert.pem"),
 			KeyFile:            filepath.Join(tempDir, "server-key.pem"),
@@ -57,7 +57,7 @@ var _ = Describe("TLS", func() {
 		clientCAPool := x509.NewCertPool()
 		clientCAPool.AppendCertsFromPEM(pemBytes)
 
-		tlsConfig, err := opsTLS.Config()
+		tlsConfig, err := httpTLS.Config()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tlsConfig).To(Equal(&tls.Config{
 			Certificates: []tls.Certificate{cert},
@@ -76,11 +76,11 @@ var _ = Describe("TLS", func() {
 
 	Context("when TLS is not enabled", func() {
 		BeforeEach(func() {
-			opsTLS.Enabled = false
+			httpTLS.Enabled = false
 		})
 
 		It("returns a nil config", func() {
-			tlsConfig, err := opsTLS.Config()
+			tlsConfig, err := httpTLS.Config()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tlsConfig).To(BeNil())
 		})
@@ -88,11 +88,11 @@ var _ = Describe("TLS", func() {
 
 	Context("when a client certificate is not required", func() {
 		BeforeEach(func() {
-			opsTLS.ClientCertRequired = false
+			httpTLS.ClientCertRequired = false
 		})
 
 		It("requests a client cert with verification", func() {
-			tlsConfig, err := opsTLS.Config()
+			tlsConfig, err := httpTLS.Config()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tlsConfig.ClientAuth).To(Equal(tls.VerifyClientCertIfGiven))
 		})
@@ -100,22 +100,22 @@ var _ = Describe("TLS", func() {
 
 	Context("when the server certificate cannot be constructed", func() {
 		BeforeEach(func() {
-			opsTLS.CertFile = "non-existent-file"
+			httpTLS.CertFile = "non-existent-file"
 		})
 
 		It("returns an error", func() {
-			_, err := opsTLS.Config()
+			_, err := httpTLS.Config()
 			Expect(err).To(MatchError("open non-existent-file: no such file or directory"))
 		})
 	})
 
 	Context("the client CA slice is empty", func() {
 		BeforeEach(func() {
-			opsTLS.ClientCACertFiles = nil
+			httpTLS.ClientCACertFiles = nil
 		})
 
 		It("builds a TLS configuration without an empty CA pool", func() {
-			tlsConfig, err := opsTLS.Config()
+			tlsConfig, err := httpTLS.Config()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(tlsConfig.ClientCAs.Subjects()).To(BeEmpty())
 		})
@@ -123,13 +123,13 @@ var _ = Describe("TLS", func() {
 
 	Context("when a client CA cert cannot be read", func() {
 		BeforeEach(func() {
-			opsTLS.ClientCACertFiles = []string{
+			httpTLS.ClientCACertFiles = []string{
 				"non-existent-file",
 			}
 		})
 
 		It("returns an error", func() {
-			_, err := opsTLS.Config()
+			_, err := httpTLS.Config()
 			Expect(err).To(MatchError("open non-existent-file: no such file or directory"))
 		})
 	})
