@@ -763,3 +763,24 @@ func TestDelegation(t *testing.T) {
 		require.Equal(t, msg, pt)
 	})
 }
+
+func TestHandleSessionReturn(t *testing.T) {
+	opts := defaultOptions()
+	opts.sessionCacheSize = 5
+	csp, cleanup := newProvider(t, opts)
+	defer cleanup()
+
+	// Retrieve and destroy default session created during initialization
+	session, err := csp.getSession()
+	require.NoError(t, err)
+	csp.closeSession(session)
+
+	// Verify session pool is empty and place invalid session in pool
+	require.Empty(t, csp.sessPool, "sessionPool should be empty")
+	csp.returnSession(pkcs11.SessionHandle(^uint(0)))
+
+	// Attempt to generate key with invalid session
+	_, err = csp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+	require.EqualError(t, err, "Failed generating ECDSA P256 key: P11: keypair generate failed [pkcs11: 0xB3: CKR_SESSION_HANDLE_INVALID]")
+	require.Empty(t, csp.sessPool, "sessionPool should be empty")
+}
