@@ -1545,3 +1545,31 @@ func TestPKCS11ECKeySignVerify(t *testing.T) {
 		t.Fatal("Signature should not match with software verification!")
 	}
 }
+
+func TestHandleSessionReturn(t *testing.T) {
+	opts := PKCS11Opts{
+		HashFamily: "SHA2",
+		SecLevel:   256,
+		SoftVerify: false,
+	}
+	opts.Library, opts.Pin, opts.Label = FindPKCS11Lib()
+
+	provider, err := New(opts, currentKS)
+	require.NoError(t, err)
+	pi := provider.(*impl)
+	defer pi.ctx.Destroy()
+
+	// Retrieve and destroy default session created during initialization
+	session, err := pi.getSession()
+	require.NoError(t, err)
+	pi.closeSession(session)
+
+	// Verify session pool is empty and place invalid session in pool
+	require.Empty(t, pi.sessPool, "sessionPool should be empty")
+	pi.returnSession(pkcs11.SessionHandle(^uint(0)))
+
+	// Attempt to generate key with invalid session
+	_, err = pi.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+	require.EqualError(t, err, "Failed generating ECDSA P256 key: P11: keypair generate failed [pkcs11: 0xB3: CKR_SESSION_HANDLE_INVALID]")
+	require.Empty(t, pi.sessPool, "sessionPool should be empty")
+}
