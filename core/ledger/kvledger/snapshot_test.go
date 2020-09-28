@@ -104,6 +104,20 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 		},
 	)
 
+	// add dummy entry in collection config history and commit block-3 and generate the snapshot
+	collConfigPkg := &peer.CollectionConfigPackage{
+		Config: []*peer.CollectionConfig{
+			{
+				Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
+						Name: "coll",
+					},
+				},
+			},
+		},
+	}
+	addDummyEntryInCollectionConfigHistory(t, provider, kvlgr.ledgerID, "ns", 1, collConfigPkg)
+
 	// add block-2 only with public and private data and generate the snapshot
 	blockAndPvtdata2 := prepareNextBlockForTest(t, kvlgr, blkGenerator, "SimulateForBlk2",
 		map[string]string{
@@ -132,23 +146,11 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 				"txids.data", "txids.metadata",
 				"public_state.data", "public_state.metadata",
 				"private_state_hashes.data", "private_state_hashes.metadata",
+				"confighistory.data", "confighistory.metadata",
 			},
 		},
 	)
 
-	// add dummy entry in collection config history and commit block-3 and generate the snapshot
-	collConfigPkg := &peer.CollectionConfigPackage{
-		Config: []*peer.CollectionConfig{
-			{
-				Payload: &peer.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &peer.StaticCollectionConfig{
-						Name: "coll",
-					},
-				},
-			},
-		},
-	}
-	addDummyEntryInCollectionConfigHistory(t, provider, kvlgr.ledgerID, "ns", 2, collConfigPkg)
 	blockAndPvtdata3 := prepareNextBlockForTest(t, kvlgr, blkGenerator, "SimulateForBlk3",
 		map[string]string{
 			"key1": "value1.3",
@@ -196,7 +198,7 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 					"key3": "value3.3",
 				},
 				collectionConfig: map[uint64]*peer.CollectionConfigPackage{
-					2: collConfigPkg,
+					1: collConfigPkg,
 				},
 			},
 		)
@@ -838,6 +840,9 @@ func verifyCreatedLedger(t *testing.T,
 			Height:            e.lastBlockNumber + 1,
 			CurrentBlockHash:  e.lastBlockHash,
 			PreviousBlockHash: e.previousBlockHash,
+			BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
+				LastBlockInSnapshot: e.lastBlockNumber,
+			},
 		},
 		destBCInfo,
 	)

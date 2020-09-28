@@ -402,6 +402,17 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 	res := cscc.Invoke(mockStub)
 	require.Equal(t, int32(shim.OK), res.Status)
 
+	// wait until ledger creation is done
+	ledgerCreationDone := func() bool {
+		resp := cscc.joinBySnapshotStatus()
+		require.Equal(t, shim.OK, int(resp.Status))
+		status := &pb.JoinBySnapshotStatus{}
+		err := proto.Unmarshal(resp.Payload, status)
+		require.NoError(t, err)
+		return !status.InProgress
+	}
+	require.Eventually(t, ledgerCreationDone, time.Minute, time.Second)
+
 	// verify get channels
 	mockStub.GetArgsReturns([][]byte{[]byte(GetChannels)})
 	res = cscc.Invoke(mockStub)
@@ -429,7 +440,7 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChainBySnapshot"), []byte("invalid-snapshot")})
 	res = cscc.Invoke(mockStub)
 	require.Equal(t, int32(shim.ERROR), res.Status)
-	require.Contains(t, res.Message, "cannot create ledger from snapshot invalid-snapshot: error while loading metadata:")
+	require.Contains(t, res.Message, "no such file or directory")
 
 	// error path due to CheckACL error
 	mockACLProvider.CheckACLReturns(errors.New("Failed authorization"))

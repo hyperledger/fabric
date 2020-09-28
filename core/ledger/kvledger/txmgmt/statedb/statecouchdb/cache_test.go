@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package statecouchdb
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/VictoriaMetrics/fastcache"
@@ -55,6 +56,67 @@ func TestGetPutState(t *testing.T) {
 	v, err = cache.getState("ch1", "ns1", "k1")
 	require.NoError(t, err)
 	require.True(t, proto.Equal(expectedValue1, v))
+}
+
+func TestGetPutStateWithBigPayloadIfKeyDoesNotExist(t *testing.T) {
+	cache := newCache(32, sysNamespaces)
+
+	expectedValue := &CacheValue{Value: []byte("value")}
+	require.NoError(t, cache.putState("ch1", "ns1", "k1", expectedValue))
+	v, err := cache.getState("ch1", "ns1", "k1")
+	require.NoError(t, err)
+	require.True(t, proto.Equal(expectedValue, v))
+
+	// test PutState with BigPayload
+	token := make([]byte, (64*1024)+1)
+	rand.Read(token)
+	expectedValue1 := &CacheValue{Value: token}
+	require.NoError(t, cache.putState("ch1", "ns1", "k1", expectedValue1))
+
+	v, err = cache.getState("ch1", "ns1", "k1")
+	require.NoError(t, err)
+	// actually bigPayloads are not saved in cache, should return nil/nothing
+	require.Nil(t, v)
+}
+
+func TestUpdateStatesWithSingleSmallAndSingleBigPayloads(t *testing.T) {
+	cache := newCache(32, sysNamespaces)
+
+	expectedValue1 := &CacheValue{Value: []byte("value1")}
+	require.NoError(t, cache.putState("ch1", "ns1", "k1", expectedValue1))
+
+	expectedValue2 := &CacheValue{Value: []byte("value2")}
+	require.NoError(t, cache.putState("ch1", "ns1", "k2", expectedValue2))
+
+	v1, err := cache.getState("ch1", "ns1", "k1")
+	require.NoError(t, err)
+	require.True(t, proto.Equal(expectedValue1, v1))
+
+	v2, err := cache.getState("ch1", "ns1", "k2")
+	require.NoError(t, err)
+	require.True(t, proto.Equal(expectedValue2, v2))
+
+	token := make([]byte, (64*1024)+1)
+	rand.Read(token)
+
+	expectedValue3 := &CacheValue{Value: []byte("value3")}
+	expectedValue4 := &CacheValue{Value: token}
+
+	updates := cacheUpdates{
+		"ns1": cacheKVs{
+			"k1": expectedValue3,
+			"k2": expectedValue4,
+		},
+	}
+	require.NoError(t, cache.UpdateStates("ch1", updates))
+
+	v3, err := cache.getState("ch1", "ns1", "k1")
+	require.NoError(t, err)
+	require.True(t, proto.Equal(expectedValue3, v3))
+
+	v4, err := cache.getState("ch1", "ns1", "k2")
+	require.NoError(t, err)
+	require.Nil(t, v4)
 }
 
 func TestUpdateStates(t *testing.T) {

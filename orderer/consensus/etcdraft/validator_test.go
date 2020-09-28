@@ -33,10 +33,6 @@ func makeOrdererOrg(caCert []byte) *mocks.OrdererOrg {
 	return ordererOrg
 }
 
-func mockOrdererWithOrgs(metadata []byte, orgs ...*mocks.OrdererOrg) *mocks.OrdererConfig {
-	return mockOrderer(metadata)
-}
-
 var _ = Describe("Metadata Validation", func() {
 	var (
 		chain             *etcdraft.Chain
@@ -96,35 +92,33 @@ var _ = Describe("Metadata Validation", func() {
 		os.RemoveAll(dataDir)
 	})
 
-	//When("determining parameter well-formedness", func() {
-	//	It("succeeds when new consensus metadata is nil", func() {
-	//		ordererConf := mockOrderer(nil)
-	//		Expect(chain.ValidateConsensusMetadata(ordererConf, ordererConf, false)).To(Succeed())
-	//	})
-	//
-	//	It("fails when new consensus metadata is not nil while old consensus metadata is nil", func() {
-	//		oldOrdererConf := mockOrderer(nil)
-	//		newOrdererConf := mockOrderer([]byte("test"))
-	//		Expect(func() {
-	//			chain.ValidateConsensusMetadata(oldOrdererConf, newOrdererConf, false)
-	//		}).To(Panic())
-	//	})
-	//
-	//	It("fails when old consensus metadata is not well-formed", func() {
-	//		oldOrdererConf := mockOrderer([]byte("test"))
-	//		newOrdererConf := mockOrderer([]byte("test"))
-	//		Expect(func() {
-	//			chain.ValidateConsensusMetadata(oldOrdererConf, newOrdererConf, false)
-	//		}).To(Panic())
-	//	})
-	//
-	//	It("fails when new consensus metadata is not well-formed", func() {
-	//		oldBytes, _ := proto.Marshal(&etcdraftproto.ConfigMetadata{})
-	//		oldOrdererConf := mockOrderer(oldBytes)
-	//		newOrdererConf := mockOrderer([]byte("test"))
-	//		Expect(chain.ValidateConsensusMetadata(oldOrdererConf, newOrdererConf, false)).NotTo(Succeed())
-	//	})
-	//})
+	When("determining parameter well-formedness", func() {
+		It("succeeds when new orderer config is nil", func() {
+			Expect(chain.ValidateConsensusMetadata(nil, nil, false)).To(Succeed())
+		})
+
+		It("fails when new orderer config is not nil while old config metadata is nil", func() {
+			newOrdererConf := mockOrderer([]byte("test"))
+			Expect(func() {
+				chain.ValidateConsensusMetadata(nil, newOrdererConf, false)
+			}).To(Panic())
+		})
+
+		It("fails when old consensus metadata is not well-formed", func() {
+			oldOrdererConf := mockOrderer([]byte("test"))
+			newOrdererConf := mockOrderer([]byte("test"))
+			Expect(func() {
+				chain.ValidateConsensusMetadata(oldOrdererConf, newOrdererConf, false)
+			}).To(Panic())
+		})
+
+		It("fails when new consensus metadata is not well-formed", func() {
+			oldBytes, _ := proto.Marshal(&etcdraftproto.ConfigMetadata{})
+			oldOrdererConf := mockOrderer(oldBytes)
+			newOrdererConf := mockOrderer([]byte("test"))
+			Expect(chain.ValidateConsensusMetadata(oldOrdererConf, newOrdererConf, false)).NotTo(Succeed())
+		})
+	})
 
 	Context("valid old consensus metadata", func() {
 		var (
@@ -222,6 +216,12 @@ var _ = Describe("Metadata Validation", func() {
 				newBytes, _ := proto.Marshal(newMetadata)
 				newOrdererConfig = mockOrderer(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).NotTo(Succeed())
+			})
+
+			It("succeeds when the new consenters are a subset of the system consenters and certificates signed by MSP participant on a channel", func() {
+				newBytes, _ := proto.Marshal(newMetadata)
+				newOrdererConfig = mockOrderer(newBytes)
+				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(Succeed())
 			})
 		})
 

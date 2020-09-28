@@ -500,7 +500,6 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool, 
 		}
 
 		broadcastClient, err = common.GetBroadcastClientFnc()
-
 		if err != nil {
 			return nil, errors.WithMessage(err, "error getting broadcast client")
 		}
@@ -694,9 +693,13 @@ func NewDeliverGroup(
 ) *DeliverGroup {
 	clients := make([]*DeliverClient, len(deliverClients))
 	for i, client := range deliverClients {
+		address := peerAddresses[i]
+		if address == "" {
+			address = viper.GetString("peer.address")
+		}
 		dc := &DeliverClient{
 			Client:  client,
-			Address: peerAddresses[i],
+			Address: address,
 		}
 		clients[i] = dc
 	}

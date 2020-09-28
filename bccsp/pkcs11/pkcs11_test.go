@@ -534,10 +534,6 @@ func TestPKCS11GetSession(t *testing.T) {
 		csp.returnSession(session)
 	}
 
-	// Lets break OpenSession, so non-cached session cannot be opened
-	oldSlot := csp.slot
-	csp.slot = ^uint(0)
-
 	// Should be able to get sessionCacheSize cached sessions
 	sessions = nil
 	for i := 0; i < sessionCacheSize; i++ {
@@ -545,27 +541,6 @@ func TestPKCS11GetSession(t *testing.T) {
 		require.NoError(t, err)
 		sessions = append(sessions, session)
 	}
-
-	_, err := csp.getSession()
-	require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
-
-	// Load cache with bad sessions
-	for i := 0; i < sessionCacheSize; i++ {
-		csp.returnSession(pkcs11.SessionHandle(^uint(0)))
-	}
-
-	// Fix OpenSession so non-cached sessions can be opened
-	csp.slot = oldSlot
-
-	// Request a session, return, and re-acquire. The pool should be emptied
-	// before creating a new session so when returned, it should be the only
-	// session in the cache.
-	sess, err := csp.getSession()
-	require.NoError(t, err)
-	csp.returnSession(sess)
-	sess2, err := csp.getSession()
-	require.NoError(t, err)
-	require.Equal(t, sess, sess2, "expected to get back the same session")
 
 	// Cleanup
 	for _, session := range sessions {
@@ -621,11 +596,6 @@ func TestSessionHandleCaching(t *testing.T) {
 		csp.returnSession(sess2)
 		require.Empty(t, csp.sessions, "expected sessions to be empty")
 		require.Empty(t, csp.handleCache, "expected handles to be cleared")
-
-		csp.slot = ^uint(0) // break OpenSession
-		_, err = csp.getSession()
-		require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
-		require.Empty(t, csp.sessions, "expected sessions to be empty")
 	})
 
 	t.Run("SessionCacheEnabled", func(t *testing.T) {
@@ -673,31 +643,6 @@ func TestSessionHandleCaching(t *testing.T) {
 		require.Len(t, csp.sessions, 1, "expected one open session (sess1)")
 		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
 		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
-
-		csp.slot = ^uint(0) // break OpenSession
-		_, err = csp.getSession()
-		require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
-		require.Len(t, csp.sessions, 1, "expected one active session (sess1)")
-		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
-		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
-
-		// Return a busted session that should be cached
-		csp.returnSession(pkcs11.SessionHandle(^uint(0)))
-		require.Len(t, csp.sessions, 1, "expected one active session (sess1)")
-		require.Len(t, csp.sessPool, 1, "sessionPool should contain busted session")
-		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
-
-		// Return sess1 that should be discarded
-		csp.returnSession(sess1)
-		require.Len(t, csp.sessions, 0, "expected sess1 to be removed")
-		require.Len(t, csp.sessPool, 1, "sessionPool should contain busted session")
-		require.Empty(t, csp.handleCache, "expected handles to be purged on removal of last tracked session")
-
-		// Try to get broken session from cache
-		_, err = csp.getSession()
-		require.EqualError(t, err, "OpenSession failed: pkcs11: 0x3: CKR_SLOT_ID_INVALID")
-		require.Empty(t, csp.sessions, "expected sessions to be empty")
-		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
 	})
 }
 
@@ -724,22 +669,13 @@ func TestKeyCache(t *testing.T) {
 	require.True(t, ok, "key should be cached")
 	require.Same(t, key, cached, "key from cache should be what was found")
 
-	// Kill all valid cached sessions
-	csp.slot = ^uint(0)
+	// Retrieve last session
 	sess, err := csp.getSession()
 	require.NoError(t, err)
-	require.Len(t, csp.sessions, 1, "should have one active session")
-	require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
+	require.Empty(t, csp.sessPool, "sessionPool should be empty")
 
-	csp.returnSession(pkcs11.SessionHandle(^uint(0)))
-	require.Len(t, csp.sessions, 1, "should have one active session")
-	require.Len(t, csp.sessPool, 1, "sessionPool should be empty")
-
-	_, ok = csp.cachedKey(k.SKI())
-	require.True(t, ok, "key should remain in cache due to active sessions")
-
-	// Force caches to be cleared
-	csp.returnSession(sess)
+	// Force caches to be cleared by closing last session
+	csp.closeSession(sess)
 	require.Empty(t, csp.sessions, "sessions should be empty")
 	require.Empty(t, csp.keyCache, "key cache should be empty")
 
@@ -817,4 +753,25 @@ func TestDelegation(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, msg, pt)
 	})
+}
+
+func TestHandleSessionReturn(t *testing.T) {
+	opts := defaultOptions()
+	opts.sessionCacheSize = 5
+	csp, cleanup := newProvider(t, opts)
+	defer cleanup()
+
+	// Retrieve and destroy default session created during initialization
+	session, err := csp.getSession()
+	require.NoError(t, err)
+	csp.closeSession(session)
+
+	// Verify session pool is empty and place invalid session in pool
+	require.Empty(t, csp.sessPool, "sessionPool should be empty")
+	csp.returnSession(pkcs11.SessionHandle(^uint(0)))
+
+	// Attempt to generate key with invalid session
+	_, err = csp.KeyGen(&bccsp.ECDSAP256KeyGenOpts{Temporary: false})
+	require.EqualError(t, err, "Failed generating ECDSA P256 key: P11: keypair generate failed [pkcs11: 0xB3: CKR_SESSION_HANDLE_INVALID]")
+	require.Empty(t, csp.sessPool, "sessionPool should be empty")
 }

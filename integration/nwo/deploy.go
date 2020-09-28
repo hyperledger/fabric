@@ -246,7 +246,7 @@ func ApproveChaincodeForMyOrg(n *Network, channel string, orderer *Orderer, chai
 			Expect(err).NotTo(HaveOccurred())
 			Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 			approvedOrgs[p.Organization] = true
-			Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(`\Qcommitted with status (VALID)\E`))
+			Eventually(sess.Err, n.EventuallyTimeout).Should(gbytes.Say(fmt.Sprintf(`\Qcommitted with status (VALID) at %s\E`, n.PeerAddress(p, ListenPort))))
 		}
 	}
 }

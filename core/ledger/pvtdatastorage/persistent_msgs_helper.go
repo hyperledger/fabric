@@ -7,44 +7,68 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 func newExpiryData() *ExpiryData {
-	return &ExpiryData{Map: make(map[string]*Collections)}
+	return &ExpiryData{Map: make(map[string]*NamespaceExpiryData)}
 }
 
-func (e *ExpiryData) getOrCreateCollections(ns string) *Collections {
-	collections, ok := e.Map[ns]
+func (e *ExpiryData) getOrCreateCollections(ns string) *NamespaceExpiryData {
+	nsExpiryData, ok := e.Map[ns]
 	if !ok {
-		collections = &Collections{
-			Map:            make(map[string]*TxNums),
-			MissingDataMap: make(map[string]bool)}
-		e.Map[ns] = collections
+		nsExpiryData = &NamespaceExpiryData{
+			PresentData:  make(map[string]*TxNums),
+			MissingData:  make(map[string]bool),
+			BootKVHashes: make(map[string]*TxNums),
+		}
+		e.Map[ns] = nsExpiryData
 	} else {
 		// due to protobuf encoding/decoding, the previously
 		// initialized map could be a nil now due to 0 length.
 		// Hence, we need to reinitialize the map.
-		if collections.Map == nil {
-			collections.Map = make(map[string]*TxNums)
+		if nsExpiryData.PresentData == nil {
+			nsExpiryData.PresentData = make(map[string]*TxNums)
 		}
-		if collections.MissingDataMap == nil {
-			collections.MissingDataMap = make(map[string]bool)
+		if nsExpiryData.MissingData == nil {
+			nsExpiryData.MissingData = make(map[string]bool)
+		}
+		if nsExpiryData.BootKVHashes == nil {
+			nsExpiryData.BootKVHashes = make(map[string]*TxNums)
 		}
 	}
-	return collections
+	return nsExpiryData
 }
 
 func (e *ExpiryData) addPresentData(ns, coll string, txNum uint64) {
-	collections := e.getOrCreateCollections(ns)
+	nsExpiryData := e.getOrCreateCollections(ns)
 
-	txNums, ok := collections.Map[coll]
+	txNums, ok := nsExpiryData.PresentData[coll]
 	if !ok {
 		txNums = &TxNums{}
-		collections.Map[coll] = txNums
+		nsExpiryData.PresentData[coll] = txNums
 	}
 	txNums.List = append(txNums.List, txNum)
 }
 
 func (e *ExpiryData) addMissingData(ns, coll string) {
-	collections := e.getOrCreateCollections(ns)
-	collections.MissingDataMap[coll] = true
+	nsExpiryData := e.getOrCreateCollections(ns)
+	nsExpiryData.MissingData[coll] = true
+}
+
+func (e *ExpiryData) addBootKVHash(ns, coll string, txNum uint64) {
+	nsExpiryData := e.getOrCreateCollections(ns)
+
+	txNums, ok := nsExpiryData.BootKVHashes[coll]
+	if !ok {
+		txNums = &TxNums{}
+		nsExpiryData.BootKVHashes[coll] = txNums
+	}
+	txNums.List = append(txNums.List, txNum)
+}
+
+func (h *BootKVHashes) toMap() map[string][]byte {
+	m := make(map[string][]byte, len(h.List))
+	for _, kv := range h.List {
+		m[string(kv.KeyHash)] = kv.ValueHash
+	}
+	return m
 }
 
 func newCollElgInfo(nsCollMap map[string][]string) *CollElgInfo {

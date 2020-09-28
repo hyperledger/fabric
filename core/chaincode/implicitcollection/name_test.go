@@ -53,3 +53,9 @@ func TestMspIDIfImplicitCollection(t *testing.T) {
 		})
 	}
 }
+
+func TestIsImplicitCollection(t *testing.T) {
+	require.True(t, IsImplicitCollection("_implicit_org_"))
+	require.True(t, IsImplicitCollection("_implicit_org_MyOrg"))
+	require.False(t, IsImplicitCollection("implicit_org_MyOrg"))
+}

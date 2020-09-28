@@ -14,8 +14,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
@@ -226,8 +228,12 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	defer cleanup()
 
 	var initArg string
+	waitCh := make(chan struct{})
 	peerInstance.Initialize(
-		func(cid string) { initArg = cid },
+		func(cid string) {
+			<-waitCh
+			initArg = cid
+		},
 		nil,
 		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
 		&ledgermocks.DeployedChaincodeInfoProvider{},
@@ -244,9 +250,22 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	defer os.Remove(tempdir)
 
 	snapshotDir := ledgermgmttest.CreateSnapshotWithGenesisBlock(t, tempdir, testChannelID, &ConfigTxProcessor{})
-	err = peerInstance.CreateChannelFromSnaphotshot(snapshotDir, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
+	err = peerInstance.CreateChannelFromSnapshot(snapshotDir, &mock.DeployedChaincodeInfoProvider{}, nil, nil)
 	require.NoError(t, err)
 
+	expectedStatus := &pb.JoinBySnapshotStatus{InProgress: true, BootstrappingSnapshotDir: snapshotDir}
+	require.Equal(t, expectedStatus, peerInstance.JoinBySnaphotStatus())
+
+	// write a msg to waitCh to unblock channel init func
+	waitCh <- struct{}{}
+
+	// wait until ledger creation is done
+	ledgerCreationDone := func() bool {
+		return !peerInstance.JoinBySnaphotStatus().InProgress
+	}
+	require.Eventually(t, ledgerCreationDone, time.Minute, time.Second)
+
+	// verify channel init func is called
 	require.Equal(t, testChannelID, initArg)
 
 	// verify ledger created
@@ -256,6 +275,9 @@ func TestCreateChannelBySnapshot(t *testing.T) {
 	bcInfo, err := ledger.GetBlockchainInfo()
 	require.NoError(t, err)
 	require.Equal(t, uint64(1), bcInfo.GetHeight())
+
+	expectedStatus = &pb.JoinBySnapshotStatus{InProgress: false, BootstrappingSnapshotDir: ""}
+	require.Equal(t, expectedStatus, peerInstance.JoinBySnaphotStatus())
 
 	// Bad ledger
 	ledger = peerInstance.GetLedger("BogusChain")

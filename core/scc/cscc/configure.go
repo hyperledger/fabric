@@ -77,10 +77,11 @@ var cnflogger = flogging.MustGetLogger("cscc")
 
 // These are function names from Invoke first parameter
 const (
-	JoinChain           string = "JoinChain"
-	JoinChainBySnapshot string = "JoinChainBySnapshot"
-	GetConfigBlock      string = "GetConfigBlock"
-	GetChannels         string = "GetChannels"
+	JoinChain            string = "JoinChain"
+	JoinChainBySnapshot  string = "JoinChainBySnapshot"
+	JoinBySnapshotStatus string = "JoinBySnapshotStatus"
+	GetConfigBlock       string = "GetConfigBlock"
+	GetChannels          string = "GetChannels"
 )
 
 // Init is mostly useless from an SCC perspective
@@ -108,7 +109,7 @@ func (e *PeerConfiger) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 
 	fname := string(args[0])
 
-	if fname != GetChannels && len(args) < 2 {
+	if fname != GetChannels && fname != JoinBySnapshotStatus && len(args) < 2 {
 		return shim.Error(fmt.Sprintf("Incorrect number of arguments, %d", len(args)))
 	}
 
@@ -180,11 +181,16 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 			return shim.Error("Cannot join the channel, no snapshot directory provided")
 		}
 		// check policy
-		if err = e.aclProvider.CheckACL(resources.Cscc_JoinChain, "", sp); err != nil {
+		if err = e.aclProvider.CheckACL(resources.Cscc_JoinChainBySnapshot, "", sp); err != nil {
 			return shim.Error(fmt.Sprintf("access denied for [%s]: [%s]", fname, err))
 		}
 		snapshotDir := string(args[1])
 		return e.JoinChainBySnapshot(snapshotDir, e.deployedCCInfoProvider, e.legacyLifecycle, e.newLifecycle)
+	case JoinBySnapshotStatus:
+		if err = e.aclProvider.CheckACL(resources.Cscc_JoinBySnapshotStatus, "", sp); err != nil {
+			return shim.Error(fmt.Sprintf("access denied for [%s]: %s", fname, err))
+		}
+		return e.joinBySnapshotStatus()
 	case GetConfigBlock:
 		// 2. check policy
 		if err = e.aclProvider.CheckACL(resources.Cscc_GetConfigBlock, string(args[1]), sp); err != nil {
@@ -267,7 +273,7 @@ func (e *PeerConfiger) JoinChainBySnapshot(
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
 ) pb.Response {
-	if err := e.peer.CreateChannelFromSnaphotshot(snapshotDir, deployedCCInfoProvider, lr, nr); err != nil {
+	if err := e.peer.CreateChannelFromSnapshot(snapshotDir, deployedCCInfoProvider, lr, nr); err != nil {
 		return shim.Error(err.Error())
 	}
 
@@ -311,4 +317,16 @@ func (e *PeerConfiger) getChannels() pb.Response {
 	}
 
 	return shim.Success(cqrbytes)
+}
+
+// joinBySnapshotStatus returns information about joinbysnapshot running status.
+func (e *PeerConfiger) joinBySnapshotStatus() pb.Response {
+	status := e.peer.JoinBySnaphotStatus()
+
+	statusBytes, err := proto.Marshal(status)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(statusBytes)
 }

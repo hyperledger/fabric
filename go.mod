@@ -12,7 +12,7 @@ require (
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
 	github.com/Shopify/sarama v1.20.1
 	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
-	github.com/VictoriaMetrics/fastcache v1.4.6
+	github.com/VictoriaMetrics/fastcache v1.5.7
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/coreos/go-systemd v0.0.0-20190620071333-e64a0ec8b42a // indirect
@@ -28,6 +28,7 @@ require (
 	github.com/fsouza/go-dockerclient v1.4.1
 	github.com/go-kit/kit v0.8.0
 	github.com/golang/protobuf v1.3.3
+	github.com/golang/snappy v0.0.2 // indirect
 	github.com/google/go-cmp v0.5.0 // indirect
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.7.2
@@ -38,7 +39,7 @@ require (
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20200128192331-2d899240a7ed
 	github.com/hyperledger/fabric-config v0.0.7
 	github.com/hyperledger/fabric-lib-go v1.0.0
-	github.com/hyperledger/fabric-protos-go v0.0.0-20200819205323-f34c922b9e79
+	github.com/hyperledger/fabric-protos-go v0.0.0-20200923192742-3897341ac036
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.2.0
 	github.com/magiconair/properties v1.8.1 // indirect

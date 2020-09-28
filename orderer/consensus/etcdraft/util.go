@@ -241,7 +241,7 @@ func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts *x509.Ve
 		if consenter == nil {
 			return errors.Errorf("metadata has nil consenter")
 		}
-		if err := ValidateConsenterTLSCerts(consenter, verifyOpts); err != nil {
+		if err := validateConsenterTLSCerts(consenter, verifyOpts); err != nil {
 			return err
 		}
 	}
@@ -391,7 +391,7 @@ func createX509VerifyOptions(oldOrdererConfig, newOrdererConfig channelconfig.Or
 	}, nil
 }
 
-func ValidateConsenterTLSCerts(c *etcdraft.Consenter, opts *x509.VerifyOptions) error {
+func validateConsenterTLSCerts(c *etcdraft.Consenter, opts *x509.VerifyOptions) error {
 	clientCert, err := parseCertificateFromBytes(c.ClientTlsCert)
 	if err != nil {
 		return errors.Wrapf(err, "parsing tls client cert of %s:%d", c.Host, c.Port)

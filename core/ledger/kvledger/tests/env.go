@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -223,7 +224,7 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 		initializer.MetricsProvider = &disabled.Provider{}
 	}
 
-	if initializer.Config == nil {
+	if initializer.Config == nil || initializer.Config.RootFSPath == "" {
 		rootPath, err := ioutil.TempDir("/tmp", "ledgersData")
 		if err != nil {
 			t.Fatalf("Failed to create root directory: %s", err)
@@ -248,9 +249,10 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 
 	if initializer.Config.PrivateDataConfig == nil {
 		initializer.Config.PrivateDataConfig = &ledger.PrivateDataConfig{
-			MaxBatchSize:    5000,
-			BatchesInterval: 1000,
-			PurgeInterval:   100,
+			MaxBatchSize:                        5000,
+			BatchesInterval:                     1000,
+			PurgeInterval:                       100,
+			DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 		}
 	}
 	if initializer.Config.SnapshotsConfig == nil {

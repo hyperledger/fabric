@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/follower/mocks"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -116,12 +117,32 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 	// replaces cluster.VerifyBlocks, count blocks
 	var numBlocks int32
 	altVerifyBlocks := func(blockBuff []*cb.Block, signatureVerifier cluster.BlockVerifier) error { // replaces cluster.VerifyBlocks, count invocations
+		if len(blockBuff) == 0 {
+			return errors.New("buffer is empty")
+		}
+
 		require.NotNil(t, signatureVerifier)
 		atomic.StoreInt32(&numBlocks, int32(len(blockBuff)))
 		return nil
 	}
 
-	t.Run("skip genesis block", func(t *testing.T) {
+	t.Run("skip genesis block, alone", func(t *testing.T) {
+		setupBlockPullerTest(t)
+		atomic.StoreInt32(&numBlocks, 0)
+		creator, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)
+		require.NotNil(t, creator)
+		require.NoError(t, err)
+		creator.ClusterVerifyBlocks = altVerifyBlocks
+		blocks := []*cb.Block{
+			generateJoinBlock(t, tlsCA, channelID, 0),
+		}
+
+		err = creator.VerifyBlockSequence(blocks, "")
+		require.NoError(t, err)
+		require.Equal(t, int32(0), atomic.LoadInt32(&numBlocks))
+	})
+
+	t.Run("skip genesis block as part of a slice", func(t *testing.T) {
 		setupBlockPullerTest(t)
 		atomic.StoreInt32(&numBlocks, 0)
 		creator, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, dialer, localconfig.Cluster{}, cryptoProv)

@@ -94,6 +94,18 @@ func TestImportFromSnapshot(t *testing.T) {
 			err := originalBlockStore.AddBlock(b)
 			require.NoError(t, err)
 		}
+
+		// verify blockchain info for original store (created by genesisblock)
+		lastBlock := blocksBeforeSnapshot[len(blocksBeforeSnapshot)-1]
+		prevBlock := blocksBeforeSnapshot[len(blocksBeforeSnapshot)-2]
+		bcInfo, err := originalBlockStore.GetBlockchainInfo()
+		require.NoError(t, err)
+		require.Equal(t, &common.BlockchainInfo{
+			Height:            uint64(len(blocksBeforeSnapshot)),
+			CurrentBlockHash:  protoutil.BlockHeaderHash(lastBlock.Header),
+			PreviousBlockHash: protoutil.BlockHeaderHash(prevBlock.Header),
+		}, bcInfo)
+
 		_, err = originalBlockStore.ExportTxIds(snapshotDir, testNewHashFunc)
 		require.NoError(t, err)
 		lastBlockInSnapshot := blocksBeforeSnapshot[len(blocksBeforeSnapshot)-1]
@@ -139,6 +151,9 @@ func TestImportFromSnapshot(t *testing.T) {
 				Height:            snapshotInfo.LastBlockNum + 1,
 				CurrentBlockHash:  snapshotInfo.LastBlockHash,
 				PreviousBlockHash: snapshotInfo.PreviousBlockHash,
+				BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
+					LastBlockInSnapshot: uint64(snapshotInfo.LastBlockNum),
+				},
 			},
 			blocksDetailsBeforeSnapshot,
 			blocksBeforeSnapshot,
@@ -162,6 +177,9 @@ func TestImportFromSnapshot(t *testing.T) {
 			Height:            finalBlock.Header.Number + 1,
 			CurrentBlockHash:  protoutil.BlockHeaderHash(finalBlock.Header),
 			PreviousBlockHash: finalBlock.Header.PreviousHash,
+			BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
+				LastBlockInSnapshot: uint64(snapshotInfo.LastBlockNum),
+			},
 		}
 		verifyQueriesOnBlocksPriorToSnapshot(t,
 			bootstrappedBlockStore,
@@ -189,6 +207,9 @@ func TestImportFromSnapshot(t *testing.T) {
 				Height:            snapshotInfo.LastBlockNum + 1,
 				CurrentBlockHash:  snapshotInfo.LastBlockHash,
 				PreviousBlockHash: snapshotInfo.PreviousBlockHash,
+				BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
+					LastBlockInSnapshot: uint64(snapshotInfo.LastBlockNum),
+				},
 			},
 			blocksDetailsBeforeSnapshot,
 			blocksBeforeSnapshot,
@@ -204,6 +225,9 @@ func TestImportFromSnapshot(t *testing.T) {
 			Height:            finalBlock.Header.Number + 1,
 			CurrentBlockHash:  protoutil.BlockHeaderHash(finalBlock.Header),
 			PreviousBlockHash: finalBlock.Header.PreviousHash,
+			BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
+				LastBlockInSnapshot: uint64(snapshotInfo.LastBlockNum),
+			},
 		}
 		verifyQueriesOnBlocksAddedAfterBootstrapping(t,
 			bootstrappedBlockStore,
@@ -275,6 +299,9 @@ func TestImportFromSnapshot(t *testing.T) {
 					Height:            finalBlock.Header.Number + 1,
 					CurrentBlockHash:  protoutil.BlockHeaderHash(finalBlock.Header),
 					PreviousBlockHash: finalBlock.Header.PreviousHash,
+					BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
+						LastBlockInSnapshot: uint64(snapshotInfo.LastBlockNum),
+					},
 				},
 				blockDetails,
 				blocks,

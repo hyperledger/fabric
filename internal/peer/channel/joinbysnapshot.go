@@ -55,5 +55,10 @@ func joinBySnapshot(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) er
 		Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte(cscc.JoinChainBySnapshot), []byte(snapshotPath)}},
 	}
 
-	return executeJoin(cf, spec)
+	if err = executeJoin(cf, spec); err != nil {
+		return err
+	}
+
+	logger.Info("The joinbysnapshot operation is in progress. Check the status of joinbysnapshot to know if it is done.")
+	return nil
 }

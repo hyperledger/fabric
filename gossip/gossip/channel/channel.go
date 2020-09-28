@@ -414,6 +414,11 @@ func (gc *gossipChannel) publishStateInfo() {
 		return
 	}
 
+	gc.publishSignedStateInfoMessage()
+	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(0))
+}
+
+func (gc *gossipChannel) publishSignedStateInfoMessage() {
 	stateInfoMsg, err := gc.setupSignedStateInfoMessage()
 	if err != nil {
 		gc.logger.Errorf("Failed creating signed state info message: %v", err)
@@ -421,7 +426,6 @@ func (gc *gossipChannel) publishStateInfo() {
 	}
 	gc.stateInfoMsgStore.Add(stateInfoMsg)
 	gc.Gossip(stateInfoMsg)
-	atomic.StoreInt32(&gc.shouldGossipStateInfo, int32(0))
 }
 
 func (gc *gossipChannel) setupSignedStateInfoMessage() (*protoext.SignedGossipMessage, error) {
@@ -928,6 +932,14 @@ func (gc *gossipChannel) UpdateLedgerHeight(height uint64) {
 // UpdateChaincodes updates the chaincodes the peer publishes
 // to other peers in the channel
 func (gc *gossipChannel) UpdateChaincodes(chaincodes []*proto.Chaincode) {
+	// Always publish the signed state info message regardless.
+	// We do this because we have to update our data structures
+	// with the new chaincodes installed/instantiated, to be able to
+	// respond to discovery requests, no matter if we see other peers
+	// in the membership, or do not see them.
+
+	defer gc.publishSignedStateInfoMessage()
+
 	gc.Lock()
 	defer gc.Unlock()
 

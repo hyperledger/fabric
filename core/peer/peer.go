@@ -224,23 +224,26 @@ func (p *Peer) CreateChannel(
 	return nil
 }
 
-// CreateChannelFromSnapshot create a channel from the specified snapshot.
-func (p *Peer) CreateChannelFromSnaphotshot(
+// CreateChannelFromSnapshot creates a channel from the specified snapshot.
+func (p *Peer) CreateChannelFromSnapshot(
 	snapshotDir string,
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	legacyLifecycleValidation plugindispatcher.LifecycleResources,
 	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
 ) error {
-	l, cid, err := p.LedgerMgr.CreateLedgerFromSnapshot(snapshotDir)
+	channelCallback := func(l ledger.PeerLedger, cid string) {
+		if err := p.createChannel(cid, l, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
+			logger.Errorf("error creating channel for %s", cid)
+			return
+		}
+		p.initChannel(cid)
+	}
+
+	err := p.LedgerMgr.CreateLedgerFromSnapshot(snapshotDir, channelCallback)
 	if err != nil {
 		return errors.WithMessagef(err, "cannot create ledger from snapshot %s", snapshotDir)
 	}
 
-	if err := p.createChannel(cid, l, deployedCCInfoProvider, legacyLifecycleValidation, newLifecycleValidation); err != nil {
-		return err
-	}
-
-	p.initChannel(cid)
 	return nil
 }
 
@@ -473,6 +476,11 @@ func (p *Peer) GetPolicyManager(cid string) policies.Manager {
 		return c.Resources().PolicyManager()
 	}
 	return nil
+}
+
+// JoinBySnaphotStatus queries ledger mgr to get the status of joinbysnapshot
+func (p *Peer) JoinBySnaphotStatus() *pb.JoinBySnapshotStatus {
+	return p.LedgerMgr.JoinBySnapshotStatus()
 }
 
 // initChannel takes care to initialize channel after peer joined, for example deploys system CCs

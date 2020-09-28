@@ -245,7 +245,9 @@ func configFromEnv(prefix string) (address, override string, clientConfig comm.C
 	clientConfig.Timeout = connTimeout
 	secOpts := comm.SecureOptions{
 		UseTLS:            viper.GetBool(prefix + ".tls.enabled"),
-		RequireClientCert: viper.GetBool(prefix + ".tls.clientAuthRequired")}
+		RequireClientCert: viper.GetBool(prefix + ".tls.clientAuthRequired"),
+		TimeShift:         viper.GetDuration(prefix + ".tls.handshakeTimeShift"),
+	}
 	if secOpts.UseTLS {
 		caPEM, res := ioutil.ReadFile(config.GetPath(prefix + ".tls.rootcert.file"))
 		if res != nil {

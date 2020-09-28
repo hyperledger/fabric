@@ -316,6 +316,22 @@ Metrics:
 
 ################################################################################
 #
+#   Channel participation API Configuration
+#
+#   - This provides the channel participation API configuration for the orderer.
+#   - Channel participation uses the same ListenAddress and TLS settings of the
+#     Operations service.
+#
+################################################################################
+ChannelParticipation:
+    # Channel participation API is enabled.
+    Enabled: false
+
+    # The maximum size of the request body when joining a channel.
+    MaxRequestBodySize: 1 MB
+
+################################################################################
+#
 #   Consensus Configuration
 #
 #   - This section contains config options for a consensus plugin. It is opaque

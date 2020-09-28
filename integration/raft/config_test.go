@@ -419,14 +419,22 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				Eventually(oRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Suspecting our own eviction from the channel"))
 			}
 
+			//we removed caCert a few steps before and now consensus metadata is invalid bacause orderer3's cert is signed by unknown authority.
+			By("Adding orderer3's TLS root CA certificate back after removal")
+			nwo.UpdateOrdererMSP(network, peer, orderer, "systemchannel", "OrdererOrg", func(config msp.FabricMSPConfig) msp.FabricMSPConfig {
+				config.TlsRootCerts = append(config.TlsRootCerts, caCert)
+				return config
+			})
+
 			By("Attemping to add a consenter with invalid certs")
 			// create new certs that are not in the channel config
 			ca, err := tlsgen.NewCA()
 			Expect(err).NotTo(HaveOccurred())
 			client, err := ca.NewClientCertKeyPair()
 			Expect(err).NotTo(HaveOccurred())
-			pemBlock, _ := pem.Decode(client.Cert)
-			certX509, err := x509.ParseCertificate(pemBlock.Bytes)
+
+			newConsenterCertPem, _ := pem.Decode(client.Cert)
+			newConsenterCert, err := x509.ParseCertificate(newConsenterCertPem.Bytes)
 			Expect(err).NotTo(HaveOccurred())
 
 			current, updated := consenterAdder(
@@ -443,7 +451,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			)
 			sess = nwo.UpdateOrdererConfigSession(network, orderer, network.SystemChannel.Name, current, updated, peer, orderer)
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(sess.Err).To(MatchError(ContainSubstring(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'systemchannel': consensus metadata update for channel config update is invalid: invalid new config metadata: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", certX509.SerialNumber))))
+			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'systemchannel': consensus metadata update for channel config update is invalid: invalid new config metadata: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", newConsenterCert.SerialNumber)))
 		})
 	})
 

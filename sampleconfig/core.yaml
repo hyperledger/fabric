@@ -588,8 +588,6 @@ chaincode:
         _lifecycle: enable
         cscc: enable
         lscc: enable
-        escc: enable
-        vscc: enable
         qscc: enable
 
     # Logging section for the chaincode container
@@ -678,6 +676,16 @@ ledger:
     # the minimum duration (in milliseconds) between writing
     # two consecutive db batches for converting the ineligible missing data entries to eligible missing data entries
     collElgProcDbBatchesInterval: 1000
+    # The missing data entries are classified into two categories:
+    # (1) prioritized
+    # (2) deprioritized
+    # Initially, all missing data are in the prioritized list. When the
+    # reconciler is unable to fetch the missing data from other peers,
+    # the unreconciled missing data would be moved to the deprioritized list.
+    # The reconciler would retry deprioritized missing data after every
+    # deprioritizedDataReconcilerInterval (unit: minutes). Note that the
+    # interval needs to be greater than the reconcileSleepInterval
+    deprioritizedDataReconcilerInterval: 60m
 
 ###############################################################################
 #

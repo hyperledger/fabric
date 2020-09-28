@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
@@ -19,9 +20,10 @@ import (
 func pvtDataConf() *PrivateDataConfig {
 	return &PrivateDataConfig{
 		PrivateDataConfig: &ledger.PrivateDataConfig{
-			BatchesInterval: 1000,
-			MaxBatchSize:    5000,
-			PurgeInterval:   2,
+			BatchesInterval:                     1000,
+			MaxBatchSize:                        5000,
+			PurgeInterval:                       2,
+			DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 		},
 		StorePath: "",
 	}
@@ -50,7 +52,7 @@ func NewTestStoreEnv(
 	conf.StorePath = storeDir
 	testStoreProvider, err := NewProvider(conf)
 	require.NoError(t, err)
-	testStore, err := testStoreProvider.OpenStore(ledgerid, &Initializer{})
+	testStore, err := testStoreProvider.OpenStore(ledgerid)
 	testStore.Init(btlPolicy)
 	require.NoError(t, err)
 	return &StoreEnv{t, testStoreProvider, testStore, ledgerid, btlPolicy, conf}
@@ -62,7 +64,7 @@ func (env *StoreEnv) CloseAndReopen() {
 	env.TestStoreProvider.Close()
 	env.TestStoreProvider, err = NewProvider(env.conf)
 	require.NoError(env.t, err)
-	env.TestStore, err = env.TestStoreProvider.OpenStore(env.ledgerid, &Initializer{})
+	env.TestStore, err = env.TestStoreProvider.OpenStore(env.ledgerid)
 	env.TestStore.Init(env.btlPolicy)
 	require.NoError(env.t, err)
 }
