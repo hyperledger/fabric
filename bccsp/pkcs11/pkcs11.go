@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"regexp"
 	"sync"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 )
 
 var logger = flogging.MustGetLogger("bccsp_p11")
+var regex = regexp.MustCompile(".*0xB.:\\sCKR.+")
 
 type Provider struct {
 	bccsp.BCCSP
@@ -374,7 +376,7 @@ func (csp *Provider) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool,
 	if err != nil {
 		return nil, false, err
 	}
-	defer csp.returnSession(session)
+	defer func() { csp.handleSessionReturn(err, session) }()
 
 	isPriv = true
 	_, err = csp.findKeyPairFromSKI(session, ski, privateKeyType)
@@ -464,7 +466,7 @@ func (csp *Provider) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) 
 	if err != nil {
 		return nil, nil, err
 	}
-	defer csp.returnSession(session)
+	defer func() { csp.handleSessionReturn(err, session) }()
 
 	id := nextIDCtr()
 	publabel := fmt.Sprintf("BCPUB%s", id.Text(16))
@@ -583,7 +585,7 @@ func (csp *Provider) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err er
 	if err != nil {
 		return nil, nil, err
 	}
-	defer csp.returnSession(session)
+	defer func() { csp.handleSessionReturn(err, session) }()
 
 	privateKey, err := csp.findKeyPairFromSKI(session, ski, privateKeyType)
 	if err != nil {
@@ -615,7 +617,7 @@ func (csp *Provider) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteS
 	if err != nil {
 		return false, err
 	}
-	defer csp.returnSession(session)
+	defer func() { csp.handleSessionReturn(err, session) }()
 
 	logger.Debugf("Verify ECDSA")
 
@@ -798,6 +800,17 @@ func (csp *Provider) ecPoint(session pkcs11.SessionHandle, key pkcs11.ObjectHand
 	}
 
 	return ecpt, oid, nil
+}
+
+func (csp *Provider) handleSessionReturn(err error, session pkcs11.SessionHandle) {
+	if err != nil {
+		if regex.MatchString(err.Error()) {
+			logger.Infof("PKCS11 session invalidated, closing session: %v", err)
+			csp.closeSession(session)
+			return
+		}
+	}
+	csp.returnSession(session)
 }
 
 func listAttrs(p11lib *pkcs11.Ctx, session pkcs11.SessionHandle, obj pkcs11.ObjectHandle) {
