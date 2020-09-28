@@ -13,12 +13,15 @@ import (
 	"os"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	cl "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger/blkstorage/blkstoragetest"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
+	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
@@ -243,6 +246,72 @@ func TestBlockedRetrieval(t *testing.T) {
 	block, status = it.Next()
 	require.Equal(t, cb.Status_SUCCESS, status, "Expected to successfully read the third block")
 	require.Equal(t, uint64(2), block.Header.Number, "Expected to successfully retrieve the third block")
+
+	// verify NextCommit seek position
+	it2, num2 := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_NextCommit{NextCommit: &ab.SeekNextCommit{}}})
+	require.Equal(t, uint64(3), num2)
+	defer it2.Close()
+
+	b3 := blockledger.CreateNextBlock(fl, []*cb.Envelope{envelope})
+	fl.Append(b3)
+
+	block, status = it.Next()
+	require.Equal(t, cb.Status_SUCCESS, status)
+	require.Equal(t, uint64(3), block.Header.Number)
+}
+
+func TestBlockRetrievalWithSnapshot(t *testing.T) {
+	numBlocks := 5
+	// create an extra block to add later for iterator.Next testing
+	blocks := testutil.ConstructTestBlocks(t, numBlocks+1)
+
+	blockStore, cleanup := blkstoragetest.BootstrapBlockstoreFromSnapshot(t, "blockretrievalwithsnapshot", blocks[:numBlocks])
+	defer cleanup()
+
+	fl := NewFileLedger(blockStore)
+
+	// verify lastBlockInSnapshot, which should be numBlocks - 1
+	bcInfo, err := fl.blockStore.GetBlockchainInfo()
+	require.NoError(t, err)
+	require.Equal(t, uint64(numBlocks-1), bcInfo.BootstrappingSnapshotInfo.LastBlockInSnapshot)
+
+	// verify iterator startingNum for Newest, NextCommit, and Specified
+	it, startingNum := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Newest{}})
+	defer it.Close()
+	require.Equal(t, uint64(numBlocks), startingNum)
+
+	it2, startingNum2 := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_NextCommit{}})
+	defer it2.Close()
+	require.Equal(t, uint64(numBlocks), startingNum2)
+
+	it3, startingNum3 := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: uint64(numBlocks)}}})
+	defer it3.Close()
+	require.Equal(t, uint64(numBlocks), startingNum3)
+
+	it4, _ := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: uint64(numBlocks - 1)}}})
+	defer it4.Close()
+	require.Equal(t, &blockledger.NotFoundErrorIterator{}, it4)
+
+	it5, _ := fl.Iterator(&ab.SeekPosition{Type: &ab.SeekPosition_Specified{Specified: &ab.SeekSpecified{Number: uint64(numBlocks + 1)}}})
+	defer it5.Close()
+	require.Equal(t, &blockledger.NotFoundErrorIterator{}, it4)
+
+	// add a block and verify iterator.Next
+	nextBlk := blocks[numBlocks]
+	err = fl.Append(nextBlk)
+	require.NoError(t, err)
+
+	blk, status := it.Next()
+	require.Equal(t, common.Status_SUCCESS, status)
+	require.Equal(t, nextBlk, blk)
+
+	blk, status = it2.Next()
+	require.Equal(t, common.Status_SUCCESS, status)
+	require.Equal(t, nextBlk, blk)
+
+	blk, status = it3.Next()
+	require.Equal(t, common.Status_SUCCESS, status)
+	require.Equal(t, nextBlk, blk)
 }
 
 func TestBlockstoreError(t *testing.T) {

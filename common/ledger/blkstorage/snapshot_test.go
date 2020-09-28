@@ -152,7 +152,7 @@ func TestImportFromSnapshot(t *testing.T) {
 				CurrentBlockHash:  snapshotInfo.LastBlockHash,
 				PreviousBlockHash: snapshotInfo.PreviousBlockHash,
 				BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
-					LastBlockInSnapshot: uint64(snapshotInfo.LastBlockNum),
+					LastBlockInSnapshot: snapshotInfo.LastBlockNum,
 				},
 			},
 			blocksDetailsBeforeSnapshot,
@@ -178,7 +178,7 @@ func TestImportFromSnapshot(t *testing.T) {
 			CurrentBlockHash:  protoutil.BlockHeaderHash(finalBlock.Header),
 			PreviousBlockHash: finalBlock.Header.PreviousHash,
 			BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
-				LastBlockInSnapshot: uint64(snapshotInfo.LastBlockNum),
+				LastBlockInSnapshot: snapshotInfo.LastBlockNum,
 			},
 		}
 		verifyQueriesOnBlocksPriorToSnapshot(t,
@@ -208,7 +208,7 @@ func TestImportFromSnapshot(t *testing.T) {
 				CurrentBlockHash:  snapshotInfo.LastBlockHash,
 				PreviousBlockHash: snapshotInfo.PreviousBlockHash,
 				BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
-					LastBlockInSnapshot: uint64(snapshotInfo.LastBlockNum),
+					LastBlockInSnapshot: snapshotInfo.LastBlockNum,
 				},
 			},
 			blocksDetailsBeforeSnapshot,
@@ -226,7 +226,7 @@ func TestImportFromSnapshot(t *testing.T) {
 			CurrentBlockHash:  protoutil.BlockHeaderHash(finalBlock.Header),
 			PreviousBlockHash: finalBlock.Header.PreviousHash,
 			BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
-				LastBlockInSnapshot: uint64(snapshotInfo.LastBlockNum),
+				LastBlockInSnapshot: snapshotInfo.LastBlockNum,
 			},
 		}
 		verifyQueriesOnBlocksAddedAfterBootstrapping(t,
@@ -300,7 +300,7 @@ func TestImportFromSnapshot(t *testing.T) {
 					CurrentBlockHash:  protoutil.BlockHeaderHash(finalBlock.Header),
 					PreviousBlockHash: finalBlock.Header.PreviousHash,
 					BootstrappingSnapshotInfo: &common.BootstrappingSnapshotInfo{
-						LastBlockInSnapshot: uint64(snapshotInfo.LastBlockNum),
+						LastBlockInSnapshot: snapshotInfo.LastBlockNum,
 					},
 				},
 				blockDetails,
