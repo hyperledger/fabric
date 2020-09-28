@@ -669,22 +669,13 @@ func TestKeyCache(t *testing.T) {
 	require.True(t, ok, "key should be cached")
 	require.Same(t, key, cached, "key from cache should be what was found")
 
-	// Kill all valid cached sessions
-	csp.slot = ^uint(0)
+	// Retrieve last session
 	sess, err := csp.getSession()
 	require.NoError(t, err)
-	require.Len(t, csp.sessions, 1, "should have one active session")
-	require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
+	require.Empty(t, csp.sessPool, "sessionPool should be empty")
 
-	csp.returnSession(pkcs11.SessionHandle(^uint(0)))
-	require.Len(t, csp.sessions, 1, "should have one active session")
-	require.Len(t, csp.sessPool, 1, "sessionPool should be empty")
-
-	_, ok = csp.cachedKey(k.SKI())
-	require.True(t, ok, "key should remain in cache due to active sessions")
-
-	// Force caches to be cleared
-	csp.returnSession(sess)
+	// Force caches to be cleared by closing last session
+	csp.closeSession(sess)
 	require.Empty(t, csp.sessions, "sessions should be empty")
 	require.Empty(t, csp.keyCache, "key cache should be empty")
 
