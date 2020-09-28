@@ -25,7 +25,7 @@ import (
 func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, expectedChannelInfo ChannelInfo) {
 	blockBytes, err := proto.Marshal(block)
 	Expect(err).NotTo(HaveOccurred())
-	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.OperationsPort))
+	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.AdminPort))
 	req := GenerateJoinRequest(url, channel, blockBytes)
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
 
@@ -75,7 +75,7 @@ type channelInfoShort struct {
 
 func List(n *nwo.Network, o *nwo.Orderer, expectedChannels []string, systemChannel ...string) {
 	authClient, unauthClient := nwo.OrdererOperationalClients(n, o)
-	listChannelsURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.OperationsPort))
+	listChannelsURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.AdminPort))
 
 	body := getBody(authClient, listChannelsURL)()
 	list := &channelList{}
@@ -139,7 +139,7 @@ type ChannelInfo struct {
 
 func ListOne(n *nwo.Network, o *nwo.Orderer, channel string) ChannelInfo {
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
-	listChannelURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.OperationsPort), channel)
+	listChannelURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.AdminPort), channel)
 
 	body := getBody(authClient, listChannelURL)()
 	c := &ChannelInfo{}
@@ -150,7 +150,7 @@ func ListOne(n *nwo.Network, o *nwo.Orderer, channel string) ChannelInfo {
 
 func Remove(n *nwo.Network, o *nwo.Orderer, channel string) {
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
-	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.OperationsPort), channel)
+	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.AdminPort), channel)
 
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	Expect(err).NotTo(HaveOccurred())

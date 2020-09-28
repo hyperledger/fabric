@@ -310,7 +310,7 @@ Operations:
 
 ################################################################################
 #
-#   Metrics  Configuration
+#   Metrics Configuration
 #
 #   - This configures metrics collection for the orderer
 #
@@ -334,6 +334,35 @@ Metrics:
       # The prefix is prepended to all emitted statsd metrics
       Prefix:
 
+################################################################################
+#
+#   Admin Configuration
+#
+#   - This configures the admin server endpoint for the orderer
+#
+################################################################################
+Admin:
+    # host and port for the admin server
+    ListenAddress: 127.0.0.1:9443
+
+    # TLS configuration for the admin endpoint
+    TLS:
+        # TLS enabled
+        Enabled: false
+
+        # Certificate is the location of the PEM encoded TLS certificate
+        Certificate:
+
+        # PrivateKey points to the location of the PEM-encoded key
+        PrivateKey:
+
+        # Most admin service endpoints require client authentication when TLS
+        # is enabled. ClientAuthRequired requires client certificate authentication
+        # at the TLS layer to access all resources.
+        ClientAuthRequired: false
+
+        # Paths to PEM encoded ca certificates to trust for client authentication
+        ClientRootCAs: []
 
 ################################################################################
 #

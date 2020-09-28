@@ -912,7 +912,7 @@ type errorResponse struct {
 func channelparticipationJoinFailure(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, expectedStatus int, expectedError string) {
 	blockBytes, err := proto.Marshal(block)
 	Expect(err).NotTo(HaveOccurred())
-	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.OperationsPort))
+	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.AdminPort))
 	req := channelparticipation.GenerateJoinRequest(url, channel, blockBytes)
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
 
@@ -935,7 +935,7 @@ func doBodyFailure(client *http.Client, req *http.Request, expectedStatus int, e
 
 func channelparticipationRemoveFailure(n *nwo.Network, o *nwo.Orderer, channel string, expectedStatus int, expectedError string) {
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
-	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.OperationsPort), channel)
+	url := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.AdminPort), channel)
 
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	Expect(err).NotTo(HaveOccurred())
