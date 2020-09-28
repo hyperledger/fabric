@@ -14,6 +14,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"regexp"
 	"sync"
 	"time"
 
@@ -22,6 +23,8 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap/zapcore"
 )
+
+var regex = regexp.MustCompile(".*0xB.:\\sCKR.+")
 
 func (csp *impl) initialize(opts PKCS11Opts) (*impl, error) {
 	if opts.Library == "" {
@@ -138,7 +141,7 @@ func (csp *impl) getECKey(ski []byte) (pubKey *ecdsa.PublicKey, isPriv bool, err
 	if err != nil {
 		return nil, false, err
 	}
-	defer csp.returnSession(session)
+	defer func() { csp.handleSessionReturn(err, session) }()
 
 	isPriv = true
 	_, err = csp.findKeyPairFromSKI(session, ski, privateKeyType)
@@ -233,7 +236,7 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 	if err != nil {
 		return nil, nil, err
 	}
-	defer csp.returnSession(session)
+	defer func() { csp.handleSessionReturn(err, session) }()
 
 	keylabel := ""
 	updateSKI := false
@@ -363,7 +366,7 @@ func (csp *impl) signP11ECDSA(ski []byte, msg []byte) (R, S *big.Int, err error)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer csp.returnSession(session)
+	defer func() { csp.handleSessionReturn(err, session) }()
 
 	privateKey, err := csp.findKeyPairFromSKI(session, ski, privateKeyType)
 	if err != nil {
@@ -396,7 +399,7 @@ func (csp *impl) verifyP11ECDSA(ski []byte, msg []byte, R, S *big.Int, byteSize 
 	if err != nil {
 		return false, err
 	}
-	defer csp.returnSession(session)
+	defer func() { csp.handleSessionReturn(err, session) }()
 
 	logger.Debugf("Verify ECDSA\n")
 
@@ -585,6 +588,17 @@ func (csp *impl) ecPoint(session pkcs11.SessionHandle, key pkcs11.ObjectHandle) 
 	}
 
 	return ecpt, oid, nil
+}
+
+func (csp *impl) handleSessionReturn(err error, session pkcs11.SessionHandle) {
+	if err != nil {
+		if regex.MatchString(err.Error()) {
+			logger.Infof("PKCS11 session invalidated, closing session: %v", err)
+			csp.closeSession(session)
+			return
+		}
+	}
+	csp.returnSession(session)
 }
 
 func listAttrs(p11lib *pkcs11.Ctx, session pkcs11.SessionHandle, obj pkcs11.ObjectHandle) {
