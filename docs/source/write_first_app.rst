@@ -1,4 +1,4 @@
-Writing Your First Application
+Running a Fabric Application
 ==============================
 
 .. note:: If you're not yet familiar with the fundamental architecture of a

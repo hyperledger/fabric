@@ -22,9 +22,9 @@ current master branch, it is possible that you will encounter errors.
 
 ## Before you begin
 
-Before you can run the test network, you need to clone the `fabric-samples`
-repository and download the Fabric images. Make sure that you have installed
-the [Prerequisites](prereqs.html) and [Installed the Samples, Binaries and Docker Images](install.html).
+Before you can run the test network, you need to install Fabric Samples in your
+environment. Follow the instructions on [getting_started](getting_started.html)
+to install the required software.
 
 **Note:** The test network has been successfully verified with Docker Desktop version 2.5.0.1 and is the recommended version at this time. Higher versions may not work.
 
@@ -377,7 +377,7 @@ local machine, you can use the tutorials to start developing your own solution:
 
 - Learn how to deploy your own smart contracts to the test network using the
 [Deploying a smart contract to a channel](deploy_chaincode.html) tutorial.
-- Visit the [Writing Your First Application](write_first_app.html) tutorial
+- Visit the [Running a Fabric Application](write_first_app.html) tutorial
 to learn how to use the APIs provided by the Fabric SDKs to invoke smart
 contracts from your client applications.
 - If you are ready to deploy a more complicated smart contract to the network, follow
@@ -636,7 +636,7 @@ If you have any problems with the tutorial, review the following:
    Ensure that the file in question (**createChannel.sh** in this example) is
    encoded in the Unix format. This was most likely caused by not setting
    ``core.autocrlf`` to ``false`` in your Git configuration (see
-    [Windows extras](prereqs.html#windows-extras)). There are several ways of fixing this. If you have
+    [Windows](prereqs.html#windows)). There are several ways of fixing this. If you have
    access to the vim editor for instance, open the file:
    ```
    vim ./fabric-samples/test-network/scripts/createChannel.sh
