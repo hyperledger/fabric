@@ -75,10 +75,10 @@ requirement to install these when you first run the tutorial:
 
 The commercial paper tutorial is one of the samples in the `fabric-samples`
 repository. Before you begin this tutorial, ensure that you have followed the
-instructions to install the Fabric [Prerequisites](../prereqs.html) and
-[Download the Samples, Binaries and Docker Images](../install.html).
+instructions to install the required software in the [Getting Started](../getting_started.html) section.
 When you are finished, you will have cloned the `fabric-samples` repository that
 contains the tutorial scripts, smart contract, and application files.
+
 
 ![commercialpaper.download](./commercial_paper.diagram.2.png) *Download the
 `fabric-samples` GitHub repository to your local machine.*

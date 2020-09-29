@@ -15,15 +15,16 @@ and how and when to use them.
 
 In this topic, we'll cover:
 
-* [What is a smart contract](#smart-contract)
-* [A note on terminology](#terminology)
-* [Smart contracts and the ledger](#ledger)
-* [How to develop a smart contract](#developing)
-* [The importance of endorsement policies](#endorsement)
-* [Valid transactions](#valid-transactions)
-* [Channels and chaincode definitions](#channels)
-* [Communicating between smart contracts](#intercommunication)
-* [What is system chaincode?](#system-chaincode)
+- [Smart Contracts and Chaincode](#smart-contracts-and-chaincode)
+  - [Smart contract](#smart-contract)
+  - [Terminology](#terminology)
+  - [Ledger](#ledger)
+  - [Development](#development)
+  - [Endorsement](#endorsement)
+  - [Valid transactions](#valid-transactions)
+  - [Channels](#channels)
+  - [Intercommunication](#intercommunication)
+  - [System chaincode](#system-chaincode)
 
 ## Smart contract
 
@@ -129,8 +130,7 @@ where you can see a smart contract transaction that creates a new asset:
     }
 ```
 
-You can learn more about the **Basic** smart contract in the [Writing your
-first application](../write_first_app.html) tutorial.
+You can learn more about the **Basic** smart contract in the [Running a Fabric Application](../write_first_app.html) tutorial.
 
 A smart contract can describe an almost infinite array of business use cases
 relating to immutability of data in multi-organizational decision making. The
