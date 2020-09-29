@@ -1376,6 +1376,12 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 			},
 			General: localconfig.General{
 				BootstrapMethod: "none",
+				Cluster: localconfig.Cluster{
+					ReplicationBufferSize:   1,
+					ReplicationPullTimeout:  time.Microsecond,
+					ReplicationRetryTimeout: time.Microsecond,
+					ReplicationMaxRetries:   2,
+				},
 			},
 			FileLedger: localconfig.FileLedger{
 				Location: tmpdir,
