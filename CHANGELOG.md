@@ -1,3 +1,35 @@
+## v1.4.9
+Wed Sep 30 14:01:41 EDT 2020
+
+* [5146a9f](https://github.com/hyperledger/fabric/commit/5146a9f) Remove No Longer Relevant Release Note
+* [4924294](https://github.com/hyperledger/fabric/commit/4924294) Update release notes with [FAB-18250](https://jira.hyperledger.org/browse/FAB-18250)
+* [56a81f7](https://github.com/hyperledger/fabric/commit/56a81f7) [FAB-18250](https://jira.hyperledger.org/browse/FAB-18250) Check Error Before Returning Session to Pool (#1938)
+* [17e171b](https://github.com/hyperledger/fabric/commit/17e171b) Remove escc and vscc from list of system chaincodes
+* [2d63281](https://github.com/hyperledger/fabric/commit/2d63281) Remove GetSessionInfo Call
+* [4f1e340](https://github.com/hyperledger/fabric/commit/4f1e340) Add release notes for v1.4.9
+* [40abeec](https://github.com/hyperledger/fabric/commit/40abeec) [FAB-18237](https://jira.hyperledger.org/browse/FAB-18237) always update stateInfo message upon chaincode update (#1915)
+* [693cae5](https://github.com/hyperledger/fabric/commit/693cae5) Clarify tlsHandshakeTimeShift CLI help text (#1895)
+* [d9a8bc9](https://github.com/hyperledger/fabric/commit/d9a8bc9) Peer CLI communicate with orderers with expired TLS certs
+* [51ffd55](https://github.com/hyperledger/fabric/commit/51ffd55) Add extra queryexecutor nil checks
+* [95e4cfd](https://github.com/hyperledger/fabric/commit/95e4cfd) [FAB-18208](https://jira.hyperledger.org/browse/FAB-18208) Do not sign gossip message if membership is empty
+* [5201e86](https://github.com/hyperledger/fabric/commit/5201e86) Fix data race in gossip/discovery test (#1865)
+* [11cbae9](https://github.com/hyperledger/fabric/commit/11cbae9) Add object handle and key cache to bccsp/pkcs11
+* [d626146](https://github.com/hyperledger/fabric/commit/d626146) Drain session pool before creating new sessions
+* [d0c5065](https://github.com/hyperledger/fabric/commit/d0c5065) Fix Broken Doc Reference
+* [d308fbf](https://github.com/hyperledger/fabric/commit/d308fbf) Re-enable Skipped PKCS11 Tests
+* [80d3934](https://github.com/hyperledger/fabric/commit/80d3934) Fix broken pkcs11 tests
+* [c8d124f](https://github.com/hyperledger/fabric/commit/c8d124f) [FAB-18073](https://jira.hyperledger.org/browse/FAB-18073) Add integration test for dev mode
+* [9848841](https://github.com/hyperledger/fabric/commit/9848841) [FAB-18171](https://jira.hyperledger.org/browse/FAB-18171) Disregard certificate validity period in intra-orderer communication (#1825)
+* [243dc0e](https://github.com/hyperledger/fabric/commit/243dc0e) [FAB-17539](https://jira.hyperledger.org/browse/FAB-17539) Always remember anchor peers in membership (#1422) (#1815)
+* [f208ffe](https://github.com/hyperledger/fabric/commit/f208ffe) [FAB-18188](https://jira.hyperledger.org/browse/FAB-18188) Log orderer and peer cert expiration date upon startup (#1804)
+* [a19c9ec](https://github.com/hyperledger/fabric/commit/a19c9ec) Remove Latest Tag Publishing
+* [8c85f77](https://github.com/hyperledger/fabric/commit/8c85f77) Fix and improve discovery TLS authentication comments in document
+* [dcba9b1](https://github.com/hyperledger/fabric/commit/dcba9b1) [FAB-18163](https://jira.hyperledger.org/browse/FAB-18163) TLS Timeshift w/o Separate Cluster Port (#1726)
+* [4eaec1d](https://github.com/hyperledger/fabric/commit/4eaec1d) Use correct gossip SecretEnvelope reference
+* [6361bff](https://github.com/hyperledger/fabric/commit/6361bff) Update release-1.4 for Fabric CA v1.4.8 release
+* [d3c3aac](https://github.com/hyperledger/fabric/commit/d3c3aac) Fix link in Develop apps doc
+* [a3486d3](https://github.com/hyperledger/fabric/commit/a3486d3) Prepare for Fabric v1.4.9 (#1627)
+
 ## v1.4.8
 Wed Jul 22 09:23:53 EDT 2020
 
