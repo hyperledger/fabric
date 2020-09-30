@@ -44,6 +44,12 @@ import (
 	"time"
 )
 
+const (
+	consentersTestDataDir = "testdata/consenters_certs/"
+	ca1Dir                = consentersTestDataDir + "ca1"
+	ca2Dir                = consentersTestDataDir + "ca2"
+)
+
 var (
 	certAsPEM []byte
 )
@@ -62,21 +68,24 @@ type ordererConfig interface {
 
 var _ = Describe("Consenter", func() {
 	var (
-		chainManager       *mocks.ChainManager
-		support            *consensusmocks.FakeConsenterSupport
-		dataDir            string
-		snapDir            string
-		walDir             string
-		mspDir             string
-		genesisBlockApp    *common.Block
-		serverCertificates [][]byte
-		tlsCA              tlsgen.CA
+		chainManager    *mocks.ChainManager
+		support         *consensusmocks.FakeConsenterSupport
+		dataDir         string
+		snapDir         string
+		walDir          string
+		mspDir          string
+		genesisBlockApp *common.Block
+		confAppRaft     *genesisconfig.Profile
+		tlsCA           tlsgen.CA
+		tlsCa1Cert      []byte
+		tlsCa2Cert      []byte
 	)
 
 	BeforeEach(func() {
-		ca, err := tlsgen.NewCA()
+		var err error
+		tlsCA, err = tlsgen.NewCA()
 		Expect(err).NotTo(HaveOccurred())
-		kp, err := ca.NewClientCertKeyPair()
+		kp, err := tlsCA.NewClientCertKeyPair()
 		Expect(err).NotTo(HaveOccurred())
 		if certAsPEM == nil {
 			certAsPEM = kp.Cert
@@ -107,9 +116,8 @@ var _ = Describe("Consenter", func() {
 		}
 
 		support.BlockReturns(lastBlock)
-
-		serverCertificates = nil
 		genesisBlockApp = nil
+		confAppRaft = nil
 	})
 
 	AfterEach(func() {
@@ -119,17 +127,17 @@ var _ = Describe("Consenter", func() {
 
 	When("the consenter is extracting the channel", func() {
 		It("extracts successfully from step requests", func() {
-			consenter := newConsenter(chainManager, tlsCA)
+			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			ch := consenter.TargetChannel(&orderer.ConsensusRequest{Channel: "mychannel"})
 			Expect(ch).To(BeIdenticalTo("mychannel"))
 		})
 		It("extracts successfully from submit requests", func() {
-			consenter := newConsenter(chainManager, tlsCA)
+			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			ch := consenter.TargetChannel(&orderer.SubmitRequest{Channel: "mychannel"})
 			Expect(ch).To(BeIdenticalTo("mychannel"))
 		})
 		It("returns an empty string for the rest of the messages", func() {
-			consenter := newConsenter(chainManager, tlsCA)
+			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			ch := consenter.TargetChannel(&common.Block{})
 			Expect(ch).To(BeEmpty())
 		})
@@ -138,7 +146,7 @@ var _ = Describe("Consenter", func() {
 	When("the consenter is asked about join-block membership", func() {
 		table.DescribeTable("identifies a bad block",
 			func(block *common.Block, errExpected string) {
-				consenter := newConsenter(chainManager, tlsCA)
+				consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 				isMem, err := consenter.IsChannelMember(block)
 				Expect(isMem).To(BeFalse())
 				Expect(err).To(MatchError(errExpected))
@@ -156,11 +164,15 @@ var _ = Describe("Consenter", func() {
 		)
 
 		BeforeEach(func() {
-			tlsCA, err := tlsgen.NewCA()
-			Expect(err).NotTo(HaveOccurred())
-			confAppRaft := genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
+			confAppRaft = genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
 			confAppRaft.Consortiums = nil
 			confAppRaft.Consortium = ""
+
+			var err error
+			tlsCa1Cert, err = ioutil.ReadFile(filepath.Join(ca1Dir, "ca.pem"))
+			Expect(err).NotTo(HaveOccurred())
+			tlsCa2Cert, err = ioutil.ReadFile(filepath.Join(ca2Dir, "ca.pem"))
+			Expect(err).NotTo(HaveOccurred())
 
 			//IsChannelMember verifies config meta along with it's tls certs of consenters.
 			//So when we add new conseter with tls certs, they must be signed by any msp from orderer config.
@@ -169,16 +181,22 @@ var _ = Describe("Consenter", func() {
 			mspDir, err = ioutil.TempDir("", "msp-")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(confAppRaft.Orderer).NotTo(BeNil())
-			Expect(confAppRaft.Orderer.Organizations).To(HaveLen(1))
+			Expect(confAppRaft.Orderer.Organizations).ToNot(HaveLen(0))
+			Expect(confAppRaft.Orderer.EtcdRaft.Consenters).ToNot(HaveLen(0))
+			//one consenter is enough for testing
+			confAppRaft.Orderer.EtcdRaft.Consenters = confAppRaft.Orderer.EtcdRaft.Consenters[:1]
+
+			consenterCertPath := filepath.Join(ca1Dir, "client1.pem")
+			confAppRaft.Orderer.EtcdRaft.Consenters[0].ClientTlsCert = []byte(consenterCertPath)
+			confAppRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert = []byte(consenterCertPath)
 
 			err = testutil.CopyDir(confAppRaft.Orderer.Organizations[0].MSPDir, mspDir, true)
 			Expect(err).NotTo(HaveOccurred())
 			confAppRaft.Orderer.Organizations[0].MSPDir = mspDir
 			confAppRaft.Orderer.Organizations[0].ID = fmt.Sprintf("SampleMSP-%d", time.Now().UnixNano())
-			err = ioutil.WriteFile(filepath.Join(mspDir, "tlscacerts", "cert.pem"), tlsCA.CertBytes(), 0644)
+			err = ioutil.WriteFile(filepath.Join(mspDir, "tlscacerts", "cert.pem"), tlsCa1Cert, 0644)
 			Expect(err).NotTo(HaveOccurred())
 
-			serverCertificates = generateCertificates(confAppRaft, tlsCA, dataDir)
 			bootstrapper, err := encoder.NewBootstrapper(confAppRaft)
 			Expect(err).NotTo(HaveOccurred())
 			genesisBlockApp = bootstrapper.GenesisBlockForChannel("my-raft-channel")
@@ -186,21 +204,43 @@ var _ = Describe("Consenter", func() {
 		})
 
 		It("identifies a member block", func() {
-			consenter := newConsenter(chainManager, tlsCA)
-			for i := 0; i < len(serverCertificates); i++ {
-				consenter.Cert = serverCertificates[i]
-				isMem, err := consenter.IsChannelMember(genesisBlockApp)
-				Expect(isMem).To(BeTrue())
-				Expect(err).NotTo(HaveOccurred())
-			}
+			consenterCert, err := ioutil.ReadFile(filepath.Join(ca1Dir, "client1.pem"))
+			Expect(err).NotTo(HaveOccurred())
+
+			consenter := newConsenter(chainManager, tlsCa1Cert, consenterCert)
+
+			isMem, err := consenter.IsChannelMember(genesisBlockApp)
+			Expect(isMem).To(BeTrue())
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("identifies a non-member block", func() {
-			consenter := newConsenter(chainManager, tlsCA)
-			consenter.Cert = certAsPEM
+			nonMemberConsenterCert, err := ioutil.ReadFile(filepath.Join(ca1Dir, "client2.pem"))
+			Expect(err).NotTo(HaveOccurred())
+			consenter := newConsenter(chainManager, tlsCa1Cert, nonMemberConsenterCert)
+
 			isMem, err := consenter.IsChannelMember(genesisBlockApp)
 			Expect(isMem).To(BeFalse())
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("raft config has consenter with certificate that is not signed by any msp", func() {
+			foreignConsenterCertPath := filepath.Join(ca2Dir, "client.pem")
+			foreignConsenterCert, err := ioutil.ReadFile(foreignConsenterCertPath)
+			Expect(err).NotTo(HaveOccurred())
+			confAppRaft.Orderer.EtcdRaft.Consenters[0].ClientTlsCert = []byte(foreignConsenterCertPath)
+			confAppRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert = []byte(foreignConsenterCertPath)
+
+			consenter := newConsenter(chainManager, tlsCa2Cert, foreignConsenterCert)
+
+			bootstrapper, err := encoder.NewBootstrapper(confAppRaft)
+			Expect(err).NotTo(HaveOccurred())
+			genesisBlockApp = bootstrapper.GenesisBlockForChannel("my-raft-channel")
+			Expect(genesisBlockApp).NotTo(BeNil())
+
+			isMem, err := consenter.IsChannelMember(genesisBlockApp)
+			Expect(isMem).To(BeFalse())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -213,7 +253,7 @@ var _ = Describe("Consenter", func() {
 			chainManager.On("GetConsensusChain", "notraftchain").Return(&inactive.Chain{Err: errors.New("not a raft chain")})
 		})
 		It("calls the chain manager and returns the reference when it is found", func() {
-			consenter := newConsenter(chainManager, tlsCA)
+			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			Expect(consenter).NotTo(BeNil())
 
 			chain := consenter.ReceiverByChain("mychannel")
@@ -221,14 +261,14 @@ var _ = Describe("Consenter", func() {
 			Expect(chain).To(BeIdenticalTo(chainInstance))
 		})
 		It("calls the chain manager and returns nil when it's not found", func() {
-			consenter := newConsenter(chainManager, tlsCA)
+			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			Expect(consenter).NotTo(BeNil())
 
 			chain := consenter.ReceiverByChain("notmychannel")
 			Expect(chain).To(BeNil())
 		})
 		It("calls the chain manager and returns nil when it's not a raft chain", func() {
-			consenter := newConsenter(chainManager, tlsCA)
+			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			Expect(consenter).NotTo(BeNil())
 
 			chain := consenter.ReceiverByChain("notraftchain")
@@ -260,7 +300,7 @@ var _ = Describe("Consenter", func() {
 		)
 		support.SharedConfigReturns(mockOrderer)
 
-		consenter := newConsenter(chainManager, tlsCA)
+		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 		consenter.EtcdRaftConfig.WALDir = walDir
 		consenter.EtcdRaftConfig.SnapDir = snapDir
 		// consenter.EtcdRaftConfig.EvictionSuspicion is missing
@@ -311,7 +351,7 @@ var _ = Describe("Consenter", func() {
 		)
 		support.SharedConfigReturns(mockOrderer)
 
-		consenter := newConsenter(chainManager, tlsCA)
+		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 		consenter.EtcdRaftConfig.WALDir = walDir
 		consenter.EtcdRaftConfig.SnapDir = snapDir
 		//without a system channel, the InactiveChainRegistry is nil
@@ -366,7 +406,7 @@ var _ = Describe("Consenter", func() {
 		support.SharedConfigReturns(mockOrderer)
 		support.ChannelIDReturns("foo")
 
-		consenter := newConsenter(chainManager, tlsCA)
+		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 
 		chain, err := consenter.HandleChain(support, &common.Metadata{})
 		Expect(chain).To(Not(BeNil()))
@@ -391,7 +431,7 @@ var _ = Describe("Consenter", func() {
 		)
 		support.SharedConfigReturns(mockOrderer)
 
-		consenter := newConsenter(chainManager, tlsCA)
+		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 
 		chain, err := consenter.HandleChain(support, nil)
 		Expect(chain).To(BeNil())
@@ -421,7 +461,7 @@ var _ = Describe("Consenter", func() {
 		mockOrderer.CapabilitiesReturns(&mocks.OrdererCapabilities{})
 		support.SharedConfigReturns(mockOrderer)
 
-		consenter := newConsenter(chainManager, tlsCA)
+		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 
 		chain, err := consenter.HandleChain(support, nil)
 		Expect(chain).To(BeNil())
@@ -452,7 +492,7 @@ var _ = Describe("Consenter", func() {
 		support.SharedConfigReturns(mockOrderer)
 		support.ChannelIDReturns("foo")
 
-		consenter := newConsenter(chainManager, tlsCA)
+		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 		//without a system channel, the InactiveChainRegistry is nil
 		consenter.InactiveChainRegistry = nil
 		consenter.icr = nil
@@ -468,10 +508,8 @@ type consenter struct {
 	icr *mocks.InactiveChainRegistry
 }
 
-func newConsenter(chainManager *mocks.ChainManager, ca tlsgen.CA) *consenter {
+func newConsenter(chainManager *mocks.ChainManager, caCert, cert []byte) *consenter {
 	communicator := &clustermocks.Communicator{}
-	ca, err := tlsgen.NewCA()
-	Expect(err).NotTo(HaveOccurred())
 	communicator.On("Configure", mock.Anything, mock.Anything)
 	icr := &mocks.InactiveChainRegistry{}
 	icr.On("TrackChain", "foo", mock.Anything, mock.Anything)
@@ -483,7 +521,7 @@ func newConsenter(chainManager *mocks.ChainManager, ca tlsgen.CA) *consenter {
 		ChainManager:          chainManager,
 		InactiveChainRegistry: icr,
 		Communication:         communicator,
-		Cert:                  certAsPEM,
+		Cert:                  cert,
 		Logger:                flogging.MustGetLogger("test"),
 		Dispatcher: &etcdraft.Dispatcher{
 			Logger:        flogging.MustGetLogger("test"),
@@ -492,7 +530,7 @@ func newConsenter(chainManager *mocks.ChainManager, ca tlsgen.CA) *consenter {
 		Dialer: &cluster.PredicateDialer{
 			Config: comm.ClientConfig{
 				SecOpts: comm.SecureOptions{
-					Certificate: ca.CertBytes(),
+					Certificate: caCert,
 				},
 			},
 		},
