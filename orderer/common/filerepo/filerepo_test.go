@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package filerepo_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -113,10 +112,8 @@ func TestFileRepo_SaveFailure(t *testing.T) {
 	r, err := filerepo.New("testdata", "joinblock")
 	require.NoError(t, err)
 
-	filePath := filepath.Join("testdata", "joinblock", "mychannel.joinblock")
-
 	err = r.Save("mychannel", []byte{})
-	require.EqualError(t, err, fmt.Sprintf("file already exists at %s", filePath))
+	require.EqualError(t, err, os.ErrExist.Error())
 }
 
 func TestFileRepo_Remove(t *testing.T) {
