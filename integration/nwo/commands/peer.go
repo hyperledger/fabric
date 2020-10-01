@@ -135,6 +135,44 @@ func (c ChannelJoin) Args() []string {
 	return args
 }
 
+type ChannelJoinBySnapshot struct {
+	SnapshotPath string
+	ClientAuth   bool
+}
+
+func (c ChannelJoinBySnapshot) SessionName() string {
+	return "peer-channel-joinbysnapshot"
+}
+
+func (c ChannelJoinBySnapshot) Args() []string {
+	args := []string{
+		"channel", "joinbysnapshot",
+		"--snapshotpath", c.SnapshotPath,
+	}
+	if c.ClientAuth {
+		args = append(args, "--clientauth")
+	}
+	return args
+}
+
+type ChannelJoinBySnapshotStatus struct {
+	ClientAuth bool
+}
+
+func (c ChannelJoinBySnapshotStatus) SessionName() string {
+	return "peer-channel-joinbysnapshotstatus"
+}
+
+func (c ChannelJoinBySnapshotStatus) Args() []string {
+	args := []string{
+		"channel", "joinbysnapshotstatus",
+	}
+	if c.ClientAuth {
+		args = append(args, "--clientauth")
+	}
+	return args
+}
+
 type ChannelFetch struct {
 	ChannelID             string
 	Block                 string
@@ -784,6 +822,76 @@ func (c ChannelInfo) Args() []string {
 		"-c", c.ChannelID,
 	}
 	if c.ClientAuth {
+		args = append(args, "--clientauth")
+	}
+	return args
+}
+
+type SnapshotSubmitRequest struct {
+	ChannelID   string
+	BlockNumber string
+	ClientAuth  bool
+	PeerAddress string
+}
+
+func (s SnapshotSubmitRequest) SessionName() string {
+	return "peer-snapshot-submit"
+}
+
+func (s SnapshotSubmitRequest) Args() []string {
+	args := []string{
+		"snapshot", "submitrequest",
+		"--channelID", s.ChannelID,
+		"--blockNumber", s.BlockNumber,
+		"--peerAddress", s.PeerAddress,
+	}
+	if s.ClientAuth {
+		args = append(args, "--clientauth")
+	}
+	return args
+}
+
+type SnapshotCancelRequest struct {
+	ChannelID   string
+	BlockNumber string
+	ClientAuth  bool
+	PeerAddress string
+}
+
+func (s SnapshotCancelRequest) SessionName() string {
+	return "peer-snapshot-submit"
+}
+
+func (s SnapshotCancelRequest) Args() []string {
+	args := []string{
+		"snapshot", "cancelrequest",
+		"--channelID", s.ChannelID,
+		"--blockNumber", s.BlockNumber,
+		"--peerAddress", s.PeerAddress,
+	}
+	if s.ClientAuth {
+		args = append(args, "--clientauth")
+	}
+	return args
+}
+
+type SnapshotListPending struct {
+	ChannelID   string
+	ClientAuth  bool
+	PeerAddress string
+}
+
+func (s SnapshotListPending) SessionName() string {
+	return "peer-snapshot-submit"
+}
+
+func (s SnapshotListPending) Args() []string {
+	args := []string{
+		"snapshot", "listpending",
+		"--channelID", s.ChannelID,
+		"--peerAddress", s.PeerAddress,
+	}
+	if s.ClientAuth {
 		args = append(args, "--clientauth")
 	}
 	return args
