@@ -142,18 +142,19 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 	}
 	l.isPvtstoreAheadOfBlkstore.Store(isAhead)
 
-	// TODO Move the function `GetChaincodeEventListener` to ledger interface and
-	// this functionality of registering for events to ledgermgmt package so that this
-	// is reused across other future ledger implementations
-	ccEventListener := initializer.stateDB.GetChaincodeEventListener()
-	logger.Debugf("Register state db for chaincode lifecycle events: %t", ccEventListener != nil)
-	if ccEventListener != nil {
-		cceventmgmt.GetMgr().Register(ledgerID, ccEventListener)
-		initializer.ccLifecycleEventProvider.RegisterListener(
-			ledgerID,
-			&ccEventListenerAdaptor{ccEventListener},
+	statedbIndexCreator := initializer.stateDB.GetChaincodeEventListener()
+	if statedbIndexCreator != nil {
+		logger.Debugf("Register state db for chaincode lifecycle events")
+		err := l.registerStateDBIndexCreatorForChaincodeLifecycleEvents(
+			statedbIndexCreator,
+			initializer.ccInfoProvider,
+			initializer.ccLifecycleEventProvider,
+			cceventmgmt.GetMgr(),
 			initializer.initializingFromSnapshot,
 		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	//Recover both state DB and history DB if they are out of sync with block storage
@@ -172,6 +173,77 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 
 	l.stats = initializer.stats
 	return l, nil
+}
+
+func (l *kvLedger) registerStateDBIndexCreatorForChaincodeLifecycleEvents(
+	stateDBIndexCreator cceventmgmt.ChaincodeLifecycleEventListener,
+	deployedChaincodesInfoExtractor ledger.DeployedChaincodeInfoProvider,
+	chaincodesLifecycleEventsProvider ledger.ChaincodeLifecycleEventProvider,
+	legacyChaincodesLifecycleEventsProvider *cceventmgmt.Mgr,
+	bootstrappingFromSnapshot bool,
+) error {
+	if !bootstrappingFromSnapshot {
+		// regular opening of ledger
+		if err := chaincodesLifecycleEventsProvider.RegisterListener(
+			l.ledgerID, &ccEventListenerAdaptor{stateDBIndexCreator}, false); err != nil {
+			return err
+		}
+		legacyChaincodesLifecycleEventsProvider.Register(l.ledgerID, stateDBIndexCreator)
+		return nil
+	}
+
+	// opening of ledger after creating from a snapshot -
+	// it would have been better if we could explicitly retrieve the list of invocable chaincodes instead of
+	// passing the flag initializer.initializingFromSnapshot to the ccLifecycleEventProvider (which is essentially
+	// the _lifecycle cache) for directing ccLifecycleEventProvider to call us back. However, the lock that ensures
+	// the synchronization with the chaincode installer is maintained in the lifecycle cache and by design the lifecycle
+	// cache takes the responsibility of calling any listener under the lock
+	if err := chaincodesLifecycleEventsProvider.RegisterListener(
+		l.ledgerID, &ccEventListenerAdaptor{stateDBIndexCreator}, true); err != nil {
+		return errors.WithMessage(err, "error while creating statdb indexes after bootstrapping from snapshot")
+	}
+
+	legacyChaincodes, err := l.listLegacyChaincodesDefined(deployedChaincodesInfoExtractor)
+	if err != nil {
+		return errors.WithMessage(err, "error while creating statdb indexes after bootstrapping from snapshot")
+	}
+
+	if err := legacyChaincodesLifecycleEventsProvider.RegisterAndInvokeFor(
+		legacyChaincodes, l.ledgerID, stateDBIndexCreator); err != nil {
+		return errors.WithMessage(err, "error while creating statdb indexes after bootstrapping from snapshot")
+	}
+	return nil
+}
+
+func (l *kvLedger) listLegacyChaincodesDefined(
+	deployedChaincodesInfoExtractor ledger.DeployedChaincodeInfoProvider) (
+	[]*cceventmgmt.ChaincodeDefinition, error) {
+	qe, err := l.txmgr.NewQueryExecutor("")
+	if err != nil {
+		return nil, err
+	}
+	defer qe.Done()
+
+	definedChaincodes, err := deployedChaincodesInfoExtractor.AllChaincodesInfo(l.ledgerID, qe)
+	if err != nil {
+		return nil, err
+	}
+
+	legacyChaincodes := []*cceventmgmt.ChaincodeDefinition{}
+	for _, chaincodeInfo := range definedChaincodes {
+		if !chaincodeInfo.IsLegacy {
+			continue
+		}
+		legacyChaincodes = append(legacyChaincodes,
+			&cceventmgmt.ChaincodeDefinition{
+				Name:              chaincodeInfo.Name,
+				Version:           chaincodeInfo.Version,
+				Hash:              chaincodeInfo.Hash,
+				CollectionConfigs: chaincodeInfo.ExplicitCollectionConfigPkg,
+			},
+		)
+	}
+	return legacyChaincodes, nil
 }
 
 func (l *kvLedger) initTxMgr(initializer *txmgr.Initializer) error {

@@ -49,8 +49,8 @@ func TestCCEventMgmt(t *testing.T) {
 	eventMgr.Register("channel1", handler3)
 	eventMgr.Register("channel2", handler3)
 
+	cc1ExpectedEvent := &mockEvent{cc1Def, cc1DBArtifactsTar}
 	cc2ExpectedEvent := &mockEvent{cc2Def, cc2DBArtifactsTar}
-	_ = cc2ExpectedEvent
 	cc3ExpectedEvent := &mockEvent{cc3Def, cc3DBArtifactsTar}
 
 	// Deploy cc3 on chain1 - handler1 and handler3 should receive event because cc3 is being deployed only on chain1
@@ -95,6 +95,18 @@ func TestCCEventMgmt(t *testing.T) {
 	)
 	eventMgr.ChaincodeInstallDone(true)
 	require.NotContains(t, handler1.eventsRecieved, cc2ExpectedEvent)
+
+	mockListener := &mockHandler{}
+	require.NoError(t,
+		mgr.RegisterAndInvokeFor([]*ChaincodeDefinition{cc1Def, cc2Def, cc3Def},
+			"test-ledger", mockListener,
+		),
+	)
+	require.Contains(t, mockListener.eventsRecieved, cc1ExpectedEvent)
+	require.Contains(t, mockListener.eventsRecieved, cc3ExpectedEvent)
+	require.NotContains(t, mockListener.eventsRecieved, cc2ExpectedEvent)
+	require.Equal(t, 2, mockListener.doneRecievedCount)
+	require.Contains(t, mgr.ccLifecycleListeners["test-ledger"], mockListener)
 }
 
 func TestLSCCListener(t *testing.T) {
