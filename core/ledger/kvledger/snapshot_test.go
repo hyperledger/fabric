@@ -31,6 +31,7 @@ import (
 	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	kvledgermock "github.com/hyperledger/fabric/core/ledger/kvledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/mock"
@@ -288,39 +289,19 @@ func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 			CouchDB:       couchDBConfig,
 		}
 		destinationProvider := testutilNewProvider(destConf, t, &mock.DeployedChaincodeInfoProvider{})
-		ccLifecycleEventProvider := destinationProvider.initializer.ChaincodeLifecycleEventProvider.(*mock.ChaincodeLifecycleEventProvider)
-		ccLifecycleEventProvider.RegisterListenerStub = func(
-			channelID string,
-			listener ledger.ChaincodeLifecycleEventListener,
-			callback bool) error {
-			if callback {
-				err := listener.HandleChaincodeDeploy(
-					&ledger.ChaincodeDefinition{
-						Name: "ns",
-					},
-					testutil.CreateTarBytesForTest(
-						[]*testutil.TarFileEntry{
-							{
-								Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json",
-								Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`,
-							},
-						},
-					),
-				)
-				require.NoError(t, err)
-			}
-			return nil
-		}
 		return snapshotDir, couchDBConfig, destinationProvider
 	}
 
-	t.Run("create_indexes_on_couchdb", func(t *testing.T) {
-		snapshotDir, couchDBConfig, provider := setup()
-		defer func() {
-			require.NoError(t, statecouchdb.DropApplicationDBs(couchDBConfig))
-		}()
-		lgr, _, err := provider.CreateFromSnapshot(snapshotDir)
-		require.NoError(t, err)
+	dbArtifactsBytes := testutil.CreateTarBytesForTest(
+		[]*testutil.TarFileEntry{
+			{
+				Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json",
+				Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`,
+			},
+		},
+	)
+
+	verifyIndexCreatedOnMarbleSize := func(lgr ledger.PeerLedger) {
 		qe, err := lgr.NewQueryExecutor()
 		require.NoError(t, err)
 		defer qe.Done()
@@ -339,6 +320,132 @@ func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 		require.Len(t, actualResults, 1)
 		_, err = qe.ExecuteQuery("ns", `{"selector":{"owner":"tom"}, "sort": [{"color": "desc"}]}`)
 		require.Contains(t, err.Error(), "No index exists for this sort")
+	}
+
+	t.Run("create_indexes_on_couchdb_for_new_lifecycle", func(t *testing.T) {
+		snapshotDir, couchDBConfig, provider := setup()
+		defer func() {
+			require.NoError(t, statecouchdb.DropApplicationDBs(couchDBConfig))
+		}()
+
+		// mimic new lifecycle chaincode "ns" installed and defiend and the package contains an index definition "sort index"
+		ccLifecycleEventProvider := provider.initializer.ChaincodeLifecycleEventProvider.(*mock.ChaincodeLifecycleEventProvider)
+		ccLifecycleEventProvider.RegisterListenerStub =
+			func(
+				channelID string,
+				listener ledger.ChaincodeLifecycleEventListener,
+				callback bool,
+			) error {
+				if callback {
+					err := listener.HandleChaincodeDeploy(
+						&ledger.ChaincodeDefinition{
+							Name: "ns",
+						},
+						dbArtifactsBytes,
+					)
+					require.NoError(t, err)
+				}
+				return nil
+			}
+
+		lgr, _, err := provider.CreateFromSnapshot(snapshotDir)
+		require.NoError(t, err)
+		verifyIndexCreatedOnMarbleSize(lgr)
+	})
+
+	t.Run("create_indexes_on_couchdb_for_legacy_lifecycle", func(t *testing.T) {
+		snapshotDir, couchDBConfig, provider := setup()
+		defer func() {
+			require.NoError(t, statecouchdb.DropApplicationDBs(couchDBConfig))
+		}()
+
+		// mimic legacy chaincode "ns" installed and defiend and the package contains an index definition "sort index"
+		deployedCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
+		deployedCCInfoProvider.AllChaincodesInfoReturns(
+			map[string]*ledger.DeployedChaincodeInfo{
+				"ns": {
+					Name:     "ns",
+					Version:  "version",
+					Hash:     []byte("hash"),
+					IsLegacy: true,
+				},
+				"anotherNs": {
+					Name:     "anotherNs",
+					Version:  "version",
+					Hash:     []byte("hash"),
+					IsLegacy: false,
+				},
+			},
+			nil,
+		)
+
+		installedChaincodeInfoProvider := &kvledgermock.ChaincodeInfoProvider{}
+		installedChaincodeInfoProvider.RetrieveChaincodeArtifactsReturns(
+			true, dbArtifactsBytes, nil,
+		)
+		cceventmgmt.Initialize(installedChaincodeInfoProvider)
+		lgr, _, err := provider.CreateFromSnapshot(snapshotDir)
+		require.NoError(t, err)
+
+		require.Equal(t, 1, installedChaincodeInfoProvider.RetrieveChaincodeArtifactsCallCount())
+		require.Equal(t,
+			&cceventmgmt.ChaincodeDefinition{
+				Name:    "ns",
+				Version: "version",
+				Hash:    []byte("hash"),
+			},
+			installedChaincodeInfoProvider.RetrieveChaincodeArtifactsArgsForCall(0),
+		)
+		verifyIndexCreatedOnMarbleSize(lgr)
+	})
+
+	t.Run("errors-propagation", func(t *testing.T) {
+		snapshotDir, couchDBConfig, provider := setup()
+		defer func() {
+			require.NoError(t, statecouchdb.DropApplicationDBs(couchDBConfig))
+		}()
+
+		t.Run("deployedChaincodeInfoProvider-returns-error", func(t *testing.T) {
+			deployedCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
+			deployedCCInfoProvider.AllChaincodesInfoReturns(nil, fmt.Errorf("error-retrieving-all-defined-chaincodes"))
+
+			installedChaincodeInfoProvider := &kvledgermock.ChaincodeInfoProvider{}
+			installedChaincodeInfoProvider.RetrieveChaincodeArtifactsReturns(
+				true, dbArtifactsBytes, nil,
+			)
+			cceventmgmt.Initialize(installedChaincodeInfoProvider)
+			_, _, err := provider.CreateFromSnapshot(snapshotDir)
+			require.EqualError(t, err, "error while opening ledger: error while creating statdb indexes after bootstrapping from snapshot: error-retrieving-all-defined-chaincodes")
+		})
+
+		t.Run("legacychaincodes-dbartifacts-retriever-returns-error", func(t *testing.T) {
+			deployedCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
+			deployedCCInfoProvider.AllChaincodesInfoReturns(
+				map[string]*ledger.DeployedChaincodeInfo{
+					"ns": {
+						Name:     "ns",
+						Version:  "version",
+						Hash:     []byte("hash"),
+						IsLegacy: true,
+					},
+				},
+				nil,
+			)
+
+			installedChaincodeInfoProvider := &kvledgermock.ChaincodeInfoProvider{}
+			installedChaincodeInfoProvider.RetrieveChaincodeArtifactsReturns(false, nil, fmt.Errorf("error-retrieving-db-artifacts"))
+			cceventmgmt.Initialize(installedChaincodeInfoProvider)
+			_, _, err := provider.CreateFromSnapshot(snapshotDir)
+			require.EqualError(t, err, "error while opening ledger: error while creating statdb indexes after bootstrapping from snapshot: error-retrieving-db-artifacts")
+		})
+
+		t.Run("chaincodeLifecycleEventProvider-returns-error", func(t *testing.T) {
+			chaincodeLifecycleEventProvider := provider.initializer.ChaincodeLifecycleEventProvider.(*mock.ChaincodeLifecycleEventProvider)
+			chaincodeLifecycleEventProvider.RegisterListenerReturns(fmt.Errorf("error-calling-back"))
+			cceventmgmt.Initialize(nil)
+			_, _, err := provider.CreateFromSnapshot(snapshotDir)
+			require.EqualError(t, err, "error while opening ledger: error while creating statdb indexes after bootstrapping from snapshot: error-calling-back")
+		})
 	})
 }
 
