@@ -195,12 +195,13 @@ var _ = Describe("ChannelParticipation", func() {
 			Expect(newLeader).To(Equal(leader))
 
 			By("submitting transaction to orderer3 to ensure it is active")
-			env := CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello-again"))
-			resp, err := ordererclient.Broadcast(network, orderer3, env)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
-			expectedBlockNumPerChannel := map[string]int{"participation-trophy": 4}
-			assertBlockReception(expectedBlockNumPerChannel, orderers, peer, network)
+			submitTxn(orderer3, peer, network, orderers, 4, channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          5,
+			})
 
 			By("joining orderer1 to another channel as a member")
 			genesisBlockAPT := applicationChannelGenesisBlock(network, []*nwo.Orderer{orderer1}, peer, "another-participation-trophy")
@@ -225,11 +226,9 @@ var _ = Describe("ChannelParticipation", func() {
 			Expect(err).NotTo(HaveOccurred())
 			computeSignSubmitConfigUpdate(network, orderer2, peer, c, "participation-trophy")
 
-			// remove orderer1 from the orderer runners
-			ordererRunners = ordererRunners[1:]
 			if leader == 1 {
 				By("waiting for the new leader to be ready")
-				newLeader := findLeader(ordererRunners)
+				newLeader := findLeader(ordererRunners[1:])
 				Expect(newLeader).NotTo(Equal(leader))
 			}
 
@@ -273,7 +272,7 @@ var _ = Describe("ChannelParticipation", func() {
 			channelparticipationJoinFailure(network, orderer3, "systemchannel", systemChannelBlock, http.StatusForbidden, "cannot join: application channels already exist")
 		})
 
-		It("join application channel with join-block as member via channel participation api", func() {
+		It("joins application channels with join-block as member via channel participation api", func() {
 			orderer1 := network.Orderer("orderer1")
 			orderer2 := network.Orderer("orderer2")
 			orderer3 := network.Orderer("orderer3")
@@ -366,21 +365,16 @@ var _ = Describe("ChannelParticipation", func() {
 			newLeader := findLeader([]*ginkgomon.Runner{ordererRunners[2]})
 			Expect(newLeader).To(Equal(leader))
 
-			By("submitting transaction to orderer3 to ensure it is active")
-			env := CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello-again"))
-			resp, err := ordererclient.Broadcast(network, orderer3, env)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
-			expectedBlockNumPerChannel := map[string]int{"participation-trophy": 5}
-			assertBlockReception(expectedBlockNumPerChannel, orderers, peer, network)
-
-			By("checking the channel height")
-			expectedChannelInfoPT.Height = 6
-			channelInfo := channelparticipation.ListOne(network, orderer3, "participation-trophy")
-			Expect(channelInfo).To(Equal(expectedChannelInfoPT))
+			submitTxn(orderer3, peer, network, orderers, 5, channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          6,
+			})
 		})
 
-		It("join application channel with join-block as follower via channel participation api", func() {
+		It("joins application channels with join-block as follower via channel participation api", func() {
 			orderer1 := network.Orderer("orderer1")
 			orderer2 := network.Orderer("orderer2")
 			orderer3 := network.Orderer("orderer3")
@@ -647,7 +641,7 @@ func submitTxn(o *nwo.Orderer, peer *nwo.Peer, network *nwo.Network, orderers []
 	resp, err := ordererclient.Broadcast(network, o, env)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.Status).To(Equal(common.Status_SUCCESS))
-	expectedBlockNumPerChannel := map[string]int{"participation-trophy": expectedBlkNum}
+	expectedBlockNumPerChannel := map[string]int{expectedChannelInfo.Name: expectedBlkNum}
 	assertBlockReception(expectedBlockNumPerChannel, orderers, peer, network)
 
 	By("checking the channel height")
