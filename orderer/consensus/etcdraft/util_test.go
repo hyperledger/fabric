@@ -119,7 +119,7 @@ func TestIsConsenterOfChannel(t *testing.T) {
 	}
 }
 
-func TestCheckConfigMetadata(t *testing.T) {
+func TestVerifyConfigMetadata(t *testing.T) {
 	tlsCA, err := tlsgen.NewCA()
 	if err != nil {
 		panic(err)

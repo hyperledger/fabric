@@ -15,6 +15,7 @@ import (
 	"encoding/pem"
 	"io/ioutil"
 	"math/big"
+	"strings"
 
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/bccsp/utils"
@@ -65,11 +66,30 @@ func serializeIdentity(clientCert string, mspID string) ([]byte, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	if err := validateEnrollmentCertificate(b); err != nil {
+		return nil, err
+	}
 	sId := &msp.SerializedIdentity{
 		Mspid:   mspID,
 		IdBytes: b,
 	}
 	return protoutil.MarshalOrPanic(sId), nil
+}
+
+func validateEnrollmentCertificate(b []byte) error {
+	bl, _ := pem.Decode(b)
+	if bl == nil {
+		return errors.Errorf("enrollment certificate isn't a valid PEM block")
+	}
+
+	if bl.Type != "CERTIFICATE" {
+		return errors.Errorf("enrollment certificate should be a certificate, got a %s instead", strings.ToLower(bl.Type))
+	}
+
+	if _, err := x509.ParseCertificate(bl.Bytes); err != nil {
+		return errors.Errorf("enrollment certificate is not a valid x509 certificate: %v", err)
+	}
+	return nil
 }
 
 func (si *Signer) Sign(msg []byte) ([]byte, error) {
