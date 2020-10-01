@@ -104,6 +104,13 @@ type marble struct {
 	Owner      string `json:"owner"`
 }
 
+type marbleHistory struct {
+	TxId      string  `json:"TxId"`
+	Value     *marble `json:"Value"`
+	Timestamp string  `json:"Timestamp"`
+	IsDelete  string  `json:"IsDelete"`
+}
+
 // Init initializes chaincode
 // ===========================
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
@@ -699,51 +706,37 @@ func (t *SimpleChaincode) getHistoryForMarble(stub shim.ChaincodeStubInterface, 
 	}
 	defer resultsIterator.Close()
 
-	// buffer is a JSON array containing historic values for the marble
-	var buffer bytes.Buffer
-	buffer.WriteString("[")
+	result := []*marbleHistory{}
 
-	bArrayMemberAlreadyWritten := false
 	for resultsIterator.HasNext() {
 		response, err := resultsIterator.Next()
 		if err != nil {
 			return shim.Error(err.Error())
 		}
-		// Add a comma before array members, suppress it for the first array member
-		if bArrayMemberAlreadyWritten {
-			buffer.WriteString(",")
-		}
-		buffer.WriteString("{\"TxId\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(response.TxId)
-		buffer.WriteString("\"")
 
-		buffer.WriteString(", \"Value\":")
-		// if it was a delete operation on given key, then we need to set the
-		//corresponding value null. Else, we will write the response.Value
-		//as-is (as the Value itself a JSON marble)
-		if response.IsDelete {
-			buffer.WriteString("null")
-		} else {
-			buffer.WriteString(string(response.Value))
+		var value *marble = nil
+		if !response.IsDelete {
+			value = &marble{}
+			err = json.Unmarshal(response.Value, value)
+			if err != nil {
+				return shim.Error(err.Error())
+			}
 		}
 
-		buffer.WriteString(", \"Timestamp\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).String())
-		buffer.WriteString("\"")
-
-		buffer.WriteString(", \"IsDelete\":")
-		buffer.WriteString("\"")
-		buffer.WriteString(strconv.FormatBool(response.IsDelete))
-		buffer.WriteString("\"")
-
-		buffer.WriteString("}")
-		bArrayMemberAlreadyWritten = true
+		history := &marbleHistory{
+			TxId:      response.TxId,
+			Value:     value,
+			Timestamp: time.Unix(response.Timestamp.Seconds, int64(response.Timestamp.Nanos)).String(),
+			IsDelete:  strconv.FormatBool(response.IsDelete),
+		}
+		result = append(result, history)
 	}
-	buffer.WriteString("]")
 
-	fmt.Printf("- getHistoryForMarble returning:\n%s\n", buffer.String())
+	bytes, err := json.Marshal(result)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
 
-	return shim.Success(buffer.Bytes())
+	fmt.Printf("- getHistoryForMarble returning:\n%s\n", string(bytes))
+	return shim.Success(bytes)
 }

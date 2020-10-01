@@ -357,9 +357,11 @@ func verifyColorIndexPresence(n *nwo.Network, channel string, orderer *nwo.Order
 func verifyIndexPresence(n *nwo.Network, channel string, orderer *nwo.Orderer, peer *nwo.Peer, ccName string, expectIndexPresent bool, indexQuery string) {
 	By("invoking queryMarbles function with a user constructed query that requires an index due to a sort")
 	sess, err := n.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
-		ChannelID: channel,
-		Name:      ccName,
-		Ctor:      prepareChaincodeInvokeArgs("queryMarbles", indexQuery),
+		ChannelID:     channel,
+		Name:          ccName,
+		Ctor:          prepareChaincodeInvokeArgs("queryMarbles", indexQuery),
+		Orderer:       n.OrdererAddress(orderer, nwo.ListenPort),
+		PeerAddresses: []string{n.PeerAddress(peer, nwo.ListenPort)},
 	})
 	Expect(err).NotTo(HaveOccurred())
 	if expectIndexPresent {
