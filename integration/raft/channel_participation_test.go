@@ -226,11 +226,42 @@ var _ = Describe("ChannelParticipation", func() {
 			Expect(err).NotTo(HaveOccurred())
 			computeSignSubmitConfigUpdate(network, orderer2, peer, c, "participation-trophy")
 
+			By("ensuring orderer1 transitions to a follower")
+			Eventually(func() channelparticipation.ChannelInfo {
+				return channelparticipation.ListOne(network, orderer1, "participation-trophy")
+			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "active",
+				ClusterRelation: "follower",
+				Height:          6,
+			}))
+
 			if leader == 1 {
 				By("waiting for the new leader to be ready")
 				newLeader := findLeader(ordererRunners[1:])
 				Expect(newLeader).NotTo(Equal(leader))
 			}
+
+			members = []*nwo.Orderer{orderer2, orderer3}
+			submitTxn(orderer2, peer, network, members, 6, channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          7,
+			})
+
+			By("ensuring orderer1 pulls the latest block as a follower")
+			Eventually(func() channelparticipation.ChannelInfo {
+				return channelparticipation.ListOne(network, orderer1, "participation-trophy")
+			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "active",
+				ClusterRelation: "follower",
+				Height:          7,
+			}))
 
 			By("removing orderer1 from a channel")
 			channelparticipation.Remove(network, orderer1, "participation-trophy")
@@ -239,22 +270,20 @@ var _ = Describe("ChannelParticipation", func() {
 			channelparticipation.List(network, orderer1, []string{"another-participation-trophy"})
 
 			By("ensuring the channel is still usable by submitting a transaction to each remaining consenter for the channel")
-			orderers = []*nwo.Orderer{orderer2, orderer3}
-
-			submitTxn(orderer2, peer, network, orderers, 5, channelparticipation.ChannelInfo{
+			submitTxn(orderer2, peer, network, members, 7, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
 				ClusterRelation: "member",
-				Height:          6,
+				Height:          8,
 			})
 
-			submitTxn(orderer3, peer, network, orderers, 6, channelparticipation.ChannelInfo{
+			submitTxn(orderer3, peer, network, members, 8, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
 				ClusterRelation: "member",
-				Height:          7,
+				Height:          9,
 			})
 
 			By("attempting to join with an invalid block")
