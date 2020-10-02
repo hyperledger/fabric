@@ -22,13 +22,44 @@ configuring and using private data with Fabric:
 #. :ref:`pd-store-private-data`
 #. :ref:`pd-query-authorized`
 #. :ref:`pd-query-unauthorized`
+<<<<<<< HEAD
+=======
+#. :ref:`pd-transfer-asset`
+>>>>>>> 568e08c33... Private data edits
 #. :ref:`pd-purge`
 #. :ref:`pd-indexes`
 #. :ref:`pd-ref-material`
 
 This tutorial will deploy the `marbles private data sample <https://github.com/hyperledger/fabric-samples/tree/{BRANCH}/chaincode/marbles02_private>`__
 to the Fabric test network to demonstrate how to create, deploy, and use a collection of
+<<<<<<< HEAD
 private data. You should have completed the task :doc:`install`.
+=======
+private data.
+You should have completed the task :doc:`install`.
+
+.. _pd-use-case:
+
+Asset transfer private data sample use case
+-------------------------------------------
+
+This sample demonstrates the use of three private data collections, ``assetCollection``, ``Org1MSPPrivateCollection`` & ``Org2MSPPrivateCollection`` to transfer an asset between Org1 and Org2, using following use case:
+
+A member of Org1 creates a new asset, henceforth referred as owner. The public details of the asset,
+including the identity of the owner, are stored in the private data collection named ``assetCollection``. The asset is also created with an appraised
+value supplied by the owner. The appraised value is used by each participant to agree to the transfer of the asset, and is only stored in owner organization's collection. In our case, the initial appraisal value agreed by the owner is stored in the ``Org1MSPPrivateCollection``.
+
+To purchase the asset, the buyer needs to agree to the same appraised value as
+the asset owner. In this step, the buyer (a member of Org2) creates an agreement
+to trade and agree to an appraisal value using smart contract function ``'AgreeToTransfer'``.
+This value is stored in ``Org2MSPPrivateCollection`` collection. Now, the asset
+owner can transfer the asset to the buyer using smart contract function ``'TransferAsset'``.
+The ``'TransferAsset'`` function uses the hash on the channel ledger to
+confirm that the owner and the buyer have agreed to the same appraised value
+before transferring the asset.
+
+Before we go through the transfer scenario, we will discuss how organizations can use private data collections in Fabric.
+>>>>>>> 568e08c33... Private data edits
 
 .. _pd-build-json:
 
@@ -71,6 +102,7 @@ A collection definition is composed of the following properties:
   enforce that only clients belonging to one of the collection member organizations
   are allowed read access to private data.
 
+<<<<<<< HEAD
 To illustrate usage of private data, the marbles private data example contains
 two private data collection definitions: ``collectionMarbles``
 and ``collectionMarblePrivateDetails``. The ``policy`` property in the
@@ -81,6 +113,27 @@ have the private data in their private database.
 
 For more information on building a policy definition refer to the :doc:`endorsement-policies`
 topic.
+=======
+- ``memberOnlyWrite``: a value of ``true`` indicates that peers automatically
+  enforce that only clients belonging to one of the collection member organizations
+  are allowed write access to private data.
+
+- ``endorsementPolicy``: defines the endorsement policy that needs to be met in
+  order to write to the private data collection. The collection level endorsement policy
+  overrides to chaincode level policy. For more information on building a policy
+  definition refer to the :doc:`endorsement-policies` topic.
+
+The same collection definition file needs to be deployed by all organizations that
+use the chaincode, even if the organization does not belong to any collections. In
+addition to the collections that are explicitly defined in a collection file,
+each organization has access to an implicit collection on their peers that can only
+be read by their organization. For an example that uses implicit data collections,
+see the :doc:`secured_asset_transfer/secured_private_asset_transfer_tutorial`.
+
+The asset transfer private data example contains a `collections_config.json` file
+that defines three private data collection definitions: ``assetCollection``, ``Org1MSPPrivateCollection``,
+and ``Org2MSPPrivateCollection``.
+>>>>>>> 568e08c33... Private data edits
 
 .. code:: json
 
@@ -106,8 +159,19 @@ topic.
    }
  ]
 
-The data to be secured by these policies is mapped in chaincode and will be
-shown later in the tutorial.
+
+The ``policy`` property in the ``assetCollection`` definition specifies that both
+Org1 and Org2 can store the collection on their peers. The ``memberOnlyRead``
+and ``memberOnlyWrite`` parameters are used to specify that only Org1 and
+Org2 clients can read and write to this collection.
+
+The ``Org1MSPPrivateCollection`` collection allows only peers of Org1 to have
+the private data in their private database, while the ``Org2MSPPrivateCollection``
+collection can only be stored by the peers of Org2. The ``endorsementPolicy`` parameter
+is used to create a collection specific endorsement policy. Each update to
+``Org1MSPPrivateCollection`` or ``Org2MSPPrivateCollection`` needs to be endorsed
+by the organization that stores the collection on their peers. We will see how
+these collections are used to transfer the asset in the course of the tutorial.
 
 This collection definition file is deployed when the chaincode definition is
 committed to the channel using the `peer lifecycle chaincode commit command <commands/peerlifecycle.html#peer-lifecycle-chaincode-commit>`__.
@@ -141,7 +205,14 @@ be accessed.
    Price      int    `json:"price"`
  }
 
+<<<<<<< HEAD
 Specifically access to the private data will be restricted as follows:
+=======
+Specifically, access to the private data will be restricted as follows:
+
+- ``objectType, color, size, and owner`` are stored in ``assetCollection`` and hence will be visible to members of the channel per the definition in the collection policy (Org1 and Org2).
+- ``AppraisedValue`` of an asset is stored in collection ``Org1MSPPrivateCollection`` or ``Org2MSPPrivateCollection`` , depending on the owner of the asset. The value is only accessible to the users who belong to the organization that can store the collection.
+>>>>>>> 568e08c33... Private data edits
 
 - ``name, color, size, and owner`` will be visible to all members of the channel (Org1 and Org2)
 - ``price`` only visible to members of Org1
@@ -163,11 +234,20 @@ Reading collection data
 
 Use the chaincode API ``GetPrivateData()`` to query private data in the
 database.  ``GetPrivateData()`` takes two arguments, the **collection name**
+<<<<<<< HEAD
 and the data key. Recall the collection  ``collectionMarbles`` allows members of
 Org1 and Org2 to have the private data in a side database, and the collection
 ``collectionMarblePrivateDetails`` allows only members of Org1 to have the
 private data in a side database. For implementation details refer to the
 following two `marbles private data functions <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02_private/go/marbles_chaincode_private.go>`__:
+=======
+and the data key. Recall the collection  ``assetCollection`` allows peers of
+Org1 and Org2 to have the private data in a side database, and the collection
+``Org1MSPPrivateCollection`` allows only peers of Org1 to have their
+private data in a side database and ``Org2MSPPrivateCollection`` allows peers
+of Org2 to have their private data in a side database.
+For implementation details refer to the following two `asset transfer private data functions <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-private-data/chaincode-go/chaincode/asset_queries.go>`__:
+>>>>>>> 568e08c33... Private data edits
 
  * **readMarble** for querying the values of the ``name, color, size and owner`` attributes
  * **readMarblePrivateDetails** for querying the values of the ``price`` attribute
@@ -351,7 +431,13 @@ This command will create a chaincode package named marblesp.tar.gz.
 2. Use the following command to install the chaincode package onto the peer
 ``peer0.org1.example.com``.
 
+<<<<<<< HEAD
 .. code:: bash
+=======
+Register identities
+-------------------
+The private data transfer smart contract supports ownership by individual identities that belong to the network. In our scenario, the owner of the asset will be a member of Org1, while the buyer will belong to Org2. To highlight the connection between the ``GetClientIdentity().GetID()`` API and the information within a user's certificate, we will register two new identities using the Org1 and Org2 Certificate Authorities (CA's), and then use the CA's to generate each identity's certificate and private key.
+>>>>>>> 568e08c33... Private data edits
 
     peer lifecycle chaincode install marblesp.tar.gz
 
@@ -503,9 +589,15 @@ similar to:
 Store private data
 ------------------
 
+<<<<<<< HEAD
 Acting as a member of Org1, who is authorized to transact with all of the private data
 in the marbles private data sample, switch back to an Org1 peer and
 submit a request to add a marble:
+=======
+Now that we have created the identity of the asset owner, we can invoke the
+private data smart contract to create a new asset. Copy and paste the following
+set of commands into your terminal in the `test-network` directory:
+>>>>>>> 568e08c33... Private data edits
 
 :guilabel:`Try it yourself`
 
@@ -528,7 +620,7 @@ twice to persist the private data, once for each collection. Also note that
 the private data is passed using the ``--transient`` flag. Inputs passed
 as transient data will not be persisted in the transaction in order to keep
 the data private. Transient data is passed as binary data and therefore when
-using CLI it must be base64 encoded. We use an environment variable
+using terminal it must be base64 encoded. We use an environment variable
 to capture the base64 encoded value, and use ``tr`` command to strip off the
 problematic newline characters that linux base64 command adds.
 
@@ -548,9 +640,15 @@ You should see results similar to:
 Query the private data as an authorized peer
 --------------------------------------------
 
+<<<<<<< HEAD
 Our collection definition allows all members of Org1 and Org2
 to have the ``name, color, size, owner`` private data in their side database,
 but only peers in Org1 can have the ``price`` private data in their side
+=======
+Our collection definition allows all peers of Org1 and Org2
+to have the ``assetID, color, size, and owner`` private data in their side database,
+but only peers in Org1 can have Org1's opinion of their ``appraisedValue`` private data in their side
+>>>>>>> 568e08c33... Private data edits
 database. As an authorized peer in Org1, we will query both sets of private data.
 
 The first ``query`` command calls the ``readMarble`` function which passes
@@ -646,9 +744,15 @@ You should see the following result:
 Query the private data as an unauthorized peer
 ----------------------------------------------
 
+<<<<<<< HEAD
 Now we will switch to a member of Org2. Org2 has the marbles private data
 ``name, color, size, owner`` in its side database, but does not store the
 marbles ``price`` data. We will query for both sets of private data.
+=======
+Now we will operate a user from Org2. Org2 has the asset transfer private data
+``assetID, color, size, owner`` in its side database as defined in the ``assetCollection`` policy, but does not store the
+asset ``appraisedValue`` data for Org1. We will query for both sets of private data.
+>>>>>>> 568e08c33... Private data edits
 
 Switch to a peer in Org2
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -687,17 +791,40 @@ You should see something similar to the following result:
 Query private data Org2 is not authorized to
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+<<<<<<< HEAD
 Peers in Org2 do not have the marbles ``price`` private data in their side database.
 When they try to query for this data, they get back a hash of the key matching
 the public state but will not have the private state.
+=======
+Because the asset was created by Org1, the ``appraisedValue`` associated with
+``asset1`` is stored in the ``Org1MSPPrivateCollection`` collection. The value is
+not stored by peers in Org2. Run the following command to demonstrate that the
+asset's ``appraisedValue`` is not stored in the ``Org2MSPPrivateCollection``
+on the Org2 peer:
+>>>>>>> 568e08c33... Private data edits
 
 :guilabel:`Try it yourself`
 
 .. code:: bash
 
+<<<<<<< HEAD
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
+=======
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
 
-You should see a result similar to:
+The empty response shows that the asset1 private details do not exist in buyer
+(Org2) private collection.
+
+Nor can a user from Org2 read the Org1 private data collection:
+
+.. code:: bash
+
+    peer chaincode query -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
+>>>>>>> 568e08c33... Private data edits
+
+By setting ``"memberOnlyRead": true`` in the collection configuration file, we
+specify that only clients from Org1 can read data from the collection. An Org2 client
+who tries to read the collection would only get the following response:
 
 .. code:: json
 
@@ -706,13 +833,14 @@ You should see a result similar to:
     GET_STATE failed: transaction ID: d9c437d862de66755076aeebe79e7727791981606ae1cb685642c93f102b03e5:
     tx creator does not have read access permission on privatedata in chaincodeName:marblesp collectionName: collectionMarblePrivateDetails\"}"
 
-Members of Org2 will only be able to see the public hash of the private data.
+Users from Org2 will only be able to see the public hash of the private data.
 
 .. _pd-purge:
 
 Purge Private Data
 ------------------
 
+<<<<<<< HEAD
 For use cases where private data only needs to be on the ledger until it can be
 replicated into an off-chain database, it is possible to "purge" the data after
 a certain set number of blocks, leaving behind only hash of the data that serves
@@ -762,6 +890,18 @@ running the following command. Note the highest block number.
 Back in the peer container, query for the **marble1** price data by running the
 following command. (A Query does not create a new transaction on the ledger
 since no data is transacted).
+=======
+Let's see what it takes to transfer ``asset1`` to Org2. In this case, Org2 needs to agree
+to buy the asset from Org1, and they need to agree on the ``appraisedValue``. You may be wondering how they can
+agree if Org1 keeps their opinion of the ``appraisedValue`` in their private side database. For the answer
+to this, lets continue.
+
+:guilabel:`Try it yourself`
+
+Switch back to the terminal with our peer CLI.
+
+To transfer an asset, the buyer (recipient) needs to agree to the same ``appraisedValue`` as the asset owner, by calling chaincode function ``AgreeToTransfer``. The agreed value will be stored in the ``Org2MSPDetailsCollection`` collection on the Org2 peer. Run the following commands to agree to the appraised value of 100 as Org2:
+>>>>>>> 568e08c33... Private data edits
 
 .. code:: bash
 
@@ -783,6 +923,7 @@ creates a new block on the chain.
     export MARBLE=$(echo -n "{\"name\":\"marble2\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
     peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["InitMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 
+<<<<<<< HEAD
 Switch back to the Terminal window and view the private data logs for this peer
 again. You should see the block height increase by 1.
 
@@ -796,6 +937,20 @@ running the following command:
 .. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
+=======
+Now that buyer has agreed to buy the asset for the appraised value, the owner can transfer
+the asset to Org2. The asset needs to be transferred by the identity that owns the asset,
+so lets go acting as Org1:
+
+.. code:: bash
+
+    export CORE_PEER_LOCALMSPID="Org1MSP"
+    export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp
+    export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+    export CORE_PEER_ADDRESS=localhost:7051
+
+The owner from Org1 can read the data added by the `AgreeToTransfer` transaction to view the buyer identity:
+>>>>>>> 568e08c33... Private data edits
 
 The private data has not been purged, therefore the results are unchanged from
 previous query:
@@ -804,6 +959,7 @@ previous query:
 
     {"docType":"marblePrivateDetails","name":"marble1","price":99}
 
+<<<<<<< HEAD
 Transfer marble2 to "joe" by running the following command. This transaction
 will add a second new block on the chain.
 
@@ -821,6 +977,27 @@ again. You should see the block height increase by 1.
 
 Back in the peer container, query for the marble1 price data by running the
 following command:
+=======
+We now have all we need to transfer the asset. The smart contract uses the
+``GetPrivateDataHash()`` function to check that the hash of the asset appraisal
+value in ``Org1MSPPrivateCollection`` matches the hash of the appraisal value in the
+``Org2MSPPrivateCollection``. If the hashes are the same, it confirms that the
+owner and the interested buyer have agreed to the same asset value. If the
+conditions are met, the transfer function will get the client ID of the buyer
+from the transfer agreement and make the buyer the new owner of the asset. The transfer
+function will also delete the asset appraisal value from the collection of the former owner,
+as well as remove the transfer agreement from the ``assetCollection``.
+
+Run the following commands to transfer the asset. The owner needs to provide the
+assetID and the organization MSP ID of the buyer to the transfer transaction:
+
+.. code:: bash
+
+    export ASSET_OWNER=$(echo -n "{\"assetID\":\"asset1\",\"buyerMSP\":\"Org2MSP\"}" | base64 | tr -d \\n)
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"TransferAsset","Args":[]}' --transient "{\"asset_owner\":\"$ASSET_OWNER\"}" --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+
+You can query ``asset1`` to see the results of the transfer:
+>>>>>>> 568e08c33... Private data edits
 
 .. code:: bash
 
@@ -845,16 +1022,56 @@ again. You should see the block height increase by 1.
 
 .. code:: bash
 
+<<<<<<< HEAD
     docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
 
 Back in the peer container, query for the marble1 price data by running the
 following command:
+=======
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
+
+Your query will return empty result, since the asset private data is removed from the Org1 private data collection.
+
+
+.. _pd-purge:
+
+Purge Private Data
+------------------
+
+For use cases where private data only needs to be persisted for a short period of time,
+it is possible to "purge" the data after a certain set number of blocks, leaving
+behind only a hash of the data that serves as immutable evidence of the transaction.
+An organization could decide to purge private data if the data contained sensitive
+information that was used by another transaction, but is not longer needed, or
+if the data is being replicated into an off-chain database.
+
+The ``appraisedValue`` data in our example contains a private agreement that
+the organization may want to expire after a certain period of time. Thus, it
+has a limited lifespan, and can be purged after existing unchanged on the
+blockchain for a designated number of blocks using the ``blockToLive`` property
+in the collection definition.
+
+The ``Org2MSPPrivateCollection`` definition has a ``blockToLive``
+property value of ``3``, meaning this data will live on the side database for
+three blocks and then after that it will get purged. If we create additional
+blocks on the channel, the ``appraisedValue`` agreed to by Org2 will eventually
+get purged. We can create 3 new blocks to demonstrate:
+
+:guilabel:`Try it yourself`
+
+Run the following commands in your terminal to switch back to operating as member
+of Org2 and target the Org2 peer:
+>>>>>>> 568e08c33... Private data edits
 
 .. code:: bash
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
 
+<<<<<<< HEAD
 You should still be able to see the price data.
+=======
+We can still query the ``appraisedValue`` in the ``Org2MSPPrivateCollection``:
+>>>>>>> 568e08c33... Private data edits
 
 .. code:: bash
 
@@ -869,8 +1086,21 @@ data should be purged after this transaction.
     export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"jerry\"}" | base64 | tr -d \\n)
     peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marblesp -c '{"Args":["TransferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
 
+<<<<<<< HEAD
 Switch back to the Terminal window and view the private data logs for this peer
 again. You should see the block height increase by 1.
+=======
+Since we need to keep track of how many blocks we are adding before the private data gets purged,
+open a new terminal window and run the following command to view the private data logs for
+the Org2 peer. Note the highest block number.
+
+.. code:: bash
+
+    docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
+
+Now return to the terminal where we are acting as a member of Org2 and run the following
+commands to create three new assets. Each command will create a new block.
+>>>>>>> 568e08c33... Private data edits
 
 .. code:: bash
 
@@ -882,8 +1112,22 @@ Back in the peer container, query for the marble1 price data by running the foll
 
     peer chaincode query -C mychannel -n marblesp -c '{"Args":["ReadMarblePrivateDetails","marble1"]}'
 
+<<<<<<< HEAD
 Because the price data has been purged, you should no longer be able to see it.
 You should see something similar to:
+=======
+
+Return to the other terminal and run the following command to confirm that
+the new assets resulted in the creation of three new blocks:
+
+.. code:: bash
+
+    docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
+
+The ``appraisedValue`` has now been purged from the ``Org2MSPDetailsCollection``
+private data collection. Issue the query again from the Org2 terminal to see that
+the response is empty.
+>>>>>>> 568e08c33... Private data edits
 
 .. code:: bash
 
@@ -907,7 +1151,24 @@ automatically deployed upon chaincode instantiation on the channel when
 the  ``--collections-config`` flag is specified pointing to the location of
 the collection JSON file.
 
+Clean up
+--------
 
+<<<<<<< HEAD
+=======
+When you are finished using the private data smart contract, you can bring down the test
+network using ``network.sh`` script.
+
+
+.. code:: bash
+
+  ./network.sh down
+
+This command will bring down the CAs, peers, and ordering node of the network
+that we created. Note that all of the data on the ledger will be lost.
+If you want to go through the tutorial again, you will start from a clean initial state.
+
+>>>>>>> 568e08c33... Private data edits
 .. _pd-ref-material:
 
 Additional resources
@@ -923,6 +1184,8 @@ For additional private data education, a video tutorial has been created.
    <br/><br/>
    <iframe width="560" height="315" src="https://www.youtube.com/embed/qyjDi93URJE" frameborder="0" allowfullscreen></iframe>
    <br/><br/>
+
+
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
