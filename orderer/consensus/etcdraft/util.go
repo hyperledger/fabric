@@ -200,8 +200,10 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 	return MetadataFromConfigUpdate(configUpdate)
 }
 
-// VerifyConfigMetadata validates Raft config metadata
-func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts *x509.VerifyOptions) error {
+// VerifyConfigMetadata validates Raft config metadata.
+// If x509.VerifyOpts is nil, it will do only sanity check of certificates.
+// If ignoreCertExpiration is true, it will verify certificate and ignore expiration errors.
+func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts *x509.VerifyOptions, ignoreCertExpiration bool) error {
 	if metadata == nil {
 		// defensive check. this should not happen as CheckConfigMetadata
 		// should always be called with non-nil config metadata
@@ -236,12 +238,12 @@ func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts *x509.Ve
 		return errors.Errorf("empty consenter set")
 	}
 
-	// sanity check of certificates
+	//verifying certificates for being signed by CA and expiration depending on ignoreCertExpiration
 	for _, consenter := range metadata.Consenters {
 		if consenter == nil {
 			return errors.Errorf("metadata has nil consenter")
 		}
-		if err := validateConsenterTLSCerts(consenter, verifyOpts); err != nil {
+		if err := validateConsenterTLSCerts(consenter, verifyOpts, ignoreCertExpiration); err != nil {
 			return err
 		}
 	}
@@ -391,7 +393,8 @@ func createX509VerifyOptions(oldOrdererConfig, newOrdererConfig channelconfig.Or
 	}, nil
 }
 
-func validateConsenterTLSCerts(c *etcdraft.Consenter, opts *x509.VerifyOptions) error {
+//validateConsenterTLSCerts decodes PEM cert, parses and validates it. If opts is nil, then only sanity check is done.
+func validateConsenterTLSCerts(c *etcdraft.Consenter, opts *x509.VerifyOptions, ignoreExpiration bool) error {
 	clientCert, err := parseCertificateFromBytes(c.ClientTlsCert)
 	if err != nil {
 		return errors.Wrapf(err, "parsing tls client cert of %s:%d", c.Host, c.Port)
@@ -402,14 +405,24 @@ func validateConsenterTLSCerts(c *etcdraft.Consenter, opts *x509.VerifyOptions) 
 		return errors.Wrapf(err, "parsing tls server cert of %s:%d", c.Host, c.Port)
 	}
 
-	_, err = clientCert.Verify(*opts)
-	if err != nil {
-		return errors.Errorf("verifying tls client cert with serial number %d: %v", clientCert.SerialNumber, err)
-	}
+	if opts != nil {
+		verifyOpts := *opts
 
-	_, err = serverCert.Verify(*opts)
-	if err != nil {
-		return errors.Errorf("verifying tls server cert with serial number %d: %v", serverCert.SerialNumber, err)
+		var verify = func(certType string, cert *x509.Certificate, opts x509.VerifyOptions) error {
+			if _, err := clientCert.Verify(verifyOpts); err != nil {
+				if validationRes, ok := err.(x509.CertificateInvalidError); !ok || (!ignoreExpiration || validationRes.Reason != x509.Expired) {
+					return errors.Errorf("verifying tls %s cert with serial number %d: %v", certType, clientCert.SerialNumber, err)
+				}
+			}
+			return nil
+		}
+
+		if err := verify("client", clientCert, verifyOpts); err != nil {
+			return err
+		}
+		if err := verify("server", serverCert, verifyOpts); err != nil {
+			return err
+		}
 	}
 
 	return nil

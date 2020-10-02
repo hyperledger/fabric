@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
@@ -40,7 +39,7 @@ type MembershipChanges struct {
 
 // ComputeMembershipChanges computes membership update based on information about new consenters, returns
 // two slices: a slice of added consenters and a slice of consenters to be removed
-func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters map[uint64]*etcdraft.Consenter, newConsenters []*etcdraft.Consenter, ordererConfig channelconfig.Orderer) (mc *MembershipChanges, err error) {
+func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters map[uint64]*etcdraft.Consenter, newConsenters []*etcdraft.Consenter) (mc *MembershipChanges, err error) {
 	result := &MembershipChanges{
 		NewConsenters:    map[uint64]*etcdraft.Consenter{},
 		NewBlockMetadata: proto.Clone(oldMetadata).(*etcdraft.BlockMetadata),
@@ -58,7 +57,6 @@ func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters
 			result.NewConsenters[nodeID] = c
 			continue
 		}
-
 		addedNodeIndex = i
 		result.AddedNodes = append(result.AddedNodes, c)
 	}

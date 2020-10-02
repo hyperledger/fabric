@@ -270,7 +270,8 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 	if err != nil {
 		return false, errors.Wrapf(err, "failed to create x509 verify options from orderer config")
 	}
-	if err := VerifyConfigMetadata(configMetadata, verifyOpts); err != nil {
+
+	if err := VerifyConfigMetadata(configMetadata, verifyOpts, true); err != nil {
 		return false, errors.Wrapf(err, "failed to validate config metadata of ordering config")
 	}
 

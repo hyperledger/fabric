@@ -9,11 +9,6 @@ package etcdraft
 import (
 	"crypto/x509"
 	"encoding/base64"
-	"github.com/stretchr/testify/assert"
-	"io/ioutil"
-	"path/filepath"
-	"testing"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -22,7 +17,17 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io/ioutil"
+	"path/filepath"
+	"testing"
+)
+
+const (
+	consentersTestDataDir = "testdata/consenters_certs/"
+	ca1Dir                = consentersTestDataDir + "ca1"
+	ca2Dir                = consentersTestDataDir + "ca2"
 )
 
 func TestIsConsenterOfChannel(t *testing.T) {
@@ -171,7 +176,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			singleConsenter,
 		},
 	}
-	assert.Nil(t, VerifyConfigMetadata(goodMetadata, goodVerifyingOpts))
+	assert.Nil(t, VerifyConfigMetadata(goodMetadata, goodVerifyingOpts, false))
 
 	// test variety of bad metadata
 	for _, testCase := range []struct {
@@ -335,8 +340,36 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			errRegex:   "certificate signed by unknown authority",
 		},
 	} {
-		err := VerifyConfigMetadata(testCase.metadata, testCase.verifyOpts)
+		err := VerifyConfigMetadata(testCase.metadata, testCase.verifyOpts, false)
 		require.NotNil(t, err, testCase.description)
 		require.Regexp(t, testCase.errRegex, err)
 	}
+
+	//test ignoreCertExpiration option
+	tlsCaCertBytes, err := ioutil.ReadFile(filepath.Join(ca1Dir, "ca.pem"))
+	require.Nil(t, err)
+	tlsCaCert, err := parseCertificateFromBytes(tlsCaCertBytes)
+	require.Nil(t, err)
+
+	tlsClientCert, err := ioutil.ReadFile(filepath.Join(ca1Dir, "client3.pem"))
+	require.Nil(t, err)
+
+	expiredCertVerifyOpts := *goodVerifyingOpts
+	expiredCertVerifyOpts.Roots.AddCert(tlsCaCert)
+	consenterWithExpiredCerts := &etcdraftproto.Consenter{
+		Host:          "host1",
+		Port:          10001,
+		ClientTlsCert: tlsClientCert,
+		ServerTlsCert: tlsClientCert,
+	}
+
+	medatadaWithExpiredConsenter := &etcdraftproto.ConfigMetadata{
+		Options: validOptions,
+		Consenters: []*etcdraftproto.Consenter{
+			consenterWithExpiredCerts,
+		},
+	}
+
+	require.Nil(t, VerifyConfigMetadata(medatadaWithExpiredConsenter, &expiredCertVerifyOpts, true))
+	require.NotNil(t, VerifyConfigMetadata(medatadaWithExpiredConsenter, &expiredCertVerifyOpts, false))
 }

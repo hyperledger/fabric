@@ -330,7 +330,7 @@ func TestMembershipChanges(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			changes, err := etcdraft.ComputeMembershipChanges(blockMetadata, test.OldConsenters, test.NewConsenters, mockOrdererConfig)
+			changes, err := etcdraft.ComputeMembershipChanges(blockMetadata, test.OldConsenters, test.NewConsenters)
 
 			if test.ExpectedErr != "" {
 				require.EqualError(t, err, test.ExpectedErr)

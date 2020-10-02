@@ -964,7 +964,7 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 		c.sizeLimit = configMetadata.Options.SnapshotIntervalSize
 	}
 
-	changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMetadata.Consenters, c.support.SharedConfig())
+	changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMetadata.Consenters)
 	if err != nil {
 		c.logger.Panicf("illegal configuration change detected: %s", err)
 	}
@@ -1314,7 +1314,7 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 		return errors.Wrapf(err, "failed to create x509 verify options from old and new orderer config")
 	}
 
-	if err := VerifyConfigMetadata(newMetadata, verifyOpts); err != nil {
+	if err := VerifyConfigMetadata(newMetadata, verifyOpts, true); err != nil {
 		return errors.Wrap(err, "invalid new config metadata")
 	}
 
@@ -1335,9 +1335,16 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 	c.raftMetadataLock.RUnlock()
 
 	dummyOldConsentersMap := CreateConsentersMap(dummyOldBlockMetadata, oldMetadata)
-	changes, err := ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters, c.support.SharedConfig())
+	changes, err := ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters)
 	if err != nil {
 		return err
+	}
+
+	//new config metadata was verified above. Additionally need to check new consenters for certificates expiration
+	for _, c := range changes.AddedNodes {
+		if err := validateConsenterTLSCerts(c, verifyOpts, false); err != nil {
+			return errors.Wrapf(err, "consenter %s:%d has invalid certificates", c.Host, c.Port)
+		}
 	}
 
 	active := c.ActiveNodes.Load().([]uint64)
