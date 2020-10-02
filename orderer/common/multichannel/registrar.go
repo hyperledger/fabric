@@ -10,7 +10,6 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
-	"fmt"
 	"path/filepath"
 	"sync"
 
@@ -328,12 +327,12 @@ func (r *Registrar) initAppChannels(existingChannels []string, channelsWithJoinB
 func (r *Registrar) initLedgerResourcesClusterConsenter(configBlock *cb.Block) (*ledgerResources, consensus.ClusterConsenter, error) {
 	configEnv, err := protoutil.ExtractEnvelope(configBlock, 0)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed extracting config envelope from block")
+		return nil, nil, errors.WithMessagef(err, "failed extracting config envelope from block")
 	}
 
 	ledgerRes, err := r.newLedgerResources(configEnv)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed creating ledger resources")
+		return nil, nil, errors.WithMessagef(err, "failed creating ledger resources")
 	}
 
 	ordererConfig, _ := ledgerRes.OrdererConfig()
@@ -370,7 +369,7 @@ func (r *Registrar) SystemChannel() *ChainSupport {
 func (r *Registrar) BroadcastChannelSupport(msg *cb.Envelope) (*cb.ChannelHeader, bool, *ChainSupport, error) {
 	chdr, err := protoutil.ChannelHeader(msg)
 	if err != nil {
-		return nil, false, nil, fmt.Errorf("could not determine channel ID: %s", err)
+		return nil, false, nil, errors.WithMessage(err, "could not determine channel ID")
 	}
 
 	cs := r.GetChain(chdr.ChannelId)
@@ -427,7 +426,7 @@ func (r *Registrar) GetFollower(chainID string) *follower.Chain {
 func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources, error) {
 	payload, err := protoutil.UnmarshalPayload(configTx.Payload)
 	if err != nil {
-		return nil, errors.Wrap(err, "error umarshaling envelope to payload")
+		return nil, errors.WithMessage(err, "error umarshaling envelope to payload")
 	}
 
 	if payload.Header == nil {
@@ -436,27 +435,27 @@ func (r *Registrar) newLedgerResources(configTx *cb.Envelope) (*ledgerResources,
 
 	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error unmarshaling channel header")
+		return nil, errors.WithMessage(err, "error unmarshaling channel header")
 	}
 
 	configEnvelope, err := configtx.UnmarshalConfigEnvelope(payload.Data)
 	if err != nil {
-		return nil, errors.Wrap(err, "error umarshaling config envelope from payload data")
+		return nil, errors.WithMessage(err, "error umarshaling config envelope from payload data")
 	}
 
 	bundle, err := channelconfig.NewBundle(chdr.ChannelId, configEnvelope.Config, r.bccsp)
 	if err != nil {
-		return nil, errors.Wrap(err, "error creating channelconfig bundle")
+		return nil, errors.WithMessage(err, "error creating channelconfig bundle")
 	}
 
 	err = checkResources(bundle)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error checking bundle for channel: %s", chdr.ChannelId)
+		return nil, errors.WithMessagef(err, "error checking bundle for channel: %s", chdr.ChannelId)
 	}
 
 	ledger, err := r.ledgerFactory.GetOrCreate(chdr.ChannelId)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error getting ledger for channel: %s", chdr.ChannelId)
+		return nil, errors.WithMessagef(err, "error getting ledger for channel: %s", chdr.ChannelId)
 	}
 
 	return &ledgerResources{
@@ -686,7 +685,7 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 	}
 
 	if err := r.joinBlockFileRepo.Save(channelID, blockBytes); err != nil {
-		return types.ChannelInfo{}, errors.Wrapf(err, "failed saving joinblock to file repo for channel %s", channelID)
+		return types.ChannelInfo{}, errors.WithMessagef(err, "failed saving joinblock to file repo for channel %s", channelID)
 	}
 	defer func() {
 		if err != nil {
@@ -703,7 +702,7 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 
 	isMember, err := clusterConsenter.IsChannelMember(configBlock)
 	if err != nil {
-		return types.ChannelInfo{}, errors.Wrap(err, "failed to determine cluster membership from join-block")
+		return types.ChannelInfo{}, errors.WithMessage(err, "failed to determine cluster membership from join-block")
 	}
 
 	if configBlock.Header.Number == 0 && isMember {
@@ -719,7 +718,7 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 
 	fChain, info, err := r.createFollower(ledgerRes, clusterConsenter, configBlock, channelID)
 	if err != nil {
-		return info, errors.Wrap(err, "failed to create follower")
+		return info, errors.WithMessage(err, "failed to create follower")
 	}
 
 	fChain.Start()
@@ -730,7 +729,7 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 func (r *Registrar) createAsMember(ledgerRes *ledgerResources, configBlock *cb.Block, channelID string) (*ChainSupport, types.ChannelInfo, error) {
 	if ledgerRes.Height() == 0 {
 		if err := ledgerRes.Append(configBlock); err != nil {
-			return nil, types.ChannelInfo{}, errors.Wrap(err, "failed to append join block to the ledger")
+			return nil, types.ChannelInfo{}, errors.WithMessage(err, "failed to append join block to the ledger")
 		}
 	}
 	chain, err := newChainSupport(
@@ -742,7 +741,7 @@ func (r *Registrar) createAsMember(ledgerRes *ledgerResources, configBlock *cb.B
 		r.bccsp,
 	)
 	if err != nil {
-		return nil, types.ChannelInfo{}, errors.Wrap(err, "failed to create chain support")
+		return nil, types.ChannelInfo{}, errors.WithMessage(err, "failed to create chain support")
 	}
 
 	info := types.ChannelInfo{
@@ -768,7 +767,7 @@ func (r *Registrar) createFollower(
 	blockPullerCreator, err := follower.NewBlockPullerCreator(
 		channelID, fLog, r.signer, r.clusterDialer, r.config.General.Cluster, r.bccsp)
 	if err != nil {
-		return nil, types.ChannelInfo{}, errors.Wrapf(err, "failed to create BlockPullerFactory for channel %s", channelID)
+		return nil, types.ChannelInfo{}, errors.WithMessagef(err, "failed to create BlockPullerFactory for channel %s", channelID)
 	}
 
 	fChain, err := follower.NewChain(
@@ -784,7 +783,7 @@ func (r *Registrar) createFollower(
 	)
 
 	if err != nil {
-		return nil, types.ChannelInfo{}, errors.Wrapf(err, "failed to create follower for channel %s", channelID)
+		return nil, types.ChannelInfo{}, errors.WithMessagef(err, "failed to create follower for channel %s", channelID)
 	}
 
 	info := types.ChannelInfo{
@@ -811,7 +810,7 @@ func (r *Registrar) joinSystemChannel(
 
 	if configBlock.Header.Number == 0 {
 		if err := ledgerRes.Append(configBlock); err != nil {
-			return types.ChannelInfo{}, errors.Wrap(err, "error appending config block to the ledger")
+			return types.ChannelInfo{}, errors.WithMessage(err, "error appending config block to the ledger")
 		}
 	}
 
@@ -820,7 +819,7 @@ func (r *Registrar) joinSystemChannel(
 	// conflicting channel participation API actions on the orderer.
 	cs, err := newOnBoardingChainSupport(ledgerRes, r.config, r.bccsp)
 	if err != nil {
-		return types.ChannelInfo{}, errors.Wrap(err, "error creating onboarding chain support")
+		return types.ChannelInfo{}, errors.WithMessage(err, "error creating onboarding chain support")
 	}
 	r.chains[channelID] = cs
 	r.systemChannel = cs
@@ -937,7 +936,7 @@ func (r *Registrar) loadJoinBlocks() map[string]*cb.Block {
 
 func (r *Registrar) removeJoinBlock(channelID string) error {
 	if err := r.joinBlockFileRepo.Remove(channelID); err != nil {
-		return errors.Wrapf(err, "failed removing joinblock for channel %s", channelID)
+		return errors.WithMessagef(err, "failed removing joinblock for channel %s", channelID)
 	}
 
 	return nil
@@ -964,18 +963,18 @@ func (r *Registrar) removeSystemChannel() error {
 
 		rl, err := r.ledgerFactory.GetOrCreate(channel)
 		if err != nil {
-			return errors.Wrapf(err, "could not retrieve ledger for channel: %s", channel)
+			return errors.WithMessagef(err, "could not retrieve ledger for channel: %s", channel)
 		}
 		configBlock := ConfigBlockOrPanic(rl)
 		isChannelMember, err := consenter.IsChannelMember(configBlock)
 		if err != nil {
-			return errors.Wrapf(err, "failed to determine channel membership for channel: %s", channel)
+			return errors.WithMessagef(err, "failed to determine channel membership for channel: %s", channel)
 		}
 		if !isChannelMember {
 			logger.Debugf("Not a member of channel %s, removing it", channel)
 			err := r.removeMember(channel, cs)
 			if err != nil {
-				return errors.Wrapf(err, "failed to remove channel: %s", channel)
+				return errors.WithMessagef(err, "failed to remove channel: %s", channel)
 			}
 		}
 	}

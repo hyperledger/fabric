@@ -166,7 +166,7 @@ func (h *HTTPHandler) serveJoin(resp http.ResponseWriter, req *http.Request) {
 
 	channelID, isAppChannel, err := ValidateJoinBlock(block)
 	if err != nil {
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "invalid join block"))
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "invalid join block"))
 		return
 	}
 
@@ -237,7 +237,7 @@ func (h *HTTPHandler) extractChannelID(req *http.Request, resp http.ResponseWrit
 	}
 
 	if err := configtx.ValidateChannelID(channelID); err != nil {
-		err = errors.Wrap(err, "invalid channel ID")
+		err = errors.WithMessage(err, "invalid channel ID")
 		h.sendResponseJsonError(resp, http.StatusBadRequest, err)
 		return "", err
 	}
@@ -249,16 +249,16 @@ func (h *HTTPHandler) sendJoinError(err error, resp http.ResponseWriter) {
 	switch err {
 	case types.ErrSystemChannelExists:
 		// The client is trying to join an app-channel, but the system channel exists: only GET is allowed on app channels.
-		h.sendResponseNotAllowed(resp, errors.Wrap(err, "cannot join"), http.MethodGet)
+		h.sendResponseNotAllowed(resp, errors.WithMessage(err, "cannot join"), http.MethodGet)
 	case types.ErrChannelAlreadyExists:
 		// The client is trying to join an app-channel that exists, but the system channel does not;
 		// The client is trying to join the system-channel, and it exists. GET & DELETE are allowed on the channel.
-		h.sendResponseNotAllowed(resp, errors.Wrap(err, "cannot join"), http.MethodGet, http.MethodDelete)
+		h.sendResponseNotAllowed(resp, errors.WithMessage(err, "cannot join"), http.MethodGet, http.MethodDelete)
 	case types.ErrAppChannelsAlreadyExists:
 		// The client is trying to join the system-channel that does not exist, but app channels exist.
-		h.sendResponseJsonError(resp, http.StatusForbidden, errors.Wrap(err, "cannot join"))
+		h.sendResponseJsonError(resp, http.StatusForbidden, errors.WithMessage(err, "cannot join"))
 	default:
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot join"))
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "cannot join"))
 	}
 }
 
@@ -286,11 +286,11 @@ func (h *HTTPHandler) serveRemove(resp http.ResponseWriter, req *http.Request) {
 
 	switch err {
 	case types.ErrSystemChannelExists:
-		h.sendResponseNotAllowed(resp, errors.Wrap(err, "cannot remove"), http.MethodGet)
+		h.sendResponseNotAllowed(resp, errors.WithMessage(err, "cannot remove"), http.MethodGet)
 	case types.ErrChannelNotExist:
-		h.sendResponseJsonError(resp, http.StatusNotFound, errors.Wrap(err, "cannot remove"))
+		h.sendResponseJsonError(resp, http.StatusNotFound, errors.WithMessage(err, "cannot remove"))
 	default:
-		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.Wrap(err, "cannot remove"))
+		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "cannot remove"))
 	}
 }
 
