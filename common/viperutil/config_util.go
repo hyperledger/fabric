@@ -315,7 +315,7 @@ func bccspHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, e
 
 	err := mapstructure.Decode(data, config)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not decode bcssp type")
+		return nil, errors.Wrap(err, "could not decode bccsp type")
 	}
 
 	return config, nil
