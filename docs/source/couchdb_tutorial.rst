@@ -788,6 +788,20 @@ To delete the index used in this tutorial, the curl command would be:
    curl -X DELETE http://localhost:5984/mychannel_ledger/_index/indexOwnerDoc/json/indexOwner -H  "accept: */*" -H  "Host: localhost:5984"
 
 
+Clean up
+~~~~~~~~
+
+When you are finished using the tutorial, you can bring down the test network
+using ``network.sh`` script.
+
+.. code:: bash
+
+   ./network.sh down
+
+This command will bring down the CAs, peers, and ordering node of the network
+that we created. Note that all of the data on the ledger will be lost.
+If you want to go through the tutorial again, you will start from a clean initial state.
+
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
