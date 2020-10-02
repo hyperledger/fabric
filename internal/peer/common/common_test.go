@@ -12,9 +12,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
@@ -246,4 +249,58 @@ func TestInitCmdWithoutInitCrypto(t *testing.T) {
 	os.Setenv("CORE_PEER_MSPCONFIGPATH", dir)
 
 	common.InitCmd(packageCmd, nil)
+}
+
+func TestSetBCCSPConfigOverrides(t *testing.T) {
+	bccspConfig := factory.GetDefaultOpts()
+	envConfig := &factory.FactoryOpts{
+		ProviderName: "test-default",
+		SwOpts: &factory.SwOpts{
+			HashFamily: "SHA2",
+			SecLevel:   256,
+			Ephemeral:  true,
+		},
+		Pkcs11Opts: &pkcs11.PKCS11Opts{
+			HashFamily: "test-pkcs11-hash",
+			SecLevel:   12345,
+			Library:    "test-pkcs11-library",
+			Label:      "test-pkcs11-label",
+			Pin:        "test-pkcs11-pin",
+		},
+	}
+
+	t.Run("success", func(t *testing.T) {
+		cleanup := setBCCSPEnvVariables(envConfig)
+		defer cleanup()
+		err := common.SetBCCSPConfigOverrides(bccspConfig)
+		assert.NoError(t, err)
+		assert.Equal(t, envConfig, bccspConfig)
+	})
+
+	t.Run("PKCS11 security set to string value", func(t *testing.T) {
+		cleanup := setBCCSPEnvVariables(envConfig)
+		defer cleanup()
+		os.Setenv("CORE_PEER_BCCSP_PKCS11_SECURITY", "INSECURITY")
+
+		err := common.SetBCCSPConfigOverrides(bccspConfig)
+		assert.EqualError(t, err, "CORE_PEER_BCCSP_PKCS11_SECURITY set to non-integer value: INSECURITY")
+	})
+}
+
+func setBCCSPEnvVariables(bccspConfig *factory.FactoryOpts) (cleanup func()) {
+	os.Setenv("CORE_PEER_BCCSP_DEFAULT", bccspConfig.ProviderName)
+	os.Setenv("CORE_PEER_BCCSP_PKCS11_SECURITY", strconv.Itoa(bccspConfig.Pkcs11Opts.SecLevel))
+	os.Setenv("CORE_PEER_BCCSP_PKCS11_HASH", bccspConfig.Pkcs11Opts.HashFamily)
+	os.Setenv("CORE_PEER_BCCSP_PKCS11_PIN", bccspConfig.Pkcs11Opts.Pin)
+	os.Setenv("CORE_PEER_BCCSP_PKCS11_LABEL", bccspConfig.Pkcs11Opts.Label)
+	os.Setenv("CORE_PEER_BCCSP_PKCS11_LIBRARY", bccspConfig.Pkcs11Opts.Library)
+
+	return func() {
+		os.Unsetenv("CORE_PEER_BCCSP_DEFAULT")
+		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_SECURITY")
+		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_HASH")
+		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_PIN")
+		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_LABEL")
+		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_LIBRARY")
+	}
 }
