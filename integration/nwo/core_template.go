@@ -110,6 +110,12 @@ peer:
       Security: 256
       FileKeyStore:
         KeyStore:
+    PKCS11:
+      Hash: SHA2
+      Security: 256
+      Library:
+      Label:
+      Pin:
   mspConfigPath: {{ .PeerLocalMSPDir Peer }}
   localMspId: {{ (.Organization Peer.Organization).MSPID }}
   deliveryclient:
