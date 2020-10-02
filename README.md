@@ -24,11 +24,24 @@ open source architecture; Hyperledger Fabric is your starting point.
 
 ## Releases
 
+Fabric provides a release approximately once every four months with new features
+and improvements. Additionally, certain releases are designated as long-term
+support (LTS) releases. Important fixes will be backported to the most recent
+LTS release, and to the prior LTS release during periods of LTS release overlap.
+For more details see the [LTS strategy](https://github.com/hyperledger/fabric-rfcs/blob/master/text/0005-lts-release-strategy.md).
+
+LTS releases:
+- [v2.2.x](https://hyperledger-fabric.readthedocs.io/en/release-2.2/whatsnew.html) (current LTS release)
+- [v1.4.x](https://hyperledger-fabric.readthedocs.io/en/release-1.4/whatsnew.html) (prior LTS release, maintained through April 2021)
+
+Unless specified otherwise, all releases will be upgradable from the prior minor release.
+Additionally, each LTS release is upgradable to the next LTS release.
+
 Fabric releases and release notes can be found on the [GitHub releases page](https://github.com/hyperledger/fabric/releases).
 
 Please visit the [Hyperledger Fabric Jira dashboard](https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104) for our release roadmap.
-We plan on a quarterly release cadence, delivering on a scoped set of themes and select features.
-Unless specified otherwise, all releases will be upgradable from the prior minor release.
+
+Follow the release discussion on the [#fabric-release](https://chat.hyperledger.org/channel/fabric-release) channel in RocketChat.
 
 ## Documentation, Getting Started and Developer Guides
 
