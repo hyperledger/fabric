@@ -148,14 +148,17 @@ also requires a majority approval. A maintainer removed for
 inactivity should be restored following a sustained resumption of contributions
 and reviews (a month or more) demonstrating a renewed commitment to the project.
 
-Release cadence
-~~~~~~~~~~~~~~~
+Releases
+~~~~~~~~
 
-The Fabric maintainers have settled on a quarterly (approximately) release
-cadence (see `releases <https://github.com/hyperledger/fabric#releases>`__).
-At any given time, there will be a stable LTS (long term support) release branch,
-as well as the master branch for upcoming new features.
-Follow the discussion on the #fabric-release channel in RocketChat.
+Fabric provides a release approximately once every four months with new features and improvements.
+New feature work is merged to the Fabric master branch on `Github <https://github.com/hyperledger/fabric>`__.
+Releases branches are created prior to each release so that the code can stabilize while
+new features continue to get merged to the master branch.
+Important fixes will also be backported to the most recent LTS (long-term support) release branch,
+and to the prior LTS release branch during periods of LTS release overlap.
+
+See `releases <https://github.com/hyperledger/fabric#releases>`__ for more details.
 
 Making Feature/Enhancement Proposals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
