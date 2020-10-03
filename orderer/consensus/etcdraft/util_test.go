@@ -161,7 +161,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 
 	rootCertPool := x509.NewCertPool()
 	rootCertPool.AddCert(caRootCert)
-	goodVerifyingOpts := &x509.VerifyOptions{
+	goodVerifyingOpts := x509.VerifyOptions{
 		Roots: rootCertPool,
 		KeyUsages: []x509.ExtKeyUsage{
 			x509.ExtKeyUsageClientAuth,
@@ -182,7 +182,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 	for _, testCase := range []struct {
 		description string
 		metadata    *etcdraftproto.ConfigMetadata
-		verifyOpts  *x509.VerifyOptions
+		verifyOpts  x509.VerifyOptions
 		errRegex    string
 	}{
 		{
@@ -336,7 +336,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 					singleConsenter,
 				},
 			},
-			verifyOpts: &x509.VerifyOptions{},
+			verifyOpts: x509.VerifyOptions{},
 			errRegex:   "certificate signed by unknown authority",
 		},
 	} {
@@ -354,7 +354,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 	tlsClientCert, err := ioutil.ReadFile(filepath.Join(ca1Dir, "client3.pem"))
 	require.Nil(t, err)
 
-	expiredCertVerifyOpts := *goodVerifyingOpts
+	expiredCertVerifyOpts := goodVerifyingOpts
 	expiredCertVerifyOpts.Roots.AddCert(tlsCaCert)
 	consenterWithExpiredCerts := &etcdraftproto.Consenter{
 		Host:          "host1",
@@ -370,6 +370,6 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		},
 	}
 
-	require.Nil(t, VerifyConfigMetadata(medatadaWithExpiredConsenter, &expiredCertVerifyOpts, true))
-	require.NotNil(t, VerifyConfigMetadata(medatadaWithExpiredConsenter, &expiredCertVerifyOpts, false))
+	require.Nil(t, VerifyConfigMetadata(medatadaWithExpiredConsenter, expiredCertVerifyOpts, true))
+	require.NotNil(t, VerifyConfigMetadata(medatadaWithExpiredConsenter, expiredCertVerifyOpts, false))
 }

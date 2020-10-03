@@ -1309,7 +1309,7 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 		return errors.Wrap(err, "failed to unmarshal new etcdraft metadata configuration")
 	}
 
-	verifyOpts, err := createX509VerifyOptions(oldOrdererConfig, newOrdererConfig)
+	verifyOpts, err := createX509VerifyOptions(newOrdererConfig)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create x509 verify options from old and new orderer config")
 	}

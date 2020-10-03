@@ -391,41 +391,6 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Waiting for orderer3 to see the leader")
 			findLeader([]*ginkgomon.Runner{ordererRunners[2]})
 
-			By("Removing orderer3's TLS root CA certificate")
-			nwo.UpdateOrdererMSP(network, peer, orderer, "systemchannel", "OrdererOrg", func(config msp.FabricMSPConfig) msp.FabricMSPConfig {
-				config.TlsRootCerts = config.TlsRootCerts[:len(config.TlsRootCerts)-1]
-				return config
-			})
-
-			By("Killing orderer3")
-			o3Proc := ordererProcesses[2]
-			o3Proc.Signal(syscall.SIGKILL)
-			Eventually(o3Proc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
-
-			By("Restarting orderer3")
-			o3Runner := network.OrdererRunner(orderer3)
-			ordererRunners[2] = o3Runner
-			o3Proc = ifrit.Invoke(o3Runner)
-			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			ordererProcesses[2] = o3Proc
-
-			By("Ensuring TLS handshakes fail with the other orderers")
-			for i, oRunner := range ordererRunners {
-				if i < 2 {
-					Eventually(oRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("TLS handshake failed with error tls: failed to verify client certificate"))
-					continue
-				}
-				Eventually(oRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("TLS handshake failed with error remote error: tls: bad certificate"))
-				Eventually(oRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Suspecting our own eviction from the channel"))
-			}
-
-			//we removed caCert a few steps before and now consensus metadata is invalid bacause orderer3's cert is signed by unknown authority.
-			By("Adding orderer3's TLS root CA certificate back after removal")
-			nwo.UpdateOrdererMSP(network, peer, orderer, "systemchannel", "OrdererOrg", func(config msp.FabricMSPConfig) msp.FabricMSPConfig {
-				config.TlsRootCerts = append(config.TlsRootCerts, caCert)
-				return config
-			})
-
 			By("Attemping to add a consenter with invalid certs")
 			// create new certs that are not in the channel config
 			ca, err := tlsgen.NewCA()

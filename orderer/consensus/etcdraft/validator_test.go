@@ -122,14 +122,14 @@ var _ = Describe("Metadata Validation", func() {
 
 	Context("valid old consensus metadata", func() {
 		var (
-			newMetadata      *etcdraftproto.ConfigMetadata
+			metadata         etcdraftproto.ConfigMetadata
 			oldOrdererConfig *mocks.OrdererConfig
 			newOrdererConfig *mocks.OrdererConfig
 			newChannel       bool
 		)
 
 		BeforeEach(func() {
-			oldMetadata := &etcdraftproto.ConfigMetadata{
+			metadata = etcdraftproto.ConfigMetadata{
 				Options: &etcdraftproto.Options{
 					TickInterval:         "500ms",
 					ElectionTick:         10,
@@ -158,11 +158,17 @@ var _ = Describe("Metadata Validation", func() {
 					},
 				},
 			}
-			newMetadata = oldMetadata
-			oldBytes, _ := proto.Marshal(oldMetadata)
+
+			oldBytes, err := proto.Marshal(&metadata)
+			Expect(err).NotTo(HaveOccurred())
 			oldOrdererConfig = mockOrderer(oldBytes)
 			org1 := makeOrdererOrg(tlsCA.CertBytes())
 			oldOrdererConfig.OrganizationsReturns(map[string]channelconfig.OrdererOrg{
+				"org1": org1,
+			})
+
+			newOrdererConfig = mockOrderer(oldBytes)
+			newOrdererConfig.OrganizationsReturns(map[string]channelconfig.OrdererOrg{
 				"org1": org1,
 			})
 
@@ -171,9 +177,11 @@ var _ = Describe("Metadata Validation", func() {
 
 		It("fails when new consensus metadata has invalid options", func() {
 			// NOTE: we are not checking all failures here since tests for CheckConfigMetadata does that
+			newMetadata := metadata
 			newMetadata.Options.TickInterval = ""
-			newBytes, _ := proto.Marshal(newMetadata)
-			newOrdererConfig = mockOrderer(newBytes)
+			newBytes, err := proto.Marshal(&newMetadata)
+			Expect(err).NotTo(HaveOccurred())
+			newOrdererConfig.ConsensusMetadataReturns(newBytes)
 			Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).NotTo(Succeed())
 		})
 
@@ -183,44 +191,52 @@ var _ = Describe("Metadata Validation", func() {
 			})
 
 			It("fails when the new consenters are an empty set", func() {
+				newMetadata := metadata
 				newMetadata.Consenters = []*etcdraftproto.Consenter{}
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).NotTo(Succeed())
 			})
 
 			It("succeeds when the new consenters are the same as the existing consenters", func() {
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newMetadata := metadata
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(Succeed())
 			})
 
 			It("succeeds when the new consenters are a subset of the existing consenters", func() {
+				newMetadata := metadata
 				newMetadata.Consenters = newMetadata.Consenters[:2]
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(Succeed())
 			})
 
 			It("fails when the new consenters are not a subset of the existing consenters", func() {
+				newMetadata := metadata
 				newMetadata.Consenters[2].ClientTlsCert = clientTLSCert(tlsCA)
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).NotTo(Succeed())
 			})
 
 			It("fails when the new consenter has certificate which not signed by any CA of an orderer org", func() {
 				anotherCa, err := tlsgen.NewCA()
 				Expect(err).NotTo(HaveOccurred())
+				newMetadata := metadata
 				newMetadata.Consenters[2].ClientTlsCert = clientTLSCert(anotherCa)
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).NotTo(Succeed())
 			})
 
 			It("succeeds when the new consenters are a subset of the system consenters and certificates signed by MSP participant on a channel", func() {
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(Succeed())
 			})
 		})
@@ -232,32 +248,39 @@ var _ = Describe("Metadata Validation", func() {
 			})
 
 			It("fails when the new consenters are an empty set", func() {
+				newMetadata := metadata
 				// NOTE: This also takes care of the case when we remove node from a singleton consenter set
 				newMetadata.Consenters = []*etcdraftproto.Consenter{}
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).NotTo(Succeed())
 			})
 
 			It("succeeds when the new consenters are the same as the existing consenters", func() {
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newMetadata := metadata
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(Succeed())
 			})
 
 			It("succeeds on addition of a single consenter", func() {
+				newMetadata := metadata
 				newMetadata.Consenters = append(newMetadata.Consenters, &etcdraftproto.Consenter{
 					Host:          "host4",
 					Port:          10004,
 					ClientTlsCert: clientTLSCert(tlsCA),
 					ServerTlsCert: serverTLSCert(tlsCA),
 				})
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(Succeed())
 			})
 
 			It("fails on addition of more than one consenter", func() {
+				newMetadata := metadata
 				newMetadata.Consenters = append(newMetadata.Consenters,
 					&etcdraftproto.Consenter{
 						Host:          "host4",
@@ -272,50 +295,61 @@ var _ = Describe("Metadata Validation", func() {
 						ServerTlsCert: serverTLSCert(tlsCA),
 					},
 				)
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).NotTo(Succeed())
 			})
 
 			It("succeeds on removal of a single consenter", func() {
+				newMetadata := metadata
 				newMetadata.Consenters = newMetadata.Consenters[:2]
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(Succeed())
 			})
 
 			It("fails on removal of more than one consenter", func() {
+				newMetadata := metadata
 				newMetadata.Consenters = newMetadata.Consenters[:1]
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).NotTo(Succeed())
 			})
 
 			It("succeeds on rotating certs in case of both addition and removal of a node each to reuse the raft NodeId", func() {
+				newMetadata := metadata
 				newMetadata.Consenters = append(newMetadata.Consenters[:2], &etcdraftproto.Consenter{
 					Host:          "host4",
 					Port:          10004,
 					ClientTlsCert: clientTLSCert(tlsCA),
 					ServerTlsCert: serverTLSCert(tlsCA),
 				})
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(Succeed())
 			})
 
 			It("succeeds on removal of inactive node in 2/3 cluster", func() {
 				chain.ActiveNodes.Store([]uint64{1, 2})
+				newMetadata := metadata
 				newMetadata.Consenters = newMetadata.Consenters[:2]
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(Succeed())
 			})
 
 			It("fails on removal of active node in 2/3 cluster", func() {
 				chain.ActiveNodes.Store([]uint64{1, 2})
+				newMetadata := metadata
 				newMetadata.Consenters = newMetadata.Consenters[1:]
-				newBytes, _ := proto.Marshal(newMetadata)
-				newOrdererConfig = mockOrderer(newBytes)
+				newBytes, err := proto.Marshal(&newMetadata)
+				Expect(err).NotTo(HaveOccurred())
+				newOrdererConfig.ConsensusMetadataReturns(newBytes)
 				Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(
 					MatchError("2 out of 3 nodes are alive, configuration will result in quorum loss"))
 			})
@@ -349,9 +383,11 @@ var _ = Describe("Metadata Validation", func() {
 
 				It("succeeds on removal of inactive node in 2/3 cluster", func() {
 					chain.ActiveNodes.Store([]uint64{2, 3}) // 4 is inactive
+					newMetadata := metadata
 					newMetadata.Consenters = newMetadata.Consenters[:2]
-					newBytes, _ := proto.Marshal(newMetadata)
-					newOrdererConfig = mockOrderer(newBytes)
+					newBytes, err := proto.Marshal(&newMetadata)
+					Expect(err).NotTo(HaveOccurred())
+					newOrdererConfig.ConsensusMetadataReturns(newBytes)
 					Expect(chain.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, newChannel)).To(Succeed())
 				})
 			})

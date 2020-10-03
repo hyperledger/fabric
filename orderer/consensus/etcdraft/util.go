@@ -7,11 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"bytes"
-	"crypto/sha1"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -203,7 +200,7 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 // VerifyConfigMetadata validates Raft config metadata.
 // If x509.VerifyOpts is nil, it will do only sanity check of certificates.
 // If ignoreCertExpiration is true, it will verify certificate and ignore expiration errors.
-func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts *x509.VerifyOptions, ignoreCertExpiration bool) error {
+func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts x509.VerifyOptions, ignoreCertExpiration bool) error {
 	if metadata == nil {
 		// defensive check. this should not happen as CheckConfigMetadata
 		// should always be called with non-nil config metadata
@@ -284,106 +281,30 @@ func parseCertificateListFromBytes(certs [][]byte) ([]*x509.Certificate, error) 
 	return certificateList, nil
 }
 
-func getCertFingerprint(cert *x509.Certificate) (string, error) {
-	fingerprint := sha1.Sum(cert.Raw)
-	var buf bytes.Buffer
-	for i, f := range fingerprint {
-		if i > 0 {
-			if _, err := fmt.Fprintf(&buf, ":"); err != nil {
-				return "", errors.Wrapf(err, "building fingerprint of %s", cert.Raw)
-			}
-		}
-
-		if _, err := fmt.Fprintf(&buf, "%02X", f); err != nil {
-			return "", errors.Wrapf(err, "building fingerprint of %s", cert.Raw)
-		}
-	}
-
-	return buf.String(), nil
-}
-
-func createX509VerifyOptions(oldOrdererConfig, newOrdererConfig channelconfig.Orderer) (*x509.VerifyOptions, error) {
+func createX509VerifyOptions(ordererConfig channelconfig.Orderer) (x509.VerifyOptions, error) {
 	tlsRoots := x509.NewCertPool()
 	tlsIntermediates := x509.NewCertPool()
 
-	tlsRootsMap := make(map[string]*x509.Certificate)
-	tlsIntermediatesMap := make(map[string]*x509.Certificate)
+	for _, org := range ordererConfig.Organizations() {
+		rootCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSRootCerts())
+		if err != nil {
+			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls root certs")
+		}
+		intermediateCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSIntermediateCerts())
+		if err != nil {
+			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls intermediate certs")
+		}
 
-	if oldOrdererConfig != nil {
-		for _, org := range oldOrdererConfig.Organizations() {
-			rootCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSRootCerts())
-			if err != nil {
-				return nil, errors.Wrap(err, "parsing tls root certs")
-			}
-			intermediateCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSIntermediateCerts())
-			if err != nil {
-				return nil, errors.Wrap(err, "parsing tls intermediate certs")
-			}
+		for _, cert := range rootCerts {
+			tlsRoots.AddCert(cert)
+		}
 
-			for _, cert := range rootCerts {
-				fingerprint, err := getCertFingerprint(cert)
-				if err != nil {
-					return nil, errors.WithStack(err)
-				}
-
-				if _, exists := tlsRootsMap[fingerprint]; !exists {
-					tlsRoots.AddCert(cert)
-					tlsRootsMap[fingerprint] = cert
-				}
-			}
-
-			for _, cert := range intermediateCerts {
-				fingerprint, err := getCertFingerprint(cert)
-				if err != nil {
-					return nil, errors.WithStack(err)
-				}
-
-				if _, exists := tlsIntermediatesMap[fingerprint]; !exists {
-					tlsIntermediates.AddCert(cert)
-					tlsIntermediatesMap[fingerprint] = cert
-				}
-			}
+		for _, cert := range intermediateCerts {
+			tlsIntermediates.AddCert(cert)
 		}
 	}
 
-	if newOrdererConfig != nil {
-		for _, org := range newOrdererConfig.Organizations() {
-			rootCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSRootCerts())
-			if err != nil {
-				return nil, errors.Wrap(err, "parsing tls root certs")
-			}
-			intermediateCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSIntermediateCerts())
-			if err != nil {
-				return nil, errors.Wrap(err, "parsing tls intermediate certs")
-			}
-
-			for _, cert := range rootCerts {
-				fingerprint, err := getCertFingerprint(cert)
-				if err != nil {
-					return nil, errors.WithStack(err)
-				}
-
-				if _, exists := tlsRootsMap[fingerprint]; !exists {
-					tlsRoots.AddCert(cert)
-					tlsRootsMap[fingerprint] = cert
-				}
-			}
-
-			for _, cert := range intermediateCerts {
-				fingerprint, err := getCertFingerprint(cert)
-				if err != nil {
-					return nil, errors.WithStack(err)
-				}
-
-				if _, exists := tlsIntermediatesMap[fingerprint]; !exists {
-					tlsIntermediates.AddCert(cert)
-					tlsIntermediatesMap[fingerprint] = cert
-				}
-			}
-		}
-	}
-
-	return &x509.VerifyOptions{
+	return x509.VerifyOptions{
 		Roots:         tlsRoots,
 		Intermediates: tlsIntermediates,
 		KeyUsages: []x509.ExtKeyUsage{
@@ -393,8 +314,8 @@ func createX509VerifyOptions(oldOrdererConfig, newOrdererConfig channelconfig.Or
 	}, nil
 }
 
-//validateConsenterTLSCerts decodes PEM cert, parses and validates it. If opts is nil, then only sanity check is done.
-func validateConsenterTLSCerts(c *etcdraft.Consenter, opts *x509.VerifyOptions, ignoreExpiration bool) error {
+//validateConsenterTLSCerts decodes PEM cert, parses and validates it.
+func validateConsenterTLSCerts(c *etcdraft.Consenter, opts x509.VerifyOptions, ignoreExpiration bool) error {
 	clientCert, err := parseCertificateFromBytes(c.ClientTlsCert)
 	if err != nil {
 		return errors.Wrapf(err, "parsing tls client cert of %s:%d", c.Host, c.Port)
@@ -405,24 +326,20 @@ func validateConsenterTLSCerts(c *etcdraft.Consenter, opts *x509.VerifyOptions, 
 		return errors.Wrapf(err, "parsing tls server cert of %s:%d", c.Host, c.Port)
 	}
 
-	if opts != nil {
-		verifyOpts := *opts
-
-		var verify = func(certType string, cert *x509.Certificate, opts x509.VerifyOptions) error {
-			if _, err := clientCert.Verify(verifyOpts); err != nil {
-				if validationRes, ok := err.(x509.CertificateInvalidError); !ok || (!ignoreExpiration || validationRes.Reason != x509.Expired) {
-					return errors.Errorf("verifying tls %s cert with serial number %d: %v", certType, clientCert.SerialNumber, err)
-				}
+	var verify = func(certType string, cert *x509.Certificate, opts x509.VerifyOptions) error {
+		if _, err := clientCert.Verify(opts); err != nil {
+			if validationRes, ok := err.(x509.CertificateInvalidError); !ok || (!ignoreExpiration || validationRes.Reason != x509.Expired) {
+				return errors.Errorf("verifying tls %s cert with serial number %d: %v", certType, clientCert.SerialNumber, err)
 			}
-			return nil
 		}
+		return nil
+	}
 
-		if err := verify("client", clientCert, verifyOpts); err != nil {
-			return err
-		}
-		if err := verify("server", serverCert, verifyOpts); err != nil {
-			return err
-		}
+	if err := verify("client", clientCert, opts); err != nil {
+		return err
+	}
+	if err := verify("server", serverCert, opts); err != nil {
+		return err
 	}
 
 	return nil
