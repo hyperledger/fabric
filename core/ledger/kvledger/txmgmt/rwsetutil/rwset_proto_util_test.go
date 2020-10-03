@@ -193,7 +193,7 @@ func sampleCollHashedRwSet(collectionName string) *CollHashedRwSet {
 
 func TestTxPvtRwSetConversion(t *testing.T) {
 	txPvtRwSet := sampleTxPvtRwSet()
-	protoMsg, err := txPvtRwSet.toProtoMsg()
+	protoMsg, err := txPvtRwSet.ToProtoMsg()
 	require.NoError(t, err)
 	txPvtRwSet1, err := TxPvtRwSetFromProtoMsg(protoMsg)
 	require.NoError(t, err)

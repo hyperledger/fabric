@@ -30,6 +30,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/confighistory/confighistorytest"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
@@ -104,19 +105,8 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 		},
 	)
 
-	// add dummy entry in collection config history and commit block-3 and generate the snapshot
-	collConfigPkg := &peer.CollectionConfigPackage{
-		Config: []*peer.CollectionConfig{
-			{
-				Payload: &peer.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &peer.StaticCollectionConfig{
-						Name: "coll",
-					},
-				},
-			},
-		},
-	}
-	addDummyEntryInCollectionConfigHistory(t, provider, kvlgr.ledgerID, "ns", 1, collConfigPkg)
+	// add dummy entry in collection config history and commit block-2 and generate the snapshot
+	addDummyEntryInCollectionConfigHistory(t, provider, kvlgr.ledgerID, "ns", 1, []*pb.StaticCollectionConfig{{Name: "coll"}})
 
 	// add block-2 only with public and private data and generate the snapshot
 	blockAndPvtdata2 := prepareNextBlockForTest(t, kvlgr, blkGenerator, "SimulateForBlk2",
@@ -198,7 +188,17 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 					"key3": "value3.3",
 				},
 				collectionConfig: map[uint64]*peer.CollectionConfigPackage{
-					1: collConfigPkg,
+					1: {
+						Config: []*peer.CollectionConfig{
+							{
+								Payload: &peer.CollectionConfig_StaticCollectionConfig{
+									StaticCollectionConfig: &peer.StaticCollectionConfig{
+										Name: "coll",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		)
@@ -207,7 +207,6 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 	t.Run("create-ledger-from-snapshot-error-paths", func(t *testing.T) {
 		testCreateLedgerFromSnapshotErrorPaths(t, snapshotDir)
 	})
-
 }
 
 func TestSnapshotDBTypeCouchDB(t *testing.T) {
@@ -877,34 +876,16 @@ func addDummyEntryInCollectionConfigHistory(
 	ledgerID string,
 	namespace string,
 	committingBlockNumber uint64,
-	collectionConfig *peer.CollectionConfigPackage,
+	collectionConfig []*peer.StaticCollectionConfig,
 ) {
-	// configure mock to cause data entry in collection config history
-	ccInfoProviderMock := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
-	ccInfoProviderMock.UpdatedChaincodesReturns(
-		[]*ledger.ChaincodeLifecycleInfo{
-			{
-				Name: "ns",
-			},
-		},
-		nil,
-	)
-
-	ccInfoProviderMock.ChaincodeInfoReturns(
-		&ledger.DeployedChaincodeInfo{
-			Name:                        namespace,
-			ExplicitCollectionConfigPkg: collectionConfig,
-		},
-		nil,
-	)
+	configHistory := &confighistorytest.Mgr{
+		Mgr:                provider.configHistoryMgr,
+		MockCCInfoProvider: provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider),
+	}
 	require.NoError(t,
-		provider.configHistoryMgr.HandleStateUpdates(
-			&ledger.StateUpdateTrigger{
-				LedgerID:           ledgerID,
-				CommittingBlockNum: committingBlockNumber,
-				StateUpdates: map[string]*ledger.KVStateUpdates{
-					namespace: {},
-				},
+		configHistory.Setup(ledgerID, namespace,
+			map[uint64][]*peer.StaticCollectionConfig{
+				committingBlockNumber: collectionConfig,
 			},
 		),
 	)

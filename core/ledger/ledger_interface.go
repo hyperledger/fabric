@@ -623,11 +623,11 @@ func (e *InvalidCollNameError) Error() string {
 
 // PvtdataHashMismatch is used when the hash of private write-set
 // does not match the corresponding hash present in the block
-// See function `PeerLedger.CommitPvtData` for the usages
+// or there is a mismatch with the boot-KV-hashes present in the
+// private block store if the legder is created from a snapshot
 type PvtdataHashMismatch struct {
 	BlockNum, TxNum       uint64
 	Namespace, Collection string
-	ExpectedHash          []byte
 }
 
 // DeployedChaincodeInfoProvider is a dependency that is used by ledger to build collection config history
