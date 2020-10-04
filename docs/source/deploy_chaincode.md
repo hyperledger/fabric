@@ -198,7 +198,7 @@ class AssetTransfer extends Contract {
 
 The ``AssetTransfer`` class provides the transaction context for the functions defined within the smart contract that read and write data to the blockchain ledger.
 ```
-async createAsset(ctx, id, color, size, owner, appraisedValue) {
+async CreateAsset(ctx, id, color, size, owner, appraisedValue) {
         const asset = {
             ID: id,
             Color: color,
@@ -272,8 +272,8 @@ export class AssetTransfer extends Contract {
 
 The ``AssetTransfer`` class provides the transaction context for the functions defined within the smart contract that read and write data to the blockchain ledger.
 ```
- // createAsset issues a new asset to the world state with given details.
-    public async createAsset(ctx: Context, id: string, color: string, size: number, owner: string, appraisedValue: number) {
+ // CreateAsset issues a new asset to the world state with given details.
+    public async CreateAsset(ctx: Context, id: string, color: string, size: number, owner: string, appraisedValue: number) {
         const asset = {
             ID: id,
             Color: color,
@@ -586,11 +586,11 @@ CONTAINER ID        IMAGE                                                       
 ```
 If you used the `--init-required` flag, you need to invoke the Init function before you can use the upgraded chaincode. Because we did not request the execution of Init, we can test our new JavaScript chaincode by creating a new car:
 ```
-peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"function":"createAsset","Args":["asset8","blue","16","Kelley","750"]}'
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"function":"CreateAsset","Args":["asset8","blue","16","Kelley","750"]}'
 ```
 You can query all the cars on the ledger again to see the new car:
 ```
-peer chaincode query -C mychannel -n basic -c '{"Args":["getAllAssets"]}'
+peer chaincode query -C mychannel -n basic -c '{"Args":["GetAllAssets"]}'
 ```
 
 You should see the following result from the JavaScript chaincode:
