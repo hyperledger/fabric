@@ -37,8 +37,15 @@ func RaftPeers(consenterIDs []uint64) []raft.Peer {
 	return peers
 }
 
+type ConsentersMap map[string]struct{}
+
+func (c ConsentersMap) Exists(consenter *etcdraft.Consenter) bool {
+	_, exists := c[string(consenter.ClientTlsCert)]
+	return exists
+}
+
 // ConsentersToMap maps consenters into set where key is client TLS certificate
-func ConsentersToMap(consenters []*etcdraft.Consenter) map[string]struct{} {
+func ConsentersToMap(consenters []*etcdraft.Consenter) ConsentersMap {
 	set := map[string]struct{}{}
 	for _, c := range consenters {
 		set[string(c.ClientTlsCert)] = struct{}{}

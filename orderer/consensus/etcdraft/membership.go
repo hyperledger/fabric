@@ -64,7 +64,7 @@ func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters
 	var deletedNodeID uint64
 	newConsentersSet := ConsentersToMap(newConsenters)
 	for nodeID, c := range oldConsenters {
-		if _, exists := newConsentersSet[string(c.ClientTlsCert)]; !exists {
+		if !newConsentersSet.Exists(c) {
 			result.RemovedNodes = append(result.RemovedNodes, c)
 			deletedNodeID = nodeID
 		}

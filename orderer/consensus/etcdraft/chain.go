@@ -1322,7 +1322,7 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 		// check if the consenters are a subset of the existing consenters (system channel consenters)
 		set := ConsentersToMap(oldMetadata.Consenters)
 		for _, c := range newMetadata.Consenters {
-			if _, exits := set[string(c.ClientTlsCert)]; !exits {
+			if !set.Exists(c) {
 				return errors.New("new channel has consenter that is not part of system consenter set")
 			}
 		}
