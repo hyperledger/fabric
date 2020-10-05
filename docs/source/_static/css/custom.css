@@ -177,7 +177,6 @@ a:visited {
     background-color: #d9e5ef
 }
 
-
 /* Mobile view */
 
 .wy-nav-top {
@@ -191,4 +190,16 @@ a:visited {
     background-size: Auto 19px;
     background-position: center top;
     background-origin: content box;
+}
+
+/* Fix tables */
+
+.wy-table-responsive table td {
+    /* !important prevents the common CSS stylesheets from overriding
+        this as on RTD they are loaded after this stylesheet */
+    white-space: normal !important;
+}
+
+.wy-table-responsive {
+    overflow: visible !important;
 }
