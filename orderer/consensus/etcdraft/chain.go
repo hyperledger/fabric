@@ -1290,12 +1290,23 @@ func (c *Chain) newConfigMetadata(block *common.Block) *etcdraft.ConfigMetadata 
 // ValidateConsensusMetadata determines the validity of a
 // ConsensusMetadata update during config updates on the channel.
 func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig channelconfig.Orderer, newChannel bool) error {
-	// metadata was not updated
 	if newOrdererConfig == nil {
+		c.logger.Panic("Programming Error: ValidateConsensusMetadata called with nil new channel config")
 		return nil
 	}
+
+	// metadata was not updated
+	if newOrdererConfig.ConsensusMetadata() == nil {
+		return nil
+	}
+
 	if oldOrdererConfig == nil {
 		c.logger.Panic("Programming Error: ValidateConsensusMetadata called with nil old channel config")
+		return nil
+	}
+
+	if oldOrdererConfig.ConsensusMetadata() == nil {
+		c.logger.Panic("Programming Error: ValidateConsensusMetadata called with nil old metadata")
 		return nil
 	}
 
@@ -1314,7 +1325,7 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 		return errors.Wrapf(err, "failed to create x509 verify options from old and new orderer config")
 	}
 
-	if err := VerifyConfigMetadata(newMetadata, verifyOpts, true); err != nil {
+	if err := VerifyConfigMetadata(newMetadata, verifyOpts); err != nil {
 		return errors.Wrap(err, "invalid new config metadata")
 	}
 

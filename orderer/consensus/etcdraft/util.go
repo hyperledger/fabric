@@ -205,9 +205,8 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 }
 
 // VerifyConfigMetadata validates Raft config metadata.
-// If x509.VerifyOpts is nil, it will do only sanity check of certificates.
-// If ignoreCertExpiration is true, it will verify certificate and ignore expiration errors.
-func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts x509.VerifyOptions, ignoreCertExpiration bool) error {
+// Note: ignores certificates expiration.
+func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts x509.VerifyOptions) error {
 	if metadata == nil {
 		// defensive check. this should not happen as CheckConfigMetadata
 		// should always be called with non-nil config metadata
@@ -242,12 +241,12 @@ func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts x509.Ver
 		return errors.Errorf("empty consenter set")
 	}
 
-	//verifying certificates for being signed by CA and expiration depending on ignoreCertExpiration
+	//verifying certificates for being signed by CA, expiration is ignored
 	for _, consenter := range metadata.Consenters {
 		if consenter == nil {
 			return errors.Errorf("metadata has nil consenter")
 		}
-		if err := validateConsenterTLSCerts(consenter, verifyOpts, ignoreCertExpiration); err != nil {
+		if err := validateConsenterTLSCerts(consenter, verifyOpts, true); err != nil {
 			return err
 		}
 	}

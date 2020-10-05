@@ -176,7 +176,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			singleConsenter,
 		},
 	}
-	assert.Nil(t, VerifyConfigMetadata(goodMetadata, goodVerifyingOpts, false))
+	assert.Nil(t, VerifyConfigMetadata(goodMetadata, goodVerifyingOpts))
 
 	// test variety of bad metadata
 	for _, testCase := range []struct {
@@ -340,12 +340,12 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			errRegex:   "certificate signed by unknown authority",
 		},
 	} {
-		err := VerifyConfigMetadata(testCase.metadata, testCase.verifyOpts, false)
+		err := VerifyConfigMetadata(testCase.metadata, testCase.verifyOpts)
 		require.NotNil(t, err, testCase.description)
 		require.Regexp(t, testCase.errRegex, err)
 	}
 
-	//test ignoreCertExpiration option
+	//test use case when consenter has expired certificates
 	tlsCaCertBytes, err := ioutil.ReadFile(filepath.Join(ca1Dir, "ca.pem"))
 	require.Nil(t, err)
 	tlsCaCert, err := parseCertificateFromBytes(tlsCaCertBytes)
@@ -370,6 +370,5 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		},
 	}
 
-	require.Nil(t, VerifyConfigMetadata(medatadaWithExpiredConsenter, expiredCertVerifyOpts, true))
-	require.NotNil(t, VerifyConfigMetadata(medatadaWithExpiredConsenter, expiredCertVerifyOpts, false))
+	require.Nil(t, VerifyConfigMetadata(medatadaWithExpiredConsenter, expiredCertVerifyOpts))
 }

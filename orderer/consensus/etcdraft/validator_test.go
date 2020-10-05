@@ -94,13 +94,20 @@ var _ = Describe("Metadata Validation", func() {
 
 	When("determining parameter well-formedness", func() {
 		It("succeeds when new orderer config is nil", func() {
-			Expect(chain.ValidateConsensusMetadata(nil, nil, false)).To(Succeed())
+			Expect(chain.ValidateConsensusMetadata(mockOrderer(nil), mockOrderer(nil), false)).To(Succeed())
+		})
+
+		It("fails when new orderer config is not nil while old orderer config is nil", func() {
+			newOrdererConf := mockOrderer([]byte("test"))
+			Expect(func() {
+				chain.ValidateConsensusMetadata(nil, newOrdererConf, false)
+			}).To(Panic())
 		})
 
 		It("fails when new orderer config is not nil while old config metadata is nil", func() {
 			newOrdererConf := mockOrderer([]byte("test"))
 			Expect(func() {
-				chain.ValidateConsensusMetadata(nil, newOrdererConf, false)
+				chain.ValidateConsensusMetadata(mockOrderer(nil), newOrdererConf, false)
 			}).To(Panic())
 		})
 
