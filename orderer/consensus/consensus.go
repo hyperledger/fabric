@@ -40,7 +40,7 @@ type MetadataValidator interface {
 	// updates on the channel.
 	// Since the ConsensusMetadata is specific to the consensus implementation (independent of the particular
 	// chain) this validation also needs to be implemented by the specific consensus implementation.
-	ValidateConsensusMetadata(oldMetadata, newMetadata []byte, newChannel bool) error
+	ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig channelconfig.Orderer, newChannel bool) error
 }
 
 // Chain defines a way to inject messages for ordering.
@@ -139,6 +139,6 @@ type NoOpMetadataValidator struct {
 
 // ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config updates
 // on the channel, and it always returns nil error for the NoOpMetadataValidator implementation.
-func (n NoOpMetadataValidator) ValidateConsensusMetadata(oldMetadataBytes, newMetadataBytes []byte, newChannel bool) error {
+func (n NoOpMetadataValidator) ValidateConsensusMetadata(oldChannelConfig, newChannelConfig channelconfig.Orderer, newChannel bool) error {
 	return nil
 }
