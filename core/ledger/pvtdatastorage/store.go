@@ -152,7 +152,6 @@ func (p *Provider) SnapshotDataImporterFor(
 	membershipProvider ledger.MembershipInfoProvider,
 	configHistoryRetriever *confighistory.Retriever,
 ) (*SnapshotDataImporter, error) {
-
 	db := p.dbProvider.GetDBHandle(ledgerID)
 	batch := db.NewUpdateBatch()
 	batch.Put(lastBlockInBootSnapshotKey, encodeLastBlockInBootSnapshotVal(lastBlockInSnapshot))
@@ -569,7 +568,7 @@ func (s *Store) FetchBootKVHashes(blkNum, txNum uint64, ns, coll string) (map[st
 			},
 		),
 	)
-	if encVal == nil || err != nil {
+	if err != nil || encVal == nil {
 		return nil, err
 	}
 	bootKVHashes, err := decodeBootKVHashesVal(encVal)
