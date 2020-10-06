@@ -152,16 +152,14 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 	if !ok {
 		logger.Panic("old config is missing orderer group")
 	}
-	oldMetadata := oldOrdererConfig.ConsensusMetadata()
 
 	// we can remove this check since this is being validated in checkResources earlier
 	newOrdererConfig, ok := bundle.OrdererConfig()
 	if !ok {
 		return nil, errors.New("new config is missing orderer group")
 	}
-	newMetadata := newOrdererConfig.ConsensusMetadata()
 
-	if err = cs.ValidateConsensusMetadata(oldMetadata, newMetadata, false); err != nil {
+	if err = cs.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, false); err != nil {
 		return nil, errors.Wrap(err, "consensus metadata update for channel config update is invalid")
 	}
 	return env, nil

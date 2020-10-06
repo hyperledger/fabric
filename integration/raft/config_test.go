@@ -8,6 +8,8 @@ package raft
 
 import (
 	"bytes"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -207,7 +209,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			exitCode := network.CreateChannelExitCode(channel, orderer, org1Peer0, org1Peer0, org2Peer0, orderer)
 			Expect(exitCode).NotTo(Equal(0))
 			Consistently(process.Wait).ShouldNot(Receive()) // malformed tx should not crash orderer
-			Expect(runner.Err()).To(gbytes.Say(`invalid new config metdadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
+			Expect(runner.Err()).To(gbytes.Say(`invalid new config metadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 
 			By("Submitting channel config update with illegal value")
 			channel = network.SystemChannel.Name
@@ -235,7 +237,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			sess := nwo.UpdateOrdererConfigSession(network, orderer, channel, config, updatedConfig, org1Peer0, orderer)
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(sess.Err).To(gbytes.Say(`invalid new config metdadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
+			Expect(sess.Err).To(gbytes.Say(`invalid new config metadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 		})
 	})
 
@@ -389,39 +391,15 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Waiting for orderer3 to see the leader")
 			findLeader([]*ginkgomon.Runner{ordererRunners[2]})
 
-			By("Removing orderer3's TLS root CA certificate")
-			nwo.UpdateOrdererMSP(network, peer, orderer, "systemchannel", "OrdererOrg", func(config msp.FabricMSPConfig) msp.FabricMSPConfig {
-				config.TlsRootCerts = config.TlsRootCerts[:len(config.TlsRootCerts)-1]
-				return config
-			})
-
-			By("Killing orderer3")
-			o3Proc := ordererProcesses[2]
-			o3Proc.Signal(syscall.SIGKILL)
-			Eventually(o3Proc.Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
-
-			By("Restarting orderer3")
-			o3Runner := network.OrdererRunner(orderer3)
-			ordererRunners[2] = o3Runner
-			o3Proc = ifrit.Invoke(o3Runner)
-			Eventually(o3Proc.Ready(), network.EventuallyTimeout).Should(BeClosed())
-			ordererProcesses[2] = o3Proc
-
-			By("Ensuring TLS handshakes fail with the other orderers")
-			for i, oRunner := range ordererRunners {
-				if i < 2 {
-					Eventually(oRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("TLS handshake failed with error tls: failed to verify client certificate"))
-					continue
-				}
-				Eventually(oRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("TLS handshake failed with error remote error: tls: bad certificate"))
-				Eventually(oRunner.Err(), network.EventuallyTimeout).Should(gbytes.Say("Suspecting our own eviction from the channel"))
-			}
-
 			By("Attemping to add a consenter with invalid certs")
 			// create new certs that are not in the channel config
 			ca, err := tlsgen.NewCA()
 			Expect(err).NotTo(HaveOccurred())
 			client, err := ca.NewClientCertKeyPair()
+			Expect(err).NotTo(HaveOccurred())
+
+			newConsenterCertPem, _ := pem.Decode(client.Cert)
+			newConsenterCert, err := x509.ParseCertificate(newConsenterCertPem.Bytes)
 			Expect(err).NotTo(HaveOccurred())
 
 			current, updated := consenterAdder(
@@ -438,7 +416,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			)
 			sess = nwo.UpdateOrdererConfigSession(network, orderer, network.SystemChannel.Name, current, updated, peer, orderer)
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'systemchannel': consensus metadata update for channel config update is invalid: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", client.TLSCert.SerialNumber)))
+			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'systemchannel': consensus metadata update for channel config update is invalid: invalid new config metadata: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", newConsenterCert.SerialNumber)))
 		})
 	})
 

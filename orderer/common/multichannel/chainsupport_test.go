@@ -58,8 +58,8 @@ func TestConsensusMetadataValidation(t *testing.T) {
 	require.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
 	om, nm, nc := mv.ValidateConsensusMetadataArgsForCall(0)
 	require.False(t, nc)
-	require.Equal(t, oldConsensusMetadata, om)
-	require.Equal(t, newConsensusMetadata, nm)
+	require.Equal(t, oldConsensusMetadata, om.ConsensusMetadata())
+	require.Equal(t, newConsensusMetadata, nm.ConsensusMetadata())
 
 	// case 2: invalid consensus metadata update
 	mv.ValidateConsensusMetadataReturns(errors.New("bananas"))
