@@ -142,7 +142,8 @@ func TestGetMissingPvtData(t *testing.T) {
 
 		_, expectedMissingPvtDataInfo := setup(h)
 
-		h.commitPvtDataOfOldBlocks(nil, expectedMissingPvtDataInfo)
+		_, err = h.commitPvtDataOfOldBlocks(nil, expectedMissingPvtDataInfo)
+		require.NoError(t, err)
 		for i := 0; i < 5; i++ {
 			h.verifyMissingPvtDataSameAs(int(2), ledger.MissingPvtDataInfo{})
 		}

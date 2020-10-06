@@ -116,12 +116,12 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 
 	for {
 		e := <-events
-		logger.Debugw("event received", "channelID", l.ledgerID, "type", e.typ, "blockNumber", e.blockNumber, "snapshotInProgress=", snapshotInProgress)
+		logger.Debugw("Event received", "channelID", l.ledgerID, "type", e.typ, "blockNumber", e.blockNumber, "snapshotInProgress=", snapshotInProgress)
 		switch e.typ {
 		case commitStart:
 			committerStatus = blocked
 			if snapshotInProgress {
-				logger.Infow("commit waiting on snapshot to be generated", "channelID", l.ledgerID, "lastCommittedBlockNumber", lastCommittedBlockNumber)
+				logger.Infow("Blocking the commit till snapshot generation completes", "channelID", l.ledgerID, "blockNumber", e.blockNumber)
 				continue
 			}
 			// no in-progress snapshot, let commit proceed
@@ -151,7 +151,7 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 				logger.Errorw("Failed to delete snapshot request, the pending snapshot requests (if any) may not be processed", "channelID", l.ledgerID, "requestedBlockNum", requestedBlockNum, "error", err)
 			}
 			if committerStatus == blocked {
-				// write to commitProceed channel to unblock commit
+				logger.Infow("Unblocking the commit", "channelID", l.ledgerID)
 				committerStatus = inProcess
 				commitProceed <- struct{}{}
 			}
@@ -166,6 +166,8 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 			requestedBlockNum := e.blockNumber
 			if requestedBlockNum == 0 {
 				requestedBlockNum = leastAcceptableBlockNum
+				logger.Infow("Converting the snapshot generation request from block number 0 to the latest committed block number",
+					"channelID", l.ledgerID, "convertedRequestBlockNumber", leastAcceptableBlockNum)
 			}
 
 			if requestedBlockNum < leastAcceptableBlockNum {
@@ -285,6 +287,7 @@ func newSnapshotRequestBookkeeper(dbHandle *leveldbhelper.DBHandle) (*snapshotRe
 
 // add adds the given block number to the bookkeeper db and returns an error if the block number already exists
 func (k *snapshotRequestBookkeeper) add(blockNumber uint64) error {
+	logger.Infow("Adding new request for snapshot", "blockNumber", blockNumber)
 	key := encodeSnapshotRequestKey(blockNumber)
 
 	exists, err := k.exist(blockNumber)
@@ -302,12 +305,13 @@ func (k *snapshotRequestBookkeeper) add(blockNumber uint64) error {
 	if blockNumber < k.smallestRequestBlockNum {
 		k.smallestRequestBlockNum = blockNumber
 	}
-
+	logger.Infow("Added new request for snapshot", "blockNumber", blockNumber, "next snapshot blockNumber", k.smallestRequestBlockNum)
 	return nil
 }
 
 // delete deletes the given block number from the bookkeeper db and returns an error if the block number does not exist
 func (k *snapshotRequestBookkeeper) delete(blockNumber uint64) error {
+	logger.Infow("Deleting pending request for snapshot", "blockNumber", blockNumber)
 	exists, err := k.exist(blockNumber)
 	if err != nil {
 		return err
@@ -327,7 +331,7 @@ func (k *snapshotRequestBookkeeper) delete(blockNumber uint64) error {
 	if k.smallestRequestBlockNum, err = k.smallestRequest(); err != nil {
 		return err
 	}
-
+	logger.Infow("Deleted pending request for snapshot", "blockNumber", blockNumber, "next snapshot blockNumber", k.smallestRequestBlockNum)
 	return nil
 }
 
