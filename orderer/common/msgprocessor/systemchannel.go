@@ -29,7 +29,7 @@ type ChannelConfigTemplator interface {
 
 // MetadataValidator can be used to validate updates to the consensus-specific metadata.
 type MetadataValidator interface {
-	ValidateConsensusMetadata(oldMetadata, newMetadata []byte, newChannel bool) error
+	ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig channelconfig.Orderer, newChannel bool) error
 }
 
 // SystemChannel implements the Processor interface for the system channel.

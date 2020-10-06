@@ -255,9 +255,58 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	)
 }
 
+<<<<<<< HEAD
 func (c *Consenter) JoinChain(support consensus.ConsenterSupport, joinBlock *common.Block) (consensus.Chain, error) {
 	//TODO fully construct a follower.Chain
 	return nil, errors.New("not implemented")
+=======
+func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
+	if joinBlock == nil {
+		return false, errors.New("nil block")
+	}
+	envelopeConfig, err := protoutil.ExtractEnvelope(joinBlock, 0)
+	if err != nil {
+		return false, err
+	}
+	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, c.BCCSP)
+	if err != nil {
+		return false, err
+	}
+	oc, exists := bundle.OrdererConfig()
+	if !exists {
+		return false, errors.New("no orderer config in bundle")
+	}
+	configMetadata := &etcdraft.ConfigMetadata{}
+	if err := proto.Unmarshal(oc.ConsensusMetadata(), configMetadata); err != nil {
+		return false, err
+	}
+
+	verifyOpts, err := createX509VerifyOptions(oc)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to create x509 verify options from orderer config")
+	}
+
+	if err := VerifyConfigMetadata(configMetadata, verifyOpts); err != nil {
+		return false, errors.Wrapf(err, "failed to validate config metadata of ordering config")
+	}
+
+	member := false
+	for _, consenter := range configMetadata.Consenters {
+		if bytes.Equal(c.Cert, consenter.ServerTlsCert) || bytes.Equal(c.Cert, consenter.ClientTlsCert) {
+			member = true
+			break
+		}
+	}
+
+	return member, nil
+}
+
+// RemoveInactiveChainRegistry stops and removes the inactive chain registry.
+// This is used when removing the system channel.
+func (c *Consenter) RemoveInactiveChainRegistry() {
+	c.InactiveChainRegistry.Stop()
+	c.InactiveChainRegistry = nil
+>>>>>>> 886d3cc55... FAB-18192 Fixed TLS certs validation for consenters. (#1888)
 }
 
 // ReadBlockMetadata attempts to read raft metadata from block metadata, if available.

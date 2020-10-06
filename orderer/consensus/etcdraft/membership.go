@@ -7,13 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
@@ -42,7 +39,7 @@ type MembershipChanges struct {
 
 // ComputeMembershipChanges computes membership update based on information about new consenters, returns
 // two slices: a slice of added consenters and a slice of consenters to be removed
-func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters map[uint64]*etcdraft.Consenter, newConsenters []*etcdraft.Consenter, ordererConfig channelconfig.Orderer) (mc *MembershipChanges, err error) {
+func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters map[uint64]*etcdraft.Consenter, newConsenters []*etcdraft.Consenter) (mc *MembershipChanges, err error) {
 	result := &MembershipChanges{
 		NewConsenters:    map[uint64]*etcdraft.Consenter{},
 		NewBlockMetadata: proto.Clone(oldMetadata).(*etcdraft.BlockMetadata),
@@ -60,10 +57,6 @@ func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters
 			result.NewConsenters[nodeID] = c
 			continue
 		}
-		err := validateConsenterTLSCerts(c, ordererConfig)
-		if err != nil {
-			return nil, err
-		}
 		addedNodeIndex = i
 		result.AddedNodes = append(result.AddedNodes, c)
 	}
@@ -71,7 +64,7 @@ func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters
 	var deletedNodeID uint64
 	newConsentersSet := ConsentersToMap(newConsenters)
 	for nodeID, c := range oldConsenters {
-		if _, exists := newConsentersSet[string(c.ClientTlsCert)]; !exists {
+		if !newConsentersSet.Exists(c) {
 			result.RemovedNodes = append(result.RemovedNodes, c)
 			deletedNodeID = nodeID
 		}
@@ -110,94 +103,6 @@ func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters
 	}
 
 	return result, nil
-}
-
-func validateConsenterTLSCerts(c *etcdraft.Consenter, ordererConfig channelconfig.Orderer) error {
-	clientCert, err := parseCertificateFromBytes(c.ClientTlsCert)
-	if err != nil {
-		return errors.Wrap(err, "parsing tls client cert")
-	}
-	serverCert, err := parseCertificateFromBytes(c.ServerTlsCert)
-	if err != nil {
-		return errors.Wrap(err, "parsing tls server cert")
-	}
-
-	opts, err := createX509VerifyOptions(ordererConfig.Organizations())
-	if err != nil {
-		return errors.WithMessage(err, "creating x509 verify options")
-	}
-	_, err = clientCert.Verify(opts)
-	if err != nil {
-		return fmt.Errorf("verifying tls client cert with serial number %d: %v", clientCert.SerialNumber, err)
-	}
-
-	_, err = serverCert.Verify(opts)
-	if err != nil {
-		return fmt.Errorf("verifying tls server cert with serial number %d: %v", serverCert.SerialNumber, err)
-	}
-
-	return nil
-}
-
-func createX509VerifyOptions(orgs map[string]channelconfig.OrdererOrg) (x509.VerifyOptions, error) {
-	tlsRoots := x509.NewCertPool()
-	tlsIntermediates := x509.NewCertPool()
-
-	for _, org := range orgs {
-		rootCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSRootCerts())
-		if err != nil {
-			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls root certs")
-		}
-		intermediateCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSIntermediateCerts())
-		if err != nil {
-			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls intermediate certs")
-		}
-
-		for _, cert := range rootCerts {
-			tlsRoots.AddCert(cert)
-		}
-		for _, cert := range intermediateCerts {
-			tlsIntermediates.AddCert(cert)
-		}
-	}
-
-	return x509.VerifyOptions{
-		Roots:         tlsRoots,
-		Intermediates: tlsIntermediates,
-		KeyUsages: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageClientAuth,
-			x509.ExtKeyUsageServerAuth,
-		},
-	}, nil
-}
-
-func parseCertificateListFromBytes(certs [][]byte) ([]*x509.Certificate, error) {
-	certificateList := []*x509.Certificate{}
-
-	for _, cert := range certs {
-		certificate, err := parseCertificateFromBytes(cert)
-		if err != nil {
-			return certificateList, err
-		}
-
-		certificateList = append(certificateList, certificate)
-	}
-
-	return certificateList, nil
-}
-
-func parseCertificateFromBytes(cert []byte) (*x509.Certificate, error) {
-	pemBlock, _ := pem.Decode(cert)
-	if pemBlock == nil {
-		return &x509.Certificate{}, fmt.Errorf("no PEM data found in cert[% x]", cert)
-	}
-
-	certificate, err := x509.ParseCertificate(pemBlock.Bytes)
-	if err != nil {
-		return &x509.Certificate{}, err
-	}
-
-	return certificate, nil
 }
 
 // Stringer implements fmt.Stringer interface

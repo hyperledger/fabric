@@ -60,7 +60,11 @@ func init() {
 	factory.InitFactories(nil)
 }
 
-func mockOrderer(batchTimeout time.Duration, metadata []byte) *mocks.OrdererConfig {
+func mockOrderer(metadata []byte) *mocks.OrdererConfig {
+	return mockOrdererWithBatchTimeout(time.Second, metadata)
+}
+
+func mockOrdererWithBatchTimeout(batchTimeout time.Duration, metadata []byte) *mocks.OrdererConfig {
 	mockOrderer := &mocks.OrdererConfig{}
 	mockOrderer.BatchTimeoutReturns(batchTimeout)
 	mockOrderer.ConsensusMetadataReturns(metadata)
@@ -68,7 +72,7 @@ func mockOrderer(batchTimeout time.Duration, metadata []byte) *mocks.OrdererConf
 }
 
 func mockOrdererWithTLSRootCert(batchTimeout time.Duration, metadata []byte, tlsCA tlsgen.CA) *mocks.OrdererConfig {
-	mockOrderer := mockOrderer(batchTimeout, metadata)
+	mockOrderer := mockOrdererWithBatchTimeout(batchTimeout, metadata)
 	mockOrg := &mocks.OrdererOrg{}
 	mockMSP := &mocks.MSP{}
 	mockMSP.GetTLSRootCertsReturns([][]byte{tlsCA.CertBytes()})
@@ -345,7 +349,7 @@ var _ = Describe("Chain", func() {
 				By("respecting batch timeout")
 				cutter.CutNext = false
 				timeout := time.Second
-				support.SharedConfigReturns(mockOrderer(timeout, nil))
+				support.SharedConfigReturns(mockOrdererWithBatchTimeout(timeout, nil))
 				err = chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(2))
@@ -363,7 +367,7 @@ var _ = Describe("Chain", func() {
 				close(cutter.Block)
 
 				timeout := time.Second
-				support.SharedConfigReturns(mockOrderer(timeout, nil))
+				support.SharedConfigReturns(mockOrdererWithBatchTimeout(timeout, nil))
 
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
@@ -384,7 +388,7 @@ var _ = Describe("Chain", func() {
 			It("does not write a block if halted before timeout", func() {
 				close(cutter.Block)
 				timeout := time.Second
-				support.SharedConfigReturns(mockOrderer(timeout, nil))
+				support.SharedConfigReturns(mockOrdererWithBatchTimeout(timeout, nil))
 
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
@@ -401,7 +405,7 @@ var _ = Describe("Chain", func() {
 				close(cutter.Block)
 
 				timeout := time.Second
-				support.SharedConfigReturns(mockOrderer(timeout, nil))
+				support.SharedConfigReturns(mockOrdererWithBatchTimeout(timeout, nil))
 
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
@@ -439,7 +443,7 @@ var _ = Describe("Chain", func() {
 				close(cutter.Block)
 
 				timeout := time.Second
-				support.SharedConfigReturns(mockOrderer(timeout, nil))
+				support.SharedConfigReturns(mockOrdererWithBatchTimeout(timeout, nil))
 
 				err := chain.Order(env, 0)
 				Expect(err).NotTo(HaveOccurred())
@@ -457,7 +461,7 @@ var _ = Describe("Chain", func() {
 					close(cutter.Block)
 
 					timeout := time.Hour
-					support.SharedConfigReturns(mockOrderer(timeout, nil))
+					support.SharedConfigReturns(mockOrdererWithBatchTimeout(timeout, nil))
 					support.SequenceReturns(1)
 				})
 
@@ -3300,7 +3304,7 @@ func newChain(
 	if support == nil {
 		support = &consensusmocks.FakeConsenterSupport{}
 		support.ChannelIDReturns(channel)
-		support.SharedConfigReturns(mockOrderer(timeout, nil))
+		support.SharedConfigReturns(mockOrdererWithBatchTimeout(timeout, nil))
 	}
 	cutter := mockblockcutter.NewReceiver()
 	close(cutter.Block)
@@ -3601,7 +3605,7 @@ func createNetwork(
 		m := proto.Clone(raftMetadata).(*raftprotos.BlockMetadata)
 		support := &consensusmocks.FakeConsenterSupport{}
 		support.ChannelIDReturns(channel)
-		support.SharedConfigReturns(mockOrderer(timeout, nil))
+		support.SharedConfigReturns(mockOrdererWithBatchTimeout(timeout, nil))
 		mockOrdererConfig := mockOrdererWithTLSRootCert(timeout, nil, tlsCA)
 		support.SharedConfigReturns(mockOrdererConfig)
 		n.addChain(newChain(timeout, channel, dir, nodeID, m, consenters, cryptoProvider, support))

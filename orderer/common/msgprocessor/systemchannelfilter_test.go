@@ -454,7 +454,13 @@ func TestFailedMetadataValidation(t *testing.T) {
 	// validate arguments to ValidateConsensusMetadata
 	assert.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
 	om, nm, nc := mv.ValidateConsensusMetadataArgsForCall(0)
+<<<<<<< HEAD
 	assert.True(t, nc)
 	assert.Equal(t, []byte("old consensus metadata"), om)
 	assert.Equal(t, []byte("new consensus metadata"), nm)
+=======
+	require.True(t, nc)
+	require.Equal(t, []byte("old consensus metadata"), om.ConsensusMetadata())
+	require.Equal(t, []byte("new consensus metadata"), nm.ConsensusMetadata())
+>>>>>>> 886d3cc55... FAB-18192 Fixed TLS certs validation for consenters. (#1888)
 }
