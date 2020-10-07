@@ -56,9 +56,10 @@ type ChainManager interface {
 
 // Config contains etcdraft configurations
 type Config struct {
-	WALDir            string // WAL data of <my-channel> is stored in WALDir/<my-channel>
-	SnapDir           string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
-	EvictionSuspicion string // Duration threshold that the node samples in order to suspect its eviction from the channel.
+	WALDir               string // WAL data of <my-channel> is stored in WALDir/<my-channel>
+	SnapDir              string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
+	EvictionSuspicion    string // Duration threshold that the node samples in order to suspect its eviction from the channel.
+	TickIntervalOverride string // Duration to use for tick interval instead of what is specified in the channel config.
 }
 
 // Consenter implements etcdraft consenter
@@ -180,9 +181,18 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		}
 	}
 
-	tickInterval, err := time.ParseDuration(m.Options.TickInterval)
-	if err != nil {
-		return nil, errors.Errorf("failed to parse TickInterval (%s) to time duration", m.Options.TickInterval)
+	var tickInterval time.Duration
+	if c.EtcdRaftConfig.TickIntervalOverride == "" {
+		tickInterval, err = time.ParseDuration(m.Options.TickInterval)
+		if err != nil {
+			return nil, errors.Errorf("failed to parse TickInterval (%s) to time duration", m.Options.TickInterval)
+		}
+	} else {
+		tickInterval, err = time.ParseDuration(c.EtcdRaftConfig.TickIntervalOverride)
+		if err != nil {
+			return nil, errors.Errorf("failed parsing Consensus.TickIntervalOverride: %s: %v", c.EtcdRaftConfig.TickIntervalOverride, err)
+		}
+		c.Logger.Infof("TickIntervalOverride is set, overriding channel configuration tick interval to %v", tickInterval)
 	}
 
 	opts := Options{
