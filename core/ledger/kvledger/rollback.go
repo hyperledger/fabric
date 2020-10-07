@@ -23,6 +23,14 @@ func RollbackKVLedger(rootFSPath, ledgerID string, blockNum uint64) error {
 	defer fileLock.Unlock()
 
 	blockstorePath := BlockStorePath(rootFSPath)
+	isFromSnapshot, err := blkstorage.IsBootstrappedFromSnapshot(blockstorePath, ledgerID)
+	if err != nil {
+		return err
+	}
+	if isFromSnapshot {
+		return errors.Errorf("cannot rollback channel [%s] because it was bootstrapped from a snapshot", ledgerID)
+	}
+
 	if err := blkstorage.ValidateRollbackParams(blockstorePath, ledgerID, blockNum); err != nil {
 		return err
 	}
