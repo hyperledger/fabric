@@ -270,7 +270,7 @@ func (l *kvLedger) initTxMgr(initializer *txmgr.Initializer) error {
 
 func (l *kvLedger) initSnapshotMgr(initializer *lgrInitializer) error {
 	dbHandle := initializer.bookkeeperProvider.GetDBHandle(l.ledgerID, bookkeeping.SnapshotRequest)
-	bookkeeper, err := newSnapshotRequestBookkeeper(dbHandle)
+	bookkeeper, err := newSnapshotRequestBookkeeper(l.ledgerID, dbHandle)
 	if err != nil {
 		return err
 	}
