@@ -270,12 +270,16 @@ func (m *snapshotMgr) shutdown() {
 
 // snapshotRequestBookkeeper manages snapshot requests in a leveldb and maintains smallest block number for pending snapshot requests
 type snapshotRequestBookkeeper struct {
+	ledgerID                string
 	dbHandle                *leveldbhelper.DBHandle
 	smallestRequestBlockNum uint64
 }
 
-func newSnapshotRequestBookkeeper(dbHandle *leveldbhelper.DBHandle) (*snapshotRequestBookkeeper, error) {
-	bk := &snapshotRequestBookkeeper{dbHandle: dbHandle}
+func newSnapshotRequestBookkeeper(ledgerID string, dbHandle *leveldbhelper.DBHandle) (*snapshotRequestBookkeeper, error) {
+	bk := &snapshotRequestBookkeeper{
+		ledgerID: ledgerID,
+		dbHandle: dbHandle,
+	}
 
 	var err error
 	if bk.smallestRequestBlockNum, err = bk.smallestRequest(); err != nil {
@@ -287,7 +291,7 @@ func newSnapshotRequestBookkeeper(dbHandle *leveldbhelper.DBHandle) (*snapshotRe
 
 // add adds the given block number to the bookkeeper db and returns an error if the block number already exists
 func (k *snapshotRequestBookkeeper) add(blockNumber uint64) error {
-	logger.Infow("Adding new request for snapshot", "blockNumber", blockNumber)
+	logger.Infow("Adding new request for snapshot", "channelID", k.ledgerID, "blockNumber", blockNumber)
 	key := encodeSnapshotRequestKey(blockNumber)
 
 	exists, err := k.exist(blockNumber)
@@ -305,13 +309,13 @@ func (k *snapshotRequestBookkeeper) add(blockNumber uint64) error {
 	if blockNumber < k.smallestRequestBlockNum {
 		k.smallestRequestBlockNum = blockNumber
 	}
-	logger.Infow("Added new request for snapshot", "blockNumber", blockNumber, "next snapshot blockNumber", k.smallestRequestBlockNum)
+	logger.Infow("Added new request for snapshot", "channelID", k.ledgerID, "blockNumber", blockNumber, "next snapshot blockNumber", k.smallestRequestBlockNum)
 	return nil
 }
 
 // delete deletes the given block number from the bookkeeper db and returns an error if the block number does not exist
 func (k *snapshotRequestBookkeeper) delete(blockNumber uint64) error {
-	logger.Infow("Deleting pending request for snapshot", "blockNumber", blockNumber)
+	logger.Infow("Deleting pending request for snapshot", "channelID", k.ledgerID, "blockNumber", blockNumber)
 	exists, err := k.exist(blockNumber)
 	if err != nil {
 		return err
@@ -331,7 +335,7 @@ func (k *snapshotRequestBookkeeper) delete(blockNumber uint64) error {
 	if k.smallestRequestBlockNum, err = k.smallestRequest(); err != nil {
 		return err
 	}
-	logger.Infow("Deleted pending request for snapshot", "blockNumber", blockNumber, "next snapshot blockNumber", k.smallestRequestBlockNum)
+	logger.Infow("Deleted pending request for snapshot", "channelID", k.ledgerID, "blockNumber", blockNumber, "next snapshot blockNumber", k.smallestRequestBlockNum)
 	return nil
 }
 

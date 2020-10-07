@@ -29,7 +29,7 @@ func TestSnapshotRequestBookKeeper(t *testing.T) {
 
 	ledgerID := "testsnapshotrequestbookkeeper"
 	dbHandle := provider.bookkeepingProvider.GetDBHandle(ledgerID, bookkeeping.SnapshotRequest)
-	bookkeeper, err := newSnapshotRequestBookkeeper(dbHandle)
+	bookkeeper, err := newSnapshotRequestBookkeeper("test-ledger", dbHandle)
 	require.NoError(t, err)
 
 	// add requests and verify smallestRequest
@@ -62,7 +62,7 @@ func TestSnapshotRequestBookKeeper(t *testing.T) {
 	provider2 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider2.Close()
 	dbHandle2 := provider2.bookkeepingProvider.GetDBHandle(ledgerID, bookkeeping.SnapshotRequest)
-	bookkeeper2, err := newSnapshotRequestBookkeeper(dbHandle2)
+	bookkeeper2, err := newSnapshotRequestBookkeeper("test-ledger", dbHandle2)
 	require.NoError(t, err)
 
 	requestBlockNums, err = bookkeeper2.list()
@@ -93,7 +93,7 @@ func TestSnapshotRequestBookKeeperErrorPaths(t *testing.T) {
 	defer provider.Close()
 
 	dbHandle := provider.bookkeepingProvider.GetDBHandle("testrequestbookkeepererrorpaths", bookkeeping.SnapshotRequest)
-	bookkeeper2, err := newSnapshotRequestBookkeeper(dbHandle)
+	bookkeeper2, err := newSnapshotRequestBookkeeper("test-ledger", dbHandle)
 	require.NoError(t, err)
 
 	require.NoError(t, bookkeeper2.add(20))
@@ -102,7 +102,7 @@ func TestSnapshotRequestBookKeeperErrorPaths(t *testing.T) {
 
 	provider.Close()
 
-	_, err = newSnapshotRequestBookkeeper(dbHandle)
+	_, err = newSnapshotRequestBookkeeper("test-ledger", dbHandle)
 	require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
 
 	err = bookkeeper2.add(20)
