@@ -133,8 +133,8 @@ used to further fine tune the cluster communication or replication mechanisms:
   * `SnapDir`: specifies the location at which snapshots for `etcd/raft` are stored.
   Each channel will have its own subdirectory named after the channel ID.
 
-There is also a hidden configuration parameter that can be set by adding it to
-the consensus section in the `orderer.yaml`:
+There are also two hidden configuration parameters that can each be set by adding
+them the consensus section in the `orderer.yaml`:
 
   * `EvictionSuspicion`: The cumulative period of time of channel eviction
   suspicion that triggers the node to pull blocks from other nodes and see if it
@@ -143,6 +143,10 @@ the consensus section in the `orderer.yaml`:
   certificate), the node halts its operation for that channel. A node suspects
   its channel eviction when it doesn't know about any elected leader nor can be
   elected as leader in the channel. Defaults to 10 minutes.
+  * `TickIntervalOverride`: If set, this value will be preferred over the tick
+  interval configured in all channels where this ordering node is a consenter.
+  This value should be set only with great care, as a mismatch in tick interval
+  across orderers could result in a loss of quorum for one or more channels.
 
 ### Channel configuration
 

@@ -494,6 +494,38 @@ var _ = Describe("Consenter", func() {
 		Expect(err).To(MatchError("failed to parse TickInterval (500) to time duration"))
 	})
 
+	When("the TickIntervalOverride is invalid", func() {
+		It("returns an error", func() {
+			m := &etcdraftproto.ConfigMetadata{
+				Consenters: []*etcdraftproto.Consenter{
+					{ServerTlsCert: certAsPEM},
+				},
+				Options: &etcdraftproto.Options{
+					TickInterval:      "500",
+					ElectionTick:      10,
+					HeartbeatTick:     1,
+					MaxInflightBlocks: 5,
+				},
+			}
+			metadata := protoutil.MarshalOrPanic(m)
+			mockOrderer := &mocks.OrdererConfig{}
+			mockOrderer.ConsensusMetadataReturns(metadata)
+			mockOrderer.BatchSizeReturns(
+				&orderer.BatchSize{
+					PreferredMaxBytes: 2 * 1024 * 1024,
+				},
+			)
+			mockOrderer.CapabilitiesReturns(&mocks.OrdererCapabilities{})
+			support.SharedConfigReturns(mockOrderer)
+
+			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
+			consenter.EtcdRaftConfig.TickIntervalOverride = "seven"
+
+			_, err := consenter.HandleChain(support, nil)
+			Expect(err).To(MatchError("failed parsing Consensus.TickIntervalOverride: seven: time: invalid duration seven"))
+		})
+	})
+
 	It("returns an error if no matching cert found", func() {
 		m := &etcdraftproto.ConfigMetadata{
 			Consenters: []*etcdraftproto.Consenter{
