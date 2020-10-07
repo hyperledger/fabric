@@ -209,7 +209,12 @@ func (msp *bccspmsp) validateIdentityOUsV11(id *identity) error {
 			break
 		}
 	}
-	if counter != 1 {
+
+	// the identity should have exactly one OU role, return an error if the counter is not 1.
+	if counter == 0 {
+		return errors.Errorf("the identity does not have an OU that resolves to client or peer. OUs: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
+	}
+	if counter > 1 {
 		return errors.Errorf("the identity must be a client or a peer identity to be valid, not a combination of them. OUs: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
 	}
 
@@ -263,8 +268,13 @@ func (msp *bccspmsp) validateIdentityOUsV142(id *identity) error {
 			break
 		}
 	}
-	if counter != 1 {
-		return errors.Errorf("the identity must be a client, a peer, an orderer or an admin identity to be valid, not a combination of them. OUs: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
+
+	// the identity should have exactly one OU role, return an error if the counter is not 1.
+	if counter == 0 {
+		return errors.Errorf("the identity does not have an OU that resolves to client, peer, orderer, or admin role. OUs: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
+	}
+	if counter > 1 {
+		return errors.Errorf("the identity must have a client, a peer, an orderer, or an admin OU role to be valid, not a combination of them. OUs: %s, MSP: [%s]", OUIDs(id.GetOrganizationalUnits()), msp.name)
 	}
 
 	return nil
