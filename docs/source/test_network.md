@@ -41,14 +41,14 @@ up a Fabric network using the Docker images on your local machine. You can run
 Usage:
   network.sh <Mode> [Flags]
     Modes:
-      up - bring up fabric orderer and peer nodes. No channel is created
-      up createChannel - bring up fabric network with one channel
-      createChannel - create and join a channel after the network is created
-      deployCC - deploy the asset transfer basic chaincode on the channel or specify
-      down - clear the network with docker-compose down
-      restart - restart the network
+      up - Bring up Fabric orderer and peer nodes. No channel is created
+      up createChannel - Bring up fabric network with one channel
+      createChannel - Create and join a channel after the network is created
+      deployCC - Deploy a chaincode to a channel (defaults to asset-transfer-basic)
+      down - Bring down the network
 
     Flags:
+<<<<<<< HEAD
     -ca <use CAs> -  create Certificate Authorities to generate the crypto material
     -c <channel name> - channel name to use (defaults to "mychannel")
     -s <dbtype> - the database backend to use: goleveldb (default) or couchdb
@@ -64,15 +64,36 @@ Usage:
     -cai <ca_imagetag> - the image tag to be used for CA (defaults to "latest")
     -verbose - verbose mode
     -h - print this message
+=======
+    Used with network.sh up, network.sh createChannel:
+    -ca <use CAs> -  Use Certificate Authorities to generate network crypto material
+    -c <channel name> - Name of channel to create (defaults to "mychannel")
+    -s <dbtype> - Peer state database to deploy: goleveldb (default) or couchdb
+    -r <max retry> - CLI times out after certain number of attempts (defaults to 5)
+    -d <delay> - CLI delays for a certain number of seconds (defaults to 3)
+    -i <imagetag> - Docker image tag of Fabric to deploy (defaults to "latest")
+    -cai <ca_imagetag> - Docker image tag of Fabric CA to deploy (defaults to "latest")
+    -verbose - Verbose mode
+
+    Used with network.sh deployCC
+    -c <channel name> - Name of channel to deploy chaincode to
+    -ccn <name> - Chaincode name. This flag can be used to deploy one of the asset transfer samples to a channel. Sample options: basic (default),ledger, private, sbe, secured
+    -ccl <language> - Programming language of the chaincode to deploy: go (default), java, javascript, typescript
+    -ccv <version>  - Chaincode version. 1.0 (default), v2, version3.x, etc
+    -ccs <sequence>  - Chaincode definition sequence. Must be an integer, 1 (default), 2, 3, etc
+    -ccp <path>  - (Optional) File path to the chaincode. When provided, the -ccn flag will be used only for the chaincode name.
+    -ccep <policy>  - (Optional) Chaincode endorsement policy using signature policy syntax. The default policy requires an endorsement from Org1 and Org2
+    -cccg <collection-config>  - (Optional) File path to private data collections configuration file
+    -cci <fcn name>  - (Optional) Name of chaincode initialization function. When a function is provided, the execution of init will be requested and the function will be invoked.
+
+    -h - Print this message
+>>>>>>> 9adde2e7d... Update help text in test net tutorial
 
  Possible Mode and flag combinations
-   up -ca -c -r -d -s -i -verbose
-   up createChannel -ca -c -r -d -s -i -verbose
+   up -ca -r -d -s -i -cai -verbose
+   up createChannel -ca -c -r -d -s -i -cai -verbose
    createChannel -c -r -d -verbose
    deployCC -ccn -ccl -ccv -ccs -ccp -cci -r -d -verbose
-
- Taking all defaults:
-   network.sh up
 
  Examples:
    network.sh up createChannel -ca -c mychannel -s couchdb -i 2.0.0
