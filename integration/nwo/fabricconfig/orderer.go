@@ -14,6 +14,7 @@ type Orderer struct {
 	Kafka                *Kafka                `yaml:"Kafka,omitempty"`
 	Operations           *OrdererOperations    `yaml:"Operations,omitempty"`
 	ChannelParticipation *ChannelParticipation `yaml:"ChannelParticipation,omitempty"`
+	Consensus            map[string]string     `yaml:"Consensus,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
