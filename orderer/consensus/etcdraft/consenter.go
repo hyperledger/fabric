@@ -33,7 +33,7 @@ import (
 	"go.etcd.io/etcd/raft"
 )
 
-//go:generate mockery -dir . -name InactiveChainRegistry -case underscore -output mocks
+//go:generate counterfeiter -o mocks/inactive_chain_registry.go --fake-name InactiveChainRegistry . InactiveChainRegistry
 
 // InactiveChainRegistry registers chains that are inactive
 type InactiveChainRegistry interface {
@@ -299,6 +299,9 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 // RemoveInactiveChainRegistry stops and removes the inactive chain registry.
 // This is used when removing the system channel.
 func (c *Consenter) RemoveInactiveChainRegistry() {
+	if c.InactiveChainRegistry == nil {
+		return
+	}
 	c.InactiveChainRegistry.Stop()
 	c.InactiveChainRegistry = nil
 }
