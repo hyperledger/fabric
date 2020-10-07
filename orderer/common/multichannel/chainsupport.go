@@ -56,7 +56,7 @@ func newChainSupport(
 	// Assuming a block created with cb.NewBlock(), this should not
 	// error even if the orderer metadata is an empty byte slice
 	if err != nil {
-		return nil, errors.Wrapf(err, "error extracting orderer metadata for channel: %s", ledgerResources.ConfigtxValidator().ChannelID())
+		return nil, errors.WithMessagef(err, "error extracting orderer metadata for channel: %s", ledgerResources.ConfigtxValidator().ChannelID())
 	}
 
 	// Construct limited support needed as a parameter for additional support
@@ -86,7 +86,7 @@ func newChainSupport(
 
 	cs.Chain, err = consenter.HandleChain(cs, metadata)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error creating consenter for channel: %s", cs.ChannelID())
+		return nil, errors.WithMessagef(err, "error creating consenter for channel: %s", cs.ChannelID())
 	}
 
 	cs.MetadataValidator, ok = cs.Chain.(consensus.MetadataValidator)
@@ -141,7 +141,7 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 	}
 
 	if err = checkResources(bundle); err != nil {
-		return nil, errors.Wrap(err, "config update is not compatible")
+		return nil, errors.WithMessage(err, "config update is not compatible")
 	}
 
 	if err = cs.ValidateNew(bundle); err != nil {
@@ -160,7 +160,7 @@ func (cs *ChainSupport) ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEn
 	}
 
 	if err = cs.ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig, false); err != nil {
-		return nil, errors.Wrap(err, "consensus metadata update for channel config update is invalid")
+		return nil, errors.WithMessage(err, "consensus metadata update for channel config update is invalid")
 	}
 	return env, nil
 }

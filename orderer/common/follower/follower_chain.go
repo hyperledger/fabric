@@ -169,7 +169,7 @@ func NewChain(
 		// the endpoints from the join-block.
 		puller, err := blockPullerFactory.BlockPuller(joinBlock)
 		if err != nil {
-			return nil, errors.Wrap(err, "error creating a block puller from join-block")
+			return nil, errors.WithMessage(err, "error creating a block puller from join-block")
 		}
 		puller.Close()
 
@@ -317,7 +317,7 @@ func (c *Chain) pull() error {
 	if c.joinBlock != nil {
 		err = c.pullUpToJoin()
 		if err != nil {
-			return errors.Wrap(err, "failed to pull up to join block")
+			return errors.WithMessage(err, "failed to pull up to join block")
 		}
 
 		// The join block never returns an error. This is checked before the follower is started.
@@ -334,7 +334,7 @@ func (c *Chain) pull() error {
 		c.joinBlock = nil
 		err = c.loadLastConfig()
 		if err != nil {
-			return errors.Wrap(err, "failed to load last config block")
+			return errors.WithMessage(err, "failed to load last config block")
 		}
 
 		c.logger.Info("Onboarding finished successfully, continuing to pull blocks after join-block")
@@ -342,7 +342,7 @@ func (c *Chain) pull() error {
 
 	err = c.pullAfterJoin()
 	if err != nil {
-		return errors.Wrap(err, "failed to pull after join block")
+		return errors.WithMessage(err, "failed to pull after join block")
 	}
 
 	// Trigger creation of a new consensus.Chain.
@@ -367,7 +367,7 @@ func (c *Chain) pullUpToJoin() error {
 	// Block puller created with endpoints from the join-block.
 	c.blockPuller, err = c.blockPullerFactory.BlockPuller(c.joinBlock)
 	if err != nil { //This should never happen since we check the join-block before we start.
-		return errors.Wrapf(err, "error creating block puller")
+		return errors.WithMessagef(err, "error creating block puller")
 	}
 	defer c.blockPuller.Close()
 	// Since we created the block-puller with the join-block, do not update the endpoints from the
@@ -390,7 +390,7 @@ func (c *Chain) pullAfterJoin() error {
 
 	c.blockPuller, err = c.blockPullerFactory.BlockPuller(c.lastConfig)
 	if err != nil {
-		return errors.Wrap(err, "error creating block puller")
+		return errors.WithMessage(err, "error creating block puller")
 	}
 	defer c.blockPuller.Close()
 
@@ -399,7 +399,7 @@ func (c *Chain) pullAfterJoin() error {
 		// Check membership
 		isMember, errMem := c.clusterConsenter.IsChannelMember(c.lastConfig)
 		if errMem != nil {
-			return errors.Wrap(err, "failed to determine channel membership from last config")
+			return errors.WithMessage(err, "failed to determine channel membership from last config")
 		}
 		if isMember {
 			c.setStatusReport(types.ClusterRelationMember, types.StatusActive)
@@ -506,7 +506,7 @@ func (c *Chain) pullUntilTarget(targetHeight uint64, updateEndpoints bool) (uint
 		default:
 			nextBlock := c.blockPuller.PullBlock(seq)
 			if nextBlock == nil {
-				return n, errors.Wrapf(cluster.ErrRetryCountExhausted, "failed to pull block %d", seq)
+				return n, errors.WithMessagef(cluster.ErrRetryCountExhausted, "failed to pull block %d", seq)
 			}
 			reportedPrevHash := nextBlock.Header.PreviousHash
 			if (nextBlock.Header.Number > 0) && !bytes.Equal(reportedPrevHash, actualPrevHash) {
@@ -515,19 +515,19 @@ func (c *Chain) pullUntilTarget(targetHeight uint64, updateEndpoints bool) (uint
 			}
 			actualPrevHash = protoutil.BlockHeaderHash(nextBlock.Header)
 			if err := c.ledgerResources.Append(nextBlock); err != nil {
-				return n, errors.Wrapf(err, "failed to append block %d to the ledger", nextBlock.Header.Number)
+				return n, errors.WithMessagef(err, "failed to append block %d to the ledger", nextBlock.Header.Number)
 			}
 
 			if protoutil.IsConfigBlock(nextBlock) {
 				c.logger.Debugf("Pulled blocks from %d to %d, last block is config", firstBlockToPull, nextBlock.Header.Number)
 				c.lastConfig = nextBlock
 				if err := c.blockPullerFactory.UpdateVerifierFromConfigBlock(nextBlock); err != nil {
-					return n, errors.Wrapf(err, "failed to update verifier from last config,  block number: %d", nextBlock.Header.Number)
+					return n, errors.WithMessagef(err, "failed to update verifier from last config,  block number: %d", nextBlock.Header.Number)
 				}
 				if updateEndpoints {
 					endpoints, err := cluster.EndpointconfigFromConfigBlock(nextBlock, c.cryptoProvider)
 					if err != nil {
-						return n, errors.Wrapf(err, "failed to extract endpoints from last config,  block number: %d", nextBlock.Header.Number)
+						return n, errors.WithMessagef(err, "failed to extract endpoints from last config,  block number: %d", nextBlock.Header.Number)
 					}
 					c.blockPuller.UpdateEndpoints(endpoints)
 				}
@@ -546,11 +546,11 @@ func (c *Chain) loadLastConfig() error {
 	lastBlock := c.ledgerResources.Block(height - 1)
 	index, err := protoutil.GetLastConfigIndexFromBlock(lastBlock)
 	if err != nil {
-		return errors.Wrap(err, "chain does have appropriately encoded last config in its latest block")
+		return errors.WithMessage(err, "chain does have appropriately encoded last config in its latest block")
 	}
 	lastConfig := c.ledgerResources.Block(index)
 	if lastConfig == nil {
-		return errors.Wrapf(err, "could not retrieve config block from index %d", index)
+		return errors.WithMessagef(err, "could not retrieve config block from index %d", index)
 	}
 	c.lastConfig = lastConfig
 	return nil
