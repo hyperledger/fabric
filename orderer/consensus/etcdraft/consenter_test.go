@@ -9,6 +9,13 @@ package etcdraft_test
 import (
 	"encoding/pem"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
@@ -36,12 +43,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"io/ioutil"
-	"os"
-	"path"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 //These fixtures contain certificates for testing consenters.
@@ -438,7 +439,7 @@ var _ = Describe("Consenter", func() {
 		Expect(chain).To(Not(BeNil()))
 		Expect(err).To(Not(HaveOccurred()))
 		Expect(chain.Order(nil, 0).Error()).To(Equal("channel foo is not serviced by me"))
-		consenter.icr.AssertNumberOfCalls(testingInstance, "TrackChain", 1)
+		Expect(consenter.icr.TrackChainCallCount()).To(Equal(1))
 	})
 
 	It("fails to handle chain if etcdraft options have not been provided", func() {
@@ -551,13 +552,23 @@ var _ = Describe("Consenter", func() {
 		support.ChannelIDReturns("foo")
 
 		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
-		//without a system channel, the InactiveChainRegistry is nil
-		consenter.InactiveChainRegistry = nil
-		consenter.icr = nil
+		// without a system channel, the InactiveChainRegistry is nil
+		consenter.RemoveInactiveChainRegistry()
 
 		chain, err := consenter.HandleChain(support, &common.Metadata{})
 		Expect(chain).To((BeNil()))
 		Expect(err).To(MatchError("without a system channel, a follower should have been created: not in the channel"))
+	})
+
+	It("removes the inactive chain registry (and doesn't panic upon retries)", func() {
+		consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
+
+		consenter.RemoveInactiveChainRegistry()
+		Expect(consenter.icr.StopCallCount()).To(Equal(1))
+		Expect(consenter.InactiveChainRegistry).To(BeNil())
+
+		consenter.RemoveInactiveChainRegistry()
+		Expect(consenter.icr.StopCallCount()).To(Equal(1))
 	})
 })
 
@@ -570,7 +581,6 @@ func newConsenter(chainManager *mocks.ChainManager, caCert, cert []byte) *consen
 	communicator := &clustermocks.Communicator{}
 	communicator.On("Configure", mock.Anything, mock.Anything)
 	icr := &mocks.InactiveChainRegistry{}
-	icr.On("TrackChain", "foo", mock.Anything, mock.Anything)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	Expect(err).NotTo(HaveOccurred())

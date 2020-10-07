@@ -982,7 +982,7 @@ func (r *Registrar) removeSystemChannel() error {
 	// remove system channel resources
 	err := r.ledgerFactory.Remove(systemChannelID)
 	if err != nil {
-		return errors.Errorf("error removing ledger for system channel %s", r.systemChannelID)
+		return errors.WithMessagef(err, "error removing ledger for system channel %s", r.systemChannelID)
 	}
 
 	// remove system channel references
