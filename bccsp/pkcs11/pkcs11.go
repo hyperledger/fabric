@@ -490,15 +490,14 @@ func (csp *impl) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte, ke
 	if err := csp.ctx.FindObjectsInit(session, template); err != nil {
 		return 0, err
 	}
+	defer csp.ctx.FindObjectsFinal(session)
 
 	// single session instance, assume one hit only
 	objs, _, err := csp.ctx.FindObjects(session, 1)
 	if err != nil {
 		return 0, err
 	}
-	if err = csp.ctx.FindObjectsFinal(session); err != nil {
-		return 0, err
-	}
+
 	if len(objs) == 0 {
 		return 0, fmt.Errorf("Key not found [%s]", hex.Dump(keyId))
 	}
