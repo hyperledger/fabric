@@ -274,6 +274,30 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 		})
 	})
 
+	When("a single node cluster has the tick interval overridden", func() {
+		It("reflects this in its startup logs", func() {
+			network = nwo.New(nwo.BasicEtcdRaft(), testDir, client, BasePort(), components)
+			network.GenerateConfigTree()
+			network.Bootstrap()
+
+			orderer := network.Orderer("orderer")
+			ordererConfig := network.ReadOrdererConfig(orderer)
+			ordererConfig.Consensus["TickIntervalOverride"] = "642ms"
+			network.WriteOrdererConfig(orderer, ordererConfig)
+
+			By("Launching the orderer")
+			runner := network.OrdererRunner(orderer)
+			ordererRunners = append(ordererRunners, runner)
+
+			process := ifrit.Invoke(runner)
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+			ordererProcesses = append(ordererProcesses, process)
+
+			Eventually(runner.Err()).Should(gbytes.Say("TickIntervalOverride is set, overriding channel configuration tick interval to 642ms"))
+
+		})
+	})
+
 	When("the orderer certificates are all rotated", func() {
 		It("is possible to rotate certificate by adding & removing cert in single config", func() {
 			layout := nwo.MultiNodeEtcdRaft()

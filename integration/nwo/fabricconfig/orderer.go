@@ -14,6 +14,7 @@ type Orderer struct {
 	RAMLedger  *RAMLedger         `yaml:"RAMLedger,omitempty"`
 	Kafka      *Kafka             `yaml:"Kafka,omitempty"`
 	Operations *OrdererOperations `yaml:"Operations,omitempty"`
+	Consensus  map[string]string  `yaml:"Consensus,omitempty"`
 
 	ExtraProperties map[string]interface{} `yaml:",inline,omitempty"`
 }
