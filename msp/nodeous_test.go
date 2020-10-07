@@ -41,6 +41,7 @@ func TestInvalidAdminNodeOU(t *testing.T) {
 }
 
 func TestInvalidSigningIdentityNodeOU(t *testing.T) {
+<<<<<<< HEAD
 	// testdata/nodeous2:
 	// the configuration enables NodeOUs but the signing identity does not carry
 	// any valid NodeOUS. Therefore signing identity validation should fail
@@ -63,6 +64,48 @@ func TestInvalidSigningIdentityNodeOU(t *testing.T) {
 
 	err = id.Validate()
 	assert.NoError(t, err)
+=======
+	t.Run("signing_identity_validation_fails_with_MSPv1_4_3", func(t *testing.T) {
+		// testdata/nodeous2:
+		// the configuration enables NodeOUs but the signing identity does not carry
+		// any valid NodeOUS. Therefore signing identity validation should fail
+		thisMSP := getLocalMSPWithVersion(t, "testdata/nodeous2", MSPv1_4_3)
+		require.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+
+		id, err := thisMSP.GetDefaultSigningIdentity()
+		require.NoError(t, err)
+
+		err = id.Validate()
+		require.EqualError(t, err, "could not validate identity's OUs: the identity does not have an OU that resolves to client, peer, orderer, or admin role. OUs: [], MSP: [SampleOrg]")
+	})
+
+	t.Run("signing_identity_validation_fails_with_MSPv1_1", func(t *testing.T) {
+		// testdata/nodeous2:
+		// the configuration enables NodeOUs but the signing identity does not carry
+		// any valid NodeOUS. Therefore signing identity validation should fail
+		thisMSP := getLocalMSPWithVersion(t, "testdata/nodeous2", MSPv1_1)
+		require.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+
+		id, err := thisMSP.GetDefaultSigningIdentity()
+		require.NoError(t, err)
+
+		err = id.Validate()
+		require.EqualError(t, err, "could not validate identity's OUs: the identity does not have an OU that resolves to client or peer. OUs: [], MSP: [SampleOrg]")
+	})
+
+	t.Run("signing_identity_validation_succeeds_with_MSPv1_0", func(t *testing.T) {
+		// MSPv1_0 should not fail, node OUs not yet implemented in 1_0
+		thisMSP, err := getLocalMSPWithVersionAndError(t, "testdata/nodeous1", MSPv1_0)
+		require.False(t, thisMSP.(*bccspmsp).ouEnforcement)
+		require.NoError(t, err)
+
+		id, err := thisMSP.GetDefaultSigningIdentity()
+		require.NoError(t, err)
+
+		err = id.Validate()
+		require.NoError(t, err)
+	})
+>>>>>>> 60fa28270... Fix Node OU error message
 }
 
 func TestValidMSPWithNodeOU(t *testing.T) {
