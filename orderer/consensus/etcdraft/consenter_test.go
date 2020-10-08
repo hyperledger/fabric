@@ -522,7 +522,7 @@ var _ = Describe("Consenter", func() {
 			consenter.EtcdRaftConfig.TickIntervalOverride = "seven"
 
 			_, err := consenter.HandleChain(support, nil)
-			Expect(err).To(MatchError("failed parsing Consensus.TickIntervalOverride: seven: time: invalid duration seven"))
+			Expect(err).To(MatchError("failed parsing Consensus.TickIntervalOverride: seven: time: invalid duration \"seven\""))
 		})
 	})
 
