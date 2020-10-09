@@ -373,19 +373,20 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Launching orderer3")
 			launch(orderer3)
 
-			By("Expanding the TLS root CA certificates")
-			nwo.UpdateOrdererMSP(network, peer, orderer, "systemchannel", "OrdererOrg", func(config msp.FabricMSPConfig) msp.FabricMSPConfig {
+			By("Expanding the TLS root CA certificates and adding orderer3 to the channel")
+			updateOrdererMSPAndConsensusMetadata(network, peer, orderer, "systemchannel", "OrdererOrg", func(config msp.FabricMSPConfig) msp.FabricMSPConfig {
 				config.TlsRootCerts = append(config.TlsRootCerts, caCert)
 				return config
-			})
-
-			By("Adding orderer3 to the channel")
-			addConsenter(network, peer, orderer, "systemchannel", etcdraft.Consenter{
-				ServerTlsCert: thirdOrdererCertificate,
-				ClientTlsCert: thirdOrdererCertificate,
-				Host:          "127.0.0.1",
-				Port:          uint32(network.OrdererPort(orderer3, nwo.ClusterPort)),
-			})
+			},
+				func(metadata *etcdraft.ConfigMetadata) {
+					metadata.Consenters = append(metadata.Consenters, &etcdraft.Consenter{
+						ServerTlsCert: thirdOrdererCertificate,
+						ClientTlsCert: thirdOrdererCertificate,
+						Host:          "127.0.0.1",
+						Port:          uint32(network.OrdererPort(orderer3, nwo.ClusterPort)),
+					})
+				},
+			)
 
 			By("Waiting for orderer3 to see the leader")
 			findLeader([]*ginkgomon.Runner{ordererRunners[2]})
@@ -1803,4 +1804,52 @@ func updateEtcdRaftMetadata(network *nwo.Network, peer *nwo.Peer, orderer *nwo.O
 		Expect(err).NotTo(HaveOccurred())
 		return newMetadata
 	})
+}
+
+func mutateConsensusMetadata(originalMetadata []byte, f func(md *etcdraft.ConfigMetadata)) []byte {
+	metadata := &etcdraft.ConfigMetadata{}
+	err := proto.Unmarshal(originalMetadata, metadata)
+	Expect(err).NotTo(HaveOccurred())
+
+	f(metadata)
+
+	newMetadata, err := proto.Marshal(metadata)
+	Expect(err).NotTo(HaveOccurred())
+	return newMetadata
+}
+
+func updateOrdererMSPAndConsensusMetadata(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel, orgID string, mutateMSP nwo.MSPMutator, f func(md *etcdraft.ConfigMetadata)) {
+	config := nwo.GetConfig(network, peer, orderer, channel)
+	updatedConfig := proto.Clone(config).(*common.Config)
+
+	// Unpack the MSP config
+	rawMSPConfig := updatedConfig.ChannelGroup.Groups["Orderer"].Groups[orgID].Values["MSP"]
+	mspConfig := &msp.MSPConfig{}
+	err := proto.Unmarshal(rawMSPConfig.Value, mspConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	fabricConfig := &msp.FabricMSPConfig{}
+	err = proto.Unmarshal(mspConfig.Config, fabricConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Mutate it as we are asked
+	*fabricConfig = mutateMSP(*fabricConfig)
+
+	// Wrap it back into the config
+	mspConfig.Config = protoutil.MarshalOrPanic(fabricConfig)
+	rawMSPConfig.Value = protoutil.MarshalOrPanic(mspConfig)
+
+	consensusTypeConfigValue := updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"]
+	consensusTypeValue := &protosorderer.ConsensusType{}
+	err = proto.Unmarshal(consensusTypeConfigValue.Value, consensusTypeValue)
+	Expect(err).NotTo(HaveOccurred())
+
+	consensusTypeValue.Metadata = mutateConsensusMetadata(consensusTypeValue.Metadata, f)
+
+	updatedConfig.ChannelGroup.Groups["Orderer"].Values["ConsensusType"] = &common.ConfigValue{
+		ModPolicy: "Admins",
+		Value:     protoutil.MarshalOrPanic(consensusTypeValue),
+	}
+
+	nwo.UpdateOrdererConfig(network, orderer, channel, config, updatedConfig, peer, orderer)
 }
