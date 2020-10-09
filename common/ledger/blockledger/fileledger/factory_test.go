@@ -12,21 +12,26 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger/mock"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/stretchr/testify/require"
 )
 
+//go:generate counterfeiter -o mock/file_ledger_block_store.go --fake-name FileLedgerBlockStore . fileLedgerBlockStore
+
+type fileLedgerBlockStore interface {
+	FileLedgerBlockStore
+}
+
 func TestBlockStoreProviderErrors(t *testing.T) {
-	mockBlockStore := &mock.BlockStoreProvider{}
+	mockBlockStoreProvider := &mock.BlockStoreProvider{}
 	f := &fileLedgerFactory{
-		blkstorageProvider: mockBlockStore,
-		ledgers:            map[string]blockledger.ReadWriter{},
+		blkstorageProvider: mockBlockStoreProvider,
+		ledgers:            map[string]*FileLedger{},
 	}
 
 	t.Run("list", func(t *testing.T) {
-		mockBlockStore.ListReturns(nil, errors.New("boogie"))
+		mockBlockStoreProvider.ListReturns(nil, errors.New("boogie"))
 		require.PanicsWithValue(
 			t,
 			"boogie",
@@ -36,16 +41,29 @@ func TestBlockStoreProviderErrors(t *testing.T) {
 	})
 
 	t.Run("open", func(t *testing.T) {
-		mockBlockStore.OpenReturns(nil, errors.New("woogie"))
+		mockBlockStoreProvider.OpenReturns(nil, errors.New("woogie"))
 		_, err := f.GetOrCreate("foo")
 		require.EqualError(t, err, "woogie")
 		require.Empty(t, f.ledgers, "Expected no new ledger is created")
 	})
 
 	t.Run("remove", func(t *testing.T) {
-		mockBlockStore.DropReturns(errors.New("oogie"))
-		err := f.Remove("foo")
-		require.EqualError(t, err, "oogie")
+		t.Run("ledger doesn't exist", func(t *testing.T) {
+			err := f.Remove("foo")
+			require.NoError(t, err)
+			require.Equal(t, 1, mockBlockStoreProvider.DropCallCount())
+		})
+
+		t.Run("dropping the blockstore fails", func(t *testing.T) {
+			mockBlockStore := &mock.FileLedgerBlockStore{}
+			f.ledgers["foo"] = &FileLedger{blockStore: mockBlockStore}
+			mockBlockStoreProvider.DropReturns(errors.New("oogie"))
+
+			err := f.Remove("foo")
+			require.EqualError(t, err, "oogie")
+			require.Equal(t, 1, mockBlockStore.ShutdownCallCount())
+			require.Equal(t, 2, mockBlockStoreProvider.DropCallCount())
+		})
 	})
 }
 

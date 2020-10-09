@@ -28,6 +28,7 @@ type FileLedgerBlockStore interface {
 	AddBlock(block *cb.Block) error
 	GetBlockchainInfo() (*cb.BlockchainInfo, error)
 	RetrieveBlocks(startBlockNumber uint64) (ledger.ResultsIterator, error)
+	Shutdown()
 }
 
 // NewFileLedger creates a new FileLedger for interaction with the ledger
