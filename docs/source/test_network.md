@@ -577,6 +577,14 @@ If you have any problems with the tutorial, review the following:
    docker rm -f $(docker ps -aq)
    docker rmi -f $(docker images -q)
    ```
+-  If you are running Docker Desktop on macOS and experience the following error during chaincode installation:
+   ```
+   Error: chaincode install failed with status: 500 - failed to invoke backing implementation of 'InstallChaincode': could not build chaincode: docker build failed: docker image inspection failed: Get "http://unix.sock/images/dev-peer0.org1.example.com-basic_1.0-4ec191e793b27e953ff2ede5a8bcc63152cecb1e4c3f301a26e22692c61967ad-42f57faac8360472e47cbbbf3940e81bba83439702d085878d148089a1b213ca/json": dial unix /host/var/run/docker.sock: connect: no such file or directory
+   Chaincode installation on peer0.org1 has failed
+   Deploying chaincode failed
+   ```
+
+   This problem is caused by a newer version of Docker Desktop for macOS. To resolve this issue, in the Docker Desktop preferences, uncheck the box `Use gRPC FUSE for file sharing` to use the legacy osxfs file sharing instead and click **Apply & Restart**.
 
 -  If you see errors on your create, approve, commit, invoke or query commands,
    make sure you have properly updated the channel name and chaincode name.
