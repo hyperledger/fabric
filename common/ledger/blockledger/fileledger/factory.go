@@ -24,7 +24,7 @@ type blockStoreProvider interface {
 
 type fileLedgerFactory struct {
 	blkstorageProvider blockStoreProvider
-	ledgers            map[string]blockledger.ReadWriter
+	ledgers            map[string]*FileLedger
 	mutex              sync.Mutex
 }
 
@@ -54,6 +54,13 @@ func (f *fileLedgerFactory) GetOrCreate(channelID string) (blockledger.ReadWrite
 func (f *fileLedgerFactory) Remove(channelID string) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
+
+	// check cache for open blockstore and, if one exists,
+	// shut it down in order to avoid resource contention
+	ledger, ok := f.ledgers[channelID]
+	if ok {
+		ledger.blockStore.Shutdown()
+	}
 
 	err := f.blkstorageProvider.Drop(channelID)
 	if err != nil {
@@ -92,6 +99,6 @@ func New(directory string, metricsProvider metrics.Provider) (blockledger.Factor
 	}
 	return &fileLedgerFactory{
 		blkstorageProvider: p,
-		ledgers:            make(map[string]blockledger.ReadWriter),
+		ledgers:            map[string]*FileLedger{},
 	}, nil
 }
