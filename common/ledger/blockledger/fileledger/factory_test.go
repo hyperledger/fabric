@@ -24,13 +24,17 @@ type fileLedgerBlockStore interface {
 }
 
 func TestBlockStoreProviderErrors(t *testing.T) {
-	mockBlockStoreProvider := &mock.BlockStoreProvider{}
-	f := &fileLedgerFactory{
-		blkstorageProvider: mockBlockStoreProvider,
-		ledgers:            map[string]*FileLedger{},
+	setup := func() (*fileLedgerFactory, *mock.BlockStoreProvider) {
+		m := &mock.BlockStoreProvider{}
+		f := &fileLedgerFactory{
+			blkstorageProvider: m,
+			ledgers:            map[string]*FileLedger{},
+		}
+		return f, m
 	}
 
 	t.Run("list", func(t *testing.T) {
+		f, mockBlockStoreProvider := setup()
 		mockBlockStoreProvider.ListReturns(nil, errors.New("boogie"))
 		require.PanicsWithValue(
 			t,
@@ -41,6 +45,7 @@ func TestBlockStoreProviderErrors(t *testing.T) {
 	})
 
 	t.Run("open", func(t *testing.T) {
+		f, mockBlockStoreProvider := setup()
 		mockBlockStoreProvider.OpenReturns(nil, errors.New("woogie"))
 		_, err := f.GetOrCreate("foo")
 		require.EqualError(t, err, "woogie")
@@ -49,20 +54,26 @@ func TestBlockStoreProviderErrors(t *testing.T) {
 
 	t.Run("remove", func(t *testing.T) {
 		t.Run("ledger doesn't exist", func(t *testing.T) {
+			f, mockBlockStoreProvider := setup()
 			err := f.Remove("foo")
 			require.NoError(t, err)
 			require.Equal(t, 1, mockBlockStoreProvider.DropCallCount())
+			channelID := mockBlockStoreProvider.DropArgsForCall(0)
+			require.Equal(t, "foo", channelID)
 		})
 
 		t.Run("dropping the blockstore fails", func(t *testing.T) {
+			f, mockBlockStoreProvider := setup()
 			mockBlockStore := &mock.FileLedgerBlockStore{}
-			f.ledgers["foo"] = &FileLedger{blockStore: mockBlockStore}
+			f.ledgers["bar"] = &FileLedger{blockStore: mockBlockStore}
 			mockBlockStoreProvider.DropReturns(errors.New("oogie"))
 
-			err := f.Remove("foo")
+			err := f.Remove("bar")
 			require.EqualError(t, err, "oogie")
 			require.Equal(t, 1, mockBlockStore.ShutdownCallCount())
-			require.Equal(t, 2, mockBlockStoreProvider.DropCallCount())
+			require.Equal(t, 1, mockBlockStoreProvider.DropCallCount())
+			channelID := mockBlockStoreProvider.DropArgsForCall(0)
+			require.Equal(t, "bar", channelID)
 		})
 	})
 }
