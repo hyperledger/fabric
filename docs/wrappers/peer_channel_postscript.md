@@ -137,6 +137,52 @@ Here's an example of the `peer channel join` command.
 
   You can see that the peer has successfully made a request to join the channel.
 
+### peer channel joinbysnapshot example
+
+Here's an example of the `peer channel joinbysnapshot` command.
+
+* Join a peer to the channel from a snapshot identified by the directory
+  `/snapshots/completed/testchannel/1000`. The snapshot was previously created on a different peer.
+
+  ```
+  peer channel joinbysnapshot --snapshotpath /snapshots/completed/testchannel/1000
+
+  2020-10-12 11:41:45.442 EDT [channelCmd] InitCmdFactory -> INFO 001 Endorser and orderer connections initialized
+  2020-10-12 11:41:45.444 EDT [channelCmd] executeJoin -> INFO 002 Successfully submitted proposal to join channel
+  2020-10-12 11:41:45.444 EDT [channelCmd] joinBySnapshot -> INFO 003 The joinbysnapshot operation is in progress. Use "peer channel joinbysnapshotstatus" to check the status.
+
+  ```
+
+  You can see that the peer has successfully made a request to join the channel from the specified snapshot.
+  When a `joinbysnapshot` operation is in progress, you cannot run another `peer channel join`
+  or `peer channel joinbysnapshot` simultaneously. To know whether or not a joinbysnapshot operation is in progress,
+  you can call the `peer channel joinbysnapshotstatus` command.
+
+
+### peer channel joinbysnapshotstatus example
+
+Here are some examples of the `peer channel joinbysnapshotstatus` command.
+
+* Query if joinbysnapshot is in progress for any channel. If yes,
+  it returns a message indicating a joinbysnapshot operation is in progress.
+
+  ```
+  peer channel joinbysnapshotstatus
+
+  2020-10-12 11:41:45.952 EDT [channelCmd] InitCmdFactory -> INFO 001 Endorser and orderer connections initialized
+  A joinbysnapshot operation is in progress for snapshot at /snapshots/completed/testchannel/1000
+  ```
+
+* If no `joinbysnapshot` operation is in progress, it returns a message indicating no joinbysnapshot operation is in progress.
+
+  ```
+  peer channel joinbysnapshotstatus
+
+  2020-10-12 11:41:47.922 EDT [channelCmd] InitCmdFactory -> INFO 001 Endorser and orderer connections initialized
+  No joinbysnapshot operation is in progress
+
+  ```
+
 ### peer channel list example
 
   Here's an example of the `peer channel list` command.

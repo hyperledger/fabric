@@ -8,6 +8,7 @@ Commands Reference
    commands/peerchaincode.md
    commands/peerlifecycle.md
    commands/peerchannel.md
+   commands/peersnapshot.md
    commands/peerversion.md
    commands/peernode.md
    commands/configtxgen.md

@@ -58,7 +58,7 @@ generateHelpText \
         docs/wrappers/peer_lifecycle_chaincode_postscript.md \
         "${commands[@]}"
 
-commands=("peer channel" "peer channel create" "peer channel fetch" "peer channel getinfo" "peer channel join" "peer channel list" "peer channel signconfigtx" "peer channel update")
+commands=("peer channel" "peer channel create" "peer channel fetch" "peer channel getinfo" "peer channel join" "peer channel joinbysnapshot" "peer channel joinbysnapshotstatus" "peer channel list" "peer channel signconfigtx" "peer channel update")
 generateHelpText \
         docs/source/commands/peerchannel.md \
         docs/wrappers/peer_channel_preamble.md \
@@ -70,6 +70,13 @@ generateHelpText \
         docs/source/commands/peernode.md \
         docs/wrappers/peer_node_preamble.md \
         docs/wrappers/peer_node_postscript.md \
+        "${commands[@]}"
+
+commands=("peer snapshot cancelrequest" "peer snapshot listpending" "peer snapshot submitrequest")
+generateHelpText \
+        docs/source/commands/peersnapshot.md \
+        docs/wrappers/peer_snapshot_preamble.md \
+        docs/wrappers/peer_snapshot_postscript.md \
         "${commands[@]}"
 
 commands=("configtxgen")
