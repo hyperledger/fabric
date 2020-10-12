@@ -332,10 +332,10 @@ func validateConsenterTLSCerts(c *etcdraft.Consenter, opts x509.VerifyOptions, i
 		return errors.Wrapf(err, "parsing tls server cert of %s:%d", c.Host, c.Port)
 	}
 
-	var verify = func(certType string, cert *x509.Certificate, opts x509.VerifyOptions) error {
-		if _, err := clientCert.Verify(opts); err != nil {
+	verify := func(certType string, cert *x509.Certificate, opts x509.VerifyOptions) error {
+		if _, err := cert.Verify(opts); err != nil {
 			if validationRes, ok := err.(x509.CertificateInvalidError); !ok || (!ignoreExpiration || validationRes.Reason != x509.Expired) {
-				return errors.Errorf("verifying tls %s cert with serial number %d: %v", certType, clientCert.SerialNumber, err)
+				return errors.Wrapf(err, "verifying tls %s cert with serial number %d", certType, cert.SerialNumber)
 			}
 		}
 		return nil

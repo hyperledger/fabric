@@ -9,6 +9,7 @@ package etcdraft
 import (
 	"crypto/x509"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -142,6 +143,31 @@ func TestVerifyConfigMetadata(t *testing.T) {
 	}
 
 	clientPair, err := tlsCA.NewClientCertKeyPair()
+	if err != nil {
+		panic(err)
+	}
+
+	unknownTlsCA, err := tlsgen.NewCA()
+	if err != nil {
+		panic(err)
+	}
+
+	unknownServerPair, err := unknownTlsCA.NewServerCertKeyPair("unknownhost")
+	if err != nil {
+		panic(err)
+	}
+
+	unknownServerCert, err := parseCertificateFromBytes(unknownServerPair.Cert)
+	if err != nil {
+		panic(err)
+	}
+
+	unknownClientPair, err := unknownTlsCA.NewClientCertKeyPair()
+	if err != nil {
+		panic(err)
+	}
+
+	unknownClientCert, err := parseCertificateFromBytes(unknownClientPair.Cert)
 	if err != nil {
 		panic(err)
 	}
@@ -330,20 +356,39 @@ func TestVerifyConfigMetadata(t *testing.T) {
 			errRegex:   "duplicate consenter",
 		},
 		{
-			description: "consenter has cert signed by unknown authority",
+			description: "consenter has client cert signed by unknown authority",
 			metadata: &etcdraftproto.ConfigMetadata{
 				Options: validOptions,
 				Consenters: []*etcdraftproto.Consenter{
-					singleConsenter,
+					{
+						ClientTlsCert: unknownClientPair.Cert,
+						ServerTlsCert: serverPair.Cert,
+					},
 				},
 			},
-			verifyOpts: x509.VerifyOptions{},
-			errRegex:   "certificate signed by unknown authority",
+			verifyOpts: goodVerifyingOpts,
+			errRegex:   fmt.Sprintf("verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", unknownClientCert.SerialNumber),
+		},
+		{
+			description: "consenter has server cert signed by unknown authority",
+			metadata: &etcdraftproto.ConfigMetadata{
+				Options: validOptions,
+				Consenters: []*etcdraftproto.Consenter{
+					{
+						ServerTlsCert: unknownServerPair.Cert,
+						ClientTlsCert: clientPair.Cert,
+					},
+				},
+			},
+			verifyOpts: goodVerifyingOpts,
+			errRegex:   fmt.Sprintf("verifying tls server cert with serial number %d: x509: certificate signed by unknown authority", unknownServerCert.SerialNumber),
 		},
 	} {
-		err := VerifyConfigMetadata(testCase.metadata, testCase.verifyOpts)
-		assert.NotNil(t, err, testCase.description)
-		assert.Regexp(t, testCase.errRegex, err)
+		t.Run(testCase.description, func(t *testing.T) {
+			err := VerifyConfigMetadata(testCase.metadata, testCase.verifyOpts)
+			assert.NotNil(t, err)
+			assert.Regexp(t, testCase.errRegex, err)
+		})
 	}
 
 	//test use case when consenter has expired certificates
@@ -364,12 +409,12 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		ServerTlsCert: tlsClientCert,
 	}
 
-	medatadaWithExpiredConsenter := &etcdraftproto.ConfigMetadata{
+	metadataWithExpiredConsenter := &etcdraftproto.ConfigMetadata{
 		Options: validOptions,
 		Consenters: []*etcdraftproto.Consenter{
 			consenterWithExpiredCerts,
 		},
 	}
 
-	assert.Nil(t, VerifyConfigMetadata(medatadaWithExpiredConsenter, expiredCertVerifyOpts))
+	assert.Nil(t, VerifyConfigMetadata(metadataWithExpiredConsenter, expiredCertVerifyOpts))
 }
