@@ -853,7 +853,12 @@ func (l *kvLedger) CommitPvtDataOfOldBlocks(reconciledPvtdata []*ledger.Reconcil
 
 func (l *kvLedger) applyValidTxPvtDataOfOldBlocks(hashVerifiedPvtData map[uint64][]*ledger.TxPvtData) error {
 	logger.Debugf("[%s:] Filtering pvtData of invalidation transactions", l.ledgerID)
-	committedPvtData, err := filterPvtDataOfInvalidTx(hashVerifiedPvtData, l.blockStore)
+
+	lastBlockInBootstrapSnapshot := uint64(0)
+	if l.bootSnapshotMetadata != nil {
+		lastBlockInBootstrapSnapshot = l.bootSnapshotMetadata.LastBlockNumber
+	}
+	committedPvtData, err := filterPvtDataOfInvalidTx(hashVerifiedPvtData, l.blockStore, lastBlockInBootstrapSnapshot)
 	if err != nil {
 		return err
 	}
@@ -984,10 +989,17 @@ func (a *ccEventListenerAdaptor) ChaincodeDeployDone(succeeded bool) {
 	a.legacyEventListener.ChaincodeDeployDone(succeeded)
 }
 
-func filterPvtDataOfInvalidTx(hashVerifiedPvtData map[uint64][]*ledger.TxPvtData, blockStore *blkstorage.BlockStore) (map[uint64][]*ledger.TxPvtData, error) {
+func filterPvtDataOfInvalidTx(
+	hashVerifiedPvtData map[uint64][]*ledger.TxPvtData,
+	blockStore *blkstorage.BlockStore,
+	lastBlockInBootstrapSnapshot uint64,
+) (map[uint64][]*ledger.TxPvtData, error) {
 	committedPvtData := make(map[uint64][]*ledger.TxPvtData)
 	for blkNum, txsPvtData := range hashVerifiedPvtData {
-
+		if blkNum <= lastBlockInBootstrapSnapshot {
+			committedPvtData[blkNum] = txsPvtData
+			continue
+		}
 		// TODO: Instead of retrieving the whole block, we need to retrieve only
 		// the TxValidationFlags from the block metadata. For that, we would need
 		// to add a new index for the block metadata - FAB-15808

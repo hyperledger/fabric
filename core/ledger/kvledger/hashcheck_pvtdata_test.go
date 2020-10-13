@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -242,7 +243,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		require.Len(t, hashMismatches, 0)
 	})
 
-	t.Run("for-data-before-snapshot:trims-the-extra-keys", func(t *testing.T) {
+	t.Run("for-data-before-snapshot:does-not-trim-the-extra-keys", func(t *testing.T) {
 		lgr := bootstrappedLedger
 		pvtdata := pvtdataCopy()
 		pvtdataWithExtraKey := pvtdataCopy()
@@ -275,7 +276,7 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 		verifyBlocksPvtdata(t,
 			map[uint64][]*ledger.TxPvtData{
 				2: {
-					pvtdata[0],
+					pvtdataWithExtraKey[0],
 					pvtdata[1],
 				},
 			},
@@ -325,6 +326,69 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 					TxNum:      1,
 					Namespace:  "ns-2",
 					Collection: "coll-2",
+				},
+			},
+			hashMismatches,
+		)
+	})
+
+	t.Run("for-data-before-snapshot:reports-repeated-key", func(t *testing.T) {
+		lgr := bootstrappedLedger
+		pvtdata := pvtdataCopy()
+		repeatedKeyInTx0Ns1Coll1 := pvtdataCopy()
+		repeatedKeyWS := &kvrwset.KVRWSet{
+			Writes: []*kvrwset.KVWrite{
+				{
+					Key:   "tx0-key-1",
+					Value: []byte("tx0-val-1"),
+				},
+				{
+					Key:   "tx0-key-1",
+					Value: []byte("tx0-val-1-tempered"),
+				},
+			},
+		}
+
+		repeatedKeyWSBytes, err := proto.Marshal(repeatedKeyWS)
+		require.NoError(t, err)
+		repeatedKeyInTx0Ns1Coll1[0].WriteSet.NsPvtRwset[0].CollectionPvtRwset[0].Rwset = repeatedKeyWSBytes
+
+		expectedPartOfTx0, _ := produceSamplePvtdata(t, 0,
+			[][4]string{
+				{"ns-1", "coll-2", "tx0-key-2", "tx0-val-2"},
+			},
+		)
+
+		blocksValidPvtData, hashMismatches, err := constructValidAndInvalidPvtData(
+			[]*ledger.ReconciledPvtdata{
+				{
+					BlockNum:  2,
+					WriteSets: repeatedKeyInTx0Ns1Coll1,
+				},
+			},
+			lgr.blockStore,
+			lgr.pvtdataStore,
+			2,
+		)
+		require.NoError(t, err)
+
+		verifyBlocksPvtdata(t,
+			map[uint64][]*ledger.TxPvtData{
+				2: {
+					expectedPartOfTx0,
+					pvtdata[1],
+				},
+			},
+			blocksValidPvtData,
+		)
+
+		require.ElementsMatch(t,
+			[]*ledger.PvtdataHashMismatch{
+				{
+					BlockNum:   2,
+					TxNum:      0,
+					Namespace:  "ns-1",
+					Collection: "coll-1",
 				},
 			},
 			hashMismatches,
@@ -411,7 +475,7 @@ func verifyBlocksPvtdata(t *testing.T, expected, actual map[uint64][]*ledger.TxP
 
 		for _, e := range expectedTx {
 			require.NotNil(t, m[e.SeqInBlock])
-			require.True(t, proto.Equal(e.WriteSet, m[e.SeqInBlock]))
+			require.Equal(t, e.WriteSet, m[e.SeqInBlock])
 		}
 	}
 }
