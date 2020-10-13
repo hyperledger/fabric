@@ -7,14 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package node
 
 import (
-	"io/ioutil"
 	"os"
-	"path"
-	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/config"
-	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -25,21 +20,7 @@ func TestResetCmd(t *testing.T) {
 	viper.Set("peer.fileSystemPath", testPath)
 	defer os.RemoveAll(testPath)
 
-	viper.Set("logging.ledger", "INFO")
-	rootFSPath := filepath.Join(config.GetPath("peer.fileSystemPath"), "ledgersData")
-	historyDBPath := filepath.Join(rootFSPath, "historyLeveldb")
-	require.NoError(t,
-		os.MkdirAll(historyDBPath, 0755),
-	)
-	require.NoError(t,
-		ioutil.WriteFile(path.Join(historyDBPath, "dummyfile.txt"), []byte("this is a dummy file for test"), 0644),
-	)
 	cmd := resetCmd()
-
-	_, err := os.Stat(historyDBPath)
-	require.False(t, os.IsNotExist(err))
-	require.NoError(t, cmd.Execute())
-	empty, err := fileutil.DirEmpty(historyDBPath)
-	require.NoError(t, err)
-	require.True(t, empty)
+	err := cmd.Execute()
+	require.Contains(t, err.Error(), "open /tmp/hyperledger/test/ledgersData/chains/chains: no such file or directory")
 }

@@ -9,6 +9,7 @@ package tests
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
@@ -216,4 +217,59 @@ func TestResetLedgerWithoutDroppingDBs(t *testing.T) {
 	require.EqualError(t, err, "the state database [height=9] is ahead of the block store [height=1]. "+
 		"This is possible when the state database is not dropped after a ledger reset/rollback. "+
 		"The state database can safely be dropped and will be rebuilt up to block store height upon the next peer start")
+}
+
+func TestResetFailIfAnyLedgerBootstrappedFromSnapshot(t *testing.T) {
+	env := newEnv(t)
+	defer env.cleanup()
+	env.initLedgerMgmt()
+
+	// populate ledgers with sample data
+	ledgerID := "testLedgerFromSnapshot"
+	dataHelper := newSampleDataHelper(t)
+	h := env.newTestHelperCreateLgr(ledgerID, t)
+	dataHelper.populateLedger(h)
+	dataHelper.verifyLedgerContent(h)
+	bcInfo, err := h.lgr.GetBlockchainInfo()
+	require.NoError(t, err)
+
+	// create a sanapshot
+	blockNum := bcInfo.Height - 1
+	require.NoError(t, h.lgr.SubmitSnapshotRequest(blockNum))
+	// wait until snapshot is generated
+	snapshotGenerated := func() bool {
+		requests, err := h.lgr.PendingSnapshotRequests()
+		require.NoError(t, err)
+		return len(requests) == 0
+	}
+	require.Eventually(t, snapshotGenerated, time.Minute, 100*time.Millisecond)
+	snapshotDir := kvledger.SnapshotDirForLedgerBlockNum(env.initializer.Config.SnapshotsConfig.RootDir, ledgerID, blockNum)
+	env.closeLedgerMgmt()
+
+	// creates a new env with multiple ledgers, some from genesis block and some from a snapshot
+	env2 := newEnv(t)
+	defer env2.cleanup()
+	env2.initLedgerMgmt()
+
+	for i := 0; i < 2; i++ {
+		ledgerID := fmt.Sprintf("ledger-%d", i)
+		env2.newTestHelperCreateLgr(ledgerID, t)
+	}
+
+	callbackCounter := 0
+	callback := func(l ledger.PeerLedger, cid string) { callbackCounter++ }
+	require.NoError(t, env2.ledgerMgr.CreateLedgerFromSnapshot(snapshotDir, callback))
+
+	// wait until ledger creation is done
+	ledgerCreated := func() bool {
+		status := env2.ledgerMgr.JoinBySnapshotStatus()
+		return !status.InProgress && status.BootstrappingSnapshotDir == ""
+	}
+	require.Eventually(t, ledgerCreated, time.Minute, 100*time.Microsecond)
+	require.Equal(t, 1, callbackCounter)
+	env2.closeLedgerMgmt()
+
+	// reset should fail
+	err = kvledger.ResetAllKVLedgers(env2.initializer.Config.RootFSPath)
+	require.EqualError(t, err, "cannot reset channels because at least one channel was bootstrapped from a snapshot: [testLedgerFromSnapshot]")
 }

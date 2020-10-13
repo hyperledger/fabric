@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -112,6 +114,73 @@ func TestBinarySearchBlockFileNum(t *testing.T) {
 		expectedFileNum := locFromIndex.fileSuffixNum
 		require.Equal(t, expectedFileNum, fileNum)
 	}
+}
+
+func TestIsBootstrappedFromSnapshot(t *testing.T) {
+	testDir, err := ioutil.TempDir("", "isbootstrappedfromsnapshot")
+	require.NoError(t, err)
+	defer os.RemoveAll(testDir)
+
+	t.Run("no_bootstrapping_snapshot_info_file", func(t *testing.T) {
+		// create chains directory for the ledger without bootstrappingSnapshotInfoFile
+		ledgerid := "testnosnapshotinfofile"
+		require.NoError(t, os.MkdirAll(filepath.Join(testDir, ChainsDir, ledgerid), 0755))
+		isFromSnapshot, err := IsBootstrappedFromSnapshot(testDir, ledgerid)
+		require.NoError(t, err)
+		require.False(t, isFromSnapshot)
+	})
+
+	t.Run("with_bootstrapping_snapshot_info_file", func(t *testing.T) {
+		// create chains directory for the ledger with bootstrappingSnapshotInfoFile
+		ledgerid := "testwithsnapshotinfofile"
+		ledgerChainDir := filepath.Join(testDir, ChainsDir, ledgerid)
+		require.NoError(t, os.MkdirAll(ledgerChainDir, 0755))
+		file, err := os.Create(filepath.Join(ledgerChainDir, bootstrappingSnapshotInfoFile))
+		require.NoError(t, err)
+		defer file.Close()
+		isFromSnapshot, err := IsBootstrappedFromSnapshot(testDir, ledgerid)
+		require.NoError(t, err)
+		require.True(t, isFromSnapshot)
+	})
+}
+
+func TestGetLedgersBootstrappedFromSnapshot(t *testing.T) {
+	t.Run("no_bootstrapping_snapshot_info_file", func(t *testing.T) {
+		testDir, err := ioutil.TempDir("", "getledgersfromsnapshot_nosnapshot_info")
+		require.NoError(t, err)
+		defer os.RemoveAll(testDir)
+
+		// create chains directories for ledgers without bootstrappingSnapshotInfoFile
+		for i := 0; i < 5; i++ {
+			require.NoError(t, os.MkdirAll(filepath.Join(testDir, ChainsDir, fmt.Sprintf("ledger_%d", i)), 0755))
+		}
+
+		ledgersFromSnapshot, err := GetLedgersBootstrappedFromSnapshot(testDir)
+		require.NoError(t, err)
+		require.Equal(t, 0, len(ledgersFromSnapshot))
+	})
+
+	t.Run("with_bootstrapping_snapshot_info_file", func(t *testing.T) {
+		testDir, err := ioutil.TempDir("", "getledgersfromsnapshot_snapshot_info")
+		require.NoError(t, err)
+		defer os.RemoveAll(testDir)
+
+		// create chains directories for ledgers
+		// also create bootstrappingSnapshotInfoFile for ledger_0 and ledger_1
+		for i := 0; i < 5; i++ {
+			ledgerChainDir := filepath.Join(testDir, ChainsDir, fmt.Sprintf("ledger_%d", i))
+			require.NoError(t, os.MkdirAll(ledgerChainDir, 0755))
+			if i < 2 {
+				file, err := os.Create(filepath.Join(ledgerChainDir, bootstrappingSnapshotInfoFile))
+				require.NoError(t, err)
+				defer file.Close()
+			}
+		}
+
+		ledgersFromSnapshot, err := GetLedgersBootstrappedFromSnapshot(testDir)
+		require.NoError(t, err)
+		require.ElementsMatch(t, ledgersFromSnapshot, []string{"ledger_0", "ledger_1"})
+	})
 }
 
 func checkBlockfilesInfoFromFS(t *testing.T, blkStoreDir string, expected *blockfilesInfo) {
