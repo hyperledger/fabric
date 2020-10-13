@@ -69,6 +69,16 @@ var _ = Describe("ChannelParticipation", func() {
 		os.RemoveAll(testDir)
 	})
 
+	restartOrderer := func(o *nwo.Orderer, index int) {
+		ordererProcesses[index].Signal(syscall.SIGKILL)
+		Eventually(ordererProcesses[index].Wait(), network.EventuallyTimeout).Should(Receive(MatchError("exit status 137")))
+		ordererRunner := network.OrdererRunner(o)
+		ordererProcess := ifrit.Invoke(ordererRunner)
+		Eventually(ordererProcess.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		ordererProcesses[index] = ordererProcess
+		ordererRunners[index] = ordererRunner
+	}
+
 	Describe("three node etcdraft network without a system channel", func() {
 		startOrderer := func(o *nwo.Orderer) {
 			ordererRunner := network.OrdererRunner(o)
@@ -482,6 +492,95 @@ var _ = Describe("ChannelParticipation", func() {
 			})
 		})
 
+		It("creates the system channel with a genesis block", func() {
+			peer := network.Peer("Org1", "peer0")
+			orderer1 := network.Orderer("orderer1")
+			orderer2 := network.Orderer("orderer2")
+			orderer3 := network.Orderer("orderer3")
+			orderers := []*nwo.Orderer{orderer1, orderer2, orderer3}
+			for _, o := range orderers {
+				startOrderer(o)
+			}
+
+			systemChannelBlockBytes, err := ioutil.ReadFile(network.OutputBlockPath("systemchannel"))
+			Expect(err).NotTo(HaveOccurred())
+			systemChannelBlock := &common.Block{}
+			err = proto.Unmarshal(systemChannelBlockBytes, systemChannelBlock)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedChannelInfo := channelparticipation.ChannelInfo{
+				Name:            "systemchannel",
+				URL:             "/participation/v1/channels/systemchannel",
+				Status:          "inactive",
+				ClusterRelation: "member",
+				Height:          1,
+			}
+
+			By("joining orderers to systemchannel")
+			for _, o := range orderers {
+				channelparticipation.Join(network, o, "systemchannel", systemChannelBlock, expectedChannelInfo)
+			}
+
+			By("attempting to join a channel when system channel is present")
+			channelparticipationJoinFailure(network, orderer1, "systemchannel", systemChannelBlock, http.StatusMethodNotAllowed, "cannot join: system channel exists")
+
+			By("attempting to submit a transaction to systemchannel")
+			for _, o := range orderers {
+				By("submitting transaction to " + o.Name)
+				env := CreateBroadcastEnvelope(network, peer, "systemchannel", []byte("hello"))
+				resp, err := ordererclient.Broadcast(network, o, env)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(resp.Status).To(Equal(common.Status_FORBIDDEN))
+			}
+
+			By("restarting all orderers")
+			for i, o := range orderers {
+				restartOrderer(o, i)
+			}
+
+			By("creating a channel")
+			network.CreateChannel("testchannel", orderer1, peer)
+
+			expectedChannelInfo = channelparticipation.ChannelInfo{
+				Name:            "testchannel",
+				URL:             "/participation/v1/channels/testchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          1,
+			}
+			for _, o := range orderers {
+				By("listing single channel for " + o.Name)
+				Eventually(func() channelparticipation.ChannelInfo {
+					return channelparticipation.ListOne(network, o, "testchannel")
+				}, network.EventuallyTimeout).Should(Equal(expectedChannelInfo))
+			}
+
+			for _, o := range orderers {
+				By("listing the channels for " + o.Name)
+				channelparticipation.List(network, o, []string{"testchannel"}, "systemchannel")
+			}
+
+			expectedChannelInfo = channelparticipation.ChannelInfo{
+				Name:            "systemchannel",
+				URL:             "/participation/v1/channels/systemchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          2,
+			}
+			for _, o := range orderers {
+				By("listing single channel for " + o.Name)
+				Eventually(func() channelparticipation.ChannelInfo {
+					return channelparticipation.ListOne(network, o, "systemchannel")
+				}, network.EventuallyTimeout).Should(Equal(expectedChannelInfo))
+			}
+
+			By("submitting transaction to orderer to confirm channel is usable")
+			env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
+			resp, err := ordererclient.Broadcast(network, orderer1, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+		})
+
 	})
 
 	Describe("three node etcdraft network with a system channel", func() {
@@ -624,6 +723,7 @@ var _ = Describe("ChannelParticipation", func() {
 			})
 		})
 	})
+
 })
 
 func submitTxn(o *nwo.Orderer, peer *nwo.Peer, n *nwo.Network, orderers []*nwo.Orderer, expectedBlkNum int, expectedChannelInfo channelparticipation.ChannelInfo) {
