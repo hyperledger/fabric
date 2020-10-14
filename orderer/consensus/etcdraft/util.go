@@ -37,8 +37,15 @@ func RaftPeers(consenterIDs []uint64) []raft.Peer {
 	return peers
 }
 
+type ConsentersMap map[string]struct{}
+
+func (c ConsentersMap) Exists(consenter *etcdraft.Consenter) bool {
+	_, exists := c[string(consenter.ClientTlsCert)]
+	return exists
+}
+
 // ConsentersToMap maps consenters into set where key is client TLS certificate
-func ConsentersToMap(consenters []*etcdraft.Consenter) map[string]struct{} {
+func ConsentersToMap(consenters []*etcdraft.Consenter) ConsentersMap {
 	set := map[string]struct{}{}
 	for _, c := range consenters {
 		set[string(c.ClientTlsCert)] = struct{}{}
@@ -197,8 +204,9 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 	return MetadataFromConfigUpdate(configUpdate)
 }
 
-// CheckConfigMetadata validates Raft config metadata
-func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata) error {
+// VerifyConfigMetadata validates Raft config metadata.
+// Note: ignores certificates expiration.
+func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts x509.VerifyOptions) error {
 	if metadata == nil {
 		// defensive check. this should not happen as CheckConfigMetadata
 		// should always be called with non-nil config metadata
@@ -233,15 +241,12 @@ func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata) error {
 		return errors.Errorf("empty consenter set")
 	}
 
-	// sanity check of certificates
+	//verifying certificates for being signed by CA, expiration is ignored
 	for _, consenter := range metadata.Consenters {
 		if consenter == nil {
 			return errors.Errorf("metadata has nil consenter")
 		}
-		if err := validateCert(consenter.ServerTlsCert, "server"); err != nil {
-			return err
-		}
-		if err := validateCert(consenter.ClientTlsCert, "client"); err != nil {
+		if err := validateConsenterTLSCerts(consenter, verifyOpts, true); err != nil {
 			return err
 		}
 	}
@@ -253,16 +258,96 @@ func CheckConfigMetadata(metadata *etcdraft.ConfigMetadata) error {
 	return nil
 }
 
-func validateCert(pemData []byte, certRole string) error {
-	bl, _ := pem.Decode(pemData)
-
-	if bl == nil {
-		return errors.Errorf("%s TLS certificate is not PEM encoded: %s", certRole, string(pemData))
+func parseCertificateFromBytes(cert []byte) (*x509.Certificate, error) {
+	pemBlock, _ := pem.Decode(cert)
+	if pemBlock == nil {
+		return &x509.Certificate{}, errors.Errorf("no PEM data found in cert[% x]", cert)
 	}
 
-	if _, err := x509.ParseCertificate(bl.Bytes); err != nil {
-		return errors.Errorf("%s TLS certificate has invalid ASN1 structure, %v: %s", certRole, err, string(pemData))
+	certificate, err := x509.ParseCertificate(pemBlock.Bytes)
+	if err != nil {
+		return nil, errors.Errorf("%s TLS certificate has invalid ASN1 structure %s", err, string(pemBlock.Bytes))
 	}
+
+	return certificate, nil
+}
+
+func parseCertificateListFromBytes(certs [][]byte) ([]*x509.Certificate, error) {
+	var certificateList []*x509.Certificate
+
+	for _, cert := range certs {
+		certificate, err := parseCertificateFromBytes(cert)
+		if err != nil {
+			return certificateList, err
+		}
+
+		certificateList = append(certificateList, certificate)
+	}
+
+	return certificateList, nil
+}
+
+func createX509VerifyOptions(ordererConfig channelconfig.Orderer) (x509.VerifyOptions, error) {
+	tlsRoots := x509.NewCertPool()
+	tlsIntermediates := x509.NewCertPool()
+
+	for _, org := range ordererConfig.Organizations() {
+		rootCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSRootCerts())
+		if err != nil {
+			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls root certs")
+		}
+		intermediateCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSIntermediateCerts())
+		if err != nil {
+			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls intermediate certs")
+		}
+
+		for _, cert := range rootCerts {
+			tlsRoots.AddCert(cert)
+		}
+
+		for _, cert := range intermediateCerts {
+			tlsIntermediates.AddCert(cert)
+		}
+	}
+
+	return x509.VerifyOptions{
+		Roots:         tlsRoots,
+		Intermediates: tlsIntermediates,
+		KeyUsages: []x509.ExtKeyUsage{
+			x509.ExtKeyUsageClientAuth,
+			x509.ExtKeyUsageServerAuth,
+		},
+	}, nil
+}
+
+//validateConsenterTLSCerts decodes PEM cert, parses and validates it.
+func validateConsenterTLSCerts(c *etcdraft.Consenter, opts x509.VerifyOptions, ignoreExpiration bool) error {
+	clientCert, err := parseCertificateFromBytes(c.ClientTlsCert)
+	if err != nil {
+		return errors.Wrapf(err, "parsing tls client cert of %s:%d", c.Host, c.Port)
+	}
+
+	serverCert, err := parseCertificateFromBytes(c.ServerTlsCert)
+	if err != nil {
+		return errors.Wrapf(err, "parsing tls server cert of %s:%d", c.Host, c.Port)
+	}
+
+	verify := func(certType string, cert *x509.Certificate, opts x509.VerifyOptions) error {
+		if _, err := cert.Verify(opts); err != nil {
+			if validationRes, ok := err.(x509.CertificateInvalidError); !ok || (!ignoreExpiration || validationRes.Reason != x509.Expired) {
+				return errors.Wrapf(err, "verifying tls %s cert with serial number %d", certType, cert.SerialNumber)
+			}
+		}
+		return nil
+	}
+
+	if err := verify("client", clientCert, opts); err != nil {
+		return err
+	}
+	if err := verify("server", serverCert, opts); err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -151,23 +151,21 @@ func (scf *SystemChainFilter) authorizeAndInspect(configTx *cb.Envelope) error {
 		return errors.Wrap(err, "new bundle invalid")
 	}
 
-	oc, ok := bundle.OrdererConfig()
+	ordererConfig, ok := bundle.OrdererConfig()
 	if !ok {
 		return errors.New("config is missing orderer group")
 	}
-	newMetadata := oc.ConsensusMetadata()
 
 	oldOrdererConfig, ok := scf.support.OrdererConfig()
 	if !ok {
 		logger.Panic("old config is missing orderer group")
 	}
-	oldMetadata := oldOrdererConfig.ConsensusMetadata()
 
-	if err = scf.validator.ValidateConsensusMetadata(oldMetadata, newMetadata, true); err != nil {
+	if err = scf.validator.ValidateConsensusMetadata(oldOrdererConfig, ordererConfig, true); err != nil {
 		return errors.Wrap(err, "consensus metadata update for channel creation is invalid")
 	}
 
-	if err = oc.Capabilities().Supported(); err != nil {
+	if err = ordererConfig.Capabilities().Supported(); err != nil {
 		return errors.Wrap(err, "config update is not compatible")
 	}
 

@@ -160,8 +160,8 @@ func TestConsensusMetadataValidation(t *testing.T) {
 	assert.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
 	om, nm, nc := mv.ValidateConsensusMetadataArgsForCall(0)
 	assert.False(t, nc)
-	assert.Equal(t, oldConsensusMetadata, om)
-	assert.Equal(t, newConsensusMetadata, nm)
+	assert.Equal(t, oldConsensusMetadata, om.ConsensusMetadata())
+	assert.Equal(t, newConsensusMetadata, nm.ConsensusMetadata())
 
 	// case 2: invalid consensus metadata update
 	mv.ValidateConsensusMetadataReturns(errors.New("bananas"))

@@ -455,6 +455,6 @@ func TestFailedMetadataValidation(t *testing.T) {
 	assert.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
 	om, nm, nc := mv.ValidateConsensusMetadataArgsForCall(0)
 	assert.True(t, nc)
-	assert.Equal(t, []byte("old consensus metadata"), om)
-	assert.Equal(t, []byte("new consensus metadata"), nm)
+	assert.Equal(t, []byte("old consensus metadata"), om.ConsensusMetadata())
+	assert.Equal(t, []byte("new consensus metadata"), nm.ConsensusMetadata())
 }
