@@ -10,7 +10,6 @@ import (
 	"bytes"
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -47,7 +46,7 @@ func constructValidAndInvalidPvtData(
 		var err error
 
 		if pvtdata.BlockNum <= lastBlockInBootSnapshot {
-			validData, invalidData, err = verifyHashesAndTrimWriteSetViaBootKVHashes(pvtdata, pvtdataStore)
+			validData, invalidData, err = verifyHashesViaBootKVHashes(pvtdata, pvtdataStore)
 		} else {
 			validData, invalidData, err = verifyHashesFromBlockStore(pvtdata, blockStore)
 		}
@@ -193,7 +192,7 @@ func findInvalidNsPvtData(nsRwset *rwset.NsPvtReadWriteSet, txRWSet *rwsetutil.T
 	return invalidPvtData, invalidNsColl
 }
 
-func verifyHashesAndTrimWriteSetViaBootKVHashes(reconciledPvtdata *ledger.ReconciledPvtdata, pvtdataStore *pvtdatastorage.Store) (
+func verifyHashesViaBootKVHashes(reconciledPvtdata *ledger.ReconciledPvtdata, pvtdataStore *pvtdatastorage.Store) (
 	[]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
 ) {
 	var validPvtData []*ledger.TxPvtData
@@ -202,20 +201,22 @@ func verifyHashesAndTrimWriteSetViaBootKVHashes(reconciledPvtdata *ledger.Reconc
 	blkNum := reconciledPvtdata.BlockNum
 
 	for txNum, txData := range reconciledPvtdata.WriteSets { // Tx loop
+		var toDeleteNsColl []*nsColl
+
 		reconTx, err := rwsetutil.TxPvtRwSetFromProtoMsg(txData.WriteSet)
 		if err != nil {
 			continue
 		}
 
-		trimmedTx := &rwsetutil.TxPvtRwSet{}
-
 		for _, reconNS := range reconTx.NsPvtRwSet { // Ns Loop
-			trimmedNs := &rwsetutil.NsPvtRwSet{
-				NameSpace: reconNS.NameSpace,
-			}
-
 			for _, reconColl := range reconNS.CollPvtRwSets { // coll loop
 				if reconColl.KvRwSet == nil || len(reconColl.KvRwSet.Writes) == 0 {
+					toDeleteNsColl = append(toDeleteNsColl,
+						&nsColl{
+							ns:   reconNS.NameSpace,
+							coll: reconColl.CollectionName,
+						},
+					)
 					continue
 				}
 
@@ -224,30 +225,41 @@ func verifyHashesAndTrimWriteSetViaBootKVHashes(reconciledPvtdata *ledger.Reconc
 					return nil, nil, err
 				}
 				if len(expectedKVHashes) == 0 {
+					toDeleteNsColl = append(toDeleteNsColl,
+						&nsColl{
+							ns:   reconNS.NameSpace,
+							coll: reconColl.CollectionName,
+						},
+					)
 					continue
 				}
 
-				filteredInKVs := []*kvrwset.KVWrite{}
-				anyKVHashMismatch := false
+				anyKVMismatch := false
 				numKVsRecieved := 0
+				keysVisited := map[string]struct{}{}
 
 				for _, reconKV := range reconColl.KvRwSet.Writes {
+					_, ok := keysVisited[reconKV.Key]
+					if ok {
+						anyKVMismatch = true
+						break
+					}
+					keysVisited[reconKV.Key] = struct{}{}
+
 					reconKeyHash := util.ComputeSHA256([]byte(reconKV.Key))
 					reconValHash := util.ComputeSHA256(reconKV.Value)
 
 					expectedValHash, ok := expectedKVHashes[string(reconKeyHash)]
 					if ok {
 						numKVsRecieved++
-						if bytes.Equal(expectedValHash, reconValHash) {
-							filteredInKVs = append(filteredInKVs, reconKV)
-						} else {
-							anyKVHashMismatch = true
+						if !bytes.Equal(expectedValHash, reconValHash) {
+							anyKVMismatch = true
 							break
 						}
 					}
 				}
 
-				if anyKVHashMismatch || numKVsRecieved < len(expectedKVHashes) {
+				if anyKVMismatch || numKVsRecieved < len(expectedKVHashes) {
 					invalidPvtData = append(invalidPvtData,
 						&ledger.PvtdataHashMismatch{
 							BlockNum:   blkNum,
@@ -256,35 +268,23 @@ func verifyHashesAndTrimWriteSetViaBootKVHashes(reconciledPvtdata *ledger.Reconc
 							Collection: reconColl.CollectionName,
 						},
 					)
+					toDeleteNsColl = append(toDeleteNsColl,
+						&nsColl{
+							ns:   reconNS.NameSpace,
+							coll: reconColl.CollectionName,
+						},
+					)
 					continue
 				}
-
-				trimmedNs.CollPvtRwSets = append(trimmedNs.CollPvtRwSets,
-					&rwsetutil.CollPvtRwSet{
-						CollectionName: reconColl.CollectionName,
-						KvRwSet: &kvrwset.KVRWSet{
-							Writes: filteredInKVs,
-						},
-					},
-				)
 			} // end coll loop
-
-			if len(trimmedNs.CollPvtRwSets) > 0 {
-				trimmedTx.NsPvtRwSet = append(trimmedTx.NsPvtRwSet, trimmedNs)
-			}
 		} // end Ns loop
 
-		if len(trimmedTx.NsPvtRwSet) > 0 {
-			trimmedTxProto, err := trimmedTx.ToProtoMsg()
-			if err != nil {
-				return nil, nil, err
-			}
-			validPvtData = append(validPvtData,
-				&ledger.TxPvtData{
-					SeqInBlock: txNum,
-					WriteSet:   trimmedTxProto,
-				},
-			)
+		for _, nsColl := range toDeleteNsColl {
+			removeCollFromTxPvtReadWriteSet(txData.WriteSet, nsColl.ns, nsColl.coll)
+		}
+
+		if len(txData.WriteSet.NsPvtRwset) > 0 {
+			validPvtData = append(validPvtData, txData)
 		}
 	} // end Tx loop
 	return validPvtData, invalidPvtData, nil
