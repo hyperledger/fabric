@@ -889,11 +889,12 @@ func (dbclient *couchDatabase) readDocRange(startKey, endKey string, limit int32
 	defer closeResponseBody(resp)
 
 	if couchdbLogger.IsEnabledFor(zapcore.DebugLevel) {
-		dump, err2 := httputil.DumpResponse(resp, true)
+		dump, err2 := httputil.DumpResponse(resp, false)
 		if err2 != nil {
 			log.Fatal(err2)
 		}
-		couchdbLogger.Debugf("[%s] %s", dbclient.dbName, dump)
+		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
+		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
 	}
 
 	//handle as JSON document
@@ -1025,11 +1026,12 @@ func (dbclient *couchDatabase) queryDocuments(query string) ([]*queryResult, str
 	defer closeResponseBody(resp)
 
 	if couchdbLogger.IsEnabledFor(zapcore.DebugLevel) {
-		dump, err2 := httputil.DumpResponse(resp, true)
+		dump, err2 := httputil.DumpResponse(resp, false)
 		if err2 != nil {
 			log.Fatal(err2)
 		}
-		couchdbLogger.Debugf("[%s] %s", dbclient.dbName, dump)
+		// compact debug log by replacing carriage return / line feed with dashes to separate http headers
+		couchdbLogger.Debugf("[%s] HTTP Response: %s", dbclient.dbName, bytes.Replace(dump, []byte{0x0d, 0x0a}, []byte{0x20, 0x7c, 0x20}, -1))
 	}
 
 	//handle as JSON document
