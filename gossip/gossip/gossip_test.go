@@ -1285,8 +1285,13 @@ func TestSendByCriteria(t *testing.T) {
 	criteria.Channel = common.ChannelID("A")
 	criteria.MinAck = 10
 	err = g1.SendByCriteria(msg, criteria)
+<<<<<<< HEAD
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Requested to send to at least 10 peers, but know only of")
+=======
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "requested to send to at least 10 peers, but know only of")
+>>>>>>> d43e5ddd5... Add stringer for channelID type (#2016)
 
 	// We send to a minimum of 3 peers with acknowledgement, while no peer acknowledges the messages.
 	// Wait until g1 sees the rest of the peers in the channel

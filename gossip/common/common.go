@@ -45,6 +45,10 @@ type Payload struct {
 // ChannelID defines the identity representation of a chain
 type ChannelID []byte
 
+func (c ChannelID) String() string {
+	return string(c)
+}
+
 // MessageReplacingPolicy Returns:
 // MESSAGE_INVALIDATES if this message invalidates that
 // MESSAGE_INVALIDATED if this message is invalidated by that
