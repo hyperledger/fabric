@@ -674,14 +674,14 @@ When successful, the command will return the following result:
 
     {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw=="}
 
-The `"owner"` of the asset is the identity that created the asset by invoking the smart contract. The private data smart contract uses the ``GetClientIdentity().GetID()`` API to read the common name and issuer of the identity certificate.
+The `"owner"` of the asset is the identity that created the asset by invoking the smart contract. The private data smart contract uses the ``GetClientIdentity().GetID()`` API to read the name and issuer of the identity certificate.
 You can see that information by decoding the owner string out of base64 format:
 
 .. code:: bash
 
     echo eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw== | base64 --decode
 
-The result will show the common name and issuer of the owner certificate:
+The result will show the name and issuer of the owner certificate:
 
 .. code:: bash
 
