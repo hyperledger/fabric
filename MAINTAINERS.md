@@ -25,7 +25,7 @@ Maintainers
 |------|--------|------|----------------------
 | Chris Gabriel  | [denali49][denali49] | cmgabriel | <alaskadd@gmail.com>
 | Joe Alewine | [joealewine][joealewine] | joe-alewine | <joe.alewine@ibm.com>
-| Nikhil Gupta | [nikhil550][nikhil550] | nikhilgupta | <negupta@us.ibm.com>
+| Nikhil Gupta | [nikhil550][nikhil550] | nikhilgupta | <nikhilg550@gmail.com>
 | Anthony O'Dowd | [odowdaibm][odowdaibm] | odowdaibm | <a_o-dowd@uk.ibm.com>
 | Pam Andrejko | [pamandrejko][pamandrejko] | pandrejko | <pama@ibm.com>
 
