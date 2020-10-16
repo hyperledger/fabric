@@ -78,7 +78,7 @@ func (ks *fileBasedKeyStore) Init(pwd []byte, path string, readOnly bool) error 
 	ks.path = path
 
 	clone := make([]byte, len(pwd))
-	copy(ks.pwd, pwd)
+	copy(clone, pwd)
 	ks.pwd = clone
 	ks.readOnly = readOnly
 
