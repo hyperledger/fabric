@@ -99,6 +99,9 @@ func newChainSupport(
 		cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: types.ClusterRelationNone, Status: types.StatusActive}
 	}
 
+	clusterRelation, status := cs.StatusReporter.StatusReport()
+	registrar.ReportRelationAndStatusMetrics(cs.ChannelID(), clusterRelation, status)
+
 	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChannelID())
 
 	return cs, nil

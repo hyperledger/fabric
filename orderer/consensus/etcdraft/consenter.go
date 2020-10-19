@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/hyperledger/fabric/protoutil"
@@ -45,13 +46,14 @@ type InactiveChainRegistry interface {
 	Stop()
 }
 
-//go:generate mockery -dir . -name ChainManager -case underscore -output mocks
+//go:generate counterfeiter -o mocks/chain_manager.go --fake-name ChainManager . ChainManager
 
 // ChainManager defines the methods from multichannel.Registrar needed by the Consenter.
 type ChainManager interface {
 	GetConsensusChain(channelID string) consensus.Chain
 	CreateChain(channelID string)
 	SwitchChainToFollower(channelID string)
+	ReportRelationAndStatusMetrics(channelID string, relation types.ClusterRelation, status types.Status)
 }
 
 // Config contains etcdraft configurations
@@ -160,10 +162,12 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	id, err := c.detectSelfID(consenters)
 	if err != nil {
 		if c.InactiveChainRegistry != nil {
-			// There is a system channel, use the InactiveChainRegistry to track the future config updates of application channel.
+			// There is a system channel, use the InactiveChainRegistry to track the
+			// future config updates of application channel.
 			c.InactiveChainRegistry.TrackChain(support.ChannelID(), support.Block(0), func() {
 				c.ChainManager.CreateChain(support.ChannelID())
 			})
+			c.ChainManager.ReportRelationAndStatusMetrics(support.ChannelID(), types.ClusterRelationConfigTracker, types.StatusInactive)
 			return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
 		}
 
@@ -234,6 +238,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		c.Logger.Info("With system channel: after eviction InactiveChainRegistry.TrackChain will be called")
 		haltCallback = func() {
 			c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.ChainManager.CreateChain(support.ChannelID()) })
+			c.ChainManager.ReportRelationAndStatusMetrics(support.ChannelID(), types.ClusterRelationConfigTracker, types.StatusInactive)
 		}
 	} else {
 		// when we do NOT have a system channel, we switch to a follower.Chain upon eviction.

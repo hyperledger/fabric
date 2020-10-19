@@ -62,6 +62,12 @@ type ChainCreator interface {
 	SwitchFollowerToChain(chainName string)
 }
 
+//go:generate counterfeiter -o mocks/channel_participation_metrics_reporter.go -fake-name ChannelParticipationMetricsReporter . ChannelParticipationMetricsReporter
+
+type ChannelParticipationMetricsReporter interface {
+	ReportRelationAndStatusMetrics(channelID string, relation types.ClusterRelation, status types.Status)
+}
+
 // Chain implements a component that allows the orderer to follow a specific channel when is not a cluster member,
 // that is, be a "follower" of the cluster. It also allows the orderer to perform "onboarding" for
 // channels it is joining as a member, with a join-block.
@@ -115,6 +121,8 @@ type Chain struct {
 	chainCreator ChainCreator
 
 	cryptoProvider bccsp.BCCSP // Cryptographic services
+
+	channelParticipationMetricsReporter ChannelParticipationMetricsReporter
 }
 
 // NewChain constructs a follower.Chain object.
@@ -126,24 +134,26 @@ func NewChain(
 	blockPullerFactory BlockPullerFactory,
 	chainCreator ChainCreator,
 	cryptoProvider bccsp.BCCSP,
+	channelParticipationMetricsReporter ChannelParticipationMetricsReporter,
 ) (*Chain, error) {
 	options.applyDefaults()
 
 	chain := &Chain{
-		stopChan:           make(chan struct{}),
-		doneChan:           make(chan struct{}),
-		cRel:               types.ClusterRelationFollower,
-		status:             types.StatusOnBoarding,
-		ledgerResources:    ledgerResources,
-		clusterConsenter:   clusterConsenter,
-		joinBlock:          joinBlock,
-		firstHeight:        ledgerResources.Height(),
-		options:            options,
-		logger:             options.Logger.With("channel", ledgerResources.ChannelID()),
-		timeAfter:          options.TimeAfter,
-		blockPullerFactory: blockPullerFactory,
-		chainCreator:       chainCreator,
-		cryptoProvider:     cryptoProvider,
+		stopChan:                            make(chan struct{}),
+		doneChan:                            make(chan struct{}),
+		cRel:                                types.ClusterRelationFollower,
+		status:                              types.StatusOnBoarding,
+		ledgerResources:                     ledgerResources,
+		clusterConsenter:                    clusterConsenter,
+		joinBlock:                           joinBlock,
+		firstHeight:                         ledgerResources.Height(),
+		options:                             options,
+		logger:                              options.Logger.With("channel", ledgerResources.ChannelID()),
+		timeAfter:                           options.TimeAfter,
+		blockPullerFactory:                  blockPullerFactory,
+		chainCreator:                        chainCreator,
+		cryptoProvider:                      cryptoProvider,
+		channelParticipationMetricsReporter: channelParticipationMetricsReporter,
 	}
 
 	if ledgerResources.Height() > 0 {
@@ -189,6 +199,8 @@ func NewChain(
 	}
 
 	chain.logger.Debugf("Options are: %v", chain.options)
+
+	chain.channelParticipationMetricsReporter.ReportRelationAndStatusMetrics(ledgerResources.ChannelID(), chain.cRel, chain.status)
 
 	return chain, nil
 }
@@ -244,6 +256,8 @@ func (c *Chain) setStatus(status types.Status) {
 	defer c.mutex.Unlock()
 
 	c.status = status
+
+	c.channelParticipationMetricsReporter.ReportRelationAndStatusMetrics(c.ledgerResources.ChannelID(), c.cRel, c.status)
 }
 
 func (c *Chain) setClusterRelation(clusterRelation types.ClusterRelation) {
@@ -251,6 +265,8 @@ func (c *Chain) setClusterRelation(clusterRelation types.ClusterRelation) {
 	defer c.mutex.Unlock()
 
 	c.cRel = clusterRelation
+
+	c.channelParticipationMetricsReporter.ReportRelationAndStatusMetrics(c.ledgerResources.ChannelID(), c.cRel, c.status)
 }
 
 func (c *Chain) Height() uint64 {
@@ -374,10 +390,11 @@ func (c *Chain) pullUpToJoin() error {
 	return nil
 }
 
-// pullAfterJoin pulls blocks continuously, inspecting the fetched config blocks for membership.
-// On every config block, it renews the BlockPuller, to take in the new configuration.
-// It will exit with 'nil' if it detects a config block that indicates the orderer is a member of the cluster.
-// It checks whether the chain was stopped between blocks.
+// pullAfterJoin pulls blocks continuously, inspecting the fetched config
+// blocks for membership. On every config block, it renews the BlockPuller,
+// to take in the new configuration. It will exit with 'nil' if it detects
+// a config block that indicates the orderer is a member of the cluster. It
+// checks whether the chain was stopped between blocks.
 func (c *Chain) pullAfterJoin() error {
 	c.setStatus(types.StatusActive)
 

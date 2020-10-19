@@ -1044,6 +1044,8 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 		consenter.IsChannelMemberReturns(true, nil)
 		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		fakeFields := newFakeMetricsFields()
+		registrar.channelParticipationMetrics = newFakeMetrics(fakeFields)
 
 		t.Run("failure - consenter channel membership error", func(t *testing.T) {
 			badConsenter := &mocks.Consenter{}
@@ -1113,6 +1115,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 			joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "my-raft-channel.joinblock")
 			_, err = os.Stat(joinBlockPath)
 			require.True(t, os.IsNotExist(err))
+			checkMetrics(t, fakeFields, []string{"channel", "my-raft-channel"}, 1, 1, 1)
 		})
 	})
 
@@ -1157,6 +1160,8 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		consenter.IsChannelMemberReturns(false, nil)
 
 		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		fakeFields := newFakeMetricsFields()
+		registrar.channelParticipationMetrics = newFakeMetrics(fakeFields)
 		registrar.Initialize(mockConsenters)
 
 		// Before join the chain, it doesn't exist
@@ -1179,6 +1184,8 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		fChain := registrar.GetFollower("my-raft-channel")
 		require.NotNil(t, fChain)
 		fChain.Halt()
+
+		checkMetrics(t, fakeFields, []string{"channel", "my-raft-channel"}, 2, 2, 1)
 	})
 
 	t.Run("Join app channel as follower then switch to member", func(t *testing.T) {
@@ -1188,6 +1195,8 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		consenter.IsChannelMemberReturns(false, nil)
 
 		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		fakeFields := newFakeMetricsFields()
+		registrar.channelParticipationMetrics = newFakeMetrics(fakeFields)
 		registrar.Initialize(mockConsenters)
 
 		// Before join the chain, it doesn't exist
@@ -1209,6 +1218,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "my-raft-channel.joinblock")
 		_, err = os.Stat(joinBlockPath)
 		require.NoError(t, err)
+		checkMetrics(t, fakeFields, []string{"channel", "my-raft-channel"}, 2, 2, 1)
 
 		// Let's assume the follower appended a block
 		genesisBlockAppRaft.Header.Number = 0
@@ -1231,6 +1241,8 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		// join-block removed after switching from follower to member
 		_, err = os.Stat(joinBlockPath)
 		require.True(t, os.IsNotExist(err))
+
+		checkMetrics(t, fakeFields, []string{"channel", "my-raft-channel"}, 1, 1, 2)
 	})
 
 	t.Run("Join app channel as member, then switch to follower", func(t *testing.T) {
@@ -1239,6 +1251,8 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 		consenter.IsChannelMemberReturns(true, nil)
 		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		fakeFields := newFakeMetricsFields()
+		registrar.channelParticipationMetrics = newFakeMetrics(fakeFields)
 		registrar.Initialize(mockConsenters)
 
 		// Before join the chain, it doesn't exist
@@ -1259,6 +1273,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		require.Equal(t, 1, len(channelList.Channels))
 		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
 		require.Nil(t, channelList.SystemChannel)
+		checkMetrics(t, fakeFields, []string{"channel", "my-raft-channel"}, 1, 1, 1)
 
 		// Let's assume the chain appended another config block
 		genesisBlockAppRaft.Header.PreviousHash = protoutil.BlockHeaderHash(genesisBlockAppRaft.Header)
@@ -1284,6 +1299,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		require.Nil(t, channelList.SystemChannel)
 		fChain.Halt()
 		require.False(t, fChain.IsRunning())
+		checkMetrics(t, fakeFields, []string{"channel", "my-raft-channel"}, 2, 1, 3)
 	})
 
 	t.Run("Join system channel without on-boarding", func(t *testing.T) {
@@ -1358,6 +1374,17 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, uint64(0), ledgerRW.Height(), "block was not appended")
 	})
+}
+
+func checkMetrics(t *testing.T, fakeFields *fakeMetricsFields, expectedLabels []string, expectedRelation, expectedStatus, expectedCallCount int) {
+	require.Equal(t, expectedCallCount, fakeFields.fakeRelation.SetCallCount())
+	require.Equal(t, float64(expectedRelation), fakeFields.fakeRelation.SetArgsForCall(expectedCallCount-1))
+	require.Equal(t, expectedCallCount, fakeFields.fakeRelation.WithCallCount())
+	require.Equal(t, expectedLabels, fakeFields.fakeRelation.WithArgsForCall(expectedCallCount-1))
+	require.Equal(t, expectedCallCount, fakeFields.fakeStatus.SetCallCount())
+	require.Equal(t, float64(expectedStatus), fakeFields.fakeStatus.SetArgsForCall(expectedCallCount-1))
+	require.Equal(t, expectedCallCount, fakeFields.fakeStatus.WithCallCount())
+	require.Equal(t, expectedLabels, fakeFields.fakeStatus.WithArgsForCall(expectedCallCount-1))
 }
 
 func TestRegistrar_RemoveChannel(t *testing.T) {

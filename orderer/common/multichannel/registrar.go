@@ -55,14 +55,15 @@ type Registrar struct {
 	systemChannelID string
 	systemChannel   *ChainSupport
 
-	consenters         map[string]consensus.Consenter
-	ledgerFactory      blockledger.Factory
-	signer             identity.SignerSerializer
-	blockcutterMetrics *blockcutter.Metrics
-	templator          msgprocessor.ChannelConfigTemplator
-	callbacks          []channelconfig.BundleActor
-	bccsp              bccsp.BCCSP
-	clusterDialer      *cluster.PredicateDialer
+	consenters                  map[string]consensus.Consenter
+	ledgerFactory               blockledger.Factory
+	signer                      identity.SignerSerializer
+	blockcutterMetrics          *blockcutter.Metrics
+	templator                   msgprocessor.ChannelConfigTemplator
+	callbacks                   []channelconfig.BundleActor
+	bccsp                       bccsp.BCCSP
+	clusterDialer               *cluster.PredicateDialer
+	channelParticipationMetrics *Metrics
 
 	joinBlockFileRepo *filerepo.Repo
 }
@@ -97,16 +98,17 @@ func NewRegistrar(
 	clusterDialer *cluster.PredicateDialer,
 	callbacks ...channelconfig.BundleActor) *Registrar {
 	r := &Registrar{
-		config:             config,
-		chains:             make(map[string]*ChainSupport),
-		followers:          make(map[string]*follower.Chain),
-		pendingRemoval:     make(map[string]bool),
-		ledgerFactory:      ledgerFactory,
-		signer:             signer,
-		blockcutterMetrics: blockcutter.NewMetrics(metricsProvider),
-		callbacks:          callbacks,
-		bccsp:              bccsp,
-		clusterDialer:      clusterDialer,
+		config:                      config,
+		chains:                      make(map[string]*ChainSupport),
+		followers:                   make(map[string]*follower.Chain),
+		pendingRemoval:              make(map[string]bool),
+		ledgerFactory:               ledgerFactory,
+		signer:                      signer,
+		blockcutterMetrics:          blockcutter.NewMetrics(metricsProvider),
+		callbacks:                   callbacks,
+		bccsp:                       bccsp,
+		clusterDialer:               clusterDialer,
+		channelParticipationMetrics: NewMetrics(metricsProvider),
 	}
 
 	if config.ChannelParticipation.Enabled {
@@ -854,18 +856,21 @@ func (r *Registrar) createFollower(
 		blockPullerCreator,
 		r,
 		r.bccsp,
+		r,
 	)
 
 	if err != nil {
 		return nil, types.ChannelInfo{}, errors.WithMessagef(err, "failed to create follower for channel %s", channelID)
 	}
 
+	clusterRelation, status := fChain.StatusReport()
 	info := types.ChannelInfo{
-		Name:   channelID,
-		URL:    "",
-		Height: ledgerRes.Height(),
+		Name:            channelID,
+		URL:             "",
+		Height:          ledgerRes.Height(),
+		ClusterRelation: clusterRelation,
+		Status:          status,
 	}
-	info.ClusterRelation, info.Status = fChain.StatusReport()
 
 	r.followers[channelID] = fChain
 
@@ -1093,4 +1098,9 @@ func (r *Registrar) removeLedgerAsync(channelID string) {
 		}
 		delete(r.pendingRemoval, channelID)
 	}()
+}
+
+func (r *Registrar) ReportRelationAndStatusMetrics(channelID string, relation types.ClusterRelation, status types.Status) {
+	r.channelParticipationMetrics.reportRelation(channelID, relation)
+	r.channelParticipationMetrics.reportStatus(channelID, status)
 }
