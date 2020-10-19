@@ -968,6 +968,9 @@ var _ = Describe("Chain", func() {
 									return nil
 								}
 
+								// This is a false assumption - single node shouldn't be able to pull block from anywhere.
+								// However, this test is mainly to assert that chain should attempt catchup upon start,
+								// so we could live with it.
 								return ledger[i]
 							}
 
@@ -989,6 +992,27 @@ var _ = Describe("Chain", func() {
 							close(signal)                         // unblock block puller
 							Eventually(done).Should(Receive(nil)) // WaitReady should be unblocked
 							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(2))
+						})
+
+						It("commits block from snapshot if it's missing from ledger", func() {
+							// Scenario:
+							// Single node exists right after a snapshot is taken, while the block
+							// in it hasn't been successfully persisted into ledger (there can be one
+							// async block write in-flight). Then the node is restarted, and catches
+							// up using the block in snapshot.
+
+							Expect(chain.Order(env, uint64(0))).To(Succeed())
+							Eventually(support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
+							Eventually(countFiles, LongEventualTimeout).Should(Equal(1))
+
+							chain.Halt()
+
+							c := newChain(10*time.Second, channelID, dataDir, 1, raftMetadata, consenters)
+							c.init()
+							c.Start()
+							defer c.Halt()
+
+							Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
 
 						It("restores snapshot w/o extra entries", func() {
