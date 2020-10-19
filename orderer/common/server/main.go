@@ -384,31 +384,6 @@ func reuseListener(conf *localconfig.TopLevel) bool {
 	return false
 }
 
-// Extract system channel last config block
-func extractSysChanLastConfig(lf blockledger.Factory, bootstrapBlock *cb.Block) *cb.Block {
-	// Are we bootstrapping?
-	channelCount := len(lf.ChannelIDs())
-	if channelCount == 0 {
-		logger.Info("Bootstrapping because no existing channels")
-		return nil
-	}
-	logger.Infof("Not bootstrapping because of %d existing channels", channelCount)
-
-	systemChannelName, err := protoutil.GetChannelIDFromBlock(bootstrapBlock)
-	if err != nil {
-		logger.Panicf("Failed extracting system channel name from bootstrap block: %v", err)
-	}
-	systemChannelLedger, err := lf.GetOrCreate(systemChannelName)
-	if err != nil {
-		logger.Panicf("Failed getting system channel ledger: %v", err)
-	}
-	height := systemChannelLedger.Height()
-	lastConfigBlock := multichannel.ConfigBlockOrPanic(systemChannelLedger)
-	logger.Infof("System channel: name=%s, height=%d, last config block number=%d",
-		systemChannelName, height, lastConfigBlock.Header.Number)
-	return lastConfigBlock
-}
-
 // extractSystemChannel loops through all channels, and return the last
 // config block for the system channel. Returns nil if no system channel
 // was found.
@@ -418,6 +393,10 @@ func extractSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) *cb.Block {
 		if err != nil {
 			logger.Panicf("Failed getting channel %v's ledger: %v", cID, err)
 		}
+		if channelLedger.Height() == 0 {
+			continue // Some channels may have an empty ledger and (possibly) a join-block, skip those
+		}
+
 		channelConfigBlock := multichannel.ConfigBlockOrPanic(channelLedger)
 
 		err = onboarding.ValidateBootstrapBlock(channelConfigBlock, bccsp)

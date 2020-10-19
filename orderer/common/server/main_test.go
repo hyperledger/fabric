@@ -394,7 +394,9 @@ func TestInitSystemChannelWithJoinBlock(t *testing.T) {
 
 }
 
-func TestExtractSysChanLastConfig(t *testing.T) {
+func TestExtractSystemChannel(t *testing.T) {
+	cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+
 	tmpdir, err := ioutil.TempDir("", "main_test-")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpdir)
@@ -402,43 +404,52 @@ func TestExtractSysChanLastConfig(t *testing.T) {
 	rlf, err := fileledger.New(tmpdir, &disabled.Provider{})
 	require.NoError(t, err)
 
+	lastConf := extractSystemChannel(rlf, cryptoProvider)
+	require.Nil(t, lastConf, "no ledgers")
+
+	_, err = rlf.GetOrCreate("emptychannelid")
+	require.NoError(t, err)
+
+	lastConf = extractSystemChannel(rlf, cryptoProvider)
+	require.Nil(t, lastConf, "skip empty ledger")
+
 	conf := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
-	genesisBlock := encoder.New(conf).GenesisBlock()
-
-	lastConf := extractSysChanLastConfig(rlf, genesisBlock)
-	require.Nil(t, lastConf)
-
-	rl, err := rlf.GetOrCreate("testchannelid")
+	conf.Consortiums = nil
+	configBlock := encoder.New(conf).GenesisBlock()
+	rl, err := rlf.GetOrCreate("appchannelid")
+	err = rl.Append(configBlock)
 	require.NoError(t, err)
 
-	err = rl.Append(genesisBlock)
+	lastConf = extractSystemChannel(rlf, cryptoProvider)
+	require.Nil(t, lastConf, "skip app ledger")
+
+	conf = genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+	configBlock = encoder.New(conf).GenesisBlock()
+	rl, err = rlf.GetOrCreate("testchannelid")
+	err = rl.Append(configBlock)
 	require.NoError(t, err)
 
-	lastConf = extractSysChanLastConfig(rlf, genesisBlock)
-	require.NotNil(t, lastConf)
+	lastConf = extractSystemChannel(rlf, cryptoProvider)
+	require.NotNil(t, lastConf, "get system channel genesis block")
 	require.Equal(t, uint64(0), lastConf.Header.Number)
 
-	require.Panics(t, func() {
-		_ = extractSysChanLastConfig(rlf, nil)
-	})
-
-	configTx, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, "testchannelid", nil, &common.ConfigEnvelope{}, 0, 0)
-	require.NoError(t, err)
-
-	nextBlock := blockledger.CreateNextBlock(rl, []*common.Envelope{configTx})
-	nextBlock.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
+	// Make and append the next config block
+	prevHash := protoutil.BlockHeaderHash(configBlock.Header)
+	configBlock.Header.Number = 1
+	configBlock.Header.PreviousHash = prevHash
+	configBlock.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: protoutil.MarshalOrPanic(&common.OrdererBlockMetadata{
 			LastConfig: &common.LastConfig{Index: rl.Height()},
 		}),
 	})
-	nextBlock.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
+	configBlock.Metadata.Metadata[common.BlockMetadataIndex_LAST_CONFIG] = protoutil.MarshalOrPanic(&common.Metadata{
 		Value: protoutil.MarshalOrPanic(&common.LastConfig{Index: rl.Height()}),
 	})
-	err = rl.Append(nextBlock)
+	err = rl.Append(configBlock)
 	require.NoError(t, err)
 
-	lastConf = extractSysChanLastConfig(rlf, genesisBlock)
-	require.NotNil(t, lastConf)
+	lastConf = extractSystemChannel(rlf, cryptoProvider)
+	require.NotNil(t, lastConf, "get system channel last config block")
 	require.Equal(t, uint64(1), lastConf.Header.Number)
 }
 
