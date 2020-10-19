@@ -887,6 +887,11 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 	if c.lastBlock.Header.Number >= b.Header.Number {
 		c.logger.Warnf("Snapshot is at block [%d], local block number is %d, no sync needed", b.Header.Number, c.lastBlock.Header.Number)
 		return nil
+	} else if b.Header.Number == c.lastBlock.Header.Number+1 {
+		c.logger.Infof("The only missing block [%d] is encapsulated in snapshot, committing it to shortcut catchup process", b.Header.Number)
+		c.commitBlock(b)
+		c.lastBlock = b
+		return nil
 	}
 
 	puller, err := c.createPuller()
@@ -904,33 +909,37 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 		if block == nil {
 			return errors.Errorf("failed to fetch block [%d] from cluster", next)
 		}
-		if protoutil.IsConfigBlock(block) {
-			c.support.WriteConfigBlock(block, nil)
-
-			configMembership := c.detectConfChange(block)
-
-			if configMembership != nil && configMembership.Changed() {
-				c.logger.Infof("Config block [%d] changes consenter set, communication should be reconfigured", block.Header.Number)
-
-				c.raftMetadataLock.Lock()
-				c.opts.BlockMetadata = configMembership.NewBlockMetadata
-				c.opts.Consenters = configMembership.NewConsenters
-				c.raftMetadataLock.Unlock()
-
-				if err := c.configureComm(); err != nil {
-					c.logger.Panicf("Failed to configure communication: %s", err)
-				}
-			}
-		} else {
-			c.support.WriteBlock(block, nil)
-		}
-
+		c.commitBlock(block)
 		c.lastBlock = block
 		next++
 	}
 
 	c.logger.Infof("Finished syncing with cluster up to and including block [%d]", b.Header.Number)
 	return nil
+}
+
+func (c *Chain) commitBlock(block *common.Block) {
+	if !protoutil.IsConfigBlock(block) {
+		c.support.WriteBlock(block, nil)
+		return
+	}
+
+	c.support.WriteConfigBlock(block, nil)
+
+	configMembership := c.detectConfChange(block)
+
+	if configMembership != nil && configMembership.Changed() {
+		c.logger.Infof("Config block [%d] changes consenter set, communication should be reconfigured", block.Header.Number)
+
+		c.raftMetadataLock.Lock()
+		c.opts.BlockMetadata = configMembership.NewBlockMetadata
+		c.opts.Consenters = configMembership.NewConsenters
+		c.raftMetadataLock.Unlock()
+
+		if err := c.configureComm(); err != nil {
+			c.logger.Panicf("Failed to configure communication: %s", err)
+		}
+	}
 }
 
 func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
