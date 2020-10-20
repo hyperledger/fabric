@@ -5,8 +5,6 @@ package server
 
 import (
 	"fmt"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/orderer/common/filerepo"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -20,6 +18,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -37,6 +36,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/orderer/common/bootstrap/file"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
+	"github.com/hyperledger/fabric/orderer/common/filerepo"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
 	"github.com/hyperledger/fabric/orderer/common/onboarding"
@@ -761,6 +761,32 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	require.Equal(t, 2, len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	require.Len(t, predDialer.Config.SecOpts.ServerRootCAs, 2)
 	grpcServer.Listener().Close()
+}
+
+func TestRootServerCertAggregation(t *testing.T) {
+	caMgr := &caManager{
+		appRootCAsByChain:     make(map[string][][]byte),
+		ordererRootCAsByChain: make(map[string][][]byte),
+	}
+
+	predDialer := &cluster.PredicateDialer{
+		Config: comm.ClientConfig{},
+	}
+
+	ca1, err := tlsgen.NewCA()
+	require.NoError(t, err)
+
+	ca2, err := tlsgen.NewCA()
+	require.NoError(t, err)
+
+	caMgr.ordererRootCAsByChain["foo"] = [][]byte{ca1.CertBytes()}
+	caMgr.ordererRootCAsByChain["bar"] = [][]byte{ca1.CertBytes()}
+
+	caMgr.updateClusterDialer(predDialer, [][]byte{ca2.CertBytes(), ca2.CertBytes(), ca2.CertBytes()})
+
+	require.Len(t, predDialer.Config.SecOpts.ServerRootCAs, 2)
+	require.Contains(t, predDialer.Config.SecOpts.ServerRootCAs, ca1.CertBytes())
+	require.Contains(t, predDialer.Config.SecOpts.ServerRootCAs, ca2.CertBytes())
 }
 
 func TestConfigureClusterListener(t *testing.T) {
