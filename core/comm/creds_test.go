@@ -93,7 +93,7 @@ func TestCreds(t *testing.T) {
 	})
 	wg.Wait()
 	assert.Contains(t, err.Error(), "protocol version not supported")
-	assert.Contains(t, recorder.Messages()[0], "TLS handshake failed with error")
+	assert.Contains(t, recorder.Messages()[1], "TLS handshake failed")
 }
 
 func TestNewTLSConfig(t *testing.T) {

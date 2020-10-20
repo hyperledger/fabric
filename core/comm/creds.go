@@ -13,12 +13,16 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"google.golang.org/grpc/credentials"
 )
 
 var (
+	// Logger for TLS client connections
+	tlsClientLogger = flogging.MustGetLogger("comm.tls")
+
 	ClientHandshakeNotImplError = errors.New("core/comm: Client handshakes" +
 		"are not implemented with serverCreds")
 	OverrrideHostnameNotSupportedError = errors.New(
@@ -37,6 +41,10 @@ var (
 func NewServerTransportCredentials(
 	serverConfig *TLSConfig,
 	logger *flogging.FabricLogger) credentials.TransportCredentials {
+
+	if logger == nil {
+		logger = tlsClientLogger
+	}
 
 	// NOTE: unlike the default grpc/credentials implementation, we do not
 	// clone the tls.Config which allows us to update it dynamically
@@ -100,15 +108,14 @@ func (sc *serverCreds) ClientHandshake(context.Context,
 // ServerHandshake does the authentication handshake for servers.
 func (sc *serverCreds) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
 	serverConfig := sc.serverConfig.Config()
-
 	conn := tls.Server(rawConn, &serverConfig)
+	l := sc.logger.With("remote address", conn.RemoteAddr().String())
+	start := time.Now()
 	if err := conn.Handshake(); err != nil {
-		if sc.logger != nil {
-			sc.logger.With("remote address",
-				conn.RemoteAddr().String()).Errorf("TLS handshake failed with error %s", err)
-		}
+		l.Errorf("Server TLS handshake failed in %s with error %s", time.Since(start), err)
 		return nil, nil, err
 	}
+	l.Debugf("Server TLS handshake completed in %s", time.Since(start))
 	return conn, credentials.TLSInfo{State: conn.ConnectionState()}, nil
 }
 
@@ -148,7 +155,16 @@ func (dtc *DynamicClientCredentials) latestConfig() *tls.Config {
 }
 
 func (dtc *DynamicClientCredentials) ClientHandshake(ctx context.Context, authority string, rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
-	return credentials.NewTLS(dtc.latestConfig()).ClientHandshake(ctx, authority, rawConn)
+	l := tlsClientLogger.With("remote address", rawConn.RemoteAddr().String())
+	creds := credentials.NewTLS(dtc.latestConfig())
+	start := time.Now()
+	conn, auth, err := creds.ClientHandshake(ctx, authority, rawConn)
+	if err != nil {
+		l.Errorf("Client TLS handshake failed after %s with error: %s", time.Since(start), err)
+	} else {
+		l.Debugf("Client TLS handshake completed in %s", time.Since(start))
+	}
+	return conn, auth, err
 }
 
 func (dtc *DynamicClientCredentials) ServerHandshake(rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
