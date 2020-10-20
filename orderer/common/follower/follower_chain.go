@@ -26,7 +26,7 @@ var ErrChainStopped = errors.New("chain stopped")
 
 //go:generate counterfeiter -o mocks/ledger_resources.go -fake-name LedgerResources . LedgerResources
 
-// LedgerResources defines dome the interfaces of ledger & config resources needed by the follower.Chain.
+// LedgerResources defines some of the interfaces of ledger & config resources needed by the follower.Chain.
 type LedgerResources interface {
 	// ChannelID The channel ID.
 	ChannelID() string
@@ -107,11 +107,14 @@ type Chain struct {
 	// Creates a block puller on demand, and allows the update of the block signature verifier with each incoming
 	// config block.
 	blockPullerFactory BlockPullerFactory
+	// A block puller instance, created either from the join-block or last-config-block. When pulling blocks using
+	// the last-config-block, the endpoints are updated with each incoming config block.
+	blockPuller ChannelPuller
+
 	// Creates a new consensus.Chain for this channel, to replace the current follower.Chain.
 	chainCreator ChainCreator
 
-	cryptoProvider bccsp.BCCSP   // Cryptographic services
-	blockPuller    ChannelPuller // A block puller instance that is recreated every time a config is pulled.
+	cryptoProvider bccsp.BCCSP // Cryptographic services
 }
 
 // NewChain constructs a follower.Chain object.
@@ -147,7 +150,9 @@ func NewChain(
 		if err := chain.loadLastConfig(); err != nil {
 			return nil, err
 		}
-		blockPullerFactory.UpdateVerifierFromConfigBlock(chain.lastConfig)
+		if err := blockPullerFactory.UpdateVerifierFromConfigBlock(chain.lastConfig); err != nil {
+			return nil, err
+		}
 	}
 
 	if joinBlock == nil {
@@ -234,12 +239,18 @@ func (c *Chain) StatusReport() (types.ClusterRelation, types.Status) {
 	return c.cRel, c.status
 }
 
-func (c *Chain) setStatusReport(clusterRelation types.ClusterRelation, status types.Status) {
+func (c *Chain) setStatus(status types.Status) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.status = status
+}
+
+func (c *Chain) setClusterRelation(clusterRelation types.ClusterRelation) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	c.cRel = clusterRelation
-	c.status = status
 }
 
 func (c *Chain) Height() uint64 {
@@ -273,7 +284,7 @@ func (c *Chain) run() {
 	if err := c.pull(); err != nil {
 
 		c.logger.Warnf("Pull failed, error: %s", err)
-		// TODO set the status to StatusError
+		// TODO set the status to StatusError (see FAB-18106)
 	}
 }
 
@@ -319,25 +330,7 @@ func (c *Chain) pull() error {
 		if err != nil {
 			return errors.WithMessage(err, "failed to pull up to join block")
 		}
-
-		// The join block never returns an error. This is checked before the follower is started.
-		if isMem, _ := c.clusterConsenter.IsChannelMember(c.joinBlock); isMem {
-			c.setStatusReport(types.ClusterRelationMember, types.StatusActive)
-			// Trigger creation of a new consensus.Chain.
-			c.logger.Info("Onboarding finished successfully, going to switch from follower to a consensus.Chain")
-			c.halt()
-			c.chainCreator.SwitchFollowerToChain(c.ledgerResources.ChannelID())
-			return nil
-		}
-
-		c.setStatusReport(types.ClusterRelationFollower, types.StatusActive)
-		c.joinBlock = nil
-		err = c.loadLastConfig()
-		if err != nil {
-			return errors.WithMessage(err, "failed to load last config block")
-		}
-
-		c.logger.Info("Onboarding finished successfully, continuing to pull blocks after join-block")
+		c.logger.Info("Onboarding finished successfully, pulled blocks up to join-block")
 	}
 
 	err = c.pullAfterJoin()
@@ -386,7 +379,12 @@ func (c *Chain) pullUpToJoin() error {
 // It will exit with 'nil' if it detects a config block that indicates the orderer is a member of the cluster.
 // It checks whether the chain was stopped between blocks.
 func (c *Chain) pullAfterJoin() error {
-	var err error
+	c.setStatus(types.StatusActive)
+
+	err := c.loadLastConfig()
+	if err != nil {
+		return errors.WithMessage(err, "failed to load last config block")
+	}
 
 	c.blockPuller, err = c.blockPullerFactory.BlockPuller(c.lastConfig)
 	if err != nil {
@@ -402,7 +400,7 @@ func (c *Chain) pullAfterJoin() error {
 			return errors.WithMessage(err, "failed to determine channel membership from last config")
 		}
 		if isMember {
-			c.setStatusReport(types.ClusterRelationMember, types.StatusActive)
+			c.setClusterRelation(types.ClusterRelationMember)
 			return nil
 		}
 
