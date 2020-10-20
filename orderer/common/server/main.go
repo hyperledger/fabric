@@ -1007,15 +1007,26 @@ func (mgr *caManager) updateClusterDialer(
 
 	// Iterate over all orderer root CAs for all chains and add them
 	// to the root CAs
-	var clusterRootCAs [][]byte
-	for _, roots := range mgr.ordererRootCAsByChain {
-		clusterRootCAs = append(clusterRootCAs, roots...)
+	clusterRootCAs := make(cluster.StringSet)
+	for _, orgRootCAs := range mgr.ordererRootCAsByChain {
+		for _, rootCA := range orgRootCAs {
+			clusterRootCAs[string(rootCA)] = struct{}{}
+		}
 	}
 
 	// Add the local root CAs too
-	clusterRootCAs = append(clusterRootCAs, localClusterRootCAs...)
+	for _, localRootCA := range localClusterRootCAs {
+		clusterRootCAs[string(localRootCA)] = struct{}{}
+	}
+
+	// Convert StringSet to byte slice
+	var clusterRootCAsBytes [][]byte
+	for root := range clusterRootCAs {
+		clusterRootCAsBytes = append(clusterRootCAsBytes, []byte(root))
+	}
+
 	// Update the cluster config with the new root CAs
-	clusterDialer.UpdateRootCAs(clusterRootCAs)
+	clusterDialer.UpdateRootCAs(clusterRootCAsBytes)
 }
 
 func prettyPrintStruct(i interface{}) {
