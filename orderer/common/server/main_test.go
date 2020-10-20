@@ -5,7 +5,6 @@ package server
 
 import (
 	"fmt"
-	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -38,6 +37,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/multichannel"
+	"github.com/hyperledger/fabric/orderer/common/onboarding"
 	server_mocks "github.com/hyperledger/fabric/orderer/common/server/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/protoutil"
@@ -641,6 +641,32 @@ func TestUpdateTrustedRoots(t *testing.T) {
 	assert.Equal(t, 2, len(caMgr.ordererRootCAsByChain["testchannelid"]))
 	assert.Len(t, predDialer.Config.SecOpts.ServerRootCAs, 2)
 	grpcServer.Listener().Close()
+}
+
+func TestRootServerCertAggregation(t *testing.T) {
+	caMgr := &caManager{
+		appRootCAsByChain:     make(map[string][][]byte),
+		ordererRootCAsByChain: make(map[string][][]byte),
+	}
+
+	predDialer := &cluster.PredicateDialer{
+		Config: comm.ClientConfig{},
+	}
+
+	ca1, err := tlsgen.NewCA()
+	require.NoError(t, err)
+
+	ca2, err := tlsgen.NewCA()
+	require.NoError(t, err)
+
+	caMgr.ordererRootCAsByChain["foo"] = [][]byte{ca1.CertBytes()}
+	caMgr.ordererRootCAsByChain["bar"] = [][]byte{ca1.CertBytes()}
+
+	caMgr.updateClusterDialer(predDialer, [][]byte{ca2.CertBytes(), ca2.CertBytes(), ca2.CertBytes()})
+
+	require.Len(t, predDialer.Config.SecOpts.ServerRootCAs, 2)
+	require.Contains(t, predDialer.Config.SecOpts.ServerRootCAs, ca1.CertBytes())
+	require.Contains(t, predDialer.Config.SecOpts.ServerRootCAs, ca2.CertBytes())
 }
 
 func TestConfigureClusterListener(t *testing.T) {
