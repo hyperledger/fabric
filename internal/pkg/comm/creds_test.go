@@ -16,6 +16,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/hyperledger/fabric/common/flogging/floggingtest"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/stretchr/testify/assert"
@@ -94,8 +96,8 @@ func TestCreds(t *testing.T) {
 		MaxVersion: tls.VersionTLS10,
 	})
 	wg.Wait()
-	assert.Contains(t, err.Error(), "protocol version not supported")
-	assert.Contains(t, recorder.Messages()[0], "TLS handshake failed with error")
+	require.Contains(t, err.Error(), "protocol version not supported")
+	require.Contains(t, recorder.Messages()[1], "TLS handshake failed")
 }
 
 func TestNewTLSConfig(t *testing.T) {
