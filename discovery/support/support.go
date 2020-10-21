@@ -41,9 +41,9 @@ type channelConfigGetter interface {
 	acl.ChannelConfigGetter
 }
 
-//go:generate counterfeiter -o mocks/config_block_getter.go --fake-name ConfigBlockGetter . configBlockGetter
-type configBlockGetter interface {
-	config.CurrentConfigBlockGetter
+//go:generate counterfeiter -o mocks/config_getter.go --fake-name ConfigGetter . configGetter
+type configGetter interface {
+	config.CurrentConfigGetter
 }
 
 //go:generate counterfeiter -o mocks/configtx_validator.go --fake-name ConfigtxValidator . configtxValidator

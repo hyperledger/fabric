@@ -954,17 +954,17 @@ func registerDiscoveryService(
 	gSup := gossip.NewDiscoverySupport(gossipService)
 	ccSup := ccsupport.NewDiscoverySupport(metadataProvider)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, metadataProvider)
-	confSup := config.NewDiscoverySupport(config.CurrentConfigBlockGetterFunc(func(channelID string) *common.Block {
+	confSup := config.NewDiscoverySupport(config.CurrentConfigGetterFunc(func(channelID string) *common.Config {
 		channel := peerInstance.Channel(channelID)
 		if channel == nil {
 			return nil
 		}
-		block, err := peer.ConfigBlockFromLedger(channel.Ledger())
+		config, err := peer.RetrievePersistedChannelConfig(channel.Ledger())
 		if err != nil {
-			logger.Error("failed to get config block", err)
+			logger.Errorw("failed to get channel config", "error", err)
 			return nil
 		}
-		return block
+		return config
 	}))
 	support := discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl)
 	svc := discovery.NewService(discovery.Config{

@@ -42,6 +42,15 @@ func MakeGenesisBlock(channelID string) (*cb.Block, error) {
 	return gb, nil
 }
 
+func MakeChannelConfig(channelID string) (*cb.Config, error) {
+	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
+	channelGroup, err := encoder.NewChannelGroup(profile)
+	if err != nil {
+		return nil, err
+	}
+	return &cb.Config{ChannelGroup: channelGroup}, nil
+}
+
 // MakeGenesisBlockWithMSPs creates a genesis block using the MSPs provided for the given channelID
 func MakeGenesisBlockFromMSPs(channelID string, appMSPConf, ordererMSPConf *mspproto.MSPConfig, appOrgID, ordererOrgID string) (*cb.Block, error) {
 	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())

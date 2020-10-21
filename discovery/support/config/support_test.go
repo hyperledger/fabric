@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/discovery/support/config"
 	"github.com/hyperledger/fabric/discovery/support/mocks"
@@ -30,34 +29,6 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/stretchr/testify/require"
 )
-
-func blockWithPayload() *common.Block {
-	env := &common.Envelope{
-		Payload: []byte{1, 2, 3},
-	}
-	b, _ := proto.Marshal(env)
-	return &common.Block{
-		Data: &common.BlockData{
-			Data: [][]byte{b},
-		},
-	}
-}
-
-func blockWithConfigEnvelope() *common.Block {
-	pl := &common.Payload{
-		Data: []byte{1, 2, 3},
-	}
-	plBytes, _ := proto.Marshal(pl)
-	env := &common.Envelope{
-		Payload: plBytes,
-	}
-	b, _ := proto.Marshal(env)
-	return &common.Block{
-		Data: &common.BlockData{
-			Data: [][]byte{b},
-		},
-	}
-}
 
 func TestMSPIDMapping(t *testing.T) {
 	randString := func() string {
@@ -108,13 +79,17 @@ func TestMSPIDMapping(t *testing.T) {
 		org.MSPDir = filepath.Join(cryptoConfigDir, "peerOrganizations", "org1.example.com", "msp")
 	}
 
-	gen := encoder.New(profileConfig)
-	block := gen.GenesisBlockForChannel("mychannel")
+	channelGroup, err := encoder.NewChannelGroup(profileConfig)
+	require.NoError(t, err)
+	fakeConfigGetter := &mocks.ConfigGetter{}
+	fakeConfigGetter.GetCurrConfigReturnsOnCall(
+		0,
+		&common.Config{
+			ChannelGroup: channelGroup,
+		},
+	)
 
-	fakeBlockGetter := &mocks.ConfigBlockGetter{}
-	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(0, block)
-
-	cs := config.NewDiscoverySupport(fakeBlockGetter)
+	cs := config.NewDiscoverySupport(fakeConfigGetter)
 	res, err := cs.Config("mychannel")
 	require.NoError(t, err)
 
@@ -138,90 +113,48 @@ func TestMSPIDMapping(t *testing.T) {
 }
 
 func TestSupportGreenPath(t *testing.T) {
-	fakeBlockGetter := &mocks.ConfigBlockGetter{}
-	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(0, nil)
+	fakeConfigGetter := &mocks.ConfigGetter{}
+	fakeConfigGetter.GetCurrConfigReturnsOnCall(0, nil)
 
-	cs := config.NewDiscoverySupport(fakeBlockGetter)
+	cs := config.NewDiscoverySupport(fakeConfigGetter)
 	res, err := cs.Config("test")
 	require.Nil(t, res)
-	require.Equal(t, "could not get last config block for channel test", err.Error())
+	require.Equal(t, "could not get last config for channel test", err.Error())
 
-	block, err := test.MakeGenesisBlock("test")
+	config, err := test.MakeChannelConfig("test")
 	require.NoError(t, err)
-	require.NotNil(t, block)
+	require.NotNil(t, config)
 
-	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(1, block)
+	fakeConfigGetter.GetCurrConfigReturnsOnCall(1, config)
 	res, err = cs.Config("test")
 	require.NoError(t, err)
 	require.NotNil(t, res)
 }
 
-func TestSupportBadConfig(t *testing.T) {
-	fakeBlockGetter := &mocks.ConfigBlockGetter{}
-	cs := config.NewDiscoverySupport(fakeBlockGetter)
-
-	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(0, &common.Block{
-		Data: &common.BlockData{},
-	})
-	res, err := cs.Config("test")
-	require.Contains(t, err.Error(), "no transactions in block")
-	require.Nil(t, res)
-
-	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(1, &common.Block{
-		Data: &common.BlockData{
-			Data: [][]byte{{1, 2, 3}},
-		},
-	})
-	res, err = cs.Config("test")
-	require.Contains(t, err.Error(), "failed unmarshaling envelope")
-	require.Nil(t, res)
-
-	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(2, blockWithPayload())
-	res, err = cs.Config("test")
-	require.Contains(t, err.Error(), "failed unmarshaling payload")
-	require.Nil(t, res)
-
-	fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(3, blockWithConfigEnvelope())
-	res, err = cs.Config("test")
-	require.Contains(t, err.Error(), "failed unmarshaling config envelope")
-	require.Nil(t, res)
-}
-
-func TestValidateConfigEnvelope(t *testing.T) {
+func TestValidateConfig(t *testing.T) {
 	tests := []struct {
 		name          string
-		ce            *common.ConfigEnvelope
+		config        *common.Config
 		containsError string
 	}{
 		{
 			name:          "nil Config field",
-			ce:            &common.ConfigEnvelope{},
-			containsError: "field Config is nil",
-		},
-		{
-			name: "nil ChannelGroup field",
-			ce: &common.ConfigEnvelope{
-				Config: &common.Config{},
-			},
+			config:        &common.Config{},
 			containsError: "field Config.ChannelGroup is nil",
 		},
 		{
 			name: "nil Groups field",
-			ce: &common.ConfigEnvelope{
-				Config: &common.Config{
-					ChannelGroup: &common.ConfigGroup{},
-				},
+			config: &common.Config{
+				ChannelGroup: &common.ConfigGroup{},
 			},
 			containsError: "field Config.ChannelGroup.Groups is nil",
 		},
 		{
 			name: "no orderer group key",
-			ce: &common.ConfigEnvelope{
-				Config: &common.Config{
-					ChannelGroup: &common.ConfigGroup{
-						Groups: map[string]*common.ConfigGroup{
-							channelconfig.ApplicationGroupKey: {},
-						},
+			config: &common.Config{
+				ChannelGroup: &common.ConfigGroup{
+					Groups: map[string]*common.ConfigGroup{
+						channelconfig.ApplicationGroupKey: {},
 					},
 				},
 			},
@@ -229,13 +162,11 @@ func TestValidateConfigEnvelope(t *testing.T) {
 		},
 		{
 			name: "no application group key",
-			ce: &common.ConfigEnvelope{
-				Config: &common.Config{
-					ChannelGroup: &common.ConfigGroup{
-						Groups: map[string]*common.ConfigGroup{
-							channelconfig.OrdererGroupKey: {
-								Groups: map[string]*common.ConfigGroup{},
-							},
+			config: &common.Config{
+				ChannelGroup: &common.ConfigGroup{
+					Groups: map[string]*common.ConfigGroup{
+						channelconfig.OrdererGroupKey: {
+							Groups: map[string]*common.ConfigGroup{},
 						},
 					},
 				},
@@ -244,15 +175,13 @@ func TestValidateConfigEnvelope(t *testing.T) {
 		},
 		{
 			name: "no groups key in orderer group",
-			ce: &common.ConfigEnvelope{
-				Config: &common.Config{
-					ChannelGroup: &common.ConfigGroup{
-						Groups: map[string]*common.ConfigGroup{
-							channelconfig.ApplicationGroupKey: {
-								Groups: map[string]*common.ConfigGroup{},
-							},
-							channelconfig.OrdererGroupKey: {},
+			config: &common.Config{
+				ChannelGroup: &common.ConfigGroup{
+					Groups: map[string]*common.ConfigGroup{
+						channelconfig.ApplicationGroupKey: {
+							Groups: map[string]*common.ConfigGroup{},
 						},
+						channelconfig.OrdererGroupKey: {},
 					},
 				},
 			},
@@ -260,14 +189,12 @@ func TestValidateConfigEnvelope(t *testing.T) {
 		},
 		{
 			name: "no groups key in application group",
-			ce: &common.ConfigEnvelope{
-				Config: &common.Config{
-					ChannelGroup: &common.ConfigGroup{
-						Groups: map[string]*common.ConfigGroup{
-							channelconfig.ApplicationGroupKey: {},
-							channelconfig.OrdererGroupKey: {
-								Groups: map[string]*common.ConfigGroup{},
-							},
+			config: &common.Config{
+				ChannelGroup: &common.ConfigGroup{
+					Groups: map[string]*common.ConfigGroup{
+						channelconfig.ApplicationGroupKey: {},
+						channelconfig.OrdererGroupKey: {
+							Groups: map[string]*common.ConfigGroup{},
 						},
 					},
 				},
@@ -276,16 +203,14 @@ func TestValidateConfigEnvelope(t *testing.T) {
 		},
 		{
 			name: "no Values in ChannelGroup",
-			ce: &common.ConfigEnvelope{
-				Config: &common.Config{
-					ChannelGroup: &common.ConfigGroup{
-						Groups: map[string]*common.ConfigGroup{
-							channelconfig.ApplicationGroupKey: {
-								Groups: map[string]*common.ConfigGroup{},
-							},
-							channelconfig.OrdererGroupKey: {
-								Groups: map[string]*common.ConfigGroup{},
-							},
+			config: &common.Config{
+				ChannelGroup: &common.ConfigGroup{
+					Groups: map[string]*common.ConfigGroup{
+						channelconfig.ApplicationGroupKey: {
+							Groups: map[string]*common.ConfigGroup{},
+						},
+						channelconfig.OrdererGroupKey: {
+							Groups: map[string]*common.ConfigGroup{},
 						},
 					},
 				},
@@ -297,24 +222,23 @@ func TestValidateConfigEnvelope(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			err := config.ValidateConfigEnvelope(test.ce)
+			err := config.ValidateConfig(test.config)
 			require.Contains(t, test.containsError, err.Error())
 		})
 	}
-
 }
 
 func TestOrdererEndpoints(t *testing.T) {
 	t.Run("Global endpoints", func(t *testing.T) {
-		block, err := test.MakeGenesisBlock("mychannel")
+		channelConfig, err := test.MakeChannelConfig("mychannel")
 		require.NoError(t, err)
 
-		fakeBlockGetter := &mocks.ConfigBlockGetter{}
-		cs := config.NewDiscoverySupport(fakeBlockGetter)
+		fakeConfigGetter := &mocks.ConfigGetter{}
+		cs := config.NewDiscoverySupport(fakeConfigGetter)
 
-		fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(0, block)
+		fakeConfigGetter.GetCurrConfigReturnsOnCall(0, channelConfig)
 
-		injectGlobalOrdererEndpoint(t, block, "globalEndpoint:7050")
+		injectGlobalOrdererEndpoint(t, channelConfig, "globalEndpoint:7050")
 
 		res, err := cs.Config("test")
 		require.NoError(t, err)
@@ -324,16 +248,16 @@ func TestOrdererEndpoints(t *testing.T) {
 	})
 
 	t.Run("Per org endpoints alongside global endpoints", func(t *testing.T) {
-		block, err := test.MakeGenesisBlock("mychannel")
+		channelConfig, err := test.MakeChannelConfig("mychannel")
 		require.NoError(t, err)
 
-		fakeBlockGetter := &mocks.ConfigBlockGetter{}
-		cs := config.NewDiscoverySupport(fakeBlockGetter)
+		fakeConfigGetter := &mocks.ConfigGetter{}
+		cs := config.NewDiscoverySupport(fakeConfigGetter)
 
-		fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(0, block)
+		fakeConfigGetter.GetCurrConfigReturnsOnCall(0, channelConfig)
 
-		injectAdditionalEndpointPair(t, block, "perOrgEndpoint:7050", "anotherOrg")
-		injectAdditionalEndpointPair(t, block, "endpointWithoutAPortName", "aBadOrg")
+		injectAdditionalEndpointPair(t, channelConfig, "perOrgEndpoint:7050", "anotherOrg")
+		injectAdditionalEndpointPair(t, channelConfig, "endpointWithoutAPortName", "aBadOrg")
 
 		res, err := cs.Config("test")
 		require.NoError(t, err)
@@ -345,17 +269,17 @@ func TestOrdererEndpoints(t *testing.T) {
 	})
 
 	t.Run("Per org endpoints without global endpoints", func(t *testing.T) {
-		block, err := test.MakeGenesisBlock("mychannel")
+		channelConfig, err := test.MakeChannelConfig("mychannel")
 		require.NoError(t, err)
 
-		fakeBlockGetter := &mocks.ConfigBlockGetter{}
-		cs := config.NewDiscoverySupport(fakeBlockGetter)
+		fakeConfigGetter := &mocks.ConfigGetter{}
+		cs := config.NewDiscoverySupport(fakeConfigGetter)
 
-		fakeBlockGetter.GetCurrConfigBlockReturnsOnCall(0, block)
+		fakeConfigGetter.GetCurrConfigReturnsOnCall(0, channelConfig)
 
-		removeGlobalEndpoints(t, block)
-		injectAdditionalEndpointPair(t, block, "perOrgEndpoint:7050", "SampleOrg")
-		injectAdditionalEndpointPair(t, block, "endpointWithoutAPortName", "aBadOrg")
+		removeGlobalEndpoints(t, channelConfig)
+		injectAdditionalEndpointPair(t, channelConfig, "perOrgEndpoint:7050", "SampleOrg")
+		injectAdditionalEndpointPair(t, channelConfig, "endpointWithoutAPortName", "aBadOrg")
 
 		res, err := cs.Config("test")
 		require.NoError(t, err)
@@ -366,58 +290,30 @@ func TestOrdererEndpoints(t *testing.T) {
 	})
 }
 
-func removeGlobalEndpoints(t *testing.T, block *common.Block) {
-	// Unwrap the layers until we reach the orderer addresses
-	env, err := protoutil.ExtractEnvelope(block, 0)
-	require.NoError(t, err)
-	payload := protoutil.UnmarshalPayloadOrPanic(env.Payload)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	require.NoError(t, err)
+func removeGlobalEndpoints(t *testing.T, config *common.Config) {
 	// Remove the orderer addresses
-	delete(confEnv.Config.ChannelGroup.Values, channelconfig.OrdererAddressesKey)
-	// And put it back into the block
-	payload.Data = protoutil.MarshalOrPanic(confEnv)
-	env.Payload = protoutil.MarshalOrPanic(payload)
-	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
+	delete(config.ChannelGroup.Values, channelconfig.OrdererAddressesKey)
 }
 
-func injectGlobalOrdererEndpoint(t *testing.T, block *common.Block, endpoint string) {
+func injectGlobalOrdererEndpoint(t *testing.T, config *common.Config, endpoint string) {
 	ordererAddresses := channelconfig.OrdererAddressesValue([]string{endpoint})
-	// Unwrap the layers until we reach the orderer addresses
-	env, err := protoutil.ExtractEnvelope(block, 0)
-	require.NoError(t, err)
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	require.NoError(t, err)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	require.NoError(t, err)
 	// Replace the orderer addresses
-	confEnv.Config.ChannelGroup.Values[ordererAddresses.Key()] = &common.ConfigValue{
+	config.ChannelGroup.Values[ordererAddresses.Key()] = &common.ConfigValue{
 		Value:     protoutil.MarshalOrPanic(ordererAddresses.Value()),
 		ModPolicy: "/Channel/Orderer/Admins",
 	}
 	// Remove the per org addresses, if applicable
-	ordererGrps := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+	ordererGrps := config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
 	for _, grp := range ordererGrps {
 		if grp.Values[channelconfig.EndpointsKey] == nil {
 			continue
 		}
 		grp.Values[channelconfig.EndpointsKey].Value = nil
 	}
-	// And put it back into the block
-	payload.Data = protoutil.MarshalOrPanic(confEnv)
-	env.Payload = protoutil.MarshalOrPanic(payload)
-	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
 }
 
-func injectAdditionalEndpointPair(t *testing.T, block *common.Block, endpoint string, orgName string) {
-	// Unwrap the layers until we reach the orderer addresses
-	env, err := protoutil.ExtractEnvelope(block, 0)
-	require.NoError(t, err)
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	require.NoError(t, err)
-	confEnv, err := configtx.UnmarshalConfigEnvelope(payload.Data)
-	require.NoError(t, err)
-	ordererGrp := confEnv.Config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
+func injectAdditionalEndpointPair(t *testing.T, config *common.Config, endpoint string, orgName string) {
+	ordererGrp := config.ChannelGroup.Groups[channelconfig.OrdererGroupKey].Groups
 	// Get the first orderer org config
 	var firstOrdererConfig *common.ConfigGroup
 	for _, grp := range ordererGrp {
@@ -429,7 +325,7 @@ func injectAdditionalEndpointPair(t *testing.T, block *common.Block, endpoint st
 	ordererGrp[orgName] = secondOrdererConfig
 	// Reach the FabricMSPConfig buried in it.
 	mspConfig := &msp.MSPConfig{}
-	err = proto.Unmarshal(secondOrdererConfig.Values[channelconfig.MSPKey].Value, mspConfig)
+	err := proto.Unmarshal(secondOrdererConfig.Values[channelconfig.MSPKey].Value, mspConfig)
 	require.NoError(t, err)
 
 	fabricConfig := &msp.FabricMSPConfig{}
@@ -450,9 +346,4 @@ func injectAdditionalEndpointPair(t *testing.T, block *common.Block, endpoint st
 		Addresses: []string{endpoint},
 	}
 	secondOrdererConfig.Values[channelconfig.EndpointsKey].Value = protoutil.MarshalOrPanic(ordererOrgProtos)
-
-	// Fold everything back into the block
-	payload.Data = protoutil.MarshalOrPanic(confEnv)
-	env.Payload = protoutil.MarshalOrPanic(payload)
-	block.Data.Data[0] = protoutil.MarshalOrPanic(env)
 }

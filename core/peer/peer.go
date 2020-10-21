@@ -249,8 +249,8 @@ func (p *Peer) CreateChannelFromSnapshot(
 	return nil
 }
 
-// retrievePersistedChannelConfig retrieves the persisted channel config from statedb
-func retrievePersistedChannelConfig(ledger ledger.PeerLedger) (*common.Config, error) {
+// RetrievePersistedChannelConfig retrieves the persisted channel config from statedb
+func RetrievePersistedChannelConfig(ledger ledger.PeerLedger) (*common.Config, error) {
 	qe, err := ledger.NewQueryExecutor()
 	if err != nil {
 		return nil, err
@@ -267,7 +267,7 @@ func (p *Peer) createChannel(
 	legacyLifecycleValidation plugindispatcher.LifecycleResources,
 	newLifecycleValidation plugindispatcher.CollectionAndLifecycleResources,
 ) error {
-	chanConf, err := retrievePersistedChannelConfig(l)
+	chanConf, err := RetrievePersistedChannelConfig(l)
 	if err != nil {
 		return err
 	}

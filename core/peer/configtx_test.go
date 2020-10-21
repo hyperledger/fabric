@@ -48,7 +48,7 @@ func TestConfigTxCreateLedger(t *testing.T) {
 	ledger, err := ledgerMgr.CreateLedger(channelID, genesisBlock)
 	require.NoError(t, err)
 
-	retrievedchanConf, err := retrievePersistedChannelConfig(ledger)
+	retrievedchanConf, err := RetrievePersistedChannelConfig(ledger)
 	require.NoError(t, err)
 	require.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(retrievedchanConf))
 }
@@ -91,7 +91,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	lgr, err := ledgerMgr.CreateLedger(channelID, genesisBlock)
 	require.NoError(t, err)
 
-	retrievedchanConf, err := retrievePersistedChannelConfig(lgr)
+	retrievedchanConf, err := RetrievePersistedChannelConfig(lgr)
 	require.NoError(t, err)
 	require.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(retrievedchanConf))
 
@@ -102,7 +102,7 @@ func TestConfigTxUpdateChanConfig(t *testing.T) {
 	inMemoryChanConf := bs.ConfigtxValidator().ConfigProto()
 	require.Equal(t, proto.CompactTextString(chanConf), proto.CompactTextString(inMemoryChanConf))
 
-	retrievedchanConf, err = retrievePersistedChannelConfig(lgr)
+	retrievedchanConf, err = RetrievePersistedChannelConfig(lgr)
 	require.NoError(t, err)
 	require.Equal(t, proto.CompactTextString(bs.ConfigtxValidator().ConfigProto()), proto.CompactTextString(retrievedchanConf))
 
@@ -130,7 +130,7 @@ func TestGenesisBlockCreateLedger(t *testing.T) {
 
 	lgr, err := ledgerMgr.CreateLedger("testchain", b)
 	require.NoError(t, err)
-	chanConf, err := retrievePersistedChannelConfig(lgr)
+	chanConf, err := RetrievePersistedChannelConfig(lgr)
 	require.NoError(t, err)
 	require.NotNil(t, chanConf)
 	t.Logf("chanConf = %s", chanConf)
@@ -219,7 +219,7 @@ func (h *testHelper) constructChannelBundle(channelID string, ledger ledger.Peer
 		return nil, err
 	}
 
-	chanConf, err := retrievePersistedChannelConfig(ledger)
+	chanConf, err := RetrievePersistedChannelConfig(ledger)
 	if err != nil {
 		return nil, err
 	}
