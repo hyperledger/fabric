@@ -95,7 +95,7 @@ func TestCreds(t *testing.T) {
 	})
 	wg.Wait()
 	require.Contains(t, err.Error(), "protocol version not supported")
-	require.Contains(t, recorder.Messages()[0], "TLS handshake failed with error")
+	require.Contains(t, recorder.Messages()[1], "TLS handshake failed")
 }
 
 func TestNewTLSConfig(t *testing.T) {
