@@ -90,7 +90,7 @@ func (r *Repo) Save(baseName string, content []byte) error {
 	dest := r.baseToFilePath(baseName)
 
 	if _, err := os.Stat(dest); err == nil {
-		return errors.Errorf("file already exists at %s", dest)
+		return os.ErrExist
 	}
 
 	tmpFileName := fileName + r.transientFileMarker

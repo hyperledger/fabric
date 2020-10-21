@@ -7,11 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package fileledger
 
 import (
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/orderer/common/filerepo"
 )
 
 //go:generate counterfeiter -o mock/block_store_provider.go --fake-name BlockStoreProvider . blockStoreProvider
@@ -26,6 +29,7 @@ type fileLedgerFactory struct {
 	blkstorageProvider blockStoreProvider
 	ledgers            map[string]*FileLedger
 	mutex              sync.Mutex
+	removeFileRepo     *filerepo.Repo
 }
 
 // GetOrCreate gets an existing ledger (if it exists) or creates it
@@ -62,12 +66,20 @@ func (f *fileLedgerFactory) Remove(channelID string) error {
 		ledger.blockStore.Shutdown()
 	}
 
+	if err := f.removeFileRepo.Save(channelID, []byte{}); err != nil && err != os.ErrExist {
+		return err
+	}
+
 	err := f.blkstorageProvider.Drop(channelID)
 	if err != nil {
 		return err
 	}
 
 	delete(f.ledgers, channelID)
+
+	if err := f.removeFileRepo.Remove(channelID); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -97,8 +109,30 @@ func New(directory string, metricsProvider metrics.Provider) (blockledger.Factor
 	if err != nil {
 		return nil, err
 	}
-	return &fileLedgerFactory{
+
+	fileRepo, err := filerepo.New(filepath.Join(directory, "filerepo"), "remove")
+	if err != nil {
+		return nil, err
+	}
+
+	factory := &fileLedgerFactory{
 		blkstorageProvider: p,
 		ledgers:            map[string]*FileLedger{},
-	}, nil
+		removeFileRepo:     fileRepo,
+	}
+
+	files, err := factory.removeFileRepo.List()
+	if len(files) != 0 {
+		for _, fileName := range files {
+			channelID := factory.removeFileRepo.FileToBaseName(fileName)
+			err = factory.Remove(channelID)
+			if err != nil {
+				logger.Errorf("Failed to remove channel %s: %s", channelID, err.Error())
+				return nil, err
+			}
+			logger.Infof("Removed channel: %s", channelID)
+		}
+	}
+
+	return factory, nil
 }
