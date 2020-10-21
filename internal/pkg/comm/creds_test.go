@@ -94,8 +94,13 @@ func TestCreds(t *testing.T) {
 		MaxVersion: tls.VersionTLS10,
 	})
 	wg.Wait()
+<<<<<<< HEAD
 	assert.Contains(t, err.Error(), "protocol version not supported")
 	assert.Contains(t, recorder.Messages()[0], "TLS handshake failed with error")
+=======
+	require.Contains(t, err.Error(), "protocol version not supported")
+	require.Contains(t, recorder.Messages()[1], "TLS handshake failed")
+>>>>>>> 90733a0c2... Log TLS handshake duration (#2032)
 }
 
 func TestNewTLSConfig(t *testing.T) {
