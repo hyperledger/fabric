@@ -31,10 +31,14 @@ type clusterConsenter interface {
 	consensus.ClusterConsenter
 }
 
+var _ clusterConsenter // suppress "unused type" warning
+
 //go:generate counterfeiter -o mocks/time_after.go -fake-name TimeAfter . timeAfter
 type timeAfter interface {
 	After(d time.Duration) <-chan time.Time
 }
+
+var _ timeAfter // suppress "unused type" warning
 
 var testLogger = flogging.MustGetLogger("follower.test")
 
@@ -164,7 +168,8 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 
 	setup := func() {
 		globalSetup(t)
-		remoteBlockchain.fill(joinNum + 1)
+		remoteBlockchain.fill(joinNum)
+		remoteBlockchain.appendConfig(1)
 
 		ledgerResources.AppendCalls(localBlockchain.Append)
 
@@ -199,7 +204,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 2, pullerFactory.BlockPullerCallCount())
+		assert.Equal(t, 3, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 11, ledgerResources.AppendCallCount())
 		for i := uint64(0); i <= joinNum; i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
@@ -229,7 +234,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 2, pullerFactory.BlockPullerCallCount())
+		assert.Equal(t, 3, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 6, ledgerResources.AppendCallCount())
 		for i := uint64(0); i <= joinNum; i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
@@ -239,7 +244,8 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 	t.Run("no need to pull, member", func(t *testing.T) {
 		setup()
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
-		localBlockchain.fill(joinNum + 1) //No gap between the ledger and the join block
+		localBlockchain.fill(joinNum)
+		localBlockchain.appendConfig(1) //No gap between the ledger and the join block
 		assert.True(t, joinBlockAppRaft.Header.Number < ledgerResources.Height())
 
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
@@ -258,7 +264,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 1, pullerFactory.BlockPullerCallCount())
+		assert.Equal(t, 2, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 0, ledgerResources.AppendCallCount())
 
 		assert.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
@@ -297,7 +303,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		assert.Equal(t, types.ClusterRelationMember, cRel)
 		assert.Equal(t, types.StatusActive, status)
 
-		assert.Equal(t, 2, pullerFactory.BlockPullerCallCount())
+		assert.Equal(t, 3, pullerFactory.BlockPullerCallCount())
 		assert.Equal(t, 11, ledgerResources.AppendCallCount())
 		for i := uint64(0); i <= joinNum; i++ {
 			assert.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
@@ -597,14 +603,17 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 
 func TestFollowerPullPastJoin(t *testing.T) {
 	joinNum := uint64(10)
-	joinBlockAppRaft := makeConfigBlock(joinNum, []byte{}, 0)
-	require.NotNil(t, joinBlockAppRaft)
-
+	var joinBlockAppRaft *common.Block
 	var wgChain sync.WaitGroup
 
 	setup := func() {
 		globalSetup(t)
-		remoteBlockchain.fill(joinNum + 11)
+		remoteBlockchain.fill(joinNum)
+		remoteBlockchain.appendConfig(0)
+		joinBlockAppRaft = remoteBlockchain.Block(joinNum)
+		require.NotNil(t, joinBlockAppRaft)
+		remoteBlockchain.fill(10)
+
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
 
 		puller.PullBlockCalls(func(i uint64) *common.Block { return remoteBlockchain.Block(i) })
