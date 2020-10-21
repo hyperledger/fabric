@@ -447,9 +447,9 @@ func createSupport(t *testing.T, dir string, lsccMetadataManager *lsccMetadataMa
 	ccSup := ccsupport.NewDiscoverySupport(lsccMetadataManager)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, pe, lsccMetadataManager)
 
-	fakeBlockGetter := &mocks.ConfigBlockGetter{}
-	fakeBlockGetter.GetCurrConfigBlockReturns(createGenesisBlock(filepath.Join(dir, "crypto-config")))
-	confSup := config.NewDiscoverySupport(fakeBlockGetter)
+	fakeConfigGetter := &mocks.ConfigGetter{}
+	fakeConfigGetter.GetCurrConfigReturns(createChannelConfig(t, filepath.Join(dir, "crypto-config")))
+	confSup := config.NewDiscoverySupport(fakeConfigGetter)
 	return &support{
 		Support:         discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl),
 		mspWrapper:      mspManagerWrapper,
@@ -657,7 +657,7 @@ func generateChannelArtifacts() (string, error) {
 	return dir, nil
 }
 
-func createGenesisBlock(cryptoConfigDir string) *common.Block {
+func createChannelConfig(t *testing.T, cryptoConfigDir string) *common.Config {
 	appConfig := genesisconfig.Load("TwoOrgsChannel", "testdata")
 	ordererConfig := genesisconfig.Load("TwoOrgsOrdererGenesis", "testdata")
 	// Glue the two parts together, without loss of generality - to the application parts
@@ -677,8 +677,12 @@ func createGenesisBlock(cryptoConfigDir string) *common.Block {
 		org.MSPDir = filepath.Join(cryptoConfigDir, "peerOrganizations", fmt.Sprintf("org%d.example.com", i+1), "msp")
 	}
 
-	channelGenerator := encoder.New(channelConfig)
-	return channelGenerator.GenesisBlockForChannel("mychannel")
+	channelGroup, err := encoder.NewChannelGroup(channelConfig)
+	require.NoError(t, err)
+
+	return &common.Config{
+		ChannelGroup: channelGroup,
+	}
 }
 
 type testPeer struct {
