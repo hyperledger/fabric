@@ -137,10 +137,6 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
-			By("waiting for the leader to be ready")
-			memberRunners := []*ginkgomon.Runner{ordererRunners[0], ordererRunners[1]}
-			leader := findLeader(memberRunners)
-
 			submitTxn(orderer1, peer, network, members, 1, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
@@ -190,10 +186,6 @@ var _ = Describe("ChannelParticipation", func() {
 				return channelparticipation.ListOne(network, orderer3, "participation-trophy")
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoPT))
 
-			// make sure orderer3 finds the leader
-			newLeader := findLeader([]*ginkgomon.Runner{ordererRunners[2]})
-			Expect(newLeader).To(Equal(leader))
-
 			By("submitting transaction to orderer3 to ensure it is active")
 			submitTxn(orderer3, peer, network, orderers, 4, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
@@ -236,12 +228,6 @@ var _ = Describe("ChannelParticipation", func() {
 				ClusterRelation: "follower",
 				Height:          6,
 			}))
-
-			if leader == 1 {
-				By("waiting for the new leader to be ready")
-				newLeader := findLeader(ordererRunners[1:])
-				Expect(newLeader).NotTo(Equal(leader))
-			}
 
 			members = []*nwo.Orderer{orderer2, orderer3}
 			submitTxn(orderer2, peer, network, members, 6, channelparticipation.ChannelInfo{
@@ -330,10 +316,6 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
-			By("waiting for the leader to be ready")
-			memberRunners := []*ginkgomon.Runner{ordererRunners[0], ordererRunners[1]}
-			leader := findLeader(memberRunners)
-
 			submitTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
@@ -390,10 +372,6 @@ var _ = Describe("ChannelParticipation", func() {
 				return channelparticipation.ListOne(network, orderer3, "participation-trophy")
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoMember))
 
-			// make sure orderer3 finds the leader
-			newLeader := findLeader([]*ginkgomon.Runner{ordererRunners[2]})
-			Expect(newLeader).To(Equal(leader))
-
 			submitTxn(orderer3, peer, network, orderers, 5, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
@@ -431,10 +409,6 @@ var _ = Describe("ChannelParticipation", func() {
 				channelInfo := channelparticipation.ListOne(network, o, "participation-trophy")
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
-
-			By("waiting for the leader to be ready")
-			memberRunners := []*ginkgomon.Runner{ordererRunners[0], ordererRunners[1]}
-			leader := findLeader(memberRunners)
 
 			submitTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
@@ -499,10 +473,6 @@ var _ = Describe("ChannelParticipation", func() {
 				return channelparticipation.ListOne(network, orderer3, "participation-trophy")
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoPT))
 
-			// make sure orderer3 finds the leader
-			newLeader := findLeader([]*ginkgomon.Runner{ordererRunners[2]})
-			Expect(newLeader).To(Equal(leader))
-
 			submitTxn(orderer3, peer, network, orderers, 5, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
@@ -549,17 +519,13 @@ var _ = Describe("ChannelParticipation", func() {
 				startOrderer(o)
 			}
 
-			findLeader(ordererRunners)
-
 			By("creating an application channel using system channel")
 			network.CreateChannel("testchannel", orderer1, peer)
 
 			By("broadcasting envelopes to each orderer")
 			for _, o := range orderers {
 				env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
-				resp, err := ordererclient.Broadcast(network, o, env)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+				Eventually(broadcastTransactionFunc(network, o, env), network.EventuallyTimeout).Should(Equal(common.Status_SUCCESS))
 			}
 
 			By("enabling the channel participation API on each orderer")
@@ -569,10 +535,6 @@ var _ = Describe("ChannelParticipation", func() {
 				network.GenerateOrdererConfig(o)
 				restartOrderer(o, i)
 			}
-
-			By("finding the leader (once for system channel and once for application channel)")
-			findLeader(ordererRunners)
-			findLeader(ordererRunners)
 
 			By("listing the channels")
 			expectedChannelInfo := channelparticipation.ChannelInfo{
@@ -609,8 +571,6 @@ var _ = Describe("ChannelParticipation", func() {
 			for _, o := range orderers {
 				channelparticipation.Remove(network, o, "systemchannel")
 			}
-			By("finding the leader")
-			findLeader(ordererRunners)
 
 			By("listing the channels again")
 			for _, o := range orderers {
@@ -620,9 +580,7 @@ var _ = Describe("ChannelParticipation", func() {
 			By("broadcasting envelopes to each orderer")
 			for _, o := range orderers {
 				env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
-				resp, err := ordererclient.Broadcast(network, o, env)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+				Eventually(broadcastTransactionFunc(network, o, env), network.EventuallyTimeout).Should(Equal(common.Status_SUCCESS))
 			}
 
 			By("using the channel participation API to join a new channel")
@@ -641,40 +599,42 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
-			By("waiting for the leader to be ready")
-			findLeader(ordererRunners)
+			submitTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          2,
+			})
 
-			By("ensuring the channel is usable by submitting a transaction to each member")
-			env := CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello"))
-			for _, o := range orderers {
-				By("submitting transaction to " + o.Name)
-				expectedChannelInfoPT.Height++
-				resp, err := ordererclient.Broadcast(network, o, env)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.Status).To(Equal(common.Status_SUCCESS))
-				expectedBlockNumPerChannel := map[string]int{"participation-trophy": int(expectedChannelInfoPT.Height - 1)}
-				assertBlockReception(expectedBlockNumPerChannel, orderers, peer, network)
+			submitTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          3,
+			})
 
-				By("checking the channel height")
-				channelInfo := channelparticipation.ListOne(network, o, "participation-trophy")
-				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
-			}
+			submitTxn(orderer3, peer, network, orderers, 3, channelparticipation.ChannelInfo{
+				Name:            "participation-trophy",
+				URL:             "/participation/v1/channels/participation-trophy",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          4,
+			})
 		})
 	})
 })
 
-func submitTxn(o *nwo.Orderer, peer *nwo.Peer, network *nwo.Network, orderers []*nwo.Orderer,
-	expectedBlkNum int, expectedChannelInfo channelparticipation.ChannelInfo) {
+func submitTxn(o *nwo.Orderer, peer *nwo.Peer, n *nwo.Network, orderers []*nwo.Orderer, expectedBlkNum int, expectedChannelInfo channelparticipation.ChannelInfo) {
 	By("submitting a transaction to " + o.Name)
-	env := CreateBroadcastEnvelope(network, peer, expectedChannelInfo.Name, []byte("hello"))
-	resp, err := ordererclient.Broadcast(network, o, env)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+	env := CreateBroadcastEnvelope(n, peer, expectedChannelInfo.Name, []byte("hello"))
+	Eventually(broadcastTransactionFunc(n, o, env), n.EventuallyTimeout, time.Second).Should(Equal(common.Status_SUCCESS))
 	expectedBlockNumPerChannel := map[string]int{expectedChannelInfo.Name: expectedBlkNum}
-	assertBlockReception(expectedBlockNumPerChannel, orderers, peer, network)
+	assertBlockReception(expectedBlockNumPerChannel, orderers, peer, n)
 
-	By("checking the channel height")
-	channelInfo := channelparticipation.ListOne(network, o, expectedChannelInfo.Name)
+	By("checking the channel info on " + o.Name)
+	channelInfo := channelparticipation.ListOne(n, o, expectedChannelInfo.Name)
 	Expect(channelInfo).To(Equal(expectedChannelInfo))
 }
 
@@ -884,12 +844,18 @@ func computeSignSubmitConfigUpdate(n *nwo.Network, o *nwo.Orderer, p *nwo.Peer, 
 
 	currentBlockNumber := nwo.CurrentConfigBlockNumber(n, p, o, channel)
 
-	resp, err := ordererclient.Broadcast(n, o, configUpdateEnvelope)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+	Eventually(broadcastTransactionFunc(n, o, configUpdateEnvelope), n.EventuallyTimeout).Should(Equal(common.Status_SUCCESS))
 
 	ccb := func() uint64 { return nwo.CurrentConfigBlockNumber(n, p, o, channel) }
 	Eventually(ccb, n.EventuallyTimeout).Should(BeNumerically(">", currentBlockNumber))
+}
+
+func broadcastTransactionFunc(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) func() common.Status {
+	return func() common.Status {
+		resp, err := ordererclient.Broadcast(n, o, env)
+		Expect(err).NotTo(HaveOccurred())
+		return resp.Status
+	}
 }
 
 func consenterChannelConfig(n *nwo.Network, o *nwo.Orderer) orderer.Consenter {
