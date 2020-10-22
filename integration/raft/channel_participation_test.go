@@ -652,6 +652,36 @@ var _ = Describe("ChannelParticipation", func() {
 				channelparticipation.List(network, o, []string{"testchannel"}, "systemchannel")
 			}
 
+			By("removing orderer3 from the consenters set")
+			channelConfig := nwo.GetConfig(network, peer, orderer2, "testchannel")
+			c := configtx.New(channelConfig)
+			err := c.Orderer().RemoveConsenter(consenterChannelConfig(network, orderer3))
+			Expect(err).NotTo(HaveOccurred())
+			computeSignSubmitConfigUpdate(network, orderer2, peer, c, "testchannel")
+
+			By("ensuring orderer3 transitions to inactive/config-tracker")
+			Eventually(func() channelparticipation.ChannelInfo {
+				return channelparticipation.ListOne(network, orderer3, "testchannel")
+			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
+				Name:            "testchannel",
+				URL:             "/participation/v1/channels/testchannel",
+				Status:          "inactive",
+				ClusterRelation: "config-tracker",
+				Height:          5,
+			}))
+
+			By("restarting orderer3 to ensure it still reports inactive/config-tracker")
+			restartOrderer(orderer3, 2)
+			Eventually(func() channelparticipation.ChannelInfo {
+				return channelparticipation.ListOne(network, orderer3, "testchannel")
+			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
+				Name:            "testchannel",
+				URL:             "/participation/v1/channels/testchannel",
+				Status:          "inactive",
+				ClusterRelation: "config-tracker",
+				Height:          5,
+			}))
+
 			By("attempting to join a channel when the system channel is present")
 			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
 			channelparticipationJoinFailure(network, orderers[0], "participation-trophy", genesisBlock, http.StatusMethodNotAllowed, "cannot join: system channel exists")
@@ -660,9 +690,9 @@ var _ = Describe("ChannelParticipation", func() {
 			channelparticipationRemoveFailure(network, orderers[0], "testchannel", http.StatusMethodNotAllowed, "cannot remove: system channel exists")
 
 			By("putting the system channel into maintenance mode")
-			channelConfig := nwo.GetConfig(network, peer, orderer2, "systemchannel")
-			c := configtx.New(channelConfig)
-			err := c.Orderer().SetConsensusState(orderer.ConsensusStateMaintenance)
+			channelConfig = nwo.GetConfig(network, peer, orderer2, "systemchannel")
+			c = configtx.New(channelConfig)
+			err = c.Orderer().SetConsensusState(orderer.ConsensusStateMaintenance)
 			Expect(err).NotTo(HaveOccurred())
 			computeSignSubmitConfigUpdate(network, orderer2, peer, c, "systemchannel")
 
@@ -672,15 +702,27 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			By("listing the channels again")
-			for _, o := range orderers {
+			for _, o := range orderers[:1] {
 				channelparticipation.List(network, o, []string{"testchannel"})
 			}
+			channelparticipation.List(network, orderer3, []string{})
 
-			By("broadcasting envelopes to each orderer")
-			for _, o := range orderers {
-				env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
-				Eventually(broadcastTransactionFunc(network, o, env), network.EventuallyTimeout).Should(Equal(common.Status_SUCCESS))
-			}
+			By("broadcasting envelopes to each active orderer")
+			submitTxn(orderer1, peer, network, orderers[:1], 5, channelparticipation.ChannelInfo{
+				Name:            "testchannel",
+				URL:             "/participation/v1/channels/testchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          6,
+			})
+
+			submitTxn(orderer2, peer, network, orderers[:1], 6, channelparticipation.ChannelInfo{
+				Name:            "testchannel",
+				URL:             "/participation/v1/channels/testchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          7,
+			})
 
 			By("using the channel participation API to join a new channel")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
