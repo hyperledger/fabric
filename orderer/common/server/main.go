@@ -113,25 +113,30 @@ func Main() {
 	}
 
 	var bootstrapBlock *cb.Block
-	if conf.General.BootstrapMethod == "file" {
+	switch conf.General.BootstrapMethod {
+	case "file":
+		if len(lf.ChannelIDs()) > 0 {
+			logger.Info("Not bootstrapping the system channel because of existing channels")
+			break
+		}
+
 		bootstrapBlock = file.New(conf.General.BootstrapFile).GenesisBlock()
 		if err := onboarding.ValidateBootstrapBlock(bootstrapBlock, cryptoProvider); err != nil {
 			logger.Panicf("Failed validating bootstrap block: %v", err)
 		}
 
-		// Are we bootstrapping with a genesis block (i.e. bootstrap block number = 0)?
-		// If yes, generate the system channel with a genesis block.
-		if len(lf.ChannelIDs()) == 0 && bootstrapBlock.Header.Number == 0 {
-			logger.Info("Bootstrapping the system channel")
-			initializeBootstrapChannel(bootstrapBlock, lf)
-		} else if len(lf.ChannelIDs()) > 0 {
-			logger.Info("Not bootstrapping the system channel because of existing channels")
-		} else {
+		if bootstrapBlock.Header.Number > 0 {
 			logger.Infof("Not bootstrapping the system channel because the bootstrap block number is %d (>0), replication is needed", bootstrapBlock.Header.Number)
+			break
 		}
-	} else if conf.General.BootstrapMethod == "none" {
+
+		// bootstrapping with a genesis block (i.e. bootstrap block number = 0)
+		// generate the system channel with a genesis block.
+		logger.Info("Bootstrapping the system channel")
+		initializeBootstrapChannel(bootstrapBlock, lf)
+	case "none":
 		bootstrapBlock = initSystemChannelWithJoinBlock(conf, cryptoProvider, lf)
-	} else {
+	default:
 		logger.Panicf("Unknown bootstrap method: %s", conf.General.BootstrapMethod)
 	}
 
@@ -179,19 +184,23 @@ func Main() {
 		// If we have a separate gRPC server for the cluster,
 		// we need to update its TLS CA certificate pool.
 		serversToUpdate = append(serversToUpdate, clusterGRPCServer)
-	}
 
-	// If the orderer has a system channel and is of cluster type, it may have to replicate first.
-	if clusterBootBlock != nil && isClusterType {
-		// When we are bootstrapping with a clusterBootBlock with number >0, replication will be performed.
-		// Only clusters that are equipped with a recent config block (number i.e. >0) can replicate.
-		// This will replicate all channels if the clusterBootBlock number > system-channel height (i.e. there is a gap in the ledger).
-		repInitiator = onboarding.NewReplicationInitiator(lf, clusterBootBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
-		repInitiator.ReplicateIfNeeded(clusterBootBlock)
-		// With BootstrapMethod == "none", the bootstrapBlock comes from a join-block. If it exists, we need to remove
-		// the system channel join-block from the filerepo.
-		if conf.General.BootstrapMethod == "none" && bootstrapBlock != nil {
-			discardSystemChannelJoinBlock(conf, bootstrapBlock)
+		// If the orderer has a system channel and is of cluster type, it may have
+		// to replicate first.
+		if clusterBootBlock != nil {
+			// When we are bootstrapping with a clusterBootBlock with number >0,
+			// replication will be performed. Only clusters that are equipped with
+			// a recent config block (number i.e. >0) can replicate. This will
+			// replicate all channels if the clusterBootBlock number > system-channel
+			// height (i.e. there is a gap in the ledger).
+			repInitiator = onboarding.NewReplicationInitiator(lf, clusterBootBlock, conf, clusterClientConfig.SecOpts, signer, cryptoProvider)
+			repInitiator.ReplicateIfNeeded(clusterBootBlock)
+			// With BootstrapMethod == "none", the bootstrapBlock comes from a
+			// join-block. If it exists, we need to remove the system channel
+			// join-block from the filerepo.
+			if conf.General.BootstrapMethod == "none" && bootstrapBlock != nil {
+				discardSystemChannelJoinBlock(conf, bootstrapBlock)
+			}
 		}
 	}
 
@@ -327,8 +336,8 @@ func initSystemChannelWithJoinBlock(
 	}
 
 	if bootstrapBlock == nil {
-		logger.Info("No join-block was found for the system channel")
-		return bootstrapBlock
+		logger.Debug("No join-block was found for the system channel")
+		return nil
 	}
 
 	if bootstrapBlock.Header.Number == 0 {
@@ -339,10 +348,7 @@ func initSystemChannelWithJoinBlock(
 	return bootstrapBlock
 }
 
-func discardSystemChannelJoinBlock(
-	config *localconfig.TopLevel,
-	bootstrapBlock *cb.Block,
-) {
+func discardSystemChannelJoinBlock(config *localconfig.TopLevel, bootstrapBlock *cb.Block) {
 	if !config.ChannelParticipation.Enabled {
 		return
 	}
@@ -377,8 +383,7 @@ func reuseListener(conf *localconfig.TopLevel) bool {
 
 	// Else, one of the above is defined, so all 4 properties should be defined.
 	if clusterConf.ListenPort == 0 || clusterConf.ServerCertificate == "" || clusterConf.ListenAddress == "" || clusterConf.ServerPrivateKey == "" {
-		logger.Panic("Options: General.Cluster.ListenPort, General.Cluster.ListenAddress, General.Cluster.ServerCertificate," +
-			" General.Cluster.ServerPrivateKey, should be defined altogether.")
+		logger.Panic("Options: General.Cluster.ListenPort, General.Cluster.ListenAddress, General.Cluster.ServerCertificate, General.Cluster.ServerPrivateKey, should be defined altogether.")
 	}
 
 	return false
