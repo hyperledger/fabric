@@ -46,13 +46,14 @@ func ledgerConfig() *ledger.Config {
 		deprioritizedDataReconcilerInterval = viper.GetDuration("ledger.pvtdataStore.deprioritizedDataReconcilerInterval")
 	}
 
-	rootFSPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "ledgersData")
+	fsPath := coreconfig.GetPath("peer.fileSystemPath")
+	ledgersDataRootDir := filepath.Join(fsPath, "ledgersData")
 	snapshotsRootDir := viper.GetString("ledger.snapshots.rootDir")
 	if snapshotsRootDir == "" {
-		snapshotsRootDir = filepath.Join(rootFSPath, "snapshots")
+		snapshotsRootDir = filepath.Join(fsPath, "snapshots")
 	}
 	conf := &ledger.Config{
-		RootFSPath: rootFSPath,
+		RootFSPath: ledgersDataRootDir,
 		StateDBConfig: &ledger.StateDBConfig{
 			StateDatabase: viper.GetString("ledger.state.stateDatabase"),
 			CouchDB:       &ledger.CouchDBConfig{},
@@ -83,7 +84,7 @@ func ledgerConfig() *ledger.Config {
 			MaxBatchUpdateSize:      maxBatchUpdateSize,
 			WarmIndexesAfterNBlocks: warmAfterNBlocks,
 			CreateGlobalChangesDB:   viper.GetBool("ledger.state.couchDBConfig.createGlobalChangesDB"),
-			RedoLogPath:             filepath.Join(rootFSPath, "couchdbRedoLogs"),
+			RedoLogPath:             filepath.Join(ledgersDataRootDir, "couchdbRedoLogs"),
 			UserCacheSizeMBs:        viper.GetInt("ledger.state.couchDBConfig.cacheSize"),
 		}
 	}
