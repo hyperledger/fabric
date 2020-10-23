@@ -196,7 +196,7 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 
 		By("verifying snapshot completed on org2peer1")
 		verifyNoPendingSnapshotRequest(setup.network, org2peer1, testchannelID)
-		snapshotDir := filepath.Join(setup.network.PeerLedgerDir(org2peer1), "snapshots/completed", testchannelID, strconv.Itoa(blockNumForNextSnapshot))
+		snapshotDir := filepath.Join(setup.network.PeerDir(org2peer1), "filesystem", "snapshots", "completed", testchannelID, strconv.Itoa(blockNumForNextSnapshot))
 
 		// test 6: bootstrap a peer in a different org from the new snapshot
 		By("starting a peer (org1peer1) in existing org1 (couchdb)")
@@ -439,8 +439,8 @@ func generateAndCompareSnapshots(n *nwo.Network, peer1, peer2 *nwo.Peer, blockNu
 	verifyNoPendingSnapshotRequest(n, peer2, testchannelID)
 
 	By("comparing snapshot metadata generated on different peers for the same block number")
-	snapshotDir1 := filepath.Join(n.PeerLedgerDir(peer1), "snapshots/completed", testchannelID, strconv.Itoa(blockNumForSnapshot))
-	snapshotDir2 := filepath.Join(n.PeerLedgerDir(peer2), "snapshots/completed", testchannelID, strconv.Itoa(blockNumForSnapshot))
+	snapshotDir1 := filepath.Join(n.PeerDir(peer1), "filesystem", "snapshots", "completed", testchannelID, strconv.Itoa(blockNumForSnapshot))
+	snapshotDir2 := filepath.Join(n.PeerDir(peer2), "filesystem", "snapshots", "completed", testchannelID, strconv.Itoa(blockNumForSnapshot))
 	compareSnapshotMetadata(snapshotDir1, snapshotDir2)
 
 	return snapshotDir1, snapshotDir2
