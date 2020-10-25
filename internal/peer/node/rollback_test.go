@@ -26,7 +26,7 @@ func TestRollbackCmd(t *testing.T) {
 		args := []string{"-c", "ch1", "-b", "10"}
 		cmd.SetArgs(args)
 		err := cmd.Execute()
-		expectedErr := "ledgerID [ch1] does not exist"
-		require.Equal(t, expectedErr, err.Error())
+		// this should return an error as no ledger has been set up
+		require.Contains(t, err.Error(), "error while checking if any ledger has been bootstrapped from snapshot")
 	})
 }

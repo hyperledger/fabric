@@ -21,5 +21,5 @@ func TestUpgradeDBsCmd(t *testing.T) {
 	defer os.RemoveAll(testPath)
 
 	cmd := upgradeDBsCmd()
-	require.NoError(t, cmd.Execute())
+	require.EqualError(t, cmd.Execute(), "the data format is already up to date. No upgrade is required")
 }

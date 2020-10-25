@@ -9,7 +9,6 @@ package tests
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
@@ -161,52 +160,12 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 	})
 }
 
-func TestRollbackFailIfLedgerBootstrappedFromSnapshot(t *testing.T) {
+func TestRollbackKVLedgerErrorCases(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-
-	// populate ledgers with sample data
-	ledgerID := "testLedgerFromSnapshot"
-	dataHelper := newSampleDataHelper(t)
-	h := env.newTestHelperCreateLgr(ledgerID, t)
-	dataHelper.populateLedger(h)
-	dataHelper.verifyLedgerContent(h)
-	bcInfo, err := h.lgr.GetBlockchainInfo()
-	require.NoError(t, err)
-
-	// create a sanapshot
-	blockNum := bcInfo.Height - 1
-	require.NoError(t, h.lgr.SubmitSnapshotRequest(blockNum))
-	// wait until snapshot is generated
-	snapshotGenerated := func() bool {
-		requests, err := h.lgr.PendingSnapshotRequests()
-		require.NoError(t, err)
-		return len(requests) == 0
-	}
-	require.Eventually(t, snapshotGenerated, time.Minute, 100*time.Millisecond)
-	snapshotDir := kvledger.SnapshotDirForLedgerBlockNum(env.initializer.Config.SnapshotsConfig.RootDir, ledgerID, blockNum)
 	env.closeLedgerMgmt()
 
-	// bootstrap a ledger from the snapshot
-	env2 := newEnv(t)
-	defer env2.cleanup()
-	env2.initLedgerMgmt()
-
-	callbackCounter := 0
-	callback := func(l ledger.PeerLedger, cid string) { callbackCounter++ }
-	require.NoError(t, env2.ledgerMgr.CreateLedgerFromSnapshot(snapshotDir, callback))
-
-	// wait until ledger creation is done
-	ledgerCreated := func() bool {
-		status := env2.ledgerMgr.JoinBySnapshotStatus()
-		return !status.InProgress && status.BootstrappingSnapshotDir == ""
-	}
-	require.Eventually(t, ledgerCreated, time.Minute, 100*time.Millisecond)
-	require.Equal(t, 1, callbackCounter)
-	env2.closeLedgerMgmt()
-
-	// rollback the ledger should fail
-	err = kvledger.RollbackKVLedger(env2.initializer.Config.RootFSPath, ledgerID, 1)
-	require.EqualError(t, err, "cannot rollback channel [testLedgerFromSnapshot] because it was bootstrapped from a snapshot")
+	err := kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "non-existing-ledger", 4)
+	require.EqualError(t, err, "ledgerID [non-existing-ledger] does not exist")
 }
