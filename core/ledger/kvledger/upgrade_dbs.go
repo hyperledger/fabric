@@ -30,6 +30,24 @@ func UpgradeDBs(config *ledger.Config) error {
 
 	logger.Infof("Ledger data folder from config = [%s]", rootFSPath)
 
+	dbPath := LedgerProviderPath(rootFSPath)
+	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
+	db.Open()
+	defer db.Close()
+	idStore := &idStore{db, dbPath}
+
+	// Check upfront whether we should upgrade the data format before dropping databases.
+	// If someone mistakenly executes the upgrade command in a peer that has some channels that
+	// are bootstrapped from a snapshot, the peer will not be able to start as the data for those channels
+	// cannot be recovered
+	isEligible, err := idStore.checkUpgradeEligibility()
+	if err != nil {
+		return errors.WithMessage(err, "error while checking whether upgrade is required")
+	}
+	if !isEligible {
+		return errors.New("the data format is already up to date. No upgrade is required")
+	}
+
 	if config.StateDBConfig.StateDatabase == ledger.CouchDB {
 		if err := statecouchdb.DropApplicationDBs(config.StateDBConfig.CouchDB); err != nil {
 			return err
@@ -42,10 +60,5 @@ func UpgradeDBs(config *ledger.Config) error {
 		return err
 	}
 
-	dbPath := LedgerProviderPath(rootFSPath)
-	db := leveldbhelper.CreateDB(&leveldbhelper.Conf{DBPath: dbPath})
-	db.Open()
-	defer db.Close()
-	idStore := &idStore{db, dbPath}
 	return idStore.upgradeFormat()
 }

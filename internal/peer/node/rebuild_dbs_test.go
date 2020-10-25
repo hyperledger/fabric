@@ -7,15 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package node
 
 import (
-	"io/ioutil"
 	"os"
-	"path"
-	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/config"
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
-	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -26,33 +20,9 @@ func TestRebuildDBsCmd(t *testing.T) {
 	viper.Set("peer.fileSystemPath", testPath)
 	defer os.RemoveAll(testPath)
 
-	viper.Set("logging.ledger", "INFO")
-	rootFSPath := filepath.Join(config.GetPath("peer.fileSystemPath"), "ledgersData")
-	bookkeeperDBPath := kvledger.BookkeeperDBPath(rootFSPath)
-	configHistoryDBPath := kvledger.ConfigHistoryDBPath(rootFSPath)
-	historyDBPath := kvledger.HistoryDBPath(rootFSPath)
-	stateDBPath := kvledger.StateDBPath(rootFSPath)
-	blockstoreIndexDBPath := filepath.Join(kvledger.BlockStorePath(rootFSPath), "index")
-
-	dbPaths := []string{bookkeeperDBPath, configHistoryDBPath, historyDBPath, stateDBPath, blockstoreIndexDBPath}
-	for _, dbPath := range dbPaths {
-		require.NoError(t, os.MkdirAll(dbPath, 0755))
-		require.NoError(t, ioutil.WriteFile(path.Join(dbPath, "dummyfile.txt"), []byte("this is a dummy file for test"), 0644))
-	}
-
-	// check dbs exist before upgrade
-	for _, dbPath := range dbPaths {
-		_, err := os.Stat(dbPath)
-		require.False(t, os.IsNotExist(err))
-	}
-
+	// this should return an error as no ledger has been set up
 	cmd := rebuildDBsCmd()
-	require.NoError(t, cmd.Execute())
-
-	// check dbs do not exist after upgrade
-	for _, dbPath := range dbPaths {
-		empty, err := fileutil.DirEmpty(dbPath)
-		require.NoError(t, err)
-		require.True(t, empty)
-	}
+	err := cmd.Execute()
+	// this should return an error as no ledger has been set up
+	require.Contains(t, err.Error(), "error while checking if any ledger has been bootstrapped from snapshot")
 }

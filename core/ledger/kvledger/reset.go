@@ -28,7 +28,7 @@ func ResetAllKVLedgers(rootFSPath string) error {
 		return err
 	}
 	if len(ledgerIDs) > 0 {
-		return errors.Errorf("cannot reset channels because at least one channel was bootstrapped from a snapshot: %+v", ledgerIDs)
+		return errors.Errorf("cannot reset channels because the peer contains channel(s) %s that were bootstrapped from snapshot", ledgerIDs)
 	}
 
 	logger.Info("Resetting all channel ledgers to genesis block")
