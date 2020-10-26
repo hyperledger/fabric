@@ -6,6 +6,7 @@ Operations Guides
 
    orderer_deploy
    msp
+   peer_ledger_snapshot
    hsm.md
    configtx
    endorsement-policies
