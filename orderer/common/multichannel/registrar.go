@@ -118,7 +118,7 @@ func NewRegistrar(
 // InitJoinBlockFileRepo initialize the channel participation API joinblock file repo. This creates
 // the fileRepoDir on the filesystem if it does not already exist.
 func InitJoinBlockFileRepo(config *localconfig.TopLevel) (*filerepo.Repo, error) {
-	fileRepoDir := filepath.Join(config.FileLedger.Location, "filerepo")
+	fileRepoDir := filepath.Join(config.FileLedger.Location, "pendingops")
 	logger.Infof("Channel Participation API enabled, registrar initializing with file repo %s", fileRepoDir)
 
 	joinBlockFileRepo, err := filerepo.New(fileRepoDir, "joinblock")

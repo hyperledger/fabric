@@ -110,7 +110,7 @@ func New(directory string, metricsProvider metrics.Provider) (blockledger.Factor
 		return nil, err
 	}
 
-	fileRepo, err := filerepo.New(filepath.Join(directory, "filerepo"), "remove")
+	fileRepo, err := filerepo.New(filepath.Join(directory, "pendingops"), "remove")
 	if err != nil {
 		return nil, err
 	}
