@@ -61,7 +61,7 @@ func TestBlockStoreProviderErrors(t *testing.T) {
 		dir, err := ioutil.TempDir("", "fileledger")
 		require.NoError(t, err, "Error creating temp dir: %s", err)
 		defer os.RemoveAll(dir)
-		fileRepo, err := filerepo.New(filepath.Join(dir, "filerepo"), "remove")
+		fileRepo, err := filerepo.New(filepath.Join(dir, "pendingops"), "remove")
 		require.NoError(t, err, "Error creating temp file repo: %s", err)
 
 		t.Run("ledger doesn't exist", func(t *testing.T) {
@@ -117,7 +117,7 @@ func TestMultiReinitialization(t *testing.T) {
 	require.Equal(t, 3, len(f.ChannelIDs()), "Expected channel to be recovered")
 	f.Close()
 
-	bar2FileRepoDir := filepath.Join(dir, "filerepo", "remove", "bar2.remove")
+	bar2FileRepoDir := filepath.Join(dir, "pendingops", "remove", "bar2.remove")
 	_, err = os.Create(bar2FileRepoDir)
 	require.NoError(t, err, "Error creating temp file: %s", err)
 
@@ -153,14 +153,14 @@ func TestNewErrors(t *testing.T) {
 		require.NoError(t, err, "Error creating temp dir: %s", err)
 		defer os.RemoveAll(dir)
 
-		fileRepoDir := filepath.Join(dir, "filerepo", "remove")
+		fileRepoDir := filepath.Join(dir, "pendingops", "remove")
 		err = os.MkdirAll(fileRepoDir, 0700)
 		require.NoError(t, err, "Error creating temp dir: %s", err)
 		removeFile := filepath.Join(fileRepoDir, "rojo.remove")
 		_, err = os.Create(removeFile)
 		require.NoError(t, err, "Error creating temp file: %s", err)
 		err = os.Chmod(removeFile, 0444)
-		err = os.Chmod(filepath.Join(dir, "filerepo", "remove"), 0444)
+		err = os.Chmod(filepath.Join(dir, "pendingops", "remove"), 0444)
 		require.NoError(t, err, "Error changing permissions of temp file: %s", err)
 
 		_, err = New(dir, metricsProvider)
@@ -172,14 +172,14 @@ func TestNewErrors(t *testing.T) {
 		require.NoError(t, err, "Error creating temp dir: %s", err)
 		defer os.RemoveAll(dir)
 
-		fileRepoDir := filepath.Join(dir, "filerepo", "remove")
+		fileRepoDir := filepath.Join(dir, "pendingops", "remove")
 		err = os.MkdirAll(fileRepoDir, 0777)
 		require.NoError(t, err, "Error creating temp dir: %s", err)
 		removeFile := filepath.Join(fileRepoDir, "rojo.remove")
 		_, err = os.Create(removeFile)
 		require.NoError(t, err, "Error creating temp file: %s", err)
 		err = os.Chmod(removeFile, 0444)
-		err = os.Chmod(filepath.Join(dir, "filerepo", "remove"), 0544)
+		err = os.Chmod(filepath.Join(dir, "pendingops", "remove"), 0544)
 		require.NoError(t, err, "Error changing permissions of temp file: %s", err)
 
 		_, err = New(dir, metricsProvider)
@@ -193,7 +193,7 @@ func TestRemove(t *testing.T) {
 	require.NoError(t, err, "Error creating temp dir: %s", err)
 	defer os.RemoveAll(dir)
 
-	fileRepo, err := filerepo.New(filepath.Join(dir, "filerepo"), "remove")
+	fileRepo, err := filerepo.New(filepath.Join(dir, "pendingops"), "remove")
 	require.NoError(t, err, "Error creating temp file repo: %s", err)
 	f := &fileLedgerFactory{
 		blkstorageProvider: mockBlockStore,
@@ -203,7 +203,7 @@ func TestRemove(t *testing.T) {
 	defer f.Close()
 
 	t.Run("success", func(t *testing.T) {
-		dest := filepath.Join(dir, "filerepo", "remove", "foo.remove")
+		dest := filepath.Join(dir, "pendingops", "remove", "foo.remove")
 		mockBlockStore.DropCalls(func(string) error {
 			_, err = os.Stat(dest)
 			require.NoError(t, err, "Expected foo.remove to exist")
@@ -222,15 +222,15 @@ func TestRemove(t *testing.T) {
 		err = f.Remove("foo")
 		require.EqualError(t, err, "oogie")
 
-		dest := filepath.Join(dir, "filerepo", "remove", "foo.remove")
+		dest := filepath.Join(dir, "pendingops", "remove", "foo.remove")
 		_, err = os.Stat(dest)
 		require.NoError(t, err, "Expected foo.remove to exist")
 	})
 
-	t.Run("saving to file repo fails", func(t *testing.T) {
+	t.Run("saving to pending ops fails", func(t *testing.T) {
 		os.RemoveAll(dir)
 		mockBlockStore.DropReturns(nil)
 		err = f.Remove("foo")
-		require.EqualError(t, err, fmt.Sprintf("error while creating file:%s/filerepo/remove/foo.remove~: open %s/filerepo/remove/foo.remove~: no such file or directory", dir, dir))
+		require.EqualError(t, err, fmt.Sprintf("error while creating file:%s/pendingops/remove/foo.remove~: open %s/pendingops/remove/foo.remove~: no such file or directory", dir, dir))
 	})
 }

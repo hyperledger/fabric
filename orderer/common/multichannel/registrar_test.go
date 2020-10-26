@@ -552,7 +552,7 @@ func TestNewRegistrarWithFileRepo(t *testing.T) {
 		}, "Should not panic when file repo dir exists and is read writable")
 		require.NotNil(t, manager)
 		require.NotNil(t, manager.joinBlockFileRepo)
-		require.DirExists(t, filepath.Join(tmpdir, "filerepo"))
+		require.DirExists(t, filepath.Join(tmpdir, "pendingops"))
 
 		list := manager.ChannelList()
 		require.Nil(t, list.SystemChannel)
@@ -574,7 +574,7 @@ type joinBlock struct {
 }
 
 func createJoinBlockFileRepoDirWithBlocks(t *testing.T, tmpdir string, joinBlocks ...*joinBlock) {
-	joinBlockRepoPath := filepath.Join(tmpdir, "filerepo", "joinblock")
+	joinBlockRepoPath := filepath.Join(tmpdir, "pendingops", "joinblock")
 	err := os.MkdirAll(joinBlockRepoPath, 0755)
 	require.NoError(t, err)
 	for _, jb := range joinBlocks {
@@ -950,7 +950,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		info, err := registrar.JoinChannel("some-app-channel", &cb.Block{}, true)
 		require.EqualError(t, err, "system channel exists")
 		require.Equal(t, types.ChannelInfo{}, info)
-		joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "some-app-channel.joinblock")
+		joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "some-app-channel.joinblock")
 		_, err = os.Stat(joinBlockPath)
 		require.True(t, os.IsNotExist(err))
 	})
@@ -975,7 +975,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		info, err := registrar.JoinChannel("my-raft-channel", &cb.Block{}, true)
 		require.EqualError(t, err, "channel already exists")
 		require.Equal(t, types.ChannelInfo{}, info)
-		joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "my-channel.joinblock")
+		joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "my-channel.joinblock")
 		_, err = os.Stat(joinBlockPath)
 		require.True(t, os.IsNotExist(err))
 	})
@@ -1000,7 +1000,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		info, err := registrar.JoinChannel("sys-channel", &cb.Block{}, false)
 		require.EqualError(t, err, "application channels already exist")
 		require.Equal(t, types.ChannelInfo{}, info)
-		joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "sys-channel.joinblock")
+		joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "sys-channel.joinblock")
 		_, err = os.Stat(joinBlockPath)
 		require.True(t, os.IsNotExist(err))
 	})
@@ -1027,7 +1027,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 			// After join failure, check that everything has been cleaned up
 			require.Empty(t, ledgerFactory.ChannelIDs())
-			joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "my-raft-channel.joinblock")
+			joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "my-raft-channel.joinblock")
 			_, err = os.Stat(joinBlockPath)
 			require.True(t, os.IsNotExist(err))
 			require.Nil(t, registrar.GetChain("my-raft-channel"))
@@ -1050,7 +1050,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 			// After join failure, check that everything has been cleaned up
 			require.Empty(t, ledgerFactory.ChannelIDs())
-			joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "my-raft-channel.joinblock")
+			joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "my-raft-channel.joinblock")
 			_, err = os.Stat(joinBlockPath)
 			require.True(t, os.IsNotExist(err))
 			require.Nil(t, registrar.GetChain("my-raft-channel"))
@@ -1075,7 +1075,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 			require.Equal(t, 1, len(channelList.Channels))
 			require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
 			require.Nil(t, channelList.SystemChannel)
-			joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "my-raft-channel.joinblock")
+			joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "my-raft-channel.joinblock")
 			_, err = os.Stat(joinBlockPath)
 			require.True(t, os.IsNotExist(err))
 		})
@@ -1171,7 +1171,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		fChain.Halt()
 
 		// join-block exists before switching from follower to member
-		joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "my-raft-channel.joinblock")
+		joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "my-raft-channel.joinblock")
 		_, err = os.Stat(joinBlockPath)
 		require.NoError(t, err)
 
@@ -1270,7 +1270,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		require.NotNil(t, cs)
 
 		// join-block exists
-		joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "sys-raft-channel.joinblock")
+		joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "sys-raft-channel.joinblock")
 		_, err = os.Stat(joinBlockPath)
 		require.NoError(t, err)
 
@@ -1307,7 +1307,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		require.NotNil(t, cs)
 
 		// join-block exists
-		joinBlockPath := filepath.Join(tmpdir, "filerepo", "joinblock", "sys-raft-channel.joinblock")
+		joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "sys-raft-channel.joinblock")
 		_, err = os.Stat(joinBlockPath)
 		require.NoError(t, err)
 

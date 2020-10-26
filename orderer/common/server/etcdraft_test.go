@@ -160,7 +160,7 @@ func testEtcdRaftOSNJoinSysChan(gt *GomegaWithT, configPath, configtxgen, ordere
 	genesisBlockPath := generateBootstrapBlock(gt, configPath, configtxgen, "system", "SampleEtcdRaftSystemChannel")
 	genesisBlockBytes, err := ioutil.ReadFile(genesisBlockPath)
 	gt.Expect(err).NotTo(HaveOccurred())
-	fileRepoDir := filepath.Join(tempDir, "ledger", "filerepo", "joinblock")
+	fileRepoDir := filepath.Join(tempDir, "ledger", "pendingops", "joinblock")
 	joinBlockPath := filepath.Join(fileRepoDir, "system.joinblock")
 	err = ioutil.WriteFile(joinBlockPath, genesisBlockBytes, 0644)
 	gt.Expect(err).NotTo(HaveOccurred())
