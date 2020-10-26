@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
+	"github.com/hyperledger/fabric/common/fabhttp"
 	"github.com/hyperledger/fabric/common/flogging"
 	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
 	"github.com/hyperledger/fabric/common/grpclogging"
@@ -1221,8 +1222,17 @@ func initGossipService(
 
 func newOperationsSystem(coreConfig *peer.Config) *operations.System {
 	return operations.NewSystem(operations.Options{
-		Logger:        flogging.MustGetLogger("peer.operations"),
-		ListenAddress: coreConfig.OperationsListenAddress,
+		Options: fabhttp.Options{
+			Logger:        flogging.MustGetLogger("peer.operations"),
+			ListenAddress: coreConfig.OperationsListenAddress,
+			TLS: fabhttp.TLS{
+				Enabled:            coreConfig.OperationsTLSEnabled,
+				CertFile:           coreConfig.OperationsTLSCertFile,
+				KeyFile:            coreConfig.OperationsTLSKeyFile,
+				ClientCertRequired: coreConfig.OperationsTLSClientAuthRequired,
+				ClientCACertFiles:  coreConfig.OperationsTLSClientRootCAs,
+			},
+		},
 		Metrics: operations.MetricsOptions{
 			Provider: coreConfig.MetricsProvider,
 			Statsd: &operations.Statsd{
@@ -1231,13 +1241,6 @@ func newOperationsSystem(coreConfig *peer.Config) *operations.System {
 				WriteInterval: coreConfig.StatsdWriteInterval,
 				Prefix:        coreConfig.StatsdPrefix,
 			},
-		},
-		TLS: operations.TLS{
-			Enabled:            coreConfig.OperationsTLSEnabled,
-			CertFile:           coreConfig.OperationsTLSCertFile,
-			KeyFile:            coreConfig.OperationsTLSKeyFile,
-			ClientCertRequired: coreConfig.OperationsTLSClientAuthRequired,
-			ClientCACertFiles:  coreConfig.OperationsTLSClientRootCAs,
 		},
 		Version: metadata.Version,
 	})

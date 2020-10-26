@@ -28,6 +28,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/hyperledger/fabric/common/fabhttp"
 	"github.com/hyperledger/fabric/common/flogging"
 	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
 	"github.com/hyperledger/fabric/common/grpclogging"
@@ -95,6 +96,10 @@ func Main() {
 	}
 
 	opsSystem := newOperationsSystem(conf.Operations, conf.Metrics)
+	if err = opsSystem.Start(); err != nil {
+		logger.Panicf("failed to start operations subsystem: %s", err)
+	}
+	defer opsSystem.Stop()
 	metricsProvider := opsSystem.Provider
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
 	flogging.SetObserver(logObserver)
@@ -243,14 +248,16 @@ func Main() {
 		tlsCallback,
 	)
 
-	opsSystem.RegisterHandler(
+	adminServer := newAdminServer(conf.Admin)
+	adminServer.RegisterHandler(
 		channelparticipation.URLBaseV1,
 		channelparticipation.NewHTTPHandler(conf.ChannelParticipation, manager),
+		conf.Admin.TLS.Enabled,
 	)
-	if err = opsSystem.Start(); err != nil {
-		logger.Panicf("failed to start operations subsystem: %s", err)
+	if err = adminServer.Start(); err != nil {
+		logger.Panicf("failed to start admin server: %s", err)
 	}
-	defer opsSystem.Stop()
+	defer adminServer.Stop()
 
 	mutualTLS := serverConfig.SecOpts.UseTLS && serverConfig.SecOpts.RequireClientCert
 	server := NewServer(
@@ -848,8 +855,17 @@ func initializeEtcdraftConsenter(
 
 func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics) *operations.System {
 	return operations.NewSystem(operations.Options{
-		Logger:        flogging.MustGetLogger("orderer.operations"),
-		ListenAddress: ops.ListenAddress,
+		Options: fabhttp.Options{
+			Logger:        flogging.MustGetLogger("orderer.operations"),
+			ListenAddress: ops.ListenAddress,
+			TLS: fabhttp.TLS{
+				Enabled:            ops.TLS.Enabled,
+				CertFile:           ops.TLS.Certificate,
+				KeyFile:            ops.TLS.PrivateKey,
+				ClientCertRequired: ops.TLS.ClientAuthRequired,
+				ClientCACertFiles:  ops.TLS.ClientRootCAs,
+			},
+		},
 		Metrics: operations.MetricsOptions{
 			Provider: metrics.Provider,
 			Statsd: &operations.Statsd{
@@ -859,14 +875,21 @@ func newOperationsSystem(ops localconfig.Operations, metrics localconfig.Metrics
 				Prefix:        metrics.Statsd.Prefix,
 			},
 		},
-		TLS: operations.TLS{
-			Enabled:            ops.TLS.Enabled,
-			CertFile:           ops.TLS.Certificate,
-			KeyFile:            ops.TLS.PrivateKey,
-			ClientCertRequired: ops.TLS.ClientAuthRequired,
-			ClientCACertFiles:  ops.TLS.ClientRootCAs,
-		},
 		Version: metadata.Version,
+	})
+}
+
+func newAdminServer(admin localconfig.Admin) *fabhttp.Server {
+	return fabhttp.NewServer(fabhttp.Options{
+		Logger:        flogging.MustGetLogger("orderer.admin"),
+		ListenAddress: admin.ListenAddress,
+		TLS: fabhttp.TLS{
+			Enabled:            admin.TLS.Enabled,
+			CertFile:           admin.TLS.Certificate,
+			KeyFile:            admin.TLS.PrivateKey,
+			ClientCertRequired: admin.TLS.ClientAuthRequired,
+			ClientCACertFiles:  admin.TLS.ClientRootCAs,
+		},
 	})
 }
 

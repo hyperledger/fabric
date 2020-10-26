@@ -121,6 +121,17 @@ Metrics:
     {{- end }}
     WriteInterval: 5s
     Prefix: {{ ReplaceAll (ToLower Orderer.ID) "." "_" }}
+Admin:
+  ListenAddress: 127.0.0.1:{{ .OrdererPort Orderer "Admin" }}
+  TLS:
+    Enabled: {{ .TLSEnabled }}
+    PrivateKey: {{ $w.OrdererLocalTLSDir Orderer }}/server.key
+    Certificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
+    RootCAs:
+    -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
+    ClientAuthRequired: {{ $w.ClientAuthRequired }}
+    ClientRootCAs:
+    -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
 {{- end }}
 ChannelParticipation:
   Enabled: {{ .Consensus.ChannelParticipationEnabled }}

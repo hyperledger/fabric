@@ -29,6 +29,7 @@ type TopLevel struct {
 	Operations           Operations
 	Metrics              Metrics
 	ChannelParticipation ChannelParticipation
+	Admin                Admin
 }
 
 // General contains config which should be common among all orderer types.
@@ -198,6 +199,12 @@ type Statsd struct {
 	Prefix        string
 }
 
+// Admin configures the admin endpoint for the orderer.
+type Admin struct {
+	ListenAddress string
+	TLS           TLS
+}
+
 // ChannelParticipation provides the channel participation API configuration for the orderer.
 // Channel participation uses the same ListenAddress and TLS settings of the Operations service.
 type ChannelParticipation struct {
@@ -282,6 +289,9 @@ var Defaults = TopLevel{
 	ChannelParticipation: ChannelParticipation{
 		Enabled:            false,
 		MaxRequestBodySize: 1024 * 1024,
+	},
+	Admin: Admin{
+		ListenAddress: "127.0.0.1:0",
 	},
 }
 

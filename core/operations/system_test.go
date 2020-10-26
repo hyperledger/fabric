@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-lib-go/healthz"
+	"github.com/hyperledger/fabric/common/fabhttp"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/metrics/prometheus"
 	"github.com/hyperledger/fabric/common/metrics/statsd"
@@ -55,17 +56,19 @@ var _ = Describe("System", func() {
 
 		fakeLogger = &fakes.Logger{}
 		options = operations.Options{
-			Logger:        fakeLogger,
-			ListenAddress: "127.0.0.1:0",
+			Options: fabhttp.Options{
+				Logger:        fakeLogger,
+				ListenAddress: "127.0.0.1:0",
+				TLS: fabhttp.TLS{
+					Enabled:            true,
+					CertFile:           filepath.Join(tempDir, "server-cert.pem"),
+					KeyFile:            filepath.Join(tempDir, "server-key.pem"),
+					ClientCertRequired: false,
+					ClientCACertFiles:  []string{filepath.Join(tempDir, "client-ca.pem")},
+				},
+			},
 			Metrics: operations.MetricsOptions{
 				Provider: "disabled",
-			},
-			TLS: operations.TLS{
-				Enabled:            true,
-				CertFile:           filepath.Join(tempDir, "server-cert.pem"),
-				KeyFile:            filepath.Join(tempDir, "server-key.pem"),
-				ClientCertRequired: false,
-				ClientCACertFiles:  []string{filepath.Join(tempDir, "client-ca.pem")},
 			},
 			Version: "test-version",
 		}
@@ -122,7 +125,7 @@ var _ = Describe("System", func() {
 	})
 
 	It("hosts a secure endpoint for additional APIs when added", func() {
-		system.RegisterHandler(AdditionalTestApiPath, &fakes.Handler{Code: http.StatusOK, Text: "secure"})
+		system.RegisterHandler(AdditionalTestApiPath, &fakes.Handler{Code: http.StatusOK, Text: "secure"}, options.TLS.Enabled)
 		err := system.Start()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -169,7 +172,7 @@ var _ = Describe("System", func() {
 		})
 
 		It("hosts an insecure endpoint for additional APIs when added", func() {
-			system.RegisterHandler(AdditionalTestApiPath, &fakes.Handler{Code: http.StatusOK, Text: "insecure"})
+			system.RegisterHandler(AdditionalTestApiPath, &fakes.Handler{Code: http.StatusOK, Text: "insecure"}, options.TLS.Enabled)
 			err := system.Start()
 			Expect(err).NotTo(HaveOccurred())
 
