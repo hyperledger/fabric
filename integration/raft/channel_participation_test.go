@@ -102,7 +102,8 @@ var _ = Describe("ChannelParticipation", func() {
 			orderer1 := network.Orderer("orderer1")
 			startOrderer(orderer1)
 
-			channelparticipation.List(network, orderer1, nil)
+			cl := channelparticipation.List(network, orderer1)
+			Expect(cl).To(Equal(channelparticipation.ChannelList{}))
 
 			By("attempting to create a channel without a system channel defined")
 			sess, err := network.PeerAdminSession(network.Peer("Org1", "peer0"), commands.ChannelCreate{
@@ -128,7 +129,8 @@ var _ = Describe("ChannelParticipation", func() {
 			By("starting all three orderers")
 			for _, o := range orderers {
 				startOrderer(o)
-				channelparticipation.List(network, o, nil)
+				cl := channelparticipation.List(network, o)
+				Expect(cl).To(Equal(channelparticipation.ChannelList{}))
 			}
 
 			genesisBlock := applicationChannelGenesisBlock(network, consenters, peer, "participation-trophy")
@@ -219,7 +221,8 @@ var _ = Describe("ChannelParticipation", func() {
 			Expect(channelInfo).To(Equal(expectedChannelInfoAPT))
 
 			By("listing all channels for orderer1")
-			channelparticipation.List(network, orderer1, []string{"participation-trophy", "another-participation-trophy"})
+			cl := channelparticipation.List(network, orderer1)
+			channelparticipation.ChannelListMatcher(cl, []string{"participation-trophy", "another-participation-trophy"})
 
 			By("removing orderer1 from the consenter set")
 			channelConfig = nwo.GetConfig(network, peer, orderer2, "participation-trophy")
@@ -261,9 +264,27 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("removing orderer1 from a channel")
 			channelparticipation.Remove(network, orderer1, "participation-trophy")
+			Eventually(func() channelparticipation.ChannelList {
+				return channelparticipation.List(network, orderer1)
+			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelList{
+				SystemChannel: nil,
+				Channels: []channelparticipation.ChannelInfoShort{
+					{
+						Name: "another-participation-trophy",
+						URL:  "/participation/v1/channels/another-participation-trophy",
+					},
+				},
+			}))
+
+			By("submitting transaction to orderer1")
+			env := CreateBroadcastEnvelope(network, peer, "participation-trophy", []byte("hello"))
+			resp, err := ordererclient.Broadcast(network, orderer1, env)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(resp.Status).To(Equal(common.Status_BAD_REQUEST))
 
 			By("listing all channels for orderer1")
-			channelparticipation.List(network, orderer1, []string{"another-participation-trophy"})
+			cl = channelparticipation.List(network, orderer1)
+			channelparticipation.ChannelListMatcher(cl, []string{"another-participation-trophy"})
 
 			By("ensuring the channel is still usable by submitting a transaction to each remaining consenter for the channel")
 			submitPeerTxn(orderer2, peer, network, consenters, 7, channelparticipation.ChannelInfo{
@@ -307,7 +328,8 @@ var _ = Describe("ChannelParticipation", func() {
 			By("starting two orderers")
 			for _, o := range orderers {
 				startOrderer(o)
-				channelparticipation.List(network, o, nil)
+				cl := channelparticipation.List(network, o)
+				Expect(cl).To(Equal(channelparticipation.ChannelList{}))
 			}
 
 			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
@@ -354,7 +376,8 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("starting third orderer")
 			startOrderer(orderer3)
-			channelparticipation.List(network, orderer3, nil)
+			cl := channelparticipation.List(network, orderer3)
+			Expect(cl).To(Equal(channelparticipation.ChannelList{}))
 
 			By("adding orderer3 to the consenters set")
 			channelConfig = nwo.GetConfig(network, peer, orderer2, "participation-trophy")
@@ -401,7 +424,8 @@ var _ = Describe("ChannelParticipation", func() {
 			By("starting two orderers")
 			for _, o := range orderers {
 				startOrderer(o)
-				channelparticipation.List(network, o, nil)
+				cl := channelparticipation.List(network, o)
+				Expect(cl).To(Equal(channelparticipation.ChannelList{}))
 			}
 
 			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
@@ -448,7 +472,8 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("starting third orderer")
 			startOrderer(orderer3)
-			channelparticipation.List(network, orderer3, nil)
+			cl := channelparticipation.List(network, orderer3)
+			Expect(cl).To(Equal(channelparticipation.ChannelList{}))
 
 			By("joining orderer3 to the channel as a follower")
 			// make sure we can join using a config block from one of the other orderers
@@ -555,7 +580,8 @@ var _ = Describe("ChannelParticipation", func() {
 
 			for _, o := range orderers {
 				By("listing the channels for " + o.Name)
-				channelparticipation.List(network, o, []string{"testchannel"}, "systemchannel")
+				cl := channelparticipation.List(network, o)
+				channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, []string{"systemchannel"}...)
 			}
 
 			expectedChannelInfo = channelparticipation.ChannelInfo{
@@ -644,7 +670,8 @@ var _ = Describe("ChannelParticipation", func() {
 					return channelparticipation.ListOne(network, o, "testchannel")
 				}, network.EventuallyTimeout).Should(Equal(expectedChannelInfo))
 				By("listing all channels")
-				channelparticipation.List(network, o, []string{"testchannel"}, "systemchannel")
+				cl := channelparticipation.List(network, o)
+				channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, []string{"systemchannel"}...)
 			}
 
 			By("submitting a transaction to ensure the system channel is active after restart")
@@ -756,9 +783,9 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("listing the channels after removing the system channel")
 			for _, o := range orderers1and2 {
-				channelparticipation.List(network, o, []string{"testchannel"})
+				cl := channelparticipation.List(network, o)
+				channelparticipation.ChannelListMatcher(cl, []string{"testchannel"})
 			}
-			channelparticipation.List(network, orderer3, []string{})
 
 			By("submitting a transaction to each active orderer after restart")
 			submitPeerTxn(orderer1, peer, network, orderers1and2, 8, channelparticipation.ChannelInfo{

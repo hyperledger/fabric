@@ -63,33 +63,30 @@ func doBody(client *http.Client, req *http.Request) []byte {
 	return bodyBytes
 }
 
-type channelList struct {
-	SystemChannel *channelInfoShort  `json:"systemChannel"`
-	Channels      []channelInfoShort `json:"channels"`
+type ChannelList struct {
+	SystemChannel *ChannelInfoShort  `json:"systemChannel"`
+	Channels      []ChannelInfoShort `json:"channels"`
 }
 
-type channelInfoShort struct {
+type ChannelInfoShort struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
 }
 
-func List(n *nwo.Network, o *nwo.Orderer, expectedChannels []string, systemChannel ...string) {
+func List(n *nwo.Network, o *nwo.Orderer) ChannelList {
 	authClient, unauthClient := nwo.OrdererOperationalClients(n, o)
 	listChannelsURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.AdminPort))
 
 	body := getBody(authClient, listChannelsURL)()
-	list := &channelList{}
+	list := &ChannelList{}
 	err := json.Unmarshal([]byte(body), list)
 	Expect(err).NotTo(HaveOccurred())
-
-	Expect(*list).To(MatchFields(IgnoreExtras, Fields{
-		"Channels":      channelsMatcher(expectedChannels),
-		"SystemChannel": systemChannelMatcher(systemChannel...),
-	}))
 
 	resp, err := unauthClient.Get(listChannelsURL)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
+
+	return *list
 }
 
 func getBody(client *http.Client, url string) func() string {
@@ -102,31 +99,6 @@ func getBody(client *http.Client, url string) func() string {
 		resp.Body.Close()
 		return string(bodyBytes)
 	}
-}
-
-func channelsMatcher(channels []string) types.GomegaMatcher {
-	if len(channels) == 0 {
-		return BeEmpty()
-	}
-	matchers := make([]types.GomegaMatcher, len(channels))
-	for i, channel := range channels {
-		matchers[i] = channelInfoShortMatcher(channel)
-	}
-	return ConsistOf(matchers)
-}
-
-func systemChannelMatcher(systemChannel ...string) types.GomegaMatcher {
-	if len(systemChannel) == 0 {
-		return BeNil()
-	}
-	return PointTo(channelInfoShortMatcher(systemChannel[0]))
-}
-
-func channelInfoShortMatcher(channel string) types.GomegaMatcher {
-	return MatchFields(IgnoreExtras, Fields{
-		"Name": Equal(channel),
-		"URL":  Equal(fmt.Sprintf("/participation/v1/channels/%s", channel)),
-	})
 }
 
 type ChannelInfo struct {
@@ -158,4 +130,36 @@ func Remove(n *nwo.Network, o *nwo.Orderer, channel string) {
 	resp, err := authClient.Do(req)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+}
+
+func ChannelListMatcher(list ChannelList, expectedChannels []string, systemChannel ...string) {
+	Expect(list).To(MatchFields(IgnoreExtras, Fields{
+		"Channels":      channelsMatcher(expectedChannels),
+		"SystemChannel": systemChannelMatcher(systemChannel...),
+	}))
+}
+
+func channelsMatcher(channels []string) types.GomegaMatcher {
+	if len(channels) == 0 {
+		return BeEmpty()
+	}
+	matchers := make([]types.GomegaMatcher, len(channels))
+	for i, channel := range channels {
+		matchers[i] = channelInfoShortMatcher(channel)
+	}
+	return ConsistOf(matchers)
+}
+
+func systemChannelMatcher(systemChannel ...string) types.GomegaMatcher {
+	if len(systemChannel) == 0 {
+		return BeNil()
+	}
+	return PointTo(channelInfoShortMatcher(systemChannel[0]))
+}
+
+func channelInfoShortMatcher(channel string) types.GomegaMatcher {
+	return MatchFields(IgnoreExtras, Fields{
+		"Name": Equal(channel),
+		"URL":  Equal(fmt.Sprintf("/participation/v1/channels/%s", channel)),
+	})
 }

@@ -938,6 +938,39 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		os.RemoveAll(tmpdir)
 	}
 
+	t.Run("Reject join when removal is occurring", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		newLedger(ledgerFactory, "sys-raft-channel", genesisBlockSysRaft)
+
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		registrar.pendingRemoval["some-app-channel"] = true
+		info, err := registrar.JoinChannel("some-app-channel", &cb.Block{}, true)
+		require.Equal(t, err, types.ErrChannelPendingRemoval)
+		require.Equal(t, types.ChannelInfo{}, info)
+		joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "some-app-channel.joinblock")
+		_, err = os.Stat(joinBlockPath)
+		require.True(t, os.IsNotExist(err))
+	})
+
+	t.Run("Reject join when removal previously failed", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		newLedger(ledgerFactory, "sys-raft-channel", genesisBlockSysRaft)
+
+		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		registrar.Initialize(mockConsenters)
+
+		registrar.pendingRemoval["some-app-channel"] = false
+		info, err := registrar.JoinChannel("some-app-channel", &cb.Block{}, true)
+		require.Equal(t, types.ErrChannelRemovalFailure, err)
+		require.Equal(t, types.ChannelInfo{}, info)
+	})
+
 	t.Run("Reject join when system channel exists", func(t *testing.T) {
 		setup(t)
 		defer cleanup()
@@ -1026,6 +1059,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 			require.EqualError(t, err, "failed to determine cluster membership from join-block: apple")
 
 			// After join failure, check that everything has been cleaned up
+			require.Eventually(t, func() bool { return len(ledgerFactory.ChannelIDs()) == 0 }, time.Minute, time.Second)
 			require.Empty(t, ledgerFactory.ChannelIDs())
 			joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "my-raft-channel.joinblock")
 			_, err = os.Stat(joinBlockPath)
@@ -1049,6 +1083,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 			require.EqualError(t, err, "failed to create chain support: error creating consenter for channel: my-raft-channel: banana")
 
 			// After join failure, check that everything has been cleaned up
+			require.Eventually(t, func() bool { return len(ledgerFactory.ChannelIDs()) == 0 }, time.Minute, time.Second)
 			require.Empty(t, ledgerFactory.ChannelIDs())
 			joinBlockPath := filepath.Join(tmpdir, "pendingops", "joinblock", "my-raft-channel.joinblock")
 			_, err = os.Stat(joinBlockPath)
@@ -1472,6 +1507,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 
 			// After removing the channel, it no longer exists in the registrar or the ledger
 			require.Nil(t, registrar.GetChain("my-raft-channel"))
+			require.Eventually(t, func() bool { return len(ledgerFactory.ChannelIDs()) == 0 }, time.Minute, time.Second)
 			require.NotContains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
 		})
 
@@ -1496,8 +1532,14 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 
 			// After removing the channel, it no longer exists in the registrar or the ledger
 			require.Nil(t, registrar.GetFollower("my-follower-raft-channel"))
-			_, err = registrar.ChannelInfo("my-follower-raft-channel")
-			require.EqualError(t, err, "channel does not exist")
+			channelInfo, err := registrar.ChannelInfo("my-follower-raft-channel")
+			require.NoError(t, err)
+			require.Equal(t, channelInfo, types.ChannelInfo{
+				Name:            "my-follower-raft-channel",
+				ClusterRelation: types.ClusterRelationFollower,
+				Status:          types.StatusInactive,
+			})
+			require.Eventually(t, func() bool { return len(ledgerFactory.ChannelIDs()) == 0 }, time.Minute, time.Second)
 			require.NotContains(t, ledgerFactory.ChannelIDs(), "my-follower-raft-channel")
 		})
 	})
@@ -1518,6 +1560,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		genesisBlockAppRaftNonMember := appBootstrapper.GenesisBlockForChannel("channel-im-not-a-member-of")
 		require.NotNil(t, genesisBlockAppRaftNonMember)
 		createLedgerAndChain(t, registrar, ledgerFactory, genesisBlockAppRaftNonMember, "channel-im-not-a-member-of")
+
 		require.NotNil(t, registrar.GetChain("channel-im-not-a-member-of"))
 		require.Contains(t, ledgerFactory.ChannelIDs(), "channel-im-not-a-member-of")
 		consenter.IsChannelMemberStub = func(b *cb.Block) (bool, error) {
@@ -1542,6 +1585,146 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		// channels the orderer wasn't a member no longer exist
 		require.Nil(t, registrar.GetChain("channel-im-not-a-member-of"))
 		require.NotContains(t, ledgerFactory.ChannelIDs(), "channel-im-not-a-member-of")
+	})
+
+	t.Run("remove system channel ledger fails", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		newLedger(ledgerFactory, "raft-sys-channel", genesisBlockSysRaft)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+		require.NotNil(t, registrar.GetChain("raft-sys-channel"))
+		require.Contains(t, ledgerFactory.ChannelIDs(), "raft-sys-channel")
+
+		os.RemoveAll(filepath.Join(tmpdir, "pendingops", "remove"))
+
+		err := registrar.RemoveChannel("raft-sys-channel")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed removing ledger for system channel raft-sys-channel")
+
+		require.NotNil(t, registrar.SystemChannelID())
+		require.Contains(t, ledgerFactory.ChannelIDs(), "raft-sys-channel")
+	})
+
+	t.Run("remove non-systemchannel members fails", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		newLedger(ledgerFactory, "raft-sys-channel", genesisBlockSysRaft)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+		require.NotNil(t, registrar.GetChain("raft-sys-channel"))
+		require.Contains(t, ledgerFactory.ChannelIDs(), "raft-sys-channel")
+
+		genesisBlockAppRaftNonMember := appBootstrapper.GenesisBlockForChannel("channel-im-not-a-member-of")
+		require.NotNil(t, genesisBlockAppRaftNonMember)
+		createLedgerAndChain(t, registrar, ledgerFactory, genesisBlockAppRaftNonMember, "channel-im-not-a-member-of")
+
+		require.NotNil(t, registrar.GetChain("channel-im-not-a-member-of"))
+		require.Contains(t, ledgerFactory.ChannelIDs(), "channel-im-not-a-member-of")
+		consenter.IsChannelMemberStub = func(b *cb.Block) (bool, error) {
+			os.RemoveAll(filepath.Join(tmpdir, "pendingops", "remove"))
+			if bytes.Compare(b.Header.DataHash, genesisBlockAppRaft.Header.DataHash) == 0 {
+				return true, nil
+			}
+			return false, nil
+		}
+
+		err := registrar.RemoveChannel("raft-sys-channel")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed removing ledger for channel(s): channel-im-not-a-member-of")
+
+		require.Empty(t, registrar.SystemChannelID())
+		require.Nil(t, registrar.SystemChannel())
+		require.Nil(t, registrar.GetChain("raft-sys-channel"))
+		require.NotContains(t, ledgerFactory.ChannelIDs(), "raft-sys-channel")
+
+		require.NotNil(t, registrar.GetChain("channel-im-not-a-member-of"))
+		require.Contains(t, ledgerFactory.ChannelIDs(), "channel-im-not-a-member-of")
+	})
+
+	t.Run("app channel is already being removed", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		consenter.IsChannelMemberReturns(true, nil)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+
+		require.Nil(t, registrar.GetChain("my-raft-channel"))
+		require.NotContains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+		info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 1}, info)
+		require.NotNil(t, registrar.GetChain("my-raft-channel"))
+		require.Contains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+
+		registrar.pendingRemoval["my-raft-channel"] = true
+		err = registrar.RemoveChannel("my-raft-channel")
+		require.Error(t, err)
+		require.Equal(t, types.ErrChannelPendingRemoval, err)
+
+		require.Contains(t, registrar.ChannelList().Channels, types.ChannelInfoShort{Name: "my-raft-channel"})
+	})
+
+	t.Run("app channel removal previously failed", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		consenter.IsChannelMemberReturns(true, nil)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+
+		require.Nil(t, registrar.GetChain("my-raft-channel"))
+		require.NotContains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+		info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 1}, info)
+		require.NotNil(t, registrar.GetChain("my-raft-channel"))
+		require.Contains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+
+		registrar.pendingRemoval["my-raft-channel"] = false
+		err = registrar.RemoveChannel("my-raft-channel")
+		require.Error(t, err)
+		require.Equal(t, types.ErrChannelRemovalFailure, err)
+
+		require.Contains(t, registrar.ChannelList().Channels, types.ChannelInfoShort{Name: "my-raft-channel"})
+	})
+
+	t.Run("remove channel fails", func(t *testing.T) {
+		setup(t)
+		defer cleanup()
+
+		consenter.IsChannelMemberReturns(true, nil)
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
+		registrar.Initialize(mockConsenters)
+
+		require.Nil(t, registrar.GetChain("my-raft-channel"))
+		require.NotContains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+		info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
+		require.NoError(t, err)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 1}, info)
+		require.NotNil(t, registrar.GetChain("my-raft-channel"))
+		require.Contains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+
+		// This will force the failure of the underlying factory.Remove() because the pendingops/remove will not exist
+		os.RemoveAll(filepath.Join(tmpdir, "pendingops", "remove"))
+
+		err = registrar.RemoveChannel("my-raft-channel")
+		require.NoError(t, err)
+
+		require.Nil(t, registrar.GetChain("my-raft-channel"))
+		require.Eventually(t, func() bool { return len(ledgerFactory.ChannelIDs()) == 1 }, time.Minute, time.Second)
+		require.Contains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
+
+		// Confirm removal failure by checking channel status
+		channelInfo, err := registrar.ChannelInfo("my-raft-channel")
+		require.NoError(t, err)
+		require.Equal(t, channelInfo, types.ChannelInfo{
+			Name:            "my-raft-channel",
+			ClusterRelation: types.ClusterRelationFollower,
+			Status:          types.StatusInactive})
 	})
 }
 

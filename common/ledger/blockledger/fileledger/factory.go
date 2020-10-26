@@ -59,15 +59,15 @@ func (f *fileLedgerFactory) Remove(channelID string) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
+	if err := f.removeFileRepo.Save(channelID, []byte{}); err != nil && err != os.ErrExist {
+		return err
+	}
+
 	// check cache for open blockstore and, if one exists,
 	// shut it down in order to avoid resource contention
 	ledger, ok := f.ledgers[channelID]
 	if ok {
 		ledger.blockStore.Shutdown()
-	}
-
-	if err := f.removeFileRepo.Save(channelID, []byte{}); err != nil && err != os.ErrExist {
-		return err
 	}
 
 	err := f.blkstorageProvider.Drop(channelID)

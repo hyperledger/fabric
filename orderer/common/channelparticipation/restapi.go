@@ -257,6 +257,11 @@ func (h *HTTPHandler) sendJoinError(err error, resp http.ResponseWriter) {
 	case types.ErrAppChannelsAlreadyExists:
 		// The client is trying to join the system-channel that does not exist, but app channels exist.
 		h.sendResponseJsonError(resp, http.StatusForbidden, errors.WithMessage(err, "cannot join"))
+	case types.ErrChannelPendingRemoval:
+		// The client is trying to join a channel that is currently being removed.
+		h.sendResponseJsonError(resp, http.StatusConflict, errors.WithMessage(err, "cannot join"))
+	case types.ErrChannelRemovalFailure:
+		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.WithMessage(err, "cannot join"))
 	default:
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "cannot join"))
 	}
@@ -289,6 +294,10 @@ func (h *HTTPHandler) serveRemove(resp http.ResponseWriter, req *http.Request) {
 		h.sendResponseNotAllowed(resp, errors.WithMessage(err, "cannot remove"), http.MethodGet)
 	case types.ErrChannelNotExist:
 		h.sendResponseJsonError(resp, http.StatusNotFound, errors.WithMessage(err, "cannot remove"))
+	case types.ErrChannelPendingRemoval:
+		h.sendResponseJsonError(resp, http.StatusConflict, errors.WithMessage(err, "cannot remove"))
+	case types.ErrChannelRemovalFailure:
+		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.WithMessage(err, "cannot remove"))
 	default:
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "cannot remove"))
 	}

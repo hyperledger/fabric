@@ -10,7 +10,9 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -45,9 +47,11 @@ var logger = flogging.MustGetLogger("orderer.commmon.multichannel")
 type Registrar struct {
 	config localconfig.TopLevel
 
-	lock            sync.RWMutex
-	chains          map[string]*ChainSupport
-	followers       map[string]*follower.Chain
+	lock      sync.RWMutex
+	chains    map[string]*ChainSupport
+	followers map[string]*follower.Chain
+	// true indicates a ledger removal is pending; false indicates a ledger removal failed
+	pendingRemoval  map[string]bool
 	systemChannelID string
 	systemChannel   *ChainSupport
 
@@ -96,6 +100,7 @@ func NewRegistrar(
 		config:             config,
 		chains:             make(map[string]*ChainSupport),
 		followers:          make(map[string]*follower.Chain),
+		pendingRemoval:     make(map[string]bool),
 		ledgerFactory:      ledgerFactory,
 		signer:             signer,
 		blockcutterMetrics: blockcutter.NewMetrics(metricsProvider),
@@ -664,6 +669,13 @@ func (r *Registrar) ChannelList() types.ChannelList {
 		list.Channels = append(list.Channels, types.ChannelInfoShort{Name: name})
 	}
 
+	for c := range r.pendingRemoval {
+		list.Channels = append(list.Channels, types.ChannelInfoShort{
+			Name: c,
+		})
+
+	}
+
 	return list
 }
 
@@ -687,6 +699,15 @@ func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 		return info, nil
 	}
 
+	_, ok := r.pendingRemoval[channelID]
+	if ok {
+		return types.ChannelInfo{
+			Name:            channelID,
+			ClusterRelation: types.ClusterRelationFollower,
+			Status:          types.StatusInactive,
+		}, nil
+	}
+
 	return types.ChannelInfo{}, types.ErrChannelNotExist
 }
 
@@ -695,6 +716,14 @@ func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppChannel bool) (info types.ChannelInfo, err error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
+
+	if removalStatus, ok := r.pendingRemoval[channelID]; ok {
+		if removalStatus {
+			return types.ChannelInfo{}, types.ErrChannelPendingRemoval
+		} else {
+			return types.ChannelInfo{}, types.ErrChannelRemovalFailure
+		}
+	}
 
 	if r.systemChannelID != "" {
 		return types.ChannelInfo{}, types.ErrSystemChannelExists
@@ -886,6 +915,15 @@ func (r *Registrar) joinSystemChannel(
 func (r *Registrar) RemoveChannel(channelID string) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
+
+	if removalStatus, ok := r.pendingRemoval[channelID]; ok {
+		if removalStatus {
+			return types.ErrChannelPendingRemoval
+		} else {
+			return types.ErrChannelRemovalFailure
+		}
+	}
+
 	if r.systemChannelID != "" {
 		if channelID != r.systemChannelID {
 			return types.ErrSystemChannelExists
@@ -896,7 +934,8 @@ func (r *Registrar) RemoveChannel(channelID string) error {
 	cs, ok := r.chains[channelID]
 	if ok {
 		cs.Halt()
-		return r.removeMember(channelID, cs)
+		r.removeMember(channelID, cs)
+		return nil
 	}
 
 	fChain, ok := r.followers[channelID]
@@ -908,17 +947,12 @@ func (r *Registrar) RemoveChannel(channelID string) error {
 	return types.ErrChannelNotExist
 }
 
-func (r *Registrar) removeMember(channelID string, cs *ChainSupport) error {
-	err := r.ledgerFactory.Remove(channelID)
-	if err != nil {
-		return errors.Errorf("error removing ledger for channel %s", channelID)
-	}
+func (r *Registrar) removeMember(channelID string, cs *ChainSupport) {
+	r.removeLedgerAsync(channelID)
 
 	delete(r.chains, channelID)
 
 	logger.Infof("Removed channel: %s", channelID)
-
-	return nil
 }
 
 func (r *Registrar) removeFollower(channelID string, follower *follower.Chain) error {
@@ -931,10 +965,7 @@ func (r *Registrar) removeFollower(channelID string, follower *follower.Chain) e
 		return err
 	}
 
-	err := r.ledgerFactory.Remove(channelID)
-	if err != nil {
-		return errors.Errorf("error removing ledger for channel %s", channelID)
-	}
+	r.removeLedgerAsync(channelID)
 
 	delete(r.followers, channelID)
 
@@ -1000,6 +1031,19 @@ func (r *Registrar) removeSystemChannel() error {
 	r.systemChannel.Halt()
 	delete(r.chains, systemChannelID)
 
+	// remove system channel resources
+	err := r.ledgerFactory.Remove(systemChannelID)
+	if err != nil {
+		return errors.WithMessagef(err, "failed removing ledger for system channel %s", r.systemChannelID)
+	}
+
+	// remove system channel references
+	r.systemChannel = nil
+	r.systemChannelID = ""
+	logger.Infof("removed system channel: %s", systemChannelID)
+
+	failedRemovals := []string{}
+
 	// halt all application channels
 	for channel, cs := range r.chains {
 		cs.Halt()
@@ -1014,23 +1058,21 @@ func (r *Registrar) removeSystemChannel() error {
 			return errors.WithMessagef(err, "failed to determine channel membership for channel: %s", channel)
 		}
 		if !isChannelMember {
-			logger.Debugf("Not a member of channel %s, removing it", channel)
-			err := r.removeMember(channel, cs)
+			logger.Debugf("not a member of channel %s, removing it", channel)
+			err := r.ledgerFactory.Remove(channel)
 			if err != nil {
-				return errors.WithMessagef(err, "failed to remove channel: %s", channel)
+				logger.Errorf("failed removing ledger for channel %s, error: %v", channel, err)
+				failedRemovals = append(failedRemovals, channel)
+				continue
 			}
+
+			delete(r.chains, channel)
 		}
 	}
 
-	// remove system channel resources
-	err := r.ledgerFactory.Remove(systemChannelID)
-	if err != nil {
-		return errors.WithMessagef(err, "error removing ledger for system channel %s", r.systemChannelID)
+	if len(failedRemovals) > 0 {
+		return fmt.Errorf("failed removing ledger for channel(s): %s", strings.Join(failedRemovals, ", "))
 	}
-
-	// remove system channel references
-	r.systemChannel = nil
-	r.systemChannelID = ""
 
 	// reintialize the registrar to recreate every channel
 	r.init(r.consenters)
@@ -1038,7 +1080,22 @@ func (r *Registrar) removeSystemChannel() error {
 	// restart every channel
 	r.startChannels()
 
-	logger.Infof("Removed system channel: %s", systemChannelID)
-
 	return nil
+}
+
+func (r *Registrar) removeLedgerAsync(channelID string) {
+	r.pendingRemoval[channelID] = true
+
+	go func() {
+		if err := r.ledgerFactory.Remove(channelID); err != nil {
+			r.lock.Lock()
+			r.pendingRemoval[channelID] = false
+			r.lock.Unlock()
+			logger.Errorf("ledger factory failed to remove empty ledger '%s', error: %s", channelID, err)
+			return
+		}
+		r.lock.Lock()
+		delete(r.pendingRemoval, channelID)
+		r.lock.Unlock()
+	}()
 }
