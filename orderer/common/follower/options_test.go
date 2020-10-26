@@ -7,22 +7,23 @@ SPDX-License-Identifier: Apache-2.0
 package follower
 
 import (
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOptions_applyDefaults(t *testing.T) {
 	t.Run("on empty object", func(t *testing.T) {
 		opt := Options{}
 		opt.applyDefaults()
-		assert.Equal(t, defaultPullRetryMinInterval, opt.PullRetryMinInterval)
-		assert.Equal(t, defaultPullRetryMaxInterval, opt.PullRetryMaxInterval)
-		assert.Equal(t, defaultHeightPollMinInterval, opt.HeightPollMinInterval)
-		assert.Equal(t, defaultHeightPollMaxInterval, opt.HeightPollMaxInterval)
-		assert.NotNil(t, opt.Logger)
-		assert.NotNil(t, opt.TimeAfter)
+		require.Equal(t, defaultPullRetryMinInterval, opt.PullRetryMinInterval)
+		require.Equal(t, defaultPullRetryMaxInterval, opt.PullRetryMaxInterval)
+		require.Equal(t, defaultHeightPollMinInterval, opt.HeightPollMinInterval)
+		require.Equal(t, defaultHeightPollMaxInterval, opt.HeightPollMaxInterval)
+		require.NotNil(t, opt.Logger)
+		require.NotNil(t, opt.TimeAfter)
 	})
 	t.Run("with alternatives", func(t *testing.T) {
 		timeAfterFunc := func(d time.Duration) <-chan time.Time { return make(chan time.Time) }
@@ -36,11 +37,11 @@ func TestOptions_applyDefaults(t *testing.T) {
 			TimeAfter: timeAfterFunc,
 		}
 		opt.applyDefaults()
-		assert.Equal(t, time.Microsecond, opt.PullRetryMinInterval)
-		assert.Equal(t, time.Hour, opt.PullRetryMaxInterval)
-		assert.Equal(t, time.Millisecond, opt.HeightPollMinInterval)
-		assert.Equal(t, time.Minute, opt.HeightPollMaxInterval)
-		assert.NotNil(t, opt.Logger)
-		assert.NotNil(t, opt.TimeAfter)
+		require.Equal(t, time.Microsecond, opt.PullRetryMinInterval)
+		require.Equal(t, time.Hour, opt.PullRetryMaxInterval)
+		require.Equal(t, time.Millisecond, opt.HeightPollMinInterval)
+		require.Equal(t, time.Minute, opt.HeightPollMaxInterval)
+		require.NotNil(t, opt.Logger)
+		require.NotNil(t, opt.TimeAfter)
 	})
 }
