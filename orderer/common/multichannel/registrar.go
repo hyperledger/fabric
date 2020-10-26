@@ -922,8 +922,6 @@ func (r *Registrar) removeMember(channelID string, cs *ChainSupport) error {
 }
 
 func (r *Registrar) removeFollower(channelID string, follower *follower.Chain) error {
-	follower.Halt()
-
 	// join block may still exist if the follower is:
 	// 1) still onboarding
 	// 2) active but not yet called registrar.SwitchFollowerToChain()
