@@ -196,7 +196,12 @@ type Chain struct {
 	periodicChecker *PeriodicCheck
 
 	haltCallback func()
-	// BCCSP instane
+
+	statusReportMutex sync.Mutex
+	clusterRelation   types.ClusterRelation
+	status            types.Status
+
+	// BCCSP instance
 	CryptoProvider bccsp.BCCSP
 }
 
@@ -269,6 +274,8 @@ func NewChain(
 		createPuller:     f,
 		clock:            opts.Clock,
 		haltCallback:     haltCallback,
+		clusterRelation:  types.ClusterRelationMember,
+		status:           types.StatusActive,
 		Metrics: &Metrics{
 			ClusterSize:             opts.Metrics.ClusterSize.With("channel", support.ChannelID()),
 			IsLeader:                opts.Metrics.IsLeader.With("channel", support.ChannelID()),
@@ -434,11 +441,15 @@ func (c *Chain) stop() bool {
 	}
 	<-c.doneC
 
+	c.statusReportMutex.Lock()
+	defer c.statusReportMutex.Unlock()
+	c.status = types.StatusInactive
+
 	return true
 }
 
 // halt stops the chain and calls the haltCallback function, which allows the
-// chain to transfer responsibility to a follower or inactive chain when a chain
+// chain to transfer responsibility to a follower or the inactive chain registry when a chain
 // discovers it is no longer a member of a channel.
 func (c *Chain) halt() {
 	if stopped := c.stop(); !stopped {
@@ -446,7 +457,16 @@ func (c *Chain) halt() {
 		return
 	}
 	if c.haltCallback != nil {
-		c.haltCallback()
+		c.haltCallback() // Must be invoked WITHOUT any internal lock
+
+		c.statusReportMutex.Lock()
+		defer c.statusReportMutex.Unlock()
+
+		// If the haltCallback registers the chain in to the inactive chain registry (i.e., system channel exists) then
+		// this is the correct clusterRelation. If the haltCallback transfers responsibility to a follower.Chain, then
+		// this chain is about to be GC anyway. The new follower.Chain replacing this one will report the correct
+		// StatusReport.
+		c.clusterRelation = types.ClusterRelationConfigTracker
 	}
 }
 
@@ -1377,7 +1397,10 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 
 // StatusReport returns the ClusterRelation & Status
 func (c *Chain) StatusReport() (types.ClusterRelation, types.Status) {
-	return types.ClusterRelationMember, types.StatusActive
+	c.statusReportMutex.Lock()
+	defer c.statusReportMutex.Unlock()
+
+	return c.clusterRelation, c.status
 }
 
 func (c *Chain) suspectEviction() bool {
