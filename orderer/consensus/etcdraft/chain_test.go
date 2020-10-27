@@ -1448,6 +1448,15 @@ var _ = Describe("Chain", func() {
 
 			By("Asserting the haltCallback is called when the node is removed from the replica set")
 			Eventually(fakeHaltCallbacker.HaltCallbackCallCount).Should(Equal(1))
+			By("Asserting the StatusReport responds correctly after eviction")
+			Eventually(
+				func() orderer_types.ClusterRelation {
+					cRel, _ := c1.StatusReport()
+					return cRel
+				},
+			).Should(Equal(orderer_types.ClusterRelationConfigTracker))
+			_, status := c1.StatusReport()
+			Expect(status).To(Equal(orderer_types.StatusInactive))
 
 			By("Asserting leader can still serve requests as single-node cluster")
 			c2.cutter.CutNext = true
@@ -1484,6 +1493,15 @@ var _ = Describe("Chain", func() {
 			By("Asserting the haltCallback is not called when Halt is called before eviction")
 			c1.clock.Increment(interval)
 			Eventually(fakeHaltCallbacker.HaltCallbackCallCount).Should(Equal(0))
+			By("Asserting the StatusReport responds correctly if the haltCallback is not called")
+			Eventually(
+				func() orderer_types.Status {
+					_, status := c1.StatusReport()
+					return status
+				},
+			).Should(Equal(orderer_types.StatusInactive))
+			cRel, _ := c1.StatusReport()
+			Expect(cRel).To(Equal(orderer_types.ClusterRelationMember))
 		})
 
 		It("can remove leader by reconfiguring cluster even if leadership transfer fails", func() {
