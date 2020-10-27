@@ -87,7 +87,7 @@ func NewBlockPullerCreator(
 }
 
 // BlockPuller creates a block puller on demand, taking the endpoints from the config block.
-func (creator *BlockPullerCreator) BlockPuller(configBlock *common.Block) (ChannelPuller, error) {
+func (creator *BlockPullerCreator) BlockPuller(configBlock *common.Block, stopChannel chan struct{}) (ChannelPuller, error) {
 	// Extract the TLS CA certs and endpoints from the join-block
 	endpoints, err := cluster.EndpointconfigFromConfigBlock(configBlock, creator.bccsp)
 	if err != nil {
@@ -106,6 +106,7 @@ func (creator *BlockPullerCreator) BlockPuller(configBlock *common.Block) (Chann
 		TLSCert:             creator.der.Bytes,
 		Channel:             creator.channelID,
 		Dialer:              creator.stdDialer,
+		StopChannel:         stopChannel,
 	}
 
 	return bp, nil

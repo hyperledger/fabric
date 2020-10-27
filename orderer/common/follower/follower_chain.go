@@ -50,7 +50,7 @@ type TimeAfter func(d time.Duration) <-chan time.Time
 // BlockPullerFactory creates a ChannelPuller on demand, and exposes a method to update the a block signature verifier
 // linked to that ChannelPuller.
 type BlockPullerFactory interface {
-	BlockPuller(configBlock *common.Block) (ChannelPuller, error)
+	BlockPuller(configBlock *common.Block, stopChannel chan struct{}) (ChannelPuller, error)
 	UpdateVerifierFromConfigBlock(configBlock *common.Block) error
 }
 
@@ -130,8 +130,8 @@ func NewChain(
 	options.applyDefaults()
 
 	chain := &Chain{
-		stopChan:           make(chan (struct{})),
-		doneChan:           make(chan (struct{})),
+		stopChan:           make(chan struct{}),
+		doneChan:           make(chan struct{}),
 		cRel:               types.ClusterRelationFollower,
 		status:             types.StatusOnBoarding,
 		ledgerResources:    ledgerResources,
@@ -172,7 +172,7 @@ func NewChain(
 
 		// Check the block puller creation function once before we start the follower. This ensures we can extract
 		// the endpoints from the join-block.
-		puller, err := blockPullerFactory.BlockPuller(joinBlock)
+		puller, err := blockPullerFactory.BlockPuller(joinBlock, nil)
 		if err != nil {
 			return nil, errors.WithMessage(err, "error creating a block puller from join-block")
 		}
@@ -358,7 +358,7 @@ func (c *Chain) pullUpToJoin() error {
 
 	var err error
 	// Block puller created with endpoints from the join-block.
-	c.blockPuller, err = c.blockPullerFactory.BlockPuller(c.joinBlock)
+	c.blockPuller, err = c.blockPullerFactory.BlockPuller(c.joinBlock, c.stopChan)
 	if err != nil { //This should never happen since we check the join-block before we start.
 		return errors.WithMessagef(err, "error creating block puller")
 	}
@@ -386,7 +386,7 @@ func (c *Chain) pullAfterJoin() error {
 		return errors.WithMessage(err, "failed to load last config block")
 	}
 
-	c.blockPuller, err = c.blockPullerFactory.BlockPuller(c.lastConfig)
+	c.blockPuller, err = c.blockPullerFactory.BlockPuller(c.lastConfig, c.stopChan)
 	if err != nil {
 		return errors.WithMessage(err, "error creating block puller")
 	}

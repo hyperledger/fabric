@@ -101,13 +101,13 @@ func TestBlockPullerFactory_BlockPuller(t *testing.T) {
 	t.Run("good", func(t *testing.T) {
 		joinBlockAppRaft := generateJoinBlock(t, tlsCA, channelID, 10)
 		require.NotNil(t, joinBlockAppRaft)
-		bp, err := factory.BlockPuller(joinBlockAppRaft)
+		bp, err := factory.BlockPuller(joinBlockAppRaft, make(chan struct{}))
 		require.NoError(t, err)
 		require.NotNil(t, bp)
 	})
 
 	t.Run("bad join block", func(t *testing.T) {
-		bp, err := factory.BlockPuller(&cb.Block{Header: &cb.BlockHeader{}})
+		bp, err := factory.BlockPuller(&cb.Block{Header: &cb.BlockHeader{}}, make(chan struct{}))
 		require.EqualError(t, err, "error extracting endpoints from config block: block data is nil")
 		require.Nil(t, bp)
 	})

@@ -99,6 +99,7 @@ func NewBlockPuller(support consensus.ConsenterSupport,
 		TLSCert:             der.Bytes,
 		Channel:             support.ChannelID(),
 		Dialer:              stdDialer,
+		StopChannel:         make(chan struct{}),
 	}
 
 	return &LedgerBlockPuller{

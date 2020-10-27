@@ -315,6 +315,7 @@ func newBlockPuller(dialer *countingDialer, orderers ...string) *cluster.BlockPu
 		RetryTimeout:        time.Millisecond * 10,
 		VerifyBlockSequence: noopBlockVerifierf,
 		Logger:              flogging.MustGetLogger("test"),
+		StopChannel:         make(chan struct{}),
 	}
 }
 
@@ -1153,6 +1154,51 @@ func TestBlockPullerMaxRetriesExhausted(t *testing.T) {
 	bp.Close()
 	dialer.assertAllConnectionsClosed(t)
 	require.True(t, exhaustedRetryAttemptsLogged)
+}
+
+func TestBlockPullerToBadEndpointWithStop(t *testing.T) {
+	// Scenario:
+	// The block puller is initialized with endpoints that do not exist.
+	// It should attempt to re-connect but will fail, causing the PullBlock()
+	// to block the calling go-routine. Closing the StopChannel should signal
+	// the blocked go-routine to gives up, and nil is returned.
+
+	dialer := newCountingDialer()
+	bp := newBlockPuller(dialer, "10.10.10.10:666") // Nobody is there
+
+	var couldNotConnectLogged bool
+	var receivedStopLogged bool
+
+	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		if entry.Message == "Could not connect to any endpoint of [{\"CAs\":null,\"Endpoint\":\"10.10.10.10:666\"}]" {
+			couldNotConnectLogged = true
+		}
+		if entry.Message == "Received a stop signal" {
+			receivedStopLogged = true
+		}
+		return nil
+	}))
+
+	// Retry for a long time
+	bp.MaxPullBlockRetries = 100
+	bp.RetryTimeout = time.Hour
+
+	wgRelease := sync.WaitGroup{}
+	wgRelease.Add(1)
+
+	go func() {
+		//But this will get stuck until the StopChannel is closed
+		require.Nil(t, bp.PullBlock(uint64(1)))
+		bp.Close()
+		wgRelease.Done()
+	}()
+
+	close(bp.StopChannel)
+	wgRelease.Wait()
+
+	dialer.assertAllConnectionsClosed(t)
+	require.True(t, couldNotConnectLogged)
+	require.True(t, receivedStopLogged)
 }
 
 func TestBlockPullerToBadEndpoint(t *testing.T) {

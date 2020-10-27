@@ -40,6 +40,12 @@ type BlockPuller struct {
 	Dialer              Dialer
 	VerifyBlockSequence BlockSequenceVerifier
 	Endpoints           []EndpointCriteria
+
+	// A 'stopper' goroutine may signal the go-routine servicing PullBlock & HeightsByEndpoints to stop by closing this
+	// channel. Note: all methods of the BlockPuller must be serviced by a single goroutine, it is not thread safe.
+	// It is the responsibility of the 'stopper' not to close the channel more then once.
+	StopChannel chan struct{}
+
 	// Internal state
 	stream       *ImpatientStream
 	blockBuff    []*common.Block
@@ -100,7 +106,11 @@ func (p *BlockPuller) PullBlock(seq uint64) *common.Block {
 			p.Logger.Errorf("Failed pulling block [%d]: retry count exhausted(%d)", seq, p.MaxPullBlockRetries)
 			return nil
 		}
-		time.Sleep(p.RetryTimeout)
+
+		if waitOnStop(p.RetryTimeout, p.StopChannel) {
+			p.Logger.Info("Received a stop signal")
+			return nil
+		}
 	}
 }
 
@@ -124,6 +134,16 @@ func (p *BlockPuller) UpdateEndpoints(endpoints []EndpointCriteria) {
 	p.disconnect()
 }
 
+// waitOnStop waits duration, but returns immediately with true if the stop channel fires first.
+func waitOnStop(duration time.Duration, stop <-chan struct{}) bool {
+	select {
+	case <-stop:
+		return true
+	case <-time.After(duration):
+		return false
+	}
+}
+
 func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
 
 	block := p.popBlock(seq)
@@ -138,7 +158,11 @@ func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
 		p.connectToSomeEndpoint(seq)
 		if p.isDisconnected() {
 			p.Logger.Debugf("Failed to connect to some endpoint, going to try again in %v", p.RetryTimeout)
-			time.Sleep(p.RetryTimeout)
+
+			if waitOnStop(p.RetryTimeout, p.StopChannel) {
+				p.Logger.Info("Received a stop signal")
+				return nil
+			}
 		}
 		if retriesLeft == 0 && p.MaxPullBlockRetries > 0 {
 			p.Logger.Errorf("Failed to connect to some endpoint, attempts exhausted(%d), seq: %d, endpoints: %v",
