@@ -305,8 +305,10 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 			nwo.DeployChaincode(setup.network, testchannelID, setup.orderer, newlifecycleChaincode)
 		})
 
-		// Below test verifies private data reconciliation on peers bootstrapped from a snapshot.
-		FIt("generates snapshot and bootstraps from snapshots", func() {
+		// This test verifies the following:
+		// bootstrapped peer can pull private data
+		// bootstrapped peer can supply private data to other bootstrapped peer
+		It("generates snapshot and bootstraps from snapshots", func() {
 			org1peer0 := setup.network.Peer("Org1", "peer0")
 			org2peer0 := setup.network.Peer("Org2", "peer0")
 			channelPeers := setup.network.PeersWithChannel(testchannelID)
