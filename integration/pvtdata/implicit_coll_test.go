@@ -18,6 +18,8 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
+	"github.com/onsi/gomega/gexec"
 
 	"github.com/tedsuo/ifrit"
 )
@@ -172,6 +174,25 @@ func readImplicitCollection(n *nwo.Network, peer *nwo.Peer, chaincodeName string
 		Ctor:      fmt.Sprintf(`{"Args":["readWriteKVs","%s","%s"]}`, readInputBase64, ""),
 	}
 	queryChaincode(n, peer, command, expectedMsg, expectSuccess)
+}
+
+func invokeChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeInvoke) {
+	sess, err := n.PeerUserSession(peer, "User1", command)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful."))
+}
+
+func queryChaincode(n *nwo.Network, peer *nwo.Peer, command commands.ChaincodeQuery, expectedMessage string, expectSuccess bool) {
+	sess, err := n.PeerUserSession(peer, "User1", command)
+	Expect(err).NotTo(HaveOccurred())
+	if expectSuccess {
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		Expect(sess).To(gbytes.Say(expectedMessage))
+	} else {
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit())
+		Expect(sess.Err).To(gbytes.Say(expectedMessage))
+	}
 }
 
 func discoverAllPeers(n *nwo.Network, peer *nwo.Peer, channelID string, retries int, retryInterval time.Duration) {
