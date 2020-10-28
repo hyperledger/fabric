@@ -81,6 +81,7 @@ const (
 	JoinChainBySnapshot  string = "JoinChainBySnapshot"
 	JoinBySnapshotStatus string = "JoinBySnapshotStatus"
 	GetConfigBlock       string = "GetConfigBlock"
+	GetChannelConfig     string = "GetChannelConfig"
 	GetChannels          string = "GetChannels"
 )
 
@@ -198,6 +199,14 @@ func (e *PeerConfiger) InvokeNoShim(args [][]byte, sp *pb.SignedProposal) pb.Res
 		}
 
 		return e.getConfigBlock(args[1])
+	case GetChannelConfig:
+		if len(args[1]) == 0 {
+			return shim.Error("empty channel name provided")
+		}
+		if err = e.aclProvider.CheckACL(resources.Cscc_GetChannelConfig, string(args[1]), sp); err != nil {
+			return shim.Error(fmt.Sprintf("access denied for [%s][%s]: %s", fname, args[1], err))
+		}
+		return e.getChannelConfig(args[1])
 	case GetChannels:
 		// 2. check get channels policy
 		if err = e.aclProvider.CheckACL(resources.Cscc_GetChannels, "", sp); err != nil {
@@ -302,6 +311,23 @@ func (e *PeerConfiger) getConfigBlock(channelID []byte) pb.Response {
 	}
 
 	return shim.Success(blockBytes)
+}
+
+func (e *PeerConfiger) getChannelConfig(channelID []byte) pb.Response {
+	channel := e.peer.Channel(string(channelID))
+	if channel == nil {
+		return shim.Error(fmt.Sprintf("unknown channel ID, %s", string(channelID)))
+	}
+	channelConfig, err := peer.RetrievePersistedChannelConfig(channel.Ledger())
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	channelConfigBytes, err := protoutil.Marshal(channelConfig)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+	return shim.Success(channelConfigBytes)
 }
 
 // getChannels returns information about all channels for this peer
