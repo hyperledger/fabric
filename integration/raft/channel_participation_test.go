@@ -524,13 +524,11 @@ var _ = Describe("ChannelParticipation", func() {
 			By("attempting to join a channel when system channel is present")
 			channelparticipationJoinFailure(network, orderer1, "systemchannel", systemChannelBlock, http.StatusMethodNotAllowed, "cannot join: system channel exists")
 
-			By("attempting to submit a transaction to systemchannel")
+			By("ensuring the system channel is unusable before restarting by attempting to submit a transaction")
 			for _, o := range orderers {
 				By("submitting transaction to " + o.Name)
 				env := CreateBroadcastEnvelope(network, peer, "systemchannel", []byte("hello"))
-				resp, err := ordererclient.Broadcast(network, o, env)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp.Status).To(Equal(common.Status_FORBIDDEN))
+				Expect(broadcastTransactionFunc(network, o, env)()).To(Equal(common.Status_FORBIDDEN))
 			}
 
 			By("restarting all orderers")
@@ -576,11 +574,8 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("submitting transaction to orderer to confirm channel is usable")
 			env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
-			resp, err := ordererclient.Broadcast(network, orderer1, env)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(resp.Status).To(Equal(common.Status_SUCCESS))
+			Eventually(broadcastTransactionFunc(network, orderer1, env), network.EventuallyTimeout).Should(Equal(common.Status_SUCCESS))
 		})
-
 	})
 
 	Describe("three node etcdraft network with a system channel", func() {
