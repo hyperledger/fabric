@@ -20,16 +20,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/peer/chaincode/mock"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -151,49 +147,6 @@ func TestCheckInvalidJSON(t *testing.T) {
 		t.Logf("Bar argument error should have been caught: %s", invalidJSON)
 		return
 	}
-}
-
-func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
-	signer, err := common.GetDefaultSigner()
-	require.NoError(t, err)
-
-	mockchain := "mockchain"
-	factory.InitFactories(nil)
-	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
-	pgen := encoder.New(config)
-	genesisBlock := pgen.GenesisBlockForChannel(mockchain)
-
-	mockResponse := &pb.ProposalResponse{
-		Response:    &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(genesisBlock)},
-		Endorsement: &pb.Endorsement{},
-	}
-	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-	ordererEndpoints, err := common.GetOrdererEndpointOfChain(mockchain, signer, mockEndorserClient, cryptoProvider)
-	require.NoError(t, err, "GetOrdererEndpointOfChain from genesis block")
-
-	require.Equal(t, len(ordererEndpoints), 0)
-}
-
-func TestGetOrdererEndpointFail(t *testing.T) {
-	signer, err := common.GetDefaultSigner()
-	require.NoError(t, err)
-
-	mockchain := "mockchain"
-	factory.InitFactories(nil)
-
-	mockResponse := &pb.ProposalResponse{
-		Response:    &pb.Response{Status: 404, Payload: []byte{}},
-		Endorsement: &pb.Endorsement{},
-	}
-	mockEndorserClient := common.GetMockEndorserClient(mockResponse, nil)
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-	_, err = common.GetOrdererEndpointOfChain(mockchain, signer, mockEndorserClient, cryptoProvider)
-	require.Error(t, err, "GetOrdererEndpointOfChain from invalid response")
 }
 
 const sampleCollectionConfigGood = `[

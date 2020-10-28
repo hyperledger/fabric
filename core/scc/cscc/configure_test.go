@@ -450,6 +450,91 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 	require.Contains(t, res.Message, "access denied for [JoinChainBySnapshot]")
 }
 
+func TestConfigerInvokeGetChannelConfig(t *testing.T) {
+	testDir, err := ioutil.TempDir("", "cscc_test_GetChannelConfig")
+	require.NoError(t, err)
+	defer os.RemoveAll(testDir)
+
+	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
+	ledgerInitializer.CustomTxProcessors = map[common.HeaderType]ledger.CustomTxProcessor{
+		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+	}
+	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgerInitializer)
+	defer ledgerMgr.Close()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:")
+	require.NoError(t, err)
+	grpcServer := grpc.NewServer()
+
+	cscc := newPeerConfiger(t, ledgerMgr, grpcServer, listener.Addr().String())
+
+	go grpcServer.Serve(listener)
+	defer grpcServer.Stop()
+
+	block, err := configtxtest.MakeGenesisBlock("test-channel-id")
+	require.NoError(t, err)
+	require.NoError(t,
+		cscc.peer.CreateChannel("test-channel-id", block, cscc.deployedCCInfoProvider, cscc.legacyLifecycle, cscc.newLifecycle),
+	)
+
+	initMocks := func() (*mocks.ACLProvider, *mocks.ChaincodeStub) {
+		mockACLProvider := cscc.aclProvider.(*mocks.ACLProvider)
+		mockACLProvider.CheckACLReturns(nil)
+
+		mockStub := &mocks.ChaincodeStub{}
+		mockStub.GetSignedProposalReturns(validSignedProposal(), nil)
+		mockStub.GetArgsReturns([][]byte{[]byte("GetChannelConfig"), []byte("test-channel-id")})
+		return mockACLProvider, mockStub
+	}
+
+	t.Run("green-path", func(t *testing.T) {
+		_, mockStub := initMocks()
+		res := cscc.Invoke(mockStub)
+		require.Equal(t, int32(shim.OK), res.Status)
+
+		retrievedChannelConfig := &cb.Config{}
+		require.NoError(t, proto.Unmarshal(res.Payload, retrievedChannelConfig))
+		require.True(t,
+			proto.Equal(
+				channelConfigFromBlock(t, block),
+				retrievedChannelConfig,
+			),
+		)
+	})
+
+	t.Run("acl-error", func(t *testing.T) {
+		mockACLProvider, mockStub := initMocks()
+		mockACLProvider.CheckACLReturns(errors.New("auth error"))
+		res := cscc.Invoke(mockStub)
+		require.Equal(t, int32(shim.ERROR), res.Status)
+		require.Equal(t, res.Message, "access denied for [GetChannelConfig][test-channel-id]: auth error")
+	})
+
+	t.Run("missing-channel-name-error", func(t *testing.T) {
+		_, mockStub := initMocks()
+		mockStub.GetArgsReturns([][]byte{[]byte("GetChannelConfig")})
+		res := cscc.Invoke(mockStub)
+		require.Equal(t, int32(shim.ERROR), res.Status)
+		require.Equal(t, "Incorrect number of arguments, 1", res.Message)
+	})
+
+	t.Run("nil-channel-name-error", func(t *testing.T) {
+		_, mockStub := initMocks()
+		mockStub.GetArgsReturns([][]byte{[]byte("GetChannelConfig"), {}})
+		res := cscc.Invoke(mockStub)
+		require.Equal(t, int32(shim.ERROR), res.Status)
+		require.Equal(t, "empty channel name provided", res.Message)
+	})
+
+	t.Run("non-existing-channel-name-error", func(t *testing.T) {
+		_, mockStub := initMocks()
+		mockStub.GetArgsReturns([][]byte{[]byte("GetChannelConfig"), []byte("non-existing-channel")})
+		res := cscc.Invoke(mockStub)
+		require.Equal(t, int32(shim.ERROR), res.Status)
+		require.Equal(t, "unknown channel ID, non-existing-channel", res.Message)
+	})
+}
+
 func TestPeerConfiger_SubmittingOrdererGenesis(t *testing.T) {
 	conf := genesisconfig.Load(genesisconfig.SampleSingleMSPSoloProfile, configtest.GetDevConfigDir())
 	conf.Application = nil
@@ -569,4 +654,13 @@ func validSignedProposal() *pb.SignedProposal {
 			}),
 		}),
 	}
+}
+
+func channelConfigFromBlock(t *testing.T, configBlock *cb.Block) *cb.Config {
+	envelopeConfig, err := protoutil.ExtractEnvelope(configBlock, 0)
+	require.NoError(t, err)
+	configEnv := &common.ConfigEnvelope{}
+	_, err = protoutil.UnmarshalEnvelopeOfType(envelopeConfig, common.HeaderType_CONFIG, configEnv)
+	require.NoError(t, err)
+	return configEnv.Config
 }

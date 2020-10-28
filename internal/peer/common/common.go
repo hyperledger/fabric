@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
@@ -217,7 +218,7 @@ func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]),
 			ChaincodeId: &pb.ChaincodeID{Name: "cscc"},
-			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte(cscc.GetConfigBlock), []byte(chainID)}},
+			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte(cscc.GetChannelConfig), []byte(chainID)}},
 		},
 	}
 
@@ -228,40 +229,36 @@ func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.
 
 	prop, _, err := protoutil.CreateProposalFromCIS(pcommon.HeaderType_CONFIG, "", invocation, creator)
 	if err != nil {
-		return nil, errors.WithMessage(err, "error creating GetConfigBlock proposal")
+		return nil, errors.WithMessage(err, "error creating GetChannelConfig proposal")
 	}
 
 	signedProp, err := protoutil.GetSignedProposal(prop, signer)
 	if err != nil {
-		return nil, errors.WithMessage(err, "error creating signed GetConfigBlock proposal")
+		return nil, errors.WithMessage(err, "error creating signed GetChannelConfig proposal")
 	}
 
 	proposalResp, err := endorserClient.ProcessProposal(context.Background(), signedProp)
 	if err != nil {
-		return nil, errors.WithMessage(err, "error endorsing GetConfigBlock")
+		return nil, errors.WithMessage(err, "error endorsing GetChannelConfig")
 	}
 
 	if proposalResp == nil {
-		return nil, errors.WithMessage(err, "error nil proposal response")
+		return nil, errors.New("received nil proposal response")
 	}
 
 	if proposalResp.Response.Status != 0 && proposalResp.Response.Status != 200 {
 		return nil, errors.Errorf("error bad proposal response %d: %s", proposalResp.Response.Status, proposalResp.Response.Message)
 	}
 
-	// parse config block
-	block, err := protoutil.UnmarshalBlock(proposalResp.Response.Payload)
-	if err != nil {
-		return nil, errors.WithMessage(err, "error unmarshaling config block")
+	// parse config
+	channelConfig := &pcommon.Config{}
+	if err := proto.Unmarshal(proposalResp.Response.Payload, channelConfig); err != nil {
+		return nil, errors.WithMessage(err, "error unmarshaling channel config")
 	}
 
-	envelopeConfig, err := protoutil.ExtractEnvelope(block, 0)
+	bundle, err := channelconfig.NewBundle(chainID, channelConfig, cryptoProvider)
 	if err != nil {
-		return nil, errors.WithMessage(err, "error extracting config block envelope")
-	}
-	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, cryptoProvider)
-	if err != nil {
-		return nil, errors.WithMessage(err, "error loading config block")
+		return nil, errors.WithMessage(err, "error loading channel config")
 	}
 
 	return bundle.ChannelConfig().OrdererAddresses(), nil

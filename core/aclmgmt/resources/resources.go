@@ -51,6 +51,7 @@ const (
 	Cscc_JoinChainBySnapshot  = "cscc/JoinChainBySnapshot"
 	Cscc_JoinBySnapshotStatus = "cscc/JoinBySnapshotStatus"
 	Cscc_GetConfigBlock       = "cscc/GetConfigBlock"
+	Cscc_GetChannelConfig     = "cscc/GetChannelConfig"
 	Cscc_GetChannels          = "cscc/GetChannels"
 
 	//Peer resources
