@@ -369,8 +369,8 @@ Admin:
 #   Channel participation API Configuration
 #
 #   - This provides the channel participation API configuration for the orderer.
-#   - Channel participation uses the same ListenAddress and TLS settings of the
-#     Operations service.
+#   - Channel participation uses the ListenAddress and TLS settings of the Admin
+#     service.
 #
 ################################################################################
 ChannelParticipation:
