@@ -693,8 +693,8 @@ func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 // JoinChannel instructs the orderer to create a channel and join it with the provided config block.
 // The URL field is empty, and is to be completed by the caller.
 func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppChannel bool) (info types.ChannelInfo, err error) {
-	r.lock.RLock()
-	defer r.lock.RUnlock()
+	r.lock.Lock()
+	defer r.lock.Unlock()
 
 	if r.systemChannelID != "" {
 		return types.ChannelInfo{}, types.ErrSystemChannelExists
