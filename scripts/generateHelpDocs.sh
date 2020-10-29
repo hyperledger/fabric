@@ -65,7 +65,7 @@ generateHelpText \
         docs/wrappers/peer_channel_postscript.md \
         "${commands[@]}"
 
-commands=("peer node start" "peer node reset" "peer node rollback")
+commands=("peer node pause" "peer node rebuild-dbs" "peer node reset" "peer node resume" "peer node rollback" "peer node start" "peer node upgrade-dbs")
 generateHelpText \
         docs/source/commands/peernode.md \
         docs/wrappers/peer_node_preamble.md \
