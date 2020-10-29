@@ -18,7 +18,7 @@ func rebuildDBsCmd() *cobra.Command {
 var nodeRebuildCmd = &cobra.Command{
 	Use:   "rebuild-dbs",
 	Short: "Rebuilds databases.",
-	Long: "Drops the databases for all the channels and rebuilds them upon peer restart. " +
+	Long: "Drops the databases for all the channels and rebuilds them upon peer restart." +
 		" When the command is executed, the peer must be offline." +
 		" The command is not supported if the peer contains any channel that was bootstrapped from a snapshot.",
 	RunE: func(cmd *cobra.Command, args []string) error {
