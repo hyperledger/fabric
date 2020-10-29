@@ -400,6 +400,7 @@ func BlockPullerFromConfigBlock(conf PullerConfig, block *common.Block, verifier
 		FetchTimeout:        conf.Timeout,
 		Channel:             conf.Channel,
 		Signer:              conf.Signer,
+		StopChannel:         make(chan struct{}),
 	}, nil
 }
 
