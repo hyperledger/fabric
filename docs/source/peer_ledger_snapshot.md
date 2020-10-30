@@ -145,7 +145,7 @@ To verify that the peer has joined the channel successfully, issue a command sim
 peer channel getinfo -c <name of channel joined by snapshot>
 ```
 
-Additionally, if the peer has not already installed a chaincode being used on the channel, do so, and then issue a query. A successful return of data indicates that the peer has successfully joined using the snapshot. You can then install all of the chaincodes being used on the channel. If the snapshot is used by a new organization, and the channel contains the definitions for the chaincodes that are defined using the [new chaincode lifecycle](../chaincode_lifecycle.html), the new organization will need to approve the definition of these chaincodes before they can be invoked on the peer.
+Additionally, if the peer has not already installed a chaincode being used on the channel, do so, and then issue a query. A successful return of data indicates that the peer has successfully joined using the snapshot. You can then install all of the chaincodes being used on the channel. If the snapshot is used by a new organization, and the channel contains the definitions for the chaincodes that are defined using the [new chaincode lifecycle](./chaincode_lifecycle.html), the new organization will need to approve the definition of these chaincodes before they can be invoked on the peer.
 
 ## Try it out
 
