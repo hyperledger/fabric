@@ -8,7 +8,7 @@ Here is an example of the `peer snapshot cancelrequest` command.
     for `peer0.org1.example.com:7051`:
 
     ```
-    peer snapshot cancelrequest -C mychannel -b 1000 --peerAddress peer0.org1.example.com:7051
+    peer snapshot cancelrequest -c mychannel -b 1000 --peerAddress peer0.org1.example.com:7051
 
     Snapshot request cancelled successfully
 
@@ -28,7 +28,7 @@ If a snapshot is already generated, the corresponding block number will be remov
     for `peer0.org1.example.com:7051`:
 
     ```
-    peer snapshot listpending -C mychannel --peerAddress peer0.org1.example.com:7051
+    peer snapshot listpending -c mychannel --peerAddress peer0.org1.example.com:7051
 
     Successfully got pending snapshot requests: [1000 5000]
 
@@ -46,7 +46,7 @@ Here is an example of the `peer snapshot submitrequest` command.
     for `peer0.org1.example.com:7051`:
 
     ```
-    peer snapshot submitrequest -C mychannel -b 1000 --peerAddress peer0.org1.example.com:7051
+    peer snapshot submitrequest -c mychannel -b 1000 --peerAddress peer0.org1.example.com:7051
 
     Snapshot request submitted successfully
 

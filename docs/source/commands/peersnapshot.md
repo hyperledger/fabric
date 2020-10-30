@@ -23,7 +23,7 @@ Usage:
 
 Flags:
   -b, --blockNumber uint         The block number for which a snapshot will be generated
-  -C, --channelID string         The channel on which this command should be executed
+  -c, --channelID string         The channel on which this command should be executed
   -h, --help                     help for cancelrequest
       --peerAddress string       The address of the peer to connect to
       --tlsRootCertFile string   The path to the TLS root cert file of the peer to connect to, required if TLS is enabled and ignored if TLS is disabled.
@@ -38,7 +38,7 @@ Usage:
   peer snapshot listpending [flags]
 
 Flags:
-  -C, --channelID string         The channel on which this command should be executed
+  -c, --channelID string         The channel on which this command should be executed
   -h, --help                     help for listpending
       --peerAddress string       The address of the peer to connect to
       --tlsRootCertFile string   The path to the TLS root cert file of the peer to connect to, required if TLS is enabled and ignored if TLS is disabled.
@@ -54,7 +54,7 @@ Usage:
 
 Flags:
   -b, --blockNumber uint         The block number for which a snapshot will be generated
-  -C, --channelID string         The channel on which this command should be executed
+  -c, --channelID string         The channel on which this command should be executed
   -h, --help                     help for submitrequest
       --peerAddress string       The address of the peer to connect to
       --tlsRootCertFile string   The path to the TLS root cert file of the peer to connect to, required if TLS is enabled and ignored if TLS is disabled.
@@ -70,7 +70,7 @@ Here is an example of the `peer snapshot cancelrequest` command.
     for `peer0.org1.example.com:7051`:
 
     ```
-    peer snapshot cancelrequest -C mychannel -b 1000 --peerAddress peer0.org1.example.com:7051
+    peer snapshot cancelrequest -c mychannel -b 1000 --peerAddress peer0.org1.example.com:7051
 
     Snapshot request cancelled successfully
 
@@ -90,7 +90,7 @@ If a snapshot is already generated, the corresponding block number will be remov
     for `peer0.org1.example.com:7051`:
 
     ```
-    peer snapshot listpending -C mychannel --peerAddress peer0.org1.example.com:7051
+    peer snapshot listpending -c mychannel --peerAddress peer0.org1.example.com:7051
 
     Successfully got pending snapshot requests: [1000 5000]
 
@@ -108,7 +108,7 @@ Here is an example of the `peer snapshot submitrequest` command.
     for `peer0.org1.example.com:7051`:
 
     ```
-    peer snapshot submitrequest -C mychannel -b 1000 --peerAddress peer0.org1.example.com:7051
+    peer snapshot submitrequest -c mychannel -b 1000 --peerAddress peer0.org1.example.com:7051
 
     Snapshot request submitted successfully
 

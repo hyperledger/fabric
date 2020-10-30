@@ -81,7 +81,7 @@ func cancelRequest(cmd *cobra.Command, cl *client, cryptoProvider bccsp.BCCSP) e
 
 func validateCancelRequest() error {
 	if channelID == "" {
-		return errors.New("the required parameter 'channelID' is empty. Rerun the command with -C flag")
+		return errors.New("the required parameter 'channelID' is empty. Rerun the command with -c flag")
 	}
 	if blockNumber == 0 {
 		return errors.New("the required parameter 'blockNumber' is empty or set to 0. Rerun the command with -b flag")

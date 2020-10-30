@@ -63,13 +63,13 @@ In this example, the ledger height is `970`.
 A snapshot request can be submitted by issuing a command similar to:
 
 ```
-peer snapshot submitrequest -C <name of channel> -b <ledger height where snapshot will be taken> --peerAddress <address of peer> --tlsRootCertFile <path to root certificate of the TLS CA>
+peer snapshot submitrequest -c <name of channel> -b <ledger height where snapshot will be taken> --peerAddress <address of peer> --tlsRootCertFile <path to root certificate of the TLS CA>
 ```
 
 For example:
 
 ```
-peer snapshot submitrequest -C testchannel -b 1000 --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
+peer snapshot submitrequest -c testchannel -b 1000 --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
 ```
 
 **If you give a ledger height of `0`, the snapshot is taken immediately. This is useful for cases when an organization is interested in generating a snapshot that will be used by one of its own peers and does not intend to share the data with another organization. Do not take these "immediate" snapshots in cases when snapshots will be evaluated from multiple peers, as it increases the likelihood that the snapshots will be taken at different ledger heights.**
@@ -79,7 +79,7 @@ If the request is successful, you will see a `Snapshot request submitted success
 You can list the pending snapshots by issuing a command similar to:
 
 ```
-peer snapshot listpending -C testchannel --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
+peer snapshot listpending -c testchannel --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
 ```
 
 You will see a response similar to:
@@ -93,7 +93,7 @@ When a snapshot has been generated for a particular block height, the pending re
 To delete a snapshot request, simply exchange `submitrequest` with `cancelrequest`. For example:
 
 ```
-peer snapshot cancelrequest -C testchannel -b 1000 --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
+peer snapshot cancelrequest -c testchannel -b 1000 --peerAddress 127.0.0.1:22509 --tlsRootCertFile tls/cert.pem
 ```
 
 If you submit the `listpending` command again, the snapshot should no longer appear.
