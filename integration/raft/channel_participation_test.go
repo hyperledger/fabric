@@ -147,7 +147,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
-			submitTxn(orderer1, peer, network, members, 1, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer1, peer, network, members, 1, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -155,7 +155,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Height:          2,
 			})
 
-			submitTxn(orderer2, peer, network, members, 2, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer2, peer, network, members, 2, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -197,7 +197,7 @@ var _ = Describe("ChannelParticipation", func() {
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoPT))
 
 			By("submitting transaction to orderer3 to ensure it is active")
-			submitTxn(orderer3, peer, network, orderers, 4, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer3, peer, network, orderers, 4, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -240,7 +240,7 @@ var _ = Describe("ChannelParticipation", func() {
 			}))
 
 			members = []*nwo.Orderer{orderer2, orderer3}
-			submitTxn(orderer2, peer, network, members, 6, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer2, peer, network, members, 6, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -266,7 +266,7 @@ var _ = Describe("ChannelParticipation", func() {
 			channelparticipation.List(network, orderer1, []string{"another-participation-trophy"})
 
 			By("ensuring the channel is still usable by submitting a transaction to each remaining consenter for the channel")
-			submitTxn(orderer2, peer, network, members, 7, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer2, peer, network, members, 7, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -274,7 +274,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Height:          8,
 			})
 
-			submitTxn(orderer3, peer, network, members, 8, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer3, peer, network, members, 8, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -326,7 +326,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
-			submitTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -334,7 +334,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Height:          2,
 			})
 
-			submitTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -382,7 +382,7 @@ var _ = Describe("ChannelParticipation", func() {
 				return channelparticipation.ListOne(network, orderer3, "participation-trophy")
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoMember))
 
-			submitTxn(orderer3, peer, network, orderers, 5, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer3, peer, network, orderers, 5, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -420,7 +420,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
-			submitTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -428,7 +428,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Height:          2,
 			})
 
-			submitTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -483,7 +483,7 @@ var _ = Describe("ChannelParticipation", func() {
 				return channelparticipation.ListOne(network, orderer3, "participation-trophy")
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoPT))
 
-			submitTxn(orderer3, peer, network, orderers, 5, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer3, peer, network, orderers, 5, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -647,6 +647,24 @@ var _ = Describe("ChannelParticipation", func() {
 				channelparticipation.List(network, o, []string{"testchannel"}, "systemchannel")
 			}
 
+			By("submitting a transaction to ensure the system channel is active after restart")
+			submitOrdererTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
+				Name:            "systemchannel",
+				URL:             "/participation/v1/channels/systemchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          3,
+			})
+
+			By("submitting a transaction to ensure the application channel is active after restart")
+			submitPeerTxn(orderer2, peer, network, orderers, 4, channelparticipation.ChannelInfo{
+				Name:            "testchannel",
+				URL:             "/participation/v1/channels/testchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          5,
+			})
+
 			By("removing orderer3 from the consenters set")
 			channelConfig := nwo.GetConfig(network, peer, orderer2, "testchannel")
 			c := configtx.New(channelConfig)
@@ -662,8 +680,39 @@ var _ = Describe("ChannelParticipation", func() {
 				URL:             "/participation/v1/channels/testchannel",
 				Status:          "inactive",
 				ClusterRelation: "config-tracker",
-				Height:          5,
+				Height:          6,
 			}))
+
+			By("ensuring orderers 1 and 2 receive the block")
+			orderers1and2 := []*nwo.Orderer{orderer1, orderer2}
+			for _, o := range orderers1and2 {
+				Eventually(func() channelparticipation.ChannelInfo {
+					return channelparticipation.ListOne(network, o, "testchannel")
+				}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
+					Name:            "testchannel",
+					URL:             "/participation/v1/channels/testchannel",
+					Status:          "active",
+					ClusterRelation: "member",
+					Height:          6,
+				}))
+			}
+
+			By("submitting a transaction to each active orderer")
+			submitPeerTxn(orderer1, peer, network, orderers1and2, 6, channelparticipation.ChannelInfo{
+				Name:            "testchannel",
+				URL:             "/participation/v1/channels/testchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          7,
+			})
+
+			submitPeerTxn(orderer2, peer, network, orderers1and2, 7, channelparticipation.ChannelInfo{
+				Name:            "testchannel",
+				URL:             "/participation/v1/channels/testchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          8,
+			})
 
 			By("restarting orderer3 to ensure it still reports inactive/config-tracker")
 			restartOrderer(orderer3, 2)
@@ -674,7 +723,7 @@ var _ = Describe("ChannelParticipation", func() {
 				URL:             "/participation/v1/channels/testchannel",
 				Status:          "inactive",
 				ClusterRelation: "config-tracker",
-				Height:          5,
+				Height:          6,
 			}))
 
 			By("attempting to join a channel when the system channel is present")
@@ -683,6 +732,15 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("attempting to remove a channel when the system channel is present")
 			channelparticipationRemoveFailure(network, orderers[0], "testchannel", http.StatusMethodNotAllowed, "cannot remove: system channel exists")
+
+			By("submitting a transaction to ensure the system channel is active after restart")
+			submitOrdererTxn(orderer3, peer, network, orderers, 3, channelparticipation.ChannelInfo{
+				Name:            "systemchannel",
+				URL:             "/participation/v1/channels/systemchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          4,
+			})
 
 			By("putting the system channel into maintenance mode")
 			channelConfig = nwo.GetConfig(network, peer, orderer2, "systemchannel")
@@ -696,27 +754,27 @@ var _ = Describe("ChannelParticipation", func() {
 				channelparticipation.Remove(network, o, "systemchannel")
 			}
 
-			By("listing the channels again")
-			for _, o := range orderers[:1] {
+			By("listing the channels after removing the system channel")
+			for _, o := range orderers1and2 {
 				channelparticipation.List(network, o, []string{"testchannel"})
 			}
 			channelparticipation.List(network, orderer3, []string{})
 
-			By("broadcasting envelopes to each active orderer")
-			submitTxn(orderer1, peer, network, orderers[:1], 5, channelparticipation.ChannelInfo{
+			By("submitting a transaction to each active orderer after restart")
+			submitPeerTxn(orderer1, peer, network, orderers1and2, 8, channelparticipation.ChannelInfo{
 				Name:            "testchannel",
 				URL:             "/participation/v1/channels/testchannel",
 				Status:          "active",
 				ClusterRelation: "member",
-				Height:          6,
+				Height:          9,
 			})
 
-			submitTxn(orderer2, peer, network, orderers[:1], 6, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer2, peer, network, orderers1and2, 9, channelparticipation.ChannelInfo{
 				Name:            "testchannel",
 				URL:             "/participation/v1/channels/testchannel",
 				Status:          "active",
 				ClusterRelation: "member",
-				Height:          7,
+				Height:          10,
 			})
 
 			By("using the channel participation API to join a new channel")
@@ -735,7 +793,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(channelInfo).To(Equal(expectedChannelInfoPT))
 			}
 
-			submitTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -743,7 +801,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Height:          2,
 			})
 
-			submitTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -751,7 +809,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Height:          3,
 			})
 
-			submitTxn(orderer3, peer, network, orderers, 3, channelparticipation.ChannelInfo{
+			submitPeerTxn(orderer3, peer, network, orderers, 3, channelparticipation.ChannelInfo{
 				Name:            "participation-trophy",
 				URL:             "/participation/v1/channels/participation-trophy",
 				Status:          "active",
@@ -763,16 +821,30 @@ var _ = Describe("ChannelParticipation", func() {
 
 })
 
-func submitTxn(o *nwo.Orderer, peer *nwo.Peer, n *nwo.Network, orderers []*nwo.Orderer, expectedBlkNum int, expectedChannelInfo channelparticipation.ChannelInfo) {
-	By("submitting a transaction to " + o.Name)
+// submit a transaction signed by the peer and ensure it was
+// committed to the ledger
+func submitPeerTxn(o *nwo.Orderer, peer *nwo.Peer, n *nwo.Network, orderers []*nwo.Orderer, expectedBlkNum int, expectedChannelInfo channelparticipation.ChannelInfo) {
 	env := CreateBroadcastEnvelope(n, peer, expectedChannelInfo.Name, []byte("hello"))
+	submitTxn(o, env, peer, n, orderers, expectedBlkNum, expectedChannelInfo)
+}
+
+// submit a transaction signed by the orderer and ensure it is
+// committed to the ledger
+func submitOrdererTxn(o *nwo.Orderer, peer *nwo.Peer, n *nwo.Network, orderers []*nwo.Orderer, expectedBlkNum int, expectedChannelInfo channelparticipation.ChannelInfo) {
+	env := CreateBroadcastEnvelope(n, o, expectedChannelInfo.Name, []byte("hello"))
+	submitTxn(o, env, peer, n, orderers, expectedBlkNum, expectedChannelInfo)
+}
+
+// submit the envelope to the orderer and ensure it is committed
+// to the ledger
+func submitTxn(o *nwo.Orderer, env *common.Envelope, peer *nwo.Peer, n *nwo.Network, orderers []*nwo.Orderer, expectedBlkNum int, expectedChannelInfo channelparticipation.ChannelInfo) {
+	By("submitting a transaction to " + o.Name)
 	Eventually(broadcastTransactionFunc(n, o, env), n.EventuallyTimeout, time.Second).Should(Equal(common.Status_SUCCESS))
-	expectedBlockNumPerChannel := map[string]int{expectedChannelInfo.Name: expectedBlkNum}
-	assertBlockReception(expectedBlockNumPerChannel, orderers, peer, n)
 
 	By("checking the channel info on " + o.Name)
-	channelInfo := channelparticipation.ListOne(n, o, expectedChannelInfo.Name)
-	Expect(channelInfo).To(Equal(expectedChannelInfo))
+	Eventually(func() channelparticipation.ChannelInfo {
+		return channelparticipation.ListOne(n, o, expectedChannelInfo.Name)
+	}, n.EventuallyTimeout).Should(Equal(expectedChannelInfo))
 }
 
 func applicationChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, p *nwo.Peer, channel string) *common.Block {
