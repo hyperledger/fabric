@@ -78,7 +78,7 @@ func listPending(cmd *cobra.Command, cl *client, cryptoProvider bccsp.BCCSP) err
 
 func validateListPending() error {
 	if channelID == "" {
-		return errors.New("the required parameter 'channelID' is empty. Rerun the command with -C flag")
+		return errors.New("the required parameter 'channelID' is empty. Rerun the command with -c flag")
 	}
 	return nil
 }

@@ -26,7 +26,7 @@ func TestCancelRequestCmd(t *testing.T) {
 
 	resetFlags()
 	cmd := cancelRequestCmd(mockClient, nil)
-	cmd.SetArgs([]string{"-C", "mychannel", "-b", "100"})
+	cmd.SetArgs([]string{"-c", "mychannel", "-b", "100"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, []byte("Snapshot request cancelled successfully\n"), buffer.Contents())
@@ -43,9 +43,9 @@ func TestCancelRequestCmd(t *testing.T) {
 
 	resetFlags()
 	cmd.SetArgs([]string{"-b", "100"})
-	require.EqualError(t, cmd.Execute(), "the required parameter 'channelID' is empty. Rerun the command with -C flag")
+	require.EqualError(t, cmd.Execute(), "the required parameter 'channelID' is empty. Rerun the command with -c flag")
 
 	resetFlags()
-	cmd.SetArgs([]string{"-C", "mychannel"})
+	cmd.SetArgs([]string{"-c", "mychannel"})
 	require.EqualError(t, cmd.Execute(), "the required parameter 'blockNumber' is empty or set to 0. Rerun the command with -b flag")
 }

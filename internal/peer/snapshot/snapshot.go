@@ -56,7 +56,7 @@ func init() {
 func resetFlags() {
 	flags = &pflag.FlagSet{}
 
-	flags.StringVarP(&channelID, "channelID", "C", "", "The channel on which this command should be executed")
+	flags.StringVarP(&channelID, "channelID", "c", "", "The channel on which this command should be executed")
 	flags.Uint64VarP(&blockNumber, "blockNumber", "b", 0, "The block number for which a snapshot will be generated")
 	flags.StringVarP(&peerAddress, "peerAddress", "", "", "The address of the peer to connect to")
 	flags.StringVarP(&tlsRootCertFile, "tlsRootCertFile", "", "",

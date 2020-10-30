@@ -39,7 +39,7 @@ func TestValidatePeerConnectionParameters(t *testing.T) {
 	require.NoError(t, validatePeerConnectionParameters())
 
 	// test error propagation
-	args := []string{"-C", "mychannel"}
+	args := []string{"-c", "mychannel"}
 	resetFlags()
 	cmd := listPendingCmd(nil, nil)
 	cmd.SetArgs(args)
