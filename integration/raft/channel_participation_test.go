@@ -647,6 +647,10 @@ var _ = Describe("ChannelParticipation", func() {
 				channelparticipation.List(network, o, []string{"testchannel"}, "systemchannel")
 			}
 
+			By("broadcasting an envelope to ensure the channel is active after restart")
+			env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
+			Eventually(broadcastTransactionFunc(network, orderer2, env), network.EventuallyTimeout).Should(Equal(common.Status_SUCCESS))
+
 			By("removing orderer3 from the consenters set")
 			channelConfig := nwo.GetConfig(network, peer, orderer2, "testchannel")
 			c := configtx.New(channelConfig)
@@ -662,7 +666,7 @@ var _ = Describe("ChannelParticipation", func() {
 				URL:             "/participation/v1/channels/testchannel",
 				Status:          "inactive",
 				ClusterRelation: "config-tracker",
-				Height:          5,
+				Height:          6,
 			}))
 
 			By("restarting orderer3 to ensure it still reports inactive/config-tracker")
@@ -674,7 +678,7 @@ var _ = Describe("ChannelParticipation", func() {
 				URL:             "/participation/v1/channels/testchannel",
 				Status:          "inactive",
 				ClusterRelation: "config-tracker",
-				Height:          5,
+				Height:          6,
 			}))
 
 			By("attempting to join a channel when the system channel is present")
@@ -697,26 +701,27 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			By("listing the channels again")
-			for _, o := range orderers[:1] {
+			orderers1and2 := []*nwo.Orderer{orderer1, orderer2}
+			for _, o := range orderers1and2 {
 				channelparticipation.List(network, o, []string{"testchannel"})
 			}
 			channelparticipation.List(network, orderer3, []string{})
 
 			By("broadcasting envelopes to each active orderer")
-			submitTxn(orderer1, peer, network, orderers[:1], 5, channelparticipation.ChannelInfo{
-				Name:            "testchannel",
-				URL:             "/participation/v1/channels/testchannel",
-				Status:          "active",
-				ClusterRelation: "member",
-				Height:          6,
-			})
-
-			submitTxn(orderer2, peer, network, orderers[:1], 6, channelparticipation.ChannelInfo{
+			submitTxn(orderer1, peer, network, orderers1and2, 6, channelparticipation.ChannelInfo{
 				Name:            "testchannel",
 				URL:             "/participation/v1/channels/testchannel",
 				Status:          "active",
 				ClusterRelation: "member",
 				Height:          7,
+			})
+
+			submitTxn(orderer2, peer, network, orderers1and2, 7, channelparticipation.ChannelInfo{
+				Name:            "testchannel",
+				URL:             "/participation/v1/channels/testchannel",
+				Status:          "active",
+				ClusterRelation: "member",
+				Height:          8,
 			})
 
 			By("using the channel participation API to join a new channel")
