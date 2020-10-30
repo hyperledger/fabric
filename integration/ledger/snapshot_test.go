@@ -187,7 +187,7 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 			nwo.DeployChaincode(setup.network, testchannelID, setup.orderer, newlifecycleChaincode, channelPeers...)
 
 			By("invoking chaincode after upgraded to new lifecycle chaincode")
-			helper.invokeMarblesChaincode(legacyChaincode.Name, org1peer0, "initMarble", "marble-upgrade", "blue", "35", "tom")
+			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org1peer0, "initMarble", "marble-upgrade", "blue", "35", "tom")
 
 			// test 5: generate snapshot again on a peer bootstrapped from a snapshot and upgraded to new lifecycle chaincode
 			blockNumForNextSnapshot := nwo.GetLedgerHeight(setup.network, org2peer1, testchannelID)
@@ -196,8 +196,8 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 
 			// invoke chaincode to trigger snapshot generation
 			// 1st call should be committed before snapshot generation, 2nd call should be committed after snapshot generation
-			helper.invokeMarblesChaincode(legacyChaincode.Name, org1peer0, "transferMarble", testKey, "newowner_beforesnapshot")
-			helper.invokeMarblesChaincode(legacyChaincode.Name, org1peer0, "transferMarble", testKey, "newowner_aftersnapshot")
+			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org1peer0, "transferMarble", testKey, "newowner_beforesnapshot")
+			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org1peer0, "transferMarble", testKey, "newowner_aftersnapshot")
 
 			By("verifying snapshot completed on org2peer1")
 			verifyNoPendingSnapshotRequest(setup.network, org2peer1, testchannelID)
@@ -221,7 +221,7 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 			expectedHistory = []*marbleHistoryResult{
 				{IsDelete: "false", Value: newMarble(testKey, "blue", 35, "newowner_aftersnapshot")},
 			}
-			helper.assertGetHistoryForMarble(legacyChaincode.Name, org1peer1, expectedHistory, testKey)
+			helper.assertGetHistoryForMarble(newlifecycleChaincode.Name, org1peer1, expectedHistory, testKey)
 
 			verifyQSCC(setup.network, org1peer1, testchannelID, blockNumForNextSnapshot, txidBeforeSnapshot)
 
@@ -240,18 +240,23 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 			verifySizeIndexExists(setup.network, testchannelID, setup.orderer, org2peer1, "marbles")
 
 			By("invoking chaincode on bootstrapped peer org4peer0")
-			helper.invokeMarblesChaincode(legacyChaincode.Name, org4peer0, "delete", testKey)
+			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org4peer0, "delete", testKey)
 
 			By("verifying history on peer org4peer0")
 			expectedHistory = []*marbleHistoryResult{
 				{IsDelete: "true"},
 				{IsDelete: "false", Value: newMarble(testKey, "blue", 35, "newowner_aftersnapshot")},
 			}
-			helper.assertGetHistoryForMarble(legacyChaincode.Name, org4peer0, expectedHistory, testKey)
+			helper.assertGetHistoryForMarble(newlifecycleChaincode.Name, org4peer0, expectedHistory, testKey)
 
 			verifyQSCC(setup.network, org4peer0, testchannelID, blockNumForNextSnapshot, txidBeforeSnapshot)
 
-			// test 8: verify chaincode upgrade and install after bootstrapping
+			// test 8: verify cscc works correctly to get an orderer endpoint from the channel config
+			// even if the peer does not have a channel config block when bootstrapped from snapshot
+			By("invoking chaincode without passing orderer endpoint on org4peer0")
+			invokeWithoutPassingOrdererEndPoint(setup.network, org4peer0, testchannelID, newlifecycleChaincode.Name, "initMarble", "marble-cscctest", "blue", "35", "tom")
+
+			// test 9: verify chaincode upgrade and install after bootstrapping
 			By("upgrading chaincode to version 2.0 on all peers after bootstrapping from snapshot")
 			newlifecycleChaincode.Version = "2.0"
 			newlifecycleChaincode.Sequence = "2"
@@ -980,4 +985,20 @@ func assertPvtdataPresencePerCollectionConfig1(n *nwo.Network, chaincodeName, ma
 			marblechaincodeutil.AssertPresentInCollectionMPD(n, testchannelID, chaincodeName, marbleName, peer)
 		}
 	}
+}
+
+// invokeWithoutPassingOrdererEndPoint does not pass orderer endpoint to a chaincode invoke command.
+// As a result, the command will send a cscc query to the peer and cscc will return the orderer endpoint from the channel config.
+func invokeWithoutPassingOrdererEndPoint(n *nwo.Network, peer *nwo.Peer, channelID, chaincodeName string, funcAndArgs ...string) {
+	command := commands.ChaincodeInvoke{
+		ChannelID: channelID,
+		Name:      chaincodeName,
+		Ctor:      prepareChaincodeInvokeArgs(funcAndArgs...),
+		PeerAddresses: []string{
+			n.PeerAddress(peer, nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	}
+	invokeChaincode(n, peer, command)
+	nwo.WaitUntilEqualLedgerHeight(n, channelID, nwo.GetLedgerHeight(n, peer, channelID), n.PeersWithChannel(channelID)...)
 }
