@@ -48,21 +48,18 @@ stages:
             displayName: Run Unit Tests
 
   - stage: IntegrationTests
-    dependsOn: VerifyBuild
+    dependsOn: []
     jobs:
       - job: IntegrationTests
-        condition: eq(stageDependencies.VerifyBuild.Checks.outputs['SetJobTriggers.runTests'], 'true')
         pool:
           vmImage: ubuntu-18.04
         strategy:
-          parallel: 5
+          parallel: 1
         timeoutInMinutes: 90
         steps:
           - template: install_deps.yml
           - checkout: self
             path: 'fabric'
             displayName: Checkout Fabric Code
-          - script: ./ci/scripts/setup_hsm.sh
-            displayName: Install SoftHSM
-          - script: make integration-test
+          - script: make integration-test-prereqs && cd integration/raft && ginkgo
             displayName: Run Integration Tests

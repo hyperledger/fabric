@@ -603,7 +603,7 @@ var _ = Describe("ChannelParticipation", func() {
 			network.Bootstrap()
 		})
 
-		It("joins channels using the legacy channel creation mechanism and then removes the system channel to transition to the channel participation API", func() {
+		FIt("joins channels using the legacy channel creation mechanism and then removes the system channel to transition to the channel participation API", func() {
 			orderer1 := network.Orderer("orderer1")
 			orderer2 := network.Orderer("orderer2")
 			orderer3 := network.Orderer("orderer3")
@@ -654,6 +654,7 @@ var _ = Describe("ChannelParticipation", func() {
 			By("removing orderer3 from the consenters set")
 			channelConfig := nwo.GetConfig(network, peer, orderer2, "testchannel")
 			c := configtx.New(channelConfig)
+
 			err := c.Orderer().RemoveConsenter(consenterChannelConfig(network, orderer3))
 			Expect(err).NotTo(HaveOccurred())
 			computeSignSubmitConfigUpdate(network, orderer2, peer, c, "testchannel")
@@ -661,7 +662,7 @@ var _ = Describe("ChannelParticipation", func() {
 			By("ensuring orderer3 transitions to inactive/config-tracker")
 			Eventually(func() channelparticipation.ChannelInfo {
 				return channelparticipation.ListOne(network, orderer3, "testchannel")
-			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
+			}, time.Minute*5).Should(Equal(channelparticipation.ChannelInfo{
 				Name:            "testchannel",
 				URL:             "/participation/v1/channels/testchannel",
 				Status:          "inactive",
@@ -673,7 +674,7 @@ var _ = Describe("ChannelParticipation", func() {
 			restartOrderer(orderer3, 2)
 			Eventually(func() channelparticipation.ChannelInfo {
 				return channelparticipation.ListOne(network, orderer3, "testchannel")
-			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
+			}, time.Minute*5).Should(Equal(channelparticipation.ChannelInfo{
 				Name:            "testchannel",
 				URL:             "/participation/v1/channels/testchannel",
 				Status:          "inactive",
