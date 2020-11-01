@@ -151,6 +151,7 @@ func (p *Provider) SnapshotDataImporterFor(
 	lastBlockInSnapshot uint64,
 	membershipProvider ledger.MembershipInfoProvider,
 	configHistoryRetriever *confighistory.Retriever,
+	tempDirRoot string,
 ) (*SnapshotDataImporter, error) {
 	db := p.dbProvider.GetDBHandle(ledgerID)
 	batch := db.NewUpdateBatch()
@@ -165,7 +166,8 @@ func (p *Provider) SnapshotDataImporterFor(
 		p.dbProvider.GetDBHandle(ledgerID),
 		membershipProvider,
 		configHistoryRetriever,
-	), nil
+		tempDirRoot,
+	)
 }
 
 // OpenStore returns a handle to a store

@@ -244,7 +244,7 @@ func (p *Provider) initSnapshotDir() error {
 		return errors.Errorf("invalid path: %s. The path for the snapshot dir is expected to be an absolute path", snapshotsRootDir)
 	}
 
-	inProgressSnapshotsPath := InProgressSnapshotsPath(snapshotsRootDir)
+	inProgressSnapshotsPath := SnapshotsTempDirPath(snapshotsRootDir)
 	completedSnapshotsPath := CompletedSnapshotsPath(snapshotsRootDir)
 
 	if err := os.RemoveAll(inProgressSnapshotsPath); err != nil {
@@ -294,7 +294,10 @@ func (p *Provider) CreateFromGenesisBlock(genesisBlock *common.Block) (ledger.Pe
 func (p *Provider) deleteUnderConstructionLedger(ledger ledger.PeerLedger, ledgerID string, creationErr error) error {
 	if creationErr == nil {
 		return nil
+	} else {
+		logger.Errorf("ledger creation error = %+v", creationErr)
 	}
+
 	if ledger != nil {
 		ledger.Close()
 	}

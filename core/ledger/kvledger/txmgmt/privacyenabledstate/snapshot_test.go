@@ -750,6 +750,8 @@ func testSnapshotImportPvtdataHashesConsumer(t *testing.T, dbEnv TestEnv) {
 			require.Equal(t, []byte("key-hash-1"), callArgsKeyHash)
 			require.Equal(t, []byte("value-hash-1"), callArgsValueHash)
 			require.Equal(t, version.NewHeight(1, 1), callArgsVer)
+
+			require.Equal(t, 1, c.DoneCallCount())
 		}
 	})
 
@@ -769,5 +771,27 @@ func testSnapshotImportPvtdataHashesConsumer(t *testing.T, dbEnv TestEnv) {
 			consumers[1],
 		)
 		require.EqualError(t, err, "cannot-consume")
+	})
+
+	t.Run("snapshot-import-propages-error-from-consumer-done-invoke"+dbEnv.GetName(), func(t *testing.T) {
+		init()
+		consumers := []*mock.SnapshotPvtdataHashesConsumer{
+			{},
+			{},
+		}
+		consumers[0].DoneReturns(errors.New("cannot-finish-without-error"))
+
+		err := dbEnv.GetProvider().ImportFromSnapshot(
+			generateLedgerID(t),
+			version.NewHeight(10, 10),
+			snapshotDir,
+			consumers[0],
+			consumers[1],
+		)
+		require.EqualError(t, err, "cannot-finish-without-error")
+
+		for _, c := range consumers {
+			require.Equal(t, 1, c.DoneCallCount())
+		}
 	})
 }

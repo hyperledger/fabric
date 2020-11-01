@@ -99,7 +99,7 @@ func (l *kvLedger) generateSnapshot() error {
 	}
 	lastBlockNum := bcInfo.Height - 1
 	snapshotTempDir, err := ioutil.TempDir(
-		InProgressSnapshotsPath(snapshotsRootDir),
+		SnapshotsTempDirPath(snapshotsRootDir),
 		fmt.Sprintf("%s-%d-", l.ledgerID, lastBlockNum),
 	)
 	if err != nil {
@@ -235,7 +235,7 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 
 	ledgerID := metadata.ChannelName
 	lastBlockNum := metadata.LastBlockNumber
-	logger.Debugw("Creating ledger from snapshot - verified hashes", "snapshotDir", snapshotDir, "ledgerID", ledgerID)
+	logger.Debugw("Verified hashes", "snapshotDir", snapshotDir, "ledgerID", ledgerID)
 
 	lastBlkHash, err := hex.DecodeString(metadata.LastBlockHashInHex)
 	if err != nil {
@@ -274,7 +274,7 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 			errors.WithMessage(err, "error while importing data into block store"),
 		)
 	}
-	logger.Debugw("Creating ledger from snapshot - imported data into blockstore", "ledgerID", ledgerID)
+	logger.Debugw("Imported data into blockstore", "ledgerID", ledgerID)
 
 	if err = p.configHistoryMgr.ImportFromSnapshot(metadata.ChannelName, snapshotDir); err != nil {
 		return nil, "", p.deleteUnderConstructionLedger(
@@ -283,7 +283,7 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 			errors.WithMessage(err, "error while importing data into config history Mgr"),
 		)
 	}
-	logger.Debugw("Creating ledger from snapshot - imported data into collection config history", "ledgerID", ledgerID)
+	logger.Debugw("Imported data into collection config history", "ledgerID", ledgerID)
 
 	configHistoryRetiever := p.configHistoryMgr.GetRetriever(ledgerID)
 	btlPolicy := pvtdatapolicy.ConstructBTLPolicy(
@@ -293,10 +293,11 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 		},
 	)
 	purgeMgrBuilder := pvtstatepurgemgmt.NewPurgeMgrBuilder(ledgerID, btlPolicy, p.bookkeepingProvider)
-	logger.Debugw("Creating ledger from snapshot - constructed pvtdata hashes consumer for purge Mgr", "ledgerID", ledgerID)
+	logger.Debugw("Constructed pvtdata hashes consumer for purge Mgr", "ledgerID", ledgerID)
 
 	pvtdataStoreBuilder, err := p.pvtdataStoreProvider.SnapshotDataImporterFor(
 		ledgerID, lastBlockNum, p.initializer.MembershipInfoProvider, configHistoryRetiever,
+		SnapshotsTempDirPath(p.initializer.Config.SnapshotsConfig.RootDir),
 	)
 	if err != nil {
 		return nil, "", p.deleteUnderConstructionLedger(
@@ -305,7 +306,7 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 			errors.WithMessage(err, "error while getting pvtdata hashes consumer for pvtdata store"),
 		)
 	}
-	logger.Debugw("Creating ledger from snapshot - constructed pvtdata hashes consumer for pvt data store", "ledgerID", ledgerID)
+	logger.Debugw("Constructed pvtdata hashes consumer for pvt data store", "ledgerID", ledgerID)
 
 	if err = p.dbProvider.ImportFromSnapshot(ledgerID, savepoint, snapshotDir, purgeMgrBuilder, pvtdataStoreBuilder); err != nil {
 		return nil, "", p.deleteUnderConstructionLedger(
@@ -314,7 +315,7 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 			errors.WithMessage(err, "error while importing data into state db"),
 		)
 	}
-	logger.Debugw("Creating ledger from snapshot - importing data into statedb, purgeMgr, and pvtdata store", "ledgerID", ledgerID)
+	logger.Debugw("Imported data into statedb, purgeMgr, and pvtdata store", "ledgerID", ledgerID)
 
 	if p.historydbProvider != nil {
 		if err := p.historydbProvider.MarkStartingSavepoint(ledgerID, savepoint); err != nil {
@@ -324,7 +325,7 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 				errors.WithMessage(err, "error while preparing history db"),
 			)
 		}
-		logger.Debugw("Creating ledger from snapshot - preparing history db", "ledgerID", ledgerID)
+		logger.Debugw("Preparing history db", "ledgerID", ledgerID)
 	}
 
 	lgr, err := p.open(ledgerID, metadata, true)
