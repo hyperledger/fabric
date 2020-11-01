@@ -65,3 +65,7 @@ func (b *PurgeMgrBuilder) ConsumeSnapshotData(
 	}
 	return nil
 }
+
+func (b *PurgeMgrBuilder) Done() error {
+	return nil
+}

@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/confighistory/confighistorytest"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/stretchr/testify/require"
 	"github.com/willf/bitset"
 )
@@ -29,6 +30,16 @@ import (
 func TestSnapshotImporter(t *testing.T) {
 	ledgerID := "test-ledger"
 	myMSPID := "myOrg"
+
+	// set smaller batch size for testing
+	originalSnapshotRowSortBatchSize := maxSnapshotRowSortBatchSize
+	originalBatchLenForSnapshotImport := maxBatchLenForSnapshotImport
+	maxSnapshotRowSortBatchSize = 1
+	maxBatchLenForSnapshotImport = 1
+	defer func() {
+		maxSnapshotRowSortBatchSize = originalSnapshotRowSortBatchSize
+		maxBatchLenForSnapshotImport = originalBatchLenForSnapshotImport
+	}()
 
 	setup := func() (*SnapshotDataImporter, *confighistorytest.Mgr, *dbEntriesVerifier) {
 		testDir := testDir(t)
@@ -43,14 +54,16 @@ func TestSnapshotImporter(t *testing.T) {
 
 		db := dbProvider.GetDBHandle(ledgerID)
 
-		return newSnapshotDataImporter(
-				ledgerID,
-				db,
-				newMockMembershipProvider(myMSPID),
-				configHistoryMgr.GetRetriever(ledgerID),
-			),
-			configHistoryMgr,
-			&dbEntriesVerifier{t, db}
+		snapshotDataImporter, err := newSnapshotDataImporter(
+			ledgerID,
+			db,
+			newMockMembershipProvider(myMSPID),
+			configHistoryMgr.GetRetriever(ledgerID),
+			testDir,
+		)
+		require.NoError(t, err)
+
+		return snapshotDataImporter, configHistoryMgr, &dbEntriesVerifier{t, db}
 	}
 
 	t.Run("coll-eligible-and-never-expires", func(t *testing.T) {
@@ -74,6 +87,7 @@ func TestSnapshotImporter(t *testing.T) {
 			version.NewHeight(20, 300),
 		)
 		require.NoError(t, err)
+		require.NoError(t, snapshotDataImporter.Done())
 
 		dbVerifier.verifyBootKVHashesEntry(
 			&bootKVHashesKey{blkNum: 20, txNum: 300, ns: "ns", coll: "coll"},
@@ -84,9 +98,8 @@ func TestSnapshotImporter(t *testing.T) {
 			},
 		)
 
-		dbVerifier.verifyMissingDataEntry(
+		dbVerifier.verifyElgMissingDataEntry(
 			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
-			true,
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -114,6 +127,7 @@ func TestSnapshotImporter(t *testing.T) {
 			version.NewHeight(20, 300),
 		)
 		require.NoError(t, err)
+		require.NoError(t, snapshotDataImporter.Done())
 
 		dbVerifier.verifyBootKVHashesEntry(
 			&bootKVHashesKey{blkNum: 20, txNum: 300, ns: "ns", coll: "coll"},
@@ -124,9 +138,8 @@ func TestSnapshotImporter(t *testing.T) {
 			},
 		)
 
-		dbVerifier.verifyMissingDataEntry(
+		dbVerifier.verifyInelgMissingDataEntry(
 			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
-			false,
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -154,6 +167,7 @@ func TestSnapshotImporter(t *testing.T) {
 			version.NewHeight(20, 300),
 		)
 		require.NoError(t, err)
+		require.NoError(t, snapshotDataImporter.Done())
 
 		dbVerifier.verifyBootKVHashesEntry(
 			&bootKVHashesKey{blkNum: 20, txNum: 300, ns: "ns", coll: "coll"},
@@ -164,9 +178,8 @@ func TestSnapshotImporter(t *testing.T) {
 			},
 		)
 
-		dbVerifier.verifyMissingDataEntry(
+		dbVerifier.verifyElgMissingDataEntry(
 			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
-			true,
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -208,6 +221,7 @@ func TestSnapshotImporter(t *testing.T) {
 			version.NewHeight(20, 300),
 		)
 		require.NoError(t, err)
+		require.NoError(t, snapshotDataImporter.Done())
 
 		dbVerifier.verifyBootKVHashesEntry(
 			&bootKVHashesKey{blkNum: 20, txNum: 300, ns: "ns", coll: "coll"},
@@ -218,9 +232,8 @@ func TestSnapshotImporter(t *testing.T) {
 			},
 		)
 
-		dbVerifier.verifyMissingDataEntry(
+		dbVerifier.verifyInelgMissingDataEntry(
 			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: "coll", blkNum: 20}},
-			false,
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -255,6 +268,7 @@ func TestSnapshotImporter(t *testing.T) {
 			version.NewHeight(20, 300),
 		)
 		require.NoError(t, err)
+		require.NoError(t, snapshotDataImporter.Done())
 
 		dbVerifier.verifyBootKVHashesEntry(
 			&bootKVHashesKey{blkNum: 20, txNum: 300, ns: "ns", coll: myImplicitColl},
@@ -265,9 +279,8 @@ func TestSnapshotImporter(t *testing.T) {
 			},
 		)
 
-		dbVerifier.verifyMissingDataEntry(
+		dbVerifier.verifyElgMissingDataEntry(
 			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: myImplicitColl, blkNum: 20}},
-			true,
 			(&bitset.BitSet{}).Set(300),
 		)
 
@@ -288,6 +301,7 @@ func TestSnapshotImporter(t *testing.T) {
 			version.NewHeight(20, 300),
 		)
 		require.NoError(t, err)
+		require.NoError(t, snapshotDataImporter.Done())
 
 		dbVerifier.verifyBootKVHashesEntry(
 			&bootKVHashesKey{blkNum: 20, txNum: 300, ns: "ns", coll: otherOrgImplicitColl},
@@ -298,12 +312,81 @@ func TestSnapshotImporter(t *testing.T) {
 			},
 		)
 
-		dbVerifier.verifyMissingDataEntry(
+		dbVerifier.verifyInelgMissingDataEntry(
 			&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: otherOrgImplicitColl, blkNum: 20}},
-			false,
 			(&bitset.BitSet{}).Set(300),
 		)
 
+		dbVerifier.verifyNoExpiryEntries()
+	})
+
+	t.Run("write-data-for-more-than-one-block-having-more-than-one-tx", func(t *testing.T) {
+		originalBatchLenForSnapshotImport := maxBatchLenForSnapshotImport
+		maxBatchLenForSnapshotImport = 4
+		defer func() {
+			maxBatchLenForSnapshotImport = originalBatchLenForSnapshotImport
+		}()
+
+		snapshotDataImporter, configHistoryMgr, dbVerifier := setup()
+		err := configHistoryMgr.Setup(
+			ledgerID, "ns",
+			map[uint64][]*peer.StaticCollectionConfig{},
+		)
+		require.NoError(t, err)
+
+		myImplicitColl := implicitcollection.NameForOrg(myMSPID)
+		for i := 10; i < 20; i++ {
+			err = snapshotDataImporter.ConsumeSnapshotData("ns", myImplicitColl,
+				[]byte("key-hash"), []byte("value-hash"),
+				version.NewHeight(uint64(i), 300),
+			)
+			require.NoError(t, err)
+
+			err = snapshotDataImporter.ConsumeSnapshotData("ns", myImplicitColl,
+				[]byte("another-key-hash"), []byte("another-value-hash"),
+				version.NewHeight(uint64(i), 301),
+			)
+			require.NoError(t, err)
+
+			err = snapshotDataImporter.ConsumeSnapshotData("ns", myImplicitColl,
+				[]byte("another-key-hash"), []byte("another-value-hash"),
+				version.NewHeight(uint64(i), 302),
+			)
+			require.NoError(t, err)
+
+		}
+		require.NoError(t, snapshotDataImporter.Done())
+
+		for i := 10; i < 20; i++ {
+			dbVerifier.verifyBootKVHashesEntry(
+				&bootKVHashesKey{blkNum: uint64(i), txNum: 300, ns: "ns", coll: myImplicitColl},
+				&BootKVHashes{
+					List: []*BootKVHash{
+						{KeyHash: []byte("key-hash"), ValueHash: []byte("value-hash")},
+					},
+				},
+			)
+			dbVerifier.verifyBootKVHashesEntry(
+				&bootKVHashesKey{blkNum: uint64(i), txNum: 301, ns: "ns", coll: myImplicitColl},
+				&BootKVHashes{
+					List: []*BootKVHash{
+						{KeyHash: []byte("another-key-hash"), ValueHash: []byte("another-value-hash")},
+					},
+				},
+			)
+			dbVerifier.verifyBootKVHashesEntry(
+				&bootKVHashesKey{blkNum: uint64(i), txNum: 302, ns: "ns", coll: myImplicitColl},
+				&BootKVHashes{
+					List: []*BootKVHash{
+						{KeyHash: []byte("another-key-hash"), ValueHash: []byte("another-value-hash")},
+					},
+				},
+			)
+			dbVerifier.verifyElgMissingDataEntry(
+				&missingDataKey{nsCollBlk: nsCollBlk{ns: "ns", coll: myImplicitColl, blkNum: uint64(i)}},
+				(&bitset.BitSet{}).Set(300).Set(301).Set(302),
+			)
+		}
 		dbVerifier.verifyNoExpiryEntries()
 	})
 
@@ -328,15 +411,8 @@ func TestSnapshotImporter(t *testing.T) {
 			version.NewHeight(20, 300),
 		)
 		require.NoError(t, err)
-
-		_, ok := snapshotDataImporter.namespacesVisited["ns"]
-		require.True(t, ok)
-
-		snapshotDataImporter.eligibilityAndBTLCache.eligibilityHistory[nsColl{"ns", "coll"}] = nil
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
-			[]byte("key-hash-1"), []byte("value-hash-1"),
-			version.NewHeight(21, 300),
-		)
+		snapshotDataImporter.namespacesVisited["ns"] = struct{}{}
+		err = snapshotDataImporter.Done()
 		require.EqualError(t, err, "unexpected error - no collection config history for <namespace=ns, collection=coll>")
 	})
 }
@@ -358,13 +434,15 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 
 		db := dbProvider.GetDBHandle(ledgerID)
 
-		return newSnapshotDataImporter(
-				ledgerID,
-				db,
-				newMockMembershipProvider(myMSPID),
-				configHistoryMgr.GetRetriever(ledgerID),
-			),
-			configHistoryMgr
+		snapshotDataImporter, err := newSnapshotDataImporter(
+			ledgerID,
+			db,
+			newMockMembershipProvider(myMSPID),
+			configHistoryMgr.GetRetriever(ledgerID),
+			testDir,
+		)
+		require.NoError(t, err)
+		return snapshotDataImporter, configHistoryMgr
 	}
 
 	t.Run("expect-error-when-no-coll-config-not-present-for-namespace", func(t *testing.T) {
@@ -379,6 +457,9 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
+		require.NoError(t, err)
+
+		err = snapshotDataImporter.Done()
 		require.EqualError(t, err, "unexpected error - no collection config history for <namespace=ns, collection=coll>")
 	})
 
@@ -401,10 +482,13 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(10, 300),
 		)
+		require.NoError(t, err)
+
+		err = snapshotDataImporter.Done()
 		require.EqualError(t, err, "unexpected error - no collection config found below block number [10] for <namespace=ns, collection=coll>")
 	})
 
-	t.Run("error-when-membershipProvider-returns error", func(t *testing.T) {
+	t.Run("error-when-membershipProvider-returns-error", func(t *testing.T) {
 		snapshotDataImporter, configHistoryMgr := setup()
 		err := configHistoryMgr.Setup(
 			ledgerID, "ns",
@@ -425,10 +509,13 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
+		require.NoError(t, err)
+
+		err = snapshotDataImporter.Done()
 		require.EqualError(t, err, "membership-error")
 	})
 
-	t.Run("error-during-decoding-existing-missing-data-entry", func(t *testing.T) {
+	t.Run("error-when-writing-pending-data-during-done", func(t *testing.T) {
 		snapshotDataImporter, configHistoryMgr := setup()
 		err := configHistoryMgr.Setup(
 			ledgerID, "ns",
@@ -443,22 +530,18 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 			},
 		)
 		require.NoError(t, err)
-		err = snapshotDataImporter.db.Put(
-			encodeElgPrioMissingDataKey(
-				&missingDataKey{nsCollBlk: nsCollBlk{blkNum: 20, ns: "ns", coll: "coll"}},
-			),
-			[]byte("garbage-value"),
-			false,
-		)
-		require.NoError(t, err)
 		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
-		require.Contains(t, err.Error(), "error while decoding missing data value")
+		require.NoError(t, err)
+
+		snapshotDataImporter.rowsSorter.dbProvider.Close()
+		err = snapshotDataImporter.Done()
+		require.EqualError(t, err, "error writing batch to leveldb: leveldb: closed")
 	})
 
-	t.Run("error-during-decoding-existing-bootKVHashes", func(t *testing.T) {
+	t.Run("error-when-retrieving-iterator-during-done", func(t *testing.T) {
 		snapshotDataImporter, configHistoryMgr := setup()
 		err := configHistoryMgr.Setup(
 			ledgerID, "ns",
@@ -473,49 +556,26 @@ func TestSnapshotImporterErrorPropagation(t *testing.T) {
 			},
 		)
 		require.NoError(t, err)
-		err = snapshotDataImporter.db.Put(
-			encodeBootKVHashesKey(
-				&bootKVHashesKey{blkNum: 20, txNum: 300, ns: "ns", coll: "coll"},
-			),
-			[]byte("garbage-value"),
-			false,
-		)
-		require.NoError(t, err)
-		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
-			[]byte("key-hash"), []byte("value-hash"),
-			version.NewHeight(20, 300),
-		)
-		require.Contains(t, err.Error(), "error while unmarshalling bytes for BootKVHashes")
-	})
 
-	t.Run("error-during-decoding-existing-expiryEntry", func(t *testing.T) {
-		snapshotDataImporter, configHistoryMgr := setup()
-		err := configHistoryMgr.Setup(
-			ledgerID, "ns",
-			map[uint64][]*peer.StaticCollectionConfig{
-				15: {
-					{
-						Name:             "coll",
-						MemberOrgsPolicy: iamIn.toMemberOrgPolicy(),
-						BlockToLive:      30,
-					},
-				},
-			},
-		)
-		require.NoError(t, err)
-		err = snapshotDataImporter.db.Put(
-			encodeExpiryKey(
-				&expiryKey{committingBlk: 20, expiringBlk: 51},
-			),
-			[]byte("garbage-value"),
-			false,
-		)
-		require.NoError(t, err)
+		// set smaller batch size for testing
+		originalSnapshotRowSortBatchSize := maxSnapshotRowSortBatchSize
+		originalBatchLenForSnapshotImport := maxBatchLenForSnapshotImport
+		maxSnapshotRowSortBatchSize = 1
+		maxBatchLenForSnapshotImport = 1
+		defer func() {
+			maxSnapshotRowSortBatchSize = originalSnapshotRowSortBatchSize
+			maxBatchLenForSnapshotImport = originalBatchLenForSnapshotImport
+		}()
+
 		err = snapshotDataImporter.ConsumeSnapshotData("ns", "coll",
 			[]byte("key-hash"), []byte("value-hash"),
 			version.NewHeight(20, 300),
 		)
-		require.Contains(t, err.Error(), "error while decoding expiry value")
+		require.NoError(t, err)
+
+		snapshotDataImporter.rowsSorter.dbProvider.Close()
+		err = snapshotDataImporter.Done()
+		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
 	})
 }
 
@@ -751,116 +811,67 @@ func (e eligibilityVal) sameAs(p *peer.CollectionPolicyConfig) bool {
 	return e == eligibilityVal(p.GetSignaturePolicy().Identities[0].Principal[0])
 }
 
-func TestDBUpdator(t *testing.T) {
-	setup := func() (*dbUpdater, *dbEntriesVerifier, *leveldbhelper.Provider) {
+func TestDBUpdates(t *testing.T) {
+	setup := func() *leveldbhelper.Provider {
 		testDir := testDir(t)
 		t.Cleanup(func() { os.RemoveAll(testDir) })
 
 		p, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: testDir})
 		require.NoError(t, err)
 		t.Cleanup(func() { p.Close() })
-		db := p.GetDBHandle("test-ledger")
-		batch := db.NewUpdateBatch()
-		return &dbUpdater{
-				db:    db,
-				batch: batch,
-			},
-			&dbEntriesVerifier{
-				t:  t,
-				db: db,
-			},
-			p
+		return p
 	}
 
 	t.Run("upsert-missing-data-entry-eligible-data", func(t *testing.T) {
-		dbUpdater, verifier, _ := setup()
-		missingDataKey := &missingDataKey{
-			nsCollBlk{
-				ns:     "ns-1",
-				coll:   "coll-1",
-				blkNum: 1,
+		provider := setup()
+		db := provider.GetDBHandle("test-db")
+		verifier := &dbEntriesVerifier{t, db}
+
+		dbUpdates := newDBUpdates()
+		dbUpdates.upsertElgMissingDataEntry("ns-1", "coll-1", 1, 10)
+		dbUpdates.upsertElgMissingDataEntry("ns-1", "coll-1", 1, 50)
+		require.NoError(t, dbUpdates.commitToDB(db))
+		verifier.verifyElgMissingDataEntry(
+			&missingDataKey{
+				nsCollBlk{"ns-1", "coll-1", 1},
 			},
-		}
-		require.NoError(t,
-			dbUpdater.upsertMissingDataEntry(missingDataKey, 10, true),
+			(&bitset.BitSet{}).Set(10).Set(50),
 		)
-		require.NoError(t,
-			dbUpdater.commitBatch(),
-		)
-		verifier.verifyMissingDataEntry(missingDataKey, true, (&bitset.BitSet{}).Set(10))
-
-		require.NoError(t,
-			dbUpdater.upsertMissingDataEntry(missingDataKey, 50, true),
-		)
-		require.NoError(t,
-			dbUpdater.commitBatch(),
-		)
-
-		verifier.verifyMissingDataEntry(missingDataKey, true, (&bitset.BitSet{}).Set(10).Set(50))
 	})
 
 	t.Run("upsert-missing-data-entry-ineligible-data", func(t *testing.T) {
-		dbUpdater, verifier, _ := setup()
-		missingDataKey := &missingDataKey{
-			nsCollBlk{
-				ns:     "ns-1",
-				coll:   "coll-1",
-				blkNum: 1,
+		provider := setup()
+		db := provider.GetDBHandle("test-db")
+		verifier := &dbEntriesVerifier{t, db}
+
+		dbUpdates := newDBUpdates()
+		dbUpdates.upsertInelgMissingDataEntry("ns-1", "coll-1", 1, 10)
+		dbUpdates.upsertInelgMissingDataEntry("ns-1", "coll-1", 1, 50)
+		require.NoError(t, dbUpdates.commitToDB(db))
+		verifier.verifyInelgMissingDataEntry(
+			&missingDataKey{
+				nsCollBlk{"ns-1", "coll-1", 1},
 			},
-		}
-
-		require.NoError(t,
-			dbUpdater.upsertMissingDataEntry(missingDataKey, 10, false),
+			(&bitset.BitSet{}).Set(10).Set(50),
 		)
-		require.NoError(t,
-			dbUpdater.commitBatch(),
-		)
-
-		verifier.verifyMissingDataEntry(missingDataKey, false, (&bitset.BitSet{}).Set(10))
-
-		require.NoError(t,
-			dbUpdater.upsertMissingDataEntry(missingDataKey, 50, false),
-		)
-		require.NoError(t,
-			dbUpdater.commitBatch(),
-		)
-
-		verifier.verifyMissingDataEntry(missingDataKey, false, (&bitset.BitSet{}).Set(10).Set(50))
 	})
 
 	t.Run("upsert-bootKVHashes", func(t *testing.T) {
-		bootKVHashesKey := &bootKVHashesKey{
-			blkNum: 1,
-			txNum:  2,
-			ns:     "ns-1",
-			coll:   "coll-1",
-		}
-		dbUpdater, verifier, _ := setup()
-		require.NoError(t,
-			dbUpdater.upsertBootKVHashes(bootKVHashesKey, []byte("key-hash"), []byte("value-hash")),
-		)
-		require.NoError(t,
-			dbUpdater.commitBatch(),
-		)
+		provider := setup()
+		db := provider.GetDBHandle("test-db")
+		verifier := &dbEntriesVerifier{t, db}
 
-		verifier.verifyBootKVHashesEntry(bootKVHashesKey,
-			&BootKVHashes{
-				List: []*BootKVHash{
-					{
-						KeyHash:   []byte("key-hash"),
-						ValueHash: []byte("value-hash"),
-					},
-				},
-			})
-
-		require.NoError(t,
-			dbUpdater.upsertBootKVHashes(bootKVHashesKey, []byte("another-key-hash"), []byte("another-value-hash")),
-		)
-		require.NoError(t,
-			dbUpdater.commitBatch(),
-		)
-
-		verifier.verifyBootKVHashesEntry(bootKVHashesKey,
+		dbUpdates := newDBUpdates()
+		dbUpdates.upsertBootKVHashes("ns-1", "coll-1", 1, 2, []byte("key-hash"), []byte("value-hash"))
+		dbUpdates.upsertBootKVHashes("ns-1", "coll-1", 1, 2, []byte("another-key-hash"), []byte("another-value-hash"))
+		require.NoError(t, dbUpdates.commitToDB(db))
+		verifier.verifyBootKVHashesEntry(
+			&bootKVHashesKey{
+				blkNum: 1,
+				txNum:  2,
+				ns:     "ns-1",
+				coll:   "coll-1",
+			},
 			&BootKVHashes{
 				List: []*BootKVHash{
 					{
@@ -872,67 +883,26 @@ func TestDBUpdator(t *testing.T) {
 						ValueHash: []byte("another-value-hash"),
 					},
 				},
-			})
+			},
+		)
 	})
 
 	t.Run("upsert-expiryEntry", func(t *testing.T) {
-		expiryKey := &expiryKey{
-			committingBlk: 2,
-			expiringBlk:   5,
-		}
-		dbUpdater, verifier, _ := setup()
-		require.NoError(t,
-			dbUpdater.upsertExpiryEntry(expiryKey, "ns-1", "coll-1", 10),
-		)
-		require.NoError(t,
-			dbUpdater.commitBatch(),
-		)
+		provider := setup()
+		db := provider.GetDBHandle("test-db")
+		verifier := &dbEntriesVerifier{t, db}
 
-		verifier.verifyExpiryEntry(expiryKey,
-			&ExpiryData{
-				Map: map[string]*NamespaceExpiryData{
-					"ns-1": {
-						MissingData: map[string]bool{
-							"coll-1": true,
-						},
-						BootKVHashes: map[string]*TxNums{
-							"coll-1": {List: []uint64{10}},
-						},
-					},
-				},
+		dbUpdates := newDBUpdates()
+		dbUpdates.upsertExpiryEntry(5, 2, "ns-1", "coll-1", 10)
+		dbUpdates.upsertExpiryEntry(5, 2, "ns-1", "coll-1", 11)
+		dbUpdates.upsertExpiryEntry(5, 2, "ns-1", "coll-2", 12)
+		require.NoError(t, dbUpdates.commitToDB(db))
+
+		verifier.verifyExpiryEntry(
+			&expiryKey{
+				committingBlk: 2,
+				expiringBlk:   5,
 			},
-		)
-
-		require.NoError(t,
-			dbUpdater.upsertExpiryEntry(expiryKey, "ns-1", "coll-1", 11),
-		)
-		require.NoError(t,
-			dbUpdater.commitBatch(),
-		)
-
-		verifier.verifyExpiryEntry(expiryKey,
-			&ExpiryData{
-				Map: map[string]*NamespaceExpiryData{
-					"ns-1": {
-						MissingData: map[string]bool{
-							"coll-1": true,
-						},
-						BootKVHashes: map[string]*TxNums{
-							"coll-1": {List: []uint64{10, 11}},
-						},
-					},
-				},
-			},
-		)
-
-		require.NoError(t,
-			dbUpdater.upsertExpiryEntry(expiryKey, "ns-1", "coll-2", 12),
-		)
-		require.NoError(t,
-			dbUpdater.commitBatch(),
-		)
-
-		verifier.verifyExpiryEntry(expiryKey,
 			&ExpiryData{
 				Map: map[string]*NamespaceExpiryData{
 					"ns-1": {
@@ -951,33 +921,12 @@ func TestDBUpdator(t *testing.T) {
 	})
 
 	t.Run("error-propagation", func(t *testing.T) {
-		dbUpdater, _, dbProvider := setup()
+		dbProvider := setup()
+		db := dbProvider.GetDBHandle("test-db")
+		dbUpdates := newDBUpdates()
+		dbUpdates.elgMissingDataEntries[missingDataKey{}] = &bitset.BitSet{}
 		dbProvider.Close()
-
-		err := dbUpdater.upsertBootKVHashes(
-			&bootKVHashesKey{blkNum: 20, txNum: 20, ns: "nil", coll: ""},
-			nil,
-			nil,
-		)
-		require.Contains(t, err.Error(), "leveldb: closed")
-
-		err = dbUpdater.upsertMissingDataEntry(
-			&missingDataKey{nsCollBlk: nsCollBlk{blkNum: 20, ns: "", coll: ""}},
-			20,
-			true,
-		)
-		require.Contains(t, err.Error(), "leveldb: closed")
-
-		err = dbUpdater.upsertExpiryEntry(
-			&expiryKey{committingBlk: 20, expiringBlk: 10},
-			"",
-			"",
-			20,
-		)
-		require.Contains(t, err.Error(), "leveldb: closed")
-
-		dbUpdater.batch.Put([]byte("key"), []byte("value"))
-		err = dbUpdater.commitBatch()
+		err := dbUpdates.commitToDB(db)
 		require.Contains(t, err.Error(), "leveldb: closed")
 	})
 }
@@ -987,15 +936,16 @@ type dbEntriesVerifier struct {
 	db *leveldbhelper.DBHandle
 }
 
-func (v *dbEntriesVerifier) verifyMissingDataEntry(key *missingDataKey, isEligibile bool, expectedVal *bitset.BitSet) {
-	var k []byte
-	if isEligibile {
-		k = encodeElgPrioMissingDataKey(key)
-	} else {
-		k = encodeInelgMissingDataKey(key)
-	}
+func (v *dbEntriesVerifier) verifyElgMissingDataEntry(key *missingDataKey, expectedVal *bitset.BitSet) {
+	valEnc, err := v.db.Get(encodeElgPrioMissingDataKey(key))
+	require.NoError(v.t, err)
+	val, err := decodeMissingDataValue(valEnc)
+	require.NoError(v.t, err)
+	require.Equal(v.t, expectedVal, val)
+}
 
-	valEnc, err := v.db.Get(k)
+func (v *dbEntriesVerifier) verifyInelgMissingDataEntry(key *missingDataKey, expectedVal *bitset.BitSet) {
+	valEnc, err := v.db.Get(encodeInelgMissingDataKey(key))
 	require.NoError(v.t, err)
 	val, err := decodeMissingDataValue(valEnc)
 	require.NoError(v.t, err)
@@ -1031,4 +981,204 @@ func testDir(t *testing.T) string {
 	dir, err := ioutil.TempDir("", "snapshot-data-importer-")
 	require.NoError(t, err)
 	return dir
+}
+
+func TestSnapshotRowsSorter(t *testing.T) {
+	testCases := []struct {
+		inputRows         []*snapshotRow
+		expectedSortOrder []int
+	}{
+		{
+			inputRows: []*snapshotRow{
+				{
+					version:   version.NewHeight(100, 100),
+					ns:        "ns-1",
+					coll:      "coll-1",
+					keyHash:   []byte("key-hash"),
+					valueHash: []byte("value-hash"),
+				},
+
+				{
+					version:   version.NewHeight(0, 0),
+					ns:        "ns-2",
+					coll:      "coll-2",
+					keyHash:   []byte("key-hash"),
+					valueHash: []byte("value-hash"),
+				},
+			},
+			expectedSortOrder: []int{1, 0},
+		},
+
+		{
+			inputRows: []*snapshotRow{
+				{
+					version:   version.NewHeight(100, 100),
+					ns:        "ns-2",
+					coll:      "coll-1",
+					keyHash:   []byte("key-hash"),
+					valueHash: []byte("value-hash"),
+				},
+
+				{
+					version:   version.NewHeight(100, 100),
+					ns:        "ns-1",
+					coll:      "coll-1",
+					keyHash:   []byte("key-hash"),
+					valueHash: []byte("value-hash"),
+				},
+			},
+			expectedSortOrder: []int{1, 0},
+		},
+
+		{
+			inputRows: []*snapshotRow{
+				{
+					version:   version.NewHeight(100, 100),
+					ns:        "ns-1",
+					coll:      "coll-2",
+					keyHash:   []byte("key-hash"),
+					valueHash: []byte("value-hash"),
+				},
+
+				{
+					version:   version.NewHeight(100, 100),
+					ns:        "ns-1",
+					coll:      "coll-1",
+					keyHash:   []byte("key-hash"),
+					valueHash: []byte("value-hash"),
+				},
+			},
+			expectedSortOrder: []int{1, 0},
+		},
+
+		{
+			inputRows: []*snapshotRow{
+				{
+					version:   version.NewHeight(100, 100),
+					ns:        "ns-1",
+					coll:      "coll-1",
+					keyHash:   []byte("key-hash-2"),
+					valueHash: []byte("value-hash-1"),
+				},
+
+				{
+					version:   version.NewHeight(100, 100),
+					ns:        "ns-1",
+					coll:      "coll-1",
+					keyHash:   []byte("key-hash-1"),
+					valueHash: []byte("value-hash-2"),
+				},
+			},
+			expectedSortOrder: []int{1, 0},
+		},
+
+		{
+			inputRows: []*snapshotRow{
+				{
+					version:   version.NewHeight(100, 100),
+					ns:        "ns-1",
+					coll:      "coll-1",
+					keyHash:   []byte("key-hash-1"),
+					valueHash: []byte("value-hash-2"),
+				},
+
+				{
+					version:   version.NewHeight(100, 100),
+					ns:        "ns-1",
+					coll:      "coll-1",
+					keyHash:   []byte("key-hash-2"),
+					valueHash: []byte("value-hash-1"),
+				},
+			},
+			expectedSortOrder: []int{0, 1},
+		},
+	}
+
+	for i, testCase := range testCases {
+		t.Run(fmt.Sprintf("testcase-%d", i), func(t *testing.T) {
+			dir, err := ioutil.TempDir("", "snapshot-row-sorter-")
+			require.NoError(t, err)
+			defer os.RemoveAll(dir)
+
+			sorter, err := newSnapshotRowsSorter(dir)
+			require.NoError(t, err)
+
+			for _, row := range testCase.inputRows {
+				require.NoError(t, sorter.add(row))
+			}
+
+			require.NoError(t, sorter.addingDone())
+			iter, err := sorter.iterator()
+			require.NoError(t, err)
+			defer iter.close()
+
+			results := []*snapshotRow{}
+			for {
+				row, err := iter.next()
+				require.NoError(t, err)
+				if row == nil {
+					break
+				}
+				results = append(results, row)
+			}
+			require.Len(t, results, len(testCase.inputRows))
+
+			for i := 0; i < len(results); i++ {
+				require.Equal(
+					t,
+					testCase.inputRows[testCase.expectedSortOrder[i]],
+					results[i],
+				)
+			}
+		})
+	}
+}
+
+func TestSnapshotRowsSorterCleanup(t *testing.T) {
+	dir, err := ioutil.TempDir("", "snapshot-row-sorter-")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	sorter, err := newSnapshotRowsSorter(dir)
+	require.NoError(t, err)
+	empty, err := fileutil.DirEmpty(dir)
+	require.NoError(t, err)
+	require.False(t, empty)
+
+	sorter.cleanup()
+	empty, err = fileutil.DirEmpty(dir)
+	require.NoError(t, err)
+	require.True(t, empty)
+}
+
+func TestSnapshotRowsSortEncodingDecoding(t *testing.T) {
+	rows := []*snapshotRow{
+		{
+			version:   version.NewHeight(100, 100),
+			ns:        "ns",
+			coll:      "coll",
+			keyHash:   []byte("key-hash"),
+			valueHash: []byte("value-hash"),
+		},
+
+		{
+			version:   version.NewHeight(0, 0),
+			ns:        "",
+			coll:      "",
+			keyHash:   []byte("key-hash"),
+			valueHash: []byte("value-hash"),
+		},
+	}
+
+	for _, row := range rows {
+		encSortKey := encodeSnapshotRowForSorting(row)
+		decSortKey, err := decodeSnapshotRowFromSortEncoding(encSortKey)
+		require.NoError(t, err)
+		require.Equal(t, row, decSortKey)
+	}
+
+	t.Run("error_propagation_during_decoding", func(t *testing.T) {
+		_, err := decodeSnapshotRowFromSortEncoding([]byte("random-string"))
+		require.EqualError(t, err, "decoded size from DecodeVarint is invalid, expected <=8, but got 114")
+	})
 }

@@ -7,8 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
+	"bytes"
+	"io/ioutil"
 	"math"
+	"os"
 
+	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -19,11 +23,20 @@ import (
 	"github.com/willf/bitset"
 )
 
+var (
+	// batch used for sorting the data
+	maxSnapshotRowSortBatchSize = 1 * 1024 * 1024
+	// batch used for writing the final data,
+	// (64 bytes for a single kvhash + additional KVs and encoding overheads) * 10000 will roughly lead to batch size between 1MB and 2MB
+	maxBatchLenForSnapshotImport = 10000
+)
+
 type SnapshotDataImporter struct {
 	namespacesVisited      map[string]struct{}
 	eligibilityAndBTLCache *eligibilityAndBTLCache
 
-	db *leveldbhelper.DBHandle
+	rowsSorter *snapshotRowsSorter
+	db         *leveldbhelper.DBHandle
 }
 
 func newSnapshotDataImporter(
@@ -31,83 +44,102 @@ func newSnapshotDataImporter(
 	dbHandle *leveldbhelper.DBHandle,
 	membershipProvider ledger.MembershipInfoProvider,
 	configHistoryRetriever *confighistory.Retriever,
-) *SnapshotDataImporter {
+	tempDirRoot string,
+) (*SnapshotDataImporter, error) {
+	rowsSorter, err := newSnapshotRowsSorter(tempDirRoot)
+	if err != nil {
+		return nil, err
+	}
 	return &SnapshotDataImporter{
 		namespacesVisited:      map[string]struct{}{},
 		eligibilityAndBTLCache: newEligibilityAndBTLCache(ledgerID, membershipProvider, configHistoryRetriever),
+		rowsSorter:             rowsSorter,
 		db:                     dbHandle,
-	}
+	}, nil
 }
 
 func (i *SnapshotDataImporter) ConsumeSnapshotData(
 	namespace, collection string,
 	keyHash, valueHash []byte,
-	version *version.Height) error {
-
-	if _, ok := i.namespacesVisited[namespace]; !ok {
-		if err := i.eligibilityAndBTLCache.loadDataFor(namespace); err != nil {
-			return err
-		}
-		i.namespacesVisited[namespace] = struct{}{}
-	}
-
-	blkNum := version.BlockNum
-	txNum := version.TxNum
-
-	isEligible, err := i.eligibilityAndBTLCache.isEligibile(namespace, collection, blkNum)
-	if err != nil {
-		return err
-	}
-
-	dbUpdater := &dbUpdater{
-		db:    i.db,
-		batch: i.db.NewUpdateBatch(),
-	}
-
-	err = dbUpdater.upsertMissingDataEntry(
-		&missingDataKey{
-			nsCollBlk{
-				ns:     namespace,
-				coll:   collection,
-				blkNum: blkNum,
-			},
+	version *version.Height,
+) error {
+	return i.rowsSorter.add(
+		&snapshotRow{
+			version:   version,
+			ns:        namespace,
+			coll:      collection,
+			keyHash:   keyHash,
+			valueHash: valueHash,
 		},
-		txNum,
-		isEligible,
 	)
+}
+
+func (i *SnapshotDataImporter) Done() error {
+	defer i.rowsSorter.cleanup()
+	if err := i.rowsSorter.addingDone(); err != nil {
+		return err
+	}
+	iter, err := i.rowsSorter.iterator()
 	if err != nil {
 		return err
 	}
+	defer iter.close()
 
-	err = dbUpdater.upsertBootKVHashes(
-		&bootKVHashesKey{
-			ns:     namespace,
-			coll:   collection,
-			blkNum: blkNum,
-			txNum:  txNum,
-		},
-		keyHash,
-		valueHash,
-	)
-	if err != nil {
-		return err
-	}
+	dbUpdates := newDBUpdates()
+	currentBlockNum := uint64(0)
 
-	hasExpiry, expiringBlk := i.eligibilityAndBTLCache.hasExpiry(namespace, collection, blkNum)
-	if hasExpiry {
-		err := dbUpdater.upsertExpiryEntry(
-			&expiryKey{
-				committingBlk: blkNum,
-				expiringBlk:   expiringBlk,
-			},
-			namespace, collection, txNum,
-		)
+	for {
+		row, err := iter.next()
 		if err != nil {
 			return err
 		}
-	}
+		if row == nil {
+			// iterator exhausted. Commit all pending writes
+			return dbUpdates.commitToDB(i.db)
+		}
 
-	return dbUpdater.commitBatch()
+		namespace := row.ns
+		collection := row.coll
+		blkNum := row.version.BlockNum
+		txNum := row.version.TxNum
+		keyHash := row.keyHash
+		valueHash := row.valueHash
+
+		if blkNum != currentBlockNum {
+			currentBlockNum = blkNum
+			// commit is to be invoked only on block boundaries because we write data for one block only once
+			if dbUpdates.numKVHashesEntries() >= maxBatchLenForSnapshotImport {
+				if err := dbUpdates.commitToDB(i.db); err != nil {
+					return err
+				}
+				dbUpdates = newDBUpdates()
+			}
+		}
+
+		if _, ok := i.namespacesVisited[namespace]; !ok {
+			if err := i.eligibilityAndBTLCache.loadDataFor(namespace); err != nil {
+				return err
+			}
+			i.namespacesVisited[namespace] = struct{}{}
+		}
+
+		isEligible, err := i.eligibilityAndBTLCache.isEligibile(namespace, collection, blkNum)
+		if err != nil {
+			return err
+		}
+
+		if isEligible {
+			dbUpdates.upsertElgMissingDataEntry(namespace, collection, blkNum, txNum)
+		} else {
+			dbUpdates.upsertInelgMissingDataEntry(namespace, collection, blkNum, txNum)
+		}
+
+		dbUpdates.upsertBootKVHashes(namespace, collection, blkNum, txNum, keyHash, valueHash)
+
+		if hasExpiry, expiringBlk := i.eligibilityAndBTLCache.hasExpiry(namespace, collection, blkNum); hasExpiry {
+			dbUpdates.upsertExpiryEntry(expiringBlk, blkNum, namespace, collection, txNum)
+		}
+	}
 }
 
 type nsColl struct {
@@ -229,101 +261,264 @@ func (i *eligibilityAndBTLCache) hasExpiry(namespace, collection string, committ
 	return expiringBlk < math.MaxUint64, expiringBlk
 }
 
-type dbUpdater struct {
-	db    *leveldbhelper.DBHandle
-	batch *leveldbhelper.UpdateBatch
+type dbUpdates struct {
+	elgMissingDataEntries   map[missingDataKey]*bitset.BitSet
+	inelgMissingDataEntries map[missingDataKey]*bitset.BitSet
+	bootKVHashes            map[bootKVHashesKey]*BootKVHashes
+	expiryEntries           map[expiryKey]*ExpiryData
 }
 
-func (u *dbUpdater) upsertMissingDataEntry(key *missingDataKey, committingTxNum uint64, isEligible bool) error {
-	var encKey []byte
-	if isEligible {
-		encKey = encodeElgPrioMissingDataKey(key)
-	} else {
-		encKey = encodeInelgMissingDataKey(key)
+func newDBUpdates() *dbUpdates {
+	return &dbUpdates{
+		elgMissingDataEntries:   map[missingDataKey]*bitset.BitSet{},
+		inelgMissingDataEntries: map[missingDataKey]*bitset.BitSet{},
+		bootKVHashes:            map[bootKVHashesKey]*BootKVHashes{},
+		expiryEntries:           map[expiryKey]*ExpiryData{},
 	}
+}
 
-	encVal, err := u.db.Get(encKey)
-	if err != nil {
-		return errors.WithMessage(err, "error while getting missing data bitmap from the store")
+func (u *dbUpdates) upsertElgMissingDataEntry(ns, coll string, blkNum, txNum uint64) {
+	key := missingDataKey{
+		nsCollBlk{
+			ns:     ns,
+			coll:   coll,
+			blkNum: blkNum,
+		},
 	}
-
-	var missingData *bitset.BitSet
-	if encVal != nil {
-		if missingData, err = decodeMissingDataValue(encVal); err != nil {
-			return err
-		}
-	} else {
+	missingData, ok := u.elgMissingDataEntries[key]
+	if !ok {
 		missingData = &bitset.BitSet{}
+		u.elgMissingDataEntries[key] = missingData
 	}
-
-	missingData.Set(uint(committingTxNum))
-	encVal, err = encodeMissingDataValue(missingData)
-	if err != nil {
-		return err
-	}
-	u.batch.Put(encKey, encVal)
-	return nil
+	missingData.Set(uint(txNum))
 }
 
-func (u *dbUpdater) upsertBootKVHashes(key *bootKVHashesKey, keyHash, valueHash []byte) error {
-	encKey := encodeBootKVHashesKey(key)
-	encVal, err := u.db.Get(encKey)
-	if err != nil {
-		return err
+func (u *dbUpdates) upsertInelgMissingDataEntry(ns, coll string, blkNum, txNum uint64) {
+	key := missingDataKey{
+		nsCollBlk{
+			ns:     ns,
+			coll:   coll,
+			blkNum: blkNum,
+		},
 	}
-
-	var val *BootKVHashes
-	if encVal != nil {
-		if val, err = decodeBootKVHashesVal(encVal); err != nil {
-			return err
-		}
-	} else {
-		val = &BootKVHashes{}
+	missingData, ok := u.inelgMissingDataEntries[key]
+	if !ok {
+		missingData = &bitset.BitSet{}
+		u.inelgMissingDataEntries[key] = missingData
 	}
+	missingData.Set(uint(txNum))
+}
 
-	val.List = append(val.List,
+func (u *dbUpdates) upsertBootKVHashes(ns, coll string, blkNum, txNum uint64, keyHash, valueHash []byte) {
+	key := bootKVHashesKey{
+		blkNum: blkNum,
+		txNum:  txNum,
+		ns:     ns,
+		coll:   coll,
+	}
+	bootKVHashes, ok := u.bootKVHashes[key]
+	if !ok {
+		bootKVHashes = &BootKVHashes{}
+		u.bootKVHashes[key] = bootKVHashes
+	}
+	bootKVHashes.List = append(bootKVHashes.List,
 		&BootKVHash{
 			KeyHash:   keyHash,
 			ValueHash: valueHash,
 		},
 	)
-	if encVal, err = encodeBootKVHashesVal(val); err != nil {
-		return errors.Wrap(err, "error while marshalling BootKVHashes")
-	}
-	u.batch.Put(encKey, encVal)
-	return nil
 }
 
-func (u *dbUpdater) upsertExpiryEntry(
-	key *expiryKey,
-	namesapce, collection string,
-	txNum uint64,
-) error {
-	encKey := encodeExpiryKey(key)
-	encVal, err := u.db.Get(encKey)
-	if err != nil {
-		return err
+func (u *dbUpdates) upsertExpiryEntry(expiringBlk, committingBlk uint64, namesapce, collection string, txNum uint64) {
+	key := expiryKey{
+		expiringBlk:   expiringBlk,
+		committingBlk: committingBlk,
 	}
+	expiryData, ok := u.expiryEntries[key]
+	if !ok {
+		expiryData = newExpiryData()
+		u.expiryEntries[key] = expiryData
+	}
+	expiryData.addMissingData(namesapce, collection)
+	expiryData.addBootKVHash(namesapce, collection, txNum)
+}
 
-	var val *ExpiryData
-	if encVal != nil {
-		if val, err = decodeExpiryValue(encVal); err != nil {
+func (u *dbUpdates) numKVHashesEntries() int {
+	return len(u.bootKVHashes)
+}
+
+func (u *dbUpdates) commitToDB(db *leveldbhelper.DBHandle) error {
+	batch := db.NewUpdateBatch()
+	for k, v := range u.elgMissingDataEntries {
+		encKey := encodeElgPrioMissingDataKey(&k)
+		encVal, err := encodeMissingDataValue(v)
+		if err != nil {
 			return err
 		}
-	} else {
-		val = newExpiryData()
+		batch.Put(encKey, encVal)
 	}
 
-	val.addMissingData(namesapce, collection)
-	val.addBootKVHash(namesapce, collection, txNum)
-	encVal, err = encodeExpiryValue(val)
-	if err != nil {
-		return err
+	for k, v := range u.inelgMissingDataEntries {
+		encKey := encodeInelgMissingDataKey(&k)
+		encVal, err := encodeMissingDataValue(v)
+		if err != nil {
+			return err
+		}
+		batch.Put(encKey, encVal)
 	}
-	u.batch.Put(encKey, encVal)
+
+	for k, v := range u.bootKVHashes {
+		encKey := encodeBootKVHashesKey(&k)
+		encVal, err := encodeBootKVHashesVal(v)
+		if err != nil {
+			return err
+		}
+		batch.Put(encKey, encVal)
+	}
+
+	for k, v := range u.expiryEntries {
+		encKey := encodeExpiryKey(&k)
+		encVal, err := encodeExpiryValue(v)
+		if err != nil {
+			return err
+		}
+		batch.Put(encKey, encVal)
+	}
+	return db.WriteBatch(batch, true)
+}
+
+type snapshotRowsSorter struct {
+	tempDir    string
+	dbProvider *leveldbhelper.Provider
+	db         *leveldbhelper.DBHandle
+	batch      *leveldbhelper.UpdateBatch
+	batchSize  int
+}
+
+func newSnapshotRowsSorter(tempDirRoot string) (*snapshotRowsSorter, error) {
+	tempDir, err := ioutil.TempDir(tempDirRoot, "pvtdatastore-snapshotdatainporter-")
+	if err != nil {
+		return nil, errors.Wrap(err, "error while creating temp dir for sorting rows")
+	}
+	dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{
+		DBPath: tempDir,
+	})
+	if err != nil {
+		return nil, err
+	}
+	db := dbProvider.GetDBHandle("")
+	batch := db.NewUpdateBatch()
+	return &snapshotRowsSorter{
+		tempDir:    tempDir,
+		dbProvider: dbProvider,
+		db:         db,
+		batch:      batch,
+	}, nil
+}
+
+func (s *snapshotRowsSorter) add(k *snapshotRow) error {
+	encKey := encodeSnapshotRowForSorting(k)
+	s.batch.Put(encKey, []byte{})
+	s.batchSize += len(encKey)
+
+	if s.batchSize >= maxSnapshotRowSortBatchSize {
+		if err := s.db.WriteBatch(s.batch, false); err != nil {
+			return err
+		}
+		s.batch.Reset()
+		s.batchSize = 0
+	}
 	return nil
 }
 
-func (u *dbUpdater) commitBatch() error {
-	return u.db.WriteBatch(u.batch, true)
+func (s *snapshotRowsSorter) addingDone() error {
+	return s.db.WriteBatch(s.batch, false)
+}
+
+func (s *snapshotRowsSorter) iterator() (*sortedSnapshotRowsIterator, error) {
+	dbIter, err := s.db.GetIterator(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &sortedSnapshotRowsIterator{
+		dbIter: dbIter,
+	}, nil
+}
+
+func (s *snapshotRowsSorter) cleanup() {
+	s.dbProvider.Close()
+	if err := os.RemoveAll(s.tempDir); err != nil {
+		logger.Errorw("Error while deleting temp dir [%s]", s.tempDir)
+	}
+}
+
+type sortedSnapshotRowsIterator struct {
+	dbIter *leveldbhelper.Iterator
+}
+
+func (i *sortedSnapshotRowsIterator) next() (*snapshotRow, error) {
+	hasMore := i.dbIter.Next()
+	if err := i.dbIter.Error(); err != nil {
+		return nil, err
+	}
+	if !hasMore {
+		return nil, nil
+	}
+	encKey := i.dbIter.Key()
+	encKeyCopy := make([]byte, len(encKey))
+	copy(encKeyCopy, encKey)
+	row, err := decodeSnapshotRowFromSortEncoding(encKeyCopy)
+	if err != nil {
+		return nil, err
+	}
+	return row, nil
+}
+
+func (i *sortedSnapshotRowsIterator) close() {
+	i.dbIter.Release()
+}
+
+type snapshotRow struct {
+	version            *version.Height
+	ns, coll           string
+	keyHash, valueHash []byte
+}
+
+func encodeSnapshotRowForSorting(k *snapshotRow) []byte {
+	encKey := k.version.ToBytes()
+	encKey = append(encKey, []byte(k.ns)...)
+	encKey = append(encKey, nilByte)
+	encKey = append(encKey, []byte(k.coll)...)
+	encKey = append(encKey, nilByte)
+	encKey = append(encKey, util.EncodeOrderPreservingVarUint64(uint64(len(k.keyHash)))...)
+	encKey = append(encKey, k.keyHash...)
+	encKey = append(encKey, k.valueHash...)
+	return encKey
+}
+
+func decodeSnapshotRowFromSortEncoding(encKey []byte) (*snapshotRow, error) {
+	version, bytesConsumed, err := version.NewHeightFromBytes(encKey)
+	if err != nil {
+		return nil, err
+	}
+
+	remainingBytes := encKey[bytesConsumed:]
+	nsCollKVHash := bytes.SplitN(remainingBytes, []byte{nilByte}, 3)
+	ns := nsCollKVHash[0]
+	coll := nsCollKVHash[1]
+	kvHashes := nsCollKVHash[2]
+
+	keyHashLen, bytesConsumed, err := util.DecodeOrderPreservingVarUint64(kvHashes)
+	if err != nil {
+		return nil, err
+	}
+	keyHash := kvHashes[bytesConsumed : bytesConsumed+int(keyHashLen)]
+	valueHash := kvHashes[bytesConsumed+int(keyHashLen):]
+	return &snapshotRow{
+		version:   version,
+		ns:        string(ns),
+		coll:      string(coll),
+		keyHash:   keyHash,
+		valueHash: valueHash,
+	}, nil
 }

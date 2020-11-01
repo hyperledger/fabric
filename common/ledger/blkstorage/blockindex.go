@@ -38,7 +38,7 @@ var (
 	indexSavePointKey              = []byte(indexSavePointKeyStr)
 	errIndexSavePointKeyNotPresent = errors.New("NoBlockIndexed")
 	errNilValue                    = errors.New("")
-	importTxIDsBatchSize           = uint64(1000) // txID is 64 bytes, so batch size roughly translates to 64KB
+	importTxIDsBatchSize           = uint64(10000) // txID is 64 bytes, so batch size roughly translates to 640KB
 )
 
 type blockIdxInfo struct {
