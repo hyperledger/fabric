@@ -36,6 +36,7 @@ type CA struct {
 	PostalCode         string
 	Signer             crypto.Signer
 	SignCert           *x509.Certificate
+	SignedCertExpiry   time.Duration
 }
 
 // NewCA creates an instance of CA and saves the signing key pair in
@@ -50,6 +51,8 @@ func NewCA(
 	orgUnit,
 	streetAddress,
 	postalCode string,
+	caCertExpiry,
+	signedCertExpiry time.Duration,
 ) (*CA, error) {
 
 	var ca *CA
@@ -64,7 +67,7 @@ func NewCA(
 		return nil, err
 	}
 
-	template := x509Template()
+	template := x509Template(caCertExpiry)
 	//this is a CA
 	template.IsCA = true
 	template.KeyUsage |= x509.KeyUsageDigitalSignature |
@@ -100,6 +103,7 @@ func NewCA(
 			PrivateKey: priv,
 		},
 		SignCert:           x509Cert,
+		SignedCertExpiry:   signedCertExpiry,
 		Country:            country,
 		Province:           province,
 		Locality:           locality,
@@ -123,7 +127,7 @@ func (ca *CA) SignCertificate(
 	eku []x509.ExtKeyUsage,
 ) (*x509.Certificate, error) {
 
-	template := x509Template()
+	template := x509Template(ca.SignedCertExpiry)
 	template.KeyUsage = ku
 	template.ExtKeyUsage = eku
 
@@ -219,14 +223,12 @@ func subjectTemplateAdditional(
 }
 
 // default template for X509 certificates
-func x509Template() x509.Certificate {
+func x509Template(expiry time.Duration) x509.Certificate {
 
 	// generate a serial number
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, _ := rand.Int(rand.Reader, serialNumberLimit)
 
-	// set expiry to around 10 years
-	expiry := 3650 * 24 * time.Hour
 	// round minute and backdate 5 minutes
 	notBefore := time.Now().Round(time.Minute).Add(-5 * time.Minute).UTC()
 

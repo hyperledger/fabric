@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
+	"time"
 
 	"github.com/hyperledger/fabric/internal/cryptogen/ca"
 	"github.com/hyperledger/fabric/internal/cryptogen/csp"
@@ -28,6 +29,7 @@ const (
 	adminBaseName           = "Admin"
 	defaultHostnameTemplate = "{{.Prefix}}{{.Index}}"
 	defaultCNTemplate       = "{{.Hostname}}.{{.Domain}}"
+	defaultCertExpiry       = 3650 * 24 * time.Hour
 )
 
 type HostnameData struct {
@@ -67,13 +69,16 @@ type UsersSpec struct {
 }
 
 type OrgSpec struct {
-	Name          string       `yaml:"Name"`
-	Domain        string       `yaml:"Domain"`
-	EnableNodeOUs bool         `yaml:"EnableNodeOUs"`
-	CA            NodeSpec     `yaml:"CA"`
-	Template      NodeTemplate `yaml:"Template"`
-	Specs         []NodeSpec   `yaml:"Specs"`
-	Users         UsersSpec    `yaml:"Users"`
+	Name               string        `yaml:"Name"`
+	Domain             string        `yaml:"Domain"`
+	EnableNodeOUs      bool          `yaml:"EnableNodeOUs"`
+	CACertExpiry       time.Duration `yaml:"CACertExpiry"`
+	IdentityCertExpiry time.Duration `yaml:"IdentityCertExpiry"`
+	TLSCertExpiry      time.Duration `yaml:"TLSCertExpiry"`
+	CA                 NodeSpec      `yaml:"CA"`
+	Template           NodeTemplate  `yaml:"Template"`
+	Specs              []NodeSpec    `yaml:"Specs"`
+	Users              UsersSpec     `yaml:"Users"`
 }
 
 type Config struct {
@@ -92,6 +97,9 @@ OrdererOrgs:
   - Name: Orderer
     Domain: example.com
     EnableNodeOUs: false
+    CACertExpiry: 87600h
+    IdentityCertExpiry: 87600h
+    TLSCertExpiry: 87600h
 
     # ---------------------------------------------------------------------------
     # "Specs" - See PeerOrgs below for complete description
@@ -109,6 +117,9 @@ PeerOrgs:
   - Name: Org1
     Domain: org1.example.com
     EnableNodeOUs: false
+    CACertExpiry: 87600h
+    IdentityCertExpiry: 87600h
+    TLSCertExpiry: 87600h
 
     # ---------------------------------------------------------------------------
     # "CA"
@@ -193,6 +204,10 @@ PeerOrgs:
   - Name: Org2
     Domain: org2.example.com
     EnableNodeOUs: false
+    CACertExpiry: 87600h
+    IdentityCertExpiry: 87600h
+    TLSCertExpiry: 87600h
+
     Template:
       Count: 1
     Users:
@@ -265,6 +280,14 @@ func getConfig() (*Config, error) {
 		return nil, fmt.Errorf("Error Unmarshaling YAML: %s", err)
 	}
 
+	for idx := range config.PeerOrgs {
+		setExpiryDefaults(&config.PeerOrgs[idx])
+	}
+
+	for idx := range config.OrdererOrgs {
+		setExpiryDefaults(&config.OrdererOrgs[idx])
+	}
+
 	return config, nil
 }
 
@@ -308,8 +331,8 @@ func extendPeerOrg(orgSpec OrgSpec) {
 	caDir := filepath.Join(orgDir, "ca")
 	tlscaDir := filepath.Join(orgDir, "tlsca")
 
-	signCA := getCA(caDir, orgSpec, orgSpec.CA.CommonName)
-	tlsCA := getCA(tlscaDir, orgSpec, "tls"+orgSpec.CA.CommonName)
+	signCA := getCA(caDir, orgSpec, orgSpec.CA.CommonName, orgSpec.IdentityCertExpiry)
+	tlsCA := getCA(tlscaDir, orgSpec, "tls"+orgSpec.CA.CommonName, orgSpec.TLSCertExpiry)
 
 	generateNodes(peersDir, orgSpec.Specs, signCA, tlsCA, msp.PEER, orgSpec.EnableNodeOUs)
 
@@ -357,8 +380,8 @@ func extendOrdererOrg(orgSpec OrgSpec) {
 		return
 	}
 
-	signCA := getCA(caDir, orgSpec, orgSpec.CA.CommonName)
-	tlsCA := getCA(tlscaDir, orgSpec, "tls"+orgSpec.CA.CommonName)
+	signCA := getCA(caDir, orgSpec, orgSpec.CA.CommonName, orgSpec.IdentityCertExpiry)
+	tlsCA := getCA(tlscaDir, orgSpec, "tls"+orgSpec.CA.CommonName, orgSpec.TLSCertExpiry)
 
 	generateNodes(orderersDir, orgSpec.Specs, signCA, tlsCA, msp.ORDERER, orgSpec.EnableNodeOUs)
 
@@ -525,13 +548,13 @@ func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
 	usersDir := filepath.Join(orgDir, "users")
 	adminCertsDir := filepath.Join(mspDir, "admincerts")
 	// generate signing CA
-	signCA, err := ca.NewCA(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
+	signCA, err := ca.NewCA(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode, orgSpec.CACertExpiry, orgSpec.IdentityCertExpiry)
 	if err != nil {
 		fmt.Printf("Error generating signCA for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
 	}
 	// generate TLS CA
-	tlsCA, err := ca.NewCA(tlsCADir, orgName, "tls"+orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
+	tlsCA, err := ca.NewCA(tlsCADir, orgName, "tls"+orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode, orgSpec.CACertExpiry, orgSpec.TLSCertExpiry)
 	if err != nil {
 		fmt.Printf("Error generating tlsCA for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
@@ -642,13 +665,13 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 	usersDir := filepath.Join(orgDir, "users")
 	adminCertsDir := filepath.Join(mspDir, "admincerts")
 	// generate signing CA
-	signCA, err := ca.NewCA(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
+	signCA, err := ca.NewCA(caDir, orgName, orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode, orgSpec.CACertExpiry, orgSpec.IdentityCertExpiry)
 	if err != nil {
 		fmt.Printf("Error generating signCA for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
 	}
 	// generate TLS CA
-	tlsCA, err := ca.NewCA(tlsCADir, orgName, "tls"+orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode)
+	tlsCA, err := ca.NewCA(tlsCADir, orgName, "tls"+orgSpec.CA.CommonName, orgSpec.CA.Country, orgSpec.CA.Province, orgSpec.CA.Locality, orgSpec.CA.OrganizationalUnit, orgSpec.CA.StreetAddress, orgSpec.CA.PostalCode, orgSpec.CACertExpiry, orgSpec.TLSCertExpiry)
 	if err != nil {
 		fmt.Printf("Error generating tlsCA for org %s:\n%v\n", orgName, err)
 		os.Exit(1)
@@ -722,7 +745,7 @@ func printVersion() {
 	fmt.Println(metadata.GetVersionInfo())
 }
 
-func getCA(caDir string, spec OrgSpec, name string) *ca.CA {
+func getCA(caDir string, spec OrgSpec, name string, signedCertExpiry time.Duration) *ca.CA {
 	priv, _ := csp.LoadPrivateKey(caDir)
 	cert, _ := ca.LoadCertificateECDSA(caDir)
 
@@ -736,5 +759,20 @@ func getCA(caDir string, spec OrgSpec, name string) *ca.CA {
 		OrganizationalUnit: spec.CA.OrganizationalUnit,
 		StreetAddress:      spec.CA.StreetAddress,
 		PostalCode:         spec.CA.PostalCode,
+		SignedCertExpiry:   signedCertExpiry,
+	}
+}
+
+func setExpiryDefaults(orgSpec *OrgSpec) {
+	if orgSpec.CACertExpiry == time.Duration(0) {
+		orgSpec.CACertExpiry = defaultCertExpiry
+	}
+
+	if orgSpec.IdentityCertExpiry == time.Duration(0) {
+		orgSpec.IdentityCertExpiry = defaultCertExpiry
+	}
+
+	if orgSpec.TLSCertExpiry == time.Duration(0) {
+		orgSpec.TLSCertExpiry = defaultCertExpiry
 	}
 }

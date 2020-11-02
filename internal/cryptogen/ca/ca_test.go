@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric/internal/cryptogen/ca"
 	"github.com/hyperledger/fabric/internal/cryptogen/csp"
@@ -33,6 +34,8 @@ const (
 	testOrganizationalUnit = "Hyperledger Fabric"
 	testStreetAddress      = "testStreetAddress"
 	testPostalCode         = "123456"
+	caCertExpiry           = 3650 * 24 * time.Hour
+	signedCertExpiry       = 365 * 24 * time.Hour
 )
 
 func TestLoadCertificateECDSA(t *testing.T) {
@@ -62,6 +65,8 @@ func TestLoadCertificateECDSA(t *testing.T) {
 		testOrganizationalUnit,
 		testStreetAddress,
 		testPostalCode,
+		caCertExpiry,
+		signedCertExpiry,
 	)
 	require.NoError(t, err, "Error generating CA")
 
@@ -135,6 +140,8 @@ func TestNewCA(t *testing.T) {
 		testOrganizationalUnit,
 		testStreetAddress,
 		testPostalCode,
+		caCertExpiry,
+		signedCertExpiry,
 	)
 	require.NoError(t, err, "Error generating CA")
 	require.NotNil(t, rootCA, "Failed to return CA")
@@ -189,6 +196,8 @@ func TestGenerateSignCertificate(t *testing.T) {
 		testOrganizationalUnit,
 		testStreetAddress,
 		testPostalCode,
+		caCertExpiry,
+		signedCertExpiry,
 	)
 	require.NoError(t, err, "Error generating CA")
 
@@ -254,7 +263,52 @@ func TestGenerateSignCertificate(t *testing.T) {
 	_, err = badCA.SignCertificate(certDir, testName, nil, nil, &ecdsa.PublicKey{},
 		x509.KeyUsageKeyEncipherment, []x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	require.Error(t, err, "Empty CA should not be able to sign")
+}
 
+func TestCertificateExpiry(t *testing.T) {
+	testDir, err := ioutil.TempDir("", "ca-test")
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %s", err)
+	}
+	defer os.RemoveAll(testDir)
+
+	// generate private key
+	certDir, err := ioutil.TempDir(testDir, "certs")
+	if err != nil {
+		t.Fatalf("Failed to create certs directory: %s", err)
+	}
+	priv, err := csp.GeneratePrivateKey(certDir)
+	require.NoError(t, err, "Failed to generate signed certificate")
+
+	// create our CA
+	caDir := filepath.Join(testDir, "ca")
+	rootCA, err := ca.NewCA(
+		caDir,
+		testCA2Name,
+		testCA2Name,
+		testCountry,
+		testProvince,
+		testLocality,
+		testOrganizationalUnit,
+		testStreetAddress,
+		testPostalCode,
+		caCertExpiry,
+		signedCertExpiry,
+	)
+	require.NoError(t, err, "Error generating CA")
+	validateCertExpiry(t, rootCA.SignCert, caCertExpiry)
+
+	cert, err := rootCA.SignCertificate(
+		certDir,
+		testName,
+		nil,
+		nil,
+		&priv.PublicKey,
+		x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
+		[]x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	)
+	require.NoError(t, err, "Failed to generate signed certificate")
+	validateCertExpiry(t, cert, signedCertExpiry)
 }
 
 func checkForFile(file string) bool {
@@ -262,4 +316,12 @@ func checkForFile(file string) bool {
 		return false
 	}
 	return true
+}
+
+func validateCertExpiry(t *testing.T, cert *x509.Certificate, expiry time.Duration) {
+	notBefore := time.Now().Round(time.Minute).Add(-5 * time.Minute).UTC()
+	notAfter := notBefore.Add(expiry)
+
+	require.WithinDuration(t, notBefore, cert.NotBefore, time.Minute, "Certificate NotBefore not in expected range")
+	require.WithinDuration(t, notAfter, cert.NotAfter, time.Minute, "Certificate NotAfter not in expected range")
 }
