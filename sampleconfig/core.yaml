@@ -687,6 +687,10 @@ ledger:
     # interval needs to be greater than the reconcileSleepInterval
     deprioritizedDataReconcilerInterval: 60m
 
+  snapshots:
+    # Path on the file system where peer will store ledger snapshots
+    rootDir: /var/hyperledger/production/snapshots
+
 ###############################################################################
 #
 #    Operations section

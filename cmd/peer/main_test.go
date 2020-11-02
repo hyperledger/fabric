@@ -62,6 +62,7 @@ func TestPluginLoadingFailure(t *testing.T) {
 			cmd := exec.Command(peer, "node", "start")
 			cmd.Env = []string{
 				fmt.Sprintf("CORE_PEER_FILESYSTEMPATH=%s", tempDir),
+				fmt.Sprintf("CORE_LEDGER_SNAPSHOTS_ROOTDIR=%s", filepath.Join(tempDir, "snapshots")),
 				fmt.Sprintf("CORE_PEER_HANDLERS_%s_LIBRARY=%s", plugin, filepath.Join(parentDir, "internal/peer/testdata/invalid_plugins/invalidplugin.so")),
 				fmt.Sprintf("CORE_PEER_LISTENADDRESS=%s", peerListenAddress),
 				fmt.Sprintf("CORE_PEER_CHAINCODELISTENADDRESS=%s", chaincodeListenAddress),
