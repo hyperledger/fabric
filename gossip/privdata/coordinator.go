@@ -124,6 +124,7 @@ type coordinator struct {
 	Support
 	store                          *transientstore.Store
 	transientBlockRetention        uint64
+	logger                         util.Logger
 	metrics                        *metrics.PrivdataMetrics
 	pullRetryThreshold             time.Duration
 	skipPullingInvalidTransactions bool
@@ -138,6 +139,7 @@ func NewCoordinator(mspID string, support Support, store *transientstore.Store, 
 		store:                          store,
 		selfSignedData:                 selfSignedData,
 		transientBlockRetention:        config.TransientBlockRetention,
+		logger:                         logger.With("channel", support.ChainID),
 		metrics:                        metrics,
 		pullRetryThreshold:             config.PullRetryThreshold,
 		skipPullingInvalidTransactions: config.SkipPullingInvalidTransactions,
@@ -154,15 +156,15 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 		return errors.New("Block header is nil")
 	}
 
-	logger.Infof("[%s] Received block [%d] from buffer", c.ChainID, block.Header.Number)
+	c.logger.Infof("Received block [%d] from buffer", block.Header.Number)
 
-	logger.Debugf("[%s] Validating block [%d]", c.ChainID, block.Header.Number)
+	c.logger.Debugf("Validating block [%d]", block.Header.Number)
 
 	validationStart := time.Now()
 	err := c.Validator.Validate(block)
 	c.reportValidationDuration(time.Since(validationStart))
 	if err != nil {
-		logger.Errorf("Validation failed: %+v", err)
+		c.logger.Errorf("Validation failed: %+v", err)
 		return err
 	}
 
@@ -204,7 +206,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	}
 	pvtdataToRetrieve, err := c.getTxPvtdataInfoFromBlock(block)
 	if err != nil {
-		logger.Warningf("Failed to get private data info from block: %s", err)
+		c.logger.Warningf("Failed to get private data info from block: %s", err)
 		return err
 	}
 
@@ -212,7 +214,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	// RetrievePvtdata checks this peer's eligibility and then retreives from cache, transient store, or from a remote peer.
 	retrievedPvtdata, err := pdp.RetrievePvtdata(pvtdataToRetrieve)
 	if err != nil {
-		logger.Warningf("Failed to retrieve pvtdata: %s", err)
+		c.logger.Warningf("Failed to retrieve pvtdata: %s", err)
 		return err
 	}
 
@@ -266,16 +268,16 @@ func (c *coordinator) GetPvtDataAndBlockByNum(seqNum uint64, peerAuthInfo protou
 				}
 				sp, err := c.CollectionStore.RetrieveCollectionAccessPolicy(cc)
 				if err != nil {
-					logger.Warningf("Failed obtaining policy for collection criteria [%#v]: %s", cc, err)
+					c.logger.Warningf("Failed obtaining policy for collection criteria [%#v]: %s", cc, err)
 					continue
 				}
 				isAuthorized := sp.AccessFilter()
 				if isAuthorized == nil {
-					logger.Warningf("Failed obtaining filter for collection criteria [%#v]", cc)
+					c.logger.Warningf("Failed obtaining filter for collection criteria [%#v]", cc)
 					continue
 				}
 				if !isAuthorized(peerAuthInfo) {
-					logger.Debugf("Skipping collection criteria [%#v] because peer isn't authorized", cc)
+					c.logger.Debugf("Skipping collection criteria [%#v] because peer isn't authorized", cc)
 					continue
 				}
 				seqs2Namespaces.addCollection(uint64(seqInBlock), txPvtDataItem.WriteSet.DataModel, ns.Namespace, col)
@@ -322,7 +324,7 @@ func (c *coordinator) getTxPvtdataInfoFromBlock(block *common.Block) ([]*ledger.
 
 				colConfig, err := c.CollectionStore.RetrieveCollectionConfig(cc)
 				if err != nil {
-					logger.Warningf("Failed to retrieve collection config for collection criteria [%#v]: %s", cc, err)
+					c.logger.Warningf("Failed to retrieve collection config for collection criteria [%#v]: %s", cc, err)
 					return nil, err
 				}
 				col := &ledger.CollectionPvtdataInfo{
