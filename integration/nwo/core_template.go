@@ -217,6 +217,8 @@ ledger:
       warmIndexesAfterNBlocks: 1
   history:
     enableHistoryDatabase: true
+  pvtdataStore:
+    deprioritizedDataReconcilerInterval: 60m
 
 operations:
   listenAddress: 127.0.0.1:{{ .PeerPort Peer "Operations" }}

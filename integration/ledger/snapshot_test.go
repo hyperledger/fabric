@@ -576,9 +576,12 @@ func initAndStartFourOrgsNetwork() *setup {
 	n.Bootstrap()
 
 	// set ReconcileSleepInterval to 1 second to reconcile pvtdata faster
+	// set DeprioritizedDataReconcilerInterval to 2 seconds to resume reconciliation quickly
+	// to prevent CI flake in case peer connection is temporarily lost.
 	for _, p := range n.Peers {
 		core := n.ReadPeerConfig(p)
 		core.Peer.Gossip.PvtData.ReconcileSleepInterval = 1 * time.Second
+		core.Ledger.PvtdataStore.DeprioritizedDataReconcilerInterval = 2 * time.Second
 		n.WritePeerConfig(p, core)
 	}
 
