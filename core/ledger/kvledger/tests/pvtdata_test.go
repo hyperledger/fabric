@@ -10,13 +10,14 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMissingCollConfig(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1", t)
+	l := env.createTestLedger("ledger1")
 
 	collConf := []*collConf{{name: "coll1", btl: 5}}
 
@@ -26,9 +27,15 @@ func TestMissingCollConfig(t *testing.T) {
 
 	// pvt data operations should give error as no collection config defined
 	l.simulateDataTx("", func(s *simulator) {
-		l.assertError(s.GetPrivateData("cc1", "coll1", "key"))
-		l.assertError(s.SetPrivateData("cc1", "coll1", "key", []byte("value")))
-		l.assertError(s.DeletePrivateData("cc1", "coll1", "key"))
+		expectedErr := "collection config not defined for chaincode [cc1], pass the collection configuration upon chaincode definition/instantiation"
+		_, err := s.GetPrivateData("cc1", "coll1", "key")
+		require.EqualError(t, err, expectedErr)
+
+		err = s.SetPrivateData("cc1", "coll1", "key", []byte("value"))
+		require.EqualError(t, err, expectedErr)
+
+		err = s.DeletePrivateData("cc1", "coll1", "key")
+		require.EqualError(t, err, expectedErr)
 	})
 
 	// upgrade cc1 (add collConf)
@@ -38,12 +45,24 @@ func TestMissingCollConfig(t *testing.T) {
 	// operations on coll1 should not give error
 	// operations on coll2 should give error (because, only coll1 is defined in collConf)
 	l.simulateDataTx("", func(s *simulator) {
-		l.assertNoError(s.GetPrivateData("cc1", "coll1", "key1"))
-		l.assertNoError(s.SetPrivateData("cc1", "coll1", "key2", []byte("value")))
-		l.assertNoError(s.DeletePrivateData("cc1", "coll1", "key3"))
-		l.assertError(s.GetPrivateData("cc1", "coll2", "key"))
-		l.assertError(s.SetPrivateData("cc1", "coll2", "key", []byte("value")))
-		l.assertError(s.DeletePrivateData("cc1", "coll2", "key"))
+		_, err := s.GetPrivateData("cc1", "coll1", "key1")
+		require.NoError(t, err)
+
+		err = s.SetPrivateData("cc1", "coll1", "key2", []byte("value"))
+		require.NoError(t, err)
+
+		err = s.DeletePrivateData("cc1", "coll1", "key3")
+		require.NoError(t, err)
+
+		expectedErr := "collection [coll2] not defined in the collection config for chaincode [cc1]"
+		_, err = s.GetPrivateData("cc1", "coll2", "key")
+		require.EqualError(t, err, expectedErr)
+
+		err = s.SetPrivateData("cc1", "coll2", "key", []byte("value"))
+		require.EqualError(t, err, expectedErr)
+
+		err = s.DeletePrivateData("cc1", "coll2", "key")
+		require.EqualError(t, err, expectedErr)
 	})
 }
 
@@ -51,7 +70,7 @@ func TestTxWithMissingPvtdata(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1", t)
+	l := env.createTestLedger("ledger1")
 
 	collConf := []*collConf{{name: "coll1", btl: 5}}
 
@@ -73,7 +92,8 @@ func TestTxWithMissingPvtdata(t *testing.T) {
 
 	l.verifyPvtState("cc1", "coll1", "key2", "value2") // key2 should have been committed
 	l.simulateDataTx("", func(s *simulator) {
-		l.assertError(s.GetPrivateData("cc1", "coll1", "key1")) // key1 would be stale with respect to hashed version
+		_, err := s.GetPrivateData("cc1", "coll1", "key1") // key1 would be stale with respect to hashed version
+		require.EqualError(t, err, "private data matching public hash version is not available. Public hash version = {BlockNum: 2, TxNum: 0}, Private data version = <nil>")
 	})
 
 	// verify missing pvtdata info
@@ -96,7 +116,7 @@ func TestTxWithWrongPvtdata(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1", t)
+	l := env.createTestLedger("ledger1")
 
 	collConf := []*collConf{{name: "coll1", btl: 5}}
 
@@ -122,7 +142,7 @@ func TestBTL(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1", t)
+	l := env.createTestLedger("ledger1")
 	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 5}}
 
 	// deploy cc1 with 'collConf'

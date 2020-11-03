@@ -46,7 +46,7 @@ func TestV11(t *testing.T) {
 
 	env.initLedgerMgmt()
 
-	l1, l2 := env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
+	l1, l2 := env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
 	dataHelper := &v1xSampleDataHelper{sampleDataVersion: "v1.1", t: t}
 
 	dataHelper.verify(l1)
@@ -58,7 +58,7 @@ func TestV11(t *testing.T) {
 	env.verifyRebuilableDirEmpty(rebuildable)
 	env.initLedgerMgmt()
 
-	l1, l2 = env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
+	l1, l2 = env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
 	dataHelper.verify(l1)
 	dataHelper.verify(l2)
 
@@ -177,7 +177,7 @@ func testV11CommitHashes(t *testing.T,
 	env.verifyRebuilableDirEmpty(rebuildable)
 
 	env.initLedgerMgmt()
-	h := env.openTestLedger("ledger1", t)
+	h := env.openTestLedger("ledger1")
 	blocksAndPvtData := h.retrieveCommittedBlocksAndPvtdata(0, h.currentHeight()-1)
 
 	var commitHashPreReset []byte
@@ -192,7 +192,7 @@ func testV11CommitHashes(t *testing.T,
 	resetFunc(h, ledgerFSRoot)
 	env.initLedgerMgmt()
 
-	h = env.openTestLedger("ledger1", t)
+	h = env.openTestLedger("ledger1")
 	for i := int(h.currentHeight()); i < len(blocksAndPvtData); i++ {
 		d := blocksAndPvtData[i]
 		// add metadata slot for commit hash, as this would have be missing in the blocks from 1.1 prior to this feature
@@ -255,7 +255,7 @@ func TestV13WithStateCouchdb(t *testing.T) {
 
 	env.initLedgerMgmt()
 
-	h1, h2 := env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
+	h1, h2 := env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
 	dataHelper := &v1xSampleDataHelper{sampleDataVersion: "v1.3", t: t}
 	dataHelper.verify(h1)
 	dataHelper.verify(h2)
@@ -267,7 +267,7 @@ func TestV13WithStateCouchdb(t *testing.T) {
 	env.verifyRebuilableDirEmpty(rebuildable)
 	env.initLedgerMgmt()
 
-	h1, h2 = env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
+	h1, h2 = env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
 	dataHelper.verify(h1)
 	dataHelper.verify(h2)
 }

@@ -45,7 +45,7 @@ const (
 )
 
 type env struct {
-	assert      *require.Assertions
+	t           *testing.T
 	initializer *ledgermgmt.Initializer
 	ledgerMgr   *ledgermgmt.LedgerMgr
 }
@@ -65,7 +65,7 @@ func newEnvWithInitializer(t *testing.T, initializer *ledgermgmt.Initializer) *e
 	populateMissingsWithTestDefaults(t, initializer)
 
 	return &env{
-		assert:      require.New(t),
+		t:           t,
 		initializer: initializer,
 	}
 }
@@ -90,35 +90,35 @@ func (e *env) closeAllLedgersAndRemoveDirContents(flags rebuildable) {
 		indexPath := e.getBlockIndexDBPath()
 		logger.Infof("Deleting blockstore indexdb path [%s]", indexPath)
 		e.verifyNonEmptyDirExists(indexPath)
-		e.assert.NoError(fileutil.RemoveContents(indexPath))
+		require.NoError(e.t, fileutil.RemoveContents(indexPath))
 	}
 
 	if flags&rebuildableStatedb == rebuildableStatedb {
 		statedbPath := e.getLevelstateDBPath()
 		logger.Infof("Deleting statedb path [%s]", statedbPath)
 		e.verifyNonEmptyDirExists(statedbPath)
-		e.assert.NoError(fileutil.RemoveContents(statedbPath))
+		require.NoError(e.t, fileutil.RemoveContents(statedbPath))
 	}
 
 	if flags&rebuildableConfigHistory == rebuildableConfigHistory {
 		configHistoryPath := e.getConfigHistoryDBPath()
 		logger.Infof("Deleting configHistory db path [%s]", configHistoryPath)
 		e.verifyNonEmptyDirExists(configHistoryPath)
-		e.assert.NoError(fileutil.RemoveContents(configHistoryPath))
+		require.NoError(e.t, fileutil.RemoveContents(configHistoryPath))
 	}
 
 	if flags&rebuildableBookkeeper == rebuildableBookkeeper {
 		bookkeeperPath := e.getBookkeeperDBPath()
 		logger.Infof("Deleting bookkeeper db path [%s]", bookkeeperPath)
 		e.verifyNonEmptyDirExists(bookkeeperPath)
-		e.assert.NoError(fileutil.RemoveContents(bookkeeperPath))
+		require.NoError(e.t, fileutil.RemoveContents(bookkeeperPath))
 	}
 
 	if flags&rebuildableHistoryDB == rebuildableHistoryDB {
 		historyPath := e.getHistoryDBPath()
 		logger.Infof("Deleting history db path [%s]", historyPath)
 		e.verifyNonEmptyDirExists(historyPath)
-		e.assert.NoError(fileutil.RemoveContents(historyPath))
+		require.NoError(e.t, fileutil.RemoveContents(historyPath))
 	}
 
 	e.verifyRebuilableDirEmpty(flags)
@@ -162,14 +162,14 @@ func (e *env) verifyRebuilableDirEmpty(flags rebuildable) {
 
 func (e *env) verifyNonEmptyDirExists(path string) {
 	empty, err := fileutil.DirEmpty(path)
-	e.assert.NoError(err)
-	e.assert.False(empty)
+	require.NoError(e.t, err)
+	require.False(e.t, empty)
 }
 
 func (e *env) verifyDirEmpty(path string) {
 	empty, err := fileutil.DirEmpty(path)
-	e.assert.NoError(err)
-	e.assert.True(empty)
+	require.NoError(e.t, err)
+	require.True(e.t, empty)
 }
 
 func (e *env) initLedgerMgmt() {
