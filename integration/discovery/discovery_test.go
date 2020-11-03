@@ -11,7 +11,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
+	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
@@ -35,7 +37,7 @@ var _ = Describe("DiscoveryService", func() {
 		testDir   string
 		client    *docker.Client
 		network   *nwo.Network
-		process   ifrit.Process
+		processes []ifrit.Process
 		orderer   *nwo.Orderer
 		org1Peer0 *nwo.Peer
 		org2Peer0 *nwo.Peer
@@ -55,7 +57,7 @@ var _ = Describe("DiscoveryService", func() {
 		config.RemovePeer("Org2", "peer1")
 		Expect(config.Peers).To(HaveLen(2))
 
-		// add org3 with one peer
+		// add org3 with one peer (to generate cryptogen and configtx files)
 		config.Organizations = append(config.Organizations, &nwo.Organization{
 			Name:          "Org3",
 			MSPID:         "Org3MSP",
@@ -66,32 +68,43 @@ var _ = Describe("DiscoveryService", func() {
 		})
 		config.Consortiums[0].Organizations = append(config.Consortiums[0].Organizations, "Org3")
 		config.Profiles[1].Organizations = append(config.Profiles[1].Organizations, "Org3")
-		config.Peers = append(config.Peers, &nwo.Peer{
-			Name:         "peer0",
-			Organization: "Org3",
-			Channels: []*nwo.PeerChannel{
-				{Name: "testchannel", Anchor: true},
+		config.Peers = append(config.Peers,
+			&nwo.Peer{
+				Name:         "peer0",
+				Organization: "Org3",
+				Channels: []*nwo.PeerChannel{
+					{Name: "testchannel", Anchor: true},
+				},
 			},
-		})
+		)
 
 		network = nwo.New(config, testDir, client, StartPort(), components)
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
+		// initially remove Org3 peer0 from the network and later add it back to test joinbysnapshot
+		peers := []*nwo.Peer{}
+		for _, p := range network.Peers {
+			if p.Organization != "Org3" {
+				peers = append(peers, p)
+			}
+		}
+		network.Peers = peers
+
 		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
+		process := ifrit.Invoke(networkRunner)
 		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		processes = append(processes, process)
 
 		orderer = network.Orderer("orderer")
 		network.CreateAndJoinChannel(orderer, "testchannel")
 
 		org1Peer0 = network.Peer("Org1", "peer0")
 		org2Peer0 = network.Peer("Org2", "peer0")
-		org3Peer0 = network.Peer("Org3", "peer0")
 	})
 
 	AfterEach(func() {
-		if process != nil {
+		for _, process := range processes {
 			process.Signal(syscall.SIGTERM)
 			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 		}
@@ -142,22 +155,49 @@ var _ = Describe("DiscoveryService", func() {
 		By("Updating anchor peers")
 		network.UpdateChannelAnchors(orderer, "testchannel")
 
-		By("retrieving the configuration")
-		config := commands.Config{
-			UserCert: network.PeerUserCert(org1Peer0, "User1"),
-			UserKey:  network.PeerUserKey(org1Peer0, "User1"),
-			MSPID:    network.Organization(org1Peer0.Organization).MSPID,
-			Server:   network.PeerAddress(org1Peer0, nwo.ListenPort),
-			Channel:  "testchannel",
-		}
-		sess, err := network.Discover(config)
-		Expect(err).NotTo(HaveOccurred())
-		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
+		//
+		// bootstrapping a peer from snapshot
+		//
 
-		By("unmarshaling the response")
-		discoveredConfig := &discovery.ConfigResult{}
-		err = json.Unmarshal(sess.Out.Contents(), &discoveredConfig)
-		Expect(err).NotTo(HaveOccurred())
+		By("generating a snapshot at current block number on org1Peer0")
+		blockNum := nwo.GetLedgerHeight(network, org1Peer0, "testchannel") - 1
+		submitSnapshotRequest(network, "testchannel", 0, org1Peer0, "Snapshot request submitted successfully")
+
+		By("verifying snapshot completed on org1Peer0")
+		verifyNoPendingSnapshotRequest(network, org1Peer0, "testchannel")
+		snapshotDir := filepath.Join(network.PeerDir(org1Peer0), "filesystem", "snapshots", "completed", "testchannel", strconv.Itoa(blockNum))
+
+		By("adding peer org3Peer0 to the network")
+		org3Peer0 = &nwo.Peer{
+			Name:         "peer0",
+			Organization: "Org3",
+			Channels: []*nwo.PeerChannel{
+				{Name: "testchannel", Anchor: true},
+			},
+		}
+		network.Peers = append(network.Peers, org3Peer0)
+
+		By("starting peer org3Peer0")
+		peerRunner := network.PeerRunner(org3Peer0)
+		process := ifrit.Invoke(peerRunner)
+		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		processes = append(processes, process)
+
+		By("joining peer org3Peer0 to channel by a snapshot")
+		joinBySnapshot(network, orderer, org3Peer0, "testchannel", snapshotDir)
+
+		//
+		// retrieving configuration and validating membership
+		//
+
+		By("retrieving the configuration from org1Peer0")
+		discoveredConfig := discoverConfiguration(network, org1Peer0)
+
+		By("retrieving the configuration from org3Peer0")
+		discoveredConfig2 := discoverConfiguration(network, org1Peer0)
+
+		By("comparing configuration from org1Peer0 and org3Peer0")
+		Expect(proto.Equal(discoveredConfig, discoveredConfig2)).To(BeTrue())
 
 		By("validating the membership data")
 		Expect(discoveredConfig.Msps).To(HaveLen(len(network.Organizations)))
@@ -203,7 +243,7 @@ var _ = Describe("DiscoveryService", func() {
 			Channel:   "testchannel",
 			Chaincode: "mycc",
 		}
-		sess, err = network.Discover(endorsers)
+		sess, err := network.Discover(endorsers)
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
 		Expect(sess.Err).To(gbytes.Say(`failed constructing descriptor for chaincodes:<name:"mycc"`))
@@ -687,4 +727,63 @@ func unmarshalFabricMSPConfig(c *pm.MSPConfig) *pm.FabricMSPConfig {
 	err := proto.Unmarshal(c.Config, fabricConfig)
 	Expect(err).NotTo(HaveOccurred())
 	return fabricConfig
+}
+
+func discoverConfiguration(n *nwo.Network, peer *nwo.Peer) *discovery.ConfigResult {
+	config := commands.Config{
+		UserCert: n.PeerUserCert(peer, "User1"),
+		UserKey:  n.PeerUserKey(peer, "User1"),
+		MSPID:    n.Organization(peer.Organization).MSPID,
+		Server:   n.PeerAddress(peer, nwo.ListenPort),
+		Channel:  "testchannel",
+	}
+	sess, err := n.Discover(config)
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+
+	By("unmarshaling the response")
+	discoveredConfig := &discovery.ConfigResult{}
+	err = json.Unmarshal(sess.Out.Contents(), &discoveredConfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	return discoveredConfig
+}
+
+func submitSnapshotRequest(n *nwo.Network, channel string, blockNum int, peer *nwo.Peer, expectedMsg string) {
+	sess, err := n.PeerAdminSession(peer, commands.SnapshotSubmitRequest{
+		ChannelID:   channel,
+		BlockNumber: strconv.Itoa(blockNum),
+		ClientAuth:  n.ClientAuthRequired,
+		PeerAddress: n.PeerAddress(peer, nwo.ListenPort),
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	Expect(sess).To(gbytes.Say(expectedMsg))
+}
+
+func verifyNoPendingSnapshotRequest(n *nwo.Network, peer *nwo.Peer, channelID string) {
+	cmd := commands.SnapshotListPending{
+		ChannelID:   channelID,
+		ClientAuth:  n.ClientAuthRequired,
+		PeerAddress: n.PeerAddress(peer, nwo.ListenPort),
+	}
+	checkPending := func() []byte {
+		sess, err := n.PeerAdminSession(peer, cmd)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+		return sess.Buffer().Contents()
+	}
+	Eventually(checkPending, n.EventuallyTimeout, 10*time.Second).Should(ContainSubstring("Successfully got pending snapshot requests: []\n"))
+}
+
+func joinBySnapshot(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID string, snapshotDir string) {
+	n.JoinChannelBySnapshot(snapshotDir, peer)
+
+	By("calling JoinBySnapshotStatus until joinbysnapshot is completed")
+	checkStatus := func() []byte { return n.JoinBySnapshotStatus(peer) }
+	Eventually(checkStatus, n.EventuallyTimeout, 10*time.Second).Should(ContainSubstring("No joinbysnapshot operation is in progress"))
+
+	By("waiting for the peer to have the same ledger height")
+	channelHeight := nwo.GetMaxLedgerHeight(n, channelID, n.PeersWithChannel(channelID)...)
+	nwo.WaitUntilEqualLedgerHeight(n, channelID, channelHeight, peer)
 }
