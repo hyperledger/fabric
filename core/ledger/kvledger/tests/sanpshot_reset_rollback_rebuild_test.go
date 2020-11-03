@@ -22,18 +22,18 @@ func TestResetRollbackRebuildFailsIfAnyLedgerBootstrappedFromSnapshot(t *testing
 
 	// populate ledgers with sample data
 	dataHelper := newSampleDataHelper(t)
-	h := env.newTestHelperCreateLgr("ledger_from_snapshot", t)
-	dataHelper.populateLedger(h)
-	dataHelper.verifyLedgerContent(h)
-	bcInfo, err := h.lgr.GetBlockchainInfo()
+	l := env.createTestLedger("ledger_from_snapshot", t)
+	dataHelper.populateLedger(l)
+	dataHelper.verifyLedgerContent(l)
+	bcInfo, err := l.lgr.GetBlockchainInfo()
 	require.NoError(t, err)
 
 	// create a sanapshot
 	blockNum := bcInfo.Height - 1
-	require.NoError(t, h.lgr.SubmitSnapshotRequest(blockNum))
+	require.NoError(t, l.lgr.SubmitSnapshotRequest(blockNum))
 	// wait until snapshot is generated
 	snapshotGenerated := func() bool {
-		requests, err := h.lgr.PendingSnapshotRequests()
+		requests, err := l.lgr.PendingSnapshotRequests()
 		require.NoError(t, err)
 		return len(requests) == 0
 	}
@@ -46,7 +46,7 @@ func TestResetRollbackRebuildFailsIfAnyLedgerBootstrappedFromSnapshot(t *testing
 	defer env2.cleanup()
 	env2.initLedgerMgmt()
 
-	env2.newTestHelperCreateLgr("ledger_from_genesis_block", t)
+	env2.createTestLedger("ledger_from_genesis_block", t)
 
 	callbackCounter := 0
 	callback := func(l ledger.PeerLedger, cid string) { callbackCounter++ }

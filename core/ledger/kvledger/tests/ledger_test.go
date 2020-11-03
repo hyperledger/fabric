@@ -29,15 +29,15 @@ func TestLedgerAPIs(t *testing.T) {
 	env.initLedgerMgmt()
 
 	// create two ledgers
-	h1 := env.newTestHelperCreateLgr("ledger1", t)
-	h2 := env.newTestHelperCreateLgr("ledger2", t)
+	testLedger1 := env.createTestLedger("ledger1", t)
+	testLedger2 := env.createTestLedger("ledger2", t)
 
 	// populate ledgers with sample data
 	dataHelper := newSampleDataHelper(t)
-	dataHelper.populateLedger(h1)
-	dataHelper.populateLedger(h2)
+	dataHelper.populateLedger(testLedger1)
+	dataHelper.populateLedger(testLedger2)
 
 	// verify contents in both the ledgers
-	dataHelper.verifyLedgerContent(h1)
-	dataHelper.verifyLedgerContent(h2)
+	dataHelper.verifyLedgerContent(testLedger1)
+	dataHelper.verifyLedgerContent(testLedger2)
 }

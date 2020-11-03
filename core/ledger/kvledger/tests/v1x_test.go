@@ -46,11 +46,11 @@ func TestV11(t *testing.T) {
 
 	env.initLedgerMgmt()
 
-	h1, h2 := env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
+	l1, l2 := env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
 	dataHelper := &v1xSampleDataHelper{sampleDataVersion: "v1.1", t: t}
 
-	dataHelper.verify(h1)
-	dataHelper.verify(h2)
+	dataHelper.verify(l1)
+	dataHelper.verify(l2)
 
 	// rebuild and verify again
 	env.ledgerMgr.Close()
@@ -58,20 +58,20 @@ func TestV11(t *testing.T) {
 	env.verifyRebuilableDirEmpty(rebuildable)
 	env.initLedgerMgmt()
 
-	h1, h2 = env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
-	dataHelper.verify(h1)
-	dataHelper.verify(h2)
+	l1, l2 = env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
+	dataHelper.verify(l1)
+	dataHelper.verify(l2)
 
-	h1.verifyCommitHashNotExists()
-	h2.verifyCommitHashNotExists()
-	h1.simulateDataTx("txid1_with_new_binary", func(s *simulator) {
+	l1.verifyCommitHashNotExists()
+	l2.verifyCommitHashNotExists()
+	l1.simulateDataTx("txid1_with_new_binary", func(s *simulator) {
 		s.setState("cc1", "new_key", "new_value")
 	})
 
 	// add a new block and the new block should not contain a commit hash
 	// because the previously committed block from 1.1 code did not contain commit hash
-	h1.cutBlockAndCommitLegacy()
-	h1.verifyCommitHashNotExists()
+	l1.cutBlockAndCommitLegacy()
+	l1.verifyCommitHashNotExists()
 }
 
 func TestV11CommitHashes(t *testing.T) {
@@ -79,14 +79,14 @@ func TestV11CommitHashes(t *testing.T) {
 		description               string
 		v11SampleDataPath         string
 		preResetCommitHashExists  bool
-		resetFunc                 func(h *testhelper, ledgerFSRoot string)
+		resetFunc                 func(h *testLedger, ledgerFSRoot string)
 		postResetCommitHashExists bool
 	}{
 		{
 			"Reset (no existing CommitHash)",
 			"testdata/v11/sample_ledgers/ledgersData.zip",
 			false,
-			func(h *testhelper, ledgerFSRoot string) {
+			func(h *testLedger, ledgerFSRoot string) {
 				require.NoError(t, kvledger.ResetAllKVLedgers(ledgerFSRoot))
 			},
 			true,
@@ -96,7 +96,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"Rollback to genesis block (no existing CommitHash)",
 			"testdata/v11/sample_ledgers/ledgersData.zip",
 			false,
-			func(h *testhelper, ledgerFSRoot string) {
+			func(h *testLedger, ledgerFSRoot string) {
 				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, 0))
 			},
 			true,
@@ -106,7 +106,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"Rollback to block other than genesis block (no existing CommitHash)",
 			"testdata/v11/sample_ledgers/ledgersData.zip",
 			false,
-			func(h *testhelper, ledgerFSRoot string) {
+			func(h *testLedger, ledgerFSRoot string) {
 				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, h.currentHeight()/2+1))
 			},
 			false,
@@ -116,7 +116,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"Reset (existing CommitHash)",
 			"testdata/v11/sample_ledgers_with_commit_hashes/ledgersData.zip",
 			true,
-			func(h *testhelper, ledgerFSRoot string) {
+			func(h *testLedger, ledgerFSRoot string) {
 				require.NoError(t, kvledger.ResetAllKVLedgers(ledgerFSRoot))
 			},
 			true,
@@ -126,7 +126,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"Rollback to genesis block (existing CommitHash)",
 			"testdata/v11/sample_ledgers_with_commit_hashes/ledgersData.zip",
 			true,
-			func(h *testhelper, ledgerFSRoot string) {
+			func(h *testLedger, ledgerFSRoot string) {
 				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, 0))
 			},
 			true,
@@ -136,7 +136,7 @@ func TestV11CommitHashes(t *testing.T) {
 			"Rollback to block other than genesis block (existing CommitHash)",
 			"testdata/v11/sample_ledgers_with_commit_hashes/ledgersData.zip",
 			true,
-			func(h *testhelper, ledgerFSRoot string) {
+			func(h *testLedger, ledgerFSRoot string) {
 				require.NoError(t, kvledger.RollbackKVLedger(ledgerFSRoot, h.lgrid, h.currentHeight()/2+1))
 			},
 			true,
@@ -161,7 +161,7 @@ func TestV11CommitHashes(t *testing.T) {
 func testV11CommitHashes(t *testing.T,
 	v11DataPath string,
 	preResetCommitHashExists bool,
-	resetFunc func(*testhelper, string),
+	resetFunc func(*testLedger, string),
 	postResetCommitHashExists bool,
 ) {
 	env := newEnv(t)
@@ -177,7 +177,7 @@ func testV11CommitHashes(t *testing.T,
 	env.verifyRebuilableDirEmpty(rebuildable)
 
 	env.initLedgerMgmt()
-	h := env.newTestHelperOpenLgr("ledger1", t)
+	h := env.openTestLedger("ledger1", t)
 	blocksAndPvtData := h.retrieveCommittedBlocksAndPvtdata(0, h.currentHeight()-1)
 
 	var commitHashPreReset []byte
@@ -192,7 +192,7 @@ func testV11CommitHashes(t *testing.T,
 	resetFunc(h, ledgerFSRoot)
 	env.initLedgerMgmt()
 
-	h = env.newTestHelperOpenLgr("ledger1", t)
+	h = env.openTestLedger("ledger1", t)
 	for i := int(h.currentHeight()); i < len(blocksAndPvtData); i++ {
 		d := blocksAndPvtData[i]
 		// add metadata slot for commit hash, as this would have be missing in the blocks from 1.1 prior to this feature
@@ -255,7 +255,7 @@ func TestV13WithStateCouchdb(t *testing.T) {
 
 	env.initLedgerMgmt()
 
-	h1, h2 := env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
+	h1, h2 := env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
 	dataHelper := &v1xSampleDataHelper{sampleDataVersion: "v1.3", t: t}
 	dataHelper.verify(h1)
 	dataHelper.verify(h2)
@@ -267,7 +267,7 @@ func TestV13WithStateCouchdb(t *testing.T) {
 	env.verifyRebuilableDirEmpty(rebuildable)
 	env.initLedgerMgmt()
 
-	h1, h2 = env.newTestHelperOpenLgr("ledger1", t), env.newTestHelperOpenLgr("ledger2", t)
+	h1, h2 = env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
 	dataHelper.verify(h1)
 	dataHelper.verify(h2)
 }
@@ -407,7 +407,7 @@ type v1xSampleDataHelper struct {
 	t                 *testing.T
 }
 
-func (d *v1xSampleDataHelper) verify(h *testhelper) {
+func (d *v1xSampleDataHelper) verify(h *testLedger) {
 	d.verifyState(h)
 	d.verifyBlockAndPvtdata(h)
 	d.verifyGetTransactionByID(h)
@@ -415,7 +415,7 @@ func (d *v1xSampleDataHelper) verify(h *testhelper) {
 	d.verifyHistory(h)
 }
 
-func (d *v1xSampleDataHelper) verifyState(h *testhelper) {
+func (d *v1xSampleDataHelper) verifyState(h *testLedger) {
 	lgrid := h.lgrid
 	h.verifyPubState("cc1", "key1", d.sampleVal("value13", lgrid))
 	h.verifyPubState("cc1", "key2", "")
@@ -432,7 +432,7 @@ func (d *v1xSampleDataHelper) verifyState(h *testhelper) {
 	h.verifyPvtState("cc2", "coll2", "key4", d.sampleVal("value12", lgrid))
 }
 
-func (d *v1xSampleDataHelper) verifyHistory(h *testhelper) {
+func (d *v1xSampleDataHelper) verifyHistory(h *testLedger) {
 	lgrid := h.lgrid
 	expectedHistoryCC1Key1 := []string{
 		d.sampleVal("value13", lgrid),
@@ -441,7 +441,7 @@ func (d *v1xSampleDataHelper) verifyHistory(h *testhelper) {
 	h.verifyHistory("cc1", "key1", expectedHistoryCC1Key1)
 }
 
-func (d *v1xSampleDataHelper) verifyConfigHistory(h *testhelper) {
+func (d *v1xSampleDataHelper) verifyConfigHistory(h *testLedger) {
 	lgrid := h.lgrid
 	h.verifyMostRecentCollectionConfigBelow(10, "cc1",
 		&expectedCollConfInfo{5, d.sampleCollConf2(lgrid, "cc1")})
@@ -456,12 +456,12 @@ func (d *v1xSampleDataHelper) verifyConfigHistory(h *testhelper) {
 		&expectedCollConfInfo{3, d.sampleCollConf1(lgrid, "cc2")})
 }
 
-func (d *v1xSampleDataHelper) verifyConfigHistoryDoesNotExist(h *testhelper) {
+func (d *v1xSampleDataHelper) verifyConfigHistoryDoesNotExist(h *testLedger) {
 	h.verifyMostRecentCollectionConfigBelow(10, "cc1", nil)
 	h.verifyMostRecentCollectionConfigBelow(10, "cc2", nil)
 }
 
-func (d *v1xSampleDataHelper) verifyBlockAndPvtdata(h *testhelper) {
+func (d *v1xSampleDataHelper) verifyBlockAndPvtdata(h *testLedger) {
 	lgrid := h.lgrid
 	h.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) {
 		r.hasNumTx(2)
@@ -475,7 +475,7 @@ func (d *v1xSampleDataHelper) verifyBlockAndPvtdata(h *testhelper) {
 	})
 }
 
-func (d *v1xSampleDataHelper) verifyGetTransactionByID(h *testhelper) {
+func (d *v1xSampleDataHelper) verifyGetTransactionByID(h *testLedger) {
 	h.verifyTxValidationCode("txid7", protopeer.TxValidationCode_VALID)
 	h.verifyTxValidationCode("txid8", protopeer.TxValidationCode_MVCC_READ_CONFLICT)
 }
