@@ -29,8 +29,8 @@ func TestLedgerAPIs(t *testing.T) {
 	env.initLedgerMgmt()
 
 	// create two ledgers
-	testLedger1 := env.createTestLedger("ledger1", t)
-	testLedger2 := env.createTestLedger("ledger2", t)
+	testLedger1 := env.createTestLedger("ledger1")
+	testLedger2 := env.createTestLedger("ledger2")
 
 	// populate ledgers with sample data
 	dataHelper := newSampleDataHelper(t)

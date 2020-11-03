@@ -15,7 +15,7 @@ func TestRebuildComponents(t *testing.T) {
 	defer env.cleanup()
 	env.initLedgerMgmt()
 
-	l1, l2 := env.createTestLedger("ledger1", t), env.createTestLedger("ledger2", t)
+	l1, l2 := env.createTestLedger("ledger1"), env.createTestLedger("ledger2")
 	dataHelper := newSampleDataHelper(t)
 
 	dataHelper.populateLedger(l1)
@@ -27,7 +27,7 @@ func TestRebuildComponents(t *testing.T) {
 	t.Run("rebuild only statedb",
 		func(t *testing.T) {
 			env.closeAllLedgersAndRemoveDirContents(rebuildableStatedb)
-			l1, l2 := env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
+			l1, l2 := env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
 			dataHelper.verifyLedgerContent(l1)
 			dataHelper.verifyLedgerContent(l2)
 		},
@@ -36,7 +36,7 @@ func TestRebuildComponents(t *testing.T) {
 	t.Run("rebuild statedb and config history",
 		func(t *testing.T) {
 			env.closeAllLedgersAndRemoveDirContents(rebuildableStatedb | rebuildableConfigHistory)
-			l1, l2 := env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
+			l1, l2 := env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
 			dataHelper.verifyLedgerContent(l1)
 			dataHelper.verifyLedgerContent(l2)
 		},
@@ -45,7 +45,7 @@ func TestRebuildComponents(t *testing.T) {
 	t.Run("rebuild statedb and block index",
 		func(t *testing.T) {
 			env.closeAllLedgersAndRemoveDirContents(rebuildableStatedb | rebuildableBlockIndex)
-			l1, l2 := env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
+			l1, l2 := env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
 			dataHelper.verifyLedgerContent(l1)
 			dataHelper.verifyLedgerContent(l2)
 		},
@@ -54,7 +54,7 @@ func TestRebuildComponents(t *testing.T) {
 	t.Run("rebuild statedb and historydb",
 		func(t *testing.T) {
 			env.closeAllLedgersAndRemoveDirContents(rebuildableStatedb | rebuildableHistoryDB)
-			l1, l2 := env.openTestLedger("ledger1", t), env.openTestLedger("ledger2", t)
+			l1, l2 := env.openTestLedger("ledger1"), env.openTestLedger("ledger2")
 			dataHelper.verifyLedgerContent(l1)
 			dataHelper.verifyLedgerContent(l2)
 		},
@@ -65,7 +65,7 @@ func TestRebuildComponentsWithBTL(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1", t)
+	l := env.createTestLedger("ledger1")
 	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 1}}
 
 	// deploy cc1 with 'collConf'
@@ -105,7 +105,7 @@ func TestRebuildComponentsWithBTL(t *testing.T) {
 	// rebuild statedb and bookkeeper
 	env.closeAllLedgersAndRemoveDirContents(rebuildableStatedb | rebuildableBookkeeper)
 
-	l = env.openTestLedger("ledger1", t)
+	l = env.openTestLedger("ledger1")
 	l.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
 	l.verifyPvtState("cc1", "coll2", "key2", "")                        // key2 should have been purged from the state
 	l.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage

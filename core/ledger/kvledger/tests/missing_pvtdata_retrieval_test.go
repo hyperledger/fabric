@@ -48,11 +48,17 @@ func TestGetMissingPvtData(t *testing.T) {
 		blk2 := l.cutBlockAndCommitLegacy()
 
 		l.verifyPvtState("cc1", "coll1", "key2", "value2") // key2 should have been committed
+
 		l.simulateDataTx("", func(s *simulator) {
-			l.assertError(s.GetPrivateData("cc1", "coll1", "key1")) // key1 would be stale with respect to hashed version
+			// key1 would be stale with respect to hashed version
+			_, err := s.GetPrivateData("cc1", "coll1", "key1")
+			require.EqualError(t, err, "private data matching public hash version is not available. Public hash version = {BlockNum: 2, TxNum: 0}, Private data version = <nil>")
 		})
+
 		l.simulateDataTx("", func(s *simulator) {
-			l.assertError(s.GetPrivateData("cc1", "coll1", "key3")) // key3 would be stale with respect to hashed version
+			// key3 would be stale with respect to hashed version
+			_, err := s.GetPrivateData("cc1", "coll1", "key3")
+			require.EqualError(t, err, "private data matching public hash version is not available. Public hash version = {BlockNum: 2, TxNum: 2}, Private data version = <nil>")
 		})
 
 		// verify missing pvtdata info
@@ -69,7 +75,7 @@ func TestGetMissingPvtData(t *testing.T) {
 		env := newEnv(t)
 		defer env.cleanup()
 		env.initLedgerMgmt()
-		l := env.createTestLedger("ledger1", t)
+		l := env.createTestLedger("ledger1")
 
 		blk, expectedMissingPvtDataInfo := setup(l)
 
@@ -95,7 +101,7 @@ func TestGetMissingPvtData(t *testing.T) {
 		require.NoError(t, err)
 		env.initLedgerMgmt()
 
-		l = env.openTestLedger("ledger1", t)
+		l = env.openTestLedger("ledger1")
 		l.verifyLedgerHeight(3)
 
 		// verify block & pvtdata
@@ -138,7 +144,7 @@ func TestGetMissingPvtData(t *testing.T) {
 		env := newEnvWithInitializer(t, initializer)
 		defer env.cleanup()
 		env.initLedgerMgmt()
-		l := env.createTestLedger("ledger1", t)
+		l := env.createTestLedger("ledger1")
 
 		_, expectedMissingPvtDataInfo := setup(l)
 
@@ -152,7 +158,7 @@ func TestGetMissingPvtData(t *testing.T) {
 		env.initializer.Config.PrivateDataConfig.DeprioritizedDataReconcilerInterval = 0 * time.Second
 		env.initLedgerMgmt()
 
-		l = env.openTestLedger("ledger1", t)
+		l = env.openTestLedger("ledger1")
 		for i := 0; i < 5; i++ {
 			l.verifyMissingPvtDataSameAs(2, expectedMissingPvtDataInfo)
 		}
@@ -161,7 +167,7 @@ func TestGetMissingPvtData(t *testing.T) {
 		env.initializer.Config.PrivateDataConfig.DeprioritizedDataReconcilerInterval = 120 * time.Minute
 		env.initLedgerMgmt()
 
-		l = env.openTestLedger("ledger1", t)
+		l = env.openTestLedger("ledger1")
 		for i := 0; i < 5; i++ {
 			l.verifyMissingPvtDataSameAs(2, ledger.MissingPvtDataInfo{})
 		}

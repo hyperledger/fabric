@@ -22,7 +22,7 @@ func TestResetRollbackRebuildFailsIfAnyLedgerBootstrappedFromSnapshot(t *testing
 
 	// populate ledgers with sample data
 	dataHelper := newSampleDataHelper(t)
-	l := env.createTestLedger("ledger_from_snapshot", t)
+	l := env.createTestLedger("ledger_from_snapshot")
 	dataHelper.populateLedger(l)
 	dataHelper.verifyLedgerContent(l)
 	bcInfo, err := l.lgr.GetBlockchainInfo()
@@ -46,7 +46,7 @@ func TestResetRollbackRebuildFailsIfAnyLedgerBootstrappedFromSnapshot(t *testing
 	defer env2.cleanup()
 	env2.initLedgerMgmt()
 
-	env2.createTestLedger("ledger_from_genesis_block", t)
+	env2.createTestLedger("ledger_from_genesis_block")
 
 	callbackCounter := 0
 	callback := func(l ledger.PeerLedger, cid string) { callbackCounter++ }

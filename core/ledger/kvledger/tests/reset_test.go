@@ -32,7 +32,7 @@ func TestResetAllLedgers(t *testing.T) {
 	ledgerIDs := make([]string, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		ledgerIDs[i] = fmt.Sprintf("ledger-%d", i)
-		l := env.createTestLedger(ledgerIDs[i], t)
+		l := env.createTestLedger(ledgerIDs[i])
 		dataHelper.populateLedger(l)
 		dataHelper.verifyLedgerContent(l)
 		gb, err := l.lgr.GetBlockByNumber(0)
@@ -61,7 +61,7 @@ func TestResetAllLedgers(t *testing.T) {
 	//   and final blockchainInfo and ledger state same as before reset
 	for i := 0; i < 10; i++ {
 		ledgerID := fmt.Sprintf("ledger-%d", i)
-		l := env.openTestLedger(ledgerID, t)
+		l := env.openTestLedger(ledgerID)
 		l.verifyLedgerHeight(1)
 		require.Equal(t, blockchainsInfo[i].Height, preResetHt[ledgerID])
 		gb, err := l.lgr.GetBlockByNumber(0)
@@ -108,7 +108,7 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1", t)
+	l := env.createTestLedger("ledger1")
 	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 1}}
 
 	// deploy cc1 with 'collConf'
@@ -163,7 +163,7 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("preResetHt = %#v", preResetHt)
 	require.Equal(t, uint64(5), preResetHt["ledger1"])
-	l = env.openTestLedger("ledger1", t)
+	l = env.openTestLedger("ledger1")
 	l.verifyLedgerHeight(1)
 
 	// recommit blocks
@@ -192,7 +192,7 @@ func TestResetLedgerWithoutDroppingDBs(t *testing.T) {
 	dataHelper := newSampleDataHelper(t)
 
 	// create ledgers and pouplate with sample data
-	l := env.createTestLedger("ledger-1", t)
+	l := env.createTestLedger("ledger-1")
 	dataHelper.populateLedger(l)
 	dataHelper.verifyLedgerContent(l)
 	env.closeLedgerMgmt()
@@ -211,7 +211,6 @@ func TestResetLedgerWithoutDroppingDBs(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint64(9), preResetHt["ledger-1"])
 	_, err = env.ledgerMgr.OpenLedger("ledger-1")
-	require.Error(t, err)
 	// populateLedger() stores 8 block in total
 	require.EqualError(t, err, "the state database [height=9] is ahead of the block store [height=1]. "+
 		"This is possible when the state database is not dropped after a ledger reset/rollback. "+

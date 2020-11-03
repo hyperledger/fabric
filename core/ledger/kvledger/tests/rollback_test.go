@@ -22,7 +22,7 @@ func TestRollbackKVLedger(t *testing.T) {
 	// populate ledgers with sample data
 	dataHelper := newSampleDataHelper(t)
 
-	l := env.createTestLedger("testLedger", t)
+	l := env.createTestLedger("testLedger")
 	// populate creates 8 blocks
 	dataHelper.populateLedger(l)
 	dataHelper.verifyLedgerContent(l)
@@ -50,7 +50,7 @@ func TestRollbackKVLedger(t *testing.T) {
 	require.Equal(t, bcInfo.Height, preResetHt["testLedger"])
 	t.Logf("preResetHt = %#v", preResetHt)
 
-	l = env.openTestLedger("testLedger", t)
+	l = env.openTestLedger("testLedger")
 	l.verifyLedgerHeight(targetBlockNum + 1)
 	targetBlockNumIndex := targetBlockNum - 1
 	for _, b := range dataHelper.submittedData["testLedger"].Blocks[targetBlockNumIndex+1:] {
@@ -69,7 +69,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1", t)
+	l := env.createTestLedger("ledger1")
 	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 1}}
 
 	// deploy cc1 with 'collConf'
@@ -120,7 +120,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 	env.verifyRebuilableDirEmpty(rebuildable)
 
 	env.initLedgerMgmt()
-	l = env.openTestLedger("ledger1", t)
+	l = env.openTestLedger("ledger1")
 	l.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
 	l.verifyPvtState("cc1", "coll2", "key2", "")                        // key2 should have been purged from the state
 	l.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage

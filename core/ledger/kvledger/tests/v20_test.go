@@ -27,14 +27,14 @@ func TestV20SampleLedger(t *testing.T) {
 	require.NoError(t, testutil.Unzip("testdata/v20/sample_ledgers/ledgersData.zip", ledgerFSRoot, false))
 
 	env.initLedgerMgmt()
-	l1 := env.openTestLedger("testchannel", t)
+	l1 := env.openTestLedger("testchannel")
 	dataHelper.verify(l1)
 
 	// rebuild and verify again
 	env.closeLedgerMgmt()
 	require.NoError(t, kvledger.RebuildDBs(env.initializer.Config))
 	env.initLedgerMgmt()
-	l1 = env.openTestLedger("testchannel", t)
+	l1 = env.openTestLedger("testchannel")
 	dataHelper.verify(l1)
 }
 
