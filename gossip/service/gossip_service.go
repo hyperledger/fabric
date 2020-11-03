@@ -335,7 +335,7 @@ func (g *GossipService) InitializeChannel(channelID string, ordererSource *order
 	servicesAdapter := &state.ServicesMediator{GossipAdapter: g, MCSAdapter: g.mcs}
 
 	// Initialize private data fetcher
-	dataRetriever := gossipprivdata.NewDataRetriever(store, support.Committer)
+	dataRetriever := gossipprivdata.NewDataRetriever(channelID, store, support.Committer)
 	collectionAccessFactory := gossipprivdata.NewCollectionAccessFactory(support.IdDeserializeFactory)
 	fetcher := gossipprivdata.NewPuller(g.metrics.PrivdataMetrics, support.CollectionStore, g.gossipSvc, dataRetriever,
 		collectionAccessFactory, channelID, g.serviceConfig.BtlPullMargin)
