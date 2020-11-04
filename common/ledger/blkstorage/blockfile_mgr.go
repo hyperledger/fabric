@@ -586,6 +586,10 @@ func (mgr *blockfileMgr) retrieveBlocks(startNum uint64) (*blocksItr, error) {
 	return newBlockItr(mgr, startNum), nil
 }
 
+func (mgr *blockfileMgr) txIDExists(txID string) (bool, error) {
+	return mgr.index.txIDExists(txID)
+}
+
 func (mgr *blockfileMgr) retrieveTransactionByID(txID string) (*common.Envelope, error) {
 	logger.Debugf("retrieveTransactionByID() - txId = [%s]", txID)
 	loc, err := mgr.index.getTxLoc(txID)

@@ -484,6 +484,13 @@ func (l *kvLedger) recommitLostBlocks(firstBlockNum uint64, lastBlockNum uint64,
 	return nil
 }
 
+// TxIDExists returns true if the specified txID is already present in one of the already committed blocks
+func (l *kvLedger) TxIDExists(txID string) (bool, error) {
+	l.blockAPIsRWLock.RLock()
+	defer l.blockAPIsRWLock.RUnlock()
+	return l.blockStore.TxIDExists(txID)
+}
+
 // GetTransactionByID retrieves a transaction by id
 func (l *kvLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, error) {
 	l.blockAPIsRWLock.RLock()

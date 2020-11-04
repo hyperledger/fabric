@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/semaphore"
 	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/mocks"
-	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
@@ -58,7 +57,7 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 	mockDispatcher := &mockDispatcher{}
 	mockLedger := &mocks.LedgerResources{}
 	mockCapabilities := &tmocks.ApplicationCapabilities{}
-	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("Day after day, day after day"))
+	mockLedger.On("TxIDExists", mock.Anything).Return(false, nil)
 	tValidator := &TxValidator{
 		ChannelID:        "",
 		Semaphore:        semaphore.New(10),
@@ -127,7 +126,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 	mockCapabilities := &tmocks.ApplicationCapabilities{}
 	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(true)
 	mockLedger := &mocks.LedgerResources{}
-	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
+	mockLedger.On("TxIDExists", mock.Anything).Return(false, nil)
 	tValidator := &TxValidator{
 		ChannelID:        "",
 		Semaphore:        semaphore.New(10),
@@ -174,7 +173,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	require.NoError(t, err)
 
 	mockLedger := &mocks.LedgerResources{}
-	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger2.NotFoundInIndexErr("Water, water, everywhere, nor any drop to drink"))
+	mockLedger.On("TxIDExists", mock.Anything).Return(false, nil)
 	mockCapabilities := &tmocks.ApplicationCapabilities{}
 	tValidator := &TxValidator{
 		ChannelID:        "",

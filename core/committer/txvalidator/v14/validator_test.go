@@ -1426,6 +1426,12 @@ type mockLedger struct {
 	mock.Mock
 }
 
+// TxIDExists returns true if the specified txID is already present in one of the already committed blocks
+func (m *mockLedger) TxIDExists(txID string) (bool, error) {
+	args := m.Called(txID)
+	return args.Get(0).(bool), args.Error(1)
+}
+
 // GetTransactionByID returns transaction by ud
 func (m *mockLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, error) {
 	args := m.Called(txID)
@@ -1715,7 +1721,7 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
-	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, ledger.NotFoundInIndexErr(""))
+	theLedger.On("TxIDExists", mock.Anything).Return(false, nil)
 
 	queryExecutor := new(mockQueryExecutor)
 	queryExecutor.On("GetState", mock.Anything, mock.Anything).Return([]byte{}, errors.New("Unable to connect to DB"))
@@ -1751,7 +1757,7 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
-	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, errors.New("Unable to connect to DB"))
+	theLedger.On("TxIDExists", mock.Anything).Return(false, errors.New("Unable to connect to DB"))
 
 	b := &common.Block{
 		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
@@ -1781,7 +1787,7 @@ func TestDuplicateTxId(t *testing.T) {
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
-	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, nil)
+	theLedger.On("TxIDExists", mock.Anything).Return(true, nil)
 
 	b := &common.Block{
 		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
@@ -1822,7 +1828,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	ccID := "mycc"
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
-	theLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, ledger.NotFoundInIndexErr(""))
+	theLedger.On("TxIDExists", mock.Anything).Return(false, nil)
 
 	cd := &ccp.ChaincodeData{
 		Name:    ccID,
@@ -1851,7 +1857,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 
 func createMockLedger(t *testing.T, ccID string) *mockLedger {
 	l := new(mockLedger)
-	l.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, ledger.NotFoundInIndexErr(""))
+	l.On("TxIDExists", mock.Anything).Return(false, nil)
 	cd := &ccp.ChaincodeData{
 		Name:    ccID,
 		Version: ccVersion,

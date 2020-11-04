@@ -59,89 +59,117 @@ func TestKVLedgerNilHistoryDBProvider(t *testing.T) {
 }
 
 func TestKVLedgerBlockStorage(t *testing.T) {
-	conf, cleanup := testConfig(t)
-	defer cleanup()
-	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
-	defer provider.Close()
+	t.Run("green-path", func(t *testing.T) {
+		conf, cleanup := testConfig(t)
+		defer cleanup()
+		provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+		defer provider.Close()
 
-	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
-	gbHash := protoutil.BlockHeaderHash(gb.Header)
-	ledger, err := provider.CreateFromGenesisBlock(gb)
-	require.NoError(t, err)
-	defer ledger.Close()
+		bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+		gbHash := protoutil.BlockHeaderHash(gb.Header)
+		ledger, err := provider.CreateFromGenesisBlock(gb)
+		require.NoError(t, err)
+		defer ledger.Close()
 
-	bcInfo, _ := ledger.GetBlockchainInfo()
-	require.Equal(t, &common.BlockchainInfo{
-		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
-	}, bcInfo)
+		bcInfo, _ := ledger.GetBlockchainInfo()
+		require.Equal(t, &common.BlockchainInfo{
+			Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
+		}, bcInfo)
 
-	txid := util.GenerateUUID()
-	simulator, _ := ledger.NewTxSimulator(txid)
-	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value1")))
-	require.NoError(t, simulator.SetState("ns1", "key2", []byte("value2")))
-	require.NoError(t, simulator.SetState("ns1", "key3", []byte("value3")))
-	simulator.Done()
-	simRes, _ := simulator.GetTxSimulationResults()
-	pubSimBytes, _ := simRes.GetPubSimulationBytes()
-	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{}))
+		txid := util.GenerateUUID()
+		simulator, _ := ledger.NewTxSimulator(txid)
+		require.NoError(t, simulator.SetState("ns1", "key1", []byte("value1")))
+		require.NoError(t, simulator.SetState("ns1", "key2", []byte("value2")))
+		require.NoError(t, simulator.SetState("ns1", "key3", []byte("value3")))
+		simulator.Done()
+		simRes, _ := simulator.GetTxSimulationResults()
+		pubSimBytes, _ := simRes.GetPubSimulationBytes()
+		block1 := bg.NextBlock([][]byte{pubSimBytes})
+		require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{}))
 
-	bcInfo, _ = ledger.GetBlockchainInfo()
-	block1Hash := protoutil.BlockHeaderHash(block1.Header)
-	require.Equal(t, &common.BlockchainInfo{
-		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
-	}, bcInfo)
+		bcInfo, _ = ledger.GetBlockchainInfo()
+		block1Hash := protoutil.BlockHeaderHash(block1.Header)
+		require.Equal(t, &common.BlockchainInfo{
+			Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
+		}, bcInfo)
 
-	txid = util.GenerateUUID()
-	simulator, _ = ledger.NewTxSimulator(txid)
-	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value4")))
-	require.NoError(t, simulator.SetState("ns1", "key2", []byte("value5")))
-	require.NoError(t, simulator.SetState("ns1", "key3", []byte("value6")))
-	simulator.Done()
-	simRes, _ = simulator.GetTxSimulationResults()
-	pubSimBytes, _ = simRes.GetPubSimulationBytes()
-	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{}))
+		txid = util.GenerateUUID()
+		simulator, _ = ledger.NewTxSimulator(txid)
+		require.NoError(t, simulator.SetState("ns1", "key1", []byte("value4")))
+		require.NoError(t, simulator.SetState("ns1", "key2", []byte("value5")))
+		require.NoError(t, simulator.SetState("ns1", "key3", []byte("value6")))
+		simulator.Done()
+		simRes, _ = simulator.GetTxSimulationResults()
+		pubSimBytes, _ = simRes.GetPubSimulationBytes()
+		block2 := bg.NextBlock([][]byte{pubSimBytes})
+		require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{}))
 
-	bcInfo, _ = ledger.GetBlockchainInfo()
-	block2Hash := protoutil.BlockHeaderHash(block2.Header)
-	require.Equal(t, &common.BlockchainInfo{
-		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash}, bcInfo)
+		bcInfo, _ = ledger.GetBlockchainInfo()
+		block2Hash := protoutil.BlockHeaderHash(block2.Header)
+		require.Equal(t, &common.BlockchainInfo{
+			Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash}, bcInfo)
 
-	b0, _ := ledger.GetBlockByHash(gbHash)
-	require.True(t, proto.Equal(b0, gb), "proto messages are not equal")
+		b0, _ := ledger.GetBlockByHash(gbHash)
+		require.True(t, proto.Equal(b0, gb), "proto messages are not equal")
 
-	b1, _ := ledger.GetBlockByHash(block1Hash)
-	require.True(t, proto.Equal(b1, block1), "proto messages are not equal")
+		b1, _ := ledger.GetBlockByHash(block1Hash)
+		require.True(t, proto.Equal(b1, block1), "proto messages are not equal")
 
-	b0, _ = ledger.GetBlockByNumber(0)
-	require.True(t, proto.Equal(b0, gb), "proto messages are not equal")
+		b0, _ = ledger.GetBlockByNumber(0)
+		require.True(t, proto.Equal(b0, gb), "proto messages are not equal")
 
-	b1, _ = ledger.GetBlockByNumber(1)
-	require.Equal(t, block1, b1)
+		b1, _ = ledger.GetBlockByNumber(1)
+		require.Equal(t, block1, b1)
 
-	// get the tran id from the 2nd block, then use it to test GetTransactionByID()
-	txEnvBytes2 := block1.Data.Data[0]
-	txEnv2, err := protoutil.GetEnvelopeFromBlock(txEnvBytes2)
-	require.NoError(t, err, "Error upon GetEnvelopeFromBlock")
-	payload2, err := protoutil.UnmarshalPayload(txEnv2.Payload)
-	require.NoError(t, err, "Error upon GetPayload")
-	chdr, err := protoutil.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
-	require.NoError(t, err, "Error upon GetChannelHeaderFromBytes")
-	txID2 := chdr.TxId
-	processedTran2, err := ledger.GetTransactionByID(txID2)
-	require.NoError(t, err, "Error upon GetTransactionByID")
-	// get the tran envelope from the retrieved ProcessedTransaction
-	retrievedTxEnv2 := processedTran2.TransactionEnvelope
-	require.Equal(t, txEnv2, retrievedTxEnv2)
+		// get the tran id from the 2nd block, then use it to test GetTransactionByID()
+		txEnvBytes2 := block1.Data.Data[0]
+		txEnv2, err := protoutil.GetEnvelopeFromBlock(txEnvBytes2)
+		require.NoError(t, err, "Error upon GetEnvelopeFromBlock")
+		payload2, err := protoutil.UnmarshalPayload(txEnv2.Payload)
+		require.NoError(t, err, "Error upon GetPayload")
+		chdr, err := protoutil.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
+		require.NoError(t, err, "Error upon GetChannelHeaderFromBytes")
+		txID2 := chdr.TxId
 
-	//  get the tran id from the 2nd block, then use it to test GetBlockByTxID
-	b1, _ = ledger.GetBlockByTxID(txID2)
-	require.True(t, proto.Equal(b1, block1), "proto messages are not equal")
+		exists, err := ledger.TxIDExists(txID2)
+		require.NoError(t, err)
+		require.True(t, exists)
 
-	// get the transaction validation code for this transaction id
-	validCode, _ := ledger.GetTxValidationCodeByTxID(txID2)
-	require.Equal(t, peer.TxValidationCode_VALID, validCode)
+		processedTran2, err := ledger.GetTransactionByID(txID2)
+		require.NoError(t, err, "Error upon GetTransactionByID")
+		// get the tran envelope from the retrieved ProcessedTransaction
+		retrievedTxEnv2 := processedTran2.TransactionEnvelope
+		require.Equal(t, txEnv2, retrievedTxEnv2)
+
+		//  get the tran id from the 2nd block, then use it to test GetBlockByTxID
+		b1, _ = ledger.GetBlockByTxID(txID2)
+		require.True(t, proto.Equal(b1, block1), "proto messages are not equal")
+
+		// get the transaction validation code for this transaction id
+		validCode, _ := ledger.GetTxValidationCodeByTxID(txID2)
+		require.Equal(t, peer.TxValidationCode_VALID, validCode)
+
+		exists, err = ledger.TxIDExists("random-txid")
+		require.NoError(t, err)
+		require.False(t, exists)
+	})
+
+	t.Run("error-path", func(t *testing.T) {
+		conf, cleanup := testConfig(t)
+		defer cleanup()
+		provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+		defer provider.Close()
+
+		_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+		ledger, err := provider.CreateFromGenesisBlock(gb)
+		require.NoError(t, err)
+		defer ledger.Close()
+
+		provider.blkStoreProvider.Close()
+		exists, err := ledger.TxIDExists("random-txid")
+		require.EqualError(t, err, "error while trying to check the presence of TXID [random-txid]: internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.False(t, exists)
+	})
 }
 
 func TestAddCommitHash(t *testing.T) {

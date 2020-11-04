@@ -33,7 +33,6 @@ import (
 	ccp "github.com/hyperledger/fabric/core/common/ccprovider"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/core/scc/lscc"
@@ -171,7 +170,7 @@ func setupValidatorWithMspMgr(mspmgr msp.MSPManager, mockID *supportmocks.Identi
 	mockQE.On("GetState", "lscc", "escc").Return(nil, nil)
 
 	mockLedger := &txvalidatormocks.LedgerResources{}
-	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
+	mockLedger.On("TxIDExists", mock.Anything).Return(false, nil)
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
@@ -1017,7 +1016,7 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 
 	mockLedger := &txvalidatormocks.LedgerResources{}
 	v.LedgerResources = mockLedger
-	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, errors.New("uh, oh"))
+	mockLedger.On("TxIDExists", mock.Anything).Return(false, errors.New("uh, oh"))
 
 	b := &common.Block{
 		Data:   &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(tx)}},
@@ -1038,7 +1037,7 @@ func TestDuplicateTxId(t *testing.T) {
 
 	mockLedger := &txvalidatormocks.LedgerResources{}
 	v.LedgerResources = mockLedger
-	mockLedger.On("GetTransactionByID", mock.Anything).Return(&peer.ProcessedTransaction{}, nil)
+	mockLedger.On("TxIDExists", mock.Anything).Return(true, nil)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
 
@@ -1080,7 +1079,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	mockQE.On("Done").Return(nil)
 
 	mockLedger := &txvalidatormocks.LedgerResources{}
-	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
+	mockLedger.On("TxIDExists", mock.Anything).Return(false, nil)
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
@@ -1155,7 +1154,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 	}), nil)
 
 	mockLedger := &txvalidatormocks.LedgerResources{}
-	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
+	mockLedger.On("TxIDExists", mock.Anything).Return(false, nil)
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}
@@ -1208,7 +1207,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 	}), nil)
 
 	mockLedger := &txvalidatormocks.LedgerResources{}
-	mockLedger.On("GetTransactionByID", mock.Anything).Return(nil, ledger.NotFoundInIndexErr("As idle as a painted ship upon a painted ocean"))
+	mockLedger.On("TxIDExists", mock.Anything).Return(false, nil)
 	mockLedger.On("NewQueryExecutor").Return(mockQE, nil)
 
 	mockCpmg := &plugindispatchermocks.ChannelPolicyManagerGetter{}

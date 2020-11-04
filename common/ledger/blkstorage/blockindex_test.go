@@ -151,6 +151,17 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 			require.Exactly(t, ErrAttrNotIndexed, err)
 		}
 
+		// test txIDExists
+		txid, err = protoutil.GetOrComputeTxIDFromEnvelope(blocks[0].Data.Data[0])
+		require.NoError(t, err)
+		exists, err := blockfileMgr.txIDExists(txid)
+		if containsAttr(indexItems, IndexableAttrTxID) {
+			require.NoError(t, err)
+			require.True(t, exists)
+		} else {
+			require.Exactly(t, ErrAttrNotIndexed, err)
+		}
+
 		//test 'retrieveTrasnactionsByBlockNumTranNum
 		txEnvelope2, err := blockfileMgr.retrieveTransactionByBlockNumTranNum(0, 0)
 		if containsAttr(indexItems, IndexableAttrBlockNumTranNum) {

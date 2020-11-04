@@ -223,6 +223,24 @@ func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidati
 	return peer.TxValidationCode(v.TxValidationCode), nil
 }
 
+func (index *blockIndex) txIDExists(txID string) (bool, error) {
+	if !index.isAttributeIndexed(IndexableAttrTxID) {
+		return false, ErrAttrNotIndexed
+	}
+	rangeScan := constructTxIDRangeScan(txID)
+	itr, err := index.db.GetIterator(rangeScan.startKey, rangeScan.stopKey)
+	if err != nil {
+		return false, errors.WithMessagef(err, "error while trying to check the presence of TXID [%s]", txID)
+	}
+	defer itr.Release()
+
+	present := itr.Next()
+	if err := itr.Error(); err != nil {
+		return false, errors.Wrapf(err, "error while trying to check the presence of TXID [%s]", txID)
+	}
+	return present, nil
+}
+
 func (index *blockIndex) getTxIDVal(txID string) (*TxIDIndexValue, error) {
 	if !index.isAttributeIndexed(IndexableAttrTxID) {
 		return nil, ErrAttrNotIndexed

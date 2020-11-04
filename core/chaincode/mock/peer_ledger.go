@@ -290,6 +290,19 @@ type PeerLedger struct {
 	submitSnapshotRequestReturnsOnCall map[int]struct {
 		result1 error
 	}
+	TxIDExistsStub        func(string) (bool, error)
+	txIDExistsMutex       sync.RWMutex
+	txIDExistsArgsForCall []struct {
+		arg1 string
+	}
+	txIDExistsReturns struct {
+		result1 bool
+		result2 error
+	}
+	txIDExistsReturnsOnCall map[int]struct {
+		result1 bool
+		result2 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -1649,6 +1662,69 @@ func (fake *PeerLedger) SubmitSnapshotRequestReturnsOnCall(i int, result1 error)
 	}{result1}
 }
 
+func (fake *PeerLedger) TxIDExists(arg1 string) (bool, error) {
+	fake.txIDExistsMutex.Lock()
+	ret, specificReturn := fake.txIDExistsReturnsOnCall[len(fake.txIDExistsArgsForCall)]
+	fake.txIDExistsArgsForCall = append(fake.txIDExistsArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("TxIDExists", []interface{}{arg1})
+	fake.txIDExistsMutex.Unlock()
+	if fake.TxIDExistsStub != nil {
+		return fake.TxIDExistsStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	fakeReturns := fake.txIDExistsReturns
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *PeerLedger) TxIDExistsCallCount() int {
+	fake.txIDExistsMutex.RLock()
+	defer fake.txIDExistsMutex.RUnlock()
+	return len(fake.txIDExistsArgsForCall)
+}
+
+func (fake *PeerLedger) TxIDExistsCalls(stub func(string) (bool, error)) {
+	fake.txIDExistsMutex.Lock()
+	defer fake.txIDExistsMutex.Unlock()
+	fake.TxIDExistsStub = stub
+}
+
+func (fake *PeerLedger) TxIDExistsArgsForCall(i int) string {
+	fake.txIDExistsMutex.RLock()
+	defer fake.txIDExistsMutex.RUnlock()
+	argsForCall := fake.txIDExistsArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *PeerLedger) TxIDExistsReturns(result1 bool, result2 error) {
+	fake.txIDExistsMutex.Lock()
+	defer fake.txIDExistsMutex.Unlock()
+	fake.TxIDExistsStub = nil
+	fake.txIDExistsReturns = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *PeerLedger) TxIDExistsReturnsOnCall(i int, result1 bool, result2 error) {
+	fake.txIDExistsMutex.Lock()
+	defer fake.txIDExistsMutex.Unlock()
+	fake.TxIDExistsStub = nil
+	if fake.txIDExistsReturnsOnCall == nil {
+		fake.txIDExistsReturnsOnCall = make(map[int]struct {
+			result1 bool
+			result2 error
+		})
+	}
+	fake.txIDExistsReturnsOnCall[i] = struct {
+		result1 bool
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *PeerLedger) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -1698,6 +1774,8 @@ func (fake *PeerLedger) Invocations() map[string][][]interface{} {
 	defer fake.pendingSnapshotRequestsMutex.RUnlock()
 	fake.submitSnapshotRequestMutex.RLock()
 	defer fake.submitSnapshotRequestMutex.RUnlock()
+	fake.txIDExistsMutex.RLock()
+	defer fake.txIDExistsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

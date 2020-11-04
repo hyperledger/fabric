@@ -491,6 +491,10 @@ func verifyQueriesOnBlocksPriorToSnapshot(
 
 			_, err = bootstrappedBlockStore.RetrieveTxValidationCodeByTxID(txID)
 			require.EqualError(t, err, expectedErrorStr)
+
+			exists, err := bootstrappedBlockStore.TxIDExists(txID)
+			require.NoError(t, err)
+			require.True(t, exists)
 		}
 	}
 }
@@ -540,6 +544,10 @@ func verifyQueriesOnBlocksAddedAfterBootstrapping(t *testing.T,
 			expectedTxEnv, err := protoutil.GetEnvelopeFromBlock(block.Data.Data[j])
 			require.NoError(t, err)
 			require.Equal(t, expectedTxEnv, retrievedTxEnv)
+
+			exists, err := bootstrappedBlockStore.TxIDExists(txID)
+			require.NoError(t, err)
+			require.True(t, exists)
 		}
 
 		for j, validationCode := range d.validationCodes {
