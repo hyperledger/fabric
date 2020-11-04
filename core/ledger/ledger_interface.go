@@ -157,6 +157,9 @@ type PeerLedgerProvider interface {
 // that tells apart valid transactions from invalid ones
 type PeerLedger interface {
 	commonledger.Ledger
+	// TxIDExists returns true if the specified txID is already present in one of the already committed blocks.
+	// This function returns error only if there is an underlying condition that prevents checking for the txID, such as an I/O error.
+	TxIDExists(txID string) (bool, error)
 	// GetTransactionByID retrieves a transaction by id
 	GetTransactionByID(txID string) (*peer.ProcessedTransaction, error)
 	// GetBlockByHash returns a block given it's hash

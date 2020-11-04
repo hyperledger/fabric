@@ -453,29 +453,25 @@ func (v *TxValidator) checkTxIdDupsLedger(tIdx int, chdr *common.ChannelHeader, 
 	txID := chdr.TxId
 
 	// Look for a transaction with the same identifier inside the ledger
-	_, err := ldgr.GetTransactionByID(txID)
+	exists, err := ldgr.TxIDExists(txID)
 
-	switch err.(type) {
-	case nil:
-		// invalid case, returned error is nil. It means that there is already a tx in the ledger with the same id
-		logger.Error("Duplicate transaction found, ", txID, ", skipping")
-		return &blockValidationResult{
-			tIdx:           tIdx,
-			validationCode: peer.TxValidationCode_DUPLICATE_TXID,
-		}
-	case ledger.NotFoundInIndexErr:
-		// valid case, returned error is of type NotFoundInIndexErr.
-		// It means that no tx with the same id is found in the ledger
-		return nil
-	default:
-		// invalid case, returned error is not of type NotFoundInIndexErr.
-		// It means that we could not verify whether a tx with the supplied id is in the ledger
+	if err != nil {
 		logger.Errorf("Ledger failure while attempting to detect duplicate status for txid %s: %s", txID, err)
 		return &blockValidationResult{
 			tIdx: tIdx,
 			err:  err,
 		}
 	}
+
+	if exists {
+		logger.Error("Duplicate transaction found, ", txID, ", skipping")
+		return &blockValidationResult{
+			tIdx:           tIdx,
+			validationCode: peer.TxValidationCode_DUPLICATE_TXID,
+		}
+	}
+
+	return nil
 }
 
 // generateCCKey generates a unique identifier for chaincode in specific channel

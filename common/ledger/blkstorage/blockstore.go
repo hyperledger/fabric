@@ -72,6 +72,11 @@ func (store *BlockStore) RetrieveBlockByNumber(blockNum uint64) (*common.Block, 
 	return store.fileMgr.retrieveBlockByNumber(blockNum)
 }
 
+// TxIDExists returns true if a transaction with the txID is ever committed
+func (store *BlockStore) TxIDExists(txID string) (bool, error) {
+	return store.fileMgr.txIDExists(txID)
+}
+
 // RetrieveTxByID returns a transaction for given transaction id
 func (store *BlockStore) RetrieveTxByID(txID string) (*common.Envelope, error) {
 	return store.fileMgr.retrieveTransactionByID(txID)

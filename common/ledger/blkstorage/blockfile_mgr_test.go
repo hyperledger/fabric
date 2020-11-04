@@ -170,6 +170,49 @@ func TestBlockfileMgrBlockchainInfo(t *testing.T) {
 	require.Equal(t, uint64(10), bcInfo.Height)
 }
 
+func TestTxIDExists(t *testing.T) {
+	t.Run("green-path", func(t *testing.T) {
+		env := newTestEnv(t, NewConf(testPath(), 0))
+		defer env.Cleanup()
+
+		blkStore, err := env.provider.Open("testLedger")
+		require.NoError(t, err)
+		defer blkStore.Shutdown()
+
+		blocks := testutil.ConstructTestBlocks(t, 2)
+		for _, blk := range blocks {
+			require.NoError(t, blkStore.AddBlock(blk))
+		}
+
+		for _, blk := range blocks {
+			for i := range blk.Data.Data {
+				txID, err := protoutil.GetOrComputeTxIDFromEnvelope(blk.Data.Data[i])
+				require.NoError(t, err)
+				exists, err := blkStore.TxIDExists(txID)
+				require.NoError(t, err)
+				require.True(t, exists)
+			}
+		}
+		exists, err := blkStore.TxIDExists("non-existant-txid")
+		require.NoError(t, err)
+		require.False(t, exists)
+	})
+
+	t.Run("error-path", func(t *testing.T) {
+		env := newTestEnv(t, NewConf(testPath(), 0))
+		defer env.Cleanup()
+
+		blkStore, err := env.provider.Open("testLedger")
+		require.NoError(t, err)
+		defer blkStore.Shutdown()
+
+		env.provider.Close()
+		exists, err := blkStore.TxIDExists("random")
+		require.EqualError(t, err, "error while trying to check the presence of TXID [random]: internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.False(t, exists)
+	})
+}
+
 func TestBlockfileMgrGetTxById(t *testing.T) {
 	env := newTestEnv(t, NewConf(testPath(), 0))
 	defer env.Cleanup()
