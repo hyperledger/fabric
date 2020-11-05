@@ -470,6 +470,8 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				ordererConfig.General.Cluster.ListenAddress = ""
 				ordererConfig.General.Cluster.ServerCertificate = ""
 				ordererConfig.General.Cluster.ServerPrivateKey = ""
+				ordererConfig.General.Cluster.ClientCertificate = ""
+				ordererConfig.General.Cluster.ClientPrivateKey = ""
 				network.WriteOrdererConfig(orderer, ordererConfig)
 			}
 
