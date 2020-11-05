@@ -216,7 +216,7 @@ var _ = Describe("Chain", func() {
 
 			chain.Start()
 			cRel, status := chain.StatusReport()
-			Expect(cRel).To(Equal(orderer_types.ClusterRelationMember))
+			Expect(cRel).To(Equal(orderer_types.ClusterRelationConsenter))
 			Expect(status).To(Equal(orderer_types.StatusActive))
 
 			// When the Raft node bootstraps, it produces a ConfChange
@@ -1501,7 +1501,7 @@ var _ = Describe("Chain", func() {
 				},
 			).Should(Equal(orderer_types.StatusInactive))
 			cRel, _ := c1.StatusReport()
-			Expect(cRel).To(Equal(orderer_types.ClusterRelationMember))
+			Expect(cRel).To(Equal(orderer_types.ClusterRelationConsenter))
 		})
 
 		It("can remove leader by reconfiguring cluster even if leadership transfer fails", func() {

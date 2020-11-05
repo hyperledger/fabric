@@ -354,7 +354,7 @@ func TestRegistrar_Initialize(t *testing.T) {
 		info, err := manager.ChannelInfo("my-sys-channel")
 		require.NoError(t, err)
 		require.Equal(t,
-			types.ChannelInfo{Name: "my-sys-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 1},
+			types.ChannelInfo{Name: "my-sys-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 1},
 			info,
 		)
 	})
@@ -393,7 +393,7 @@ func TestRegistrar_Initialize(t *testing.T) {
 		info, err := manager.ChannelInfo("my-raft-channel")
 		require.NoError(t, err)
 		require.Equal(t,
-			types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 1},
+			types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 1},
 			info,
 		)
 	})
@@ -632,14 +632,14 @@ func TestCreateChain(t *testing.T) {
 		info, err := manager.ChannelInfo("testchannelid")
 		require.NoError(t, err)
 		require.Equal(t,
-			types.ChannelInfo{Name: "testchannelid", URL: "", ClusterRelation: types.ClusterRelationMember, Status: types.StatusActive, Height: 1},
+			types.ChannelInfo{Name: "testchannelid", URL: "", ClusterRelation: types.ClusterRelationConsenter, Status: types.StatusActive, Height: 1},
 			info,
 		)
 
 		info, err = manager.ChannelInfo("mychannel")
 		require.NoError(t, err)
 		require.Equal(t,
-			types.ChannelInfo{Name: "mychannel", URL: "", ClusterRelation: types.ClusterRelationMember, Status: types.StatusActive, Height: 1},
+			types.ChannelInfo{Name: "mychannel", URL: "", ClusterRelation: types.ClusterRelationConsenter, Status: types.StatusActive, Height: 1},
 			info,
 		)
 
@@ -1063,14 +1063,14 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 			require.Nil(t, registrar.GetChain("my-raft-channel"))
 			info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
 			require.NoError(t, err)
-			require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 0x1}, info)
+			require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 0x1}, info)
 			// After creating the channel, it exists
 			require.NotNil(t, registrar.GetChain("my-raft-channel"))
 
 			// ChannelInfo() and ChannelList() are working fine
 			info, err = registrar.ChannelInfo("my-raft-channel")
 			require.NoError(t, err)
-			require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 0x1}, info)
+			require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 0x1}, info)
 			channelList := registrar.ChannelList()
 			require.Equal(t, 1, len(channelList.Channels))
 			require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
@@ -1096,14 +1096,14 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 		info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
 		require.NoError(t, err)
-		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "onboarding", Height: 0x0}, info)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "onboarding", Height: 0x0}, info)
 		// After creating the follower.Chain, it not in the chains map.
 		require.Nil(t, registrar.GetChain("my-raft-channel"))
 
 		// ChannelInfo() and ChannelList() are working fine
 		info, err = registrar.ChannelInfo("my-raft-channel")
 		require.NoError(t, err)
-		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "onboarding", Height: 0x0}, info)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "onboarding", Height: 0x0}, info)
 		channelList := registrar.ChannelList()
 		require.Equal(t, 1, len(channelList.Channels))
 		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
@@ -1187,7 +1187,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		// ChannelInfo() and ChannelList() are still working fine
 		info, err = registrar.ChannelInfo("my-raft-channel")
 		require.NoError(t, err)
-		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 0x1}, info)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 0x1}, info)
 		channelList := registrar.ChannelList()
 		require.Equal(t, 1, len(channelList.Channels))
 		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
@@ -1211,7 +1211,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 		info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
 		require.NoError(t, err)
-		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 0x1}, info)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 0x1}, info)
 		// After creating the chain, it exists
 		cs := registrar.GetChain("my-raft-channel")
 		require.NotNil(t, cs)
@@ -1219,7 +1219,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		// ChannelInfo() and ChannelList() are working fine
 		info, err = registrar.ChannelInfo("my-raft-channel")
 		require.NoError(t, err)
-		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 0x1}, info)
+		require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 0x1}, info)
 		channelList := registrar.ChannelList()
 		require.Equal(t, 1, len(channelList.Channels))
 		require.Equal(t, "my-raft-channel", channelList.Channels[0].Name)
@@ -1264,7 +1264,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 
 		info, err := registrar.JoinChannel("sys-raft-channel", genesisBlockSysRaft, false)
 		require.NoError(t, err)
-		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "member", Status: "inactive", Height: 0x1}, info)
+		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "consenter", Status: "inactive", Height: 0x1}, info)
 		// After creating the chain, it exists
 		cs := registrar.GetChain("sys-raft-channel")
 		require.NotNil(t, cs)
@@ -1277,7 +1277,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		// ChannelInfo() and ChannelList() are working fine
 		info, err = registrar.ChannelInfo("sys-raft-channel")
 		require.NoError(t, err)
-		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "member", Status: "inactive", Height: 0x1}, info)
+		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "consenter", Status: "inactive", Height: 0x1}, info)
 		channelList := registrar.ChannelList()
 		require.Equal(t, 0, len(channelList.Channels))
 		require.NotNil(t, channelList.SystemChannel)
@@ -1301,7 +1301,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		genesisBlockSysRaft.Header.Number = 7
 		info, err := registrar.JoinChannel("sys-raft-channel", genesisBlockSysRaft, false)
 		require.NoError(t, err)
-		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "member", Status: "inactive", Height: 0x0}, info)
+		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "consenter", Status: "inactive", Height: 0x0}, info)
 		// After creating the chain, it exists
 		cs := registrar.GetChain("sys-raft-channel")
 		require.NotNil(t, cs)
@@ -1314,7 +1314,7 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		// ChannelInfo() and ChannelList() are working fine
 		info, err = registrar.ChannelInfo("sys-raft-channel")
 		require.NoError(t, err)
-		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "member", Status: "inactive", Height: 0x0}, info)
+		require.Equal(t, types.ChannelInfo{Name: "sys-raft-channel", URL: "", ClusterRelation: "consenter", Status: "inactive", Height: 0x0}, info)
 		channelList := registrar.ChannelList()
 		require.Equal(t, 0, len(channelList.Channels))
 		require.NotNil(t, channelList.SystemChannel)
@@ -1454,7 +1454,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		setup(t)
 		defer cleanup()
 
-		t.Run("member", func(t *testing.T) {
+		t.Run("consenter", func(t *testing.T) {
 			consenter.IsChannelMemberReturns(true, nil)
 			registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, dialer)
 			registrar.Initialize(mockConsenters)
@@ -1463,7 +1463,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 			require.NotContains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
 			info, err := registrar.JoinChannel("my-raft-channel", genesisBlockAppRaft, true)
 			require.NoError(t, err)
-			require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "member", Status: "active", Height: 1}, info)
+			require.Equal(t, types.ChannelInfo{Name: "my-raft-channel", URL: "", ClusterRelation: "consenter", Status: "active", Height: 1}, info)
 			require.NotNil(t, registrar.GetChain("my-raft-channel"))
 			require.Contains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
 

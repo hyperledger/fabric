@@ -207,7 +207,7 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 	t.Run("channel exists", func(t *testing.T) {
 		fakeManager.ChannelInfoReturns(types.ChannelInfo{
 			Name:            "app-channel",
-			ClusterRelation: "member",
+			ClusterRelation: "consenter",
 			Status:          "active",
 			Height:          3,
 		}, nil)
@@ -224,7 +224,7 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 		require.Equal(t, types.ChannelInfo{
 			Name:            "app-channel",
 			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
-			ClusterRelation: "member",
+			ClusterRelation: "consenter",
 			Status:          "active",
 			Height:          3,
 		}, infoResp)
@@ -250,7 +250,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		fakeManager, h := setup(config, t)
 		fakeManager.JoinChannelReturns(types.ChannelInfo{
 			Name:            "app-channel",
-			ClusterRelation: "member",
+			ClusterRelation: "consenter",
 			Status:          "active",
 			Height:          1,
 		}, nil)
@@ -267,7 +267,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		require.Equal(t, types.ChannelInfo{
 			Name:            "app-channel",
 			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
-			ClusterRelation: "member",
+			ClusterRelation: "consenter",
 			Status:          "active",
 			Height:          1,
 		}, infoResp)

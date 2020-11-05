@@ -33,9 +33,9 @@ type ChannelInfoShort struct {
 type ClusterRelation string
 
 const (
-	// The orderer is a cluster member of a cluster consensus protocol (e.g. etcdraft) for a specific channel.
+	// The orderer is a cluster consenter of a cluster consensus protocol (e.g. etcdraft) for a specific channel.
 	// That is, the orderer is in the consenters set of the channel.
-	ClusterRelationMember ClusterRelation = "member"
+	ClusterRelationConsenter ClusterRelation = "consenter"
 	// The orderer is following a cluster consensus protocol by pulling blocks from other orderers.
 	// The orderer is NOT in the consenters set of the channel.
 	ClusterRelationFollower ClusterRelation = "follower"
@@ -47,7 +47,7 @@ const (
 )
 
 // Status represents the degree by which the orderer had caught up with the rest of the cluster after joining the
-// channel (either as a member or a follower).
+// channel (either as a consenter or a follower).
 type Status string
 
 const (
@@ -68,9 +68,10 @@ type ChannelInfo struct {
 	Name string `json:"name"`
 	// The channel relative URL (no Host:Port, only path), e.g.: "/participation/v1/channels/my-channel".
 	URL string `json:"url"`
-	// Whether the orderer is a “member” or ”follower” of the cluster, or "config-tracker" of the cluster, for this channel.
+	// Whether the orderer is a “consenter”, ”follower”, or "config-tracker" of
+	// the cluster for this channel.
 	// For non cluster consensus types (solo, kafka) it is "none".
-	// Possible values:  “member”, ”follower”, "config-tracker", "none".
+	// Possible values:  “consenter”, ”follower”, "config-tracker", "none".
 	ClusterRelation ClusterRelation `json:"clusterRelation"`
 	// Whether the orderer is ”onboarding”, ”active”, or "inactive", for this channel.
 	// For non cluster consensus types (solo, kafka) it is "active".

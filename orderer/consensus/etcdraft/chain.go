@@ -274,7 +274,7 @@ func NewChain(
 		createPuller:     f,
 		clock:            opts.Clock,
 		haltCallback:     haltCallback,
-		clusterRelation:  types.ClusterRelationMember,
+		clusterRelation:  types.ClusterRelationConsenter,
 		status:           types.StatusActive,
 		Metrics: &Metrics{
 			ClusterSize:             opts.Metrics.ClusterSize.With("channel", support.ChannelID()),

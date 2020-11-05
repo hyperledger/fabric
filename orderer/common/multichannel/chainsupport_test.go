@@ -7,10 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"testing"
+
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/types"
-	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -103,7 +104,7 @@ func TestNewOnboardingChainSupport(t *testing.T) {
 	require.False(t, open)
 
 	cRel, status := cs.StatusReport()
-	require.Equal(t, types.ClusterRelationMember, cRel)
+	require.Equal(t, types.ClusterRelationConsenter, cRel)
 	require.Equal(t, types.StatusInactive, status)
 
 	require.Equal(t, uint64(7), cs.Height(), "ledger ReadWriter is initialized")

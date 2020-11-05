@@ -28,7 +28,7 @@ type mockChainCluster struct {
 }
 
 func (c *mockChainCluster) StatusReport() (types.ClusterRelation, types.Status) {
-	return types.ClusterRelationMember, types.StatusActive
+	return types.ClusterRelationConsenter, types.StatusActive
 }
 
 type mockChain struct {
