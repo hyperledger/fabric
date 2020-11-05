@@ -158,7 +158,7 @@ func NewChain(
 	if joinBlock == nil {
 		chain.status = types.StatusActive
 		if isMem, _ := chain.clusterConsenter.IsChannelMember(chain.lastConfig); isMem {
-			chain.cRel = types.ClusterRelationMember
+			chain.cRel = types.ClusterRelationConsenter
 		}
 
 		chain.logger.Infof("Created with a nil join-block, ledger height: %d", chain.firstHeight)
@@ -182,7 +182,7 @@ func NewChain(
 			chain.status = types.StatusActive
 		}
 		if isMem, _ := chain.clusterConsenter.IsChannelMember(chain.joinBlock); isMem {
-			chain.cRel = types.ClusterRelationMember
+			chain.cRel = types.ClusterRelationConsenter
 		}
 
 		chain.logger.Infof("Created with join-block number: %d, ledger height: %d", joinBlock.Header.Number, chain.firstHeight)
@@ -400,7 +400,7 @@ func (c *Chain) pullAfterJoin() error {
 			return errors.WithMessage(err, "failed to determine channel membership from last config")
 		}
 		if isMember {
-			c.setClusterRelation(types.ClusterRelationMember)
+			c.setClusterRelation(types.ClusterRelationConsenter)
 			return nil
 		}
 

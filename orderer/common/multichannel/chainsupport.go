@@ -189,7 +189,7 @@ func newOnBoardingChainSupport(
 	cs := &ChainSupport{ledgerResources: ledgerResources}
 	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, config), bccsp)
 	cs.Chain = &inactive.Chain{Err: errors.New("system channel creation pending: server requires restart")}
-	cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: types.ClusterRelationMember, Status: types.StatusInactive}
+	cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: types.ClusterRelationConsenter, Status: types.StatusInactive}
 
 	logger.Debugf("[channel: %s] Done creating onboarding channel support resources", cs.ChannelID())
 
