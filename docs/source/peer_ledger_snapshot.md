@@ -29,7 +29,7 @@ Because of these limitations, the decision of whether a peer will join a channel
 Snapshots can be used by organizations that already have peers on a channel or by organizations new to a channel. Whatever the use case, the process is largely the same.
 
 1. **Schedule a snapshot**. These snapshots must be taken at **exactly the same ledger height** on each peer. This will allow an organization to evaluate the snapshots to make sure they contain the same data. This ledger height must be equal or higher than the current block height (snapshots scheduled for a higher block height will be taken when the block height is reached). They cannot be taken from a lower block height. If you attempt to schedule a snapshot at a height lower than the current height you will get an error. Note that a peer that already used a snapshot to join a channel can also be used to take a snapshot. Snapshots can be scheduled as needed or there can be an agreed among organizations to take them at a regular cadence, for example every 10,000 blocks. This ensures that consistent and recent snapshots are always available. Note that is is not possible to schedule recurring snapshots. Each snapshot has to be scheduled independently. However, there is no limit to the number of future snapshots that can be scheduled. When joining a peer from a snapshot, it is a good practice to use a snapshot more recent than the latest channel config block height. This ensures that the peer will have the most recent channel configuration including the latest ordering service endpoints and CA certificates.
-2. **When the ledger height is reached, the snapshot is taken by the peer**. The snapshot is comprised of a folder that includes files that contain the public state, hashes of private state, transaction IDs, and the collection config history. A file containing metadata relating to these files is also included. For more information, check out [contents of a snapshot](#contents-of-a-snapshot).
+2. **When the ledger height is reached, the snapshot is taken by the peer**. The snapshot is comprised of a directory that includes files that contain the public state, hashes of private state, transaction IDs, and the collection config history. A file containing metadata relating to these files is also included. For more information, check out [contents of a snapshot](#contents-of-a-snapshot).
 3. **If the snapshot will be used by a new organization, the snapshot is sent to them**. This must be completed out of band. Because snapshot files are not compressed, it is likely that peer administrators will want to compress these files before sending them. In a typical scenario, the administrator will receive the snapshot from one of the existing organizations but will want to receive the snapshot metadata from more than one organizations in order to verify the snapshot received.
 
 The organization that will use the snapshot to join the channel will then:
@@ -88,7 +88,9 @@ You will see a response similar to:
 Successfully got pending snapshot requests [1000]
 ```
 
-When a snapshot has been generated for a particular block height, the pending request for that block height will no longer appear in the list. You can also verify that a snapshot has been created successfully by looking at the peer logs or by checking the expected location of the snapshot, `{snapshotsFolder}/completed/{channelName}/{lastBlockNumberInSnapshot}` under the directory defined by the `peer.fileSystemPath` in the peer's `core.yaml`.
+When a snapshot has been generated for a particular block height, the pending request for that block height will no longer appear in the list. You can also verify that a snapshot has been created successfully by looking at the peer logs.
+
+Snapshots will be written to a directory based on the `core.yaml` `ledger.snapshots.rootDir` property. Completed snapshots are written to a subdirectory based on the channel name and block number of the snapshot: `{ledger.snapshots.rootDir}/completed/{channelName}/{lastBlockNumberInSnapshot}`. If the `ledger.snapshots.rootDir` property is not specified in the core.yaml, then the default value is `{peer.fileSystemPath}/snapshots`.
 
 To delete a snapshot request, simply exchange `submitrequest` with `cancelrequest`. For example:
 
@@ -100,9 +102,9 @@ If you submit the `listpending` command again, the snapshot should no longer app
 
 ### Contents of a snapshot
 
-Snapshots are stored on a peer in a snapshot folder that is further organized by channel name and the block number when the snapshot was taken: `{snapshotsFolder}/completed/{channelName}/{lastBlockNumberInSnapshot}`. Once the peer generates a snapshot in this folder, the peer does not use that folder for any purpose and it is safe to compress and transfer the snapshot using external tools, and to delete it when no longer needed.
+Once the peer generates a snapshot to the `{ledger.snapshots.rootDir}/completed/{channelName}/{lastBlockNumberInSnapshot}` directory, the peer does not use that directory for any purpose and it is safe to compress and transfer the snapshot using external tools, and to delete it when no longer needed.
 
-As mentioned above, the snapshot contains a folder with files for the different data items listed below:
+As mentioned above, the completed snapshot directory contains files for the different data items listed below:
 
 * **Public state**
   * This includes the latest value of all of the keys on the channel. For example, the public state would show an asset (a key) and its current owner (the value), but not any of its historical owners.
