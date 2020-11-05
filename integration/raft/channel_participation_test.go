@@ -133,7 +133,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(cl).To(Equal(channelparticipation.ChannelList{}))
 			}
 
-			genesisBlock := applicationChannelGenesisBlock(network, consenters, peer, "participation-trophy")
+			genesisBlock := applicationChannelGenesisBlock(network, consenters, []*nwo.Peer{peer}, "participation-trophy")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
 				Name:              "participation-trophy",
 				URL:               "/participation/v1/channels/participation-trophy",
@@ -208,7 +208,7 @@ var _ = Describe("ChannelParticipation", func() {
 			})
 
 			By("joining orderer1 to another channel as a consenter")
-			genesisBlockAPT := applicationChannelGenesisBlock(network, []*nwo.Orderer{orderer1}, peer, "another-participation-trophy")
+			genesisBlockAPT := applicationChannelGenesisBlock(network, []*nwo.Orderer{orderer1}, []*nwo.Peer{peer}, "another-participation-trophy")
 			expectedChannelInfoAPT := channelparticipation.ChannelInfo{
 				Name:              "another-participation-trophy",
 				URL:               "/participation/v1/channels/another-participation-trophy",
@@ -332,7 +332,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(cl).To(Equal(channelparticipation.ChannelList{}))
 			}
 
-			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
+			genesisBlock := applicationChannelGenesisBlock(network, orderers, []*nwo.Peer{peer}, "participation-trophy")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
 				Name:              "participation-trophy",
 				URL:               "/participation/v1/channels/participation-trophy",
@@ -428,7 +428,7 @@ var _ = Describe("ChannelParticipation", func() {
 				Expect(cl).To(Equal(channelparticipation.ChannelList{}))
 			}
 
-			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
+			genesisBlock := applicationChannelGenesisBlock(network, orderers, []*nwo.Peer{peer}, "participation-trophy")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
 				Name:              "participation-trophy",
 				URL:               "/participation/v1/channels/participation-trophy",
@@ -518,20 +518,19 @@ var _ = Describe("ChannelParticipation", func() {
 		})
 
 		It("creates the system channel with a genesis block", func() {
-			peer := network.Peer("Org1", "peer0")
 			orderer1 := network.Orderer("orderer1")
 			orderer2 := network.Orderer("orderer2")
 			orderer3 := network.Orderer("orderer3")
 			orderers := []*nwo.Orderer{orderer1, orderer2, orderer3}
+			org1peer0 := network.Peer("Org1", "peer0")
+			org2peer0 := network.Peer("Org2", "peer0")
+			peers := []*nwo.Peer{org1peer0, org2peer0}
+
 			for _, o := range orderers {
 				startOrderer(o)
 			}
 
-			systemChannelBlockBytes, err := ioutil.ReadFile(network.OutputBlockPath("systemchannel"))
-			Expect(err).NotTo(HaveOccurred())
-			systemChannelBlock := &common.Block{}
-			err = proto.Unmarshal(systemChannelBlockBytes, systemChannelBlock)
-			Expect(err).NotTo(HaveOccurred())
+			systemChannelGenesisBlock := systemChannelGenesisBlock(network, orderers, peers, network.SystemChannel.Name)
 
 			expectedChannelInfo := channelparticipation.ChannelInfo{
 				Name:              "systemchannel",
@@ -543,16 +542,16 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("joining orderers to systemchannel")
 			for _, o := range orderers {
-				channelparticipation.Join(network, o, "systemchannel", systemChannelBlock, expectedChannelInfo)
+				channelparticipation.Join(network, o, "systemchannel", systemChannelGenesisBlock, expectedChannelInfo)
 			}
 
 			By("attempting to join a channel when system channel is present")
-			channelparticipationJoinFailure(network, orderer1, "systemchannel", systemChannelBlock, http.StatusMethodNotAllowed, "cannot join: system channel exists")
+			channelparticipationJoinFailure(network, orderer1, "systemchannel", systemChannelGenesisBlock, http.StatusMethodNotAllowed, "cannot join: system channel exists")
 
 			By("ensuring the system channel is unusable before restarting by attempting to submit a transaction")
 			for _, o := range orderers {
 				By("submitting transaction to " + o.Name)
-				env := CreateBroadcastEnvelope(network, peer, "systemchannel", []byte("hello"))
+				env := CreateBroadcastEnvelope(network, org1peer0, "systemchannel", []byte("hello"))
 				Expect(broadcastTransactionFunc(network, o, env)()).To(Equal(common.Status_FORBIDDEN))
 			}
 
@@ -562,7 +561,7 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			By("creating a channel")
-			network.CreateChannel("testchannel", orderer1, peer)
+			network.CreateChannel("testchannel", orderer1, org1peer0)
 
 			expectedChannelInfo = channelparticipation.ChannelInfo{
 				Name:              "testchannel",
@@ -599,7 +598,7 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			By("submitting transaction to orderer to confirm channel is usable")
-			env := CreateBroadcastEnvelope(network, peer, "testchannel", []byte("hello"))
+			env := CreateBroadcastEnvelope(network, org1peer0, "testchannel", []byte("hello"))
 			Eventually(broadcastTransactionFunc(network, orderer1, env), network.EventuallyTimeout).Should(Equal(common.Status_SUCCESS))
 		})
 	})
@@ -754,7 +753,7 @@ var _ = Describe("ChannelParticipation", func() {
 			}))
 
 			By("attempting to join a channel when the system channel is present")
-			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
+			genesisBlock := applicationChannelGenesisBlock(network, orderers, []*nwo.Peer{peer}, "participation-trophy")
 			channelparticipationJoinFailure(network, orderers[0], "participation-trophy", genesisBlock, http.StatusMethodNotAllowed, "cannot join: system channel exists")
 
 			By("attempting to remove a channel when the system channel is present")
@@ -845,7 +844,6 @@ var _ = Describe("ChannelParticipation", func() {
 			})
 		})
 	})
-
 })
 
 // submit a transaction signed by the peer and ensure it was
@@ -874,9 +872,9 @@ func submitTxn(o *nwo.Orderer, env *common.Envelope, peer *nwo.Peer, n *nwo.Netw
 	}, n.EventuallyTimeout).Should(Equal(expectedChannelInfo))
 }
 
-func applicationChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, p *nwo.Peer, channel string) *common.Block {
+func applicationChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, peers []*nwo.Peer, channel string) *common.Block {
 	ordererOrgs, consenters := ordererOrganizationsAndConsenters(n, orderers)
-	peerOrgs := peerOrganizations(n, p)
+	peerOrgs := peerOrganizations(n, peers)
 
 	channelConfig := configtx.Channel{
 		Orderer: configtx.Orderer{
@@ -968,6 +966,80 @@ func applicationChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, p *
 	return genesisBlock
 }
 
+func systemChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, peers []*nwo.Peer, channel string) *common.Block {
+	ordererOrgs, consenters := ordererOrganizationsAndConsenters(n, orderers)
+	peerOrgs := peerOrganizations(n, peers)
+
+	channelConfig := configtx.Channel{
+		Orderer: configtx.Orderer{
+			OrdererType:   "etcdraft",
+			Organizations: ordererOrgs,
+			EtcdRaft: orderer.EtcdRaft{
+				Consenters: consenters,
+				Options: orderer.EtcdRaftOptions{
+					TickInterval:         "500ms",
+					ElectionTick:         10,
+					HeartbeatTick:        1,
+					MaxInflightBlocks:    5,
+					SnapshotIntervalSize: 16 * 1024 * 1024, // 16 MB
+				},
+			},
+			Policies: map[string]configtx.Policy{
+				"Readers": {
+					Type: "ImplicitMeta",
+					Rule: "ANY Readers",
+				},
+				"Writers": {
+					Type: "ImplicitMeta",
+					Rule: "ANY Writers",
+				},
+				"Admins": {
+					Type: "ImplicitMeta",
+					Rule: "MAJORITY Admins",
+				},
+				"BlockValidation": {
+					Type: "ImplicitMeta",
+					Rule: "ANY Writers",
+				},
+			},
+			Capabilities: []string{"V2_0"},
+			BatchSize: orderer.BatchSize{
+				MaxMessageCount:   100,
+				AbsoluteMaxBytes:  1024 * 1024,
+				PreferredMaxBytes: 512 * 1024,
+			},
+			BatchTimeout: 2 * time.Second,
+			State:        "STATE_NORMAL",
+		},
+		Consortiums: []configtx.Consortium{
+			{
+				Name:          n.Consortiums[0].Name,
+				Organizations: peerOrgs,
+			},
+		},
+		Capabilities: []string{"V2_0"},
+		Policies: map[string]configtx.Policy{
+			"Readers": {
+				Type: "ImplicitMeta",
+				Rule: "ANY Readers",
+			},
+			"Writers": {
+				Type: "ImplicitMeta",
+				Rule: "ANY Writers",
+			},
+			"Admins": {
+				Type: "ImplicitMeta",
+				Rule: "MAJORITY Admins",
+			},
+		},
+	}
+
+	genesisBlock, err := configtx.NewSystemChannelGenesisBlock(channelConfig, channel)
+	Expect(err).NotTo(HaveOccurred())
+
+	return genesisBlock
+}
+
 // parseCertificate loads the PEM-encoded x509 certificate at the specified
 // path.
 func parseCertificate(path string) *x509.Certificate {
@@ -1004,7 +1076,7 @@ func ordererOrganizationsAndConsenters(n *nwo.Network, orderers []*nwo.Orderer) 
 			orgConfig.OrdererEndpoints = []string{
 				n.OrdererAddress(o, nwo.ListenPort),
 			}
-			ordererOrgsMap[o.Organization] = orgConfig
+			ordererOrgsMap[o.Organization] = &orgConfig
 		} else {
 			orgConfig.OrdererEndpoints = append(orgConfig.OrdererEndpoints, n.OrdererAddress(o, nwo.ListenPort))
 			orgConfig.MSP.RootCerts = append(orgConfig.MSP.RootCerts, rootCert)
@@ -1023,18 +1095,23 @@ func ordererOrganizationsAndConsenters(n *nwo.Network, orderers []*nwo.Orderer) 
 	return ordererOrgs, consenters
 }
 
-func peerOrganizations(n *nwo.Network, p *nwo.Peer) []configtx.Organization {
-	rootCert := parseCertificate(n.PeerCACert(p))
-	adminCert := parseCertificate(n.PeerUserCert(p, "Admin"))
-	tlsRootCert := parseCertificate(filepath.Join(n.PeerLocalTLSDir(p), "ca.crt"))
+// constructs the peer organizations for a config block. It should be passed
+// only one peer per organization.
+func peerOrganizations(n *nwo.Network, peers []*nwo.Peer) []configtx.Organization {
+	peerOrgs := make([]configtx.Organization, len(peers))
+	for i, p := range peers {
+		rootCert := parseCertificate(n.PeerCACert(p))
+		adminCert := parseCertificate(n.PeerUserCert(p, "Admin"))
+		tlsRootCert := parseCertificate(filepath.Join(n.PeerLocalTLSDir(p), "ca.crt"))
 
-	peerOrg := configtxOrganization(n.Organization(p.Organization), rootCert, adminCert, tlsRootCert)
+		peerOrgs[i] = configtxOrganization(n.Organization(p.Organization), rootCert, adminCert, tlsRootCert)
+	}
 
-	return []configtx.Organization{*peerOrg}
+	return peerOrgs
 }
 
-func configtxOrganization(org *nwo.Organization, rootCert, adminCert, tlsRootCert *x509.Certificate) *configtx.Organization {
-	orgConfig := &configtx.Organization{
+func configtxOrganization(org *nwo.Organization, rootCert, adminCert, tlsRootCert *x509.Certificate) configtx.Organization {
+	return configtx.Organization{
 		Name: org.Name,
 		Policies: map[string]configtx.Policy{
 			"Readers": {
@@ -1047,7 +1124,7 @@ func configtxOrganization(org *nwo.Organization, rootCert, adminCert, tlsRootCer
 			},
 			"Admins": {
 				Type: "Signature",
-				Rule: fmt.Sprintf("OR('%s.member')", org.MSPID),
+				Rule: fmt.Sprintf("OR('%s.admin')", org.MSPID),
 			},
 		},
 		MSP: configtx.MSP{
@@ -1057,8 +1134,6 @@ func configtxOrganization(org *nwo.Organization, rootCert, adminCert, tlsRootCer
 			TLSRootCerts: []*x509.Certificate{tlsRootCert},
 		},
 	}
-
-	return orgConfig
 }
 
 func computeSignSubmitConfigUpdate(n *nwo.Network, o *nwo.Orderer, p *nwo.Peer, c configtx.ConfigTx, channel string) {
