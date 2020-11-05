@@ -11,6 +11,7 @@ Commands Reference
    commands/peersnapshot.md
    commands/peerversion.md
    commands/peernode.md
+   commands/osnadminchannel.md
    commands/configtxgen.md
    commands/configtxlator.md
    commands/cryptogen.md

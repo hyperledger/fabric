@@ -41,8 +41,8 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	// command line flags
 	//
 	app := kingpin.New("osnadmin", "Orderer Service Node (OSN) administration")
-	orderer := app.Flag("orderer-address", "Endpoint of the OSN").Short('o').Required().String()
-	caFile := app.Flag("ca-file", "Path to file containing PEM-encoded trusted certificate(s) for the OSN").Required().String()
+	orderer := app.Flag("orderer-address", "Admin endpoint of the OSN").Short('o').Required().String()
+	caFile := app.Flag("ca-file", "Path to file containing PEM-encoded TLS CA certificate(s) for the OSN").Required().String()
 	clientCert := app.Flag("client-cert", "Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the OSN").Required().String()
 	clientKey := app.Flag("client-key", "Path to file containing PEM-encoded private key to use for mutual TLS communication with the OSN").Required().String()
 
@@ -50,7 +50,7 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 
 	join := channel.Command("join", "Join an Ordering Service Node (OSN) to a channel. If the channel does not yet exist, it will be created.")
 	joinChannelID := join.Flag("channel-id", "Channel ID").Short('c').Required().String()
-	configBlockPath := join.Flag("config-block", "Path to the file containing the config block").Short('b').Required().String()
+	configBlockPath := join.Flag("config-block", "Path to the file containing an up-to-date config block for the channel").Short('b').Required().String()
 
 	list := channel.Command("list", "List channel information for an Ordering Service Node (OSN). If the channel-id flag is set, more detailed information will be provided for that channel.")
 	listChannelID := list.Flag("channel-id", "Channel ID").Short('c').String()
