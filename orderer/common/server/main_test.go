@@ -194,14 +194,102 @@ func TestInitializeServerConfig(t *testing.T) {
 		clusterCert    string
 		clusterKey     string
 		clusterCA      string
+		isCluster      bool
 	}{
-		{"BadCertificate", badFile, goodFile, goodFile, goodFile, "", "", ""},
-		{"BadPrivateKey", goodFile, badFile, goodFile, goodFile, "", "", ""},
-		{"BadRootCA", goodFile, goodFile, badFile, goodFile, "", "", ""},
-		{"BadClientRootCertificate", goodFile, goodFile, goodFile, badFile, "", "", ""},
-		{"ClusterBadCertificate", goodFile, goodFile, goodFile, goodFile, badFile, goodFile, goodFile},
-		{"ClusterBadPrivateKey", goodFile, goodFile, goodFile, goodFile, goodFile, badFile, goodFile},
-		{"ClusterBadRootCA", goodFile, goodFile, goodFile, goodFile, goodFile, goodFile, badFile},
+		{
+			name:           "BadCertificate",
+			certificate:    badFile,
+			privateKey:     goodFile,
+			rootCA:         goodFile,
+			clientRootCert: goodFile,
+		},
+		{
+			name:           "BadPrivateKey",
+			certificate:    goodFile,
+			privateKey:     badFile,
+			rootCA:         goodFile,
+			clientRootCert: goodFile,
+		},
+		{
+			name:           "BadRootCA",
+			certificate:    goodFile,
+			privateKey:     goodFile,
+			rootCA:         badFile,
+			clientRootCert: goodFile,
+		},
+		{
+			name:           "BadClientRootCertificate",
+			certificate:    goodFile,
+			privateKey:     goodFile,
+			rootCA:         goodFile,
+			clientRootCert: badFile,
+		},
+		{
+			name:           "BadCertificate - cluster reuses server config",
+			certificate:    badFile,
+			privateKey:     goodFile,
+			rootCA:         goodFile,
+			clientRootCert: goodFile,
+			clusterCert:    "",
+			clusterKey:     "",
+			clusterCA:      "",
+			isCluster:      true,
+		},
+		{
+			name:           "BadPrivateKey - cluster reuses server config",
+			certificate:    goodFile,
+			privateKey:     badFile,
+			rootCA:         goodFile,
+			clientRootCert: goodFile,
+			clusterCert:    "",
+			clusterKey:     "",
+			clusterCA:      "",
+			isCluster:      true,
+		},
+		{
+			name:           "BadRootCA - cluster reuses server config",
+			certificate:    goodFile,
+			privateKey:     goodFile,
+			rootCA:         badFile,
+			clientRootCert: goodFile,
+			clusterCert:    "",
+			clusterKey:     "",
+			clusterCA:      "",
+			isCluster:      true,
+		},
+		{
+			name:           "ClusterBadCertificate",
+			certificate:    goodFile,
+			privateKey:     goodFile,
+			rootCA:         goodFile,
+			clientRootCert: goodFile,
+			clusterCert:    badFile,
+			clusterKey:     goodFile,
+			clusterCA:      goodFile,
+			isCluster:      true,
+		},
+		{
+			name:           "ClusterBadPrivateKey",
+			certificate:    goodFile,
+			privateKey:     goodFile,
+			rootCA:         goodFile,
+			clientRootCert: goodFile,
+			clusterCert:    goodFile,
+			clusterKey:     badFile,
+			clusterCA:      goodFile,
+			isCluster:      true,
+		},
+		{
+			name:           "ClusterBadRootCA",
+			certificate:    goodFile,
+			privateKey:     goodFile,
+			rootCA:         goodFile,
+			clientRootCert: goodFile,
+			clusterCert:    goodFile,
+			clusterKey:     goodFile,
+			clusterCA:      badFile,
+			isCluster:      true,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -222,8 +310,13 @@ func TestInitializeServerConfig(t *testing.T) {
 					},
 				},
 			}
+<<<<<<< HEAD
 			assert.Panics(t, func() {
 				if tc.clusterCert == "" {
+=======
+			require.Panics(t, func() {
+				if !tc.isCluster {
+>>>>>>> d620ab33e... [FAB-18298] Default cluster cert and key
 					initializeServerConfig(conf, nil)
 				} else {
 					initializeClusterClientConfig(conf)
