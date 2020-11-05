@@ -63,13 +63,21 @@ func TestMissingOrdererSection(t *testing.T) {
 	require.EqualError(t, doOutputBlock(config, "foo", blockDest), "refusing to generate block which is missing orderer section")
 }
 
-func TestMissingConsortiumSection(t *testing.T) {
+func TestApplicationChannelGenesisBlock(t *testing.T) {
 	blockDest := filepath.Join(tmpDir, "block")
 
-	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
-	config.Consortiums = nil
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelInsecureSoloProfile, configtest.GetDevConfigDir())
 
-	require.NoError(t, doOutputBlock(config, "foo", blockDest), "Missing consortiums section")
+	require.NoError(t, doOutputBlock(config, "foo", blockDest))
+}
+
+func TestApplicationChannelMissingApplicationSection(t *testing.T) {
+	blockDest := filepath.Join(tmpDir, "block")
+
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelInsecureSoloProfile, configtest.GetDevConfigDir())
+	config.Application = nil
+
+	require.EqualError(t, doOutputBlock(config, "foo", blockDest), "refusing to generate application channel block which is missing application section")
 }
 
 func TestMissingConsortiumValue(t *testing.T) {

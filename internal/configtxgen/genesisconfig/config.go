@@ -52,6 +52,14 @@ const (
 	// the etcd/raft-based ordering service.
 	SampleDevModeEtcdRaftProfile = "SampleDevModeEtcdRaft"
 
+	// SampleAppChannelInsecureSoloProfile references the sample profile which
+	// does not include any MSPs and uses solo for ordering.
+	SampleAppChannelInsecureSoloProfile = "SampleAppChannelInsecureSolo"
+	// SampleApppChannelEtcdRaftProfile references the sample profile used for
+	// testing the etcd/raft-based ordering service using the channel
+	// participation API.
+	SampleAppChannelEtcdRaftProfile = "SampleAppChannelEtcdRaft"
+
 	// SampleSingleMSPChannelProfile references the sample profile which
 	// includes only the sample MSP and is used to create a channel
 	SampleSingleMSPChannelProfile = "SampleSingleMSPChannel"
