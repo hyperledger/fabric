@@ -539,17 +539,23 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig
 		SecOpts:      comm.SecureOptions{},
 	}
 
-	if conf.General.Cluster.ClientCertificate == "" {
-		return cc
-	}
+	reuseGrpcListener := reuseListener(conf)
 
 	certFile := conf.General.Cluster.ClientCertificate
+	keyFile := conf.General.Cluster.ClientPrivateKey
+	if certFile == "" && keyFile == "" {
+		if !reuseGrpcListener {
+			return cc
+		}
+		certFile = conf.General.TLS.Certificate
+		keyFile = conf.General.TLS.PrivateKey
+	}
+
 	certBytes, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		logger.Fatalf("Failed to load client TLS certificate file '%s' (%s)", certFile, err)
 	}
 
-	keyFile := conf.General.Cluster.ClientPrivateKey
 	keyBytes, err := ioutil.ReadFile(keyFile)
 	if err != nil {
 		logger.Fatalf("Failed to load client TLS key file '%s' (%s)", keyFile, err)
@@ -565,7 +571,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig
 	}
 
 	timeShift := conf.General.TLS.TLSHandshakeTimeShift
-	if reuseGrpcListener := reuseListener(conf); !reuseGrpcListener {
+	if !reuseGrpcListener {
 		timeShift = conf.General.Cluster.TLSHandshakeTimeShift
 	}
 
