@@ -21,3 +21,9 @@ var ErrAppChannelsAlreadyExists = errors.New("application channels already exist
 
 // ErrChannelNotExist is returned when trying to remove or list a channel that does not exist
 var ErrChannelNotExist = errors.New("channel does not exist")
+
+// ErrChannelPendingRemoval is returned when trying to remove or list a channel that is being removed.
+var ErrChannelPendingRemoval = errors.New("channel pending removal")
+
+// ErrChannelRemovalFailure is returned when a removal attempt failure has been recorded.
+var ErrChannelRemovalFailure = errors.New("channel removal failure")
