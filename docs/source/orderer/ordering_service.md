@@ -55,7 +55,7 @@ peers then process the configuration transactions in order to verify that the
 modifications approved by the orderer do indeed satisfy the policies defined in
 the channel.
 
-## Orderer nodes and Identity
+## Orderer nodes and identity
 
 Everything that interacts with a blockchain network, including peers,
 applications, admins, and orderers, acquires their organizational identity from
@@ -243,7 +243,12 @@ majority of ordering nodes (what's known as a "quorum") remaining, Raft is said
 to be "crash fault tolerant" (CFT). In other words, if there are three nodes in a
 channel, it can withstand the loss of one node (leaving two remaining). If you
 have five nodes in a channel, you can lose two nodes (leaving three
-remaining nodes).
+remaining nodes). This feature of a Raft ordering service is a factor in the
+establishment of a high availability strategy for your ordering service. Additionally,
+in a production environment, you would want to spread these nodes across data
+centers and even locations. For example, by putting one node in three different
+data centers. That way, if a data center or entire location becomes unavailable,
+the nodes in the other data centers continue to operate.
 
 From the perspective of the service they provide to a network or a channel, Raft
 and the existing Kafka-based ordering service (which we'll talk about later) are

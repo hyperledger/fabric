@@ -62,7 +62,7 @@ Generally speaking, Fabric is agnostic to the methods used to deploy and manage 
 
 As long as you have the ability to deploy containers, whether locally (or behind a firewall), or in a cloud, it should be possible to stand up components and connect them to each other. However, Kubernetes features a number of helpful tools that have made it a popular container management platform for deploying and managing Fabric networks. For more information about Kubernetes, check out `the Kubernetes documentation <https://kubernetes.io/docs>`_. This topic will mostly limit its scope to the binaries and provide instructions that can be applied when using a Docker deployment or Kubernetes.
 
-However and wherever you choose to deploy your components, you will need to make sure you have enough resources for the components to run effectively. The sizes you need will largely depend on your use case. If you plan to join a single peer to several high volume channels, it will need much more CPU and memory than if you only plan to join to a single channel. As a rough estimate, plan to dedicate approximately three times the resources to a peer as you plan to allocate to a single ordering node (as you will see below, it is recommended to deploy at least three and optimally five nodes in an ordering service). Similarly, you should need approximately a tenth of the resources for a CA as you will for a peer. You will also need to add storage to your cluster (some cloud providers may provide storage) as you cannot configure Persistent Volumes and Persistent Volume Claims without storage being set up with your cloud provider first.
+However and wherever you choose to deploy your components, you will need to make sure you have enough resources for the components to run effectively. The sizes you need will largely depend on your use case. If you plan to join a single peer to several high volume channels, it will need much more CPU and memory than if you only plan to join to a single channel. As a rough estimate, plan to dedicate approximately three times the resources to a peer as you plan to allocate to a single ordering node (as you will see below, it is recommended to deploy at least three and optimally five nodes in an ordering service). Similarly, you should need approximately a tenth of the resources for a CA as you will for a peer. You will also need to add storage to your cluster (some cloud providers may provide storage) as you cannot configure Persistent Volumes and Persistent Volume Claims without storage being set up with your cloud provider first. The use of persistent storage ensures that data such as MSPs, ledgers, and installed chaincodes are not stored on the container filesystem, preventing them from being destroyed if the containers are destroyed.
 
 By deploying a proof of concept network and testing it under load, you will have a better sense of the resources you will require.
 
@@ -160,7 +160,7 @@ When you're comfortable with how your peer has been configured, how your volumes
 
 .. toctree::
    :maxdepth: 1
-   :caption: Deploying a Production Peer
+   :caption: Deploying a production peer
 
    deploypeer/peerplan
    deploypeer/peerchecklist
@@ -171,31 +171,35 @@ When you're comfortable with how your peer has been configured, how your volumes
 Creating an ordering node
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Unlike the creation of a peer, you will need to create a genesis block (or reference a block that has already been created, if adding an ordering node to an existing ordering service) and specify the path to it before launching the ordering node.
+Note: while it is possible to add additional nodes to an ordering service, only the process for creating an ordering service is covered in these tutorials.
 
-In Fabric, this configuration file for ordering nodes is called ``orderer.yaml``. You can find a sample ``orderer.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/master/sampleconfig/orderer.yaml>`__. Note that ``orderer.yaml`` is different than the "genesis block" of an ordering service. This block, which includes the initial configuration of the orderer system channel, must be created before an ordering node is created because it is used to bootstrap the node.
+If you’ve read through the key concept topic on :doc:`orderer/ordering_service`, you should have a good idea of the role the ordering service plays in a network and the nature of its interactions with other network components. The ordering service is responsible for literally “ordering” endorsed transactions into blocks, which peers then validate and commit to their ledgers.
 
-As with the peer, you will see that there are quite a number of parameters you either have the option to set or will need to set for your node to work properly. In general, if you do not have the need to change a tuning value, leave it alone.
+These roles are important to understand before you create an ordering service, as it will influence your customization and deployment decisions. Among the chief differences between a peer and ordering service is that in a production network, multiple ordering nodes work together to form the “ordering service” of a channel. This creates a series of important decisions that need to be made at both the node level and at the cluster level. Some of these cluster decisions are not made in individual ordering node ``orderer.yaml`` files but instead in the ``configtx.yaml`` file that is used to generate the genesis block for the system channel (which is used to bootstrap ordering nodes), and also used to generate the genesis block of application channels. For a look at the various decisions you will need to make, check out :doc:`deployorderer/ordererplan`.
 
-Either way, here are some values in ``orderer.yaml`` you must review. You will notice that some of these fields are the same as those in ``core.yaml`` only with different names.
+The configuration values in an ordering node’s ``orderer.yaml`` file must be customized or overridden with environment variables. You can find the default ``orderer.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/master/sampleconfig/orderer.yaml>`_.
 
-* ``General.LocalMSPID``: this is the name of the local MSP, generated by your CA, of your orderer organization.
+This configuration file is bundled with the orderer image and is also included with the downloadable binaries. For information about how to download the production ``orderer.yaml`` along with the orderer image, check out :doc:`deployorderer/ordererdeploy`.
 
-* ``General.LocalMSPDir``: the place where the local MSP for the ordering node is located. Note that it is a best practice to mount this volume external to your container.
+While there are many parameters in the default ``orderer.yaml``, you will only need to customize a small percentage of them. In general, if you do not have the need to change a tuning value, keep the default value.
 
-* ``General.ListenAddress`` and ``General.ListenPort``: represents the endpoint to other ordering nodes in the same organization.
+Among the parameters in ``orderer.yaml``, there are:
 
-* ``FileLedger``: although ordering nodes do not have a state database, they still all carry copies of the blockchain, as this allows them to verify permissions using the latest config block. Therefore the ledger fields should be customized with the correct file path.
+* **Identifiers**: these include not just the paths to the relevant local MSP and Transport Layer Security (TLS) certificates, but also the MSP ID of the organization that owns the ordering node.
 
-* ``Cluster``: these values are important for ordering service nodes that communicate with other ordering nodes, such as in a Raft based ordering service.
+* **Addresses and paths**: because ordering nodes interact with other components, you must specify a series of addresses in the configuration. These include addresses where the ordering node itself can be found by other components as well as **Operations and metrics**, which allow you to set up methods for monitoring the health and performance of your ordering node through the configuration of endpoints.
 
-* ``General.BootstrapFile``: this is the name of the configuration block used to bootstrap an ordering node. If this node is the first node generated in an ordering service, this file will have to be generated and is known as the "genesis block".
-
-* ``General.BootstrapMethod``: the method by which the bootstrap block is given. For now, this can only be ``file``, in which the file in the ``BootstrapFile`` is specified. Starting in 2.0, you can specify ``none`` to simply start the orderer without bootstrapping.
-
-* ``Consensus``: determines the key/value pairs allowed by the consensus plugin (Raft ordering services are supported and recommended) for the Write Ahead Logs (``WALDir``) and Snapshots (``SnapDir``).
+For more information about ``orderer.yaml`` and its specific parameters, check out :doc:`deployorderer/ordererchecklist`.
 
 When you're comfortable with how your ordering node has been configured, how your volumes are mounted, and your backend configuration, you can run the command to launch the ordering node (this command will depend on your backend configuration).
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Deploying a production ordering node
+
+   deployorderer/ordererplan
+   deployorderer/ordererchecklist
+   deployorderer/ordererdeploy
 
 Next steps
 ----------
