@@ -488,14 +488,6 @@ func TestHTTPHandler_ServeHTTP_Remove(t *testing.T) {
 		checkErrorResponse(t, http.StatusConflict, "cannot remove: channel pending removal", resp)
 	})
 
-	t.Run("Error: Channel Removal", func(t *testing.T) {
-		fakeManager, h := setup(config, t)
-		fakeManager.RemoveChannelReturns(types.ErrChannelRemovalFailure)
-		resp := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodDelete, path.Join(channelparticipation.URLBaseV1Channels, "my-channel"), nil)
-		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusInternalServerError, "cannot remove: channel removal failure", resp)
-	})
 }
 
 func setup(config localconfig.ChannelParticipation, t *testing.T) (*mocks.ChannelManagement, *channelparticipation.HTTPHandler) {

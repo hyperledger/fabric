@@ -916,12 +916,8 @@ func (r *Registrar) RemoveChannel(channelID string) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if removalStatus, ok := r.pendingRemoval[channelID]; ok {
-		if removalStatus {
-			return types.ErrChannelPendingRemoval
-		} else {
-			return types.ErrChannelRemovalFailure
-		}
+	if removalStatus := r.pendingRemoval[channelID]; removalStatus {
+		return types.ErrChannelPendingRemoval
 	}
 
 	if r.systemChannelID != "" {
@@ -1087,15 +1083,14 @@ func (r *Registrar) removeLedgerAsync(channelID string) {
 	r.pendingRemoval[channelID] = true
 
 	go func() {
-		if err := r.ledgerFactory.Remove(channelID); err != nil {
-			r.lock.Lock()
+		err := r.ledgerFactory.Remove(channelID)
+		r.lock.Lock()
+		defer r.lock.Unlock()
+		if err != nil {
 			r.pendingRemoval[channelID] = false
-			r.lock.Unlock()
 			logger.Errorf("ledger factory failed to remove empty ledger '%s', error: %s", channelID, err)
 			return
 		}
-		r.lock.Lock()
 		delete(r.pendingRemoval, channelID)
-		r.lock.Unlock()
 	}()
 }

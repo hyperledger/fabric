@@ -296,8 +296,6 @@ func (h *HTTPHandler) serveRemove(resp http.ResponseWriter, req *http.Request) {
 		h.sendResponseJsonError(resp, http.StatusNotFound, errors.WithMessage(err, "cannot remove"))
 	case types.ErrChannelPendingRemoval:
 		h.sendResponseJsonError(resp, http.StatusConflict, errors.WithMessage(err, "cannot remove"))
-	case types.ErrChannelRemovalFailure:
-		h.sendResponseJsonError(resp, http.StatusInternalServerError, errors.WithMessage(err, "cannot remove"))
 	default:
 		h.sendResponseJsonError(resp, http.StatusBadRequest, errors.WithMessage(err, "cannot remove"))
 	}
