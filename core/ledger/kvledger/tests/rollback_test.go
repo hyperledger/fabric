@@ -22,7 +22,7 @@ func TestRollbackKVLedger(t *testing.T) {
 	// populate ledgers with sample data
 	dataHelper := newSampleDataHelper(t)
 
-	l := env.createTestLedger("testLedger")
+	l := env.createTestLedgerFromGenesisBlk("testLedger")
 	// populate creates 8 blocks
 	dataHelper.populateLedger(l)
 	dataHelper.verifyLedgerContent(l)
@@ -69,7 +69,7 @@ func TestRollbackKVLedgerWithBTL(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1")
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
 	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 1}}
 
 	// deploy cc1 with 'collConf'

@@ -17,7 +17,7 @@ func TestMissingCollConfig(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1")
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
 
 	collConf := []*collConf{{name: "coll1", btl: 5}}
 
@@ -70,7 +70,7 @@ func TestTxWithMissingPvtdata(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1")
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
 
 	collConf := []*collConf{{name: "coll1", btl: 5}}
 
@@ -116,7 +116,7 @@ func TestTxWithWrongPvtdata(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1")
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
 
 	collConf := []*collConf{{name: "coll1", btl: 5}}
 
@@ -142,7 +142,7 @@ func TestBTL(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1")
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
 	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 5}}
 
 	// deploy cc1 with 'collConf'

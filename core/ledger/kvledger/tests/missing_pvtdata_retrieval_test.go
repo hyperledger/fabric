@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -75,7 +73,7 @@ func TestGetMissingPvtData(t *testing.T) {
 		env := newEnv(t)
 		defer env.cleanup()
 		env.initLedgerMgmt()
-		l := env.createTestLedger("ledger1")
+		l := env.createTestLedgerFromGenesisBlk("ledger1")
 
 		blk, expectedMissingPvtDataInfo := setup(l)
 
@@ -124,9 +122,6 @@ func TestGetMissingPvtData(t *testing.T) {
 	})
 
 	t.Run("get deprioritized missing data", func(t *testing.T) {
-		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		require.NoError(t, err)
-
 		initializer := &ledgermgmt.Initializer{
 			Config: &ledger.Config{
 				PrivateDataConfig: &ledger.PrivateDataConfig{
@@ -136,19 +131,15 @@ func TestGetMissingPvtData(t *testing.T) {
 					DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 				},
 			},
-			HashProvider: cryptoProvider,
-			EbMetadataProvider: &externalbuilder.MetadataProvider{
-				DurablePath: "testdata",
-			},
 		}
 		env := newEnvWithInitializer(t, initializer)
 		defer env.cleanup()
 		env.initLedgerMgmt()
-		l := env.createTestLedger("ledger1")
+		l := env.createTestLedgerFromGenesisBlk("ledger1")
 
 		_, expectedMissingPvtDataInfo := setup(l)
 
-		_, err = l.commitPvtDataOfOldBlocks(nil, expectedMissingPvtDataInfo)
+		_, err := l.commitPvtDataOfOldBlocks(nil, expectedMissingPvtDataInfo)
 		require.NoError(t, err)
 		for i := 0; i < 5; i++ {
 			l.verifyMissingPvtDataSameAs(int(2), ledger.MissingPvtDataInfo{})
