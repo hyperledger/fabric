@@ -32,7 +32,7 @@ func TestResetAllLedgers(t *testing.T) {
 	ledgerIDs := make([]string, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		ledgerIDs[i] = fmt.Sprintf("ledger-%d", i)
-		l := env.createTestLedger(ledgerIDs[i])
+		l := env.createTestLedgerFromGenesisBlk(ledgerIDs[i])
 		dataHelper.populateLedger(l)
 		dataHelper.verifyLedgerContent(l)
 		gb, err := l.lgr.GetBlockByNumber(0)
@@ -108,7 +108,7 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1")
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
 	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 1}}
 
 	// deploy cc1 with 'collConf'
@@ -192,7 +192,7 @@ func TestResetLedgerWithoutDroppingDBs(t *testing.T) {
 	dataHelper := newSampleDataHelper(t)
 
 	// create ledgers and pouplate with sample data
-	l := env.createTestLedger("ledger-1")
+	l := env.createTestLedgerFromGenesisBlk("ledger-1")
 	dataHelper.populateLedger(l)
 	dataHelper.verifyLedgerContent(l)
 	env.closeLedgerMgmt()

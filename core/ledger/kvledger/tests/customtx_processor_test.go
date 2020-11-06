@@ -37,7 +37,7 @@ func TestReadWriteCustomTxProcessor(t *testing.T) {
 	defer env.cleanup()
 	env.initLedgerMgmt()
 
-	l := env.createTestLedger("ledger1")
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
 	l.simulateDataTx("tx0", func(s *simulator) {
 		s.setState("ns", "key1", "value1")
 		s.setState("ns", "key2", "value2")
@@ -90,7 +90,7 @@ func TestRangeReadAndWriteCustomTxProcessor(t *testing.T) {
 	defer env.cleanup()
 	env.initLedgerMgmt()
 
-	l := env.createTestLedger("ledger1")
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
 	l.simulateDataTx("tx0", func(s *simulator) {
 		s.setState("ns", "key1", "value1")
 		s.setState("ns", "key2", "value2")

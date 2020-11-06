@@ -15,7 +15,7 @@ func TestRebuildComponents(t *testing.T) {
 	defer env.cleanup()
 	env.initLedgerMgmt()
 
-	l1, l2 := env.createTestLedger("ledger1"), env.createTestLedger("ledger2")
+	l1, l2 := env.createTestLedgerFromGenesisBlk("ledger1"), env.createTestLedgerFromGenesisBlk("ledger2")
 	dataHelper := newSampleDataHelper(t)
 
 	dataHelper.populateLedger(l1)
@@ -65,7 +65,7 @@ func TestRebuildComponentsWithBTL(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	l := env.createTestLedger("ledger1")
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
 	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 1}}
 
 	// deploy cc1 with 'collConf'

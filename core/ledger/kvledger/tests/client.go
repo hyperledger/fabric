@@ -105,6 +105,10 @@ func (c *client) causeMissingPvtData(txIndex uint64) {
 	c.simulatedTrans[txIndex].Pvtws = nil
 }
 
+func (c *client) discardSimulation() {
+	c.simulatedTrans = nil
+}
+
 func (c *client) retrieveCommittedBlocksAndPvtdata(startNum, endNum uint64) []*ledger.BlockAndPvtData {
 	data := []*ledger.BlockAndPvtData{}
 	for i := startNum; i <= endNum; i++ {
