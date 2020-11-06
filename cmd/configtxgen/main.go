@@ -38,10 +38,15 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 	}
 	logger.Info("Generating genesis block")
 	if config.Orderer == nil {
-		return errors.Errorf("refusing to generate block which is missing orderer section")
+		return errors.New("refusing to generate block which is missing orderer section")
 	}
-	if config.Consortiums == nil {
-		logger.Warning("Genesis block does not contain a consortiums group definition.  This block cannot be used for orderer bootstrap.")
+	if config.Consortiums != nil {
+		logger.Info("Creating system channel genesis block")
+	} else {
+		if config.Application == nil {
+			return errors.New("refusing to generate application channel block which is missing application section")
+		}
+		logger.Info("Creating application channel genesis block")
 	}
 	genesisBlock := pgen.GenesisBlockForChannel(channelID)
 	logger.Info("Writing genesis block")
