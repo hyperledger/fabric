@@ -1686,10 +1686,10 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 
 		registrar.pendingRemoval["my-raft-channel"] = false
 		err = registrar.RemoveChannel("my-raft-channel")
-		require.Error(t, err)
-		require.Equal(t, types.ErrChannelRemovalFailure, err)
+		require.NoError(t, err)
 
-		require.Contains(t, registrar.ChannelList().Channels, types.ChannelInfoShort{Name: "my-raft-channel"})
+		require.Eventually(t, func() bool { return len(ledgerFactory.ChannelIDs()) == 0 }, time.Minute, time.Second)
+		require.NotContains(t, registrar.ChannelList().Channels, types.ChannelInfoShort{Name: "my-raft-channel"})
 	})
 
 	t.Run("remove channel fails", func(t *testing.T) {
