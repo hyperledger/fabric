@@ -218,18 +218,6 @@ type PeerLedger interface {
 	CancelSnapshotRequest(height uint64) error
 	// PendingSnapshotRequests returns a list of heights for the pending (or under processing) snapshot requests.
 	PendingSnapshotRequests() ([]uint64, error)
-	// ListSnapshots returns the information for available snapshots.
-	// It returns a list of strings representing the following JSON object:
-	// type snapshotSignableMetadata struct {
-	//    ChannelName        string            `json:"channel_name"`
-	//    ChannelHeight      uint64            `json:"channel_height"`
-	//    LastBlockHashInHex string            `json:"last_block_hash"`
-	//    FilesAndHashes     map[string]string `json:"snapshot_files_raw_hashes"`
-	// }
-	ListSnapshots() ([]string, error)
-	// DeleteSnapshot deletes the snapshot files except the metadata file.
-	// It returns an error if no such a snapshot exists.
-	DeleteSnapshot(height uint64) error
 }
 
 // SimpleQueryExecutor encapsulates basic functions
