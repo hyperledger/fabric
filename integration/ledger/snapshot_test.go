@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package ledger
 
 import (
+	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -19,13 +21,18 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric-protos-go/common"
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/integration/chaincode/kvexecutor"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/pvtdata/marblechaincodeutil"
 	"github.com/hyperledger/fabric/integration/runner"
+	ic "github.com/hyperledger/fabric/internal/peer/chaincode"
+	"github.com/hyperledger/fabric/internal/peer/common"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -121,8 +128,8 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 			helper.invokeMarblesChaincode(legacyChaincode.Name, org1peer0, "initMarble", "marble-0", "blue", "35", "tom")
 			helper.invokeMarblesChaincode(legacyChaincode.Name, org1peer0, "initMarble", "marble-1", "red", "100", "tom")
 
-			By("getting an txid from a block before snapshot is generated")
-			txidBeforeSnapshot := getTxIDFromLastBlock(setup.network, org1peer0)
+			By("getting an existing transaction from a block before snapshot is generated")
+			txenvBeforeSnapshot, txidBeforeSnapshot := getTxFromLastBlock(setup.network, org1peer0)
 
 			// verify snapshot commands with different parameters")
 			blockNum := nwo.GetLedgerHeight(setup.network, org1peer0, testchannelID) - 1
@@ -169,6 +176,9 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 			By("invoking marbles chaincode on bootstrapped peer org3peer0")
 			helper.invokeMarblesChaincode(legacyChaincode.Name, org3peer0, "transferMarble", testKey, "newowner3")
 
+			By("getting an existing transaction from a block after snapshot is generated")
+			txenvAfterSnapshot, txidAfterSnapshot := getTxFromLastBlock(setup.network, org1peer0)
+
 			By("verifying history on peer org3peer0")
 			expectedHistory = []*marbleHistoryResult{
 				{IsDelete: "false", Value: newMarble(testKey, "blue", 35, "newowner3")},
@@ -177,6 +187,14 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 			helper.assertGetHistoryForMarble(legacyChaincode.Name, org3peer0, expectedHistory, testKey)
 
 			verifyQSCC(setup.network, org3peer0, testchannelID, blockNum, txidBeforeSnapshot)
+
+			// verify DUPLICATE_TXID error when resubmitting old tx on a peer bootstrapped from snapshot (v1_4 capability)
+			By("resubmitting an old transaction committed before snapshot, expecting duplicated txid error")
+			err := commitTx(setup.network, setup.orderer, org3peer0, testchannelID, txenvBeforeSnapshot, txidBeforeSnapshot)
+			Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (DUPLICATE_TXID)"))
+			By("resubmitting an old transaction committed after snapshot, expecting duplicated txid error")
+			err = commitTx(setup.network, setup.orderer, org3peer0, testchannelID, txenvAfterSnapshot, txidAfterSnapshot)
+			Expect(err.Error()).To(Equal("transaction invalidated with status (DUPLICATE_TXID)"))
 
 			// test 4: upgrade legacy chaincode to new lifecycle
 			By("enabling V2_0 capabilities")
@@ -196,12 +214,16 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 
 			// invoke chaincode to trigger snapshot generation
 			// 1st call should be committed before snapshot generation, 2nd call should be committed after snapshot generation
-			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org1peer0, "transferMarble", testKey, "newowner_beforesnapshot")
-			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org1peer0, "transferMarble", testKey, "newowner_aftersnapshot")
+			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org2peer1, "transferMarble", testKey, "newowner_beforesnapshot")
+			helper.invokeMarblesChaincode(newlifecycleChaincode.Name, org2peer1, "transferMarble", testKey, "newowner_aftersnapshot")
 
 			By("verifying snapshot completed on org2peer1")
 			verifyNoPendingSnapshotRequest(setup.network, org2peer1, testchannelID)
 			nextSnapshotDir := filepath.Join(setup.network.PeerDir(org2peer1), "filesystem", "snapshots", "completed", testchannelID, strconv.Itoa(blockNumForNextSnapshot))
+
+			By("getting an existing transaction from a block after new snapshot is generated")
+			helper.invokeMarblesChaincode(legacyChaincode.Name, org2peer1, "initMarble", "marble-3", "red", "100", "tom")
+			txenvAfterSnapshot, txidAfterSnapshot = getTxFromLastBlock(setup.network, org1peer0)
 
 			// test 6: bootstrap a peer in a different org from the new snapshot
 			By("starting a peer (org1peer1) in existing org1 (couchdb)")
@@ -250,6 +272,14 @@ var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 			helper.assertGetHistoryForMarble(newlifecycleChaincode.Name, org4peer0, expectedHistory, testKey)
 
 			verifyQSCC(setup.network, org4peer0, testchannelID, blockNumForNextSnapshot, txidBeforeSnapshot)
+
+			// verify DUPLICATE_TXID error when resubmitting old tx on a peer bootstrapped from snapshot (v_20 capability)
+			By("resubmitting an old transaction committed before snapshot, expecting duplicated txid error")
+			err = commitTx(setup.network, setup.orderer, org4peer0, testchannelID, txenvBeforeSnapshot, txidBeforeSnapshot)
+			Expect(err.Error()).To(ContainSubstring("transaction invalidated with status (DUPLICATE_TXID)"))
+			By("resubmitting an old transaction committed after snapshot, expecting duplicated txid error")
+			err = commitTx(setup.network, setup.orderer, org4peer0, testchannelID, txenvAfterSnapshot, txidAfterSnapshot)
+			Expect(err.Error()).To(Equal("transaction invalidated with status (DUPLICATE_TXID)"))
 
 			// test 8: verify cscc works correctly to get an orderer endpoint from the channel config
 			// even if the peer does not have a channel config block when bootstrapped from snapshot
@@ -792,7 +822,7 @@ func joinBySnapshot(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
-	var bcInfo = common.BlockchainInfo{}
+	var bcInfo = cb.BlockchainInfo{}
 	err = json.Unmarshal([]byte(channelInfoStr), &bcInfo)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(bcInfo.Height).To(Equal(uint64(channelHeight)))
@@ -814,7 +844,7 @@ func verifyQSCC(n *nwo.Network, peer *nwo.Peer, channelID string, lastBlockInSna
 		txidBeforeSnapshot, txidBeforeSnapshot, lastBlockInSnapshot+1)))
 
 	By("verifying qscc GetBlockByTxID succeeds for a txid after snapshot on peer " + peerID)
-	newTxid := getTxIDFromLastBlock(n, peer)
+	_, newTxid := getTxFromLastBlock(n, peer)
 	callQSCC(n, peer, "qscc", "GetBlockByTxID", 0, channelID, newTxid)
 
 	By("verifying qscc GetTransactionByID returns an error for a txid before snapshot on peer " + peerID)
@@ -836,9 +866,9 @@ func installAndApproveChaincode(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.
 	nwo.EnsureChaincodeCommitted(n, channelID, chaincode.Name, chaincode.Version, chaincode.Sequence, checkOrgs, peer)
 }
 
-// getTxIDFromLastBlock gets a transaction id from the latest block that has been
+// getTxFromLastBlock gets a transaction id from the latest block that has been
 // marshaled and stored on the filesystem
-func getTxIDFromLastBlock(n *nwo.Network, peer *nwo.Peer) string {
+func getTxFromLastBlock(n *nwo.Network, peer *nwo.Peer) (*cb.Envelope, string) {
 	blockfile := filepath.Join(n.RootDir, "newest_block.pb")
 	fetchNewest := commands.ChannelFetch{
 		ChannelID:  "testchannel",
@@ -851,10 +881,12 @@ func getTxIDFromLastBlock(n *nwo.Network, peer *nwo.Peer) string {
 	Expect(sess.Err).To(gbytes.Say("Received block: "))
 
 	block := nwo.UnmarshalBlockFromFile(blockfile)
+	txEnvelope, err := protoutil.UnmarshalEnvelope(block.Data.Data[0])
+	Expect(err).NotTo(HaveOccurred())
 	txID, err := protoutil.GetOrComputeTxIDFromEnvelope(block.Data.Data[0])
 	Expect(err).NotTo(HaveOccurred())
 
-	return txID
+	return txEnvelope, txID
 }
 
 func invokeAndQueryKVExecutorChaincode(n *nwo.Network, orderer *nwo.Orderer, channelID string, chaincode nwo.Chaincode, kvdata []kvexecutor.KVData, peers ...*nwo.Peer) {
@@ -1004,4 +1036,69 @@ func invokeWithoutPassingOrdererEndPoint(n *nwo.Network, peer *nwo.Peer, channel
 	}
 	invokeChaincode(n, peer, command)
 	nwo.WaitUntilEqualLedgerHeight(n, channelID, nwo.GetLedgerHeight(n, peer, channelID), n.PeersWithChannel(channelID)...)
+}
+
+// commitTx commits a transaction for a given transaction envelope
+func commitTx(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID string, env *cb.Envelope, txid string) error {
+	var cancelFunc context.CancelFunc
+	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelFunc()
+
+	// get signing identity
+	By("getting the signer for user1 on peer " + peer.ID())
+	conf := signer.Config{
+		MSPID:        n.Organization(peer.Organization).MSPID,
+		IdentityPath: n.PeerUserCert(peer, "User1"),
+		KeyPath:      n.PeerUserKey(peer, "User1"),
+	}
+	signer, err := signer.NewSigner(conf)
+	Expect(err).NotTo(HaveOccurred())
+
+	// create deliver client and delivergroup
+	peerClient := &common.PeerClient{
+		CommonClient: common.CommonClient{
+			GRPCClient: grpcClient(filepath.Join(n.PeerLocalTLSDir(peer), "ca.crt")),
+			Address:    n.PeerAddress(peer, nwo.ListenPort),
+		},
+	}
+	deliverClient, err := peerClient.PeerDeliver()
+	Expect(err).NotTo(HaveOccurred())
+	dg := ic.NewDeliverGroup([]pb.DeliverClient{deliverClient}, []string{n.PeerAddress(peer, nwo.ListenPort)}, signer, tls.Certificate{}, channelID, txid)
+	err = dg.Connect(ctx)
+	Expect(err).NotTo(HaveOccurred())
+
+	// create orderer client and broadcast client
+	By("creating orderer client to send transaction to the orderer" + peer.ID())
+	ordererClient := &common.OrdererClient{
+		CommonClient: common.CommonClient{
+			GRPCClient: grpcClient(filepath.Join(n.OrdererLocalTLSDir(orderer), "ca.crt")),
+			Address:    n.OrdererAddress(orderer, nwo.ListenPort),
+		},
+	}
+	bc, err := ordererClient.Broadcast()
+	Expect(err).NotTo(HaveOccurred())
+	broadcastClient := &common.BroadcastGRPCClient{Client: bc}
+	err = broadcastClient.Send(env)
+	Expect(err).NotTo(HaveOccurred())
+
+	// wait for deliver event
+	By("waiting for deliver event on peer " + peer.ID())
+	return dg.Wait(ctx)
+}
+
+func grpcClient(tlsRootCertFile string) *comm.GRPCClient {
+	caPEM, res := ioutil.ReadFile(tlsRootCertFile)
+	Expect(res).To(BeNil())
+
+	gClient, err := comm.NewGRPCClient(comm.ClientConfig{
+		Timeout: 3 * time.Second,
+		KaOpts:  comm.DefaultKeepaliveOptions,
+		SecOpts: comm.SecureOptions{
+			UseTLS:        true,
+			ServerRootCAs: [][]byte{caPEM},
+		},
+	})
+	Expect(err).NotTo(HaveOccurred())
+
+	return gClient
 }
