@@ -44,7 +44,7 @@ func (c *Chain) Halt() {
 
 }
 
-// StatusReport returns the ClusterRelation & Status
-func (c *Chain) StatusReport() (types.ClusterRelation, types.Status) {
-	return types.ClusterRelationConfigTracker, types.StatusInactive
+// StatusReport returns the ConsensusRelation & Status
+func (c *Chain) StatusReport() (types.ConsensusRelation, types.Status) {
+	return types.ConsensusRelationConfigTracker, types.StatusInactive
 }

@@ -104,7 +104,7 @@ func TestNewOnboardingChainSupport(t *testing.T) {
 	require.False(t, open)
 
 	cRel, status := cs.StatusReport()
-	require.Equal(t, types.ClusterRelationConsenter, cRel)
+	require.Equal(t, types.ConsensusRelationConsenter, cRel)
 	require.Equal(t, types.StatusInactive, status)
 
 	require.Equal(t, uint64(7), cs.Height(), "ledger ReadWriter is initialized")

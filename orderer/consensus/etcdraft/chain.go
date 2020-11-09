@@ -198,7 +198,7 @@ type Chain struct {
 	haltCallback func()
 
 	statusReportMutex sync.Mutex
-	clusterRelation   types.ClusterRelation
+	consensusRelation types.ConsensusRelation
 	status            types.Status
 
 	// BCCSP instance
@@ -251,31 +251,31 @@ func NewChain(
 	}
 
 	c := &Chain{
-		configurator:     conf,
-		rpc:              rpc,
-		channelID:        support.ChannelID(),
-		raftID:           opts.RaftID,
-		submitC:          make(chan *submit),
-		applyC:           make(chan apply),
-		haltC:            make(chan struct{}),
-		doneC:            make(chan struct{}),
-		startC:           make(chan struct{}),
-		snapC:            make(chan *raftpb.Snapshot),
-		errorC:           make(chan struct{}),
-		gcC:              make(chan *gc),
-		observeC:         observeC,
-		support:          support,
-		fresh:            fresh,
-		appliedIndex:     opts.BlockMetadata.RaftIndex,
-		lastBlock:        b,
-		sizeLimit:        sizeLimit,
-		lastSnapBlockNum: snapBlkNum,
-		confState:        cc,
-		createPuller:     f,
-		clock:            opts.Clock,
-		haltCallback:     haltCallback,
-		clusterRelation:  types.ClusterRelationConsenter,
-		status:           types.StatusActive,
+		configurator:      conf,
+		rpc:               rpc,
+		channelID:         support.ChannelID(),
+		raftID:            opts.RaftID,
+		submitC:           make(chan *submit),
+		applyC:            make(chan apply),
+		haltC:             make(chan struct{}),
+		doneC:             make(chan struct{}),
+		startC:            make(chan struct{}),
+		snapC:             make(chan *raftpb.Snapshot),
+		errorC:            make(chan struct{}),
+		gcC:               make(chan *gc),
+		observeC:          observeC,
+		support:           support,
+		fresh:             fresh,
+		appliedIndex:      opts.BlockMetadata.RaftIndex,
+		lastBlock:         b,
+		sizeLimit:         sizeLimit,
+		lastSnapBlockNum:  snapBlkNum,
+		confState:         cc,
+		createPuller:      f,
+		clock:             opts.Clock,
+		haltCallback:      haltCallback,
+		consensusRelation: types.ConsensusRelationConsenter,
+		status:            types.StatusActive,
 		Metrics: &Metrics{
 			ClusterSize:             opts.Metrics.ClusterSize.With("channel", support.ChannelID()),
 			IsLeader:                opts.Metrics.IsLeader.With("channel", support.ChannelID()),
@@ -463,10 +463,10 @@ func (c *Chain) halt() {
 		defer c.statusReportMutex.Unlock()
 
 		// If the haltCallback registers the chain in to the inactive chain registry (i.e., system channel exists) then
-		// this is the correct clusterRelation. If the haltCallback transfers responsibility to a follower.Chain, then
+		// this is the correct consensusRelation. If the haltCallback transfers responsibility to a follower.Chain, then
 		// this chain is about to be GC anyway. The new follower.Chain replacing this one will report the correct
 		// StatusReport.
-		c.clusterRelation = types.ClusterRelationConfigTracker
+		c.consensusRelation = types.ConsensusRelationConfigTracker
 	}
 }
 
@@ -1395,12 +1395,12 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 	return nil
 }
 
-// StatusReport returns the ClusterRelation & Status
-func (c *Chain) StatusReport() (types.ClusterRelation, types.Status) {
+// StatusReport returns the ConsensusRelation & Status
+func (c *Chain) StatusReport() (types.ConsensusRelation, types.Status) {
 	c.statusReportMutex.Lock()
 	defer c.statusReportMutex.Unlock()
 
-	return c.clusterRelation, c.status
+	return c.consensusRelation, c.status
 }
 
 func (c *Chain) suspectEviction() bool {

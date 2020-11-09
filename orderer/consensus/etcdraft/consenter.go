@@ -53,7 +53,7 @@ type ChainManager interface {
 	GetConsensusChain(channelID string) consensus.Chain
 	CreateChain(channelID string)
 	SwitchChainToFollower(channelID string)
-	ReportRelationAndStatusMetrics(channelID string, relation types.ClusterRelation, status types.Status)
+	ReportConsensusRelationAndStatusMetrics(channelID string, relation types.ConsensusRelation, status types.Status)
 }
 
 // Config contains etcdraft configurations
@@ -167,7 +167,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 			c.InactiveChainRegistry.TrackChain(support.ChannelID(), support.Block(0), func() {
 				c.ChainManager.CreateChain(support.ChannelID())
 			})
-			c.ChainManager.ReportRelationAndStatusMetrics(support.ChannelID(), types.ClusterRelationConfigTracker, types.StatusInactive)
+			c.ChainManager.ReportConsensusRelationAndStatusMetrics(support.ChannelID(), types.ConsensusRelationConfigTracker, types.StatusInactive)
 			return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
 		}
 
@@ -238,7 +238,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		c.Logger.Info("With system channel: after eviction InactiveChainRegistry.TrackChain will be called")
 		haltCallback = func() {
 			c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.ChainManager.CreateChain(support.ChannelID()) })
-			c.ChainManager.ReportRelationAndStatusMetrics(support.ChannelID(), types.ClusterRelationConfigTracker, types.StatusInactive)
+			c.ChainManager.ReportConsensusRelationAndStatusMetrics(support.ChannelID(), types.ConsensusRelationConfigTracker, types.StatusInactive)
 		}
 	} else {
 		// when we do NOT have a system channel, we switch to a follower.Chain upon eviction.

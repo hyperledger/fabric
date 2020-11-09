@@ -9,55 +9,55 @@ import (
 )
 
 type ChannelParticipationMetricsReporter struct {
-	ReportRelationAndStatusMetricsStub        func(string, types.ClusterRelation, types.Status)
-	reportRelationAndStatusMetricsMutex       sync.RWMutex
-	reportRelationAndStatusMetricsArgsForCall []struct {
+	ReportConsensusRelationAndStatusMetricsStub        func(string, types.ConsensusRelation, types.Status)
+	reportConsensusRelationAndStatusMetricsMutex       sync.RWMutex
+	reportConsensusRelationAndStatusMetricsArgsForCall []struct {
 		arg1 string
-		arg2 types.ClusterRelation
+		arg2 types.ConsensusRelation
 		arg3 types.Status
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *ChannelParticipationMetricsReporter) ReportRelationAndStatusMetrics(arg1 string, arg2 types.ClusterRelation, arg3 types.Status) {
-	fake.reportRelationAndStatusMetricsMutex.Lock()
-	fake.reportRelationAndStatusMetricsArgsForCall = append(fake.reportRelationAndStatusMetricsArgsForCall, struct {
+func (fake *ChannelParticipationMetricsReporter) ReportConsensusRelationAndStatusMetrics(arg1 string, arg2 types.ConsensusRelation, arg3 types.Status) {
+	fake.reportConsensusRelationAndStatusMetricsMutex.Lock()
+	fake.reportConsensusRelationAndStatusMetricsArgsForCall = append(fake.reportConsensusRelationAndStatusMetricsArgsForCall, struct {
 		arg1 string
-		arg2 types.ClusterRelation
+		arg2 types.ConsensusRelation
 		arg3 types.Status
 	}{arg1, arg2, arg3})
-	fake.recordInvocation("ReportRelationAndStatusMetrics", []interface{}{arg1, arg2, arg3})
-	fake.reportRelationAndStatusMetricsMutex.Unlock()
-	if fake.ReportRelationAndStatusMetricsStub != nil {
-		fake.ReportRelationAndStatusMetricsStub(arg1, arg2, arg3)
+	fake.recordInvocation("ReportConsensusRelationAndStatusMetrics", []interface{}{arg1, arg2, arg3})
+	fake.reportConsensusRelationAndStatusMetricsMutex.Unlock()
+	if fake.ReportConsensusRelationAndStatusMetricsStub != nil {
+		fake.ReportConsensusRelationAndStatusMetricsStub(arg1, arg2, arg3)
 	}
 }
 
-func (fake *ChannelParticipationMetricsReporter) ReportRelationAndStatusMetricsCallCount() int {
-	fake.reportRelationAndStatusMetricsMutex.RLock()
-	defer fake.reportRelationAndStatusMetricsMutex.RUnlock()
-	return len(fake.reportRelationAndStatusMetricsArgsForCall)
+func (fake *ChannelParticipationMetricsReporter) ReportConsensusRelationAndStatusMetricsCallCount() int {
+	fake.reportConsensusRelationAndStatusMetricsMutex.RLock()
+	defer fake.reportConsensusRelationAndStatusMetricsMutex.RUnlock()
+	return len(fake.reportConsensusRelationAndStatusMetricsArgsForCall)
 }
 
-func (fake *ChannelParticipationMetricsReporter) ReportRelationAndStatusMetricsCalls(stub func(string, types.ClusterRelation, types.Status)) {
-	fake.reportRelationAndStatusMetricsMutex.Lock()
-	defer fake.reportRelationAndStatusMetricsMutex.Unlock()
-	fake.ReportRelationAndStatusMetricsStub = stub
+func (fake *ChannelParticipationMetricsReporter) ReportConsensusRelationAndStatusMetricsCalls(stub func(string, types.ConsensusRelation, types.Status)) {
+	fake.reportConsensusRelationAndStatusMetricsMutex.Lock()
+	defer fake.reportConsensusRelationAndStatusMetricsMutex.Unlock()
+	fake.ReportConsensusRelationAndStatusMetricsStub = stub
 }
 
-func (fake *ChannelParticipationMetricsReporter) ReportRelationAndStatusMetricsArgsForCall(i int) (string, types.ClusterRelation, types.Status) {
-	fake.reportRelationAndStatusMetricsMutex.RLock()
-	defer fake.reportRelationAndStatusMetricsMutex.RUnlock()
-	argsForCall := fake.reportRelationAndStatusMetricsArgsForCall[i]
+func (fake *ChannelParticipationMetricsReporter) ReportConsensusRelationAndStatusMetricsArgsForCall(i int) (string, types.ConsensusRelation, types.Status) {
+	fake.reportConsensusRelationAndStatusMetricsMutex.RLock()
+	defer fake.reportConsensusRelationAndStatusMetricsMutex.RUnlock()
+	argsForCall := fake.reportConsensusRelationAndStatusMetricsArgsForCall[i]
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *ChannelParticipationMetricsReporter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
-	fake.reportRelationAndStatusMetricsMutex.RLock()
-	defer fake.reportRelationAndStatusMetricsMutex.RUnlock()
+	fake.reportConsensusRelationAndStatusMetricsMutex.RLock()
+	defer fake.reportConsensusRelationAndStatusMetricsMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

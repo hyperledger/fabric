@@ -21,11 +21,11 @@ var (
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}
 
-	relationOpts = metrics.GaugeOpts{
+	consensusRelationOpts = metrics.GaugeOpts{
 		Namespace:    "participation",
 		Subsystem:    "",
-		Name:         "cluster_relation",
-		Help:         "The channel participation cluster relation of the node: 0 if none, 1 if consenter, 2 if follower, 3 if config-tracker.",
+		Name:         "consensus_relation",
+		Help:         "The channel participation consensus relation of the node: 0 if other, 1 if consenter, 2 if follower, 3 if config-tracker.",
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}
@@ -33,8 +33,8 @@ var (
 
 // Metrics defines the metrics for the cluster.
 type Metrics struct {
-	Status   metrics.Gauge
-	Relation metrics.Gauge
+	Status            metrics.Gauge
+	ConsensusRelation metrics.Gauge
 }
 
 // A MetricsProvider is an abstraction for a metrics provider. It is a factory for
@@ -50,11 +50,11 @@ type MetricsProvider interface {
 
 //go:generate mockery -dir . -name MetricsProvider -case underscore -output ./mocks/
 
-// NewMetrics initializes new metrics for the cluster infrastructure.
+// NewMetrics initializes new metrics for the channel participation API.
 func NewMetrics(m MetricsProvider) *Metrics {
 	return &Metrics{
-		Status:   m.NewGauge(statusOpts),
-		Relation: m.NewGauge(relationOpts),
+		Status:            m.NewGauge(statusOpts),
+		ConsensusRelation: m.NewGauge(consensusRelationOpts),
 	}
 }
 
@@ -73,20 +73,20 @@ func (m *Metrics) reportStatus(channel string, status types.Status) {
 	m.Status.With("channel", channel).Set(float64(s))
 }
 
-func (m *Metrics) reportRelation(channel string, relation types.ClusterRelation) {
+func (m *Metrics) reportConsensusRelation(channel string, relation types.ConsensusRelation) {
 	var r int
 	switch relation {
-	case types.ClusterRelationNone:
+	case types.ConsensusRelationOther:
 		r = 0
-	case types.ClusterRelationConsenter:
+	case types.ConsensusRelationConsenter:
 		r = 1
-	case types.ClusterRelationFollower:
+	case types.ConsensusRelationFollower:
 		r = 2
-	case types.ClusterRelationConfigTracker:
+	case types.ConsensusRelationConfigTracker:
 		r = 3
 	default:
 		logger.Panicf("Programming error: unexpected relation %s", relation)
 
 	}
-	m.Relation.With("channel", channel).Set(float64(r))
+	m.ConsensusRelation.With("channel", channel).Set(float64(r))
 }
