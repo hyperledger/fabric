@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 set -euo pipefail
+set -x
 
 make "release/${TARGET}"
 mkdir "release/${TARGET}/config"

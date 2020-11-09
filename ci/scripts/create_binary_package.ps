@@ -1,0 +1,7 @@
+@echo off
+
+make "release\%TARGET%"
+mkdir "release\%TARGET%\config"
+mv sampleconfig\*yaml "release\%TARGET%\config"
+cd "release\%TARGET%"
+tar -czvf "hyperledger-fabric-%TARGET%-%RELEASE%%CD%tar.gz" bin config
