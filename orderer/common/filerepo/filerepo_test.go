@@ -18,7 +18,7 @@ import (
 
 func TestNewFileRepo(t *testing.T) {
 	// Write a temporary file
-	tempFilePath := filepath.Join("testdata", "joinblock", "mychannel.joinblock~")
+	tempFilePath := filepath.Join("testdata", "join", "mychannel.join~")
 	tempFile, err := os.Create(tempFilePath)
 	require.NoError(t, err)
 	defer func() {
@@ -30,7 +30,7 @@ func TestNewFileRepo(t *testing.T) {
 	_, err = os.Stat(tempFilePath)
 	require.NoError(t, err)
 
-	_, err = filerepo.New("testdata", "joinblock")
+	_, err = filerepo.New("testdata", "join")
 	require.NoError(t, err)
 
 	// Check tempfile was cleared out upon creating a new file repo
@@ -84,10 +84,10 @@ func TestFileRepo_Save(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
-			r, err := filerepo.New("testdata", "joinblock")
+			r, err := filerepo.New("testdata", "join")
 			require.NoError(t, err)
 
-			filePath := filepath.Join("testdata", "joinblock", "newchannel.joinblock")
+			filePath := filepath.Join("testdata", "join", "newchannel.join")
 
 			err = r.Save("newchannel", tt.content)
 			defer os.Remove(filePath)
@@ -109,7 +109,7 @@ func TestFileRepo_Save(t *testing.T) {
 }
 
 func TestFileRepo_SaveFailure(t *testing.T) {
-	r, err := filerepo.New("testdata", "joinblock")
+	r, err := filerepo.New("testdata", "join")
 	require.NoError(t, err)
 
 	err = r.Save("mychannel", []byte{})
@@ -118,7 +118,7 @@ func TestFileRepo_SaveFailure(t *testing.T) {
 
 func TestFileRepo_Remove(t *testing.T) {
 	// Write a temporary file
-	tempFilePath := filepath.Join("testdata", "joinblock", "channel2.joinblock")
+	tempFilePath := filepath.Join("testdata", "join", "channel2.join")
 	tempFile, err := os.Create(tempFilePath)
 	require.NoError(t, err)
 	defer func() {
@@ -126,7 +126,7 @@ func TestFileRepo_Remove(t *testing.T) {
 		os.Remove(tempFilePath)
 	}()
 
-	r, err := filerepo.New("testdata", "joinblock")
+	r, err := filerepo.New("testdata", "join")
 	require.NoError(t, err)
 
 	err = r.Remove("channel2")
@@ -137,7 +137,7 @@ func TestFileRepo_Remove(t *testing.T) {
 
 func TestFileRepo_Read(t *testing.T) {
 	t.Run("Successful read, non-empty bytes", func(t *testing.T) {
-		r, err := filerepo.New("testdata", "joinblock")
+		r, err := filerepo.New("testdata", "join")
 		require.NoError(t, err)
 
 		bytes, err := r.Read("mychannel")
@@ -155,28 +155,28 @@ func TestFileRepo_Read(t *testing.T) {
 	})
 
 	t.Run("Failed read, invalid file", func(t *testing.T) {
-		r, err := filerepo.New("testdata", "joinblock")
+		r, err := filerepo.New("testdata", "join")
 		require.NoError(t, err)
 
 		_, err = r.Read("invalidfile")
-		require.EqualError(t, err, "open testdata/joinblock/invalidfile.joinblock: no such file or directory")
+		require.EqualError(t, err, "open testdata/join/invalidfile.join: no such file or directory")
 	})
 }
 
 func TestFileRepo_List(t *testing.T) {
-	r, err := filerepo.New("testdata", "joinblock")
+	r, err := filerepo.New("testdata", "join")
 	require.NoError(t, err)
 
 	files, err := r.List()
 	require.NoError(t, err)
-	require.Equal(t, []string{"mychannel.joinblock"}, files)
+	require.Equal(t, []string{"mychannel.join"}, files)
 }
 
 func TestFileRepo_FileToBaseName(t *testing.T) {
-	r, err := filerepo.New("testdata", "joinblock")
+	r, err := filerepo.New("testdata", "join")
 	require.NoError(t, err)
 
-	filePath := filepath.Join("testdata", "joinblock", "mychannel.joinblock")
+	filePath := filepath.Join("testdata", "join", "mychannel.join")
 	channelName := r.FileToBaseName(filePath)
 	require.Equal(t, "mychannel", channelName)
 }
