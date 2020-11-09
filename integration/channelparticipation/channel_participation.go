@@ -89,7 +89,6 @@ func getBody(client *http.Client, url string) func() string {
 	return func() string {
 		resp, err := client.Get(url)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 		bodyBytes, err := ioutil.ReadAll(resp.Body)
 		Expect(err).NotTo(HaveOccurred())
 		resp.Body.Close()
