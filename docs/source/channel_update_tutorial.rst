@@ -459,7 +459,10 @@ as the Org3 Admin:
   export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp
   export CORE_PEER_ADDRESS=peer0.org3.example.com:11051
 
-Now let's send a call to the ordering service asking for the genesis block of
+Org3 peers can join ``mychannel`` by either the genesis block or a snapshot that is created
+after Org3 has joined the channel.
+
+To join by the genesis block, send a call to the ordering service asking for the genesis block of
 ``mychannel``. As a result of the successful channel update, the ordering service
 will verify that Org3 can pull the genesis block and join the channel. If Org3 had not
 been successfully appended to the channel config, the ordering service would
@@ -489,6 +492,15 @@ peer to the channel:
 
   peer channel join -b mychannel.block
 
+To join by a snapshot, follow the instruction in `Taking a snapshot <peer_ledger_snapshot.html#taking-a-snapshot>`__
+to take a snapshot on an existing peer. The snapshot should be taken after Org3 has been added to ``mychannel``
+to ensure that the snapshot contains the updated channel configuration including Org3.
+Locate the snapshot directory, copy it to the filesystem of the new Org3 peer, and issue the
+``peer channel joinbysnapshot`` command using the path to the snapshot on your file system.
+
+.. code:: bash
+
+  peer channel joinbysnapshot --snapshotpath <path to snapshot>
 
 Configuring Leader Election
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -138,7 +138,7 @@ Note that the file types explained here is a superset of all of the files that m
 When joining a channel using the genesis block, a command similar to `peer channel join --blockpath mychannel.block` is issued. When joining the peer to the channel using a snapshot, issue a command similar to:
 
 ```
-peer channel joinbysnapshot --snapshotPath <path to snapshot>
+peer channel joinbysnapshot --snapshotpath <path to snapshot>
 ```
 
 To verify that the peer has joined the channel successfully, issue a command similar to:
@@ -153,9 +153,9 @@ Additionally, if the peer has not already installed a chaincode being used on th
 
 If you want to try out the ledger snapshotting process, you'll first need a network with a running channel. If you don't have a network, deploy the [test network](./test_network.html). This will create a network with two orgs, which both have a single peer, and an application channel.
 
-Next, follow the [Adding an Org to a Channel](./channel_update_tutorial.html) to add a new org to your network and application channel. When you reach the section where you are asked to [Join Org3 to the Channel](./channel_update_tutorial.html#join-org3-to-the-channel), select the peer you want to use to take the snapshot and follow the instructions above to take the snapshot. Then locate the snapshot on the your peer and copy it somewhere else on your filesystem. Taking the snapshot at this step ensures that the new peer joins the channel using a snapshot taken after a point when its organization has already been joined to the channel.
+Next, follow the [Adding an Org to a Channel](./channel_update_tutorial.html) to add a new org to your network and application channel. When you reach the section where you are asked to [Join Org3 to the Channel](./channel_update_tutorial.html#join-org3-to-the-channel), select the peer you want to use to take the snapshot and follow the instructions above to take the snapshot. Then locate the snapshot on the peer and copy it somewhere else on your filesystem. Taking the snapshot at this step ensures that the new peer joins the channel using a snapshot taken after a point when its organization has already been joined to the channel.
 
-After you have taken the snapshot and copied it, instead of issuing the `peer channel join -b mychannel.block` command, substitute `peer channel joinbysnapshot --snapshotPath <path to snapshot>` using the path to the snapshot on your filesystem.
+After you have taken the snapshot and copied it, instead of issuing the `peer channel join -b mychannel.block` command, substitute `peer channel joinbysnapshot --snapshotpath <path to snapshot>` using the path to the snapshot on your filesystem.
 
 ## Troubleshooting
 
