@@ -284,7 +284,7 @@ var _ = Describe("Instance", func() {
 			Expect(instance.Session).NotTo(BeNil())
 
 			errCh := make(chan error)
-			go func() { errCh <- instance.Session.Wait() }()
+			go func(sess *externalbuilder.Session) { errCh <- sess.Wait() }(instance.Session)
 			Eventually(errCh).Should(Receive(BeNil()))
 		})
 	})
@@ -298,7 +298,7 @@ var _ = Describe("Instance", func() {
 			instance.TermTimeout = time.Minute
 
 			errCh := make(chan error)
-			go func() { errCh <- instance.Session.Wait() }()
+			go func() { errCh <- sess.Wait() }()
 			Consistently(errCh).ShouldNot(Receive())
 
 			err = instance.Stop()
@@ -316,7 +316,7 @@ var _ = Describe("Instance", func() {
 				instance.TermTimeout = time.Second
 
 				errCh := make(chan error)
-				go func() { errCh <- instance.Session.Wait() }()
+				go func() { errCh <- sess.Wait() }()
 				Consistently(errCh).ShouldNot(Receive())
 
 				err = instance.Stop()
