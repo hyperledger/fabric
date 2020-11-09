@@ -12,31 +12,16 @@ variables:
   GOPATH: $(Agent.BuildDirectory)/go
   PATH: $(Agent.BuildDirectory)/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
   GOVER: 1.14.4
+  PKCS11_LIB: /usr/local/Cellar/softhsm/2.6.1/lib/softhsm/libsofthsm2.so
+  PKCS11_PIN: 98765432
+  PKCS11_LABEL: ForFabric
 
 stages:
-  - stage: VerifyBuild
-    dependsOn: []
-    jobs:
-      - job: Checks
-        pool:
-          vmImage: ubuntu-18.04
-        steps:
-          - template: install_deps.yml
-          - checkout: self
-            path: 'fabric'
-            displayName: Checkout Fabric Code
-          - script: make basic-checks native
-            displayName: Run Basic Checks
-          - script: ./ci/scripts/evaluate_commits.sh
-            name: SetJobTriggers
-
   - stage: UnitTests
-    dependsOn: VerifyBuild
     jobs:
       - job: UnitTests
-        condition: eq(stageDependencies.VerifyBuild.Checks.outputs['SetJobTriggers.runTests'], 'true')
         pool:
-          vmImage: ubuntu-18.04
+          vmImage: macOS-10.14
         steps:
           - template: install_deps.yml
           - checkout: self
@@ -44,25 +29,5 @@ stages:
             displayName: Checkout Fabric Code
           - script: ./ci/scripts/setup_hsm.sh
             displayName: Install SoftHSM
-          - script: make unit-test
+          - script: cd bccsp && go test -tags pkcs11 ./...
             displayName: Run Unit Tests
-
-  - stage: IntegrationTests
-    dependsOn: VerifyBuild
-    jobs:
-      - job: IntegrationTests
-        condition: eq(stageDependencies.VerifyBuild.Checks.outputs['SetJobTriggers.runTests'], 'true')
-        pool:
-          vmImage: ubuntu-18.04
-        strategy:
-          parallel: 5
-        timeoutInMinutes: 90
-        steps:
-          - template: install_deps.yml
-          - checkout: self
-            path: 'fabric'
-            displayName: Checkout Fabric Code
-          - script: ./ci/scripts/setup_hsm.sh
-            displayName: Install SoftHSM
-          - script: make integration-test
-            displayName: Run Integration Tests
