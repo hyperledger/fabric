@@ -216,7 +216,7 @@ var _ = Describe("Chain", func() {
 
 			chain.Start()
 			cRel, status := chain.StatusReport()
-			Expect(cRel).To(Equal(orderer_types.ClusterRelationConsenter))
+			Expect(cRel).To(Equal(orderer_types.ConsensusRelationConsenter))
 			Expect(status).To(Equal(orderer_types.StatusActive))
 
 			// When the Raft node bootstraps, it produces a ConfChange
@@ -1450,11 +1450,11 @@ var _ = Describe("Chain", func() {
 			Eventually(fakeHaltCallbacker.HaltCallbackCallCount).Should(Equal(1))
 			By("Asserting the StatusReport responds correctly after eviction")
 			Eventually(
-				func() orderer_types.ClusterRelation {
+				func() orderer_types.ConsensusRelation {
 					cRel, _ := c1.StatusReport()
 					return cRel
 				},
-			).Should(Equal(orderer_types.ClusterRelationConfigTracker))
+			).Should(Equal(orderer_types.ConsensusRelationConfigTracker))
 			_, status := c1.StatusReport()
 			Expect(status).To(Equal(orderer_types.StatusInactive))
 
@@ -1501,7 +1501,7 @@ var _ = Describe("Chain", func() {
 				},
 			).Should(Equal(orderer_types.StatusInactive))
 			cRel, _ := c1.StatusReport()
-			Expect(cRel).To(Equal(orderer_types.ClusterRelationConsenter))
+			Expect(cRel).To(Equal(orderer_types.ConsensusRelationConsenter))
 		})
 
 		It("can remove leader by reconfiguring cluster even if leadership transfer fails", func() {

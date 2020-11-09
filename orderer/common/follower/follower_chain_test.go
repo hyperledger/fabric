@@ -115,8 +115,8 @@ func TestFollowerNewChain(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, nil, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusOnBoarding, status)
 	})
 
@@ -127,8 +127,8 @@ func TestFollowerNewChain(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, nil, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusOnBoarding, status)
 
 		require.NotPanics(t, chain.Start)
@@ -155,8 +155,8 @@ func TestFollowerNewChain(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, nil, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.True(t, status == types.StatusActive)
 	})
 }
@@ -193,8 +193,8 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusOnBoarding, status)
 
 		require.NotPanics(t, chain.Start)
@@ -202,8 +202,8 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount())
@@ -223,14 +223,14 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusOnBoarding, status)
 
-		require.Equal(t, 1, mockChannelParticipationMetricsReporter.ReportRelationAndStatusMetricsCallCount())
-		channel, relation, status := mockChannelParticipationMetricsReporter.ReportRelationAndStatusMetricsArgsForCall(0)
+		require.Equal(t, 1, mockChannelParticipationMetricsReporter.ReportConsensusRelationAndStatusMetricsCallCount())
+		channel, relation, status := mockChannelParticipationMetricsReporter.ReportConsensusRelationAndStatusMetricsArgsForCall(0)
 		require.Equal(t, "my-channel", channel)
-		require.Equal(t, types.ClusterRelationConsenter, relation)
+		require.Equal(t, types.ConsensusRelationConsenter, relation)
 		require.Equal(t, types.StatusOnBoarding, status)
 
 		require.NotPanics(t, chain.Start)
@@ -238,8 +238,8 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount())
@@ -249,10 +249,10 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		}
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
 
-		require.Equal(t, 3, mockChannelParticipationMetricsReporter.ReportRelationAndStatusMetricsCallCount())
-		channel, relation, status = mockChannelParticipationMetricsReporter.ReportRelationAndStatusMetricsArgsForCall(2)
+		require.Equal(t, 3, mockChannelParticipationMetricsReporter.ReportConsensusRelationAndStatusMetricsCallCount())
+		channel, relation, status = mockChannelParticipationMetricsReporter.ReportConsensusRelationAndStatusMetricsArgsForCall(2)
 		require.Equal(t, "my-channel", channel)
-		require.Equal(t, types.ClusterRelationConsenter, relation)
+		require.Equal(t, types.ConsensusRelationConsenter, relation)
 		require.Equal(t, types.StatusActive, status)
 
 	})
@@ -266,8 +266,8 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.NotPanics(t, chain.Start)
@@ -275,8 +275,8 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 2, pullerFactory.BlockPullerCallCount())
@@ -305,8 +305,8 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusOnBoarding, status)
 
 		require.NotPanics(t, chain.Start)
@@ -314,8 +314,8 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount())
@@ -370,8 +370,8 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.NotPanics(t, chain.Start)
@@ -379,8 +379,8 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 1, pullerFactory.BlockPullerCallCount())
@@ -411,8 +411,8 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.NotPanics(t, chain.Start)
@@ -420,8 +420,8 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 1, pullerFactory.BlockPullerCallCount())
@@ -469,8 +469,8 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 
 		require.Equal(t, 0, timeAfterCount.AfterCallCount())
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.NotPanics(t, chain.Start)
@@ -478,8 +478,8 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 1, pullerFactory.BlockPullerCallCount())
@@ -516,8 +516,8 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.NotPanics(t, chain.Start)
@@ -525,8 +525,8 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 1, pullerFactory.BlockPullerCallCount(), "after finding a config, block puller is created")
@@ -590,8 +590,8 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.NotPanics(t, chain.Start)
@@ -599,8 +599,8 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 1, pullerFactory.BlockPullerCallCount(), "after finding a config, or error, block puller is created")
@@ -661,8 +661,8 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusOnBoarding, status)
 
 		require.NotPanics(t, chain.Start)
@@ -670,8 +670,8 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount())
@@ -702,8 +702,8 @@ func TestFollowerPullPastJoin(t *testing.T) {
 
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusOnBoarding, status)
 
 		require.NotPanics(t, chain.Start)
@@ -711,8 +711,8 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount())
@@ -749,8 +749,8 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusOnBoarding, status)
 
 		require.NotPanics(t, chain.Start)
@@ -758,8 +758,8 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount(), "after finding a config, block puller is created")
@@ -823,8 +823,8 @@ func TestFollowerPullPastJoin(t *testing.T) {
 
 		require.NoError(t, err)
 
-		cRel, status := chain.StatusReport()
-		require.Equal(t, types.ClusterRelationFollower, cRel)
+		consensusRelation, status := chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.Equal(t, types.StatusOnBoarding, status)
 
 		require.NotPanics(t, chain.Start)
@@ -832,8 +832,8 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		require.NotPanics(t, chain.Halt)
 		require.False(t, chain.IsRunning())
 
-		cRel, status = chain.StatusReport()
-		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		consensusRelation, status = chain.StatusReport()
+		require.Equal(t, types.ConsensusRelationConsenter, consensusRelation)
 		require.Equal(t, types.StatusActive, status)
 
 		require.Equal(t, 3, pullerFactory.BlockPullerCallCount(), "after finding a config, or error, block puller is created")

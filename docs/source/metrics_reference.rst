@@ -193,8 +193,8 @@ The following orderer metrics are exported for consumption by Prometheus.
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | logging_entries_written                      | counter   | Number of log entries that are written                     | level     |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
-| participation_cluster_relation               | gauge     | The channel participation cluster relation of the node: 0  | channel   |                                                                    |
-|                                              |           | if none, 1 if consenter, 2 if follower, 3 if               |           |                                                                    |
+| participation_consensus_relation             | gauge     | The channel participation consensus relation of the node:  | channel   |                                                                    |
+|                                              |           | 0 if other, 1 if consenter, 2 if follower, 3 if            |           |                                                                    |
 |                                              |           | config-tracker.                                            |           |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | participation_status                         | gauge     | The channel participation status of the node: 0 if         | channel   |                                                                    |
@@ -333,8 +333,8 @@ associated with the metric.
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | logging.entries_written.%{level}                                          | counter   | Number of log entries that are written                     |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
-| participation.cluster_relation.%{channel}                                 | gauge     | The channel participation cluster relation of the node: 0  |
-|                                                                           |           | if none, 1 if consenter, 2 if follower, 3 if               |
+| participation.consensus_relation.%{channel}                               | gauge     | The channel participation consensus relation of the node:  |
+|                                                                           |           | 0 if other, 1 if consenter, 2 if follower, 3 if            |
 |                                                                           |           | config-tracker.                                            |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | participation.status.%{channel}                                           | gauge     | The channel participation status of the node: 0 if         |

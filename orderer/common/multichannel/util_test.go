@@ -27,8 +27,8 @@ type mockChainCluster struct {
 	*mockChain
 }
 
-func (c *mockChainCluster) StatusReport() (types.ClusterRelation, types.Status) {
-	return types.ClusterRelationConsenter, types.StatusActive
+func (c *mockChainCluster) StatusReport() (types.ConsensusRelation, types.Status) {
+	return types.ConsensusRelationConsenter, types.StatusActive
 }
 
 type mockChain struct {

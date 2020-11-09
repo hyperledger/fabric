@@ -33,7 +33,7 @@ var _ = Describe("Metrics", func() {
 			Expect(metrics).NotTo(BeNil())
 			Expect(fakeProvider.NewGaugeCallCount()).To(Equal(2))
 
-			Expect(metrics.Relation).To(Equal(fakeGauge))
+			Expect(metrics.ConsensusRelation).To(Equal(fakeGauge))
 			Expect(metrics.Status).To(Equal(fakeGauge))
 		})
 	})
@@ -85,7 +85,7 @@ var _ = Describe("Metrics", func() {
 		})
 	})
 
-	Context("reportRelation", func() {
+	Context("reportConsensusRelation", func() {
 		var (
 			fakeProvider *metricsfakes.Provider
 			fakeGauge    *metricsfakes.Gauge
@@ -100,63 +100,63 @@ var _ = Describe("Metrics", func() {
 			fakeGauge.WithReturns(fakeGauge)
 
 			metrics = NewMetrics(fakeProvider)
-			Expect(metrics.Relation).To(Equal(fakeGauge))
+			Expect(metrics.ConsensusRelation).To(Equal(fakeGauge))
 		})
 
-		It("reports relation none as a gauge", func() {
-			metrics.reportRelation("fake-channel", types.ClusterRelationNone)
+		It("reports consensus relation other as a gauge", func() {
+			metrics.reportConsensusRelation("fake-channel", types.ConsensusRelationOther)
 			Expect(fakeGauge.WithCallCount()).To(Equal(1))
 			Expect(fakeGauge.WithArgsForCall(0)).To(Equal([]string{"channel", "fake-channel"}))
 			Expect(fakeGauge.SetCallCount()).To(Equal(1))
 			Expect(fakeGauge.SetArgsForCall(0)).To(Equal(float64(0)))
 		})
 
-		It("reports relation consenter as a gauge", func() {
-			metrics.reportRelation("fake-channel", types.ClusterRelationConsenter)
+		It("reports consensus relation consenter as a gauge", func() {
+			metrics.reportConsensusRelation("fake-channel", types.ConsensusRelationConsenter)
 			Expect(fakeGauge.WithCallCount()).To(Equal(1))
 			Expect(fakeGauge.WithArgsForCall(0)).To(Equal([]string{"channel", "fake-channel"}))
 			Expect(fakeGauge.SetCallCount()).To(Equal(1))
 			Expect(fakeGauge.SetArgsForCall(0)).To(Equal(float64(1)))
 		})
 
-		It("reports relation follower as a gauge", func() {
-			metrics.reportRelation("fake-channel", types.ClusterRelationFollower)
+		It("reports consensus relation follower as a gauge", func() {
+			metrics.reportConsensusRelation("fake-channel", types.ConsensusRelationFollower)
 			Expect(fakeGauge.WithCallCount()).To(Equal(1))
 			Expect(fakeGauge.WithArgsForCall(0)).To(Equal([]string{"channel", "fake-channel"}))
 			Expect(fakeGauge.SetCallCount()).To(Equal(1))
 			Expect(fakeGauge.SetArgsForCall(0)).To(Equal(float64(2)))
 		})
 
-		It("reports relation config-tracker as a gauge", func() {
-			metrics.reportRelation("fake-channel", types.ClusterRelationConfigTracker)
+		It("reports consensus relation config-tracker as a gauge", func() {
+			metrics.reportConsensusRelation("fake-channel", types.ConsensusRelationConfigTracker)
 			Expect(fakeGauge.WithCallCount()).To(Equal(1))
 			Expect(fakeGauge.WithArgsForCall(0)).To(Equal([]string{"channel", "fake-channel"}))
 			Expect(fakeGauge.SetCallCount()).To(Equal(1))
 			Expect(fakeGauge.SetArgsForCall(0)).To(Equal(float64(3)))
 		})
 
-		It("panics when reporting an unknown relation", func() {
-			Expect(func() { metrics.reportRelation("fake-channel", "unknown") }).To(Panic())
+		It("panics when reporting an unknown consensus relation", func() {
+			Expect(func() { metrics.reportConsensusRelation("fake-channel", "unknown") }).To(Panic())
 		})
 	})
 })
 
 func newFakeMetrics(fakeFields *fakeMetricsFields) *Metrics {
 	return &Metrics{
-		Relation: fakeFields.fakeRelation,
-		Status:   fakeFields.fakeStatus,
+		ConsensusRelation: fakeFields.fakeConsensusRelation,
+		Status:            fakeFields.fakeStatus,
 	}
 }
 
 type fakeMetricsFields struct {
-	fakeRelation *metricsfakes.Gauge
-	fakeStatus   *metricsfakes.Gauge
+	fakeConsensusRelation *metricsfakes.Gauge
+	fakeStatus            *metricsfakes.Gauge
 }
 
 func newFakeMetricsFields() *fakeMetricsFields {
 	return &fakeMetricsFields{
-		fakeRelation: newFakeGauge(),
-		fakeStatus:   newFakeGauge(),
+		fakeConsensusRelation: newFakeGauge(),
+		fakeStatus:            newFakeGauge(),
 	}
 }
 

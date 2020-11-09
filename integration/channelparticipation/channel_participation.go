@@ -102,11 +102,11 @@ func getBody(client *http.Client, url string) func() string {
 }
 
 type ChannelInfo struct {
-	Name            string `json:"name"`
-	URL             string `json:"url"`
-	Status          string `json:"status"`
-	ClusterRelation string `json:"clusterRelation"`
-	Height          uint64 `json:"height"`
+	Name              string `json:"name"`
+	URL               string `json:"url"`
+	Status            string `json:"status"`
+	ConsensusRelation string `json:"consensusRelation"`
+	Height            uint64 `json:"height"`
 }
 
 func ListOne(n *nwo.Network, o *nwo.Orderer, channel string) ChannelInfo {

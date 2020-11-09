@@ -18,15 +18,15 @@ import "github.com/hyperledger/fabric/orderer/common/types"
 type StatusReporter interface {
 	// StatusReport provides the cluster relation and status.
 	// See:  channelparticipation.ChannelInfo for more details.
-	StatusReport() (types.ClusterRelation, types.Status)
+	StatusReport() (types.ConsensusRelation, types.Status)
 }
 
 // StaticStatusReporter is intended for chains that do not implement the StatusReporter interface.
 type StaticStatusReporter struct {
-	ClusterRelation types.ClusterRelation
-	Status          types.Status
+	ConsensusRelation types.ConsensusRelation
+	Status            types.Status
 }
 
-func (s StaticStatusReporter) StatusReport() (types.ClusterRelation, types.Status) {
-	return s.ClusterRelation, s.Status
+func (s StaticStatusReporter) StatusReport() (types.ConsensusRelation, types.Status) {
+	return s.ConsensusRelation, s.Status
 }

@@ -449,10 +449,10 @@ var _ = Describe("Consenter", func() {
 		Expect(err).To(Not(HaveOccurred()))
 		Expect(chain.Order(nil, 0).Error()).To(Equal("channel foo is not serviced by me"))
 		Expect(consenter.icr.TrackChainCallCount()).To(Equal(1))
-		Expect(chainManager.ReportRelationAndStatusMetricsCallCount()).To(Equal(1))
-		channel, relation, status := chainManager.ReportRelationAndStatusMetricsArgsForCall(0)
+		Expect(chainManager.ReportConsensusRelationAndStatusMetricsCallCount()).To(Equal(1))
+		channel, relation, status := chainManager.ReportConsensusRelationAndStatusMetricsArgsForCall(0)
 		Expect(channel).To(Equal("foo"))
-		Expect(relation).To(Equal(types.ClusterRelationConfigTracker))
+		Expect(relation).To(Equal(types.ConsensusRelationConfigTracker))
 		Expect(status).To(Equal(types.StatusInactive))
 	})
 

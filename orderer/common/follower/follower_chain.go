@@ -65,7 +65,7 @@ type ChainCreator interface {
 //go:generate counterfeiter -o mocks/channel_participation_metrics_reporter.go -fake-name ChannelParticipationMetricsReporter . ChannelParticipationMetricsReporter
 
 type ChannelParticipationMetricsReporter interface {
-	ReportRelationAndStatusMetrics(channelID string, relation types.ClusterRelation, status types.Status)
+	ReportConsensusRelationAndStatusMetrics(channelID string, relation types.ConsensusRelation, status types.Status)
 }
 
 // Chain implements a component that allows the orderer to follow a specific channel when is not a cluster member,
@@ -92,13 +92,13 @@ type ChannelParticipationMetricsReporter interface {
 // i.e. the follower is performing onboarding for an etcdraft.Chain. Otherwise, the follower return clusterRelation
 // "follower".
 type Chain struct {
-	mutex    sync.Mutex    // Protects the start/stop flags & channels, cRel & status. All the rest are immutable or accessed only by the go-routine.
-	started  bool          // Start once.
-	stopped  bool          // Stop once.
-	stopChan chan struct{} // A 'closer' signals the go-routine to stop by closing this channel.
-	doneChan chan struct{} // The go-routine signals the 'closer' that it is done by closing this channel.
-	cRel     types.ClusterRelation
-	status   types.Status
+	mutex             sync.Mutex    // Protects the start/stop flags & channels, consensusRelation & status. All the rest are immutable or accessed only by the go-routine.
+	started           bool          // Start once.
+	stopped           bool          // Stop once.
+	stopChan          chan struct{} // A 'closer' signals the go-routine to stop by closing this channel.
+	doneChan          chan struct{} // The go-routine signals the 'closer' that it is done by closing this channel.
+	consensusRelation types.ConsensusRelation
+	status            types.Status
 
 	ledgerResources  LedgerResources            // ledger & config resources
 	clusterConsenter consensus.ClusterConsenter // detects whether a block indicates channel membership
@@ -141,7 +141,7 @@ func NewChain(
 	chain := &Chain{
 		stopChan:                            make(chan struct{}),
 		doneChan:                            make(chan struct{}),
-		cRel:                                types.ClusterRelationFollower,
+		consensusRelation:                   types.ConsensusRelationFollower,
 		status:                              types.StatusOnBoarding,
 		ledgerResources:                     ledgerResources,
 		clusterConsenter:                    clusterConsenter,
@@ -168,7 +168,7 @@ func NewChain(
 	if joinBlock == nil {
 		chain.status = types.StatusActive
 		if isMem, _ := chain.clusterConsenter.IsChannelMember(chain.lastConfig); isMem {
-			chain.cRel = types.ClusterRelationConsenter
+			chain.consensusRelation = types.ConsensusRelationConsenter
 		}
 
 		chain.logger.Infof("Created with a nil join-block, ledger height: %d", chain.firstHeight)
@@ -192,7 +192,7 @@ func NewChain(
 			chain.status = types.StatusActive
 		}
 		if isMem, _ := chain.clusterConsenter.IsChannelMember(chain.joinBlock); isMem {
-			chain.cRel = types.ClusterRelationConsenter
+			chain.consensusRelation = types.ConsensusRelationConsenter
 		}
 
 		chain.logger.Infof("Created with join-block number: %d, ledger height: %d", joinBlock.Header.Number, chain.firstHeight)
@@ -200,7 +200,7 @@ func NewChain(
 
 	chain.logger.Debugf("Options are: %v", chain.options)
 
-	chain.channelParticipationMetricsReporter.ReportRelationAndStatusMetrics(ledgerResources.ChannelID(), chain.cRel, chain.status)
+	chain.channelParticipationMetricsReporter.ReportConsensusRelationAndStatusMetrics(ledgerResources.ChannelID(), chain.consensusRelation, chain.status)
 
 	return chain, nil
 }
@@ -243,12 +243,12 @@ func (c *Chain) halt() {
 	c.logger.Info("Stopped")
 }
 
-// StatusReport returns the ClusterRelation & Status.
-func (c *Chain) StatusReport() (types.ClusterRelation, types.Status) {
+// StatusReport returns the ConsensusRelation & Status.
+func (c *Chain) StatusReport() (types.ConsensusRelation, types.Status) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	return c.cRel, c.status
+	return c.consensusRelation, c.status
 }
 
 func (c *Chain) setStatus(status types.Status) {
@@ -257,16 +257,16 @@ func (c *Chain) setStatus(status types.Status) {
 
 	c.status = status
 
-	c.channelParticipationMetricsReporter.ReportRelationAndStatusMetrics(c.ledgerResources.ChannelID(), c.cRel, c.status)
+	c.channelParticipationMetricsReporter.ReportConsensusRelationAndStatusMetrics(c.ledgerResources.ChannelID(), c.consensusRelation, c.status)
 }
 
-func (c *Chain) setClusterRelation(clusterRelation types.ClusterRelation) {
+func (c *Chain) setConsensusRelation(clusterRelation types.ConsensusRelation) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	c.cRel = clusterRelation
+	c.consensusRelation = clusterRelation
 
-	c.channelParticipationMetricsReporter.ReportRelationAndStatusMetrics(c.ledgerResources.ChannelID(), c.cRel, c.status)
+	c.channelParticipationMetricsReporter.ReportConsensusRelationAndStatusMetrics(c.ledgerResources.ChannelID(), c.consensusRelation, c.status)
 }
 
 func (c *Chain) Height() uint64 {
@@ -417,7 +417,7 @@ func (c *Chain) pullAfterJoin() error {
 			return errors.WithMessage(err, "failed to determine channel membership from last config")
 		}
 		if isMember {
-			c.setClusterRelation(types.ClusterRelationConsenter)
+			c.setConsensusRelation(types.ConsensusRelationConsenter)
 			return nil
 		}
 

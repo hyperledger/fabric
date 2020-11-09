@@ -117,10 +117,10 @@ var _ = Describe("osnadmin", func() {
 			})
 
 			mockChannelManagement.ChannelInfoReturns(types.ChannelInfo{
-				Name:            "asparagus",
-				ClusterRelation: "broccoli",
-				Status:          "carrot",
-				Height:          987,
+				Name:              "asparagus",
+				ConsensusRelation: "broccoli",
+				Status:            "carrot",
+				Height:            987,
 			}, nil)
 		})
 
@@ -165,11 +165,11 @@ var _ = Describe("osnadmin", func() {
 			}
 			output, exit, err := executeForArgs(args)
 			expectedOutput := types.ChannelInfo{
-				Name:            "asparagus",
-				URL:             "/participation/v1/channels/asparagus",
-				ClusterRelation: "broccoli",
-				Status:          "carrot",
-				Height:          987,
+				Name:              "asparagus",
+				URL:               "/participation/v1/channels/asparagus",
+				ConsensusRelation: "broccoli",
+				Status:            "carrot",
+				Height:            987,
 			}
 			checkOutput(output, exit, err, 200, expectedOutput)
 		})
@@ -252,10 +252,10 @@ var _ = Describe("osnadmin", func() {
 			blockPath = createBlockFile(tempDir, configBlock)
 
 			mockChannelManagement.JoinChannelReturns(types.ChannelInfo{
-				Name:            "apple",
-				ClusterRelation: "banana",
-				Status:          "orange",
-				Height:          123,
+				Name:              "apple",
+				ConsensusRelation: "banana",
+				Status:            "orange",
+				Height:            123,
 			}, nil)
 		})
 
@@ -272,11 +272,11 @@ var _ = Describe("osnadmin", func() {
 			}
 			output, exit, err := executeForArgs(args)
 			expectedOutput := types.ChannelInfo{
-				Name:            "apple",
-				URL:             "/participation/v1/channels/apple",
-				ClusterRelation: "banana",
-				Status:          "orange",
-				Height:          123,
+				Name:              "apple",
+				URL:               "/participation/v1/channels/apple",
+				ConsensusRelation: "banana",
+				Status:            "orange",
+				Height:            123,
 			}
 			checkOutput(output, exit, err, 201, expectedOutput)
 		})
@@ -403,10 +403,10 @@ var _ = Describe("osnadmin", func() {
 			)
 			blockPath := createBlockFile(tempDir, configBlock)
 			mockChannelManagement.JoinChannelReturns(types.ChannelInfo{
-				Name:            "apple",
-				ClusterRelation: "banana",
-				Status:          "orange",
-				Height:          123,
+				Name:              "apple",
+				ConsensusRelation: "banana",
+				Status:            "orange",
+				Height:            123,
 			}, nil)
 
 			args := []string{
@@ -421,11 +421,11 @@ var _ = Describe("osnadmin", func() {
 			}
 			output, exit, err := executeForArgs(args)
 			expectedOutput := types.ChannelInfo{
-				Name:            "apple",
-				URL:             "/participation/v1/channels/apple",
-				ClusterRelation: "banana",
-				Status:          "orange",
-				Height:          123,
+				Name:              "apple",
+				URL:               "/participation/v1/channels/apple",
+				ConsensusRelation: "banana",
+				Status:            "orange",
+				Height:            123,
 			}
 			checkOutput(output, exit, err, 201, expectedOutput)
 		})

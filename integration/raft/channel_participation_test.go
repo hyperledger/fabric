@@ -135,11 +135,11 @@ var _ = Describe("ChannelParticipation", func() {
 
 			genesisBlock := applicationChannelGenesisBlock(network, consenters, peer, "participation-trophy")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          1,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            1,
 			}
 
 			for _, o := range consenters {
@@ -150,30 +150,30 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			submitPeerTxn(orderer1, peer, network, consenters, 1, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          2,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            2,
 			})
 
 			submitPeerTxn(orderer2, peer, network, consenters, 2, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          3,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            3,
 			})
 
 			By("joining orderer3 to the channel as a follower")
 			// make sure we can join using a config block from one of the other orderers
 			configBlockPT := nwo.GetConfigBlock(network, peer, orderer2, "participation-trophy")
 			expectedChannelInfoPTFollower := channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "onboarding",
-				ClusterRelation: "follower",
-				Height:          0,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "onboarding",
+				ConsensusRelation: "follower",
+				Height:            0,
 			}
 			channelparticipation.Join(network, orderer3, "participation-trophy", configBlockPT, expectedChannelInfoPTFollower)
 
@@ -200,21 +200,21 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("submitting transaction to orderer3 to ensure it is active")
 			submitPeerTxn(orderer3, peer, network, orderers, 4, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          5,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            5,
 			})
 
 			By("joining orderer1 to another channel as a consenter")
 			genesisBlockAPT := applicationChannelGenesisBlock(network, []*nwo.Orderer{orderer1}, peer, "another-participation-trophy")
 			expectedChannelInfoAPT := channelparticipation.ChannelInfo{
-				Name:            "another-participation-trophy",
-				URL:             "/participation/v1/channels/another-participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          1,
+				Name:              "another-participation-trophy",
+				URL:               "/participation/v1/channels/another-participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            1,
 			}
 			channelparticipation.Join(network, orderer1, "another-participation-trophy", genesisBlockAPT, expectedChannelInfoAPT)
 			channelInfo := channelparticipation.ListOne(network, orderer1, "another-participation-trophy")
@@ -235,31 +235,31 @@ var _ = Describe("ChannelParticipation", func() {
 			Eventually(func() channelparticipation.ChannelInfo {
 				return channelparticipation.ListOne(network, orderer1, "participation-trophy")
 			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "follower",
-				Height:          6,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "follower",
+				Height:            6,
 			}))
 
 			consenters = []*nwo.Orderer{orderer2, orderer3}
 			submitPeerTxn(orderer2, peer, network, consenters, 6, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          7,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            7,
 			})
 
 			By("ensuring orderer1 pulls the latest block as a follower")
 			Eventually(func() channelparticipation.ChannelInfo {
 				return channelparticipation.ListOne(network, orderer1, "participation-trophy")
 			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "follower",
-				Height:          7,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "follower",
+				Height:            7,
 			}))
 
 			By("removing orderer1 from a channel")
@@ -288,19 +288,19 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("ensuring the channel is still usable by submitting a transaction to each remaining consenter for the channel")
 			submitPeerTxn(orderer2, peer, network, consenters, 7, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          8,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            8,
 			})
 
 			submitPeerTxn(orderer3, peer, network, consenters, 8, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          9,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            9,
 			})
 
 			By("attempting to join with an invalid block")
@@ -334,11 +334,11 @@ var _ = Describe("ChannelParticipation", func() {
 
 			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          1,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            1,
 			}
 
 			for _, o := range orderers {
@@ -349,19 +349,19 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			submitPeerTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          2,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            2,
 			})
 
 			submitPeerTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          3,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            3,
 			})
 
 			By("submitting a channel config update")
@@ -390,11 +390,11 @@ var _ = Describe("ChannelParticipation", func() {
 			// make sure we can join using a config block from one of the other orderers
 			configBlockPT := nwo.GetConfigBlock(network, peer, orderer2, "participation-trophy")
 			expectedChannelInfoConsenter := channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "onboarding",
-				ClusterRelation: "consenter",
-				Height:          0,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "onboarding",
+				ConsensusRelation: "consenter",
+				Height:            0,
 			}
 			channelparticipation.Join(network, orderer3, "participation-trophy", configBlockPT, expectedChannelInfoConsenter)
 
@@ -406,11 +406,11 @@ var _ = Describe("ChannelParticipation", func() {
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoConsenter))
 
 			submitPeerTxn(orderer3, peer, network, orderers, 5, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          6,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            6,
 			})
 		})
 
@@ -430,11 +430,11 @@ var _ = Describe("ChannelParticipation", func() {
 
 			genesisBlock := applicationChannelGenesisBlock(network, orderers, peer, "participation-trophy")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          1,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            1,
 			}
 
 			for _, o := range orderers {
@@ -445,19 +445,19 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			submitPeerTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          2,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            2,
 			})
 
 			submitPeerTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          3,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            3,
 			})
 
 			By("submitting a channel config update")
@@ -479,11 +479,11 @@ var _ = Describe("ChannelParticipation", func() {
 			// make sure we can join using a config block from one of the other orderers
 			configBlockPT := nwo.GetConfigBlock(network, peer, orderer2, "participation-trophy")
 			expectedChannelInfoPTFollower := channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "onboarding",
-				ClusterRelation: "follower",
-				Height:          0,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "onboarding",
+				ConsensusRelation: "follower",
+				Height:            0,
 			}
 			channelparticipation.Join(network, orderer3, "participation-trophy", configBlockPT, expectedChannelInfoPTFollower)
 
@@ -509,11 +509,11 @@ var _ = Describe("ChannelParticipation", func() {
 			}, network.EventuallyTimeout).Should(Equal(expectedChannelInfoPT))
 
 			submitPeerTxn(orderer3, peer, network, orderers, 5, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          6,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            6,
 			})
 		})
 
@@ -534,11 +534,11 @@ var _ = Describe("ChannelParticipation", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			expectedChannelInfo := channelparticipation.ChannelInfo{
-				Name:            "systemchannel",
-				URL:             "/participation/v1/channels/systemchannel",
-				Status:          "inactive",
-				ClusterRelation: "consenter",
-				Height:          1,
+				Name:              "systemchannel",
+				URL:               "/participation/v1/channels/systemchannel",
+				Status:            "inactive",
+				ConsensusRelation: "consenter",
+				Height:            1,
 			}
 
 			By("joining orderers to systemchannel")
@@ -565,11 +565,11 @@ var _ = Describe("ChannelParticipation", func() {
 			network.CreateChannel("testchannel", orderer1, peer)
 
 			expectedChannelInfo = channelparticipation.ChannelInfo{
-				Name:            "testchannel",
-				URL:             "/participation/v1/channels/testchannel",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          1,
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            1,
 			}
 			for _, o := range orderers {
 				By("listing single channel for " + o.Name)
@@ -585,11 +585,11 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			expectedChannelInfo = channelparticipation.ChannelInfo{
-				Name:            "systemchannel",
-				URL:             "/participation/v1/channels/systemchannel",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          2,
+				Name:              "systemchannel",
+				URL:               "/participation/v1/channels/systemchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            2,
 			}
 			for _, o := range orderers {
 				By("listing single channel for " + o.Name)
@@ -658,11 +658,11 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("listing the channels")
 			expectedChannelInfo := channelparticipation.ChannelInfo{
-				Name:            "testchannel",
-				URL:             "/participation/v1/channels/testchannel",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          4,
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            4,
 			}
 			for _, o := range orderers {
 				By("listing single channel")
@@ -676,20 +676,20 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("submitting a transaction to ensure the system channel is active after restart")
 			submitOrdererTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
-				Name:            "systemchannel",
-				URL:             "/participation/v1/channels/systemchannel",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          3,
+				Name:              "systemchannel",
+				URL:               "/participation/v1/channels/systemchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            3,
 			})
 
 			By("submitting a transaction to ensure the application channel is active after restart")
 			submitPeerTxn(orderer2, peer, network, orderers, 4, channelparticipation.ChannelInfo{
-				Name:            "testchannel",
-				URL:             "/participation/v1/channels/testchannel",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          5,
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            5,
 			})
 
 			By("removing orderer3 from the consenters set")
@@ -703,11 +703,11 @@ var _ = Describe("ChannelParticipation", func() {
 			Eventually(func() channelparticipation.ChannelInfo {
 				return channelparticipation.ListOne(network, orderer3, "testchannel")
 			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
-				Name:            "testchannel",
-				URL:             "/participation/v1/channels/testchannel",
-				Status:          "inactive",
-				ClusterRelation: "config-tracker",
-				Height:          6,
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "inactive",
+				ConsensusRelation: "config-tracker",
+				Height:            6,
 			}))
 
 			By("ensuring orderers 1 and 2 receive the block")
@@ -716,29 +716,29 @@ var _ = Describe("ChannelParticipation", func() {
 				Eventually(func() channelparticipation.ChannelInfo {
 					return channelparticipation.ListOne(network, o, "testchannel")
 				}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
-					Name:            "testchannel",
-					URL:             "/participation/v1/channels/testchannel",
-					Status:          "active",
-					ClusterRelation: "consenter",
-					Height:          6,
+					Name:              "testchannel",
+					URL:               "/participation/v1/channels/testchannel",
+					Status:            "active",
+					ConsensusRelation: "consenter",
+					Height:            6,
 				}))
 			}
 
 			By("submitting a transaction to each active orderer")
 			submitPeerTxn(orderer1, peer, network, orderers1and2, 6, channelparticipation.ChannelInfo{
-				Name:            "testchannel",
-				URL:             "/participation/v1/channels/testchannel",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          7,
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            7,
 			})
 
 			submitPeerTxn(orderer2, peer, network, orderers1and2, 7, channelparticipation.ChannelInfo{
-				Name:            "testchannel",
-				URL:             "/participation/v1/channels/testchannel",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          8,
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            8,
 			})
 
 			By("restarting orderer3 to ensure it still reports inactive/config-tracker")
@@ -746,11 +746,11 @@ var _ = Describe("ChannelParticipation", func() {
 			Eventually(func() channelparticipation.ChannelInfo {
 				return channelparticipation.ListOne(network, orderer3, "testchannel")
 			}, network.EventuallyTimeout).Should(Equal(channelparticipation.ChannelInfo{
-				Name:            "testchannel",
-				URL:             "/participation/v1/channels/testchannel",
-				Status:          "inactive",
-				ClusterRelation: "config-tracker",
-				Height:          6,
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "inactive",
+				ConsensusRelation: "config-tracker",
+				Height:            6,
 			}))
 
 			By("attempting to join a channel when the system channel is present")
@@ -762,11 +762,11 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("submitting a transaction to ensure the system channel is active after restart")
 			submitOrdererTxn(orderer3, peer, network, orderers, 3, channelparticipation.ChannelInfo{
-				Name:            "systemchannel",
-				URL:             "/participation/v1/channels/systemchannel",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          4,
+				Name:              "systemchannel",
+				URL:               "/participation/v1/channels/systemchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            4,
 			})
 
 			By("putting the system channel into maintenance mode")
@@ -789,28 +789,28 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("submitting a transaction to each active orderer after restart")
 			submitPeerTxn(orderer1, peer, network, orderers1and2, 8, channelparticipation.ChannelInfo{
-				Name:            "testchannel",
-				URL:             "/participation/v1/channels/testchannel",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          9,
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            9,
 			})
 
 			submitPeerTxn(orderer2, peer, network, orderers1and2, 9, channelparticipation.ChannelInfo{
-				Name:            "testchannel",
-				URL:             "/participation/v1/channels/testchannel",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          10,
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            10,
 			})
 
 			By("using the channel participation API to join a new channel")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          1,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            1,
 			}
 
 			for _, o := range orderers {
@@ -821,27 +821,27 @@ var _ = Describe("ChannelParticipation", func() {
 			}
 
 			submitPeerTxn(orderer1, peer, network, orderers, 1, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          2,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            2,
 			})
 
 			submitPeerTxn(orderer2, peer, network, orderers, 2, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          3,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            3,
 			})
 
 			submitPeerTxn(orderer3, peer, network, orderers, 3, channelparticipation.ChannelInfo{
-				Name:            "participation-trophy",
-				URL:             "/participation/v1/channels/participation-trophy",
-				Status:          "active",
-				ClusterRelation: "consenter",
-				Height:          4,
+				Name:              "participation-trophy",
+				URL:               "/participation/v1/channels/participation-trophy",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            4,
 			})
 		})
 	})

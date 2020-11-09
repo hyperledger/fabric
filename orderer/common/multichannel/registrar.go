@@ -691,22 +691,22 @@ func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 
 	if c, ok := r.chains[channelID]; ok {
 		info.Height = c.Height()
-		info.ClusterRelation, info.Status = c.StatusReport()
+		info.ConsensusRelation, info.Status = c.StatusReport()
 		return info, nil
 	}
 
 	if f, ok := r.followers[channelID]; ok {
 		info.Height = f.Height()
-		info.ClusterRelation, info.Status = f.StatusReport()
+		info.ConsensusRelation, info.Status = f.StatusReport()
 		return info, nil
 	}
 
 	_, ok := r.pendingRemoval[channelID]
 	if ok {
 		return types.ChannelInfo{
-			Name:            channelID,
-			ClusterRelation: types.ClusterRelationFollower,
-			Status:          types.StatusInactive,
+			Name:              channelID,
+			ConsensusRelation: types.ConsensusRelationFollower,
+			Status:            types.StatusInactive,
 		}, nil
 	}
 
@@ -825,7 +825,7 @@ func (r *Registrar) createAsMember(ledgerRes *ledgerResources, configBlock *cb.B
 		URL:    "",
 		Height: ledgerRes.Height(),
 	}
-	info.ClusterRelation, info.Status = chain.StatusReport()
+	info.ConsensusRelation, info.Status = chain.StatusReport()
 	r.chains[channelID] = chain
 
 	logger.Infof("Joining channel: %v", info)
@@ -865,11 +865,11 @@ func (r *Registrar) createFollower(
 
 	clusterRelation, status := fChain.StatusReport()
 	info := types.ChannelInfo{
-		Name:            channelID,
-		URL:             "",
-		Height:          ledgerRes.Height(),
-		ClusterRelation: clusterRelation,
-		Status:          status,
+		Name:              channelID,
+		URL:               "",
+		Height:            ledgerRes.Height(),
+		ConsensusRelation: clusterRelation,
+		Status:            status,
 	}
 
 	r.followers[channelID] = fChain
@@ -909,7 +909,7 @@ func (r *Registrar) joinSystemChannel(
 		URL:    "",
 		Height: ledgerRes.Height(),
 	}
-	info.ClusterRelation, info.Status = r.systemChannel.StatusReport()
+	info.ConsensusRelation, info.Status = r.systemChannel.StatusReport()
 
 	logger.Infof("System channel creation pending: server requires restart! ChannelInfo: %v", info)
 
@@ -1100,7 +1100,7 @@ func (r *Registrar) removeLedgerAsync(channelID string) {
 	}()
 }
 
-func (r *Registrar) ReportRelationAndStatusMetrics(channelID string, relation types.ClusterRelation, status types.Status) {
-	r.channelParticipationMetrics.reportRelation(channelID, relation)
+func (r *Registrar) ReportConsensusRelationAndStatusMetrics(channelID string, relation types.ConsensusRelation, status types.Status) {
+	r.channelParticipationMetrics.reportConsensusRelation(channelID, relation)
 	r.channelParticipationMetrics.reportStatus(channelID, status)
 }

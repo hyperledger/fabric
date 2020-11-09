@@ -96,11 +96,11 @@ func newChainSupport(
 
 	cs.StatusReporter, ok = cs.Chain.(consensus.StatusReporter)
 	if !ok { // Non-cluster types: solo, kafka
-		cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: types.ClusterRelationNone, Status: types.StatusActive}
+		cs.StatusReporter = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationOther, Status: types.StatusActive}
 	}
 
 	clusterRelation, status := cs.StatusReporter.StatusReport()
-	registrar.ReportRelationAndStatusMetrics(cs.ChannelID(), clusterRelation, status)
+	registrar.ReportConsensusRelationAndStatusMetrics(cs.ChannelID(), clusterRelation, status)
 
 	logger.Debugf("[channel: %s] Done creating channel support resources", cs.ChannelID())
 
@@ -192,7 +192,7 @@ func newOnBoardingChainSupport(
 	cs := &ChainSupport{ledgerResources: ledgerResources}
 	cs.Processor = msgprocessor.NewStandardChannel(cs, msgprocessor.CreateStandardChannelFilters(cs, config), bccsp)
 	cs.Chain = &inactive.Chain{Err: errors.New("system channel creation pending: server requires restart")}
-	cs.StatusReporter = consensus.StaticStatusReporter{ClusterRelation: types.ClusterRelationConsenter, Status: types.StatusInactive}
+	cs.StatusReporter = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationConsenter, Status: types.StatusInactive}
 
 	logger.Debugf("[channel: %s] Done creating onboarding channel support resources", cs.ChannelID())
 
