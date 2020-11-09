@@ -74,7 +74,7 @@ type Gauge interface {
 	// Add increments a Gauge value.
 	Add(delta float64) // TODO: consider removing
 
-	// Set is used to update the current value associted with a Gauge.
+	// Set is used to update the current value associated with a Gauge.
 	Set(value float64)
 }
 

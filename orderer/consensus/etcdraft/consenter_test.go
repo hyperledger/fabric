@@ -31,6 +31,8 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	clustermocks "github.com/hyperledger/fabric/orderer/common/cluster/mocks"
+	"github.com/hyperledger/fabric/orderer/common/types"
+	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
 	"github.com/hyperledger/fabric/orderer/consensus/inactive"
@@ -275,9 +277,16 @@ var _ = Describe("Consenter", func() {
 		cryptoProvider, _ := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		chainInstance := &etcdraft.Chain{CryptoProvider: cryptoProvider}
 		BeforeEach(func() {
-			chainManager.On("GetConsensusChain", "mychannel").Return(chainInstance)
-			chainManager.On("GetConsensusChain", "notmychannel").Return(nil)
-			chainManager.On("GetConsensusChain", "notraftchain").Return(&inactive.Chain{Err: errors.New("not a raft chain")})
+			chainManager.GetConsensusChainStub = func(channel string) consensus.Chain {
+				switch channel {
+				case "mychannel":
+					return chainInstance
+				case "notraftchain":
+					return &inactive.Chain{Err: errors.New("not a raft chain")}
+				default:
+					return nil
+				}
+			}
 		})
 		It("calls the chain manager and returns the reference when it is found", func() {
 			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
@@ -440,6 +449,11 @@ var _ = Describe("Consenter", func() {
 		Expect(err).To(Not(HaveOccurred()))
 		Expect(chain.Order(nil, 0).Error()).To(Equal("channel foo is not serviced by me"))
 		Expect(consenter.icr.TrackChainCallCount()).To(Equal(1))
+		Expect(chainManager.ReportRelationAndStatusMetricsCallCount()).To(Equal(1))
+		channel, relation, status := chainManager.ReportRelationAndStatusMetricsArgsForCall(0)
+		Expect(channel).To(Equal("foo"))
+		Expect(relation).To(Equal(types.ClusterRelationConfigTracker))
+		Expect(status).To(Equal(types.StatusInactive))
 	})
 
 	It("fails to handle chain if etcdraft options have not been provided", func() {

@@ -43,17 +43,18 @@ var testLogger = flogging.MustGetLogger("follower.test")
 
 // Global test variables
 var (
-	cryptoProvider       bccsp.BCCSP
-	localBlockchain      *memoryBlockChain
-	remoteBlockchain     *memoryBlockChain
-	ledgerResources      *mocks.LedgerResources
-	mockClusterConsenter *mocks.ClusterConsenter
-	pullerFactory        *mocks.BlockPullerFactory
-	puller               *mocks.ChannelPuller
-	mockChainCreator     *mocks.ChainCreator
-	options              follower.Options
-	timeAfterCount       *mocks.TimeAfter
-	maxDelay             int64
+	cryptoProvider                          bccsp.BCCSP
+	localBlockchain                         *memoryBlockChain
+	remoteBlockchain                        *memoryBlockChain
+	ledgerResources                         *mocks.LedgerResources
+	mockClusterConsenter                    *mocks.ClusterConsenter
+	mockChannelParticipationMetricsReporter *mocks.ChannelParticipationMetricsReporter
+	pullerFactory                           *mocks.BlockPullerFactory
+	puller                                  *mocks.ChannelPuller
+	mockChainCreator                        *mocks.ChainCreator
+	options                                 follower.Options
+	timeAfterCount                          *mocks.TimeAfter
+	maxDelay                                int64
 )
 
 // Before each test in all test cases
@@ -77,6 +78,8 @@ func globalSetup(t *testing.T) {
 	pullerFactory.BlockPullerReturns(puller, nil)
 
 	mockChainCreator = &mocks.ChainCreator{}
+
+	mockChannelParticipationMetricsReporter = &mocks.ChannelParticipationMetricsReporter{}
 
 	options = follower.Options{
 		Logger:                testLogger,
@@ -109,7 +112,7 @@ func TestFollowerNewChain(t *testing.T) {
 		globalSetup(t)
 		ledgerResources.HeightReturns(0)
 		mockClusterConsenter.IsChannelMemberReturns(false, nil)
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, nil)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, nil, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -121,7 +124,7 @@ func TestFollowerNewChain(t *testing.T) {
 		globalSetup(t)
 		ledgerResources.HeightReturns(0)
 		mockClusterConsenter.IsChannelMemberReturns(true, nil)
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, nil)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, nil, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -137,10 +140,10 @@ func TestFollowerNewChain(t *testing.T) {
 
 	t.Run("bad join block", func(t *testing.T) {
 		globalSetup(t)
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, &common.Block{}, options, pullerFactory, mockChainCreator, nil)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, &common.Block{}, options, pullerFactory, mockChainCreator, nil, mockChannelParticipationMetricsReporter)
 		require.EqualError(t, err, "block header is nil")
 		require.Nil(t, chain)
-		chain, err = follower.NewChain(ledgerResources, mockClusterConsenter, &common.Block{Header: &common.BlockHeader{}}, options, pullerFactory, mockChainCreator, nil)
+		chain, err = follower.NewChain(ledgerResources, mockClusterConsenter, &common.Block{Header: &common.BlockHeader{}}, options, pullerFactory, mockChainCreator, nil, mockChannelParticipationMetricsReporter)
 		require.EqualError(t, err, "block data is nil")
 		require.Nil(t, chain)
 	})
@@ -149,7 +152,7 @@ func TestFollowerNewChain(t *testing.T) {
 		globalSetup(t)
 		localBlockchain.fill(5)
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, nil)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, nil, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -187,7 +190,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		setup()
 		mockClusterConsenter.IsChannelMemberCalls(amIReallyInChannel)
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -217,11 +220,17 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		require.True(t, joinBlockAppRaft.Header.Number > ledgerResources.Height())
 		require.True(t, ledgerResources.Height() > 0)
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
 		require.Equal(t, types.ClusterRelationConsenter, cRel)
+		require.Equal(t, types.StatusOnBoarding, status)
+
+		require.Equal(t, 1, mockChannelParticipationMetricsReporter.ReportRelationAndStatusMetricsCallCount())
+		channel, relation, status := mockChannelParticipationMetricsReporter.ReportRelationAndStatusMetricsArgsForCall(0)
+		require.Equal(t, "my-channel", channel)
+		require.Equal(t, types.ClusterRelationConsenter, relation)
 		require.Equal(t, types.StatusOnBoarding, status)
 
 		require.NotPanics(t, chain.Start)
@@ -239,6 +248,13 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 			require.Equal(t, remoteBlockchain.Block(i).Header, localBlockchain.Block(i).Header, "failed block i=%d", i)
 		}
 		require.Equal(t, 1, mockChainCreator.SwitchFollowerToChainCallCount())
+
+		require.Equal(t, 3, mockChannelParticipationMetricsReporter.ReportRelationAndStatusMetricsCallCount())
+		channel, relation, status = mockChannelParticipationMetricsReporter.ReportRelationAndStatusMetricsArgsForCall(2)
+		require.Equal(t, "my-channel", channel)
+		require.Equal(t, types.ClusterRelationConsenter, relation)
+		require.Equal(t, types.StatusActive, status)
+
 	})
 	t.Run("no need to pull, member", func(t *testing.T) {
 		setup()
@@ -247,7 +263,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		localBlockchain.appendConfig(1) //No gap between the ledger and the join block
 		require.True(t, joinBlockAppRaft.Header.Number < ledgerResources.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -286,7 +302,7 @@ func TestFollowerPullUpToJoin(t *testing.T) {
 		pullerFactory.BlockPullerReturns(puller, nil)
 		options.TimeAfter = timeAfterCount.After
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -351,7 +367,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		})
 		require.Equal(t, joinNum+1, localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -391,7 +407,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		})
 		require.Equal(t, joinNum+1, localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 
 		require.NoError(t, err)
 
@@ -447,7 +463,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		})
 		require.Equal(t, joinNum+1, localBlockchain.Height())
 		options.TimeAfter = timeAfterCount.After
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 
 		require.NoError(t, err)
 
@@ -497,7 +513,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() }) //Stop when a new chain is created
 		require.Equal(t, joinNum+1, localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -570,7 +586,7 @@ func TestFollowerPullAfterJoin(t *testing.T) {
 
 		options.TimeAfter = timeAfterCount.After
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 
 		require.NoError(t, err)
 
@@ -642,7 +658,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		})
 		require.Equal(t, uint64(0), localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -682,7 +698,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		})
 		require.Equal(t, uint64(0), localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 
 		require.NoError(t, err)
 
@@ -730,7 +746,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 		mockChainCreator.SwitchFollowerToChainCalls(func(_ string) { wgChain.Done() }) //Stop when a new chain is created
 		require.Equal(t, uint64(6), localBlockchain.Height())
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 		require.NoError(t, err)
 
 		cRel, status := chain.StatusReport()
@@ -803,7 +819,7 @@ func TestFollowerPullPastJoin(t *testing.T) {
 
 		options.TimeAfter = timeAfterCount.After
 
-		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider)
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, joinBlockAppRaft, options, pullerFactory, mockChainCreator, cryptoProvider, mockChannelParticipationMetricsReporter)
 
 		require.NoError(t, err)
 
