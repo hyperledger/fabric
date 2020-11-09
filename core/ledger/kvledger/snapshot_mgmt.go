@@ -77,17 +77,6 @@ func (l *kvLedger) PendingSnapshotRequests() ([]uint64, error) {
 	return l.snapshotMgr.snapshotRequestBookkeeper.list()
 }
 
-// ListSnapshots returns the information for available snapshots.
-func (l *kvLedger) ListSnapshots() ([]string, error) {
-	return nil, errors.Errorf("not implemented")
-}
-
-// DeleteSnapshot deletes the snapshot files except for the metadata file and
-// returns an error if no such a snapshot exists
-func (l *kvLedger) DeleteSnapshot(blockNumber uint64) error {
-	return errors.Errorf("not implemented")
-}
-
 // processSnapshotMgmtEvents handles each event in the events channel and performs synchronization acorss
 // block commits, snapshot generation, and snapshot request submission/cancellation.
 // It should be started in a separate goroutine when the ledger is created/opened.

@@ -1546,14 +1546,6 @@ func (m *mockLedger) CancelSnapshotRequest(height uint64) error {
 	return nil
 }
 
-func (m *mockLedger) ListSnapshots() ([]string, error) {
-	return nil, nil
-}
-
-func (m *mockLedger) DeleteSnapshot(height uint64) error {
-	return nil
-}
-
 // mockQueryExecutor mock of the query executor,
 // needed to simulate inability to access state db, e.g.
 // the case where due to db failure it's not possible to

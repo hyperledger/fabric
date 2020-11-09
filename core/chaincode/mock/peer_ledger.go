@@ -52,17 +52,6 @@ type PeerLedger struct {
 		result1 []*ledger.PvtdataHashMismatch
 		result2 error
 	}
-	DeleteSnapshotStub        func(uint64) error
-	deleteSnapshotMutex       sync.RWMutex
-	deleteSnapshotArgsForCall []struct {
-		arg1 uint64
-	}
-	deleteSnapshotReturns struct {
-		result1 error
-	}
-	deleteSnapshotReturnsOnCall map[int]struct {
-		result1 error
-	}
 	DoesPvtDataInfoExistStub        func(uint64) (bool, error)
 	doesPvtDataInfoExistMutex       sync.RWMutex
 	doesPvtDataInfoExistArgsForCall []struct {
@@ -216,18 +205,6 @@ type PeerLedger struct {
 	}
 	getTxValidationCodeByTxIDReturnsOnCall map[int]struct {
 		result1 peer.TxValidationCode
-		result2 error
-	}
-	ListSnapshotsStub        func() ([]string, error)
-	listSnapshotsMutex       sync.RWMutex
-	listSnapshotsArgsForCall []struct {
-	}
-	listSnapshotsReturns struct {
-		result1 []string
-		result2 error
-	}
-	listSnapshotsReturnsOnCall map[int]struct {
-		result1 []string
 		result2 error
 	}
 	NewHistoryQueryExecutorStub        func() (ledger.HistoryQueryExecutor, error)
@@ -518,66 +495,6 @@ func (fake *PeerLedger) CommitPvtDataOfOldBlocksReturnsOnCall(i int, result1 []*
 		result1 []*ledger.PvtdataHashMismatch
 		result2 error
 	}{result1, result2}
-}
-
-func (fake *PeerLedger) DeleteSnapshot(arg1 uint64) error {
-	fake.deleteSnapshotMutex.Lock()
-	ret, specificReturn := fake.deleteSnapshotReturnsOnCall[len(fake.deleteSnapshotArgsForCall)]
-	fake.deleteSnapshotArgsForCall = append(fake.deleteSnapshotArgsForCall, struct {
-		arg1 uint64
-	}{arg1})
-	fake.recordInvocation("DeleteSnapshot", []interface{}{arg1})
-	fake.deleteSnapshotMutex.Unlock()
-	if fake.DeleteSnapshotStub != nil {
-		return fake.DeleteSnapshotStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1
-	}
-	fakeReturns := fake.deleteSnapshotReturns
-	return fakeReturns.result1
-}
-
-func (fake *PeerLedger) DeleteSnapshotCallCount() int {
-	fake.deleteSnapshotMutex.RLock()
-	defer fake.deleteSnapshotMutex.RUnlock()
-	return len(fake.deleteSnapshotArgsForCall)
-}
-
-func (fake *PeerLedger) DeleteSnapshotCalls(stub func(uint64) error) {
-	fake.deleteSnapshotMutex.Lock()
-	defer fake.deleteSnapshotMutex.Unlock()
-	fake.DeleteSnapshotStub = stub
-}
-
-func (fake *PeerLedger) DeleteSnapshotArgsForCall(i int) uint64 {
-	fake.deleteSnapshotMutex.RLock()
-	defer fake.deleteSnapshotMutex.RUnlock()
-	argsForCall := fake.deleteSnapshotArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *PeerLedger) DeleteSnapshotReturns(result1 error) {
-	fake.deleteSnapshotMutex.Lock()
-	defer fake.deleteSnapshotMutex.Unlock()
-	fake.DeleteSnapshotStub = nil
-	fake.deleteSnapshotReturns = struct {
-		result1 error
-	}{result1}
-}
-
-func (fake *PeerLedger) DeleteSnapshotReturnsOnCall(i int, result1 error) {
-	fake.deleteSnapshotMutex.Lock()
-	defer fake.deleteSnapshotMutex.Unlock()
-	fake.DeleteSnapshotStub = nil
-	if fake.deleteSnapshotReturnsOnCall == nil {
-		fake.deleteSnapshotReturnsOnCall = make(map[int]struct {
-			result1 error
-		})
-	}
-	fake.deleteSnapshotReturnsOnCall[i] = struct {
-		result1 error
-	}{result1}
 }
 
 func (fake *PeerLedger) DoesPvtDataInfoExist(arg1 uint64) (bool, error) {
@@ -1319,61 +1236,6 @@ func (fake *PeerLedger) GetTxValidationCodeByTxIDReturnsOnCall(i int, result1 pe
 	}{result1, result2}
 }
 
-func (fake *PeerLedger) ListSnapshots() ([]string, error) {
-	fake.listSnapshotsMutex.Lock()
-	ret, specificReturn := fake.listSnapshotsReturnsOnCall[len(fake.listSnapshotsArgsForCall)]
-	fake.listSnapshotsArgsForCall = append(fake.listSnapshotsArgsForCall, struct {
-	}{})
-	fake.recordInvocation("ListSnapshots", []interface{}{})
-	fake.listSnapshotsMutex.Unlock()
-	if fake.ListSnapshotsStub != nil {
-		return fake.ListSnapshotsStub()
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.listSnapshotsReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *PeerLedger) ListSnapshotsCallCount() int {
-	fake.listSnapshotsMutex.RLock()
-	defer fake.listSnapshotsMutex.RUnlock()
-	return len(fake.listSnapshotsArgsForCall)
-}
-
-func (fake *PeerLedger) ListSnapshotsCalls(stub func() ([]string, error)) {
-	fake.listSnapshotsMutex.Lock()
-	defer fake.listSnapshotsMutex.Unlock()
-	fake.ListSnapshotsStub = stub
-}
-
-func (fake *PeerLedger) ListSnapshotsReturns(result1 []string, result2 error) {
-	fake.listSnapshotsMutex.Lock()
-	defer fake.listSnapshotsMutex.Unlock()
-	fake.ListSnapshotsStub = nil
-	fake.listSnapshotsReturns = struct {
-		result1 []string
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *PeerLedger) ListSnapshotsReturnsOnCall(i int, result1 []string, result2 error) {
-	fake.listSnapshotsMutex.Lock()
-	defer fake.listSnapshotsMutex.Unlock()
-	fake.ListSnapshotsStub = nil
-	if fake.listSnapshotsReturnsOnCall == nil {
-		fake.listSnapshotsReturnsOnCall = make(map[int]struct {
-			result1 []string
-			result2 error
-		})
-	}
-	fake.listSnapshotsReturnsOnCall[i] = struct {
-		result1 []string
-		result2 error
-	}{result1, result2}
-}
-
 func (fake *PeerLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {
 	fake.newHistoryQueryExecutorMutex.Lock()
 	ret, specificReturn := fake.newHistoryQueryExecutorReturnsOnCall[len(fake.newHistoryQueryExecutorArgsForCall)]
@@ -1736,8 +1598,6 @@ func (fake *PeerLedger) Invocations() map[string][][]interface{} {
 	defer fake.commitLegacyMutex.RUnlock()
 	fake.commitPvtDataOfOldBlocksMutex.RLock()
 	defer fake.commitPvtDataOfOldBlocksMutex.RUnlock()
-	fake.deleteSnapshotMutex.RLock()
-	defer fake.deleteSnapshotMutex.RUnlock()
 	fake.doesPvtDataInfoExistMutex.RLock()
 	defer fake.doesPvtDataInfoExistMutex.RUnlock()
 	fake.getBlockByHashMutex.RLock()
@@ -1762,8 +1622,6 @@ func (fake *PeerLedger) Invocations() map[string][][]interface{} {
 	defer fake.getTransactionByIDMutex.RUnlock()
 	fake.getTxValidationCodeByTxIDMutex.RLock()
 	defer fake.getTxValidationCodeByTxIDMutex.RUnlock()
-	fake.listSnapshotsMutex.RLock()
-	defer fake.listSnapshotsMutex.RUnlock()
 	fake.newHistoryQueryExecutorMutex.RLock()
 	defer fake.newHistoryQueryExecutorMutex.RUnlock()
 	fake.newQueryExecutorMutex.RLock()
