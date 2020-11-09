@@ -12,14 +12,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -264,41 +262,6 @@ func TestInitCmdWithoutInitCrypto(t *testing.T) {
 	common.InitCmd(packageCmd, nil)
 }
 
-func TestSetBCCSPConfigOverrides(t *testing.T) {
-	bccspConfig := factory.GetDefaultOpts()
-	envConfig := &factory.FactoryOpts{
-		Default: "test-default",
-		SW: &factory.SwOpts{
-			Hash:     "SHA2",
-			Security: 256,
-		},
-		PKCS11: &pkcs11.PKCS11Opts{
-			Hash:     "test-pkcs11-hash",
-			Security: 12345,
-			Library:  "test-pkcs11-library",
-			Label:    "test-pkcs11-label",
-			Pin:      "test-pkcs11-pin",
-		},
-	}
-
-	t.Run("success", func(t *testing.T) {
-		cleanup := setBCCSPEnvVariables(envConfig)
-		defer cleanup()
-		err := common.SetBCCSPConfigOverrides(bccspConfig)
-		require.NoError(t, err)
-		require.Equal(t, envConfig, bccspConfig)
-	})
-
-	t.Run("PKCS11 security set to string value", func(t *testing.T) {
-		cleanup := setBCCSPEnvVariables(envConfig)
-		defer cleanup()
-		os.Setenv("CORE_PEER_BCCSP_PKCS11_SECURITY", "INSECURITY")
-
-		err := common.SetBCCSPConfigOverrides(bccspConfig)
-		require.EqualError(t, err, "CORE_PEER_BCCSP_PKCS11_SECURITY set to non-integer value: INSECURITY")
-	})
-}
-
 func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 	require.NoError(t, msptesttools.LoadMSPSetupForTesting())
 	signer, err := common.GetDefaultSigner()
@@ -384,26 +347,4 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 		_, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
 		require.EqualError(t, err, "error loading channel config: config must contain a channel group")
 	})
-}
-
-func setBCCSPEnvVariables(bccspConfig *factory.FactoryOpts) (cleanup func()) {
-	os.Setenv("CORE_PEER_BCCSP_DEFAULT", bccspConfig.Default)
-	os.Setenv("CORE_PEER_BCCSP_SW_SECURITY", strconv.Itoa(bccspConfig.SW.Security))
-	os.Setenv("CORE_PEER_BCCSP_SW_HASH", bccspConfig.SW.Hash)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_SECURITY", strconv.Itoa(bccspConfig.PKCS11.Security))
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_HASH", bccspConfig.PKCS11.Hash)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_PIN", bccspConfig.PKCS11.Pin)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_LABEL", bccspConfig.PKCS11.Label)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_LIBRARY", bccspConfig.PKCS11.Library)
-
-	return func() {
-		os.Unsetenv("CORE_PEER_BCCSP_DEFAULT")
-		os.Unsetenv("CORE_PEER_BCCSP_SW_SECURITY")
-		os.Unsetenv("CORE_PEER_BCCSP_SW_HASH")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_SECURITY")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_HASH")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_PIN")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_LABEL")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_LIBRARY")
-	}
 }

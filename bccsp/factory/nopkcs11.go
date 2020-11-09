@@ -15,6 +15,12 @@ import (
 
 const pkcs11Enabled = false
 
+// FactoryOpts holds configuration information used to initialize factory implementations
+type FactoryOpts struct {
+	Default string  `json:"default" yaml:"Default"`
+	SW      *SwOpts `json:"SW,omitempty" yaml:"SW,omitempty"`
+}
+
 // InitFactories must be called before using factory interfaces
 // It is acceptable to call with config = nil, in which case
 // some defaults will get used

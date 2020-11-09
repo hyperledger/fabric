@@ -21,10 +21,10 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"strconv"
 	"syscall"
 	"time"
 
+	bpkcs11 "github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/miekg/pkcs11"
@@ -50,7 +50,12 @@ var _ = Describe("PKCS11 enabled network", func() {
 		network.Bootstrap()
 
 		By("configuring PKCS11 artifacts")
-		configurePKCS11(network)
+		setupPKCS11(network)
+
+		By("starting fabric processes")
+		networkRunner := network.NetworkGroupRunner()
+		process = ifrit.Invoke(networkRunner)
+		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
 	})
 
 	AfterEach(func() {
@@ -62,44 +67,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 		os.RemoveAll(tempDir)
 	})
 
-	It("executes transactions against a basic solo network using yaml config", func() {
-		setPKCS11Config(network, bccspConfig)
-
-		By("starting fabric processes")
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
-		chaincode := nwo.Chaincode{
-			Name:            "mycc",
-			Version:         "0.0",
-			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
-			Lang:            "binary",
-			PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
-			Ctor:            `{"Args":["init","a","100","b","200"]}`,
-			SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
-			Sequence:        "1",
-			InitRequired:    true,
-			Label:           "my_prebuilt_chaincode",
-		}
-
-		orderer := network.Orderer("orderer")
-		network.CreateAndJoinChannels(orderer)
-
-		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.PeersWithChannel("testchannel")...)
-		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
-		runQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
-	})
-
-	It("executes transactions against a basic solo network using environment variable config", func() {
-		envCleanup := setPKCS11ConfigWithEnvVariables(network, bccspConfig)
-		defer envCleanup()
-
-		By("starting fabric processes")
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
-
+	It("executes transactions against a basic solo network", func() {
 		chaincode := nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "0.0",
@@ -122,12 +90,28 @@ var _ = Describe("PKCS11 enabled network", func() {
 	})
 })
 
-func configurePKCS11(network *nwo.Network) {
+func setupPKCS11(network *nwo.Network) {
+	lib, pin, label := bpkcs11.FindPKCS11Lib()
+
+	By("establishing a PKCS11 session")
+	ctx, sess := setupPKCS11Ctx(lib, label, pin)
+	defer ctx.Destroy()
+	defer ctx.CloseSession(sess)
+
 	configurePeerPKCS11(ctx, sess, network)
 	configureOrdererPKCS11(ctx, sess, network)
-}
 
-func setPKCS11Config(network *nwo.Network, bccspConfig *fabricconfig.BCCSP) {
+	bccspConfig := &fabricconfig.BCCSP{
+		Default: "PKCS11",
+		PKCS11: &fabricconfig.PKCS11{
+			Security: 256,
+			Hash:     "SHA2",
+			Pin:      pin,
+			Label:    label,
+			Library:  lib,
+		},
+	}
+
 	By("updating bccsp peer config")
 	for _, peer := range network.Peers {
 		peerConfig := network.ReadPeerConfig(peer)
@@ -140,39 +124,6 @@ func setPKCS11Config(network *nwo.Network, bccspConfig *fabricconfig.BCCSP) {
 	ordererConfig := network.ReadOrdererConfig(orderer)
 	ordererConfig.General.BCCSP = bccspConfig
 	network.WriteOrdererConfig(orderer, ordererConfig)
-}
-
-func setPKCS11ConfigWithEnvVariables(network *nwo.Network, bccspConfig *fabricconfig.BCCSP) (cleanup func()) {
-	By("setting bccsp peer config via environment variables")
-	os.Setenv("CORE_PEER_BCCSP_DEFAULT", bccspConfig.Default)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_SECURITY", strconv.Itoa(bccspConfig.PKCS11.Security))
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_HASH", bccspConfig.PKCS11.Hash)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_PIN", bccspConfig.PKCS11.Pin)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_LABEL", bccspConfig.PKCS11.Label)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_LIBRARY", bccspConfig.PKCS11.Library)
-
-	By("setting bccsp orderer config via environment variables")
-	os.Setenv("ORDERER_GENERAL_BCCSP_DEFAULT", bccspConfig.Default)
-	os.Setenv("ORDERER_GENERAL_BCCSP_PKCS11_SECURITY", strconv.Itoa(bccspConfig.PKCS11.Security))
-	os.Setenv("ORDERER_GENERAL_BCCSP_PKCS11_HASH", bccspConfig.PKCS11.Hash)
-	os.Setenv("ORDERER_GENERAL_BCCSP_PKCS11_PIN", bccspConfig.PKCS11.Pin)
-	os.Setenv("ORDERER_GENERAL_BCCSP_PKCS11_LABEL", bccspConfig.PKCS11.Label)
-	os.Setenv("ORDERER_GENERAL_BCCSP_PKCS11_LIBRARY", bccspConfig.PKCS11.Library)
-
-	return func() {
-		os.Unsetenv("CORE_PEER_BCCSP_DEFAULT")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_SECURITY")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_HASH")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_PIN")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_LABEL")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_LIBRARY")
-		os.Unsetenv("ORDERER_GENERAL_BCCSP_DEFAULT")
-		os.Unsetenv("ORDERER_GENERAL_BCCSP_PKCS11_SECURITY")
-		os.Unsetenv("ORDERER_GENERAL_BCCSP_PKCS11_HASH")
-		os.Unsetenv("ORDERER_GENERAL_BCCSP_PKCS11_PIN")
-		os.Unsetenv("ORDERER_GENERAL_BCCSP_PKCS11_LABEL")
-		os.Unsetenv("ORDERER_GENERAL_BCCSP_PKCS11_LIBRARY")
-	}
 }
 
 func configurePeerPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nwo.Network) {
@@ -227,6 +178,43 @@ func configureOrdererPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network 
 	newAdminPemCert := buildCert(caBytes, orgCAPath, adminCSR, adminSerial, adminPubKey)
 	orgAdminMSPPath := network.OrdererUserMSPDir(orderer, "Admin")
 	updateMSPFolder(orgAdminMSPPath, fmt.Sprintf("Admin@%s-cert.pem", domain), newAdminPemCert)
+}
+
+// Creates pkcs11 context and session
+func setupPKCS11Ctx(lib, label, pin string) (*pkcs11.Ctx, pkcs11.SessionHandle) {
+	ctx := pkcs11.New(lib)
+
+	err := ctx.Initialize()
+	Expect(err).NotTo(HaveOccurred())
+
+	slot := findPKCS11Slot(ctx, label)
+	Expect(slot).Should(BeNumerically(">", 0), "Could not find slot with label %s", label)
+
+	sess, err := ctx.OpenSession(slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Login
+	err = ctx.Login(sess, pkcs11.CKU_USER, pin)
+	Expect(err).NotTo(HaveOccurred())
+
+	return ctx, sess
+}
+
+// Identifies pkcs11 slot using specified label
+func findPKCS11Slot(ctx *pkcs11.Ctx, label string) uint {
+	slots, err := ctx.GetSlotList(true)
+	Expect(err).NotTo(HaveOccurred())
+
+	for _, s := range slots {
+		tokInfo, err := ctx.GetTokenInfo(s)
+		Expect(err).NotTo(HaveOccurred())
+
+		if tokInfo.Label == label {
+			return s
+		}
+	}
+
+	return 0
 }
 
 // Creates CSR for provided organization and organizational unit

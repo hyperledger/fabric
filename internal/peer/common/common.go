@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -133,54 +132,14 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 
 	// Init the BCCSP
 	SetBCCSPKeystorePath()
-
 	bccspConfig := factory.GetDefaultOpts()
 	if err := viper.UnmarshalKey("peer.BCCSP", &bccspConfig); err != nil {
 		return errors.WithMessage(err, "could not decode peer BCCSP configuration")
 	}
 
-	if err := SetBCCSPConfigOverrides(bccspConfig); err != nil {
-		return err
-	}
-
 	err = mspmgmt.LoadLocalMspWithType(mspMgrConfigDir, bccspConfig, localMSPID, localMSPType)
 	if err != nil {
 		return errors.WithMessagef(err, "error when setting up MSP of type %s from directory %s", localMSPType, mspMgrConfigDir)
-	}
-
-	return nil
-}
-
-// Overrides BCCSP config values when corresponding environment variables
-// are set.
-func SetBCCSPConfigOverrides(bccspConfig *factory.FactoryOpts) error {
-	if pkcs11Default, exist := os.LookupEnv("CORE_PEER_BCCSP_DEFAULT"); exist {
-		bccspConfig.Default = pkcs11Default
-	}
-
-	// PKCS11 Overrides
-	if pkcs11Hash, exist := os.LookupEnv("CORE_PEER_BCCSP_PKCS11_HASH"); exist {
-		bccspConfig.PKCS11.Hash = pkcs11Hash
-	}
-
-	if pkcs11Security, exist := os.LookupEnv("CORE_PEER_BCCSP_PKCS11_SECURITY"); exist {
-		pkcs11Sec, err := strconv.Atoi(pkcs11Security)
-		if err != nil {
-			return errors.Errorf("CORE_PEER_BCCSP_PKCS11_SECURITY set to non-integer value: %s", pkcs11Security)
-		}
-		bccspConfig.PKCS11.Security = pkcs11Sec
-	}
-
-	if pkcs11Library, exist := os.LookupEnv("CORE_PEER_BCCSP_PKCS11_LIBRARY"); exist {
-		bccspConfig.PKCS11.Library = pkcs11Library
-	}
-
-	if pkcs11Label, exist := os.LookupEnv("CORE_PEER_BCCSP_PKCS11_LABEL"); exist {
-		bccspConfig.PKCS11.Label = pkcs11Label
-	}
-
-	if pkcs11Pin, exist := os.LookupEnv("CORE_PEER_BCCSP_PKCS11_PIN"); exist {
-		bccspConfig.PKCS11.Pin = pkcs11Pin
 	}
 
 	return nil
