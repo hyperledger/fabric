@@ -128,7 +128,7 @@ func InitJoinBlockFileRepo(config *localconfig.TopLevel) (*filerepo.Repo, error)
 	fileRepoDir := filepath.Join(config.FileLedger.Location, "pendingops")
 	logger.Infof("Channel Participation API enabled, registrar initializing with file repo %s", fileRepoDir)
 
-	joinBlockFileRepo, err := filerepo.New(fileRepoDir, "joinblock")
+	joinBlockFileRepo, err := filerepo.New(fileRepoDir, "join")
 	if err != nil {
 		return nil, err
 	}
