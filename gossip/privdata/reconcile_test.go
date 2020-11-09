@@ -41,7 +41,8 @@ func TestNoItemsToReconcile(t *testing.T) {
 	fetcher.On("FetchReconciledItems", mock.Anything).Return(nil, errors.New("this function shouldn't be called"))
 
 	r := &Reconciler{
-		channel:                "",
+		channel:                "mychannel",
+		logger:                 logger.With("channel", "mychannel"),
 		metrics:                metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics,
 		ReconcileSleepInterval: time.Minute,
 		ReconcileBatchSize:     1,
@@ -82,7 +83,8 @@ func TestNotReconcilingWhenCollectionConfigNotAvailable(t *testing.T) {
 	}).Return(nil, errors.New("called with no digests"))
 
 	r := &Reconciler{
-		channel:                "",
+		channel:                "mychannel",
+		logger:                 logger.With("channel", "mychannel"),
 		metrics:                metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics,
 		ReconcileSleepInterval: time.Minute,
 		ReconcileBatchSize:     1,
@@ -188,6 +190,7 @@ func TestReconciliationHappyPathWithoutScheduler(t *testing.T) {
 
 	r := &Reconciler{
 		channel:                "mychannel",
+		logger:                 logger.With("channel", "mychannel"),
 		metrics:                metrics,
 		ReconcileSleepInterval: time.Minute,
 		ReconcileBatchSize:     1,
@@ -486,7 +489,8 @@ func TestReconciliationFailedToCommit(t *testing.T) {
 	committer.On("CommitPvtDataOfOldBlocks", mock.Anything, mock.Anything).Return(nil, errors.New("failed to commit"))
 
 	r := &Reconciler{
-		channel:                "",
+		channel:                "mychannel",
+		logger:                 logger.With("channel", "mychannel"),
 		metrics:                metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics,
 		ReconcileSleepInterval: time.Minute,
 		ReconcileBatchSize:     1,
