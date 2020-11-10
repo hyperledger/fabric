@@ -42,9 +42,9 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	//
 	app := kingpin.New("osnadmin", "Orderer Service Node (OSN) administration")
 	orderer := app.Flag("orderer-address", "Admin endpoint of the OSN").Short('o').Required().String()
-	caFile := app.Flag("ca-file", "Path to file containing PEM-encoded TLS CA certificate(s) for the OSN").Required().String()
-	clientCert := app.Flag("client-cert", "Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the OSN").Required().String()
-	clientKey := app.Flag("client-key", "Path to file containing PEM-encoded private key to use for mutual TLS communication with the OSN").Required().String()
+	caFile := app.Flag("ca-file", "Path to file containing PEM-encoded TLS CA certificate(s) for the OSN").String()
+	clientCert := app.Flag("client-cert", "Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the OSN").String()
+	clientKey := app.Flag("client-key", "Path to file containing PEM-encoded private key to use for mutual TLS communication with the OSN").String()
 
 	channel := app.Command("channel", "Channel actions")
 
@@ -63,21 +63,31 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	//
 	// flag validation
 	//
-	osnURL := fmt.Sprintf("https://%s", *orderer)
+	var (
+		osnURL        string
+		caCertPool    *x509.CertPool
+		tlsClientCert tls.Certificate
+	)
+	// TLS enabled
+	if *caFile != "" {
+		osnURL = fmt.Sprintf("https://%s", *orderer)
+		var err error
+		caCertPool = x509.NewCertPool()
+		caFilePEM, err := ioutil.ReadFile(*caFile)
+		if err != nil {
+			return "", 1, fmt.Errorf("reading orderer CA certificate: %s", err)
+		}
+		err = comm.AddPemToCertPool(caFilePEM, caCertPool)
+		if err != nil {
+			return "", 1, fmt.Errorf("adding ca-file PEM to cert pool: %s", err)
+		}
 
-	caCertPool := x509.NewCertPool()
-	caFilePEM, err := ioutil.ReadFile(*caFile)
-	if err != nil {
-		return "", 1, fmt.Errorf("reading orderer CA certificate: %s", err)
-	}
-	err = comm.AddPemToCertPool(caFilePEM, caCertPool)
-	if err != nil {
-		return "", 1, fmt.Errorf("adding ca-file PEM to cert pool: %s", err)
-	}
-
-	tlsClientCert, err := tls.LoadX509KeyPair(*clientCert, *clientKey)
-	if err != nil {
-		return "", 1, fmt.Errorf("loading client cert/key pair: %s", err)
+		tlsClientCert, err = tls.LoadX509KeyPair(*clientCert, *clientKey)
+		if err != nil {
+			return "", 1, fmt.Errorf("loading client cert/key pair: %s", err)
+		}
+	} else { // TLS disabled
+		osnURL = fmt.Sprintf("http://%s", *orderer)
 	}
 
 	var marshaledConfigBlock []byte
