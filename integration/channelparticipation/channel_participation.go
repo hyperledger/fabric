@@ -74,17 +74,13 @@ type ChannelInfoShort struct {
 }
 
 func List(n *nwo.Network, o *nwo.Orderer) ChannelList {
-	authClient, unauthClient := nwo.OrdererOperationalClients(n, o)
+	authClient, _ := nwo.OrdererOperationalClients(n, o)
 	listChannelsURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels", n.OrdererPort(o, nwo.AdminPort))
 
 	body := getBody(authClient, listChannelsURL)()
 	list := &ChannelList{}
 	err := json.Unmarshal([]byte(body), list)
 	Expect(err).NotTo(HaveOccurred())
-
-	resp, err := unauthClient.Get(listChannelsURL)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(resp.StatusCode).To(Equal(http.StatusUnauthorized))
 
 	return *list
 }

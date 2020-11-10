@@ -123,7 +123,7 @@ Admin:
     Certificate: {{ $w.OrdererLocalTLSDir Orderer }}/server.crt
     RootCAs:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
-    ClientAuthRequired: {{ $w.ClientAuthRequired }}
+    ClientAuthRequired: true
     ClientRootCAs:
     -  {{ $w.OrdererLocalTLSDir Orderer }}/ca.crt
 {{- end }}

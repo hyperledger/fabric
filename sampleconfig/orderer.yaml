@@ -359,7 +359,10 @@ Admin:
         # Most admin service endpoints require client authentication when TLS
         # is enabled. ClientAuthRequired requires client certificate authentication
         # at the TLS layer to access all resources.
-        ClientAuthRequired: false
+        #
+        # NOTE: When TLS is enabled, the admin endpoint requires mutual TLS. The
+        # orderer will panic on startup if this value is set to false.
+        ClientAuthRequired: true
 
         # Paths to PEM encoded ca certificates to trust for client authentication
         ClientRootCAs: []
