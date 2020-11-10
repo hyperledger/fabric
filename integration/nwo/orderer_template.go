@@ -49,12 +49,6 @@ General:
       Security: 256
       FileKeyStore:
         KeyStore:
-    PKCS11:
-      Hash: SHA2
-      Security: 256
-      Library:
-      Label:
-      Pin:
   Authentication:
     TimeWindow: 15m
 FileLedger:
