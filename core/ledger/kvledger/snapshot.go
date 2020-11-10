@@ -105,6 +105,8 @@ func (l *kvLedger) generateSnapshot() error {
 	if err != nil {
 		return errors.Wrapf(err, "error while creating temp dir [%s]", snapshotTempDir)
 	}
+	defer os.RemoveAll(snapshotTempDir)
+
 	newHashFunc := func() (hash.Hash, error) {
 		return l.hashProvider.GetHash(snapshotHashOpts)
 	}
@@ -113,19 +115,19 @@ func (l *kvLedger) generateSnapshot() error {
 	if err != nil {
 		return err
 	}
-	logger.Debugw("Snapshot generation - exported TxIDs from blockstore", "channelID", l.ledgerID)
+	logger.Debugw("Exported TxIDs from blockstore", "channelID", l.ledgerID)
 
 	configsHistoryExportSummary, err := l.configHistoryRetriever.ExportConfigHistory(snapshotTempDir, newHashFunc)
 	if err != nil {
 		return err
 	}
-	logger.Debugw("Snapshot generation - exported collection config history", "channelID", l.ledgerID)
+	logger.Debugw("Exported collection config history", "channelID", l.ledgerID)
 
 	stateDBExportSummary, err := l.txmgr.ExportPubStateAndPvtStateHashes(snapshotTempDir, newHashFunc)
 	if err != nil {
 		return err
 	}
-	logger.Debugw("Snapshot generation - exported public state and private state hashes", "channelID", l.ledgerID)
+	logger.Debugw("Exported public state and private state hashes", "channelID", l.ledgerID)
 
 	if err := l.generateSnapshotMetadataFiles(
 		snapshotTempDir, txIDsExportSummary,
@@ -133,7 +135,7 @@ func (l *kvLedger) generateSnapshot() error {
 	); err != nil {
 		return err
 	}
-	logger.Debugw("Snapshot generation - generated metadata files", "channelID", l.ledgerID)
+	logger.Debugw("Generated metadata files", "channelID", l.ledgerID)
 
 	if err := fileutil.SyncDir(snapshotTempDir); err != nil {
 		return err
