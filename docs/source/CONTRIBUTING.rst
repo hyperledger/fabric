@@ -246,7 +246,7 @@ Reporting bugs
 ~~~~~~~~~~~~~~
 
 If you are a user and you have found a bug, please submit an issue using
-`JIRA <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`__.
+`JIRA <https://jira.hyperledger.org/projects/FAB/issues>`__.
 Before you create a new JIRA issue, please try to search the existing items to
 be sure no one else has previously reported it. If it has been previously
 reported, then you might add a comment that you also are interested in seeing
@@ -277,8 +277,8 @@ for a detailed workflow.
 Fixing issues and working stories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Review the `issues
-list <https://jira.hyperledger.org/issues/?filter=10580>`__ and find
+Fabric issues and bugs are managed in `JIRA <https://jira.hyperledger.org/projects/FAB/issues>`__.
+Review the list of issues and find
 something that interests you. You could also check the
 `"help-wanted" <https://jira.hyperledger.org/issues/?filter=10147>`__
 list. It is wise to start with something relatively straight forward and
@@ -287,6 +287,10 @@ then assign the issue to yourself. Please be considerate and rescind the
 assignment if you cannot finish in a reasonable time, or add a comment
 saying that you are still actively working the issue if you need a
 little more time.
+
+While Jira tracks a backlog of known issues that could be worked in the future,
+if you intend to immediately work on a change that does not yet have a corresponding Jira issue,
+you can submit a pull request to `Github <https://github.com/hyperledger/fabric>`__ without linking to an existing Jira issue.
 
 Reviewing submitted Pull Requests (PRs)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -351,12 +355,12 @@ What makes a good pull request?
    regression, it is much easier to identify the culprit commit than if
    we have some composite change that impacts more of the code.
 
--  Include a link to the JIRA story for the change. Why? Because a) we
-   want to track our velocity to better judge what we think we can
-   deliver and when and b) because we can justify the change more
-   effectively. In many cases, there should be some discussion around a
-   proposed change and we want to link back to that from the change
-   itself.
+-  If there is a corresponding Jira issue or bug, include a link to the
+   Jira issue in the PR summary and commit message.
+   Why? Because the maintainer that merges the PR will need to close
+   any corresponding Jira issue.
+   Also, in many cases, there will be additional discussion around
+   a proposed change or bug in Jira.
 
 -  Include unit and integration tests (or changes to existing tests)
    with every change. This does not mean just happy path testing,
@@ -398,9 +402,7 @@ What makes a good pull request?
 
 -  Write a meaningful commit message. Include a meaningful 55 (or less)
    character title, followed by a blank line, followed by a more
-   comprehensive description of the change. Each change MUST include the JIRA
-   identifier corresponding to the change (e.g. [FAB-1234]). This can be
-   in the title but should also be in the body of the commit message.
+   comprehensive description of the change.
 
 .. note:: Example commit message:
 
@@ -449,7 +451,6 @@ Related Topics
 .. toctree::
    :maxdepth: 1
 
-   jira_navigation
    dev-setup/devenv
    dev-setup/build
    style-guides/go-style
