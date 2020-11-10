@@ -197,11 +197,6 @@ func (cn *clusterNode) stop() {
 }
 
 func (cn *clusterNode) renewCertificates() {
-	// Stop the gRPC service
-	cn.srv.Stop()
-	// and restart it afterwards
-	defer cn.resurrect()
-
 	clientKeyPair, err := ca.NewClientCertKeyPair()
 	if err != nil {
 		panic(fmt.Errorf("failed creating client certificate %v", err))
@@ -878,8 +873,32 @@ func TestRenewCertificates(t *testing.T) {
 
 	// Close outgoing connections from node2 to node1
 	node2.c.Configure(testChannel, nil)
+	// Stop the gRPC service of node 2 to replace its certificate
+	node2.srv.Stop()
+
+	// Wait until node 1 detects this
+	gt := gomega.NewGomegaWithT(t)
+	gt.Eventually(func() error {
+		remote, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
+		if err != nil {
+			return err
+		}
+		stream, err := remote.NewStream(time.Hour)
+		if err != nil {
+			return err
+		}
+		err = stream.Send(wrapSubmitReq(testSubReq))
+		if err != nil {
+			return err
+		}
+		return nil
+	}).Should(gomega.Not(gomega.Succeed()))
+
 	// Renew node 2's keys
 	node2.renewCertificates()
+
+	// Resurrect node 2 to make it service connections again
+	node2.resurrect()
 
 	// W.L.O.G, try to send a message from node1 to node2
 	// It should fail, because node2's server certificate has now changed,
