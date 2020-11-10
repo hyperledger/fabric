@@ -80,6 +80,14 @@ var _ = Describe("Metrics", func() {
 			Expect(fakeGauge.SetArgsForCall(0)).To(Equal(float64(2)))
 		})
 
+		It("reports status failure as a gauge", func() {
+			metrics.reportStatus("fake-channel", types.StatusFailed)
+			Expect(fakeGauge.WithCallCount()).To(Equal(1))
+			Expect(fakeGauge.WithArgsForCall(0)).To(Equal([]string{"channel", "fake-channel"}))
+			Expect(fakeGauge.SetCallCount()).To(Equal(1))
+			Expect(fakeGauge.SetArgsForCall(0)).To(Equal(float64(3)))
+		})
+
 		It("panics when reporting an unknown cluster status", func() {
 			Expect(func() { metrics.reportStatus("fake-channel", "unknown") }).To(Panic())
 		})

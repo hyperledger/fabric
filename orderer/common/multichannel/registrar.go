@@ -50,8 +50,10 @@ type Registrar struct {
 	lock      sync.RWMutex
 	chains    map[string]*ChainSupport
 	followers map[string]*follower.Chain
-	// true indicates a ledger removal is pending; false indicates a ledger removal failed
-	pendingRemoval  map[string]bool
+	// existence indicates removal is in-progress or failed
+	// when failed, the status will indicate failed all other states
+	// denote an in-progress removal
+	pendingRemoval  map[string]consensus.StaticStatusReporter
 	systemChannelID string
 	systemChannel   *ChainSupport
 
@@ -101,7 +103,7 @@ func NewRegistrar(
 		config:                      config,
 		chains:                      make(map[string]*ChainSupport),
 		followers:                   make(map[string]*follower.Chain),
-		pendingRemoval:              make(map[string]bool),
+		pendingRemoval:              make(map[string]consensus.StaticStatusReporter),
 		ledgerFactory:               ledgerFactory,
 		signer:                      signer,
 		blockcutterMetrics:          blockcutter.NewMetrics(metricsProvider),
@@ -701,12 +703,12 @@ func (r *Registrar) ChannelInfo(channelID string) (types.ChannelInfo, error) {
 		return info, nil
 	}
 
-	_, ok := r.pendingRemoval[channelID]
+	status, ok := r.pendingRemoval[channelID]
 	if ok {
 		return types.ChannelInfo{
 			Name:              channelID,
-			ConsensusRelation: types.ConsensusRelationFollower,
-			Status:            types.StatusInactive,
+			ConsensusRelation: status.ConsensusRelation,
+			Status:            status.Status,
 		}, nil
 	}
 
@@ -719,12 +721,11 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if removalStatus, ok := r.pendingRemoval[channelID]; ok {
-		if removalStatus {
-			return types.ChannelInfo{}, types.ErrChannelPendingRemoval
-		} else {
+	if status, ok := r.pendingRemoval[channelID]; ok {
+		if status.Status == types.StatusFailed {
 			return types.ChannelInfo{}, types.ErrChannelRemovalFailure
 		}
+		return types.ChannelInfo{}, types.ErrChannelPendingRemoval
 	}
 
 	if r.systemChannelID != "" {
@@ -921,7 +922,8 @@ func (r *Registrar) RemoveChannel(channelID string) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if removalStatus := r.pendingRemoval[channelID]; removalStatus {
+	status, ok := r.pendingRemoval[channelID]
+	if ok && status.Status != types.StatusFailed {
 		return types.ErrChannelPendingRemoval
 	}
 
@@ -949,6 +951,8 @@ func (r *Registrar) RemoveChannel(channelID string) error {
 }
 
 func (r *Registrar) removeMember(channelID string, cs *ChainSupport) {
+	relation, status := cs.StatusReport()
+	r.pendingRemoval[channelID] = consensus.StaticStatusReporter{ConsensusRelation: relation, Status: status}
 	r.removeLedgerAsync(channelID)
 
 	delete(r.chains, channelID)
@@ -966,6 +970,8 @@ func (r *Registrar) removeFollower(channelID string, follower *follower.Chain) e
 		return err
 	}
 
+	relation, status := follower.StatusReport()
+	r.pendingRemoval[channelID] = consensus.StaticStatusReporter{ConsensusRelation: relation, Status: status}
 	r.removeLedgerAsync(channelID)
 
 	delete(r.followers, channelID)
@@ -1085,14 +1091,14 @@ func (r *Registrar) removeSystemChannel() error {
 }
 
 func (r *Registrar) removeLedgerAsync(channelID string) {
-	r.pendingRemoval[channelID] = true
 
 	go func() {
 		err := r.ledgerFactory.Remove(channelID)
 		r.lock.Lock()
 		defer r.lock.Unlock()
 		if err != nil {
-			r.pendingRemoval[channelID] = false
+			r.pendingRemoval[channelID] = consensus.StaticStatusReporter{ConsensusRelation: r.pendingRemoval[channelID].ConsensusRelation, Status: types.StatusFailed}
+			r.channelParticipationMetrics.reportStatus(channelID, types.StatusFailed)
 			logger.Errorf("ledger factory failed to remove empty ledger '%s', error: %s", channelID, err)
 			return
 		}
