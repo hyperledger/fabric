@@ -585,13 +585,6 @@ func (e *ErrCollectionConfigNotYetAvailable) Error() string {
 	return e.Msg
 }
 
-// NotFoundInIndexErr is used to indicate missing entry in the index
-type NotFoundInIndexErr string
-
-func (NotFoundInIndexErr) Error() string {
-	return "Entry not found in index"
-}
-
 // CollConfigNotDefinedError is returned whenever an operation
 // is requested on a collection whose config has not been defined
 type CollConfigNotDefinedError struct {

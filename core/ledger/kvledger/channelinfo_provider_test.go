@@ -202,7 +202,7 @@ func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
 	configBlock = newBlock(nil, lastBlockNum, lastBlockNum+1, protoutil.BlockHeaderHash(configBlock.Header))
 	require.NoError(t, blkStore.AddBlock(configBlock))
 	_, err = channelInfoProvider.getAllMSPIDs()
-	require.EqualError(t, err, "Entry not found in index")
+	require.EqualError(t, err, "no such block number [3] in index")
 
 	// test GetLastConfigIndexFromBlock error by using invalid bytes for LastConfig metadata value
 	lastBlockNum++

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package blkstorage
 
 import (
+	"fmt"
 	"io/ioutil"
 	"math"
 	"os"
@@ -90,26 +91,18 @@ func (w *testBlockfileMgrWrapper) addBlocks(blocks []*common.Block) {
 	}
 }
 
-func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*common.Block, expectedErr error) {
+func (w *testBlockfileMgrWrapper) testGetBlockByHash(blocks []*common.Block) {
 	for i, block := range blocks {
 		hash := protoutil.BlockHeaderHash(block.Header)
 		b, err := w.blockfileMgr.retrieveBlockByHash(hash)
-		if expectedErr != nil {
-			require.Error(w.t, err, expectedErr.Error())
-			continue
-		}
 		require.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 		require.Equal(w.t, block, b)
 	}
 }
 
-func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block, startingNum uint64, expectedErr error) {
+func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block) {
 	for i := 0; i < len(blocks); i++ {
-		b, err := w.blockfileMgr.retrieveBlockByNumber(startingNum + uint64(i))
-		if expectedErr != nil {
-			require.Equal(w.t, err.Error(), expectedErr.Error())
-			continue
-		}
+		b, err := w.blockfileMgr.retrieveBlockByNumber(blocks[0].Header.Number + uint64(i))
 		require.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 		require.Equal(w.t, blocks[i], b)
 	}
@@ -120,18 +113,33 @@ func (w *testBlockfileMgrWrapper) testGetBlockByNumber(blocks []*common.Block, s
 	require.Equal(w.t, blocks[iLastBlock], b)
 }
 
-func (w *testBlockfileMgrWrapper) testGetBlockByTxID(blocks []*common.Block, expectedErr error) {
+func (w *testBlockfileMgrWrapper) testGetBlockByTxID(blocks []*common.Block) {
 	for i, block := range blocks {
 		for _, txEnv := range block.Data.Data {
 			txID, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnv)
 			require.NoError(w.t, err)
 			b, err := w.blockfileMgr.retrieveBlockByTxID(txID)
-			if expectedErr != nil {
-				require.Equal(w.t, err.Error(), expectedErr.Error())
-				continue
-			}
 			require.NoError(w.t, err, "Error while retrieving [%d]th block from blockfileMgr", i)
 			require.Equal(w.t, block, b)
+		}
+	}
+}
+
+func (w *testBlockfileMgrWrapper) testGetBlockByHashNotIndexed(blocks []*common.Block) {
+	for _, block := range blocks {
+		hash := protoutil.BlockHeaderHash(block.Header)
+		_, err := w.blockfileMgr.retrieveBlockByHash(hash)
+		require.EqualError(w.t, err, fmt.Sprintf("no such block hash [%x] in index", hash))
+	}
+}
+
+func (w *testBlockfileMgrWrapper) testGetBlockByTxIDNotIndexed(blocks []*common.Block) {
+	for _, block := range blocks {
+		for _, txEnv := range block.Data.Data {
+			txID, err := protoutil.GetOrComputeTxIDFromEnvelope(txEnv)
+			require.NoError(w.t, err)
+			_, err = w.blockfileMgr.retrieveBlockByTxID(txID)
+			require.EqualError(w.t, err, fmt.Sprintf("no such transaction ID [%s] in index", txID))
 		}
 	}
 }
