@@ -87,8 +87,12 @@ var _ = Describe("osnadmin", func() {
 	})
 
 	JustBeforeEach(func() {
-		testServer.TLS = tlsConfig
-		testServer.StartTLS()
+		if tlsConfig != nil {
+			testServer.TLS = tlsConfig
+			testServer.StartTLS()
+		} else {
+			testServer.Start()
+		}
 
 		u, err := url.Parse(testServer.URL)
 		Expect(err).NotTo(HaveOccurred())
@@ -196,6 +200,62 @@ var _ = Describe("osnadmin", func() {
 				checkOutput(output, exit, err, 404, expectedOutput)
 			})
 		})
+
+		Context("when TLS is disabled", func() {
+			BeforeEach(func() {
+				tlsConfig = nil
+			})
+
+			It("uses the channel participation API to list all channels", func() {
+				args := []string{
+					"channel",
+					"list",
+					"--orderer-address", ordererURL,
+				}
+				output, exit, err := executeForArgs(args)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(exit).To(Equal(0))
+
+				expectedOutput := types.ChannelList{
+					Channels: []types.ChannelInfoShort{
+						{
+							Name: "participation-trophy",
+							URL:  "/participation/v1/channels/participation-trophy",
+						},
+						{
+							Name: "another-participation-trophy",
+							URL:  "/participation/v1/channels/another-participation-trophy",
+						},
+					},
+					SystemChannel: &types.ChannelInfoShort{
+						Name: "fight-the-system",
+						URL:  "/participation/v1/channels/fight-the-system",
+					},
+				}
+				checkOutput(output, exit, err, 200, expectedOutput)
+			})
+
+			It("uses the channel participation API to list the details of a single channel", func() {
+				args := []string{
+					"channel",
+					"list",
+					"--orderer-address", ordererURL,
+					"--channel-id", "tell-me-your-secrets",
+				}
+				output, exit, err := executeForArgs(args)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(exit).To(Equal(0))
+
+				expectedOutput := types.ChannelInfo{
+					Name:              "asparagus",
+					URL:               "/participation/v1/channels/asparagus",
+					ConsensusRelation: "broccoli",
+					Status:            "carrot",
+					Height:            987,
+				}
+				checkOutput(output, exit, err, 200, expectedOutput)
+			})
+		})
 	})
 
 	Describe("Remove", func() {
@@ -235,6 +295,25 @@ var _ = Describe("osnadmin", func() {
 					Error: "cannot remove: channel does not exist",
 				}
 				checkOutput(output, exit, err, 404, expectedOutput)
+			})
+		})
+
+		Context("when TLS is disabled", func() {
+			BeforeEach(func() {
+				tlsConfig = nil
+			})
+
+			It("uses the channel participation API to remove a channel", func() {
+				args := []string{
+					"channel",
+					"remove",
+					"--orderer-address", ordererURL,
+					"--channel-id", channelID,
+				}
+				output, exit, err := executeForArgs(args)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(exit).To(Equal(0))
+				Expect(output).To(Equal("Status: 204\n"))
 			})
 		})
 	})
@@ -389,6 +468,31 @@ var _ = Describe("osnadmin", func() {
 					Error: "cannot join: channel already exists",
 				}
 				checkOutput(output, exit, err, 405, expectedOutput)
+			})
+		})
+
+		Context("when TLS is disabled", func() {
+			BeforeEach(func() {
+				tlsConfig = nil
+			})
+
+			It("uses the channel participation API to join a channel", func() {
+				args := []string{
+					"channel",
+					"join",
+					"--orderer-address", ordererURL,
+					"--channel-id", channelID,
+					"--config-block", blockPath,
+				}
+				output, exit, err := executeForArgs(args)
+				expectedOutput := types.ChannelInfo{
+					Name:              "apple",
+					URL:               "/participation/v1/channels/apple",
+					ConsensusRelation: "banana",
+					Status:            "orange",
+					Height:            123,
+				}
+				checkOutput(output, exit, err, 201, expectedOutput)
 			})
 		})
 	})
