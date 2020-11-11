@@ -626,7 +626,7 @@ var _ = Describe("ChannelParticipation", func() {
 			for _, o := range orderers1and2 {
 				By("listing the channels for " + o.Name)
 				cl := channelparticipation.List(network, o)
-				channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, []string{"systemchannel"}...)
+				channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, "systemchannel")
 			}
 
 			expectedChannelInfo = channelparticipation.ChannelInfo{
@@ -688,7 +688,7 @@ var _ = Describe("ChannelParticipation", func() {
 
 			By("listing the channels for orderer3")
 			cl := channelparticipation.List(network, orderer3)
-			channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, []string{"systemchannel"}...)
+			channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, "systemchannel")
 
 			By("ensuring orderer3 catches up to the latest height as an active consenter")
 			expectedChannelInfo.Status = "active"
@@ -855,7 +855,7 @@ var _ = Describe("ChannelParticipation", func() {
 				}, network.EventuallyTimeout).Should(Equal(expectedChannelInfo))
 				By("listing all channels")
 				cl := channelparticipation.List(network, o)
-				channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, []string{"systemchannel"}...)
+				channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, "systemchannel")
 			}
 
 			By("submitting a transaction to ensure the system channel is active after restart")
@@ -971,23 +971,6 @@ var _ = Describe("ChannelParticipation", func() {
 				channelparticipation.ChannelListMatcher(cl, []string{"testchannel"})
 			}
 
-			By("submitting a transaction to each active orderer after restart")
-			submitPeerTxn(orderer1, peer, network, channelparticipation.ChannelInfo{
-				Name:              "testchannel",
-				URL:               "/participation/v1/channels/testchannel",
-				Status:            "active",
-				ConsensusRelation: "consenter",
-				Height:            8,
-			})
-
-			submitPeerTxn(orderer2, peer, network, channelparticipation.ChannelInfo{
-				Name:              "testchannel",
-				URL:               "/participation/v1/channels/testchannel",
-				Status:            "active",
-				ConsensusRelation: "consenter",
-				Height:            9,
-			})
-
 			By("using the channel participation API to join a new channel")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
 				Name:              "participation-trophy",
@@ -1026,6 +1009,23 @@ var _ = Describe("ChannelParticipation", func() {
 				Status:            "active",
 				ConsensusRelation: "consenter",
 				Height:            4,
+			})
+
+			By("submitting a transaction to each active orderer on testchannel")
+			submitPeerTxn(orderer1, peer, network, channelparticipation.ChannelInfo{
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            9,
+			})
+
+			submitPeerTxn(orderer2, peer, network, channelparticipation.ChannelInfo{
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            10,
 			})
 		})
 	})
