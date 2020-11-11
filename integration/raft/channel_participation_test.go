@@ -731,6 +731,16 @@ var _ = Describe("ChannelParticipation", func() {
 				Height:            7,
 			})
 		})
+
+		It("requires a client certificate to connect when TLS is enabled", func() {
+			orderer := network.Orderer("orderer1")
+			_, unauthClient := nwo.OrdererOperationalClients(network, orderer)
+			ordererAddress := fmt.Sprintf("127.0.0.1:%d", network.OrdererPort(orderer, nwo.AdminPort))
+			listChannelsURL := fmt.Sprintf("https://%s/participation/v1/channels", ordererAddress)
+
+			_, err := unauthClient.Get(listChannelsURL)
+			Expect(err).To(MatchError(fmt.Sprintf("Get \"%s\": dial tcp %s: connect: connection refused", listChannelsURL, ordererAddress)))
+		})
 	})
 
 	Describe("three node etcdraft network with a system channel", func() {

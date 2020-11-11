@@ -486,6 +486,9 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			logger.Infof("Kafka.Version unset, setting to %v", Defaults.Kafka.Version)
 			c.Kafka.Version = Defaults.Kafka.Version
 
+		case c.Admin.TLS.Enabled && !c.Admin.TLS.ClientAuthRequired:
+			logger.Panic("Admin.TLS.ClientAuthRequired must be set to true if Admin.TLS.Enabled is set to true")
+
 		default:
 			return
 		}
