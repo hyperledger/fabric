@@ -330,6 +330,16 @@ This section is used to select your ledger database type, either `goleveldb` `Co
 
 - **`ledger.state.couchDBConfig.password:`** (Required when using CouchDB.) Specify the password for the CouchDB user with read and write authority to the database.
 
+The `ledger` section also contains your default snapshot directory where snapshots are stored. For more information about snapshots, check out [Taking ledger snapshots and using them to join channels](../peer_ledger_snapshot.html).
+
+```
+snapshots:
+  # Path on the file system where peer will store ledger snapshots
+  rootDir: /var/hyperledger/production/snapshots
+```
+
+- **`ledger.snapshots.rootDir:`** (Default value should be overridden.) This is the path to where snapshots are stored on the local filesystem of the peer. It can be an absolute path or relative to `FABRIC_CFG_PATH` and defaults to `/var/hyperledger/production/snapshots`. When the snapshot is taken, it is automatically organized by the status, channel name, and block number of the snapshot. For more information, check out [Taking a snapshot](../peer_ledger_snapshot.html#taking-a-snapshot). The user running the peer needs to own and have write access to this directory.
+
 ## operations.*
 
 ```
