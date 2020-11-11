@@ -59,6 +59,8 @@ const (
 	StatusOnBoarding Status = "onboarding"
 	// The orderer is not storing any blocks for this channel.
 	StatusInactive Status = "inactive"
+	// The last orderer operation against the channel failed.
+	StatusFailed Status = "failed"
 )
 
 // ChannelInfo carries the response to an HTTP request to List a single channel.

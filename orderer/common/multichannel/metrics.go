@@ -16,7 +16,7 @@ var (
 		Namespace:    "participation",
 		Subsystem:    "",
 		Name:         "status",
-		Help:         "The channel participation status of the node: 0 if inactive, 1 if active, 2 if onboarding.",
+		Help:         "The channel participation status of the node: 0 if inactive, 1 if active, 2 if onboarding, 3 if failed.",
 		LabelNames:   []string{"channel"},
 		StatsdFormat: "%{#fqname}.%{channel}",
 	}
@@ -67,6 +67,8 @@ func (m *Metrics) reportStatus(channel string, status types.Status) {
 		s = 1
 	case types.StatusOnBoarding:
 		s = 2
+	case types.StatusFailed:
+		s = 3
 	default:
 		logger.Panicf("Programming error: unexpected status %s", status)
 	}

@@ -947,7 +947,8 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
 
-		registrar.pendingRemoval["some-app-channel"] = true
+		registrar.pendingRemoval["some-app-channel"] = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationFollower, Status: types.StatusInactive}
+
 		info, err := registrar.JoinChannel("some-app-channel", &cb.Block{}, true)
 		require.Equal(t, err, types.ErrChannelPendingRemoval)
 		require.Equal(t, types.ChannelInfo{}, info)
@@ -965,7 +966,8 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		registrar := NewRegistrar(localconfig.TopLevel{}, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
 		registrar.Initialize(mockConsenters)
 
-		registrar.pendingRemoval["some-app-channel"] = false
+		registrar.pendingRemoval["some-app-channel"] = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationFollower, Status: types.StatusFailed}
+
 		info, err := registrar.JoinChannel("some-app-channel", &cb.Block{}, true)
 		require.Equal(t, types.ErrChannelRemovalFailure, err)
 		require.Equal(t, types.ChannelInfo{}, info)
@@ -1559,15 +1561,12 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 
 			// After removing the channel, it no longer exists in the registrar or the ledger
 			require.Nil(t, registrar.GetFollower("my-follower-raft-channel"))
-			channelInfo, err := registrar.ChannelInfo("my-follower-raft-channel")
-			require.NoError(t, err)
-			require.Equal(t, channelInfo, types.ChannelInfo{
-				Name:              "my-follower-raft-channel",
-				ConsensusRelation: types.ConsensusRelationFollower,
-				Status:            types.StatusInactive,
-			})
 			require.Eventually(t, func() bool { return len(ledgerFactory.ChannelIDs()) == 0 }, time.Minute, time.Second)
 			require.NotContains(t, ledgerFactory.ChannelIDs(), "my-follower-raft-channel")
+
+			channelInfo, err := registrar.ChannelInfo("my-follower-raft-channel")
+			require.Equal(t, err, types.ErrChannelNotExist)
+			require.Equal(t, channelInfo, types.ChannelInfo{})
 		})
 	})
 
@@ -1687,7 +1686,8 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		require.NotNil(t, registrar.GetChain("my-raft-channel"))
 		require.Contains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
 
-		registrar.pendingRemoval["my-raft-channel"] = true
+		registrar.pendingRemoval["my-raft-channel"] = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationFollower, Status: types.StatusInactive}
+
 		err = registrar.RemoveChannel("my-raft-channel")
 		require.Error(t, err)
 		require.Equal(t, types.ErrChannelPendingRemoval, err)
@@ -1711,7 +1711,8 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		require.NotNil(t, registrar.GetChain("my-raft-channel"))
 		require.Contains(t, ledgerFactory.ChannelIDs(), "my-raft-channel")
 
-		registrar.pendingRemoval["my-raft-channel"] = false
+		registrar.pendingRemoval["my-raft-channel"] = consensus.StaticStatusReporter{ConsensusRelation: types.ConsensusRelationFollower, Status: types.StatusFailed}
+
 		err = registrar.RemoveChannel("my-raft-channel")
 		require.NoError(t, err)
 
@@ -1750,8 +1751,8 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, channelInfo, types.ChannelInfo{
 			Name:              "my-raft-channel",
-			ConsensusRelation: types.ConsensusRelationFollower,
-			Status:            types.StatusInactive})
+			ConsensusRelation: types.ConsensusRelationConsenter,
+			Status:            types.StatusFailed})
 	})
 }
 

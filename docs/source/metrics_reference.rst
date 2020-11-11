@@ -198,7 +198,7 @@ The following orderer metrics are exported for consumption by Prometheus.
 |                                              |           | config-tracker.                                            |           |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | participation_status                         | gauge     | The channel participation status of the node: 0 if         | channel   |                                                                    |
-|                                              |           | inactive, 1 if active, 2 if onboarding.                    |           |                                                                    |
+|                                              |           | inactive, 1 if active, 2 if onboarding, 3 if failed.       |           |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 
 StatsD
@@ -338,7 +338,7 @@ associated with the metric.
 |                                                                           |           | config-tracker.                                            |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | participation.status.%{channel}                                           | gauge     | The channel participation status of the node: 0 if         |
-|                                                                           |           | inactive, 1 if active, 2 if onboarding.                    |
+|                                                                           |           | inactive, 1 if active, 2 if onboarding, 3 if failed.       |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 
 Peer Metrics
