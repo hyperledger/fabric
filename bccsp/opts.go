@@ -22,6 +22,19 @@ const (
 	// ECDSAReRand ECDSA key re-randomization
 	ECDSAReRand = "ECDSA_RERAND"
 
+	// RSA at the default security level.
+	// Each BCCSP may or may not support default security level. If not supported than
+	// an error will be returned.
+	RSA = "RSA"
+	// RSA at 1024 bit security level.
+	RSA1024 = "RSA1024"
+	// RSA at 2048 bit security level.
+	RSA2048 = "RSA2048"
+	// RSA at 3072 bit security level.
+	RSA3072 = "RSA3072"
+	// RSA at 4096 bit security level.
+	RSA4096 = "RSA4096"
+
 	// AES Advanced Encryption Standard at the default security level.
 	// Each BCCSP may or may not support default security level. If not supported than
 	// an error will be returned.
@@ -262,5 +275,37 @@ func (opts *X509PublicKeyImportOpts) Algorithm() string {
 // Ephemeral returns true if the key to generate has to be ephemeral,
 // false otherwise.
 func (opts *X509PublicKeyImportOpts) Ephemeral() bool {
+	return opts.Temporary
+}
+
+// RSAKeyGenOpts contains options for RSA key generation.
+type RSAKeyGenOpts struct {
+	Temporary bool
+}
+
+// Algorithm returns the key generation algorithm identifier (to be used).
+func (opts *RSAKeyGenOpts) Algorithm() string {
+	return RSA
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (opts *RSAKeyGenOpts) Ephemeral() bool {
+	return opts.Temporary
+}
+
+// ECDSAGoPublicKeyImportOpts contains options for RSA key importation from rsa.PublicKey
+type RSAGoPublicKeyImportOpts struct {
+	Temporary bool
+}
+
+// Algorithm returns the key importation algorithm identifier (to be used).
+func (opts *RSAGoPublicKeyImportOpts) Algorithm() string {
+	return RSA
+}
+
+// Ephemeral returns true if the key to generate has to be ephemeral,
+// false otherwise.
+func (opts *RSAGoPublicKeyImportOpts) Ephemeral() bool {
 	return opts.Temporary
 }

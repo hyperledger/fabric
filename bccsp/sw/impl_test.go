@@ -8,9 +8,11 @@ package sw
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/x509"
@@ -1337,6 +1339,338 @@ func TestSHA(t *testing.T) {
 		}
 	}
 }
+func TestRSAKeyGenEphemeral(t *testing.T) {
+	t.Parallel()
+	provider, _, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	k, err := provider.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: true})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating RSA key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating RSA key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating RSA key. Key should be asymmetric")
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed generating RSA corresponding public key [%s]", err)
+	}
+	if pk == nil {
+		t.Fatal("PK must be different from nil")
+	}
+
+	b, err := k.Bytes()
+	if err == nil {
+		t.Fatal("Secret keys cannot be exported. It must fail in this case")
+	}
+	if len(b) != 0 {
+		t.Fatal("Secret keys cannot be exported. It must be nil")
+	}
+}
+
+func TestRSAPublicKeyInvalidBytes(t *testing.T) {
+	t.Parallel()
+
+	rsaKey := &rsaPublicKey{nil}
+	b, err := rsaKey.Bytes()
+	if err == nil {
+		t.Fatal("It must fail in this case")
+	}
+	if len(b) != 0 {
+		t.Fatal("It must be nil")
+	}
+}
+
+func TestRSAPrivateKeySKI(t *testing.T) {
+	t.Parallel()
+	provider, _, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	k, err := provider.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	ski := k.SKI()
+	if len(ski) == 0 {
+		t.Fatal("SKI not valid. Zero length.")
+	}
+}
+
+func TestRSAKeyGenNonEphemeral(t *testing.T) {
+	t.Parallel()
+	provider, _, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	k, err := provider.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+	if k == nil {
+		t.Fatal("Failed generating RSA key. Key must be different from nil")
+	}
+	if !k.Private() {
+		t.Fatal("Failed generating RSA key. Key should be private")
+	}
+	if k.Symmetric() {
+		t.Fatal("Failed generating RSA key. Key should be asymmetric")
+	}
+}
+
+func TestRSAGetKeyBySKI(t *testing.T) {
+	t.Parallel()
+	provider, _, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	k, err := provider.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	k2, err := provider.GetKey(k.SKI())
+	if err != nil {
+		t.Fatalf("Failed getting RSA key [%s]", err)
+	}
+	if k2 == nil {
+		t.Fatal("Failed getting RSA key. Key must be different from nil")
+	}
+	if !k2.Private() {
+		t.Fatal("Failed getting RSA key. Key should be private")
+	}
+	if k2.Symmetric() {
+		t.Fatal("Failed getting RSA key. Key should be asymmetric")
+	}
+
+	// Check that the SKIs are the same
+	if !bytes.Equal(k.SKI(), k2.SKI()) {
+		t.Fatalf("SKIs are different [%x]!=[%x]", k.SKI(), k2.SKI())
+	}
+}
+
+func TestRSAPublicKeyFromPrivateKey(t *testing.T) {
+	t.Parallel()
+	provider, _, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	k, err := provider.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public key from private RSA key [%s]", err)
+	}
+	if pk == nil {
+		t.Fatal("Failed getting public key from private RSA key. Key must be different from nil")
+	}
+	if pk.Private() {
+		t.Fatal("Failed generating RSA key. Key should be public")
+	}
+	if pk.Symmetric() {
+		t.Fatal("Failed generating RSA key. Key should be asymmetric")
+	}
+}
+
+func TestRSAPublicKeyBytes(t *testing.T) {
+	t.Parallel()
+	provider, _, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	k, err := provider.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public key from private RSA key [%s]", err)
+	}
+
+	raw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed marshalling RSA public key [%s]", err)
+	}
+	if len(raw) == 0 {
+		t.Fatal("Failed marshalling RSA public key. Zero length")
+	}
+}
+
+func TestRSAPublicKeySKI(t *testing.T) {
+	t.Parallel()
+	provider, _, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	k, err := provider.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting public key from private RSA key [%s]", err)
+	}
+
+	ski := pk.SKI()
+	if len(ski) == 0 {
+		t.Fatal("SKI not valid. Zero length.")
+	}
+}
+
+func TestRSASign(t *testing.T) {
+	t.Parallel()
+	provider, _, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	k, err := provider.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	msg := []byte("Hello World")
+
+	digest, err := provider.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := provider.Sign(k, digest, &rsa.PSSOptions{SaltLength: 32, Hash: getCryptoHashIndex(t)})
+	if err != nil {
+		t.Fatalf("Failed generating RSA signature [%s]", err)
+	}
+	if len(signature) == 0 {
+		t.Fatal("Failed generating RSA key. Signature must be different from nil")
+	}
+}
+
+func TestRSAVerify(t *testing.T) {
+	t.Parallel()
+	provider, ks, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	k, err := provider.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	msg := []byte("Hello World")
+
+	digest, err := provider.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := provider.Sign(k, digest, &rsa.PSSOptions{SaltLength: 32, Hash: getCryptoHashIndex(t)})
+	if err != nil {
+		t.Fatalf("Failed generating RSA signature [%s]", err)
+	}
+
+	valid, err := provider.Verify(k, signature, digest, &rsa.PSSOptions{SaltLength: 32, Hash: getCryptoHashIndex(t)})
+	if err != nil {
+		t.Fatalf("Failed verifying RSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying RSA signature. Signature not valid.")
+	}
+
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting corresponding public key [%s]", err)
+	}
+
+	valid, err = provider.Verify(pk, signature, digest, &rsa.PSSOptions{SaltLength: 32, Hash: getCryptoHashIndex(t)})
+	if err != nil {
+		t.Fatalf("Failed verifying RSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying RSA signature. Signature not valid.")
+	}
+
+	// Store public key
+	err = ks.StoreKey(pk)
+	if err != nil {
+		t.Fatalf("Failed storing corresponding public key [%s]", err)
+	}
+
+	pk2, err := ks.GetKey(pk.SKI())
+	if err != nil {
+		t.Fatalf("Failed retrieving corresponding public key [%s]", err)
+	}
+
+	valid, err = provider.Verify(pk2, signature, digest, &rsa.PSSOptions{SaltLength: 32, Hash: getCryptoHashIndex(t)})
+	if err != nil {
+		t.Fatalf("Failed verifying RSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying RSA signature. Signature not valid.")
+	}
+
+}
+
+func TestRSAKeyImportFromRSAPublicKey(t *testing.T) {
+	t.Parallel()
+	provider, _, cleanup := currentTestConfig.Provider(t)
+	defer cleanup()
+
+	// Generate an RSA key
+	k, err := provider.KeyGen(&bccsp.RSAKeyGenOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed generating RSA key [%s]", err)
+	}
+
+	// Export the public key
+	pk, err := k.PublicKey()
+	if err != nil {
+		t.Fatalf("Failed getting RSA public key [%s]", err)
+	}
+
+	pkRaw, err := pk.Bytes()
+	if err != nil {
+		t.Fatalf("Failed getting RSA raw public key [%s]", err)
+	}
+
+	pub, err := utils.DERToPublicKey(pkRaw)
+	if err != nil {
+		t.Fatalf("Failed converting raw to RSA.PublicKey [%s]", err)
+	}
+
+	// Import the RSA.PublicKey
+	pk2, err := provider.KeyImport(pub, &bccsp.RSAGoPublicKeyImportOpts{Temporary: false})
+	if err != nil {
+		t.Fatalf("Failed importing RSA public key [%s]", err)
+	}
+	if pk2 == nil {
+		t.Fatal("Failed importing RSA public key. Return BCCSP key cannot be nil.")
+	}
+
+	// Sign and verify with the imported public key
+	msg := []byte("Hello World")
+
+	digest, err := provider.Hash(msg, &bccsp.SHAOpts{})
+	if err != nil {
+		t.Fatalf("Failed computing HASH [%s]", err)
+	}
+
+	signature, err := provider.Sign(k, digest, &rsa.PSSOptions{SaltLength: 32, Hash: getCryptoHashIndex(t)})
+	if err != nil {
+		t.Fatalf("Failed generating RSA signature [%s]", err)
+	}
+
+	valid, err := provider.Verify(pk2, signature, digest, &rsa.PSSOptions{SaltLength: 32, Hash: getCryptoHashIndex(t)})
+	if err != nil {
+		t.Fatalf("Failed verifying RSA signature [%s]", err)
+	}
+	if !valid {
+		t.Fatal("Failed verifying RSA signature. Signature not valid.")
+	}
+}
 
 func TestAddWrapper(t *testing.T) {
 	t.Parallel()
@@ -1368,4 +1702,31 @@ func TestAddWrapper(t *testing.T) {
 	err := sw.AddWrapper(reflect.TypeOf(cleanup), cleanup)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "wrapper type not valid, must be on of: KeyGenerator, KeyDeriver, KeyImporter, Encryptor, Decryptor, Signer, Verifier, Hasher")
+}
+
+func getCryptoHashIndex(t *testing.T) crypto.Hash {
+	switch currentTestConfig.hashFamily {
+	case "SHA2":
+		switch currentTestConfig.securityLevel {
+		case 256:
+			return crypto.SHA256
+		case 384:
+			return crypto.SHA384
+		default:
+			t.Fatalf("Invalid security level [%d]", currentTestConfig.securityLevel)
+		}
+	case "SHA3":
+		switch currentTestConfig.securityLevel {
+		case 256:
+			return crypto.SHA3_256
+		case 384:
+			return crypto.SHA3_384
+		default:
+			t.Fatalf("Invalid security level [%d]", currentTestConfig.securityLevel)
+		}
+	default:
+		t.Fatalf("Invalid hash family [%s]", currentTestConfig.hashFamily)
+	}
+
+	return crypto.SHA3_256
 }

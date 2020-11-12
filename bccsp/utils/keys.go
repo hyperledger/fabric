@@ -1,10 +1,20 @@
 /*
-Copyright IBM Corp. All Rights Reserved.
+Copyright IBM Corp. 2016 All Rights Reserved.
 
-SPDX-License-Identifier: Apache-2.0
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+		 http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
-package sw
+package utils
 
 import (
 	"crypto/ecdsa"
@@ -18,6 +28,7 @@ import (
 	"fmt"
 )
 
+// struct to hold info required for PKCS#8
 type pkcs8Info struct {
 	Version             int
 	PrivateKeyAlgorithm []asn1.ObjectIdentifier
@@ -54,27 +65,31 @@ func oidFromNamedCurve(curve elliptic.Curve) (asn1.ObjectIdentifier, bool) {
 	return nil, false
 }
 
-func privateKeyToDER(privateKey *ecdsa.PrivateKey) ([]byte, error) {
+// PrivateKeyToDER marshals a private key to der
+func PrivateKeyToDER(privateKey *ecdsa.PrivateKey) ([]byte, error) {
 	if privateKey == nil {
-		return nil, errors.New("invalid ecdsa private key. It must be different from nil")
+		return nil, errors.New("Invalid ecdsa private key. It must be different from nil.")
 	}
 
 	return x509.MarshalECPrivateKey(privateKey)
 }
 
-func privateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
+// PrivateKeyToPEM converts the private key to PEM format.
+// EC private keys are converted to PKCS#8 format.
+// RSA private keys are converted to PKCS#1 format.
+func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 	// Validate inputs
 	if len(pwd) != 0 {
-		return privateKeyToEncryptedPEM(privateKey, pwd)
+		return PrivateKeyToEncryptedPEM(privateKey, pwd)
 	}
 	if privateKey == nil {
-		return nil, errors.New("invalid key. It must be different from nil")
+		return nil, errors.New("Invalid key. It must be different from nil.")
 	}
 
 	switch k := privateKey.(type) {
 	case *ecdsa.PrivateKey:
 		if k == nil {
-			return nil, errors.New("invalid ecdsa private key. It must be different from nil")
+			return nil, errors.New("Invalid ecdsa private key. It must be different from nil.")
 		}
 
 		// get the oid for the curve
@@ -95,7 +110,7 @@ func privateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 		})
 
 		if err != nil {
-			return nil, fmt.Errorf("error marshaling EC key to asn1: [%s]", err)
+			return nil, fmt.Errorf("error marshaling EC key to asn1 [%s]", err)
 		}
 
 		var pkcs8Key pkcs8Info
@@ -107,7 +122,7 @@ func privateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 
 		pkcs8Bytes, err := asn1.Marshal(pkcs8Key)
 		if err != nil {
-			return nil, fmt.Errorf("error marshaling EC key to asn1: [%s]", err)
+			return nil, fmt.Errorf("error marshaling EC key to asn1 [%s]", err)
 		}
 		return pem.EncodeToMemory(
 			&pem.Block{
@@ -132,15 +147,16 @@ func privateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 	}
 }
 
-func privateKeyToEncryptedPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
+// PrivateKeyToEncryptedPEM converts a private key to an encrypted PEM
+func PrivateKeyToEncryptedPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 	if privateKey == nil {
-		return nil, errors.New("invalid private key. It must be different from nil")
+		return nil, errors.New("Invalid private key. It must be different from nil.")
 	}
 
 	switch k := privateKey.(type) {
 	case *ecdsa.PrivateKey:
 		if k == nil {
-			return nil, errors.New("invalid ecdsa private key. It must be different from nil")
+			return nil, errors.New("Invalid ecdsa private key. It must be different from nil.")
 		}
 		raw, err := x509.MarshalECPrivateKey(k)
 
@@ -162,11 +178,12 @@ func privateKeyToEncryptedPEM(privateKey interface{}, pwd []byte) ([]byte, error
 		return pem.EncodeToMemory(block), nil
 
 	default:
-		return nil, errors.New("invalid key type. It must be *ecdsa.PrivateKey")
+		return nil, errors.New("Invalid key type. It must be *ecdsa.PrivateKey")
 	}
 }
 
-func derToPrivateKey(der []byte) (key interface{}, err error) {
+// DERToPrivateKey unmarshals a der to private key
+func DERToPrivateKey(der []byte) (key interface{}, err error) {
 
 	if key, err = x509.ParsePKCS1PrivateKey(der); err == nil {
 		return key, nil
@@ -177,7 +194,7 @@ func derToPrivateKey(der []byte) (key interface{}, err error) {
 		case *rsa.PrivateKey, *ecdsa.PrivateKey:
 			return
 		default:
-			return nil, errors.New("found unknown private key type in PKCS#8 wrapping")
+			return nil, errors.New("Found unknown private key type in PKCS#8 wrapping")
 		}
 	}
 
@@ -185,58 +202,63 @@ func derToPrivateKey(der []byte) (key interface{}, err error) {
 		return
 	}
 
-	return nil, errors.New("invalid key type. The DER must contain an rsa.PrivateKey or an ecdsa.PrivateKey")
+	return nil, errors.New("Invalid key type. The DER must contain an rsa.PrivateKey or ecdsa.PrivateKey")
 }
 
-func pemToPrivateKey(raw []byte, pwd []byte) (interface{}, error) {
+// PEMtoPrivateKey unmarshals a pem to private key
+func PEMtoPrivateKey(raw []byte, pwd []byte) (interface{}, error) {
+	if len(raw) == 0 {
+		return nil, errors.New("Invalid PEM. It must be different from nil.")
+	}
 	block, _ := pem.Decode(raw)
 	if block == nil {
-		return nil, fmt.Errorf("failed decoding PEM. Block must be different from nil [% x]", raw)
+		return nil, fmt.Errorf("Failed decoding PEM. Block must be different from nil. [% x]", raw)
 	}
 
 	// TODO: derive from header the type of the key
 
 	if x509.IsEncryptedPEMBlock(block) {
 		if len(pwd) == 0 {
-			return nil, errors.New("encrypted Key. Need a password")
+			return nil, errors.New("Encrypted Key. Need a password")
 		}
 
 		decrypted, err := x509.DecryptPEMBlock(block, pwd)
 		if err != nil {
-			return nil, fmt.Errorf("failed PEM decryption: [%s]", err)
+			return nil, fmt.Errorf("Failed PEM decryption [%s]", err)
 		}
 
-		key, err := derToPrivateKey(decrypted)
+		key, err := DERToPrivateKey(decrypted)
 		if err != nil {
 			return nil, err
 		}
 		return key, err
 	}
 
-	cert, err := derToPrivateKey(block.Bytes)
+	cert, err := DERToPrivateKey(block.Bytes)
 	if err != nil {
 		return nil, err
 	}
 	return cert, err
 }
 
-func pemToAES(raw []byte, pwd []byte) ([]byte, error) {
+// PEMtoAES extracts from the PEM an AES key
+func PEMtoAES(raw []byte, pwd []byte) ([]byte, error) {
 	if len(raw) == 0 {
-		return nil, errors.New("invalid PEM. It must be different from nil")
+		return nil, errors.New("Invalid PEM. It must be different from nil.")
 	}
 	block, _ := pem.Decode(raw)
 	if block == nil {
-		return nil, fmt.Errorf("failed decoding PEM. Block must be different from nil [% x]", raw)
+		return nil, fmt.Errorf("Failed decoding PEM. Block must be different from nil. [% x]", raw)
 	}
 
 	if x509.IsEncryptedPEMBlock(block) {
 		if len(pwd) == 0 {
-			return nil, errors.New("encrypted Key. Password must be different fom nil")
+			return nil, errors.New("Encrypted Key. Password must be different fom nil")
 		}
 
 		decrypted, err := x509.DecryptPEMBlock(block, pwd)
 		if err != nil {
-			return nil, fmt.Errorf("failed PEM decryption: [%s]", err)
+			return nil, fmt.Errorf("Failed PEM decryption. [%s]", err)
 		}
 		return decrypted, nil
 	}
@@ -244,16 +266,18 @@ func pemToAES(raw []byte, pwd []byte) ([]byte, error) {
 	return block.Bytes, nil
 }
 
-func aesToPEM(raw []byte) []byte {
+// AEStoPEM encapsulates an AES key in the PEM format
+func AEStoPEM(raw []byte) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "AES PRIVATE KEY", Bytes: raw})
 }
 
-func aesToEncryptedPEM(raw []byte, pwd []byte) ([]byte, error) {
+// AEStoEncryptedPEM encapsulates an AES key in the encrypted PEM format
+func AEStoEncryptedPEM(raw []byte, pwd []byte) ([]byte, error) {
 	if len(raw) == 0 {
-		return nil, errors.New("invalid aes key. It must be different from nil")
+		return nil, errors.New("Invalid aes key. It must be different from nil")
 	}
 	if len(pwd) == 0 {
-		return aesToPEM(raw), nil
+		return AEStoPEM(raw), nil
 	}
 
 	block, err := x509.EncryptPEMBlock(
@@ -270,19 +294,20 @@ func aesToEncryptedPEM(raw []byte, pwd []byte) ([]byte, error) {
 	return pem.EncodeToMemory(block), nil
 }
 
-func publicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
+// PublicKeyToPEM marshals a public key to the pem format
+func PublicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 	if len(pwd) != 0 {
-		return publicKeyToEncryptedPEM(publicKey, pwd)
+		return PublicKeyToEncryptedPEM(publicKey, pwd)
 	}
 
 	if publicKey == nil {
-		return nil, errors.New("invalid public key. It must be different from nil")
+		return nil, errors.New("Invalid public key. It must be different from nil.")
 	}
 
 	switch k := publicKey.(type) {
 	case *ecdsa.PublicKey:
 		if k == nil {
-			return nil, errors.New("invalid ecdsa public key. It must be different from nil")
+			return nil, errors.New("Invalid ecdsa public key. It must be different from nil.")
 		}
 		PubASN1, err := x509.MarshalPKIXPublicKey(k)
 		if err != nil {
@@ -316,11 +341,53 @@ func publicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 	}
 }
 
-func publicKeyToEncryptedPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
+// PublicKeyToDER marshals a public key to the der format
+func PublicKeyToDER(publicKey interface{}) ([]byte, error) {
+	if publicKey == nil {
+		return nil, errors.New("Invalid public key. It must be different from nil.")
+	}
+
 	switch k := publicKey.(type) {
 	case *ecdsa.PublicKey:
 		if k == nil {
-			return nil, errors.New("invalid ecdsa public key. It must be different from nil")
+			return nil, errors.New("Invalid ecdsa public key. It must be different from nil.")
+		}
+		PubASN1, err := x509.MarshalPKIXPublicKey(k)
+		if err != nil {
+			return nil, err
+		}
+
+		return PubASN1, nil
+
+	case *rsa.PublicKey:
+		if k == nil {
+			return nil, errors.New("Invalid rsa public key. It must be different from nil.")
+		}
+		PubASN1, err := x509.MarshalPKIXPublicKey(k)
+		if err != nil {
+			return nil, err
+		}
+
+		return PubASN1, nil
+
+	default:
+		return nil, errors.New("Invalid key type. It must be *ecdsa.PublicKey or *rsa.PublicKey")
+	}
+}
+
+// PublicKeyToEncryptedPEM converts a public key to encrypted pem
+func PublicKeyToEncryptedPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
+	if publicKey == nil {
+		return nil, errors.New("Invalid public key. It must be different from nil.")
+	}
+	if len(pwd) == 0 {
+		return nil, errors.New("Invalid password. It must be different from nil.")
+	}
+
+	switch k := publicKey.(type) {
+	case *ecdsa.PublicKey:
+		if k == nil {
+			return nil, errors.New("Invalid ecdsa public key. It must be different from nil.")
 		}
 		raw, err := x509.MarshalPKIXPublicKey(k)
 		if err != nil {
@@ -339,48 +406,51 @@ func publicKeyToEncryptedPEM(publicKey interface{}, pwd []byte) ([]byte, error) 
 		}
 
 		return pem.EncodeToMemory(block), nil
+
 	default:
-		return nil, errors.New("invalid key type. It must be *ecdsa.PublicKey")
+		return nil, errors.New("Invalid key type. It must be *ecdsa.PublicKey")
 	}
 }
 
-func pemToPublicKey(raw []byte, pwd []byte) (interface{}, error) {
+// PEMtoPublicKey unmarshals a pem to public key
+func PEMtoPublicKey(raw []byte, pwd []byte) (interface{}, error) {
 	if len(raw) == 0 {
-		return nil, errors.New("invalid PEM. It must be different from nil")
+		return nil, errors.New("Invalid PEM. It must be different from nil.")
 	}
 	block, _ := pem.Decode(raw)
 	if block == nil {
-		return nil, fmt.Errorf("failed decoding. Block must be different from nil [% x]", raw)
+		return nil, fmt.Errorf("Failed decoding. Block must be different from nil. [% x]", raw)
 	}
 
 	// TODO: derive from header the type of the key
 	if x509.IsEncryptedPEMBlock(block) {
 		if len(pwd) == 0 {
-			return nil, errors.New("encrypted Key. Password must be different from nil")
+			return nil, errors.New("Encrypted Key. Password must be different from nil")
 		}
 
 		decrypted, err := x509.DecryptPEMBlock(block, pwd)
 		if err != nil {
-			return nil, fmt.Errorf("failed PEM decryption: [%s]", err)
+			return nil, fmt.Errorf("Failed PEM decryption. [%s]", err)
 		}
 
-		key, err := derToPublicKey(decrypted)
+		key, err := DERToPublicKey(decrypted)
 		if err != nil {
 			return nil, err
 		}
 		return key, err
 	}
 
-	cert, err := derToPublicKey(block.Bytes)
+	cert, err := DERToPublicKey(block.Bytes)
 	if err != nil {
 		return nil, err
 	}
 	return cert, err
 }
 
-func derToPublicKey(raw []byte) (pub interface{}, err error) {
+// DERToPublicKey unmarshals a der to public key
+func DERToPublicKey(raw []byte) (pub interface{}, err error) {
 	if len(raw) == 0 {
-		return nil, errors.New("invalid DER. It must be different from nil")
+		return nil, errors.New("Invalid DER. It must be different from nil.")
 	}
 
 	key, err := x509.ParsePKIXPublicKey(raw)

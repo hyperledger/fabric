@@ -20,6 +20,7 @@ type config struct {
 	ellipticCurve elliptic.Curve
 	hashFunction  func() hash.Hash
 	aesBitLength  int
+	rsaBitLength  int
 }
 
 func (conf *config) setSecurityLevel(securityLevel int, hashFamily string) (err error) {
@@ -39,10 +40,12 @@ func (conf *config) setSecurityLevelSHA2(level int) (err error) {
 	case 256:
 		conf.ellipticCurve = elliptic.P256()
 		conf.hashFunction = sha256.New
+		conf.rsaBitLength = 2048
 		conf.aesBitLength = 32
 	case 384:
 		conf.ellipticCurve = elliptic.P384()
 		conf.hashFunction = sha512.New384
+		conf.rsaBitLength = 3072
 		conf.aesBitLength = 32
 	default:
 		err = fmt.Errorf("Security level not supported [%d]", level)
@@ -55,10 +58,12 @@ func (conf *config) setSecurityLevelSHA3(level int) (err error) {
 	case 256:
 		conf.ellipticCurve = elliptic.P256()
 		conf.hashFunction = sha3.New256
+		conf.rsaBitLength = 2048
 		conf.aesBitLength = 32
 	case 384:
 		conf.ellipticCurve = elliptic.P384()
 		conf.hashFunction = sha3.New384
+		conf.rsaBitLength = 3072
 		conf.aesBitLength = 32
 	default:
 		err = fmt.Errorf("Security level not supported [%d]", level)

@@ -192,5 +192,5 @@ func TestX509PublicKeyImportOptsKeyImporter(t *testing.T) {
 	cert.PublicKey = "Hello world"
 	_, err = ki.KeyImport(cert, &mocks2.KeyImportOpts{})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Certificate's public key type not recognized. Supported keys: [ECDSA]")
+	require.Contains(t, err.Error(), "Certificate's public key type not recognized. Supported keys: [ECDSA, RSA]")
 }

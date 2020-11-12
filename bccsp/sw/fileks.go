@@ -9,6 +9,7 @@ package sw
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/rsa"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -142,6 +143,8 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 		switch k := key.(type) {
 		case *ecdsa.PrivateKey:
 			return &ecdsaPrivateKey{k}, nil
+		case *rsa.PrivateKey:
+			return &rsaPrivateKey{key.(*rsa.PrivateKey)}, nil
 		default:
 			return nil, errors.New("secret key type not recognized")
 		}
@@ -155,6 +158,8 @@ func (ks *fileBasedKeyStore) GetKey(ski []byte) (bccsp.Key, error) {
 		switch k := key.(type) {
 		case *ecdsa.PublicKey:
 			return &ecdsaPublicKey{k}, nil
+		case *rsa.PublicKey:
+			return &rsaPublicKey{key.(*rsa.PublicKey)}, nil
 		default:
 			return nil, errors.New("public key type not recognized")
 		}
@@ -184,6 +189,18 @@ func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
 		if err != nil {
 			return fmt.Errorf("failed storing ECDSA public key [%s]", err)
+		}
+
+	case *rsaPrivateKey:
+		err = ks.storePrivateKey(hex.EncodeToString(k.SKI()), kk.privKey)
+		if err != nil {
+			return fmt.Errorf("Failed storing RSA private key [%s]", err)
+		}
+
+	case *rsaPublicKey:
+		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
+		if err != nil {
+			return fmt.Errorf("Failed storing RSA public key [%s]", err)
 		}
 
 	case *aesPrivateKey:
@@ -224,6 +241,8 @@ func (ks *fileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err 
 		switch kk := key.(type) {
 		case *ecdsa.PrivateKey:
 			k = &ecdsaPrivateKey{kk}
+		case *rsa.PrivateKey:
+			k = &rsaPrivateKey{key.(*rsa.PrivateKey)}
 		default:
 			continue
 		}

@@ -14,6 +14,7 @@ import (
 
 	mocks2 "github.com/hyperledger/fabric/bccsp/mocks"
 	"github.com/hyperledger/fabric/bccsp/sw/mocks"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,6 +74,20 @@ func TestAESKeyGenerator(t *testing.T) {
 	require.True(t, ok)
 	require.NotNil(t, aesK.privKey)
 	require.Equal(t, len(aesK.privKey), 32)
+}
+
+func TestRSAKeyGenerator(t *testing.T) {
+	t.Parallel()
+
+	kg := &rsaKeyGenerator{length: 512}
+
+	k, err := kg.KeyGen(nil)
+	assert.NoError(t, err)
+
+	rsaK, ok := k.(*rsaPrivateKey)
+	assert.True(t, ok)
+	assert.NotNil(t, rsaK.privKey)
+	assert.Equal(t, rsaK.privKey.N.BitLen(), 512)
 }
 
 func TestAESKeyGeneratorInvalidInputs(t *testing.T) {
