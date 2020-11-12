@@ -114,8 +114,7 @@ func TestStoreBasicCommitAndRetrieval(t *testing.T) {
 
 	// pvt data retrieval for block 2 should return ErrOutOfRange
 	retrievedData, err = store.GetPvtDataByBlockNum(2, nilFilter)
-	_, ok := err.(*ErrOutOfRange)
-	require.True(t, ok)
+	require.EqualError(t, err, "last committed block number [1] smaller than the requested block number [2]")
 	require.Nil(t, retrievedData)
 
 	// pvt data with block 2 - commit
@@ -562,8 +561,11 @@ func TestStoreState(t *testing.T) {
 	testData := []*ledger.TxPvtData{
 		produceSamplePvtdata(t, 0, []string{"ns-1:coll-1", "ns-1:coll-2"}),
 	}
-	_, ok := store.Commit(1, testData, nil).(*ErrIllegalArgs)
-	require.True(t, ok)
+
+	require.EqualError(t,
+		store.Commit(1, testData, nil),
+		"expected block number=0, received block number=1",
+	)
 }
 
 func TestPendingBatch(t *testing.T) {
@@ -609,8 +611,7 @@ func TestPendingBatch(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, true, hasPendingBatch)
 	pvtData, err := s.GetPvtDataByBlockNum(26, nil)
-	_, ok := err.(*ErrOutOfRange)
-	require.True(t, ok)
+	require.EqualError(t, err, "last committed block number [25] smaller than the requested block number [26]")
 	require.Nil(t, pvtData)
 
 	// emulate a version upgrade

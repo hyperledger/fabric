@@ -928,7 +928,7 @@ func TestCommitToPvtAndBlockstoreError(t *testing.T) {
 	// try to write the last block again. The function should return an
 	// error from the private data store.
 	err = kvlgr.commitToPvtAndBlockStore(sampleData[8]) // block 9
-	require.EqualError(t, err, "Expected block number=10, received block number=9")
+	require.EqualError(t, err, "expected block number=10, received block number=9")
 
 	lastBlkAndPvtData := sampleData[9] // block 10
 	// Add the block directly to blockstore

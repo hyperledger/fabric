@@ -343,7 +343,7 @@ func TestLedgerCreationFailure(t *testing.T) {
 	require.NoError(t, err)
 	genesisBlock.Header.Number = 1 // should cause an error during ledger creation
 	_, err = provider.CreateFromGenesisBlock(genesisBlock)
-	require.EqualError(t, err, "Expected block number=0, received block number=1")
+	require.EqualError(t, err, "expected block number=0, received block number=1")
 
 	verifyLedgerDoesNotExist(t, provider, ledgerID)
 }
@@ -363,7 +363,7 @@ func TestLedgerCreationFailureDuringLedgerDeletion(t *testing.T) {
 
 	provider.dbProvider.Close()
 	_, err = provider.CreateFromGenesisBlock(genesisBlock)
-	require.Contains(t, err.Error(), "Expected block number=0, received block number=1: error while deleting data from ledger [testLedger]")
+	require.Contains(t, err.Error(), "expected block number=0, received block number=1: error while deleting data from ledger [testLedger]")
 
 	verifyLedgerIDExists(t, provider, ledgerID, msgs.Status_UNDER_CONSTRUCTION)
 }
