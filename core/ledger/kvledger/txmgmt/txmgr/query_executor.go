@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package txmgr
 
 import (
-	"fmt"
-
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
@@ -214,9 +212,10 @@ func (q *queryExecutor) GetPrivateData(ns, coll, key string) ([]byte, error) {
 		return nil, err
 	}
 	if !version.AreSame(hashVersion, ver) {
-		return nil, &ErrPvtdataNotAvailable{Msg: fmt.Sprintf(
+		return nil, errors.Errorf(
 			"private data matching public hash version is not available. Public hash version = %s, Private data version = %s",
-			hashVersion, ver)}
+			hashVersion, ver,
+		)
 	}
 	if q.collectReadset {
 		q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
