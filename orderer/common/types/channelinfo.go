@@ -14,6 +14,7 @@ type ErrorResponse struct {
 
 // ChannelList carries the response to an HTTP request to List all the channels.
 // This is marshaled into the body of the HTTP response.
+// swagger:model channelList
 type ChannelList struct {
 	// The system channel info, nil if it doesn't exist.
 	SystemChannel *ChannelInfoShort `json:"systemChannel"`
@@ -65,6 +66,7 @@ const (
 
 // ChannelInfo carries the response to an HTTP request to List a single channel.
 // This is marshaled into the body of the HTTP response.
+// swagger:model channelInfo
 type ChannelInfo struct {
 	// The channel name.
 	Name string `json:"name"`

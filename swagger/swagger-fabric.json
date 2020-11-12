@@ -1,0 +1,223 @@
+{
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "description": "Package main is the entrypoint for the orderer binary\nand calls only into the server.Main() function.  No other\nfunction should be included in this package.",
+    "title": "Orderer API",
+    "license": {
+      "name": "Copyright IBM Corp. All Rights Reserved."
+    },
+    "version": "2.3"
+  },
+  "basePath": "/v1",
+  "paths": {
+    "/channels": {
+      "get": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Returns the complete list of channels an Ordering Service Node (OSN) has joined.",
+        "operationId": "listChannels",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved channel.",
+            "schema": {
+              "$ref": "#/definitions/channelList"
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "If a channel does not yet exist, it will be created.",
+        "tags": [
+          "channels"
+        ],
+        "summary": "Joins an Ordering Service Node (OSN) to a channel.",
+        "operationId": "joinChannel",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "up-to-date config block for the channel.",
+            "name": "configBlock",
+            "in": "formData",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successfully joined channel."
+          },
+          "400": {
+            "description": "Cannot join channel."
+          },
+          "403": {
+            "description": "The client is trying to join the system-channel that does not exist, but application channels exist."
+          },
+          "405": {
+            "description": "The client is trying to join an app-channel, but the system channel exists.\nThe client is trying to join an app-channel that exists, but the system channel does not.\nThe client is trying to join the system-channel, and it exists.\n"
+          },
+          "409": {
+            "description": "The client is trying to join a channel that is currently being removed."
+          },
+          "500": {
+            "description": "Removal of channel failed."
+          }
+        }
+      }
+    },
+    "/channels/{channelID}": {
+      "get": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Returns detailed channel information for a specific channel Ordering Service Node (OSN) has joined.",
+        "operationId": "listChannel",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Channel ID",
+            "name": "channelID",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved channel.",
+            "schema": {
+              "$ref": "#/definitions/channelInfo"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Removes an Ordering Service Node (OSN) from a channel.",
+        "operationId": "removeChannel",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Channel ID",
+            "name": "channelID",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successfully removed channel."
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "The channel does not exist."
+          },
+          "405": {
+            "description": "The system channel exists, removal is not allowed."
+          },
+          "409": {
+            "description": "The channel is pending removal."
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ChannelInfoShort": {
+      "type": "object",
+      "title": "ChannelInfoShort carries a short info of a single channel.",
+      "properties": {
+        "name": {
+          "description": "The channel name.",
+          "type": "string",
+          "x-go-name": "Name"
+        },
+        "url": {
+          "description": "The channel relative URL (no Host:Port, only path), e.g.: \"/participation/v1/channels/my-channel\".",
+          "type": "string",
+          "x-go-name": "URL"
+        }
+      },
+      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+    },
+    "ConsensusRelation": {
+      "type": "string",
+      "title": "ConsensusRelation represents the relationship between the orderer and the channel's consensus cluster.",
+      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+    },
+    "Status": {
+      "description": "Status represents the degree by which the orderer had caught up with the rest of the cluster after joining the\nchannel (either as a consenter or a follower).",
+      "type": "string",
+      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+    },
+    "channelInfo": {
+      "description": "This is marshaled into the body of the HTTP response.",
+      "type": "object",
+      "title": "ChannelInfo carries the response to an HTTP request to List a single channel.",
+      "properties": {
+        "consensusRelation": {
+          "$ref": "#/definitions/ConsensusRelation"
+        },
+        "height": {
+          "description": "Current block height.",
+          "type": "integer",
+          "format": "uint64",
+          "x-go-name": "Height"
+        },
+        "name": {
+          "description": "The channel name.",
+          "type": "string",
+          "x-go-name": "Name"
+        },
+        "status": {
+          "$ref": "#/definitions/Status"
+        },
+        "url": {
+          "description": "The channel relative URL (no Host:Port, only path), e.g.: \"/participation/v1/channels/my-channel\".",
+          "type": "string",
+          "x-go-name": "URL"
+        }
+      },
+      "x-go-name": "ChannelInfo",
+      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+    },
+    "channelList": {
+      "description": "This is marshaled into the body of the HTTP response.",
+      "type": "object",
+      "title": "ChannelList carries the response to an HTTP request to List all the channels.",
+      "properties": {
+        "channels": {
+          "description": "Application channels only, nil or empty if no channels defined.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ChannelInfoShort"
+          },
+          "x-go-name": "Channels"
+        },
+        "systemChannel": {
+          "$ref": "#/definitions/ChannelInfoShort"
+        }
+      },
+      "x-go-name": "ChannelList",
+      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+    }
+  },
+  "tags": [
+    {
+      "description": "Channel Participation APIs",
+      "name": "channels"
+    }
+  ]
+}

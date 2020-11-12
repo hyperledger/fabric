@@ -70,12 +70,84 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 		router:    mux.NewRouter(),
 	}
 
+	// swagger:operation GET /channels/{channelID} channels listChannel
+	// ---
+	// summary: Returns detailed channel information for a specific channel Ordering Service Node (OSN) has joined.
+	// parameters:
+	// - name: channelID
+	//   in: path
+	//   description: Channel ID
+	//   required: true
+	//   type: string
+	// responses:
+	//    "200":
+	//       description: Successfully retrieved channel.
+	//       schema:
+	//         "$ref": "#/definitions/channelInfo"
+
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveListOne).Methods(http.MethodGet)
+
+	// swagger:operation DELETE /channels/{channelID} channels removeChannel
+	// ---
+	// summary: Removes an Ordering Service Node (OSN) from a channel.
+	// parameters:
+	// - name: channelID
+	//   in: path
+	//   description: Channel ID
+	//   required: true
+	//   type: string
+	// responses:
+	//    '204':
+	//      description: Successfully removed channel.
+	//    '400':
+	//      description: Bad request.
+	//    '404':
+	//      description: The channel does not exist.
+	//    '405':
+	//      description: The system channel exists, removal is not allowed.
+	//    '409':
+	//      description: The channel is pending removal.
 
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveRemove).Methods(http.MethodDelete)
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveNotAllowed)
 
+	// swagger:operation GET /channels channels listChannels
+	// ---
+	// summary: Returns the complete list of channels an Ordering Service Node (OSN) has joined.
+	// responses:
+	//    "200":
+	//       description: Successfully retrieved channel.
+	//       schema:
+	//         "$ref": "#/definitions/channelList"
+
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveListAll).Methods(http.MethodGet)
+
+	// swagger:operation POST /channels channels joinChannel
+	// ---
+	// summary: Joins an Ordering Service Node (OSN) to a channel.
+	// description: If a channel does not yet exist, it will be created.
+	// parameters:
+	// - name: configBlock
+	//   in: formData
+	//   description: up-to-date config block for the channel.
+	//   required: true
+	//   type: string
+	// responses:
+	//    '201':
+	//      description: Successfully joined channel.
+	//    '400':
+	//      description: Cannot join channel.
+	//    '403':
+	//      description: The client is trying to join the system-channel that does not exist, but application channels exist.
+	//    '405':
+	//      description: |
+	//                   The client is trying to join an app-channel, but the system channel exists.
+	//                   The client is trying to join an app-channel that exists, but the system channel does not.
+	//                   The client is trying to join the system-channel, and it exists.
+	//    '409':
+	//      description: The client is trying to join a channel that is currently being removed.
+	//    '500':
+	//      description: Removal of channel failed.
 
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveJoin).Methods(http.MethodPost).HeadersRegexp(
 		"Content-Type", "multipart/form-data*")
