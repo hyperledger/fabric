@@ -163,28 +163,12 @@ See `releases <https://github.com/hyperledger/fabric#releases>`__ for more detai
 Making Feature/Enhancement Proposals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-First, take time to review
-`JIRA <https://jira.hyperledger.org/issues/?filter=12524>`__
-to be sure that there isn't already an open (or recently closed) proposal for the
-same function. If there isn't, to make a proposal we recommend that you open a
-JIRA Epic or Story, whichever seems to best fit the circumstance and
-link or inline a "one pager" of the proposal that states what the feature would
-do and, if possible, how it might be implemented. It would help also to make a
-case for why the feature should be added, such as identifying specific use
-case(s) for which the feature is needed and a case for what the benefit would be
-should the feature be implemented. Once the JIRA issue is created, and the
-"one pager" either attached, inlined in the description field, or a link to a
-publicly accessible document is added to the description, send an introductory
-email to the fabric@lists.hyperledger.org mailing list linking the
-JIRA issue, and soliciting feedback.
+Minor improvements can be implemented and reviewed via the normal `GitHub pull request workflow <https://guides.github.com/introduction/flow/>`__ but for changes that are more substantial Fabric follows the RFC (request for comments) process.
 
-Discussion of the proposed feature should be conducted in the JIRA issue itself,
-so that we have a consistent pattern within our community as to where to find
-design discussion.
+This process is intended to provide a consistent and controlled path for major changes to Fabric and other official project components, so that all stakeholders can be confident about the direction in which Fabric is evolving.
 
-Getting the support of three or more of the Hyperledger Fabric maintainers for
-the new feature will greatly enhance the probability that the feature's related
-PRs will be included in a subsequent release.
+To propose a new feature, first, check
+`JIRA <https://jira.hyperledger.org/projects/FAB/issues>`__ and the `Fabric RFC repository <https://github.com/hyperledger/fabric-rfcs/>`__ to be sure that there isn't already an open (or recently closed) proposal for the same functionality. If there isn't, follow `the RFC process <https://github.com/hyperledger/fabric-rfcs/blob/master/README.md>`__ to make a proposal.
 
 Contributor meeting
 ~~~~~~~~~~~~~~~~~~~
