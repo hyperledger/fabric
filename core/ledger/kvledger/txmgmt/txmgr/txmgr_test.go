@@ -861,76 +861,46 @@ func TestTxSimulatorUnsupportedTx(t *testing.T) {
 	err := simulator.SetState("ns", "key", []byte("value"))
 	require.NoError(t, err)
 	_, err = simulator.GetPrivateDataRangeScanIterator("ns1", "coll1", "startKey", "endKey")
-	_, ok := err.(*ErrUnsupportedTransaction)
-	require.True(t, ok)
+	require.EqualError(t, err, "txid [txid1]: unsuppored transaction. Queries on pvt data is supported only in a read-only transaction")
 
 	simulator, _ = txMgr.NewTxSimulator("txid2")
 	_, err = simulator.GetPrivateDataRangeScanIterator("ns1", "coll1", "startKey", "endKey")
 	require.NoError(t, err)
 	err = simulator.SetState("ns", "key", []byte("value"))
-	_, ok = err.(*ErrUnsupportedTransaction)
-	require.True(t, ok)
+	require.EqualError(t, err, "txid [txid2]: unsuppored transaction. Transaction has already performed queries on pvt data. Writes are not allowed")
 
 	simulator, _ = txMgr.NewTxSimulator("txid3")
 	err = simulator.SetState("ns", "key", []byte("value"))
 	require.NoError(t, err)
 	_, err = simulator.GetStateRangeScanIteratorWithPagination("ns1", "startKey", "endKey", 2)
-	_, ok = err.(*ErrUnsupportedTransaction)
-	require.True(t, ok)
+	require.EqualError(t, err, "txid [txid3]: unsuppored transaction. Paginated queries are supported only in a read-only transaction")
 
 	simulator, _ = txMgr.NewTxSimulator("txid4")
 	_, err = simulator.GetStateRangeScanIteratorWithPagination("ns1", "startKey", "endKey", 2)
 	require.NoError(t, err)
 	err = simulator.SetState("ns", "key", []byte("value"))
-	_, ok = err.(*ErrUnsupportedTransaction)
-	require.True(t, ok)
+	require.EqualError(t, err, "txid [txid4]: unsuppored transaction. Transaction has already performed a paginated query. Writes are not allowed")
 
 }
 
-// TestTxSimulatorQueryUnsupportedTx is only tested on the CouchDB testEnv
-func TestTxSimulatorQueryUnsupportedTx(t *testing.T) {
-	for _, testEnv := range testEnvs {
-		// Query is only supported and tested on the CouchDB testEnv
-		if testEnv.getName() == couchDBtestEnvName {
-			t.Logf("Running test for TestEnv = %s", testEnv.getName())
-			testLedgerID := "testtxsimulatorunsupportedtxqueries"
-			testEnv.init(t, testLedgerID, nil)
-			testTxSimulatorQueryUnsupportedTx(t, testEnv)
-			testEnv.cleanup()
-		}
-	}
-}
-
-func testTxSimulatorQueryUnsupportedTx(t *testing.T, env testEnv) {
-	txMgr := env.getTxMgr()
-	txMgrHelper := newTxMgrTestHelper(t, txMgr)
-
-	s1, _ := txMgr.NewTxSimulator("test_tx1")
-
-	require.NoError(t, s1.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`)))
-
-	s1.Done()
-
-	// validate and commit RWset
-	txRWSet, _ := s1.GetTxSimulationResults()
-	txMgrHelper.validateAndCommitRWSet(txRWSet.PubSimulationResults)
-
+func TestTxSimulatorUnsupportedTxCouchDBQuery(t *testing.T) {
+	testEnv := testEnvsMap[couchDBtestEnvName]
+	testEnv.init(t, "testtxsimulatorunsupportedtxqueries", nil)
+	defer testEnv.cleanup()
+	txMgr := testEnv.getTxMgr()
 	queryString := `{"selector":{"owner":{"$eq":"bob"}}}`
 
 	simulator, _ := txMgr.NewTxSimulator("txid1")
 	err := simulator.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
 	require.NoError(t, err)
 	_, err = simulator.ExecuteQueryWithPagination("ns1", queryString, "", 2)
-	_, ok := err.(*ErrUnsupportedTransaction)
-	require.True(t, ok)
+	require.EqualError(t, err, "txid [txid1]: unsuppored transaction. Paginated queries are supported only in a read-only transaction")
 
 	simulator, _ = txMgr.NewTxSimulator("txid2")
 	_, err = simulator.ExecuteQueryWithPagination("ns1", queryString, "", 2)
 	require.NoError(t, err)
 	err = simulator.SetState("ns1", "key1", []byte(`{"asset_name":"marble1","color":"red","size":"25","owner":"jerry"}`))
-	_, ok = err.(*ErrUnsupportedTransaction)
-	require.True(t, ok)
-
+	require.EqualError(t, err, "txid [txid2]: unsuppored transaction. Transaction has already performed a paginated query. Writes are not allowed")
 }
 
 func TestConstructUniquePvtData(t *testing.T) {
@@ -1197,7 +1167,7 @@ func TestTxSimulatorMissingPvtdata(t *testing.T) {
 	updateBatch.PvtUpdates.Put("ns1", "coll1", "key1", []byte("value1"), version.NewHeight(1, 1))
 	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 1)))
 
-	require.True(t, testPvtValueEqual(t, txMgr, "ns1", "coll1", "key1", []byte("value1")))
+	verifyPvtKeyValue(t, txMgr, "ns1", "coll1", "key1", []byte("value1"))
 
 	updateBatch = privacyenabledstate.NewUpdateBatch()
 	updateBatch.HashUpdates.Put("ns1", "coll1", util.ComputeStringHash("key1"), util.ComputeStringHash("value1"), version.NewHeight(2, 1))
@@ -1206,13 +1176,10 @@ func TestTxSimulatorMissingPvtdata(t *testing.T) {
 	updateBatch.PvtUpdates.Put("ns1", "coll3", "key3", []byte("value3"), version.NewHeight(2, 1))
 	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(2, 1)))
 
-	require.False(t, testPvtKeyExist(t, txMgr, "ns1", "coll1", "key1"))
-
-	require.False(t, testPvtKeyExist(t, txMgr, "ns1", "coll2", "key2"))
-
-	require.True(t, testPvtValueEqual(t, txMgr, "ns1", "coll3", "key3", []byte("value3")))
-
-	require.True(t, testPvtValueEqual(t, txMgr, "ns1", "coll4", "key4", nil))
+	verifyPvtKeyVersionStale(t, txMgr, "ns1", "coll1", "key1")
+	verifyPvtKeyVersionStale(t, txMgr, "ns1", "coll2", "key2")
+	verifyPvtKeyValue(t, txMgr, "ns1", "coll3", "key3", []byte("value3"))
+	verifyPvtKeyValue(t, txMgr, "ns1", "coll4", "key4", nil)
 }
 
 func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
@@ -1246,7 +1213,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	require.NoError(t, txMgr.Commit())
 
 	// pvt data should not exist
-	require.False(t, testPvtKeyExist(t, txMgr, "ns", "coll", "pvtkey1"))
+	verifyPvtKeyVersionStale(t, txMgr, "ns", "coll", "pvtkey1")
 
 	// committing pvt data of block 1
 	v1 := []byte("pvt-value1")
@@ -1260,7 +1227,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	require.NoError(t, err)
 
 	// pvt data should exist
-	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", v1))
+	verifyPvtKeyValue(t, txMgr, "ns", "coll", "pvtkey1", v1)
 
 	// storing hashed data but the pvt key is missing
 	// stored pvt key would get expired and purged while committing block 4
@@ -1272,7 +1239,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	require.NoError(t, txMgr.Commit())
 
 	// pvt data should not exist
-	require.False(t, testPvtKeyExist(t, txMgr, "ns", "coll", "pvtkey2"))
+	verifyPvtKeyVersionStale(t, txMgr, "ns", "coll", "pvtkey2")
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-3",
 		map[string]string{"pubkey3": "pub-value3"}, nil, false)
@@ -1297,7 +1264,7 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	require.NoError(t, err)
 
 	// pvt data should exist
-	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey2", v2))
+	verifyPvtKeyValue(t, txMgr, "ns", "coll", "pvtkey2", v2)
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-4",
 		map[string]string{"pubkey4": "pub-value4"}, nil, false)
@@ -1305,24 +1272,22 @@ func TestRemoveStaleAndCommitPvtDataOfOldBlocksWithExpiry(t *testing.T) {
 	require.NoError(t, err)
 	// committing block 4 and should purge pvtkey2
 	require.NoError(t, txMgr.Commit())
-
-	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey2", nil))
+	verifyPvtKeyValue(t, txMgr, "ns", "coll", "pvtkey2", nil)
 }
 
-func testPvtKeyExist(t *testing.T, txMgr *LockBasedTxMgr, ns, coll, key string) bool {
+func verifyPvtKeyVersionStale(t *testing.T, txMgr *LockBasedTxMgr, ns, coll, key string) {
 	simulator, _ := txMgr.NewTxSimulator("tx-tmp")
 	defer simulator.Done()
 	_, err := simulator.GetPrivateData(ns, coll, key)
-	_, ok := err.(*ErrPvtdataNotAvailable)
-	return !ok
+	require.Contains(t, err.Error(), "private data matching public hash version is not available")
 }
 
-func testPvtValueEqual(t *testing.T, txMgr *LockBasedTxMgr, ns, coll, key string, value []byte) bool {
+func verifyPvtKeyValue(t *testing.T, txMgr *LockBasedTxMgr, ns, coll, key string, expectedValue []byte) {
 	simulator, _ := txMgr.NewTxSimulator("tx-tmp")
 	defer simulator.Done()
 	pvtValue, err := simulator.GetPrivateData(ns, coll, key)
 	require.NoError(t, err)
-	return bytes.Equal(pvtValue, value)
+	require.Equal(t, expectedValue, pvtValue)
 }
 
 func TestDeleteOnCursor(t *testing.T) {
@@ -1395,24 +1360,21 @@ func TestTxSimulatorMissingPvtdataExpiry(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
 
-	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", []byte("pvt-value1")))
+	verifyPvtKeyValue(t, txMgr, "ns", "coll", "pvtkey1", []byte("pvt-value1"))
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-2",
-
 		map[string]string{"pubkey1": "pub-value2"}, map[string]string{"pvtkey2": "pvt-value2"}, false)
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
-
-	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", []byte("pvt-value1")))
+	verifyPvtKeyValue(t, txMgr, "ns", "coll", "pvtkey1", []byte("pvt-value1"))
 
 	blkAndPvtdata = prepareNextBlockForTest(t, txMgr, bg, "txid-2",
 		map[string]string{"pubkey1": "pub-value3"}, map[string]string{"pvtkey3": "pvt-value3"}, false)
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
-
-	require.True(t, testPvtValueEqual(t, txMgr, "ns", "coll", "pvtkey1", nil))
+	verifyPvtKeyValue(t, txMgr, "ns", "coll", "pvtkey1", nil)
 }
 
 func TestTxWithPubMetadata(t *testing.T) {
