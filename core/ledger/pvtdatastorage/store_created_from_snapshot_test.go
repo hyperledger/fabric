@@ -106,7 +106,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 		require.Equal(t, uint64(25), lastBlkNum)
 
 		err = store.Commit(25, nil, nil)
-		require.EqualError(t, err, "Expected block number=26, received block number=25")
+		require.EqualError(t, err, "expected block number=26, received block number=25")
 		require.NoError(t, store.Commit(26, nil, nil))
 	})
 

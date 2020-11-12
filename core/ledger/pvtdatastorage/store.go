@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package pvtdatastorage
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -261,7 +260,7 @@ func (s *Store) Init(btlPolicy pvtdatapolicy.BTLPolicy) {
 func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtData ledger.TxMissingPvtData) error {
 	expectedBlockNum := s.nextBlockNum()
 	if expectedBlockNum != blockNum {
-		return &ErrIllegalArgs{fmt.Sprintf("Expected block number=%d, received block number=%d", expectedBlockNum, blockNum)}
+		return errors.Errorf("expected block number=%d, received block number=%d", expectedBlockNum, blockNum)
 	}
 
 	batch := s.db.NewUpdateBatch()
@@ -394,11 +393,11 @@ func (s *Store) ResetLastUpdatedOldBlocksList() error {
 func (s *Store) GetPvtDataByBlockNum(blockNum uint64, filter ledger.PvtNsCollFilter) ([]*ledger.TxPvtData, error) {
 	logger.Debugf("Get private data for block [%d], filter=%#v", blockNum, filter)
 	if s.isEmpty {
-		return nil, &ErrOutOfRange{"The store is empty"}
+		return nil, errors.New("the store is empty")
 	}
 	lastCommittedBlock := atomic.LoadUint64(&s.lastCommittedBlock)
 	if blockNum > lastCommittedBlock {
-		return nil, &ErrOutOfRange{fmt.Sprintf("Last committed block=%d, block requested=%d", lastCommittedBlock, blockNum)}
+		return nil, errors.Errorf("last committed block number [%d] smaller than the requested block number [%d]", lastCommittedBlock, blockNum)
 	}
 	startKey, endKey := getDataKeysForRangeScanByBlockNum(blockNum)
 	logger.Debugf("Querying private data storage for write sets using startKey=%#v, endKey=%#v", startKey, endKey)
@@ -856,31 +855,4 @@ func (c *collElgProcSync) done() {
 
 func (c *collElgProcSync) waitForDone() {
 	<-c.procComplete
-}
-
-// ErrIllegalCall is to be thrown by a store impl if the store does not expect a call to Prepare/Commit/Rollback/InitLastCommittedBlock
-type ErrIllegalCall struct {
-	msg string
-}
-
-func (err *ErrIllegalCall) Error() string {
-	return err.msg
-}
-
-// ErrIllegalArgs is to be thrown by a store impl if the args passed are not allowed
-type ErrIllegalArgs struct {
-	msg string
-}
-
-func (err *ErrIllegalArgs) Error() string {
-	return err.msg
-}
-
-// ErrOutOfRange is to be thrown for the request for the data that is not yet committed
-type ErrOutOfRange struct {
-	msg string
-}
-
-func (err *ErrOutOfRange) Error() string {
-	return err.msg
 }

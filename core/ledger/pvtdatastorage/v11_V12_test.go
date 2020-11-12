@@ -65,8 +65,7 @@ func TestV11v12(t *testing.T) {
 	checkDataExists(t, s, 14)
 
 	_, err = s.GetPvtDataByBlockNum(uint64(15), nil)
-	_, ok := err.(*ErrOutOfRange)
-	require.True(t, ok)
+	require.EqualError(t, err, "last committed block number [14] smaller than the requested block number [15]")
 }
 
 func checkDataNotExists(t *testing.T, s *Store, blkNum int) {
