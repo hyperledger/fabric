@@ -717,7 +717,7 @@ func (n *Network) GenerateConfigTree() {
 // written to ${rootDir}/${Channel.Name}_tx.pb.
 func (n *Network) Bootstrap() {
 	if n.DockerClient != nil {
-		n.createDockerNetwork()
+		n.CreateDockerNetwork()
 	}
 
 	sess, err := n.Cryptogen(commands.Generate{
@@ -753,7 +753,7 @@ func (n *Network) Bootstrap() {
 	n.ConcatenateTLSCACertificates()
 }
 
-func (n *Network) createDockerNetwork() {
+func (n *Network) CreateDockerNetwork() {
 	_, err := n.DockerClient.CreateNetwork(
 		docker.CreateNetworkOptions{
 			Name:   n.NetworkID,
