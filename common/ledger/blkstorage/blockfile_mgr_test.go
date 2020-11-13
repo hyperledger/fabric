@@ -28,8 +28,8 @@ func TestBlockfileMgrBlockReadWrite(t *testing.T) {
 	defer blkfileMgrWrapper.close()
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
-	blkfileMgrWrapper.testGetBlockByHash(blocks, nil)
-	blkfileMgrWrapper.testGetBlockByNumber(blocks, 0, nil)
+	blkfileMgrWrapper.testGetBlockByHash(blocks)
+	blkfileMgrWrapper.testGetBlockByNumber(blocks)
 }
 
 func TestAddBlockWithWrongHash(t *testing.T) {
@@ -384,7 +384,7 @@ func TestBlockfileMgrRestart(t *testing.T) {
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
 	require.Equal(t, 9, int(blkfileMgrWrapper.blockfileMgr.blockfilesInfo.lastPersistedBlock))
-	blkfileMgrWrapper.testGetBlockByHash(blocks, nil)
+	blkfileMgrWrapper.testGetBlockByHash(blocks)
 	require.Equal(t, expectedHeight, blkfileMgrWrapper.blockfileMgr.getBlockchainInfo().Height)
 }
 
@@ -406,14 +406,14 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
 	blkfileMgrWrapper.addBlocks(blocks[:100])
 	require.Equal(t, 1, blkfileMgrWrapper.blockfileMgr.blockfilesInfo.latestFileNumber)
-	blkfileMgrWrapper.testGetBlockByHash(blocks[:100], nil)
+	blkfileMgrWrapper.testGetBlockByHash(blocks[:100])
 	blkfileMgrWrapper.close()
 
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
 	blkfileMgrWrapper.addBlocks(blocks[100:])
 	require.Equal(t, 2, blkfileMgrWrapper.blockfileMgr.blockfilesInfo.latestFileNumber)
-	blkfileMgrWrapper.testGetBlockByHash(blocks[100:], nil)
+	blkfileMgrWrapper.testGetBlockByHash(blocks[100:])
 }
 
 func TestBlockfileMgrGetBlockByTxID(t *testing.T) {
@@ -500,7 +500,7 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteBlkfile
 	blkfileMgrWrapper.addBlocks(blocks[5:])
 	require.True(t, testutilGetFileSize(t, lastFilePath) > 0)
 	require.Equal(t, firstBlkFileSize, testutilGetFileSize(t, firstFilePath))
-	blkfileMgrWrapper.testGetBlockByNumber(blocks, 0, nil)
+	blkfileMgrWrapper.testGetBlockByNumber(blocks)
 	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 0, len(blocks)-1, blocks)
 }
 

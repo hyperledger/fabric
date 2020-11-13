@@ -70,7 +70,7 @@ func testBlockIndexSync(t *testing.T, numBlocks int, numBlocksToIndex int, syncB
 		// Before, we test for index sync-up, verify that the last set of blocks not indexed in the original index
 		for i := numBlocksToIndex + 1; i <= numBlocks; i++ {
 			_, err := blkfileMgr.retrieveBlockByNumber(uint64(i))
-			require.Exactly(t, ErrNotFoundInIndex, err)
+			require.EqualError(t, err, fmt.Sprintf("no such block number [%d] in index", i))
 		}
 
 		// perform index sync
@@ -125,7 +125,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 			require.NoError(t, err, "Error while retrieving block by hash")
 			require.Equal(t, blocks[0], block)
 		} else {
-			require.Exactly(t, ErrAttrNotIndexed, err)
+			require.EqualError(t, err, "block hashes not maintained in index")
 		}
 
 		// test 'retrieveBlockByNumber'
@@ -134,7 +134,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 			require.NoError(t, err, "Error while retrieving block by number")
 			require.Equal(t, blocks[0], block)
 		} else {
-			require.Exactly(t, ErrAttrNotIndexed, err)
+			require.EqualError(t, err, "block numbers not maintained in index")
 		}
 
 		// test 'retrieveTransactionByID'
@@ -148,7 +148,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 			require.NoError(t, err)
 			require.Equal(t, txEnvelopeOrig, txEnvelope)
 		} else {
-			require.Exactly(t, ErrAttrNotIndexed, err)
+			require.EqualError(t, err, "transaction IDs not maintained in index")
 		}
 
 		// test txIDExists
@@ -159,7 +159,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 			require.NoError(t, err)
 			require.True(t, exists)
 		} else {
-			require.Exactly(t, ErrAttrNotIndexed, err)
+			require.EqualError(t, err, "transaction IDs not maintained in index")
 		}
 
 		//test 'retrieveTrasnactionsByBlockNumTranNum
@@ -171,7 +171,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 			require.NoError(t, err2)
 			require.Equal(t, txEnvelopeOrig2, txEnvelope2)
 		} else {
-			require.Exactly(t, ErrAttrNotIndexed, err)
+			require.EqualError(t, err, "<blockNumber, transactionNumber> tuple not maintained in index")
 		}
 
 		// test 'retrieveBlockByTxID'
@@ -182,7 +182,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 			require.NoError(t, err, "Error while retrieving block by txID")
 			require.Equal(t, block, blocks[0])
 		} else {
-			require.Exactly(t, ErrAttrNotIndexed, err)
+			require.EqualError(t, err, "transaction IDs not maintained in index")
 		}
 
 		for _, block := range blocks {
@@ -195,13 +195,11 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 				reason, err := blockfileMgr.retrieveTxValidationCodeByTxID(txid)
 
 				if containsAttr(indexItems, IndexableAttrTxID) {
-					require.NoError(t, err, "Error while retrieving tx validation code by txID")
-
+					require.NoError(t, err)
 					reasonFromFlags := flags.Flag(idx)
-
 					require.Equal(t, reasonFromFlags, reason)
 				} else {
-					require.Exactly(t, ErrAttrNotIndexed, err)
+					require.EqualError(t, err, "transaction IDs not maintained in index")
 				}
 			}
 		}
@@ -349,7 +347,7 @@ func TestExportUniqueTxIDsWhenTxIDsNotIndexed(t *testing.T) {
 	testSnapshotDir := testPath()
 	defer os.RemoveAll(testSnapshotDir)
 	_, err := blkfileMgrWrapper.blockfileMgr.index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
-	require.Equal(t, err, ErrAttrNotIndexed)
+	require.EqualError(t, err, "transaction IDs not maintained in index")
 }
 
 func TestExportUniqueTxIDsErrorCases(t *testing.T) {

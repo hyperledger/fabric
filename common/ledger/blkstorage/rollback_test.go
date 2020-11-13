@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,9 +54,9 @@ func TestRollback(t *testing.T) {
 	require.Equal(t, actualBlkfilesInfo.latestFileNumber, 4)
 
 	// 4. Check whether all blocks are stored correctly
-	blkfileMgrWrapper.testGetBlockByNumber(blocks, 0, nil)
-	blkfileMgrWrapper.testGetBlockByHash(blocks, nil)
-	blkfileMgrWrapper.testGetBlockByTxID(blocks, nil)
+	blkfileMgrWrapper.testGetBlockByNumber(blocks)
+	blkfileMgrWrapper.testGetBlockByHash(blocks)
+	blkfileMgrWrapper.testGetBlockByTxID(blocks)
 
 	// 5. Close the blkfileMgrWrapper
 	env.provider.Close()
@@ -314,23 +313,22 @@ func assertBlockStoreRollback(t *testing.T, path, ledgerID string, blocks []*com
 
 	// 3. Check whether all blocks till the target block number are stored correctly
 	if blkfileMgrWrapper.blockfileMgr.index.isAttributeIndexed(IndexableAttrBlockNum) {
-		blkfileMgrWrapper.testGetBlockByNumber(blocks[:rollbackedToBlkNum+1], 0, nil)
+		blkfileMgrWrapper.testGetBlockByNumber(blocks[:rollbackedToBlkNum+1])
 	}
 	if blkfileMgrWrapper.blockfileMgr.index.isAttributeIndexed(IndexableAttrBlockHash) {
-		blkfileMgrWrapper.testGetBlockByHash(blocks[:rollbackedToBlkNum+1], nil)
+		blkfileMgrWrapper.testGetBlockByHash(blocks[:rollbackedToBlkNum+1])
 	}
 	if blkfileMgrWrapper.blockfileMgr.index.isAttributeIndexed(IndexableAttrTxID) {
-		blkfileMgrWrapper.testGetBlockByTxID(blocks[:rollbackedToBlkNum+1], nil)
+		blkfileMgrWrapper.testGetBlockByTxID(blocks[:rollbackedToBlkNum+1])
 	}
 
 	// 4. Check whether all blocks with number greater than target block number
 	// are removed including index entries
-	expectedErr := errors.New("Entry not found in index")
 	if blkfileMgrWrapper.blockfileMgr.index.isAttributeIndexed(IndexableAttrBlockHash) {
-		blkfileMgrWrapper.testGetBlockByHash(blocks[rollbackedToBlkNum+1:], expectedErr)
+		blkfileMgrWrapper.testGetBlockByHashNotIndexed(blocks[rollbackedToBlkNum+1:])
 	}
 	if blkfileMgrWrapper.blockfileMgr.index.isAttributeIndexed(IndexableAttrTxID) {
-		blkfileMgrWrapper.testGetBlockByTxID(blocks[rollbackedToBlkNum+1:], expectedErr)
+		blkfileMgrWrapper.testGetBlockByTxIDNotIndexed(blocks[rollbackedToBlkNum+1:])
 	}
 
 	// 5. Close the blkfileMgrWrapper
