@@ -11,7 +11,7 @@ variables:
   - name: GOPATH
     value: $(Agent.BuildDirectory)/go
   - name: GOVER
-    value: 1.14.4
+    value: 1.14.12
 
 stages:
   - stage: BuildBinaries
