@@ -573,18 +573,6 @@ func (missingPvtDataInfo MissingPvtDataInfo) Add(blkNum, txNum uint64, ns, coll 
 			Collection: coll})
 }
 
-// ErrCollectionConfigNotYetAvailable is an error which is returned from the function
-// ConfigHistoryRetriever.CollectionConfigAt() if the latest block number committed
-// is lower than the block number specified in the request.
-type ErrCollectionConfigNotYetAvailable struct {
-	MaxBlockNumCommitted uint64
-	Msg                  string
-}
-
-func (e *ErrCollectionConfigNotYetAvailable) Error() string {
-	return e.Msg
-}
-
 // CollConfigNotDefinedError is returned whenever an operation
 // is requested on a collection whose config has not been defined
 type CollConfigNotDefinedError struct {
