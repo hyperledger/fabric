@@ -17,6 +17,7 @@ Maintainers
 | Manish Sethi | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
 | Gari Singh | [mastersingh24][mastersingh24] | mastersingh24 | <gari.r.singh@gmail.com>
 | Matthew Sykes | [sykesm][sykesm] | sykesm | <sykesmat@us.ibm.com>
+| Will Lahti | [wlahti][wlahti] | wlahti | <wtlahti@us.ibm.com>
 | Yacov Manevich | [yacovm][yacovm] | yacovm | <yacovm@il.ibm.com>
 
 **Documentation Maintainers**
@@ -82,4 +83,5 @@ Maintainers
 [srderson]: https://github.com/srderson
 [sykesm]: https://github.com/sykesm
 [tamasblummer]: https://github.com/tamasblummer
+[wlahti]: https://github.com/wlahti
 [yacovm]: https://github.com/yacovm
