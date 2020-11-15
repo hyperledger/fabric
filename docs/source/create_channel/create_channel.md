@@ -1,6 +1,8 @@
-# Creating a new channel
+# Create a channel with a system channel (legacy)
 
 You can use this tutorial to learn how to create new channels using the [configtxgen](../commands/configtxgen.html) CLI tool and then use the [peer channel](../commands/peerchannel.html) commands to join a channel with your peers. While this tutorial will leverage the Fabric test network to create the new channel, the steps in this tutorial can also be used by network operators in a production environment.
+
+Fabric v2.3 introduces the capability to create a channel without requiring a system channel, removing an extra layer of administration from the process. Check out the [Create a channel without a system channel](create_channel_participation.html) tutorial to learn more about the steps required.
 
 In the process of creating the channel, this tutorial will take you through the following steps and concepts:
 
@@ -50,7 +52,7 @@ You can find the `configtx.yaml` file that is used to deploy the test network in
 
   The `configtxgen` tool uses `configtx.yaml` file to create a complete genesis block for the system channel. As a result, the system channel profile needs to specify the full system channel configuration. The channel profile used to create the channel creation transaction only needs to contain the additional configuration information required to create an application channel.
 
-You can visit the [Using configtx.yaml to create a channel genesis block](create_channel_genesis.html) tutorial to learn more about this file. For now, we will return to the operational aspects of creating the channel, though we will reference parts of this file in future steps.
+You can visit the [Using configtx.yaml to create a channel genesis block](create_channel_config.html) tutorial to learn more about this file. For now, we will return to the operational aspects of creating the channel, though we will reference parts of this file in future steps.
 
 ## Start the network
 
@@ -364,7 +366,7 @@ Blockchain info: {"height":3,"currentBlockHash":"eBpwWKTNUgnXGpaY2ojF4xeP3bWdjlP
 
 We can confirm that the channel was created successfully by deploying a chaincode to the channel. We can use the `network.sh` script to deploy the Basic asset transfer chaincode to any test network channel. Deploy a chaincode to our new channel using the following command:
 ```
-./network.sh deployCC --ccn basic -c channel1 --cci InitLedger 
+./network.sh deployCC --ccn basic -c channel1 --cci InitLedger
 ```
 
 After you run the command, you should see the chaincode being deployed to the channel in your logs. The chaincode is invoked to add data to the channel ledger.
