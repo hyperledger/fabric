@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-GOTOOLS = counterfeiter ginkgo gocov gocov-xml goimports golint misspell mockery protoc-gen-go
+GOTOOLS = counterfeiter ginkgo gocov gocov-xml goimports golint misspell mockery protoc-gen-go swagger
 BUILD_DIR ?= build
 GOTOOLS_BINDIR ?= $(shell go env GOPATH)/bin
 
@@ -17,6 +17,7 @@ go.fqp.golint        := golang.org/x/lint/golint
 go.fqp.misspell      := github.com/client9/misspell/cmd/misspell
 go.fqp.mockery       := github.com/vektra/mockery/cmd/mockery
 go.fqp.protoc-gen-go := github.com/golang/protobuf/protoc-gen-go
+go.fqp.swagger       := github.com/go-swagger/go-swagger/cmd/swagger
 
 .PHONY: gotools-install
 gotools-install: $(patsubst %,$(GOTOOLS_BINDIR)/%, $(GOTOOLS))

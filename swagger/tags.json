@@ -1,6 +1,12 @@
 {
-	"tags": [{
-		"name": "channels",
-		"description": "Channel Participation APIs"
-	}]
+    "tags": [
+        {
+            "name": "channels",
+            "description": "Channel Participation APIs"
+        },
+        {
+            "name": "operations",
+            "description": "Operations APIs"
+        }
+    ]
 }

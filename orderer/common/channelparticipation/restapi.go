@@ -131,7 +131,6 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	//   in: formData
 	//   description: up-to-date config block for the channel.
 	//   required: true
-	//   type: string
 	// responses:
 	//    '201':
 	//      description: Successfully joined channel.

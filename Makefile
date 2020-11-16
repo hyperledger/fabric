@@ -106,7 +106,7 @@ all: check-go-version native docker checks
 checks: basic-checks unit-test integration-test
 
 .PHONY: basic-checks
-basic-checks: check-go-version license spelling references trailing-spaces linter check-metrics-doc filename-spaces
+basic-checks: check-go-version license spelling references trailing-spaces linter check-metrics-doc filename-spaces check-swagger
 
 .PHONY: desk-checks
 desk-check: checks verify
@@ -194,12 +194,12 @@ generate-metrics-doc:
 	./scripts/metrics_doc.sh generate
 
 .PHONY: check-swagger
-check-swagger:
+check-swagger: gotool.swagger
 	@echo "SWAGGER: Checking for outdated swagger..."
 	./scripts/swagger.sh check
 
 .PHONY: generate-swagger
-generate-swagger:
+generate-swagger: gotool.swagger
 	@echo "Generating swagger..."
 	./scripts/swagger.sh generate
 
