@@ -24,7 +24,7 @@ if [ -n "$OUTPUT" ]; then
 fi
 
 echo "Checking with goimports"
-OUTPUT="$(goimports -l ${source_dirs} | grep -Ev '(^|/)testdata/' || true)"
+OUTPUT="$(goimports -l ${source_dirs} | grep -Ev '(^|/)testdata/' | grep -Ev '\.pb\.go$' | grep -Ev '/mocks/' || true)"
 if [ -n "$OUTPUT" ]; then
     echo "The following files contain goimports errors"
     echo $OUTPUT

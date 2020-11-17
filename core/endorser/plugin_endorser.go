@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
-	"github.com/hyperledger/fabric/core/handlers/endorsement/api"
+	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
 	endorsement3 "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
 	"github.com/hyperledger/fabric/core/transientstore"
 	pb "github.com/hyperledger/fabric/protos/peer"

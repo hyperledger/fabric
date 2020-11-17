@@ -14,7 +14,7 @@ import (
 
 	"github.com/hyperledger/fabric/cmd/common"
 	. "github.com/hyperledger/fabric/discovery/client"
-	"github.com/hyperledger/fabric/discovery/cmd"
+	discovery "github.com/hyperledger/fabric/discovery/cmd"
 	"github.com/hyperledger/fabric/discovery/cmd/mocks"
 	"github.com/hyperledger/fabric/protos/gossip"
 	"github.com/hyperledger/fabric/protos/msp"

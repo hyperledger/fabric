@@ -473,7 +473,9 @@ func init() {
 	proto.RegisterEnum("protos.MetaDataKeys", MetaDataKeys_name, MetaDataKeys_value)
 }
 
-func init() { proto.RegisterFile("peer/transaction.proto", fileDescriptor_transaction_4fbd1a0e1a50cfab) }
+func init() {
+	proto.RegisterFile("peer/transaction.proto", fileDescriptor_transaction_4fbd1a0e1a50cfab)
+}
 
 var fileDescriptor_transaction_4fbd1a0e1a50cfab = []byte{
 	// 877 bytes of a gzipped FileDescriptorProto

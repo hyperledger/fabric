@@ -12,7 +12,7 @@ import (
 
 	"github.com/hyperledger/fabric/cmd/common"
 	. "github.com/hyperledger/fabric/discovery/client"
-	"github.com/hyperledger/fabric/discovery/cmd"
+	discovery "github.com/hyperledger/fabric/discovery/cmd"
 	"github.com/hyperledger/fabric/discovery/cmd/mocks"
 	discprotos "github.com/hyperledger/fabric/protos/discovery"
 	"github.com/hyperledger/fabric/protos/msp"
