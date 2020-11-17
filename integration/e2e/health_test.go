@@ -146,7 +146,7 @@ var _ = Describe("Health", func() {
 				statusCode, status = DoHealthCheck(authClient, healthURL)
 				Expect(status.Status).To(Equal("Service Unavailable"))
 				Expect(status.FailedChecks[0].Component).To(Equal("couchdb"))
-				Expect(status.FailedChecks[0].Reason).Should((HavePrefix(fmt.Sprintf("failed to connect to couch db [http error calling couchdb: Head http://%s: dial tcp %s: ", couchAddr, couchAddr))))
+				Expect(status.FailedChecks[0].Reason).Should(HavePrefix(fmt.Sprintf(`failed to connect to couch db [http error calling couchdb: Head "http://%s": dial tcp %s: `, couchAddr, couchAddr)))
 			})
 		})
 	})
