@@ -2060,6 +2060,40 @@ func TestDropErrorPath(t *testing.T) {
 	require.EqualError(t, vdbEnv.DBProvider.Drop(channelName), "internal leveldb error while obtaining db iterator: leveldb: closed")
 }
 
+func TestReadFromDBInvalidKey(t *testing.T) {
+	vdbEnv.init(t, sysNamespaces)
+	defer vdbEnv.cleanup()
+	channelName := "test_getstate_invalidkey"
+	db, err := vdbEnv.DBProvider.GetDBHandle(channelName, nil)
+	require.NoError(t, err)
+	vdb := db.(*VersionedDB)
+
+	testcase := []struct {
+		key              string
+		expectedErrorMsg string
+	}{
+		{
+			key:              string([]byte{0xff, 0xfe, 0xfd}),
+			expectedErrorMsg: "invalid key [fffefd], must be a UTF-8 string",
+		},
+		{
+			key:              "",
+			expectedErrorMsg: "invalid key. Empty string is not supported as a key by couchdb",
+		},
+		{
+			key:              "_key_starting_with_an_underscore",
+			expectedErrorMsg: `invalid key [_key_starting_with_an_underscore], cannot begin with "_"`,
+		},
+	}
+
+	for i, tc := range testcase {
+		t.Run(fmt.Sprintf("testcase-%d", i), func(t *testing.T) {
+			_, err = vdb.readFromDB("ns", tc.key)
+			require.EqualError(t, err, tc.expectedErrorMsg)
+		})
+	}
+}
+
 type dummyFullScanIter struct {
 	err error
 	kv  *statedb.VersionedKV

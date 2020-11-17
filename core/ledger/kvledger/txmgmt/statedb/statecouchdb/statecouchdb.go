@@ -526,6 +526,9 @@ func (vdb *VersionedDB) readFromDB(namespace, key string) (*keyValue, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := validateKey(key); err != nil {
+		return nil, err
+	}
 	couchDoc, _, err := db.readDoc(key)
 	if err != nil {
 		return nil, err
