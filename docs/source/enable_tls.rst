@@ -23,7 +23,9 @@ By default, TLS client authentication is turned off when TLS is enabled on a pee
 This means that the peer node will not verify the certificate of a client (another peer
 node, application, or the CLI) during a TLS handshake. To enable TLS client authentication
 on a peer node, set the peer configuration property ``peer.tls.clientAuthRequired`` to
-``true``.
+``true`` and set the ``peer.tls.clientRootCAs.files`` property to the CA chain file(s) that
+contain(s) the CA certificate chain(s) that issued TLS certificates for your organization's
+clients.
 
 By default, a peer node will use the same certificate and private key pair when acting as a
 TLS server and client.  To use a different certificate and private key pair for the client
@@ -38,6 +40,7 @@ variables:
  * ``CORE_PEER_TLS_CERT_FILE`` = fully qualified path of the server certificate
  * ``CORE_PEER_TLS_KEY_FILE`` = fully qualified path of the server private key
  * ``CORE_PEER_TLS_CLIENTAUTHREQUIRED`` = ``true``
+ * ``CORE_PEER_TLS_CLIENTROOTCAS_FILES`` = fully qualified path of the CA chain file
  * ``CORE_PEER_TLS_CLIENTCERT_FILE`` = fully qualified path of the client certificate
  * ``CORE_PEER_TLS_CLIENTKEY_FILE`` = fully qualified path of the client key
 
