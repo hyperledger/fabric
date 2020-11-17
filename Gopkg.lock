@@ -772,7 +772,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4fa2ca25ca372413905486e2c02570b1f5ae72eeab50d223660fcd190582e0c3"
+  digest = "1:8b843c02184a878127f7088da71887c4d481e24d64a7039a07ce961d45908311"
   name = "golang.org/x/crypto"
   packages = [
     "sha3",
@@ -820,9 +820,10 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:847ffe30bb2463c17bf12bac2558b63f5dc104fd5920c8adf8c150a08cd176fb"
+  digest = "1:4a44ad185d16d398d7330d968d2fe1f4a9526b15b219218c2df802ac20ba6153"
   name = "golang.org/x/sys"
   packages = [
+    "cpu",
     "unix",
     "windows",
   ]
@@ -865,23 +866,26 @@
   version = "v0.3.0"
 
 [[projects]]
-  digest = "1:0a25e2d158566f94027c0eeb72e1d34b0cfba5b8b51dc7c5b1bb04c2d437898b"
+  branch = "release-branch.go1.14"
+  digest = "1:b8c0ebe25da393d35060d76c38af904d5689eb63de8b76898747c641aff4c2df"
   name = "golang.org/x/tools"
   packages = [
     "cmd/goimports",
     "go/ast/astutil",
     "go/gcexportdata",
-    "go/internal/cgo",
     "go/internal/gcimporter",
+    "go/internal/packagesdriver",
     "go/packages",
     "go/types/typeutil",
-    "imports",
     "internal/fastwalk",
     "internal/gopathwalk",
+    "internal/imports",
+    "internal/module",
     "internal/semver",
+    "internal/span",
   ]
   pruneopts = "NUT"
-  revision = "f60e5f99f0816fc2d9ecb338008ea420248d2943"
+  revision = "c00d67ef29d03e4dd86a6fb6a75dba1b71a5e294"
 
 [[projects]]
   branch = "master"

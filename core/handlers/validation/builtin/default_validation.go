@@ -12,13 +12,13 @@ import (
 
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/handlers/validation/api"
+	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
 	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
-	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v12"
-	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v13"
+	v12 "github.com/hyperledger/fabric/core/handlers/validation/builtin/v12"
+	v13 "github.com/hyperledger/fabric/core/handlers/validation/builtin/v13"
 	"github.com/hyperledger/fabric/protos/common"
 	"github.com/pkg/errors"
 )
