@@ -196,6 +196,7 @@ func TestInitializeServerConfig(t *testing.T) {
 		clusterKey     string
 		clusterCA      string
 		isCluster      bool
+		expectedPanic  string
 	}{
 		{
 			name:           "BadCertificate",
@@ -203,6 +204,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			privateKey:     goodFile,
 			rootCA:         goodFile,
 			clientRootCert: goodFile,
+			expectedPanic:  "Failed to load server Certificate file 'does_not_exist' (open does_not_exist: no such file or directory)",
 		},
 		{
 			name:           "BadPrivateKey",
@@ -210,6 +212,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			privateKey:     badFile,
 			rootCA:         goodFile,
 			clientRootCert: goodFile,
+			expectedPanic:  "Failed to load PrivateKey file 'does_not_exist' (open does_not_exist: no such file or directory)",
 		},
 		{
 			name:           "BadRootCA",
@@ -217,6 +220,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			privateKey:     goodFile,
 			rootCA:         badFile,
 			clientRootCert: goodFile,
+			expectedPanic:  "Failed to load ServerRootCAs file 'open does_not_exist: no such file or directory' (does_not_exist)",
 		},
 		{
 			name:           "BadClientRootCertificate",
@@ -224,6 +228,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			privateKey:     goodFile,
 			rootCA:         goodFile,
 			clientRootCert: badFile,
+			expectedPanic:  "Failed to load ClientRootCAs file 'open does_not_exist: no such file or directory' (does_not_exist)",
 		},
 		{
 			name:           "BadCertificate - cluster reuses server config",
@@ -235,6 +240,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			clusterKey:     "",
 			clusterCA:      "",
 			isCluster:      true,
+			expectedPanic:  "Failed to load client TLS certificate file 'does_not_exist' (open does_not_exist: no such file or directory)",
 		},
 		{
 			name:           "BadPrivateKey - cluster reuses server config",
@@ -246,6 +252,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			clusterKey:     "",
 			clusterCA:      "",
 			isCluster:      true,
+			expectedPanic:  "Failed to load client TLS key file 'does_not_exist' (open does_not_exist: no such file or directory)",
 		},
 		{
 			name:           "BadRootCA - cluster reuses server config",
@@ -257,6 +264,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			clusterKey:     "",
 			clusterCA:      "",
 			isCluster:      true,
+			expectedPanic:  "Failed to load ServerRootCAs file '' (open : no such file or directory)",
 		},
 		{
 			name:           "ClusterBadCertificate",
@@ -268,6 +276,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			clusterKey:     goodFile,
 			clusterCA:      goodFile,
 			isCluster:      true,
+			expectedPanic:  "Failed to load client TLS certificate file 'does_not_exist' (open does_not_exist: no such file or directory)",
 		},
 		{
 			name:           "ClusterBadPrivateKey",
@@ -279,6 +288,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			clusterKey:     badFile,
 			clusterCA:      goodFile,
 			isCluster:      true,
+			expectedPanic:  "Failed to load client TLS key file 'does_not_exist' (open does_not_exist: no such file or directory)",
 		},
 		{
 			name:           "ClusterBadRootCA",
@@ -290,6 +300,7 @@ func TestInitializeServerConfig(t *testing.T) {
 			clusterKey:     goodFile,
 			clusterCA:      badFile,
 			isCluster:      true,
+			expectedPanic:  "Failed to load ServerRootCAs file 'does_not_exist' (open does_not_exist: no such file or directory)",
 		},
 	}
 	for _, tc := range testCases {
@@ -311,7 +322,7 @@ func TestInitializeServerConfig(t *testing.T) {
 					},
 				},
 			}
-			require.Panics(t, func() {
+			require.PanicsWithValue(t, tc.expectedPanic, func() {
 				if !tc.isCluster {
 					initializeServerConfig(conf, nil)
 				} else {
