@@ -68,7 +68,7 @@ func (f InvalidChaincodeNameErr) Error() string {
 type InvalidVersionErr string
 
 func (f InvalidVersionErr) Error() string {
-	return fmt.Sprintf("invalid chaincode version '%s'. Versions must not be empty and can only consist of alphanumerics, '_',  '-', '+', and '.'", string(f))
+	return fmt.Sprintf("invalid chaincode version '%s'. Versions must not be empty and can only consist of alphanumerics, '_',  '-', '+', and '.' and can not begin with a 0.", string(f))
 }
 
 //InvalidStatedbArtifactsErr invalid state database artifacts error
