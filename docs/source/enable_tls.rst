@@ -18,16 +18,12 @@ To enable TLS on a peer node set the following peer configuration properties:
    certificate
  * ``peer.tls.key.file`` = fully qualified path of the file that contains the TLS server
    private key
- * ``peer.tls.rootcert.file`` = fully qualified path of the file that contains the
-   certificate chain of the certificate authority(CA) that issued TLS server certificate
 
 By default, TLS client authentication is turned off when TLS is enabled on a peer node.
 This means that the peer node will not verify the certificate of a client (another peer
 node, application, or the CLI) during a TLS handshake. To enable TLS client authentication
 on a peer node, set the peer configuration property ``peer.tls.clientAuthRequired`` to
-``true`` and set the ``peer.tls.clientRootCAs.files`` property to the CA chain file(s) that
-contain(s) the CA certificate chain(s) that issued TLS certificates for your organization's
-clients.
+``true``.
 
 By default, a peer node will use the same certificate and private key pair when acting as a
 TLS server and client.  To use a different certificate and private key pair for the client
@@ -41,9 +37,7 @@ variables:
  * ``CORE_PEER_TLS_ENABLED`` = ``true``
  * ``CORE_PEER_TLS_CERT_FILE`` = fully qualified path of the server certificate
  * ``CORE_PEER_TLS_KEY_FILE`` = fully qualified path of the server private key
- * ``CORE_PEER_TLS_ROOTCERT_FILE`` = fully qualified path of the CA chain file
  * ``CORE_PEER_TLS_CLIENTAUTHREQUIRED`` = ``true``
- * ``CORE_PEER_TLS_CLIENTROOTCAS_FILES`` = fully qualified path of the CA chain file
  * ``CORE_PEER_TLS_CLIENTCERT_FILE`` = fully qualified path of the client certificate
  * ``CORE_PEER_TLS_CLIENTKEY_FILE`` = fully qualified path of the client key
 
@@ -52,9 +46,10 @@ certificate during a TLS handshake. If the client does not send its certificate,
 handshake will fail and the peer will close the connection.
 
 When a peer joins a channel, root CA certificate chains of the channel members are
-read from the config block of the channel and are added to the TLS client and server
+read from the config block of the channel and are added to the TLS server and client
 root CAs data structure. So, peer to peer communication, peer to orderer communication
-should work seamlessly.
+should work seamlessly. However, if needed, you can add additional root CA certificates
+by setting ``peer.tls.rootcert.file`` and ``peer.tls.clientRootCAs.files``.
 
 Configuring TLS for orderer nodes
 ---------------------------------
@@ -66,15 +61,11 @@ To enable TLS on an orderer node, set the following orderer configuration proper
    private key
  * ``General.TLS.Certificate`` = fully qualified path of the file that contains the server
    certificate
- * ``General.TLS.RootCAs`` = fully qualified path of the file that contains the certificate
-   chain of the CA that issued TLS server certificate
 
 By default, TLS client authentication is turned off on orderer, as is the case with peer.
-To enable TLS client authentication, set the following config properties:
+To enable TLS client authentication, set the following config property:
 
  * ``General.TLS.ClientAuthRequired`` = ``true``
- * ``General.TLS.ClientRootCAs`` = fully qualified path of the file that contains the
-   certificate chain of the CA that issued the TLS server certificate
 
 TLS with client authentication can also be enabled by setting the following environment
 variables:
@@ -84,11 +75,13 @@ variables:
    server private key
  * ``ORDERER_GENERAL_TLS_CERTIFICATE`` = fully qualified path of the file that contains the
    server certificate
- * ``ORDERER_GENERAL_TLS_ROOTCAS`` = fully qualified path of the file that contains the
-   certificate chain of the CA that issued TLS server certificate
  * ``ORDERER_GENERAL_TLS_CLIENTAUTHREQUIRED`` = ``true``
- * ``ORDERER_GENERAL_TLS_CLIENTROOTCAS`` = fully qualified path of the file that contains
-   the certificate chain of the CA that issued TLS server certificate
+
+   When an orderer participates in a channel, root CA certificate chains of the channel members are
+   read from the config block of the channel and are added to the TLS server and client
+   root CAs data structure. So, orderer to orderer communication
+   should work seamlessly. However, if needed, you can add additional root CA certificates
+   by setting ``General.TLS.RootCAs`` and ``General.TLS.ClientRootCAs``.
 
 Configuring TLS for the peer CLI
 --------------------------------

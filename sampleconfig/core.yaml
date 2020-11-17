@@ -253,26 +253,31 @@ peer:
     tls:
         # Require server-side TLS
         enabled:  false
-        # Require client certificates / mutual TLS.
+        # Require client certificates / mutual TLS for inbound connections.
         # Note that clients that are not configured to use a certificate will
         # fail to connect to the peer.
         clientAuthRequired: false
         # X.509 certificate used for TLS server
         cert:
             file: tls/server.crt
-        # Private key used for TLS server (and client if clientAuthEnabled
-        # is set to true
+        # Private key used for TLS server
         key:
             file: tls/server.key
-        # Trusted root certificate chain for tls.cert
+        # rootcert.file represents the trusted root certificate chain used for verifying certificates
+        # of other nodes during outbound connections.
+        # It is not required to be set, but can be used to augment the set of TLS CA certificates
+        # available from the MSPs of each channel’s configuration.
         rootcert:
             file: tls/ca.crt
-        # Set of root certificate authorities used to verify client certificates
+        # If mutual TLS is enabled, clientRootCAs.files contains a list of additional root certificates
+        # used for verifying certificates of client connections.
+        # It is not required to be set, but can be used to augment the set of TLS CA certificates
+        # available from the MSPs of each channel’s configuration.
         clientRootCAs:
             files:
               - tls/ca.crt
-        # Private key used for TLS when making client connections.  If
-        # not set, peer.tls.key.file will be used instead
+        # Private key used for TLS when making client connections.
+        # If not set, peer.tls.key.file will be used instead
         clientKey:
             file:
         # X.509 certificate used for TLS when making client connections.

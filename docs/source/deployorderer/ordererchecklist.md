@@ -41,14 +41,24 @@ ListenPort: 7050
 ## General.TLS
 
 ```
+# Require server-side TLS
 Enabled: false
 # PrivateKey governs the file location of the private key of the TLS certificate.
 PrivateKey: tls/server.key
 # Certificate governs the file location of the server TLS certificate.
 Certificate: tls/server.crt
+# RootCAs contains a list additional root certificates used for verifying certificates
+# of other orderer nodes during outbound connections.
+# It is not required to be set, but can be used to augment the set of TLS CA certificates
+# available from the MSPs of each channel’s configuration.
 RootCAs:
   - tls/ca.crt
+# Require client certificates / mutual TLS for inbound connections.
 ClientAuthRequired: false
+# If mutual TLS is enabled, ClientRootCAs contains a list of additional root certificates
+# used for verifying certificates of client connections.
+# It is not required to be set, but can be used to augment the set of TLS CA certificates
+# available from the MSPs of each channel’s configuration.
 ClientRootCAs:
 ```
 
