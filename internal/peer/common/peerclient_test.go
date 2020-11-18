@@ -161,12 +161,71 @@ func TestPeerClientTimeout(t *testing.T) {
 		cert := pClient.Certificate()
 		require.NotNil(t, cert)
 	})
-	t.Run("GetCertificate()", func(t *testing.T) {
+}
+
+func TestGetClientCertificate(t *testing.T) {
+	t.Run("GetClientCertificate_clientAuthRequired_disabled", func(t *testing.T) {
 		cleanup := initPeerTestEnv(t)
 		defer cleanup()
-		cert, err := common.GetCertificate()
+		cert, err := common.GetClientCertificate()
 		require.NotEqual(t, cert, &tls.Certificate{})
 		require.NoError(t, err)
+	})
+
+	t.Run("GetClientCertificate_clientAuthRequired_enabled", func(t *testing.T) {
+		viper.Set("peer.tls.clientAuthRequired", true)
+		viper.Set("peer.tls.clientKey.file", filepath.Join("./testdata/certs", "client.key"))
+		viper.Set("peer.tls.clientCert.file", filepath.Join("./testdata/certs", "client.crt"))
+		defer viper.Reset()
+
+		cert, err := common.GetClientCertificate()
+		require.NoError(t, err)
+		require.NotEqual(t, cert, tls.Certificate{})
+	})
+
+	t.Run("GetClientCertificate_empty_keyfile", func(t *testing.T) {
+		viper.Set("peer.tls.clientAuthRequired", true)
+		viper.Set("peer.tls.clientKey.file", filepath.Join("./testdata/certs", "empty.key"))
+		viper.Set("peer.tls.clientCert.file", filepath.Join("./testdata/certs", "client.crt"))
+		defer viper.Reset()
+
+		cert, err := common.GetClientCertificate()
+		require.EqualError(t, err, "failed to load client certificate: tls: failed to find any PEM data in key input")
+		require.Equal(t, cert, tls.Certificate{})
+	})
+
+	t.Run("GetClientCertificate_empty_certfile", func(t *testing.T) {
+		viper.Set("peer.tls.clientAuthRequired", true)
+		viper.Set("peer.tls.clientKey.file", filepath.Join("./testdata/certs", "client.key"))
+		viper.Set("peer.tls.clientCert.file", filepath.Join("./testdata/certs", "empty.crt"))
+		defer viper.Reset()
+
+		cert, err := common.GetClientCertificate()
+		require.EqualError(t, err, "failed to load client certificate: tls: failed to find any PEM data in certificate input")
+		require.Equal(t, cert, tls.Certificate{})
+	})
+
+	t.Run("GetClientCertificate_bad_keyfilepath", func(t *testing.T) {
+		// bad key file path
+		viper.Set("peer.tls.clientAuthRequired", true)
+		viper.Set("peer.tls.clientKey.file", filepath.Join("./testdata/certs", "nokey.key"))
+		viper.Set("peer.tls.clientCert.file", filepath.Join("./testdata/certs", "client.crt"))
+		defer viper.Reset()
+
+		cert, err := common.GetClientCertificate()
+		require.EqualError(t, err, "unable to load peer.tls.clientKey.file: open testdata/certs/nokey.key: no such file or directory")
+		require.Equal(t, cert, tls.Certificate{})
+	})
+
+	t.Run("GetClientCertificate_missing_certfilepath", func(t *testing.T) {
+		// missing cert file path
+		viper.Set("peer.tls.clientAuthRequired", true)
+		viper.Set("peer.tls.clientKey.file", filepath.Join("./testdata/certs", "client.key"))
+		defer viper.Reset()
+
+		cert, err := common.GetClientCertificate()
+		require.EqualError(t, err, "unable to load peer.tls.clientCert.file: open : no such file or directory")
+		require.Equal(t, cert, tls.Certificate{})
 	})
 }
 
