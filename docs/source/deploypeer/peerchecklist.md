@@ -220,8 +220,8 @@ tls:
         file: tls/ca.crt
     # If mutual TLS is enabled, clientRootCAs.files contains a list of additional root certificates
     # used for verifying certificates of client connections.
-    # It is not required to be set, but can be used to augment the set of TLS CA certificates
-    # available from the MSPs of each channel’s configuration.
+    # It augments the set of TLS CA certificates available from the MSPs of each channel’s configuration.
+    # Minimally, set your organization's TLS CA root certificate so that the peer can receive join channel requests.
     clientRootCAs:
         files:
           - tls/ca.crt
@@ -241,7 +241,7 @@ The next two parameters only need to be provided when mutual TLS is required:
 
 - **`clientAuthRequired`:** Defaults to `false`. Set to `true` for a higher level of security by using **mutual TLS**, which can be configured as an extra verification step of the client-side TLS certificate. Where server-side TLS is considered the minimally necessary level of security, mutual TLS is an additional and optional level of security.
 
-- **`clientRootCAs.files`:** Contains a list of additional root certificates used for verifying certificates of client connections. It is not required to be set, but can be used to augment the set of TLS CA certificates available from the MSPs of each channel’s configuration.
+- **`clientRootCAs.files`:** Contains a list of additional root certificates used for verifying certificates of client connections. It augments the set of TLS CA certificates available from the MSPs of each channel’s configuration. Minimally, set your organization's TLS CA root certificate so that the peer can receive join channel requests.
 
 ## peer.bccsp.*
 
