@@ -271,8 +271,8 @@ peer:
             file: tls/ca.crt
         # If mutual TLS is enabled, clientRootCAs.files contains a list of additional root certificates
         # used for verifying certificates of client connections.
-        # It is not required to be set, but can be used to augment the set of TLS CA certificates
-        # available from the MSPs of each channel’s configuration.
+        # It augments the set of TLS CA certificates available from the MSPs of each channel’s configuration.
+        # Minimally, set your organization's TLS CA root certificate so that the peer can receive join channel requests.
         clientRootCAs:
             files:
               - tls/ca.crt
