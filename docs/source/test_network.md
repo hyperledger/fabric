@@ -6,8 +6,8 @@ can deploy a test network by using scripts that are provided in the
 by running nodes on your local machine. More experienced developers can use the
 network to test their smart contracts and applications. The network is meant to
 be used only as a tool for education and testing. It should not be used as a
-template for deploying a production network. The test network is being introduced
-in Fabric v2.0 as the long term replacement for the `first-network` sample.
+template for deploying a production network. To learn about using Fabric in
+production, see [Deploying a production network](deployment_guide_overview.html).
 
 The sample network deploys a Fabric network with Docker Compose. Because the
 nodes are isolated within a Docker Compose network, the test network is not
