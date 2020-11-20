@@ -327,7 +327,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 		return nil, fmt.Errorf("Proposed configuration has no application group members, but consortium contains members")
 	}
 
-	// If the consortium has no members, allow the source request to contain arbitrary members
+	// If the consortium has no members, allow the source request to contain arbitrary members, even though the eventual channel creation transaction may get invalidated
 	// Otherwise, require that the supplied members are a subset of the consortium members
 	if len(systemChannelGroup.Groups[channelconfig.ConsortiumsGroupKey].Groups[consortium.Name].Groups) > 0 {
 		for orgName := range configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups {
@@ -337,6 +337,12 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 			}
 			applicationGroup.Groups[orgName] = proto.Clone(consortiumGroup).(*cb.ConfigGroup)
 		}
+	} else {
+		// If consortium has no members, log a Warning to help troulbeshoot any issues,
+		// e.g. if channel creation transaction eventually gets invalidated due to including members
+		logger.Warnf("System channel consortium has no members, attempting to create application channel %s with %d members",
+			channelHeader.ChannelId,
+			len(configUpdate.WriteSet.Groups[channelconfig.ApplicationGroupKey].Groups))
 	}
 
 	channelGroup := protoutil.NewConfigGroup()
