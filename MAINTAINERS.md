@@ -10,7 +10,6 @@ Maintainers
 | Artem Barger | [c0rwin][c0rwin] | c0rwin | <bartem@il.ibm.com>
 | Danny Cao | [caod123][caod123] | caod | <dcao@us.ibm.com>
 | Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
-| Chris Ferris | [christo4ferris][christo4ferris] | cbf | <chris.ferris@gmail.com>
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Jay Guo | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
 | Jason Yellick | [jyellick][jyellick] | jyellick | <jyellick@us.ibm.com>
@@ -44,6 +43,7 @@ Maintainers
 | Name | GitHub | Chat | email
 |------|--------|------|----------------------
 | Binh Nguyen | [binhn][binhn] | binhn | <binh1010010110@gmail.com>
+| Chris Ferris | [christo4ferris][christo4ferris] | cbf | <chris.ferris@gmail.com>
 | Gabor Hosszu | [gabre][gabre] | hgabor | <gabor@digitalasset.com>
 | Greg Haskins | [ghaskins][ghaskins] | ghaskins | <gregory.haskins@gmail.com>
 | Jonathan Levi | [hacera][hacera] |JonathanLevi | <jonathan@hacera.com>
