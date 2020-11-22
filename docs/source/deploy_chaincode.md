@@ -79,7 +79,7 @@ We need to package the chaincode before it can be installed on our peers. The st
 
 ### Go
 
-Before we package the chaincode, we need to install the chaincode dependences. Navigate to the folder that contains the Go version of the asset-transfer (basic) chaincode.
+Before we package the chaincode, we need to install the chaincode dependencies. Navigate to the folder that contains the Go version of the asset-transfer (basic) chaincode.
 ```
 cd fabric-samples/asset-transfer-basic/chaincode-go
 ```
@@ -144,7 +144,7 @@ GO111MODULE=on go mod vendor
 
 If the command is successful, the go packages will be installed inside a `vendor` folder.
 
-Now that we that have our dependences, we can create the chaincode package. Navigate back to our working directory in the `test-network` folder so that we can package the chaincode together with our other network artifacts.
+Now that we that have our dependencies, we can create the chaincode package. Navigate back to our working directory in the `test-network` folder so that we can package the chaincode together with our other network artifacts.
 ```
 cd ../../test-network
 ```
@@ -175,12 +175,12 @@ Now that we created the chaincode package, we can [install the chaincode](#insta
 
 ### JavaScript
 
-Before we package the chaincode, we need to install the chaincode dependences. Navigate to the folder that contains the JavaScript version of the asset-transfer (basic) chaincode.
+Before we package the chaincode, we need to install the chaincode dependencies. Navigate to the folder that contains the JavaScript version of the asset-transfer (basic) chaincode.
 ```
 cd fabric-samples/asset-transfer-basic/chaincode-javascript
 ```
 
-The dependencies are listed in the `package.json` file in the `asset-transfer-basic/chaincode-javascript` directory. You should take a moment to examine this file. You can find the dependences section displayed below:
+The dependencies are listed in the `package.json` file in the `asset-transfer-basic/chaincode-javascript` directory. You should take a moment to examine this file. You can find the dependencies section displayed below:
 ```
 "dependencies": {
 		"fabric-contract-api": "^2.0.0",
@@ -217,9 +217,9 @@ To install the smart contract dependencies, run the following command from the `
 npm install
 ```
 
-If the command is successful, the JavaScript packages will be installed inside a `npm_modules` folder.
+If the command is successful, the JavaScript packages will be installed inside a `node_modules` folder.
 
-Now that we that have our dependences, we can create the chaincode package. Navigate back to our working directory in the `test-network` folder so that we can package the chaincode together with our other network artifacts.
+Now that we that have our dependencies, we can create the chaincode package. Navigate back to our working directory in the `test-network` folder so that we can package the chaincode together with our other network artifacts.
 ```
 cd ../../test-network
 ```
@@ -248,12 +248,12 @@ Now that we created the chaincode package, we can [install the chaincode](#insta
 
 ### Typescript
 
-Before we package the chaincode, we need to install the chaincode dependences. Navigate to the folder that contains the TypeScript version of the asset-transfer (basic) chaincode.
+Before we package the chaincode, we need to install the chaincode dependencies. Navigate to the folder that contains the TypeScript version of the asset-transfer (basic) chaincode.
 ```
 cd fabric-samples/asset-transfer-basic/chaincode-typescript
 ```
 
-The dependencies are listed in the `package.json` file in the `asset-transfer-basic/chaincode-typescript` directory. You should take a moment to examine this file. You can find the dependences section displayed below:
+The dependencies are listed in the `package.json` file in the `asset-transfer-basic/chaincode-typescript` directory. You should take a moment to examine this file. You can find the dependencies section displayed below:
 ```
 "dependencies": {
 		"fabric-contract-api": "^2.0.0",
@@ -293,9 +293,9 @@ To install the smart contract dependencies, run the following command from the `
 npm install
 ```
 
-If the command is successful, the JavaScript packages will be installed inside a `npm_modules` folder.
+If the command is successful, the JavaScript packages will be installed inside a `node_modules` folder.
 
-Now that we that have our dependences, we can create the chaincode package. Navigate back to our working directory in the `test-network` folder so that we can package the chaincode together with our other network artifacts.
+Now that we that have our dependencies, we can create the chaincode package. Navigate back to our working directory in the `test-network` folder so that we can package the chaincode together with our other network artifacts.
 ```
 cd ../../test-network
 ```
@@ -369,7 +369,7 @@ The chaincode is built by the peer when the chaincode is installed. The install 
 
 After you install the chaincode package, you need to approve a chaincode definition for your organization. The definition includes the important parameters of chaincode governance such as the name, version, and the chaincode endorsement policy.
 
-The set of channel members who need to approve a chaincode before it can be deployed is governed by the `Application/Channel/lifeycleEndorsement` policy. By default, this policy requires that a majority of channel members need to approve a chaincode before it can used on a channel. Because we have only two organizations on the channel, and a majority of 2 is 2, we need approve a chaincode definition of asset-transfer (basic) as Org1 and Org2.
+The set of channel members who need to approve a chaincode before it can be deployed is governed by the `/Channel/Application/LifeycleEndorsement` policy. By default, this policy requires that a majority of channel members need to approve a chaincode before it can used on a channel. Because we have only two organizations on the channel, and a majority of 2 is 2, we need approve a chaincode definition of asset-transfer (basic) as Org1 and Org2.
 
 If an organization has installed the chaincode on their peer, they need to include the packageID in the chaincode definition approved by their organization. The package ID is used to associate the chaincode installed on a peer with an approved chaincode definition, and allows an organization to use the chaincode to endorse transactions. You can find the package ID of a chaincode by using the [peer lifecycle chaincode queryinstalled](commands/peerlifecycle.html#peer-lifecycle-chaincode-queryinstalled) command to query your peer.
 ```
@@ -488,7 +488,7 @@ To provide a scenario for upgrading the asset-transfer (basic) chaincode that we
 
 We are going to assume that Org1 and Org2 initially installed the GO version of the asset-transfer (basic) chaincode, but would be more comfortable working with a chaincode written in JavaScript. The first step is to package the JavaScript version of the asset-transfer (basic) chaincode. If you used the JavaScript instructions to package your chaincode when you went through the tutorial, you can install new chaincode binaries by following the steps for packaging a chaincode written in [Go](#go) or [TypeScript](#typescript).
 
-Issue the following commands from the `test-network` directory to install the chaincode dependences.
+Issue the following commands from the `test-network` directory to install the chaincode dependencies.
 ```
 cd ../asset-transfer-basic/chaincode-javascript
 npm install
