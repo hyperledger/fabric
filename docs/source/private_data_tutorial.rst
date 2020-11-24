@@ -1,9 +1,9 @@
 Using Private Data in Fabric
 ============================
 
-This tutorial will demonstrate the use of collections to provide storage
+This tutorial will demonstrate the use of Private Data Collections (PDC) to provide storage
 and retrieval of private data on the blockchain network for authorized peers
-of organizations.
+of organizations. The collection is specified using a collection definition file containing the policies governing that collection.
 
 The information in this tutorial assumes knowledge of private data
 stores and their use cases. For more information, check out :doc:`private-data/private-data`.
@@ -62,7 +62,7 @@ Build a collection definition JSON file
 ---------------------------------------
 
 Before a set of organizations can transact using private data, all organizations
-on channel need to build a collection file that defines the private
+on channel need to build a collection definition file that defines the private
 data collections associated with each chaincode. Data that is stored in a private
 data collection is only distributed to the peers of certain organizations instead
 of all members of the channel. The collection definition file describes all of the
@@ -215,9 +215,11 @@ Specifically, access to the private data will be restricted as follows:
 
 
 All of the data that is created by the asset transfer private data sample smart
-contract is stored in private data. The smart contract uses the Fabric chaincode API
+contract is stored in PDC. The smart contract uses the Fabric chaincode API
 to read and write private data to private data collections using the ``GetPrivateData()``
 and ``PutPrivateData()`` functions. You can find more information about those functions `here <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStub>`_.
+This private data is stored in private state db on the peer (separate from public state db), and
+is disseminated between authorized peers via gossip protocol.
 
 The following diagram illustrates the private data model used by the private data
 sample. Note that Org3 is only shown in the diagram to illustrate that if
@@ -265,9 +267,9 @@ For example, in the following snippet of the ``CreateAsset`` function,
 
 .. code-block:: GO
 
-  // CreateAsset creates a new asset by placing the main asset details in the assetCollection
-  // that can be read by both organizations. The appraisal value is stored in the owner's org specific collection.
-  func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface) error {
+    // CreateAsset creates a new asset by placing the main asset details in the assetCollection
+    // that can be read by both organizations. The appraisal value is stored in the owners org specific collection.
+    func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface) error {
 
         // Get new asset from transient map
         transientMap, err := ctx.GetStub().GetTransient()
@@ -283,7 +285,7 @@ For example, in the following snippet of the ``CreateAsset`` function,
         }
 
         type assetTransientInput struct {
-            Type           string `json:"objectType"` //Type is used to distinguish the various types of objects in state database
+            Type           string `json:"objectType"` //Type is used to distinguish the various types of objects in 
             ID             string `json:"assetID"`
             Color          string `json:"color"`
             Size           int    `json:"size"`
@@ -322,9 +324,9 @@ For example, in the following snippet of the ``CreateAsset`` function,
         }
 
         // Get ID of submitting client identity
-        clientID, err := ctx.GetClientIdentity().GetID()
+        clientID, err := submittingClientIdentity(ctx)
         if err != nil {
-            return fmt.Errorf("failed to get verified OrgID: %v", err)
+            return err
         }
 
         // Verify that the client is submitting request to peer in their organization
@@ -351,7 +353,8 @@ For example, in the following snippet of the ``CreateAsset`` function,
         // Save asset to private data collection
         // Typical logger, logs to stdout/file in the fabric managed docker container, running this chaincode
         // Look for container name like dev-peer0.org1.example.com-{chaincodename_version}-xyz
-        log.Printf("CreateAsset Put: collection %v, ID %v", assetCollection, assetInput.ID)
+        log.Printf("CreateAsset Put: collection %v, ID %v, owner %v", assetCollection, assetInput.ID, clientID)
+
         err = ctx.GetStub().PutPrivateData(assetCollection, assetInput.ID, assetJSONasBytes)
         if err != nil {
             return fmt.Errorf("failed to put asset into private data collecton: %v", err)
@@ -374,7 +377,7 @@ For example, in the following snippet of the ``CreateAsset`` function,
             return fmt.Errorf("failed to infer private collection name for the org: %v", err)
         }
 
-        // Put asset appraised value into owner's org specific private data collection
+        // Put asset appraised value into owners org specific private data collection
         log.Printf("Put: collection %v, ID %v", orgCollection, assetInput.ID)
         err = ctx.GetStub().PutPrivateData(orgCollection, assetInput.ID, assetPrivateDetailsAsBytes)
         if err != nil {
@@ -672,20 +675,10 @@ When successful, the command will return the following result:
 
 .. code:: bash
 
-    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw=="}
+    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"x509::CN=appUser1,OU=admin,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org1.example.com,O=org1.example.com,L=Durham,ST=North Carolina,C=US"}
 
-The `"owner"` of the asset is the identity that created the asset by invoking the smart contract. The private data smart contract uses the ``GetClientIdentity().GetID()`` API to read the name and issuer of the identity certificate.
-You can see that information by decoding the owner string out of base64 format:
+The `"owner"` of the asset is the identity that created the asset by invoking the smart contract. The private data smart contract uses the ``GetClientIdentity().GetID()`` API to read the name and issuer of the identity certificate. You can see the name and issuer of the identity certificate, in the owner attribute.
 
-.. code:: bash
-
-    echo eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw== | base64 --decode
-
-The result will show the name and issuer of the owner certificate:
-
-.. code:: bash
-
-    x509::CN=org1admin,OU=admin,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org1.example.com,O=org1.example.com,L=Durham,ST=North Carolina,C=US
 
 Query for the ``appraisedValue`` private data of ``asset1`` as a member of Org1.
 
@@ -740,7 +733,8 @@ When successful, should see something similar to the following result:
 
 .. code:: json
 
-    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw=="}
+    {"objectType":"asset","assetID":"asset1","color":"green","size":20,
+    "owner":"x509::CN=appUser1,OU=admin,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org1.example.com,O=org1.example.com,L=Durham,ST=North Carolina,C=US" }
 
 Query private data Org2 is not authorized to
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -861,17 +855,9 @@ The results will show that the buyer identity now owns the asset:
 
 .. code:: bash
 
-    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049YnV5ZXIsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1IdXJzbGV5LFNUPUhhbXBzaGlyZSxDPVVL"}
+    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"x509::CN=appUser2, OU=client + OU=org2 + OU=department1::CN=ca.org2.example.com, O=org2.example.com, L=Hursley, ST=Hampshire, C=UK"}
 
-You can base64 decode the `"owner"` to see that it is the buyer identity:
-
-.. code:: bash
-
-   echo eDUwOTo6Q049YnV5ZXIsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1IdXJzbGV5LFNUPUhhbXBzaGlyZSxDPVVL | base64 --decode
-
-.. code:: bash
-
-    x509::CN=buyer,OU=client,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org2.example.com,O=org2.example.com,L=Hursley,ST=Hampshire,C=UK
+The `"owner"` of the asset now has the the buyer identity.
 
 You can also confirm that transfer removed the private details from the Org1 collection:
 
