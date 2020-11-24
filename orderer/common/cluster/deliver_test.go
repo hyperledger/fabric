@@ -143,6 +143,8 @@ func readSeekEnvelope(stream orderer.AtomicBroadcast_DeliverServer) (*orderer.Se
 }
 
 type deliverServer struct {
+	logger *flogging.FabricLogger
+
 	t *testing.T
 	sync.Mutex
 	err            error
@@ -188,6 +190,7 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 		panic("timed out waiting for seek assertions to receive a value")
 	// Get the next seek assertion and ensure the next seek is of the expected type
 	case seekAssert := <-ds.seekAssertions:
+		ds.logger.Debugf("Received seekInfo: %+v", seekInfo)
 		seekAssert(seekInfo, channel)
 	}
 
@@ -294,6 +297,7 @@ func newClusterNode(t *testing.T) *deliverServer {
 		panic(err)
 	}
 	ds := &deliverServer{
+		logger:         flogging.MustGetLogger("test.debug"),
 		t:              t,
 		seekAssertions: make(chan func(*orderer.SeekInfo, string), 100),
 		blockResponses: make(chan *orderer.DeliverResponse, 100),
@@ -928,6 +932,11 @@ func TestBlockPullerFailures(t *testing.T) {
 func TestBlockPullerBadBlocks(t *testing.T) {
 	// Scenario: ordering node sends malformed blocks.
 
+	// This test case is flaky, so let's add some logs for the next time it fails.
+	flogging.ActivateSpec("debug")
+	defer flogging.ActivateSpec("info")
+	testLogger := flogging.MustGetLogger("test.debug")
+
 	removeHeader := func(resp *orderer.DeliverResponse) *orderer.DeliverResponse {
 		resp.GetBlock().Header = nil
 		return resp
@@ -1021,6 +1030,7 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 			// Expect the block puller to retry and this time give it what it wants
 			osn.addExpectProbeAssert()
 			osn.addExpectPullAssert(10)
+			require.Len(t, osn.seekAssertions, 4)
 
 			// Wait until the block is pulled and the malleability is detected
 			var detectedBadBlock sync.WaitGroup
@@ -1030,6 +1040,7 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 					detectedBadBlock.Done()
 					// Close the channel to make the current server-side deliver stream close
 					close(osn.blocks())
+					testLogger.Infof("Expected err log has been printed: %s\n", testCase.expectedErrMsg)
 					// Ane reset the block buffer to be able to write into it again
 					osn.setBlocks(make(chan *orderer.DeliverResponse, 100))
 					// Put a correct block after it, 1 for the probing and 1 for the fetch
