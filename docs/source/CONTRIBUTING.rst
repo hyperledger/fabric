@@ -237,7 +237,7 @@ reported, then you might add a comment that you also are interested in seeing
 the defect fixed.
 
 .. note:: If the defect is security-related, please follow the Hyperledger
-          `security bug reporting process <https://wiki.hyperledger.org/display/HYP/Defect+Response>`__.
+          `security bug reporting process <https://wiki.hyperledger.org/display/SEC/Defect+Response>`__.
 
 If it has not been previously reported, you may either submit a PR with a
 well documented commit message describing the defect and the fix, or you
