@@ -1041,7 +1041,7 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 					// Close the channel to make the current server-side deliver stream close
 					close(osn.blocks())
 					testLogger.Infof("Expected err log has been printed: %s\n", testCase.expectedErrMsg)
-					// Ane reset the block buffer to be able to write into it again
+					// And reset the block buffer to be able to write into it again
 					osn.setBlocks(make(chan *orderer.DeliverResponse, 100))
 					// Put a correct block after it, 1 for the probing and 1 for the fetch
 					osn.enqueueResponse(10)
