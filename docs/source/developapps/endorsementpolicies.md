@@ -6,7 +6,7 @@ Endorsement policies define the smallest set of organizations that are required
 to endorse a transaction in order for it to be valid. To endorse, an organization's
 endorsing peer needs to run the smart contract associated with the transaction
 and sign its outcome. When the ordering service sends the transaction to the
-committing peers, they will each individually check whether the endorsements in
+committing peers, each of them will individually check whether the endorsements in
 the transaction fulfill the endorsement policy. If this is not the case, the
 transaction is invalidated and it will have no effect on world state.
 
