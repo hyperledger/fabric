@@ -285,7 +285,7 @@ For example, in the following snippet of the ``CreateAsset`` function,
         }
 
         type assetTransientInput struct {
-            Type           string `json:"objectType"` //Type is used to distinguish the various types of objects in 
+            Type           string `json:"objectType"` //Type is used to distinguish the various types of objects in state database
             ID             string `json:"assetID"`
             Color          string `json:"color"`
             Size           int    `json:"size"`
@@ -857,7 +857,7 @@ The results will show that the buyer identity now owns the asset:
 
     {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"x509::CN=appUser2, OU=client + OU=org2 + OU=department1::CN=ca.org2.example.com, O=org2.example.com, L=Hursley, ST=Hampshire, C=UK"}
 
-The `"owner"` of the asset now has the the buyer identity.
+The `"owner"` of the asset now has the buyer identity.
 
 You can also confirm that transfer removed the private details from the Org1 collection:
 
