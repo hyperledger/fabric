@@ -73,8 +73,8 @@ var (
 	GetOrdererEndpointOfChainFnc func(chainID string, signer Signer,
 		endorserClient pb.EndorserClient, cryptoProvider bccsp.BCCSP) ([]string, error)
 
-	// GetCertificateFnc is a function that returns the client TLS certificate
-	GetCertificateFnc func() (tls.Certificate, error)
+	// GetClientCertificateFnc is a function that returns the client TLS certificate
+	GetClientCertificateFnc func() (tls.Certificate, error)
 )
 
 type CommonClient struct {
@@ -90,7 +90,7 @@ func init() {
 	GetOrdererEndpointOfChainFnc = GetOrdererEndpointOfChain
 	GetDeliverClientFnc = GetDeliverClient
 	GetPeerDeliverClientFnc = GetPeerDeliverClient
-	GetCertificateFnc = GetCertificate
+	GetClientCertificateFnc = GetClientCertificate
 }
 
 // InitConfig initializes viper config
@@ -255,23 +255,27 @@ func configFromEnv(prefix string) (address, override string, clientConfig comm.C
 		secOpts.ServerRootCAs = [][]byte{caPEM}
 	}
 	if secOpts.RequireClientCert {
-		keyPEM, res := ioutil.ReadFile(config.GetPath(prefix + ".tls.clientKey.file"))
-		if res != nil {
-			err = errors.WithMessage(res,
-				fmt.Sprintf("unable to load %s.tls.clientKey.file", prefix))
+		secOpts.Key, secOpts.Certificate, err = getClientAuthInfoFromEnv(prefix)
+		if err != nil {
 			return
 		}
-		secOpts.Key = keyPEM
-		certPEM, res := ioutil.ReadFile(config.GetPath(prefix + ".tls.clientCert.file"))
-		if res != nil {
-			err = errors.WithMessage(res,
-				fmt.Sprintf("unable to load %s.tls.clientCert.file", prefix))
-			return
-		}
-		secOpts.Certificate = certPEM
 	}
 	clientConfig.SecOpts = secOpts
 	return
+}
+
+// getClientAuthInfoFromEnv reads client tls key file and cert file and returns the bytes for the files
+func getClientAuthInfoFromEnv(prefix string) ([]byte, []byte, error) {
+	keyPEM, err := ioutil.ReadFile(config.GetPath(prefix + ".tls.clientKey.file"))
+	if err != nil {
+		return nil, nil, errors.WithMessagef(err, "unable to load %s.tls.clientKey.file", prefix)
+	}
+	certPEM, err := ioutil.ReadFile(config.GetPath(prefix + ".tls.clientCert.file"))
+	if err != nil {
+		return nil, nil, errors.WithMessagef(err, "unable to load %s.tls.clientCert.file", prefix)
+	}
+
+	return keyPEM, certPEM, nil
 }
 
 func InitCmd(cmd *cobra.Command, args []string) {

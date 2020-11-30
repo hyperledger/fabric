@@ -469,7 +469,7 @@ func InitCmdFactory(cmdName string, isEndorserRequired, isOrdererRequired bool, 
 			return nil, errors.New("no endorser clients retrieved - this might indicate a bug")
 		}
 	}
-	certificate, err := common.GetCertificateFnc()
+	certificate, err := common.GetClientCertificateFnc()
 	if err != nil {
 		return nil, errors.WithMessage(err, "error getting client certificate")
 	}

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -54,16 +53,12 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 	}
 
 	if secOpts.RequireClientCert {
-		keyPEM, err := ioutil.ReadFile(config.GetPath("peer.tls.clientKey.file"))
+		var err error
+		secOpts.Key, secOpts.Certificate, err = getClientAuthInfoFromEnv("peer")
 		if err != nil {
-			return nil, errors.WithMessage(err, "unable to load peer.tls.clientKey.file")
+			return nil, err
 		}
-		secOpts.Key = keyPEM
-		certPEM, err := ioutil.ReadFile(config.GetPath("peer.tls.clientCert.file"))
-		if err != nil {
-			return nil, errors.WithMessage(err, "unable to load peer.tls.clientCert.file")
-		}
-		secOpts.Certificate = certPEM
+
 	}
 	clientConfig.SecOpts = secOpts
 
@@ -133,26 +128,29 @@ func (pc *PeerClient) Certificate() tls.Certificate {
 // from the configuration settings for "peer.address" and
 // "peer.tls.rootcert.file"
 func GetEndorserClient(address, tlsRootCertFile string) (pb.EndorserClient, error) {
-	var peerClient *PeerClient
-	var err error
-	if address != "" {
-		peerClient, err = NewPeerClientForAddress(address, tlsRootCertFile)
-	} else {
-		peerClient, err = NewPeerClientFromEnv()
-	}
+	peerClient, err := newPeerClient(address, tlsRootCertFile)
 	if err != nil {
 		return nil, err
 	}
 	return peerClient.Endorser()
 }
 
-// GetCertificate returns the client's TLS certificate
-func GetCertificate() (tls.Certificate, error) {
-	peerClient, err := NewPeerClientFromEnv()
+// GetClientCertificate returns the client's TLS certificate
+func GetClientCertificate() (tls.Certificate, error) {
+	if !viper.GetBool("peer.tls.clientAuthRequired") {
+		return tls.Certificate{}, nil
+	}
+
+	key, certificate, err := getClientAuthInfoFromEnv("peer")
 	if err != nil {
 		return tls.Certificate{}, err
 	}
-	return peerClient.Certificate(), nil
+
+	cert, err := tls.X509KeyPair(certificate, key)
+	if err != nil {
+		return tls.Certificate{}, errors.WithMessage(err, "failed to load client certificate")
+	}
+	return cert, nil
 }
 
 // GetDeliverClient returns a new deliver client. If both the address and
@@ -160,13 +158,7 @@ func GetCertificate() (tls.Certificate, error) {
 // from the configuration settings for "peer.address" and
 // "peer.tls.rootcert.file"
 func GetDeliverClient(address, tlsRootCertFile string) (pb.Deliver_DeliverClient, error) {
-	var peerClient *PeerClient
-	var err error
-	if address != "" {
-		peerClient, err = NewPeerClientForAddress(address, tlsRootCertFile)
-	} else {
-		peerClient, err = NewPeerClientFromEnv()
-	}
+	peerClient, err := newPeerClient(address, tlsRootCertFile)
 	if err != nil {
 		return nil, err
 	}
@@ -178,13 +170,7 @@ func GetDeliverClient(address, tlsRootCertFile string) (pb.Deliver_DeliverClient
 // from the configuration settings for "peer.address" and
 // "peer.tls.rootcert.file"
 func GetPeerDeliverClient(address, tlsRootCertFile string) (pb.DeliverClient, error) {
-	var peerClient *PeerClient
-	var err error
-	if address != "" {
-		peerClient, err = NewPeerClientForAddress(address, tlsRootCertFile)
-	} else {
-		peerClient, err = NewPeerClientFromEnv()
-	}
+	peerClient, err := newPeerClient(address, tlsRootCertFile)
 	if err != nil {
 		return nil, err
 	}
@@ -205,15 +191,16 @@ func (pc *PeerClient) SnapshotClient() (pb.SnapshotClient, error) {
 // from the configuration settings for "peer.address" and
 // "peer.tls.rootcert.file"
 func GetSnapshotClient(address, tlsRootCertFile string) (pb.SnapshotClient, error) {
-	var peerClient *PeerClient
-	var err error
-	if address != "" {
-		peerClient, err = NewPeerClientForAddress(address, tlsRootCertFile)
-	} else {
-		peerClient, err = NewPeerClientFromEnv()
-	}
+	peerClient, err := newPeerClient(address, tlsRootCertFile)
 	if err != nil {
 		return nil, err
 	}
 	return peerClient.SnapshotClient()
+}
+
+func newPeerClient(address, tlsRootCertFile string) (*PeerClient, error) {
+	if address != "" {
+		return NewPeerClientForAddress(address, tlsRootCertFile)
+	}
+	return NewPeerClientFromEnv()
 }
