@@ -37,6 +37,9 @@ In addition to the above, here is a sampling of the decisions you will need to m
 * **Database type.**
   Some channels in a network might require all data to be modeled in a way :doc:`couchdb_as_state_database` can understand, while other networks, prioritizing speed, might decide that all peers will use LevelDB. Note that channels should not have peers that use both CouchDB and LevelDB on them, as CouchDB imposes some data restrictions on keys and values. Keys and values that are valid in LevelDB may not be valid in CouchDB.
 
+* **Create a system channel or not.**
+  Ordering nodes can be bootstrapped with a configuration block for an administrative channel known as the “system channel” (from which application channels can be created), or simply started and joined to application channels as needed. The recommended method is to bootstrap without a configuration block, which is the approach this deployment guide assumes you will take. For more information about creating a system channel genesis block and bootstrapping an ordering node with it, check out `Deploying a production network <https://hyperledger-fabric.readthedocs.io/en/release-2.2/deployment_guide_overview.html#creating-an-ordering-node>`_ from the Fabric v2.2 documentation.
+
 * **Channels and private data.**
   Some networks might decide that :doc:`channels` are the best way to ensure privacy and isolation for certain transactions. Others might decide that fewer channels, supplemented where necessary with :doc:`private-data/private-data` collections, better serves their privacy needs.
 
@@ -175,7 +178,7 @@ Note: while it is possible to add additional nodes to an ordering service, only 
 
 If you’ve read through the key concept topic on :doc:`orderer/ordering_service`, you should have a good idea of the role the ordering service plays in a network and the nature of its interactions with other network components. The ordering service is responsible for literally “ordering” endorsed transactions into blocks, which peers then validate and commit to their ledgers.
 
-These roles are important to understand before you create an ordering service, as it will influence your customization and deployment decisions. Among the chief differences between a peer and ordering service is that in a production network, multiple ordering nodes work together to form the “ordering service” of a channel. This creates a series of important decisions that need to be made at both the node level and at the cluster level. Some of these cluster decisions are not made in individual ordering node ``orderer.yaml`` files but instead in the ``configtx.yaml`` file that is used to generate the genesis block for the system channel (which is used to bootstrap ordering nodes), and also used to generate the genesis block of application channels. For a look at the various decisions you will need to make, check out :doc:`deployorderer/ordererplan`.
+These roles are important to understand before you create an ordering service, as it will influence your customization and deployment decisions. Among the chief differences between a peer and ordering service is that in a production network, multiple ordering nodes work together to form the “ordering service” of a channel (these nodes are also known as the “consenter set”). This creates a series of important decisions that need to be made at both the node level and at the cluster level. Some of these cluster decisions are not made in individual ordering node ``orderer.yaml`` files but instead in the ``configtx.yaml`` file that is used to generate the genesis block for an application channel. For a look at the various decisions you will need to make, check out :doc:`deployorderer/ordererplan`.
 
 The configuration values in an ordering node’s ``orderer.yaml`` file must be customized or overridden with environment variables. You can find the default ``orderer.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/master/sampleconfig/orderer.yaml>`_.
 
@@ -191,7 +194,7 @@ Among the parameters in ``orderer.yaml``, there are:
 
 For more information about ``orderer.yaml`` and its specific parameters, check out :doc:`deployorderer/ordererchecklist`.
 
-When you're comfortable with how your ordering node has been configured, how your volumes are mounted, and your backend configuration, you can run the command to launch the ordering node (this command will depend on your backend configuration).
+Note: This tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer. Instead, these nodes (or a subset of them), will be joined to a channel using the process to :doc:`create_channel/create_channel_participation`. For information on how to create an orderer that will be bootstrapped with a system channel genesis block, check out `Deploy the ordering service <https://hyperledger-fabric.readthedocs.io/en/release-2.2/deployment_guide_overview.html>`_ from the Fabric v2.2 documentation.
 
 .. toctree::
    :maxdepth: 1
@@ -204,7 +207,7 @@ When you're comfortable with how your ordering node has been configured, how you
 Next steps
 ----------
 
-Blockchain networks are all about connection, so once you've deployed nodes, you'll obviously want to connect them to other nodes! If you have a peer organization and a peer, you'll want to join your organization to a consortium and join or :doc:`channels`. If you have an ordering node, you will want to add peer organizations to your consortium. You'll also want to learn how to develop chaincode, which you can learn about in the topics :doc:`developapps/scenario` and :doc:`chaincode4ade`.
+Blockchain networks are all about connection, so once you've deployed nodes, you'll obviously want to connect them to other nodes! If you have a peer organization and a peer, you'll want to join your organization to a consortium and join or :doc:`create_channel/create_channel_participation`. If you have an ordering node, you will want to add peer organizations to your consortium. You'll also want to learn how to develop chaincode, which you can learn about in the topics :doc:`developapps/scenario` and :doc:`chaincode4ade`.
 
 Part of the process of connecting nodes and creating channels will involve modifying policies to fit the use cases of business networks. For more information about policies, check out :doc:`policies/policies`.
 
