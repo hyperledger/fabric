@@ -32,14 +32,6 @@ execution and ordering are performed by the same nodes.
 
 ## Orderer nodes and channel configuration
 
-In addition to their **ordering** role, orderers also maintain the list of
-organizations that are allowed to create channels. This list of organizations is
-known as the "consortium", and the list itself is kept in the configuration of
-the "orderer system channel" (also known as the "ordering system channel"). By
-default, this list, and the channel it lives on, can only be edited by the
-orderer admin. Note that it is possible for an ordering service to hold several
-of these lists, which makes the consortium a vehicle for Fabric multi-tenancy.
-
 Orderers also enforce basic access control for channels, restricting who can
 read and write data to them, and who can configure them. Remember that who
 is authorized to modify a configuration element in a channel is subject to the
@@ -201,7 +193,7 @@ implementations for achieving consensus on the strict ordering of transactions
 between ordering service nodes.
 
 For information about how to stand up an ordering node (regardless of the
-implementation the node will be used in), check out [our documentation on standing up an ordering node](../orderer_deploy.html).
+implementation the node will be used in), check out [our documentation on deploying a production ordering service](../deployorderer/ordererplan.html).
 
 * **Raft** (recommended)
 
@@ -224,14 +216,13 @@ implementation the node will be used in), check out [our documentation on standi
 * **Solo** (deprecated in v2.x)
 
   The Solo implementation of the ordering service is intended for test only and
-  consists only of a single ordering node.  It has been deprecated and may be
-  removed entirely in a future release.  Existing users of Solo should move to
+  consists only of a single ordering node. It has been deprecated and may be
+  removed entirely in a future release. Existing users of Solo should move to
   a single node Raft network for equivalent function.
 
 ## Raft
 
-For information on how to configure a Raft ordering service, check out our
-[documentation on configuring a Raft ordering service](../raft_configuration.html).
+For information on how to customize the `orderer.yaml` file that determines the configuration of an ordering node, check out the [Checklist for a production ordering node](../deployorderer/ordererchecklist.html).
 
 The go-to ordering service choice for production networks, the Fabric
 implementation of the established Raft protocol uses a "leader and follower"
@@ -256,22 +247,22 @@ similar. They're both CFT ordering services using the leader and follower
 design. If you are an application developer, smart contract developer, or peer
 administrator, you will not notice a functional difference between an ordering
 service based on Raft versus Kafka. However, there are a few major differences worth
-considering, especially if you intend to manage an ordering service:
+considering, especially if you intend to manage an ordering service.
 
 * Raft is easier to set up. Although Kafka has many admirers, even those
 admirers will (usually) admit that deploying a Kafka cluster and its ZooKeeper
 ensemble can be tricky, requiring a high level of expertise in Kafka
 infrastructure and settings. Additionally, there are many more components to
 manage with Kafka than with Raft, which means that there are more places where
-things can go wrong. And Kafka has its own versions, which must be coordinated
+things can go wrong. Kafka also has its own versions, which must be coordinated
 with your orderers. **With Raft, everything is embedded into your ordering node**.
 
 * Kafka and Zookeeper are not designed to be run across large networks. While
 Kafka is CFT, it should be run in a tight group of hosts. This means that
 practically speaking you need to have one organization run the Kafka cluster.
 Given that, having ordering nodes run by different organizations when using Kafka
-(which Fabric supports) doesn't give you much in terms of decentralization because
-the nodes will all go to the same Kafka cluster which is under the control of a
+(which Fabric supports) doesn't decentralize the nodes because ultimately
+the nodes all go to a Kafka cluster which is under the control of a
 single organization. With Raft, each organization can have its own ordering
 nodes, participating in the ordering service, which leads to a more decentralized
 system.
@@ -323,9 +314,6 @@ the entries and their order, making the logs on the various orderers replicated.
 
 **Consenter set**. The ordering nodes actively participating in the consensus
 mechanism for a given channel and receiving replicated logs for the channel.
-This can be all of the nodes available (either in a single cluster or in
-multiple clusters contributing to the system channel), or a subset of those
-nodes.
 
 **Finite-State Machine (FSM)**. Every ordering node in Raft has an FSM and
 collectively they're used to ensure that the sequence of logs in the various
@@ -338,7 +326,7 @@ there to be a quorum. If a quorum of nodes is unavailable for any reason, the
 ordering service cluster becomes unavailable for both read and write operations
 on the channel, and no new logs can be committed.
 
-**Leader**. This is not a new concept --- Kafka also uses leaders, as we've said ---
+**Leader**. This is not a new concept --- Kafka also uses leaders ---
 but it's critical to understand that at any given time, a channel's consenter set
 elects a single node to be the leader (we'll describe how this happens in Raft
 later). The leader is responsible for ingesting new log entries, replicating
@@ -357,17 +345,7 @@ initiate a leader election and one of them will be elected the new leader.
 
 ### Raft in a transaction flow
 
-Every channel runs on a **separate** instance of the Raft protocol, which allows
-each instance to elect a different leader. This configuration also allows
-further decentralization of the service in use cases where clusters are made up
-of ordering nodes controlled by different organizations. While all Raft nodes
-must be part of the system channel, they do not necessarily have to be part of
-all application channels. Channel creators (and channel admins) have the ability
-to pick a subset of the available orderers and to add or remove ordering nodes
-as needed (as long as only a single node is added or removed at a time).
-
-While this configuration creates more overhead in the form of redundant heartbeat
-messages and goroutines, it lays necessary groundwork for BFT.
+Every channel runs on a **separate** instance of the Raft protocol, which allows each instance to elect a different leader. This configuration also allows further decentralization of the service in use cases where clusters are made up of ordering nodes controlled by different organizations. Ordering nodes can be added or removed from a channel as needed as long as only a single node is added or removed at a time. While this configuration creates more overhead in the form of redundant heartbeat messages and goroutines, it lays necessary groundwork for BFT.
 
 In Raft, transactions (in the form of proposals or configuration updates) are
 automatically routed by the ordering node that receives the transaction to the
