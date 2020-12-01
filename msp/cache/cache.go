@@ -9,6 +9,7 @@ package cache
 import (
 	pmsp "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/internal/bytesconv"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
 )
@@ -63,7 +64,7 @@ func (id *cachedIdentity) Validate() error {
 }
 
 func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
-	id, ok := c.deserializeIdentityCache.get(string(serializedIdentity))
+	id, ok := c.deserializeIdentityCache.get(bytesconv.BytesToString(serializedIdentity))
 	if ok {
 		return &cachedIdentity{
 			cache:    c,
@@ -73,7 +74,7 @@ func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity
 
 	id, err := c.MSP.DeserializeIdentity(serializedIdentity)
 	if err == nil {
-		c.deserializeIdentityCache.add(string(serializedIdentity), id)
+		c.deserializeIdentityCache.add(bytesconv.BytesToString(serializedIdentity), id)
 		return &cachedIdentity{
 			cache:    c,
 			Identity: id.(msp.Identity),
@@ -83,14 +84,16 @@ func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity
 }
 
 func (c *cachedMSP) Setup(config *pmsp.MSPConfig) error {
-	c.cleanCache()
+	if err := c.cleanCache(); err != nil {
+		return err
+	}
 
 	return c.MSP.Setup(config)
 }
 
 func (c *cachedMSP) Validate(id msp.Identity) error {
 	identifier := id.GetIdentifier()
-	key := string(identifier.Mspid + ":" + identifier.Id)
+	key := identifier.Mspid + ":" + identifier.Id
 
 	_, ok := c.validateIdentityCache.get(key)
 	if ok {
@@ -108,7 +111,7 @@ func (c *cachedMSP) Validate(id msp.Identity) error {
 
 func (c *cachedMSP) SatisfiesPrincipal(id msp.Identity, principal *pmsp.MSPPrincipal) error {
 	identifier := id.GetIdentifier()
-	identityKey := string(identifier.Mspid + ":" + identifier.Id)
+	identityKey := identifier.Mspid + ":" + identifier.Id
 	principalKey := string(principal.PrincipalClassification) + string(principal.Principal)
 	key := identityKey + principalKey
 
