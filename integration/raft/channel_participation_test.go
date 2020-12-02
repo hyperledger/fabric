@@ -1215,6 +1215,30 @@ var _ = Describe("ChannelParticipation", func() {
 				cl := channelparticipation.List(network, o)
 				channelparticipation.ChannelListMatcher(cl, []string{"testchannel"})
 			}
+			cl := channelparticipation.List(network, orderer3)
+			channelparticipation.ChannelListMatcher(cl, nil)
+
+			By("fetching a block from each orderer to ensure a leader has been elected for the existing application channel")
+			for _, o := range orderers1and2 {
+				FetchBlock(network, o, 0, "testchannel")
+			}
+
+			By("submitting a transaction to each active orderer on testchannel")
+			submitPeerTxn(orderer1, peer, network, channelparticipation.ChannelInfo{
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            9,
+			})
+
+			submitPeerTxn(orderer2, peer, network, channelparticipation.ChannelInfo{
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            10,
+			})
 
 			By("using the channel participation API to join a new channel")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
@@ -1254,23 +1278,6 @@ var _ = Describe("ChannelParticipation", func() {
 				Status:            "active",
 				ConsensusRelation: "consenter",
 				Height:            4,
-			})
-
-			By("submitting a transaction to each active orderer on testchannel")
-			submitPeerTxn(orderer1, peer, network, channelparticipation.ChannelInfo{
-				Name:              "testchannel",
-				URL:               "/participation/v1/channels/testchannel",
-				Status:            "active",
-				ConsensusRelation: "consenter",
-				Height:            9,
-			})
-
-			submitPeerTxn(orderer2, peer, network, channelparticipation.ChannelInfo{
-				Name:              "testchannel",
-				URL:               "/participation/v1/channels/testchannel",
-				Status:            "active",
-				ConsensusRelation: "consenter",
-				Height:            10,
 			})
 		})
 	})
