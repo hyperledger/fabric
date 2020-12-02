@@ -333,7 +333,8 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 			nil,
 		)
 		_, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
-		require.EqualError(t, err, "error unmarshaling channel config: unexpected EOF")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "error unmarshaling channel config")
 	})
 
 	t.Run("unloadable-config", func(t *testing.T) {
