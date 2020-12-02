@@ -193,8 +193,9 @@ func TestCreateSignedTx(t *testing.T) {
 			Status: int32(200),
 		},
 	}}
+	// TODO: Is it a problem that blank a TX can be signed with no endorsements
 	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	require.Error(t, err, "Expected error with no endorsements")
+	require.NoError(t, err)
 
 	// success
 	responses = []*pb.ProposalResponse{{
