@@ -970,7 +970,8 @@ var _ = Describe("Serializer", func() {
 
 			It("wraps and returns the error", func() {
 				err := s.DeserializeFieldAsProto("namespaces", "fake", "field", fakeState, &lb.InstallChaincodeResult{})
-				Expect(err).To(MatchError("could not unmarshal key namespaces/fields/fake/field to *lifecycle.InstallChaincodeResult: proto: can't skip unknown wire type 7"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not unmarshal key namespaces/fields/fake/field to *lifecycle.InstallChaincodeResult"))
 			})
 		})
 	})
