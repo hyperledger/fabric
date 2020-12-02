@@ -107,7 +107,8 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fails to unmarshal issuer public key", func() {
 				pk, err := Issuer.NewPublicKeyFromBytes([]byte{0, 1, 2, 3, 4}, nil)
-				Expect(err).To(MatchError("failed to unmarshal issuer public key: proto: idemix.IssuerPublicKey: illegal tag 0 (wire type 0)"))
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).Should(HavePrefix("failed to unmarshal issuer public key"))
 				Expect(pk).To(BeNil())
 			})
 
@@ -357,7 +358,9 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on invalid credential request", func() {
 				err := CredRequest.Verify([]byte{0, 1, 2, 3, 4}, issuerPublicKey, IssuerNonce)
-				Expect(err).To(MatchError("proto: idemix.CredRequest: illegal tag 0 (wire type 0)"))
+				Expect(err).ToNot(BeNil())
+				fmt.Println(err)
+				Expect(err.Error()).To(HaveSuffix("invalid field number"))
 			})
 
 			It("fail on nil issuer public key", func() {
@@ -391,7 +394,8 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on invalid credential request", func() {
 				raw, err := Credential.Sign(issuerSecretKey, []byte{0, 1, 2, 3, 4}, nil)
-				Expect(err).To(MatchError("failed unmarshalling credential request: proto: idemix.CredRequest: illegal tag 0 (wire type 0)"))
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(HavePrefix("failed unmarshalling credential request"))
 				Expect(raw).To(BeNil())
 			})
 
@@ -471,7 +475,8 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on malformed cri", func() {
 				err := Revocation.Verify(nil, []byte{0, 1, 2, 3, 4}, 0, 0)
-				Expect(err).To(MatchError("proto: idemix.CredentialRevocationInformation: illegal tag 0 (wire type 0)"))
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(HaveSuffix("invalid field number"))
 			})
 		})
 	})
@@ -523,7 +528,9 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on invalid signature", func() {
 				err := SignatureScheme.Verify(issuerPublicKey, []byte{0, 1, 2, 3, 4}, nil, nil, 0, nil, 0)
-				Expect(err).To(MatchError("proto: idemix.Signature: illegal tag 0 (wire type 0)"))
+				Expect(err).ToNot(BeNil())
+				fmt.Println(err.Error())
+				Expect(err.Error()).To(HaveSuffix("invalid field number"))
 			})
 
 			It("fail on invalid attributes", func() {
@@ -586,7 +593,8 @@ var _ = Describe("Idemix Bridge", func() {
 
 			It("fail on invalid signature", func() {
 				err := NymSignatureScheme.Verify(issuerPublicKey, nymPublicKey, []byte{0, 1, 2, 3, 4}, nil)
-				Expect(err).To(MatchError("error unmarshalling signature: proto: idemix.NymSignature: illegal tag 0 (wire type 0)"))
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(HavePrefix("error unmarshalling signature"))
 			})
 
 		})
@@ -847,7 +855,8 @@ var _ = Describe("Idemix Bridge", func() {
 						},
 					},
 				)
-				Expect(err).To(MatchError("proto: idemix.Credential: illegal tag 0 (wire type 0)"))
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(HaveSuffix("invalid field number"))
 				Expect(valid).To(BeFalse())
 			})
 
@@ -1114,7 +1123,8 @@ var _ = Describe("Idemix Bridge", func() {
 						CRI:        cri,
 					},
 				)
-				Expect(err).To(MatchError("failed unmarshalling credential: proto: idemix.Credential: illegal tag 0 (wire type 0)"))
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(HavePrefix("failed unmarshalling credential"))
 				Expect(signature).To(BeNil())
 			})
 
@@ -1132,7 +1142,8 @@ var _ = Describe("Idemix Bridge", func() {
 						CRI:        []byte{0, 1, 2, 3, 4},
 					},
 				)
-				Expect(err).To(MatchError("failed unmarshalling credential revocation information: proto: idemix.CredentialRevocationInformation: illegal tag 0 (wire type 0)"))
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(HavePrefix("failed unmarshalling credential revocation information"))
 				Expect(signature).To(BeNil())
 			})
 
