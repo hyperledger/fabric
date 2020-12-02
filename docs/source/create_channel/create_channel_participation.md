@@ -358,7 +358,7 @@ An unlimited number of profiles can be listed in the `Profiles` section accordin
 After you have completed editing the `configtx.yaml`, you can use it to create a new channel for the peer organizations. Every channel configuration starts with a genesis block. Because we previously set the environment variables for the `configtxgen` tool, you can run the following command to build the genesis block for `channel1` using the `SampleAppChannelEtcdRaft` profile:
 
 ```
-configtxgen -profile SampleAppGenesisEtcdRaft -outputBlock ./channel-artifacts/channel1.tx -channelID channel1
+configtxgen -profile SampleAppGenesisEtcdRaft -outputBlock genesis_block.pb -channelID channel1
 ```
 
 Where:
