@@ -359,7 +359,6 @@ var _ = Describe("Idemix Bridge", func() {
 			It("fail on invalid credential request", func() {
 				err := CredRequest.Verify([]byte{0, 1, 2, 3, 4}, issuerPublicKey, IssuerNonce)
 				Expect(err).ToNot(BeNil())
-				fmt.Println(err)
 				Expect(err.Error()).To(HaveSuffix("invalid field number"))
 			})
 
@@ -529,7 +528,6 @@ var _ = Describe("Idemix Bridge", func() {
 			It("fail on invalid signature", func() {
 				err := SignatureScheme.Verify(issuerPublicKey, []byte{0, 1, 2, 3, 4}, nil, nil, 0, nil, 0)
 				Expect(err).ToNot(BeNil())
-				fmt.Println(err.Error())
 				Expect(err.Error()).To(HaveSuffix("invalid field number"))
 			})
 

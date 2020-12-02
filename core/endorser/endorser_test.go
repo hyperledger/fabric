@@ -10,12 +10,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/davecgh/go-spew/spew"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
@@ -25,10 +23,9 @@ import (
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/endorser/fake"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protoutil"
-
-	"github.com/golang/protobuf/proto"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 )
 
 var _ = Describe("Endorser", func() {
@@ -718,7 +715,6 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(HavePrefix("error unmarshaling Proposal"))
-			spew.Dump(proposalResponse)
 			Expect(proposalResponse.Response.Status).To(Equal(int32(500)))
 			Expect(proposalResponse.Response.Message).To(HavePrefix("error unmarshaling Proposal"))
 		})
