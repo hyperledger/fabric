@@ -159,7 +159,8 @@ var _ = Describe("Consenter", func() {
 				consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 				isMem, err := consenter.IsChannelMember(block)
 				Expect(isMem).To(BeFalse())
-				Expect(err).To(MatchError(errExpected))
+				Expect(err).NotTo(BeNil())
+				Expect(err.Error()).To(HavePrefix(errExpected))
 			},
 			table.Entry("nil block", nil, "nil block"),
 			table.Entry("data is nil", &common.Block{}, "block data is nil"),
@@ -537,7 +538,7 @@ var _ = Describe("Consenter", func() {
 			consenter.EtcdRaftConfig.TickIntervalOverride = "seven"
 
 			_, err := consenter.HandleChain(support, nil)
-			Expect(err).To(MatchError("failed parsing Consensus.TickIntervalOverride: seven: time: invalid duration seven"))
+			Expect(err).To(MatchError(`failed parsing Consensus.TickIntervalOverride: seven: time: invalid duration "seven"`))
 		})
 	})
 
