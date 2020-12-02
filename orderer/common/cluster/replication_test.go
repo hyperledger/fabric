@@ -828,6 +828,7 @@ func TestParticipant(t *testing.T) {
 
 			err := cluster.Participant(puller, predicate)
 			if testCase.expectedError != "" {
+				require.Error(t, err)
 				require.Contains(t, err.Error(), testCase.expectedError)
 				require.Len(t, configBlocks, 0)
 			} else {
@@ -887,6 +888,7 @@ func TestBlockPullerFromConfigBlockFailures(t *testing.T) {
 			verifierRetriever := &mocks.VerifierRetriever{}
 			verifierRetriever.On("RetrieveVerifier", mock.Anything).Return(&cluster.NoopBlockVerifier{})
 			bp, err := cluster.BlockPullerFromConfigBlock(testCase.pullerConfig, testCase.block, verifierRetriever, cryptoProvider)
+			require.Error(t, err)
 			require.Contains(t, err.Error(), testCase.expectedErr)
 			require.Nil(t, bp)
 		})
@@ -1375,6 +1377,7 @@ func TestExtractGenesisBlock(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			channelName, gb, err := cluster.ExtractGenesisBlock(flogging.MustGetLogger("test"), testCase.block)
 			if testCase.expectedErr != "" {
+				require.Error(t, err)
 				require.Contains(t, err.Error(), testCase.expectedErr)
 			} else {
 				require.NoError(t, err)

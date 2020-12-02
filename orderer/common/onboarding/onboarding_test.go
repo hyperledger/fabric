@@ -1173,6 +1173,7 @@ func TestValidateBootstrapBlock(t *testing.T) {
 				require.NoError(t, err)
 				return
 			}
+			require.Error(t, err)
 			require.Contains(t, err.Error(), testCase.expectedError)
 		})
 	}

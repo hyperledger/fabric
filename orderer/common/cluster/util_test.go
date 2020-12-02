@@ -752,6 +752,7 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			conf, err := cluster.ConfigFromBlock(testCase.block)
 			require.Nil(t, conf)
+			require.Error(t, err)
 			require.Contains(t, err.Error(), testCase.expectedError)
 		})
 	}
