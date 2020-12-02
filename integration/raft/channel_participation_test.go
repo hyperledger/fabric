@@ -1215,6 +1215,30 @@ var _ = Describe("ChannelParticipation", func() {
 				cl := channelparticipation.List(network, o)
 				channelparticipation.ChannelListMatcher(cl, []string{"testchannel"})
 			}
+			cl := channelparticipation.List(network, orderer3)
+			channelparticipation.ChannelListMatcher(cl, nil)
+
+			By("fetching blocks from each orderer to ensure a leader has been elected for the existing application channel")
+			for _, o := range orderers1and2 {
+				deliverBlock(o, network, "testchannel")
+			}
+
+			By("submitting a transaction to each active orderer on testchannel")
+			submitPeerTxn(orderer1, peer, network, channelparticipation.ChannelInfo{
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            9,
+			})
+
+			submitPeerTxn(orderer2, peer, network, channelparticipation.ChannelInfo{
+				Name:              "testchannel",
+				URL:               "/participation/v1/channels/testchannel",
+				Status:            "active",
+				ConsensusRelation: "consenter",
+				Height:            10,
+			})
 
 			By("using the channel participation API to join a new channel")
 			expectedChannelInfoPT := channelparticipation.ChannelInfo{
@@ -1255,23 +1279,6 @@ var _ = Describe("ChannelParticipation", func() {
 				ConsensusRelation: "consenter",
 				Height:            4,
 			})
-
-			By("submitting a transaction to each active orderer on testchannel")
-			submitPeerTxn(orderer1, peer, network, channelparticipation.ChannelInfo{
-				Name:              "testchannel",
-				URL:               "/participation/v1/channels/testchannel",
-				Status:            "active",
-				ConsensusRelation: "consenter",
-				Height:            9,
-			})
-
-			submitPeerTxn(orderer2, peer, network, channelparticipation.ChannelInfo{
-				Name:              "testchannel",
-				URL:               "/participation/v1/channels/testchannel",
-				Status:            "active",
-				ConsensusRelation: "consenter",
-				Height:            10,
-			})
 		})
 	})
 })
@@ -1300,6 +1307,14 @@ func submitTxn(o *nwo.Orderer, env *common.Envelope, n *nwo.Network, expectedCha
 	Eventually(func() channelparticipation.ChannelInfo {
 		return channelparticipation.ListOne(n, o, expectedChannelInfo.Name)
 	}, n.EventuallyTimeout).Should(Equal(expectedChannelInfo))
+}
+
+func deliverBlock(o *nwo.Orderer, n *nwo.Network, channel string) {
+	env := CreateDeliverEnvelope(n, o, 0, channel)
+	Expect(env).NotTo(BeNil())
+
+	By("fetching block from " + o.Name)
+	Eventually(deliverFunc(n, o, env), n.EventuallyTimeout, time.Second).ShouldNot(BeNil())
 }
 
 func applicationChannelGenesisBlock(n *nwo.Network, orderers []*nwo.Orderer, peers []*nwo.Peer, channel string) *common.Block {
@@ -1596,6 +1611,13 @@ func broadcastTransactionFunc(n *nwo.Network, o *nwo.Orderer, env *common.Envelo
 		resp, err := ordererclient.Broadcast(n, o, env)
 		Expect(err).NotTo(HaveOccurred())
 		return resp.Status
+	}
+}
+
+func deliverFunc(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) func() *common.Block {
+	return func() *common.Block {
+		block, _ := ordererclient.Deliver(n, o, env)
+		return block
 	}
 }
 
