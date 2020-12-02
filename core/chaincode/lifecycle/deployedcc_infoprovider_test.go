@@ -233,7 +233,8 @@ var _ = Describe("ValidatorCommitter", func() {
 
 			It("wraps and returns that error", func() {
 				_, err := vc.ChaincodeInfo("channel-name", "cc-name", fakeQueryExecutor)
-				Expect(err).To(MatchError("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo"))
 			})
 		})
 	})
@@ -368,7 +369,8 @@ var _ = Describe("ValidatorCommitter", func() {
 
 			It("wraps and returns that error", func() {
 				_, err := vc.AllChaincodesInfo("channel-name", fakeQueryExecutor)
-				Expect(err).To(MatchError("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo"))
 			})
 		})
 	})
@@ -437,7 +439,8 @@ var _ = Describe("ValidatorCommitter", func() {
 
 			It("wraps and returns that error", func() {
 				_, err := vc.CollectionInfo("channel-name", "cc-name", "collection-name", fakeQueryExecutor)
-				Expect(err).To(MatchError("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo"))
 			})
 		})
 	})
@@ -622,7 +625,8 @@ var _ = Describe("ValidatorCommitter", func() {
 
 			It("wraps and returns that error", func() {
 				_, err := vc.AllCollectionsConfigPkg("channel-name", "cc-name", fakeQueryExecutor)
-				Expect(err).To(MatchError("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not get info about chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo"))
 			})
 		})
 	})
@@ -685,7 +689,8 @@ var _ = Describe("ValidatorCommitter", func() {
 
 			It("wraps and returns that error", func() {
 				_, _, uerr, _ := vc.ValidationInfo("channel-id", "cc-name", fakeQueryExecutor)
-				Expect(uerr).To(MatchError("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo: proto: can't skip unknown wire type 7"))
+				Expect(uerr).To(Not(BeNil()))
+				Expect(uerr.Error()).To(HavePrefix("could not get chaincode: could not deserialize chaincode definition for chaincode cc-name: could not unmarshal state for key namespaces/fields/cc-name/ValidationInfo"))
 			})
 		})
 	})

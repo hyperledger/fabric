@@ -788,7 +788,8 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("could not fetch metadata for current definition: could not unmarshal metadata for namespace namespaces/cc-name: proto: can't skip unknown wire type 7"))
+					Expect(err).To(Not(BeNil()))
+					Expect(err.Error()).To(HavePrefix("could not fetch metadata for current definition: could not unmarshal metadata for namespace namespaces/cc-name"))
 				})
 			})
 
@@ -865,7 +866,8 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("wraps and returns the error", func() {
 					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("could not deserialize chaincode-source metadata for cc-name#5: could not unmarshal metadata for namespace chaincode-sources/cc-name#5: proto: can't skip unknown wire type 7"))
+					Expect(err).To(Not(BeNil()))
+					Expect(err.Error()).To(HavePrefix("could not deserialize chaincode-source metadata for cc-name#5: could not unmarshal metadata for namespace chaincode-sources/cc-name#5"))
 				})
 			})
 
@@ -876,7 +878,8 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("wraps and returns the error", func() {
 					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("could not deserialize chaincode package for cc-name#5: could not unmarshal state for key chaincode-sources/fields/cc-name#5/PackageID: proto: can't skip unknown wire type 7"))
+					Expect(err).To(Not(BeNil()))
+					Expect(err.Error()).To(HavePrefix("could not deserialize chaincode package for cc-name#5: could not unmarshal state for key chaincode-sources/fields/cc-name#5/PackageID"))
 				})
 			})
 		})
@@ -1248,7 +1251,8 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("wraps and returns the error", func() {
 					cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 0, fakePublicState, fakeOrgStates[0])
-					Expect(err).To(MatchError("could not deserialize namespace metadata for next sequence 5: could not unmarshal metadata for namespace namespaces/cc-name#5: proto: can't skip unknown wire type 7"))
+					Expect(err).To(Not(BeNil()))
+					Expect(err.Error()).To(HavePrefix("could not deserialize namespace metadata for next sequence 5: could not unmarshal metadata for namespace namespaces/cc-name#5"))
 					Expect(cc).To(BeNil())
 				})
 			})
@@ -1311,7 +1315,8 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("wraps and returns the error", func() {
 				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
-				Expect(err).To(MatchError("could not deserialize namespace metadata for cc-name#4: could not unmarshal metadata for namespace namespaces/cc-name#4: proto: can't skip unknown wire type 7"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not deserialize namespace metadata for cc-name#4: could not unmarshal metadata for namespace namespaces/cc-name#4"))
 				Expect(cc).To(BeNil())
 			})
 		})
@@ -1323,7 +1328,8 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("wraps and returns the error", func() {
 				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
-				Expect(err).To(MatchError("could not deserialize chaincode parameters for cc-name#4: could not unmarshal state for key namespaces/fields/cc-name#4/EndorsementInfo: proto: can't skip unknown wire type 7"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not deserialize chaincode parameters for cc-name#4: could not unmarshal state for key namespaces/fields/cc-name#4/EndorsementInfo"))
 				Expect(cc).To(BeNil())
 			})
 		})
@@ -1335,7 +1341,8 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("wraps and returns the error", func() {
 				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
-				Expect(err).To(MatchError("could not deserialize chaincode-source metadata for cc-name#4: could not unmarshal metadata for namespace chaincode-sources/cc-name#4: proto: can't skip unknown wire type 7"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not deserialize chaincode-source metadata for cc-name#4: could not unmarshal metadata for namespace chaincode-sources/cc-name#4"))
 				Expect(cc).To(BeNil())
 			})
 		})
@@ -1359,7 +1366,8 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("wraps and returns the error", func() {
 				cc, err := ef.QueryApprovedChaincodeDefinition("my-channel", "cc-name", 4, fakePublicState, fakeOrgStates[0])
-				Expect(err).To(MatchError("could not deserialize chaincode package for cc-name#4: could not unmarshal state for key chaincode-sources/fields/cc-name#4/PackageID: proto: can't skip unknown wire type 7"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not deserialize chaincode package for cc-name#4: could not unmarshal state for key chaincode-sources/fields/cc-name#4/PackageID"))
 				Expect(cc).To(BeNil())
 			})
 		})
@@ -1687,7 +1695,8 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("returns an error", func() {
 				cc, err := ef.QueryChaincodeDefinition("cc-name", fakePublicState)
-				Expect(err).To(MatchError("could not deserialize namespace cc-name as chaincode: could not unmarshal state for key namespaces/fields/cc-name/EndorsementInfo: proto: can't skip unknown wire type 7"))
+				Expect(err).To(Not(BeNil()))
+				Expect(err.Error()).To(HavePrefix("could not deserialize namespace cc-name as chaincode: could not unmarshal state for key namespaces/fields/cc-name/EndorsementInfo"))
 				Expect(cc).To(BeNil())
 			})
 		})
