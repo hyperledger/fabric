@@ -224,7 +224,7 @@ func TestFailingCC2CC(t *testing.T) {
 		resetProvider(resources.Qscc_GetChainInfo, "testchannel", sProp, nil)
 		res := stub.MockInvokeWithSignedProposal("2", args, sProp)
 		require.Equal(t, int32(shim.ERROR), res.Status, "GetChainInfo must fail: %s", res.Message)
-		require.Contains(t, res.Message, "Failed to identify the called chaincode: could not unmarshal proposal: proto: can't skip unknown wire type 7")
+		require.Contains(t, res.Message, "Failed to identify the called chaincode: could not unmarshal proposal")
 	})
 
 	t.Run("DifferentInvokedCC", func(t *testing.T) {
