@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
+
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
@@ -742,13 +744,11 @@ var _ = Describe("Endorser", func() {
 
 		It("wraps and returns an error and responds to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).To(MatchError("error unmarshalling Proposal: proto: can't skip unknown wire type 7"))
-			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
-				Response: &pb.Response{
-					Status:  500,
-					Message: "error unmarshalling Proposal: proto: can't skip unknown wire type 7",
-				},
-			}))
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(HavePrefix("error unmarshaling Proposal"))
+			spew.Dump(proposalResponse)
+			Expect(proposalResponse.Response.Status).To(Equal(int32(500)))
+			Expect(proposalResponse.Response.Message).To(HavePrefix("error unmarshaling Proposal"))
 		})
 	})
 
