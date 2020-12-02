@@ -173,7 +173,8 @@ var _ = Describe("UnpackProposal", func() {
 
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
-			Expect(err).To(MatchError("error unmarshaling Proposal: proto: can't skip unknown wire type 7"))
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(HavePrefix("error unmarshaling Proposal"))
 		})
 	})
 
@@ -186,7 +187,8 @@ var _ = Describe("UnpackProposal", func() {
 
 		It("wraps and returns the error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
-			Expect(err).To(MatchError("error unmarshaling Header: proto: can't skip unknown wire type 7"))
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(HavePrefix("error unmarshaling Header"))
 		})
 	})
 
@@ -199,7 +201,8 @@ var _ = Describe("UnpackProposal", func() {
 
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
-			Expect(err).To(MatchError("error unmarshaling ChannelHeader: proto: can't skip unknown wire type 7"))
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(HavePrefix("error unmarshaling ChannelHeader"))
 		})
 	})
 
@@ -212,7 +215,8 @@ var _ = Describe("UnpackProposal", func() {
 
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
-			Expect(err).To(MatchError("error unmarshaling SignatureHeader: proto: can't skip unknown wire type 7"))
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(HavePrefix("error unmarshaling SignatureHeader"))
 		})
 	})
 
@@ -225,7 +229,8 @@ var _ = Describe("UnpackProposal", func() {
 
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
-			Expect(err).To(MatchError("error unmarshaling ChaincodeHeaderExtension: proto: can't skip unknown wire type 7"))
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(HavePrefix("error unmarshaling ChaincodeHeaderExtension"))
 		})
 	})
 
@@ -238,7 +243,8 @@ var _ = Describe("UnpackProposal", func() {
 
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
-			Expect(err).To(MatchError("error unmarshaling ChaincodeProposalPayload: proto: can't skip unknown wire type 7"))
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(HavePrefix("error unmarshaling ChaincodeProposalPayload"))
 		})
 	})
 
@@ -273,7 +279,8 @@ var _ = Describe("UnpackProposal", func() {
 
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
-			Expect(err).To(MatchError("error unmarshaling ChaincodeInvocationSpec: proto: can't skip unknown wire type 7"))
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(HavePrefix("error unmarshaling ChaincodeInvocationSpec"))
 		})
 	})
 

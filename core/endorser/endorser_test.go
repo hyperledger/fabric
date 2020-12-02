@@ -10,6 +10,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -714,13 +716,11 @@ var _ = Describe("Endorser", func() {
 
 		It("wraps and returns an error and responds to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).To(MatchError("error unmarshaling Proposal: proto: can't skip unknown wire type 7"))
-			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
-				Response: &pb.Response{
-					Status:  500,
-					Message: "error unmarshaling Proposal: proto: can't skip unknown wire type 7",
-				},
-			}))
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(HavePrefix("error unmarshaling Proposal"))
+			spew.Dump(proposalResponse)
+			Expect(proposalResponse.Response.Status).To(Equal(int32(500)))
+			Expect(proposalResponse.Response.Message).To(HavePrefix("error unmarshaling Proposal"))
 		})
 	})
 
