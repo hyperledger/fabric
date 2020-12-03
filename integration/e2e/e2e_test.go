@@ -781,7 +781,7 @@ func CheckLogspecOperations(client *http.Client, logspecURL string) {
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	Expect(err).NotTo(HaveOccurred())
-	Expect(string(bodyBytes)).To(MatchJSON(`{"spec":"info"}`))
+	Expect(string(bodyBytes)).To(MatchJSON(`{"spec":"orderer=debug:info"}`))
 
 	updateReq, err := http.NewRequest(http.MethodPut, logspecURL, strings.NewReader(`{"spec":"debug"}`))
 	Expect(err).NotTo(HaveOccurred())
