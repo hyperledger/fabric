@@ -4,7 +4,16 @@ In this topic we'll cover recommendations for upgrading to the newest release fr
 
 ## Upgrading from 2.1 to 2.2
 
-The 2.1 and 2.2 releases of Fabric are stabilization releases, featuring bug fixes and other forms of code hardening. As such there are no particular considerations needed for upgrade, and no new capability levels requiring particular image versions or channel configuration updates.
+The v2.1 and v2.2 releases of Fabric are stabilization releases, featuring bug fixes and other forms of code hardening. As such there are no particular considerations needed for upgrade, and no new capability levels requiring particular image versions or channel configuration updates.
+
+### Upgrading from 2.2 to 2.3
+
+The v2.3 release of Fabric includes two main new features:
+
+1. The ability to take snapshots of the ledgers on peers (and to bootstrap a new peer from a snapshot). For more information, check out [Taking ledger snapshots and using them to join channels](./peer_ledger_snapshot.html).
+2. Channels can now be created without first creating a system channel. For more information, check out [Creating a channel without a system channel](./create_channel/create_channel_participation.html).
+
+Neither of these features require channel updates to capability in order to function. However, you will need to upgrade to v2.3 to take advantage of both features and, in the case of the new channel creation process, need to migrate away from the system channel, which is covered in the [Creating a channel without a system channel](./create_channel/create_channel_participation.html) tutorial.
 
 ## Upgrading to 2.2 from the 1.4.x long term support release
 
@@ -86,7 +95,7 @@ For information about how to set new capabilities, check out [Updating the capab
 
 ### Define ordering node endpoint per org (recommend)
 
-Starting with version v1.4.2, it was recommended to define orderer endpoints in both the system channel and in all application channels at the organization level by adding a new `OrdererEndpoints` stanza within the channel configuration of an organization, replacing the global `OrdererAddresses` section of channel configuration. If at least one organization has an ordering service endpoint defined at an organizational level, all orderers and peers will ignore the channel level endpoints when connecting to ordering nodes.
+Starting with version v1.4.2, it was recommended to define orderer endpoints in all channels at the organization level by adding a new `OrdererEndpoints` stanza within the channel configuration of an organization, replacing the global `OrdererAddresses` section of channel configuration. If at least one organization has an ordering service endpoint defined at an organizational level, all orderers and peers will ignore the channel level endpoints when connecting to ordering nodes.
 
 Utilizing organization level orderer endpoints is required when using service discovery with ordering nodes provided by multiple organizations. This allows clients to provide the correct organization TLS certificates.
 
@@ -111,10 +120,10 @@ In this example, we will create a stanza for a single org called `OrdererOrg`. N
 
 Then, export the following environment variables:
 
-* `CH_NAME`: the name of the channel being updated. Note that all system channels and application channels should contain organization endpoints for ordering nodes.
+* `CH_NAME`: the name of the channel being updated.
 * `CORE_PEER_LOCALMSPID`: the MSP ID of the organization proposing the channel update. This will be the MSP of one of the orderer organizations.
 * `CORE_PEER_MSPCONFIGPATH`: the absolute path to the MSP representing your organization.
-* `TLS_ROOT_CA`: the absolute path to the root CA certificate of the organization proposing the system channel update.
+* `TLS_ROOT_CA`: the absolute path to the root CA certificate of the organization proposing the channel update.
 * `ORDERER_CONTAINER`: the name of an ordering node container. When targeting the ordering service, you can target any particular node in the ordering service. Your requests will be forwarded to the leader automatically.
 * `ORGNAME`: The name of the organization you are currently updating. For example, `OrdererOrg`.
 
