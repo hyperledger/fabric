@@ -8,7 +8,7 @@ The current options for the peer state database are LevelDB and CouchDB. LevelDB
 key-value state database embedded in the peer process. CouchDB is an alternative external state database.
 Like the LevelDB key-value store, CouchDB can store any binary data that is modeled in chaincode
 (CouchDB attachments are used internally for non-JSON data). As a document object store,
-CouchDB allows you to store data in JSON format, issue rich queries against your data,
+CouchDB allows you to store data in JSON format, issue JSON queries against your data,
 and use indexes to support your queries.
 
 Both LevelDB and CouchDB support core chaincode operations such as getting and setting a key
@@ -18,7 +18,7 @@ key of ``owner,asset_id`` can be used to query all assets owned by a certain ent
 queries can be used for read-only queries against the ledger, as well as in transactions that
 update the ledger.
 
-Modeling your data in JSON allows you to issue rich queries against the values of your data,
+Modeling your data in JSON allows you to issue JSON queries against the values of your data,
 instead of only being able to query the keys. This makes it easier for your applications and
 chaincode to read the data stored on the blockchain ledger. Using CouchDB can help you meet
 auditing and reporting requirements for many use cases that are not supported by LevelDB. If you use
@@ -27,10 +27,8 @@ Using indexes makes queries more flexible and efficient and enables you to query
 datasets from chaincode.
 
 CouchDB runs as a separate database process alongside the peer, therefore there are additional
-considerations in terms of setup, management, and operations. You may consider starting with the
-default embedded LevelDB, and move to CouchDB if you require the additional complex rich queries.
-It is a good practice to model asset data as JSON, so that you have the option to perform
-complex rich queries if needed in the future.
+considerations in terms of setup, management, and operations. It is a good practice to model
+asset data as JSON, so that you have the option to perform complex JSON queries if needed in the future.
 
 .. note:: The key for a CouchDB JSON document can only contain valid UTF-8 strings and cannot begin
    with an underscore ("_"). Whether you are using CouchDB or LevelDB, you should avoid using
@@ -42,8 +40,24 @@ complex rich queries if needed in the future.
    - ``Any field beginning with an underscore, "_"``
    - ``~version``
 
+   Because of these data incompatibilities between LevelDB and CouchDB, the database choice
+   must be finalized prior to deploying a production peer. The database cannot be converted at a
+   later time.
+
 Using CouchDB from Chaincode
 ----------------------------
+
+Reading and writing JSON data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When writing JSON data values to CouchDB (e.g. using ``PutState``) and reading
+JSON back in later chaincode requests (e.g. using ``GetState``), the format of the JSON and
+the order of the JSON fields are not guaranteed, based on the JSON specification. Your chaincode
+should therefore unmarshall the JSON before working with the data. Similarly, when marshaling
+JSON, utilize a library that guarantees deterministic results, so that proposed chaincode writes
+and responses to clients will be identical across endorsing peers (note that Go ``json.Marshal()``
+does in fact sort keys deterministically, but in other languages you may need to utilize a canonical
+JSON library).
 
 Chaincode queries
 ~~~~~~~~~~~~~~~~~
@@ -51,25 +65,25 @@ Chaincode queries
 Most of the `chaincode shim APIs <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStubInterface>`__
 can be utilized with either LevelDB or CouchDB state database, e.g. ``GetState``, ``PutState``,
 ``GetStateByRange``, ``GetStateByPartialCompositeKey``. Additionally when you utilize CouchDB as
-the state database and model assets as JSON in chaincode, you can perform rich queries against
-the JSON in the state database by using the ``GetQueryResult`` API and passing a CouchDB query string.
+the state database and model assets as JSON in chaincode, you can perform JSON queries against
+the data in the state database by using the ``GetQueryResult`` API and passing a CouchDB query string.
 The query string follows the `CouchDB JSON query syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html>`__.
 
-The `marbles02 fabric sample <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/marbles_chaincode.go>`__
-demonstrates use of CouchDB queries from chaincode. It includes a ``queryMarblesByOwner()`` function
+The `asset transfer Fabric sample <https://github.com/hyperledger/fabric-samples/blob/master/asset-transfer-ledger-queries/chaincode-go/asset_transfer_ledger_chaincode.go>`__
+demonstrates use of CouchDB queries from chaincode. It includes a ``queryAssetsByOwner()`` function
 that demonstrates parameterized queries by passing an owner id into chaincode. It then queries the
-state data for JSON documents matching the docType of “marble” and the owner id using the JSON query
+state data for JSON documents matching the docType of "asset" and the owner id using the JSON query
 syntax:
 
 .. code:: bash
 
-  {"selector":{"docType":"marble","owner":<OWNER_ID>}}
+  {"selector":{"docType":"asset","owner":<OWNER_ID>}}
 
-The responses to rich queries are useful for understanding the data on the ledger. However,
-there is no guarantee that the result set for a rich query will be stable between
-the chaincode execution and commit time. As a result, you should not use a rich query and
+The responses to JSON queries are useful for understanding the data on the ledger. However,
+there is no guarantee that the result set for a JSON query will be stable between
+the chaincode execution and commit time. As a result, you should not use a JSON query and
 update the channel ledger in a single transaction. For example, if you perform a
-rich query for all assets owned by Alice and transfer them to Bob, a new asset may
+JSON query for all assets owned by Alice and transfer them to Bob, a new asset may
 be assigned to Alice by another transaction between chaincode execution time
 and commit time.
 
@@ -79,9 +93,9 @@ and commit time.
 CouchDB pagination
 ^^^^^^^^^^^^^^^^^^
 
-Fabric supports paging of query results for rich queries and range based queries.
+Fabric supports paging of query results for JSON queries and key range based queries.
 APIs supporting pagination allow the use of page size and bookmarks to be used for
-both range and rich queries. To support efficient pagination, the Fabric
+both key range and JSON queries. To support efficient pagination, the Fabric
 pagination APIs must be used. Specifically, the CouchDB ``limit`` keyword will
 not be honored in CouchDB queries since Fabric itself manages the pagination of
 query results and implicitly sets the pageSize limit that is passed to CouchDB.
@@ -118,7 +132,7 @@ any JSON query with a sort. Indexes enable you to query data from chaincode when
 a large amount of data on your ledger. Indexes can be packaged alongside chaincode
 in a ``/META-INF/statedb/couchdb/indexes`` directory. Each index must be defined in
 its own text file with extension ``*.json`` with the index definition formatted in JSON
-following the `CouchDB index JSON syntax <http://docs.couchdb.org/en/2.1.1/api/database/find.html#db-index>`__.
+following the `CouchDB index JSON syntax <http://docs.couchdb.org/en/3.1.1/api/database/find.html#db-index>`__.
 For example, to support the above marble query, a sample index on the ``docType`` and ``owner``
 fields is provided:
 
@@ -126,7 +140,7 @@ fields is provided:
 
   {"index":{"fields":["docType","owner"]},"ddoc":"indexOwnerDoc", "name":"indexOwner","type":"json"}
 
-The sample index can be found `here <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02/go/META-INF/statedb/couchdb/indexes/indexOwner.json>`__.
+The sample index can be found `here <https://github.com/hyperledger/fabric-samples/blob/master/asset-transfer-ledger-queries/chaincode-go/META-INF/statedb/couchdb/indexes/indexOwner.json>`__.
 
 Any index in the chaincode’s ``META-INF/statedb/couchdb/indexes`` directory
 will be packaged up with the chaincode for deployment. The index will be deployed
@@ -160,7 +174,7 @@ CouchDB Configuration
 CouchDB is enabled as the state database by changing the ``stateDatabase`` configuration option from
 goleveldb to CouchDB. Additionally, the ``couchDBAddress`` needs to configured to point to the
 CouchDB to be used by the peer. The username and password properties should be populated with
-an admin username and password if CouchDB is configured with a username and password. Additional
+an admin username and password. Additional
 options are provided in the ``couchDBConfig`` section and are documented in place. Changes to the
 *core.yaml* will be effective immediately after restarting the peer.
 
@@ -221,7 +235,7 @@ variables using Docker Compose scripting.
 For CouchDB installations outside of the docker images supplied with Fabric,
 the
 `local.ini file of that installation
-<http://docs.couchdb.org/en/2.1.1/config/intro.html#configuration-files>`__
+<http://docs.couchdb.org/en/3.1.1/config/intro.html#configuration-files>`__
 must be edited to set the admin username and password.
 
 Docker compose scripts only set the username and password at the creation of
