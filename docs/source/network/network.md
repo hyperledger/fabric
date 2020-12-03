@@ -15,6 +15,8 @@ declarative policies -- a key feature of Hyperledger Fabric. In a nutshell,
 you'll understand the major technical components of Hyperledger Fabric and the
 decisions organizations need to make about them.
 
+Note: this topic describes a network that uses a "system channel", a channel that the ordering service is bootstrapped with and the ordering service exclusively controls. In the diagrams this is shown as the network configuration `NC4`. Since the release of v2.3, using system channel is now considered the legacy process as compared to the process to [Create a channel without a system channel](../create_channel/create_channel_participation.html).
+
 ## What is a blockchain network?
 
 A blockchain network is a technical infrastructure that provides ledger and

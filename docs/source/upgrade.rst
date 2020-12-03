@@ -12,6 +12,8 @@ high level, a four step process.
    capability levels, where available. Note that some releases will have
    capabilities in all groups while other releases may have few or even no new
    capabilities at all.
+5. If you want to migrate your network by removing the orderer system channel,
+   check out :doc:`create_channel/create_channel_participation`.
 
 For more information about capabilities, check out :doc:`capabilities_concept`.
 
