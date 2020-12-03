@@ -1058,7 +1058,7 @@ var _ = Describe("ChannelParticipation", func() {
 			network.Bootstrap()
 		})
 
-		It("joins channels using the legacy channel creation mechanism and then removes the system channel to transition to the channel participation API", func() {
+		FIt("joins channels using the legacy channel creation mechanism and then removes the system channel to transition to the channel participation API", func() {
 			orderer1 := network.Orderer("orderer1")
 			orderer2 := network.Orderer("orderer2")
 			orderer3 := network.Orderer("orderer3")
@@ -1068,8 +1068,14 @@ var _ = Describe("ChannelParticipation", func() {
 				startOrderer(o)
 			}
 
+			By("finding leader for system channel")
+			findLeader(ordererRunners)
+
 			By("creating an application channel using system channel")
 			network.CreateChannel("testchannel", orderer1, peer)
+
+			By("finding leader for application channel")
+			findLeader(ordererRunners)
 
 			By("broadcasting envelopes to each orderer")
 			for _, o := range orderers {
@@ -1084,6 +1090,12 @@ var _ = Describe("ChannelParticipation", func() {
 				network.GenerateOrdererConfig(o)
 				restartOrderer(o, i)
 			}
+
+			By("finding leader for system channel")
+			findLeader(ordererRunners)
+
+			By("finding leader for application channel")
+			appLeader := findLeader(ordererRunners)
 
 			By("listing the channels")
 			expectedChannelInfo := channelparticipation.ChannelInfo{
@@ -1122,11 +1134,16 @@ var _ = Describe("ChannelParticipation", func() {
 			})
 
 			By("removing orderer3 from the consenters set")
-			channelConfig := nwo.GetConfig(network, peer, orderer2, "testchannel")
+			submittingOrderer := orderer2
+			if appLeader == 2 {
+				By("using orderer1 since orderer2 is the leader")
+				submittingOrderer = orderer1
+			}
+			channelConfig := nwo.GetConfig(network, peer, submittingOrderer, "testchannel")
 			c := configtx.New(channelConfig)
 			err := c.Orderer().RemoveConsenter(consenterChannelConfig(network, orderer3))
 			Expect(err).NotTo(HaveOccurred())
-			computeSignSubmitConfigUpdate(network, orderer2, peer, c, "testchannel")
+			computeSignSubmitConfigUpdate(network, submittingOrderer, peer, c, "testchannel")
 
 			By("ensuring orderer3 transitions to inactive/config-tracker")
 			Eventually(func() channelparticipation.ChannelInfo {

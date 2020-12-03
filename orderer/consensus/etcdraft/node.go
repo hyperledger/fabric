@@ -157,8 +157,10 @@ func (n *node) run(campaign bool) {
 				}
 			}
 
+			n.logger.Errorf("!!!WTL entries: %+v, softstate: %+v", rd.CommittedEntries, rd.SoftState)
 			// skip empty apply
 			if len(rd.CommittedEntries) != 0 || rd.SoftState != nil {
+				n.logger.Errorf("!!!WTL applying entry")
 				n.chain.applyC <- apply{rd.CommittedEntries, rd.SoftState}
 			}
 

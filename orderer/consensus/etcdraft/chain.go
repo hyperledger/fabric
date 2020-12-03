@@ -733,7 +733,7 @@ func (c *Chain) run() {
 						if nodeCount > 2 {
 							close(c.errorC)
 						} else {
-							c.logger.Warningf("No leader is present, cluster size is %d", nodeCount)
+							c.logger.Warningf("No leader is present, cluster size is %d: current nodes in channel: %+v", nodeCount, c.confState.Nodes)
 						}
 					}
 				}
