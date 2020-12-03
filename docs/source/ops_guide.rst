@@ -4,7 +4,6 @@ Operations Guides
 .. toctree::
    :maxdepth: 1
 
-   orderer_deploy
    msp
    peer_ledger_snapshot
    hsm.md
