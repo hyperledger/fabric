@@ -8,9 +8,8 @@ For a high level overview of the concept of ordering and how the supported
 ordering service implementations (including Raft) work at a high level, check
 out our conceptual documentation on the [Ordering Service](./orderer/ordering_service.html).
 
-To learn about the process of setting up an ordering node --- including the
-creation of a local MSP and the creation of a genesis block --- check out our
-documentation on [Setting up an ordering node](orderer_deploy.html).
+To learn about the process of setting up an ordering node, check out our
+documentation on [Planning for an ordering service](./deployorderer/ordererplan.html).
 
 ## Configuration
 
@@ -262,7 +261,7 @@ little as a few months, so check with your issuer. Before the expiration date,
 you will need to rotate these certificates on the node itself and every channel
 the node is joined to, including the system channel.
 
-**Note:** In case the public key of the TLS certificate remains the same, 
+**Note:** In case the public key of the TLS certificate remains the same,
 there is no need to issue channel configuration updates.
 
 For each channel the node participates in:
