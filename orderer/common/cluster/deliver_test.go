@@ -176,9 +176,7 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 		return err
 	}
 	seekInfo, channel, err := readSeekEnvelope(stream)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(ds.t, err)
 
 	// FAB-16233 This is meant to mitigate timeouts when
 	// seekAssertions does not receive a value
@@ -187,7 +185,7 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 
 	select {
 	case <-timer.C:
-		panic("timed out waiting for seek assertions to receive a value")
+		ds.t.Fatalf("timed out waiting for seek assertions to receive a value\n")
 	// Get the next seek assertion and ensure the next seek is of the expected type
 	case seekAssert := <-ds.seekAssertions:
 		ds.logger.Debugf("Received seekInfo: %+v", seekInfo)
@@ -204,7 +202,8 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 		}
 		return stream.Send(resp)
 	}
-	panic(fmt.Sprintf("expected either specified or newest seek but got %v", seekInfo.GetStart()))
+	ds.t.Fatalf("expected either specified or newest seek but got %v\n", seekInfo.GetStart())
+	return nil // unreachable
 }
 
 func (ds *deliverServer) deliverBlocks(stream orderer.AtomicBroadcast_DeliverServer) error {
@@ -293,9 +292,7 @@ func (ds *deliverServer) addExpectPullAssert(seq uint64) {
 
 func newClusterNode(t *testing.T) *deliverServer {
 	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	ds := &deliverServer{
 		logger:         flogging.MustGetLogger("test.debug"),
 		t:              t,
