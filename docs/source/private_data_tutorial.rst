@@ -317,6 +317,7 @@ to package the marbles chaincode.
 
 The test network includes two organizations, Org1 and Org2, with one peer each.
 Therefore, the chaincode package has to be installed on two peers:
+   ./network.sh deployCC -ccn private -ccp ../asset-transfer-private-data/chaincode-go/ -ccep "OR('Org1MSP.peer','Org2MSP.peer')" -cccg ../asset-transfer-private-data/chaincode-go/collections_config.json
 
 - peer0.org1.example.com
 - peer0.org2.example.com
