@@ -364,7 +364,11 @@ Blockchain info: {"height":3,"currentBlockHash":"eBpwWKTNUgnXGpaY2ojF4xeP3bWdjlP
 
 We can confirm that the channel was created successfully by deploying a chaincode to the channel. We can use the `network.sh` script to deploy the Basic asset transfer chaincode to any test network channel. Deploy a chaincode to our new channel using the following command:
 ```
+<<<<<<< HEAD
 ./network.sh deployCC --ccn basic -c channel1 --cci InitLedger 
+=======
+./network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-go/ -c channel1 --cci InitLedger
+>>>>>>> 24459b067... Remove Short Names and Replace With Full Path in Fabric
 ```
 
 After you run the command, you should see the chaincode being deployed to the channel in your logs. The chaincode is invoked to add data to the channel ledger.
