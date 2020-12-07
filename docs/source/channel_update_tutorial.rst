@@ -571,7 +571,7 @@ use the ``test-network`` script to deploy the Basic chaincode:
 .. code:: bash
 
   cd fabric-samples/test-network
-  ./network.sh deployCC -ccn basic -ccl go
+  ./network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-go/ -ccl go
 
 The script will install the Basic chaincode on the Org1 and Org2 peers, approve
 the chaincode definition for Org1 and Org2, and then commit the chaincode

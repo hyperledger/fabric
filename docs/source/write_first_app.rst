@@ -138,7 +138,7 @@ Next, let's deploy the chaincode by calling the ``./network.sh`` script with the
 
 .. code:: bash
 
-  ./network.sh deployCC -ccn basic -ccl javascript
+  ./network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-javascript/ -ccl javascript
 
 .. note:: Behind the scenes, this script uses the chaincode lifecycle to package, install,
           query installed chaincode, approve chaincode for both Org1 and Org2, and finally commit the chaincode.
