@@ -64,14 +64,27 @@ func (dr *dataRetriever) CollectionRWSet(digests []*gossip2.PvtDataDigest, block
 		// if there is an error getting info from the ledger, we need to try to read from transient store
 		return nil, false, errors.Wrap(err, "wasn't able to read ledger height")
 	}
-	if height <= blockNum {
+
+	// The condition may be true for either commit or reconciliation case when another peer sends a request to retrieve private data.
+	// For the commit case, get the private data from the transient store because the block has not been committed.
+	// For the reconciliation case, this peer is further behind the ledger height than the peer that requested for the private data.
+	// In this case, the ledger does not have the requested private data. Also, the data cannot be queried in the transient store,
+	// as the txID in the digest will be missing.
+	if height <= blockNum { // Check whenever current ledger height is equal or below block sequence num.
 		logger.Debug("Current ledger height ", height, "is below requested block sequence number",
 			blockNum, "retrieving private data from transient store")
-	}
 
-	if height <= blockNum { // Check whenever current ledger height is equal or below block sequence num.
 		results := make(Dig2PvtRWSetWithConfig)
 		for _, dig := range digests {
+			// skip retrieving from transient store if txid is not available
+			if dig.TxId == "" {
+				logger.Infof("Skip querying transient store for chaincode %s, collection name %s, block number %d, sequence in block %d, "+
+					"as the txid is missing, perhaps because it is a reconciliation request",
+					dig.Namespace, dig.Collection, blockNum, dig.SeqInBlock)
+
+				continue
+			}
+
 			filter := map[string]ledger.PvtCollFilter{
 				dig.Namespace: map[string]bool{
 					dig.Collection: true,
@@ -200,7 +213,7 @@ func (dr *dataRetriever) fromTransientStore(dig *gossip2.PvtDataDigest, filter m
 		colConfigs, found := rws.CollectionConfigs[dig.Namespace]
 		if !found {
 			logger.Error("No collection config was found for chaincode", dig.Namespace, "collection name",
-				dig.Namespace, "txID", dig.TxId)
+				dig.Collection, "txID", dig.TxId)
 			continue
 		}
 
