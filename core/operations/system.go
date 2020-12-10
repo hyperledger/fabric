@@ -151,29 +151,30 @@ func (s *System) initializeMetricsProvider() error {
 }
 
 func (s *System) initializeLoggingHandler() {
-	// swagger:operation GET /logspec operations logspec
+	// swagger:operation GET /logspec operations logspecget
 	// ---
 	// summary: Retrieves the active logging spec for a peer or orderer.
 	// responses:
 	//     '200':
 	//        description: Ok.
 
-	// swagger:operation PUT /logspec operations logspec
+	// swagger:operation PUT /logspec operations logspecput
 	// ---
 	// summary: Updates the active logging spec for a peer or orderer.
 	//
 	// parameters:
 	// - name: payload
-	//   in: body
+	//   in: formData
+	//   type: string
 	//   description: The payload must consist of a single attribute named spec.
 	//   required: true
-	//   schema:
-	//      "$ref": "#/definitions/spec"
 	// responses:
 	//     '204':
 	//        description: No content.
 	//     '400':
 	//        description: Bad request.
+	// consumes:
+	//   - multipart/form-data
 	s.RegisterHandler("/logspec", httpadmin.NewSpecHandler(), s.options.TLS.Enabled)
 }
 

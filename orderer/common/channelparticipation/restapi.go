@@ -70,7 +70,7 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 		router:    mux.NewRouter(),
 	}
 
-	// swagger:operation GET /channels/{channelID} channels listChannel
+	// swagger:operation GET /v1/participation/channels/{channelID} channels listChannel
 	// ---
 	// summary: Returns detailed channel information for a specific channel Ordering Service Node (OSN) has joined.
 	// parameters:
@@ -80,14 +80,21 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	//   required: true
 	//   type: string
 	// responses:
-	//    "200":
+	//    '200':
 	//       description: Successfully retrieved channel.
 	//       schema:
 	//         "$ref": "#/definitions/channelInfo"
+	//       headers:
+	//        Content-Type:
+	//          description: The media type of the resource
+	//          type: string
+	//        Cache-Control:
+	//         description: The directives for caching responses
+	//         type: string
 
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveListOne).Methods(http.MethodGet)
 
-	// swagger:operation DELETE /channels/{channelID} channels removeChannel
+	// swagger:operation DELETE /v1/participation/channels/{channelID} channels removeChannel
 	// ---
 	// summary: Removes an Ordering Service Node (OSN) from a channel.
 	// parameters:
@@ -111,29 +118,45 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveRemove).Methods(http.MethodDelete)
 	handler.router.HandleFunc(urlWithChannelIDKey, handler.serveNotAllowed)
 
-	// swagger:operation GET /channels channels listChannels
+	// swagger:operation GET /v1/participation/channels channels listChannels
 	// ---
 	// summary: Returns the complete list of channels an Ordering Service Node (OSN) has joined.
 	// responses:
-	//    "200":
-	//       description: Successfully retrieved channel.
+	//    '200':
+	//       description: Successfully retrieved channels.
 	//       schema:
 	//         "$ref": "#/definitions/channelList"
+	//       headers:
+	//        Content-Type:
+	//          description: The media type of the resource
+	//          type: string
+	//        Cache-Control:
+	//         description: The directives for caching responses
+	//         type: string
 
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveListAll).Methods(http.MethodGet)
 
-	// swagger:operation POST /channels channels joinChannel
+	// swagger:operation POST /v1/participation/channels channels joinChannel
 	// ---
 	// summary: Joins an Ordering Service Node (OSN) to a channel.
 	// description: If a channel does not yet exist, it will be created.
 	// parameters:
 	// - name: configBlock
 	//   in: formData
-	//   description: up-to-date config block for the channel.
+	//   type: string
 	//   required: true
 	// responses:
 	//    '201':
 	//      description: Successfully joined channel.
+	//      schema:
+	//        "$ref": "#/definitions/channelInfo"
+	//      headers:
+	//       Content-Type:
+	//         description: The media type of the resource
+	//         type: string
+	//       Location:
+	//        description: The URL to redirect a page to
+	//        type: string
 	//    '400':
 	//      description: Cannot join channel.
 	//    '403':
@@ -147,6 +170,8 @@ func NewHTTPHandler(config localconfig.ChannelParticipation, registrar ChannelMa
 	//      description: The client is trying to join a channel that is currently being removed.
 	//    '500':
 	//      description: Removal of channel failed.
+	// consumes:
+	//   - multipart/form-data
 
 	handler.router.HandleFunc(URLBaseV1Channels, handler.serveJoin).Methods(http.MethodPost).HeadersRegexp(
 		"Content-Type", "multipart/form-data*")

@@ -18,9 +18,79 @@
     },
     "version": "2.3"
   },
-  "basePath": "/v1",
   "paths": {
-    "/channels": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Retrieves all registered health checkers for the process.",
+        "operationId": "healthz",
+        "responses": {
+          "200": {
+            "description": "Ok."
+          },
+          "503": {
+            "description": "Service unavailable."
+          }
+        }
+      }
+    },
+    "/logspec": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Retrieves the active logging spec for a peer or orderer.",
+        "operationId": "logspecget",
+        "responses": {
+          "200": {
+            "description": "Ok."
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "tags": [
+          "operations"
+        ],
+        "summary": "Updates the active logging spec for a peer or orderer.",
+        "operationId": "logspecput",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "The payload must consist of a single attribute named spec.",
+            "name": "payload",
+            "in": "formData",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "operationId": "metrics",
+        "responses": {
+          "200": {
+            "description": "Ok."
+          }
+        }
+      }
+    },
+    "/v1/participation/channels": {
       "get": {
         "tags": [
           "channels"
@@ -29,15 +99,28 @@
         "operationId": "listChannels",
         "responses": {
           "200": {
-            "description": "Successfully retrieved channel.",
+            "description": "Successfully retrieved channels.",
             "schema": {
               "$ref": "#/definitions/channelList"
+            },
+            "headers": {
+              "Cache-Control": {
+                "type": "string",
+                "description": "The directives for caching responses"
+              },
+              "Content-Type": {
+                "type": "string",
+                "description": "The media type of the resource"
+              }
             }
           }
         }
       },
       "post": {
         "description": "If a channel does not yet exist, it will be created.",
+        "consumes": [
+          "multipart/form-data"
+        ],
         "tags": [
           "channels"
         ],
@@ -45,7 +128,7 @@
         "operationId": "joinChannel",
         "parameters": [
           {
-            "description": "up-to-date config block for the channel.",
+            "type": "string",
             "name": "configBlock",
             "in": "formData",
             "required": true
@@ -53,7 +136,20 @@
         ],
         "responses": {
           "201": {
-            "description": "Successfully joined channel."
+            "description": "Successfully joined channel.",
+            "schema": {
+              "$ref": "#/definitions/channelInfo"
+            },
+            "headers": {
+              "Content-Type": {
+                "type": "string",
+                "description": "The media type of the resource"
+              },
+              "Location": {
+                "type": "string",
+                "description": "The URL to redirect a page to"
+              }
+            }
           },
           "400": {
             "description": "Cannot join channel."
@@ -73,7 +169,7 @@
         }
       }
     },
-    "/channels/{channelID}": {
+    "/v1/participation/channels/{channelID}": {
       "get": {
         "tags": [
           "channels"
@@ -94,6 +190,16 @@
             "description": "Successfully retrieved channel.",
             "schema": {
               "$ref": "#/definitions/channelInfo"
+            },
+            "headers": {
+              "Cache-Control": {
+                "type": "string",
+                "description": "The directives for caching responses"
+              },
+              "Content-Type": {
+                "type": "string",
+                "description": "The media type of the resource"
+              }
             }
           }
         }
@@ -128,76 +234,6 @@
           },
           "409": {
             "description": "The channel is pending removal."
-          }
-        }
-      }
-    },
-    "/healthz": {
-      "get": {
-        "tags": [
-          "operations"
-        ],
-        "summary": "Retrieves all registered health checkers for the process.",
-        "operationId": "healthz",
-        "responses": {
-          "200": {
-            "description": "Ok."
-          },
-          "503": {
-            "description": "Service unavailable."
-          }
-        }
-      }
-    },
-    "/logspec": {
-      "get": {
-        "tags": [
-          "operations"
-        ],
-        "summary": "Retrieves the active logging spec for a peer or orderer.",
-        "operationId": "logspec",
-        "responses": {
-          "200": {
-            "description": "Ok."
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "operations"
-        ],
-        "summary": "Updates the active logging spec for a peer or orderer.",
-        "operationId": "logspec",
-        "parameters": [
-          {
-            "description": "The payload must consist of a single attribute named spec.",
-            "name": "payload",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/spec"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No content."
-          },
-          "400": {
-            "description": "Bad request."
-          }
-        }
-      }
-    },
-    "/metrics": {
-      "get": {
-        "tags": [
-          "operations"
-        ],
-        "operationId": "metrics",
-        "responses": {
-          "200": {
-            "description": "Ok."
           }
         }
       }
@@ -311,11 +347,17 @@
   "tags": [
     {
       "description": "Channel Participation APIs",
-      "name": "channels"
+      "name": "channels",
+      "externalDocs": {
+        "url": "https://hyperledger-fabric.readthedocs.io/en/latest/commands/osnadminchannel.html"
+      }
     },
     {
       "description": "Operations APIs",
-      "name": "operations"
+      "name": "operations",
+      "externalDocs": {
+        "url": "https://hyperledger-fabric.readthedocs.io/en/latest/operations_service.html"
+      }
     }
   ]
 }

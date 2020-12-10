@@ -11,7 +11,6 @@ SPDX-License-Identifier: Apache-2.0
 // cases. It offers a unique approach to consensus that enables performance at scale while preserving privacy.
 //
 //     Schemes: http, https
-//     BasePath: /v1
 //     Version: 2.3
 //     License: Copyright IBM Corp. All Rights Reserved.
 //
