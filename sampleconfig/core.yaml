@@ -230,7 +230,13 @@ peer:
             # indicates whenever state transfer is enabled or not
             # default value is true, i.e. state transfer is active
             # and takes care to sync up missing blocks allowing
-            # lagging peer to catch up to speed with rest network
+            # lagging peer to catch up to speed with rest network.
+            # Keep in mind that when peer.gossip.useLeaderElection is true
+            # and there are several peers in the organization,
+            # or peer.gossip.useLeaderElection is false alongside with
+            # peer.gossip.orgleader being false, the peer's ledger may lag behind
+            # the rest of the peers and will never catch up due to state transfer
+            # being disabled.
             enabled: false
             # checkInterval interval to check whether peer is lagging behind enough to
             # request blocks via state transfer from another peer.
