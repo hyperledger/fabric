@@ -45,8 +45,9 @@ const (
 	defAntiEntropyStateResponseTimeout = 3 * time.Second
 	defAntiEntropyBatchSize            = 10
 
-	defChannelBufferSize     = 100
-	defAntiEntropyMaxRetries = 3
+	defChannelBufferSize      = 100
+	defAntiEntropyMaxRetries  = 3
+	stragglerWarningThreshold = 100
 
 	defMaxBlockDistance = 20
 
@@ -766,6 +767,13 @@ func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMod
 	}
 
 	if !blockingMode && payload.SeqNum-height >= uint64(s.config.StateBlockBufferSize) {
+		if s.straggler(height, payload) {
+			s.logger.Warningf("[%s] Current block height (%d) is too far behind other peers at height (%d) to be able to receive blocks "+
+				"without state transfer which is disabled in the configuration "+
+				"(peer.gossip.state.enabled = false). Consider enabling it or setting the peer explicitly to be a leader (peer.gossip.orgLeader = true) "+
+				"in order to pull blocks directly from the ordering service.",
+				s.chainID, height, payload.SeqNum+1)
+		}
 		return errors.Errorf("Ledger height is at %d, cannot enqueue block with sequence of %d", height, payload.SeqNum)
 	}
 
@@ -776,6 +784,16 @@ func (s *GossipStateProviderImpl) addPayload(payload *proto.Payload, blockingMod
 	s.payloads.Push(payload)
 	s.logger.Debugf("Blocks payloads buffer size for channel [%s] is %d blocks", s.chainID, s.payloads.Size())
 	return nil
+}
+
+func (s *GossipStateProviderImpl) straggler(currHeight uint64, receivedPayload *proto.Payload) bool {
+	// If state transfer is disabled, there is no way to request blocks from peers that their ledger has advanced too far.
+	stateDisabled := !s.config.StateEnabled
+	// We are too far behind if we received a block with a sequence number more than stragglerWarningThreshold ahead of our height.
+	tooFarBehind := currHeight+stragglerWarningThreshold < receivedPayload.SeqNum
+	// We depend on other peers for blocks if we use leader election, or we are not explicitly configured to be an org leader.
+	peerDependent := s.config.UseLeaderElection || !s.config.OrgLeader
+	return stateDisabled && tooFarBehind && peerDependent
 }
 
 func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData util.PvtDataCollections) error {
