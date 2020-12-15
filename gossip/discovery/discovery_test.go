@@ -815,7 +815,7 @@ func TestUpdate(t *testing.T) {
 	checkMembership := func() bool {
 		for _, member := range instances[nodeNum-1].GetMembership() {
 			if string(member.PKIid) == instances[0].comm.id {
-				if "bla bla" != string(member.Metadata) {
+				if string(member.Metadata) != "bla bla" {
 					return false
 				}
 			}
@@ -823,7 +823,7 @@ func TestUpdate(t *testing.T) {
 
 		for _, member := range instances[0].GetMembership() {
 			if string(member.PKIid) == instances[nodeNum-1].comm.id {
-				if "localhost:5511" != string(member.Endpoint) {
+				if member.Endpoint != "localhost:5511" {
 					return false
 				}
 			}
@@ -1777,9 +1777,7 @@ func TestMembershipAfterExpiration(t *testing.T) {
 			lock.Lock()
 			defer lock.Unlock()
 
-			if _, matched := expectedMsgs[entry.Message]; matched {
-				delete(expectedMsgs, entry.Message)
-			}
+			delete(expectedMsgs, entry.Message)
 			return nil
 		}))
 	}
