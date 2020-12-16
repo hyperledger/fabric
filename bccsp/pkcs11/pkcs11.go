@@ -297,8 +297,13 @@ func (csp *impl) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) (ski
 		if prvCopyerror != nil {
 			return nil, nil, fmt.Errorf("P11: Private Key copy failed with error [%s]. Please contact your HSM vendor", prvCopyerror)
 		}
+<<<<<<< HEAD
 		prvKeyDestroyError := p11lib.DestroyObject(session, prv)
 		if pubKeyDestroyError != nil {
+=======
+		prvKeyDestroyError := csp.ctx.DestroyObject(session, prv)
+		if prvKeyDestroyError != nil {
+>>>>>>> 7da02d1cd... Check correct error
 			return nil, nil, fmt.Errorf("P11: Private Key destroy failed with error [%s]. Please contact your HSM vendor", prvKeyDestroyError)
 		}
 	}
