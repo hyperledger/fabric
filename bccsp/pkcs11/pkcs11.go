@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
@@ -507,6 +508,8 @@ func (csp *Provider) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) 
 		pubkeyT,
 		prvkeyT,
 	)
+	fmt.Println("THIS IS THE KEY:")
+	spew.Dump(prvkeyT)
 	if err != nil {
 		return nil, nil, fmt.Errorf("P11: keypair generate failed [%s]", err)
 	}
@@ -556,7 +559,7 @@ func (csp *Provider) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) 
 			return nil, nil, fmt.Errorf("P11: Private Key copy failed with error [%s]. Please contact your HSM vendor", prvCopyerror)
 		}
 		prvKeyDestroyError := csp.ctx.DestroyObject(session, prv)
-		if pubKeyDestroyError != nil {
+		if prvKeyDestroyError != nil {
 			return nil, nil, fmt.Errorf("P11: Private Key destroy failed with error [%s]. Please contact your HSM vendor", prvKeyDestroyError)
 		}
 	}
