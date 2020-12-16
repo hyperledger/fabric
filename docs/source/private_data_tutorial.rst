@@ -447,7 +447,7 @@ Run the following command from the test network directory.
 
 .. code:: bash
 
-   ./network.sh deployCC -ccn private -ccep "OR('Org1MSP.peer','Org2MSP.peer')" -cccg ../asset-transfer-private-data/chaincode-go/collections_config.json
+   ./network.sh deployCC -ccn private -ccp ../asset-transfer-private-data/chaincode-go/ -ccl go -ccep "OR('Org1MSP.peer','Org2MSP.peer')" -cccg ../asset-transfer-private-data/chaincode-go/collections_config.json
 
 Note that we need to pass the path to the private data collection definition file
 to the command. As part of deploying the chaincode to the channel, both organizations

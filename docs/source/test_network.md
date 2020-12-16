@@ -48,23 +48,6 @@ Usage:
       down - Bring down the network
 
     Flags:
-<<<<<<< HEAD
-    -ca <use CAs> -  create Certificate Authorities to generate the crypto material
-    -c <channel name> - channel name to use (defaults to "mychannel")
-    -s <dbtype> - the database backend to use: goleveldb (default) or couchdb
-    -r <max retry> - CLI times out after certain number of attempts (defaults to 5)
-    -d <delay> - delay duration in seconds (defaults to 3)
-    -ccn <name> - the short name of the chaincode to deploy: basic (default),ledger, private, secured
-    -ccl <language> - the programming language of the chaincode to deploy: go (default), java, javascript, typescript
-    -ccv <version>  - chaincode version. 1.0 (default)
-    -ccs <sequence>  - chaincode definition sequence. Must be an integer, 1 (default), 2, 3, etc
-    -ccp <path>  - Optional, chaincode path. Path to the chaincode. When provided the -ccn will be used as the deployed name and not the short name of the known chaincodes.
-    -cci <fcn name>  - Optional, chaincode init required function to invoke. When provided this function will be invoked after deployment of the chaincode and will define the chaincode as initialization required.
-    -i <imagetag> - the tag to be used to launch the network (defaults to "latest")
-    -cai <ca_imagetag> - the image tag to be used for CA (defaults to "latest")
-    -verbose - verbose mode
-    -h - print this message
-=======
     Used with network.sh up, network.sh createChannel:
     -ca <use CAs> -  Use Certificate Authorities to generate network crypto material
     -c <channel name> - Name of channel to create (defaults to "mychannel")
@@ -77,17 +60,16 @@ Usage:
 
     Used with network.sh deployCC
     -c <channel name> - Name of channel to deploy chaincode to
-    -ccn <name> - Chaincode name. This flag can be used to deploy one of the asset transfer samples to a channel. Sample options: basic (default),ledger, private, sbe, secured
+    -ccn <name> - Chaincode name.
     -ccl <language> - Programming language of the chaincode to deploy: go (default), java, javascript, typescript
     -ccv <version>  - Chaincode version. 1.0 (default), v2, version3.x, etc
     -ccs <sequence>  - Chaincode definition sequence. Must be an integer, 1 (default), 2, 3, etc
-    -ccp <path>  - (Optional) File path to the chaincode. When provided, the -ccn flag will be used only for the chaincode name.
+    -ccp <path>  - File path to the chaincode.
     -ccep <policy>  - (Optional) Chaincode endorsement policy using signature policy syntax. The default policy requires an endorsement from Org1 and Org2
     -cccg <collection-config>  - (Optional) File path to private data collections configuration file
     -cci <fcn name>  - (Optional) Name of chaincode initialization function. When a function is provided, the execution of init will be requested and the function will be invoked.
 
     -h - Print this message
->>>>>>> 9adde2e7d... Update help text in test net tutorial
 
  Possible Mode and flag combinations
    up -ca -r -d -s -i -cai -verbose
@@ -98,7 +80,8 @@ Usage:
  Examples:
    network.sh up createChannel -ca -c mychannel -s couchdb -i 2.0.0
    network.sh createChannel -c channelName
-   network.sh deployCC -ccn basic -ccl javascript
+   network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-javascript/ -ccl javascript
+   network.sh deployCC -ccn mychaincode -ccp ./user/mychaincode -ccv 1 -ccl javascript
 ```
 
 From inside the `test-network` directory, run the following command to remove
@@ -308,7 +291,7 @@ export CORE_PEER_ADDRESS=localhost:7051
 The `CORE_PEER_TLS_ROOTCERT_FILE` and `CORE_PEER_MSPCONFIGPATH` environment
 variables point to the Org1 crypto material in the `organizations` folder.
 
-If you used `./network.sh deployCC` to install and start the asset-transfer (basic) chaincode, you can invoke the `InitLedger` function of the (Go) chaincode to put an initial list of assets on the ledger (if using typescript or javascript `./network.sh deployCC -l javascript` for example, you will invoke the `InitLedger` function of the respective chaincodes).
+If you used `./network.sh deployCC` to install and start the asset-transfer (basic) chaincode, you can invoke the `InitLedger` function of the (Go) chaincode to put an initial list of assets on the ledger (if using typescript or javascript `./network.sh deployCC -ccl javascript` for example, you will invoke the `InitLedger` function of the respective chaincodes).
 
 Run the following command to initialize the ledger with assets:
 ```
@@ -503,12 +486,12 @@ organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/
     ├── IssuerPublicKey
     ├── IssuerRevocationPublicKey
     ├── cacerts
-    │   └── localhost-7054-ca-org1.pem
+    │   └── localhost-7054-ca-org1.pem
     ├── config.yaml
     ├── keystore
-    │   └── 58e81e6f1ee8930df46841bf88c22a08ae53c1332319854608539ee78ed2fd65_sk
+    │   └── 58e81e6f1ee8930df46841bf88c22a08ae53c1332319854608539ee78ed2fd65_sk
     ├── signcerts
-    │   └── cert.pem
+    │   └── cert.pem
     └── user
 ```
 You can find the certificate of the admin user in the `signcerts` folder and the
