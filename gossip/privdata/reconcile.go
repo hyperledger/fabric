@@ -120,7 +120,6 @@ func (r *Reconciler) run() {
 			r.logger.Debug("Start reconcile missing private info")
 			if err := r.reconcile(); err != nil {
 				r.logger.Error("Failed to reconcile missing private info, error: ", err.Error())
-				break
 			}
 		}
 	}
