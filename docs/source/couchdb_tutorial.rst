@@ -311,7 +311,11 @@ Run the following command to deploy the smart contract to `mychannel`:
 
 .. code:: bash
 
+<<<<<<< HEAD
   ./network.sh deployCC -ccn ledger -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
+=======
+  ./network.sh deployCC -ccn ledger -ccp ../asset-transfer-ledger-queries/chaincode-go/ -ccl go -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
+>>>>>>> b9526384a... Add Language Argument to DeployCC Calls
 
 Note that we are using the `-ccep` flag to deploy the smart contract with an endorsement policy of
 `"OR('Org1MSP.peer','Org2MSP.peer')"`. This allows either organization to create an asset without

@@ -91,7 +91,11 @@ The script will deploy the nodes of the network and create a single channel name
 
 You can use the test network script to deploy the secured asset transfer smart contract to the channel. Run the following command to deploy the smart contract to `mychannel`:
 ```
+<<<<<<< HEAD
 ./network.sh deployCC -ccn secured -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
+=======
+./network.sh deployCC -ccn secured -ccp ../asset-transfer-secured-agreement/chaincode-go/ -ccl -go -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
+>>>>>>> b9526384a... Add Language Argument to DeployCC Calls
 ```
 
 Note that we are using the `-ccep` flag to deploy the smart contract with an endorsement policy of `"OR('Org1MSP.peer','Org2MSP.peer')"`. This allows either organization to create an asset without receiving an endorsement from the other organization.
