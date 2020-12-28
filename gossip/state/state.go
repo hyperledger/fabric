@@ -42,8 +42,6 @@ type GossipStateProvider interface {
 
 const (
 	stragglerWarningThreshold = 100
-	defAntiEntropyBatchSize   = 10
-	defMaxBlockDistance       = 20
 
 	blocking    = true
 	nonBlocking = false
