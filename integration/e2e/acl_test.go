@@ -265,7 +265,7 @@ var _ = Describe("EndToEndACL", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
-		Expect(sess.Err).To(gbytes.Say(`access denied: channel \[\] creator org \[Org2MSP\]`))
+		Expect(sess.Err).To(gbytes.Say(`access denied: channel \[\] creator org unknown, creator is malformed`))
 
 		By("installing the chaincode to an org1 peer as a non-admin org1 identity")
 		sess, err = network.PeerUserSession(org1Peer0, "User1", commands.ChaincodeInstall{
