@@ -23,7 +23,7 @@ func AssertImagesExist(imageNames ...string) {
 
 	for _, imageName := range imageNames {
 		images, err := dockerClient.ListImages(docker.ListImagesOptions{
-			Filter: imageName,
+			Filters: map[string][]string{"reference": {imageName}},
 		})
 		ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
