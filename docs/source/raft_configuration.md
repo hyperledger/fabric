@@ -2,6 +2,8 @@
 
 **Audience**: *Raft ordering node admins*
 
+Note: this topic describes the process for configuring a Raft ordering service that has not been bootstrapped with a system channel genesis block. For a version of this topic that includes information about the system channel, check out [Configuring and operating a Raft ordering service](https://hyperledger-fabric.readthedocs.io/en/release-2.2/raft_configuration.html).
+
 ## Conceptual overview
 
 For a high level overview of the concept of ordering and how the supported
@@ -14,17 +16,7 @@ documentation on [Setting up an ordering node](orderer_deploy.html).
 
 ## Configuration
 
-While every Raft node must be added to the system channel, a node does not need
-to be added to every application channel. Additionally, you can remove and add a
-node from a channel dynamically without affecting the other nodes, a process
-described in the Reconfiguration section below.
-
-Raft nodes identify each other using TLS pinning, so in order to impersonate a
-Raft node, an attacker needs to obtain the **private key** of its TLS
-certificate. As a result, it is not possible to run a Raft node without a valid
-TLS configuration.
-
-A Raft cluster is configured in two planes:
+A Raft cluster is configured in two places:
 
   * **Local configuration**: Governs node specific aspects, such as TLS
   communication, replication behavior, and file storage.
@@ -32,6 +24,11 @@ A Raft cluster is configured in two planes:
   * **Channel configuration**: Defines the membership of the Raft cluster for the
   corresponding channel, as well as protocol specific parameters such as heartbeat
   frequency, leader timeouts, and more.
+
+Raft nodes identify each other using TLS pinning, so in order to impersonate a
+Raft node, an attacker needs to obtain the **private key** of its TLS
+certificate. As a result, it is not possible to run a Raft node without a valid
+TLS configuration.
 
 Recall, each channel has its own instance of a Raft protocol running. Thus, a
 Raft node must be referenced in the configuration of each channel it belongs to
@@ -58,12 +55,11 @@ The following section from `configtx.yaml` shows three Raft nodes (also called
               ServerTLSCert: path/to/ServerTLSCert2
 ```
 
-Note: an orderer will be listed as a consenter in the system channel as well as
-any application channels they're joined to.
-
 When the channel config block is created, the `configtxgen` tool reads the paths
 to the TLS certificates, and replaces the paths with the corresponding bytes of
 the certificates.
+
+Note: it is possible to remove and add an ordering node from a channel dynamically without affecting the other nodes, a process described in the Reconfiguration section below.
 
 ### Local configuration
 
@@ -203,23 +199,13 @@ one or two).
 So by extending a cluster of three nodes to four nodes (while only two are
 alive) you are effectively stuck until the original offline node is resurrected.
 
-Adding a new node to a Raft cluster is done by:
+To add a new node to the ordering service:
 
-  1. **Adding the TLS certificates** of the new node to the channel through a
-  channel configuration update transaction. Note: the new node must be added to
-  the system channel before being added to one or more application channels.
-  2. **Fetching the latest config block** of the system channel from an orderer node
-  that's part of the system channel.
-  3. **Ensuring that the node that will be added is part of the system channel**
-  by checking that the config block that was fetched includes the certificate of
-  (soon to be) added node.
-  4. **Starting the new Raft node** with the path to the config block in the
-  `General.BootstrapFile` configuration parameter.
-  5. **Waiting for the Raft node to replicate the blocks** from existing nodes for
-  all channels its certificates have been added to. After this step has been
-  completed, the node begins servicing the channel.
-  6. **Adding the endpoint** of the newly added Raft node to the channel
-  configuration of all channels.
+  1. **Ensure the orderer organization that owns the new node is one of the orderer organizations on the channel**. If the orderer organization is not an administrator, the node will be unable to pull blocks as a follower or be joined to the consenter set.
+  2. **Start the new ordering node**. For information about how to deploy an ordering node, check out [Planning for an ordering service](./deployorderer/ordererdeploy.html). Note that when you use the `osnadmin` CLI to create and join a channel, you do not need to point to a configuration block when starting the node.
+  3. **Use the `osnadmin` CLI to add the first orderer to the channel**. For more information, check out [Create a channel without a system channel](../create_channel/create_channel_participation.html#step-two-use-the-osnadmin-cli-to-add-the-first-orderer-to-the-channel) tutorial.
+  4. **Wait for the Raft node to replicate the blocks** from existing nodes for all channels its certificates have been added to. When an ordering node is added to a channel, it is added as a "follower", a state in which it can replicate blocks but is not part of the "consenter set" actively servicing the channel. When the node finishes replicating the blocks, its status should change from "onboarding" to "active". Note that an "active" ordering node is still not part of the consenter set.
+  5. **Add the new ordering node to the consenter set**. For more information, check out [Create a channel without a system channel](../create_channel/create_channel_participation.html#step-three-join-additional-ordering-nodes).
 
 It is possible to add a node that is already running (and participates in some
 channels already) to a channel while the node itself is running. To do this, simply
@@ -232,27 +218,13 @@ channel, and then start the Raft instance for that chain.
 After it has successfully done so, the channel configuration can be updated to
 include the endpoint of the new Raft orderer.
 
-Removing a node from a Raft cluster is done by:
+To remove an ordering node from the consenter set of a channel, use the `osnadmin channel remove` command to remove its endpoint and certificates from the channel. For more information, check out [Add or remove orderers from existing channels](../create_channel/create_channel_participation.html#add-or-remove-orderers-from-existing-channels).
 
-  1. Removing its endpoint from the channel config for all channels, including
-  the system channel controlled by the orderer admins.
-  2. Removing its entry (identified by its certificates) from the channel
-  configuration for all channels. Again, this includes the system channel.
-  3. Shut down the node.
+Once an ordering node is removed from the channel, the other ordering nodes stop communicating with the removed orderer in the context of the removed channel. They might still be communicating on other channels.
 
-Removing a node from a specific channel, but keeping it servicing other channels
-is done by:
+The node that is removed from the channel automatically detects its removal either immediately or after `EvictionSuspicion` time has passed (10 minutes by default) and shuts down its Raft instance on that channel.
 
-  1. Removing its endpoint from the channel config for the channel.
-  2. Removing its entry (identified by its certificates) from the channel
-  configuration.
-  3. The second phase causes:
-     * The remaining orderer nodes in the channel to cease communicating with
-     the removed orderer node in the context of the removed channel. They might
-     still be communicating on other channels.
-     * The node that is removed from the channel would autonomously detect its
-     removal either immediately or after `EvictionSuspicion` time has passed
-     (10 minutes by default) and will shut down its Raft instance.
+If the intent is to delete the node entirely, remove it from all channels before shutting down the node.
 
 ### TLS certificate rotation for an orderer node
 
@@ -260,7 +232,7 @@ All TLS certificates have an expiration date that is determined by the issuer.
 These expiration dates can range from 10 years from the date of issuance to as
 little as a few months, so check with your issuer. Before the expiration date,
 you will need to rotate these certificates on the node itself and every channel
-the node is joined to, including the system channel.
+the node is joined to.
 
 For each channel the node participates in:
 

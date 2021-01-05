@@ -1,6 +1,13 @@
 Channel Configuration (configtx)
 ================================
 
+.. note:: This topic describes how channels are configured when the network has
+          not been bootstrapped using a system channel genesis block. For
+          information about the structure of configurations, including the
+          configuration of the system channel, check out
+          `Channel Configuration (configtx) <https://hyperledger-fabric.readthedocs.io/en/release-2.2/configtx.html>`_
+          from the v2.2 documentation.
+
 Shared configuration for a Hyperledger Fabric blockchain network is
 stored in a collection configuration transactions, one per channel. Each
 configuration transaction is usually referred to by the shorter name
@@ -333,88 +340,8 @@ with different names.
         },
     }
 
-Orderer system channel configuration
-------------------------------------
-
-The ordering system channel needs to define ordering parameters, and
-consortiums for creating channels. There must be exactly one ordering
-system channel for an ordering service, and it is the first channel to
-be created (or more accurately bootstrapped). It is recommended never to
-define an Application section inside of the ordering system channel
-genesis configuration, but may be done for testing. Note that any member
-with read access to the ordering system channel may see all channel
-creations, so this channel's access should be restricted.
-
-The ordering parameters are defined as the following subset of config:
-
-::
-
-    &ConfigGroup{
-        Groups: map<string, *ConfigGroup> {
-            "Orderer":&ConfigGroup{
-                Groups:map<String, *ConfigGroup> {
-                    {{org_name}}:&ConfigGroup{
-                        Values:map<string, *ConfigValue>{
-                            "MSP":msp.MSPConfig,
-                        },
-                    },
-                },
-
-                Values:map<string, *ConfigValue> {
-                    "ConsensusType":orderer.ConsensusType,
-                    "BatchSize":orderer.BatchSize,
-                    "BatchTimeout":orderer.BatchTimeout,
-                    "KafkaBrokers":orderer.KafkaBrokers,
-                },
-            },
-        },
-
-Each organization participating in ordering has a group element under
-the ``Orderer`` group. This group defines a single parameter ``MSP``
-which contains the cryptographic identity information for that
-organization. The ``Values`` of the ``Orderer`` group determine how the
-ordering nodes function. They exist per channel, so
-``orderer.BatchTimeout`` for instance may be specified differently on
-one channel than another.
-
-At startup, the orderer is faced with a filesystem which contains
-information for many channels. The orderer identifies the system channel
-by identifying the channel with the consortiums group defined. The
-consortiums group has the following structure.
-
-::
-
-    &ConfigGroup{
-        Groups: map<string, *ConfigGroup> {
-            "Consortiums":&ConfigGroup{
-                Groups:map<String, *ConfigGroup> {
-                    {{consortium_name}}:&ConfigGroup{
-                        Groups:map<string, *ConfigGroup> {
-                            {{org_name}}:&ConfigGroup{
-                                Values:map<string, *ConfigValue>{
-                                    "MSP":msp.MSPConfig,
-                                },
-                            },
-                        },
-                        Values:map<string, *ConfigValue> {
-                            "ChannelCreationPolicy":common.Policy,
-                        }
-                    },
-                },
-            },
-        },
-    },
-
-Note that each consortium defines a set of members, just like the
-organizational members for the ordering orgs. Each consortium also
-defines a ``ChannelCreationPolicy``. This is a policy which is applied
-to authorize channel creation requests. Typically, this value will be
-set to an ``ImplicitMetaPolicy`` requiring that the new members of the
-channel sign to authorize the channel creation. More details about
-channel creation follow later in this document.
-
-Application channel configuration
----------------------------------
+Channel configuration
+---------------------
 
 Application configuration is for channels which are designed for
 application type transactions. It is defined as follows:
@@ -442,48 +369,10 @@ information, each org additionally encodes a list of ``AnchorPeers``.
 This list allows the peers of different organizations to contact each
 other for peer gossip networking.
 
-The application channel encodes a copy of the orderer orgs and consensus
-options to allow for deterministic updating of these parameters, so the
-same ``Orderer`` section from the orderer system channel configuration
-is included. However from an application perspective this may be largely
-ignored.
-
 Channel creation
 ----------------
 
-When the orderer receives a ``CONFIG_UPDATE`` for a channel which does
-not exist, the orderer assumes that this must be a channel creation
-request and performs the following.
-
-1. The orderer identifies the consortium which the channel creation
-   request is to be performed for. It does this by looking at the
-   ``Consortium`` value of the top level group.
-2. The orderer verifies that the organizations included in the
-   ``Application`` group are a subset of the organizations included in
-   the corresponding consortium and that the ``ApplicationGroup`` is set
-   to ``version`` ``1``.
-3. The orderer verifies that if the consortium has members, that the new
-   channel also has application members (creation consortiums and
-   channels with no members is useful for testing only).
-4. The orderer creates a template configuration by taking the
-   ``Orderer`` group from the ordering system channel, and creating an
-   ``Application`` group with the newly specified members and specifying
-   its ``mod_policy`` to be the ``ChannelCreationPolicy`` as specified
-   in the consortium config. Note that the policy is evaluated in the
-   context of the new configuration, so a policy requiring ``ALL``
-   members, would require signatures from all the new channel members,
-   not all the members of the consortium.
-5. The orderer then applies the ``CONFIG_UPDATE`` as an update to this
-   template configuration. Because the ``CONFIG_UPDATE`` applies
-   modifications to the ``Application`` group (its ``version`` is
-   ``1``), the config code validates these updates against the
-   ``ChannelCreationPolicy``. If the channel creation contains any other
-   modifications, such as to an individual org's anchor peers, the
-   corresponding mod policy for the element will be invoked.
-6. The new ``CONFIG`` transaction with the new channel config is wrapped
-   and sent for ordering on the ordering system channel. After ordering,
-   the channel is created.
+For information about how to create a channel, check out :doc:`create_channel/create_channel_participation`.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
-
