@@ -1,0 +1,18 @@
+{
+    "tags": [
+        {
+            "name": "channels",
+            "description": "Channel Participation APIs",
+            "externalDocs": {
+               "url": "https://hyperledger-fabric.readthedocs.io/en/latest/commands/osnadminchannel.html"
+            }
+        },
+        {
+            "name": "operations",
+            "description": "Operations APIs",
+            "externalDocs": {
+               "url": "https://hyperledger-fabric.readthedocs.io/en/latest/operations_service.html"
+            }
+        }
+    ]
+}
