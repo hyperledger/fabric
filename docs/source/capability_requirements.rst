@@ -1,6 +1,14 @@
 Defining capability requirements
 ================================
 
+.. note:: This topic describes a network that does not use a "system channel", a
+          channel that the ordering service is bootstrapped with and the ordering
+          service exclusively controls. Since the release of v2.3, using a system
+          channel is now considered the legacy process as compared to the process
+          to :doc:`create_channel_participation`. For a version of this topic that
+          includes information about the system channel, check out
+          `Capability requirements <https://hyperledger-fabric.readthedocs.io/en/release-2.2/capability_requirements.html>`_ from the v2.2 documentation.
+
 As discussed in :doc:`capabilities_concept`, capability requirements are defined
 per channel in the channel configuration (found in the channel’s most recent
 configuration block). The channel configuration contains three locations, each
@@ -27,11 +35,6 @@ reconfiguration).
 .. note:: For more information about how to update a channel configuration, check
           out :doc:`config_update`.
 
-Because new channels copy the configuration of the ordering system channel by
-default, new channels will automatically be configured to work with the orderer
-and channel capabilities of the ordering system channel and the application
-capabilities specified by the channel creation transaction.
-
 Capabilities in an Initial Configuration
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -41,9 +44,6 @@ for each capability type (Channel, Orderer, and Application).
 
 Note that there is a ``Capabilities`` section defined at the root level (for the channel
 capabilities), and at the Orderer level (for orderer capabilities).
-
-When defining the orderer system channel there is no Application section, as those
-capabilities are defined during the creation of an application channel.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
