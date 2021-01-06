@@ -192,7 +192,7 @@ The command will list the block height of the channel and the hash of the most r
 Blockchain info: {"height":1,"currentBlockHash":"kvtQYYEL2tz0kDCNttPFNC4e6HVUFOGMTIDxZ+DeNQM="}
 ```
 
-We can now join the Org2 peer to the channel. Set the following environment variables to operate the `peer` CLI as the Org2 admin. The environment variables will also set the Org2 peer, ``peer0.org1.example.com``, as the target peer.
+We can now join the Org2 peer to the channel. Set the following environment variables to operate the `peer` CLI as the Org2 admin. The environment variables will also set the Org2 peer, ``peer0.org2.example.com``, as the target peer.
 ```
 export CORE_PEER_TLS_ENABLED=true
 export CORE_PEER_LOCALMSPID="Org2MSP"
