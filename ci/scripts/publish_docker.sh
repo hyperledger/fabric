@@ -6,14 +6,12 @@ set -euo pipefail
 
 make docker
 
-wget -qO "$PWD/manifest-tool" https://github.com/estesp/manifest-tool/releases/download/v1.0.0/manifest-tool-linux-amd64
-chmod +x ./manifest-tool
-
+docker login --username "${DOCKER_USERNAME}" --password "${DOCKER_PASSWORD}"
 for image in baseos peer orderer ccenv tools; do
-  docker login --username "${DOCKER_USERNAME}" --password "${DOCKER_PASSWORD}"
-  docker tag "hyperledger/fabric-${image}" "hyperledger/fabric-${image}:amd64-${RELEASE}"
-  docker push "hyperledger/fabric-${image}:amd64-${RELEASE}"
-
-  ./manifest-tool push from-args --platforms linux/amd64 --template "hyperledger/fabric-${image}:amd64-${RELEASE}" --target "hyperledger/fabric-${image}:${RELEASE}"
-  ./manifest-tool push from-args --platforms linux/amd64 --template "hyperledger/fabric-${image}:amd64-${RELEASE}" --target "hyperledger/fabric-${image}:${TWO_DIGIT_RELEASE}"
+  for release in ${RELEASE} ${TWO_DIGIT_RELEASE}; do
+    docker tag "hyperledger/fabric-${image}" "hyperledger/fabric-${image}:amd64-${release}"
+    docker tag "hyperledger/fabric-${image}" "hyperledger/fabric-${image}:${release}"
+    docker push "hyperledger/fabric-${image}:amd64-${release}"
+    docker push "hyperledger/fabric-${image}:${release}"
+  done
 done
