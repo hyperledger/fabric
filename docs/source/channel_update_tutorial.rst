@@ -284,7 +284,8 @@ means of the ``jq`` tool:
 
 .. code:: bash
 
-  configtxlator proto_decode --input config_block.pb --type common.Block | jq .data.data[0].payload.data.config > config.json
+  configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
+  jq .data.data[0].payload.data.config config_block.json > config.json
 
 This command leaves us with a trimmed down JSON object -- ``config.json`` -- which
 will serve as the baseline for our config update.
@@ -740,7 +741,8 @@ channel configuration.
 
 .. code:: bash
 
-    configtxlator proto_decode --input config_block.pb --type common.Block | jq .data.data[0].payload.data.config > config.json
+  configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
+  jq .data.data[0].payload.data.config config_block.json > config.json
 
 The ``config.json`` is the now trimmed JSON representing the latest channel configuration
 that we will update.
