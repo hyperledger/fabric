@@ -125,7 +125,7 @@ func TestBadCouchDBInstance(t *testing.T) {
 	}
 
 	//Create a bad CouchDatabase
-	badDB := couchDatabase{&badCouchDBInstance, "baddb", 1}
+	badDB := couchDatabase{&badCouchDBInstance, "baddb"}
 
 	//Test createCouchDatabase with bad connection
 	_, err := createCouchDatabase(&badCouchDBInstance, "baddbtest")

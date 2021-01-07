@@ -122,7 +122,7 @@ func createCouchDatabase(couchInstance *couchInstance, dbName string) (*couchDat
 		return nil, err
 	}
 
-	couchDBDatabase := couchDatabase{couchInstance: couchInstance, dbName: databaseName, indexWarmCounter: 1}
+	couchDBDatabase := couchDatabase{couchInstance: couchInstance, dbName: databaseName}
 
 	// Create CouchDB database upon ledger startup, if it doesn't already exist
 	err = couchDBDatabase.createDatabaseIfNotExist()
@@ -138,7 +138,7 @@ func createCouchDatabase(couchInstance *couchInstance, dbName string) (*couchDat
 func createSystemDatabasesIfNotExist(couchInstance *couchInstance) error {
 
 	dbName := "_users"
-	systemCouchDBDatabase := couchDatabase{couchInstance: couchInstance, dbName: dbName, indexWarmCounter: 1}
+	systemCouchDBDatabase := couchDatabase{couchInstance: couchInstance, dbName: dbName}
 	err := systemCouchDBDatabase.createDatabaseIfNotExist()
 	if err != nil {
 		couchdbLogger.Errorf("Error calling CouchDB createDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
@@ -146,7 +146,7 @@ func createSystemDatabasesIfNotExist(couchInstance *couchInstance) error {
 	}
 
 	dbName = "_replicator"
-	systemCouchDBDatabase = couchDatabase{couchInstance: couchInstance, dbName: dbName, indexWarmCounter: 1}
+	systemCouchDBDatabase = couchDatabase{couchInstance: couchInstance, dbName: dbName}
 	err = systemCouchDBDatabase.createDatabaseIfNotExist()
 	if err != nil {
 		couchdbLogger.Errorf("Error calling CouchDB createDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)
@@ -154,7 +154,7 @@ func createSystemDatabasesIfNotExist(couchInstance *couchInstance) error {
 	}
 	if couchInstance.conf.CreateGlobalChangesDB {
 		dbName = "_global_changes"
-		systemCouchDBDatabase = couchDatabase{couchInstance: couchInstance, dbName: dbName, indexWarmCounter: 1}
+		systemCouchDBDatabase = couchDatabase{couchInstance: couchInstance, dbName: dbName}
 		err = systemCouchDBDatabase.createDatabaseIfNotExist()
 		if err != nil {
 			couchdbLogger.Errorf("Error calling CouchDB createDatabaseIfNotExist() for system dbName: %s, error: %s", dbName, err)

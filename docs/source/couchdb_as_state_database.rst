@@ -218,14 +218,6 @@ Below is the ``stateDatabase`` section from *core.yaml*:
          internalQueryLimit: 1000
          # Limit on the number of records per CouchDB bulk update batch
          maxBatchUpdateSize: 1000
-         # Warm indexes after every N blocks.
-         # This option warms any indexes that have been
-         # deployed to CouchDB after every N blocks.
-         # A value of 1 will warm indexes after every block commit,
-         # to ensure fast selector queries.
-         # Increasing the value may improve write efficiency of peer and CouchDB,
-         # but may degrade query response time.
-         warmIndexesAfterNBlocks: 1
 
 CouchDB hosted in docker containers supplied with Hyperledger Fabric have the
 capability of setting the CouchDB username and password with environment

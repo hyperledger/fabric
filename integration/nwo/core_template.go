@@ -208,7 +208,6 @@ ledger:
       requestTimeout: 35s
       queryLimit: 10000
       maxBatchUpdateSize: 1000
-      warmIndexesAfterNBlocks: 1
   history:
     enableHistoryDatabase: true
   pvtdataStore:
