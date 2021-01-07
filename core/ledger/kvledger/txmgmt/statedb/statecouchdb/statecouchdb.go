@@ -203,7 +203,7 @@ func (provider *VersionedDBProvider) Close() {
 // It is not an error if a database does not exist.
 func (provider *VersionedDBProvider) Drop(dbName string) error {
 	metadataDBName := constructMetadataDBName(dbName)
-	couchDBDatabase := couchDatabase{couchInstance: provider.couchInstance, dbName: metadataDBName, indexWarmCounter: 1}
+	couchDBDatabase := couchDatabase{couchInstance: provider.couchInstance, dbName: metadataDBName}
 	_, couchDBReturn, err := couchDBDatabase.getDatabaseInfo()
 	if couchDBReturn != nil && couchDBReturn.StatusCode == 404 {
 		// db does not exist
@@ -769,20 +769,6 @@ func (vdb *VersionedDB) postCommitProcessing(committers []*committer, namespaces
 		}
 
 	}()
-
-	for _, ns := range namespaces {
-		db, err := vdb.getNamespaceDBHandle(ns)
-		if err != nil {
-			return err
-		}
-		if db.couchInstance.conf.WarmIndexesAfterNBlocks > 0 {
-			if db.indexWarmCounter >= db.couchInstance.conf.WarmIndexesAfterNBlocks {
-				go db.runWarmIndexAllIndexes()
-				db.indexWarmCounter = 0
-			}
-			db.indexWarmCounter++
-		}
-	}
 
 	// Record a savepoint at a given height
 	if err := vdb.recordSavepoint(height); err != nil {

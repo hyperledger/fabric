@@ -87,9 +87,6 @@ type CouchDBConfig struct {
 	// MaxBatchUpdateSize is the maximum number of records to included in CouchDB
 	// bulk update operations.
 	MaxBatchUpdateSize int
-	// WarmIndexesAfterNBlocks is the number of blocks after which to warm any
-	// CouchDB indexes.
-	WarmIndexesAfterNBlocks int
 	// CreateGlobalChangesDB determines whether or not to create the "_global_changes"
 	// system database.
 	CreateGlobalChangesDB bool

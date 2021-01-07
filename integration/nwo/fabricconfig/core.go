@@ -305,15 +305,14 @@ type StateConfig struct {
 }
 
 type CouchDBConfig struct {
-	CouchDBAddress          string        `yaml:"couchDBAddress,omitempty"`
-	Username                string        `yaml:"username,omitempty"`
-	Password                string        `yaml:"password,omitempty"`
-	MaxRetries              int           `yaml:"maxRetries,omitempty"`
-	MaxRetriesOnStartup     int           `yaml:"maxRetriesOnStartup,omitempty"`
-	RequestTimeout          time.Duration `yaml:"requestTimeout,omitempty"`
-	QueryLimit              int           `yaml:"queryLimit,omitempty"`
-	MaxBatchUpdateSize      int           `yaml:"maxBatchUpdateSize,omitempty"`
-	WarmIndexesAfterNBlocks int           `yaml:"warmIndexesAfteNBlocks,omitempty"`
+	CouchDBAddress      string        `yaml:"couchDBAddress,omitempty"`
+	Username            string        `yaml:"username,omitempty"`
+	Password            string        `yaml:"password,omitempty"`
+	MaxRetries          int           `yaml:"maxRetries,omitempty"`
+	MaxRetriesOnStartup int           `yaml:"maxRetriesOnStartup,omitempty"`
+	RequestTimeout      time.Duration `yaml:"requestTimeout,omitempty"`
+	QueryLimit          int           `yaml:"queryLimit,omitempty"`
+	MaxBatchUpdateSize  int           `yaml:"maxBatchUpdateSize,omitempty"`
 }
 
 type HistoryConfig struct {

@@ -114,9 +114,8 @@ type couchInstance struct {
 
 //couchDatabase represents a database within a CouchDB instance
 type couchDatabase struct {
-	couchInstance    *couchInstance //connection configuration
-	dbName           string
-	indexWarmCounter int
+	couchInstance *couchInstance //connection configuration
+	dbName        string
 }
 
 //dbReturn contains an error reported by CouchDB
@@ -1241,73 +1240,6 @@ func (dbclient *couchDatabase) deleteIndex(designdoc, indexname string) error {
 		return err
 	}
 	defer closeResponseBody(resp)
-
-	return nil
-
-}
-
-//warmIndex method provides a function for warming a single index
-func (dbclient *couchDatabase) warmIndex(designdoc, indexname string) error {
-	dbName := dbclient.dbName
-
-	couchdbLogger.Debugf("[%s] Entering WarmIndex()  designdoc=%s  indexname=%s", dbName, designdoc, indexname)
-
-	indexURL, err := url.Parse(dbclient.couchInstance.url())
-	if err != nil {
-		couchdbLogger.Errorf("URL parse error: %s", err)
-		return errors.Wrapf(err, "error parsing CouchDB URL: %s", dbclient.couchInstance.url())
-	}
-
-	queryParms := indexURL.Query()
-	//Query parameter that allows the execution of the URL to return immediately
-	//The update_after will cause the index update to run after the URL returns
-	queryParms.Add("stale", "update_after")
-
-	//get the number of retries
-	maxRetries := dbclient.couchInstance.conf.MaxRetries
-
-	resp, _, err := dbclient.handleRequest(http.MethodGet, "WarmIndex", indexURL, nil, "", "", maxRetries, true, &queryParms, "_design", designdoc, "_view", indexname)
-	if err != nil {
-		return err
-	}
-	defer closeResponseBody(resp)
-
-	return nil
-
-}
-
-//runWarmIndexAllIndexes is a wrapper for WarmIndexAllIndexes to catch and report any errors
-func (dbclient *couchDatabase) runWarmIndexAllIndexes() {
-
-	err := dbclient.warmIndexAllIndexes()
-	if err != nil {
-		couchdbLogger.Errorf("Error detected during WarmIndexAllIndexes(): %+v", err)
-	}
-
-}
-
-//warmIndexAllIndexes method provides a function for warming all indexes for a database
-func (dbclient *couchDatabase) warmIndexAllIndexes() error {
-
-	couchdbLogger.Debugf("[%s] Entering WarmIndexAllIndexes()", dbclient.dbName)
-
-	//Retrieve all indexes
-	listResult, err := dbclient.listIndex()
-	if err != nil {
-		return err
-	}
-
-	//For each index definition, execute an index refresh
-	for _, elem := range listResult {
-
-		err := dbclient.warmIndex(elem.DesignDocument, elem.Name)
-		if err != nil {
-			return err
-		}
-
-	}
-
-	couchdbLogger.Debugf("[%s] Exiting WarmIndexAllIndexes()", dbclient.dbName)
 
 	return nil
 

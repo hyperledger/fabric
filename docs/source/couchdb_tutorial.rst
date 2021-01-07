@@ -224,14 +224,6 @@ In general, you should model index fields to match the fields that will be used
 in query filters and sorts. For more details on building an index in JSON
 format refer to the `CouchDB documentation <http://docs.couchdb.org/en/latest/api/database/find.html#db-index>`__.
 
-A final word on indexing, Fabric takes care of indexing the documents in the
-database using a pattern called ``index warming``. CouchDB does not typically
-index new or updated documents until the next query. Fabric ensures that
-indexes stay 'warm' by requesting an index update after every block of data is
-committed.  This ensures queries are fast because they do not have to index
-documents before running the query. This process keeps the index current
-and refreshed every time new records are added to the state database.
-
 .. _cdb-add-index:
 
 
