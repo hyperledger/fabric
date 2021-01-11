@@ -151,6 +151,7 @@ type deliverServer struct {
 	srv            *comm.GRPCServer
 	seekAssertions chan func(*orderer.SeekInfo, string)
 	blockResponses chan *orderer.DeliverResponse
+	done           chan struct{}
 }
 
 func (ds *deliverServer) endpointCriteria() cluster.EndpointCriteria {
@@ -190,17 +191,22 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 	case seekAssert := <-ds.seekAssertions:
 		ds.logger.Debugf("Received seekInfo: %+v", seekInfo)
 		seekAssert(seekInfo, channel)
+	case <-ds.done:
+		return nil
 	}
 
 	if seekInfo.GetStart().GetSpecified() != nil {
 		return ds.deliverBlocks(stream)
 	}
 	if seekInfo.GetStart().GetNewest() != nil {
-		resp := <-ds.blocks()
-		if resp == nil {
-			return nil
+		select {
+		case resp := <-ds.blocks():
+			if resp == nil {
+				return nil
+			}
+			return stream.Send(resp)
+		case <-ds.done:
 		}
-		return stream.Send(resp)
 	}
 	ds.t.Fatalf("expected either specified or newest seek but got %v\n", seekInfo.GetStart())
 	return nil // unreachable
@@ -209,7 +215,13 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 func (ds *deliverServer) deliverBlocks(stream orderer.AtomicBroadcast_DeliverServer) error {
 	for {
 		blockChan := ds.blocks()
-		response := <-blockChan
+		var response *orderer.DeliverResponse
+		select {
+		case response = <-blockChan:
+		case <-ds.done:
+			return nil
+		}
+
 		// A nil response is a signal from the test to close the stream.
 		// This is needed to avoid reading from the block buffer, hence
 		// consuming by accident a block that is tabled to be pulled
@@ -253,6 +265,7 @@ func (ds *deliverServer) resurrect() {
 		respChan <- resp
 	}
 	ds.blockResponses = respChan
+	ds.done = make(chan struct{})
 	ds.srv.Stop()
 	// And re-create the gRPC server on that port
 	ds.srv, err = comm.NewGRPCServer(fmt.Sprintf("127.0.0.1:%d", ds.port()), comm.ServerConfig{})
@@ -264,29 +277,38 @@ func (ds *deliverServer) resurrect() {
 func (ds *deliverServer) stop() {
 	ds.srv.Stop()
 	close(ds.blocks())
+	close(ds.done)
 }
 
 func (ds *deliverServer) enqueueResponse(seq uint64) {
-	ds.blocks() <- &orderer.DeliverResponse{
-		Type: &orderer.DeliverResponse_Block{Block: protoutil.NewBlock(seq, nil)},
+	select {
+	case ds.blocks() <- &orderer.DeliverResponse{
+		Type: &orderer.DeliverResponse_Block{Block: protoutil.NewBlock(seq, nil)}}:
+	case <-ds.done:
 	}
 }
 
 func (ds *deliverServer) addExpectProbeAssert() {
-	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
+	select {
+	case ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		require.NotNil(ds.t, info.GetStart().GetNewest())
 		require.Equal(ds.t, info.ErrorResponse, orderer.SeekInfo_BEST_EFFORT)
+	}:
+	case <-ds.done:
 	}
 }
 
 func (ds *deliverServer) addExpectPullAssert(seq uint64) {
-	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
+	select {
+	case ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		seekPosition := info.GetStart()
 		require.NotNil(ds.t, seekPosition)
 		seekSpecified := seekPosition.GetSpecified()
 		require.NotNil(ds.t, seekSpecified)
 		require.Equal(ds.t, seq, seekSpecified.Number)
 		require.Equal(ds.t, info.ErrorResponse, orderer.SeekInfo_BEST_EFFORT)
+	}:
+	case <-ds.done:
 	}
 }
 
@@ -298,6 +320,7 @@ func newClusterNode(t *testing.T) *deliverServer {
 		t:              t,
 		seekAssertions: make(chan func(*orderer.SeekInfo, string), 100),
 		blockResponses: make(chan *orderer.DeliverResponse, 100),
+		done:           make(chan struct{}),
 		srv:            srv,
 	}
 	orderer.RegisterAtomicBroadcastServer(srv.Server(), ds)
