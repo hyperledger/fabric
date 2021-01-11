@@ -58,14 +58,6 @@ You can see the part of `configtx.yaml` that defines Org1 of the test network be
           Endorsement:
               Type: Signature
               Rule: "OR('Org1MSP.peer')"
-
-      # leave this flag set to true.
-      AnchorPeers:
-          # AnchorPeers defines the location of peers which can be used
-          # for cross org gossip communication.  Note, this value is only
-          # encoded in the genesis block in the Application section context
-          - Host: peer0.org1.example.com
-            Port: 7051
   ```  
 
   - The `Name` field is an informal name used to identify the organization.
@@ -81,8 +73,6 @@ You can see the part of `configtx.yaml` that defines Org1 of the test network be
     The MSP folder that is used to create the channel MSP only contains public certificates. As a result, you can build the MSP folder locally, and then send the MSP to the organization that is creating the channel.
 
   - The `Policies` section is used to define a set of signature policies that reference the channel member. We will discuss these policies in more detail when we discuss [channel policies](channel_policies.html).
-
-  - The `AnchorPeers` field lists the anchor peers for an organization. Anchor peers are required in order to take advantage of features such as private data and service discovery. It is recommended that organizations select at least one anchor peer. While an organization can select their anchor peers on the channel for the first time using the `configtxgen` tool, it is recommended that each organization set anchor peers by using the `configtxlator` tool to [update the channel configuration](create_channel.html#set-anchor-peers). As a result, this field is not required.
 
 ## Capabilities
 
