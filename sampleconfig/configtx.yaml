@@ -66,8 +66,12 @@ Organizations:
             - "127.0.0.1:7050"
 
         # AnchorPeers defines the location of peers which can be used for
-        # cross-org gossip communication. Note, this value is only encoded in
-        # the genesis block in the Application section context.
+        # cross-org gossip communication. 
+        #
+        # NOTE: this value should only be set when using the deprecated 
+        # `configtxgen --outputAnchorPeersUpdate` command. It is recommended
+        # to instead use the channel configuration update process to set the
+        # anchor peers for each organization.
         AnchorPeers:
             - Host: 127.0.0.1
               Port: 7051
