@@ -1919,7 +1919,7 @@ func TestMain(m *testing.M) {
 
 	id, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
-		fmt.Printf("GetSigningIdentity failed with err %s", err)
+		fmt.Printf("GetDefaultSigningIdentity failed with err %s", err)
 		return
 	}
 

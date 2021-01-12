@@ -46,19 +46,6 @@ type MSP struct {
 		result1 string
 		result2 error
 	}
-	GetSigningIdentityStub        func(*msp.IdentityIdentifier) (msp.SigningIdentity, error)
-	getSigningIdentityMutex       sync.RWMutex
-	getSigningIdentityArgsForCall []struct {
-		arg1 *msp.IdentityIdentifier
-	}
-	getSigningIdentityReturns struct {
-		result1 msp.SigningIdentity
-		result2 error
-	}
-	getSigningIdentityReturnsOnCall map[int]struct {
-		result1 msp.SigningIdentity
-		result2 error
-	}
 	GetTLSIntermediateCertsStub        func() [][]byte
 	getTLSIntermediateCertsMutex       sync.RWMutex
 	getTLSIntermediateCertsArgsForCall []struct {
@@ -322,69 +309,6 @@ func (fake *MSP) GetIdentifierReturnsOnCall(i int, result1 string, result2 error
 	}
 	fake.getIdentifierReturnsOnCall[i] = struct {
 		result1 string
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *MSP) GetSigningIdentity(arg1 *msp.IdentityIdentifier) (msp.SigningIdentity, error) {
-	fake.getSigningIdentityMutex.Lock()
-	ret, specificReturn := fake.getSigningIdentityReturnsOnCall[len(fake.getSigningIdentityArgsForCall)]
-	fake.getSigningIdentityArgsForCall = append(fake.getSigningIdentityArgsForCall, struct {
-		arg1 *msp.IdentityIdentifier
-	}{arg1})
-	fake.recordInvocation("GetSigningIdentity", []interface{}{arg1})
-	fake.getSigningIdentityMutex.Unlock()
-	if fake.GetSigningIdentityStub != nil {
-		return fake.GetSigningIdentityStub(arg1)
-	}
-	if specificReturn {
-		return ret.result1, ret.result2
-	}
-	fakeReturns := fake.getSigningIdentityReturns
-	return fakeReturns.result1, fakeReturns.result2
-}
-
-func (fake *MSP) GetSigningIdentityCallCount() int {
-	fake.getSigningIdentityMutex.RLock()
-	defer fake.getSigningIdentityMutex.RUnlock()
-	return len(fake.getSigningIdentityArgsForCall)
-}
-
-func (fake *MSP) GetSigningIdentityCalls(stub func(*msp.IdentityIdentifier) (msp.SigningIdentity, error)) {
-	fake.getSigningIdentityMutex.Lock()
-	defer fake.getSigningIdentityMutex.Unlock()
-	fake.GetSigningIdentityStub = stub
-}
-
-func (fake *MSP) GetSigningIdentityArgsForCall(i int) *msp.IdentityIdentifier {
-	fake.getSigningIdentityMutex.RLock()
-	defer fake.getSigningIdentityMutex.RUnlock()
-	argsForCall := fake.getSigningIdentityArgsForCall[i]
-	return argsForCall.arg1
-}
-
-func (fake *MSP) GetSigningIdentityReturns(result1 msp.SigningIdentity, result2 error) {
-	fake.getSigningIdentityMutex.Lock()
-	defer fake.getSigningIdentityMutex.Unlock()
-	fake.GetSigningIdentityStub = nil
-	fake.getSigningIdentityReturns = struct {
-		result1 msp.SigningIdentity
-		result2 error
-	}{result1, result2}
-}
-
-func (fake *MSP) GetSigningIdentityReturnsOnCall(i int, result1 msp.SigningIdentity, result2 error) {
-	fake.getSigningIdentityMutex.Lock()
-	defer fake.getSigningIdentityMutex.Unlock()
-	fake.GetSigningIdentityStub = nil
-	if fake.getSigningIdentityReturnsOnCall == nil {
-		fake.getSigningIdentityReturnsOnCall = make(map[int]struct {
-			result1 msp.SigningIdentity
-			result2 error
-		})
-	}
-	fake.getSigningIdentityReturnsOnCall[i] = struct {
-		result1 msp.SigningIdentity
 		result2 error
 	}{result1, result2}
 }
@@ -847,8 +771,6 @@ func (fake *MSP) Invocations() map[string][][]interface{} {
 	defer fake.getDefaultSigningIdentityMutex.RUnlock()
 	fake.getIdentifierMutex.RLock()
 	defer fake.getIdentifierMutex.RUnlock()
-	fake.getSigningIdentityMutex.RLock()
-	defer fake.getSigningIdentityMutex.RUnlock()
 	fake.getTLSIntermediateCertsMutex.RLock()
 	defer fake.getTLSIntermediateCertsMutex.RUnlock()
 	fake.getTLSRootCertsMutex.RLock()

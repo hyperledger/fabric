@@ -409,10 +409,6 @@ func (fake *mockMSP) GetIdentifier() (string, error) {
 	return fake.MspID, nil
 }
 
-func (fake *mockMSP) GetSigningIdentity(identifier *msp.IdentityIdentifier) (msp.SigningIdentity, error) {
-	return nil, nil
-}
-
 func (fake *mockMSP) GetDefaultSigningIdentity() (msp.SigningIdentity, error) {
 	return nil, nil
 }
