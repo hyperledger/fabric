@@ -2,16 +2,18 @@
 
 After you have downloaded the Hyperledger Fabric Docker images and samples, you
 can deploy a test network by using scripts that are provided in the
-`fabric-samples` repository. You can use the test network to learn about Fabric
-by running nodes on your local machine. More experienced developers can use the
+`fabric-samples` repository. The test network is provided for learning about Fabric
+by running nodes on your local machine. Developers can use the
 network to test their smart contracts and applications. The network is meant to
-be used only as a tool for education and testing. It should not be used as a
-template for deploying a production network. To learn about using Fabric in
-production, see [Deploying a production network](deployment_guide_overview.html).
+be used only as a tool for education and testing and not as a model for how to set up
+a network. In general, modifications to the scripts are discouraged and could break the network. It is based on a limited configuration that should not be used as a template for deploying a production network:
+- It includes two peer organizations and an ordering organization.
+- For simplicity, a single node Raft ordering service is configured.
+- To reduce complexity, a TLS Certificate Authority (CA) is not deployed. All certificates are issued by the root CAs.
+- The sample network deploys a Fabric network with Docker Compose. Because the
+nodes are isolated within a Docker Compose network, the test network is not configured to connect to other running Fabric nodes.
 
-The sample network deploys a Fabric network with Docker Compose. Because the
-nodes are isolated within a Docker Compose network, the test network is not
-configured to connect to other running fabric nodes.
+To learn how to use Fabric in production, see [Deploying a production network](deployment_guide_overview.html).
 
 **Note:** These instructions have been verified to work against the
 latest stable Docker images and the pre-compiled setup utilities within the
