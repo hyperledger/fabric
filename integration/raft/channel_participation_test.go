@@ -1121,10 +1121,18 @@ var _ = Describe("ChannelParticipation", func() {
 				Height:            5,
 			})
 
-			By("removing orderer3 from the consenters set")
+			By("removing orderer3 from the org endpoints and consenters set")
 			channelConfig := nwo.GetConfig(network, peer, orderer2, "testchannel")
 			c := configtx.New(channelConfig)
-			err := c.Orderer().RemoveConsenter(consenterChannelConfig(network, orderer3))
+			host, port := conftx.OrdererHostPort(network, orderer3)
+			err := c.Orderer().Organization(orderer3.Organization).RemoveEndpoint(
+				configtx.Address{
+					Host: host,
+					Port: port,
+				},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			err = c.Orderer().RemoveConsenter(consenterChannelConfig(network, orderer3))
 			Expect(err).NotTo(HaveOccurred())
 			computeSignSubmitConfigUpdate(network, orderer2, peer, c, "testchannel")
 
