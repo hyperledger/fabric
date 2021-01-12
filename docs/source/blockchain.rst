@@ -181,8 +181,7 @@ interact with the ledger. In most cases, chaincode interacts only with the
 database component of the ledger, the world state (querying it, for example), and
 not the transaction log.
 
-Chaincode can be implemented in several programming languages. Currently, Go and
-Node are supported.
+Chaincode can be implemented in several programming languages. Currently, Go, Node.js, and Java chaincode are supported.
 
 **Privacy**
 
