@@ -74,9 +74,6 @@ type MSP interface {
 	// GetIdentifier returns the provider identifier
 	GetIdentifier() (string, error)
 
-	// GetSigningIdentity returns a signing identity corresponding to the provided identifier
-	GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error)
-
 	// GetDefaultSigningIdentity returns the default signing identity
 	GetDefaultSigningIdentity() (SigningIdentity, error)
 

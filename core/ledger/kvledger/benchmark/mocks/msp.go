@@ -37,11 +37,6 @@ func (msp *noopmsp) GetIdentifier() (string, error) {
 	return "NOOP", nil
 }
 
-func (msp *noopmsp) GetSigningIdentity(identifier *msp.IdentityIdentifier) (msp.SigningIdentity, error) {
-	id, _ := newNoopSigningIdentity()
-	return id, nil
-}
-
 func (msp *noopmsp) GetDefaultSigningIdentity() (msp.SigningIdentity, error) {
 	id, _ := newNoopSigningIdentity()
 	return id, nil

@@ -302,13 +302,6 @@ func (msp *bccspmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
 	return msp.signer, nil
 }
 
-// GetSigningIdentity returns a specific signing
-// identity identified by the supplied identifier
-func (msp *bccspmsp) GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error) {
-	// TODO
-	return nil, errors.Errorf("no signing identity for %#v", identifier)
-}
-
 // Validate attempts to determine whether
 // the supplied identity is valid according
 // to this MSP's roots of trust; it returns

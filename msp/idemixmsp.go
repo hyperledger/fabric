@@ -245,10 +245,6 @@ func (msp *idemixmsp) GetIdentifier() (string, error) {
 	return msp.name, nil
 }
 
-func (msp *idemixmsp) GetSigningIdentity(identifier *IdentityIdentifier) (SigningIdentity, error) {
-	return nil, errors.Errorf("GetSigningIdentity not implemented")
-}
-
 func (msp *idemixmsp) GetDefaultSigningIdentity() (SigningIdentity, error) {
 	mspLogger.Debugf("Obtaining default idemix signing identity")
 

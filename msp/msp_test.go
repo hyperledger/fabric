@@ -239,8 +239,6 @@ func TestGetSigningIdentityFromVerifyingMSP(t *testing.T) {
 
 	_, err = newmsp.GetDefaultSigningIdentity()
 	require.Error(t, err)
-	_, err = newmsp.GetSigningIdentity(nil)
-	require.Error(t, err)
 }
 
 func TestValidateDefaultSigningIdentity(t *testing.T) {
@@ -254,7 +252,7 @@ func TestValidateDefaultSigningIdentity(t *testing.T) {
 func TestSerializeIdentities(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded, got err %s", err)
 		return
 	}
 
@@ -287,7 +285,7 @@ func TestIsWellFormed(t *testing.T) {
 
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded, got err %s", err)
 		return
 	}
 
@@ -420,7 +418,7 @@ func TestValidateAdminIdentity(t *testing.T) {
 func TestSerializeIdentitiesWithWrongMSP(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded, got err %s", err)
 		return
 	}
 
@@ -446,7 +444,7 @@ func TestSerializeIdentitiesWithWrongMSP(t *testing.T) {
 func TestSerializeIdentitiesWithMSPManager(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded, got err %s", err)
 		return
 	}
 
@@ -480,7 +478,7 @@ func TestSerializeIdentitiesWithMSPManager(t *testing.T) {
 func TestIdentitiesGetters(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded, got err %s", err)
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded, got err %s", err)
 		return
 	}
 
@@ -494,7 +492,7 @@ func TestIdentitiesGetters(t *testing.T) {
 func TestSignAndVerify(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded")
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded")
 		return
 	}
 
@@ -540,7 +538,7 @@ func TestSignAndVerifyFailures(t *testing.T) {
 
 	id, err := localMspBad.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded")
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded")
 		return
 	}
 
@@ -569,7 +567,7 @@ func TestSignAndVerifyFailures(t *testing.T) {
 func TestSignAndVerifyOtherHash(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded")
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded")
 		return
 	}
 
@@ -592,7 +590,7 @@ func TestSignAndVerifyOtherHash(t *testing.T) {
 func TestSignAndVerify_longMessage(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded")
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded")
 		return
 	}
 
@@ -631,7 +629,7 @@ func TestSignAndVerify_longMessage(t *testing.T) {
 func TestGetOU(t *testing.T) {
 	id, err := localMsp.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded")
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded")
 		return
 	}
 
@@ -641,7 +639,7 @@ func TestGetOU(t *testing.T) {
 func TestGetOUFail(t *testing.T) {
 	id, err := localMspBad.GetDefaultSigningIdentity()
 	if err != nil {
-		t.Fatalf("GetSigningIdentity should have succeeded")
+		t.Fatalf("GetDefaultSigningIdentity should have succeeded")
 		return
 	}
 
