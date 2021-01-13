@@ -203,13 +203,23 @@ one or two).
 So by extending a cluster of three nodes to four nodes (while only two are
 alive) you are effectively stuck until the original offline node is resurrected.
 
-To add a new node to the ordering service:
+Adding a new node to a Raft cluster is done by:
 
-  1. **Ensure the orderer organization that owns the new node is one of the orderer organizations on the channel**. If the orderer organization is not an administrator, the node will be unable to pull blocks as a follower or be joined to the consenter set.
-  2. **Start the new ordering node**. For information about how to deploy an ordering node, check out [Planning for an ordering service](./deployorderer/ordererdeploy.html). Note that when you use the `osnadmin` CLI to create and join a channel, you do not need to point to a configuration block when starting the node.
-  3. **Use the `osnadmin` CLI to add the first orderer to the channel**. For more information, check out [Create a channel without a system channel](./create_channel/create_channel_participation.html#step-two-use-the-osnadmin-cli-to-add-the-first-orderer-to-the-channel) tutorial.
-  4. **Wait for the Raft node to replicate the blocks** from existing nodes for all channels its certificates have been added to. When an ordering node is added to a channel, it is added as a "follower", a state in which it can replicate blocks but is not part of the "consenter set" actively servicing the channel. When the node finishes replicating the blocks, its status should change from "onboarding" to "active". Note that an "active" ordering node is still not part of the consenter set.
-  5. **Add the new ordering node to the consenter set**. For more information, check out [Create a channel without a system channel](./create_channel/create_channel_participation.html#step-three-join-additional-ordering-nodes).
+  1. **Adding the TLS certificates** of the new node to the channel through a
+  channel configuration update transaction. Note: the new node must be added to
+  the system channel before being added to one or more application channels.
+  2. **Fetching the latest config block** of the system channel from an orderer node
+  that's part of the system channel.
+  3. **Ensuring that the node that will be added is part of the system channel**
+  by checking that the config block that was fetched includes the certificate of
+  (soon to be) added node.
+  4. **Starting the new Raft node** with the path to the config block in the
+  `General.BootstrapFile` configuration parameter.
+  5. **Waiting for the Raft node to replicate the blocks** from existing nodes for
+  all channels its certificates have been added to. After this step has been
+  completed, the node begins servicing the channel.
+  6. **Adding the endpoint** of the newly added Raft node to the channel
+  configuration of all channels.
 
 It is possible to add a node that is already running (and participates in some
 channels already) to a channel while the node itself is running. To do this, simply
@@ -222,7 +232,7 @@ channel, and then start the Raft instance for that chain.
 After it has successfully done so, the channel configuration can be updated to
 include the endpoint of the new Raft orderer.
 
-To remove an ordering node from the consenter set of a channel, use the `osnadmin channel remove` command to remove its endpoint and certificates from the channel. For more information, check out [Add or remove orderers from existing channels](./create_channel/create_channel_participation.html#add-or-remove-orderers-from-existing-channels).
+Removing a node from a Raft cluster is done by:
 
   1. Removing its endpoint from the channel config for all channels, including
   the system channel controlled by the orderer admins.
