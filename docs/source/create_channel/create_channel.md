@@ -221,7 +221,7 @@ peer channel join -b ./channel-artifacts/channel_org2.block
 
 ## Set anchor peers
 
-After an organization has joined their peers to the channel, they should select at least one of their peers to become an anchor peer. [Anchor peers](../gossip.html#anchor-peers) are required in order to take advantage of features such as private data and service discovery. Each organization should set multiple anchor peers on a channel for redundancy. For more information about gossip and anchor peers, see the [Gossip data dissemination protocol](../gossip.html).
+After an organizations has joined their peers to the channel, they should select at least one of their peers to become an anchor peer. [Anchor peers](../gossip.html#anchor-peers) are required in order to take advantage of features such as private data and service discovery. Each organization should set multiple anchor peers on a channel for redundancy. For more information about gossip and anchor peers, see the [Gossip data dissemination protocol](../gossip.html).
 
 The endpoint information of the anchor peers of each organization is included in the channel configuration. Each channel member can specify their anchor peers by updating the channel. We will use the [configtxlator](../commands/configtxlator.html) tool to update the channel configuration and select an anchor peer for Org1 and Org2. The process for setting an anchor peer is similar to the steps that are required to make other channel updates and provides an introduction to how to use `configtxlator` to [update a channel configuration](../config_update.html). You will also need to install the [jq tool](https://stedolan.github.io/jq/) on your local machine.
 
