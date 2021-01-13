@@ -17,7 +17,12 @@ ADD . $GOPATH/src/github.com/hyperledger/fabric
 WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 
 FROM golang as tools
+<<<<<<< HEAD
 RUN make configtxgen configtxlator cryptogen peer discover idemixgen
+=======
+ARG GO_TAGS
+RUN make configtxgen configtxlator cryptogen peer discover osnadmin idemixgen GO_TAGS=${GO_TAGS}
+>>>>>>> 00e644d04... [FAB-18398] Added osnadmin binary to tools image (#2275)
 
 FROM golang:${GO_VER}-alpine
 # git is required to support `go list -m`
