@@ -17,7 +17,8 @@ ADD . $GOPATH/src/github.com/hyperledger/fabric
 WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 
 FROM golang as tools
-RUN make configtxgen configtxlator cryptogen peer discover idemixgen
+ARG GO_TAGS
+RUN make configtxgen configtxlator cryptogen peer discover idemixgen GO_TAGS=${GO_TAGS}
 
 FROM golang:${GO_VER}-alpine
 # git is required to support `go list -m`
