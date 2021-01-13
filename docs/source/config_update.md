@@ -2,6 +2,8 @@
 
 *Audience: network administrators, node administrators*
 
+Note: this topic describes the process for updating a channel on a network that does not have a system channel. For a version of this topic that includes information about the system channel, check out [Updating a channel configuration](https://hyperledger-fabric.readthedocs.io/en/release-2.2/config_update.html).
+
 ## What is a channel configuration?
 
 Like many complex systems, Hyperledger Fabric networks are comprised of both **structure** and a number related of **processes**.
@@ -9,7 +11,7 @@ Like many complex systems, Hyperledger Fabric networks are comprised of both **s
 * **Structure**: encompassing users (like admins), organizations, peers, ordering nodes, CAs, smart contracts, and applications.
 * **Process**: the way these structures interact. Most important of these are [Policies](./policies/policies.html), the rules that govern which users can do what, and under what conditions.
 
-Information identifying the structure of blockchain networks and the processes governing how structures interact are contained in **channel configurations**. These configurations are collectively decided upon by the members of channels and are contained in blocks that are committed to the ledger of a channel. Channel configurations can be built using a tool called `configtxgen`, which uses a `configtx.yaml` file as its input. You can look at a [sample `configtx.yaml` file here](http://github.com/hyperledger/fabric/blob/release-2.0/sampleconfig/configtx.yaml).
+Information identifying the structure of blockchain networks and the processes governing how structures interact are contained in **channel configurations**. These configurations are collectively decided upon by the members of channels and are contained in blocks that are committed to the ledger of a channel. Channel configurations can be built using a tool called `configtxgen`, which uses a `configtx.yaml` file as its input. You can look at a [sample `configtx.yaml` file here](http://github.com/hyperledger/fabric/blob/{BRANCH}/sampleconfig/configtx.yaml).
 
 Because configurations are contained in blocks (the first of these is known as the genesis block with the latest representing the current configuration of the channel), the process for updating a channel configuration (changing the structure by adding members, for example, or processes by modifying channel policies) is known as a **configuration update transaction**.
 
@@ -33,11 +35,9 @@ In this section, we'll look a sample channel configuration and show the configur
 
 To see what the configuration file of an application channel looks like after it has been pulled and scoped, click **Click here to see the config** below. For ease of readability, it might be helpful to put this config into a viewer that supports JSON folding, like atom or Visual Studio.
 
-Note: for simplicity, we are only showing an application channel configuration here. The configuration of the orderer system channel is very similar, but not identical, to the configuration of an application channel. However, the same basic rules and structure apply, as do the commands to pull and edit a configuration, as you can see in our topic on [Updating the capability level of a channel](./updating_capabilities.html).
-
 <details>
   <summary>
-    **Click here to see the config**. Note that this is the configuration of an application channel, not the orderer system channel.
+    **Click here to see the config**
   </summary>
   ```
   {
@@ -880,8 +880,6 @@ A config might look intimidating in this form, but once you study it you’ll se
 
 For example, let's take a look at the config with a few of the tabs closed.
 
-Note that this is the configuration of an application channel, not the orderer system channel.
-
 ![Sample config simplified](./images/sample_config.png)
 
 The structure of the config should now be more obvious. You can see the config groupings: `Channel`, `Application`, and `Orderer`, and the configuration parameters related to each config grouping (we'll talk more about these in the next section), but also where the MSPs representing organizations are. Note that the `Channel` config grouping is below the `Orderer` group config values.
@@ -906,7 +904,7 @@ Governs the configuration parameters unique to application channels (for example
 
 #### `Channel/Orderer`
 
-Governs configuration parameters unique to the ordering service or the orderer system channel, requires a majority of the ordering organizations’ admins (by default there is only one ordering organization, though more can be added, for example when multiple organizations contribute nodes to the ordering service).
+Governs configuration parameters unique to the ordering service and requires a majority of the ordering organizations’ admins (by default there is only one ordering organization, though more can be added, for example when multiple organizations contribute nodes to the ordering service).
 
 * **Batch size**. These parameters dictate the number and size of transactions in a block. No block will appear larger than `absolute_max_bytes` large or with more than `max_message_count` transactions inside the block. If it is possible to construct a block under `preferred_max_bytes`, then a block will be cut prematurely, and transactions larger than this size will appear in their own block.
 
@@ -930,14 +928,6 @@ Governs configuration parameters that both the peer orgs and the ordering servic
 
 * **Hashing algorithm**. The algorithm used for computing the hash values encoded into the blocks of the blockchain. In particular, this affects the data hash, and the previous block hash fields of the block. Note, this field currently only has one valid value (`SHA256`) and should not be changed.
 
-#### System channel configuration parameters
-
-Certain configuration values are unique to the orderer system channel.
-
-* **Channel creation policy.** Defines the policy value which will be set as the mod_policy for the Application group of new channels for the consortium it is defined in. The signature set attached to the channel creation request will be checked against the instantiation of this policy in the new channel to ensure that the channel creation is authorized. Note that this config value is only set in the orderer system channel.
-
-* **Channel restrictions.** Only editable in the orderer system channel. The total number of channels the orderer is willing to allocate may be specified as `max_count`. This is primarily useful in pre-production environments with weak consortium `ChannelCreation` policies.
-
 ## Editing a config
 
 Updating a channel configuration is a three step operation that's conceptually simple:
@@ -957,7 +947,7 @@ In this topic, we'll show the process of editing a channel configuration indepen
 
 ### Set environment variables for your config update
 
-Before you attempt to use the sample commands, make sure to export the following environment variables, which will depend on the way you have structured your deployment. Note that the channel name, `CH_NAME` will have to be set for every channel being updated, as channel configuration updates only apply to the configuration of the channel being updated (with the exception of the ordering system channel, whose configuration is copied into the configuration of application channels by default).
+Before you attempt to use the sample commands, make sure to export the following environment variables, which will depend on the way you have structured your deployment. Note that the channel name, `CH_NAME` will have to be set for every channel being updated, as channel configuration updates only apply to the configuration of the channel being updated.
 
 * `CH_NAME`: the name of the channel being updated.
 * `TLS_ROOT_CA`: the path to the root CA cert of the TLS CA of the organization proposing the update.
