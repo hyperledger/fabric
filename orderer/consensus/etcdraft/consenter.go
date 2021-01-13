@@ -194,7 +194,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	} else {
 		tickInterval, err = time.ParseDuration(c.EtcdRaftConfig.TickIntervalOverride)
 		if err != nil {
-			return nil, errors.Errorf("failed parsing Consensus.TickIntervalOverride: %s: %v", c.EtcdRaftConfig.TickIntervalOverride, err)
+			return nil, errors.WithMessage(err, "failed parsing Consensus.TickIntervalOverride")
 		}
 		c.Logger.Infof("TickIntervalOverride is set, overriding channel configuration tick interval to %v", tickInterval)
 	}
