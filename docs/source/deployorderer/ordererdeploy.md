@@ -98,7 +98,7 @@ You must provision persistent storage for your ledgers. The default location for
 
 Now you can use the [Checklist for a production orderer](./ordererchecklist.html) to modify the default settings in the `orderer.yaml` file. In the future, if you decide to deploy the orderer through Kubernetes or Docker, you can override the same default settings by using environment variables instead. Check out the [note](../deployment_guide_overview.html#step-five-deploy-orderers-and-ordering-nodes) in the deployment guide overview for instructions on how to construct the environment variable names for an override.
 
-At a minimum, you need to configure the following parameters:
+You need to configure the following parameters:
 - `General.ListenAddress` - Hostname that the ordering node listens on.
 - `General.ListenPort` - Port that the ordering node listens on.
 - `General.TLS.Enabled: true` - Server-side TLS should be enabled in all production networks.
@@ -110,6 +110,15 @@ At a minimum, you need to configure the following parameters:
 - `General.LocalMSPID` - MSP ID of the ordering organization as specified in the channel configuration.
 - `FileLedger.Location` - Location on the file system to the ledgers of the channels this orderer will be servicing.
 - `ChannelParticipation.Enabled` - Set to `true`. This allows the orderer to be joined to an application channel without joining a system channel first.
+
+Because this tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer, the following additional parameters are required if you want to create an application channel with the `osnadmin` command.
+
+- `Admin.ListenAddress` - The orderer admin server address (host and port) that can be used by the `osnadmin` command to configure channels on the ordering service. This value should be a unique `host:port` combination to avoid conflicts.
+- `Admin.TLS.Enabled:` - Technically this can be set to `false`, but this is not recommended. In general, you should always set this value to `true`.
+- `Admin.TLS.PrivateKey:` - The path to and file name of the orderer private key issued by the TLS CA.
+- `Admin.TLS.Certificate:` - The path to and file name of the orderer signed certificate issued by the TLS CA.
+- `Admin.TLS.ClientAuthRequired:` This value must be set to `true`. Note that while mutual TLS is required for all operations on the orderer Admin endpoint, the entire network is not required to use Mutual TLS.
+- `Admin.TLS.ClientRootCAs:` - The path to and file name of the admin client TLS CA Root certificate. In the folder structure above, this is `admin-client/client-tls-ca-cert.pem`.
 
 ## Start the orderer
 
