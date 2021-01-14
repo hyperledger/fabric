@@ -184,6 +184,15 @@ At a minimum, you need to configure the following parameters:
 - `General.LocalMSPID` - MSP ID of the ordering organization as specified in the channel configuration.
 - `FileLedger.Location` - Location of the orderer ledger on the file system.
 
+Because this tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer, the following additional parameters are required if you want to create an application channel with the `osnadmin` command.
+
+- `Admin.ListenAddress` - The orderer admin server address (host and port) that can be used by the `osnadmin` command to configure channels on the ordering service. This value should be a unique `host:port` combination to avoid conflicts.
+- `Admin.TLS.Enabled:` - Technically this can be set to `false`, but this is not recommended. In general, you should always set this value to `true`.
+- `Admin.TLS.PrivateKey:` - The path to and file name of the orderer private key issued by the TLS CA.
+- `Admin.TLS.Certificate:` - The path to and file name of the orderer signed certificate issued by the TLS CA.
+- `Admin.TLS.ClientAuthRequired:` This value must be set to `true`. Note that while mutual TLS is required for all operations on the orderer Admin endpoint, the entire network is not required to use Mutual TLS.
+- `Admin.TLS.ClientRootCAs:` - The path to and file name of the admin client TLS CA Root certificate. In the folder structure above, this is `admin-client/client-tls-ca-cert.pem`.
+
 ## Start the orderer
 
 Make sure you have set the value of the `FABRIC_CFG_PATH` to be the location of the `orderer.yaml` file relative to where you are invoking the orderer binary. For example, if you run the orderer binary from the `fabric/bin` folder, it would point to the  `/config` folder:
