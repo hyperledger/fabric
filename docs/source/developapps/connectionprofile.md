@@ -209,7 +209,7 @@ about it:
   application operations relate to organizations rather than channels. For
   example, an application can request notification from one or all peers within
   its organization, or all organizations within the network -- using [connection
-  options](./connectoptions.html).  For this, there needs to be an organization
+  options](./connectionoptions.html).  For this, there needs to be an organization
   to peer mapping, and this section provides it.
 
 * Line 101: `MagnetoCorp:`
