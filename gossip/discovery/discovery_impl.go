@@ -869,11 +869,7 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*protoext.SignedGo
 			alive.lastSeen = time.Now()
 			alive.seqNum = am.Timestamp.SeqNum
 
-			if am := d.aliveMembership.MsgByID(m.GetAliveMsg().Membership.PkiId); am == nil {
-				d.logger.Debug("Adding", am, "to aliveMembership")
-				msg := &protoext.SignedGossipMessage{GossipMessage: m.GossipMessage, Envelope: am.Envelope}
-				d.aliveMembership.Put(m.GetAliveMsg().Membership.PkiId, msg)
-			} else {
+			if am := d.aliveMembership.MsgByID(m.GetAliveMsg().Membership.PkiId); am != nil {
 				d.logger.Debug("Replacing", am, "in aliveMembership")
 				am.GossipMessage = m.GossipMessage
 				am.Envelope = m.Envelope
