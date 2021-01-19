@@ -11,6 +11,7 @@ package factory
 import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/pkg/errors"
+	"strings"
 )
 
 const pkcs11Enabled = false
@@ -52,8 +53,16 @@ func initFactories(config *FactoryOpts) error {
 	bccspMap = make(map[string]bccsp.BCCSP)
 
 	// Software-Based BCCSP
-	if config.ProviderName == "SW" && config.SwOpts != nil {
-		f := &SWFactory{}
+	if (config.ProviderName == "SW" || config.ProviderName == "GM") && config.SwOpts != nil {
+
+		// f := &SWFactory{} ADD GM
+		var f BCCSPFactory
+		if strings.ToUpper(config.ProviderName) == "GM" {
+			f = &GMFactory{}
+		} else {
+			f = &SWFactory{}
+		}
+
 		err := initBCCSP(f, config)
 		if err != nil {
 			return errors.Wrapf(err, "Failed initializing BCCSP")
@@ -83,6 +92,8 @@ func GetBCCSPFromOpts(config *FactoryOpts) (bccsp.BCCSP, error) {
 	switch config.ProviderName {
 	case "SW":
 		f = &SWFactory{}
+	case "GM":
+		f = &GMFactory{}
 	case "PLUGIN":
 		f = &PluginFactory{}
 	default:

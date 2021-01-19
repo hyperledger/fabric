@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/pkg/errors"
+	"strings"
 )
 
 const pkcs11Enabled = true
@@ -42,9 +43,12 @@ func initFactories(config *FactoryOpts) error {
 		config = GetDefaultOpts()
 	}
 
-	if config.ProviderName == "" {
-		config.ProviderName = "SW"
-	}
+	//if config.ProviderName == "" {
+	//	config.ProviderName = "SW"
+	//}
+
+	// 暂时由GM替代 bccsp
+	config.ProviderName = "GM"
 
 	if config.SwOpts == nil {
 		config.SwOpts = GetDefaultOpts().SwOpts
@@ -54,8 +58,14 @@ func initFactories(config *FactoryOpts) error {
 	bccspMap = make(map[string]bccsp.BCCSP)
 
 	// Software-Based BCCSP
-	if config.ProviderName == "SW" && config.SwOpts != nil {
-		f := &SWFactory{}
+	if (config.ProviderName == "SW" || config.ProviderName == "GM") && config.SwOpts != nil {
+
+		var f BCCSPFactory
+		if strings.ToUpper(config.ProviderName) == "GM" {
+			f = &GMFactory{}
+		} else {
+			f = &SWFactory{}
+		}
 		err := initBCCSP(f, config)
 		if err != nil {
 			return errors.Wrap(err, "Failed initializing SW.BCCSP")
@@ -95,6 +105,8 @@ func GetBCCSPFromOpts(config *FactoryOpts) (bccsp.BCCSP, error) {
 	switch config.ProviderName {
 	case "SW":
 		f = &SWFactory{}
+	case "GM":
+		f = &GMFactory{}
 	case "PKCS11":
 		f = &PKCS11Factory{}
 	case "PLUGIN":

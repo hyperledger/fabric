@@ -2,8 +2,8 @@ package sarama
 
 import (
 	"compress/gzip"
-	"crypto/tls"
 	"fmt"
+	tls "github.com/tjfoc/gmtls"
 	"io/ioutil"
 	"net"
 	"regexp"

@@ -1,0 +1,45 @@
+2021-01-18T18:19:29.900+0800 I CONTROL  [main] Automatically disabling TLS 1.0, to force-enable TLS 1.0 specify --sslDisabledProtocols 'none'
+2021-01-18T18:19:29.992+0800 I CONTROL  [initandlisten] MongoDB starting : pid=8492 port=27017 dbpath=/data/db 64-bit host=elwinchen-MC1.local
+2021-01-18T18:19:29.992+0800 I CONTROL  [initandlisten] db version v4.0.9
+2021-01-18T18:19:29.992+0800 I CONTROL  [initandlisten] git version: fc525e2d9b0e4bceff5c2201457e564362909765
+2021-01-18T18:19:29.992+0800 I CONTROL  [initandlisten] allocator: system
+2021-01-18T18:19:29.992+0800 I CONTROL  [initandlisten] modules: none
+2021-01-18T18:19:29.992+0800 I CONTROL  [initandlisten] build environment:
+2021-01-18T18:19:29.992+0800 I CONTROL  [initandlisten]     distarch: x86_64
+2021-01-18T18:19:29.992+0800 I CONTROL  [initandlisten]     target_arch: x86_64
+2021-01-18T18:19:29.992+0800 I CONTROL  [initandlisten] options: {}
+2021-01-18T18:19:30.002+0800 I STORAGE  [initandlisten] exception in initAndListen: IllegalOperation: Attempted to create a lock file on a read-only directory: /data/db, terminating
+2021-01-18T18:19:30.003+0800 I NETWORK  [initandlisten] shutdown: going to close listening sockets...
+2021-01-18T18:19:30.003+0800 I NETWORK  [initandlisten] removing socket file: /tmp/mongodb-27017.sock
+2021-01-18T18:19:30.003+0800 I CONTROL  [initandlisten] now exiting
+2021-01-18T18:19:30.003+0800 I CONTROL  [initandlisten] shutting down with code:100
+2021-01-19T14:27:54.580+0800 I CONTROL  [main] Automatically disabling TLS 1.0, to force-enable TLS 1.0 specify --sslDisabledProtocols 'none'
+2021-01-19T14:27:54.758+0800 I CONTROL  [initandlisten] MongoDB starting : pid=9750 port=27017 dbpath=/data/db 64-bit host=elwinchen-MC1.local
+2021-01-19T14:27:54.759+0800 I CONTROL  [initandlisten] db version v4.0.9
+2021-01-19T14:27:54.759+0800 I CONTROL  [initandlisten] git version: fc525e2d9b0e4bceff5c2201457e564362909765
+2021-01-19T14:27:54.759+0800 I CONTROL  [initandlisten] allocator: system
+2021-01-19T14:27:54.759+0800 I CONTROL  [initandlisten] modules: none
+2021-01-19T14:27:54.759+0800 I CONTROL  [initandlisten] build environment:
+2021-01-19T14:27:54.759+0800 I CONTROL  [initandlisten]     distarch: x86_64
+2021-01-19T14:27:54.759+0800 I CONTROL  [initandlisten]     target_arch: x86_64
+2021-01-19T14:27:54.759+0800 I CONTROL  [initandlisten] options: {}
+2021-01-19T14:27:54.763+0800 I STORAGE  [initandlisten] exception in initAndListen: IllegalOperation: Attempted to create a lock file on a read-only directory: /data/db, terminating
+2021-01-19T14:27:54.763+0800 I NETWORK  [initandlisten] shutdown: going to close listening sockets...
+2021-01-19T14:27:54.763+0800 I NETWORK  [initandlisten] removing socket file: /tmp/mongodb-27017.sock
+2021-01-19T14:27:54.763+0800 I CONTROL  [initandlisten] now exiting
+2021-01-19T14:27:54.764+0800 I CONTROL  [initandlisten] shutting down with code:100
+2021-01-19T14:28:08.437+0800 I CONTROL  [main] Automatically disabling TLS 1.0, to force-enable TLS 1.0 specify --sslDisabledProtocols 'none'
+2021-01-19T14:28:08.507+0800 I CONTROL  [initandlisten] MongoDB starting : pid=9776 port=27017 dbpath=/data/db 64-bit host=elwinchen-MC1.local
+2021-01-19T14:28:08.508+0800 I CONTROL  [initandlisten] db version v4.0.9
+2021-01-19T14:28:08.508+0800 I CONTROL  [initandlisten] git version: fc525e2d9b0e4bceff5c2201457e564362909765
+2021-01-19T14:28:08.508+0800 I CONTROL  [initandlisten] allocator: system
+2021-01-19T14:28:08.508+0800 I CONTROL  [initandlisten] modules: none
+2021-01-19T14:28:08.508+0800 I CONTROL  [initandlisten] build environment:
+2021-01-19T14:28:08.508+0800 I CONTROL  [initandlisten]     distarch: x86_64
+2021-01-19T14:28:08.508+0800 I CONTROL  [initandlisten]     target_arch: x86_64
+2021-01-19T14:28:08.508+0800 I CONTROL  [initandlisten] options: {}
+2021-01-19T14:28:08.509+0800 I STORAGE  [initandlisten] exception in initAndListen: IllegalOperation: Attempted to create a lock file on a read-only directory: /data/db, terminating
+2021-01-19T14:28:08.509+0800 I NETWORK  [initandlisten] shutdown: going to close listening sockets...
+2021-01-19T14:28:08.509+0800 I NETWORK  [initandlisten] removing socket file: /tmp/mongodb-27017.sock
+2021-01-19T14:28:08.509+0800 I CONTROL  [initandlisten] now exiting
+2021-01-19T14:28:08.509+0800 I CONTROL  [initandlisten] shutting down with code:100

@@ -26,6 +26,13 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 )
 
+// 定义国密 Key 的驱动, 实现 KeyDeriver 接口
+type smPublicKeyKeyDeriver struct{}
+
+func (kd *smPublicKeyKeyDeriver) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (dk bccsp.Key, err error) {
+	return nil, errors.New("Not implemented")
+}
+
 type ecdsaPublicKeyKeyDeriver struct{}
 
 func (kd *ecdsaPublicKeyKeyDeriver) KeyDeriv(k bccsp.Key, opts bccsp.KeyDerivOpts) (bccsp.Key, error) {

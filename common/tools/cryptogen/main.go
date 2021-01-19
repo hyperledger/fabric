@@ -721,18 +721,24 @@ func printVersion() {
 }
 
 func getCA(caDir string, spec OrgSpec, name string) *ca.CA {
-	_, signer, _ := csp.LoadPrivateKey(caDir)
-	cert, _ := ca.LoadCertificateECDSA(caDir)
+
+	priv, _, err := csp.LoadPrivateKey(caDir)
+	if err != nil {
+		panic(err)
+	}
+	cert, _ := ca.LoadCertificateGMSM2(caDir)
 
 	return &ca.CA{
-		Name:               name,
-		Signer:             signer,
-		SignCert:           cert,
+		Name: name,
+		//Signer:             signer,
+		//SignCert:           cert,
 		Country:            spec.CA.Country,
 		Province:           spec.CA.Province,
 		Locality:           spec.CA.Locality,
 		OrganizationalUnit: spec.CA.OrganizationalUnit,
 		StreetAddress:      spec.CA.StreetAddress,
 		PostalCode:         spec.CA.PostalCode,
+		SignSm2Cert:        cert,
+		Sm2Key:             priv,
 	}
 }

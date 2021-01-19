@@ -13,6 +13,7 @@ package main
 
 import (
 	"crypto/ecdsa"
+	//"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -26,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/idemix"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
+	"github.com/tjfoc/gmsm/sm2"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -62,7 +64,7 @@ func main() {
 
 		revocationKey, err := idemix.GenerateLongTermRevocationKey()
 		handleError(err)
-		encodedRevocationSK, err := x509.MarshalECPrivateKey(revocationKey)
+		encodedRevocationSK, err := sm2.MarshalECPrivateKey(revocationKey)
 		handleError(err)
 		pemEncodedRevocationSK := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encodedRevocationSK})
 		handleError(err)
@@ -136,7 +138,7 @@ func readIssuerKey() *idemix.IssuerKey {
 	return key
 }
 
-func readRevocationKey() *ecdsa.PrivateKey {
+func readRevocationKey() *sm2.PrivateKey {
 	path := filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigRevocationKey)
 	keyBytes, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -147,7 +149,7 @@ func readRevocationKey() *ecdsa.PrivateKey {
 	if block == nil {
 		handleError(errors.Errorf("failed to decode ECDSA private key"))
 	}
-	key, err := x509.ParseECPrivateKey(block.Bytes)
+	key, err := sm2.ParseECPrivateKey(block.Bytes)
 	handleError(err)
 
 	return key

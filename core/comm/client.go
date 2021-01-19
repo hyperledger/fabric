@@ -8,11 +8,13 @@ package comm
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
+	//"crypto/tls"
+	//"crypto/x509"
 	"time"
 
 	"github.com/pkg/errors"
+	tls "github.com/tjfoc/gmsm/gmtls"
+	"github.com/tjfoc/gmsm/sm2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -78,7 +80,7 @@ func (client *GRPCClient) parseSecureOptions(opts *SecureOptions) error {
 		VerifyPeerCertificate: opts.VerifyCertificate,
 		MinVersion:            tls.VersionTLS12} // TLS 1.2 only
 	if len(opts.ServerRootCAs) > 0 {
-		client.tlsConfig.RootCAs = x509.NewCertPool()
+		client.tlsConfig.RootCAs = sm2.NewCertPool()
 		for _, certBytes := range opts.ServerRootCAs {
 			err := AddPemToCertPool(certBytes, client.tlsConfig.RootCAs)
 			if err != nil {
@@ -154,7 +156,7 @@ func (client *GRPCClient) SetServerRootCAs(serverRoots [][]byte) error {
 
 	// NOTE: if no serverRoots are specified, the current cert pool will be
 	// replaced with an empty one
-	certPool := x509.NewCertPool()
+	certPool := sm2.NewCertPool()
 	for _, root := range serverRoots {
 		err := AddPemToCertPool(root, certPool)
 		if err != nil {

@@ -6,28 +6,29 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
-	"crypto/ecdsa"
+	// "crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
-	"crypto/x509"
+	// "crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"reflect"
 
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/pkg/errors"
+	"github.com/tjfoc/gmsm/sm2"
 )
 
 // revocationSecretKey contains the revocation secret key
 // and implements the bccsp.Key interface
 type revocationSecretKey struct {
 	// sk is the idemix reference to the revocation key
-	privKey *ecdsa.PrivateKey
+	privKey *sm2.PrivateKey
 	// exportable if true, sk can be exported via the Bytes function
 	exportable bool
 }
 
-func NewRevocationSecretKey(sk *ecdsa.PrivateKey, exportable bool) *revocationSecretKey {
+func NewRevocationSecretKey(sk *sm2.PrivateKey, exportable bool) *revocationSecretKey {
 	return &revocationSecretKey{privKey: sk, exportable: exportable}
 }
 
@@ -71,17 +72,17 @@ func (k *revocationSecretKey) PublicKey() (bccsp.Key, error) {
 }
 
 type revocationPublicKey struct {
-	pubKey *ecdsa.PublicKey
+	pubKey *sm2.PublicKey
 }
 
-func NewRevocationPublicKey(pubKey *ecdsa.PublicKey) *revocationPublicKey {
+func NewRevocationPublicKey(pubKey *sm2.PublicKey) *revocationPublicKey {
 	return &revocationPublicKey{pubKey: pubKey}
 }
 
 // Bytes converts this key to its byte representation,
 // if this operation is allowed.
 func (k *revocationPublicKey) Bytes() (raw []byte, err error) {
-	raw, err = x509.MarshalPKIXPublicKey(k.pubKey)
+	raw, err = sm2.MarshalPKIXPublicKey(k.pubKey)
 	if err != nil {
 		return nil, fmt.Errorf("Failed marshalling key [%s]", err)
 	}
@@ -154,11 +155,11 @@ func (i *RevocationPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyI
 	if blockPub == nil {
 		return nil, errors.New("Failed to decode revocation ECDSA public key")
 	}
-	revocationPk, err := x509.ParsePKIXPublicKey(blockPub.Bytes)
+	revocationPk, err := sm2.ParsePKIXPublicKey(blockPub.Bytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to parse revocation ECDSA public key bytes")
 	}
-	ecdsaPublicKey, isECDSA := revocationPk.(*ecdsa.PublicKey)
+	ecdsaPublicKey, isECDSA := revocationPk.(*sm2.PublicKey)
 	if !isECDSA {
 		return nil, errors.Errorf("key is of type %v, not of type ECDSA", reflect.TypeOf(revocationPk))
 	}
