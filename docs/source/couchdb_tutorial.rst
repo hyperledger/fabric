@@ -461,8 +461,7 @@ It is also important to plan the indexes you install with your chaincode. You
 should install only a few indexes per chaincode that support most of your queries.
 Adding too many indexes, or using an excessive number of fields in an index, will
 degrade the performance of your network. This is because the indexes are updated
-after each block is committed. The more indexes that need to be updated through
-"index warming", the longer it will take for transactions to complete.
+after each block is committed.
 
 The examples in this section will help demonstrate how queries use indexes and
 what type of queries will have the best performance. Remember the following
