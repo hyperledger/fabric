@@ -55,7 +55,6 @@ func initFactories(config *FactoryOpts) error {
 	// Software-Based BCCSP
 	if (config.ProviderName == "SW" || config.ProviderName == "GM") && config.SwOpts != nil {
 
-		// f := &SWFactory{} ADD GM
 		var f BCCSPFactory
 		if strings.ToUpper(config.ProviderName) == "GM" {
 			f = &GMFactory{}

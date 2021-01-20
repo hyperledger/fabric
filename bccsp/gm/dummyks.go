@@ -15,7 +15,7 @@ package gm
 import (
 	"errors"
 
-	"github.com/tjfoc/hyperledger-fabric-gm/bccsp"
+	"github.com/hyperledger/fabric/bccsp"
 )
 
 //模拟实现

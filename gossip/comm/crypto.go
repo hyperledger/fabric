@@ -8,17 +8,14 @@ package comm
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/pem"
 	"math/big"
 
 	"github.com/hyperledger/fabric/common/util"
 	"google.golang.org/grpc/peer"
 
+	"github.com/tjfoc/gmsm/x509"
 	"github.com/tjfoc/gmsm/sm2"
 	tls "github.com/tjfoc/gmtls"
 	credentials "github.com/tjfoc/gmtls/gmcredentials"
@@ -36,17 +33,17 @@ func GenerateCertificatesOrPanic() tls.Certificate {
 	if err != nil {
 		panic(err)
 	}
-	template := sm2.Certificate{
-		KeyUsage:     sm2.KeyUsageKeyEncipherment | sm2.KeyUsageDigitalSignature,
+	template := x509.Certificate{
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		SerialNumber: sn,
-		ExtKeyUsage:  []sm2.ExtKeyUsage{sm2.ExtKeyUsageServerAuth},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
 
-	rawBytes, err := sm2.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+	rawBytes, err := x509.CreateCertificate(&template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {
 		panic(err)
 	}
-	privBytes, err := sm2.MarshalSm2UnecryptedPrivateKey(privateKey)
+	privBytes, err := x509.MarshalSm2UnecryptedPrivateKey(privateKey)
 	if err != nil {
 		panic(err)
 	}

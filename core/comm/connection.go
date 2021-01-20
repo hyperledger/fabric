@@ -22,7 +22,7 @@ import (
 	"github.com/hyperledger/fabric/core/config"
 	tls "github.com/tjfoc/gmsm/gmtls"
 	"github.com/tjfoc/gmsm/gmtls/gmcredentials"
-	"github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/x509"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -138,12 +138,12 @@ func (cs *CredentialSupport) GetDeliverServiceCredentials(
 	}
 
 	// Parse all PEM bundles and add them into the CA cert pool.
-	certPool := sm2.NewCertPool()
+	certPool := x509.NewCertPool()
 
 	for _, cert := range rootCACerts {
 		block, _ := pem.Decode(cert)
 		if block != nil {
-			cert, err := sm2.ParseCertificate(block.Bytes)
+			cert, err := x509.ParseCertificate(block.Bytes)
 			if err == nil {
 				certPool.AddCert(cert)
 			} else {
@@ -178,7 +178,7 @@ func (cs *CredentialSupport) GetPeerCredentials() credentials.TransportCredentia
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cs.clientCert},
 	}
-	var certPool = sm2.NewCertPool()
+	var certPool = x509.NewCertPool()
 	appRootCAs := [][]byte{}
 	for _, appRootCA := range cs.AppRootCAsByChain {
 		appRootCAs = append(appRootCAs, appRootCA...)
@@ -258,7 +258,7 @@ func InitTLSForShim(key, certStr string) credentials.TransportCredentials {
 	if err != nil {
 		commLogger.Panicf("failed loading root ca cert: %v", err)
 	}
-	cp := sm2.NewCertPool()
+	cp := x509.NewCertPool()
 	if !cp.AppendCertsFromPEM(b) {
 		commLogger.Panicf("failed to append certificates")
 	}

@@ -12,11 +12,11 @@ package main
 // the Identity Mixer MSP
 
 import (
-	"crypto/ecdsa"
 	//"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/tjfoc/gmsm/sm2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,7 +27,7 @@ import (
 	"github.com/hyperledger/fabric/idemix"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
-	"github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/pkcs12"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -64,7 +64,7 @@ func main() {
 
 		revocationKey, err := idemix.GenerateLongTermRevocationKey()
 		handleError(err)
-		encodedRevocationSK, err := sm2.MarshalECPrivateKey(revocationKey)
+		encodedRevocationSK, err := pkcs12.MarshalECPrivateKey(revocationKey)
 		handleError(err)
 		pemEncodedRevocationSK := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encodedRevocationSK})
 		handleError(err)
@@ -149,10 +149,14 @@ func readRevocationKey() *sm2.PrivateKey {
 	if block == nil {
 		handleError(errors.Errorf("failed to decode ECDSA private key"))
 	}
-	key, err := sm2.ParseECPrivateKey(block.Bytes)
+	key, err := pkcs12.ParsePKCS8PrivateKey(block.Bytes)
 	handleError(err)
 
-	return key
+	privKey, ok := key.(*sm2.PrivateKey)
+	if !ok{
+		handleError(errors.Wrapf(err, "privKey is not *sm2.PrivateKey"))
+	}
+	return privKey
 }
 
 // checkDirectoryNotExists checks whether a directory with the given path already exists and exits if this is the case

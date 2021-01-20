@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/tjfoc/gmsm/x509"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -187,7 +188,7 @@ func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 		}
 	case *gmsm2PublicKey:
 		kk := k.(*gmsm2PublicKey)
-		err = ks.storePublicKey(hex.EncodeToString(k.SKI(), kk.pubKey))
+		err = ks.storePublicKey(hex.EncodeToString(k.SKI()), kk.pubKey)
 		if err != nil {
 			return fmt.Errorf("Failed storing GMSM2 public key [%s]", err)
 		}
@@ -343,7 +344,7 @@ func (ks *fileBasedKeyStore) storeKey(alias string, key []byte) error {
 	if len(ks.pwd) == 0 {
 		ks.pwd = nil
 	}
-	pem, err := sm4.WriteKeyToMem(key, ks.pwd)
+	pem, err := sm4.WriteKeyToPem(key, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting key to PEM [%s]: [%s]", alias, err)
 		return err
@@ -370,7 +371,7 @@ func (ks *fileBasedKeyStore) loadPrivateKey(alias string) (interface{}, error) {
 	}
 
 	// privateKey, err := utils.PEMtoPrivateKey(raw, ks.pwd)
-	privateKey, err := sm2.ReadPrivateKeyFromMem(raw, nil)
+	privateKey, err := x509.ReadPrivateKeyFromPem(raw, nil)
 	if err != nil {
 		logger.Errorf("Failed parsing private key [%s]: [%s].", alias, err.Error())
 
@@ -392,7 +393,7 @@ func (ks *fileBasedKeyStore) loadPublicKey(alias string) (interface{}, error) {
 	}
 
 	// privateKey, err := utils.PEMtoPublicKey(raw, ks.pwd)
-	privateKey, err := sm2.ReadPublicKeyFromMem(raw, nil)
+	privateKey, err := x509.ReadPublicKeyFromPem(raw)
 	if err != nil {
 		logger.Errorf("Failed parsing private key [%s]: [%s].", alias, err.Error())
 
@@ -417,7 +418,7 @@ func (ks *fileBasedKeyStore) loadKey(alias string) ([]byte, error) {
 	if len(ks.pwd) == 0 {
 		ks.pwd = nil
 	}
-	key, err := sm4.ReadKeyFromMem(pem, ks.pwd)
+	key, err := sm4.ReadKeyFromPem(pem, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed parsing key [%s]: [%s]", alias, err)
 

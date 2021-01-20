@@ -9,12 +9,12 @@ package comm
 import (
 	"context"
 	//"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"net"
 	"sync"
 
 	tls "github.com/tjfoc/gmtls"
+	"github.com/tjfoc/gmsm/x509"
 	"github.com/tjfoc/gmtls/gmcredentials"
 
 	"github.com/hyperledger/fabric/common/flogging"

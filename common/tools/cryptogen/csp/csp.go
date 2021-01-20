@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/signer"
 	"github.com/pkg/errors"
 	"github.com/tjfoc/gmsm/sm2"
+	gmx509 "github.com/tjfoc/gmsm/x509"
 )
 
 // LoadPrivateKey loads a private key from file in keystorePath
@@ -144,7 +145,7 @@ func GetSM2PublicKey(priv bccsp.Key) (*sm2.PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	sm2PubKey, err := sm2.ParseSm2PublicKey(pubKeyBytes)
+	sm2PubKey, err := gmx509.ParseSm2PublicKey(pubKeyBytes)
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/tjfoc/gmsm/x509"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,8 +26,8 @@ import (
 
 	"github.com/tjfoc/gmsm/sm2"
 	"github.com/tjfoc/gmsm/sm4"
-	"github.com/tjfoc/hyperledger-fabric-gm/bccsp"
-	"github.com/tjfoc/hyperledger-fabric-gm/bccsp/utils"
+	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/utils"
 )
 
 // NewFileBasedKeyStore instantiated a file-based key store at a given position.
@@ -286,7 +287,7 @@ func (ks *fileBasedKeyStore) storeKey(alias string, key []byte) error {
 		ks.pwd = nil
 	}
 
-	pem, err := sm4.WriteKeytoMem(key, ks.pwd)
+	pem, err := sm4.WriteKeyToPem(key, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting key to PEM [%s]: [%s]", alias, err)
 		return err
@@ -314,7 +315,7 @@ func (ks *fileBasedKeyStore) loadPrivateKey(alias string) (interface{}, error) {
 	}
 
 	// privateKey, err := utils.PEMtoPrivateKey(raw, ks.pwd)
-	privateKey, err := sm2.ReadPrivateKeyFromMem(raw, nil)
+	privateKey, err := x509.ReadPrivateKeyFromPem(raw, nil)
 	if err != nil {
 		logger.Errorf("Failed parsing private key [%s]: [%s].", alias, err.Error())
 
@@ -336,7 +337,7 @@ func (ks *fileBasedKeyStore) loadPublicKey(alias string) (interface{}, error) {
 	}
 
 	// privateKey, err := utils.PEMtoPublicKey(raw, ks.pwd)
-	privateKey, err := sm2.ReadPublicKeyFromMem(raw, nil)
+	privateKey, err := x509.ReadPublicKeyFromPem(raw)
 	if err != nil {
 		logger.Errorf("Failed parsing private key [%s]: [%s].", alias, err.Error())
 
@@ -362,7 +363,7 @@ func (ks *fileBasedKeyStore) loadKey(alias string) ([]byte, error) {
 	if len(ks.pwd) == 0 {
 		ks.pwd = nil
 	}
-	key, err := sm4.ReadKeyFromMem(pem, ks.pwd)
+	key, err := sm4.ReadKeyFromPem(pem, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed parsing key [%s]: [%s]", alias, err)
 
@@ -395,7 +396,7 @@ func (ks *fileBasedKeyStore) createKeyStore() error {
 	ksPath := ks.path
 	logger.Debugf("Creating KeyStore at [%s]...", ksPath)
 
-	os.MkdirAll(ksPath, 0755)
+	_ = os.MkdirAll(ksPath, 0755)
 
 	logger.Debugf("KeyStore created at [%s].", ksPath)
 	return nil

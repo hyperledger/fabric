@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger/fabric/common/tools/cryptogen/ca"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
 	fabricmsp "github.com/hyperledger/fabric/msp"
-	"github.com/tjfoc/gmsm/sm2"
+	gmx509 "github.com/tjfoc/gmsm/x509"
 	"gopkg.in/yaml.v2"
 )
 
@@ -103,7 +103,6 @@ func GenerateLocalMSP(baseDir, name string, sans []string, signCA *ca.CA,
 
 	// generate config.yaml if required
 	if nodeOUs {
-
 		exportConfig(mspDir, filepath.Join("cacerts", x509Filename(signCA.Name)), true)
 	}
 
@@ -242,7 +241,7 @@ func x509Filename(name string) string {
 	return name + "-cert.pem"
 }
 
-func x509Export(path string, cert *sm2.Certificate) error {
+func x509Export(path string, cert *gmx509.Certificate) error {
 	return pemExport(path, "CERTIFICATE", cert.Raw)
 }
 

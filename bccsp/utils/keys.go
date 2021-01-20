@@ -20,13 +20,14 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
+	"crypto/rsa"
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/tjfoc/gmsm/sm2"
+	gmx509 "github.com/tjfoc/gmsm/x509"
 )
 
 // struct to hold info required for PKCS#8
@@ -147,7 +148,7 @@ func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 		if k == nil {
 			return nil, errors.New("Invalid sm2 private key, It must be different from nil.")
 		}
-		return sm2.WritePrivateKeyToMem(k, nil)
+		return gmx509.WritePrivateKeyToPem(k, nil)
 	default:
 		return nil, errors.New("Invalid key type. It must be *ecdsa.PrivateKey or *rsa.PrivateKey")
 	}
@@ -186,7 +187,7 @@ func PrivateKeyToEncryptedPEM(privateKey interface{}, pwd []byte) ([]byte, error
 		if k == nil {
 			return nil, errors.New("Invalid sm2 private key, It must be different from nil.")
 		}
-		return sm2.WritePrivateKeyToMem(k, pwd)
+		return gmx509.WritePrivateKeyToPem(k, pwd)
 
 	default:
 		return nil, errors.New("Invalid key type. It must be *ecdsa.PrivateKey")
@@ -215,7 +216,7 @@ func DERToPrivateKey(der []byte) (key interface{}, err error) {
 		return
 	}
 
-	if key, err := sm2.ParsePKCS8UnecryptedPrivateKey(der); err == nil {
+	if key, err := gmx509.ParsePKCS8UnecryptedPrivateKey(der); err == nil {
 		fmt.Printf("Are you kidding me666? %T", key)
 		return key, nil
 	} else {
@@ -360,7 +361,8 @@ func PublicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 		if k == nil {
 			return nil, errors.New("Invalid sm2 public key, It must be different from nil.")
 		}
-		return sm2.WritePublicKeytoMem(k, nil)
+		kk := publicKey.(*sm2.PublicKey)
+		return gmx509.WritePublicKeyToPem(kk)
 	default:
 		return nil, errors.New("Invalid key type. It must be *ecdsa.PublicKey or *rsa.PublicKey")
 	}
@@ -436,7 +438,8 @@ func PublicKeyToEncryptedPEM(publicKey interface{}, pwd []byte) ([]byte, error) 
 		if k == nil {
 			return nil, errors.New("Invalid sm2 public key, It must be different from nil.")
 		}
-		return sm2.WritePublicKeytoMem(k, nil)
+		kk := publicKey.(*sm2.PublicKey)
+		return gmx509.WritePublicKeyToPem(kk)
 	default:
 		return nil, errors.New("Invalid key type. It must be *ecdsa.PublicKey")
 	}
@@ -485,7 +488,7 @@ func DERToPublicKey(raw []byte) (pub interface{}, err error) {
 
 	key, err := x509.ParsePKIXPublicKey(raw)
 	if err != nil {
-		key, err = sm2.ParseSm2PublicKey(raw)
+		key, err = gmx509.ParseSm2PublicKey(raw)
 	}
 	return key, err
 }

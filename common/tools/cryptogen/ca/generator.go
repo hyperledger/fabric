@@ -13,6 +13,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"github.com/tjfoc/gmsm/sm2"
 	"io/ioutil"
 	"math/big"
 	"net"
@@ -25,7 +26,7 @@ import (
 	"github.com/hyperledger/fabric/bccsp/gm"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/tools/cryptogen/csp"
-	"github.com/tjfoc/gmsm/sm2"
+	gmx509 "github.com/tjfoc/gmsm/x509"
 )
 
 type CA struct {
@@ -39,7 +40,7 @@ type CA struct {
 	//SignKey  *ecdsa.PrivateKey
 	Signer      crypto.Signer
 	SignCert    *x509.Certificate
-	SignSm2Cert *sm2.Certificate
+	SignSm2Cert *gmx509.Certificate
 	Sm2Key      bccsp.Key
 }
 
@@ -85,8 +86,7 @@ func NewCA(baseDir, org, name, country, province, locality, orgUnit, streetAddre
 
 				sm2cert := gm.ParseX509Certificate2Sm2(&template)
 				sm2cert.PublicKey = sm2PubKey
-				// TODO
-				x509Cert, err := genCertificateGMSM2(baseDir, name, sm2cert, sm2cert, sm2PubKey, signer)
+				x509Cert, err := genCertificateGMSM2(baseDir, name, sm2cert, sm2cert, sm2PubKey, priv)
 
 				response = err
 				if err == nil {
@@ -113,7 +113,7 @@ func NewCA(baseDir, org, name, country, province, locality, orgUnit, streetAddre
 // SignCertificate creates a signed certificate based on a built-in template
 // and saves it in baseDir/name
 func (ca *CA) SignCertificate(baseDir, name string, ous, sans []string, pub *sm2.PublicKey,
-	ku x509.KeyUsage, eku []x509.ExtKeyUsage) (*sm2.Certificate, error) {
+	ku x509.KeyUsage, eku []x509.ExtKeyUsage) (*gmx509.Certificate, error) {
 
 	template := x509Template()
 	template.KeyUsage = ku
@@ -197,13 +197,13 @@ func x509Template() x509.Certificate {
 	notBefore := time.Now().Round(time.Minute).Add(-5 * time.Minute).UTC()
 
 	//basic template to use
-	x509 := x509.Certificate{
+	tmpX509 := x509.Certificate{
 		SerialNumber:          serialNumber,
 		NotBefore:             notBefore,
 		NotAfter:              notBefore.Add(expiry).UTC(),
 		BasicConstraintsValid: true,
 	}
-	return x509
+	return tmpX509
 
 }
 
@@ -225,7 +225,7 @@ func genCertificateECDSA(baseDir, name string, template, parent *x509.Certificat
 	}
 	//pem encode the cert
 	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
-	certFile.Close()
+	_ = certFile.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -262,8 +262,8 @@ func LoadCertificateECDSA(certPath string) (*x509.Certificate, error) {
 	return cert, err
 }
 
-func genCertificateGMSM2(baseDir, name string, template, parent *sm2.Certificate, pub *sm2.PublicKey,
-	key bccsp.Key) (*sm2.Certificate, error) {
+func genCertificateGMSM2(baseDir, name string, template, parent *gmx509.Certificate, pub *sm2.PublicKey,
+	key bccsp.Key) (*gmx509.Certificate, error) {
 	fmt.Println("hehehehe", template.PublicKey.(*sm2.PublicKey))
 
 	certBytes, err := gm.CreateCertificateToMem(template, parent, key)
@@ -276,15 +276,15 @@ func genCertificateGMSM2(baseDir, name string, template, parent *sm2.Certificate
 	if err != nil {
 		return nil, err
 	}
-	x509Cert, err := sm2.ReadCertificateFromMem(certBytes)
+	x509Cert, err := gmx509.ReadCertificateFromPem(certBytes)
 	if err != nil {
 		return nil, err
 	}
 	return x509Cert, nil
 }
 
-func LoadCertificateGMSM2(certPath string) (*sm2.Certificate, error) {
-	var cert *sm2.Certificate
+func LoadCertificateGMSM2(certPath string) (*gmx509.Certificate, error) {
+	var cert *gmx509.Certificate
 	var err error
 	walkFunc := func(path string, info os.FileInfo, err error) error {
 		if strings.HasSuffix(path, ".pem") {

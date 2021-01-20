@@ -14,12 +14,12 @@ import (
 
 	"github.com/hyperledger/fabric/common/metrics"
 	"github.com/pkg/errors"
-	"github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/x509"
 	"google.golang.org/grpc"
 )
 
 // RemoteVerifier verifies the connection to the remote host
-type RemoteVerifier func(rawCerts [][]byte, verifiedChains [][]*sm2.Certificate) error
+type RemoteVerifier func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error
 
 //go:generate mockery -dir . -name SecureDialer -case underscore -output ./mocks/
 
@@ -59,7 +59,7 @@ func NewConnectionStore(dialer SecureDialer, tlsConnectionCount metrics.Gauge) *
 // verifyHandshake returns a predicate that verifies that the remote node authenticates
 // itself with the given TLS certificate
 func (c *ConnectionStore) verifyHandshake(endpoint string, certificate []byte) RemoteVerifier {
-	return func(rawCerts [][]byte, verifiedChains [][]*sm2.Certificate) error {
+	return func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 		if bytes.Equal(certificate, rawCerts[0]) {
 			return nil
 		}

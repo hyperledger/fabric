@@ -8,14 +8,12 @@ package tlsgen
 
 import (
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/pem"
 	"github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/x509"
 	"math/big"
 	"net"
 	"time"
@@ -34,28 +32,28 @@ func newPrivKey() (*sm2.PrivateKey, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	privBytes, err := sm2.MarshalSm2UnecryptedPrivateKey(privateKey)
+	privBytes, err := x509.MarshalSm2UnecryptedPrivateKey(privateKey)
 	if err != nil {
 		return nil, nil, err
 	}
 	return privateKey, privBytes, nil
 }
 
-func newCertTemplate() (sm2.Certificate, error) {
+func newCertTemplate() (x509.Certificate, error) {
 	sn, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
-		return sm2.Certificate{}, err
+		return x509.Certificate{}, err
 	}
-	return sm2.Certificate{
+	return x509.Certificate{
 		Subject:      pkix.Name{SerialNumber: sn.String()},
 		NotBefore:    time.Now().Add(time.Hour * (-24)),
 		NotAfter:     time.Now().Add(time.Hour * 24),
-		KeyUsage:     sm2.KeyUsageKeyEncipherment | sm2.KeyUsageDigitalSignature,
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		SerialNumber: sn,
 	}, nil
 }
 
-func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Signer, parent *sm2.Certificate) (*CertKeyPair, error) {
+func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Signer, parent *x509.Certificate) (*CertKeyPair, error) {
 	privateKey, privBytes, err := newPrivKey()
 	if err != nil {
 		return nil, err
@@ -70,11 +68,11 @@ func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Sig
 	if isCA {
 		template.NotAfter = tenYearsFromNow
 		template.IsCA = true
-		template.KeyUsage |= sm2.KeyUsageCertSign | sm2.KeyUsageCRLSign
-		template.ExtKeyUsage = []sm2.ExtKeyUsage{sm2.ExtKeyUsageAny}
+		template.KeyUsage |= x509.KeyUsageCertSign | x509.KeyUsageCRLSign
+		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageAny}
 		template.BasicConstraintsValid = true
 	} else {
-		template.ExtKeyUsage = []sm2.ExtKeyUsage{sm2.ExtKeyUsageClientAuth}
+		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
 	}
 	if isServer {
 		template.NotAfter = tenYearsFromNow
@@ -90,14 +88,14 @@ func newCertKeyPair(isCA bool, isServer bool, host string, certSigner crypto.Sig
 		parent = &template
 		certSigner = privateKey
 	}
-	rawBytes, err := sm2.CreateCertificate(rand.Reader, &template, parent, &privateKey.PublicKey, certSigner)
+	rawBytes, err := x509.CreateCertificate(&template, parent, &privateKey.PublicKey, certSigner)
 	if err != nil {
 		return nil, err
 	}
 	pubKey := encodePEM("CERTIFICATE", rawBytes)
 
 	block, _ := pem.Decode(pubKey)
-	cert, err := sm2.ParseCertificate(block.Bytes)
+	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		return nil, err
 	}
