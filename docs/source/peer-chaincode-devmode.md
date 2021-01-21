@@ -35,7 +35,7 @@ Throughout this tutorial, all commands are performed from the `fabric/` folder. 
     ```
 5. Generate the genesis block for the ordering service. Run the following command to generate the genesis block and store it in `$(pwd)/sampleconfig/genesisblock` so that it can be used by the orderer in the next step when the orderer is started.
     ```
-    configtxgen -profile SampleDevModeSolo -channelID syschannel -outputBlock genesisblock -configPath $FABRIC_CFG_PATH -outputBlock $(pwd)/sampleconfig/genesisblock
+    configtxgen -profile SampleDevModeSolo -channelID syschannel -outputBlock genesisblock -configPath $FABRIC_CFG_PATH -outputBlock "$(pwd)/sampleconfig/genesisblock"
     ```
 
     When successful you should see results similar to:
