@@ -247,15 +247,14 @@ chaincode is ready to be used.
 After you have used the `network.sh` to create a channel, you can start a
 chaincode on the channel using the following command:
 ```
-./network.sh deployCC
+./network.sh deployCC -ccn basic -ccp ../asset-transfer-basic/chaincode-go -ccl go
 ```
 The `deployCC` subcommand will install the **asset-transfer (basic)** chaincode on
 ``peer0.org1.example.com`` and ``peer0.org2.example.com`` and then deploy
 the chaincode on the channel specified using the channel flag (or `mychannel`
 if no channel is specified).  If you are deploying a chaincode for the first
-time, the script will install the chaincode dependencies. By default, The script
-installs the Go version of the asset-transfer (basic) chaincode. However, you can use the
-language flag, `-l`, to install the typescript or javascript versions of the chaincode.
+time, the script will install the chaincode dependencies. You can use the
+language flag, `-l`, to install the Go, typescript or javascript versions of the chaincode.
 You can find the asset-transfer (basic) chaincode in the `asset-transfer-basic` folder of the `fabric-samples`
 directory. This folder contains sample chaincode that are provided as examples and
 used by tutorials to highlight Fabric features.
@@ -293,7 +292,7 @@ export CORE_PEER_ADDRESS=localhost:7051
 The `CORE_PEER_TLS_ROOTCERT_FILE` and `CORE_PEER_MSPCONFIGPATH` environment
 variables point to the Org1 crypto material in the `organizations` folder.
 
-If you used `./network.sh deployCC` to install and start the asset-transfer (basic) chaincode, you can invoke the `InitLedger` function of the (Go) chaincode to put an initial list of assets on the ledger (if using typescript or javascript `./network.sh deployCC -l javascript` for example, you will invoke the `InitLedger` function of the respective chaincodes).
+If you used `./network.sh deployCC -ccl go` to install and start the asset-transfer (basic) chaincode, you can invoke the `InitLedger` function of the (Go) chaincode to put an initial list of assets on the ledger (if using typescript or javascript `./network.sh deployCC -ccl javascript` for example, you will invoke the `InitLedger` function of the respective chaincodes).
 
 Run the following command to initialize the ledger with assets:
 ```
