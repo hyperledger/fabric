@@ -107,13 +107,15 @@ Creating network "net_test" with the default driver
 Creating volume "net_orderer.example.com" with default driver
 Creating volume "net_peer0.org1.example.com" with default driver
 Creating volume "net_peer0.org2.example.com" with default driver
-Creating orderer.example.com    ... done
 Creating peer0.org2.example.com ... done
+Creating orderer.example.com    ... done
 Creating peer0.org1.example.com ... done
-CONTAINER ID        IMAGE                               COMMAND             CREATED             STATUS                  PORTS                              NAMES
-8d0c74b9d6af        hyperledger/fabric-orderer:latest   "orderer"           4 seconds ago       Up Less than a second   0.0.0.0:7050->7050/tcp             orderer.example.com
-ea1cf82b5b99        hyperledger/fabric-peer:latest      "peer node start"   4 seconds ago       Up Less than a second   0.0.0.0:7051->7051/tcp             peer0.org1.example.com
-cd8d9b23cb56        hyperledger/fabric-peer:latest      "peer node start"   4 seconds ago       Up 1 second             7051/tcp, 0.0.0.0:9051->9051/tcp   peer0.org2.example.com
+Creating cli                    ... done
+CONTAINER ID   IMAGE                               COMMAND             CREATED         STATUS                  PORTS                                            NAMES
+1667543b5634   hyperledger/fabric-tools:latest     "/bin/bash"         1 second ago    Up Less than a second                                                    cli
+b6b117c81c7f   hyperledger/fabric-peer:latest      "peer node start"   2 seconds ago   Up 1 second             0.0.0.0:7051->7051/tcp                           peer0.org1.example.com
+703ead770e05   hyperledger/fabric-orderer:latest   "orderer"           2 seconds ago   Up Less than a second   0.0.0.0:7050->7050/tcp, 0.0.0.0:7053->7053/tcp   orderer.example.com
+718d43f5f312   hyperledger/fabric-peer:latest      "peer node start"   2 seconds ago   Up 1 second             7051/tcp, 0.0.0.0:9051->9051/tcp                 peer0.org2.example.com
 ```
 
 If you don't get this result, jump down to [Troubleshooting](#troubleshooting)
@@ -132,9 +134,8 @@ docker ps -a
 ```
 
 Each node and user that interacts with a Fabric network needs to belong to an
-organization that is a network member. The group of organizations that are
-members of a Fabric network are often referred to as the consortium. The test
-network has two consortium members, Org1 and Org2. The network also includes one
+organization in order to participate in the network. The test
+network includes two peer organizations, Org1 and Org2. It also includes a single
 orderer organization that maintains the ordering service of the network.
 
 [Peers](peers/peers.html) are the fundamental components of any Fabric network.
@@ -142,7 +143,7 @@ Peers store the blockchain ledger and validate transactions before they are
 committed to the ledger. Peers run the smart contracts that contain the business
 logic that is used to manage the assets on the blockchain ledger.
 
-Every peer in the network needs to belong to a member of the consortium. In the
+Every peer in the network needs to belong to an organization. In the
 test network, each organization operates one peer each, `peer0.org1.example.com`
 and `peer0.org2.example.com`.
 
@@ -158,15 +159,12 @@ An ordering service allows peers to focus on validating transactions and
 committing them to the ledger. After ordering nodes receive endorsed transactions
 from clients, they come to consensus on the order of transactions and then add
 them to blocks. The blocks are then distributed to peer nodes, which add the
-blocks the blockchain ledger. Ordering nodes also operate the system channel
-that defines the capabilities of a Fabric network, such as how blocks are made
-and which version of Fabric that nodes can use. The system channel defines which
-organizations are members of the consortium.
+blocks to the blockchain ledger.
 
 The sample network uses a single node Raft ordering service that is operated by
-the ordering organization. You can see the ordering node running on your machine
+the orderer organization. You can see the ordering node running on your machine
 as `orderer.example.com`. While the test network only uses a single node ordering
-service, a real network would have multiple ordering nodes, operated by one or
+service, a production network would have multiple ordering nodes, operated by one or
 multiple orderer organizations. The different ordering nodes would use the Raft
 consensus algorithm to come to agreement on the order of transactions across
 the network.
@@ -523,13 +521,7 @@ below provide a guided tour of what happens when you issue the command of
   the crypto material and MSP folders for all three organizations in the
   `organizations` folder.
 
-- The script uses configtxgen tool to create the system channel genesis block.
-  Configtxgen consumes the `TwoOrgsOrdererGenesis`  channel profile in the
-  `configtx/configtx.yaml` file to create the genesis block. The block is stored
-  in the `system-genesis-block` folder.
-
-- Once the organization crypto material and the system channel genesis block have
-  been generated, the `network.sh` can bring up the nodes of the network. The
+- Once the organization crypto material has been generated, the `network.sh` can bring up the nodes of the network. The
   script uses the ``docker-compose-test-net.yaml`` file in the `docker` folder
   to create the peer and orderer nodes. The `docker` folder also contains the
   ``docker-compose-e2e.yaml`` file that brings up the nodes of the network
@@ -539,11 +531,8 @@ below provide a guided tour of what happens when you issue the command of
 
 - If you use the `createChannel` subcommand, `./network.sh` runs the
   `createChannel.sh` script in the `scripts` folder to create a channel
-  using the supplied channel name. The script uses the `configtx.yaml` file to
-  create the channel creation transaction, as well as two anchor peer update
-  transactions. The script uses the peer cli to create the channel, join
-  ``peer0.org1.example.com`` and ``peer0.org2.example.com`` to the channel, and
-  make both of the peers anchor peers.
+  using the supplied channel name. The script uses the `configtxgen` tool to create the channel genesis block
+  based on the `TwoOrgsApplicationGenesis` channel profile in the `configtx/configtx.yaml` file. After creating the channel, the script uses the peer cli to join ``peer0.org1.example.com`` and ``peer0.org2.example.com`` to the channel, and make both of the peers anchor peers.
 
 - If you issue the `deployCC` command, `./network.sh` runs the ``deployCC.sh``
   script to install the **asset-transfer (basic)** chaincode on both peers and then define then
@@ -644,16 +633,6 @@ If you have any problems with the tutorial, review the following:
    ```
    :set ff=unix
    ```
-
-- If your orderer exits upon creation or if you see that the create channel
-  command fails due to an inability to connect to your ordering service, use
-  the `docker logs` command to read the logs from the ordering node. You may see
-  the following message:
-  ```
-  PANI 007 [channel system-channel] config requires unsupported orderer capabilities: Orderer capability V2_0 is required but not supported: Orderer capability V2_0 is required but not supported
-  ```
-  This occurs when you are trying to run the network using Fabric version 1.4.x
-  docker images. The test network needs to run using Fabric version 2.x.
 
 If you continue to see errors, share your logs on the **fabric-questions**
 channel on [Hyperledger Rocket Chat](https://chat.hyperledger.org/home) or on
