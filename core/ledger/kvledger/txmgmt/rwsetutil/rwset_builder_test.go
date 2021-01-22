@@ -357,3 +357,71 @@ func serializeTestProtoMsg(t *testing.T, protoMsg proto.Message) []byte {
 	require.NoError(t, err)
 	return msgBytes
 }
+
+func TestNilOrZeroLengthByteArrayValueConvertedToDelete(t *testing.T) {
+	t.Run("public_writeset", func(t *testing.T) {
+		rwsetBuilder := NewRWSetBuilder()
+		rwsetBuilder.AddToWriteSet("ns", "key1", nil)
+		rwsetBuilder.AddToWriteSet("ns", "key2", []byte{})
+
+		simulationResults, err := rwsetBuilder.GetTxSimulationResults()
+		require.NoError(t, err)
+		pubRWSet := &kvrwset.KVRWSet{}
+		require.NoError(
+			t,
+			proto.Unmarshal(simulationResults.PubSimulationResults.NsRwset[0].Rwset, pubRWSet),
+		)
+		require.True(t, proto.Equal(
+			&kvrwset.KVRWSet{
+				Writes: []*kvrwset.KVWrite{
+					{Key: "key1", IsDelete: true},
+					{Key: "key2", IsDelete: true},
+				},
+			},
+			pubRWSet,
+		))
+	})
+
+	t.Run("pvtdata_and_hashes_writesets", func(t *testing.T) {
+		rwsetBuilder := NewRWSetBuilder()
+		rwsetBuilder.AddToPvtAndHashedWriteSet("ns", "coll", "key1", nil)
+		rwsetBuilder.AddToPvtAndHashedWriteSet("ns", "coll", "key2", []byte{})
+
+		simulationResults, err := rwsetBuilder.GetTxSimulationResults()
+		require.NoError(t, err)
+
+		t.Run("hashed_writeset", func(t *testing.T) {
+			hashedRWSet := &kvrwset.HashedRWSet{}
+			require.NoError(
+				t,
+				proto.Unmarshal(simulationResults.PubSimulationResults.NsRwset[0].CollectionHashedRwset[0].HashedRwset, hashedRWSet),
+			)
+			require.True(t, proto.Equal(
+				&kvrwset.HashedRWSet{
+					HashedWrites: []*kvrwset.KVWriteHash{
+						{KeyHash: util.ComputeStringHash("key1"), IsDelete: true},
+						{KeyHash: util.ComputeStringHash("key2"), IsDelete: true},
+					},
+				},
+				hashedRWSet,
+			))
+		})
+
+		t.Run("pvtdata_writeset", func(t *testing.T) {
+			pvtWSet := &kvrwset.KVRWSet{}
+			require.NoError(
+				t,
+				proto.Unmarshal(simulationResults.PvtSimulationResults.NsPvtRwset[0].CollectionPvtRwset[0].Rwset, pvtWSet),
+			)
+			require.True(t, proto.Equal(
+				&kvrwset.KVRWSet{
+					Writes: []*kvrwset.KVWrite{
+						{Key: "key1", IsDelete: true},
+						{Key: "key2", IsDelete: true},
+					},
+				},
+				pvtWSet,
+			))
+		})
+	})
+}
