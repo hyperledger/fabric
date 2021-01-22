@@ -81,22 +81,26 @@ other, and TLS certificates issued by a public TLS CA for the client facing API.
 
   * `ClientCertificate`, `ClientPrivateKey`: The file path of the client TLS certificate
   and corresponding private key.
-  * `ListenPort`: The port the cluster listens on. If blank, the port is the same
-  port as the orderer general port (`general.listenPort`)
+  * `ListenPort`: The port the cluster listens on. 
+  It must be same as `consenters[i].Port` in Channel configuration. 
+  If blank, the port is the same port as the orderer general port (`general.listenPort`)
   * `ListenAddress`: The address the cluster service is listening on.
   * `ServerCertificate`, `ServerPrivateKey`: The TLS server certificate key pair
   which is used when the cluster service is running on a separate gRPC server
   (different port).
-  * `SendBufferSize`: Regulates the number of messages in the egress buffer.
 
 Note: `ListenPort`, `ListenAddress`, `ServerCertificate`, `ServerPrivateKey` must
 be either set together or unset together.
 If they are unset, they are inherited from the general TLS section,
 in example `general.tls.{privateKey, certificate}`.
+When general TLS is disabled:
+ - Use a different `ListenPort` than the orderer general port
+ - Properly configure TLS root CAs in the channel configuration.
 
 There are also hidden configuration parameters for `general.cluster` which can be
 used to further fine tune the cluster communication or replication mechanisms:
 
+  * `SendBufferSize`: Regulates the number of messages in the egress buffer.
   * `DialTimeout`, `RPCTimeout`: Specify the timeouts of creating connections and
   establishing streams.
   * `ReplicationBufferSize`: the maximum number of bytes that can be allocated
