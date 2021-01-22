@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/pvtstatepurgemgmt"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/queryutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/txmgr"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validator/valimpl"
@@ -275,7 +276,7 @@ func (uniquePvtData uniquePvtDataMap) updateUsingPvtWrite(pvtWrite *kvrwset.KVWr
 		uniquePvtData[hashedCompositeKey] =
 			&privacyenabledstate.PvtKVWrite{
 				Key:      pvtWrite.Key,
-				IsDelete: pvtWrite.IsDelete,
+				IsDelete: rwsetutil.IsKVWriteDelete(pvtWrite),
 				Value:    pvtWrite.Value,
 				Version:  ver,
 			}

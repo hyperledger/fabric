@@ -22,9 +22,11 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/version"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/protos/ledger/rwset/kvrwset"
 	"github.com/kr/pretty"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTxRWSetMarshalUnmarshal(t *testing.T) {
@@ -240,4 +242,34 @@ func TestVersionConversion(t *testing.T) {
 	// convert internal to proto
 	assert.Nil(t, newProtoVersion(nil))
 	assert.Equal(t, protoVer, newProtoVersion(internalVer))
+}
+
+func TestIsDelete(t *testing.T) {
+	t.Run("kvWrite", func(t *testing.T) {
+		kvWritesToBeInterpretedAsDelete := []*kvrwset.KVWrite{
+			{Value: nil, IsDelete: true},
+			{Value: nil, IsDelete: false},
+			{Value: []byte{}, IsDelete: true},
+			{Value: []byte{}, IsDelete: false},
+		}
+
+		for _, k := range kvWritesToBeInterpretedAsDelete {
+			require.True(t, IsKVWriteDelete(k))
+		}
+	})
+
+	t.Run("kvhashwrite", func(t *testing.T) {
+		kvHashesWritesToBeInterpretedAsDelete := []*kvrwset.KVWriteHash{
+			{ValueHash: nil, IsDelete: true},
+			{ValueHash: nil, IsDelete: false},
+			{ValueHash: []byte{}, IsDelete: true},
+			{ValueHash: []byte{}, IsDelete: false},
+			{ValueHash: util.ComputeHash([]byte{}), IsDelete: true},
+			{ValueHash: util.ComputeHash([]byte{}), IsDelete: false},
+		}
+
+		for _, k := range kvHashesWritesToBeInterpretedAsDelete {
+			require.True(t, IsKVWriteHashDelete(k))
+		}
+	})
 }

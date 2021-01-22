@@ -48,6 +48,10 @@ func (c *client) simulateDataTx(txid string, simulationLogic func(s *simulator))
 	return txAndPvtdata
 }
 
+func (c *client) submitHandCraftedTx(txAndPvtdata *txAndPvtdata) {
+	c.simulatedTrans = append(c.simulatedTrans, txAndPvtdata)
+}
+
 // simulateDeployTx mimics a transction that deploys a chaincode. This in turn calls the function 'simulateDataTx'
 // with supplying the simulation logic that mimics the inoke funciton of 'lscc' for the ledger tests
 func (c *client) simulateDeployTx(ccName string, collConfs []*collConf) *txAndPvtdata {
