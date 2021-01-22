@@ -51,6 +51,10 @@ func (c *client) simulateDataTx(txid string, simulationLogic func(s *simulator))
 	return txAndPvtdata
 }
 
+func (c *client) submitHandCraftedTx(txAndPvtdata *txAndPvtdata) {
+	c.simulatedTrans = append(c.simulatedTrans, txAndPvtdata)
+}
+
 func (c *client) addPostOrderTx(txid string, customTxType common.HeaderType) *txAndPvtdata {
 	if txid == "" {
 		txid = util.GenerateUUID()

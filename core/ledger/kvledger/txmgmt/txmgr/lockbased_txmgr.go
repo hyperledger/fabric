@@ -324,7 +324,7 @@ func (uniquePvtData uniquePvtDataMap) updateUsingPvtWrite(pvtWrite *kvrwset.KVWr
 		uniquePvtData[hashedCompositeKey] =
 			&privacyenabledstate.PvtKVWrite{
 				Key:      pvtWrite.Key,
-				IsDelete: pvtWrite.IsDelete,
+				IsDelete: rwsetutil.IsKVWriteDelete(pvtWrite),
 				Value:    pvtWrite.Value,
 				Version:  ver,
 			}
