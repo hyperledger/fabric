@@ -74,7 +74,7 @@ func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 					&kvrwset.KVWrite{
 						Key:      string(hashedWrite.KeyHash),
 						Value:    hashedWrite.ValueHash,
-						IsDelete: hashedWrite.IsDelete,
+						IsDelete: rwsetutil.IsKVWriteHashDelete(hashedWrite),
 					},
 				)
 			}
@@ -96,7 +96,7 @@ func (txops txOps) applyTxRwset(rwset *rwsetutil.TxRwSet) error {
 
 // applyKVWrite records upsertion/deletion of a kvwrite
 func (txops txOps) applyKVWrite(ns, coll string, kvWrite *kvrwset.KVWrite) {
-	if kvWrite.IsDelete {
+	if rwsetutil.IsKVWriteDelete(kvWrite) {
 		txops.delete(compositeKey{ns, coll, kvWrite.Key})
 	} else {
 		txops.upsert(compositeKey{ns, coll, kvWrite.Key}, kvWrite.Value)

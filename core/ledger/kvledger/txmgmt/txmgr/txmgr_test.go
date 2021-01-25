@@ -14,7 +14,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -922,6 +925,31 @@ func TestConstructUniquePvtData(t *testing.T) {
 	// ns1-coll1-key1 should be accepted
 	pvtDataBlk3Tx1 := producePvtdata(t, 1, []string{"ns1:coll1"}, []string{"key1"}, [][]byte{v3})
 
+	pvtDataBlk3Tx2WriteSetBytes, err := proto.Marshal(
+		&kvrwset.KVRWSet{
+			Writes: []*kvrwset.KVWrite{
+				{Key: "key5", IsDelete: false, Value: nil},
+			},
+		},
+	)
+	require.NoError(t, err)
+	pvtDataBlk3Tx2 := &ledger.TxPvtData{
+		SeqInBlock: 2,
+		WriteSet: &rwset.TxPvtReadWriteSet{
+			NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+				{
+					Namespace: "ns1",
+					CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+						{
+							CollectionName: "coll1",
+							Rwset:          pvtDataBlk3Tx2WriteSetBytes,
+						},
+					},
+				},
+			},
+		},
+	}
+
 	blocksPvtData := map[uint64][]*ledger.TxPvtData{
 		1: {
 			pvtDataBlk1Tx1,
@@ -934,6 +962,7 @@ func TestConstructUniquePvtData(t *testing.T) {
 		},
 		3: {
 			pvtDataBlk3Tx1,
+			pvtDataBlk3Tx2,
 		},
 	}
 
@@ -949,11 +978,15 @@ func TestConstructUniquePvtData(t *testing.T) {
 	hashedCompositeKeyNs1Coll1Key1 := privacyenabledstate.HashedCompositeKey{Namespace: "ns1", CollectionName: "coll1", KeyHash: string(util.ComputeStringHash("key1"))}
 	pvtKVWriteNs1Coll1Key1 := &privacyenabledstate.PvtKVWrite{Key: "key1", IsDelete: false, Value: v3, Version: version.NewHeight(3, 1)}
 
+	hashedCompositeKeyNs1Coll1Key5 := privacyenabledstate.HashedCompositeKey{Namespace: "ns1", CollectionName: "coll1", KeyHash: string(util.ComputeStringHash("key5"))}
+	pvtKVWriteNs1Coll1Key5 := &privacyenabledstate.PvtKVWrite{Key: "key5", IsDelete: true, Value: nil, Version: version.NewHeight(3, 2)}
+
 	expectedUniquePvtData := uniquePvtDataMap{
 		hashedCompositeKeyNs1Coll2Key3: pvtKVWriteNs1Coll2Key3,
 		hashedCompositeKeyNs1Coll2Key4: pvtKVWriteNs1Coll2Key4,
 		hashedCompositeKeyNs1Coll1Key2: pvtKVWriteNs1Coll1Key2,
 		hashedCompositeKeyNs1Coll1Key1: pvtKVWriteNs1Coll1Key1,
+		hashedCompositeKeyNs1Coll1Key5: pvtKVWriteNs1Coll1Key5,
 	}
 
 	uniquePvtData, err := constructUniquePvtData(blocksPvtData)
