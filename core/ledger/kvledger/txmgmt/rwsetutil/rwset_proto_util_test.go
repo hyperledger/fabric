@@ -23,6 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/kr/pretty"
 	"github.com/stretchr/testify/require"
 )
@@ -240,4 +241,34 @@ func TestVersionConversion(t *testing.T) {
 	// convert internal to proto
 	require.Nil(t, newProtoVersion(nil))
 	require.Equal(t, protoVer, newProtoVersion(internalVer))
+}
+
+func TestIsDelete(t *testing.T) {
+	t.Run("kvWrite", func(t *testing.T) {
+		kvWritesToBeInterpretedAsDelete := []*kvrwset.KVWrite{
+			{Value: nil, IsDelete: true},
+			{Value: nil, IsDelete: false},
+			{Value: []byte{}, IsDelete: true},
+			{Value: []byte{}, IsDelete: false},
+		}
+
+		for _, k := range kvWritesToBeInterpretedAsDelete {
+			require.True(t, IsKVWriteDelete(k))
+		}
+	})
+
+	t.Run("kvhashwrite", func(t *testing.T) {
+		kvHashesWritesToBeInterpretedAsDelete := []*kvrwset.KVWriteHash{
+			{ValueHash: nil, IsDelete: true},
+			{ValueHash: nil, IsDelete: false},
+			{ValueHash: []byte{}, IsDelete: true},
+			{ValueHash: []byte{}, IsDelete: false},
+			{ValueHash: util.ComputeHash([]byte{}), IsDelete: true},
+			{ValueHash: util.ComputeHash([]byte{}), IsDelete: false},
+		}
+
+		for _, k := range kvHashesWritesToBeInterpretedAsDelete {
+			require.True(t, IsKVWriteHashDelete(k))
+		}
+	})
 }

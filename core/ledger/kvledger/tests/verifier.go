@@ -53,6 +53,15 @@ func (v *verifier) verifyPubState(ns, key string, expectedVal string) {
 	v.assert.Equal(expectedValBytes, committedVal)
 }
 
+func (v *verifier) verifyPvtdataHashState(ns, coll, key string, expectedValHash []byte) {
+	qe, err := v.lgr.NewQueryExecutor()
+	v.assert.NoError(err)
+	defer qe.Done()
+	committedValHash, err := qe.GetPrivateDataHash(ns, coll, key)
+	v.assert.NoError(err)
+	v.assert.Equal(expectedValHash, committedValHash)
+}
+
 func (v *verifier) verifyPvtState(ns, coll, key string, expectedVal string) {
 	qe, err := v.lgr.NewQueryExecutor()
 	v.assert.NoError(err)

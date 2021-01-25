@@ -135,7 +135,7 @@ func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string,
 			for _, kvWrite := range nsRWSet.KvRwSet.Writes {
 				if kvWrite.Key == key {
 					return &queryresult.KeyModification{TxId: txID, Value: kvWrite.Value,
-						Timestamp: timestamp, IsDelete: kvWrite.IsDelete}, nil
+						Timestamp: timestamp, IsDelete: rwsetutil.IsKVWriteDelete(kvWrite)}, nil
 				}
 			} // end keys loop
 			logger.Debugf("key [%s] not found in namespace [%s]'s writeset", key, namespace)
