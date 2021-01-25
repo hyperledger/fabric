@@ -340,7 +340,7 @@ func addPvtRWSetToPvtUpdateBatch(pvtRWSet *rwsetutil.TxPvtRwSet, pvtUpdateBatch 
 	for _, ns := range pvtRWSet.NsPvtRwSet {
 		for _, coll := range ns.CollPvtRwSets {
 			for _, kvwrite := range coll.KvRwSet.Writes {
-				if !kvwrite.IsDelete {
+				if !rwsetutil.IsKVWriteDelete(kvwrite) {
 					pvtUpdateBatch.Put(ns.NameSpace, coll.CollectionName, kvwrite.Key, kvwrite.Value, ver)
 				} else {
 					pvtUpdateBatch.Delete(ns.NameSpace, coll.CollectionName, kvwrite.Key, ver)
