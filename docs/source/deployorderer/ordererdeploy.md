@@ -2,7 +2,7 @@
 
 Before deploying an ordering service, review the material in [Planning for an ordering service](./ordererplan.html) and [Checklist for a production ordering service](./ordererchecklist.html), which discusses all of the relevant decisions you need to make and parameters you need to configure before deploying an ordering service.
 
-This tutorial is based on the Raft consensus protocol and can be used to build an ordering service, which is comprised of ordering nodes, or "orderers". It describes the process to create a three-node Raft ordering service where all of the ordering nodes belong to the same organization. This tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer. Instead, these nodes (or a subset of them), will be joined to a channel using the process to [Create a channel without a system channel](../create_channel/create-channel_participation.html).
+This tutorial is based on the Raft consensus protocol and can be used to build an ordering service, which is comprised of ordering nodes, or "orderers". It describes the process to create a three-node Raft ordering service where all of the ordering nodes belong to the same organization. This tutorial assumes that a system channel genesis block will not be used when bootstrapping the orderer. Instead, these nodes (or a subset of them), will be joined to a channel using the process to [Create a channel](../create_channel/create-channel_participation.html).
 
 For information on how to create an orderer that will be bootstrapped with a system channel genesis block, check out [Deploy the ordering service](https://hyperledger-fabric.readthedocs.io/en/release-2.2/deployorderer/ordererdeploy.html) from the Fabric v2.2 documentation.
 
@@ -147,7 +147,7 @@ You have successfully started one node, you now need to repeat these steps to co
 
 Your ordering service is started and ready to order transactions into blocks. Depending on your use case, you may need to add or remove orderers from the consenter set, or other organizations may want to contribute their own orderers to the cluster. See the topic on ordering service [reconfiguration](../raft_configuration.html#reconfiguration) for considerations and instructions.
 
-Once your nodes have been created, you are ready to join them to a channel. Check out [Create a channel without a system channel](../create_channel/create-channel_participation.html) for more information.
+Once your nodes have been created, you are ready to join them to a channel. Check out [Create a channel](../create_channel/create-channel_participation.html) for more information.
 
 ## Troubleshooting
 
