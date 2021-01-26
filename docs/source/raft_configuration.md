@@ -81,8 +81,8 @@ other, and TLS certificates issued by a public TLS CA for the client facing API.
 
   * `ClientCertificate`, `ClientPrivateKey`: The file path of the client TLS certificate
   and corresponding private key.
-  * `ListenPort`: The port the cluster listens on. 
-  It must be same as `consenters[i].Port` in Channel configuration. 
+  * `ListenPort`: The port the cluster listens on.
+  It must be same as `consenters[i].Port` in Channel configuration.
   If blank, the port is the same port as the orderer general port (`general.listenPort`)
   * `ListenAddress`: The address the cluster service is listening on.
   * `ServerCertificate`, `ServerPrivateKey`: The TLS server certificate key pair
@@ -206,9 +206,9 @@ To add a new node to the ordering service:
 
   1. **Ensure the orderer organization that owns the new node is one of the orderer organizations on the channel**. If the orderer organization is not an administrator, the node will be unable to pull blocks as a follower or be joined to the consenter set.
   2. **Start the new ordering node**. For information about how to deploy an ordering node, check out [Planning for an ordering service](./deployorderer/ordererdeploy.html). Note that when you use the `osnadmin` CLI to create and join a channel, you do not need to point to a configuration block when starting the node.
-  3. **Use the `osnadmin` CLI to add the first orderer to the channel**. For more information, check out [Create a channel without a system channel](./create_channel/create_channel_participation.html#step-two-use-the-osnadmin-cli-to-add-the-first-orderer-to-the-channel) tutorial.
+  3. **Use the `osnadmin` CLI to add the first orderer to the channel**. For more information, check out the [Create a channel](./create_channel/create_channel_participation.html#step-two-use-the-osnadmin-cli-to-add-the-first-orderer-to-the-channel) tutorial.
   4. **Wait for the Raft node to replicate the blocks** from existing nodes for all channels its certificates have been added to. When an ordering node is added to a channel, it is added as a "follower", a state in which it can replicate blocks but is not part of the "consenter set" actively servicing the channel. When the node finishes replicating the blocks, its status should change from "onboarding" to "active". Note that an "active" ordering node is still not part of the consenter set.
-  5. **Add the new ordering node to the consenter set**. For more information, check out [Create a channel without a system channel](./create_channel/create_channel_participation.html#step-three-join-additional-ordering-nodes).
+  5. **Add the new ordering node to the consenter set**. For more information, check out the [Create a channel](./create_channel/create_channel_participation.html#step-three-join-additional-ordering-nodes) tutorial.
 
 It is possible to add a node that is already running (and participates in some
 channels already) to a channel while the node itself is running. To do this, simply

@@ -1,6 +1,6 @@
 # Membership Service Provider (MSP)
 
-Note: this topic describes a network that does not use a "system channel", a channel that the ordering service is bootstrapped with and the ordering service exclusively controls. Since the release of v2.3, using system channel is now considered the legacy process as compared to the process to [Create a channel without a system channel](../create_channel/create_channel_participation.html). For a version of this topic that includes information about the system channel, check out [Membership Service Provider (MSP)](https://hyperledger-fabric.readthedocs.io/en/release-2.2/membership/membership.html) from the v2.2 documentation.
+Note: this topic describes a network that does not use a "system channel", a channel that the ordering service is bootstrapped with and the ordering service exclusively controls. Since the release of v2.3, using system channel is now considered the legacy process as compared to the process to [Create a channel](../create_channel/create_channel_participation.html) without a system channel. For a version of this topic that includes information about the system channel, check out [Membership Service Provider (MSP)](https://hyperledger-fabric.readthedocs.io/en/release-2.2/membership/membership.html) from the v2.2 documentation.
 
 ## Why do I need an MSP?
 

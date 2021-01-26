@@ -1,8 +1,8 @@
-# Create a channel without a system channel
+# Create a channel
 
 To simplify the channel creation process and enhance the privacy and scalability of channels, it is now possible to create application channels (where transactions involving assets happen) without first creating a “system channel” managed by the ordering service. Use this tutorial to learn how to create new channels without a system channel by using the `configtxgen` tool to create a genesis block and the `osnadmin CLI` (which runs against a REST API exposed by each ordering service node) to join ordering nodes to a channel. This process allows ordering nodes to join (or leave) any number of channels as needed, similar to how peers can participate in multiple channels.
 
-**How this process differs from the legacy process:**
+**How this process differs from the legacy Fabric v2.2 process:**
 
  * **System channel no longer required**: Besides the creation of the system channel representing an extra step (as compared to the new process), this system channel created an extra layer of administration that, for some use cases, provided no tangible benefit.
  * **Consortium no longer required**: You no longer need to define the set of organizations, known as the “consortium”, who are permitted to create channels on a particular ordering service. With this new process, all channels are application channels, so the concept of a list of organizations who can create channels no longer applies. Any set of organizations can get together and create a channel using a defined set of ordering nodes (which become the ordering service of that channel).
@@ -28,6 +28,8 @@ While creating the channel, this tutorial will take you through the following st
 - [Step two: Use the `osnadmin` CLI to add the first orderer to the channel](#step-two-use-the-osnadmin-cli-to-add-the-first-orderer-to-the-channel)
 - [Step three: Join additional ordering nodes](#step-three-join-additional-ordering-nodes)
 - [Next steps](#next-steps)
+
+**Note**: If you prefer to learn how to create a channel with the test network instead, check out the [Create a channel using the test network](create_channel_test_net.html) tutorial.
 
 ## Folder structure
 
