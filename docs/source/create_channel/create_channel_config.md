@@ -182,7 +182,7 @@ The `TwoOrgsChannel` provides the name of the consortium, `SampleConsortium`, ho
 
 ### SampleAppChannelEtcdRaft
 
-The `SampleAppChannelEtcdRaft` profile is provided for customers that prefer to create a channel without a system channel by using the `osnadmin CLI`. The major difference is that a consortium definition is no longer required. Check out the [Create a channel without a system channel](create_channel_participation.html) tutorial to learn more about how to use this profile.
+The `SampleAppChannelEtcdRaft` profile is provided for customers that prefer to create a channel without a system channel by using the `osnadmin CLI`. The major difference is that a consortium definition is no longer required. Check out the [Create a channel](create_channel_participation.html) tutorial to learn more about how to use this profile.
 
 ```
 SampleAppChannelEtcdRaft:
