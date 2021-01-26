@@ -817,6 +817,10 @@ func serve(args []string) error {
 		)
 	}
 
+	if coreConfig.GatewayOptions.Enabled {
+		logger.Info("Starting peer with Gateway enabled")
+	}
+
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
 
 	// Get configuration before starting go routines to avoid

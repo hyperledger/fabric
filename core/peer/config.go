@@ -30,6 +30,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/internal/pkg/gateway"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
@@ -206,6 +207,13 @@ type Config struct {
 	DockerKey string
 	// DockerCA is the path to the PEM encoded CA certificate for the docker daemon.
 	DockerCA string
+
+	// ----- Gateway config -----
+
+	// The gateway service is used by client SDKs to
+	// interact with fabric networks
+
+	GatewayOptions gateway.Options
 }
 
 // GlobalConfig obtains a set of configuration from viper, build and returns
@@ -264,6 +272,9 @@ func (c *Config) load() error {
 	if viper.IsSet("peer.keepalive.deliveryClient.timeout") {
 		c.DeliverClientKeepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
 	}
+
+	c.GatewayOptions = gateway.DefaultOptions()
+	c.GatewayOptions.Enabled = viper.GetBool("peer.gateway.enabled")
 
 	c.VMEndpoint = viper.GetString("vm.endpoint")
 	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")
