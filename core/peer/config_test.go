@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/internal/pkg/gateway"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -237,6 +238,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.chaincodeListenAddress", "0.0.0.0:7052")
 	viper.Set("peer.chaincodeAddress", "0.0.0.0:7052")
 	viper.Set("peer.validatorPoolSize", 1)
+	viper.Set("peer.gateway.enabled", true)
 
 	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	viper.Set("vm.docker.tls.enabled", false)
@@ -331,6 +333,10 @@ func TestGlobalConfig(t *testing.T) {
 		DockerCert: filepath.Join(cwd, "test/vm/tls/cert/file"),
 		DockerKey:  filepath.Join(cwd, "test/vm/tls/key/file"),
 		DockerCA:   filepath.Join(cwd, "test/vm/tls/ca/file"),
+
+		GatewayOptions: gateway.Options{
+			Enabled: true,
+		},
 	}
 
 	require.Equal(t, coreConfig, expectedConfig)
