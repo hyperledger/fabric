@@ -10,7 +10,7 @@ Here's an example of the `osnadmin channel join` command.
 
   ```
 
-  osnadmin channel join -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channel-id mychannel --config-block mychannel-genesis-block.pb
+  osnadmin channel join -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel --config-block mychannel-genesis-block.pb
 
   Status: 201
   {
@@ -51,10 +51,10 @@ Here are some examples of the `osnadmin channel list` command.
 
   Status 200 and the list of channels are returned. 
 
-* Using the `--channel-id` flag to list more details for `mychannel`.
+* Using the `--channelID` flag to list more details for `mychannel`.
 
   ```
-  osnadmin channel list -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channel-id mychannel
+  osnadmin channel list -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel
 
   Status: 200
   {
@@ -76,7 +76,7 @@ Here's an example of the `osnadmin channel remove` command.
 * Removing channel `mychannel` from the orderer at `orderer.example.com:9443`.
 
   ```
-  osnadmin channel remove -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channel-id mychannel
+  osnadmin channel remove -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel
 
   Status: 204
   ```
