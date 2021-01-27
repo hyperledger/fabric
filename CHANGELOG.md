@@ -1,3 +1,27 @@
+## v1.4.10
+Wed Jan 27 18:16:54 EST 2021
+
+* [adfdd61](https://github.com/hyperledger/fabric/commit/adfdd61) Add v1.4.10 release notes
+* [3813607](https://github.com/hyperledger/fabric/commit/3813607) Fix the issue of Nil/Zero-length-byte-array value (#2312)
+* [e95a134](https://github.com/hyperledger/fabric/commit/e95a134) Remove unreachable and unnecessary code in gossip membership (#2296)
+* [51a3a52](https://github.com/hyperledger/fabric/commit/51a3a52) [FAB-17039](https://jira.hyperledger.org/browse/FAB-17039) CherryPick: Skip retrieving pvtdata from transient store when txid is missing (bp #2183) (#2203)
+* [746b7e9](https://github.com/hyperledger/fabric/commit/746b7e9) [FAB-18323](https://jira.hyperledger.org/browse/FAB-18323) CherryPick: remove ephemeral from BCCSP SW options (#1553)
+* [25d99ba](https://github.com/hyperledger/fabric/commit/25d99ba) Update endorsementpolicies.md
+* [7004000](https://github.com/hyperledger/fabric/commit/7004000) Bump Go to 1.14.12
+* [2dbf8d6](https://github.com/hyperledger/fabric/commit/2dbf8d6) Bump version of golang.org/x/tools
+* [e876e64](https://github.com/hyperledger/fabric/commit/e876e64) [FAB-13370](https://jira.hyperledger.org/browse/FAB-13370) increase go env timeout from 10s to 1m
+* [1d7b876](https://github.com/hyperledger/fabric/commit/1d7b876) Increase Eventually Timeout
+* [a25b63f](https://github.com/hyperledger/fabric/commit/a25b63f) Prepare for go 1.14 (#755)
+* [b5a12de](https://github.com/hyperledger/fabric/commit/b5a12de) Log TLS hanshake duration
+* [56d7b84](https://github.com/hyperledger/fabric/commit/56d7b84) Deduplicate orderer server TLS root CAs (#2030)
+* [cf344b5](https://github.com/hyperledger/fabric/commit/cf344b5) [FAB-18244](https://jira.hyperledger.org/browse/FAB-18244) single node catches up with snapshot (#2022)
+* [83c833c](https://github.com/hyperledger/fabric/commit/83c833c) [FAB-18270](https://jira.hyperledger.org/browse/FAB-18270) Disable debug of CouchDB response body
+* [75f9fe7](https://github.com/hyperledger/fabric/commit/75f9fe7) [FAB-18265](https://jira.hyperledger.org/browse/FAB-18265) Always Use DummyKeystore For PKCS11 BCCSP Provider
+* [a40f9d2](https://github.com/hyperledger/fabric/commit/a40f9d2) Allow tick interval override via orderer.yaml
+* [db1abf6](https://github.com/hyperledger/fabric/commit/db1abf6) Always Finalize the PKCS11 FindObject Operation (#1978)
+* [df50dea](https://github.com/hyperledger/fabric/commit/df50dea) Update devmode doc to note TLS must be disabled (release-1.4)
+* [4af8308](https://github.com/hyperledger/fabric/commit/4af8308) Prepare for next release v1.4.10
+
 ## v1.4.9
 Wed Sep 30 14:01:41 EDT 2020
 
