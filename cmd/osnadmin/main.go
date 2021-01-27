@@ -58,7 +58,10 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	remove := channel.Command("remove", "Remove an Ordering Service Node (OSN) from a channel.")
 	removeChannelID := remove.Flag("channelID", "Channel ID").Short('c').Required().String()
 
-	command := kingpin.MustParse(app.Parse(args))
+	command, err := app.Parse(args)
+	if err != nil {
+		return "", 1, err
+	}
 
 	//
 	// flag validation
