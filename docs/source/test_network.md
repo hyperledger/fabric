@@ -23,8 +23,17 @@ current master branch, it is possible that you will encounter errors.
 ## Before you begin
 
 Before you can run the test network, you need to clone the `fabric-samples`
-repository and download the Fabric images. Make sure that you have installed
-the [Prerequisites](prereqs.html) and [Installed the Samples, Binaries and Docker Images](install.html).
+repository and download the Fabric images.
+
+**Important:** This tutorial is compatible with the Fabric test network sample v2.2.x. After you have installed the [prerequisites](../getting_started.html),
+**you must run the following command** to clone the required version of the
+[hyperledger/fabric samples](https://github.com/hyperledger/fabric-samples) repository and checkout
+the correct version tag. The command also installs the Hyperledger Fabric platform-specific
+binaries and config files for the version into the `/bin` and `/config` directories of `fabric-samples`.
+
+```
+curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.2.2 1.4.9
+```
 
 ## Bring up the test network
 

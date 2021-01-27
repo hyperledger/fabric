@@ -11,11 +11,24 @@ In the process of creating the channel, this tutorial will take you through the 
 - [Joining peers to the channel](#join-peers-to-the-channel)
 - [Setting anchor peers](#set-anchor-peers)
 
+
+## Before you begin
+
+**Important:** This tutorial uses the Fabric test network and is compatible with v2.2.x or lower of the
+test network sample. After you have installed the [prerequisites](../getting_started.html),
+**you must run the following command** to clone the required version of the
+[hyperledger/fabric samples](https://github.com/hyperledger/fabric-samples) repository and checkout
+the correct version tag. The command also installs the Hyperledger Fabric platform-specific
+binaries and config files for the version into the `/bin` and `/config` directories of `fabric-samples`
+so that you can run the test network.
+
+```
+curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.2.2 1.4.9
+```
+
 ## Setting up the configtxgen tool
 
-Channels are created by building a channel creation transaction and submitting the transaction to the ordering service. The channel creation transaction specifies the initial configuration of the channel and is used by the ordering service to write the channel genesis block. While it is possible to build the channel creation transaction file manually, it is easier to use the [configtxgen](../commands/configtxgen.html) tool. The tool works by reading a `configtx.yaml` file that defines the configuration of your channel, and then writing the relevant information into the channel creation transaction. Before we discuss the `configtx.yaml` file in the next section, we can get started by downloading and setting up the `configtxgen` tool.
-
-You can download the `configtxgen` binaries by following the steps to [install the samples, binaries and Docker images](../install.html). `configtxgen` will be downloaded to the `bin` folder of your local clone of the `fabric-samples` repository along with other Fabric tools.
+Channels are created by building a channel creation transaction and submitting the transaction to the ordering service. The channel creation transaction specifies the initial configuration of the channel and is used by the ordering service to write the channel genesis block. While it is possible to build the channel creation transaction file manually, it is easier to use the [configtxgen](../commands/configtxgen.html) tool. The tool works by reading a `configtx.yaml` file that defines the configuration of your channel, and then writing the relevant information into the channel creation transaction. The `configtxgen` tool was installed when you ran the `curl` command in the previous step.
 
 For the purposes of this tutorial, we will want to operate from the `test-network` directory inside `fabric-samples`. Navigate to that directory using the following command:
 ```
@@ -364,7 +377,7 @@ Blockchain info: {"height":3,"currentBlockHash":"eBpwWKTNUgnXGpaY2ojF4xeP3bWdjlP
 
 We can confirm that the channel was created successfully by deploying a chaincode to the channel. We can use the `network.sh` script to deploy the Basic asset transfer chaincode to any test network channel. Deploy a chaincode to our new channel using the following command:
 ```
-./network.sh deployCC --ccn basic -ccp ../asset-transfer-basic/chaincode-go/ -ccl go -c channel1 --cci InitLedger 
+./network.sh deployCC --ccn basic -ccp ../asset-transfer-basic/chaincode-go/ -ccl go -c channel1 --cci InitLedger
 ```
 
 After you run the command, you should see the chaincode being deployed to the channel in your logs. The chaincode is invoked to add data to the channel ledger.
