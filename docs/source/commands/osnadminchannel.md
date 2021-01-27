@@ -45,7 +45,7 @@ Subcommands:
 
   channel list [<flags>]
     List channel information for an Ordering Service Node (OSN). If the
-    channel-id flag is set, more detailed information will be provided for that
+    channelID flag is set, more detailed information will be provided for that
     channel.
 
   channel remove --channelID=CHANNELID
@@ -84,7 +84,7 @@ Flags:
 ```
 usage: osnadmin channel list [<flags>]
 
-List channel information for an Ordering Service Node (OSN). If the channel-id
+List channel information for an Ordering Service Node (OSN). If the channelID
 flag is set, more detailed information will be provided for that channel.
 
 Flags:
