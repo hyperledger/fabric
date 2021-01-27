@@ -52,7 +52,7 @@ the binaries and images.
 .. code:: bash
 
   curl -sSL https://bit.ly/2ysbOFE | bash -s -- <fabric_version> <fabric-ca_version>
-  curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.2.1 1.4.9
+  curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.2.2 1.4.9
 
 .. note:: If you get an error running the above curl command, you may
           have too old a version of curl that does not handle
