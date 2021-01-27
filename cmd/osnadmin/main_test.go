@@ -162,7 +162,7 @@ var _ = Describe("osnadmin", func() {
 				"channel",
 				"list",
 				"--orderer-address", ordererURL,
-				"--channel-id", "tell-me-your-secrets",
+				"--channelID", "tell-me-your-secrets",
 				"--ca-file", ordererCACert,
 				"--client-cert", clientCert,
 				"--client-key", clientKey,
@@ -188,7 +188,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"list",
 					"--orderer-address", ordererURL,
-					"--channel-id", "tell-me-your-secrets",
+					"--channelID", "tell-me-your-secrets",
 					"--ca-file", ordererCACert,
 					"--client-cert", clientCert,
 					"--client-key", clientKey,
@@ -240,7 +240,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"list",
 					"--orderer-address", ordererURL,
-					"--channel-id", "tell-me-your-secrets",
+					"--channelID", "tell-me-your-secrets",
 				}
 				output, exit, err := executeForArgs(args)
 				Expect(err).NotTo(HaveOccurred())
@@ -264,7 +264,7 @@ var _ = Describe("osnadmin", func() {
 				"channel",
 				"remove",
 				"--orderer-address", ordererURL,
-				"--channel-id", channelID,
+				"--channelID", channelID,
 				"--ca-file", ordererCACert,
 				"--client-cert", clientCert,
 				"--client-key", clientKey,
@@ -286,7 +286,7 @@ var _ = Describe("osnadmin", func() {
 					"remove",
 					"--ca-file", ordererCACert,
 					"--orderer-address", ordererURL,
-					"--channel-id", channelID,
+					"--channelID", channelID,
 					"--client-cert", clientCert,
 					"--client-key", clientKey,
 				}
@@ -308,7 +308,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"remove",
 					"--orderer-address", ordererURL,
-					"--channel-id", channelID,
+					"--channelID", channelID,
 				}
 				output, exit, err := executeForArgs(args)
 				Expect(err).NotTo(HaveOccurred())
@@ -343,7 +343,7 @@ var _ = Describe("osnadmin", func() {
 				"channel",
 				"join",
 				"--orderer-address", ordererURL,
-				"--channel-id", channelID,
+				"--channelID", channelID,
 				"--config-block", blockPath,
 				"--ca-file", ordererCACert,
 				"--client-cert", clientCert,
@@ -370,7 +370,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"join",
 					"--orderer-address", ordererURL,
-					"--channel-id", channelID,
+					"--channelID", channelID,
 					"--config-block", blockPath,
 					"--ca-file", ordererCACert,
 					"--client-cert", clientCert,
@@ -382,7 +382,7 @@ var _ = Describe("osnadmin", func() {
 			})
 		})
 
-		Context("when the --channel-id does not match the channel ID in the block", func() {
+		Context("when the --channelID does not match the channel ID in the block", func() {
 			BeforeEach(func() {
 				channelID = "not-the-channel-youre-looking-for"
 			})
@@ -392,7 +392,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"join",
 					"--orderer-address", ordererURL,
-					"--channel-id", channelID,
+					"--channelID", channelID,
 					"--config-block", blockPath,
 					"--ca-file", ordererCACert,
 					"--client-cert", clientCert,
@@ -400,7 +400,7 @@ var _ = Describe("osnadmin", func() {
 				}
 				output, exit, err := executeForArgs(args)
 
-				checkFlagError(output, exit, err, "specified --channel-id not-the-channel-youre-looking-for does not match channel ID testing123 in config block")
+				checkFlagError(output, exit, err, "specified --channelID not-the-channel-youre-looking-for does not match channel ID testing123 in config block")
 			})
 		})
 
@@ -430,7 +430,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"join",
 					"--orderer-address", ordererURL,
-					"--channel-id", channelID,
+					"--channelID", channelID,
 					"--config-block", blockPath,
 					"--ca-file", ordererCACert,
 					"--client-cert", clientCert,
@@ -457,7 +457,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"join",
 					"--orderer-address", ordererURL,
-					"--channel-id", channelID,
+					"--channelID", channelID,
 					"--config-block", blockPath,
 					"--ca-file", ordererCACert,
 					"--client-cert", clientCert,
@@ -481,7 +481,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"join",
 					"--orderer-address", ordererURL,
-					"--channel-id", channelID,
+					"--channelID", channelID,
 					"--config-block", blockPath,
 				}
 				output, exit, err := executeForArgs(args)
@@ -498,7 +498,7 @@ var _ = Describe("osnadmin", func() {
 	})
 
 	Describe("Flags", func() {
-		It("accepts short versions of the --orderer-address, --channel-id, and --config-block flags", func() {
+		It("accepts short versions of the --orderer-address, --channelID, and --config-block flags", func() {
 			configBlock := blockWithGroups(
 				map[string]*cb.ConfigGroup{
 					"Application": {},
@@ -544,7 +544,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"list",
 					"--orderer-address", ordererURL,
-					"--channel-id", channelID,
+					"--channelID", channelID,
 					"--ca-file", ordererCACert,
 					"--client-cert", clientCert,
 					"--client-key", clientKey,
@@ -564,7 +564,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"remove",
 					"--orderer-address", ordererURL,
-					"--channel-id", channelID,
+					"--channelID", channelID,
 					"--ca-file", ordererCACert,
 					"--client-cert", clientCert,
 					"--client-key", clientKey,
@@ -605,7 +605,7 @@ var _ = Describe("osnadmin", func() {
 					"channel",
 					"join",
 					"--orderer-address", ordererURL,
-					"--channel-id", channelID,
+					"--channelID", channelID,
 					"--ca-file", ordererCACert,
 					"--client-cert", clientCert,
 					"--client-key", clientKey,

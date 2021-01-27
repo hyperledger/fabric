@@ -152,12 +152,12 @@ Before you can take advantage of this feature on a deployed ordering service, yo
     Now you can run `osnadmin channel remove` to remove the system channel from the node configuration:
 
     ```
-    osnadmin channel remove -o [ORDERER_ADMIN_LISTENADDRESS] --channel-id syschannel --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
+    osnadmin channel remove -o [ORDERER_ADMIN_LISTENADDRESS] --channelID syschannel --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
     ```
 
     For example:
     ```
-    osnadmin channel remove -o HOST1:7081 --channel-id syschannel --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
+    osnadmin channel remove -o HOST1:7081 --channelID syschannel --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
     ```
     When successful you see:
     ```
@@ -388,7 +388,7 @@ export OSN_TLS_CA_ROOT_CERT=../config/organizations/ordererOrganizations/orderer
 export ADMIN_TLS_SIGN_CERT=../config/admin-client/client-tls-cert.pem
 export ADMIN_TLS_PRIVATE_KEY=../config/admin-client/client-tls-key.pem
 
-osnadmin channel join --channel-id [CHANNEL_NAME]  --config-block [CHANNEL_CONFIG_BLOCK] -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
+osnadmin channel join --channelID [CHANNEL_NAME]  --config-block [CHANNEL_CONFIG_BLOCK] -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
 ```
 
 Replace:
@@ -401,7 +401,7 @@ Replace:
 
 For example:
 ```
-osnadmin channel join --channel-id channel1 --config-block genesis_block.pb -o OSN1.example.com:7050 --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
+osnadmin channel join --channelID channel1 --config-block genesis_block.pb -o OSN1.example.com:7050 --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
 ```
 
 **Note:** Because the connection between the `osnadmin` CLI and the orderer requires mutual TLS, you need to pass the `--client-cert` and `--client-key` parameters on each `osadmin` command. The `--client-cert` parameter points to the admin client certificate and `--client-key` refers to the admin client private key, both issued by the admin client TLS CA.
@@ -429,15 +429,15 @@ INFO 089 Start accepting requests as Raft leader at block [0] channel=channel1 n
 
 After the first orderer is added to the channel, subsequent nodes can join from either the genesis block or from the latest config block. When an orderer joins from a config block, its status is always "onboarding" while its ledger catches up to the config block that was specified in the join command, after which the status is automatically updated to "active".
 
-Use the `osnadmin channel list` command with the `--channel-id` flag to view the detailed `status` and `consensusRelation` of any **channel** on any ordering node:
+Use the `osnadmin channel list` command with the `--channelID` flag to view the detailed `status` and `consensusRelation` of any **channel** on any ordering node:
 
 ```
-osnadmin channel list --channel-id [CHANNEL_NAME] -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
+osnadmin channel list --channelID [CHANNEL_NAME] -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
 ```
 
 For example:
 ```
-osnadmin channel list --channel-id channel1 -o HOST2:7081 --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
+osnadmin channel list --channelID channel1 -o HOST2:7081 --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
 ```
 
 Replace:
@@ -479,7 +479,7 @@ To simplify the tutorial, we assume this additional orderer is part of the same 
 For this tutorial, the new orderer is not part of the consenter set. Run the following command to join the new orderer to the channel:
 
 ```
-osnadmin channel join --channel-id [CHANNEL_NAME]  --config-block [CHANNEL_CONFIG_BLOCK] -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
+osnadmin channel join --channelID [CHANNEL_NAME]  --config-block [CHANNEL_CONFIG_BLOCK] -o [ORDERER_ADMIN_LISTENADDRESS] --ca-file $OSN_TLS_CA_ROOT_CERT --client-cert $ADMIN_TLS_SIGN_CERT --client-key $ADMIN_TLS_PRIVATE_KEY
 ```
 
 An orderer can join the channel by providing the genesis block, or the latest config block. But the value of `consensusRelation` will always be "follower" until this orderer is added to the channel's consenter set, by submitting an update to the channel configuration.

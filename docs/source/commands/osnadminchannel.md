@@ -39,7 +39,7 @@ Flags:
                                  OSN
 
 Subcommands:
-  channel join --channel-id=CHANNEL-ID --config-block=CONFIG-BLOCK
+  channel join --channelID=CHANNEL-ID --config-block=CONFIG-BLOCK
     Join an Ordering Service Node (OSN) to a channel. If the channel does not
     yet exist, it will be created.
 
@@ -48,14 +48,14 @@ Subcommands:
     channel-id flag is set, more detailed information will be provided for that
     channel.
 
-  channel remove --channel-id=CHANNEL-ID
+  channel remove --channelID=CHANNEL-ID
     Remove an Ordering Service Node (OSN) from a channel.
 ```
 
 
 ## osnadmin channel join
 ```
-usage: osnadmin channel join --channel-id=CHANNEL-ID --config-block=CONFIG-BLOCK
+usage: osnadmin channel join --channelID=CHANNEL-ID --config-block=CONFIG-BLOCK
 
 Join an Ordering Service Node (OSN) to a channel. If the channel does not yet
 exist, it will be created.
@@ -73,7 +73,7 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
-  -c, --channel-id=CHANNEL-ID    Channel ID
+  -c, --channelID=CHANNEL-ID    Channel ID
   -b, --config-block=CONFIG-BLOCK  
                                  Path to the file containing an up-to-date
                                  config block for the channel
@@ -100,13 +100,13 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
-  -c, --channel-id=CHANNEL-ID    Channel ID
+  -c, --channelID=CHANNEL-ID    Channel ID
 ```
 
 
 ## osnadmin channel remove
 ```
-usage: osnadmin channel remove --channel-id=CHANNEL-ID
+usage: osnadmin channel remove --channelID=CHANNEL-ID
 
 Remove an Ordering Service Node (OSN) from a channel.
 
@@ -123,7 +123,7 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
-  -c, --channel-id=CHANNEL-ID    Channel ID
+  -c, --channelID=CHANNEL-ID    Channel ID
 ```
 
 ## Example Usage
@@ -138,7 +138,7 @@ Here's an example of the `osnadmin channel join` command.
 
   ```
 
-  osnadmin channel join -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channel-id mychannel --config-block mychannel-genesis-block.pb
+  osnadmin channel join -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel --config-block mychannel-genesis-block.pb
 
   Status: 201
   {
@@ -179,10 +179,10 @@ Here are some examples of the `osnadmin channel list` command.
 
   Status 200 and the list of channels are returned. 
 
-* Using the `--channel-id` flag to list more details for `mychannel`.
+* Using the `--channelID` flag to list more details for `mychannel`.
 
   ```
-  osnadmin channel list -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channel-id mychannel
+  osnadmin channel list -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel
 
   Status: 200
   {
@@ -204,7 +204,7 @@ Here's an example of the `osnadmin channel remove` command.
 * Removing channel `mychannel` from the orderer at `orderer.example.com:9443`.
 
   ```
-  osnadmin channel remove -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channel-id mychannel
+  osnadmin channel remove -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY --channelID mychannel
 
   Status: 204
   ```
