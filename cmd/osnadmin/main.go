@@ -49,14 +49,14 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	channel := app.Command("channel", "Channel actions")
 
 	join := channel.Command("join", "Join an Ordering Service Node (OSN) to a channel. If the channel does not yet exist, it will be created.")
-	joinChannelID := join.Flag("channel-id", "Channel ID").Short('c').Required().String()
+	joinChannelID := join.Flag("channelID", "Channel ID").Short('c').Required().String()
 	configBlockPath := join.Flag("config-block", "Path to the file containing an up-to-date config block for the channel").Short('b').Required().String()
 
 	list := channel.Command("list", "List channel information for an Ordering Service Node (OSN). If the channel-id flag is set, more detailed information will be provided for that channel.")
-	listChannelID := list.Flag("channel-id", "Channel ID").Short('c').String()
+	listChannelID := list.Flag("channelID", "Channel ID").Short('c').String()
 
 	remove := channel.Command("remove", "Remove an Ordering Service Node (OSN) from a channel.")
-	removeChannelID := remove.Flag("channel-id", "Channel ID").Short('c').Required().String()
+	removeChannelID := remove.Flag("channelID", "Channel ID").Short('c').Required().String()
 
 	command := kingpin.MustParse(app.Parse(args))
 
@@ -173,7 +173,7 @@ func validateBlockChannelID(blockBytes []byte, channelID string) error {
 	// quick sanity check that the orderer admin is joining
 	// the channel they think they're joining.
 	if channelID != blockChannelID {
-		return fmt.Errorf("specified --channel-id %s does not match channel ID %s in config block", channelID, blockChannelID)
+		return fmt.Errorf("specified --channelID %s does not match channel ID %s in config block", channelID, blockChannelID)
 	}
 
 	return nil
