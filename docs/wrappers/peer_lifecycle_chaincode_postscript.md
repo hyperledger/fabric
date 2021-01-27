@@ -228,7 +228,7 @@ also outputs which organizations have approved the chaincode definition. If an
 organization has approved the chaincode definition specified in the command, the
 command will return a value of true. You can use this command to learn whether enough
 channel members have approved a chaincode definition to meet the
-`Application/Channel/Endorsement` policy (a majority by default) before the
+`/Channel/Application/Endorsement` policy (a majority by default) before the
 definition can be committed to a channel.
 
   * Here is an example of the `peer lifecycle chaincode checkcommitreadiness` command,

@@ -27,7 +27,7 @@ Channel actions
 Flags:
       --help                     Show context-sensitive help (also try
                                  --help-long and --help-man).
-  -o, --orderer-address=ORDERER-ADDRESS  
+  -o, --orderer-address=ORDERER-ADDRESS
                                  Admin endpoint of the OSN
       --ca-file=CA-FILE          Path to file containing PEM-encoded TLS CA
                                  certificate(s) for the OSN
@@ -39,7 +39,7 @@ Flags:
                                  OSN
 
 Subcommands:
-  channel join --channelID=CHANNEL-ID --config-block=CONFIG-BLOCK
+  channel join --channelID=CHANNELID --config-block=CONFIG-BLOCK
     Join an Ordering Service Node (OSN) to a channel. If the channel does not
     yet exist, it will be created.
 
@@ -48,14 +48,14 @@ Subcommands:
     channel-id flag is set, more detailed information will be provided for that
     channel.
 
-  channel remove --channelID=CHANNEL-ID
+  channel remove --channelID=CHANNELID
     Remove an Ordering Service Node (OSN) from a channel.
 ```
 
 
 ## osnadmin channel join
 ```
-usage: osnadmin channel join --channelID=CHANNEL-ID --config-block=CONFIG-BLOCK
+usage: osnadmin channel join --channelID=CHANNELID --config-block=CONFIG-BLOCK
 
 Join an Ordering Service Node (OSN) to a channel. If the channel does not yet
 exist, it will be created.
@@ -63,7 +63,7 @@ exist, it will be created.
 Flags:
       --help                     Show context-sensitive help (also try
                                  --help-long and --help-man).
-  -o, --orderer-address=ORDERER-ADDRESS  
+  -o, --orderer-address=ORDERER-ADDRESS
                                  Admin endpoint of the OSN
       --ca-file=CA-FILE          Path to file containing PEM-encoded TLS CA
                                  certificate(s) for the OSN
@@ -73,8 +73,8 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
-  -c, --channelID=CHANNEL-ID    Channel ID
-  -b, --config-block=CONFIG-BLOCK  
+  -c, --channelID=CHANNELID      Channel ID
+  -b, --config-block=CONFIG-BLOCK
                                  Path to the file containing an up-to-date
                                  config block for the channel
 ```
@@ -90,7 +90,7 @@ flag is set, more detailed information will be provided for that channel.
 Flags:
       --help                     Show context-sensitive help (also try
                                  --help-long and --help-man).
-  -o, --orderer-address=ORDERER-ADDRESS  
+  -o, --orderer-address=ORDERER-ADDRESS
                                  Admin endpoint of the OSN
       --ca-file=CA-FILE          Path to file containing PEM-encoded TLS CA
                                  certificate(s) for the OSN
@@ -100,20 +100,20 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
-  -c, --channelID=CHANNEL-ID    Channel ID
+  -c, --channelID=CHANNELID      Channel ID
 ```
 
 
 ## osnadmin channel remove
 ```
-usage: osnadmin channel remove --channelID=CHANNEL-ID
+usage: osnadmin channel remove --channelID=CHANNELID
 
 Remove an Ordering Service Node (OSN) from a channel.
 
 Flags:
       --help                     Show context-sensitive help (also try
                                  --help-long and --help-man).
-  -o, --orderer-address=ORDERER-ADDRESS  
+  -o, --orderer-address=ORDERER-ADDRESS
                                  Admin endpoint of the OSN
       --ca-file=CA-FILE          Path to file containing PEM-encoded TLS CA
                                  certificate(s) for the OSN
@@ -123,7 +123,7 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
-  -c, --channelID=CHANNEL-ID    Channel ID
+  -c, --channelID=CHANNELID      Channel ID
 ```
 
 ## Example Usage
@@ -132,7 +132,7 @@ Flags:
 
 Here's an example of the `osnadmin channel join` command.
 
-* Create and join a sample channel `mychannel` defined by the application channel genesis 
+* Create and join a sample channel `mychannel` defined by the application channel genesis
   block contained in file `mychannel-genesis-block.pb`. Use the orderer admin endpoint
   at `orderer.example.com:9443`.
 
@@ -162,7 +162,7 @@ Here are some examples of the `osnadmin channel list` command.
   system channel (if one exists) and all of the application channels.
 
   ```
-  osnadmin channel list -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY 
+  osnadmin channel list -o orderer.example.com:9443 --ca-file $CA_FILE --client-cert $CLIENT_CERT --client-key $CLIENT_KEY
 
   Status: 200
   {
@@ -177,7 +177,7 @@ Here are some examples of the `osnadmin channel list` command.
 
   ```
 
-  Status 200 and the list of channels are returned. 
+  Status 200 and the list of channels are returned.
 
 * Using the `--channelID` flag to list more details for `mychannel`.
 
@@ -195,7 +195,7 @@ Here are some examples of the `osnadmin channel list` command.
 
   ```
 
-  Status 200 and the details of the channels are returned. 
+  Status 200 and the details of the channels are returned.
 
 ### osnadmin channel remove example
 
@@ -209,6 +209,6 @@ Here's an example of the `osnadmin channel remove` command.
   Status: 204
   ```
 
-  Status 204 is returned upon successful removal of a channel. 
+  Status 204 is returned upon successful removal of a channel.
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
