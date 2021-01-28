@@ -803,7 +803,7 @@ func serve(args []string) error {
 	)
 
 	if coreConfig.DiscoveryEnabled {
-		registerDiscoveryService(
+		ds := createDiscoveryService(
 			coreConfig,
 			peerInstance,
 			peerServer,
@@ -815,6 +815,8 @@ func serve(args []string) error {
 			),
 			gossipService,
 		)
+		logger.Info("Discovery service activated")
+		discprotos.RegisterDiscoveryServer(peerServer.Server(), ds)
 	}
 
 	if coreConfig.GatewayOptions.Enabled {
@@ -941,14 +943,14 @@ func createSelfSignedData() protoutil.SignedData {
 	}
 }
 
-func registerDiscoveryService(
+func createDiscoveryService(
 	coreConfig *peer.Config,
 	peerInstance *peer.Peer,
 	peerServer *comm.GRPCServer,
 	polMgr policies.ChannelPolicyManagerGetter,
 	metadataProvider *lifecycle.MetadataProvider,
 	gossipService *gossipservice.GossipService,
-) {
+) *discovery.Service {
 	mspID := coreConfig.LocalMSPID
 	localAccessPolicy := localPolicy(policydsl.SignedByAnyAdmin([]string{mspID}))
 	if coreConfig.DiscoveryOrgMembersAllowed {
@@ -972,14 +974,12 @@ func registerDiscoveryService(
 		return config
 	}))
 	support := discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl)
-	svc := discovery.NewService(discovery.Config{
+	return discovery.NewService(discovery.Config{
 		TLS:                          peerServer.TLSEnabled(),
 		AuthCacheEnabled:             coreConfig.DiscoveryAuthCacheEnabled,
 		AuthCacheMaxSize:             coreConfig.DiscoveryAuthCacheMaxSize,
 		AuthCachePurgeRetentionRatio: coreConfig.DiscoveryAuthCachePurgeRetentionRatio,
 	}, support)
-	logger.Info("Discovery service activated")
-	discprotos.RegisterDiscoveryServer(peerServer.Server(), svc)
 }
 
 // create a CC listener using peer.chaincodeListenAddress (and if that's not set use peer.peerAddress)
