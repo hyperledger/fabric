@@ -93,6 +93,7 @@ import (
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
+	gateway "github.com/hyperledger/fabric/internal/pkg/gateway/server"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -802,8 +803,9 @@ func serve(args []string) error {
 		coreConfig.ValidatorPoolSize,
 	)
 
+	var discoveryService gateway.DiscoveryService
 	if coreConfig.DiscoveryEnabled {
-		registerDiscoveryService(
+		discoveryService = registerDiscoveryService(
 			coreConfig,
 			peerInstance,
 			peerServer,
@@ -818,7 +820,7 @@ func serve(args []string) error {
 	}
 
 	if coreConfig.GatewayOptions.Enabled {
-		logger.Info("Starting peer with Gateway enabled")
+		registerGateway(peerServer, discoveryService)
 	}
 
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
@@ -948,7 +950,7 @@ func registerDiscoveryService(
 	polMgr policies.ChannelPolicyManagerGetter,
 	metadataProvider *lifecycle.MetadataProvider,
 	gossipService *gossipservice.GossipService,
-) {
+) gateway.DiscoveryService {
 	mspID := coreConfig.LocalMSPID
 	localAccessPolicy := localPolicy(policydsl.SignedByAnyAdmin([]string{mspID}))
 	if coreConfig.DiscoveryOrgMembersAllowed {
@@ -980,6 +982,18 @@ func registerDiscoveryService(
 	}, support)
 	logger.Info("Discovery service activated")
 	discprotos.RegisterDiscoveryServer(peerServer.Server(), svc)
+	return svc
+}
+
+func registerGateway(peerServer *comm.GRPCServer, discoveryService gateway.DiscoveryService) {
+	if nil == discoveryService {
+		logger.Warn("Gateway service enabled but not starting as discovery is disabled")
+		return
+	}
+
+	// Register Gateway service with peerServer
+
+	logger.Info("Gateway service started")
 }
 
 // create a CC listener using peer.chaincodeListenAddress (and if that's not set use peer.peerAddress)
