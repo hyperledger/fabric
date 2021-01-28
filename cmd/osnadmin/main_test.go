@@ -534,6 +534,18 @@ var _ = Describe("osnadmin", func() {
 			checkOutput(output, exit, err, 201, expectedOutput)
 		})
 
+		Context("when an unknown flag is used", func() {
+			It("returns an error for long flags", func() {
+				_, _, err := executeForArgs([]string{"channel", "list", "--bad-flag"})
+				Expect(err).To(MatchError("unknown long flag '--bad-flag'"))
+			})
+
+			It("returns an error for short flags", func() {
+				_, _, err := executeForArgs([]string{"channel", "list", "-z"})
+				Expect(err).To(MatchError("unknown short flag '-z'"))
+			})
+		})
+
 		Context("when the ca cert cannot be read", func() {
 			BeforeEach(func() {
 				ordererCACert = "not-the-ca-cert-youre-looking-for"

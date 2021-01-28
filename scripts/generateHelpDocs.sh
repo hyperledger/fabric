@@ -29,7 +29,7 @@ generateHelpText(){
 
 ## $x
 \`\`\`
-$($x --help 2>&1)
+$($x --help 2>&1 | sed -E 's/[[:space:]]+$//g')
 \`\`\`
 
 EOF

@@ -52,13 +52,16 @@ func executeForArgs(args []string) (output string, exit int, err error) {
 	joinChannelID := join.Flag("channelID", "Channel ID").Short('c').Required().String()
 	configBlockPath := join.Flag("config-block", "Path to the file containing an up-to-date config block for the channel").Short('b').Required().String()
 
-	list := channel.Command("list", "List channel information for an Ordering Service Node (OSN). If the channel-id flag is set, more detailed information will be provided for that channel.")
+	list := channel.Command("list", "List channel information for an Ordering Service Node (OSN). If the channelID flag is set, more detailed information will be provided for that channel.")
 	listChannelID := list.Flag("channelID", "Channel ID").Short('c').String()
 
 	remove := channel.Command("remove", "Remove an Ordering Service Node (OSN) from a channel.")
 	removeChannelID := remove.Flag("channelID", "Channel ID").Short('c').Required().String()
 
-	command := kingpin.MustParse(app.Parse(args))
+	command, err := app.Parse(args)
+	if err != nil {
+		return "", 1, err
+	}
 
 	//
 	// flag validation
