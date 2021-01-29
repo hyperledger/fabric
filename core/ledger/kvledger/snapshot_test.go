@@ -21,14 +21,12 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger"
-	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/ledger/confighistory/confighistorytest"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -108,7 +106,7 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 	)
 
 	// add dummy entry in collection config history and commit block-2 and generate the snapshot
-	addDummyEntryInCollectionConfigHistory(t, provider, kvlgr.ledgerID, "ns", 1, []*pb.StaticCollectionConfig{{Name: "coll"}})
+	addDummyEntryInCollectionConfigHistory(t, provider, kvlgr.ledgerID, "ns", 1, []*peer.StaticCollectionConfig{{Name: "coll"}})
 
 	// add block-2 only with public and private data and generate the snapshot
 	blockAndPvtdata2 := prepareNextBlockForTest(t, kvlgr, blkGenerator, "SimulateForBlk2",
@@ -500,7 +498,7 @@ func TestSnapshotsDirInitializingErrors(t *testing.T) {
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 		_, err = NewProvider(
-			&lgr.Initializer{
+			&ledger.Initializer{
 				DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 				MetricsProvider:               &disabled.Provider{},
 				Config:                        conf,
@@ -1018,7 +1016,7 @@ func TestMostRecentCollectionConfigFetcher(t *testing.T) {
 	chaincodeName := "test-chaincode"
 
 	implicitCollectionName := implicitcollection.NameForOrg("test-org")
-	implicitCollection := &pb.StaticCollectionConfig{
+	implicitCollection := &peer.StaticCollectionConfig{
 		Name: implicitCollectionName,
 	}
 	mockDeployedCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
@@ -1026,7 +1024,7 @@ func TestMostRecentCollectionConfigFetcher(t *testing.T) {
 
 	provider := testutilNewProvider(conf, t, mockDeployedCCInfoProvider)
 	explicitCollectionName := "explicit-coll"
-	explicitCollection := &pb.StaticCollectionConfig{
+	explicitCollection := &peer.StaticCollectionConfig{
 		Name: explicitCollectionName,
 	}
 	testutilPersistExplicitCollectionConfig(
@@ -1036,7 +1034,7 @@ func TestMostRecentCollectionConfigFetcher(t *testing.T) {
 		ledgerID,
 		chaincodeName,
 		testutilCollConfigPkg(
-			[]*pb.StaticCollectionConfig{
+			[]*peer.StaticCollectionConfig{
 				explicitCollection,
 			},
 		),
@@ -1051,7 +1049,7 @@ func TestMostRecentCollectionConfigFetcher(t *testing.T) {
 	testcases := []struct {
 		name                 string
 		lookupCollectionName string
-		expectedOutput       *pb.StaticCollectionConfig
+		expectedOutput       *peer.StaticCollectionConfig
 	}{
 		{
 			name:                 "lookup-implicit-collection",

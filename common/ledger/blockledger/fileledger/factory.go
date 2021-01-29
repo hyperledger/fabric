@@ -122,16 +122,17 @@ func New(directory string, metricsProvider metrics.Provider) (blockledger.Factor
 	}
 
 	files, err := factory.removeFileRepo.List()
-	if len(files) != 0 {
-		for _, fileName := range files {
-			channelID := factory.removeFileRepo.FileToBaseName(fileName)
-			err = factory.Remove(channelID)
-			if err != nil {
-				logger.Errorf("Failed to remove channel %s: %s", channelID, err.Error())
-				return nil, err
-			}
-			logger.Infof("Removed channel: %s", channelID)
+	if err != nil {
+		return nil, err
+	}
+	for _, fileName := range files {
+		channelID := factory.removeFileRepo.FileToBaseName(fileName)
+		err = factory.Remove(channelID)
+		if err != nil {
+			logger.Errorf("Failed to remove channel %s: %s", channelID, err.Error())
+			return nil, err
 		}
+		logger.Infof("Removed channel: %s", channelID)
 	}
 
 	return factory, nil

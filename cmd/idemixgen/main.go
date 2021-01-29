@@ -193,6 +193,8 @@ func checkDirectoryNotExists(path string, errorMessage string) {
 	}
 }
 
+//lint:file-ignore SA5011 handleError is unconventional
+
 func handleError(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

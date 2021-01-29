@@ -160,6 +160,7 @@ func TestNewErrors(t *testing.T) {
 		_, err = os.Create(removeFile)
 		require.NoError(t, err, "Error creating temp file: %s", err)
 		err = os.Chmod(removeFile, 0444)
+		require.NoError(t, err, "Error changing permissions of temp file: %s", err)
 		err = os.Chmod(filepath.Join(dir, "pendingops", "remove"), 0444)
 		require.NoError(t, err, "Error changing permissions of temp file: %s", err)
 
@@ -179,6 +180,7 @@ func TestNewErrors(t *testing.T) {
 		_, err = os.Create(removeFile)
 		require.NoError(t, err, "Error creating temp file: %s", err)
 		err = os.Chmod(removeFile, 0444)
+		require.NoError(t, err, "Error changing permissions of temp file: %s", err)
 		err = os.Chmod(filepath.Join(dir, "pendingops", "remove"), 0544)
 		require.NoError(t, err, "Error changing permissions of temp file: %s", err)
 

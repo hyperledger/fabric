@@ -309,7 +309,7 @@ func checkForModifiedCollectionsBTL(newCollectionsMap map[string]*pb.StaticColle
 		}
 
 		oldCollectionName := oldCollection.GetName()
-		newCollection, _ := newCollectionsMap[oldCollectionName]
+		newCollection := newCollectionsMap[oldCollectionName]
 		// BlockToLive cannot be changed
 		if newCollection.GetBlockToLive() != oldCollection.GetBlockToLive() {
 			modifiedCollectionsBTL = append(modifiedCollectionsBTL, oldCollectionName)

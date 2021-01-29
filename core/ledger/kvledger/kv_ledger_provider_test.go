@@ -28,7 +28,6 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
-	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/protoutil"
@@ -166,7 +165,7 @@ func TestNewProviderIdStoreFormatError(t *testing.T) {
 
 	// NewProvider fails because ledgerProvider (idStore) has old format
 	_, err := NewProvider(
-		&lgr.Initializer{
+		&ledger.Initializer{
 			DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 			MetricsProvider:               &disabled.Provider{},
 			Config:                        conf,
@@ -375,7 +374,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 	defer provider1.Close()
 
 	numLedgers := 10
-	ledgers := make([]lgr.PeerLedger, numLedgers)
+	ledgers := make([]ledger.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		bg, gb := testutil.NewBlockGenerator(t, constructTestLedgerID(i), false)
 		l, err := provider1.CreateFromGenesisBlock(gb)
@@ -390,7 +389,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 		require.NoError(t, err)
 		pubSimBytes, _ := res.GetPubSimulationBytes()
 		b := bg.NextBlock([][]byte{pubSimBytes})
-		err = l.CommitLegacy(&lgr.BlockAndPvtData{Block: b}, &ledger.CommitOptions{})
+		err = l.CommitLegacy(&ledger.BlockAndPvtData{Block: b}, &ledger.CommitOptions{})
 		l.Close()
 		require.NoError(t, err)
 	}
@@ -399,7 +398,7 @@ func TestMultipleLedgerBasicRW(t *testing.T) {
 
 	provider2 := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider2.Close()
-	ledgers = make([]lgr.PeerLedger, numLedgers)
+	ledgers = make([]ledger.PeerLedger, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		l, err := provider2.Open(constructTestLedgerID(i))
 		require.NoError(t, err)
@@ -425,29 +424,29 @@ func TestLedgerBackup(t *testing.T) {
 	restorePath := filepath.Join(basePath, "kvledger2")
 
 	// create and populate a ledger in the original environment
-	origConf := &lgr.Config{
+	origConf := &ledger.Config{
 		RootFSPath:    originalPath,
-		StateDBConfig: &lgr.StateDBConfig{},
-		PrivateDataConfig: &lgr.PrivateDataConfig{
+		StateDBConfig: &ledger.StateDBConfig{},
+		PrivateDataConfig: &ledger.PrivateDataConfig{
 			MaxBatchSize:                        5000,
 			BatchesInterval:                     1000,
 			PurgeInterval:                       100,
 			DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 		},
-		HistoryDBConfig: &lgr.HistoryDBConfig{
+		HistoryDBConfig: &ledger.HistoryDBConfig{
 			Enabled: true,
 		},
-		SnapshotsConfig: &lgr.SnapshotsConfig{
+		SnapshotsConfig: &ledger.SnapshotsConfig{
 			RootDir: filepath.Join(originalPath, "snapshots"),
 		},
 	}
 	provider := testutilNewProvider(origConf, t, &mock.DeployedChaincodeInfoProvider{})
 	bg, gb := testutil.NewBlockGenerator(t, ledgerid, false)
 	gbHash := protoutil.BlockHeaderHash(gb.Header)
-	ledger, _ := provider.CreateFromGenesisBlock(gb)
+	lgr, _ := provider.CreateFromGenesisBlock(gb)
 
 	txid := util.GenerateUUID()
-	simulator, _ := ledger.NewTxSimulator(txid)
+	simulator, _ := lgr.NewTxSimulator(txid)
 	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value1")))
 	require.NoError(t, simulator.SetState("ns1", "key2", []byte("value2")))
 	require.NoError(t, simulator.SetState("ns1", "key3", []byte("value3")))
@@ -455,10 +454,10 @@ func TestLedgerBackup(t *testing.T) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimBytes})
-	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block1}, &lgr.CommitOptions{}))
+	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block1}, &ledger.CommitOptions{}))
 
 	txid = util.GenerateUUID()
-	simulator, _ = ledger.NewTxSimulator(txid)
+	simulator, _ = lgr.NewTxSimulator(txid)
 	require.NoError(t, simulator.SetState("ns1", "key1", []byte("value4")))
 	require.NoError(t, simulator.SetState("ns1", "key2", []byte("value5")))
 	require.NoError(t, simulator.SetState("ns1", "key3", []byte("value6")))
@@ -466,9 +465,9 @@ func TestLedgerBackup(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	block2 := bg.NextBlock([][]byte{pubSimBytes})
-	require.NoError(t, ledger.CommitLegacy(&lgr.BlockAndPvtData{Block: block2}, &lgr.CommitOptions{}))
+	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block2}, &ledger.CommitOptions{}))
 
-	ledger.Close()
+	lgr.Close()
 	provider.Close()
 
 	// remove the statedb, historydb, and block indexes (they are supposed to be auto created during opening of an existing ledger)
@@ -479,19 +478,19 @@ func TestLedgerBackup(t *testing.T) {
 	require.NoError(t, os.Rename(originalPath, restorePath))
 
 	// Instantiate the ledger from restore environment and this should behave exactly as it would have in the original environment
-	restoreConf := &lgr.Config{
+	restoreConf := &ledger.Config{
 		RootFSPath:    restorePath,
-		StateDBConfig: &lgr.StateDBConfig{},
-		PrivateDataConfig: &lgr.PrivateDataConfig{
+		StateDBConfig: &ledger.StateDBConfig{},
+		PrivateDataConfig: &ledger.PrivateDataConfig{
 			MaxBatchSize:                        5000,
 			BatchesInterval:                     1000,
 			PurgeInterval:                       100,
 			DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 		},
-		HistoryDBConfig: &lgr.HistoryDBConfig{
+		HistoryDBConfig: &ledger.HistoryDBConfig{
 			Enabled: true,
 		},
-		SnapshotsConfig: &lgr.SnapshotsConfig{
+		SnapshotsConfig: &ledger.SnapshotsConfig{
 			RootDir: filepath.Join(restorePath, "snapshots"),
 		},
 	}
@@ -501,33 +500,33 @@ func TestLedgerBackup(t *testing.T) {
 	_, err = provider.CreateFromGenesisBlock(gb)
 	require.EqualError(t, err, "ledger [TestLedger] already exists with state [ACTIVE]")
 
-	ledger, err = provider.Open(ledgerid)
+	lgr, err = provider.Open(ledgerid)
 	require.NoError(t, err)
-	defer ledger.Close()
+	defer lgr.Close()
 
 	block1Hash := protoutil.BlockHeaderHash(block1.Header)
 	block2Hash := protoutil.BlockHeaderHash(block2.Header)
-	bcInfo, _ := ledger.GetBlockchainInfo()
+	bcInfo, _ := lgr.GetBlockchainInfo()
 	require.Equal(t, &common.BlockchainInfo{
 		Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
 	}, bcInfo)
 
-	b0, _ := ledger.GetBlockByHash(gbHash)
+	b0, _ := lgr.GetBlockByHash(gbHash)
 	require.True(t, proto.Equal(b0, gb), "proto messages are not equal")
 
-	b1, _ := ledger.GetBlockByHash(block1Hash)
+	b1, _ := lgr.GetBlockByHash(block1Hash)
 	require.True(t, proto.Equal(b1, block1), "proto messages are not equal")
 
-	b2, _ := ledger.GetBlockByHash(block2Hash)
+	b2, _ := lgr.GetBlockByHash(block2Hash)
 	require.True(t, proto.Equal(b2, block2), "proto messages are not equal")
 
-	b0, _ = ledger.GetBlockByNumber(0)
+	b0, _ = lgr.GetBlockByNumber(0)
 	require.True(t, proto.Equal(b0, gb), "proto messages are not equal")
 
-	b1, _ = ledger.GetBlockByNumber(1)
+	b1, _ = lgr.GetBlockByNumber(1)
 	require.True(t, proto.Equal(b1, block1), "proto messages are not equal")
 
-	b2, _ = ledger.GetBlockByNumber(2)
+	b2, _ = lgr.GetBlockByNumber(2)
 	require.True(t, proto.Equal(b2, block2), "proto messages are not equal")
 
 	// get the tran id from the 2nd block, then use it to test GetTransactionByID()
@@ -539,17 +538,17 @@ func TestLedgerBackup(t *testing.T) {
 	chdr, err := protoutil.UnmarshalChannelHeader(payload2.Header.ChannelHeader)
 	require.NoError(t, err, "Error upon GetChannelHeaderFromBytes")
 	txID2 := chdr.TxId
-	processedTran2, err := ledger.GetTransactionByID(txID2)
+	processedTran2, err := lgr.GetTransactionByID(txID2)
 	require.NoError(t, err, "Error upon GetTransactionByID")
 	// get the tran envelope from the retrieved ProcessedTransaction
 	retrievedTxEnv2 := processedTran2.TransactionEnvelope
 	require.Equal(t, txEnv2, retrievedTxEnv2)
 
-	qe, _ := ledger.NewQueryExecutor()
+	qe, _ := lgr.NewQueryExecutor()
 	value1, _ := qe.GetState("ns1", "key1")
 	require.Equal(t, []byte("value4"), value1)
 
-	hqe, err := ledger.NewHistoryQueryExecutor()
+	hqe, err := lgr.NewHistoryQueryExecutor()
 	require.NoError(t, err)
 	itr, err := hqe.GetHistoryForKey("ns1", "key1")
 	require.NoError(t, err)
@@ -567,22 +566,22 @@ func constructTestLedgerID(i int) string {
 	return fmt.Sprintf("ledger_%06d", i)
 }
 
-func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
+func testConfig(t *testing.T) (conf *ledger.Config, cleanup func()) {
 	path, err := ioutil.TempDir("", "kvledger")
 	require.NoError(t, err, "Failed to create test ledger directory")
-	conf = &lgr.Config{
+	conf = &ledger.Config{
 		RootFSPath:    path,
-		StateDBConfig: &lgr.StateDBConfig{},
-		PrivateDataConfig: &lgr.PrivateDataConfig{
+		StateDBConfig: &ledger.StateDBConfig{},
+		PrivateDataConfig: &ledger.PrivateDataConfig{
 			MaxBatchSize:                        5000,
 			BatchesInterval:                     1000,
 			PurgeInterval:                       100,
 			DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 		},
-		HistoryDBConfig: &lgr.HistoryDBConfig{
+		HistoryDBConfig: &ledger.HistoryDBConfig{
 			Enabled: true,
 		},
-		SnapshotsConfig: &lgr.SnapshotsConfig{
+		SnapshotsConfig: &ledger.SnapshotsConfig{
 			RootDir: filepath.Join(path, "snapshots"),
 		},
 	}
@@ -593,12 +592,12 @@ func testConfig(t *testing.T) (conf *lgr.Config, cleanup func()) {
 	return conf, cleanup
 }
 
-func testutilNewProvider(conf *lgr.Config, t *testing.T, ccInfoProvider *mock.DeployedChaincodeInfoProvider) *Provider {
+func testutilNewProvider(conf *ledger.Config, t *testing.T, ccInfoProvider *mock.DeployedChaincodeInfoProvider) *Provider {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
 	provider, err := NewProvider(
-		&lgr.Initializer{
+		&ledger.Initializer{
 			DeployedChaincodeInfoProvider:   ccInfoProvider,
 			MetricsProvider:                 &disabled.Provider{},
 			Config:                          conf,
@@ -620,7 +619,7 @@ type nsCollBtlConfig struct {
 func testutilNewProviderWithCollectionConfig(
 	t *testing.T,
 	nsCollBtlConfigs []*nsCollBtlConfig,
-	conf *lgr.Config,
+	conf *ledger.Config,
 ) *Provider {
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	mockCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
@@ -641,17 +640,17 @@ func testutilNewProviderWithCollectionConfig(
 		nsCollMap[nsCollBtlConf.namespace] = collMap
 	}
 
-	mockCCInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe lgr.SimpleQueryExecutor) (*lgr.DeployedChaincodeInfo, error) {
+	mockCCInfoProvider.ChaincodeInfoStub = func(channelName, ccName string, qe ledger.SimpleQueryExecutor) (*ledger.DeployedChaincodeInfo, error) {
 		for i, nsCollBtlConf := range nsCollBtlConfigs {
 			if ccName == nsCollBtlConf.namespace {
-				return &lgr.DeployedChaincodeInfo{
+				return &ledger.DeployedChaincodeInfo{
 					Name: nsCollBtlConf.namespace, ExplicitCollectionConfigPkg: collectionConfPkgs[i]}, nil
 			}
 		}
 		return nil, nil
 	}
 
-	mockCCInfoProvider.AllCollectionsConfigPkgStub = func(channelName, ccName string, qe lgr.SimpleQueryExecutor) (*peer.CollectionConfigPackage, error) {
+	mockCCInfoProvider.AllCollectionsConfigPkgStub = func(channelName, ccName string, qe ledger.SimpleQueryExecutor) (*peer.CollectionConfigPackage, error) {
 		for i, nsCollBtlConf := range nsCollBtlConfigs {
 			if ccName == nsCollBtlConf.namespace {
 				return collectionConfPkgs[i], nil
@@ -661,7 +660,7 @@ func testutilNewProviderWithCollectionConfig(
 
 	}
 
-	mockCCInfoProvider.CollectionInfoStub = func(channelName, ccName, collName string, qe lgr.SimpleQueryExecutor) (*peer.StaticCollectionConfig, error) {
+	mockCCInfoProvider.CollectionInfoStub = func(channelName, ccName, collName string, qe ledger.SimpleQueryExecutor) (*peer.StaticCollectionConfig, error) {
 		for _, nsCollBtlConf := range nsCollBtlConfigs {
 			if ccName == nsCollBtlConf.namespace {
 				return nsCollMap[nsCollBtlConf.namespace][collName], nil

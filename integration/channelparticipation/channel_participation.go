@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 )
 
@@ -128,7 +128,7 @@ func Remove(n *nwo.Network, o *nwo.Orderer, channel string) {
 }
 
 func ChannelListMatcher(list ChannelList, expectedChannels []string, systemChannel ...string) {
-	Expect(list).To(MatchFields(IgnoreExtras, Fields{
+	Expect(list).To(gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 		"Channels":      channelsMatcher(expectedChannels),
 		"SystemChannel": systemChannelMatcher(systemChannel...),
 	}))
@@ -149,11 +149,11 @@ func systemChannelMatcher(systemChannel ...string) types.GomegaMatcher {
 	if len(systemChannel) == 0 {
 		return BeNil()
 	}
-	return PointTo(channelInfoShortMatcher(systemChannel[0]))
+	return gstruct.PointTo(channelInfoShortMatcher(systemChannel[0]))
 }
 
 func channelInfoShortMatcher(channel string) types.GomegaMatcher {
-	return MatchFields(IgnoreExtras, Fields{
+	return gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 		"Name": Equal(channel),
 		"URL":  Equal(fmt.Sprintf("/participation/v1/channels/%s", channel)),
 	})

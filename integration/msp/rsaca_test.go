@@ -220,8 +220,7 @@ func createMSP(baseDir, domain string, nodeOUs bool) (signCA *CA, tlsCA *CA, adm
 }
 
 func writeCA(ca *CA, dir string) {
-	var err error
-	err = os.MkdirAll(dir, 0755)
+	err := os.MkdirAll(dir, 0755)
 	Expect(err).NotTo(HaveOccurred())
 
 	certFilename := filepath.Join(dir, ca.certFilename())

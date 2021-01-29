@@ -1590,7 +1590,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		require.NotNil(t, registrar.GetChain("channel-im-not-a-member-of"))
 		require.Contains(t, ledgerFactory.ChannelIDs(), "channel-im-not-a-member-of")
 		consenter.IsChannelMemberStub = func(b *cb.Block) (bool, error) {
-			if bytes.Compare(b.Header.DataHash, genesisBlockAppRaft.Header.DataHash) == 0 {
+			if bytes.Equal(b.Header.DataHash, genesisBlockAppRaft.Header.DataHash) {
 				return true, nil
 			}
 			return false, nil
@@ -1651,7 +1651,7 @@ func TestRegistrar_RemoveChannel(t *testing.T) {
 		require.Contains(t, ledgerFactory.ChannelIDs(), "channel-im-not-a-member-of")
 		consenter.IsChannelMemberStub = func(b *cb.Block) (bool, error) {
 			os.RemoveAll(filepath.Join(tmpdir, "pendingops", "remove"))
-			if bytes.Compare(b.Header.DataHash, genesisBlockAppRaft.Header.DataHash) == 0 {
+			if bytes.Equal(b.Header.DataHash, genesisBlockAppRaft.Header.DataHash) {
 				return true, nil
 			}
 			return false, nil

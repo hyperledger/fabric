@@ -20,7 +20,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	protosraft "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -902,7 +901,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("14) Adding the second orderer to system channel")
-			addConsenter(network, peer, orderer, syschannel, etcdraft.Consenter{
+			addConsenter(network, peer, orderer, syschannel, protosraft.Consenter{
 				ServerTlsCert: secondOrdererCertificate,
 				ClientTlsCert: secondOrdererCertificate,
 				Host:          "127.0.0.1",
@@ -925,7 +924,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Eventually(o2Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
 
 			By("18) Adding orderer2 to channel2")
-			addConsenter(network, peer, orderer, channel2, etcdraft.Consenter{
+			addConsenter(network, peer, orderer, channel2, protosraft.Consenter{
 				ServerTlsCert: secondOrdererCertificate,
 				ClientTlsCert: secondOrdererCertificate,
 				Host:          "127.0.0.1",

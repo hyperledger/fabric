@@ -762,7 +762,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}, Header: &common.BlockHeader{}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	require.EqualError(t, err, fmt.Sprintf("LSCC invocation is attempting to write to namespace bogusbogus"))
+	require.EqualError(t, err, "LSCC invocation is attempting to write to namespace bogusbogus")
 }
 
 func TestAlreadyDeployed(t *testing.T) {
@@ -1322,7 +1322,7 @@ func TestInvalidateUpgradeBadVersion(t *testing.T) {
 	require.EqualError(t, err, fmt.Sprintf("Existing version of the cc on the ledger (%s) should be different from the upgraded one", ccver))
 }
 
-func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bool) {
+func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 	state := make(map[string]map[string][]byte)
 	state["lscc"] = make(map[string][]byte)
 
@@ -1344,7 +1344,7 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 	v := newCustomValidationInstance(sf, capabilities)
 
 	ccname := "mycc"
-	ccver = "2"
+	ccver := "2"
 
 	policy, err := getSignedByMSPMemberPolicy(mspid)
 	if err != nil {
@@ -1512,9 +1512,9 @@ func validateUpgradeWithCollection(t *testing.T, ccver string, V1_2Validation bo
 
 func TestValidateUpgradeWithCollection(t *testing.T) {
 	// with V1_2Validation enabled
-	validateUpgradeWithCollection(t, "v12-validation-enabled", true)
+	validateUpgradeWithCollection(t, true)
 	// with V1_2Validation disabled
-	validateUpgradeWithCollection(t, "v12-validation-disabled", false)
+	validateUpgradeWithCollection(t, false)
 }
 
 func TestValidateUpgradeWithPoliciesOK(t *testing.T) {
@@ -1575,11 +1575,11 @@ func TestValidateUpgradeWithNewFailAllIP(t *testing.T) {
 	// We run this test twice, once with the V11 capability (and expect
 	// a failure) and once without (and we expect success).
 
-	validateUpgradeWithNewFailAllIP(t, "v11-capabilityenabled", true, true)
-	validateUpgradeWithNewFailAllIP(t, "v11-capabilitydisabled", false, false)
+	validateUpgradeWithNewFailAllIP(t, true, true)
+	validateUpgradeWithNewFailAllIP(t, false, false)
 }
 
-func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, expecterr bool) {
+func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool) {
 	state := make(map[string]map[string][]byte)
 	state["lscc"] = make(map[string][]byte)
 
@@ -1601,7 +1601,7 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, ccver string, v11capability, 
 	v := newCustomValidationInstance(sf, capabilities)
 
 	ccname := "mycc"
-	ccver = "2"
+	ccver := "2"
 
 	// create lscc record with accept all instantiation policy
 	ipbytes, err := proto.Marshal(policydsl.AcceptAllPolicy)

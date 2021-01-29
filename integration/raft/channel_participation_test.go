@@ -243,7 +243,6 @@ var _ = Describe("ChannelParticipation", func() {
 				Height:            6,
 			}))
 
-			consenters = []*nwo.Orderer{orderer2, orderer3}
 			submitPeerTxn(orderer2, peer, network, channelparticipation.ChannelInfo{
 				Name:              "participation-trophy",
 				URL:               "/participation/v1/channels/participation-trophy",

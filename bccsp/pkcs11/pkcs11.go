@@ -29,7 +29,7 @@ import (
 )
 
 var logger = flogging.MustGetLogger("bccsp_p11")
-var regex = regexp.MustCompile(".*0xB.:\\sCKR.+")
+var invalidSessionRegex = regexp.MustCompile(`.*0xB.:\sCKR.+`)
 
 type Provider struct {
 	bccsp.BCCSP
@@ -803,7 +803,7 @@ func (csp *Provider) ecPoint(session pkcs11.SessionHandle, key pkcs11.ObjectHand
 
 func (csp *Provider) handleSessionReturn(err error, session pkcs11.SessionHandle) {
 	if err != nil {
-		if regex.MatchString(err.Error()) {
+		if invalidSessionRegex.MatchString(err.Error()) {
 			logger.Infof("PKCS11 session invalidated, closing session: %v", err)
 			csp.closeSession(session)
 			return

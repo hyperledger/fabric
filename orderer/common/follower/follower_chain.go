@@ -224,10 +224,7 @@ func (c *Chain) Start() {
 // Halt signals the Chain to stop and waits for the internal go-routine to exit.
 func (c *Chain) Halt() {
 	c.halt()
-
-	select {
-	case <-c.doneChan:
-	}
+	<-c.doneChan
 }
 
 func (c *Chain) halt() {

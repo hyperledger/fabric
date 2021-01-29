@@ -51,6 +51,7 @@ func TestRSAPublicKey(t *testing.T) {
 	bytes, err := k.Bytes()
 	require.NoError(t, err)
 	bytes2, err := x509.MarshalPKIXPublicKey(k.pubKey)
+	require.NoError(t, err)
 	require.Equal(t, bytes2, bytes, "bytes are not computed in the right way.")
 
 	_, err = (&rsaPublicKey{}).Bytes()

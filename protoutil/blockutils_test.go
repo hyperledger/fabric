@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/protoutil"
@@ -53,7 +52,7 @@ func TestNewBlock(t *testing.T) {
 }
 
 func TestGoodBlockHeaderBytes(t *testing.T) {
-	goodBlockHeader := &common.BlockHeader{
+	goodBlockHeader := &cb.BlockHeader{
 		Number:       1,
 		PreviousHash: []byte("foo"),
 		DataHash:     []byte("bar"),
@@ -61,7 +60,7 @@ func TestGoodBlockHeaderBytes(t *testing.T) {
 
 	_ = protoutil.BlockHeaderBytes(goodBlockHeader) // Should not panic
 
-	goodBlockHeaderMaxNumber := &common.BlockHeader{
+	goodBlockHeaderMaxNumber := &cb.BlockHeader{
 		Number:       math.MaxUint64,
 		PreviousHash: []byte("foo"),
 		DataHash:     []byte("bar"),
@@ -86,7 +85,7 @@ func TestGetChannelIDFromBlockBytes(t *testing.T) {
 
 func TestGetChannelIDFromBlock(t *testing.T) {
 	var err error
-	var gb *common.Block
+	var gb *cb.Block
 	var cid string
 
 	// nil block

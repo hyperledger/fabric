@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -198,7 +197,7 @@ func (c *SimpleCollectionStore) RetrieveCollectionPersistenceConfigs(cc Collecti
 // memberOnlyRead & memberOnlyWrite
 func (c *SimpleCollectionStore) RetrieveReadWritePermission(
 	cc CollectionCriteria,
-	signedProposal *pb.SignedProposal,
+	signedProposal *peer.SignedProposal,
 	qe ledger.QueryExecutor,
 ) (bool, bool, error) {
 	collection, err := c.retrieveSimpleCollection(cc, qe)
@@ -227,7 +226,7 @@ func canAnyoneReadAndWrite(collection *SimpleCollection) bool {
 	return false
 }
 
-func isCreatorOfProposalAMember(signedProposal *pb.SignedProposal, collection *SimpleCollection) (bool, error) {
+func isCreatorOfProposalAMember(signedProposal *peer.SignedProposal, collection *SimpleCollection) (bool, error) {
 	signedData, err := getSignedData(signedProposal)
 	if err != nil {
 		return false, err
@@ -237,7 +236,7 @@ func isCreatorOfProposalAMember(signedProposal *pb.SignedProposal, collection *S
 	return accessFilter(signedData), nil
 }
 
-func getSignedData(signedProposal *pb.SignedProposal) (protoutil.SignedData, error) {
+func getSignedData(signedProposal *peer.SignedProposal) (protoutil.SignedData, error) {
 	proposal, err := protoutil.UnmarshalProposal(signedProposal.ProposalBytes)
 	if err != nil {
 		return protoutil.SignedData{}, err

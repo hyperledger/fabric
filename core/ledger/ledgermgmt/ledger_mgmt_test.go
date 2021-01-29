@@ -246,6 +246,7 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 
 	// CreateLedger should work after the previous CreateLedgerFromSnapshot is done
 	_, err = ledgerMgr2.CreateLedger(channelID3, gb)
+	require.NoError(t, err, "creating ledger for %s should have succeeded", channelID3)
 
 	// CreateLedgerFromSnapshot should work after the previous CreateLedgerFromSnapshot is done
 	callback = func(l ledger.PeerLedger, cid string) {}

@@ -13,7 +13,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -302,15 +301,15 @@ func TestBlockRetrievalWithSnapshot(t *testing.T) {
 	require.NoError(t, err)
 
 	blk, status := it.Next()
-	require.Equal(t, common.Status_SUCCESS, status)
+	require.Equal(t, cb.Status_SUCCESS, status)
 	require.Equal(t, nextBlk, blk)
 
 	blk, status = it2.Next()
-	require.Equal(t, common.Status_SUCCESS, status)
+	require.Equal(t, cb.Status_SUCCESS, status)
 	require.Equal(t, nextBlk, blk)
 
 	blk, status = it3.Next()
-	require.Equal(t, common.Status_SUCCESS, status)
+	require.Equal(t, cb.Status_SUCCESS, status)
 	require.Equal(t, nextBlk, blk)
 }
 

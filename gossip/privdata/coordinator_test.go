@@ -35,11 +35,9 @@ import (
 	"github.com/hyperledger/fabric/gossip/metrics"
 	gmetricsmocks "github.com/hyperledger/fabric/gossip/metrics/mocks"
 	privdatacommon "github.com/hyperledger/fabric/gossip/privdata/common"
-	"github.com/hyperledger/fabric/gossip/privdata/mocks"
-	capabilitymock "github.com/hyperledger/fabric/gossip/privdata/mocks"
+	privdatamocks "github.com/hyperledger/fabric/gossip/privdata/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
@@ -595,7 +593,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
 	hash := util2.ComputeSHA256([]byte("rws-pre-image"))
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		t.Fatal("Shouldn't have committed")
 	}).Return(nil)
@@ -629,14 +627,14 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 	block := bf.withoutMetadata().create()
 	// Scenario I: Block we got doesn't have any metadata with it
 	pvtData := pdFactory.create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(mspID, Support{
@@ -704,7 +702,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	fetcher.On("fetch", mock.Anything).expectingDigests(digKeys).expectingEndorsers(identity.GetMSPIdentifier()).Return(&privdatacommon.FetchedPvtDataContainer{
 		AvailableElements: nil,
 	}, nil)
-	committer = &mocks.Committer{}
+	committer = &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		commitHappened = true
@@ -720,8 +718,8 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
-	capabilityProvider = &capabilitymock.CapabilityProvider{}
-	appCapability = &capabilitymock.AppCapabilities{}
+	capabilityProvider = &privdatamocks.CapabilityProvider{}
+	appCapability = &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(false)
 	coordinator = NewCoordinator(mspID, Support{
@@ -749,7 +747,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 		require.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer = &mocks.Committer{}
+	committer = &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPvtData := args.Get(0).(*ledger.BlockAndPvtData)
 		commitHappened = true
@@ -777,8 +775,8 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	block = bf.withInvalidTxns(1).AddTxn("tx1", "ns1", hash, "c1", "c2").AddTxn("tx2", "ns2", hash, "c1").create()
 	pvtData = pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
-	capabilityProvider = &capabilitymock.CapabilityProvider{}
-	appCapability = &capabilitymock.AppCapabilities{}
+	capabilityProvider = &privdatamocks.CapabilityProvider{}
+	appCapability = &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	digKeys = []privdatacommon.DigKey{}
@@ -803,7 +801,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	// StorePvtDataOfInvalidTx to true and configured the coordinator to pull pvtData of invalid
 	// transactions, it should store the pvtData of invalid transactions in the ledger.
 	testConfig.SkipPullingInvalidTransactions = false
-	committer = &mocks.Committer{}
+	committer = &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPvtData := args.Get(0).(*ledger.BlockAndPvtData)
 		commitHappened = true
@@ -919,7 +917,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 	}
 
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 
 	store := newTransientStore(t)
 	defer store.tearDown()
@@ -964,7 +962,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1").create()
@@ -972,8 +970,8 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(mspID, Support{
@@ -1035,7 +1033,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		require.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
@@ -1078,7 +1076,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").
@@ -1093,8 +1091,8 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns1", "c1", "c2").addRWSet().addNSRWSet("ns2", "c1").create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(mspID, Support{
@@ -1202,7 +1200,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	// Scenario V: Block we got has private data alongside it but coordinator cannot retrieve collection access
 	// policy of collections due to databse unavailability error.
 	// we verify that the error propagates properly.
-	mockCs := &mocks.CollectionStore{}
+	mockCs := &privdatamocks.CollectionStore{}
 	mockCs.On("RetrieveCollectionConfig", mock.Anything).Return(nil, errors.New("test error"))
 	coordinator = NewCoordinator(mspID, Support{
 		ChainID:            "testchannelid",
@@ -1239,7 +1237,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 			},
 		},
 	}, nil)
-	committer = &mocks.Committer{}
+	committer = &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
@@ -1279,7 +1277,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 		Channel:    "testchannelid",
 	}).withMSPIdentity(identity.GetMSPIdentifier())
 	fetcher = &fetcherMock{t: t}
-	committer = &mocks.Committer{}
+	committer = &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		require.True(t, reflect.DeepEqual(flattenTxPvtDataMap(privateDataPassed2Ledger),
@@ -1332,7 +1330,7 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 		require.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		privateDataPassed2Ledger := args.Get(0).(*ledger.BlockAndPvtData).PvtData
 		require.Equal(t, ledger.TxPvtDataMap{}, privateDataPassed2Ledger)
@@ -1351,7 +1349,7 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").
@@ -1366,8 +1364,8 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(mspID, Support{
@@ -1406,7 +1404,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 		require.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
 		privateDataPassed2Ledger := blockAndPrivateData.PvtData
@@ -1472,7 +1470,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
@@ -1481,8 +1479,8 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	pvtData := pdFactory.addRWSet().addNSRWSet("ns3", "c3").create()
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(mspID, Support{
@@ -1524,7 +1522,7 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 		require.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
 		privateDataPassed2Ledger := blockAndPrivateData.PvtData
@@ -1547,7 +1545,7 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 
 	block := bf.AddTxn("tx1", "ns3", hash, "c2").create()
@@ -1555,8 +1553,8 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(mspID, Support{
@@ -1593,16 +1591,16 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	defer store.tearDown()
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 
 	fetcher := &fetcherMock{t: t}
 
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 
@@ -1655,7 +1653,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 	peerSelfSignedData := protoutil.SignedData{}
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
 
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Return(nil)
 
 	store := newTransientStore(t)
@@ -1718,7 +1716,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 
 	pdFactory := &pvtDataFactory{}
@@ -1727,8 +1725,8 @@ func TestPurgeBelowHeight(t *testing.T) {
 
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(mspID, Support{
@@ -1762,20 +1760,20 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 	mspID := "Org1MSP"
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 	cs := createcollectionStore(protoutil.SignedData{}).thatAcceptsAll()
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 
 	store := newTransientStore(t)
 	defer store.tearDown()
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 
 	fetcher := &fetcherMock{t: t}
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(mspID, Support{
@@ -1840,7 +1838,7 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 		require.True(t, commitHappened)
 		commitHappened = false
 	}
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 		blockAndPrivateData := args.Get(0).(*ledger.BlockAndPvtData)
 		// Ensure there is no private data to commit
@@ -1864,7 +1862,7 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 
 	// The block contains a read only private data transaction
@@ -1872,8 +1870,8 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(mspID, Support{
@@ -1909,7 +1907,7 @@ func TestCoordinatorMetrics(t *testing.T) {
 
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll().withMSPIdentity(identity.GetMSPIdentifier())
 
-	committer := &mocks.Committer{}
+	committer := &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Return(nil)
 
 	store := newTransientStore(t)
@@ -1922,7 +1920,7 @@ func TestCoordinatorMetrics(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain("testchannelid")
+		return mspmgmt.GetManagerForChain("testchannelid")
 	})
 
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").
@@ -1956,8 +1954,8 @@ func TestCoordinatorMetrics(t *testing.T) {
 
 	committer.On("DoesPvtDataInfoExistInLedger", mock.Anything).Return(false, nil)
 
-	capabilityProvider := &capabilitymock.CapabilityProvider{}
-	appCapability := &capabilitymock.AppCapabilities{}
+	capabilityProvider := &privdatamocks.CapabilityProvider{}
+	appCapability := &privdatamocks.AppCapabilities{}
 	capabilityProvider.On("Capabilities").Return(appCapability)
 	appCapability.On("StorePvtDataOfInvalidTx").Return(true)
 	coordinator := NewCoordinator(mspID, Support{

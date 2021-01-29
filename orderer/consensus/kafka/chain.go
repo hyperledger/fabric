@@ -1055,9 +1055,7 @@ func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}
 					continue
 				}
 
-				var ok bool
-				ok, err = broker.Connected()
-				if !ok {
+				if ok, _ := broker.Connected(); !ok {
 					continue
 				}
 				defer broker.Close()
