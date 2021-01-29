@@ -205,6 +205,7 @@ github.com/hyperledger/fabric-lib-go/healthz
 ## explicit
 github.com/hyperledger/fabric-protos-go/common
 github.com/hyperledger/fabric-protos-go/discovery
+github.com/hyperledger/fabric-protos-go/gateway
 github.com/hyperledger/fabric-protos-go/gossip
 github.com/hyperledger/fabric-protos-go/ledger/queryresult
 github.com/hyperledger/fabric-protos-go/ledger/rwset
