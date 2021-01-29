@@ -248,20 +248,6 @@ var sid []byte
 var mspid string
 var channelID string = "testchannelid"
 
-type mockPolicyChecker struct{}
-
-func (c *mockPolicyChecker) CheckPolicy(channelID, policyName string, signedProp *peer.SignedProposal) error {
-	return nil
-}
-
-func (c *mockPolicyChecker) CheckPolicyBySignedData(channelID, policyName string, sd []*protoutil.SignedData) error {
-	return nil
-}
-
-func (c *mockPolicyChecker) CheckPolicyNoChannel(policyName string, signedProp *peer.SignedProposal) error {
-	return nil
-}
-
 func TestMain(m *testing.M) {
 	code := -1
 	defer func() {

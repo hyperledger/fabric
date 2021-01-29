@@ -79,17 +79,9 @@ var (
 		Channel: "foo",
 	})
 
-	fooRes = &orderer.SubmitResponse{
-		Info: "foo",
-	}
-
 	barReq = wrapSubmitReq(&orderer.SubmitRequest{
 		Channel: "bar",
 	})
-
-	barRes = &orderer.SubmitResponse{
-		Info: "bar",
-	}
 
 	testConsensusReq = &orderer.StepRequest{
 		Payload: &orderer.StepRequest_ConsensusRequest{

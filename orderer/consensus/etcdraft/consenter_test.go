@@ -624,27 +624,3 @@ func newConsenter(chainManager *mocks.ChainManager, caCert, cert []byte) *consen
 		icr:       icr,
 	}
 }
-
-func generateCertificates(confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) [][]byte {
-	certificates := [][]byte{}
-	for i, c := range confAppRaft.Orderer.EtcdRaft.Consenters {
-		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
-		Expect(err).NotTo(HaveOccurred())
-		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
-		err = ioutil.WriteFile(srvP, srvC.Cert, 0644)
-		Expect(err).NotTo(HaveOccurred())
-
-		clnC, err := tlsCA.NewClientCertKeyPair()
-		Expect(err).NotTo(HaveOccurred())
-		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
-		err = ioutil.WriteFile(clnP, clnC.Cert, 0644)
-		Expect(err).NotTo(HaveOccurred())
-
-		c.ServerTlsCert = []byte(srvP)
-		c.ClientTlsCert = []byte(clnP)
-
-		certificates = append(certificates, srvC.Cert)
-	}
-
-	return certificates
-}

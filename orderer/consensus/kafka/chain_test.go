@@ -67,10 +67,10 @@ func newMockChannel() *mockkafka.ChannelConfig {
 	return mockChannel
 }
 
-var (
-	extraShortTimeout = 1 * time.Millisecond
-	shortTimeout      = 1 * time.Second
-	longTimeout       = 1 * time.Hour
+const (
+	extraShortTimeout = time.Millisecond
+	shortTimeout      = time.Second
+	longTimeout       = time.Hour
 
 	hitBranch = 50 * time.Millisecond
 )

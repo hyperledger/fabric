@@ -698,12 +698,6 @@ func checkCLIError(output string, exit int, err error, expectedError string) {
 	Expect(output).To(Equal(fmt.Sprintf("Error: %s\n", expectedError)))
 }
 
-func checkCLIErrorRegExp(output string, exit int, err error, expectedErrorRegExp string) {
-	Expect(err).NotTo(HaveOccurred())
-	Expect(exit).To(Equal(1))
-	Expect(output).To(MatchRegexp(fmt.Sprintf("Error: %s\n", expectedErrorRegExp)))
-}
-
 func generateCertificates(tempDir string) {
 	serverCA, err := tlsgen.NewCA()
 	Expect(err).NotTo(HaveOccurred())

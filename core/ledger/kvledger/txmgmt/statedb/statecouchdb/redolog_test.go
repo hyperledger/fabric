@@ -164,21 +164,6 @@ func redologTestSetup(t *testing.T) (p *redoLoggerProvider, cleanup func()) {
 	return
 }
 
-// testGenerareRedoRecord is the code that generates a serialized redo record into a
-// file based on the current version of the code, so that the file with serialized data
-// can get checked into source control. The following test function
-// 'TestReadExistingRedoRecord' verifies data compatibility in later builds/releases.
-// Specifically, it verifies that the changes in the struct statedb.NewUpdateBatch
-// are compatible such that the redo records persisted from the earlier commit/release
-// can still be deserialized on later commits/releases.
-// In order to generate this serialized record, change this function name to start with
-// uppercase "T" so that execution of go test will generate the test file.
-func testGenerareRedoRecord(t *testing.T) {
-	val, err := encodeRedologVal(constructSampleRedoRecord())
-	require.NoError(t, err)
-	require.NoError(t, ioutil.WriteFile("testdata/persisted_redo_record", val, 0644))
-}
-
 func TestReadExistingRedoRecord(t *testing.T) {
 	b, err := ioutil.ReadFile("testdata/persisted_redo_record")
 	require.NoError(t, err)
