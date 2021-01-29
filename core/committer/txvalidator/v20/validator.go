@@ -72,7 +72,7 @@ type LedgerResources interface {
 // and plugin dispatcher
 type Dispatcher interface {
 	// Dispatch invokes the appropriate validation plugin for the supplied transaction in the block
-	Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode)
+	Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (peer.TxValidationCode, error)
 }
 
 //go:generate mockery -dir . -name ChannelResources -case underscore -output mocks/
@@ -370,7 +370,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 
 			// Validate tx with plugins
 			logger.Debug("Validating transaction with plugins")
-			err, cde := v.Dispatcher.Dispatch(tIdx, payload, d, block)
+			cde, err := v.Dispatcher.Dispatch(tIdx, payload, d, block)
 			if err != nil {
 				logger.Errorf("Dispatch for transaction txId = %s returned error: %s", txID, err)
 				switch err.(type) {

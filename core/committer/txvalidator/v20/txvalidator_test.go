@@ -34,8 +34,8 @@ type mockDispatcher struct {
 	DispatchErr error
 }
 
-func (v *mockDispatcher) Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode) {
-	return v.DispatchErr, v.DispatchRv
+func (v *mockDispatcher) Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (peer.TxValidationCode, error) {
+	return v.DispatchRv, v.DispatchErr
 }
 
 func testValidationWithNTXes(t *testing.T, nBlocks int) {
