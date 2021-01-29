@@ -63,7 +63,7 @@ type ChannelResources interface {
 // and vscc execution, in order to increase
 // testability of TxValidator
 type vsccValidator interface {
-	VSCCValidateTx(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode)
+	VSCCValidateTx(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (peer.TxValidationCode, error)
 }
 
 // implementation of Validator interface, keeps
@@ -344,7 +344,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 
 			// Validate tx with vscc and policy
 			logger.Debug("Validating transaction vscc tx validate")
-			err, cde := v.Vscc.VSCCValidateTx(tIdx, payload, d, block)
+			cde, err := v.Vscc.VSCCValidateTx(tIdx, payload, d, block)
 			if err != nil {
 				logger.Errorf("VSCCValidateTx for transaction txId = %s returned error: %s", txID, err)
 				switch err.(type) {

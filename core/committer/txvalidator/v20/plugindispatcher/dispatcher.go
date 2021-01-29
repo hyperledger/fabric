@@ -99,39 +99,39 @@ func New(chainID string, cr ChannelResources, ler LedgerResources, lcr Lifecycle
 }
 
 // Dispatch executes the validation plugin(s) for transaction
-func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (error, peer.TxValidationCode) {
+func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (peer.TxValidationCode, error) {
 	chainID := v.chainID
 	logger.Debugf("[%s] Dispatch starts for bytes %p", chainID, envBytes)
 
 	// get channel header
 	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 	if err != nil {
-		return err, peer.TxValidationCode_BAD_CHANNEL_HEADER
+		return peer.TxValidationCode_BAD_CHANNEL_HEADER, err
 	}
 
 	// get header extensions so we have the chaincode ID
 	hdrExt, err := protoutil.UnmarshalChaincodeHeaderExtension(chdr.Extension)
 	if err != nil {
-		return err, peer.TxValidationCode_BAD_HEADER_EXTENSION
+		return peer.TxValidationCode_BAD_HEADER_EXTENSION, err
 	}
 
 	/* obtain the list of namespaces we're writing to */
 	respPayload, err := protoutil.GetActionFromEnvelope(envBytes)
 	if err != nil {
-		return errors.WithMessage(err, "GetActionFromEnvelope failed"), peer.TxValidationCode_BAD_RESPONSE_PAYLOAD
+		return peer.TxValidationCode_BAD_RESPONSE_PAYLOAD, errors.WithMessage(err, "GetActionFromEnvelope failed")
 	}
 	txRWSet := &rwsetutil.TxRwSet{}
 	if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
-		return errors.WithMessage(err, "txRWSet.FromProtoBytes failed"), peer.TxValidationCode_BAD_RWSET
+		return peer.TxValidationCode_BAD_RWSET, errors.WithMessage(err, "txRWSet.FromProtoBytes failed")
 	}
 
 	// Verify the header extension and response payload contain the ChaincodeId
 	if hdrExt.ChaincodeId == nil {
-		return errors.New("nil ChaincodeId in header extension"), peer.TxValidationCode_INVALID_OTHER_REASON
+		return peer.TxValidationCode_INVALID_OTHER_REASON, errors.New("nil ChaincodeId in header extension")
 	}
 
 	if respPayload.ChaincodeId == nil {
-		return errors.New("nil ChaincodeId in ChaincodeAction"), peer.TxValidationCode_INVALID_OTHER_REASON
+		return peer.TxValidationCode_INVALID_OTHER_REASON, errors.New("nil ChaincodeId in ChaincodeAction")
 	}
 
 	// get name and version of the cc we invoked
@@ -142,18 +142,18 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 	if ccID == "" {
 		err = errors.New("invalid chaincode ID")
 		logger.Errorf("%+v", err)
-		return err, peer.TxValidationCode_INVALID_CHAINCODE
+		return peer.TxValidationCode_INVALID_CHAINCODE, err
 	}
 	if ccID != respPayload.ChaincodeId.Name {
 		err = errors.Errorf("inconsistent ccid info (%s/%s)", ccID, respPayload.ChaincodeId.Name)
 		logger.Errorf("%+v", err)
-		return err, peer.TxValidationCode_INVALID_CHAINCODE
+		return peer.TxValidationCode_INVALID_CHAINCODE, err
 	}
 	// sanity check on ccver
 	if ccVer == "" {
 		err = errors.New("invalid chaincode version")
 		logger.Errorf("%+v", err)
-		return err, peer.TxValidationCode_INVALID_CHAINCODE
+		return peer.TxValidationCode_INVALID_CHAINCODE, err
 	}
 
 	wrNamespace := map[string]bool{}
@@ -161,10 +161,10 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 	if respPayload.Events != nil {
 		ccEvent := &peer.ChaincodeEvent{}
 		if err = proto.Unmarshal(respPayload.Events, ccEvent); err != nil {
-			return errors.Wrapf(err, "invalid chaincode event"), peer.TxValidationCode_INVALID_OTHER_REASON
+			return peer.TxValidationCode_INVALID_OTHER_REASON, errors.Wrapf(err, "invalid chaincode event")
 		}
 		if ccEvent.ChaincodeId != ccID {
-			return errors.Errorf("chaincode event chaincode id does not match chaincode action chaincode id"), peer.TxValidationCode_INVALID_OTHER_REASON
+			return peer.TxValidationCode_INVALID_OTHER_REASON, errors.Errorf("chaincode event chaincode id does not match chaincode action chaincode id")
 		}
 	}
 
@@ -173,8 +173,8 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 		// check to make sure there is no duplicate namespace in txRWSet
 		if _, ok := namespaces[ns.NameSpace]; ok {
 			logger.Errorf("duplicate namespace '%s' in txRWSet", ns.NameSpace)
-			return errors.Errorf("duplicate namespace '%s' in txRWSet", ns.NameSpace),
-				peer.TxValidationCode_ILLEGAL_WRITESET
+			return peer.TxValidationCode_ILLEGAL_WRITESET,
+				errors.Errorf("duplicate namespace '%s' in txRWSet", ns.NameSpace)
 		}
 		namespaces[ns.NameSpace] = struct{}{}
 
@@ -192,7 +192,7 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 		validationPlugin, args, err := v.GetInfoForValidate(chdr, ns)
 		if err != nil {
 			logger.Errorf("GetInfoForValidate for txId = %s returned error: %+v", chdr.TxId, err)
-			return err, peer.TxValidationCode_INVALID_CHAINCODE
+			return peer.TxValidationCode_INVALID_CHAINCODE, err
 		}
 
 		// invoke the plugin
@@ -209,15 +209,15 @@ func (v *dispatcherImpl) Dispatch(seq int, payload *common.Payload, envBytes []b
 		if err = v.invokeValidationPlugin(ctx); err != nil {
 			switch err.(type) {
 			case *commonerrors.VSCCEndorsementPolicyError:
-				return err, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE
+				return peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE, err
 			default:
-				return err, peer.TxValidationCode_INVALID_OTHER_REASON
+				return peer.TxValidationCode_INVALID_OTHER_REASON, err
 			}
 		}
 	}
 
 	logger.Debugf("[%s] Dispatch completes env bytes %p", chainID, envBytes)
-	return nil, peer.TxValidationCode_VALID
+	return peer.TxValidationCode_VALID, nil
 }
 
 func (v *dispatcherImpl) invokeValidationPlugin(ctx *Context) error {
