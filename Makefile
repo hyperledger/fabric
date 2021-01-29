@@ -45,6 +45,9 @@
 #   - unit-test - runs the go-test based unit tests
 #   - verify - runs unit tests for only the changed package tree
 
+#noop change to test CI
+FOO = bar3
+
 ALPINE_VER ?= 3.12
 BASE_VERSION = 2.3.0
 
