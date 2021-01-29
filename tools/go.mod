@@ -13,5 +13,6 @@ require (
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/vektra/mockery v0.0.0-20181123154057-e78b021dcbb5
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f
-	golang.org/x/tools v0.0.0-20200717024301-6ddee64345a6
+	golang.org/x/tools v0.1.0
+	honnef.co/go/tools v0.1.1
 )
