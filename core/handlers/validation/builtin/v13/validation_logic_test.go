@@ -6,9 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 package v13
 
 import (
-	"archive/tar"
-	"bytes"
-	"compress/gzip"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -24,7 +21,6 @@ import (
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
-	"github.com/hyperledger/fabric/core/common/ccpackage"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/core/common/privdata"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
@@ -71,75 +67,6 @@ func createTx(endorsedByDuplicatedIdentity bool) (*common.Envelope, error) {
 		return nil, err
 	}
 	return env, err
-}
-
-func processSignedCDS(cds *peer.ChaincodeDeploymentSpec, policy *common.SignaturePolicyEnvelope) ([]byte, error) {
-	env, err := ccpackage.OwnerCreateSignedCCDepSpec(cds, policy, nil)
-	if err != nil {
-		return nil, fmt.Errorf("could not create package %s", err)
-	}
-
-	b := protoutil.MarshalOrPanic(env)
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	if err != nil {
-		return nil, fmt.Errorf("could not create bootBCCSP %s", err)
-	}
-	ccpack := &ccprovider.SignedCDSPackage{GetHasher: cryptoProvider}
-	cd, err := ccpack.InitFromBuffer(b)
-	if err != nil {
-		return nil, fmt.Errorf("error owner creating package %s", err)
-	}
-
-	if err = ccpack.PutChaincodeToFS(); err != nil {
-		return nil, fmt.Errorf("error putting package on the FS %s", err)
-	}
-
-	cd.InstantiationPolicy = protoutil.MarshalOrPanic(policy)
-
-	return protoutil.MarshalOrPanic(cd), nil
-}
-
-func constructDeploymentSpec(name, path, version string, initArgs [][]byte, createFS bool) (*peer.ChaincodeDeploymentSpec, error) {
-	spec := &peer.ChaincodeSpec{Type: 1, ChaincodeId: &peer.ChaincodeID{Name: name, Path: path, Version: version}, Input: &peer.ChaincodeInput{Args: initArgs}}
-
-	codePackageBytes := bytes.NewBuffer(nil)
-	gz := gzip.NewWriter(codePackageBytes)
-	tw := tar.NewWriter(gz)
-
-	payload := []byte(name + path + version)
-	err := tw.WriteHeader(&tar.Header{
-		Name: "src/garbage.go",
-		Size: int64(len(payload)),
-		Mode: 0100644,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = tw.Write(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	tw.Close()
-	gz.Close()
-
-	chaincodeDeploymentSpec := &peer.ChaincodeDeploymentSpec{ChaincodeSpec: spec, CodePackage: codePackageBytes.Bytes()}
-
-	if createFS {
-		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		if err != nil {
-			return nil, err
-		}
-		ccinfoFSImpl := &ccprovider.CCInfoFSImpl{GetHasher: cryptoProvider}
-		_, err = ccinfoFSImpl.PutChaincode(chaincodeDeploymentSpec)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return chaincodeDeploymentSpec, nil
 }
 
 func createCCDataRWsetWithCollection(nameK, nameV, version string, policy []byte, collectionConfigPackage []byte) ([]byte, error) {
@@ -1715,20 +1642,6 @@ var sid []byte
 var mspid string
 var channelID string = "testchannelid"
 
-type mockPolicyChecker struct{}
-
-func (c *mockPolicyChecker) CheckPolicy(channelID, policyName string, signedProp *peer.SignedProposal) error {
-	return nil
-}
-
-func (c *mockPolicyChecker) CheckPolicyBySignedData(channelID, policyName string, sd []*protoutil.SignedData) error {
-	return nil
-}
-
-func (c *mockPolicyChecker) CheckPolicyNoChannel(policyName string, signedProp *peer.SignedProposal) error {
-	return nil
-}
-
 func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,
 	requiredPeerCount int32, maximumPeerCount int32, blockToLive uint64,
 ) *peer.CollectionConfig {
@@ -1954,10 +1867,6 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 	// Test 6: modify the BlockToLive in an existing collection -> error
 	err = testValidateCollection(t, v, []*peer.CollectionConfig{coll1, coll2, coll3}, cdRWSet, lsccFunc, ac, chid)
 	require.EqualError(t, err, "the BlockToLive in the following existing collections must not be modified: [mycollection2]")
-}
-
-var mockMSPIDGetter = func(cid string) []string {
-	return []string{"SampleOrg"}
 }
 
 func TestMain(m *testing.M) {

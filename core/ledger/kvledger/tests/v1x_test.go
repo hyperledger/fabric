@@ -456,11 +456,6 @@ func (d *v1xSampleDataHelper) verifyConfigHistory(h *testLedger) {
 		&expectedCollConfInfo{3, d.sampleCollConf1(lgrid, "cc2")})
 }
 
-func (d *v1xSampleDataHelper) verifyConfigHistoryDoesNotExist(h *testLedger) {
-	h.verifyMostRecentCollectionConfigBelow(10, "cc1", nil)
-	h.verifyMostRecentCollectionConfigBelow(10, "cc2", nil)
-}
-
 func (d *v1xSampleDataHelper) verifyBlockAndPvtdata(h *testLedger) {
 	lgrid := h.lgrid
 	h.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) {
