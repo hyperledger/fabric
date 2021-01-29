@@ -68,3 +68,11 @@ if [ -n "$OUTPUT" ]; then
     echo "$OUTPUT"
     exit 1
 fi
+
+echo "Checking with staticcheck"
+OUTPUT="$(staticcheck ./... || true)"
+if [ -n "$OUTPUT" ]; then
+    echo "The following staticcheck issues were flagged"
+    echo "$OUTPUT"
+    exit 1
+fi
