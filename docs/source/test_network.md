@@ -16,7 +16,7 @@ nodes are isolated within a Docker Compose network, the test network is not conf
 To learn how to use Fabric in production, see [Deploying a production network](deployment_guide_overview.html).
 
 **Note:** These instructions have been verified to work against the
-latest stable Docker images and the pre-compiled setup utilities within the
+latest stable Fabric Docker images and the pre-compiled setup utilities within the
 supplied tar file. If you run these commands with images or tools from the
 current master branch, it is possible that you will encounter errors.
 
@@ -25,6 +25,8 @@ current master branch, it is possible that you will encounter errors.
 Before you can run the test network, you need to clone the `fabric-samples`
 repository and download the Fabric images. Make sure that you have installed
 the [Prerequisites](prereqs.html) and [Installed the Samples, Binaries and Docker Images](install.html).
+
+**Note:** The test network has been successfully verified with Docker version 2.5.0.1 and is the recommended version at this time. Higher versions of Docker may not work.
 
 ## Bring up the test network
 
@@ -614,6 +616,17 @@ If you have any problems with the tutorial, review the following:
    Are you sure you want to continue? [y/N]
    ```
    Select ``y``.
+
+-  If you try to create a channel with the command `./network.sh createChannel`,
+   and it fails with the following error:
+   ```
+   [comm.tls] ClientHandshake -> ERRO 003 Client TLS handshake failed after 1.908956ms with error: EOF remoteaddress=127.0.0.1:7051
+   Error: error getting endorser client for channel: endorser client failed to connect to localhost:7051: failed to create new connection: context deadline exceeded
+   After 5 attempts, peer0.org1 has failed to join channel 'mychannel'
+   ```
+
+   You need to uninstall Docker and reinstall the recommended version 2.5.0.1. Then, reclone the `fabric-samples`
+   repository before reattempting the commands.
 
 -  If you see an error similar to the following:
    ```
