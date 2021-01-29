@@ -11,8 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
-	cb "github.com/hyperledger/fabric-protos-go/common"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
@@ -22,11 +21,11 @@ import (
 // UnpackedProposal contains the interesting artifacts from inside the proposal.
 type UnpackedProposal struct {
 	ChaincodeName   string
-	ChannelHeader   *cb.ChannelHeader
-	Input           *pb.ChaincodeInput
-	Proposal        *pb.Proposal
-	SignatureHeader *cb.SignatureHeader
-	SignedProposal  *pb.SignedProposal
+	ChannelHeader   *common.ChannelHeader
+	Input           *peer.ChaincodeInput
+	Proposal        *peer.Proposal
+	SignatureHeader *common.SignatureHeader
+	SignedProposal  *peer.SignedProposal
 	ProposalHash    []byte
 }
 
@@ -40,7 +39,7 @@ func (up *UnpackedProposal) TxID() string {
 
 // UnpackProposal creates an an *UnpackedProposal which is guaranteed to have
 // no zero-ed fields or it returns an error.
-func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
+func UnpackProposal(signedProp *peer.SignedProposal) (*UnpackedProposal, error) {
 	prop, err := protoutil.UnmarshalProposal(signedProp.ProposalBytes)
 	if err != nil {
 		return nil, err
@@ -92,7 +91,7 @@ func UnpackProposal(signedProp *pb.SignedProposal) (*UnpackedProposal, error) {
 		return nil, errors.Errorf("chaincode input did not contain any input")
 	}
 
-	cppNoTransient := &pb.ChaincodeProposalPayload{Input: cpp.Input, TransientMap: nil}
+	cppNoTransient := &peer.ChaincodeProposalPayload{Input: cpp.Input, TransientMap: nil}
 	ppBytes, err := proto.Marshal(cppNoTransient)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not marshal non-transient portion of payload")

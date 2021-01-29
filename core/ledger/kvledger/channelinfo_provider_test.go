@@ -15,7 +15,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator"
-	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -237,7 +236,7 @@ func verifyGetAllMSPIDs(t *testing.T, channelInfoProvider *channelInfoProvider, 
 	require.ElementsMatch(t, expectedMSPIDs, mspids)
 }
 
-func newBlock(env []*common.Envelope, blockNum uint64, lastConfigBlockNum uint64, previousHash []byte) *cb.Block {
+func newBlock(env []*cb.Envelope, blockNum uint64, lastConfigBlockNum uint64, previousHash []byte) *cb.Block {
 	block := testutil.NewBlock(env, blockNum, previousHash)
 	block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{
 		Value: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
@@ -290,7 +289,7 @@ func getEnvelopeFromConfig(channelName string, config *cb.Config) *cb.Envelope {
 func createTestOrgGroups(t *testing.T) map[string]*cb.ConfigGroup {
 	blockData, err := ioutil.ReadFile("testdata/test_configblock.json")
 	require.NoError(t, err)
-	block := &common.Block{}
+	block := &cb.Block{}
 	require.NoError(t, protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block))
 	config := getConfigFromBlock(block)
 	return config.ChannelGroup.Groups[channelconfig.ApplicationGroupKey].Groups

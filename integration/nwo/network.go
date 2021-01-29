@@ -31,7 +31,7 @@ import (
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/matchers"
 	"github.com/onsi/gomega/types"
 	"github.com/tedsuo/ifrit"
@@ -1287,9 +1287,9 @@ func (n *Network) PeerRunner(p *Peer, env ...string) *ginkgomon.Runner {
 	cmd := n.peerCommand(
 		commands.NodeStart{PeerID: p.ID(), DevMode: p.DevMode},
 		"",
-		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
-		fmt.Sprintf("CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin"),
-		fmt.Sprintf("CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw"),
+		"FABRIC_CFG_PATH="+n.PeerDir(p),
+		"CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin",
+		"CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw",
 	)
 	cmd.Env = append(cmd.Env, env...)
 
@@ -1463,7 +1463,7 @@ func (n *Network) DiscoveredPeerMatcher(p *Peer, chaincodes ...string) types.Gom
 	peerCert, err := ioutil.ReadFile(n.PeerCert(p))
 	Expect(err).NotTo(HaveOccurred())
 
-	return MatchAllFields(Fields{
+	return gstruct.MatchAllFields(gstruct.Fields{
 		"MSPID":      Equal(n.Organization(p.Organization).MSPID),
 		"Endpoint":   Equal(fmt.Sprintf("127.0.0.1:%d", n.PeerPort(p, ListenPort))),
 		"Identity":   Equal(string(peerCert)),

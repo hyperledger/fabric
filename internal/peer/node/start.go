@@ -22,7 +22,6 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	discprotos "github.com/hyperledger/fabric-protos-go/discovery"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
@@ -88,7 +87,6 @@ import (
 	gossipgossip "github.com/hyperledger/fabric/gossip/gossip"
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
 	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
-	"github.com/hyperledger/fabric/gossip/service"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/version"
@@ -426,8 +424,8 @@ func serve(args []string) error {
 		ebMetadataProvider,
 	)
 
-	txProcessors := map[common.HeaderType]ledger.CustomTxProcessor{
-		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+	txProcessors := map[cb.HeaderType]ledger.CustomTxProcessor{
+		cb.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
 	}
 
 	peerInstance.LedgerMgr = ledgermgmt.NewLedgerMgr(
@@ -961,7 +959,7 @@ func createDiscoveryService(
 	gSup := gossip.NewDiscoverySupport(gossipService)
 	ccSup := ccsupport.NewDiscoverySupport(metadataProvider)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, metadataProvider)
-	confSup := config.NewDiscoverySupport(config.CurrentConfigGetterFunc(func(channelID string) *common.Config {
+	confSup := config.NewDiscoverySupport(config.CurrentConfigGetterFunc(func(channelID string) *cb.Config {
 		channel := peerInstance.Channel(channelID)
 		if channel == nil {
 			return nil
@@ -1198,7 +1196,7 @@ func initGossipService(
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(factory.GetDefault()))
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 
-	serviceConfig := service.GlobalConfig()
+	serviceConfig := gossipservice.GlobalConfig()
 	if serviceConfig.Endpoint != "" {
 		peerAddress = serviceConfig.Endpoint
 	}

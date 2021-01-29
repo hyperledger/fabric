@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package endorsement
 
 import (
-	. "github.com/hyperledger/fabric-protos-go/discovery"
+	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/gossip/api"
@@ -47,7 +47,7 @@ type principalSetsByCollectionName map[string]policies.PrincipalSet
 
 // toIdentityFilter converts this principalSetsByCollectionName mapping to a filter
 // which accepts or rejects identities of peers.
-func (psbc principalSetsByCollectionName) toIdentityFilter(channel string, evaluator principalEvaluator, cc *ChaincodeCall) (identityFilter, error) {
+func (psbc principalSetsByCollectionName) toIdentityFilter(channel string, evaluator principalEvaluator, cc *discovery.ChaincodeCall) (identityFilter, error) {
 	var principalSets policies.PrincipalSets
 	for _, col := range cc.CollectionNames {
 		// Each collection we're interested in should exist in the principalSetsByCollectionName mapping.

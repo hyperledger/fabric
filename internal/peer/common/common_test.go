@@ -111,6 +111,7 @@ func TestSetBCCSPKeystorePath(t *testing.T) {
 	os.Setenv("FABRIC_CFG_PATH", cfgPath)
 	viper.Reset()
 	err = common.InitConfig("notset")
+	require.NoError(t, err)
 	common.SetBCCSPKeystorePath()
 	t.Log(viper.GetString(cfgKey))
 	require.Equal(t, "", viper.GetString(cfgKey))

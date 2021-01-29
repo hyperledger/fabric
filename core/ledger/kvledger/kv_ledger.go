@@ -539,7 +539,7 @@ func (l *kvLedger) GetBlocksIterator(startBlockNumber uint64) (commonledger.Resu
 func (l *kvLedger) GetBlockByHash(blockHash []byte) (*common.Block, error) {
 	block, err := l.blockStore.RetrieveBlockByHash(blockHash)
 	l.blockAPIsRWLock.RLock()
-	l.blockAPIsRWLock.RUnlock()
+	l.blockAPIsRWLock.RUnlock() //lint:ignore SA2001 syncpoint
 	return block, err
 }
 
@@ -908,7 +908,7 @@ func (itr *blocksItr) Next() (commonledger.QueryResult, error) {
 		return nil, err
 	}
 	itr.blockAPIsRWLock.RLock()
-	itr.blockAPIsRWLock.RUnlock()
+	itr.blockAPIsRWLock.RUnlock() //lint:ignore SA2001 syncpoint
 	return block, nil
 }
 

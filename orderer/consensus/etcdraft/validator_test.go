@@ -7,22 +7,22 @@
 package etcdraft_test
 
 import (
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
 	"io/ioutil"
 	"os"
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	raftprotos "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
+	"github.com/hyperledger/fabric/orderer/consensus/etcdraft/mocks"
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 func makeOrdererOrg(caCert []byte) *mocks.OrdererOrg {
@@ -120,7 +120,7 @@ var _ = Describe("Metadata Validation", func() {
 		})
 
 		It("fails when new consensus metadata is not well-formed", func() {
-			oldBytes, _ := proto.Marshal(&etcdraftproto.ConfigMetadata{})
+			oldBytes, _ := proto.Marshal(&raftprotos.ConfigMetadata{})
 			oldOrdererConf := mockOrderer(oldBytes)
 			newOrdererConf := mockOrderer([]byte("test"))
 			Expect(chain.ValidateConsensusMetadata(oldOrdererConf, newOrdererConf, false)).NotTo(Succeed())
@@ -129,22 +129,22 @@ var _ = Describe("Metadata Validation", func() {
 
 	Context("valid old consensus metadata", func() {
 		var (
-			metadata         etcdraftproto.ConfigMetadata
+			metadata         raftprotos.ConfigMetadata
 			oldOrdererConfig *mocks.OrdererConfig
 			newOrdererConfig *mocks.OrdererConfig
 			newChannel       bool
 		)
 
 		BeforeEach(func() {
-			metadata = etcdraftproto.ConfigMetadata{
-				Options: &etcdraftproto.Options{
+			metadata = raftprotos.ConfigMetadata{
+				Options: &raftprotos.Options{
 					TickInterval:         "500ms",
 					ElectionTick:         10,
 					HeartbeatTick:        1,
 					MaxInflightBlocks:    5,
 					SnapshotIntervalSize: 20 * 1024 * 1024, // 20 MB
 				},
-				Consenters: []*etcdraftproto.Consenter{
+				Consenters: []*raftprotos.Consenter{
 					{
 						Host:          "host1",
 						Port:          10001,
@@ -199,7 +199,7 @@ var _ = Describe("Metadata Validation", func() {
 
 			It("fails when the new consenters are an empty set", func() {
 				newMetadata := metadata
-				newMetadata.Consenters = []*etcdraftproto.Consenter{}
+				newMetadata.Consenters = []*raftprotos.Consenter{}
 				newBytes, err := proto.Marshal(&newMetadata)
 				Expect(err).NotTo(HaveOccurred())
 				newOrdererConfig.ConsensusMetadataReturns(newBytes)
@@ -257,7 +257,7 @@ var _ = Describe("Metadata Validation", func() {
 			It("fails when the new consenters are an empty set", func() {
 				newMetadata := metadata
 				// NOTE: This also takes care of the case when we remove node from a singleton consenter set
-				newMetadata.Consenters = []*etcdraftproto.Consenter{}
+				newMetadata.Consenters = []*raftprotos.Consenter{}
 				newBytes, err := proto.Marshal(&newMetadata)
 				Expect(err).NotTo(HaveOccurred())
 				newOrdererConfig.ConsensusMetadataReturns(newBytes)
@@ -274,7 +274,7 @@ var _ = Describe("Metadata Validation", func() {
 
 			It("succeeds on addition of a single consenter", func() {
 				newMetadata := metadata
-				newMetadata.Consenters = append(newMetadata.Consenters, &etcdraftproto.Consenter{
+				newMetadata.Consenters = append(newMetadata.Consenters, &raftprotos.Consenter{
 					Host:          "host4",
 					Port:          10004,
 					ClientTlsCert: clientTLSCert(tlsCA),
@@ -289,13 +289,13 @@ var _ = Describe("Metadata Validation", func() {
 			It("fails on addition of more than one consenter", func() {
 				newMetadata := metadata
 				newMetadata.Consenters = append(newMetadata.Consenters,
-					&etcdraftproto.Consenter{
+					&raftprotos.Consenter{
 						Host:          "host4",
 						Port:          10004,
 						ClientTlsCert: clientTLSCert(tlsCA),
 						ServerTlsCert: serverTLSCert(tlsCA),
 					},
-					&etcdraftproto.Consenter{
+					&raftprotos.Consenter{
 						Host:          "host5",
 						Port:          10005,
 						ClientTlsCert: clientTLSCert(tlsCA),
@@ -328,7 +328,7 @@ var _ = Describe("Metadata Validation", func() {
 
 			It("succeeds on rotating certs in case of both addition and removal of a node each to reuse the raft NodeId", func() {
 				newMetadata := metadata
-				newMetadata.Consenters = append(newMetadata.Consenters[:2], &etcdraftproto.Consenter{
+				newMetadata.Consenters = append(newMetadata.Consenters[:2], &raftprotos.Consenter{
 					Host:          "host4",
 					Port:          10004,
 					ClientTlsCert: clientTLSCert(tlsCA),

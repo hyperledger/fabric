@@ -43,8 +43,8 @@ func TestSnapshot(t *testing.T) {
 	gb, err := test.MakeGenesisBlock(ledgerID)
 	require.NoError(t, err)
 	lgr, err := ledgerMgr.CreateLedger(ledgerID, gb)
-	defer lgr.Close()
 	require.NoError(t, err)
+	defer lgr.Close()
 
 	fakeLedgerGetter := &mock.LedgerGetter{}
 	fakeLedgerGetter.GetLedgerReturns(lgr)

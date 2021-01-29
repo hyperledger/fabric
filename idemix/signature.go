@@ -190,7 +190,7 @@ func NewSignature(cred *Credential, sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP2
 	index = 0
 	proofData = proofData[:2*FieldBytes]
 	index = appendBytesBig(proofData, index, c)
-	index = appendBytesBig(proofData, index, Nonce)
+	appendBytesBig(proofData, index, Nonce)
 	ProofC := HashModOrder(proofData)
 
 	// Step 3: reply to the challenge message (s-values)
@@ -369,7 +369,7 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 	index = 0
 	proofData = proofData[:2*FieldBytes]
 	index = appendBytesBig(proofData, index, c)
-	index = appendBytesBig(proofData, index, Nonce)
+	appendBytesBig(proofData, index, Nonce)
 
 	if *ProofC != *HashModOrder(proofData) {
 		// This debug line helps identify where the mismatch happened

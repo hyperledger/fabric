@@ -88,7 +88,6 @@ func TestPeriodicCheck(t *testing.T) {
 		case report := <-reports:
 			lastReport = report
 		default:
-			break
 		}
 	}
 

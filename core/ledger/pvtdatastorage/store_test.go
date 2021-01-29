@@ -846,7 +846,7 @@ func testInelgMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missi
 func testWaitForPurgerRoutineToFinish(s *Store) {
 	time.Sleep(1 * time.Second)
 	s.purgerLock.Lock()
-	s.purgerLock.Unlock()
+	s.purgerLock.Unlock() //lint:ignore SA2001 syncpoint
 }
 
 func testutilWaitForCollElgProcToFinish(s *Store) {

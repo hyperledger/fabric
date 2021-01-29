@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/common/ledger/snapshot"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/ledger/util"
 	commonledgerutil "github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
@@ -243,7 +242,7 @@ func TestTxIDKeyEncodingDecoding(t *testing.T) {
 
 func TestTxIDKeyDecodingInvalidInputs(t *testing.T) {
 	prefix := []byte{txIDIdxKeyPrefix}
-	txIDLen := util.EncodeOrderPreservingVarUint64(uint64(len("mytxid")))
+	txIDLen := commonledgerutil.EncodeOrderPreservingVarUint64(uint64(len("mytxid")))
 	txID := []byte("mytxid")
 
 	// empty byte

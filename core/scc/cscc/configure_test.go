@@ -16,7 +16,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
-	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -42,7 +41,6 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
@@ -255,8 +253,8 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
-	ledgerInitializer.CustomTxProcessors = map[common.HeaderType]ledger.CustomTxProcessor{
-		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+	ledgerInitializer.CustomTxProcessors = map[cb.HeaderType]ledger.CustomTxProcessor{
+		cb.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
 	}
 	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgerInitializer)
 	defer ledgerMgr.Close()
@@ -370,8 +368,8 @@ func TestConfigerInvokeJoinChainBySnapshot(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
-	ledgerInitializer.CustomTxProcessors = map[common.HeaderType]ledger.CustomTxProcessor{
-		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+	ledgerInitializer.CustomTxProcessors = map[cb.HeaderType]ledger.CustomTxProcessor{
+		cb.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
 	}
 	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgerInitializer)
 	defer ledgerMgr.Close()
@@ -456,8 +454,8 @@ func TestConfigerInvokeGetChannelConfig(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	ledgerInitializer := ledgermgmttest.NewInitializer(testDir)
-	ledgerInitializer.CustomTxProcessors = map[common.HeaderType]ledger.CustomTxProcessor{
-		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+	ledgerInitializer.CustomTxProcessors = map[cb.HeaderType]ledger.CustomTxProcessor{
+		cb.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
 	}
 	ledgerMgr := ledgermgmt.NewLedgerMgr(ledgerInitializer)
 	defer ledgerMgr.Close()
@@ -582,16 +580,6 @@ func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *
 	var defaultSecureDialOpts = func() []grpc.DialOption {
 		return []grpc.DialOption{grpc.WithInsecure()}
 	}
-	var defaultDeliverClientDialOpts []grpc.DialOption
-	defaultDeliverClientDialOpts = append(
-		defaultDeliverClientDialOpts,
-		grpc.WithBlock(),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)),
-	)
-	defaultDeliverClientDialOpts = append(
-		defaultDeliverClientDialOpts,
-		comm.ClientKeepaliveOptions(comm.DefaultKeepaliveOptions)...,
-	)
 	gossipConfig, err := gossip.GlobalConfig(peerEndpoint, nil)
 	require.NoError(t, err)
 
@@ -659,8 +647,8 @@ func validSignedProposal() *pb.SignedProposal {
 func channelConfigFromBlock(t *testing.T, configBlock *cb.Block) *cb.Config {
 	envelopeConfig, err := protoutil.ExtractEnvelope(configBlock, 0)
 	require.NoError(t, err)
-	configEnv := &common.ConfigEnvelope{}
-	_, err = protoutil.UnmarshalEnvelopeOfType(envelopeConfig, common.HeaderType_CONFIG, configEnv)
+	configEnv := &cb.ConfigEnvelope{}
+	_, err = protoutil.UnmarshalEnvelopeOfType(envelopeConfig, cb.HeaderType_CONFIG, configEnv)
 	require.NoError(t, err)
 	return configEnv.Config
 }

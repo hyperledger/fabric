@@ -516,6 +516,7 @@ func TestExtractSystemChannel(t *testing.T) {
 	conf.Consortiums = nil
 	configBlock := encoder.New(conf).GenesisBlock()
 	rl, err := rlf.GetOrCreate("appchannelid")
+	require.NoError(t, err)
 	err = rl.Append(configBlock)
 	require.NoError(t, err)
 
@@ -525,6 +526,7 @@ func TestExtractSystemChannel(t *testing.T) {
 	conf = genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
 	configBlock = encoder.New(conf).GenesisBlock()
 	rl, err = rlf.GetOrCreate("testchannelid")
+	require.NoError(t, err)
 	err = rl.Append(configBlock)
 	require.NoError(t, err)
 

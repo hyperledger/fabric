@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
-	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/election"
 	"github.com/hyperledger/fabric/gossip/filter"
@@ -113,7 +112,7 @@ type gossipSvc interface {
 // required from gossip service by delivery service
 type GossipServiceAdapter interface {
 	// PeersOfChannel returns slice with members of specified channel
-	PeersOfChannel(gossipcommon.ChannelID) []discovery.NetworkMember
+	PeersOfChannel(common.ChannelID) []discovery.NetworkMember
 
 	// AddPayload adds payload to the local state sync buffer
 	AddPayload(channelID string, payload *gproto.Payload) error
@@ -460,7 +459,7 @@ func (g *GossipService) updateAnchors(config Config) {
 
 	// Initialize new state provider for given committer
 	logger.Debug("Creating state provider for channelID", config.ChannelID())
-	g.JoinChan(jcm, gossipcommon.ChannelID(config.ChannelID()))
+	g.JoinChan(jcm, common.ChannelID(config.ChannelID()))
 }
 
 // AddPayload appends message payload to for given chain
@@ -494,7 +493,7 @@ func (g *GossipService) Stop() {
 func (g *GossipService) newLeaderElectionComponent(channelID string, callback func(bool),
 	electionMetrics *gossipmetrics.ElectionMetrics) election.LeaderElectionService {
 	PKIid := g.mcs.GetPKIidOfCert(g.peerIdentity)
-	adapter := election.NewAdapter(g, PKIid, gossipcommon.ChannelID(channelID), electionMetrics)
+	adapter := election.NewAdapter(g, PKIid, common.ChannelID(channelID), electionMetrics)
 	config := election.ElectionConfig{
 		StartupGracePeriod:       g.serviceConfig.ElectionStartupGracePeriod,
 		MembershipSampleInterval: g.serviceConfig.ElectionMembershipSampleInterval,

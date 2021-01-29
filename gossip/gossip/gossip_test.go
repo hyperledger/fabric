@@ -670,7 +670,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 			case msg := <-ch:
 				{
 					if protoext.IsDataMsg(msg.GetGossipMessage().GossipMessage) {
-						t.Fatal("Should not receive data message back, got", msg)
+						t.Errorf("Should not receive data message back, got %s", msg)
 					}
 				}
 				// Waiting for 2 seconds to make sure we won't
@@ -750,11 +750,11 @@ func TestDissemination(t *testing.T) {
 	}
 	var lastPeer = fmt.Sprintf("127.0.0.1:%d", portn)
 	metaDataUpdated := func() bool {
-		if 2 != heightOfPeer(boot.PeersOfChannel(common.ChannelID("A")), lastPeer) {
+		if heightOfPeer(boot.PeersOfChannel(common.ChannelID("A")), lastPeer) != 2 {
 			return false
 		}
 		for i := 0; i < n-1; i++ {
-			if 2 != heightOfPeer(peers[i].PeersOfChannel(common.ChannelID("A")), lastPeer) {
+			if heightOfPeer(peers[i].PeersOfChannel(common.ChannelID("A")), lastPeer) != 2 {
 				return false
 			}
 			for _, p := range peers[i].PeersOfChannel(common.ChannelID("A")) {
@@ -875,10 +875,10 @@ func TestMembershipConvergence(t *testing.T) {
 
 	fullKnowledge := func() bool {
 		for i := 0; i < 15; i++ {
-			if 15 != len(peers[i].Peers()) {
+			if len(peers[i].Peers()) != 15 {
 				return false
 			}
-			if "Connector" != string(metadataOfPeer(peers[i].Peers(), endpoint15)) {
+			if string(metadataOfPeer(peers[i].Peers(), endpoint15)) != "Connector" {
 				return false
 			}
 		}
@@ -894,7 +894,7 @@ func TestMembershipConvergence(t *testing.T) {
 
 	ensureForget := func() bool {
 		for i := 0; i < 15; i++ {
-			if 14 != len(peers[i].Peers()) {
+			if len(peers[i].Peers()) != 14 {
 				return false
 			}
 		}
@@ -911,10 +911,10 @@ func TestMembershipConvergence(t *testing.T) {
 
 	ensureResync := func() bool {
 		for i := 0; i < 15; i++ {
-			if 15 != len(peers[i].Peers()) {
+			if len(peers[i].Peers()) != 15 {
 				return false
 			}
-			if "Connector2" != string(metadataOfPeer(peers[i].Peers(), endpoint15)) {
+			if string(metadataOfPeer(peers[i].Peers(), endpoint15)) != "Connector2" {
 				return false
 			}
 		}
@@ -1338,7 +1338,7 @@ func TestSendByCriteria(t *testing.T) {
 		if msg == nil {
 			return
 		}
-		t.Fatalf("%d got a message, but shouldn't have!", peerId)
+		t.Errorf("%d got a message, but shouldn't have!", peerId)
 	}
 	g2Endpoint := fmt.Sprintf("127.0.0.1:%d", port1)
 	g3Endpoint := fmt.Sprintf("127.0.0.1:%d", port2)

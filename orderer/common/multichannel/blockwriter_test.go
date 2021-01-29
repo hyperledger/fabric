@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	newchannelconfig "github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/ledger/blockledger/fileledger"
@@ -46,13 +45,13 @@ type mockBlockWriterSupport struct {
 	bccsp      bccsp.BCCSP
 }
 
-func (mbws mockBlockWriterSupport) Update(bundle *newchannelconfig.Bundle) {}
+func (mbws mockBlockWriterSupport) Update(bundle *channelconfig.Bundle) {}
 
-func (mbws mockBlockWriterSupport) CreateBundle(channelID string, config *cb.Config) (*newchannelconfig.Bundle, error) {
+func (mbws mockBlockWriterSupport) CreateBundle(channelID string, config *cb.Config) (*channelconfig.Bundle, error) {
 	return channelconfig.NewBundle(channelID, config, mbws.bccsp)
 }
 
-func (mbws mockBlockWriterSupport) SharedConfig() newchannelconfig.Orderer {
+func (mbws mockBlockWriterSupport) SharedConfig() channelconfig.Orderer {
 	return mbws.fakeConfig
 }
 
@@ -242,7 +241,7 @@ func TestGoodWriteConfig(t *testing.T) {
 
 	// Wait for the commit to complete
 	bw.committingBlock.Lock()
-	bw.committingBlock.Unlock()
+	bw.committingBlock.Unlock() //lint:ignore SA2001 syncpoint
 
 	cBlock := blockledger.GetBlock(l, block.Header.Number)
 	require.Equal(t, block.Header, cBlock.Header)
@@ -291,7 +290,7 @@ func TestMigrationWriteConfig(t *testing.T) {
 
 	// Wait for the commit to complete
 	bw.committingBlock.Lock()
-	bw.committingBlock.Unlock()
+	bw.committingBlock.Unlock() //lint:ignore SA2001 syncpoint
 
 	cBlock := blockledger.GetBlock(l, block.Header.Number)
 	require.Equal(t, block.Header, cBlock.Header)
@@ -345,7 +344,7 @@ func TestRaceWriteConfig(t *testing.T) {
 
 	// Wait for the commit to complete
 	bw.committingBlock.Lock()
-	bw.committingBlock.Unlock()
+	bw.committingBlock.Unlock() //lint:ignore SA2001 syncpoint
 
 	cBlock := blockledger.GetBlock(l, block1.Header.Number)
 	require.Equal(t, block1.Header, cBlock.Header)

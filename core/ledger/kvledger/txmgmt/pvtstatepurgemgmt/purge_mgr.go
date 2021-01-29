@@ -72,7 +72,7 @@ func (p *PurgeMgr) PrepareForExpiringKeys(expiringAtBlk uint64) {
 // WaitForPrepareToFinish holds the caller till the background goroutine launched by 'PrepareForExpiringKeys' is finished
 func (p *PurgeMgr) WaitForPrepareToFinish() {
 	p.lock.Lock()
-	p.lock.Unlock()
+	p.lock.Unlock() //lint:ignore SA2001 syncpoint
 }
 
 // UpdateExpiryInfoOfPvtDataOfOldBlocks updates the existing expiry entries in the expiryKeeper with the given pvtUpdates

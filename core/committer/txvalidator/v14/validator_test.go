@@ -20,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	ctxt "github.com/hyperledger/fabric/common/configtx/test"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
@@ -625,7 +624,7 @@ func TestParallelValidation(t *testing.T) {
 	mgr := mgmt.GetManagerForChain("foochain")
 	mgr.Setup([]msp.MSP{msp1, msp2})
 
-	vpKey := pb.MetaDataKeys_VALIDATION_PARAMETER.String()
+	vpKey := peer.MetaDataKeys_VALIDATION_PARAMETER.String()
 	l, v, cleanup := setupLedgerAndValidatorExplicitWithMSP(
 		t,
 		v13Capabilities(),
@@ -1383,7 +1382,7 @@ func TestValidateTxWithStateBasedEndorsement(t *testing.T) {
 		l, v, cleanup := setupLedgerAndValidatorWithV12Capabilities(t)
 		defer cleanup()
 
-		err, b := validateTxWithStateBasedEndorsement(t, l, v)
+		b, err := validateTxWithStateBasedEndorsement(t, l, v)
 
 		require.NoError(t, err)
 		assertValid(b, t)
@@ -1393,14 +1392,14 @@ func TestValidateTxWithStateBasedEndorsement(t *testing.T) {
 		l, v, cleanup := setupLedgerAndValidatorWithV13Capabilities(t)
 		defer cleanup()
 
-		err, b := validateTxWithStateBasedEndorsement(t, l, v)
+		b, err := validateTxWithStateBasedEndorsement(t, l, v)
 
 		require.NoError(t, err)
 		assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
 	})
 }
 
-func validateTxWithStateBasedEndorsement(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) (error, *common.Block) {
+func validateTxWithStateBasedEndorsement(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator) (*common.Block, error) {
 	ccID := "mycc"
 
 	putCCInfoWithVSCCAndVer(l, ccID, "vscc", ccVersion, signedByAnyMember([]string{"SampleOrg"}), t)
@@ -1411,7 +1410,7 @@ func validateTxWithStateBasedEndorsement(t *testing.T, l ledger.PeerLedger, v tx
 
 	err := v.Validate(b)
 
-	return err, b
+	return b, err
 }
 
 // mockLedger structure used to test ledger

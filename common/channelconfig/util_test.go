@@ -14,7 +14,6 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-config/protolator"
-	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
@@ -303,7 +302,7 @@ func TestExtractMSPIDsForApplicationOrgs(t *testing.T) {
 	// and other properties needed to build channel config and extract MSPIDs
 	blockData, err := ioutil.ReadFile("testdata/test_configblock.json")
 	require.NoError(t, err)
-	block := &common.Block{}
+	block := &cb.Block{}
 	protolator.DeepUnmarshalJSON(bytes.NewBuffer(blockData), block)
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())

@@ -549,7 +549,7 @@ func (ci *ChainInspector) Channels() []ChannelGenesisBlock {
 		}
 		ci.validateHashPointer(block, prevHash)
 		// Set the previous hash for the next iteration
-		prevHash = protoutil.BlockHeaderHash(block.Header)
+		prevHash = protoutil.BlockHeaderHash(block.Header) //lint:ignore SA5011 logs and panics above
 
 		channel, gb, err := ExtractGenesisBlock(ci.Logger, block)
 		if err != nil {
