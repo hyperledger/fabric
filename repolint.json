@@ -1,0 +1,192 @@
+{
+  "axioms": {
+    "linguist": "language",
+    "licensee": "license",
+    "packagers": "packager"
+  },
+  "rules": {
+    "all": {
+      "apache-license-file:file-contents": [
+        "error",
+        {
+          "files": [
+            "LICENSE*"
+          ],
+          "content": "Apache License.*Version 2.0",
+          "fail-on-non-existent": true
+        }
+      ],
+      "code-of-conduct-file:file-contents": [
+        "error",
+        {
+          "files": [
+            "CODE_OF_CONDUCT*"
+          ],
+          "content": "https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct",
+          "fail-on-non-existent": true
+        }
+      ],
+      "security-file-matches:file-contents": [
+        "error",
+        {
+          "files": [
+            "SECURITY.md"
+          ],
+          "content": "https://wiki.hyperledger.org/display/SEC/Defect.Response",
+          "fail-on-non-existent": true
+        }
+      ],
+      "readme-file-exists:file-existence": [
+        "error",
+        {
+          "files": [
+            "README.md",
+            "README"
+          ]
+        }
+      ],
+      "readme-references-license:file-contents": [
+        "error",
+        {
+          "files": [
+            "README.md",
+            "README"
+          ],
+          "content": "license",
+          "flags": "i"
+        }
+      ],
+      "maintainers-file-exists:file-existence": [
+        "error",
+        {
+          "files": [
+            "MAINTAINERS.md",
+            "MAINTAINERS.rst"
+          ]
+        }
+      ],
+      "contributing-file-exists:file-existence": [
+        "error",
+        {
+          "files": [
+            "CONTRIBUTING.md"
+          ]
+        }
+      ],
+      "changelog-file-exists:file-existence": [
+        "error",
+        {
+          "files": [
+            "CHANGELOG.md"
+          ]
+        }
+      ],
+      "test-directory-exists:directory-existence": [
+        "error",
+        {
+          "directories": [
+            "**/test*",
+            "**/specs",
+            "**/**_test.go"
+          ],
+          "nocase": true
+        }
+      ],
+      "integrates-with-ci:file-existence": [
+        "error",
+        {
+          "files": [
+            "circle.yml",
+            ".circleci/config.yml",
+            "ci/azure-pipelines.yml",
+            ".ci/azure-pipelines.yml",
+            "Jenkinsfile",
+            "Jenkinsfile.ci",
+            "Jenkinsfile.cd"
+          ]
+        }
+      ],
+      "notice-file-exists:file-existence": [
+        "warning",
+        {
+          "files": [
+            "NOTICE*"
+          ]
+        }
+      ],
+      "source-license-headers-exist:file-starts-with": [
+        "warning",
+        {
+          "files": [
+            "**/*.js",
+            "!node_modules/**"
+          ],
+          "lineCount": 5,
+          "patterns": [
+            "Copyright",
+            "License"
+          ],
+          "flags": "i"
+        }
+      ],
+      "binaries-not-present:file-type-exclusion": [
+        "error",
+        {
+          "type": [
+            "**/*.exe",
+            "**/*.dll",
+            "!node_modules/**"
+          ]
+        }
+      ]
+    },
+    "language=javascript": {
+      "package-metadata-exists:file-existence": [
+        "warning",
+        {
+          "files": [
+            "package.json"
+          ]
+        }
+      ]
+    },
+    "language=ruby": {
+      "package-metadata-exists:file-existence": [
+        "warning",
+        {
+          "files": [
+            "Gemfile"
+          ]
+        }
+      ]
+    },
+    "language=java": {
+      "package-metadata-exists:file-existence": [
+        "warning",
+        {
+          "files": [
+            "pom.xml",
+            "build.xml",
+            "build.gradle"
+          ]
+        }
+      ]
+    },
+    "license=*": {
+      "license-detectable-by-licensee": [
+        "warning"
+      ]
+    },
+    "language=python": {
+      "package-metadata-exists:file-existence": [
+        "warning",
+        {
+          "files": [
+            "setup.py",
+            "requirements.txt"
+          ]
+        }
+      ]
+    }
+  }
+}
