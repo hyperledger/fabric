@@ -79,8 +79,8 @@ func main() {
 		checkDirectoryNotExists(path, fmt.Sprintf("Directory %s already exists", path))
 
 		// write private and public keys to the file
-		handleError(os.MkdirAll(filepath.Join(*outputDir, IdemixDirIssuer), 0770))
-		handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirMsp), 0770))
+		handleError(os.MkdirAll(filepath.Join(*outputDir, IdemixDirIssuer), 0o770))
+		handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirMsp), 0o770))
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigIssuerSecretKey), isk)
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, IdemixConfigRevocationKey), pemEncodedRevocationSK)
 		writeFile(filepath.Join(*outputDir, IdemixDirIssuer, msp.IdemixConfigFileIssuerPublicKey), ipk)
@@ -114,12 +114,12 @@ func main() {
 		checkDirectoryNotExists(path, fmt.Sprintf("This MSP config already contains a directory \"%s\"", path))
 
 		// Write config to file
-		handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirUser), 0770))
+		handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirUser), 0o770))
 		writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirUser, msp.IdemixConfigFileSigner), config)
 
 		// Write CA public info in case genCAInput != outputDir
 		if *genCAInput != *outputDir {
-			handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirMsp), 0770))
+			handleError(os.MkdirAll(filepath.Join(*outputDir, msp.IdemixConfigDirMsp), 0o770))
 			writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileRevocationPublicKey), rpk)
 			writeFile(filepath.Join(*outputDir, msp.IdemixConfigDirMsp, msp.IdemixConfigFileIssuerPublicKey), ipkRaw)
 		}
@@ -136,7 +136,7 @@ func printVersion() {
 
 // writeFile writes bytes to a file and panics in case of an error
 func writeFile(path string, contents []byte) {
-	handleError(ioutil.WriteFile(path, contents, 0640))
+	handleError(ioutil.WriteFile(path, contents, 0o640))
 }
 
 // readIssuerKey reads the issuer key from the current directory

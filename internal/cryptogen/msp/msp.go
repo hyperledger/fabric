@@ -48,7 +48,6 @@ func GenerateLocalMSP(
 	nodeType int,
 	nodeOUs bool,
 ) error {
-
 	// create folder structure
 	mspDir := filepath.Join(baseDir, "msp")
 	tlsDir := filepath.Join(baseDir, "tls")
@@ -58,7 +57,7 @@ func GenerateLocalMSP(
 		return err
 	}
 
-	err = os.MkdirAll(tlsDir, 0755)
+	err = os.MkdirAll(tlsDir, 0o755)
 	if err != nil {
 		return err
 	}
@@ -114,7 +113,6 @@ func GenerateLocalMSP(
 
 	// generate config.yaml if required
 	if nodeOUs {
-
 		exportConfig(mspDir, filepath.Join("cacerts", x509Filename(signCA.Name)), true)
 	}
 
@@ -150,8 +148,10 @@ func GenerateLocalMSP(
 		sans,
 		&tlsPrivKey.PublicKey,
 		x509.KeyUsageDigitalSignature|x509.KeyUsageKeyEncipherment,
-		[]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth,
-			x509.ExtKeyUsageClientAuth},
+		[]x509.ExtKeyUsage{
+			x509.ExtKeyUsageServerAuth,
+			x509.ExtKeyUsageClientAuth,
+		},
 	)
 	if err != nil {
 		return err
@@ -186,7 +186,6 @@ func GenerateVerifyingMSP(
 	tlsCA *ca.CA,
 	nodeOUs bool,
 ) error {
-
 	// create folder structure and write artifacts to proper locations
 	err := createFolderStructure(baseDir, false)
 	if err != nil {
@@ -224,7 +223,7 @@ func GenerateVerifyingMSP(
 	}
 
 	ksDir := filepath.Join(baseDir, "keystore")
-	err = os.Mkdir(ksDir, 0755)
+	err = os.Mkdir(ksDir, 0o755)
 	defer os.RemoveAll(ksDir)
 	if err != nil {
 		return errors.WithMessage(err, "failed to create keystore directory")
@@ -250,7 +249,6 @@ func GenerateVerifyingMSP(
 }
 
 func createFolderStructure(rootDir string, local bool) error {
-
 	var folders []string
 	// create admincerts, cacerts, keystore and signcerts folders
 	folders = []string{
@@ -264,7 +262,7 @@ func createFolderStructure(rootDir string, local bool) error {
 	}
 
 	for _, folder := range folders {
-		err := os.MkdirAll(folder, 0755)
+		err := os.MkdirAll(folder, 0o755)
 		if err != nil {
 			return err
 		}
@@ -286,7 +284,7 @@ func keyExport(keystore, output string) error {
 }
 
 func pemExport(path, pemType string, bytes []byte) error {
-	//write pem out to file
+	// write pem out to file
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -297,7 +295,7 @@ func pemExport(path, pemType string, bytes []byte) error {
 }
 
 func exportConfig(mspDir, caFile string, enable bool) error {
-	var config = &fabricmsp.Configuration{
+	config := &fabricmsp.Configuration{
 		NodeOUs: &fabricmsp.NodeOUs{
 			Enable: enable,
 			ClientOUIdentifier: &fabricmsp.OrganizationalUnitIdentifiersConfiguration{

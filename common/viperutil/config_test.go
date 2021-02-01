@@ -202,7 +202,7 @@ func TestStringFromFile(t *testing.T) {
 
 	expectedValue := "this is the text in the file"
 
-	err = ioutil.WriteFile(file.Name(), []byte(expectedValue), 0644)
+	err = ioutil.WriteFile(file.Name(), []byte(expectedValue), 0o644)
 	require.NoError(t, err, "uname to write temp file")
 
 	yaml := fmt.Sprintf("---\nInner:\n  Single:\n    File: %s", file.Name())
@@ -228,7 +228,7 @@ func TestPEMBlocksFromFile(t *testing.T) {
 		pems = append(pems, publicKeyCert...)
 	}
 
-	err = ioutil.WriteFile(file.Name(), pems, 0644)
+	err = ioutil.WriteFile(file.Name(), pems, 0o644)
 	require.NoError(t, err, "failed to write temp file")
 
 	yaml := fmt.Sprintf("---\nInner:\n  Multiple:\n    File: %s", file.Name())
@@ -254,7 +254,7 @@ func TestPEMBlocksFromFileEnv(t *testing.T) {
 		pems = append(pems, publicKeyCert...)
 	}
 
-	err = ioutil.WriteFile(file.Name(), pems, 0644)
+	err = ioutil.WriteFile(file.Name(), pems, 0o644)
 	require.NoError(t, err, "failed to write temp file")
 
 	envVar := testEnvPrefix + "_INNER_MULTIPLE_FILE"
@@ -304,7 +304,7 @@ func TestStringFromFileEnv(t *testing.T) {
 	require.NoError(t, err, "failed to create temp file")
 	defer os.Remove(file.Name())
 
-	err = ioutil.WriteFile(file.Name(), []byte(expectedValue), 0644)
+	err = ioutil.WriteFile(file.Name(), []byte(expectedValue), 0o644)
 	require.NoError(t, err, "failed to write temp file")
 
 	envVar := testEnvPrefix + "_INNER_SINGLE_FILE"

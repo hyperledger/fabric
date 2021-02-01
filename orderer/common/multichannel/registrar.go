@@ -681,7 +681,6 @@ func (r *Registrar) ChannelList() types.ChannelList {
 		list.Channels = append(list.Channels, types.ChannelInfoShort{
 			Name: c,
 		})
-
 	}
 
 	return list
@@ -863,7 +862,6 @@ func (r *Registrar) createFollower(
 		r.bccsp,
 		r,
 	)
-
 	if err != nil {
 		return nil, types.ChannelInfo{}, errors.WithMessagef(err, "failed to create follower for channel %s", channelID)
 	}
@@ -1095,7 +1093,6 @@ func (r *Registrar) removeSystemChannel() error {
 }
 
 func (r *Registrar) removeLedgerAsync(channelID string) {
-
 	go func() {
 		err := r.ledgerFactory.Remove(channelID)
 		r.lock.Lock()

@@ -28,8 +28,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var couchDBAddress string
-var stopCouchDBFunc func()
+var (
+	couchDBAddress  string
+	stopCouchDBFunc func()
+)
 
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,valimpl,confighistory,pvtstatepurgemgmt=debug")
@@ -105,7 +107,8 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 		bcInfo, _ = lgr.GetBlockchainInfo()
 		block2Hash := protoutil.BlockHeaderHash(block2.Header)
 		require.Equal(t, &common.BlockchainInfo{
-			Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash}, bcInfo)
+			Height: 3, CurrentBlockHash: block2Hash, PreviousBlockHash: block1Hash,
+		}, bcInfo)
 
 		b0, _ := lgr.GetBlockByHash(gbHash)
 		require.True(t, proto.Equal(b0, gb), "proto messages are not equal")
@@ -220,7 +223,6 @@ func TestAddCommitHash(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, commitHash, lgr.(*kvLedger).commitHash)
 	require.Equal(t, len(commitHash), 0)
-
 }
 
 func TestKVLedgerBlockStorageWithPvtdata(t *testing.T) {
@@ -326,9 +328,11 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	require.NoError(t, ledger1.CommitLegacy(blockAndPvtdata1, &ledger.CommitOptions{}))
 	checkBCSummaryForTest(t, ledger1,
 		&bcSummary{
-			bcInfo: &common.BlockchainInfo{Height: 2,
+			bcInfo: &common.BlockchainInfo{
+				Height:            2,
 				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header),
-				PreviousBlockHash: gbHash},
+				PreviousBlockHash: gbHash,
+			},
 		},
 	)
 
@@ -347,9 +351,11 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// block storage should be as of block-2 but the state and history db should be as of block-1
 	checkBCSummaryForTest(t, ledger1,
 		&bcSummary{
-			bcInfo: &common.BlockchainInfo{Height: 3,
+			bcInfo: &common.BlockchainInfo{
+				Height:            3,
 				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header),
-				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header)},
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata1.Block.Header),
+			},
 
 			stateDBSavePoint: uint64(1),
 			stateDBKVs:       map[string]string{"key1": "value1.1", "key2": "value2.1", "key3": "value3.1"},
@@ -404,9 +410,11 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 	// assume that peer fails here after committing the transaction to state DB but before history DB
 	checkBCSummaryForTest(t, ledger2,
 		&bcSummary{
-			bcInfo: &common.BlockchainInfo{Height: 4,
+			bcInfo: &common.BlockchainInfo{
+				Height:            4,
 				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
-				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header)},
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata2.Block.Header),
+			},
 
 			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
@@ -461,9 +469,11 @@ func TestKVLedgerDBRecovery(t *testing.T) {
 
 	checkBCSummaryForTest(t, ledger3,
 		&bcSummary{
-			bcInfo: &common.BlockchainInfo{Height: 5,
+			bcInfo: &common.BlockchainInfo{
+				Height:            5,
 				CurrentBlockHash:  protoutil.BlockHeaderHash(blockAndPvtdata4.Block.Header),
-				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header)},
+				PreviousBlockHash: protoutil.BlockHeaderHash(blockAndPvtdata3.Block.Header),
+			},
 
 			stateDBSavePoint: uint64(3),
 			stateDBKVs:       map[string]string{"key1": "value1.3", "key2": "value2.3", "key3": "value3.3"},
@@ -514,7 +524,8 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 
 	bcInfo, _ := lgr.GetBlockchainInfo()
 	require.Equal(t, &common.BlockchainInfo{
-		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil}, bcInfo)
+		Height: 1, CurrentBlockHash: gbHash, PreviousBlockHash: nil,
+	}, bcInfo)
 
 	txid := util.GenerateUUID()
 	simulator, _ := lgr.NewTxSimulator(txid)
@@ -532,7 +543,8 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	bcInfo, _ = lgr.GetBlockchainInfo()
 	block1Hash := protoutil.BlockHeaderHash(block1.Header)
 	require.Equal(t, &common.BlockchainInfo{
-		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash}, bcInfo)
+		Height: 2, CurrentBlockHash: block1Hash, PreviousBlockHash: gbHash,
+	}, bcInfo)
 
 	simulationResults := [][]byte{}
 	txid = util.GenerateUUID()
@@ -546,7 +558,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimBytes, _ = simRes.GetPubSimulationBytes()
 	simulationResults = append(simulationResults, pubSimBytes)
-	//add a 2nd transaction
+	// add a 2nd transaction
 	txid2 := util.GenerateUUID()
 	simulator2, _ := lgr.NewTxSimulator(txid2)
 	require.NoError(t, simulator2.SetState("ns1", "key7", []byte("{\"shipmentID\":\"161003PKC7600\",\"customsInvoice\":{\"methodOfTransport\":\"TRAIN\",\"invoiceNumber\":\"00091624\"},\"weightUnitOfMeasure\":\"KGM\",\"volumeUnitOfMeasure\": \"CO\",\"dimensionUnitOfMeasure\":\"CM\",\"currency\":\"USD\"}")))
@@ -584,7 +596,7 @@ func TestLedgerWithCouchDbEnabledWithBinaryAndJSONData(t *testing.T) {
 	b2, _ = lgr.GetBlockByNumber(2)
 	require.True(t, proto.Equal(b2, block2), "proto messages are not equal")
 
-	//Similar test has been pushed down to historyleveldb_test.go as well
+	// Similar test has been pushed down to historyleveldb_test.go as well
 	if conf.HistoryDBConfig.Enabled {
 		logger.Debugf("History is enabled\n")
 		qhistory, err := lgr.NewHistoryQueryExecutor()
@@ -1236,7 +1248,7 @@ func btlPolicyForSampleData() pvtdatapolicy.BTLPolicy {
 func prepareNextBlockForTest(t *testing.T, l ledger.PeerLedger, bg *testutil.BlockGenerator,
 	txid string, pubKVs map[string]string, pvtKVs map[string]string) *ledger.BlockAndPvtData {
 	simulator, _ := l.NewTxSimulator(txid)
-	//simulating transaction
+	// simulating transaction
 	for k, v := range pubKVs {
 		require.NoError(t, simulator.SetState("ns", k, []byte(v)))
 	}

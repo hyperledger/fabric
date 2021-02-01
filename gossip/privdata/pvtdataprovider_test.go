@@ -1253,7 +1253,6 @@ func testRetrievePvtdataSuccess(t *testing.T,
 	expectedDigKeys []privdatacommon.DigKey,
 	pvtdataToRetrieve []*ledger.TxPvtdataInfo,
 	expectedBlockPvtdata *ledger.BlockPvtdata) {
-
 	fmt.Println("\n" + scenario)
 
 	tempdir, err := ioutil.TempDir("", "ts")
@@ -1292,7 +1291,6 @@ func testRetrievePvtdataFailure(t *testing.T,
 	expectedDigKeys []privdatacommon.DigKey,
 	pvtdataToRetrieve []*ledger.TxPvtdataInfo,
 	expectedErr string) {
-
 	fmt.Println("\n" + scenario)
 
 	tempdir, err := ioutil.TempDir("", "ts")
@@ -1320,7 +1318,6 @@ func setupPrivateDataProvider(t *testing.T,
 	storePvtdataOfInvalidTx, skipPullingInvalidTransactions bool, store *transientstore.Store,
 	rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer []rwSet,
 	expectedDigKeys []privdatacommon.DigKey) *PvtdataProvider {
-
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
@@ -1364,7 +1361,6 @@ func testPurged(t *testing.T,
 	retrievedPvtdata ledger.RetrievedPvtdata,
 	store *transientstore.Store,
 	txPvtdataInfo []*ledger.TxPvtdataInfo) {
-
 	retrievedPvtdata.Purge()
 	for _, pvtdata := range retrievedPvtdata.GetBlockPvtdata().PvtData {
 		func() {

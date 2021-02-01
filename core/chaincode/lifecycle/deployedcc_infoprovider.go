@@ -34,14 +34,12 @@ const (
 	LifecycleEndorsementPolicyRef = "/Channel/Application/LifecycleEndorsement"
 )
 
-var (
-	// This is a channel which was created with a lifecycle endorsement policy
-	LifecycleDefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
-		Type: &cb.ApplicationPolicy_ChannelConfigPolicyReference{
-			ChannelConfigPolicyReference: LifecycleEndorsementPolicyRef,
-		},
-	})
-)
+// This is a channel which was created with a lifecycle endorsement policy
+var LifecycleDefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&cb.ApplicationPolicy{
+	Type: &cb.ApplicationPolicy_ChannelConfigPolicyReference{
+		ChannelConfigPolicyReference: LifecycleEndorsementPolicyRef,
+	},
+})
 
 type ValidatorCommitter struct {
 	CoreConfig                   *peer.Config
@@ -205,7 +203,7 @@ func (vc *ValidatorCommitter) CollectionInfo(channelName, chaincodeName, collect
 }
 
 // ImplicitCollections implements function in interface ledger.DeployedChaincodeInfoProvider.  It returns
-//a slice that contains one proto msg for each of the implicit collections
+// a slice that contains one proto msg for each of the implicit collections
 func (vc *ValidatorCommitter) ImplicitCollections(channelName, chaincodeName string, qe ledger.SimpleQueryExecutor) ([]*pb.StaticCollectionConfig, error) {
 	exists, _, err := vc.Resources.ChaincodeDefinitionIfDefined(chaincodeName, &SimpleQueryExecutorShim{
 		Namespace:           LifecycleNamespace,

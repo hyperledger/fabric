@@ -23,7 +23,7 @@ func TestConstructBlockfilesInfo(t *testing.T) {
 	conf := NewConf(testPath(), 0)
 	blkStoreDir := conf.getLedgerBlockDir(ledgerid)
 	env := newTestEnv(t, conf)
-	require.NoError(t, os.MkdirAll(blkStoreDir, 0755))
+	require.NoError(t, os.MkdirAll(blkStoreDir, 0o755))
 	defer env.Cleanup()
 
 	// constructBlockfilesInfo on an empty block folder should return blockfileInfo with noBlockFiles: true
@@ -124,7 +124,7 @@ func TestIsBootstrappedFromSnapshot(t *testing.T) {
 	t.Run("no_bootstrapping_snapshot_info_file", func(t *testing.T) {
 		// create chains directory for the ledger without bootstrappingSnapshotInfoFile
 		ledgerid := "testnosnapshotinfofile"
-		require.NoError(t, os.MkdirAll(filepath.Join(testDir, ChainsDir, ledgerid), 0755))
+		require.NoError(t, os.MkdirAll(filepath.Join(testDir, ChainsDir, ledgerid), 0o755))
 		isFromSnapshot, err := IsBootstrappedFromSnapshot(testDir, ledgerid)
 		require.NoError(t, err)
 		require.False(t, isFromSnapshot)
@@ -134,7 +134,7 @@ func TestIsBootstrappedFromSnapshot(t *testing.T) {
 		// create chains directory for the ledger with bootstrappingSnapshotInfoFile
 		ledgerid := "testwithsnapshotinfofile"
 		ledgerChainDir := filepath.Join(testDir, ChainsDir, ledgerid)
-		require.NoError(t, os.MkdirAll(ledgerChainDir, 0755))
+		require.NoError(t, os.MkdirAll(ledgerChainDir, 0o755))
 		file, err := os.Create(filepath.Join(ledgerChainDir, bootstrappingSnapshotInfoFile))
 		require.NoError(t, err)
 		defer file.Close()
@@ -152,7 +152,7 @@ func TestGetLedgersBootstrappedFromSnapshot(t *testing.T) {
 
 		// create chains directories for ledgers without bootstrappingSnapshotInfoFile
 		for i := 0; i < 5; i++ {
-			require.NoError(t, os.MkdirAll(filepath.Join(testDir, ChainsDir, fmt.Sprintf("ledger_%d", i)), 0755))
+			require.NoError(t, os.MkdirAll(filepath.Join(testDir, ChainsDir, fmt.Sprintf("ledger_%d", i)), 0o755))
 		}
 
 		ledgersFromSnapshot, err := GetLedgersBootstrappedFromSnapshot(testDir)
@@ -169,7 +169,7 @@ func TestGetLedgersBootstrappedFromSnapshot(t *testing.T) {
 		// also create bootstrappingSnapshotInfoFile for ledger_0 and ledger_1
 		for i := 0; i < 5; i++ {
 			ledgerChainDir := filepath.Join(testDir, ChainsDir, fmt.Sprintf("ledger_%d", i))
-			require.NoError(t, os.MkdirAll(ledgerChainDir, 0755))
+			require.NoError(t, os.MkdirAll(ledgerChainDir, 0o755))
 			if i < 2 {
 				file, err := os.Create(filepath.Join(ledgerChainDir, bootstrappingSnapshotInfoFile))
 				require.NoError(t, err)

@@ -25,11 +25,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testNewHashFunc = func() (hash.Hash, error) {
-		return sha256.New(), nil
-	}
-)
+var testNewHashFunc = func() (hash.Hash, error) {
+	return sha256.New(), nil
+}
 
 func TestBlockIndexSync(t *testing.T) {
 	testBlockIndexSync(t, 10, 5, false)
@@ -161,7 +159,7 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 			require.EqualError(t, err, "transaction IDs not maintained in index")
 		}
 
-		//test 'retrieveTrasnactionsByBlockNumTranNum
+		// test 'retrieveTrasnactionsByBlockNumTranNum
 		txEnvelope2, err := blockfileMgr.retrieveTransactionByBlockNumTranNum(0, 0)
 		if containsAttr(indexItems, IndexableAttrBlockNumTranNum) {
 			require.NoError(t, err, "Error while retrieving tx by blockNum and tranNum")
@@ -374,7 +372,7 @@ func TestExportUniqueTxIDsErrorCases(t *testing.T) {
 
 	// error during metadata file creation
 	fmt.Printf("testSnapshotDir=%s", testSnapshotDir)
-	require.NoError(t, os.MkdirAll(testSnapshotDir, 0700))
+	require.NoError(t, os.MkdirAll(testSnapshotDir, 0o700))
 	metadataFilePath := filepath.Join(testSnapshotDir, snapshotMetadataFileName)
 	_, err = os.Create(metadataFilePath)
 	require.NoError(t, err)
@@ -383,14 +381,14 @@ func TestExportUniqueTxIDsErrorCases(t *testing.T) {
 	os.RemoveAll(testSnapshotDir)
 
 	// error while retrieving the txid key
-	require.NoError(t, os.MkdirAll(testSnapshotDir, 0700))
+	require.NoError(t, os.MkdirAll(testSnapshotDir, 0o700))
 	index.db.Put([]byte{txIDIdxKeyPrefix}, []byte("some junk value"), true)
 	_, err = index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.EqualError(t, err, "invalid txIDKey {74}: number of consumed bytes from DecodeVarint is invalid, expected 1, but got 0")
 	os.RemoveAll(testSnapshotDir)
 
 	// error while reading from leveldb
-	require.NoError(t, os.MkdirAll(testSnapshotDir, 0700))
+	require.NoError(t, os.MkdirAll(testSnapshotDir, 0o700))
 	env.provider.leveldbProvider.Close()
 	_, err = index.exportUniqueTxIDs(testSnapshotDir, testNewHashFunc)
 	require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")

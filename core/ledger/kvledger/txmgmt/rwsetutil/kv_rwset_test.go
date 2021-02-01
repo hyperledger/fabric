@@ -38,7 +38,7 @@ func TestKVRWSetV1BackwardCompatible(t *testing.T) {
 func PrepareBinaryFileSampleKVRWSetV1(t *testing.T) {
 	b, err := proto.Marshal(constructSampleKVRWSet())
 	require.NoError(t, err)
-	require.NoError(t, ioutil.WriteFile(kvrwsetV1ProtoBytesFile, b, 0644))
+	require.NoError(t, ioutil.WriteFile(kvrwsetV1ProtoBytesFile, b, 0o644))
 }
 
 func constructSampleKVRWSet() *kvrwset.KVRWSet {

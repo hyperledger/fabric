@@ -8,6 +8,7 @@ package channelparticipation
 
 import (
 	"errors"
+
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/channelconfig"

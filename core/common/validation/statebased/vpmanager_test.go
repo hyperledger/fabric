@@ -105,8 +105,9 @@ func TestSimple(t *testing.T) {
 	spe := policydsl.SignedByMspMember("foo")
 	mr := &mockState{GetStateMetadataRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}, GetPrivateDataMetadataByHashRv: map[string][]byte{vpMetadataKey: protoutil.MarshalOrPanic(spe)}}
 	ms := &mockStateFetcher{FetchStateRv: mr}
-	pm := &KeyLevelValidationParameterManagerImpl{PolicyTranslator: &mockTranslator{},
-		StateFetcher: ms,
+	pm := &KeyLevelValidationParameterManagerImpl{
+		PolicyTranslator: &mockTranslator{},
+		StateFetcher:     ms,
 	}
 
 	sp, err := pm.GetValidationParameterForKey("cc", "coll", "key", 0, 0)
@@ -135,7 +136,8 @@ func rwsetUpdatingMetadataFor(cc, key string) []byte {
 						},
 					}),
 				},
-			}})
+			},
+		})
 }
 
 func pvtRwsetUpdatingMetadataFor(cc, coll, key string) []byte {
@@ -163,7 +165,8 @@ func pvtRwsetUpdatingMetadataFor(cc, coll, key string) []byte {
 						},
 					},
 				},
-			}})
+			},
+		})
 }
 
 func runFunctions(t *testing.T, seed int64, funcs ...func()) {

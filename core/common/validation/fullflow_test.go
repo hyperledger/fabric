@@ -27,7 +27,9 @@ func getProposal(channelID string) (*peer.Proposal, error) {
 	cis := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			ChaincodeId: getChaincodeID(),
-			Type:        peer.ChaincodeSpec_GOLANG}}
+			Type:        peer.ChaincodeSpec_GOLANG,
+		},
+	}
 
 	proposal, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, channelID, cis, signerSerialized)
 	return proposal, err
@@ -374,9 +376,11 @@ func TestInvocationsBadArgs(t *testing.T) {
 	require.Error(t, err)
 }
 
-var signer msp.SigningIdentity
-var signerSerialized []byte
-var signerMSPId string
+var (
+	signer           msp.SigningIdentity
+	signerSerialized []byte
+	signerMSPId      string
+)
 
 func TestMain(m *testing.M) {
 	// setup crypto algorithms

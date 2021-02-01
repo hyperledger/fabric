@@ -87,5 +87,4 @@ func TestToSlice(t *testing.T) {
 	for _, msg := range membershipStore.ToSlice() {
 		require.True(t, existsInSlice(expectedMsgs, msg))
 	}
-
 }

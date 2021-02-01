@@ -17,14 +17,14 @@ import (
 
 //--------- errors ---------
 
-//PolicyNotFound cache for resource
+// PolicyNotFound cache for resource
 type PolicyNotFound string
 
 func (e PolicyNotFound) Error() string {
 	return fmt.Sprintf("policy %s not found", string(e))
 }
 
-//InvalidIdInfo
+// InvalidIdInfo
 type InvalidIdInfo string
 
 func (e InvalidIdInfo) Error() string {
@@ -33,13 +33,13 @@ func (e InvalidIdInfo) Error() string {
 
 //---------- policyEvaluator ------
 
-//policyEvalutor interface provides the interfaces for policy evaluation
+// policyEvalutor interface provides the interfaces for policy evaluation
 type policyEvaluator interface {
 	PolicyRefForAPI(resName string) string
 	Evaluate(polName string, id []*protoutil.SignedData) error
 }
 
-//policyEvaluatorImpl implements policyEvaluator
+// policyEvaluatorImpl implements policyEvaluator
 type policyEvaluatorImpl struct {
 	bundle channelconfig.Resources
 }
@@ -69,31 +69,31 @@ func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.SignedDa
 
 //------ resourcePolicyProvider ----------
 
-//aclmgmtPolicyProvider is the interface implemented by resource based ACL.
+// aclmgmtPolicyProvider is the interface implemented by resource based ACL.
 type aclmgmtPolicyProvider interface {
-	//GetPolicyName returns policy name given resource name
+	// GetPolicyName returns policy name given resource name
 	GetPolicyName(resName string) string
 
-	//CheckACL backs ACLProvider interface
+	// CheckACL backs ACLProvider interface
 	CheckACL(polName string, idinfo interface{}) error
 }
 
-//aclmgmtPolicyProviderImpl holds the bytes from state of the ledger
+// aclmgmtPolicyProviderImpl holds the bytes from state of the ledger
 type aclmgmtPolicyProviderImpl struct {
 	pEvaluator policyEvaluator
 }
 
-//GetPolicyName returns the policy name given the resource string
+// GetPolicyName returns the policy name given the resource string
 func (rp *aclmgmtPolicyProviderImpl) GetPolicyName(resName string) string {
 	return rp.pEvaluator.PolicyRefForAPI(resName)
 }
 
-//CheckACL implements AClProvider's CheckACL interface so it can be registered
-//as a provider with aclmgmt
+// CheckACL implements AClProvider's CheckACL interface so it can be registered
+// as a provider with aclmgmt
 func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}) error {
 	aclLogger.Debugf("acl check(%s)", polName)
 
-	//we will implement other identifiers. In the end we just need a SignedData
+	// we will implement other identifiers. In the end we just need a SignedData
 	var sd []*protoutil.SignedData
 	switch idinfo := idinfo.(type) {
 	case *pb.SignedProposal:
@@ -140,19 +140,19 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 
 //-------- resource provider - entry point API used by aclmgmtimpl for doing resource based ACL ----------
 
-//resource getter gets channelconfig.Resources given channel ID
+// resource getter gets channelconfig.Resources given channel ID
 type ResourceGetter func(channelID string) channelconfig.Resources
 
-//resource provider that uses the resource configuration information to provide ACL support
+// resource provider that uses the resource configuration information to provide ACL support
 type resourceProvider struct {
-	//resource getter
+	// resource getter
 	resGetter ResourceGetter
 
-	//default provider to be used for undefined resources
+	// default provider to be used for undefined resources
 	defaultProvider defaultACLProvider
 }
 
-//create a new resourceProvider
+// create a new resourceProvider
 func newResourceProvider(rg ResourceGetter, defprov defaultACLProvider) *resourceProvider {
 	return &resourceProvider{rg, defprov}
 }
@@ -163,7 +163,7 @@ func (rp *resourceProvider) enforceDefaultBehavior(resName string, channelID str
 	return rp.defaultProvider.IsPtypePolicy(resName)
 }
 
-//CheckACL implements the ACL
+// CheckACL implements the ACL
 func (rp *resourceProvider) CheckACL(resName string, channelID string, idinfo interface{}) error {
 	if !rp.enforceDefaultBehavior(resName, channelID, idinfo) {
 		resCfg := rp.resGetter(channelID)

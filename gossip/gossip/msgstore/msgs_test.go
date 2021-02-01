@@ -93,7 +93,6 @@ func TestMessagesGet(t *testing.T) {
 	for _, num2Search := range expected {
 		require.True(t, contains(msgStore.Get(), num2Search), "Value %v not found in array", num2Search)
 	}
-
 }
 
 func TestNewMessagesInvalidated(t *testing.T) {
@@ -190,7 +189,6 @@ func TestExpiration(t *testing.T) {
 	}
 
 	require.Equal(t, 10, msgStore.Size(), "Wrong number of items in store - after second batch expiration and first banch re-added")
-
 }
 
 func TestExpirationConcurrency(t *testing.T) {

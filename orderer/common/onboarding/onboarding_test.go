@@ -99,7 +99,7 @@ func copyYamlFiles(src, dst string) {
 		if err != nil {
 			os.Exit(-1)
 		}
-		err = ioutil.WriteFile(filepath.Join(dst, file), fileBytes, 0644)
+		err = ioutil.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
 		if err != nil {
 			os.Exit(-1)
 		}

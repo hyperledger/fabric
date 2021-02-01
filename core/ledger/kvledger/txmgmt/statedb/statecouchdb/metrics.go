@@ -12,16 +12,14 @@ import (
 	"github.com/hyperledger/fabric/common/metrics"
 )
 
-var (
-	apiProcessingTimeOpts = metrics.HistogramOpts{
-		Namespace:    "couchdb",
-		Subsystem:    "",
-		Name:         "processing_time",
-		Help:         "Time taken in seconds for the function to complete request to CouchDB",
-		LabelNames:   []string{"database", "function_name", "result"},
-		StatsdFormat: "%{#fqname}.%{database}.%{function_name}.%{result}",
-	}
-)
+var apiProcessingTimeOpts = metrics.HistogramOpts{
+	Namespace:    "couchdb",
+	Subsystem:    "",
+	Name:         "processing_time",
+	Help:         "Time taken in seconds for the function to complete request to CouchDB",
+	LabelNames:   []string{"database", "function_name", "result"},
+	StatsdFormat: "%{#fqname}.%{database}.%{function_name}.%{result}",
+}
 
 type stats struct {
 	apiProcessingTime metrics.Histogram

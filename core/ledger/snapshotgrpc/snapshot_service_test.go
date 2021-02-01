@@ -82,7 +82,7 @@ func TestSnapshot(t *testing.T) {
 	require.EqualError(t, err, "no snapshot request exists for block number 100")
 
 	// common error tests for all requests
-	var tests = []struct {
+	tests := []struct {
 		name          string
 		channelID     string
 		signedRequest *pb.SignedSnapshotRequest

@@ -93,7 +93,7 @@ func TestLoadCertificateECDSA_wrongEncoding(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	filename := filepath.Join(testDir, "wrong_encoding.pem")
-	err = ioutil.WriteFile(filename, []byte("wrong_encoding"), 0644) // Wrong encoded cert
+	err = ioutil.WriteFile(filename, []byte("wrong_encoding"), 0o644) // Wrong encoded cert
 	require.NoErrorf(t, err, "failed to create file %s", filename)
 
 	_, err = ca.LoadCertificateECDSA(testDir)
@@ -108,7 +108,7 @@ func TestLoadCertificateECDSA_empty_DER_cert(t *testing.T) {
 
 	filename := filepath.Join(testDir, "empty.pem")
 	empty_cert := "-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----"
-	err = ioutil.WriteFile(filename, []byte(empty_cert), 0644)
+	err = ioutil.WriteFile(filename, []byte(empty_cert), 0o644)
 	require.NoErrorf(t, err, "failed to create file %s", filename)
 
 	cert, err := ca.LoadCertificateECDSA(testDir)
@@ -254,7 +254,6 @@ func TestGenerateSignCertificate(t *testing.T) {
 	_, err = badCA.SignCertificate(certDir, testName, nil, nil, &ecdsa.PublicKey{},
 		x509.KeyUsageKeyEncipherment, []x509.ExtKeyUsage{x509.ExtKeyUsageAny})
 	require.Error(t, err, "Empty CA should not be able to sign")
-
 }
 
 func checkForFile(file string) bool {

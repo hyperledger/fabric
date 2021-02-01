@@ -95,7 +95,7 @@ func TestCLI(t *testing.T) {
 		testCmdInvoked = false
 		exited = false
 		dir := filepath.Join(os.TempDir(), fmt.Sprintf("config%d", rand.Int()))
-		os.Mkdir(dir, 0700)
+		os.Mkdir(dir, 0o700)
 		defer os.RemoveAll(dir)
 
 		userCert := filepath.Join(dir, "cert.pem")

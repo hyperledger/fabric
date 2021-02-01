@@ -35,14 +35,13 @@ func TestCacheConfigurationNegative(t *testing.T) {
 	viper.Set("peer.address", "wrongAddress")
 	_, err = GlobalConfig()
 	require.Error(t, err, "Expected error for bad configuration")
-
 }
 
 func TestPeerAddress(t *testing.T) {
 	localIP, err := comm.GetLocalIP()
 	require.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		name                string
 		settings            map[string]interface{}
 		expectedPeerAddress string
@@ -217,7 +216,7 @@ func TestGlobalConfig(t *testing.T) {
 	require.NoError(t, err, "failed to get current working directory")
 	viper.SetConfigFile(filepath.Join(cwd, "core.yaml"))
 
-	//Capture the configuration from viper
+	// Capture the configuration from viper
 	viper.Set("peer.addressAutoDetect", false)
 	viper.Set("peer.address", "localhost:8080")
 	viper.Set("peer.id", "testPeerID")

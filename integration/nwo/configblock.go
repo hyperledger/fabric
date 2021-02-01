@@ -103,7 +103,7 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Expect(signedEnvelope).NotTo(BeNil())
 
 	updateFile := filepath.Join(tempDir, "update.pb")
-	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0600)
+	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
@@ -258,7 +258,7 @@ func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, c
 	Expect(err).NotTo(HaveOccurred())
 	Expect(signedEnvelope).NotTo(BeNil())
 
-	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0600)
+	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {

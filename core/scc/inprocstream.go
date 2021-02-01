@@ -14,7 +14,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 )
 
-//SendPanicFailure
+// SendPanicFailure
 type SendPanicFailure string
 
 func (e SendPanicFailure) Error() string {
@@ -33,8 +33,8 @@ func newInProcStream(recv <-chan *pb.ChaincodeMessage, send chan<- *pb.Chaincode
 }
 
 func (s *inProcStream) Send(msg *pb.ChaincodeMessage) (err error) {
-	//send may happen on a closed channel when the system is
-	//shutting down. Just catch the exception and return error
+	// send may happen on a closed channel when the system is
+	// shutting down. Just catch the exception and return error
 	defer func() {
 		if r := recover(); r != nil {
 			err = SendPanicFailure(fmt.Sprintf("%s", r))

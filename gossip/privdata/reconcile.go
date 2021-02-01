@@ -70,8 +70,7 @@ type Reconciler struct {
 
 // NoOpReconciler non functional reconciler to be used
 // in case reconciliation has been disabled
-type NoOpReconciler struct {
-}
+type NoOpReconciler struct{}
 
 func (*NoOpReconciler) Start() {
 	// do nothing

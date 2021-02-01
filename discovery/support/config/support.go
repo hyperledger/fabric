@@ -88,7 +88,6 @@ func (s *DiscoverySupport) Config(channel string) (*discovery.ConfigResult, erro
 		return nil, errors.WithStack(err)
 	}
 	return res, nil
-
 }
 
 func computeOrdererEndpoints(ordererGrp map[string]*common.ConfigGroup, globalOrdererAddresses []string) (map[string]*discovery.Endpoints, error) {

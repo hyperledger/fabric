@@ -225,7 +225,8 @@ func TestPrincipalIdentity(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-		Principal:               idBytes}
+		Principal:               idBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.NoError(t, err)
@@ -249,12 +250,12 @@ func TestPrincipalIdentityWrongIdentity(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-		Principal:               idBytes}
+		Principal:               idBytes,
+	}
 
 	err = id2.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Identity MSP principal for different user should fail")
 	require.Contains(t, err.Error(), "the identities do not match")
-
 }
 
 func TestPrincipalIdentityBadIdentity(t *testing.T) {
@@ -268,7 +269,8 @@ func TestPrincipalIdentityBadIdentity(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-		Principal:               idBytes}
+		Principal:               idBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Identity MSP principal for a bad principal should fail")
@@ -287,7 +289,8 @@ func TestAnonymityPrincipal(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.NoError(t, err)
@@ -305,7 +308,8 @@ func TestAnonymityPrincipalBad(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Idemix identity is anonymous and should not pass NOMINAL anonymity principal")
@@ -324,7 +328,8 @@ func TestAnonymityPrincipalV11(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ANONYMITY,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err)
@@ -368,7 +373,8 @@ func TestPrincipalOU(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               bytes}
+		Principal:               bytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.NoError(t, err)
@@ -391,12 +397,12 @@ func TestPrincipalOUWrongOU(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               bytes}
+		Principal:               bytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "OU MSP principal should have failed for user of different OU")
 	require.Contains(t, err.Error(), "user is not part of the desired organizational unit")
-
 }
 
 func TestPrincipalOUWrongMSP(t *testing.T) {
@@ -416,12 +422,12 @@ func TestPrincipalOUWrongMSP(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               bytes}
+		Principal:               bytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "OU MSP principal should have failed for user of different MSP")
 	require.Contains(t, err.Error(), "the identity is a member of a different MSP")
-
 }
 
 func TestPrincipalOUBad(t *testing.T) {
@@ -436,7 +442,8 @@ func TestPrincipalOUBad(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               bytes}
+		Principal:               bytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "OU MSP principal should have failed for a bad OU principal")
@@ -455,7 +462,8 @@ func TestPrincipalRoleMember(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.NoError(t, err)
@@ -466,7 +474,8 @@ func TestPrincipalRoleMember(t *testing.T) {
 
 	principal = &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.NoError(t, err)
@@ -484,7 +493,8 @@ func TestPrincipalRoleAdmin(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	// Admin should also satisfy member
 	err = id1.SatisfiesPrincipal(principal)
@@ -495,7 +505,8 @@ func TestPrincipalRoleAdmin(t *testing.T) {
 
 	principal = &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.NoError(t, err)
@@ -513,7 +524,8 @@ func TestPrincipalRoleNotPeer(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Admin should not satisfy PEER principal")
@@ -532,7 +544,8 @@ func TestPrincipalRoleNotAdmin(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Member should not satisfy Admin principal")
@@ -551,7 +564,8 @@ func TestPrincipalRoleWrongMSP(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Role MSP principal should have failed for user of different MSP")
@@ -571,7 +585,8 @@ func TestPrincipalRoleBadRole(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Role MSP principal should have failed for a bad Role")
@@ -587,7 +602,8 @@ func TestPrincipalBad(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: 1234,
-		Principal:               nil}
+		Principal:               nil,
+	}
 
 	err = id1.SatisfiesPrincipal(principal)
 	require.Error(t, err, "Principal with bad Classification should fail")
@@ -611,14 +627,16 @@ func TestPrincipalCombined(t *testing.T) {
 
 	principalOU := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
 	require.NoError(t, err)
 
 	principalRole := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	principals := []*msp.MSPPrincipal{principalOU, principalRole}
 
@@ -651,14 +669,16 @@ func TestPrincipalCombinedBad(t *testing.T) {
 
 	principalOU := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: id1.GetMSPIdentifier()})
 	require.NoError(t, err)
 
 	principalRole := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	principals := []*msp.MSPPrincipal{principalOU, principalRole}
 
@@ -691,14 +711,16 @@ func TestPrincipalCombinedV11(t *testing.T) {
 
 	principalOU := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	principalBytes, err = proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: id1.GetMSPIdentifier()})
 	require.NoError(t, err)
 
 	principalRole := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 
 	principals := []*msp.MSPPrincipal{principalOU, principalRole}
 
@@ -724,7 +746,8 @@ func TestRoleClientV11(t *testing.T) {
 	require.NoError(t, err)
 	principalRole := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	err = id1.SatisfiesPrincipal(principalRole)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid MSP role type")
@@ -740,7 +763,8 @@ func TestRolePeerV11(t *testing.T) {
 	require.NoError(t, err)
 	principalRole := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	err = id1.SatisfiesPrincipal(principalRole)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid MSP role type")

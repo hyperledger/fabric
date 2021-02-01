@@ -17,7 +17,7 @@ import (
 
 func TestLedgerConfig(t *testing.T) {
 	defer viper.Reset()
-	var tests = []struct {
+	tests := []struct {
 		name     string
 		config   map[string]interface{}
 		expected *ledger.Config

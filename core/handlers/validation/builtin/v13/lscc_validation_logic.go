@@ -85,12 +85,10 @@ func validateNewCollectionConfigs(newCollectionConfigs []*pb.CollectionConfig) e
 		if maximumPeerCount < requiredPeerCount {
 			return fmt.Errorf("collection-name: %s -- maximum peer count (%d) cannot be less than the required peer count (%d)",
 				collectionName, maximumPeerCount, requiredPeerCount)
-
 		}
 		if requiredPeerCount < 0 {
 			return fmt.Errorf("collection-name: %s -- requiredPeerCount (%d) cannot be less than zero (%d)",
 				collectionName, maximumPeerCount, requiredPeerCount)
-
 		}
 
 		// make sure that the signature policy is meaningful (only consists of ORs)
@@ -248,7 +246,6 @@ func (vscc *Validator) validateRWSetAndCollection(
 		if lsccrwset.Writes[1].Key != key {
 			return policyErr(fmt.Errorf("invalid key for the collection of chaincode %s:%s; expected '%s', received '%s'",
 				cdRWSet.Name, cdRWSet.Version, key, lsccrwset.Writes[1].Key))
-
 		}
 
 		collectionsConfigLedger = lsccrwset.Writes[1].Value
@@ -257,7 +254,6 @@ func (vscc *Validator) validateRWSetAndCollection(
 	if !bytes.Equal(collectionsConfigArg, collectionsConfigLedger) {
 		return policyErr(fmt.Errorf("collection configuration arguments supplied for chaincode %s:%s do not match the configuration in the lscc writeset",
 			cdRWSet.Name, cdRWSet.Version))
-
 	}
 
 	channelState, err := vscc.stateFetcher.FetchState()
@@ -278,8 +274,9 @@ func (vscc *Validator) validateRWSetAndCollection(
 			// because it means something went wrong while looking up the
 			// older collection
 			if _, ok := err.(privdata.NoSuchCollectionError); !ok {
-				return &commonerrors.VSCCExecutionFailureError{Err: fmt.Errorf("unable to check whether collection existed earlier for chaincode %s:%s",
-					cdRWSet.Name, cdRWSet.Version),
+				return &commonerrors.VSCCExecutionFailureError{
+					Err: fmt.Errorf("unable to check whether collection existed earlier for chaincode %s:%s",
+						cdRWSet.Name, cdRWSet.Version),
 				}
 			}
 		}
@@ -318,8 +315,9 @@ func (vscc *Validator) validateRWSetAndCollection(
 				// because it means something went wrong while looking up the
 				// older collection
 				if _, ok := err.(privdata.NoSuchCollectionError); !ok {
-					return &commonerrors.VSCCExecutionFailureError{Err: fmt.Errorf("unable to check whether collection existed earlier for chaincode %s:%s: %v",
-						cdRWSet.Name, cdRWSet.Version, err),
+					return &commonerrors.VSCCExecutionFailureError{
+						Err: fmt.Errorf("unable to check whether collection existed earlier for chaincode %s:%s: %v",
+							cdRWSet.Name, cdRWSet.Version, err),
 					}
 				}
 			}

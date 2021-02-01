@@ -56,7 +56,6 @@ func (m *mockLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsI
 }
 
 func (m *mockLedger) Close() {
-
 }
 
 // TxIDExists returns true if the specified txID is already present in one of the already committed blocks

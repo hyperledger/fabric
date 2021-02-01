@@ -59,13 +59,11 @@ const (
 	DefaultEndorsementPolicyRef = "/Channel/Application/Endorsement"
 )
 
-var (
-	DefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
-		Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
-			ChannelConfigPolicyReference: DefaultEndorsementPolicyRef,
-		},
-	})
-)
+var DefaultEndorsementPolicyBytes = protoutil.MarshalOrPanic(&pb.ApplicationPolicy{
+	Type: &pb.ApplicationPolicy_ChannelConfigPolicyReference{
+		ChannelConfigPolicyReference: DefaultEndorsementPolicyRef,
+	},
+})
 
 // Sequences are the underpinning of the definition framework for lifecycle.
 // All definitions must have a Sequence field in the public state.  This
@@ -520,7 +518,6 @@ func (ef *ExternalFunctions) ApproveChaincodeDefinitionForOrg(chname, ccname str
 // If the parameter of sequence is not provided, this function returns the latest approved chaincode definition
 // (latest: new one of the currently defined sequence number and the next sequence number).
 func (ef *ExternalFunctions) QueryApprovedChaincodeDefinition(chname, ccname string, sequence int64, publicState ReadableState, orgState ReadableState) (*ApprovedChaincodeDefinition, error) {
-
 	requestedSequence := sequence
 
 	// If requested sequence is not provided,

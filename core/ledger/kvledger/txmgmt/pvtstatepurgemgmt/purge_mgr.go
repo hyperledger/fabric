@@ -117,7 +117,8 @@ func (p *PurgeMgr) addMissingPvtDataToWorkingSet(pvtKeys privacyenabledstate.Pvt
 		hashedCompositeKey := privacyenabledstate.HashedCompositeKey{
 			Namespace:      k.Namespace,
 			CollectionName: k.CollectionName,
-			KeyHash:        string(util.ComputeStringHash(k.Key))}
+			KeyHash:        string(util.ComputeStringHash(k.Key)),
+		}
 
 		toPurgeKey, ok := p.workingset.toPurge[hashedCompositeKey]
 		if !ok {

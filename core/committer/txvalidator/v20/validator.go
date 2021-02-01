@@ -457,7 +457,6 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 // the function returns nil if it has ensured that there is no such duplicate, such
 // that its consumer can proceed with the transaction processing
 func (v *TxValidator) checkTxIdDupsLedger(tIdx int, chdr *common.ChannelHeader, ldgr LedgerResources) *blockValidationResult {
-
 	// Retrieve the transaction identifier of the input header
 	txID := chdr.TxId
 

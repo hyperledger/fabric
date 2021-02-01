@@ -53,7 +53,8 @@ func CreateDB(conf *Conf) *DB {
 		dbState:         closed,
 		readOpts:        readOpts,
 		writeOptsNoSync: writeOptsNoSync,
-		writeOptsSync:   writeOptsSync}
+		writeOptsSync:   writeOptsSync,
+	}
 }
 
 // Open opens the underlying db

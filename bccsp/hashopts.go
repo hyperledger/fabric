@@ -19,8 +19,7 @@ package bccsp
 import "fmt"
 
 // SHA256Opts contains options relating to SHA-256.
-type SHA256Opts struct {
-}
+type SHA256Opts struct{}
 
 // Algorithm returns the hash algorithm identifier (to be used).
 func (opts *SHA256Opts) Algorithm() string {
@@ -28,8 +27,7 @@ func (opts *SHA256Opts) Algorithm() string {
 }
 
 // SHA384Opts contains options relating to SHA-384.
-type SHA384Opts struct {
-}
+type SHA384Opts struct{}
 
 // Algorithm returns the hash algorithm identifier (to be used).
 func (opts *SHA384Opts) Algorithm() string {
@@ -37,8 +35,7 @@ func (opts *SHA384Opts) Algorithm() string {
 }
 
 // SHA3_256Opts contains options relating to SHA3-256.
-type SHA3_256Opts struct {
-}
+type SHA3_256Opts struct{}
 
 // Algorithm returns the hash algorithm identifier (to be used).
 func (opts *SHA3_256Opts) Algorithm() string {
@@ -46,8 +43,7 @@ func (opts *SHA3_256Opts) Algorithm() string {
 }
 
 // SHA3_384Opts contains options relating to SHA3-384.
-type SHA3_384Opts struct {
-}
+type SHA3_384Opts struct{}
 
 // Algorithm returns the hash algorithm identifier (to be used).
 func (opts *SHA3_384Opts) Algorithm() string {

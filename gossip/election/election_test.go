@@ -174,7 +174,6 @@ func createPeerWithCostumeMetrics(id int, peerMap map[string]*peer, l *sync.RWMu
 	peerMap[idStr] = p
 	l.Unlock()
 	return p
-
 }
 
 func createPeer(id int, peerMap map[string]*peer, l *sync.RWMutex) *peer {

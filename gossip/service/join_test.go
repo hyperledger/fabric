@@ -27,8 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type secAdvMock struct {
-}
+type secAdvMock struct{}
 
 func init() {
 	util.SetupTestLogging()

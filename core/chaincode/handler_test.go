@@ -1007,8 +1007,8 @@ var _ = Describe("Handler", func() {
 
 			Context("and GetPrivateData returns the response message", func() {
 				BeforeEach(func() {
-					//txContext.CollectionACLCache.put("collection-name", true, false)
-					//fakeCollectionStore.HasReadAccessReturns(false, nil) // to
+					// txContext.CollectionACLCache.put("collection-name", true, false)
+					// fakeCollectionStore.HasReadAccessReturns(false, nil) // to
 					// ensure that the access cache is used
 				})
 

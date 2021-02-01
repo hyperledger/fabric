@@ -141,7 +141,7 @@ func (l *kvLedger) generateSnapshot() error {
 		return err
 	}
 	slgr := SnapshotsDirForLedger(snapshotsRootDir, l.ledgerID)
-	if err := os.MkdirAll(slgr, 0755); err != nil {
+	if err := os.MkdirAll(slgr, 0o755); err != nil {
 		return errors.Wrapf(err, "error while creating final dir for snapshot:%s", slgr)
 	}
 	if err := fileutil.SyncParentDir(slgr); err != nil {
@@ -192,7 +192,7 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	if err != nil {
 		return errors.Wrap(err, "error while marshelling snapshot metadata to JSON")
 	}
-	if err := fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotSignableMetadataFileName), signableMetadataBytes, 0444); err != nil {
+	if err := fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotSignableMetadataFileName), signableMetadataBytes, 0o444); err != nil {
 		return err
 	}
 
@@ -214,7 +214,7 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	if err != nil {
 		return errors.Wrap(err, "error while marshalling snapshot additional metadata to JSON")
 	}
-	return fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotAdditionalMetadataFileName), additionalMetadataBytes, 0444)
+	return fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotAdditionalMetadataFileName), additionalMetadataBytes, 0o444)
 }
 
 // CreateFromSnapshot implements the corresponding method from interface ledger.PeerLedgerProvider

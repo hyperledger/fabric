@@ -45,7 +45,7 @@ func TestImportFromSnapshot(t *testing.T) {
 		testDir = testPath()
 		env = newTestEnv(t, NewConf(testDir, 0))
 		snapshotDir = filepath.Join(testDir, "snapshot")
-		require.NoError(t, os.Mkdir(snapshotDir, 0755))
+		require.NoError(t, os.Mkdir(snapshotDir, 0o755))
 
 		bg, genesisBlock := testutil.NewBlockGenerator(t, "testLedger", false)
 		blocksGenerator = bg
@@ -242,7 +242,7 @@ func TestImportFromSnapshot(t *testing.T) {
 		defer cleanup()
 
 		anotherSnapshotDir := filepath.Join(testDir, "anotherSnapshot")
-		require.NoError(t, os.Mkdir(anotherSnapshotDir, 0755))
+		require.NoError(t, os.Mkdir(anotherSnapshotDir, 0o755))
 
 		for _, b := range blocksAfterSnapshot {
 			require.NoError(t, bootstrappedBlockStore.AddBlock(b))
@@ -348,7 +348,7 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 	cleanupDirs := func() {
 		require.NoError(t, os.RemoveAll(ledgerDir))
 		require.NoError(t, os.RemoveAll(snapshotDir))
-		require.NoError(t, os.Mkdir(snapshotDir, 0755))
+		require.NoError(t, os.Mkdir(snapshotDir, 0o755))
 	}
 
 	createSnapshotMetadataFile := func(content uint64) {
@@ -425,11 +425,10 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 		require.NoError(t, err)
 		env.provider.Close()
 		env = newTestEnv(t, NewConf(testPath, 0))
-		require.NoError(t, ioutil.WriteFile(bootstrappingSnapshotInfoFile, []byte("junk-data"), 0644))
+		require.NoError(t, ioutil.WriteFile(bootstrappingSnapshotInfoFile, []byte("junk-data"), 0o644))
 		_, err = env.provider.Open(ledgerID)
 		require.Contains(t, err.Error(), "error while unmarshalling bootstrappingSnapshotInfo")
 	})
-
 }
 
 func generateNextTestBlock(bg *testutil.BlockGenerator, d *testBlockDetails) *common.Block {

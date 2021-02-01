@@ -17,9 +17,7 @@ import (
 )
 
 var _ = Describe("Credential Request", func() {
-
 	Describe("when creating a credential request", func() {
-
 		var (
 			CredentialRequestSigner *handlers.CredentialRequestSigner
 			fakeCredRequest         *mock.CredRequest
@@ -31,9 +29,7 @@ var _ = Describe("Credential Request", func() {
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
-			var (
-				fakeSignature []byte
-			)
+			var fakeSignature []byte
 			BeforeEach(func() {
 				fakeSignature = []byte("fake signature")
 				fakeCredRequest.SignReturns(fakeSignature, nil)
@@ -47,7 +43,6 @@ var _ = Describe("Credential Request", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(signature).To(BeEquivalentTo(fakeSignature))
-
 			})
 		})
 
@@ -68,7 +63,6 @@ var _ = Describe("Credential Request", func() {
 		})
 
 		Context("and the options are not well formed", func() {
-
 			Context("and the user secret key is nil", func() {
 				It("returns error", func() {
 					signature, err := CredentialRequestSigner.Sign(
@@ -140,12 +134,10 @@ var _ = Describe("Credential Request", func() {
 					Expect(signature).To(BeNil())
 				})
 			})
-
 		})
 	})
 
 	Describe("when verifying a credential request", func() {
-
 		var (
 			CredentialRequestVerifier *handlers.CredentialRequestVerifier
 			IssuerNonce               []byte
@@ -196,7 +188,6 @@ var _ = Describe("Credential Request", func() {
 		})
 
 		Context("and the parameters are not well formed", func() {
-
 			Context("and the issuer public key is nil", func() {
 				It("returns error", func() {
 					valid, err := CredentialRequestVerifier.Verify(
@@ -253,9 +244,7 @@ var _ = Describe("Credential Request", func() {
 })
 
 var _ = Describe("Credential", func() {
-
 	Describe("when creating a credential", func() {
-
 		var (
 			CredentialSigner *handlers.CredentialSigner
 			fakeCredential   *mock.Credential
@@ -267,9 +256,7 @@ var _ = Describe("Credential", func() {
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
-			var (
-				fakeSignature []byte
-			)
+			var fakeSignature []byte
 			BeforeEach(func() {
 				fakeSignature = []byte("fake signature")
 				fakeCredential.SignReturns(fakeSignature, nil)
@@ -283,7 +270,6 @@ var _ = Describe("Credential", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(signature).To(BeEquivalentTo(fakeSignature))
-
 			})
 		})
 
@@ -304,7 +290,6 @@ var _ = Describe("Credential", func() {
 		})
 
 		Context("and the parameters are not well formed", func() {
-
 			Context("and the issuer secret key is nil", func() {
 				It("returns error", func() {
 					signature, err := CredentialSigner.Sign(
@@ -356,7 +341,6 @@ var _ = Describe("Credential", func() {
 	})
 
 	Describe("when verifying a credential", func() {
-
 		var (
 			CredentialVerifier *handlers.CredentialVerifier
 			fakeCredential     *mock.Credential
@@ -402,7 +386,6 @@ var _ = Describe("Credential", func() {
 		})
 
 		Context("and the parameters are not well formed", func() {
-
 			Context("and the user secret key is nil", func() {
 				It("returns error", func() {
 					valid, err := CredentialVerifier.Verify(

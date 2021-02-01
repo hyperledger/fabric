@@ -57,7 +57,7 @@ func TestEmptyACLs(t *testing.T) {
 }
 
 func TestEmptyPolicyRef(t *testing.T) {
-	var ars = map[string]*pb.APIResource{
+	ars := map[string]*pb.APIResource{
 		"unsetAPI": {PolicyRef: ""},
 	}
 
@@ -78,5 +78,4 @@ func TestEmptyPolicyRef(t *testing.T) {
 	require.NotNil(t, ccg.aclPolicyRefs)
 	require.NotEmpty(t, ccg.aclPolicyRefs)
 	require.NotContains(t, ccg.aclPolicyRefs, sampleAPI1Name)
-
 }

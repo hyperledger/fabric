@@ -49,7 +49,6 @@ func (pr *provider) NewPolicy(data []byte) (policies.Policy, proto.Message, erro
 		deserializer:            pr.deserializer,
 		signaturePolicyEnvelope: sigPolicy,
 	}, sigPolicy, nil
-
 }
 
 // EnvelopeBasedPolicyProvider allows to create a new policy from SignaturePolicyEnvelope struct instead of []byte

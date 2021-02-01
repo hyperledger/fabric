@@ -39,22 +39,24 @@ import (
 
 type msgMutator func(message *proto.Envelope)
 
-var shortenedWaitTime = time.Millisecond * 300
-var conf = Config{
-	ID:                          "test",
-	PublishStateInfoInterval:    time.Millisecond * 100,
-	MaxBlockCountToStore:        100,
-	PullPeerNum:                 3,
-	PullInterval:                time.Second,
-	RequestStateInfoInterval:    time.Millisecond * 100,
-	BlockExpirationInterval:     time.Second * 6,
-	StateInfoCacheSweepInterval: time.Second,
-	TimeForMembershipTracker:    time.Second * 5,
-	DigestWaitTime:              shortenedWaitTime / 2,
-	RequestWaitTime:             shortenedWaitTime,
-	ResponseWaitTime:            shortenedWaitTime,
-	MsgExpirationTimeout:        DefMsgExpirationTimeout,
-}
+var (
+	shortenedWaitTime = time.Millisecond * 300
+	conf              = Config{
+		ID:                          "test",
+		PublishStateInfoInterval:    time.Millisecond * 100,
+		MaxBlockCountToStore:        100,
+		PullPeerNum:                 3,
+		PullInterval:                time.Second,
+		RequestStateInfoInterval:    time.Millisecond * 100,
+		BlockExpirationInterval:     time.Second * 6,
+		StateInfoCacheSweepInterval: time.Second,
+		TimeForMembershipTracker:    time.Second * 5,
+		DigestWaitTime:              shortenedWaitTime / 2,
+		RequestWaitTime:             shortenedWaitTime,
+		ResponseWaitTime:            shortenedWaitTime,
+		MsgExpirationTimeout:        DefMsgExpirationTimeout,
+	}
+)
 
 var disabledMetrics = metrics.NewGossipMetrics(&disabled.Provider{}).MembershipMetrics
 
@@ -178,7 +180,6 @@ func (m *receivedMsg) Respond(msg *proto.GossipMessage) {
 
 // Ack returns to the sender an acknowledgement for the message
 func (m *receivedMsg) Ack(err error) {
-
 }
 
 func (m *receivedMsg) GetConnectionInfo() *protoext.ConnectionInfo {
@@ -496,7 +497,6 @@ func TestLeaveChannel(t *testing.T) {
 	// Sleep 3 times the pull interval.
 	// we're not supposed to send a pull during this time.
 	time.Sleep(conf.PullInterval * 3)
-
 }
 
 func TestChannelPeriodicalPublishStateInfo(t *testing.T) {
@@ -1186,7 +1186,6 @@ func TestChannelPulledBadBlocks(t *testing.T) {
 	var wg2 sync.WaitGroup
 	wg2.Add(1)
 	noop := func(env *proto.Envelope) {
-
 	}
 	pullPhase2 := simulatePullPhase(gc, t, &wg2, noop, 10, 11)
 	adapter.On("Send", mock.Anything, mock.Anything).Run(pullPhase2)
@@ -1880,7 +1879,6 @@ func TestChannelPullWithDigestsFilter(t *testing.T) {
 	case msg := <-receivedBlocksChan:
 		require.Equal(t, uint64(11), msg.GetDataMsg().Payload.SeqNum)
 	}
-
 }
 
 func TestFilterForeignOrgLeadershipMessages(t *testing.T) {
@@ -1925,7 +1923,8 @@ func TestFilterForeignOrgLeadershipMessages(t *testing.T) {
 	gc := NewGossipChannel(pkiIDInOrg1, org1, cs, channelA, adapter, joinMsg, disabledMetrics, logger)
 
 	leadershipMsg := func(sender common.PKIidType, creator common.PKIidType) protoext.ReceivedMessage {
-		return &receivedMsg{PKIID: sender,
+		return &receivedMsg{
+			PKIID: sender,
 			msg: &protoext.SignedGossipMessage{
 				GossipMessage: &proto.GossipMessage{
 					Channel: common.ChannelID("A"),
@@ -1933,7 +1932,8 @@ func TestFilterForeignOrgLeadershipMessages(t *testing.T) {
 					Content: &proto.GossipMessage_LeadershipMsg{
 						LeadershipMsg: &proto.LeadershipMessage{
 							PkiId: creator,
-						}},
+						},
+					},
 				},
 			},
 		}
@@ -2116,11 +2116,10 @@ func sequence(start uint64, end uint64) []uint64 {
 		i++
 	}
 	return sequence
-
 }
 
 func TestChangesInPeers(t *testing.T) {
-	//TestChangesInPeers tracks after offline and online peers in channel
+	// TestChangesInPeers tracks after offline and online peers in channel
 	// Scenario1: no new peers - list of peers stays with no change
 	// Scenario2: new peer was added - old peers stay with no change
 	// Scenario3: new peer was added - one old peer was deleted
@@ -2136,7 +2135,7 @@ func TestChangesInPeers(t *testing.T) {
 		entryInChannel func(chan string)
 		expectedTotal  float64
 	}
-	var cases = []testCase{
+	cases := []testCase{
 		{
 			name:       "noChanges",
 			oldMembers: map[string]struct{}{"pkiID11": {}, "pkiID22": {}, "pkiID33": {}},
@@ -2151,8 +2150,10 @@ func TestChangesInPeers(t *testing.T) {
 			name:       "newPeerWasAdded",
 			oldMembers: map[string]struct{}{"pkiID1": {}},
 			newMembers: map[string]struct{}{"pkiID1": {}, "pkiID3": {}},
-			expected: []string{"Membership view has changed. peers went online: [[pkiID3]], current view: [[pkiID1] [pkiID3]]",
-				"Membership view has changed. peers went online: [[pkiID3]], current view: [[pkiID3] [pkiID1]]"},
+			expected: []string{
+				"Membership view has changed. peers went online: [[pkiID3]], current view: [[pkiID1] [pkiID3]]",
+				"Membership view has changed. peers went online: [[pkiID3]], current view: [[pkiID3] [pkiID1]]",
+			},
 			entryInChannel: func(chStr chan string) {},
 			expectedTotal:  2,
 		},
@@ -2160,8 +2161,10 @@ func TestChangesInPeers(t *testing.T) {
 			name:       "newPeerAddedOldPeerDeleted",
 			oldMembers: map[string]struct{}{"pkiID1": {}, "pkiID2": {}},
 			newMembers: map[string]struct{}{"pkiID1": {}, "pkiID3": {}},
-			expected: []string{"Membership view has changed. peers went offline: [[pkiID2]], peers went online: [[pkiID3]], current view: [[pkiID1] [pkiID3]]",
-				"Membership view has changed. peers went offline: [[pkiID2]], peers went online: [[pkiID3]], current view: [[pkiID3] [pkiID1]]"},
+			expected: []string{
+				"Membership view has changed. peers went offline: [[pkiID2]], peers went online: [[pkiID3]], current view: [[pkiID1] [pkiID3]]",
+				"Membership view has changed. peers went offline: [[pkiID2]], peers went online: [[pkiID3]], current view: [[pkiID3] [pkiID1]]",
+			},
 			entryInChannel: func(chStr chan string) {},
 			expectedTotal:  2,
 		},
@@ -2169,8 +2172,10 @@ func TestChangesInPeers(t *testing.T) {
 			name:       "newPeersAddedOldPeerStayed",
 			oldMembers: map[string]struct{}{"pkiID1": {}},
 			newMembers: map[string]struct{}{"pkiID2": {}},
-			expected: []string{"Membership view has changed. peers went offline: [[pkiID1]], peers went online: [[pkiID2]], current view: [[pkiID2]]",
-				"Membership view has changed. peers went offline: [[pkiID1]], peers went online: [[pkiID2]], current view: [[pkiID2]]"},
+			expected: []string{
+				"Membership view has changed. peers went offline: [[pkiID1]], peers went online: [[pkiID2]], current view: [[pkiID2]]",
+				"Membership view has changed. peers went offline: [[pkiID1]], peers went online: [[pkiID2]], current view: [[pkiID2]]",
+			},
 			entryInChannel: func(chStr chan string) {},
 			expectedTotal:  1,
 		},
@@ -2194,8 +2199,10 @@ func TestChangesInPeers(t *testing.T) {
 			name:       "onePeerWasDeletedRestStayed",
 			oldMembers: map[string]struct{}{"pkiID01": {}, "pkiID02": {}, "pkiID03": {}},
 			newMembers: map[string]struct{}{"pkiID01": {}, "pkiID02": {}},
-			expected: []string{"Membership view has changed. peers went offline: [[pkiID03]], current view: [[pkiID01] [pkiID02]]",
-				"Membership view has changed. peers went offline: [[pkiID03]], current view: [[pkiID02] [pkiID01]]"},
+			expected: []string{
+				"Membership view has changed. peers went offline: [[pkiID03]], current view: [[pkiID01] [pkiID02]]",
+				"Membership view has changed. peers went offline: [[pkiID03]], current view: [[pkiID02] [pkiID01]]",
+			},
 			entryInChannel: func(chStr chan string) {},
 			expectedTotal:  2,
 		},
@@ -2204,8 +2211,7 @@ func TestChangesInPeers(t *testing.T) {
 	for _, test := range cases {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-
-			//channel for holding the output of report
+			// channel for holding the output of report
 			chForString := make(chan string, 1)
 			// this is called as mt.report()
 			funcLogger := func(a ...interface{}) {

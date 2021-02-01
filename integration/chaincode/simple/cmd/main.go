@@ -41,7 +41,7 @@ func handleSigTerm() {
 		return
 	}
 
-	err := ioutil.WriteFile(termFile, []byte("term-file"), 0644)
+	err := ioutil.WriteFile(termFile, []byte("term-file"), 0o644)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write term file to %s: %s", termFile, err)
 	}

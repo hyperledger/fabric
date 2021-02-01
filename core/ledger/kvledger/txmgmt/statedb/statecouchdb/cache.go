@@ -11,9 +11,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-var (
-	keySep = []byte{0x00}
-)
+var keySep = []byte{0x00}
 
 // cache holds both the system and user cache
 type cache struct {
@@ -85,7 +83,6 @@ func (c *cache) putState(chainID, namespace, key string, cacheValue *CacheValue)
 
 	cacheKey := constructCacheKey(chainID, namespace, key)
 	valBytes, err := proto.Marshal(cacheValue)
-
 	if err != nil {
 		return err
 	}

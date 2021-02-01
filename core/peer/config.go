@@ -358,7 +358,6 @@ func getLocalAddress() (string, error) {
 	}
 	peerLogger.Info("Returning", peerAddress)
 	return peerAddress, nil
-
 }
 
 // GetServerConfig returns the gRPC server configuration for the peer

@@ -232,7 +232,8 @@ func NewSignature(cred *Credential, sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP2
 			RevocationEpochPk:  cri.EpochPk,
 			RevocationPkSig:    cri.EpochPkSig,
 			Epoch:              cri.Epoch,
-			NonRevocationProof: nonRevokedProof},
+			NonRevocationProof: nonRevokedProof,
+		},
 		nil
 }
 

@@ -66,5 +66,4 @@ func TestSWFactoryGet(t *testing.T) {
 	csp, err = f.Get(opts)
 	require.NoError(t, err)
 	require.NotNil(t, csp)
-
 }

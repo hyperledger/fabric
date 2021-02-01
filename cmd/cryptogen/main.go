@@ -199,7 +199,7 @@ PeerOrgs:
       Count: 1
 `
 
-//command line flags
+// command line flags
 var (
 	app = kingpin.New("cryptogen", "Utility for generating Hyperledger Fabric key material")
 
@@ -235,7 +235,6 @@ func main() {
 	case version.FullCommand():
 		printVersion()
 	}
-
 }
 
 func getConfig() (*Config, error) {
@@ -292,7 +291,6 @@ func extend() {
 		}
 		extendOrdererOrg(orgSpec)
 	}
-
 }
 
 func extendPeerOrg(orgSpec OrgSpec) {
@@ -382,7 +380,6 @@ func extendOrdererOrg(orgSpec OrgSpec) {
 }
 
 func generate() {
-
 	config, err := getConfig()
 	if err != nil {
 		fmt.Printf("Error reading config: %s", err)
@@ -409,7 +406,6 @@ func generate() {
 }
 
 func parseTemplate(input string, data interface{}) (string, error) {
-
 	t, err := template.New("parse").Parse(input)
 	if err != nil {
 		return "", fmt.Errorf("Error parsing template: %s", err)
@@ -425,7 +421,6 @@ func parseTemplate(input string, data interface{}) (string, error) {
 }
 
 func parseTemplateWithDefault(input, defaultInput string, data interface{}) (string, error) {
-
 	// Use the default if the input is an empty string
 	if len(input) == 0 {
 		input = defaultInput
@@ -512,7 +507,6 @@ func renderOrgSpec(orgSpec *OrgSpec, prefix string) error {
 }
 
 func generatePeerOrg(baseDir string, orgSpec OrgSpec) {
-
 	orgName := orgSpec.Domain
 
 	fmt.Println(orgName)
@@ -599,7 +593,7 @@ func copyAdminCert(usersDir, adminCertsDir, adminUserName string) error {
 		return err
 	}
 	// recreate the admincerts directory
-	err = os.MkdirAll(adminCertsDir, 0755)
+	err = os.MkdirAll(adminCertsDir, 0o755)
 	if err != nil {
 		return err
 	}
@@ -630,7 +624,6 @@ func generateNodes(baseDir string, nodes []NodeSpec, signCA *ca.CA, tlsCA *ca.CA
 }
 
 func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
-
 	orgName := orgSpec.Domain
 
 	// generate CAs
@@ -696,7 +689,6 @@ func generateOrdererOrg(baseDir string, orgSpec OrgSpec) {
 			os.Exit(1)
 		}
 	}
-
 }
 
 func copyFile(src, dst string) error {

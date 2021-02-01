@@ -203,7 +203,7 @@ func serve(args []string) error {
 
 	logger.Infof("Starting %s", version.GetInfo())
 
-	//obtain coreConfiguration
+	// obtain coreConfiguration
 	coreConfig, err := peer.GlobalConfig()
 	if err != nil {
 		return err
@@ -336,8 +336,8 @@ func serve(args []string) error {
 		mgmt.NewLocalMSPPrincipalGetter(factory.GetDefault()),
 	)
 
-	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
-	//Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
+	// startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
+	// Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
 	aclProvider := aclmgmt.NewACLProvider(
 		aclmgmt.ResourceGetter(peerInstance.GetStableChannelConfig),
 		policyChecker,
@@ -408,7 +408,7 @@ func serve(args []string) error {
 	chaincodeCustodian := lifecycle.NewChaincodeCustodian()
 
 	externalBuilderOutput := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "externalbuilder", "builds")
-	if err := os.MkdirAll(externalBuilderOutput, 0700); err != nil {
+	if err := os.MkdirAll(externalBuilderOutput, 0o700); err != nil {
 		logger.Panicf("could not create externalbuilder build output dir: %s", err)
 	}
 
@@ -511,7 +511,7 @@ func serve(args []string) error {
 		logger.Panicf("Failed to create chaincode server: %s", err)
 	}
 
-	//get user mode
+	// get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := coreConfig.PeerTLSEnabled
 
@@ -1174,7 +1174,6 @@ func initGossipService(
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 	privdataConfig *gossipprivdata.PrivdataConfig,
 ) (*gossipservice.GossipService, error) {
-
 	var certs *gossipcommon.TLSCertificates
 	if peerServer.TLSEnabled() {
 		serverCert := peerServer.ServerCertificate()

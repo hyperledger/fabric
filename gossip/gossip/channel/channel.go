@@ -1077,7 +1077,7 @@ func GenerateMAC(pkiID common.PKIidType, channelID common.ChannelID) []byte {
 	return common_utils.ComputeSHA256(preImage)
 }
 
-//membershipTracker is a struct for tracking changes in peers of the channel
+// membershipTracker is a struct for tracking changes in peers of the channel
 type membershipTracker struct {
 	getPeersToTrack func() []discovery.NetworkMember
 	report          func(...interface{})
@@ -1087,7 +1087,7 @@ type membershipTracker struct {
 	chainID         common.ChannelID
 }
 
-//endpoints return all peers by their endpoints
+// endpoints return all peers by their endpoints
 func endpoints(members discovery.Members) [][]string {
 	var currView [][]string
 	for _, member := range members {
@@ -1104,7 +1104,7 @@ func endpoints(members discovery.Members) [][]string {
 	return currView
 }
 
-//checkIfPeersChanged checks which peers are offline and which are online for channel
+// checkIfPeersChanged checks which peers are offline and which are online for channel
 func (mt *membershipTracker) checkIfPeersChanged(prevPeers discovery.Members, currPeers discovery.Members,
 	prevSetPeers map[string]struct{}, currSetPeers map[string]struct{}) {
 	var currView [][]string
@@ -1143,7 +1143,7 @@ func (mt *membershipTracker) trackMembershipChanges() {
 	prev := mt.getPeersToTrack()
 	prevSetPeers := mt.createSetOfPeers(prev)
 	for {
-		//timeout to check changes in peers
+		// timeout to check changes in peers
 		select {
 		case <-mt.stopChan:
 			return

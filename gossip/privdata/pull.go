@@ -371,8 +371,10 @@ func (p *puller) scatterRequests(peersDigestMapping peer2Digests) []util.Subscri
 	return subscriptions
 }
 
-type peer2Digests map[remotePeer][]protosgossip.PvtDataDigest
-type noneSelectedPeers []discovery.NetworkMember
+type (
+	peer2Digests      map[remotePeer][]protosgossip.PvtDataDigest
+	noneSelectedPeers []discovery.NetworkMember
+)
 
 func (p *puller) assignDigestsToPeers(members []discovery.NetworkMember, dig2Filter digestToFilterMapping) (peer2Digests, noneSelectedPeers) {
 	if p.logger.IsEnabledFor(zapcore.DebugLevel) {

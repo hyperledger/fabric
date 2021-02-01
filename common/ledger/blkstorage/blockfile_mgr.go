@@ -29,9 +29,7 @@ const (
 	bootstrappingSnapshotInfoTempFile = "bootstrappingSnapshotTemp.info"
 )
 
-var (
-	blkMgrInfoKey = []byte("blkMgrInfo")
-)
+var blkMgrInfoKey = []byte("blkMgrInfo")
 
 type blockfileMgr struct {
 	rootDir                   string
@@ -195,7 +193,7 @@ func bootstrapFromSnapshottedTxIDs(
 		bootstrappingSnapshotInfoTempFile,
 		bootstrappingSnapshotInfoFile,
 		bsiBytes,
-		0644,
+		0o644,
 	); err != nil {
 		return err
 	}
@@ -210,21 +208,21 @@ func bootstrapFromSnapshottedTxIDs(
 
 func syncBlockfilesInfoFromFS(rootDir string, blkfilesInfo *blockfilesInfo) {
 	logger.Debugf("Starting blockfilesInfo=%s", blkfilesInfo)
-	//Checks if the file suffix of where the last block was written exists
+	// Checks if the file suffix of where the last block was written exists
 	filePath := deriveBlockfilePath(rootDir, blkfilesInfo.latestFileNumber)
 	exists, size, err := fileutil.FileExists(filePath)
 	if err != nil {
 		panic(fmt.Sprintf("Error in checking whether file [%s] exists: %s", filePath, err))
 	}
 	logger.Debugf("status of file [%s]: exists=[%t], size=[%d]", filePath, exists, size)
-	//Test is !exists because when file number is first used the file does not exist yet
-	//checks that the file exists and that the size of the file is what is stored in blockfilesInfo
-	//status of file [<blkstorage_location>/blocks/blockfile_000000]: exists=[false], size=[0]
+	// Test is !exists because when file number is first used the file does not exist yet
+	// checks that the file exists and that the size of the file is what is stored in blockfilesInfo
+	// status of file [<blkstorage_location>/blocks/blockfile_000000]: exists=[false], size=[0]
 	if !exists || int(size) == blkfilesInfo.latestFileSize {
 		// blockfilesInfo is in sync with the file on disk
 		return
 	}
-	//Scan the file system to verify that the blockfilesInfo stored in db is correct
+	// Scan the file system to verify that the blockfilesInfo stored in db is correct
 	_, endOffsetLastBlock, numBlocks, err := scanForLastCompleteBlock(
 		rootDir, blkfilesInfo.latestFileNumber, int64(blkfilesInfo.latestFileSize))
 	if err != nil {
@@ -234,7 +232,7 @@ func syncBlockfilesInfoFromFS(rootDir string, blkfilesInfo *blockfilesInfo) {
 	if numBlocks == 0 {
 		return
 	}
-	//Updates the blockfilesInfo for the actual last block number stored and it's end location
+	// Updates the blockfilesInfo for the actual last block number stored and it's end location
 	if blkfilesInfo.noBlockFiles {
 		blkfilesInfo.lastPersistedBlock = uint64(numBlocks - 1)
 	} else {
@@ -256,11 +254,11 @@ func (mgr *blockfileMgr) moveToNextFile() {
 	blkfilesInfo := &blockfilesInfo{
 		latestFileNumber:   mgr.blockfilesInfo.latestFileNumber + 1,
 		latestFileSize:     0,
-		lastPersistedBlock: mgr.blockfilesInfo.lastPersistedBlock}
+		lastPersistedBlock: mgr.blockfilesInfo.lastPersistedBlock,
+	}
 
 	nextFileWriter, err := newBlockfileWriter(
 		deriveBlockfilePath(mgr.rootDir, blkfilesInfo.latestFileNumber))
-
 	if err != nil {
 		panic(fmt.Sprintf("Could not open writer to next file: %s", err))
 	}
@@ -297,7 +295,7 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		return errors.WithMessage(err, "error serializing block")
 	}
 	blockHash := protoutil.BlockHeaderHash(block.Header)
-	//Get the location / offset where each transaction starts in the block and where the block ends
+	// Get the location / offset where each transaction starts in the block and where the block ends
 	txOffsets := info.txOffsets
 	currentOffset := mgr.blockfilesInfo.latestFileSize
 
@@ -305,16 +303,16 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 	blockBytesEncodedLen := proto.EncodeVarint(uint64(blockBytesLen))
 	totalBytesToAppend := blockBytesLen + len(blockBytesEncodedLen)
 
-	//Determine if we need to start a new file since the size of this block
-	//exceeds the amount of space left in the current file
+	// Determine if we need to start a new file since the size of this block
+	// exceeds the amount of space left in the current file
 	if currentOffset+totalBytesToAppend > mgr.conf.maxBlockfileSize {
 		mgr.moveToNextFile()
 		currentOffset = 0
 	}
-	//append blockBytesEncodedLen to the file
+	// append blockBytesEncodedLen to the file
 	err = mgr.currentFileWriter.append(blockBytesEncodedLen, false)
 	if err == nil {
-		//append the actual block bytes to the file
+		// append the actual block bytes to the file
 		err = mgr.currentFileWriter.append(blockBytes, true)
 	}
 	if err != nil {
@@ -325,14 +323,15 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		return errors.WithMessage(err, "error appending block to file")
 	}
 
-	//Update the blockfilesInfo with the results of adding the new block
+	// Update the blockfilesInfo with the results of adding the new block
 	currentBlkfilesInfo := mgr.blockfilesInfo
 	newBlkfilesInfo := &blockfilesInfo{
 		latestFileNumber:   currentBlkfilesInfo.latestFileNumber,
 		latestFileSize:     currentBlkfilesInfo.latestFileSize + totalBytesToAppend,
 		noBlockFiles:       false,
-		lastPersistedBlock: block.Header.Number}
-	//save the blockfilesInfo in the database
+		lastPersistedBlock: block.Header.Number,
+	}
+	// save the blockfilesInfo in the database
 	if err = mgr.saveBlkfilesInfo(newBlkfilesInfo, false); err != nil {
 		truncateErr := mgr.currentFileWriter.truncateFile(currentBlkfilesInfo.latestFileSize)
 		if truncateErr != nil {
@@ -341,21 +340,22 @@ func (mgr *blockfileMgr) addBlock(block *common.Block) error {
 		return errors.WithMessage(err, "error saving blockfiles file info to db")
 	}
 
-	//Index block file location pointer updated with file suffex and offset for the new block
+	// Index block file location pointer updated with file suffex and offset for the new block
 	blockFLP := &fileLocPointer{fileSuffixNum: newBlkfilesInfo.latestFileNumber}
 	blockFLP.offset = currentOffset
 	// shift the txoffset because we prepend length of bytes before block bytes
 	for _, txOffset := range txOffsets {
 		txOffset.loc.offset += len(blockBytesEncodedLen)
 	}
-	//save the index in the database
+	// save the index in the database
 	if err = mgr.index.indexBlock(&blockIdxInfo{
 		blockNum: block.Header.Number, blockHash: blockHash,
-		flp: blockFLP, txOffsets: txOffsets, metadata: block.Metadata}); err != nil {
+		flp: blockFLP, txOffsets: txOffsets, metadata: block.Metadata,
+	}); err != nil {
 		return err
 	}
 
-	//update the blockfilesInfo (for storage) and the blockchain info (for APIs) in the manager
+	// update the blockfilesInfo (for storage) and the blockchain info (for APIs) in the manager
 	mgr.updateBlockfilesInfo(newBlkfilesInfo)
 	mgr.updateBlockchainInfo(blockHash, block)
 	return nil
@@ -414,7 +414,7 @@ func (mgr *blockfileMgr) syncIndex() error {
 
 	logger.Infof("Start building index from block [%d] to last block [%d]", nextIndexableBlock, mgr.blockfilesInfo.lastPersistedBlock)
 
-	//open a blockstream to the file location that was stored in the index
+	// open a blockstream to the file location that was stored in the index
 	var stream *blockStream
 	if stream, err = newBlockStream(mgr.rootDir, startFileNum, int64(startOffset), endFileNum); err != nil {
 		return err
@@ -432,9 +432,9 @@ func (mgr *blockfileMgr) syncIndex() error {
 		}
 	}
 
-	//Should be at the last block already, but go ahead and loop looking for next blockBytes.
-	//If there is another block, add it to the index.
-	//This will ensure block indexes are correct, for example if peer had crashed before indexes got updated.
+	// Should be at the last block already, but go ahead and loop looking for next blockBytes.
+	// If there is another block, add it to the index.
+	// This will ensure block indexes are correct, for example if peer had crashed before indexes got updated.
 	blockIdxInfo := &blockIdxInfo{}
 	for {
 		if blockBytes, blockPlacementInfo, err = stream.nextBlockBytesAndPlacementInfo(); err != nil {
@@ -448,18 +448,20 @@ func (mgr *blockfileMgr) syncIndex() error {
 			return err
 		}
 
-		//The blockStartOffset will get applied to the txOffsets prior to indexing within indexBlock(),
-		//therefore just shift by the difference between blockBytesOffset and blockStartOffset
+		// The blockStartOffset will get applied to the txOffsets prior to indexing within indexBlock(),
+		// therefore just shift by the difference between blockBytesOffset and blockStartOffset
 		numBytesToShift := int(blockPlacementInfo.blockBytesOffset - blockPlacementInfo.blockStartOffset)
 		for _, offset := range info.txOffsets {
 			offset.loc.offset += numBytesToShift
 		}
 
-		//Update the blockIndexInfo with what was actually stored in file system
+		// Update the blockIndexInfo with what was actually stored in file system
 		blockIdxInfo.blockHash = protoutil.BlockHeaderHash(info.blockHeader)
 		blockIdxInfo.blockNum = info.blockHeader.Number
-		blockIdxInfo.flp = &fileLocPointer{fileSuffixNum: blockPlacementInfo.fileNum,
-			locPointer: locPointer{offset: int(blockPlacementInfo.blockStartOffset)}}
+		blockIdxInfo.flp = &fileLocPointer{
+			fileSuffixNum: blockPlacementInfo.fileNum,
+			locPointer:    locPointer{offset: int(blockPlacementInfo.blockStartOffset)},
+		}
 		blockIdxInfo.txOffsets = info.txOffsets
 		blockIdxInfo.metadata = info.metadata
 
@@ -669,7 +671,7 @@ func (mgr *blockfileMgr) fetchRawBytes(lp *fileLocPointer) ([]byte, error) {
 	return b, nil
 }
 
-//Get the current blockfilesInfo information that is stored in the database
+// Get the current blockfilesInfo information that is stored in the database
 func (mgr *blockfileMgr) loadBlkfilesInfo() (*blockfilesInfo, error) {
 	var b []byte
 	var err error
@@ -709,7 +711,7 @@ func (mgr *blockfileMgr) bootstrappedFromSnapshot() bool {
 // scanForLastCompleteBlock scan a given block file and detects the last offset in the file
 // after which there may lie a block partially written (towards the end of the file in a crash scenario).
 func scanForLastCompleteBlock(rootDir string, fileNum int, startingOffset int64) ([]byte, int64, int, error) {
-	//scan the passed file number suffix starting from the passed offset to find the last completed block
+	// scan the passed file number suffix starting from the passed offset to find the last completed block
 	numBlocks := 0
 	var lastBlockBytes []byte
 	blockStream, errOpen := newBlockfileStream(rootDir, fileNum, startingOffset)

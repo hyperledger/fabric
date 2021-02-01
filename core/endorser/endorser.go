@@ -171,7 +171,6 @@ func (e *Endorser) callChaincode(txParams *ccprovider.TransactionParams, input *
 	}
 
 	return res, ccevent, err
-
 }
 
 // SimulateProposal simulates the proposal by calling the chaincode

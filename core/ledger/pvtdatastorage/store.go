@@ -22,9 +22,7 @@ import (
 	"github.com/willf/bitset"
 )
 
-var (
-	logger = flogging.MustGetLogger("pvtdatastorage")
-)
+var logger = flogging.MustGetLogger("pvtdatastorage")
 
 // Provider provides handle to specific 'Store' that in turn manages
 // private write sets for a ledger
@@ -837,7 +835,7 @@ func (c *collElgProcSync) notify() {
 	select {
 	case c.notification <- true:
 		logger.Debugf("Signaled to collection eligibility processing routine")
-	default: //noop
+	default: // noop
 		logger.Debugf("Previous signal still pending. Skipping new signal")
 	}
 }

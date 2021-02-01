@@ -156,7 +156,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			genesisBlock := pgen.GenesisBlockForChannel(network.SystemChannel.Name)
 			data, err := proto.Marshal(genesisBlock)
 			Expect(err).NotTo(HaveOccurred())
-			err = ioutil.WriteFile(network.OutputBlockPath(network.SystemChannel.Name), data, 0644)
+			err = ioutil.WriteFile(network.OutputBlockPath(network.SystemChannel.Name), data, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Starting orderer with malformed genesis block")
@@ -199,7 +199,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 			data, err = proto.Marshal(configtx)
 			Expect(err).NotTo(HaveOccurred())
-			err = ioutil.WriteFile(network.CreateChannelTxPath(channel), data, 0644)
+			err = ioutil.WriteFile(network.CreateChannelTxPath(channel), data, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Submitting malformed channel creation config tx to orderer")
@@ -295,7 +295,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			// Get the last config block of the system channel
 			configBlock := nwo.GetConfigBlock(network, peer, orderer, "systemchannel")
 			// Plant it in the file system of orderer2, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Waiting for the existing orderer to relinquish its leadership")
@@ -350,9 +350,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Updating it on the file system")
-			err = ioutil.WriteFile(caCertPath, caCert, 0644)
+			err = ioutil.WriteFile(caCertPath, caCert, 0o644)
 			Expect(err).NotTo(HaveOccurred())
-			err = ioutil.WriteFile(thirdOrdererCertificatePath, thirdOrdererCertificate, 0644)
+			err = ioutil.WriteFile(thirdOrdererCertificatePath, thirdOrdererCertificate, 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Overwriting the TLS directory of the new orderer")
@@ -362,13 +362,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				data, err := ioutil.ReadFile(filepath.Join(ordererTLSPath, fileName))
 				Expect(err).NotTo(HaveOccurred())
 
-				err = ioutil.WriteFile(dst, data, 0644)
+				err = ioutil.WriteFile(dst, data, 0o644)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
 			By("Obtaining the last config block from the orderer once more to update the bootstrap file")
 			configBlock = nwo.GetConfigBlock(network, peer, orderer, "systemchannel")
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Launching orderer3")
@@ -441,7 +441,6 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			ordererProcesses = append(ordererProcesses, process)
 
 			Eventually(runner.Err()).Should(gbytes.Say("TickIntervalOverride is set, overriding channel configuration tick interval to 642ms"))
-
 		})
 	})
 
@@ -761,7 +760,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			// Get the last config block of the system channel
 			configBlock := nwo.GetConfigBlock(network, peer, o1, "systemchannel")
 			// Plant it in the file system of orderer4, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Launching orderer4")
@@ -912,9 +911,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 	})
 
 	When("orderer cluster is not healthy", func() {
-		var (
-			o1, o2 *nwo.Orderer
-		)
+		var o1, o2 *nwo.Orderer
 
 		BeforeEach(func() {
 			network = nwo.New(nwo.MultiNodeEtcdRaft(), testDir, client, StartPort(), components)
@@ -1315,7 +1312,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			genesisBootBlock, err := ioutil.ReadFile(filepath.Join(testDir, "systemchannel_block.pb"))
 			Expect(err).NotTo(HaveOccurred())
 			restoreBootBlock := func() {
-				err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), genesisBootBlock, 0644)
+				err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), genesisBootBlock, 0o644)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
@@ -1337,7 +1334,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				// Get the last config block of the system channel
 				configBlock := nwo.GetConfigBlock(network, peer, orderers[0], "systemchannel")
 				// Plant it in the file system of orderer, the new node to be onboarded.
-				err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
+				err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
 				Expect(err).NotTo(HaveOccurred())
 
 				By(fmt.Sprintf("Launching orderer%d", i+1))
@@ -1600,7 +1597,7 @@ func extendNetwork(n *nwo.Network) {
 	Expect(err).NotTo(HaveOccurred())
 	defer os.Remove(cryptoConfigYAML.Name())
 
-	err = ioutil.WriteFile(cryptoConfigYAML.Name(), []byte(extendedCryptoConfig), 0644)
+	err = ioutil.WriteFile(cryptoConfigYAML.Name(), []byte(extendedCryptoConfig), 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	// Invoke cryptogen extend to add new orderers
@@ -1641,7 +1638,7 @@ func refreshOrdererPEMs(n *nwo.Network) []*certificateChange {
 		newCertBytes, err := ioutil.ReadFile(certChange.srcFile)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = ioutil.WriteFile(certChange.dstFile, newCertBytes, 0644)
+		err = ioutil.WriteFile(certChange.dstFile, newCertBytes, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		if !strings.Contains(certChange.dstFile, "server.crt") {

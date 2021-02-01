@@ -77,9 +77,8 @@ type DB struct {
 
 // Commit implements method in HistoryDB interface
 func (d *DB) Commit(block *common.Block) error {
-
 	blockNo := block.Header.Number
-	//Set the starting tranNo to 0
+	// Set the starting tranNo to 0
 	var tranNo uint64
 
 	dbBatch := d.levelDB.NewUpdateBatch()

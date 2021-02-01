@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package metadata
 
 // Variables defined by the Makefile and passed in with ldflags
-var Version = "latest"
-var CommitSHA = "development build"
-var BaseDockerLabel = "org.hyperledger.fabric"
-var DockerNamespace = "hyperledger"
+var (
+	Version         = "latest"
+	CommitSHA       = "development build"
+	BaseDockerLabel = "org.hyperledger.fabric"
+	DockerNamespace = "hyperledger"
+)

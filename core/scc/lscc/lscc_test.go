@@ -84,7 +84,7 @@ func constructDeploymentSpec(name, path, version string, initArgs [][]byte, crea
 	err := tw.WriteHeader(&tar.Header{
 		Name: "src/garbage.go",
 		Size: int64(len(payload)),
-		Mode: 0100644,
+		Mode: 0o100644,
 	})
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func constructDeploymentSpec(name, path, version string, initArgs [][]byte, crea
 		err := tw.WriteHeader(&tar.Header{
 			Name: "META-INF/statedb/couchdb/indexes/badIndex.json",
 			Size: int64(len(payload)),
-			Mode: 0100644,
+			Mode: 0o100644,
 		})
 		if err != nil {
 			return nil, err
@@ -295,7 +295,6 @@ func TestNewLifecycleEnabled(t *testing.T) {
 	res := stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("deploy"), []byte("test"), nil}, nil)
 	require.NotEqual(t, int32(shim.OK), res.Status)
 	require.Equal(t, "Channel 'test' has been migrated to the new lifecycle, LSCC is now read-only", res.Message)
-
 }
 
 func TestDeploy(t *testing.T) {
@@ -1355,7 +1354,7 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	require.NoError(t, err)
 
 	// check MSPPrincipal_IDENTITY type
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signers := [][]byte{[]byte("signer0"), []byte("signer1")}
 	signaturePolicyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	signaturePolicy := &pb.CollectionPolicyConfig_SignaturePolicy{
 		SignaturePolicy: signaturePolicyEnvelope,
@@ -1499,9 +1498,11 @@ func TestLifecycleChaincodeRegularExpressionsMatch(t *testing.T) {
 	require.Equal(t, ChaincodeVersionRegExp.String(), lifecycle.ChaincodeVersionRegExp.String())
 }
 
-var id msp.SigningIdentity
-var channelID = "testchannelid"
-var mockAclProvider *mocks.MockACLProvider
+var (
+	id              msp.SigningIdentity
+	channelID       = "testchannelid"
+	mockAclProvider *mocks.MockACLProvider
+)
 
 func NewMockProvider() sysccprovider.SystemChaincodeProvider {
 	capabilities := &mock.ApplicationCapabilities{}

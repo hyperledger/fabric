@@ -48,11 +48,11 @@ func Untar(buffer io.Reader, dst string) error {
 		target := filepath.Join(dst, header.Name)
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0700); err != nil {
+			if err := os.MkdirAll(target, 0o700); err != nil {
 				return errors.WithMessagef(err, "could not create directory '%s'", header.Name)
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
+			if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
 				return errors.WithMessagef(err, "could not create directory '%s'", filepath.Dir(header.Name))
 			}
 

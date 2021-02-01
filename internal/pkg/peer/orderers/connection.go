@@ -160,7 +160,6 @@ func (cs *ConnectionSource) Update(globalAddrs []string, orgs map[string]Orderer
 			} else {
 				if err := comm.AddPemToCertPool(rootCert, globalCertPool); err != nil {
 					cs.logger.Warningf("Could not add orderer cert for org '%s' to global cert pool: %s", orgName, err)
-
 				}
 			}
 		}

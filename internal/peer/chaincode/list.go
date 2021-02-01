@@ -163,7 +163,6 @@ func (cci ccInfo) String() string {
 		b.WriteString(fmt.Sprintf("%s: %s, ", md2.Field(i).Name, val))
 	}
 	return b.String()[:len(b.String())-2]
-
 }
 
 func isBytes(v reflect.Value) bool {

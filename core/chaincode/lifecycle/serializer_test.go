@@ -139,9 +139,7 @@ var _ = Describe("Serializer", func() {
 		})
 
 		Context("when the namespace already contains the keys and values", func() {
-			var (
-				kvs map[string][]byte
-			)
+			var kvs map[string][]byte
 
 			BeforeEach(func() {
 				kvs = map[string][]byte{
@@ -521,9 +519,7 @@ var _ = Describe("Serializer", func() {
 	})
 
 	Describe("Integration Round Trip of Serialize/Deserialize", func() {
-		var (
-			KVStore map[string][]byte
-		)
+		var KVStore map[string][]byte
 
 		BeforeEach(func() {
 			KVStore = map[string][]byte{}
@@ -563,9 +559,7 @@ var _ = Describe("Serializer", func() {
 	})
 
 	Describe("IsMetadataSerialized", func() {
-		var (
-			kvs map[string][]byte
-		)
+		var kvs map[string][]byte
 
 		BeforeEach(func() {
 			kvs = map[string][]byte{
@@ -612,9 +606,7 @@ var _ = Describe("Serializer", func() {
 	})
 
 	Describe("IsSerialized", func() {
-		var (
-			kvs map[string][]byte
-		)
+		var kvs map[string][]byte
 
 		BeforeEach(func() {
 			kvs = map[string][]byte{

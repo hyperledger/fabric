@@ -80,7 +80,8 @@ func (*Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res handl
 		return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
 			Type:     bccsp.IdemixIssuerPublicKeyImporterUnmarshallingError,
 			ErrorMsg: "failed to unmarshal issuer public key",
-			Cause:    err})
+			Cause:    err,
+		})
 	}
 
 	err = ipk.SetHash()
@@ -88,7 +89,8 @@ func (*Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res handl
 		return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
 			Type:     bccsp.IdemixIssuerPublicKeyImporterHashError,
 			ErrorMsg: "setting the hash of the issuer public key failed",
-			Cause:    err})
+			Cause:    err,
+		})
 	}
 
 	err = ipk.Check()
@@ -96,7 +98,8 @@ func (*Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (res handl
 		return nil, errors.WithStack(&bccsp.IdemixIssuerPublicKeyImporterError{
 			Type:     bccsp.IdemixIssuerPublicKeyImporterValidationError,
 			ErrorMsg: "invalid issuer public key",
-			Cause:    err})
+			Cause:    err,
+		})
 	}
 
 	if len(attributes) != 0 {

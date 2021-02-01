@@ -43,18 +43,18 @@ var (
 	protoEncode       = app.Command("proto_encode", "Converts a JSON document to protobuf.")
 	protoEncodeType   = protoEncode.Flag("type", "The type of protobuf structure to encode to.  For example, 'common.Config'.").Required().String()
 	protoEncodeSource = protoEncode.Flag("input", "A file containing the JSON document.").Default(os.Stdin.Name()).File()
-	protoEncodeDest   = protoEncode.Flag("output", "A file to write the output to.").Default(os.Stdout.Name()).OpenFile(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	protoEncodeDest   = protoEncode.Flag("output", "A file to write the output to.").Default(os.Stdout.Name()).OpenFile(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 
 	protoDecode       = app.Command("proto_decode", "Converts a proto message to JSON.")
 	protoDecodeType   = protoDecode.Flag("type", "The type of protobuf structure to decode from.  For example, 'common.Config'.").Required().String()
 	protoDecodeSource = protoDecode.Flag("input", "A file containing the proto message.").Default(os.Stdin.Name()).File()
-	protoDecodeDest   = protoDecode.Flag("output", "A file to write the JSON document to.").Default(os.Stdout.Name()).OpenFile(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	protoDecodeDest   = protoDecode.Flag("output", "A file to write the JSON document to.").Default(os.Stdout.Name()).OpenFile(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 
 	computeUpdate          = app.Command("compute_update", "Takes two marshaled common.Config messages and computes the config update which transitions between the two.")
 	computeUpdateOriginal  = computeUpdate.Flag("original", "The original config message.").File()
 	computeUpdateUpdated   = computeUpdate.Flag("updated", "The updated config message.").File()
 	computeUpdateChannelID = computeUpdate.Flag("channel_id", "The name of the channel for this update.").Required().String()
-	computeUpdateDest      = computeUpdate.Flag("output", "A file to write the JSON document to.").Default(os.Stdout.Name()).OpenFile(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	computeUpdateDest      = computeUpdate.Flag("output", "A file to write the JSON document to.").Default(os.Stdout.Name()).OpenFile(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 
 	version = app.Command("version", "Show version information")
 )
@@ -94,7 +94,6 @@ func main() {
 	case version.FullCommand():
 		printVersion()
 	}
-
 }
 
 func startServer(address string, cors []string) {

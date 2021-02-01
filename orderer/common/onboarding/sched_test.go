@@ -70,7 +70,5 @@ func TestTicker(t *testing.T) {
 		tickerStopped.Wait()
 		_, ok := <-ticker.C
 		require.False(t, ok)
-
 	})
-
 }

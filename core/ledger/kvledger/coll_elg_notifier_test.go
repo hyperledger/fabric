@@ -27,13 +27,15 @@ func TestCollElgNotifier(t *testing.T) {
 	mockDeployedChaincodeInfoProvider.ChaincodeInfoReturnsOnCall(0,
 		&ledger.DeployedChaincodeInfo{
 			ExplicitCollectionConfigPkg: testutilPrepapreMockCollectionConfigPkg(
-				map[string]bool{"coll1": true, "coll2": true, "coll3": false})}, nil)
+				map[string]bool{"coll1": true, "coll2": true, "coll3": false}),
+		}, nil)
 
 	// post commit - returns 4 collections
 	mockDeployedChaincodeInfoProvider.ChaincodeInfoReturnsOnCall(1,
 		&ledger.DeployedChaincodeInfo{
 			ExplicitCollectionConfigPkg: testutilPrepapreMockCollectionConfigPkg(
-				map[string]bool{"coll1": false, "coll2": true, "coll3": true, "coll4": true})}, nil)
+				map[string]bool{"coll1": false, "coll2": true, "coll3": true, "coll4": true}),
+		}, nil)
 
 	mockMembershipInfoProvider := &mock.MembershipInfoProvider{}
 	mockMembershipInfoProvider.AmMemberOfStub = func(channel string, p *peer.CollectionPolicyConfig) (bool, error) {

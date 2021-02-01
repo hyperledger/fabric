@@ -95,7 +95,7 @@ func (r *Registry) GenerateDockerfile(ccType string) (string, error) {
 	// ----------------------------------------------------------------------------------------------------
 	// Then augment it with any general options
 	// ----------------------------------------------------------------------------------------------------
-	//append version so chaincode build version can be compared against peer build version
+	// append version so chaincode build version can be compared against peer build version
 	buf = append(buf, fmt.Sprintf("ENV CORE_CHAINCODE_BUILDLEVEL=%s", metadata.Version))
 
 	// ----------------------------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ func writeBytesToPackage(name string, payload []byte, tw *tar.Writer) error {
 	err := tw.WriteHeader(&tar.Header{
 		Name: name,
 		Size: int64(len(payload)),
-		Mode: 0100644,
+		Mode: 0o100644,
 	})
 	if err != nil {
 		return err

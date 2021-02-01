@@ -131,7 +131,7 @@ func (d *Detector) Build(ccid string, mdBytes []byte, codeStream io.Reader) (*In
 
 	durablePath := filepath.Join(d.DurablePath, SanitizeCCIDPath(ccid))
 
-	err = os.Mkdir(durablePath, 0700)
+	err = os.Mkdir(durablePath, 0o700)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "could not create dir '%s' to persist build output", durablePath)
 	}
@@ -144,7 +144,7 @@ func (d *Detector) Build(ccid string, mdBytes []byte, codeStream io.Reader) (*In
 		return nil, errors.WithMessage(err, "could not marshal for build-info.json")
 	}
 
-	err = ioutil.WriteFile(filepath.Join(durablePath, "build-info.json"), buildInfo, 0600)
+	err = ioutil.WriteFile(filepath.Join(durablePath, "build-info.json"), buildInfo, 0o600)
 	if err != nil {
 		os.RemoveAll(durablePath)
 		return nil, errors.WithMessage(err, "could not write build-info.json")
@@ -209,22 +209,22 @@ func NewBuildContext(ccid string, mdBytes []byte, codePackage io.Reader) (bc *Bu
 	}()
 
 	sourceDir := filepath.Join(scratchDir, "src")
-	if err = os.Mkdir(sourceDir, 0700); err != nil {
+	if err = os.Mkdir(sourceDir, 0o700); err != nil {
 		return nil, errors.WithMessage(err, "could not create source dir")
 	}
 
 	metadataDir := filepath.Join(scratchDir, "metadata")
-	if err = os.Mkdir(metadataDir, 0700); err != nil {
+	if err = os.Mkdir(metadataDir, 0o700); err != nil {
 		return nil, errors.WithMessage(err, "could not create metadata dir")
 	}
 
 	outputDir := filepath.Join(scratchDir, "bld")
-	if err = os.Mkdir(outputDir, 0700); err != nil {
+	if err = os.Mkdir(outputDir, 0o700); err != nil {
 		return nil, errors.WithMessage(err, "could not create build dir")
 	}
 
 	releaseDir := filepath.Join(scratchDir, "release")
-	if err = os.Mkdir(releaseDir, 0700); err != nil {
+	if err = os.Mkdir(releaseDir, 0o700); err != nil {
 		return nil, errors.WithMessage(err, "could not create release dir")
 	}
 
@@ -233,7 +233,7 @@ func NewBuildContext(ccid string, mdBytes []byte, codePackage io.Reader) (bc *Bu
 		return nil, errors.WithMessage(err, "could not untar source package")
 	}
 
-	err = ioutil.WriteFile(filepath.Join(metadataDir, "metadata.json"), mdBytes, 0700)
+	err = ioutil.WriteFile(filepath.Join(metadataDir, "metadata.json"), mdBytes, 0o700)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not write metadata file")
 	}
@@ -371,7 +371,7 @@ func (b *Builder) Run(ccid, bldDir string, peerConnection *ccintf.PeerConnection
 		return nil, errors.WithMessage(err, "could not marshal run config")
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(launchDir, "chaincode.json"), marshaledRC, 0600); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(launchDir, "chaincode.json"), marshaledRC, 0o600); err != nil {
 		return nil, errors.WithMessage(err, "could not write root cert")
 	}
 

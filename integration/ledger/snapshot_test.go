@@ -599,7 +599,8 @@ func initAndStartFourOrgsNetwork() *setup {
 		Organization: "Org4",
 		Channels: []*nwo.PeerChannel{
 			{Name: testchannelID, Anchor: true},
-		}})
+		},
+	})
 
 	n := nwo.New(config, testDir, client, StartPort(), components)
 	n.GenerateConfigTree()
@@ -822,7 +823,7 @@ func joinBySnapshot(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
-	var bcInfo = cb.BlockchainInfo{}
+	bcInfo := cb.BlockchainInfo{}
 	err = json.Unmarshal([]byte(channelInfoStr), &bcInfo)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(bcInfo.Height).To(Equal(uint64(channelHeight)))

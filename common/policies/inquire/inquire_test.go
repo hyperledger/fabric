@@ -29,7 +29,8 @@ func createPrincipals(orgNames ...string) []*msp.MSPPrincipal {
 	appendPrincipal := func(orgName string) {
 		principals = append(principals, &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: orgName})})
+			Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: orgName}),
+		})
 	}
 	for _, org := range orgNames {
 		appendPrincipal(org)

@@ -216,7 +216,6 @@ func NewChain(
 	haltCallback func(),
 	observeC chan<- raft.SoftState,
 ) (*Chain, error) {
-
 	lg := opts.Logger.With("channel", support.ChannelID(), "node", opts.RaftID)
 
 	fresh := !wal.Exist(opts.WALDir)
@@ -889,7 +888,6 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelop
 	}
 	batches, pending = c.support.BlockCutter().Ordered(msg.Payload)
 	return batches, pending, nil
-
 }
 
 func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]*common.Envelope) {
@@ -1380,7 +1378,7 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 		return err
 	}
 
-	//new config metadata was verified above. Additionally need to check new consenters for certificates expiration
+	// new config metadata was verified above. Additionally need to check new consenters for certificates expiration
 	for _, c := range changes.AddedNodes {
 		if err := validateConsenterTLSCerts(c, verifyOpts, false); err != nil {
 			return errors.Wrapf(err, "consenter %s:%d has invalid certificates", c.Host, c.Port)

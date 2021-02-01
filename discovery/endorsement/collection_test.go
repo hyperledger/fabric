@@ -173,7 +173,6 @@ func TestToMemberFilter(t *testing.T) {
 		})
 		require.False(t, authorized)
 	})
-
 }
 
 func TestIsIdentityAuthorizedByPrincipalSet(t *testing.T) {

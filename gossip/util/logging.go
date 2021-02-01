@@ -27,9 +27,11 @@ const (
 	PrivateDataLogger = "gossip.privdata"
 )
 
-var loggers = make(map[string]Logger)
-var lock = sync.Mutex{}
-var testMode bool
+var (
+	loggers  = make(map[string]Logger)
+	lock     = sync.Mutex{}
+	testMode bool
+)
 
 // defaultTestSpec is the default logging level for gossip tests
 var defaultTestSpec = "WARNING"

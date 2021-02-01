@@ -35,7 +35,7 @@ var chaincodeInstallPath string
 // Attempt to keep the interface at a level with minimal
 // interface for possible generalization.
 type CCPackage interface {
-	//InitFromBuffer initialize the package from bytes
+	// InitFromBuffer initialize the package from bytes
 	InitFromBuffer(buf []byte) (*ChaincodeData, error)
 
 	// PutChaincodeToFS writes the chaincode to the filesystem
@@ -66,7 +66,7 @@ type CCPackage interface {
 func SetChaincodesPath(path string) {
 	if s, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			if err := os.Mkdir(path, 0755); err != nil {
+			if err := os.Mkdir(path, 0o755); err != nil {
 				panic(fmt.Sprintf("Could not create chaincodes install path: %s", err))
 			}
 		} else {
@@ -167,7 +167,7 @@ func (*CCInfoFSImpl) GetChaincodeInstallPath() string {
 }
 
 // PutChaincode is a wrapper for putting raw ChaincodeDeploymentSpec
-//using CDSPackage. This is only used in UTs
+// using CDSPackage. This is only used in UTs
 func (cifs *CCInfoFSImpl) PutChaincode(depSpec *pb.ChaincodeDeploymentSpec) (CCPackage, error) {
 	buf, err := proto.Marshal(depSpec)
 	if err != nil {

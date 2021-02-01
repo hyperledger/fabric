@@ -802,8 +802,7 @@ func (mdf *ccMetadataFetcher) Metadata(channel string, cc string, _ ...string) *
 	return mdf.Called(cc).Get(0).(*chaincode.Metadata)
 }
 
-type principalEvaluator struct {
-}
+type principalEvaluator struct{}
 
 func (pe *principalEvaluator) SatisfiesPrincipal(channel string, identity []byte, principal *msp.MSPPrincipal) error {
 	sID := &msp.SerializedIdentity{}
@@ -838,7 +837,8 @@ type inquireablePolicy struct {
 func (ip *inquireablePolicy) appendPrincipal(orgName string) {
 	ip.principals = append(ip.principals, &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: orgName})})
+		Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: orgName}),
+	})
 }
 
 func (ip *inquireablePolicy) SatisfiedBy() []policies.PrincipalSet {

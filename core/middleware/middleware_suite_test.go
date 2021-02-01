@@ -8,11 +8,10 @@ package middleware_test
 
 import (
 	"net/http"
+	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
 )
 
 func TestMiddleware(t *testing.T) {

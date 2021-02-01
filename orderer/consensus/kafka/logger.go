@@ -16,8 +16,10 @@ import (
 	"go.uber.org/zap"
 )
 
-var logger = flogging.MustGetLogger("orderer.consensus.kafka")
-var saramaLogger eventLogger
+var (
+	logger       = flogging.MustGetLogger("orderer.consensus.kafka")
+	saramaLogger eventLogger
+)
 
 // init initializes the samara logger
 func init() {

@@ -144,7 +144,6 @@ var _ = Describe("UnpackProposal", func() {
 			proposal.Payload = marshalChaincodeProposalPayload()
 			return protoutil.MarshalOrPanic(proposal)
 		}
-
 	})
 
 	JustBeforeEach(func() {

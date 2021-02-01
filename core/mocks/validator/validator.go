@@ -26,8 +26,7 @@ func (m *MockValidator) Validate(block *common.Block) error {
 }
 
 // MockVsccValidator is a mock implementation of the VSCC validation interface
-type MockVsccValidator struct {
-}
+type MockVsccValidator struct{}
 
 // VSCCValidateTx does nothing
 func (v *MockVsccValidator) VSCCValidateTx(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (peer.TxValidationCode, error) {

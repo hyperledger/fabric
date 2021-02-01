@@ -88,7 +88,7 @@ const OfficialPath = "/etc/hyperledger/fabric"
 // Viper instance
 //----------------------------------------------------------------------------------
 func InitViper(v *viper.Viper, configName string) error {
-	var altPath = os.Getenv("FABRIC_CFG_PATH")
+	altPath := os.Getenv("FABRIC_CFG_PATH")
 	if altPath != "" {
 		// If the user has overridden the path with an envvar, its the only path
 		// we will consider

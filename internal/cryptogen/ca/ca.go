@@ -51,10 +51,9 @@ func NewCA(
 	streetAddress,
 	postalCode string,
 ) (*CA, error) {
-
 	var ca *CA
 
-	err := os.MkdirAll(baseDir, 0755)
+	err := os.MkdirAll(baseDir, 0o755)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +64,7 @@ func NewCA(
 	}
 
 	template := x509Template()
-	//this is a CA
+	// this is a CA
 	template.IsCA = true
 	template.KeyUsage |= x509.KeyUsageDigitalSignature |
 		x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign |
@@ -75,7 +74,7 @@ func NewCA(
 		x509.ExtKeyUsageServerAuth,
 	}
 
-	//set the organization for the subject
+	// set the organization for the subject
 	subject := subjectTemplateAdditional(country, province, locality, orgUnit, streetAddress, postalCode)
 	subject.Organization = []string{org}
 	subject.CommonName = name
@@ -122,12 +121,11 @@ func (ca *CA) SignCertificate(
 	ku x509.KeyUsage,
 	eku []x509.ExtKeyUsage,
 ) (*x509.Certificate, error) {
-
 	template := x509Template()
 	template.KeyUsage = ku
 	template.ExtKeyUsage = eku
 
-	//set the organization for the subject
+	// set the organization for the subject
 	subject := subjectTemplateAdditional(
 		ca.Country,
 		ca.Province,
@@ -159,7 +157,6 @@ func (ca *CA) SignCertificate(
 		pub,
 		ca.Signer,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +217,6 @@ func subjectTemplateAdditional(
 
 // default template for X509 certificates
 func x509Template() x509.Certificate {
-
 	// generate a serial number
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, _ := rand.Int(rand.Reader, serialNumberLimit)
@@ -230,7 +226,7 @@ func x509Template() x509.Certificate {
 	// round minute and backdate 5 minutes
 	notBefore := time.Now().Round(time.Minute).Add(-5 * time.Minute).UTC()
 
-	//basic template to use
+	// basic template to use
 	x509 := x509.Certificate{
 		SerialNumber:          serialNumber,
 		NotBefore:             notBefore,
@@ -238,7 +234,6 @@ func x509Template() x509.Certificate {
 		BasicConstraintsValid: true,
 	}
 	return x509
-
 }
 
 // generate a signed X509 certificate using ECDSA
@@ -250,20 +245,19 @@ func genCertificateECDSA(
 	pub *ecdsa.PublicKey,
 	priv interface{},
 ) (*x509.Certificate, error) {
-
-	//create the x509 public cert
+	// create the x509 public cert
 	certBytes, err := x509.CreateCertificate(rand.Reader, template, parent, pub, priv)
 	if err != nil {
 		return nil, err
 	}
 
-	//write cert out to file
+	// write cert out to file
 	fileName := filepath.Join(baseDir, name+"-cert.pem")
 	certFile, err := os.Create(fileName)
 	if err != nil {
 		return nil, err
 	}
-	//pem encode the cert
+	// pem encode the cert
 	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
 	certFile.Close()
 	if err != nil {

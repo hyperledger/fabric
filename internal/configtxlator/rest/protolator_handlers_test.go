@@ -64,7 +64,6 @@ func TestProtolatorDecode(t *testing.T) {
 }
 
 func TestProtolatorEncode(t *testing.T) {
-
 	url := fmt.Sprintf("/protolator/encode/%s", proto.MessageName(testProto))
 
 	req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte(testOutput)))

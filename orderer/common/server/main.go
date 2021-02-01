@@ -59,7 +59,7 @@ import (
 
 var logger = flogging.MustGetLogger("orderer.common.server")
 
-//command line flags
+// command line flags
 var (
 	app = kingpin.New("orderer", "Hyperledger Fabric orderer node")
 
@@ -925,14 +925,14 @@ func (mgr *caManager) updateTrustedRoots(
 	ordOrgMSPs := make(map[string]struct{})
 
 	if ac, ok := cm.ApplicationConfig(); ok {
-		//loop through app orgs and build map of MSPIDs
+		// loop through app orgs and build map of MSPIDs
 		for _, appOrg := range ac.Organizations() {
 			appOrgMSPs[appOrg.MSPID()] = struct{}{}
 		}
 	}
 
 	if ac, ok := cm.OrdererConfig(); ok {
-		//loop through orderer orgs and build map of MSPIDs
+		// loop through orderer orgs and build map of MSPIDs
 		for _, ordOrg := range ac.Organizations() {
 			ordOrgMSPs[ordOrg.MSPID()] = struct{}{}
 		}
@@ -940,7 +940,7 @@ func (mgr *caManager) updateTrustedRoots(
 
 	if cc, ok := cm.ConsortiumsConfig(); ok {
 		for _, consortium := range cc.Consortiums() {
-			//loop through consortium orgs and build map of MSPIDs
+			// loop through consortium orgs and build map of MSPIDs
 			for _, consortiumOrg := range consortium.Organizations() {
 				appOrgMSPs[consortiumOrg.MSPID()] = struct{}{}
 			}

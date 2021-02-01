@@ -21,8 +21,7 @@ import (
 
 // DefaultEndorsementFactory returns an endorsement plugin factory which returns plugins
 // that behave as the default endorsement system chaincode
-type DefaultEndorsementFactory struct {
-}
+type DefaultEndorsementFactory struct{}
 
 // New returns an endorsement plugin that behaves as the default endorsement system chaincode
 func (*DefaultEndorsementFactory) New() endorsement.Plugin {

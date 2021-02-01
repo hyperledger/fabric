@@ -37,9 +37,7 @@ const (
 	DefSendBuffSize  = 20
 )
 
-var (
-	errProbe = errors.New("probe")
-)
+var errProbe = errors.New("probe")
 
 // SecurityAdvisor defines an external auxiliary object
 // that provides security and identity related capabilities
@@ -60,7 +58,6 @@ func (c *commImpl) SetDialOpts(opts ...grpc.DialOption) {
 func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore identity.Mapper,
 	peerIdentity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor,
 	commMetrics *metrics.CommMetrics, config CommConfig, dialOpts ...grpc.DialOption) (Comm, error) {
-
 	commInst := &commImpl{
 		sa:              sa,
 		pubSub:          util.NewPubSub(),

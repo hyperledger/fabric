@@ -43,7 +43,6 @@ func TestPayloadsBufferImpl_Push(t *testing.T) {
 	buffer := NewPayloadsBuffer(5)
 
 	payload, err := randomPayloadWithSeqNum(4)
-
 	if err != nil {
 		t.Fatal("Wasn't able to generate random payload for test")
 	}
@@ -85,7 +84,6 @@ func TestPayloadsBufferImpl_Ready(t *testing.T) {
 
 	time.AfterFunc(100*time.Millisecond, func() {
 		payload, err := randomPayloadWithSeqNum(1)
-
 		if err != nil {
 			t.Fatal("Wasn't able to generate random payload for test")
 		}
@@ -104,7 +102,6 @@ func TestPayloadsBufferImpl_Ready(t *testing.T) {
 // Test to push several concurrent blocks into the buffer
 // with same sequence number, only one expected to succeed
 func TestPayloadsBufferImpl_ConcurrentPush(t *testing.T) {
-
 	// Test setup, next block num to expect and
 	// how many concurrent pushes to simulate
 	nextSeqNum := uint64(7)

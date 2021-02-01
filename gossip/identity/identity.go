@@ -17,11 +17,9 @@ import (
 	errors "github.com/pkg/errors"
 )
 
-var (
-	// identityUsageThreshold sets the maximum time that an identity
-	// can not be used to verify some signature before it will be deleted
-	usageThreshold = time.Hour
-)
+// identityUsageThreshold sets the maximum time that an identity
+// can not be used to verify some signature before it will be deleted
+var usageThreshold = time.Hour
 
 // Mapper holds mappings between pkiID
 // to certificates(identities) of peers

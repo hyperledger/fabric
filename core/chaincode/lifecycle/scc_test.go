@@ -817,9 +817,7 @@ var _ = Describe("SCC", func() {
 			})
 
 			Context("when committed definition contains a collection that has different BTL than defined in the proposed definition", func() {
-				var (
-					committedCollConfigs collectionConfigs
-				)
+				var committedCollConfigs collectionConfigs
 				BeforeEach(func() {
 					committedCollConfigs = collConfigs.deepCopy()
 					committedCollConfigs[0].BlockToLive = committedCollConfigs[0].BlockToLive + 1

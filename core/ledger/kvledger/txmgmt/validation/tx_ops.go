@@ -48,7 +48,7 @@ func prepareTxOps(rwset *rwsetutil.TxRwSet, precedingUpdates *publicAndHashUpdat
 			delete(txops, ck)
 		}
 	}
-	//logger.Debugf("prepareTxOps() txops after final processing=%#v", spew.Sdump(txops))
+	// logger.Debugf("prepareTxOps() txops after final processing=%#v", spew.Sdump(txops))
 	return txops, nil
 }
 

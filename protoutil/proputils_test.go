@@ -30,7 +30,9 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			Type:        pb.ChaincodeSpec_GOLANG,
 			ChaincodeId: &pb.ChaincodeID{Name: "chaincode_name"},
-			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
+			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}},
+		},
+	}
 }
 
 func TestGetChaincodeDeploymentSpec(t *testing.T) {
@@ -78,7 +80,6 @@ func TestCDSProposals(t *testing.T) {
 	require.NotNil(t, prop, "Upgrade proposal should not be nil")
 	require.NoError(t, err, "Unexpected error creating upgrade proposal")
 	require.NotEqual(t, "", txid, "txid should not be empty")
-
 }
 
 func TestProposal(t *testing.T) {
@@ -226,7 +227,8 @@ func TestProposalResponse(t *testing.T) {
 		ChaincodeId: "ccid",
 		EventName:   "EventName",
 		Payload:     []byte("EventPayload"),
-		TxId:        "TxID"}
+		TxId:        "TxID",
+	}
 	ccid := &pb.ChaincodeID{
 		Name:    "ccid",
 		Version: "v1",
@@ -298,7 +300,8 @@ func TestProposalResponse(t *testing.T) {
 		Payload:     prpBytes,
 		Endorsement: &pb.Endorsement{Endorser: []byte("endorser"), Signature: []byte("signature")},
 		Version:     1, // TODO: pick right version number
-		Response:    &pb.Response{Status: 200, Message: "OK"}}
+		Response:    &pb.Response{Status: 200, Message: "OK"},
+	}
 
 	// create a proposal response
 	prBytes, err := protoutil.GetBytesProposalResponse(pr)
@@ -468,8 +471,10 @@ func TestComputeProposalTxID(t *testing.T) {
 	require.Equal(t, txid, txid2)
 }
 
-var signer msp.SigningIdentity
-var signerSerialized []byte
+var (
+	signer           msp.SigningIdentity
+	signerSerialized []byte
+)
 
 func TestMain(m *testing.M) {
 	// setup the MSP manager so that we can sign/verify

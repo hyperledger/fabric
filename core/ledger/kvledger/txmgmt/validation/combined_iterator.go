@@ -42,7 +42,6 @@ type combinedIterator struct {
 
 func newCombinedIterator(db statedb.VersionedDB, updates *statedb.UpdateBatch,
 	ns string, startKey string, endKey string, includeEndKey bool) (*combinedIterator, error) {
-
 	var dbItr statedb.ResultsIterator
 	var updatesItr statedb.ResultsIterator
 	var err error
@@ -58,8 +57,10 @@ func newCombinedIterator(db statedb.VersionedDB, updates *statedb.UpdateBatch,
 		return nil, err
 	}
 	logger.Debugf("Combined iterator initialized. dbItem=%#v, updatesItem=%#v", dbItem, updatesItem)
-	return &combinedIterator{ns, db, updates, endKey, includeEndKey,
-		dbItr, updatesItr, dbItem, updatesItem, false}, nil
+	return &combinedIterator{
+		ns, db, updates, endKey, includeEndKey,
+		dbItr, updatesItr, dbItem, updatesItem, false,
+	}, nil
 }
 
 // Next returns the KV from either dbItr or updatesItr that gives the next smaller key
@@ -80,7 +81,7 @@ func (itr *combinedIterator) Next() (*statedb.VersionedKV, error) {
 		selectedItem = itr.dbItem
 		moveDBItr = true
 	case 0:
-		//both items are same so, choose the updatesItem (latest)
+		// both items are same so, choose the updatesItem (latest)
 		selectedItem = itr.updatesItem
 		moveUpdatesItr = true
 		moveDBItr = true

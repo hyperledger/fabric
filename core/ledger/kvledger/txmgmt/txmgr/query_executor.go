@@ -498,7 +498,6 @@ type queryResultsItr struct {
 
 // Next implements method in interface ledger.ResultsIterator
 func (itr *queryResultsItr) Next() (commonledger.QueryResult, error) {
-
 	queryResult, err := itr.DBItr.Next()
 	if err != nil {
 		return nil, err

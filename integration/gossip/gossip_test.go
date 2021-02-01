@@ -176,7 +176,6 @@ var _ = Describe("Gossip State Transfer and Membership", func() {
 			network.DiscoveredPeer(peer0Org2, "_lifecycle"),
 			network.DiscoveredPeer(peer1Org2, "_lifecycle"),
 		))
-
 	})
 
 	When("gossip connection is lost and restored", func() {

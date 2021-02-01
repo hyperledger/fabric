@@ -366,7 +366,6 @@ func TestGetVMNameForDocker(t *testing.T) {
 		require.Nil(t, err, "Expected nil error")
 		require.Equal(t, test.expectedOutput, name, "Unexpected output for test case name: %s", test.name)
 	}
-
 }
 
 func TestGetVMName(t *testing.T) {
@@ -383,7 +382,6 @@ func TestGetVMName(t *testing.T) {
 		name := test.vm.GetVMName(test.ccid)
 		require.Equal(t, test.expectedOutput, name, "Unexpected output for test case name: %s", test.name)
 	}
-
 }
 
 func Test_buildImage(t *testing.T) {
@@ -446,7 +444,6 @@ func TestBuild(t *testing.T) {
 		codePackage, err := ioutil.ReadAll(codePackageStream)
 		require.NoError(t, err)
 		require.Equal(t, []byte("code-package"), codePackage)
-
 	})
 
 	t.Run("when inspecting the image fails", func(t *testing.T) {

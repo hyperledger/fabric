@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	repoFilePermPrivateRW      os.FileMode = 0600
+	repoFilePermPrivateRW      os.FileMode = 0o600
 	defaultTransientFileMarker             = "~"
 )
 

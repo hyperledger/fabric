@@ -62,7 +62,6 @@ func acceptAll(msg interface{}) bool {
 }
 
 var noopPurgeIdentity = func(_ common.PKIidType, _ api.PeerIdentityType) {
-
 }
 
 var (
@@ -128,7 +127,6 @@ func (*naiveSecProvider) VerifyByChannel(_ common.ChannelID, _ api.PeerIdentityT
 func newCommInstanceOnlyWithMetrics(t *testing.T, commMetrics *metrics.CommMetrics, sec *naiveSecProvider,
 	gRPCServer *comm.GRPCServer, certs *common.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, dialOpts ...grpc.DialOption) Comm {
-
 	_, portString, err := net.SplitHostPort(gRPCServer.Address())
 	require.NoError(t, err)
 
@@ -690,7 +688,6 @@ func TestNonResponsivePing(t *testing.T) {
 		require.Fail(t, "Request wasn't cancelled on time")
 	case <-s:
 	}
-
 }
 
 func TestResponses(t *testing.T) {

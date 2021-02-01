@@ -411,19 +411,22 @@ func TestEnvelope_SignSecret(t *testing.T) {
 func TestInternalEndpoint(t *testing.T) {
 	require.Empty(t, protoext.InternalEndpoint(nil))
 	require.Empty(t, protoext.InternalEndpoint(&gossip.SecretEnvelope{
-		Payload: []byte{1, 2, 3}}))
+		Payload: []byte{1, 2, 3},
+	}))
 	require.Equal(t, "foo", protoext.InternalEndpoint(&gossip.SecretEnvelope{
 		Payload: protoutil.MarshalOrPanic(
 			&gossip.Secret{
 				Content: &gossip.Secret_InternalEndpoint{
 					InternalEndpoint: "foo",
 				},
-			})}))
+			}),
+	}))
 }
 
 func envelopes() []*gossip.Envelope {
 	return []*gossip.Envelope{
-		{Payload: []byte{2, 2, 2},
+		{
+			Payload:   []byte{2, 2, 2},
 			Signature: []byte{2, 2, 2},
 			SecretEnvelope: &gossip.SecretEnvelope{
 				Payload:   []byte{2, 2, 2},

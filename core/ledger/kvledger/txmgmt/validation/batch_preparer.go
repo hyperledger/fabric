@@ -124,7 +124,6 @@ func validateAndPreparePvtBatch(
 	pubAndHashUpdates *publicAndHashUpdates,
 	pvtdata map[uint64]*ledger.TxPvtData,
 ) (*privacyenabledstate.PvtUpdateBatch, error) {
-
 	pvtUpdates := privacyenabledstate.NewPvtUpdateBatch()
 	metadataUpdates := metadataUpdates{}
 	for _, tx := range blk.txs {
@@ -360,7 +359,6 @@ func incrementPvtdataVersionIfNeeded(
 	pvtUpdateBatch *privacyenabledstate.PvtUpdateBatch,
 	pubAndHashUpdates *publicAndHashUpdates,
 	db *privacyenabledstate.DB) error {
-
 	for collKey := range metadataUpdates {
 		ns, coll, key := collKey.ns, collKey.coll, collKey.key
 		keyHash := util.ComputeStringHash(key)

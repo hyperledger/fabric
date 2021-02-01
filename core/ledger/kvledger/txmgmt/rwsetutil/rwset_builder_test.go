@@ -57,7 +57,8 @@ func TestTxSimulationResultWithOnlyPubData(t *testing.T) {
 	ns1KVRWSet := &kvrwset.KVRWSet{
 		Reads:            []*kvrwset.KVRead{NewKVRead("key1", version.NewHeight(1, 1)), NewKVRead("key2", version.NewHeight(1, 2))},
 		RangeQueriesInfo: []*kvrwset.RangeQueryInfo{rqi1, rqi3},
-		Writes:           []*kvrwset.KVWrite{newKVWrite("key2", []byte("value2"))}}
+		Writes:           []*kvrwset.KVWrite{newKVWrite("key2", []byte("value2"))},
+	}
 
 	ns1RWSet := &rwset.NsReadWriteSet{
 		Namespace: "ns1",
@@ -67,7 +68,8 @@ func TestTxSimulationResultWithOnlyPubData(t *testing.T) {
 	ns2KVRWSet := &kvrwset.KVRWSet{
 		Reads:            []*kvrwset.KVRead{NewKVRead("key2", version.NewHeight(1, 2))},
 		RangeQueriesInfo: nil,
-		Writes:           []*kvrwset.KVWrite{newKVWrite("key3", []byte("value3"))}}
+		Writes:           []*kvrwset.KVWrite{newKVWrite("key3", []byte("value3"))},
+	}
 
 	ns2RWSet := &rwset.NsReadWriteSet{
 		Namespace: "ns2",
@@ -151,12 +153,14 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 
 	hashedNs1Coll1 := &kvrwset.HashedRWSet{
 		HashedReads: []*kvrwset.KVReadHash{
-			constructTestPvtKVReadHash(t, "key1", version.NewHeight(1, 1))},
+			constructTestPvtKVReadHash(t, "key1", version.NewHeight(1, 1)),
+		},
 	}
 
 	hashedNs1Coll2 := &kvrwset.HashedRWSet{
 		HashedReads: []*kvrwset.KVReadHash{
-			constructTestPvtKVReadHash(t, "key1", version.NewHeight(1, 1))},
+			constructTestPvtKVReadHash(t, "key1", version.NewHeight(1, 1)),
+		},
 		HashedWrites: []*kvrwset.KVWriteHash{
 			constructTestPvtKVWriteHash(t, "key1", []byte("pvt-ns1-coll2-key1-value")),
 		},

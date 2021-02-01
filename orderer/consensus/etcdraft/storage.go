@@ -69,7 +69,6 @@ func CreateStorage(
 	snapDir string,
 	ram MemoryStorage,
 ) (*RaftStorage, error) {
-
 	sn, err := createSnapshotter(lg, snapDir)
 	if err != nil {
 		return nil, err

@@ -97,17 +97,17 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		return err
 	}
 
-	//Index1
+	// Index1
 	if index.isAttributeIndexed(IndexableAttrBlockHash) {
 		batch.Put(constructBlockHashKey(blkHash), flpBytes)
 	}
 
-	//Index2
+	// Index2
 	if index.isAttributeIndexed(IndexableAttrBlockNum) {
 		batch.Put(constructBlockNumKey(blkNum), flpBytes)
 	}
 
-	//Index3 Used to find a transaction by its transaction id
+	// Index3 Used to find a transaction by its transaction id
 	if index.isAttributeIndexed(IndexableAttrTxID) {
 		for i, txoffset := range txOffsets {
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
@@ -133,7 +133,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		}
 	}
 
-	//Index4 - Store BlockNumTranNum will be used to query history data
+	// Index4 - Store BlockNumTranNum will be used to query history data
 	if index.isAttributeIndexed(IndexableAttrBlockNumTranNum) {
 		for i, txoffset := range txOffsets {
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
@@ -366,7 +366,6 @@ func importTxIDsFromSnapshot(
 	snapshotDir string,
 	lastBlockNumInSnapshot uint64,
 	db *leveldbhelper.DBHandle) error {
-
 	txIDsMetadata, err := snapshot.OpenFile(filepath.Join(snapshotDir, snapshotMetadataFileName), snapshotFileFormat)
 	if err != nil {
 		return err

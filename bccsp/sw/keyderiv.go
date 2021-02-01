@@ -48,8 +48,8 @@ func (kd *ecdsaPublicKeyKeyDeriver) KeyDeriv(key bccsp.Key, opts bccsp.KeyDerivO
 		Y:     new(big.Int),
 	}
 
-	var k = new(big.Int).SetBytes(reRandOpts.ExpansionValue())
-	var one = new(big.Int).SetInt64(1)
+	k := new(big.Int).SetBytes(reRandOpts.ExpansionValue())
+	one := new(big.Int).SetInt64(1)
 	n := new(big.Int).Sub(ecdsaK.pubKey.Params().N, one)
 	k.Mod(k, n)
 	k.Add(k, one)
@@ -95,8 +95,8 @@ func (kd *ecdsaPrivateKeyKeyDeriver) KeyDeriv(key bccsp.Key, opts bccsp.KeyDeriv
 		D: new(big.Int),
 	}
 
-	var k = new(big.Int).SetBytes(reRandOpts.ExpansionValue())
-	var one = new(big.Int).SetInt64(1)
+	k := new(big.Int).SetBytes(reRandOpts.ExpansionValue())
+	one := new(big.Int).SetInt64(1)
 	n := new(big.Int).Sub(ecdsaK.privKey.Params().N, one)
 	k.Mod(k, n)
 	k.Add(k, one)

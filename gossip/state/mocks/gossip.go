@@ -41,13 +41,11 @@ func (g *GossipMock) SuspectPeers(s api.PeerSuspector) {
 // UpdateLedgerHeight updates the ledger height the peer
 // publishes to other peers in the channel
 func (g *GossipMock) UpdateLedgerHeight(height uint64, channelID common.ChannelID) {
-
 }
 
 // UpdateChaincodes updates the chaincodes the peer publishes
 // to other peers in the channel
 func (g *GossipMock) UpdateChaincodes(chaincode []*proto.Chaincode, channelID common.ChannelID) {
-
 }
 
 func (g *GossipMock) LeaveChan(_ common.ChannelID) {
@@ -96,7 +94,6 @@ func (g *GossipMock) IsInMyOrg(member discovery.NetworkMember) bool {
 }
 
 func (g *GossipMock) Stop() {
-
 }
 
 func (g *GossipMock) SendByCriteria(*protoext.SignedGossipMessage, gossip.SendCriteria) error {

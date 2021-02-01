@@ -144,7 +144,6 @@ func (client *GRPCClient) SetMaxSendMsgSize(size int) {
 // SetServerRootCAs sets the list of authorities used to verify server
 // certificates based on a list of PEM-encoded X509 certificate authorities
 func (client *GRPCClient) SetServerRootCAs(serverRoots [][]byte) error {
-
 	// NOTE: if no serverRoots are specified, the current cert pool will be
 	// replaced with an empty one
 	certPool := x509.NewCertPool()
@@ -176,7 +175,6 @@ func CertPoolOverride(pool *x509.CertPool) TLSOption {
 // overrides the server name used to verify the hostname on the
 // certificate returned by a server when using TLS
 func (client *GRPCClient) NewConnection(address string, tlsOptions ...TLSOption) (*grpc.ClientConn, error) {
-
 	var dialOpts []grpc.DialOption
 	dialOpts = append(dialOpts, client.dialOpts...)
 

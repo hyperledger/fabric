@@ -75,7 +75,6 @@ func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {
 	}
 
 	return certifiersIdentifier, nil
-
 }
 
 func (msp *bccspmsp) setupCrypto(conf *m.FabricMSPConfig) error {
@@ -419,7 +418,6 @@ func (msp *bccspmsp) setupOUs(conf *m.FabricMSPConfig) error {
 }
 
 func (msp *bccspmsp) setupTLSCAs(conf *m.FabricMSPConfig) error {
-
 	opts := &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()}
 
 	// Load TLS root and intermediate CA identities
@@ -639,7 +637,8 @@ func (msp *bccspmsp) postSetupV11(conf *m.FabricMSPConfig) error {
 	}
 	principal := &m.MSPPrincipal{
 		PrincipalClassification: m.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	for i, admin := range msp.admins {
 		err = admin.SatisfiesPrincipal(principal)
 		if err != nil {

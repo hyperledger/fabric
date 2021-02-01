@@ -39,7 +39,7 @@ func TestCBCPKCS7EncryptCBCPKCS7Decrypt(t *testing.T) {
 	rand.Reader.Read(key)
 
 	//                  123456789012345678901234567890123456789012
-	var ptext = []byte("a message with arbitrary length (42 bytes)")
+	ptext := []byte("a message with arbitrary length (42 bytes)")
 
 	encrypted, encErr := AESCBCPKCS7Encrypt(key, ptext)
 	if encErr != nil {
@@ -62,10 +62,12 @@ func TestPKCS7Padding(t *testing.T) {
 
 	// 0 byte/length ptext
 	ptext := []byte("")
-	expected := []byte{16, 16, 16, 16,
+	expected := []byte{
 		16, 16, 16, 16,
 		16, 16, 16, 16,
-		16, 16, 16, 16}
+		16, 16, 16, 16,
+		16, 16, 16, 16,
+	}
 	result := pkcs7Padding(ptext)
 
 	if !bytes.Equal(expected, result) {
@@ -74,10 +76,12 @@ func TestPKCS7Padding(t *testing.T) {
 
 	// 1 byte/length ptext
 	ptext = []byte("1")
-	expected = []byte{'1', 15, 15, 15,
+	expected = []byte{
+		'1', 15, 15, 15,
 		15, 15, 15, 15,
 		15, 15, 15, 15,
-		15, 15, 15, 15}
+		15, 15, 15, 15,
+	}
 	result = pkcs7Padding(ptext)
 
 	if !bytes.Equal(expected, result) {
@@ -86,10 +90,12 @@ func TestPKCS7Padding(t *testing.T) {
 
 	// 2 byte/length ptext
 	ptext = []byte("12")
-	expected = []byte{'1', '2', 14, 14,
+	expected = []byte{
+		'1', '2', 14, 14,
 		14, 14, 14, 14,
 		14, 14, 14, 14,
-		14, 14, 14, 14}
+		14, 14, 14, 14,
+	}
 	result = pkcs7Padding(ptext)
 
 	if !bytes.Equal(expected, result) {
@@ -132,10 +138,12 @@ func TestPKCS7UnPadding(t *testing.T) {
 
 	// 0 byte/length ptext
 	expected := []byte("")
-	ptext := []byte{16, 16, 16, 16,
+	ptext := []byte{
 		16, 16, 16, 16,
 		16, 16, 16, 16,
-		16, 16, 16, 16}
+		16, 16, 16, 16,
+		16, 16, 16, 16,
+	}
 
 	result, _ := pkcs7UnPadding(ptext)
 
@@ -145,10 +153,12 @@ func TestPKCS7UnPadding(t *testing.T) {
 
 	// 1 byte/length ptext
 	expected = []byte("1")
-	ptext = []byte{'1', 15, 15, 15,
+	ptext = []byte{
+		'1', 15, 15, 15,
 		15, 15, 15, 15,
 		15, 15, 15, 15,
-		15, 15, 15, 15}
+		15, 15, 15, 15,
+	}
 
 	result, _ = pkcs7UnPadding(ptext)
 
@@ -158,10 +168,12 @@ func TestPKCS7UnPadding(t *testing.T) {
 
 	// 2 byte/length ptext
 	expected = []byte("12")
-	ptext = []byte{'1', '2', 14, 14,
+	ptext = []byte{
+		'1', '2', 14, 14,
 		14, 14, 14, 14,
 		14, 14, 14, 14,
-		14, 14, 14, 14}
+		14, 14, 14, 14,
+	}
 
 	result, _ = pkcs7UnPadding(ptext)
 
@@ -207,7 +219,7 @@ func TestCBCEncryptCBCPKCS7Decrypt_BlockSizeLengthPlaintext(t *testing.T) {
 	rand.Reader.Read(key)
 
 	//                  1234567890123456
-	var ptext = []byte("a 16 byte messag")
+	ptext := []byte("a 16 byte messag")
 
 	encrypted, encErr := aesCBCEncrypt(key, ptext)
 	if encErr != nil {
@@ -231,7 +243,7 @@ func TestCBCPKCS7EncryptCBCDecrypt_ExpectingCorruptMessage(t *testing.T) {
 	rand.Reader.Read(key)
 
 	//                  0123456789ABCDEF
-	var ptext = []byte("a 16 byte messag")
+	ptext := []byte("a 16 byte messag")
 
 	encrypted, encErr := AESCBCPKCS7Encrypt(key, ptext)
 	if encErr != nil {
@@ -263,7 +275,7 @@ func TestCBCPKCS7Encrypt_EmptyPlaintext(t *testing.T) {
 
 	t.Log("Generated key: ", key)
 
-	var emptyPlaintext = []byte("")
+	emptyPlaintext := []byte("")
 	t.Log("Plaintext length: ", len(emptyPlaintext))
 
 	ciphertext, encErr := AESCBCPKCS7Encrypt(key, emptyPlaintext)
@@ -290,7 +302,7 @@ func TestCBCEncrypt_EmptyPlaintext(t *testing.T) {
 	rand.Reader.Read(key)
 	t.Log("Generated key: ", key)
 
-	var emptyPlaintext = []byte("")
+	emptyPlaintext := []byte("")
 	t.Log("Message length: ", len(emptyPlaintext))
 
 	ciphertext, encErr := aesCBCEncrypt(key, emptyPlaintext)
@@ -299,7 +311,7 @@ func TestCBCEncrypt_EmptyPlaintext(t *testing.T) {
 	t.Log("Ciphertext length: ", len(ciphertext))
 
 	// Expected cipher length: aes.BlockSize, the first and only block is the IV
-	var expectedLength = aes.BlockSize
+	expectedLength := aes.BlockSize
 
 	if len(ciphertext) != expectedLength {
 		t.Fatalf("Wrong ciphertext length. Expected: '%d', received: '%d'", expectedLength, len(ciphertext))
@@ -315,7 +327,7 @@ func TestCBCPKCS7Encrypt_VerifyRandomIVs(t *testing.T) {
 	rand.Reader.Read(key)
 	t.Log("Key 1", key)
 
-	var ptext = []byte("a message to encrypt")
+	ptext := []byte("a message to encrypt")
 
 	ciphertext1, err := AESCBCPKCS7Encrypt(key, ptext)
 	if err != nil {
@@ -350,7 +362,7 @@ func TestCBCPKCS7Encrypt_CorrectCiphertextLengthCheck(t *testing.T) {
 	// length of message (in bytes) == aes.BlockSize (16 bytes)
 	// The expected cipher length = IV length (1 block) + 1 block message
 
-	var ptext = []byte("0123456789ABCDEF")
+	ptext := []byte("0123456789ABCDEF")
 
 	for i := 1; i < aes.BlockSize; i++ {
 		ciphertext, err := AESCBCPKCS7Encrypt(key, ptext[:i])
@@ -378,7 +390,7 @@ func TestCBCEncryptCBCDecrypt_KeyMismatch(t *testing.T) {
 	copy(wrongKey, key[:])
 	wrongKey[0] = key[0] + 1
 
-	var ptext = []byte("1234567890ABCDEF")
+	ptext := []byte("1234567890ABCDEF")
 	encrypted, encErr := aesCBCEncrypt(key, ptext)
 	if encErr != nil {
 		t.Fatalf("Error encrypting '%s': %v", ptext, encErr)
@@ -402,7 +414,7 @@ func TestCBCEncryptCBCDecrypt(t *testing.T) {
 	rand.Reader.Read(key)
 
 	//                  1234567890123456
-	var ptext = []byte("a 16 byte messag")
+	ptext := []byte("a 16 byte messag")
 
 	encrypted, encErr := aesCBCEncrypt(key, ptext)
 	if encErr != nil {
@@ -427,7 +439,7 @@ func TestCBCEncryptWithRandCBCDecrypt(t *testing.T) {
 	rand.Reader.Read(key)
 
 	//                  1234567890123456
-	var ptext = []byte("a 16 byte messag")
+	ptext := []byte("a 16 byte messag")
 
 	encrypted, encErr := aesCBCEncryptWithRand(rand.Reader, key, ptext)
 	if encErr != nil {
@@ -452,7 +464,7 @@ func TestCBCEncryptWithIVCBCDecrypt(t *testing.T) {
 	rand.Reader.Read(key)
 
 	//                  1234567890123456
-	var ptext = []byte("a 16 byte messag")
+	ptext := []byte("a 16 byte messag")
 
 	iv := make([]byte, aes.BlockSize)
 	_, err := io.ReadFull(rand.Reader, iv)

@@ -65,8 +65,7 @@ var (
 
 type peerIdentityAcceptor func(identity api.PeerIdentityType) error
 
-type joinChanMsg struct {
-}
+type joinChanMsg struct{}
 
 func init() {
 	gossiputil.SetupTestLogging()
@@ -89,8 +88,7 @@ func (jcm *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer 
 	return []api.AnchorPeer{}
 }
 
-type orgCryptoService struct {
-}
+type orgCryptoService struct{}
 
 // OrgByPeerIdentity returns the OrgIdentityType
 // of a given peer identity
@@ -336,7 +334,6 @@ func (mock *ramLedger) GetBlockByNumber(blockNumber uint64) (*pcomm.Block, error
 }
 
 func (mock *ramLedger) Close() {
-
 }
 
 // Create new instance of KVLedger to be used for testing
@@ -450,7 +447,6 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(logger gossiputil.Logger, id 
 		cs:     cs,
 		grpc:   gRPCServer,
 	}, port
-
 }
 
 // add metrics provider for metrics testing
@@ -535,7 +531,6 @@ func TestStraggler(t *testing.T) {
 			})
 		})
 	}
-
 }
 
 func TestNilDirectMsg(t *testing.T) {
@@ -615,7 +610,8 @@ func TestLargeBlockGap(t *testing.T) {
 			Properties: &proto.Properties{
 				LedgerHeight: 500,
 			},
-		}}
+		},
+	}
 	g.On("PeersOfChannel", mock.Anything).Return(membership)
 	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
 	g.On("Accept", mock.Anything, true).Return(nil, msgsFromPeer)
@@ -1323,7 +1319,6 @@ type receivedMessageMock struct {
 
 // Ack returns to the sender an acknowledgement for the message
 func (mock *receivedMessageMock) Ack(err error) {
-
 }
 
 func (mock *receivedMessageMock) Respond(msg *proto.GossipMessage) {
@@ -1373,7 +1368,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 
 	coord1.On("LedgerHeight", mock.Anything).Return(uint64(5), nil)
 
-	var data = map[uint64]*testData{
+	data := map[uint64]*testData{
 		uint64(2): {
 			block: &pcomm.Block{
 				Header: &pcomm.BlockHeader{

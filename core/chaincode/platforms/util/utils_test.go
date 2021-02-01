@@ -66,7 +66,6 @@ func TestDockerPull(t *testing.T) {
 }
 
 func TestUtil_GetDockerImageFromConfig(t *testing.T) {
-
 	path := "dt"
 
 	expected := "FROM " + metadata.DockerNamespace + ":" + runtime.GOARCH + "-" + metadata.Version
@@ -78,7 +77,6 @@ func TestUtil_GetDockerImageFromConfig(t *testing.T) {
 	viper.Set(path, "FROM $(DOCKER_NS):$(ARCH)-$(TWO_DIGIT_VERSION)")
 	actual = GetDockerImageFromConfig(path)
 	require.Equal(t, expected, actual, `Error parsing Dockerfile Template. Expected "%s", got "%s"`, expected, actual)
-
 }
 
 func TestMain(m *testing.M) {

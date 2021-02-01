@@ -41,7 +41,7 @@ func (q *QueryExecutor) GetHistoryForKey(namespace string, key string) (commonle
 	return &historyScanner{rangeScan, namespace, key, dbItr, q.blockStore}, nil
 }
 
-//historyScanner implements ResultsIterator for iterating through history results
+// historyScanner implements ResultsIterator for iterating through history results
 type historyScanner struct {
 	rangeScan  *rangeScan
 	namespace  string
@@ -134,14 +134,16 @@ func getKeyModificationFromTran(tranEnvelope *common.Envelope, namespace string,
 			// got the correct namespace, now find the key write
 			for _, kvWrite := range nsRWSet.KvRwSet.Writes {
 				if kvWrite.Key == key {
-					return &queryresult.KeyModification{TxId: txID, Value: kvWrite.Value,
-						Timestamp: timestamp, IsDelete: rwsetutil.IsKVWriteDelete(kvWrite)}, nil
+					return &queryresult.KeyModification{
+						TxId: txID, Value: kvWrite.Value,
+						Timestamp: timestamp, IsDelete: rwsetutil.IsKVWriteDelete(kvWrite),
+					}, nil
 				}
 			} // end keys loop
 			logger.Debugf("key [%s] not found in namespace [%s]'s writeset", key, namespace)
 			return nil, nil
 		} // end if
-	} //end namespaces loop
+	} // end namespaces loop
 	logger.Debugf("namespace [%s] not found in transaction's ReadWriteSets", namespace)
 	return nil, nil
 }

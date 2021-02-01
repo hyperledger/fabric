@@ -59,7 +59,7 @@ func signpackage(cmd *cobra.Command, ipackageFile string, opackageFile string, c
 	}
 
 	b = protoutil.MarshalOrPanic(env)
-	err = ioutil.WriteFile(opackageFile, b, 0700)
+	err = ioutil.WriteFile(opackageFile, b, 0o700)
 	if err != nil {
 		return err
 	}

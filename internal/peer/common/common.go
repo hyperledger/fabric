@@ -34,11 +34,15 @@ import (
 )
 
 // UndefinedParamValue defines what undefined parameters in the command line will initialise to
-const UndefinedParamValue = ""
-const CmdRoot = "core"
+const (
+	UndefinedParamValue = ""
+	CmdRoot             = "core"
+)
 
-var mainLogger = flogging.MustGetLogger("main")
-var logOutput = os.Stderr
+var (
+	mainLogger = flogging.MustGetLogger("main")
+	logOutput  = os.Stderr
+)
 
 var (
 	defaultConnTimeout = 3 * time.Second
@@ -313,9 +317,9 @@ func InitCmd(cmd *cobra.Command, args []string) {
 	}
 
 	// Init the MSP
-	var mspMgrConfigDir = config.GetPath("peer.mspConfigPath")
-	var mspID = viper.GetString("peer.localMspId")
-	var mspType = viper.GetString("peer.localMspType")
+	mspMgrConfigDir := config.GetPath("peer.mspConfigPath")
+	mspID := viper.GetString("peer.localMspId")
+	mspType := viper.GetString("peer.localMspType")
 	if mspType == "" {
 		mspType = msp.ProviderTypeToString(msp.FABRIC)
 	}

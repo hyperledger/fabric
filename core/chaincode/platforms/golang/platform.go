@@ -97,7 +97,7 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 
 		// only files and directories; no links or special files
 		mode := header.FileInfo().Mode()
-		if mode&^(os.ModeDir|0777) != 0 {
+		if mode&^(os.ModeDir|0o777) != 0 {
 			return fmt.Errorf("illegal file mode in payload: %s", header.Name)
 		}
 	}
@@ -106,7 +106,7 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 }
 
 // Directory constant copied from tar package.
-const c_ISDIR = 040000
+const c_ISDIR = 0o40000
 
 // Default compression to use for production. Test packages disable compression.
 var gzipCompressionLevel = gzip.DefaultCompression
@@ -159,7 +159,7 @@ func (p *Platform) GetDeploymentPayload(codepath string) ([]byte, error) {
 		err := tw.WriteHeader(&tar.Header{
 			Typeflag: tar.TypeDir,
 			Name:     dirname + "/",
-			Mode:     c_ISDIR | 0755,
+			Mode:     c_ISDIR | 0o755,
 			Uid:      500,
 			Gid:      500,
 		})
@@ -194,8 +194,10 @@ func (p *Platform) GenerateDockerfile() (string, error) {
 	return strings.Join(buf, "\n"), nil
 }
 
-const staticLDFlagsOpts = "-ldflags \"-linkmode external -extldflags '-static'\""
-const dynamicLDFlagsOpts = ""
+const (
+	staticLDFlagsOpts  = "-ldflags \"-linkmode external -extldflags '-static'\""
+	dynamicLDFlagsOpts = ""
+)
 
 func getLDFlagsOpts() string {
 	if viper.GetBool("chaincode.golang.dynamicLink") {

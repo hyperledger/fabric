@@ -86,7 +86,6 @@ var _ bool = Describe("PrivateData", func() {
 		})
 
 		It("disseminates private data per collections_config1 (positive test) and collections_config8 (negative test)", func() {
-
 			By("deploying legacy chaincode and adding marble1")
 			testChaincode := chaincode{
 				Chaincode: nwo.Chaincode{
@@ -174,9 +173,7 @@ var _ bool = Describe("PrivateData", func() {
 	})
 
 	Describe("Pvtdata behavior when a peer with new certs joins the network", func() {
-		var (
-			peerProcesses map[string]ifrit.Process
-		)
+		var peerProcesses map[string]ifrit.Process
 
 		BeforeEach(func() {
 			By("setting up the network")
@@ -306,7 +303,8 @@ var _ bool = Describe("PrivateData", func() {
 				Path:              "github.com/hyperledger/fabric/integration/chaincode/marbles_private/cmd",
 				Ctor:              `{"Args":["init"]}`,
 				Policy:            `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member')`,
-				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config1.json")}
+				CollectionsConfig: filepath.Join("testdata", "collection_configs", "collections_config1.json"),
+			}
 
 			sess, err = network.PeerUserSession(org2Peer1, "Admin2", commands.ChaincodeInstallLegacy{
 				Name:        chaincode.Name,
@@ -348,7 +346,7 @@ var _ bool = Describe("PrivateData", func() {
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 						channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
-						var channelInfo = cb.BlockchainInfo{}
+						channelInfo := cb.BlockchainInfo{}
 						err = json.Unmarshal([]byte(channelInfoStr), &channelInfo)
 						Expect(err).NotTo(HaveOccurred())
 						return int(channelInfo.Height)
@@ -833,7 +831,8 @@ var _ bool = Describe("PrivateData", func() {
 			peerList := []*nwo.Peer{
 				network.Peer("Org1", "peer0"),
 				network.Peer("Org2", "peer0"),
-				network.Peer("Org3", "peer0")}
+				network.Peer("Org3", "peer0"),
+			}
 
 			By("verifying getMarbleHash is accessible from all peers that has the chaincode instantiated")
 			expectedBytes := util.ComputeStringHash(`{"docType":"marble","name":"test-marble-1","color":"blue","size":35,"owner":"tom"}`)
@@ -1177,7 +1176,6 @@ func assertPvtdataPresencePerCollectionConfig7(n *nwo.Network, chaincodeName, ma
 	}
 	Expect(collectionMPresence).To(Equal(1))
 	Expect(collectionMPDPresence).To(Equal(1))
-
 }
 
 // deliverEvent contains the response and related info from a DeliverWithPrivateData call

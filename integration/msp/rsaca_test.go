@@ -197,7 +197,7 @@ func createMSP(baseDir, domain string, nodeOUs bool) (signCA *CA, tlsCA *CA, adm
 
 	adminUsername := "Admin@" + domain
 	adminDir := filepath.Join(baseDir, "users", adminUsername)
-	err := os.MkdirAll(adminDir, 0755)
+	err := os.MkdirAll(adminDir, 0o755)
 	Expect(err).NotTo(HaveOccurred())
 
 	var ous []string
@@ -208,11 +208,11 @@ func createMSP(baseDir, domain string, nodeOUs bool) (signCA *CA, tlsCA *CA, adm
 	writeLocalMSP(adminDir, adminUsername, ous, nil, signCA, tlsCA, nil, nodeOUs, true)
 	adminPemCert, err = ioutil.ReadFile(filepath.Join(adminDir, "msp", "signcerts", certFilename(adminUsername)))
 	Expect(err).NotTo(HaveOccurred())
-	err = ioutil.WriteFile(filepath.Join(adminDir, "msp", "admincerts", certFilename(adminUsername)), adminPemCert, 0644)
+	err = ioutil.WriteFile(filepath.Join(adminDir, "msp", "admincerts", certFilename(adminUsername)), adminPemCert, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	if !nodeOUs {
-		err := ioutil.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminUsername)), adminPemCert, 0644)
+		err := ioutil.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminUsername)), adminPemCert, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -220,7 +220,7 @@ func createMSP(baseDir, domain string, nodeOUs bool) (signCA *CA, tlsCA *CA, adm
 }
 
 func writeCA(ca *CA, dir string) {
-	err := os.MkdirAll(dir, 0755)
+	err := os.MkdirAll(dir, 0o755)
 	Expect(err).NotTo(HaveOccurred())
 
 	certFilename := filepath.Join(dir, ca.certFilename())
@@ -231,7 +231,7 @@ func writeCA(ca *CA, dir string) {
 }
 
 func writeCertificate(filename string, der []byte) {
-	certFile, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0644)
+	certFile, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 	defer certFile.Close()
 	err = pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: der})
@@ -239,7 +239,7 @@ func writeCertificate(filename string, der []byte) {
 }
 
 func writeKey(filename string, signer crypto.Signer) {
-	keyFile, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0600)
+	keyFile, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0o600)
 	Expect(err).NotTo(HaveOccurred())
 	defer keyFile.Close()
 	derKey, err := x509.MarshalPKCS8PrivateKey(signer)
@@ -250,7 +250,7 @@ func writeKey(filename string, signer crypto.Signer) {
 
 func writeVerifyingMSP(mspDir string, signCA, tlsCA *CA, nodeOUs bool) {
 	for _, dir := range []string{"admincerts", "cacerts", "tlscacerts"} {
-		err := os.MkdirAll(filepath.Join(mspDir, dir), 0755)
+		err := os.MkdirAll(filepath.Join(mspDir, dir), 0o755)
 		Expect(err).NotTo(HaveOccurred())
 	}
 	if nodeOUs {
@@ -263,12 +263,12 @@ func writeVerifyingMSP(mspDir string, signCA, tlsCA *CA, nodeOUs bool) {
 
 func writeLocalMSP(baseDir, name string, signOUs, sans []string, signCA, tlsCA *CA, adminCertPem []byte, nodeOUs, client bool) {
 	mspDir := filepath.Join(baseDir, "msp")
-	err := os.MkdirAll(mspDir, 0755)
+	err := os.MkdirAll(mspDir, 0o755)
 	Expect(err).NotTo(HaveOccurred())
 	writeVerifyingMSP(mspDir, signCA, tlsCA, nodeOUs)
 
 	for _, dir := range []string{"admincerts", "keystore", "signcerts"} {
-		err := os.MkdirAll(filepath.Join(mspDir, dir), 0755)
+		err := os.MkdirAll(filepath.Join(mspDir, dir), 0o755)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -276,7 +276,7 @@ func writeLocalMSP(baseDir, name string, signOUs, sans []string, signCA, tlsCA *
 		block, _ := pem.Decode(adminCertPem)
 		adminCert, err := x509.ParseCertificate(block.Bytes)
 		Expect(err).NotTo(HaveOccurred())
-		err = ioutil.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminCert.Subject.CommonName)), adminCertPem, 0644)
+		err = ioutil.WriteFile(filepath.Join(mspDir, "admincerts", certFilename(adminCert.Subject.CommonName)), adminCertPem, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 	}
 
@@ -290,7 +290,7 @@ func writeLocalMSP(baseDir, name string, signOUs, sans []string, signCA, tlsCA *
 
 	// populate tls
 	tlsDir := filepath.Join(baseDir, "tls")
-	err = os.MkdirAll(tlsDir, 0755)
+	err = os.MkdirAll(tlsDir, 0o755)
 	Expect(err).NotTo(HaveOccurred())
 	writeCertificate(filepath.Join(tlsDir, "ca.crt"), tlsCA.certBytes)
 
@@ -306,7 +306,7 @@ func writeLocalMSP(baseDir, name string, signOUs, sans []string, signCA, tlsCA *
 }
 
 func writeConfigYaml(configFilename, caFile string, enable bool) {
-	var config = &fabricmsp.Configuration{
+	config := &fabricmsp.Configuration{
 		NodeOUs: &fabricmsp.NodeOUs{
 			Enable: enable,
 			ClientOUIdentifier: &fabricmsp.OrganizationalUnitIdentifiersConfiguration{

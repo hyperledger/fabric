@@ -319,7 +319,7 @@ func (n *Network) WriteOrdererConfig(o *Orderer, config *fabricconfig.Orderer) {
 	ordererBytes, err := yaml.Marshal(config)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = ioutil.WriteFile(n.OrdererConfigPath(o), ordererBytes, 0644)
+	err = ioutil.WriteFile(n.OrdererConfigPath(o), ordererBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -341,7 +341,7 @@ func (n *Network) WriteConfigTxConfig(config *fabricconfig.ConfigTx) {
 	configtxBytes, err := yaml.Marshal(config)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = ioutil.WriteFile(n.ConfigTxConfigPath(), configtxBytes, 0644)
+	err = ioutil.WriteFile(n.ConfigTxConfigPath(), configtxBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -381,7 +381,7 @@ func (n *Network) WritePeerConfig(p *Peer, config *fabricconfig.Core) {
 	coreBytes, err := yaml.Marshal(config)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = ioutil.WriteFile(n.PeerConfigPath(p), coreBytes, 0644)
+	err = ioutil.WriteFile(n.PeerConfigPath(p), coreBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -873,7 +873,7 @@ func (n *Network) ConcatenateTLSCACertificates() {
 		Expect(err).NotTo(HaveOccurred())
 		bundle.Write(certBytes)
 	}
-	err := ioutil.WriteFile(n.CACertsBundlePath(), bundle.Bytes(), 0660)
+	err := ioutil.WriteFile(n.CACertsBundlePath(), bundle.Bytes(), 0o660)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -1137,7 +1137,6 @@ func (n *Network) JoinBySnapshotStatus(p *Peer) []byte {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 	return sess.Out.Contents()
-
 }
 
 // Cryptogen starts a gexec.Session for the provided cryptogen command.
@@ -1658,8 +1657,10 @@ func (n *Network) ReservePort() uint16 {
 	return n.StartPort - 1
 }
 
-type PortName string
-type Ports map[PortName]uint16
+type (
+	PortName string
+	Ports    map[PortName]uint16
+)
 
 const (
 	ChaincodePort  PortName = "Chaincode"
@@ -1845,7 +1846,7 @@ func (n *Network) GenerateConfigTxConfig() {
 }
 
 func (n *Network) GenerateOrdererConfig(o *Orderer) {
-	err := os.MkdirAll(n.OrdererDir(o), 0755)
+	err := os.MkdirAll(n.OrdererDir(o), 0o755)
 	Expect(err).NotTo(HaveOccurred())
 
 	orderer, err := os.Create(n.OrdererConfigPath(o))
@@ -1865,7 +1866,7 @@ func (n *Network) GenerateOrdererConfig(o *Orderer) {
 }
 
 func (n *Network) GenerateCoreConfig(p *Peer) {
-	err := os.MkdirAll(n.PeerDir(p), 0755)
+	err := os.MkdirAll(n.PeerDir(p), 0o755)
 	Expect(err).NotTo(HaveOccurred())
 
 	core, err := os.Create(n.PeerConfigPath(p))

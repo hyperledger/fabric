@@ -111,7 +111,6 @@ func (env *lockBasedEnv) init(t *testing.T, testLedgerID string, btlPolicy pvtda
 	}
 	env.txmgr, err = NewLockBasedTxMgr(txmgrInitializer)
 	require.NoError(t, err)
-
 }
 
 func (env *lockBasedEnv) getTxMgr() *LockBasedTxMgr {

@@ -115,7 +115,6 @@ func (fc *fetchCall) expectingDigests(digests []privdatacommon.DigKey) *fetchCal
 }
 
 func (fc *fetchCall) Return(returnArguments ...interface{}) *mock.Call {
-
 	return fc.Call.Return(returnArguments...)
 }
 

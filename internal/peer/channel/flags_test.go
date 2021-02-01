@@ -16,7 +16,6 @@ import (
 )
 
 func TestOrdererFlags(t *testing.T) {
-
 	var (
 		ca       = "root.crt"
 		key      = "client.key"
@@ -46,9 +45,11 @@ func TestOrdererFlags(t *testing.T) {
 
 	runCmd.AddCommand(testCmd)
 
-	runCmd.SetArgs([]string{"test", "--cafile", ca, "--keyfile", key,
+	runCmd.SetArgs([]string{
+		"test", "--cafile", ca, "--keyfile", key,
 		"--certfile", cert, "--orderer", endpoint, "--tls", "--clientauth",
-		"--ordererTLSHostnameOverride", sn})
+		"--ordererTLSHostnameOverride", sn,
+	})
 	err := runCmd.Execute()
 	require.NoError(t, err)
 

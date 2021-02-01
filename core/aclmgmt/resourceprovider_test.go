@@ -28,7 +28,7 @@ func newPolicyProvider(pEvaluator policyEvaluator) aclmgmtPolicyProvider {
 
 // ------- mocks ---------
 
-//mockPolicyEvaluatorImpl implements policyEvaluator
+// mockPolicyEvaluatorImpl implements policyEvaluator
 type mockPolicyEvaluatorImpl struct {
 	pmap  map[string]string
 	peval map[string]error
@@ -44,7 +44,7 @@ func (pe *mockPolicyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.Sign
 		return PolicyNotFound(polName)
 	}
 
-	//this could be non nil or some error
+	// this could be non nil or some error
 	return err
 }
 
@@ -74,7 +74,7 @@ func TestPolicyBad(t *testing.T) {
 	peval := &mockPolicyEvaluatorImpl{pmap: map[string]string{"res": "pol"}, peval: map[string]error{"pol": nil}}
 	pprov := newPolicyProvider(peval)
 
-	//bad policy
+	// bad policy
 	err := pprov.CheckACL("pol", []byte("not a signed proposal"))
 	require.Error(t, err, InvalidIdInfo("pol").Error())
 
@@ -128,7 +128,6 @@ func TestCheckACLNoChannel(t *testing.T) {
 	rp = &resourceProvider{defaultProvider: defAclProvider}
 	err = rp.CheckACLNoChannel("aptype", struct{}{})
 	require.EqualError(t, err, "Unknown id on channelless checkACL aptype")
-
 }
 
 func init() {

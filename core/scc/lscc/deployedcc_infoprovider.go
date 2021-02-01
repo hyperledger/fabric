@@ -23,8 +23,7 @@ const (
 )
 
 // DeployedCCInfoProvider implements interface ledger.DeployedChaincodeInfoProvider
-type DeployedCCInfoProvider struct {
-}
+type DeployedCCInfoProvider struct{}
 
 // Namespaces implements function in interface ledger.DeployedChaincodeInfoProvider
 func (p *DeployedCCInfoProvider) Namespaces() []string {

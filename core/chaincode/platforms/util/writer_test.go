@@ -36,7 +36,7 @@ func TestWriteFileToPackage(t *testing.T) {
 	filename := "test.txt"
 	filecontent := "hello"
 	filePath := filepath.Join(tempDir, filename)
-	err = ioutil.WriteFile(filePath, bytes.NewBufferString(filecontent).Bytes(), 0600)
+	err = ioutil.WriteFile(filePath, bytes.NewBufferString(filecontent).Bytes(), 0o600)
 	require.NoError(t, err, "Error creating file %s", filePath)
 
 	err = WriteFileToPackage(filePath, filename, tw)
@@ -57,7 +57,7 @@ func TestWriteFileToPackage(t *testing.T) {
 	require.Equal(t, time.Time{}, header.AccessTime, "expected zero access time")
 	require.Equal(t, time.Unix(0, 0), header.ModTime, "expected zero modification time")
 	require.Equal(t, time.Time{}, header.ChangeTime, "expected zero change time")
-	require.Equal(t, int64(0100644), header.Mode, "expected regular file mode")
+	require.Equal(t, int64(0o100644), header.Mode, "expected regular file mode")
 	require.Equal(t, 500, header.Uid, "expected 500 uid")
 	require.Equal(t, 500, header.Gid, "expected 500 gid")
 	require.Equal(t, "", header.Uname, "expected empty user name")
@@ -220,9 +220,9 @@ func Test_WriteFolderToTarPackageFailure4(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 	testFile := filepath.Join(tempDir, "test.java")
-	err = ioutil.WriteFile(testFile, []byte("Content"), 0644)
+	err = ioutil.WriteFile(testFile, []byte("Content"), 0o644)
 	require.NoError(t, err, "Error creating file", testFile)
-	err = os.Chmod(tempDir, 0644)
+	err = os.Chmod(tempDir, 0o644)
 	require.NoError(t, err)
 
 	buf := bytes.NewBuffer(nil)
@@ -233,7 +233,7 @@ func Test_WriteFolderToTarPackageFailure4(t *testing.T) {
 	require.Error(t, err, "Should have received error writing folder to package")
 	require.Contains(t, err.Error(), "permission denied")
 
-	err = os.Chmod(tempDir, 0700)
+	err = os.Chmod(tempDir, 0o700)
 	require.NoError(t, err)
 }
 

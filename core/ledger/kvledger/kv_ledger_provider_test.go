@@ -644,7 +644,8 @@ func testutilNewProviderWithCollectionConfig(
 		for i, nsCollBtlConf := range nsCollBtlConfigs {
 			if ccName == nsCollBtlConf.namespace {
 				return &ledger.DeployedChaincodeInfo{
-					Name: nsCollBtlConf.namespace, ExplicitCollectionConfigPkg: collectionConfPkgs[i]}, nil
+					Name: nsCollBtlConf.namespace, ExplicitCollectionConfigPkg: collectionConfPkgs[i],
+				}, nil
 			}
 		}
 		return nil, nil
@@ -657,7 +658,6 @@ func testutilNewProviderWithCollectionConfig(
 			}
 		}
 		return nil, nil
-
 	}
 
 	mockCCInfoProvider.CollectionInfoStub = func(channelName, ccName, collName string, qe ledger.SimpleQueryExecutor) (*peer.StaticCollectionConfig, error) {

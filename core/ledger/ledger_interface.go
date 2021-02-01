@@ -567,7 +567,8 @@ func (missingPvtDataInfo MissingPvtDataInfo) Add(blkNum, txNum uint64, ns, coll 
 	missingBlockPvtDataInfo[txNum] = append(missingBlockPvtDataInfo[txNum],
 		&MissingCollectionPvtDataInfo{
 			Namespace:  ns,
-			Collection: coll})
+			Collection: coll,
+		})
 }
 
 // CollConfigNotDefinedError is returned whenever an operation

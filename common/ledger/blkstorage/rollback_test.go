@@ -288,7 +288,6 @@ func TestDuplicateTxIDDuringRollback(t *testing.T) {
 
 func assertBlockStoreRollback(t *testing.T, path, ledgerID string, blocks []*common.Block,
 	rollbackedToBlkNum uint64, lastFileSuffixNum int, indexConfig *IndexConfig) {
-
 	env := newTestEnvSelectiveIndexing(t, NewConf(path, 0), indexConfig.AttrsToIndex, &disabled.Provider{})
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerID)
 

@@ -154,10 +154,10 @@ func TestJCMInterface(t *testing.T) {
 }
 
 func TestLeaderElectionWithDeliverClient(t *testing.T) {
-	//Test check if leader election works with mock deliver service instance
-	//Configuration set to use dynamic leader election
-	//10 peers started, added to channel and at the end we check if only for one peer
-	//mockDeliverService.StartDeliverForChannel was invoked
+	// Test check if leader election works with mock deliver service instance
+	// Configuration set to use dynamic leader election
+	// 10 peers started, added to channel and at the end we check if only for one peer
+	// mockDeliverService.StartDeliverForChannel was invoked
 
 	n := 10
 	serviceConfig := &ServiceConfig{
@@ -283,7 +283,6 @@ func TestWithStaticDeliverClientLeader(t *testing.T) {
 }
 
 func TestWithStaticDeliverClientNotLeader(t *testing.T) {
-
 	serviceConfig := &ServiceConfig{
 		UseLeaderElection:                false,
 		OrgLeader:                        false,
@@ -331,7 +330,6 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 }
 
 func TestWithStaticDeliverClientBothStaticAndLeaderElection(t *testing.T) {
-
 	serviceConfig := &ServiceConfig{
 		UseLeaderElection:                true,
 		OrgLeader:                        true,
@@ -482,7 +480,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 
 	logger.Warning("Starting leader election services")
 
-	//Starting leader election services
+	// Starting leader election services
 	services := make([]*electionService, n)
 
 	electionMetrics := gossipmetrics.NewGossipMetrics(&disabled.Provider{}).ElectionMetrics
@@ -503,7 +501,7 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 			startsNum++
 		}
 	}
-	//Only leader should invoke callback function, so it is double check that only one leader exists
+	// Only leader should invoke callback function, so it is double check that only one leader exists
 	require.Equal(t, 1, startsNum, "Only for one peer callback function should be called - chanA")
 
 	// Adding some peers to new channel and creating leader election services for peers in new channel
@@ -544,8 +542,8 @@ func TestLeaderElectionWithRealGossip(t *testing.T) {
 	}
 	require.Equal(t, 1, startsNum, "Only for one peer callback function should be called - chanB")
 
-	//Stopping 2 gossip instances(peer 0 and peer 1), should init re-election
-	//Now peer 2 become leader for first channel and peer 3 for second channel
+	// Stopping 2 gossip instances(peer 0 and peer 1), should init re-election
+	// Now peer 2 become leader for first channel and peer 3 for second channel
 
 	logger.Warning("Killing 2 peers, initiation new leader election")
 
@@ -589,8 +587,7 @@ func (es *electionService) callback(isLeader bool) {
 	es.callbackInvokeCount = es.callbackInvokeCount + 1
 }
 
-type joinChanMsg struct {
-}
+type joinChanMsg struct{}
 
 // SequenceNumber returns the sequence number of the block this joinChanMsg
 // is derived from
@@ -803,11 +800,9 @@ func getAvailablePort(t *testing.T) (endpoint string, ll net.Listener) {
 	return endpoint, ll
 }
 
-type naiveCryptoService struct {
-}
+type naiveCryptoService struct{}
 
-type orgCryptoService struct {
-}
+type orgCryptoService struct{}
 
 // OrgByPeerIdentity returns the OrgIdentityType
 // of a given peer identity

@@ -195,7 +195,8 @@ func TestSatisfiesPrincipalPeer(t *testing.T) {
 		require.NoError(t, err)
 		principal := &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
+			Principal:               principalBytes,
+		}
 		err = id.SatisfiesPrincipal(principal)
 		require.NoError(t, err)
 	}))
@@ -208,7 +209,8 @@ func TestSatisfiesPrincipalPeer(t *testing.T) {
 		require.NoError(t, err)
 		principal := &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
+			Principal:               principalBytes,
+		}
 		err = id.SatisfiesPrincipal(principal)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "The identity is not a [CLIENT] under this MSP [SampleOrg]")
@@ -236,7 +238,8 @@ func TestSatisfiesPrincipalClient(t *testing.T) {
 		require.NoError(t, err)
 		principal := &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
+			Principal:               principalBytes,
+		}
 		err = id.SatisfiesPrincipal(principal)
 		require.NoError(t, err)
 	}))
@@ -249,7 +252,8 @@ func TestSatisfiesPrincipalClient(t *testing.T) {
 		require.NoError(t, err)
 		principal := &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
+			Principal:               principalBytes,
+		}
 		err = id.SatisfiesPrincipal(principal)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "The identity is not a [PEER] under this MSP [SampleOrg]")
@@ -272,7 +276,8 @@ func TestSatisfiesPrincipalAdmin(t *testing.T) {
 	require.NoError(t, err)
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	err = id.SatisfiesPrincipal(principal)
 	require.NoError(t, err)
 }
@@ -334,7 +339,8 @@ func TestAdminInAdmincertsWith143MSP(t *testing.T) {
 		require.NoError(t, err)
 		principal := &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
+			Principal:               principalBytes,
+		}
 		err = id.SatisfiesPrincipal(principal)
 		require.NoError(t, err)
 	}
@@ -353,7 +359,8 @@ func TestSatisfiesPrincipalOrderer(t *testing.T) {
 	require.NoError(t, err)
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	err = id.SatisfiesPrincipal(principal)
 	require.NoError(t, err)
 }
@@ -380,7 +387,8 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 	require.NoError(t, err)
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	err = id.SatisfiesPrincipal(principal)
 	require.Error(t, err)
 	require.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for classification, node ou for type [ORDERER], not defined, msp: [SampleOrg]", err.Error())
@@ -404,7 +412,8 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 	require.NoError(t, err)
 	principal = &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	err = id.SatisfiesPrincipal(principal)
 	require.Error(t, err)
 	require.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for classification, node ou for type [ORDERER], not defined, msp: [SampleOrg]", err.Error())

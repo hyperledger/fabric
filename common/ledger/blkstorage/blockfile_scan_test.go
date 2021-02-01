@@ -60,7 +60,7 @@ func TestBlockFileScanSmallTxLastTxIncomplete(t *testing.T) {
 	_, fileSize, err := fileutil.FileExists(filePath)
 	require.NoError(t, err)
 
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o660)
 	require.NoError(t, err)
 	defer file.Close()
 	err = file.Truncate(fileSize - 1)

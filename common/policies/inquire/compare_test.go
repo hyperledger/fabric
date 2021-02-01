@@ -177,19 +177,22 @@ func TestNewComparablePrincipalSet(t *testing.T) {
 func member(orgName string) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: orgName})}
+		Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: orgName}),
+	}
 }
 
 func peer(orgName string) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: orgName})}
+		Principal:               protoutil.MarshalOrPanic(&msp.MSPRole{Role: msp.MSPRole_PEER, MspIdentifier: orgName}),
+	}
 }
 
 func ou(orgName string) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ORGANIZATION_UNIT,
-		Principal:               protoutil.MarshalOrPanic(&msp.OrganizationUnit{OrganizationalUnitIdentifier: "ou", MspIdentifier: orgName})}
+		Principal:               protoutil.MarshalOrPanic(&msp.OrganizationUnit{OrganizationalUnitIdentifier: "ou", MspIdentifier: orgName}),
+	}
 }
 
 func identity(orgName string) *msp.MSPPrincipal {

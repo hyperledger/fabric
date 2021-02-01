@@ -77,7 +77,9 @@ func getProposalWithType(ccID string, pType common.HeaderType) (*peer.Proposal, 
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			ChaincodeId: &peer.ChaincodeID{Name: ccID, Version: ccVersion},
 			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("func")}},
-			Type:        peer.ChaincodeSpec_GOLANG}}
+			Type:        peer.ChaincodeSpec_GOLANG,
+		},
+	}
 
 	proposal, _, err := protoutil.CreateProposalFromCIS(pType, "testchannelid", cis, signerSerialized)
 	return proposal, err
@@ -392,6 +394,7 @@ func (fake *mockMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identit
 func (fake *mockMSP) IsWellFormed(identity *protosmsp.SerializedIdentity) error {
 	return nil
 }
+
 func (fake *mockMSP) Setup(config *protosmsp.MSPConfig) error {
 	return nil
 }

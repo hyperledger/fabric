@@ -51,6 +51,7 @@ PeerOrgs:{{ range .PeerOrgs }}
 {{- end }}
 {{- end }}
 `
+
 const OrgUpdateCryptoTemplate = `---
 {{ with $w := . -}}
 PeerOrgs:{{ range .PeerOrgs }}

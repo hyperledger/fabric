@@ -71,7 +71,6 @@ func (mrm *mutableResourcesMock) CreateBundle(channelID string, c *common.Config
 	mockResources.OrdererConfigReturns(mockOrderer, true)
 
 	return mockResources, nil
-
 }
 
 func TestLedgerResources_VerifyBlockSignature(t *testing.T) {

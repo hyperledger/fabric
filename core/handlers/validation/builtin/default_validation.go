@@ -27,8 +27,7 @@ import (
 
 var logger = flogging.MustGetLogger("vscc")
 
-type DefaultValidationFactory struct {
-}
+type DefaultValidationFactory struct{}
 
 func (*DefaultValidationFactory) New() validation.Plugin {
 	return &DefaultValidation{}

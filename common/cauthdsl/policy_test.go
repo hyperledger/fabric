@@ -18,8 +18,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var acceptAllPolicy *cb.Policy
-var rejectAllPolicy *cb.Policy
+var (
+	acceptAllPolicy *cb.Policy
+	rejectAllPolicy *cb.Policy
+)
 
 func init() {
 	acceptAllPolicy = makePolicySource(true)

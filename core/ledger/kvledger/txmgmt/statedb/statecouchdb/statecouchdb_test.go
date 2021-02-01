@@ -125,8 +125,10 @@ func (env *testCouchDBEnv) cleanup(config *ledger.CouchDBConfig) {
 // we create two CouchDB instances/containers---one is used to test the
 // functionality of the versionedDB and another for testing the CouchDB
 // util functions.
-var vdbEnv = &testVDBEnv{}
-var couchDBEnv = &testCouchDBEnv{}
+var (
+	vdbEnv     = &testVDBEnv{}
+	couchDBEnv = &testCouchDBEnv{}
+)
 
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("statecouchdb=debug")
@@ -428,7 +430,6 @@ func TestMultiDBBasicRW(t *testing.T) {
 	defer vdbEnv.cleanup()
 
 	commontests.TestMultiDBBasicRW(t, vdbEnv.DBProvider)
-
 }
 
 func TestDeletes(t *testing.T) {
@@ -549,7 +550,6 @@ func TestUtilityFunctions(t *testing.T) {
 	// ValidateKeyValue should return an error for a key that begins with an underscore
 	err = db.ValidateKeyValue("_testKey", []byte("testValue"))
 	require.Error(t, err, "ValidateKey should have thrown an error for a key that begins with an underscore")
-
 }
 
 // TestInvalidJSONFields tests for invalid JSON fields
@@ -597,16 +597,15 @@ func TestInvalidJSONFields(t *testing.T) {
 }
 
 func TestDebugFunctions(t *testing.T) {
-	//Test printCompositeKeys
+	// Test printCompositeKeys
 	// initialize a key list
 	loadKeys := []*statedb.CompositeKey{}
-	//create a composite key and add to the key list
+	// create a composite key and add to the key list
 	compositeKey3 := statedb.CompositeKey{Namespace: "ns", Key: "key3"}
 	loadKeys = append(loadKeys, &compositeKey3)
 	compositeKey4 := statedb.CompositeKey{Namespace: "ns", Key: "key4"}
 	loadKeys = append(loadKeys, &compositeKey4)
 	require.Equal(t, "[ns,key3],[ns,key4]", printCompositeKeys(loadKeys))
-
 }
 
 func TestHandleChaincodeDeploy(t *testing.T) {
@@ -642,7 +641,7 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	jsonValue11 := `{"asset_name": "marble11","color": "cyan","size": 1000007,"owner": "joe"}`
 	batch.Put("ns1", "key11", []byte(jsonValue11), version.NewHeight(1, 11))
 
-	//add keys for a separate namespace
+	// add keys for a separate namespace
 	batch.Put("ns2", "key1", []byte(jsonValue1), version.NewHeight(1, 12))
 	batch.Put("ns2", "key2", []byte(jsonValue2), version.NewHeight(1, 13))
 	batch.Put("ns2", "key3", []byte(jsonValue3), version.NewHeight(1, 14))
@@ -664,13 +663,13 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 		"META-INF/statedb/couchdb/collections/collectionMarblesPrivateDetails/indexes/indexCollPrivDetails.json": []byte(`{"index":{"fields":["docType","price"]},"ddoc":"indexPrivateDetails", "name":"indexPrivateDetails","type":"json"}`),
 	}
 
-	//Create a query
+	// Create a query
 	queryString := `{"selector":{"owner":"fred"}}`
 
 	_, err = db.ExecuteQuery("ns1", queryString)
 	require.NoError(t, err)
 
-	//Create a query with a sort
+	// Create a query with a sort
 	queryString = `{"selector":{"owner":"fred"}, "sort": [{"size": "desc"}]}`
 
 	_, err = db.ExecuteQuery("ns1", queryString)
@@ -689,10 +688,9 @@ func TestHandleChaincodeDeploy(t *testing.T) {
 	}
 	require.Eventually(t, queryUsingIndex, 2*time.Second, 100*time.Millisecond, "error executing query with sort")
 
-	//Query namespace "ns2", index is only created in "ns1".  This should return an error.
+	// Query namespace "ns2", index is only created in "ns1".  This should return an error.
 	_, err = db.ExecuteQuery("ns2", queryString)
 	require.Error(t, err, "Error should have been thrown for a missing index")
-
 }
 
 func TestTryCastingToJSON(t *testing.T) {
@@ -920,9 +918,11 @@ func TestPaginatedQuery(t *testing.T) {
 
 	// Test explicit paging
 	// Increase pagesize to 50,  should return all values
-	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15",
+	returnKeys = []string{
+		"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15",
 		"key16", "key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29",
-		"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40"}
+		"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40",
+	}
 	_, err = executeQuery(t, db, "ns1", queryString, "", int32(50), returnKeys)
 	require.NoError(t, err)
 
@@ -939,9 +939,11 @@ func TestPaginatedQuery(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test implicit paging
-	returnKeys = []string{"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15",
+	returnKeys = []string{
+		"key2", "key3", "key4", "key6", "key8", "key12", "key13", "key14", "key15",
 		"key16", "key17", "key18", "key19", "key20", "key22", "key24", "key25", "key26", "key28", "key29",
-		"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40"}
+		"key30", "key32", "key33", "key34", "key35", "key37", "key39", "key40",
+	}
 	_, err = executeQuery(t, db, "ns1", queryString, "", int32(0), returnKeys)
 	require.NoError(t, err)
 

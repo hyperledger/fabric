@@ -536,9 +536,7 @@ var _ = Describe("Blocksprovider", func() {
 	})
 
 	When("the deliver client returns a status", func() {
-		var (
-			status common.Status
-		)
+		var status common.Status
 
 		BeforeEach(func() {
 			// appease the race detector

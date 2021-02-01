@@ -55,27 +55,32 @@ func appendBytes(data []byte, index int, bytesToAdd []byte) int {
 	copy(data[index:], bytesToAdd)
 	return index + len(bytesToAdd)
 }
+
 func appendBytesG1(data []byte, index int, E *FP256BN.ECP) int {
 	length := 2*FieldBytes + 1
 	E.ToBytes(data[index:index+length], false)
 	return index + length
 }
+
 func EcpToBytes(E *FP256BN.ECP) []byte {
 	length := 2*FieldBytes + 1
 	res := make([]byte, length)
 	E.ToBytes(res, false)
 	return res
 }
+
 func appendBytesG2(data []byte, index int, E *FP256BN.ECP2) int {
 	length := 4 * FieldBytes
 	E.ToBytes(data[index : index+length])
 	return index + length
 }
+
 func appendBytesBig(data []byte, index int, B *FP256BN.BIG) int {
 	length := FieldBytes
 	B.ToBytes(data[index : index+length])
 	return index + length
 }
+
 func appendBytesString(data []byte, index int, s string) int {
 	bytes := []byte(s)
 	copy(data[index:], bytes)
@@ -102,7 +107,8 @@ func BigToBytes(big *FP256BN.BIG) []byte {
 func EcpToProto(p *FP256BN.ECP) *ECP {
 	return &ECP{
 		X: BigToBytes(p.GetX()),
-		Y: BigToBytes(p.GetY())}
+		Y: BigToBytes(p.GetY()),
+	}
 }
 
 // EcpFromProto converts a proto struct *ECP into an *amcl.ECP
@@ -116,7 +122,8 @@ func Ecp2ToProto(p *FP256BN.ECP2) *ECP2 {
 		Xa: BigToBytes(p.GetX().GetA()),
 		Xb: BigToBytes(p.GetX().GetB()),
 		Ya: BigToBytes(p.GetY().GetA()),
-		Yb: BigToBytes(p.GetY().GetB())}
+		Yb: BigToBytes(p.GetY().GetB()),
+	}
 }
 
 // Ecp2FromProto converts a proto struct *ECP2 into an *amcl.ECP2

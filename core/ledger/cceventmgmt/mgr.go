@@ -47,7 +47,8 @@ func newMgr(chaincodeInfoProvider ChaincodeInfoProvider) *Mgr {
 	return &Mgr{
 		infoProvider:         chaincodeInfoProvider,
 		ccLifecycleListeners: make(map[string][]ChaincodeLifecycleEventListener),
-		callbackStatus:       newCallbackStatus()}
+		callbackStatus:       newCallbackStatus(),
+	}
 }
 
 // Register registers a ChaincodeLifecycleEventListener for given ledgerid
@@ -195,7 +196,8 @@ type callbackStatus struct {
 func newCallbackStatus() *callbackStatus {
 	return &callbackStatus{
 		deployPending:  make(map[string]bool),
-		installPending: make(map[string]bool)}
+		installPending: make(map[string]bool),
+	}
 }
 
 func (s *callbackStatus) setDeployPending(channelID string) {

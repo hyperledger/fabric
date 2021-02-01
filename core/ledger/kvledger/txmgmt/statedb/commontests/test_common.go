@@ -90,7 +90,6 @@ func TestBasicRW(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	sp, err = db.GetLatestSavePoint()
 	require.NoError(t, err)
 	require.Equal(t, savePoint, sp)
-
 }
 
 // TestDrop tests dropping channel-specific ledger data
@@ -245,7 +244,6 @@ func TestIterator(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 
 	itr4, _ := db.GetStateRangeScanIterator("ns2", "", "")
 	testItr(t, itr4, []string{"key5", "key6"})
-
 }
 
 func testItr(t *testing.T, itr statedb.ResultsIterator, expectedKeys []string) {
@@ -289,7 +287,7 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	jsonValue11 := `{"asset_name": "marble11","color": "cyan","size": 1000007,"owner": "joe"}`
 	batch.Put("ns1", "key11", []byte(jsonValue11), version.NewHeight(1, 11))
 
-	//add keys for a separate namespace
+	// add keys for a separate namespace
 	batch.Put("ns2", "key1", []byte(jsonValue1), version.NewHeight(1, 12))
 	batch.Put("ns2", "key2", []byte(jsonValue2), version.NewHeight(1, 13))
 	batch.Put("ns2", "key3", []byte(jsonValue3), version.NewHeight(1, 14))
@@ -525,12 +523,10 @@ func TestQuery(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	queryResult2, err = itr.Next()
 	require.NoError(t, err)
 	require.Nil(t, queryResult2)
-
 }
 
 // TestGetVersion tests retrieving the version by namespace and key
 func TestGetVersion(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-
 	db, err := dbProvider.GetDBHandle("testgetversion", nil)
 	require.NoError(t, err)
 
@@ -548,37 +544,37 @@ func TestGetVersion(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	err = db.ApplyUpdates(batch, savePoint)
 	require.NoError(t, err)
 
-	//check to see if the bulk optimizable interface is supported (couchdb)
+	// check to see if the bulk optimizable interface is supported (couchdb)
 	if bulkdb, ok := db.(statedb.BulkOptimizable); ok {
-		//clear the cached versions, this will force a read when getVerion is called
+		// clear the cached versions, this will force a read when getVerion is called
 		bulkdb.ClearCachedVersions()
 	}
 
-	//retrieve a version by namespace and key
+	// retrieve a version by namespace and key
 	resp, err := db.GetVersion("ns", "key2")
 	require.NoError(t, err)
 	require.Equal(t, version.NewHeight(1, 2), resp)
 
-	//attempt to retrieve an non-existent namespace and key
+	// attempt to retrieve an non-existent namespace and key
 	resp, err = db.GetVersion("ns2", "key2")
 	require.NoError(t, err)
 	require.Nil(t, resp)
 
-	//check to see if the bulk optimizable interface is supported (couchdb)
+	// check to see if the bulk optimizable interface is supported (couchdb)
 	if bulkdb, ok := db.(statedb.BulkOptimizable); ok {
 
-		//clear the cached versions, this will force a read when getVerion is called
+		// clear the cached versions, this will force a read when getVerion is called
 		bulkdb.ClearCachedVersions()
 
 		// initialize a key list
 		loadKeys := []*statedb.CompositeKey{}
-		//create a composite key and add to the key list
+		// create a composite key and add to the key list
 		compositeKey := statedb.CompositeKey{Namespace: "ns", Key: "key3"}
 		loadKeys = append(loadKeys, &compositeKey)
-		//load the committed versions
+		// load the committed versions
 		require.NoError(t, bulkdb.LoadCommittedVersions(loadKeys))
 
-		//retrieve a version by namespace and key
+		// retrieve a version by namespace and key
 		resp, err := db.GetVersion("ns", "key3")
 		require.NoError(t, err)
 		require.Equal(t, version.NewHeight(1, 3), resp)
@@ -619,7 +615,7 @@ func TestSmallBatchSize(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 	savePoint := version.NewHeight(1, 12)
 	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
-	//Verify all marbles were added
+	// Verify all marbles were added
 
 	vv, _ := db.GetState("ns1", "key1")
 	require.JSONEq(t, string(jsonValue1), string(vv.Value))
@@ -657,7 +653,6 @@ func TestSmallBatchSize(t *testing.T, dbProvider statedb.VersionedDBProvider) {
 
 // TestBatchWithIndividualRetry tests a single failure in a batch
 func TestBatchWithIndividualRetry(t *testing.T, dbProvider statedb.VersionedDBProvider) {
-
 	db, err := dbProvider.GetDBHandle("testbatchretry", nil)
 	require.NoError(t, err)
 
@@ -677,7 +672,7 @@ func TestBatchWithIndividualRetry(t *testing.T, dbProvider statedb.VersionedDBPr
 
 	// Clear the cache for the next batch, in place of simulation
 	if bulkdb, ok := db.(statedb.BulkOptimizable); ok {
-		//clear the cached versions, this will force a read when getVerion is called
+		// clear the cached versions, this will force a read when getVerion is called
 		bulkdb.ClearCachedVersions()
 	}
 
@@ -707,7 +702,7 @@ func TestBatchWithIndividualRetry(t *testing.T, dbProvider statedb.VersionedDBPr
 	err = db.ApplyUpdates(batch, savePoint)
 	require.NoError(t, err)
 
-	//Create a new set of values that use JSONs instead of binary
+	// Create a new set of values that use JSONs instead of binary
 	jsonValue5 := []byte(`{"asset_name": "marble5","color": "blue","size": 5,"owner": "fred"}`)
 	jsonValue6 := []byte(`{"asset_name": "marble6","color": "blue","size": 6,"owner": "elaine"}`)
 	jsonValue7 := []byte(`{"asset_name": "marble7","color": "blue","size": 7,"owner": "fred"}`)
@@ -715,7 +710,7 @@ func TestBatchWithIndividualRetry(t *testing.T, dbProvider statedb.VersionedDBPr
 
 	// Clear the cache for the next batch, in place of simulation
 	if bulkdb, ok := db.(statedb.BulkOptimizable); ok {
-		//clear the cached versions, this will force a read when getVersion is called
+		// clear the cached versions, this will force a read when getVersion is called
 		bulkdb.ClearCachedVersions()
 	}
 
@@ -730,11 +725,11 @@ func TestBatchWithIndividualRetry(t *testing.T, dbProvider statedb.VersionedDBPr
 
 	// Clear the cache for the next batch, in place of simulation
 	if bulkdb, ok := db.(statedb.BulkOptimizable); ok {
-		//clear the cached versions, this will force a read when getVersion is called
+		// clear the cached versions, this will force a read when getVersion is called
 		bulkdb.ClearCachedVersions()
 	}
 
-	//Send the batch through again to test updates
+	// Send the batch through again to test updates
 	batch = statedb.NewUpdateBatch()
 	batch.Put("ns1", "key5", jsonValue5, version.NewHeight(1, 9))
 	batch.Put("ns1", "key6", jsonValue6, version.NewHeight(1, 10))
@@ -761,7 +756,6 @@ func TestBatchWithIndividualRetry(t *testing.T, dbProvider statedb.VersionedDBPr
 	savePoint = version.NewHeight(1, 18)
 	err = db.ApplyUpdates(batch, savePoint)
 	require.NoError(t, err)
-
 }
 
 // TestValueAndMetadataWrites tests statedb for value and metadata read-writes
@@ -888,18 +882,18 @@ func TestPaginatedRangeQuery(t *testing.T, dbProvider statedb.VersionedDBProvide
 	savePoint := version.NewHeight(2, 22)
 	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
-	//Test range query with no pagination
+	// Test range query with no pagination
 	returnKeys := []string{}
 	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(0), returnKeys)
 	require.NoError(t, err)
 
-	//Test range query with large page size (single page return)
+	// Test range query with large page size (single page return)
 	returnKeys = []string{"key1", "key10", "key11", "key12", "key13", "key14"}
 	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(10), returnKeys)
 	require.NoError(t, err)
 
-	//Test explicit pagination
-	//Test range query with multiple pages
+	// Test explicit pagination
+	// Test range query with multiple pages
 	returnKeys = []string{"key1", "key10"}
 	nextStartKey, err := executeRangeQuery(t, db, "ns1", "key1", "key22", int32(2), returnKeys)
 	require.NoError(t, err)
@@ -909,13 +903,13 @@ func TestPaginatedRangeQuery(t *testing.T, dbProvider statedb.VersionedDBProvide
 	_, err = executeRangeQuery(t, db, "ns1", nextStartKey, "key22", int32(2), returnKeys)
 	require.NoError(t, err)
 
-	//Test implicit pagination
-	//Test range query with no pagesize and a small queryLimit
+	// Test implicit pagination
+	// Test range query with no pagesize and a small queryLimit
 	returnKeys = []string{}
 	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(0), returnKeys)
 	require.NoError(t, err)
 
-	//Test range query with pagesize greater than the queryLimit
+	// Test range query with pagesize greater than the queryLimit
 	returnKeys = []string{"key1", "key10", "key11", "key12"}
 	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(4), returnKeys)
 	require.NoError(t, err)
@@ -955,7 +949,7 @@ func TestRangeQuerySpecialCharacters(t *testing.T, dbProvider statedb.VersionedD
 	savePoint := version.NewHeight(2, 22)
 	require.NoError(t, db.ApplyUpdates(batch, savePoint))
 
-	//Test range query for the keys with special or non-English characters
+	// Test range query for the keys with special or non-English characters
 	returnKeys := []string{"key1", "key1%=", "key1&%-", "key1-a", "key10", "key1español", "key1z", "key1中文", "key1한국어"}
 	// returnKeys := []string{"key1", "key1%=", "key1&%-", "key1-a", "key10", "key1español", "key1z"}
 	_, err = executeRangeQuery(t, db, "ns1", "key1", "key2", int32(10), returnKeys)
@@ -1031,7 +1025,6 @@ func TestDataExportImport(
 	t *testing.T,
 	dbProvider statedb.VersionedDBProvider,
 ) {
-
 	sourceDB, err := dbProvider.GetDBHandle("source_ledger", nil)
 	require.NoError(t, err)
 

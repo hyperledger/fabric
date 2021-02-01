@@ -493,15 +493,15 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 	err = db.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
 	require.NoError(t, err)
 
-	//Test HandleChaincodeDefinition with a nil tar file
+	// Test HandleChaincodeDefinition with a nil tar file
 	err = db.HandleChaincodeDeploy(chaincodeDef, nil)
 	require.NoError(t, err)
 
-	//Test HandleChaincodeDefinition with a bad tar file
+	// Test HandleChaincodeDefinition with a bad tar file
 	err = db.HandleChaincodeDeploy(chaincodeDef, []byte(`This is a really bad tar file`))
 	require.NoError(t, err, "Error should not have been thrown for a bad tar file")
 
-	//Test HandleChaincodeDefinition with a nil chaincodeDef
+	// Test HandleChaincodeDefinition with a nil chaincodeDef
 	err = db.HandleChaincodeDeploy(nil, dbArtifactsTarBytes)
 	require.Error(t, err, "Error should have been thrown for a nil chaincodeDefinition")
 
@@ -523,7 +523,6 @@ func testHandleChainCodeDeploy(t *testing.T, env TestEnv) {
 
 	err = db.HandleChaincodeDeploy(chaincodeDef, dbArtifactsTarBytes)
 	require.NoError(t, err)
-
 }
 
 func TestMetadataRetrieval(t *testing.T) {

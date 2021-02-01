@@ -259,7 +259,6 @@ func (s *MSPMessageCryptoService) Expiration(peerIdentity api.PeerIdentityType) 
 		return time.Time{}, errors.Wrap(err, "Unable to extract msp.Identity from peer Identity")
 	}
 	return id.ExpiresAt(), nil
-
 }
 
 func (s *MSPMessageCryptoService) getValidatedIdentity(peerIdentity api.PeerIdentityType) (msp.Identity, common.ChannelID, error) {

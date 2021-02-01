@@ -254,7 +254,8 @@ func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetB
 			// set the identity that signs the message: it's the endorser
 			Identity: endorsement.Endorser,
 			// set the signature
-			Signature: endorsement.Signature})
+			Signature: endorsement.Signature,
+		})
 	}
 
 	// construct the policy checker object

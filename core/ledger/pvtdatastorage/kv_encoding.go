@@ -152,7 +152,7 @@ func encodeInelgMissingDataKey(key *missingDataKey) []byte {
 
 func decodeInelgMissingDataKey(keyBytes []byte) *missingDataKey {
 	key := &missingDataKey{nsCollBlk: nsCollBlk{}}
-	splittedKey := bytes.SplitN(keyBytes[1:], []byte{nilByte}, 3) //encoded bytes for blknum may contain empty bytes
+	splittedKey := bytes.SplitN(keyBytes[1:], []byte{nilByte}, 3) // encoded bytes for blknum may contain empty bytes
 	key.ns = string(splittedKey[0])
 	key.coll = string(splittedKey[1])
 	key.blkNum, _ = decodeReverseOrderVarUint64(splittedKey[2])

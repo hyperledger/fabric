@@ -59,7 +59,6 @@ func NewDBProvider(
 	stateDBConf *StateDBConfig,
 	sysNamespaces []string,
 ) (*DBProvider, error) {
-
 	var vdbProvider statedb.VersionedDBProvider
 	var err error
 
@@ -142,7 +141,6 @@ func (s *DB) IsBulkOptimizable() bool {
 // LoadCommittedVersionsOfPubAndHashedKeys loads committed version of given public and hashed states
 func (s *DB) LoadCommittedVersionsOfPubAndHashedKeys(pubKeys []*statedb.CompositeKey,
 	hashedKeys []*HashedCompositeKey) error {
-
 	bulkOptimizable, ok := s.VersionedDB.(statedb.BulkOptimizable)
 	if !ok {
 		return nil
@@ -301,7 +299,7 @@ func (s *DB) GetPrivateDataMetadataByHash(namespace, collection string, keyHash 
 // is acceptable since peer can continue in the committing role without the indexes. However, executing chaincode queries
 // may be affected, until a new chaincode with fixed indexes is installed and instantiated
 func (s *DB) HandleChaincodeDeploy(chaincodeDefinition *cceventmgmt.ChaincodeDefinition, dbArtifactsTar []byte) error {
-	//Check to see if the interface for IndexCapable is implemented
+	// Check to see if the interface for IndexCapable is implemented
 	indexCapable, ok := s.VersionedDB.(statedb.IndexCapable)
 	if !ok {
 		return nil

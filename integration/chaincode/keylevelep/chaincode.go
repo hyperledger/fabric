@@ -28,8 +28,7 @@ are provided:
 -) "delep": delete the key-level endorsement policy for the state altogether
 -) "listorgs": list the orgs included in the state's endorsement policy
 */
-type EndorsementCC struct {
-}
+type EndorsementCC struct{}
 
 // Init callback
 func (cc *EndorsementCC) Init(stub shim.ChaincodeStubInterface) pb.Response {

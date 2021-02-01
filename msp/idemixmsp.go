@@ -227,7 +227,8 @@ func (msp *idemixmsp) Setup(conf1 *m.MSPConfig) error {
 		Cred:           conf.Signer.Cred,
 		UserKey:        UserKey,
 		NymKey:         NymKey,
-		enrollmentId:   enrollmentId}
+		enrollmentId:   enrollmentId,
+	}
 
 	return nil
 }

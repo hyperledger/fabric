@@ -13,13 +13,11 @@ import (
 )
 
 func TestBuildCollectionKVSKey(t *testing.T) {
-
 	chaincodeCollectionKey := BuildCollectionKVSKey("chaincodeKey")
 	require.Equal(t, "chaincodeKey~collection", chaincodeCollectionKey, "collection keys should end in ~collection")
 }
 
 func TestIsCollectionConfigKey(t *testing.T) {
-
 	isCollection := IsCollectionConfigKey("chaincodeKey")
 	require.False(t, isCollection, "key without tilda is not a collection key and should have returned false")
 

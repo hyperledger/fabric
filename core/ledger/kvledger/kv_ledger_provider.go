@@ -250,10 +250,10 @@ func (p *Provider) initSnapshotDir() error {
 	if err := os.RemoveAll(inProgressSnapshotsPath); err != nil {
 		return errors.Wrapf(err, "error while deleting the dir: %s", inProgressSnapshotsPath)
 	}
-	if err := os.MkdirAll(inProgressSnapshotsPath, 0755); err != nil {
+	if err := os.MkdirAll(inProgressSnapshotsPath, 0o755); err != nil {
 		return errors.Wrapf(err, "error while creating the dir: %s", inProgressSnapshotsPath)
 	}
-	if err := os.MkdirAll(completedSnapshotsPath, 0755); err != nil {
+	if err := os.MkdirAll(completedSnapshotsPath, 0o755); err != nil {
 		return errors.Wrapf(err, "error while creating the dir: %s", completedSnapshotsPath)
 	}
 	return fileutil.SyncDir(snapshotsRootDir)

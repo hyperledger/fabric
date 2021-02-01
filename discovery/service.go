@@ -23,9 +23,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	logger = flogging.MustGetLogger("discovery")
-)
+var logger = flogging.MustGetLogger("discovery")
 
 var accessDenied = wrapError(errors.New("access denied"))
 

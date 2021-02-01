@@ -61,8 +61,10 @@ func protoMatcher(pvds ...*proto.PvtDataDigest) func([]*proto.PvtDataDigest) boo
 	}
 }
 
-var policyLock sync.Mutex
-var policy2Filter map[privdata.CollectionAccessPolicy]privdata.Filter
+var (
+	policyLock    sync.Mutex
+	policy2Filter map[privdata.CollectionAccessPolicy]privdata.Filter
+)
 
 type mockCollectionStore struct {
 	m            map[string]*mockCollectionAccess
@@ -183,7 +185,6 @@ type receivedMsg struct {
 }
 
 func (msg *receivedMsg) Ack(_ error) {
-
 }
 
 func (msg *receivedMsg) Respond(message *proto.GossipMessage) {
@@ -1018,7 +1019,6 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 		Run(
 			func(mock.Arguments) {
 				require.Fail(t, "we should not fetch private data of collection2 from peer 2")
-
 			},
 		)
 
@@ -1031,7 +1031,6 @@ func TestPullerAvoidPullingPurgedData(t *testing.T) {
 	require.Equal(t, 1, len(fetchedMessages.PurgedElements))
 	require.Equal(t, dig1, fetchedMessages.PurgedElements[0])
 	p3.PrivateDataRetriever.(*dataRetrieverMock).AssertNumberOfCalls(t, "CollectionRWSet", 1)
-
 }
 
 type counterDataRetreiver struct {

@@ -330,7 +330,6 @@ func TestByzantineResponder(t *testing.T) {
 	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "5", Strcmp) == -1)
 	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "6", Strcmp) == -1)
 	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "7", Strcmp) == -1)
-
 }
 
 func TestMultipleInitiators(t *testing.T) {
@@ -359,7 +358,6 @@ func TestMultipleInitiators(t *testing.T) {
 		require.True(t, util.IndexInSlice(inst.state.ToArray(), "3", Strcmp) != -1)
 		require.True(t, util.IndexInSlice(inst.state.ToArray(), "4", Strcmp) != -1)
 	}
-
 }
 
 func TestLatePeers(t *testing.T) {
@@ -391,7 +389,6 @@ func TestLatePeers(t *testing.T) {
 	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "6", Strcmp) != -1)
 	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "7", Strcmp) != -1)
 	require.True(t, util.IndexInSlice(inst1.state.ToArray(), "8", Strcmp) != -1)
-
 }
 
 func TestBiDiUpdates(t *testing.T) {
@@ -420,7 +417,6 @@ func TestBiDiUpdates(t *testing.T) {
 	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "1", Strcmp) != -1)
 	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "2", Strcmp) != -1)
 	require.True(t, util.IndexInSlice(inst2.state.ToArray(), "3", Strcmp) != -1)
-
 }
 
 func TestSpread(t *testing.T) {
@@ -526,7 +522,6 @@ func TestFilter(t *testing.T) {
 	require.True(t, util.IndexInSlice(inst3.state.ToArray(), "3", Strcmp) != -1)
 	require.True(t, util.IndexInSlice(inst3.state.ToArray(), "4", Strcmp) == -1)
 	require.True(t, util.IndexInSlice(inst3.state.ToArray(), "5", Strcmp) != -1)
-
 }
 
 func Strcmp(a interface{}, b interface{}) bool {
