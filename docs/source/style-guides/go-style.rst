@@ -18,7 +18,7 @@ pull requests:
 The following tools are executed against all pull requests. Any errors flagged
 by these tools must be addressed before the code will be merged:
 
-  - `gofmt -s <https://golang.org/cmd/gofmt/>`__
+  - `gofumpt -s <https://github.com/mvdan/gofumpt>`__
   - `goimports <https://godoc.org/golang.org/x/tools/cmd/goimports>`__
   - `go vet <https://golang.org/cmd/vet/>`__
 

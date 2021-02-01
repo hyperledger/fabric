@@ -174,7 +174,7 @@ profile: export JOB_TYPE=PROFILE
 profile: unit-test
 
 .PHONY: linter
-linter: check-deps gotool.goimports
+linter: check-deps gotool.goimports gotool.gofumpt gotool.staticcheck
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
 
