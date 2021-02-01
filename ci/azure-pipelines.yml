@@ -27,6 +27,8 @@ stages:
             displayName: Checkout Fabric Code
           - script: make basic-checks native
             displayName: Run Basic Checks
+          - script: ./ci/scripts/lint_repo.sh
+            displayName: Run RepoLinter
           - script: ./ci/scripts/evaluate_commits.sh
             name: SetJobTriggers
 
