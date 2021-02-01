@@ -79,7 +79,6 @@ func TestSpawnEtcdRaft(t *testing.T) {
 		t.Run("Restart orderer after joining system channel", func(t *testing.T) {
 			testEtcdRaftOSNJoinSysChan(NewGomegaWithT(t), tempSharedDir, configtxgen, orderer, cryptoPath)
 		})
-
 	})
 }
 
@@ -87,7 +86,7 @@ func copyYamlFiles(gt *GomegaWithT, src, dst string) {
 	for _, file := range []string{"configtx.yaml", "examplecom-config.yaml", "orderer.yaml"} {
 		fileBytes, err := ioutil.ReadFile(filepath.Join(src, file))
 		gt.Expect(err).NotTo(HaveOccurred())
-		err = ioutil.WriteFile(filepath.Join(dst, file), fileBytes, 0644)
+		err = ioutil.WriteFile(filepath.Join(dst, file), fileBytes, 0o644)
 		gt.Expect(err).NotTo(HaveOccurred())
 	}
 }
@@ -127,7 +126,6 @@ func generateCryptoMaterials(gt *GomegaWithT, cryptogen, path string) string {
 }
 
 func testEtcdRaftOSNRestart(gt *GomegaWithT, tempDir, configtxgen, orderer, cryptoPath string) {
-
 	genesisBlockPath := generateBootstrapBlock(gt, tempDir, configtxgen, "system", "SampleEtcdRaftSystemChannel")
 
 	// Launch the OSN
@@ -162,7 +160,7 @@ func testEtcdRaftOSNJoinSysChan(gt *GomegaWithT, configPath, configtxgen, ordere
 	gt.Expect(err).NotTo(HaveOccurred())
 	fileRepoDir := filepath.Join(tempDir, "ledger", "pendingops", "join")
 	joinBlockPath := filepath.Join(fileRepoDir, "system.join")
-	err = ioutil.WriteFile(joinBlockPath, genesisBlockBytes, 0644)
+	err = ioutil.WriteFile(joinBlockPath, genesisBlockBytes, 0o644)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	gt.Eventually(ordererProcess.Kill(), time.Minute).Should(gexec.Exit())
@@ -223,7 +221,7 @@ func testEtcdRaftOSNFailureInvalidBootstrapBlock(gt *GomegaWithT, configPath, or
 
 	// Copy it to the designated location in the temporary folder
 	genesisBlockPath = filepath.Join(tempDir, "genesis.block")
-	err = ioutil.WriteFile(genesisBlockPath, genesisBlockBytes, 0644)
+	err = ioutil.WriteFile(genesisBlockPath, genesisBlockBytes, 0o644)
 	gt.Expect(err).NotTo(HaveOccurred())
 
 	// Launch the OSN

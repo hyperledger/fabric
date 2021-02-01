@@ -200,14 +200,13 @@ func (ks *fileBasedKeyStore) StoreKey(k bccsp.Key) (err error) {
 }
 
 func (ks *fileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err error) {
-
 	files, _ := ioutil.ReadDir(ks.path)
 	for _, f := range files {
 		if f.IsDir() {
 			continue
 		}
 
-		if f.Size() > (1 << 16) { //64k, somewhat arbitrary limit, considering even large keys
+		if f.Size() > (1 << 16) { // 64k, somewhat arbitrary limit, considering even large keys
 			continue
 		}
 
@@ -263,7 +262,7 @@ func (ks *fileBasedKeyStore) storePrivateKey(alias string, privateKey interface{
 		return err
 	}
 
-	err = ioutil.WriteFile(ks.getPathForAlias(alias, "sk"), rawKey, 0600)
+	err = ioutil.WriteFile(ks.getPathForAlias(alias, "sk"), rawKey, 0o600)
 	if err != nil {
 		logger.Errorf("Failed storing private key [%s]: [%s]", alias, err)
 		return err
@@ -279,7 +278,7 @@ func (ks *fileBasedKeyStore) storePublicKey(alias string, publicKey interface{})
 		return err
 	}
 
-	err = ioutil.WriteFile(ks.getPathForAlias(alias, "pk"), rawKey, 0600)
+	err = ioutil.WriteFile(ks.getPathForAlias(alias, "pk"), rawKey, 0o600)
 	if err != nil {
 		logger.Errorf("Failed storing private key [%s]: [%s]", alias, err)
 		return err
@@ -295,7 +294,7 @@ func (ks *fileBasedKeyStore) storeKey(alias string, key []byte) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(ks.getPathForAlias(alias, "key"), pem, 0600)
+	err = ioutil.WriteFile(ks.getPathForAlias(alias, "key"), pem, 0o600)
 	if err != nil {
 		logger.Errorf("Failed storing key [%s]: [%s]", alias, err)
 		return err
@@ -372,7 +371,7 @@ func (ks *fileBasedKeyStore) createKeyStore() error {
 	ksPath := ks.path
 	logger.Debugf("Creating KeyStore at [%s]...", ksPath)
 
-	err := os.MkdirAll(ksPath, 0755)
+	err := os.MkdirAll(ksPath, 0o755)
 	if err != nil {
 		return err
 	}

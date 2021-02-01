@@ -86,7 +86,9 @@ func newPeerClientForClientConfig(address, override string, clientConfig comm.Cl
 		CommonClient: CommonClient{
 			GRPCClient: gClient,
 			Address:    address,
-			sn:         override}}
+			sn:         override,
+		},
+	}
 	return pClient, nil
 }
 

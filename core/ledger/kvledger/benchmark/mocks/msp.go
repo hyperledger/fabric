@@ -13,8 +13,7 @@ import (
 	"github.com/hyperledger/fabric/msp"
 )
 
-type noopmsp struct {
-}
+type noopmsp struct{}
 
 // NewNoopMsp returns a no-op implementation of the MSP interface
 func NewNoopMsp() msp.MSP {
@@ -80,8 +79,7 @@ func (msp *noopmsp) IsWellFormed(_ *mspprotos.SerializedIdentity) error {
 	return nil
 }
 
-type noopidentity struct {
-}
+type noopidentity struct{}
 
 func newNoopIdentity() (msp.Identity, error) {
 	return &noopidentity{}, nil

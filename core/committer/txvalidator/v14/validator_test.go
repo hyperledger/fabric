@@ -162,7 +162,9 @@ func getProposalWithType(ccID string, pType common.HeaderType) (*peer.Proposal, 
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			ChaincodeId: &peer.ChaincodeID{Name: ccID, Version: ccVersion},
 			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("func")}},
-			Type:        peer.ChaincodeSpec_GOLANG}}
+			Type:        peer.ChaincodeSpec_GOLANG,
+		},
+	}
 
 	proposal, _, err := protoutil.CreateProposalFromCIS(pType, "testchannelid", cis, signerSerialized)
 	return proposal, err
@@ -560,6 +562,7 @@ func (fake *mockMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identit
 func (fake *mockMSP) IsWellFormed(identity *mb.SerializedIdentity) error {
 	return nil
 }
+
 func (fake *mockMSP) Setup(config *mb.MSPConfig) error {
 	return nil
 }
@@ -1035,7 +1038,9 @@ func testInvokeOKSCC(t *testing.T, l ledger.PeerLedger, v txvalidator.Validator)
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			ChaincodeId: &peer.ChaincodeID{Name: "lscc", Version: ccVersion},
 			Input:       &peer.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte("testchannelid"), cds}},
-			Type:        peer.ChaincodeSpec_GOLANG}}
+			Type:        peer.ChaincodeSpec_GOLANG,
+		},
+	}
 
 	prop, _, err := protoutil.CreateProposalFromCIS(common.HeaderType_ENDORSER_TRANSACTION, "testchannelid", cis, signerSerialized)
 	require.NoError(t, err)
@@ -1364,7 +1369,6 @@ func testInvokeNoBlock(t *testing.T, l ledger.PeerLedger, v txvalidator.Validato
 }
 
 func TestValidateTxWithStateBasedEndorsement(t *testing.T) {
-
 	// SCENARIO: we validate a transaction that writes to key "key". This key
 	// has a state-based endorsement policy that cannot be satisfied, while
 	// the chaincode endorseemnt policy is satisfied by this transaction.
@@ -1507,7 +1511,6 @@ func (m *mockLedger) DoesPvtDataInfoExist(blkNum uint64) (bool, error) {
 }
 
 func (m *mockLedger) Close() {
-
 }
 
 func (m *mockLedger) Commit(block *common.Block) error {

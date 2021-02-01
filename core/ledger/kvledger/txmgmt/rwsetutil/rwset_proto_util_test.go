@@ -224,11 +224,13 @@ func sampleNsPvtRwSet(ns string) *NsPvtRwSet {
 }
 
 func sampleCollPvtRwSet(collectionName string) *CollPvtRwSet {
-	return &CollPvtRwSet{CollectionName: collectionName,
+	return &CollPvtRwSet{
+		CollectionName: collectionName,
 		KvRwSet: &kvrwset.KVRWSet{
 			Reads:  []*kvrwset.KVRead{{Key: "key1", Version: &kvrwset.Version{BlockNum: 1, TxNum: 1}}},
 			Writes: []*kvrwset.KVWrite{{Key: "key2", IsDelete: false, Value: []byte("value2")}},
-		}}
+		},
+	}
 }
 
 func TestVersionConversion(t *testing.T) {

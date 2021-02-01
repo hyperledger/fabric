@@ -78,7 +78,6 @@ func TestGetRevision(t *testing.T) {
 	revisionsMap, err = db.getRevisions("bad-namespace", nsUpdates)
 	require.NoError(t, err)
 	require.Equal(t, "", revisionsMap["key-in-db"])
-
 }
 
 func TestBuildCommittersForNs(t *testing.T) {
@@ -112,7 +111,6 @@ func TestBuildCommittersForNs(t *testing.T) {
 	require.Equal(t, 2, len(committers))
 	require.Equal(t, "ns", committers[0].namespace)
 	require.Equal(t, "ns", committers[1].namespace)
-
 }
 
 func TestBuildCommitters(t *testing.T) {
@@ -234,7 +232,7 @@ func TestCommitUpdates(t *testing.T) {
 	couchDoc, err := keyValToCouchDoc(&keyValue{key: "key1", revision: "", VersionedValue: nsUpdates["key1"]})
 	require.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		committer   *committer
 		expectedErr string
 	}{

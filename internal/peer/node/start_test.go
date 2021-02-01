@@ -82,7 +82,7 @@ func TestHandlerMap(t *testing.T) {
 }
 
 func TestComputeChaincodeEndpoint(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		peerAddress            string
 		chaincodeAddress       string
 		chaincodeListenAddress string

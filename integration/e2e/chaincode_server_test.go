@@ -56,12 +56,12 @@ var _ = Describe("ChaincodeAsExternalServer", func() {
 		// Write the config files
 		connJSON, err := json.Marshal(connData)
 		Expect(err).NotTo(HaveOccurred())
-		err = ioutil.WriteFile(filepath.Join(assetDir, "connection.json"), connJSON, 0644)
+		err = ioutil.WriteFile(filepath.Join(assetDir, "connection.json"), connJSON, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		configJSON, err := json.Marshal(serverKeyPair)
 		Expect(err).NotTo(HaveOccurred())
-		err = ioutil.WriteFile(filepath.Join(assetDir, "config.json"), configJSON, 0644)
+		err = ioutil.WriteFile(filepath.Join(assetDir, "config.json"), configJSON, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		// Setup the network

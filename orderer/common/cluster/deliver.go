@@ -130,7 +130,7 @@ func (p *BlockPuller) HeightsByEndpoints() (map[string]uint64, error) {
 func (p *BlockPuller) UpdateEndpoints(endpoints []EndpointCriteria) {
 	p.Logger.Debugf("Updating endpoints: %v", endpoints)
 	p.Endpoints = endpoints
-	//TODO FAB-18121 Disconnect only if the currently connected endpoint was dropped or has changes in its TLSRootCAs
+	// TODO FAB-18121 Disconnect only if the currently connected endpoint was dropped or has changes in its TLSRootCAs
 	p.disconnect()
 }
 
@@ -145,7 +145,6 @@ func waitOnStop(duration time.Duration, stop <-chan struct{}) bool {
 }
 
 func (p *BlockPuller) tryFetchBlock(seq uint64) *common.Block {
-
 	block := p.popBlock(seq)
 	if block != nil {
 		return block

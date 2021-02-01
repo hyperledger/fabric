@@ -220,7 +220,6 @@ func (d *distributorImpl) disseminationPlanForMsg(colAP privdata.CollectionAcces
 			Identity:  []byte(signature.PeerIdentity),
 		})
 	})
-
 	if err != nil {
 		d.logger.Error("Failed to retrieve peer routing filter for channel", d.chainID, ":", err)
 		return nil, err

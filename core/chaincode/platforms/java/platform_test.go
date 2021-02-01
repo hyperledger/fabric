@@ -62,28 +62,28 @@ func TestValidatePath(t *testing.T) {
 
 func TestValidateCodePackage(t *testing.T) {
 	platform := java.Platform{}
-	b, _ := generateMockPackegeBytes("src/pom.xml", 0100400)
+	b, _ := generateMockPackegeBytes("src/pom.xml", 0o100400)
 	require.NoError(t, platform.ValidateCodePackage(b))
 
-	b, _ = generateMockPackegeBytes("src/pom.xml", 0100555)
+	b, _ = generateMockPackegeBytes("src/pom.xml", 0o100555)
 	require.Error(t, platform.ValidateCodePackage(b))
 
-	b, _ = generateMockPackegeBytes("src/build.gradle", 0100400)
+	b, _ = generateMockPackegeBytes("src/build.gradle", 0o100400)
 	require.NoError(t, platform.ValidateCodePackage(b))
 
-	b, _ = generateMockPackegeBytes("src/build.xml", 0100400)
+	b, _ = generateMockPackegeBytes("src/build.xml", 0o100400)
 	require.Error(t, platform.ValidateCodePackage(b))
 
-	b, _ = generateMockPackegeBytes("src/src/Main.java", 0100400)
+	b, _ = generateMockPackegeBytes("src/src/Main.java", 0o100400)
 	require.NoError(t, platform.ValidateCodePackage(b))
 
-	b, _ = generateMockPackegeBytes("src/build/Main.java", 0100400)
+	b, _ = generateMockPackegeBytes("src/build/Main.java", 0o100400)
 	require.Error(t, platform.ValidateCodePackage(b))
 
-	b, _ = generateMockPackegeBytes("src/src/xyz/main.java", 0100400)
+	b, _ = generateMockPackegeBytes("src/src/xyz/main.java", 0o100400)
 	require.NoError(t, platform.ValidateCodePackage(b))
 
-	b, _ = generateMockPackegeBytes("src/src/xyz/main.class", 0100400)
+	b, _ = generateMockPackegeBytes("src/src/xyz/main.class", 0o100400)
 	require.Error(t, platform.ValidateCodePackage(b))
 
 	b, _ = platform.GetDeploymentPayload(chaincodePathFolderGradle)

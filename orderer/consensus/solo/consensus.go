@@ -159,7 +159,7 @@ func (ch *chain) main() {
 				timer = nil
 			}
 		case <-timer:
-			//clear the timer
+			// clear the timer
 			timer = nil
 
 			batch := ch.support.BlockCutter().Cut()

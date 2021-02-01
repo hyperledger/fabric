@@ -75,7 +75,7 @@ func SyncParentDir(path string) error {
 
 // CreateDirIfMissing makes sure that the dir exists and returns whether the dir is empty
 func CreateDirIfMissing(dirPath string) (bool, error) {
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
+	if err := os.MkdirAll(dirPath, 0o755); err != nil {
 		return false, errors.Wrapf(err, "error while creating dir: %s", dirPath)
 	}
 	if err := SyncParentDir(dirPath); err != nil {

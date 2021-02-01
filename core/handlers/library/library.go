@@ -19,8 +19,7 @@ import (
 
 // HandlerLibrary is used to assert
 // how to create the various handlers
-type HandlerLibrary struct {
-}
+type HandlerLibrary struct{}
 
 // DefaultAuth creates a default auth.Filter
 // that doesn't do any access control checks - simply

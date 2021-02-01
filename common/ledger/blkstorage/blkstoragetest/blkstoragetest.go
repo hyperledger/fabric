@@ -44,7 +44,7 @@ func BootstrapBlockstoreFromSnapshot(t *testing.T, ledgerName string, blocks []*
 	testDir, err := ioutil.TempDir("", ledgerName)
 	require.NoError(t, err)
 	snapshotDir := filepath.Join(testDir, "snapshot")
-	require.NoError(t, os.Mkdir(snapshotDir, 0755))
+	require.NoError(t, os.Mkdir(snapshotDir, 0o755))
 
 	conf := blkstorage.NewConf(testDir, 0)
 	indexConfig := &blkstorage.IndexConfig{AttrsToIndex: attrsToIndex}

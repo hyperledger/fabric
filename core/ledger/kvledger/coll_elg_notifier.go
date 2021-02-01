@@ -99,7 +99,6 @@ func (n *collElgNotifier) invokeLedgerSpecificNotifier(ledgerID string, commting
 // elgEnabledCollNames returns the names of the collections for which the peer is not eligible as per 'existingPkg' and is eligible as per 'postCommitPkg'
 func (n *collElgNotifier) elgEnabledCollNames(ledgerID string,
 	existingPkg, postCommitPkg *peer.CollectionConfigPackage) ([]string, error) {
-
 	collectionNames := []string{}
 	exisingConfs := retrieveCollConfs(existingPkg)
 	postCommitConfs := retrieveCollConfs(postCommitPkg)

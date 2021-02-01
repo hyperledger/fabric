@@ -16,23 +16,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//Unit test of couch db util functionality
+// Unit test of couch db util functionality
 func TestCreateCouchDBConnectionAndDB(t *testing.T) {
 	config := testConfig()
 	couchDBEnv.startCouchDB(t)
 	config.Address = couchDBEnv.couchAddress
 	defer couchDBEnv.cleanup(config)
 	database := "testcreatecouchdbconnectionanddb"
-	//create a new connection
+	// create a new connection
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
 	require.NoError(t, err, "Error when trying to CreateCouchInstance")
 
 	_, err = createCouchDatabase(couchInstance, database)
 	require.NoError(t, err, "Error when trying to CreateCouchDatabase")
-
 }
 
-//Unit test of couch db util functionality
+// Unit test of couch db util functionality
 func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
 	config := testConfig()
 	couchDBEnv.startCouchDB(t)
@@ -41,18 +40,18 @@ func TestNotCreateCouchGlobalChangesDB(t *testing.T) {
 	config.CreateGlobalChangesDB = false
 	database := "_global_changes"
 
-	//create a new connection
+	// create a new connection
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
 	require.NoError(t, err, "Error when trying to CreateCouchInstance")
 
 	db := couchDatabase{couchInstance: couchInstance, dbName: database}
 
-	//Retrieve the info for the new database and make sure the name matches
+	// Retrieve the info for the new database and make sure the name matches
 	_, _, errdb := db.getDatabaseInfo()
 	require.NotNil(t, errdb)
 }
 
-//Unit test of couch db util functionality
+// Unit test of couch db util functionality
 func TestCreateCouchDBSystemDBs(t *testing.T) {
 	config := testConfig()
 	couchDBEnv.startCouchDB(t)
@@ -60,7 +59,7 @@ func TestCreateCouchDBSystemDBs(t *testing.T) {
 	defer couchDBEnv.cleanup(config)
 	config.CreateGlobalChangesDB = true
 
-	//create a new connection
+	// create a new connection
 	couchInstance, err := createCouchInstance(config, &disabled.Provider{})
 
 	require.NoError(t, err, "Error when trying to CreateCouchInstance")
@@ -70,41 +69,40 @@ func TestCreateCouchDBSystemDBs(t *testing.T) {
 
 	db := couchDatabase{couchInstance: couchInstance, dbName: "_users"}
 
-	//Retrieve the info for the new database and make sure the name matches
+	// Retrieve the info for the new database and make sure the name matches
 	dbResp, _, errdb := db.getDatabaseInfo()
 	require.NoError(t, errdb, "Error when trying to retrieve _users database information")
 	require.Equal(t, "_users", dbResp.DbName)
 
 	db = couchDatabase{couchInstance: couchInstance, dbName: "_replicator"}
 
-	//Retrieve the info for the new database and make sure the name matches
+	// Retrieve the info for the new database and make sure the name matches
 	dbResp, _, errdb = db.getDatabaseInfo()
 	require.NoError(t, errdb, "Error when trying to retrieve _replicator database information")
 	require.Equal(t, "_replicator", dbResp.DbName)
 
 	db = couchDatabase{couchInstance: couchInstance, dbName: "_global_changes"}
 
-	//Retrieve the info for the new database and make sure the name matches
+	// Retrieve the info for the new database and make sure the name matches
 	dbResp, _, errdb = db.getDatabaseInfo()
 	require.NoError(t, errdb, "Error when trying to retrieve _global_changes database information")
 	require.Equal(t, "_global_changes", dbResp.DbName)
-
 }
 
 func TestDatabaseMapping(t *testing.T) {
-	//create a new instance and database object using a database name mixed case
+	// create a new instance and database object using a database name mixed case
 	_, err := mapAndValidateDatabaseName("testDB")
 	require.Error(t, err, "Error expected because the name contains capital letters")
 
-	//create a new instance and database object using a database name with special characters
+	// create a new instance and database object using a database name with special characters
 	_, err = mapAndValidateDatabaseName("test1234/1")
 	require.Error(t, err, "Error expected because the name contains illegal chars")
 
-	//create a new instance and database object using a database name with special characters
+	// create a new instance and database object using a database name with special characters
 	_, err = mapAndValidateDatabaseName("5test1234")
 	require.Error(t, err, "Error expected because the name starts with a number")
 
-	//create a new instance and database object using an empty string
+	// create a new instance and database object using an empty string
 	_, err = mapAndValidateDatabaseName("")
 	require.Error(t, err, "Error should have been thrown for an invalid name")
 

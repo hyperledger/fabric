@@ -139,7 +139,6 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 		cf.DeliverClients,
 		cf.BroadcastClient,
 	)
-
 	if err != nil {
 		return errors.Errorf("%s - proposal response: %v", err, proposalResp)
 	}

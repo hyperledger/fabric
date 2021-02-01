@@ -185,7 +185,8 @@ func findInvalidNsPvtData(nsRwset *rwset.NsPvtReadWriteSet, txRWSet *rwsetutil.T
 				BlockNum:   blkNum,
 				TxNum:      txNum,
 				Namespace:  ns,
-				Collection: coll})
+				Collection: coll,
+			})
 			invalidNsColl = append(invalidNsColl, &nsColl{ns, coll})
 		}
 	}

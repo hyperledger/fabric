@@ -241,7 +241,7 @@ func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts x509.Ver
 		return errors.Errorf("empty consenter set")
 	}
 
-	//verifying certificates for being signed by CA, expiration is ignored
+	// verifying certificates for being signed by CA, expiration is ignored
 	for _, consenter := range metadata.Consenters {
 		if consenter == nil {
 			return errors.Errorf("metadata has nil consenter")
@@ -320,7 +320,7 @@ func createX509VerifyOptions(ordererConfig channelconfig.Orderer) (x509.VerifyOp
 	}, nil
 }
 
-//validateConsenterTLSCerts decodes PEM cert, parses and validates it.
+// validateConsenterTLSCerts decodes PEM cert, parses and validates it.
 func validateConsenterTLSCerts(c *etcdraft.Consenter, opts x509.VerifyOptions, ignoreExpiration bool) error {
 	clientCert, err := parseCertificateFromBytes(c.ClientTlsCert)
 	if err != nil {

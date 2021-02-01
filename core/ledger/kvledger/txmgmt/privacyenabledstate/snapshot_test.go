@@ -25,11 +25,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testNewHashFunc = func() (hash.Hash, error) {
-		return sha256.New(), nil
-	}
-)
+var testNewHashFunc = func() (hash.Hash, error) {
+	return sha256.New(), nil
+}
 
 func TestSnapshot(t *testing.T) {
 	for _, env := range testEnvs {
@@ -208,7 +206,6 @@ func verifyExportedSnapshot(
 	publicStateFilesExpected bool,
 	pvtdataHashesFilesExpected bool,
 ) {
-
 	numFilesExpected := 0
 	if publicStateFilesExpected {
 		numFilesExpected += 2
@@ -530,7 +527,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 
 			dataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(dataFile))
-			require.NoError(t, os.MkdirAll(dataFile, 0700))
+			require.NoError(t, os.MkdirAll(dataFile, 0o700))
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), fmt.Sprintf("the supplied path [%s] is a dir", dataFile))
@@ -542,7 +539,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 
 			dataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(dataFile))
-			require.NoError(t, ioutil.WriteFile(dataFile, []byte(""), 0600))
+			require.NoError(t, ioutil.WriteFile(dataFile, []byte(""), 0o600))
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.Contains(t, err.Error(), fmt.Sprintf("error while opening data file: error while reading from the snapshot file: %s", dataFile))
@@ -554,7 +551,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 
 			dataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(dataFile))
-			require.NoError(t, ioutil.WriteFile(dataFile, []byte{0x00}, 0600))
+			require.NoError(t, ioutil.WriteFile(dataFile, []byte{0x00}, 0o600))
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
 			require.EqualError(t, err, "error while opening data file: unexpected data format: 0")
@@ -567,7 +564,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			dataFile := filepath.Join(snapshotDir, f)
 			require.NoError(t, os.Remove(dataFile))
 
-			require.NoError(t, ioutil.WriteFile(dataFile, []byte{snapshotFileFormat}, 0600))
+			require.NoError(t, ioutil.WriteFile(dataFile, []byte{snapshotFileFormat}, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
@@ -592,7 +589,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 				),
 			)
 			fileContent = append(fileContent, buf.Bytes()...)
-			require.NoError(t, ioutil.WriteFile(dataFile, fileContent, 0600))
+			require.NoError(t, ioutil.WriteFile(dataFile, fileContent, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
@@ -622,7 +619,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, os.Remove(metadataFile))
 
 			fileContentWithMissingNumRows := []byte{snapshotFileFormat}
-			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingNumRows, 0600))
+			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingNumRows, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
@@ -640,7 +637,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			buf := proto.NewBuffer(nil)
 			require.NoError(t, buf.EncodeVarint(5))
 			fileContentWithMissingCCName = append(fileContentWithMissingCCName, buf.Bytes()...)
-			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingCCName, 0600))
+			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingCCName, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)
@@ -659,7 +656,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 			require.NoError(t, buf.EncodeVarint(1))
 			require.NoError(t, buf.EncodeRawBytes([]byte("my-chaincode")))
 			fileContentWithMissingCCName = append(fileContentWithMissingCCName, buf.Bytes()...)
-			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingCCName, 0600))
+			require.NoError(t, ioutil.WriteFile(metadataFile, fileContentWithMissingCCName, 0o600))
 
 			err := dbEnv.GetProvider().ImportFromSnapshot(
 				generateLedgerID(t), version.NewHeight(10, 10), snapshotDir)

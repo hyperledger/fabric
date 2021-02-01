@@ -71,8 +71,10 @@ func TestPutCDSErrorPaths(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)
 
-	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
-		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
+		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
+		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}},
+	}, CodePackage: []byte("code")}
 
 	ccpack, b, _, err := processCDS(cds, true)
 	if err != nil {
@@ -80,19 +82,19 @@ func TestPutCDSErrorPaths(t *testing.T) {
 		return
 	}
 
-	//validate with invalid name
+	// validate with invalid name
 	if err = ccpack.ValidateCC(&ChaincodeData{Name: "invalname", Version: "0"}); err == nil {
 		t.Fatalf("expected error validating package")
 		return
 	}
-	//remove the buffer
+	// remove the buffer
 	ccpack.buf = nil
 	if err = ccpack.PutChaincodeToFS(); err == nil {
 		t.Fatalf("expected error putting package on the FS")
 		return
 	}
 
-	//put back  the buffer but remove the depspec
+	// put back  the buffer but remove the depspec
 	ccpack.buf = b
 	savDepSpec := ccpack.depSpec
 	ccpack.depSpec = nil
@@ -101,7 +103,7 @@ func TestPutCDSErrorPaths(t *testing.T) {
 		return
 	}
 
-	//put back dep spec
+	// put back dep spec
 	ccpack.depSpec = savDepSpec
 
 	//...but remove the chaincode directory
@@ -144,22 +146,22 @@ func TestCDSGetCCPackage(t *testing.T) {
 	}
 }
 
-//switch the chaincodes on the FS and validate
+// switch the chaincodes on the FS and validate
 func TestCDSSwitchChaincodes(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)
 
-	//someone modified the code on the FS with "badcode"
+	// someone modified the code on the FS with "badcode"
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("badcode")}
 
-	//write the bad code to the fs
+	// write the bad code to the fs
 	badccpack, _, _, err := processCDS(cds, true)
 	if err != nil {
 		t.Fatalf("error putting CDS to FS %s", err)
 		return
 	}
 
-	//mimic the good code ChaincodeData from the instantiate...
+	// mimic the good code ChaincodeData from the instantiate...
 	cds.CodePackage = []byte("goodcode")
 
 	//...and generate the CD for it (don't overwrite the bad code)
@@ -193,8 +195,10 @@ func TestPutChaincodeToFSErrorPaths(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "depspec cannot be nil if buf is not nil", "Unexpected error returned")
 
-	ccpack.depSpec = &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
-		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
+	ccpack.depSpec = &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
+		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
+		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}},
+	}, CodePackage: []byte("code")}
 	err = ccpack.PutChaincodeToFS()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "nil data", "Unexpected error returned")

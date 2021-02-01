@@ -50,7 +50,8 @@ func TestCombinerGetState(t *testing.T) {
 			&queryutil.UpdateBatchBackedQueryExecuter{UpdateBatch: batch1},
 			&queryutil.UpdateBatchBackedQueryExecuter{UpdateBatch: batch2},
 			&queryutil.UpdateBatchBackedQueryExecuter{UpdateBatch: batch3},
-		}}
+		},
+	}
 
 	val, err := combiner.GetState("ns1", "key1")
 	require.NoError(t, err)
@@ -69,7 +70,8 @@ func TestCombinerGetState(t *testing.T) {
 			&queryutil.UpdateBatchBackedQueryExecuter{UpdateBatch: batch3},
 			&queryutil.UpdateBatchBackedQueryExecuter{UpdateBatch: batch2},
 			&queryutil.UpdateBatchBackedQueryExecuter{UpdateBatch: batch1},
-		}}
+		},
+	}
 	val, err = combiner.GetState("ns1", "key1")
 	require.NoError(t, err)
 	require.Equal(t, []byte("b3_value1"), val)
@@ -248,7 +250,8 @@ func TestGetPrivateDataHash(t *testing.T) {
 			&queryutil.UpdateBatchBackedQueryExecuter{HashUpdatesBatch: batch1},
 			&queryutil.UpdateBatchBackedQueryExecuter{HashUpdatesBatch: batch2},
 			&queryutil.UpdateBatchBackedQueryExecuter{HashUpdatesBatch: batch3},
-		}}
+		},
+	}
 
 	val, err := combiner.GetPrivateDataHash("ns1", "coll1", "key1")
 	require.NoError(t, err)
@@ -267,7 +270,8 @@ func TestGetPrivateDataHash(t *testing.T) {
 			&queryutil.UpdateBatchBackedQueryExecuter{HashUpdatesBatch: batch3},
 			&queryutil.UpdateBatchBackedQueryExecuter{HashUpdatesBatch: batch2},
 			&queryutil.UpdateBatchBackedQueryExecuter{HashUpdatesBatch: batch1},
-		}}
+		},
+	}
 	val, err = combiner.GetPrivateDataHash("ns1", "coll1", "key1")
 	require.NoError(t, err)
 	require.Equal(t, []byte("b3_value1"), val)

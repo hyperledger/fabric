@@ -83,7 +83,6 @@ func TestMain(m *testing.M) {
 	msptesttools.LoadMSPSetupForTesting()
 	rc := m.Run()
 	os.Exit(rc)
-
 }
 
 func TestConfigerInit(t *testing.T) {
@@ -284,7 +283,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChain"), nil})
 	mockStub.GetSignedProposalReturns(sProp, nil)
 	res := cscc.Invoke(mockStub)
-	//res := stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), nil}, sProp)
+	// res := stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), nil}, sProp)
 	require.Equal(t, int32(shim.ERROR), res.Status)
 
 	// Try fail path with block and nil payload header
@@ -300,7 +299,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	badBlockBytes := protoutil.MarshalOrPanic(badBlock)
 	mockStub.GetArgsReturns([][]byte{[]byte("JoinChain"), badBlockBytes})
 	res = cscc.Invoke(mockStub)
-	//res = stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), badBlockBytes}, sProp)
+	// res = stub.MockInvokeWithSignedProposal("2", [][]byte{[]byte("JoinChain"), badBlockBytes}, sProp)
 	require.Equal(t, int32(shim.ERROR), res.Status)
 
 	// Now, continue with valid execution path
@@ -321,7 +320,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	sProp.Signature = sProp.ProposalBytes
 
 	// Query the configuration block
-	//channelID := []byte{143, 222, 22, 192, 73, 145, 76, 110, 167, 154, 118, 66, 132, 204, 113, 168}
+	// channelID := []byte{143, 222, 22, 192, 73, 145, 76, 110, 167, 154, 118, 66, 132, 204, 113, 168}
 	channelID, err := protoutil.GetChannelIDFromBlockBytes(blockBytes)
 	if err != nil {
 		t.Fatalf("cscc invoke JoinChain failed with: %v", err)
@@ -577,7 +576,7 @@ func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *
 
 	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
-	var defaultSecureDialOpts = func() []grpc.DialOption {
+	defaultSecureDialOpts := func() []grpc.DialOption {
 		return []grpc.DialOption{grpc.WithInsecure()}
 	}
 	gossipConfig, err := gossip.GlobalConfig(peerEndpoint, nil)
@@ -619,6 +618,7 @@ func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *
 
 	return cscc
 }
+
 func mockConfigBlock() []byte {
 	var blockBytes []byte = nil
 	block, err := configtxtest.MakeGenesisBlock("mytestchannelid")

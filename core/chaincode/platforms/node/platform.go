@@ -52,7 +52,7 @@ func (p *Platform) ValidatePath(rawPath string) error {
 		return fmt.Errorf("invalid path: %s", err)
 	}
 
-	//Treat empty scheme as a local filesystem path
+	// Treat empty scheme as a local filesystem path
 	if path.Scheme == "" {
 		pathToCheck, err := filepath.Abs(rawPath)
 		if err != nil {
@@ -86,7 +86,7 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 	}
 	tr := tar.NewReader(gr)
 
-	var foundPackageJson = false
+	foundPackageJson := false
 	for {
 		header, err := tr.Next()
 		if err != nil {
@@ -112,7 +112,7 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 		//
 		// Anything else is suspect in this context and will be rejected
 		// --------------------------------------------------------------------------------------
-		if header.Mode&^0100666 != 0 {
+		if header.Mode&^0o100666 != 0 {
 			return fmt.Errorf("illegal file mode detected for file %s: %o", header.Name, header.Mode)
 		}
 	}
@@ -125,7 +125,6 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 
 // Generates a deployment payload by putting source files in src/$file entries in .tar.gz format
 func (p *Platform) GetDeploymentPayload(path string) ([]byte, error) {
-
 	var err error
 
 	// --------------------------------------------------------------------------------------

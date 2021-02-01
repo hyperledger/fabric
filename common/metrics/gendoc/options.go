@@ -38,7 +38,7 @@ func Options(pkgs []*packages.Package) ([]interface{}, error) {
 // FileOptions walks the specified ast.File for options structs used when
 // creating metrics and returns instances that are recreated from the source.
 func FileOptions(f *ast.File) ([]interface{}, error) {
-	var imports = walkImports(f)
+	imports := walkImports(f)
 	var options []interface{}
 	var errors []error
 

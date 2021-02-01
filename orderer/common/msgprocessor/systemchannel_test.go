@@ -92,7 +92,6 @@ func TestProcessSystemChannelNormalMsg(t *testing.T) {
 		})
 		require.Nil(t, err)
 		require.Equal(t, ms.SequenceVal, cs)
-
 	})
 }
 

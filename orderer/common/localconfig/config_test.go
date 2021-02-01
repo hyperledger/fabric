@@ -91,7 +91,7 @@ func TestLoadMalformedConfigFile(t *testing.T) {
 	}()
 
 	// Create a malformed orderer.yaml file in temp dir
-	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 	require.Nil(t, err, "Error creating file: %s", err)
 	f.WriteString("General: 42")
 	require.NoError(t, f.Close(), "Error closing file")
@@ -249,7 +249,7 @@ Consensus:
     World: 42
 `
 
-	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 	require.Nil(t, err, "Error creating file: %s", err)
 	f.WriteString(content)
 	require.NoError(t, f.Close(), "Error closing file")

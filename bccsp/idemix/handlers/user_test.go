@@ -17,7 +17,6 @@ import (
 )
 
 var _ = Describe("User", func() {
-
 	var (
 		fakeUser          *mock.User
 		fakeUserSecretKey bccsp.Key
@@ -28,9 +27,7 @@ var _ = Describe("User", func() {
 	})
 
 	Describe("when creating a user key", func() {
-		var (
-			UserKeyGen *handlers.UserKeyGen
-		)
+		var UserKeyGen *handlers.UserKeyGen
 
 		BeforeEach(func() {
 			UserKeyGen = &handlers.UserKeyGen{}
@@ -100,7 +97,6 @@ var _ = Describe("User", func() {
 					Expect(err).To(MatchError("not exportable"))
 					Expect(raw).To(BeNil())
 				})
-
 			})
 		})
 
@@ -115,7 +111,6 @@ var _ = Describe("User", func() {
 				Expect(keyPair).To(BeNil())
 			})
 		})
-
 	})
 
 	Describe("when deriving a new pseudonym", func() {
@@ -208,7 +203,6 @@ var _ = Describe("User", func() {
 					Expect(err).To(HaveOccurred())
 					Expect(raw).To(BeNil())
 				})
-
 			})
 		})
 
@@ -227,7 +221,6 @@ var _ = Describe("User", func() {
 		})
 
 		Context("and the options are not well formed", func() {
-
 			Context("and the user secret key is nil", func() {
 				It("returns error", func() {
 					nym, err := NymKeyDerivation.KeyDeriv(nil, &bccsp.IdemixNymKeyDerivationOpts{})
@@ -278,7 +271,6 @@ var _ = Describe("User", func() {
 					Expect(err).To(MatchError("invalid options, missing issuer public key"))
 					Expect(nym).To(BeNil())
 				})
-
 			})
 
 			Context("and the issuer public key is not of type *issuerPublicKey", func() {
@@ -291,22 +283,18 @@ var _ = Describe("User", func() {
 					Expect(err).To(MatchError("invalid options, expected IssuerPK as *issuerPublicKey"))
 					Expect(nym).To(BeNil())
 				})
-
 			})
 		})
 	})
 
 	Context("when importing a user key", func() {
-		var (
-			UserKeyImporter *handlers.UserKeyImporter
-		)
+		var UserKeyImporter *handlers.UserKeyImporter
 
 		BeforeEach(func() {
 			UserKeyImporter = &handlers.UserKeyImporter{Exportable: true, User: fakeUser}
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
-
 			BeforeEach(func() {
 				sk := &mock.Big{}
 				sk.BytesReturns([]byte("fake-pk-bytes"), nil)
@@ -325,7 +313,6 @@ var _ = Describe("User", func() {
 		})
 
 		Context("and the underlying cryptographic algorithm fails", func() {
-
 			BeforeEach(func() {
 				fakeUser.NewKeyFromBytesReturns(nil, errors.New("new-public-key-nym-import-err"))
 			})
@@ -353,22 +340,17 @@ var _ = Describe("User", func() {
 				Expect(err).To(MatchError("new-public-key-nym-import-err"))
 				Expect(k).To(BeNil())
 			})
-
 		})
-
 	})
 
 	Context("when importing a nym public key", func() {
-		var (
-			NymPublicKeyImporter *handlers.NymPublicKeyImporter
-		)
+		var NymPublicKeyImporter *handlers.NymPublicKeyImporter
 
 		BeforeEach(func() {
 			NymPublicKeyImporter = &handlers.NymPublicKeyImporter{User: fakeUser}
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
-
 			BeforeEach(func() {
 				ecp := &mock.Ecp{}
 				ecp.BytesReturns([]byte("fake-pk-bytes"), nil)
@@ -387,7 +369,6 @@ var _ = Describe("User", func() {
 		})
 
 		Context("and the underlying cryptographic algorithm fails", func() {
-
 			BeforeEach(func() {
 				fakeUser.NewPublicNymFromBytesReturns(nil, errors.New("new-public-key-nym-import-err"))
 			})
@@ -415,9 +396,6 @@ var _ = Describe("User", func() {
 				Expect(err).To(MatchError("new-public-key-nym-import-err"))
 				Expect(k).To(BeNil())
 			})
-
 		})
-
 	})
-
 })

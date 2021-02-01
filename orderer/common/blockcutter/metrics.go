@@ -8,15 +8,13 @@ package blockcutter
 
 import "github.com/hyperledger/fabric/common/metrics"
 
-var (
-	blockFillDuration = metrics.HistogramOpts{
-		Namespace:    "blockcutter",
-		Name:         "block_fill_duration",
-		Help:         "The time from first transaction enqueing to the block being cut in seconds.",
-		LabelNames:   []string{"channel"},
-		StatsdFormat: "%{#fqname}.%{channel}",
-	}
-)
+var blockFillDuration = metrics.HistogramOpts{
+	Namespace:    "blockcutter",
+	Name:         "block_fill_duration",
+	Help:         "The time from first transaction enqueing to the block being cut in seconds.",
+	LabelNames:   []string{"channel"},
+	StatsdFormat: "%{#fqname}.%{channel}",
+}
 
 type Metrics struct {
 	BlockFillDuration metrics.Histogram

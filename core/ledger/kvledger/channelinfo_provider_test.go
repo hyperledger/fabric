@@ -102,8 +102,8 @@ func TestGetAllMSPIDs(t *testing.T) {
 
 	var block *cb.Block
 	var configBlock *cb.Block
-	var lastBlockNum = uint64(0)
-	var lastConfigBlockNum = uint64(0)
+	lastBlockNum := uint64(0)
+	lastConfigBlockNum := uint64(0)
 
 	// verify GetAllMSPIDs in a corner case where the channel has no block
 	verifyGetAllMSPIDs(t, channelInfoProvider, nil)
@@ -179,8 +179,8 @@ func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
 	channelInfoProvider := &channelInfoProvider{channelName, blkStore, nil}
 
 	var configBlock *cb.Block
-	var lastBlockNum = uint64(0)
-	var lastConfigBlockNum = uint64(0)
+	lastBlockNum := uint64(0)
+	lastConfigBlockNum := uint64(0)
 
 	// add genesis block
 	configBlock, err = test.MakeGenesisBlock(channelName)

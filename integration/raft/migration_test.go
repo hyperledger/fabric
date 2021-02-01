@@ -159,7 +159,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			By("2) Verify: Normal TX's on standard channel are blocked")
 			assertTxFailed(network, orderer, channel1)
 
-			//In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
+			// In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
 			By("2) Verify: delivery request from peer is blocked")
 			err := checkPeerDeliverRequest(orderer, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
@@ -685,7 +685,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			// Get the last config block of the system channel
 			configBlock := nwo.GetConfigBlock(network, peer, o1, "systemchannel")
 			// Plant it in the file system of orderer4, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Launching the fourth orderer")
@@ -910,7 +910,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("15) Obtaining the last config block from the orderer")
 			configBlock := nwo.GetConfigBlock(network, peer, orderer, syschannel)
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("16) Waiting for the existing orderer to relinquish its leadership")

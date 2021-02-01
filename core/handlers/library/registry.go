@@ -55,8 +55,10 @@ type registry struct {
 	validators map[string]validation.PluginFactory
 }
 
-var once sync.Once
-var reg registry
+var (
+	once sync.Once
+	reg  registry
+)
 
 // InitRegistry creates the (only) instance
 // of the registry

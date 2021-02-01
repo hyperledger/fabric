@@ -47,7 +47,8 @@ func NewServerTransportCredentials(
 
 	return &serverCreds{
 		serverConfig: serverConfig,
-		logger:       logger}
+		logger:       logger,
+	}
 }
 
 // serverCreds is an implementation of grpc/credentials.TransportCredentials.

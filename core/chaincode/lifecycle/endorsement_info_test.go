@@ -96,7 +96,6 @@ var _ = Describe("ChaincodeEndorsementInfoSource", func() {
 			Cache:       fakeCache,
 			BuiltinSCCs: builtinSCCs,
 		}
-
 	})
 
 	Describe("CachedChaincodeInfo", func() {

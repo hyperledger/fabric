@@ -100,7 +100,6 @@ func (cei *ChaincodeEndorsementInfoSource) CachedChaincodeInfo(channelID, chainc
 	}
 
 	return chaincodeInfo, true, nil
-
 }
 
 // ChaincodeEndorsementInfo returns the information necessary to handle a chaincode invocation request, as well as a function to

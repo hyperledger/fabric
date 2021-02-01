@@ -14,8 +14,7 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-type addr struct {
-}
+type addr struct{}
 
 func (*addr) Network() string {
 	return ""

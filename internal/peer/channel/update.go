@@ -35,7 +35,7 @@ func updateCmd(cf *ChannelCmdFactory) *cobra.Command {
 }
 
 func update(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
-	//the global chainID filled by the "-c" command
+	// the global chainID filled by the "-c" command
 	if channelID == common.UndefinedParamValue {
 		return errors.New("Must supply channel ID")
 	}

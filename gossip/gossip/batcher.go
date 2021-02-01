@@ -16,7 +16,7 @@ import (
 
 type emitBatchCallback func([]interface{})
 
-//batchingEmitter is used for the gossip push/forwarding phase.
+// batchingEmitter is used for the gossip push/forwarding phase.
 // Messages are added into the batchingEmitter, and they are forwarded periodically T times in batches and then discarded.
 // If the batchingEmitter's stored message count reaches a certain capacity, that also triggers a message dispatch
 type batchingEmitter interface {

@@ -136,7 +136,6 @@ func newSnapshotWriter(
 	dir, dataFileName, metadataFileName string,
 	newHash func() (hash.Hash, error),
 ) (*snapshotWriter, error) {
-
 	dataFilePath := filepath.Join(dir, dataFileName)
 	metadataFilePath := filepath.Join(dir, metadataFileName)
 

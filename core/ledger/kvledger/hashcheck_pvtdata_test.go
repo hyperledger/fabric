@@ -87,7 +87,8 @@ func TestConstructValidInvalidBlocksPvtData(t *testing.T) {
 	blockAndPvtData1 := &ledger.BlockAndPvtData{
 		Block:          blk2,
 		PvtData:        pvtData,
-		MissingPvtData: missingData}
+		MissingPvtData: missingData,
+	}
 	require.NoError(t, kvledger.commit(blockAndPvtData1, &ledger.CommitOptions{}))
 
 	// generate snapshot at block-2

@@ -45,9 +45,8 @@ func NewGRPCServer(address string, serverConfig ServerConfig) (*GRPCServer, erro
 	if address == "" {
 		return nil, errors.New("missing address parameter")
 	}
-	//create our listener
+	// create our listener
 	lis, err := net.Listen("tcp", address)
-
 	if err != nil {
 		return nil, err
 	}
@@ -63,14 +62,14 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 		lock:     &sync.Mutex{},
 	}
 
-	//set up our server options
+	// set up our server options
 	var serverOpts []grpc.ServerOption
 
 	secureConfig := serverConfig.SecOpts
 	if secureConfig.UseTLS {
-		//both key and cert are required
+		// both key and cert are required
 		if secureConfig.Key != nil && secureConfig.Certificate != nil {
-			//load server public and private keys
+			// load server public and private keys
 			cert, err := tls.X509KeyPair(secureConfig.Certificate, secureConfig.Key)
 			if err != nil {
 				return nil, err
@@ -78,7 +77,7 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 
 			grpcServer.serverCertificate.Store(cert)
 
-			//set up our TLS config
+			// set up our TLS config
 			if len(secureConfig.CipherSuites) == 0 {
 				secureConfig.CipherSuites = DefaultTLSCipherSuites
 			}
@@ -101,11 +100,11 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 				}
 			}
 			grpcServer.tls.config.ClientAuth = tls.RequestClientCert
-			//check if client authentication is required
+			// check if client authentication is required
 			if secureConfig.RequireClientCert {
-				//require TLS client auth
+				// require TLS client auth
 				grpcServer.tls.config.ClientAuth = tls.RequireAndVerifyClientCert
-				//if we have client root CAs, create a certPool
+				// if we have client root CAs, create a certPool
 				if len(secureConfig.ClientRootCAs) > 0 {
 					grpcServer.tls.config.ClientCAs = x509.NewCertPool()
 					for _, clientRootCA := range secureConfig.ClientRootCAs {

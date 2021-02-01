@@ -28,8 +28,7 @@ func (n NodeStart) Args() []string {
 	return args
 }
 
-type NodeReset struct {
-}
+type NodeReset struct{}
 
 func (n NodeReset) SessionName() string {
 	return "peer-node-reset"

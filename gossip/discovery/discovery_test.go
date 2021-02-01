@@ -39,15 +39,17 @@ import (
 
 var timeout = time.Second * time.Duration(15)
 
-var aliveTimeInterval = time.Duration(time.Millisecond * 300)
-var defaultTestConfig = DiscoveryConfig{
-	AliveTimeInterval:            aliveTimeInterval,
-	AliveExpirationTimeout:       10 * aliveTimeInterval,
-	AliveExpirationCheckInterval: aliveTimeInterval,
-	ReconnectInterval:            10 * aliveTimeInterval,
-	MaxConnectionAttempts:        DefMaxConnectionAttempts,
-	MsgExpirationFactor:          DefMsgExpirationFactor,
-}
+var (
+	aliveTimeInterval = time.Duration(time.Millisecond * 300)
+	defaultTestConfig = DiscoveryConfig{
+		AliveTimeInterval:            aliveTimeInterval,
+		AliveExpirationTimeout:       10 * aliveTimeInterval,
+		AliveExpirationCheckInterval: aliveTimeInterval,
+		ReconnectInterval:            10 * aliveTimeInterval,
+		MaxConnectionAttempts:        DefMaxConnectionAttempts,
+		MsgExpirationFactor:          DefMsgExpirationFactor,
+	}
+)
 
 func init() {
 	util.SetupTestLogging()
@@ -1548,7 +1550,6 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	for i := 0; i < peersNum; i++ {
 		instances[i].Stop()
 	}
-
 }
 
 func TestAliveMsgStore(t *testing.T) {
@@ -1576,7 +1577,7 @@ func TestAliveMsgStore(t *testing.T) {
 		aliveMsgs = append(aliveMsgs, aliveMsg)
 	}
 
-	//Check new alive msgs
+	// Check new alive msgs
 	for _, msg := range aliveMsgs {
 		require.True(t, instances[0].discoveryImpl().msgStore.CheckValid(msg), "aliveMsgStore CheckValid returns false on new AliveMsg")
 	}

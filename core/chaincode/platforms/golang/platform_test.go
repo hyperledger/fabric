@@ -74,7 +74,7 @@ func TestValidatePath(t *testing.T) {
 	reset := setupGopath(t, "testdata")
 	defer reset()
 
-	var tests = []struct {
+	tests := []struct {
 		path string
 		succ bool
 	}{
@@ -100,7 +100,7 @@ func TestNormalizePath(t *testing.T) {
 	require.NoError(t, err, "failed to create temporary directory")
 	defer os.RemoveAll(tempdir)
 
-	var tests = []struct {
+	tests := []struct {
 		path   string
 		result string
 	}{
@@ -121,9 +121,9 @@ func TestNormalizePath(t *testing.T) {
 
 // copied from the tar package
 const (
-	c_ISUID = 04000   // Set uid
-	c_ISGID = 02000   // Set gid
-	c_ISREG = 0100000 // Regular file
+	c_ISUID = 0o4000   // Set uid
+	c_ISGID = 0o2000   // Set gid
+	c_ISREG = 0o100000 // Regular file
 )
 
 func TestValidateCodePackage(t *testing.T) {
@@ -134,16 +134,16 @@ func TestValidateCodePackage(t *testing.T) {
 		mode            int64
 		successExpected bool
 	}{
-		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/main.go", mode: c_ISREG | 0400, successExpected: false},
-		{name: "NoCode", path: "path/to/somewhere", file: "src/path/to/somewhere/main.go", mode: c_ISREG | 0400, successExpected: true},
-		{name: "NoCode", path: "path/to/somewhere", file: "src/path/to/somewhere/main.go", mode: c_ISREG | 0644, successExpected: true},
-		{name: "NoCode", path: "path/to/somewhere", file: "src/path/to/somewhere/main.go", mode: c_ISREG | 0755, successExpected: true},
-		{name: "NoCode", path: "path/to/directory/", file: "src/path/to/directory/", mode: c_ISDIR | 0755, successExpected: true},
-		{name: "NoCode", path: "path/to/directory", file: "src/path/to/directory", mode: c_ISDIR | 0755, successExpected: true},
-		{name: "NoCode", path: "path/to/setuid", file: "src/path/to/setuid", mode: c_ISUID | 0755, successExpected: false},
-		{name: "NoCode", path: "path/to/setgid", file: "src/path/to/setgid", mode: c_ISGID | 0755, successExpected: false},
-		{name: "NoCode", path: "path/to/sticky/", file: "src/path/to/sticky/", mode: c_ISDIR | c_ISGID | 0755, successExpected: false},
-		{name: "NoCode", path: "path/to/somewhere", file: "META-INF/path/to/a/meta3", mode: 0100400, successExpected: true},
+		{name: "NoCode", path: "path/to/somewhere", file: "/src/path/to/somewhere/main.go", mode: c_ISREG | 0o400, successExpected: false},
+		{name: "NoCode", path: "path/to/somewhere", file: "src/path/to/somewhere/main.go", mode: c_ISREG | 0o400, successExpected: true},
+		{name: "NoCode", path: "path/to/somewhere", file: "src/path/to/somewhere/main.go", mode: c_ISREG | 0o644, successExpected: true},
+		{name: "NoCode", path: "path/to/somewhere", file: "src/path/to/somewhere/main.go", mode: c_ISREG | 0o755, successExpected: true},
+		{name: "NoCode", path: "path/to/directory/", file: "src/path/to/directory/", mode: c_ISDIR | 0o755, successExpected: true},
+		{name: "NoCode", path: "path/to/directory", file: "src/path/to/directory", mode: c_ISDIR | 0o755, successExpected: true},
+		{name: "NoCode", path: "path/to/setuid", file: "src/path/to/setuid", mode: c_ISUID | 0o755, successExpected: false},
+		{name: "NoCode", path: "path/to/setgid", file: "src/path/to/setgid", mode: c_ISGID | 0o755, successExpected: false},
+		{name: "NoCode", path: "path/to/sticky/", file: "src/path/to/sticky/", mode: c_ISDIR | c_ISGID | 0o755, successExpected: false},
+		{name: "NoCode", path: "path/to/somewhere", file: "META-INF/path/to/a/meta3", mode: 0o100400, successExpected: true},
 	}
 
 	for _, tt := range tests {
@@ -238,7 +238,7 @@ func TestGopathDeploymentPayload(t *testing.T) {
 		require.Contains(t, contents, "META-INF/statedb/couchdb/indexes/indexOwner.json")
 	})
 
-	var tests = []struct {
+	tests := []struct {
 		path string
 		succ bool
 	}{

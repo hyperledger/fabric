@@ -64,6 +64,7 @@ func TestPvtGetNoCollection(t *testing.T) {
 	require.Error(t, err)
 	require.IsType(t, &ledger.CollConfigNotDefinedError{}, err)
 }
+
 func TestPvtPutNoCollection(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
 	testEnv.init(t, "test-pvtdata-put-no-collection", nil)

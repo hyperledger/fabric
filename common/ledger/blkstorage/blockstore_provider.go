@@ -79,7 +79,7 @@ func NewProvider(conf *Conf, indexConfig *IndexConfig, metricsProvider metrics.P
 		}
 
 		logger.Info("Creating new file ledger directory at", dirPath)
-		if err = os.MkdirAll(dirPath, 0755); err != nil {
+		if err = os.MkdirAll(dirPath, 0o755); err != nil {
 			return nil, errors.Wrapf(err, "failed to create ledger directory: %s", dirPath)
 		}
 	}

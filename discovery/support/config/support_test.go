@@ -38,7 +38,7 @@ func TestMSPIDMapping(t *testing.T) {
 	}
 
 	dir := filepath.Join(os.TempDir(), fmt.Sprintf("TestMSPIDMapping_%s", randString()))
-	os.Mkdir(dir, 0700)
+	os.Mkdir(dir, 0o700)
 	defer os.RemoveAll(dir)
 
 	cryptogen, err := gexec.Build("github.com/hyperledger/fabric/cmd/cryptogen")

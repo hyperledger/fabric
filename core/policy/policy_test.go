@@ -45,7 +45,8 @@ func TestCheckPolicyBySignedDataInvalidArgs(t *testing.T) {
 					Deserializer: &mocks.MockIdentityDeserializer{
 						Identity: []byte("Alice"),
 						Msg:      []byte("msg1"),
-					}},
+					},
+				},
 			},
 		},
 	}

@@ -31,7 +31,7 @@ func TestOidFromNamedCurve(t *testing.T) {
 		ok  bool
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		name     string
 		curve    elliptic.Curve
 		expected result
@@ -85,7 +85,6 @@ func TestOidFromNamedCurve(t *testing.T) {
 			require.Equal(t, ok, test.expected.ok)
 		})
 	}
-
 }
 
 func TestECDSAKeys(t *testing.T) {

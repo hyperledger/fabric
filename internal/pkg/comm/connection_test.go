@@ -21,7 +21,7 @@ const (
 	numChildOrgs = 2
 )
 
-//string for cert filenames
+// string for cert filenames
 var (
 	orgCACert   = filepath.Join("testdata", "certs", "Org%d-cert.pem")
 	childCACert = filepath.Join("testdata", "certs", "Org%d-child%d-cert.pem")

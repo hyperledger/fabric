@@ -391,7 +391,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		})
 	}
 
-	//test use case when consenter has expired certificates
+	// test use case when consenter has expired certificates
 	tlsCaCertBytes, err := ioutil.ReadFile(filepath.Join(ca1Dir, "ca.pem"))
 	require.Nil(t, err)
 	tlsCaCert, err := parseCertificateFromBytes(tlsCaCertBytes)

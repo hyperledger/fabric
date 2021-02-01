@@ -81,7 +81,8 @@ func signedByFabricEntity(mspId string, role mb.MSPRole_MSPRoleType) *cb.Signatu
 	// specify the principal: it's a member of the msp we just found
 	principal := &mb.MSPPrincipal{
 		PrincipalClassification: mb.MSPPrincipal_ROLE,
-		Principal:               protoMarshalOrPanic(&mb.MSPRole{Role: role, MspIdentifier: mspId})}
+		Principal:               protoMarshalOrPanic(&mb.MSPRole{Role: role, MspIdentifier: mspId}),
+	}
 
 	// create the policy: it requires exactly 1 signature from the first (and only) principal
 	p := &cb.SignaturePolicyEnvelope{
@@ -99,7 +100,8 @@ func SignedByMspAdmin(mspId string) *cb.SignaturePolicyEnvelope {
 	// specify the principal: it's a member of the msp we just found
 	principal := &mb.MSPPrincipal{
 		PrincipalClassification: mb.MSPPrincipal_ROLE,
-		Principal:               protoMarshalOrPanic(&mb.MSPRole{Role: mb.MSPRole_ADMIN, MspIdentifier: mspId})}
+		Principal:               protoMarshalOrPanic(&mb.MSPRole{Role: mb.MSPRole_ADMIN, MspIdentifier: mspId}),
+	}
 
 	// create the policy: it requires exactly 1 signature from the first (and only) principal
 	p := &cb.SignaturePolicyEnvelope{
@@ -111,7 +113,7 @@ func SignedByMspAdmin(mspId string) *cb.SignaturePolicyEnvelope {
 	return p
 }
 
-//wrapper for generating "any of a given role" type policies
+// wrapper for generating "any of a given role" type policies
 func signedByAnyOfGivenRole(role mb.MSPRole_MSPRoleType, ids []string) *cb.SignaturePolicyEnvelope {
 	return SignedByNOutOfGivenRole(1, role, ids)
 }
@@ -126,7 +128,8 @@ func SignedByNOutOfGivenRole(n int32, role mb.MSPRole_MSPRoleType, ids []string)
 	for i, id := range ids {
 		principals[i] = &mb.MSPPrincipal{
 			PrincipalClassification: mb.MSPPrincipal_ROLE,
-			Principal:               protoMarshalOrPanic(&mb.MSPRole{Role: role, MspIdentifier: id})}
+			Principal:               protoMarshalOrPanic(&mb.MSPRole{Role: role, MspIdentifier: id}),
+		}
 		sigspolicy[i] = SignedBy(int32(i))
 	}
 

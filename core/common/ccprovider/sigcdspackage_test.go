@@ -68,8 +68,10 @@ func TestPutSignedCDSErrorPaths(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)
 
-	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
-		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
+		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
+		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}},
+	}, CodePackage: []byte("code")}
 
 	ccpack, b, _, err := processSignedCDS(cds, &common.SignaturePolicyEnvelope{Version: 1}, true)
 	if err != nil {
@@ -163,8 +165,10 @@ func TestGetCDSDataErrorPaths(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)
 
-	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
-		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
+		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
+		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}},
+	}, CodePackage: []byte("code")}
 
 	ccpack, _, _, err := processSignedCDS(cds, &common.SignaturePolicyEnvelope{Version: 1}, true)
 	if err != nil {
@@ -200,8 +204,10 @@ func TestInitFromBufferErrorPaths(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)
 
-	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
-		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
+		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
+		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}},
+	}, CodePackage: []byte("code")}
 
 	ccpack, _, _, err := processSignedCDS(cds, &common.SignaturePolicyEnvelope{Version: 1}, true)
 	if err != nil {
@@ -218,8 +224,10 @@ func TestValidateSignedCCErrorPaths(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)
 
-	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
-		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("code")}
+	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{
+		Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"},
+		Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}},
+	}, CodePackage: []byte("code")}
 
 	ccpack, _, _, err := processSignedCDS(cds, &common.SignaturePolicyEnvelope{Version: 1}, true)
 	if err != nil {
@@ -227,7 +235,7 @@ func TestValidateSignedCCErrorPaths(t *testing.T) {
 		return
 	}
 
-	//validate with invalid name
+	// validate with invalid name
 	cd := &ChaincodeData{Name: "invalname", Version: "0"}
 	err = ccpack.ValidateCC(cd)
 	require.Error(t, err)
@@ -321,22 +329,22 @@ func TestInvalidSigCDSGetCCPackage(t *testing.T) {
 	}
 }
 
-//switch the chaincodes on the FS and validate
+// switch the chaincodes on the FS and validate
 func TestSignedCDSSwitchChaincodes(t *testing.T) {
 	ccdir := setupccdir()
 	defer os.RemoveAll(ccdir)
 
-	//someone modifyed the code on the FS with "badcode"
+	// someone modifyed the code on the FS with "badcode"
 	cds := &pb.ChaincodeDeploymentSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: 1, ChaincodeId: &pb.ChaincodeID{Name: "testcc", Version: "0"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("")}}}, CodePackage: []byte("badcode")}
 
-	//write the bad code to the fs
+	// write the bad code to the fs
 	badccpack, _, _, err := processSignedCDS(cds, &common.SignaturePolicyEnvelope{Version: 1}, true)
 	if err != nil {
 		t.Fatalf("error putting CDS to FS %s", err)
 		return
 	}
 
-	//mimic the good code ChaincodeData from the instantiate...
+	// mimic the good code ChaincodeData from the instantiate...
 	cds.CodePackage = []byte("goodcode")
 
 	//...and generate the CD for it (don't overwrite the bad code)

@@ -42,7 +42,6 @@ func (exp *expirationRejectRule) Apply(message *common.Envelope) error {
 		return nil
 	}
 	signedData, err := protoutil.EnvelopeAsSignedData(message)
-
 	if err != nil {
 		return errors.Errorf("could not convert message to signedData: %s", err)
 	}

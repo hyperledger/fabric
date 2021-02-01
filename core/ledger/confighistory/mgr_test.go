@@ -25,11 +25,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testNewHashFunc = func() (hash.Hash, error) {
-		return sha256.New(), nil
-	}
-)
+var testNewHashFunc = func() (hash.Hash, error) {
+	return sha256.New(), nil
+}
 
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec("confighistory=debug")
@@ -48,7 +46,8 @@ func TestWithNoCollectionConfig(t *testing.T) {
 	testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(mockCCInfoProvider, "chaincode1", nil)
 	err = mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
 		LedgerID:           "ledger1",
-		CommittingBlockNum: 50},
+		CommittingBlockNum: 50,
+	},
 	)
 	require.NoError(t, err)
 	retriever := mgr.GetRetriever("ledger1")
@@ -73,7 +72,8 @@ func TestWithEmptyCollectionConfig(t *testing.T) {
 	)
 	err = mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
 		LedgerID:           "ledger1",
-		CommittingBlockNum: 50},
+		CommittingBlockNum: 50,
+	},
 	)
 	require.NoError(t, err)
 	retriever := mgr.GetRetriever("ledger1")
@@ -103,7 +103,8 @@ func TestMgrQueries(t *testing.T) {
 			testutilEquipMockCCInfoProviderToReturnDesiredCollConfig(mockCCInfoProvider, chaincodeName, collConfigPackage)
 			err = mgr.HandleStateUpdates(&ledger.StateUpdateTrigger{
 				LedgerID:           ledgerid,
-				CommittingBlockNum: committingBlockNum},
+				CommittingBlockNum: committingBlockNum,
+			},
 			)
 			require.NoError(t, err)
 		}
@@ -568,7 +569,7 @@ func TestExportConfigHistoryErrorCase(t *testing.T) {
 	os.RemoveAll(env.testSnapshotDir)
 
 	// error during metadata file creation
-	require.NoError(t, os.MkdirAll(env.testSnapshotDir, 0700))
+	require.NoError(t, os.MkdirAll(env.testSnapshotDir, 0o700))
 	metadataFilePath := filepath.Join(env.testSnapshotDir, snapshotMetadataFileName)
 	_, err = os.Create(metadataFilePath)
 	require.NoError(t, err)
@@ -577,7 +578,7 @@ func TestExportConfigHistoryErrorCase(t *testing.T) {
 	os.RemoveAll(env.testSnapshotDir)
 
 	// error while reading from leveldb
-	require.NoError(t, os.MkdirAll(env.testSnapshotDir, 0700))
+	require.NoError(t, os.MkdirAll(env.testSnapshotDir, 0o700))
 	env.mgr.dbProvider.Close()
 	_, err = retriever.ExportConfigHistory(env.testSnapshotDir, testNewHashFunc)
 	require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")

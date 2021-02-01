@@ -48,7 +48,7 @@ func TestRWSetV1BackwardCompatible(t *testing.T) {
 func PrepareBinaryFileSampleRWSetV1(t *testing.T) {
 	b, err := proto.Marshal(constructSampleRWSet())
 	require.NoError(t, err)
-	require.NoError(t, ioutil.WriteFile(rwsetV1ProtoBytesFile, b, 0644))
+	require.NoError(t, ioutil.WriteFile(rwsetV1ProtoBytesFile, b, 0o644))
 }
 
 func constructSampleRWSet() *rwset.TxReadWriteSet {

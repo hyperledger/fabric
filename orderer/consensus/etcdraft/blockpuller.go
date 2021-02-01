@@ -65,7 +65,6 @@ func NewBlockPuller(support consensus.ConsenterSupport,
 	clusterConfig localconfig.Cluster,
 	bccsp bccsp.BCCSP,
 ) (BlockPuller, error) {
-
 	verifyBlockSequence := func(blocks []*common.Block, _ string) error {
 		return cluster.VerifyBlocks(blocks, support)
 	}

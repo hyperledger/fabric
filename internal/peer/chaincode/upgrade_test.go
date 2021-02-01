@@ -45,14 +45,18 @@ func TestUpgradeCmd(t *testing.T) {
 	cmd := upgradeCmd(mockCF, cryptoProvider)
 	addFlags(cmd)
 
-	args := []string{"-n", "mychaincode", "-p", "mychaincodepath",
-		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
+	args := []string{
+		"-n", "mychaincode", "-p", "mychaincodepath",
+		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}",
+	}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	require.Error(t, err, "'peer chaincode upgrade' command should have failed without -C flag")
 
-	args = []string{"-C", "mychannel", "-n", "mychaincode", "-p", "mychaincodepath",
-		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
+	args = []string{
+		"-C", "mychannel", "-n", "mychaincode", "-p", "mychaincodepath",
+		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}",
+	}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	require.NoError(t, err, "'peer chaincode upgrade' command failed")
@@ -81,8 +85,10 @@ func TestUpgradeCmdEndorseFail(t *testing.T) {
 	cmd := upgradeCmd(mockCF, cryptoProvider)
 	addFlags(cmd)
 
-	args := []string{"-C", "mychannel", "-n", "mychaincode", "-p", "mychaincodepath",
-		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
+	args := []string{
+		"-C", "mychannel", "-n", "mychaincode", "-p", "mychaincodepath",
+		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}",
+	}
 	cmd.SetArgs(args)
 
 	expectErrMsg := fmt.Sprintf("could not assemble transaction, err proposal response was not successful, error code %d, msg %s", errCode, errMsg)
@@ -155,8 +161,10 @@ func TestUpgradeCmdWithNilCF(t *testing.T) {
 	cmd := upgradeCmd(nil, cryptoProvider)
 	addFlags(cmd)
 
-	args := []string{"-C", "mychannel", "-n", "mychaincode", "-p", "mychaincodepath",
-		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}"}
+	args := []string{
+		"-C", "mychannel", "-n", "mychaincode", "-p", "mychaincodepath",
+		"-v", "anotherversion", "-c", "{\"Function\":\"init\",\"Args\": [\"param\",\"1\"]}",
+	}
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	require.Error(t, err, "'peer chaincode upgrade' command should have failed without a panic")

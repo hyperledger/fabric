@@ -404,7 +404,6 @@ func TestNewDataRetriever_EmptyWriteSet(t *testing.T) {
 	}]
 	assertion.NotEmpty(pvtRWSet)
 	assertion.Empty(pvtRWSet.RWSet)
-
 }
 
 func TestNewDataRetriever_FailedObtainConfigHistoryRetriever(t *testing.T) {

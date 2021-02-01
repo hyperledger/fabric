@@ -17,7 +17,7 @@ import (
 )
 
 func TestLoggerLevelsActivateSpec(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		spec                 string
 		expectedLevels       map[string]zapcore.Level
 		expectedDefaultLevel zapcore.Level
@@ -108,7 +108,7 @@ func TestLoggerLevelsActivateSpec(t *testing.T) {
 }
 
 func TestLoggerLevelsActivateSpecErrors(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		spec string
 		err  error
 	}{
@@ -135,7 +135,7 @@ func TestLoggerLevelsActivateSpecErrors(t *testing.T) {
 }
 
 func TestSpec(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		input  string
 		output string
 	}{
@@ -159,7 +159,7 @@ func TestSpec(t *testing.T) {
 }
 
 func TestEnabled(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		spec      string
 		enabledAt zapcore.Level
 	}{

@@ -90,12 +90,12 @@ func writeVerifierToFile(ipkBytes []byte, revpkBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirMsp, m.IdemixConfigFileIssuerPublicKey), ipkBytes, 0644)
+	err = ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirMsp, m.IdemixConfigFileIssuerPublicKey), ipkBytes, 0o644)
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirMsp, m.IdemixConfigFileRevocationPublicKey), revpkBytes, 0644)
+	return ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirMsp, m.IdemixConfigFileRevocationPublicKey), revpkBytes, 0o644)
 }
 
 func writeSignerToFile(signerBytes []byte) error {
@@ -103,7 +103,7 @@ func writeSignerToFile(signerBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirUser, m.IdemixConfigFileSigner), signerBytes, 0644)
+	return ioutil.WriteFile(filepath.Join(testDir, m.IdemixConfigDirUser, m.IdemixConfigFileSigner), signerBytes, 0o644)
 }
 
 // setupMSP tests whether we can successfully setup an idemix msp
@@ -122,7 +122,6 @@ func setupMSP() error {
 		return errors.Wrap(err, "Getting MSP failed")
 	}
 	mspConfig, err := m.GetIdemixMspConfig(testDir, "TestName")
-
 	if err != nil {
 		return err
 	}

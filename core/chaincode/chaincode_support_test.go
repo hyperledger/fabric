@@ -162,7 +162,7 @@ func (meqe *mockExecQuerySimulator) GetTxSimulationResults() ([]byte, error) {
 	return simRes.GetPubSimulationBytes()
 }
 
-//initialize peer and start up. If security==enabled, login as vp
+// initialize peer and start up. If security==enabled, login as vp
 func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), error) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	if err != nil {
@@ -314,7 +314,7 @@ func finitMockPeer(peerInstance *peer.Peer, channelIDs ...string) {
 	os.RemoveAll(filepath.Join(os.TempDir(), "hyperledger"))
 }
 
-//store the stream CC mappings here
+// store the stream CC mappings here
 var mockPeerCCSupport = mock.NewMockPeerSupport()
 
 func setupcc(name string) (*mock.MockCCComm, *mock.MockCCComm) {
@@ -327,7 +327,7 @@ func setupcc(name string) (*mock.MockCCComm, *mock.MockCCComm) {
 	return peerSide, ccSide
 }
 
-//assign this to done and failNow and keep using them
+// assign this to done and failNow and keep using them
 func setuperror() chan error {
 	return make(chan error)
 }
@@ -387,18 +387,18 @@ func execCC(t *testing.T, txParams *ccprovider.TransactionParams, ccSide *mock.M
 		t.Fatalf("exec failed with %s", err)
 	}
 
-	//wait
+	// wait
 	processDone(t, done, waitForERROR)
 
 	return nil
 }
 
-//initialize cc support env and startup the chaincode
+// initialize cc support env and startup the chaincode
 func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *ChaincodeSupport) (*mock.MockCCComm, *mock.MockCCComm) {
 	peerSide, ccSide := setupcc(ccname)
 	defer mockPeerCCSupport.RemoveCC(ccname)
 
-	//register peer side with ccsupport
+	// register peer side with ccsupport
 	go func() {
 		chaincodeSupport.HandleChaincodeStream(peerSide)
 	}()
@@ -412,7 +412,7 @@ func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *Ch
 	ccDone := make(chan struct{})
 	defer close(ccDone)
 
-	//start the mock peer
+	// start the mock peer
 	go func() {
 		respSet := &mock.MockResponseSet{
 			DoneFunc:  errorFunc,
@@ -428,7 +428,7 @@ func startCC(t *testing.T, channelID string, ccname string, chaincodeSupport *Ch
 
 	ccSide.Send(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER, Payload: protoutil.MarshalOrPanic(&pb.ChaincodeID{Name: ccname + ":0"}), Txid: "0", ChannelId: channelID})
 
-	//wait for init
+	// wait for init
 	processDone(t, done, false)
 
 	return peerSide, ccSide
@@ -445,7 +445,7 @@ func getTarGZ(t *testing.T, name string, contents []byte) []byte {
 	tr.Write(contents)
 	tr.Close()
 	gw.Close()
-	ioutil.WriteFile("/tmp/t.gz", inputbuf.Bytes(), 0644)
+	ioutil.WriteFile("/tmp/t.gz", inputbuf.Bytes(), 0o644)
 	return inputbuf.Bytes()
 }
 
@@ -463,10 +463,10 @@ func deployCC(t *testing.T, txParams *ccprovider.TransactionParams, ccContext *C
 
 	b := protoutil.MarshalOrPanic(cds)
 
-	//wrap the deployment in an invocation spec to lscc...
+	// wrap the deployment in an invocation spec to lscc...
 	lsccSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_GOLANG, ChaincodeId: &pb.ChaincodeID{Name: "lscc"}, Input: &pb.ChaincodeInput{Args: [][]byte{[]byte("deploy"), []byte(txParams.ChannelID), b}}}}
 
-	//write to lscc
+	// write to lscc
 	if _, _, err := chaincodeSupport.Execute(txParams, "lscc", lsccSpec.ChaincodeSpec.Input); err != nil {
 		t.Fatalf("Error deploying chaincode %v (err: %s)", ccContext, err)
 	}
@@ -486,7 +486,7 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm,
 	txid := util.GenerateUUID()
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
-	//bad txid in response (should be "1"), should fail
+	// bad txid in response (should be "1"), should fail
 	resp := &mock.MockResponse{
 		RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION},
 		RespMsg: &pb.ChaincodeMessage{
@@ -504,7 +504,7 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm,
 
 	execCC(t, txParams, ccSide, ccname, false, true, done, cis, respSet, chaincodeSupport)
 
-	//set the right TxID in response now
+	// set the right TxID in response now
 	resp = &mock.MockResponse{
 		RecvMsg: &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_TRANSACTION},
 		RespMsg: &pb.ChaincodeMessage{
@@ -520,8 +520,8 @@ func initializeCC(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm,
 		Responses: []*mock.MockResponse{resp},
 	}
 
-	//we are not going to reach the chaincode and so won't get a response from it. processDone will not
-	//be triggered by the chaincode stream.  We just expect an error from fabric. Hence pass nil for done
+	// we are not going to reach the chaincode and so won't get a response from it. processDone will not
+	// be triggered by the chaincode stream.  We just expect an error from fabric. Hence pass nil for done
 	execCC(t, txParams, ccSide, "badccname", false, true, nil, cis, respSet, chaincodeSupport)
 
 	//---------try a successful init at last-------
@@ -577,7 +577,7 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm, cha
 
 	execCC(t, txParams, ccSide, ccname, false, false, done, cis, respSet, chaincodeSupport)
 
-	//delete the extra var
+	// delete the extra var
 	respSet = &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
@@ -591,7 +591,7 @@ func invokeCC(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm, cha
 	txParams.TxID = "3"
 	execCC(t, txParams, ccSide, ccname, false, false, done, cis, respSet, chaincodeSupport)
 
-	//get the extra var and delete it
+	// get the extra var and delete it
 	respSet = &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
@@ -621,7 +621,7 @@ func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSi
 	txid := util.GenerateUUID()
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
-	//create the response
+	// create the response
 	queryStateNextFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
 		qr := &pb.QueryResponse{}
 		proto.Unmarshal(reqMsg.Payload, qr)
@@ -680,7 +680,7 @@ func getQueryStateByRange(t *testing.T, collection, chainID, ccname string, ccSi
 
 func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.MockCCComm, chaincodeSupport *ChaincodeSupport) error {
 	calledCC := "calledCC"
-	//starts and registers the CC
+	// starts and registers the CC
 	_, calledCCSide := startCC(t, chainID2, calledCC, chaincodeSupport)
 	if calledCCSide == nil {
 		t.Fatalf("start up failed for called CC")
@@ -697,7 +697,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.MockCCCo
 	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("deploycc")}, Decorations: nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid := util.GenerateUUID()
-	//first deploy the new cc to LSCC
+	// first deploy the new cc to LSCC
 	txParams, txsim := startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
 	ccContext := &CCContext{
@@ -707,17 +707,17 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.MockCCCo
 
 	deployCC(t, txParams, ccContext, cis.ChaincodeSpec, chaincodeSupport)
 
-	//commit
+	// commit
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
 
-	//now do the cc2cc
+	// now do the cc2cc
 	chaincodeID = &pb.ChaincodeID{Name: ccname, Version: "0"}
 	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("invokecc")}, Decorations: nil}
 	cis = &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid = util.GenerateUUID()
 	txParams, txsim = startTx(t, chaincodeSupport.Peer, chainID, cis, txid)
 
-	//call a callable system CC, a regular cc, a regular but different cc on a different chain, a regular but same cc on a different chain,  and an uncallable system cc and expect an error inthe last one
+	// call a callable system CC, a regular cc, a regular but different cc on a different chain, a regular but same cc on a different chain,  and an uncallable system cc and expect an error inthe last one
 	respSet := &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
@@ -742,7 +742,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.MockCCCo
 
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
 
-	//finally lets try a Bad ACL with CC-calling-CC
+	// finally lets try a Bad ACL with CC-calling-CC
 	chaincodeID = &pb.ChaincodeID{Name: ccname, Version: "0"}
 	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("invokecc")}, Decorations: nil}
 	cis = &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
@@ -757,7 +757,7 @@ func cc2cc(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.MockCCCo
 		return nil
 	}
 
-	//call regular cc but without ACL on called CC
+	// call regular cc but without ACL on called CC
 	respSet = &mock.MockResponseSet{
 		DoneFunc:  errorFunc,
 		ErrorFunc: nil,
@@ -806,7 +806,7 @@ func getQueryResult(t *testing.T, collection, chainID, ccname string, ccSide *mo
 
 	queryExec.txsim = txParams.TXSimulator
 
-	//create the response
+	// create the response
 	queryStateNextFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
 		qr := &pb.QueryResponse{}
 		proto.Unmarshal(reqMsg.Payload, qr)
@@ -886,7 +886,7 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm, c
 
 	queryExec.txsim = txParams.TXSimulator
 
-	//create the response
+	// create the response
 	queryStateNextFunc := func(reqMsg *pb.ChaincodeMessage) *pb.ChaincodeMessage {
 		qr := &pb.QueryResponse{}
 		proto.Unmarshal(reqMsg.Payload, qr)
@@ -917,7 +917,7 @@ func getHistory(t *testing.T, chainID, ccname string, ccSide *mock.MockCCComm, c
 	return nil
 }
 
-//success case
+// success case
 func TestStartAndWaitSuccess(t *testing.T) {
 	handlerRegistry := NewHandlerRegistry(false)
 	fakeRuntime := &mock.Runtime{}
@@ -934,14 +934,14 @@ func TestStartAndWaitSuccess(t *testing.T) {
 	}
 
 	fakeStreamHandler := &mock.ChaincodeStreamHandler{}
-	//actual test - everythings good
+	// actual test - everythings good
 	err := launcher.Launch("testcc:0", fakeStreamHandler)
 	if err != nil {
 		t.Fatalf("expected success but failed with error %s", err)
 	}
 }
 
-//test timeout error
+// test timeout error
 func TestStartAndWaitTimeout(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
 	fakeRuntime.StartStub = func(_ string, _ *ccintf.PeerConnection) error {
@@ -957,14 +957,14 @@ func TestStartAndWaitTimeout(t *testing.T) {
 	}
 
 	fakeStreamHandler := &mock.ChaincodeStreamHandler{}
-	//the actual test - timeout 1000 > 500
+	// the actual test - timeout 1000 > 500
 	err := launcher.Launch("testcc:0", fakeStreamHandler)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
 	}
 }
 
-//test container return error
+// test container return error
 func TestStartAndWaitLaunchError(t *testing.T) {
 	fakeRuntime := &mock.Runtime{}
 	fakeRuntime.StartStub = func(_ string, _ *ccintf.PeerConnection) error {
@@ -979,7 +979,7 @@ func TestStartAndWaitLaunchError(t *testing.T) {
 	}
 
 	fakeStreamHandler := &mock.ChaincodeStreamHandler{}
-	//actual test - container launch gives error
+	// actual test - container launch gives error
 	err := launcher.Launch("testcc:0", fakeStreamHandler)
 	if err == nil {
 		t.Fatalf("expected error but succeeded")
@@ -1114,7 +1114,7 @@ func genNewPld(t *testing.T, ccName string) []byte {
 }
 
 func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.MockCCComm, chaincodeSupport *ChaincodeSupport) {
-	//first deploy the CC on chainID2
+	// first deploy the CC on chainID2
 	chaincodeID := &pb.ChaincodeID{Name: ccname, Version: "0"}
 	ci := &pb.ChaincodeInput{Args: [][]byte{[]byte("deploycc")}, Decorations: nil}
 	cis := &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
@@ -1129,7 +1129,7 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.Mock
 
 	deployCC(t, txParams, ccContext, cis.ChaincodeSpec, chaincodeSupport)
 
-	//commit
+	// commit
 	endTx(t, chaincodeSupport.Peer, txParams, txsim, cis)
 
 	done := setuperror()
@@ -1138,8 +1138,8 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.Mock
 		done <- err
 	}
 
-	//now for the test - call the same cc on a different channel(should succeed), call the same cc on the same channel(should fail)
-	//Note the error "Another request pending for this Txid. Cannot process." in the logs under TX "cctosamecctx"
+	// now for the test - call the same cc on a different channel(should succeed), call the same cc on the same channel(should fail)
+	// Note the error "Another request pending for this Txid. Cannot process." in the logs under TX "cctosamecctx"
 	ci = &pb.ChaincodeInput{Args: [][]byte{[]byte("invoke"), []byte("A"), []byte("B"), []byte("10")}, Decorations: nil}
 	cis = &pb.ChaincodeInvocationSpec{ChaincodeSpec: &pb.ChaincodeSpec{Type: pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeId: chaincodeID, Input: ci}}
 	txid = util.GenerateUUID()
@@ -1161,7 +1161,7 @@ func cc2SameCC(t *testing.T, chainID, chainID2, ccname string, ccSide *mock.Mock
 }
 
 func TestCCFramework(t *testing.T) {
-	//register 2 channels
+	// register 2 channels
 	chainID := "mockchainid"
 	chainID2 := "secondchain"
 	peerInstance, chaincodeSupport, cleanup, err := initMockPeer(chainID, chainID2)
@@ -1170,46 +1170,46 @@ func TestCCFramework(t *testing.T) {
 	}
 	defer cleanup()
 	defer finitMockPeer(peerInstance, chainID, chainID2)
-	//create a chaincode
+	// create a chaincode
 	ccname := "shimTestCC"
 
-	//starts and registers the CC
+	// starts and registers the CC
 	_, ccSide := startCC(t, chainID, ccname, chaincodeSupport)
 	if ccSide == nil {
 		t.Fatalf("start up failed")
 	}
 	defer ccSide.Quit()
 
-	//call's init and does some PUT (after doing some negative testing)
+	// call's init and does some PUT (after doing some negative testing)
 	initializeCC(t, chainID, ccname, ccSide, chaincodeSupport)
 
-	//chaincode support should not allow dups
+	// chaincode support should not allow dups
 	handler := &Handler{chaincodeID: ccname + ":0", BuiltinSCCs: chaincodeSupport.BuiltinSCCs}
 	if err := chaincodeSupport.HandlerRegistry.Register(handler); err == nil {
 		t.Fatalf("expected re-register to fail")
 	}
 
-	//call's init and does some PUT (after doing some negative testing)
+	// call's init and does some PUT (after doing some negative testing)
 	initializeCC(t, chainID2, ccname, ccSide, chaincodeSupport)
 
-	//call's invoke and do some GET
+	// call's invoke and do some GET
 	invokeCC(t, chainID, ccname, ccSide, chaincodeSupport)
 
-	//call's query state range
+	// call's query state range
 	getQueryStateByRange(t, "", chainID, ccname, ccSide, chaincodeSupport)
 
-	//call's cc2cc on the same chaincode only call to chainID2 should succeed
+	// call's cc2cc on the same chaincode only call to chainID2 should succeed
 	cc2SameCC(t, chainID, chainID2, ccname, ccSide, chaincodeSupport)
 
-	//call's cc2cc (variation with syscc calls)
+	// call's cc2cc (variation with syscc calls)
 	cc2cc(t, chainID, chainID2, ccname, ccSide, chaincodeSupport)
 	// reset mock
 	chaincodeSupport.ACLProvider = &mock.ACLProvider{}
 
-	//call's query result
+	// call's query result
 	getQueryResult(t, "", chainID, ccname, ccSide, chaincodeSupport)
 
-	//call's history result
+	// call's history result
 	getHistory(t, chainID, ccname, ccSide, chaincodeSupport)
 
 	ccSide.Quit()
@@ -1366,7 +1366,7 @@ func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.Chainco
 
 			txsim.Done()
 
-			//get simulation results
+			// get simulation results
 			if txSimulationResults, err = txsim.GetTxSimulationResults(); err != nil {
 				return err
 			}
@@ -1391,7 +1391,7 @@ func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.Chainco
 				return err
 			}
 
-			//create the block with 1 transaction
+			// create the block with 1 transaction
 			bcInfo, err := lgr.GetBlockchainInfo()
 			if err != nil {
 				return err
@@ -1401,9 +1401,9 @@ func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.Chainco
 			txsFilter := txflags.NewWithValues(len(block.Data.Data), pb.TxValidationCode_VALID)
 			block.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
-			//commit the block
+			// commit the block
 
-			//see comment on _commitLock_
+			// see comment on _commitLock_
 			_commitLock_.Lock()
 			defer _commitLock_.Unlock()
 

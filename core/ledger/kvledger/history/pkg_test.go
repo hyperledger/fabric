@@ -21,15 +21,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testHashFunc = func(data []byte) ([]byte, error) {
-		h := sha256.New()
-		if _, err := h.Write(data); err != nil {
-			return nil, err
-		}
-		return h.Sum(nil), nil
+var testHashFunc = func(data []byte) ([]byte, error) {
+	h := sha256.New()
+	if _, err := h.Write(data); err != nil {
+		return nil, err
 	}
-)
+	return h.Sum(nil), nil
+}
 
 type levelDBLockBasedHistoryEnv struct {
 	t                     testing.TB
@@ -105,7 +103,6 @@ type testBlockStoreEnv struct {
 }
 
 func newBlockStorageTestEnv(t testing.TB) *testBlockStoreEnv {
-
 	testPath, err := ioutil.TempDir("", "historyleveldb-")
 	if err != nil {
 		panic(err)

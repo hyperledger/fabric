@@ -283,7 +283,8 @@ func (ds *deliverServer) stop() {
 func (ds *deliverServer) enqueueResponse(seq uint64) {
 	select {
 	case ds.blocks() <- &orderer.DeliverResponse{
-		Type: &orderer.DeliverResponse_Block{Block: protoutil.NewBlock(seq, nil)}}:
+		Type: &orderer.DeliverResponse_Block{Block: protoutil.NewBlock(seq, nil)},
+	}:
 	case <-ds.done:
 	}
 }
@@ -1029,7 +1030,6 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 	for _, testCase := range testcases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-
 			osn := newClusterNode(t)
 			defer osn.stop()
 
@@ -1218,7 +1218,7 @@ func TestBlockPullerToBadEndpointWithStop(t *testing.T) {
 	wgRelease.Add(1)
 
 	go func() {
-		//But this will get stuck until the StopChannel is closed
+		// But this will get stuck until the StopChannel is closed
 		require.Nil(t, bp.PullBlock(uint64(1)))
 		bp.Close()
 		wgRelease.Done()

@@ -209,13 +209,11 @@ func getChainInfo(vledger ledger.PeerLedger) pb.Response {
 func getBlockByTxID(vledger ledger.PeerLedger, rawTxID []byte) pb.Response {
 	txID := string(rawTxID)
 	block, err := vledger.GetBlockByTxID(txID)
-
 	if err != nil {
 		return shim.Error(fmt.Sprintf("Failed to get block for txID %s, error %s", txID, err))
 	}
 
 	bytes, err := protoutil.Marshal(block)
-
 	if err != nil {
 		return shim.Error(err.Error())
 	}

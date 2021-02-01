@@ -190,7 +190,6 @@ func TestBlockStoreProvider(t *testing.T) {
 	exists, err := provider.Exists(constructLedgerid(numStores + 1))
 	require.NoError(t, err)
 	require.Equal(t, false, exists)
-
 }
 
 func TestDrop(t *testing.T) {

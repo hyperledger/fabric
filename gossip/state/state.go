@@ -163,8 +163,7 @@ type GossipStateProviderImpl struct {
 }
 
 // stateRequestValidator facilitates validation of the state request messages
-type stateRequestValidator struct {
-}
+type stateRequestValidator struct{}
 
 // validate checks for RemoteStateRequest message validity
 func (v *stateRequestValidator) validate(request *proto.RemoteStateRequest, batchSize uint64) error {
@@ -292,7 +291,6 @@ func (s *GossipStateProviderImpl) receiveAndQueueGossipMessages(ch <-chan *proto
 					s.logger.Warningf("Block [%d] received from gossip wasn't added to payload buffer: %v", dataMsg.Payload.SeqNum, err)
 					return
 				}
-
 			} else {
 				s.logger.Debug("Gossip message received is not of data message type, usually this should not happen.")
 			}
@@ -345,12 +343,14 @@ func (s *GossipStateProviderImpl) privateDataMessage(msg protoext.ReceivedMessag
 
 	txPvtRwSet := &rwset.TxPvtReadWriteSet{
 		DataModel: rwset.TxReadWriteSet_KV,
-		NsPvtRwset: []*rwset.NsPvtReadWriteSet{{
-			Namespace: pvtDataMsg.Payload.Namespace,
-			CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{{
-				CollectionName: collectionName,
-				Rwset:          pvtRwSet,
-			}}},
+		NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+			{
+				Namespace: pvtDataMsg.Payload.Namespace,
+				CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{{
+					CollectionName: collectionName,
+					Rwset:          pvtRwSet,
+				}},
+			},
 		},
 	}
 
@@ -448,7 +448,6 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg protoext.ReceivedMessag
 			Identity:  connInfo.Identity,
 		}
 		block, pvtData, err := s.ledger.GetPvtDataAndBlockByNum(seqNum, peerAuthInfo)
-
 		if err != nil {
 			s.logger.Errorf("cannot read block number %d from ledger, because %+v, skipping...", seqNum, err)
 			continue
@@ -460,7 +459,6 @@ func (s *GossipStateProviderImpl) handleStateRequest(msg protoext.ReceivedMessag
 		}
 
 		blockBytes, err := pb.Marshal(block)
-
 		if err != nil {
 			s.logger.Errorf("Could not marshal block: %+v", errors.WithStack(err))
 			continue
@@ -791,7 +789,6 @@ func (s *GossipStateProviderImpl) straggler(currHeight uint64, receivedPayload *
 }
 
 func (s *GossipStateProviderImpl) commitBlock(block *common.Block, pvtData util.PvtDataCollections) error {
-
 	t1 := time.Now()
 
 	// Commit block with available private transactions

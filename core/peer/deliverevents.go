@@ -178,7 +178,6 @@ func (bprs *blockAndPrivateDataResponseSender) getPrivateData(
 	channelID string,
 	signedData *protoutil.SignedData,
 ) (map[uint64]*rwset.TxPvtReadWriteSet, error) {
-
 	channel, ok := chain.(Chain)
 	if !ok {
 		return nil, errors.New("wrong chain type")
@@ -430,7 +429,7 @@ func (ac aggregatedCollections) addCollection(seqInBlock uint64, dm rwset.TxRead
 // asPrivateDataMap converts aggregatedCollections to map[uint64]*rwset.TxPvtReadWriteSet
 // as defined in BlockAndPrivateData protobuf message.
 func (ac aggregatedCollections) asPrivateDataMap() map[uint64]*rwset.TxPvtReadWriteSet {
-	var pvtDataMap = make(map[uint64]*rwset.TxPvtReadWriteSet)
+	pvtDataMap := make(map[uint64]*rwset.TxPvtReadWriteSet)
 	for seq, ns := range ac {
 		// create a txPvtReadWriteSet and add collection data to it
 		txPvtRWSet := &rwset.TxPvtReadWriteSet{
@@ -451,8 +450,7 @@ func (ac aggregatedCollections) asPrivateDataMap() map[uint64]*rwset.TxPvtReadWr
 
 // identityDeserializerMgr implements an IdentityDeserializerManager
 // by routing the call to the msp/mgmt package
-type identityDeserializerMgr struct {
-}
+type identityDeserializerMgr struct{}
 
 func (*identityDeserializerMgr) Deserializer(channelID string) (msp.IdentityDeserializer, error) {
 	id, ok := mgmt.GetDeserializers()[channelID]
@@ -463,8 +461,7 @@ func (*identityDeserializerMgr) Deserializer(channelID string) (msp.IdentityDese
 }
 
 // collPolicyChecker is the default implementation for CollectionPolicyChecker interface
-type collPolicyChecker struct {
-}
+type collPolicyChecker struct{}
 
 // CheckCollectionPolicy checks if the CollectionCriteria meets the policy requirement
 func (cs *collPolicyChecker) CheckCollectionPolicy(

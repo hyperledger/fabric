@@ -56,21 +56,21 @@ func createCertPool(rootCAs [][]byte) (*x509.CertPool, error) {
 
 // helper function to invoke the EmptyCall againt the test service
 func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Empty, error) {
-	//add DialOptions
+	// add DialOptions
 	dialOptions = append(dialOptions, grpc.WithBlock())
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	//create GRPC client conn
+	// create GRPC client conn
 	clientConn, err := grpc.DialContext(ctx, address, dialOptions...)
 	if err != nil {
 		return nil, err
 	}
 	defer clientConn.Close()
 
-	//create GRPC client
+	// create GRPC client
 	client := testpb.NewTestServiceClient(clientConn)
 
-	//invoke service
+	// invoke service
 	empty, err := client.EmptyCall(context.Background(), new(testpb.Empty))
 	if err != nil {
 		return nil, err
@@ -82,7 +82,6 @@ func invokeEmptyCall(address string, dialOptions []grpc.DialOption) (*testpb.Emp
 // helper function to build an MSPConfig given root certs
 func createMSPConfig(rootCerts, tlsRootCerts, tlsIntermediateCerts [][]byte,
 	mspID string) (*mspproto.MSPConfig, error) {
-
 	fmspconf := &mspproto.FabricMSPConfig{
 		RootCerts:            rootCerts,
 		TlsRootCerts:         tlsRootCerts,
@@ -225,7 +224,7 @@ func TestUpdateRootsFromConfigBlock(t *testing.T) {
 	})
 
 	// basic function tests
-	var tests = []struct {
+	tests := []struct {
 		name          string
 		serverConfig  comm.ServerConfig
 		createChannel func(*testing.T)

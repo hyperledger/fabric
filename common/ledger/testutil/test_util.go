@@ -35,14 +35,14 @@ type TarFileEntry struct {
 
 // CreateTarBytesForTest creates a tar byte array for unit testing
 func CreateTarBytesForTest(testFiles []*TarFileEntry) []byte {
-	//Create a buffer for the tar file
+	// Create a buffer for the tar file
 	buffer := new(bytes.Buffer)
 	tarWriter := tar.NewWriter(buffer)
 
 	for _, file := range testFiles {
 		tarHeader := &tar.Header{
 			Name: file.Name,
-			Mode: 0600,
+			Mode: 0o600,
 			Size: int64(len(file.Body)),
 		}
 		err := tarWriter.WriteHeader(tarHeader)

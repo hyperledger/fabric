@@ -367,9 +367,7 @@ func IsKVWriteDelete(kvWrite *kvrwset.KVWrite) bool {
 	return kvWrite.IsDelete || len(kvWrite.Value) == 0
 }
 
-var (
-	hashOfZeroLengthByteArray = util.ComputeHash([]byte{})
-)
+var hashOfZeroLengthByteArray = util.ComputeHash([]byte{})
 
 // IsKVWriteHashDelete returns true if the kvWriteHash indicates a delete operation. See FAB-18386 for details.
 func IsKVWriteHashDelete(kvWriteHash *kvrwset.KVWriteHash) bool {

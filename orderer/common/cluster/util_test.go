@@ -705,7 +705,8 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 					Payload: protoutil.MarshalOrPanic(&common.Payload{
 						Data: []byte{1, 2, 3},
 					}),
-				})}}},
+				})}},
+			},
 		},
 		{
 			name:          "invalid envelope in block",
@@ -730,7 +731,8 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 							ChannelHeader: []byte{1, 2, 3},
 						},
 					}),
-				})}}},
+				})}},
+			},
 		},
 		{
 			name:          "invalid config block",
@@ -746,7 +748,8 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 							}),
 						},
 					}),
-				})}}},
+				})}},
+			},
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {

@@ -228,7 +228,6 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 			Status:            "active",
 			Height:            3,
 		}, infoResp)
-
 	})
 
 	t.Run("channel does not exists", func(t *testing.T) {
@@ -349,7 +348,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, channelparticipation.URLBaseV1Channels, joinBody)
-		req.Header.Set("Content-Type", "multipart/form-data") //missing boundary
+		req.Header.Set("Content-Type", "multipart/form-data") // missing boundary
 
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "cannot read form from request body: multipart: boundary is empty", resp)
@@ -487,7 +486,6 @@ func TestHTTPHandler_ServeHTTP_Remove(t *testing.T) {
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusConflict, "cannot remove: channel pending removal", resp)
 	})
-
 }
 
 func setup(config localconfig.ChannelParticipation, t *testing.T) (*mocks.ChannelManagement, *channelparticipation.HTTPHandler) {

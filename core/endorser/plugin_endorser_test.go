@@ -28,9 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	mockTransientStoreRetriever = transientStoreRetriever()
-)
+var mockTransientStoreRetriever = transientStoreRetriever()
 
 //go:generate counterfeiter -o fake/query_executor.go -fake-name QueryExecutor . queryExecutor
 type queryExecutor interface {
@@ -169,7 +167,6 @@ func TestPluginEndorserErrors(t *testing.T) {
 		require.Nil(t, prpBytes)
 		require.Contains(t, err.Error(), "plugin initialization failed")
 	})
-
 }
 
 func transientStoreRetriever() *mocks.TransientStoreRetriever {

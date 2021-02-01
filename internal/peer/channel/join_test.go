@@ -41,7 +41,7 @@ func TestJoin(t *testing.T) {
 	dir, err := ioutil.TempDir("/tmp", "jointest")
 	require.NoError(t, err, "Could not create the directory %s", dir)
 	mockblockfile := filepath.Join(dir, "mockjointest.block")
-	err = ioutil.WriteFile(mockblockfile, []byte(""), 0644)
+	err = ioutil.WriteFile(mockblockfile, []byte(""), 0o644)
 	require.NoError(t, err, "Could not write to the file %s", mockblockfile)
 	defer os.RemoveAll(dir)
 	signer, err := common.GetDefaultSigner()
@@ -112,7 +112,7 @@ func TestBadProposalResponse(t *testing.T) {
 	resetFlags()
 
 	mockblockfile := "/tmp/mockjointest.block"
-	ioutil.WriteFile(mockblockfile, []byte(""), 0644)
+	ioutil.WriteFile(mockblockfile, []byte(""), 0o644)
 	defer os.Remove(mockblockfile)
 	signer, err := common.GetDefaultSigner()
 	require.NoError(t, err, "Get default signer error: %v", err)

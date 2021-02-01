@@ -321,7 +321,6 @@ func TestPullChannelFailure(t *testing.T) {
 			require.Equal(t, cluster.ErrRetryCountExhausted, err)
 		})
 	}
-
 }
 
 func TestPullerConfigFromTopLevelConfig(t *testing.T) {
@@ -443,8 +442,10 @@ func TestReplicateChainsGreenPath(t *testing.T) {
 	channelLister := &mocks.ChannelLister{}
 	channelLister.On("Channels").Return([]cluster.ChannelGenesisBlock{
 		{ChannelName: "E", GenesisBlock: fakeGB},
-		{ChannelName: "D", GenesisBlock: fakeGB}, {ChannelName: "C", GenesisBlock: fakeGB},
-		{ChannelName: "A", GenesisBlock: fakeGB}, {ChannelName: "B", GenesisBlock: fakeGB},
+		{ChannelName: "D", GenesisBlock: fakeGB},
+		{ChannelName: "C", GenesisBlock: fakeGB},
+		{ChannelName: "A", GenesisBlock: fakeGB},
+		{ChannelName: "B", GenesisBlock: fakeGB},
 	})
 	channelLister.On("Close")
 

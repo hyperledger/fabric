@@ -20,6 +20,7 @@ var redoLogKey = []byte{byte(0)}
 type redoLoggerProvider struct {
 	leveldbProvider *leveldbhelper.Provider
 }
+
 type redoLogger struct {
 	dbHandle *leveldbhelper.DBHandle
 }

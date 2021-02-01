@@ -259,7 +259,6 @@ func newValidationInstance(state map[string]map[string][]byte) *Validator {
 	vs.GetStateMultipleKeysStub = func(namespace string, keys []string) ([][]byte, error) {
 		if ns, ok := state[namespace]; ok {
 			return [][]byte{ns[keys[0]]}, nil
-
 		} else {
 			return nil, fmt.Errorf("could not retrieve namespace %s", namespace)
 		}
@@ -873,7 +872,7 @@ func TestValidateDeployOK(t *testing.T) {
 }
 
 func TestValidateDeployNOK(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		description string
 		ccName      string
 		ccVersion   string
@@ -930,7 +929,6 @@ func TestValidateDeployWithCollection(t *testing.T) {
 	vs.GetStateMultipleKeysStub = func(namespace string, keys []string) ([][]byte, error) {
 		if ns, ok := state[namespace]; ok {
 			return [][]byte{ns[keys[0]]}, nil
-
 		} else {
 			return nil, fmt.Errorf("could not retrieve namespace %s", namespace)
 		}
@@ -948,7 +946,7 @@ func TestValidateDeployWithCollection(t *testing.T) {
 
 	collName1 := "mycollection1"
 	collName2 := "mycollection2"
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signers := [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	var requiredPeerCount, maximumPeerCount int32
 	var blockToLive uint64
@@ -1257,7 +1255,6 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 	vs.GetStateMultipleKeysStub = func(namespace string, keys []string) ([][]byte, error) {
 		if ns, ok := state[namespace]; ok {
 			return [][]byte{ns[keys[0]]}, nil
-
 		} else {
 			return nil, fmt.Errorf("could not retrieve namespace %s", namespace)
 		}
@@ -1290,7 +1287,7 @@ func validateUpgradeWithCollection(t *testing.T, V1_2Validation bool) {
 
 	collName1 := "mycollection1"
 	collName2 := "mycollection2"
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signers := [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	var requiredPeerCount, maximumPeerCount int32
 	var blockToLive uint64
@@ -1514,7 +1511,6 @@ func validateUpgradeWithNewFailAllIP(t *testing.T, v11capability, expecterr bool
 	vs.GetStateMultipleKeysStub = func(namespace string, keys []string) ([][]byte, error) {
 		if ns, ok := state[namespace]; ok {
 			return [][]byte{ns[keys[0]]}, nil
-
 		} else {
 			return nil, fmt.Errorf("could not retrieve namespace %s", namespace)
 		}
@@ -1637,10 +1633,12 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	require.EqualError(t, err, "chaincode instantiation policy violated, error signature set did not satisfy policy")
 }
 
-var id msp.SigningIdentity
-var sid []byte
-var mspid string
-var channelID string = "testchannelid"
+var (
+	id        msp.SigningIdentity
+	sid       []byte
+	mspid     string
+	channelID string = "testchannelid"
+)
 
 func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,
 	requiredPeerCount int32, maximumPeerCount int32, blockToLive uint64,
@@ -1678,7 +1676,6 @@ func testValidateCollection(t *testing.T, v *Validator, collectionConfigs []*pee
 
 	err = v.validateRWSetAndCollection(rwset, cdRWSet, lsccargs, lsccFunc, ac, chid)
 	return err
-
 }
 
 func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
@@ -1735,7 +1732,7 @@ func TestValidateRWSetAndCollectionForDeploy(t *testing.T) {
 	// Test 7: Valid collection config package -> success
 	collName1 := "mycollection1"
 	collName2 := "mycollection2"
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signers := [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	var requiredPeerCount, maximumPeerCount int32
 	var blockToLive uint64
@@ -1824,7 +1821,7 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 	collName1 := "mycollection1"
 	collName2 := "mycollection2"
 	collName3 := "mycollection3"
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signers := [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	var requiredPeerCount, maximumPeerCount int32
 	var blockToLive uint64

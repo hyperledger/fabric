@@ -45,15 +45,17 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-var aliveTimeInterval = 1000 * time.Millisecond
-var discoveryConfig = discovery.DiscoveryConfig{
-	AliveTimeInterval:            aliveTimeInterval,
-	AliveExpirationTimeout:       10 * aliveTimeInterval,
-	AliveExpirationCheckInterval: aliveTimeInterval,
-	ReconnectInterval:            aliveTimeInterval,
-	MaxConnectionAttempts:        5,
-	MsgExpirationFactor:          discovery.DefMsgExpirationFactor,
-}
+var (
+	aliveTimeInterval = 1000 * time.Millisecond
+	discoveryConfig   = discovery.DiscoveryConfig{
+		AliveTimeInterval:            aliveTimeInterval,
+		AliveExpirationTimeout:       10 * aliveTimeInterval,
+		AliveExpirationCheckInterval: aliveTimeInterval,
+		ReconnectInterval:            aliveTimeInterval,
+		MaxConnectionAttempts:        5,
+		MsgExpirationFactor:          discovery.DefMsgExpirationFactor,
+	}
+)
 
 var orgInChannelA = api.OrgIdentityType("ORG1")
 
@@ -126,8 +128,7 @@ func (cs *naiveCryptoService) Expiration(peerIdentity api.PeerIdentityType) (tim
 	return time.Now().Add(time.Hour), nil
 }
 
-type orgCryptoService struct {
-}
+type orgCryptoService struct{}
 
 // OrgByPeerIdentity returns the OrgIdentityType
 // of a given peer identity
@@ -215,7 +216,6 @@ func bootPeersWithPorts(ports ...int) []string {
 func newGossipInstanceWithGrpcMcsMetrics(id int, port int, gRPCServer *corecomm.GRPCServer, certs *common.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, maxMsgCount int, mcs api.MessageCryptoService,
 	metrics *metrics.GossipMetrics, bootPorts ...int) *gossipGRPC {
-
 	conf := &Config{
 		BootstrapPeers:               bootPeersWithPorts(bootPorts...),
 		ID:                           fmt.Sprintf("p%d", id),
@@ -386,7 +386,6 @@ func TestLeaveChannel(t *testing.T) {
 	waitUntilOrFail(t, countMembership(p0, 1), "waiting for p0 to update membership view")
 	waitUntilOrFail(t, countMembership(p1, 1), "waiting for p1 to update membership view")
 	waitUntilOrFail(t, countMembership(p2, 0), "waiting for p2 to update membership view")
-
 }
 
 func TestPull(t *testing.T) {
@@ -552,7 +551,6 @@ func TestConnectToAnchorPeers(t *testing.T) {
 
 	fmt.Println("<<<TestConnectToAnchorPeers>>>")
 	atomic.StoreInt32(&stopped, int32(1))
-
 }
 
 func TestMembership(t *testing.T) {
@@ -585,7 +583,7 @@ func TestMembership(t *testing.T) {
 	}
 
 	portn, grpcn, certsn, secDialOptsn, _ := util.CreateGRPCLayer()
-	var lastPeer = fmt.Sprintf("127.0.0.1:%d", portn)
+	lastPeer := fmt.Sprintf("127.0.0.1:%d", portn)
 	pI := newGossipInstanceWithGRPC(0, portn, grpcn, certsn, secDialOptsn, 100, port0)
 	peers[n-1] = pI
 	pI.JoinChan(&joinChanMsg{}, common.ChannelID("A"))
@@ -639,7 +637,6 @@ func TestMembership(t *testing.T) {
 	t.Log("Took", time.Since(t1))
 	atomic.StoreInt32(&stopped, int32(1))
 	fmt.Println("<<<TestMembership>>>")
-
 }
 
 func TestNoMessagesSelfLoop(t *testing.T) {
@@ -748,7 +745,7 @@ func TestDissemination(t *testing.T) {
 			pI.UpdateLedgerHeight(2, common.ChannelID("A"))
 		}
 	}
-	var lastPeer = fmt.Sprintf("127.0.0.1:%d", portn)
+	lastPeer := fmt.Sprintf("127.0.0.1:%d", portn)
 	metaDataUpdated := func() bool {
 		if heightOfPeer(boot.PeersOfChannel(common.ChannelID("A")), lastPeer) != 2 {
 			return false
@@ -1489,7 +1486,6 @@ func createDataMsg(seqnum uint64, data []byte, channel common.ChannelID) *proto.
 }
 
 func createLeadershipMsg(isDeclaration bool, channel common.ChannelID, incTime uint64, seqNum uint64, pkiid []byte) *proto.GossipMessage {
-
 	leadershipMsg := &proto.LeadershipMessage{
 		IsDeclaration: isDeclaration,
 		PkiId:         pkiid,

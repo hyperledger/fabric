@@ -102,7 +102,6 @@ func (provider *storeProvider) Close() {
 // in the transient store based on txid and the block height the private data was received at
 func (s *Store) Persist(txid string, blockHeight uint64,
 	privateSimulationResultsWithConfig *transientstore.TxPvtReadWriteSetWithConfigInfo) error {
-
 	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
 
 	dbBatch := s.db.NewUpdateBatch()
@@ -154,7 +153,6 @@ func (s *Store) Persist(txid string, blockHeight uint64,
 // GetTxPvtRWSetByTxid returns an iterator due to the fact that the txid may have multiple private
 // write sets persisted from different endorsers.
 func (s *Store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) (RWSetScanner, error) {
-
 	logger.Debugf("Getting private data from transient store for transaction %s", txid)
 
 	// Construct startKey and endKey to do an range query
@@ -172,7 +170,6 @@ func (s *Store) GetTxPvtRWSetByTxid(txid string, filter ledger.PvtNsCollFilter) 
 // transient store. PurgeByTxids() is expected to be called by coordinator after
 // committing a block to ledger.
 func (s *Store) PurgeByTxids(txids []string) error {
-
 	logger.Debug("Purging private data from transient store for committed txids")
 
 	dbBatch := s.db.NewUpdateBatch()
@@ -224,7 +221,6 @@ func (s *Store) PurgeByTxids(txids []string) error {
 // after successful block commit, PurgeBelowHeight() is still required to remove orphan entries (as
 // transaction that gets endorsed may not be submitted by the client for commit)
 func (s *Store) PurgeBelowHeight(maxBlockNumToRetain uint64) error {
-
 	logger.Debugf("Purging orphaned private data from transient store received prior to block [%d]", maxBlockNumToRetain)
 
 	// Do a range query with 0 as startKey and maxBlockNumToRetain-1 as endKey

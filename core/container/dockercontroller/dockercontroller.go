@@ -361,7 +361,7 @@ func addFiles(tw *tar.Writer, contents map[string][]byte) error {
 		err := tw.WriteHeader(&tar.Header{
 			Name: name,
 			Size: int64(len(payload)),
-			Mode: 0100644,
+			Mode: 0o100644,
 		})
 		if err != nil {
 			return err

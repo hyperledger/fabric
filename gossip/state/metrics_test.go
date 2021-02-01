@@ -89,5 +89,4 @@ func TestMetrics(t *testing.T) {
 	require.True(t, size == 1 || size == 0)
 	size = testMetricProvider.FakePayloadBufferSizeGauge.SetArgsForCall(1)
 	require.True(t, size == 1 || size == 0)
-
 }

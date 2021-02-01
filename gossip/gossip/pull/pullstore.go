@@ -158,7 +158,6 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 		}
 	}
 	return p
-
 }
 
 func (p *pullMediatorImpl) HandleMessage(m protoext.ReceivedMessage) {
@@ -225,7 +224,6 @@ func (p *pullMediatorImpl) RegisterMsgHook(pullMsgType MsgType, hook MessageHook
 	p.Lock()
 	defer p.Unlock()
 	p.msgType2Hook[pullMsgType] = append(p.msgType2Hook[pullMsgType], hook)
-
 }
 
 // Add adds a GossipMessage to the store

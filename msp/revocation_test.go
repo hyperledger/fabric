@@ -67,7 +67,8 @@ func TestIdentityPolicyPrincipalAgainstRevokedIdentity(t *testing.T) {
 
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-		Principal:               idSerialized}
+		Principal:               idSerialized,
+	}
 
 	err = id.SatisfiesPrincipal(principal)
 	require.Error(t, err)

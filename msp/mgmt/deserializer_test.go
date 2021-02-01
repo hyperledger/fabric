@@ -70,7 +70,6 @@ func TestMspDeserializersManager_GetLocalDeserializer(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-
 	mspDir := configtest.GetDevMspDir()
 
 	testConf, err := msp.GetLocalMspConfig(mspDir, nil, "SampleOrg")

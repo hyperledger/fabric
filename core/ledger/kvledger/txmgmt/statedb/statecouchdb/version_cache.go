@@ -10,10 +10,12 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 )
 
-type versions map[string]nsVersions
-type revisions map[string]nsRevisions
-type nsRevisions map[string]string
-type nsVersions map[string]*version.Height
+type (
+	versions    map[string]nsVersions
+	revisions   map[string]nsRevisions
+	nsRevisions map[string]string
+	nsVersions  map[string]*version.Height
+)
 
 // versionsCache contains maps of versions and revisions.
 // Used as a local cache during bulk processing of a block.

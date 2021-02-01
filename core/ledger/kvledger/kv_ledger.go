@@ -157,7 +157,7 @@ func newKVLedger(initializer *lgrInitializer) (*kvLedger, error) {
 		}
 	}
 
-	//Recover both state DB and history DB if they are out of sync with block storage
+	// Recover both state DB and history DB if they are out of sync with block storage
 	if err := l.recoverDBs(); err != nil {
 		return nil, err
 	}
@@ -355,7 +355,7 @@ func (l *kvLedger) recoverDBs() error {
 }
 
 func (l *kvLedger) syncStateAndHistoryDBWithBlockstore() error {
-	//If there is no block in blockstorage, nothing to recover.
+	// If there is no block in blockstorage, nothing to recover.
 	info, _ := l.blockStore.GetBlockchainInfo()
 	if info.Height == 0 {
 		logger.Debug("Block storage is empty.")
@@ -464,8 +464,8 @@ func (l *kvLedger) filterYetToCommitBlocks(blocksPvtData map[uint64][]*ledger.Tx
 	return nil
 }
 
-//recommitLostBlocks retrieves blocks in specified range and commit the write set to either
-//state DB or history DB or both
+// recommitLostBlocks retrieves blocks in specified range and commit the write set to either
+// state DB or history DB or both
 func (l *kvLedger) recommitLostBlocks(firstBlockNum uint64, lastBlockNum uint64, recoverables ...recoverable) error {
 	logger.Infof("Recommitting lost blocks - firstBlockNum=%d, lastBlockNum=%d, recoverables=%#v", firstBlockNum, lastBlockNum, recoverables)
 	var err error
@@ -1040,7 +1040,6 @@ func constructPvtdataMap(pvtdata []*ledger.TxPvtData) ledger.TxPvtDataMap {
 
 func constructPvtDataAndMissingData(blockAndPvtData *ledger.BlockAndPvtData) ([]*ledger.TxPvtData,
 	ledger.TxMissingPvtData) {
-
 	var pvtData []*ledger.TxPvtData
 	missingPvtData := make(ledger.TxMissingPvtData)
 

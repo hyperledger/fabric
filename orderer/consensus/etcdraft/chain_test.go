@@ -657,7 +657,6 @@ var _ = Describe("Chain", func() {
 								common.HeaderType_CONFIG,
 								newConfigUpdateEnv(channelID, nil, values))
 							configSeq = 0
-
 						}) // BeforeEach block
 
 						It("should be able to process config update of type B", func() {
@@ -696,15 +695,12 @@ var _ = Describe("Chain", func() {
 							Expect(err).NotTo(HaveOccurred())
 							Eventually(support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 						})
-
 					})
 				})
 			})
 
 			Describe("Crash Fault Tolerance", func() {
-				var (
-					raftMetadata *raftprotos.BlockMetadata
-				)
+				var raftMetadata *raftprotos.BlockMetadata
 
 				BeforeEach(func() {
 					raftMetadata = &raftprotos.BlockMetadata{
@@ -770,7 +766,6 @@ var _ = Describe("Chain", func() {
 						err := c.Order(env, uint64(0))
 						Expect(err).NotTo(HaveOccurred())
 						Eventually(c.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
-
 					})
 
 					It("only replays blocks after Applied index", func() {
@@ -825,7 +820,7 @@ var _ = Describe("Chain", func() {
 							files, err := ioutil.ReadDir(walDir)
 							Expect(err).NotTo(HaveOccurred())
 							for _, f := range files {
-								os.Chmod(path.Join(walDir, f.Name()), 0300)
+								os.Chmod(path.Join(walDir, f.Name()), 0o300)
 							}
 
 							c, err := etcdraft.NewChain(support, opts, configurator, nil, cryptoProvider, noOpBlockPuller, nil, observeC)
@@ -1242,7 +1237,7 @@ var _ = Describe("Chain", func() {
 			})
 
 			Context("Invalid WAL dir", func() {
-				var support = &consensusmocks.FakeConsenterSupport{}
+				support := &consensusmocks.FakeConsenterSupport{}
 				BeforeEach(func() {
 					// for block creator initialization
 					support.HeightReturns(1)
@@ -1286,7 +1281,7 @@ var _ = Describe("Chain", func() {
 						Expect(err).NotTo(HaveOccurred())
 						defer os.RemoveAll(d)
 
-						err = os.Chmod(d, 0500)
+						err = os.Chmod(d, 0o500)
 						Expect(err).NotTo(HaveOccurred())
 
 						chain, err := etcdraft.NewChain(
@@ -1318,7 +1313,7 @@ var _ = Describe("Chain", func() {
 						Expect(err).NotTo(HaveOccurred())
 						defer os.RemoveAll(d)
 
-						err = os.Chmod(d, 0500)
+						err = os.Chmod(d, 0o500)
 						Expect(err).NotTo(HaveOccurred())
 
 						chain, err := etcdraft.NewChain(
@@ -1813,7 +1808,6 @@ var _ = Describe("Chain", func() {
 						Eventually(c.support.WriteConfigBlockCallCount, LongEventualTimeout).Should(Equal(1))
 					})
 				})
-
 			})
 
 			Context("reconfiguration", func() {
@@ -3874,7 +3868,6 @@ func (n *network) elect(id uint64) {
 			}
 		}
 	}
-
 }
 
 // sets the configEnv var declared above

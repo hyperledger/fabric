@@ -128,9 +128,7 @@ var _ = Describe("ValidatorCommitter", func() {
 	})
 
 	Describe("UpdatedChaincodes", func() {
-		var (
-			updates map[string][]*kvrwset.KVWrite
-		)
+		var updates map[string][]*kvrwset.KVWrite
 
 		BeforeEach(func() {
 			updates = map[string][]*kvrwset.KVWrite{
@@ -241,9 +239,7 @@ var _ = Describe("ValidatorCommitter", func() {
 	})
 
 	Describe("AllChaincodesInfo", func() {
-		var (
-			fakeStateIteratorKVs MapLedgerShim
-		)
+		var fakeStateIteratorKVs MapLedgerShim
 		BeforeEach(func() {
 			fakeStateIteratorKVs = MapLedgerShim(map[string][]byte{})
 			err := resources.Serializer.Serialize("namespaces", "cc-name", &lifecycle.ChaincodeDefinition{}, fakeStateIteratorKVs)
@@ -300,9 +296,7 @@ var _ = Describe("ValidatorCommitter", func() {
 		})
 
 		Context("when LegacyProvider.AllChaincodesInfo returns DeployedChaincodeInfo", func() {
-			var (
-				cc1Info, cc2Info *ledger.DeployedChaincodeInfo
-			)
+			var cc1Info, cc2Info *ledger.DeployedChaincodeInfo
 			BeforeEach(func() {
 				// fakeLegacyProvider returns 2 DeployedChaincodeInfo, one of them has the same name as new lifecycle chaincode "cc-name"
 				cc1Info = &ledger.DeployedChaincodeInfo{
@@ -416,9 +410,7 @@ var _ = Describe("ValidatorCommitter", func() {
 		})
 
 		Context("when the chaincode is not in the new lifecycle", func() {
-			var (
-				collInfo *pb.StaticCollectionConfig
-			)
+			var collInfo *pb.StaticCollectionConfig
 
 			BeforeEach(func() {
 				collInfo = &pb.StaticCollectionConfig{}
@@ -587,9 +579,7 @@ var _ = Describe("ValidatorCommitter", func() {
 		})
 
 		Context("when the chaincode is not in the new lifecycle", func() {
-			var (
-				ccPkg *pb.CollectionConfigPackage
-			)
+			var ccPkg *pb.CollectionConfigPackage
 
 			BeforeEach(func() {
 				ccPkg = &pb.CollectionConfigPackage{}
@@ -701,9 +691,7 @@ var _ = Describe("ValidatorCommitter", func() {
 	})
 
 	Describe("CollectionValidationInfo", func() {
-		var (
-			fakeValidationState *mock.ValidationState
-		)
+		var fakeValidationState *mock.ValidationState
 
 		BeforeEach(func() {
 			fakeValidationState = &mock.ValidationState{}
@@ -870,6 +858,5 @@ var _ = Describe("ValidatorCommitter", func() {
 				Expect(vErr).To(MatchError("no org found in channel with MSPID 'bad-mspid'"))
 			})
 		})
-
 	})
 })

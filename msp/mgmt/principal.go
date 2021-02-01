@@ -61,7 +61,8 @@ func (m *localMSPPrincipalGetter) Get(role string) (*msp.MSPPrincipal, error) {
 
 		return &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}, nil
+			Principal:               principalBytes,
+		}, nil
 	case Members:
 		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: mspid})
 		if err != nil {
@@ -70,7 +71,8 @@ func (m *localMSPPrincipalGetter) Get(role string) (*msp.MSPPrincipal, error) {
 
 		return &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}, nil
+			Principal:               principalBytes,
+		}, nil
 	default:
 		return nil, errors.Errorf("MSP Principal role [%s] not recognized", role)
 	}

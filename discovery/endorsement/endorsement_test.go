@@ -657,7 +657,8 @@ func TestPeersAuthorizedByCriteria(t *testing.T) {
 			},
 			expected: peerSet{
 				newPeer(0).withChaincode(cc1, "1.0"),
-				newPeer(12).withChaincode(cc1, "1.0")}.toMembers(),
+				newPeer(12).withChaincode(cc1, "1.0"),
+			}.toMembers(),
 		},
 	} {
 		t.Run(tst.name, func(t *testing.T) {
@@ -918,8 +919,7 @@ func (ip inquireablePolicy) SatisfiedBy() []policies.PrincipalSet {
 	return ip
 }
 
-type principalEvaluatorMock struct {
-}
+type principalEvaluatorMock struct{}
 
 func (pe *principalEvaluatorMock) SatisfiesPrincipal(channel string, identity []byte, principal *msp.MSPPrincipal) error {
 	peerRole := &msp.MSPRole{}

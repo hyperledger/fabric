@@ -134,7 +134,8 @@ type coordinator struct {
 // NewCoordinator creates a new instance of coordinator
 func NewCoordinator(mspID string, support Support, store *transientstore.Store, selfSignedData protoutil.SignedData, metrics *metrics.PrivdataMetrics,
 	config CoordinatorConfig, idDeserializerFactory IdentityDeserializerFactory) Coordinator {
-	return &coordinator{Support: support,
+	return &coordinator{
+		Support:                        support,
 		mspID:                          mspID,
 		store:                          store,
 		selfSignedData:                 selfSignedData,

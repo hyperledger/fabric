@@ -48,6 +48,7 @@ type event struct {
 	typ         eventType
 	blockNumber uint64
 }
+
 type requestResponse struct {
 	err error
 }
@@ -386,9 +387,7 @@ func (k *snapshotRequestBookkeeper) smallestRequest() (uint64, error) {
 	return smallestBlockNumber, nil
 }
 
-var (
-	snapshotRequestKeyPrefix = []byte("s")
-)
+var snapshotRequestKeyPrefix = []byte("s")
 
 func encodeSnapshotRequestKey(blockNumber uint64) []byte {
 	return append(snapshotRequestKeyPrefix, util.EncodeOrderPreservingVarUint64(blockNumber)...)

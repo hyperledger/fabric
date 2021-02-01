@@ -80,7 +80,6 @@ func (c *PrivdataConfig) loadPrivDataConfig() {
 	if maxPeerCount < requiredPeerCount {
 		panic(fmt.Sprintf("peer.gossip.pvtData.implicitCollectionDisseminationPolicy.maxPeerCount (%d) cannot be less than requiredPeerCount (%d)",
 			maxPeerCount, requiredPeerCount))
-
 	}
 
 	c.ImplicitCollDisseminationPolicy.RequiredPeerCount = requiredPeerCount

@@ -17,15 +17,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testHashFunc = func(data []byte) ([]byte, error) {
-		h := sha256.New()
-		if _, err := h.Write(data); err != nil {
-			return nil, err
-		}
-		return h.Sum(nil), nil
+var testHashFunc = func(data []byte) ([]byte, error) {
+	h := sha256.New()
+	if _, err := h.Write(data); err != nil {
+		return nil, err
 	}
-)
+	return h.Sum(nil), nil
+}
 
 func TestQueryResultHelper_NoResults(t *testing.T) {
 	helper, _ := NewRangeQueryResultsHelper(true, 3, testHashFunc)
@@ -62,8 +60,8 @@ func TestQueryResultHelper_Hash_OneLevel(t *testing.T) {
 	require.Equal(t, &kvrwset.QueryReadsMerkleSummary{
 		MaxDegree:      uint32(maxDegree),
 		MaxLevel:       1,
-		MaxLevelHashes: hashesToBytes([]Hash{level1_1, level1_2, level1_3})}, h)
-
+		MaxLevelHashes: hashesToBytes([]Hash{level1_1, level1_2, level1_3}),
+	}, h)
 }
 
 func TestQueryResultHelper_Hash_TwoLevel(t *testing.T) {
@@ -84,8 +82,8 @@ func TestQueryResultHelper_Hash_TwoLevel(t *testing.T) {
 	require.Equal(t, &kvrwset.QueryReadsMerkleSummary{
 		MaxDegree:      uint32(maxDegree),
 		MaxLevel:       2,
-		MaxLevelHashes: hashesToBytes([]Hash{level2_1, level2_2})}, h)
-
+		MaxLevelHashes: hashesToBytes([]Hash{level2_1, level2_2}),
+	}, h)
 }
 
 func TestQueryResultHelper_Hash_ThreeLevel(t *testing.T) {
@@ -121,8 +119,8 @@ func TestQueryResultHelper_Hash_ThreeLevel(t *testing.T) {
 	require.Equal(t, &kvrwset.QueryReadsMerkleSummary{
 		MaxDegree:      uint32(maxDegree),
 		MaxLevel:       3,
-		MaxLevelHashes: hashesToBytes([]Hash{level3_1, level3_2})}, h)
-
+		MaxLevelHashes: hashesToBytes([]Hash{level3_1, level3_2}),
+	}, h)
 }
 
 func TestQueryResultHelper_Hash_MaxLevelIncrementNeededInDone(t *testing.T) {
@@ -148,8 +146,8 @@ func TestQueryResultHelper_Hash_MaxLevelIncrementNeededInDone(t *testing.T) {
 	require.Equal(t, &kvrwset.QueryReadsMerkleSummary{
 		MaxDegree:      uint32(maxDegree),
 		MaxLevel:       3,
-		MaxLevelHashes: hashesToBytes([]Hash{level3_1})}, h)
-
+		MaxLevelHashes: hashesToBytes([]Hash{level3_1}),
+	}, h)
 }
 
 func TestQueryResultHelper_Hash_FirstLevelSkipNeededInDone(t *testing.T) {
@@ -185,8 +183,8 @@ func TestQueryResultHelper_Hash_FirstLevelSkipNeededInDone(t *testing.T) {
 	require.Equal(t, &kvrwset.QueryReadsMerkleSummary{
 		MaxDegree:      uint32(maxDegree),
 		MaxLevel:       3,
-		MaxLevelHashes: hashesToBytes([]Hash{level3_1, level3_2})}, h)
-
+		MaxLevelHashes: hashesToBytes([]Hash{level3_1, level3_2}),
+	}, h)
 }
 
 func buildTestResults(t *testing.T, enableHashing bool, maxDegree int, kvReads []*kvrwset.KVRead) ([]*kvrwset.KVRead, *kvrwset.QueryReadsMerkleSummary) {

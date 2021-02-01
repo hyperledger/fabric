@@ -33,20 +33,20 @@ var _ = Describe("copy", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		srcRootDir = filepath.Join(tempDir, "src")
-		err = os.Mkdir(srcRootDir, 0755)
+		err = os.Mkdir(srcRootDir, 0o755)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = ioutil.WriteFile(filepath.Join(srcRootDir, "file-in-root.txt"), []byte("root file contents"), 0644)
+		err = ioutil.WriteFile(filepath.Join(srcRootDir, "file-in-root.txt"), []byte("root file contents"), 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Symlink("file-in-root.txt", filepath.Join(srcRootDir, "symlink-in-root.txt"))
 		Expect(err).NotTo(HaveOccurred())
 
 		srcSubDir = filepath.Join(srcRootDir, "subdir")
-		err = os.Mkdir(srcSubDir, 0755)
+		err = os.Mkdir(srcSubDir, 0o755)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = ioutil.WriteFile(filepath.Join(srcSubDir, "file-in-subdir.txt"), []byte("subdir file contents"), 0644)
+		err = ioutil.WriteFile(filepath.Join(srcSubDir, "file-in-subdir.txt"), []byte("subdir file contents"), 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		err = os.Symlink("file-in-subdir.txt", filepath.Join(srcSubDir, "symlink-in-subdir.txt"))

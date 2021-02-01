@@ -194,9 +194,9 @@ func (c *committer) commitUpdates() error {
 		doc := c.batchUpdateMap[resp.ID]
 
 		var err error
-		//Remove the "_rev" from the JSON before saving
-		//this will allow the CouchDB retry logic to retry revisions without encountering
-		//a mismatch between the "If-Match" and the "_rev" tag in the JSON
+		// Remove the "_rev" from the JSON before saving
+		// this will allow the CouchDB retry logic to retry revisions without encountering
+		// a mismatch between the "If-Match" and the "_rev" tag in the JSON
 		if doc.CouchDoc.jsonValue != nil {
 			err = removeJSONRevision(&doc.CouchDoc.jsonValue)
 			if err != nil {
@@ -304,7 +304,7 @@ func (vdb *VersionedDB) addMissingRevisionsFromDB(ns string, missingKeys []strin
 	return nil
 }
 
-//batchableDocument defines a document for a batch
+// batchableDocument defines a document for a batch
 type batchableDocument struct {
 	CouchDoc couchDoc
 	Deleted  bool

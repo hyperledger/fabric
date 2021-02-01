@@ -23,9 +23,11 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-const CouchDBDefaultImage = "couchdb:3.1.1"
-const CouchDBUsername = "admin"
-const CouchDBPassword = "adminpw"
+const (
+	CouchDBDefaultImage = "couchdb:3.1.1"
+	CouchDBUsername     = "admin"
+	CouchDBPassword     = "adminpw"
+)
 
 // CouchDB manages the execution of an instance of a dockerized CounchDB
 // for tests.

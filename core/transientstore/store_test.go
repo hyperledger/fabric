@@ -447,9 +447,9 @@ func TestTransientStorePurgeBelowHeight(t *testing.T) {
 
 	// Expected results for txid-1
 	var expectedEndorsersResults []*EndorserPvtSimulationResults
-	expectedEndorsersResults = append(expectedEndorsersResults, endorser2SimulationResults) //endorsed at height 12
-	expectedEndorsersResults = append(expectedEndorsersResults, endorser3SimulationResults) //endorsed at height 12
-	expectedEndorsersResults = append(expectedEndorsersResults, endorser4SimulationResults) //endorsed at height 13
+	expectedEndorsersResults = append(expectedEndorsersResults, endorser2SimulationResults) // endorsed at height 12
+	expectedEndorsersResults = append(expectedEndorsersResults, endorser3SimulationResults) // endorsed at height 12
+	expectedEndorsersResults = append(expectedEndorsersResults, endorser4SimulationResults) // endorsed at height 13
 
 	// Check whether actual results and expected results are same
 	var actualEndorsersResults []*EndorserPvtSimulationResults
@@ -556,13 +556,12 @@ func TestTransientStoreRetrievalWithFilter(t *testing.T) {
 		require.Equal(t, expected.ReceivedAtBlockHeight, actualRes[i].ReceivedAtBlockHeight)
 		require.True(t, proto.Equal(expected.PvtSimulationResultsWithConfig, actualRes[i].PvtSimulationResultsWithConfig))
 	}
-
 }
 
 func sortResults(res []*EndorserPvtSimulationResults) {
 	// Results are sorted by ascending order of received at block height. When the block
 	// heights are same, we sort by comparing the hash of private write set.
-	var sortCondition = func(i, j int) bool {
+	sortCondition := func(i, j int) bool {
 		if res[i].ReceivedAtBlockHeight == res[j].ReceivedAtBlockHeight {
 			resI, _ := proto.Marshal(res[i].PvtSimulationResultsWithConfig)
 			resJ, _ := proto.Marshal(res[j].PvtSimulationResultsWithConfig)
@@ -653,7 +652,7 @@ func createCollectionConfig(collectionName string, signaturePolicyEnvelope *comm
 }
 
 func sampleCollectionConfigPackage(colName string) *peer.CollectionConfig {
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signers := [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 
 	var requiredPeerCount, maximumPeerCount int32
@@ -667,7 +666,6 @@ func sampleCollectionConfigPackage(colName string) *peer.CollectionConfig {
 // this is used only for testing
 func (s *Store) persistOldProto(txid string, blockHeight uint64,
 	privateSimulationResults *rwset.TxPvtReadWriteSet) error {
-
 	logger.Debugf("Persisting private data to transient store for txid [%s] at block height [%d]", txid, blockHeight)
 
 	dbBatch := s.db.NewUpdateBatch()

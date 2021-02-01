@@ -28,7 +28,7 @@ func initPeerTestEnv(t *testing.T) (cfgPath string, cleanup func()) {
 	cfgPath, err := ioutil.TempDir("", "peerTestEnv")
 	require.NoError(t, err)
 	certsDir := filepath.Join(cfgPath, "certs")
-	err = os.Mkdir(certsDir, 0755)
+	err = os.Mkdir(certsDir, 0o755)
 	require.NoError(t, err)
 
 	configFile, err := os.Create(filepath.Join(cfgPath, "test.yaml"))
@@ -68,26 +68,26 @@ orderer:
 	require.NoError(t, err)
 
 	caCrtFile := path.Join(certsDir, "ca.crt")
-	err = ioutil.WriteFile(caCrtFile, ca.CertBytes(), 0644)
+	err = ioutil.WriteFile(caCrtFile, ca.CertBytes(), 0o644)
 	require.NoError(t, err)
 
 	kp, err := ca.NewClientCertKeyPair()
 	require.NoError(t, err)
 
 	key := path.Join(certsDir, "client.key")
-	err = ioutil.WriteFile(key, kp.Key, 0644)
+	err = ioutil.WriteFile(key, kp.Key, 0o644)
 	require.NoError(t, err)
 
 	crt := path.Join(certsDir, "client.crt")
-	err = ioutil.WriteFile(crt, kp.Cert, 0644)
+	err = ioutil.WriteFile(crt, kp.Cert, 0o644)
 	require.NoError(t, err)
 
 	ekey := path.Join(certsDir, "empty.key")
-	err = ioutil.WriteFile(ekey, []byte{}, 0644)
+	err = ioutil.WriteFile(ekey, []byte{}, 0o644)
 	require.NoError(t, err)
 
 	ecrt := path.Join(certsDir, "empty.crt")
-	err = ioutil.WriteFile(ecrt, []byte{}, 0644)
+	err = ioutil.WriteFile(ecrt, []byte{}, 0o644)
 	require.NoError(t, err)
 
 	configFile, err = os.Create(filepath.Join(certsDir, "bad.key"))
@@ -364,7 +364,6 @@ func TestNewPeerClientForAddress(t *testing.T) {
 	pClient, err = common.NewPeerClientForAddress("badPeer", "")
 	require.Contains(t, err.Error(), "unable to load peer.tls.clientKey.file")
 	require.Nil(t, pClient)
-
 }
 
 func TestGetClients_AddressError(t *testing.T) {

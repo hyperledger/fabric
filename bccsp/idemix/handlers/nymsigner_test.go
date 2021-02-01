@@ -16,9 +16,7 @@ import (
 )
 
 var _ = Describe("Nym Signature", func() {
-
 	Describe("when creating a signature", func() {
-
 		var (
 			NymSigner           *handlers.NymSigner
 			fakeSignatureScheme *mock.NymSignatureScheme
@@ -37,9 +35,7 @@ var _ = Describe("Nym Signature", func() {
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
-			var (
-				fakeSignature []byte
-			)
+			var fakeSignature []byte
 			BeforeEach(func() {
 				fakeSignature = []byte("fake signature")
 				fakeSignatureScheme.SignReturns(fakeSignature, nil)
@@ -56,7 +52,6 @@ var _ = Describe("Nym Signature", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(signature).To(BeEquivalentTo(fakeSignature))
-
 			})
 		})
 
@@ -80,7 +75,6 @@ var _ = Describe("Nym Signature", func() {
 		})
 
 		Context("and the parameters are not well formed", func() {
-
 			Context("and the user secret key is nil", func() {
 				It("returns error", func() {
 					signature, err := NymSigner.Sign(
@@ -196,7 +190,6 @@ var _ = Describe("Nym Signature", func() {
 	})
 
 	Describe("when verifying a signature", func() {
-
 		var (
 			NymVerifier         *handlers.NymVerifier
 			fakeSignatureScheme *mock.NymSignatureScheme
@@ -246,7 +239,6 @@ var _ = Describe("Nym Signature", func() {
 		})
 
 		Context("and the parameters are not well formed", func() {
-
 			Context("and the nym public key is nil", func() {
 				It("returns error", func() {
 					valid, err := NymVerifier.Verify(

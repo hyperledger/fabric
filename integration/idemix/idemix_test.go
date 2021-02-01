@@ -101,7 +101,6 @@ var _ = Describe("EndToEnd", func() {
 			Query(network, peer, "testchannel", "80")
 		})
 	})
-
 })
 
 func Query(n *nwo.Network, peer *nwo.Peer, channel string, expectedOutput string) {

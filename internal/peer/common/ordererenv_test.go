@@ -15,7 +15,6 @@ import (
 )
 
 func TestOrdererCmdEnv(t *testing.T) {
-
 	var (
 		ca       = "root.crt"
 		key      = "client.key"
@@ -41,9 +40,11 @@ func TestOrdererCmdEnv(t *testing.T) {
 
 	common.AddOrdererFlags(runCmd)
 
-	runCmd.SetArgs([]string{"test", "--cafile", ca, "--keyfile", key,
+	runCmd.SetArgs([]string{
+		"test", "--cafile", ca, "--keyfile", key,
 		"--certfile", cert, "--orderer", endpoint, "--tls", "--clientauth",
-		"--ordererTLSHostnameOverride", sn})
+		"--ordererTLSHostnameOverride", sn,
+	})
 	err := runCmd.Execute()
 	require.NoError(t, err)
 
@@ -56,5 +57,4 @@ func TestOrdererCmdEnv(t *testing.T) {
 	require.Equal(t, sn, viper.GetString("orderer.tls.serverhostoverride"))
 	require.Equal(t, true, viper.GetBool("orderer.tls.enabled"))
 	require.Equal(t, true, viper.GetBool("orderer.tls.clientAuthRequired"))
-
 }

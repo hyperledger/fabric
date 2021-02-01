@@ -110,7 +110,7 @@ func TestNewSimpleCollectionWithBadConfig(t *testing.T) {
 
 func TestNewSimpleCollectionWithGoodConfig(t *testing.T) {
 	// create member access policy
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signers := [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	accessPolicy := createCollectionPolicyConfig(policyEnvelope)
 
@@ -156,7 +156,7 @@ func TestSetupWithBadConfig(t *testing.T) {
 
 func TestSetupGoodConfigCollection(t *testing.T) {
 	// create member access policy
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signers := [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	accessPolicy := createCollectionPolicyConfig(policyEnvelope)
 
@@ -186,7 +186,7 @@ func TestSetupGoodConfigCollection(t *testing.T) {
 
 func TestSimpleCollectionFilter(t *testing.T) {
 	// create member access policy
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signers := [][]byte{[]byte("signer0"), []byte("signer1")}
 	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
 	accessPolicy := createCollectionPolicyConfig(policyEnvelope)
 

@@ -29,16 +29,17 @@ func TestValidateConfigTx(t *testing.T) {
 	}
 
 	updateResult := &cb.Envelope{
-		Payload: protoutil.MarshalOrPanic(&cb.Payload{Header: &cb.Header{
-			ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
-				Type:      int32(cb.HeaderType_CONFIG),
-				ChannelId: channelID,
-			}),
-			SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{
-				Creator: signerSerialized,
-				Nonce:   protoutil.CreateNonceOrPanic(),
-			}),
-		},
+		Payload: protoutil.MarshalOrPanic(&cb.Payload{
+			Header: &cb.Header{
+				ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+					Type:      int32(cb.HeaderType_CONFIG),
+					ChannelId: channelID,
+				}),
+				SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{
+					Creator: signerSerialized,
+					Nonce:   protoutil.CreateNonceOrPanic(),
+				}),
+			},
 			Data: protoutil.MarshalOrPanic(&cb.ConfigEnvelope{
 				LastUpdate: chCrtEnv,
 			}),

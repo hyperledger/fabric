@@ -37,11 +37,9 @@ func (*Chain) Errored() <-chan struct{} {
 }
 
 func (c *Chain) Start() {
-
 }
 
 func (c *Chain) Halt() {
-
 }
 
 // StatusReport returns the ConsensusRelation & Status

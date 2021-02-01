@@ -24,8 +24,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var pullInterval time.Duration
-var timeoutInterval = 20 * time.Second
+var (
+	pullInterval    time.Duration
+	timeoutInterval = 20 * time.Second
+)
 
 func init() {
 	util.SetupTestLogging()
@@ -61,7 +63,6 @@ func (pm *pullMsg) GetConnectionInfo() *protoext.ConnectionInfo {
 
 // Ack returns to the sender an acknowledgement for the message
 func (pm *pullMsg) Ack(err error) {
-
 }
 
 type pullInstance struct {
@@ -206,7 +207,6 @@ func TestRegisterMsgHook(t *testing.T) {
 
 	// Ensure all message types are received
 	waitUntilOrFail(t, func() bool { return len(receivedMsgTypes.ToArray()) == 4 })
-
 }
 
 func TestFilter(t *testing.T) {
@@ -349,7 +349,6 @@ func TestDigestsFilters(t *testing.T) {
 
 	// inst2 is expected to send digest to inst1
 	waitUntilOrFail(t, func() bool { return atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) })
-
 }
 
 func TestHandleMessage(t *testing.T) {

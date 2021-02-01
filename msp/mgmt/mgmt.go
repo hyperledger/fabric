@@ -52,10 +52,12 @@ func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) er
 // OWNERSHIP OF PER-CHAIN MSP MANAGERS WILL BE HANDLED BY IT;
 // HOWEVER IN THE INTERIM, THESE HELPER FUNCTIONS ARE REQUIRED
 
-var m sync.Mutex
-var localMsp msp.MSP
-var mspMap = make(map[string]msp.MSPManager)
-var mspLogger = flogging.MustGetLogger("msp")
+var (
+	m         sync.Mutex
+	localMsp  msp.MSP
+	mspMap    = make(map[string]msp.MSPManager)
+	mspLogger = flogging.MustGetLogger("msp")
+)
 
 // TODO - this is a temporary solution to allow the peer to track whether the
 // MSPManager has been setup for a channel, which indicates whether the channel

@@ -298,7 +298,6 @@ func (s *setup) startPeer(peer *nwo.Peer) {
 }
 
 func (s *setup) startBrokerAndOrderer() {
-
 	brokerRunner := s.network.BrokerGroupRunner()
 	brokerProcess := ifrit.Invoke(brokerRunner)
 	Eventually(brokerProcess.Ready(), s.network.EventuallyTimeout).Should(BeClosed())
@@ -339,7 +338,7 @@ func (nh *networkHelper) getLedgerHeight(peer *nwo.Peer) int {
 	Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
 
 	channelInfoStr := strings.TrimPrefix(string(sess.Buffer().Contents()[:]), "Blockchain info:")
-	var channelInfo = common.BlockchainInfo{}
+	channelInfo := common.BlockchainInfo{}
 	err = json.Unmarshal([]byte(channelInfoStr), &channelInfo)
 	Expect(err).NotTo(HaveOccurred())
 	return int(channelInfo.Height)

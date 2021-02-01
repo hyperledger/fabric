@@ -264,7 +264,8 @@ func (g *Node) learnAnchorPeers(channel string, orgOfAnchorPeers api.OrgIdentity
 		}
 
 		g.disc.Connect(discovery.NetworkMember{
-			InternalEndpoint: endpoint, Endpoint: endpoint}, identifier)
+			InternalEndpoint: endpoint, Endpoint: endpoint,
+		}, identifier)
 	}
 }
 
@@ -1177,7 +1178,6 @@ func (g *Node) connect2BootstrapPeers() {
 			Endpoint:         endpoint,
 		}, identifier)
 	}
-
 }
 
 func (g *Node) hasExternalEndpoint(PKIID common.PKIidType) bool {

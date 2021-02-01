@@ -19,8 +19,7 @@ import (
 // KVExcutor is a chaincode implementation that takes a KVData array as read parameter
 // and a a KVData array as write parameter, and then calls GetXXX/PutXXX methods to read and write
 // state/collection data. Both input params should be marshalled json data and then base64 encoded.
-type KVExcutor struct {
-}
+type KVExcutor struct{}
 
 // KVData contains the data to read/write a key.
 // Key is required. Value is required for write and ignored for read.
@@ -48,7 +47,7 @@ func (t *KVExcutor) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	case "readWriteKVs":
 		return t.readWriteKVs(stub, args)
 	default:
-		//error
+		// error
 		fmt.Println("invoke did not find func: " + function)
 		return shim.Error("Received unknown function invocation")
 	}

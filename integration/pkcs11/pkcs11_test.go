@@ -290,7 +290,7 @@ func buildCert(caBytes []byte, org1CAPath string, csr *x509.CertificateRequest, 
 // Overwrites existing cert and removes private key from keystore folder
 func updateMSPFolder(path, certName string, cert []byte) {
 	// Overwrite existing certificate with new certificate
-	err := ioutil.WriteFile(filepath.Join(path, "signcerts", certName), cert, 0644)
+	err := ioutil.WriteFile(filepath.Join(path, "signcerts", certName), cert, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 
 	// delete the existing private key - this is stored in the hsm

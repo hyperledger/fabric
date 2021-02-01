@@ -84,7 +84,9 @@ func TestSign(t *testing.T) {
 		key: expectedKey,
 		csp: &mocks.MockBCCSP{
 			SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts,
-			SignValue: expectedSig}}
+			SignValue: expectedSig,
+		},
+	}
 	signature, err := signer.Sign(nil, expectedDigest, expectedOpts)
 	require.NoError(t, err)
 	require.Equal(t, expectedSig, signature)
@@ -93,28 +95,33 @@ func TestSign(t *testing.T) {
 		key: expectedKey,
 		csp: &mocks.MockBCCSP{
 			SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts,
-			SignErr: errors.New("no signature")}}
+			SignErr: errors.New("no signature"),
+		},
+	}
 	_, err = signer.Sign(nil, expectedDigest, expectedOpts)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "no signature")
 
 	signer = &bccspCryptoSigner{
 		key: nil,
-		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts}}
+		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts},
+	}
 	_, err = signer.Sign(nil, expectedDigest, expectedOpts)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "invalid key")
 
 	signer = &bccspCryptoSigner{
 		key: expectedKey,
-		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts}}
+		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts},
+	}
 	_, err = signer.Sign(nil, nil, expectedOpts)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "invalid digest")
 
 	signer = &bccspCryptoSigner{
 		key: expectedKey,
-		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts}}
+		csp: &mocks.MockBCCSP{SignArgKey: expectedKey, SignDigestArg: expectedDigest, SignOptsArg: expectedOpts},
+	}
 	_, err = signer.Sign(nil, expectedDigest, nil)
 	require.Error(t, err)
 	require.Equal(t, err.Error(), "invalid opts")

@@ -42,7 +42,7 @@ func TestLevelDBHelperReadWithoutOpen(t *testing.T) {
 
 func TestLevelDBHelper(t *testing.T) {
 	env := newTestDBEnv(t, testDBPath)
-	//defer env.cleanup()
+	// defer env.cleanup()
 	db := env.db
 
 	db.Open()
@@ -159,7 +159,7 @@ func TestFileLock(t *testing.T) {
 
 func TestCreateDBInEmptyDir(t *testing.T) {
 	require.NoError(t, os.RemoveAll(testDBPath), "")
-	require.NoError(t, os.MkdirAll(testDBPath, 0775), "")
+	require.NoError(t, os.MkdirAll(testDBPath, 0o775), "")
 	db := CreateDB(&Conf{DBPath: testDBPath})
 	defer db.Close()
 	defer func() {
@@ -172,7 +172,7 @@ func TestCreateDBInEmptyDir(t *testing.T) {
 
 func TestCreateDBInNonEmptyDir(t *testing.T) {
 	require.NoError(t, os.RemoveAll(testDBPath), "")
-	require.NoError(t, os.MkdirAll(testDBPath, 0775), "")
+	require.NoError(t, os.MkdirAll(testDBPath, 0o775), "")
 	file, err := os.Create(filepath.Join(testDBPath, "dummyfile.txt"))
 	require.NoError(t, err, "")
 	file.Close()

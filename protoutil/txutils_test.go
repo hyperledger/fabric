@@ -116,7 +116,6 @@ func TestGetPayloads(t *testing.T) {
 	_, _, err = protoutil.GetPayloads(txAction)
 	require.Error(t, err, "Expected error with malformed transaction action payload")
 	t.Logf("error6 [%s]", err)
-
 }
 
 func TestCreateSignedTx(t *testing.T) {
@@ -231,7 +230,6 @@ func TestCreateSignedTx(t *testing.T) {
 	prop.Header = []byte("bad header")
 	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
 	require.Error(t, err, "Expected error with malformed proposal header")
-
 }
 
 func TestCreateSignedTxStatus(t *testing.T) {
@@ -363,7 +361,6 @@ func TestGetSignedProposal(t *testing.T) {
 	require.Error(t, err, "Expected error with nil proposal")
 	_, err = protoutil.GetSignedProposal(prop, nil)
 	require.Error(t, err, "Expected error with nil signing identity")
-
 }
 
 func TestMockSignedEndorserProposalOrPanic(t *testing.T) {
@@ -516,7 +513,6 @@ func TestGetorComputeTxIDFromEnvelope(t *testing.T) {
 		actualTxID, err := protoutil.GetOrComputeTxIDFromEnvelope(envelopeBytes)
 		require.Nil(t, err)
 		require.Equal(t, "709184f9d24f6ade8fcd4d6521a6eef295fef6c2e67216c58b68ac15e8946492", actualTxID)
-
 	})
 }
 
@@ -546,5 +542,4 @@ func createSampleTxEnvelopeBytes(txID string) []byte {
 		Payload: payloadBytes,
 	}
 	return protoutil.MarshalOrPanic(envelope)
-
 }

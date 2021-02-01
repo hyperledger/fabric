@@ -49,12 +49,12 @@ var _ = Describe("EndToEnd", func() {
 
 		// Create directories for endorsement and validation activation
 		dir := filepath.Join(testDir, "endorsement")
-		err = os.Mkdir(dir, 0700)
+		err = os.Mkdir(dir, 0o700)
 		Expect(err).NotTo(HaveOccurred())
 		SetEndorsementPluginActivationFolder(dir)
 
 		dir = filepath.Join(testDir, "validation")
-		err = os.Mkdir(dir, 0700)
+		err = os.Mkdir(dir, 0o700)
 		Expect(err).NotTo(HaveOccurred())
 		SetValidationPluginActivationFolder(dir)
 

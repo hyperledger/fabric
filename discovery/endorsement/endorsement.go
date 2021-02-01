@@ -22,9 +22,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	logger = flogging.MustGetLogger("discovery.endorsement")
-)
+var logger = flogging.MustGetLogger("discovery.endorsement")
 
 type principalEvaluator interface {
 	// SatisfiesPrincipal returns whether a given peer identity satisfies a certain principal

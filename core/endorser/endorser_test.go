@@ -983,7 +983,6 @@ var _ = Describe("Endorser", func() {
 
 	Context("when retrieving simulation results", func() {
 		BeforeEach(func() {
-
 			mockDeployedCCInfoProvider := &ledgermock.DeployedChaincodeInfoProvider{}
 			fakeSupport.GetDeployedCCInfoProviderReturns(mockDeployedCCInfoProvider)
 

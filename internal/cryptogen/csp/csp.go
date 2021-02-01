@@ -29,7 +29,6 @@ func LoadPrivateKey(keystorePath string) (*ecdsa.PrivateKey, error) {
 	var priv *ecdsa.PrivateKey
 
 	walkFunc := func(path string, info os.FileInfo, pathErr error) error {
-
 		if !strings.HasSuffix(path, "_sk") {
 			return nil
 		}
@@ -76,7 +75,6 @@ func parsePrivateKeyPEM(rawKey []byte) (*ecdsa.PrivateKey, error) {
 // GeneratePrivateKey creates an EC private key using a P-256 curve and stores
 // it in keystorePath.
 func GeneratePrivateKey(keystorePath string) (*ecdsa.PrivateKey, error) {
-
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to generate private key")
@@ -90,7 +88,7 @@ func GeneratePrivateKey(keystorePath string) (*ecdsa.PrivateKey, error) {
 	pemEncoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: pkcs8Encoded})
 
 	keyFile := filepath.Join(keystorePath, "priv_sk")
-	err = ioutil.WriteFile(keyFile, pemEncoded, 0600)
+	err = ioutil.WriteFile(keyFile, pemEncoded, 0o600)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "failed to save private key to file %s", keyFile)
 	}

@@ -774,7 +774,6 @@ func TestEligibilityAndBTLCacheDataExpiry(t *testing.T) {
 		require.False(t, expires)
 		require.Equal(t, uint64(math.MaxUint64), expiringBlk)
 	})
-
 }
 
 func newMockMembershipProvider(myMspID string) *mock.MembershipInfoProvider {

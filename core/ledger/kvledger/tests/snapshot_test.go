@@ -181,12 +181,14 @@ func TestSnapshotGenerationAndBootstrap(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t,
 		[]*ledger.PvtdataHashMismatch{
-			{BlockNum: 2,
+			{
+				BlockNum:   2,
 				TxNum:      0,
 				Namespace:  "myChaincode",
 				Collection: "collection-1",
 			},
-			{BlockNum: 3,
+			{
+				BlockNum:   3,
 				TxNum:      0,
 				Namespace:  "myChaincode",
 				Collection: "collection-2",

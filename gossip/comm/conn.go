@@ -40,7 +40,7 @@ type connectionStore struct {
 	connFactory      connFactory            // creates a connection to remote peer
 	sync.RWMutex                            // synchronize access to shared variables
 	pki2Conn         map[string]*connection // mapping between pkiID to connections
-	destinationLocks map[string]*sync.Mutex //mapping between pkiIDs and locks,
+	destinationLocks map[string]*sync.Mutex // mapping between pkiIDs and locks,
 	// used to prevent concurrent connection establishment to the same remote endpoint
 }
 
@@ -250,7 +250,7 @@ func (conn *connection) send(msg *protoext.SignedGossipMessage, onErr func(error
 		if shouldBlock {
 			select {
 			case conn.outBuff <- m: // try again, and wait to send
-			case <-conn.stopChan: //stop blocking if the connection is closing
+			case <-conn.stopChan: // stop blocking if the connection is closing
 			}
 		} else {
 			conn.metrics.BufferOverflow.Add(1)

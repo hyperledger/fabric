@@ -293,7 +293,6 @@ func getMockChaincodeCmdFactoryEndorsementFailure(ccRespStatus int32, ccRespPayl
 
 	mockRespFailure, err := protoutil.CreateProposalResponseFailure(prop.Header, prop.Payload, response, result, nil, "foo")
 	if err != nil {
-
 		return nil, fmt.Errorf("Could not create proposal response failure, err %s\n", err)
 	}
 
@@ -314,7 +313,9 @@ func createCIS() *pb.ChaincodeInvocationSpec {
 		ChaincodeSpec: &pb.ChaincodeSpec{
 			Type:        pb.ChaincodeSpec_GOLANG,
 			ChaincodeId: &pb.ChaincodeID{Name: "chaincode_name"},
-			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}}}}
+			Input:       &pb.ChaincodeInput{Args: [][]byte{[]byte("arg1"), []byte("arg2")}},
+		},
+	}
 }
 
 func getMockDeliverClientResponseWithTxStatusAndID(txStatus pb.TxValidationCode, txID string) *mock.PeerDeliverClient {

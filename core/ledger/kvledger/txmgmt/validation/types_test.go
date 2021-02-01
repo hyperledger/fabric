@@ -63,10 +63,12 @@ func TestRetrieveHash(t *testing.T) {
 	ns1 := "ns1"
 	chrs1 := &rwsetutil.CollHashedRwSet{
 		CollectionName: coll1,
-		PvtRwSetHash:   expected}
+		PvtRwSetHash:   expected,
+	}
 	nrs1 := &rwsetutil.NsRwSet{
 		NameSpace:        ns1,
-		CollHashedRwSets: []*rwsetutil.CollHashedRwSet{chrs1}}
+		CollHashedRwSets: []*rwsetutil.CollHashedRwSet{chrs1},
+	}
 	trs1 := &rwsetutil.TxRwSet{NsRwSets: []*rwsetutil.NsRwSet{nrs1}}
 	tx1 := &transaction{rwset: trs1}
 
@@ -88,7 +90,8 @@ func TestRetrieveHash_NsRwSetsNotEqualsToNs(t *testing.T) {
 	ns3 := "ns3"
 	nrs3 := &rwsetutil.NsRwSet{
 		NameSpace:        "ns",
-		CollHashedRwSets: []*rwsetutil.CollHashedRwSet{}}
+		CollHashedRwSets: []*rwsetutil.CollHashedRwSet{},
+	}
 	trs3 := &rwsetutil.TxRwSet{NsRwSets: []*rwsetutil.NsRwSet{nrs3}}
 	tx3 := &transaction{rwset: trs3}
 

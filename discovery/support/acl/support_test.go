@@ -222,5 +222,4 @@ func TestChannelVerifier(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed obtaining channel application writers policy")
 	})
-
 }

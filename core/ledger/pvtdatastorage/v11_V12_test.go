@@ -8,9 +8,8 @@ package pvtdatastorage
 
 import (
 	"io/ioutil"
-	"path/filepath"
-
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"

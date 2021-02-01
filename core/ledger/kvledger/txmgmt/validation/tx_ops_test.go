@@ -65,7 +65,7 @@ func TestTxOpsPreparationValueUpdate(t *testing.T) {
 		testutilSerializedMetadata(t, map[string][]byte{"metadata2": []byte("metadata2")}),
 		version.NewHeight(1, 2))
 
-	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) //write the above initial state to db
+	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) // write the above initial state to db
 	precedingUpdates := newPubAndHashUpdates()
 
 	rwset := testutilBuildRwset( // A sample rwset {upsert key1, key2, key3}
@@ -122,7 +122,7 @@ func TestTxOpsPreparationMetadataUpdates(t *testing.T) {
 		testutilSerializedMetadata(t, map[string][]byte{"metadata2": []byte("metadata2")}),
 		version.NewHeight(1, 2))
 
-	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) //write the above initial state to db
+	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) // write the above initial state to db
 	precedingUpdates := newPubAndHashUpdates()
 
 	rwset := testutilBuildRwset( // A sample rwset {update metadta for the three keys}
@@ -174,7 +174,7 @@ func TestTxOpsPreparationMetadataDelete(t *testing.T) {
 		testutilSerializedMetadata(t, map[string][]byte{"metadata2": []byte("metadata2")}),
 		version.NewHeight(1, 2))
 
-	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) //write the above initial state to db
+	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) // write the above initial state to db
 	precedingUpdates := newPubAndHashUpdates()
 
 	rwset := testutilBuildRwset( // A sample rwset {delete metadata for the three keys}
@@ -231,7 +231,7 @@ func TestTxOpsPreparationMixedUpdates(t *testing.T) {
 		testutilSerializedMetadata(t, map[string][]byte{"metadata4": []byte("metadata4")}),
 		version.NewHeight(1, 4))
 
-	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) //write the above initial state to db
+	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) // write the above initial state to db
 
 	precedingUpdates := newPubAndHashUpdates()
 
@@ -319,7 +319,7 @@ func TestTxOpsPreparationPvtdataHashes(t *testing.T) {
 		testutilSerializedMetadata(t, map[string][]byte{"metadata4": []byte("metadata4")}),
 		version.NewHeight(1, 4))
 
-	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) //write the above initial state to db
+	require.NoError(t, db.ApplyPrivacyAwareUpdates(updateBatch, version.NewHeight(1, 2))) // write the above initial state to db
 
 	precedingUpdates := newPubAndHashUpdates()
 	rwset := testutilBuildRwset( // A sample rwset {key1:only value update, key2: value and metadata update, key3: only metadata update, key4: only value update}

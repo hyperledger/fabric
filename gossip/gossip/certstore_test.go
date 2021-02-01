@@ -31,11 +31,9 @@ func init() {
 	util.SetupTestLogging()
 }
 
-var (
-	cs = &naiveCryptoService{
-		revokedPkiIDS: make(map[string]struct{}),
-	}
-)
+var cs = &naiveCryptoService{
+	revokedPkiIDS: make(map[string]struct{}),
+}
 
 type pullerMock struct {
 	mock.Mock
@@ -55,7 +53,6 @@ func (s *sentMsg) GetSourceEnvelope() *proto.Envelope {
 
 // Ack returns to the sender an acknowledgement for the message
 func (s *sentMsg) Ack(err error) {
-
 }
 
 func (s *sentMsg) Respond(msg *proto.GossipMessage) {

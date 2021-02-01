@@ -41,7 +41,6 @@ func GlobalConfig() *StateConfig {
 }
 
 func (c *StateConfig) loadStateConfig() {
-
 	c.StateCheckInterval = DefStateCheckInterval
 	if viper.IsSet("peer.gossip.state.checkInterval") {
 		c.StateCheckInterval = viper.GetDuration("peer.gossip.state.checkInterval")

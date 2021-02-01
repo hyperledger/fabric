@@ -140,8 +140,7 @@ type ConsenterSupport interface {
 }
 
 // NoOpMetadataValidator implements a MetadataValidator that always returns nil error irrespecttive of the inputs.
-type NoOpMetadataValidator struct {
-}
+type NoOpMetadataValidator struct{}
 
 // ValidateConsensusMetadata determines the validity of a ConsensusMetadata update during config updates
 // on the channel, and it always returns nil error for the NoOpMetadataValidator implementation.

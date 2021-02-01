@@ -82,7 +82,6 @@ func TestGroupModPolicyUpdate(t *testing.T) {
 }
 
 func TestGroupPolicyModification(t *testing.T) {
-
 	policy1Name := "foo"
 	policy2Name := "bar"
 	original := &cb.ConfigGroup{
@@ -148,7 +147,6 @@ func TestGroupPolicyModification(t *testing.T) {
 }
 
 func TestGroupValueModification(t *testing.T) {
-
 	value1Name := "foo"
 	value2Name := "bar"
 	original := &cb.ConfigGroup{
@@ -206,7 +204,6 @@ func TestGroupValueModification(t *testing.T) {
 }
 
 func TestGroupGroupsModification(t *testing.T) {
-
 	subGroupName := "foo"
 	original := &cb.ConfigGroup{
 		Version: 7,
@@ -269,7 +266,6 @@ func TestGroupGroupsModification(t *testing.T) {
 }
 
 func TestGroupValueAddition(t *testing.T) {
-
 	value1Name := "foo"
 	value2Name := "bar"
 	original := &cb.ConfigGroup{
@@ -331,7 +327,6 @@ func TestGroupValueAddition(t *testing.T) {
 }
 
 func TestGroupPolicySwap(t *testing.T) {
-
 	policy1Name := "foo"
 	policy2Name := "bar"
 	original := &cb.ConfigGroup{
@@ -391,7 +386,6 @@ func TestGroupPolicySwap(t *testing.T) {
 }
 
 func TestComplex(t *testing.T) {
-
 	existingGroup1Name := "existingGroup1"
 	existingGroup2Name := "existingGroup2"
 	existingPolicyName := "existingPolicy"
@@ -500,7 +494,6 @@ func TestComplex(t *testing.T) {
 }
 
 func TestTwiceNestedModification(t *testing.T) {
-
 	subGroupName := "foo"
 	subSubGroupName := "bar"
 	valueName := "testValue"

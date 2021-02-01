@@ -67,7 +67,8 @@ func NewNymSignature(sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP256BN.BIG, ipk *
 		ProofC:     BigToBytes(ProofC),
 		ProofSSk:   BigToBytes(ProofSSk),
 		ProofSRNym: BigToBytes(ProofSRNym),
-		Nonce:      BigToBytes(Nonce)}, nil
+		Nonce:      BigToBytes(Nonce),
+	}, nil
 }
 
 // Ver verifies an idemix NymSignature

@@ -153,7 +153,6 @@ var _ = Describe("InstantiationPolicy", func() {
 			Expect(ListInstantiatedLegacy(network, org1Peer, "testchannel")).To(gbytes.Say("Name: fakecc, Version: rightsubmitter"))
 		})
 	})
-
 })
 
 func PeerSigner(n *nwo.Network, p *nwo.Peer) *signer.Signer {

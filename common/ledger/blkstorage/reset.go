@@ -103,7 +103,7 @@ func retrieveGenesisBlkOffsetAndMakeACopy(ledgerDir string) (string, int64, erro
 		return "", -1, err
 	}
 	// just for an extra safety make a backup of genesis block
-	if err := ioutil.WriteFile(path.Join(ledgerDir, "__backupGenesisBlockBytes"), genesisBlockBytes, 0640); err != nil {
+	if err := ioutil.WriteFile(path.Join(ledgerDir, "__backupGenesisBlockBytes"), genesisBlockBytes, 0o640); err != nil {
 		return "", -1, err
 	}
 	logger.Infof("Genesis block backed up. Genesis block info file [%s], offset [%d]", blockfilePath, endOffsetGenesisBlock)
@@ -169,7 +169,7 @@ func recordHeightIfGreaterThanPreviousRecording(ledgerDir string) error {
 		logger.Infof("Recording current height [%d]", currentHt)
 		return ioutil.WriteFile(preResetHtFile,
 			[]byte(strconv.FormatUint(currentHt, 10)),
-			0640,
+			0o640,
 		)
 	}
 	logger.Infof("Not recording current height [%d] since this is less than previously recorded height [%d]",

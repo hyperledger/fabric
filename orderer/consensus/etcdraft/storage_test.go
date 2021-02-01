@@ -256,7 +256,6 @@ func TestTakeSnapshot(t *testing.T) {
 	})
 
 	t.Run("Bad", func(t *testing.T) {
-
 		t.Run("MaxSnapshotFiles==2", func(t *testing.T) {
 			// If latest snapshot file is corrupted, storage should be able
 			// to recover from an older one.
@@ -308,7 +307,7 @@ func TestTakeSnapshot(t *testing.T) {
 
 			corrupted := filepath.Join(snapDir, names[0])
 			t.Logf("Corrupt latest snapshot file: %s", corrupted)
-			f, err := os.OpenFile(corrupted, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+			f, err := os.OpenFile(corrupted, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o666)
 			require.NoError(t, err)
 			_, err = f.WriteString("Corrupted Snapshot")
 			require.NoError(t, err)

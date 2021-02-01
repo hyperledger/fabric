@@ -105,7 +105,7 @@ func fetch(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 		file = args[1]
 	}
 
-	if err = ioutil.WriteFile(file, b, 0644); err != nil {
+	if err = ioutil.WriteFile(file, b, 0o644); err != nil {
 		return err
 	}
 

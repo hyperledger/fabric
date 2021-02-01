@@ -77,7 +77,7 @@ ZsQXrlIqlmNalfYPX+NDDELqlpXQBeEqnA==
 
 			defer os.Remove(tmpFile.Name())
 
-			err = ioutil.WriteFile(tmpFile.Name(), []byte(testCase.keyBytes), 0600)
+			err = ioutil.WriteFile(tmpFile.Name(), []byte(testCase.keyBytes), 0o600)
 			require.NoError(t, err)
 
 			signer, err := NewSigner(Config{

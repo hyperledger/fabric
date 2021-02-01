@@ -78,5 +78,4 @@ func TestOrgSpecificOrdererEndpoints(t *testing.T) {
 
 		require.NotEmpty(t, cc.OrdererConfig().Organizations()["SampleOrg"].Endpoints)
 	})
-
 }

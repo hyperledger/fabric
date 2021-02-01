@@ -124,7 +124,7 @@ func TestInstallFromBadPackage(t *testing.T) {
 	defer os.RemoveAll(pdir)
 
 	ccpackfile := pdir + "/ccpack.file"
-	err := ioutil.WriteFile(ccpackfile, []byte("really bad CC package"), 0700)
+	err := ioutil.WriteFile(ccpackfile, []byte("really bad CC package"), 0o700)
 	if err != nil {
 		t.Fatalf("could not create package :%v", err)
 	}
