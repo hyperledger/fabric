@@ -271,12 +271,12 @@ func TestIsEmpty(t *testing.T) {
 	require.True(t, isEmpty)
 
 	configCopy := *config
-	configCopy.Address = "junk"
+	configCopy.Address = "address-and-port.invalid:0"
 	configCopy.MaxRetries = 0
 	couchInstance.conf = &configCopy
 	_, err = couchInstance.isEmpty(ignore)
 	require.Error(t, err)
-	require.Regexp(t, `unable to connect to CouchDB, check the hostname and port: http error calling couchdb: Get "?http://junk/_all_dbs"?`, err.Error())
+	require.Regexp(t, `unable to connect to CouchDB, check the hostname and port: http error calling couchdb: Get "?http://address-and-port.invalid:0/_all_dbs"?`, err.Error())
 }
 
 func TestDBBadDatabaseName(t *testing.T) {
