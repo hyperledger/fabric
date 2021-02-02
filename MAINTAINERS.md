@@ -1,6 +1,8 @@
 Maintainers
 ===========
 
+See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html#maintainers) to learn about the role of the maintainers and the process to become one.
+
 **Active Maintainers**
 
 | Name | GitHub | Chat | email
