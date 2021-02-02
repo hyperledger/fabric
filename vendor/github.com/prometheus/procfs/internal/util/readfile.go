@@ -11,27 +11,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package procfs
+package util
 
 import (
-	"strings"
-
-	"github.com/prometheus/procfs/internal/util"
+	"io"
+	"io/ioutil"
+	"os"
 )
 
-// Environ reads process environments from /proc/<pid>/environ
-func (p Proc) Environ() ([]string, error) {
-	environments := make([]string, 0)
+// ReadFileNoStat uses ioutil.ReadAll to read contents of entire file.
+// This is similar to ioutil.ReadFile but without the call to os.Stat, because
+// many files in /proc and /sys report incorrect file sizes (either 0 or 4096).
+// Reads a max file size of 512kB.  For files larger than this, a scanner
+// should be used.
+func ReadFileNoStat(filename string) ([]byte, error) {
+	const maxBufferSize = 1024 * 512
 
-	data, err := util.ReadFileNoStat(p.path("environ"))
+	f, err := os.Open(filename)
 	if err != nil {
-		return environments, err
+		return nil, err
 	}
+	defer f.Close()
 
-	environments = strings.Split(string(data), "\000")
-	if len(environments) > 0 {
-		environments = environments[:len(environments)-1]
-	}
-
-	return environments, nil
+	reader := io.LimitReader(f, maxBufferSize)
+	return ioutil.ReadAll(reader)
 }
