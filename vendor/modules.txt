@@ -324,9 +324,10 @@ github.com/spf13/pflag
 # github.com/spf13/viper v1.1.1
 ## explicit
 github.com/spf13/viper
-# github.com/stretchr/objx v0.1.1
+# github.com/stretchr/objx v0.3.0
+## explicit
 github.com/stretchr/objx
-# github.com/stretchr/testify v1.5.1
+# github.com/stretchr/testify v1.7.1-0.20210116013205-6990a05d54c2
 ## explicit
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/mock
@@ -497,4 +498,7 @@ gopkg.in/tomb.v1
 # gopkg.in/yaml.v2 v2.3.0
 ## explicit
 gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+## explicit
+gopkg.in/yaml.v3
 # golang.org/x/sys => golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380
