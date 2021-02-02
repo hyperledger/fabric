@@ -5,7 +5,7 @@ code.cloudfoundry.org/clock/fakeclock
 # github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
-# github.com/DataDog/zstd v1.4.0
+# github.com/DataDog/zstd v1.4.5
 ## explicit
 github.com/DataDog/zstd
 # github.com/Knetic/govaluate v3.0.0+incompatible
@@ -108,7 +108,7 @@ github.com/eapache/go-xerial-snappy
 # github.com/eapache/queue v1.1.0
 ## explicit
 github.com/eapache/queue
-# github.com/frankban/quicktest v1.9.0
+# github.com/frankban/quicktest v1.11.3
 ## explicit
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
@@ -221,7 +221,7 @@ github.com/inconshreveable/mousetrap
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515
 github.com/kr/logfmt
-# github.com/kr/pretty v0.2.0
+# github.com/kr/pretty v0.2.1
 ## explicit
 github.com/kr/pretty
 # github.com/kr/text v0.1.0
@@ -299,7 +299,7 @@ github.com/opencontainers/runc/libcontainer/user
 # github.com/pelletier/go-toml v1.8.0
 ## explicit
 github.com/pelletier/go-toml
-# github.com/pierrec/lz4 v2.5.0+incompatible
+# github.com/pierrec/lz4 v2.6.0+incompatible
 ## explicit
 github.com/pierrec/lz4
 github.com/pierrec/lz4/internal/xxh32
@@ -322,7 +322,7 @@ github.com/prometheus/common/model
 # github.com/prometheus/procfs v0.0.3
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
-# github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
+# github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 ## explicit
 github.com/rcrowley/go-metrics
 # github.com/sirupsen/logrus v1.6.0
@@ -412,10 +412,10 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
 go.uber.org/zap/zaptest/observer
-# golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+# golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 ## explicit
 golang.org/x/crypto/sha3
-# golang.org/x/net v0.0.0-20200813134508-3edf25e44fcc
+# golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 ## explicit
 golang.org/x/net/html
 golang.org/x/net/html/atom
@@ -428,13 +428,12 @@ golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
 # golang.org/x/sync v0.0.0-20190423024810-112230192c58
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.0.0-20200922070232-aee5d888a860
+# golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # golang.org/x/text v0.3.3
-## explicit
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/htmlindex
