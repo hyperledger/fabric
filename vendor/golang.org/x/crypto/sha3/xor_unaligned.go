@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // +build amd64 386 ppc64le
-// +build !appengine
+// +build !purego
 
 package sha3
 
@@ -15,15 +15,6 @@ type storageBuf [maxRate / 8]uint64
 func (b *storageBuf) asBytes() *[maxRate]byte {
 	return (*[maxRate]byte)(unsafe.Pointer(b))
 }
-
-//go:nocheckptr
-//
-// xorInUnaligned intentionally reads the input buffer as an unaligned slice of
-// integers. The language spec is not clear on whether that is allowed.
-// See:
-// 	https://golang.org/issue/37644
-// 	https://golang.org/issue/37298
-// 	https://golang.org/issue/35381
 
 // xorInUnaligned uses unaligned reads and writes to update d.a to contain d.a
 // XOR buf.
