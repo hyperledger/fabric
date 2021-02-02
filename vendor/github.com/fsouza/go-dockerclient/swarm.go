@@ -36,13 +36,14 @@ type InitSwarmOptions struct {
 // See https://goo.gl/ZWyG1M for more details.
 func (c *Client) InitSwarm(opts InitSwarmOptions) (string, error) {
 	path := "/swarm/init"
-	resp, err := c.do("POST", path, doOptions{
+	resp, err := c.do(http.MethodPost, path, doOptions{
 		data:      opts.InitRequest,
 		forceJSON: true,
 		context:   opts.Context,
 	})
 	if err != nil {
-		if e, ok := err.(*Error); ok && (e.Status == http.StatusNotAcceptable || e.Status == http.StatusServiceUnavailable) {
+		var e *Error
+		if errors.As(err, &e) && (e.Status == http.StatusNotAcceptable || e.Status == http.StatusServiceUnavailable) {
 			return "", ErrNodeAlreadyInSwarm
 		}
 		return "", err
@@ -66,13 +67,14 @@ type JoinSwarmOptions struct {
 // See https://goo.gl/N59IP1 for more details.
 func (c *Client) JoinSwarm(opts JoinSwarmOptions) error {
 	path := "/swarm/join"
-	resp, err := c.do("POST", path, doOptions{
+	resp, err := c.do(http.MethodPost, path, doOptions{
 		data:      opts.JoinRequest,
 		forceJSON: true,
 		context:   opts.Context,
 	})
 	if err != nil {
-		if e, ok := err.(*Error); ok && (e.Status == http.StatusNotAcceptable || e.Status == http.StatusServiceUnavailable) {
+		var e *Error
+		if errors.As(err, &e) && (e.Status == http.StatusNotAcceptable || e.Status == http.StatusServiceUnavailable) {
 			return ErrNodeAlreadyInSwarm
 		}
 	}
@@ -93,11 +95,12 @@ func (c *Client) LeaveSwarm(opts LeaveSwarmOptions) error {
 	params := make(url.Values)
 	params.Set("force", strconv.FormatBool(opts.Force))
 	path := "/swarm/leave?" + params.Encode()
-	resp, err := c.do("POST", path, doOptions{
+	resp, err := c.do(http.MethodPost, path, doOptions{
 		context: opts.Context,
 	})
 	if err != nil {
-		if e, ok := err.(*Error); ok && (e.Status == http.StatusNotAcceptable || e.Status == http.StatusServiceUnavailable) {
+		var e *Error
+		if errors.As(err, &e) && (e.Status == http.StatusNotAcceptable || e.Status == http.StatusServiceUnavailable) {
 			return ErrNodeNotInSwarm
 		}
 	}
@@ -123,13 +126,14 @@ func (c *Client) UpdateSwarm(opts UpdateSwarmOptions) error {
 	params.Set("rotateWorkerToken", strconv.FormatBool(opts.RotateWorkerToken))
 	params.Set("rotateManagerToken", strconv.FormatBool(opts.RotateManagerToken))
 	path := "/swarm/update?" + params.Encode()
-	resp, err := c.do("POST", path, doOptions{
+	resp, err := c.do(http.MethodPost, path, doOptions{
 		data:      opts.Swarm,
 		forceJSON: true,
 		context:   opts.Context,
 	})
 	if err != nil {
-		if e, ok := err.(*Error); ok && (e.Status == http.StatusNotAcceptable || e.Status == http.StatusServiceUnavailable) {
+		var e *Error
+		if errors.As(err, &e) && (e.Status == http.StatusNotAcceptable || e.Status == http.StatusServiceUnavailable) {
 			return ErrNodeNotInSwarm
 		}
 	}
@@ -141,11 +145,12 @@ func (c *Client) UpdateSwarm(opts UpdateSwarmOptions) error {
 // See https://goo.gl/MFwgX9 for more details.
 func (c *Client) InspectSwarm(ctx context.Context) (swarm.Swarm, error) {
 	response := swarm.Swarm{}
-	resp, err := c.do("GET", "/swarm", doOptions{
+	resp, err := c.do(http.MethodGet, "/swarm", doOptions{
 		context: ctx,
 	})
 	if err != nil {
-		if e, ok := err.(*Error); ok && (e.Status == http.StatusNotAcceptable || e.Status == http.StatusServiceUnavailable) {
+		var e *Error
+		if errors.As(err, &e) && (e.Status == http.StatusNotAcceptable || e.Status == http.StatusServiceUnavailable) {
 			return response, ErrNodeNotInSwarm
 		}
 		return response, err
