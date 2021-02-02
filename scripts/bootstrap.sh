@@ -22,7 +22,7 @@ printHelp() {
     echo "-b : bypass download of platform-specific binaries"
     echo
     echo "e.g. bootstrap.sh 2.2.2 1.4.9 -s"
-    echo "will download docker images and binaries for Fabric v2.2.1 and Fabric CA v1.4.9"
+    echo "will download docker images and binaries for Fabric v2.2.2 and Fabric CA v1.4.9"
 }
 
 # dockerPull() pulls docker images from fabric and chaincode repositories
