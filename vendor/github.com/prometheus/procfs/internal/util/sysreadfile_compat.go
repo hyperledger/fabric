@@ -11,27 +11,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package procfs
+// +build linux,appengine !linux
+
+package util
 
 import (
-	"strings"
-
-	"github.com/prometheus/procfs/internal/util"
+	"fmt"
 )
 
-// Environ reads process environments from /proc/<pid>/environ
-func (p Proc) Environ() ([]string, error) {
-	environments := make([]string, 0)
-
-	data, err := util.ReadFileNoStat(p.path("environ"))
-	if err != nil {
-		return environments, err
-	}
-
-	environments = strings.Split(string(data), "\000")
-	if len(environments) > 0 {
-		environments = environments[:len(environments)-1]
-	}
-
-	return environments, nil
+// SysReadFile is here implemented as a noop for builds that do not support
+// the read syscall. For example Windows, or Linux on Google App Engine.
+func SysReadFile(file string) (string, error) {
+	return "", fmt.Errorf("not supported on this platform")
 }
