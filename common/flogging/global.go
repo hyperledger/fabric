@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	defaultFormat = "%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
+	defaultFormat = "%{color}%{time:2006-01-02 15:04:05.000 MST} %{id:04x} %{level:.4s}%{color:reset} [%{module}] %{color:bold}%{shortfunc}%{color:reset} -> %{message}"
 	defaultLevel  = zapcore.InfoLevel
 )
 
