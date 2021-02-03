@@ -16,7 +16,7 @@ import (
 )
 
 func TestLoadCert(t *testing.T) {
-	pair, err := newCertKeyPair(false, false, "", nil, nil)
+	pair, err := newCertKeyPair(false, false, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, pair)
 	tlsCertPair, err := tls.X509KeyPair(pair.Cert, pair.Key)
