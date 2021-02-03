@@ -79,7 +79,7 @@ created above. It retrieves the following platform-specific binaries:
   * ``discover``,
   * ``idemixgen``
   * ``orderer``,
-	* ``osnadmin``,
+  * ``osnadmin``,
   * ``peer``,
   * ``fabric-ca-client``,
   * ``fabric-ca-server``
