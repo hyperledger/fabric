@@ -82,3 +82,9 @@ func TestTLSCA(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "context deadline exceeded")
 }
+
+func TestTLSCASigner(t *testing.T) {
+	tlsCA, err := NewCA()
+	require.NoError(t, err)
+	require.Equal(t, tlsCA.(*ca).caCert.Signer, tlsCA.Signer())
+}
