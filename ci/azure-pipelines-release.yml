@@ -78,7 +78,7 @@ stages:
               addChangeLog: true
               assets: $(Pipeline.Workspace)/*amd64*/*
               compareWith: lastFullRelease
-              gitHubConnection: fabric-release
+              gitHubConnection: hyperledger
               isDraft: true
               releaseNotesFile: release_notes/v$(RELEASE).md
               repositoryName: $(Build.Repository.Name)
