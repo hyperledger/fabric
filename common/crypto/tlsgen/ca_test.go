@@ -82,3 +82,9 @@ func TestTLSCA(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "context deadline exceeded")
 }
+
+func TestTLSCASigner(t *testing.T) {
+	tlsCA, err := NewCA()
+	assert.NoError(t, err)
+	assert.Equal(t, tlsCA.(*ca).caCert.Signer, tlsCA.Signer())
+}
