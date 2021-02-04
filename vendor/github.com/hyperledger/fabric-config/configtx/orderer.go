@@ -30,7 +30,7 @@ const (
 // Orderer configures the ordering service behavior for a channel.
 type Orderer struct {
 	// OrdererType is the type of orderer
-	// Options: `Solo`, `Kafka` or `Raft`
+	// Options: `ConsensusTypeSolo`, `ConsensusTypeKafka` or `ConsensusTypeEtcdRaft`
 	OrdererType string
 	// BatchTimeout is the wait time between transactions.
 	BatchTimeout  time.Duration
@@ -519,7 +519,7 @@ func (o *OrdererGroup) Capabilities() ([]string, error) {
 }
 
 // AddCapability adds capability to the provided channel config.
-// If the provided capability already exist in current configuration, this action
+// If the provided capability already exists in current configuration, this action
 // will be a no-op.
 func (o *OrdererGroup) AddCapability(capability string) error {
 	capabilities, err := o.Capabilities()
@@ -551,7 +551,7 @@ func (o *OrdererGroup) RemoveCapability(capability string) error {
 }
 
 // SetEndpoint adds an orderer's endpoint to an existing channel config transaction.
-// If the same endpoint already exist in current configuration, this will be a no-op.
+// If the same endpoint already exists in current configuration, this will be a no-op.
 func (o *OrdererOrg) SetEndpoint(endpoint Address) error {
 	ordererAddrProto := &cb.OrdererAddresses{}
 
@@ -613,11 +613,27 @@ func (o *OrdererOrg) RemoveEndpoint(endpoint Address) error {
 }
 
 // SetPolicy sets the specified policy in the orderer group's config policy map.
-// If the policy already exist in current configuration, its value will be overwritten.
+// If the policy already exists in current configuration, its value will be overwritten.
 func (o *OrdererGroup) SetPolicy(modPolicy, policyName string, policy Policy) error {
 	err := setPolicy(o.ordererGroup, modPolicy, policyName, policy)
 	if err != nil {
 		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
+	}
+
+	return nil
+}
+
+// SetPolicies sets the specified policy in the orderer group's config policy map.
+// If the policies already exist in current configuration, the values will be replaced with new policies.
+func (o *OrdererGroup) SetPolicies(modPolicy string, policies map[string]Policy) error {
+
+	if _, ok := policies[BlockValidationPolicyKey]; !ok {
+		return errors.New("BlockValidation policy must be defined")
+	}
+
+	err := setPolicies(o.ordererGroup, policies, modPolicy)
+	if err != nil {
+		return fmt.Errorf("failed to set policies: %v", err)
 	}
 
 	return nil
@@ -670,9 +686,15 @@ func (o *OrdererOrg) SetMSP(updatedMSP MSP) error {
 }
 
 // SetPolicy sets the specified policy in the orderer org group's config policy map.
-// If the policy already exist in current configuration, its value will be overwritten.
+// If the policy already exists in current configuration, its value will be overwritten.
 func (o *OrdererOrg) SetPolicy(modPolicy, policyName string, policy Policy) error {
 	return setPolicy(o.orgGroup, modPolicy, policyName, policy)
+}
+
+// SetPolicies sets the specified policies in the orderer org group's config policy map.
+// If the policies already exist in current configuration, the values will be replaced with new policies.
+func (o *OrdererOrg) SetPolicies(modPolicy string, policies map[string]Policy) error {
+	return setPolicies(o.orgGroup, policies, modPolicy)
 }
 
 // RemovePolicy removes an existing policy from an orderer organization.

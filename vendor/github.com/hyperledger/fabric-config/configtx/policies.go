@@ -202,6 +202,7 @@ func setPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPolicy stri
 		return errors.New("no Writers policy defined")
 	}
 
+	cg.Policies = make(map[string]*cb.ConfigPolicy)
 	for policyName, policy := range policyMap {
 		err := setPolicy(cg, modPolicy, policyName, policy)
 		if err != nil {

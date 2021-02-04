@@ -175,17 +175,17 @@ github.com/hpcloud/tail/ratelimiter
 github.com/hpcloud/tail/util
 github.com/hpcloud/tail/watch
 github.com/hpcloud/tail/winfile
-# github.com/hyperledger/fabric-amcl v0.0.0-20200128223036-d1aa2665426a
+# github.com/hyperledger/fabric-amcl v0.0.0-20200424173818-327c9e2cf77a
 ## explicit
 github.com/hyperledger/fabric-amcl/amcl
 github.com/hyperledger/fabric-amcl/amcl/FP256BN
-# github.com/hyperledger/fabric-chaincode-go v0.0.0-20200128192331-2d899240a7ed
+# github.com/hyperledger/fabric-chaincode-go v0.0.0-20201119163726-f8ef75b17719
 ## explicit
 github.com/hyperledger/fabric-chaincode-go/pkg/statebased
 github.com/hyperledger/fabric-chaincode-go/shim
 github.com/hyperledger/fabric-chaincode-go/shim/internal
 github.com/hyperledger/fabric-chaincode-go/shimtest
-# github.com/hyperledger/fabric-config v0.0.7
+# github.com/hyperledger/fabric-config v0.0.9
 ## explicit
 github.com/hyperledger/fabric-config/configtx
 github.com/hyperledger/fabric-config/configtx/internal/policydsl
@@ -201,7 +201,7 @@ github.com/hyperledger/fabric-config/protolator/protoext/peerext
 # github.com/hyperledger/fabric-lib-go v1.0.0
 ## explicit
 github.com/hyperledger/fabric-lib-go/healthz
-# github.com/hyperledger/fabric-protos-go v0.0.0-20201028172056-a3136dde2354
+# github.com/hyperledger/fabric-protos-go v0.0.0-20210127161553-4f432a78f286
 ## explicit
 github.com/hyperledger/fabric-protos-go/common
 github.com/hyperledger/fabric-protos-go/discovery

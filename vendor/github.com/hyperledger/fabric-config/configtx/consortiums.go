@@ -204,7 +204,7 @@ func (c *ConsortiumOrg) setMSPConfig(updatedMSP MSP) error {
 
 // SetChannelCreationPolicy sets the ConsortiumChannelCreationPolicy for
 // the given configuration Group.
-// If the policy already exist in current configuration, its value will be overwritten.
+// If the policy already exists in current configuration, its value will be overwritten.
 func (c *ConsortiumGroup) SetChannelCreationPolicy(policy Policy) error {
 	imp, err := implicitMetaFromString(policy.Rule)
 	if err != nil {
@@ -230,11 +230,22 @@ func (c *ConsortiumOrg) Policies() (map[string]Policy, error) {
 }
 
 // SetPolicy sets the specified policy in the consortium org group's config policy map.
-// If the policy already exist in current configuration, its value will be overwritten.
+// If the policy already exists in current configuration, its value will be overwritten.
 func (c *ConsortiumOrg) SetPolicy(name string, policy Policy) error {
 	err := setPolicy(c.orgGroup, AdminsPolicyKey, name, policy)
 	if err != nil {
 		return fmt.Errorf("failed to set policy '%s' to consortium org '%s': %v", name, c.name, err)
+	}
+
+	return nil
+}
+
+// SetPolicies sets the specified policies in the consortium org group's config policy map.
+// If the policies already exist in current configuration, the values will be replaced with new policies.
+func (c *ConsortiumOrg) SetPolicies(policies map[string]Policy) error {
+	err := setPolicies(c.orgGroup, policies, AdminsPolicyKey)
+	if err != nil {
+		return fmt.Errorf("failed to set policies to consortium org '%s': %v", c.name, err)
 	}
 
 	return nil
