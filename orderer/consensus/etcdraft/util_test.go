@@ -7,12 +7,15 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -24,12 +27,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-)
-
-const (
-	consentersTestDataDir = "testdata/consenters_certs/"
-	ca1Dir                = consentersTestDataDir + "ca1"
-	ca2Dir                = consentersTestDataDir + "ca2"
 )
 
 func TestIsConsenterOfChannel(t *testing.T) {
@@ -128,49 +125,31 @@ func TestIsConsenterOfChannel(t *testing.T) {
 
 func TestVerifyConfigMetadata(t *testing.T) {
 	tlsCA, err := tlsgen.NewCA()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err, "failed to create CA")
 
 	caRootCert, err := parseCertificateFromBytes(tlsCA.CertBytes())
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err, "failed to parse CA certificate")
 
 	serverPair, err := tlsCA.NewServerCertKeyPair("localhost")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err, "failed to create server key pair")
 
 	clientPair, err := tlsCA.NewClientCertKeyPair()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err, "failed to create client key pair")
 
 	unknownTlsCA, err := tlsgen.NewCA()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err, "failed to create unknown CA")
 
 	unknownServerPair, err := unknownTlsCA.NewServerCertKeyPair("unknownhost")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err, "failed to create unknown server key pair")
 
 	unknownServerCert, err := parseCertificateFromBytes(unknownServerPair.Cert)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err, "failed to parse unknown server certificate")
 
 	unknownClientPair, err := unknownTlsCA.NewClientCertKeyPair()
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err, "failed to create unknown client key pair")
 
 	unknownClientCert, err := parseCertificateFromBytes(unknownClientPair.Cert)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err, "failed to parse unknown client certificate")
 
 	validOptions := &etcdraftproto.Options{
 		TickInterval:         "500ms",
@@ -391,30 +370,44 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		})
 	}
 
-	// test use case when consenter has expired certificates
-	tlsCaCertBytes, err := ioutil.ReadFile(filepath.Join(ca1Dir, "ca.pem"))
-	require.Nil(t, err)
-	tlsCaCert, err := parseCertificateFromBytes(tlsCaCertBytes)
-	require.Nil(t, err)
+	t.Run("ExpiredCertificate", func(t *testing.T) {
+		clientPair, err := tlsCA.NewClientCertKeyPair()
+		require.NoError(t, err, "failed to create client key pair")
 
-	tlsClientCert, err := ioutil.ReadFile(filepath.Join(ca1Dir, "client3.pem"))
-	require.Nil(t, err)
+		clientCert := clientPair.TLSCert
+		clientCert.NotAfter = time.Now().Add(-24 * time.Hour)
+		clientCertBytes, err := x509.CreateCertificate(rand.Reader, clientCert, caRootCert, clientPair.Signer.Public(), tlsCA.Signer())
+		require.NoError(t, err, "failed to create expired certificate")
 
-	expiredCertVerifyOpts := goodVerifyingOpts
-	expiredCertVerifyOpts.Roots.AddCert(tlsCaCert)
-	consenterWithExpiredCerts := &etcdraftproto.Consenter{
-		Host:          "host1",
-		Port:          10001,
-		ClientTlsCert: tlsClientCert,
-		ServerTlsCert: tlsClientCert,
-	}
+		clientCert, err = x509.ParseCertificate(clientCertBytes)
+		require.NoError(t, err, "failed to parse expired certificate")
 
-	metadataWithExpiredConsenter := &etcdraftproto.ConfigMetadata{
-		Options: validOptions,
-		Consenters: []*etcdraftproto.Consenter{
-			consenterWithExpiredCerts,
-		},
-	}
+		_, err = clientCert.Verify(goodVerifyingOpts)
+		require.Error(t, err, "expected certificate verification to fail")
+		cie, ok := err.(x509.CertificateInvalidError)
+		require.True(t, ok, "expected an x509.CertificateInvalidError but got %T", err)
+		require.Equal(t, x509.Expired, cie.Reason)
 
-	require.Nil(t, VerifyConfigMetadata(metadataWithExpiredConsenter, expiredCertVerifyOpts))
+		consenterWithExpiredCerts := &etcdraftproto.Consenter{
+			Host:          "host1",
+			Port:          10001,
+			ClientTlsCert: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: clientCertBytes}),
+			ServerTlsCert: serverPair.Cert,
+		}
+
+		metadataWithExpiredConsenter := &etcdraftproto.ConfigMetadata{
+			Options: &etcdraftproto.Options{
+				TickInterval:         "500ms",
+				ElectionTick:         10,
+				HeartbeatTick:        1,
+				MaxInflightBlocks:    5,
+				SnapshotIntervalSize: 20 * 1024 * 1024, // 20 MB
+			},
+			Consenters: []*etcdraftproto.Consenter{
+				consenterWithExpiredCerts,
+			},
+		}
+
+		require.Nil(t, VerifyConfigMetadata(metadataWithExpiredConsenter, goodVerifyingOpts))
+	})
 }

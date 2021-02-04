@@ -39,54 +39,35 @@ import (
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
+	gtypes "github.com/onsi/gomega/types"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-// These fixtures contain certificates for testing consenters.
-// In both folders certificates generated using tlsgen pkg, each certificate is singed by ca.pem inside corresponding folder.
-// Each cert has 10years expiration time (tlsgenCa.NewServerCertKeyPair("localhost")).
-
-// NOTE ONLY FOR GO 1.15+: prior to go1.15 tlsgen produced CA root cert without SubjectKeyId, which is not allowed by MSP validator.
-// In this test left tags @ONLY-GO1.15+ in places where fixtures can be replaced with tlsgen runtime generated certs once fabric moved to 1.15
-
-const (
-	consentersTestDataDir = "testdata/consenters_certs/"
-	ca1Dir                = consentersTestDataDir + "ca1"
-	ca2Dir                = consentersTestDataDir + "ca2"
-)
-
 var certAsPEM []byte
 
 //go:generate counterfeiter -o mocks/orderer_capabilities.go --fake-name OrdererCapabilities . ordererCapabilities
-
 type ordererCapabilities interface {
 	channelconfig.OrdererCapabilities
 }
 
 //go:generate counterfeiter -o mocks/orderer_config.go --fake-name OrdererConfig . ordererConfig
-
 type ordererConfig interface {
 	channelconfig.Orderer
 }
 
 var _ = Describe("Consenter", func() {
 	var (
-		chainManager    *mocks.ChainManager
-		support         *consensusmocks.FakeConsenterSupport
-		dataDir         string
-		snapDir         string
-		walDir          string
-		mspDir          string
-		genesisBlockApp *common.Block
-		confAppRaft     *genesisconfig.Profile
-		tlsCA           tlsgen.CA
-		tlsCa1Cert      []byte
-		tlsCa2Cert      []byte
+		chainManager *mocks.ChainManager
+		support      *consensusmocks.FakeConsenterSupport
+		dataDir      string
+		snapDir      string
+		walDir       string
+		tlsCA        tlsgen.CA
 	)
 
 	BeforeEach(func() {
@@ -124,13 +105,12 @@ var _ = Describe("Consenter", func() {
 		}
 
 		support.BlockReturns(lastBlock)
-		genesisBlockApp = nil
-		confAppRaft = nil
 	})
 
 	AfterEach(func() {
-		os.RemoveAll(dataDir)
-		os.RemoveAll(mspDir)
+		if dataDir != "" {
+			os.RemoveAll(dataDir)
+		}
 	})
 
 	When("the consenter is extracting the channel", func() {
@@ -139,11 +119,13 @@ var _ = Describe("Consenter", func() {
 			ch := consenter.TargetChannel(&orderer.ConsensusRequest{Channel: "mychannel"})
 			Expect(ch).To(BeIdenticalTo("mychannel"))
 		})
+
 		It("extracts successfully from submit requests", func() {
 			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			ch := consenter.TargetChannel(&orderer.SubmitRequest{Channel: "mychannel"})
 			Expect(ch).To(BeIdenticalTo("mychannel"))
 		})
+
 		It("returns an empty string for the rest of the messages", func() {
 			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			ch := consenter.TargetChannel(&common.Block{})
@@ -151,45 +133,48 @@ var _ = Describe("Consenter", func() {
 		})
 	})
 
+	DescribeTable("identifies a bad block",
+		func(block *common.Block, errMatcher gtypes.GomegaMatcher) {
+			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
+			isMem, err := consenter.IsChannelMember(block)
+			Expect(isMem).To(BeFalse())
+			Expect(err).To(errMatcher)
+		},
+		Entry("nil block", nil, MatchError("nil block")),
+		Entry("data is nil", &common.Block{}, MatchError("block data is nil")),
+		Entry("data is empty", protoutil.NewBlock(10, []byte{1, 2, 3, 4}), MatchError("envelope index out of bounds")),
+		Entry("bad data",
+			func() *common.Block {
+				block := protoutil.NewBlock(10, []byte{1, 2, 3, 4})
+				block.Data.Data = [][]byte{{1, 2, 3, 4}, {5, 6, 7, 8}}
+				return block
+			}(),
+			MatchError(HavePrefix("block data does not carry an envelope at index 0: error unmarshaling Envelope: proto:"))),
+	)
+
 	When("the consenter is asked about join-block membership", func() {
-		table.DescribeTable("identifies a bad block",
-			func(block *common.Block, errExpected string) {
-				consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
-				isMem, err := consenter.IsChannelMember(block)
-				Expect(isMem).To(BeFalse())
-				Expect(err).To(MatchError(errExpected))
-			},
-			table.Entry("nil block", nil, "nil block"),
-			table.Entry("data is nil", &common.Block{}, "block data is nil"),
-			table.Entry("data is empty", protoutil.NewBlock(10, []byte{1, 2, 3, 4}), "envelope index out of bounds"),
-			table.Entry("bad data",
-				func() *common.Block {
-					block := protoutil.NewBlock(10, []byte{1, 2, 3, 4})
-					block.Data.Data = [][]byte{{1, 2, 3, 4}, {5, 6, 7, 8}}
-					return block
-				}(),
-				"block data does not carry an envelope at index 0: error unmarshaling Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)"),
+		var (
+			mspDir          string
+			memberKeyPair   *tlsgen.CertKeyPair
+			genesisBlockApp *common.Block
+			confAppRaft     *genesisconfig.Profile
 		)
 
 		BeforeEach(func() {
+			var err error
+			mspDir, err = ioutil.TempDir(dataDir, "msp")
+			Expect(err).NotTo(HaveOccurred())
+
 			confAppRaft = genesisconfig.Load(genesisconfig.SampleDevModeEtcdRaftProfile, configtest.GetDevConfigDir())
 			confAppRaft.Consortiums = nil
 			confAppRaft.Consortium = ""
 
-			//@ONLY-GO1.15+
-			//it won't be needed, global var tlsCA will be used instead
-			var err error
-			tlsCa1Cert, err = ioutil.ReadFile(filepath.Join(ca1Dir, "ca.pem"))
-			Expect(err).NotTo(HaveOccurred())
-			tlsCa2Cert, err = ioutil.ReadFile(filepath.Join(ca2Dir, "ca.pem"))
-			Expect(err).NotTo(HaveOccurred())
-
-			// IsChannelMember verifies config meta along with it's tls certs of consenters.
-			// So when we add new conseter with tls certs, they must be signed by any msp from orderer config.
-			// Consenters in this test will have certificates from fixtures generated by tlsgen pkg. To pass validation, root ca cert should be part of a MSP in orderer config.
+			// IsChannelMember verifies config meta along with it's tls certs
+			// ofconsenters. So when we add new conseter with tls certs, they must be
+			// signed by any msp from orderer config. Consenters in this test will
+			// have certificates from fixtures generated by tlsgen pkg. To pass
+			// validation, root ca cert should be part of a MSP in orderer config.
 			// Adding tls ca root cert to an existing ordering org's MSP definition.
-			mspDir, err = ioutil.TempDir("", "msp-")
-			Expect(err).NotTo(HaveOccurred())
 			Expect(confAppRaft.Orderer).NotTo(BeNil())
 			Expect(confAppRaft.Orderer.Organizations).ToNot(HaveLen(0))
 			Expect(confAppRaft.Orderer.EtcdRaft.Consenters).ToNot(HaveLen(0))
@@ -197,9 +182,15 @@ var _ = Describe("Consenter", func() {
 			// one consenter is enough for testing
 			confAppRaft.Orderer.EtcdRaft.Consenters = confAppRaft.Orderer.EtcdRaft.Consenters[:1]
 
-			//@ONLY-GO1.15+
-			//Here we would generate client pair using tlsCA and set it to the consenter
-			consenterCertPath := filepath.Join(ca1Dir, "client1.pem")
+			// Generate client pair using tlsCA and set it to the consenter
+			memberKeyPair, err = tlsCA.NewServerCertKeyPair("127.0.0.1", "::1", "localhost")
+			Expect(err).NotTo(HaveOccurred())
+			consenterDir, err := ioutil.TempDir(dataDir, "consenter")
+			Expect(err).NotTo(HaveOccurred())
+			consenterCertPath := filepath.Join(consenterDir, "client.pem")
+			err = ioutil.WriteFile(consenterCertPath, memberKeyPair.Cert, 0o644)
+			Expect(err).NotTo(HaveOccurred())
+
 			confAppRaft.Orderer.EtcdRaft.Consenters[0].ClientTlsCert = []byte(consenterCertPath)
 			confAppRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert = []byte(consenterCertPath)
 
@@ -209,10 +200,8 @@ var _ = Describe("Consenter", func() {
 			confAppRaft.Orderer.Organizations[0].MSPDir = mspDir
 			confAppRaft.Orderer.Organizations[0].ID = fmt.Sprintf("SampleMSP-%d", time.Now().UnixNano())
 
-			// writing tls root cert to msp folder
-			// ONLY-GO1.15+ Here we would write tlsCA.CertBytes() instead
-			err = ioutil.WriteFile(filepath.Join(mspDir, "tlscacerts", "cert.pem"), tlsCa1Cert, 0o644)
-
+			// Write the TLS root cert to the msp folder
+			err = ioutil.WriteFile(filepath.Join(mspDir, "tlscacerts", "cert.pem"), tlsCA.CertBytes(), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			bootstrapper, err := encoder.NewBootstrapper(confAppRaft)
@@ -222,43 +211,41 @@ var _ = Describe("Consenter", func() {
 		})
 
 		It("identifies a member block", func() {
-			// ONLY-GO1.15+
-			// Generate cert using tlsCA.NewClientCertKeyPair()
-
-			consenterCert, err := ioutil.ReadFile(filepath.Join(ca1Dir, "client1.pem"))
-			Expect(err).NotTo(HaveOccurred())
-
-			consenter := newConsenter(chainManager, tlsCa1Cert, consenterCert)
-
+			consenter := newConsenter(chainManager, tlsCA.CertBytes(), memberKeyPair.Cert)
 			isMem, err := consenter.IsChannelMember(genesisBlockApp)
 			Expect(isMem).To(BeTrue())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("identifies a non-member block", func() {
-			// ONLY-GO1.15+
-			// Generate cert using tlsCA.NewClientCertKeyPair()
-
-			nonMemberConsenterCert, err := ioutil.ReadFile(filepath.Join(ca1Dir, "client2.pem"))
+			foreignCA, err := tlsgen.NewCA()
 			Expect(err).NotTo(HaveOccurred())
-			consenter := newConsenter(chainManager, tlsCa1Cert, nonMemberConsenterCert)
+			nonMemberKeyPair, err := foreignCA.NewServerCertKeyPair("127.0.0.1", "::1", "localhost")
+			Expect(err).NotTo(HaveOccurred())
 
+			consenter := newConsenter(chainManager, tlsCA.CertBytes(), nonMemberKeyPair.Cert)
 			isMem, err := consenter.IsChannelMember(genesisBlockApp)
 			Expect(isMem).To(BeFalse())
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("raft config has consenter with certificate that is not signed by any msp", func() {
-			// ONLY-GO1.15+
-			// Create new ca using tlsgen.NewCA() and generate certificate. New tls root cert won't be part of MSP.
-
-			foreignConsenterCertPath := filepath.Join(ca2Dir, "client.pem")
-			foreignConsenterCert, err := ioutil.ReadFile(foreignConsenterCertPath)
+			// This TLS root cert will not be part of the MSP.
+			foreignCA, err := tlsgen.NewCA()
 			Expect(err).NotTo(HaveOccurred())
+			foreignKeyPair, err := foreignCA.NewServerCertKeyPair("127.0.0.1", "::1", "localhost")
+			Expect(err).NotTo(HaveOccurred())
+
+			consenterDir, err := ioutil.TempDir(dataDir, "foreign-consenter")
+			Expect(err).NotTo(HaveOccurred())
+			foreignConsenterCertPath := filepath.Join(consenterDir, "client.pem")
+			err = ioutil.WriteFile(foreignConsenterCertPath, foreignKeyPair.Cert, 0o644)
+			Expect(err).NotTo(HaveOccurred())
+
 			confAppRaft.Orderer.EtcdRaft.Consenters[0].ClientTlsCert = []byte(foreignConsenterCertPath)
 			confAppRaft.Orderer.EtcdRaft.Consenters[0].ServerTlsCert = []byte(foreignConsenterCertPath)
 
-			consenter := newConsenter(chainManager, tlsCa2Cert, foreignConsenterCert)
+			consenter := newConsenter(chainManager, foreignCA.CertBytes(), foreignKeyPair.Cert)
 
 			bootstrapper, err := encoder.NewBootstrapper(confAppRaft)
 			Expect(err).NotTo(HaveOccurred())
@@ -286,6 +273,7 @@ var _ = Describe("Consenter", func() {
 				}
 			}
 		})
+
 		It("calls the chain manager and returns the reference when it is found", func() {
 			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			Expect(consenter).NotTo(BeNil())
@@ -294,6 +282,7 @@ var _ = Describe("Consenter", func() {
 			Expect(chain).NotTo(BeNil())
 			Expect(chain).To(BeIdenticalTo(chainInstance))
 		})
+
 		It("calls the chain manager and returns nil when it's not found", func() {
 			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			Expect(consenter).NotTo(BeNil())
@@ -301,6 +290,7 @@ var _ = Describe("Consenter", func() {
 			chain := consenter.ReceiverByChain("notmychannel")
 			Expect(chain).To(BeNil())
 		})
+
 		It("calls the chain manager and returns nil when it's not a raft chain", func() {
 			consenter := newConsenter(chainManager, tlsCA.CertBytes(), certAsPEM)
 			Expect(consenter).NotTo(BeNil())
