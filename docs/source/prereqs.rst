@@ -34,14 +34,8 @@ operating, or developing on (or for), Hyperledger Fabric:
     Toolbox <https://docs.docker.com/toolbox/toolbox_install_windows/>`__ -
     again, Docker version Docker 17.06.2-ce or greater is required.
 
-The Fabric sample test network has been successfully 
-verified with Docker 2.5.0.1. Higher versions may not work at this time.
-You can check the version of Docker you have installed with the following
-command from a terminal prompt:
-
-.. code:: bash
-
-  docker --version
+The Fabric sample test network has been successfully
+verified with Docker Desktop version 2.5.0.1. Higher versions may not work at this time.
 
 .. note:: The following applies to linux systems running systemd.
 
