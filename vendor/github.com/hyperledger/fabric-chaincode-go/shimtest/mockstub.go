@@ -16,6 +16,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
@@ -34,6 +35,8 @@ type MockStub struct {
 	// arguments the stub was called with
 	args [][]byte
 
+	// transientMap
+	TransientMap map[string][]byte
 	// A pointer back to the chaincode that will invoke this, set by constructor.
 	// If a peer calls this stub, the chaincode will be invoked from here.
 	cc shim.Chaincode
@@ -400,9 +403,31 @@ func (stub *MockStub) GetCreator() ([]byte, error) {
 	return stub.Creator, nil
 }
 
-// GetTransient Not implemented ...
+// SetTransient set TransientMap to mockStub
+func (stub *MockStub) SetTransient(tMap map[string][]byte) error {
+	if stub.signedProposal == nil {
+		return fmt.Errorf("signedProposal is not initialized")
+	}
+	payloadByte, err := proto.Marshal(&pb.ChaincodeProposalPayload{
+		TransientMap: tMap,
+	})
+	if err != nil {
+		return err
+	}
+	proposalByte, err := proto.Marshal(&pb.Proposal{
+		Payload: payloadByte,
+	})
+	if err != nil {
+		return err
+	}
+	stub.signedProposal.ProposalBytes = proposalByte
+	stub.TransientMap = tMap
+	return nil
+}
+
+// GetTransient ...
 func (stub *MockStub) GetTransient() (map[string][]byte, error) {
-	return nil, nil
+	return stub.TransientMap, nil
 }
 
 // GetBinding Not implemented ...
