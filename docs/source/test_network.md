@@ -26,7 +26,7 @@ Before you can run the test network, you need to clone the `fabric-samples`
 repository and download the Fabric images. Make sure that you have installed
 the [Prerequisites](prereqs.html) and [Installed the Samples, Binaries and Docker Images](install.html).
 
-**Note:** The test network has been successfully verified with Docker version 2.5.0.1 and is the recommended version at this time. Higher versions of Docker may not work.
+**Note:** The test network has been successfully verified with Docker Desktop version 2.5.0.1 and is the recommended version at this time. Higher versions may not work.
 
 ## Bring up the test network
 
@@ -625,7 +625,7 @@ If you have any problems with the tutorial, review the following:
    After 5 attempts, peer0.org1 has failed to join channel 'mychannel'
    ```
 
-   You need to uninstall Docker and reinstall the recommended version 2.5.0.1. Then, reclone the `fabric-samples`
+   You need to uninstall Docker Desktop and reinstall the recommended version 2.5.0.1. Then, reclone the `fabric-samples`
    repository before reattempting the commands.
 
 -  If you see an error similar to the following:
