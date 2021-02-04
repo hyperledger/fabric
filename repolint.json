@@ -1,0 +1,122 @@
+{
+  "axioms": {
+    "linguist": "language",
+    "licensee": "license",
+    "packagers": "packager"
+  },
+  "rules": {
+    "all": {
+      "apache-license-file:file-contents": [
+        "error",
+        {
+          "files": [
+            "LICENSE*"
+          ],
+          "content": "Apache License.*Version 2.0",
+          "fail-on-non-existent": true
+        }
+      ],
+      "code-of-conduct-file:file-contents": [
+        "error",
+        {
+          "files": [
+            "CODE_OF_CONDUCT*"
+          ],
+          "content": "https://wiki.hyperledger.org/community/hyperledger-project-code-of-conduct",
+          "fail-on-non-existent": true
+        }
+      ],
+      "security-file-matches:file-contents": [
+        "error",
+        {
+          "files": [
+            "SECURITY.md"
+          ],
+          "content": "https://wiki.hyperledger.org/display/SEC/Defect\\+Response",
+          "fail-on-non-existent": true
+        }
+      ],
+      "readme-file-exists:file-existence": [
+        "error",
+        {
+          "files": [
+            "README.md"
+          ]
+        }
+      ],
+      "readme-references-license:file-contents": [
+        "error",
+        {
+          "files": [
+            "README.md"
+          ],
+          "content": "license",
+          "flags": "i"
+        }
+      ],
+      "maintainers-file-exists:file-existence": [
+        "error",
+        {
+          "files": [
+            "MAINTAINERS.md"
+          ]
+        }
+      ],
+      "contributing-file-exists:file-existence": [
+        "error",
+        {
+          "files": [
+            "CONTRIBUTING.md"
+          ]
+        }
+      ],
+      "changelog-file-exists:file-existence": [
+        "error",
+        {
+          "files": [
+            "CHANGELOG.md"
+          ]
+        }
+      ],
+      "integrates-with-ci:file-existence": [
+        "error",
+        {
+          "files": [
+            "ci/azure-pipelines.yml"
+          ]
+        }
+      ],
+      "notice-file-exists:file-existence": [
+        "error",
+        {
+          "files": [
+            "NOTICE"
+          ]
+        }
+      ],
+      "source-license-headers-exist:file-starts-with": [
+        "error",
+        {
+          "files": [
+            "**/*.go",
+            "**/*.sh"
+          ],
+          "skip-paths-matching": {
+            "patterns": [
+              ".pb.go$",
+              "fake[s]?/",
+              "/mock[s]?/",
+              "^vendor"
+            ]
+          },
+          "lineCount": 10,
+          "patterns": [
+            "Copyright",
+            "License"
+          ],
+          "flags": "i"
+        }
+      ]
+    }
+  }
+}

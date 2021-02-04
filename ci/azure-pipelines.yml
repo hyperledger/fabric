@@ -30,6 +30,17 @@ stages:
           - script: ./ci/scripts/evaluate_commits.sh
             name: SetJobTriggers
 
+      - job: LintRepo
+        pool:
+          vmImage: ubuntu-18.04
+        container: hyperledger-tools.jfrog.io/repolinter:0.10.0
+        steps:
+          - checkout: self
+            path: 'fabric'
+            displayName: Checkout Fabric Code
+          - script: bundle exec /app/bin/repolinter.js
+            displayName: Lint
+
   - stage: UnitTests
     dependsOn: VerifyBuild
     jobs:
