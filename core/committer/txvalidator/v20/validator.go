@@ -416,6 +416,20 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				return
 			}
 			logger.Debugf("config transaction received for chain %s", channel)
+		} else if common.HeaderType(chdr.Type) == common.HeaderType_PREPARE {
+
+			txID = chdr.TxId
+
+			//TODO: Check duplicate transactions. Implementation from endorsmant block is below:
+
+			/*erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.LedgerResources)
+			if erroneousResultEntry != nil {
+			  results <- erroneousResultEntry
+			  return
+			}*/
+
+			//TODO: add some Dispatcher validations (like in Endorment validation, I suppose)
+
 		} else {
 			logger.Warningf("Unknown transaction type [%s] in block number [%d] transaction index [%d]",
 				common.HeaderType(chdr.Type), block.Header.Number, tIdx)
