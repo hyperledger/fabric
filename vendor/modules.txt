@@ -8,6 +8,24 @@ github.com/Azure/go-ansiterm/winterm
 # github.com/DataDog/zstd v1.4.5
 ## explicit
 github.com/DataDog/zstd
+# github.com/IBM/idemix v0.0.0-20210930104432-e4a1410f5353
+## explicit
+github.com/IBM/idemix
+github.com/IBM/idemix/bccsp
+github.com/IBM/idemix/bccsp/keystore
+github.com/IBM/idemix/bccsp/schemes
+github.com/IBM/idemix/bccsp/schemes/dlog/bridge
+github.com/IBM/idemix/bccsp/schemes/dlog/crypto
+github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl
+github.com/IBM/idemix/bccsp/schemes/dlog/handlers
+github.com/IBM/idemix/common/flogging
+github.com/IBM/idemix/common/flogging/fabenc
+# github.com/IBM/mathlib v0.0.0-20210928081244-f5486459a290
+github.com/IBM/mathlib
+github.com/IBM/mathlib/driver
+github.com/IBM/mathlib/driver/amcl
+github.com/IBM/mathlib/driver/common
+github.com/IBM/mathlib/driver/gurvy
 # github.com/Knetic/govaluate v3.0.0+incompatible
 ## explicit
 github.com/Knetic/govaluate
@@ -49,12 +67,19 @@ github.com/VictoriaMetrics/fastcache
 # github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 github.com/alecthomas/template
 github.com/alecthomas/template/parse
-# github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4
+# github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922
 github.com/alecthomas/units
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
+# github.com/consensys/gnark-crypto v0.4.0
+github.com/consensys/gnark-crypto/ecc
+github.com/consensys/gnark-crypto/ecc/bn254
+github.com/consensys/gnark-crypto/ecc/bn254/fp
+github.com/consensys/gnark-crypto/ecc/bn254/fr
+github.com/consensys/gnark-crypto/ecc/bn254/internal/fptower
+github.com/consensys/gnark-crypto/internal/parallel
 # github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59
 github.com/containerd/cgroups/stats/v1
 # github.com/containerd/containerd v1.4.1
@@ -169,10 +194,11 @@ github.com/hashicorp/hcl/hcl/token
 github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/hyperledger/fabric-amcl v0.0.0-20200424173818-327c9e2cf77a
-## explicit
+# github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8
 github.com/hyperledger/fabric-amcl/amcl
 github.com/hyperledger/fabric-amcl/amcl/FP256BN
+github.com/hyperledger/fabric-amcl/core
+github.com/hyperledger/fabric-amcl/core/FP256BN
 # github.com/hyperledger/fabric-chaincode-go v0.0.0-20201119163726-f8ef75b17719
 ## explicit
 github.com/hyperledger/fabric-chaincode-go/pkg/statebased
@@ -195,7 +221,7 @@ github.com/hyperledger/fabric-config/protolator/protoext/peerext
 # github.com/hyperledger/fabric-lib-go v1.0.0
 ## explicit
 github.com/hyperledger/fabric-lib-go/healthz
-# github.com/hyperledger/fabric-protos-go v0.0.0-20210903093419-e9e1b9f969d8
+# github.com/hyperledger/fabric-protos-go v0.0.0-20210911123859-041d13f0980c
 ## explicit
 github.com/hyperledger/fabric-protos-go/common
 github.com/hyperledger/fabric-protos-go/discovery
@@ -415,11 +441,10 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
 go.uber.org/zap/zaptest/observer
-# golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
+# golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 ## explicit
 golang.org/x/crypto/sha3
-# golang.org/x/net v0.0.0-20210119194325-5f4716e94777
-## explicit
+# golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
@@ -431,7 +456,7 @@ golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
+# golang.org/x/sys v0.0.0-20210326220804-49726bf1d181
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix

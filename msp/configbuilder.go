@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/IBM/idemix"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/bccsp"
@@ -160,7 +161,7 @@ func GetLocalMspConfigWithType(dir string, bccspConfig *factory.FactoryOpts, ID,
 	case ProviderTypeToString(FABRIC):
 		return GetLocalMspConfig(dir, bccspConfig, ID)
 	case ProviderTypeToString(IDEMIX):
-		return GetIdemixMspConfig(dir, ID)
+		return idemix.GetIdemixMspConfig(dir, ID)
 	default:
 		return nil, errors.Errorf("unknown MSP type '%s'", mspType)
 	}
@@ -198,7 +199,7 @@ func GetVerifyingMspConfig(dir, ID, mspType string) (*msp.MSPConfig, error) {
 	case ProviderTypeToString(FABRIC):
 		return getMspConfig(dir, ID, nil)
 	case ProviderTypeToString(IDEMIX):
-		return GetIdemixMspConfig(dir, ID)
+		return idemix.GetIdemixMspConfig(dir, ID)
 	default:
 		return nil, errors.Errorf("unknown MSP type '%s'", mspType)
 	}
@@ -377,48 +378,4 @@ func loadCertificateAt(dir, certificatePath string, ouType string) []byte {
 	}
 
 	return nil
-}
-
-const (
-	IdemixConfigDirMsp                  = "msp"
-	IdemixConfigDirUser                 = "user"
-	IdemixConfigFileIssuerPublicKey     = "IssuerPublicKey"
-	IdemixConfigFileRevocationPublicKey = "RevocationPublicKey"
-	IdemixConfigFileSigner              = "SignerConfig"
-)
-
-// GetIdemixMspConfig returns the configuration for the Idemix MSP
-func GetIdemixMspConfig(dir string, ID string) (*msp.MSPConfig, error) {
-	ipkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileIssuerPublicKey))
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read issuer public key file")
-	}
-
-	revocationPkBytes, err := readFile(filepath.Join(dir, IdemixConfigDirMsp, IdemixConfigFileRevocationPublicKey))
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read revocation public key file")
-	}
-
-	idemixConfig := &msp.IdemixMSPConfig{
-		Name:         ID,
-		Ipk:          ipkBytes,
-		RevocationPk: revocationPkBytes,
-	}
-
-	signerBytes, err := readFile(filepath.Join(dir, IdemixConfigDirUser, IdemixConfigFileSigner))
-	if err == nil {
-		signerConfig := &msp.IdemixMSPSignerConfig{}
-		err = proto.Unmarshal(signerBytes, signerConfig)
-		if err != nil {
-			return nil, err
-		}
-		idemixConfig.Signer = signerConfig
-	}
-
-	confBytes, err := proto.Marshal(idemixConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return &msp.MSPConfig{Config: confBytes, Type: int32(IDEMIX)}, nil
 }

@@ -45,7 +45,7 @@ func TestMSPIDMapping(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(cryptogen)
 
-	idemixgen, err := gexec.Build("github.com/hyperledger/fabric/cmd/idemixgen")
+	idemixgen, err := gexec.Build("github.com/IBM/idemix/tools/idemixgen", "-mod=mod")
 	require.NoError(t, err)
 	defer os.Remove(idemixgen)
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/hyperledger/fabric/integration/nwo/runner"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
 )
 
 type Components struct {
@@ -32,7 +33,9 @@ func (c *Components) Discover() string {
 }
 
 func (c *Components) Idemixgen() string {
-	return c.Build("github.com/hyperledger/fabric/cmd/idemixgen")
+	idemixgen, err := gexec.Build("github.com/IBM/idemix/tools/idemixgen", "-mod=mod")
+	Expect(err).NotTo(HaveOccurred())
+	return idemixgen
 }
 
 func (c *Components) Orderer() string {
