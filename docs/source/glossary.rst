@@ -590,9 +590,8 @@ cryptographic algorithms for signatures, logging frameworks and state stores,
 are easily swapped in and out of the SDK. The SDK provides APIs for transaction
 processing, membership services, node traversal and event handling.
 
-Currently, the two officially supported SDKs are for Node.js and Java, while two
-more -- Python and Go -- are not yet official but can still be downloaded
-and tested.
+Currently, there are three officially supported SDKs -- for Node.js, Java, and Go. While the Python SDK
+is not yet official but can still be downloaded and tested.
 
 .. _Smart-Contract:
 

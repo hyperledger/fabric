@@ -40,14 +40,16 @@ Hyperledger Fabric offers a number of SDKs to support developing applications in
 
   * `Node.js SDK <https://github.com/hyperledger/fabric-sdk-node>`__ and `Node.js SDK documentation <https://hyperledger.github.io/fabric-sdk-node/>`__.
   * `Java SDK <https://github.com/hyperledger/fabric-gateway-java>`__ and `Java SDK documentation <https://hyperledger.github.io/fabric-gateway-java/>`__.
+  * `Go SDK <https://github.com/hyperledger/fabric-sdk-go>`__ and `Go SDK documentation <https://pkg.go.dev/github.com/hyperledger/fabric-sdk-go/>`__.
 
-  Prerequisites for developing with the SDKs can be found in the Node.js SDK `README <https://github.com/hyperledger/fabric-sdk-node#build-and-test>`__ and Java SDK `README <https://github.com/hyperledger/fabric-gateway-java/blob/master/README.md>`__.
+  Prerequisites for developing with the SDKs can be found in the Node.js SDK `README <https://github.com/hyperledger/fabric-sdk-node#build-and-test>`__ ,
+  Java SDK `README <https://github.com/hyperledger/fabric-gateway-java/blob/master/README.md>`__, and
+  Go SDK `README <https://github.com/hyperledger/fabric-sdk-go/blob/main/README.md>`__.
 
-In addition, there are two more application SDKs that have not yet been officially released
-(for Python and Go), but they are still available for downloading and testing:
+In addition, there is one other application SDK that has not yet been officially released
+for Python, but is still available for downloading and testing:
 
   * `Python SDK <https://github.com/hyperledger/fabric-sdk-py>`__.
-  * `Go SDK <https://github.com/hyperledger/fabric-sdk-go>`__.
 
 Currently, Node.js, Java and Go support the new application programming model delivered in Hyperledger Fabric v1.4.
 
