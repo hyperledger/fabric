@@ -1,10 +1,10 @@
 /*
-Copyright 2020 IBM All Rights Reserved.
+Copyright 2021 IBM All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
 
-package server
+package gateway
 
 import (
 	"fmt"
@@ -55,7 +55,7 @@ func createUnsignedTx(
 func getValueFromResponse(response *peer.ProposalResponse) (*gateway.Result, error) {
 	var retVal []byte
 
-	if response.Payload != nil {
+	if response != nil && response.Payload != nil {
 		payload, err := protoutil.UnmarshalProposalResponsePayload(response.Payload)
 		if err != nil {
 			return nil, err
@@ -78,6 +78,9 @@ func getValueFromResponse(response *peer.ProposalResponse) (*gateway.Result, err
 }
 
 func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposal) (string, string, error) {
+	if signedProposal == nil {
+		return "", "", fmt.Errorf("a signed proposal is required")
+	}
 	proposal, err := protoutil.UnmarshalProposal(signedProposal.ProposalBytes)
 	if err != nil {
 		return "", "", err
