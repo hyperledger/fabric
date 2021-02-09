@@ -141,6 +141,8 @@ peer:
     concurrency:
       endorserService: 100
       deliverService: 100
+  gateway:
+    enabled: {{ .GatewayEnabled }}
 
 vm:
   endpoint: unix:///var/run/docker.sock

@@ -155,6 +155,7 @@ type Network struct {
 	StatsdEndpoint        string
 	ClientAuthRequired    bool
 	TLSEnabled            bool
+	GatewayEnabled        bool
 
 	PortsByBrokerID  map[string]Ports
 	PortsByOrdererID map[string]Ports
@@ -191,16 +192,17 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 		PortsByOrdererID:  map[string]Ports{},
 		PortsByPeerID:     map[string]Ports{},
 
-		Organizations: c.Organizations,
-		Consensus:     c.Consensus,
-		Orderers:      c.Orderers,
-		Peers:         c.Peers,
-		SystemChannel: c.SystemChannel,
-		Channels:      c.Channels,
-		Profiles:      c.Profiles,
-		Consortiums:   c.Consortiums,
-		Templates:     c.Templates,
-		TLSEnabled:    true, // Set TLS enabled as true for default
+		Organizations:  c.Organizations,
+		Consensus:      c.Consensus,
+		Orderers:       c.Orderers,
+		Peers:          c.Peers,
+		SystemChannel:  c.SystemChannel,
+		Channels:       c.Channels,
+		Profiles:       c.Profiles,
+		Consortiums:    c.Consortiums,
+		Templates:      c.Templates,
+		TLSEnabled:     true,  // Set TLS enabled as true for default
+		GatewayEnabled: false, // Set Gateway enabled as false for default
 
 		mutex:        &sync.Mutex{},
 		lastExecuted: make(map[string]time.Time),
