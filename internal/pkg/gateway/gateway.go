@@ -1,6 +1,5 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
-
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,23 +8,43 @@ package gateway
 import (
 	"context"
 
-	"github.com/hyperledger/fabric-protos-go/orderer"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/flogging"
+	"google.golang.org/grpc"
 )
 
-//go:generate counterfeiter -o mocks/endorser.go --fake-name Endorser . Endorser
+var logger = flogging.MustGetLogger("gateway")
 
-// An Endorser can process a signed proposal to produce a proposal response.
-// The embedded gateway can either use the host peer server or an EndorserClient to a remote peer
-// to process this.
-type Endorser interface {
-	ProcessProposal(ctx context.Context, in *peer.SignedProposal) (*peer.ProposalResponse, error)
+// Server represents the GRPC server for the Gateway.
+type Server struct {
+	registry *registry
 }
 
-//go:generate counterfeiter -o mocks/registry.go --fake-name Registry . Registry
+type EndorserServerAdapter struct {
+	Server peer.EndorserServer
+}
 
-// Registry represents the current network topology
-type Registry interface {
-	Endorsers(channel string, chaincode string) []Endorser
-	Orderers(channel string) []orderer.AtomicBroadcast_BroadcastClient
+func (e *EndorserServerAdapter) ProcessProposal(ctx context.Context, req *peer.SignedProposal, _ ...grpc.CallOption) (*peer.ProposalResponse, error) {
+	return e.Server.ProcessProposal(ctx, req)
+}
+
+// CreateServer creates an embedded instance of the Gateway.
+func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, selfEndpoint string) *Server {
+	gwServer := &Server{
+		registry: &registry{
+			localEndorser:       localEndorser,
+			discovery:           discovery,
+			selfEndpoint:        selfEndpoint,
+			logger:              logger,
+			endorserFactory:     newEndorser,
+			ordererFactory:      newOrderer,
+			remoteEndorsers:     map[string]peer.EndorserClient{},
+			broadcastClients:    map[string]ab.AtomicBroadcast_BroadcastClient{},
+			tlsRootCerts:        map[string][][]byte{},
+			channelsInitialized: map[string]bool{},
+		},
+	}
+
+	return gwServer
 }

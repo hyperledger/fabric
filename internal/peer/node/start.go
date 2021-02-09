@@ -92,7 +92,7 @@ import (
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
-	gatewayserver "github.com/hyperledger/fabric/internal/pkg/gateway/server"
+	"github.com/hyperledger/fabric/internal/pkg/gateway"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -802,8 +802,9 @@ func serve(args []string) error {
 		coreConfig.ValidatorPoolSize,
 	)
 
+	var discoveryService *discovery.Service
 	if coreConfig.DiscoveryEnabled {
-		ds := createDiscoveryService(
+		discoveryService = createDiscoveryService(
 			coreConfig,
 			peerInstance,
 			peerServer,
@@ -816,17 +817,19 @@ func serve(args []string) error {
 			gossipService,
 		)
 		logger.Info("Discovery service activated")
-		discprotos.RegisterDiscoveryServer(peerServer.Server(), ds)
+		discprotos.RegisterDiscoveryServer(peerServer.Server(), discoveryService)
 	}
 
 	if coreConfig.GatewayOptions.Enabled {
-		logger.Info("Starting peer with Gateway enabled")
-		gs, err := gatewayserver.CreateGatewayServer(serverEndorser)
-		if err != nil {
-			logger.Panicf("Failed to create Gateway server: %s", err)
+		if coreConfig.DiscoveryEnabled {
+			logger.Info("Starting peer with Gateway enabled")
+			gatewayprotos.RegisterGatewayServer(
+				peerServer.Server(),
+				gateway.CreateServer(&gateway.EndorserServerAdapter{Server: serverEndorser}, discoveryService, peerInstance.GossipService.SelfMembershipInfo().Endpoint),
+			)
+		} else {
+			logger.Warning("Discovery service must be enabled for embedded gateway")
 		}
-		gatewayprotos.RegisterGatewayServer(peerServer.Server(), gs)
-		logger.Info("Gateway server activated")
 	}
 
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
