@@ -821,7 +821,7 @@ func serve(args []string) error {
 
 	if coreConfig.GatewayOptions.Enabled {
 		logger.Info("Starting peer with Gateway enabled")
-		gs, err := gatewayserver.CreateGatewayServer(serverEndorser)
+		gs, err := gatewayserver.CreateGatewayServer(serverEndorser, peerInstance)
 		if err != nil {
 			logger.Panicf("Failed to create Gateway server: %s", err)
 		}

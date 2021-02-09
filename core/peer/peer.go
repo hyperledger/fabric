@@ -128,10 +128,7 @@ type DeliverChainManager struct {
 }
 
 func (d DeliverChainManager) GetChain(chainID string) deliver.Chain {
-	if channel := d.Peer.Channel(chainID); channel != nil {
-		return channel
-	}
-	return nil
+	return d.Peer.Channel(chainID)
 }
 
 // fileLedgerBlockStore implements the interface expected by

@@ -9,6 +9,7 @@ package server
 import (
 	"testing"
 
+	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	"github.com/stretchr/testify/require"
 )
@@ -16,6 +17,6 @@ import (
 func TestCreateGatewayServer(t *testing.T) {
 	endorser := &mocks.Endorser{}
 
-	_, err := CreateGatewayServer(endorser)
+	_, err := CreateGatewayServer(endorser, &peer.Peer{})
 	require.NoError(t, err, "Failed to create gateway server")
 }
