@@ -294,6 +294,33 @@ func computeSKI(key *ecdsa.PublicKey) []byte {
 	return hash[:]
 }
 
+func TestValidHostname(t *testing.T) {
+	tests := []struct {
+		name  string
+		valid bool
+	}{
+		{"", false},
+		{".", false},
+		{"example.com", true},
+		{"example.com.", true},
+		{"*.example.com", true},
+		{".example.com", false},
+		{"host.*.example.com", false},
+		{"localhost", true},
+		{"-localhost", false},
+		{"Not_Quite.example.com", true},
+		{"weird:colon.example.com", true},
+		{"1-2-3.example.com", true},
+	}
+	for _, tt := range tests {
+		if tt.valid {
+			require.True(t, validHostname(tt.name), "expected %s to be a valid hostname", tt.name)
+		} else {
+			require.False(t, validHostname(tt.name), "expected %s to be an invalid hostname", tt.name)
+		}
+	}
+}
+
 func TestValidateCANameConstraintsMitigation(t *testing.T) {
 	// Prior to Go 1.15, if a signing certificate contains a name constraint, the
 	// leaf certificate does not include a SAN, and the leaf common name looks
@@ -320,9 +347,9 @@ func TestValidateCANameConstraintsMitigation(t *testing.T) {
 		KeyUsage:                    caKeyUsage,
 		SubjectKeyId:                computeSKI(caKey.Public().(*ecdsa.PublicKey)),
 	}
-	certBytes, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, caKey.Public(), caKey)
+	caCertBytes, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, caKey.Public(), caKey)
 	require.NoError(t, err)
-	ca, err := x509.ParseCertificate(certBytes)
+	ca, err := x509.ParseCertificate(caCertBytes)
 	require.NoError(t, err)
 
 	leafTemplate := x509.Certificate{
@@ -339,37 +366,82 @@ func TestValidateCANameConstraintsMitigation(t *testing.T) {
 	keyBytes, err := x509.MarshalPKCS8PrivateKey(leafKey)
 	require.NoError(t, err)
 
-	caCertPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
+	caCertPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCertBytes})
 	leafCertPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: leafCertBytes})
 	leafKeyPem := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
-	fabricMSPConfig := &msp.FabricMSPConfig{
-		Name:      "ConstraintsMSP",
-		RootCerts: [][]byte{caCertPem},
-		SigningIdentity: &msp.SigningIdentityInfo{
-			PublicSigner: leafCertPem,
-			PrivateSigner: &msp.KeyInfo{
-				KeyIdentifier: "Certificate Without SAN",
-				KeyMaterial:   leafKeyPem,
+
+	t.Run("VerifyNameConstraintsSingleCert", func(t *testing.T) {
+		for _, der := range [][]byte{caCertBytes, leafCertBytes} {
+			cert, err := x509.ParseCertificate(der)
+			require.NoError(t, err, "failed to parse certificate")
+
+			err = verifyLegacyNameConstraints([]*x509.Certificate{cert})
+			require.NoError(t, err, "single certificate should not trigger legacy constraints")
+		}
+	})
+
+	t.Run("VerifyNameConstraints", func(t *testing.T) {
+		var certs []*x509.Certificate
+		for _, der := range [][]byte{leafCertBytes, caCertBytes} {
+			cert, err := x509.ParseCertificate(der)
+			require.NoError(t, err, "failed to parse certificate")
+			certs = append(certs, cert)
+		}
+
+		err = verifyLegacyNameConstraints(certs)
+		require.Error(t, err, "certificate chain should trigger legacy constraints")
+		var cie x509.CertificateInvalidError
+		require.True(t, errors.As(err, &cie))
+		require.Equal(t, x509.NameConstraintsWithoutSANs, cie.Reason)
+	})
+
+	t.Run("VerifyNameConstraintsWithSAN", func(t *testing.T) {
+		caCert, err := x509.ParseCertificate(caCertBytes)
+		require.NoError(t, err)
+
+		leafTemplate := leafTemplate
+		leafTemplate.DNSNames = []string{"localhost"}
+
+		leafCertBytes, err := x509.CreateCertificate(rand.Reader, &leafTemplate, caCert, leafKey.Public(), caKey)
+		require.NoError(t, err)
+
+		leafCert, err := x509.ParseCertificate(leafCertBytes)
+		require.NoError(t, err)
+
+		err = verifyLegacyNameConstraints([]*x509.Certificate{leafCert, caCert})
+		require.NoError(t, err, "signer with name constraints and leaf with SANs should be valid")
+	})
+
+	t.Run("ValidationAtSetup", func(t *testing.T) {
+		fabricMSPConfig := &msp.FabricMSPConfig{
+			Name:      "ConstraintsMSP",
+			RootCerts: [][]byte{caCertPem},
+			SigningIdentity: &msp.SigningIdentityInfo{
+				PublicSigner: leafCertPem,
+				PrivateSigner: &msp.KeyInfo{
+					KeyIdentifier: "Certificate Without SAN",
+					KeyMaterial:   leafKeyPem,
+				},
 			},
-		},
-	}
-	mspConfig := &msp.MSPConfig{
-		Config: protoutil.MarshalOrPanic(fabricMSPConfig),
-	}
+		}
+		mspConfig := &msp.MSPConfig{
+			Config: protoutil.MarshalOrPanic(fabricMSPConfig),
+		}
 
-	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(configtest.GetDevMspDir(), "keystore"), true)
-	require.NoError(t, err)
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(ks)
-	require.NoError(t, err)
+		ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(configtest.GetDevMspDir(), "keystore"), true)
+		require.NoError(t, err)
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(ks)
+		require.NoError(t, err)
 
-	testMSP, err := NewBccspMspWithKeyStore(MSPv1_0, ks, cryptoProvider)
-	require.NoError(t, err)
+		testMSP, err := NewBccspMspWithKeyStore(MSPv1_0, ks, cryptoProvider)
+		require.NoError(t, err)
 
-	err = testMSP.Setup(mspConfig)
-	require.Error(t, err)
-	var cie x509.CertificateInvalidError
-	require.True(t, errors.As(err, &cie))
-	require.Equal(t, x509.NameConstraintsWithoutSANs, cie.Reason)
+		err = testMSP.Setup(mspConfig)
+		require.Error(t, err)
+		var cie x509.CertificateInvalidError
+		require.True(t, errors.As(err, &cie))
+		require.Equal(t, x509.NameConstraintsWithoutSANs, cie.Reason)
+	})
 }
 
 func TestIsWellFormed(t *testing.T) {
