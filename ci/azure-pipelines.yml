@@ -11,7 +11,7 @@ pr:
 variables:
   GOPATH: $(Agent.BuildDirectory)/go
   PATH: $(Agent.BuildDirectory)/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  GOVER: 1.14.12
+  GOVER: 1.15.7
 
 stages:
   - stage: VerifyBuild
