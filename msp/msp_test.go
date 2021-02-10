@@ -9,7 +9,11 @@ package msp
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/hex"
 	"encoding/pem"
@@ -29,7 +33,9 @@ import (
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var notACert = `-----BEGIN X509 CRL-----
@@ -280,6 +286,90 @@ func TestSerializeIdentities(t *testing.T) {
 		t.Fatalf("Identities should be equal (%s) (%s)", id, idBack)
 		return
 	}
+}
+
+func computeSKI(key *ecdsa.PublicKey) []byte {
+	raw := elliptic.Marshal(key.Curve, key.X, key.Y)
+	hash := sha256.Sum256(raw)
+	return hash[:]
+}
+
+func TestValidateCANameConstraintsMitigation(t *testing.T) {
+	// Prior to Go 1.15, if a signing certificate contains a name constraint, the
+	// leaf certificate does not include a SAN, and the leaf common name looks
+	// like a valid hostname, the certificate chain would fail to validate.
+	// (This behavior may have been introduced with Go 1.10.)
+	//
+	// In Go 1.15, the behavior has changed and, by default, the same structure
+	// will validate. This test asserts on the old behavior.
+	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+	leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	caKeyUsage := x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign | x509.KeyUsageCRLSign
+	caTemplate := x509.Certificate{
+		Subject:                     pkix.Name{CommonName: "TestCA"},
+		SerialNumber:                big.NewInt(1),
+		NotBefore:                   time.Now().Add(-1 * time.Hour),
+		NotAfter:                    time.Now().Add(2 * time.Hour),
+		ExcludedDNSDomains:          []string{"example.com"},
+		PermittedDNSDomainsCritical: true,
+		IsCA:                        true,
+		BasicConstraintsValid:       true,
+		KeyUsage:                    caKeyUsage,
+		SubjectKeyId:                computeSKI(caKey.Public().(*ecdsa.PublicKey)),
+	}
+	certBytes, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, caKey.Public(), caKey)
+	require.NoError(t, err)
+	ca, err := x509.ParseCertificate(certBytes)
+	require.NoError(t, err)
+
+	leafTemplate := x509.Certificate{
+		Subject:      pkix.Name{CommonName: "localhost"},
+		SerialNumber: big.NewInt(2),
+		NotBefore:    time.Now().Add(-1 * time.Hour),
+		NotAfter:     time.Now().Add(2 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		SubjectKeyId: computeSKI(leafKey.Public().(*ecdsa.PublicKey)),
+	}
+	leafCertBytes, err := x509.CreateCertificate(rand.Reader, &leafTemplate, ca, leafKey.Public(), caKey)
+	require.NoError(t, err)
+
+	keyBytes, err := x509.MarshalPKCS8PrivateKey(leafKey)
+	require.NoError(t, err)
+
+	caCertPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
+	leafCertPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: leafCertBytes})
+	leafKeyPem := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
+	fabricMSPConfig := &msp.FabricMSPConfig{
+		Name:      "ConstraintsMSP",
+		RootCerts: [][]byte{caCertPem},
+		SigningIdentity: &msp.SigningIdentityInfo{
+			PublicSigner: leafCertPem,
+			PrivateSigner: &msp.KeyInfo{
+				KeyIdentifier: "Certificate Without SAN",
+				KeyMaterial:   leafKeyPem,
+			},
+		},
+	}
+	mspConfig := &msp.MSPConfig{
+		Config: protoutil.MarshalOrPanic(fabricMSPConfig),
+	}
+
+	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(configtest.GetDevMspDir(), "keystore"), true)
+	require.NoError(t, err)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(ks)
+	require.NoError(t, err)
+
+	testMSP, err := NewBccspMspWithKeyStore(MSPv1_0, ks, cryptoProvider)
+	require.NoError(t, err)
+
+	err = testMSP.Setup(mspConfig)
+	require.Error(t, err)
+	var cie x509.CertificateInvalidError
+	require.True(t, errors.As(err, &cie))
+	require.Equal(t, x509.NameConstraintsWithoutSANs, cie.Reason)
 }
 
 func TestIsWellFormed(t *testing.T) {
