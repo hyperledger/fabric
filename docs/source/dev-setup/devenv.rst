@@ -5,7 +5,7 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 -  `Git client <https://git-scm.com/downloads>`__
--  `Go <https://golang.org/dl/>`__ version 1.14.x
+-  `Go <https://golang.org/dl/>`__ version 1.15.x
 -  `Docker <https://docs.docker.com/get-docker/>`__ version 18.03 or later
 -  (macOS) `Xcode Command Line Tools <https://developer.apple.com/downloads/>`__
 -  `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__
@@ -137,8 +137,8 @@ this is to delete and recreate the token.
 
 ::
 
-    softhsm2-util --init-token --slot 0 --label ForFabric --so-pin 1234 --pin 98765432
     softhsm2-util --delete-token --token ForFabric
+    softhsm2-util --init-token --slot 0 --label ForFabric --so-pin 1234 --pin 98765432
 
 Debugging with ``pkcs11-spy``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
