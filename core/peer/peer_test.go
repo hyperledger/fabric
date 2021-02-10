@@ -20,6 +20,7 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/plugin"
 	"github.com/hyperledger/fabric/core/deliverservice"
@@ -109,27 +110,23 @@ func TestInitialize(t *testing.T) {
 	peerInstance, cleanup := NewTestPeer(t)
 	defer cleanup()
 
-	org1CA, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-cert.pem"))
+	org1CA, err := tlsgen.NewCA()
 	require.NoError(t, err)
-	org1Server1Key, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-server1-key.pem"))
+	org1Server1KeyPair, err := org1CA.NewServerCertKeyPair("localhost", "127.0.0.1", "::1")
 	require.NoError(t, err)
-	org1Server1Cert, err := ioutil.ReadFile(filepath.Join("testdata", "Org1-server1-cert.pem"))
-	require.NoError(t, err)
+
 	serverConfig := comm.ServerConfig{
 		SecOpts: comm.SecureOptions{
 			UseTLS:            true,
-			Certificate:       org1Server1Cert,
-			Key:               org1Server1Key,
-			ServerRootCAs:     [][]byte{org1CA},
+			Certificate:       org1Server1KeyPair.Cert,
+			Key:               org1Server1KeyPair.Key,
+			ServerRootCAs:     [][]byte{org1CA.CertBytes()},
 			RequireClientCert: true,
 		},
 	}
 
 	server, err := comm.NewGRPCServer("localhost:0", serverConfig)
-	if err != nil {
-		t.Fatalf("NewGRPCServer failed with error [%s]", err)
-		return
-	}
+	require.NoError(t, err, "failed to create gRPC server")
 
 	peerInstance.Initialize(
 		nil,

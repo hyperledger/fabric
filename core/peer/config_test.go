@@ -7,6 +7,7 @@ package peer
 
 import (
 	"crypto/tls"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/gateway"
 	"github.com/spf13/viper"
@@ -94,10 +96,15 @@ func TestPeerAddress(t *testing.T) {
 }
 
 func TestGetServerConfig(t *testing.T) {
+	tempdir, err := ioutil.TempDir("", "peer-clientcert")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+
 	// good config without TLS
 	viper.Set("peer.tls.enabled", false)
 	viper.Set("peer.connectiontimeout", "7s")
-	sc, _ := GetServerConfig()
+	sc, err := GetServerConfig()
+	require.NoError(t, err)
 	require.Equal(t, false, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be false")
 	require.Equal(t, sc.ConnectionTimeout, 7*time.Second, "ServerConfig.ConnectionTimeout should be 7 seconds")
 
@@ -114,27 +121,47 @@ func TestGetServerConfig(t *testing.T) {
 	require.Equal(t, time.Duration(2)*time.Minute, sc.KaOpts.ServerMinInterval, "ServerConfig.KaOpts.ServerMinInterval should be set to 2 min")
 
 	// good config with TLS
+	org1CA, err := tlsgen.NewCA()
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-ca-cert.pem"), org1CA.CertBytes(), 0o644)
+	require.NoError(t, err)
+	org2CA, err := tlsgen.NewCA()
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tempdir, "org2-ca-cert.pem"), org2CA.CertBytes(), 0o644)
+	require.NoError(t, err)
+
+	org1ServerKP, err := org1CA.NewServerCertKeyPair("localhost")
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-server1-cert.pem"), org1ServerKP.Cert, 0o644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-server1-key.pem"), org1ServerKP.Key, 0o600)
+	require.NoError(t, err)
+
 	viper.Set("peer.tls.enabled", true)
-	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org1-server1-cert.pem"))
-	viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
-	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org1-cert.pem"))
-	sc, _ = GetServerConfig()
+	viper.Set("peer.tls.cert.file", filepath.Join(tempdir, "org1-server1-cert.pem"))
+	viper.Set("peer.tls.key.file", filepath.Join(tempdir, "org1-server1-key.pem"))
+	viper.Set("peer.tls.rootcert.file", filepath.Join(tempdir, "org1-ca-cert.pem"))
+
+	sc, err = GetServerConfig()
+	require.NoError(t, err, "failed to build server config")
 	require.Equal(t, true, sc.SecOpts.UseTLS, "ServerConfig.SecOpts.UseTLS should be true")
 	require.Equal(t, false, sc.SecOpts.RequireClientCert, "ServerConfig.SecOpts.RequireClientCert should be false")
 	viper.Set("peer.tls.clientAuthRequired", true)
 	viper.Set("peer.tls.clientRootCAs.files", []string{
-		filepath.Join("testdata", "Org1-cert.pem"),
-		filepath.Join("testdata", "Org2-cert.pem"),
+		filepath.Join(tempdir, "org1-ca-cert.pem"),
+		filepath.Join(tempdir, "org2-ca-cert.pem"),
 	})
 	sc, _ = GetServerConfig()
 	require.Equal(t, true, sc.SecOpts.RequireClientCert, "ServerConfig.SecOpts.RequireClientCert should be true")
 	require.Equal(t, 2, len(sc.SecOpts.ClientRootCAs), "ServerConfig.SecOpts.ClientRootCAs should contain 2 entries")
 
 	// bad config with TLS
-	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org11-cert.pem"))
-	_, err := GetServerConfig()
+	viper.Set("peer.tls.rootcert.file", "non-existent-file.pem")
+	_, err = GetServerConfig()
 	require.Error(t, err, "GetServerConfig should return error with bad root cert path")
-	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org11-cert.pem"))
+
+	viper.Set("peer.tls.rootcert.file", filepath.Join(tempdir, "org1-ca-cert.pem"))
+	viper.Set("peer.tls.cert.file", "non-existent-file.pem")
 	_, err = GetServerConfig()
 	require.Error(t, err, "GetServerConfig should return error with bad tls cert path")
 
@@ -144,22 +171,35 @@ func TestGetServerConfig(t *testing.T) {
 }
 
 func TestGetClientCertificate(t *testing.T) {
+	tempdir, err := ioutil.TempDir("", "peer-clientcert")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+
+	ca, err := tlsgen.NewCA()
+	require.NoError(t, err)
+	kp, err := ca.NewServerCertKeyPair("localhost")
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tempdir, "server1-cert.pem"), kp.Cert, 0o644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tempdir, "server1-key.pem"), kp.Key, 0o600)
+	require.NoError(t, err)
+
 	viper.Set("peer.tls.key.file", "")
 	viper.Set("peer.tls.cert.file", "")
 	viper.Set("peer.tls.clientKey.file", "")
 	viper.Set("peer.tls.clientCert.file", "")
 
 	// neither client nor server key pairs set - expect error
-	_, err := GetClientCertificate()
+	_, err = GetClientCertificate()
 	require.Error(t, err)
 
 	viper.Set("peer.tls.key.file", "")
-	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org1-server1-cert.pem"))
+	viper.Set("peer.tls.cert.file", filepath.Join(tempdir, "server1-cert.pem"))
 	// missing server key file - expect error
 	_, err = GetClientCertificate()
 	require.Error(t, err)
 
-	viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
+	viper.Set("peer.tls.key.file", filepath.Join(tempdir, "server1-key.pem"))
 	viper.Set("peer.tls.cert.file", "")
 	// missing server cert file - expect error
 	_, err = GetClientCertificate()
@@ -167,29 +207,29 @@ func TestGetClientCertificate(t *testing.T) {
 
 	// set server TLS settings to ensure we get the client TLS settings
 	// when they are set properly
-	viper.Set("peer.tls.key.file", filepath.Join("testdata", "Org1-server1-key.pem"))
-	viper.Set("peer.tls.cert.file", filepath.Join("testdata", "Org1-server1-cert.pem"))
+	viper.Set("peer.tls.key.file", filepath.Join(tempdir, "server1-key.pem"))
+	viper.Set("peer.tls.cert.file", filepath.Join(tempdir, "server1-cert.pem"))
 
 	// peer.tls.clientCert.file not set - expect error
-	viper.Set("peer.tls.clientKey.file", filepath.Join("testdata", "Org2-server1-key.pem"))
+	viper.Set("peer.tls.clientKey.file", filepath.Join(tempdir, "server1-key.pem"))
 	_, err = GetClientCertificate()
 	require.Error(t, err)
 
 	// peer.tls.clientKey.file not set - expect error
 	viper.Set("peer.tls.clientKey.file", "")
-	viper.Set("peer.tls.clientCert.file", filepath.Join("testdata", "Org2-server1-cert.pem"))
+	viper.Set("peer.tls.clientCert.file", filepath.Join(tempdir, "server1-cert.pem"))
 	_, err = GetClientCertificate()
 	require.Error(t, err)
 
 	// client auth required and clientKey/clientCert set
 	expected, err := tls.LoadX509KeyPair(
-		filepath.Join("testdata", "Org2-server1-cert.pem"),
-		filepath.Join("testdata", "Org2-server1-key.pem"),
+		filepath.Join(tempdir, "server1-cert.pem"),
+		filepath.Join(tempdir, "server1-key.pem"),
 	)
 	if err != nil {
 		t.Fatalf("Failed to load test certificate (%s)", err)
 	}
-	viper.Set("peer.tls.clientKey.file", filepath.Join("testdata", "Org2-server1-key.pem"))
+	viper.Set("peer.tls.clientKey.file", filepath.Join(tempdir, "server1-key.pem"))
 	cert, err := GetClientCertificate()
 	require.NoError(t, err)
 	require.Equal(t, expected, cert)
@@ -199,12 +239,10 @@ func TestGetClientCertificate(t *testing.T) {
 	viper.Set("peer.tls.clientKey.file", "")
 	viper.Set("peer.tls.clientCert.file", "")
 	expected, err = tls.LoadX509KeyPair(
-		filepath.Join("testdata", "Org1-server1-cert.pem"),
-		filepath.Join("testdata", "Org1-server1-key.pem"),
+		filepath.Join(tempdir, "server1-cert.pem"),
+		filepath.Join(tempdir, "server1-key.pem"),
 	)
-	if err != nil {
-		t.Fatalf("Failed to load test certificate (%s)", err)
-	}
+	require.NoError(t, err, "failed to load test certificate")
 	cert, err = GetClientCertificate()
 	require.NoError(t, err)
 	require.Equal(t, expected, cert)
