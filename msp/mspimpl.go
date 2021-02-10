@@ -10,8 +10,10 @@ import (
 	"bytes"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/hex"
 	"encoding/pem"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	m "github.com/hyperledger/fabric-protos-go/msp"
@@ -735,7 +737,105 @@ func (msp *bccspmsp) getUniqueValidationChain(cert *x509.Certificate, opts x509.
 		return nil, errors.Errorf("this MSP only supports a single validation chain, got %d", len(validationChains))
 	}
 
+	// Make the additional verification checks that were done in Go 1.14.
+	err = verifyLegacyNameConstraints(validationChains[0])
+	if err != nil {
+		return nil, errors.WithMessage(err, "the supplied identity is not valid")
+	}
+
 	return validationChains[0], nil
+}
+
+var (
+	oidExtensionSubjectAltName  = asn1.ObjectIdentifier{2, 5, 29, 17}
+	oidExtensionNameConstraints = asn1.ObjectIdentifier{2, 5, 29, 30}
+)
+
+// verifyLegacyNameConstraints exercises the name constraint validation rules
+// that were part of the certificate verification process in Go 1.14.
+//
+// If a signing certificate contains a name constratint, the leaf certificate
+// does not include SAN extensions, and the leaf's common name looks like a
+// host name, the validation would fail with an x509.CertificateInvalidError
+// and a rason of x509.NameConstraintsWithoutSANs.
+func verifyLegacyNameConstraints(chain []*x509.Certificate) error {
+	if len(chain) < 2 {
+		return nil
+	}
+
+	// Leaf certificates with SANs are fine.
+	if oidInExtensions(oidExtensionSubjectAltName, chain[0].Extensions) {
+		return nil
+	}
+	// Leaf certificates without a hostname in CN are fine.
+	if !validHostname(chain[0].Subject.CommonName) {
+		return nil
+	}
+	// If an intermediate or root have a name constraint, validation
+	// would fail in Go 1.14.
+	for _, c := range chain[1:] {
+		if oidInExtensions(oidExtensionNameConstraints, c.Extensions) {
+			return x509.CertificateInvalidError{Cert: chain[0], Reason: x509.NameConstraintsWithoutSANs}
+		}
+	}
+	return nil
+}
+
+func oidInExtensions(oid asn1.ObjectIdentifier, exts []pkix.Extension) bool {
+	for _, ext := range exts {
+		if ext.Id.Equal(oid) {
+			return true
+		}
+	}
+	return false
+}
+
+// validHostname reports whether host is a valid hostname that can be matched or
+// matched against according to RFC 6125 2.2, with some leniency to accommodate
+// legacy values.
+//
+// This implementation is sourced from the standaard library.
+func validHostname(host string) bool {
+	host = strings.TrimSuffix(host, ".")
+
+	if len(host) == 0 {
+		return false
+	}
+
+	for i, part := range strings.Split(host, ".") {
+		if part == "" {
+			// Empty label.
+			return false
+		}
+		if i == 0 && part == "*" {
+			// Only allow full left-most wildcards, as those are the only ones
+			// we match, and matching literal '*' characters is probably never
+			// the expected behavior.
+			continue
+		}
+		for j, c := range part {
+			if 'a' <= c && c <= 'z' {
+				continue
+			}
+			if '0' <= c && c <= '9' {
+				continue
+			}
+			if 'A' <= c && c <= 'Z' {
+				continue
+			}
+			if c == '-' && j != 0 {
+				continue
+			}
+			if c == '_' || c == ':' {
+				// Not valid characters in hostnames, but commonly
+				// found in deployments outside the WebPKI.
+				continue
+			}
+			return false
+		}
+	}
+
+	return true
 }
 
 func (msp *bccspmsp) getValidationChain(cert *x509.Certificate, isIntermediateChain bool) ([]*x509.Certificate, error) {
