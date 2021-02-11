@@ -182,18 +182,18 @@ See how the application:
 
 * Submits a `redeem` transaction to the network for commercial paper `PAP21`
   using the `yenPaper` contract. See interaction point **2a**. This results in
-  the creation of a commercial paper represented by state `PAP21` in `world
+  the redemption of a commercial paper represented by state `PAP21` in `world
   state A`; interaction point **2b**. This operation is captured as a
   transaction in the blockchain at interaction point **2c**.
 
 * Submits a `buy` transaction to the network for bond `BON31` using the
   `euroBond` contract. See interaction point **3a**. This results in the
-  creation of a bond represented by state `BON31` in `world state B`;
+  update of a bond represented by state `BON31` in `world state B`;
   interaction point **3b**. This operation is captured as a transaction in the
   blockchain at interaction point **3c**.
 
 * Submits a `sell` transaction to the network for bond `BON41` using the
-  `yenBond` contract. See interaction point **4a**. This results in the creation
+  `yenBond` contract. See interaction point **4a**. This results in the update
   of a bond represented by state `BON41` in `world state B`; interaction point
   **4b**. This operation is captured as a transaction in the blockchain at
   interaction point **4c**.
