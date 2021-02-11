@@ -180,14 +180,14 @@ need to horizontally scroll to locate the information):
 * The Ordering Org CA, `ca_orderer`, is running in container `7b01f5454832`
 
 These containers all form a [Docker network](https://docs.docker.com/network/)
-called `net_test`. You can view the network with the `docker network` command:
+called `fabric_test`. You can view the network with the `docker network` command:
 
 ```
-$ docker network inspect net_test
+$ docker network inspect fabric_test
 
   [
       {
-          "Name": "net_test",
+          "Name": "fabric_test",
           "Id": "f4c9712139311004b8f7acc14e9f90170c5dcfd8cdd06303c7b074624b44dc9f",
           "Created": "2020-04-28T22:45:38.525016Z",
           "Containers": {
@@ -289,21 +289,21 @@ smart contracts, for example.
 
 In the MagnetoCorp directory, run the following command to run the
 `monitordocker.sh`  script and start the `logspout` tool for the containers
-associated with PaperNet running on `net_test`:
+associated with PaperNet running on `fabric_test`:
 ```
-(magnetocorp admin)$ ./configuration/cli/monitordocker.sh net_test
+(magnetocorp admin)$ ./configuration/cli/monitordocker.sh fabric_test
 ...
 latest: Pulling from gliderlabs/logspout
 4fe2ade4980c: Pull complete
 decca452f519: Pull complete
 (...)
-Starting monitoring on all containers on the network net_test
+Starting monitoring on all containers on the network fabric_test
 b7f3586e5d0233de5a454df369b8eadab0613886fc9877529587345fc01a3582
 ```
 
 Note that you can pass a port number to the above command if the default port in `monitordocker.sh` is already in use.
 ```
-(magnetocorp admin)$ ./monitordocker.sh net_test <port_number>
+(magnetocorp admin)$ ./monitordocker.sh fabric_test <port_number>
 ```
 
 This window will now show output from the Docker containers for the remainder of the

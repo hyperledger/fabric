@@ -105,7 +105,7 @@ ordering node. No channel is created when you run `./network.sh up`, though we
 will get there in a [future step](#creating-a-channel). If the command completes
 successfully, you will see the logs of the nodes being created:
 ```
-Creating network "net_test" with the default driver
+Creating network "fabric_test" with the default driver
 Creating volume "net_orderer.example.com" with default driver
 Creating volume "net_peer0.org1.example.com" with default driver
 Creating volume "net_peer0.org2.example.com" with default driver
