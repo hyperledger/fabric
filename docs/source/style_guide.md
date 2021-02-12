@@ -78,7 +78,7 @@ If you look at the raw versions of the documentation, you will see that many top
 
 **When to bold?**
 
-Not too often. The best use of them is either as a summary or as a way of drawing attention to concepts you want to talk about. “A blockchain network contains a ledger, at least one chaincode, and peers”, especially if you’re going to be talking about those things in that paragraph. Avoid using them simply to emphasize a single word, as in something like "Blockchain networks **must** use propery security protocols".
+Not too often. The best use of them is either as a summary or as a way of drawing attention to concepts you want to talk about. “A blockchain network contains a ledger, at least one chaincode, and peers”, especially if you’re going to be talking about those things in that paragraph. Avoid using them simply to emphasize a single word, as in something like "Blockchain networks **must** use proper security protocols".
 
 **When to surround something in back tics `nnn`?**
 

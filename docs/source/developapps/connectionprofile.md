@@ -478,7 +478,7 @@ This file is reproduced inline from the GitHub commercial paper
 201:     #
 202:     url: http://localhost:7054
 203:     #
-204:     # [Optioanl]. HTTP connection properties used for communication
+204:     # [Optional]. HTTP connection properties used for communication
 205:     #
 206:     httpOptions:
 207:       verify: false
