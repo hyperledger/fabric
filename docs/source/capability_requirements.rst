@@ -5,7 +5,7 @@ Defining capability requirements
           channel that the ordering service is bootstrapped with and the ordering
           service exclusively controls. Since the release of v2.3, using a system
           channel is now considered the legacy process as compared to the process
-          to :doc:`create_channel_participation`. For a version of this topic that
+          to :doc:`create_channel/create_channel_participation`. For a version of this topic that
           includes information about the system channel, check out
           `Capability requirements <https://hyperledger-fabric.readthedocs.io/en/release-2.2/capability_requirements.html>`_ from the v2.2 documentation.
 

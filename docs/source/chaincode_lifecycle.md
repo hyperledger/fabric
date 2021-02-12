@@ -54,7 +54,7 @@ every organization on a channel needs to complete each step.
 3. **Approve a chaincode definition for your organization:** Every organization
   that will use the chaincode needs to complete this step. The chaincode
   definition needs to be approved by a sufficient number of organizations
-  to satisfy the channel's LifecycleEndorsment policy (a majority, by default)
+  to satisfy the channel's LifecycleEndorsement policy (a majority, by default)
   before the chaincode can be started on the channel.
 4. **Commit the chaincode definition to the channel:** The commit transaction
   needs to be submitted by one organization once the required number of
