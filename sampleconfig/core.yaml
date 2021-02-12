@@ -230,7 +230,13 @@ peer:
             # indicates whenever state transfer is enabled or not
             # default value is true, i.e. state transfer is active
             # and takes care to sync up missing blocks allowing
-            # lagging peer to catch up to speed with rest network
+            # lagging peer to catch up to speed with rest network.
+            # Keep in mind that when peer.gossip.useLeaderElection is true
+            # and there are several peers in the organization,
+            # or peer.gossip.useLeaderElection is false alongside with
+            # peer.gossip.orgleader being false, the peer's ledger may lag behind
+            # the rest of the peers and will never catch up due to state transfer
+            # being disabled.
             enabled: false
             # checkInterval interval to check whether peer is lagging behind enough to
             # request blocks via state transfer from another peer.
@@ -253,26 +259,31 @@ peer:
     tls:
         # Require server-side TLS
         enabled:  false
-        # Require client certificates / mutual TLS.
+        # Require client certificates / mutual TLS for inbound connections.
         # Note that clients that are not configured to use a certificate will
         # fail to connect to the peer.
         clientAuthRequired: false
         # X.509 certificate used for TLS server
         cert:
             file: tls/server.crt
-        # Private key used for TLS server (and client if clientAuthEnabled
-        # is set to true
+        # Private key used for TLS server
         key:
             file: tls/server.key
-        # Trusted root certificate chain for tls.cert
+        # rootcert.file represents the trusted root certificate chain used for verifying certificates
+        # of other nodes during outbound connections.
+        # It is not required to be set, but can be used to augment the set of TLS CA certificates
+        # available from the MSPs of each channel’s configuration.
         rootcert:
             file: tls/ca.crt
-        # Set of root certificate authorities used to verify client certificates
+        # If mutual TLS is enabled, clientRootCAs.files contains a list of additional root certificates
+        # used for verifying certificates of client connections.
+        # It augments the set of TLS CA certificates available from the MSPs of each channel’s configuration.
+        # Minimally, set your organization's TLS CA root certificate so that the peer can receive join channel requests.
         clientRootCAs:
             files:
               - tls/ca.crt
-        # Private key used for TLS when making client connections.  If
-        # not set, peer.tls.key.file will be used instead
+        # Private key used for TLS when making client connections.
+        # If not set, peer.tls.key.file will be used instead
         clientKey:
             file:
         # X.509 certificate used for TLS when making client connections.
@@ -644,14 +655,6 @@ ledger:
        internalQueryLimit: 1000
        # Limit on the number of records per CouchDB bulk update batch
        maxBatchUpdateSize: 1000
-       # Warm indexes after every N blocks.
-       # This option warms any indexes that have been
-       # deployed to CouchDB after every N blocks.
-       # A value of 1 will warm indexes after every block commit,
-       # to ensure fast selector queries.
-       # Increasing the value may improve write efficiency of peer and CouchDB,
-       # but may degrade query response time.
-       warmIndexesAfterNBlocks: 1
        # Create the _global_changes system database
        # This is optional.  Creating the global changes database will require
        # additional system resources to track changes and maintain the database
@@ -686,6 +689,10 @@ ledger:
     # deprioritizedDataReconcilerInterval (unit: minutes). Note that the
     # interval needs to be greater than the reconcileSleepInterval
     deprioritizedDataReconcilerInterval: 60m
+
+  snapshots:
+    # Path on the file system where peer will store ledger snapshots
+    rootDir: /var/hyperledger/production/snapshots
 
 ###############################################################################
 #

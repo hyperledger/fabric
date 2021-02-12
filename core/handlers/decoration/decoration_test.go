@@ -50,7 +50,6 @@ type mockDecorator struct {
 
 func (d *mockDecorator) Decorate(proposal *peer.Proposal,
 	input *peer.ChaincodeInput) *peer.ChaincodeInput {
-
 	d.sequence = binary.BigEndian.Uint32(input.Decorations[decorationKey])
 	binary.BigEndian.PutUint32(input.Decorations[decorationKey], d.sequence+1)
 

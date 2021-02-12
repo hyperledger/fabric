@@ -7,6 +7,7 @@ package docker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -40,7 +41,7 @@ type ListNodesOptions struct {
 // See http://goo.gl/3K4GwU for more details.
 func (c *Client) ListNodes(opts ListNodesOptions) ([]swarm.Node, error) {
 	path := "/nodes?" + queryString(opts)
-	resp, err := c.do("GET", path, doOptions{context: opts.Context})
+	resp, err := c.do(http.MethodGet, path, doOptions{context: opts.Context})
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +57,10 @@ func (c *Client) ListNodes(opts ListNodesOptions) ([]swarm.Node, error) {
 //
 // See http://goo.gl/WjkTOk for more details.
 func (c *Client) InspectNode(id string) (*swarm.Node, error) {
-	resp, err := c.do("GET", "/nodes/"+id, doOptions{})
+	resp, err := c.do(http.MethodGet, "/nodes/"+id, doOptions{})
 	if err != nil {
-		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
+		var e *Error
+		if errors.As(err, &e) && e.Status == http.StatusNotFound {
 			return nil, &NoSuchNode{ID: id}
 		}
 		return nil, err
@@ -87,13 +89,14 @@ func (c *Client) UpdateNode(id string, opts UpdateNodeOptions) error {
 	params := make(url.Values)
 	params.Set("version", strconv.FormatUint(opts.Version, 10))
 	path := "/nodes/" + id + "/update?" + params.Encode()
-	resp, err := c.do("POST", path, doOptions{
+	resp, err := c.do(http.MethodPost, path, doOptions{
 		context:   opts.Context,
 		forceJSON: true,
 		data:      opts.NodeSpec,
 	})
 	if err != nil {
-		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
+		var e *Error
+		if errors.As(err, &e) && e.Status == http.StatusNotFound {
 			return &NoSuchNode{ID: id}
 		}
 		return err
@@ -118,9 +121,10 @@ func (c *Client) RemoveNode(opts RemoveNodeOptions) error {
 	params := make(url.Values)
 	params.Set("force", strconv.FormatBool(opts.Force))
 	path := "/nodes/" + opts.ID + "?" + params.Encode()
-	resp, err := c.do("DELETE", path, doOptions{context: opts.Context})
+	resp, err := c.do(http.MethodDelete, path, doOptions{context: opts.Context})
 	if err != nil {
-		if e, ok := err.(*Error); ok && e.Status == http.StatusNotFound {
+		var e *Error
+		if errors.As(err, &e) && e.Status == http.StatusNotFound {
 			return &NoSuchNode{ID: opts.ID}
 		}
 		return err

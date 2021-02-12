@@ -105,7 +105,6 @@ func TestDifferentChannelID(t *testing.T) {
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
@@ -125,7 +124,6 @@ func TestOldConfigReplay(t *testing.T) {
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
@@ -144,7 +142,6 @@ func TestValidConfigChange(t *testing.T) {
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
@@ -170,7 +167,6 @@ func TestConfigChangeRegressedSequence(t *testing.T) {
 		makeConfig(makeConfigPair("foo", "foo", 1, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
@@ -193,7 +189,6 @@ func TestConfigChangeOldSequence(t *testing.T) {
 		makeConfig(makeConfigPair("foo", "foo", 1, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
@@ -223,7 +218,6 @@ func TestConfigPartialUpdate(t *testing.T) {
 		),
 		"foonamespace",
 		defaultPolicyManager())
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
@@ -245,7 +239,6 @@ func TestEmptyConfigUpdate(t *testing.T) {
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		defaultPolicyManager())
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
@@ -268,7 +261,6 @@ func TestSilentConfigModification(t *testing.T) {
 		),
 		"foonamespace",
 		defaultPolicyManager())
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
@@ -295,7 +287,6 @@ func TestConfigChangeViolatesPolicy(t *testing.T) {
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		pm)
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
@@ -319,7 +310,6 @@ func TestUnchangedConfigViolatesPolicy(t *testing.T) {
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		pm)
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}
@@ -350,7 +340,6 @@ func TestInvalidProposal(t *testing.T) {
 		makeConfig(makeConfigPair("foo", "foo", 0, []byte("foo"))),
 		"foonamespace",
 		pm)
-
 	if err != nil {
 		t.Fatalf("Error constructing config manager: %s", err)
 	}

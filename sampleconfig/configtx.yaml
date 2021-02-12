@@ -66,8 +66,12 @@ Organizations:
             - "127.0.0.1:7050"
 
         # AnchorPeers defines the location of peers which can be used for
-        # cross-org gossip communication. Note, this value is only encoded in
-        # the genesis block in the Application section context.
+        # cross-org gossip communication. 
+        #
+        # NOTE: this value should only be set when using the deprecated 
+        # `configtxgen --outputAnchorPeersUpdate` command. It is recommended
+        # to instead use the channel configuration update process to set the
+        # anchor peers for each organization.
         AnchorPeers:
             - Host: 127.0.0.1
               Port: 7051
@@ -193,6 +197,9 @@ Application: &ApplicationDefaults
 
         # ACL policy for cscc's "GetConfigBlock" function
         cscc/GetConfigBlock: /Channel/Application/Readers
+
+        # ACL policy for cscc's "GetChannelConfig" function
+        cscc/GetChannelConfig: /Channel/Application/Readers
 
         #---Miscellaneous peer function to policy mapping for access control---#
 
@@ -598,3 +605,36 @@ Profiles:
                           Admins:
                               Type: Signature
                               Rule: "OR('SampleOrg.member')"
+
+    # SampleAppChannelInsecureSolo defines an application channel configuration
+    # which uses the Solo orderer and contains no MSP definitions. 
+    SampleAppChannelInsecureSolo:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+        Application: 
+            <<: *ApplicationDefaults
+
+    # SampleAppChannelEtcdRaft defines an application channel configuration 
+    # that uses the etcd/raft-based orderer.
+    SampleAppChannelEtcdRaft:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: etcdraft
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - <<: *SampleOrg
+                  Policies:
+                      <<: *SampleOrgPolicies
+                      Admins:
+                          Type: Signature
+                          Rule: "OR('SampleOrg.member')"

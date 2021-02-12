@@ -43,7 +43,7 @@ func (c Config) ToFile(file string) error {
 		return errors.Wrap(err, "config isn't valid")
 	}
 	b, _ := yaml.Marshal(c)
-	if err := ioutil.WriteFile(file, b, 0600); err != nil {
+	if err := ioutil.WriteFile(file, b, 0o600); err != nil {
 		return errors.Errorf("failed writing file %s: %v", file, err)
 	}
 	return nil

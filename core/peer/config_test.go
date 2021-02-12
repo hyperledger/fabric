@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/internal/pkg/gateway"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -34,14 +35,13 @@ func TestCacheConfigurationNegative(t *testing.T) {
 	viper.Set("peer.address", "wrongAddress")
 	_, err = GlobalConfig()
 	require.Error(t, err, "Expected error for bad configuration")
-
 }
 
 func TestPeerAddress(t *testing.T) {
 	localIP, err := comm.GetLocalIP()
 	require.NoError(t, err)
 
-	var tests = []struct {
+	tests := []struct {
 		name                string
 		settings            map[string]interface{}
 		expectedPeerAddress string
@@ -216,7 +216,7 @@ func TestGlobalConfig(t *testing.T) {
 	require.NoError(t, err, "failed to get current working directory")
 	viper.SetConfigFile(filepath.Join(cwd, "core.yaml"))
 
-	//Capture the configuration from viper
+	// Capture the configuration from viper
 	viper.Set("peer.addressAutoDetect", false)
 	viper.Set("peer.address", "localhost:8080")
 	viper.Set("peer.id", "testPeerID")
@@ -237,6 +237,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.chaincodeListenAddress", "0.0.0.0:7052")
 	viper.Set("peer.chaincodeAddress", "0.0.0.0:7052")
 	viper.Set("peer.validatorPoolSize", 1)
+	viper.Set("peer.gateway.enabled", true)
 
 	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	viper.Set("vm.docker.tls.enabled", false)
@@ -331,6 +332,10 @@ func TestGlobalConfig(t *testing.T) {
 		DockerCert: filepath.Join(cwd, "test/vm/tls/cert/file"),
 		DockerKey:  filepath.Join(cwd, "test/vm/tls/key/file"),
 		DockerCA:   filepath.Join(cwd, "test/vm/tls/ca/file"),
+
+		GatewayOptions: gateway.Options{
+			Enabled: true,
+		},
 	}
 
 	require.Equal(t, coreConfig, expectedConfig)

@@ -575,9 +575,7 @@ var _ = Describe("Deliver", func() {
 		})
 
 		Context("when blocks with private data are requested", func() {
-			var (
-				fakeResponseSender *mock.PrivateDataResponseSender
-			)
+			var fakeResponseSender *mock.PrivateDataResponseSender
 
 			BeforeEach(func() {
 				fakeResponseSender = &mock.PrivateDataResponseSender{}

@@ -53,26 +53,6 @@ type pvtdataPurgeMgr struct {
 	usedOnce bool
 }
 
-// ErrUnsupportedTransaction is expected to be thrown if a unsupported query is performed in an update transaction
-type ErrUnsupportedTransaction struct {
-	Msg string
-}
-
-func (e *ErrUnsupportedTransaction) Error() string {
-	return e.Msg
-}
-
-// ErrPvtdataNotAvailable is to be thrown when an application seeks a private data item
-// during simulation and the simulator is not capable of returning the version of the
-// private data item consistent with the snapshot exposed to the simulation
-type ErrPvtdataNotAvailable struct {
-	Msg string
-}
-
-func (e *ErrPvtdataNotAvailable) Error() string {
-	return e.Msg
-}
-
 type current struct {
 	block     *common.Block
 	batch     *privacyenabledstate.UpdateBatch
@@ -101,7 +81,6 @@ type Initializer struct {
 
 // NewLockBasedTxMgr constructs a new instance of NewLockBasedTxMgr
 func NewLockBasedTxMgr(initializer *Initializer) (*LockBasedTxMgr, error) {
-
 	if initializer.HashFunc == nil {
 		return nil, errors.New("create new lock based TxMgr failed: passed in nil ledger hasher")
 	}
@@ -298,6 +277,7 @@ func (uniquePvtData uniquePvtDataMap) updateUsingBlockPvtdata(blockPvtData []*le
 	} // for each tx
 	return nil
 }
+
 func (uniquePvtData uniquePvtDataMap) updateUsingTxPvtData(txPvtData *ledger.TxPvtData, ver *version.Height) error {
 	for _, nsPvtData := range txPvtData.WriteSet.NsPvtRwset {
 		if err := uniquePvtData.updateUsingNsPvtData(nsPvtData, ver); err != nil {
@@ -306,6 +286,7 @@ func (uniquePvtData uniquePvtDataMap) updateUsingTxPvtData(txPvtData *ledger.TxP
 	} // for each ns
 	return nil
 }
+
 func (uniquePvtData uniquePvtDataMap) updateUsingNsPvtData(nsPvtData *rwset.NsPvtReadWriteSet, ver *version.Height) error {
 	for _, collPvtData := range nsPvtData.CollectionPvtRwset {
 		if err := uniquePvtData.updateUsingCollPvtData(collPvtData, nsPvtData.Namespace, ver); err != nil {
@@ -317,7 +298,6 @@ func (uniquePvtData uniquePvtDataMap) updateUsingNsPvtData(nsPvtData *rwset.NsPv
 
 func (uniquePvtData uniquePvtDataMap) updateUsingCollPvtData(collPvtData *rwset.CollectionPvtReadWriteSet,
 	ns string, ver *version.Height) error {
-
 	kvRWSet := &kvrwset.KVRWSet{}
 	if err := proto.Unmarshal(collPvtData.Rwset, kvRWSet); err != nil {
 		return err
@@ -338,13 +318,12 @@ func (uniquePvtData uniquePvtDataMap) updateUsingCollPvtData(collPvtData *rwset.
 
 func (uniquePvtData uniquePvtDataMap) updateUsingPvtWrite(pvtWrite *kvrwset.KVWrite,
 	hashedCompositeKey privacyenabledstate.HashedCompositeKey, ver *version.Height) {
-
 	pvtData, ok := uniquePvtData[hashedCompositeKey]
 	if !ok || pvtData.Version.Compare(ver) < 0 {
 		uniquePvtData[hashedCompositeKey] =
 			&privacyenabledstate.PvtKVWrite{
 				Key:      pvtWrite.Key,
-				IsDelete: pvtWrite.IsDelete,
+				IsDelete: rwsetutil.IsKVWriteDelete(pvtWrite),
 				Value:    pvtWrite.Value,
 				Version:  ver,
 			}
@@ -390,7 +369,6 @@ func (uniquePvtData uniquePvtDataMap) loadCommittedVersionIntoCache(db *privacye
 
 func checkIfPvtWriteIsStale(hashedKey *privacyenabledstate.HashedCompositeKey,
 	kvWrite *privacyenabledstate.PvtKVWrite, db *privacyenabledstate.DB) (bool, error) {
-
 	ns := hashedKey.Namespace
 	coll := hashedKey.CollectionName
 	keyHashBytes := []byte(hashedKey.KeyHash)
@@ -469,7 +447,8 @@ func (txmgr *LockBasedTxMgr) invokeNamespaceListeners() error {
 		txmgr.current.listeners = append(txmgr.current.listeners, listener)
 
 		committedStateQueryExecuter := &queryutil.QECombiner{
-			QueryExecuters: []queryutil.QueryExecuter{txmgr.db}}
+			QueryExecuters: []queryutil.QueryExecuter{txmgr.db},
+		}
 
 		postCommitQueryExecuter := &queryutil.QECombiner{
 			QueryExecuters: []queryutil.QueryExecuter{

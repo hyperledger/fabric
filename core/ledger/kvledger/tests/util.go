@@ -41,11 +41,6 @@ type txAndPvtdata struct {
 
 //go:generate counterfeiter -o fakes/signer.go --fake-name Signer . signer
 
-type signer interface {
-	Sign(msg []byte) ([]byte, error)
-	Serialize() ([]byte, error)
-}
-
 func convertToCollConfigProtoBytes(collConfs []*collConf) ([]byte, error) {
 	var protoConfArray []*protopeer.CollectionConfig
 	for _, c := range collConfs {
@@ -143,7 +138,6 @@ func constructUnsignedTxEnv(
 	visibility []byte,
 	headerType common.HeaderType,
 ) (*common.Envelope, string, error) {
-
 	sigID := &fakes.Signer{}
 	sigID.SerializeReturns([]byte("signer"), nil)
 	sigID.SignReturns([]byte("signature"), nil)

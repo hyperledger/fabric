@@ -136,7 +136,6 @@ func newSnapshotWriter(
 	dir, dataFileName, metadataFileName string,
 	newHash func() (hash.Hash, error),
 ) (*snapshotWriter, error) {
-
 	dataFilePath := filepath.Join(dir, dataFileName)
 	metadataFilePath := filepath.Join(dir, metadataFileName)
 
@@ -381,6 +380,12 @@ func (r *worldStateSnapshotReader) Next() (*statedb.VersionedKV, error) {
 			},
 		}, nil
 	}
+
+	if r.pvtStateHashes != nil {
+		if err := r.invokeDoneOnPvtdataHashesConsumers(); err != nil {
+			return nil, err
+		}
+	}
 	return nil, nil
 }
 
@@ -403,6 +408,19 @@ func (r *worldStateSnapshotReader) invokePvtdataHashesConsumers(
 		}
 	}
 	return nil
+}
+
+func (r *worldStateSnapshotReader) invokeDoneOnPvtdataHashesConsumers() error {
+	if len(r.pvtdataHashesConsumers) == 0 {
+		return nil
+	}
+	var err error
+	for _, c := range r.pvtdataHashesConsumers {
+		if cErr := c.Done(); cErr != nil && err == nil {
+			err = cErr
+		}
+	}
+	return err
 }
 
 func (r *worldStateSnapshotReader) Close() {
@@ -537,4 +555,5 @@ func (c *cursor) currentNamespace() string {
 
 type SnapshotPvtdataHashesConsumer interface {
 	ConsumeSnapshotData(namespace, coll string, keyHash []byte, valueHash []byte, version *version.Height) error
+	Done() error
 }

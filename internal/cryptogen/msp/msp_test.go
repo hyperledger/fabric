@@ -166,7 +166,6 @@ func testGenerateVerifyingMSP(t *testing.T, nodeOUs bool) {
 	require.Error(t, err, "Should have failed with CA name 'test/fail'")
 	t.Log(err)
 	cleanup(testDir)
-
 }
 
 func TestGenerateVerifyingMSPWithNodeOU(t *testing.T) {
@@ -182,7 +181,7 @@ func TestExportConfig(t *testing.T) {
 	configFile := filepath.Join(path, "config.yaml")
 	caFile := "ca.pem"
 	t.Log(path)
-	err := os.MkdirAll(path, 0755)
+	err := os.MkdirAll(path, 0o755)
 	if err != nil {
 		t.Fatalf("failed to create test directory: [%s]", err)
 	}

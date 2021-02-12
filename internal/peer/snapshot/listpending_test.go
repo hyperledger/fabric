@@ -26,7 +26,7 @@ func TestListPendingCmd(t *testing.T) {
 
 	resetFlags()
 	cmd := listPendingCmd(mockClient, nil)
-	cmd.SetArgs([]string{"-C", "mychannel"})
+	cmd.SetArgs([]string{"-c", "mychannel"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, []byte("Successfully got pending snapshot requests: [100 200]\n"), buffer.Contents())
@@ -43,5 +43,5 @@ func TestListPendingCmd(t *testing.T) {
 
 	resetFlags()
 	cmd.SetArgs([]string{})
-	require.EqualError(t, cmd.Execute(), "the required parameter 'channelID' is empty. Rerun the command with -C flag")
+	require.EqualError(t, cmd.Execute(), "the required parameter 'channelID' is empty. Rerun the command with -c flag")
 }

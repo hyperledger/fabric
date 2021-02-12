@@ -18,16 +18,16 @@ func TestSend(t *testing.T) {
 
 	stream := newInProcStream(ch, ch)
 
-	//good send (non-blocking send and receive)
+	// good send (non-blocking send and receive)
 	msg := &pb.ChaincodeMessage{}
 	go stream.Send(msg)
 	msg2, _ := stream.Recv()
 	require.Equal(t, msg, msg2, "send != recv")
 
-	//close the channel
+	// close the channel
 	close(ch)
 
-	//bad send, should panic, unblock and return error
+	// bad send, should panic, unblock and return error
 	err := stream.Send(msg)
 	require.NotNil(t, err, "should have errored on panic")
 }

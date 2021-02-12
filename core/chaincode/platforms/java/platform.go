@@ -32,7 +32,7 @@ func (p *Platform) Name() string {
 	return pb.ChaincodeSpec_JAVA.String()
 }
 
-//ValidatePath validates the java chaincode paths
+// ValidatePath validates the java chaincode paths
 func (p *Platform) ValidatePath(rawPath string) error {
 	path, err := url.Parse(rawPath)
 	if err != nil || path == nil {
@@ -79,7 +79,7 @@ func (p *Platform) ValidateCodePackage(code []byte) error {
 		//
 		// Anything else is suspect in this context and will be rejected
 		// --------------------------------------------------------------------------------------
-		if header.Mode&^0100666 != 0 {
+		if header.Mode&^0o100666 != 0 {
 			return fmt.Errorf("illegal file mode detected for file %s: %o", header.Name, header.Mode)
 		}
 	}

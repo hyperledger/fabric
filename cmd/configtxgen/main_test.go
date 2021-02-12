@@ -63,13 +63,21 @@ func TestMissingOrdererSection(t *testing.T) {
 	require.EqualError(t, doOutputBlock(config, "foo", blockDest), "refusing to generate block which is missing orderer section")
 }
 
-func TestMissingConsortiumSection(t *testing.T) {
+func TestApplicationChannelGenesisBlock(t *testing.T) {
 	blockDest := filepath.Join(tmpDir, "block")
 
-	config := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
-	config.Consortiums = nil
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelInsecureSoloProfile, configtest.GetDevConfigDir())
 
-	require.NoError(t, doOutputBlock(config, "foo", blockDest), "Missing consortiums section")
+	require.NoError(t, doOutputBlock(config, "foo", blockDest))
+}
+
+func TestApplicationChannelMissingApplicationSection(t *testing.T) {
+	blockDest := filepath.Join(tmpDir, "block")
+
+	config := genesisconfig.Load(genesisconfig.SampleAppChannelInsecureSoloProfile, configtest.GetDevConfigDir())
+	config.Application = nil
+
+	require.EqualError(t, doOutputBlock(config, "foo", blockDest), "refusing to generate application channel block which is missing application section")
 }
 
 func TestMissingConsortiumValue(t *testing.T) {
@@ -85,7 +93,7 @@ func TestUnsuccessfulChannelTxFileCreation(t *testing.T) {
 	configTxDest := filepath.Join(tmpDir, "configtx")
 
 	config := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
-	require.NoError(t, ioutil.WriteFile(configTxDest, []byte{}, 0440))
+	require.NoError(t, ioutil.WriteFile(configTxDest, []byte{}, 0o440))
 	defer os.Remove(configTxDest)
 
 	require.EqualError(t, doOutputChannelCreateTx(config, nil, "foo", configTxDest), fmt.Sprintf("error writing channel create tx: open %s: permission denied", configTxDest))

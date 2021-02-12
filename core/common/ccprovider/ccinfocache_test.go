@@ -42,7 +42,7 @@ func getDepSpec(name string, path string, version string, initArgs [][]byte) (*p
 	err := tw.WriteHeader(&tar.Header{
 		Name: "src/garbage.go",
 		Size: int64(len(payload)),
-		Mode: 0100644,
+		Mode: 0o100644,
 	})
 	if err != nil {
 		return nil, err
@@ -196,7 +196,7 @@ func TestCCInfoFSPeerInstance(t *testing.T) {
 	require.NotNil(t, resp)
 	require.NotZero(t, len(resp.Chaincodes), "GetInstalledChaincodes should not have returned 0 chaincodes")
 
-	//get chaincode data
+	// get chaincode data
 	_, err = GetChaincodeData("bar:1.0")
 	require.NoError(t, err)
 }
@@ -214,7 +214,7 @@ func TestGetInstalledChaincodesErrorPaths(t *testing.T) {
 
 	// Set the above created directory as the chaincode install path
 	SetChaincodesPath(dir)
-	err = ioutil.WriteFile(filepath.Join(dir, "idontexist.1.0"), []byte("test"), 0777)
+	err = ioutil.WriteFile(filepath.Join(dir, "idontexist.1.0"), []byte("test"), 0o777)
 	require.NoError(t, err)
 	resp, err := GetInstalledChaincodes()
 	require.NoError(t, err)

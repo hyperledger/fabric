@@ -23,6 +23,16 @@ type SnapshotPvtdataHashesConsumer struct {
 	consumeSnapshotDataReturnsOnCall map[int]struct {
 		result1 error
 	}
+	DoneStub        func() error
+	doneMutex       sync.RWMutex
+	doneArgsForCall []struct {
+	}
+	doneReturns struct {
+		result1 error
+	}
+	doneReturnsOnCall map[int]struct {
+		result1 error
+	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -101,11 +111,65 @@ func (fake *SnapshotPvtdataHashesConsumer) ConsumeSnapshotDataReturnsOnCall(i in
 	}{result1}
 }
 
+func (fake *SnapshotPvtdataHashesConsumer) Done() error {
+	fake.doneMutex.Lock()
+	ret, specificReturn := fake.doneReturnsOnCall[len(fake.doneArgsForCall)]
+	fake.doneArgsForCall = append(fake.doneArgsForCall, struct {
+	}{})
+	fake.recordInvocation("Done", []interface{}{})
+	fake.doneMutex.Unlock()
+	if fake.DoneStub != nil {
+		return fake.DoneStub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.doneReturns
+	return fakeReturns.result1
+}
+
+func (fake *SnapshotPvtdataHashesConsumer) DoneCallCount() int {
+	fake.doneMutex.RLock()
+	defer fake.doneMutex.RUnlock()
+	return len(fake.doneArgsForCall)
+}
+
+func (fake *SnapshotPvtdataHashesConsumer) DoneCalls(stub func() error) {
+	fake.doneMutex.Lock()
+	defer fake.doneMutex.Unlock()
+	fake.DoneStub = stub
+}
+
+func (fake *SnapshotPvtdataHashesConsumer) DoneReturns(result1 error) {
+	fake.doneMutex.Lock()
+	defer fake.doneMutex.Unlock()
+	fake.DoneStub = nil
+	fake.doneReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *SnapshotPvtdataHashesConsumer) DoneReturnsOnCall(i int, result1 error) {
+	fake.doneMutex.Lock()
+	defer fake.doneMutex.Unlock()
+	fake.DoneStub = nil
+	if fake.doneReturnsOnCall == nil {
+		fake.doneReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.doneReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
+}
+
 func (fake *SnapshotPvtdataHashesConsumer) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.consumeSnapshotDataMutex.RLock()
 	defer fake.consumeSnapshotDataMutex.RUnlock()
+	fake.doneMutex.RLock()
+	defer fake.doneMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}
 	for key, value := range fake.invocations {
 		copiedInvocations[key] = value

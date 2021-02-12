@@ -12,6 +12,8 @@ Updating a channel configuration is, at a high level, a three step process (for 
 
 We will be performing these channel configuration updates by leveraging a file called `enable_lifecycle.json`, which contains all of the updates we will be making in the channel configurations. Note that in a production setting it is likely that multiple users would be making these channel update requests. However, for the sake of simplicity, we are presenting all of the updates as how they would appear in a single file.
 
+Note: this topic describes a network that does not use a "system channel", a channel that the ordering service is bootstrapped with and the ordering service exclusively controls. Since the release of v2.3, using a system channel is now considered the legacy process as compared to the new process to [Create a channel](./create_channel/create_channel_participation.html) without a system channel. For a version of this topic that includes information about the system channel, check out [Enabling the new chaincode lifecycle](https://hyperledger-fabric.readthedocs.io/en/release-2.2/enable_cc_lifecycle.html) from the v2.2 documentation.
+
 ## Create `enable_lifecycle.json`
 
 Note that in addition to using `enable_lifecycle.json`, this tutorial also uses `jq` to apply the edits to the modified config file. The modified config can also be edited manually (after it has been pulled, translated, and scoped). Check out this [sample channel configuration](./config_update.html#sample-channel-configuration) for reference.
@@ -129,42 +131,13 @@ Note that the `enable_lifecycle.json` uses sample values, for example `org1Polic
 
 ## Edit the channel configurations
 
-### System channel updates
+To fully enable the new chaincode lifecycle, you must first edit the configuration of your own organization as it exists in a channel configuration, and then you must update the channel itself to include a default endorsement policy for the channel. You can then optionally update your channel access control list.
 
-Because configuration changes to the system channel to enable the new lifecycle only involve parameters inside the configuration of the peer organizations within the channel configuration, each peer organization being edited will have to sign the relevant channel configuration update.
+Note: this topic leverages the instructions on how to update a channel configuration that are found in the [Updating a channel configuration](./config_update.html) tutorial. The environment variables listed here work in conjunction with those commands to update your channels.
 
-However, by default, the system channel can only be edited by system channel admins (typically these are admins of the ordering service organizations and not peer organizations), which means that the configuration updates to the peer organizations in the consortium will have to be proposed by a system channel admin and sent to the relevant peer organization to be signed.
+### Edit the peer organizations
 
-You will need to export the following variables:
-
-* `CH_NAME`: the name of the system channel being updated.
-* `CORE_PEER_LOCALMSPID`: the MSP ID of the organization proposing the channel update. This will be the MSP of one of the ordering service organizations.
-* `CORE_PEER_MSPCONFIGPATH`: the absolute path to the MSP representing your organization.
-* `TLS_ROOT_CA`: the absolute path to the root CA certificate of the organization proposing the system channel update.
-* `ORDERER_CONTAINER`: the name of an ordering node container. When targeting the ordering service, you can target any particular node in the ordering service. Your requests will be forwarded to the leader automatically.
-* `ORGNAME`: the name of the organization you are currently updating.
-* `CONSORTIUM_NAME`: the name of the consortium being updated.
-
-Once you have set the environment variables, navigate to [Step 1: Pull and translate the config](./config_update.html#step-1-pull-and-translate-the-config).
-
-Then, add the lifecycle organization policy (as listed in `enable_lifecycle.json`) to a file called `modified_config.json` using this command:
-
-```
-jq -s ".[0] * {\"channel_group\":{\"groups\":{\"Consortiums\":{\"groups\": {\"$CONSORTIUM_NAME\": {\"groups\": {\"$ORGNAME\": {\"policies\": .[1].${ORGNAME}Policies}}}}}}}}" config.json ./enable_lifecycle.json > modified_config.json
-```
-
-Then, follow the steps at [Step 3: Re-encode and submit the config](./config_update.html#step-3-re-encode-and-submit-the-config).
-
-As stated above, these changes will have to be proposed by a system channel admin and sent to the relevant peer organization for signature.
-
-### Application channel updates
-
-#### Edit the peer organizations
-
-We need to perform a similar set of edits to all of the organizations on all
-application channels.
-
-Note that unlike the system channel, peer organizations are able to make configuration update requests to application channels. If you are making a configuration change to your own organization, you will be able to make these changes without needing the signature of other organizations. However, if you are attempting to make a change to a different organization, that organization will have to approve the change.
+By default, peer organizations are able to make configuration update requests to their own organization on an application channel without needing the approval of any other peer organizations. However, if you are attempting to make a change to a different organization, that organization will have to approve the change.
 
 You will need to export the following variables:
 
@@ -185,13 +158,11 @@ jq -s ".[0] * {\"channel_group\":{\"groups\":{\"Application\": {\"groups\": {\"$
 
 Then, follow the steps at [Step 3: Re-encode and submit the config](./config_update.html#step-3-re-encode-and-submit-the-config).
 
-#### Edit the application channels
+### Edit the application channels
 
-After all of the application channels have been [updated to include V2_0 capabilities](./upgrade_to_newest_version.html#capabilities),
-endorsement policies for the new chaincode lifecycle must be added to each
-channel.
+After all of the application channels have been [updated to include V2_0 capabilities](./upgrade_to_newest_version.html#capabilities), endorsement policies for the new chaincode lifecycle must be added to each channel.
 
-You can set the same environment you set when updating the peer organizations. Note that in this case you will not be updating the configuration of an org in the configuration, so the `ORGNAME` variable will not be used.
+You can set the same environment variables you set when updating the peer organizations. Note that in this case you will not be updating the configuration of an org in the configuration, so the `ORGNAME` variable will not be used.
 
 Once you have set the environment variables, navigate to [Step 1: Pull and translate the config](./config_update.html#step-1-pull-and-translate-the-config).
 

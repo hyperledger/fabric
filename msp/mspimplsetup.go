@@ -10,12 +10,14 @@ import (
 	"bytes"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	m "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/utils"
 	errors "github.com/pkg/errors"
 )
 
@@ -75,7 +77,6 @@ func (msp *bccspmsp) getCertifiersIdentifier(certRaw []byte) ([]byte, error) {
 	}
 
 	return certifiersIdentifier, nil
-
 }
 
 func (msp *bccspmsp) setupCrypto(conf *m.FabricMSPConfig) error {
@@ -194,6 +195,23 @@ func (msp *bccspmsp) setupAdminsV142(conf *m.FabricMSPConfig) error {
 	return nil
 }
 
+func isECDSASignatureAlgorithm(algid asn1.ObjectIdentifier) bool {
+	// This is the set of ECDSA algorithms supported by Go 1.14 for CRL
+	// signatures.
+	ecdsaSignaureAlgorithms := []asn1.ObjectIdentifier{
+		{1, 2, 840, 10045, 4, 1},    // oidSignatureECDSAWithSHA1
+		{1, 2, 840, 10045, 4, 3, 2}, // oidSignatureECDSAWithSHA256
+		{1, 2, 840, 10045, 4, 3, 3}, // oidSignatureECDSAWithSHA384
+		{1, 2, 840, 10045, 4, 3, 4}, // oidSignatureECDSAWithSHA512
+	}
+	for _, id := range ecdsaSignaureAlgorithms {
+		if id.Equal(algid) {
+			return true
+		}
+	}
+	return false
+}
+
 func (msp *bccspmsp) setupCRLs(conf *m.FabricMSPConfig) error {
 	// setup the CRL (if present)
 	msp.CRL = make([]*pkix.CertificateList, len(conf.RevocationList))
@@ -201,6 +219,19 @@ func (msp *bccspmsp) setupCRLs(conf *m.FabricMSPConfig) error {
 		crl, err := x509.ParseCRL(crlbytes)
 		if err != nil {
 			return errors.Wrap(err, "could not parse RevocationList")
+		}
+
+		// Massage the ECDSA signature values
+		if isECDSASignatureAlgorithm(crl.SignatureAlgorithm.Algorithm) {
+			r, s, err := utils.UnmarshalECDSASignature(crl.SignatureValue.RightAlign())
+			if err != nil {
+				return err
+			}
+			sig, err := utils.MarshalECDSASignature(r, s)
+			if err != nil {
+				return err
+			}
+			crl.SignatureValue = asn1.BitString{Bytes: sig, BitLength: 8 * len(sig)}
 		}
 
 		// TODO: pre-verify the signature on the CRL and create a map
@@ -419,7 +450,6 @@ func (msp *bccspmsp) setupOUs(conf *m.FabricMSPConfig) error {
 }
 
 func (msp *bccspmsp) setupTLSCAs(conf *m.FabricMSPConfig) error {
-
 	opts := &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()}
 
 	// Load TLS root and intermediate CA identities
@@ -639,7 +669,8 @@ func (msp *bccspmsp) postSetupV11(conf *m.FabricMSPConfig) error {
 	}
 	principal := &m.MSPPrincipal{
 		PrincipalClassification: m.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	for i, admin := range msp.admins {
 		err = admin.SatisfiesPrincipal(principal)
 		if err != nil {

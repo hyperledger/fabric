@@ -84,7 +84,6 @@ type consenterImpl struct {
 // multichannel.NewManagerImpl() when ranging over the ledgerFactory's
 // existingChains.
 func (consenter *consenterImpl) HandleChain(support consensus.ConsenterSupport, metadata *cb.Metadata) (consensus.Chain, error) {
-
 	// Check if this node was migrated from Raft
 	if consenter.inactiveChainRegistry != nil {
 		logger.Infof("This node was migrated from Kafka to Raft, skipping activation of Kafka chain")

@@ -56,7 +56,7 @@ func newBlockfileStream(rootDir string, fileNum int, startOffset int64) (*blockf
 	logger.Debugf("newBlockfileStream(): filePath=[%s], startOffset=[%d]", filePath, startOffset)
 	var file *os.File
 	var err error
-	if file, err = os.OpenFile(filePath, os.O_RDONLY, 0600); err != nil {
+	if file, err = os.OpenFile(filePath, os.O_RDONLY, 0o600); err != nil {
 		return nil, errors.Wrapf(err, "error opening block file %s", filePath)
 	}
 	var newPosition int64
@@ -132,7 +132,8 @@ func (s *blockfileStream) nextBlockBytesAndPlacementInfo() ([]byte, *blockPlacem
 	blockPlacementInfo := &blockPlacementInfo{
 		fileNum:          s.fileNum,
 		blockStartOffset: s.currentOffset,
-		blockBytesOffset: s.currentOffset + int64(n)}
+		blockBytesOffset: s.currentOffset + int64(n),
+	}
 	s.currentOffset += int64(n) + int64(length)
 	logger.Debugf("Returning blockbytes - length=[%d], placementInfo={%s}", len(blockBytes), blockPlacementInfo)
 	return blockBytes, blockPlacementInfo, nil

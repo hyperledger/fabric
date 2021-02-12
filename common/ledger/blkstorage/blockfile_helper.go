@@ -16,6 +16,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 )
 
@@ -183,4 +184,37 @@ func loadBootstrappingSnapshotInfo(rootDir string) (*BootstrappingSnapshotInfo, 
 		return nil, errors.Wrapf(err, "error while unmarshalling bootstrappingSnapshotInfo")
 	}
 	return bsi, nil
+}
+
+func IsBootstrappedFromSnapshot(blockStorageDir, ledgerID string) (bool, error) {
+	ledgerDir := filepath.Join(blockStorageDir, ChainsDir, ledgerID)
+	_, err := os.Stat(filepath.Join(ledgerDir, bootstrappingSnapshotInfoFile))
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to read bootstrappingSnapshotInfo file under blockstore directory %s", ledgerDir)
+	}
+	return true, nil
+}
+
+func GetLedgersBootstrappedFromSnapshot(blockStorageDir string) ([]string, error) {
+	chainsDir := filepath.Join(blockStorageDir, ChainsDir)
+	ledgerIDs, err := fileutil.ListSubdirs(chainsDir)
+	if err != nil {
+		return nil, err
+	}
+
+	isFromSnapshot := false
+	ledgersFromSnapshot := []string{}
+	for _, ledgerID := range ledgerIDs {
+		if isFromSnapshot, err = IsBootstrappedFromSnapshot(blockStorageDir, ledgerID); err != nil {
+			return nil, err
+		}
+		if isFromSnapshot {
+			ledgersFromSnapshot = append(ledgersFromSnapshot, ledgerID)
+		}
+	}
+
+	return ledgersFromSnapshot, nil
 }

@@ -9,7 +9,6 @@ package test
 import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -36,10 +35,19 @@ func MakeGenesisBlock(channelID string) (*cb.Block, error) {
 		return gb, nil
 	}
 
-	txsFilter := txflags.NewWithValues(len(gb.Data.Data), peer.TxValidationCode_VALID)
+	txsFilter := txflags.NewWithValues(len(gb.Data.Data), pb.TxValidationCode_VALID)
 	gb.Metadata.Metadata[cb.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
 
 	return gb, nil
+}
+
+func MakeChannelConfig(channelID string) (*cb.Config, error) {
+	profile := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
+	channelGroup, err := encoder.NewChannelGroup(profile)
+	if err != nil {
+		return nil, err
+	}
+	return &cb.Config{ChannelGroup: channelGroup}, nil
 }
 
 // MakeGenesisBlockWithMSPs creates a genesis block using the MSPs provided for the given channelID

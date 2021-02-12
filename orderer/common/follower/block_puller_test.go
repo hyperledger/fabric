@@ -101,13 +101,13 @@ func TestBlockPullerFactory_BlockPuller(t *testing.T) {
 	t.Run("good", func(t *testing.T) {
 		joinBlockAppRaft := generateJoinBlock(t, tlsCA, channelID, 10)
 		require.NotNil(t, joinBlockAppRaft)
-		bp, err := factory.BlockPuller(joinBlockAppRaft)
+		bp, err := factory.BlockPuller(joinBlockAppRaft, make(chan struct{}))
 		require.NoError(t, err)
 		require.NotNil(t, bp)
 	})
 
 	t.Run("bad join block", func(t *testing.T) {
-		bp, err := factory.BlockPuller(&cb.Block{Header: &cb.BlockHeader{}})
+		bp, err := factory.BlockPuller(&cb.Block{Header: &cb.BlockHeader{}}, make(chan struct{}))
 		require.EqualError(t, err, "error extracting endpoints from config block: block data is nil")
 		require.Nil(t, bp)
 	})
@@ -152,7 +152,8 @@ func TestBlockPullerFactory_VerifyBlockSequence(t *testing.T) {
 		blocks := []*cb.Block{
 			generateJoinBlock(t, tlsCA, channelID, 0),
 			protoutil.NewBlock(1, []byte{}),
-			protoutil.NewBlock(2, []byte{})}
+			protoutil.NewBlock(2, []byte{}),
+		}
 
 		err = creator.VerifyBlockSequence(blocks, "")
 		require.NoError(t, err)
@@ -201,13 +202,13 @@ func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsC
 		srvC, err := tlsCA.NewServerCertKeyPair(c.Host)
 		require.NoError(t, err)
 		srvP := path.Join(certDir, fmt.Sprintf("server%d.crt", i))
-		err = ioutil.WriteFile(srvP, srvC.Cert, 0644)
+		err = ioutil.WriteFile(srvP, srvC.Cert, 0o644)
 		require.NoError(t, err)
 
 		clnC, err := tlsCA.NewClientCertKeyPair()
 		require.NoError(t, err)
 		clnP := path.Join(certDir, fmt.Sprintf("client%d.crt", i))
-		err = ioutil.WriteFile(clnP, clnC.Cert, 0644)
+		err = ioutil.WriteFile(clnP, clnC.Cert, 0o644)
 		require.NoError(t, err)
 
 		c.ServerTlsCert = []byte(srvP)

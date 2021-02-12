@@ -1,5 +1,7 @@
 # Membership Service Provider (MSP)
 
+Note: this topic describes a network that does not use a "system channel", a channel that the ordering service is bootstrapped with and the ordering service exclusively controls. Since the release of v2.3, using system channel is now considered the legacy process as compared to the process to [Create a channel](../create_channel/create_channel_participation.html) without a system channel. For a version of this topic that includes information about the system channel, check out [Membership Service Provider (MSP)](https://hyperledger-fabric.readthedocs.io/en/release-2.2/membership/membership.html) from the v2.2 documentation.
+
 ## Why do I need an MSP?
 
 Because Fabric is a permissioned network, blockchain participants need a way to prove their identity to the rest of the network in order to transact on the network. If you've read through the documentation on [Identity](../identity/identity.html)
@@ -15,13 +17,13 @@ This ability to turn verifiable identities into roles is fundamental to the way 
 
 *Identities are similar to your credit cards that are used to prove you can pay. The MSP is similar to the list of accepted credit cards.*
 
-Consider a consortium of banks that operate a blockchain network. Each bank operates peer and ordering nodes, and the peers endorse transactions submitted to the network. However, each bank would also have departments and account holders. The account holders would belong to each organization, but would not run nodes on the network. They would only interact with the system from their mobile or web application. So how does the network recognize and differentiate these identities? A CA was used to create the identities, but like the card example, those identities can't just be issued, they need to be recognized by the network. MSPs are used to define the organizations that are trusted by the network members. MSPs are also the mechanism that provide members with a set of roles and permissions within the network. Because the MSPs defining these organizations are known to the members of a network, they can then be used to validate that network entities that attempt to perform actions are allowed to.
+Consider a group of banks that operate a blockchain network. Each bank operates peer and ordering nodes, and the peers endorse transactions submitted to the network. However, each bank would also have departments and account holders. The account holders would belong to each organization, but would not run nodes on the network. They would only interact with the system from their mobile or web application. So how does the network recognize and differentiate these identities? A CA was used to create the identities, but like the card example, those identities can't just be issued, they need to be recognized by the network. MSPs are used to define the organizations that are trusted by the network members. MSPs are also the mechanism that provide members with a set of roles and permissions within the network. Because the MSPs defining these organizations are known to the members of a network, they can then be used to validate that network entities that attempt to perform actions are allowed to.
 
 Finally, consider if you want to join an _existing_ network, you need a way to turn your identity into something that is recognized by the network. The MSP is the mechanism that enables you to participate on a permissioned blockchain network. To transact on a Fabric network a member needs to:
 
 1. Have an identity issued by a CA that is trusted by the network.
 2. Become a member of an _organization_ that is recognized and approved by the network members. The MSP is how the identity is linked to the membership of an organization. Membership is achieved by adding the member's public key (also known as certificate, signing cert, or signcert) to the organization’s MSP.
-3. Add the MSP to either a [consortium](../glossary.html#consortium) on the network or a channel.
+3. Add the MSP to a channel.
 4. Ensure the MSP is included in the [policy](../policies/policies.html) definitions on the network.
 
 ## What is an MSP?
@@ -65,16 +67,15 @@ The channel MSP defines the _relationship_ between the identities of channel mem
 
 **Every organization participating in a channel must have an MSP defined for it**. In fact, it is recommended that there is a one-to-one mapping between organizations and MSPs. The MSP defines which members are empowered to act on behalf of the organization. This includes configuration of the MSP itself as well as approving administrative tasks that the organization has role, such as adding new members to a channel. If all network members were part of a single organization or MSP, data privacy is sacrificed. Multiple organizations facilitate privacy by segregating ledger data to only channel members. If more granularity is required within an organization, the organization can be further divided into organizational units (OUs) which we describe in more detail later in this topic.
 
-**The system channel MSP includes the MSPs of all the organizations that participate in an ordering service.** An ordering service will likely include ordering nodes from multiple organizations and collectively these organizations run the ordering service, most importantly managing the consortium of organizations and the default policies that are inherited by the application channels.
+**The channel MSP includes the MSPs of all the organizations on a channel.** This includes not just "peer organizations", which own peers and invoke chaincodes, but the organizations that own and run the ordering service.
 
-**Local MSPs are only defined on the file system of the node or user** to which they apply. Therefore, physically and logically there is only one local MSP per
-node. However, as channel MSPs are available to all nodes in the channel, they are logically defined once in the channel configuration. However, **a channel MSP is also instantiated on the file system of every node in the channel and kept synchronized via consensus**. So while there is a copy of each channel MSP on the local file system of every node, logically a channel MSP resides on and is maintained by the channel or the network.
+**Local MSPs are only defined on the file system of the node or user** to which they apply. Therefore, physically and logically there is only one local MSP per node. However, as channel MSPs are available to all nodes in the channel, they are logically defined once in the channel configuration. However, **a channel MSP is also instantiated on the file system of every node in the channel and kept synchronized via consensus**. So while there is a copy of each channel MSP on the local file system of every node, logically a channel MSP resides on and is maintained by the channel or the network.
 
 The following diagram illustrates how local and channel MSPs coexist on the network:  
 
 ![MSP3](./membership.diagram.2.png)
 
-*The MSPs for the peer and orderer are local, whereas the MSPs for a channel (including the network configuration channel, also known as the system channel) are global, shared across all participants of that channel. In this figure, the network system channel is administered by ORG1, but another application channel can be managed by ORG1 and ORG2. The peer is a member of and managed by ORG2, whereas ORG1 manages the orderer of the figure. ORG1 trusts identities from RCA1, whereas ORG2 trusts identities from RCA2. It is important to note that these are administration identities, reflecting who can administer these components. So while ORG1 administers the network, ORG2.MSP does exist in the network definition.*
+*In this figure, ORG1, owns the ordering node joined to the channel. The MSPs related to ORG1, the local MSP of the node and the global MSP that formally represents ORG1 on the channel, have been created by RCA1, the CA for ORG1. The peer organization, ORG2, also has a local MSP for its peer and another global MSP that represents ORG2 on the channel. Both ORG1 and ORG2 are channel members, and manage the channel in their areas of administration, and trust identities created by each other's CA. Note that in a production scenario, it is likely that there will be several peer organizations who collaborate in the administration of the channel, and potentially more than one orderer organization as well.*
 
 ## What role does an organization play in an MSP?
 
@@ -130,7 +131,7 @@ The resulting ROLE and OU attributes are visible inside the X.509 signing certif
 
 **Note:** For Channel MSPs, just because an actor has the role of an administrator it doesn't mean that they can administer particular resources. The actual power a given identity has with respect to administering the system is determined by the _policies_ that manage system resources. For example, a channel policy might specify that `ORG1-MANUFACTURING` administrators, meaning identities with a role of `admin` and a Node OU of  `ORG1-MANUFACTURING`, have the rights to add new organizations to the channel, whereas the `ORG1-DISTRIBUTION` administrators have no such rights.
 
-Finally, OUs could be used by different organizations in a consortium to distinguish each other. But in such cases, the different organizations have to use the same Root CAs and Intermediate CAs for their chain of trust, and assign the OU field to identify members of each organization. When every organization has the same CA or chain of trust, this makes the system more centralized than what might be desirable and therefore deserves careful consideration on a blockchain network.
+Finally, OUs could be used by different organizations to distinguish each other. But in such cases, the different organizations have to use the same Root CAs and Intermediate CAs for their chain of trust, and assign the OU field to identify members of each organization. When every organization has the same CA or chain of trust, this makes the system more centralized than what might be desirable and therefore deserves careful consideration on a blockchain network.
 
 ## MSP Structure
 

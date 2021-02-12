@@ -47,11 +47,6 @@ func (m *MockMSP) GetIdentifier() (string, error) {
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockMSP) GetSigningIdentity(identifier *msp.IdentityIdentifier) (msp.SigningIdentity, error) {
-	args := m.Called(identifier)
-	return args.Get(0).(msp.SigningIdentity), args.Error(1)
-}
-
 func (m *MockMSP) GetDefaultSigningIdentity() (msp.SigningIdentity, error) {
 	args := m.Called()
 	return args.Get(0).(msp.SigningIdentity), args.Error(1)

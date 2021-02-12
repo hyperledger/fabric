@@ -206,10 +206,10 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 
 	t.Run("channel exists", func(t *testing.T) {
 		fakeManager.ChannelInfoReturns(types.ChannelInfo{
-			Name:            "app-channel",
-			ClusterRelation: "member",
-			Status:          "active",
-			Height:          3,
+			Name:              "app-channel",
+			ConsensusRelation: "consenter",
+			Status:            "active",
+			Height:            3,
 		}, nil)
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, channelparticipation.URLBaseV1Channels+"/app-channel", nil)
@@ -222,13 +222,12 @@ func TestHTTPHandler_ServeHTTP_ListSingle(t *testing.T) {
 		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
 		require.NoError(t, err, "cannot be unmarshaled")
 		require.Equal(t, types.ChannelInfo{
-			Name:            "app-channel",
-			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
-			ClusterRelation: "member",
-			Status:          "active",
-			Height:          3,
+			Name:              "app-channel",
+			URL:               channelparticipation.URLBaseV1Channels + "/app-channel",
+			ConsensusRelation: "consenter",
+			Status:            "active",
+			Height:            3,
 		}, infoResp)
-
 	})
 
 	t.Run("channel does not exists", func(t *testing.T) {
@@ -249,10 +248,10 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 	t.Run("created ok", func(t *testing.T) {
 		fakeManager, h := setup(config, t)
 		fakeManager.JoinChannelReturns(types.ChannelInfo{
-			Name:            "app-channel",
-			ClusterRelation: "member",
-			Status:          "active",
-			Height:          1,
+			Name:              "app-channel",
+			ConsensusRelation: "consenter",
+			Status:            "active",
+			Height:            1,
 		}, nil)
 
 		resp := httptest.NewRecorder()
@@ -265,11 +264,11 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		err := json.Unmarshal(resp.Body.Bytes(), &infoResp)
 		require.NoError(t, err, "cannot be unmarshaled")
 		require.Equal(t, types.ChannelInfo{
-			Name:            "app-channel",
-			URL:             channelparticipation.URLBaseV1Channels + "/app-channel",
-			ClusterRelation: "member",
-			Status:          "active",
-			Height:          1,
+			Name:              "app-channel",
+			URL:               channelparticipation.URLBaseV1Channels + "/app-channel",
+			ConsensusRelation: "consenter",
+			Status:            "active",
+			Height:            1,
 		}, infoResp)
 	})
 
@@ -300,6 +299,15 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusForbidden, "cannot join: application channels already exist", resp)
+	})
+
+	t.Run("Error: Channel Pending Removal", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.JoinChannelReturns(types.ChannelInfo{}, types.ErrChannelPendingRemoval)
+		resp := httptest.NewRecorder()
+		req := genJoinRequestFormData(t, validBlockBytes("ch-id"))
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusConflict, "cannot join: channel pending removal", resp)
 	})
 
 	t.Run("bad body - not a block", func(t *testing.T) {
@@ -340,7 +348,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodPost, channelparticipation.URLBaseV1Channels, joinBody)
-		req.Header.Set("Content-Type", "multipart/form-data") //missing boundary
+		req.Header.Set("Content-Type", "multipart/form-data") // missing boundary
 
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusBadRequest, "cannot read form from request body: multipart: boundary is empty", resp)
@@ -468,6 +476,15 @@ func TestHTTPHandler_ServeHTTP_Remove(t *testing.T) {
 		h.ServeHTTP(resp, req)
 		checkErrorResponse(t, http.StatusMethodNotAllowed, "cannot remove: system channel exists", resp)
 		require.Equal(t, "GET", resp.Result().Header.Get("Allow"))
+	})
+
+	t.Run("Error: Channel Pending Removal", func(t *testing.T) {
+		fakeManager, h := setup(config, t)
+		fakeManager.RemoveChannelReturns(types.ErrChannelPendingRemoval)
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodDelete, path.Join(channelparticipation.URLBaseV1Channels, "my-channel"), nil)
+		h.ServeHTTP(resp, req)
+		checkErrorResponse(t, http.StatusConflict, "cannot remove: channel pending removal", resp)
 	})
 }
 

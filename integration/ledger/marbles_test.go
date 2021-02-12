@@ -155,9 +155,7 @@ var _ bool = Describe("all shim APIs for non-private data", func() {
 	})
 
 	When("CouchDB is used as stateDB", func() {
-		var (
-			couchProcess ifrit.Process
-		)
+		var couchProcess ifrit.Process
 
 		BeforeEach(func() {
 			By("stopping peers")
@@ -206,7 +204,7 @@ var _ bool = Describe("all shim APIs for non-private data", func() {
 
 // marble is the struct to unmarshal the response bytes returned from getMarble API
 type marble struct {
-	ObjectType string `json:"docType"` //docType is "marble"
+	ObjectType string `json:"docType"` // docType is "marble"
 	Name       string `json:"name"`
 	Color      string `json:"color"`
 	Size       int    `json:"size"`
@@ -289,7 +287,6 @@ func (th *marblesTestHelper) assertMarbleExists(chaincodeName string, peer *nwo.
 	err = json.Unmarshal(sess.Out.Contents(), result)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(result).To(Equal(expectedResult))
-
 }
 
 // assertMarbleDoesNotExist asserts that the marble does not exist

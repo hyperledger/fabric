@@ -243,7 +243,6 @@ func ValidateRollbackParams(blockStorageDir, ledgerID string, targetBlockNum uin
 		return err
 	}
 	return nil
-
 }
 
 func validateLedgerID(ledgerDir, ledgerID string) error {

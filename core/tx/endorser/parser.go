@@ -40,7 +40,6 @@ type EndorserTx struct {
 }
 
 func unmarshalEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
-
 	if len(txenv.ChannelHeader.Extension) == 0 {
 		return nil, errors.New("empty header extension")
 	}
@@ -126,7 +125,6 @@ func unmarshalEndorserTx(txenv *tx.Envelope) (*EndorserTx, error) {
 }
 
 func (e *EndorserTx) validate() error {
-
 	if e.Epoch != 0 {
 		return errors.Errorf("invalid epoch in ChannelHeader. Expected 0, got [%d]", e.Epoch)
 	}

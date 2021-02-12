@@ -27,8 +27,8 @@ type mockChainCluster struct {
 	*mockChain
 }
 
-func (c *mockChainCluster) StatusReport() (types.ClusterRelation, types.Status) {
-	return types.ClusterRelationMember, types.StatusActive
+func (c *mockChainCluster) StatusReport() (types.ConsensusRelation, types.Status) {
+	return types.ConsensusRelationConsenter, types.StatusActive
 }
 
 type mockChain struct {
@@ -170,7 +170,8 @@ func makeConfigTxFromConfigUpdateEnvelope(chainID string, configUpdateEnv *cb.Co
 	}
 	configTx, err := protoutil.CreateSignedEnvelope(cb.HeaderType_CONFIG, chainID, mockCrypto(), &cb.ConfigEnvelope{
 		Config:     &cb.Config{Sequence: 1, ChannelGroup: configtx.UnmarshalConfigUpdateOrPanic(configUpdateEnv.ConfigUpdate).WriteSet},
-		LastUpdate: configUpdateTx},
+		LastUpdate: configUpdateTx,
+	},
 		msgVersion, epoch)
 	if err != nil {
 		panic(err)

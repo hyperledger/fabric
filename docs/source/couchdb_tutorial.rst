@@ -224,14 +224,6 @@ In general, you should model index fields to match the fields that will be used
 in query filters and sorts. For more details on building an index in JSON
 format refer to the `CouchDB documentation <http://docs.couchdb.org/en/latest/api/database/find.html#db-index>`__.
 
-A final word on indexing, Fabric takes care of indexing the documents in the
-database using a pattern called ``index warming``. CouchDB does not typically
-index new or updated documents until the next query. Fabric ensures that
-indexes stay 'warm' by requesting an index update after every block of data is
-committed.  This ensures queries are fast because they do not have to index
-documents before running the query. This process keeps the index current
-and refreshed every time new records are added to the state database.
-
 .. _cdb-add-index:
 
 
@@ -311,7 +303,7 @@ Run the following command to deploy the smart contract to `mychannel`:
 
 .. code:: bash
 
-  ./network.sh deployCC -ccn ledger -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
+  ./network.sh deployCC -ccn ledger -ccp ../asset-transfer-ledger-queries/chaincode-go/ -ccl go -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
 
 Note that we are using the `-ccep` flag to deploy the smart contract with an endorsement policy of
 `"OR('Org1MSP.peer','Org2MSP.peer')"`. This allows either organization to create an asset without
@@ -408,7 +400,7 @@ command as Org1 to create a asset owned by "tom":
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     export CORE_PEER_ADDRESS=localhost:7051
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset1","blue","5","tom","35"]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n ledger -c '{"Args":["CreateAsset","asset1","blue","5","tom","35"]}'
 
 Next, query for all assets owned by tom:
 
@@ -469,8 +461,7 @@ It is also important to plan the indexes you install with your chaincode. You
 should install only a few indexes per chaincode that support most of your queries.
 Adding too many indexes, or using an excessive number of fields in an index, will
 degrade the performance of your network. This is because the indexes are updated
-after each block is committed. The more indexes that need to be updated through
-"index warming", the longer it will take for transactions to complete.
+after each block is committed.
 
 The examples in this section will help demonstrate how queries use indexes and
 what type of queries will have the best performance. Remember the following
@@ -612,10 +603,10 @@ total of five assets owned by "tom":
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     export CORE_PEER_ADDRESS=localhost:7051
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset2","yellow","5","tom","35"]}'
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset3","green","6","tom","20"]}'
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset4","purple","7","tom","20"]}'
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n ledger -c '{"Args":["CreateAsset","asset5","blue","8","tom","40"]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n ledger -c '{"Args":["CreateAsset","asset2","yellow","5","tom","35"]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n ledger -c '{"Args":["CreateAsset","asset3","green","6","tom","20"]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n ledger -c '{"Args":["CreateAsset","asset4","purple","7","tom","20"]}'
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile  "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n ledger -c '{"Args":["CreateAsset","asset5","blue","8","tom","40"]}'
 
 In addition to the arguments for the query in the previous example,
 QueryAssetsWithPagination adds ``pagesize`` and ``bookmark``. ``PageSize``
@@ -635,8 +626,8 @@ a unique bookmark.)
     func (t *SimpleChaincode) QueryAssetsWithPagination(
             ctx contractapi.TransactionContextInterface,
             queryString,
-            bookmark string,
-            pageSize int) ([]*Asset, error) {
+            pageSize int,
+            bookmark string) (*PaginatedQueryResult, error) {
 
             return getQueryResultForQueryStringWithPagination(ctx, queryString, int32(pageSize), bookmark)
     }
@@ -652,16 +643,21 @@ with a pageSize of ``3`` and no bookmark specified.
 .. code:: bash
 
   // Rich Query with index name explicitly specified and a page size of 3:
-  peer chaincode query -C mychannel -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","","3"]}'
+  peer chaincode query -C mychannel -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","3",""]}'
 
 The following response is received (carriage returns added for clarity), three
 of the five assets are returned because the ``pagsize`` was set to ``3``:
 
 .. code:: bash
 
-  [{"docType":"asset","ID":"asset1","color":"blue","size":5,"owner":"tom","appraisedValue":35},
-  {"docType":"asset","ID":"asset2","color":"yellow","size":5,"owner":"tom","appraisedValue":35},
-  {"docType":"asset","ID":"asset3","color":"green","size":6,"owner":"tom","appraisedValue":20}]
+  {
+    "records":[
+      {"docType":"asset","ID":"asset1","color":"blue","size":5,"owner":"tom","appraisedValue":35},
+      {"docType":"asset","ID":"asset2","color":"yellow","size":5,"owner":"tom","appraisedValue":35},
+      {"docType":"asset","ID":"asset3","color":"green","size":6,"owner":"tom","appraisedValue":20}],
+    "fetchedRecordsCount":3,
+    "bookmark":"g1AAAABJeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqzJRYXp5YYg2Q5YLI5IPUgSVawJIjFXJKfm5UFANozE8s"
+  }
 
 
 .. note::  Bookmarks are uniquely generated by CouchDB for each query and
@@ -677,35 +673,29 @@ from the previous query.
 
 .. code:: bash
 
-  peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkGoOkOWDSOSANIFk2iCyIyVySn5uVBQAGEhRz","3"]}'
+  peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","3","g1AAAABJeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqzJRYXp5YYg2Q5YLI5IPUgSVawJIjFXJKfm5UFANozE8s"]}'
 
 The following response is received (carriage returns added for clarity).  The
 last two records are retrieved:
 
 .. code:: bash
 
-  [{"Key":"asset4", "Record":{"color":"purple","docType":"asset","name":"asset4","size":"7","owner":"tom","appraisedValue":20}},
-   {"Key":"asset5", "Record":{"color":"blue","docType":"asset","name":"asset5","size":"8","owner":"tom","appraisedValue":40}}]
-  [{"ResponseMetadata":{"RecordsCount":"2",
-  "Bookmark":"g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkmoKkOWDSOSANIFk2iCyIyVySn5uVBQAGYhR1"}}]
+  {
+    "records":[
+      {"docType":"asset","ID":"asset4","color":"purple","size":7,"owner":"tom","appraisedValue":20},
+      {"docType":"asset","ID":"asset5","color":"blue","size":8,"owner":"tom","appraisedValue":40}],
+    "fetchedRecordsCount":2,
+    "bookmark":"g1AAAABJeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqzJRYXp5aYgmQ5YLI5IPUgSVawJIjFXJKfm5UFANqBE80"
+  }
 
-The final command is a peer command to call QueryAssetsWithPagination with
-a pageSize of ``3`` and with the bookmark from the previous query.
+The returned bookmark marks the end of the result set. If we attempt to query with this bookmark,
+no more results will get returned.
 
 :guilabel:`Try it yourself`
 
 .. code:: bash
 
-    peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkmoKkOWDSOSANIFk2iCyIyVySn5uVBQAGYhR1","3"]}'
-
-The following response is received (carriage returns added for clarity).
-No records are returned, indicating that all pages have been retrieved:
-
-.. code:: bash
-
-    []
-    [{"ResponseMetadata":{"RecordsCount":"0",
-    "Bookmark":"g1AAAABLeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqz5yYWJeWkmoKkOWDSOSANIFk2iCyIyVySn5uVBQAGYhR1"}}]
+    peer chaincode query -C $CHANNEL_NAME -n ledger -c '{"Args":["QueryAssetsWithPagination", "{\"selector\":{\"docType\":\"asset\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}","3","g1AAAABJeJzLYWBgYMpgSmHgKy5JLCrJTq2MT8lPzkzJBYqzJRYXp5aYgmQ5YLI5IPUgSVawJIjFXJKfm5UFANqBE80"]}'
 
 For an example of how a client application can iterate over
 the result sets using pagination, search for the ``getQueryResultForQueryStringWithPagination``
@@ -787,6 +777,20 @@ To delete the index used in this tutorial, the curl command would be:
 
    curl -X DELETE http://localhost:5984/mychannel_ledger/_index/indexOwnerDoc/json/indexOwner -H  "accept: */*" -H  "Host: localhost:5984"
 
+
+Clean up
+~~~~~~~~
+
+When you are finished using the tutorial, you can bring down the test network
+using ``network.sh`` script.
+
+.. code:: bash
+
+   ./network.sh down
+
+This command will bring down the CAs, peers, and ordering node of the network
+that we created. Note that all of the data on the ledger will be lost.
+If you want to go through the tutorial again, you will start from a clean initial state.
 
 
 .. Licensed under Creative Commons Attribution 4.0 International License

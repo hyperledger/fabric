@@ -183,7 +183,6 @@ var _ = Describe("MSP identity test on a network with mutual TLS required", func
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(0))
 		Expect(sess).To(gbytes.Say("90"))
-
 	})
 })
 

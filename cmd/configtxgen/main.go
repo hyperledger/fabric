@@ -38,14 +38,19 @@ func doOutputBlock(config *genesisconfig.Profile, channelID string, outputBlock 
 	}
 	logger.Info("Generating genesis block")
 	if config.Orderer == nil {
-		return errors.Errorf("refusing to generate block which is missing orderer section")
+		return errors.New("refusing to generate block which is missing orderer section")
 	}
-	if config.Consortiums == nil {
-		logger.Warning("Genesis block does not contain a consortiums group definition.  This block cannot be used for orderer bootstrap.")
+	if config.Consortiums != nil {
+		logger.Info("Creating system channel genesis block")
+	} else {
+		if config.Application == nil {
+			return errors.New("refusing to generate application channel block which is missing application section")
+		}
+		logger.Info("Creating application channel genesis block")
 	}
 	genesisBlock := pgen.GenesisBlockForChannel(channelID)
 	logger.Info("Writing genesis block")
-	err = writeFile(outputBlock, protoutil.MarshalOrPanic(genesisBlock), 0640)
+	err = writeFile(outputBlock, protoutil.MarshalOrPanic(genesisBlock), 0o640)
 	if err != nil {
 		return fmt.Errorf("error writing genesis block: %s", err)
 	}
@@ -67,7 +72,7 @@ func doOutputChannelCreateTx(conf, baseProfile *genesisconfig.Profile, channelID
 	}
 
 	logger.Info("Writing new channel tx")
-	err = writeFile(outputChannelCreateTx, protoutil.MarshalOrPanic(configtx), 0640)
+	err = writeFile(outputChannelCreateTx, protoutil.MarshalOrPanic(configtx), 0o640)
 	if err != nil {
 		return fmt.Errorf("error writing channel create tx: %s", err)
 	}
@@ -119,7 +124,7 @@ func doOutputAnchorPeersUpdate(conf *genesisconfig.Profile, channelID string, ou
 	}
 
 	logger.Info("Writing anchor peer update")
-	err = writeFile(outputAnchorPeersUpdate, protoutil.MarshalOrPanic(updateTx), 0640)
+	err = writeFile(outputAnchorPeersUpdate, protoutil.MarshalOrPanic(updateTx), 0o640)
 	if err != nil {
 		return fmt.Errorf("Error writing channel anchor peer update: %s", err)
 	}
@@ -190,7 +195,7 @@ func writeFile(filename string, data []byte, perm os.FileMode) error {
 		return err
 	}
 	if !exists {
-		err = os.MkdirAll(dirPath, 0750)
+		err = os.MkdirAll(dirPath, 0o750)
 		if err != nil {
 			return err
 		}

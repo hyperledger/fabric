@@ -21,7 +21,6 @@ import (
 )
 
 func TestImplicitMetaPolicy_Convert(t *testing.T) {
-
 	// Scenario: we attempt the conversion of a simple metapolicy requiring
 	// ALL of 2 sub-policies, each of which are plain signedby
 
@@ -104,7 +103,6 @@ func TestImplicitMetaPolicy_Convert(t *testing.T) {
 }
 
 func TestImplicitMetaPolicy_Convert1(t *testing.T) {
-
 	// Scenario: we attempt the conversion of a metapolicy requiring
 	// ALL of 2 sub-policies, where the first one is an OR of 2 and
 	// the second one is an OR of 1, with a principal that is already
@@ -164,7 +162,6 @@ func TestImplicitMetaPolicy_Convert1(t *testing.T) {
 }
 
 func TestImplicitMetaPolicy_Convert2(t *testing.T) {
-
 	// Scenario: we attempt the conversion of a metapolicy requiring
 	// ALL of 2 sub-policies, where the first one is an OR of an AND
 	// of 2 and an OR of 1 and the second one is an AND of 2, with
@@ -330,7 +327,6 @@ func TestImplicitMetaPolicy_Convert2(t *testing.T) {
 }
 
 func TestImplicitMetaPolicy_Convert3(t *testing.T) {
-
 	// Scenario: we attempt the conversion of a metapolicy requiring
 	// ALL of 2 sub-policies, where the first one is a metapolicy itself,
 	// requiring ALL of 2 simple subpolicies to be satisfied and the
@@ -449,7 +445,6 @@ func TestImplicitMetaPolicy_Convert3(t *testing.T) {
 }
 
 func TestImplicitMetaPolicy_Convert4(t *testing.T) {
-
 	// Scenario: we attempt the conversion of a metapolicy requiring
 	// ALL of 2 sub-policies, where the first one is a metapolicy itself,
 	// requiring ALL of 2 simple subpolicies to be satisfied and the
@@ -550,7 +545,6 @@ func TestImplicitMetaPolicy_Convert4(t *testing.T) {
 }
 
 func TestImplicitMetaPolicy_Convert5(t *testing.T) {
-
 	// Scenario: we attempt the conversion of a metapolicy requiring
 	// ALL of 2 sub-policies, where the first one is an OR of an AND
 	// of 2 and an OR of 1 and the second one is an AND of 2, with
@@ -708,7 +702,6 @@ func TestImplicitMetaPolicy_Convert5(t *testing.T) {
 }
 
 func TestImplicitMetaPolicy_Convert6(t *testing.T) {
-
 	// Scenario: we attempt the conversion of a metapolicy requiring
 	// ALL of 2 sub-policies, where the first one is an OR of an AND
 	// of 2 and an OR of 1 and the second one is an AND of 2, with
@@ -867,7 +860,6 @@ func (i *inconvertiblePolicy) EvaluateIdentities(signatureSet []msp.Identity) er
 }
 
 func TestImplicitMetaPolicy_Convert7(t *testing.T) {
-
 	// Scenario: we attempt the conversion of a metapolicy
 	// with an incovertible subpolicy
 
@@ -897,7 +889,6 @@ func (i *convertFailurePolicy) Convert() (*cb.SignaturePolicyEnvelope, error) {
 }
 
 func TestImplicitMetaPolicy_Convert8(t *testing.T) {
-
 	// Scenario: we attempt the conversion of a metapolicy
 	// with a subpolicy whose conversion fails
 

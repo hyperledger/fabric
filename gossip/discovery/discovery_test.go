@@ -39,15 +39,17 @@ import (
 
 var timeout = time.Second * time.Duration(15)
 
-var aliveTimeInterval = time.Duration(time.Millisecond * 300)
-var defaultTestConfig = DiscoveryConfig{
-	AliveTimeInterval:            aliveTimeInterval,
-	AliveExpirationTimeout:       10 * aliveTimeInterval,
-	AliveExpirationCheckInterval: aliveTimeInterval,
-	ReconnectInterval:            10 * aliveTimeInterval,
-	MaxConnectionAttempts:        DefMaxConnectionAttempts,
-	MsgExpirationFactor:          DefMsgExpirationFactor,
-}
+var (
+	aliveTimeInterval = time.Duration(time.Millisecond * 300)
+	defaultTestConfig = DiscoveryConfig{
+		AliveTimeInterval:            aliveTimeInterval,
+		AliveExpirationTimeout:       10 * aliveTimeInterval,
+		AliveExpirationCheckInterval: aliveTimeInterval,
+		ReconnectInterval:            10 * aliveTimeInterval,
+		MaxConnectionAttempts:        DefMaxConnectionAttempts,
+		MsgExpirationFactor:          DefMsgExpirationFactor,
+	}
+)
 
 func init() {
 	util.SetupTestLogging()
@@ -815,7 +817,7 @@ func TestUpdate(t *testing.T) {
 	checkMembership := func() bool {
 		for _, member := range instances[nodeNum-1].GetMembership() {
 			if string(member.PKIid) == instances[0].comm.id {
-				if "bla bla" != string(member.Metadata) {
+				if string(member.Metadata) != "bla bla" {
 					return false
 				}
 			}
@@ -823,7 +825,7 @@ func TestUpdate(t *testing.T) {
 
 		for _, member := range instances[0].GetMembership() {
 			if string(member.PKIid) == instances[nodeNum-1].comm.id {
-				if "localhost:5511" != string(member.Endpoint) {
+				if member.Endpoint != "localhost:5511" {
 					return false
 				}
 			}
@@ -1548,7 +1550,6 @@ func TestMsgStoreExpirationWithMembershipMessages(t *testing.T) {
 	for i := 0; i < peersNum; i++ {
 		instances[i].Stop()
 	}
-
 }
 
 func TestAliveMsgStore(t *testing.T) {
@@ -1576,7 +1577,7 @@ func TestAliveMsgStore(t *testing.T) {
 		aliveMsgs = append(aliveMsgs, aliveMsg)
 	}
 
-	//Check new alive msgs
+	// Check new alive msgs
 	for _, msg := range aliveMsgs {
 		require.True(t, instances[0].discoveryImpl().msgStore.CheckValid(msg), "aliveMsgStore CheckValid returns false on new AliveMsg")
 	}
@@ -1777,9 +1778,7 @@ func TestMembershipAfterExpiration(t *testing.T) {
 			lock.Lock()
 			defer lock.Unlock()
 
-			if _, matched := expectedMsgs[entry.Message]; matched {
-				delete(expectedMsgs, entry.Message)
-			}
+			delete(expectedMsgs, entry.Message)
 			return nil
 		}))
 	}

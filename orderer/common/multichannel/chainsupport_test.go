@@ -7,10 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"testing"
+
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/types"
-	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -58,8 +59,8 @@ func TestConsensusMetadataValidation(t *testing.T) {
 	require.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
 	om, nm, nc := mv.ValidateConsensusMetadataArgsForCall(0)
 	require.False(t, nc)
-	require.Equal(t, oldConsensusMetadata, om)
-	require.Equal(t, newConsensusMetadata, nm)
+	require.Equal(t, oldConsensusMetadata, om.ConsensusMetadata())
+	require.Equal(t, newConsensusMetadata, nm.ConsensusMetadata())
 
 	// case 2: invalid consensus metadata update
 	mv.ValidateConsensusMetadataReturns(errors.New("bananas"))
@@ -103,7 +104,7 @@ func TestNewOnboardingChainSupport(t *testing.T) {
 	require.False(t, open)
 
 	cRel, status := cs.StatusReport()
-	require.Equal(t, types.ClusterRelationMember, cRel)
+	require.Equal(t, types.ConsensusRelationConsenter, cRel)
 	require.Equal(t, types.StatusInactive, status)
 
 	require.Equal(t, uint64(7), cs.Height(), "ledger ReadWriter is initialized")

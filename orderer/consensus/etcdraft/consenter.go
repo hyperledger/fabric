@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
+	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
 	"github.com/hyperledger/fabric/orderer/consensus/inactive"
 	"github.com/hyperledger/fabric/protoutil"
@@ -33,7 +34,7 @@ import (
 	"go.etcd.io/etcd/raft"
 )
 
-//go:generate mockery -dir . -name InactiveChainRegistry -case underscore -output mocks
+//go:generate counterfeiter -o mocks/inactive_chain_registry.go --fake-name InactiveChainRegistry . InactiveChainRegistry
 
 // InactiveChainRegistry registers chains that are inactive
 type InactiveChainRegistry interface {
@@ -45,20 +46,22 @@ type InactiveChainRegistry interface {
 	Stop()
 }
 
-//go:generate mockery -dir . -name ChainManager -case underscore -output mocks
+//go:generate counterfeiter -o mocks/chain_manager.go --fake-name ChainManager . ChainManager
 
 // ChainManager defines the methods from multichannel.Registrar needed by the Consenter.
 type ChainManager interface {
 	GetConsensusChain(channelID string) consensus.Chain
 	CreateChain(channelID string)
 	SwitchChainToFollower(channelID string)
+	ReportConsensusRelationAndStatusMetrics(channelID string, relation types.ConsensusRelation, status types.Status)
 }
 
 // Config contains etcdraft configurations
 type Config struct {
-	WALDir            string // WAL data of <my-channel> is stored in WALDir/<my-channel>
-	SnapDir           string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
-	EvictionSuspicion string // Duration threshold that the node samples in order to suspect its eviction from the channel.
+	WALDir               string // WAL data of <my-channel> is stored in WALDir/<my-channel>
+	SnapDir              string // Snapshots of <my-channel> are stored in SnapDir/<my-channel>
+	EvictionSuspicion    string // Duration threshold that the node samples in order to suspect its eviction from the channel.
+	TickIntervalOverride string // Duration to use for tick interval instead of what is specified in the channel config.
 }
 
 // Consenter implements etcdraft consenter
@@ -159,10 +162,12 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	id, err := c.detectSelfID(consenters)
 	if err != nil {
 		if c.InactiveChainRegistry != nil {
-			// There is a system channel, use the InactiveChainRegistry to track the future config updates of application channel.
+			// There is a system channel, use the InactiveChainRegistry to track the
+			// future config updates of application channel.
 			c.InactiveChainRegistry.TrackChain(support.ChannelID(), support.Block(0), func() {
 				c.ChainManager.CreateChain(support.ChannelID())
 			})
+			c.ChainManager.ReportConsensusRelationAndStatusMetrics(support.ChannelID(), types.ConsensusRelationConfigTracker, types.StatusInactive)
 			return &inactive.Chain{Err: errors.Errorf("channel %s is not serviced by me", support.ChannelID())}, nil
 		}
 
@@ -180,9 +185,18 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		}
 	}
 
-	tickInterval, err := time.ParseDuration(m.Options.TickInterval)
-	if err != nil {
-		return nil, errors.Errorf("failed to parse TickInterval (%s) to time duration", m.Options.TickInterval)
+	var tickInterval time.Duration
+	if c.EtcdRaftConfig.TickIntervalOverride == "" {
+		tickInterval, err = time.ParseDuration(m.Options.TickInterval)
+		if err != nil {
+			return nil, errors.Errorf("failed to parse TickInterval (%s) to time duration", m.Options.TickInterval)
+		}
+	} else {
+		tickInterval, err = time.ParseDuration(c.EtcdRaftConfig.TickIntervalOverride)
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed parsing Consensus.TickIntervalOverride")
+		}
+		c.Logger.Infof("TickIntervalOverride is set, overriding channel configuration tick interval to %v", tickInterval)
 	}
 
 	opts := Options{
@@ -224,6 +238,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 		c.Logger.Info("With system channel: after eviction InactiveChainRegistry.TrackChain will be called")
 		haltCallback = func() {
 			c.InactiveChainRegistry.TrackChain(support.ChannelID(), nil, func() { c.ChainManager.CreateChain(support.ChannelID()) })
+			c.ChainManager.ReportConsensusRelationAndStatusMetrics(support.ChannelID(), types.ConsensusRelationConfigTracker, types.StatusInactive)
 		}
 	} else {
 		// when we do NOT have a system channel, we switch to a follower.Chain upon eviction.
@@ -265,8 +280,14 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 	if err := proto.Unmarshal(oc.ConsensusMetadata(), configMetadata); err != nil {
 		return false, err
 	}
-	if err := CheckConfigMetadata(configMetadata); err != nil {
-		return false, err
+
+	verifyOpts, err := createX509VerifyOptions(oc)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to create x509 verify options from orderer config")
+	}
+
+	if err := VerifyConfigMetadata(configMetadata, verifyOpts); err != nil {
+		return false, errors.Wrapf(err, "failed to validate config metadata of ordering config")
 	}
 
 	member := false
@@ -283,6 +304,9 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 // RemoveInactiveChainRegistry stops and removes the inactive chain registry.
 // This is used when removing the system channel.
 func (c *Consenter) RemoveInactiveChainRegistry() {
+	if c.InactiveChainRegistry == nil {
+		return
+	}
 	c.InactiveChainRegistry.Stop()
 	c.InactiveChainRegistry = nil
 }

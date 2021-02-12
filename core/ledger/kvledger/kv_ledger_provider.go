@@ -244,16 +244,16 @@ func (p *Provider) initSnapshotDir() error {
 		return errors.Errorf("invalid path: %s. The path for the snapshot dir is expected to be an absolute path", snapshotsRootDir)
 	}
 
-	inProgressSnapshotsPath := InProgressSnapshotsPath(snapshotsRootDir)
+	inProgressSnapshotsPath := SnapshotsTempDirPath(snapshotsRootDir)
 	completedSnapshotsPath := CompletedSnapshotsPath(snapshotsRootDir)
 
 	if err := os.RemoveAll(inProgressSnapshotsPath); err != nil {
 		return errors.Wrapf(err, "error while deleting the dir: %s", inProgressSnapshotsPath)
 	}
-	if err := os.MkdirAll(inProgressSnapshotsPath, 0755); err != nil {
+	if err := os.MkdirAll(inProgressSnapshotsPath, 0o755); err != nil {
 		return errors.Wrapf(err, "error while creating the dir: %s", inProgressSnapshotsPath)
 	}
-	if err := os.MkdirAll(completedSnapshotsPath, 0755); err != nil {
+	if err := os.MkdirAll(completedSnapshotsPath, 0o755); err != nil {
 		return errors.Wrapf(err, "error while creating the dir: %s", completedSnapshotsPath)
 	}
 	return fileutil.SyncDir(snapshotsRootDir)
@@ -294,7 +294,10 @@ func (p *Provider) CreateFromGenesisBlock(genesisBlock *common.Block) (ledger.Pe
 func (p *Provider) deleteUnderConstructionLedger(ledger ledger.PeerLedger, ledgerID string, creationErr error) error {
 	if creationErr == nil {
 		return nil
+	} else {
+		logger.Errorf("ledger creation error = %+v", creationErr)
 	}
+
 	if ledger != nil {
 		ledger.Close()
 	}

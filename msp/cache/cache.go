@@ -84,13 +84,12 @@ func (c *cachedMSP) DeserializeIdentity(serializedIdentity []byte) (msp.Identity
 
 func (c *cachedMSP) Setup(config *pmsp.MSPConfig) error {
 	c.cleanCache()
-
 	return c.MSP.Setup(config)
 }
 
 func (c *cachedMSP) Validate(id msp.Identity) error {
 	identifier := id.GetIdentifier()
-	key := string(identifier.Mspid + ":" + identifier.Id)
+	key := identifier.Mspid + ":" + identifier.Id
 
 	_, ok := c.validateIdentityCache.get(key)
 	if ok {
@@ -108,7 +107,7 @@ func (c *cachedMSP) Validate(id msp.Identity) error {
 
 func (c *cachedMSP) SatisfiesPrincipal(id msp.Identity, principal *pmsp.MSPPrincipal) error {
 	identifier := id.GetIdentifier()
-	identityKey := string(identifier.Mspid + ":" + identifier.Id)
+	identityKey := identifier.Mspid + ":" + identifier.Id
 	principalKey := string(principal.PrincipalClassification) + string(principal.Principal)
 	key := identityKey + principalKey
 
@@ -127,10 +126,8 @@ func (c *cachedMSP) SatisfiesPrincipal(id msp.Identity, principal *pmsp.MSPPrinc
 	return err
 }
 
-func (c *cachedMSP) cleanCache() error {
+func (c *cachedMSP) cleanCache() {
 	c.deserializeIdentityCache = newSecondChanceCache(deserializeIdentityCacheSize)
 	c.satisfiesPrincipalCache = newSecondChanceCache(satisfiesPrincipalCacheSize)
 	c.validateIdentityCache = newSecondChanceCache(validateIdentityCacheSize)
-
-	return nil
 }

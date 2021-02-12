@@ -95,7 +95,7 @@ func createSignedCCDepSpec(cdsbytes []byte, instpolicybytes []byte, endorsements
 	//...and marshal it
 	cipbytes := protoutil.MarshalOrPanic(cip)
 
-	//use defaults (this is definitely ok for install package)
+	// use defaults (this is definitely ok for install package)
 	msgVersion := int32(0)
 	epoch := uint64(0)
 	chdr := protoutil.MakeChannelHeader(common.HeaderType_CHAINCODE_PACKAGE, msgVersion, "", epoch)
@@ -119,7 +119,7 @@ func CreateSignedCCDepSpecForInstall(pack []*common.Envelope) (*common.Envelope,
 		return nil, errors.New("no packages provided to collate")
 	}
 
-	//rules...
+	// rules...
 	//   all packages must be endorsed or all packages should not be endorsed
 	//   the chaincode deployment spec should be same
 	var baseCip *peer.SignedChaincodeDeploymentSpec
@@ -137,11 +137,11 @@ func CreateSignedCCDepSpecForInstall(pack []*common.Envelope) (*common.Envelope,
 			return nil, err
 		}
 
-		//if its the first element, check if it has endorsement so we can
-		//enforce endorsement rules
+		// if its the first element, check if it has endorsement so we can
+		// enforce endorsement rules
 		if n == 0 {
 			baseCip = cip
-			//if it has endorsement, all other owners should have signed too
+			// if it has endorsement, all other owners should have signed too
 			if len(cip.OwnerEndorsements) > 0 {
 				endorsementExists = true
 				endorsements = make([]*peer.Endorsement, len(pack))
@@ -175,9 +175,9 @@ func OwnerCreateSignedCCDepSpec(cds *peer.ChaincodeDeploymentSpec, instPolicy *c
 	instpolicybytes := protoutil.MarshalOrPanic(instPolicy)
 
 	var endorsements []*peer.Endorsement
-	//it is not mandatory (at this protoutil level) to have a signature
-	//this is especially convenient during dev/test
-	//it may be necessary to enforce it via a policy at a higher level
+	// it is not mandatory (at this protoutil level) to have a signature
+	// this is especially convenient during dev/test
+	// it may be necessary to enforce it via a policy at a higher level
 	if owner != nil {
 		// serialize the signing identity
 		endorser, err := owner.Serialize()

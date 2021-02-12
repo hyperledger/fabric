@@ -73,9 +73,7 @@ var _ = Describe("Extcc", func() {
 			})
 		})
 		Context("chaincode info incorrect", func() {
-			var (
-				ccinfo *ccintf.ChaincodeServerInfo
-			)
+			var ccinfo *ccintf.ChaincodeServerInfo
 			BeforeEach(func() {
 				ccinfo = &ccintf.ChaincodeServerInfo{
 					Address: "ccaddress:12345",

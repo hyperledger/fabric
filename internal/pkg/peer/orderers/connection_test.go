@@ -353,9 +353,7 @@ var _ = Describe("Connection", func() {
 	})
 
 	When("the configuration does not contain orderer org endpoints", func() {
-		var (
-			globalCertPool *x509.CertPool
-		)
+		var globalCertPool *x509.CertPool
 
 		BeforeEach(func() {
 			org1.Addresses = nil

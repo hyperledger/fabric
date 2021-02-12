@@ -137,8 +137,7 @@ func (g *RevocationKeyGen) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 }
 
 // RevocationPublicKeyImporter imports revocation public keys
-type RevocationPublicKeyImporter struct {
-}
+type RevocationPublicKeyImporter struct{}
 
 func (i *RevocationPublicKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (k bccsp.Key, err error) {
 	der, ok := raw.([]byte)

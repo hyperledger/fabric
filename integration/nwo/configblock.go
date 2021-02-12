@@ -32,20 +32,31 @@ func GetConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string) *c
 
 	// fetch the config block
 	output := filepath.Join(tempDir, "config_block.pb")
-	sess, err := n.OrdererAdminSession(orderer, peer, commands.ChannelFetch{
-		ChannelID:  channel,
-		Block:      "config",
-		Orderer:    n.OrdererAddress(orderer, ListenPort),
-		OutputFile: output,
-		ClientAuth: n.ClientAuthRequired,
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	Expect(sess.Err).To(gbytes.Say("Received block: "))
+	FetchConfigBlock(n, peer, orderer, channel, output)
 
 	// unmarshal the config block bytes
 	configBlock := UnmarshalBlockFromFile(output)
 	return configBlock
+}
+
+// FetchConfigBlock fetches latest config block.
+func FetchConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string, output string) {
+	fetch := func() int {
+		sess, err := n.OrdererAdminSession(orderer, peer, commands.ChannelFetch{
+			ChannelID:  channel,
+			Block:      "config",
+			Orderer:    n.OrdererAddress(orderer, ListenPort),
+			OutputFile: output,
+			ClientAuth: n.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		code := sess.Wait(n.EventuallyTimeout).ExitCode()
+		if code == 0 {
+			Expect(sess.Err).To(gbytes.Say("Received block: "))
+		}
+		return code
+	}
+	Eventually(fetch, n.EventuallyTimeout).Should(Equal(0))
 }
 
 // GetConfig retrieves the last config of the given channel.
@@ -92,7 +103,7 @@ func UpdateConfig(n *Network, orderer *Orderer, channel string, current, updated
 	Expect(signedEnvelope).NotTo(BeNil())
 
 	updateFile := filepath.Join(tempDir, "update.pb")
-	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0600)
+	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {
@@ -176,26 +187,6 @@ func CurrentConfigBlockNumberFromPeer(n *Network, peer *Peer, channel, output st
 	return configBlock.Header.Number
 }
 
-// FetchConfigBlock fetches latest config block.
-func FetchConfigBlock(n *Network, peer *Peer, orderer *Orderer, channel string, output string) {
-	fetch := func() int {
-		sess, err := n.OrdererAdminSession(orderer, peer, commands.ChannelFetch{
-			ChannelID:  channel,
-			Block:      "config",
-			Orderer:    n.OrdererAddress(orderer, ListenPort),
-			OutputFile: output,
-			ClientAuth: n.ClientAuthRequired,
-		})
-		Expect(err).NotTo(HaveOccurred())
-		code := sess.Wait(n.EventuallyTimeout).ExitCode()
-		if code == 0 {
-			Expect(sess.Err).To(gbytes.Say("Received block: "))
-		}
-		return code
-	}
-	Eventually(fetch, n.EventuallyTimeout).Should(Equal(0))
-}
-
 // UpdateOrdererConfig computes, signs, and submits a configuration update
 // which requires orderers signature and waits for the update to complete.
 func UpdateOrdererConfig(n *Network, orderer *Orderer, channel string, current, updated *common.Config, submitter *Peer, additionalSigners ...*Orderer) {
@@ -267,7 +258,7 @@ func ComputeUpdateOrdererConfig(updateFile string, n *Network, channel string, c
 	Expect(err).NotTo(HaveOccurred())
 	Expect(signedEnvelope).NotTo(BeNil())
 
-	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0600)
+	err = ioutil.WriteFile(updateFile, protoutil.MarshalOrPanic(signedEnvelope), 0o600)
 	Expect(err).NotTo(HaveOccurred())
 
 	for _, signer := range additionalSigners {

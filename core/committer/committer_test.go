@@ -56,7 +56,12 @@ func (m *mockLedger) GetBlocksIterator(startBlockNumber uint64) (ledger.ResultsI
 }
 
 func (m *mockLedger) Close() {
+}
 
+// TxIDExists returns true if the specified txID is already present in one of the already committed blocks
+func (m *mockLedger) TxIDExists(txID string) (bool, error) {
+	args := m.Called(txID)
+	return args.Get(0).(bool), args.Error(1)
 }
 
 func (m *mockLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, error) {

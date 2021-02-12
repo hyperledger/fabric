@@ -40,14 +40,14 @@ func joinCmd(cf *ChannelCmdFactory) *cobra.Command {
 	return joinCmd
 }
 
-//GBFileNotFoundErr genesis block file not found
+// GBFileNotFoundErr genesis block file not found
 type GBFileNotFoundErr string
 
 func (e GBFileNotFoundErr) Error() string {
 	return fmt.Sprintf("genesis block file not found %s", string(e))
 }
 
-//ProposalFailedErr proposal failed
+// ProposalFailedErr proposal failed
 type ProposalFailedErr string
 
 func (e ProposalFailedErr) Error() string {

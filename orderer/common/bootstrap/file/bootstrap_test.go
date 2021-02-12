@@ -15,9 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const file = "abc.genesis"
-const fileBak = file + ".bak"
-const fileFake = file + ".fake"
+const (
+	file     = "abc.genesis"
+	fileBak  = file + ".bak"
+	fileFake = file + ".fake"
+)
 
 func TestGenesisBlock(t *testing.T) {
 	testDir, err := ioutil.TempDir("", "unittest")
@@ -36,7 +38,7 @@ func TestGenesisBlock(t *testing.T) {
 	})
 
 	t.Run("Bad - Malformed Block", func(t *testing.T) {
-		err := ioutil.WriteFile(testFile, []byte("abc"), 0644)
+		err := ioutil.WriteFile(testFile, []byte("abc"), 0o644)
 		require.NoErrorf(t, err, "generate temporary test file: %s", file)
 
 		require.Panics(t, func() {
@@ -46,7 +48,7 @@ func TestGenesisBlock(t *testing.T) {
 	})
 
 	t.Run("Correct flow", func(t *testing.T) {
-		//The original block and file
+		// The original block and file
 		expectedNumber := uint64(0)
 		expectedBytes := []byte("abc")
 		expectedHash := []byte(nil)
@@ -70,7 +72,7 @@ func TestGenesisBlock(t *testing.T) {
 			Metadata: metadata,
 		}
 		marshalledBlock, _ := proto.Marshal(block)
-		err := ioutil.WriteFile(testFile, marshalledBlock, 0644)
+		err := ioutil.WriteFile(testFile, marshalledBlock, 0o644)
 		require.NoErrorf(t, err, "generate temporary test file: %s", file)
 		defer os.Remove(testFile)
 
@@ -93,7 +95,7 @@ func TestGenesisBlock(t *testing.T) {
 }
 
 func TestReplaceGenesisBlockFile(t *testing.T) {
-	//The original block and file
+	// The original block and file
 	expectedNumber := uint64(0)
 	expectedBytes := []byte("abc")
 	expectedHash := []byte(nil)
@@ -120,7 +122,7 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	testFile := path.Join(testDir, file)
-	err = ioutil.WriteFile(testFile, marshalledBlock, 0644)
+	err = ioutil.WriteFile(testFile, marshalledBlock, 0o644)
 	require.NoErrorf(t, err, "generate temporary test file: %s", file)
 
 	testFileBak := path.Join(testDir, fileBak)
@@ -204,7 +206,7 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 		_, err := os.Create(testFileBak)
 		defer os.Remove(testFileBak)
 		require.NoErrorf(t, err, "Failed to create backup")
-		err = os.Chmod(testFileBak, 0400)
+		err = os.Chmod(testFileBak, 0o400)
 		require.NoErrorf(t, err, "Failed to change permission on backup")
 
 		err = replacer.ReplaceGenesisBlockFile(block2)
@@ -212,14 +214,14 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 		require.Contains(t, err.Error(), "permission denied")
 		require.Contains(t, err.Error(), "could not copy genesis block file")
 
-		err = os.Chmod(testFileBak, 0600)
+		err = os.Chmod(testFileBak, 0o600)
 		require.NoErrorf(t, err, "Failed to restore permission on backup")
 	})
 
 	t.Run("Bad - source not writable", func(t *testing.T) {
 		replacer := bootfile.NewReplacer(testFile)
 
-		errC := os.Chmod(testFile, 0400)
+		errC := os.Chmod(testFile, 0o400)
 		require.NoErrorf(t, errC, "Failed to change permission on origin")
 
 		errWr := replacer.CheckReadWrite()
@@ -233,14 +235,14 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 		require.Contains(t, errRep.Error(), "could not write new genesis block into file")
 		require.Contains(t, errRep.Error(), "use backup if necessary")
 
-		err = os.Chmod(testFile, 0600)
+		err = os.Chmod(testFile, 0o600)
 		require.NoErrorf(t, err, "Failed to restore permission, origin")
 	})
 
 	t.Run("Bad - source not readable", func(t *testing.T) {
 		replacer := bootfile.NewReplacer(testFile)
 
-		errC := os.Chmod(testFile, 0200)
+		errC := os.Chmod(testFile, 0o200)
 		require.NoErrorf(t, errC, "Failed to change permission on origin")
 
 		errWr := replacer.CheckReadWrite()
@@ -253,7 +255,7 @@ func TestReplaceGenesisBlockFile(t *testing.T) {
 		require.Contains(t, errRep.Error(), "permission denied")
 		require.Contains(t, errRep.Error(), "could not copy genesis block file")
 
-		err = os.Chmod(testFile, 0600)
+		err = os.Chmod(testFile, 0o600)
 		require.NoErrorf(t, err, "Failed to restore permission, origin")
 	})
 }

@@ -20,7 +20,7 @@ func TestInstantiateCmd(t *testing.T) {
 	require.NoError(t, err)
 
 	// basic function tests
-	var tests = []struct {
+	tests := []struct {
 		name          string
 		args          []string
 		errorExpected bool

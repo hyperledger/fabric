@@ -45,7 +45,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/protoext"
 	"github.com/hyperledger/fabric/gossip/state/mocks"
 	gossiputil "github.com/hyperledger/fabric/gossip/util"
-	gutil "github.com/hyperledger/fabric/gossip/util"
 	corecomm "github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega"
@@ -66,11 +65,10 @@ var (
 
 type peerIdentityAcceptor func(identity api.PeerIdentityType) error
 
-type joinChanMsg struct {
-}
+type joinChanMsg struct{}
 
 func init() {
-	gutil.SetupTestLogging()
+	gossiputil.SetupTestLogging()
 	factory.InitFactories(nil)
 }
 
@@ -90,8 +88,7 @@ func (jcm *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer 
 	return []api.AnchorPeer{}
 }
 
-type orgCryptoService struct {
-}
+type orgCryptoService struct{}
 
 // OrgByPeerIdentity returns the OrgIdentityType
 // of a given peer identity
@@ -337,7 +334,6 @@ func (mock *ramLedger) GetBlockByNumber(blockNumber uint64) (*pcomm.Block, error
 }
 
 func (mock *ramLedger) Close() {
-
 }
 
 // Create new instance of KVLedger to be used for testing
@@ -352,12 +348,12 @@ func newCommitter() committer.Committer {
 
 func newPeerNodeWithGossip(id int, committer committer.Committer,
 	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, bootPorts ...int) *peerNode {
-	logger := flogging.MustGetLogger(gutil.StateLogger)
+	logger := flogging.MustGetLogger(gossiputil.StateLogger)
 	return newPeerNodeWithGossipWithValidator(logger, id, committer, acceptor, g, &validator.MockValidator{}, bootPorts...)
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
-func newPeerNodeWithGossipWithValidatorWithMetrics(logger gutil.Logger, id int, committer committer.Committer,
+func newPeerNodeWithGossipWithValidatorWithMetrics(logger gossiputil.Logger, id int, committer committer.Committer,
 	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, v txvalidator.Validator,
 	gossipMetrics *metrics.GossipMetrics, bootPorts ...int) (node *peerNode, port int) {
 	cs := &cryptoServiceMock{acceptor: acceptor}
@@ -451,20 +447,19 @@ func newPeerNodeWithGossipWithValidatorWithMetrics(logger gutil.Logger, id int, 
 		cs:     cs,
 		grpc:   gRPCServer,
 	}, port
-
 }
 
 // add metrics provider for metrics testing
 func newPeerNodeWithGossipWithMetrics(id int, committer committer.Committer,
 	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, gossipMetrics *metrics.GossipMetrics) *peerNode {
-	logger := flogging.MustGetLogger(gutil.StateLogger)
+	logger := flogging.MustGetLogger(gossiputil.StateLogger)
 	node, _ := newPeerNodeWithGossipWithValidatorWithMetrics(logger, id, committer, acceptor, g,
 		&validator.MockValidator{}, gossipMetrics)
 	return node
 }
 
 // Constructing pseudo peer node, simulating only gossip and state transfer part
-func newPeerNodeWithGossipWithValidator(logger gutil.Logger, id int, committer committer.Committer,
+func newPeerNodeWithGossipWithValidator(logger gossiputil.Logger, id int, committer committer.Committer,
 	acceptor peerIdentityAcceptor, g peerNodeGossipSupport, v txvalidator.Validator, bootPorts ...int) *peerNode {
 	gossipMetrics := metrics.NewGossipMetrics(&disabled.Provider{})
 	node, _ := newPeerNodeWithGossipWithValidatorWithMetrics(logger, id, committer, acceptor, g, v, gossipMetrics, bootPorts...)
@@ -480,8 +475,62 @@ func newPeerNode(id int, committer committer.Committer, acceptor peerIdentityAcc
 func newBootNode(id int, committer committer.Committer, acceptor peerIdentityAcceptor) (node *peerNode, port int) {
 	v := &validator.MockValidator{}
 	gossipMetrics := metrics.NewGossipMetrics(&disabled.Provider{})
-	logger := flogging.MustGetLogger(gutil.StateLogger)
+	logger := flogging.MustGetLogger(gossiputil.StateLogger)
 	return newPeerNodeWithGossipWithValidatorWithMetrics(logger, id, committer, acceptor, nil, v, gossipMetrics)
+}
+
+func TestStraggler(t *testing.T) {
+	for _, testCase := range []struct {
+		stateEnabled   bool
+		orgLeader      bool
+		leaderElection bool
+		height         uint64
+		receivedSeq    uint64
+		expected       bool
+	}{
+		{
+			height:         100,
+			receivedSeq:    300,
+			leaderElection: true,
+			expected:       true,
+		},
+		{
+			height:      100,
+			receivedSeq: 300,
+			expected:    true,
+		},
+		{
+			height:      100,
+			receivedSeq: 300,
+			orgLeader:   true,
+		},
+		{
+			height:         100,
+			receivedSeq:    105,
+			leaderElection: true,
+		},
+		{
+			height:         100,
+			receivedSeq:    300,
+			leaderElection: true,
+			stateEnabled:   true,
+		},
+	} {
+		description := fmt.Sprintf("%+v", testCase)
+		t.Run(description, func(t *testing.T) {
+			s := &GossipStateProviderImpl{
+				config: &StateConfig{
+					StateEnabled:      testCase.stateEnabled,
+					OrgLeader:         testCase.orgLeader,
+					UseLeaderElection: testCase.leaderElection,
+				},
+			}
+
+			s.straggler(testCase.height, &proto.Payload{
+				SeqNum: testCase.receivedSeq,
+			})
+		})
+	}
 }
 
 func TestNilDirectMsg(t *testing.T) {
@@ -561,7 +610,8 @@ func TestLargeBlockGap(t *testing.T) {
 			Properties: &proto.Properties{
 				LedgerHeight: 500,
 			},
-		}}
+		},
+	}
 	g.On("PeersOfChannel", mock.Anything).Return(membership)
 	g.On("Accept", mock.Anything, false).Return(make(<-chan *proto.GossipMessage), nil)
 	g.On("Accept", mock.Anything, true).Return(nil, msgsFromPeer)
@@ -796,7 +846,7 @@ func TestHaltChainProcessing(t *testing.T) {
 
 	buf := gbytes.NewBuffer()
 
-	logger := flogging.MustGetLogger(gutil.StateLogger).WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+	logger := flogging.MustGetLogger(gossiputil.StateLogger).WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
 		buf.Write([]byte(entry.Message))
 		buf.Write([]byte("\n"))
 		return nil
@@ -1234,9 +1284,9 @@ type coordinatorMock struct {
 	mock.Mock
 }
 
-func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64, _ protoutil.SignedData) (*pcomm.Block, gutil.PvtDataCollections, error) {
+func (mock *coordinatorMock) GetPvtDataAndBlockByNum(seqNum uint64, _ protoutil.SignedData) (*pcomm.Block, gossiputil.PvtDataCollections, error) {
 	args := mock.Called(seqNum)
-	return args.Get(0).(*pcomm.Block), args.Get(1).(gutil.PvtDataCollections), args.Error(2)
+	return args.Get(0).(*pcomm.Block), args.Get(1).(gossiputil.PvtDataCollections), args.Error(2)
 }
 
 func (mock *coordinatorMock) GetBlockByNum(seqNum uint64) (*pcomm.Block, error) {
@@ -1244,7 +1294,7 @@ func (mock *coordinatorMock) GetBlockByNum(seqNum uint64) (*pcomm.Block, error) 
 	return args.Get(0).(*pcomm.Block), args.Error(1)
 }
 
-func (mock *coordinatorMock) StoreBlock(block *pcomm.Block, data gutil.PvtDataCollections) error {
+func (mock *coordinatorMock) StoreBlock(block *pcomm.Block, data gossiputil.PvtDataCollections) error {
 	args := mock.Called(block, data)
 	return args.Error(1)
 }
@@ -1269,7 +1319,6 @@ type receivedMessageMock struct {
 
 // Ack returns to the sender an acknowledgement for the message
 func (mock *receivedMessageMock) Ack(err error) {
-
 }
 
 func (mock *receivedMessageMock) Respond(msg *proto.GossipMessage) {
@@ -1293,7 +1342,7 @@ func (mock *receivedMessageMock) GetConnectionInfo() *protoext.ConnectionInfo {
 
 type testData struct {
 	block   *pcomm.Block
-	pvtData gutil.PvtDataCollections
+	pvtData gossiputil.PvtDataCollections
 }
 
 func TestTransferOfPrivateRWSet(t *testing.T) {
@@ -1319,7 +1368,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 
 	coord1.On("LedgerHeight", mock.Anything).Return(uint64(5), nil)
 
-	var data = map[uint64]*testData{
+	data := map[uint64]*testData{
 		uint64(2): {
 			block: &pcomm.Block{
 				Header: &pcomm.BlockHeader{
@@ -1331,7 +1380,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 					Data: [][]byte{{1}, {2}, {3}},
 				},
 			},
-			pvtData: gutil.PvtDataCollections{
+			pvtData: gossiputil.PvtDataCollections{
 				{
 					SeqInBlock: uint64(0),
 					WriteSet: &rwset.TxPvtReadWriteSet{
@@ -1363,7 +1412,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 					Data: [][]byte{{4}, {5}, {6}},
 				},
 			},
-			pvtData: gutil.PvtDataCollections{
+			pvtData: gossiputil.PvtDataCollections{
 				{
 					SeqInBlock: uint64(2),
 					WriteSet: &rwset.TxPvtReadWriteSet{
@@ -1402,7 +1451,7 @@ func TestTransferOfPrivateRWSet(t *testing.T) {
 		StateChannelSize:     DefStateChannelSize,
 		StateEnabled:         true,
 	}
-	logger := flogging.MustGetLogger(gutil.StateLogger)
+	logger := flogging.MustGetLogger(gossiputil.StateLogger)
 	st := NewGossipStateProvider(logger, chainID, servicesAdapater, coord1, stateMetrics, blocking, stateConfig)
 	defer st.Stop()
 
@@ -1567,7 +1616,7 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		Data: &pcomm.BlockData{
 			Data: [][]byte{{4}, {5}, {6}},
 		},
-	}, gutil.PvtDataCollections{&ledger.TxPvtData{
+	}, gossiputil.PvtDataCollections{&ledger.TxPvtData{
 		SeqInBlock: uint64(1),
 		WriteSet: &rwset.TxPvtReadWriteSet{
 			DataModel: rwset.TxReadWriteSet_KV,
@@ -1648,12 +1697,12 @@ func TestTransferOfPvtDataBetweenPeers(t *testing.T) {
 		StateChannelSize:     DefStateChannelSize,
 		StateEnabled:         true,
 	}
-	logger := flogging.MustGetLogger(gutil.StateLogger)
+	logger := flogging.MustGetLogger(gossiputil.StateLogger)
 	peer1State := NewGossipStateProvider(logger, chainID, mediator, peers["peer1"].coord, stateMetrics, blocking, stateConfig)
 	defer peer1State.Stop()
 
 	mediator = &ServicesMediator{GossipAdapter: peers["peer2"], MCSAdapter: cryptoService}
-	logger = flogging.MustGetLogger(gutil.StateLogger)
+	logger = flogging.MustGetLogger(gossiputil.StateLogger)
 	peer2State := NewGossipStateProvider(logger, chainID, mediator, peers["peer2"].coord, stateMetrics, blocking, stateConfig)
 	defer peer2State.Stop()
 

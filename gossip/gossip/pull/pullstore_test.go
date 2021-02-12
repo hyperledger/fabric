@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/gossip"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/gossip/gossip/algo"
@@ -25,8 +24,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var pullInterval time.Duration
-var timeoutInterval = 20 * time.Second
+var (
+	pullInterval    time.Duration
+	timeoutInterval = 20 * time.Second
+)
 
 func init() {
 	util.SetupTestLogging()
@@ -40,11 +41,11 @@ type pullMsg struct {
 
 // GetSourceMessage Returns the SignedGossipMessage the ReceivedMessage was
 // constructed with
-func (pm *pullMsg) GetSourceEnvelope() *proto.Envelope {
+func (pm *pullMsg) GetSourceEnvelope() *gossip.Envelope {
 	return pm.msg.Envelope
 }
 
-func (pm *pullMsg) Respond(msg *proto.GossipMessage) {
+func (pm *pullMsg) Respond(msg *gossip.GossipMessage) {
 	sMsg, _ := protoext.NoopSign(msg)
 	pm.respondChan <- &pullMsg{
 		msg:         sMsg,
@@ -62,7 +63,6 @@ func (pm *pullMsg) GetConnectionInfo() *protoext.ConnectionInfo {
 
 // Ack returns to the sender an acknowledgement for the message
 func (pm *pullMsg) Ack(err error) {
-
 }
 
 type pullInstance struct {
@@ -140,12 +140,12 @@ func createPullInstanceWithFilters(endpoint string, peer2PullInst map[string]*pu
 	peer2PullInst[endpoint] = inst
 
 	conf := Config{
-		MsgType:           proto.PullMsgType_BLOCK_MSG,
+		MsgType:           gossip.PullMsgType_BLOCK_MSG,
 		Channel:           []byte(""),
 		ID:                endpoint,
 		PeerCountToSelect: 3,
 		PullInterval:      pullInterval,
-		Tag:               proto.GossipMessage_EMPTY,
+		Tag:               gossip.GossipMessage_EMPTY,
 		PullEngineConfig: algo.PullEngineConfig{
 			DigestWaitTime:   time.Duration(100) * time.Millisecond,
 			RequestWaitTime:  time.Duration(200) * time.Millisecond,
@@ -207,7 +207,6 @@ func TestRegisterMsgHook(t *testing.T) {
 
 	// Ensure all message types are received
 	waitUntilOrFail(t, func() bool { return len(receivedMsgTypes.ToArray()) == 4 })
-
 }
 
 func TestFilter(t *testing.T) {
@@ -350,7 +349,6 @@ func TestDigestsFilters(t *testing.T) {
 
 	// inst2 is expected to send digest to inst1
 	waitUntilOrFail(t, func() bool { return atomic.LoadInt32(&inst1ReceivedDigest) == int32(1) })
-
 }
 
 func TestHandleMessage(t *testing.T) {
@@ -416,12 +414,12 @@ func waitUntilOrFail(t *testing.T, pred func() bool) {
 }
 
 func dataMsg(seqNum int) *protoext.SignedGossipMessage {
-	sMsg, _ := protoext.NoopSign(&proto.GossipMessage{
+	sMsg, _ := protoext.NoopSign(&gossip.GossipMessage{
 		Nonce: 0,
-		Tag:   proto.GossipMessage_EMPTY,
-		Content: &proto.GossipMessage_DataMsg{
-			DataMsg: &proto.DataMessage{
-				Payload: &proto.Payload{
+		Tag:   gossip.GossipMessage_EMPTY,
+		Content: &gossip.GossipMessage_DataMsg{
+			DataMsg: &gossip.DataMessage{
+				Payload: &gossip.Payload{
 					Data:   []byte{},
 					SeqNum: uint64(seqNum),
 				},
@@ -431,28 +429,28 @@ func dataMsg(seqNum int) *protoext.SignedGossipMessage {
 	return sMsg
 }
 
-func helloMsg() *proto.GossipMessage {
-	return &proto.GossipMessage{
+func helloMsg() *gossip.GossipMessage {
+	return &gossip.GossipMessage{
 		Channel: []byte(""),
-		Tag:     proto.GossipMessage_EMPTY,
-		Content: &proto.GossipMessage_Hello{
-			Hello: &proto.GossipHello{
+		Tag:     gossip.GossipMessage_EMPTY,
+		Content: &gossip.GossipMessage_Hello{
+			Hello: &gossip.GossipHello{
 				Nonce:    0,
 				Metadata: nil,
-				MsgType:  proto.PullMsgType_BLOCK_MSG,
+				MsgType:  gossip.PullMsgType_BLOCK_MSG,
 			},
 		},
 	}
 }
 
-func reqMsg(digest ...string) *proto.GossipMessage {
-	return &proto.GossipMessage{
+func reqMsg(digest ...string) *gossip.GossipMessage {
+	return &gossip.GossipMessage{
 		Channel: []byte(""),
-		Tag:     proto.GossipMessage_EMPTY,
+		Tag:     gossip.GossipMessage_EMPTY,
 		Nonce:   0,
-		Content: &proto.GossipMessage_DataReq{
-			DataReq: &proto.DataRequest{
-				MsgType: proto.PullMsgType_BLOCK_MSG,
+		Content: &gossip.GossipMessage_DataReq{
+			DataReq: &gossip.DataRequest{
+				MsgType: gossip.PullMsgType_BLOCK_MSG,
 				Nonce:   0,
 				Digests: util.StringsToBytes(digest),
 			},
@@ -461,8 +459,8 @@ func reqMsg(digest ...string) *proto.GossipMessage {
 }
 
 func createDigestsFilter(level uint64) IngressDigestFilter {
-	return func(digestMsg *proto.DataDigest) *proto.DataDigest {
-		res := &proto.DataDigest{
+	return func(digestMsg *gossip.DataDigest) *gossip.DataDigest {
+		res := &gossip.DataDigest{
 			MsgType: digestMsg.MsgType,
 			Nonce:   digestMsg.Nonce,
 		}

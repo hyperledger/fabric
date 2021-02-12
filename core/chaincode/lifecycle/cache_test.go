@@ -479,7 +479,6 @@ var _ = Describe("Cache", func() {
 					go chaincodeCustodian.Work(nil, nil, fakeLauncher)
 					Eventually(fakeLauncher.LaunchCallCount).Should(Equal(1))
 				})
-
 			})
 		})
 
@@ -1083,14 +1082,11 @@ var _ = Describe("Cache", func() {
 	})
 
 	Describe("EventsOnCacheUpdates", func() {
-		var (
-			fakeListener *ledgermock.ChaincodeLifecycleEventListener
-		)
+		var fakeListener *ledgermock.ChaincodeLifecycleEventListener
 
 		BeforeEach(func() {
 			fakeListener = &ledgermock.ChaincodeLifecycleEventListener{}
 			c.RegisterListener("channel-id", fakeListener, false)
-
 		})
 
 		Context("when initializing cache", func() {
@@ -1308,7 +1304,6 @@ var _ = Describe("Cache", func() {
 					approvalTrigger.StateUpdates["_lifecycle"].CollHashUpdates["_implicit_org_my-mspid"] = []*kvrwset.KVWriteHash{
 						{KeyHash: util.ComputeSHA256([]byte("namespaces/fields/chaincode-name#4/EndorsementInfo"))},
 					}
-
 				})
 
 				It("receives the event and cleans up stale chaincode definition references", func() {
@@ -1330,7 +1325,6 @@ var _ = Describe("Cache", func() {
 			})
 
 			Context("when an existing chaincode definition with a package is updated", func() {
-
 				BeforeEach(func() {
 					channelCache.Chaincodes["chaincode-name"].InstallInfo = &lifecycle.ChaincodeInstallInfo{
 						Label:     "chaincode-label",
@@ -1361,7 +1355,6 @@ var _ = Describe("Cache", func() {
 				})
 
 				Context("by an approve event with an empty package ID for the current sequence number", func() {
-
 					BeforeEach(func() {
 						approvalTrigger.StateUpdates["_lifecycle"].CollHashUpdates["_implicit_org_my-mspid"] = []*kvrwset.KVWriteHash{
 							{KeyHash: util.ComputeSHA256([]byte("chaincode-sources/fields/chaincode-name#3/PackageID"))},
@@ -1369,7 +1362,6 @@ var _ = Describe("Cache", func() {
 					})
 
 					It("receives the event, cleans up stale chaincode definition references and stops the unreferenced chaincode", func() {
-
 						approve("", "chaincode-name", 3)
 
 						installedCC, err := c.GetInstalledChaincode("packageID")
@@ -1384,7 +1376,6 @@ var _ = Describe("Cache", func() {
 				})
 
 				Context("by approve and commit events with an empty package ID for the next sequence number", func() {
-
 					BeforeEach(func() {
 						approvalTrigger.StateUpdates["_lifecycle"].CollHashUpdates["_implicit_org_my-mspid"] = []*kvrwset.KVWriteHash{
 							{KeyHash: util.ComputeSHA256([]byte("chaincode-sources/fields/chaincode-name#4/PackageID"))},
@@ -1394,7 +1385,6 @@ var _ = Describe("Cache", func() {
 					})
 
 					It("receives the event, cleans up stale chaincode definition references and stops the unreferenced chaincode", func() {
-
 						approve("", "chaincode-name", 4)
 						define("chaincode-name", 4)
 						c.StateCommitDone("channel-id")
@@ -1410,7 +1400,6 @@ var _ = Describe("Cache", func() {
 					})
 				})
 			})
-
 		})
 	})
 })

@@ -56,8 +56,7 @@ func TestExtractCertificateHashFromContext(t *testing.T) {
 	require.Equal(t, h.Sum(nil), comm.ExtractCertificateHashFromContext(ctx))
 }
 
-type nonTLSConnection struct {
-}
+type nonTLSConnection struct{}
 
 func (*nonTLSConnection) AuthType() string {
 	return ""
@@ -175,7 +174,8 @@ func newInspectingServer(listener net.Listener, inspector comm.BindingInspector)
 			UseTLS:      true,
 			Certificate: []byte(selfSignedCertPEM),
 			Key:         []byte(selfSignedKeyPEM),
-		}})
+		},
+	})
 	if err != nil {
 		panic(err)
 	}

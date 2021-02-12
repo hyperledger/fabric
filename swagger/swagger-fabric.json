@@ -1,0 +1,363 @@
+{
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "swagger": "2.0",
+  "info": {
+    "description": "Hyperledger Fabric is an enterprise-grade permissioned distributed ledger framework for developing\nsolutions and applications. Its modular and versatile design satisfies a broad range of industry use\ncases. It offers a unique approach to consensus that enables performance at scale while preserving privacy.",
+    "title": "Fabric API",
+    "license": {
+      "name": "Copyright IBM Corp. All Rights Reserved."
+    },
+    "version": "2.3"
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Retrieves all registered health checkers for the process.",
+        "operationId": "healthz",
+        "responses": {
+          "200": {
+            "description": "Ok."
+          },
+          "503": {
+            "description": "Service unavailable."
+          }
+        }
+      }
+    },
+    "/logspec": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Retrieves the active logging spec for a peer or orderer.",
+        "operationId": "logspecget",
+        "responses": {
+          "200": {
+            "description": "Ok."
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "tags": [
+          "operations"
+        ],
+        "summary": "Updates the active logging spec for a peer or orderer.",
+        "operationId": "logspecput",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "The payload must consist of a single attribute named spec.",
+            "name": "payload",
+            "in": "formData",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content."
+          },
+          "400": {
+            "description": "Bad request."
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "operationId": "metrics",
+        "responses": {
+          "200": {
+            "description": "Ok."
+          }
+        }
+      }
+    },
+    "/v1/participation/channels": {
+      "get": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Returns the complete list of channels an Ordering Service Node (OSN) has joined.",
+        "operationId": "listChannels",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved channels.",
+            "schema": {
+              "$ref": "#/definitions/channelList"
+            },
+            "headers": {
+              "Cache-Control": {
+                "type": "string",
+                "description": "The directives for caching responses"
+              },
+              "Content-Type": {
+                "type": "string",
+                "description": "The media type of the resource"
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "If a channel does not yet exist, it will be created.",
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "tags": [
+          "channels"
+        ],
+        "summary": "Joins an Ordering Service Node (OSN) to a channel.",
+        "operationId": "joinChannel",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "configBlock",
+            "in": "formData",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successfully joined channel.",
+            "schema": {
+              "$ref": "#/definitions/channelInfo"
+            },
+            "headers": {
+              "Content-Type": {
+                "type": "string",
+                "description": "The media type of the resource"
+              },
+              "Location": {
+                "type": "string",
+                "description": "The URL to redirect a page to"
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot join channel."
+          },
+          "403": {
+            "description": "The client is trying to join the system-channel that does not exist, but application channels exist."
+          },
+          "405": {
+            "description": "The client is trying to join an app-channel, but the system channel exists.\nThe client is trying to join an app-channel that exists, but the system channel does not.\nThe client is trying to join the system-channel, and it exists.\n"
+          },
+          "409": {
+            "description": "The client is trying to join a channel that is currently being removed."
+          },
+          "500": {
+            "description": "Removal of channel failed."
+          }
+        }
+      }
+    },
+    "/v1/participation/channels/{channelID}": {
+      "get": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Returns detailed channel information for a specific channel Ordering Service Node (OSN) has joined.",
+        "operationId": "listChannel",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Channel ID",
+            "name": "channelID",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved channel.",
+            "schema": {
+              "$ref": "#/definitions/channelInfo"
+            },
+            "headers": {
+              "Cache-Control": {
+                "type": "string",
+                "description": "The directives for caching responses"
+              },
+              "Content-Type": {
+                "type": "string",
+                "description": "The media type of the resource"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Removes an Ordering Service Node (OSN) from a channel.",
+        "operationId": "removeChannel",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "Channel ID",
+            "name": "channelID",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successfully removed channel."
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "The channel does not exist."
+          },
+          "405": {
+            "description": "The system channel exists, removal is not allowed."
+          },
+          "409": {
+            "description": "The channel is pending removal."
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "tags": [
+          "operations"
+        ],
+        "summary": "Returns the orderer or peer version and the commit SHA on which the release was created.",
+        "operationId": "version",
+        "responses": {
+          "200": {
+            "description": "Ok."
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ChannelInfoShort": {
+      "type": "object",
+      "title": "ChannelInfoShort carries a short info of a single channel.",
+      "properties": {
+        "name": {
+          "description": "The channel name.",
+          "type": "string",
+          "x-go-name": "Name"
+        },
+        "url": {
+          "description": "The channel relative URL (no Host:Port, only path), e.g.: \"/participation/v1/channels/my-channel\".",
+          "type": "string",
+          "x-go-name": "URL"
+        }
+      },
+      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+    },
+    "ConsensusRelation": {
+      "type": "string",
+      "title": "ConsensusRelation represents the relationship between the orderer and the channel's consensus cluster.",
+      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+    },
+    "Status": {
+      "description": "Status represents the degree by which the orderer had caught up with the rest of the cluster after joining the\nchannel (either as a consenter or a follower).",
+      "type": "string",
+      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+    },
+    "channelInfo": {
+      "description": "This is marshaled into the body of the HTTP response.",
+      "type": "object",
+      "title": "ChannelInfo carries the response to an HTTP request to List a single channel.",
+      "properties": {
+        "consensusRelation": {
+          "$ref": "#/definitions/ConsensusRelation"
+        },
+        "height": {
+          "description": "Current block height.",
+          "type": "integer",
+          "format": "uint64",
+          "x-go-name": "Height"
+        },
+        "name": {
+          "description": "The channel name.",
+          "type": "string",
+          "x-go-name": "Name"
+        },
+        "status": {
+          "$ref": "#/definitions/Status"
+        },
+        "url": {
+          "description": "The channel relative URL (no Host:Port, only path), e.g.: \"/participation/v1/channels/my-channel\".",
+          "type": "string",
+          "x-go-name": "URL"
+        }
+      },
+      "x-go-name": "ChannelInfo",
+      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+    },
+    "channelList": {
+      "description": "This is marshaled into the body of the HTTP response.",
+      "type": "object",
+      "title": "ChannelList carries the response to an HTTP request to List all the channels.",
+      "properties": {
+        "channels": {
+          "description": "Application channels only, nil or empty if no channels defined.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ChannelInfoShort"
+          },
+          "x-go-name": "Channels"
+        },
+        "systemChannel": {
+          "$ref": "#/definitions/ChannelInfoShort"
+        }
+      },
+      "x-go-name": "ChannelList",
+      "x-go-package": "github.com/hyperledger/fabric/orderer/common/types"
+    },
+    "spec": {
+      "type": "object",
+      "properties": {
+        "spec": {
+          "type": "string",
+          "x-go-name": "Spec"
+        }
+      },
+      "x-go-name": "LogSpec",
+      "x-go-package": "github.com/hyperledger/fabric/common/flogging/httpadmin"
+    }
+  },
+  "tags": [
+    {
+      "description": "Channel Participation APIs",
+      "name": "channels",
+      "externalDocs": {
+        "url": "https://hyperledger-fabric.readthedocs.io/en/latest/commands/osnadminchannel.html"
+      }
+    },
+    {
+      "description": "Operations APIs",
+      "name": "operations",
+      "externalDocs": {
+        "url": "https://hyperledger-fabric.readthedocs.io/en/latest/operations_service.html"
+      }
+    }
+  ]
+}

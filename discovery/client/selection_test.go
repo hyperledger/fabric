@@ -147,7 +147,6 @@ func TestPrioritiesByHeight(t *testing.T) {
 			require.Equal(t, test.expected, p)
 		})
 	}
-
 }
 
 func stateInfoWithHeight(h uint64) *protoext.SignedGossipMessage {

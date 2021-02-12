@@ -143,12 +143,15 @@ func readSeekEnvelope(stream orderer.AtomicBroadcast_DeliverServer) (*orderer.Se
 }
 
 type deliverServer struct {
+	logger *flogging.FabricLogger
+
 	t *testing.T
 	sync.Mutex
 	err            error
 	srv            *comm.GRPCServer
 	seekAssertions chan func(*orderer.SeekInfo, string)
 	blockResponses chan *orderer.DeliverResponse
+	done           chan struct{}
 }
 
 func (ds *deliverServer) endpointCriteria() cluster.EndpointCriteria {
@@ -174,9 +177,7 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 		return err
 	}
 	seekInfo, channel, err := readSeekEnvelope(stream)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(ds.t, err)
 
 	// FAB-16233 This is meant to mitigate timeouts when
 	// seekAssertions does not receive a value
@@ -185,29 +186,42 @@ func (ds *deliverServer) Deliver(stream orderer.AtomicBroadcast_DeliverServer) e
 
 	select {
 	case <-timer.C:
-		panic("timed out waiting for seek assertions to receive a value")
+		ds.t.Fatalf("timed out waiting for seek assertions to receive a value\n")
 	// Get the next seek assertion and ensure the next seek is of the expected type
 	case seekAssert := <-ds.seekAssertions:
+		ds.logger.Debugf("Received seekInfo: %+v", seekInfo)
 		seekAssert(seekInfo, channel)
+	case <-ds.done:
+		return nil
 	}
 
 	if seekInfo.GetStart().GetSpecified() != nil {
 		return ds.deliverBlocks(stream)
 	}
 	if seekInfo.GetStart().GetNewest() != nil {
-		resp := <-ds.blocks()
-		if resp == nil {
-			return nil
+		select {
+		case resp := <-ds.blocks():
+			if resp == nil {
+				return nil
+			}
+			return stream.Send(resp)
+		case <-ds.done:
 		}
-		return stream.Send(resp)
 	}
-	panic(fmt.Sprintf("expected either specified or newest seek but got %v", seekInfo.GetStart()))
+	ds.t.Fatalf("expected either specified or newest seek but got %v\n", seekInfo.GetStart())
+	return nil // unreachable
 }
 
 func (ds *deliverServer) deliverBlocks(stream orderer.AtomicBroadcast_DeliverServer) error {
 	for {
 		blockChan := ds.blocks()
-		response := <-blockChan
+		var response *orderer.DeliverResponse
+		select {
+		case response = <-blockChan:
+		case <-ds.done:
+			return nil
+		}
+
 		// A nil response is a signal from the test to close the stream.
 		// This is needed to avoid reading from the block buffer, hence
 		// consuming by accident a block that is tabled to be pulled
@@ -251,6 +265,7 @@ func (ds *deliverServer) resurrect() {
 		respChan <- resp
 	}
 	ds.blockResponses = respChan
+	ds.done = make(chan struct{})
 	ds.srv.Stop()
 	// And re-create the gRPC server on that port
 	ds.srv, err = comm.NewGRPCServer(fmt.Sprintf("127.0.0.1:%d", ds.port()), comm.ServerConfig{})
@@ -262,41 +277,51 @@ func (ds *deliverServer) resurrect() {
 func (ds *deliverServer) stop() {
 	ds.srv.Stop()
 	close(ds.blocks())
+	close(ds.done)
 }
 
 func (ds *deliverServer) enqueueResponse(seq uint64) {
-	ds.blocks() <- &orderer.DeliverResponse{
+	select {
+	case ds.blocks() <- &orderer.DeliverResponse{
 		Type: &orderer.DeliverResponse_Block{Block: protoutil.NewBlock(seq, nil)},
+	}:
+	case <-ds.done:
 	}
 }
 
 func (ds *deliverServer) addExpectProbeAssert() {
-	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
+	select {
+	case ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		require.NotNil(ds.t, info.GetStart().GetNewest())
 		require.Equal(ds.t, info.ErrorResponse, orderer.SeekInfo_BEST_EFFORT)
+	}:
+	case <-ds.done:
 	}
 }
 
 func (ds *deliverServer) addExpectPullAssert(seq uint64) {
-	ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
+	select {
+	case ds.seekAssertions <- func(info *orderer.SeekInfo, _ string) {
 		seekPosition := info.GetStart()
 		require.NotNil(ds.t, seekPosition)
 		seekSpecified := seekPosition.GetSpecified()
 		require.NotNil(ds.t, seekSpecified)
 		require.Equal(ds.t, seq, seekSpecified.Number)
 		require.Equal(ds.t, info.ErrorResponse, orderer.SeekInfo_BEST_EFFORT)
+	}:
+	case <-ds.done:
 	}
 }
 
 func newClusterNode(t *testing.T) *deliverServer {
 	srv, err := comm.NewGRPCServer("127.0.0.1:0", comm.ServerConfig{})
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 	ds := &deliverServer{
+		logger:         flogging.MustGetLogger("test.debug"),
 		t:              t,
 		seekAssertions: make(chan func(*orderer.SeekInfo, string), 100),
 		blockResponses: make(chan *orderer.DeliverResponse, 100),
+		done:           make(chan struct{}),
 		srv:            srv,
 	}
 	orderer.RegisterAtomicBroadcastServer(srv.Server(), ds)
@@ -315,6 +340,7 @@ func newBlockPuller(dialer *countingDialer, orderers ...string) *cluster.BlockPu
 		RetryTimeout:        time.Millisecond * 10,
 		VerifyBlockSequence: noopBlockVerifierf,
 		Logger:              flogging.MustGetLogger("test"),
+		StopChannel:         make(chan struct{}),
 	}
 }
 
@@ -927,6 +953,11 @@ func TestBlockPullerFailures(t *testing.T) {
 func TestBlockPullerBadBlocks(t *testing.T) {
 	// Scenario: ordering node sends malformed blocks.
 
+	// This test case is flaky, so let's add some logs for the next time it fails.
+	flogging.ActivateSpec("debug")
+	defer flogging.ActivateSpec("info")
+	testLogger := flogging.MustGetLogger("test.debug")
+
 	removeHeader := func(resp *orderer.DeliverResponse) *orderer.DeliverResponse {
 		resp.GetBlock().Header = nil
 		return resp
@@ -999,7 +1030,6 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 	for _, testCase := range testcases {
 		testCase := testCase
 		t.Run(testCase.name, func(t *testing.T) {
-
 			osn := newClusterNode(t)
 			defer osn.stop()
 
@@ -1020,6 +1050,7 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 			// Expect the block puller to retry and this time give it what it wants
 			osn.addExpectProbeAssert()
 			osn.addExpectPullAssert(10)
+			require.Len(t, osn.seekAssertions, 4)
 
 			// Wait until the block is pulled and the malleability is detected
 			var detectedBadBlock sync.WaitGroup
@@ -1029,7 +1060,8 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 					detectedBadBlock.Done()
 					// Close the channel to make the current server-side deliver stream close
 					close(osn.blocks())
-					// Ane reset the block buffer to be able to write into it again
+					testLogger.Infof("Expected err log has been printed: %s\n", testCase.expectedErrMsg)
+					// And reset the block buffer to be able to write into it again
 					osn.setBlocks(make(chan *orderer.DeliverResponse, 100))
 					// Put a correct block after it, 1 for the probing and 1 for the fetch
 					osn.enqueueResponse(10)
@@ -1153,6 +1185,51 @@ func TestBlockPullerMaxRetriesExhausted(t *testing.T) {
 	bp.Close()
 	dialer.assertAllConnectionsClosed(t)
 	require.True(t, exhaustedRetryAttemptsLogged)
+}
+
+func TestBlockPullerToBadEndpointWithStop(t *testing.T) {
+	// Scenario:
+	// The block puller is initialized with endpoints that do not exist.
+	// It should attempt to re-connect but will fail, causing the PullBlock()
+	// to block the calling go-routine. Closing the StopChannel should signal
+	// the blocked go-routine to gives up, and nil is returned.
+
+	dialer := newCountingDialer()
+	bp := newBlockPuller(dialer, "10.10.10.10:666") // Nobody is there
+
+	var couldNotConnectLogged bool
+	var receivedStopLogged bool
+
+	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
+		if entry.Message == "Could not connect to any endpoint of [{\"CAs\":null,\"Endpoint\":\"10.10.10.10:666\"}]" {
+			couldNotConnectLogged = true
+		}
+		if entry.Message == "Received a stop signal" {
+			receivedStopLogged = true
+		}
+		return nil
+	}))
+
+	// Retry for a long time
+	bp.MaxPullBlockRetries = 100
+	bp.RetryTimeout = time.Hour
+
+	wgRelease := sync.WaitGroup{}
+	wgRelease.Add(1)
+
+	go func() {
+		// But this will get stuck until the StopChannel is closed
+		require.Nil(t, bp.PullBlock(uint64(1)))
+		bp.Close()
+		wgRelease.Done()
+	}()
+
+	close(bp.StopChannel)
+	wgRelease.Wait()
+
+	dialer.assertAllConnectionsClosed(t)
+	require.True(t, couldNotConnectLogged)
+	require.True(t, receivedStopLogged)
 }
 
 func TestBlockPullerToBadEndpoint(t *testing.T) {

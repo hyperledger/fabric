@@ -12,8 +12,7 @@ import (
 )
 
 // CC example simple Chaincode implementation
-type CC struct {
-}
+type CC struct{}
 
 func (t *CC) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	err := stub.PutState("foo", []byte("callee:foo"))

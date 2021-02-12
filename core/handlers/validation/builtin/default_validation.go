@@ -15,10 +15,10 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	validation "github.com/hyperledger/fabric/core/handlers/validation/api"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
-	. "github.com/hyperledger/fabric/core/handlers/validation/api/state"
+	vc "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
+	vi "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
+	vp "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
+	vs "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	v12 "github.com/hyperledger/fabric/core/handlers/validation/builtin/v12"
 	v13 "github.com/hyperledger/fabric/core/handlers/validation/builtin/v13"
 	v20 "github.com/hyperledger/fabric/core/handlers/validation/builtin/v20"
@@ -27,15 +27,14 @@ import (
 
 var logger = flogging.MustGetLogger("vscc")
 
-type DefaultValidationFactory struct {
-}
+type DefaultValidationFactory struct{}
 
 func (*DefaultValidationFactory) New() validation.Plugin {
 	return &DefaultValidation{}
 }
 
 type DefaultValidation struct {
-	Capabilities    Capabilities
+	Capabilities    vc.Capabilities
 	TxValidatorV1_2 TransactionValidator
 	TxValidatorV1_3 TransactionValidator
 	TxValidatorV2_0 TransactionValidator
@@ -51,7 +50,7 @@ func (v *DefaultValidation) Validate(block *common.Block, namespace string, txPo
 		logger.Panicf("Expected to receive policy bytes in context data")
 	}
 
-	serializedPolicy, isSerializedPolicy := contextData[0].(SerializedPolicy)
+	serializedPolicy, isSerializedPolicy := contextData[0].(vp.SerializedPolicy)
 	if !isSerializedPolicy {
 		logger.Panicf("Expected to receive a serialized policy in the first context data")
 	}
@@ -102,23 +101,23 @@ func convertErrorTypeOrPanic(err error) error {
 
 func (v *DefaultValidation) Init(dependencies ...validation.Dependency) error {
 	var (
-		d   IdentityDeserializer
-		c   Capabilities
-		sf  StateFetcher
-		pe  PolicyEvaluator
+		d   vi.IdentityDeserializer
+		c   vc.Capabilities
+		sf  vs.StateFetcher
+		pe  vp.PolicyEvaluator
 		cor plugindispatcher.CollectionResources
 	)
 	for _, dep := range dependencies {
-		if deserializer, isIdentityDeserializer := dep.(IdentityDeserializer); isIdentityDeserializer {
+		if deserializer, isIdentityDeserializer := dep.(vi.IdentityDeserializer); isIdentityDeserializer {
 			d = deserializer
 		}
-		if capabilities, isCapabilities := dep.(Capabilities); isCapabilities {
+		if capabilities, isCapabilities := dep.(vc.Capabilities); isCapabilities {
 			c = capabilities
 		}
-		if stateFetcher, isStateFetcher := dep.(StateFetcher); isStateFetcher {
+		if stateFetcher, isStateFetcher := dep.(vs.StateFetcher); isStateFetcher {
 			sf = stateFetcher
 		}
-		if policyEvaluator, isPolicyFetcher := dep.(PolicyEvaluator); isPolicyFetcher {
+		if policyEvaluator, isPolicyFetcher := dep.(vp.PolicyEvaluator); isPolicyFetcher {
 			pe = policyEvaluator
 		}
 		if collectionResources, isCollectionResources := dep.(plugindispatcher.CollectionResources); isCollectionResources {

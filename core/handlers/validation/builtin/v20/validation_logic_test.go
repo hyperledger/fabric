@@ -90,7 +90,6 @@ func newValidationInstance(state map[string]map[string][]byte) *Validator {
 	vs.GetStateMultipleKeysStub = func(namespace string, keys []string) ([][]byte, error) {
 		if ns, ok := state[namespace]; ok {
 			return [][]byte{ns[keys[0]]}, nil
-
 		} else {
 			return nil, fmt.Errorf("could not retrieve namespace %s", namespace)
 		}
@@ -243,24 +242,12 @@ func TestToApplicationPolicyTranslator_Translate(t *testing.T) {
 	}))
 }
 
-var id msp.SigningIdentity
-var sid []byte
-var mspid string
-var channelID string = "testchannelid"
-
-type mockPolicyChecker struct{}
-
-func (c *mockPolicyChecker) CheckPolicy(channelID, policyName string, signedProp *peer.SignedProposal) error {
-	return nil
-}
-
-func (c *mockPolicyChecker) CheckPolicyBySignedData(channelID, policyName string, sd []*protoutil.SignedData) error {
-	return nil
-}
-
-func (c *mockPolicyChecker) CheckPolicyNoChannel(policyName string, signedProp *peer.SignedProposal) error {
-	return nil
-}
+var (
+	id        msp.SigningIdentity
+	sid       []byte
+	mspid     string
+	channelID string = "testchannelid"
+)
 
 func TestMain(m *testing.M) {
 	code := -1
@@ -286,7 +273,7 @@ func TestMain(m *testing.M) {
 
 	id, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
-		fmt.Printf("GetSigningIdentity failed with err %s", err)
+		fmt.Printf("GetDefaultSigningIdentity failed with err %s", err)
 		return
 	}
 

@@ -61,7 +61,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 		)
 
 		snapshotDataImporter, err := p.SnapshotDataImporterFor("test-ledger", 25,
-			newMockMembershipProvider("myOrg"), configHistoryMgr.GetRetriever("test-ledger"),
+			newMockMembershipProvider("myOrg"), configHistoryMgr.GetRetriever("test-ledger"), testDir,
 		)
 		require.NoError(t, err)
 
@@ -70,6 +70,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 				snapshotDataImporter.ConsumeSnapshotData("ns", d.collection, d.keyHash, d.valueHash, d.version),
 			)
 		}
+		require.NoError(t, snapshotDataImporter.Done())
 
 		store, err := p.OpenStore("test-ledger")
 		require.NoError(t, err)
@@ -105,7 +106,7 @@ func TestPvtdataStoreCreatedFromSnapshot(t *testing.T) {
 		require.Equal(t, uint64(25), lastBlkNum)
 
 		err = store.Commit(25, nil, nil)
-		require.EqualError(t, err, "Expected block number=26, received block number=25")
+		require.EqualError(t, err, "expected block number=26, received block number=25")
 		require.NoError(t, store.Commit(26, nil, nil))
 	})
 
@@ -321,7 +322,22 @@ func TestStoreCreationErrorPath(t *testing.T) {
 	configHistoryMgr, err := confighistorytest.NewMgr(path.Join(testDir, "config-history"))
 	require.NoError(t, err)
 
-	p.Close()
-	_, err = p.SnapshotDataImporterFor("test-ledger", 25, newMockMembershipProvider("myOrg"), configHistoryMgr.GetRetriever("test-ledger"))
-	require.Contains(t, err.Error(), "error while writing snapshot info to db")
+	t.Run("error-while-constructing-snapshot-data-importer", func(t *testing.T) {
+		_, err = p.SnapshotDataImporterFor("test-ledger", 25,
+			newMockMembershipProvider("myOrg"),
+			configHistoryMgr.GetRetriever("test-ledger"),
+			"non-existing-dir",
+		)
+		require.Contains(t, err.Error(), "error while creating temp dir for sorting rows")
+	})
+
+	t.Run("error-while-writing-snapshot-info-into-pvtdata-store", func(t *testing.T) {
+		p.Close()
+		_, err = p.SnapshotDataImporterFor("test-ledger", 25,
+			newMockMembershipProvider("myOrg"),
+			configHistoryMgr.GetRetriever("test-ledger"),
+			testDir,
+		)
+		require.Contains(t, err.Error(), "error while writing snapshot info to db")
+	})
 }

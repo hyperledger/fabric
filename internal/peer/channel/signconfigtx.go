@@ -62,5 +62,5 @@ func sign(cmd *cobra.Command, args []string, cf *ChannelCmdFactory) error {
 
 	sCtxEnvData := protoutil.MarshalOrPanic(sCtxEnv)
 
-	return ioutil.WriteFile(channelTxFile, sCtxEnvData, 0660)
+	return ioutil.WriteFile(channelTxFile, sCtxEnvData, 0o660)
 }

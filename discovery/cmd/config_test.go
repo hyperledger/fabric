@@ -72,7 +72,6 @@ func TestParseConfigResponse(t *testing.T) {
 	chanRes := &mocks.ChannelResponse{}
 
 	t.Run("Failure", func(t *testing.T) {
-
 		chanRes.On("Config").Return(nil, errors.New("not found")).Once()
 		res.On("ForChannel", "mychannel").Return(chanRes)
 		err := parser.ParseResponse("mychannel", res)

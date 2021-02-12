@@ -98,13 +98,10 @@ func trackCertExpiration(rawCert []byte, certRole string, info MessageFunc, warn
 	sched(timeLeftUntilOneWeekBeforeExpiration, func() {
 		warn("The %s certificate will expire within one week", certRole)
 	})
-
 }
 
-var (
-	// ErrPubKeyMismatch is used by CertificatesWithSamePublicKey to indicate the two public keys mismatch
-	ErrPubKeyMismatch = errors.New("public keys do not match")
-)
+// ErrPubKeyMismatch is used by CertificatesWithSamePublicKey to indicate the two public keys mismatch
+var ErrPubKeyMismatch = errors.New("public keys do not match")
 
 // LogNonPubKeyMismatchErr logs an error which is not an ErrPubKeyMismatch error
 func LogNonPubKeyMismatchErr(log func(template string, args ...interface{}), err error, cert1DER, cert2DER []byte) {

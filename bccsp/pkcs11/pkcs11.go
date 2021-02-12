@@ -28,8 +28,10 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var logger = flogging.MustGetLogger("bccsp_p11")
-var regex = regexp.MustCompile(".*0xB.:\\sCKR.+")
+var (
+	logger              = flogging.MustGetLogger("bccsp_p11")
+	invalidSessionRegex = regexp.MustCompile(`.*0xB.:\sCKR.+`)
+)
 
 type Provider struct {
 	bccsp.BCCSP
@@ -556,7 +558,7 @@ func (csp *Provider) generateECKey(curve asn1.ObjectIdentifier, ephemeral bool) 
 			return nil, nil, fmt.Errorf("P11: Private Key copy failed with error [%s]. Please contact your HSM vendor", prvCopyerror)
 		}
 		prvKeyDestroyError := csp.ctx.DestroyObject(session, prv)
-		if pubKeyDestroyError != nil {
+		if prvKeyDestroyError != nil {
 			return nil, nil, fmt.Errorf("P11: Private Key destroy failed with error [%s]. Please contact your HSM vendor", prvKeyDestroyError)
 		}
 	}
@@ -702,15 +704,14 @@ func (csp *Provider) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte
 	if err := csp.ctx.FindObjectsInit(session, template); err != nil {
 		return 0, err
 	}
+	defer csp.ctx.FindObjectsFinal(session)
 
 	// single session instance, assume one hit only
 	objs, _, err := csp.ctx.FindObjects(session, 1)
 	if err != nil {
 		return 0, err
 	}
-	if err = csp.ctx.FindObjectsFinal(session); err != nil {
-		return 0, err
-	}
+
 	if len(objs) == 0 {
 		return 0, fmt.Errorf("Key not found [%s]", hex.Dump(ski))
 	}
@@ -804,7 +805,7 @@ func (csp *Provider) ecPoint(session pkcs11.SessionHandle, key pkcs11.ObjectHand
 
 func (csp *Provider) handleSessionReturn(err error, session pkcs11.SessionHandle) {
 	if err != nil {
-		if regex.MatchString(err.Error()) {
+		if invalidSessionRegex.MatchString(err.Error()) {
 			logger.Infof("PKCS11 session invalidated, closing session: %v", err)
 			csp.closeSession(session)
 			return
@@ -859,8 +860,8 @@ func nextIDCtr() *big.Int {
 func FindPKCS11Lib() (lib, pin, label string) {
 	if lib = os.Getenv("PKCS11_LIB"); lib == "" {
 		possibilities := []string{
-			"/usr/lib/softhsm/libsofthsm2.so",                  //Debian
-			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so", //Ubuntu
+			"/usr/lib/softhsm/libsofthsm2.so",                  // Debian
+			"/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so", // Ubuntu
 		}
 		for _, path := range possibilities {
 			if _, err := os.Stat(path); !os.IsNotExist(err) {

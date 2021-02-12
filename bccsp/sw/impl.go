@@ -24,9 +24,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	logger = flogging.MustGetLogger("bccsp_sw")
-)
+var logger = flogging.MustGetLogger("bccsp_sw")
 
 // CSP provides a generic implementation of the BCCSP interface based
 // on wrappers. It can be customized by providing implementations for the
@@ -60,9 +58,11 @@ func New(keyStore bccsp.KeyStore) (*CSP, error) {
 	keyDerivers := make(map[reflect.Type]KeyDeriver)
 	keyImporters := make(map[reflect.Type]KeyImporter)
 
-	csp := &CSP{keyStore,
+	csp := &CSP{
+		keyStore,
 		keyGenerators, keyDerivers, keyImporters, encryptors,
-		decryptors, signers, verifiers, hashers}
+		decryptors, signers, verifiers, hashers,
+	}
 
 	return csp, nil
 }

@@ -6,7 +6,7 @@
 #
 
 # if version not passed in, default to latest released version
-VERSION=2.2.1
+VERSION=2.3.1
 # if ca version not passed in, default to latest released version
 CA_VERSION=1.4.9
 ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
@@ -21,8 +21,8 @@ printHelp() {
     echo "-s : bypass fabric-samples repo clone"
     echo "-b : bypass download of platform-specific binaries"
     echo
-    echo "e.g. bootstrap.sh 2.2.1 1.4.9 -s"
-    echo "will download docker images and binaries for Fabric v2.2.1 and Fabric CA v1.4.9"
+    echo "e.g. bootstrap.sh 2.3.1 1.4.9 -s"
+    echo "will download docker images and binaries for Fabric v2.3.1 and Fabric CA v1.4.9"
 }
 
 # dockerPull() pulls docker images from fabric and chaincode repositories
@@ -51,16 +51,23 @@ cloneSamplesRepo() {
     # version to the binaries and docker images to be downloaded
     if [ -d first-network ]; then
         # if we are in the fabric-samples repo, checkout corresponding version
-        echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
-        git checkout v${VERSION}
+        echo "==> Already in fabric-samples repo"
     elif [ -d fabric-samples ]; then
         # if fabric-samples repo already cloned and in current directory,
-        # cd fabric-samples and checkout corresponding version
-        echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
-        cd fabric-samples && git checkout v${VERSION}
+        # cd fabric-samples
+        echo "===> Changing directory to fabric-samples"
+        cd fabric-samples
     else
-        echo "===> Cloning hyperledger/fabric-samples repo and checkout v${VERSION}"
-        git clone -b master https://github.com/hyperledger/fabric-samples.git && cd fabric-samples && git checkout v${VERSION}
+        echo "===> Cloning hyperledger/fabric-samples repo"
+        git clone -b master https://github.com/hyperledger/fabric-samples.git && cd fabric-samples
+    fi
+
+    if GIT_DIR=.git git rev-parse v${VERSION} >/dev/null 2>&1; then
+        echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
+        git checkout -q v${VERSION}
+    else
+        echo "fabric-samples v${VERSION} does not exist, defaulting master"
+        git checkout -q master
     fi
 }
 

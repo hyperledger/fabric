@@ -73,16 +73,16 @@ func TestChannelList(t *testing.T) {
 
 func TestChannelInfo(t *testing.T) {
 	info := types.ChannelInfo{
-		Name:            "a",
-		URL:             "/api/channels/a",
-		ClusterRelation: types.ClusterRelationFollower,
-		Status:          types.StatusActive,
-		Height:          uint64(1) << 60,
+		Name:              "a",
+		URL:               "/api/channels/a",
+		ConsensusRelation: types.ConsensusRelationFollower,
+		Status:            types.StatusActive,
+		Height:            uint64(1) << 60,
 	}
 
 	buff, err := json.Marshal(info)
 	require.NoError(t, err)
-	require.Equal(t, `{"name":"a","url":"/api/channels/a","clusterRelation":"follower","status":"active","height":1152921504606846976}`, string(buff))
+	require.Equal(t, `{"name":"a","url":"/api/channels/a","consensusRelation":"follower","status":"active","height":1152921504606846976}`, string(buff))
 
 	var info2 types.ChannelInfo
 	err = json.Unmarshal(buff, &info2)

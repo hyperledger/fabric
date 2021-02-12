@@ -133,5 +133,4 @@ func TestValidateBadInput(t *testing.T) {
 			},
 		}, "", 0, 0, []byte("policy"))
 	})
-
 }

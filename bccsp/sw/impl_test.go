@@ -208,7 +208,6 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 	if ecdsaKey.D.Cmp(big.NewInt(0)) == 0 {
 		t.Fatal("P256 generated key in invalid. Private key must be different from 0.")
 	}
-
 }
 
 func TestKeyGenAESOpts(t *testing.T) {
@@ -764,7 +763,6 @@ func TestECDSAKeyImportFromECDSAPrivateKey(t *testing.T) {
 	}
 
 	pk, err := provider.KeyImport(pub, &bccsp.ECDSAPKIXPublicKeyImportOpts{Temporary: false})
-
 	if err != nil {
 		t.Fatalf("Failed importing ECDSA public key [%s]", err)
 	}
@@ -895,7 +893,6 @@ func TestKeyImportFromX509ECDSAPublicKey(t *testing.T) {
 
 	// Import the certificate's public key
 	pk2, err := provider.KeyImport(cert, &bccsp.X509PublicKeyImportOpts{Temporary: false})
-
 	if err != nil {
 		t.Fatalf("Failed importing ECDSA public key [%s]", err)
 	}
@@ -962,7 +959,6 @@ func TestECDSASignatureEncoding(t *testing.T) {
 		t.Fatalf("Unmarshalling should fail for [% x]", v)
 	}
 	t.Logf("Unmarshalling correctly failed for [% x] [%s]", v, err)
-
 }
 
 func TestECDSALowS(t *testing.T) {
@@ -1171,7 +1167,6 @@ func TestHMACKeyDerivOverAES256Key(t *testing.T) {
 	}
 
 	hmcaedKey, err := provider.KeyDeriv(k, &bccsp.HMACDeriveKeyOpts{Temporary: false, Arg: []byte{1}})
-
 	if err != nil {
 		t.Fatalf("Failed HMACing AES_256 key [%s]", err)
 	}

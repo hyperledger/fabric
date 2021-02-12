@@ -202,7 +202,7 @@ func (pdp *PvtdataProvider) RetrievePvtdata(pvtdataToRetrieve []*ledger.TxPvtdat
 
 	pvtdata := make(rwsetByKeys)
 
-	//If there is no private data to retrieve for the block, skip all population attempts and return
+	// If there is no private data to retrieve for the block, skip all population attempts and return
 	if len(pvtdataRetrievalInfo.remainingEligibleMissingKeys) == 0 {
 		pdp.logger.Debugf("No eligible collection private write sets to fetch for block [%d]", pdp.blockNum)
 		retrievedPvtdata.pvtdataRetrievalInfo = pvtdataRetrievalInfo

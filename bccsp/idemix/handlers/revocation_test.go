@@ -24,7 +24,6 @@ import (
 )
 
 var _ = Describe("Revocation", func() {
-
 	Describe("when creating a revocation key-pair", func() {
 		var (
 			RevocationKeyGen *handlers.RevocationKeyGen
@@ -51,8 +50,10 @@ var _ = Describe("Revocation", func() {
 				idemixRevocationKey = &ecdsa.PrivateKey{
 					PublicKey: ecdsa.PublicKey{
 						Curve: elliptic.P256(),
-						X:     big.NewInt(1), Y: big.NewInt(1)},
-					D: big.NewInt(1)}
+						X:     big.NewInt(1), Y: big.NewInt(1),
+					},
+					D: big.NewInt(1),
+				}
 
 				raw := elliptic.Marshal(idemixRevocationKey.Curve, idemixRevocationKey.PublicKey.X, idemixRevocationKey.PublicKey.Y)
 				hash := sha256.New()
@@ -125,7 +126,6 @@ var _ = Describe("Revocation", func() {
 					Expect(err).To(MatchError("not exportable"))
 					Expect(raw).To(BeNil())
 				})
-
 			})
 		})
 
@@ -140,13 +140,10 @@ var _ = Describe("Revocation", func() {
 				Expect(keyPair).To(BeNil())
 			})
 		})
-
 	})
 
 	Context("when importing a revocation public key", func() {
-		var (
-			RevocationPublicKeyImporter *handlers.RevocationPublicKeyImporter
-		)
+		var RevocationPublicKeyImporter *handlers.RevocationPublicKeyImporter
 
 		BeforeEach(func() {
 			RevocationPublicKeyImporter = &handlers.RevocationPublicKeyImporter{}
@@ -184,7 +181,6 @@ var _ = Describe("Revocation", func() {
 		})
 
 		Context("and the underlying cryptographic algorithm fails", func() {
-
 			It("returns an error on nil raw", func() {
 				k, err := RevocationPublicKeyImporter.KeyImport(nil, nil)
 				Expect(err).To(MatchError("invalid raw, expected byte array"))
@@ -208,17 +204,12 @@ var _ = Describe("Revocation", func() {
 				Expect(err).To(MatchError("Failed to decode revocation ECDSA public key"))
 				Expect(k).To(BeNil())
 			})
-
 		})
-
 	})
-
 })
 
 var _ = Describe("CRI", func() {
-
 	Describe("when creating a CRI", func() {
-
 		var (
 			CriSigner      *handlers.CriSigner
 			fakeRevocation *mock.Revocation
@@ -230,9 +221,7 @@ var _ = Describe("CRI", func() {
 		})
 
 		Context("and the underlying cryptographic algorithm succeed", func() {
-			var (
-				fakeSignature []byte
-			)
+			var fakeSignature []byte
 			BeforeEach(func() {
 				fakeSignature = []byte("fake signature")
 				fakeRevocation.SignReturns(fakeSignature, nil)
@@ -246,7 +235,6 @@ var _ = Describe("CRI", func() {
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(signature).To(BeEquivalentTo(fakeSignature))
-
 			})
 		})
 
@@ -267,7 +255,6 @@ var _ = Describe("CRI", func() {
 		})
 
 		Context("and the parameters are not well formed", func() {
-
 			Context("and the revocation secret key is nil", func() {
 				It("returns error", func() {
 					signature, err := CriSigner.Sign(
@@ -306,12 +293,10 @@ var _ = Describe("CRI", func() {
 					Expect(signature).To(BeNil())
 				})
 			})
-
 		})
 	})
 
 	Describe("when verifying a CRI", func() {
-
 		var (
 			CriVerifier    *handlers.CriVerifier
 			fakeRevocation *mock.Revocation
@@ -357,7 +342,6 @@ var _ = Describe("CRI", func() {
 		})
 
 		Context("and the parameters are not well formed", func() {
-
 			Context("and the user secret key is nil", func() {
 				It("returns error", func() {
 					valid, err := CriVerifier.Verify(
@@ -422,7 +406,6 @@ var _ = Describe("CRI", func() {
 					Expect(valid).To(BeFalse())
 				})
 			})
-
 		})
 	})
 })

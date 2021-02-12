@@ -129,7 +129,6 @@ func (pv *PluginValidator) getOrCreatePlugin(ctx *Context) (validation.Plugin, e
 
 	pluginsByChannel := pv.getOrCreatePluginChannelMapping(vp.Name(ctx.VSCCName), pluginFactory)
 	return pluginsByChannel.createPluginIfAbsent(ctx.Channel)
-
 }
 
 func (pv *PluginValidator) getOrCreatePluginChannelMapping(plugin vp.Name, pf validation.PluginFactory) *pluginsByChannel {
@@ -191,8 +190,7 @@ func (pbc *pluginsByChannel) initPlugin(plugin validation.Plugin, channel string
 // information for the legacy lifecycle. It will never be called but
 // it is necessary to have this dependency passed at init time to the
 // default plugin
-type legacyCollectionInfoProvider struct {
-}
+type legacyCollectionInfoProvider struct{}
 
 func (*legacyCollectionInfoProvider) CollectionValidationInfo(chaincodeName, collectionName string, state vs.State) ([]byte, error, error) {
 	panic("programming error")

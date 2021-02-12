@@ -36,7 +36,6 @@ func createCAOrPanic() tlsgen.CA {
 // CreateGRPCLayer returns a new gRPC server with associated port, TLS certificates, SecureDialOpts and DialOption
 func CreateGRPCLayer() (port int, gRPCServer *comm.GRPCServer, certs *common.TLSCertificates,
 	secureDialOpts api.PeerSecureDialOpts, dialOpts []grpc.DialOption) {
-
 	serverKeyPair, err := ca.NewServerCertKeyPair("127.0.0.1")
 	if err != nil {
 		panic(err)

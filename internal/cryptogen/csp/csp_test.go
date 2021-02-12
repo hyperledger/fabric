@@ -94,7 +94,7 @@ func TestLoadPrivateKey_BadPEM(t *testing.T) {
 			err := ioutil.WriteFile(
 				badPEMFile,
 				test.data,
-				0755,
+				0o755,
 			)
 			if err != nil {
 				t.Fatalf("failed to write to wrong encoding file: %s", err)

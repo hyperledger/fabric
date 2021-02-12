@@ -24,10 +24,10 @@ func checkResources(res channelconfig.Resources) error {
 		return errors.New("config does not contain orderer config")
 	}
 	if err := oc.Capabilities().Supported(); err != nil {
-		return errors.Wrapf(err, "config requires unsupported orderer capabilities: %s", err)
+		return errors.WithMessagef(err, "config requires unsupported orderer capabilities: %s", err)
 	}
 	if err := res.ChannelConfig().Capabilities().Supported(); err != nil {
-		return errors.Wrapf(err, "config requires unsupported channel capabilities: %s", err)
+		return errors.WithMessagef(err, "config requires unsupported channel capabilities: %s", err)
 	}
 	return nil
 }
@@ -96,7 +96,7 @@ func (lr *ledgerResources) VerifyBlockSignature(sd []*protoutil.SignedData, enve
 	}
 	err := policy.EvaluateSignedData(sd)
 	if err != nil {
-		return errors.Wrap(err, "block verification failed")
+		return errors.WithMessage(err, "block verification failed")
 	}
 	return nil
 }

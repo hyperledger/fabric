@@ -43,8 +43,8 @@ func TestSnapshot(t *testing.T) {
 	gb, err := test.MakeGenesisBlock(ledgerID)
 	require.NoError(t, err)
 	lgr, err := ledgerMgr.CreateLedger(ledgerID, gb)
-	defer lgr.Close()
 	require.NoError(t, err)
+	defer lgr.Close()
 
 	fakeLedgerGetter := &mock.LedgerGetter{}
 	fakeLedgerGetter.GetLedgerReturns(lgr)
@@ -82,7 +82,7 @@ func TestSnapshot(t *testing.T) {
 	require.EqualError(t, err, "no snapshot request exists for block number 100")
 
 	// common error tests for all requests
-	var tests = []struct {
+	tests := []struct {
 		name          string
 		channelID     string
 		signedRequest *pb.SignedSnapshotRequest

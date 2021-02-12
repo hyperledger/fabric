@@ -130,6 +130,7 @@ func verifyNsEntries(t *testing.T, nsItr *leveldbhelper.Iterator, expectedEntrie
 	}
 	require.Equal(t, expectedEntries, retrievedEntries)
 }
+
 func populateDBWithSampleData(t *testing.T, db *db, sampledata []*compositeKV) {
 	batch := db.newBatch()
 	for _, data := range sampledata {

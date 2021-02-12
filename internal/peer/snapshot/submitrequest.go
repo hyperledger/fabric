@@ -81,7 +81,7 @@ func submitRequest(cmd *cobra.Command, cl *client, cryptoProvider bccsp.BCCSP) e
 
 func validateSubmitRequest() error {
 	if channelID == "" {
-		return errors.New("the required parameter 'channelID' is empty. Rerun the command with -C flag")
+		return errors.New("the required parameter 'channelID' is empty. Rerun the command with -c flag")
 	}
 	return nil
 }

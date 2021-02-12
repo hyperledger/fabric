@@ -46,7 +46,6 @@ func CopyDir(logger *flogging.FabricLogger, srcroot, destroot string) error {
 			return errors.Errorf("refusing to copy unsupported file %s with mode %o", path, info.Mode())
 		}
 	})
-
 	// If an error occurred, clean up any created files.
 	if err != nil {
 		if err := os.RemoveAll(destroot); err != nil {

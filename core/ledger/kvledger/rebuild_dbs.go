@@ -26,6 +26,15 @@ func RebuildDBs(config *ledger.Config) error {
 	}
 	defer fileLock.Unlock()
 
+	blockstorePath := BlockStorePath(rootFSPath)
+	ledgerIDs, err := blkstorage.GetLedgersBootstrappedFromSnapshot(blockstorePath)
+	if err != nil {
+		return errors.WithMessage(err, "error while checking if any ledger has been bootstrapped from snapshot")
+	}
+	if len(ledgerIDs) > 0 {
+		return errors.Errorf("cannot rebuild databases because the peer contains channel(s) %s that were bootstrapped from snapshot", ledgerIDs)
+	}
+
 	if config.StateDBConfig.StateDatabase == ledger.CouchDB {
 		if err := statecouchdb.DropApplicationDBs(config.StateDBConfig.CouchDB); err != nil {
 			return err
@@ -34,7 +43,5 @@ func RebuildDBs(config *ledger.Config) error {
 	if err := dropDBs(rootFSPath); err != nil {
 		return err
 	}
-
-	blockstorePath := BlockStorePath(rootFSPath)
 	return blkstorage.DeleteBlockStoreIndex(blockstorePath)
 }

@@ -35,10 +35,10 @@ type RWSetBuilder struct {
 
 type nsPubRwBuilder struct {
 	namespace         string
-	readMap           map[string]*kvrwset.KVRead //for mvcc validation
+	readMap           map[string]*kvrwset.KVRead // for mvcc validation
 	writeMap          map[string]*kvrwset.KVWrite
 	metadataWriteMap  map[string]*kvrwset.KVMetadataWrite
-	rangeQueriesMap   map[rangeQueryKey]*kvrwset.RangeQueryInfo //for phantom read validation
+	rangeQueriesMap   map[rangeQueryKey]*kvrwset.RangeQueryInfo // for phantom read validation
 	rangeQueriesKeys  []rangeQueryKey
 	collHashRwBuilder map[string]*collHashRwBuilder
 }
@@ -138,7 +138,7 @@ func (b *RWSetBuilder) GetTxSimulationResults() (*ledger.TxSimulationResults, er
 
 	// Populate the collection-level hashes into pub rwset and compute the proto bytes for pvt rwset
 	if pvtData != nil {
-		if pvtDataProto, err = pvtData.toProtoMsg(); err != nil {
+		if pvtDataProto, err = pvtData.ToProtoMsg(); err != nil {
 			return nil, err
 		}
 		for _, ns := range pvtDataProto.NsPvtRwset {
@@ -199,12 +199,12 @@ func (b *nsPubRwBuilder) build() *NsRwSet {
 	var metadataWriteSet []*kvrwset.KVMetadataWrite
 	var rangeQueriesInfo []*kvrwset.RangeQueryInfo
 	var collHashedRwSet []*CollHashedRwSet
-	//add read set
+	// add read set
 	util.GetValuesBySortedKeys(&(b.readMap), &readSet)
-	//add write set
+	// add write set
 	util.GetValuesBySortedKeys(&(b.writeMap), &writeSet)
 	util.GetValuesBySortedKeys(&(b.metadataWriteMap), &metadataWriteSet)
-	//add range query info
+	// add range query info
 	for _, key := range b.rangeQueriesKeys {
 		rangeQueriesInfo = append(rangeQueriesInfo, b.rangeQueriesMap[key])
 	}

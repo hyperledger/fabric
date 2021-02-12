@@ -151,8 +151,7 @@ type PvtdataSourceHinter interface {
 }
 
 // ChannelConfig gives handle to the channel config
-type ChannelConfig struct {
-}
+type ChannelConfig struct{}
 
 // State exposes functions that helps a `Processor` in retrieving the latest state
 // The `State` passed to the `Process` function represents the world state for the channel as of

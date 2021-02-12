@@ -101,7 +101,6 @@ func TestGlobalConfig(t *testing.T) {
 	}
 
 	require.Equal(t, expectedConfig, coreConfig)
-
 }
 
 func TestGlobalConfigDefaults(t *testing.T) {

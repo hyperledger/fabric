@@ -345,6 +345,9 @@ type ChaincodeStubInterface interface {
 	// proposal to be included as part of a transaction. The event will be
 	// available within the transaction in the committed block regardless of the
 	// validity of the transaction.
+	// Only a single event can be included in a transaction, and must originate
+	// from the outer-most invoked chaincode in chaincode-to-chaincode scenarios.
+	// The marshaled ChaincodeEvent will be available in the transaction's ChaincodeAction.events field.
 	SetEvent(name string, payload []byte) error
 }
 

@@ -70,7 +70,7 @@ func setupTestLedger(chainid string, path string) (*shimtest.MockStub, *peer.Pee
 	return stub, peerInstance, cleanup, nil
 }
 
-//pass the prop so we can conveniently inline it in the call and get it back
+// pass the prop so we can conveniently inline it in the call and get it back
 func resetProvider(res, chainid string, prop *peer2.SignedProposal, retErr error) *peer2.SignedProposal {
 	if prop == nil {
 		prop, _ = protoutil.MockSignedEndorserProposalOrPanic(
@@ -270,7 +270,8 @@ func TestFailingAccessControl(t *testing.T) {
 	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(chainid,
 		&peer2.ChaincodeSpec{
 			ChaincodeId: &peer2.ChaincodeID{
-				Name: "qscc"},
+				Name: "qscc",
+			},
 		},
 		[]byte("Alice"),
 		[]byte("msg1"),

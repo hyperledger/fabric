@@ -144,7 +144,7 @@ func TestCreateLedgerFromSnapshot(t *testing.T) {
 		defer cleanup()
 
 		// copy snapshotDir to a new dir and remove a metadata file so that kvledger.CreateFromSnapshot will fail
-		require.NoError(t, os.MkdirAll(initializer.Config.SnapshotsConfig.RootDir, 0755))
+		require.NoError(t, os.MkdirAll(initializer.Config.SnapshotsConfig.RootDir, 0o755))
 		require.NoError(t, testutil.CopyDir(snapshotDir, initializer.Config.SnapshotsConfig.RootDir, false))
 		newSnapshotDir := filepath.Join(initializer.Config.SnapshotsConfig.RootDir, "0")
 		require.NoError(t, os.Remove(filepath.Join(newSnapshotDir, "_snapshot_signable_metadata.json")))
@@ -246,6 +246,7 @@ func TestConcurrentCreateLedgerFromSnapshot(t *testing.T) {
 
 	// CreateLedger should work after the previous CreateLedgerFromSnapshot is done
 	_, err = ledgerMgr2.CreateLedger(channelID3, gb)
+	require.NoError(t, err, "creating ledger for %s should have succeeded", channelID3)
 
 	// CreateLedgerFromSnapshot should work after the previous CreateLedgerFromSnapshot is done
 	callback = func(l ledger.PeerLedger, cid string) {}

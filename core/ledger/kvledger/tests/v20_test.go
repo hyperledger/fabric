@@ -27,15 +27,15 @@ func TestV20SampleLedger(t *testing.T) {
 	require.NoError(t, testutil.Unzip("testdata/v20/sample_ledgers/ledgersData.zip", ledgerFSRoot, false))
 
 	env.initLedgerMgmt()
-	h1 := env.newTestHelperOpenLgr("testchannel", t)
-	dataHelper.verify(h1)
+	l1 := env.openTestLedger("testchannel")
+	dataHelper.verify(l1)
 
 	// rebuild and verify again
 	env.closeLedgerMgmt()
 	require.NoError(t, kvledger.RebuildDBs(env.initializer.Config))
 	env.initLedgerMgmt()
-	h1 = env.newTestHelperOpenLgr("testchannel", t)
-	dataHelper.verify(h1)
+	l1 = env.openTestLedger("testchannel")
+	dataHelper.verify(l1)
 }
 
 // The generated ledger has the following blocks:
@@ -51,44 +51,44 @@ type v20SampleDataHelper struct {
 	t                 *testing.T
 }
 
-func (d *v20SampleDataHelper) verify(h *testhelper) {
-	d.verifyState(h)
-	d.verifyBlockAndPvtdata(h)
-	d.verifyConfigHistory(h)
-	d.verifyHistory(h)
+func (d *v20SampleDataHelper) verify(l *testLedger) {
+	d.verifyState(l)
+	d.verifyBlockAndPvtdata(l)
+	d.verifyConfigHistory(l)
+	d.verifyHistory(l)
 }
 
-func (d *v20SampleDataHelper) verifyState(h *testhelper) {
-	h.verifyPubState("marbles", "marble100", d.marbleValue("marble100", "blue", "jerry", 35))
-	h.verifyPvtState("marblesp", "collectionMarbles", "marble1", d.marbleValue("marble1", "blue", "tom", 35))
-	h.verifyPvtState("marblesp", "collectionMarblePrivateDetails", "marble1", d.marbleDetail("marble1", 99))
+func (d *v20SampleDataHelper) verifyState(l *testLedger) {
+	l.verifyPubState("marbles", "marble100", d.marbleValue("marble100", "blue", "jerry", 35))
+	l.verifyPvtState("marblesp", "collectionMarbles", "marble1", d.marbleValue("marble1", "blue", "tom", 35))
+	l.verifyPvtState("marblesp", "collectionMarblePrivateDetails", "marble1", d.marbleDetail("marble1", 99))
 }
 
-func (d *v20SampleDataHelper) verifyHistory(h *testhelper) {
+func (d *v20SampleDataHelper) verifyHistory(l *testLedger) {
 	expectedHistoryValue1 := []string{
 		d.marbleValue("marble100", "blue", "jerry", 35),
 		d.marbleValue("marble100", "blue", "tom", 35),
 	}
-	h.verifyHistory("marbles", "marble100", expectedHistoryValue1)
+	l.verifyHistory("marbles", "marble100", expectedHistoryValue1)
 }
 
-func (d *v20SampleDataHelper) verifyConfigHistory(h *testhelper) {
+func (d *v20SampleDataHelper) verifyConfigHistory(l *testLedger) {
 	// below block 10 should match integration/ledger/testdata/collection_configs/collections_config1.json
-	h.verifyMostRecentCollectionConfigBelow(10, "marblesp",
+	l.verifyMostRecentCollectionConfigBelow(10, "marblesp",
 		&expectedCollConfInfo{8, d.marbleCollConf1("marbelsp")})
 
 	// below block 18 should match integration/ledger/testdata/collection_configs/collections_config2.json
-	h.verifyMostRecentCollectionConfigBelow(18, "marblesp",
+	l.verifyMostRecentCollectionConfigBelow(18, "marblesp",
 		&expectedCollConfInfo{17, d.marbleCollConf2("marbelsp")})
 }
 
-func (d *v20SampleDataHelper) verifyBlockAndPvtdata(h *testhelper) {
-	h.verifyBlockAndPvtData(8, nil, func(r *retrievedBlockAndPvtdata) {
+func (d *v20SampleDataHelper) verifyBlockAndPvtdata(l *testLedger) {
+	l.verifyBlockAndPvtData(8, nil, func(r *retrievedBlockAndPvtdata) {
 		r.hasNumTx(1)
 		r.hasNoPvtdata()
 	})
 
-	h.verifyBlockAndPvtData(13, nil, func(r *retrievedBlockAndPvtdata) {
+	l.verifyBlockAndPvtData(13, nil, func(r *retrievedBlockAndPvtdata) {
 		r.hasNumTx(1)
 		r.pvtdataShouldContain(0, "marblesp", "collectionMarbles", "marble1", d.marbleValue("marble1", "blue", "tom", 35))
 		r.pvtdataShouldContain(0, "marblesp", "collectionMarblePrivateDetails", "marble1", d.marbleDetail("marble1", 99))

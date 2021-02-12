@@ -19,7 +19,7 @@ type serializedBlockInfo struct {
 	metadata    *common.BlockMetadata
 }
 
-//The order of the transactions must be maintained for history
+// The order of the transactions must be maintained for history
 type txindexInfo struct {
 	txID string
 	loc  *locPointer
@@ -167,7 +167,6 @@ func extractData(buf *buffer) (*common.BlockData, []*txindexInfo, error) {
 		if txid, err = protoutil.GetOrComputeTxIDFromEnvelope(txEnvBytes); err != nil {
 			logger.Warningf("error while extracting txid from tx envelope bytes during deserialization of block. Ignoring this error as this is caused by a malformed transaction. Error:%s",
 				err)
-
 		}
 		data.Data = append(data.Data, txEnvBytes)
 		idxInfo := &txindexInfo{txID: txid, loc: &locPointer{txOffset, buf.GetBytesConsumed() - txOffset}}

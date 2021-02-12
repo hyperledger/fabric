@@ -49,7 +49,7 @@ type ChaincodeStreamHandler interface {
 }
 
 type SelfDescribingSysCC interface {
-	//Unique name of the system chaincode
+	// Unique name of the system chaincode
 	Name() string
 
 	// Chaincode returns the underlying chaincode

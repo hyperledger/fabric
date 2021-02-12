@@ -121,7 +121,7 @@ var _ = Describe("ConfigTx", func() {
 		envBytes, err := proto.Marshal(envelope)
 		Expect(err).NotTo(HaveOccurred())
 		channelCreateTxPath := network.CreateChannelTxPath("testchannel")
-		err = ioutil.WriteFile(channelCreateTxPath, envBytes, 0644)
+		err = ioutil.WriteFile(channelCreateTxPath, envBytes, 0o644)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("creating the channel")

@@ -355,7 +355,6 @@ func TestRevalidation(t *testing.T) {
 			case <-time.After(100 * time.Millisecond):
 			}
 		})
-
 	})
 
 	t.Run("NormalMsg", func(t *testing.T) {

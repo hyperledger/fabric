@@ -40,7 +40,7 @@ func CreateFile(filePath string, dataformat byte, newHashFunc NewHashFunc) (*Fil
 	}
 	// create the file only if it does not already exist.
 	// set the permission mode to read-only, as once the file is closed, we do not support modifying the file
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0444)
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o444)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error while creating the snapshot file: %s", filePath)
 	}

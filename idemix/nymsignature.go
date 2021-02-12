@@ -55,7 +55,7 @@ func NewNymSignature(sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP256BN.BIG, ipk *
 	index = 0
 	proofData = proofData[:2*FieldBytes]
 	index = appendBytesBig(proofData, index, c)
-	index = appendBytesBig(proofData, index, Nonce)
+	appendBytesBig(proofData, index, Nonce)
 	ProofC := HashModOrder(proofData)
 
 	// Step 3: reply to the challenge message (s-values)
@@ -67,7 +67,8 @@ func NewNymSignature(sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP256BN.BIG, ipk *
 		ProofC:     BigToBytes(ProofC),
 		ProofSSk:   BigToBytes(ProofSSk),
 		ProofSRNym: BigToBytes(ProofSRNym),
-		Nonce:      BigToBytes(Nonce)}, nil
+		Nonce:      BigToBytes(Nonce),
+	}, nil
 }
 
 // Ver verifies an idemix NymSignature
@@ -99,7 +100,7 @@ func (sig *NymSignature) Ver(nym *FP256BN.ECP, ipk *IssuerPublicKey, msg []byte)
 	index = 0
 	proofData = proofData[:2*FieldBytes]
 	index = appendBytesBig(proofData, index, c)
-	index = appendBytesBig(proofData, index, Nonce)
+	appendBytesBig(proofData, index, Nonce)
 
 	if *ProofC != *HashModOrder(proofData) {
 		return errors.Errorf("pseudonym signature invalid: zero-knowledge proof is invalid")

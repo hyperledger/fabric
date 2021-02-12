@@ -3,14 +3,16 @@ package mocks
 
 import (
 	"sync"
+
+	"github.com/hyperledger/fabric/common/channelconfig"
 )
 
 type MetadataValidator struct {
-	ValidateConsensusMetadataStub        func([]byte, []byte, bool) error
+	ValidateConsensusMetadataStub        func(channelconfig.Orderer, channelconfig.Orderer, bool) error
 	validateConsensusMetadataMutex       sync.RWMutex
 	validateConsensusMetadataArgsForCall []struct {
-		arg1 []byte
-		arg2 []byte
+		arg1 channelconfig.Orderer
+		arg2 channelconfig.Orderer
 		arg3 bool
 	}
 	validateConsensusMetadataReturns struct {
@@ -23,25 +25,15 @@ type MetadataValidator struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *MetadataValidator) ValidateConsensusMetadata(arg1 []byte, arg2 []byte, arg3 bool) error {
-	var arg1Copy []byte
-	if arg1 != nil {
-		arg1Copy = make([]byte, len(arg1))
-		copy(arg1Copy, arg1)
-	}
-	var arg2Copy []byte
-	if arg2 != nil {
-		arg2Copy = make([]byte, len(arg2))
-		copy(arg2Copy, arg2)
-	}
+func (fake *MetadataValidator) ValidateConsensusMetadata(arg1 channelconfig.Orderer, arg2 channelconfig.Orderer, arg3 bool) error {
 	fake.validateConsensusMetadataMutex.Lock()
 	ret, specificReturn := fake.validateConsensusMetadataReturnsOnCall[len(fake.validateConsensusMetadataArgsForCall)]
 	fake.validateConsensusMetadataArgsForCall = append(fake.validateConsensusMetadataArgsForCall, struct {
-		arg1 []byte
-		arg2 []byte
+		arg1 channelconfig.Orderer
+		arg2 channelconfig.Orderer
 		arg3 bool
-	}{arg1Copy, arg2Copy, arg3})
-	fake.recordInvocation("ValidateConsensusMetadata", []interface{}{arg1Copy, arg2Copy, arg3})
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("ValidateConsensusMetadata", []interface{}{arg1, arg2, arg3})
 	fake.validateConsensusMetadataMutex.Unlock()
 	if fake.ValidateConsensusMetadataStub != nil {
 		return fake.ValidateConsensusMetadataStub(arg1, arg2, arg3)
@@ -59,13 +51,13 @@ func (fake *MetadataValidator) ValidateConsensusMetadataCallCount() int {
 	return len(fake.validateConsensusMetadataArgsForCall)
 }
 
-func (fake *MetadataValidator) ValidateConsensusMetadataCalls(stub func([]byte, []byte, bool) error) {
+func (fake *MetadataValidator) ValidateConsensusMetadataCalls(stub func(channelconfig.Orderer, channelconfig.Orderer, bool) error) {
 	fake.validateConsensusMetadataMutex.Lock()
 	defer fake.validateConsensusMetadataMutex.Unlock()
 	fake.ValidateConsensusMetadataStub = stub
 }
 
-func (fake *MetadataValidator) ValidateConsensusMetadataArgsForCall(i int) ([]byte, []byte, bool) {
+func (fake *MetadataValidator) ValidateConsensusMetadataArgsForCall(i int) (channelconfig.Orderer, channelconfig.Orderer, bool) {
 	fake.validateConsensusMetadataMutex.RLock()
 	defer fake.validateConsensusMetadataMutex.RUnlock()
 	argsForCall := fake.validateConsensusMetadataArgsForCall[i]

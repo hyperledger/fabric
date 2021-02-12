@@ -82,7 +82,7 @@ func TestBigKeyFile(t *testing.T) {
 	copy(bigBuff, rawKey)
 
 	//>64k, so that total file size will be too big
-	ioutil.WriteFile(filepath.Join(ksPath, "bigfile.pem"), bigBuff, 0666)
+	ioutil.WriteFile(filepath.Join(ksPath, "bigfile.pem"), bigBuff, 0o666)
 
 	_, err = ks.GetKey(ski)
 	require.Error(t, err)
@@ -90,7 +90,7 @@ func TestBigKeyFile(t *testing.T) {
 	require.EqualError(t, err, expected)
 
 	// 1k, so that the key would be found
-	ioutil.WriteFile(filepath.Join(ksPath, "smallerfile.pem"), bigBuff[0:1<<10], 0666)
+	ioutil.WriteFile(filepath.Join(ksPath, "smallerfile.pem"), bigBuff[0:1<<10], 0o666)
 
 	_, err = ks.GetKey(ski)
 	require.NoError(t, err)
@@ -108,6 +108,7 @@ func TestReInitKeyStore(t *testing.T) {
 	err = fbKs.Init(nil, ksPath, false)
 	require.EqualError(t, err, "keystore is already initialized")
 }
+
 func TestDirExists(t *testing.T) {
 	r, err := dirExists("")
 	require.False(t, r)

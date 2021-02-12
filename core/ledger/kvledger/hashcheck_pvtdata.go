@@ -14,23 +14,42 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/ledger/pvtdatastorage"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
 // constructValidAndInvalidPvtData computes the valid pvt data and hash mismatch list
-// from a received pvt data list of old blocks.
-func constructValidAndInvalidPvtData(reconciledPvtdata []*ledger.ReconciledPvtdata, blockStore *blkstorage.BlockStore) (
+// from a received pvt data list of old blocks. The reconciled data elements that belong
+// to a block which is not available in the blockstore (i.e., the block is prior to or equal
+// to the lastBlockInBootSnapshot), the boot KV hashes in the private data store are used for
+// verifying the hashes. Further, in this case, the write-set of a collection is trimmed in order
+// to remove the key-values that were not present in the snapshot (most likely because, they
+//	were over-written in a later version)
+func constructValidAndInvalidPvtData(
+	reconciledPvtdata []*ledger.ReconciledPvtdata,
+	blockStore *blkstorage.BlockStore,
+	pvtdataStore *pvtdatastorage.Store,
+	lastBlockInBootSnapshot uint64,
+) (
 	map[uint64][]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
 ) {
-	// for each block, for each transaction, retrieve the txEnvelope to
-	// compare the hash of pvtRwSet in the block and the hash of the received
-	// txPvtData. On a mismatch, add an entry to hashMismatch list.
+	// for each block, for each transaction, verify the hash of pvtRwSet
+	// present in the received data txPvtData.
+	// On a mismatch, add an entry to hashMismatch list.
 	// On a match, add the pvtData to the validPvtData list
 	validPvtData := make(map[uint64][]*ledger.TxPvtData)
 	var invalidPvtData []*ledger.PvtdataHashMismatch
 
 	for _, pvtdata := range reconciledPvtdata {
-		validData, invalidData, err := findValidAndInvalidPvtdata(pvtdata, blockStore)
+		var validData []*ledger.TxPvtData
+		var invalidData []*ledger.PvtdataHashMismatch
+		var err error
+
+		if pvtdata.BlockNum <= lastBlockInBootSnapshot {
+			validData, invalidData, err = verifyHashesViaBootKVHashes(pvtdata, pvtdataStore)
+		} else {
+			validData, invalidData, err = verifyHashesFromBlockStore(pvtdata, blockStore)
+		}
 		if err != nil {
 			return nil, nil, err
 		}
@@ -42,7 +61,7 @@ func constructValidAndInvalidPvtData(reconciledPvtdata []*ledger.ReconciledPvtda
 	return validPvtData, invalidPvtData, nil
 }
 
-func findValidAndInvalidPvtdata(reconciledPvtdata *ledger.ReconciledPvtdata, blockStore *blkstorage.BlockStore) (
+func verifyHashesFromBlockStore(reconciledPvtdata *ledger.ReconciledPvtdata, blockStore *blkstorage.BlockStore) (
 	[]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
 ) {
 	var validPvtData []*ledger.TxPvtData
@@ -163,13 +182,111 @@ func findInvalidNsPvtData(nsRwset *rwset.NsPvtReadWriteSet, txRWSet *rwsetutil.T
 
 		if !bytes.Equal(util.ComputeSHA256(collPvtRwset.Rwset), rwsetHash) {
 			invalidPvtData = append(invalidPvtData, &ledger.PvtdataHashMismatch{
-				BlockNum:     blkNum,
-				TxNum:        txNum,
-				Namespace:    ns,
-				Collection:   coll,
-				ExpectedHash: rwsetHash})
+				BlockNum:   blkNum,
+				TxNum:      txNum,
+				Namespace:  ns,
+				Collection: coll,
+			})
 			invalidNsColl = append(invalidNsColl, &nsColl{ns, coll})
 		}
 	}
 	return invalidPvtData, invalidNsColl
+}
+
+func verifyHashesViaBootKVHashes(reconciledPvtdata *ledger.ReconciledPvtdata, pvtdataStore *pvtdatastorage.Store) (
+	[]*ledger.TxPvtData, []*ledger.PvtdataHashMismatch, error,
+) {
+	var validPvtData []*ledger.TxPvtData
+	var invalidPvtData []*ledger.PvtdataHashMismatch
+
+	blkNum := reconciledPvtdata.BlockNum
+
+	for txNum, txData := range reconciledPvtdata.WriteSets { // Tx loop
+		var toDeleteNsColl []*nsColl
+
+		reconTx, err := rwsetutil.TxPvtRwSetFromProtoMsg(txData.WriteSet)
+		if err != nil {
+			continue
+		}
+
+		for _, reconNS := range reconTx.NsPvtRwSet { // Ns Loop
+			for _, reconColl := range reconNS.CollPvtRwSets { // coll loop
+				if reconColl.KvRwSet == nil || len(reconColl.KvRwSet.Writes) == 0 {
+					toDeleteNsColl = append(toDeleteNsColl,
+						&nsColl{
+							ns:   reconNS.NameSpace,
+							coll: reconColl.CollectionName,
+						},
+					)
+					continue
+				}
+
+				expectedKVHashes, err := pvtdataStore.FetchBootKVHashes(blkNum, txNum, reconNS.NameSpace, reconColl.CollectionName)
+				if err != nil {
+					return nil, nil, err
+				}
+				if len(expectedKVHashes) == 0 {
+					toDeleteNsColl = append(toDeleteNsColl,
+						&nsColl{
+							ns:   reconNS.NameSpace,
+							coll: reconColl.CollectionName,
+						},
+					)
+					continue
+				}
+
+				anyKVMismatch := false
+				numKVsRecieved := 0
+				keysVisited := map[string]struct{}{}
+
+				for _, reconKV := range reconColl.KvRwSet.Writes {
+					_, ok := keysVisited[reconKV.Key]
+					if ok {
+						anyKVMismatch = true
+						break
+					}
+					keysVisited[reconKV.Key] = struct{}{}
+
+					reconKeyHash := util.ComputeSHA256([]byte(reconKV.Key))
+					reconValHash := util.ComputeSHA256(reconKV.Value)
+
+					expectedValHash, ok := expectedKVHashes[string(reconKeyHash)]
+					if ok {
+						numKVsRecieved++
+						if !bytes.Equal(expectedValHash, reconValHash) {
+							anyKVMismatch = true
+							break
+						}
+					}
+				}
+
+				if anyKVMismatch || numKVsRecieved < len(expectedKVHashes) {
+					invalidPvtData = append(invalidPvtData,
+						&ledger.PvtdataHashMismatch{
+							BlockNum:   blkNum,
+							TxNum:      txNum,
+							Namespace:  reconNS.NameSpace,
+							Collection: reconColl.CollectionName,
+						},
+					)
+					toDeleteNsColl = append(toDeleteNsColl,
+						&nsColl{
+							ns:   reconNS.NameSpace,
+							coll: reconColl.CollectionName,
+						},
+					)
+					continue
+				}
+			} // end coll loop
+		} // end Ns loop
+
+		for _, nsColl := range toDeleteNsColl {
+			removeCollFromTxPvtReadWriteSet(txData.WriteSet, nsColl.ns, nsColl.coll)
+		}
+
+		if len(txData.WriteSet.NsPvtRwset) > 0 {
+			validPvtData = append(validPvtData, txData)
+		}
+	} // end Tx loop
+	return validPvtData, invalidPvtData, nil
 }

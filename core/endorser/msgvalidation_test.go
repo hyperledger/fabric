@@ -144,7 +144,6 @@ var _ = Describe("UnpackProposal", func() {
 			proposal.Payload = marshalChaincodeProposalPayload()
 			return protoutil.MarshalOrPanic(proposal)
 		}
-
 	})
 
 	JustBeforeEach(func() {
@@ -446,18 +445,6 @@ var _ = Describe("Validate", func() {
 		})
 	})
 
-	Context("when the identity is actually not a validly serialized proto", func() {
-		BeforeEach(func() {
-			up.SignatureHeader.Creator = []byte("garbage")
-			up.ChannelHeader.TxId = "8f9de857052f103caee0fef35f66766562b4b4c2a14af34e9626351de52edfc4"
-		})
-
-		It("returns an auth error", func() {
-			err := up.Validate(fakeIdentityDeserializer)
-			Expect(err).To(MatchError("access denied: channel [channel-id] creator org unknown, creator is malformed"))
-		})
-	})
-
 	Context("when the identity cannot be deserialized", func() {
 		BeforeEach(func() {
 			fakeIdentityDeserializer.DeserializeIdentityReturns(nil, fmt.Errorf("fake-deserializing-error"))
@@ -465,12 +452,13 @@ var _ = Describe("Validate", func() {
 
 		It("returns a generic auth error", func() {
 			err := up.Validate(fakeIdentityDeserializer)
-			Expect(err).To(MatchError("access denied: channel [channel-id] creator org [mspid]"))
+			Expect(err).To(MatchError("access denied: channel [channel-id] creator org unknown, creator is malformed"))
 		})
 	})
 
 	Context("when the identity is not valid", func() {
 		BeforeEach(func() {
+			fakeIdentity.GetMSPIdentifierReturns("mspid")
 			fakeIdentity.ValidateReturns(fmt.Errorf("fake-validate-error"))
 		})
 
@@ -482,6 +470,7 @@ var _ = Describe("Validate", func() {
 
 	Context("when the identity signature is not valid", func() {
 		BeforeEach(func() {
+			fakeIdentity.GetMSPIdentifierReturns("mspid")
 			fakeIdentity.VerifyReturns(fmt.Errorf("fake-verify-error"))
 		})
 

@@ -58,14 +58,6 @@ You can see the part of `configtx.yaml` that defines Org1 of the test network be
           Endorsement:
               Type: Signature
               Rule: "OR('Org1MSP.peer')"
-
-      # leave this flag set to true.
-      AnchorPeers:
-          # AnchorPeers defines the location of peers which can be used
-          # for cross org gossip communication.  Note, this value is only
-          # encoded in the genesis block in the Application section context
-          - Host: peer0.org1.example.com
-            Port: 7051
   ```  
 
   - The `Name` field is an informal name used to identify the organization.
@@ -81,8 +73,6 @@ You can see the part of `configtx.yaml` that defines Org1 of the test network be
     The MSP folder that is used to create the channel MSP only contains public certificates. As a result, you can build the MSP folder locally, and then send the MSP to the organization that is creating the channel.
 
   - The `Policies` section is used to define a set of signature policies that reference the channel member. We will discuss these policies in more detail when we discuss [channel policies](channel_policies.html).
-
-  - The `AnchorPeers` field lists the anchor peers for an organization. Anchor peers are required in order to take advantage of features such as private data and service discovery. It is recommended that organizations select at least one anchor peer. While an organization can select their anchor peers on the channel for the first time using the `configtxgen` tool, it is recommended that each organization set anchor peers by using the `configtxlator` tool to [update the channel configuration](create_channel.html#set-anchor-peers). As a result, this field is not required.
 
 ## Capabilities
 
@@ -145,7 +135,7 @@ The test network uses the default policies provided by Fabric, which require tha
 
 The `configtxgen` tool reads the channel profiles in the **Profiles** section to build a channel configuration. Each profile uses YAML syntax to gather data from other sections of the file. The `configtxgen` tool uses this configuration to create a channel creation transaction for an applications channel, or to write the channel genesis block for a system channel. To learn more about YAML syntax, [Wikipedia](https://en.wikipedia.org/wiki/YAML) provides a good place to get started.
 
-The `configtx.yaml` used by the test network contains two channel profiles, `TwoOrgsOrdererGenesis` and `TwoOrgsChannel`:
+The `configtx.yaml` used by the test network contains two channel profiles, `TwoOrgsOrdererGenesis` and `TwoOrgsChannel`. If you want to create a channel without a system channel by using the `osnadmin CLI` then you can refer to the `SampleAppChannelEtcdRaft`
 
 ### TwoOrgsOrdererGenesis
 
@@ -189,3 +179,32 @@ TwoOrgsChannel:
 The system channel is used by the ordering service as a template to create application channels. The nodes of the ordering service that are defined in the system channel become the default consenter set of new channels, while the administrators of the ordering service become the orderer administrators of the channel. The channel MSPs of channel members are transferred to the new channel from the system channel. After the channel is created, ordering nodes can be added or removed from the channel by updating the channel configuration. You can also update the channel configuration to [add other organizations as channel members](../channel_update_tutorial.html).
 
 The `TwoOrgsChannel` provides the name of the consortium, `SampleConsortium`, hosted by the test network system channel. As a result, the ordering service defined in the `TwoOrgsOrdererGenesis` profile becomes channel consenter set. In the `Application` section, both organizations from the consortium, Org1 and Org2, are included as channel members. The channel uses `V2_0` as the application capabilities, and uses the default policies from the **Application** section to govern how peer organizations will interact with the channel. The application channel also uses the default policies from the **Channel** section and enables `V2_0` as the channel capability level.
+
+### SampleAppChannelEtcdRaft
+
+The `SampleAppChannelEtcdRaft` profile is provided for customers that prefer to create a channel without a system channel by using the `osnadmin CLI`. The major difference is that a consortium definition is no longer required. Check out the [Create a channel](create_channel_participation.html) tutorial to learn more about how to use this profile.
+
+```
+SampleAppChannelEtcdRaft:
+    <<: *ChannelDefaults
+    Orderer:
+        <<: *OrdererDefaults
+        OrdererType: etcdraft
+        Organizations:
+            - <<: *SampleOrg
+              Policies:
+                  <<: *SampleOrgPolicies
+                  Admins:
+                      Type: Signature
+                      Rule: "OR('SampleOrg.member')"
+    Application:
+        <<: *ApplicationDefaults
+        Organizations:
+            - <<: *SampleOrg
+              Policies:
+                  <<: *SampleOrgPolicies
+                  Admins:
+                      Type: Signature
+                      Rule: "OR('SampleOrg.member')"
+```
+For simplicity, this snippet assumes that the peers and orderers belong to the same organization `SampleOrg`. For a production deployment however, it is recommended that the peer and ordering nodes belong to separate organizations.

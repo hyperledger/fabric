@@ -77,5 +77,4 @@ func TestAssemblePvtRWSet(t *testing.T) {
 	require.NotNil(t, configs.Config[0].GetStaticCollectionConfig())
 	require.Equal(t, "mycollection-1", configs.Config[0].GetStaticCollectionConfig().Name)
 	require.Equal(t, 1, len(pvtReadWriteSetWithConfigInfo.PvtRwset.NsPvtRwset))
-
 }

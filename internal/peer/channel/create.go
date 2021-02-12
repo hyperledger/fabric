@@ -24,14 +24,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//ConfigTxFileNotFound channel create configuration tx file not found
+// ConfigTxFileNotFound channel create configuration tx file not found
 type ConfigTxFileNotFound string
 
 func (e ConfigTxFileNotFound) Error() string {
 	return fmt.Sprintf("channel create configuration tx file not found %s", string(e))
 }
 
-//InvalidCreateTx invalid channel create transaction
+// InvalidCreateTx invalid channel create transaction
 type InvalidCreateTx string
 
 func (e InvalidCreateTx) Error() string {
@@ -187,7 +187,7 @@ func executeCreate(cf *ChannelCmdFactory) error {
 	if outputBlock != common.UndefinedParamValue {
 		file = outputBlock
 	}
-	err = ioutil.WriteFile(file, b, 0644)
+	err = ioutil.WriteFile(file, b, 0o644)
 	if err != nil {
 		return err
 	}

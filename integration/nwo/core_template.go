@@ -110,12 +110,6 @@ peer:
       Security: 256
       FileKeyStore:
         KeyStore:
-    PKCS11:
-      Hash: SHA2
-      Security: 256
-      Library:
-      Label:
-      Pin:
   mspConfigPath: {{ .PeerLocalMSPDir Peer }}
   localMspId: {{ (.Organization Peer.Organization).MSPID }}
   deliveryclient:
@@ -214,9 +208,10 @@ ledger:
       requestTimeout: 35s
       queryLimit: 10000
       maxBatchUpdateSize: 1000
-      warmIndexesAfterNBlocks: 1
   history:
     enableHistoryDatabase: true
+  pvtdataStore:
+    deprioritizedDataReconcilerInterval: 60m
 
 operations:
   listenAddress: 127.0.0.1:{{ .PeerPort Peer "Operations" }}

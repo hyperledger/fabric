@@ -72,7 +72,8 @@ func TestMockComm_PingPong(t *testing.T) {
 					SeqNum: 1,
 					Data:   []byte("Ping"),
 				},
-			}},
+			},
+		},
 	})
 	peerA.Send(sMsg, &comm.RemotePeer{Endpoint: "peerB", PKIID: common.PKIidType("peerB")})
 
@@ -88,12 +89,12 @@ func TestMockComm_PingPong(t *testing.T) {
 					SeqNum: 1,
 					Data:   []byte("Pong"),
 				},
-			}},
+			},
+		},
 	})
 
 	msg = <-rcvChA
 	dataMsg = msg.GetGossipMessage().GetDataMsg()
 	data = string(dataMsg.Payload.Data)
 	require.Equal(t, "Pong", data)
-
 }

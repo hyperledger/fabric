@@ -455,6 +455,6 @@ func TestFailedMetadataValidation(t *testing.T) {
 	require.Equal(t, 1, mv.ValidateConsensusMetadataCallCount())
 	om, nm, nc := mv.ValidateConsensusMetadataArgsForCall(0)
 	require.True(t, nc)
-	require.Equal(t, []byte("old consensus metadata"), om)
-	require.Equal(t, []byte("new consensus metadata"), nm)
+	require.Equal(t, []byte("old consensus metadata"), om.ConsensusMetadata())
+	require.Equal(t, []byte("new consensus metadata"), nm.ConsensusMetadata())
 }

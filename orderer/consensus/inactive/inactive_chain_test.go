@@ -28,6 +28,6 @@ func TestInactiveChain(t *testing.T) {
 	require.False(t, open)
 
 	cRel, status := chain.StatusReport()
-	require.Equal(t, types.ClusterRelationConfigTracker, cRel)
+	require.Equal(t, types.ConsensusRelationConfigTracker, cRel)
 	require.Equal(t, types.StatusInactive, status)
 }

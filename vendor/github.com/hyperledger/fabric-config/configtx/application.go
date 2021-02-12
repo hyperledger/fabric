@@ -139,7 +139,7 @@ func (a *ApplicationGroup) Capabilities() ([]string, error) {
 }
 
 // AddCapability sets capability to the provided channel config.
-// If the provided capability already exist in current configuration, this action
+// If the provided capability already exists in current configuration, this action
 // will be a no-op.
 func (a *ApplicationGroup) AddCapability(capability string) error {
 	capabilities, err := a.Capabilities()
@@ -177,11 +177,22 @@ func (a *ApplicationGroup) Policies() (map[string]Policy, error) {
 }
 
 // SetPolicy sets the specified policy in the application group's config policy map.
-// If the policy already exist in current configuration, its value will be overwritten.
+// If the policy already exists in current configuration, its value will be overwritten.
 func (a *ApplicationGroup) SetPolicy(modPolicy, policyName string, policy Policy) error {
 	err := setPolicy(a.applicationGroup, modPolicy, policyName, policy)
 	if err != nil {
 		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
+	}
+
+	return nil
+}
+
+// SetPolicies sets the specified policies in the application group's config policy map.
+// If the policies already exist in current configuration, the values will be replaced with new policies.
+func (a *ApplicationGroup) SetPolicies(modPolicy string, policies map[string]Policy) error {
+	err := setPolicies(a.applicationGroup, policies, modPolicy)
+	if err != nil {
+		return fmt.Errorf("failed to set policies: %v", err)
 	}
 
 	return nil
@@ -200,17 +211,28 @@ func (a *ApplicationGroup) RemovePolicy(policyName string) error {
 }
 
 // Policies returns the map of policies for a specific application org in
-// the updated config..
+// the updated config.
 func (a *ApplicationOrg) Policies() (map[string]Policy, error) {
 	return getPolicies(a.orgGroup.Policies)
 }
 
 // SetPolicy sets the specified policy in the application org group's config policy map.
-// If an Organization policy already exist in current configuration, its value will be overwritten.
+// If an Organization policy already exists in current configuration, its value will be overwritten.
 func (a *ApplicationOrg) SetPolicy(modPolicy, policyName string, policy Policy) error {
 	err := setPolicy(a.orgGroup, modPolicy, policyName, policy)
 	if err != nil {
 		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
+	}
+
+	return nil
+}
+
+// SetPolicies sets the specified policies in the application org group's config policy map.
+// If the policies already exist in current configuration, the values will be replaced with new policies.
+func (a *ApplicationOrg) SetPolicies(modPolicy string, policies map[string]Policy) error {
+	err := setPolicies(a.orgGroup, policies, modPolicy)
+	if err != nil {
+		return fmt.Errorf("failed to set policies: %v", err)
 	}
 
 	return nil
@@ -336,11 +358,16 @@ func (a *ApplicationOrg) RemoveAnchorPeer(anchorPeerToRemove Address) error {
 
 // ACLs returns a map of ACLS for given config application.
 func (a *ApplicationGroup) ACLs() (map[string]string, error) {
+	aclConfigValue, ok := a.applicationGroup.Values[ACLsKey]
+	if !ok {
+		return nil, nil
+	}
+
 	aclProtos := &pb.ACLs{}
 
-	err := unmarshalConfigValueAtKey(a.applicationGroup, ACLsKey, aclProtos)
+	err := proto.Unmarshal(aclConfigValue.Value, aclProtos)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshaling %s: %v", ACLsKey, err)
 	}
 
 	retACLs := map[string]string{}
@@ -352,7 +379,7 @@ func (a *ApplicationGroup) ACLs() (map[string]string, error) {
 }
 
 // SetACLs sets ACLS to an existing channel config application.
-// If an ACL already exist in current configuration, it will be replaced with new ACL.
+// If an ACL already exists in current configuration, it will be replaced with new ACL.
 func (a *ApplicationGroup) SetACLs(acls map[string]string) error {
 	err := setValue(a.applicationGroup, aclValues(acls), AdminsPolicyKey)
 	if err != nil {

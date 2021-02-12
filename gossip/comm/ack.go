@@ -12,8 +12,10 @@ import (
 	"github.com/hyperledger/fabric/gossip/util"
 )
 
-type sendFunc func(peer *RemotePeer, msg *protoext.SignedGossipMessage)
-type waitFunc func(*RemotePeer) error
+type (
+	sendFunc func(peer *RemotePeer, msg *protoext.SignedGossipMessage)
+	waitFunc func(*RemotePeer) error
+)
 
 type ackSendOperation struct {
 	snd        sendFunc

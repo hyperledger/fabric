@@ -65,20 +65,6 @@ func TestGetIdentifier(t *testing.T) {
 	mockMSP.AssertExpectations(t)
 }
 
-func TestGetSigningIdentity(t *testing.T) {
-	mockMSP := &mocks.MockMSP{}
-	i, err := New(mockMSP)
-	require.NoError(t, err)
-
-	mockIdentity := &mocks.MockSigningIdentity{Mock: mock.Mock{}, MockIdentity: &mocks.MockIdentity{ID: "Alice"}}
-	identifier := &msp.IdentityIdentifier{Mspid: "MSP", Id: "Alice"}
-	mockMSP.On("GetSigningIdentity", identifier).Return(mockIdentity, nil)
-	id, err := i.GetSigningIdentity(identifier)
-	require.NoError(t, err)
-	require.Equal(t, mockIdentity, id)
-	mockMSP.AssertExpectations(t)
-}
-
 func TestGetDefaultSigningIdentity(t *testing.T) {
 	mockMSP := &mocks.MockMSP{}
 	i, err := New(mockMSP)

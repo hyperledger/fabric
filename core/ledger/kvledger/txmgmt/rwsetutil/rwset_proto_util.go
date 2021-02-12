@@ -17,6 +17,8 @@ limitations under the License.
 package rwsetutil
 
 import (
+	"bytes"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
@@ -128,7 +130,7 @@ func (txRwSet *TxRwSet) FromProtoBytes(protoBytes []byte) error {
 func (txPvtRwSet *TxPvtRwSet) ToProtoBytes() ([]byte, error) {
 	var protoMsg *rwset.TxPvtReadWriteSet
 	var err error
-	if protoMsg, err = txPvtRwSet.toProtoMsg(); err != nil {
+	if protoMsg, err = txPvtRwSet.ToProtoMsg(); err != nil {
 		return nil, err
 	}
 	return proto.Marshal(protoMsg)
@@ -251,7 +253,8 @@ func (txRwSet *TxRwSet) NumCollections() int {
 // functions for private read-write set
 ///////////////////////////////////////////////////////////////////////////////
 
-func (txPvtRwSet *TxPvtRwSet) toProtoMsg() (*rwset.TxPvtReadWriteSet, error) {
+// ToToProtoMsg transforms the struct into equivalent proto message
+func (txPvtRwSet *TxPvtRwSet) ToProtoMsg() (*rwset.TxPvtReadWriteSet, error) {
 	protoMsg := &rwset.TxPvtReadWriteSet{DataModel: rwset.TxReadWriteSet_KV}
 	var nsProtoMsg *rwset.NsPvtReadWriteSet
 	var err error
@@ -342,7 +345,7 @@ func newProtoVersion(height *version.Height) *kvrwset.Version {
 }
 
 func newKVWrite(key string, value []byte) *kvrwset.KVWrite {
-	return &kvrwset.KVWrite{Key: key, IsDelete: value == nil, Value: value}
+	return &kvrwset.KVWrite{Key: key, IsDelete: len(value) == 0, Value: value}
 }
 
 func newPvtKVReadHash(key string, version *version.Height) *kvrwset.KVReadHash {
@@ -357,4 +360,16 @@ func newPvtKVWriteAndHash(key string, value []byte) (*kvrwset.KVWrite, *kvrwset.
 		valueHash = util.ComputeHash(value)
 	}
 	return kvWrite, &kvrwset.KVWriteHash{KeyHash: keyHash, IsDelete: kvWrite.IsDelete, ValueHash: valueHash}
+}
+
+// IsKVWriteDelete returns true if the kvWrite indicates a delete operation. See FAB-18386 for details.
+func IsKVWriteDelete(kvWrite *kvrwset.KVWrite) bool {
+	return kvWrite.IsDelete || len(kvWrite.Value) == 0
+}
+
+var hashOfZeroLengthByteArray = util.ComputeHash([]byte{})
+
+// IsKVWriteHashDelete returns true if the kvWriteHash indicates a delete operation. See FAB-18386 for details.
+func IsKVWriteHashDelete(kvWriteHash *kvrwset.KVWriteHash) bool {
+	return kvWriteHash.IsDelete || len(kvWriteHash.ValueHash) == 0 || bytes.Equal(hashOfZeroLengthByteArray, kvWriteHash.ValueHash)
 }

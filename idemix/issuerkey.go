@@ -89,7 +89,7 @@ func NewIssuerKey(AttributeNames []string, rng *amcl.RAND) (*IssuerKey, error) {
 	index = appendBytesG2(proofData, index, GenG2)
 	index = appendBytesG1(proofData, index, BarG1)
 	index = appendBytesG2(proofData, index, W)
-	index = appendBytesG1(proofData, index, BarG2)
+	appendBytesG1(proofData, index, BarG2)
 
 	proofC := HashModOrder(proofData)
 	key.Ipk.ProofC = BigToBytes(proofC)
@@ -161,7 +161,7 @@ func (IPk *IssuerPublicKey) Check() error {
 	index = appendBytesG2(proofData, index, GenG2)
 	index = appendBytesG1(proofData, index, BarG1)
 	index = appendBytesG2(proofData, index, W)
-	index = appendBytesG1(proofData, index, BarG2)
+	appendBytesG1(proofData, index, BarG2)
 
 	// Verify that the challenge is the same
 	if *ProofC != *HashModOrder(proofData) {

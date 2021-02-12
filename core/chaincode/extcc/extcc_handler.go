@@ -26,8 +26,7 @@ type StreamHandler interface {
 	HandleChaincodeStream(stream ccintf.ChaincodeStream) error
 }
 
-type ExternalChaincodeRuntime struct {
-}
+type ExternalChaincodeRuntime struct{}
 
 // createConnection - standard grpc client creating using ClientConfig info (surprised there isn't
 // a helper method for this)
@@ -56,7 +55,7 @@ func (i *ExternalChaincodeRuntime) Stream(ccid string, ccinfo *ccintf.ChaincodeS
 
 	defer conn.Close()
 
-	//create the client and start streaming
+	// create the client and start streaming
 	client := pb.NewChaincodeClient(conn)
 
 	stream, err := client.Connect(context.Background())
@@ -64,7 +63,7 @@ func (i *ExternalChaincodeRuntime) Stream(ccid string, ccinfo *ccintf.ChaincodeS
 		return errors.WithMessagef(err, "error creating grpc client connection to %s", ccid)
 	}
 
-	//peer as client has to initiate the stream. Rest of the process is unchanged
+	// peer as client has to initiate the stream. Rest of the process is unchanged
 	sHandler.HandleChaincodeStream(stream)
 
 	extccLogger.Debugf("External chaincode %s client exited", ccid)

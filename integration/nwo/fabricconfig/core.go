@@ -294,8 +294,9 @@ type SystemFlags struct {
 
 type Ledger struct {
 	// Blockchain - not sure if it's needed
-	State   *StateConfig   `yaml:"state,omitempty"`
-	History *HistoryConfig `yaml:"history,omitempty"`
+	State        *StateConfig   `yaml:"state,omitempty"`
+	History      *HistoryConfig `yaml:"history,omitempty"`
+	PvtdataStore *PvtdataStore  `yaml:"pvtdataStore,omitempty"`
 }
 
 type StateConfig struct {
@@ -304,19 +305,22 @@ type StateConfig struct {
 }
 
 type CouchDBConfig struct {
-	CouchDBAddress          string        `yaml:"couchDBAddress,omitempty"`
-	Username                string        `yaml:"username,omitempty"`
-	Password                string        `yaml:"password,omitempty"`
-	MaxRetries              int           `yaml:"maxRetries,omitempty"`
-	MaxRetriesOnStartup     int           `yaml:"maxRetriesOnStartup,omitempty"`
-	RequestTimeout          time.Duration `yaml:"requestTimeout,omitempty"`
-	QueryLimit              int           `yaml:"queryLimit,omitempty"`
-	MaxBatchUpdateSize      int           `yaml:"maxBatchUpdateSize,omitempty"`
-	WarmIndexesAfterNBlocks int           `yaml:"warmIndexesAfteNBlocks,omitempty"`
+	CouchDBAddress      string        `yaml:"couchDBAddress,omitempty"`
+	Username            string        `yaml:"username,omitempty"`
+	Password            string        `yaml:"password,omitempty"`
+	MaxRetries          int           `yaml:"maxRetries,omitempty"`
+	MaxRetriesOnStartup int           `yaml:"maxRetriesOnStartup,omitempty"`
+	RequestTimeout      time.Duration `yaml:"requestTimeout,omitempty"`
+	QueryLimit          int           `yaml:"queryLimit,omitempty"`
+	MaxBatchUpdateSize  int           `yaml:"maxBatchUpdateSize,omitempty"`
 }
 
 type HistoryConfig struct {
 	EnableHistoryDatabase bool `yaml:"enableHistoryDatabase"`
+}
+
+type PvtdataStore struct {
+	DeprioritizedDataReconcilerInterval time.Duration
 }
 
 type Operations struct {

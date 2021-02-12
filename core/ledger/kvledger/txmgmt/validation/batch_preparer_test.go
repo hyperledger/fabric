@@ -503,10 +503,12 @@ type testKeyRead struct {
 	ns, coll, key string
 	version       *version.Height
 }
+
 type testKeyWrite struct {
 	ns, coll, key string
 	val           string
 }
+
 type testRwset struct {
 	reads  []*testKeyRead
 	writes []*testKeyWrite

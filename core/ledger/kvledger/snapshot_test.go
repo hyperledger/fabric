@@ -21,19 +21,20 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/ledger"
-	lgr "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
+	"github.com/hyperledger/fabric/core/ledger/confighistory/confighistorytest"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	kvledgermock "github.com/hyperledger/fabric/core/ledger/kvledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/msgs"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb/statecouchdb"
 	"github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
@@ -104,19 +105,8 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 		},
 	)
 
-	// add dummy entry in collection config history and commit block-3 and generate the snapshot
-	collConfigPkg := &peer.CollectionConfigPackage{
-		Config: []*peer.CollectionConfig{
-			{
-				Payload: &peer.CollectionConfig_StaticCollectionConfig{
-					StaticCollectionConfig: &peer.StaticCollectionConfig{
-						Name: "coll",
-					},
-				},
-			},
-		},
-	}
-	addDummyEntryInCollectionConfigHistory(t, provider, kvlgr.ledgerID, "ns", 1, collConfigPkg)
+	// add dummy entry in collection config history and commit block-2 and generate the snapshot
+	addDummyEntryInCollectionConfigHistory(t, provider, kvlgr.ledgerID, "ns", 1, []*peer.StaticCollectionConfig{{Name: "coll"}})
 
 	// add block-2 only with public and private data and generate the snapshot
 	blockAndPvtdata2 := prepareNextBlockForTest(t, kvlgr, blkGenerator, "SimulateForBlk2",
@@ -198,7 +188,17 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 					"key3": "value3.3",
 				},
 				collectionConfig: map[uint64]*peer.CollectionConfigPackage{
-					1: collConfigPkg,
+					1: {
+						Config: []*peer.CollectionConfig{
+							{
+								Payload: &peer.CollectionConfig_StaticCollectionConfig{
+									StaticCollectionConfig: &peer.StaticCollectionConfig{
+										Name: "coll",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		)
@@ -207,7 +207,6 @@ func TestSnapshotGenerationAndNewLedgerCreation(t *testing.T) {
 	t.Run("create-ledger-from-snapshot-error-paths", func(t *testing.T) {
 		testCreateLedgerFromSnapshotErrorPaths(t, snapshotDir)
 	})
-
 }
 
 func TestSnapshotDBTypeCouchDB(t *testing.T) {
@@ -288,39 +287,19 @@ func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 			CouchDB:       couchDBConfig,
 		}
 		destinationProvider := testutilNewProvider(destConf, t, &mock.DeployedChaincodeInfoProvider{})
-		ccLifecycleEventProvider := destinationProvider.initializer.ChaincodeLifecycleEventProvider.(*mock.ChaincodeLifecycleEventProvider)
-		ccLifecycleEventProvider.RegisterListenerStub = func(
-			channelID string,
-			listener ledger.ChaincodeLifecycleEventListener,
-			callback bool) error {
-			if callback {
-				err := listener.HandleChaincodeDeploy(
-					&ledger.ChaincodeDefinition{
-						Name: "ns",
-					},
-					testutil.CreateTarBytesForTest(
-						[]*testutil.TarFileEntry{
-							{
-								Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json",
-								Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`,
-							},
-						},
-					),
-				)
-				require.NoError(t, err)
-			}
-			return nil
-		}
 		return snapshotDir, couchDBConfig, destinationProvider
 	}
 
-	t.Run("create_indexes_on_couchdb", func(t *testing.T) {
-		snapshotDir, couchDBConfig, provider := setup()
-		defer func() {
-			require.NoError(t, statecouchdb.DropApplicationDBs(couchDBConfig))
-		}()
-		lgr, _, err := provider.CreateFromSnapshot(snapshotDir)
-		require.NoError(t, err)
+	dbArtifactsBytes := testutil.CreateTarBytesForTest(
+		[]*testutil.TarFileEntry{
+			{
+				Name: "META-INF/statedb/couchdb/indexes/indexSizeSortName.json",
+				Body: `{"index":{"fields":[{"size":"desc"}]},"ddoc":"indexSizeSortName","name":"indexSizeSortName","type":"json"}`,
+			},
+		},
+	)
+
+	verifyIndexCreatedOnMarbleSize := func(lgr ledger.PeerLedger) {
 		qe, err := lgr.NewQueryExecutor()
 		require.NoError(t, err)
 		defer qe.Done()
@@ -339,11 +318,137 @@ func TestSnapshotCouchDBIndexCreation(t *testing.T) {
 		require.Len(t, actualResults, 1)
 		_, err = qe.ExecuteQuery("ns", `{"selector":{"owner":"tom"}, "sort": [{"color": "desc"}]}`)
 		require.Contains(t, err.Error(), "No index exists for this sort")
+	}
+
+	t.Run("create_indexes_on_couchdb_for_new_lifecycle", func(t *testing.T) {
+		snapshotDir, couchDBConfig, provider := setup()
+		defer func() {
+			require.NoError(t, statecouchdb.DropApplicationDBs(couchDBConfig))
+		}()
+
+		// mimic new lifecycle chaincode "ns" installed and defiend and the package contains an index definition "sort index"
+		ccLifecycleEventProvider := provider.initializer.ChaincodeLifecycleEventProvider.(*mock.ChaincodeLifecycleEventProvider)
+		ccLifecycleEventProvider.RegisterListenerStub =
+			func(
+				channelID string,
+				listener ledger.ChaincodeLifecycleEventListener,
+				callback bool,
+			) error {
+				if callback {
+					err := listener.HandleChaincodeDeploy(
+						&ledger.ChaincodeDefinition{
+							Name: "ns",
+						},
+						dbArtifactsBytes,
+					)
+					require.NoError(t, err)
+				}
+				return nil
+			}
+
+		lgr, _, err := provider.CreateFromSnapshot(snapshotDir)
+		require.NoError(t, err)
+		verifyIndexCreatedOnMarbleSize(lgr)
+	})
+
+	t.Run("create_indexes_on_couchdb_for_legacy_lifecycle", func(t *testing.T) {
+		snapshotDir, couchDBConfig, provider := setup()
+		defer func() {
+			require.NoError(t, statecouchdb.DropApplicationDBs(couchDBConfig))
+		}()
+
+		// mimic legacy chaincode "ns" installed and defiend and the package contains an index definition "sort index"
+		deployedCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
+		deployedCCInfoProvider.AllChaincodesInfoReturns(
+			map[string]*ledger.DeployedChaincodeInfo{
+				"ns": {
+					Name:     "ns",
+					Version:  "version",
+					Hash:     []byte("hash"),
+					IsLegacy: true,
+				},
+				"anotherNs": {
+					Name:     "anotherNs",
+					Version:  "version",
+					Hash:     []byte("hash"),
+					IsLegacy: false,
+				},
+			},
+			nil,
+		)
+
+		installedChaincodeInfoProvider := &kvledgermock.ChaincodeInfoProvider{}
+		installedChaincodeInfoProvider.RetrieveChaincodeArtifactsReturns(
+			true, dbArtifactsBytes, nil,
+		)
+		cceventmgmt.Initialize(installedChaincodeInfoProvider)
+		lgr, _, err := provider.CreateFromSnapshot(snapshotDir)
+		require.NoError(t, err)
+
+		require.Equal(t, 1, installedChaincodeInfoProvider.RetrieveChaincodeArtifactsCallCount())
+		require.Equal(t,
+			&cceventmgmt.ChaincodeDefinition{
+				Name:    "ns",
+				Version: "version",
+				Hash:    []byte("hash"),
+			},
+			installedChaincodeInfoProvider.RetrieveChaincodeArtifactsArgsForCall(0),
+		)
+		verifyIndexCreatedOnMarbleSize(lgr)
+	})
+
+	t.Run("errors-propagation", func(t *testing.T) {
+		snapshotDir, couchDBConfig, provider := setup()
+		defer func() {
+			require.NoError(t, statecouchdb.DropApplicationDBs(couchDBConfig))
+		}()
+
+		t.Run("deployedChaincodeInfoProvider-returns-error", func(t *testing.T) {
+			deployedCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
+			deployedCCInfoProvider.AllChaincodesInfoReturns(nil, fmt.Errorf("error-retrieving-all-defined-chaincodes"))
+
+			installedChaincodeInfoProvider := &kvledgermock.ChaincodeInfoProvider{}
+			installedChaincodeInfoProvider.RetrieveChaincodeArtifactsReturns(
+				true, dbArtifactsBytes, nil,
+			)
+			cceventmgmt.Initialize(installedChaincodeInfoProvider)
+			_, _, err := provider.CreateFromSnapshot(snapshotDir)
+			require.EqualError(t, err, "error while opening ledger: error while creating statdb indexes after bootstrapping from snapshot: error-retrieving-all-defined-chaincodes")
+		})
+
+		t.Run("legacychaincodes-dbartifacts-retriever-returns-error", func(t *testing.T) {
+			deployedCCInfoProvider := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
+			deployedCCInfoProvider.AllChaincodesInfoReturns(
+				map[string]*ledger.DeployedChaincodeInfo{
+					"ns": {
+						Name:     "ns",
+						Version:  "version",
+						Hash:     []byte("hash"),
+						IsLegacy: true,
+					},
+				},
+				nil,
+			)
+
+			installedChaincodeInfoProvider := &kvledgermock.ChaincodeInfoProvider{}
+			installedChaincodeInfoProvider.RetrieveChaincodeArtifactsReturns(false, nil, fmt.Errorf("error-retrieving-db-artifacts"))
+			cceventmgmt.Initialize(installedChaincodeInfoProvider)
+			_, _, err := provider.CreateFromSnapshot(snapshotDir)
+			require.EqualError(t, err, "error while opening ledger: error while creating statdb indexes after bootstrapping from snapshot: error-retrieving-db-artifacts")
+		})
+
+		t.Run("chaincodeLifecycleEventProvider-returns-error", func(t *testing.T) {
+			chaincodeLifecycleEventProvider := provider.initializer.ChaincodeLifecycleEventProvider.(*mock.ChaincodeLifecycleEventProvider)
+			chaincodeLifecycleEventProvider.RegisterListenerReturns(fmt.Errorf("error-calling-back"))
+			cceventmgmt.Initialize(nil)
+			_, _, err := provider.CreateFromSnapshot(snapshotDir)
+			require.EqualError(t, err, "error while opening ledger: error while creating statdb indexes after bootstrapping from snapshot: error-calling-back")
+		})
 	})
 }
 
 func TestSnapshotDirPaths(t *testing.T) {
-	require.Equal(t, "/peerFSPath/snapshotRootDir/underConstruction", InProgressSnapshotsPath("/peerFSPath/snapshotRootDir"))
+	require.Equal(t, "/peerFSPath/snapshotRootDir/temp", SnapshotsTempDirPath("/peerFSPath/snapshotRootDir"))
 	require.Equal(t, "/peerFSPath/snapshotRootDir/completed", CompletedSnapshotsPath("/peerFSPath/snapshotRootDir"))
 	require.Equal(t, "/peerFSPath/snapshotRootDir/completed/myLedger", SnapshotsDirForLedger("/peerFSPath/snapshotRootDir", "myLedger"))
 	require.Equal(t, "/peerFSPath/snapshotRootDir/completed/myLedger/2000", SnapshotDirForLedgerBlockNum("/peerFSPath/snapshotRootDir", "myLedger", 2000))
@@ -357,7 +462,7 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 		provider.Close()
 	}()
 
-	inProgressSnapshotsPath := InProgressSnapshotsPath(conf.SnapshotsConfig.RootDir)
+	inProgressSnapshotsPath := SnapshotsTempDirPath(conf.SnapshotsConfig.RootDir)
 	completedSnapshotsPath := CompletedSnapshotsPath(conf.SnapshotsConfig.RootDir)
 
 	// verify that upon first time start, kvledgerProvider creates an empty temp dir and an empty final dir for the snapshots
@@ -369,7 +474,7 @@ func TestSnapshotDirPathsCreation(t *testing.T) {
 
 	// add a file in each of the above folders
 	for _, dir := range [2]string{inProgressSnapshotsPath, completedSnapshotsPath} {
-		err := ioutil.WriteFile(filepath.Join(dir, "testFile"), []byte("some junk data"), 0644)
+		err := ioutil.WriteFile(filepath.Join(dir, "testFile"), []byte("some junk data"), 0o644)
 		require.NoError(t, err)
 		f, err := ioutil.ReadDir(dir)
 		require.NoError(t, err)
@@ -393,7 +498,7 @@ func TestSnapshotsDirInitializingErrors(t *testing.T) {
 		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 		require.NoError(t, err)
 		_, err = NewProvider(
-			&lgr.Initializer{
+			&ledger.Initializer{
 				DeployedChaincodeInfoProvider: &mock.DeployedChaincodeInfoProvider{},
 				MetricsProvider:               &disabled.Provider{},
 				Config:                        conf,
@@ -416,8 +521,8 @@ func TestSnapshotsDirInitializingErrors(t *testing.T) {
 		defer cleanup()
 
 		completedSnapshotsPath := CompletedSnapshotsPath(conf.SnapshotsConfig.RootDir)
-		require.NoError(t, os.MkdirAll(filepath.Dir(completedSnapshotsPath), 0755))
-		require.NoError(t, ioutil.WriteFile(completedSnapshotsPath, []byte("some data"), 0644))
+		require.NoError(t, os.MkdirAll(filepath.Dir(completedSnapshotsPath), 0o755))
+		require.NoError(t, ioutil.WriteFile(completedSnapshotsPath, []byte("some data"), 0o644))
 		err := initKVLedgerProvider(conf)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "while creating the dir: "+completedSnapshotsPath)
@@ -449,7 +554,7 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 	t.Run("snapshot tmp dir creation returns error", func(t *testing.T) {
 		closeAndReopenLedgerProvider()
 		require.NoError(t, os.RemoveAll( // remove the base tempdir so that the snapshot tempdir creation fails
-			InProgressSnapshotsPath(conf.SnapshotsConfig.RootDir),
+			SnapshotsTempDirPath(conf.SnapshotsConfig.RootDir),
 		))
 		err := kvlgr.generateSnapshot()
 		require.Error(t, err)
@@ -489,14 +594,25 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 	t.Run("renaming to the final snapshot dir returns error", func(t *testing.T) {
 		closeAndReopenLedgerProvider()
 		snapshotFinalDir := SnapshotDirForLedgerBlockNum(conf.SnapshotsConfig.RootDir, "testLedgerid", 0)
-		require.NoError(t, os.MkdirAll(snapshotFinalDir, 0744))
+		require.NoError(t, os.MkdirAll(snapshotFinalDir, 0o744))
 		defer os.RemoveAll(snapshotFinalDir)
 		require.NoError(t, ioutil.WriteFile( // make a non-empty snapshotFinalDir to trigger failure on rename
 			filepath.Join(snapshotFinalDir, "dummyFile"),
-			[]byte("dummy file"), 0444),
+			[]byte("dummy file"), 0o444),
 		)
 		err := kvlgr.generateSnapshot()
 		require.Contains(t, err.Error(), "error while renaming dir")
+	})
+
+	t.Run("deletes the temp folder upon error", func(t *testing.T) {
+		closeAndReopenLedgerProvider()
+		provider.blkStoreProvider.Close() // close the blockstore provider to trigger an error
+		err := kvlgr.generateSnapshot()
+		require.Error(t, err)
+
+		empty, err := fileutil.DirEmpty(SnapshotsTempDirPath(conf.SnapshotsConfig.RootDir))
+		require.NoError(t, err)
+		require.True(t, empty)
 	})
 }
 
@@ -513,13 +629,13 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		conf, cleanupFunc := testConfig(t)
 		// make a copy of originalSnapshotDir
 		snapshotDirForTest = filepath.Join(conf.RootFSPath, "snapshot")
-		require.NoError(t, os.MkdirAll(snapshotDirForTest, 0700))
+		require.NoError(t, os.MkdirAll(snapshotDirForTest, 0o700))
 		files, err := ioutil.ReadDir(originalSnapshotDir)
 		require.NoError(t, err)
 		for _, f := range files {
 			content, err := ioutil.ReadFile(filepath.Join(originalSnapshotDir, f.Name()))
 			require.NoError(t, err)
-			err = ioutil.WriteFile(filepath.Join(snapshotDirForTest, f.Name()), content, 0600)
+			err = ioutil.WriteFile(filepath.Join(snapshotDirForTest, f.Name()), content, 0o600)
 			require.NoError(t, err)
 		}
 
@@ -541,17 +657,17 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 	overwriteModifiedSignableMetadata := func() {
 		signaleMetadataJSON, err := metadata.snapshotSignableMetadata.toJSON()
 		require.NoError(t, err)
-		require.NoError(t, ioutil.WriteFile(signableMetadataFile, signaleMetadataJSON, 0600))
+		require.NoError(t, ioutil.WriteFile(signableMetadataFile, signaleMetadataJSON, 0o600))
 
 		metadata.snapshotAdditionalMetadata.SnapshotHashInHex = computeHashForTest(t, provider, signaleMetadataJSON)
 		additionalMetadataJSON, err := metadata.snapshotAdditionalMetadata.toJSON()
 		require.NoError(t, err)
-		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, additionalMetadataJSON, 0600))
+		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, additionalMetadataJSON, 0o600))
 	}
 
 	overwriteDataFile := func(fileName string, content []byte) {
 		filePath := filepath.Join(snapshotDirForTest, fileName)
-		require.NoError(t, ioutil.WriteFile(filePath, content, 0600))
+		require.NoError(t, ioutil.WriteFile(filePath, content, 0o600))
 		metadata.snapshotSignableMetadata.FilesAndHashes[fileName] = computeHashForTest(t, provider, content)
 		overwriteModifiedSignableMetadata()
 	}
@@ -589,7 +705,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte(""), 0600))
+		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte(""), 0o600))
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
@@ -602,7 +718,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, []byte(""), 0600))
+		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, []byte(""), 0o600))
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
@@ -615,7 +731,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte("{}"), 0600))
+		require.NoError(t, ioutil.WriteFile(signableMetadataFile, []byte("{}"), 0o600))
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.Contains(t,
 			err.Error(),
@@ -645,7 +761,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		err := ioutil.WriteFile(filepath.Join(snapshotDirForTest, "txids.data"), []byte("random content"), 0600)
+		err := ioutil.WriteFile(filepath.Join(snapshotDirForTest, "txids.data"), []byte("random content"), 0o600)
 		require.NoError(t, err)
 
 		_, _, err = provider.CreateFromSnapshot(snapshotDirForTest)
@@ -752,7 +868,7 @@ func verifySnapshotOutput(
 	t *testing.T,
 	o *expectedSnapshotOutput,
 ) {
-	inProgressSnapshotsPath := InProgressSnapshotsPath(o.snapshotRootDir)
+	inProgressSnapshotsPath := SnapshotsTempDirPath(o.snapshotRootDir)
 	f, err := ioutil.ReadDir(inProgressSnapshotsPath)
 	require.NoError(t, err)
 	require.Len(t, f, 0)
@@ -830,7 +946,6 @@ func verifyCreatedLedger(t *testing.T,
 	l *kvLedger,
 	e *expectedLegderState,
 ) {
-
 	verifyLedgerIDExists(t, p, l.ledgerID, msgs.Status_ACTIVE)
 
 	destBCInfo, err := l.GetBlockchainInfo()
@@ -877,34 +992,16 @@ func addDummyEntryInCollectionConfigHistory(
 	ledgerID string,
 	namespace string,
 	committingBlockNumber uint64,
-	collectionConfig *peer.CollectionConfigPackage,
+	collectionConfig []*peer.StaticCollectionConfig,
 ) {
-	// configure mock to cause data entry in collection config history
-	ccInfoProviderMock := provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider)
-	ccInfoProviderMock.UpdatedChaincodesReturns(
-		[]*ledger.ChaincodeLifecycleInfo{
-			{
-				Name: "ns",
-			},
-		},
-		nil,
-	)
-
-	ccInfoProviderMock.ChaincodeInfoReturns(
-		&ledger.DeployedChaincodeInfo{
-			Name:                        namespace,
-			ExplicitCollectionConfigPkg: collectionConfig,
-		},
-		nil,
-	)
+	configHistory := &confighistorytest.Mgr{
+		Mgr:                provider.configHistoryMgr,
+		MockCCInfoProvider: provider.initializer.DeployedChaincodeInfoProvider.(*mock.DeployedChaincodeInfoProvider),
+	}
 	require.NoError(t,
-		provider.configHistoryMgr.HandleStateUpdates(
-			&ledger.StateUpdateTrigger{
-				LedgerID:           ledgerID,
-				CommittingBlockNum: committingBlockNumber,
-				StateUpdates: map[string]*ledger.KVStateUpdates{
-					namespace: {},
-				},
+		configHistory.Setup(ledgerID, namespace,
+			map[uint64][]*peer.StaticCollectionConfig{
+				committingBlockNumber: collectionConfig,
 			},
 		),
 	)
@@ -918,7 +1015,7 @@ func TestMostRecentCollectionConfigFetcher(t *testing.T) {
 	chaincodeName := "test-chaincode"
 
 	implicitCollectionName := implicitcollection.NameForOrg("test-org")
-	implicitCollection := &pb.StaticCollectionConfig{
+	implicitCollection := &peer.StaticCollectionConfig{
 		Name: implicitCollectionName,
 	}
 	mockDeployedCCInfoProvider := &mock.DeployedChaincodeInfoProvider{}
@@ -926,7 +1023,7 @@ func TestMostRecentCollectionConfigFetcher(t *testing.T) {
 
 	provider := testutilNewProvider(conf, t, mockDeployedCCInfoProvider)
 	explicitCollectionName := "explicit-coll"
-	explicitCollection := &pb.StaticCollectionConfig{
+	explicitCollection := &peer.StaticCollectionConfig{
 		Name: explicitCollectionName,
 	}
 	testutilPersistExplicitCollectionConfig(
@@ -936,7 +1033,7 @@ func TestMostRecentCollectionConfigFetcher(t *testing.T) {
 		ledgerID,
 		chaincodeName,
 		testutilCollConfigPkg(
-			[]*pb.StaticCollectionConfig{
+			[]*peer.StaticCollectionConfig{
 				explicitCollection,
 			},
 		),
@@ -951,7 +1048,7 @@ func TestMostRecentCollectionConfigFetcher(t *testing.T) {
 	testcases := []struct {
 		name                 string
 		lookupCollectionName string
-		expectedOutput       *pb.StaticCollectionConfig
+		expectedOutput       *peer.StaticCollectionConfig
 	}{
 		{
 			name:                 "lookup-implicit-collection",

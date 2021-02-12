@@ -45,7 +45,7 @@ func TestImportFromSnapshot(t *testing.T) {
 		testDir = testPath()
 		env = newTestEnv(t, NewConf(testDir, 0))
 		snapshotDir = filepath.Join(testDir, "snapshot")
-		require.NoError(t, os.Mkdir(snapshotDir, 0755))
+		require.NoError(t, os.Mkdir(snapshotDir, 0o755))
 
 		bg, genesisBlock := testutil.NewBlockGenerator(t, "testLedger", false)
 		blocksGenerator = bg
@@ -242,7 +242,7 @@ func TestImportFromSnapshot(t *testing.T) {
 		defer cleanup()
 
 		anotherSnapshotDir := filepath.Join(testDir, "anotherSnapshot")
-		require.NoError(t, os.Mkdir(anotherSnapshotDir, 0755))
+		require.NoError(t, os.Mkdir(anotherSnapshotDir, 0o755))
 
 		for _, b := range blocksAfterSnapshot {
 			require.NoError(t, bootstrappedBlockStore.AddBlock(b))
@@ -285,7 +285,7 @@ func TestImportFromSnapshot(t *testing.T) {
 
 			// before, we test for index sync-up, verify that the last set of blocks not indexed in the original index
 			_, err := blkfileMgr.retrieveBlockByNumber(block.Header.Number)
-			require.Exactly(t, ErrNotFoundInIndex, err)
+			require.EqualError(t, err, fmt.Sprintf("no such block number [%d] in index", block.Header.Number))
 
 			// close and open should be able to sync-up the index
 			closeBlockStore()
@@ -348,7 +348,7 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 	cleanupDirs := func() {
 		require.NoError(t, os.RemoveAll(ledgerDir))
 		require.NoError(t, os.RemoveAll(snapshotDir))
-		require.NoError(t, os.Mkdir(snapshotDir, 0755))
+		require.NoError(t, os.Mkdir(snapshotDir, 0o755))
 	}
 
 	createSnapshotMetadataFile := func(content uint64) {
@@ -425,11 +425,10 @@ func TestBootstrapFromSnapshotErrorPaths(t *testing.T) {
 		require.NoError(t, err)
 		env.provider.Close()
 		env = newTestEnv(t, NewConf(testPath, 0))
-		require.NoError(t, ioutil.WriteFile(bootstrappingSnapshotInfoFile, []byte("junk-data"), 0644))
+		require.NoError(t, ioutil.WriteFile(bootstrappingSnapshotInfoFile, []byte("junk-data"), 0o644))
 		_, err = env.provider.Open(ledgerID)
 		require.Contains(t, err.Error(), "error while unmarshalling bootstrappingSnapshotInfo")
 	})
-
 }
 
 func generateNextTestBlock(bg *testutil.BlockGenerator, d *testBlockDetails) *common.Block {
@@ -473,7 +472,7 @@ func verifyQueriesOnBlocksPriorToSnapshot(
 		require.EqualError(t, err, expectedErrStr)
 
 		_, err = bootstrappedBlockStore.RetrieveBlockByHash(blockHash)
-		require.Equal(t, ErrNotFoundInIndex, err)
+		require.EqualError(t, err, fmt.Sprintf("no such block hash [%x] in index", blockHash))
 	}
 
 	bootstrappingSnapshotHeight := uint64(len(blocksDetailsBeforeSnapshot))
@@ -491,6 +490,10 @@ func verifyQueriesOnBlocksPriorToSnapshot(
 
 			_, err = bootstrappedBlockStore.RetrieveTxValidationCodeByTxID(txID)
 			require.EqualError(t, err, expectedErrorStr)
+
+			exists, err := bootstrappedBlockStore.TxIDExists(txID)
+			require.NoError(t, err)
+			require.True(t, exists)
 		}
 	}
 }
@@ -540,6 +543,10 @@ func verifyQueriesOnBlocksAddedAfterBootstrapping(t *testing.T,
 			expectedTxEnv, err := protoutil.GetEnvelopeFromBlock(block.Data.Data[j])
 			require.NoError(t, err)
 			require.Equal(t, expectedTxEnv, retrievedTxEnv)
+
+			exists, err := bootstrappedBlockStore.TxIDExists(txID)
+			require.NoError(t, err)
+			require.True(t, exists)
 		}
 
 		for j, validationCode := range d.validationCodes {

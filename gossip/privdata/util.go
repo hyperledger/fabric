@@ -171,8 +171,9 @@ func (bf *blockFactory) withInvalidTxns(sequences ...int) *blockFactory {
 }
 
 func sampleNsRwSet(ns string, hash []byte, collections ...string) *rwsetutil.NsRwSet {
-	nsRwSet := &rwsetutil.NsRwSet{NameSpace: ns,
-		KvRwSet: sampleKvRwSet(),
+	nsRwSet := &rwsetutil.NsRwSet{
+		NameSpace: ns,
+		KvRwSet:   sampleKvRwSet(),
 	}
 	for _, col := range collections {
 		nsRwSet.CollHashedRwSets = append(nsRwSet.CollHashedRwSets, sampleCollHashedRwSet(col, hash, true))
@@ -181,8 +182,9 @@ func sampleNsRwSet(ns string, hash []byte, collections ...string) *rwsetutil.NsR
 }
 
 func sampleReadOnlyNsRwSet(ns string, hash []byte, collections ...string) *rwsetutil.NsRwSet {
-	nsRwSet := &rwsetutil.NsRwSet{NameSpace: ns,
-		KvRwSet: sampleKvRwSet(),
+	nsRwSet := &rwsetutil.NsRwSet{
+		NameSpace: ns,
+		KvRwSet:   sampleKvRwSet(),
 	}
 	for _, col := range collections {
 		nsRwSet.CollHashedRwSets = append(nsRwSet.CollHashedRwSets, sampleCollHashedRwSet(col, hash, false))

@@ -57,7 +57,8 @@ func TestTxSimulationResultWithOnlyPubData(t *testing.T) {
 	ns1KVRWSet := &kvrwset.KVRWSet{
 		Reads:            []*kvrwset.KVRead{NewKVRead("key1", version.NewHeight(1, 1)), NewKVRead("key2", version.NewHeight(1, 2))},
 		RangeQueriesInfo: []*kvrwset.RangeQueryInfo{rqi1, rqi3},
-		Writes:           []*kvrwset.KVWrite{newKVWrite("key2", []byte("value2"))}}
+		Writes:           []*kvrwset.KVWrite{newKVWrite("key2", []byte("value2"))},
+	}
 
 	ns1RWSet := &rwset.NsReadWriteSet{
 		Namespace: "ns1",
@@ -67,7 +68,8 @@ func TestTxSimulationResultWithOnlyPubData(t *testing.T) {
 	ns2KVRWSet := &kvrwset.KVRWSet{
 		Reads:            []*kvrwset.KVRead{NewKVRead("key2", version.NewHeight(1, 2))},
 		RangeQueriesInfo: nil,
-		Writes:           []*kvrwset.KVWrite{newKVWrite("key3", []byte("value3"))}}
+		Writes:           []*kvrwset.KVWrite{newKVWrite("key3", []byte("value3"))},
+	}
 
 	ns2RWSet := &rwset.NsReadWriteSet{
 		Namespace: "ns2",
@@ -151,12 +153,14 @@ func TestTxSimulationResultWithPvtData(t *testing.T) {
 
 	hashedNs1Coll1 := &kvrwset.HashedRWSet{
 		HashedReads: []*kvrwset.KVReadHash{
-			constructTestPvtKVReadHash(t, "key1", version.NewHeight(1, 1))},
+			constructTestPvtKVReadHash(t, "key1", version.NewHeight(1, 1)),
+		},
 	}
 
 	hashedNs1Coll2 := &kvrwset.HashedRWSet{
 		HashedReads: []*kvrwset.KVReadHash{
-			constructTestPvtKVReadHash(t, "key1", version.NewHeight(1, 1))},
+			constructTestPvtKVReadHash(t, "key1", version.NewHeight(1, 1)),
+		},
 		HashedWrites: []*kvrwset.KVWriteHash{
 			constructTestPvtKVWriteHash(t, "key1", []byte("pvt-ns1-coll2-key1-value")),
 		},
@@ -356,4 +360,72 @@ func serializeTestProtoMsg(t *testing.T, protoMsg proto.Message) []byte {
 	msgBytes, err := proto.Marshal(protoMsg)
 	require.NoError(t, err)
 	return msgBytes
+}
+
+func TestNilOrZeroLengthByteArrayValueConvertedToDelete(t *testing.T) {
+	t.Run("public_writeset", func(t *testing.T) {
+		rwsetBuilder := NewRWSetBuilder()
+		rwsetBuilder.AddToWriteSet("ns", "key1", nil)
+		rwsetBuilder.AddToWriteSet("ns", "key2", []byte{})
+
+		simulationResults, err := rwsetBuilder.GetTxSimulationResults()
+		require.NoError(t, err)
+		pubRWSet := &kvrwset.KVRWSet{}
+		require.NoError(
+			t,
+			proto.Unmarshal(simulationResults.PubSimulationResults.NsRwset[0].Rwset, pubRWSet),
+		)
+		require.True(t, proto.Equal(
+			&kvrwset.KVRWSet{
+				Writes: []*kvrwset.KVWrite{
+					{Key: "key1", IsDelete: true},
+					{Key: "key2", IsDelete: true},
+				},
+			},
+			pubRWSet,
+		))
+	})
+
+	t.Run("pvtdata_and_hashes_writesets", func(t *testing.T) {
+		rwsetBuilder := NewRWSetBuilder()
+		rwsetBuilder.AddToPvtAndHashedWriteSet("ns", "coll", "key1", nil)
+		rwsetBuilder.AddToPvtAndHashedWriteSet("ns", "coll", "key2", []byte{})
+
+		simulationResults, err := rwsetBuilder.GetTxSimulationResults()
+		require.NoError(t, err)
+
+		t.Run("hashed_writeset", func(t *testing.T) {
+			hashedRWSet := &kvrwset.HashedRWSet{}
+			require.NoError(
+				t,
+				proto.Unmarshal(simulationResults.PubSimulationResults.NsRwset[0].CollectionHashedRwset[0].HashedRwset, hashedRWSet),
+			)
+			require.True(t, proto.Equal(
+				&kvrwset.HashedRWSet{
+					HashedWrites: []*kvrwset.KVWriteHash{
+						{KeyHash: util.ComputeStringHash("key1"), IsDelete: true},
+						{KeyHash: util.ComputeStringHash("key2"), IsDelete: true},
+					},
+				},
+				hashedRWSet,
+			))
+		})
+
+		t.Run("pvtdata_writeset", func(t *testing.T) {
+			pvtWSet := &kvrwset.KVRWSet{}
+			require.NoError(
+				t,
+				proto.Unmarshal(simulationResults.PvtSimulationResults.NsPvtRwset[0].CollectionPvtRwset[0].Rwset, pvtWSet),
+			)
+			require.True(t, proto.Equal(
+				&kvrwset.KVRWSet{
+					Writes: []*kvrwset.KVWrite{
+						{Key: "key1", IsDelete: true},
+						{Key: "key2", IsDelete: true},
+					},
+				},
+				pvtWSet,
+			))
+		})
+	})
 }

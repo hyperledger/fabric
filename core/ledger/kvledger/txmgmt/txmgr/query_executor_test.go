@@ -22,15 +22,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testHashFunc = func(data []byte) ([]byte, error) {
-		h := sha256.New()
-		if _, err := h.Write(data); err != nil {
-			return nil, err
-		}
-		return h.Sum(nil), nil
+var testHashFunc = func(data []byte) ([]byte, error) {
+	h := sha256.New()
+	if _, err := h.Write(data); err != nil {
+		return nil, err
 	}
-)
+	return h.Sum(nil), nil
+}
 
 func TestPvtdataResultsItr(t *testing.T) {
 	testEnv := testEnvsMap[levelDBtestEnvName]
@@ -46,7 +44,8 @@ func TestPvtdataResultsItr(t *testing.T) {
 
 	txMgr := testEnv.getTxMgr()
 	populateCollConfigForTest(t, txMgr, []collConfigkey{
-		{"ns1", "coll1"}, {"ns2", "coll1"}, {"ns3", "coll1"}, {"ns4", "coll1"}},
+		{"ns1", "coll1"}, {"ns2", "coll1"}, {"ns3", "coll1"}, {"ns4", "coll1"},
+	},
 		version.NewHeight(1, 0),
 	)
 

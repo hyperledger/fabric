@@ -13,8 +13,11 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	configtxtest "github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -31,7 +34,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-//TestSavepoint tests that save points get written after each block and get returned via GetBlockNumfromSavepoint
+// TestSavepoint tests that save points get written after each block and get returned via GetBlockNumfromSavepoint
 func TestSavepoint(t *testing.T) {
 	env := newTestHistoryEnv(t)
 	defer env.cleanup()
@@ -88,7 +91,7 @@ func TestSavepoint(t *testing.T) {
 	require.NoError(t, err, "Error upon historyDatabase.GetLastSavepoint()")
 	require.Equal(t, uint64(2), savepoint.BlockNum)
 
-	//Pass high blockNum, ShouldRecover should return true with 3 as blocknum to recover from
+	// Pass high blockNum, ShouldRecover should return true with 3 as blocknum to recover from
 	status, blockNum, err = env.testHistoryDB.ShouldRecover(10)
 	require.NoError(t, err, "Error upon historyDatabase.ShouldRecover()")
 	require.True(t, status)
@@ -136,7 +139,7 @@ func TestHistory(t *testing.T) {
 	require.NoError(t, store1.AddBlock(gb))
 	require.NoError(t, env.testHistoryDB.Commit(gb))
 
-	//block1
+	// block1
 	txid := util2.GenerateUUID()
 	simulator, _ := env.txmgr.NewTxSimulator(txid)
 	value1 := []byte("value1")
@@ -150,7 +153,7 @@ func TestHistory(t *testing.T) {
 	err = env.testHistoryDB.Commit(block1)
 	require.NoError(t, err)
 
-	//block2 tran1
+	// block2 tran1
 	simulationResults := [][]byte{}
 	txid = util2.GenerateUUID()
 	simulator, _ = env.txmgr.NewTxSimulator(txid)
@@ -160,7 +163,7 @@ func TestHistory(t *testing.T) {
 	simRes, _ = simulator.GetTxSimulationResults()
 	pubSimResBytes, _ = simRes.GetPubSimulationBytes()
 	simulationResults = append(simulationResults, pubSimResBytes)
-	//block2 tran2
+	// block2 tran2
 	txid2 := util2.GenerateUUID()
 	simulator2, _ := env.txmgr.NewTxSimulator(txid2)
 	value3 := []byte("value3")
@@ -175,7 +178,7 @@ func TestHistory(t *testing.T) {
 	err = env.testHistoryDB.Commit(block2)
 	require.NoError(t, err)
 
-	//block3
+	// block3
 	txid = util2.GenerateUUID()
 	simulator, _ = env.txmgr.NewTxSimulator(txid)
 	require.NoError(t, simulator.DeleteState("ns1", "key7"))
@@ -230,7 +233,6 @@ func TestHistory(t *testing.T) {
 		itr, err = qhistory.GetHistoryForKey("ns1", "key7")
 		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
 		require.Nil(t, itr)
-
 	})
 }
 
@@ -247,7 +249,7 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	require.NoError(t, store1.AddBlock(gb))
 	require.NoError(t, env.testHistoryDB.Commit(gb))
 
-	//block1
+	// block1
 	txid := util2.GenerateUUID()
 	simulator, _ := env.txmgr.NewTxSimulator(txid)
 	value1 := []byte("value1")
@@ -257,7 +259,7 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	pubSimResBytes, _ := simRes.GetPubSimulationBytes()
 	block1 := bg.NextBlock([][]byte{pubSimResBytes})
 
-	//for this invalid tran test, set the transaction to invalid
+	// for this invalid tran test, set the transaction to invalid
 	txsFilter := txflags.ValidationFlags(block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER])
 	txsFilter.SetFlag(0, peer.TxValidationCode_INVALID_OTHER_REASON)
 	block1.Metadata.Metadata[common.BlockMetadataIndex_TRANSACTIONS_FILTER] = txsFilter
@@ -278,7 +280,7 @@ func TestHistoryForInvalidTran(t *testing.T) {
 	require.Nil(t, kmod)
 }
 
-//TestGenesisBlockNoError tests that Genesis blocks are ignored by history processing
+// TestGenesisBlockNoError tests that Genesis blocks are ignored by history processing
 // since we only persist history of chaincode key writes
 func TestGenesisBlockNoError(t *testing.T) {
 	env := newTestHistoryEnv(t)
@@ -304,7 +306,7 @@ func TestHistoryWithKeyContainingNilBytes(t *testing.T) {
 	require.NoError(t, store1.AddBlock(gb))
 	require.NoError(t, env.testHistoryDB.Commit(gb))
 
-	//block1
+	// block1
 	txid := util2.GenerateUUID()
 	simulator, _ := env.txmgr.NewTxSimulator(txid)
 	require.NoError(t, simulator.SetState("ns1", "key", []byte("value1"))) // add a key <key> that contains no nil byte
@@ -317,7 +319,7 @@ func TestHistoryWithKeyContainingNilBytes(t *testing.T) {
 	err = env.testHistoryDB.Commit(block1)
 	require.NoError(t, err)
 
-	//block2 tran1
+	// block2 tran1
 	simulationResults := [][]byte{}
 	txid = util2.GenerateUUID()
 	simulator, _ = env.txmgr.NewTxSimulator(txid)
@@ -327,7 +329,7 @@ func TestHistoryWithKeyContainingNilBytes(t *testing.T) {
 	pubSimResBytes, _ = simRes.GetPubSimulationBytes()
 	simulationResults = append(simulationResults, pubSimResBytes)
 
-	//block2 tran2
+	// block2 tran2
 	txid2 := util2.GenerateUUID()
 	simulator2, _ := env.txmgr.NewTxSimulator(txid2)
 
@@ -500,6 +502,61 @@ func TestDrop(t *testing.T) {
 
 	env.testHistoryDBProvider.Close()
 	require.EqualError(t, env.testHistoryDBProvider.Drop("ledger2"), "internal leveldb error while obtaining db iterator: leveldb: closed")
+}
+
+// TestHistoryWithKVWriteOfNilValue - See FAB-18386 for details
+func TestHistoryWithKVWriteOfNilValue(t *testing.T) {
+	env := newTestHistoryEnv(t)
+	defer env.cleanup()
+	provider := env.testBlockStorageEnv.provider
+	store, err := provider.Open("ledger1")
+	require.NoError(t, err)
+	defer store.Shutdown()
+
+	bg, gb := testutil.NewBlockGenerator(t, "ledger1", false)
+
+	kvRWSet := &kvrwset.KVRWSet{
+		Writes: []*kvrwset.KVWrite{
+			// explicitly set IsDelete to false while the value to nil. As this will never be generated by simulation
+			{Key: "key1", IsDelete: false, Value: nil},
+		},
+	}
+	kvRWsetBytes, err := proto.Marshal(kvRWSet)
+	require.NoError(t, err)
+
+	txRWSet := &rwset.TxReadWriteSet{
+		NsRwset: []*rwset.NsReadWriteSet{
+			{
+				Namespace: "ns1",
+				Rwset:     kvRWsetBytes,
+			},
+		},
+	}
+
+	txRWSetBytes, err := proto.Marshal(txRWSet)
+	require.NoError(t, err)
+
+	block1 := bg.NextBlockWithTxid([][]byte{txRWSetBytes}, []string{"txid1"})
+
+	historydb := env.testHistoryDBProvider.GetDBHandle("ledger1")
+	require.NoError(t, store.AddBlock(gb))
+	require.NoError(t, historydb.Commit(gb))
+	require.NoError(t, store.AddBlock(block1))
+	require.NoError(t, historydb.Commit(block1))
+
+	historydbQE, err := historydb.NewQueryExecutor(store)
+	require.NoError(t, err)
+	itr, err := historydbQE.GetHistoryForKey("ns1", "key1")
+	require.NoError(t, err)
+	kmod, err := itr.Next()
+	require.NoError(t, err)
+	keyModification := kmod.(*queryresult.KeyModification)
+	// despite IsDelete set to "false" in the write-set, historydb results should set this to "true"
+	require.True(t, keyModification.IsDelete)
+
+	kmod, err = itr.Next()
+	require.NoError(t, err)
+	require.Nil(t, kmod)
 }
 
 // verify history results

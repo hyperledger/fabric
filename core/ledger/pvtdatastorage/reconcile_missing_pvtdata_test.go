@@ -24,7 +24,6 @@ type blockTxPvtDataInfoForTest struct {
 }
 
 type pvtDataForTest struct {
-	blockNum        uint64
 	pvtData         []*ledger.TxPvtData
 	dataKeys        []*dataKey
 	missingDataInfo ledger.TxMissingPvtData

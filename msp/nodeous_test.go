@@ -41,28 +41,46 @@ func TestInvalidAdminNodeOU(t *testing.T) {
 }
 
 func TestInvalidSigningIdentityNodeOU(t *testing.T) {
-	// testdata/nodeous2:
-	// the configuration enables NodeOUs but the signing identity does not carry
-	// any valid NodeOUS. Therefore signing identity validation should fail
-	thisMSP := getLocalMSPWithVersion(t, "testdata/nodeous2", MSPv1_1)
-	require.True(t, thisMSP.(*bccspmsp).ouEnforcement)
+	t.Run("signing_identity_validation_fails_with_MSPv1_4_3", func(t *testing.T) {
+		// testdata/nodeous2:
+		// the configuration enables NodeOUs but the signing identity does not carry
+		// any valid NodeOUS. Therefore signing identity validation should fail
+		thisMSP := getLocalMSPWithVersion(t, "testdata/nodeous2", MSPv1_4_3)
+		require.True(t, thisMSP.(*bccspmsp).ouEnforcement)
 
-	id, err := thisMSP.GetDefaultSigningIdentity()
-	require.NoError(t, err)
+		id, err := thisMSP.GetDefaultSigningIdentity()
+		require.NoError(t, err)
 
-	err = id.Validate()
-	require.Error(t, err)
+		err = id.Validate()
+		require.EqualError(t, err, "could not validate identity's OUs: the identity does not have an OU that resolves to client, peer, orderer, or admin role. OUs: [], MSP: [SampleOrg]")
+	})
 
-	// MSPv1_0 should not fail
-	thisMSP, err = getLocalMSPWithVersionAndError(t, "testdata/nodeous1", MSPv1_0)
-	require.False(t, thisMSP.(*bccspmsp).ouEnforcement)
-	require.NoError(t, err)
+	t.Run("signing_identity_validation_fails_with_MSPv1_1", func(t *testing.T) {
+		// testdata/nodeous2:
+		// the configuration enables NodeOUs but the signing identity does not carry
+		// any valid NodeOUS. Therefore signing identity validation should fail
+		thisMSP := getLocalMSPWithVersion(t, "testdata/nodeous2", MSPv1_1)
+		require.True(t, thisMSP.(*bccspmsp).ouEnforcement)
 
-	id, err = thisMSP.GetDefaultSigningIdentity()
-	require.NoError(t, err)
+		id, err := thisMSP.GetDefaultSigningIdentity()
+		require.NoError(t, err)
 
-	err = id.Validate()
-	require.NoError(t, err)
+		err = id.Validate()
+		require.EqualError(t, err, "could not validate identity's OUs: the identity does not have an OU that resolves to client or peer. OUs: [], MSP: [SampleOrg]")
+	})
+
+	t.Run("signing_identity_validation_succeeds_with_MSPv1_0", func(t *testing.T) {
+		// MSPv1_0 should not fail, node OUs not yet implemented in 1_0
+		thisMSP, err := getLocalMSPWithVersionAndError(t, "testdata/nodeous1", MSPv1_0)
+		require.False(t, thisMSP.(*bccspmsp).ouEnforcement)
+		require.NoError(t, err)
+
+		id, err := thisMSP.GetDefaultSigningIdentity()
+		require.NoError(t, err)
+
+		err = id.Validate()
+		require.NoError(t, err)
+	})
 }
 
 func TestValidMSPWithNodeOU(t *testing.T) {
@@ -177,7 +195,8 @@ func TestSatisfiesPrincipalPeer(t *testing.T) {
 		require.NoError(t, err)
 		principal := &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
+			Principal:               principalBytes,
+		}
 		err = id.SatisfiesPrincipal(principal)
 		require.NoError(t, err)
 	}))
@@ -190,7 +209,8 @@ func TestSatisfiesPrincipalPeer(t *testing.T) {
 		require.NoError(t, err)
 		principal := &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
+			Principal:               principalBytes,
+		}
 		err = id.SatisfiesPrincipal(principal)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "The identity is not a [CLIENT] under this MSP [SampleOrg]")
@@ -218,7 +238,8 @@ func TestSatisfiesPrincipalClient(t *testing.T) {
 		require.NoError(t, err)
 		principal := &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
+			Principal:               principalBytes,
+		}
 		err = id.SatisfiesPrincipal(principal)
 		require.NoError(t, err)
 	}))
@@ -231,7 +252,8 @@ func TestSatisfiesPrincipalClient(t *testing.T) {
 		require.NoError(t, err)
 		principal := &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
+			Principal:               principalBytes,
+		}
 		err = id.SatisfiesPrincipal(principal)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "The identity is not a [PEER] under this MSP [SampleOrg]")
@@ -254,7 +276,8 @@ func TestSatisfiesPrincipalAdmin(t *testing.T) {
 	require.NoError(t, err)
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	err = id.SatisfiesPrincipal(principal)
 	require.NoError(t, err)
 }
@@ -316,7 +339,8 @@ func TestAdminInAdmincertsWith143MSP(t *testing.T) {
 		require.NoError(t, err)
 		principal := &msp.MSPPrincipal{
 			PrincipalClassification: msp.MSPPrincipal_ROLE,
-			Principal:               principalBytes}
+			Principal:               principalBytes,
+		}
 		err = id.SatisfiesPrincipal(principal)
 		require.NoError(t, err)
 	}
@@ -335,7 +359,8 @@ func TestSatisfiesPrincipalOrderer(t *testing.T) {
 	require.NoError(t, err)
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	err = id.SatisfiesPrincipal(principal)
 	require.NoError(t, err)
 }
@@ -362,7 +387,8 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 	require.NoError(t, err)
 	principal := &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	err = id.SatisfiesPrincipal(principal)
 	require.Error(t, err)
 	require.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for classification, node ou for type [ORDERER], not defined, msp: [SampleOrg]", err.Error())
@@ -386,7 +412,8 @@ func TestLoad142MSPWithInvalidOrdererConfiguration(t *testing.T) {
 	require.NoError(t, err)
 	principal = &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_ROLE,
-		Principal:               principalBytes}
+		Principal:               principalBytes,
+	}
 	err = id.SatisfiesPrincipal(principal)
 	require.Error(t, err)
 	require.Equal(t, "The identity is not a [ORDERER] under this MSP [SampleOrg]: cannot test for classification, node ou for type [ORDERER], not defined, msp: [SampleOrg]", err.Error())

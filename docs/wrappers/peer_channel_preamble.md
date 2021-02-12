@@ -12,6 +12,8 @@ The `peer channel` command has the following subcommands:
   * fetch
   * getinfo
   * join
+  * joinbysnapshot
+  * joinbysnapshotstatus
   * list
   * signconfigtx
   * update

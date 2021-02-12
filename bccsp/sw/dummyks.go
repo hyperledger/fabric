@@ -28,8 +28,7 @@ func NewDummyKeyStore() bccsp.KeyStore {
 }
 
 // dummyKeyStore is a read-only KeyStore that neither loads nor stores keys.
-type dummyKeyStore struct {
-}
+type dummyKeyStore struct{}
 
 // ReadOnly returns true if this KeyStore is read only, false otherwise.
 // If ReadOnly is true then StoreKey will fail.

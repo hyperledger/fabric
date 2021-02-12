@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package filerepo
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -19,7 +18,7 @@ import (
 )
 
 const (
-	repoFilePermPrivateRW      os.FileMode = 0600
+	repoFilePermPrivateRW      os.FileMode = 0o600
 	defaultTransientFileMarker             = "~"
 )
 
@@ -91,7 +90,7 @@ func (r *Repo) Save(baseName string, content []byte) error {
 	dest := r.baseToFilePath(baseName)
 
 	if _, err := os.Stat(dest); err == nil {
-		return fmt.Errorf("file already exists at %s", dest)
+		return os.ErrExist
 	}
 
 	tmpFileName := fileName + r.transientFileMarker
@@ -162,7 +161,7 @@ func (r *Repo) baseToFilePath(baseName string) string {
 }
 
 func (r *Repo) baseToFileName(baseName string) string {
-	return fmt.Sprintf("%s.%s", baseName, r.fileSuffix)
+	return baseName + "." + r.fileSuffix
 }
 
 func validateFileSuffix(fileSuffix string) error {
@@ -171,7 +170,7 @@ func validateFileSuffix(fileSuffix string) error {
 	}
 
 	if strings.Contains(fileSuffix, string(os.PathSeparator)) {
-		return fmt.Errorf("fileSuffix [%s] illegal, cannot contain os path separator", fileSuffix)
+		return errors.Errorf("fileSuffix [%s] illegal, cannot contain os path separator", fileSuffix)
 	}
 
 	return nil

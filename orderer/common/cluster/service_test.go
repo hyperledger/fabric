@@ -43,11 +43,6 @@ var (
 			SubmitRes: &orderer.SubmitResponse{},
 		},
 	}
-	submitResponse2 = &orderer.StepResponse{
-		Payload: &orderer.StepResponse_SubmitRes{
-			SubmitRes: &orderer.SubmitResponse{},
-		},
-	}
 	consensusRequest = &orderer.StepRequest{
 		Payload: &orderer.StepRequest_ConsensusRequest{
 			ConsensusRequest: &orderer.ConsensusRequest{

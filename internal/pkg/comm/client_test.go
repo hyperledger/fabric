@@ -444,7 +444,7 @@ func TestSetMessageSize(t *testing.T) {
 	defer srv.Stop()
 	go srv.Start()
 
-	var tests = []struct {
+	tests := []struct {
 		name        string
 		maxRecvSize int
 		maxSendSize int
@@ -504,7 +504,7 @@ func TestSetMessageSize(t *testing.T) {
 			callCtx := context.Background()
 			callCtx, cancel := context.WithTimeout(callCtx, testTimeout)
 			defer cancel()
-			//invoke service
+			// invoke service
 			echo := &testpb.Echo{
 				Payload: []byte{0, 0, 0, 0, 0},
 			}

@@ -32,8 +32,7 @@ func (s *Store) CommitPvtDataOfOldBlocks(
 	deprioritizedMissingData := unreconciledMissingData
 
 	if s.isLastUpdatedOldBlocksSet {
-		return &ErrIllegalCall{`The lastUpdatedOldBlocksList is set. It means that the
-		stateDB may not be in sync with the pvtStore`}
+		return errors.New("the lastUpdatedOldBlocksList is set. It means that the stateDB may not be in sync with the pvtStore")
 	}
 
 	p := &oldBlockDataProcessor{

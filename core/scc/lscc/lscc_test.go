@@ -22,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	mb "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
@@ -85,7 +84,7 @@ func constructDeploymentSpec(name, path, version string, initArgs [][]byte, crea
 	err := tw.WriteHeader(&tar.Header{
 		Name: "src/garbage.go",
 		Size: int64(len(payload)),
-		Mode: 0100644,
+		Mode: 0o100644,
 	})
 	if err != nil {
 		return nil, err
@@ -102,7 +101,7 @@ func constructDeploymentSpec(name, path, version string, initArgs [][]byte, crea
 		err := tw.WriteHeader(&tar.Header{
 			Name: "META-INF/statedb/couchdb/indexes/badIndex.json",
 			Size: int64(len(payload)),
-			Mode: 0100644,
+			Mode: 0o100644,
 		})
 		if err != nil {
 			return nil, err
@@ -296,7 +295,6 @@ func TestNewLifecycleEnabled(t *testing.T) {
 	res := stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("deploy"), []byte("test"), nil}, nil)
 	require.NotEqual(t, int32(shim.OK), res.Status)
 	require.Equal(t, "Channel 'test' has been migrated to the new lifecycle, LSCC is now read-only", res.Message)
-
 }
 
 func TestDeploy(t *testing.T) {
@@ -432,7 +430,7 @@ func TestDeploy(t *testing.T) {
 	maximumPeerCount = 2
 	coll1 := createCollectionConfig(collName1, policyEnvelope, requiredPeerCount, maximumPeerCount)
 
-	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1}}
+	ccp := &pb.CollectionConfigPackage{Config: []*pb.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	require.NoError(t, err)
 	require.NotNil(t, ccpBytes)
@@ -486,17 +484,17 @@ func TestDeploy(t *testing.T) {
 
 func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,
 	requiredPeerCount int32, maximumPeerCount int32,
-) *peer.CollectionConfig {
-	signaturePolicy := &peer.CollectionPolicyConfig_SignaturePolicy{
+) *pb.CollectionConfig {
+	signaturePolicy := &pb.CollectionPolicyConfig_SignaturePolicy{
 		SignaturePolicy: signaturePolicyEnvelope,
 	}
-	accessPolicy := &peer.CollectionPolicyConfig{
+	accessPolicy := &pb.CollectionPolicyConfig{
 		Payload: signaturePolicy,
 	}
 
-	return &peer.CollectionConfig{
-		Payload: &peer.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &peer.StaticCollectionConfig{
+	return &pb.CollectionConfig{
+		Payload: &pb.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &pb.StaticCollectionConfig{
 				Name:              collectionName,
 				MemberOrgsPolicy:  accessPolicy,
 				RequiredPeerCount: requiredPeerCount,
@@ -736,7 +734,7 @@ func TestUpgrade(t *testing.T) {
 	maximumPeerCount = 2
 	coll1 := createCollectionConfig(collName1, testPolicyEnvelope, requiredPeerCount, maximumPeerCount)
 
-	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1}}
+	ccp := &pb.CollectionConfigPackage{Config: []*pb.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	require.NoError(t, err)
 	require.NotNil(t, ccpBytes)
@@ -1190,7 +1188,7 @@ func TestPutChaincodeCollectionData(t *testing.T) {
 
 	collName1 := "mycollection1"
 	coll1 := createCollectionConfig(collName1, testPolicyEnvelope, 1, 2)
-	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1}}
+	ccp := &pb.CollectionConfigPackage{Config: []*pb.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	require.NoError(t, err)
 	require.NotNil(t, ccpBytes)
@@ -1226,7 +1224,7 @@ func TestGetChaincodeCollectionData(t *testing.T) {
 
 	collName1 := "mycollection1"
 	coll1 := createCollectionConfig(collName1, testPolicyEnvelope, 1, 2)
-	ccp := &peer.CollectionConfigPackage{Config: []*peer.CollectionConfig{coll1}}
+	ccp := &pb.CollectionConfigPackage{Config: []*pb.CollectionConfig{coll1}}
 	ccpBytes, err := proto.Marshal(ccp)
 	require.NoError(t, err)
 	require.NotNil(t, ccpBytes)
@@ -1295,31 +1293,31 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	require.EqualError(t, err, "collection configuration is not set")
 
 	// error case: empty collection config
-	cc := &peer.CollectionConfig{}
+	cc := &pb.CollectionConfig{}
 	err = checkCollectionMemberPolicy(cc, mgr)
 	require.EqualError(t, err, "collection configuration is empty")
 
 	// error case: no static collection config
-	cc = &peer.CollectionConfig{Payload: &peer.CollectionConfig_StaticCollectionConfig{}}
+	cc = &pb.CollectionConfig{Payload: &pb.CollectionConfig_StaticCollectionConfig{}}
 	err = checkCollectionMemberPolicy(cc, mgr)
 	require.EqualError(t, err, "collection configuration is empty")
 
 	// error case: member org policy not set
-	cc = &peer.CollectionConfig{
-		Payload: &peer.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &peer.StaticCollectionConfig{},
+	cc = &pb.CollectionConfig{
+		Payload: &pb.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &pb.StaticCollectionConfig{},
 		},
 	}
 	err = checkCollectionMemberPolicy(cc, mgr)
 	require.EqualError(t, err, "collection member policy is not set")
 
 	// error case: member org policy config empty
-	cc = &peer.CollectionConfig{
-		Payload: &peer.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &peer.StaticCollectionConfig{
+	cc = &pb.CollectionConfig{
+		Payload: &pb.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &pb.StaticCollectionConfig{
 				Name: "mycollection",
-				MemberOrgsPolicy: &peer.CollectionPolicyConfig{
-					Payload: &peer.CollectionPolicyConfig_SignaturePolicy{},
+				MemberOrgsPolicy: &pb.CollectionPolicyConfig{
+					Payload: &pb.CollectionPolicyConfig_SignaturePolicy{},
 				},
 			},
 		},
@@ -1328,9 +1326,9 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	require.EqualError(t, err, "collection member org policy is empty")
 
 	// error case: signd-by index is out of range of signers
-	cc = &peer.CollectionConfig{
-		Payload: &peer.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &peer.StaticCollectionConfig{
+	cc = &pb.CollectionConfig{
+		Payload: &pb.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &pb.StaticCollectionConfig{
 				Name:             "mycollection",
 				MemberOrgsPolicy: getBadAccessPolicy([]string{"signer0"}, 1),
 			},
@@ -1340,12 +1338,12 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	require.EqualError(t, err, "invalid member org policy for collection 'mycollection': identity index out of range, requested 1, but identities length is 1")
 
 	// valid case: well-formed collection policy config
-	cc = &peer.CollectionConfig{
-		Payload: &peer.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &peer.StaticCollectionConfig{
+	cc = &pb.CollectionConfig{
+		Payload: &pb.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &pb.StaticCollectionConfig{
 				Name: "mycollection",
-				MemberOrgsPolicy: &peer.CollectionPolicyConfig{
-					Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
+				MemberOrgsPolicy: &pb.CollectionPolicyConfig{
+					Payload: &pb.CollectionPolicyConfig_SignaturePolicy{
 						SignaturePolicy: testPolicyEnvelope,
 					},
 				},
@@ -1356,17 +1354,17 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	require.NoError(t, err)
 
 	// check MSPPrincipal_IDENTITY type
-	var signers = [][]byte{[]byte("signer0"), []byte("signer1")}
+	signers := [][]byte{[]byte("signer0"), []byte("signer1")}
 	signaturePolicyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(1)), signers)
-	signaturePolicy := &peer.CollectionPolicyConfig_SignaturePolicy{
+	signaturePolicy := &pb.CollectionPolicyConfig_SignaturePolicy{
 		SignaturePolicy: signaturePolicyEnvelope,
 	}
-	accessPolicy := &peer.CollectionPolicyConfig{
+	accessPolicy := &pb.CollectionPolicyConfig{
 		Payload: signaturePolicy,
 	}
-	cc = &peer.CollectionConfig{
-		Payload: &peer.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &peer.StaticCollectionConfig{
+	cc = &pb.CollectionConfig{
+		Payload: &pb.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &pb.StaticCollectionConfig{
 				Name:             "mycollection",
 				MemberOrgsPolicy: accessPolicy,
 			},
@@ -1380,9 +1378,9 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	signaturePolicyEnvelope = policydsl.SignedByAnyMember([]string{"Org1"})
 	signaturePolicy.SignaturePolicy = signaturePolicyEnvelope
 	accessPolicy.Payload = signaturePolicy
-	cc = &peer.CollectionConfig{
-		Payload: &peer.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &peer.StaticCollectionConfig{
+	cc = &pb.CollectionConfig{
+		Payload: &pb.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &pb.StaticCollectionConfig{
 				Name:             "mycollection",
 				MemberOrgsPolicy: accessPolicy,
 			},
@@ -1395,9 +1393,9 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	signaturePolicyEnvelope = policydsl.SignedByAnyMember([]string{"Org2"})
 	signaturePolicy.SignaturePolicy = signaturePolicyEnvelope
 	accessPolicy.Payload = signaturePolicy
-	cc = &peer.CollectionConfig{
-		Payload: &peer.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &peer.StaticCollectionConfig{
+	cc = &pb.CollectionConfig{
+		Payload: &pb.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &pb.StaticCollectionConfig{
 				Name:             "mycollection",
 				MemberOrgsPolicy: accessPolicy,
 			},
@@ -1419,9 +1417,9 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 		Identities: []*mb.MSPPrincipal{principal},
 	}
 	accessPolicy.Payload = signaturePolicy
-	cc = &peer.CollectionConfig{
-		Payload: &peer.CollectionConfig_StaticCollectionConfig{
-			StaticCollectionConfig: &peer.StaticCollectionConfig{
+	cc = &pb.CollectionConfig{
+		Payload: &pb.CollectionConfig_StaticCollectionConfig{
+			StaticCollectionConfig: &pb.StaticCollectionConfig{
 				Name:             "mycollection",
 				MemberOrgsPolicy: accessPolicy,
 			},
@@ -1500,9 +1498,11 @@ func TestLifecycleChaincodeRegularExpressionsMatch(t *testing.T) {
 	require.Equal(t, ChaincodeVersionRegExp.String(), lifecycle.ChaincodeVersionRegExp.String())
 }
 
-var id msp.SigningIdentity
-var channelID = "testchannelid"
-var mockAclProvider *mocks.MockACLProvider
+var (
+	id              msp.SigningIdentity
+	channelID       = "testchannelid"
+	mockAclProvider *mocks.MockACLProvider
+)
 
 func NewMockProvider() sysccprovider.SystemChaincodeProvider {
 	capabilities := &mock.ApplicationCapabilities{}
@@ -1525,7 +1525,7 @@ func TestMain(m *testing.M) {
 
 	id, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
 	if err != nil {
-		fmt.Printf("GetSigningIdentity failed with err %s", err)
+		fmt.Printf("GetDefaultSigningIdentity failed with err %s", err)
 		os.Exit(-1)
 	}
 
@@ -1539,7 +1539,7 @@ type MockSupport struct {
 	PutChaincodeToLocalStorageErr    error
 	GetChaincodeFromLocalStorageRv   ccprovider.CCPackage
 	GetChaincodeFromLocalStorageErr  error
-	GetChaincodesFromLocalStorageRv  *peer.ChaincodeQueryResponse
+	GetChaincodesFromLocalStorageRv  *pb.ChaincodeQueryResponse
 	GetChaincodesFromLocalStorageErr error
 	GetInstantiationPolicyRv         []byte
 	GetInstantiationPolicyErr        error
@@ -1557,7 +1557,7 @@ func (s *MockSupport) GetChaincodeFromLocalStorage(ccNameVersion string) (ccprov
 	return s.GetChaincodeFromLocalStorageRv, s.GetChaincodeFromLocalStorageErr
 }
 
-func (s *MockSupport) GetChaincodesFromLocalStorage() (*peer.ChaincodeQueryResponse, error) {
+func (s *MockSupport) GetChaincodesFromLocalStorage() (*pb.ChaincodeQueryResponse, error) {
 	return s.GetChaincodesFromLocalStorageRv, s.GetChaincodesFromLocalStorageErr
 }
 
@@ -1570,27 +1570,27 @@ func (s *MockSupport) GetInstantiationPolicy(channel string, ccpack ccprovider.C
 	return s.GetInstantiationPolicyRv, s.GetInstantiationPolicyErr
 }
 
-func (s *MockSupport) CheckInstantiationPolicy(signedProp *peer.SignedProposal, chainName string, instantiationPolicy []byte) error {
+func (s *MockSupport) CheckInstantiationPolicy(signedProp *pb.SignedProposal, chainName string, instantiationPolicy []byte) error {
 	if s.CheckInstantiationPolicyMap != nil {
 		return s.CheckInstantiationPolicyMap[string(instantiationPolicy)]
 	}
 	return s.CheckInstantiationPolicyErr
 }
 
-func (s *MockSupport) CheckCollectionConfig(collectionConfig *peer.CollectionConfig, channelName string) error {
+func (s *MockSupport) CheckCollectionConfig(collectionConfig *pb.CollectionConfig, channelName string) error {
 	return s.CheckCollectionConfigErr
 }
 
 // getBadAccessPolicy creates a bad CollectionPolicyConfig with signedby index out of range of signers
-func getBadAccessPolicy(signers []string, badIndex int32) *peer.CollectionPolicyConfig {
+func getBadAccessPolicy(signers []string, badIndex int32) *pb.CollectionPolicyConfig {
 	var data [][]byte
 	for _, signer := range signers {
 		data = append(data, []byte(signer))
 	}
 	// use a out of range index to trigger error
 	policyEnvelope := policydsl.Envelope(policydsl.Or(policydsl.SignedBy(0), policydsl.SignedBy(badIndex)), data)
-	return &peer.CollectionPolicyConfig{
-		Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
+	return &pb.CollectionPolicyConfig{
+		Payload: &pb.CollectionPolicyConfig_SignaturePolicy{
 			SignaturePolicy: policyEnvelope,
 		},
 	}

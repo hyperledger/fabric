@@ -1023,7 +1023,6 @@ func setupProducerForChannel(retryOptions localconfig.Retry, haltChan chan struc
 
 // Creates the Kafka topic for the channel if it does not already exist
 func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}, brokers []string, brokerConfig *sarama.Config, topicDetail *sarama.TopicDetail, channel channel) error {
-
 	// requires Kafka v0.10.1.0 or higher
 	if !brokerConfig.Version.IsAtLeast(sarama.V0_10_1_0) {
 		return nil
@@ -1041,7 +1040,6 @@ func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}
 		channel,
 		retryMsg,
 		func() error {
-
 			var err error
 			clusterMembers := map[int32]*sarama.Broker{}
 			var controllerId int32
@@ -1055,9 +1053,7 @@ func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}
 					continue
 				}
 
-				var ok bool
-				ok, err = broker.Connected()
-				if !ok {
+				if ok, _ := broker.Connected(); !ok {
 					continue
 				}
 				defer broker.Close()
@@ -1074,8 +1070,8 @@ func setupTopicForChannel(retryOptions localconfig.Retry, haltChan chan struct{}
 				metadata, err := broker.GetMetadata(&sarama.MetadataRequest{
 					Version:                apiVersion,
 					Topics:                 []string{channel.topic()},
-					AllowAutoTopicCreation: false})
-
+					AllowAutoTopicCreation: false,
+				})
 				if err != nil {
 					continue
 				}

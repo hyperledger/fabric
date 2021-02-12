@@ -119,7 +119,8 @@ func TestService(t *testing.T) {
 	// Scenario VI: Request a CC query with no interests at all
 	req.Queries[0].Query = &discovery.Query_CcQuery{
 		CcQuery: &discovery.ChaincodeQuery{
-			Interests: []*discovery.ChaincodeInterest{}},
+			Interests: []*discovery.ChaincodeInterest{},
+		},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	require.NoError(t, err)
@@ -132,7 +133,8 @@ func TestService(t *testing.T) {
 				Chaincodes: []*discovery.ChaincodeCall{{
 					Name: "",
 				}},
-			}}},
+			}},
+		},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
 	require.NoError(t, err)

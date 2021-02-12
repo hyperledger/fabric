@@ -25,7 +25,6 @@ type validator struct {
 // preLoadCommittedVersionOfRSet loads committed version of all keys in each
 // transaction's read set into a cache.
 func (v *validator) preLoadCommittedVersionOfRSet(blk *block) error {
-
 	// Collect both public and hashed keys in read sets of all transactions in a given block
 	var pubKeys []*statedb.CompositeKey
 	var hashedKeys []*privacyenabledstate.HashedCompositeKey
@@ -118,10 +117,9 @@ func (v *validator) validateEndorserTX(
 	txRWSet *rwsetutil.TxRwSet,
 	doMVCCValidation bool,
 	updates *publicAndHashUpdates) (peer.TxValidationCode, error) {
-
-	var validationCode = peer.TxValidationCode_VALID
+	validationCode := peer.TxValidationCode_VALID
 	var err error
-	//mvcc validation, may invalidate transaction
+	// mvcc validation, may invalidate transaction
 	if doMVCCValidation {
 		validationCode, err = v.validateTx(txRWSet, updates)
 	}
@@ -130,7 +128,7 @@ func (v *validator) validateEndorserTX(
 
 func (v *validator) validateTx(txRWSet *rwsetutil.TxRwSet, updates *publicAndHashUpdates) (peer.TxValidationCode, error) {
 	// Uncomment the following only for local debugging. Don't want to print data in the logs in production
-	//logger.Debugf("validateTx - validating txRWSet: %s", spew.Sdump(txRWSet))
+	// logger.Debugf("validateTx - validating txRWSet: %s", spew.Sdump(txRWSet))
 	for _, nsRWSet := range txRWSet.NsRwSets {
 		ns := nsRWSet.NameSpace
 		// Validate public reads

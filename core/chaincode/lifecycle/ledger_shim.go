@@ -184,8 +184,7 @@ func (pqes *PrivateQueryExecutorShim) CollectionName() string {
 // used to ensure channel-less system chaincode calls don't panic and return
 // and error when an invalid operation is attempted (i.e. an InstallChaincode
 // invocation against a chaincode other than _lifecycle)
-type DummyQueryExecutorShim struct {
-}
+type DummyQueryExecutorShim struct{}
 
 func (*DummyQueryExecutorShim) GetState(key string) ([]byte, error) {
 	return nil, errors.New("invalid channel-less operation")

@@ -91,7 +91,7 @@ func TestLoadMalformedConfigFile(t *testing.T) {
 	}()
 
 	// Create a malformed orderer.yaml file in temp dir
-	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 	require.Nil(t, err, "Error creating file: %s", err)
 	f.WriteString("General: 42")
 	require.NoError(t, f.Close(), "Error closing file")
@@ -181,6 +181,49 @@ func TestKafkaSASLPlain(t *testing.T) {
 	}
 }
 
+func TestAdminTLSConfig(t *testing.T) {
+	testCases := []struct {
+		name        string
+		tls         TLS
+		shouldPanic bool
+	}{
+		{
+			name: "no TLS",
+			tls: TLS{
+				Enabled:            false,
+				ClientAuthRequired: false,
+			},
+			shouldPanic: false,
+		},
+		{
+			name: "TLS enabled and ClientAuthRequired",
+			tls: TLS{
+				Enabled:            true,
+				ClientAuthRequired: true,
+			},
+			shouldPanic: false,
+		},
+		{
+			name: "TLS enabled and ClientAuthRequired set to false",
+			tls: TLS{
+				Enabled:            true,
+				ClientAuthRequired: false,
+			},
+			shouldPanic: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			uconf := &TopLevel{Admin: Admin{TLS: tc.tls}}
+			if tc.shouldPanic {
+				require.PanicsWithValue(t, "Admin.TLS.ClientAuthRequired must be set to true if Admin.TLS.Enabled is set to true", func() { uconf.completeInitialization("/dummy/path") })
+			} else {
+				require.NotPanics(t, func() { uconf.completeInitialization("/dummy/path") }, "Should not panic")
+			}
+		})
+	}
+}
+
 func TestClusterDefaults(t *testing.T) {
 	cleanup := configtest.SetDevFabricConfigPath(t)
 	defer cleanup()
@@ -206,7 +249,7 @@ Consensus:
     World: 42
 `
 
-	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	f, err := os.OpenFile(filepath.Join(name, "orderer.yaml"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
 	require.Nil(t, err, "Error creating file: %s", err)
 	f.WriteString(content)
 	require.NoError(t, f.Close(), "Error closing file")

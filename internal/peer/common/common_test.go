@@ -12,17 +12,24 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
+	cb "github.com/hyperledger/fabric-protos-go/common"
+	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/bccsp/pkcs11"
+	"github.com/hyperledger/fabric/bccsp/sw"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
+	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/msp"
+	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
+	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -74,7 +81,7 @@ func TestInitCryptoMissingDir(t *testing.T) {
 
 func TestInitCryptoFileNotDir(t *testing.T) {
 	file := path.Join(os.TempDir(), util.GenerateUUID())
-	err := ioutil.WriteFile(file, []byte{}, 0644)
+	err := ioutil.WriteFile(file, []byte{}, 0o644)
 	require.Nil(t, err, "Failed to create test file")
 	defer os.Remove(file)
 	err = common.InitCrypto(file, "SampleOrg", msp.ProviderTypeToString(msp.FABRIC))
@@ -104,6 +111,7 @@ func TestSetBCCSPKeystorePath(t *testing.T) {
 	os.Setenv("FABRIC_CFG_PATH", cfgPath)
 	viper.Reset()
 	err = common.InitConfig("notset")
+	require.NoError(t, err)
 	common.SetBCCSPKeystorePath()
 	t.Log(viper.GetString(cfgKey))
 	require.Equal(t, "", viper.GetString(cfgKey))
@@ -255,59 +263,89 @@ func TestInitCmdWithoutInitCrypto(t *testing.T) {
 	common.InitCmd(packageCmd, nil)
 }
 
-func TestSetBCCSPConfigOverrides(t *testing.T) {
-	bccspConfig := factory.GetDefaultOpts()
-	envConfig := &factory.FactoryOpts{
-		Default: "test-default",
-		SW: &factory.SwOpts{
-			Hash:     "SHA2",
-			Security: 256,
-		},
-		PKCS11: &pkcs11.PKCS11Opts{
-			Hash:     "test-pkcs11-hash",
-			Security: 12345,
-			Library:  "test-pkcs11-library",
-			Label:    "test-pkcs11-label",
-			Pin:      "test-pkcs11-pin",
-		},
-	}
+func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
+	require.NoError(t, msptesttools.LoadMSPSetupForTesting())
+	signer, err := common.GetDefaultSigner()
+	require.NoError(t, err)
+	factory.InitFactories(nil)
+	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	require.NoError(t, err)
 
-	t.Run("success", func(t *testing.T) {
-		cleanup := setBCCSPEnvVariables(envConfig)
-		defer cleanup()
-		err := common.SetBCCSPConfigOverrides(bccspConfig)
+	t.Run("green-path", func(t *testing.T) {
+		profile := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+		channelGroup, err := encoder.NewChannelGroup(profile)
 		require.NoError(t, err)
-		require.Equal(t, envConfig, bccspConfig)
+		channelConfig := &cb.Config{ChannelGroup: channelGroup}
+
+		ordererAddresses := channelconfig.OrdererAddressesValue([]string{"order-1-endpoint", "order-2-end-point"})
+		channelConfig.ChannelGroup.Values[ordererAddresses.Key()] = &cb.ConfigValue{
+			Value: protoutil.MarshalOrPanic(ordererAddresses.Value()),
+		}
+
+		mockEndorserClient := common.GetMockEndorserClient(
+			&pb.ProposalResponse{
+				Response:    &pb.Response{Status: 200, Payload: protoutil.MarshalOrPanic(channelConfig)},
+				Endorsement: &pb.Endorsement{},
+			},
+			nil,
+		)
+
+		ordererEndpoints, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
+		require.NoError(t, err)
+		require.Equal(t, []string{"order-1-endpoint", "order-2-end-point"}, ordererEndpoints)
 	})
 
-	t.Run("PKCS11 security set to string value", func(t *testing.T) {
-		cleanup := setBCCSPEnvVariables(envConfig)
-		defer cleanup()
-		os.Setenv("CORE_PEER_BCCSP_PKCS11_SECURITY", "INSECURITY")
-
-		err := common.SetBCCSPConfigOverrides(bccspConfig)
-		require.EqualError(t, err, "CORE_PEER_BCCSP_PKCS11_SECURITY set to non-integer value: INSECURITY")
+	t.Run("error-invoking-CSCC", func(t *testing.T) {
+		mockEndorserClient := common.GetMockEndorserClient(
+			nil,
+			errors.Errorf("cscc-invocation-error"),
+		)
+		_, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
+		require.EqualError(t, err, "error endorsing GetChannelConfig: cscc-invocation-error")
 	})
-}
 
-func setBCCSPEnvVariables(bccspConfig *factory.FactoryOpts) (cleanup func()) {
-	os.Setenv("CORE_PEER_BCCSP_DEFAULT", bccspConfig.Default)
-	os.Setenv("CORE_PEER_BCCSP_SW_SECURITY", strconv.Itoa(bccspConfig.SW.Security))
-	os.Setenv("CORE_PEER_BCCSP_SW_HASH", bccspConfig.SW.Hash)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_SECURITY", strconv.Itoa(bccspConfig.PKCS11.Security))
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_HASH", bccspConfig.PKCS11.Hash)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_PIN", bccspConfig.PKCS11.Pin)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_LABEL", bccspConfig.PKCS11.Label)
-	os.Setenv("CORE_PEER_BCCSP_PKCS11_LIBRARY", bccspConfig.PKCS11.Library)
+	t.Run("nil-response", func(t *testing.T) {
+		mockEndorserClient := common.GetMockEndorserClient(
+			nil,
+			nil,
+		)
+		_, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
+		require.EqualError(t, err, "received nil proposal response")
+	})
 
-	return func() {
-		os.Unsetenv("CORE_PEER_BCCSP_DEFAULT")
-		os.Unsetenv("CORE_PEER_BCCSP_SW_SECURITY")
-		os.Unsetenv("CORE_PEER_BCCSP_SW_HASH")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_SECURITY")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_HASH")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_PIN")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_LABEL")
-		os.Unsetenv("CORE_PEER_BCCSP_PKCS11_LIBRARY")
-	}
+	t.Run("bad-status-code-from-cscc", func(t *testing.T) {
+		mockEndorserClient := common.GetMockEndorserClient(
+			&pb.ProposalResponse{
+				Response:    &pb.Response{Status: 404, Payload: []byte{}},
+				Endorsement: &pb.Endorsement{},
+			},
+			nil,
+		)
+		_, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
+		require.EqualError(t, err, "error bad proposal response 404: ")
+	})
+
+	t.Run("unmarshalable-config", func(t *testing.T) {
+		mockEndorserClient := common.GetMockEndorserClient(
+			&pb.ProposalResponse{
+				Response:    &pb.Response{Status: 200, Payload: []byte("unmarshalable-config")},
+				Endorsement: &pb.Endorsement{},
+			},
+			nil,
+		)
+		_, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
+		require.EqualError(t, err, "error unmarshaling channel config: unexpected EOF")
+	})
+
+	t.Run("unloadable-config", func(t *testing.T) {
+		mockEndorserClient := common.GetMockEndorserClient(
+			&pb.ProposalResponse{
+				Response:    &pb.Response{Status: 200, Payload: []byte{}},
+				Endorsement: &pb.Endorsement{},
+			},
+			nil,
+		)
+		_, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
+		require.EqualError(t, err, "error loading channel config: config must contain a channel group")
+	})
 }

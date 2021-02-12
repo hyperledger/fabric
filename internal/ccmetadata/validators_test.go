@@ -92,7 +92,6 @@ func TestBadMetadataExtension(t *testing.T) {
 
 	err := ValidateMetadataFile(fileName, fileBytes)
 	require.Error(t, err, "Should have received an error")
-
 }
 
 func TestBadFilePaths(t *testing.T) {
@@ -163,11 +162,9 @@ func TestBadFilePaths(t *testing.T) {
 	err = ValidateMetadataFile(fileName, fileBytes)
 	fmt.Println(err)
 	require.Error(t, err, "Should have received an error for an invalid file name")
-
 }
 
 func TestIndexValidation(t *testing.T) {
-
 	// Test valid index with field sorts
 	indexDef := []byte(`{"index":{"fields":[{"size":"desc"}, {"color":"desc"}]},"ddoc":"indexSizeSortName", "name":"indexSizeSortName","type":"json"}`)
 	_, indexDefinition := isJSON(indexDef)
@@ -202,11 +199,9 @@ func TestIndexValidation(t *testing.T) {
 	_, indexDefinition = isJSON(indexDef)
 	err = validateIndexJSON(indexDefinition)
 	require.NoError(t, err)
-
 }
 
 func TestIndexValidationInvalidParameters(t *testing.T) {
-
 	// Test numeric values passed in for parameters
 	indexDef := []byte(`{"index":{"fields":[{"size":"desc"}, {"color":"desc"}]},"ddoc":1, "name":"indexSizeSortName","type":"json"}`)
 	_, indexDefinition := isJSON(indexDef)
@@ -248,11 +243,9 @@ func TestIndexValidationInvalidParameters(t *testing.T) {
 	_, indexDefinition = isJSON(indexDef)
 	err = validateIndexJSON(indexDefinition)
 	require.Error(t, err, "Error should have been thrown for missing index parameter")
-
 }
 
 func TestIndexValidationInvalidFields(t *testing.T) {
-
 	// Test invalid fields parameter
 	indexDef := []byte(`{"index":{"fields1":[{"size":"desc"}, {"color":"desc"}]},"ddoc":"indexSizeSortName", "name":"indexSizeSortName","type":"json"}`)
 	_, indexDefinition := isJSON(indexDef)
@@ -288,7 +281,6 @@ func TestIndexValidationInvalidFields(t *testing.T) {
 	_, indexDefinition = isJSON(indexDef)
 	err = validateIndexJSON(indexDefinition)
 	require.Error(t, err, "Error should have been thrown for missing JSON for fields")
-
 }
 
 func cleanupDir(dir string) error {

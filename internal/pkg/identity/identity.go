@@ -22,6 +22,8 @@ type Serializer interface {
 	Serialize() ([]byte, error)
 }
 
+//go:generate counterfeiter -o mocks/signer_serializer.go --fake-name SignerSerializer . SignerSerializer
+
 // SignerSerializer groups the Sign and Serialize methods.
 type SignerSerializer interface {
 	Signer

@@ -21,11 +21,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testNewHashFunc = func() (hash.Hash, error) {
-		return sha256.New(), nil
-	}
-)
+var testNewHashFunc = func() (hash.Hash, error) {
+	return sha256.New(), nil
+}
 
 func TestFileCreateAndRead(t *testing.T) {
 	testDir := testPath(t)

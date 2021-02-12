@@ -22,7 +22,7 @@ import (
 )
 
 func TestParseFormat(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		desc       string
 		spec       string
 		formatters []fabenc.Formatter
@@ -52,7 +52,8 @@ func TestParseFormat(t *testing.T) {
 			spec: "%{color} suffix",
 			formatters: []fabenc.Formatter{
 				fabenc.ColorFormatter{},
-				fabenc.StringFormatter{Value: " suffix"}},
+				fabenc.StringFormatter{Value: " suffix"},
+			},
 		},
 		{
 			desc: "with prefix and suffix",
@@ -88,7 +89,7 @@ func TestParseFormatError(t *testing.T) {
 }
 
 func TestNewFormatter(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		verb      string
 		format    string
 		formatter fabenc.Formatter
@@ -127,7 +128,7 @@ func TestNewFormatter(t *testing.T) {
 }
 
 func TestColorFormatter(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		f         fabenc.ColorFormatter
 		level     zapcore.Level
 		formatted string
@@ -162,7 +163,7 @@ func TestColorFormatter(t *testing.T) {
 }
 
 func TestLevelFormatter(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		level     zapcore.Level
 		formatted string
 	}{
@@ -268,7 +269,7 @@ func TestMultiFormatter(t *testing.T) {
 		zap.String("name", "value"),
 	}
 
-	var tests = []struct {
+	tests := []struct {
 		desc     string
 		initial  []fabenc.Formatter
 		update   []fabenc.Formatter

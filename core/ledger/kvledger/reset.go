@@ -22,6 +22,15 @@ func ResetAllKVLedgers(rootFSPath string) error {
 	}
 	defer fileLock.Unlock()
 
+	blockstorePath := BlockStorePath(rootFSPath)
+	ledgerIDs, err := blkstorage.GetLedgersBootstrappedFromSnapshot(blockstorePath)
+	if err != nil {
+		return err
+	}
+	if len(ledgerIDs) > 0 {
+		return errors.Errorf("cannot reset channels because the peer contains channel(s) %s that were bootstrapped from snapshot", ledgerIDs)
+	}
+
 	logger.Info("Resetting all channel ledgers to genesis block")
 	logger.Infof("Ledger data folder from config = [%s]", rootFSPath)
 	if err := dropDBs(rootFSPath); err != nil {

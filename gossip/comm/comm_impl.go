@@ -37,9 +37,7 @@ const (
 	DefSendBuffSize  = 20
 )
 
-var (
-	errProbe = errors.New("probe")
-)
+var errProbe = errors.New("probe")
 
 // SecurityAdvisor defines an external auxiliary object
 // that provides security and identity related capabilities
@@ -60,7 +58,6 @@ func (c *commImpl) SetDialOpts(opts ...grpc.DialOption) {
 func NewCommInstance(s *grpc.Server, certs *common.TLSCertificates, idStore identity.Mapper,
 	peerIdentity api.PeerIdentityType, secureDialOpts api.PeerSecureDialOpts, sa api.SecurityAdvisor,
 	commMetrics *metrics.CommMetrics, config CommConfig, dialOpts ...grpc.DialOption) (Comm, error) {
-
 	commInst := &commImpl{
 		sa:              sa,
 		pubSub:          util.NewPubSub(),
@@ -259,7 +256,7 @@ func (c *commImpl) Probe(remotePeer *RemotePeer) error {
 	endpoint := remotePeer.Endpoint
 	pkiID := remotePeer.PKIID
 	if c.isStopping() {
-		return fmt.Errorf("Stopping")
+		return errors.New("stopping")
 	}
 	c.logger.Debug("Entering, endpoint:", endpoint, "PKIID:", pkiID)
 	dialOpts = append(dialOpts, c.secureDialOpts()...)
@@ -315,7 +312,7 @@ func (c *commImpl) Handshake(remotePeer *RemotePeer) (api.PeerIdentityType, erro
 		return nil, err
 	}
 	if len(remotePeer.PKIID) > 0 && !bytes.Equal(connInfo.ID, remotePeer.PKIID) {
-		return nil, fmt.Errorf("PKI-ID of remote peer doesn't match expected PKI-ID")
+		return nil, errors.New("PKI-ID of remote peer doesn't match expected PKI-ID")
 	}
 	return connInfo.Identity, nil
 }
@@ -432,7 +429,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator, isProbe bool
 	// TLS enabled but not detected on other side
 	if useTLS && len(remoteCertHash) == 0 {
 		c.logger.Warningf("%s didn't send TLS certificate", remoteAddress)
-		return nil, fmt.Errorf("No TLS certificate")
+		return nil, errors.New("no TLS certificate")
 	}
 
 	cMsg, err = c.createConnectionMsg(c.PKIID, selfCertHash, c.peerIdentity, signer, isProbe)
@@ -444,18 +441,18 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator, isProbe bool
 	stream.Send(cMsg.Envelope)
 	m, err := readWithTimeout(stream, c.connTimeout, remoteAddress)
 	if err != nil {
-		c.logger.Warningf("Failed reading messge from %s, reason: %v", remoteAddress, err)
+		c.logger.Warningf("Failed reading message from %s, reason: %v", remoteAddress, err)
 		return nil, err
 	}
 	receivedMsg := m.GetConn()
 	if receivedMsg == nil {
 		c.logger.Warning("Expected connection message from", remoteAddress, "but got", receivedMsg)
-		return nil, fmt.Errorf("Wrong type")
+		return nil, errors.New("wrong type")
 	}
 
 	if receivedMsg.PkiId == nil {
 		c.logger.Warningf("%s didn't send a pkiID", remoteAddress)
-		return nil, fmt.Errorf("No PKI-ID")
+		return nil, errors.New("no PKI-ID")
 	}
 
 	c.logger.Debug("Received", receivedMsg, "from", remoteAddress)
@@ -544,7 +541,7 @@ func (c *commImpl) SendWithAck(msg *protoext.SignedGossipMessage, timeout time.D
 				return err
 			}
 			if msg, isAck := msg.(*proto.Acknowledgement); !isAck {
-				return fmt.Errorf("Received a message of type %s, expected *proto.Acknowledgement", reflect.TypeOf(msg))
+				return errors.Errorf("received a message of type %s, expected *proto.Acknowledgement", reflect.TypeOf(msg))
 			} else {
 				if msg.Error != "" {
 					return errors.New(msg.Error)
@@ -562,7 +559,7 @@ func (c *commImpl) SendWithAck(msg *protoext.SignedGossipMessage, timeout time.D
 
 func (c *commImpl) GossipStream(stream proto.Gossip_GossipStreamServer) error {
 	if c.isStopping() {
-		return fmt.Errorf("Shutting down")
+		return errors.New("shutting down")
 	}
 	connInfo, err := c.authenticateRemotePeer(stream, false, false)
 

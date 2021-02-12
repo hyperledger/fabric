@@ -87,9 +87,6 @@ type CouchDBConfig struct {
 	// MaxBatchUpdateSize is the maximum number of records to included in CouchDB
 	// bulk update operations.
 	MaxBatchUpdateSize int
-	// WarmIndexesAfterNBlocks is the number of blocks after which to warm any
-	// CouchDB indexes.
-	WarmIndexesAfterNBlocks int
 	// CreateGlobalChangesDB determines whether or not to create the "_global_changes"
 	// system database.
 	CreateGlobalChangesDB bool
@@ -157,6 +154,9 @@ type PeerLedgerProvider interface {
 // that tells apart valid transactions from invalid ones
 type PeerLedger interface {
 	commonledger.Ledger
+	// TxIDExists returns true if the specified txID is already present in one of the already committed blocks.
+	// This function returns error only if there is an underlying condition that prevents checking for the txID, such as an I/O error.
+	TxIDExists(txID string) (bool, error)
 	// GetTransactionByID retrieves a transaction by id
 	GetTransactionByID(txID string) (*peer.ProcessedTransaction, error)
 	// GetBlockByHash returns a block given it's hash
@@ -215,18 +215,6 @@ type PeerLedger interface {
 	CancelSnapshotRequest(height uint64) error
 	// PendingSnapshotRequests returns a list of heights for the pending (or under processing) snapshot requests.
 	PendingSnapshotRequests() ([]uint64, error)
-	// ListSnapshots returns the information for available snapshots.
-	// It returns a list of strings representing the following JSON object:
-	// type snapshotSignableMetadata struct {
-	//    ChannelName        string            `json:"channel_name"`
-	//    ChannelHeight      uint64            `json:"channel_height"`
-	//    LastBlockHashInHex string            `json:"last_block_hash"`
-	//    FilesAndHashes     map[string]string `json:"snapshot_files_raw_hashes"`
-	// }
-	ListSnapshots() ([]string, error)
-	// DeleteSnapshot deletes the snapshot files except the metadata file.
-	// It returns an error if no such a snapshot exists.
-	DeleteSnapshot(height uint64) error
 }
 
 // SimpleQueryExecutor encapsulates basic functions
@@ -579,26 +567,8 @@ func (missingPvtDataInfo MissingPvtDataInfo) Add(blkNum, txNum uint64, ns, coll 
 	missingBlockPvtDataInfo[txNum] = append(missingBlockPvtDataInfo[txNum],
 		&MissingCollectionPvtDataInfo{
 			Namespace:  ns,
-			Collection: coll})
-}
-
-// ErrCollectionConfigNotYetAvailable is an error which is returned from the function
-// ConfigHistoryRetriever.CollectionConfigAt() if the latest block number committed
-// is lower than the block number specified in the request.
-type ErrCollectionConfigNotYetAvailable struct {
-	MaxBlockNumCommitted uint64
-	Msg                  string
-}
-
-func (e *ErrCollectionConfigNotYetAvailable) Error() string {
-	return e.Msg
-}
-
-// NotFoundInIndexErr is used to indicate missing entry in the index
-type NotFoundInIndexErr string
-
-func (NotFoundInIndexErr) Error() string {
-	return "Entry not found in index"
+			Collection: coll,
+		})
 }
 
 // CollConfigNotDefinedError is returned whenever an operation
@@ -623,11 +593,11 @@ func (e *InvalidCollNameError) Error() string {
 
 // PvtdataHashMismatch is used when the hash of private write-set
 // does not match the corresponding hash present in the block
-// See function `PeerLedger.CommitPvtData` for the usages
+// or there is a mismatch with the boot-KV-hashes present in the
+// private block store if the legder is created from a snapshot
 type PvtdataHashMismatch struct {
 	BlockNum, TxNum       uint64
 	Namespace, Collection string
-	ExpectedHash          []byte
 }
 
 // DeployedChaincodeInfoProvider is a dependency that is used by ledger to build collection config history

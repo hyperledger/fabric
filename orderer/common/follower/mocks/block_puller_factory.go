@@ -9,10 +9,11 @@ import (
 )
 
 type BlockPullerFactory struct {
-	BlockPullerStub        func(*common.Block) (follower.ChannelPuller, error)
+	BlockPullerStub        func(*common.Block, chan struct{}) (follower.ChannelPuller, error)
 	blockPullerMutex       sync.RWMutex
 	blockPullerArgsForCall []struct {
 		arg1 *common.Block
+		arg2 chan struct{}
 	}
 	blockPullerReturns struct {
 		result1 follower.ChannelPuller
@@ -37,16 +38,17 @@ type BlockPullerFactory struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *BlockPullerFactory) BlockPuller(arg1 *common.Block) (follower.ChannelPuller, error) {
+func (fake *BlockPullerFactory) BlockPuller(arg1 *common.Block, arg2 chan struct{}) (follower.ChannelPuller, error) {
 	fake.blockPullerMutex.Lock()
 	ret, specificReturn := fake.blockPullerReturnsOnCall[len(fake.blockPullerArgsForCall)]
 	fake.blockPullerArgsForCall = append(fake.blockPullerArgsForCall, struct {
 		arg1 *common.Block
-	}{arg1})
-	fake.recordInvocation("BlockPuller", []interface{}{arg1})
+		arg2 chan struct{}
+	}{arg1, arg2})
+	fake.recordInvocation("BlockPuller", []interface{}{arg1, arg2})
 	fake.blockPullerMutex.Unlock()
 	if fake.BlockPullerStub != nil {
-		return fake.BlockPullerStub(arg1)
+		return fake.BlockPullerStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
@@ -61,17 +63,17 @@ func (fake *BlockPullerFactory) BlockPullerCallCount() int {
 	return len(fake.blockPullerArgsForCall)
 }
 
-func (fake *BlockPullerFactory) BlockPullerCalls(stub func(*common.Block) (follower.ChannelPuller, error)) {
+func (fake *BlockPullerFactory) BlockPullerCalls(stub func(*common.Block, chan struct{}) (follower.ChannelPuller, error)) {
 	fake.blockPullerMutex.Lock()
 	defer fake.blockPullerMutex.Unlock()
 	fake.BlockPullerStub = stub
 }
 
-func (fake *BlockPullerFactory) BlockPullerArgsForCall(i int) *common.Block {
+func (fake *BlockPullerFactory) BlockPullerArgsForCall(i int) (*common.Block, chan struct{}) {
 	fake.blockPullerMutex.RLock()
 	defer fake.blockPullerMutex.RUnlock()
 	argsForCall := fake.blockPullerArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *BlockPullerFactory) BlockPullerReturns(result1 follower.ChannelPuller, result2 error) {

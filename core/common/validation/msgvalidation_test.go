@@ -10,11 +10,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
@@ -48,57 +46,6 @@ func createTestProposalAndSignedProposal(channel string) (*peer.Proposal, error)
 	}
 
 	return prop, nil
-}
-
-func protoMarshal(t *testing.T, m proto.Message) []byte {
-	bytes, err := proto.Marshal(m)
-	require.NoError(t, err)
-	return bytes
-}
-
-// createTestHeader creates a header for a given transaction type, channel id, and creator
-// Based on useGoodTxid, the returned header will have either a good or bad txid for testing purpose
-func createTestHeader(t *testing.T, txType common.HeaderType, channelId string, creator []byte, useGoodTxid bool) (*common.Header, error) {
-	nonce := []byte("nonce-abc-12345")
-
-	// useGoodTxid is used to for testing purpose. When it is true, we use a bad value for txid
-	txid := "bad"
-	if useGoodTxid {
-		txid = protoutil.ComputeTxID(nonce, creator)
-	}
-
-	chdr := &common.ChannelHeader{
-		Type:      int32(txType),
-		ChannelId: channelId,
-		TxId:      txid,
-		Epoch:     uint64(0),
-	}
-
-	shdr := &common.SignatureHeader{
-		Creator: creator,
-		Nonce:   nonce,
-	}
-
-	return &common.Header{
-		ChannelHeader:   protoMarshal(t, chdr),
-		SignatureHeader: protoMarshal(t, shdr),
-	}, nil
-}
-
-func createTestEnvelope(t *testing.T, data []byte, header *common.Header, signer msp.SigningIdentity) (*common.Envelope, error) {
-	payload := &common.Payload{
-		Header: header,
-		Data:   data,
-	}
-	payloadBytes := protoMarshal(t, payload)
-
-	signature, err := signer.Sign(payloadBytes)
-	require.NoError(t, err)
-
-	return &common.Envelope{
-		Payload:   payloadBytes,
-		Signature: signature,
-	}, nil
 }
 
 func TestCheckSignatureFromCreator(t *testing.T) {

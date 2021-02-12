@@ -94,16 +94,16 @@ type NamespaceProvider interface {
 	PossibleNamespaces(vdb VersionedDB) ([]string, error)
 }
 
-//BulkOptimizable interface provides additional functions for
-//databases capable of batch operations
+// BulkOptimizable interface provides additional functions for
+// databases capable of batch operations
 type BulkOptimizable interface {
 	LoadCommittedVersions(keys []*CompositeKey) error
 	GetCachedVersion(namespace, key string) (*version.Height, bool)
 	ClearCachedVersions()
 }
 
-//IndexCapable interface provides additional functions for
-//databases capable of index operations
+// IndexCapable interface provides additional functions for
+// databases capable of index operations
 type IndexCapable interface {
 	GetDBType() string
 	ProcessIndexesForChaincodeDeploy(namespace string, indexFilesData map[string][]byte) error

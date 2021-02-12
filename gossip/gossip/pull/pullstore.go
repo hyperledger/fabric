@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/gossip"
-	proto "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/gossip/comm"
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/gossip/discovery"
@@ -55,13 +54,13 @@ type Config struct {
 	PullInterval      time.Duration // Duration between pull invocations
 	Channel           common.ChannelID
 	PeerCountToSelect int // Number of peers to initiate pull with
-	Tag               proto.GossipMessage_Tag
-	MsgType           proto.PullMsgType
+	Tag               gossip.GossipMessage_Tag
+	MsgType           gossip.PullMsgType
 	PullEngineConfig  algo.PullEngineConfig
 }
 
 // IngressDigestFilter filters out entities in digests that are received from remote peers
-type IngressDigestFilter func(digestMsg *proto.DataDigest) *proto.DataDigest
+type IngressDigestFilter func(digestMsg *gossip.DataDigest) *gossip.DataDigest
 
 // EgressDigestFilter filters digests to be sent to a remote peer, that
 // sent a hello with the following message
@@ -154,12 +153,11 @@ func NewPullMediator(config Config, adapter *PullAdapter) Mediator {
 
 	if adapter.IngressDigFilter == nil {
 		// Create accept all filter
-		adapter.IngressDigFilter = func(digestMsg *proto.DataDigest) *proto.DataDigest {
+		adapter.IngressDigFilter = func(digestMsg *gossip.DataDigest) *gossip.DataDigest {
 			return digestMsg
 		}
 	}
 	return p
-
 }
 
 func (p *pullMediatorImpl) HandleMessage(m protoext.ReceivedMessage) {
@@ -226,7 +224,6 @@ func (p *pullMediatorImpl) RegisterMsgHook(pullMsgType MsgType, hook MessageHook
 	p.Lock()
 	defer p.Unlock()
 	p.msgType2Hook[pullMsgType] = append(p.msgType2Hook[pullMsgType], hook)
-
 }
 
 // Add adds a GossipMessage to the store
@@ -263,11 +260,11 @@ func (p *pullMediatorImpl) SelectPeers() []string {
 // and returns an NONCE that is expected to be returned
 // in the digest message.
 func (p *pullMediatorImpl) Hello(dest string, nonce uint64) {
-	helloMsg := &proto.GossipMessage{
+	helloMsg := &gossip.GossipMessage{
 		Channel: p.config.Channel,
 		Tag:     p.config.Tag,
-		Content: &proto.GossipMessage_Hello{
-			Hello: &proto.GossipHello{
+		Content: &gossip.GossipMessage_Hello{
+			Hello: &gossip.GossipHello{
 				Nonce:    nonce,
 				Metadata: nil,
 				MsgType:  p.config.MsgType,
@@ -287,12 +284,12 @@ func (p *pullMediatorImpl) Hello(dest string, nonce uint64) {
 // SendDigest sends a digest to a remote PullEngine.
 // The context parameter specifies the remote engine to send to.
 func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context interface{}) {
-	digMsg := &proto.GossipMessage{
+	digMsg := &gossip.GossipMessage{
 		Channel: p.config.Channel,
 		Tag:     p.config.Tag,
 		Nonce:   0,
-		Content: &proto.GossipMessage_DataDig{
-			DataDig: &proto.DataDigest{
+		Content: &gossip.GossipMessage_DataDig{
+			DataDig: &gossip.DataDigest{
 				MsgType: p.config.MsgType,
 				Nonce:   nonce,
 				Digests: util.StringsToBytes(digest),
@@ -310,12 +307,12 @@ func (p *pullMediatorImpl) SendDigest(digest []string, nonce uint64, context int
 // SendReq sends an array of items to a certain remote PullEngine identified
 // by a string
 func (p *pullMediatorImpl) SendReq(dest string, items []string, nonce uint64) {
-	req := &proto.GossipMessage{
+	req := &gossip.GossipMessage{
 		Channel: p.config.Channel,
 		Tag:     p.config.Tag,
 		Nonce:   0,
-		Content: &proto.GossipMessage_DataReq{
-			DataReq: &proto.DataRequest{
+		Content: &gossip.GossipMessage_DataReq{
+			DataReq: &gossip.DataRequest{
 				MsgType: p.config.MsgType,
 				Nonce:   nonce,
 				Digests: util.StringsToBytes(items),
@@ -367,7 +364,7 @@ func digestsToHex(digests [][]byte) []string {
 
 // SendRes sends an array of items to a remote PullEngine identified by a context.
 func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce uint64) {
-	items2return := []*proto.Envelope{}
+	items2return := []*gossip.Envelope{}
 	p.RLock()
 	defer p.RUnlock()
 	for _, item := range items {
@@ -375,12 +372,12 @@ func (p *pullMediatorImpl) SendRes(items []string, context interface{}, nonce ui
 			items2return = append(items2return, msg.Envelope)
 		}
 	}
-	returnedUpdate := &proto.GossipMessage{
+	returnedUpdate := &gossip.GossipMessage{
 		Channel: p.config.Channel,
 		Tag:     p.config.Tag,
 		Nonce:   0,
-		Content: &proto.GossipMessage_DataUpdate{
-			DataUpdate: &proto.DataUpdate{
+		Content: &gossip.GossipMessage_DataUpdate{
+			DataUpdate: &gossip.DataUpdate{
 				MsgType: p.config.MsgType,
 				Nonce:   nonce,
 				Data:    items2return,

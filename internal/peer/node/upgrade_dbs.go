@@ -18,7 +18,8 @@ func upgradeDBsCmd() *cobra.Command {
 var nodeUpgradeDBsCmd = &cobra.Command{
 	Use:   "upgrade-dbs",
 	Short: "Upgrades databases.",
-	Long:  "Upgrades databases by directly updating the database format or dropping the databases. Dropped databases will be rebuilt with new format upon peer restart. When the command is executed, the peer must be offline.",
+	Long: "Upgrades databases by directly updating the database format or dropping the databases." +
+		" Dropped databases will be rebuilt with new format upon peer restart. When the command is executed, the peer must be offline.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ledgerConfig()
 		return kvledger.UpgradeDBs(config)

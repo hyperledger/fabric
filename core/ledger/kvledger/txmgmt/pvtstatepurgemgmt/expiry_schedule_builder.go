@@ -56,7 +56,6 @@ func buildExpirySchedule(
 	btlPolicy pvtdatapolicy.BTLPolicy,
 	pvtUpdates *privacyenabledstate.PvtUpdateBatch,
 	hashedUpdates *privacyenabledstate.HashedUpdateBatch) ([]*expiryInfo, error) {
-
 	hashedUpdateKeys := hashedUpdates.ToCompositeKeyMap()
 	expiryScheduleBuilder := newExpiryScheduleBuilder(btlPolicy)
 

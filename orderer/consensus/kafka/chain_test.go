@@ -67,16 +67,15 @@ func newMockChannel() *mockkafka.ChannelConfig {
 	return mockChannel
 }
 
-var (
-	extraShortTimeout = 1 * time.Millisecond
-	shortTimeout      = 1 * time.Second
-	longTimeout       = 1 * time.Hour
+const (
+	extraShortTimeout = time.Millisecond
+	shortTimeout      = time.Second
+	longTimeout       = time.Hour
 
 	hitBranch = 50 * time.Millisecond
 )
 
 func TestChain(t *testing.T) {
-
 	oldestOffset := int64(0)
 	newestOffset := int64(5)
 	lastOriginalOffsetProcessed := int64(0)
@@ -496,7 +495,6 @@ func TestChain(t *testing.T) {
 }
 
 func TestSetupTopicForChannel(t *testing.T) {
-
 	mockChannel := newChannel(channelNameForTest(t), defaultPartition)
 	haltChan := make(chan struct{})
 
@@ -524,8 +522,12 @@ func TestSetupTopicForChannel(t *testing.T) {
 			&sarama.CreateTopicsResponse{
 				TopicErrors: map[string]*sarama.TopicError{
 					mockChannel.topic(): {
-						Err: sarama.ErrNoError}}}),
-		"MetadataRequest": sarama.NewMockWrapper(mdrUnknownTopicOrPartition)})
+						Err: sarama.ErrNoError,
+					},
+				},
+			}),
+		"MetadataRequest": sarama.NewMockWrapper(mdrUnknownTopicOrPartition),
+	})
 
 	mockBrokerTopicExists := sarama.NewMockBroker(t, 1)
 	defer mockBrokerTopicExists.Close()
@@ -534,13 +536,20 @@ func TestSetupTopicForChannel(t *testing.T) {
 			&sarama.CreateTopicsResponse{
 				TopicErrors: map[string]*sarama.TopicError{
 					mockChannel.topic(): {
-						Err: sarama.ErrTopicAlreadyExists}}}),
+						Err: sarama.ErrTopicAlreadyExists,
+					},
+				},
+			}),
 		"MetadataRequest": sarama.NewMockWrapper(&sarama.MetadataResponse{
 			Version: 1,
 			Topics: []*sarama.TopicMetadata{
 				{
 					Name: channelNameForTest(t),
-					Err:  sarama.ErrNoError}}})})
+					Err:  sarama.ErrNoError,
+				},
+			},
+		}),
+	})
 
 	mockBrokerInvalidTopic := sarama.NewMockBroker(t, 2)
 	defer mockBrokerInvalidTopic.Close()
@@ -553,8 +562,12 @@ func TestSetupTopicForChannel(t *testing.T) {
 			&sarama.CreateTopicsResponse{
 				TopicErrors: map[string]*sarama.TopicError{
 					mockChannel.topic(): {
-						Err: sarama.ErrInvalidTopic}}}),
-		"MetadataRequest": metadataResponse})
+						Err: sarama.ErrInvalidTopic,
+					},
+				},
+			}),
+		"MetadataRequest": metadataResponse,
+	})
 
 	mockBrokerInvalidTopic2 := sarama.NewMockBroker(t, 3)
 	defer mockBrokerInvalidTopic2.Close()
@@ -563,17 +576,22 @@ func TestSetupTopicForChannel(t *testing.T) {
 			&sarama.CreateTopicsResponse{
 				TopicErrors: map[string]*sarama.TopicError{
 					mockChannel.topic(): {
-						Err: sarama.ErrInvalidTopic}}}),
+						Err: sarama.ErrInvalidTopic,
+					},
+				},
+			}),
 		"MetadataRequest": sarama.NewMockWrapper(&sarama.MetadataResponse{
 			Version:      1,
 			Brokers:      []*sarama.Broker{sarama.NewBroker(mockBrokerInvalidTopic2.Addr())},
-			ControllerID: mockBrokerInvalidTopic2.BrokerID()})})
+			ControllerID: mockBrokerInvalidTopic2.BrokerID(),
+		}),
+	})
 
 	closedBroker := sarama.NewMockBroker(t, 99)
 	badAddress := closedBroker.Addr()
 	closedBroker.Close()
 
-	var tests = []struct {
+	tests := []struct {
 		name         string
 		brokers      []string
 		brokerConfig *sarama.Config
@@ -638,7 +656,8 @@ func TestSetupTopicForChannel(t *testing.T) {
 				test.brokerConfig,
 				&sarama.TopicDetail{
 					NumPartitions:     1,
-					ReplicationFactor: 2},
+					ReplicationFactor: 2,
+				},
 				mockChannel)
 			if test.expectErr {
 				require.Contains(t, err.Error(), test.errorMsg)
@@ -647,7 +666,6 @@ func TestSetupTopicForChannel(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestSetupProducerForChannel(t *testing.T) {
@@ -1086,7 +1104,6 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 
 			require.NotEmpty(t, mockSupport.BlockCutterVal.CurBatch, "Expected the blockCutter to be non-empty")
 			require.NotNil(t, bareMinimumChain.timer, "Expected the cutTimer to be non-nil when there are pending envelopes")
-
 		})
 
 		t.Run("ReceiveTimeToCutProper", func(t *testing.T) {
@@ -1475,7 +1492,8 @@ func TestProcessMessagesToBlocks(t *testing.T) {
 
 					errorChan:                      errorChan,
 					haltChan:                       haltChan,
-					doneProcessingMessagesToBlocks: make(chan struct{})}
+					doneProcessingMessagesToBlocks: make(chan struct{}),
+				}
 
 				var counts []uint64
 				done := make(chan struct{})
@@ -3318,7 +3336,6 @@ func newMockOrdererTxEnvelope() *cb.Envelope {
 }
 
 func TestDeliverSession(t *testing.T) {
-
 	type testEnvironment struct {
 		channelID  string
 		topic      string
@@ -3334,7 +3351,6 @@ func TestDeliverSession(t *testing.T) {
 
 	// initializes test environment
 	newTestEnvironment := func(t *testing.T) *testEnvironment {
-
 		channelID := channelNameForTest(t)
 		topic := channelID
 		partition := int32(defaultPartition)
@@ -3397,7 +3413,8 @@ func TestDeliverSession(t *testing.T) {
 						}),
 					},
 					Data: []byte("TEST_DATA"),
-				})})),
+				}),
+			})),
 		))
 
 		return &testEnvironment{
@@ -3417,7 +3434,6 @@ func TestDeliverSession(t *testing.T) {
 	// BrokerDeath simulates the partition leader dying and a
 	// second broker becoming the leader before the deliver session times out.
 	t.Run("BrokerDeath", func(t *testing.T) {
-
 		// initialize test environment
 		env := newTestEnvironment(t)
 
@@ -3505,7 +3521,6 @@ func TestDeliverSession(t *testing.T) {
 
 	// An ErrOffsetOutOfRange is non-recoverable
 	t.Run("ErrOffsetOutOfRange", func(t *testing.T) {
-
 		// initialize test environment
 		env := newTestEnvironment(t)
 
@@ -3567,7 +3582,6 @@ func TestDeliverSession(t *testing.T) {
 
 	// test chain timeout
 	t.Run("DeliverSessionTimedOut", func(t *testing.T) {
-
 		// initialize test environment
 		env := newTestEnvironment(t)
 
@@ -3637,7 +3651,6 @@ func TestDeliverSession(t *testing.T) {
 
 		chain.Halt()
 	})
-
 }
 
 func TestHealthCheck(t *testing.T) {

@@ -142,7 +142,7 @@ type MutualTLSConfig struct {
 	// Certfiles root certificates for TLS validation (Comma separated path list)
 	Path string `yaml:"path"`
 
-	//Client TLS information
+	// Client TLS information
 	Client TLSKeyPair `yaml:"client"`
 }
 

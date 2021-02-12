@@ -14,7 +14,6 @@ import (
 )
 
 func TestMetrics(t *testing.T) {
-
 	provider := &metricsfakes.Provider{}
 
 	counter := &metricsfakes.Counter{}

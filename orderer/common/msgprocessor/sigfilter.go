@@ -54,7 +54,6 @@ func (sf *SigFilter) Apply(message *cb.Envelope) error {
 	}
 
 	signedData, err := protoutil.EnvelopeAsSignedData(message)
-
 	if err != nil {
 		return fmt.Errorf("could not convert message to signedData: %s", err)
 	}
@@ -62,7 +61,7 @@ func (sf *SigFilter) Apply(message *cb.Envelope) error {
 	// In maintenance mode, we typically require the signature of /Channel/Orderer/Writers.
 	// This will filter out configuration changes that are not related to consensus-type migration
 	// (e.g on /Channel/Application), and will block Deliver requests from peers (which are normally /Channel/Readers).
-	var policyName = sf.normalPolicyName
+	policyName := sf.normalPolicyName
 	if ordererConf.ConsensusState() == orderer.ConsensusType_STATE_MAINTENANCE {
 		policyName = sf.maintenancePolicyName
 	}

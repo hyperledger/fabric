@@ -20,7 +20,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	protosraft "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -160,7 +159,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			By("2) Verify: Normal TX's on standard channel are blocked")
 			assertTxFailed(network, orderer, channel1)
 
-			//In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
+			// In maintenance mode deliver requests are open to those entities that satisfy the /Channel/Orderer/Readers policy
 			By("2) Verify: delivery request from peer is blocked")
 			err := checkPeerDeliverRequest(orderer, peer, network, channel1)
 			Expect(err).To(MatchError(errors.New("FORBIDDEN")))
@@ -686,7 +685,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			// Get the last config block of the system channel
 			configBlock := nwo.GetConfigBlock(network, peer, o1, "systemchannel")
 			// Plant it in the file system of orderer4, the new node to be onboarded.
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Launching the fourth orderer")
@@ -902,7 +901,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("14) Adding the second orderer to system channel")
-			addConsenter(network, peer, orderer, syschannel, etcdraft.Consenter{
+			addConsenter(network, peer, orderer, syschannel, protosraft.Consenter{
 				ServerTlsCert: secondOrdererCertificate,
 				ClientTlsCert: secondOrdererCertificate,
 				Host:          "127.0.0.1",
@@ -911,7 +910,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 
 			By("15) Obtaining the last config block from the orderer")
 			configBlock := nwo.GetConfigBlock(network, peer, orderer, syschannel)
-			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0644)
+			err = ioutil.WriteFile(filepath.Join(testDir, "systemchannel_block.pb"), protoutil.MarshalOrPanic(configBlock), 0o644)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("16) Waiting for the existing orderer to relinquish its leadership")
@@ -925,7 +924,7 @@ var _ = Describe("Kafka2RaftMigration", func() {
 			Eventually(o2Runner.Err(), network.EventuallyTimeout, time.Second).Should(gbytes.Say("Raft leader changed: 0 -> "))
 
 			By("18) Adding orderer2 to channel2")
-			addConsenter(network, peer, orderer, channel2, etcdraft.Consenter{
+			addConsenter(network, peer, orderer, channel2, protosraft.Consenter{
 				ServerTlsCert: secondOrdererCertificate,
 				ClientTlsCert: secondOrdererCertificate,
 				Host:          "127.0.0.1",

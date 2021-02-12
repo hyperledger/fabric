@@ -21,10 +21,8 @@ const (
 	EndorsersCommand = "endorsers"
 )
 
-var (
-	// responseParserWriter defines the stdout
-	responseParserWriter = os.Stdout
-)
+// responseParserWriter defines the stdout
+var responseParserWriter = os.Stdout
 
 const (
 	defaultTimeout = time.Second * 10

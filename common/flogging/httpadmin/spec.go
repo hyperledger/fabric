@@ -21,6 +21,7 @@ type Logging interface {
 	Spec() string
 }
 
+// swagger:model spec
 type LogSpec struct {
 	Spec string `json:"spec,omitempty"`
 }

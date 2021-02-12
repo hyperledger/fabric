@@ -385,11 +385,11 @@ var _ = Describe("Endorser", func() {
 
 		It("wraps and returns an error and responds to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).To(MatchError("error validating proposal: access denied: channel [channel-id] creator org [msp-id]"))
+			Expect(err).To(MatchError("error validating proposal: access denied: channel [channel-id] creator org unknown, creator is malformed"))
 			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
 				Response: &pb.Response{
 					Status:  500,
-					Message: "error validating proposal: access denied: channel [channel-id] creator org [msp-id]",
+					Message: "error validating proposal: access denied: channel [channel-id] creator org unknown, creator is malformed",
 				},
 			}))
 		})
@@ -618,11 +618,11 @@ var _ = Describe("Endorser", func() {
 
 			It("wraps and returns an error and responds to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-				Expect(err).To(MatchError("error validating proposal: access denied: channel [] creator org [msp-id]"))
+				Expect(err).To(MatchError("error validating proposal: access denied: channel [] creator org unknown, creator is malformed"))
 				Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
 					Response: &pb.Response{
 						Status:  500,
-						Message: "error validating proposal: access denied: channel [] creator org [msp-id]",
+						Message: "error validating proposal: access denied: channel [] creator org unknown, creator is malformed",
 					},
 				}))
 			})
@@ -983,7 +983,6 @@ var _ = Describe("Endorser", func() {
 
 	Context("when retrieving simulation results", func() {
 		BeforeEach(func() {
-
 			mockDeployedCCInfoProvider := &ledgermock.DeployedChaincodeInfoProvider{}
 			fakeSupport.GetDeployedCCInfoProviderReturns(mockDeployedCCInfoProvider)
 

@@ -102,5 +102,4 @@ func TestNotSavingInMem(t *testing.T) {
 	sig1, _ := ms.sign(([]byte)("aa"))
 	sig2, _ := ms.sign(([]byte)("aa"))
 	require.NotEqual(t, sig1, sig2)
-
 }

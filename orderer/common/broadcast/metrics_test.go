@@ -15,9 +15,7 @@ import (
 )
 
 var _ = Describe("Metrics", func() {
-	var (
-		fakeProvider *mock.MetricsProvider
-	)
+	var fakeProvider *mock.MetricsProvider
 
 	BeforeEach(func() {
 		fakeProvider = &mock.MetricsProvider{}

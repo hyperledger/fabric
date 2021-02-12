@@ -74,7 +74,6 @@ func TestEventLogger(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("expected event on eventChan2")
 	}
-
 }
 
 func TestEventListener(t *testing.T) {

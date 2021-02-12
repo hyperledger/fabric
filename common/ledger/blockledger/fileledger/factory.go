@@ -7,11 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package fileledger
 
 import (
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/orderer/common/filerepo"
 )
 
 //go:generate counterfeiter -o mock/block_store_provider.go --fake-name BlockStoreProvider . blockStoreProvider
@@ -24,8 +27,9 @@ type blockStoreProvider interface {
 
 type fileLedgerFactory struct {
 	blkstorageProvider blockStoreProvider
-	ledgers            map[string]blockledger.ReadWriter
+	ledgers            map[string]*FileLedger
 	mutex              sync.Mutex
+	removeFileRepo     *filerepo.Repo
 }
 
 // GetOrCreate gets an existing ledger (if it exists) or creates it
@@ -55,12 +59,27 @@ func (f *fileLedgerFactory) Remove(channelID string) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
+	if err := f.removeFileRepo.Save(channelID, []byte{}); err != nil && err != os.ErrExist {
+		return err
+	}
+
+	// check cache for open blockstore and, if one exists,
+	// shut it down in order to avoid resource contention
+	ledger, ok := f.ledgers[channelID]
+	if ok {
+		ledger.blockStore.Shutdown()
+	}
+
 	err := f.blkstorageProvider.Drop(channelID)
 	if err != nil {
 		return err
 	}
 
 	delete(f.ledgers, channelID)
+
+	if err := f.removeFileRepo.Remove(channelID); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -84,14 +103,38 @@ func New(directory string, metricsProvider metrics.Provider) (blockledger.Factor
 	p, err := blkstorage.NewProvider(
 		blkstorage.NewConf(directory, -1),
 		&blkstorage.IndexConfig{
-			AttrsToIndex: []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum}},
+			AttrsToIndex: []blkstorage.IndexableAttr{blkstorage.IndexableAttrBlockNum},
+		},
 		metricsProvider,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return &fileLedgerFactory{
+
+	fileRepo, err := filerepo.New(filepath.Join(directory, "pendingops"), "remove")
+	if err != nil {
+		return nil, err
+	}
+
+	factory := &fileLedgerFactory{
 		blkstorageProvider: p,
-		ledgers:            make(map[string]blockledger.ReadWriter),
-	}, nil
+		ledgers:            map[string]*FileLedger{},
+		removeFileRepo:     fileRepo,
+	}
+
+	files, err := factory.removeFileRepo.List()
+	if err != nil {
+		return nil, err
+	}
+	for _, fileName := range files {
+		channelID := factory.removeFileRepo.FileToBaseName(fileName)
+		err = factory.Remove(channelID)
+		if err != nil {
+			logger.Errorf("Failed to remove channel %s: %s", channelID, err.Error())
+			return nil, err
+		}
+		logger.Infof("Removed channel: %s", channelID)
+	}
+
+	return factory, nil
 }

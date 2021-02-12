@@ -54,7 +54,7 @@ func instantiateCmd(cf *ChaincodeCmdFactory, cryptoProvider bccsp.BCCSP) *cobra.
 	return chaincodeInstantiateCmd
 }
 
-//instantiate the command via Endorser
+// instantiate the command via Endorser
 func instantiate(cmd *cobra.Command, cf *ChaincodeCmdFactory) (*protcommon.Envelope, error) {
 	spec, err := getChaincodeSpec(cmd)
 	if err != nil {

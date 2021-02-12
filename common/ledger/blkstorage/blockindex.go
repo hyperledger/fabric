@@ -38,7 +38,7 @@ var (
 	indexSavePointKey              = []byte(indexSavePointKeyStr)
 	errIndexSavePointKeyNotPresent = errors.New("NoBlockIndexed")
 	errNilValue                    = errors.New("")
-	importTxIDsBatchSize           = uint64(1000) // txID is 64 bytes, so batch size roughly translates to 64KB
+	importTxIDsBatchSize           = uint64(10000) // txID is 64 bytes, so batch size roughly translates to 640KB
 )
 
 type blockIdxInfo struct {
@@ -97,17 +97,17 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		return err
 	}
 
-	//Index1
+	// Index1
 	if index.isAttributeIndexed(IndexableAttrBlockHash) {
 		batch.Put(constructBlockHashKey(blkHash), flpBytes)
 	}
 
-	//Index2
+	// Index2
 	if index.isAttributeIndexed(IndexableAttrBlockNum) {
 		batch.Put(constructBlockNumKey(blkNum), flpBytes)
 	}
 
-	//Index3 Used to find a transaction by its transaction id
+	// Index3 Used to find a transaction by its transaction id
 	if index.isAttributeIndexed(IndexableAttrTxID) {
 		for i, txoffset := range txOffsets {
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
@@ -133,7 +133,7 @@ func (index *blockIndex) indexBlock(blockIdxInfo *blockIdxInfo) error {
 		}
 	}
 
-	//Index4 - Store BlockNumTranNum will be used to query history data
+	// Index4 - Store BlockNumTranNum will be used to query history data
 	if index.isAttributeIndexed(IndexableAttrBlockNumTranNum) {
 		for i, txoffset := range txOffsets {
 			txFlp := newFileLocationPointer(flp.fileSuffixNum, flp.offset, txoffset.loc)
@@ -161,33 +161,37 @@ func (index *blockIndex) isAttributeIndexed(attribute IndexableAttr) bool {
 
 func (index *blockIndex) getBlockLocByHash(blockHash []byte) (*fileLocPointer, error) {
 	if !index.isAttributeIndexed(IndexableAttrBlockHash) {
-		return nil, ErrAttrNotIndexed
+		return nil, errors.New("block hashes not maintained in index")
 	}
 	b, err := index.db.Get(constructBlockHashKey(blockHash))
 	if err != nil {
 		return nil, err
 	}
 	if b == nil {
-		return nil, ErrNotFoundInIndex
+		return nil, errors.Errorf("no such block hash [%x] in index", blockHash)
 	}
 	blkLoc := &fileLocPointer{}
-	blkLoc.unmarshal(b)
+	if err := blkLoc.unmarshal(b); err != nil {
+		return nil, err
+	}
 	return blkLoc, nil
 }
 
 func (index *blockIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer, error) {
 	if !index.isAttributeIndexed(IndexableAttrBlockNum) {
-		return nil, ErrAttrNotIndexed
+		return nil, errors.New("block numbers not maintained in index")
 	}
 	b, err := index.db.Get(constructBlockNumKey(blockNum))
 	if err != nil {
 		return nil, err
 	}
 	if b == nil {
-		return nil, ErrNotFoundInIndex
+		return nil, errors.Errorf("no such block number [%d] in index", blockNum)
 	}
 	blkLoc := &fileLocPointer{}
-	blkLoc.unmarshal(b)
+	if err := blkLoc.unmarshal(b); err != nil {
+		return nil, err
+	}
 	return blkLoc, nil
 }
 
@@ -223,9 +227,27 @@ func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidati
 	return peer.TxValidationCode(v.TxValidationCode), nil
 }
 
+func (index *blockIndex) txIDExists(txID string) (bool, error) {
+	if !index.isAttributeIndexed(IndexableAttrTxID) {
+		return false, errors.New("transaction IDs not maintained in index")
+	}
+	rangeScan := constructTxIDRangeScan(txID)
+	itr, err := index.db.GetIterator(rangeScan.startKey, rangeScan.stopKey)
+	if err != nil {
+		return false, errors.WithMessagef(err, "error while trying to check the presence of TXID [%s]", txID)
+	}
+	defer itr.Release()
+
+	present := itr.Next()
+	if err := itr.Error(); err != nil {
+		return false, errors.Wrapf(err, "error while trying to check the presence of TXID [%s]", txID)
+	}
+	return present, nil
+}
+
 func (index *blockIndex) getTxIDVal(txID string) (*TxIDIndexValue, error) {
 	if !index.isAttributeIndexed(IndexableAttrTxID) {
-		return nil, ErrAttrNotIndexed
+		return nil, errors.New("transaction IDs not maintained in index")
 	}
 	rangeScan := constructTxIDRangeScan(txID)
 	itr, err := index.db.GetIterator(rangeScan.startKey, rangeScan.stopKey)
@@ -239,7 +261,7 @@ func (index *blockIndex) getTxIDVal(txID string) (*TxIDIndexValue, error) {
 		return nil, errors.Wrapf(err, "error while trying to retrieve transaction info by TXID [%s]", txID)
 	}
 	if !present {
-		return nil, ErrNotFoundInIndex
+		return nil, errors.Errorf("no such transaction ID [%s] in index", txID)
 	}
 	valBytes := itr.Value()
 	if len(valBytes) == 0 {
@@ -254,23 +276,25 @@ func (index *blockIndex) getTxIDVal(txID string) (*TxIDIndexValue, error) {
 
 func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
 	if !index.isAttributeIndexed(IndexableAttrBlockNumTranNum) {
-		return nil, ErrAttrNotIndexed
+		return nil, errors.New("<blockNumber, transactionNumber> tuple not maintained in index")
 	}
 	b, err := index.db.Get(constructBlockNumTranNumKey(blockNum, tranNum))
 	if err != nil {
 		return nil, err
 	}
 	if b == nil {
-		return nil, ErrNotFoundInIndex
+		return nil, errors.Errorf("no such blockNumber, transactionNumber <%d, %d> in index", blockNum, tranNum)
 	}
 	txFLP := &fileLocPointer{}
-	txFLP.unmarshal(b)
+	if err := txFLP.unmarshal(b); err != nil {
+		return nil, err
+	}
 	return txFLP, nil
 }
 
 func (index *blockIndex) exportUniqueTxIDs(dir string, newHashFunc snapshot.NewHashFunc) (map[string][]byte, error) {
 	if !index.isAttributeIndexed(IndexableAttrTxID) {
-		return nil, ErrAttrNotIndexed
+		return nil, errors.New("transaction IDs not maintained in index")
 	}
 
 	dbItr, err := index.db.GetIterator([]byte{txIDIdxKeyPrefix}, []byte{txIDIdxKeyPrefix + 1})
@@ -342,7 +366,6 @@ func importTxIDsFromSnapshot(
 	snapshotDir string,
 	lastBlockNumInSnapshot uint64,
 	db *leveldbhelper.DBHandle) error {
-
 	txIDsMetadata, err := snapshot.OpenFile(filepath.Join(snapshotDir, snapshotMetadataFileName), snapshotFileFormat)
 	if err != nil {
 		return err

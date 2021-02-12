@@ -46,11 +46,11 @@
 #   - verify - runs unit tests for only the changed package tree
 
 ALPINE_VER ?= 3.12
-BASE_VERSION = 2.3.0
+BASE_VERSION = 2.4.0
 
 # 3rd party image version
 # These versions are also set in the runners in ./integration/runners/
-COUCHDB_VER ?= 3.1
+COUCHDB_VER ?= 3.1.1
 KAFKA_VER ?= 5.3.1
 ZOOKEEPER_VER ?= 5.3.1
 
@@ -77,13 +77,13 @@ METADATA_VAR += CommitSHA=$(EXTRA_VERSION)
 METADATA_VAR += BaseDockerLabel=$(BASE_DOCKER_LABEL)
 METADATA_VAR += DockerNamespace=$(DOCKER_NS)
 
-GO_VER = 1.14.4
+GO_VER = 1.14.12
 GO_TAGS ?=
 
 RELEASE_EXES = orderer $(TOOLS_EXES)
 RELEASE_IMAGES = baseos ccenv orderer peer tools
 RELEASE_PLATFORMS = darwin-amd64 linux-amd64 windows-amd64
-TOOLS_EXES = configtxgen configtxlator cryptogen discover idemixgen peer
+TOOLS_EXES = configtxgen configtxlator cryptogen discover idemixgen osnadmin peer
 
 pkgmap.configtxgen    := $(PKGNAME)/cmd/configtxgen
 pkgmap.configtxlator  := $(PKGNAME)/cmd/configtxlator
@@ -91,6 +91,7 @@ pkgmap.cryptogen      := $(PKGNAME)/cmd/cryptogen
 pkgmap.discover       := $(PKGNAME)/cmd/discover
 pkgmap.idemixgen      := $(PKGNAME)/cmd/idemixgen
 pkgmap.orderer        := $(PKGNAME)/cmd/orderer
+pkgmap.osnadmin       := $(PKGNAME)/cmd/osnadmin
 pkgmap.peer           := $(PKGNAME)/cmd/peer
 
 .DEFAULT_GOAL := all
@@ -105,7 +106,7 @@ all: check-go-version native docker checks
 checks: basic-checks unit-test integration-test
 
 .PHONY: basic-checks
-basic-checks: check-go-version license spelling references trailing-spaces linter check-metrics-doc filename-spaces
+basic-checks: check-go-version license spelling references trailing-spaces linter check-metrics-doc filename-spaces check-swagger
 
 .PHONY: desk-checks
 desk-check: checks verify
@@ -173,7 +174,7 @@ profile: export JOB_TYPE=PROFILE
 profile: unit-test
 
 .PHONY: linter
-linter: check-deps gotool.goimports
+linter: check-deps gotool.goimports gotool.gofumpt gotool.staticcheck
 	@echo "LINT: Running code checks.."
 	./scripts/golinter.sh
 
@@ -191,6 +192,16 @@ check-metrics-doc:
 generate-metrics-doc:
 	@echo "Generating metrics reference documentation..."
 	./scripts/metrics_doc.sh generate
+
+.PHONY: check-swagger
+check-swagger: gotool.swagger
+	@echo "SWAGGER: Checking for outdated swagger..."
+	./scripts/swagger.sh check
+
+.PHONY: generate-swagger
+generate-swagger: gotool.swagger
+	@echo "Generating swagger..."
+	./scripts/swagger.sh generate
 
 .PHONY: protos
 protos: gotool.protoc-gen-go
@@ -220,6 +231,7 @@ $(BUILD_DIR)/images/ccenv/$(DUMMY):   BUILD_CONTEXT=images/ccenv
 $(BUILD_DIR)/images/baseos/$(DUMMY):  BUILD_CONTEXT=images/baseos
 $(BUILD_DIR)/images/peer/$(DUMMY):    BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 $(BUILD_DIR)/images/orderer/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
+$(BUILD_DIR)/images/tools/$(DUMMY): BUILD_ARGS=--build-arg GO_TAGS=${GO_TAGS}
 
 $(BUILD_DIR)/images/%/$(DUMMY):
 	@echo "Building Docker image $(DOCKER_NS)/fabric-$*"

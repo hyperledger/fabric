@@ -242,7 +242,7 @@ func byteSizeDecodeHook(f reflect.Kind, t reflect.Kind, data interface{}) (inter
 	if raw == "" {
 		return data, nil
 	}
-	var re = regexp.MustCompile(`^(?P<size>[0-9]+)\s*(?i)(?P<unit>(k|m|g))b?$`)
+	re := regexp.MustCompile(`^(?P<size>[0-9]+)\s*(?i)(?P<unit>(k|m|g))b?$`)
 	if re.MatchString(raw) {
 		size, err := strconv.ParseUint(re.ReplaceAllString(raw, "${size}"), 0, 64)
 		if err != nil {

@@ -32,14 +32,16 @@ type StorageDataRetriever interface {
 }
 
 type dataRetriever struct {
+	logger    util.Logger
 	store     *transientstore.Store
 	committer committer.Committer
 }
 
 // NewDataRetriever constructing function for implementation of the
 // StorageDataRetriever interface
-func NewDataRetriever(store *transientstore.Store, committer committer.Committer) StorageDataRetriever {
+func NewDataRetriever(channelID string, store *transientstore.Store, committer committer.Committer) StorageDataRetriever {
 	return &dataRetriever{
+		logger:    logger.With("channel", channelID),
 		store:     store,
 		committer: committer,
 	}
@@ -53,14 +55,27 @@ func (dr *dataRetriever) CollectionRWSet(digests []*protosgossip.PvtDataDigest, 
 		// if there is an error getting info from the ledger, we need to try to read from transient store
 		return nil, false, errors.Wrap(err, "wasn't able to read ledger height")
 	}
-	if height <= blockNum {
-		logger.Debug("Current ledger height ", height, "is below requested block sequence number",
-			blockNum, "retrieving private data from transient store")
-	}
 
+	// The condition may be true for either commit or reconciliation case when another peer sends a request to retrieve private data.
+	// For the commit case, get the private data from the transient store because the block has not been committed.
+	// For the reconciliation case, this peer is further behind the ledger height than the peer that requested for the private data.
+	// In this case, the ledger does not have the requested private data. Also, the data cannot be queried in the transient store,
+	// as the txID in the digest will be missing.
 	if height <= blockNum { // Check whenever current ledger height is equal or below block sequence num.
+		dr.logger.Debug("Current ledger height ", height, "is below requested block sequence number",
+			blockNum, "retrieving private data from transient store")
+
 		results := make(Dig2PvtRWSetWithConfig)
 		for _, dig := range digests {
+			// skip retrieving from transient store if txid is not available
+			if dig.TxId == "" {
+				dr.logger.Infof("Skip querying transient store for chaincode %s, collection name %s, block number %d, sequence in block %d, "+
+					"as the txid is missing, perhaps because it is a reconciliation request",
+					dig.Namespace, dig.Collection, blockNum, dig.SeqInBlock)
+
+				continue
+			}
+
 			filter := map[string]ledger.PvtCollFilter{
 				dig.Namespace: map[string]bool{
 					dig.Collection: true,
@@ -68,7 +83,7 @@ func (dr *dataRetriever) CollectionRWSet(digests []*protosgossip.PvtDataDigest, 
 			}
 			pvtRWSet, err := dr.fromTransientStore(dig, filter)
 			if err != nil {
-				logger.Errorf("couldn't read from transient store private read-write set, "+
+				dr.logger.Errorf("couldn't read from transient store private read-write set, "+
 					"digest %+v, because of %s", dig, err)
 				continue
 			}
@@ -108,7 +123,7 @@ func (dr *dataRetriever) fromLedger(digests []*protosgossip.PvtDataDigest, block
 		pvtRWSetWithConfig := &util.PrivateRWSetWithConfig{}
 		for _, data := range pvtData {
 			if data.WriteSet == nil {
-				logger.Warning("Received nil write set for collection tx in block", data.SeqInBlock, "block number", blockNum)
+				dr.logger.Warning("Received nil write set for collection tx in block", data.SeqInBlock, "block number", blockNum)
 				continue
 			}
 
@@ -177,25 +192,25 @@ func (dr *dataRetriever) fromTransientStore(dig *protosgossip.PvtDataDigest, fil
 		}
 		rws := res.PvtSimulationResultsWithConfig
 		if rws == nil {
-			logger.Debug("Skipping nil PvtSimulationResultsWithConfig received at block height", res.ReceivedAtBlockHeight)
+			dr.logger.Debug("Skipping nil PvtSimulationResultsWithConfig received at block height", res.ReceivedAtBlockHeight)
 			continue
 		}
 		txPvtRWSet := rws.PvtRwset
 		if txPvtRWSet == nil {
-			logger.Debug("Skipping empty PvtRwset of PvtSimulationResultsWithConfig received at block height", res.ReceivedAtBlockHeight)
+			dr.logger.Debug("Skipping empty PvtRwset of PvtSimulationResultsWithConfig received at block height", res.ReceivedAtBlockHeight)
 			continue
 		}
 
 		colConfigs, found := rws.CollectionConfigs[dig.Namespace]
 		if !found {
-			logger.Error("No collection config was found for chaincode", dig.Namespace, "collection name",
-				dig.Namespace, "txID", dig.TxId)
+			dr.logger.Error("No collection config was found for chaincode", dig.Namespace, "collection name",
+				dig.Collection, "txID", dig.TxId)
 			continue
 		}
 
 		configs := extractCollectionConfig(colConfigs, dig.Collection)
 		if configs == nil {
-			logger.Error("No collection config was found for collection", dig.Collection,
+			dr.logger.Error("No collection config was found for collection", dig.Collection,
 				"namespace", dig.Namespace, "txID", dig.TxId)
 			continue
 		}
@@ -216,13 +231,13 @@ func (dr *dataRetriever) extractPvtRWsets(pvtRWSets []*rwset.NsPvtReadWriteSet, 
 	for _, nsws := range pvtRWSets {
 		// and in each namespace - iterate over all collections
 		if nsws.Namespace != namespace {
-			logger.Debug("Received private data namespace ", nsws.Namespace, " instead of ", namespace, " skipping...")
+			dr.logger.Debug("Received private data namespace ", nsws.Namespace, " instead of ", namespace, " skipping...")
 			continue
 		}
 		for _, col := range nsws.CollectionPvtRwset {
 			// This isn't the collection we're looking for
 			if col.CollectionName != collectionName {
-				logger.Debug("Received private data collection ", col.CollectionName, " instead of ", collectionName, " skipping...")
+				dr.logger.Debug("Received private data collection ", col.CollectionName, " instead of ", collectionName, " skipping...")
 				continue
 			}
 			// Add the collection pRWset to the accumulated set

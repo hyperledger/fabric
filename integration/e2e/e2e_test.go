@@ -158,7 +158,9 @@ var _ = Describe("EndToEnd", func() {
 
 			By("setting up the channel")
 			network.CreateAndJoinChannel(orderer, "testchannel")
-			channelparticipation.List(network, orderer, []string{"testchannel"}, "systemchannel")
+			cl := channelparticipation.List(network, orderer)
+			channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, []string{"systemchannel"}...)
+
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			By("attempting to install unsupported chaincode without docker")
@@ -259,7 +261,9 @@ var _ = Describe("EndToEnd", func() {
 			orderer := network.Orderer("orderer")
 
 			network.CreateAndJoinChannel(orderer, "testchannel")
-			channelparticipation.List(network, orderer, []string{"testchannel"}, "systemchannel")
+			cl := channelparticipation.List(network, orderer)
+			channelparticipation.ChannelListMatcher(cl, []string{"testchannel"}, []string{"systemchannel"}...)
+
 			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 
 			// package, install, and approve by org1 - module chaincode
@@ -395,7 +399,9 @@ var _ = Describe("EndToEnd", func() {
 
 			By("Create second channel and deploy chaincode")
 			network.CreateAndJoinChannel(orderer, "testchannel2")
-			channelparticipation.List(network, orderer, []string{"testchannel", "testchannel2"}, "systemchannel")
+			cl := channelparticipation.List(network, orderer)
+			channelparticipation.ChannelListMatcher(cl, []string{"testchannel", "testchannel2"}, []string{"systemchannel"}...)
+
 			peers := network.PeersWithChannel("testchannel2")
 			nwo.EnableCapabilities(network, "testchannel2", "Application", "V2_0", orderer, network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"))
 			nwo.ApproveChaincodeForMyOrg(network, "testchannel2", orderer, chaincode, peers...)

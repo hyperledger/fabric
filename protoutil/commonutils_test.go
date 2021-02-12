@@ -49,7 +49,6 @@ func TestNonceLength(t *testing.T) {
 	if actual != expected {
 		t.Fatalf("Expected nonce to be of size %d, got %d instead", expected, actual)
 	}
-
 }
 
 func TestUnmarshalPayload(t *testing.T) {
@@ -67,7 +66,6 @@ func TestUnmarshalPayload(t *testing.T) {
 	require.Panics(t, func() {
 		_ = UnmarshalPayloadOrPanic(bad)
 	}, "Expected panic unmarshaling malformed payload")
-
 }
 
 func TestUnmarshalSignatureHeader(t *testing.T) {
@@ -100,7 +98,6 @@ func TestUnmarshalSignatureHeader(t *testing.T) {
 }
 
 func TestUnmarshalSignatureHeaderOrPanic(t *testing.T) {
-
 	t.Run("panic due to invalid header", func(t *testing.T) {
 		sighdrBytes := []byte("invalid signature header")
 		require.Panics(t, func() {
@@ -130,7 +127,6 @@ func TestUnmarshalEnvelope(t *testing.T) {
 	require.Panics(t, func() {
 		_ = UnmarshalEnvelopeOrPanic(bad)
 	}, "Expected panic unmarshaling malformed envelope")
-
 }
 
 func TestUnmarshalBlock(t *testing.T) {
@@ -146,7 +142,6 @@ func TestUnmarshalBlock(t *testing.T) {
 	require.Panics(t, func() {
 		_ = UnmarshalBlockOrPanic(bad)
 	}, "Expected panic unmarshaling malformed block")
-
 }
 
 func TestUnmarshalEnvelopeOfType(t *testing.T) {
@@ -210,7 +205,6 @@ func TestUnmarshalEnvelopeOfType(t *testing.T) {
 	env.Payload = payload
 	_, err = UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, &cb.ConfigEnvelope{})
 	require.NoError(t, err, "Unexpected error unmarshaling envelope")
-
 }
 
 func TestExtractEnvelopeNilData(t *testing.T) {

@@ -7,11 +7,12 @@ In this topic, we'll cover:
 
 * [What is a policy](#what-is-a-policy)
 * [Why are policies needed](#why-are-policies-needed)
-* [How are policies implemented throughout Fabric](#how-are-policies-implemented-throughout-fabric)
-* [Fabric policy domains](#the-fabric-policy-domains)
+* [How are policies implemented](#how-are-policies-implemented)
 * [How do you write a policy in Fabric](#how-do-you-write-a-policy-in-fabric)
 * [Fabric chaincode lifecycle](#fabric-chaincode-lifecycle)
 * [Overriding policy definitions](#overriding-policy-definitions)
+
+Note: this topic describes a network that does not use a "system channel", a channel that the ordering service is bootstrapped with and the ordering service exclusively controls. Since the release of v2.3, using system channel is now considered the legacy process as compared to the process to [Create a channel](../create_channel/create_channel_participation.html) without a system channel. For a version of this topic that includes information about the system channel, check out [Policies](https://hyperledger-fabric.readthedocs.io/en/release-2.2/policies/policies.html) from the v2.2 documentation.
 
 ## What is a policy
 
@@ -30,9 +31,9 @@ and responsibilities of each party.
 Whereas an insurance policy is put in place for risk management, in Hyperledger
 Fabric, policies are the mechanism for infrastructure management. Fabric policies
 represent how members come to agreement on accepting or rejecting changes to the
-network, a channel, or a smart contract. Policies are agreed to by the consortium
-members when a network is originally configured, but they can also be modified
-as the network evolves. For example, they describe the criteria for adding or
+network, a channel, or a smart contract. Policies are agreed to by the channel
+members when the channel is originally configured, but they can also be modified
+as the channel evolves. For example, they describe the criteria for adding or
 removing members from a channel, change how blocks are formed, or specify the
 number of organizations required to endorse a smart contract. All of these
 actions are described by a policy which defines who can perform the action.
@@ -59,39 +60,11 @@ they are written, policies evaluate the collection of signatures attached to
 transactions and proposals and validate if the signatures fulfill the governance
 agreed to by the network.
 
-## How are policies implemented throughout Fabric
+## How are policies implemented
 
-Policies are implemented at different levels of a Fabric network. Each policy
-domain governs different aspects of how a network operates.
+Policies are defined within the relevant administrative domain of a particular action defined by the policy. For example, the policy for adding a peer organization to a channel is defined within the administrative domain of the peer organizations (known as the `Application` group). Similarly, adding ordering nodes in the consenter set of the channel is controlled by a policy inside the `Orderer` group. Actions that cross both the peer and orderer organizational domains are contained in the `Channel` group.
 
-![policies.policies](./FabricPolicyHierarchy-2.png) *A visual representation
-of the Fabric policy hierarchy.*
-
-### System channel configuration
-
-Every network begins with an ordering **system channel**. There must be exactly
-one ordering system channel for an ordering service, and it is the first channel
-to be created. The system channel also contains the organizations who are the
-members of the ordering service (ordering organizations) and those that are
-on the networks to transact (consortium organizations).
-
-The policies in the ordering system channel configuration blocks govern the
-consensus used by the ordering service and define how new blocks are created.
-The system channel also governs which members of the consortium are allowed to
-create new channels.
-
-### Application channel configuration
-
-Application _channels_ are used to provide a private communication mechanism
-between organizations in the consortium.
-
-The policies in an application channel govern the ability to add or remove
-members from the channel. Application channels also govern which organizations
-are required to approve a chaincode before the chaincode is defined and
-committed to a channel using the Fabric chaincode lifecycle. When an application
-channel is initially created, it inherits all the ordering service parameters
-from the orderer system channel by default. However, those parameters (and the
-policies governing them) can be customized in each channel.
+Typically, these policies default to the "majority of admins" of the group they fall under (a majority of peer organization admins for example, or in the case of `Channel` policies, a majority of both peer organizations and orderer organizations), though they can be specified to any rule a user wishes to define. Check out [Signature policies](#signature-policies) for more information.
 
 ### Access control lists (ACLs)
 
@@ -136,35 +109,6 @@ the `Modification policy`. Modification policies specify the group of identities
 required to sign (approve) any configuration _update_. It is the policy that
 defines how the policy is updated. Thus, each channel configuration element
 includes a reference to a policy which governs its modification.
-
-## The Fabric policy domains
-
-While Fabric policies are flexible and can be configured to meet the needs of a
-network, the policy structure naturally leads to a division between the domains
-governed by either the Ordering Service organizations or the members of the
-consortium. In the following diagram you can see how the default policies
-implement control over the Fabric policy domains below.
-
-![policies.policies](./FabricPolicyHierarchy-4.png) *A more detailed look at the
-policy domains governed by the Orderer organizations and consortium organizations.*
-
-A fully functional Fabric network can feature many organizations with different
-responsibilities. The domains provide the ability to extend different privileges
-and roles to different organizations by allowing the founders of the ordering
-service the ability to establish the initial rules and membership of the
-consortium. They also allow the organizations that join the consortium to create
-private application channels, govern their own business logic, and restrict
-access to the data that is put on the network.
-
-The system channel configuration and a portion of each application channel
-configuration provides the ordering organizations control over which organizations
-are members of the consortium, how blocks are delivered to channels, and the
-consensus mechanism used by the nodes of the ordering service.
-
-The system channel configuration provides members of the consortium the ability
-to create channels. Application channels and ACLs are the mechanism that
-consortium organizations use to add or remove members from a channel and restrict
-access to data and smart contracts on a channel.
 
 ## How do you write a policy in Fabric
 
@@ -222,10 +166,7 @@ organizations.
 As mentioned above, a key benefit of an `ImplicitMeta` policy such as `MAJORITY
 Admins` is that when you add a new admin organization to the channel, you do not
 have to update the channel policy. Therefore `ImplicitMeta` policies are
-considered to be more flexible as the consortium members change. The consortium
-on the orderer can change as new members are added or an existing member leaves
-with the consortium members agreeing to the changes, but no policy updates are
-required. Recall that `ImplicitMeta` policies ultimately resolve the
+considered to be more flexible as organizations are added. Recall that `ImplicitMeta` policies ultimately resolve the
 `Signature` sub-policies underneath them in the configuration tree as the
 diagram shows.
 
@@ -249,19 +190,19 @@ sign.
 Understanding policies begins with examining the `configtx.yaml` where the
 channel policies are defined. We can use the `configtx.yaml` file in the Fabric
 test network to see examples of both policy syntax types. We are going to examine
-the configtx.yaml file used by the [fabric-samples/test-network](https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/test-network/configtx/configtx.yaml) sample.
+the `configtx.yaml` file used by the [fabric-samples/test-network](https://github.com/hyperledger/fabric-samples/blob/master/test-network/configtx/configtx.yaml) sample.
 
-The first section of the file defines the organizations of the network. Inside each
+The first section of the file defines the organizations that will be members of the channel. Inside each
 organization definition are the default policies for that organization, `Readers`, `Writers`,
 `Admins`, and `Endorsement`, although you can name your policies anything you want.
 Each policy has a `Type` which describes how the policy is expressed (`Signature`
 or `ImplicitMeta`) and a `Rule`.
 
-The test network example below shows the Org1 organization definition in the system
-channel, where the policy `Type` is `Signature` and the endorsement policy rule
+The test network example below shows the Org1 organization definition in the
+channel, where the policy `Type` is `Signature` and the `Endorsement:` policy rule
 is defined as `"OR('Org1MSP.peer')"`. This policy specifies that a peer that is
 a member of `Org1MSP` is required to sign. It is these signature policies that
-become the sub-policies that the ImplicitMeta policies point to.  
+become the sub-policies that the `ImplicitMeta` policies point to.
 
 <details>
   <summary>
@@ -269,32 +210,32 @@ become the sub-policies that the ImplicitMeta policies point to.
   </summary>
 
 ```
- - &Org1
-        # DefaultOrg defines the organization which is used in the sampleconfig
-        # of the fabric.git development environment
-        Name: Org1MSP
+- &Org1
+       # DefaultOrg defines the organization which is used in the sampleconfig
+       # of the fabric.git development environment
+       Name: Org1MSP
 
-        # ID to load the MSP definition as
-        ID: Org1MSP
+       # ID to load the MSP definition as
+       ID: Org1MSP
 
-        MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
+       MSPDir: ../organizations/peerOrganizations/org1.example.com/msp
 
-        # Policies defines the set of policies at this level of the config tree
-        # For organization policies, their canonical path is usually
-        #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
-        Policies:
-            Readers:
-                Type: Signature
-                Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')"
-            Writers:
-                Type: Signature
-                Rule: "OR('Org1MSP.admin', 'Org1MSP.client')"
-            Admins:
-                Type: Signature
-                Rule: "OR('Org1MSP.admin')"
-            Endorsement:
-                Type: Signature
-                Rule: "OR('Org1MSP.peer')"
+       # Policies defines the set of policies at this level of the config tree
+       # For organization policies, their canonical path is usually
+       #   /Channel/<Application|Orderer>/<OrgName>/<PolicyName>
+       Policies:
+           Readers:
+               Type: Signature
+               Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')"
+           Writers:
+               Type: Signature
+               Rule: "OR('Org1MSP.admin', 'Org1MSP.client')"
+           Admins:
+               Type: Signature
+               Rule: "OR('Org1MSP.admin')"
+           Endorsement:
+               Type: Signature
+               Rule: "OR('Org1MSP.peer')"
 ```
 </details>
 
@@ -423,7 +364,7 @@ If an endorsement policy is not explicitly specified during the approval step,
 the default `Endorsement` policy `"MAJORITY Endorsement"` is used which means
 that a majority of the peers belonging to the different channel members
 (organizations) need to execute and validate a transaction against the chaincode
-in order for the transaction to be considered valid.  This default policy allows
+in order for the transaction to be considered valid. This default policy allows
 organizations that join the channel to become automatically added to the chaincode
 endorsement policy. If you don't want to use the default endorsement
 policy, use the Signature policy format to specify a more complex endorsement
@@ -436,8 +377,8 @@ IDs, but they are more versatile because they can include a wide range of
 properties of an actor’s identity, such as the actor’s organization,
 organizational unit, role or even the actor’s specific identity. When we talk
 about principals, they are the properties which determine their permissions.
-Principals are described as 'MSP.ROLE', where `MSP` represents the required MSP
-ID (the organization),  and `ROLE` represents one of the four accepted roles:
+Principals are described as `'MSP.ROLE'`, where `MSP` represents the required MSP
+ID (the organization), and `ROLE` represents one of the four accepted roles:
 Member, Admin, Client, and Peer. A role is associated to an identity when a user
 enrolls with a CA. You can customize the list of roles available on your Fabric
 CA.
@@ -479,14 +420,11 @@ developing, and testing your blockchain, but they are meant to be customized
 in a production environment. You should be aware of the default policies
 in the `configtx.yaml` file. Channel configuration policies can be extended
 with arbitrary verbs, beyond the default `Readers, Writers, Admins` in
-`configtx.yaml`. The orderer system and application channels are overridden by
-issuing a config update when you override the default policies by editing the
-`configtx.yaml` for the orderer system channel or the `configtx.yaml` for a
-specific channel.
+`configtx.yaml`.
 
-See the topic on
-[Updating a channel configuration](../config_update.html#updating-a-channel-configuration)
-for more information.
+For more information on overriding policy definitions when creating a channel, check out [Channel policies](../create_channel/channel_policies.html) and [Creating a channel without a system channel](../create_channel/create_channel_participation.html).
+
+For information about how to update a channel, check out [Updating a channel configuration](../config_update.html#updating-a-channel-configuration) for more information.
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/) -->

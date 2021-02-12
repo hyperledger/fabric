@@ -16,8 +16,7 @@ import (
 )
 
 // Revocation encapsulates the idemix algorithms for revocation
-type Revocation struct {
-}
+type Revocation struct{}
 
 // NewKey generate a new revocation key-pair.
 func (*Revocation) NewKey() (*ecdsa.PrivateKey, error) {

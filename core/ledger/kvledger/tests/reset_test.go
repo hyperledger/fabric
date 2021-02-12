@@ -32,13 +32,13 @@ func TestResetAllLedgers(t *testing.T) {
 	ledgerIDs := make([]string, numLedgers)
 	for i := 0; i < numLedgers; i++ {
 		ledgerIDs[i] = fmt.Sprintf("ledger-%d", i)
-		h := env.newTestHelperCreateLgr(ledgerIDs[i], t)
-		dataHelper.populateLedger(h)
-		dataHelper.verifyLedgerContent(h)
-		gb, err := h.lgr.GetBlockByNumber(0)
+		l := env.createTestLedgerFromGenesisBlk(ledgerIDs[i])
+		dataHelper.populateLedger(l)
+		dataHelper.verifyLedgerContent(l)
+		gb, err := l.lgr.GetBlockByNumber(0)
 		require.NoError(t, err)
 		genesisBlocks = append(genesisBlocks, gb)
-		bcInfo, err := h.lgr.GetBlockchainInfo()
+		bcInfo, err := l.lgr.GetBlockchainInfo()
 		require.NoError(t, err)
 		blockchainsInfo = append(blockchainsInfo, bcInfo)
 	}
@@ -61,19 +61,19 @@ func TestResetAllLedgers(t *testing.T) {
 	//   and final blockchainInfo and ledger state same as before reset
 	for i := 0; i < 10; i++ {
 		ledgerID := fmt.Sprintf("ledger-%d", i)
-		h := env.newTestHelperOpenLgr(ledgerID, t)
-		h.verifyLedgerHeight(1)
+		l := env.openTestLedger(ledgerID)
+		l.verifyLedgerHeight(1)
 		require.Equal(t, blockchainsInfo[i].Height, preResetHt[ledgerID])
-		gb, err := h.lgr.GetBlockByNumber(0)
+		gb, err := l.lgr.GetBlockByNumber(0)
 		require.NoError(t, err)
 		require.Equal(t, genesisBlocks[i], gb)
 		for _, b := range dataHelper.submittedData[ledgerID].Blocks {
-			require.NoError(t, h.lgr.CommitLegacy(b, &ledger.CommitOptions{}))
+			require.NoError(t, l.lgr.CommitLegacy(b, &ledger.CommitOptions{}))
 		}
-		bcInfo, err := h.lgr.GetBlockchainInfo()
+		bcInfo, err := l.lgr.GetBlockchainInfo()
 		require.NoError(t, err)
 		require.Equal(t, blockchainsInfo[i], bcInfo)
-		dataHelper.verifyLedgerContent(h)
+		dataHelper.verifyLedgerContent(l)
 	}
 
 	require.NoError(t, kvledger.ClearPreResetHeight(env.initializer.Config.RootFSPath, ledgerIDs))
@@ -108,43 +108,43 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 	env := newEnv(t)
 	defer env.cleanup()
 	env.initLedgerMgmt()
-	h := env.newTestHelperCreateLgr("ledger1", t)
+	l := env.createTestLedgerFromGenesisBlk("ledger1")
 	collConf := []*collConf{{name: "coll1", btl: 0}, {name: "coll2", btl: 1}}
 
 	// deploy cc1 with 'collConf'
-	h.simulateDeployTx("cc1", collConf)
-	blk1 := h.cutBlockAndCommitLegacy()
+	l.simulateDeployTx("cc1", collConf)
+	blk1 := l.cutBlockAndCommitLegacy()
 
 	// commit pvtdata writes in block 2.
-	h.simulateDataTx("", func(s *simulator) {
+	l.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "key1", "value1") // (key1 would never expire)
 		s.setPvtdata("cc1", "coll2", "key2", "value2") // (key2 would expire at block 4)
 	})
-	blk2 := h.cutBlockAndCommitLegacy()
+	blk2 := l.cutBlockAndCommitLegacy()
 
 	// After commit of block 2
-	h.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
-	h.verifyPvtState("cc1", "coll2", "key2", "value2") // key2 should still exist in the state
-	h.verifyBlockAndPvtDataSameAs(2, blk2)             // key1 and key2 should still exist in the pvtdata storage
+	l.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
+	l.verifyPvtState("cc1", "coll2", "key2", "value2") // key2 should still exist in the state
+	l.verifyBlockAndPvtDataSameAs(2, blk2)             // key1 and key2 should still exist in the pvtdata storage
 
 	// After commit of block 3
-	h.simulateDataTx("", func(s *simulator) {
+	l.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
 	})
-	blk3 := h.cutBlockAndCommitLegacy()
+	blk3 := l.cutBlockAndCommitLegacy()
 
 	// After commit of block 4
-	h.simulateDataTx("", func(s *simulator) {
+	l.simulateDataTx("", func(s *simulator) {
 		s.setPvtdata("cc1", "coll1", "someOtherKey", "someOtherVal")
 		s.setPvtdata("cc1", "coll2", "someOtherKey", "someOtherVal")
 	})
-	blk4 := h.cutBlockAndCommitLegacy()
+	blk4 := l.cutBlockAndCommitLegacy()
 
 	// After commit of block 4
-	h.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
-	h.verifyPvtState("cc1", "coll2", "key2", "")                        // key2 should have been purged from the state
-	h.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage
+	l.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
+	l.verifyPvtState("cc1", "coll2", "key2", "")                        // key2 should have been purged from the state
+	l.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage
 		r.pvtdataShouldContain(0, "cc1", "coll1", "key1", "value1") // key1 should still exist in the pvtdata storage
 		r.pvtdataShouldNotContain("cc1", "coll2")                   // <cc1, coll2> shold have been purged from the pvtdata storage
 	})
@@ -163,22 +163,22 @@ func TestResetAllLedgersWithBTL(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("preResetHt = %#v", preResetHt)
 	require.Equal(t, uint64(5), preResetHt["ledger1"])
-	h = env.newTestHelperOpenLgr("ledger1", t)
-	h.verifyLedgerHeight(1)
+	l = env.openTestLedger("ledger1")
+	l.verifyLedgerHeight(1)
 
 	// recommit blocks
-	require.NoError(t, h.lgr.CommitLegacy(blk1, &ledger.CommitOptions{}))
-	require.NoError(t, h.lgr.CommitLegacy(blk2, &ledger.CommitOptions{}))
+	require.NoError(t, l.lgr.CommitLegacy(blk1, &ledger.CommitOptions{}))
+	require.NoError(t, l.lgr.CommitLegacy(blk2, &ledger.CommitOptions{}))
 	// After the recommit of block 2
-	h.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
-	h.verifyPvtState("cc1", "coll2", "key2", "value2") // key2 should still exist in the state
-	require.NoError(t, h.lgr.CommitLegacy(blk3, &ledger.CommitOptions{}))
-	require.NoError(t, h.lgr.CommitLegacy(blk4, &ledger.CommitOptions{}))
+	l.verifyPvtState("cc1", "coll1", "key1", "value1") // key1 should still exist in the state
+	l.verifyPvtState("cc1", "coll2", "key2", "value2") // key2 should still exist in the state
+	require.NoError(t, l.lgr.CommitLegacy(blk3, &ledger.CommitOptions{}))
+	require.NoError(t, l.lgr.CommitLegacy(blk4, &ledger.CommitOptions{}))
 
 	// after the recommit of block 4
-	h.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
-	h.verifyPvtState("cc1", "coll2", "key2", "")                        // key2 should have been purged from the state
-	h.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage
+	l.verifyPvtState("cc1", "coll1", "key1", "value1")                  // key1 should still exist in the state
+	l.verifyPvtState("cc1", "coll2", "key2", "")                        // key2 should have been purged from the state
+	l.verifyBlockAndPvtData(2, nil, func(r *retrievedBlockAndPvtdata) { // retrieve the pvtdata for block 2 from pvtdata storage
 		r.pvtdataShouldContain(0, "cc1", "coll1", "key1", "value1") // key1 should still exist in the pvtdata storage
 		r.pvtdataShouldNotContain("cc1", "coll2")                   // <cc1, coll2> shold have been purged from the pvtdata storage
 	})
@@ -192,9 +192,9 @@ func TestResetLedgerWithoutDroppingDBs(t *testing.T) {
 	dataHelper := newSampleDataHelper(t)
 
 	// create ledgers and pouplate with sample data
-	h := env.newTestHelperCreateLgr("ledger-1", t)
-	dataHelper.populateLedger(h)
-	dataHelper.verifyLedgerContent(h)
+	l := env.createTestLedgerFromGenesisBlk("ledger-1")
+	dataHelper.populateLedger(l)
+	dataHelper.verifyLedgerContent(l)
 	env.closeLedgerMgmt()
 
 	// Reset All kv ledgers
@@ -211,7 +211,6 @@ func TestResetLedgerWithoutDroppingDBs(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uint64(9), preResetHt["ledger-1"])
 	_, err = env.ledgerMgr.OpenLedger("ledger-1")
-	require.Error(t, err)
 	// populateLedger() stores 8 block in total
 	require.EqualError(t, err, "the state database [height=9] is ahead of the block store [height=1]. "+
 		"This is possible when the state database is not dropped after a ledger reset/rollback. "+

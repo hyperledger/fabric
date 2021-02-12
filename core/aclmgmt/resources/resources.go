@@ -28,7 +28,7 @@ const (
 	Snapshot_cancelrequest = "snapshot/cancelrequest"
 	Snapshot_listpending   = "snapshot/listpending"
 
-	//Lscc resources
+	// Lscc resources
 	Lscc_Install                   = "lscc/Install"
 	Lscc_Deploy                    = "lscc/Deploy"
 	Lscc_Upgrade                   = "lscc/Upgrade"
@@ -39,25 +39,26 @@ const (
 	Lscc_GetInstalledChaincodes    = "lscc/GetInstalledChaincodes"
 	Lscc_GetCollectionsConfig      = "lscc/GetCollectionsConfig"
 
-	//Qscc resources
+	// Qscc resources
 	Qscc_GetChainInfo       = "qscc/GetChainInfo"
 	Qscc_GetBlockByNumber   = "qscc/GetBlockByNumber"
 	Qscc_GetBlockByHash     = "qscc/GetBlockByHash"
 	Qscc_GetTransactionByID = "qscc/GetTransactionByID"
 	Qscc_GetBlockByTxID     = "qscc/GetBlockByTxID"
 
-	//Cscc resources
+	// Cscc resources
 	Cscc_JoinChain            = "cscc/JoinChain"
 	Cscc_JoinChainBySnapshot  = "cscc/JoinChainBySnapshot"
 	Cscc_JoinBySnapshotStatus = "cscc/JoinBySnapshotStatus"
 	Cscc_GetConfigBlock       = "cscc/GetConfigBlock"
+	Cscc_GetChannelConfig     = "cscc/GetChannelConfig"
 	Cscc_GetChannels          = "cscc/GetChannels"
 
-	//Peer resources
+	// Peer resources
 	Peer_Propose              = "peer/Propose"
 	Peer_ChaincodeToChaincode = "peer/ChaincodeToChaincode"
 
-	//Events
+	// Events
 	Event_Block         = "event/Block"
 	Event_FilteredBlock = "event/FilteredBlock"
 )

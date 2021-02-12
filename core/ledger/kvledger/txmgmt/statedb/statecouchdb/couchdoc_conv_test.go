@@ -31,7 +31,7 @@ func TestKVAndDocConversion(t *testing.T) {
 	keyWithSortedJSONValue := &keyValue{
 		"key2", "rev2",
 		&statedb.VersionedValue{
-			//note that json.Marshal will sort the keys of map.
+			// note that json.Marshal will sort the keys of map.
 			Value:    []byte(`{"color":"blue","marble":"m1"}`),
 			Version:  version.NewHeight(1, 2),
 			Metadata: []byte("metadata2"),

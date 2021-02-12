@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
@@ -19,48 +17,54 @@ import (
 )
 
 func TestGetMissingPvtData(t *testing.T) {
-	setup := func(h *testhelper) (*ledger.BlockAndPvtData, ledger.MissingPvtDataInfo) {
+	setup := func(l *testLedger) (*ledger.BlockAndPvtData, ledger.MissingPvtDataInfo) {
 		collConf := []*collConf{{
 			name: "coll1",
 			btl:  5,
 		}}
 
 		// deploy cc1 with 'collConf'
-		h.simulateDeployTx("cc1", collConf)
-		h.cutBlockAndCommitLegacy()
+		l.simulateDeployTx("cc1", collConf)
+		l.cutBlockAndCommitLegacy()
 
 		// pvtdata simulation
-		h.simulateDataTx("", func(s *simulator) {
+		l.simulateDataTx("", func(s *simulator) {
 			s.setPvtdata("cc1", "coll1", "key1", "value1")
 		})
 		// another pvtdata simulation
-		h.simulateDataTx("", func(s *simulator) {
+		l.simulateDataTx("", func(s *simulator) {
 			s.setPvtdata("cc1", "coll1", "key2", "value2")
 		})
 		// another pvtdata simulation
-		h.simulateDataTx("", func(s *simulator) {
+		l.simulateDataTx("", func(s *simulator) {
 			s.setPvtdata("cc1", "coll1", "key3", "value3")
 		})
 
 		// two transactions are missing some pvtdata
-		h.causeMissingPvtData(0)
-		h.causeMissingPvtData(2)
-		blk2 := h.cutBlockAndCommitLegacy()
+		l.causeMissingPvtData(0)
+		l.causeMissingPvtData(2)
+		blk2 := l.cutBlockAndCommitLegacy()
 
-		h.verifyPvtState("cc1", "coll1", "key2", "value2") // key2 should have been committed
-		h.simulateDataTx("", func(s *simulator) {
-			h.assertError(s.GetPrivateData("cc1", "coll1", "key1")) // key1 would be stale with respect to hashed version
+		l.verifyPvtState("cc1", "coll1", "key2", "value2") // key2 should have been committed
+
+		l.simulateDataTx("", func(s *simulator) {
+			// key1 would be stale with respect to hashed version
+			_, err := s.GetPrivateData("cc1", "coll1", "key1")
+			require.EqualError(t, err, "private data matching public hash version is not available. Public hash version = {BlockNum: 2, TxNum: 0}, Private data version = <nil>")
 		})
-		h.simulateDataTx("", func(s *simulator) {
-			h.assertError(s.GetPrivateData("cc1", "coll1", "key3")) // key3 would be stale with respect to hashed version
+
+		l.simulateDataTx("", func(s *simulator) {
+			// key3 would be stale with respect to hashed version
+			_, err := s.GetPrivateData("cc1", "coll1", "key3")
+			require.EqualError(t, err, "private data matching public hash version is not available. Public hash version = {BlockNum: 2, TxNum: 2}, Private data version = <nil>")
 		})
 
 		// verify missing pvtdata info
-		h.verifyBlockAndPvtDataSameAs(2, blk2)
+		l.verifyBlockAndPvtDataSameAs(2, blk2)
 		expectedMissingPvtDataInfo := make(ledger.MissingPvtDataInfo)
 		expectedMissingPvtDataInfo.Add(2, 0, "cc1", "coll1")
 		expectedMissingPvtDataInfo.Add(2, 2, "cc1", "coll1")
-		h.verifyMissingPvtDataSameAs(2, expectedMissingPvtDataInfo)
+		l.verifyMissingPvtDataSameAs(2, expectedMissingPvtDataInfo)
 
 		return blk2, expectedMissingPvtDataInfo
 	}
@@ -69,58 +73,55 @@ func TestGetMissingPvtData(t *testing.T) {
 		env := newEnv(t)
 		defer env.cleanup()
 		env.initLedgerMgmt()
-		h := env.newTestHelperCreateLgr("ledger1", t)
+		l := env.createTestLedgerFromGenesisBlk("ledger1")
 
-		blk, expectedMissingPvtDataInfo := setup(h)
+		blk, expectedMissingPvtDataInfo := setup(l)
 
 		// commit block 3
-		h.simulateDataTx("", func(s *simulator) {
+		l.simulateDataTx("", func(s *simulator) {
 			s.setPvtdata("cc1", "coll1", "key4", "value4")
 		})
-		blk3 := h.cutBlockAndCommitLegacy()
+		blk3 := l.cutBlockAndCommitLegacy()
 
 		// commit block 4
-		h.simulateDataTx("", func(s *simulator) {
+		l.simulateDataTx("", func(s *simulator) {
 			s.setPvtdata("cc1", "coll1", "key5", "value5")
 		})
-		blk4 := h.cutBlockAndCommitLegacy()
+		blk4 := l.cutBlockAndCommitLegacy()
 
 		// verify missing pvtdata info
-		h.verifyMissingPvtDataSameAs(5, expectedMissingPvtDataInfo)
+		l.verifyMissingPvtDataSameAs(5, expectedMissingPvtDataInfo)
 
 		// rollback ledger to block 2
-		h.verifyLedgerHeight(5)
+		l.verifyLedgerHeight(5)
 		env.closeLedgerMgmt()
 		err := kvledger.RollbackKVLedger(env.initializer.Config.RootFSPath, "ledger1", 2)
 		require.NoError(t, err)
 		env.initLedgerMgmt()
 
-		h = env.newTestHelperOpenLgr("ledger1", t)
-		h.verifyLedgerHeight(3)
+		l = env.openTestLedger("ledger1")
+		l.verifyLedgerHeight(3)
 
 		// verify block & pvtdata
-		h.verifyBlockAndPvtDataSameAs(2, blk)
+		l.verifyBlockAndPvtDataSameAs(2, blk)
 		// when the pvtdata store is ahead of blockstore,
 		// missing pvtdata info for block 2 would not be returned.
-		h.verifyMissingPvtDataSameAs(5, nil)
+		l.verifyMissingPvtDataSameAs(5, nil)
 
 		// recommit block 3
-		require.NoError(t, h.lgr.CommitLegacy(blk3, &ledger.CommitOptions{}))
+		require.NoError(t, l.lgr.CommitLegacy(blk3, &ledger.CommitOptions{}))
 		// when the pvtdata store is ahead of blockstore,
 		// missing pvtdata info for block 2 would not be returned.
-		h.verifyMissingPvtDataSameAs(5, nil)
+		l.verifyMissingPvtDataSameAs(5, nil)
 
 		// recommit block 4
-		require.NoError(t, h.lgr.CommitLegacy(blk4, &ledger.CommitOptions{}))
+		require.NoError(t, l.lgr.CommitLegacy(blk4, &ledger.CommitOptions{}))
 		// once the pvtdata store and blockstore becomes equal,
 		// missing pvtdata info for block 2 would be returned.
-		h.verifyMissingPvtDataSameAs(5, expectedMissingPvtDataInfo)
+		l.verifyMissingPvtDataSameAs(5, expectedMissingPvtDataInfo)
 	})
 
 	t.Run("get deprioritized missing data", func(t *testing.T) {
-		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		require.NoError(t, err)
-
 		initializer := &ledgermgmt.Initializer{
 			Config: &ledger.Config{
 				PrivateDataConfig: &ledger.PrivateDataConfig{
@@ -130,39 +131,36 @@ func TestGetMissingPvtData(t *testing.T) {
 					DeprioritizedDataReconcilerInterval: 120 * time.Minute,
 				},
 			},
-			HashProvider: cryptoProvider,
-			EbMetadataProvider: &externalbuilder.MetadataProvider{
-				DurablePath: "testdata",
-			},
 		}
 		env := newEnvWithInitializer(t, initializer)
 		defer env.cleanup()
 		env.initLedgerMgmt()
-		h := env.newTestHelperCreateLgr("ledger1", t)
+		l := env.createTestLedgerFromGenesisBlk("ledger1")
 
-		_, expectedMissingPvtDataInfo := setup(h)
+		_, expectedMissingPvtDataInfo := setup(l)
 
-		h.commitPvtDataOfOldBlocks(nil, expectedMissingPvtDataInfo)
+		_, err := l.commitPvtDataOfOldBlocks(nil, expectedMissingPvtDataInfo)
+		require.NoError(t, err)
 		for i := 0; i < 5; i++ {
-			h.verifyMissingPvtDataSameAs(int(2), ledger.MissingPvtDataInfo{})
+			l.verifyMissingPvtDataSameAs(int(2), ledger.MissingPvtDataInfo{})
 		}
 
 		env.closeLedgerMgmt()
 		env.initializer.Config.PrivateDataConfig.DeprioritizedDataReconcilerInterval = 0 * time.Second
 		env.initLedgerMgmt()
 
-		h = env.newTestHelperOpenLgr("ledger1", t)
+		l = env.openTestLedger("ledger1")
 		for i := 0; i < 5; i++ {
-			h.verifyMissingPvtDataSameAs(2, expectedMissingPvtDataInfo)
+			l.verifyMissingPvtDataSameAs(2, expectedMissingPvtDataInfo)
 		}
 
 		env.closeLedgerMgmt()
 		env.initializer.Config.PrivateDataConfig.DeprioritizedDataReconcilerInterval = 120 * time.Minute
 		env.initLedgerMgmt()
 
-		h = env.newTestHelperOpenLgr("ledger1", t)
+		l = env.openTestLedger("ledger1")
 		for i := 0; i < 5; i++ {
-			h.verifyMissingPvtDataSameAs(2, ledger.MissingPvtDataInfo{})
+			l.verifyMissingPvtDataSameAs(2, ledger.MissingPvtDataInfo{})
 		}
 	})
 }

@@ -67,9 +67,7 @@ channel. Once the definition has been committed, the chaincode is ready to use.
 Any invoke of the chaincode that writes data to the ledger will need to be
 validated by enough channel members to meet the endorsement policy.
 
-You can specify an endorsement policy for a chaincode using the Fabric SDKs.
-For an example, visit the `How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-chaincode-lifecycle.html>`_
-in the Node.js SDK documentation. You can also create an endorsement policy from
+You can create an endorsement policy from
 your CLI when you approve and commit a chaincode definition with the Fabric peer
 binaries by using the ``--signature-policy`` flag.
 
@@ -120,8 +118,7 @@ the membership of the channel, so it will be updated automatically when organiza
 are added or removed from a channel. One advantage of using channel policies is
 that they can be written to be updated automatically with channel membership.
 
-If you specify an endorsement policy using the ``--signature-policy`` flag or
-the SDK, you will need to update the policy when organizations join or leave the
+If you specify an endorsement policy using the ``--signature-policy`` flag, you will need to update the policy when organizations join or leave the
 channel. A new organization added to the channel after the chaincode has been defined
 will be able to query a chaincode (provided the query has appropriate authorization as
 defined by channel policies and any application level checks enforced by the

@@ -23,12 +23,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-const DefAliveTimeInterval = 5 * time.Second
-const DefAliveExpirationTimeout = 5 * DefAliveTimeInterval
-const DefAliveExpirationCheckInterval = DefAliveExpirationTimeout / 10
-const DefReconnectInterval = DefAliveExpirationTimeout
-const DefMsgExpirationFactor = 20
-const DefMaxConnectionAttempts = 120
+const (
+	DefAliveTimeInterval            = 5 * time.Second
+	DefAliveExpirationTimeout       = 5 * DefAliveTimeInterval
+	DefAliveExpirationCheckInterval = DefAliveExpirationTimeout / 10
+	DefReconnectInterval            = DefAliveExpirationTimeout
+	DefMsgExpirationFactor          = 20
+	DefMaxConnectionAttempts        = 120
+)
 
 type timestamp struct {
 	incTime  time.Time
@@ -182,7 +184,6 @@ func (d *gossipDiscoveryImpl) Connect(member NetworkMember, id identifier) {
 			go d.sendUntilAcked(peer, req)
 			return
 		}
-
 	}()
 }
 
@@ -550,7 +551,6 @@ func (d *gossipDiscoveryImpl) handleAliveMessage(m *protoext.SignedGossipMessage
 		} else if !same(lastAliveTS, ts) {
 			d.logger.Debug("got old alive message about alive peer ", protoext.MemberToString(m.GetAliveMsg().Membership), "lastAliveTS:", lastAliveTS, "but got ts:", ts)
 		}
-
 	}
 	// else, ignore the message because it is too old
 }
@@ -869,11 +869,7 @@ func (d *gossipDiscoveryImpl) learnExistingMembers(aliveArr []*protoext.SignedGo
 			alive.lastSeen = time.Now()
 			alive.seqNum = am.Timestamp.SeqNum
 
-			if am := d.aliveMembership.MsgByID(m.GetAliveMsg().Membership.PkiId); am == nil {
-				d.logger.Debug("Adding", am, "to aliveMembership")
-				msg := &protoext.SignedGossipMessage{GossipMessage: m.GossipMessage, Envelope: am.Envelope}
-				d.aliveMembership.Put(m.GetAliveMsg().Membership.PkiId, msg)
-			} else {
+			if am := d.aliveMembership.MsgByID(m.GetAliveMsg().Membership.PkiId); am != nil {
 				d.logger.Debug("Replacing", am, "in aliveMembership")
 				am.GossipMessage = m.GossipMessage
 				am.Envelope = m.Envelope
@@ -964,7 +960,6 @@ func (d *gossipDiscoveryImpl) GetMembership() []NetworkMember {
 		})
 	}
 	return response
-
 }
 
 func tsToTime(ts uint64) time.Time {

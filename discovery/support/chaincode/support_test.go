@@ -38,8 +38,10 @@ func TestSupport(t *testing.T) {
 		Rule:       &common.SignaturePolicy{},
 		Identities: []*msp.MSPPrincipal{{Principal: []byte("principal-2")}},
 	}
-	ccmd3 := &chaincode.Metadata{Policy: protoutil.MarshalOrPanic(notEmptySignaturePolicyEnvelope),
-		CollectionPolicies: map[string][]byte{"col1": protoutil.MarshalOrPanic(notEmptySignaturePolicyEnvelope2)}}
+	ccmd3 := &chaincode.Metadata{
+		Policy:             protoutil.MarshalOrPanic(notEmptySignaturePolicyEnvelope),
+		CollectionPolicies: map[string][]byte{"col1": protoutil.MarshalOrPanic(notEmptySignaturePolicyEnvelope2)},
+	}
 
 	tests := []struct {
 		name           string

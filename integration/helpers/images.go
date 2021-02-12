@@ -13,7 +13,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric/common/util"
-	. "github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
@@ -23,12 +23,12 @@ func AssertImagesExist(imageNames ...string) {
 
 	for _, imageName := range imageNames {
 		images, err := dockerClient.ListImages(docker.ListImagesOptions{
-			Filter: imageName,
+			Filters: map[string][]string{"reference": {imageName}},
 		})
 		ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 		if len(images) != 1 {
-			Fail(fmt.Sprintf("missing required image: %s", imageName), 1)
+			ginkgo.Fail(fmt.Sprintf("missing required image: %s", imageName), 1)
 		}
 	}
 }

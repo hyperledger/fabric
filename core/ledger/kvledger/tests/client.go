@@ -51,6 +51,10 @@ func (c *client) simulateDataTx(txid string, simulationLogic func(s *simulator))
 	return txAndPvtdata
 }
 
+func (c *client) submitHandCraftedTx(txAndPvtdata *txAndPvtdata) {
+	c.simulatedTrans = append(c.simulatedTrans, txAndPvtdata)
+}
+
 func (c *client) addPostOrderTx(txid string, customTxType common.HeaderType) *txAndPvtdata {
 	if txid == "" {
 		txid = util.GenerateUUID()
@@ -103,6 +107,10 @@ func (c *client) causeMissingPvtData(txIndex uint64) {
 		}
 	}
 	c.simulatedTrans[txIndex].Pvtws = nil
+}
+
+func (c *client) discardSimulation() {
+	c.simulatedTrans = nil
 }
 
 func (c *client) retrieveCommittedBlocksAndPvtdata(startNum, endNum uint64) []*ledger.BlockAndPvtData {

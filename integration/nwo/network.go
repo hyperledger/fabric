@@ -31,7 +31,7 @@ import (
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/matchers"
 	"github.com/onsi/gomega/types"
 	"github.com/tedsuo/ifrit"
@@ -319,7 +319,7 @@ func (n *Network) WriteOrdererConfig(o *Orderer, config *fabricconfig.Orderer) {
 	ordererBytes, err := yaml.Marshal(config)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = ioutil.WriteFile(n.OrdererConfigPath(o), ordererBytes, 0644)
+	err = ioutil.WriteFile(n.OrdererConfigPath(o), ordererBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -341,7 +341,7 @@ func (n *Network) WriteConfigTxConfig(config *fabricconfig.ConfigTx) {
 	configtxBytes, err := yaml.Marshal(config)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = ioutil.WriteFile(n.ConfigTxConfigPath(), configtxBytes, 0644)
+	err = ioutil.WriteFile(n.ConfigTxConfigPath(), configtxBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -381,7 +381,7 @@ func (n *Network) WritePeerConfig(p *Peer, config *fabricconfig.Core) {
 	coreBytes, err := yaml.Marshal(config)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = ioutil.WriteFile(n.PeerConfigPath(p), coreBytes, 0644)
+	err = ioutil.WriteFile(n.PeerConfigPath(p), coreBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -717,7 +717,7 @@ func (n *Network) GenerateConfigTree() {
 // written to ${rootDir}/${Channel.Name}_tx.pb.
 func (n *Network) Bootstrap() {
 	if n.DockerClient != nil {
-		n.createDockerNetwork()
+		n.CreateDockerNetwork()
 	}
 
 	sess, err := n.Cryptogen(commands.Generate{
@@ -753,7 +753,7 @@ func (n *Network) Bootstrap() {
 	n.ConcatenateTLSCACertificates()
 }
 
-func (n *Network) createDockerNetwork() {
+func (n *Network) CreateDockerNetwork() {
 	_, err := n.DockerClient.CreateNetwork(
 		docker.CreateNetworkOptions{
 			Name:   n.NetworkID,
@@ -873,7 +873,7 @@ func (n *Network) ConcatenateTLSCACertificates() {
 		Expect(err).NotTo(HaveOccurred())
 		bundle.Write(certBytes)
 	}
-	err := ioutil.WriteFile(n.CACertsBundlePath(), bundle.Bytes(), 0660)
+	err := ioutil.WriteFile(n.CACertsBundlePath(), bundle.Bytes(), 0o660)
 	Expect(err).NotTo(HaveOccurred())
 }
 
@@ -1115,6 +1115,30 @@ func (n *Network) JoinChannel(name string, o *Orderer, peers ...*Peer) {
 	}
 }
 
+func (n *Network) JoinChannelBySnapshot(snapshotDir string, peers ...*Peer) {
+	if len(peers) == 0 {
+		return
+	}
+
+	for _, p := range peers {
+		sess, err := n.PeerAdminSession(p, commands.ChannelJoinBySnapshot{
+			SnapshotPath: snapshotDir,
+			ClientAuth:   n.ClientAuthRequired,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	}
+}
+
+func (n *Network) JoinBySnapshotStatus(p *Peer) []byte {
+	sess, err := n.PeerAdminSession(p, commands.ChannelJoinBySnapshotStatus{
+		ClientAuth: n.ClientAuthRequired,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+	return sess.Out.Contents()
+}
+
 // Cryptogen starts a gexec.Session for the provided cryptogen command.
 func (n *Network) Cryptogen(command Command) (*gexec.Session, error) {
 	cmd := NewCommand(n.Components.Cryptogen(), command)
@@ -1262,9 +1286,9 @@ func (n *Network) PeerRunner(p *Peer, env ...string) *ginkgomon.Runner {
 	cmd := n.peerCommand(
 		commands.NodeStart{PeerID: p.ID(), DevMode: p.DevMode},
 		"",
-		fmt.Sprintf("FABRIC_CFG_PATH=%s", n.PeerDir(p)),
-		fmt.Sprintf("CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin"),
-		fmt.Sprintf("CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw"),
+		"FABRIC_CFG_PATH="+n.PeerDir(p),
+		"CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin",
+		"CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw",
 	)
 	cmd.Env = append(cmd.Env, env...)
 
@@ -1322,6 +1346,13 @@ func (n *Network) peerCommand(command Command, tlsDir string, env ...string) *ex
 	requiredPeerAddresses := flagCount("--peerAddresses", cmd.Args)
 	for i := 0; i < requiredPeerAddresses; i++ {
 		cmd.Args = append(cmd.Args, "--tlsRootCertFiles")
+		cmd.Args = append(cmd.Args, n.CACertsBundlePath())
+	}
+
+	// If there is --peerAddress, add --tlsRootCertFile parameter
+	requiredPeerAddress := flagCount("--peerAddress", cmd.Args)
+	if requiredPeerAddress > 0 {
+		cmd.Args = append(cmd.Args, "--tlsRootCertFile")
 		cmd.Args = append(cmd.Args, n.CACertsBundlePath())
 	}
 	return cmd
@@ -1431,7 +1462,7 @@ func (n *Network) DiscoveredPeerMatcher(p *Peer, chaincodes ...string) types.Gom
 	peerCert, err := ioutil.ReadFile(n.PeerCert(p))
 	Expect(err).NotTo(HaveOccurred())
 
-	return MatchAllFields(Fields{
+	return gstruct.MatchAllFields(gstruct.Fields{
 		"MSPID":      Equal(n.Organization(p.Organization).MSPID),
 		"Endpoint":   Equal(fmt.Sprintf("127.0.0.1:%d", n.PeerPort(p, ListenPort))),
 		"Identity":   Equal(string(peerCert)),
@@ -1626,8 +1657,10 @@ func (n *Network) ReservePort() uint16 {
 	return n.StartPort - 1
 }
 
-type PortName string
-type Ports map[PortName]uint16
+type (
+	PortName string
+	Ports    map[PortName]uint16
+)
 
 const (
 	ChaincodePort  PortName = "Chaincode"
@@ -1637,6 +1670,7 @@ const (
 	ProfilePort    PortName = "Profile"
 	OperationsPort PortName = "Operations"
 	ClusterPort    PortName = "Cluster"
+	AdminPort      PortName = "Admin"
 )
 
 // PeerPortNames returns the list of ports that need to be reserved for a Peer.
@@ -1647,7 +1681,7 @@ func PeerPortNames() []PortName {
 // OrdererPortNames  returns the list of ports that need to be reserved for an
 // Orderer.
 func OrdererPortNames() []PortName {
-	return []PortName{ListenPort, ProfilePort, OperationsPort, ClusterPort}
+	return []PortName{ListenPort, ProfilePort, OperationsPort, ClusterPort, AdminPort}
 }
 
 // BrokerPortNames returns the list of ports that need to be reserved for a
@@ -1812,7 +1846,7 @@ func (n *Network) GenerateConfigTxConfig() {
 }
 
 func (n *Network) GenerateOrdererConfig(o *Orderer) {
-	err := os.MkdirAll(n.OrdererDir(o), 0755)
+	err := os.MkdirAll(n.OrdererDir(o), 0o755)
 	Expect(err).NotTo(HaveOccurred())
 
 	orderer, err := os.Create(n.OrdererConfigPath(o))
@@ -1832,7 +1866,7 @@ func (n *Network) GenerateOrdererConfig(o *Orderer) {
 }
 
 func (n *Network) GenerateCoreConfig(p *Peer) {
-	err := os.MkdirAll(n.PeerDir(p), 0755)
+	err := os.MkdirAll(n.PeerDir(p), 0o755)
 	Expect(err).NotTo(HaveOccurred())
 
 	core, err := os.Create(n.PeerConfigPath(p))

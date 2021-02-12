@@ -59,7 +59,6 @@ func (oc *OrdererClient) Deliver() (ab.AtomicBroadcast_DeliverClient, error) {
 	}
 	// TODO: check to see if we should actually handle error before returning
 	return ab.NewAtomicBroadcastClient(conn).Deliver(context.TODO())
-
 }
 
 // Certificate returns the TLS client certificate (if available)

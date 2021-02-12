@@ -13,10 +13,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-var (
-	// ErrNotFound defines an error that means that an element wasn't found
-	ErrNotFound = errors.New("not found")
-)
+// ErrNotFound defines an error that means that an element wasn't found
+var ErrNotFound = errors.New("not found")
 
 // Signer signs a message and returns the signature and nil,
 // or nil and error on failure

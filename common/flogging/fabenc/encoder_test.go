@@ -22,7 +22,7 @@ import (
 
 func TestEncodeEntry(t *testing.T) {
 	startTime := time.Now()
-	var tests = []struct {
+	tests := []struct {
 		name     string
 		spec     string
 		fields   []zapcore.Field

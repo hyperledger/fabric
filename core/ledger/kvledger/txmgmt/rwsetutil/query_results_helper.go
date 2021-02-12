@@ -230,9 +230,11 @@ func (m *merkleTree) done() error {
 }
 
 func (m *merkleTree) getSummery() *kvrwset.QueryReadsMerkleSummary {
-	return &kvrwset.QueryReadsMerkleSummary{MaxDegree: m.maxDegree,
+	return &kvrwset.QueryReadsMerkleSummary{
+		MaxDegree:      m.maxDegree,
 		MaxLevel:       uint32(m.getMaxLevel()),
-		MaxLevelHashes: hashesToBytes(m.getMaxLevelHashes())}
+		MaxLevelHashes: hashesToBytes(m.getMaxLevelHashes()),
+	}
 }
 
 func (m *merkleTree) getMaxLevel() MerkleTreeLevel {

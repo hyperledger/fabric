@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/common/metrics"
-	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/pkg/errors"
 )
@@ -53,14 +52,6 @@ func (c *IndexConfig) Contains(indexableAttr IndexableAttr) bool {
 	return false
 }
 
-var (
-	// ErrNotFoundInIndex is used to indicate missing entry in the index
-	ErrNotFoundInIndex = ledger.NotFoundInIndexErr("")
-
-	// ErrAttrNotIndexed is used to indicate that an attribute is not indexed
-	ErrAttrNotIndexed = errors.New("attribute not indexed")
-)
-
 // BlockStoreProvider provides handle to block storage - this is not thread-safe
 type BlockStoreProvider struct {
 	conf            *Conf
@@ -88,7 +79,7 @@ func NewProvider(conf *Conf, indexConfig *IndexConfig, metricsProvider metrics.P
 		}
 
 		logger.Info("Creating new file ledger directory at", dirPath)
-		if err = os.MkdirAll(dirPath, 0755); err != nil {
+		if err = os.MkdirAll(dirPath, 0o755); err != nil {
 			return nil, errors.Wrapf(err, "failed to create ledger directory: %s", dirPath)
 		}
 	}

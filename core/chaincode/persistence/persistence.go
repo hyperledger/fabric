@@ -36,8 +36,7 @@ type IOReadWriter interface {
 }
 
 // FilesystemIO is the production implementation of the IOWriter interface
-type FilesystemIO struct {
-}
+type FilesystemIO struct{}
 
 // WriteFile writes a file to the filesystem; it does so atomically
 // by first writing to a temp file and then renaming the file so that
@@ -137,7 +136,7 @@ func (s *Store) Initialize() {
 	if err != nil {
 		panic(fmt.Sprintf("Initialization of chaincode store failed: %s", err))
 	}
-	if err = s.ReadWriter.MakeDir(s.Path, 0750); err != nil {
+	if err = s.ReadWriter.MakeDir(s.Path, 0o750); err != nil {
 		panic(fmt.Sprintf("Could not create _lifecycle chaincodes install path: %s", err))
 	}
 }

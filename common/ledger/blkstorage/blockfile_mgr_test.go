@@ -28,8 +28,8 @@ func TestBlockfileMgrBlockReadWrite(t *testing.T) {
 	defer blkfileMgrWrapper.close()
 	blocks := testutil.ConstructTestBlocks(t, 10)
 	blkfileMgrWrapper.addBlocks(blocks)
-	blkfileMgrWrapper.testGetBlockByHash(blocks, nil)
-	blkfileMgrWrapper.testGetBlockByNumber(blocks, 0, nil)
+	blkfileMgrWrapper.testGetBlockByHash(blocks)
+	blkfileMgrWrapper.testGetBlockByNumber(blocks)
 }
 
 func TestAddBlockWithWrongHash(t *testing.T) {
@@ -168,6 +168,49 @@ func TestBlockfileMgrBlockchainInfo(t *testing.T) {
 	blkfileMgrWrapper.addBlocks(blocks)
 	bcInfo = blkfileMgrWrapper.blockfileMgr.getBlockchainInfo()
 	require.Equal(t, uint64(10), bcInfo.Height)
+}
+
+func TestTxIDExists(t *testing.T) {
+	t.Run("green-path", func(t *testing.T) {
+		env := newTestEnv(t, NewConf(testPath(), 0))
+		defer env.Cleanup()
+
+		blkStore, err := env.provider.Open("testLedger")
+		require.NoError(t, err)
+		defer blkStore.Shutdown()
+
+		blocks := testutil.ConstructTestBlocks(t, 2)
+		for _, blk := range blocks {
+			require.NoError(t, blkStore.AddBlock(blk))
+		}
+
+		for _, blk := range blocks {
+			for i := range blk.Data.Data {
+				txID, err := protoutil.GetOrComputeTxIDFromEnvelope(blk.Data.Data[i])
+				require.NoError(t, err)
+				exists, err := blkStore.TxIDExists(txID)
+				require.NoError(t, err)
+				require.True(t, exists)
+			}
+		}
+		exists, err := blkStore.TxIDExists("non-existant-txid")
+		require.NoError(t, err)
+		require.False(t, exists)
+	})
+
+	t.Run("error-path", func(t *testing.T) {
+		env := newTestEnv(t, NewConf(testPath(), 0))
+		defer env.Cleanup()
+
+		blkStore, err := env.provider.Open("testLedger")
+		require.NoError(t, err)
+		defer blkStore.Shutdown()
+
+		env.provider.Close()
+		exists, err := blkStore.TxIDExists("random")
+		require.EqualError(t, err, "error while trying to check the presence of TXID [random]: internal leveldb error while obtaining db iterator: leveldb: closed")
+		require.False(t, exists)
+	})
 }
 
 func TestBlockfileMgrGetTxById(t *testing.T) {
@@ -341,7 +384,7 @@ func TestBlockfileMgrRestart(t *testing.T) {
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
 	require.Equal(t, 9, int(blkfileMgrWrapper.blockfileMgr.blockfilesInfo.lastPersistedBlock))
-	blkfileMgrWrapper.testGetBlockByHash(blocks, nil)
+	blkfileMgrWrapper.testGetBlockByHash(blocks)
 	require.Equal(t, expectedHeight, blkfileMgrWrapper.blockfileMgr.getBlockchainInfo().Height)
 }
 
@@ -363,14 +406,14 @@ func TestBlockfileMgrFileRolling(t *testing.T) {
 	blkfileMgrWrapper := newTestBlockfileWrapper(env, ledgerid)
 	blkfileMgrWrapper.addBlocks(blocks[:100])
 	require.Equal(t, 1, blkfileMgrWrapper.blockfileMgr.blockfilesInfo.latestFileNumber)
-	blkfileMgrWrapper.testGetBlockByHash(blocks[:100], nil)
+	blkfileMgrWrapper.testGetBlockByHash(blocks[:100])
 	blkfileMgrWrapper.close()
 
 	blkfileMgrWrapper = newTestBlockfileWrapper(env, ledgerid)
 	defer blkfileMgrWrapper.close()
 	blkfileMgrWrapper.addBlocks(blocks[100:])
 	require.Equal(t, 2, blkfileMgrWrapper.blockfileMgr.blockfilesInfo.latestFileNumber)
-	blkfileMgrWrapper.testGetBlockByHash(blocks[100:], nil)
+	blkfileMgrWrapper.testGetBlockByHash(blocks[100:])
 }
 
 func TestBlockfileMgrGetBlockByTxID(t *testing.T) {
@@ -457,7 +500,7 @@ func testBlockfileMgrSimulateCrashAtFirstBlockInFile(t *testing.T, deleteBlkfile
 	blkfileMgrWrapper.addBlocks(blocks[5:])
 	require.True(t, testutilGetFileSize(t, lastFilePath) > 0)
 	require.Equal(t, firstBlkFileSize, testutilGetFileSize(t, firstFilePath))
-	blkfileMgrWrapper.testGetBlockByNumber(blocks, 0, nil)
+	blkfileMgrWrapper.testGetBlockByNumber(blocks)
 	testBlockfileMgrBlockIterator(t, blkfileMgrWrapper.blockfileMgr, 0, len(blocks)-1, blocks)
 }
 

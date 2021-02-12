@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package tests
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,12 +16,11 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/ledger/blkstorage"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
-	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
@@ -28,9 +28,6 @@ import (
 	corepeer "github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/internal/fileutil"
-	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
-	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,27 +42,19 @@ const (
 )
 
 type env struct {
-	assert      *require.Assertions
+	t           *testing.T
 	initializer *ledgermgmt.Initializer
 	ledgerMgr   *ledgermgmt.LedgerMgr
 }
 
 func newEnv(t *testing.T) *env {
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-	return newEnvWithInitializer(t, &ledgermgmt.Initializer{
-		HashProvider: cryptoProvider,
-		EbMetadataProvider: &externalbuilder.MetadataProvider{
-			DurablePath: "testdata",
-		},
-	})
+	return newEnvWithInitializer(t, &ledgermgmt.Initializer{})
 }
 
 func newEnvWithInitializer(t *testing.T, initializer *ledgermgmt.Initializer) *env {
 	populateMissingsWithTestDefaults(t, initializer)
-
 	return &env{
-		assert:      require.New(t),
+		t:           t,
 		initializer: initializer,
 	}
 }
@@ -90,35 +79,35 @@ func (e *env) closeAllLedgersAndRemoveDirContents(flags rebuildable) {
 		indexPath := e.getBlockIndexDBPath()
 		logger.Infof("Deleting blockstore indexdb path [%s]", indexPath)
 		e.verifyNonEmptyDirExists(indexPath)
-		e.assert.NoError(fileutil.RemoveContents(indexPath))
+		require.NoError(e.t, fileutil.RemoveContents(indexPath))
 	}
 
 	if flags&rebuildableStatedb == rebuildableStatedb {
 		statedbPath := e.getLevelstateDBPath()
 		logger.Infof("Deleting statedb path [%s]", statedbPath)
 		e.verifyNonEmptyDirExists(statedbPath)
-		e.assert.NoError(fileutil.RemoveContents(statedbPath))
+		require.NoError(e.t, fileutil.RemoveContents(statedbPath))
 	}
 
 	if flags&rebuildableConfigHistory == rebuildableConfigHistory {
 		configHistoryPath := e.getConfigHistoryDBPath()
 		logger.Infof("Deleting configHistory db path [%s]", configHistoryPath)
 		e.verifyNonEmptyDirExists(configHistoryPath)
-		e.assert.NoError(fileutil.RemoveContents(configHistoryPath))
+		require.NoError(e.t, fileutil.RemoveContents(configHistoryPath))
 	}
 
 	if flags&rebuildableBookkeeper == rebuildableBookkeeper {
 		bookkeeperPath := e.getBookkeeperDBPath()
 		logger.Infof("Deleting bookkeeper db path [%s]", bookkeeperPath)
 		e.verifyNonEmptyDirExists(bookkeeperPath)
-		e.assert.NoError(fileutil.RemoveContents(bookkeeperPath))
+		require.NoError(e.t, fileutil.RemoveContents(bookkeeperPath))
 	}
 
 	if flags&rebuildableHistoryDB == rebuildableHistoryDB {
 		historyPath := e.getHistoryDBPath()
 		logger.Infof("Deleting history db path [%s]", historyPath)
 		e.verifyNonEmptyDirExists(historyPath)
-		e.assert.NoError(fileutil.RemoveContents(historyPath))
+		require.NoError(e.t, fileutil.RemoveContents(historyPath))
 	}
 
 	e.verifyRebuilableDirEmpty(flags)
@@ -162,14 +151,14 @@ func (e *env) verifyRebuilableDirEmpty(flags rebuildable) {
 
 func (e *env) verifyNonEmptyDirExists(path string) {
 	empty, err := fileutil.DirEmpty(path)
-	e.assert.NoError(err)
-	e.assert.False(empty)
+	require.NoError(e.t, err)
+	require.False(e.t, empty)
 }
 
 func (e *env) verifyDirEmpty(path string) {
 	empty, err := fileutil.DirEmpty(path)
-	e.assert.NoError(err)
-	e.assert.True(empty)
+	require.NoError(e.t, err)
+	require.True(e.t, empty)
 }
 
 func (e *env) initLedgerMgmt() {
@@ -210,14 +199,7 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 	}
 
 	if initializer.MembershipInfoProvider == nil {
-		identityDeserializerFactory := func(chainID string) msp.IdentityDeserializer {
-			return mgmt.GetManagerForChain(chainID)
-		}
-		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-		require.NoError(t, err)
-		mspID := "test-mspid"
-		membershipInfoProvider := privdata.NewMembershipInfoProvider(mspID, createSelfSignedData(cryptoProvider), identityDeserializerFactory)
-		initializer.MembershipInfoProvider = membershipInfoProvider
+		initializer.MembershipInfoProvider = &membershipInfoProvider{myOrgMSPID: "test-mspid"}
 	}
 
 	if initializer.MetricsProvider == nil {
@@ -260,23 +242,16 @@ func populateMissingsWithTestDefaults(t *testing.T, initializer *ledgermgmt.Init
 			RootDir: filepath.Join(initializer.Config.RootFSPath, "snapshots"),
 		}
 	}
-}
+	if initializer.HashProvider == nil {
+		cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+		require.NoError(t, err)
+		initializer.HashProvider = cryptoProvider
+	}
 
-func createSelfSignedData(cryptoProvider bccsp.BCCSP) protoutil.SignedData {
-	sID := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
-	msg := make([]byte, 32)
-	sig, err := sID.Sign(msg)
-	if err != nil {
-		logger.Panicf("Failed creating self signed data because message signing failed: %v", err)
-	}
-	peerIdentity, err := sID.Serialize()
-	if err != nil {
-		logger.Panicf("Failed creating self signed data because peer identity couldn't be serialized: %v", err)
-	}
-	return protoutil.SignedData{
-		Data:      msg,
-		Signature: sig,
-		Identity:  peerIdentity,
+	if initializer.EbMetadataProvider == nil {
+		initializer.EbMetadataProvider = &externalbuilder.MetadataProvider{
+			DurablePath: "testdata",
+		}
 	}
 }
 
@@ -335,4 +310,23 @@ func createDeployedCCInfoProvider(orgMSPIDs []string) ledger.DeployedChaincodeIn
 		ValidatorCommitter: deployedCCInfoProvider,
 		orgMSPIDs:          orgMSPIDs,
 	}
+}
+
+type membershipInfoProvider struct {
+	myOrgMSPID string
+}
+
+func (p *membershipInfoProvider) AmMemberOf(channelName string, collectionPolicyConfig *peer.CollectionPolicyConfig) (bool, error) {
+	members := convertFromMemberOrgsPolicy(collectionPolicyConfig)
+	fmt.Printf("memebers = %s\n", members)
+	for _, m := range members {
+		if m == p.myOrgMSPID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (p *membershipInfoProvider) MyImplicitCollectionName() string {
+	return implicitcollection.NameForOrg(p.myOrgMSPID)
 }

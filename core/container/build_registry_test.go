@@ -16,9 +16,7 @@ import (
 )
 
 var _ = Describe("BuildRegistry", func() {
-	var (
-		br *container.BuildRegistry
-	)
+	var br *container.BuildRegistry
 
 	BeforeEach(func() {
 		br = &container.BuildRegistry{}
@@ -32,9 +30,7 @@ var _ = Describe("BuildRegistry", func() {
 	})
 
 	When("the ccid is already building", func() {
-		var (
-			initialBS *container.BuildStatus
-		)
+		var initialBS *container.BuildStatus
 
 		BeforeEach(func() {
 			var ok bool
@@ -69,9 +65,7 @@ var _ = Describe("BuildRegistry", func() {
 })
 
 var _ = Describe("BuildStatus", func() {
-	var (
-		bs *container.BuildStatus
-	)
+	var bs *container.BuildStatus
 
 	BeforeEach(func() {
 		bs = container.NewBuildStatus()

@@ -22,9 +22,9 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	discprotos "github.com/hyperledger/fabric-protos-go/discovery"
+	gatewayprotos "github.com/hyperledger/fabric-protos-go/gateway"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/deliver"
+	"github.com/hyperledger/fabric/common/fabhttp"
 	"github.com/hyperledger/fabric/common/flogging"
 	floggingmetrics "github.com/hyperledger/fabric/common/flogging/metrics"
 	"github.com/hyperledger/fabric/common/grpclogging"
@@ -87,11 +88,11 @@ import (
 	gossipgossip "github.com/hyperledger/fabric/gossip/gossip"
 	gossipmetrics "github.com/hyperledger/fabric/gossip/metrics"
 	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
-	"github.com/hyperledger/fabric/gossip/service"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
+	gatewayserver "github.com/hyperledger/fabric/internal/pkg/gateway/server"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -204,7 +205,7 @@ func serve(args []string) error {
 
 	logger.Infof("Starting %s", version.GetInfo())
 
-	//obtain coreConfiguration
+	// obtain coreConfiguration
 	coreConfig, err := peer.GlobalConfig()
 	if err != nil {
 		return err
@@ -337,8 +338,8 @@ func serve(args []string) error {
 		mgmt.NewLocalMSPPrincipalGetter(factory.GetDefault()),
 	)
 
-	//startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
-	//Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
+	// startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).
+	// Users can pass in their own ACLProvider to RegisterACLProvider (currently unit tests do this)
 	aclProvider := aclmgmt.NewACLProvider(
 		aclmgmt.ResourceGetter(peerInstance.GetStableChannelConfig),
 		policyChecker,
@@ -409,7 +410,7 @@ func serve(args []string) error {
 	chaincodeCustodian := lifecycle.NewChaincodeCustodian()
 
 	externalBuilderOutput := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "externalbuilder", "builds")
-	if err := os.MkdirAll(externalBuilderOutput, 0700); err != nil {
+	if err := os.MkdirAll(externalBuilderOutput, 0o700); err != nil {
 		logger.Panicf("could not create externalbuilder build output dir: %s", err)
 	}
 
@@ -425,8 +426,8 @@ func serve(args []string) error {
 		ebMetadataProvider,
 	)
 
-	txProcessors := map[common.HeaderType]ledger.CustomTxProcessor{
-		common.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
+	txProcessors := map[cb.HeaderType]ledger.CustomTxProcessor{
+		cb.HeaderType_CONFIG: &peer.ConfigTxProcessor{},
 	}
 
 	peerInstance.LedgerMgr = ledgermgmt.NewLedgerMgr(
@@ -512,7 +513,7 @@ func serve(args []string) error {
 		logger.Panicf("Failed to create chaincode server: %s", err)
 	}
 
-	//get user mode
+	// get user mode
 	userRunsCC := chaincode.IsDevMode()
 	tlsEnabled := coreConfig.PeerTLSEnabled
 
@@ -802,7 +803,7 @@ func serve(args []string) error {
 	)
 
 	if coreConfig.DiscoveryEnabled {
-		registerDiscoveryService(
+		ds := createDiscoveryService(
 			coreConfig,
 			peerInstance,
 			peerServer,
@@ -814,6 +815,18 @@ func serve(args []string) error {
 			),
 			gossipService,
 		)
+		logger.Info("Discovery service activated")
+		discprotos.RegisterDiscoveryServer(peerServer.Server(), ds)
+	}
+
+	if coreConfig.GatewayOptions.Enabled {
+		logger.Info("Starting peer with Gateway enabled")
+		gs, err := gatewayserver.CreateGatewayServer(serverEndorser)
+		if err != nil {
+			logger.Panicf("Failed to create Gateway server: %s", err)
+		}
+		gatewayprotos.RegisterGatewayServer(peerServer.Server(), gs)
+		logger.Info("Gateway server activated")
 	}
 
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
@@ -936,14 +949,14 @@ func createSelfSignedData() protoutil.SignedData {
 	}
 }
 
-func registerDiscoveryService(
+func createDiscoveryService(
 	coreConfig *peer.Config,
 	peerInstance *peer.Peer,
 	peerServer *comm.GRPCServer,
 	polMgr policies.ChannelPolicyManagerGetter,
 	metadataProvider *lifecycle.MetadataProvider,
 	gossipService *gossipservice.GossipService,
-) {
+) *discovery.Service {
 	mspID := coreConfig.LocalMSPID
 	localAccessPolicy := localPolicy(policydsl.SignedByAnyAdmin([]string{mspID}))
 	if coreConfig.DiscoveryOrgMembersAllowed {
@@ -954,27 +967,25 @@ func registerDiscoveryService(
 	gSup := gossip.NewDiscoverySupport(gossipService)
 	ccSup := ccsupport.NewDiscoverySupport(metadataProvider)
 	ea := endorsement.NewEndorsementAnalyzer(gSup, ccSup, acl, metadataProvider)
-	confSup := config.NewDiscoverySupport(config.CurrentConfigBlockGetterFunc(func(channelID string) *common.Block {
+	confSup := config.NewDiscoverySupport(config.CurrentConfigGetterFunc(func(channelID string) *cb.Config {
 		channel := peerInstance.Channel(channelID)
 		if channel == nil {
 			return nil
 		}
-		block, err := peer.ConfigBlockFromLedger(channel.Ledger())
+		config, err := peer.RetrievePersistedChannelConfig(channel.Ledger())
 		if err != nil {
-			logger.Error("failed to get config block", err)
+			logger.Errorw("failed to get channel config", "error", err)
 			return nil
 		}
-		return block
+		return config
 	}))
 	support := discsupport.NewDiscoverySupport(acl, gSup, ea, confSup, acl)
-	svc := discovery.NewService(discovery.Config{
+	return discovery.NewService(discovery.Config{
 		TLS:                          peerServer.TLSEnabled(),
 		AuthCacheEnabled:             coreConfig.DiscoveryAuthCacheEnabled,
 		AuthCacheMaxSize:             coreConfig.DiscoveryAuthCacheMaxSize,
 		AuthCachePurgeRetentionRatio: coreConfig.DiscoveryAuthCachePurgeRetentionRatio,
 	}, support)
-	logger.Info("Discovery service activated")
-	discprotos.RegisterDiscoveryServer(peerServer.Server(), svc)
 }
 
 // create a CC listener using peer.chaincodeListenAddress (and if that's not set use peer.peerAddress)
@@ -1171,7 +1182,6 @@ func initGossipService(
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 	privdataConfig *gossipprivdata.PrivdataConfig,
 ) (*gossipservice.GossipService, error) {
-
 	var certs *gossipcommon.TLSCertificates
 	if peerServer.TLSEnabled() {
 		serverCert := peerServer.ServerCertificate()
@@ -1193,7 +1203,7 @@ func initGossipService(
 	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(factory.GetDefault()))
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 
-	serviceConfig := service.GlobalConfig()
+	serviceConfig := gossipservice.GlobalConfig()
 	if serviceConfig.Endpoint != "" {
 		peerAddress = serviceConfig.Endpoint
 	}
@@ -1221,8 +1231,17 @@ func initGossipService(
 
 func newOperationsSystem(coreConfig *peer.Config) *operations.System {
 	return operations.NewSystem(operations.Options{
-		Logger:        flogging.MustGetLogger("peer.operations"),
-		ListenAddress: coreConfig.OperationsListenAddress,
+		Options: fabhttp.Options{
+			Logger:        flogging.MustGetLogger("peer.operations"),
+			ListenAddress: coreConfig.OperationsListenAddress,
+			TLS: fabhttp.TLS{
+				Enabled:            coreConfig.OperationsTLSEnabled,
+				CertFile:           coreConfig.OperationsTLSCertFile,
+				KeyFile:            coreConfig.OperationsTLSKeyFile,
+				ClientCertRequired: coreConfig.OperationsTLSClientAuthRequired,
+				ClientCACertFiles:  coreConfig.OperationsTLSClientRootCAs,
+			},
+		},
 		Metrics: operations.MetricsOptions{
 			Provider: coreConfig.MetricsProvider,
 			Statsd: &operations.Statsd{
@@ -1231,13 +1250,6 @@ func newOperationsSystem(coreConfig *peer.Config) *operations.System {
 				WriteInterval: coreConfig.StatsdWriteInterval,
 				Prefix:        coreConfig.StatsdPrefix,
 			},
-		},
-		TLS: operations.TLS{
-			Enabled:            coreConfig.OperationsTLSEnabled,
-			CertFile:           coreConfig.OperationsTLSCertFile,
-			KeyFile:            coreConfig.OperationsTLSKeyFile,
-			ClientCertRequired: coreConfig.OperationsTLSClientAuthRequired,
-			ClientCACertFiles:  coreConfig.OperationsTLSClientRootCAs,
 		},
 		Version: metadata.Version,
 	})

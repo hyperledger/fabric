@@ -26,7 +26,7 @@ func TestSubmitRequestCmd(t *testing.T) {
 
 	resetFlags()
 	cmd := submitRequestCmd(mockClient, nil)
-	cmd.SetArgs([]string{"-C", "mychannel"})
+	cmd.SetArgs([]string{"-c", "mychannel"})
 	require.NoError(t, cmd.Execute())
 	require.Equal(t, []byte("Snapshot request submitted successfully\n"), buffer.Contents())
 
@@ -35,7 +35,7 @@ func TestSubmitRequestCmd(t *testing.T) {
 	mockClient.writer = buffer2
 	resetFlags()
 	cmd = submitRequestCmd(mockClient, nil)
-	cmd.SetArgs([]string{"-C", "mychannel", "-b", "100"})
+	cmd.SetArgs([]string{"-c", "mychannel", "-b", "100"})
 	require.NoError(t, cmd.Execute())
 	require.Equal(t, []byte("Snapshot request submitted successfully\n"), buffer2.Contents())
 
@@ -51,5 +51,5 @@ func TestSubmitRequestCmd(t *testing.T) {
 
 	resetFlags()
 	cmd.SetArgs([]string{})
-	require.EqualError(t, cmd.Execute(), "the required parameter 'channelID' is empty. Rerun the command with -C flag")
+	require.EqualError(t, cmd.Execute(), "the required parameter 'channelID' is empty. Rerun the command with -c flag")
 }

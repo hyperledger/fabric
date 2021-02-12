@@ -118,9 +118,11 @@ func TestHandleChain(t *testing.T) {
 
 // Test helper functions and mock objects defined here
 
-var mockConsenter commonConsenter
-var mockLocalConfig *localconfig.TopLevel
-var mockBrokerConfig *sarama.Config
+var (
+	mockConsenter    commonConsenter
+	mockLocalConfig  *localconfig.TopLevel
+	mockBrokerConfig *sarama.Config
+)
 
 func extractEncodedOffset(marshalledOrdererMetadata []byte) int64 {
 	omd := &cb.Metadata{}
@@ -136,7 +138,6 @@ func newMockBrokerConfig(
 	retryOptions localconfig.Retry,
 	kafkaVersion sarama.KafkaVersion,
 	chosenStaticPartition int32) *sarama.Config {
-
 	brokerConfig := newBrokerConfig(
 		tlsConfig,
 		saslPlain,
@@ -175,7 +176,6 @@ func newMockLocalConfig(
 	saslPlain localconfig.SASLPlain,
 	retryOptions localconfig.Retry,
 	verboseLog bool) *localconfig.TopLevel {
-
 	return &localconfig.TopLevel{
 		General: localconfig.General{
 			TLS: localconfig.TLS{

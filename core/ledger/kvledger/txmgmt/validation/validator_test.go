@@ -71,7 +71,7 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 
 	testValidator := &validator{db: db, hashFunc: testHashFunc}
 
-	//populate db with initial data
+	// populate db with initial data
 	batch := privacyenabledstate.NewUpdateBatch()
 
 	// Create two public KV pairs
@@ -79,12 +79,16 @@ func TestValidatorBulkLoadingOfCache(t *testing.T) {
 	pubKV2 := keyValue{namespace: "ns1", key: "key2", value: []byte("value2"), version: version.NewHeight(1, 1)}
 
 	// Create two hashed KV pairs
-	hashedKV1 := keyValue{namespace: "ns2", collection: "col1", key: "hashedPvtKey1",
+	hashedKV1 := keyValue{
+		namespace: "ns2", collection: "col1", key: "hashedPvtKey1",
 		keyHash: util.ComputeStringHash("hashedPvtKey1"), value: []byte("value1"),
-		version: version.NewHeight(1, 2)}
-	hashedKV2 := keyValue{namespace: "ns2", collection: "col2", key: "hashedPvtKey2",
+		version: version.NewHeight(1, 2),
+	}
+	hashedKV2 := keyValue{
+		namespace: "ns2", collection: "col2", key: "hashedPvtKey2",
 		keyHash: util.ComputeStringHash("hashedPvtKey2"), value: []byte("value2"),
-		version: version.NewHeight(1, 3)}
+		version: version.NewHeight(1, 3),
+	}
 
 	// Store the public and hashed KV pairs to DB
 	batch.PubUpdates.Put(pubKV1.namespace, pubKV1.key, pubKV1.value, pubKV1.version)
@@ -196,7 +200,7 @@ func TestValidator(t *testing.T) {
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
 
-	//populate db with initial data
+	// populate db with initial data
 	batch := privacyenabledstate.NewUpdateBatch()
 	batch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 0))
 	batch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 1))
@@ -207,18 +211,18 @@ func TestValidator(t *testing.T) {
 
 	testValidator := &validator{db: db, hashFunc: testHashFunc}
 
-	//rwset1 should be valid
+	// rwset1 should be valid
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder1.AddToReadSet("ns1", "key1", version.NewHeight(1, 0))
 	rwsetBuilder1.AddToReadSet("ns2", "key2", nil)
 	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder1), []int{})
 
-	//rwset2 should not be valid
+	// rwset2 should not be valid
 	rwsetBuilder2 := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder2.AddToReadSet("ns1", "key1", version.NewHeight(1, 1))
 	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder2), []int{0})
 
-	//rwset3 should not be valid
+	// rwset3 should not be valid
 	rwsetBuilder3 := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder3.AddToReadSet("ns1", "key1", nil)
 	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder3), []int{0})
@@ -239,7 +243,7 @@ func TestPhantomValidation(t *testing.T) {
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
 
-	//populate db with initial data
+	// populate db with initial data
 	batch := privacyenabledstate.NewUpdateBatch()
 	batch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 0))
 	batch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 1))
@@ -250,31 +254,34 @@ func TestPhantomValidation(t *testing.T) {
 
 	testValidator := &validator{db: db, hashFunc: testHashFunc}
 
-	//rwset1 should be valid
+	// rwset1 should be valid
 	rwsetBuilder1 := rwsetutil.NewRWSetBuilder()
 	rqi1 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: true}
 	rwsetutil.SetRawReads(rqi1, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
-		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2))})
+		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2)),
+	})
 	rwsetBuilder1.AddToRangeQuerySet("ns1", rqi1)
 	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder1), []int{})
 
-	//rwset2 should not be valid - Version of key4 changed
+	// rwset2 should not be valid - Version of key4 changed
 	rwsetBuilder2 := rwsetutil.NewRWSetBuilder()
 	rqi2 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
 	rwsetutil.SetRawReads(rqi2, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2)),
-		rwsetutil.NewKVRead("key4", version.NewHeight(1, 2))})
+		rwsetutil.NewKVRead("key4", version.NewHeight(1, 2)),
+	})
 	rwsetBuilder2.AddToRangeQuerySet("ns1", rqi2)
 	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder2), []int{0})
 
-	//rwset3 should not be valid - simulate key3 got committed to db
+	// rwset3 should not be valid - simulate key3 got committed to db
 	rwsetBuilder3 := rwsetutil.NewRWSetBuilder()
 	rqi3 := &kvrwset.RangeQueryInfo{StartKey: "key2", EndKey: "key4", ItrExhausted: false}
 	rwsetutil.SetRawReads(rqi3, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
-		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3))})
+		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3)),
+	})
 	rwsetBuilder3.AddToRangeQuerySet("ns1", rqi3)
 	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder3), []int{0})
 
@@ -286,11 +293,12 @@ func TestPhantomValidation(t *testing.T) {
 	rwsetutil.SetRawReads(rqi5, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2)),
-		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3))})
+		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3)),
+	})
 	rwsetBuilder5.AddToRangeQuerySet("ns1", rqi5)
 	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder4, rwsetBuilder5), []int{1})
 
-	//Add a key in rwset6 and rwset7 should become invalid
+	// Add a key in rwset6 and rwset7 should become invalid
 	rwsetBuilder6 := rwsetutil.NewRWSetBuilder()
 	rwsetBuilder6.AddToWriteSet("ns1", "key2_1", []byte("value2_1"))
 
@@ -299,7 +307,8 @@ func TestPhantomValidation(t *testing.T) {
 	rwsetutil.SetRawReads(rqi7, []*kvrwset.KVRead{
 		rwsetutil.NewKVRead("key2", version.NewHeight(1, 1)),
 		rwsetutil.NewKVRead("key3", version.NewHeight(1, 2)),
-		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3))})
+		rwsetutil.NewKVRead("key4", version.NewHeight(1, 3)),
+	})
 	rwsetBuilder7.AddToRangeQuerySet("ns1", rqi7)
 	checkValidation(t, testValidator, getTestPubSimulationRWSet(t, rwsetBuilder6, rwsetBuilder7), []int{1})
 }
@@ -310,7 +319,7 @@ func TestPhantomHashBasedValidation(t *testing.T) {
 	defer testDBEnv.Cleanup()
 	db := testDBEnv.GetDBHandle("TestDB")
 
-	//populate db with initial data
+	// populate db with initial data
 	batch := privacyenabledstate.NewUpdateBatch()
 	batch.PubUpdates.Put("ns1", "key1", []byte("value1"), version.NewHeight(1, 0))
 	batch.PubUpdates.Put("ns1", "key2", []byte("value2"), version.NewHeight(1, 1))

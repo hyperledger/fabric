@@ -148,7 +148,6 @@ func (pv *PluginValidator) getOrCreatePlugin(ctx *Context) (validation.Plugin, e
 
 	pluginsByChannel := pv.getOrCreatePluginChannelMapping(txvalidatorplugin.Name(ctx.PluginName), pluginFactory)
 	return pluginsByChannel.createPluginIfAbsent(ctx.Channel)
-
 }
 
 func (pv *PluginValidator) getOrCreatePluginChannelMapping(plugin txvalidatorplugin.Name, pf validation.PluginFactory) *pluginsByChannel {

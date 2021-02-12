@@ -186,7 +186,7 @@ func (c *ClientConnectionsInput) appendPeerConfig(n *common.NetworkConfig, peer 
 }
 
 func (c *ClientConnections) setCertificate() error {
-	certificate, err := common.GetCertificate()
+	certificate, err := common.GetClientCertificate()
 	if err != nil {
 		return errors.WithMessage(err, "failed to retrieve client cerificate")
 	}

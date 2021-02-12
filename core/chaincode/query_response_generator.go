@@ -19,7 +19,6 @@ type QueryResponseGenerator struct {
 // BuildQueryResponse takes an iterator and fetch state to construct QueryResponse
 func (q *QueryResponseGenerator) BuildQueryResponse(txContext *TransactionContext, iter commonledger.ResultsIterator,
 	iterID string, isPaginated bool, totalReturnLimit int32) (*pb.QueryResponse, error) {
-
 	pendingQueryResults := txContext.GetPendingQueryResult(iterID)
 	totalReturnCount := txContext.GetTotalReturnCount(iterID)
 
@@ -64,7 +63,6 @@ func (q *QueryResponseGenerator) BuildQueryResponse(txContext *TransactionContex
 }
 
 func createQueryResponse(txContext *TransactionContext, iterID string, isPaginated bool, pendingQueryResults *PendingQueryResult, totalReturnCount int32) (*pb.QueryResponse, error) {
-
 	batch := pendingQueryResults.Cut()
 
 	if isPaginated {
@@ -81,7 +79,6 @@ func createQueryResponse(txContext *TransactionContext, iterID string, isPaginat
 	// if explicit pagination is not used, then the end of the resultset has been reached, return the batch
 	txContext.CleanupQueryContext(iterID)
 	return &pb.QueryResponse{Results: batch, HasMore: false, Id: iterID}, nil
-
 }
 
 func createResponseMetadata(returnCount int32, bookmark string) *pb.QueryResponseMetadata {

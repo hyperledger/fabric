@@ -13,10 +13,12 @@ import (
 	"github.com/pkg/errors"
 )
 
-type dataKey []byte
-type rangeScan struct {
-	startKey, endKey []byte
-}
+type (
+	dataKey   []byte
+	rangeScan struct {
+		startKey, endKey []byte
+	}
+)
 
 var (
 	compositeKeySep = []byte{0x00} // used as a separator between different components of dataKey

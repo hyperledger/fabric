@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft_test
 
 import (
-	"fmt"
 	"testing"
 
 	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -155,10 +154,6 @@ func TestMembershipChanges(t *testing.T) {
 	client4, err := tlsIntermediateCA2.NewClientCertKeyPair()
 	require.NoError(t, err)
 
-	// cert for fake-org3
-	tlsCA3, err := tlsgen.NewCA()
-	require.NoError(t, err)
-	client5, err := tlsCA3.NewClientCertKeyPair()
 	require.NoError(t, err)
 
 	c := []*etcdraftproto.Consenter{
@@ -230,54 +225,6 @@ func TestMembershipChanges(t *testing.T) {
 			Changed:     true,
 			Rotated:     false,
 			ExpectedErr: "",
-		},
-		{
-			Name: "Add a node with an invalid client cert bytes",
-			OldConsenters: map[uint64]*etcdraftproto.Consenter{
-				1: c[0],
-			},
-			NewConsenters: []*etcdraftproto.Consenter{
-				c[0],
-				{ClientTlsCert: []byte("woops")},
-			},
-			Changes:     nil,
-			ExpectedErr: fmt.Sprintf("parsing tls client cert: no PEM data found in cert[% x]", []byte("woops")),
-		},
-		{
-			Name: "Add a node with an invalid server cert bytes",
-			OldConsenters: map[uint64]*etcdraftproto.Consenter{
-				1: c[0],
-			},
-			NewConsenters: []*etcdraftproto.Consenter{
-				c[0],
-				{ClientTlsCert: client3.Cert, ServerTlsCert: []byte("doh!")},
-			},
-			Changes:     nil,
-			ExpectedErr: fmt.Sprintf("parsing tls server cert: no PEM data found in cert[% x]", []byte("doh!")),
-		},
-		{
-			Name: "Add a node with an invalid tls client cert",
-			OldConsenters: map[uint64]*etcdraftproto.Consenter{
-				1: c[0],
-			},
-			NewConsenters: []*etcdraftproto.Consenter{
-				c[0],
-				{ClientTlsCert: client5.Cert, ServerTlsCert: client3.Cert},
-			},
-			Changes:     nil,
-			ExpectedErr: fmt.Sprintf("verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", client5.TLSCert.SerialNumber),
-		},
-		{
-			Name: "Add a node with an invalid tls server cert",
-			OldConsenters: map[uint64]*etcdraftproto.Consenter{
-				1: c[0],
-			},
-			NewConsenters: []*etcdraftproto.Consenter{
-				c[0],
-				{ClientTlsCert: client3.Cert, ServerTlsCert: client5.Cert},
-			},
-			Changes:     nil,
-			ExpectedErr: fmt.Sprintf("verifying tls server cert with serial number %d: x509: certificate signed by unknown authority", client5.TLSCert.SerialNumber),
 		},
 		{
 			Name: "Remove a node",
@@ -383,7 +330,7 @@ func TestMembershipChanges(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			changes, err := etcdraft.ComputeMembershipChanges(blockMetadata, test.OldConsenters, test.NewConsenters, mockOrdererConfig)
+			changes, err := etcdraft.ComputeMembershipChanges(blockMetadata, test.OldConsenters, test.NewConsenters)
 
 			if test.ExpectedErr != "" {
 				require.EqualError(t, err, test.ExpectedErr)

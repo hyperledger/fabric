@@ -54,7 +54,8 @@ func newOrderer(port int, t *testing.T) *timeoutOrderer {
 	if err != nil {
 		panic(err)
 	}
-	o := &timeoutOrderer{Server: srv,
+	o := &timeoutOrderer{
+		Server:           srv,
 		Listener:         lsnr,
 		t:                t,
 		nextExpectedSeek: uint64(1),
@@ -442,7 +443,7 @@ func createTxFile(filename string, typ cb.HeaderType, channelID string) (*cb.Env
 		return nil, err
 	}
 
-	if err = ioutil.WriteFile(filename, data, 0644); err != nil {
+	if err = ioutil.WriteFile(filename, data, 0o644); err != nil {
 		return nil, err
 	}
 
@@ -462,7 +463,7 @@ func TestCreateChainFromTx(t *testing.T) {
 	}
 	defer os.RemoveAll(dir) // clean up
 
-	//this could be created by the create command
+	// this could be created by the create command
 	defer os.Remove(mockchannel + ".block")
 
 	file := filepath.Join(dir, mockchannel)
@@ -492,7 +493,7 @@ func TestCreateChainFromTx(t *testing.T) {
 	cmd.SetArgs(args)
 	err = cmd.Execute()
 	require.Error(t, err, "Create command should have failed because tx file does not exist")
-	var msgExpr = regexp.MustCompile(`channel create configuration tx file not found.*no such file or directory`)
+	msgExpr := regexp.MustCompile(`channel create configuration tx file not found.*no such file or directory`)
 	require.True(t, msgExpr.MatchString(err.Error()))
 
 	// Success case: -f option is empty
@@ -526,7 +527,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 
 	defer os.RemoveAll(dir) // clean up
 
-	//this is created by create command
+	// this is created by create command
 	defer os.Remove(mockchannel + ".block")
 
 	file := filepath.Join(dir, mockchannel)
@@ -549,7 +550,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 	args := []string{"-c", mockchannel, "-f", file, "-o", "localhost:7050"}
 	cmd.SetArgs(args)
 
-	//bad type CONFIG
+	// bad type CONFIG
 	if _, err = createTxFile(file, cb.HeaderType_CONFIG, mockchannel); err != nil {
 		t.Fatalf("couldn't create tx file")
 	}
@@ -562,7 +563,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 		t.Errorf("invalid error")
 	}
 
-	//bad channel name - does not match one specified in command
+	// bad channel name - does not match one specified in command
 	if _, err = createTxFile(file, cb.HeaderType_CONFIG_UPDATE, "different_channel"); err != nil {
 		t.Fatalf("couldn't create tx file")
 	}
@@ -573,7 +574,7 @@ func TestCreateChainInvalidTx(t *testing.T) {
 		t.Errorf("invalid error")
 	}
 
-	//empty channel
+	// empty channel
 	if _, err = createTxFile(file, cb.HeaderType_CONFIG_UPDATE, ""); err != nil {
 		t.Fatalf("couldn't create tx file")
 	}
@@ -598,7 +599,7 @@ func TestCreateChainNilCF(t *testing.T) {
 	require.NoError(t, err, "Couldn't create temp dir")
 	defer os.RemoveAll(dir) // clean up
 
-	//this is created by create command
+	// this is created by create command
 	defer os.Remove(mockchannel + ".block")
 	file := filepath.Join(dir, mockchannel)
 

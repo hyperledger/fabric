@@ -114,6 +114,7 @@ func constructVersionedKV(ns string, key string, value []byte, version *version.
 		},
 		VersionedValue: &statedb.VersionedValue{
 			Value:   value,
-			Version: version},
+			Version: version,
+		},
 	}
 }

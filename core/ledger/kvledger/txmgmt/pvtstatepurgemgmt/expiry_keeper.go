@@ -131,6 +131,7 @@ func decodeExpiryInfo(key []byte, value []byte) (*expiryInfo, error) {
 	}
 	return &expiryInfo{
 			expiryInfoKey: &expiryInfoKey{committingBlk: committingBlk, expiryBlk: expiryBlk},
-			pvtdataKeys:   pvtdataKeys},
+			pvtdataKeys:   pvtdataKeys,
+		},
 		nil
 }

@@ -13,9 +13,9 @@ import (
 	"strings"
 )
 
-//The targz metadata provider is reference for other providers (such as what CAR would
-//implement). Currently it treats only statedb metadata but will be generalized in future
-//to allow for arbitrary metadata to be packaged with the chaincode.
+// The targz metadata provider is reference for other providers (such as what CAR would
+// implement). Currently it treats only statedb metadata but will be generalized in future
+// to allow for arbitrary metadata to be packaged with the chaincode.
 const (
 	ccPackageStatedbDir = "META-INF/statedb/"
 )

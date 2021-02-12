@@ -17,7 +17,7 @@ import (
 
 func TestLedgerConfig(t *testing.T) {
 	defer viper.Reset()
-	var tests = []struct {
+	tests := []struct {
 		name     string
 		config   map[string]interface{}
 		expected *ledger.Config
@@ -44,7 +44,7 @@ func TestLedgerConfig(t *testing.T) {
 					Enabled: false,
 				},
 				SnapshotsConfig: &ledger.SnapshotsConfig{
-					RootDir: "/peerfs/ledgersData/snapshots",
+					RootDir: "/peerfs/snapshots",
 				},
 			},
 		},
@@ -67,18 +67,17 @@ func TestLedgerConfig(t *testing.T) {
 				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "CouchDB",
 					CouchDB: &ledger.CouchDBConfig{
-						Address:                 "localhost:5984",
-						Username:                "username",
-						Password:                "password",
-						MaxRetries:              3,
-						MaxRetriesOnStartup:     10,
-						RequestTimeout:          30 * time.Second,
-						InternalQueryLimit:      1000,
-						MaxBatchUpdateSize:      500,
-						WarmIndexesAfterNBlocks: 1,
-						CreateGlobalChangesDB:   true,
-						RedoLogPath:             "/peerfs/ledgersData/couchdbRedoLogs",
-						UserCacheSizeMBs:        64,
+						Address:               "localhost:5984",
+						Username:              "username",
+						Password:              "password",
+						MaxRetries:            3,
+						MaxRetriesOnStartup:   10,
+						RequestTimeout:        30 * time.Second,
+						InternalQueryLimit:    1000,
+						MaxBatchUpdateSize:    500,
+						CreateGlobalChangesDB: true,
+						RedoLogPath:           "/peerfs/ledgersData/couchdbRedoLogs",
+						UserCacheSizeMBs:      64,
 					},
 				},
 				PrivateDataConfig: &ledger.PrivateDataConfig{
@@ -91,7 +90,7 @@ func TestLedgerConfig(t *testing.T) {
 					Enabled: false,
 				},
 				SnapshotsConfig: &ledger.SnapshotsConfig{
-					RootDir: "/peerfs/ledgersData/snapshots",
+					RootDir: "/peerfs/snapshots",
 				},
 			},
 		},
@@ -108,7 +107,6 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.state.couchDBConfig.requestTimeout":               "30s",
 				"ledger.state.couchDBConfig.internalQueryLimit":           500,
 				"ledger.state.couchDBConfig.maxBatchUpdateSize":           600,
-				"ledger.state.couchDBConfig.warmIndexesAfterNBlocks":      5,
 				"ledger.state.couchDBConfig.createGlobalChangesDB":        true,
 				"ledger.state.couchDBConfig.cacheSize":                    64,
 				"ledger.pvtdataStore.collElgProcMaxDbBatchSize":           50000,
@@ -116,25 +114,24 @@ func TestLedgerConfig(t *testing.T) {
 				"ledger.pvtdataStore.purgeInterval":                       1000,
 				"ledger.pvtdataStore.deprioritizedDataReconcilerInterval": "180m",
 				"ledger.history.enableHistoryDatabase":                    true,
-				"ledger.snapshots.rootDir":                                "/peerfs/snapshots",
+				"ledger.snapshots.rootDir":                                "/peerfs/customLocationForsnapshots",
 			},
 			expected: &ledger.Config{
 				RootFSPath: "/peerfs/ledgersData",
 				StateDBConfig: &ledger.StateDBConfig{
 					StateDatabase: "CouchDB",
 					CouchDB: &ledger.CouchDBConfig{
-						Address:                 "localhost:5984",
-						Username:                "username",
-						Password:                "password",
-						MaxRetries:              3,
-						MaxRetriesOnStartup:     10,
-						RequestTimeout:          30 * time.Second,
-						InternalQueryLimit:      500,
-						MaxBatchUpdateSize:      600,
-						WarmIndexesAfterNBlocks: 5,
-						CreateGlobalChangesDB:   true,
-						RedoLogPath:             "/peerfs/ledgersData/couchdbRedoLogs",
-						UserCacheSizeMBs:        64,
+						Address:               "localhost:5984",
+						Username:              "username",
+						Password:              "password",
+						MaxRetries:            3,
+						MaxRetriesOnStartup:   10,
+						RequestTimeout:        30 * time.Second,
+						InternalQueryLimit:    500,
+						MaxBatchUpdateSize:    600,
+						CreateGlobalChangesDB: true,
+						RedoLogPath:           "/peerfs/ledgersData/couchdbRedoLogs",
+						UserCacheSizeMBs:      64,
 					},
 				},
 				PrivateDataConfig: &ledger.PrivateDataConfig{
@@ -147,7 +144,7 @@ func TestLedgerConfig(t *testing.T) {
 					Enabled: true,
 				},
 				SnapshotsConfig: &ledger.SnapshotsConfig{
-					RootDir: "/peerfs/snapshots",
+					RootDir: "/peerfs/customLocationForsnapshots",
 				},
 			},
 		},

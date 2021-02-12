@@ -205,7 +205,6 @@ func TestTrackExpiration(t *testing.T) {
 			} else {
 				require.Empty(t, formattedWarning)
 			}
-
 		})
 	}
 }

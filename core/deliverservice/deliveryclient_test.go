@@ -224,5 +224,4 @@ func TestStop(t *testing.T) {
 			require.Fail(t, "block providers should te closed")
 		}
 	}
-
 }

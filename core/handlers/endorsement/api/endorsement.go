@@ -18,8 +18,7 @@ type Argument interface {
 }
 
 // Dependency marks a dependency passed to the Init() method
-type Dependency interface {
-}
+type Dependency interface{}
 
 // Plugin endorses a proposal response
 type Plugin interface {

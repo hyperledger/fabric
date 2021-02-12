@@ -48,7 +48,7 @@ func TestFabricLoggerEncoding(t *testing.T) {
 func TestFabricLogger(t *testing.T) {
 	var enabler zap.LevelEnablerFunc = func(l zapcore.Level) bool { return true }
 
-	var tests = []struct {
+	tests := []struct {
 		desc    string
 		f       func(fl *flogging.FabricLogger)
 		level   zapcore.Level

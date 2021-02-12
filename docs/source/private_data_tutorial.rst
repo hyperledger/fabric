@@ -1,9 +1,9 @@
 Using Private Data in Fabric
 ============================
 
-This tutorial will demonstrate the use of collections to provide storage
+This tutorial will demonstrate the use of Private Data Collections (PDC) to provide storage
 and retrieval of private data on the blockchain network for authorized peers
-of organizations.
+of organizations. The collection is specified using a collection definition file containing the policies governing that collection.
 
 The information in this tutorial assumes knowledge of private data
 stores and their use cases. For more information, check out :doc:`private-data/private-data`.
@@ -23,6 +23,7 @@ configuring and using private data with Fabric:
 #. :ref:`pd-register-identities`
 #. :ref:`pd-store-private-data`
 #. :ref:`pd-query-authorized`
+#. :ref:`pd-query-unauthorized`
 #. :ref:`pd-transfer-asset`
 #. :ref:`pd-purge`
 #. :ref:`pd-indexes`
@@ -41,10 +42,17 @@ Asset transfer private data sample use case
 This sample demonstrates the use of three private data collections, ``assetCollection``, ``Org1MSPPrivateCollection`` & ``Org2MSPPrivateCollection`` to transfer an asset between Org1 and Org2, using following use case:
 
 A member of Org1 creates a new asset, henceforth referred as owner. The public details of the asset,
-including the owner, are stored in the private data collection named ``assetCollection``. The asset is also created with an appraised
+including the identity of the owner, are stored in the private data collection named ``assetCollection``. The asset is also created with an appraised
 value supplied by the owner. The appraised value is used by each participant to agree to the transfer of the asset, and is only stored in owner organization's collection. In our case, the initial appraisal value agreed by the owner is stored in the ``Org1MSPPrivateCollection``.
 
-To purchase the asset, the buyer needs to agree to the same appraised value as the asset owner. In this step, the buyer (a member of Org2) creates an agreement to trade and agree to an appraisal value using smart contract function ``'AgreeToTransfer'``. This value is stored in ``Org2MSPPrivateCollection`` collection. Now, the asset owner can transfer the asset to the buyer using smart contract function ``'TransferAsset'``, which checks for the conditions that must be met for transfer to succeed.
+To purchase the asset, the buyer needs to agree to the same appraised value as
+the asset owner. In this step, the buyer (a member of Org2) creates an agreement
+to trade and agree to an appraisal value using smart contract function ``'AgreeToTransfer'``.
+This value is stored in ``Org2MSPPrivateCollection`` collection. Now, the asset
+owner can transfer the asset to the buyer using smart contract function ``'TransferAsset'``.
+The ``'TransferAsset'`` function uses the hash on the channel ledger to
+confirm that the owner and the buyer have agreed to the same appraised value
+before transferring the asset.
 
 Before we go through the transfer scenario, we will discuss how organizations can use private data collections in Fabric.
 
@@ -54,7 +62,7 @@ Build a collection definition JSON file
 ---------------------------------------
 
 Before a set of organizations can transact using private data, all organizations
-on channel need to build a collection file that defines the private
+on channel need to build a collection definition file that defines the private
 data collections associated with each chaincode. Data that is stored in a private
 data collection is only distributed to the peers of certain organizations instead
 of all members of the channel. The collection definition file describes all of the
@@ -103,14 +111,9 @@ each organization has access to an implicit collection on their peers that can o
 be read by their organization. For an example that uses implicit data collections,
 see the :doc:`secured_asset_transfer/secured_private_asset_transfer_tutorial`.
 
-To illustrate the use of private data, the asset transfer private data example contains
-three private data collection definitions: ``assetCollection``, ``Org1MSPPrivateCollection``,
-and ``Org2MSPPrivateCollection``. The ``policy`` property in the
-``assetCollection`` definition allows all members of the channel (Org1 and
-Org2) to have the private data in a private database. The
-``Org1MSPPrivateCollection`` collection allows only members of Org1 to
-have the private data in their private database, and the ``Org2MSPPrivateCollection``
-collection allows only members of Org2 to have the private data in their private database.
+The asset transfer private data example contains a `collections_config.json` file
+that defines three private data collection definitions: ``assetCollection``, ``Org1MSPPrivateCollection``,
+and ``Org2MSPPrivateCollection``.
 
 .. code:: json
 
@@ -152,8 +155,19 @@ collection allows only members of Org2 to have the private data in their private
     }
  ]
 
-The data to be secured by these policies is mapped in chaincode and will be
-shown later in the tutorial.
+
+The ``policy`` property in the ``assetCollection`` definition specifies that both
+Org1 and Org2 can store the collection on their peers. The ``memberOnlyRead``
+and ``memberOnlyWrite`` parameters are used to specify that only Org1 and
+Org2 clients can read and write to this collection.
+
+The ``Org1MSPPrivateCollection`` collection allows only peers of Org1 to have
+the private data in their private database, while the ``Org2MSPPrivateCollection``
+collection can only be stored by the peers of Org2. The ``endorsementPolicy`` parameter
+is used to create a collection specific endorsement policy. Each update to
+``Org1MSPPrivateCollection`` or ``Org2MSPPrivateCollection`` needs to be endorsed
+by the organization that stores the collection on their peers. We will see how
+these collections are used to transfer the asset in the course of the tutorial.
 
 This collection definition file is deployed when the chaincode definition is
 committed to the channel using the `peer lifecycle chaincode commit command <commands/peerlifecycle.html#peer-lifecycle-chaincode-commit>`__.
@@ -197,14 +211,15 @@ be accessed.
 Specifically, access to the private data will be restricted as follows:
 
 - ``objectType, color, size, and owner`` are stored in ``assetCollection`` and hence will be visible to members of the channel per the definition in the collection policy (Org1 and Org2).
-- ``AppraisedValue`` of an asset is stored in collection Org1MSPPrivateCollection or Org2MSPPrivateCollection , depending on the owner of the asset.  The value is only accessible to members of the respective collection.
-
+- ``AppraisedValue`` of an asset is stored in collection ``Org1MSPPrivateCollection`` or ``Org2MSPPrivateCollection`` , depending on the owner of the asset. The value is only accessible to the users who belong to the organization that can store the collection.
 
 
 All of the data that is created by the asset transfer private data sample smart
-contract is stored in private data. The smart contract uses the Fabric chaincode API
+contract is stored in PDC. The smart contract uses the Fabric chaincode API
 to read and write private data to private data collections using the ``GetPrivateData()``
 and ``PutPrivateData()`` functions. You can find more information about those functions `here <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStub>`_.
+This private data is stored in private state db on the peer (separate from public state db), and
+is disseminated between authorized peers via gossip protocol.
 
 The following diagram illustrates the private data model used by the private data
 sample. Note that Org3 is only shown in the diagram to illustrate that if
@@ -218,10 +233,10 @@ Reading collection data
 
 The smart contract uses the chaincode API ``GetPrivateData()`` to query private data in the
 database.  ``GetPrivateData()`` takes two arguments, the **collection name**
-and the data key. Recall the collection  ``assetCollection`` allows members of
+and the data key. Recall the collection  ``assetCollection`` allows peers of
 Org1 and Org2 to have the private data in a side database, and the collection
-``Org1MSPPrivateCollection`` allows only members of Org1 to have their
-private data in a side database and ``Org2MSPPrivateCollection`` allows members
+``Org1MSPPrivateCollection`` allows only peers of Org1 to have their
+private data in a side database and ``Org2MSPPrivateCollection`` allows peers
 of Org2 to have their private data in a side database.
 For implementation details refer to the following two `asset transfer private data functions <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-private-data/chaincode-go/chaincode/asset_queries.go>`__:
 
@@ -252,9 +267,9 @@ For example, in the following snippet of the ``CreateAsset`` function,
 
 .. code-block:: GO
 
-  // CreateAsset creates a new asset by placing the main asset details in the assetCollection
-  // that can be read by both organizations. The appraisal value is stored in the owner's org specific collection.
-  func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface) error {
+    // CreateAsset creates a new asset by placing the main asset details in the assetCollection
+    // that can be read by both organizations. The appraisal value is stored in the owners org specific collection.
+    func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface) error {
 
         // Get new asset from transient map
         transientMap, err := ctx.GetStub().GetTransient()
@@ -309,9 +324,9 @@ For example, in the following snippet of the ``CreateAsset`` function,
         }
 
         // Get ID of submitting client identity
-        clientID, err := ctx.GetClientIdentity().GetID()
+        clientID, err := submittingClientIdentity(ctx)
         if err != nil {
-            return fmt.Errorf("failed to get verified OrgID: %v", err)
+            return err
         }
 
         // Verify that the client is submitting request to peer in their organization
@@ -338,7 +353,8 @@ For example, in the following snippet of the ``CreateAsset`` function,
         // Save asset to private data collection
         // Typical logger, logs to stdout/file in the fabric managed docker container, running this chaincode
         // Look for container name like dev-peer0.org1.example.com-{chaincodename_version}-xyz
-        log.Printf("CreateAsset Put: collection %v, ID %v", assetCollection, assetInput.ID)
+        log.Printf("CreateAsset Put: collection %v, ID %v, owner %v", assetCollection, assetInput.ID, clientID)
+
         err = ctx.GetStub().PutPrivateData(assetCollection, assetInput.ID, assetJSONasBytes)
         if err != nil {
             return fmt.Errorf("failed to put asset into private data collecton: %v", err)
@@ -361,7 +377,7 @@ For example, in the following snippet of the ``CreateAsset`` function,
             return fmt.Errorf("failed to infer private collection name for the org: %v", err)
         }
 
-        // Put asset appraised value into owner's org specific private data collection
+        // Put asset appraised value into owners org specific private data collection
         log.Printf("Put: collection %v, ID %v", orgCollection, assetInput.ID)
         err = ctx.GetStub().PutPrivateData(orgCollection, assetInput.ID, assetPrivateDetailsAsBytes)
         if err != nil {
@@ -431,7 +447,7 @@ Run the following command from the test network directory.
 
 .. code:: bash
 
-   ./network.sh deployCC -ccn private -ccep "OR('Org1MSP.peer','Org2MSP.peer')" -cccg ../asset-transfer-private-data/chaincode-go/collections_config.json
+   ./network.sh deployCC -ccn private -ccp ../asset-transfer-private-data/chaincode-go/ -ccl go -ccep "OR('Org1MSP.peer','Org2MSP.peer')" -cccg ../asset-transfer-private-data/chaincode-go/collections_config.json
 
 Note that we need to pass the path to the private data collection definition file
 to the command. As part of deploying the chaincode to the channel, both organizations
@@ -466,7 +482,7 @@ the same ``--collections-config`` flag to provide the path to the collection def
 
 Register identities
 -------------------
-The private data transfer smart contract supports ownership by individual identities that belong to the network. In our scenario, the owner of the asset will be a member of Org1, while the buyer will belong to Org2. To highlight the connection between the `GetClientIdentity().GetID()` API and the information within a user's certificate, we will register two new identities using the Org1 and Org2 Certificate Authorities (CA's), and then use the CA's to generate each identity's certificate and private key.
+The private data transfer smart contract supports ownership by individual identities that belong to the network. In our scenario, the owner of the asset will be a member of Org1, while the buyer will belong to Org2. To highlight the connection between the ``GetClientIdentity().GetID()`` API and the information within a user's certificate, we will register two new identities using the Org1 and Org2 Certificate Authorities (CA's), and then use the CA's to generate each identity's certificate and private key.
 
 First, we need to set the following environment variables to use the Fabric CA client:
 
@@ -485,21 +501,21 @@ You can register a new owner client identity using the `fabric-ca-client` tool:
 
 .. code:: bash
 
-    fabric-ca-client register --caname ca-org1 --id.name owner --id.secret ownerpw --id.type client --tls.certfiles ${PWD}/organizations/fabric-ca/org1/tls-cert.pem
+    fabric-ca-client register --caname ca-org1 --id.name owner --id.secret ownerpw --id.type client --tls.certfiles "${PWD}/organizations/fabric-ca/org1/tls-cert.pem"
 
 
 You can now generate the identity certificates and MSP folder by providing the enroll name and secret to the enroll command:
 
 .. code:: bash
 
-    fabric-ca-client enroll -u https://owner:ownerpw@localhost:7054 --caname ca-org1 -M ${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp --tls.certfiles ${PWD}/organizations/fabric-ca/org1/tls-cert.pem
+    fabric-ca-client enroll -u https://owner:ownerpw@localhost:7054 --caname ca-org1 -M "${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp" --tls.certfiles "${PWD}/organizations/fabric-ca/org1/tls-cert.pem"
 
 
 Run the command below to copy the Node OU configuration file into the owner identity MSP folder.
 
 .. code:: bash
 
-    cp ${PWD}/organizations/peerOrganizations/org1.example.com/msp/config.yaml ${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp/config.yaml
+    cp "${PWD}/organizations/peerOrganizations/org1.example.com/msp/config.yaml" "${PWD}/organizations/peerOrganizations/org1.example.com/users/owner@org1.example.com/msp/config.yaml"
 
 
 We can now use the Org2 CA to create the buyer identity. Set the Fabric CA client home the Org2 CA admin:
@@ -512,21 +528,21 @@ You can register a new owner client identity using the `fabric-ca-client` tool:
 
 .. code:: bash
 
-    fabric-ca-client register --caname ca-org2 --id.name buyer --id.secret buyerpw --id.type client --tls.certfiles ${PWD}/organizations/fabric-ca/org2/tls-cert.pem
+    fabric-ca-client register --caname ca-org2 --id.name buyer --id.secret buyerpw --id.type client --tls.certfiles "${PWD}/organizations/fabric-ca/org2/tls-cert.pem"
 
 
 We can now enroll to generate the identity MSP folder:
 
 .. code:: bash
 
-    fabric-ca-client enroll -u https://buyer:buyerpw@localhost:8054 --caname ca-org2 -M ${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp --tls.certfiles ${PWD}/organizations/fabric-ca/org2/tls-cert.pem
+    fabric-ca-client enroll -u https://buyer:buyerpw@localhost:8054 --caname ca-org2 -M "${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp" --tls.certfiles "${PWD}/organizations/fabric-ca/org2/tls-cert.pem"
 
 
 Run the command below to copy the Node OU configuration file into the buyer identity MSP folder.
 
 .. code:: bash
 
-    cp ${PWD}/organizations/peerOrganizations/org2.example.com/msp/config.yaml ${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp/config.yaml
+    cp "${PWD}/organizations/peerOrganizations/org2.example.com/msp/config.yaml" "${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp/config.yaml"
 
 .. _pd-store-private-data:
 
@@ -535,7 +551,7 @@ Create an asset in private data
 
 Now that we have created the identity of the asset owner, we can invoke the
 private data smart contract to create a new asset. Copy and paste the following
-set of commands into your CLI in the `test-network` directory:
+set of commands into your terminal in the `test-network` directory:
 
 :guilabel:`Try it yourself`
 
@@ -559,7 +575,7 @@ twice to persist the private data, once for each collection. Also note that
 the private data is passed using the ``--transient`` flag. Inputs passed
 as transient data will not be persisted in the transaction in order to keep
 the data private. Transient data is passed as binary data and therefore when
-using CLI it must be base64 encoded. We use an environment variable
+using terminal it must be base64 encoded. We use an environment variable
 to capture the base64 encoded value, and use ``tr`` command to strip off the
 problematic newline characters that linux base64 command adds.
 
@@ -568,7 +584,7 @@ Run the following command to create the asset:
 .. code:: bash
 
     export ASSET_PROPERTIES=$(echo -n "{\"objectType\":\"asset\",\"assetID\":\"asset1\",\"color\":\"green\",\"size\":20,\"appraisedValue\":100}" | base64 | tr -d \\n)
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
 
 You should see results similar to:
 
@@ -585,7 +601,7 @@ An endorsement from the Org1 peer can meet both endorsement policies and is able
 Query the private data as an authorized peer
 --------------------------------------------
 
-Our collection definition allows all members of Org1 and Org2
+Our collection definition allows all peers of Org1 and Org2
 to have the ``assetID, color, size, and owner`` private data in their side database,
 but only peers in Org1 can have Org1's opinion of their ``appraisedValue`` private data in their side
 database. As an authorized peer in Org1, we will query both sets of private data.
@@ -659,20 +675,10 @@ When successful, the command will return the following result:
 
 .. code:: bash
 
-    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw=="}
+    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"x509::CN=appUser1,OU=admin,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org1.example.com,O=org1.example.com,L=Durham,ST=North Carolina,C=US"}
 
-The `"owner"` of the asset is the identity that created the asset by invoking the smart contract. The private data smart contract uses the ``GetClientIdentity().GetID()`` API to read the common name and issuer of the identity certificate.
-You can see that information by decoding the owner string out of base64 format:
+The `"owner"` of the asset is the identity that created the asset by invoking the smart contract. The private data smart contract uses the ``GetClientIdentity().GetID()`` API to read the name and issuer of the identity certificate. You can see the name and issuer of the identity certificate, in the owner attribute.
 
-.. code:: bash
-
-    echo eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw== | base64 --decode
-
-The result will show the common name and issuer of the owner certificate:
-
-.. code:: bash
-
-    x509::CN=org1admin,OU=admin,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org1.example.com,O=org1.example.com,L=Durham,ST=North Carolina,C=US
 
 Query for the ``appraisedValue`` private data of ``asset1`` as a member of Org1.
 
@@ -686,12 +692,13 @@ You should see the following result:
 
     {"assetID":"asset1","appraisedValue":100}
 
+.. _pd-query-unauthorized:
 
 Query the private data as an unauthorized peer
 ----------------------------------------------
 
-Now we will operate a member of Org2. Org2 has the asset transfer private data
-``assetID, color, size, owner`` in its side database as defined in the assetCollection policy, but does not store the
+Now we will operate a user from Org2. Org2 has the asset transfer private data
+``assetID, color, size, owner`` in its side database as defined in the ``assetCollection`` policy, but does not store the
 asset ``appraisedValue`` data for Org1. We will query for both sets of private data.
 
 Switch to a peer in Org2
@@ -726,22 +733,36 @@ When successful, should see something similar to the following result:
 
 .. code:: json
 
-    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049b3JnMWFkbWluLE9VPWFkbWluLE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMS5leGFtcGxlLmNvbSxPPW9yZzEuZXhhbXBsZS5jb20sTD1EdXJoYW0sU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUw=="}
+    {"objectType":"asset","assetID":"asset1","color":"green","size":20,
+    "owner":"x509::CN=appUser1,OU=admin,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org1.example.com,O=org1.example.com,L=Durham,ST=North Carolina,C=US" }
 
 Query private data Org2 is not authorized to
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Peers in Org2 do not have the Org1 asset1 ``appraisedValue`` private data in their side database.
-When they try to query for this data, they get back a hash of the key matching
-the public state but will not have the private state.
+Because the asset was created by Org1, the ``appraisedValue`` associated with
+``asset1`` is stored in the ``Org1MSPPrivateCollection`` collection. The value is
+not stored by peers in Org2. Run the following command to demonstrate that the
+asset's ``appraisedValue`` is not stored in the ``Org2MSPPrivateCollection``
+on the Org2 peer:
 
 :guilabel:`Try it yourself`
 
 .. code:: bash
 
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
+
+The empty response shows that the asset1 private details do not exist in buyer
+(Org2) private collection.
+
+Nor can a user from Org2 read the Org1 private data collection:
+
+.. code:: bash
+
     peer chaincode query -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
 
-You should see a result similar to:
+By setting ``"memberOnlyRead": true`` in the collection configuration file, we
+specify that only clients from Org1 can read data from the collection. An Org2 client
+who tries to read the collection would only get the following response:
 
 .. code:: json
 
@@ -749,7 +770,7 @@ You should see a result similar to:
     read asset details: GET_STATE failed: transaction ID: d23e4bc0538c3abfb7a6bd4323fd5f52306e2723be56460fc6da0e5acaee6b23: tx
     creator does not have read access permission on privatedata in chaincodeName:private collectionName: Org1MSPPrivateCollection"
 
-Members of Org2 will only be able to see the public hash of the private data.
+Users from Org2 will only be able to see the public hash of the private data.
 
 .. _pd-transfer-asset:
 
@@ -763,49 +784,21 @@ to this, lets continue.
 
 :guilabel:`Try it yourself`
 
-Since we need to keep track of how many blocks we add to see if our private data gets purged, open a new terminal window and view the private data logs for this peer by
-running the following command. Note the highest block number.
+Switch back to the terminal with our peer CLI.
 
-.. code:: bash
-
-    docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
-
-
-Switch back to the terminal with our peer CLI. Now that we are operating
-as a member of Org2, we can demonstrate that the asset appraisal is not stored
-in Org2MSPPrivateCollection, on the Org2 peer:
-
-.. code:: bash
-
-    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
-
-The empty response shows that the asset1 private details do not exist in buyer (Org2) private collection.
-
-Nor can a member of Org2, read the Org1 private data collection:
-
-.. code:: bash
-
-    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
-
-By setting ``"memberOnlyRead": true`` in the collection configuration file, we specify that only members of Org1 can read data from the collection. An Org2 member who tries to read the collection would only get the following response:
-
-.. code:: bash
-
-    Error: endorsement failure during query. response: status:500 message:"failed to read from asset details GET_STATE failed: transaction ID: 10d39a7d0b340455a19ca4198146702d68d884d41a0e60936f1599c1ddb9c99d: tx creator does not have read access permission on privatedata in chaincodeName:private collectionName: Org1MSPPrivateCollection"
-
-To transfer an asset, the buyer (recipient) needs to agree to the same ``appraisedValue`` as the asset owner, by calling chaincode function ``AgreeToTransfer``. The agreed value will be stored in the ``Org2MSPDetailsCollection`` collection on the Org2 peer. Run the following command to agree to the appraised value of 100, as Org2:
+To transfer an asset, the buyer (recipient) needs to agree to the same ``appraisedValue`` as the asset owner, by calling chaincode function ``AgreeToTransfer``. The agreed value will be stored in the ``Org2MSPDetailsCollection`` collection on the Org2 peer. Run the following commands to agree to the appraised value of 100 as Org2:
 
 .. code:: bash
 
     export ASSET_VALUE=$(echo -n "{\"assetID\":\"asset1\",\"appraisedValue\":100}" | base64 | tr -d \\n)
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"AgreeToTransfer","Args":[]}' --transient "{\"asset_value\":\"$ASSET_VALUE\"}"
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"AgreeToTransfer","Args":[]}' --transient "{\"asset_value\":\"$ASSET_VALUE\"}"
 
 
 The buyer can now query the value they agreed to in the Org2 private data collection:
 
 .. code:: bash
 
-    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
 
 The invoke will return the following value:
 
@@ -813,14 +806,9 @@ The invoke will return the following value:
 
     {"assetID":"asset1","appraisedValue":100}
 
-Switch back to the Terminal window and view the private data logs for this peer
-again. You should see the block height increase by 1.
-
-.. code:: bash
-
-    docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
-
-Back in the peer container, let's transfer the asset to Org2. Let's go back to acting as Org1:
+Now that buyer has agreed to buy the asset for the appraised value, the owner can transfer
+the asset to Org2. The asset needs to be transferred by the identity that owns the asset,
+so lets go acting as Org1:
 
 .. code:: bash
 
@@ -829,62 +817,55 @@ Back in the peer container, let's transfer the asset to Org2. Let's go back to a
     export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
     export CORE_PEER_ADDRESS=localhost:7051
 
-Now that buyer has agreed to buy the asset for appraised value, the owner
-from Org1 can read the data added by `AgreeToTransfer` to see buyer identity:
+The owner from Org1 can read the data added by the `AgreeToTransfer` transaction to view the buyer identity:
 
 .. code:: bash
 
-    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadTransferAgreement","Args":["asset1"]}'
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"ReadTransferAgreement","Args":["asset1"]}'
 
 .. code:: bash
 
     {"assetID":"asset1","buyerID":"eDUwOTo6Q049YnV5ZXIsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1IdXJzbGV5LFNUPUhhbXBzaGlyZSxDPVVL"}
 
-The owner from Org1 can now transfer the asset to Org2. To transfer the asset, the owner needs to pass the MSP ID of the new asset owner Org. The transfer
-function will read the client ID of the interested buyer user from the transfer agreement:
+We now have all we need to transfer the asset. The smart contract uses the
+``GetPrivateDataHash()`` function to check that the hash of the asset appraisal
+value in ``Org1MSPPrivateCollection`` matches the hash of the appraisal value in the
+``Org2MSPPrivateCollection``. If the hashes are the same, it confirms that the
+owner and the interested buyer have agreed to the same asset value. If the
+conditions are met, the transfer function will get the client ID of the buyer
+from the transfer agreement and make the buyer the new owner of the asset. The transfer
+function will also delete the asset appraisal value from the collection of the former owner,
+as well as remove the transfer agreement from the ``assetCollection``.
+
+Run the following commands to transfer the asset. The owner needs to provide the
+assetID and the organization MSP ID of the buyer to the transfer transaction:
 
 .. code:: bash
 
     export ASSET_OWNER=$(echo -n "{\"assetID\":\"asset1\",\"buyerMSP\":\"Org2MSP\"}" | base64 | tr -d \\n)
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"TransferAsset","Args":[]}' --transient "{\"asset_owner\":\"$ASSET_OWNER\"}" --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
 
-The owner of the asset needs to initiate the transfer:
-
-.. code:: bash
-
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"TransferAsset","Args":[]}' --transient "{\"asset_owner\":\"$ASSET_OWNER\"}" --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-
-You can ReadAsset ``asset1`` to see the results of the transfer:
+You can query ``asset1`` to see the results of the transfer:
 
 .. code:: bash
 
-    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAsset","Args":["asset1"]}'
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"ReadAsset","Args":["asset1"]}'
 
 The results will show that the buyer identity now owns the asset:
 
 .. code:: bash
 
-    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"eDUwOTo6Q049YnV5ZXIsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1IdXJzbGV5LFNUPUhhbXBzaGlyZSxDPVVL"}
+    {"objectType":"asset","assetID":"asset1","color":"green","size":20,"owner":"x509::CN=appUser2, OU=client + OU=org2 + OU=department1::CN=ca.org2.example.com, O=org2.example.com, L=Hursley, ST=Hampshire, C=UK"}
 
-You can base64 decode the `"owner"` to see that it is the buyer identity:
-
-.. code:: bash
-
-   echo eDUwOTo6Q049YnV5ZXIsT1U9Y2xpZW50LE89SHlwZXJsZWRnZXIsU1Q9Tm9ydGggQ2Fyb2xpbmEsQz1VUzo6Q049Y2Eub3JnMi5leGFtcGxlLmNvbSxPPW9yZzIuZXhhbXBsZS5jb20sTD1IdXJzbGV5LFNUPUhhbXBzaGlyZSxDPVVL | base64 --decode
-
-.. code:: bash
-
-    x509::CN=buyer,OU=client,O=Hyperledger,ST=North Carolina,C=US::CN=ca.org2.example.com,O=org2.example.com,L=Hursley,ST=Hampshire,C=UK
+The `"owner"` of the asset now has the buyer identity.
 
 You can also confirm that transfer removed the private details from the Org1 collection:
 
 .. code:: bash
 
-    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org1MSPPrivateCollection","asset1"]}'
 
 Your query will return empty result, since the asset private data is removed from the Org1 private data collection.
-If you go back and look at the block height in your logs, you will see that the private data did not get purged from Org1
-due to hitting the fourth block (we only increased by two blocks in transferring the asset to Org2), but rather
-because when the asset transfer occurred, Org1 did not meet the ``read`` policy of the ``Org2MSPPrivateCollection``.
 
 
 .. _pd-purge:
@@ -908,13 +889,13 @@ in the collection definition.
 The ``Org2MSPPrivateCollection`` definition has a ``blockToLive``
 property value of ``3``, meaning this data will live on the side database for
 three blocks and then after that it will get purged. If we create additional
-blocks on the channel, the appraisedValue agreed to by Org2 will eventually
+blocks on the channel, the ``appraisedValue`` agreed to by Org2 will eventually
 get purged. We can create 3 new blocks to demonstrate:
-
 
 :guilabel:`Try it yourself`
 
-Swtich to a user from Org2:
+Run the following commands in your terminal to switch back to operating as member
+of Org2 and target the Org2 peer:
 
 .. code:: bash
 
@@ -923,11 +904,11 @@ Swtich to a user from Org2:
     export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/buyer@org2.example.com/msp
     export CORE_PEER_ADDRESS=localhost:9051
 
-We can still query the appraisedValue in the ``Org2MSPPrivateCollection``:
+We can still query the ``appraisedValue`` in the ``Org2MSPPrivateCollection``:
 
 .. code:: bash
 
-    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
 
 You should see the value printed in your logs:
 
@@ -935,29 +916,47 @@ You should see the value printed in your logs:
 
     {"assetID":"asset1","appraisedValue":100}
 
-Now create three new assets to create three new blocks:
+Since we need to keep track of how many blocks we are adding before the private data gets purged,
+open a new terminal window and run the following command to view the private data logs for
+the Org2 peer. Note the highest block number.
+
+.. code:: bash
+
+    docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
+
+Now return to the terminal where we are acting as a member of Org2 and run the following
+commands to create three new assets. Each command will create a new block.
 
 .. code:: bash
 
     export ASSET_PROPERTIES=$(echo -n "{\"objectType\":\"asset\",\"assetID\":\"asset2\",\"color\":\"blue\",\"size\":30,\"appraisedValue\":100}" | base64 | tr -d \\n)
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
 
 .. code:: bash
 
     export ASSET_PROPERTIES=$(echo -n "{\"objectType\":\"asset\",\"assetID\":\"asset3\",\"color\":\"red\",\"size\":25,\"appraisedValue\":100}" | base64 | tr -d \\n)
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
 
 .. code:: bash
 
     export ASSET_PROPERTIES=$(echo -n "{\"objectType\":\"asset\",\"assetID\":\"asset4\",\"color\":\"orange\",\"size\":15,\"appraisedValue\":100}" | base64 | tr -d \\n)
-    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"CreateAsset","Args":[]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
 
-The appraisedValue has now been purged from the private data collection. Issue the
-query again to see that the response is empty.
+
+Return to the other terminal and run the following command to confirm that
+the new assets resulted in the creation of three new blocks:
 
 .. code:: bash
 
-    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
+    docker logs peer0.org1.example.com 2>&1 | grep -i -a -E 'private|pvt|privdata'
+
+The ``appraisedValue`` has now been purged from the ``Org2MSPDetailsCollection``
+private data collection. Issue the query again from the Org2 terminal to see that
+the response is empty.
+
+.. code:: bash
+
+    peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n private -c '{"function":"ReadAssetPrivateDetails","Args":["Org2MSPPrivateCollection","asset1"]}'
 
 
 .. _pd-indexes:
@@ -977,7 +976,20 @@ automatically deployed upon chaincode instantiation on the channel when
 the  ``--collections-config`` flag is specified pointing to the location of
 the collection JSON file.
 
+Clean up
+--------
 
+When you are finished using the private data smart contract, you can bring down the test
+network using ``network.sh`` script.
+
+
+.. code:: bash
+
+  ./network.sh down
+
+This command will bring down the CAs, peers, and ordering node of the network
+that we created. Note that all of the data on the ledger will be lost.
+If you want to go through the tutorial again, you will start from a clean initial state.
 
 .. _pd-ref-material:
 
@@ -994,6 +1006,8 @@ For additional private data education, a video tutorial has been created.
    <br/><br/>
    <iframe width="560" height="315" src="https://www.youtube.com/embed/qyjDi93URJE" frameborder="0" allowfullscreen></iframe>
    <br/><br/>
+
+
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
