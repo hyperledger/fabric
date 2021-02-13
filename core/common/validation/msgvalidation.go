@@ -303,6 +303,11 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 			return payload, pb.TxValidationCode_INVALID_ENDORSER_TRANSACTION
 		}
 		return payload, pb.TxValidationCode_VALID
+	case common.HeaderType_PREPARE_TRANSACTION:
+		//TODO: извлечь пэйлоад Prepare-транзакции из пэйлоада этой транзакции,
+		//и выполнять проверку для этого пэйлоада как в HeaderType_ENDORSER_TRANSACTION
+		//
+		return payload, pb.TxValidationCode_VALID
 	case common.HeaderType_CONFIG:
 		// Config transactions have signatures inside which will be validated, especially at genesis there may be no creator or
 		// signature on the outermost envelope

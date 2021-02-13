@@ -24,13 +24,14 @@ import (
 
 // Height represents the height of a transaction in blockchain
 type Height struct {
-	BlockNum uint64
-	TxNum    uint64
+	BlockNum             uint64
+	TxNum                uint64
+	PACparticipationFlag bool //the key is locked due to changes made by an private atomic commit
 }
 
 // NewHeight constructs a new instance of Height
 func NewHeight(blockNum, txNum uint64) *Height {
-	return &Height{blockNum, txNum}
+	return &Height{blockNum, txNum, false}
 }
 
 // NewHeightFromBytes constructs a new instance of Height from serialized bytes

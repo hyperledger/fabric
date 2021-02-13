@@ -24,10 +24,12 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
+	//"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation/types.go"
 )
 
 // Semaphore provides to the validator means for synchronisation
@@ -416,19 +418,106 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				return
 			}
 			logger.Debugf("config transaction received for chain %s", channel)
-		} else if common.HeaderType(chdr.Type) == common.HeaderType_PREPARE {
-
+		} else if common.HeaderType(chdr.Type) == common.HeaderType_PREPARE_TRANSACTION {
+			txType := common.HeaderType(chdr.Type)
+			logger.Debugf("txType=%s", txType)
 			txID = chdr.TxId
 
-			//TODO: Check duplicate transactions. Implementation from endorsmant block is below:
+			if ptenv, err := GetPrepareTxEnvelopeFromPayload(payload.Data); err != nil {
+				logger.Warningf("Error getting PrepareTx envelope from block: %+v", err)
+				results <- &blockValidationResult{
+					tIdx:           tIdx,
+					validationCode: peer.TxValidationCode_INVALID_OTHER_REASON,
+				}
+				return
+			} else if ptenv != nil {
+				//TODO: Checking duplicate transactions. Implementation from endorsmant block is below:
 
-			/*erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.LedgerResources)
-			if erroneousResultEntry != nil {
-			  results <- erroneousResultEntry
-			  return
-			}*/
+				/*erroneousResultEntry := v.checkTxIdDupsLedger(tIdx, chdr, v.LedgerResources)
+				if erroneousResultEntry != nil {
+				  results <- erroneousResultEntry
+				  return
+				}*/
 
-			//TODO: add some Dispatcher validations (like in Endorment validation, I suppose)
+				//TODO: add some Dispatcher validations (like in Endorment validation, I suppose)
+				//TODO: сделать сравнение хэшей PrepareTx с хэшами из transient store.
+				//		решено отложить это до запуска рабочего прототипа. См. вариант реализации в телеграм.
+
+				//Below is getiing envelope of PrepareTx (which is included in Envelope.Payload.Data of the transaction)
+				if payload, err = protoutil.UnmarshalPayload(ptenv.Payload); err != nil {
+					logger.Warningf("Error getting PrepareTx payload from PrepareTx envelope: %+v", err)
+					results <- &blockValidationResult{
+						tIdx: tIdx,
+						err:  err,
+					}
+					return
+				}
+
+				tx, err := protoutil.UnmarshalTransaction(payload.Data)
+				if err != nil {
+					logger.Warningf("Error unmarshalling PrepareTx payload data from PrepareTx payload: %+v", err)
+					results <- &blockValidationResult{
+						tIdx: tIdx,
+						err:  err,
+					}
+					return
+				}
+				if len(tx.Actions) == 0 {
+					results <- &blockValidationResult{
+						tIdx: tIdx,
+						err:  errors.New("at least one TransactionAction required"),
+					}
+					return
+				}
+
+				_, respPayload, err := protoutil.GetPayloads(tx.Actions[0])
+				if err != nil {
+					logger.Warningf("Nil action in PrepareTx response payload: %+v", err)
+					results <- &blockValidationResult{
+						tIdx:           tIdx,
+						validationCode: peer.TxValidationCode_NIL_TXACTION,
+					}
+					return
+				}
+
+				var txRWSet *rwsetutil.TxRwSet
+				txRWSet = &rwsetutil.TxRwSet{}
+				if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+					results <- &blockValidationResult{
+						tIdx:           tIdx,
+						validationCode: peer.TxValidationCode_INVALID_OTHER_REASON,
+					}
+					return
+				}
+				if txRWSet != nil {
+					//TODO key locking here...
+				}
+
+			} else {
+				logger.Warningf("Unknown transaction type [%s] in block number [%d] transaction index [%d]",
+					common.HeaderType(chdr.Type), block.Header.Number, tIdx)
+				results <- &blockValidationResult{
+					tIdx:           tIdx,
+					validationCode: peer.TxValidationCode_UNKNOWN_TX_TYPE,
+				}
+				return
+			}
+
+			//it was proposed TODO further, but 99% do not need any more:
+			//Add flag PACinvolvedFlag after changing protobuf
+			//!!! When it is will be added must add the checking for the
+			//tx.PACinvolvedFlag == true
+			//===Code:===
+			//payload, err := protoutil.UnmarshalPayload(env.Payload)
+			//if err != nil {
+			//	putilsLogger.Errorf("GetPayload returns err %s", err)
+			//	return nil, pb.TxValidationCode_BAD_PAYLOAD
+			//}
+			//tx, err := protoutil.UnmarshalTransaction(data)
+			//if err != nil {
+			//	return err
+			//}
+			//tx.PACinvolvedFlag = true
 
 		} else {
 			logger.Warningf("Unknown transaction type [%s] in block number [%d] transaction index [%d]",
@@ -463,6 +552,17 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		}
 		return
 	}
+}
+
+func GetPrepareTxEnvelopeFromPayload(data []byte) (*common.PrepareTxEnvelope, error) {
+	// PrepareTxPayload always begins with an PrepareTxEnvelope
+	var err error
+	ptenv := &common.PrepareTxEnvelope{}
+	if err = proto.Unmarshal(data, ptenv); err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling Envelope")
+	}
+
+	return ptenv, nil
 }
 
 // CheckTxIdDupsLedger returns a vlockValidationResult enhanced with the respective
