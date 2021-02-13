@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package validation
 
 import (
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
@@ -99,6 +100,31 @@ func (v *validator) validateAndPrepareBatch(blk *block, doMVCCValidation bool) (
 
 		tx.validationCode = validationCode
 		if validationCode == peer.TxValidationCode_VALID {
+			if tx.headerType == common.HeaderType_PREPARE_TRANSACTION {
+				//commit PrepareTx - set key flags for participaring values
+				updates.publicUpdates.ContainsPostOrderWrites =
+					updates.publicUpdates.ContainsPostOrderWrites || tx.containsPostOrderWrites
+				txops, err := prepareTxOps(tx.rwset, updates, v.db)
+				logger.Debugf("txops=%#v", txops)
+				if err != nil {
+					logger.Warningf("Error while preparing tx options: %+v", err)
+					return nil, err
+				}
+				for compositeKey := range txops {
+					if compositeKey.coll == "" {
+						ns, key := compositeKey.ns, compositeKey.key
+						verValue := updates.publicUpdates.Get(ns, key)
+						verValue.Version.PACparticipationFlag = true
+						updates.publicUpdates.PutValAndMetadata(ns, key, verValue.Value, verValue.Metadata, verValue.Version)
+						logger.Debugf("VersionedValue.PACparticipationFlag for data [%s] set to [%v] and put to updatebatch", verValue.Value, verValue.Version.PACparticipationFlag)
+					} else {
+						//TODO: make everything above private
+						logger.Warningf("Private PAC is unsupported for now")
+						return nil, nil
+					}
+				}
+				continue
+			}
 			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator. ContainsPostOrderWrites [%t]", blk.num, tx.indexInBlock, tx.id, tx.containsPostOrderWrites)
 			committingTxHeight := version.NewHeight(blk.num, uint64(tx.indexInBlock))
 			if err := updates.applyWriteSet(tx.rwset, committingTxHeight, v.db, tx.containsPostOrderWrites); err != nil {

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package validation
 
 import (
+	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
@@ -28,6 +29,7 @@ type transaction struct {
 	rwset                   *rwsetutil.TxRwSet
 	validationCode          peer.TxValidationCode
 	containsPostOrderWrites bool
+	headerType              common.HeaderType
 }
 
 // publicAndHashUpdates encapsulates public and hash updates. The intended use of this to hold the updates

@@ -9,6 +9,7 @@ package validation
 import (
 	"bytes"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -184,6 +185,16 @@ func validatePvtdata(tx *transaction, pvtdata *ledger.TxPvtData) error {
 	return nil
 }
 
+func GetPrepareTxEnvelopeFromPayload(data []byte) (*common.PrepareTxEnvelope, error) {
+	// Payload with Header=HeaderType_PREPARE_TRANSACTION always begins with an PrepareTxEnvelope
+	var err error
+	ptenv := &common.PrepareTxEnvelope{}
+	if err = proto.Unmarshal(data, ptenv); err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling PrepareTxEnvelope")
+	}
+	return ptenv, nil
+}
+
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
 // The returned 'Block' structure contains only transactions that are endorser transactions and are not already marked as invalid
 func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
@@ -224,7 +235,50 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 		txType := common.HeaderType(chdr.Type)
 		logger.Debugf("txType=%s", txType)
 		txStatInfo.TxType = txType
-		if txType == common.HeaderType_ENDORSER_TRANSACTION {
+		if txType == common.HeaderType_PREPARE_TRANSACTION {
+			//extract actions from the PrepareTx
+			if ptenv, err := GetPrepareTxEnvelopeFromPayload(payload.Data); err != nil {
+				logger.Warningf("Error getting PrepareTx envelope from block: %+v", err)
+				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
+				continue
+			} else if ptenv != nil {
+				ptpayload, err := protoutil.UnmarshalPayload(ptenv.Payload)
+				if err != nil {
+					logger.Warningf("Error getting PrepareTx payload from PrepareTx envelope: %+v", err)
+					txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
+					continue
+				}
+
+				tx, err := protoutil.UnmarshalTransaction(ptpayload.Data)
+				if err != nil {
+					logger.Warningf("Error unmarshalling PrepareTx payload data from PrepareTx payload: %+v", err)
+					txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
+					continue
+				}
+				if len(tx.Actions) == 0 {
+					logger.Warningf("%+v", errors.New("at least one TransactionAction required"))
+					txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
+					continue
+				}
+				_, respPayload, err := protoutil.GetPayloads(tx.Actions[0])
+				if err != nil {
+					logger.Warningf("TxValidationCode = NIL_TXACTION")
+					txsFilter.SetFlag(txIndex, peer.TxValidationCode_NIL_TXACTION)
+					continue
+				}
+				txStatInfo.ChaincodeID = respPayload.ChaincodeId
+				txRWSet = &rwsetutil.TxRwSet{}
+				if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
+					logger.Warningf("Error: FromProtoBytes(): %+v", err)
+					txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
+					continue
+				}
+			} else {
+				logger.Warningf("Unknown transaction type [%s] in block number [%d]",
+					common.HeaderType(chdr.Type), blk.Header.Number)
+				continue
+			}
+		} else if txType == common.HeaderType_ENDORSER_TRANSACTION {
 			// extract actions from the envelope message
 			respPayload, err := protoutil.GetActionFromEnvelope(envBytes)
 			if err != nil {
@@ -274,6 +328,7 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 				id:                      chdr.TxId,
 				rwset:                   txRWSet,
 				containsPostOrderWrites: containsPostOrderWrites,
+				headerType:              txType,
 			})
 		}
 	}

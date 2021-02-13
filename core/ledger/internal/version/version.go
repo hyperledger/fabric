@@ -24,9 +24,11 @@ import (
 
 // Height represents the height of a transaction in blockchain
 type Height struct {
-	BlockNum             uint64
-	TxNum                uint64
-	PACparticipationFlag bool //the key is locked due to changes made by an private atomic commit
+	BlockNum uint64
+	TxNum    uint64
+	//the true key means that the value is locked due to changes
+	//are making by a private atomic commit
+	PACparticipationFlag bool
 }
 
 // NewHeight constructs a new instance of Height
