@@ -91,6 +91,7 @@ func (v *validator) validateAndPrepareBatch(blk *block, doMVCCValidation bool) (
 	}
 
 	updates := newPubAndHashUpdates()
+BlockLoop:
 	for _, tx := range blk.txs {
 		var validationCode peer.TxValidationCode
 		var err error
@@ -100,35 +101,84 @@ func (v *validator) validateAndPrepareBatch(blk *block, doMVCCValidation bool) (
 
 		tx.validationCode = validationCode
 		if validationCode == peer.TxValidationCode_VALID {
-			if tx.headerType == common.HeaderType_PREPARE_TRANSACTION {
-				//commit PrepareTx - set key flags for participaring values
+			if tx.headerType == common.HeaderType_PREPARE_TRANSACTION ||
+				tx.headerType == common.HeaderType_DECIDE_TRANSACTION ||
+				tx.headerType == common.HeaderType_ABORT_TRANSACTION {
+				//prepapre to commit PrepareTx or AbortTx or DecideTx
 				updates.publicUpdates.ContainsPostOrderWrites =
 					updates.publicUpdates.ContainsPostOrderWrites || tx.containsPostOrderWrites
 				txops, err := prepareTxOps(tx.rwset, updates, v.db)
 				logger.Debugf("txops=%#v", txops)
 				if err != nil {
-					logger.Warningf("Error while preparing tx options: %+v", err)
-					return nil, err
+					logger.Warningf("Error while preparing [%s] options: %+v", tx.headerType, err)
+					continue
 				}
-				for compositeKey := range txops {
-					if compositeKey.coll == "" {
-						ns, key := compositeKey.ns, compositeKey.key
-						verValue := updates.publicUpdates.Get(ns, key)
-						verValue.Version.PACparticipationFlag = true
-						updates.publicUpdates.PutValAndMetadata(ns, key, verValue.Value, verValue.Metadata, verValue.Version)
-						logger.Debugf("VersionedValue.PACparticipationFlag for data [%s] set to [%v] and put to updatebatch", verValue.Value, verValue.Version.PACparticipationFlag)
+				if tx.headerType == common.HeaderType_PREPARE_TRANSACTION {
+					//commit PrepareTx - set key flags for participaring values
+					for compositeKey := range txops {
+						if compositeKey.coll == "" {
+							ns, key := compositeKey.ns, compositeKey.key
+							verValue := updates.publicUpdates.Get(ns, key)
+							if verValue.Version.PACparticipationFlag == true {
+								logger.Warningf("PACparticipationFlag is already true for ns: [%s], 
+								key: [%s], value: [%s]. The transaction with id [%s] will not be executed",
+								 ns, key, string(verValue.Value), tx.id)
+								break
+							}
+							verValue.Version.PACparticipationFlag = true
+							updates.publicUpdates.PutValAndMetadata(ns, key, verValue.Value, verValue.Metadata, verValue.Version)
+							logger.Debugf("VersionedValue.PACparticipationFlag for ns [%s] data [%s] was set to [%v] and put to updatebatch",
+							 ns, string(verValue.Value), verValue.Version.PACparticipationFlag)
+						} else {
+							//TODO: should we make everything above private?
+							logger.Warningf("PAC is unsupported hashes handling for now")
+							continue
+						}
+					}
+					continue
+				} else if tx.headerType == common.HeaderType_DECIDE_TRANSACTION ||
+					tx.headerType == common.HeaderType_ABORT_TRANSACTION {
+					//unset key flags for participaring values for AbortTx or DecideTx
+					for compositeKey := range txops {
+						if compositeKey.coll == "" {
+							ns, key := compositeKey.ns, compositeKey.key
+							verValue := updates.publicUpdates.Get(ns, key)
+							if verValue.Version.PACparticipationFlag == false {
+								logger.Warningf("The peer got the [%s], but didn't get the [PREPARE_TRANSACTION] before.
+								 The PACparticipationFlag is already false for ns: [%s], key: [%s], value: [%s]",
+								 tx.headerType, ns, key, string(verValue.Value))
+								//go to the next transaction in the block
+								continue BlockLoop
+							}
+							verValue.Version.PACparticipationFlag = false
+							updates.publicUpdates.PutValAndMetadata(ns, key, verValue.Value, verValue.Metadata, verValue.Version)
+							logger.Debugf("VersionedValue.PACparticipationFlag for ns [%s] data [%s] was set to [%v]",
+							 ns, string(verValue.Value), verValue.Version.PACparticipationFlag)
+						} else {
+							//TODO: should we handle hashes of private data here?
+							logger.Warningf("PAC is unsupported hashes handling for now")
+							continue
+						}
+					}
+					if tx.headerType == common.HeaderType_ABORT_TRANSACTION {
+						logger.Debugf("[%s] was put to updatebatch", tx.headerType)
+						continue
 					} else {
-						//TODO: make everything above private
-						logger.Warningf("Private PAC is unsupported for now")
-						return nil, nil
+						//apply payload for the DECIDE_TRANSACTION
+						logger.Debugf("[%s] payload applying in progress", tx.headerType)
 					}
 				}
-				continue
 			}
 			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator. ContainsPostOrderWrites [%t]", blk.num, tx.indexInBlock, tx.id, tx.containsPostOrderWrites)
 			committingTxHeight := version.NewHeight(blk.num, uint64(tx.indexInBlock))
 			if err := updates.applyWriteSet(tx.rwset, committingTxHeight, v.db, tx.containsPostOrderWrites); err != nil {
-				return nil, err
+				if err == "PACparticipationFlag = true" {
+					logger.Debugf("One of the keys of tx [%s] with id [%s] is locked until the end a private atomic commit.", tx.headerType, tx.id)
+					tx.validationCode = peer.TxValidationCode_INVOLVED_IN_PAC
+					continue
+				} else {
+					return nil, err 
+				}
 			}
 		} else {
 			logger.Warningf("Block [%d] Transaction index [%d] TxId [%s] marked as invalid by state validator. Reason code [%s]",

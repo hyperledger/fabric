@@ -185,14 +185,14 @@ func validatePvtdata(tx *transaction, pvtdata *ledger.TxPvtData) error {
 	return nil
 }
 
-func GetPrepareTxEnvelopeFromPayload(data []byte) (*common.PrepareTxEnvelope, error) {
+func GetPACTxEnvelopeFromPayload(data []byte) (*common.PACTxEnvelope, error) {
 	// Payload with Header=HeaderType_PREPARE_TRANSACTION always begins with an PrepareTxEnvelope
 	var err error
-	ptenv := &common.PrepareTxEnvelope{}
-	if err = proto.Unmarshal(data, ptenv); err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling PrepareTxEnvelope")
+	pactxenv := &common.PACTxEnvelope{}
+	if err = proto.Unmarshal(data, pactxenv); err != nil {
+		return nil, errors.Wrap(err, "error unmarshaling PACTxEnvelope")
 	}
-	return ptenv, nil
+	return pactxenv, nil
 }
 
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
@@ -235,41 +235,43 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 		txType := common.HeaderType(chdr.Type)
 		logger.Debugf("txType=%s", txType)
 		txStatInfo.TxType = txType
-		if txType == common.HeaderType_PREPARE_TRANSACTION {
-			//extract actions from the PrepareTx
-			if ptenv, err := GetPrepareTxEnvelopeFromPayload(payload.Data); err != nil {
-				logger.Warningf("Error getting PrepareTx envelope from block: %+v", err)
+		if txType == common.HeaderType_PREPARE_TRANSACTION ||
+			txType == common.HeaderType_DECIDE_TRANSACTION ||
+			txType == common.HeaderType_ABORT_TRANSACTION {
+			//extract actions from the Private Atomic Commit Transaction
+			if pactxenv, err := GetPACTxEnvelopeFromPayload(payload.Data); err != nil {
+				logger.Warningf("Error getting [%s] envelope from block: %+v", common.HeaderType(chdr.Type), err)
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 				continue
-			} else if ptenv != nil {
-				ptpayload, err := protoutil.UnmarshalPayload(ptenv.Payload)
+			} else if pactxenv != nil {
+				pactxpayload, err := protoutil.UnmarshalPayload(pactxenv.payload)
 				if err != nil {
-					logger.Warningf("Error getting PrepareTx payload from PrepareTx envelope: %+v", err)
+					logger.Warningf("Error getting [%s] payload from PrepareTx envelope: %+v", common.HeaderType(chdr.Type), err)
 					txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 					continue
 				}
 
-				tx, err := protoutil.UnmarshalTransaction(ptpayload.Data)
+				tx, err := protoutil.UnmarshalTransaction(pactxpayload.Data)
 				if err != nil {
-					logger.Warningf("Error unmarshalling PrepareTx payload data from PrepareTx payload: %+v", err)
+					logger.Warningf("Error unmarshalling [%s] payload data from [%s] payload: %+v", common.HeaderType(chdr.Type), common.HeaderType(chdr.Type), err)
 					txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 					continue
 				}
 				if len(tx.Actions) == 0 {
-					logger.Warningf("%+v", errors.New("at least one TransactionAction required"))
+					logger.Warningf("[%s]: %+v", common.HeaderType(chdr.Type), errors.New("at least one TransactionAction required"))
 					txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 					continue
 				}
 				_, respPayload, err := protoutil.GetPayloads(tx.Actions[0])
 				if err != nil {
-					logger.Warningf("TxValidationCode = NIL_TXACTION")
+					logger.Warningf("TxValidationCode = NIL_TXACTION for [%s]", common.HeaderType(chdr.Type))
 					txsFilter.SetFlag(txIndex, peer.TxValidationCode_NIL_TXACTION)
 					continue
 				}
 				txStatInfo.ChaincodeID = respPayload.ChaincodeId
 				txRWSet = &rwsetutil.TxRwSet{}
 				if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
-					logger.Warningf("Error: FromProtoBytes(): %+v", err)
+					logger.Warningf("Error: [%s]: %+v", common.HeaderType(chdr.Type), err)
 					txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 					continue
 				}

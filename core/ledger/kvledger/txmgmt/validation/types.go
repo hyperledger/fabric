@@ -12,6 +12,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/pkg/errors"
 )
 
 // block is used to used to hold the information from its proto format to a structure
@@ -96,6 +97,16 @@ func (u *publicAndHashUpdates) applyWriteSet(
 	for compositeKey, keyops := range txops {
 		if compositeKey.coll == "" {
 			ns, key := compositeKey.ns, compositeKey.key
+
+			//check if a key taking part in private atomic commit
+			keyHeight, err := db.GetVersion(ns, key)
+			if err != nil {
+				return err
+			}
+			if keyHeight.PACparticipationFlag == true {
+				return errors.New("PACparticipationFlag = true")
+			}
+
 			if keyops.isDelete() {
 				u.publicUpdates.Delete(ns, key, txHeight)
 			} else {
