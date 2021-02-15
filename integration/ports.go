@@ -29,6 +29,7 @@ const (
 	E2EBasePort
 	GossipBasePort
 	IdemixBasePort
+	KafkaBasePort
 	LedgerPort
 	LifecyclePort
 	MSPPort
