@@ -1130,13 +1130,13 @@ func (n *Network) JoinChannelBySnapshot(snapshotDir string, peers ...*Peer) {
 	}
 }
 
-func (n *Network) JoinBySnapshotStatus(p *Peer) []byte {
+func (n *Network) JoinBySnapshotStatus(p *Peer) string {
 	sess, err := n.PeerAdminSession(p, commands.ChannelJoinBySnapshotStatus{
 		ClientAuth: n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-	return sess.Out.Contents()
+	return string(sess.Out.Contents())
 }
 
 // Cryptogen starts a gexec.Session for the provided cryptogen command.

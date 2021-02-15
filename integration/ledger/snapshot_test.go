@@ -41,9 +41,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-const (
-	testchannelID = "testchannel"
-)
+const testchannelID = "testchannel"
 
 var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
 	var (
@@ -810,7 +808,7 @@ func joinBySnapshot(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 	n.JoinChannelBySnapshot(snapshotDir, peer)
 
 	By("calling JoinBySnapshotStatus")
-	checkStatus := func() []byte { return n.JoinBySnapshotStatus(peer) }
+	checkStatus := func() string { return n.JoinBySnapshotStatus(peer) }
 	Eventually(checkStatus, n.EventuallyTimeout, 10*time.Second).Should(ContainSubstring("No joinbysnapshot operation is in progress"))
 
 	By("waiting for the new peer to have the same ledger height")

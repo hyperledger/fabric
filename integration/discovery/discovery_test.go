@@ -767,11 +767,11 @@ func verifyNoPendingSnapshotRequest(n *nwo.Network, peer *nwo.Peer, channelID st
 		ClientAuth:  n.ClientAuthRequired,
 		PeerAddress: n.PeerAddress(peer, nwo.ListenPort),
 	}
-	checkPending := func() []byte {
+	checkPending := func() string {
 		sess, err := n.PeerAdminSession(peer, cmd)
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
-		return sess.Buffer().Contents()
+		return string(sess.Buffer().Contents())
 	}
 	Eventually(checkPending, n.EventuallyTimeout, 10*time.Second).Should(ContainSubstring("Successfully got pending snapshot requests: []\n"))
 }
@@ -780,7 +780,7 @@ func joinBySnapshot(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channe
 	n.JoinChannelBySnapshot(snapshotDir, peer)
 
 	By("calling JoinBySnapshotStatus until joinbysnapshot is completed")
-	checkStatus := func() []byte { return n.JoinBySnapshotStatus(peer) }
+	checkStatus := func() string { return n.JoinBySnapshotStatus(peer) }
 	Eventually(checkStatus, n.EventuallyTimeout, 10*time.Second).Should(ContainSubstring("No joinbysnapshot operation is in progress"))
 
 	By("waiting for the peer to have the same ledger height")
