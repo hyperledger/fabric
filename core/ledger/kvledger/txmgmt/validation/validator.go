@@ -101,9 +101,9 @@ BlockLoop:
 
 		tx.validationCode = validationCode
 		if validationCode == peer.TxValidationCode_VALID {
-			if tx.headerType == common.HeaderType_PREPARE_TRANSACTION ||
-				tx.headerType == common.HeaderType_DECIDE_TRANSACTION ||
-				tx.headerType == common.HeaderType_ABORT_TRANSACTION {
+			if tx.headerType == common.HeaderType_PAC_PREPARE_TRANSACTION ||
+				tx.headerType == common.HeaderType_PAC_DECIDE_TRANSACTION ||
+				tx.headerType == common.HeaderType_PAC_ABORT_TRANSACTION {
 				//prepapre to commit PrepareTx or AbortTx or DecideTx
 				updates.publicUpdates.ContainsPostOrderWrites =
 					updates.publicUpdates.ContainsPostOrderWrites || tx.containsPostOrderWrites
@@ -113,7 +113,7 @@ BlockLoop:
 					logger.Warningf("Error while preparing [%s] options: %+v", tx.headerType, err)
 					continue
 				}
-				if tx.headerType == common.HeaderType_PREPARE_TRANSACTION {
+				if tx.headerType == common.HeaderType_PAC_PREPARE_TRANSACTION {
 					//commit PrepareTx - set key flags for participaring values
 					for compositeKey := range txops {
 						if compositeKey.coll == "" {
@@ -136,15 +136,15 @@ BlockLoop:
 						}
 					}
 					continue
-				} else if tx.headerType == common.HeaderType_DECIDE_TRANSACTION ||
-					tx.headerType == common.HeaderType_ABORT_TRANSACTION {
+				} else if tx.headerType == common.HeaderType_PAC_DECIDE_TRANSACTION ||
+					tx.headerType == common.HeaderType_PAC_ABORT_TRANSACTION {
 					//unset key flags for participaring values for AbortTx or DecideTx
 					for compositeKey := range txops {
 						if compositeKey.coll == "" {
 							ns, key := compositeKey.ns, compositeKey.key
 							verValue := updates.publicUpdates.Get(ns, key)
 							if verValue.Version.PACparticipationFlag == false {
-								logger.Warningf("The peer got the [%s], but didn't get the [PREPARE_TRANSACTION] before.
+								logger.Warningf("The peer got the [%s], but didn't get the [PAC_PREPARE_TRANSACTION] before.
 								 The PACparticipationFlag is already false for ns: [%s], key: [%s], value: [%s]",
 								 tx.headerType, ns, key, string(verValue.Value))
 								//go to the next transaction in the block
@@ -160,11 +160,11 @@ BlockLoop:
 							continue
 						}
 					}
-					if tx.headerType == common.HeaderType_ABORT_TRANSACTION {
+					if tx.headerType == common.HeaderType_PAC_ABORT_TRANSACTION {
 						logger.Debugf("[%s] was put to updatebatch", tx.headerType)
 						continue
 					} else {
-						//apply payload for the DECIDE_TRANSACTION
+						//apply payload for the PAC_DECIDE_TRANSACTION
 						logger.Debugf("[%s] payload applying in progress", tx.headerType)
 					}
 				}
@@ -174,7 +174,7 @@ BlockLoop:
 			if err := updates.applyWriteSet(tx.rwset, committingTxHeight, v.db, tx.containsPostOrderWrites); err != nil {
 				if err == "PACparticipationFlag = true" {
 					logger.Debugf("One of the keys of tx [%s] with id [%s] is locked until the end a private atomic commit.", tx.headerType, tx.id)
-					tx.validationCode = peer.TxValidationCode_INVOLVED_IN_PAC
+					tx.validationCode = peer.TxValidationCode_RWSET_KEY_INVOLVED_IN_PAC
 					continue
 				} else {
 					return nil, err 

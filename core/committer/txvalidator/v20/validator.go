@@ -416,7 +416,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				return
 			}
 			logger.Debugf("config transaction received for chain %s", channel)
-		} else if common.HeaderType(chdr.Type) == common.HeaderType_PREPARE_TRANSACTION {
+		} else if common.HeaderType(chdr.Type) == common.HeaderType_PAC_PREPARE_TRANSACTION {
 			txType := common.HeaderType(chdr.Type)
 			logger.Debugf("txType=%s", txType)
 			txID = chdr.TxId
@@ -448,7 +448,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				}
 				return
 			} else {
-				logger.Warningf("Unknown transaction type [%s] in block number [%d] transaction index [%d]",
+				logger.Warningf("Error in getting txEnvelope from payload for transaction type [%s] in block number [%d] transaction index [%d]",
 					common.HeaderType(chdr.Type), block.Header.Number, tIdx)
 				results <- &blockValidationResult{
 					tIdx:           tIdx,
@@ -457,6 +457,28 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				return
 			}
 
+		} else if common.HeaderType(chdr.Type) == common.HeaderType_PAC_DECIDE_TRANSACTION {
+			txType := common.HeaderType(chdr.Type)
+			logger.Debugf("txType=%s", txType)
+
+			//TODO: validation is here
+			logger.Warningf("DecideTx Validation was OK")
+			results <- &blockValidationResult{
+				tIdx:           tIdx,
+				validationCode: peer.TxValidationCode_VALID,
+			}
+			return
+		} else if common.HeaderType(chdr.Type) == common.HeaderType_PAC_ABORT_TRANSACTION {
+			txType := common.HeaderType(chdr.Type)
+			logger.Debugf("txType=%s", txType)
+
+			//TODO: validation is here
+			logger.Warningf("AbortTx Validation was OK")
+			results <- &blockValidationResult{
+				tIdx:           tIdx,
+				validationCode: peer.TxValidationCode_VALID,
+			}
+			return
 		} else {
 			logger.Warningf("Unknown transaction type [%s] in block number [%d] transaction index [%d]",
 				common.HeaderType(chdr.Type), block.Header.Number, tIdx)

@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+.gitignore
+.whitelist
+CODE_OF_CONDUCT.md
+CONTRIBUTING.md
+LICENSE
+README.md
+azure-pipelines.yml
+doc.go
+go.mod

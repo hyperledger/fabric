@@ -186,7 +186,9 @@ func validatePvtdata(tx *transaction, pvtdata *ledger.TxPvtData) error {
 }
 
 func GetPACTxEnvelopeFromPayload(data []byte) (*common.PACTxEnvelope, error) {
-	// Payload with Header=HeaderType_PREPARE_TRANSACTION always begins with an PrepareTxEnvelope
+	// Payload with Header=HeaderType_PAC_PREPARE_TRANSACTION
+	// or HeaderType_PAC_DECIDE_TRANSACTION or HeaderType_PAC_ABORT_TRANSACTION
+	//always begins with an PACTxEnvelope
 	var err error
 	pactxenv := &common.PACTxEnvelope{}
 	if err = proto.Unmarshal(data, pactxenv); err != nil {
@@ -235,9 +237,9 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 		txType := common.HeaderType(chdr.Type)
 		logger.Debugf("txType=%s", txType)
 		txStatInfo.TxType = txType
-		if txType == common.HeaderType_PREPARE_TRANSACTION ||
-			txType == common.HeaderType_DECIDE_TRANSACTION ||
-			txType == common.HeaderType_ABORT_TRANSACTION {
+		if txType == common.HeaderType_PAC_PREPARE_TRANSACTION ||
+			txType == common.HeaderType_PAC_DECIDE_TRANSACTION ||
+			txType == common.HeaderType_PAC_ABORT_TRANSACTION {
 			//extract actions from the Private Atomic Commit Transaction
 			if pactxenv, err := GetPACTxEnvelopeFromPayload(payload.Data); err != nil {
 				logger.Warningf("Error getting [%s] envelope from block: %+v", common.HeaderType(chdr.Type), err)

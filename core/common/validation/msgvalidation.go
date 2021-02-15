@@ -303,7 +303,7 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 			return payload, pb.TxValidationCode_INVALID_ENDORSER_TRANSACTION
 		}
 		return payload, pb.TxValidationCode_VALID
-	case common.HeaderType_PREPARE_TRANSACTION:
+	case common.HeaderType_PAC_PREPARE_TRANSACTION:
 		//TODO: извлечь пэйлоад Prepare-транзакции из пэйлоада этой транзакции,
 		//и выполнять проверку для этого пэйлоада как в HeaderType_ENDORSER_TRANSACTION
 		//
