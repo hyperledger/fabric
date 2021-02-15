@@ -4,7 +4,7 @@ Copyright IBM Corp All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package raft
+package kafka
 
 import (
 	"errors"
@@ -21,6 +21,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
 	protosraft "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
+	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -1148,21 +1149,236 @@ func assertBlockCreation(network *nwo.Network, orderer *nwo.Orderer, peer *nwo.P
 	if peer != nil {
 		signer = peer
 	}
-	env := CreateBroadcastEnvelope(network, signer, channelID, []byte("hola"))
+	env := createBroadcastEnvelope(network, signer, channelID, []byte("hola"))
 	resp, err := ordererclient.Broadcast(network, orderer, env)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
-	denv := CreateDeliverEnvelope(network, orderer, blkNum, channelID)
+	denv := createDeliverEnvelope(network, orderer, blkNum, channelID)
 	blk, err := ordererclient.Deliver(network, orderer, denv)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(blk).ToNot(BeNil())
 }
 
 func assertTxFailed(network *nwo.Network, orderer *nwo.Orderer, channelID string) {
-	env := CreateBroadcastEnvelope(network, orderer, channelID, []byte("hola"))
+	env := createBroadcastEnvelope(network, orderer, channelID, []byte("hola"))
 	resp, err := ordererclient.Broadcast(network, orderer, env)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
 	Expect(resp.Info).To(Equal("normal transactions are rejected: maintenance mode"))
+}
+
+// assertBlockReception asserts that the given orderers have the expected
+// newest block number for the specified channels
+func assertBlockReception(expectedBlockNumPerChannel map[string]int, orderers []*nwo.Orderer, p *nwo.Peer, n *nwo.Network) {
+	for channelName, blockNum := range expectedBlockNumPerChannel {
+		for _, orderer := range orderers {
+			waitForBlockReception(orderer, p, n, channelName, blockNum)
+		}
+	}
+}
+
+func waitForBlockReception(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Network, channelName string, blockNum int) {
+	c := commands.ChannelFetch{
+		ChannelID:  channelName,
+		Block:      "newest",
+		OutputFile: "/dev/null",
+		Orderer:    network.OrdererAddress(o, nwo.ListenPort),
+	}
+	Eventually(func() string {
+		sess, err := network.OrdererAdminSession(o, submitter, c)
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit())
+		if sess.ExitCode() != 0 {
+			return fmt.Sprintf("exit code is %d: %s", sess.ExitCode(), string(sess.Err.Contents()))
+		}
+		sessErr := string(sess.Err.Contents())
+		expected := fmt.Sprintf("Received block: %d", blockNum)
+		if strings.Contains(sessErr, expected) {
+			return ""
+		}
+		return sessErr
+	}, network.EventuallyTimeout, time.Second).Should(BeEmpty())
+}
+
+func createBroadcastEnvelope(n *nwo.Network, signer interface{}, channel string, data []byte) *common.Envelope {
+	env, err := protoutil.CreateSignedEnvelope(
+		common.HeaderType_MESSAGE,
+		channel,
+		nil,
+		&common.Envelope{Payload: data},
+		0,
+		0,
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	return signAsAdmin(n, signer, env)
+}
+
+// CreateDeliverEnvelope creates a deliver env to seek for specified block.
+func createDeliverEnvelope(n *nwo.Network, entity interface{}, blkNum uint64, channel string) *common.Envelope {
+	specified := &protosorderer.SeekPosition{
+		Type: &protosorderer.SeekPosition_Specified{
+			Specified: &protosorderer.SeekSpecified{Number: blkNum},
+		},
+	}
+	env, err := protoutil.CreateSignedEnvelope(
+		common.HeaderType_DELIVER_SEEK_INFO,
+		channel,
+		nil,
+		&protosorderer.SeekInfo{
+			Start:    specified,
+			Stop:     specified,
+			Behavior: protosorderer.SeekInfo_BLOCK_UNTIL_READY,
+		},
+		0,
+		0,
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	return signAsAdmin(n, entity, env)
+}
+
+func signAsAdmin(n *nwo.Network, entity interface{}, env *common.Envelope) *common.Envelope {
+	var conf signer.Config
+	switch t := entity.(type) {
+	case *nwo.Peer:
+		conf = signer.Config{
+			MSPID:        n.Organization(t.Organization).MSPID,
+			IdentityPath: n.PeerUserCert(t, "Admin"),
+			KeyPath:      n.PeerUserKey(t, "Admin"),
+		}
+	case *nwo.Orderer:
+		conf = signer.Config{
+			MSPID:        n.Organization(t.Organization).MSPID,
+			IdentityPath: n.OrdererUserCert(t, "Admin"),
+			KeyPath:      n.OrdererUserKey(t, "Admin"),
+		}
+	default:
+		panic("unsupported signing entity type")
+	}
+
+	signer, err := signer.NewSigner(conf)
+	Expect(err).NotTo(HaveOccurred())
+
+	payload, err := protoutil.UnmarshalPayload(env.Payload)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(payload.Header).NotTo(BeNil())
+	Expect(payload.Header.ChannelHeader).NotTo(BeNil())
+
+	nonce, err := protoutil.CreateNonce()
+	Expect(err).NotTo(HaveOccurred())
+	sighdr := &common.SignatureHeader{
+		Creator: signer.Creator,
+		Nonce:   nonce,
+	}
+	payload.Header.SignatureHeader = protoutil.MarshalOrPanic(sighdr)
+	payloadBytes := protoutil.MarshalOrPanic(payload)
+
+	sig, err := signer.Sign(payloadBytes)
+	Expect(err).NotTo(HaveOccurred())
+
+	return &common.Envelope{Payload: payloadBytes, Signature: sig}
+}
+
+var extendedCryptoConfig = `---
+OrdererOrgs:
+- Name: OrdererOrg
+  Domain: example.com
+  EnableNodeOUs: false
+  CA:
+    Hostname: ca
+  Specs:
+  - Hostname: orderer1
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer1new
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer2
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer2new
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer3
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer3new
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer4
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer5
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer6
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+  - Hostname: orderer7
+    SANS:
+    - localhost
+    - 127.0.0.1
+    - ::1
+`
+
+// extendNetwork rotates adds an additional orderer
+func extendNetwork(n *nwo.Network) {
+	// Overwrite the current crypto-config with additional orderers
+	cryptoConfigYAML, err := ioutil.TempFile("", "crypto-config.yaml")
+	Expect(err).NotTo(HaveOccurred())
+	defer os.Remove(cryptoConfigYAML.Name())
+
+	err = ioutil.WriteFile(cryptoConfigYAML.Name(), []byte(extendedCryptoConfig), 0o644)
+	Expect(err).NotTo(HaveOccurred())
+
+	// Invoke cryptogen extend to add new orderers
+	sess, err := n.Cryptogen(commands.Extend{
+		Config: cryptoConfigYAML.Name(),
+		Input:  n.CryptoPath(),
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
+}
+
+// addConsenter adds a new consenter to the given channel.
+func addConsenter(n *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, consenter protosraft.Consenter) {
+	updateEtcdRaftMetadata(n, peer, orderer, channel, func(metadata *protosraft.ConfigMetadata) {
+		metadata.Consenters = append(metadata.Consenters, &consenter)
+	})
+}
+
+// updateEtcdRaftMetadata executes a config update that updates the etcdraft
+// metadata according to the given function f.
+func updateEtcdRaftMetadata(network *nwo.Network, peer *nwo.Peer, orderer *nwo.Orderer, channel string, f func(md *protosraft.ConfigMetadata)) {
+	nwo.UpdateConsensusMetadata(network, peer, orderer, channel, func(originalMetadata []byte) []byte {
+		metadata := &protosraft.ConfigMetadata{}
+		err := proto.Unmarshal(originalMetadata, metadata)
+		Expect(err).NotTo(HaveOccurred())
+
+		f(metadata)
+
+		newMetadata, err := proto.Marshal(metadata)
+		Expect(err).NotTo(HaveOccurred())
+		return newMetadata
+	})
 }
