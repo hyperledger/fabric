@@ -20,7 +20,7 @@ require (
 	github.com/fsouza/go-dockerclient v1.7.0
 	github.com/go-kit/kit v0.9.0
 	github.com/golang/protobuf v1.3.3
-	github.com/golang/snappy v0.0.2 // indirect
+	github.com/golang/snappy v0.0.3-0.20201103224600-674baa8c7fc3 // indirect
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
