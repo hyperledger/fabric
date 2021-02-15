@@ -13,11 +13,12 @@ RUN [ ! -e /etc/nsswitch.conf ] && echo 'hosts: files dns' > /etc/nsswitch.conf
 
 FROM golang:${GO_VER}-alpine${ALPINE_VER} as golang
 RUN apk add --no-cache \
-	gcc \
-	musl-dev \
-	git \
 	bash \
-	make;
+	binutils-gold \
+	gcc \
+	git \
+	make \
+	musl-dev
 ADD . $GOPATH/src/github.com/hyperledger/fabric
 WORKDIR $GOPATH/src/github.com/hyperledger/fabric
 

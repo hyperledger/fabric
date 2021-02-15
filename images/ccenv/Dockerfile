@@ -6,6 +6,7 @@ ARG GO_VER
 ARG ALPINE_VER
 FROM golang:${GO_VER}-alpine${ALPINE_VER}
 RUN apk add --no-cache \
+	binutils-gold \
 	g++ \
 	gcc \
 	git \
