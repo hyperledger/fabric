@@ -825,7 +825,7 @@ func TestUpdateTrustedRoots(t *testing.T) {
 		ordererRootCAsByChain: make(map[string][][]byte),
 	}
 
-	clusterConf := initializeClusterClientConfig(conf)
+	clusterConf, _ := initializeClusterClientConfig(conf)
 	predDialer := &cluster.PredicateDialer{
 		Config: clusterConf,
 	}
