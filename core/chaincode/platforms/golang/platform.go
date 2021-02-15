@@ -494,8 +494,9 @@ func distributions() []dist {
 		{goos: "linux", goarch: "amd64"}: true,
 	}
 
-	// add local OS and ARCH
+	// add local OS and ARCH, linux and current ARCH
 	dists[dist{goos: runtime.GOOS, goarch: runtime.GOARCH}] = true
+	dists[dist{goos: "linux", goarch: runtime.GOARCH}] = true
 
 	var list []dist
 	for d := range dists {
