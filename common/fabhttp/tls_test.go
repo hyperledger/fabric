@@ -59,6 +59,11 @@ var _ = Describe("TLS", func() {
 
 		tlsConfig, err := httpTLS.Config()
 		Expect(err).NotTo(HaveOccurred())
+
+		// https://go-review.googlesource.com/c/go/+/229917
+		Expect(tlsConfig.ClientCAs.Subjects()).To(Equal(clientCAPool.Subjects()))
+		tlsConfig.ClientCAs = nil
+
 		Expect(tlsConfig).To(Equal(&tls.Config{
 			Certificates: []tls.Certificate{cert},
 			CipherSuites: []uint16{
@@ -69,7 +74,6 @@ var _ = Describe("TLS", func() {
 				tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
 				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
 			},
-			ClientCAs:  clientCAPool,
 			ClientAuth: tls.RequireAndVerifyClientCert,
 		}))
 	})

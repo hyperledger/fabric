@@ -125,38 +125,25 @@ func TestAddRootCA(t *testing.T) {
 	t.Parallel()
 
 	caPEM, err := ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
-	if err != nil {
-		t.Fatalf("failed to read root certificate: %v", err)
-	}
-
-	cert := &x509.Certificate{
-		EmailAddresses: []string{"test@foobar.com"},
-	}
+	require.NoError(t, err, "failed to read root certificate")
 
 	expectedCertPool := x509.NewCertPool()
 	ok := expectedCertPool.AppendCertsFromPEM(caPEM)
-	if !ok {
-		t.Fatalf("failed to create expected certPool")
-	}
+	require.True(t, ok, "failed to create expected certPool")
 
+	cert := &x509.Certificate{EmailAddresses: []string{"test@foobar.com"}}
 	expectedCertPool.AddCert(cert)
 
 	certPool := x509.NewCertPool()
 	ok = certPool.AppendCertsFromPEM(caPEM)
-	if !ok {
-		t.Fatalf("failed to create certPool")
-	}
+	require.True(t, ok, "failed to create certPool")
 
-	tlsConfig := &tls.Config{
-		ClientCAs: certPool,
-	}
-	config := comm.NewTLSConfig(tlsConfig)
+	config := comm.NewTLSConfig(&tls.Config{ClientCAs: certPool})
+	require.Same(t, config.Config().ClientCAs, certPool)
 
-	require.Equal(t, config.Config().ClientCAs, certPool)
-
+	// https://go-review.googlesource.com/c/go/+/229917
 	config.AddClientRootCA(cert)
-
-	require.Equal(t, config.Config().ClientCAs, expectedCertPool, "The CertPools should be equal")
+	require.Equal(t, certPool.Subjects(), expectedCertPool.Subjects(), "subjects in the pool should be equal")
 }
 
 func TestSetClientCAs(t *testing.T) {
