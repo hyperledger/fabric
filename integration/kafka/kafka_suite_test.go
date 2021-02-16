@@ -8,6 +8,7 @@ package kafka
 
 import (
 	"encoding/json"
+	"runtime"
 	"testing"
 
 	"github.com/hyperledger/fabric/integration"
@@ -19,6 +20,9 @@ import (
 
 func TestKafka(t *testing.T) {
 	RegisterFailHandler(Fail)
+	if runtime.GOARCH != "amd64" {
+		t.Skip("Kafka and ZooKeeper images may not be available for this platform")
+	}
 	RunSpecs(t, "Kafka Suite")
 }
 
