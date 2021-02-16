@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"syscall"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -28,6 +29,9 @@ var _ = Describe("solo network using ccenv-1.4", func() {
 	)
 
 	BeforeEach(func() {
+		if runtime.GOARCH != "amd64" {
+			Skip("ccenv-1.4 image may not be available for this platform")
+		}
 		var err error
 		testDir, err = ioutil.TempDir("", "lifecycle")
 		Expect(err).NotTo(HaveOccurred())
