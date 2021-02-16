@@ -553,6 +553,26 @@ func (n *Network) OrdererUserKey(o *Orderer, user string) string {
 	return filepath.Join(keystore, keys[0].Name())
 }
 
+// PeerUserSigner returns a SigningIdentity representing the specified user in
+// the peer organization.
+func (n *Network) PeerUserSigner(p *Peer, user string) *SigningIdentity {
+	return &SigningIdentity{
+		CertPath: n.PeerUserCert(p, user),
+		KeyPath:  n.PeerUserKey(p, user),
+		MSPID:    n.Organization(p.Organization).MSPID,
+	}
+}
+
+// OrdererUserSigner returns a SigningIdentity representing the specified user in
+// the orderer organization.
+func (n *Network) OrdererUserSigner(o *Orderer, user string) *SigningIdentity {
+	return &SigningIdentity{
+		CertPath: n.OrdererUserCert(o, user),
+		KeyPath:  n.OrdererUserKey(o, user),
+		MSPID:    n.Organization(o.Organization).MSPID,
+	}
+}
+
 // peerLocalCryptoDir returns the path to the local crypto directory for the peer.
 func (n *Network) peerLocalCryptoDir(p *Peer, cryptoType string) string {
 	org := n.Organization(p.Organization)
