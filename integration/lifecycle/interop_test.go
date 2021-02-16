@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -136,15 +135,14 @@ var _ = Describe("Release interoperability", func() {
 
 	Describe("Interoperability scenarios", func() {
 		var (
-			userSigner           msp.SigningIdentity
-			serialisedUserSigner []byte
-			endorserClient       pb.EndorserClient
-			deliveryClient       pb.DeliverClient
-			ordererClient        common.BroadcastClient
+			userSigner     *nwo.SigningIdentity
+			endorserClient pb.EndorserClient
+			deliveryClient pb.DeliverClient
+			ordererClient  common.BroadcastClient
 		)
 
 		BeforeEach(func() {
-			userSigner, serialisedUserSigner = Signer(network.PeerUserMSPDir(endorsers[0], "User1"))
+			userSigner = network.PeerUserSigner(endorsers[0], "User1")
 			endorserClient = EndorserClient(
 				network.PeerAddress(endorsers[0], nwo.ListenPort),
 				filepath.Join(network.PeerLocalTLSDir(endorsers[0]), "ca.crt"),
@@ -178,7 +176,6 @@ var _ = Describe("Release interoperability", func() {
 				"testchannel",
 				"mycc",
 				userSigner,
-				serialisedUserSigner,
 				"invoke",
 				"a",
 				"b",
@@ -241,7 +238,6 @@ var _ = Describe("Release interoperability", func() {
 				"testchannel",
 				"mycc",
 				userSigner,
-				serialisedUserSigner,
 				"invoke",
 				"a",
 				"b",
@@ -333,7 +329,6 @@ var _ = Describe("Release interoperability", func() {
 					"testchannel",
 					"caller",
 					userSigner,
-					serialisedUserSigner,
 					"INVOKE",
 					"callee",
 				)
@@ -436,7 +431,6 @@ var _ = Describe("Release interoperability", func() {
 						"testchannel",
 						"caller",
 						userSigner,
-						serialisedUserSigner,
 						"INVOKE",
 						"callee",
 					)
@@ -479,7 +473,6 @@ var _ = Describe("Release interoperability", func() {
 						"testchannel",
 						"caller",
 						userSigner,
-						serialisedUserSigner,
 						"INVOKE",
 						"callee",
 					)
@@ -527,7 +520,6 @@ var _ = Describe("Release interoperability", func() {
 						"testchannel",
 						"caller",
 						userSigner,
-						serialisedUserSigner,
 						"INVOKE",
 						"callee",
 					)
@@ -591,7 +583,6 @@ var _ = Describe("Release interoperability", func() {
 						"testchannel",
 						"caller",
 						userSigner,
-						serialisedUserSigner,
 						"INVOKE",
 						"callee",
 					)
@@ -637,7 +628,6 @@ var _ = Describe("Release interoperability", func() {
 						"testchannel",
 						"caller",
 						userSigner,
-						serialisedUserSigner,
 						"INVOKE",
 						"callee",
 					)
@@ -680,7 +670,6 @@ var _ = Describe("Release interoperability", func() {
 						"testchannel",
 						"caller",
 						userSigner,
-						serialisedUserSigner,
 						"INVOKE",
 						"callee",
 					)
@@ -726,7 +715,6 @@ var _ = Describe("Release interoperability", func() {
 						"testchannel",
 						"caller",
 						userSigner,
-						serialisedUserSigner,
 						"INVOKE",
 						"callee",
 					)

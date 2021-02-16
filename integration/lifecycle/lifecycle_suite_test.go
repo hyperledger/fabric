@@ -12,14 +12,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
 
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -27,13 +25,11 @@ import (
 	ic "github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
-	"github.com/pkg/errors"
 	"github.com/tedsuo/ifrit"
 )
 
@@ -124,53 +120,13 @@ func RestartNetwork(process *ifrit.Process, network *nwo.Network) {
 	Eventually((*process).Ready(), network.EventuallyTimeout).Should(BeClosed())
 }
 
-func LoadLocalMSPAt(dir, id, mspType string) (msp.MSP, error) {
-	if mspType != "bccsp" {
-		return nil, errors.Errorf("invalid msp type, expected 'bccsp', got %s", mspType)
-	}
-	conf, err := msp.GetLocalMspConfig(dir, nil, id)
-	if err != nil {
-		return nil, err
-	}
-	ks, err := sw.NewFileBasedKeyStore(nil, filepath.Join(dir, "keystore"), true)
-	if err != nil {
-		return nil, err
-	}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	if err != nil {
-		return nil, err
-	}
-	thisMSP, err := msp.NewBccspMspWithKeyStore(msp.MSPv1_0, ks, cryptoProvider)
-	if err != nil {
-		return nil, err
-	}
-	err = thisMSP.Setup(conf)
-	if err != nil {
-		return nil, err
-	}
-	return thisMSP, nil
-}
-
-func Signer(dir string) (msp.SigningIdentity, []byte) {
-	MSP, err := LoadLocalMSPAt(dir, "Org1MSP", "bccsp")
-	Expect(err).To(BeNil())
-	Expect(MSP).NotTo(BeNil())
-	Expect(err).To(BeNil(), "failed getting signer for %s", dir)
-	signer, err := MSP.GetDefaultSigningIdentity()
-	Expect(err).To(BeNil())
-	Expect(signer).NotTo(BeNil())
-	serialisedSigner, err := signer.Serialize()
-	Expect(err).To(BeNil())
-	Expect(serialisedSigner).NotTo(BeNil())
-
-	return signer, serialisedSigner
-}
-
-func SignedProposal(channel, chaincode string, signer msp.SigningIdentity, serialisedSigner []byte, args ...string) (*pb.SignedProposal, *pb.Proposal, string) {
+func SignedProposal(channel, chaincode string, signer *nwo.SigningIdentity, args ...string) (*pb.SignedProposal, *pb.Proposal, string) {
 	byteArgs := make([][]byte, 0, len(args))
 	for _, arg := range args {
 		byteArgs = append(byteArgs, []byte(arg))
 	}
+	serializedSigner, err := signer.Serialize()
+	Expect(err).NotTo(HaveOccurred())
 
 	prop, txid, err := protoutil.CreateChaincodeProposalWithTxIDAndTransient(
 		pcommon.HeaderType_ENDORSER_TRANSACTION,
@@ -186,7 +142,7 @@ func SignedProposal(channel, chaincode string, signer msp.SigningIdentity, seria
 				},
 			},
 		},
-		serialisedSigner,
+		serializedSigner,
 		"",
 		nil,
 	)
@@ -263,7 +219,7 @@ func DeliverClient(address, tlsRootCertFile string) pb.DeliverClient {
 	return pd
 }
 
-func CommitTx(network *nwo.Network, env *pcommon.Envelope, peer *nwo.Peer, dc pb.DeliverClient, oc common.BroadcastClient, signer msp.SigningIdentity, txid string) error {
+func CommitTx(network *nwo.Network, env *pcommon.Envelope, peer *nwo.Peer, dc pb.DeliverClient, oc common.BroadcastClient, signer *nwo.SigningIdentity, txid string) error {
 	var cancelFunc context.CancelFunc
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFunc()
