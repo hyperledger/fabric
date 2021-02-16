@@ -1,0 +1,112 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Release Tag, ex. (2.3.0)'
+        required: true
+      two_digit_release:
+        description: 'Two Digit Release Tag, ex. (2.3)'
+        required: true
+
+env:
+  GOPATH: /opt/go
+  PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+  GO_VER: 1.15.7
+
+jobs:
+  build-binaries:
+    name: Build Binaries
+    runs-on: ubuntu-20.04
+    container:
+      image: golang:${{ env.GO_VER }}
+    strategy:
+      matrix:
+        os:
+          - darwin-amd64
+          - linux-amd64
+          - windows-amd64
+    steps:
+      - uses: actions/setup-go@v2
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v2
+        name: Checkout Code
+      - run: .github/workflows/scripts/create_binary_package.sh
+        name: Compile and Tarball Binaries
+        with:
+          TARGET: ${{ matrix.agent }}
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.os }}-binaries
+          path: release/${{ env.os }}/*.tar.gz
+
+  build-images:
+    name: Build Images
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v2
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v2
+        name: Checkout Code
+      - run: make docker
+        name: Build Docker Images
+      - run: .github/workflows/scripts/publish_docker.sh
+        name: Publish Docker Images
+        with:
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          DOCKER_USERNAME: ${{ secrests.DOCKER_USERNAME }}
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/download-artifact@v2
+        name: Download Binary Tarballs
+        with:
+          path: artifacts
+      - uses: actions/create-release@v1
+        name: Draft Release
+        id: draft_release
+        with:
+          body_path: release_notes/v${{ github.event.inputs.release }}.md
+          release_name: v${{ github.event.inputs.release }}
+          tag_name: v${{ github.event.inputs.release }}
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Linux Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.draft_release.outputs.upload_url }}
+          asset_path: ./artifacts/linux-amd64-binaries/hyperledger-fabric-linux-amd64-${{ env.release }}.tar.gz
+          asset_name: hyperledger-fabric-linux-amd64-${{ env.release }}.tar.gz
+          asset_content_type: application/gzip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Darwin Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.draft_release.outputs.upload_url }}
+          asset_path: ./artifacts/darwin-amd64-binaries/hyperledger-fabric-darwin-amd64-${{ env.release }}.tar.gz
+          asset_name: hyperledger-fabric-darwin-amd64-${{ env.release }}.tar.gz
+          asset_content_type: application/gzip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Windows Release Asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.draft_release.outputs.upload_url }}
+          asset_path: ./artifacts/windows-amd64-binaries/hyperledger-fabric-windows-amd64-${{ env.release }}.tar.gz
+          asset_name: hyperledger-fabric-windows-amd64-${{ env.release }}.tar.gz
+          asset_content_type: application/gzip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

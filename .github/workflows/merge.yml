@@ -1,0 +1,31 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Merge
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  GOPATH: /opt/go
+  PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+  GO_VER: 1.15.7
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/setup-go@v2
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v2
+        name: Checkout Code
+      - run: .github/workflows/scripts/setup_hsm.sh
+        name: Configure SoftHSM
+      - run: make unit-tests
+        name: Run Unit Tests

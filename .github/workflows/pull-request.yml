@@ -1,0 +1,82 @@
+# Copyright the Hyperledger Fabric contributors. All rights reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: Pull Request
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+    GOPATH: /opt/go
+    PATH: /opt/go/bin:/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+    GO_VER: 1.15.7
+
+jobs:
+  verify:
+    name: Verify Build
+    runs-on: ubuntu-20.04
+    outputs:
+      run-tests: ${{ steps.triggers.outputs.run-tests }}
+    steps:
+      - uses: actions/setup-go@v2
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v2
+        name: Checkout Code
+        with:
+          fetch-depth: 0
+      - run: make basic-checks native
+        name: Run Basic Checks
+      - run: .github/workflows/scripts/evaluate_commits.sh
+        name: Set Job Triggers
+        id: triggers
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-20.04
+    needs:
+      - verify
+    if: ${{ needs.verify.outputs.run-tests }} == "true"
+    steps:
+      - uses: actions/setup-go@v2
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v2
+        name: Checkout Code
+        with:
+          fetch-depth: 0
+      - run: .github/workflows/scripts/setup_hsm.sh
+        name: Configure SoftHSM
+      - run: make unit-tests
+        name: Run Unit Tests
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-20.04
+    needs:
+      - verify
+    if: ${{ needs.verify.outputs.run-tests }} == "true"
+    strategy:
+      matrix:
+        agent: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/setup-go@v2
+        name: Install Go
+        with:
+          go-version: ${{ env.GO_VER }}
+      - uses: actions/checkout@v2
+        name: Checkout Code
+        with:
+          fetch-depth: 0
+      - run: .github/workflows/scripts/setup_hsm.sh
+        name: Configure SoftHSM
+      - run: make integration-tests
+        name: Run Integration Tests
+        env:
+          SYSTEM_JOBPOSITIONINPHASE: ${{ matrix.agent }}
+          SYSTEM_TOTALJOBSINPHASE: ${{ strategy.job-total }}

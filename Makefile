@@ -146,6 +146,9 @@ check-go-version:
 integration-test: integration-test-prereqs
 	./scripts/run-integration-tests.sh
 
+.PHONY: integration-tests
+integration-tests: integration-test
+
 .PHONY: integration-test-prereqs
 integration-test-prereqs: gotool.ginkgo baseos-docker ccenv-docker docker-thirdparty
 
