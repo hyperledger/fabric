@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
@@ -95,7 +94,7 @@ var _ = Describe("InstantiationPolicy", func() {
 				},
 			}
 
-			ordererclient.Broadcast(network, orderer, goodDeploy.Tx(PeerSigner(network, org1Peer)))
+			ordererclient.Broadcast(network, orderer, goodDeploy.Tx(network.PeerUserSigner(org1Peer, "Admin")))
 
 			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", 2, org1Peer)
 
@@ -113,7 +112,7 @@ var _ = Describe("InstantiationPolicy", func() {
 				},
 			}
 
-			ordererclient.Broadcast(network, orderer, badDeploy.Tx(PeerSigner(network, org1Peer)))
+			ordererclient.Broadcast(network, orderer, badDeploy.Tx(network.PeerUserSigner(org1Peer, "Admin")))
 
 			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", 3, org1Peer)
 			Expect(ListInstantiatedLegacy(network, org1Peer, "testchannel")).To(gbytes.Say("Name: fakecc, Version: goodip"))
@@ -130,7 +129,7 @@ var _ = Describe("InstantiationPolicy", func() {
 				},
 			}
 
-			ordererclient.Broadcast(network, orderer, badUpgrade.Tx(PeerSigner(network, org2Peer)))
+			ordererclient.Broadcast(network, orderer, badUpgrade.Tx(network.PeerUserSigner(org2Peer, "Admin")))
 
 			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", 4, org1Peer)
 			Expect(ListInstantiatedLegacy(network, org1Peer, "testchannel")).NotTo(gbytes.Say("Name: fakecc, Version: wrongsubmitter"))
@@ -147,34 +146,13 @@ var _ = Describe("InstantiationPolicy", func() {
 				},
 			}
 
-			ordererclient.Broadcast(network, orderer, goodUpgrade.Tx(PeerSigner(network, org1Peer)))
+			ordererclient.Broadcast(network, orderer, goodUpgrade.Tx(network.PeerUserSigner(org1Peer, "Admin")))
 
 			nwo.WaitUntilEqualLedgerHeight(network, "testchannel", 5, org1Peer)
 			Expect(ListInstantiatedLegacy(network, org1Peer, "testchannel")).To(gbytes.Say("Name: fakecc, Version: rightsubmitter"))
 		})
 	})
 })
-
-func PeerSigner(n *nwo.Network, p *nwo.Peer) *signer.Signer {
-	conf := signer.Config{
-		MSPID:        n.Organization(p.Organization).MSPID,
-		IdentityPath: n.PeerUserCert(p, "Admin"),
-		KeyPath:      n.PeerUserKey(p, "Admin"),
-	}
-
-	signer, err := signer.NewSigner(conf)
-	Expect(err).NotTo(HaveOccurred())
-
-	return signer
-}
-
-func MarshalOrPanic(msg proto.Message) []byte {
-	b, err := proto.Marshal(msg)
-	if err != nil {
-		panic(err)
-	}
-	return b
-}
 
 func ListInstantiatedLegacy(n *nwo.Network, p *nwo.Peer, channel string) *gbytes.Buffer {
 	sess, err := n.PeerAdminSession(p, commands.ChaincodeListInstantiatedLegacy{
@@ -194,7 +172,7 @@ type LSCCOperation struct {
 	InstantiationOrgs []*nwo.Organization
 }
 
-func (lo *LSCCOperation) Tx(signer *signer.Signer) *common.Envelope {
+func (lo *LSCCOperation) Tx(signer *nwo.SigningIdentity) *common.Envelope {
 	creatorBytes, err := signer.Serialize()
 	Expect(err).NotTo(HaveOccurred())
 
@@ -215,14 +193,14 @@ func (lo *LSCCOperation) Tx(signer *signer.Signer) *common.Envelope {
 	hasher.Write(creatorBytes)
 	txid := hex.EncodeToString(hasher.Sum(nil))
 
-	signatureHeaderBytes := MarshalOrPanic(&common.SignatureHeader{
+	signatureHeaderBytes := protoMarshal(&common.SignatureHeader{
 		Creator: creatorBytes,
 		Nonce:   nonce,
 	})
 
-	channelHeaderBytes := MarshalOrPanic(&common.ChannelHeader{
+	channelHeaderBytes := protoMarshal(&common.ChannelHeader{
 		ChannelId: lo.ChannelID,
-		Extension: MarshalOrPanic(&peer.ChaincodeHeaderExtension{
+		Extension: protoMarshal(&peer.ChaincodeHeaderExtension{
 			ChaincodeId: &peer.ChaincodeID{
 				Name: "lscc",
 			},
@@ -232,7 +210,7 @@ func (lo *LSCCOperation) Tx(signer *signer.Signer) *common.Envelope {
 		Type:      int32(common.HeaderType_ENDORSER_TRANSACTION),
 	})
 
-	chaincodeDataBytes := MarshalOrPanic(&peer.ChaincodeData{
+	chaincodeDataBytes := protoMarshal(&peer.ChaincodeData{
 		Data:                []byte("a-big-bunch-of-fakery"),
 		Id:                  []byte("a-friendly-fake-chaincode"),
 		Escc:                "escc",
@@ -243,14 +221,14 @@ func (lo *LSCCOperation) Tx(signer *signer.Signer) *common.Envelope {
 		Policy:              nil, // EndorsementPolicy deliberately left nil
 	})
 
-	proposalPayloadBytes := MarshalOrPanic(&peer.ChaincodeProposalPayload{
-		Input: MarshalOrPanic(&peer.ChaincodeInvocationSpec{
+	proposalPayloadBytes := protoMarshal(&peer.ChaincodeProposalPayload{
+		Input: protoMarshal(&peer.ChaincodeInvocationSpec{
 			ChaincodeSpec: &peer.ChaincodeSpec{
 				Input: &peer.ChaincodeInput{
 					Args: [][]byte{
 						[]byte(lo.Operation),
 						[]byte(lo.ChannelID),
-						MarshalOrPanic(&peer.ChaincodeDeploymentSpec{
+						protoMarshal(&peer.ChaincodeDeploymentSpec{
 							ChaincodeSpec: &peer.ChaincodeSpec{
 								ChaincodeId: &peer.ChaincodeID{
 									Name:    lo.Name,
@@ -278,17 +256,17 @@ func (lo *LSCCOperation) Tx(signer *signer.Signer) *common.Envelope {
 	propHash.Write(proposalPayloadBytes)
 	proposalHash := propHash.Sum(nil)[:]
 
-	proposalResponsePayloadBytes := MarshalOrPanic(&peer.ProposalResponsePayload{
+	proposalResponsePayloadBytes := protoMarshal(&peer.ProposalResponsePayload{
 		ProposalHash: proposalHash,
-		Extension: MarshalOrPanic(&peer.ChaincodeAction{
+		Extension: protoMarshal(&peer.ChaincodeAction{
 			ChaincodeId: &peer.ChaincodeID{
 				Name:    "lscc",
 				Version: "syscc",
 			},
-			Events: MarshalOrPanic(&peer.ChaincodeEvent{
+			Events: protoMarshal(&peer.ChaincodeEvent{
 				ChaincodeId: "lscc",
 				EventName:   lo.Operation,
-				Payload: MarshalOrPanic(&peer.LifecycleEvent{
+				Payload: protoMarshal(&peer.LifecycleEvent{
 					ChaincodeName: lo.Name,
 				}),
 			}),
@@ -296,12 +274,12 @@ func (lo *LSCCOperation) Tx(signer *signer.Signer) *common.Envelope {
 				Payload: chaincodeDataBytes,
 				Status:  200,
 			},
-			Results: MarshalOrPanic(&rwset.TxReadWriteSet{
+			Results: protoMarshal(&rwset.TxReadWriteSet{
 				DataModel: rwset.TxReadWriteSet_KV,
 				NsRwset: []*rwset.NsReadWriteSet{
 					{
 						Namespace: "lscc",
-						Rwset: MarshalOrPanic(&kvrwset.KVRWSet{
+						Rwset: protoMarshal(&kvrwset.KVRWSet{
 							Writes: []*kvrwset.KVWrite{
 								{
 									Key:   lo.Name,
@@ -312,7 +290,7 @@ func (lo *LSCCOperation) Tx(signer *signer.Signer) *common.Envelope {
 					},
 					{
 						Namespace: lo.Name,
-						Rwset: MarshalOrPanic(&kvrwset.KVRWSet{
+						Rwset: protoMarshal(&kvrwset.KVRWSet{
 							Writes: []*kvrwset.KVWrite{
 								{
 									Key:   "bogus-key",
@@ -329,16 +307,16 @@ func (lo *LSCCOperation) Tx(signer *signer.Signer) *common.Envelope {
 	endorsementSignature, err := signer.Sign(append(proposalResponsePayloadBytes, creatorBytes...))
 	Expect(err).NotTo(HaveOccurred())
 
-	payloadBytes := MarshalOrPanic(&common.Payload{
+	payloadBytes := protoMarshal(&common.Payload{
 		Header: &common.Header{
 			ChannelHeader:   channelHeaderBytes,
 			SignatureHeader: signatureHeaderBytes,
 		},
-		Data: MarshalOrPanic(&peer.Transaction{
+		Data: protoMarshal(&peer.Transaction{
 			Actions: []*peer.TransactionAction{
 				{
 					Header: signatureHeaderBytes,
-					Payload: MarshalOrPanic(&peer.ChaincodeActionPayload{
+					Payload: protoMarshal(&peer.ChaincodeActionPayload{
 						ChaincodeProposalPayload: proposalPayloadBytes,
 						Action: &peer.ChaincodeEndorsedAction{
 							ProposalResponsePayload: proposalResponsePayloadBytes,
@@ -362,4 +340,10 @@ func (lo *LSCCOperation) Tx(signer *signer.Signer) *common.Envelope {
 		Payload:   payloadBytes,
 		Signature: envSignature,
 	}
+}
+
+func protoMarshal(msg proto.Message) []byte {
+	b, err := proto.Marshal(msg)
+	Expect(err).NotTo(HaveOccurred())
+	return b
 }
