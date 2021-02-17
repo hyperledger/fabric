@@ -38,6 +38,7 @@ func operationalClients(tlsDir string) (authClient, unauthClient *http.Client) {
 
 	authenticatedClient := &http.Client{
 		Transport: &http.Transport{
+			MaxIdleConnsPerHost: -1,
 			TLSClientConfig: &tls.Config{
 				Certificates: []tls.Certificate{clientCert},
 				RootCAs:      clientCertPool,
@@ -46,7 +47,8 @@ func operationalClients(tlsDir string) (authClient, unauthClient *http.Client) {
 	}
 	unauthenticatedClient := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{RootCAs: clientCertPool},
+			MaxIdleConnsPerHost: -1,
+			TLSClientConfig:     &tls.Config{RootCAs: clientCertPool},
 		},
 	}
 
