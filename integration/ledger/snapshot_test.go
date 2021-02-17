@@ -23,7 +23,6 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/integration/chaincode/kvexecutor"
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -1045,13 +1044,7 @@ func commitTx(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID st
 
 	// get signing identity
 	By("getting the signer for user1 on peer " + peer.ID())
-	conf := signer.Config{
-		MSPID:        n.Organization(peer.Organization).MSPID,
-		IdentityPath: n.PeerUserCert(peer, "User1"),
-		KeyPath:      n.PeerUserKey(peer, "User1"),
-	}
-	signer, err := signer.NewSigner(conf)
-	Expect(err).NotTo(HaveOccurred())
+	signer := n.PeerUserSigner(peer, "User1")
 
 	// create deliver client and delivergroup
 	peerClient := &common.PeerClient{
