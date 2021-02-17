@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -21,6 +22,8 @@ import (
 	"github.com/onsi/gomega/gstruct"
 	"github.com/onsi/gomega/types"
 )
+
+var lastPolled = make(map[string]time.Time)
 
 func Join(n *nwo.Network, o *nwo.Orderer, channel string, block *common.Block, expectedChannelInfo ChannelInfo) {
 	blockBytes, err := proto.Marshal(block)
@@ -105,6 +108,12 @@ type ChannelInfo struct {
 }
 
 func ListOne(n *nwo.Network, o *nwo.Orderer, channel string) ChannelInfo {
+	duration := time.Until(lastPolled[o.Name].Add(time.Second))
+	if duration > 0 {
+		time.Sleep(duration)
+	}
+	lastPolled[o.Name] = time.Now()
+
 	authClient, _ := nwo.OrdererOperationalClients(n, o)
 	listChannelURL := fmt.Sprintf("https://127.0.0.1:%d/participation/v1/channels/%s", n.OrdererPort(o, nwo.AdminPort), channel)
 
