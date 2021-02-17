@@ -27,7 +27,6 @@ import (
 	conftx "github.com/hyperledger/fabric-config/configtx"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/integration/nwo"
@@ -892,35 +891,24 @@ func createConfigTx(txData []byte, channelName string, network *nwo.Network, ord
 	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(payload.Data)
 	Expect(err).NotTo(HaveOccurred())
 
-	conf := signer.Config{
-		MSPID:        network.Organization(orderer.Organization).MSPID,
-		IdentityPath: network.OrdererUserCert(orderer, "Admin"),
-		KeyPath:      network.OrdererUserKey(orderer, "Admin"),
-	}
+	signer := network.OrdererUserSigner(orderer, "Admin")
+	signConfigUpdate(signer, configUpdateEnv)
 
-	s, err := signer.NewSigner(conf)
-	Expect(err).NotTo(HaveOccurred())
-
-	signConfigUpdate(conf, configUpdateEnv)
-
-	env, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, channelName, s, configUpdateEnv, 0, 0)
+	env, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG_UPDATE, channelName, signer, configUpdateEnv, 0, 0)
 	Expect(err).NotTo(HaveOccurred())
 
 	return env
 }
 
-func signConfigUpdate(conf signer.Config, configUpdateEnv *common.ConfigUpdateEnvelope) *common.ConfigUpdateEnvelope {
-	s, err := signer.NewSigner(conf)
-	Expect(err).NotTo(HaveOccurred())
-
-	sigHeader, err := protoutil.NewSignatureHeader(s)
+func signConfigUpdate(signer *nwo.SigningIdentity, configUpdateEnv *common.ConfigUpdateEnvelope) *common.ConfigUpdateEnvelope {
+	sigHeader, err := protoutil.NewSignatureHeader(signer)
 	Expect(err).NotTo(HaveOccurred())
 
 	configSig := &common.ConfigSignature{
 		SignatureHeader: protoutil.MarshalOrPanic(sigHeader),
 	}
 
-	configSig.Signature, err = s.Sign(util.ConcatenateBytes(configSig.SignatureHeader, configUpdateEnv.ConfigUpdate))
+	configSig.Signature, err = signer.Sign(util.ConcatenateBytes(configSig.SignatureHeader, configUpdateEnv.ConfigUpdate))
 	Expect(err).NotTo(HaveOccurred())
 
 	configUpdateEnv.Signatures = append(configUpdateEnv.Signatures, configSig)
