@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	protosorderer "github.com/hyperledger/fabric-protos-go/orderer"
 	protosraft "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/cmd/common/signer"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/ordererclient"
@@ -1142,26 +1141,26 @@ func assertTransitionFailed(
 	updateOrdererConfigFailed(network, orderer, channel, current, updated, peer, orderer)
 }
 
-func assertBlockCreation(network *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer,
-	channelID string, blkNum uint64) {
-	var signer interface{}
-	signer = orderer
+func assertBlockCreation(network *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID string, blkNum uint64) {
+	var signer *nwo.SigningIdentity
+	signer = network.OrdererUserSigner(orderer, "Admin")
 	if peer != nil {
-		signer = peer
+		signer = network.PeerUserSigner(peer, "Admin")
 	}
 	env := createBroadcastEnvelope(network, signer, channelID, []byte("hola"))
 	resp, err := ordererclient.Broadcast(network, orderer, env)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.Status).To(Equal(common.Status_SUCCESS))
 
-	denv := createDeliverEnvelope(network, orderer, blkNum, channelID)
+	denv := createDeliverEnvelope(network, signer, blkNum, channelID)
 	blk, err := ordererclient.Deliver(network, orderer, denv)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(blk).ToNot(BeNil())
 }
 
 func assertTxFailed(network *nwo.Network, orderer *nwo.Orderer, channelID string) {
-	env := createBroadcastEnvelope(network, orderer, channelID, []byte("hola"))
+	signer := network.OrdererUserSigner(orderer, "Admin")
+	env := createBroadcastEnvelope(network, signer, channelID, []byte("hola"))
 	resp, err := ordererclient.Broadcast(network, orderer, env)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(resp.Status).To(Equal(common.Status_SERVICE_UNAVAILABLE))
@@ -1201,22 +1200,22 @@ func waitForBlockReception(o *nwo.Orderer, submitter *nwo.Peer, network *nwo.Net
 	}, network.EventuallyTimeout, time.Second).Should(BeEmpty())
 }
 
-func createBroadcastEnvelope(n *nwo.Network, signer interface{}, channel string, data []byte) *common.Envelope {
+func createBroadcastEnvelope(n *nwo.Network, signer *nwo.SigningIdentity, channel string, data []byte) *common.Envelope {
 	env, err := protoutil.CreateSignedEnvelope(
 		common.HeaderType_MESSAGE,
 		channel,
-		nil,
+		signer,
 		&common.Envelope{Payload: data},
 		0,
 		0,
 	)
 	Expect(err).NotTo(HaveOccurred())
 
-	return signAsAdmin(n, signer, env)
+	return env
 }
 
 // CreateDeliverEnvelope creates a deliver env to seek for specified block.
-func createDeliverEnvelope(n *nwo.Network, entity interface{}, blkNum uint64, channel string) *common.Envelope {
+func createDeliverEnvelope(n *nwo.Network, signer *nwo.SigningIdentity, blkNum uint64, channel string) *common.Envelope {
 	specified := &protosorderer.SeekPosition{
 		Type: &protosorderer.SeekPosition_Specified{
 			Specified: &protosorderer.SeekSpecified{Number: blkNum},
@@ -1225,7 +1224,7 @@ func createDeliverEnvelope(n *nwo.Network, entity interface{}, blkNum uint64, ch
 	env, err := protoutil.CreateSignedEnvelope(
 		common.HeaderType_DELIVER_SEEK_INFO,
 		channel,
-		nil,
+		signer,
 		&protosorderer.SeekInfo{
 			Start:    specified,
 			Stop:     specified,
@@ -1236,49 +1235,7 @@ func createDeliverEnvelope(n *nwo.Network, entity interface{}, blkNum uint64, ch
 	)
 	Expect(err).NotTo(HaveOccurred())
 
-	return signAsAdmin(n, entity, env)
-}
-
-func signAsAdmin(n *nwo.Network, entity interface{}, env *common.Envelope) *common.Envelope {
-	var conf signer.Config
-	switch t := entity.(type) {
-	case *nwo.Peer:
-		conf = signer.Config{
-			MSPID:        n.Organization(t.Organization).MSPID,
-			IdentityPath: n.PeerUserCert(t, "Admin"),
-			KeyPath:      n.PeerUserKey(t, "Admin"),
-		}
-	case *nwo.Orderer:
-		conf = signer.Config{
-			MSPID:        n.Organization(t.Organization).MSPID,
-			IdentityPath: n.OrdererUserCert(t, "Admin"),
-			KeyPath:      n.OrdererUserKey(t, "Admin"),
-		}
-	default:
-		panic("unsupported signing entity type")
-	}
-
-	signer, err := signer.NewSigner(conf)
-	Expect(err).NotTo(HaveOccurred())
-
-	payload, err := protoutil.UnmarshalPayload(env.Payload)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(payload.Header).NotTo(BeNil())
-	Expect(payload.Header.ChannelHeader).NotTo(BeNil())
-
-	nonce, err := protoutil.CreateNonce()
-	Expect(err).NotTo(HaveOccurred())
-	sighdr := &common.SignatureHeader{
-		Creator: signer.Creator,
-		Nonce:   nonce,
-	}
-	payload.Header.SignatureHeader = protoutil.MarshalOrPanic(sighdr)
-	payloadBytes := protoutil.MarshalOrPanic(payload)
-
-	sig, err := signer.Sign(payloadBytes)
-	Expect(err).NotTo(HaveOccurred())
-
-	return &common.Envelope{Payload: payloadBytes, Signature: sig}
+	return env
 }
 
 var extendedCryptoConfig = `---
