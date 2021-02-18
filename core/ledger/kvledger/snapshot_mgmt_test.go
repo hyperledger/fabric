@@ -230,6 +230,38 @@ func TestSnapshotRequests(t *testing.T) {
 	require.Eventually(t, requestsUpdated, time.Minute, 100*time.Millisecond)
 }
 
+func TestSnapshotMgmtConcurrency(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+	defer provider.Close()
+
+	ledgerID := "testsnapshotmgmtconcurrency"
+	bg, gb := testutil.NewBlockGenerator(t, ledgerID, false)
+	gbHash := protoutil.BlockHeaderHash(gb.Header)
+	l, err := provider.CreateFromGenesisBlock(gb)
+	require.NoError(t, err)
+	kvledger := l.(*kvLedger)
+	defer kvledger.Close()
+
+	testutilCommitBlocks(t, l, bg, 5, gbHash)
+
+	// Artificially, send event to background goroutine to indicate that commit for block 6 has started
+	// and then submit snapshot request for block 0, while not sending the event for commit done for block 6
+	kvledger.snapshotMgr.events <- &event{typ: commitStart, blockNumber: 6}
+	<-kvledger.snapshotMgr.commitProceed
+
+	require.NoError(t, kvledger.SubmitSnapshotRequest(0))
+	require.Eventually(t,
+		func() bool {
+			r, err := kvledger.snapshotMgr.snapshotRequestBookkeeper.smallestRequest()
+			require.NoError(t, err)
+			return r == 6
+		},
+		10*time.Millisecond, 1*time.Millisecond,
+	)
+}
+
 func TestSnapshotMgrShutdown(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
