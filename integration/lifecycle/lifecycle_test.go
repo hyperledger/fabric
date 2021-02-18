@@ -21,7 +21,7 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
-	"github.com/hyperledger/fabric/integration/runner"
+	"github.com/hyperledger/fabric/integration/nwo/runner"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"

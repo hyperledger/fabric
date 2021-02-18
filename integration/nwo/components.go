@@ -11,7 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/hyperledger/fabric/integration/runner"
+	"github.com/hyperledger/fabric/integration/nwo/runner"
 	. "github.com/onsi/gomega"
 )
 

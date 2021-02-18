@@ -18,7 +18,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/runner"
+	"github.com/hyperledger/fabric/integration/nwo/runner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
