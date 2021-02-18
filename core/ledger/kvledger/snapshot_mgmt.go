@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package kvledger
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"sync"
@@ -47,6 +48,10 @@ type snapshotMgr struct {
 type event struct {
 	typ         eventType
 	blockNumber uint64
+}
+
+func (e *event) String() string {
+	return fmt.Sprintf("{type=%s, blockNumber=%d}", e.typ, e.blockNumber)
 }
 
 type requestResponse struct {
@@ -106,7 +111,11 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 
 	for {
 		e := <-events
-		logger.Debugw("Event received", "channelID", l.ledgerID, "type", e.typ, "blockNumber", e.blockNumber, "snapshotInProgress=", snapshotInProgress)
+		logger.Debugw("Event received",
+			"channelID", l.ledgerID, "event", e, "snapshotInProgress", snapshotInProgress,
+			"lastCommittedBlockNumber", lastCommittedBlockNumber, "committerStatus", committerStatus,
+		)
+
 		switch e.typ {
 		case commitStart:
 			committerStatus = blocked
@@ -150,7 +159,7 @@ func (l *kvLedger) processSnapshotMgmtEvents(lastCommittedBlockNumber uint64) {
 		case requestAdd:
 			leastAcceptableBlockNum := lastCommittedBlockNumber
 			if committerStatus != idle {
-				leastAcceptableBlockNum = +1
+				leastAcceptableBlockNum++
 			}
 
 			requestedBlockNum := e.blockNumber
