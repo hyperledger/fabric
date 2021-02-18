@@ -24,7 +24,6 @@ import (
 	"time"
 
 	docker "github.com/fsouza/go-dockerclient"
-	"github.com/hyperledger/fabric/integration/helpers"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
@@ -174,14 +173,14 @@ type Network struct {
 // New creates a Network from a simple configuration. All generated or managed
 // artifacts for the network will be located under rootDir. Ports will be
 // allocated sequentially from the specified startPort.
-func New(c *Config, rootDir string, client *docker.Client, startPort int, components *Components) *Network {
+func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, components *Components) *Network {
 	network := &Network{
 		StartPort:    uint16(startPort),
 		RootDir:      rootDir,
 		Components:   components,
-		DockerClient: client,
+		DockerClient: dockerClient,
 
-		NetworkID:         helpers.UniqueName(),
+		NetworkID:         runner.UniqueName(),
 		EventuallyTimeout: time.Minute,
 		MetricsProvider:   "prometheus",
 		PortsByBrokerID:   map[string]Ports{},
@@ -240,7 +239,25 @@ func New(c *Config, rootDir string, client *docker.Client, startPort int, compon
 		}
 		network.PortsByPeerID[p.ID()] = ports
 	}
+
+	if dockerClient != nil {
+		assertImagesExist(dockerClient, RequiredImages...)
+	}
+
 	return network
+}
+
+func assertImagesExist(dockerClient *docker.Client, images ...string) {
+	for _, imageName := range images {
+		images, err := dockerClient.ListImages(docker.ListImagesOptions{
+			Filters: map[string][]string{"reference": {imageName}},
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		if len(images) != 1 {
+			ginkgo.Fail(fmt.Sprintf("missing required image: %s", imageName), 1)
+		}
+	}
 }
 
 // AddOrg adds an organization to a network.
