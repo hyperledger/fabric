@@ -102,7 +102,7 @@ noverify = [
   name = "github.com/syndtr/goleveldb"
 
 [[constraint]]
-  branch = "master"
+  branch = "release-branch.go1.14"
   name = "golang.org/x/crypto"
 
 [[constraint]]
@@ -116,6 +116,10 @@ noverify = [
 [[constraint]]
   branch = "master"
   name = "golang.org/x/sync"
+
+[[override]]
+  branch = "release-branch.go1.14-std"
+  name = "golang.org/x/sys"
 
 [[constraint]]
   name = "golang.org/x/tools"

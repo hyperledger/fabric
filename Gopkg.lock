@@ -771,15 +771,15 @@
   version = "v1.9.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:8b843c02184a878127f7088da71887c4d481e24d64a7039a07ce961d45908311"
+  branch = "release-branch.go1.14"
+  digest = "1:7337c59380bcc76b123b691534249b30950a5b6ee63107c7818e24153c0bcaa6"
   name = "golang.org/x/crypto"
   packages = [
     "sha3",
     "ssh/terminal",
   ]
   pruneopts = "NUT"
-  revision = "2aa609cf4a9d7d1126360de73b55b6002f9e052a"
+  revision = "69ecbb4d6d5dab05e49161c6e77ea40a030884e1"
 
 [[projects]]
   digest = "1:a019befaac3480235e0db34bc38f5e90baefe615795eb1e5adc4633baa3f0841"
@@ -819,8 +819,8 @@
   revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
 
 [[projects]]
-  branch = "master"
-  digest = "1:4a44ad185d16d398d7330d968d2fe1f4a9526b15b219218c2df802ac20ba6153"
+  branch = "release-branch.go1.14-std"
+  digest = "1:6370db18e9c85d5415da09fb28450b84b1a282ef6acc9d36524906a711866f0d"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -828,7 +828,7 @@
     "windows",
   ]
   pruneopts = "NUT"
-  revision = "af653ce8b74f808d092db8ca9741fbb63d2a469d"
+  revision = "915c9c3d4ccf72b2ceac5e8303d722b16b699366"
 
 [[projects]]
   digest = "1:8a12cbc891b7130d3f660f8a309e5c0b083f831e6ac38cdaa1f12e63c12d6bea"
