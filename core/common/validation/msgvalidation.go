@@ -281,7 +281,10 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 
 	// continue the validation in a way that depends on the type specified in the header
 	switch common.HeaderType(chdr.Type) {
-	case common.HeaderType_ENDORSER_TRANSACTION:
+	case common.HeaderType_ENDORSER_TRANSACTION,
+		common.HeaderType_PAC_PREPARE_TRANSACTION,
+		common.HeaderType_PAC_DECIDE_TRANSACTION,
+		common.HeaderType_PAC_ABORT_TRANSACTION:
 		// Verify that the transaction ID has been computed properly.
 		// This check is needed to ensure that the lookup into the ledger
 		// for the same TxID catches duplicates.
@@ -295,6 +298,27 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 			return nil, pb.TxValidationCode_BAD_PROPOSAL_TXID
 		}
 
+		if common.HeaderType(chdr.Type) != common.HeaderType_ENDORSER_TRANSACTION {
+			//Getting data from payload.Data
+			if pactxenv, err := protoutil.GetPACTxEnvelopeFromPayload(payload.Data); err != nil {
+				putilsLogger.Warningf("Error getting [%s] envelope from block: %+v", common.HeaderType(chdr.Type), err)
+				return payload, pb.TxValidationCode_INVALID_OTHER_REASON
+			} else if pactxenv != nil {
+				pactxpayload, err := protoutil.UnmarshalPayload(pactxenv.Payload)
+				if err != nil {
+					putilsLogger.Warningf("Error getting [%s] payload from PrepareTx envelope: %+v", common.HeaderType(chdr.Type), err)
+				}
+				err = validateEndorserTransaction(pactxpayload.Data, payload.Header)
+				putilsLogger.Debugf("ValidateTransactionEnvelope returns err %s", err)
+
+				if err != nil {
+					putilsLogger.Errorf("validateEndorserTransaction returns err %s", err)
+					return payload, pb.TxValidationCode_INVALID_OTHER_REASON
+				}
+				return payload, pb.TxValidationCode_VALID
+			}
+
+		}
 		err = validateEndorserTransaction(payload.Data, payload.Header)
 		putilsLogger.Debugf("ValidateTransactionEnvelope returns err %s", err)
 
@@ -302,11 +326,6 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 			putilsLogger.Errorf("validateEndorserTransaction returns err %s", err)
 			return payload, pb.TxValidationCode_INVALID_ENDORSER_TRANSACTION
 		}
-		return payload, pb.TxValidationCode_VALID
-	case common.HeaderType_PAC_PREPARE_TRANSACTION:
-		//TODO: извлечь пэйлоад Prepare-транзакции из пэйлоада этой транзакции,
-		//и выполнять проверку для этого пэйлоада как в HeaderType_ENDORSER_TRANSACTION
-		//
 		return payload, pb.TxValidationCode_VALID
 	case common.HeaderType_CONFIG:
 		// Config transactions have signatures inside which will be validated, especially at genesis there may be no creator or

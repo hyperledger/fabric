@@ -6,7 +6,7 @@ package common
 import (
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	timestamp "google.golang.org/protobuf/types/known/timestamp"
 	math "math"
 )
 

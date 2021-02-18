@@ -9,7 +9,6 @@ package validation
 import (
 	"bytes"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -183,18 +182,6 @@ func validatePvtdata(tx *transaction, pvtdata *ledger.TxPvtData) error {
 		}
 	}
 	return nil
-}
-
-func GetPACTxEnvelopeFromPayload(data []byte) (*common.PACTxEnvelope, error) {
-	// Payload with Header=HeaderType_PAC_PREPARE_TRANSACTION
-	// or HeaderType_PAC_DECIDE_TRANSACTION or HeaderType_PAC_ABORT_TRANSACTION
-	//always begins with an PACTxEnvelope
-	var err error
-	pactxenv := &common.PACTxEnvelope{}
-	if err = proto.Unmarshal(data, pactxenv); err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling PACTxEnvelope")
-	}
-	return pactxenv, nil
 }
 
 // preprocessProtoBlock parses the proto instance of block into 'Block' structure.
