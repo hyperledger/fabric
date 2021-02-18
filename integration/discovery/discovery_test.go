@@ -153,12 +153,13 @@ var _ = Describe("DiscoveryService", func() {
 
 	It("discovers network configuration, endorsers, and peer membership", func() {
 		By("Updating anchor peers")
+		initialHeight := nwo.GetLedgerHeight(network, org1Peer0, "testchannel")
 		network.UpdateChannelAnchors(orderer, "testchannel")
-
+		// wait for anchor peer config updates to be committed
+		nwo.WaitUntilEqualLedgerHeight(network, "testchannel", initialHeight+2, org1Peer0)
 		//
 		// bootstrapping a peer from snapshot
 		//
-
 		By("generating a snapshot at current block number on org1Peer0")
 		blockNum := nwo.GetLedgerHeight(network, org1Peer0, "testchannel") - 1
 		submitSnapshotRequest(network, "testchannel", 0, org1Peer0, "Snapshot request submitted successfully")
