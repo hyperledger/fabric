@@ -557,10 +557,9 @@ func (stream *Stream) sendMessage(request *orderer.StepRequest) {
 func (stream *Stream) serviceStream() {
 	streamStartTime := time.Now()
 	defer func() {
-		stream.Logger.Debugf("Stream %d to (%s) terminating at total lifetime of %s",
-			stream.ID, stream.Endpoint, time.Since(streamStartTime))
-
 		stream.Cancel(errAborted)
+		stream.Logger.Debugf("Stream %d to (%s) terminated with total lifetime of %s",
+			stream.ID, stream.Endpoint, time.Since(streamStartTime))
 	}()
 
 	for {
@@ -666,21 +665,20 @@ func (rc *RemoteContext) NewStream(timeout time.Duration) (*Stream, error) {
 	var canceled uint32
 
 	abortChan := make(chan struct{})
-
-	abort := func() {
-		cancel()
-		rc.streamsByID.Delete(streamID)
-		rc.Metrics.reportEgressStreamCount(rc.Channel, atomic.LoadUint32(&rc.streamsByID.size))
-		rc.Logger.Debugf("Stream %d to %s(%s) is aborted", streamID, nodeName, rc.endpoint)
-		atomic.StoreUint32(&canceled, 1)
-		close(abortChan)
-	}
+	abortReason := &atomic.Value{}
 
 	once := &sync.Once{}
-	abortReason := &atomic.Value{}
+
 	cancelWithReason := func(err error) {
-		abortReason.Store(err.Error())
-		once.Do(abort)
+		once.Do(func() {
+			abortReason.Store(err.Error())
+			cancel()
+			rc.streamsByID.Delete(streamID)
+			rc.Metrics.reportEgressStreamCount(rc.Channel, atomic.LoadUint32(&rc.streamsByID.size))
+			rc.Logger.Debugf("Stream %d to %s(%s) is aborted", streamID, nodeName, rc.endpoint)
+			atomic.StoreUint32(&canceled, 1)
+			close(abortChan)
+		})
 	}
 
 	logger := flogging.MustGetLogger("orderer.common.cluster.step")
