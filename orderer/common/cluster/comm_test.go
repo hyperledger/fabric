@@ -530,6 +530,55 @@ func TestUnavailableHosts(t *testing.T) {
 	require.Contains(t, err.Error(), "connection")
 }
 
+func TestStreamAbortReportCorrectError(t *testing.T) {
+	// Scenario: node 1 acquires a stream to node 2 and then the stream
+	// encounters an error and as a result, the stream is aborted.
+	// We ensure the error reported is the first error, even after
+	// multiple attempts of using it.
+
+	node1 := newTestNode(t)
+	defer node1.stop()
+
+	node2 := newTestNode(t)
+	defer node2.stop()
+
+	node1.c.Configure(testChannel, []cluster.RemoteNode{node2.nodeInfo})
+	node2.c.Configure(testChannel, []cluster.RemoteNode{node1.nodeInfo})
+
+	node2.handler.On("OnSubmit", testChannel, node1.nodeInfo.ID, mock.Anything).Return(errors.Errorf("whoops")).Once()
+
+	rm1, err := node1.c.Remote(testChannel, node2.nodeInfo.ID)
+	require.NoError(t, err)
+	var streamTerminated sync.WaitGroup
+	streamTerminated.Add(1)
+
+	stream := assertEventualEstablishStream(t, rm1)
+
+	l, err := zap.NewDevelopment()
+	require.NoError(t, err)
+	stream.Logger = flogging.NewFabricLogger(l, zap.Hooks(func(entry zapcore.Entry) error {
+		if strings.Contains(entry.Message, "Stream 1 to") && strings.Contains(entry.Message, "terminated") {
+			streamTerminated.Done()
+		}
+		return nil
+	}))
+
+	// Probe the stream for the first time
+	err = stream.Send(wrapSubmitReq(testReq))
+	require.NoError(t, err)
+
+	// We should receive back the crafted error
+	_, err = stream.Recv()
+	require.Contains(t, err.Error(), "whoops")
+
+	// Wait for the stream to be terminated from within the communication infrastructure
+	streamTerminated.Wait()
+
+	// We should still receive the original crafted error despite the stream being terminated
+	err = stream.Send(wrapSubmitReq(testReq))
+	require.Contains(t, err.Error(), "whoops")
+}
+
 func TestStreamAbort(t *testing.T) {
 	// Scenarios: node 1 is connected to node 2 in 2 channels,
 	// and the consumer of the communication calls receive.
