@@ -555,7 +555,13 @@ func (stream *Stream) sendMessage(request *orderer.StepRequest) {
 }
 
 func (stream *Stream) serviceStream() {
-	defer stream.Cancel(errAborted)
+	streamStartTime := time.Now()
+	defer func() {
+		stream.Logger.Debugf("Stream %d to (%s) terminating at total lifetime of %s",
+			stream.ID, stream.Endpoint, time.Since(streamStartTime))
+
+		stream.Cancel(errAborted)
+	}()
 
 	for {
 		select {
