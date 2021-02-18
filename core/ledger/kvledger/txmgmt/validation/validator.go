@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statedb"
+	"github.com/pkg/errors"
 )
 
 // validator validates a tx against the latest committed state
@@ -120,15 +121,14 @@ BlockLoop:
 							ns, key := compositeKey.ns, compositeKey.key
 							verValue := updates.publicUpdates.Get(ns, key)
 							if verValue.Version.PACparticipationFlag == true {
-								logger.Warningf("PACparticipationFlag is already true for ns: [%s], 
-								key: [%s], value: [%s]. The transaction with id [%s] will not be executed",
-								 ns, key, string(verValue.Value), tx.id)
+								logger.Warningf("PACparticipationFlag is already true for ns: [%s], key: [%s], value: [%s]. The transaction with id [%s] will not be executed",
+									ns, key, string(verValue.Value), tx.id)
 								break
 							}
 							verValue.Version.PACparticipationFlag = true
 							updates.publicUpdates.PutValAndMetadata(ns, key, verValue.Value, verValue.Metadata, verValue.Version)
 							logger.Debugf("VersionedValue.PACparticipationFlag for ns [%s] data [%s] was set to [%v] and put to updatebatch",
-							 ns, string(verValue.Value), verValue.Version.PACparticipationFlag)
+								ns, string(verValue.Value), verValue.Version.PACparticipationFlag)
 						} else {
 							//TODO: should we make everything above private?
 							logger.Warningf("PAC is unsupported hashes handling for now")
@@ -144,16 +144,15 @@ BlockLoop:
 							ns, key := compositeKey.ns, compositeKey.key
 							verValue := updates.publicUpdates.Get(ns, key)
 							if verValue.Version.PACparticipationFlag == false {
-								logger.Warningf("The peer got the [%s], but didn't get the [PAC_PREPARE_TRANSACTION] before.
-								 The PACparticipationFlag is already false for ns: [%s], key: [%s], value: [%s]",
-								 tx.headerType, ns, key, string(verValue.Value))
+								logger.Warningf("The peer got the [%s], but didn't get the [PAC_PREPARE_TRANSACTION] before. The PACparticipationFlag is already false for ns: [%s], key: [%s], value: [%s]",
+									tx.headerType, ns, key, string(verValue.Value))
 								//go to the next transaction in the block
 								continue BlockLoop
 							}
 							verValue.Version.PACparticipationFlag = false
 							updates.publicUpdates.PutValAndMetadata(ns, key, verValue.Value, verValue.Metadata, verValue.Version)
 							logger.Debugf("VersionedValue.PACparticipationFlag for ns [%s] data [%s] was set to [%v]",
-							 ns, string(verValue.Value), verValue.Version.PACparticipationFlag)
+								ns, string(verValue.Value), verValue.Version.PACparticipationFlag)
 						} else {
 							//TODO: should we handle hashes of private data here?
 							logger.Warningf("PAC is unsupported hashes handling for now")
@@ -172,12 +171,12 @@ BlockLoop:
 			logger.Debugf("Block [%d] Transaction index [%d] TxId [%s] marked as valid by state validator. ContainsPostOrderWrites [%t]", blk.num, tx.indexInBlock, tx.id, tx.containsPostOrderWrites)
 			committingTxHeight := version.NewHeight(blk.num, uint64(tx.indexInBlock))
 			if err := updates.applyWriteSet(tx.rwset, committingTxHeight, v.db, tx.containsPostOrderWrites); err != nil {
-				if err == "PACparticipationFlag = true" {
+				if err == errors.New("PACparticipationFlag = true") {
 					logger.Debugf("One of the keys of tx [%s] with id [%s] is locked until the end a private atomic commit.", tx.headerType, tx.id)
 					tx.validationCode = peer.TxValidationCode_RWSET_KEY_INVOLVED_IN_PAC
 					continue
 				} else {
-					return nil, err 
+					return nil, err
 				}
 			}
 		} else {

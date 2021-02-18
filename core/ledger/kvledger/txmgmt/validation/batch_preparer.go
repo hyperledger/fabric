@@ -228,12 +228,12 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 			txType == common.HeaderType_PAC_DECIDE_TRANSACTION ||
 			txType == common.HeaderType_PAC_ABORT_TRANSACTION {
 			//extract actions from the Private Atomic Commit Transaction
-			if pactxenv, err := GetPACTxEnvelopeFromPayload(payload.Data); err != nil {
+			if pactxenv, err := protoutil.GetPACTxEnvelopeFromPayload(payload.Data); err != nil {
 				logger.Warningf("Error getting [%s] envelope from block: %+v", common.HeaderType(chdr.Type), err)
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
 				continue
 			} else if pactxenv != nil {
-				pactxpayload, err := protoutil.UnmarshalPayload(pactxenv.payload)
+				pactxpayload, err := protoutil.UnmarshalPayload(pactxenv.Payload)
 				if err != nil {
 					logger.Warningf("Error getting [%s] payload from PrepareTx envelope: %+v", common.HeaderType(chdr.Type), err)
 					txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)

@@ -422,7 +422,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 			txID = chdr.TxId
 
 			//Below is getiing envelope of PrepareTx (which is included in Envelope.Payload.Data of the transaction)
-			if ptenv, err := GetPrepareTxEnvelopeFromPayload(payload.Data); err != nil {
+			if ptenv, err := protoutil.GetPACTxEnvelopeFromPayload(payload.Data); err != nil {
 				logger.Warningf("Error getting PrepareTx envelope from block: %+v", err)
 				results <- &blockValidationResult{
 					tIdx:           tIdx,
@@ -512,17 +512,6 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		}
 		return
 	}
-}
-
-func GetPrepareTxEnvelopeFromPayload(data []byte) (*common.PrepareTxEnvelope, error) {
-	// PrepareTxPayload always begins with an PrepareTxEnvelope
-	var err error
-	ptenv := &common.PrepareTxEnvelope{}
-	if err = proto.Unmarshal(data, ptenv); err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling Envelope")
-	}
-
-	return ptenv, nil
 }
 
 // CheckTxIdDupsLedger returns a vlockValidationResult enhanced with the respective
