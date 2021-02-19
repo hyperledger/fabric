@@ -26,7 +26,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
-	"gopkg.in/yaml.v2"
 )
 
 var _ = Describe("rollback, reset, pause and resume peer node commands", func() {
@@ -68,7 +67,7 @@ var _ = Describe("rollback, reset, pause and resume peer node commands", func() 
 
 		helper.deployChaincode(chaincode)
 
-		org2peer0 := setup.network.Peer("org2", "peer0")
+		org2peer0 := setup.network.Peer("Org2", "peer0")
 		height := helper.getLedgerHeight(org2peer0)
 
 		By("creating 5 blocks")
@@ -77,7 +76,7 @@ var _ = Describe("rollback, reset, pause and resume peer node commands", func() 
 			helper.waitUntilEqualLedgerHeight(height + i)
 		}
 
-		By("verifying marble1 to marble5 exist in collectionMarbles & collectionMarblePrivateDetails in peer0.org2")
+		By("verifying marble1 to marble5 exist in collectionMarbles & collectionMarblePrivateDetails in Org2.peer0")
 		for i := 1; i <= 5; i++ {
 			helper.assertPresentInCollectionM("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
 			helper.assertPresentInCollectionMPD("marblesp", fmt.Sprintf("marble%d", i), org2peer0)
@@ -89,9 +88,9 @@ var _ = Describe("rollback, reset, pause and resume peer node commands", func() 
 	})
 
 	// This test executes the rollback, reset, pause, and resume commands on the following peerss
-	// org1.peer0 - rollback
-	// org2.peer0 - reset
-	// org3.peer0 - pause/rollback/resume
+	// Org1.peer0 - rollback
+	// Org2.peer0 - reset
+	// Org3.peer0 - pause/rollback/resume
 	//
 	// There are 14 blocks created in BeforeEach (before rollback/reset).
 	// block 0: genesis, block 1: org1Anchor, block 2: org2Anchor, block 3: org3Anchor
@@ -102,9 +101,9 @@ var _ = Describe("rollback, reset, pause and resume peer node commands", func() 
 			Expect(helper.getLedgerHeight(peer)).Should(Equal(14))
 		}
 
-		org1peer0 := setup.network.Peer("org1", "peer0")
-		org2peer0 := setup.network.Peer("org2", "peer0")
-		org3peer0 := setup.network.Peer("org3", "peer0")
+		org1peer0 := setup.network.Peer("Org1", "peer0")
+		org2peer0 := setup.network.Peer("Org2", "peer0")
+		org3peer0 := setup.network.Peer("Org3", "peer0")
 
 		// Negative test: rollback, reset, pause, and resume should fail when the peer is online
 		expectedErrMessage := "as another peer node command is executing," +
@@ -181,13 +180,13 @@ var _ = Describe("rollback, reset, pause and resume peer node commands", func() 
 		}
 
 		// statedb rebuild test
-		By("Stopping peers and deleting the statedb folder on peer org2.peer0")
-		peer := setup.network.Peer("org2", "peer0")
+		By("Stopping peers and deleting the statedb folder on peer Org2.peer0")
+		peer := setup.network.Peer("Org2", "peer0")
 		setup.stopPeers()
 		dbPath := filepath.Join(setup.network.PeerLedgerDir(peer), "stateLeveldb")
 		Expect(os.RemoveAll(dbPath)).NotTo(HaveOccurred())
 		Expect(dbPath).NotTo(BeADirectory())
-		By("Restarting the peer org2.peer0")
+		By("Restarting the peer Org2.peer0")
 		setup.startPeer(peer)
 		Expect(dbPath).To(BeADirectory())
 		helper.assertPresentInCollectionM("marblesp", "marble2", peer)
@@ -213,21 +212,14 @@ func initThreeOrgsSetup() *setup {
 	client, err := docker.NewClientFromEnv()
 	Expect(err).NotTo(HaveOccurred())
 
-	configBytes, err := ioutil.ReadFile(filepath.Join("testdata", "network.yaml"))
-	Expect(err).NotTo(HaveOccurred())
-
-	var networkConfig *nwo.Config
-	err = yaml.Unmarshal(configBytes, &networkConfig)
-	Expect(err).NotTo(HaveOccurred())
-
-	n := nwo.New(networkConfig, testDir, client, StartPort(), components)
+	n := nwo.New(nwo.ThreeOrgSolo(), testDir, client, StartPort(), components)
 	n.GenerateConfigTree()
 	n.Bootstrap()
 
 	peers := []*nwo.Peer{
-		n.Peer("org1", "peer0"),
-		n.Peer("org2", "peer0"),
-		n.Peer("org3", "peer0"),
+		n.Peer("Org1", "peer0"),
+		n.Peer("Org2", "peer0"),
+		n.Peer("Org3", "peer0"),
 	}
 
 	setup := &setup{

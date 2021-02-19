@@ -22,7 +22,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-var _ bool = Describe("all shim APIs for non-private data", func() {
+var _ = Describe("all shim APIs for non-private data", func() {
 	var (
 		setup     *setup
 		helper    *marblesTestHelper
@@ -143,7 +143,7 @@ var _ bool = Describe("all shim APIs for non-private data", func() {
 
 	When("levelDB is used as stateDB", func() {
 		It("calls marbles APIs", func() {
-			peer := setup.network.Peer("org2", "peer0")
+			peer := setup.network.Peer("Org2", "peer0")
 
 			By("deploying new lifecycle chaincode")
 			nwo.EnableCapabilities(setup.network, setup.channelID, "Application", "V2_0", setup.orderer, setup.peers...)
@@ -162,7 +162,7 @@ var _ bool = Describe("all shim APIs for non-private data", func() {
 			setup.stopPeers()
 
 			By("configuring a peer with couchdb")
-			// configure only one of the peers (org2, peer0) to use couchdb.
+			// configure only one of the peers (Org2, peer0) to use couchdb.
 			// Note that we do not support a channel with mixed DBs.
 			// However, for testing, it would be fine to use couchdb for one
 			// peer and sending all the couchdb related test queries to this peer
@@ -171,7 +171,7 @@ var _ bool = Describe("all shim APIs for non-private data", func() {
 			Eventually(couchProcess.Ready(), runner.DefaultStartTimeout).Should(BeClosed())
 			Consistently(couchProcess.Wait()).ShouldNot(Receive())
 			couchAddr := couchDB.Address()
-			peer := setup.network.Peer("org2", "peer0")
+			peer := setup.network.Peer("Org2", "peer0")
 			core := setup.network.ReadPeerConfig(peer)
 			core.Ledger.State.StateDatabase = "CouchDB"
 			core.Ledger.State.CouchDBConfig.CouchDBAddress = couchAddr
@@ -187,7 +187,7 @@ var _ bool = Describe("all shim APIs for non-private data", func() {
 		})
 
 		It("calls marbles APIs", func() {
-			peer := setup.network.Peer("org2", "peer0")
+			peer := setup.network.Peer("Org2", "peer0")
 
 			By("deploying new lifecycle chaincode")
 			nwo.EnableCapabilities(setup.network, setup.channelID, "Application", "V2_0", setup.orderer, setup.peers...)
