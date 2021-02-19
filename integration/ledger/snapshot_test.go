@@ -22,6 +22,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	cb "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/hyperledger/fabric/integration/chaincode/kvexecutor"
@@ -30,8 +31,6 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/runner"
 	"github.com/hyperledger/fabric/integration/pvtdata/marblechaincodeutil"
 	ic "github.com/hyperledger/fabric/internal/peer/chaincode"
-	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -1047,50 +1046,25 @@ func commitTx(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID st
 	signer := n.PeerUserSigner(peer, "User1")
 
 	// create deliver client and delivergroup
-	peerClient := &common.PeerClient{
-		CommonClient: common.CommonClient{
-			GRPCClient: grpcClient(filepath.Join(n.PeerLocalTLSDir(peer), "ca.crt")),
-			Address:    n.PeerAddress(peer, nwo.ListenPort),
-		},
-	}
-	deliverClient, err := peerClient.PeerDeliver()
-	Expect(err).NotTo(HaveOccurred())
+	pcc := n.PeerClientConn(peer)
+	defer pcc.Close()
+	deliverClient := pb.NewDeliverClient(pcc)
+
 	dg := ic.NewDeliverGroup([]pb.DeliverClient{deliverClient}, []string{n.PeerAddress(peer, nwo.ListenPort)}, signer, tls.Certificate{}, channelID, txid)
-	err = dg.Connect(ctx)
+	err := dg.Connect(ctx)
 	Expect(err).NotTo(HaveOccurred())
 
 	// create orderer client and broadcast client
 	By("creating orderer client to send transaction to the orderer" + peer.ID())
-	ordererClient := &common.OrdererClient{
-		CommonClient: common.CommonClient{
-			GRPCClient: grpcClient(filepath.Join(n.OrdererLocalTLSDir(orderer), "ca.crt")),
-			Address:    n.OrdererAddress(orderer, nwo.ListenPort),
-		},
-	}
-	bc, err := ordererClient.Broadcast()
+	occ := n.OrdererClientConn(orderer)
+	defer occ.Close()
+	broadcastClient, err := ab.NewAtomicBroadcastClient(occ).Broadcast(context.Background())
 	Expect(err).NotTo(HaveOccurred())
-	broadcastClient := &common.BroadcastGRPCClient{Client: bc}
+
 	err = broadcastClient.Send(env)
 	Expect(err).NotTo(HaveOccurred())
 
 	// wait for deliver event
 	By("waiting for deliver event on peer " + peer.ID())
 	return dg.Wait(ctx)
-}
-
-func grpcClient(tlsRootCertFile string) *comm.GRPCClient {
-	caPEM, res := ioutil.ReadFile(tlsRootCertFile)
-	Expect(res).To(BeNil())
-
-	gClient, err := comm.NewGRPCClient(comm.ClientConfig{
-		Timeout: 3 * time.Second,
-		KaOpts:  comm.DefaultKeepaliveOptions,
-		SecOpts: comm.SecureOptions{
-			UseTLS:        true,
-			ServerRootCAs: [][]byte{caPEM},
-		},
-	})
-	Expect(err).NotTo(HaveOccurred())
-
-	return gClient
 }

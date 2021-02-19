@@ -8,6 +8,7 @@ package nwo
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -35,6 +36,8 @@ import (
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
 	"github.com/tedsuo/ifrit/grouper"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"gopkg.in/yaml.v2"
 )
 
@@ -1456,6 +1459,47 @@ func (n *Network) PeerUserSession(p *Peer, user string, command Command) (*gexec
 		fmt.Sprintf("CORE_PEER_MSPCONFIGPATH=%s", n.PeerUserMSPDir(p, user)),
 	)
 	return n.StartSession(cmd, command.SessionName())
+}
+
+// PeerClientConn returns a grpc.ClientConn configured to connect to the
+// provided peer. This connection can be used to create clients for the peer
+// services. The client connection should be closed when the tests are done
+// using it.
+func (n *Network) PeerClientConn(p *Peer) *grpc.ClientConn {
+	return newClientConn(
+		n.PeerAddress(p, ListenPort),
+		filepath.Join(n.PeerLocalTLSDir(p), "ca.crt"),
+	)
+}
+
+// OrdererClientConn returns a grpc.ClientConn configured to connect to the
+// provided orderer. This connection can be used to create clients for the
+// orderer services. The client connection should be closed when the tests are
+// done using it.
+func (n *Network) OrdererClientConn(o *Orderer) *grpc.ClientConn {
+	return newClientConn(
+		n.OrdererAddress(o, ListenPort),
+		filepath.Join(n.OrdererLocalTLSDir(o), "ca.crt"),
+	)
+}
+
+func newClientConn(address, ca string) *grpc.ClientConn {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	creds, err := credentials.NewClientTLSFromFile(ca, "")
+	Expect(err).NotTo(HaveOccurred())
+
+	conn, err := grpc.DialContext(
+		ctx,
+		address,
+		grpc.WithBlock(),
+		grpc.FailOnNonTempDialError(true),
+		grpc.WithTransportCredentials(creds),
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	return conn
 }
 
 // IdemixUserSession starts a gexec.Session as a idemix user for the provided peer

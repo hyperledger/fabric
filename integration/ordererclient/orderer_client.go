@@ -8,29 +8,16 @@ package ordererclient
 
 import (
 	"context"
-	"io/ioutil"
-	"path"
-	"time"
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/pkg/errors"
 )
 
 // Broadcast sends given env to Broadcast API of specified orderer.
 func Broadcast(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*orderer.BroadcastResponse, error) {
-	gRPCclient, err := createOrdererGRPCClient(n, o)
-	if err != nil {
-		return nil, err
-	}
-
-	addr := n.OrdererAddress(o, nwo.ListenPort)
-	conn, err := gRPCclient.NewConnection(addr)
-	if err != nil {
-		return nil, err
-	}
+	conn := n.OrdererClientConn(o)
 	defer conn.Close()
 
 	broadcaster, err := orderer.NewAtomicBroadcastClient(conn).Broadcast(context.Background())
@@ -53,16 +40,7 @@ func Broadcast(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*orderer.B
 
 // Deliver sends given env to Deliver API of specified orderer.
 func Deliver(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*common.Block, error) {
-	gRPCclient, err := createOrdererGRPCClient(n, o)
-	if err != nil {
-		return nil, err
-	}
-
-	addr := n.OrdererAddress(o, nwo.ListenPort)
-	conn, err := gRPCclient.NewConnection(addr)
-	if err != nil {
-		return nil, err
-	}
+	conn := n.OrdererClientConn(o)
 	defer conn.Close()
 
 	deliverer, err := orderer.NewAtomicBroadcastClient(conn).Deliver(context.Background())
@@ -86,29 +64,4 @@ func Deliver(n *nwo.Network, o *nwo.Orderer, env *common.Envelope) (*common.Bloc
 	}
 
 	return blk, nil
-}
-
-func createOrdererGRPCClient(n *nwo.Network, o *nwo.Orderer) (*comm.GRPCClient, error) {
-	config := comm.ClientConfig{}
-	config.Timeout = 5 * time.Second
-
-	secOpts := comm.SecureOptions{
-		UseTLS:            true,
-		RequireClientCert: false,
-	}
-
-	caPEM, err := ioutil.ReadFile(path.Join(n.OrdererLocalTLSDir(o), "ca.crt"))
-	if err != nil {
-		return nil, err
-	}
-
-	secOpts.ServerRootCAs = [][]byte{caPEM}
-	config.SecOpts = secOpts
-
-	grpcClient, err := comm.NewGRPCClient(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return grpcClient, nil
 }

@@ -39,7 +39,6 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/pvtdata/marblechaincodeutil"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega/gbytes"
@@ -1205,60 +1204,49 @@ func registerForDeliverEvent(
 	signingIdentity *nwo.SigningIdentity,
 	blockNum uint64,
 ) (<-chan deliverEvent, *grpc.ClientConn) {
-	// create a comm.GRPCClient
-	tlsRootCertFile := filepath.Join(network.PeerLocalTLSDir(peer), "ca.crt")
-	caPEM, err := ioutil.ReadFile(tlsRootCertFile)
-	Expect(err).NotTo(HaveOccurred())
-	clientConfig := comm.ClientConfig{Timeout: 10 * time.Second}
-	clientConfig.SecOpts = comm.SecureOptions{
-		UseTLS:            true,
-		ServerRootCAs:     [][]byte{caPEM},
-		RequireClientCert: false,
-	}
-	grpcClient, err := comm.NewGRPCClient(clientConfig)
-	Expect(err).NotTo(HaveOccurred())
-	// create a client for DeliverWithPrivateData
-	address := network.PeerAddress(peer, nwo.ListenPort)
-	conn, err := grpcClient.NewConnection(address)
-	Expect(err).NotTo(HaveOccurred())
+	// create a grpc.ClientConn
+	conn := network.PeerClientConn(peer)
+
 	dp, err := pb.NewDeliverClient(conn).DeliverWithPrivateData(ctx)
 	Expect(err).NotTo(HaveOccurred())
+
 	// send a deliver request
 	envelope, err := createDeliverEnvelope(channelID, signingIdentity, blockNum)
 	Expect(err).NotTo(HaveOccurred())
 	err = dp.Send(envelope)
-	dp.CloseSend()
 	Expect(err).NotTo(HaveOccurred())
+	err = dp.CloseSend()
+	Expect(err).NotTo(HaveOccurred())
+
 	// create a goroutine to receive the response in a separate thread
 	eventCh := make(chan deliverEvent, 1)
-	go receiveDeliverResponse(dp, address, eventCh)
+	go receiveDeliverResponse(dp, peer, eventCh)
 
 	return eventCh, conn
 }
 
 // receiveDeliverResponse expects to receive the BlockAndPrivateData response for the requested block.
-func receiveDeliverResponse(dp pb.Deliver_DeliverWithPrivateDataClient, address string, eventCh chan<- deliverEvent) error {
+func receiveDeliverResponse(dp pb.Deliver_DeliverWithPrivateDataClient, peer *nwo.Peer, eventCh chan<- deliverEvent) {
 	event := deliverEvent{}
 
 	resp, err := dp.Recv()
 	if err != nil {
-		event.Err = errors.WithMessagef(err, "error receiving deliver response from peer %s\n", address)
+		event.Err = errors.WithMessagef(err, "error receiving deliver response from peer %s", peer.ID())
 	}
 	switch r := resp.Type.(type) {
 	case *pb.DeliverResponse_BlockAndPrivateData:
 		event.BlockAndPvtData = r.BlockAndPrivateData
 		event.BlockNum = r.BlockAndPrivateData.Block.Header.Number
 	case *pb.DeliverResponse_Status:
-		event.Err = errors.Errorf("deliver completed with status (%s) before DeliverResponse_BlockAndPrivateData received from peer %s", r.Status, address)
+		event.Err = errors.Errorf("deliver completed with status (%s) before DeliverResponse_BlockAndPrivateData received from peer %s", r.Status, peer.ID())
 	default:
-		event.Err = errors.Errorf("received unexpected response type (%T) from peer %s", r, address)
+		event.Err = errors.Errorf("received unexpected response type (%T) from peer %s", r, peer.ID())
 	}
 
 	select {
 	case eventCh <- event:
 	default:
 	}
-	return nil
 }
 
 // createDeliverEnvelope creates a deliver request based on the block number.

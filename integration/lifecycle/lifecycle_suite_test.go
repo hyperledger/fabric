@@ -11,12 +11,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"syscall"
 	"testing"
 	"time"
 
 	pcommon "github.com/hyperledger/fabric-protos-go/common"
+	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/integration"
@@ -24,8 +24,6 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/template"
 	ic "github.com/hyperledger/fabric/internal/peer/chaincode"
-	"github.com/hyperledger/fabric/internal/peer/common"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -158,70 +156,7 @@ func SignedProposal(channel, chaincode string, signer *nwo.SigningIdentity, args
 	return signedProp, prop, txid
 }
 
-func grpcClient(tlsRootCertFile string) *comm.GRPCClient {
-	caPEM, res := ioutil.ReadFile(tlsRootCertFile)
-	Expect(res).To(BeNil())
-
-	gClient, err := comm.NewGRPCClient(comm.ClientConfig{
-		Timeout: 3 * time.Second,
-		KaOpts:  comm.DefaultKeepaliveOptions,
-		SecOpts: comm.SecureOptions{
-			UseTLS:        true,
-			ServerRootCAs: [][]byte{caPEM},
-		},
-	})
-	Expect(err).NotTo(HaveOccurred())
-	Expect(gClient).NotTo(BeNil())
-
-	return gClient
-}
-
-func EndorserClient(address, tlsRootCertFile string) pb.EndorserClient {
-	peerClient := &common.PeerClient{
-		CommonClient: common.CommonClient{
-			GRPCClient: grpcClient(tlsRootCertFile),
-			Address:    address,
-		},
-	}
-
-	ec, err := peerClient.Endorser()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(ec).NotTo(BeNil())
-
-	return ec
-}
-
-func OrdererClient(address, tlsRootCertFile string) common.BroadcastClient {
-	ordererClient := &common.OrdererClient{
-		CommonClient: common.CommonClient{
-			GRPCClient: grpcClient(tlsRootCertFile),
-			Address:    address,
-		},
-	}
-
-	bc, err := ordererClient.Broadcast()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(bc).NotTo(BeNil())
-
-	return &common.BroadcastGRPCClient{Client: bc}
-}
-
-func DeliverClient(address, tlsRootCertFile string) pb.DeliverClient {
-	peerClient := &common.PeerClient{
-		CommonClient: common.CommonClient{
-			GRPCClient: grpcClient(tlsRootCertFile),
-			Address:    address,
-		},
-	}
-
-	pd, err := peerClient.PeerDeliver()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(pd).NotTo(BeNil())
-
-	return pd
-}
-
-func CommitTx(network *nwo.Network, env *pcommon.Envelope, peer *nwo.Peer, dc pb.DeliverClient, oc common.BroadcastClient, signer *nwo.SigningIdentity, txid string) error {
+func CommitTx(network *nwo.Network, env *pcommon.Envelope, peer *nwo.Peer, dc pb.DeliverClient, oc ab.AtomicBroadcast_BroadcastClient, signer *nwo.SigningIdentity, txid string) error {
 	var cancelFunc context.CancelFunc
 	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFunc()
