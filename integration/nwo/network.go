@@ -31,7 +31,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/gstruct"
-	"github.com/onsi/gomega/matchers"
 	"github.com/onsi/gomega/types"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -1040,11 +1039,27 @@ func (n *Network) VerifyMembership(expectedPeers []*Peer, channel string, chainc
 	chaincodes = append(chaincodes, "_lifecycle")
 	expectedDiscoveredPeerMatchers := make([]types.GomegaMatcher, len(expectedPeers))
 	for i, peer := range expectedPeers {
-		expectedDiscoveredPeerMatchers[i] = n.DiscoveredPeerMatcher(peer, chaincodes...)
+		expectedDiscoveredPeerMatchers[i] = n.discoveredPeerMatcher(peer, chaincodes...)
 	}
 	for _, peer := range expectedPeers {
 		Eventually(DiscoverPeers(n, peer, "User1", channel), n.EventuallyTimeout).Should(ConsistOf(expectedDiscoveredPeerMatchers))
 	}
+}
+
+func (n *Network) discoveredPeerMatcher(p *Peer, chaincodes ...string) types.GomegaMatcher {
+	peerCert, err := ioutil.ReadFile(n.PeerCert(p))
+	Expect(err).NotTo(HaveOccurred())
+
+	var ccs []interface{}
+	for _, cc := range chaincodes {
+		ccs = append(ccs, cc)
+	}
+	return gstruct.MatchAllFields(gstruct.Fields{
+		"MSPID":      Equal(n.Organization(p.Organization).MSPID),
+		"Endpoint":   Equal(fmt.Sprintf("127.0.0.1:%d", n.PeerPort(p, ListenPort))),
+		"Identity":   Equal(string(peerCert)),
+		"Chaincodes": ContainElements(ccs...),
+	})
 }
 
 // CreateChannel will submit an existing create channel transaction to the
@@ -1492,31 +1507,6 @@ func (n *Network) DiscoveredPeer(p *Peer, chaincodes ...string) DiscoveredPeer {
 		Endpoint:   fmt.Sprintf("127.0.0.1:%d", n.PeerPort(p, ListenPort)),
 		Identity:   string(peerCert),
 		Chaincodes: chaincodes,
-	}
-}
-
-func (n *Network) DiscoveredPeerMatcher(p *Peer, chaincodes ...string) types.GomegaMatcher {
-	peerCert, err := ioutil.ReadFile(n.PeerCert(p))
-	Expect(err).NotTo(HaveOccurred())
-
-	return gstruct.MatchAllFields(gstruct.Fields{
-		"MSPID":      Equal(n.Organization(p.Organization).MSPID),
-		"Endpoint":   Equal(fmt.Sprintf("127.0.0.1:%d", n.PeerPort(p, ListenPort))),
-		"Identity":   Equal(string(peerCert)),
-		"Chaincodes": containElements(chaincodes...),
-	})
-}
-
-// containElements succeeds if a slice contains the passed in elements.
-func containElements(elements ...string) types.GomegaMatcher {
-	ms := make([]types.GomegaMatcher, 0, len(elements))
-	for _, element := range elements {
-		ms = append(ms, &matchers.ContainElementMatcher{
-			Element: element,
-		})
-	}
-	return &matchers.AndMatcher{
-		Matchers: ms,
 	}
 }
 
