@@ -8,9 +8,9 @@ package lifecycle
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"math"
 	"syscall"
 	"testing"
 	"time"
@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/template"
-	ic "github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -156,20 +155,58 @@ func SignedProposal(channel, chaincode string, signer *nwo.SigningIdentity, args
 	return signedProp, prop, txid
 }
 
-func CommitTx(network *nwo.Network, env *pcommon.Envelope, peer *nwo.Peer, dc pb.DeliverClient, oc ab.AtomicBroadcast_BroadcastClient, signer *nwo.SigningIdentity, txid string) error {
-	var cancelFunc context.CancelFunc
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelFunc()
+func CommitTx(nw *nwo.Network, tx *pcommon.Envelope, peer *nwo.Peer, dc pb.DeliverClient, oc ab.AtomicBroadcast_BroadcastClient, signer *nwo.SigningIdentity, txid string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	dg := ic.NewDeliverGroup([]pb.DeliverClient{dc}, []string{network.PeerAddress(peer, nwo.ListenPort)}, signer, tls.Certificate{}, "testchannel", txid)
+	df, err := dc.DeliverFiltered(ctx)
+	Expect(err).NotTo(HaveOccurred())
+	defer df.CloseSend()
 
-	err := dg.Connect(ctx)
+	deliverEnvelope, err := protoutil.CreateSignedEnvelope(
+		pcommon.HeaderType_DELIVER_SEEK_INFO,
+		"testchannel",
+		signer,
+		&ab.SeekInfo{
+			Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+			Start: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}},
+			},
+			Stop: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Specified{
+					Specified: &ab.SeekSpecified{Number: math.MaxUint64},
+				},
+			},
+		},
+		0,
+		0,
+	)
+	Expect(err).NotTo(HaveOccurred())
+	err = df.Send(deliverEnvelope)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = oc.Send(env)
+	err = oc.Send(tx)
 	Expect(err).NotTo(HaveOccurred())
 
-	return dg.Wait(ctx)
+	for {
+		resp, err := df.Recv()
+		if err != nil {
+			return err
+		}
+		fb, ok := resp.Type.(*pb.DeliverResponse_FilteredBlock)
+		if !ok {
+			return fmt.Errorf("unexpected filtered block, received %T", resp.Type)
+		}
+		for _, tx := range fb.FilteredBlock.FilteredTransactions {
+			if tx.Txid != txid {
+				continue
+			}
+			if tx.TxValidationCode != pb.TxValidationCode_VALID {
+				return fmt.Errorf("transaction invalidated with status (%s)", tx.TxValidationCode)
+			}
+			return nil
+		}
+	}
 }
 
 // GenerateOrgUpdateMeterials generates the necessary configtx and

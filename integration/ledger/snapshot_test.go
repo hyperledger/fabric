@@ -8,11 +8,11 @@ package ledger
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -30,7 +30,6 @@ import (
 	"github.com/hyperledger/fabric/integration/nwo/commands"
 	"github.com/hyperledger/fabric/integration/nwo/runner"
 	"github.com/hyperledger/fabric/integration/pvtdata/marblechaincodeutil"
-	ic "github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -41,7 +40,7 @@ import (
 
 const testchannelID = "testchannel"
 
-var _ bool = Describe("Snapshot Generation and Bootstrap", func() {
+var _ = Describe("Snapshot Generation and Bootstrap", func() {
 	var (
 		setup                 *setup
 		helper                *marblesTestHelper
@@ -1037,25 +1036,43 @@ func invokeWithoutPassingOrdererEndPoint(n *nwo.Network, peer *nwo.Peer, channel
 
 // commitTx commits a transaction for a given transaction envelope
 func commitTx(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID string, env *cb.Envelope, txid string) error {
-	var cancelFunc context.CancelFunc
-	ctx, cancelFunc := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancelFunc()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	// get signing identity
 	By("getting the signer for user1 on peer " + peer.ID())
 	signer := n.PeerUserSigner(peer, "User1")
 
-	// create deliver client and delivergroup
+	By("creating the deliver client to peer " + peer.ID())
 	pcc := n.PeerClientConn(peer)
 	defer pcc.Close()
-	deliverClient := pb.NewDeliverClient(pcc)
+	df, err := pb.NewDeliverClient(pcc).DeliverFiltered(ctx)
+	Expect(err).NotTo(HaveOccurred())
+	defer df.CloseSend()
 
-	dg := ic.NewDeliverGroup([]pb.DeliverClient{deliverClient}, []string{n.PeerAddress(peer, nwo.ListenPort)}, signer, tls.Certificate{}, channelID, txid)
-	err := dg.Connect(ctx)
+	By("starting filtered delivery on peer " + peer.ID())
+	deliverEnvelope, err := protoutil.CreateSignedEnvelope(
+		cb.HeaderType_DELIVER_SEEK_INFO,
+		channelID,
+		signer,
+		&ab.SeekInfo{
+			Behavior: ab.SeekInfo_BLOCK_UNTIL_READY,
+			Start: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Newest{Newest: &ab.SeekNewest{}},
+			},
+			Stop: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Specified{
+					Specified: &ab.SeekSpecified{Number: math.MaxUint64},
+				},
+			},
+		},
+		0,
+		0,
+	)
+	Expect(err).NotTo(HaveOccurred())
+	err = df.Send(deliverEnvelope)
 	Expect(err).NotTo(HaveOccurred())
 
-	// create orderer client and broadcast client
-	By("creating orderer client to send transaction to the orderer" + peer.ID())
+	By("creating orderer client and send transaction to the orderer" + orderer.ID())
 	occ := n.OrdererClientConn(orderer)
 	defer occ.Close()
 	broadcastClient, err := ab.NewAtomicBroadcastClient(occ).Broadcast(context.Background())
@@ -1064,7 +1081,24 @@ func commitTx(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID st
 	err = broadcastClient.Send(env)
 	Expect(err).NotTo(HaveOccurred())
 
-	// wait for deliver event
 	By("waiting for deliver event on peer " + peer.ID())
-	return dg.Wait(ctx)
+	for {
+		resp, err := df.Recv()
+		if err != nil {
+			return err
+		}
+		fb, ok := resp.Type.(*pb.DeliverResponse_FilteredBlock)
+		if !ok {
+			return fmt.Errorf("unexpected filtered block, received %T", resp.Type)
+		}
+		for _, tx := range fb.FilteredBlock.FilteredTransactions {
+			if tx.Txid != txid {
+				continue
+			}
+			if tx.TxValidationCode != pb.TxValidationCode_VALID {
+				return fmt.Errorf("transaction invalidated with status (%s)", tx.TxValidationCode)
+			}
+			return nil
+		}
+	}
 }
