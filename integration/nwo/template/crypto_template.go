@@ -4,9 +4,9 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package nwo
+package template
 
-const DefaultCryptoTemplate = `---
+const DefaultCrypto = `---
 {{ with $w := . -}}
 OrdererOrgs:{{ range .OrdererOrgs }}
 - Name: {{ .Name }}
