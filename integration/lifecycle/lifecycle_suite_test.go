@@ -113,12 +113,13 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, chaincodeName str
 	ExpectWithOffset(1, sess).To(gbytes.Say(fmt.Sprint(initialQueryResult - 10)))
 }
 
-func RestartNetwork(process *ifrit.Process, network *nwo.Network) {
-	(*process).Signal(syscall.SIGTERM)
-	Eventually((*process).Wait(), network.EventuallyTimeout).Should(Receive())
+func RestartNetwork(process ifrit.Process, network *nwo.Network) ifrit.Process {
+	process.Signal(syscall.SIGTERM)
+	Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
 	networkRunner := network.NetworkGroupRunner()
-	*process = ifrit.Invoke(networkRunner)
-	Eventually((*process).Ready(), network.EventuallyTimeout).Should(BeClosed())
+	process = ifrit.Invoke(networkRunner)
+	Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+	return process
 }
 
 func SignedProposal(channel, chaincode string, signer *nwo.SigningIdentity, args ...string) (*pb.SignedProposal, *pb.Proposal, string) {
