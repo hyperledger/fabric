@@ -12,19 +12,25 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"time"
 
 	. "github.com/onsi/gomega"
 )
 
 func OrdererOperationalClients(n *Network, o *Orderer) (authClient, unauthClient *http.Client) {
-	return operationalClients(n.OrdererLocalTLSDir(o))
+	return operationalClients(n, n.OrdererLocalTLSDir(o))
 }
 
 func PeerOperationalClients(n *Network, p *Peer) (authClient, unauthClient *http.Client) {
-	return operationalClients(n.PeerLocalTLSDir(p))
+	return operationalClients(n, n.PeerLocalTLSDir(p))
 }
 
-func operationalClients(tlsDir string) (authClient, unauthClient *http.Client) {
+func operationalClients(n *Network, tlsDir string) (authClient, unauthClient *http.Client) {
+	fingerprint := "http::" + tlsDir
+	if d := n.throttleDuration(fingerprint); d > 0 {
+		time.Sleep(d)
+	}
+
 	clientCert, err := tls.LoadX509KeyPair(
 		filepath.Join(tlsDir, "server.crt"),
 		filepath.Join(tlsDir, "server.key"),
