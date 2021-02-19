@@ -22,7 +22,6 @@ import (
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
-	yaml "gopkg.in/yaml.v2"
 )
 
 var _ = Describe("Network", func() {
@@ -49,14 +48,7 @@ var _ = Describe("Network", func() {
 		var process ifrit.Process
 
 		BeforeEach(func() {
-			soloBytes, err := ioutil.ReadFile("solo.yaml")
-			Expect(err).NotTo(HaveOccurred())
-
-			var config *nwo.Config
-			err = yaml.Unmarshal(soloBytes, &config)
-			Expect(err).NotTo(HaveOccurred())
-
-			network = nwo.New(config, tempDir, client, StartPort(), components)
+			network = nwo.New(nwo.BasicSolo(), tempDir, client, StartPort(), components)
 
 			// Generate config and bootstrap the network
 			network.GenerateConfigTree()
@@ -76,15 +68,15 @@ var _ = Describe("Network", func() {
 		})
 
 		It("deploys and executes chaincode (simple) using the legacy lifecycle", func() {
-			orderer := network.Orderer("orderer0")
-			peer := network.Peer("org1", "peer2")
+			orderer := network.Orderer("orderer")
+			peer := network.Peer("Org1", "peer0")
 
 			legacyChaincode := nwo.Chaincode{
 				Name:    "mycc",
 				Version: "0.0",
 				Path:    "github.com/hyperledger/fabric/integration/chaincode/simple/cmd",
 				Ctor:    `{"Args":["init","a","100","b","200"]}`,
-				Policy:  `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				Policy:  `AND ('Org1MSP.member','Org2MSP.member')`,
 			}
 
 			network.CreateAndJoinChannels(orderer)
@@ -93,8 +85,8 @@ var _ = Describe("Network", func() {
 		})
 
 		It("deploys and executes chaincode (simple) using _lifecycle", func() {
-			orderer := network.Orderer("orderer0")
-			peer := network.Peer("org1", "peer2")
+			orderer := network.Orderer("orderer")
+			peer := network.Peer("Org1", "peer0")
 
 			chaincode := nwo.Chaincode{
 				Name:            "mycc",
@@ -103,7 +95,7 @@ var _ = Describe("Network", func() {
 				Lang:            "golang",
 				PackageFile:     filepath.Join(tempDir, "simplecc.tar.gz"),
 				Ctor:            `{"Args":["init","a","100","b","200"]}`,
-				SignaturePolicy: `AND ('Org1ExampleCom.member','Org2ExampleCom.member')`,
+				SignaturePolicy: `AND ('Org1MSP.member','Org2MSP.member')`,
 				Sequence:        "1",
 				InitRequired:    true,
 				Label:           "my_simple_chaincode",
@@ -114,7 +106,13 @@ var _ = Describe("Network", func() {
 			network.UpdateChannelAnchors(orderer, "testchannel")
 			network.VerifyMembership(network.PeersWithChannel("testchannel"), "testchannel")
 
-			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.Peer("org1", "peer1"), network.Peer("org2", "peer1"))
+			nwo.EnableCapabilities(
+				network,
+				"testchannel",
+				"Application", "V2_0",
+				orderer,
+				network.PeersWithChannel("testchannel")...,
+			)
 			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 
 			RunQueryInvokeQuery(network, orderer, peer, 100)
@@ -139,8 +137,8 @@ func RunQueryInvokeQuery(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, i
 		Name:      "mycc",
 		Ctor:      `{"Args":["invoke","a","b","10"]}`,
 		PeerAddresses: []string{
-			n.PeerAddress(n.Peer("org1", "peer1"), nwo.ListenPort),
-			n.PeerAddress(n.Peer("org2", "peer2"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org1", "peer0"), nwo.ListenPort),
+			n.PeerAddress(n.Peer("Org2", "peer0"), nwo.ListenPort),
 		},
 		WaitForEvent: true,
 	})

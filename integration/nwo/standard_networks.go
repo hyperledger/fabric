@@ -76,6 +76,48 @@ func BasicSolo() *Config {
 	}
 }
 
+// ThreeOrgSolo returns a simple configuration with three organizations instead
+// of two.
+func ThreeOrgSolo() *Config {
+	config := BasicSolo()
+	config.Organizations = append(
+		config.Organizations,
+		&Organization{
+			Name:   "Org3",
+			MSPID:  "Org3MSP",
+			Domain: "org3.example.com",
+			Users:  2,
+			CA:     &CA{Hostname: "ca"},
+		},
+	)
+	config.Consortiums[0].Organizations = append(
+		config.Consortiums[0].Organizations,
+		"Org3",
+	)
+	config.SystemChannel.Profile = "ThreeOrgsOrdererGenesis"
+	config.Channels[0].Profile = "ThreeOrgsChannel"
+	config.Peers = append(
+		config.Peers,
+		&Peer{
+			Name:         "peer0",
+			Organization: "Org3",
+			Channels: []*PeerChannel{
+				{Name: "testchannel", Anchor: true},
+			},
+		},
+	)
+	config.Profiles = []*Profile{{
+		Name:     "ThreeOrgsOrdererGenesis",
+		Orderers: []string{"orderer"},
+	}, {
+		Name:          "ThreeOrgsChannel",
+		Consortium:    "SampleConsortium",
+		Organizations: []string{"Org1", "Org2", "Org3"},
+	}}
+
+	return config
+}
+
 // FullSolo is a configuration with two organizations and two peers per org.
 func FullSolo() *Config {
 	config := BasicSolo()
