@@ -20,6 +20,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"text/template"
 	"time"
@@ -168,8 +169,9 @@ type Network struct {
 	Consortiums      []*Consortium
 	Templates        *Templates
 
-	colorIndex       uint
-	sessLastExecuted map[string]time.Time
+	mutex        sync.Locker
+	colorIndex   uint
+	lastExecuted map[string]time.Time
 }
 
 // New creates a Network from a simple configuration. All generated or managed
@@ -200,7 +202,8 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 		Templates:     c.Templates,
 		TLSEnabled:    true, // Set TLS enabled as true for default
 
-		sessLastExecuted: make(map[string]time.Time),
+		mutex:        &sync.Mutex{},
+		lastExecuted: make(map[string]time.Time),
 	}
 
 	cwd, err := os.Getwd()
@@ -1466,7 +1469,7 @@ func (n *Network) PeerUserSession(p *Peer, user string, command Command) (*gexec
 // services. The client connection should be closed when the tests are done
 // using it.
 func (n *Network) PeerClientConn(p *Peer) *grpc.ClientConn {
-	return newClientConn(
+	return n.newClientConn(
 		n.PeerAddress(p, ListenPort),
 		filepath.Join(n.PeerLocalTLSDir(p), "ca.crt"),
 	)
@@ -1477,13 +1480,18 @@ func (n *Network) PeerClientConn(p *Peer) *grpc.ClientConn {
 // orderer services. The client connection should be closed when the tests are
 // done using it.
 func (n *Network) OrdererClientConn(o *Orderer) *grpc.ClientConn {
-	return newClientConn(
+	return n.newClientConn(
 		n.OrdererAddress(o, ListenPort),
 		filepath.Join(n.OrdererLocalTLSDir(o), "ca.crt"),
 	)
 }
 
-func newClientConn(address, ca string) *grpc.ClientConn {
+func (n *Network) newClientConn(address, ca string) *grpc.ClientConn {
+	fingerprint := "grpc::" + address + "::" + ca
+	if d := n.throttleDuration(fingerprint); d > 0 {
+		time.Sleep(d)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -1805,6 +1813,8 @@ func (n *Network) PeerPort(p *Peer, portName PortName) uint16 {
 }
 
 func (n *Network) nextColor() string {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
 	color := n.colorIndex%14 + 31
 	if color > 37 {
 		color = color + 90 - 37
@@ -1814,7 +1824,39 @@ func (n *Network) nextColor() string {
 	return fmt.Sprintf("%dm", color)
 }
 
-func commandHash(cmd *exec.Cmd) string {
+// StartSession executes a command session. This should be used to launch
+// command line tools that are expected to run to completion.
+func (n *Network) StartSession(cmd *exec.Cmd, name string) (*gexec.Session, error) {
+	if d := n.throttleDuration(commandFingerprint(cmd)); d > 0 {
+		time.Sleep(d)
+	}
+
+	ansiColorCode := n.nextColor()
+	fmt.Fprintf(
+		ginkgo.GinkgoWriter,
+		"\x1b[33m[d]\x1b[%s[%s]\x1b[0m starting %s %s\n",
+		ansiColorCode,
+		name,
+		filepath.Base(cmd.Args[0]),
+		strings.Join(cmd.Args[1:], " "),
+	)
+	return gexec.Start(
+		cmd,
+		gexec.NewPrefixedWriter(
+			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", ansiColorCode, name),
+			ginkgo.GinkgoWriter,
+		),
+		gexec.NewPrefixedWriter(
+			fmt.Sprintf("\x1b[91m[e]\x1b[%s[%s]\x1b[0m ", ansiColorCode, name),
+			ginkgo.GinkgoWriter,
+		),
+	)
+}
+
+// commandFingerprint creates a string containing the program, args, and environment
+// of an exec.Cmd. This fingerprint is used to identify repeated calls to the
+// same command for throttling.
+func commandFingerprint(cmd *exec.Cmd) string {
 	buf := bytes.NewBuffer(nil)
 	_, err := buf.WriteString(cmd.Dir)
 	Expect(err).NotTo(HaveOccurred())
@@ -1841,53 +1883,27 @@ func commandHash(cmd *exec.Cmd) string {
 	return buf.String()
 }
 
-// sessionThrottleDuration returns the time StartSession must wait before
-// starting a command session. The duration is determined by looking at when a
-// command was last executed by the network. If the time between now and the
-// last execution was less than SessionCreateInterval, the difference between
-// now and (execution + SessionCreateInterval) is returned. If more than
+// throttleDuration returns the time to wait before performing some operation
+// representted by the fingerprint.
+//
+// The duration is determined by looking at when the fingerprinted operation
+// was last executed by the network. If the time between now and the last
+// execution was less than SessionCreateInterval, the difference between now
+// and (execution + SessionCreateInterval) is returned. If more than
 // SessionCreateInterval has elapsed since the last command execution, a
 // duration of 0 is returned.
-func (n *Network) sessionThrottleDuration(cmd *exec.Cmd) time.Duration {
-	h := commandHash(cmd)
+func (n *Network) throttleDuration(fingerprint string) time.Duration {
 	now := time.Now()
-	last := n.sessLastExecuted[h]
-	n.sessLastExecuted[h] = now
+	n.mutex.Lock()
+	last := n.lastExecuted[fingerprint]
+	n.lastExecuted[fingerprint] = now
+	n.mutex.Unlock()
 
 	if diff := last.Add(n.SessionCreateInterval).Sub(now); diff > 0 {
 		return diff
 	}
 
 	return 0
-}
-
-// StartSession executes a command session. This should be used to launch
-// command line tools that are expected to run to completion.
-func (n *Network) StartSession(cmd *exec.Cmd, name string) (*gexec.Session, error) {
-	if d := n.sessionThrottleDuration(cmd); d > 0 {
-		time.Sleep(d)
-	}
-
-	ansiColorCode := n.nextColor()
-	fmt.Fprintf(
-		ginkgo.GinkgoWriter,
-		"\x1b[33m[d]\x1b[%s[%s]\x1b[0m starting %s %s\n",
-		ansiColorCode,
-		name,
-		filepath.Base(cmd.Args[0]),
-		strings.Join(cmd.Args[1:], " "),
-	)
-	return gexec.Start(
-		cmd,
-		gexec.NewPrefixedWriter(
-			fmt.Sprintf("\x1b[32m[o]\x1b[%s[%s]\x1b[0m ", ansiColorCode, name),
-			ginkgo.GinkgoWriter,
-		),
-		gexec.NewPrefixedWriter(
-			fmt.Sprintf("\x1b[91m[e]\x1b[%s[%s]\x1b[0m ", ansiColorCode, name),
-			ginkgo.GinkgoWriter,
-		),
-	)
 }
 
 // GenerateCryptoConfig creates the `crypto-config.yaml` configuration file
