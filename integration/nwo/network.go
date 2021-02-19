@@ -1856,6 +1856,9 @@ func (n *Network) StartSession(cmd *exec.Cmd, name string) (*gexec.Session, erro
 	)
 }
 
+// GenerateCryptoConfig creates the `crypto-config.yaml` configuration file
+// provided to `cryptogen` when running Bootstrap. The path to the generated
+// file can be obtained from CryptoConfigPath.
 func (n *Network) GenerateCryptoConfig() {
 	crypto, err := os.Create(n.CryptoConfigPath())
 	Expect(err).NotTo(HaveOccurred())
@@ -1869,6 +1872,9 @@ func (n *Network) GenerateCryptoConfig() {
 	Expect(err).NotTo(HaveOccurred())
 }
 
+// GenerateConfigTxConfig creates the `configtx.yaml` configuration file
+// provided to `configtxgen` when running Bootstrap. The path to the generated
+// file can be obtained from ConfigTxConfigPath.
 func (n *Network) GenerateConfigTxConfig() {
 	config, err := os.Create(n.ConfigTxConfigPath())
 	Expect(err).NotTo(HaveOccurred())
@@ -1882,6 +1888,9 @@ func (n *Network) GenerateConfigTxConfig() {
 	Expect(err).NotTo(HaveOccurred())
 }
 
+// GenerateOrdererConfig creates the `orderer.yaml` configuration file for the
+// specified orderer. The path to the generated file can be obtained from
+// OrdererConfigPath.
 func (n *Network) GenerateOrdererConfig(o *Orderer) {
 	err := os.MkdirAll(n.OrdererDir(o), 0o755)
 	Expect(err).NotTo(HaveOccurred())
@@ -1902,6 +1911,9 @@ func (n *Network) GenerateOrdererConfig(o *Orderer) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
+// GenerateCoreConfig creates the `core.yaml` configuration file for the
+// specified peer. The path to the generated file can be obtained from
+// PeerConfigPath.
 func (n *Network) GenerateCoreConfig(p *Peer) {
 	err := os.MkdirAll(n.PeerDir(p), 0o755)
 	Expect(err).NotTo(HaveOccurred())

@@ -4,9 +4,9 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package nwo
+package template
 
-const DefaultOrdererTemplate = `---
+const DefaultOrderer = `---
 {{ with $w := . -}}
 General:
   ListenAddress: 127.0.0.1

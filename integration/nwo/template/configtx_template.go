@@ -4,9 +4,9 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package nwo
+package template
 
-const DefaultConfigTxTemplate = `---
+const DefaultConfigTx = `---
 {{ with $w := . -}}
 Organizations:{{ range .PeerOrgs }}
 - &{{ .MSPID }}

@@ -22,6 +22,7 @@ import (
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
 	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/integration/nwo/template"
 	ic "github.com/hyperledger/fabric/internal/peer/chaincode"
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
@@ -241,8 +242,8 @@ func GenerateOrgUpdateMaterials(n *nwo.Network, peers ...*nwo.Peer) {
 	orgUpdateNetwork := *n
 	orgUpdateNetwork.Peers = peers
 	orgUpdateNetwork.Templates = &nwo.Templates{
-		ConfigTx: nwo.OrgUpdateConfigTxTemplate,
-		Crypto:   nwo.OrgUpdateCryptoTemplate,
+		ConfigTx: template.OrgUpdateConfigTxTemplate,
+		Crypto:   template.OrgUpdateCryptoTemplate,
 		Core:     n.Templates.CoreTemplate(),
 	}
 
