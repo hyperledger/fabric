@@ -21,7 +21,7 @@ FROM golang as tools
 ARG GO_TAGS
 RUN make configtxgen configtxlator cryptogen peer discover osnadmin idemixgen GO_TAGS=${GO_TAGS}
 
-FROM golang:${GO_VER}-alpine
+FROM golang:${GO_VER}-alpine${ALPINE_VER}
 # git is required to support `go list -m`
 RUN apk add --no-cache \
 	bash \
