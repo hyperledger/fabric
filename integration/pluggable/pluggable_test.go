@@ -125,8 +125,14 @@ var _ = Describe("EndToEnd", func() {
 	})
 })
 
-// compilePlugin compiles the plugin of the given type and returns the path for the plugin file
+// compilePlugin compiles the plugin of the given type and returns the path for
+// the plugin file.
 func compilePlugin(pluginType string) string {
+	// Building plugins can take quite a while as the build caches won't be
+	// populated for the 'dynlink' install suffix. While a minute or two is
+	// usually enough, timeouts have occurred at 2 minutes on slow machines.
+	const buildTimeout = 5 * time.Minute
+
 	pluginFilePath := filepath.Join("testdata", "plugins", pluginType, "plugin.so")
 	cmd := exec.Command(
 		"go", "build",
@@ -138,7 +144,7 @@ func compilePlugin(pluginType string) string {
 	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[build-plugin-%s] ", pluginType), GinkgoWriter)
 	sess, err := gexec.Start(cmd, pw, pw)
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, 2*time.Minute).Should(gexec.Exit(0))
+	Eventually(sess, buildTimeout).Should(gexec.Exit(0))
 
 	Expect(pluginFilePath).To(BeARegularFile())
 	return pluginFilePath
