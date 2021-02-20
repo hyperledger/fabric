@@ -1035,16 +1035,15 @@ func invokeWithoutPassingOrdererEndPoint(n *nwo.Network, peer *nwo.Peer, channel
 }
 
 // commitTx commits a transaction for a given transaction envelope
-func commitTx(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID string, env *cb.Envelope, txid string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
+func commitTx(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID string, tx *cb.Envelope, txid string) error {
 	By("getting the signer for user1 on peer " + peer.ID())
 	signer := n.PeerUserSigner(peer, "User1")
 
 	By("creating the deliver client to peer " + peer.ID())
 	pcc := n.PeerClientConn(peer)
 	defer pcc.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	df, err := pb.NewDeliverClient(pcc).DeliverFiltered(ctx)
 	Expect(err).NotTo(HaveOccurred())
 	defer df.CloseSend()
@@ -1078,7 +1077,7 @@ func commitTx(n *nwo.Network, orderer *nwo.Orderer, peer *nwo.Peer, channelID st
 	broadcastClient, err := ab.NewAtomicBroadcastClient(occ).Broadcast(context.Background())
 	Expect(err).NotTo(HaveOccurred())
 
-	err = broadcastClient.Send(env)
+	err = broadcastClient.Send(tx)
 	Expect(err).NotTo(HaveOccurred())
 
 	By("waiting for deliver event on peer " + peer.ID())
