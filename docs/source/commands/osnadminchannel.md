@@ -42,6 +42,8 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
+      --no-status                Remove the HTTP status message from the command
+                                 output
 
 Subcommands:
   channel join --channelID=CHANNELID --config-block=CONFIG-BLOCK
@@ -78,6 +80,8 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
+      --no-status                Remove the HTTP status message from the command
+                                 output
   -c, --channelID=CHANNELID      Channel ID
   -b, --config-block=CONFIG-BLOCK
                                  Path to the file containing an up-to-date
@@ -105,6 +109,8 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
+      --no-status                Remove the HTTP status message from the command
+                                 output
   -c, --channelID=CHANNELID      Channel ID
 ```
 
@@ -128,6 +134,8 @@ Flags:
       --client-key=CLIENT-KEY    Path to file containing PEM-encoded private key
                                  to use for mutual TLS communication with the
                                  OSN
+      --no-status                Remove the HTTP status message from the command
+                                 output
   -c, --channelID=CHANNELID      Channel ID
 ```
 

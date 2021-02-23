@@ -154,7 +154,7 @@ var _ = Describe("osnadmin", func() {
 					URL:  "/participation/v1/channels/fight-the-system",
 				},
 			}
-			checkOutput(output, exit, err, 200, expectedOutput)
+			checkStatusOutput(output, exit, err, 200, expectedOutput)
 		})
 
 		It("uses the channel participation API to list the details of a single channel", func() {
@@ -175,7 +175,7 @@ var _ = Describe("osnadmin", func() {
 				Status:            "carrot",
 				Height:            987,
 			}
-			checkOutput(output, exit, err, 200, expectedOutput)
+			checkStatusOutput(output, exit, err, 200, expectedOutput)
 		})
 
 		Context("when the channel does not exist", func() {
@@ -197,7 +197,7 @@ var _ = Describe("osnadmin", func() {
 				expectedOutput := types.ErrorResponse{
 					Error: "eat-your-peas",
 				}
-				checkOutput(output, exit, err, 404, expectedOutput)
+				checkStatusOutput(output, exit, err, 404, expectedOutput)
 			})
 		})
 
@@ -232,7 +232,7 @@ var _ = Describe("osnadmin", func() {
 						URL:  "/participation/v1/channels/fight-the-system",
 					},
 				}
-				checkOutput(output, exit, err, 200, expectedOutput)
+				checkStatusOutput(output, exit, err, 200, expectedOutput)
 			})
 
 			It("uses the channel participation API to list the details of a single channel", func() {
@@ -253,7 +253,7 @@ var _ = Describe("osnadmin", func() {
 					Status:            "carrot",
 					Height:            987,
 				}
-				checkOutput(output, exit, err, 200, expectedOutput)
+				checkStatusOutput(output, exit, err, 200, expectedOutput)
 			})
 		})
 	})
@@ -275,6 +275,23 @@ var _ = Describe("osnadmin", func() {
 			Expect(output).To(Equal("Status: 204\n"))
 		})
 
+		It("uses the channel participation API to remove a channel (without status)", func() {
+			args := []string{
+				"channel",
+				"remove",
+				"--orderer-address", ordererURL,
+				"--channelID", channelID,
+				"--ca-file", ordererCACert,
+				"--client-cert", clientCert,
+				"--client-key", clientKey,
+				"--no-status",
+			}
+			output, exit, err := executeForArgs(args)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(exit).To(Equal(0))
+			Expect(output).To(BeEmpty())
+		})
+
 		Context("when the channel does not exist", func() {
 			BeforeEach(func() {
 				mockChannelManagement.RemoveChannelReturns(types.ErrChannelNotExist)
@@ -294,7 +311,7 @@ var _ = Describe("osnadmin", func() {
 				expectedOutput := types.ErrorResponse{
 					Error: "cannot remove: channel does not exist",
 				}
-				checkOutput(output, exit, err, 404, expectedOutput)
+				checkStatusOutput(output, exit, err, 404, expectedOutput)
 			})
 		})
 
@@ -357,7 +374,7 @@ var _ = Describe("osnadmin", func() {
 				Status:            "orange",
 				Height:            123,
 			}
-			checkOutput(output, exit, err, 201, expectedOutput)
+			checkStatusOutput(output, exit, err, 201, expectedOutput)
 		})
 
 		Context("when the block is empty", func() {
@@ -443,7 +460,7 @@ var _ = Describe("osnadmin", func() {
 				expectedOutput := types.ErrorResponse{
 					Error: "invalid join block: block is not a config block",
 				}
-				checkOutput(output, exit, err, 400, expectedOutput)
+				checkStatusOutput(output, exit, err, 400, expectedOutput)
 			})
 		})
 
@@ -467,7 +484,26 @@ var _ = Describe("osnadmin", func() {
 				expectedOutput := types.ErrorResponse{
 					Error: "cannot join: channel already exists",
 				}
-				checkOutput(output, exit, err, 405, expectedOutput)
+				checkStatusOutput(output, exit, err, 405, expectedOutput)
+			})
+
+			It("returns 405 not allowed (without status)", func() {
+				args := []string{
+					"channel",
+					"join",
+					"--orderer-address", ordererURL,
+					"--channelID", channelID,
+					"--config-block", blockPath,
+					"--ca-file", ordererCACert,
+					"--client-cert", clientCert,
+					"--client-key", clientKey,
+					"--no-status",
+				}
+				output, exit, err := executeForArgs(args)
+				expectedOutput := types.ErrorResponse{
+					Error: "cannot join: channel already exists",
+				}
+				checkOutput(output, exit, err, expectedOutput)
 			})
 		})
 
@@ -492,7 +528,7 @@ var _ = Describe("osnadmin", func() {
 					Status:            "orange",
 					Height:            123,
 				}
-				checkOutput(output, exit, err, 201, expectedOutput)
+				checkStatusOutput(output, exit, err, 201, expectedOutput)
 			})
 		})
 	})
@@ -531,7 +567,7 @@ var _ = Describe("osnadmin", func() {
 				Status:            "orange",
 				Height:            123,
 			}
-			checkOutput(output, exit, err, 201, expectedOutput)
+			checkStatusOutput(output, exit, err, 201, expectedOutput)
 		})
 
 		Context("when an unknown flag is used", func() {
@@ -655,7 +691,7 @@ var _ = Describe("osnadmin", func() {
 				Channels:      nil,
 				SystemChannel: nil,
 			}
-			checkOutput(output, exit, err, 200, expectedOutput)
+			checkStatusOutput(output, exit, err, 200, expectedOutput)
 		})
 
 		Context("when the ca-file does not include the intermediate CA", func() {
@@ -678,12 +714,20 @@ var _ = Describe("osnadmin", func() {
 	})
 })
 
-func checkOutput(output string, exit int, err error, expectedStatus int, expectedOutput interface{}) {
+func checkStatusOutput(output string, exit int, err error, expectedStatus int, expectedOutput interface{}) {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(exit).To(Equal(0))
 	json, err := json.MarshalIndent(expectedOutput, "", "\t")
 	Expect(err).NotTo(HaveOccurred())
 	Expect(output).To(Equal(fmt.Sprintf("Status: %d\n%s\n", expectedStatus, string(json))))
+}
+
+func checkOutput(output string, exit int, err error, expectedOutput interface{}) {
+	Expect(err).NotTo(HaveOccurred())
+	Expect(exit).To(Equal(0))
+	json, err := json.MarshalIndent(expectedOutput, "", "\t")
+	Expect(err).NotTo(HaveOccurred())
+	Expect(output).To(Equal(string(json) + "\n"))
 }
 
 func checkFlagError(output string, exit int, err error, expectedError string) {
