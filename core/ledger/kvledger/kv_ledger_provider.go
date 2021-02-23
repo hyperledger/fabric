@@ -330,7 +330,7 @@ func (p *Provider) Open(ledgerID string) (ledger.PeerLedger, error) {
 	return p.open(ledgerID, bootSnapshotMetadata, false)
 }
 
-func (p *Provider) open(ledgerID string, bootSnapshotMetadata *snapshotMetadata, initializingFromSnapshot bool) (ledger.PeerLedger, error) {
+func (p *Provider) open(ledgerID string, bootSnapshotMetadata *SnapshotMetadata, initializingFromSnapshot bool) (ledger.PeerLedger, error) {
 	// Get the block store for a chain/ledger
 	blockStore, err := p.blkStoreProvider.Open(ledgerID)
 	if err != nil {
@@ -479,17 +479,17 @@ func (p *Provider) runCleanup(ledgerID string) error {
 	return p.idStore.deleteLedgerID(ledgerID)
 }
 
-func snapshotMetadataFromProto(p *msgs.BootSnapshotMetadata) (*snapshotMetadata, error) {
+func snapshotMetadataFromProto(p *msgs.BootSnapshotMetadata) (*SnapshotMetadata, error) {
 	if p == nil {
 		return nil, nil
 	}
 
-	m := &snapshotMetadataJSONs{
+	m := &SnapshotMetadataJSONs{
 		signableMetadata:   p.SingableMetadata,
 		additionalMetadata: p.AdditionalMetadata,
 	}
 
-	return m.toMetadata()
+	return m.ToMetadata()
 }
 
 //////////////////////////////////////////////////////////////////////

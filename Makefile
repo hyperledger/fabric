@@ -28,11 +28,13 @@
 #   - idemixgen - builds a native idemixgen binary
 #   - integration-test-prereqs - setup prerequisites for integration tests
 #   - integration-test - runs the integration tests
+#   - ledger - builds a native fabric ledger troubleshooting binary
 #   - license - checks go source files for Apache license header
 #   - linter - runs all code checks
 #   - native - ensures all native binaries are available
 #   - orderer - builds a native fabric orderer binary
 #   - orderer-docker[-clean] - ensures the orderer container is available[/cleaned]
+#   - osnadmin - builds a native fabric osnadmin binary
 #   - peer - builds a native fabric peer binary
 #   - peer-docker[-clean] - ensures the peer container is available[/cleaned]
 #   - profile - runs unit tests for all packages in coverprofile mode (slow)
@@ -83,13 +85,14 @@ GO_TAGS ?=
 RELEASE_EXES = orderer $(TOOLS_EXES)
 RELEASE_IMAGES = baseos ccenv orderer peer tools
 RELEASE_PLATFORMS = darwin-amd64 linux-amd64 windows-amd64
-TOOLS_EXES = configtxgen configtxlator cryptogen discover idemixgen osnadmin peer
+TOOLS_EXES = configtxgen configtxlator cryptogen discover idemixgen ledger osnadmin peer
 
 pkgmap.configtxgen    := $(PKGNAME)/cmd/configtxgen
 pkgmap.configtxlator  := $(PKGNAME)/cmd/configtxlator
 pkgmap.cryptogen      := $(PKGNAME)/cmd/cryptogen
 pkgmap.discover       := $(PKGNAME)/cmd/discover
 pkgmap.idemixgen      := $(PKGNAME)/cmd/idemixgen
+pkgmap.ledger		  := $(PKGNAME)/cmd/ledger
 pkgmap.orderer        := $(PKGNAME)/cmd/orderer
 pkgmap.osnadmin       := $(PKGNAME)/cmd/osnadmin
 pkgmap.peer           := $(PKGNAME)/cmd/peer

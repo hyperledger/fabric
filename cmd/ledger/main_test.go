@@ -1,0 +1,59 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package main
+
+import (
+	"os/exec"
+	"testing"
+	"time"
+
+	"github.com/onsi/gomega"
+	"github.com/onsi/gomega/gexec"
+)
+
+func TestArguments(t *testing.T) {
+	testCases := map[string]struct {
+		exitCode int
+		args     []string
+	}{
+		"ledger": {
+			exitCode: 0,
+			args:     []string{},
+		},
+		"ledger-help": {
+			exitCode: 0,
+			args:     []string{"--help"},
+		},
+		"compare-help": {
+			exitCode: 0,
+			args:     []string{"compare", "--help"},
+		},
+		"compare": {
+			exitCode: 1,
+			args:     []string{"compare"},
+		},
+		"one-snapshot": {
+			exitCode: 1,
+			args:     []string{"compare, snapshotDir1"},
+		},
+	}
+
+	// Build ledger binary
+	gt := gomega.NewWithT(t)
+	ledger, err := gexec.Build("github.com/hyperledger/fabric/cmd/ledger")
+	gt.Expect(err).NotTo(gomega.HaveOccurred())
+	defer gexec.CleanupBuildArtifacts()
+
+	for testName, testCase := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			cmd := exec.Command(ledger, testCase.args...)
+			session, err := gexec.Start(cmd, nil, nil)
+			gt.Expect(err).NotTo(gomega.HaveOccurred())
+			gt.Eventually(session, 5*time.Second).Should(gexec.Exit(testCase.exitCode))
+		})
+	}
+}
