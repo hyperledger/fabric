@@ -39,6 +39,10 @@ func (c *Components) Orderer() string {
 	return c.Build("github.com/hyperledger/fabric/cmd/orderer")
 }
 
+func (c *Components) Osnadmin() string {
+	return c.Build("github.com/hyperledger/fabric/cmd/osnadmin")
+}
+
 func (c *Components) Peer() string {
 	return c.Build("github.com/hyperledger/fabric/cmd/peer")
 }
