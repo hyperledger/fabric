@@ -889,7 +889,8 @@ func (m *MSP) validateCACerts() error {
 	if err != nil {
 		return fmt.Errorf("invalid intermediate cert: %v", err)
 	}
-	//TODO: follow the workaround that msp code use to incorporate cert.Verify()
+
+	// TODO: follow the workaround that msp code use to incorporate cert.Verify()
 	for _, ic := range m.IntermediateCerts {
 		validIntermediateCert := false
 		for _, rc := range m.RootCerts {
@@ -912,6 +913,20 @@ func (m *MSP) validateCACerts() error {
 	err = validateCACerts(m.TLSIntermediateCerts)
 	if err != nil {
 		return fmt.Errorf("invalid tls intermediate cert: %v", err)
+	}
+
+	tlsRootPool := x509.NewCertPool()
+	for _, rootCert := range m.TLSRootCerts {
+		tlsRootPool.AddCert(rootCert)
+	}
+
+	for _, ic := range m.TLSIntermediateCerts {
+		_, err := ic.Verify(x509.VerifyOptions{
+			Roots: tlsRootPool,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

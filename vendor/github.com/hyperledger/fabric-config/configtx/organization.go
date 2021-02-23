@@ -22,7 +22,11 @@ func newOrgConfigGroup(org Organization) (*cb.ConfigGroup, error) {
 	orgGroup := newConfigGroup()
 	orgGroup.ModPolicy = AdminsPolicyKey
 
-	if err := setPolicies(orgGroup, org.Policies, AdminsPolicyKey); err != nil {
+	if org.ModPolicy != "" {
+		orgGroup.ModPolicy = org.ModPolicy
+	}
+
+	if err := setPolicies(orgGroup, org.Policies); err != nil {
 		return nil, err
 	}
 
