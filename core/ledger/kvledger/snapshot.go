@@ -32,16 +32,16 @@ import (
 )
 
 const (
-	snapshotSignableMetadataFileName   = "_snapshot_signable_metadata.json"
+	SnapshotSignableMetadataFileName   = "_snapshot_signable_metadata.json"
 	snapshotAdditionalMetadataFileName = "_snapshot_additional_metadata.json"
 	jsonFileIndent                     = "    "
 	simpleKeyValueDB                   = "SimpleKeyValueDB"
 )
 
-// snapshotSignableMetadata is used to build a JSON that represents a unique snapshot and
+// SnapshotSignableMetadata is used to build a JSON that represents a unique snapshot and
 // can be signed by the peer. Hashsum of the resultant JSON is intended to be used as a single
 // hash of the snapshot, if need be.
-type snapshotSignableMetadata struct {
+type SnapshotSignableMetadata struct {
 	ChannelName            string            `json:"channel_name"`
 	LastBlockNumber        uint64            `json:"last_block_number"`
 	LastBlockHashInHex     string            `json:"last_block_hash"`
@@ -50,7 +50,7 @@ type snapshotSignableMetadata struct {
 	StateDBType            string            `json:"state_db_type"`
 }
 
-func (m *snapshotSignableMetadata) toJSON() ([]byte, error) {
+func (m *SnapshotSignableMetadata) ToJSON() ([]byte, error) {
 	return json.MarshalIndent(m, "", jsonFileIndent)
 }
 
@@ -59,22 +59,22 @@ type snapshotAdditionalMetadata struct {
 	LastBlockCommitHashInHex string `json:"last_block_commit_hash"`
 }
 
-func (m *snapshotAdditionalMetadata) toJSON() ([]byte, error) {
+func (m *snapshotAdditionalMetadata) ToJSON() ([]byte, error) {
 	return json.MarshalIndent(m, "", jsonFileIndent)
 }
 
-type snapshotMetadata struct {
-	*snapshotSignableMetadata
+type SnapshotMetadata struct {
+	*SnapshotSignableMetadata
 	*snapshotAdditionalMetadata
 }
 
-type snapshotMetadataJSONs struct {
+type SnapshotMetadataJSONs struct {
 	signableMetadata   string
 	additionalMetadata string
 }
 
-func (j *snapshotMetadataJSONs) toMetadata() (*snapshotMetadata, error) {
-	metadata := &snapshotSignableMetadata{}
+func (j *SnapshotMetadataJSONs) ToMetadata() (*SnapshotMetadata, error) {
+	metadata := &SnapshotSignableMetadata{}
 	if err := json.Unmarshal([]byte(j.signableMetadata), metadata); err != nil {
 		return nil, errors.Wrap(err, "error while unmarshalling signable metadata")
 	}
@@ -83,8 +83,8 @@ func (j *snapshotMetadataJSONs) toMetadata() (*snapshotMetadata, error) {
 	if err := json.Unmarshal([]byte(j.additionalMetadata), additionalMetadata); err != nil {
 		return nil, errors.Wrap(err, "error while unmarshalling additional metadata")
 	}
-	return &snapshotMetadata{
-		snapshotSignableMetadata:   metadata,
+	return &SnapshotMetadata{
+		SnapshotSignableMetadata:   metadata,
 		snapshotAdditionalMetadata: additionalMetadata,
 	}, nil
 }
@@ -179,7 +179,7 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 	if stateDBType != ledger.CouchDB {
 		stateDBType = simpleKeyValueDB
 	}
-	signableMetadata := &snapshotSignableMetadata{
+	signableMetadata := &SnapshotSignableMetadata{
 		ChannelName:            l.ledgerID,
 		LastBlockNumber:        bcInfo.Height - 1,
 		LastBlockHashInHex:     hex.EncodeToString(bcInfo.CurrentBlockHash),
@@ -188,11 +188,11 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 		StateDBType:            stateDBType,
 	}
 
-	signableMetadataBytes, err := signableMetadata.toJSON()
+	signableMetadataBytes, err := signableMetadata.ToJSON()
 	if err != nil {
 		return errors.Wrap(err, "error while marshelling snapshot metadata to JSON")
 	}
-	if err := fileutil.CreateAndSyncFile(filepath.Join(dir, snapshotSignableMetadataFileName), signableMetadataBytes, 0o444); err != nil {
+	if err := fileutil.CreateAndSyncFile(filepath.Join(dir, SnapshotSignableMetadataFileName), signableMetadataBytes, 0o444); err != nil {
 		return err
 	}
 
@@ -210,7 +210,7 @@ func (l *kvLedger) generateSnapshotMetadataFiles(
 		LastBlockCommitHashInHex: hex.EncodeToString(l.commitHash),
 	}
 
-	additionalMetadataBytes, err := additionalMetadata.toJSON()
+	additionalMetadataBytes, err := additionalMetadata.ToJSON()
 	if err != nil {
 		return errors.Wrap(err, "error while marshalling snapshot additional metadata to JSON")
 	}
@@ -226,7 +226,7 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 		return nil, "", errors.WithMessagef(err, "error while loading metadata")
 	}
 
-	metadata, err := metadataJSONs.toMetadata()
+	metadata, err := metadataJSONs.ToMetadata()
 	if err != nil {
 		return nil, "", errors.WithMessagef(err, "error while unmarshalling metadata")
 	}
@@ -349,8 +349,8 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 	return lgr, ledgerID, nil
 }
 
-func loadSnapshotMetadataJSONs(snapshotDir string) (*snapshotMetadataJSONs, error) {
-	signableMetadataFilePath := filepath.Join(snapshotDir, snapshotSignableMetadataFileName)
+func loadSnapshotMetadataJSONs(snapshotDir string) (*SnapshotMetadataJSONs, error) {
+	signableMetadataFilePath := filepath.Join(snapshotDir, SnapshotSignableMetadataFileName)
 	signableMetadataBytes, err := ioutil.ReadFile(signableMetadataFilePath)
 	if err != nil {
 		return nil, err
@@ -360,16 +360,16 @@ func loadSnapshotMetadataJSONs(snapshotDir string) (*snapshotMetadataJSONs, erro
 	if err != nil {
 		return nil, err
 	}
-	return &snapshotMetadataJSONs{
+	return &SnapshotMetadataJSONs{
 		signableMetadata:   string(signableMetadataBytes),
 		additionalMetadata: string(additionalMetadataBytes),
 	}, nil
 }
 
-func verifySnapshot(snapshotDir string, snapshotMetadata *snapshotMetadata, hashProvider ledger.HashProvider) error {
+func verifySnapshot(snapshotDir string, snapshotMetadata *SnapshotMetadata, hashProvider ledger.HashProvider) error {
 	if err := verifyFileHash(
 		snapshotDir,
-		snapshotSignableMetadataFileName,
+		SnapshotSignableMetadataFileName,
 		snapshotMetadata.SnapshotHashInHex,
 		hashProvider,
 	); err != nil {

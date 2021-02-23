@@ -21,10 +21,10 @@ import (
 
 const (
 	snapshotFileFormat             = byte(1)
-	pubStateDataFileName           = "public_state.data"
-	pubStateMetadataFileName       = "public_state.metadata"
-	pvtStateHashesFileName         = "private_state_hashes.data"
-	pvtStateHashesMetadataFileName = "private_state_hashes.metadata"
+	PubStateDataFileName           = "public_state.data"
+	PubStateMetadataFileName       = "public_state.metadata"
+	PvtStateHashesFileName         = "private_state_hashes.data"
+	PvtStateHashesMetadataFileName = "private_state_hashes.metadata"
 )
 
 // ExportPubStateAndPvtStateHashes generates four files in the specified dir. The files, public_state.data and public_state.metadata
@@ -38,8 +38,8 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 	}
 	defer itr.Close()
 
-	var pubStateWriter *snapshotWriter
-	var pvtStateHashesWriter *snapshotWriter
+	var pubStateWriter *SnapshotWriter
+	var pvtStateHashesWriter *SnapshotWriter
 	for {
 		kv, err := itr.Next()
 		if err != nil {
@@ -68,34 +68,34 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 			}
 
 			if pvtStateHashesWriter == nil { // encountered first time the pvt state hash element
-				pvtStateHashesWriter, err = newSnapshotWriter(
+				pvtStateHashesWriter, err = NewSnapshotWriter(
 					dir,
-					pvtStateHashesFileName,
-					pvtStateHashesMetadataFileName,
+					PvtStateHashesFileName,
+					PvtStateHashesMetadataFileName,
 					newHashFunc,
 				)
 				if err != nil {
 					return nil, err
 				}
-				defer pvtStateHashesWriter.close()
+				defer pvtStateHashesWriter.Close()
 			}
-			if err := pvtStateHashesWriter.addData(namespace, snapshotRecord); err != nil {
+			if err := pvtStateHashesWriter.AddData(namespace, snapshotRecord); err != nil {
 				return nil, err
 			}
 		default:
 			if pubStateWriter == nil { // encountered first time the pub state element
-				pubStateWriter, err = newSnapshotWriter(
+				pubStateWriter, err = NewSnapshotWriter(
 					dir,
-					pubStateDataFileName,
-					pubStateMetadataFileName,
+					PubStateDataFileName,
+					PubStateMetadataFileName,
 					newHashFunc,
 				)
 				if err != nil {
 					return nil, err
 				}
-				defer pubStateWriter.close()
+				defer pubStateWriter.Close()
 			}
-			if err := pubStateWriter.addData(namespace, snapshotRecord); err != nil {
+			if err := pubStateWriter.AddData(namespace, snapshotRecord); err != nil {
 				return nil, err
 			}
 		}
@@ -104,38 +104,39 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 	snapshotFilesInfo := map[string][]byte{}
 
 	if pubStateWriter != nil {
-		pubStateDataHash, pubStateMetadataHash, err := pubStateWriter.done()
+		pubStateDataHash, pubStateMetadataHash, err := pubStateWriter.Done()
 		if err != nil {
 			return nil, err
 		}
-		snapshotFilesInfo[pubStateDataFileName] = pubStateDataHash
-		snapshotFilesInfo[pubStateMetadataFileName] = pubStateMetadataHash
+		snapshotFilesInfo[PubStateDataFileName] = pubStateDataHash
+		snapshotFilesInfo[PubStateMetadataFileName] = pubStateMetadataHash
 	}
 
 	if pvtStateHashesWriter != nil {
-		pvtStateHahshesDataHash, pvtStateHashesMetadataHash, err := pvtStateHashesWriter.done()
+		pvtStateHahshesDataHash, pvtStateHashesMetadataHash, err := pvtStateHashesWriter.Done()
 		if err != nil {
 			return nil, err
 		}
-		snapshotFilesInfo[pvtStateHashesFileName] = pvtStateHahshesDataHash
-		snapshotFilesInfo[pvtStateHashesMetadataFileName] = pvtStateHashesMetadataHash
+		snapshotFilesInfo[PvtStateHashesFileName] = pvtStateHahshesDataHash
+		snapshotFilesInfo[PvtStateHashesMetadataFileName] = pvtStateHashesMetadataHash
 	}
 
 	return snapshotFilesInfo, nil
 }
 
-// snapshotWriter generates two files, a data file and a metadata file. The datafile contains a series of tuples <key, dbValue>
-// and the metadata file contains a series of tuples <namespace, number-of-tuples-in-the-data-file-that-belong-to-this-namespace>
-type snapshotWriter struct {
+// SnapshotWriter generates two files, a data file and a metadata file. The datafile contains a series of tuples <key, dbValue>
+// and the metadata file contains a series of tuples <namesapce, number-of-tuples-in-the-data-file-that-belong-to-this-namespace>
+type SnapshotWriter struct {
 	dataFile     *snapshot.FileWriter
 	metadataFile *snapshot.FileWriter
 	metadata     []*metadataRow
 }
 
-func newSnapshotWriter(
+// NewSnapshotWriter creates a new SnapshotWriter
+func NewSnapshotWriter(
 	dir, dataFileName, metadataFileName string,
 	newHash func() (hash.Hash, error),
-) (*snapshotWriter, error) {
+) (*SnapshotWriter, error) {
 	dataFilePath := filepath.Join(dir, dataFileName)
 	metadataFilePath := filepath.Join(dir, metadataFileName)
 
@@ -157,14 +158,14 @@ func newSnapshotWriter(
 	if err != nil {
 		return nil, err
 	}
-	return &snapshotWriter{
+	return &SnapshotWriter{
 			dataFile:     dataFile,
 			metadataFile: metadataFile,
 		},
 		nil
 }
 
-func (w *snapshotWriter) addData(namespace string, snapshotRecord *SnapshotRecord) error {
+func (w *SnapshotWriter) AddData(namespace string, snapshotRecord *SnapshotRecord) error {
 	if len(w.metadata) == 0 || w.metadata[len(w.metadata)-1].namespace != namespace {
 		// new namespace begins
 		w.metadata = append(w.metadata,
@@ -180,7 +181,7 @@ func (w *snapshotWriter) addData(namespace string, snapshotRecord *SnapshotRecor
 	return w.dataFile.EncodeProtoMessage(snapshotRecord)
 }
 
-func (w *snapshotWriter) done() ([]byte, []byte, error) {
+func (w *SnapshotWriter) Done() ([]byte, []byte, error) {
 	dataHash, err := w.dataFile.Done()
 	if err != nil {
 		return nil, nil, err
@@ -210,7 +211,7 @@ func writeMetadata(metadata []*metadataRow, metadataFile *snapshot.FileWriter) e
 	return nil
 }
 
-func (w *snapshotWriter) close() {
+func (w *SnapshotWriter) Close() {
 	if w == nil {
 		return
 	}
@@ -261,12 +262,12 @@ func (p *DBProvider) ImportFromSnapshot(
 	return nil
 }
 
-// worldStateSnapshotReader encapsulates the two snapshotReaders - one for the public state and another for the
+// worldStateSnapshotReader encapsulates the two SnapshotReaders - one for the public state and another for the
 // pvtstate hashes. worldStateSnapshotReader also implements the interface statedb.FullScanIterator. In the Next()
 // function, it returns the public state data and then the pvtstate hashes
 type worldStateSnapshotReader struct {
-	pubState       *snapshotReader
-	pvtStateHashes *snapshotReader
+	pubState       *SnapshotReader
+	pvtStateHashes *SnapshotReader
 
 	pvtdataHashesConsumers    []SnapshotPvtdataHashesConsumer
 	encodeKeyHashesWithBase64 bool
@@ -278,19 +279,19 @@ func newWorldStateSnapshotReader(
 	pvtdataHashesConsumers []SnapshotPvtdataHashesConsumer,
 	encodeKeyHashesWithBase64 bool,
 ) (*worldStateSnapshotReader, error) {
-	var pubState *snapshotReader
-	var pvtStateHashes *snapshotReader
+	var pubState *SnapshotReader
+	var pvtStateHashes *SnapshotReader
 	var err error
 
-	pubState, err = newSnapshotReader(
-		dir, pubStateDataFileName, pubStateMetadataFileName,
+	pubState, err = NewSnapshotReader(
+		dir, PubStateDataFileName, PubStateMetadataFileName,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	pvtStateHashes, err = newSnapshotReader(
-		dir, pvtStateHashesFileName, pvtStateHashesMetadataFileName,
+	pvtStateHashes, err = NewSnapshotReader(
+		dir, PvtStateHashesFileName, PvtStateHashesMetadataFileName,
 	)
 	if err != nil {
 		if pubState != nil {
@@ -431,14 +432,13 @@ func (r *worldStateSnapshotReader) Close() {
 	r.pvtStateHashes.Close()
 }
 
-// snapshotReader reads data from a pair of files (a data file and the corresponding metadata file)
-type snapshotReader struct {
+// SnapshotReader reads data from a pair of files (a data file and the corresponding metadata file)
+type SnapshotReader struct {
 	dataFile *snapshot.FileReader
 	cursor   *cursor
 }
 
-// If the passed in file name does not exist a nil response is returned
-func newSnapshotReader(dir, dataFileName, metadataFileName string) (*snapshotReader, error) {
+func NewSnapshotReader(dir, dataFileName, metadataFileName string) (*SnapshotReader, error) {
 	dataFilePath := filepath.Join(dir, dataFileName)
 	metadataFilePath := filepath.Join(dir, metadataFileName)
 	exist, _, err := fileutil.FileExists(dataFilePath)
@@ -470,7 +470,7 @@ func newSnapshotReader(dir, dataFileName, metadataFileName string) (*snapshotRea
 	if err != nil {
 		return nil, err
 	}
-	return &snapshotReader{
+	return &SnapshotReader{
 		dataFile: dataFile,
 		cursor: &cursor{
 			metadata: metadata,
@@ -501,7 +501,7 @@ func readMetadata(metadataFile *snapshot.FileReader) ([]*metadataRow, error) {
 	return metadata, nil
 }
 
-func (r *snapshotReader) Next() (string, *SnapshotRecord, error) {
+func (r *SnapshotReader) Next() (string, *SnapshotRecord, error) {
 	if !r.cursor.move() {
 		return "", nil, nil
 	}
@@ -513,14 +513,14 @@ func (r *snapshotReader) Next() (string, *SnapshotRecord, error) {
 	return r.cursor.currentNamespace(), snapshotRecord, nil
 }
 
-func (r *snapshotReader) Close() {
+func (r *SnapshotReader) Close() {
 	if r == nil {
 		return
 	}
 	r.dataFile.Close()
 }
 
-func (r *snapshotReader) hasMore() bool {
+func (r *SnapshotReader) hasMore() bool {
 	return r.cursor.canMove()
 }
 

@@ -209,14 +209,14 @@ func verifyExportedSnapshot(
 	numFilesExpected := 0
 	if publicStateFilesExpected {
 		numFilesExpected += 2
-		require.Contains(t, filesAndHashes, pubStateDataFileName)
-		require.Contains(t, filesAndHashes, pubStateMetadataFileName)
+		require.Contains(t, filesAndHashes, PubStateDataFileName)
+		require.Contains(t, filesAndHashes, PubStateMetadataFileName)
 	}
 
 	if pvtdataHashesFilesExpected {
 		numFilesExpected += 2
-		require.Contains(t, filesAndHashes, pvtStateHashesFileName)
-		require.Contains(t, filesAndHashes, pvtStateHashesMetadataFileName)
+		require.Contains(t, filesAndHashes, PvtStateHashesFileName)
+		require.Contains(t, filesAndHashes, PvtStateHashesMetadataFileName)
 	}
 
 	for f, h := range filesAndHashes {
@@ -337,19 +337,19 @@ func TestSnapshotReaderNextFunction(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(testdir)
 
-	w, err := newSnapshotWriter(testdir, "datafile", "metadatafile", testNewHashFunc)
+	w, err := NewSnapshotWriter(testdir, "datafile", "metadatafile", testNewHashFunc)
 	require.NoError(t, err)
 
 	snapshotRecord := &SnapshotRecord{
 		Key:   []byte("key"),
 		Value: []byte("value"),
 	}
-	require.NoError(t, w.addData("ns", snapshotRecord))
-	_, _, err = w.done()
+	require.NoError(t, w.AddData("ns", snapshotRecord))
+	_, _, err = w.Done()
 	require.NoError(t, err)
-	w.close()
+	w.Close()
 
-	r, err := newSnapshotReader(testdir, "datafile", "metadatafile")
+	r, err := NewSnapshotReader(testdir, "datafile", "metadatafile")
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	defer r.Close()
@@ -401,7 +401,7 @@ func TestLoadMetadata(t *testing.T) {
 			kvCounts:  uint64(i),
 		})
 	}
-	metadataFilePath := filepath.Join(testdir, pubStateMetadataFileName)
+	metadataFilePath := filepath.Join(testdir, PubStateMetadataFileName)
 	metadataFileWriter, err := snapshot.CreateFile(metadataFilePath, snapshotFileFormat, testNewHashFunc)
 	require.NoError(t, err)
 
@@ -445,7 +445,7 @@ func TestSnapshotExportErrorPropagation(t *testing.T) {
 		init()
 		defer cleanup()
 
-		pubStateDataFilePath := filepath.Join(snapshotDir, pubStateDataFileName)
+		pubStateDataFilePath := filepath.Join(snapshotDir, PubStateDataFileName)
 		_, err = os.Create(pubStateDataFilePath)
 		require.NoError(t, err)
 		_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
@@ -456,7 +456,7 @@ func TestSnapshotExportErrorPropagation(t *testing.T) {
 		init()
 		defer cleanup()
 
-		pubStateMetadataFilePath := filepath.Join(snapshotDir, pubStateMetadataFileName)
+		pubStateMetadataFilePath := filepath.Join(snapshotDir, PubStateMetadataFileName)
 		_, err = os.Create(pubStateMetadataFilePath)
 		require.NoError(t, err)
 		_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
@@ -467,7 +467,7 @@ func TestSnapshotExportErrorPropagation(t *testing.T) {
 		init()
 		defer cleanup()
 
-		pvtStateHashesDataFilePath := filepath.Join(snapshotDir, pvtStateHashesFileName)
+		pvtStateHashesDataFilePath := filepath.Join(snapshotDir, PvtStateHashesFileName)
 		_, err = os.Create(pvtStateHashesDataFilePath)
 		require.NoError(t, err)
 		_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
@@ -478,7 +478,7 @@ func TestSnapshotExportErrorPropagation(t *testing.T) {
 		init()
 		defer cleanup()
 
-		pvtStateHashesMetadataFilePath := filepath.Join(snapshotDir, pvtStateHashesMetadataFileName)
+		pvtStateHashesMetadataFilePath := filepath.Join(snapshotDir, PvtStateHashesMetadataFileName)
 		_, err = os.Create(pvtStateHashesMetadataFilePath)
 		require.NoError(t, err)
 		_, err = db.ExportPubStateAndPvtStateHashes(snapshotDir, testNewHashFunc)
@@ -520,7 +520,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 	}
 
 	// errors related to data files
-	for _, f := range []string{pubStateDataFileName, pvtStateHashesFileName} {
+	for _, f := range []string{PubStateDataFileName, PvtStateHashesFileName} {
 		t.Run("error_while_checking_the_presence_of_"+f, func(t *testing.T) {
 			init()
 			defer cleanup()
@@ -599,7 +599,7 @@ func TestSnapshotImportErrorPropagation(t *testing.T) {
 	}
 
 	// errors related to metadata files
-	for _, f := range []string{pubStateMetadataFileName, pvtStateHashesMetadataFileName} {
+	for _, f := range []string{PubStateMetadataFileName, PvtStateHashesMetadataFileName} {
 		t.Run("error_while_reading_data_format_from_metadata_file:"+f, func(t *testing.T) {
 			init()
 			defer cleanup()

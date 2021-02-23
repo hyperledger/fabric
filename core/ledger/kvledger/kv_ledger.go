@@ -47,7 +47,7 @@ var (
 // This implementation provides a key-value based data model
 type kvLedger struct {
 	ledgerID               string
-	bootSnapshotMetadata   *snapshotMetadata
+	bootSnapshotMetadata   *SnapshotMetadata
 	blockStore             *blkstorage.BlockStore
 	pvtdataStore           *pvtdatastorage.Store
 	txmgr                  *txmgr.LockBasedTxMgr
@@ -72,7 +72,7 @@ type kvLedger struct {
 type lgrInitializer struct {
 	ledgerID                 string
 	initializingFromSnapshot bool
-	bootSnapshotMetadata     *snapshotMetadata
+	bootSnapshotMetadata     *SnapshotMetadata
 	blockStore               *blkstorage.BlockStore
 	pvtdataStore             *pvtdatastorage.Store
 	stateDB                  *privacyenabledstate.DB

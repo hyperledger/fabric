@@ -119,7 +119,7 @@ func (c *FileWriter) Close() error {
 // FileReader reads from a ledger snapshot file. This is expected to be used for loading the ledger snapshot data
 // during bootstrapping a channel from snapshot. The data should be read, using the functions `DecodeXXX`,
 // in the same sequence in which the data was written by the functions `EncodeXXX` in the `FileCreator`.
-// Note that the FileReader does not verifies the hash of stream and it is expected that the hash has been verified
+// Note that the FileReader does not verify the hash of stream and it is expected that the hash has been verified
 // by the consumer. Later, if we decide to perform this, on-the-side, while loading the snapshot data, the FileRedear,
 // like the FileCreator, would take a `hasher` as an input
 type FileReader struct {

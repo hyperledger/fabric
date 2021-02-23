@@ -621,7 +621,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 	var snapshotDirForTest string
 	var cleanup func()
 
-	var metadata *snapshotMetadata
+	var metadata *SnapshotMetadata
 	var signableMetadataFile string
 	var additionalMetadataFile string
 
@@ -641,10 +641,10 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 
 		metadataJSONs, err := loadSnapshotMetadataJSONs(snapshotDirForTest)
 		require.NoError(t, err)
-		metadata, err = metadataJSONs.toMetadata()
+		metadata, err = metadataJSONs.ToMetadata()
 		require.NoError(t, err)
 
-		signableMetadataFile = filepath.Join(snapshotDirForTest, snapshotSignableMetadataFileName)
+		signableMetadataFile = filepath.Join(snapshotDirForTest, SnapshotSignableMetadataFileName)
 		additionalMetadataFile = filepath.Join(snapshotDirForTest, snapshotAdditionalMetadataFileName)
 
 		provider = testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
@@ -655,12 +655,12 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 	}
 
 	overwriteModifiedSignableMetadata := func() {
-		signaleMetadataJSON, err := metadata.snapshotSignableMetadata.toJSON()
+		signaleMetadataJSON, err := metadata.SnapshotSignableMetadata.ToJSON()
 		require.NoError(t, err)
 		require.NoError(t, ioutil.WriteFile(signableMetadataFile, signaleMetadataJSON, 0o600))
 
 		metadata.snapshotAdditionalMetadata.SnapshotHashInHex = computeHashForTest(t, provider, signaleMetadataJSON)
-		additionalMetadataJSON, err := metadata.snapshotAdditionalMetadata.toJSON()
+		additionalMetadataJSON, err := metadata.snapshotAdditionalMetadata.ToJSON()
 		require.NoError(t, err)
 		require.NoError(t, ioutil.WriteFile(additionalMetadataFile, additionalMetadataJSON, 0o600))
 	}
@@ -668,7 +668,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 	overwriteDataFile := func(fileName string, content []byte) {
 		filePath := filepath.Join(snapshotDirForTest, fileName)
 		require.NoError(t, ioutil.WriteFile(filePath, content, 0o600))
-		metadata.snapshotSignableMetadata.FilesAndHashes[fileName] = computeHashForTest(t, provider, content)
+		metadata.SnapshotSignableMetadata.FilesAndHashes[fileName] = computeHashForTest(t, provider, content)
 		overwriteModifiedSignableMetadata()
 	}
 
@@ -676,7 +676,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		require.NoError(t, os.Remove(filepath.Join(snapshotDirForTest, snapshotSignableMetadataFileName)))
+		require.NoError(t, os.Remove(filepath.Join(snapshotDirForTest, SnapshotSignableMetadataFileName)))
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
@@ -773,7 +773,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		metadata.snapshotSignableMetadata.LastBlockHashInHex = "invalid-hex"
+		metadata.SnapshotSignableMetadata.LastBlockHashInHex = "invalid-hex"
 		overwriteModifiedSignableMetadata()
 
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
@@ -785,7 +785,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		init(t)
 		defer cleanup()
 
-		metadata.snapshotSignableMetadata.PreviousBlockHashInHex = "invalid-hex"
+		metadata.SnapshotSignableMetadata.PreviousBlockHashInHex = "invalid-hex"
 		overwriteModifiedSignableMetadata()
 
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
@@ -886,8 +886,8 @@ func verifySnapshotOutput(
 	}
 
 	// verify the contents of the file snapshot_metadata.json
-	m := &snapshotSignableMetadata{}
-	mJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, snapshotSignableMetadataFileName))
+	m := &SnapshotSignableMetadata{}
+	mJSON, err := ioutil.ReadFile(filepath.Join(snapshotDir, SnapshotSignableMetadataFileName))
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(mJSON, m))
 
@@ -896,7 +896,7 @@ func verifySnapshotOutput(
 		previousBlockHashHex = hex.EncodeToString(o.previousBlockHash)
 	}
 	require.Equal(t,
-		&snapshotSignableMetadata{
+		&SnapshotSignableMetadata{
 			ChannelName:            o.ledgerID,
 			LastBlockNumber:        o.lastBlockNumber,
 			LastBlockHashInHex:     hex.EncodeToString(o.lastBlockHash),
