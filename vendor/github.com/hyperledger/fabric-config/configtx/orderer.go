@@ -44,7 +44,8 @@ type Orderer struct {
 	Capabilities []string
 	Policies     map[string]Policy
 	// Options: `ConsensusStateNormal` and `ConsensusStateMaintenance`
-	State orderer.ConsensusState
+	State     orderer.ConsensusState
+	ModPolicy string
 }
 
 // OrdererGroup encapsulates the parts of the config that control
@@ -198,6 +199,7 @@ func (o *OrdererGroup) Configuration() (Orderer, error) {
 		Capabilities:  capabilities,
 		Policies:      policies,
 		State:         state,
+		ModPolicy:     o.ordererGroup.GetModPolicy(),
 	}, nil
 }
 
@@ -612,10 +614,21 @@ func (o *OrdererOrg) RemoveEndpoint(endpoint Address) error {
 	return nil
 }
 
+// SetModPolicy sets the specified modification policy for the orderer group.
+func (o *OrdererGroup) SetModPolicy(modPolicy string) error {
+	if modPolicy == "" {
+		return errors.New("non empty mod policy is required")
+	}
+
+	o.ordererGroup.ModPolicy = modPolicy
+
+	return nil
+}
+
 // SetPolicy sets the specified policy in the orderer group's config policy map.
 // If the policy already exists in current configuration, its value will be overwritten.
-func (o *OrdererGroup) SetPolicy(modPolicy, policyName string, policy Policy) error {
-	err := setPolicy(o.ordererGroup, modPolicy, policyName, policy)
+func (o *OrdererGroup) SetPolicy(policyName string, policy Policy) error {
+	err := setPolicy(o.ordererGroup, policyName, policy)
 	if err != nil {
 		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
 	}
@@ -625,13 +638,12 @@ func (o *OrdererGroup) SetPolicy(modPolicy, policyName string, policy Policy) er
 
 // SetPolicies sets the specified policy in the orderer group's config policy map.
 // If the policies already exist in current configuration, the values will be replaced with new policies.
-func (o *OrdererGroup) SetPolicies(modPolicy string, policies map[string]Policy) error {
-
+func (o *OrdererGroup) SetPolicies(policies map[string]Policy) error {
 	if _, ok := policies[BlockValidationPolicyKey]; !ok {
 		return errors.New("BlockValidation policy must be defined")
 	}
 
-	err := setPolicies(o.ordererGroup, policies, modPolicy)
+	err := setPolicies(o.ordererGroup, policies)
 	if err != nil {
 		return fmt.Errorf("failed to set policies: %v", err)
 	}
@@ -685,16 +697,27 @@ func (o *OrdererOrg) SetMSP(updatedMSP MSP) error {
 	return nil
 }
 
+// SetModPolicy sets the specified modification policy for the orderer org group.
+func (o *OrdererOrg) SetModPolicy(modPolicy string) error {
+	if modPolicy == "" {
+		return errors.New("non empty mod policy is required")
+	}
+
+	o.orgGroup.ModPolicy = modPolicy
+
+	return nil
+}
+
 // SetPolicy sets the specified policy in the orderer org group's config policy map.
 // If the policy already exists in current configuration, its value will be overwritten.
-func (o *OrdererOrg) SetPolicy(modPolicy, policyName string, policy Policy) error {
-	return setPolicy(o.orgGroup, modPolicy, policyName, policy)
+func (o *OrdererOrg) SetPolicy(policyName string, policy Policy) error {
+	return setPolicy(o.orgGroup, policyName, policy)
 }
 
 // SetPolicies sets the specified policies in the orderer org group's config policy map.
 // If the policies already exist in current configuration, the values will be replaced with new policies.
-func (o *OrdererOrg) SetPolicies(modPolicy string, policies map[string]Policy) error {
-	return setPolicies(o.orgGroup, policies, modPolicy)
+func (o *OrdererOrg) SetPolicies(policies map[string]Policy) error {
+	return setPolicies(o.orgGroup, policies)
 }
 
 // RemovePolicy removes an existing policy from an orderer organization.
@@ -728,6 +751,10 @@ func (o *OrdererGroup) RemoveLegacyKafkaBrokers() {
 func newOrdererGroup(orderer Orderer) (*cb.ConfigGroup, error) {
 	ordererGroup := newConfigGroup()
 	ordererGroup.ModPolicy = AdminsPolicyKey
+
+	if orderer.ModPolicy != "" {
+		ordererGroup.ModPolicy = orderer.ModPolicy
+	}
 
 	if err := setOrdererPolicies(ordererGroup, orderer.Policies, AdminsPolicyKey); err != nil {
 		return nil, err
@@ -824,7 +851,7 @@ func setOrdererPolicies(cg *cb.ConfigGroup, policyMap map[string]Policy, modPoli
 		return errors.New("no BlockValidation policy defined")
 	}
 
-	return setPolicies(cg, policyMap, modPolicy)
+	return setPolicies(cg, policyMap)
 }
 
 // batchSizeValue returns the config definition for the orderer batch size.

@@ -159,6 +159,7 @@ type DynamicOrdererOrgConfigValue struct {
 func (doocv *DynamicOrdererOrgConfigValue) Underlying() proto.Message {
 	return doocv.ConfigValue
 }
+
 func (doocv *DynamicOrdererOrgConfigValue) StaticallyOpaqueFields() []string {
 	return []string{"value"}
 }

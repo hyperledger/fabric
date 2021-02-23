@@ -39,12 +39,14 @@ type Channel struct {
 	Consortiums  []Consortium
 	Capabilities []string
 	Policies     map[string]Policy
+	ModPolicy    string
 }
 
 // Policy is an expression used to define rules for access to channels, chaincodes, etc.
 type Policy struct {
-	Type string
-	Rule string
+	Type      string
+	Rule      string
+	ModPolicy string
 }
 
 // Organization is an organization in the channel configuration.
@@ -57,6 +59,7 @@ type Organization struct {
 	// application organization.
 	AnchorPeers      []Address
 	OrdererEndpoints []string
+	ModPolicy        string
 }
 
 // Address contains the hostname and port for an endpoint.
@@ -227,6 +230,10 @@ func newSystemChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 
 	channelGroup.ModPolicy = AdminsPolicyKey
 
+	if channelConfig.ModPolicy != "" {
+		channelGroup.ModPolicy = channelConfig.ModPolicy
+	}
+
 	return channelGroup, nil
 }
 
@@ -247,13 +254,17 @@ func newApplicationChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) 
 
 	channelGroup.ModPolicy = AdminsPolicyKey
 
+	if channelConfig.ModPolicy != "" {
+		channelGroup.ModPolicy = channelConfig.ModPolicy
+	}
+
 	return channelGroup, nil
 }
 
 func newChannelGroupWithOrderer(channelConfig Channel) (*cb.ConfigGroup, error) {
 	channelGroup := newConfigGroup()
 
-	err := setPolicies(channelGroup, channelConfig.Policies, AdminsPolicyKey)
+	err := setPolicies(channelGroup, channelConfig.Policies)
 	if err != nil {
 		return nil, fmt.Errorf("setting channel policies: %v", err)
 	}
@@ -435,6 +446,10 @@ func newChannelGroup(channelConfig Channel) (*cb.ConfigGroup, error) {
 	}
 
 	channelGroup.ModPolicy = AdminsPolicyKey
+
+	if channelConfig.ModPolicy != "" {
+		channelGroup.ModPolicy = channelConfig.ModPolicy
+	}
 
 	return channelGroup, nil
 }

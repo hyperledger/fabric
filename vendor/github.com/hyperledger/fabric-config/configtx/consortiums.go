@@ -229,10 +229,21 @@ func (c *ConsortiumOrg) Policies() (map[string]Policy, error) {
 	return getPolicies(c.orgGroup.Policies)
 }
 
+// SetModPolicy sets the specified modification policy for the consortium org group.
+func (c *ConsortiumOrg) SetModPolicy(modPolicy string) error {
+	if modPolicy == "" {
+		return errors.New("non empty mod policy is required")
+	}
+
+	c.orgGroup.ModPolicy = modPolicy
+
+	return nil
+}
+
 // SetPolicy sets the specified policy in the consortium org group's config policy map.
 // If the policy already exists in current configuration, its value will be overwritten.
 func (c *ConsortiumOrg) SetPolicy(name string, policy Policy) error {
-	err := setPolicy(c.orgGroup, AdminsPolicyKey, name, policy)
+	err := setPolicy(c.orgGroup, name, policy)
 	if err != nil {
 		return fmt.Errorf("failed to set policy '%s' to consortium org '%s': %v", name, c.name, err)
 	}
@@ -243,7 +254,7 @@ func (c *ConsortiumOrg) SetPolicy(name string, policy Policy) error {
 // SetPolicies sets the specified policies in the consortium org group's config policy map.
 // If the policies already exist in current configuration, the values will be replaced with new policies.
 func (c *ConsortiumOrg) SetPolicies(policies map[string]Policy) error {
-	err := setPolicies(c.orgGroup, policies, AdminsPolicyKey)
+	err := setPolicies(c.orgGroup, policies)
 	if err != nil {
 		return fmt.Errorf("failed to set policies to consortium org '%s': %v", c.name, err)
 	}

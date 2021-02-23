@@ -22,6 +22,7 @@ type Application struct {
 	Capabilities  []string
 	Policies      map[string]Policy
 	ACLs          map[string]string
+	ModPolicy     string
 }
 
 // ApplicationGroup encapsulates the part of the config that controls
@@ -86,7 +87,6 @@ func (a *ApplicationGroup) Configuration() (Application, error) {
 	var applicationOrgs []Organization
 	for orgName := range a.applicationGroup.Groups {
 		orgConfig, err := a.Organization(orgName).Configuration()
-
 		if err != nil {
 			return Application{}, fmt.Errorf("retrieving application org %s: %v", orgName, err)
 		}
@@ -176,10 +176,21 @@ func (a *ApplicationGroup) Policies() (map[string]Policy, error) {
 	return getPolicies(a.applicationGroup.Policies)
 }
 
+// SetModPolicy sets the specified modification policy for the application group.
+func (a *ApplicationGroup) SetModPolicy(modPolicy string) error {
+	if modPolicy == "" {
+		return errors.New("non empty mod policy is required")
+	}
+
+	a.applicationGroup.ModPolicy = modPolicy
+
+	return nil
+}
+
 // SetPolicy sets the specified policy in the application group's config policy map.
 // If the policy already exists in current configuration, its value will be overwritten.
-func (a *ApplicationGroup) SetPolicy(modPolicy, policyName string, policy Policy) error {
-	err := setPolicy(a.applicationGroup, modPolicy, policyName, policy)
+func (a *ApplicationGroup) SetPolicy(policyName string, policy Policy) error {
+	err := setPolicy(a.applicationGroup, policyName, policy)
 	if err != nil {
 		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
 	}
@@ -189,8 +200,8 @@ func (a *ApplicationGroup) SetPolicy(modPolicy, policyName string, policy Policy
 
 // SetPolicies sets the specified policies in the application group's config policy map.
 // If the policies already exist in current configuration, the values will be replaced with new policies.
-func (a *ApplicationGroup) SetPolicies(modPolicy string, policies map[string]Policy) error {
-	err := setPolicies(a.applicationGroup, policies, modPolicy)
+func (a *ApplicationGroup) SetPolicies(policies map[string]Policy) error {
+	err := setPolicies(a.applicationGroup, policies)
 	if err != nil {
 		return fmt.Errorf("failed to set policies: %v", err)
 	}
@@ -216,10 +227,21 @@ func (a *ApplicationOrg) Policies() (map[string]Policy, error) {
 	return getPolicies(a.orgGroup.Policies)
 }
 
+// SetModPolicy sets the specified modification policy for the application organization group.
+func (a *ApplicationOrg) SetModPolicy(modPolicy string) error {
+	if modPolicy == "" {
+		return errors.New("non empty mod policy is required")
+	}
+
+	a.orgGroup.ModPolicy = modPolicy
+
+	return nil
+}
+
 // SetPolicy sets the specified policy in the application org group's config policy map.
 // If an Organization policy already exists in current configuration, its value will be overwritten.
-func (a *ApplicationOrg) SetPolicy(modPolicy, policyName string, policy Policy) error {
-	err := setPolicy(a.orgGroup, modPolicy, policyName, policy)
+func (a *ApplicationOrg) SetPolicy(policyName string, policy Policy) error {
+	err := setPolicy(a.orgGroup, policyName, policy)
 	if err != nil {
 		return fmt.Errorf("failed to set policy '%s': %v", policyName, err)
 	}
@@ -229,8 +251,8 @@ func (a *ApplicationOrg) SetPolicy(modPolicy, policyName string, policy Policy) 
 
 // SetPolicies sets the specified policies in the application org group's config policy map.
 // If the policies already exist in current configuration, the values will be replaced with new policies.
-func (a *ApplicationOrg) SetPolicies(modPolicy string, policies map[string]Policy) error {
-	err := setPolicies(a.orgGroup, policies, modPolicy)
+func (a *ApplicationOrg) SetPolicies(policies map[string]Policy) error {
+	err := setPolicies(a.orgGroup, policies)
 	if err != nil {
 		return fmt.Errorf("failed to set policies: %v", err)
 	}
@@ -458,7 +480,11 @@ func newApplicationGroupTemplate(application Application) (*cb.ConfigGroup, erro
 	applicationGroup := newConfigGroup()
 	applicationGroup.ModPolicy = AdminsPolicyKey
 
-	if err = setPolicies(applicationGroup, application.Policies, AdminsPolicyKey); err != nil {
+	if application.ModPolicy != "" {
+		applicationGroup.ModPolicy = application.ModPolicy
+	}
+
+	if err = setPolicies(applicationGroup, application.Policies); err != nil {
 		return nil, err
 	}
 
