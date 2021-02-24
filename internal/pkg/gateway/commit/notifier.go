@@ -15,41 +15,49 @@ import (
 
 // Notifier enables notification of commits to a peer ledger.
 type Notifier struct {
-	channelFactory ChannelFactory
+	reader BlockReader
 }
 
 // NewNotifier returns a new commit notifier that obtains channels from a given channel factory.
-func NewNotifier(channelFactory ChannelFactory) *Notifier {
+func NewNotifier(reader BlockReader) *Notifier {
 	return &Notifier{
-		channelFactory: channelFactory,
+		reader: reader,
 	}
 }
 
 // Notify the supplied channel when the specified transaction is committed to a channel's ledger.
-func (notifier *Notifier) Notify(commit chan<- peerProto.TxValidationCode, channelID string, transactionID string) error {
-	channel, err := notifier.channelFactory.Channel(channelID)
+func (notifier *Notifier) Notify(channelID string, transactionID string) (<-chan peerProto.TxValidationCode, error) {
+	// TODO: add a context parameter to enable the notifier to be cancelled
+	// TODO: pooling of ledger iterators over multiple invocations
+	blockIterator, err := notifier.reader.Iterator(channelID, seekNextCommit())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	blockReader := channel.Reader()
-	go readCommit(commit, blockReader, transactionID)
+	commitChannel := make(chan peerProto.TxValidationCode, 1)
+	go readCommit(commitChannel, blockIterator, transactionID)
 
-	return nil
+	return commitChannel, nil
 }
 
-func readCommit(commit chan<- peerProto.TxValidationCode, blockReader blockledger.Reader, transactionID string) {
-	blockIter, _ := blockReader.Iterator(seekNextCommit())
-	defer blockIter.Close()
+func readCommit(commit chan<- peerProto.TxValidationCode, blockIterator blockledger.Iterator, transactionID string) {
+	defer blockIterator.Close()
 	defer close(commit)
 
 	for {
-		block, status := blockIter.Next()
+		block, status := blockIterator.Next()
 		if status != commonProto.Status_SUCCESS {
 			return
 		}
 
-		if status, exists := transactionStatus(block, transactionID); exists {
+		parser := &blockParser{block}
+		validationCodes, err := parser.TransactionValidationCodes()
+		if err != nil {
+			// TODO: log error -- ledger is broken at this point
+			return
+		}
+
+		if status, exists := validationCodes[transactionID]; exists {
 			commit <- status
 			return
 		}
@@ -64,28 +72,9 @@ func seekNextCommit() *ordererProto.SeekPosition {
 	}
 }
 
-func transactionStatus(block *commonProto.Block, transactionID string) (peerProto.TxValidationCode, bool) {
-	parser := blockParser{
-		Block: block,
-	}
-	validationCodes, err := parser.TransactionValidationCodes()
-	if err != nil {
-		// TODO: log error
-		return peerProto.TxValidationCode(0), false
-	}
+//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o mocks/blockreader.go --fake-name BlockReader . BlockReader
 
-	code, ok := validationCodes[transactionID]
-	return code, ok
-}
-
-//go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 -o mocks/channelfactory.go --fake-name ChannelFactory . ChannelFactory
-
-// ChannelFactory is a single-method interface view of peer.Peer to allow access to channels.
-type ChannelFactory interface {
-	Channel(channelID string) (Channel, error)
-}
-
-// Channel interface view of peer.Channel Provides only the methods needed for commit notification.
-type Channel interface {
-	Reader() blockledger.Reader
+// BlockReader allows blocks to be read from the local peer's ledgers.
+type BlockReader interface {
+	Iterator(channelID string, startType *ordererProto.SeekPosition) (blockledger.Iterator, error)
 }

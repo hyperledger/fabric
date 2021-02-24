@@ -9,7 +9,9 @@ package server
 import (
 	"fmt"
 
+	ordererProto "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/common/ledger/blockledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/internal/pkg/gateway"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
@@ -31,7 +33,7 @@ func CreateGatewayServer(localEndorser gateway.Endorser, peer *peer.Peer) (*Serv
 		return nil, err
 	}
 
-	commitNotifier := commit.NewNotifier(&peerChannelFactory{peer})
+	commitNotifier := commit.NewNotifier(&peerAdapter{peer})
 
 	gwServer := &Server{
 		registry:       registry,
@@ -41,14 +43,17 @@ func CreateGatewayServer(localEndorser gateway.Endorser, peer *peer.Peer) (*Serv
 	return gwServer, nil
 }
 
-type peerChannelFactory struct {
+type peerAdapter struct {
 	peer *peer.Peer
 }
 
-func (factory *peerChannelFactory) Channel(channelID string) (commit.Channel, error) {
-	if channel := factory.peer.Channel(channelID); channel != nil {
-		return channel, nil
+func (pa *peerAdapter) Iterator(channelID string, startType *ordererProto.SeekPosition) (blockledger.Iterator, error) {
+	channel := pa.peer.Channel(channelID)
+	if channel == nil {
+		return nil, fmt.Errorf("unknown channel: %s", channelID)
 	}
 
-	return nil, fmt.Errorf("unknown channel: %s", channelID)
+	blockIterator, _ := channel.Reader().Iterator(startType)
+
+	return blockIterator, nil
 }

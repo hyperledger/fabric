@@ -7,10 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package commit
 
 import (
+	"errors"
+
 	"github.com/golang/protobuf/proto"
 	commonProto "github.com/hyperledger/fabric-protos-go/common"
 	peerProto "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/pkg/errors"
+	ghErrors "github.com/pkg/errors"
 )
 
 type blockParser struct {
@@ -18,20 +20,27 @@ type blockParser struct {
 }
 
 func (parser *blockParser) TransactionValidationCodes() (map[string]peerProto.TxValidationCode, error) {
-	result := make(map[string]peerProto.TxValidationCode)
+	results := make(map[string]peerProto.TxValidationCode)
 
 	envelopes := parser.Block.Data.Data
 	for i, envelopeBytes := range envelopes {
-		channelHeader, err := unmarshallChannelHeader(envelopeBytes)
+		channelHeader, err := unmarshalChannelHeader(envelopeBytes)
 		if err != nil {
-			return nil, errors.Wrapf(err,
-				"failed to unmarshall channel header from envelope at index %v in block number %v", i, parser.Block.Header.Number)
+			return nil, ghErrors.WithMessagef(err, "failed to unmarshal channel header from envelope at index %v in block number %v",
+				i, parser.Block.Header.Number)
 		}
 
-		result[channelHeader.TxId] = parser.validationCode(i)
+		validationCode := parser.validationCode(i)
+		if validationCode == peerProto.TxValidationCode_BAD_PROPOSAL_TXID {
+			continue
+		}
+
+		if _, exists := results[channelHeader.TxId]; !exists {
+			results[channelHeader.TxId] = parser.validationCode(i)
+		}
 	}
 
-	return result, nil
+	return results, nil
 }
 
 func (parser *blockParser) validationCode(envelopeIndex int) peerProto.TxValidationCode {
@@ -39,7 +48,7 @@ func (parser *blockParser) validationCode(envelopeIndex int) peerProto.TxValidat
 	return peerProto.TxValidationCode(validationCodes[envelopeIndex])
 }
 
-func unmarshallChannelHeader(envelopeBytes []byte) (*commonProto.ChannelHeader, error) {
+func unmarshalChannelHeader(envelopeBytes []byte) (*commonProto.ChannelHeader, error) {
 	envelope := &commonProto.Envelope{}
 	if err := proto.Unmarshal(envelopeBytes, envelope); err != nil {
 		return nil, err
@@ -48,6 +57,10 @@ func unmarshallChannelHeader(envelopeBytes []byte) (*commonProto.ChannelHeader, 
 	payload := &commonProto.Payload{}
 	if err := proto.Unmarshal(envelope.Payload, payload); err != nil {
 		return nil, err
+	}
+
+	if payload.Header == nil {
+		return nil, errors.New("missing payload header")
 	}
 
 	channelHeader := &commonProto.ChannelHeader{}

@@ -25,19 +25,23 @@ func TestNotifier(t *testing.T) {
 		Status peerProto.TxValidationCode
 	}
 
-	NewTransactionEnvelope := func(transaction *Transaction) *commonProto.Envelope {
+	NewPayload := func(transactionID string) *commonProto.Payload {
 		channelHeader := &commonProto.ChannelHeader{
 			Type: int32(commonProto.HeaderType_ENDORSER_TRANSACTION),
-			TxId: transaction.ID,
+			TxId: transactionID,
 		}
 		channelHeaderBytes, err := proto.Marshal(channelHeader)
 		assert.NoError(t, err)
 
-		payload := &commonProto.Payload{
+		return &commonProto.Payload{
 			Header: &commonProto.Header{
 				ChannelHeader: channelHeaderBytes,
 			},
 		}
+	}
+
+	NewTransactionEnvelope := func(transaction *Transaction) *commonProto.Envelope {
+		payload := NewPayload(transaction.ID)
 		payloadBytes, err := proto.Marshal(payload)
 		assert.NoError(t, err)
 
@@ -63,6 +67,9 @@ func TestNotifier(t *testing.T) {
 		metadata[int(commonProto.BlockMetadataIndex_TRANSACTIONS_FILTER)] = validationCodes
 
 		return &commonProto.Block{
+			Header: &commonProto.BlockHeader{
+				Number: 1,
+			},
 			Metadata: &commonProto.BlockMetadata{
 				Metadata: metadata,
 			},
@@ -72,39 +79,47 @@ func TestNotifier(t *testing.T) {
 		}
 	}
 
-	NewMockChannelFactory := func(blocks ...*commonProto.Block) *commitMocks.ChannelFactory {
-		channelFactory := &commitMocks.ChannelFactory{}
-
-		channel := &deliverMock.Chain{}
-		channelFactory.ChannelReturns(channel, nil)
-
-		reader := &deliverMock.BlockReader{}
-		channel.ReaderReturns(reader)
+	NewMockBlockReader := func(blocks ...*commonProto.Block) *commitMocks.BlockReader {
+		blockReader := &commitMocks.BlockReader{}
 
 		iterator := &deliverMock.BlockIterator{}
-		reader.IteratorReturns(iterator, 0)
+		blockReader.IteratorReturns(iterator, nil)
 
 		for i, block := range blocks {
 			iterator.NextReturnsOnCall(i, block, commonProto.Status_SUCCESS)
 		}
 
-		return channelFactory
+		return blockReader
 	}
 
 	NewTestNotifier := func(blocks ...*commonProto.Block) *commit.Notifier {
-		channelFactory := NewMockChannelFactory(blocks...)
-		return commit.NewNotifier(channelFactory)
+		blockReader := NewMockBlockReader(blocks...)
+		return commit.NewNotifier(blockReader)
 	}
 
-	t.Run("Notify returns error if channel does not exist", func(t *testing.T) {
-		expected := errors.New("NO_CHANNEL_ERROR")
-		channelFactory := &commitMocks.ChannelFactory{}
-		channelFactory.ChannelReturns(nil, expected)
-		notifier := commit.NewNotifier(channelFactory)
+	t.Run("Notify returns error if block iterator cannot be obtained", func(t *testing.T) {
+		expected := errors.New("MY_ERROR_MESSAGE")
+		blockReader := &commitMocks.BlockReader{}
+		blockReader.IteratorReturns(nil, expected)
+		notifier := commit.NewNotifier(blockReader)
 
-		commitChannel := make(chan peerProto.TxValidationCode)
-		err := notifier.Notify(commitChannel, "channel", "transactionID")
+		_, err := notifier.Notify("channel", "transactionID")
 		assert.ErrorContains(t, err, expected.Error())
+	})
+
+	t.Run("Closes notification channel if unable to read from block iterator", func(t *testing.T) {
+		blockReader := &commitMocks.BlockReader{}
+		blockIterator := &deliverMock.BlockIterator{}
+		blockReader.IteratorReturns(blockIterator, nil)
+		blockIterator.NextReturns(nil, commonProto.Status_INTERNAL_SERVER_ERROR)
+		notifier := commit.NewNotifier(blockReader)
+
+		commitChannel, err := notifier.Notify("channel", "transactionID")
+		assert.NoError(t, err)
+
+		_, ok := <-commitChannel
+
+		assert.False(t, ok, "Commit channel not closed")
 	})
 
 	t.Run("Notifies valid transaction status", func(t *testing.T) {
@@ -115,8 +130,8 @@ func TestNotifier(t *testing.T) {
 		block := NewBlock(t, transaction)
 		notifier := NewTestNotifier(block)
 
-		commitChannel := make(chan peerProto.TxValidationCode)
-		assert.NoError(t, notifier.Notify(commitChannel, "channel", transaction.ID))
+		commitChannel, err := notifier.Notify("channel", transaction.ID)
+		assert.NoError(t, err)
 
 		result, ok := <-commitChannel
 
@@ -132,8 +147,7 @@ func TestNotifier(t *testing.T) {
 		block := NewBlock(t, transaction)
 		notifier := NewTestNotifier(block)
 
-		commitChannel := make(chan peerProto.TxValidationCode)
-		assert.NoError(t, notifier.Notify(commitChannel, "channel", transaction.ID))
+		commitChannel, _ := notifier.Notify("channel", transaction.ID)
 
 		result, ok := <-commitChannel
 
@@ -149,8 +163,8 @@ func TestNotifier(t *testing.T) {
 		block := NewBlock(t, transaction)
 		notifier := NewTestNotifier(block)
 
-		commitChannel := make(chan peerProto.TxValidationCode)
-		assert.NoError(t, notifier.Notify(commitChannel, "channel", transaction.ID))
+		commitChannel, err := notifier.Notify("channel", transaction.ID)
+		assert.NoError(t, err)
 
 		<-commitChannel
 		result, ok := <-commitChannel
@@ -171,8 +185,8 @@ func TestNotifier(t *testing.T) {
 		block := NewBlock(t, dummyTransaction, transaction)
 		notifier := NewTestNotifier(block)
 
-		commitChannel := make(chan peerProto.TxValidationCode)
-		assert.NoError(t, notifier.Notify(commitChannel, "channel", transaction.ID))
+		commitChannel, err := notifier.Notify("channel", transaction.ID)
+		assert.NoError(t, err)
 
 		result, ok := <-commitChannel
 
@@ -195,12 +209,91 @@ func TestNotifier(t *testing.T) {
 
 		notifier := NewTestNotifier(dummyBlock, block)
 
-		commitChannel := make(chan peerProto.TxValidationCode)
-		assert.NoError(t, notifier.Notify(commitChannel, "channel", transaction.ID))
+		commitChannel, err := notifier.Notify("channel", transaction.ID)
+		assert.NoError(t, err)
 
 		result, ok := <-commitChannel
 
 		assert.True(t, ok, "Commit channel was closed")
 		assert.Equal(t, transaction.Status, result)
+	})
+
+	t.Run("Closes notification channel on missing payload header", func(t *testing.T) {
+		transaction := &Transaction{
+			ID:     "TRANSACTION_ID",
+			Status: peerProto.TxValidationCode_VALID,
+		}
+		block := NewBlock(t, transaction)
+
+		payload := NewPayload(transaction.ID)
+		payload.Header = nil
+		payloadBytes, err := proto.Marshal(payload)
+		assert.NoError(t, err)
+
+		envelope := &commonProto.Envelope{
+			Payload: payloadBytes,
+		}
+		envelopeBytes, err := proto.Marshal(envelope)
+		assert.NoError(t, err)
+
+		block.Data.Data[0] = envelopeBytes
+
+		// Dummy block required to prevent channel close if first block does not cause close correctly
+		dummyTransaction := &Transaction{
+			ID:     transaction.ID,
+			Status: peerProto.TxValidationCode_VALID,
+		}
+		dummyBlock := NewBlock(t, dummyTransaction)
+
+		notifier := NewTestNotifier(block, dummyBlock)
+
+		commitChannel, err := notifier.Notify("channel", transaction.ID)
+		assert.NoError(t, err)
+
+		_, ok := <-commitChannel
+
+		assert.False(t, ok, "Commit channel not closed")
+	})
+
+	t.Run("Ignores transactions with TxValidationCode_BAD_PROPOSAL_TXID status since may have faked the ID we want", func(t *testing.T) {
+		transaction := &Transaction{
+			ID:     "TRANSACTION_ID",
+			Status: peerProto.TxValidationCode_VALID,
+		}
+		badTransaction := &Transaction{
+			ID:     transaction.ID,
+			Status: peerProto.TxValidationCode_BAD_PROPOSAL_TXID,
+		}
+		block := NewBlock(t, badTransaction, transaction, badTransaction)
+		notifier := NewTestNotifier(block)
+
+		commitChannel, err := notifier.Notify("channel", transaction.ID)
+		assert.NoError(t, err)
+
+		result, ok := <-commitChannel
+
+		assert.True(t, ok, "Commit channel was closed")
+		assert.Equal(t, transaction.Status, result)
+	})
+
+	t.Run("Notifies status of first transaction with matching ID in block", func(t *testing.T) {
+		transaction1 := &Transaction{
+			ID:     "TRANSACTION_ID",
+			Status: peerProto.TxValidationCode_VALID,
+		}
+		transaction2 := &Transaction{
+			ID:     transaction1.ID,
+			Status: peerProto.TxValidationCode_MVCC_READ_CONFLICT,
+		}
+		block := NewBlock(t, transaction1, transaction2)
+		notifier := NewTestNotifier(block)
+
+		commitChannel, err := notifier.Notify("channel", transaction1.ID)
+		assert.NoError(t, err)
+
+		result, ok := <-commitChannel
+
+		assert.True(t, ok, "Commit channel was closed")
+		assert.Equal(t, transaction1.Status, result)
 	})
 }
