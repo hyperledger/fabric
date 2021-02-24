@@ -137,26 +137,6 @@ func (ao *appOrgMock) AnchorPeers() []*peer.AnchorPeer {
 	return []*peer.AnchorPeer{}
 }
 
-type configMock struct {
-	orgs2AppOrgs map[string]channelconfig.ApplicationOrg
-}
-
-func (c *configMock) OrdererAddresses() []string {
-	return []string{"localhost:7050"}
-}
-
-func (*configMock) ChannelID() string {
-	return "A"
-}
-
-func (c *configMock) Organizations() map[string]channelconfig.ApplicationOrg {
-	return c.orgs2AppOrgs
-}
-
-func (*configMock) Sequence() uint64 {
-	return 0
-}
-
 func TestJoinChannelConfig(t *testing.T) {
 	// Scenarios: The channel we're joining has a single org - Org0
 	// but our org ID is actually Org0MSP in the negative path
@@ -169,8 +149,10 @@ func TestJoinChannelConfig(t *testing.T) {
 	})
 	anchorPeerTracker := &anchorPeerTracker{allEndpoints: map[string]map[string]struct{}{}}
 	g1 := &GossipService{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("OrgMSP0"), gossipSvc: g1SvcMock, anchorPeerTracker: anchorPeerTracker}
-	g1.updateAnchors(&configMock{
-		orgs2AppOrgs: map[string]channelconfig.ApplicationOrg{
+	g1.updateAnchors(ConfigUpdate{
+		ChannelID:        "A",
+		OrdererAddresses: []string{"localhost:7050"},
+		Organizations: map[string]channelconfig.ApplicationOrg{
 			"Org0": &appOrgMock{id: "Org0"},
 		},
 	})
@@ -186,8 +168,10 @@ func TestJoinChannelConfig(t *testing.T) {
 		succChan <- struct{}{}
 	})
 	g2 := &GossipService{secAdv: &secAdvMock{}, peerIdentity: api.PeerIdentityType("Org0"), gossipSvc: g2SvcMock, anchorPeerTracker: anchorPeerTracker}
-	g2.updateAnchors(&configMock{
-		orgs2AppOrgs: map[string]channelconfig.ApplicationOrg{
+	g2.updateAnchors(ConfigUpdate{
+		ChannelID:        "A",
+		OrdererAddresses: []string{"localhost:7050"},
+		Organizations: map[string]channelconfig.ApplicationOrg{
 			"Org0": &appOrgMock{id: "Org0"},
 		},
 	})
@@ -195,7 +179,6 @@ func TestJoinChannelConfig(t *testing.T) {
 	case <-time.After(time.Second):
 		require.Fail(t, "Didn't join a channel (should have done so within the time period)")
 	case <-succChan:
-
 	}
 }
 
@@ -227,8 +210,10 @@ func TestJoinChannelNoAnchorPeers(t *testing.T) {
 	require.Empty(t, appOrg0.AnchorPeers())
 	require.Empty(t, appOrg1.AnchorPeers())
 
-	g.updateAnchors(&configMock{
-		orgs2AppOrgs: map[string]channelconfig.ApplicationOrg{
+	g.updateAnchors(ConfigUpdate{
+		ChannelID:        "A",
+		OrdererAddresses: []string{"localhost:7050"},
+		Organizations: map[string]channelconfig.ApplicationOrg{
 			"Org0": appOrg0,
 			"Org1": appOrg1,
 		},
