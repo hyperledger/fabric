@@ -7,148 +7,125 @@ SPDX-License-Identifier: Apache-2.0
 package service
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/stretchr/testify/require"
 )
-
-const testChannelID = "foo"
 
 func init() {
 	util.SetupTestLogging()
 }
 
 type mockReceiver struct {
-	orgs     map[string]channelconfig.ApplicationOrg
-	sequence uint64
+	cu          ConfigUpdate
+	updateCount int
 }
 
-func (mr *mockReceiver) updateAnchors(config Config) {
-	logger.Debugf("[TEST] Setting config to %d %v", config.Sequence(), config.Organizations())
-	mr.orgs = config.Organizations()
-	mr.sequence = config.Sequence()
+func (mr *mockReceiver) updateAnchors(cu ConfigUpdate) {
+	logger.Debugf("[TEST] Setting config to %d %v", cu.Sequence, cu.Organizations)
+	mr.updateCount++
+	mr.cu = cu
 }
-
-type mockConfig mockReceiver
-
-func (mc *mockConfig) OrdererAddresses() []string {
-	return []string{"localhost:7050"}
-}
-
-func (mc *mockConfig) Sequence() uint64 {
-	return mc.sequence
-}
-
-func (mc *mockConfig) Organizations() map[string]channelconfig.ApplicationOrg {
-	return mc.orgs
-}
-
-func (mc *mockConfig) ChannelID() string {
-	return testChannelID
-}
-
-const testOrgID = "testID"
 
 func TestInitialUpdate(t *testing.T) {
-	mc := &mockConfig{
-		sequence: 7,
-		orgs: map[string]channelconfig.ApplicationOrg{
-			testOrgID: &appGrp{
+	cu := ConfigUpdate{
+		ChannelID:        "channel-id",
+		OrdererAddresses: []string{"localhost:7050"},
+		Sequence:         7,
+		Organizations: map[string]channelconfig.ApplicationOrg{
+			"testID": &appGrp{
 				anchorPeers: []*peer.AnchorPeer{{Port: 9}},
 			},
 		},
 	}
 
 	mr := &mockReceiver{}
-
 	ce := newConfigEventer(mr)
-	ce.ProcessConfigUpdate(mc)
+	ce.ProcessConfigUpdate(cu)
 
-	if !reflect.DeepEqual(mc, (*mockConfig)(mr)) {
-		t.Fatalf("Should have updated config on initial update but did not")
-	}
+	require.Equal(t, cu, mr.cu, "should have updated config on initial update but did not")
 }
 
 func TestSecondUpdate(t *testing.T) {
-	appGrps := map[string]channelconfig.ApplicationOrg{
-		testOrgID: &appGrp{
-			anchorPeers: []*peer.AnchorPeer{{Port: 9}},
+	cu := ConfigUpdate{
+		ChannelID:        "channel-id",
+		OrdererAddresses: []string{"localhost:7050"},
+		Sequence:         7,
+		Organizations: map[string]channelconfig.ApplicationOrg{
+			"testID": &appGrp{
+				anchorPeers: []*peer.AnchorPeer{{Port: 9}},
+			},
 		},
-	}
-	mc := &mockConfig{
-		sequence: 7,
-		orgs:     appGrps,
 	}
 
 	mr := &mockReceiver{}
-
 	ce := newConfigEventer(mr)
-	ce.ProcessConfigUpdate(mc)
 
-	mc.sequence = 8
-	appGrps[testOrgID] = &appGrp{
+	ce.ProcessConfigUpdate(cu)
+	require.Equal(t, cu, mr.cu, "should have updated config on initial update but did not")
+	require.Equal(t, 1, mr.updateCount)
+
+	cu.Sequence = 8
+	cu.Organizations["testID"] = &appGrp{
 		anchorPeers: []*peer.AnchorPeer{{Port: 10}},
 	}
 
-	ce.ProcessConfigUpdate(mc)
-
-	if !reflect.DeepEqual(mc, (*mockConfig)(mr)) {
-		t.Fatal("Should have updated config on initial update but did not")
-	}
+	ce.ProcessConfigUpdate(cu)
+	require.Equal(t, cu, mr.cu, "should have updated config on second update but did not")
+	require.Equal(t, 2, mr.updateCount)
 }
 
 func TestSecondSameUpdate(t *testing.T) {
-	mc := &mockConfig{
-		sequence: 7,
-		orgs: map[string]channelconfig.ApplicationOrg{
-			testOrgID: &appGrp{
+	cu := ConfigUpdate{
+		ChannelID:        "channel-id",
+		OrdererAddresses: []string{"localhost:7050"},
+		Sequence:         7,
+		Organizations: map[string]channelconfig.ApplicationOrg{
+			"testID": &appGrp{
 				anchorPeers: []*peer.AnchorPeer{{Port: 9}},
 			},
 		},
 	}
 
 	mr := &mockReceiver{}
-
 	ce := newConfigEventer(mr)
-	ce.ProcessConfigUpdate(mc)
-	mr.sequence = 0
-	mr.orgs = nil
-	ce.ProcessConfigUpdate(mc)
 
-	if mr.sequence != 0 {
-		t.Error("Should not have updated sequence when reprocessing same config")
-	}
+	ce.ProcessConfigUpdate(cu)
+	require.Equal(t, cu, mr.cu, "should have updated config on initial update but did not")
+	require.Equal(t, 1, mr.updateCount)
 
-	if mr.orgs != nil {
-		t.Error("Should not have updated anchor peers when reprocessing same config")
-	}
+	ce.ProcessConfigUpdate(
+		ConfigUpdate{Organizations: cu.Organizations},
+	)
+	require.Equal(t, cu, mr.cu, "should not have updated when reprocessing the same config")
+	require.Equal(t, 1, mr.updateCount)
 }
 
 func TestUpdatedSeqOnly(t *testing.T) {
-	mc := &mockConfig{
-		sequence: 7,
-		orgs: map[string]channelconfig.ApplicationOrg{
-			testOrgID: &appGrp{
+	cu := ConfigUpdate{
+		ChannelID:        "channel-id",
+		OrdererAddresses: []string{"localhost:7050"},
+		Sequence:         7,
+		Organizations: map[string]channelconfig.ApplicationOrg{
+			"testID": &appGrp{
 				anchorPeers: []*peer.AnchorPeer{{Port: 9}},
 			},
 		},
 	}
 
 	mr := &mockReceiver{}
-
 	ce := newConfigEventer(mr)
-	ce.ProcessConfigUpdate(mc)
-	mc.sequence = 9
-	ce.ProcessConfigUpdate(mc)
 
-	if mr.sequence != 7 {
-		t.Errorf("Should not have updated sequence when reprocessing same config")
-	}
+	ce.ProcessConfigUpdate(cu)
+	require.Equal(t, cu, mr.cu, "should have updated config on initial update but did not")
+	require.Equal(t, 1, mr.updateCount)
 
-	if !reflect.DeepEqual(mr.orgs, mc.orgs) {
-		t.Errorf("Should not have cleared anchor peers when reprocessing newer config with higher sequence")
-	}
+	cu2 := cu
+	cu2.Sequence = 9
+	ce.ProcessConfigUpdate(cu2)
+	require.Equal(t, cu, mr.cu, "should not have updated config when reprocessing same config")
+	require.Equal(t, 1, mr.updateCount)
 }

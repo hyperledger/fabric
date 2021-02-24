@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	cc "github.com/hyperledger/fabric/common/config"
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
@@ -53,12 +52,6 @@ type CollectionInfoShim struct {
 
 func (cis *CollectionInfoShim) CollectionValidationInfo(chaincodeName, collectionName string, validationState validation.State) ([]byte, error, error) {
 	return cis.CollectionAndLifecycleResources.CollectionValidationInfo(cis.ChannelID, chaincodeName, collectionName, validationState)
-}
-
-type gossipSupport struct {
-	channelconfig.Application
-	configtx.Validator
-	channelconfig.Channel
 }
 
 func ConfigBlockFromLedger(ledger ledger.PeerLedger) (*common.Block, error) {
@@ -286,13 +279,13 @@ func (p *Peer) createChannel(
 	gossipCallbackWrapper := func(bundle *channelconfig.Bundle) {
 		ac, ok := bundle.ApplicationConfig()
 		if !ok {
-			// TODO, handle a missing ApplicationConfig more gracefully
 			ac = nil
 		}
-		gossipEventer.ProcessConfigUpdate(&gossipSupport{
-			Validator:   bundle.ConfigtxValidator(),
-			Application: ac,
-			Channel:     bundle.ChannelConfig(),
+		gossipEventer.ProcessConfigUpdate(gossipservice.ConfigUpdate{
+			ChannelID:        bundle.ConfigtxValidator().ChannelID(),
+			Organizations:    ac.Organizations(),
+			OrdererAddresses: bundle.ChannelConfig().OrdererAddresses(),
+			Sequence:         bundle.ConfigtxValidator().Sequence(),
 		})
 		p.GossipService.SuspectPeers(func(identity api.PeerIdentityType) bool {
 			// TODO: this is a place-holder that would somehow make the MSP layer suspect
