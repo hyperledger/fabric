@@ -1222,7 +1222,7 @@ func (n *Network) Discover(command Command) (*gexec.Session, error) {
 	return n.StartSession(cmd, command.SessionName())
 }
 
-// OSNAdmin starts a gexec.Session for the provided osnadmin command.
+// Osnadmin starts a gexec.Session for the provided osnadmin command.
 func (n *Network) Osnadmin(command Command) (*gexec.Session, error) {
 	cmd := NewCommand(n.Components.Osnadmin(), command)
 	return n.StartSession(cmd, command.SessionName())
