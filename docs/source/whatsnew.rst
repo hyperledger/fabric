@@ -184,6 +184,7 @@ with a link to the full release change log.
 * `Fabric v1.4.8 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.8>`_.
 * `Fabric v1.4.9 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.9>`_.
 * `Fabric v1.4.10 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.10>`_.
+* `Fabric v1.4.11 release notes <https://github.com/hyperledger/fabric/releases/tag/v1.4.11>`_.
 * `Fabric CA v1.4.0 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.0>`_.
 * `Fabric CA v1.4.1 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.1>`_.
 * `Fabric CA v1.4.2 release notes <https://github.com/hyperledger/fabric-ca/releases/tag/v1.4.2>`_.

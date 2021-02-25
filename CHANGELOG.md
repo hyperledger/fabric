@@ -1,3 +1,16 @@
+## v1.4.11
+Wed Feb 24 23:51:43 EST 2021
+
+* [46cdefb](https://github.com/hyperledger/fabric/commit/46cdefb) Add v1.4.11 release notes
+* [b6822cb](https://github.com/hyperledger/fabric/commit/b6822cb) Report correct reason of stream abort in orderer cluster
+* [4db2091](https://github.com/hyperledger/fabric/commit/4db2091) Log stream total lifetime
+* [a7f2b15](https://github.com/hyperledger/fabric/commit/a7f2b15) deps: overrides to use go1.14 branches
+* [999051d](https://github.com/hyperledger/fabric/commit/999051d) Remvoe mockery from standard gotool targets
+* [f15b2b4](https://github.com/hyperledger/fabric/commit/f15b2b4) Prepare for next release v1.4.11
+* [59d406a](https://github.com/hyperledger/fabric/commit/59d406a) Update AZP Service Connection Name
+* [e3d4a0a](https://github.com/hyperledger/fabric/commit/e3d4a0a) Update image filter used by integration tests
+* [a7e659d](https://github.com/hyperledger/fabric/commit/a7e659d) Pin npm to latest-6 for compatibility with node 8
+
 ## v1.4.10
 Wed Jan 27 18:16:54 EST 2021
 
