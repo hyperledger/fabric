@@ -106,14 +106,18 @@ all: check-go-version native docker checks
 checks: basic-checks unit-test integration-test
 
 .PHONY: basic-checks
-basic-checks: check-go-version license spelling references trailing-spaces linter check-metrics-doc filename-spaces check-swagger
+basic-checks: check-go-version license spelling references trailing-spaces linter check-help-docs check-metrics-doc filename-spaces check-swagger
 
 .PHONY: desk-checks
 desk-check: checks verify
 
 .PHONY: help-docs
 help-docs: native
-	@scripts/generateHelpDocs.sh
+	@scripts/help_docs.sh
+
+.PHONY: check-help-docs
+check-help-docs: native
+	@scripts/help_docs.sh check
 
 .PHONY: spelling
 spelling: gotool.misspell
