@@ -69,10 +69,7 @@ generateOrCheck() {
   fi
 }
 
-action="generate"
-if [ "$#" -ge 1 ] && [ "$1" == "check" ]; then
-  action="check"
-fi
+action="${1:-generate}"
 
 commands=("peer version")
 generateOrCheck \
