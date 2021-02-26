@@ -75,7 +75,7 @@ func TestClientConfigClone(t *testing.T) {
 		AsyncConnect: true,
 	}
 
-	clone := origin.Clone()
+	clone := origin
 
 	// Same content, different inner fields references.
 	require.Equal(t, origin, clone)

@@ -87,12 +87,6 @@ type ClientConfig struct {
 	MaxSendMsgSize int
 }
 
-// Clone clones this ClientConfig
-func (cc ClientConfig) Clone() ClientConfig {
-	shallowClone := cc
-	return shallowClone
-}
-
 // SecureOptions defines the security parameters (e.g. TLS) for a
 // GRPCServer or GRPCClient instance
 type SecureOptions struct {

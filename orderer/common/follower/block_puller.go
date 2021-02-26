@@ -58,7 +58,7 @@ func NewBlockPullerCreator(
 	bccsp bccsp.BCCSP,
 ) (*BlockPullerCreator, error) {
 	stdDialer := &cluster.StandardDialer{
-		Config: baseDialer.Config.Clone(),
+		Config: baseDialer.Config,
 	}
 	stdDialer.Config.AsyncConnect = false
 	stdDialer.Config.SecOpts.VerifyCertificate = nil

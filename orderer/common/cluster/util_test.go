@@ -117,7 +117,7 @@ func TestPredicateDialerUpdateRootCAs(t *testing.T) {
 	require.NoError(t, err)
 
 	dialer := &cluster.PredicateDialer{
-		Config: node1.clientConfig.Clone(),
+		Config: node1.clientConfig,
 	}
 	dialer.Config.SecOpts.ServerRootCAs = [][]byte{anotherTLSCA.CertBytes()}
 	dialer.Config.Timeout = time.Second

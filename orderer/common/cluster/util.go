@@ -146,11 +146,11 @@ func (dialer *PredicateDialer) UpdateRootCAs(serverRootCAs [][]byte) {
 // certificate chain satisfy verifyFunc
 func (dialer *PredicateDialer) Dial(address string, verifyFunc RemoteVerifier) (*grpc.ClientConn, error) {
 	dialer.lock.RLock()
-	cfg := dialer.Config.Clone()
+	clientConfigCopy := dialer.Config
 	dialer.lock.RUnlock()
 
-	cfg.SecOpts.VerifyCertificate = verifyFunc
-	client, err := comm.NewGRPCClient(cfg)
+	clientConfigCopy.SecOpts.VerifyCertificate = verifyFunc
+	client, err := comm.NewGRPCClient(clientConfigCopy)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -158,7 +158,7 @@ func (dialer *PredicateDialer) Dial(address string, verifyFunc RemoteVerifier) (
 		// We need to dynamically overwrite the TLS root CAs,
 		// as they may be updated.
 		dialer.lock.RLock()
-		serverRootCAs := dialer.Config.Clone().SecOpts.ServerRootCAs
+		serverRootCAs := dialer.Config.SecOpts.ServerRootCAs
 		dialer.lock.RUnlock()
 
 		tlsConfig.RootCAs = x509.NewCertPool()
@@ -185,10 +185,10 @@ type StandardDialer struct {
 
 // Dial dials an address according to the given EndpointCriteria
 func (dialer *StandardDialer) Dial(endpointCriteria EndpointCriteria) (*grpc.ClientConn, error) {
-	cfg := dialer.Config.Clone()
-	cfg.SecOpts.ServerRootCAs = endpointCriteria.TLSRootCAs
+	clientConfigCopy := dialer.Config
+	clientConfigCopy.SecOpts.ServerRootCAs = endpointCriteria.TLSRootCAs
 
-	client, err := comm.NewGRPCClient(cfg)
+	client, err := comm.NewGRPCClient(clientConfigCopy)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed creating gRPC client")
 	}
