@@ -654,19 +654,23 @@ func TestBlockPullerFailover(t *testing.T) {
 
 	// Configure the block puller logger to signal the wait group once the block puller
 	// received the first block.
-	var pulledBlock1 sync.WaitGroup
-	pulledBlock1.Add(1)
+	pulledBlock1Done := make(chan struct{})
 	var once sync.Once
 	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
 		if strings.Contains(entry.Message, "Got block [1] of size") {
-			once.Do(pulledBlock1.Done)
+			once.Do(func() { close(pulledBlock1Done) })
 		}
 		return nil
 	}))
 
 	go func() {
 		// Wait for the block puller to pull the first block
-		pulledBlock1.Wait()
+		select {
+		case <-pulledBlock1Done:
+		case <-time.After(10 * time.Second):
+			t.Errorf("message was not logged before timeout")
+			return
+		}
 		// and now crash node1 and resurrect node 2
 		osn1.stop()
 		osn2.resurrect()
@@ -706,14 +710,13 @@ func TestBlockPullerNoneResponsiveOrderer(t *testing.T) {
 	notInUseOrdererNode := osn2
 	// Configure the logger to tell us who is the orderer node that the block puller
 	// isn't connected to. This is done by intercepting the appropriate message
-	var waitForConnection sync.WaitGroup
-	waitForConnection.Add(1)
+	waitForConnectionDone := make(chan struct{})
 	var once sync.Once
 	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
 		if !strings.Contains(entry.Message, "Sending request for block [1]") {
 			return nil
 		}
-		defer once.Do(waitForConnection.Done)
+		defer once.Do(func() { close(waitForConnectionDone) })
 		s := entry.Message[len("Sending request for block [1] to 127.0.0.1:"):]
 		port, err := strconv.ParseInt(s, 10, 32)
 		require.NoError(t, err)
@@ -734,7 +737,13 @@ func TestBlockPullerNoneResponsiveOrderer(t *testing.T) {
 	}))
 
 	go func() {
-		waitForConnection.Wait()
+		select {
+		case <-waitForConnectionDone:
+		case <-time.After(10 * time.Second):
+			t.Errorf("message was not logged before timeout")
+			return
+		}
+
 		// Enqueue the height int the orderer we're connected to
 		notInUseOrdererNode.enqueueResponse(3)
 		notInUseOrdererNode.addExpectProbeAssert()
@@ -765,17 +774,23 @@ func TestBlockPullerNoOrdererAliveAtStartup(t *testing.T) {
 	bp := newBlockPuller(dialer, osn.srv.Address())
 
 	// Configure the logger to wait until the a failed connection attempt was made
-	var connectionAttempt sync.WaitGroup
-	connectionAttempt.Add(1)
+	connectionAttemptDone := make(chan struct{})
+	var closeOnce sync.Once
 	bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
 		if strings.Contains(entry.Message, "Failed connecting to") {
-			connectionAttempt.Done()
+			closeOnce.Do(func() { close(connectionAttemptDone) })
 		}
 		return nil
 	}))
 
 	go func() {
-		connectionAttempt.Wait()
+		select {
+		case <-connectionAttemptDone:
+		case <-time.After(10 * time.Second):
+			t.Errorf("message was not logged before timeout")
+			return
+		}
+
 		osn.resurrect()
 		// The first seek request asks for the latest block
 		osn.addExpectProbeAssert()
@@ -1053,11 +1068,12 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 			require.Len(t, osn.seekAssertions, 4)
 
 			// Wait until the block is pulled and the malleability is detected
-			var detectedBadBlock sync.WaitGroup
-			detectedBadBlock.Add(1)
+			detectedBadBlockDone := make(chan struct{})
+			var closeOnce sync.Once
 			bp.Logger = bp.Logger.WithOptions(zap.Hooks(func(entry zapcore.Entry) error {
 				if strings.Contains(entry.Message, fmt.Sprintf("Failed pulling blocks: %s", testCase.expectedErrMsg)) {
-					detectedBadBlock.Done()
+					closeOnce.Do(func() { close(detectedBadBlockDone) })
+
 					// Close the channel to make the current server-side deliver stream close
 					close(osn.blocks())
 					testLogger.Infof("Expected err log has been printed: %s\n", testCase.expectedErrMsg)
@@ -1071,7 +1087,12 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 			}))
 
 			bp.PullBlock(10)
-			detectedBadBlock.Wait()
+
+			select {
+			case <-detectedBadBlockDone:
+			case <-time.After(10 * time.Second):
+				t.Fatalf("expected %q to be logged but it was not seen", testCase.expectedErrMsg)
+			}
 
 			bp.Close()
 			dialer.assertAllConnectionsClosed(t)
@@ -1214,18 +1235,22 @@ func TestBlockPullerToBadEndpointWithStop(t *testing.T) {
 	bp.MaxPullBlockRetries = 100
 	bp.RetryTimeout = time.Hour
 
-	wgRelease := sync.WaitGroup{}
-	wgRelease.Add(1)
+	releaseDone := make(chan struct{})
+	var closeOnce sync.Once
 
 	go func() {
 		// But this will get stuck until the StopChannel is closed
 		require.Nil(t, bp.PullBlock(uint64(1)))
 		bp.Close()
-		wgRelease.Done()
+		closeOnce.Do(func() { close(releaseDone) })
 	}()
 
 	close(bp.StopChannel)
-	wgRelease.Wait()
+	select {
+	case <-releaseDone:
+	case <-time.After(10 * time.Second):
+		t.Fatalf("timed out waiting for PullBlock to complete")
+	}
 
 	dialer.assertAllConnectionsClosed(t)
 	require.True(t, couldNotConnectLogged)
