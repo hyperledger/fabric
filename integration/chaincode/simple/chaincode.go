@@ -64,21 +64,23 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	}
 	function, args := stub.GetFunctionAndParameters()
 	switch function {
-	case "invoke":
-		// Make payment of X units from A to B
-		return t.invoke(stub, args)
 	case "delete":
 		// Deletes an entity from its state
 		return t.delete(stub, args)
+	case "echo":
+		return t.echo(args)
+	case "invoke":
+		// Make payment of X units from A to B
+		return t.invoke(stub, args)
+	case "mspid":
+		// Checks the shim's GetMSPID() API
+		return t.mspid(args)
 	case "query":
 		// the old "Query" is now implemtned in invoke
 		return t.query(stub, args)
 	case "respond":
 		// return with an error
 		return t.respond(stub, args)
-	case "mspid":
-		// Checks the shim's GetMSPID() API
-		return t.mspid(args)
 	default:
 		return shim.Error(`Invalid invoke function name. Expecting "invoke", "delete", "query", "respond", or "mspid"`)
 	}
@@ -227,4 +229,11 @@ func (t *SimpleChaincode) mspid(args []string) pb.Response {
 
 	fmt.Printf("MSPID:%s\n", mspid)
 	return shim.Success([]byte(mspid))
+}
+
+func (t *SimpleChaincode) echo(args []string) pb.Response {
+	if len(args) != 1 {
+		return shim.Error("echo must be invoked with a single argument")
+	}
+	return shim.Success([]byte(args[0]))
 }
