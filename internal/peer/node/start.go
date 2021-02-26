@@ -1129,7 +1129,7 @@ func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOptio
 		// set max send/recv msg sizes
 		dialOpts = append(
 			dialOpts,
-			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)),
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.DefaultMaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.DefaultMaxSendMsgSize)),
 		)
 		// set the keepalive options
 		kaOpts := comm.DefaultKeepaliveOptions
