@@ -124,8 +124,8 @@ func NewGRPCServerFromListener(listener net.Listener, serverConfig ServerConfig)
 		}
 	}
 	// set max send and recv msg sizes
-	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(MaxSendMsgSize))
-	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(MaxRecvMsgSize))
+	serverOpts = append(serverOpts, grpc.MaxSendMsgSize(DefaultMaxSendMsgSize))
+	serverOpts = append(serverOpts, grpc.MaxRecvMsgSize(DefaultMaxRecvMsgSize))
 	// set the keepalive options
 	serverOpts = append(serverOpts, ServerKeepaliveOptions(serverConfig.KaOpts)...)
 	// set connection timeout
