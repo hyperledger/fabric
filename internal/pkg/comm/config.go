@@ -18,10 +18,14 @@ import (
 )
 
 // Configuration defaults
+
+// Max send and receive bytes for grpc clients and servers
+const (
+	DefaultMaxRecvMsgSize = 100 * 1024 * 1024
+	DefaultMaxSendMsgSize = 100 * 1024 * 1024
+)
+
 var (
-	// Max send and receive bytes for grpc clients and servers
-	MaxRecvMsgSize = 100 * 1024 * 1024
-	MaxSendMsgSize = 100 * 1024 * 1024
 	// Default peer keepalive options
 	DefaultKeepaliveOptions = KeepaliveOptions{
 		ClientInterval:    time.Duration(1) * time.Minute,  // 1 min
