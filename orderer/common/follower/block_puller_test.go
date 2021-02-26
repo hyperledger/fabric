@@ -82,7 +82,7 @@ func TestNewBlockPullerFactory(t *testing.T) {
 
 	t.Run("dialer has bad cert", func(t *testing.T) {
 		badDialer := &cluster.PredicateDialer{
-			Config: dialer.Config.Clone(),
+			Config: dialer.Config,
 		}
 		badDialer.Config.SecOpts.Certificate = []byte("not-a-certificate")
 		bpf, err := follower.NewBlockPullerCreator(channelID, testLogger, mockSigner, badDialer, localconfig.Cluster{}, cryptoProv)
