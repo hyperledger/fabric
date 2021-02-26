@@ -77,6 +77,10 @@ type ClientConfig struct {
 	Timeout time.Duration
 	// AsyncConnect makes connection creation non blocking
 	AsyncConnect bool
+	// Maximum message size the client can receive
+	MaxRecvMsgSize int
+	// Maximum message size the client can send
+	MaxSendMsgSize int
 }
 
 // Clone clones this ClientConfig
