@@ -19,8 +19,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/protoutil"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 type node struct {
@@ -247,7 +247,7 @@ func (n *node) abdicateLeader(currentLead uint64) {
 				continue // skip self
 			}
 
-			if pr.RecentActive && !pr.Paused {
+			if pr.RecentActive && !pr.IsPaused() {
 				transferee = id
 				break
 			}
