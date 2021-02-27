@@ -54,26 +54,46 @@ func (n *node) start(fresh, join bool) {
 	raftPeers := RaftPeers(n.metadata.ConsenterIds)
 	n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
 
+	// In case it's a channel creation, we want to elect a leader as fast as possible,
+	// so we need at least one node to campaign right from the start.
+	// We pick that leader node by hashing the channel name to get a pseudorandom distinct string
+	// unique for the channel (so we don't pick the same node in all channels) and then we use it
+	// to pick the identifier of the node that will start the campaign.
 	var campaign bool
-	if fresh {
-		if join {
-			raftPeers = nil
-			n.logger.Info("Starting raft node to join an existing channel")
-		} else {
-			n.logger.Info("Starting raft node as part of a new channel")
+	// determine the node to start campaign by selecting the node with ID equals to:
+	//                hash(channelID) % cluster_size + 1
+	sha := sha256.Sum256([]byte(n.chainID))
+	number, _ := proto.DecodeVarint(sha[24:])
+	if n.config.ID == number%uint64(len(raftPeers))+1 {
+		campaign = true
+	}
 
-			// determine the node to start campaign by selecting the node with ID equals to:
-			//                hash(channelID) % cluster_size + 1
-			sha := sha256.Sum256([]byte(n.chainID))
-			number, _ := proto.DecodeVarint(sha[24:])
-			if n.config.ID == number%uint64(len(raftPeers))+1 {
-				campaign = true
-			}
-		}
-		n.Node = raft.StartNode(n.config, raftPeers)
-	} else {
+	// We should only campaign when starting if this is a channel creation,
+	// otherwise assume there is already a leader.
+	campaign = campaign && fresh && !join
+
+	// We start the node with an explicit list of peers in case it's a:
+	// (1) Brand new channel (! join)
+	// (2) We haven't written the peers yet to storage (WAL doesn't exist, so it's "fresh")
+	if fresh && !join {
+		n.logger.Info("Starting raft node as part of a new channel")
+	}
+
+	// Any other case, the Raft peers are taken from storage, either directly or via future replication.
+	if !fresh {
 		n.logger.Info("Restarting raft node")
+		raftPeers = nil
+	}
+
+	if fresh && join {
+		n.logger.Info("Starting raft node to join an existing channel")
+		raftPeers = nil
+	}
+
+	if len(raftPeers) == 0 {
 		n.Node = raft.RestartNode(n.config)
+	} else {
+		n.Node = raft.StartNode(n.config, raftPeers)
 	}
 
 	n.subscriberC = make(chan chan uint64)
