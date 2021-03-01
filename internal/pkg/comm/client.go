@@ -57,13 +57,6 @@ func (client *GRPCClient) TLSEnabled() bool {
 	return client.tlsConfig != nil
 }
 
-// MutualTLSRequired is a flag indicating whether the client
-// must send a certificate when making TLS connections
-func (client *GRPCClient) MutualTLSRequired() bool {
-	return client.tlsConfig != nil &&
-		len(client.tlsConfig.Certificates) > 0
-}
-
 // SetServerRootCAs sets the list of authorities used to verify server
 // certificates based on a list of PEM-encoded X509 certificate authorities
 func (client *GRPCClient) SetServerRootCAs(serverRoots [][]byte) error {

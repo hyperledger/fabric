@@ -139,7 +139,7 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		YieldLeadership:   !d.conf.IsStaticLeader,
 	}
 
-	if d.conf.DeliverGRPCClient.MutualTLSRequired() {
+	if d.conf.DeliverServiceConfig.SecOpts.RequireClientCert {
 		dc.TLSCertHash = util.ComputeSHA256(d.conf.DeliverGRPCClient.Certificate().Certificate[0])
 	}
 
