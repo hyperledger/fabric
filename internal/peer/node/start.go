@@ -825,7 +825,12 @@ func serve(args []string) error {
 			logger.Info("Starting peer with Gateway enabled")
 			gatewayprotos.RegisterGatewayServer(
 				peerServer.Server(),
-				gateway.CreateServer(&gateway.EndorserServerAdapter{Server: serverEndorser}, discoveryService, peerInstance.GossipService.SelfMembershipInfo().Endpoint),
+				gateway.CreateServer(
+					&gateway.EndorserServerAdapter{Server: serverEndorser},
+					discoveryService,
+					peerInstance.GossipService.SelfMembershipInfo().Endpoint,
+					coreConfig.GatewayOptions,
+				),
 			)
 		} else {
 			logger.Warning("Discovery service must be enabled for embedded gateway")

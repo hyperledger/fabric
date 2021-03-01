@@ -10,6 +10,9 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
+
+	"github.com/spf13/viper"
 
 	"github.com/golang/protobuf/proto"
 	cp "github.com/hyperledger/fabric-protos-go/common"
@@ -74,6 +77,7 @@ type contextKey string
 func TestGateway(t *testing.T) {
 	const testChannel = "test_channel"
 	const testChaincode = "test_chaincode"
+	const endorsementTimeout = -1 * time.Second
 
 	mockSigner := &idmocks.SignerSerializer{}
 	mockSigner.SignReturns([]byte("my_signature"), nil)
@@ -118,7 +122,12 @@ func TestGateway(t *testing.T) {
 			tt.setupDiscovery(disc)
 		}
 
-		server := CreateServer(localEndorser, disc, "localhost:7051")
+		options := Options{
+			Enabled:            true,
+			EndorsementTimeout: endorsementTimeout,
+		}
+
+		server := CreateServer(localEndorser, disc, "localhost:7051", options)
 
 		factory := &endpointFactory{
 			t:                t,
@@ -306,7 +315,11 @@ func TestGateway(t *testing.T) {
 				require.Equal(t, 1, localEndorser.ProcessProposalCallCount())
 				ectx, prop, _ := localEndorser.ProcessProposalArgsForCall(0)
 				require.Equal(t, tt.signedProposal, prop)
-				require.Same(t, ctx, ectx)
+				require.Equal(t, "apples", ectx.Value(contextKey("orange")))
+				// context timeout was set to -1s, so deadline should be in the past
+				deadline, ok := ectx.Deadline()
+				require.True(t, ok)
+				require.Negative(t, time.Until(deadline))
 
 				require.Equal(t, testChannel, preparedTxn.ChannelId)
 				// check the prepare transaction (Envelope) contains the right number of endorsements
@@ -449,7 +462,7 @@ func TestGateway(t *testing.T) {
 }
 
 func TestNilArgs(t *testing.T) {
-	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, "localhost:7051")
+	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, "localhost:7051", GetOptions(viper.New()))
 	ctx := context.Background()
 
 	_, err := server.Evaluate(ctx, nil)

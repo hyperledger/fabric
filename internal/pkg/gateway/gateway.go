@@ -19,6 +19,7 @@ var logger = flogging.MustGetLogger("gateway")
 // Server represents the GRPC server for the Gateway.
 type Server struct {
 	registry *registry
+	options  Options
 }
 
 type EndorserServerAdapter struct {
@@ -30,7 +31,7 @@ func (e *EndorserServerAdapter) ProcessProposal(ctx context.Context, req *peer.S
 }
 
 // CreateServer creates an embedded instance of the Gateway.
-func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, selfEndpoint string) *Server {
+func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, selfEndpoint string, options Options) *Server {
 	gwServer := &Server{
 		registry: &registry{
 			localEndorser:       localEndorser,
@@ -44,6 +45,7 @@ func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, selfEn
 			tlsRootCerts:        map[string][][]byte{},
 			channelsInitialized: map[string]bool{},
 		},
+		options: options,
 	}
 
 	return gwServer

@@ -273,8 +273,7 @@ func (c *Config) load() error {
 		c.DeliverClientKeepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
 	}
 
-	c.GatewayOptions = gateway.DefaultOptions()
-	c.GatewayOptions.Enabled = viper.GetBool("peer.gateway.enabled")
+	c.GatewayOptions = gateway.GetOptions(viper.GetViper())
 
 	c.VMEndpoint = viper.GetString("vm.endpoint")
 	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")
