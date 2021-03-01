@@ -13,6 +13,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
@@ -112,6 +113,48 @@ type SecureOptions struct {
 	CipherSuites []uint16
 	// TimeShift makes TLS handshakes time sampling shift to the past by a given duration
 	TimeShift time.Duration
+}
+
+func (so SecureOptions) TLSConfig() (*tls.Config, error) {
+	// if TLS is not enabled, return
+	if !so.UseTLS {
+		return nil, nil
+	}
+
+	tlsConfig := &tls.Config{
+		VerifyPeerCertificate: so.VerifyCertificate,
+		MinVersion:            tls.VersionTLS12,
+	}
+	if len(so.ServerRootCAs) > 0 {
+		tlsConfig.RootCAs = x509.NewCertPool()
+		for _, certBytes := range so.ServerRootCAs {
+			err := AddPemToCertPool(certBytes, tlsConfig.RootCAs)
+			if err != nil {
+				commLogger.Debugf("error adding root certificate: %v", err)
+				return nil, errors.WithMessage(err, "error adding root certificate")
+			}
+		}
+	}
+
+	if so.RequireClientCert {
+		// make sure we have both Key and Certificate
+		if so.Key == nil || so.Certificate == nil {
+			return nil, errors.New("both Key and Certificate are required when using mutual TLS")
+		}
+		cert, err := tls.X509KeyPair(so.Certificate, so.Key)
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed to load client certificate")
+		}
+		tlsConfig.Certificates = append(tlsConfig.Certificates, cert)
+	}
+
+	if so.TimeShift > 0 {
+		tlsConfig.Time = func() time.Time {
+			return time.Now().Add((-1) * so.TimeShift)
+		}
+	}
+
+	return tlsConfig, nil
 }
 
 // KeepaliveOptions is used to set the gRPC keepalive settings for both

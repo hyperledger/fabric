@@ -32,10 +32,11 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	client := &GRPCClient{}
 
 	// parse secure options
-	err := client.parseSecureOptions(config.SecOpts)
+	tlsConfig, err := config.SecOpts.TLSConfig()
 	if err != nil {
-		return client, err
+		return nil, err
 	}
+	client.tlsConfig = tlsConfig
 
 	// keepalive options
 
@@ -67,51 +68,6 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	))
 
 	return client, nil
-}
-
-func (client *GRPCClient) parseSecureOptions(opts SecureOptions) error {
-	// if TLS is not enabled, return
-	if !opts.UseTLS {
-		return nil
-	}
-
-	client.tlsConfig = &tls.Config{
-		VerifyPeerCertificate: opts.VerifyCertificate,
-		MinVersion:            tls.VersionTLS12,
-	}
-	if len(opts.ServerRootCAs) > 0 {
-		client.tlsConfig.RootCAs = x509.NewCertPool()
-		for _, certBytes := range opts.ServerRootCAs {
-			err := AddPemToCertPool(certBytes, client.tlsConfig.RootCAs)
-			if err != nil {
-				commLogger.Debugf("error adding root certificate: %v", err)
-				return errors.WithMessage(err, "error adding root certificate")
-			}
-		}
-	}
-	if opts.RequireClientCert {
-		// make sure we have both Key and Certificate
-		if opts.Key != nil &&
-			opts.Certificate != nil {
-			cert, err := tls.X509KeyPair(opts.Certificate,
-				opts.Key)
-			if err != nil {
-				return errors.WithMessage(err, "failed to load client certificate")
-			}
-			client.tlsConfig.Certificates = append(
-				client.tlsConfig.Certificates, cert)
-		} else {
-			return errors.New("both Key and Certificate are required when using mutual TLS")
-		}
-	}
-
-	if opts.TimeShift > 0 {
-		client.tlsConfig.Time = func() time.Time {
-			return time.Now().Add((-1) * opts.TimeShift)
-		}
-	}
-
-	return nil
 }
 
 // Certificate returns the tls.Certificate used to make TLS connections
@@ -193,8 +149,7 @@ func (client *GRPCClient) NewConnection(address string, tlsOptions ...TLSOption)
 	defer cancel()
 	conn, err := grpc.DialContext(ctx, address, dialOpts...)
 	if err != nil {
-		return nil, errors.WithMessage(errors.WithStack(err),
-			"failed to create new connection")
+		return nil, errors.Wrap(err, "failed to create new connection")
 	}
 	return conn, nil
 }
