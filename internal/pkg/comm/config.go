@@ -88,6 +88,42 @@ type ClientConfig struct {
 	MaxSendMsgSize int
 }
 
+// Convert the ClientConfig to the approriate set of grpc.DialOptions.
+// NOTE: These options do no contain the SecureOptions.
+func (cc ClientConfig) DialOptions() []grpc.DialOption {
+	var dialOpts []grpc.DialOption
+
+	dialOpts = append(dialOpts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:                cc.KaOpts.ClientInterval,
+		Timeout:             cc.KaOpts.ClientTimeout,
+		PermitWithoutStream: true,
+	}))
+
+	// Unless asynchronous connect is set, make connection establishment blocking.
+	if !cc.AsyncConnect {
+		dialOpts = append(dialOpts,
+			grpc.WithBlock(),
+			grpc.FailOnNonTempDialError(true),
+		)
+	}
+	// set send/recv message size to package defaults
+	maxRecvMsgSize := DefaultMaxRecvMsgSize
+	if cc.MaxRecvMsgSize != 0 {
+		maxRecvMsgSize = cc.MaxRecvMsgSize
+	}
+	maxSendMsgSize := DefaultMaxSendMsgSize
+	if cc.MaxSendMsgSize != 0 {
+		maxSendMsgSize = cc.MaxSendMsgSize
+	}
+	dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(
+		grpc.MaxCallRecvMsgSize(maxRecvMsgSize),
+		grpc.MaxCallSendMsgSize(maxSendMsgSize),
+	))
+
+	// client.timeout = config.DialTimeout
+	return dialOpts
+}
+
 // SecureOptions defines the security parameters (e.g. TLS) for a
 // GRPCServer or GRPCClient instance
 type SecureOptions struct {
