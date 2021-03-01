@@ -40,8 +40,8 @@ func newConnection(address string, tlsRootCerts [][]byte) (*grpc.ClientConn, err
 		RequireClientCert: false,
 	}
 	config := comm.ClientConfig{
-		SecOpts: secOpts,
-		Timeout: 5 * time.Second, // TODO from config
+		SecOpts:     secOpts,
+		DialTimeout: 5 * time.Second, // TODO from config
 	}
 	client, err := comm.NewGRPCClient(config)
 	if err != nil {

@@ -77,9 +77,9 @@ type ClientConfig struct {
 	SecOpts SecureOptions
 	// KaOpts defines the keepalive parameters
 	KaOpts KeepaliveOptions
-	// Timeout specifies how long the client will block when attempting to
-	// establish a connection
-	Timeout time.Duration
+	// DialTimeout controls how long the client can block when attempting to
+	// establish a connection to a server
+	DialTimeout time.Duration
 	// AsyncConnect makes connection creation non blocking
 	AsyncConnect bool
 	// Maximum message size the client can receive

@@ -52,7 +52,7 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 		client.dialOpts = append(client.dialOpts, grpc.WithBlock())
 		client.dialOpts = append(client.dialOpts, grpc.FailOnNonTempDialError(true))
 	}
-	client.timeout = config.Timeout
+	client.timeout = config.DialTimeout
 	// set send/recv message size to package defaults
 	maxRecvMsgSize := DefaultMaxRecvMsgSize
 	if config.MaxRecvMsgSize != 0 {

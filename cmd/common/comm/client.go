@@ -35,8 +35,8 @@ func NewClient(conf Config) (*Client, error) {
 		return nil, errors.WithStack(err)
 	}
 	cl, err := comm.NewGRPCClient(comm.ClientConfig{
-		SecOpts: sop,
-		Timeout: conf.Timeout,
+		SecOpts:     sop,
+		DialTimeout: conf.Timeout,
 	})
 	if err != nil {
 		return nil, err

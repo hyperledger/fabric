@@ -217,7 +217,7 @@ func newTestNodeWithMetrics(t *testing.T, metrics cluster.MetricsProvider, tlsCo
 	handler := &mocks.Handler{}
 	clientConfig := comm_utils.ClientConfig{
 		AsyncConnect: true,
-		Timeout:      time.Hour,
+		DialTimeout:  time.Hour,
 		SecOpts: comm_utils.SecureOptions{
 			RequireClientCert: true,
 			Key:               clientKeyPair.Key,
@@ -507,7 +507,7 @@ func TestUnavailableHosts(t *testing.T) {
 	// The below timeout makes sure that connection establishment is done
 	// asynchronously. Had it been synchronous, the Remote() call would be
 	// blocked for an hour.
-	clientConfig.Timeout = time.Hour
+	clientConfig.DialTimeout = time.Hour
 	defer node1.stop()
 
 	node2 := newTestNode(t)
@@ -814,7 +814,7 @@ func TestNoTLSCertificate(t *testing.T) {
 
 	clientConfig := comm_utils.ClientConfig{
 		AsyncConnect: true,
-		Timeout:      time.Millisecond * 100,
+		DialTimeout:  time.Millisecond * 100,
 		SecOpts: comm_utils.SecureOptions{
 			ServerRootCAs: [][]byte{ca.CertBytes()},
 			UseTLS:        true,
@@ -851,7 +851,7 @@ func TestReconnect(t *testing.T) {
 	node1 := newTestNode(t)
 	defer node1.stop()
 	conf := node1.dialer.Config
-	conf.Timeout = time.Hour
+	conf.DialTimeout = time.Hour
 
 	node2 := newTestNode(t)
 	node2.handler.On("OnSubmit", testChannel, node1.nodeInfo.ID, mock.Anything).Return(nil)

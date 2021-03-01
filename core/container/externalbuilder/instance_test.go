@@ -79,8 +79,8 @@ var _ = Describe("Instance", func() {
 						Key:               []byte("fake-key"),
 						ServerRootCAs:     [][]byte{[]byte("fake-root-cert")},
 					},
-					KaOpts:  comm.DefaultKeepaliveOptions,
-					Timeout: 10 * time.Second,
+					KaOpts:      comm.DefaultKeepaliveOptions,
+					DialTimeout: 10 * time.Second,
 				},
 			}))
 		})
@@ -151,8 +151,8 @@ var _ = Describe("Instance", func() {
 					Expect(ccinfo).To(Equal(&ccintf.ChaincodeServerInfo{
 						Address: "ccaddress:12345",
 						ClientConfig: comm.ClientConfig{
-							Timeout: 10 * time.Second,
-							KaOpts:  comm.DefaultKeepaliveOptions,
+							DialTimeout: 10 * time.Second,
+							KaOpts:      comm.DefaultKeepaliveOptions,
 						},
 					}))
 				})
@@ -171,8 +171,8 @@ var _ = Describe("Instance", func() {
 								UseTLS:        true,
 								ServerRootCAs: [][]byte{[]byte("fake-root-cert")},
 							},
-							KaOpts:  comm.DefaultKeepaliveOptions,
-							Timeout: 10 * time.Second,
+							KaOpts:      comm.DefaultKeepaliveOptions,
+							DialTimeout: 10 * time.Second,
 						},
 					}))
 				})
@@ -194,8 +194,8 @@ var _ = Describe("Instance", func() {
 								Key:               []byte("fake-key"),
 								ServerRootCAs:     [][]byte{[]byte("fake-root-cert")},
 							},
-							KaOpts:  comm.DefaultKeepaliveOptions,
-							Timeout: 3 * time.Second,
+							KaOpts:      comm.DefaultKeepaliveOptions,
+							DialTimeout: 3 * time.Second,
 						},
 					}))
 				})

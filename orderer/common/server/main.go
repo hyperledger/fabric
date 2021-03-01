@@ -535,7 +535,7 @@ func initializeClusterClientConfig(conf *localconfig.TopLevel) (comm.ClientConfi
 	cc := comm.ClientConfig{
 		AsyncConnect: true,
 		KaOpts:       comm.DefaultKeepaliveOptions,
-		Timeout:      conf.General.Cluster.DialTimeout,
+		DialTimeout:  conf.General.Cluster.DialTimeout,
 		SecOpts:      comm.SecureOptions{},
 	}
 

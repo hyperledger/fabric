@@ -60,8 +60,8 @@ var _ = Describe("Extcc", func() {
 				ccinfo := &ccintf.ChaincodeServerInfo{
 					Address: cclist.Addr().String(),
 					ClientConfig: comm.ClientConfig{
-						KaOpts:  comm.DefaultKeepaliveOptions,
-						Timeout: 10 * time.Second,
+						KaOpts:      comm.DefaultKeepaliveOptions,
+						DialTimeout: 10 * time.Second,
 					},
 				}
 				err := i.Stream("ccid", ccinfo, shandler)
@@ -85,7 +85,7 @@ var _ = Describe("Extcc", func() {
 							Key:               []byte("fake-key"),
 							ServerRootCAs:     [][]byte{[]byte("fake-root-cert")},
 						},
-						Timeout: 10 * time.Second,
+						DialTimeout: 10 * time.Second,
 					},
 				}
 			})
