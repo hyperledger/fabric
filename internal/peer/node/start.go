@@ -1163,7 +1163,7 @@ func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOptio
 		if viper.IsSet("peer.keepalive.client.timeout") {
 			kaOpts.ClientTimeout = viper.GetDuration("peer.keepalive.client.timeout")
 		}
-		dialOpts = append(dialOpts, comm.ClientKeepaliveOptions(kaOpts)...)
+		dialOpts = append(dialOpts, kaOpts.ClientKeepaliveOptions()...)
 
 		if viper.GetBool("peer.tls.enabled") {
 			dialOpts = append(dialOpts, grpc.WithTransportCredentials(credSupport.GetPeerCredentials()))
