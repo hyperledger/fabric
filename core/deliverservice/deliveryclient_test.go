@@ -27,14 +27,13 @@ func TestStartDeliverForChannel(t *testing.T) {
 	fakeLedgerInfo := &fake.LedgerInfo{}
 	fakeLedgerInfo.LedgerHeightReturns(0, fmt.Errorf("fake-ledger-error"))
 
-	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{
-		SecOpts: comm.SecureOptions{
-			UseTLS:            true,
-			RequireClientCert: true,
-			// The below certificates were taken from the peer TLS
-			// dir as output by cryptogen.
-			// They are server.crt and server.key respectively.
-			Certificate: []byte(`-----BEGIN CERTIFICATE-----
+	secOpts := comm.SecureOptions{
+		UseTLS:            true,
+		RequireClientCert: true,
+		// The below certificates were taken from the peer TLS
+		// dir as output by cryptogen.
+		// They are server.crt and server.key respectively.
+		Certificate: []byte(`-----BEGIN CERTIFICATE-----
 MIIChTCCAiygAwIBAgIQOrr7/tDzKhhCba04E6QVWzAKBggqhkjOPQQDAjB2MQsw
 CQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy
 YW5jaXNjbzEZMBcGA1UEChMQb3JnMS5leGFtcGxlLmNvbTEfMB0GA1UEAxMWdGxz
@@ -50,20 +49,22 @@ cGVlcjCCFnBlZXIwLm9yZzEuZXhhbXBsZS5jb22CBXBlZXIwMAoGCCqGSM49BAMC
 A0cAMEQCIAiAGoYeKPMd3bqtixZji8q2zGzLmIzq83xdTJoZqm50AiAKleso2EVi
 2TwsekWGpMaCOI6JV1+ZONyti6vBChhUYg==
 -----END CERTIFICATE-----`),
-			Key: []byte(`-----BEGIN PRIVATE KEY-----
+		Key: []byte(`-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgxiyAFyD0Eg1NxjbS
 U2EKDLoTQr3WPK8z7WyeOSzr+GGhRANCAATGCWmkvGIBhJqyt0WytkkPFFQsYFvA
 eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 -----END PRIVATE KEY-----`,
-			),
-		},
-	})
+		),
+	}
+	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{SecOpts: secOpts})
 	require.NoError(t, err)
 
 	t.Run("Green Path With Mutual TLS", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
-			DeliverGRPCClient:    grpcClient,
-			DeliverServiceConfig: &DeliverServiceConfig{},
+			DeliverGRPCClient: grpcClient,
+			DeliverServiceConfig: &DeliverServiceConfig{
+				SecOpts: secOpts,
+			},
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})

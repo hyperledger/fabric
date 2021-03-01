@@ -49,7 +49,6 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, tls.Certificate{}, client.Certificate())
 	require.False(t, client.TLSEnabled())
-	require.False(t, client.MutualTLSRequired())
 
 	secOpts := comm.SecureOptions{
 		UseTLS: false,
@@ -59,7 +58,6 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, tls.Certificate{}, client.Certificate())
 	require.False(t, client.TLSEnabled())
-	require.False(t, client.MutualTLSRequired())
 
 	secOpts = comm.SecureOptions{
 		UseTLS:            true,
@@ -70,7 +68,6 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	client, err = comm.NewGRPCClient(config)
 	require.NoError(t, err)
 	require.True(t, client.TLSEnabled())
-	require.False(t, client.MutualTLSRequired())
 
 	secOpts = comm.SecureOptions{
 		Certificate:       testCerts.certPEM,
@@ -83,7 +80,6 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	client, err = comm.NewGRPCClient(config)
 	require.NoError(t, err)
 	require.True(t, client.TLSEnabled())
-	require.True(t, client.MutualTLSRequired())
 	require.Equal(t, testCerts.clientCert, client.Certificate())
 }
 
