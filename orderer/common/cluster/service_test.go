@@ -281,7 +281,7 @@ func TestExpirationWarningIngress(t *testing.T) {
 	defer srv.Stop()
 
 	clientConf := comm.ClientConfig{
-		Timeout: time.Second * 3,
+		DialTimeout: time.Second * 3,
 		SecOpts: comm.SecureOptions{
 			ServerRootCAs:     [][]byte{ca.CertBytes()},
 			UseTLS:            true,

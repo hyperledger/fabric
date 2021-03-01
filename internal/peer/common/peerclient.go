@@ -42,9 +42,9 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 
 	override := viper.GetString("peer.tls.serverhostoverride")
 	clientConfig := comm.ClientConfig{}
-	clientConfig.Timeout = viper.GetDuration("peer.client.connTimeout")
-	if clientConfig.Timeout == time.Duration(0) {
-		clientConfig.Timeout = defaultConnTimeout
+	clientConfig.DialTimeout = viper.GetDuration("peer.client.connTimeout")
+	if clientConfig.DialTimeout == time.Duration(0) {
+		clientConfig.DialTimeout = defaultConnTimeout
 	}
 
 	secOpts := comm.SecureOptions{

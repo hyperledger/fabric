@@ -243,7 +243,7 @@ func configFromEnv(prefix string) (address, override string, clientConfig comm.C
 	if connTimeout == time.Duration(0) {
 		connTimeout = defaultConnTimeout
 	}
-	clientConfig.Timeout = connTimeout
+	clientConfig.DialTimeout = connTimeout
 	secOpts := comm.SecureOptions{
 		UseTLS:            viper.GetBool(prefix + ".tls.enabled"),
 		RequireClientCert: viper.GetBool(prefix + ".tls.clientAuthRequired"),

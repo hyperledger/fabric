@@ -81,9 +81,9 @@ func (c *ChaincodeServerUserData) ChaincodeServerInfo(cryptoDir string) (*ccintf
 	}
 	connInfo := &ccintf.ChaincodeServerInfo{Address: c.Address}
 
-	connInfo.ClientConfig.Timeout = time.Duration(c.DialTimeout)
-	if connInfo.ClientConfig.Timeout == 0 {
-		connInfo.ClientConfig.Timeout = DialTimeout
+	connInfo.ClientConfig.DialTimeout = time.Duration(c.DialTimeout)
+	if connInfo.ClientConfig.DialTimeout == 0 {
+		connInfo.ClientConfig.DialTimeout = DialTimeout
 	}
 
 	// we can expose this if necessary

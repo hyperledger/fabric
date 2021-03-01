@@ -71,7 +71,7 @@ func TestClientConfigClone(t *testing.T) {
 		SecOpts: SecureOptions{
 			Key: []byte{1, 2, 3},
 		},
-		Timeout:      time.Second,
+		DialTimeout:  time.Second,
 		AsyncConnect: true,
 	}
 
@@ -87,7 +87,7 @@ func TestClientConfigClone(t *testing.T) {
 	origin.KaOpts.ClientInterval = time.Hour
 	origin.SecOpts.Certificate = []byte{1, 2, 3}
 	origin.SecOpts.Key = []byte{5, 4, 6}
-	origin.Timeout = time.Second * 2
+	origin.DialTimeout = time.Second * 2
 
 	clone.SecOpts.UseTLS = true
 	clone.KaOpts.ServerMinInterval = time.Hour
@@ -101,7 +101,7 @@ func TestClientConfigClone(t *testing.T) {
 			Key:         []byte{5, 4, 6},
 			Certificate: []byte{1, 2, 3},
 		},
-		Timeout: time.Second * 2,
+		DialTimeout: time.Second * 2,
 	}
 
 	expectedCloneState := ClientConfig{
@@ -113,7 +113,7 @@ func TestClientConfigClone(t *testing.T) {
 			Key:    []byte{1, 2, 3},
 			UseTLS: true,
 		},
-		Timeout:      time.Second,
+		DialTimeout:  time.Second,
 		AsyncConnect: true,
 	}
 

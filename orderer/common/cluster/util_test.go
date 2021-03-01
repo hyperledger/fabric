@@ -93,7 +93,7 @@ func TestDialerCustomKeepAliveOptions(t *testing.T) {
 		KaOpts: comm.KeepaliveOptions{
 			ClientTimeout: time.Second * 12345,
 		},
-		Timeout: time.Millisecond * 100,
+		DialTimeout: time.Millisecond * 100,
 		SecOpts: comm.SecureOptions{
 			RequireClientCert: true,
 			Key:               clientKeyPair.Key,
@@ -120,7 +120,7 @@ func TestPredicateDialerUpdateRootCAs(t *testing.T) {
 		Config: node1.clientConfig,
 	}
 	dialer.Config.SecOpts.ServerRootCAs = [][]byte{anotherTLSCA.CertBytes()}
-	dialer.Config.Timeout = time.Second
+	dialer.Config.DialTimeout = time.Second
 	dialer.Config.AsyncConnect = false
 
 	_, err = dialer.Dial(node1.srv.Address(), nil)

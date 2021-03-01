@@ -491,7 +491,7 @@ func createClientAndService(t *testing.T, testdir string) (*client, *client, *se
 	require.NoError(t, err)
 
 	dialer, err := comm.NewGRPCClient(comm.ClientConfig{
-		Timeout: time.Second * 3,
+		DialTimeout: time.Second * 3,
 		SecOpts: comm.SecureOptions{
 			UseTLS:        true,
 			Certificate:   clientKeyPair.Cert,

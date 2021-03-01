@@ -168,7 +168,7 @@ func TestNewConnection(t *testing.T) {
 		{
 			name: "client / server same port",
 			config: comm.ClientConfig{
-				Timeout: testTimeout,
+				DialTimeout: testTimeout,
 			},
 			success: true,
 		},
@@ -176,7 +176,7 @@ func TestNewConnection(t *testing.T) {
 			name:          "client / server wrong port",
 			clientAddress: badAddress,
 			config: comm.ClientConfig{
-				Timeout: time.Second,
+				DialTimeout: time.Second,
 			},
 			success:  false,
 			errorMsg: "(connection refused|context deadline exceeded)",
@@ -186,7 +186,7 @@ func TestNewConnection(t *testing.T) {
 			clientAddress: badAddress,
 			config: comm.ClientConfig{
 				AsyncConnect: true,
-				Timeout:      testTimeout,
+				DialTimeout:  testTimeout,
 			},
 			success: true,
 		},
@@ -200,7 +200,7 @@ func TestNewConnection(t *testing.T) {
 					ServerRootCAs:     [][]byte{testCerts.caPEM},
 					RequireClientCert: true,
 				},
-				Timeout: time.Second,
+				DialTimeout: time.Second,
 			},
 			success:  false,
 			errorMsg: "context deadline exceeded",
@@ -214,7 +214,7 @@ func TestNewConnection(t *testing.T) {
 					UseTLS:        true,
 					ServerRootCAs: [][]byte{testCerts.caPEM},
 				},
-				Timeout: testTimeout,
+				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
@@ -230,7 +230,7 @@ func TestNewConnection(t *testing.T) {
 					UseTLS:        true,
 					ServerRootCAs: [][]byte{},
 				},
-				Timeout: testTimeout,
+				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
@@ -247,7 +247,7 @@ func TestNewConnection(t *testing.T) {
 					UseTLS:        true,
 					ServerRootCAs: [][]byte{testCerts.caPEM},
 				},
-				Timeout: testTimeout,
+				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
@@ -267,7 +267,7 @@ func TestNewConnection(t *testing.T) {
 					RequireClientCert: true,
 					ServerRootCAs:     [][]byte{testCerts.caPEM},
 				},
-				Timeout: testTimeout,
+				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
@@ -292,7 +292,7 @@ func TestNewConnection(t *testing.T) {
 					RequireClientCert: true,
 					ServerRootCAs:     [][]byte{testCerts.caPEM},
 				},
-				Timeout: testTimeout,
+				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
@@ -314,7 +314,7 @@ func TestNewConnection(t *testing.T) {
 					RequireClientCert: true,
 					ServerRootCAs:     [][]byte{testCerts.caPEM},
 				},
-				Timeout: testTimeout,
+				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
 				Certificates: []tls.Certificate{testCerts.serverCert},
@@ -371,7 +371,7 @@ func TestSetServerRootCAs(t *testing.T) {
 			UseTLS:        true,
 			ServerRootCAs: [][]byte{testCerts.caPEM},
 		},
-		Timeout: testTimeout,
+		DialTimeout: testTimeout,
 	}
 	client, err := comm.NewGRPCClient(config)
 	if err != nil {
@@ -485,7 +485,7 @@ func TestSetMessageSize(t *testing.T) {
 			t.Log(test.name)
 			// set up test client
 			client, err := comm.NewGRPCClient(comm.ClientConfig{
-				Timeout:        testTimeout,
+				DialTimeout:    testTimeout,
 				MaxRecvMsgSize: test.maxRecvSize,
 				MaxSendMsgSize: test.maxSendSize,
 			})
@@ -594,7 +594,7 @@ func TestDynamicClientTLSLoading(t *testing.T) {
 
 	client, err := comm.NewGRPCClient(comm.ClientConfig{
 		AsyncConnect: true,
-		Timeout:      time.Second * 1,
+		DialTimeout:  time.Second * 1,
 		SecOpts: comm.SecureOptions{
 			UseTLS:        true,
 			ServerRootCAs: [][]byte{ca1.CertBytes()},

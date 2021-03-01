@@ -324,9 +324,9 @@ func serve(args []string) error {
 	policyMgr := policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager)
 
 	deliverGRPCClient, err := comm.NewGRPCClient(comm.ClientConfig{
-		Timeout: deliverServiceConfig.ConnectionTimeout,
-		KaOpts:  deliverServiceConfig.KeepaliveOptions,
-		SecOpts: deliverServiceConfig.SecOpts,
+		DialTimeout: deliverServiceConfig.ConnectionTimeout,
+		KaOpts:      deliverServiceConfig.KeepaliveOptions,
+		SecOpts:     deliverServiceConfig.SecOpts,
 	})
 	if err != nil {
 		logger.Panicf("Could not create the deliver grpc client: [%+v]", err)
