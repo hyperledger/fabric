@@ -134,15 +134,8 @@ type KeepaliveOptions struct {
 	ServerMinInterval time.Duration
 }
 
-type Metrics struct {
-	// OpenConnCounter keeps track of number of open connections
-	OpenConnCounter metrics.Counter
-	// ClosedConnCounter keeps track of number connections closed
-	ClosedConnCounter metrics.Counter
-}
-
-// ServerKeepaliveOptions returns gRPC keepalive options for server.
-func ServerKeepaliveOptions(ka KeepaliveOptions) []grpc.ServerOption {
+// ServerKeepaliveOptions returns gRPC keepalive options for a server.
+func (ka KeepaliveOptions) ServerKeepaliveOptions() []grpc.ServerOption {
 	var serverOpts []grpc.ServerOption
 	kap := keepalive.ServerParameters{
 		Time:    ka.ServerInterval,
@@ -158,8 +151,8 @@ func ServerKeepaliveOptions(ka KeepaliveOptions) []grpc.ServerOption {
 	return serverOpts
 }
 
-// ClientKeepaliveOptions returns gRPC keepalive options for clients.
-func ClientKeepaliveOptions(ka KeepaliveOptions) []grpc.DialOption {
+// ClientKeepaliveOptions returns gRPC keepalive dial options for clients.
+func (ka KeepaliveOptions) ClientKeepaliveOptions() []grpc.DialOption {
 	var dialOpts []grpc.DialOption
 	kap := keepalive.ClientParameters{
 		Time:                ka.ClientInterval,
@@ -168,4 +161,11 @@ func ClientKeepaliveOptions(ka KeepaliveOptions) []grpc.DialOption {
 	}
 	dialOpts = append(dialOpts, grpc.WithKeepaliveParams(kap))
 	return dialOpts
+}
+
+type Metrics struct {
+	// OpenConnCounter keeps track of number of open connections
+	OpenConnCounter metrics.Counter
+	// ClosedConnCounter keeps track of number connections closed
+	ClosedConnCounter metrics.Counter
 }

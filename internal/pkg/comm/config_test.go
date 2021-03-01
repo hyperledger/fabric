@@ -30,7 +30,7 @@ func TestServerKeepaliveOptions(t *testing.T) {
 		grpc.KeepaliveParams(kap),
 		grpc.KeepaliveEnforcementPolicy(kep),
 	}
-	opts := ServerKeepaliveOptions(DefaultKeepaliveOptions)
+	opts := DefaultKeepaliveOptions.ServerKeepaliveOptions()
 
 	// Unable to test equality of options since the option methods return
 	// functions and each instance is a different func.
@@ -52,7 +52,7 @@ func TestClientKeepaliveOptions(t *testing.T) {
 		PermitWithoutStream: true,
 	}
 	expectedOpts := []grpc.DialOption{grpc.WithKeepaliveParams(kap)}
-	opts := ClientKeepaliveOptions(DefaultKeepaliveOptions)
+	opts := DefaultKeepaliveOptions.ClientKeepaliveOptions()
 
 	// Unable to test equality of options since the option methods return
 	// functions and each instance is a different func.
