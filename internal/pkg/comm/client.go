@@ -14,7 +14,6 @@ import (
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/keepalive"
 )
 
 type GRPCClient struct {
@@ -29,45 +28,17 @@ type GRPCClient struct {
 // NewGRPCClient creates a new implementation of GRPCClient given an address
 // and client configuration
 func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
-	client := &GRPCClient{}
-
 	// parse secure options
 	tlsConfig, err := config.SecOpts.TLSConfig()
 	if err != nil {
 		return nil, err
 	}
-	client.tlsConfig = tlsConfig
 
-	// keepalive options
-
-	kap := keepalive.ClientParameters{
-		Time:                config.KaOpts.ClientInterval,
-		Timeout:             config.KaOpts.ClientTimeout,
-		PermitWithoutStream: true,
-	}
-	// set keepalive
-	client.dialOpts = append(client.dialOpts, grpc.WithKeepaliveParams(kap))
-	// Unless asynchronous connect is set, make connection establishment blocking.
-	if !config.AsyncConnect {
-		client.dialOpts = append(client.dialOpts, grpc.WithBlock())
-		client.dialOpts = append(client.dialOpts, grpc.FailOnNonTempDialError(true))
-	}
-	client.timeout = config.DialTimeout
-	// set send/recv message size to package defaults
-	maxRecvMsgSize := DefaultMaxRecvMsgSize
-	if config.MaxRecvMsgSize != 0 {
-		maxRecvMsgSize = config.MaxRecvMsgSize
-	}
-	maxSendMsgSize := DefaultMaxSendMsgSize
-	if config.MaxSendMsgSize != 0 {
-		maxSendMsgSize = config.MaxSendMsgSize
-	}
-	client.dialOpts = append(client.dialOpts, grpc.WithDefaultCallOptions(
-		grpc.MaxCallRecvMsgSize(maxRecvMsgSize),
-		grpc.MaxCallSendMsgSize(maxSendMsgSize),
-	))
-
-	return client, nil
+	return &GRPCClient{
+		tlsConfig: tlsConfig,
+		dialOpts:  config.DialOptions(),
+		timeout:   config.DialTimeout,
+	}, nil
 }
 
 // Certificate returns the tls.Certificate used to make TLS connections
