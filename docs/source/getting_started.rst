@@ -7,9 +7,10 @@ Getting Started - Install
 
    prereqs
    install
+   sdk_chaincode
 
 
-The Blockchain Application Stack has 5 layers:
+The Fabric application stack has five layers:
 
 .. image:: ./getting_started_image2.png
    :width: 300px
@@ -17,11 +18,11 @@ The Blockchain Application Stack has 5 layers:
    :height: 100px
    :alt: Fabric Application Stack
 
-* :doc:`Prerequisite software <prereqs>` - is the base layer of all the needed software.
-* :doc:`Fabric and Fabric Samples <install>` - will have the executables to run a Fabric Network along with sample code.
-* :doc:`Contract APIs <sdk_chaincode>` - to develop smart contracts executed on a Fabric Network.
-* :doc:`Application SDKs <sdk_chaincode>` - to develop your blockchain application.
-* The Application - layer on top is the blockchain application you will develop to run on top of a Fabric Network.
+* :doc:`Prerequisite software <prereqs>`: the base layer needed to run the software, for example, Docker.
+* :doc:`Fabric and Fabric samples <install>`: the Fabric executables to run a Fabric network along with sample code.
+* :doc:`Contract APIs <sdk_chaincode>`: to develop smart contracts executed on a Fabric Network.
+* :doc:`Application SDKs <sdk_chaincode>`: to develop your blockchain application.
+* The Application: your blockchain application will utilize the Application SDKs to call smart contracts running on a Fabric network.
 
 
 .. Licensed under Creative Commons Attribution 4.0 International License
