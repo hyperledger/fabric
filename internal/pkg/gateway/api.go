@@ -9,11 +9,17 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/protoutil"
 )
+
+type endorserResponse struct {
+	pr  *peer.ProposalResponse
+	err error
+}
 
 // Evaluate will invoke the transaction function as specified in the SignedProposal
 func (gs *Server) Evaluate(ctx context.Context, proposedTransaction *gp.ProposedTransaction) (*gp.Result, error) {
@@ -65,17 +71,33 @@ func (gs *Server) Endorse(ctx context.Context, proposedTransaction *gp.ProposedT
 		return nil, err
 	}
 
-	var responses []*peer.ProposalResponse
-	// send to all the endorsers - TODO fan out in parallel
+	ctx, cancel := context.WithTimeout(ctx, gs.options.EndorsementTimeout)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	responseCh := make(chan *endorserResponse, len(endorsers))
+	// send to all the endorsers
 	for _, endorser := range endorsers {
-		response, err := endorser.ProcessProposal(ctx, signedProposal)
-		if err != nil {
-			return nil, fmt.Errorf("failed to process proposal: %w", err)
+		wg.Add(1)
+		go func(endorser peer.EndorserClient) {
+			defer wg.Done()
+			response, err := endorser.ProcessProposal(ctx, signedProposal)
+			responseCh <- &endorserResponse{pr: response, err: err}
+		}(endorser)
+	}
+	wg.Wait()
+	close(responseCh)
+
+	var responses []*peer.ProposalResponse
+	for response := range responseCh {
+		if response.err != nil {
+			// TODO: we should retry, or attempt a different endorsement layout (if available)
+			return nil, fmt.Errorf("failed to process proposal: %w", response.err)
 		}
-		responses = append(responses, response)
+		responses = append(responses, response.pr)
 	}
 
-	env, err := createUnsignedTx(proposal, responses...)
+	env, err := protoutil.CreateTx(proposal, responses...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assemble transaction: %w", err)
 	}

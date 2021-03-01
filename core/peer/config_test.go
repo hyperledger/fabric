@@ -276,6 +276,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.chaincodeAddress", "0.0.0.0:7052")
 	viper.Set("peer.validatorPoolSize", 1)
 	viper.Set("peer.gateway.enabled", true)
+	viper.Set("peer.gateway.endorsementTimeout", 10*time.Second)
 
 	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	viper.Set("vm.docker.tls.enabled", false)
@@ -372,7 +373,8 @@ func TestGlobalConfig(t *testing.T) {
 		DockerCA:   filepath.Join(cwd, "test/vm/tls/ca/file"),
 
 		GatewayOptions: gateway.Options{
-			Enabled: true,
+			Enabled:            true,
+			EndorsementTimeout: 10 * time.Second,
 		},
 	}
 
@@ -392,6 +394,7 @@ func TestGlobalConfigDefault(t *testing.T) {
 		ValidatorPoolSize:             runtime.NumCPU(),
 		VMNetworkMode:                 "host",
 		DeliverClientKeepaliveOptions: comm.DefaultKeepaliveOptions,
+		GatewayOptions:                gateway.GetOptions(viper.GetViper()),
 	}
 
 	require.Equal(t, expectedConfig, coreConfig)
@@ -446,6 +449,7 @@ func TestPropagateEnvironment(t *testing.T) {
 				Path:                 "/testPath",
 			},
 		},
+		GatewayOptions: gateway.GetOptions(viper.GetViper()),
 	}
 	require.Equal(t, expectedConfig, coreConfig)
 }
