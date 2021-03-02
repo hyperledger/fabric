@@ -46,26 +46,17 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 
 	config := comm.ClientConfig{}
 	client, err := comm.NewGRPCClient(config)
+	require.NotNil(t, client)
 	require.NoError(t, err)
-	require.False(t, client.TLSEnabled())
 
 	secOpts := comm.SecureOptions{
-		UseTLS: false,
-	}
-	config.SecOpts = secOpts
-	client, err = comm.NewGRPCClient(config)
-	require.NoError(t, err)
-	require.False(t, client.TLSEnabled())
-
-	secOpts = comm.SecureOptions{
 		UseTLS:            true,
 		ServerRootCAs:     [][]byte{testCerts.caPEM},
 		RequireClientCert: false,
 	}
 	config.SecOpts = secOpts
-	client, err = comm.NewGRPCClient(config)
+	_, err = comm.NewGRPCClient(config)
 	require.NoError(t, err)
-	require.True(t, client.TLSEnabled())
 
 	secOpts = comm.SecureOptions{
 		Certificate:       testCerts.certPEM,
@@ -78,9 +69,8 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, testCerts.clientCert, clientCert)
 	config.SecOpts = secOpts
-	client, err = comm.NewGRPCClient(config)
+	_, err = comm.NewGRPCClient(config)
 	require.NoError(t, err)
-	require.True(t, client.TLSEnabled())
 }
 
 func TestNewGRPCClient_BadConfig(t *testing.T) {

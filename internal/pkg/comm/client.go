@@ -41,12 +41,6 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	}, nil
 }
 
-// TLSEnabled is a flag indicating whether to use TLS for client
-// connections
-func (client *GRPCClient) TLSEnabled() bool {
-	return client.tlsConfig != nil
-}
-
 // SetServerRootCAs sets the list of authorities used to verify server
 // certificates based on a list of PEM-encoded X509 certificate authorities
 func (client *GRPCClient) SetServerRootCAs(serverRoots [][]byte) error {
