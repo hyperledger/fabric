@@ -591,7 +591,6 @@ func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *
 		secAdv,
 		defaultSecureDialOpts,
 		nil,
-		nil,
 		gossipConfig,
 		&service.ServiceConfig{},
 		&privdata.PrivdataConfig{},

@@ -68,10 +68,7 @@ type Config struct {
 	OrdererSource *orderers.ConnectionSource
 	// Signer is the identity used to sign requests.
 	Signer identity.SignerSerializer
-	// GRPC Client
-	DeliverGRPCClient *comm.GRPCClient
-	// Configuration values for deliver service.
-	// TODO: merge 2 Config struct
+	// DeliverServiceConfig is the configuration object.
 	DeliverServiceConfig *DeliverServiceConfig
 }
 
@@ -88,11 +85,16 @@ func NewDeliverService(conf *Config) DeliverService {
 }
 
 type DialerAdapter struct {
-	Client *comm.GRPCClient
+	ClientConfig comm.ClientConfig
 }
 
 func (da DialerAdapter) Dial(address string, certPool *x509.CertPool) (*grpc.ClientConn, error) {
-	return da.Client.NewConnection(address, comm.CertPoolOverride(certPool))
+	cc := da.ClientConfig
+	client, err := comm.NewGRPCClient(cc)
+	if err != nil {
+		return nil, err
+	}
+	return client.NewConnection(address, comm.CertPoolOverride(certPool))
 }
 
 type DeliverAdapter struct{}
@@ -126,7 +128,11 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 		Ledger:        ledgerInfo,
 		BlockVerifier: d.conf.CryptoSvc,
 		Dialer: DialerAdapter{
-			Client: d.conf.DeliverGRPCClient,
+			ClientConfig: comm.ClientConfig{
+				DialTimeout: d.conf.DeliverServiceConfig.ConnectionTimeout,
+				KaOpts:      d.conf.DeliverServiceConfig.KeepaliveOptions,
+				SecOpts:     d.conf.DeliverServiceConfig.SecOpts,
+			},
 		},
 		Orderers:          d.conf.OrdererSource,
 		DoneC:             make(chan struct{}),

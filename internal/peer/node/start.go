@@ -323,15 +323,6 @@ func serve(args []string) error {
 
 	policyMgr := policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager)
 
-	deliverGRPCClient, err := comm.NewGRPCClient(comm.ClientConfig{
-		DialTimeout: deliverServiceConfig.ConnectionTimeout,
-		KaOpts:      deliverServiceConfig.KeepaliveOptions,
-		SecOpts:     deliverServiceConfig.SecOpts,
-	})
-	if err != nil {
-		logger.Panicf("Could not create the deliver grpc client: [%+v]", err)
-	}
-
 	policyChecker := policy.NewPolicyChecker(
 		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
 		mgmt.GetLocalMSP(factory.GetDefault()),
@@ -459,7 +450,6 @@ func serve(args []string) error {
 		signingIdentity,
 		cs,
 		coreConfig.PeerAddress,
-		deliverGRPCClient,
 		deliverServiceConfig,
 		privdataConfig,
 	)
@@ -1186,7 +1176,6 @@ func initGossipService(
 	signer msp.SigningIdentity,
 	credSupport *comm.CredentialSupport,
 	peerAddress string,
-	deliverGRPCClient *comm.GRPCClient,
 	deliverServiceConfig *deliverservice.DeliverServiceConfig,
 	privdataConfig *gossipprivdata.PrivdataConfig,
 ) (*gossipservice.GossipService, error) {
@@ -1229,7 +1218,6 @@ func initGossipService(
 		secAdv,
 		secureDialOpts(credSupport),
 		credSupport,
-		deliverGRPCClient,
 		gossipConfig,
 		serviceConfig,
 		privdataConfig,

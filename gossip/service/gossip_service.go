@@ -130,7 +130,6 @@ type DeliveryServiceFactory interface {
 type deliveryFactoryImpl struct {
 	signer               identity.SignerSerializer
 	credentialSupport    *corecomm.CredentialSupport
-	deliverGRPCClient    *corecomm.GRPCClient
 	deliverServiceConfig *deliverservice.DeliverServiceConfig
 }
 
@@ -141,7 +140,6 @@ func (df *deliveryFactoryImpl) Service(g GossipServiceAdapter, ordererSource *or
 		CryptoSvc:            mcs,
 		Gossip:               g,
 		Signer:               df.signer,
-		DeliverGRPCClient:    df.deliverGRPCClient,
 		DeliverServiceConfig: df.deliverServiceConfig,
 		OrdererSource:        ordererSource,
 	})
@@ -240,7 +238,6 @@ func New(
 	secAdv api.SecurityAdvisor,
 	secureDialOpts api.PeerSecureDialOpts,
 	credSupport *corecomm.CredentialSupport,
-	deliverGRPCClient *corecomm.GRPCClient,
 	gossipConfig *gossip.Config,
 	serviceConfig *ServiceConfig,
 	privdataConfig *gossipprivdata.PrivdataConfig,
@@ -275,7 +272,6 @@ func New(
 		deliveryFactory: &deliveryFactoryImpl{
 			signer:               peerIdentity,
 			credentialSupport:    credSupport,
-			deliverGRPCClient:    deliverGRPCClient,
 			deliverServiceConfig: deliverServiceConfig,
 		},
 		peerIdentity:      serializedIdentity,

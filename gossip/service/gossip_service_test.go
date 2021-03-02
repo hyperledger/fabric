@@ -119,9 +119,6 @@ func TestInitGossipService(t *testing.T) {
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
 
-	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
-	require.NoError(t, err)
-
 	gossipService, err := New(
 		signer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
@@ -131,7 +128,6 @@ func TestInitGossipService(t *testing.T) {
 		secAdv,
 		nil,
 		comm.NewCredentialSupport(),
-		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
 		&privdata.PrivdataConfig{},
@@ -873,9 +869,6 @@ func TestInvalidInitialization(t *testing.T) {
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
 
-	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
-	require.NoError(t, err)
-
 	gossipService, err := New(
 		mockSignerSerializer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
@@ -885,7 +878,6 @@ func TestInvalidInitialization(t *testing.T) {
 		secAdv,
 		nil,
 		comm.NewCredentialSupport(),
-		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
 		&privdata.PrivdataConfig{},
@@ -920,9 +912,6 @@ func TestChannelConfig(t *testing.T) {
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
 
-	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
-	require.NoError(t, err)
-
 	gossipService, err := New(
 		mockSignerSerializer,
 		gossipmetrics.NewGossipMetrics(&disabled.Provider{}),
@@ -932,7 +921,6 @@ func TestChannelConfig(t *testing.T) {
 		secAdv,
 		nil,
 		nil,
-		grpcClient,
 		gossipConfig,
 		&ServiceConfig{},
 		&privdata.PrivdataConfig{},
