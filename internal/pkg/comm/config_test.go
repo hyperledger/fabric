@@ -7,9 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -119,4 +122,101 @@ func TestClientConfigClone(t *testing.T) {
 
 	require.Equal(t, expectedOriginState, origin)
 	require.Equal(t, expectedCloneState, clone)
+}
+
+func TestSecureOptionsTLSConfig(t *testing.T) {
+	ca1, err := tlsgen.NewCA()
+	require.NoError(t, err, "failed to create CA1")
+	ca2, err := tlsgen.NewCA()
+	require.NoError(t, err, "failed to create CA2")
+	ckp, err := ca1.NewClientCertKeyPair()
+	require.NoError(t, err, "failed to create client key pair")
+	clientCert, err := tls.X509KeyPair(ckp.Cert, ckp.Key)
+	require.NoError(t, err, "failed to create client certificate")
+
+	newCertPool := func(cas ...tlsgen.CA) *x509.CertPool {
+		cp := x509.NewCertPool()
+		for _, ca := range cas {
+			err := AddPemToCertPool(ca.CertBytes(), cp)
+			require.NoError(t, err, "failed to add cert to pool")
+		}
+		return cp
+	}
+
+	tests := []struct {
+		desc        string
+		so          SecureOptions
+		tc          *tls.Config
+		expectedErr string
+	}{
+		{desc: "TLSDisabled"},
+		{desc: "TLSEnabled", so: SecureOptions{UseTLS: true}, tc: &tls.Config{MinVersion: tls.VersionTLS12}},
+		{
+			desc: "ServerNameOverride",
+			so:   SecureOptions{UseTLS: true, ServerNameOverride: "bob"},
+			tc:   &tls.Config{MinVersion: tls.VersionTLS12, ServerName: "bob"},
+		},
+		{
+			desc: "WithServerRootCAs",
+			so:   SecureOptions{UseTLS: true, ServerRootCAs: [][]byte{ca1.CertBytes(), ca2.CertBytes()}},
+			tc:   &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: newCertPool(ca1, ca2)},
+		},
+		{
+			desc: "BadServerRootCertificate",
+			so: SecureOptions{
+				UseTLS: true,
+				ServerRootCAs: [][]byte{
+					[]byte("-----BEGIN CERTIFICATE-----\nYm9ndXM=\n-----END CERTIFICATE-----"),
+				},
+			},
+			expectedErr: "error adding root certificate",
+		},
+		{
+			desc: "WithRequiredClientKeyPair",
+			so:   SecureOptions{UseTLS: true, RequireClientCert: true, Key: ckp.Key, Certificate: ckp.Cert},
+			tc:   &tls.Config{MinVersion: tls.VersionTLS12, Certificates: []tls.Certificate{clientCert}},
+		},
+		{
+			desc:        "MissingClientKey",
+			so:          SecureOptions{UseTLS: true, RequireClientCert: true, Certificate: ckp.Cert},
+			expectedErr: "both Key and Certificate are required when using mutual TLS",
+		},
+		{
+			desc:        "MissingClientCert",
+			so:          SecureOptions{UseTLS: true, RequireClientCert: true, Key: ckp.Key},
+			expectedErr: "both Key and Certificate are required when using mutual TLS",
+		},
+		{
+			desc: "WithTimeShift",
+			so:   SecureOptions{UseTLS: true, TimeShift: 2 * time.Hour},
+			tc:   &tls.Config{MinVersion: tls.VersionTLS12},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			tc, err := tt.so.TLSConfig()
+			if tt.expectedErr != "" {
+				require.ErrorContainsf(t, err, tt.expectedErr, "got %v, want %s", err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+
+			if len(tt.so.ServerRootCAs) != 0 {
+				require.NotNil(t, tc.RootCAs)
+				require.Len(t, tc.RootCAs.Subjects(), len(tt.so.ServerRootCAs))
+				for _, subj := range tt.tc.RootCAs.Subjects() {
+					require.Contains(t, tc.RootCAs.Subjects(), subj, "missing subject %x", subj)
+				}
+				tt.tc.RootCAs, tc.RootCAs = nil, nil
+			}
+
+			if tt.so.TimeShift != 0 {
+				require.NotNil(t, tc.Time)
+				require.WithinDuration(t, time.Now().Add(-1*tt.so.TimeShift), tc.Time(), 10*time.Second)
+				tc.Time = nil
+			}
+
+			require.Equal(t, tt.tc, tc)
+		})
+	}
 }

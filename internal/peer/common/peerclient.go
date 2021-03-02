@@ -26,11 +26,11 @@ type PeerClient struct {
 // NewPeerClientFromEnv creates an instance of a PeerClient from the global
 // Viper instance
 func NewPeerClientFromEnv() (*PeerClient, error) {
-	address, override, clientConfig, err := configFromEnv("peer")
+	address, clientConfig, err := configFromEnv("peer")
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to load config for PeerClient")
 	}
-	return newPeerClientForClientConfig(address, override, clientConfig)
+	return newPeerClientForClientConfig(address, clientConfig)
 }
 
 // NewPeerClientForAddress creates an instance of a PeerClient using the
@@ -40,7 +40,6 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 		return nil, errors.New("peer address must be set")
 	}
 
-	override := viper.GetString("peer.tls.serverhostoverride")
 	clientConfig := comm.ClientConfig{}
 	clientConfig.DialTimeout = viper.GetDuration("peer.client.connTimeout")
 	if clientConfig.DialTimeout == time.Duration(0) {
@@ -48,8 +47,9 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 	}
 
 	secOpts := comm.SecureOptions{
-		UseTLS:            viper.GetBool("peer.tls.enabled"),
-		RequireClientCert: viper.GetBool("peer.tls.clientAuthRequired"),
+		UseTLS:             viper.GetBool("peer.tls.enabled"),
+		RequireClientCert:  viper.GetBool("peer.tls.clientAuthRequired"),
+		ServerNameOverride: viper.GetString("peer.tls.serverhostoverride"),
 	}
 
 	if secOpts.RequireClientCert {
@@ -72,13 +72,13 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 		}
 		clientConfig.SecOpts.ServerRootCAs = [][]byte{caPEM}
 	}
-	return newPeerClientForClientConfig(address, override, clientConfig)
+	return newPeerClientForClientConfig(address, clientConfig)
 }
 
-func newPeerClientForClientConfig(address, override string, clientConfig comm.ClientConfig) (*PeerClient, error) {
+func newPeerClientForClientConfig(address string, clientConfig comm.ClientConfig) (*PeerClient, error) {
 	// set the default keepalive options to match the server
 	clientConfig.KaOpts = comm.DefaultKeepaliveOptions
-	cc, err := newCommonClient(address, override, clientConfig)
+	cc, err := newCommonClient(address, clientConfig)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create PeerClient from config")
 	}
@@ -87,7 +87,7 @@ func newPeerClientForClientConfig(address, override string, clientConfig comm.Cl
 
 // Endorser returns a client for the Endorser service
 func (pc *PeerClient) Endorser() (pb.EndorserClient, error) {
-	conn, err := pc.CommonClient.NewConnection(pc.address, comm.ServerNameOverride(pc.sn))
+	conn, err := pc.CommonClient.NewConnection(pc.address)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "endorser client failed to connect to %s", pc.address)
 	}
@@ -96,7 +96,7 @@ func (pc *PeerClient) Endorser() (pb.EndorserClient, error) {
 
 // Deliver returns a client for the Deliver service
 func (pc *PeerClient) Deliver() (pb.Deliver_DeliverClient, error) {
-	conn, err := pc.CommonClient.NewConnection(pc.address, comm.ServerNameOverride(pc.sn))
+	conn, err := pc.CommonClient.NewConnection(pc.address)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.address)
 	}
@@ -106,7 +106,7 @@ func (pc *PeerClient) Deliver() (pb.Deliver_DeliverClient, error) {
 // PeerDeliver returns a client for the Deliver service for peer-specific use
 // cases (i.e. DeliverFiltered)
 func (pc *PeerClient) PeerDeliver() (pb.DeliverClient, error) {
-	conn, err := pc.CommonClient.NewConnection(pc.address, comm.ServerNameOverride(pc.sn))
+	conn, err := pc.CommonClient.NewConnection(pc.address)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.address)
 	}
@@ -174,7 +174,7 @@ func GetPeerDeliverClient(address, tlsRootCertFile string) (pb.DeliverClient, er
 
 // SnapshotClient returns a client for the snapshot service
 func (pc *PeerClient) SnapshotClient() (pb.SnapshotClient, error) {
-	conn, err := pc.CommonClient.NewConnection(pc.address, comm.ServerNameOverride(pc.sn))
+	conn, err := pc.CommonClient.NewConnection(pc.address)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "snapshot client failed to connect to %s", pc.address)
 	}

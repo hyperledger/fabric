@@ -477,15 +477,6 @@ func loadCerts(t *testing.T) testCerts {
 	return certs
 }
 
-func TestServerNameOverride(t *testing.T) {
-	tlsOption := comm.ServerNameOverride("override-name")
-	testConfig := &tls.Config{}
-	tlsOption(testConfig)
-	require.Equal(t, &tls.Config{
-		ServerName: "override-name",
-	}, testConfig)
-}
-
 func TestCertPoolOverride(t *testing.T) {
 	tlsOption := comm.CertPoolOverride(&x509.CertPool{})
 	testConfig := &tls.Config{}

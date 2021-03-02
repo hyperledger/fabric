@@ -43,12 +43,6 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 
 type TLSOption func(tlsConfig *tls.Config)
 
-func ServerNameOverride(name string) TLSOption {
-	return func(tlsConfig *tls.Config) {
-		tlsConfig.ServerName = name
-	}
-}
-
 func CertPoolOverride(pool *x509.CertPool) TLSOption {
 	return func(tlsConfig *tls.Config) {
 		tlsConfig.RootCAs = pool
