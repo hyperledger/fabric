@@ -10,7 +10,6 @@ import (
 	"crypto/tls"
 
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/pkg/errors"
 )
 
@@ -23,11 +22,11 @@ type OrdererClient struct {
 // NewOrdererClientFromEnv creates an instance of an OrdererClient from the
 // global Viper instance
 func NewOrdererClientFromEnv() (*OrdererClient, error) {
-	address, override, clientConfig, err := configFromEnv("orderer")
+	address, clientConfig, err := configFromEnv("orderer")
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to load config for OrdererClient")
 	}
-	cc, err := newCommonClient(address, override, clientConfig)
+	cc, err := newCommonClient(address, clientConfig)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create OrdererClient from config")
 	}
@@ -36,7 +35,7 @@ func NewOrdererClientFromEnv() (*OrdererClient, error) {
 
 // Broadcast returns a broadcast client for the AtomicBroadcast service
 func (oc *OrdererClient) Broadcast() (ab.AtomicBroadcast_BroadcastClient, error) {
-	conn, err := oc.CommonClient.NewConnection(oc.address, comm.ServerNameOverride(oc.sn))
+	conn, err := oc.CommonClient.NewConnection(oc.address)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.address)
 	}
@@ -46,7 +45,7 @@ func (oc *OrdererClient) Broadcast() (ab.AtomicBroadcast_BroadcastClient, error)
 
 // Deliver returns a deliver client for the AtomicBroadcast service
 func (oc *OrdererClient) Deliver() (ab.AtomicBroadcast_DeliverClient, error) {
-	conn, err := oc.CommonClient.NewConnection(oc.address, comm.ServerNameOverride(oc.sn))
+	conn, err := oc.CommonClient.NewConnection(oc.address)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.address)
 	}

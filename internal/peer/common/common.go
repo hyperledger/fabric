@@ -85,10 +85,9 @@ type CommonClient struct {
 	*comm.GRPCClient
 	clientConfig comm.ClientConfig
 	address      string
-	sn           string
 }
 
-func newCommonClient(address, override string, clientConfig comm.ClientConfig) (*CommonClient, error) {
+func newCommonClient(address string, clientConfig comm.ClientConfig) (*CommonClient, error) {
 	gClient, err := comm.NewGRPCClient(clientConfig)
 	if err != nil {
 		return nil, err
@@ -97,7 +96,6 @@ func newCommonClient(address, override string, clientConfig comm.ClientConfig) (
 		GRPCClient:   gClient,
 		clientConfig: clientConfig,
 		address:      address,
-		sn:           override,
 	}, nil
 }
 
@@ -260,9 +258,8 @@ func CheckLogLevel(level string) error {
 	return nil
 }
 
-func configFromEnv(prefix string) (address, override string, clientConfig comm.ClientConfig, err error) {
+func configFromEnv(prefix string) (address string, clientConfig comm.ClientConfig, err error) {
 	address = viper.GetString(prefix + ".address")
-	override = viper.GetString(prefix + ".tls.serverhostoverride")
 	clientConfig = comm.ClientConfig{}
 	connTimeout := viper.GetDuration(prefix + ".client.connTimeout")
 	if connTimeout == time.Duration(0) {
@@ -270,9 +267,10 @@ func configFromEnv(prefix string) (address, override string, clientConfig comm.C
 	}
 	clientConfig.DialTimeout = connTimeout
 	secOpts := comm.SecureOptions{
-		UseTLS:            viper.GetBool(prefix + ".tls.enabled"),
-		RequireClientCert: viper.GetBool(prefix + ".tls.clientAuthRequired"),
-		TimeShift:         viper.GetDuration(prefix + ".tls.handshakeTimeShift"),
+		UseTLS:             viper.GetBool(prefix + ".tls.enabled"),
+		RequireClientCert:  viper.GetBool(prefix + ".tls.clientAuthRequired"),
+		TimeShift:          viper.GetDuration(prefix + ".tls.handshakeTimeShift"),
+		ServerNameOverride: viper.GetString(prefix + ".tls.serverhostoverride"),
 	}
 	if secOpts.UseTLS {
 		caPEM, res := ioutil.ReadFile(config.GetPath(prefix + ".tls.rootcert.file"))

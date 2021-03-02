@@ -124,8 +124,8 @@ func (cc ClientConfig) DialOptions() []grpc.DialOption {
 	return dialOpts
 }
 
-// SecureOptions defines the security parameters (e.g. TLS) for a
-// GRPCServer or GRPCClient instance
+// SecureOptions defines the TLS security parameters for a GRPCServer or
+// GRPCClient instance.
 type SecureOptions struct {
 	// VerifyCertificate, if not nil, is called after normal
 	// certificate verification by either a TLS client or server.
@@ -149,6 +149,10 @@ type SecureOptions struct {
 	CipherSuites []uint16
 	// TimeShift makes TLS handshakes time sampling shift to the past by a given duration
 	TimeShift time.Duration
+	// ServerNameOverride is used to verify the hostname on the returned certificates. It
+	// is also included in the client's handshake to support virtual hosting
+	// unless it is an IP address.
+	ServerNameOverride string
 }
 
 func (so SecureOptions) TLSConfig() (*tls.Config, error) {
@@ -158,8 +162,9 @@ func (so SecureOptions) TLSConfig() (*tls.Config, error) {
 	}
 
 	tlsConfig := &tls.Config{
-		VerifyPeerCertificate: so.VerifyCertificate,
 		MinVersion:            tls.VersionTLS12,
+		ServerName:            so.ServerNameOverride,
+		VerifyPeerCertificate: so.VerifyCertificate,
 	}
 	if len(so.ServerRootCAs) > 0 {
 		tlsConfig.RootCAs = x509.NewCertPool()
