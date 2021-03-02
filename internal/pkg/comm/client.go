@@ -41,16 +41,6 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	}, nil
 }
 
-// Certificate returns the tls.Certificate used to make TLS connections
-// when client certificates are required by the server
-func (client *GRPCClient) Certificate() tls.Certificate {
-	cert := tls.Certificate{}
-	if client.tlsConfig != nil && len(client.tlsConfig.Certificates) > 0 {
-		cert = client.tlsConfig.Certificates[0]
-	}
-	return cert
-}
-
 // TLSEnabled is a flag indicating whether to use TLS for client
 // connections
 func (client *GRPCClient) TLSEnabled() bool {

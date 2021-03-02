@@ -20,7 +20,7 @@ import (
 
 // PeerClient represents a client for communicating with a peer
 type PeerClient struct {
-	CommonClient
+	*CommonClient
 }
 
 // NewPeerClientFromEnv creates an instance of a PeerClient from the global
@@ -78,34 +78,27 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 func newPeerClientForClientConfig(address, override string, clientConfig comm.ClientConfig) (*PeerClient, error) {
 	// set the default keepalive options to match the server
 	clientConfig.KaOpts = comm.DefaultKeepaliveOptions
-	gClient, err := comm.NewGRPCClient(clientConfig)
+	cc, err := newCommonClient(address, override, clientConfig)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create PeerClient from config")
 	}
-	pClient := &PeerClient{
-		CommonClient: CommonClient{
-			GRPCClient: gClient,
-			Address:    address,
-			sn:         override,
-		},
-	}
-	return pClient, nil
+	return &PeerClient{CommonClient: cc}, nil
 }
 
 // Endorser returns a client for the Endorser service
 func (pc *PeerClient) Endorser() (pb.EndorserClient, error) {
-	conn, err := pc.CommonClient.NewConnection(pc.Address, comm.ServerNameOverride(pc.sn))
+	conn, err := pc.CommonClient.NewConnection(pc.address, comm.ServerNameOverride(pc.sn))
 	if err != nil {
-		return nil, errors.WithMessagef(err, "endorser client failed to connect to %s", pc.Address)
+		return nil, errors.WithMessagef(err, "endorser client failed to connect to %s", pc.address)
 	}
 	return pb.NewEndorserClient(conn), nil
 }
 
 // Deliver returns a client for the Deliver service
 func (pc *PeerClient) Deliver() (pb.Deliver_DeliverClient, error) {
-	conn, err := pc.CommonClient.NewConnection(pc.Address, comm.ServerNameOverride(pc.sn))
+	conn, err := pc.CommonClient.NewConnection(pc.address, comm.ServerNameOverride(pc.sn))
 	if err != nil {
-		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.Address)
+		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.address)
 	}
 	return pb.NewDeliverClient(conn).Deliver(context.TODO())
 }
@@ -113,9 +106,9 @@ func (pc *PeerClient) Deliver() (pb.Deliver_DeliverClient, error) {
 // PeerDeliver returns a client for the Deliver service for peer-specific use
 // cases (i.e. DeliverFiltered)
 func (pc *PeerClient) PeerDeliver() (pb.DeliverClient, error) {
-	conn, err := pc.CommonClient.NewConnection(pc.Address, comm.ServerNameOverride(pc.sn))
+	conn, err := pc.CommonClient.NewConnection(pc.address, comm.ServerNameOverride(pc.sn))
 	if err != nil {
-		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.Address)
+		return nil, errors.WithMessagef(err, "deliver client failed to connect to %s", pc.address)
 	}
 	return pb.NewDeliverClient(conn), nil
 }
@@ -181,9 +174,9 @@ func GetPeerDeliverClient(address, tlsRootCertFile string) (pb.DeliverClient, er
 
 // SnapshotClient returns a client for the snapshot service
 func (pc *PeerClient) SnapshotClient() (pb.SnapshotClient, error) {
-	conn, err := pc.CommonClient.NewConnection(pc.Address, comm.ServerNameOverride(pc.sn))
+	conn, err := pc.CommonClient.NewConnection(pc.address, comm.ServerNameOverride(pc.sn))
 	if err != nil {
-		return nil, errors.WithMessagef(err, "snapshot client failed to connect to %s", pc.Address)
+		return nil, errors.WithMessagef(err, "snapshot client failed to connect to %s", pc.address)
 	}
 	return pb.NewSnapshotClient(conn), nil
 }

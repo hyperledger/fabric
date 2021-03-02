@@ -83,8 +83,33 @@ var (
 
 type CommonClient struct {
 	*comm.GRPCClient
-	Address string
-	sn      string
+	clientConfig comm.ClientConfig
+	address      string
+	sn           string
+}
+
+func newCommonClient(address, override string, clientConfig comm.ClientConfig) (*CommonClient, error) {
+	gClient, err := comm.NewGRPCClient(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+	return &CommonClient{
+		GRPCClient:   gClient,
+		clientConfig: clientConfig,
+		address:      address,
+		sn:           override,
+	}, nil
+}
+
+func (cc *CommonClient) Certificate() tls.Certificate {
+	if !cc.clientConfig.SecOpts.RequireClientCert {
+		return tls.Certificate{}
+	}
+	cert, err := cc.clientConfig.SecOpts.ClientCertificate()
+	if err != nil {
+		panic(err)
+	}
+	return cert
 }
 
 func init() {
