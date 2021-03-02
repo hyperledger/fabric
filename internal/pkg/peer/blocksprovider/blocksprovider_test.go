@@ -216,7 +216,7 @@ var _ = Describe("Blocksprovider", func() {
 		Eventually(fakeDialer.DialCallCount).Should(Equal(1))
 		addr, tlsCerts := fakeDialer.DialArgsForCall(0)
 		Expect(addr).To(Equal("orderer-address"))
-		Expect(tlsCerts).To(BeNil()) // TODO
+		Expect(tlsCerts).NotTo(BeNil()) // TODO
 	})
 
 	When("the dialer returns an error", func() {

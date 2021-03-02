@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package deliverservice
 
 import (
-	"crypto/x509"
+	"encoding/pem"
 	"io/ioutil"
 	"time"
 
@@ -72,26 +72,46 @@ func LoadOverridesMap() (map[string]*orderers.Endpoint, error) {
 
 	overrideMap := map[string]*orderers.Endpoint{}
 	for _, override := range overrides {
-		certPool := x509.NewCertPool()
+		var rootCerts [][]byte
 		if override.CACertsFile != "" {
 			pem, err := ioutil.ReadFile(override.CACertsFile)
 			if err != nil {
 				logger.Warningf("could not read file '%s' specified for caCertsFile of orderer endpoint override from '%s' to '%s': %s", override.CACertsFile, override.From, override.To, err)
 				continue
 			}
-			success := certPool.AppendCertsFromPEM(pem)
-			if !success {
+			rootCerts = extractCerts(pem)
+			if len(rootCerts) == 0 {
 				logger.Warningf("Attempted to create a cert pool for override of orderer address '%s' to '%s' but did not find any valid certs in '%s'", override.From, override.To, override.CACertsFile)
 				continue
 			}
 		}
 		overrideMap[override.From] = &orderers.Endpoint{
-			Address:  override.To,
-			CertPool: certPool,
+			Address:   override.To,
+			RootCerts: rootCerts,
 		}
 	}
 
 	return overrideMap, nil
+}
+
+// extractCerts is a hacky way of breaking apart a collection of PEM encoded
+// certificates. This is used to preserve the semantics of
+// x509.CertPool#AppendCertsFromPEM after removing the CertPool from the
+// orderers.Endpoint.
+func extractCerts(pemCerts []byte) [][]byte {
+	var certs [][]byte
+	for len(pemCerts) > 0 {
+		var block *pem.Block
+		block, pemCerts = pem.Decode(pemCerts)
+		if block == nil {
+			break
+		}
+		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+			continue
+		}
+		certs = append(certs, pem.EncodeToMemory(block))
+	}
+	return certs
 }
 
 func (c *DeliverServiceConfig) loadDeliverServiceConfig() {
