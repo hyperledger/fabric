@@ -73,7 +73,6 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 		secAdv,
 		defaultSecureDialOpts,
 		nil,
-		nil,
 		gossipConfig,
 		&gossipservice.ServiceConfig{},
 		&privdata.PrivdataConfig{},

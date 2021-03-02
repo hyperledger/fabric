@@ -106,9 +106,6 @@ func TestLeaderYield(t *testing.T) {
 	// Prime the membership view of the peers
 	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Millisecond*100)
 
-	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{})
-	require.NoError(t, err)
-
 	store := newTransientStore(t)
 	defer store.tearDown()
 
@@ -123,7 +120,6 @@ func TestLeaderYield(t *testing.T) {
 				ReconnectTotalTimeThreshold: time.Second,
 				ConnectionTimeout:           time.Millisecond * 100,
 			},
-			deliverGRPCClient: grpcClient,
 		}}
 		gs.InitializeChannel(channelName, orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), nil), store.Store, Support{
 			Committer: &mockLedgerInfo{1},

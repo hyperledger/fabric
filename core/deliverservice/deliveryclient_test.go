@@ -56,12 +56,9 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 -----END PRIVATE KEY-----`,
 		),
 	}
-	grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{SecOpts: secOpts})
-	require.NoError(t, err)
 
 	t.Run("Green Path With Mutual TLS", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
-			DeliverGRPCClient: grpcClient,
 			DeliverServiceConfig: &DeliverServiceConfig{
 				SecOpts: secOpts,
 			},
@@ -85,20 +82,12 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 	})
 
 	t.Run("Green Path without mutual TLS", func(t *testing.T) {
-		grpcClient, err := comm.NewGRPCClient(comm.ClientConfig{
-			SecOpts: comm.SecureOptions{
-				UseTLS: true,
-			},
-		})
-		require.NoError(t, err)
-
 		ds := NewDeliverService(&Config{
-			DeliverGRPCClient:    grpcClient,
 			DeliverServiceConfig: &DeliverServiceConfig{},
 		}).(*deliverServiceImpl)
 
 		finalized := make(chan struct{})
-		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {
 			close(finalized)
 		})
 		require.NoError(t, err)
@@ -116,11 +105,10 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 
 	t.Run("Exists", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
-			DeliverGRPCClient:    grpcClient,
 			DeliverServiceConfig: &DeliverServiceConfig{},
 		}).(*deliverServiceImpl)
 
-		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
 		require.NoError(t, err)
 
 		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
@@ -129,13 +117,12 @@ eUCutqn1KYDMYh54i6p723cXbdDkmvL2UCciHyHdSWS9lmkKVdyNGIJ6
 
 	t.Run("Stopping", func(t *testing.T) {
 		ds := NewDeliverService(&Config{
-			DeliverGRPCClient:    grpcClient,
 			DeliverServiceConfig: &DeliverServiceConfig{},
 		}).(*deliverServiceImpl)
 
 		ds.Stop()
 
-		err = ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
+		err := ds.StartDeliverForChannel("channel-id", fakeLedgerInfo, func() {})
 		require.EqualError(t, err, "Delivery service is stopping cannot join a new channel channel-id")
 	})
 }
