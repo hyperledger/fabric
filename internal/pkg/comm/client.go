@@ -41,22 +41,6 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	}, nil
 }
 
-// SetServerRootCAs sets the list of authorities used to verify server
-// certificates based on a list of PEM-encoded X509 certificate authorities
-func (client *GRPCClient) SetServerRootCAs(serverRoots [][]byte) error {
-	// NOTE: if no serverRoots are specified, the current cert pool will be
-	// replaced with an empty one
-	certPool := x509.NewCertPool()
-	for _, root := range serverRoots {
-		err := AddPemToCertPool(root, certPool)
-		if err != nil {
-			return errors.WithMessage(err, "error adding root certificate")
-		}
-	}
-	client.tlsConfig.RootCAs = certPool
-	return nil
-}
-
 type TLSOption func(tlsConfig *tls.Config)
 
 func ServerNameOverride(name string) TLSOption {
@@ -78,10 +62,6 @@ func (client *GRPCClient) NewConnection(address string, tlsOptions ...TLSOption)
 	var dialOpts []grpc.DialOption
 	dialOpts = append(dialOpts, client.dialOpts...)
 
-	// set transport credentials and max send/recv message sizes
-	// immediately before creating a connection in order to allow
-	// SetServerRootCAs / SetMaxRecvMsgSize / SetMaxSendMsgSize
-	//  to take effect on a per connection basis
 	if client.tlsConfig != nil {
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(
 			&DynamicClientCredentials{
