@@ -173,11 +173,7 @@ func (so SecureOptions) TLSConfig() (*tls.Config, error) {
 	}
 
 	if so.RequireClientCert {
-		// make sure we have both Key and Certificate
-		if so.Key == nil || so.Certificate == nil {
-			return nil, errors.New("both Key and Certificate are required when using mutual TLS")
-		}
-		cert, err := tls.X509KeyPair(so.Certificate, so.Key)
+		cert, err := so.ClientCertificate()
 		if err != nil {
 			return nil, errors.WithMessage(err, "failed to load client certificate")
 		}
@@ -191,6 +187,15 @@ func (so SecureOptions) TLSConfig() (*tls.Config, error) {
 	}
 
 	return tlsConfig, nil
+}
+
+// ClientCertificate returns the client certificate that will be used
+// for mutual TLS.
+func (so SecureOptions) ClientCertificate() (tls.Certificate, error) {
+	if so.Key == nil || so.Certificate == nil {
+		return tls.Certificate{}, errors.New("both Key and Certificate are required when using mutual TLS")
+	}
+	return tls.X509KeyPair(so.Certificate, so.Key)
 }
 
 // KeepaliveOptions is used to set the gRPC keepalive settings for both

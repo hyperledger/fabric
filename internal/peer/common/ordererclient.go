@@ -17,7 +17,7 @@ import (
 // OrdererClient represents a client for communicating with an ordering
 // service
 type OrdererClient struct {
-	CommonClient
+	*CommonClient
 }
 
 // NewOrdererClientFromEnv creates an instance of an OrdererClient from the
@@ -27,25 +27,18 @@ func NewOrdererClientFromEnv() (*OrdererClient, error) {
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to load config for OrdererClient")
 	}
-	gClient, err := comm.NewGRPCClient(clientConfig)
+	cc, err := newCommonClient(address, override, clientConfig)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to create OrdererClient from config")
 	}
-	oClient := &OrdererClient{
-		CommonClient: CommonClient{
-			GRPCClient: gClient,
-			Address:    address,
-			sn:         override,
-		},
-	}
-	return oClient, nil
+	return &OrdererClient{CommonClient: cc}, nil
 }
 
 // Broadcast returns a broadcast client for the AtomicBroadcast service
 func (oc *OrdererClient) Broadcast() (ab.AtomicBroadcast_BroadcastClient, error) {
-	conn, err := oc.CommonClient.NewConnection(oc.Address, comm.ServerNameOverride(oc.sn))
+	conn, err := oc.CommonClient.NewConnection(oc.address, comm.ServerNameOverride(oc.sn))
 	if err != nil {
-		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.Address)
+		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.address)
 	}
 	// TODO: check to see if we should actually handle error before returning
 	return ab.NewAtomicBroadcastClient(conn).Broadcast(context.TODO())
@@ -53,9 +46,9 @@ func (oc *OrdererClient) Broadcast() (ab.AtomicBroadcast_BroadcastClient, error)
 
 // Deliver returns a deliver client for the AtomicBroadcast service
 func (oc *OrdererClient) Deliver() (ab.AtomicBroadcast_DeliverClient, error) {
-	conn, err := oc.CommonClient.NewConnection(oc.Address, comm.ServerNameOverride(oc.sn))
+	conn, err := oc.CommonClient.NewConnection(oc.address, comm.ServerNameOverride(oc.sn))
 	if err != nil {
-		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.Address)
+		return nil, errors.WithMessagef(err, "orderer client failed to connect to %s", oc.address)
 	}
 	// TODO: check to see if we should actually handle error before returning
 	return ab.NewAtomicBroadcastClient(conn).Deliver(context.TODO())

@@ -140,7 +140,11 @@ func (d *deliverServiceImpl) StartDeliverForChannel(chainID string, ledgerInfo b
 	}
 
 	if d.conf.DeliverServiceConfig.SecOpts.RequireClientCert {
-		dc.TLSCertHash = util.ComputeSHA256(d.conf.DeliverGRPCClient.Certificate().Certificate[0])
+		cert, err := d.conf.DeliverServiceConfig.SecOpts.ClientCertificate()
+		if err != nil {
+			return fmt.Errorf("failed to access client TLS configuration: %w", err)
+		}
+		dc.TLSCertHash = util.ComputeSHA256(cert.Certificate[0])
 	}
 
 	d.blockProviders[chainID] = dc

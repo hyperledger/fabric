@@ -47,7 +47,6 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	config := comm.ClientConfig{}
 	client, err := comm.NewGRPCClient(config)
 	require.NoError(t, err)
-	require.Equal(t, tls.Certificate{}, client.Certificate())
 	require.False(t, client.TLSEnabled())
 
 	secOpts := comm.SecureOptions{
@@ -56,7 +55,6 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 	config.SecOpts = secOpts
 	client, err = comm.NewGRPCClient(config)
 	require.NoError(t, err)
-	require.Equal(t, tls.Certificate{}, client.Certificate())
 	require.False(t, client.TLSEnabled())
 
 	secOpts = comm.SecureOptions{
@@ -76,11 +74,13 @@ func TestNewGRPCClient_GoodConfig(t *testing.T) {
 		ServerRootCAs:     [][]byte{testCerts.caPEM},
 		RequireClientCert: true,
 	}
+	clientCert, err := secOpts.ClientCertificate()
+	require.NoError(t, err)
+	require.Equal(t, testCerts.clientCert, clientCert)
 	config.SecOpts = secOpts
 	client, err = comm.NewGRPCClient(config)
 	require.NoError(t, err)
 	require.True(t, client.TLSEnabled())
-	require.Equal(t, testCerts.clientCert, client.Certificate())
 }
 
 func TestNewGRPCClient_BadConfig(t *testing.T) {
@@ -105,7 +105,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 		RequireClientCert: true,
 	}
 	_, err = comm.NewGRPCClient(config)
-	require.Equal(t, missing, err.Error())
+	require.ErrorContains(t, err, missing)
 
 	// missing cert
 	config.SecOpts = comm.SecureOptions{
@@ -114,7 +114,7 @@ func TestNewGRPCClient_BadConfig(t *testing.T) {
 		RequireClientCert: true,
 	}
 	_, err = comm.NewGRPCClient(config)
-	require.Equal(t, missing, err.Error())
+	require.ErrorContains(t, err, missing)
 
 	// bad key
 	failed := "failed to load client certificate"
