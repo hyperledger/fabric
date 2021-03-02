@@ -8,7 +8,6 @@ package orderers_test
 
 import (
 	"bytes"
-	"crypto/x509"
 	"io/ioutil"
 	"sort"
 
@@ -20,23 +19,22 @@ import (
 )
 
 type comparableEndpoint struct {
-	Address  string
-	Subjects [][]byte
+	Address   string
+	RootCerts [][]byte
 }
 
-// stripEndpoints makes a comparable version of the endpoints specified.
-// This is necessary because the x509 Cert pool's contents don't appear to be comparable
-// in a deterministic way (usually the same, but sometimes they differ), plus, the endpoint
-// contains a channel which is not comparable.
+// stripEndpoints makes a comparable version of the endpoints specified.  This
+// is necessary because the endpoint contains a channel which is not
+// comparable.
 func stripEndpoints(endpoints []*orderers.Endpoint) []comparableEndpoint {
 	endpointsWithChannelStripped := make([]comparableEndpoint, len(endpoints))
 	for i, endpoint := range endpoints {
-		subjects := endpoint.CertPool.Subjects()
-		sort.Slice(subjects, func(i, j int) bool {
-			return bytes.Compare(subjects[i], subjects[j]) >= 0
+		certs := endpoint.RootCerts
+		sort.Slice(certs, func(i, j int) bool {
+			return bytes.Compare(certs[i], certs[j]) >= 0
 		})
 		endpointsWithChannelStripped[i].Address = endpoint.Address
-		endpointsWithChannelStripped[i].Subjects = subjects
+		endpointsWithChannelStripped[i].RootCerts = certs
 	}
 	return endpointsWithChannelStripped
 }
@@ -50,9 +48,9 @@ var _ = Describe("Connection", func() {
 		org1 orderers.OrdererOrg
 		org2 orderers.OrdererOrg
 
-		org1CertPool     *x509.CertPool
-		org2CertPool     *x509.CertPool
-		overrideCertPool *x509.CertPool
+		org1Certs     [][]byte
+		org2Certs     [][]byte
+		overrideCerts [][]byte
 
 		cs *orderers.ConnectionSource
 
@@ -80,24 +78,14 @@ var _ = Describe("Connection", func() {
 			RootCerts: [][]byte{cert3},
 		}
 
-		org1CertPool = x509.NewCertPool()
-		added := org1CertPool.AppendCertsFromPEM(cert1)
-		Expect(added).To(BeTrue())
-		added = org1CertPool.AppendCertsFromPEM(cert2)
-		Expect(added).To(BeTrue())
-
-		org2CertPool = x509.NewCertPool()
-		added = org2CertPool.AppendCertsFromPEM(cert3)
-		Expect(added).To(BeTrue())
-
-		overrideCertPool = x509.NewCertPool()
-		added = overrideCertPool.AppendCertsFromPEM(cert2)
-		Expect(added).To(BeTrue())
+		org1Certs = [][]byte{cert1, cert2}
+		org2Certs = [][]byte{cert3}
+		overrideCerts = [][]byte{cert2}
 
 		cs = orderers.NewConnectionSource(flogging.MustGetLogger("peer.orderers"), map[string]*orderers.Endpoint{
 			"override-address": {
-				Address:  "re-mapped-address",
-				CertPool: overrideCertPool,
+				Address:   "re-mapped-address",
+				RootCerts: overrideCerts,
 			},
 		})
 		cs.Update(nil, map[string]orderers.OrdererOrg{
@@ -112,20 +100,20 @@ var _ = Describe("Connection", func() {
 		Expect(stripEndpoints(endpoints)).To(ConsistOf(
 			stripEndpoints([]*orderers.Endpoint{
 				{
-					Address:  "org1-address1",
-					CertPool: org1CertPool,
+					Address:   "org1-address1",
+					RootCerts: org1Certs,
 				},
 				{
-					Address:  "org1-address2",
-					CertPool: org1CertPool,
+					Address:   "org1-address2",
+					RootCerts: org1Certs,
 				},
 				{
-					Address:  "org2-address1",
-					CertPool: org2CertPool,
+					Address:   "org2-address1",
+					RootCerts: org2Certs,
 				},
 				{
-					Address:  "org2-address2",
-					CertPool: org2CertPool,
+					Address:   "org2-address2",
+					RootCerts: org2Certs,
 				},
 			}),
 		))
@@ -168,28 +156,26 @@ var _ = Describe("Connection", func() {
 		})
 
 		It("creates a new set of orderer endpoints", func() {
-			newOrg1CertPool := x509.NewCertPool()
-			added := newOrg1CertPool.AppendCertsFromPEM(cert1)
-			Expect(added).To(BeTrue())
+			newOrg1Certs := [][]byte{cert1}
 
 			newEndpoints := cs.Endpoints()
 			Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 				stripEndpoints([]*orderers.Endpoint{
 					{
-						Address:  "org1-address1",
-						CertPool: newOrg1CertPool,
+						Address:   "org1-address1",
+						RootCerts: newOrg1Certs,
 					},
 					{
-						Address:  "org1-address2",
-						CertPool: newOrg1CertPool,
+						Address:   "org1-address2",
+						RootCerts: newOrg1Certs,
 					},
 					{
-						Address:  "org2-address1",
-						CertPool: org2CertPool,
+						Address:   "org2-address1",
+						RootCerts: org2Certs,
 					},
 					{
-						Address:  "org2-address2",
-						CertPool: org2CertPool,
+						Address:   "org2-address2",
+						RootCerts: org2Certs,
 					},
 				}),
 			))
@@ -216,20 +202,20 @@ var _ = Describe("Connection", func() {
 			Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 				stripEndpoints([]*orderers.Endpoint{
 					{
-						Address:  "org1-address1",
-						CertPool: org1CertPool,
+						Address:   "org1-address1",
+						RootCerts: org1Certs,
 					},
 					{
-						Address:  "org1-address3",
-						CertPool: org1CertPool,
+						Address:   "org1-address3",
+						RootCerts: org1Certs,
 					},
 					{
-						Address:  "org2-address1",
-						CertPool: org2CertPool,
+						Address:   "org2-address1",
+						RootCerts: org2Certs,
 					},
 					{
-						Address:  "org2-address2",
-						CertPool: org2CertPool,
+						Address:   "org2-address2",
+						RootCerts: org2Certs,
 					},
 				}),
 			))
@@ -257,12 +243,12 @@ var _ = Describe("Connection", func() {
 			Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 				stripEndpoints([]*orderers.Endpoint{
 					{
-						Address:  "org1-address1",
-						CertPool: org1CertPool,
+						Address:   "org1-address1",
+						RootCerts: org1Certs,
 					},
 					{
-						Address:  "re-mapped-address",
-						CertPool: overrideCertPool,
+						Address:   "re-mapped-address",
+						RootCerts: overrideCerts,
 					},
 				}),
 			))
@@ -281,12 +267,12 @@ var _ = Describe("Connection", func() {
 			Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 				stripEndpoints([]*orderers.Endpoint{
 					{
-						Address:  "org2-address1",
-						CertPool: org2CertPool,
+						Address:   "org2-address1",
+						RootCerts: org2Certs,
 					},
 					{
-						Address:  "org2-address2",
-						CertPool: org2CertPool,
+						Address:   "org2-address2",
+						RootCerts: org2Certs,
 					},
 				}),
 			))
@@ -311,20 +297,20 @@ var _ = Describe("Connection", func() {
 				Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 					stripEndpoints([]*orderers.Endpoint{
 						{
-							Address:  "org1-address1",
-							CertPool: org1CertPool,
+							Address:   "org1-address1",
+							RootCerts: org1Certs,
 						},
 						{
-							Address:  "org1-address2",
-							CertPool: org1CertPool,
+							Address:   "org1-address2",
+							RootCerts: org1Certs,
 						},
 						{
-							Address:  "org2-address1",
-							CertPool: org2CertPool,
+							Address:   "org2-address1",
+							RootCerts: org2Certs,
 						},
 						{
-							Address:  "org2-address2",
-							CertPool: org2CertPool,
+							Address:   "org2-address2",
+							RootCerts: org2Certs,
 						},
 					}),
 				))
@@ -353,19 +339,13 @@ var _ = Describe("Connection", func() {
 	})
 
 	When("the configuration does not contain orderer org endpoints", func() {
-		var globalCertPool *x509.CertPool
+		var globalCerts [][]byte
 
 		BeforeEach(func() {
 			org1.Addresses = nil
 			org2.Addresses = nil
 
-			globalCertPool = x509.NewCertPool()
-			added := globalCertPool.AppendCertsFromPEM(cert1)
-			Expect(added).To(BeTrue())
-			added = globalCertPool.AppendCertsFromPEM(cert2)
-			Expect(added).To(BeTrue())
-			added = globalCertPool.AppendCertsFromPEM(cert3)
-			Expect(added).To(BeTrue())
+			globalCerts = [][]byte{cert1, cert2, cert3}
 
 			cs.Update([]string{"global-addr1", "global-addr2"}, map[string]orderers.OrdererOrg{
 				"org1": org1,
@@ -378,12 +358,12 @@ var _ = Describe("Connection", func() {
 			Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 				stripEndpoints([]*orderers.Endpoint{
 					{
-						Address:  "global-addr1",
-						CertPool: globalCertPool,
+						Address:   "global-addr1",
+						RootCerts: globalCerts,
 					},
 					{
-						Address:  "global-addr2",
-						CertPool: globalCertPool,
+						Address:   "global-addr2",
+						RootCerts: globalCerts,
 					},
 				}),
 			))
@@ -408,16 +388,16 @@ var _ = Describe("Connection", func() {
 				Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 					stripEndpoints([]*orderers.Endpoint{
 						{
-							Address:  "global-addr1",
-							CertPool: globalCertPool,
+							Address:   "global-addr1",
+							RootCerts: globalCerts,
 						},
 						{
-							Address:  "global-addr2",
-							CertPool: globalCertPool,
+							Address:   "global-addr2",
+							RootCerts: globalCerts,
 						},
 						{
-							Address:  "global-addr3",
-							CertPool: globalCertPool,
+							Address:   "global-addr3",
+							RootCerts: globalCerts,
 						},
 					}),
 				))
@@ -443,8 +423,8 @@ var _ = Describe("Connection", func() {
 				Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 					stripEndpoints([]*orderers.Endpoint{
 						{
-							Address:  "global-addr1",
-							CertPool: globalCertPool,
+							Address:   "global-addr1",
+							RootCerts: globalCerts,
 						},
 					}),
 				))
@@ -470,12 +450,12 @@ var _ = Describe("Connection", func() {
 				Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 					stripEndpoints([]*orderers.Endpoint{
 						{
-							Address:  "global-addr1",
-							CertPool: globalCertPool,
+							Address:   "global-addr1",
+							RootCerts: globalCerts,
 						},
 						{
-							Address:  "global-addr3",
-							CertPool: globalCertPool,
+							Address:   "global-addr3",
+							RootCerts: globalCerts,
 						},
 					}),
 				))
@@ -502,12 +482,12 @@ var _ = Describe("Connection", func() {
 				Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 					stripEndpoints([]*orderers.Endpoint{
 						{
-							Address:  "global-addr1",
-							CertPool: globalCertPool,
+							Address:   "global-addr1",
+							RootCerts: globalCerts,
 						},
 						{
-							Address:  "re-mapped-address",
-							CertPool: overrideCertPool,
+							Address:   "re-mapped-address",
+							RootCerts: overrideCerts,
 						},
 					}),
 				))
@@ -528,8 +508,8 @@ var _ = Describe("Connection", func() {
 				Expect(stripEndpoints(newEndpoints)).To(ConsistOf(
 					stripEndpoints([]*orderers.Endpoint{
 						{
-							Address:  "new-org1-address",
-							CertPool: org1CertPool,
+							Address:   "new-org1-address",
+							RootCerts: org1Certs,
 						},
 					}),
 				))
