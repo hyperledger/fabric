@@ -8,7 +8,6 @@ package cluster
 
 import (
 	"bytes"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
@@ -154,18 +153,7 @@ func (dialer *PredicateDialer) Dial(address string, verifyFunc RemoteVerifier) (
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	return client.NewConnection(address, func(tlsConfig *tls.Config) {
-		// We need to dynamically overwrite the TLS root CAs,
-		// as they may be updated.
-		dialer.lock.RLock()
-		serverRootCAs := dialer.Config.SecOpts.ServerRootCAs
-		dialer.lock.RUnlock()
-
-		tlsConfig.RootCAs = x509.NewCertPool()
-		for _, pem := range serverRootCAs {
-			tlsConfig.RootCAs.AppendCertsFromPEM(pem)
-		}
-	})
+	return client.NewConnection(address)
 }
 
 // DERtoPEM returns a PEM representation of the DER

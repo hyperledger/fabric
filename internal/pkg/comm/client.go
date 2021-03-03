@@ -9,7 +9,6 @@ package comm
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"time"
 
 	"github.com/pkg/errors"
@@ -41,26 +40,17 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	}, nil
 }
 
-type TLSOption func(tlsConfig *tls.Config)
-
-func CertPoolOverride(pool *x509.CertPool) TLSOption {
-	return func(tlsConfig *tls.Config) {
-		tlsConfig.RootCAs = pool
-	}
-}
-
 // NewConnection returns a grpc.ClientConn for the target address and
 // overrides the server name used to verify the hostname on the
 // certificate returned by a server when using TLS
-func (client *GRPCClient) NewConnection(address string, tlsOptions ...TLSOption) (*grpc.ClientConn, error) {
+func (client *GRPCClient) NewConnection(address string) (*grpc.ClientConn, error) {
 	var dialOpts []grpc.DialOption
 	dialOpts = append(dialOpts, client.dialOpts...)
 
 	if client.tlsConfig != nil {
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(
 			&DynamicClientCredentials{
-				TLSConfig:  client.tlsConfig,
-				TLSOptions: tlsOptions,
+				TLSConfig: client.tlsConfig,
 			},
 		))
 	} else {
