@@ -8,7 +8,6 @@ package blocksprovider
 
 import (
 	"context"
-	"crypto/x509"
 	"math"
 	"time"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/protoutil"
@@ -75,7 +73,7 @@ type OrdererConnectionSource interface {
 
 //go:generate counterfeiter -o fake/dialer.go --fake-name Dialer . Dialer
 type Dialer interface {
-	Dial(address string, certPool *x509.CertPool) (*grpc.ClientConn, error)
+	Dial(address string, rootCerts [][]byte) (*grpc.ClientConn, error)
 }
 
 //go:generate counterfeiter -o fake/deliver_streamer.go --fake-name DeliverStreamer . DeliverStreamer
@@ -285,14 +283,7 @@ func (d *Deliverer) connect(seekInfoEnv *common.Envelope) (orderer.AtomicBroadca
 		return nil, nil, nil, errors.WithMessage(err, "could not get orderer endpoints")
 	}
 
-	certPool := x509.NewCertPool()
-	for _, cert := range endpoint.RootCerts {
-		if err := comm.AddPemToCertPool(cert, certPool); err != nil {
-			return nil, nil, nil, err
-		}
-	}
-
-	conn, err := d.Dialer.Dial(endpoint.Address, certPool)
+	conn, err := d.Dialer.Dial(endpoint.Address, endpoint.RootCerts)
 	if err != nil {
 		return nil, nil, nil, errors.WithMessagef(err, "could not dial endpoint '%s'", endpoint.Address)
 	}
