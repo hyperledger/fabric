@@ -9,6 +9,8 @@ package comm
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -219,4 +221,128 @@ func TestSecureOptionsTLSConfig(t *testing.T) {
 			require.Equal(t, tt.tc, tc)
 		})
 	}
+}
+
+func TestClientConfigDialOptions_GoodConfig(t *testing.T) {
+	testCerts := LoadTestCerts(t)
+
+	config := ClientConfig{}
+	opts, err := config.DialOptions()
+	require.NoError(t, err)
+	require.NotEmpty(t, opts)
+
+	secOpts := SecureOptions{
+		UseTLS:            true,
+		ServerRootCAs:     [][]byte{testCerts.CAPEM},
+		RequireClientCert: false,
+	}
+	config.SecOpts = secOpts
+	opts, err = config.DialOptions()
+	require.NoError(t, err)
+	require.NotEmpty(t, opts)
+
+	secOpts = SecureOptions{
+		Certificate:       testCerts.CertPEM,
+		Key:               testCerts.KeyPEM,
+		UseTLS:            true,
+		ServerRootCAs:     [][]byte{testCerts.CAPEM},
+		RequireClientCert: true,
+	}
+	clientCert, err := secOpts.ClientCertificate()
+	require.NoError(t, err)
+	require.Equal(t, testCerts.ClientCert, clientCert)
+	config.SecOpts = secOpts
+	opts, err = config.DialOptions()
+	require.NoError(t, err)
+	require.NotEmpty(t, opts)
+}
+
+func TestClientConfigDialOptions_BadConfig(t *testing.T) {
+	testCerts := LoadTestCerts(t)
+
+	// bad root cert
+	config := ClientConfig{
+		SecOpts: SecureOptions{
+			UseTLS:        true,
+			ServerRootCAs: [][]byte{[]byte(badPEM)},
+		},
+	}
+	_, err := config.DialOptions()
+	require.ErrorContains(t, err, "error adding root certificate")
+
+	// missing key
+	config.SecOpts = SecureOptions{
+		Certificate:       []byte("cert"),
+		UseTLS:            true,
+		RequireClientCert: true,
+	}
+	_, err = config.DialOptions()
+	require.ErrorContains(t, err, "both Key and Certificate are required when using mutual TLS")
+
+	// missing cert
+	config.SecOpts = SecureOptions{
+		Key:               []byte("key"),
+		UseTLS:            true,
+		RequireClientCert: true,
+	}
+	_, err = config.DialOptions()
+	require.ErrorContains(t, err, "both Key and Certificate are required when using mutual TLS")
+
+	// bad key
+	config.SecOpts = SecureOptions{
+		Certificate:       testCerts.CertPEM,
+		Key:               []byte(badPEM),
+		UseTLS:            true,
+		RequireClientCert: true,
+	}
+	_, err = config.DialOptions()
+	require.ErrorContains(t, err, "failed to load client certificate")
+
+	// bad cert
+	config.SecOpts = SecureOptions{
+		Certificate:       []byte(badPEM),
+		Key:               testCerts.KeyPEM,
+		UseTLS:            true,
+		RequireClientCert: true,
+	}
+	_, err = config.DialOptions()
+	require.ErrorContains(t, err, "failed to load client certificate")
+}
+
+type TestCerts struct {
+	CAPEM      []byte
+	CertPEM    []byte
+	KeyPEM     []byte
+	ClientCert tls.Certificate
+	ServerCert tls.Certificate
+}
+
+func LoadTestCerts(t *testing.T) TestCerts {
+	t.Helper()
+
+	var certs TestCerts
+	var err error
+	certs.CAPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
+	if err != nil {
+		t.Fatalf("unexpected error reading root cert for test: %v", err)
+	}
+	certs.CertPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-client1-cert.pem"))
+	if err != nil {
+		t.Fatalf("unexpected error reading cert for test: %v", err)
+	}
+	certs.KeyPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-client1-key.pem"))
+	if err != nil {
+		t.Fatalf("unexpected error reading key for test: %v", err)
+	}
+	certs.ClientCert, err = tls.X509KeyPair(certs.CertPEM, certs.KeyPEM)
+	if err != nil {
+		t.Fatalf("unexpected error loading certificate for test: %v", err)
+	}
+	certs.ServerCert, err = tls.LoadX509KeyPair(
+		filepath.Join("testdata", "certs", "Org1-server1-cert.pem"),
+		filepath.Join("testdata", "certs", "Org1-server1-key.pem"),
+	)
+	require.NoError(t, err)
+
+	return certs
 }

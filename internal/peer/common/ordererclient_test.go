@@ -131,26 +131,28 @@ func TestNewOrdererClientFromEnv(t *testing.T) {
 	badKeyFile := filepath.Join("certs", "bad.key")
 	viper.Set("orderer.tls.clientKey.file", badKeyFile)
 	oClient, err = common.NewOrdererClientFromEnv()
-	require.Contains(t, err.Error(), "failed to create OrdererClient from config")
-	require.Nil(t, oClient)
+	require.NoError(t, err)
+	_, err = oClient.NewConnection("127.0.0.1:0")
+	require.ErrorContains(t, err, "failed to load client certificate:")
+	require.ErrorContains(t, err, "tls: failed to parse private key")
 
 	// bad cert file path
 	viper.Set("orderer.tls.clientCert.file", "./nocert.crt")
 	oClient, err = common.NewOrdererClientFromEnv()
-	require.Contains(t, err.Error(), "unable to load orderer.tls.clientCert.file")
-	require.Contains(t, err.Error(), "failed to load config for OrdererClient")
+	require.ErrorContains(t, err, "unable to load orderer.tls.clientCert.file")
+	require.ErrorContains(t, err, "failed to load config for OrdererClient")
 	require.Nil(t, oClient)
 
 	// bad key file path
 	viper.Set("orderer.tls.clientKey.file", "./nokey.key")
 	oClient, err = common.NewOrdererClientFromEnv()
-	require.Contains(t, err.Error(), "unable to load orderer.tls.clientKey.file")
+	require.ErrorContains(t, err, "unable to load orderer.tls.clientKey.file")
 	require.Nil(t, oClient)
 
 	// bad ca path
 	viper.Set("orderer.tls.rootcert.file", "noroot.crt")
 	oClient, err = common.NewOrdererClientFromEnv()
-	require.Contains(t, err.Error(), "unable to load orderer.tls.rootcert.file")
+	require.ErrorContains(t, err, "unable to load orderer.tls.rootcert.file")
 	require.Nil(t, oClient)
 }
 

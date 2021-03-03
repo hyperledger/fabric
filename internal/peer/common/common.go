@@ -275,8 +275,7 @@ func configFromEnv(prefix string) (address string, clientConfig comm.ClientConfi
 	if secOpts.UseTLS {
 		caPEM, res := ioutil.ReadFile(config.GetPath(prefix + ".tls.rootcert.file"))
 		if res != nil {
-			err = errors.WithMessage(res,
-				fmt.Sprintf("unable to load %s.tls.rootcert.file", prefix))
+			err = errors.WithMessagef(res, "unable to load %s.tls.rootcert.file", prefix)
 			return
 		}
 		secOpts.ServerRootCAs = [][]byte{caPEM}
