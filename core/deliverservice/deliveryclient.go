@@ -8,7 +8,6 @@ package deliverservice
 
 import (
 	"context"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"sync"
@@ -88,13 +87,14 @@ type DialerAdapter struct {
 	ClientConfig comm.ClientConfig
 }
 
-func (da DialerAdapter) Dial(address string, certPool *x509.CertPool) (*grpc.ClientConn, error) {
+func (da DialerAdapter) Dial(address string, rootCerts [][]byte) (*grpc.ClientConn, error) {
 	cc := da.ClientConfig
+	cc.SecOpts.ServerRootCAs = rootCerts
 	client, err := comm.NewGRPCClient(cc)
 	if err != nil {
 		return nil, err
 	}
-	return client.NewConnection(address, comm.CertPoolOverride(certPool))
+	return client.NewConnection(address)
 }
 
 type DeliverAdapter struct{}

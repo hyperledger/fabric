@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package blocksprovider_test
 
 import (
-	"crypto/x509"
 	"fmt"
 	"sync"
 	"time"
@@ -59,7 +58,7 @@ var _ = Describe("Blocksprovider", func() {
 
 		fakeDialer = &fake.Dialer{}
 		ccs = nil
-		fakeDialer.DialStub = func(string, *x509.CertPool) (*grpc.ClientConn, error) {
+		fakeDialer.DialStub = func(string, [][]byte) (*grpc.ClientConn, error) {
 			mutex.Lock()
 			defer mutex.Unlock()
 			cc, err := grpc.Dial("", grpc.WithInsecure())
@@ -216,7 +215,7 @@ var _ = Describe("Blocksprovider", func() {
 		Eventually(fakeDialer.DialCallCount).Should(Equal(1))
 		addr, tlsCerts := fakeDialer.DialArgsForCall(0)
 		Expect(addr).To(Equal("orderer-address"))
-		Expect(tlsCerts).NotTo(BeNil()) // TODO
+		Expect(tlsCerts).To(BeNil()) // TODO
 	})
 
 	When("the dialer returns an error", func() {
