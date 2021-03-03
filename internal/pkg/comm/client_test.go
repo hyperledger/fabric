@@ -11,9 +11,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"net"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -35,97 +33,9 @@ func (es *echoServer) EchoCall(ctx context.Context,
 	return echo, nil
 }
 
-func TestNewGRPCClient_GoodConfig(t *testing.T) {
-	t.Parallel()
-	testCerts := loadCerts(t)
-
-	config := comm.ClientConfig{}
-	client, err := comm.NewGRPCClient(config)
-	require.NotNil(t, client)
-	require.NoError(t, err)
-
-	secOpts := comm.SecureOptions{
-		UseTLS:            true,
-		ServerRootCAs:     [][]byte{testCerts.caPEM},
-		RequireClientCert: false,
-	}
-	config.SecOpts = secOpts
-	_, err = comm.NewGRPCClient(config)
-	require.NoError(t, err)
-
-	secOpts = comm.SecureOptions{
-		Certificate:       testCerts.certPEM,
-		Key:               testCerts.keyPEM,
-		UseTLS:            true,
-		ServerRootCAs:     [][]byte{testCerts.caPEM},
-		RequireClientCert: true,
-	}
-	clientCert, err := secOpts.ClientCertificate()
-	require.NoError(t, err)
-	require.Equal(t, testCerts.clientCert, clientCert)
-	config.SecOpts = secOpts
-	_, err = comm.NewGRPCClient(config)
-	require.NoError(t, err)
-}
-
-func TestNewGRPCClient_BadConfig(t *testing.T) {
-	t.Parallel()
-	testCerts := loadCerts(t)
-
-	// bad root cert
-	config := comm.ClientConfig{
-		SecOpts: comm.SecureOptions{
-			UseTLS:        true,
-			ServerRootCAs: [][]byte{[]byte(badPEM)},
-		},
-	}
-	_, err := comm.NewGRPCClient(config)
-	require.Contains(t, err.Error(), "error adding root certificate")
-
-	// missing key
-	missing := "both Key and Certificate are required when using mutual TLS"
-	config.SecOpts = comm.SecureOptions{
-		Certificate:       []byte("cert"),
-		UseTLS:            true,
-		RequireClientCert: true,
-	}
-	_, err = comm.NewGRPCClient(config)
-	require.ErrorContains(t, err, missing)
-
-	// missing cert
-	config.SecOpts = comm.SecureOptions{
-		Key:               []byte("key"),
-		UseTLS:            true,
-		RequireClientCert: true,
-	}
-	_, err = comm.NewGRPCClient(config)
-	require.ErrorContains(t, err, missing)
-
-	// bad key
-	failed := "failed to load client certificate"
-	config.SecOpts = comm.SecureOptions{
-		Certificate:       testCerts.certPEM,
-		Key:               []byte(badPEM),
-		UseTLS:            true,
-		RequireClientCert: true,
-	}
-	_, err = comm.NewGRPCClient(config)
-	require.Contains(t, err.Error(), failed)
-
-	// bad cert
-	config.SecOpts = comm.SecureOptions{
-		Certificate:       []byte(badPEM),
-		Key:               testCerts.keyPEM,
-		UseTLS:            true,
-		RequireClientCert: true,
-	}
-	_, err = comm.NewGRPCClient(config)
-	require.Contains(t, err.Error(), failed)
-}
-
 func TestNewConnection(t *testing.T) {
 	t.Parallel()
-	testCerts := loadCerts(t)
+	testCerts := comm.LoadTestCerts(t)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -133,7 +43,7 @@ func TestNewConnection(t *testing.T) {
 	defer l.Close()
 
 	certPool := x509.NewCertPool()
-	ok := certPool.AppendCertsFromPEM(testCerts.caPEM)
+	ok := certPool.AppendCertsFromPEM(testCerts.CAPEM)
 	if !ok {
 		t.Fatal("failed to create test root cert pool")
 	}
@@ -175,10 +85,10 @@ func TestNewConnection(t *testing.T) {
 			name: "client TLS / server no TLS",
 			config: comm.ClientConfig{
 				SecOpts: comm.SecureOptions{
-					Certificate:       testCerts.certPEM,
-					Key:               testCerts.keyPEM,
+					Certificate:       testCerts.CertPEM,
+					Key:               testCerts.KeyPEM,
 					UseTLS:            true,
-					ServerRootCAs:     [][]byte{testCerts.caPEM},
+					ServerRootCAs:     [][]byte{testCerts.CAPEM},
 					RequireClientCert: true,
 				},
 				DialTimeout: time.Second,
@@ -190,15 +100,15 @@ func TestNewConnection(t *testing.T) {
 			name: "client TLS / server TLS match",
 			config: comm.ClientConfig{
 				SecOpts: comm.SecureOptions{
-					Certificate:   testCerts.certPEM,
-					Key:           testCerts.keyPEM,
+					Certificate:   testCerts.CertPEM,
+					Key:           testCerts.KeyPEM,
 					UseTLS:        true,
-					ServerRootCAs: [][]byte{testCerts.caPEM},
+					ServerRootCAs: [][]byte{testCerts.CAPEM},
 				},
 				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
-				Certificates: []tls.Certificate{testCerts.serverCert},
+				Certificates: []tls.Certificate{testCerts.ServerCert},
 			},
 			success: true,
 		},
@@ -206,15 +116,15 @@ func TestNewConnection(t *testing.T) {
 			name: "client TLS / server TLS no server roots",
 			config: comm.ClientConfig{
 				SecOpts: comm.SecureOptions{
-					Certificate:   testCerts.certPEM,
-					Key:           testCerts.keyPEM,
+					Certificate:   testCerts.CertPEM,
+					Key:           testCerts.KeyPEM,
 					UseTLS:        true,
 					ServerRootCAs: [][]byte{},
 				},
 				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
-				Certificates: []tls.Certificate{testCerts.serverCert},
+				Certificates: []tls.Certificate{testCerts.ServerCert},
 			},
 			success:  false,
 			errorMsg: "context deadline exceeded",
@@ -223,15 +133,15 @@ func TestNewConnection(t *testing.T) {
 			name: "client TLS / server TLS missing client cert",
 			config: comm.ClientConfig{
 				SecOpts: comm.SecureOptions{
-					Certificate:   testCerts.certPEM,
-					Key:           testCerts.keyPEM,
+					Certificate:   testCerts.CertPEM,
+					Key:           testCerts.KeyPEM,
 					UseTLS:        true,
-					ServerRootCAs: [][]byte{testCerts.caPEM},
+					ServerRootCAs: [][]byte{testCerts.CAPEM},
 				},
 				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
-				Certificates: []tls.Certificate{testCerts.serverCert},
+				Certificates: []tls.Certificate{testCerts.ServerCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
 				MaxVersion:   tls.VersionTLS12, // https://github.com/golang/go/issues/33368
 			},
@@ -242,16 +152,16 @@ func TestNewConnection(t *testing.T) {
 			name: "client TLS / server TLS client cert",
 			config: comm.ClientConfig{
 				SecOpts: comm.SecureOptions{
-					Certificate:       testCerts.certPEM,
-					Key:               testCerts.keyPEM,
+					Certificate:       testCerts.CertPEM,
+					Key:               testCerts.KeyPEM,
 					UseTLS:            true,
 					RequireClientCert: true,
-					ServerRootCAs:     [][]byte{testCerts.caPEM},
+					ServerRootCAs:     [][]byte{testCerts.CAPEM},
 				},
 				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
-				Certificates: []tls.Certificate{testCerts.serverCert},
+				Certificates: []tls.Certificate{testCerts.ServerCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
 				ClientCAs:    certPool,
 			},
@@ -262,21 +172,21 @@ func TestNewConnection(t *testing.T) {
 			config: comm.ClientConfig{
 				SecOpts: comm.SecureOptions{
 					VerifyCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-						if bytes.Equal(rawCerts[0], testCerts.serverCert.Certificate[0]) {
+						if bytes.Equal(rawCerts[0], testCerts.ServerCert.Certificate[0]) {
 							return nil
 						}
 						panic("mismatched certificate")
 					},
-					Certificate:       testCerts.certPEM,
-					Key:               testCerts.keyPEM,
+					Certificate:       testCerts.CertPEM,
+					Key:               testCerts.KeyPEM,
 					UseTLS:            true,
 					RequireClientCert: true,
-					ServerRootCAs:     [][]byte{testCerts.caPEM},
+					ServerRootCAs:     [][]byte{testCerts.CAPEM},
 				},
 				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
-				Certificates: []tls.Certificate{testCerts.serverCert},
+				Certificates: []tls.Certificate{testCerts.ServerCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
 				ClientCAs:    certPool,
 			},
@@ -289,16 +199,16 @@ func TestNewConnection(t *testing.T) {
 					VerifyCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 						return errors.New("TLS certificate mismatch")
 					},
-					Certificate:       testCerts.certPEM,
-					Key:               testCerts.keyPEM,
+					Certificate:       testCerts.CertPEM,
+					Key:               testCerts.KeyPEM,
 					UseTLS:            true,
 					RequireClientCert: true,
-					ServerRootCAs:     [][]byte{testCerts.caPEM},
+					ServerRootCAs:     [][]byte{testCerts.CAPEM},
 				},
 				DialTimeout: testTimeout,
 			},
 			serverTLS: &tls.Config{
-				Certificates: []tls.Certificate{testCerts.serverCert},
+				Certificates: []tls.Certificate{testCerts.ServerCert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
 				ClientCAs:    certPool,
 			},
@@ -432,42 +342,4 @@ func TestSetMessageSize(t *testing.T) {
 			}
 		})
 	}
-}
-
-type testCerts struct {
-	caPEM      []byte
-	certPEM    []byte
-	keyPEM     []byte
-	clientCert tls.Certificate
-	serverCert tls.Certificate
-}
-
-func loadCerts(t *testing.T) testCerts {
-	t.Helper()
-
-	var certs testCerts
-	var err error
-	certs.caPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-cert.pem"))
-	if err != nil {
-		t.Fatalf("unexpected error reading root cert for test: %v", err)
-	}
-	certs.certPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-client1-cert.pem"))
-	if err != nil {
-		t.Fatalf("unexpected error reading cert for test: %v", err)
-	}
-	certs.keyPEM, err = ioutil.ReadFile(filepath.Join("testdata", "certs", "Org1-client1-key.pem"))
-	if err != nil {
-		t.Fatalf("unexpected error reading key for test: %v", err)
-	}
-	certs.clientCert, err = tls.X509KeyPair(certs.certPEM, certs.keyPEM)
-	if err != nil {
-		t.Fatalf("unexpected error loading certificate for test: %v", err)
-	}
-	certs.serverCert, err = tls.LoadX509KeyPair(
-		filepath.Join("testdata", "certs", "Org1-server1-cert.pem"),
-		filepath.Join("testdata", "certs", "Org1-server1-key.pem"),
-	)
-	require.NoError(t, err)
-
-	return certs
 }

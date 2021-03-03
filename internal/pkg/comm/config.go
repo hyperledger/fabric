@@ -89,10 +89,8 @@ type ClientConfig struct {
 }
 
 // Convert the ClientConfig to the approriate set of grpc.DialOptions.
-// NOTE: These options do no contain the SecureOptions.
-func (cc ClientConfig) DialOptions() []grpc.DialOption {
+func (cc ClientConfig) DialOptions() ([]grpc.DialOption, error) {
 	var dialOpts []grpc.DialOption
-
 	dialOpts = append(dialOpts, grpc.WithKeepaliveParams(keepalive.ClientParameters{
 		Time:                cc.KaOpts.ClientInterval,
 		Timeout:             cc.KaOpts.ClientTimeout,
@@ -120,8 +118,18 @@ func (cc ClientConfig) DialOptions() []grpc.DialOption {
 		grpc.MaxCallSendMsgSize(maxSendMsgSize),
 	))
 
-	// client.timeout = config.DialTimeout
-	return dialOpts
+	tlsConfig, err := cc.SecOpts.TLSConfig()
+	if err != nil {
+		return nil, err
+	}
+	if tlsConfig != nil {
+		transportCreds := &DynamicClientCredentials{TLSConfig: tlsConfig}
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(transportCreds))
+	} else {
+		dialOpts = append(dialOpts, grpc.WithInsecure())
+	}
+
+	return dialOpts, nil
 }
 
 // SecureOptions defines the TLS security parameters for a GRPCServer or
@@ -200,7 +208,11 @@ func (so SecureOptions) ClientCertificate() (tls.Certificate, error) {
 	if so.Key == nil || so.Certificate == nil {
 		return tls.Certificate{}, errors.New("both Key and Certificate are required when using mutual TLS")
 	}
-	return tls.X509KeyPair(so.Certificate, so.Key)
+	cert, err := tls.X509KeyPair(so.Certificate, so.Key)
+	if err != nil {
+		return tls.Certificate{}, errors.WithMessage(err, "failed to create key pair")
+	}
+	return cert, nil
 }
 
 // KeepaliveOptions is used to set the gRPC keepalive settings for both

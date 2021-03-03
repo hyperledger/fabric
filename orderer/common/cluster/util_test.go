@@ -175,9 +175,9 @@ func TestStandardDialer(t *testing.T) {
 		Config: config,
 	}
 	_, err := standardDialer.Dial(cluster.EndpointCriteria{Endpoint: "127.0.0.1:8080", TLSRootCAs: certPool})
-	require.EqualError(t,
+	require.ErrorContains(t,
 		err,
-		"failed creating gRPC client: error adding root certificate: asn1: syntax error: sequence truncated",
+		"error adding root certificate: asn1: syntax error: sequence truncated",
 	)
 }
 

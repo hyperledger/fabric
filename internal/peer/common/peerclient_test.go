@@ -130,29 +130,32 @@ func TestNewPeerClientFromEnv(t *testing.T) {
 	require.NotNil(t, pClient)
 
 	// bad key file
+	// This used to be detected when creating the client instead
+	// of when the client connects.
 	badKeyFile := filepath.Join("certs", "bad.key")
 	viper.Set("peer.tls.clientKey.file", badKeyFile)
 	pClient, err = common.NewPeerClientFromEnv()
-	require.Contains(t, err.Error(), "failed to create PeerClient from config")
-	require.Nil(t, pClient)
+	require.NoError(t, err)
+	_, err = pClient.NewConnection("127.0.0.1:0")
+	require.ErrorContains(t, err, "failed to load client certificate:")
+	require.ErrorContains(t, err, "tls: failed to parse private key")
 
 	// bad cert file path
 	viper.Set("peer.tls.clientCert.file", "./nocert.crt")
 	pClient, err = common.NewPeerClientFromEnv()
-	require.Contains(t, err.Error(), "unable to load peer.tls.clientCert.file")
-	require.Contains(t, err.Error(), "failed to load config for PeerClient")
+	require.ErrorContains(t, err, "unable to load peer.tls.clientCert.file")
 	require.Nil(t, pClient)
 
 	// bad key file path
 	viper.Set("peer.tls.clientKey.file", "./nokey.key")
 	pClient, err = common.NewPeerClientFromEnv()
-	require.Contains(t, err.Error(), "unable to load peer.tls.clientKey.file")
+	require.ErrorContains(t, err, "unable to load peer.tls.clientKey.file")
 	require.Nil(t, pClient)
 
 	// bad ca path
 	viper.Set("peer.tls.rootcert.file", "noroot.crt")
 	pClient, err = common.NewPeerClientFromEnv()
-	require.Contains(t, err.Error(), "unable to load peer.tls.rootcert.file")
+	require.ErrorContains(t, err, "unable to load peer.tls.rootcert.file")
 	require.Nil(t, pClient)
 }
 
