@@ -132,7 +132,7 @@ func TestNewOrdererClientFromEnv(t *testing.T) {
 	viper.Set("orderer.tls.clientKey.file", badKeyFile)
 	oClient, err = common.NewOrdererClientFromEnv()
 	require.NoError(t, err)
-	_, err = oClient.NewConnection("127.0.0.1:0")
+	_, err = oClient.Dial("127.0.0.1:0")
 	require.ErrorContains(t, err, "failed to load client certificate:")
 	require.ErrorContains(t, err, "tls: failed to parse private key")
 

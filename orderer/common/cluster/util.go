@@ -149,11 +149,7 @@ func (dialer *PredicateDialer) Dial(address string, verifyFunc RemoteVerifier) (
 	dialer.lock.RUnlock()
 
 	clientConfigCopy.SecOpts.VerifyCertificate = verifyFunc
-	client, err := comm.NewGRPCClient(clientConfigCopy)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	return client.NewConnection(address)
+	return clientConfigCopy.Dial(address)
 }
 
 // DERtoPEM returns a PEM representation of the DER
@@ -176,12 +172,7 @@ func (dialer *StandardDialer) Dial(endpointCriteria EndpointCriteria) (*grpc.Cli
 	clientConfigCopy := dialer.Config
 	clientConfigCopy.SecOpts.ServerRootCAs = endpointCriteria.TLSRootCAs
 
-	client, err := comm.NewGRPCClient(clientConfigCopy)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed creating gRPC client")
-	}
-
-	return client.NewConnection(endpointCriteria.Endpoint)
+	return clientConfigCopy.Dial(endpointCriteria.Endpoint)
 }
 
 //go:generate mockery -dir . -name BlockVerifier -case underscore -output ./mocks/

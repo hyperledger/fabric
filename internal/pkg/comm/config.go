@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package comm
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"time"
@@ -130,6 +131,22 @@ func (cc ClientConfig) DialOptions() ([]grpc.DialOption, error) {
 	}
 
 	return dialOpts, nil
+}
+
+func (cc ClientConfig) Dial(address string) (*grpc.ClientConn, error) {
+	dialOpts, err := cc.DialOptions()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cc.DialTimeout)
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx, address, dialOpts...)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create new connection")
+	}
+	return conn, nil
 }
 
 // SecureOptions defines the TLS security parameters for a GRPCServer or

@@ -31,6 +31,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	grpc "google.golang.org/grpc"
 )
 
 // UndefinedParamValue defines what undefined parameters in the command line will initialise to
@@ -82,18 +83,12 @@ var (
 )
 
 type CommonClient struct {
-	*comm.GRPCClient
 	clientConfig comm.ClientConfig
 	address      string
 }
 
 func newCommonClient(address string, clientConfig comm.ClientConfig) (*CommonClient, error) {
-	gClient, err := comm.NewGRPCClient(clientConfig)
-	if err != nil {
-		return nil, err
-	}
 	return &CommonClient{
-		GRPCClient:   gClient,
 		clientConfig: clientConfig,
 		address:      address,
 	}, nil
@@ -108,6 +103,13 @@ func (cc *CommonClient) Certificate() tls.Certificate {
 		panic(err)
 	}
 	return cert
+}
+
+// Dial will create a new gRPC client connection to the provided
+// address. The options used for the dial are sourced from the
+// ClientConfig provided to the constructor.
+func (cc *CommonClient) Dial(address string) (*grpc.ClientConn, error) {
+	return cc.clientConfig.Dial(address)
 }
 
 func init() {

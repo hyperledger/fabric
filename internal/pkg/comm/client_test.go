@@ -33,7 +33,7 @@ func (es *echoServer) EchoCall(ctx context.Context,
 	return echo, nil
 }
 
-func TestNewConnection(t *testing.T) {
+func TestClientConfigDial(t *testing.T) {
 	t.Parallel()
 	testCerts := comm.LoadTestCerts(t)
 
@@ -233,15 +233,11 @@ func TestNewConnection(t *testing.T) {
 			srv := grpc.NewServer(serverOpts...)
 			defer srv.Stop()
 			go srv.Serve(lis)
-			client, err := comm.NewGRPCClient(test.config)
-			if err != nil {
-				t.Fatalf("error creating client for test: %v", err)
-			}
 			address := lis.Addr().String()
 			if test.clientAddress != "" {
 				address = test.clientAddress
 			}
-			conn, err := client.NewConnection(address)
+			conn, err := test.config.Dial(address)
 			if test.success {
 				require.NoError(t, err)
 				require.NotNil(t, conn)
@@ -308,14 +304,12 @@ func TestSetMessageSize(t *testing.T) {
 		address := lis.Addr().String()
 		t.Run(test.name, func(t *testing.T) {
 			t.Log(test.name)
-			// set up test client
-			client, err := comm.NewGRPCClient(comm.ClientConfig{
+			config := comm.ClientConfig{
 				DialTimeout:    testTimeout,
 				MaxRecvMsgSize: test.maxRecvSize,
 				MaxSendMsgSize: test.maxSendSize,
-			})
-			require.NoError(t, err, "error creating test client")
-			conn, err := client.NewConnection(address)
+			}
+			conn, err := config.Dial(address)
 			require.NoError(t, err)
 			defer conn.Close()
 			// create service client from conn
