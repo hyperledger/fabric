@@ -139,8 +139,8 @@ func TestSecureOptionsTLSConfig(t *testing.T) {
 	newCertPool := func(cas ...tlsgen.CA) *x509.CertPool {
 		cp := x509.NewCertPool()
 		for _, ca := range cas {
-			err := AddPemToCertPool(ca.CertBytes(), cp)
-			require.NoError(t, err, "failed to add cert to pool")
+			ok := cp.AppendCertsFromPEM(ca.CertBytes())
+			require.True(t, ok, "failed to add cert to pool")
 		}
 		return cp
 	}

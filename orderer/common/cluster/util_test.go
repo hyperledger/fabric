@@ -156,7 +156,7 @@ func TestDialerBadConfig(t *testing.T) {
 	_, err := dialer.Dial("127.0.0.1:8080", func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 		return nil
 	})
-	require.EqualError(t, err, "error adding root certificate: asn1: syntax error: sequence truncated")
+	require.ErrorContains(t, err, "error adding root certificate")
 }
 
 func TestDERtoPEM(t *testing.T) {
@@ -175,10 +175,7 @@ func TestStandardDialer(t *testing.T) {
 		Config: config,
 	}
 	_, err := standardDialer.Dial(cluster.EndpointCriteria{Endpoint: "127.0.0.1:8080", TLSRootCAs: certPool})
-	require.ErrorContains(t,
-		err,
-		"error adding root certificate: asn1: syntax error: sequence truncated",
-	)
+	require.ErrorContains(t, err, "error adding root certificate")
 }
 
 func TestVerifyBlockSignature(t *testing.T) {

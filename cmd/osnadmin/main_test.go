@@ -618,7 +618,7 @@ var _ = Describe("osnadmin", func() {
 					"--client-key", clientKey,
 				}
 				output, exit, err := executeForArgs(args)
-				checkFlagError(output, exit, err, "adding ca-file PEM to cert pool: asn1: structure error")
+				checkFlagError(output, exit, err, "failed to add ca-file PEM to cert pool")
 			})
 		})
 

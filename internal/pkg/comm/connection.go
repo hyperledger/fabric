@@ -64,9 +64,8 @@ func (cs *CredentialSupport) GetPeerCredentials() credentials.TransportCredentia
 
 	certPool := x509.NewCertPool()
 	for _, appRootCA := range appRootCAs {
-		err := AddPemToCertPool(appRootCA, certPool)
-		if err != nil {
-			commLogger.Warningf("Failed adding certificates to peer's client TLS trust pool: %s", err)
+		if !certPool.AppendCertsFromPEM(appRootCA) {
+			commLogger.Warningf("Failed adding certificates to peer's client TLS trust pool")
 		}
 	}
 
