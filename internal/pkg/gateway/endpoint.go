@@ -34,19 +34,13 @@ func newOrderer(address string, tlsRootCerts [][]byte) (ab.AtomicBroadcast_Broad
 }
 
 func newConnection(address string, tlsRootCerts [][]byte) (*grpc.ClientConn, error) {
-	secOpts := comm.SecureOptions{
-		UseTLS:            len(tlsRootCerts) > 0,
-		ServerRootCAs:     tlsRootCerts,
-		RequireClientCert: false,
-	}
 	config := comm.ClientConfig{
-		SecOpts:     secOpts,
+		SecOpts: comm.SecureOptions{
+			UseTLS:            len(tlsRootCerts) > 0,
+			ServerRootCAs:     tlsRootCerts,
+			RequireClientCert: false,
+		},
 		DialTimeout: 5 * time.Second, // TODO from config
 	}
-	client, err := comm.NewGRPCClient(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return client.NewConnection(address)
+	return config.Dial(address)
 }

@@ -820,13 +820,12 @@ func TestNoTLSCertificate(t *testing.T) {
 			UseTLS:        true,
 		},
 	}
-	cl, err := comm_utils.NewGRPCClient(clientConfig)
-	require.NoError(t, err)
 
 	var conn *grpc.ClientConn
 	gt := gomega.NewGomegaWithT(t)
 	gt.Eventually(func() (bool, error) {
-		conn, err = cl.NewConnection(node1.srv.Address())
+		var err error
+		conn, err = clientConfig.Dial(node1.srv.Address())
 		return true, err
 	}, time.Minute).Should(gomega.BeTrue())
 

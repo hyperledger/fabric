@@ -90,11 +90,7 @@ type DialerAdapter struct {
 func (da DialerAdapter) Dial(address string, rootCerts [][]byte) (*grpc.ClientConn, error) {
 	cc := da.ClientConfig
 	cc.SecOpts.ServerRootCAs = rootCerts
-	client, err := comm.NewGRPCClient(cc)
-	if err != nil {
-		return nil, err
-	}
-	return client.NewConnection(address)
+	return cc.Dial(address)
 }
 
 type DeliverAdapter struct{}
