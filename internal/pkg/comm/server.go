@@ -9,6 +9,7 @@ package comm
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -244,6 +245,29 @@ func (gServer *GRPCServer) appendClientRootCA(clientRoot []byte) error {
 	return nil
 }
 
+// parse PEM-encoded certs
+func pemToX509Certs(pemCerts []byte) ([]*x509.Certificate, error) {
+	var certs []*x509.Certificate
+
+	// it's possible that multiple certs are encoded
+	for len(pemCerts) > 0 {
+		var block *pem.Block
+		block, pemCerts = pem.Decode(pemCerts)
+		if block == nil {
+			break
+		}
+
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+
+		certs = append(certs, cert)
+	}
+
+	return certs, nil
+}
+
 // SetClientRootCAs sets the list of authorities used to verify client
 // certificates based on a list of PEM-encoded X509 certificate authorities
 func (gServer *GRPCServer) SetClientRootCAs(clientRoots [][]byte) error {
@@ -251,15 +275,9 @@ func (gServer *GRPCServer) SetClientRootCAs(clientRoots [][]byte) error {
 	defer gServer.lock.Unlock()
 
 	certPool := x509.NewCertPool()
-
 	for _, clientRoot := range clientRoots {
-		certs, err := pemToX509Certs(clientRoot)
-		if err != nil {
-			return errors.WithMessage(err, "failed to set client root certificate(s)")
-		}
-
-		for _, cert := range certs {
-			certPool.AddCert(cert)
+		if !certPool.AppendCertsFromPEM(clientRoot) {
+			return errors.New("failed to set client root certificate(s)")
 		}
 	}
 	gServer.tls.SetClientCAs(certPool)

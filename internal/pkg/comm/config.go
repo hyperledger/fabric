@@ -194,10 +194,8 @@ func (so SecureOptions) TLSConfig() (*tls.Config, error) {
 	if len(so.ServerRootCAs) > 0 {
 		tlsConfig.RootCAs = x509.NewCertPool()
 		for _, certBytes := range so.ServerRootCAs {
-			err := AddPemToCertPool(certBytes, tlsConfig.RootCAs)
-			if err != nil {
-				commLogger.Debugf("error adding root certificate: %v", err)
-				return nil, errors.WithMessage(err, "error adding root certificate")
+			if !tlsConfig.RootCAs.AppendCertsFromPEM(certBytes) {
+				return nil, errors.New("error adding root certificate")
 			}
 		}
 	}
