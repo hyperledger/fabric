@@ -110,7 +110,7 @@ github.com/eapache/go-xerial-snappy
 github.com/eapache/queue
 # github.com/frankban/quicktest v1.11.3
 ## explicit
-# github.com/fsnotify/fsnotify v1.4.7
+# github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
 # github.com/fsouza/go-dockerclient v1.7.0
 ## explicit
@@ -169,12 +169,6 @@ github.com/hashicorp/hcl/hcl/token
 github.com/hashicorp/hcl/json/parser
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/hpcloud/tail v1.0.0
-github.com/hpcloud/tail
-github.com/hpcloud/tail/ratelimiter
-github.com/hpcloud/tail/util
-github.com/hpcloud/tail/watch
-github.com/hpcloud/tail/winfile
 # github.com/hyperledger/fabric-amcl v0.0.0-20200424173818-327c9e2cf77a
 ## explicit
 github.com/hyperledger/fabric-amcl/amcl
@@ -250,7 +244,13 @@ github.com/moby/term
 github.com/moby/term/windows
 # github.com/morikuni/aec v1.0.0
 github.com/morikuni/aec
-# github.com/onsi/ginkgo v1.8.0
+# github.com/nxadm/tail v1.4.4
+github.com/nxadm/tail
+github.com/nxadm/tail/ratelimiter
+github.com/nxadm/tail/util
+github.com/nxadm/tail/watch
+github.com/nxadm/tail/winfile
+# github.com/onsi/ginkgo v1.14.0
 ## explicit
 github.com/onsi/ginkgo
 github.com/onsi/ginkgo/config
@@ -258,6 +258,7 @@ github.com/onsi/ginkgo/extensions/table
 github.com/onsi/ginkgo/internal/codelocation
 github.com/onsi/ginkgo/internal/containernode
 github.com/onsi/ginkgo/internal/failer
+github.com/onsi/ginkgo/internal/global
 github.com/onsi/ginkgo/internal/leafnodes
 github.com/onsi/ginkgo/internal/remote
 github.com/onsi/ginkgo/internal/spec
@@ -271,7 +272,7 @@ github.com/onsi/ginkgo/reporters/stenographer
 github.com/onsi/ginkgo/reporters/stenographer/support/go-colorable
 github.com/onsi/ginkgo/reporters/stenographer/support/go-isatty
 github.com/onsi/ginkgo/types
-# github.com/onsi/gomega v1.9.0
+# github.com/onsi/gomega v1.10.1 => github.com/onsi/gomega v1.9.0
 ## explicit
 github.com/onsi/gomega
 github.com/onsi/gomega/format
@@ -359,7 +360,7 @@ github.com/stretchr/testify/require
 # github.com/sykesm/zap-logfmt v0.0.2
 ## explicit
 github.com/sykesm/zap-logfmt
-# github.com/syndtr/goleveldb v1.0.1-0.20190625010220-02440ea7a285
+# github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 ## explicit
 github.com/syndtr/goleveldb/leveldb
 github.com/syndtr/goleveldb/leveldb/cache
@@ -466,7 +467,7 @@ golang.org/x/tools/internal/fastwalk
 golang.org/x/tools/internal/gopathwalk
 golang.org/x/tools/internal/semver
 golang.org/x/tools/internal/span
-# golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
+# golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
 # google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55
@@ -522,8 +523,6 @@ gopkg.in/alecthomas/kingpin.v2
 # gopkg.in/cheggaaa/pb.v1 v1.0.28
 ## explicit
 gopkg.in/cheggaaa/pb.v1
-# gopkg.in/fsnotify.v1 v1.4.7
-gopkg.in/fsnotify.v1
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
 # gopkg.in/yaml.v2 v2.4.0
@@ -532,3 +531,4 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 ## explicit
 gopkg.in/yaml.v3
+# github.com/onsi/gomega => github.com/onsi/gomega v1.9.0

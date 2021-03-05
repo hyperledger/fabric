@@ -493,6 +493,8 @@ func (t *tOps) remove(fd storage.FileDesc) {
 		if t.evictRemoved && t.bcache != nil {
 			t.bcache.EvictNS(uint64(fd.Num))
 		}
+		// Try to reuse file num, useful for discarded transaction.
+		t.s.reuseFileNum(fd.Num)
 	})
 }
 
@@ -514,7 +516,7 @@ func newTableOps(s *session) *tOps {
 		bpool  *util.BufferPool
 	)
 	if s.o.GetOpenFilesCacheCapacity() > 0 {
-		cacher = cache.NewLRU(s.o.GetOpenFilesCacheCapacity())
+		cacher = s.o.GetOpenFilesCacher().New(s.o.GetOpenFilesCacheCapacity())
 	}
 	if !s.o.GetDisableBlockCache() {
 		var bcacher cache.Cacher
