@@ -11,7 +11,7 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
 )
 
@@ -51,7 +51,7 @@ func mutualTLSBinding(ctx context.Context, claimedTLScertHash []byte) error {
 	if len(claimedTLScertHash) == 0 {
 		return errors.Errorf("client didn't include its TLS cert hash")
 	}
-	actualTLScertHash := comm.ExtractCertificateHashFromContext(ctx)
+	actualTLScertHash := util.ExtractCertificateHashFromContext(ctx)
 	if len(actualTLScertHash) == 0 {
 		return errors.Errorf("client didn't send a TLS certificate")
 	}

@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -120,7 +119,7 @@ func (s *Service) initializeExpirationCheck(stream orderer.Cluster_StepServer, e
 }
 
 func expiresAt(stream orderer.Cluster_StepServer) time.Time {
-	cert := comm.ExtractCertificateFromContext(stream.Context())
+	cert := util.ExtractCertificateFromContext(stream.Context())
 	if cert == nil {
 		return time.Time{}
 	}

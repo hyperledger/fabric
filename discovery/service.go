@@ -18,7 +18,6 @@ import (
 	"github.com/hyperledger/fabric/discovery/protoext"
 	common2 "github.com/hyperledger/fabric/gossip/common"
 	discovery2 "github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -85,7 +84,7 @@ func NewService(config Config, sup Support) *Service {
 
 func (s *Service) Discover(ctx context.Context, request *discovery.SignedRequest) (*discovery.Response, error) {
 	addr := util.ExtractRemoteAddress(ctx)
-	req, err := validateStructure(ctx, request, s.config.TLS, comm.ExtractCertificateHashFromContext)
+	req, err := validateStructure(ctx, request, s.config.TLS, util.ExtractCertificateHashFromContext)
 	if err != nil {
 		logger.Warningf("Request from %s is malformed or invalid: %v", addr, err)
 		return nil, err
