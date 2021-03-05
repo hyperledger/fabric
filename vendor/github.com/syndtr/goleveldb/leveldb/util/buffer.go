@@ -12,12 +12,15 @@ import (
 	"io"
 )
 
+// smallBufferSize is an initial allocation minimal capacity.
+const smallBufferSize = 64
+const maxInt = int(^uint(0) >> 1)
+
 // A Buffer is a variable-sized buffer of bytes with Read and Write methods.
 // The zero value for Buffer is an empty buffer ready to use.
 type Buffer struct {
-	buf       []byte   // contents are the bytes buf[off : len(buf)]
-	off       int      // read at &buf[off], write at &buf[len(buf)]
-	bootstrap [64]byte // memory to hold first slice; helps small buffers (Printf) avoid allocation.
+	buf []byte // contents are the bytes buf[off : len(buf)]
+	off int    // read at &buf[off], write at &buf[len(buf)]
 }
 
 // Bytes returns a slice of the contents of the unread portion of the buffer;
@@ -43,19 +46,33 @@ func (b *Buffer) Len() int { return len(b.buf) - b.off }
 // Truncate discards all but the first n unread bytes from the buffer.
 // It panics if n is negative or greater than the length of the buffer.
 func (b *Buffer) Truncate(n int) {
-	switch {
-	case n < 0 || n > b.Len():
-		panic("leveldb/util.Buffer: truncation out of range")
-	case n == 0:
-		// Reuse buffer space.
-		b.off = 0
+	if n == 0 {
+		b.Reset()
+		return
 	}
-	b.buf = b.buf[0 : b.off+n]
+	if n < 0 || n > b.Len() {
+		panic("leveldb/util.Buffer: truncation out of range")
+	}
+	b.buf = b.buf[:b.off+n]
 }
 
 // Reset resets the buffer so it has no content.
 // b.Reset() is the same as b.Truncate(0).
-func (b *Buffer) Reset() { b.Truncate(0) }
+func (b *Buffer) Reset() {
+	b.buf = b.buf[:0]
+	b.off = 0
+}
+
+// tryGrowByReslice is a inlineable version of grow for the fast-case where the
+// internal buffer only needs to be resliced.
+// It returns the index where bytes should be written and whether it succeeded.
+func (b *Buffer) tryGrowByReslice(n int) (int, bool) {
+	if l := len(b.buf); n <= cap(b.buf)-l {
+		b.buf = b.buf[:l+n]
+		return l, true
+	}
+	return 0, false
+}
 
 // grow grows the buffer to guarantee space for n more bytes.
 // It returns the index where bytes should be written.
@@ -64,29 +81,35 @@ func (b *Buffer) grow(n int) int {
 	m := b.Len()
 	// If buffer is empty, reset to recover space.
 	if m == 0 && b.off != 0 {
-		b.Truncate(0)
+		b.Reset()
 	}
-	if len(b.buf)+n > cap(b.buf) {
-		var buf []byte
-		if b.buf == nil && n <= len(b.bootstrap) {
-			buf = b.bootstrap[0:]
-		} else if m+n <= cap(b.buf)/2 {
-			// We can slide things down instead of allocating a new
-			// slice. We only need m+n <= cap(b.buf) to slide, but
-			// we instead let capacity get twice as large so we
-			// don't spend all our time copying.
-			copy(b.buf[:], b.buf[b.off:])
-			buf = b.buf[:m]
-		} else {
-			// not enough space anywhere
-			buf = makeSlice(2*cap(b.buf) + n)
-			copy(buf, b.buf[b.off:])
-		}
+	// Try to grow by means of a reslice.
+	if i, ok := b.tryGrowByReslice(n); ok {
+		return i
+	}
+	if b.buf == nil && n <= smallBufferSize {
+		b.buf = make([]byte, n, smallBufferSize)
+		return 0
+	}
+	c := cap(b.buf)
+	if n <= c/2-m {
+		// We can slide things down instead of allocating a new
+		// slice. We only need m+n <= c to slide, but
+		// we instead let capacity get twice as large so we
+		// don't spend all our time copying.
+		copy(b.buf, b.buf[b.off:])
+	} else if c > maxInt-c-n {
+		panic(bytes.ErrTooLarge)
+	} else {
+		// Not enough space anywhere, we need to allocate.
+		buf := makeSlice(2*c + n)
+		copy(buf, b.buf[b.off:])
 		b.buf = buf
-		b.off = 0
 	}
-	b.buf = b.buf[0 : b.off+m+n]
-	return b.off + m
+	// Restore b.off and len(b.buf).
+	b.off = 0
+	b.buf = b.buf[:m+n]
+	return m
 }
 
 // Alloc allocs n bytes of slice from the buffer, growing the buffer as
@@ -96,7 +119,10 @@ func (b *Buffer) Alloc(n int) []byte {
 	if n < 0 {
 		panic("leveldb/util.Buffer.Alloc: negative count")
 	}
-	m := b.grow(n)
+	m, ok := b.tryGrowByReslice(n)
+	if !ok {
+		m = b.grow(n)
+	}
 	return b.buf[m:]
 }
 
@@ -110,14 +136,17 @@ func (b *Buffer) Grow(n int) {
 		panic("leveldb/util.Buffer.Grow: negative count")
 	}
 	m := b.grow(n)
-	b.buf = b.buf[0:m]
+	b.buf = b.buf[:m]
 }
 
 // Write appends the contents of p to the buffer, growing the buffer as
 // needed. The return value n is the length of p; err is always nil. If the
 // buffer becomes too large, Write will panic with bytes.ErrTooLarge.
 func (b *Buffer) Write(p []byte) (n int, err error) {
-	m := b.grow(len(p))
+	m, ok := b.tryGrowByReslice(len(p))
+	if !ok {
+		m = b.grow(len(p))
+	}
 	return copy(b.buf[m:], p), nil
 }
 
@@ -132,34 +161,23 @@ const MinRead = 512
 // error except io.EOF encountered during the read is also returned. If the
 // buffer becomes too large, ReadFrom will panic with bytes.ErrTooLarge.
 func (b *Buffer) ReadFrom(r io.Reader) (n int64, err error) {
-	// If buffer is empty, reset to recover space.
-	if b.off >= len(b.buf) {
-		b.Truncate(0)
-	}
 	for {
-		if free := cap(b.buf) - len(b.buf); free < MinRead {
-			// not enough space at end
-			newBuf := b.buf
-			if b.off+free < MinRead {
-				// not enough space using beginning of buffer;
-				// double buffer capacity
-				newBuf = makeSlice(2*cap(b.buf) + MinRead)
-			}
-			copy(newBuf, b.buf[b.off:])
-			b.buf = newBuf[:len(b.buf)-b.off]
-			b.off = 0
+		i := b.grow(MinRead)
+		b.buf = b.buf[:i]
+		m, e := r.Read(b.buf[i:cap(b.buf)])
+		if m < 0 {
+			panic("leveldb/util.Buffer.ReadFrom: reader returned negative count from Read")
 		}
-		m, e := r.Read(b.buf[len(b.buf):cap(b.buf)])
-		b.buf = b.buf[0 : len(b.buf)+m]
+
+		b.buf = b.buf[:i+m]
 		n += int64(m)
 		if e == io.EOF {
-			break
+			return n, nil // e is EOF, so return nil explicitly
 		}
 		if e != nil {
 			return n, e
 		}
 	}
-	return n, nil // err is EOF, so return nil explicitly
 }
 
 // makeSlice allocates a slice of size n. If the allocation fails, it panics
@@ -197,7 +215,7 @@ func (b *Buffer) WriteTo(w io.Writer) (n int64, err error) {
 		}
 	}
 	// Buffer is now empty; reset.
-	b.Truncate(0)
+	b.Reset()
 	return
 }
 
@@ -206,7 +224,10 @@ func (b *Buffer) WriteTo(w io.Writer) (n int64, err error) {
 // WriteByte. If the buffer becomes too large, WriteByte will panic with
 // bytes.ErrTooLarge.
 func (b *Buffer) WriteByte(c byte) error {
-	m := b.grow(1)
+	m, ok := b.tryGrowByReslice(1)
+	if !ok {
+		m = b.grow(1)
+	}
 	b.buf[m] = c
 	return nil
 }
@@ -218,7 +239,7 @@ func (b *Buffer) WriteByte(c byte) error {
 func (b *Buffer) Read(p []byte) (n int, err error) {
 	if b.off >= len(b.buf) {
 		// Buffer is empty, reset to recover space.
-		b.Truncate(0)
+		b.Reset()
 		if len(p) == 0 {
 			return
 		}
@@ -248,7 +269,7 @@ func (b *Buffer) Next(n int) []byte {
 func (b *Buffer) ReadByte() (c byte, err error) {
 	if b.off >= len(b.buf) {
 		// Buffer is empty, reset to recover space.
-		b.Truncate(0)
+		b.Reset()
 		return 0, io.EOF
 	}
 	c = b.buf[b.off]
