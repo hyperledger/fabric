@@ -207,6 +207,12 @@ the command below to create a second channel named `channel2`:
 ./network.sh createChannel -c channel2
 ```
 
+**NOTE:** Make sure the name of the channel applies the following restrictions:
+
+  - contains only lower case ASCII alphanumerics, dots '.', and dashes '-'
+  - is shorter than 250 characters
+  - starts with a letter
+
 If you want to bring up the network and create a channel in a single step, you
 can use the `up` and `createChannel` modes together:
 ```
