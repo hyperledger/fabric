@@ -19,7 +19,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/common/util"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -148,7 +148,7 @@ func (c *Comm) requestContext(ctx context.Context, msg proto.Message) (*requestC
 		return nil, errors.Errorf("channel %s doesn't exist", channel)
 	}
 
-	cert := comm.ExtractRawCertificateFromContext(ctx)
+	cert := util.ExtractRawCertificateFromContext(ctx)
 	if len(cert) == 0 {
 		return nil, errors.Errorf("no TLS certificate sent")
 	}
@@ -737,7 +737,7 @@ func (rc *RemoteContext) Abort() {
 }
 
 func commonNameFromContext(ctx context.Context) string {
-	cert := comm.ExtractCertificateFromContext(ctx)
+	cert := util.ExtractCertificateFromContext(ctx)
 	if cert == nil {
 		return "unidentified node"
 	}
