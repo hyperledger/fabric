@@ -40,7 +40,7 @@ func TestCacheConfigurationNegative(t *testing.T) {
 }
 
 func TestPeerAddress(t *testing.T) {
-	localIP, err := comm.GetLocalIP()
+	localIP, err := getLocalIP()
 	require.NoError(t, err)
 
 	tests := []struct {
