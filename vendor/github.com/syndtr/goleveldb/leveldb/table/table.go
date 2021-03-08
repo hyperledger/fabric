@@ -151,10 +151,6 @@ const (
 	// These constants are part of the file format and should not be changed.
 	blockTypeNoCompression     = 0
 	blockTypeSnappyCompression = 1
-
-	// Generate new filter every 2KB of data
-	filterBaseLg = 11
-	filterBase   = 1 << filterBaseLg
 )
 
 type blockHandle struct {

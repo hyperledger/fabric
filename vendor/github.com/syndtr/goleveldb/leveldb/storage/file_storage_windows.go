@@ -37,7 +37,7 @@ func newFileLock(path string, readOnly bool) (fl fileLock, err error) {
 	var access, shareMode uint32
 	if readOnly {
 		access = syscall.GENERIC_READ
-		shareMode = syscall.FILE_SHARE_READ
+		shareMode = syscall.FILE_SHARE_READ | syscall.FILE_SHARE_WRITE
 	} else {
 		access = syscall.GENERIC_READ | syscall.GENERIC_WRITE
 	}
