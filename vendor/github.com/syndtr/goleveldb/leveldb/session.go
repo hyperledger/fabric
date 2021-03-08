@@ -132,7 +132,7 @@ func (s *session) recover() (err error) {
 			// Don't return os.ErrNotExist if the underlying storage contains
 			// other files that belong to LevelDB. So the DB won't get trashed.
 			if fds, _ := s.stor.List(storage.TypeAll); len(fds) > 0 {
-				err = &errors.ErrCorrupted{Fd: storage.FileDesc{Type: storage.TypeManifest}, Err: &errors.ErrMissingFiles{}}
+				err = &errors.ErrCorrupted{Err: errors.New("database entry point either missing or corrupted")}
 			}
 		}
 	}()
