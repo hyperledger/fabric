@@ -100,14 +100,14 @@ func (snap *Snapshot) String() string {
 // The caller should not modify the contents of the returned slice, but
 // it is safe to modify the contents of the argument after Get returns.
 func (snap *Snapshot) Get(key []byte, ro *opt.ReadOptions) (value []byte, err error) {
-	err = snap.db.ok()
-	if err != nil {
-		return
-	}
 	snap.mu.RLock()
 	defer snap.mu.RUnlock()
 	if snap.released {
 		err = ErrSnapshotReleased
+		return
+	}
+	err = snap.db.ok()
+	if err != nil {
 		return
 	}
 	return snap.db.get(nil, nil, key, snap.elem.seq, ro)
@@ -117,14 +117,14 @@ func (snap *Snapshot) Get(key []byte, ro *opt.ReadOptions) (value []byte, err er
 //
 // It is safe to modify the contents of the argument after Get returns.
 func (snap *Snapshot) Has(key []byte, ro *opt.ReadOptions) (ret bool, err error) {
-	err = snap.db.ok()
-	if err != nil {
-		return
-	}
 	snap.mu.RLock()
 	defer snap.mu.RUnlock()
 	if snap.released {
 		err = ErrSnapshotReleased
+		return
+	}
+	err = snap.db.ok()
+	if err != nil {
 		return
 	}
 	return snap.db.has(nil, nil, key, snap.elem.seq, ro)
@@ -152,13 +152,13 @@ func (snap *Snapshot) Has(key []byte, ro *opt.ReadOptions) (ret bool, err error)
 //
 // Also read Iterator documentation of the leveldb/iterator package.
 func (snap *Snapshot) NewIterator(slice *util.Range, ro *opt.ReadOptions) iterator.Iterator {
-	if err := snap.db.ok(); err != nil {
-		return iterator.NewEmptyIterator(err)
-	}
 	snap.mu.Lock()
 	defer snap.mu.Unlock()
 	if snap.released {
 		return iterator.NewEmptyIterator(ErrSnapshotReleased)
+	}
+	if err := snap.db.ok(); err != nil {
+		return iterator.NewEmptyIterator(err)
 	}
 	// Since iterator already hold version ref, it doesn't need to
 	// hold snapshot ref.

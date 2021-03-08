@@ -7,11 +7,19 @@
 package leveldb
 
 import (
+	"sort"
 	"sync/atomic"
 
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/memdb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+)
+
+const (
+	undefinedCompaction = iota
+	level0Compaction
+	nonLevel0Compaction
+	seekCompaction
 )
 
 func (s *session) pickMemdbLevel(umin, umax []byte, maxLevel int) int {
@@ -50,31 +58,40 @@ func (s *session) pickCompaction() *compaction {
 
 	var sourceLevel int
 	var t0 tFiles
+	var typ int
 	if v.cScore >= 1 {
 		sourceLevel = v.cLevel
 		cptr := s.getCompPtr(sourceLevel)
 		tables := v.levels[sourceLevel]
-		for _, t := range tables {
-			if cptr == nil || s.icmp.Compare(t.imax, cptr) > 0 {
-				t0 = append(t0, t)
-				break
+		if cptr != nil && sourceLevel > 0 {
+			n := len(tables)
+			if i := sort.Search(n, func(i int) bool {
+				return s.icmp.Compare(tables[i].imax, cptr) > 0
+			}); i < n {
+				t0 = append(t0, tables[i])
 			}
 		}
 		if len(t0) == 0 {
 			t0 = append(t0, tables[0])
+		}
+		if sourceLevel == 0 {
+			typ = level0Compaction
+		} else {
+			typ = nonLevel0Compaction
 		}
 	} else {
 		if p := atomic.LoadPointer(&v.cSeek); p != nil {
 			ts := (*tSet)(p)
 			sourceLevel = ts.level
 			t0 = append(t0, ts.table)
+			typ = seekCompaction
 		} else {
 			v.release()
 			return nil
 		}
 	}
 
-	return newCompaction(s, v, sourceLevel, t0)
+	return newCompaction(s, v, sourceLevel, t0, typ)
 }
 
 // Create compaction from given level and range; need external synchronization.
@@ -109,13 +126,18 @@ func (s *session) getCompactionRange(sourceLevel int, umin, umax []byte, noLimit
 		}
 	}
 
-	return newCompaction(s, v, sourceLevel, t0)
+	typ := level0Compaction
+	if sourceLevel != 0 {
+		typ = nonLevel0Compaction
+	}
+	return newCompaction(s, v, sourceLevel, t0, typ)
 }
 
-func newCompaction(s *session, v *version, sourceLevel int, t0 tFiles) *compaction {
+func newCompaction(s *session, v *version, sourceLevel int, t0 tFiles, typ int) *compaction {
 	c := &compaction{
 		s:             s,
 		v:             v,
+		typ:           typ,
 		sourceLevel:   sourceLevel,
 		levels:        [2]tFiles{t0, nil},
 		maxGPOverlaps: int64(s.o.GetCompactionGPOverlaps(sourceLevel)),
@@ -131,6 +153,7 @@ type compaction struct {
 	s *session
 	v *version
 
+	typ           int
 	sourceLevel   int
 	levels        [2]tFiles
 	maxGPOverlaps int64
