@@ -89,6 +89,7 @@ type filterWriter struct {
 	buf       util.Buffer
 	nKeys     int
 	offsets   []uint32
+	baseLg    uint
 }
 
 func (w *filterWriter) add(key []byte) {
@@ -103,7 +104,7 @@ func (w *filterWriter) flush(offset uint64) {
 	if w.generator == nil {
 		return
 	}
-	for x := int(offset / filterBase); x > len(w.offsets); {
+	for x := int(offset / uint64(1<<w.baseLg)); x > len(w.offsets); {
 		w.generate()
 	}
 }
@@ -122,7 +123,7 @@ func (w *filterWriter) finish() {
 		buf4 := w.buf.Alloc(4)
 		binary.LittleEndian.PutUint32(buf4, x)
 	}
-	w.buf.WriteByte(filterBaseLg)
+	w.buf.WriteByte(byte(w.baseLg))
 }
 
 func (w *filterWriter) generate() {
@@ -369,6 +370,7 @@ func NewWriter(f io.Writer, o *opt.Options) *Writer {
 	// filter block
 	if w.filter != nil {
 		w.filterBlock.generator = w.filter.NewGenerator()
+		w.filterBlock.baseLg = uint(o.GetFilterBaseLg())
 		w.filterBlock.flush(0)
 	}
 	return w
