@@ -573,9 +573,16 @@ func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *
 	require.NoError(t, err)
 
 	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
+	localMSP := mgmt.GetLocalMSP(cryptoProvider)
+	deserManager := mgmt.NewDeserializersManager(localMSP)
 
-	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
+	messageCryptoService := peergossip.NewMCS(
+		&mocks.ChannelPolicyManagerGetter{},
+		signer,
+		deserManager,
+		cryptoProvider,
+	)
+	secAdv := peergossip.NewSecurityAdvisor(deserManager)
 	defaultSecureDialOpts := func() []grpc.DialOption {
 		return []grpc.DialOption{grpc.WithInsecure()}
 	}

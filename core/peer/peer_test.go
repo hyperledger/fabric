@@ -58,8 +58,15 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	require.NoError(t, err)
 	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
 
-	messageCryptoService := peergossip.NewMCS(&mocks.ChannelPolicyManagerGetter{}, signer, mgmt.NewDeserializersManager(cryptoProvider), cryptoProvider)
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(cryptoProvider))
+	localMSP := mgmt.GetLocalMSP(cryptoProvider)
+	deserManager := mgmt.NewDeserializersManager(localMSP)
+	messageCryptoService := peergossip.NewMCS(
+		&mocks.ChannelPolicyManagerGetter{},
+		signer,
+		deserManager,
+		cryptoProvider,
+	)
+	secAdv := peergossip.NewSecurityAdvisor(deserManager)
 	defaultSecureDialOpts := func() []grpc.DialOption { return []grpc.DialOption{grpc.WithInsecure()} }
 	gossipConfig, err := gossip.GlobalConfig("localhost:0", nil)
 	require.NoError(t, err)

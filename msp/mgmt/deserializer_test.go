@@ -21,16 +21,17 @@ import (
 func TestNewDeserializersManager(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-	require.NotNil(t, NewDeserializersManager(cryptoProvider))
+	require.NotNil(t, NewDeserializersManager(GetLocalMSP(cryptoProvider)))
 }
 
 func TestMspDeserializersManager_Deserialize(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	m := NewDeserializersManager(cryptoProvider)
+	localMSP := GetLocalMSP(cryptoProvider)
+	m := NewDeserializersManager(localMSP)
 
-	i, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	i, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	raw, err := i.Serialize()
 	require.NoError(t, err)
@@ -46,7 +47,7 @@ func TestMspDeserializersManager_GetChannelDeserializers(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	m := NewDeserializersManager(cryptoProvider)
+	m := NewDeserializersManager(GetLocalMSP(cryptoProvider))
 
 	deserializers := m.GetChannelDeserializers()
 	require.NotNil(t, deserializers)
@@ -56,9 +57,10 @@ func TestMspDeserializersManager_GetLocalDeserializer(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	m := NewDeserializersManager(cryptoProvider)
+	localMSP := GetLocalMSP(cryptoProvider)
+	m := NewDeserializersManager(localMSP)
 
-	i, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	i, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	raw, err := i.Serialize()
 	require.NoError(t, err)

@@ -35,7 +35,8 @@ func TestLocalMSPPrincipalGetter_Get(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	m := NewDeserializersManager(cryptoProvider)
+	localMSP := GetLocalMSP(cryptoProvider)
+	m := NewDeserializersManager(localMSP)
 	g := NewLocalMSPPrincipalGetter(cryptoProvider)
 
 	_, err = g.Get("")
