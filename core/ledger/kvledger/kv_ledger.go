@@ -887,6 +887,16 @@ func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, err
 	return l, nil
 }
 
+// CommitNotificationsChannel returns a read-only channel on which ledger sends a `CommitNotification`
+// when a block is committed. The CommitNotification contains entries for the transactions from the committed block,
+// which are not malformed, carry a legitimate TxID, and in addition, are not marked as a duplicate transaction.
+// The consumer can close the 'done' channel to signal that the notifications are no longer needed. This will cause the
+// CommitNotifications channel to close. There is expected to be only one consumer at a time. The function returns error
+// if already a CommitNotification channel is active.
+func (l *kvLedger) CommitNotificationsChannel(done <-chan struct{}) (<-chan *ledger.CommitNotification, error) {
+	return nil, errors.New("yet-to-implement")
+}
+
 // Close closes `KVLedger`.
 // Currently this function is only used by test code. The caller should make sure no in-progress commit
 // or snapshot generation before calling this function. Otherwise, the ledger may have unknown behavior

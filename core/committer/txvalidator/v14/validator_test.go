@@ -1544,6 +1544,10 @@ func (m *mockLedger) CancelSnapshotRequest(height uint64) error {
 	return nil
 }
 
+func (m *mockLedger) CommitNotificationsChannel(done <-chan struct{}) (<-chan *ledger.CommitNotification, error) {
+	return nil, nil
+}
+
 // mockQueryExecutor mock of the query executor,
 // needed to simulate inability to access state db, e.g.
 // the case where due to db failure it's not possible to

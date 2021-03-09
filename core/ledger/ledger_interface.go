@@ -215,6 +215,13 @@ type PeerLedger interface {
 	CancelSnapshotRequest(height uint64) error
 	// PendingSnapshotRequests returns a list of heights for the pending (or under processing) snapshot requests.
 	PendingSnapshotRequests() ([]uint64, error)
+	// CommitNotificationsChannel returns a read-only channel on which ledger sends a `CommitNotification`
+	// when a block is committed. The CommitNotification contains entries for the transactions from the committed block,
+	// which are not malformed, carry a legitimate TxID, and in addition, are not marked as a duplicate transaction.
+	// The consumer can close the 'done' channel to signal that the notifications are no longer needed. This will cause the
+	// CommitNotifications channel to close. There is expected to be only one consumer at a time. The function returns error
+	// if already a CommitNotification channel is active.
+	CommitNotificationsChannel(done <-chan struct{}) (<-chan *CommitNotification, error)
 }
 
 // SimpleQueryExecutor encapsulates basic functions
@@ -724,6 +731,11 @@ func (e *InvalidTxError) Error() string {
 // Currently works at a stepping stone to decrease surface area of bccsp
 type HashProvider interface {
 	GetHash(opts bccsp.HashOpts) (hash.Hash, error)
+}
+
+type CommitNotification struct {
+	BlockNumber         uint64
+	TxIDValidationCodes map[string]peer.TxValidationCode
 }
 
 //go:generate counterfeiter -o mock/state_listener.go -fake-name StateListener . StateListener
