@@ -619,8 +619,8 @@ func (d *gossipDiscoveryImpl) resurrectMember(am *protoext.SignedGossipMessage, 
 	}
 
 	delete(d.deadLastTS, string(pkiID))
-	d.deadMembership.Remove(common.PKIidType(pkiID))
-	d.aliveMembership.Put(common.PKIidType(pkiID), &protoext.SignedGossipMessage{GossipMessage: am.GossipMessage, Envelope: am.Envelope})
+	d.deadMembership.Remove(pkiID)
+	d.aliveMembership.Put(pkiID, &protoext.SignedGossipMessage{GossipMessage: am.GossipMessage, Envelope: am.Envelope})
 }
 
 func (d *gossipDiscoveryImpl) periodicalReconnectToDead() {
@@ -797,7 +797,7 @@ func (d *gossipDiscoveryImpl) aliveMsgAndInternalEndpoint() (*proto.GossipMessag
 					PkiId:    pkiID,
 				},
 				Timestamp: &proto.PeerTime{
-					IncNum: uint64(d.incTime),
+					IncNum: d.incTime,
 					SeqNum: seqNum,
 				},
 			},
