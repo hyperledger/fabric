@@ -1192,13 +1192,15 @@ func initGossipService(
 		certs.TLSClientCert.Store(&clientCert)
 	}
 
+	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
+	deserManager := mgmt.NewDeserializersManager(localMSP)
 	messageCryptoService := peergossip.NewMCS(
 		policyMgr,
 		signer,
-		mgmt.NewDeserializersManager(factory.GetDefault()),
+		deserManager,
 		factory.GetDefault(),
 	)
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(factory.GetDefault()))
+	secAdv := peergossip.NewSecurityAdvisor(deserManager)
 	bootstrap := viper.GetStringSlice("peer.gossip.bootstrap")
 
 	serviceConfig := gossipservice.GlobalConfig()
