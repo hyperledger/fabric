@@ -128,18 +128,17 @@ func LoadMSPSetupForTesting() (bccsp.BCCSP, error) {
 }
 
 func TestLocalMSP(t *testing.T) {
-	mspDir := configtest.GetDevMspDir()
-	err := LoadLocalMsp(mspDir, nil, "SampleOrg")
-	if err != nil {
-		t.Fatalf("LoadLocalMsp failed, err %s", err)
-	}
-
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
+
+	mspDir := configtest.GetDevMspDir()
+	conf, err := msp.GetLocalMspConfig(mspDir, nil, "SampleOrg")
+	require.NoError(t, err, "failed to get local MSP config")
+	err = GetLocalMSP(cryptoProvider).Setup(conf)
+	require.NoError(t, err, "failed to setup local MSP")
+
 	_, err = GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
-	if err != nil {
-		t.Fatalf("GetDefaultSigningIdentity failed, err %s", err)
-	}
+	require.NoError(t, err, "failed to get default signing identity")
 }
 
 func TestMain(m *testing.M) {

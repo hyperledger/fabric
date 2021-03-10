@@ -34,9 +34,3 @@ func LoadMSPSetupForTesting() error {
 
 	return nil
 }
-
-// Loads the development local MSP for use in testing.  Not valid for production/runtime context
-func LoadDevMsp() error {
-	mspDir := configtest.GetDevMspDir()
-	return mgmt.LoadLocalMsp(mspDir, nil, "SampleOrg")
-}
