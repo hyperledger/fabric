@@ -93,7 +93,7 @@ func TestPKIidOfNil(t *testing.T) {
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
 		signer,
-		mgmt.NewDeserializersManager(localMSP),
+		NewDeserializersManager(localMSP),
 		cryptoProvider,
 	)
 
@@ -154,7 +154,7 @@ func TestSign(t *testing.T) {
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
 		signer,
-		mgmt.NewDeserializersManager(localMSP),
+		NewDeserializersManager(localMSP),
 		cryptoProvider,
 	)
 

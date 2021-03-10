@@ -9,7 +9,6 @@ package gossip
 import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/msp/mgmt"
 )
 
 var saLogger = flogging.MustGetLogger("peer.gossip.sa")
@@ -23,12 +22,12 @@ var saLogger = flogging.MustGetLogger("peer.gossip.sa")
 //
 // This implementation assumes that these mechanisms are all in place and working.
 type mspSecurityAdvisor struct {
-	deserializer mgmt.DeserializersManager
+	deserializer DeserializersManager
 }
 
 // NewSecurityAdvisor creates a new instance of mspSecurityAdvisor
 // that implements MessageCryptoService
-func NewSecurityAdvisor(deserializer mgmt.DeserializersManager) api.SecurityAdvisor {
+func NewSecurityAdvisor(deserializer DeserializersManager) api.SecurityAdvisor {
 	return &mspSecurityAdvisor{deserializer: deserializer}
 }
 
