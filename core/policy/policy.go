@@ -13,7 +13,6 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
@@ -42,12 +41,16 @@ type PolicyChecker interface {
 type policyChecker struct {
 	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter
 	localMSP                   msp.IdentityDeserializer
-	principalGetter            mgmt.MSPPrincipalGetter
+	principalGetter            MSPPrincipalGetter
 }
 
 // NewPolicyChecker creates a new instance of PolicyChecker
-func NewPolicyChecker(channelPolicyManagerGetter policies.ChannelPolicyManagerGetter, localMSP msp.IdentityDeserializer, principalGetter mgmt.MSPPrincipalGetter) PolicyChecker {
-	return &policyChecker{channelPolicyManagerGetter, localMSP, principalGetter}
+func NewPolicyChecker(channelPolicyManagerGetter policies.ChannelPolicyManagerGetter, localMSP msp.MSP) PolicyChecker {
+	return &policyChecker{
+		channelPolicyManagerGetter: channelPolicyManagerGetter,
+		localMSP:                   localMSP,
+		principalGetter:            &localMSPPrincipalGetter{localMSP: localMSP},
+	}
 }
 
 // CheckPolicy checks that the passed signed proposal is valid with the respect to

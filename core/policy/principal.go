@@ -14,63 +14,62 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package mgmt
+package policy
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric/bccsp"
+	protomsp "github.com/hyperledger/fabric-protos-go/msp"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
 )
 
 const (
 	// Admins is the label for the local MSP admins
 	Admins = "Admins"
-
 	// Members is the label for the local MSP members
 	Members = "Members"
 )
 
 type MSPPrincipalGetter interface {
 	// Get returns an MSP principal for the given role
-	Get(role string) (*msp.MSPPrincipal, error)
+	Get(role string) (*protomsp.MSPPrincipal, error)
 }
 
-func NewLocalMSPPrincipalGetter(cryptoProvider bccsp.BCCSP) MSPPrincipalGetter {
+func NewLocalMSPPrincipalGetter(localMSP msp.MSP) MSPPrincipalGetter {
 	return &localMSPPrincipalGetter{
-		cryptoProvider: cryptoProvider,
+		localMSP: localMSP,
 	}
 }
 
 type localMSPPrincipalGetter struct {
-	cryptoProvider bccsp.BCCSP
+	localMSP msp.MSP
 }
 
-func (m *localMSPPrincipalGetter) Get(role string) (*msp.MSPPrincipal, error) {
-	mspid, err := GetLocalMSP(m.cryptoProvider).GetIdentifier()
+func (m *localMSPPrincipalGetter) Get(role string) (*protomsp.MSPPrincipal, error) {
+	mspid, err := m.localMSP.GetIdentifier()
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not extract local msp identifier")
 	}
 
 	switch role {
 	case Admins:
-		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_ADMIN, MspIdentifier: mspid})
+		principalBytes, err := proto.Marshal(&protomsp.MSPRole{Role: protomsp.MSPRole_ADMIN, MspIdentifier: mspid})
 		if err != nil {
 			return nil, errors.Wrap(err, "marshalling failed")
 		}
 
-		return &msp.MSPPrincipal{
-			PrincipalClassification: msp.MSPPrincipal_ROLE,
+		return &protomsp.MSPPrincipal{
+			PrincipalClassification: protomsp.MSPPrincipal_ROLE,
 			Principal:               principalBytes,
 		}, nil
 	case Members:
-		principalBytes, err := proto.Marshal(&msp.MSPRole{Role: msp.MSPRole_MEMBER, MspIdentifier: mspid})
+		principalBytes, err := proto.Marshal(&protomsp.MSPRole{Role: protomsp.MSPRole_MEMBER, MspIdentifier: mspid})
 		if err != nil {
 			return nil, errors.Wrap(err, "marshalling failed")
 		}
 
-		return &msp.MSPPrincipal{
-			PrincipalClassification: msp.MSPPrincipal_ROLE,
+		return &protomsp.MSPPrincipal{
+			PrincipalClassification: protomsp.MSPPrincipal_ROLE,
 			Principal:               principalBytes,
 		}, nil
 	default:
