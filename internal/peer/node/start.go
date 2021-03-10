@@ -229,8 +229,22 @@ func serve(args []string) error {
 	flogging.SetObserver(logObserver)
 
 	mspID := coreConfig.LocalMSPID
+	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
 
-	membershipInfoProvider := privdata.NewMembershipInfoProvider(mspID, createSelfSignedData(), identityDeserializerFactory)
+	signingIdentity, err := localMSP.GetDefaultSigningIdentity()
+	if err != nil {
+		logger.Panicf("Could not get the default signing identity from the local MSP: [%+v]", err)
+	}
+	signingIdentityBytes, err := signingIdentity.Serialize()
+	if err != nil {
+		logger.Panicf("Failed to serialize the signing identity: %v", err)
+	}
+
+	membershipInfoProvider := privdata.NewMembershipInfoProvider(
+		mspID,
+		createSelfSignedData(signingIdentity),
+		identityDeserializerFactory,
+	)
 
 	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "lifecycle", "chaincodes")
 	ccStore := persistence.NewStore(chaincodeInstallPath)
@@ -296,17 +310,6 @@ func serve(args []string) error {
 		StoreProvider:            transientStoreProvider,
 		CryptoProvider:           factory.GetDefault(),
 		OrdererEndpointOverrides: deliverServiceConfig.OrdererEndpointOverrides,
-	}
-
-	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
-	signingIdentity, err := localMSP.GetDefaultSigningIdentity()
-	if err != nil {
-		logger.Panicf("Could not get the default signing identity from the local MSP: [%+v]", err)
-	}
-
-	signingIdentityBytes, err := signingIdentity.Serialize()
-	if err != nil {
-		logger.Panicf("Failed to serialize the signing identity: %v", err)
 	}
 
 	expirationLogger := flogging.MustGetLogger("certmonitor")
@@ -927,8 +930,7 @@ func localPolicy(policyObject proto.Message) policies.Policy {
 	return policy
 }
 
-func createSelfSignedData() protoutil.SignedData {
-	sID := mgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+func createSelfSignedData(sID msp.SigningIdentity) protoutil.SignedData {
 	msg := make([]byte, 32)
 	sig, err := sID.Sign(msg)
 	if err != nil {
