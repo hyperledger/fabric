@@ -112,10 +112,11 @@ func TestInitGossipService(t *testing.T) {
 
 	err = msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err)
-	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
 
 	localMSP := mgmt.GetLocalMSP(cryptoProvider)
 	deserManager := peergossip.NewDeserializersManager(localMSP)
+	signer, err := localMSP.GetDefaultSigningIdentity()
+	require.NoError(t, err)
 
 	messageCryptoService := peergossip.NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},

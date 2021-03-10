@@ -576,7 +576,8 @@ var expectedCommittedPrivateData3 = map[uint64]*ledger.TxPvtData{}
 func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -885,7 +886,8 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 	*/
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -1011,7 +1013,8 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 func TestCoordinatorStoreBlock(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -1311,7 +1314,8 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -1385,7 +1389,8 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	// Block needs to be committed with missing private data.
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -1501,7 +1506,8 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	// Block needs to be committed with missing private data.
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -1573,7 +1579,8 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -1819,7 +1826,8 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	// no missing private data was found.
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -1891,7 +1899,8 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 func TestCoordinatorMetrics(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}

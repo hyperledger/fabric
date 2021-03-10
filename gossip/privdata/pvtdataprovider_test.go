@@ -61,7 +61,8 @@ func TestRetrievePvtdata(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -833,7 +834,8 @@ func TestRetrievePvtdataFailure(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -892,7 +894,8 @@ func TestRetryFetchFromPeer(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -986,7 +989,8 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
@@ -1087,7 +1091,8 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	err := msptesttools.LoadMSPSetupForTesting()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity := mspmgmt.GetLocalSigningIdentityOrPanic(factory.GetDefault())
+	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
 	data := []byte{1, 2, 3}
