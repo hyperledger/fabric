@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
@@ -35,23 +34,6 @@ var (
 // exists or not
 type mspMgmtMgr struct {
 	msp.MSPManager
-	// track whether this MSPManager has been setup successfully
-	up bool
-}
-
-func (mgr *mspMgmtMgr) DeserializeIdentity(serializedIdentity []byte) (msp.Identity, error) {
-	if !mgr.up {
-		return nil, errors.New("channel doesn't exist")
-	}
-	return mgr.MSPManager.DeserializeIdentity(serializedIdentity)
-}
-
-func (mgr *mspMgmtMgr) Setup(msps []msp.MSP) error {
-	err := mgr.MSPManager.Setup(msps)
-	if err == nil {
-		mgr.up = true
-	}
-	return err
 }
 
 // GetManagerForChain returns the msp manager for the supplied
@@ -63,7 +45,7 @@ func GetManagerForChain(chainID string) msp.MSPManager {
 	mspMgr, ok := mspMap[chainID]
 	if !ok {
 		mspLogger.Debugf("Created new msp manager for channel `%s`", chainID)
-		mspMgmtMgr := &mspMgmtMgr{msp.NewMSPManager(), false}
+		mspMgmtMgr := &mspMgmtMgr{msp.NewMSPManager()}
 		mspMap[chainID] = mspMgmtMgr
 		mspMgr = mspMgmtMgr
 	} else {
@@ -100,7 +82,7 @@ func XXXSetMSPManager(chainID string, manager msp.MSPManager) {
 	m.Lock()
 	defer m.Unlock()
 
-	mspMap[chainID] = &mspMgmtMgr{manager, true}
+	mspMap[chainID] = &mspMgmtMgr{manager}
 }
 
 // GetLocalMSP returns the local msp (and creates it if it doesn't exist)
