@@ -40,7 +40,7 @@ func (gs *Server) Evaluate(ctx context.Context, proposedTransaction *gp.Proposed
 	if len(endorsers) == 0 {
 		return nil, fmt.Errorf("no endorsing peers found for channel: %s", proposedTransaction.ChannelId)
 	}
-	response, err := endorsers[0].ProcessProposal(ctx, signedProposal) // TODO choose suitable peer based on block height, etc (future user story)
+	response, err := endorsers[0].client.ProcessProposal(ctx, signedProposal) // TODO choose suitable peer based on block height, etc (future user story)
 	if err != nil {
 		return nil, fmt.Errorf("failed to evaluate transaction: %w", err)
 	}
@@ -77,13 +77,13 @@ func (gs *Server) Endorse(ctx context.Context, proposedTransaction *gp.ProposedT
 	var wg sync.WaitGroup
 	responseCh := make(chan *endorserResponse, len(endorsers))
 	// send to all the endorsers
-	for _, endorser := range endorsers {
+	for _, e := range endorsers {
 		wg.Add(1)
-		go func(endorser peer.EndorserClient) {
+		go func(endorser *endorser) {
 			defer wg.Done()
-			response, err := endorser.ProcessProposal(ctx, signedProposal)
+			response, err := endorser.client.ProcessProposal(ctx, signedProposal)
 			responseCh <- &endorserResponse{pr: response, err: err}
-		}(endorser)
+		}(e)
 	}
 	wg.Wait()
 	close(responseCh)
@@ -136,11 +136,11 @@ func (gs *Server) Submit(txn *gp.PreparedTransaction, cs gp.Gateway_SubmitServer
 
 	// send to first orderer for now
 	logger.Info("Submitting txn to orderer")
-	if err := orderers[0].Send(txn.Envelope); err != nil {
+	if err := orderers[0].client.Send(txn.Envelope); err != nil {
 		return fmt.Errorf("failed to send envelope to orderer: %w", err)
 	}
 
-	response, err := orderers[0].Recv()
+	response, err := orderers[0].client.Recv()
 	if err != nil {
 		return err
 	}

@@ -277,6 +277,7 @@ func TestGlobalConfig(t *testing.T) {
 	viper.Set("peer.validatorPoolSize", 1)
 	viper.Set("peer.gateway.enabled", true)
 	viper.Set("peer.gateway.endorsementTimeout", 10*time.Second)
+	viper.Set("peer.gateway.dialTimeout", 60*time.Second)
 
 	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 	viper.Set("vm.docker.tls.enabled", false)
@@ -375,6 +376,7 @@ func TestGlobalConfig(t *testing.T) {
 		GatewayOptions: gateway.Options{
 			Enabled:            true,
 			EndorsementTimeout: 10 * time.Second,
+			DialTimeout:        60 * time.Second,
 		},
 	}
 

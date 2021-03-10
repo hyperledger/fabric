@@ -14,8 +14,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	dp "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	gossipapi "github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -29,33 +27,26 @@ type Discovery interface {
 	PeersOfChannel(common.ChannelID) gossipdiscovery.Members
 }
 
-type (
-	endorserFactory func(address string, tlsRootCerts [][]byte) (peer.EndorserClient, error)
-	ordererFactory  func(address string, tlsRootCerts [][]byte) (ab.AtomicBroadcast_BroadcastClient, error)
-)
-
 type registry struct {
-	localEndorser       peer.EndorserClient
+	localEndorser       *endorser
 	discovery           Discovery
-	selfEndpoint        string
 	logger              *flogging.FabricLogger
-	endorserFactory     endorserFactory
-	ordererFactory      ordererFactory
-	remoteEndorsers     map[string]peer.EndorserClient
-	broadcastClients    map[string]ab.AtomicBroadcast_BroadcastClient
+	endpointFactory     *endpointFactory
+	remoteEndorsers     map[string]*endorser
+	broadcastClients    map[string]*orderer
 	tlsRootCerts        map[string][][]byte
 	channelsInitialized map[string]bool
 	configLock          sync.RWMutex
 }
 
 // Returns a set of endorsers that satisfies the endorsement plan for the given chaincode on a channel.
-func (reg *registry) endorsers(channel string, chaincode string) ([]peer.EndorserClient, error) {
+func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, error) {
 	err := reg.registerChannel(channel)
 	if err != nil {
 		return nil, err
 	}
 
-	var endorsers []peer.EndorserClient
+	var endorsers []*endorser
 
 	interest := &dp.ChaincodeInterest{
 		Chaincodes: []*dp.ChaincodeCall{{
@@ -94,7 +85,7 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]peer.Endorse
 				return nil, err
 			}
 			endpoint := msg.GetAliveMsg().Membership.Endpoint
-			if endpoint == reg.selfEndpoint {
+			if endpoint == reg.localEndorser.address {
 				endorsers = append(endorsers, reg.localEndorser)
 			} else if endorser, ok := reg.remoteEndorsers[endpoint]; ok {
 				endorsers = append(endorsers, endorser)
@@ -108,12 +99,12 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]peer.Endorse
 }
 
 // Returns a set of broadcastClients that can order a transaction for the given channel.
-func (reg *registry) orderers(channel string) ([]ab.AtomicBroadcast_BroadcastClient, error) {
+func (reg *registry) orderers(channel string) ([]*orderer, error) {
 	err := reg.registerChannel(channel)
 	if err != nil {
 		return nil, err
 	}
-	var orderers []ab.AtomicBroadcast_BroadcastClient
+	var orderers []*orderer
 
 	// Get the config
 	config, err := reg.discovery.Config(channel)
@@ -162,7 +153,7 @@ func (reg *registry) registerChannel(channel string) error {
 			if _, ok := reg.broadcastClients[address]; !ok {
 				// this orderer is new - connect to it and add to the broadcastClients registry
 				tlsRootCerts := reg.tlsRootCerts[mspid]
-				orderer, err := reg.ordererFactory(address, tlsRootCerts)
+				orderer, err := reg.endpointFactory.newOrderer(address, mspid, tlsRootCerts)
 				if err != nil {
 					return err
 				}
@@ -187,7 +178,7 @@ func (reg *registry) registerChannel(channel string) error {
 				if _, ok := reg.remoteEndorsers[address]; !ok && len(address) > 0 {
 					// this peer is new - connect to it and add to the remoteEndorsers registry
 					tlsRootCerts := reg.tlsRootCerts[mspid]
-					endorser, err := reg.endorserFactory(address, tlsRootCerts)
+					endorser, err := reg.endpointFactory.newEndorser(address, mspid, tlsRootCerts)
 					if err != nil {
 						return err
 					}

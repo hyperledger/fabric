@@ -29,7 +29,7 @@ func getValueFromResponse(response *peer.ProposalResponse) (*gateway.Result, err
 		}
 
 		if extension != nil && extension.Response != nil {
-			if extension.Response.Status > 200 {
+			if extension.Response.Status < 200 || extension.Response.Status >= 400 {
 				return nil, fmt.Errorf("error %d, %s", extension.Response.Status, extension.Response.Message)
 			}
 			retVal = extension.Response.Payload
