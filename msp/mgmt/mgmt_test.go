@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package mgmt
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp"
@@ -142,4 +144,26 @@ func LoadMSPSetupForTesting() (bccsp.BCCSP, error) {
 	}
 
 	return cryptoProvider, nil
+}
+
+func TestMain(m *testing.M) {
+	mspDir := configtest.GetDevMspDir()
+
+	testConf, err := msp.GetLocalMspConfig(mspDir, nil, "SampleOrg")
+	if err != nil {
+		fmt.Printf("Setup should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	cryptoProvider := factory.GetDefault()
+
+	err = GetLocalMSP(cryptoProvider).Setup(testConf)
+	if err != nil {
+		fmt.Printf("Setup for msp should have succeeded, got err %s instead", err)
+		os.Exit(-1)
+	}
+
+	XXXSetMSPManager("foo", msp.NewMSPManager())
+	retVal := m.Run()
+	os.Exit(retVal)
 }

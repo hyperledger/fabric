@@ -36,7 +36,8 @@ func TestLocalMSPPrincipalGetter_Get(t *testing.T) {
 	require.NoError(t, err)
 
 	localMSP := GetLocalMSP(cryptoProvider)
-	m := NewDeserializersManager(localMSP)
+	localMSPID, err := localMSP.GetIdentifier()
+	require.NoError(t, err)
 	g := NewLocalMSPPrincipalGetter(cryptoProvider)
 
 	_, err = g.Get("")
@@ -48,7 +49,7 @@ func TestLocalMSPPrincipalGetter_Get(t *testing.T) {
 	require.Equal(t, msp.MSPPrincipal_ROLE, p.PrincipalClassification)
 	role := &msp.MSPRole{}
 	proto.Unmarshal(p.Principal, role)
-	require.Equal(t, m.GetLocalMSPIdentifier(), role.MspIdentifier)
+	require.Equal(t, localMSPID, role.MspIdentifier)
 	require.Equal(t, msp.MSPRole_ADMIN, role.Role)
 
 	p, err = g.Get(Members)
@@ -57,6 +58,6 @@ func TestLocalMSPPrincipalGetter_Get(t *testing.T) {
 	require.Equal(t, msp.MSPPrincipal_ROLE, p.PrincipalClassification)
 	role = &msp.MSPRole{}
 	proto.Unmarshal(p.Principal, role)
-	require.Equal(t, m.GetLocalMSPIdentifier(), role.MspIdentifier)
+	require.Equal(t, localMSPID, role.MspIdentifier)
 	require.Equal(t, msp.MSPRole_MEMBER, role.Role)
 }

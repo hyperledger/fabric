@@ -115,7 +115,7 @@ func TestInitGossipService(t *testing.T) {
 	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
 
 	localMSP := mgmt.GetLocalMSP(cryptoProvider)
-	deserManager := mgmt.NewDeserializersManager(localMSP)
+	deserManager := peergossip.NewDeserializersManager(localMSP)
 
 	messageCryptoService := peergossip.NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
@@ -759,7 +759,7 @@ func newGossipInstance(serviceConfig *ServiceConfig, port int, id int, gRPCServe
 	go gRPCServer.Start()
 
 	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(localMSP))
+	secAdv := peergossip.NewSecurityAdvisor(peergossip.NewDeserializersManager(localMSP))
 	gossipService := &GossipService{
 		mcs:             cryptoService,
 		gossipSvc:       gossip,
@@ -874,7 +874,7 @@ func TestInvalidInitialization(t *testing.T) {
 
 	mockSignerSerializer := &mocks.SignerSerializer{}
 	mockSignerSerializer.SerializeReturns(api.PeerIdentityType("peer-identity"), nil)
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(mgmt.GetLocalMSP(cryptoProvider)))
+	secAdv := peergossip.NewSecurityAdvisor(peergossip.NewDeserializersManager(mgmt.GetLocalMSP(cryptoProvider)))
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
 
@@ -917,7 +917,7 @@ func TestChannelConfig(t *testing.T) {
 
 	mockSignerSerializer := &mocks.SignerSerializer{}
 	mockSignerSerializer.SerializeReturns(api.PeerIdentityType(string(orgInChannelA)), nil)
-	secAdv := peergossip.NewSecurityAdvisor(mgmt.NewDeserializersManager(mgmt.GetLocalMSP(cryptoProvider)))
+	secAdv := peergossip.NewSecurityAdvisor(peergossip.NewDeserializersManager(mgmt.GetLocalMSP(cryptoProvider)))
 	gossipConfig, err := gossip.GlobalConfig(endpoint, nil)
 	require.NoError(t, err)
 

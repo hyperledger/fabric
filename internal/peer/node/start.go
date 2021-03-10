@@ -1193,7 +1193,7 @@ func initGossipService(
 	}
 
 	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
-	deserManager := mgmt.NewDeserializersManager(localMSP)
+	deserManager := peergossip.NewDeserializersManager(localMSP)
 	messageCryptoService := peergossip.NewMCS(
 		policyMgr,
 		signer,

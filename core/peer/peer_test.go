@@ -59,7 +59,7 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
 
 	localMSP := mgmt.GetLocalMSP(cryptoProvider)
-	deserManager := mgmt.NewDeserializersManager(localMSP)
+	deserManager := peergossip.NewDeserializersManager(localMSP)
 	messageCryptoService := peergossip.NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
 		signer,

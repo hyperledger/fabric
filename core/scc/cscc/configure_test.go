@@ -574,7 +574,7 @@ func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *
 
 	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
 	localMSP := mgmt.GetLocalMSP(cryptoProvider)
-	deserManager := mgmt.NewDeserializersManager(localMSP)
+	deserManager := peergossip.NewDeserializersManager(localMSP)
 
 	messageCryptoService := peergossip.NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
