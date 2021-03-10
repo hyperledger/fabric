@@ -25,7 +25,6 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
@@ -37,8 +36,6 @@ import (
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
-	"github.com/hyperledger/fabric/core/policy"
-	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/core/scc/lscc/mock"
 	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
@@ -231,31 +228,13 @@ func TestInstall(t *testing.T) {
 
 func testInstall(t *testing.T, ccname string, version string, path string, createInvalidIndex bool, expectedErrorMsg string, caller string, scc *SCC, stub *shimtest.MockStub, aclErr error) {
 	t.Run(ccname+":"+version, func(t *testing.T) {
-		identityDeserializer := &policymocks.MockIdentityDeserializer{
-			Identity: []byte("Alice"),
-			Msg:      []byte("msg1"),
-		}
-		policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
-			Managers: map[string]policies.Manager{
-				"test": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: identityDeserializer}},
-			},
-		}
-		scc.PolicyChecker = policy.NewPolicyChecker(
-			policyManagerGetter,
-			identityDeserializer,
-			&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
-		)
-
 		cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, createInvalidIndex, false, scc)
 		require.NoError(t, err)
 		cdsBytes := protoutil.MarshalOrPanic(cds)
 
 		// constructDeploymentSpec puts the depspec on the FS. This should succeed
 		args := [][]byte{[]byte("install"), cdsBytes}
-
 		sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte(caller), []byte("msg1"))
-		identityDeserializer.Msg = sProp.ProposalBytes
-		sProp.Signature = sProp.ProposalBytes
 
 		mockAclProvider.Reset()
 		mockAclProvider.On("CheckACL", resources.Lscc_Install, "", sProp).Return(aclErr)
@@ -523,20 +502,7 @@ func testDeploy(t *testing.T, ccname string, version string, path string, forceB
 	}
 	stub.ChannelID = channelID
 
-	identityDeserializer := &policymocks.MockIdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1")}
-	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
-		Managers: map[string]policies.Manager{
-			"test": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: identityDeserializer}},
-		},
-	}
-	scc.PolicyChecker = policy.NewPolicyChecker(
-		policyManagerGetter,
-		identityDeserializer,
-		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
-	)
 	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic(channelID, &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
-	identityDeserializer.Msg = sProp.ProposalBytes
-	sProp.Signature = sProp.ProposalBytes
 
 	cds, err := constructDeploymentSpec(ccname, path, version, [][]byte{[]byte("init"), []byte("a"), []byte("100"), []byte("b"), []byte("200")}, false, install, scc)
 	require.NoError(t, err)
@@ -893,20 +859,7 @@ func TestFunctionsWithAliases(t *testing.T) {
 	res := stub.MockInit("1", nil)
 	require.Equal(t, int32(shim.OK), res.Status, res.Message)
 
-	identityDeserializer := &policymocks.MockIdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1")}
-	policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
-		Managers: map[string]policies.Manager{
-			"test": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: identityDeserializer}},
-		},
-	}
-	scc.PolicyChecker = policy.NewPolicyChecker(
-		policyManagerGetter,
-		identityDeserializer,
-		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
-	)
 	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
-	identityDeserializer.Msg = sProp.ProposalBytes
-	sProp.Signature = sProp.ProposalBytes
 
 	testInvoke := func(function, resource string) {
 		t.Run(function, func(t *testing.T) {
@@ -960,7 +913,6 @@ func TestGetChaincodes(t *testing.T) {
 			require.Equal(t, "invalid number of arguments to lscc: 2", res.Message)
 
 			sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("test", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
-			sProp.Signature = sProp.ProposalBytes
 
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resources.Lscc_GetInstantiatedChaincodes, "test", sProp).Return(errors.New("coyote"))
@@ -1038,20 +990,7 @@ func TestGetInstalledChaincodes(t *testing.T) {
 			require.NotEqual(t, int32(shim.OK), res.Status)
 			require.Equal(t, "invalid number of arguments to lscc: 2", res.Message)
 
-			identityDeserializer := &policymocks.MockIdentityDeserializer{Identity: []byte("Alice"), Msg: []byte("msg1")}
-			policyManagerGetter := &policymocks.MockChannelPolicyManagerGetter{
-				Managers: map[string]policies.Manager{
-					"test": &policymocks.MockChannelPolicyManager{MockPolicy: &policymocks.MockPolicy{Deserializer: identityDeserializer}},
-				},
-			}
-			scc.PolicyChecker = policy.NewPolicyChecker(
-				policyManagerGetter,
-				identityDeserializer,
-				&policymocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
-			)
 			sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
-			identityDeserializer.Msg = sProp.ProposalBytes
-			sProp.Signature = sProp.ProposalBytes
 
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resources.Lscc_GetInstalledChaincodes, "", sProp).Return(errors.New("authorization failure"))
@@ -1060,8 +999,6 @@ func TestGetInstalledChaincodes(t *testing.T) {
 			require.Contains(t, res.Message, "access denied for ["+function+"]")
 
 			sProp, _ = protoutil.MockSignedEndorserProposalOrPanic("", &pb.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
-			identityDeserializer.Msg = sProp.ProposalBytes
-			sProp.Signature = sProp.ProposalBytes
 
 			mockAclProvider.Reset()
 			mockAclProvider.On("CheckACL", resources.Lscc_GetInstalledChaincodes, "", sProp).Return(nil)
@@ -1239,7 +1176,6 @@ func TestGetChaincodeCollectionData(t *testing.T) {
 
 	for _, function := range []string{"GetCollectionsConfig", "getcollectionsconfig"} {
 		sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("test", &pb.ChaincodeSpec{}, []byte("Bob"), []byte("msg1"))
-		sProp.Signature = sProp.ProposalBytes
 
 		t.Run("invalid number of arguments", func(t *testing.T) {
 			res = stub.MockInvokeWithSignedProposal("1", util.ToChaincodeArgs(function, "foo", "bar"), nil)

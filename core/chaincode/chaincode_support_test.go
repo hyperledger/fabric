@@ -33,7 +33,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
-	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/common/util"
 	aclmocks "github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
@@ -53,8 +52,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/policy"
-	policymocks "github.com/hyperledger/fabric/core/policy/mocks"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
@@ -221,7 +218,6 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 		SCCProvider:      &lscc.PeerShim{Peer: peerInstance},
 		ACLProvider:      &aclmocks.DefaultACLProvider{},
 		GetMSPIDs:        peerInstance.GetMSPIDs,
-		PolicyChecker:    newPolicyChecker(peerInstance),
 		BCCSP:            cryptoProvider,
 		BuildRegistry:    buildRegistry,
 		ChaincodeBuilder: containerRouter,
@@ -1482,14 +1478,3 @@ func setupTestConfig() {
 }
 
 var signer msp.SigningIdentity
-
-func newPolicyChecker(peerInstance *peer.Peer) policy.PolicyChecker {
-	return policy.NewPolicyChecker(
-		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
-		&policymocks.MockIdentityDeserializer{
-			Identity: []byte("Admin"),
-			Msg:      []byte("msg1"),
-		},
-		&policymocks.MockMSPPrincipalGetter{Principal: []byte("Admin")},
-	)
-}
