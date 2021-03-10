@@ -11,27 +11,12 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/cache"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
-
-// LoadLocalMsp loads the local MSP from the specified directory
-func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) error {
-	if mspID == "" {
-		return errors.New("the local MSP must have an ID")
-	}
-
-	conf, err := msp.GetLocalMspConfig(dir, bccspConfig, mspID)
-	if err != nil {
-		return err
-	}
-
-	return GetLocalMSP(factory.GetDefault()).Setup(conf)
-}
 
 // FIXME: AS SOON AS THE CHAIN MANAGEMENT CODE IS COMPLETE,
 // THESE MAPS AND HELPER FUNCTIONS SHOULD DISAPPEAR BECAUSE

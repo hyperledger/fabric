@@ -12,6 +12,7 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp/factory"
+	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"google.golang.org/grpc"
@@ -63,7 +64,11 @@ func init() {
 	}
 
 	// Load local MSP
-	err = mspmgmt.LoadLocalMsp(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
+	mspConfig, err := msp.GetLocalMspConfig(conf.General.LocalMSPDir, conf.General.BCCSP, conf.General.LocalMSPID)
+	if err != nil {
+		panic(fmt.Errorf("Failed to load MSP config: %s", err))
+	}
+	err = mspmgmt.GetLocalMSP(factory.GetDefault()).Setup(mspConfig)
 	if err != nil {
 		panic(fmt.Errorf("failed to initialize local MSP: %s", err))
 	}
