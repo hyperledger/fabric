@@ -16,7 +16,11 @@ META="$2"
 BLD="$3"
 
 if [ -e "$SRC/metadata" ] ; then
-  cp -a "$SRC/metadata" "$BLD"
+    cp -a "$SRC/metadata" "$BLD"
 fi
 
-cp "$(jq -r .path "$META/metadata.json")" "$BLD/chaincode"
+if [ -f "$SRC/connection.json" ]; then
+    cp "$SRC/connection.json" "$BLD/connection.json"
+else
+    cp "$(jq -r .path "$META/metadata.json")" "$BLD/chaincode"
+fi
