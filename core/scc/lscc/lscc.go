@@ -33,7 +33,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/cceventmgmt"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/internal/ccmetadata"
 	"github.com/hyperledger/fabric/msp"
@@ -148,10 +147,6 @@ type SCC struct {
 	// SCCProvider is the interface which is passed into system chaincodes
 	// to access other parts of the system
 	SCCProvider sysccprovider.SystemChaincodeProvider
-
-	// PolicyChecker is the interface used to perform
-	// access control
-	PolicyChecker policy.PolicyChecker
 
 	// Support provides the implementation of several
 	// static functions

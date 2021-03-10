@@ -596,7 +596,6 @@ func serve(args []string) error {
 		SCCProvider:        &lscc.PeerShim{Peer: peerInstance},
 		ACLProvider:        aclProvider,
 		GetMSPIDs:          peerInstance.GetMSPIDs,
-		PolicyChecker:      policyChecker,
 		BCCSP:              factory.GetDefault(),
 		BuildRegistry:      buildRegistry,
 		ChaincodeBuilder:   containerRouter,
