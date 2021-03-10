@@ -166,7 +166,11 @@ func InitCrypto(mspMgrConfigDir, localMSPID, localMSPType string) error {
 		return errors.WithMessage(err, "could not decode peer BCCSP configuration")
 	}
 
-	err = mspmgmt.LoadLocalMspWithType(mspMgrConfigDir, bccspConfig, localMSPID, localMSPType)
+	conf, err := msp.GetLocalMspConfigWithType(mspMgrConfigDir, bccspConfig, localMSPID, localMSPType)
+	if err != nil {
+		return err
+	}
+	err = mspmgmt.GetLocalMSP(factory.GetDefault()).Setup(conf)
 	if err != nil {
 		return errors.WithMessagef(err, "error when setting up MSP of type %s from directory %s", localMSPType, mspMgrConfigDir)
 	}

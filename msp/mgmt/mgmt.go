@@ -19,20 +19,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// LoadLocalMspWithType loads the local MSP with the specified type from the specified directory
-func LoadLocalMspWithType(dir string, bccspConfig *factory.FactoryOpts, mspID, mspType string) error {
-	if mspID == "" {
-		return errors.New("the local MSP must have an ID")
-	}
-
-	conf, err := msp.GetLocalMspConfigWithType(dir, bccspConfig, mspID, mspType)
-	if err != nil {
-		return err
-	}
-
-	return GetLocalMSP(factory.GetDefault()).Setup(conf)
-}
-
 // LoadLocalMsp loads the local MSP from the specified directory
 func LoadLocalMsp(dir string, bccspConfig *factory.FactoryOpts, mspID string) error {
 	if mspID == "" {
