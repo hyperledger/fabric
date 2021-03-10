@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type Orderer struct {
+type ABClient struct {
 	CloseSendStub        func() error
 	closeSendMutex       sync.RWMutex
 	closeSendArgsForCall []struct {
@@ -102,7 +102,7 @@ type Orderer struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Orderer) CloseSend() error {
+func (fake *ABClient) CloseSend() error {
 	fake.closeSendMutex.Lock()
 	ret, specificReturn := fake.closeSendReturnsOnCall[len(fake.closeSendArgsForCall)]
 	fake.closeSendArgsForCall = append(fake.closeSendArgsForCall, struct {
@@ -119,19 +119,19 @@ func (fake *Orderer) CloseSend() error {
 	return fakeReturns.result1
 }
 
-func (fake *Orderer) CloseSendCallCount() int {
+func (fake *ABClient) CloseSendCallCount() int {
 	fake.closeSendMutex.RLock()
 	defer fake.closeSendMutex.RUnlock()
 	return len(fake.closeSendArgsForCall)
 }
 
-func (fake *Orderer) CloseSendCalls(stub func() error) {
+func (fake *ABClient) CloseSendCalls(stub func() error) {
 	fake.closeSendMutex.Lock()
 	defer fake.closeSendMutex.Unlock()
 	fake.CloseSendStub = stub
 }
 
-func (fake *Orderer) CloseSendReturns(result1 error) {
+func (fake *ABClient) CloseSendReturns(result1 error) {
 	fake.closeSendMutex.Lock()
 	defer fake.closeSendMutex.Unlock()
 	fake.CloseSendStub = nil
@@ -140,7 +140,7 @@ func (fake *Orderer) CloseSendReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *Orderer) CloseSendReturnsOnCall(i int, result1 error) {
+func (fake *ABClient) CloseSendReturnsOnCall(i int, result1 error) {
 	fake.closeSendMutex.Lock()
 	defer fake.closeSendMutex.Unlock()
 	fake.CloseSendStub = nil
@@ -154,7 +154,7 @@ func (fake *Orderer) CloseSendReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Orderer) Context() context.Context {
+func (fake *ABClient) Context() context.Context {
 	fake.contextMutex.Lock()
 	ret, specificReturn := fake.contextReturnsOnCall[len(fake.contextArgsForCall)]
 	fake.contextArgsForCall = append(fake.contextArgsForCall, struct {
@@ -171,19 +171,19 @@ func (fake *Orderer) Context() context.Context {
 	return fakeReturns.result1
 }
 
-func (fake *Orderer) ContextCallCount() int {
+func (fake *ABClient) ContextCallCount() int {
 	fake.contextMutex.RLock()
 	defer fake.contextMutex.RUnlock()
 	return len(fake.contextArgsForCall)
 }
 
-func (fake *Orderer) ContextCalls(stub func() context.Context) {
+func (fake *ABClient) ContextCalls(stub func() context.Context) {
 	fake.contextMutex.Lock()
 	defer fake.contextMutex.Unlock()
 	fake.ContextStub = stub
 }
 
-func (fake *Orderer) ContextReturns(result1 context.Context) {
+func (fake *ABClient) ContextReturns(result1 context.Context) {
 	fake.contextMutex.Lock()
 	defer fake.contextMutex.Unlock()
 	fake.ContextStub = nil
@@ -192,7 +192,7 @@ func (fake *Orderer) ContextReturns(result1 context.Context) {
 	}{result1}
 }
 
-func (fake *Orderer) ContextReturnsOnCall(i int, result1 context.Context) {
+func (fake *ABClient) ContextReturnsOnCall(i int, result1 context.Context) {
 	fake.contextMutex.Lock()
 	defer fake.contextMutex.Unlock()
 	fake.ContextStub = nil
@@ -206,7 +206,7 @@ func (fake *Orderer) ContextReturnsOnCall(i int, result1 context.Context) {
 	}{result1}
 }
 
-func (fake *Orderer) Header() (metadata.MD, error) {
+func (fake *ABClient) Header() (metadata.MD, error) {
 	fake.headerMutex.Lock()
 	ret, specificReturn := fake.headerReturnsOnCall[len(fake.headerArgsForCall)]
 	fake.headerArgsForCall = append(fake.headerArgsForCall, struct {
@@ -223,19 +223,19 @@ func (fake *Orderer) Header() (metadata.MD, error) {
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *Orderer) HeaderCallCount() int {
+func (fake *ABClient) HeaderCallCount() int {
 	fake.headerMutex.RLock()
 	defer fake.headerMutex.RUnlock()
 	return len(fake.headerArgsForCall)
 }
 
-func (fake *Orderer) HeaderCalls(stub func() (metadata.MD, error)) {
+func (fake *ABClient) HeaderCalls(stub func() (metadata.MD, error)) {
 	fake.headerMutex.Lock()
 	defer fake.headerMutex.Unlock()
 	fake.HeaderStub = stub
 }
 
-func (fake *Orderer) HeaderReturns(result1 metadata.MD, result2 error) {
+func (fake *ABClient) HeaderReturns(result1 metadata.MD, result2 error) {
 	fake.headerMutex.Lock()
 	defer fake.headerMutex.Unlock()
 	fake.HeaderStub = nil
@@ -245,7 +245,7 @@ func (fake *Orderer) HeaderReturns(result1 metadata.MD, result2 error) {
 	}{result1, result2}
 }
 
-func (fake *Orderer) HeaderReturnsOnCall(i int, result1 metadata.MD, result2 error) {
+func (fake *ABClient) HeaderReturnsOnCall(i int, result1 metadata.MD, result2 error) {
 	fake.headerMutex.Lock()
 	defer fake.headerMutex.Unlock()
 	fake.HeaderStub = nil
@@ -261,7 +261,7 @@ func (fake *Orderer) HeaderReturnsOnCall(i int, result1 metadata.MD, result2 err
 	}{result1, result2}
 }
 
-func (fake *Orderer) Recv() (*orderer.BroadcastResponse, error) {
+func (fake *ABClient) Recv() (*orderer.BroadcastResponse, error) {
 	fake.recvMutex.Lock()
 	ret, specificReturn := fake.recvReturnsOnCall[len(fake.recvArgsForCall)]
 	fake.recvArgsForCall = append(fake.recvArgsForCall, struct {
@@ -278,19 +278,19 @@ func (fake *Orderer) Recv() (*orderer.BroadcastResponse, error) {
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *Orderer) RecvCallCount() int {
+func (fake *ABClient) RecvCallCount() int {
 	fake.recvMutex.RLock()
 	defer fake.recvMutex.RUnlock()
 	return len(fake.recvArgsForCall)
 }
 
-func (fake *Orderer) RecvCalls(stub func() (*orderer.BroadcastResponse, error)) {
+func (fake *ABClient) RecvCalls(stub func() (*orderer.BroadcastResponse, error)) {
 	fake.recvMutex.Lock()
 	defer fake.recvMutex.Unlock()
 	fake.RecvStub = stub
 }
 
-func (fake *Orderer) RecvReturns(result1 *orderer.BroadcastResponse, result2 error) {
+func (fake *ABClient) RecvReturns(result1 *orderer.BroadcastResponse, result2 error) {
 	fake.recvMutex.Lock()
 	defer fake.recvMutex.Unlock()
 	fake.RecvStub = nil
@@ -300,7 +300,7 @@ func (fake *Orderer) RecvReturns(result1 *orderer.BroadcastResponse, result2 err
 	}{result1, result2}
 }
 
-func (fake *Orderer) RecvReturnsOnCall(i int, result1 *orderer.BroadcastResponse, result2 error) {
+func (fake *ABClient) RecvReturnsOnCall(i int, result1 *orderer.BroadcastResponse, result2 error) {
 	fake.recvMutex.Lock()
 	defer fake.recvMutex.Unlock()
 	fake.RecvStub = nil
@@ -316,7 +316,7 @@ func (fake *Orderer) RecvReturnsOnCall(i int, result1 *orderer.BroadcastResponse
 	}{result1, result2}
 }
 
-func (fake *Orderer) RecvMsg(arg1 interface{}) error {
+func (fake *ABClient) RecvMsg(arg1 interface{}) error {
 	fake.recvMsgMutex.Lock()
 	ret, specificReturn := fake.recvMsgReturnsOnCall[len(fake.recvMsgArgsForCall)]
 	fake.recvMsgArgsForCall = append(fake.recvMsgArgsForCall, struct {
@@ -334,26 +334,26 @@ func (fake *Orderer) RecvMsg(arg1 interface{}) error {
 	return fakeReturns.result1
 }
 
-func (fake *Orderer) RecvMsgCallCount() int {
+func (fake *ABClient) RecvMsgCallCount() int {
 	fake.recvMsgMutex.RLock()
 	defer fake.recvMsgMutex.RUnlock()
 	return len(fake.recvMsgArgsForCall)
 }
 
-func (fake *Orderer) RecvMsgCalls(stub func(interface{}) error) {
+func (fake *ABClient) RecvMsgCalls(stub func(interface{}) error) {
 	fake.recvMsgMutex.Lock()
 	defer fake.recvMsgMutex.Unlock()
 	fake.RecvMsgStub = stub
 }
 
-func (fake *Orderer) RecvMsgArgsForCall(i int) interface{} {
+func (fake *ABClient) RecvMsgArgsForCall(i int) interface{} {
 	fake.recvMsgMutex.RLock()
 	defer fake.recvMsgMutex.RUnlock()
 	argsForCall := fake.recvMsgArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *Orderer) RecvMsgReturns(result1 error) {
+func (fake *ABClient) RecvMsgReturns(result1 error) {
 	fake.recvMsgMutex.Lock()
 	defer fake.recvMsgMutex.Unlock()
 	fake.RecvMsgStub = nil
@@ -362,7 +362,7 @@ func (fake *Orderer) RecvMsgReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *Orderer) RecvMsgReturnsOnCall(i int, result1 error) {
+func (fake *ABClient) RecvMsgReturnsOnCall(i int, result1 error) {
 	fake.recvMsgMutex.Lock()
 	defer fake.recvMsgMutex.Unlock()
 	fake.RecvMsgStub = nil
@@ -376,7 +376,7 @@ func (fake *Orderer) RecvMsgReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Orderer) Send(arg1 *common.Envelope) error {
+func (fake *ABClient) Send(arg1 *common.Envelope) error {
 	fake.sendMutex.Lock()
 	ret, specificReturn := fake.sendReturnsOnCall[len(fake.sendArgsForCall)]
 	fake.sendArgsForCall = append(fake.sendArgsForCall, struct {
@@ -394,26 +394,26 @@ func (fake *Orderer) Send(arg1 *common.Envelope) error {
 	return fakeReturns.result1
 }
 
-func (fake *Orderer) SendCallCount() int {
+func (fake *ABClient) SendCallCount() int {
 	fake.sendMutex.RLock()
 	defer fake.sendMutex.RUnlock()
 	return len(fake.sendArgsForCall)
 }
 
-func (fake *Orderer) SendCalls(stub func(*common.Envelope) error) {
+func (fake *ABClient) SendCalls(stub func(*common.Envelope) error) {
 	fake.sendMutex.Lock()
 	defer fake.sendMutex.Unlock()
 	fake.SendStub = stub
 }
 
-func (fake *Orderer) SendArgsForCall(i int) *common.Envelope {
+func (fake *ABClient) SendArgsForCall(i int) *common.Envelope {
 	fake.sendMutex.RLock()
 	defer fake.sendMutex.RUnlock()
 	argsForCall := fake.sendArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *Orderer) SendReturns(result1 error) {
+func (fake *ABClient) SendReturns(result1 error) {
 	fake.sendMutex.Lock()
 	defer fake.sendMutex.Unlock()
 	fake.SendStub = nil
@@ -422,7 +422,7 @@ func (fake *Orderer) SendReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *Orderer) SendReturnsOnCall(i int, result1 error) {
+func (fake *ABClient) SendReturnsOnCall(i int, result1 error) {
 	fake.sendMutex.Lock()
 	defer fake.sendMutex.Unlock()
 	fake.SendStub = nil
@@ -436,7 +436,7 @@ func (fake *Orderer) SendReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Orderer) SendMsg(arg1 interface{}) error {
+func (fake *ABClient) SendMsg(arg1 interface{}) error {
 	fake.sendMsgMutex.Lock()
 	ret, specificReturn := fake.sendMsgReturnsOnCall[len(fake.sendMsgArgsForCall)]
 	fake.sendMsgArgsForCall = append(fake.sendMsgArgsForCall, struct {
@@ -454,26 +454,26 @@ func (fake *Orderer) SendMsg(arg1 interface{}) error {
 	return fakeReturns.result1
 }
 
-func (fake *Orderer) SendMsgCallCount() int {
+func (fake *ABClient) SendMsgCallCount() int {
 	fake.sendMsgMutex.RLock()
 	defer fake.sendMsgMutex.RUnlock()
 	return len(fake.sendMsgArgsForCall)
 }
 
-func (fake *Orderer) SendMsgCalls(stub func(interface{}) error) {
+func (fake *ABClient) SendMsgCalls(stub func(interface{}) error) {
 	fake.sendMsgMutex.Lock()
 	defer fake.sendMsgMutex.Unlock()
 	fake.SendMsgStub = stub
 }
 
-func (fake *Orderer) SendMsgArgsForCall(i int) interface{} {
+func (fake *ABClient) SendMsgArgsForCall(i int) interface{} {
 	fake.sendMsgMutex.RLock()
 	defer fake.sendMsgMutex.RUnlock()
 	argsForCall := fake.sendMsgArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *Orderer) SendMsgReturns(result1 error) {
+func (fake *ABClient) SendMsgReturns(result1 error) {
 	fake.sendMsgMutex.Lock()
 	defer fake.sendMsgMutex.Unlock()
 	fake.SendMsgStub = nil
@@ -482,7 +482,7 @@ func (fake *Orderer) SendMsgReturns(result1 error) {
 	}{result1}
 }
 
-func (fake *Orderer) SendMsgReturnsOnCall(i int, result1 error) {
+func (fake *ABClient) SendMsgReturnsOnCall(i int, result1 error) {
 	fake.sendMsgMutex.Lock()
 	defer fake.sendMsgMutex.Unlock()
 	fake.SendMsgStub = nil
@@ -496,7 +496,7 @@ func (fake *Orderer) SendMsgReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *Orderer) Trailer() metadata.MD {
+func (fake *ABClient) Trailer() metadata.MD {
 	fake.trailerMutex.Lock()
 	ret, specificReturn := fake.trailerReturnsOnCall[len(fake.trailerArgsForCall)]
 	fake.trailerArgsForCall = append(fake.trailerArgsForCall, struct {
@@ -513,19 +513,19 @@ func (fake *Orderer) Trailer() metadata.MD {
 	return fakeReturns.result1
 }
 
-func (fake *Orderer) TrailerCallCount() int {
+func (fake *ABClient) TrailerCallCount() int {
 	fake.trailerMutex.RLock()
 	defer fake.trailerMutex.RUnlock()
 	return len(fake.trailerArgsForCall)
 }
 
-func (fake *Orderer) TrailerCalls(stub func() metadata.MD) {
+func (fake *ABClient) TrailerCalls(stub func() metadata.MD) {
 	fake.trailerMutex.Lock()
 	defer fake.trailerMutex.Unlock()
 	fake.TrailerStub = stub
 }
 
-func (fake *Orderer) TrailerReturns(result1 metadata.MD) {
+func (fake *ABClient) TrailerReturns(result1 metadata.MD) {
 	fake.trailerMutex.Lock()
 	defer fake.trailerMutex.Unlock()
 	fake.TrailerStub = nil
@@ -534,7 +534,7 @@ func (fake *Orderer) TrailerReturns(result1 metadata.MD) {
 	}{result1}
 }
 
-func (fake *Orderer) TrailerReturnsOnCall(i int, result1 metadata.MD) {
+func (fake *ABClient) TrailerReturnsOnCall(i int, result1 metadata.MD) {
 	fake.trailerMutex.Lock()
 	defer fake.trailerMutex.Unlock()
 	fake.TrailerStub = nil
@@ -548,7 +548,7 @@ func (fake *Orderer) TrailerReturnsOnCall(i int, result1 metadata.MD) {
 	}{result1}
 }
 
-func (fake *Orderer) Invocations() map[string][][]interface{} {
+func (fake *ABClient) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.closeSendMutex.RLock()
@@ -574,7 +574,7 @@ func (fake *Orderer) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *Orderer) recordInvocation(key string, args []interface{}) {
+func (fake *ABClient) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {

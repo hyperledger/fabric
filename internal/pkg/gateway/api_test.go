@@ -12,8 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
-
 	"github.com/golang/protobuf/proto"
 	cp "github.com/hyperledger/fabric-protos-go/common"
 	dp "github.com/hyperledger/fabric-protos-go/discovery"
@@ -29,7 +27,9 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	idmocks "github.com/hyperledger/fabric/internal/pkg/identity/mocks"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 // The following private interfaces are here purely to prevent counterfeiter creating an import cycle in the unit test
@@ -48,8 +48,8 @@ type submitServer interface {
 	pb.Gateway_SubmitServer
 }
 
-//go:generate counterfeiter -o mocks/orderer.go --fake-name Orderer . orderer
-type orderer interface {
+//go:generate counterfeiter -o mocks/abclient.go --fake-name ABClient . abClient
+type abClient interface {
 	ab.AtomicBroadcast_BroadcastClient
 }
 
@@ -129,12 +129,7 @@ func TestGateway(t *testing.T) {
 
 		server := CreateServer(localEndorser, disc, "localhost:7051", options)
 
-		factory := &endpointFactory{
-			t:                t,
-			proposalResponse: "mock_response",
-		}
-		server.registry.endorserFactory = factory.mockEndorserFactory
-		server.registry.ordererFactory = factory.mockOrdererFactory
+		server.registry.endpointFactory = createEndpointFactory(t, "mock_response", "mock_orderer_response")
 
 		require.NoError(t, err, "Failed to sign the proposal")
 		ctx := context.WithValue(context.Background(), contextKey("orange"), "apples")
@@ -186,6 +181,38 @@ func TestGateway(t *testing.T) {
 				signedProposal:       validSignedProposal,
 				processProposalError: fmt.Errorf("mumbo-jumbo"),
 				errString:            "mumbo-jumbo",
+			},
+			{
+				name: "dialing endorser endpoint fails",
+				plan: endorsementPlan{
+					"g1": {"peer2:9051"},
+				},
+				signedProposal: validSignedProposal,
+				setupRegistry: func(reg *registry) {
+					reg.endpointFactory.dialer = func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
+						if target == "peer2:9051" {
+							return nil, fmt.Errorf("endorser not answering")
+						}
+						return nil, nil
+					}
+				},
+				errString: "failed to create new connection: endorser not answering",
+			},
+			{
+				name: "dialing orderer endpoint fails",
+				plan: endorsementPlan{
+					"g1": {"peer2:9051"},
+				},
+				signedProposal: validSignedProposal,
+				setupRegistry: func(reg *registry) {
+					reg.endpointFactory.dialer = func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
+						if target == "orderer:7050" {
+							return nil, fmt.Errorf("orderer not answering")
+						}
+						return nil, nil
+					}
+				},
+				errString: "failed to create new connection: orderer not answering",
 			},
 		}
 		for _, tt := range tests {
@@ -395,10 +422,10 @@ func TestGateway(t *testing.T) {
 				},
 				signedProposal: validSignedProposal,
 				setupRegistry: func(reg *registry) {
-					reg.ordererFactory = func(address string, tlsRootCerts [][]byte) (ab.AtomicBroadcast_BroadcastClient, error) {
-						orderer := &mocks.Orderer{}
-						orderer.SendReturns(fmt.Errorf("Orderer says no!"))
-						return orderer, nil
+					reg.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
+						abc := &mocks.ABClient{}
+						abc.SendReturns(fmt.Errorf("Orderer says no!"))
+						return abc, nil
 					}
 				},
 				errString: "failed to send envelope to orderer: Orderer says no!",
@@ -410,10 +437,10 @@ func TestGateway(t *testing.T) {
 				},
 				signedProposal: validSignedProposal,
 				setupRegistry: func(reg *registry) {
-					reg.ordererFactory = func(address string, tlsRootCerts [][]byte) (ab.AtomicBroadcast_BroadcastClient, error) {
-						orderer := &mocks.Orderer{}
-						orderer.RecvReturns(nil, fmt.Errorf("Orderer not happy!"))
-						return orderer, nil
+					reg.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
+						abc := &mocks.ABClient{}
+						abc.RecvReturns(nil, fmt.Errorf("Orderer not happy!"))
+						return abc, nil
 					}
 				},
 				errString: "Orderer not happy!",
@@ -425,10 +452,10 @@ func TestGateway(t *testing.T) {
 				},
 				signedProposal: validSignedProposal,
 				setupRegistry: func(reg *registry) {
-					reg.ordererFactory = func(address string, tlsRootCerts [][]byte) (ab.AtomicBroadcast_BroadcastClient, error) {
-						orderer := &mocks.Orderer{}
-						orderer.RecvReturns(nil, nil)
-						return orderer, nil
+					reg.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
+						abc := &mocks.ABClient{}
+						abc.RecvReturns(nil, nil)
+						return abc, nil
 					}
 				},
 				errString: "received nil response from orderer",
@@ -539,25 +566,26 @@ func createMockPeer(t *testing.T, name string) *dp.Peer {
 	}
 }
 
-type endpointFactory struct {
-	t                 *testing.T
-	proposalResponse  string
-	broadcastResponse string
-}
-
-func (ef *endpointFactory) mockEndorserFactory(address string, tlsRootCerts [][]byte) (peer.EndorserClient, error) {
-	endorser := &mocks.EndorserClient{}
-	endorser.ProcessProposalReturns(createProposalResponse(ef.t, ef.proposalResponse), nil)
-	return endorser, nil
-}
-
-func (ef *endpointFactory) mockOrdererFactory(address string, tlsRootCerts [][]byte) (ab.AtomicBroadcast_BroadcastClient, error) {
-	orderer := &mocks.Orderer{}
-	orderer.RecvReturns(&ab.BroadcastResponse{
-		Info:   ef.broadcastResponse,
-		Status: 200,
-	}, nil)
-	return orderer, nil
+func createEndpointFactory(t *testing.T, proposalResponse string, broadcastResponse string) *endpointFactory {
+	return &endpointFactory{
+		timeout: 5 * time.Second,
+		connectEndorser: func(_ *grpc.ClientConn) peer.EndorserClient {
+			e := &mocks.EndorserClient{}
+			e.ProcessProposalReturns(createProposalResponse(t, proposalResponse), nil)
+			return e
+		},
+		connectOrderer: func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
+			abc := &mocks.ABClient{}
+			abc.RecvReturns(&ab.BroadcastResponse{
+				Info:   broadcastResponse,
+				Status: 200,
+			}, nil)
+			return abc, nil
+		},
+		dialer: func(_ context.Context, _ string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
+			return nil, nil
+		},
+	}
 }
 
 func createProposal(t *testing.T, channel string, chaincode string, args ...[]byte) *peer.Proposal {

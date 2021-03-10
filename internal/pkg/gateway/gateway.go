@@ -8,7 +8,6 @@ package gateway
 import (
 	"context"
 
-	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"google.golang.org/grpc"
@@ -34,14 +33,12 @@ func (e *EndorserServerAdapter) ProcessProposal(ctx context.Context, req *peer.S
 func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, selfEndpoint string, options Options) *Server {
 	gwServer := &Server{
 		registry: &registry{
-			localEndorser:       localEndorser,
+			localEndorser:       &endorser{client: localEndorser, endpointConfig: &endpointConfig{address: selfEndpoint}},
 			discovery:           discovery,
-			selfEndpoint:        selfEndpoint,
 			logger:              logger,
-			endorserFactory:     newEndorser,
-			ordererFactory:      newOrderer,
-			remoteEndorsers:     map[string]peer.EndorserClient{},
-			broadcastClients:    map[string]ab.AtomicBroadcast_BroadcastClient{},
+			endpointFactory:     &endpointFactory{timeout: options.EndorsementTimeout},
+			remoteEndorsers:     map[string]*endorser{},
+			broadcastClients:    map[string]*orderer{},
 			tlsRootCerts:        map[string][][]byte{},
 			channelsInitialized: map[string]bool{},
 		},
