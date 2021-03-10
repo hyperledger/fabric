@@ -56,7 +56,8 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	// Initialize gossip service
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
+	signer, err := mgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 
 	localMSP := mgmt.GetLocalMSP(cryptoProvider)
 	deserManager := peergossip.NewDeserializersManager(localMSP)

@@ -55,14 +55,6 @@ func TestGetIdentityDeserializer(t *testing.T) {
 	require.NotNil(t, ids)
 }
 
-func TestGetLocalSigningIdentityOrPanic(t *testing.T) {
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-
-	sid := GetLocalSigningIdentityOrPanic(cryptoProvider)
-	require.NotNil(t, sid)
-}
-
 func TestUpdateLocalMspCache(t *testing.T) {
 	// reset localMsp to force it to be initialized on the first call
 	localMsp = nil
@@ -90,17 +82,15 @@ func TestNewMSPMgmtMgr(t *testing.T) {
 	cryptoProvider, err := LoadMSPSetupForTesting()
 	require.Nil(t, err)
 
-	// test for nonexistent channel
-	mspMgmtMgr := GetManagerForChain("fake")
-
-	id := GetLocalSigningIdentityOrPanic(cryptoProvider)
+	id, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	require.NotNil(t, id)
 
 	serializedID, err := id.Serialize()
-	if err != nil {
-		t.Fatalf("Serialize should have succeeded, got err %s", err)
-		return
-	}
+	require.NoError(t, err)
+
+	// test for nonexistent channel
+	mspMgmtMgr := GetManagerForChain("fake")
 
 	idBack, err := mspMgmtMgr.DeserializeIdentity(serializedID)
 	require.Error(t, err)
@@ -109,15 +99,6 @@ func TestNewMSPMgmtMgr(t *testing.T) {
 
 	// test for existing channel
 	mspMgmtMgr = GetManagerForChain("testchannelid")
-
-	id = GetLocalSigningIdentityOrPanic(cryptoProvider)
-	require.NotNil(t, id)
-
-	serializedID, err = id.Serialize()
-	if err != nil {
-		t.Fatalf("Serialize should have succeeded, got err %s", err)
-		return
-	}
 
 	idBack, err = mspMgmtMgr.DeserializeIdentity(serializedID)
 	require.NoError(t, err)

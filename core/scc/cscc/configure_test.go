@@ -572,8 +572,9 @@ func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	signer := mgmt.GetLocalSigningIdentityOrPanic(cryptoProvider)
 	localMSP := mgmt.GetLocalMSP(cryptoProvider)
+	signer, err := localMSP.GetDefaultSigningIdentity()
+	require.NoError(t, err)
 	deserManager := peergossip.NewDeserializersManager(localMSP)
 
 	messageCryptoService := peergossip.NewMCS(
