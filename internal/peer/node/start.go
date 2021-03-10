@@ -326,7 +326,6 @@ func serve(args []string) error {
 	policyChecker := policy.NewPolicyChecker(
 		policies.PolicyManagerGetterFunc(peerInstance.GetPolicyManager),
 		mgmt.GetLocalMSP(factory.GetDefault()),
-		mgmt.NewLocalMSPPrincipalGetter(factory.GetDefault()),
 	)
 
 	// startup aclmgmt with default ACL providers (resource based and default 1.0 policies based).

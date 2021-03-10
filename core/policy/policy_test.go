@@ -12,7 +12,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/core/policy/mocks"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
@@ -100,11 +99,11 @@ func TestPolicyCheckerInvalidArgs(t *testing.T) {
 		Identity: []byte("Alice"),
 		Msg:      []byte("msg1"),
 	}
-	pc := NewPolicyChecker(
-		policyManagerGetter,
-		identityDeserializer,
-		&mocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
-	)
+	pc := &policyChecker{
+		channelPolicyManagerGetter: policyManagerGetter,
+		localMSP:                   identityDeserializer,
+		principalGetter:            &mocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
+	}
 
 	// Check that (non-empty channel, empty policy) fails
 	err := pc.CheckPolicy("A", "", nil)
@@ -157,11 +156,11 @@ func TestPolicyChecker(t *testing.T) {
 		Identity: []byte("Alice"),
 		Msg:      []byte("msg1"),
 	}
-	pc := NewPolicyChecker(
-		policyManagerGetter,
-		identityDeserializer,
-		&mocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
-	)
+	pc := &policyChecker{
+		channelPolicyManagerGetter: policyManagerGetter,
+		localMSP:                   identityDeserializer,
+		principalGetter:            &mocks.MockMSPPrincipalGetter{Principal: []byte("Alice")},
+	}
 
 	t.Run("CheckPolicy", func(t *testing.T) {
 		// Validate Alice signatures against channel A's readers
@@ -188,12 +187,12 @@ func TestPolicyChecker(t *testing.T) {
 
 		// Alice is a member of the local MSP, policy check must succeed
 		identityDeserializer.Msg = sProp.ProposalBytes
-		err := pc.CheckPolicyNoChannel(mgmt.Members, sProp)
+		err := pc.CheckPolicyNoChannel(Members, sProp)
 		require.NoError(t, err)
 
 		sProp, _ = protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Bob"), []byte("msg2"))
 		// Bob is not a member of the local MSP, policy check must fail
-		err = pc.CheckPolicyNoChannel(mgmt.Members, sProp)
+		err = pc.CheckPolicyNoChannel(Members, sProp)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Failed deserializing proposal creator during channelless check policy with policy [Members]: [Invalid Identity]")
 	})
@@ -207,7 +206,7 @@ func TestPolicyChecker(t *testing.T) {
 
 		// Alice is a member of the local MSP, policy check must succeed
 		identityDeserializer.Msg = signedData.Data
-		err := pc.CheckPolicyNoChannelBySignedData(mgmt.Admins, []*protoutil.SignedData{signedData})
+		err := pc.CheckPolicyNoChannelBySignedData(Admins, []*protoutil.SignedData{signedData})
 		require.NoError(t, err)
 
 		// CheckPolicyNoChannelBySignedData iterates each signed data and returns an error if any data is invalid
@@ -217,7 +216,7 @@ func TestPolicyChecker(t *testing.T) {
 			Data:      []byte("msg2"),
 			Signature: []byte("msg2"),
 		}
-		err = pc.CheckPolicyNoChannelBySignedData(mgmt.Admins, []*protoutil.SignedData{signedData, signedData2})
+		err = pc.CheckPolicyNoChannelBySignedData(Admins, []*protoutil.SignedData{signedData, signedData2})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed deserializing signed data identity during channelless check policy with policy [Admins]: [Invalid Identity]")
 
@@ -226,9 +225,9 @@ func TestPolicyChecker(t *testing.T) {
 		require.EqualError(t, err, "invalid policy name during channelless check policy. Name must be different from nil.")
 
 		// signed data cannot be nil or empty
-		err = pc.CheckPolicyNoChannelBySignedData(mgmt.Admins, nil)
+		err = pc.CheckPolicyNoChannelBySignedData(Admins, nil)
 		require.EqualError(t, err, "no signed data during channelless check policy with policy [Admins]")
-		err = pc.CheckPolicyNoChannelBySignedData(mgmt.Admins, []*protoutil.SignedData{})
+		err = pc.CheckPolicyNoChannelBySignedData(Admins, []*protoutil.SignedData{})
 		require.EqualError(t, err, "no signed data during channelless check policy with policy [Admins]")
 	})
 }
