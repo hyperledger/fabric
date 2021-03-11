@@ -17,7 +17,7 @@ import (
 
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/hyperledger/fabric/internal/pkg/gateway"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -373,7 +373,7 @@ func TestGlobalConfig(t *testing.T) {
 		DockerKey:  filepath.Join(cwd, "test/vm/tls/key/file"),
 		DockerCA:   filepath.Join(cwd, "test/vm/tls/ca/file"),
 
-		GatewayOptions: gateway.Options{
+		GatewayOptions: config.Options{
 			Enabled:            true,
 			EndorsementTimeout: 10 * time.Second,
 			DialTimeout:        60 * time.Second,
@@ -396,7 +396,7 @@ func TestGlobalConfigDefault(t *testing.T) {
 		ValidatorPoolSize:             runtime.NumCPU(),
 		VMNetworkMode:                 "host",
 		DeliverClientKeepaliveOptions: comm.DefaultKeepaliveOptions,
-		GatewayOptions:                gateway.GetOptions(viper.GetViper()),
+		GatewayOptions:                config.GetOptions(viper.GetViper()),
 	}
 
 	require.Equal(t, expectedConfig, coreConfig)
@@ -451,7 +451,7 @@ func TestPropagateEnvironment(t *testing.T) {
 				Path:                 "/testPath",
 			},
 		},
-		GatewayOptions: gateway.GetOptions(viper.GetViper()),
+		GatewayOptions: config.GetOptions(viper.GetViper()),
 	}
 	require.Equal(t, expectedConfig, coreConfig)
 }

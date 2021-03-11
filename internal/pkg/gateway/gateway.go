@@ -10,6 +10,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"google.golang.org/grpc"
 )
 
@@ -18,7 +19,7 @@ var logger = flogging.MustGetLogger("gateway")
 // Server represents the GRPC server for the Gateway.
 type Server struct {
 	registry *registry
-	options  Options
+	options  config.Options
 }
 
 type EndorserServerAdapter struct {
@@ -30,7 +31,7 @@ func (e *EndorserServerAdapter) ProcessProposal(ctx context.Context, req *peer.S
 }
 
 // CreateServer creates an embedded instance of the Gateway.
-func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, localEndpoint string, localMSPID string, options Options) *Server {
+func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, localEndpoint, localMSPID string, options config.Options) *Server {
 	gwServer := &Server{
 		registry: &registry{
 			localEndorser:       &endorser{client: localEndorser, endpointConfig: &endpointConfig{address: localEndpoint, mspid: localMSPID}},
