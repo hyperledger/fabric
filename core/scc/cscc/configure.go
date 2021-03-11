@@ -26,7 +26,6 @@ import (
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/plugindispatcher"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -39,12 +38,10 @@ func New(
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider,
 	lr plugindispatcher.LifecycleResources,
 	nr plugindispatcher.CollectionAndLifecycleResources,
-	policyChecker policy.PolicyChecker,
 	p *peer.Peer,
 	bccsp bccsp.BCCSP,
 ) *PeerConfiger {
 	return &PeerConfiger{
-		policyChecker:          policyChecker,
 		aclProvider:            aclProvider,
 		deployedCCInfoProvider: deployedCCInfoProvider,
 		legacyLifecycle:        lr,
@@ -61,7 +58,6 @@ func (e *PeerConfiger) Chaincode() shim.Chaincode { return e }
 // configuration transaction coming in from the ordering service, the
 // committer calls this system chaincode to process the transaction.
 type PeerConfiger struct {
-	policyChecker          policy.PolicyChecker
 	aclProvider            aclmgmt.ACLProvider
 	deployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 	legacyLifecycle        plugindispatcher.LifecycleResources

@@ -687,7 +687,6 @@ func serve(args []string) error {
 		lifecycleValidatorCommitter,
 		lsccInst,
 		lifecycleValidatorCommitter,
-		policyChecker,
 		peerInstance,
 		factory.GetDefault(),
 	)
