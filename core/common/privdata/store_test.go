@@ -34,12 +34,21 @@ type (
 func TestNewSimpleCollectionStore(t *testing.T) {
 	mockQueryExecutorFactory := &mock.QueryExecutorFactory{}
 	mockCCInfoProvider := &mock.ChaincodeInfoProvider{}
+	mockIDDeserializerFactory := &mock.IdentityDeserializerFactory{}
 
-	cs := NewSimpleCollectionStore(mockQueryExecutorFactory, mockCCInfoProvider)
+	cs := NewSimpleCollectionStore(mockQueryExecutorFactory, mockCCInfoProvider, mockIDDeserializerFactory)
 	require.NotNil(t, cs)
 	require.Exactly(t, mockQueryExecutorFactory, cs.qeFactory)
 	require.Exactly(t, mockCCInfoProvider, cs.ccInfoProvider)
-	require.NotNil(t, cs.idDeserializerFactory)
+	require.Exactly(t, mockIDDeserializerFactory, cs.idDeserializerFactory)
+	require.Equal(t,
+		&SimpleCollectionStore{
+			qeFactory:             mockQueryExecutorFactory,
+			ccInfoProvider:        mockCCInfoProvider,
+			idDeserializerFactory: mockIDDeserializerFactory,
+		},
+		cs,
+	)
 }
 
 func TestCollectionStore(t *testing.T) {

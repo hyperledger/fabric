@@ -17,10 +17,12 @@ import (
 	"github.com/hyperledger/fabric/core/chaincode/extcc"
 	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
+	"github.com/hyperledger/fabric/core/common/privdata"
 	"github.com/hyperledger/fabric/core/container/ccintf"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/pkg/errors"
 )
 
@@ -105,6 +107,9 @@ func (cs *ChaincodeSupport) LaunchInProc(ccid string) <-chan struct{} {
 
 // HandleChaincodeStream implements ccintf.HandleChaincodeStream for all vms to call with appropriate stream
 func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream) error {
+	var deserializerFactory privdata.IdentityDeserializerFactoryFunc = func(channelID string) msp.IdentityDeserializer {
+		return cs.Peer.Channel(channelID).MSPManager()
+	}
 	handler := &Handler{
 		Invoker:                cs,
 		Keepalive:              cs.Keepalive,
@@ -116,6 +121,7 @@ func (cs *ChaincodeSupport) HandleChaincodeStream(stream ccintf.ChaincodeStream)
 		QueryResponseBuilder:   &QueryResponseGenerator{MaxResultLimit: 100},
 		UUIDGenerator:          UUIDGeneratorFunc(util.GenerateUUID),
 		LedgerGetter:           cs.Peer,
+		IDDeserializerFactory:  deserializerFactory,
 		DeployedCCInfoProvider: cs.DeployedCCInfoProvider,
 		AppConfig:              cs.AppConfig,
 		Metrics:                cs.HandlerMetrics,

@@ -13,7 +13,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -76,13 +75,15 @@ type SimpleCollectionStore struct {
 	idDeserializerFactory IdentityDeserializerFactory
 }
 
-func NewSimpleCollectionStore(qeFactory QueryExecutorFactory, ccInfoProvider ChaincodeInfoProvider) *SimpleCollectionStore {
+func NewSimpleCollectionStore(
+	qeFactory QueryExecutorFactory,
+	ccInfoProvider ChaincodeInfoProvider,
+	idDeserializerFactory IdentityDeserializerFactory,
+) *SimpleCollectionStore {
 	return &SimpleCollectionStore{
-		qeFactory:      qeFactory,
-		ccInfoProvider: ccInfoProvider,
-		idDeserializerFactory: IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-			return mspmgmt.GetManagerForChain(chainID)
-		}),
+		qeFactory:             qeFactory,
+		ccInfoProvider:        ccInfoProvider,
+		idDeserializerFactory: idDeserializerFactory,
 	}
 }
 

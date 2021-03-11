@@ -32,7 +32,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/transientstore"
 	"github.com/hyperledger/fabric/gossip/api"
-	gossipprivdata "github.com/hyperledger/fabric/gossip/privdata"
 	gossipservice "github.com/hyperledger/fabric/gossip/service"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
@@ -353,15 +352,16 @@ func (p *Peer) createChannel(
 	}
 	channel.store = store
 
-	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider)
+	var idDeserializerFactory privdata.IdentityDeserializerFactoryFunc = func(channelID string) msp.IdentityDeserializer {
+		return p.Channel(channelID).MSPManager()
+	}
+	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider, idDeserializerFactory)
 	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChannelID(), ordererSource, store, gossipservice.Support{
-		Validator:       validator,
-		Committer:       committer,
-		CollectionStore: simpleCollectionStore,
-		IdDeserializeFactory: gossipprivdata.IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-			return mspmgmt.GetManagerForChain(chainID)
-		}),
-		CapabilityProvider: channel,
+		Validator:            validator,
+		Committer:            committer,
+		CollectionStore:      simpleCollectionStore,
+		IdDeserializeFactory: idDeserializerFactory,
+		CapabilityProvider:   channel,
 	})
 
 	p.mutex.Lock()
