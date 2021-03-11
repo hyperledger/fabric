@@ -115,6 +115,8 @@ type Handler struct {
 	QueryResponseBuilder QueryResponseBuilder
 	// LedgerGetter is used to get the ledger associated with a channel
 	LedgerGetter LedgerGetter
+	// IDDeserializerFactory is provided to the private data collection store
+	IDDeserializerFactory privdata.IdentityDeserializerFactory
 	// DeployedCCInfoProvider is used to initialize the Collection Store
 	DeployedCCInfoProvider ledger.DeployedChaincodeInfoProvider
 	// UUIDGenerator is used to generate UUIDs
@@ -1203,6 +1205,7 @@ func (h *Handler) getCollectionStore(channelID string) privdata.CollectionStore 
 	return privdata.NewSimpleCollectionStore(
 		h.LedgerGetter.GetLedger(channelID),
 		h.DeployedCCInfoProvider,
+		h.IDDeserializerFactory,
 	)
 }
 
