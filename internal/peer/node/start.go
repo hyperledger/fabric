@@ -819,6 +819,7 @@ func serve(args []string) error {
 					&gateway.EndorserServerAdapter{Server: serverEndorser},
 					discoveryService,
 					peerInstance.GossipService.SelfMembershipInfo().Endpoint,
+					coreConfig.LocalMSPID,
 					coreConfig.GatewayOptions,
 				),
 			)

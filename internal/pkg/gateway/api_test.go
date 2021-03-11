@@ -30,6 +30,8 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // The following private interfaces are here purely to prevent counterfeiter creating an import cycle in the unit test
@@ -61,15 +63,34 @@ type networkMember struct {
 	mspid    string
 }
 
+type endpointDef struct {
+	proposalResponseValue   string
+	proposalResponseStatus  int32
+	proposalResponseMessage string
+	proposalError           error
+	ordererResponse         string
+	ordererStatus           int32
+	ordererSendError        error
+	ordererRecvError        error
+}
+
+var defaultEndpointDef = &endpointDef{
+	proposalResponseValue:  "mock_response",
+	proposalResponseStatus: 200,
+	ordererResponse:        "mock_orderer_response",
+	ordererStatus:          200,
+}
+
 type testDef struct {
-	name                 string
-	plan                 endorsementPlan
-	setupDiscovery       func(dm *mocks.Discovery)
-	setupRegistry        func(reg *registry)
-	processProposalError error
-	signedProposal       *peer.SignedProposal
-	localResponse        string
-	errString            string
+	name               string
+	plan               endorsementPlan
+	setupDiscovery     func(dm *mocks.Discovery)
+	setupRegistry      func(reg *registry)
+	signedProposal     *peer.SignedProposal
+	localResponse      string
+	errString          string
+	errDetails         []*pb.EndpointError
+	endpointDefinition *endpointDef
 }
 
 type contextKey string
@@ -92,7 +113,15 @@ func TestGateway(t *testing.T) {
 		if localResponse == "" {
 			localResponse = "mock_response"
 		}
-		localEndorser.ProcessProposalReturns(createProposalResponse(t, localResponse), tt.processProposalError)
+		epDef := tt.endpointDefinition
+		if epDef == nil {
+			epDef = defaultEndpointDef
+		}
+		if epDef.proposalError != nil {
+			localEndorser.ProcessProposalReturns(nil, epDef.proposalError)
+		} else {
+			localEndorser.ProcessProposalReturns(createProposalResponse(t, localResponse, 200, ""), nil)
+		}
 
 		ca, err := tlsgen.NewCA()
 		require.NoError(t, err)
@@ -127,9 +156,9 @@ func TestGateway(t *testing.T) {
 			EndorsementTimeout: endorsementTimeout,
 		}
 
-		server := CreateServer(localEndorser, disc, "localhost:7051", options)
+		server := CreateServer(localEndorser, disc, "localhost:7051", "msp1", options)
 
-		server.registry.endpointFactory = createEndpointFactory(t, "mock_response", "mock_orderer_response")
+		server.registry.endpointFactory = createEndpointFactory(t, epDef)
 
 		require.NoError(t, err, "Failed to sign the proposal")
 		ctx := context.WithValue(context.Background(), contextKey("orange"), "apples")
@@ -159,7 +188,7 @@ func TestGateway(t *testing.T) {
 			{
 				name:           "missing signed proposal",
 				plan:           endorsementPlan{},
-				errString:      "failed to unpack channel header: a signed proposal is required",
+				errString:      "failed to unpack transaction proposal: a signed proposal is required",
 				signedProposal: nil,
 			},
 			{
@@ -178,9 +207,33 @@ func TestGateway(t *testing.T) {
 				plan: endorsementPlan{
 					"g1": {"localhost:7051"},
 				},
-				signedProposal:       validSignedProposal,
-				processProposalError: fmt.Errorf("mumbo-jumbo"),
-				errString:            "mumbo-jumbo",
+				signedProposal: validSignedProposal,
+				endpointDefinition: &endpointDef{
+					proposalError: status.Error(codes.Aborted, "mumbo-jumbo"),
+				},
+				errString: "rpc error: code = Aborted desc = failed to evaluate transaction",
+				errDetails: []*pb.EndpointError{{
+					Address: "localhost:7051",
+					MspId:   "msp1",
+					Message: "rpc error: code = Aborted desc = mumbo-jumbo",
+				}},
+			},
+			{
+				name: "process proposal chaincode error",
+				plan: endorsementPlan{
+					"g1": {"peer1:8051"},
+				},
+				endpointDefinition: &endpointDef{
+					proposalResponseStatus:  400,
+					proposalResponseMessage: "Mock chaincode error",
+				},
+				signedProposal: validSignedProposal,
+				errString:      "rpc error: code = Aborted desc = transaction evaluation error",
+				errDetails: []*pb.EndpointError{{
+					Address: "peer1:8051",
+					MspId:   "msp1",
+					Message: "error 400, Mock chaincode error",
+				}},
 			},
 			{
 				name: "dialing endorser endpoint fails",
@@ -223,13 +276,21 @@ func TestGateway(t *testing.T) {
 
 				if tt.errString != "" {
 					require.ErrorContains(t, err, tt.errString)
+					s, ok := status.FromError(err)
+					require.True(t, ok, "Expected a gRPC status error")
+					require.Len(t, s.Details(), len(tt.errDetails))
+					for i, detail := range tt.errDetails {
+						require.Equal(t, detail.Message, s.Details()[i].(*pb.EndpointError).Message)
+						require.Equal(t, detail.MspId, s.Details()[i].(*pb.EndpointError).MspId)
+						require.Equal(t, detail.Address, s.Details()[i].(*pb.EndpointError).Address)
+					}
 					require.Nil(t, result)
 					return
 				}
 
 				// test the assertions
 
-				require.NoError(t, err, "Failed to evaluate the proposal")
+				require.NoError(t, err)
 				// assert the result is the payload from the proposal response returned by the local endorser
 				require.Equal(t, []byte("mock_response"), result.Value, "Incorrect result")
 
@@ -316,9 +377,33 @@ func TestGateway(t *testing.T) {
 				plan: endorsementPlan{
 					"g1": {"localhost:7051"},
 				},
-				signedProposal:       validSignedProposal,
-				processProposalError: fmt.Errorf("mumbo-jumbo"),
-				errString:            "mumbo-jumbo",
+				signedProposal: validSignedProposal,
+				endpointDefinition: &endpointDef{
+					proposalError: status.Error(codes.Aborted, "wibble"),
+				},
+				errString: "failed to endorse transaction",
+				errDetails: []*pb.EndpointError{{
+					Address: "localhost:7051",
+					MspId:   "msp1",
+					Message: "rpc error: code = Aborted desc = wibble",
+				}},
+			},
+			{
+				name: "process proposal chaincode error",
+				plan: endorsementPlan{
+					"g1": {"peer1:8051"},
+				},
+				endpointDefinition: &endpointDef{
+					proposalResponseStatus:  400,
+					proposalResponseMessage: "Mock chaincode error",
+				},
+				signedProposal: validSignedProposal,
+				errString:      "rpc error: code = Aborted desc = failed to endorse transaction",
+				errDetails: []*pb.EndpointError{{
+					Address: "peer1:8051",
+					MspId:   "msp1",
+					Message: "error 400, Mock chaincode error",
+				}},
 			},
 		}
 		for _, tt := range tests {
@@ -329,12 +414,20 @@ func TestGateway(t *testing.T) {
 
 				if tt.errString != "" {
 					require.ErrorContains(t, err, tt.errString)
+					s, ok := status.FromError(err)
+					require.True(t, ok, "Expected a gRPC status error")
+					require.Len(t, s.Details(), len(tt.errDetails))
+					for i, detail := range tt.errDetails {
+						require.Equal(t, detail.Message, s.Details()[i].(*pb.EndpointError).Message)
+						require.Equal(t, detail.MspId, s.Details()[i].(*pb.EndpointError).MspId)
+						require.Equal(t, detail.Address, s.Details()[i].(*pb.EndpointError).Address)
+					}
 					require.Nil(t, preparedTxn)
 					return
 				}
 
 				// test the assertions
-				require.NoError(t, err, "Failed to evaluate the proposal")
+				require.NoError(t, err)
 				// assert the preparedTxn is the payload from the proposal response
 				require.Equal(t, []byte("mock_response"), preparedTxn.Response.Value, "Incorrect response")
 
@@ -421,14 +514,16 @@ func TestGateway(t *testing.T) {
 					"g1": {"localhost:7051"},
 				},
 				signedProposal: validSignedProposal,
-				setupRegistry: func(reg *registry) {
-					reg.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
-						abc := &mocks.ABClient{}
-						abc.SendReturns(fmt.Errorf("Orderer says no!"))
-						return abc, nil
-					}
+				endpointDefinition: &endpointDef{
+					proposalResponseStatus: 200,
+					ordererSendError:       status.Error(codes.Internal, "Orderer says no!"),
 				},
-				errString: "failed to send envelope to orderer: Orderer says no!",
+				errString: "rpc error: code = Aborted desc = failed to send transaction to orderer",
+				errDetails: []*pb.EndpointError{{
+					Address: "orderer:7050",
+					MspId:   "msp1",
+					Message: "rpc error: code = Internal desc = Orderer says no!",
+				}},
 			},
 			{
 				name: "receive from orderer fails",
@@ -436,14 +531,16 @@ func TestGateway(t *testing.T) {
 					"g1": {"localhost:7051"},
 				},
 				signedProposal: validSignedProposal,
-				setupRegistry: func(reg *registry) {
-					reg.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
-						abc := &mocks.ABClient{}
-						abc.RecvReturns(nil, fmt.Errorf("Orderer not happy!"))
-						return abc, nil
-					}
+				endpointDefinition: &endpointDef{
+					proposalResponseStatus: 200,
+					ordererRecvError:       status.Error(codes.FailedPrecondition, "Orderer not happy!"),
 				},
-				errString: "Orderer not happy!",
+				errString: "rpc error: code = Aborted desc = failed to receive response from orderer",
+				errDetails: []*pb.EndpointError{{
+					Address: "orderer:7050",
+					MspId:   "msp1",
+					Message: "rpc error: code = FailedPrecondition desc = Orderer not happy!",
+				}},
 			},
 			{
 				name: "orderer returns nil",
@@ -467,7 +564,7 @@ func TestGateway(t *testing.T) {
 
 				// first call endorse to prepare the tx
 				preparedTx, err := server.Endorse(ctx, &pb.ProposedTransaction{Proposal: tt.signedProposal})
-				require.NoError(t, err, "Failed to prepare the transaction")
+				require.NoError(t, err)
 
 				// sign the envelope
 				preparedTx.Envelope.Signature = []byte("mysignature")
@@ -478,10 +575,18 @@ func TestGateway(t *testing.T) {
 
 				if tt.errString != "" {
 					require.ErrorContains(t, err, tt.errString)
+					s, ok := status.FromError(err)
+					require.True(t, ok, "Expected a gRPC status error")
+					require.Len(t, s.Details(), len(tt.errDetails))
+					for i, detail := range tt.errDetails {
+						require.Equal(t, detail.Message, s.Details()[i].(*pb.EndpointError).Message)
+						require.Equal(t, detail.MspId, s.Details()[i].(*pb.EndpointError).MspId)
+						require.Equal(t, detail.Address, s.Details()[i].(*pb.EndpointError).Address)
+					}
 					return
 				}
 
-				require.NoError(t, err, "Failed to commit the transaction")
+				require.NoError(t, err)
 				require.Equal(t, 1, cs.SendCallCount())
 			})
 		}
@@ -489,20 +594,25 @@ func TestGateway(t *testing.T) {
 }
 
 func TestNilArgs(t *testing.T) {
-	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, "localhost:7051", GetOptions(viper.New()))
+	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, "localhost:7051", "msp1", GetOptions(viper.New()))
 	ctx := context.Background()
 
 	_, err := server.Evaluate(ctx, nil)
-	require.ErrorContains(t, err, "a proposed transaction is required")
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a proposed transaction is required"))
 
 	_, err = server.Endorse(ctx, nil)
-	require.ErrorContains(t, err, "a proposed transaction is required")
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a proposed transaction is required"))
 
 	err = server.Submit(nil, nil)
-	require.ErrorContains(t, err, "a signed prepared transaction is required")
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a signed prepared transaction is required"))
 
 	err = server.Submit(&pb.PreparedTransaction{}, nil)
-	require.ErrorContains(t, err, "a submit server is required")
+	require.ErrorIs(t, err, status.Error(codes.Internal, "a submit server is required"))
+}
+
+func TestRpcErrorWithBadDetails(t *testing.T) {
+	err := rpcError(codes.InvalidArgument, "terrible error", nil)
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "terrible error"))
 }
 
 func mockDiscovery(t *testing.T, plan endorsementPlan, members []networkMember, config *dp.ConfigResult) *mocks.Discovery {
@@ -566,20 +676,25 @@ func createMockPeer(t *testing.T, name string) *dp.Peer {
 	}
 }
 
-func createEndpointFactory(t *testing.T, proposalResponse string, broadcastResponse string) *endpointFactory {
+func createEndpointFactory(t *testing.T, definition *endpointDef) *endpointFactory {
 	return &endpointFactory{
 		timeout: 5 * time.Second,
 		connectEndorser: func(_ *grpc.ClientConn) peer.EndorserClient {
 			e := &mocks.EndorserClient{}
-			e.ProcessProposalReturns(createProposalResponse(t, proposalResponse), nil)
+			if definition.proposalError != nil {
+				e.ProcessProposalReturns(nil, definition.proposalError)
+			} else {
+				e.ProcessProposalReturns(createProposalResponse(t, definition.proposalResponseValue, definition.proposalResponseStatus, definition.proposalResponseMessage), nil)
+			}
 			return e
 		},
 		connectOrderer: func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
 			abc := &mocks.ABClient{}
+			abc.SendReturns(definition.ordererSendError)
 			abc.RecvReturns(&ab.BroadcastResponse{
-				Info:   broadcastResponse,
-				Status: 200,
-			}, nil)
+				Info:   definition.ordererResponse,
+				Status: cp.Status(definition.ordererStatus),
+			}, definition.ordererRecvError)
 			return abc, nil
 		},
 		dialer: func(_ context.Context, _ string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
@@ -609,10 +724,11 @@ func createProposal(t *testing.T, channel string, chaincode string, args ...[]by
 	return proposal
 }
 
-func createProposalResponse(t *testing.T, value string) *peer.ProposalResponse {
+func createProposalResponse(t *testing.T, value string, status int32, errMessage string) *peer.ProposalResponse {
 	response := &peer.Response{
-		Status:  200,
+		Status:  status,
 		Payload: []byte(value),
+		Message: errMessage,
 	}
 	action := &peer.ChaincodeAction{
 		Response: response,

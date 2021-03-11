@@ -30,10 +30,10 @@ func (e *EndorserServerAdapter) ProcessProposal(ctx context.Context, req *peer.S
 }
 
 // CreateServer creates an embedded instance of the Gateway.
-func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, selfEndpoint string, options Options) *Server {
+func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, localEndpoint string, localMSPID string, options Options) *Server {
 	gwServer := &Server{
 		registry: &registry{
-			localEndorser:       &endorser{client: localEndorser, endpointConfig: &endpointConfig{address: selfEndpoint}},
+			localEndorser:       &endorser{client: localEndorser, endpointConfig: &endpointConfig{address: localEndpoint, mspid: localMSPID}},
 			discovery:           discovery,
 			logger:              logger,
 			endpointFactory:     &endpointFactory{timeout: options.EndorsementTimeout},
