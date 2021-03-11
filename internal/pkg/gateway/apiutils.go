@@ -9,9 +9,12 @@ package gateway
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/protoutil"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func getValueFromResponse(response *peer.ProposalResponse) (*gateway.Result, error) {
@@ -65,4 +68,15 @@ func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposa
 	}
 
 	return channelHeader.ChannelId, spec.ChaincodeSpec.ChaincodeId.Name, nil
+}
+
+func rpcError(code codes.Code, message string, details ...proto.Message) error {
+	st := status.New(code, message)
+	if len(details) != 0 {
+		std, err := st.WithDetails(details...)
+		if err == nil {
+			return std.Err()
+		} // otherwise return the error without the details
+	}
+	return st.Err()
 }
