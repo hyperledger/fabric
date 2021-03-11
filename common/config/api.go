@@ -17,9 +17,3 @@ type Config interface {
 	// ProposeConfigUpdate attempts to validate a new configtx against the current config state
 	ProposeConfigUpdate(configtx *cb.Envelope) (*cb.ConfigEnvelope, error)
 }
-
-// Manager provides access to the resource config
-type Manager interface {
-	// GetChannelConfig defines methods that are related to channel configuration
-	GetChannelConfig(channel string) Config
-}

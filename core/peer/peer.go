@@ -14,7 +14,6 @@ import (
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	cc "github.com/hyperledger/fabric/common/config"
 	"github.com/hyperledger/fabric/common/deliver"
 	"github.com/hyperledger/fabric/common/flogging"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
@@ -142,30 +141,6 @@ func (flbs fileLedgerBlockStore) RetrieveBlocks(startBlockNumber uint64) (common
 }
 
 func (flbs fileLedgerBlockStore) Shutdown() {}
-
-// NewConfigSupport returns
-func NewConfigSupport(peer *Peer) cc.Manager {
-	return &configSupport{
-		peer: peer,
-	}
-}
-
-type configSupport struct {
-	peer *Peer
-}
-
-// GetChannelConfig returns an instance of a object that represents
-// current channel configuration tree of the specified channel. The
-// ConfigProto method of the returned object can be used to get the
-// proto representing the channel configuration.
-func (c *configSupport) GetChannelConfig(cid string) cc.Config {
-	channel := c.peer.Channel(cid)
-	if channel == nil {
-		peerLogger.Errorf("[channel %s] channel not associated with this peer", cid)
-		return nil
-	}
-	return channel.Resources().ConfigtxValidator()
-}
 
 // A Peer holds references to subsystems and channels associated with a Fabric peer.
 type Peer struct {
