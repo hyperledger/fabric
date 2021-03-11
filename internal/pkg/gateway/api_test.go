@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	idmocks "github.com/hyperledger/fabric/internal/pkg/identity/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -120,7 +121,7 @@ func TestGateway(t *testing.T) {
 
 		ca, err := tlsgen.NewCA()
 		require.NoError(t, err)
-		config := &dp.ConfigResult{
+		configResult := &dp.ConfigResult{
 			Orderers: map[string]*dp.Endpoints{
 				"msp1": {
 					Endpoint: []*dp.Endpoint{
@@ -141,18 +142,17 @@ func TestGateway(t *testing.T) {
 			{"id3", "peer2:9051", "msp1"},
 		}
 
-		disc := mockDiscovery(t, tt.plan, members, config)
+		disc := mockDiscovery(t, tt.plan, members, configResult)
 		if tt.setupDiscovery != nil {
 			tt.setupDiscovery(disc)
 		}
 
-		options := Options{
+		options := config.Options{
 			Enabled:            true,
 			EndorsementTimeout: endorsementTimeout,
 		}
 
 		server := CreateServer(localEndorser, disc, "localhost:7051", "msp1", options)
-
 		server.registry.endpointFactory = createEndpointFactory(t, epDef)
 
 		require.NoError(t, err, "Failed to sign the proposal")
@@ -589,7 +589,7 @@ func TestGateway(t *testing.T) {
 }
 
 func TestNilArgs(t *testing.T) {
-	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, "localhost:7051", "msp1", GetOptions(viper.New()))
+	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, "localhost:7051", "msp1", config.GetOptions(viper.New()))
 	ctx := context.Background()
 
 	_, err := server.Evaluate(ctx, nil)

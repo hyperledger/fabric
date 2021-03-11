@@ -30,7 +30,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/hyperledger/fabric/internal/pkg/gateway"
+	gatewayconfig "github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
@@ -213,7 +213,7 @@ type Config struct {
 	// The gateway service is used by client SDKs to
 	// interact with fabric networks
 
-	GatewayOptions gateway.Options
+	GatewayOptions gatewayconfig.Options
 }
 
 // GlobalConfig obtains a set of configuration from viper, build and returns
@@ -273,7 +273,7 @@ func (c *Config) load() error {
 		c.DeliverClientKeepaliveOptions.ClientTimeout = viper.GetDuration("peer.keepalive.deliveryClient.timeout")
 	}
 
-	c.GatewayOptions = gateway.GetOptions(viper.GetViper())
+	c.GatewayOptions = gatewayconfig.GetOptions(viper.GetViper())
 
 	c.VMEndpoint = viper.GetString("vm.endpoint")
 	c.VMDockerTLSEnabled = viper.GetBool("vm.docker.tls.enabled")
