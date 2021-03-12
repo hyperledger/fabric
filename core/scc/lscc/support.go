@@ -11,13 +11,14 @@ import (
 	"github.com/hyperledger/fabric/common/cauthdsl"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
 type SupportImpl struct {
-	GetMSPIDs MSPIDsGetter
+	GetMSPIDs               MSPIDsGetter
+	GetIdentityDeserializer func(chainID string) msp.IdentityDeserializer
 }
 
 // PutChaincodeToLocalStorage stores the supplied chaincode
@@ -64,7 +65,6 @@ func (s *SupportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.C
 		if err != nil {
 			return nil, errors.Errorf("error marshalling default instantiation policy")
 		}
-
 	}
 	return ip, nil
 }
@@ -73,11 +73,11 @@ func (s *SupportImpl) GetInstantiationPolicy(channel string, ccpack ccprovider.C
 // complies with the supplied instantiation policy
 func (s *SupportImpl) CheckInstantiationPolicy(signedProp *pb.SignedProposal, chainName string, instantiationPolicy []byte) error {
 	// create a policy object from the policy bytes
-	mgr := mgmt.GetManagerForChain(chainName)
-	if mgr == nil {
+	idd := s.GetIdentityDeserializer(chainName)
+	if idd == nil {
 		return errors.Errorf("error checking chaincode instantiation policy: MSP manager for channel %s not found", chainName)
 	}
-	npp := cauthdsl.NewPolicyProvider(mgr)
+	npp := cauthdsl.NewPolicyProvider(idd)
 	instPol, _, err := npp.NewPolicy(instantiationPolicy)
 	if err != nil {
 		return err

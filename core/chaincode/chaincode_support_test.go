@@ -214,6 +214,9 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 		BuiltinSCCs: map[string]struct{}{"lscc": {}},
 		Support: &lscc.SupportImpl{
 			GetMSPIDs: peerInstance.GetMSPIDs,
+			GetIdentityDeserializer: func(channelName string) msp.IdentityDeserializer {
+				return mspmgmt.GetManagerForChain(channelName)
+			},
 		},
 		SCCProvider:      &lscc.PeerShim{Peer: peerInstance},
 		ACLProvider:      &aclmocks.DefaultACLProvider{},

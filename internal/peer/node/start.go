@@ -213,10 +213,6 @@ func serve(args []string) error {
 
 	platformRegistry := platforms.NewRegistry(platforms.SupportedPlatforms...)
 
-	identityDeserializerFactory := func(chainID string) msp.IdentityDeserializer {
-		return mgmt.GetManagerForChain(chainID)
-	}
-
 	opsSystem := newOperationsSystem(coreConfig)
 	err = opsSystem.Start()
 	if err != nil {
@@ -227,24 +223,6 @@ func serve(args []string) error {
 	metricsProvider := opsSystem.Provider
 	logObserver := floggingmetrics.NewObserver(metricsProvider)
 	flogging.SetObserver(logObserver)
-
-	mspID := coreConfig.LocalMSPID
-	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
-
-	signingIdentity, err := localMSP.GetDefaultSigningIdentity()
-	if err != nil {
-		logger.Panicf("Could not get the default signing identity from the local MSP: [%+v]", err)
-	}
-	signingIdentityBytes, err := signingIdentity.Serialize()
-	if err != nil {
-		logger.Panicf("Failed to serialize the signing identity: %v", err)
-	}
-
-	membershipInfoProvider := privdata.NewMembershipInfoProvider(
-		mspID,
-		createSelfSignedData(signingIdentity),
-		identityDeserializerFactory,
-	)
 
 	chaincodeInstallPath := filepath.Join(coreconfig.GetPath("peer.fileSystemPath"), "lifecycle", "chaincodes")
 	ccStore := persistence.NewStore(chaincodeInstallPath)
@@ -311,6 +289,31 @@ func serve(args []string) error {
 		CryptoProvider:           factory.GetDefault(),
 		OrdererEndpointOverrides: deliverServiceConfig.OrdererEndpointOverrides,
 	}
+
+	identityDeserializerFactory := func(channelName string) msp.IdentityDeserializer {
+		if channel := peerInstance.Channel(channelName); channel != nil {
+			return channel.MSPManager()
+		}
+		return nil
+	}
+
+	mspID := coreConfig.LocalMSPID
+	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
+
+	signingIdentity, err := localMSP.GetDefaultSigningIdentity()
+	if err != nil {
+		logger.Panicf("Could not get the default signing identity from the local MSP: [%+v]", err)
+	}
+	signingIdentityBytes, err := signingIdentity.Serialize()
+	if err != nil {
+		logger.Panicf("Failed to serialize the signing identity: %v", err)
+	}
+
+	membershipInfoProvider := privdata.NewMembershipInfoProvider(
+		mspID,
+		createSelfSignedData(signingIdentity),
+		identityDeserializerFactory,
+	)
 
 	expirationLogger := flogging.MustGetLogger("certmonitor")
 	crypto.TrackExpiration(
@@ -593,7 +596,8 @@ func serve(args []string) error {
 	lsccInst := &lscc.SCC{
 		BuiltinSCCs: builtinSCCs,
 		Support: &lscc.SupportImpl{
-			GetMSPIDs: peerInstance.GetMSPIDs,
+			GetMSPIDs:               peerInstance.GetMSPIDs,
+			GetIdentityDeserializer: identityDeserializerFactory,
 		},
 		SCCProvider:        &lscc.PeerShim{Peer: peerInstance},
 		ACLProvider:        aclProvider,
