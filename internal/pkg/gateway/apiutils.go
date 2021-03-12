@@ -10,15 +10,14 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func getValueFromResponse(response *peer.ProposalResponse) (*gateway.Result, error) {
-	var retVal []byte
+func getTransactionResponse(response *peer.ProposalResponse) (*peer.Response, error) {
+	var retVal *peer.Response
 
 	if response != nil && response.Payload != nil {
 		payload, err := protoutil.UnmarshalProposalResponsePayload(response.Payload)
@@ -35,11 +34,11 @@ func getValueFromResponse(response *peer.ProposalResponse) (*gateway.Result, err
 			if extension.Response.Status < 200 || extension.Response.Status >= 400 {
 				return nil, fmt.Errorf("error %d, %s", extension.Response.Status, extension.Response.Message)
 			}
-			retVal = extension.Response.Payload
+			retVal = extension.Response
 		}
 	}
 
-	return &gateway.Result{Value: retVal}, nil
+	return retVal, nil
 }
 
 func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposal) (string, string, error) {

@@ -25,12 +25,12 @@ type endorserResponse struct {
 }
 
 // Evaluate will invoke the transaction function as specified in the SignedProposal
-func (gs *Server) Evaluate(ctx context.Context, proposedTransaction *gp.ProposedTransaction) (*gp.Result, error) {
-	if proposedTransaction == nil {
-		return nil, status.Error(codes.InvalidArgument, "a proposed transaction is required")
+func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*gp.EvaluateResponse, error) {
+	if request == nil {
+		return nil, status.Error(codes.InvalidArgument, "an evaluate request is required")
 	}
-	signedProposal := proposedTransaction.Proposal
-	channel, chaincodeID, err := getChannelAndChaincodeFromSignedProposal(proposedTransaction.Proposal)
+	signedProposal := request.GetProposedTransaction()
+	channel, chaincodeID, err := getChannelAndChaincodeFromSignedProposal(signedProposal)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
 	}
@@ -40,7 +40,7 @@ func (gs *Server) Evaluate(ctx context.Context, proposedTransaction *gp.Proposed
 		return nil, status.Errorf(codes.Unavailable, "%s", err)
 	}
 	if len(endorsers) == 0 {
-		return nil, status.Errorf(codes.NotFound, "no endorsing peers found for channel: %s", proposedTransaction.ChannelId)
+		return nil, status.Errorf(codes.NotFound, "no endorsing peers found for channel: %s", request.ChannelId)
 	}
 
 	endorser := endorsers[0] // TODO choose suitable peer based on block height, etc (future user story)
@@ -53,7 +53,7 @@ func (gs *Server) Evaluate(ctx context.Context, proposedTransaction *gp.Proposed
 		)
 	}
 
-	value, err := getValueFromResponse(response)
+	retVal, err := getTransactionResponse(response)
 	if err != nil {
 		return nil, rpcError(
 			codes.Aborted,
@@ -61,16 +61,19 @@ func (gs *Server) Evaluate(ctx context.Context, proposedTransaction *gp.Proposed
 			&gp.EndpointError{Address: endorser.address, MspId: endorser.mspid, Message: err.Error()},
 		)
 	}
-	return value, nil
+	evaluateResponse := &gp.EvaluateResponse{
+		Result: retVal,
+	}
+	return evaluateResponse, nil
 }
 
 // Endorse will collect endorsements by invoking the transaction function specified in the SignedProposal against
 // sufficient Peers to satisfy the endorsement policy.
-func (gs *Server) Endorse(ctx context.Context, proposedTransaction *gp.ProposedTransaction) (*gp.PreparedTransaction, error) {
-	if proposedTransaction == nil {
-		return nil, status.Error(codes.InvalidArgument, "a proposed transaction is required")
+func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.EndorseResponse, error) {
+	if request == nil {
+		return nil, status.Error(codes.InvalidArgument, "an endorse request is required")
 	}
-	signedProposal := proposedTransaction.Proposal
+	signedProposal := request.GetProposedTransaction()
 	if signedProposal == nil {
 		return nil, status.Error(codes.InvalidArgument, "the proposed transaction must contain a signed proposal")
 	}
@@ -78,7 +81,7 @@ func (gs *Server) Endorse(ctx context.Context, proposedTransaction *gp.ProposedT
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
 	}
-	channel, chaincodeID, err := getChannelAndChaincodeFromSignedProposal(proposedTransaction.Proposal)
+	channel, chaincodeID, err := getChannelAndChaincodeFromSignedProposal(signedProposal)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
 	}
@@ -133,42 +136,41 @@ func (gs *Server) Endorse(ctx context.Context, proposedTransaction *gp.ProposedT
 		return nil, status.Errorf(codes.Aborted, "failed to assemble transaction: %s", err)
 	}
 
-	retVal, err := getValueFromResponse(responses[0])
+	retVal, err := getTransactionResponse(responses[0])
 	if err != nil {
-		return nil, status.Errorf(codes.Aborted, "failed to extract value from response payload: %s", err)
+		return nil, status.Errorf(codes.Aborted, "failed to extract transaction response: %s", err)
 	}
 
-	preparedTxn := &gp.PreparedTransaction{
-		TxId:      proposedTransaction.TxId,
-		ChannelId: channel,
-		Response:  retVal,
-		Envelope:  env,
+	endorseResponse := &gp.EndorseResponse{
+		Result:              retVal,
+		PreparedTransaction: env,
 	}
-	return preparedTxn, nil
+	return endorseResponse, nil
 }
 
 // Submit will send the signed transaction to the ordering service.  The output stream will close
 // once the transaction is committed on a sufficient number of remoteEndorsers according to a defined policy.
-func (gs *Server) Submit(txn *gp.PreparedTransaction, cs gp.Gateway_SubmitServer) error {
+func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.SubmitResponse, error) {
+	if request == nil {
+		return nil, status.Error(codes.InvalidArgument, "a submit request is required")
+	}
+	txn := request.GetPreparedTransaction()
 	if txn == nil {
-		return status.Error(codes.InvalidArgument, "a signed prepared transaction is required")
+		return nil, status.Error(codes.InvalidArgument, "a signed prepared transaction is required")
 	}
-	if cs == nil {
-		return status.Error(codes.Internal, "a submit server is required")
-	}
-	orderers, err := gs.registry.orderers(txn.ChannelId)
+	orderers, err := gs.registry.orderers(request.ChannelId)
 	if err != nil {
-		return status.Errorf(codes.Unavailable, "%s", err)
+		return nil, status.Errorf(codes.Unavailable, "%s", err)
 	}
 
 	if len(orderers) == 0 {
-		return status.Errorf(codes.NotFound, "no broadcastClients discovered")
+		return nil, status.Errorf(codes.NotFound, "no broadcastClients discovered")
 	}
 
 	orderer := orderers[0] // send to first orderer for now
 	logger.Info("Submitting txn to orderer")
-	if err := orderer.client.Send(txn.Envelope); err != nil {
-		return rpcError(
+	if err := orderer.client.Send(txn); err != nil {
+		return nil, rpcError(
 			codes.Aborted,
 			"failed to send transaction to orderer",
 			&gp.EndpointError{Address: orderer.address, MspId: orderer.mspid, Message: err.Error()},
@@ -177,7 +179,7 @@ func (gs *Server) Submit(txn *gp.PreparedTransaction, cs gp.Gateway_SubmitServer
 
 	response, err := orderer.client.Recv()
 	if err != nil {
-		return rpcError(
+		return nil, rpcError(
 			codes.Aborted,
 			"failed to receive response from orderer",
 			&gp.EndpointError{Address: orderer.address, MspId: orderer.mspid, Message: err.Error()},
@@ -185,10 +187,16 @@ func (gs *Server) Submit(txn *gp.PreparedTransaction, cs gp.Gateway_SubmitServer
 	}
 
 	if response == nil {
-		return status.Error(codes.Aborted, "received nil response from orderer")
+		return nil, status.Error(codes.Aborted, "received nil response from orderer")
 	}
 
-	return cs.Send(&gp.Event{
-		Value: []byte(response.Info),
-	})
+	return &gp.SubmitResponse{}, nil
+}
+
+// CommitStatus will something something.
+func (gs *Server) CommitStatus(ctx context.Context, request *gp.CommitStatusRequest) (*gp.CommitStatusResponse, error) {
+	if request == nil {
+		return nil, status.Error(codes.InvalidArgument, "a commit status request is required")
+	}
+	return nil, status.Error(codes.Unimplemented, "Not implemented")
 }

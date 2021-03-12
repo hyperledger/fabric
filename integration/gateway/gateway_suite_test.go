@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/integration"
@@ -56,18 +55,12 @@ func StartPort() int {
 	return integration.GatewayBasePort.StartPortForNode()
 }
 
-func NewProposedTransaction(signingIdentity *nwo.SigningIdentity, channelName, chaincodeName, transactionName string, args ...[]byte) *gateway.ProposedTransaction {
-	proposal, txnID := newProposalProto(signingIdentity, channelName, chaincodeName, transactionName, args...)
+func NewProposedTransaction(signingIdentity *nwo.SigningIdentity, channelName, chaincodeName, transactionName string, args ...[]byte) (*peer.SignedProposal, string) {
+	proposal, transactionID := newProposalProto(signingIdentity, channelName, chaincodeName, transactionName, args...)
 	signedProposal, err := protoutil.GetSignedProposal(proposal, signingIdentity)
 	Expect(err).NotTo(HaveOccurred())
 
-	txn := &gateway.ProposedTransaction{
-		Proposal:  signedProposal,
-		TxId:      txnID,
-		ChannelId: channelName,
-	}
-
-	return txn
+	return signedProposal, transactionID
 }
 
 func newProposalProto(signingIdentity *nwo.SigningIdentity, channelName, chaincodeName, transactionName string, args ...[]byte) (*peer.Proposal, string) {
