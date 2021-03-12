@@ -16,6 +16,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/gateway"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/integration/nwo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -103,15 +104,25 @@ var _ = Describe("GatewayService", func() {
 			defer cancel()
 
 			signingIdentity := network.PeerUserSigner(org1Peer0, "User1")
-			txn := NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", "respond", []byte("200"), []byte("conga message"), []byte("conga payload"))
+			proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", "respond", []byte("200"), []byte("conga message"), []byte("conga payload"))
 
-			result, err := gatewayClient.Evaluate(ctx, txn)
-			Expect(err).NotTo(HaveOccurred())
-			expectedResult := &gateway.Result{
-				Value: []byte("conga payload"),
+			request := &gateway.EvaluateRequest{
+				TransactionId:       transactionID,
+				ChannelId:           "testchannel",
+				ProposedTransaction: proposedTransaction,
 			}
-			Expect(result.Value).To(Equal(expectedResult.Value))
-			Expect(proto.Equal(result, expectedResult)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", result, expectedResult)
+
+			response, err := gatewayClient.Evaluate(ctx, request)
+			Expect(err).NotTo(HaveOccurred())
+			expectedResponse := &gateway.EvaluateResponse{
+				Result: &peer.Response{
+					Status:  200,
+					Message: "conga message",
+					Payload: []byte("conga payload"),
+				},
+			}
+			Expect(response.Result.Payload).To(Equal(expectedResponse.Result.Payload))
+			Expect(proto.Equal(response, expectedResponse)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", response, expectedResponse)
 		})
 	})
 
@@ -124,19 +135,33 @@ var _ = Describe("GatewayService", func() {
 			defer cancel()
 
 			signingIdentity := network.PeerUserSigner(org1Peer0, "User1")
-			proposedTransaction := NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", "respond", []byte("200"), []byte("conga message"), []byte("conga payload"))
+			proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", "respond", []byte("200"), []byte("conga message"), []byte("conga payload"))
 
-			preparedTransaction, err := gatewayClient.Endorse(ctx, proposedTransaction)
+			endorseRequest := &gateway.EndorseRequest{
+				TransactionId:       transactionID,
+				ChannelId:           "testchannel",
+				ProposedTransaction: proposedTransaction,
+			}
+
+			endorseResponse, err := gatewayClient.Endorse(ctx, endorseRequest)
 			Expect(err).NotTo(HaveOccurred())
 
-			result := preparedTransaction.GetResponse()
-			expectedResult := &gateway.Result{
-				Value: []byte("conga payload"),
+			result := endorseResponse.GetResult()
+			expectedResult := &peer.Response{
+				Status:  200,
+				Message: "conga message",
+				Payload: []byte("conga payload"),
 			}
-			Expect(result.Value).To(Equal(expectedResult.Value))
+			Expect(result.Payload).To(Equal(expectedResult.Payload))
 			Expect(proto.Equal(result, expectedResult)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", result, expectedResult)
 
-			_, err = gatewayClient.Submit(ctx, preparedTransaction)
+			preparedTransaction := endorseResponse.GetPreparedTransaction()
+			submitRequest := &gateway.SubmitRequest{
+				TransactionId:       transactionID,
+				ChannelId:           "testchannel",
+				PreparedTransaction: preparedTransaction,
+			}
+			_, err = gatewayClient.Submit(ctx, submitRequest)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

@@ -45,11 +45,6 @@ type discovery interface {
 	Discovery
 }
 
-//go:generate counterfeiter -o mocks/submitserver.go --fake-name SubmitServer . submitServer
-type submitServer interface {
-	pb.Gateway_SubmitServer
-}
-
 //go:generate counterfeiter -o mocks/abclient.go --fake-name ABClient . abClient
 type abClient interface {
 	ab.AtomicBroadcast_BroadcastClient
@@ -272,7 +267,7 @@ func TestGateway(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				server, localEndorser, ctx, disc := setup(t, &tt)
 
-				result, err := server.Evaluate(ctx, &pb.ProposedTransaction{Proposal: tt.signedProposal})
+				response, err := server.Evaluate(ctx, &pb.EvaluateRequest{ProposedTransaction: tt.signedProposal})
 
 				if tt.errString != "" {
 					require.ErrorContains(t, err, tt.errString)
@@ -284,7 +279,7 @@ func TestGateway(t *testing.T) {
 						require.Equal(t, detail.MspId, s.Details()[i].(*pb.EndpointError).MspId)
 						require.Equal(t, detail.Address, s.Details()[i].(*pb.EndpointError).Address)
 					}
-					require.Nil(t, result)
+					require.Nil(t, response)
 					return
 				}
 
@@ -292,7 +287,7 @@ func TestGateway(t *testing.T) {
 
 				require.NoError(t, err)
 				// assert the result is the payload from the proposal response returned by the local endorser
-				require.Equal(t, []byte("mock_response"), result.Value, "Incorrect result")
+				require.Equal(t, []byte("mock_response"), response.Result.Payload, "Incorrect result")
 
 				// check the local endorser (mock) was called with the right parameters
 				require.Equal(t, 1, localEndorser.ProcessProposalCallCount())
@@ -410,7 +405,7 @@ func TestGateway(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				server, localEndorser, ctx, disc := setup(t, &tt)
 
-				preparedTxn, err := server.Endorse(ctx, &pb.ProposedTransaction{Proposal: tt.signedProposal})
+				response, err := server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: tt.signedProposal})
 
 				if tt.errString != "" {
 					require.ErrorContains(t, err, tt.errString)
@@ -422,14 +417,14 @@ func TestGateway(t *testing.T) {
 						require.Equal(t, detail.MspId, s.Details()[i].(*pb.EndpointError).MspId)
 						require.Equal(t, detail.Address, s.Details()[i].(*pb.EndpointError).Address)
 					}
-					require.Nil(t, preparedTxn)
+					require.Nil(t, response)
 					return
 				}
 
 				// test the assertions
 				require.NoError(t, err)
 				// assert the preparedTxn is the payload from the proposal response
-				require.Equal(t, []byte("mock_response"), preparedTxn.Response.Value, "Incorrect response")
+				require.Equal(t, []byte("mock_response"), response.Result.Payload, "Incorrect response")
 
 				// check the local endorser (mock) was called with the right parameters
 				require.Equal(t, 1, localEndorser.ProcessProposalCallCount())
@@ -441,9 +436,8 @@ func TestGateway(t *testing.T) {
 				require.True(t, ok)
 				require.Negative(t, time.Until(deadline))
 
-				require.Equal(t, testChannel, preparedTxn.ChannelId)
 				// check the prepare transaction (Envelope) contains the right number of endorsements
-				payload, err := protoutil.UnmarshalPayload(preparedTxn.Envelope.Payload)
+				payload, err := protoutil.UnmarshalPayload(response.PreparedTransaction.Payload)
 				require.NoError(t, err)
 				txn, err := protoutil.UnmarshalTransaction(payload.Data)
 				require.NoError(t, err)
@@ -563,15 +557,16 @@ func TestGateway(t *testing.T) {
 				server, _, ctx, _ := setup(t, &tt)
 
 				// first call endorse to prepare the tx
-				preparedTx, err := server.Endorse(ctx, &pb.ProposedTransaction{Proposal: tt.signedProposal})
+				endorseResponse, err := server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: tt.signedProposal})
 				require.NoError(t, err)
 
-				// sign the envelope
-				preparedTx.Envelope.Signature = []byte("mysignature")
+				preparedTx := endorseResponse.GetPreparedTransaction()
 
-				cs := &mocks.SubmitServer{}
+				// sign the envelope
+				preparedTx.Signature = []byte("mysignature")
+
 				// submit
-				err = server.Submit(preparedTx, cs)
+				submitResponse, err := server.Submit(ctx, &pb.SubmitRequest{PreparedTransaction: preparedTx})
 
 				if tt.errString != "" {
 					require.ErrorContains(t, err, tt.errString)
@@ -587,7 +582,7 @@ func TestGateway(t *testing.T) {
 				}
 
 				require.NoError(t, err)
-				require.Equal(t, 1, cs.SendCallCount())
+				require.True(t, proto.Equal(&pb.SubmitResponse{}, submitResponse), "Incorrect response")
 			})
 		}
 	})
@@ -598,16 +593,16 @@ func TestNilArgs(t *testing.T) {
 	ctx := context.Background()
 
 	_, err := server.Evaluate(ctx, nil)
-	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a proposed transaction is required"))
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "an evaluate request is required"))
 
 	_, err = server.Endorse(ctx, nil)
-	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a proposed transaction is required"))
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "an endorse request is required"))
 
-	err = server.Submit(nil, nil)
-	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a signed prepared transaction is required"))
+	_, err = server.Submit(ctx, nil)
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a submit request is required"))
 
-	err = server.Submit(&pb.PreparedTransaction{}, nil)
-	require.ErrorIs(t, err, status.Error(codes.Internal, "a submit server is required"))
+	_, err = server.CommitStatus(ctx, nil)
+	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a commit status request is required"))
 }
 
 func TestRpcErrorWithBadDetails(t *testing.T) {
