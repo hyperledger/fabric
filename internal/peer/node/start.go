@@ -599,9 +599,12 @@ func serve(args []string) error {
 			GetMSPIDs:               peerInstance.GetMSPIDs,
 			GetIdentityDeserializer: identityDeserializerFactory,
 		},
-		SCCProvider:        &lscc.PeerShim{Peer: peerInstance},
-		ACLProvider:        aclProvider,
-		GetMSPIDs:          peerInstance.GetMSPIDs,
+		SCCProvider: &lscc.PeerShim{Peer: peerInstance},
+		ACLProvider: aclProvider,
+		GetMSPIDs:   peerInstance.GetMSPIDs,
+		GetMSPManager: func(channelName string) msp.MSPManager {
+			return peerInstance.Channel(channelName).MSPManager()
+		},
 		BCCSP:              factory.GetDefault(),
 		BuildRegistry:      buildRegistry,
 		ChaincodeBuilder:   containerRouter,

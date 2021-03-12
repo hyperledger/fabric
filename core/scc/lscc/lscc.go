@@ -36,7 +36,6 @@ import (
 	"github.com/hyperledger/fabric/core/scc"
 	"github.com/hyperledger/fabric/internal/ccmetadata"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -135,6 +134,9 @@ type ChaincodeBuilder interface {
 // MSPsIDGetter is used to get the MSP IDs for a channel.
 type MSPIDsGetter func(string) []string
 
+// IDMSPManagerGetters used to get the MSP Manager for a channel.
+type MSPManagerGetter func(string) msp.MSPManager
+
 //---------- the LSCC -----------------
 
 // SCC implements chaincode lifecycle and policies around it
@@ -153,6 +155,8 @@ type SCC struct {
 	Support FilesystemSupport
 
 	GetMSPIDs MSPIDsGetter
+
+	GetMSPManager MSPManagerGetter
 
 	BuildRegistry *container.BuildRegistry
 
@@ -461,7 +465,7 @@ func (lscc *SCC) putChaincodeCollectionData(stub shim.ChaincodeStubInterface, cd
 		return errors.Errorf("invalid collection configuration supplied for chaincode %s:%s", cd.Name, cd.Version)
 	}
 
-	mspmgr := mgmt.GetManagerForChain(stub.GetChannelID())
+	mspmgr := lscc.GetMSPManager(stub.GetChannelID())
 	if mspmgr == nil {
 		return fmt.Errorf("could not get MSP manager for channel %s", stub.GetChannelID())
 	}
