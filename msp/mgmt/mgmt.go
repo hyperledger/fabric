@@ -7,7 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package mgmt
 
 import (
-	"reflect"
 	"sync"
 
 	"github.com/hyperledger/fabric/bccsp"
@@ -48,15 +47,6 @@ func GetManagerForChain(chainID string) msp.MSPManager {
 		mspMgmtMgr := &mspMgmtMgr{msp.NewMSPManager()}
 		mspMap[chainID] = mspMgmtMgr
 		mspMgr = mspMgmtMgr
-	} else {
-		// check for internal mspManagerImpl and mspMgmtMgr types. if a different
-		// type is found, it's because a developer has added a new type that
-		// implements the MSPManager interface and should add a case to the logic
-		// above to handle it.
-		if !(reflect.TypeOf(mspMgr).Elem().Name() == "mspManagerImpl" || reflect.TypeOf(mspMgr).Elem().Name() == "mspMgmtMgr") {
-			panic("Found unexpected MSPManager type.")
-		}
-		mspLogger.Debugf("Returning existing manager for channel '%s'", chainID)
 	}
 	return mspMgr
 }
