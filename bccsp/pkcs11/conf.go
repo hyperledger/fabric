@@ -26,6 +26,7 @@ type PKCS11Opts struct {
 	Pin            string `json:"pin"`
 	SoftwareVerify bool   `json:"softwareverify,omitempty"`
 	Immutable      bool   `json:"immutable,omitempty"`
+	AltID          string `json:"altid"`
 
 	sessionCacheSize        int
 	createSessionRetries    int

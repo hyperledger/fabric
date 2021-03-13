@@ -193,21 +193,25 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 	tests := map[string]struct {
 		curve     elliptic.Curve
 		immutable bool
+		altID     string
 		opts      bccsp.KeyGenOpts
 	}{
-		"Default":             {elliptic.P256(), false, &bccsp.ECDSAKeyGenOpts{Temporary: false}},
-		"P256":                {elliptic.P256(), false, &bccsp.ECDSAP256KeyGenOpts{Temporary: false}},
-		"P384":                {elliptic.P384(), false, &bccsp.ECDSAP384KeyGenOpts{Temporary: false}},
-		"Immutable":           {elliptic.P384(), true, &bccsp.ECDSAP384KeyGenOpts{Temporary: false}},
-		"Ephemeral/Default":   {elliptic.P256(), false, &bccsp.ECDSAKeyGenOpts{Temporary: true}},
-		"Ephemeral/P256":      {elliptic.P256(), false, &bccsp.ECDSAP256KeyGenOpts{Temporary: true}},
-		"Ephemeral/P384":      {elliptic.P384(), false, &bccsp.ECDSAP384KeyGenOpts{Temporary: true}},
-		"Ephemeral/Immutable": {elliptic.P384(), true, &bccsp.ECDSAP384KeyGenOpts{Temporary: false}},
+		"Default":             {elliptic.P256(), false, "", &bccsp.ECDSAKeyGenOpts{Temporary: false}},
+		"P256":                {elliptic.P256(), false, "", &bccsp.ECDSAP256KeyGenOpts{Temporary: false}},
+		"P384":                {elliptic.P384(), false, "", &bccsp.ECDSAP384KeyGenOpts{Temporary: false}},
+		"Immutable":           {elliptic.P384(), true, "", &bccsp.ECDSAP384KeyGenOpts{Temporary: false}},
+		"AltID":               {elliptic.P384(), true, "TheAltID", &bccsp.ECDSAP384KeyGenOpts{Temporary: false}},
+		"Ephemeral/Default":   {elliptic.P256(), false, "", &bccsp.ECDSAKeyGenOpts{Temporary: true}},
+		"Ephemeral/P256":      {elliptic.P256(), false, "", &bccsp.ECDSAP256KeyGenOpts{Temporary: true}},
+		"Ephemeral/P384":      {elliptic.P384(), false, "", &bccsp.ECDSAP384KeyGenOpts{Temporary: true}},
+		"Ephemeral/Immutable": {elliptic.P384(), true, "", &bccsp.ECDSAP384KeyGenOpts{Temporary: false}},
+		"Ephemeral/AltID":     {elliptic.P384(), true, "TheAltID", &bccsp.ECDSAP384KeyGenOpts{Temporary: true}},
 	}
 	for name, tt := range tests {
 		t.Run(name, func(t *testing.T) {
 			opts := defaultOptions()
 			opts.Immutable = tt.immutable
+			opts.AltID = tt.altID
 			csp, cleanup := newProvider(t, opts)
 			defer cleanup()
 
@@ -250,9 +254,18 @@ func TestKeyGenECDSAOpts(t *testing.T) {
 				require.Len(t, attr, 1)
 
 				if tt.immutable {
-					require.Equal(t, []byte{0}, attr[0].Value)
+					if tt.altID == "" {
+						require.Equal(t, []byte{0}, attr[0].Value)
+					}
 				} else {
 					require.Equal(t, []byte{1}, attr[0].Value)
+				}
+
+				if tt.altID != "" {
+					attr, err = csp.ctx.GetAttributeValue(sess, handle, []*pkcs11.Attribute{{Type: pkcs11.CKA_ID}})
+					require.NoError(t, err)
+
+					require.Equal(t, []byte(tt.altID), attr[0].Value)
 				}
 			}
 		})
@@ -281,6 +294,43 @@ func TestECDSAGetKeyBySKI(t *testing.T) {
 	require.True(t, k2.Private(), "key should be private")
 	require.False(t, k2.Symmetric(), "key should be asymmetric")
 	require.Equalf(t, k.SKI(), k2.SKI(), "expected %x got %x", k.SKI(), k2.SKI())
+}
+
+func TestAlternateLabelGeneration(t *testing.T) {
+	// We generate a unique Alt ID for the test
+	uniqueAltId := strconv.FormatInt(time.Now().UnixNano()/1e6, 10)
+	fakeSKI := []byte("FakeSKI")
+
+	opts := defaultOptions()
+	opts.AltID = uniqueAltId
+	opts.Immutable = true
+
+	csp, cleanup := newProvider(t, opts)
+	defer cleanup()
+
+	sess, err := csp.getSession()
+	require.NoError(t, err)
+	defer csp.returnSession(sess)
+
+	// Passing fake SKI to ensure that the look up fails if the uniqueAltId is not used
+	k, err := csp.findKeyPairFromSKI(sess, fakeSKI, privateKeyType)
+	if err == nil {
+		t.Fatalf("Found a key when expected to find none.")
+	}
+
+	// Now generate a new EC Key, which should be using the uniqueAltId
+	_, _, err = csp.generateECKey(oidNamedCurveP256, true)
+	if err != nil {
+		t.Fatalf("Failed generating Key [%s]", err)
+	}
+
+	k, err = csp.findKeyPairFromSKI(sess, fakeSKI, privateKeyType)
+	if err != nil {
+		t.Fatalf("Found no key after generating an EC Key based on the AltId.")
+	}
+	if k == 0 {
+		t.Fatalf("No Key returned from the findKeyPairFromSKI call.")
+	}
 }
 
 func TestECDSAPublicKeyFromPrivateKey(t *testing.T) {
