@@ -19,6 +19,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
@@ -1116,6 +1117,143 @@ func TestCollectionConfigHistoryRetriever(t *testing.T) {
 		_, err = r.MostRecentCollectionConfigBelow(50, chaincodeName)
 		require.Contains(t, err.Error(), "error while retrieving explicit collections")
 	})
+}
+
+func TestCommitNotifications(t *testing.T) {
+	var lgr *kvLedger
+	var doneChannel chan struct{}
+	var dataChannel <-chan *ledger.CommitNotification
+
+	setup := func() {
+		var err error
+		lgr = &kvLedger{}
+		doneChannel = make(chan struct{})
+		dataChannel, err = lgr.CommitNotificationsChannel(doneChannel)
+		require.NoError(t, err)
+	}
+
+	t.Run("only first txid is included in notification", func(t *testing.T) {
+		setup()
+		lgr.sendCommitNotification(1, []*validation.TxStatInfo{
+			{
+				TxIDFromChannelHeader: "txid_1",
+				ValidationCode:        peer.TxValidationCode_BAD_RWSET,
+			},
+			{
+				TxIDFromChannelHeader: "txid_1",
+				ValidationCode:        peer.TxValidationCode_DUPLICATE_TXID,
+			},
+			{
+				TxIDFromChannelHeader: "txid_2",
+				ValidationCode:        peer.TxValidationCode_VALID,
+			},
+		})
+
+		commitNotification := <-dataChannel
+		require.Equal(t,
+			&ledger.CommitNotification{
+				BlockNumber: 1,
+				TxIDValidationCodes: map[string]peer.TxValidationCode{
+					"txid_1": peer.TxValidationCode_BAD_RWSET,
+					"txid_2": peer.TxValidationCode_VALID,
+				},
+			},
+			commitNotification,
+		)
+	})
+
+	t.Run("empty txids are not included in notification", func(t *testing.T) {
+		setup()
+		lgr.sendCommitNotification(1, []*validation.TxStatInfo{
+			{
+				TxIDFromChannelHeader: "",
+				ValidationCode:        peer.TxValidationCode_BAD_RWSET,
+			},
+			{
+				TxIDFromChannelHeader: "",
+				ValidationCode:        peer.TxValidationCode_DUPLICATE_TXID,
+			},
+		})
+
+		commitNotification := <-dataChannel
+		require.Equal(t,
+			&ledger.CommitNotification{
+				BlockNumber:         1,
+				TxIDValidationCodes: map[string]peer.TxValidationCode{},
+			},
+			commitNotification,
+		)
+	})
+
+	t.Run("second time calling CommitNotificationsChannel returns error", func(t *testing.T) {
+		setup()
+		_, err := lgr.CommitNotificationsChannel(make(chan struct{}))
+		require.EqualError(t, err, "only one commit notifications channel is allowed at a time")
+	})
+
+	t.Run("closing done channel closes the data channel on next commit", func(t *testing.T) {
+		setup()
+		lgr.sendCommitNotification(1, []*validation.TxStatInfo{})
+		_, ok := <-dataChannel
+		require.True(t, ok)
+
+		close(doneChannel)
+		lgr.sendCommitNotification(2, []*validation.TxStatInfo{})
+
+		_, ok = <-dataChannel
+		require.False(t, ok)
+	})
+}
+
+func TestCommitNotificationsOnBlockCommit(t *testing.T) {
+	conf, cleanup := testConfig(t)
+	defer cleanup()
+	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
+	defer provider.Close()
+
+	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	l, err := provider.CreateFromGenesisBlock(gb)
+	require.NoError(t, err)
+	defer l.Close()
+
+	lgr := l.(*kvLedger)
+	doneChannel := make(chan struct{})
+	dataChannel, err := lgr.CommitNotificationsChannel(doneChannel)
+	require.NoError(t, err)
+
+	s, err := lgr.NewTxSimulator("")
+	require.NoError(t, err)
+	_, err = s.GetState("ns1", "key1")
+	require.NoError(t, err)
+	require.NoError(t, s.SetState("ns1", "key1", []byte("val1")))
+	sr, err := s.GetTxSimulationResults()
+	require.NoError(t, err)
+	srBytes, err := sr.GetPubSimulationBytes()
+	require.NoError(t, err)
+	s.Done()
+
+	block := bg.NextBlockWithTxid(
+		[][]byte{
+			srBytes,
+			srBytes, // same read-sets: should cause mvcc conflict
+		},
+		[]string{
+			"txid_1",
+			"txid_2",
+		},
+	)
+	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block}, &ledger.CommitOptions{}))
+	commitNotification := <-dataChannel
+	require.Equal(t,
+		&ledger.CommitNotification{
+			BlockNumber: 1,
+			TxIDValidationCodes: map[string]peer.TxValidationCode{
+				"txid_1": peer.TxValidationCode_VALID,
+				"txid_2": peer.TxValidationCode_MVCC_READ_CONFLICT,
+			},
+		},
+		commitNotification,
+	)
 }
 
 func testutilPersistExplicitCollectionConfig(

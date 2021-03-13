@@ -302,10 +302,13 @@ func TestTxStatsInfoWithConfigTx(t *testing.T) {
 	gb := testutil.ConstructTestBlocks(t, 1)[0]
 	_, txStatsInfo, err := v.ValidateAndPrepareBatch(&ledger.BlockAndPvtData{Block: gb}, true)
 	require.NoError(t, err)
+	txID, err := protoutil.GetOrComputeTxIDFromEnvelope(gb.Data.Data[0])
+	require.NoError(t, err)
 	expectedTxStatInfo := []*TxStatInfo{
 		{
-			TxType:         common.HeaderType_CONFIG,
-			ValidationCode: peer.TxValidationCode_VALID,
+			TxIDFromChannelHeader: txID,
+			TxType:                common.HeaderType_CONFIG,
+			ValidationCode:        peer.TxValidationCode_VALID,
 		},
 	}
 	t.Logf("txStatsInfo=%s\n", spew.Sdump(txStatsInfo))
@@ -447,24 +450,28 @@ func TestTxStatsInfo(t *testing.T) {
 	require.NoError(t, err)
 	expectedTxStatInfo := []*TxStatInfo{
 		{
-			TxType:         common.HeaderType_ENDORSER_TRANSACTION,
-			ValidationCode: peer.TxValidationCode_VALID,
-			ChaincodeID:    &peer.ChaincodeID{Name: "cc_1", Version: "cc_1_v1"},
+			TxIDFromChannelHeader: "tx_1",
+			TxType:                common.HeaderType_ENDORSER_TRANSACTION,
+			ValidationCode:        peer.TxValidationCode_VALID,
+			ChaincodeID:           &peer.ChaincodeID{Name: "cc_1", Version: "cc_1_v1"},
 		},
 		{
-			TxType:         common.HeaderType_ENDORSER_TRANSACTION,
-			ValidationCode: peer.TxValidationCode_MVCC_READ_CONFLICT,
-			ChaincodeID:    &peer.ChaincodeID{Name: "cc_2", Version: "cc_2_v1"},
+			TxIDFromChannelHeader: "tx_2",
+			TxType:                common.HeaderType_ENDORSER_TRANSACTION,
+			ValidationCode:        peer.TxValidationCode_MVCC_READ_CONFLICT,
+			ChaincodeID:           &peer.ChaincodeID{Name: "cc_2", Version: "cc_2_v1"},
 		},
 		{
-			TxType:         -1,
-			ValidationCode: peer.TxValidationCode_BAD_PAYLOAD,
+			TxIDFromChannelHeader: "tx_3",
+			TxType:                -1,
+			ValidationCode:        peer.TxValidationCode_BAD_PAYLOAD,
 		},
 		{
-			TxType:         common.HeaderType_ENDORSER_TRANSACTION,
-			ValidationCode: peer.TxValidationCode_VALID,
-			ChaincodeID:    &peer.ChaincodeID{Name: "cc_4", Version: "cc_4_v1"},
-			NumCollections: 2,
+			TxIDFromChannelHeader: "tx_4",
+			TxType:                common.HeaderType_ENDORSER_TRANSACTION,
+			ValidationCode:        peer.TxValidationCode_VALID,
+			ChaincodeID:           &peer.ChaincodeID{Name: "cc_4", Version: "cc_4_v1"},
+			NumCollections:        2,
 		},
 	}
 	t.Logf("txStatsInfo=%s\n", spew.Sdump(txStatsInfo))
@@ -654,7 +661,8 @@ func Test_preprocessProtoBlock_processNonEndorserTx(t *testing.T) {
 	)
 	expectedTxStatInfo := []*TxStatInfo{
 		{
-			TxType: 100,
+			TxIDFromChannelHeader: "tx1",
+			TxType:                100,
 		},
 	}
 
