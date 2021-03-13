@@ -64,6 +64,9 @@ type kvLedger struct {
 	// reconciliation and may be updated during a regular block commit.
 	// Hence, we use atomic value to ensure consistent read.
 	isPvtstoreAheadOfBlkstore atomic.Value
+
+	commitNotifierLock sync.Mutex
+	commitNotifier     *commitNotifier
 }
 
 type lgrInitializer struct {
@@ -675,12 +678,15 @@ func (l *kvLedger) commit(pvtdataAndBlock *ledger.BlockAndPvtData, commitOpts *l
 		elapsedCommitState/time.Millisecond,
 		l.commitHash,
 	)
+
 	l.updateBlockStats(
 		elapsedBlockProcessing,
 		elapsedBlockstorageAndPvtdataCommit,
 		elapsedCommitState,
 		txstatsInfo,
 	)
+
+	l.sendCommitNotification(blockNo, txstatsInfo)
 	return nil
 }
 
@@ -887,6 +893,11 @@ func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, err
 	return l, nil
 }
 
+type commitNotifier struct {
+	dataChannel chan *ledger.CommitNotification
+	doneChannel <-chan struct{}
+}
+
 // CommitNotificationsChannel returns a read-only channel on which ledger sends a `CommitNotification`
 // when a block is committed. The CommitNotification contains entries for the transactions from the committed block,
 // which are not malformed, carry a legitimate TxID, and in addition, are not marked as a duplicate transaction.
@@ -894,7 +905,52 @@ func (l *kvLedger) GetMissingPvtDataTracker() (ledger.MissingPvtDataTracker, err
 // CommitNotifications channel to close. There is expected to be only one consumer at a time. The function returns error
 // if already a CommitNotification channel is active.
 func (l *kvLedger) CommitNotificationsChannel(done <-chan struct{}) (<-chan *ledger.CommitNotification, error) {
-	return nil, errors.New("yet-to-implement")
+	l.commitNotifierLock.Lock()
+	defer l.commitNotifierLock.Unlock()
+
+	if l.commitNotifier != nil {
+		return nil, errors.New("only one commit notifications channel is allowed at a time")
+	}
+
+	l.commitNotifier = &commitNotifier{
+		dataChannel: make(chan *ledger.CommitNotification, 10),
+		doneChannel: done,
+	}
+
+	return l.commitNotifier.dataChannel, nil
+}
+
+func (l *kvLedger) sendCommitNotification(blockNum uint64, txStatsInfo []*validation.TxStatInfo) {
+	l.commitNotifierLock.Lock()
+	defer l.commitNotifierLock.Unlock()
+
+	if l.commitNotifier == nil {
+		return
+	}
+
+	select {
+	case <-l.commitNotifier.doneChannel:
+		close(l.commitNotifier.dataChannel)
+		l.commitNotifier = nil
+	default:
+		txIDValidationCodes := map[string]peer.TxValidationCode{}
+
+		for _, t := range txStatsInfo {
+			txID := t.TxIDFromChannelHeader
+			_, ok := txIDValidationCodes[txID]
+
+			if txID == "" || ok {
+				continue
+			}
+
+			txIDValidationCodes[txID] = t.ValidationCode
+		}
+
+		l.commitNotifier.dataChannel <- &ledger.CommitNotification{
+			BlockNumber:         blockNum,
+			TxIDValidationCodes: txIDValidationCodes,
+		}
+	}
 }
 
 // Close closes `KVLedger`.

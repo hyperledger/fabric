@@ -41,10 +41,11 @@ type CommitBatchPreparer struct {
 
 // TxStatInfo encapsulates information about a transaction
 type TxStatInfo struct {
-	ValidationCode peer.TxValidationCode
-	TxType         common.HeaderType
-	ChaincodeID    *peer.ChaincodeID
-	NumCollections int
+	TxIDFromChannelHeader string
+	ValidationCode        peer.TxValidationCode
+	TxType                common.HeaderType
+	ChaincodeID           *peer.ChaincodeID
+	NumCollections        int
 }
 
 // NewCommitBatchPreparer constructs a validator that internally manages statebased validator and in addition
@@ -207,6 +208,7 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 				chdr, err = protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
 			}
 		}
+		txStatInfo.TxIDFromChannelHeader = chdr.GetTxId()
 		if txsFilter.IsInvalid(txIndex) {
 			// Skipping invalid transaction
 			logger.Warningf("Channel [%s]: Block [%d] Transaction index [%d] TxId [%s]"+
