@@ -90,10 +90,11 @@ func TestPKIidOfNil(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 	localMSP := mgmt.GetLocalMSP(cryptoProvider)
+	getChannelDesers := func() map[string]msp.IdentityDeserializer { return nil }
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
 		signer,
-		NewDeserializersManager(localMSP),
+		NewDeserializersManager(localMSP, getChannelDesers),
 		cryptoProvider,
 	)
 
@@ -151,10 +152,11 @@ func TestSign(t *testing.T) {
 	require.NoError(t, err)
 
 	localMSP := mgmt.GetLocalMSP(cryptoProvider)
+	getChannelDesers := func() map[string]msp.IdentityDeserializer { return nil }
 	msgCryptoService := NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
 		signer,
-		NewDeserializersManager(localMSP),
+		NewDeserializersManager(localMSP, getChannelDesers),
 		cryptoProvider,
 	)
 

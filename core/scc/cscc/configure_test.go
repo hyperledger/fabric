@@ -40,6 +40,7 @@ import (
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
@@ -568,7 +569,8 @@ func newPeerConfiger(t *testing.T, ledgerMgr *ledgermgmt.LedgerMgr, grpcServer *
 	localMSP := mgmt.GetLocalMSP(cryptoProvider)
 	signer, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
-	deserManager := peergossip.NewDeserializersManager(localMSP)
+	getChannelDesers := func() map[string]msp.IdentityDeserializer { return nil }
+	deserManager := peergossip.NewDeserializersManager(localMSP, getChannelDesers)
 
 	messageCryptoService := peergossip.NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},

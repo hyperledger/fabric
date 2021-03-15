@@ -450,6 +450,7 @@ func serve(args []string) error {
 	// FIXME: Creating the gossip service has the side effect of starting a bunch
 	// of go routines and registration with the grpc server.
 	gossipService, err := initGossipService(
+		peerInstance,
 		policyMgr,
 		metricsProvider,
 		peerServer,
@@ -1193,6 +1194,7 @@ func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOptio
 // 3. Init the security advisor;
 // 4. Init gossip related struct.
 func initGossipService(
+	peerInstance *peer.Peer,
 	policyMgr policies.ChannelPolicyManagerGetter,
 	metricsProvider metrics.Provider,
 	peerServer *comm.GRPCServer,
@@ -1215,7 +1217,25 @@ func initGossipService(
 	}
 
 	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
-	deserManager := peergossip.NewDeserializersManager(localMSP)
+	getChannelDeserializers := func() map[string]msp.IdentityDeserializer {
+		deserializers := map[string]msp.IdentityDeserializer{}
+		for _, ci := range peerInstance.GetChannelsInfo() {
+			channel := peerInstance.Channel(ci.ChannelId)
+			if channel == nil {
+				continue
+			}
+			msp := channel.MSPManager()
+			if msp == nil {
+				continue
+			}
+			deserializers[ci.ChannelId] = msp
+		}
+		return deserializers
+	}
+	deserManager := peergossip.NewDeserializersManager(
+		localMSP,
+		getChannelDeserializers,
+	)
 	messageCryptoService := peergossip.NewMCS(
 		policyMgr,
 		signer,

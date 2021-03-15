@@ -9,7 +9,6 @@ package gossip
 import (
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 )
 
@@ -31,15 +30,19 @@ type DeserializersManager interface {
 	GetChannelDeserializers() map[string]msp.IdentityDeserializer
 }
 
+type ChannelDeserializersFunc func() map[string]msp.IdentityDeserializer
+
 // NewDeserializersManager returns a new instance of DeserializersManager
-func NewDeserializersManager(localMSP msp.MSP) DeserializersManager {
+func NewDeserializersManager(localMSP msp.MSP, getChannelDeserializers ChannelDeserializersFunc) DeserializersManager {
 	return &mspDeserializersManager{
-		localMSP: localMSP,
+		localMSP:                localMSP,
+		getChannelDeserializers: getChannelDeserializers,
 	}
 }
 
 type mspDeserializersManager struct {
-	localMSP msp.MSP
+	localMSP                msp.MSP
+	getChannelDeserializers ChannelDeserializersFunc
 }
 
 func (m *mspDeserializersManager) Deserialize(raw []byte) (*mspproto.SerializedIdentity, error) {
@@ -56,5 +59,5 @@ func (m *mspDeserializersManager) GetLocalDeserializer() msp.IdentityDeserialize
 }
 
 func (m *mspDeserializersManager) GetChannelDeserializers() map[string]msp.IdentityDeserializer {
-	return mgmt.GetDeserializers()
+	return m.getChannelDeserializers()
 }

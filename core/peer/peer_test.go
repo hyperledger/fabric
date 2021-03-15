@@ -37,6 +37,7 @@ import (
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/stretchr/testify/require"
@@ -60,7 +61,8 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	require.NoError(t, err)
 
 	localMSP := mgmt.GetLocalMSP(cryptoProvider)
-	deserManager := peergossip.NewDeserializersManager(localMSP)
+	getChannelDesers := func() map[string]msp.IdentityDeserializer { return nil }
+	deserManager := peergossip.NewDeserializersManager(localMSP, getChannelDesers)
 	messageCryptoService := peergossip.NewMCS(
 		&mocks.ChannelPolicyManagerGetter{},
 		signer,
