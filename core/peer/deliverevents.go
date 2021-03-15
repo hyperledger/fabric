@@ -19,7 +19,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -54,6 +53,14 @@ type IdentityDeserializerManager interface {
 	// Deserializer returns an instance of transaction.Deserializer for the passed channel
 	// if the channel exists
 	Deserializer(channel string) (msp.IdentityDeserializer, error)
+}
+
+// GetDeserializerFunc is a function adapter that satisfies the
+// IdentityDeserializerManager interface.
+type GetDeserializerFunc func(channel string) (msp.IdentityDeserializer, error)
+
+func (gd GetDeserializerFunc) Deserializer(channel string) (msp.IdentityDeserializer, error) {
+	return gd(channel)
 }
 
 // blockResponseSender structure used to send block responses
@@ -272,9 +279,6 @@ func (s *DeliverServer) DeliverWithPrivateData(srv peer.Deliver_DeliverWithPriva
 	if s.CollectionPolicyChecker == nil {
 		s.CollectionPolicyChecker = &collPolicyChecker{}
 	}
-	if s.IdentityDeserializerMgr == nil {
-		s.IdentityDeserializerMgr = &identityDeserializerMgr{}
-	}
 	// getting policy checker based on resources.Event_Block resource name
 	deliverServer := &deliver.Server{
 		PolicyChecker: s.PolicyCheckerProvider(resources.Event_Block),
@@ -446,18 +450,6 @@ func (ac aggregatedCollections) asPrivateDataMap() map[uint64]*rwset.TxPvtReadWr
 		pvtDataMap[seq.seq] = txPvtRWSet
 	}
 	return pvtDataMap
-}
-
-// identityDeserializerMgr implements an IdentityDeserializerManager
-// by routing the call to the msp/mgmt package
-type identityDeserializerMgr struct{}
-
-func (*identityDeserializerMgr) Deserializer(channelID string) (msp.IdentityDeserializer, error) {
-	id, ok := mgmt.GetDeserializers()[channelID]
-	if !ok {
-		return nil, errors.Errorf("channel %s not found", channelID)
-	}
-	return id, nil
 }
 
 // collPolicyChecker is the default implementation for CollectionPolicyChecker interface

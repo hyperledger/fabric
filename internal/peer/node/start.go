@@ -486,16 +486,23 @@ func serve(args []string) error {
 		}
 	}
 
-	metrics := deliver.NewMetrics(metricsProvider)
+	getDeserializers := func(channelID string) (msp.IdentityDeserializer, error) {
+		idd := identityDeserializerFactory(channelID)
+		if idd == nil {
+			return nil, errors.Errorf("channel %s not found", channelID)
+		}
+		return idd, nil
+	}
 	abServer := &peer.DeliverServer{
 		DeliverHandler: deliver.NewHandler(
 			&peer.DeliverChainManager{Peer: peerInstance},
 			coreConfig.AuthenticationTimeWindow,
 			mutualTLS,
-			metrics,
+			deliver.NewMetrics(metricsProvider),
 			false,
 		),
-		PolicyCheckerProvider: policyCheckerProvider,
+		PolicyCheckerProvider:   policyCheckerProvider,
+		IdentityDeserializerMgr: peer.GetDeserializerFunc(getDeserializers),
 	}
 	pb.RegisterDeliverServer(peerServer.Server(), abServer)
 
