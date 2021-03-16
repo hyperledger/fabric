@@ -107,16 +107,15 @@ func (fake *ABClient) CloseSend() error {
 	ret, specificReturn := fake.closeSendReturnsOnCall[len(fake.closeSendArgsForCall)]
 	fake.closeSendArgsForCall = append(fake.closeSendArgsForCall, struct {
 	}{})
-	stub := fake.CloseSendStub
-	fakeReturns := fake.closeSendReturns
 	fake.recordInvocation("CloseSend", []interface{}{})
 	fake.closeSendMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.CloseSendStub != nil {
+		return fake.CloseSendStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.closeSendReturns
 	return fakeReturns.result1
 }
 
@@ -160,16 +159,15 @@ func (fake *ABClient) Context() context.Context {
 	ret, specificReturn := fake.contextReturnsOnCall[len(fake.contextArgsForCall)]
 	fake.contextArgsForCall = append(fake.contextArgsForCall, struct {
 	}{})
-	stub := fake.ContextStub
-	fakeReturns := fake.contextReturns
 	fake.recordInvocation("Context", []interface{}{})
 	fake.contextMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.ContextStub != nil {
+		return fake.ContextStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.contextReturns
 	return fakeReturns.result1
 }
 
@@ -213,16 +211,15 @@ func (fake *ABClient) Header() (metadata.MD, error) {
 	ret, specificReturn := fake.headerReturnsOnCall[len(fake.headerArgsForCall)]
 	fake.headerArgsForCall = append(fake.headerArgsForCall, struct {
 	}{})
-	stub := fake.HeaderStub
-	fakeReturns := fake.headerReturns
 	fake.recordInvocation("Header", []interface{}{})
 	fake.headerMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.HeaderStub != nil {
+		return fake.HeaderStub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.headerReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -269,16 +266,15 @@ func (fake *ABClient) Recv() (*orderer.BroadcastResponse, error) {
 	ret, specificReturn := fake.recvReturnsOnCall[len(fake.recvArgsForCall)]
 	fake.recvArgsForCall = append(fake.recvArgsForCall, struct {
 	}{})
-	stub := fake.RecvStub
-	fakeReturns := fake.recvReturns
 	fake.recordInvocation("Recv", []interface{}{})
 	fake.recvMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.RecvStub != nil {
+		return fake.RecvStub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.recvReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -326,16 +322,15 @@ func (fake *ABClient) RecvMsg(arg1 interface{}) error {
 	fake.recvMsgArgsForCall = append(fake.recvMsgArgsForCall, struct {
 		arg1 interface{}
 	}{arg1})
-	stub := fake.RecvMsgStub
-	fakeReturns := fake.recvMsgReturns
 	fake.recordInvocation("RecvMsg", []interface{}{arg1})
 	fake.recvMsgMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
+	if fake.RecvMsgStub != nil {
+		return fake.RecvMsgStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.recvMsgReturns
 	return fakeReturns.result1
 }
 
@@ -387,16 +382,15 @@ func (fake *ABClient) Send(arg1 *common.Envelope) error {
 	fake.sendArgsForCall = append(fake.sendArgsForCall, struct {
 		arg1 *common.Envelope
 	}{arg1})
-	stub := fake.SendStub
-	fakeReturns := fake.sendReturns
 	fake.recordInvocation("Send", []interface{}{arg1})
 	fake.sendMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
+	if fake.SendStub != nil {
+		return fake.SendStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.sendReturns
 	return fakeReturns.result1
 }
 
@@ -448,16 +442,15 @@ func (fake *ABClient) SendMsg(arg1 interface{}) error {
 	fake.sendMsgArgsForCall = append(fake.sendMsgArgsForCall, struct {
 		arg1 interface{}
 	}{arg1})
-	stub := fake.SendMsgStub
-	fakeReturns := fake.sendMsgReturns
 	fake.recordInvocation("SendMsg", []interface{}{arg1})
 	fake.sendMsgMutex.Unlock()
-	if stub != nil {
-		return stub(arg1)
+	if fake.SendMsgStub != nil {
+		return fake.SendMsgStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.sendMsgReturns
 	return fakeReturns.result1
 }
 
@@ -508,16 +501,15 @@ func (fake *ABClient) Trailer() metadata.MD {
 	ret, specificReturn := fake.trailerReturnsOnCall[len(fake.trailerArgsForCall)]
 	fake.trailerArgsForCall = append(fake.trailerArgsForCall, struct {
 	}{})
-	stub := fake.TrailerStub
-	fakeReturns := fake.trailerReturns
 	fake.recordInvocation("Trailer", []interface{}{})
 	fake.trailerMutex.Unlock()
-	if stub != nil {
-		return stub()
+	if fake.TrailerStub != nil {
+		return fake.TrailerStub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.trailerReturns
 	return fakeReturns.result1
 }
 
