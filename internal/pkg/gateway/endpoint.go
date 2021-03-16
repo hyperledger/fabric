@@ -35,8 +35,10 @@ type endpointConfig struct {
 type (
 	endorserConnector func(*grpc.ClientConn) peer.EndorserClient
 	ordererConnector  func(*grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error)
-	dialer            func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
 )
+
+//go:generate counterfeiter -o mocks/dialer.go --fake-name Dialer . dialer
+type dialer func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
 
 type endpointFactory struct {
 	timeout         time.Duration
