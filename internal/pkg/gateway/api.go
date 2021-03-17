@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
 	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -189,6 +190,10 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 
 	if response == nil {
 		return nil, status.Error(codes.Aborted, "received nil response from orderer")
+	}
+
+	if response.Status != common.Status_SUCCESS {
+		return nil, status.Errorf(codes.Aborted, "received unsuccessful response from orderer: %s", common.Status_name[int32(response.Status)])
 	}
 
 	return &gp.SubmitResponse{}, nil
