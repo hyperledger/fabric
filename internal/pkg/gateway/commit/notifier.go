@@ -73,11 +73,11 @@ func (notifier *Notifier) channelNotifier(channelName string) (*channelLevelNoti
 	defer notifier.lock.Unlock()
 
 	result := notifier.channelNotifiers[channelName]
-	if result != nil {
+	if result != nil && !result.isClosed() {
 		return result, nil
 	}
 
-	commitChannel, err := notifier.supplier.CommitNotifications(nil, channelName)
+	commitChannel, err := notifier.supplier.CommitNotifications(notifier.cancel, channelName)
 	if err != nil {
 		return nil, err
 	}

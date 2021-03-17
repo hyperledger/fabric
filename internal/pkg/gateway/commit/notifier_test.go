@@ -287,6 +287,57 @@ func TestNotifier(t *testing.T) {
 			_, actual := notificationSupplier.CommitNotificationsArgsForCall(0)
 			require.Equal(t, "CHANNEL_NAME", actual)
 		})
+
+		t.Run("stops notification if supplier stops", func(t *testing.T) {
+			commitSend := make(chan *ledger.CommitNotification, 1)
+			notifier := newTestNotifier(commitSend)
+			defer notifier.Close()
+
+			commitReceive, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			require.NoError(t, err)
+
+			close(commitSend)
+			_, ok := <-commitReceive
+
+			require.False(t, ok, "Expected notification channel to be closed but receive was successful")
+		})
+
+		t.Run("can attach new listener after supplier stops", func(t *testing.T) {
+			commitSend1 := make(chan *ledger.CommitNotification, 1)
+			commitSend2 := make(chan *ledger.CommitNotification, 1)
+			notificationSupplier := &mock.NotificationSupplier{}
+			notificationSupplier.CommitNotificationsReturnsOnCall(0, commitSend1, nil)
+			notificationSupplier.CommitNotificationsReturnsOnCall(1, commitSend2, nil)
+			notifier := commit.NewNotifier(notificationSupplier)
+			defer notifier.Close()
+
+			commitReceive1, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			require.NoError(t, err)
+
+			close(commitSend1)
+			_, ok := <-commitReceive1
+			require.False(t, ok, "Expected notification channel to be closed but receive was successful")
+
+			commitReceive2, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			require.NoError(t, err)
+
+			commitSend2 <- &ledger.CommitNotification{
+				BlockNumber: 1,
+				TxIDValidationCodes: map[string]peer.TxValidationCode{
+					"TX_ID": peer.TxValidationCode_MVCC_READ_CONFLICT,
+				},
+			}
+
+			actual, ok := <-commitReceive2
+			require.True(t, ok, "Expected notification channel to deliver a result but was closed")
+
+			expected := commit.Notification{
+				BlockNumber:    1,
+				TransactionID:  "TX_ID",
+				ValidationCode: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			}
+			require.EqualValues(t, expected, actual)
+		})
 	})
 
 	t.Run("Close", func(t *testing.T) {
@@ -311,6 +362,21 @@ func TestNotifier(t *testing.T) {
 			require.NotPanics(t, func() {
 				notifier.Close()
 			})
+		})
+
+		t.Run("stops notification supplier", func(t *testing.T) {
+			notificationSupplier := &mock.NotificationSupplier{}
+			notificationSupplier.CommitNotificationsReturns(nil, nil)
+			notifier := commit.NewNotifier(notificationSupplier)
+
+			_, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			require.NoError(t, err)
+			notifier.Close()
+
+			require.Equal(t, 1, notificationSupplier.CommitNotificationsCallCount(), "Unexpected call count")
+			done, _ := notificationSupplier.CommitNotificationsArgsForCall(0)
+			_, ok := <-done
+			require.False(t, ok, "Expected notification supplier done channel to be closed but receive was successful")
 		})
 	})
 }

@@ -14,9 +14,10 @@ import (
 
 type channelLevelNotifier struct {
 	commitChannel <-chan *ledger.CommitNotification
+	done          <-chan struct{}
 	lock          sync.Mutex
 	listeners     map[string][]*transactionListener
-	done          <-chan struct{}
+	closed        bool
 }
 
 func newChannelNotifier(done <-chan struct{}, commitChannel <-chan *ledger.CommitNotification) *channelLevelNotifier {
@@ -34,7 +35,6 @@ func (notifier *channelLevelNotifier) run() {
 		select {
 		case blockCommit, ok := <-notifier.commitChannel:
 			if !ok {
-				// This should never happen and behaviour is currently intentionally undefined / untested
 				notifier.close()
 				return
 			}
@@ -122,6 +122,14 @@ func (notifier *channelLevelNotifier) close() {
 	}
 
 	notifier.listeners = nil
+	notifier.closed = true
+}
+
+func (notifier *channelLevelNotifier) isClosed() bool {
+	notifier.lock.Lock()
+	defer notifier.lock.Unlock()
+
+	return notifier.closed
 }
 
 type transactionListener struct {
