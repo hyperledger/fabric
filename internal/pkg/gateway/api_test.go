@@ -442,6 +442,23 @@ func TestSubmit(t *testing.T) {
 			},
 			errString: "received nil response from orderer",
 		},
+		{
+			name: "orderer returns unsuccessful response",
+			plan: endorsementPlan{
+				"g1": {"localhost:7051"},
+			},
+			postSetup: func(def *preparedTest) {
+				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
+					abc := &mocks.ABClient{}
+					response := &ab.BroadcastResponse{
+						Status: cp.Status_BAD_REQUEST,
+					}
+					abc.RecvReturns(response, nil)
+					return abc, nil
+				}
+			},
+			errString: cp.Status_name[int32(cp.Status_BAD_REQUEST)],
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
