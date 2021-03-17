@@ -76,9 +76,18 @@ type PKCS11Opts struct {
 	Ephemeral bool `mapstructure:"tempkeys,omitempty" json:"tempkeys,omitempty"`
 
 	// PKCS11 options
-	Library    string `mapstructure:"library" json:"library"`
-	Label      string `mapstructure:"label" json:"label"`
-	Pin        string `mapstructure:"pin" json:"pin"`
-	SoftVerify bool   `mapstructure:"softwareverify,omitempty" json:"softwareverify,omitempty"`
-	Immutable  bool   `mapstructure:"immutable,omitempty" json:"immutable,omitempty"`
+	Library    string         `mapstructure:"library" json:"library"`
+	Label      string         `mapstructure:"label" json:"label"`
+	Pin        string         `mapstructure:"pin" json:"pin"`
+	SoftVerify bool           `mapstructure:"softwareverify,omitempty" json:"softwareverify,omitempty"`
+	Immutable  bool           `mapstructure:"immutable,omitempty" json:"immutable,omitempty"`
+	AltID      string         `json:"altid,omitempty"`
+	KeyIDs     []KeyIDMapping `json:"keyids,omitempty" mapstructure:"keyids"`
+}
+
+// A KeyIDMapping associates the CKA_ID attribute of a cryptoki object with a
+// subject key identifer.
+type KeyIDMapping struct {
+	SKI string `json:"ski,omitempty"`
+	ID  string `json:"id,omitempty"`
 }

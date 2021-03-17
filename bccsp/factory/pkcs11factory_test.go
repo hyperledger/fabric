@@ -9,10 +9,13 @@ SPDX-License-Identifier: Apache-2.0
 package factory
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPKCS11FactoryName(t *testing.T) {
@@ -110,4 +113,43 @@ func TestPKCS11FactoryGetEmptyKeyStorePath(t *testing.T) {
 	csp, err = f.Get(opts)
 	assert.NoError(t, err)
 	assert.NotNil(t, csp)
+}
+
+func TestSKIMapper(t *testing.T) {
+	inputSKI := sha256.New().Sum([]byte("some-ski"))
+	tests := []struct {
+		name     string
+		altID    string
+		keyIDs   map[string]string
+		expected []byte
+	}{
+		{name: "DefaultBehavior", expected: inputSKI},
+		{name: "AltIDOnly", altID: "alternate-ID", expected: []byte("alternate-ID")},
+		{name: "MapEntry", keyIDs: map[string]string{hex.EncodeToString(inputSKI): "mapped-id"}, expected: []byte("mapped-id")},
+		{name: "AltIDAsDefault", altID: "alternate-ID", keyIDs: map[string]string{"another-ski": "another-id"}, expected: []byte("alternate-ID")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := defaultOptions()
+			options.AltID = tt.altID
+			for k, v := range tt.keyIDs {
+				options.KeyIDs = append(options.KeyIDs, pkcs11.KeyIDMapping{SKI: k, ID: v})
+			}
+
+			mapper := skiMapper(*options)
+			result := mapper(inputSKI)
+			require.Equal(t, tt.expected, result, "got %x, want %x", result, tt.expected)
+		})
+	}
+}
+
+func defaultOptions() *pkcs11.PKCS11Opts {
+	lib, pin, label := pkcs11.FindPKCS11Lib()
+	return &pkcs11.PKCS11Opts{
+		SecLevel:   256,
+		HashFamily: "SHA2",
+		Library:    lib,
+		Pin:        pin,
+		Label:      label,
+	}
 }
