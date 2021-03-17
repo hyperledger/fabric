@@ -345,6 +345,10 @@ func (n *Network) WriteOrdererConfig(o *Orderer, config *fabricconfig.Orderer) {
 
 	err = ioutil.WriteFile(n.OrdererConfigPath(o), ordererBytes, 0o644)
 	Expect(err).NotTo(HaveOccurred())
+
+	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[updated-%s#orderer.yaml] ", o.ID()), ginkgo.GinkgoWriter)
+	_, err = pw.Write(ordererBytes)
+	Expect(err).NotTo(HaveOccurred())
 }
 
 // ReadConfigTxConfig  unmarshals the configtx.yaml and returns an
@@ -406,6 +410,10 @@ func (n *Network) WritePeerConfig(p *Peer, config *fabricconfig.Core) {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = ioutil.WriteFile(n.PeerConfigPath(p), coreBytes, 0o644)
+	Expect(err).NotTo(HaveOccurred())
+
+	pw := gexec.NewPrefixedWriter(fmt.Sprintf("[updated-%s#core.yaml] ", p.ID()), ginkgo.GinkgoWriter)
+	_, err = pw.Write(coreBytes)
 	Expect(err).NotTo(HaveOccurred())
 }
 
