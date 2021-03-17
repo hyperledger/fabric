@@ -35,9 +35,10 @@ import (
 
 var _ = Describe("PKCS11 enabled network", func() {
 	var (
-		tempDir string
-		network *nwo.Network
-		process ifrit.Process
+		tempDir   string
+		network   *nwo.Network
+		chaincode nwo.Chaincode
+		process   ifrit.Process
 	)
 
 	BeforeEach(func() {
@@ -49,26 +50,7 @@ var _ = Describe("PKCS11 enabled network", func() {
 		network.GenerateConfigTree()
 		network.Bootstrap()
 
-		By("configuring PKCS11 artifacts")
-		setupPKCS11(network)
-
-		By("starting fabric processes")
-		networkRunner := network.NetworkGroupRunner()
-		process = ifrit.Invoke(networkRunner)
-		Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
-	})
-
-	AfterEach(func() {
-		if process != nil {
-			process.Signal(syscall.SIGTERM)
-			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
-		}
-		network.Cleanup()
-		os.RemoveAll(tempDir)
-	})
-
-	It("executes transactions against a basic solo network", func() {
-		chaincode := nwo.Chaincode{
+		chaincode = nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "0.0",
 			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/simple/cmd"),
@@ -80,17 +62,68 @@ var _ = Describe("PKCS11 enabled network", func() {
 			InitRequired:    true,
 			Label:           "my_prebuilt_chaincode",
 		}
+	})
 
-		orderer := network.Orderer("orderer")
-		network.CreateAndJoinChannels(orderer)
+	AfterEach(func() {
+		if process != nil {
+			process.Signal(syscall.SIGTERM)
+			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive())
+		}
+		network.Cleanup()
+		os.RemoveAll(tempDir)
+	})
 
-		nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.PeersWithChannel("testchannel")...)
-		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
-		runQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
+	Describe("without mapping", func() {
+		BeforeEach(func() {
+			By("configuring PKCS11 artifacts")
+			setupPKCS11(network, noMapping)
+
+			By("starting fabric processes")
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		})
+
+		It("executes transactions against a basic solo network", func() {
+			orderer := network.Orderer("orderer")
+			network.CreateAndJoinChannels(orderer)
+
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.PeersWithChannel("testchannel")...)
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			runQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
+		})
+	})
+
+	Describe("mapping everything", func() {
+		BeforeEach(func() {
+			By("configuring PKCS11 artifacts")
+			setupPKCS11(network, mapAll)
+
+			By("starting fabric processes")
+			networkRunner := network.NetworkGroupRunner()
+			process = ifrit.Invoke(networkRunner)
+			Eventually(process.Ready(), network.EventuallyTimeout).Should(BeClosed())
+		})
+
+		It("executes transactions against a basic solo network", func() {
+			orderer := network.Orderer("orderer")
+			network.CreateAndJoinChannels(orderer)
+
+			nwo.EnableCapabilities(network, "testchannel", "Application", "V2_0", orderer, network.PeersWithChannel("testchannel")...)
+			nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+			runQueryInvokeQuery(network, orderer, network.Peer("Org1", "peer0"), "testchannel")
+		})
 	})
 })
 
-func setupPKCS11(network *nwo.Network) {
+type model uint8
+
+const (
+	noMapping = model(iota)
+	mapAll
+)
+
+func setupPKCS11(network *nwo.Network, model model) {
 	lib, pin, label := bpkcs11.FindPKCS11Lib()
 
 	By("establishing a PKCS11 session")
@@ -98,8 +131,22 @@ func setupPKCS11(network *nwo.Network) {
 	defer ctx.Destroy()
 	defer ctx.CloseSession(sess)
 
-	configurePeerPKCS11(ctx, sess, network)
-	configureOrdererPKCS11(ctx, sess, network)
+	serialNumbers := map[string]*big.Int{}
+	configurePeerPKCS11(ctx, sess, network, serialNumbers)
+	configureOrdererPKCS11(ctx, sess, network, serialNumbers)
+
+	var keyConfig []fabricconfig.KeyIDMapping
+	switch model {
+	case noMapping:
+	case mapAll:
+		updateKeyIdentifiers(ctx, sess, serialNumbers)
+		for ski, serial := range serialNumbers {
+			keyConfig = append(keyConfig, fabricconfig.KeyIDMapping{
+				SKI: ski,
+				ID:  serial.String(),
+			})
+		}
+	}
 
 	bccspConfig := &fabricconfig.BCCSP{
 		Default: "PKCS11",
@@ -109,6 +156,7 @@ func setupPKCS11(network *nwo.Network) {
 			Pin:      pin,
 			Label:    label,
 			Library:  lib,
+			KeyIDs:   keyConfig,
 		},
 	}
 
@@ -126,7 +174,7 @@ func setupPKCS11(network *nwo.Network) {
 	network.WriteOrdererConfig(orderer, ordererConfig)
 }
 
-func configurePeerPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nwo.Network) {
+func configurePeerPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nwo.Network, serialNumbers map[string]*big.Int) {
 	for _, peer := range network.Peers {
 		orgName := peer.Organization
 
@@ -144,20 +192,23 @@ func configurePeerPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nw
 		By("Updating the peer signcerts")
 		newOrdererPemCert := buildCert(caBytes, orgCAPath, peerCSR, peerSerial, peerPubKey)
 		updateMSPFolder(network.PeerLocalMSPDir(peer), fmt.Sprintf("peer.%s-cert.pem", domain), newOrdererPemCert)
+		serialNumbers[hex.EncodeToString(skiForKey(peerPubKey))] = peerSerial
 
 		By("Updating the peer admin user signcerts")
 		newAdminPemCert := buildCert(caBytes, orgCAPath, adminCSR, adminSerial, adminPubKey)
 		orgAdminMSPPath := network.PeerUserMSPDir(peer, "Admin")
 		updateMSPFolder(orgAdminMSPPath, fmt.Sprintf("Admin@%s-cert.pem", domain), newAdminPemCert)
+		serialNumbers[hex.EncodeToString(skiForKey(adminPubKey))] = adminSerial
 
 		By("Updating the peer user1 signcerts")
 		newUserPemCert := buildCert(caBytes, orgCAPath, userCSR, userSerial, userPubKey)
 		orgUserMSPPath := network.PeerUserMSPDir(peer, "User1")
 		updateMSPFolder(orgUserMSPPath, fmt.Sprintf("User1@%s-cert.pem", domain), newUserPemCert)
+		serialNumbers[hex.EncodeToString(skiForKey(userPubKey))] = userSerial
 	}
 }
 
-func configureOrdererPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nwo.Network) {
+func configureOrdererPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network *nwo.Network, serialNumbers map[string]*big.Int) {
 	orderer := network.Orderer("orderer")
 	orgName := orderer.Organization
 	domain := network.Organization(orgName).Domain
@@ -173,19 +224,24 @@ func configureOrdererPKCS11(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle, network 
 	By("Updating the orderer signcerts")
 	newOrdererPemCert := buildCert(caBytes, orgCAPath, ordererCSR, ordererSerial, ordererPubKey)
 	updateMSPFolder(network.OrdererLocalMSPDir(orderer), fmt.Sprintf("orderer.%s-cert.pem", domain), newOrdererPemCert)
+	serialNumbers[hex.EncodeToString(skiForKey(ordererPubKey))] = ordererSerial
 
 	By("Updating the orderer admin user signcerts")
 	newAdminPemCert := buildCert(caBytes, orgCAPath, adminCSR, adminSerial, adminPubKey)
 	orgAdminMSPPath := network.OrdererUserMSPDir(orderer, "Admin")
 	updateMSPFolder(orgAdminMSPPath, fmt.Sprintf("Admin@%s-cert.pem", domain), newAdminPemCert)
+	serialNumbers[hex.EncodeToString(skiForKey(adminPubKey))] = adminSerial
 }
 
 // Creates pkcs11 context and session
 func setupPKCS11Ctx(lib, label, pin string) (*pkcs11.Ctx, pkcs11.SessionHandle) {
 	ctx := pkcs11.New(lib)
 
-	err := ctx.Initialize()
-	Expect(err).NotTo(HaveOccurred())
+	if err := ctx.Initialize(); err != nil {
+		Expect(err).To(Equal(pkcs11.Error(pkcs11.CKR_CRYPTOKI_ALREADY_INITIALIZED)))
+	} else {
+		Expect(err).NotTo(HaveOccurred())
+	}
 
 	slot := findPKCS11Slot(ctx, label)
 	Expect(slot).Should(BeNumerically(">", 0), "Could not find slot with label %s", label)
@@ -357,7 +413,7 @@ func generateKeyPair(ctx *pkcs11.Ctx, sess pkcs11.SessionHandle) (*ecdsa.PublicK
 	err = ctx.SetAttributeValue(sess, privK, setskiT)
 	Expect(err).NotTo(HaveOccurred())
 
-	// convert pub key to rsa types
+	// convert pub key to ansi types
 	nistCurve := elliptic.P256()
 	x, y := elliptic.Unmarshal(nistCurve, ecpt)
 	if x == nil {
@@ -405,4 +461,40 @@ func ecPoint(pkcs11lib *pkcs11.Ctx, session pkcs11.SessionHandle, key pkcs11.Obj
 	}
 
 	return ecpt
+}
+
+func skiForKey(pk *ecdsa.PublicKey) []byte {
+	ski := sha256.Sum256(elliptic.Marshal(pk.Curve, pk.X, pk.Y))
+	return ski[:]
+}
+
+func updateKeyIdentifiers(pctx *pkcs11.Ctx, sess pkcs11.SessionHandle, serialNumbers map[string]*big.Int) {
+	for ks, serial := range serialNumbers {
+		ski, err := hex.DecodeString(ks)
+		Expect(err).NotTo(HaveOccurred())
+
+		updateKeyIdentifier(pctx, sess, pkcs11.CKO_PUBLIC_KEY, ski, []byte(serial.String()))
+		updateKeyIdentifier(pctx, sess, pkcs11.CKO_PRIVATE_KEY, ski, []byte(serial.String()))
+	}
+}
+
+func updateKeyIdentifier(pctx *pkcs11.Ctx, sess pkcs11.SessionHandle, class uint, currentID, newID []byte) {
+	pkt := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, class),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, currentID),
+	}
+	err := pctx.FindObjectsInit(sess, pkt)
+	Expect(err).NotTo(HaveOccurred())
+
+	objs, _, err := pctx.FindObjects(sess, 1)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(objs).To(HaveLen(1))
+
+	err = pctx.FindObjectsFinal(sess)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = pctx.SetAttributeValue(sess, objs[0], []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_ID, newID),
+	})
+	Expect(err).NotTo(HaveOccurred())
 }

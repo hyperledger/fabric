@@ -184,6 +184,14 @@ type PKCS11 struct {
 	Pin      string `yaml:"Pin,omitempty"`
 	Label    string `yaml:"Label,omitempty"`
 	Library  string `yaml:"Library,omitempty"`
+
+	AltID  string         `yaml:"AltID,omitempty"`
+	KeyIDs []KeyIDMapping `yaml:"KeyIDs,omitempty"`
+}
+
+type KeyIDMapping struct {
+	SKI string `yaml:"SKI,omitempty"`
+	ID  string `yaml:"ID,omitempty"`
 }
 
 type DeliveryClient struct {
