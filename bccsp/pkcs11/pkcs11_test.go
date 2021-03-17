@@ -565,6 +565,107 @@ func TestECDSASign(t *testing.T) {
 	require.Contains(t, err.Error(), "Invalid digest. Cannot be empty")
 }
 
+func defaultOptions() PKCS11Opts {
+	lib, pin, label := FindPKCS11Lib()
+	return PKCS11Opts{
+		Library:    lib,
+		Label:      label,
+		Pin:        pin,
+		HashFamily: "SHA2",
+		SecLevel:   256,
+		SoftVerify: false,
+	}
+}
+
+func newKeyStore(t *testing.T) (bccsp.KeyStore, func()) {
+	tempDir, err := ioutil.TempDir("", "pkcs11_ks")
+	require.NoError(t, err)
+	ks, err := sw.NewFileBasedKeyStore(nil, tempDir, false)
+	require.NoError(t, err)
+
+	return ks, func() { os.RemoveAll(tempDir) }
+}
+
+func newProvider(t *testing.T, opts PKCS11Opts, options ...Option) (*impl, func()) {
+	ks, ksCleanup := newKeyStore(t)
+	csp, err := New(opts, ks, options...)
+	require.NoError(t, err)
+
+	cleanup := func() {
+		csp.(*impl).ctx.Destroy()
+		ksCleanup()
+	}
+	return csp.(*impl), cleanup
+}
+
+type mapper struct {
+	input  []byte
+	result []byte
+}
+
+func (m *mapper) skiToID(ski []byte) []byte {
+	m.input = ski
+	return m.result
+}
+
+func TestKeyMapper(t *testing.T) {
+	mapper := &mapper{}
+	csp, cleanup := newProvider(t, defaultOptions(), WithKeyMapper(mapper.skiToID))
+	defer cleanup()
+
+	k, err := csp.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
+	require.NoError(t, err)
+
+	digest, err := csp.Hash([]byte("Hello World"), &bccsp.SHAOpts{})
+	require.NoError(t, err)
+
+	sess, err := csp.getSession()
+	require.NoError(t, err, "failed to get session")
+	defer csp.returnSession(sess)
+
+	newID := []byte("mapped-id")
+	updateKeyIdentifier(t, csp.ctx, sess, pkcs11.CKO_PUBLIC_KEY, k.SKI(), newID)
+	updateKeyIdentifier(t, csp.ctx, sess, pkcs11.CKO_PRIVATE_KEY, k.SKI(), newID)
+
+	t.Run("ToMissingID", func(t *testing.T) {
+		csp.clearCaches()
+		mapper.result = k.SKI()
+		_, err := csp.Sign(k, digest, nil)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Private key not found")
+		require.Equal(t, k.SKI(), mapper.input, "expected mapper to receive ski %x, got %x", k.SKI(), mapper.input)
+	})
+	t.Run("ToNewID", func(t *testing.T) {
+		csp.clearCaches()
+		mapper.result = newID
+		signature, err := csp.Sign(k, digest, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, signature, "signature must not be empty")
+		require.Equal(t, k.SKI(), mapper.input, "expected mapper to receive ski %x, got %x", k.SKI(), mapper.input)
+	})
+}
+
+func updateKeyIdentifier(t *testing.T, pctx *pkcs11.Ctx, sess pkcs11.SessionHandle, class uint, currentID, newID []byte) {
+	pkt := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, class),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, currentID),
+	}
+	err := pctx.FindObjectsInit(sess, pkt)
+	require.NoError(t, err)
+
+	objs, _, err := pctx.FindObjects(sess, 1)
+	require.NoError(t, err)
+	require.Len(t, objs, 1)
+
+	err = pctx.FindObjectsFinal(sess)
+	require.NoError(t, err)
+
+	err = pctx.SetAttributeValue(sess, objs[0], []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_ID, newID),
+	})
+	require.NoError(t, err)
+}
+
 func TestECDSAVerify(t *testing.T) {
 	k, err := currentBCCSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: false})
 	if err != nil {

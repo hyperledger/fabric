@@ -46,6 +46,8 @@ type impl struct {
 	softVerify bool
 	immutable  bool
 
+	getKeyIDForSKI func(ski []byte) []byte
+
 	sessLock sync.Mutex
 	sessPool chan pkcs11.SessionHandle
 	sessions map[pkcs11.SessionHandle]struct{}
@@ -55,9 +57,27 @@ type impl struct {
 	keyCache    map[string]bccsp.Key
 }
 
-// New WithParams returns a new instance of the software-based BCCSP
-// set at the passed security level, hash family and KeyStore.
-func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
+// An Option is used to configure the Provider.
+type Option func(p *impl) error
+
+// WithKeyMapper returns an option that configures the Provider to use the
+// provided function to map a subject key identifier to a cryptoki CKA_ID
+// identifer.
+func WithKeyMapper(mapper func([]byte) []byte) Option {
+	return func(i *impl) error {
+		i.getKeyIDForSKI = mapper
+		return nil
+	}
+}
+
+// New returns a new instance of a BCCSP that uses PKCS#11 standard interfaces
+// to generate and use elliptic curve key pairs for signing and verification using
+// curves that satisfy the requested security level from opts.
+//
+// All other cryptographic functions are delegated to a software based BCCSP
+// implementation that is configured to use the security level and hashing
+// familly from opts and the key store that is provided.
+func New(opts PKCS11Opts, keyStore bccsp.KeyStore, options ...Option) (bccsp.BCCSP, error) {
 	// Init config
 	conf := &config{}
 	err := conf.setSecurityLevel(opts.SecLevel, opts.HashFamily)
@@ -76,14 +96,21 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (bccsp.BCCSP, error) {
 	}
 
 	csp := &impl{
-		BCCSP:       swCSP,
-		conf:        conf,
-		sessPool:    sessPool,
-		sessions:    map[pkcs11.SessionHandle]struct{}{},
-		handleCache: map[string]pkcs11.ObjectHandle{},
-		softVerify:  opts.SoftVerify,
-		keyCache:    map[string]bccsp.Key{},
-		immutable:   opts.Immutable,
+		BCCSP:          swCSP,
+		conf:           conf,
+		getKeyIDForSKI: func(ski []byte) []byte { return ski },
+		sessPool:       sessPool,
+		sessions:       map[pkcs11.SessionHandle]struct{}{},
+		handleCache:    map[string]pkcs11.ObjectHandle{},
+		softVerify:     opts.SoftVerify,
+		keyCache:       map[string]bccsp.Key{},
+		immutable:      opts.Immutable,
+	}
+
+	for _, o := range options {
+		if err := o(csp); err != nil {
+			return nil, err
+		}
 	}
 
 	return csp.initialize(opts)
@@ -685,7 +712,7 @@ func (csp *impl) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte, ke
 
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, ktype),
-		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, csp.getKeyIDForSKI(ski)),
 	}
 	if err := csp.ctx.FindObjectsInit(session, template); err != nil {
 		return 0, err
