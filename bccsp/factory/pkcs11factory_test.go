@@ -9,6 +9,8 @@ SPDX-License-Identifier: Apache-2.0
 package factory
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
@@ -38,44 +40,11 @@ func TestPKCS11FactoryGetInvalidArgs(t *testing.T) {
 
 func TestPKCS11FactoryGet(t *testing.T) {
 	f := &PKCS11Factory{}
-	lib, pin, label := pkcs11.FindPKCS11Lib()
 
 	opts := &FactoryOpts{
-		PKCS11: &pkcs11.PKCS11Opts{
-			Security: 256,
-			Hash:     "SHA2",
-			Library:  lib,
-			Pin:      pin,
-			Label:    label,
-		},
+		PKCS11: defaultOptions(),
 	}
 	csp, err := f.Get(opts)
-	require.NoError(t, err)
-	require.NotNil(t, csp)
-
-	opts = &FactoryOpts{
-		PKCS11: &pkcs11.PKCS11Opts{
-			Security: 256,
-			Hash:     "SHA2",
-			Library:  lib,
-			Pin:      pin,
-			Label:    label,
-		},
-	}
-	csp, err = f.Get(opts)
-	require.NoError(t, err)
-	require.NotNil(t, csp)
-
-	opts = &FactoryOpts{
-		PKCS11: &pkcs11.PKCS11Opts{
-			Security: 256,
-			Hash:     "SHA2",
-			Library:  lib,
-			Pin:      pin,
-			Label:    label,
-		},
-	}
-	csp, err = f.Get(opts)
 	require.NoError(t, err)
 	require.NotNil(t, csp)
 }
@@ -109,4 +78,43 @@ func TestPKCS11FactoryGetEmptyKeyStorePath(t *testing.T) {
 	csp, err = f.Get(opts)
 	require.NoError(t, err)
 	require.NotNil(t, csp)
+}
+
+func TestSKIMapper(t *testing.T) {
+	inputSKI := sha256.New().Sum([]byte("some-ski"))
+	tests := []struct {
+		name     string
+		altID    string
+		keyIDs   map[string]string
+		expected []byte
+	}{
+		{name: "DefaultBehavior", expected: inputSKI},
+		{name: "AltIDOnly", altID: "alternate-ID", expected: []byte("alternate-ID")},
+		{name: "MapEntry", keyIDs: map[string]string{hex.EncodeToString(inputSKI): "mapped-id"}, expected: []byte("mapped-id")},
+		{name: "AltIDAsDefault", altID: "alternate-ID", keyIDs: map[string]string{"another-ski": "another-id"}, expected: []byte("alternate-ID")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := defaultOptions()
+			options.AltID = tt.altID
+			for k, v := range tt.keyIDs {
+				options.KeyIDs = append(options.KeyIDs, pkcs11.KeyIDMapping{SKI: k, ID: v})
+			}
+
+			mapper := skiMapper(*options)
+			result := mapper(inputSKI)
+			require.Equal(t, tt.expected, result, "got %x, want %x", result, tt.expected)
+		})
+	}
+}
+
+func defaultOptions() *pkcs11.PKCS11Opts {
+	lib, pin, label := pkcs11.FindPKCS11Lib()
+	return &pkcs11.PKCS11Opts{
+		Security: 256,
+		Hash:     "SHA2",
+		Library:  lib,
+		Pin:      pin,
+		Label:    label,
+	}
 }

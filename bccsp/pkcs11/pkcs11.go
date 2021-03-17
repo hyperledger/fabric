@@ -41,6 +41,7 @@ type Provider struct {
 	softVerify bool
 	immutable  bool
 
+	getKeyIDForSKI          func(ski []byte) []byte
 	createSessionRetries    int
 	createSessionRetryDelay time.Duration
 
@@ -56,6 +57,19 @@ type Provider struct {
 // Ensure we satisfy the BCCSP interfaces.
 var _ bccsp.BCCSP = (*Provider)(nil)
 
+// An Option is used to configure the Provider.
+type Option func(p *Provider) error
+
+// WithKeyMapper returns an option that configures the Provider to use the
+// provided function to map a subject key identifier to a cryptoki CKA_ID
+// identifer.
+func WithKeyMapper(mapper func([]byte) []byte) Option {
+	return func(p *Provider) error {
+		p.getKeyIDForSKI = mapper
+		return nil
+	}
+}
+
 // New returns a new instance of a BCCSP that uses PKCS#11 standard interfaces
 // to generate and use elliptic curve key pairs for signing and verification using
 // curves that satisfy the requested security level from opts.
@@ -63,7 +77,7 @@ var _ bccsp.BCCSP = (*Provider)(nil)
 // All other cryptographic functions are delegated to a software based BCCSP
 // implementation that is configured to use the security level and hashing
 // familly from opts and the key store that is provided.
-func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (*Provider, error) {
+func New(opts PKCS11Opts, keyStore bccsp.KeyStore, options ...Option) (*Provider, error) {
 	curve, err := curveForSecurityLevel(opts.Security)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed initializing configuration")
@@ -92,6 +106,7 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (*Provider, error) {
 	csp := &Provider{
 		BCCSP:                   swCSP,
 		curve:                   curve,
+		getKeyIDForSKI:          func(ski []byte) []byte { return ski },
 		createSessionRetries:    opts.createSessionRetries,
 		createSessionRetryDelay: opts.createSessionRetryDelay,
 		sessPool:                sessPool,
@@ -100,6 +115,12 @@ func New(opts PKCS11Opts, keyStore bccsp.KeyStore) (*Provider, error) {
 		keyCache:                map[string]bccsp.Key{},
 		softVerify:              opts.SoftwareVerify,
 		immutable:               opts.Immutable,
+	}
+
+	for _, o := range options {
+		if err := o(csp); err != nil {
+			return nil, err
+		}
 	}
 
 	return csp.initialize(opts)
@@ -697,7 +718,7 @@ func (csp *Provider) findKeyPairFromSKI(session pkcs11.SessionHandle, ski []byte
 
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, ktype),
-		pkcs11.NewAttribute(pkcs11.CKA_ID, ski),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, csp.getKeyIDForSKI(ski)),
 	}
 	if err := csp.ctx.FindObjectsInit(session, template); err != nil {
 		return 0, err

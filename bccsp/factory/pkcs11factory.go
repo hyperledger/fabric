@@ -9,6 +9,8 @@ SPDX-License-Identifier: Apache-2.0
 package factory
 
 import (
+	"encoding/hex"
+
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -35,8 +37,27 @@ func (f *PKCS11Factory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 		return nil, errors.New("Invalid config. It must not be nil.")
 	}
 
-	p11Opts := config.PKCS11
+	p11Opts := *config.PKCS11
 	ks := sw.NewDummyKeyStore()
+	mapper := skiMapper(p11Opts)
 
-	return pkcs11.New(*p11Opts, ks)
+	return pkcs11.New(p11Opts, ks, pkcs11.WithKeyMapper(mapper))
+}
+
+func skiMapper(p11Opts pkcs11.PKCS11Opts) func([]byte) []byte {
+	keyMap := map[string]string{}
+	for _, k := range p11Opts.KeyIDs {
+		keyMap[k.SKI] = k.ID
+	}
+
+	return func(ski []byte) []byte {
+		keyID := hex.EncodeToString(ski)
+		if id, ok := keyMap[keyID]; ok {
+			return []byte(id)
+		}
+		if p11Opts.AltID != "" {
+			return []byte(p11Opts.AltID)
+		}
+		return ski
+	}
 }

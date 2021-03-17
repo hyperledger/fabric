@@ -21,13 +21,22 @@ type PKCS11Opts struct {
 	Hash     string `json:"hash"`
 
 	// PKCS11 options
-	Library        string `json:"library"`
-	Label          string `json:"label"`
-	Pin            string `json:"pin"`
-	SoftwareVerify bool   `json:"softwareverify,omitempty"`
-	Immutable      bool   `json:"immutable,omitempty"`
+	Library        string         `json:"library"`
+	Label          string         `json:"label"`
+	Pin            string         `json:"pin"`
+	SoftwareVerify bool           `json:"softwareverify,omitempty"`
+	Immutable      bool           `json:"immutable,omitempty"`
+	AltID          string         `json:"altid,omitempty"`
+	KeyIDs         []KeyIDMapping `json:"keyids,omitempty" mapstructure:"keyids"`
 
 	sessionCacheSize        int
 	createSessionRetries    int
 	createSessionRetryDelay time.Duration
+}
+
+// A KeyIDMapping associates the CKA_ID attribute of a cryptoki object with a
+// subject key identifer.
+type KeyIDMapping struct {
+	SKI string `json:"ski,omitempty"`
+	ID  string `json:"id,omitempty"`
 }
