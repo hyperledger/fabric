@@ -289,11 +289,6 @@ func initMockPeer(channelIDs ...string) (*peer.Peer, *ChaincodeSupport, func(), 
 			cleanup()
 			return nil, nil, func() {}, err
 		}
-
-		// any channel other than the default testchannelid does not have a MSP set up -> create one
-		if id != "testchannelid" {
-			mspmgmt.XXXSetMSPManager(id, mspmgmt.GetManagerForChain("testchannelid"))
-		}
 		globalBlockNum[id] = 1
 	}
 
