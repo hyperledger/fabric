@@ -93,6 +93,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/gateway"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -820,13 +821,18 @@ func serve(args []string) error {
 	if coreConfig.GatewayOptions.Enabled {
 		if coreConfig.DiscoveryEnabled {
 			logger.Info("Starting peer with Gateway enabled")
+
+			peerAdapter := &commit.PeerAdapter{
+				Peer: peerInstance,
+			}
 			gatewayprotos.RegisterGatewayServer(
 				peerServer.Server(),
 				gateway.CreateServer(
 					&gateway.EndorserServerAdapter{Server: serverEndorser},
 					discoveryService,
-					&gateway.PeerNotifierAdapter{
-						Peer: peerInstance,
+					&commit.Finder{
+						Query:    peerAdapter,
+						Notifier: commit.NewNotifier(peerAdapter),
 					},
 					peerInstance.GossipService.SelfMembershipInfo().Endpoint,
 					coreConfig.LocalMSPID,

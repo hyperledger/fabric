@@ -168,4 +168,50 @@ var _ = Describe("GatewayService", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
+
+	Describe("CommitStatus", func() {
+		It("should respond with status of submitted transaction", func() {
+			conn := network.PeerClientConn(org1Peer0)
+			defer conn.Close()
+			gatewayClient := gateway.NewGatewayClient(conn)
+			ctx, cancel := context.WithTimeout(context.Background(), network.EventuallyTimeout)
+			defer cancel()
+
+			signingIdentity := network.PeerUserSigner(org1Peer0, "User1")
+			proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", "respond", []byte("200"), []byte("conga message"), []byte("conga payload"))
+
+			endorseRequest := &gateway.EndorseRequest{
+				TransactionId:       transactionID,
+				ChannelId:           "testchannel",
+				ProposedTransaction: proposedTransaction,
+			}
+
+			endorseResponse, err := gatewayClient.Endorse(ctx, endorseRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			preparedTransaction := endorseResponse.GetPreparedTransaction()
+			preparedTransaction.Signature, err = signingIdentity.Sign(preparedTransaction.Payload)
+			Expect(err).NotTo(HaveOccurred())
+
+			submitRequest := &gateway.SubmitRequest{
+				TransactionId:       transactionID,
+				ChannelId:           "testchannel",
+				PreparedTransaction: preparedTransaction,
+			}
+			_, err = gatewayClient.Submit(ctx, submitRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			statusRequest := &gateway.CommitStatusRequest{
+				ChannelId:     "testchannel",
+				TransactionId: transactionID,
+			}
+			actualStatus, err := gatewayClient.CommitStatus(ctx, statusRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			expectedStatus := &gateway.CommitStatusResponse{
+				Result: peer.TxValidationCode_VALID,
+			}
+			Expect(proto.Equal(actualStatus, expectedStatus)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", actualStatus, expectedStatus)
+		})
+	})
 })

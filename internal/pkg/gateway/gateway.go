@@ -10,7 +10,6 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"google.golang.org/grpc"
 )
@@ -19,9 +18,9 @@ var logger = flogging.MustGetLogger("gateway")
 
 // Server represents the GRPC server for the Gateway.
 type Server struct {
-	registry       *registry
-	commitNotifier *commit.Notifier
-	options        config.Options
+	registry     *registry
+	commitFinder CommitFinder
+	options      config.Options
 }
 
 type EndorserServerAdapter struct {
@@ -32,8 +31,12 @@ func (e *EndorserServerAdapter) ProcessProposal(ctx context.Context, req *peer.S
 	return e.Server.ProcessProposal(ctx, req)
 }
 
+type CommitFinder interface {
+	TransactionStatus(ctx context.Context, channelName string, transactionID string) (peer.TxValidationCode, error)
+}
+
 // CreateServer creates an embedded instance of the Gateway.
-func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, supplier commit.NotificationSupplier, localEndpoint, localMSPID string, options config.Options) *Server {
+func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, finder CommitFinder, localEndpoint, localMSPID string, options config.Options) *Server {
 	gwServer := &Server{
 		registry: &registry{
 			localEndorser:       &endorser{client: localEndorser, endpointConfig: &endpointConfig{address: localEndpoint, mspid: localMSPID}},
@@ -45,8 +48,8 @@ func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, suppli
 			tlsRootCerts:        map[string][][]byte{},
 			channelsInitialized: map[string]bool{},
 		},
-		commitNotifier: commit.NewNotifier(supplier),
-		options:        options,
+		commitFinder: finder,
+		options:      options,
 	}
 
 	return gwServer

@@ -36,15 +36,17 @@ func (fake *Dialer) Spy(arg1 context.Context, arg2 string, arg3 ...grpc.DialOpti
 		arg2 string
 		arg3 []grpc.DialOption
 	}{arg1, arg2, arg3})
+	stub := fake.Stub
+	returns := fake.returns
 	fake.recordInvocation("dialer", []interface{}{arg1, arg2, arg3})
 	fake.mutex.Unlock()
-	if fake.Stub != nil {
-		return fake.Stub(arg1, arg2, arg3...)
+	if stub != nil {
+		return stub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.returns.result1, fake.returns.result2
+	return returns.result1, returns.result2
 }
 
 func (fake *Dialer) CallCount() int {

@@ -4,38 +4,44 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package commit_test
+package commit
 
 import (
 	"testing"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/commit/mock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
-//go:generate counterfeiter -o mock/notificationsupplier.go --fake-name NotificationSupplier . NotificationSupplier
+//go:generate counterfeiter -o mock/notificationsupplier.go --fake-name NotificationSupplier . notificationSupplier
+type notificationSupplier interface { // Mimic NotificationSupplier to avoid circular import with generated mock
+	NotificationSupplier
+}
+
+func newNotificationSupplier(commitSend <-chan *ledger.CommitNotification) *mock.NotificationSupplier {
+	supplier := &mock.NotificationSupplier{}
+	supplier.CommitNotificationsReturnsOnCall(0, commitSend, nil)
+	supplier.CommitNotificationsReturns(nil, errors.New("unexpected call of CommitNotificationChannel"))
+	return supplier
+}
 
 func TestNotifier(t *testing.T) {
-	newTestNotifier := func(commitSend <-chan *ledger.CommitNotification) *commit.Notifier {
-		notificationSupplier := &mock.NotificationSupplier{}
-		notificationSupplier.CommitNotificationsReturnsOnCall(0, commitSend, nil)
-		notificationSupplier.CommitNotificationsReturns(nil, errors.New("unexpected call of CommitNotificationChannel"))
-
-		return commit.NewNotifier(notificationSupplier)
+	newTestNotifier := func(commitSend <-chan *ledger.CommitNotification) *Notifier {
+		supplier := newNotificationSupplier(commitSend)
+		return NewNotifier(supplier)
 	}
 
 	t.Run("Notify", func(t *testing.T) {
 		t.Run("returns error from notification supplier", func(t *testing.T) {
 			notificationSupplier := &mock.NotificationSupplier{}
 			notificationSupplier.CommitNotificationsReturns(nil, errors.New("MY_ERROR"))
-			notifier := commit.NewNotifier(notificationSupplier)
-			defer notifier.Close()
+			notifier := NewNotifier(notificationSupplier)
+			defer notifier.close()
 
-			_, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			_, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 
 			require.ErrorContains(t, err, "MY_ERROR")
 		})
@@ -43,9 +49,9 @@ func TestNotifier(t *testing.T) {
 		t.Run("delivers notification for matching transaction", func(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
-			defer notifier.Close()
+			defer notifier.close()
 
-			commitReceive, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			commitSend <- &ledger.CommitNotification{
@@ -56,7 +62,7 @@ func TestNotifier(t *testing.T) {
 			}
 			actual := <-commitReceive
 
-			expected := commit.Notification{
+			expected := notification{
 				BlockNumber:    1,
 				TransactionID:  "TX_ID",
 				ValidationCode: peer.TxValidationCode_MVCC_READ_CONFLICT,
@@ -67,9 +73,9 @@ func TestNotifier(t *testing.T) {
 		t.Run("ignores non-matching transaction in same block", func(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
-			defer notifier.Close()
+			defer notifier.close()
 
-			commitReceive, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			commitSend <- &ledger.CommitNotification{
@@ -81,7 +87,7 @@ func TestNotifier(t *testing.T) {
 			}
 			actual := <-commitReceive
 
-			expected := commit.Notification{
+			expected := notification{
 				BlockNumber:    1,
 				TransactionID:  "TX_ID",
 				ValidationCode: peer.TxValidationCode_MVCC_READ_CONFLICT,
@@ -92,9 +98,9 @@ func TestNotifier(t *testing.T) {
 		t.Run("ignores blocks without matching transaction", func(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 2)
 			notifier := newTestNotifier(commitSend)
-			defer notifier.Close()
+			defer notifier.close()
 
-			commitReceive, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			commitSend <- &ledger.CommitNotification{
@@ -111,7 +117,7 @@ func TestNotifier(t *testing.T) {
 			}
 			actual := <-commitReceive
 
-			expected := commit.Notification{
+			expected := notification{
 				BlockNumber:    2,
 				TransactionID:  "TX_ID",
 				ValidationCode: peer.TxValidationCode_MVCC_READ_CONFLICT,
@@ -122,9 +128,9 @@ func TestNotifier(t *testing.T) {
 		t.Run("processes blocks in order", func(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 2)
 			notifier := newTestNotifier(commitSend)
-			defer notifier.Close()
+			defer notifier.close()
 
-			commitReceive, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			commitSend <- &ledger.CommitNotification{
@@ -141,7 +147,7 @@ func TestNotifier(t *testing.T) {
 			}
 			actual := <-commitReceive
 
-			expected := commit.Notification{
+			expected := notification{
 				BlockNumber:    1,
 				TransactionID:  "TX_ID",
 				ValidationCode: peer.TxValidationCode_MVCC_READ_CONFLICT,
@@ -152,9 +158,9 @@ func TestNotifier(t *testing.T) {
 		t.Run("closes channel after notification", func(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 2)
 			notifier := newTestNotifier(commitSend)
-			defer notifier.Close()
+			defer notifier.close()
 
-			commitReceive, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			commitSend <- &ledger.CommitNotification{
@@ -178,10 +184,10 @@ func TestNotifier(t *testing.T) {
 		t.Run("stops notification when done channel closed", func(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
-			defer notifier.Close()
+			defer notifier.close()
 
 			done := make(chan struct{})
-			commitReceive, err := notifier.Notify(done, "CHANNEL_NAME", "TX_ID")
+			commitReceive, err := notifier.notify(done, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			close(done)
@@ -199,12 +205,12 @@ func TestNotifier(t *testing.T) {
 		t.Run("multiple listeners receive notifications", func(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
-			defer notifier.Close()
+			defer notifier.close()
 
-			commitReceive1, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive1, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
-			commitReceive2, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive2, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			commitSend <- &ledger.CommitNotification{
@@ -216,7 +222,7 @@ func TestNotifier(t *testing.T) {
 			actual1 := <-commitReceive1
 			actual2 := <-commitReceive2
 
-			expected := commit.Notification{
+			expected := notification{
 				BlockNumber:    1,
 				TransactionID:  "TX_ID",
 				ValidationCode: peer.TxValidationCode_MVCC_READ_CONFLICT,
@@ -228,13 +234,13 @@ func TestNotifier(t *testing.T) {
 		t.Run("multiple listeners can stop listening independently", func(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
-			defer notifier.Close()
+			defer notifier.close()
 
 			done := make(chan struct{})
-			commitReceive1, err := notifier.Notify(done, "CHANNEL_NAME", "TX_ID")
+			commitReceive1, err := notifier.notify(done, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
-			commitReceive2, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive2, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			close(done)
@@ -254,10 +260,10 @@ func TestNotifier(t *testing.T) {
 		t.Run("passes open done channel to notification supplier", func(t *testing.T) {
 			notificationSupplier := &mock.NotificationSupplier{}
 			notificationSupplier.CommitNotificationsReturns(nil, nil)
-			notifier := commit.NewNotifier(notificationSupplier)
-			defer notifier.Close()
+			notifier := NewNotifier(notificationSupplier)
+			defer notifier.close()
 
-			_, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			_, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			require.Equal(t, 1, notificationSupplier.CommitNotificationsCallCount(), "Unexpected call count")
@@ -272,10 +278,10 @@ func TestNotifier(t *testing.T) {
 		t.Run("passes channel name to notification supplier", func(t *testing.T) {
 			notificationSupplier := &mock.NotificationSupplier{}
 			notificationSupplier.CommitNotificationsReturns(nil, nil)
-			notifier := commit.NewNotifier(notificationSupplier)
-			defer notifier.Close()
+			notifier := NewNotifier(notificationSupplier)
+			defer notifier.close()
 
-			_, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			_, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			require.Equal(t, 1, notificationSupplier.CommitNotificationsCallCount(), "Unexpected call count")
@@ -286,9 +292,9 @@ func TestNotifier(t *testing.T) {
 		t.Run("stops notification if supplier stops", func(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
-			defer notifier.Close()
+			defer notifier.close()
 
-			commitReceive, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			close(commitSend)
@@ -303,17 +309,17 @@ func TestNotifier(t *testing.T) {
 			notificationSupplier := &mock.NotificationSupplier{}
 			notificationSupplier.CommitNotificationsReturnsOnCall(0, commitSend1, nil)
 			notificationSupplier.CommitNotificationsReturnsOnCall(1, commitSend2, nil)
-			notifier := commit.NewNotifier(notificationSupplier)
-			defer notifier.Close()
+			notifier := NewNotifier(notificationSupplier)
+			defer notifier.close()
 
-			commitReceive1, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive1, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			close(commitSend1)
 			_, ok := <-commitReceive1
 			require.False(t, ok, "Expected notification channel to be closed but receive was successful")
 
-			commitReceive2, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive2, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
 
 			commitSend2 <- &ledger.CommitNotification{
@@ -326,7 +332,7 @@ func TestNotifier(t *testing.T) {
 			actual, ok := <-commitReceive2
 			require.True(t, ok, "Expected notification channel to deliver a result but was closed")
 
-			expected := commit.Notification{
+			expected := notification{
 				BlockNumber:    1,
 				TransactionID:  "TX_ID",
 				ValidationCode: peer.TxValidationCode_MVCC_READ_CONFLICT,
@@ -340,9 +346,9 @@ func TestNotifier(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification)
 			notifier := newTestNotifier(commitSend)
 
-			commitReceive, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			commitReceive, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
-			notifier.Close()
+			notifier.close()
 
 			_, ok := <-commitReceive
 
@@ -352,21 +358,21 @@ func TestNotifier(t *testing.T) {
 		t.Run("idempotent", func(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification)
 			notifier := newTestNotifier(commitSend)
-			notifier.Close()
+			notifier.close()
 
 			require.NotPanics(t, func() {
-				notifier.Close()
+				notifier.close()
 			})
 		})
 
 		t.Run("stops notification supplier", func(t *testing.T) {
 			notificationSupplier := &mock.NotificationSupplier{}
 			notificationSupplier.CommitNotificationsReturns(nil, nil)
-			notifier := commit.NewNotifier(notificationSupplier)
+			notifier := NewNotifier(notificationSupplier)
 
-			_, err := notifier.Notify(nil, "CHANNEL_NAME", "TX_ID")
+			_, err := notifier.notify(nil, "CHANNEL_NAME", "TX_ID")
 			require.NoError(t, err)
-			notifier.Close()
+			notifier.close()
 
 			require.Equal(t, 1, notificationSupplier.CommitNotificationsCallCount(), "Unexpected call count")
 			done, _ := notificationSupplier.CommitNotificationsArgsForCall(0)
