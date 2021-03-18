@@ -471,6 +471,18 @@ func TestSubmit(t *testing.T) {
 	}
 }
 
+func TestSubmitUnsigned(t *testing.T) {
+	server := &Server{}
+	req := &pb.SubmitRequest{
+		TransactionId:       "transaction-id",
+		ChannelId:           "channel-id",
+		PreparedTransaction: &cp.Envelope{},
+	}
+	_, err := server.Submit(context.Background(), req)
+	require.Error(t, err)
+	require.Equal(t, err, status.Error(codes.InvalidArgument, "prepared transaction must be signed"))
+}
+
 func TestCommitStatus(t *testing.T) {
 	tests := []testDef{
 		{
