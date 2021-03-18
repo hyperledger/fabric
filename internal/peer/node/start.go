@@ -825,6 +825,9 @@ func serve(args []string) error {
 				gateway.CreateServer(
 					&gateway.EndorserServerAdapter{Server: serverEndorser},
 					discoveryService,
+					&gateway.PeerNotifierAdapter{
+						Peer: peerInstance,
+					},
 					peerInstance.GossipService.SelfMembershipInfo().Endpoint,
 					coreConfig.LocalMSPID,
 					coreConfig.GatewayOptions,
