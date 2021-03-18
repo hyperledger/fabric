@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/commit/mock"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	idmocks "github.com/hyperledger/fabric/internal/pkg/identity/mocks"
@@ -529,7 +530,7 @@ func TestCommitStatus(t *testing.T) {
 }
 
 func TestNilArgs(t *testing.T) {
-	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, "localhost:7051", "msp1", config.GetOptions(viper.New()))
+	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, &mock.NotificationSupplier{}, "localhost:7051", "msp1", config.GetOptions(viper.New()))
 	ctx := context.Background()
 
 	_, err := server.Evaluate(ctx, nil)
@@ -612,7 +613,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		EndorsementTimeout: endorsementTimeout,
 	}
 
-	server := CreateServer(localEndorser, disc, "localhost:7051", "msp1", options)
+	server := CreateServer(localEndorser, disc, &mock.NotificationSupplier{}, "localhost:7051", "msp1", options)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)

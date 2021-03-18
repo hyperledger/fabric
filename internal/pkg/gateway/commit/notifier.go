@@ -1,5 +1,5 @@
 /*
-Copyright 2021 IBM All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -37,10 +37,6 @@ type Notification struct {
 
 // NewNotifier constructor.
 func NewNotifier(supplier NotificationSupplier) *Notifier {
-	if supplier == nil {
-		return nil
-	}
-
 	return &Notifier{
 		supplier:         supplier,
 		channelNotifiers: make(map[string]*channelLevelNotifier),

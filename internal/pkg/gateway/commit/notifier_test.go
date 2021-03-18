@@ -1,5 +1,5 @@
 /*
-Copyright 2021 IBM All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
@@ -27,11 +27,6 @@ func TestNotifier(t *testing.T) {
 
 		return commit.NewNotifier(notificationSupplier)
 	}
-
-	t.Run("NewNotifier with nil ledger returns nil", func(t *testing.T) {
-		result := commit.NewNotifier(nil)
-		require.Nil(t, result)
-	})
 
 	t.Run("Notify", func(t *testing.T) {
 		t.Run("returns error from notification supplier", func(t *testing.T) {
