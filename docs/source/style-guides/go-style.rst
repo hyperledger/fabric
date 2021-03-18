@@ -27,7 +27,13 @@ Testing
 
 Unit tests are expected to accompany all production code changes. These tests
 should be fast, provide very good coverage for new and modified code, and
-support parallel execution.
+support parallel execution (``go test -p``).
+
+We rely heavily on our tests to catch regressions and behavior changes. If code
+is not exercised by tests, it will likely be removed. That said, we know there
+are some areas of the code where we lack test coverage. If you need to make a
+change in one of these areas, tests to cover the impacted paths should be made
+before delivering features or fixes.
 
 Two matching libraries are commonly used in our tests. When modifying code,
 please use the matching library that has already been chosen for the package.
