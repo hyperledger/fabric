@@ -145,7 +145,7 @@ func constructDeploymentSpec(name, path, version string, initArgs [][]byte, crea
 }
 
 func getMSPIDs(cid string) []string           { return nil }
-func getMSPManager(cid string) msp.MSPManager { return mspmgmt.GetManagerForChain(cid) }
+func getMSPManager(cid string) msp.MSPManager { return msp.NewMSPManager() }
 
 // TestInstall tests the install function with various inputs
 func TestInstall(t *testing.T) {
@@ -1240,8 +1240,7 @@ func TestCheckCollectionMemberPolicy(t *testing.T) {
 	mockmsp.On("DeserializeIdentity", []byte("signer1")).Return(&mspmocks.MockIdentity{}, nil)
 	mockmsp.On("GetIdentifier").Return("Org1", nil)
 	mockmsp.On("GetType").Return(msp.FABRIC)
-	mspmgmt.GetManagerForChain("foochannel")
-	mgr := mspmgmt.GetManagerForChain("foochannel")
+	mgr := msp.NewMSPManager()
 
 	// error case: msp manager not set up, no collection config set
 	err = checkCollectionMemberPolicy(nil, nil)
