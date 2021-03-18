@@ -154,7 +154,10 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	}
 	txn := request.GetPreparedTransaction()
 	if txn == nil {
-		return nil, status.Error(codes.InvalidArgument, "a signed prepared transaction is required")
+		return nil, status.Error(codes.InvalidArgument, "a prepared transaction is required")
+	}
+	if len(txn.Signature) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "prepared transaction must be signed")
 	}
 	orderers, err := gs.registry.orderers(request.ChannelId)
 	if err != nil {

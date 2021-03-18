@@ -156,6 +156,9 @@ var _ = Describe("GatewayService", func() {
 			Expect(proto.Equal(result, expectedResult)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", result, expectedResult)
 
 			preparedTransaction := endorseResponse.GetPreparedTransaction()
+			preparedTransaction.Signature, err = signingIdentity.Sign(preparedTransaction.Payload)
+			Expect(err).NotTo(HaveOccurred())
+
 			submitRequest := &gateway.SubmitRequest{
 				TransactionId:       transactionID,
 				ChannelId:           "testchannel",
