@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -158,6 +159,20 @@ func TestFollowerNewChain(t *testing.T) {
 		consensusRelation, status := chain.StatusReport()
 		require.Equal(t, types.ConsensusRelationFollower, consensusRelation)
 		require.True(t, status == types.StatusActive)
+	})
+
+	t.Run("can not find config block in chain", func(t *testing.T) {
+		globalSetup(t)
+		localBlockchain.fill(5)
+
+		// Set last config index to non-existing value 222
+		lastBlock := localBlockchain.Block(localBlockchain.Height() - 1)
+		err := setLastConfigIndexInBlock(lastBlock, 222)
+		require.NoError(t, err)
+
+		chain, err := follower.NewChain(ledgerResources, mockClusterConsenter, nil, options, pullerFactory, mockChainCreator, nil, mockChannelParticipationMetricsReporter)
+		require.EqualError(t, err, "could not retrieve config block from index 222")
+		require.Nil(t, chain)
 	})
 }
 
@@ -971,4 +986,25 @@ func TestChain_makeConfigBlock(t *testing.T) {
 	isMem, err = amIReallyInChannel(protoutil.NewBlock(10, []byte{1, 2, 3, 4}))
 	require.EqualError(t, err, "not a config")
 	require.False(t, isMem)
+}
+
+func setLastConfigIndexInBlock(block *common.Block, lastConfigIndex uint64) error {
+	ordererBlockMetadata := &common.OrdererBlockMetadata{
+		LastConfig: &common.LastConfig{
+			Index: lastConfigIndex,
+		},
+	}
+	obmBytes, err := proto.Marshal(ordererBlockMetadata)
+	if err != nil {
+		return err
+	}
+	metadata := &common.Metadata{
+		Value: obmBytes,
+	}
+	metadataBytes, err := proto.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	block.Metadata.Metadata[common.BlockMetadataIndex_SIGNATURES] = metadataBytes
+	return nil
 }
