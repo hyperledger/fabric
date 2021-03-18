@@ -352,9 +352,7 @@ func (p *Peer) createChannel(
 	}
 	channel.store = store
 
-	var idDeserializerFactory privdata.IdentityDeserializerFactoryFunc = func(channelID string) msp.IdentityDeserializer {
-		return p.Channel(channelID).MSPManager()
-	}
+	var idDeserializerFactory privdata.IdentityDeserializerFactoryFunc = p.GetIdentityDeserializer
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider, idDeserializerFactory)
 	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChannelID(), ordererSource, store, gossipservice.Support{
 		Validator:            validator,
@@ -435,6 +433,15 @@ func (p *Peer) GetLedger(cid string) ledger.PeerLedger {
 func (p *Peer) GetMSPIDs(cid string) []string {
 	if c := p.Channel(cid); c != nil {
 		return c.GetMSPIDs()
+	}
+	return nil
+}
+
+// GetIdentityDeserializer returns the msp.IdentityDeserializer for specified
+// channel.
+func (p *Peer) GetIdentityDeserializer(cid string) msp.IdentityDeserializer {
+	if c := p.Channel(cid); c != nil {
+		return c.MSPManager()
 	}
 	return nil
 }

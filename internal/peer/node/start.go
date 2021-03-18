@@ -291,13 +291,6 @@ func serve(args []string) error {
 		OrdererEndpointOverrides: deliverServiceConfig.OrdererEndpointOverrides,
 	}
 
-	identityDeserializerFactory := func(channelName string) msp.IdentityDeserializer {
-		if channel := peerInstance.Channel(channelName); channel != nil {
-			return channel.MSPManager()
-		}
-		return nil
-	}
-
 	mspID := coreConfig.LocalMSPID
 	localMSP := mgmt.GetLocalMSP(factory.GetDefault())
 
@@ -313,7 +306,7 @@ func serve(args []string) error {
 	membershipInfoProvider := privdata.NewMembershipInfoProvider(
 		mspID,
 		createSelfSignedData(signingIdentity),
-		identityDeserializerFactory,
+		peerInstance.GetIdentityDeserializer,
 	)
 
 	expirationLogger := flogging.MustGetLogger("certmonitor")
@@ -488,7 +481,7 @@ func serve(args []string) error {
 	}
 
 	getDeserializers := func(channelID string) (msp.IdentityDeserializer, error) {
-		idd := identityDeserializerFactory(channelID)
+		idd := peerInstance.GetIdentityDeserializer(channelID)
 		if idd == nil {
 			return nil, errors.Errorf("channel %s not found", channelID)
 		}
@@ -606,7 +599,7 @@ func serve(args []string) error {
 		BuiltinSCCs: builtinSCCs,
 		Support: &lscc.SupportImpl{
 			GetMSPIDs:               peerInstance.GetMSPIDs,
-			GetIdentityDeserializer: identityDeserializerFactory,
+			GetIdentityDeserializer: peerInstance.GetIdentityDeserializer,
 		},
 		SCCProvider: &lscc.PeerShim{Peer: peerInstance},
 		ACLProvider: aclProvider,
