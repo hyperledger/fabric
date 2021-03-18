@@ -49,12 +49,12 @@ func (notifier *channelLevelNotifier) run() {
 
 func (notifier *channelLevelNotifier) receiveBlock(blockCommit *ledger.CommitNotification) {
 	for transactionID, status := range blockCommit.TxIDValidationCodes {
-		notification := &Notification{
+		n := &notification{
 			BlockNumber:    blockCommit.BlockNumber,
 			TransactionID:  transactionID,
 			ValidationCode: status,
 		}
-		notifier.notify(notification)
+		notifier.notify(n)
 	}
 }
 
@@ -84,20 +84,20 @@ func (notifier *channelLevelNotifier) removeCompletedListeners() {
 	}
 }
 
-func (notifier *channelLevelNotifier) notify(notification *Notification) {
+func (notifier *channelLevelNotifier) notify(n *notification) {
 	notifier.lock.Lock()
 	defer notifier.lock.Unlock()
 
-	for _, listener := range notifier.listeners[notification.TransactionID] {
-		listener.receive(notification)
+	for _, listener := range notifier.listeners[n.TransactionID] {
+		listener.receive(n)
 		listener.close()
 	}
 
-	delete(notifier.listeners, notification.TransactionID)
+	delete(notifier.listeners, n.TransactionID)
 }
 
-func (notifier *channelLevelNotifier) registerListener(done <-chan struct{}, transactionID string) <-chan Notification {
-	notifyChannel := make(chan Notification, 1) // avoid blocking and only expect one notification per channel
+func (notifier *channelLevelNotifier) registerListener(done <-chan struct{}, transactionID string) <-chan notification {
+	notifyChannel := make(chan notification, 1) // avoid blocking and only expect one notification per channel
 	listener := &transactionListener{
 		done:          done,
 		transactionID: transactionID,
@@ -105,8 +105,8 @@ func (notifier *channelLevelNotifier) registerListener(done <-chan struct{}, tra
 	}
 
 	notifier.lock.Lock()
+	defer notifier.lock.Unlock()
 	notifier.listeners[transactionID] = append(notifier.listeners[transactionID], listener)
-	notifier.lock.Unlock()
 
 	return notifyChannel
 }
@@ -135,7 +135,7 @@ func (notifier *channelLevelNotifier) isClosed() bool {
 type transactionListener struct {
 	done          <-chan struct{}
 	transactionID string
-	notifyChannel chan<- Notification
+	notifyChannel chan<- notification
 }
 
 func (listener *transactionListener) isDone() bool {
@@ -151,6 +151,6 @@ func (listener *transactionListener) close() {
 	close(listener.notifyChannel)
 }
 
-func (listener *transactionListener) receive(notification *Notification) {
-	listener.notifyChannel <- *notification
+func (listener *transactionListener) receive(n *notification) {
+	listener.notifyChannel <- *n
 }

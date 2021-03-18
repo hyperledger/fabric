@@ -28,14 +28,13 @@ type Notifier struct {
 	once             sync.Once
 }
 
-// Notification of a specific transaction commit.
-type Notification struct {
+// notification of a specific transaction commit.
+type notification struct {
 	BlockNumber    uint64
 	TransactionID  string
 	ValidationCode peer.TxValidationCode
 }
 
-// NewNotifier constructor.
 func NewNotifier(supplier NotificationSupplier) *Notifier {
 	return &Notifier{
 		supplier:         supplier,
@@ -44,10 +43,10 @@ func NewNotifier(supplier NotificationSupplier) *Notifier {
 	}
 }
 
-// Notify the caller when the named transaction commits on the named channel. The caller is only notified of commits
+// notify the caller when the named transaction commits on the named channel. The caller is only notified of commits
 // occurring after registering for notifications.
-func (notifier *Notifier) Notify(done <-chan struct{}, channelName string, transactionID string) (<-chan Notification, error) {
-	channelNotifier, err := notifier.channelNotifier(channelName)
+func (n *Notifier) notify(done <-chan struct{}, channelName string, transactionID string) (<-chan notification, error) {
+	channelNotifier, err := n.channelNotifier(channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -56,30 +55,30 @@ func (notifier *Notifier) Notify(done <-chan struct{}, channelName string, trans
 	return notifyChannel, nil
 }
 
-// Close the notifier. This closes all notification channels obtained from this notifier. Behaviour is undefined after
+// close the notifier. This closes all notification channels obtained from this notifier. Behavior is undefined after
 // closing and the notifier should not be used.
-func (notifier *Notifier) Close() {
-	notifier.once.Do(func() {
-		close(notifier.cancel)
+func (n *Notifier) close() {
+	n.once.Do(func() {
+		close(n.cancel)
 	})
 }
 
-func (notifier *Notifier) channelNotifier(channelName string) (*channelLevelNotifier, error) {
-	notifier.lock.Lock()
-	defer notifier.lock.Unlock()
+func (n *Notifier) channelNotifier(channelName string) (*channelLevelNotifier, error) {
+	n.lock.Lock()
+	defer n.lock.Unlock()
 
-	result := notifier.channelNotifiers[channelName]
+	result := n.channelNotifiers[channelName]
 	if result != nil && !result.isClosed() {
 		return result, nil
 	}
 
-	commitChannel, err := notifier.supplier.CommitNotifications(notifier.cancel, channelName)
+	commitChannel, err := n.supplier.CommitNotifications(n.cancel, channelName)
 	if err != nil {
 		return nil, err
 	}
 
-	result = newChannelNotifier(notifier.cancel, commitChannel)
-	notifier.channelNotifiers[channelName] = result
+	result = newChannelNotifier(n.cancel, commitChannel)
+	n.channelNotifiers[channelName] = result
 
 	return result, nil
 }

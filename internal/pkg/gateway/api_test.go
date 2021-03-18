@@ -24,11 +24,11 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/commit/mock"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	idmocks "github.com/hyperledger/fabric/internal/pkg/identity/mocks"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -50,6 +50,11 @@ type discovery interface {
 //go:generate counterfeiter -o mocks/abclient.go --fake-name ABClient . abClient
 type abClient interface {
 	ab.AtomicBroadcast_BroadcastClient
+}
+
+//go:generate counterfeiter -o mocks/commitfinder.go --fake-name CommitFinder . commitFinder
+type commitFinder interface {
+	CommitFinder
 }
 
 type endorsementPlan map[string][]string
@@ -92,6 +97,9 @@ type testDef struct {
 	errDetails         []*pb.EndpointError
 	endpointDefinition *endpointDef
 	postSetup          func(def *preparedTest)
+	finderStatus       peer.TxValidationCode
+	finderErr          error
+	expectedResponse   proto.Message
 }
 
 type preparedTest struct {
@@ -101,6 +109,7 @@ type preparedTest struct {
 	localEndorser  *mocks.EndorserClient
 	discovery      *mocks.Discovery
 	dialer         *mocks.Dialer
+	finder         *mocks.CommitFinder
 }
 
 type contextKey string
@@ -504,11 +513,44 @@ func TestSubmitUnsigned(t *testing.T) {
 func TestCommitStatus(t *testing.T) {
 	tests := []testDef{
 		{
-			name: "not supported",
-			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+			name:      "error finding transaction status",
+			finderErr: errors.New("FINDER_ERROR"),
+			errString: "rpc error: code = FailedPrecondition desc = FINDER_ERROR",
+		},
+		{
+			name:         "returns transaction status",
+			finderStatus: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			expectedResponse: &pb.CommitStatusResponse{
+				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
 			},
-			errString: "rpc error: code = Unimplemented desc = Not implemented",
+		},
+		{
+			name: "passes channel name to finder",
+			postSetup: func(test *preparedTest) {
+				test.finder.TransactionStatusCalls(func(ctx context.Context, channelName string, transactionID string) (peer.TxValidationCode, error) {
+					if channelName != testChannel {
+						return 0, errors.Errorf("channel name: %s", channelName)
+					}
+					return peer.TxValidationCode_MVCC_READ_CONFLICT, nil
+				})
+			},
+			expectedResponse: &pb.CommitStatusResponse{
+				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			},
+		},
+		{
+			name: "passes transaction ID to finder",
+			postSetup: func(test *preparedTest) {
+				test.finder.TransactionStatusCalls(func(ctx context.Context, channelName string, transactionID string) (peer.TxValidationCode, error) {
+					if transactionID != "TX_ID" {
+						return 0, errors.Errorf("transaction ID: %s", transactionID)
+					}
+					return peer.TxValidationCode_MVCC_READ_CONFLICT, nil
+				})
+			},
+			expectedResponse: &pb.CommitStatusResponse{
+				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -516,21 +558,24 @@ func TestCommitStatus(t *testing.T) {
 			test := prepareTest(t, &tt)
 
 			// skeleton test code - to be completed when CommitStatus is implemented
-			submitResponse, err := test.server.CommitStatus(test.ctx, &pb.CommitStatusRequest{ChannelId: testChannel, TransactionId: "Fake TXID"})
+			response, err := test.server.CommitStatus(test.ctx, &pb.CommitStatusRequest{ChannelId: testChannel, TransactionId: "TX_ID"})
 
 			if tt.errString != "" {
 				checkError(t, err, tt.errString, tt.errDetails)
-				require.Nil(t, submitResponse)
+				require.Nil(t, response)
 				return
 			}
 
 			require.NoError(t, err)
+			if tt.expectedResponse != nil {
+				require.True(t, proto.Equal(tt.expectedResponse, response), "incorrect response", response)
+			}
 		})
 	}
 }
 
 func TestNilArgs(t *testing.T) {
-	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, &mock.NotificationSupplier{}, "localhost:7051", "msp1", config.GetOptions(viper.New()))
+	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, &mocks.CommitFinder{}, "localhost:7051", "msp1", config.GetOptions(viper.New()))
 	ctx := context.Background()
 
 	_, err := server.Evaluate(ctx, nil)
@@ -579,6 +624,9 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	mockSigner := &idmocks.SignerSerializer{}
 	mockSigner.SignReturns([]byte("my_signature"), nil)
 
+	mockFinder := &mocks.CommitFinder{}
+	mockFinder.TransactionStatusReturns(tt.finderStatus, tt.finderErr)
+
 	validProposal := createProposal(t, testChannel, testChaincode)
 	validSignedProposal, err := protoutil.GetSignedProposal(validProposal, mockSigner)
 	require.NoError(t, err)
@@ -613,7 +661,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		EndorsementTimeout: endorsementTimeout,
 	}
 
-	server := CreateServer(localEndorser, disc, &mock.NotificationSupplier{}, "localhost:7051", "msp1", options)
+	server := CreateServer(localEndorser, disc, mockFinder, "localhost:7051", "msp1", options)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)
@@ -629,6 +677,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		localEndorser:  localEndorser,
 		discovery:      disc,
 		dialer:         dialer,
+		finder:         mockFinder,
 	}
 	if tt.postSetup != nil {
 		tt.postSetup(pt)

@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 )
 
 type NotificationSupplier struct {
@@ -115,5 +114,3 @@ func (fake *NotificationSupplier) recordInvocation(key string, args []interface{
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
-
-var _ commit.NotificationSupplier = new(NotificationSupplier)

@@ -147,8 +147,9 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	return endorseResponse, nil
 }
 
-// Submit will send the signed transaction to the ordering service.  The output stream will close
-// once the transaction is committed on a sufficient number of remoteEndorsers according to a defined policy.
+// Submit will send the signed transaction to the ordering service. The response indicates whether the transaction was
+// successfully received by the orderer. This does not imply successful commit of the transaction, only that is has
+// been delivered to the orderer.
 func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.SubmitResponse, error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "a submit request is required")
@@ -199,12 +200,26 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	return &gp.SubmitResponse{}, nil
 }
 
-// CommitStatus will something something.
+// CommitStatus returns the validation code for a specific transaction on a specific channel. If the transaction is
+// already committed, the status will be returned immediately; otherwise this call will block and return only when
+// the transaction commits or the context is cancelled.
+//
+// If the transaction commit status cannot be returned, for example if the specified channel does not exist, a
+// FailedPrecondition error will be returned.
 func (gs *Server) CommitStatus(ctx context.Context, request *gp.CommitStatusRequest) (*gp.CommitStatusResponse, error) {
 	if request == nil {
 		return nil, status.Error(codes.InvalidArgument, "a commit status request is required")
 	}
-	return nil, status.Error(codes.Unimplemented, "Not implemented")
+
+	txStatus, err := gs.commitFinder.TransactionStatus(ctx, request.ChannelId, request.TransactionId)
+	if err != nil {
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
+	}
+
+	response := &gp.CommitStatusResponse{
+		Result: txStatus,
+	}
+	return response, nil
 }
 
 func endpointError(e *endorser, err error) *gp.EndpointError {
