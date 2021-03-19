@@ -23,10 +23,10 @@
 	Architecture specific (e.g. `amd64-2.0.0`), release specific (e.g. `2.0.0`), and latest patch of minor release (e.g. `2.0`).
 
 -	**Image Dockerfile**:  
-	[Dockerfile location](https://github.com/hyperledger/fabric/blob/master/images/peer/Dockerfile)
+	[Dockerfile location](https://github.com/hyperledger/fabric/blob/main/images/peer/Dockerfile)
 
 -	**Source of this description**:  
-	[Fabric github repository](https://github.com/hyperledger/fabric/blob/master/images/peer/README.md)
+	[Fabric github repository](https://github.com/hyperledger/fabric/blob/main/images/peer/README.md)
 
 # What is a Hyperledger Fabric peer?
 
@@ -160,4 +160,4 @@ to your own `core.yaml` file within the image.
 
 # License
 
-Hyperledger Fabric is licensed under the [Apache License](https://github.com/hyperledger/fabric/blob/master/LICENSE).
+Hyperledger Fabric is licensed under the [Apache License](https://github.com/hyperledger/fabric/blob/main/LICENSE).

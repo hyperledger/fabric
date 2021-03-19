@@ -4,7 +4,7 @@
 
 name: $(SourceBranchName)-$(Date:yyyyMMdd)$(Rev:.rrr)
 trigger:
-- master
+- main
 - release-2.*
 pr: none
 

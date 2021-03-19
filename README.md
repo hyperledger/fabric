@@ -3,7 +3,7 @@
 [rocketchat-url]: https://chat.hyperledger.org/channel/fabric
 [rocketchat-image]: https://open.rocket.chat/images/join-chat.svg
 
-[![Build Status](https://dev.azure.com/Hyperledger/Fabric/_apis/build/status/Merge?branchName=master)](https://dev.azure.com/Hyperledger/Fabric/_build/latest?definitionId=51&branchName=master)
+[![Build Status](https://dev.azure.com/Hyperledger/Fabric/_apis/build/status/Merge?branchName=main)](https://dev.azure.com/Hyperledger/Fabric/_build/latest?definitionId=51&branchName=main)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/955/badge)](https://bestpractices.coreinfrastructure.org/projects/955)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hyperledger/fabric)](https://goreportcard.com/report/github.com/hyperledger/fabric)
 [![GoDoc](https://godoc.org/github.com/hyperledger/fabric?status.svg)](https://godoc.org/github.com/hyperledger/fabric)
@@ -28,7 +28,7 @@ Fabric provides a release approximately once every four months with new features
 and improvements. Additionally, certain releases are designated as long-term
 support (LTS) releases. Important fixes will be backported to the most recent
 LTS release, and to the prior LTS release during periods of LTS release overlap.
-For more details see the [LTS strategy](https://github.com/hyperledger/fabric-rfcs/blob/master/text/0005-lts-release-strategy.md).
+For more details see the [LTS strategy](https://github.com/hyperledger/fabric-rfcs/blob/main/text/0005-lts-release-strategy.md).
 
 LTS releases:
 - [v2.2.x](https://hyperledger-fabric.readthedocs.io/en/release-2.2/whatsnew.html) (current LTS release)
@@ -56,7 +56,7 @@ information on getting started using and developing with the fabric, SDK and cha
 - [v1.3](http://hyperledger-fabric.readthedocs.io/en/release-1.3/)
 - [v1.2](http://hyperledger-fabric.readthedocs.io/en/release-1.2/)
 - [v1.1](http://hyperledger-fabric.readthedocs.io/en/release-1.1/)
-- [master branch (development)](http://hyperledger-fabric.readthedocs.io/en/latest/)
+- [main branch (development)](http://hyperledger-fabric.readthedocs.io/en/latest/)
 
 It's recommended for first-time users to begin by going through the Getting Started section of the documentation in order to gain familiarity with the Hyperledger Fabric components and the basic transaction flow.
 

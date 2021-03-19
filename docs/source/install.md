@@ -76,7 +76,7 @@ If using another directory, please consult the Docker documentation for [file sh
   * You may have too old a version of cURL that does not handle redirects or an unsupported environment. Please make sure you use a newer version from the [cURL downloads page](https://curl.haxx.se/download.html)
   * Alternately, there might be an issue with the bit.ly, please retry the command with the un-shortened URL:
   ```shell
-  curl -sSL https://raw.githubusercontent.com/hyperledger/fabric/master/scripts/bootstrap.sh| bash -s 
+  curl -sSL https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/bootstrap.sh| bash -s 
   ```
 
 * If you need help, post your questions and share your logs on the **fabric-questions** channel on [Hyperledger Rocket Chat](https://chat.hyperledger.org/home) or on [StackOverflow](https://stackoverflow.com/questions/tagged/hyperledger-fabric).

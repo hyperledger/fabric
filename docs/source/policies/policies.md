@@ -190,7 +190,7 @@ sign.
 Understanding policies begins with examining the `configtx.yaml` where the
 channel policies are defined. We can use the `configtx.yaml` file in the Fabric
 test network to see examples of both policy syntax types. We are going to examine
-the `configtx.yaml` file used by the [fabric-samples/test-network](https://github.com/hyperledger/fabric-samples/blob/master/test-network/configtx/configtx.yaml) sample.
+the `configtx.yaml` file used by the [fabric-samples/test-network](https://github.com/hyperledger/fabric-samples/blob/main/test-network/configtx/configtx.yaml) sample.
 
 The first section of the file defines the organizations that will be members of the channel. Inside each
 organization definition are the default policies for that organization, `Readers`, `Writers`,

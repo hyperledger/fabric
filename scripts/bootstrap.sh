@@ -59,15 +59,15 @@ cloneSamplesRepo() {
         cd fabric-samples
     else
         echo "===> Cloning hyperledger/fabric-samples repo"
-        git clone -b master https://github.com/hyperledger/fabric-samples.git && cd fabric-samples
+        git clone -b main https://github.com/hyperledger/fabric-samples.git && cd fabric-samples
     fi
 
     if GIT_DIR=.git git rev-parse v${VERSION} >/dev/null 2>&1; then
         echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
         git checkout -q v${VERSION}
     else
-        echo "fabric-samples v${VERSION} does not exist, defaulting master"
-        git checkout -q master
+        echo "fabric-samples v${VERSION} does not exist, defaulting main"
+        git checkout -q main
     fi
 }
 

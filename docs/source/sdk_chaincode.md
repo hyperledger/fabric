@@ -20,7 +20,7 @@ SDKs are available for Node.js, Java, and Go:
 
 Prerequisites for developing with the SDKs can be found in the
 Node.js SDK [README](https://github.com/hyperledger/fabric-sdk-node#build-and-test),
-Java SDK [README](https://github.com/hyperledger/fabric-gateway-java/blob/master/README.md), and
+Java SDK [README](https://github.com/hyperledger/fabric-gateway-java/blob/main/README.md), and
 Go SDK [README](https://github.com/hyperledger/fabric-sdk-go/blob/main/README.md).
 
 In addition, there is one other application SDK that has not yet been
