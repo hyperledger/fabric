@@ -112,7 +112,7 @@ approved.
 Maintainers
 ~~~~~~~~~~~
 
-The Fabric project is lead by the project's top level `maintainers <https://github.com/hyperledger/fabric/blob/master/MAINTAINERS.md>`__.
+The Fabric project is lead by the project's top level `maintainers <https://github.com/hyperledger/fabric/blob/main/MAINTAINERS.md>`__.
 The maintainers are responsible for reviewing and merging all patches submitted
 for review, and they guide the overall technical direction of the project within
 the guidelines established by the Hyperledger Technical Steering Committee (TSC).
@@ -128,7 +128,7 @@ adding a maintainer, based on the following criteria:
 - Demonstrated shepherding of project work and contributors
 
 An existing maintainer can submit a pull request to the
-`maintainers <https://github.com/hyperledger/fabric/blob/master/MAINTAINERS.md>`__ file.
+`maintainers <https://github.com/hyperledger/fabric/blob/main/MAINTAINERS.md>`__ file.
 A nominated Contributor may become a Maintainer by a majority approval of the proposal
 by the existing Maintainers. Once approved, the change set is then merged
 and the individual is added to the maintainers group.
@@ -148,7 +148,7 @@ Releases
 Fabric provides a release approximately once every four months with new features and improvements.
 New feature work is merged to the Fabric main branch on `GitHub <https://github.com/hyperledger/fabric>`__.
 Releases branches are created prior to each release so that the code can stabilize while
-new features continue to get merged to the master branch.
+new features continue to get merged to the main branch.
 Important fixes will also be backported to the most recent LTS (long-term support) release branch,
 and to the prior LTS release branch during periods of LTS release overlap.
 
@@ -402,12 +402,12 @@ Legal stuff
 
 **Note:** Each source file must include a license header for the Apache
 Software License 2.0. See the template of the `license header
-<https://github.com/hyperledger/fabric/blob/master/docs/source/dev-setup/headers.txt>`__.
+<https://github.com/hyperledger/fabric/blob/main/docs/source/dev-setup/headers.txt>`__.
 
 We have tried to make it as easy as possible to make contributions. This
 applies to how we handle the legal aspects of contribution. We use the
 same approach—the `Developer's Certificate of Origin 1.1
-(DCO) <https://github.com/hyperledger/fabric/blob/master/docs/source/DCO1.1.txt>`__—that the Linux® Kernel
+(DCO) <https://github.com/hyperledger/fabric/blob/main/docs/source/DCO1.1.txt>`__—that the Linux® Kernel
 `community <https://elinux.org/Developer_Certificate_Of_Origin>`__ uses
 to manage code contributions.
 
