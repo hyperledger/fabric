@@ -29,7 +29,7 @@ configuring and using private data with Fabric:
 #. :ref:`pd-indexes`
 #. :ref:`pd-ref-material`
 
-This tutorial will deploy the `asset transfer private data sample <https://github.com/hyperledger/fabric-samples/tree/master/asset-transfer-private-data/chaincode-go>`__
+This tutorial will deploy the `asset transfer private data sample <https://github.com/hyperledger/fabric-samples/tree/main/asset-transfer-private-data/chaincode-go>`__
 to the Fabric test network to demonstrate how to create, deploy, and use a collection of
 private data.
 You should have completed the task :doc:`install`.

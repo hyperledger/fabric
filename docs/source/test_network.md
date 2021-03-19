@@ -18,7 +18,7 @@ To learn how to use Fabric in production, see [Deploying a production network](d
 **Note:** These instructions have been verified to work against the
 latest stable Fabric Docker images and the pre-compiled setup utilities within the
 supplied tar file. If you run these commands with images or tools from the
-current master branch, it is possible that you will encounter errors.
+current main branch, it is possible that you will encounter errors.
 
 ## Before you begin
 

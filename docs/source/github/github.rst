@@ -93,22 +93,22 @@ the GitHub repository. To create a feature branch, perform the following steps:
 
 .. code::
 
-   git checkout -t origin/master
+   git checkout -t origin/main
 
-- Merge the upstream counterpart into your local master
-
-.. code::
-
-   git merge upstream/master
-
-- Update your fork on GitHub with any changes from the upstream master
+- Merge the upstream counterpart into your local main
 
 .. code::
 
-   git push origin master
+   git merge upstream/main
+
+- Update your fork on GitHub with any changes from the upstream main
+
+.. code::
+
+   git push origin main
 
 - You can now checkout a new local feature branch, this ensures you do not diverge
-  the local master branch from its remote counterpart. The feature branch will be
+  the local main branch from its remote counterpart. The feature branch will be
   an exact copy of the branch from which you created it.
 
 .. code::
@@ -257,7 +257,7 @@ will be re-triggered.
 Cherry-picking your PR to other branches
 ----------------------------------------
 
-After your PR is merged into the master branch, you need to consider whether it should be backported to earlier branches.
+After your PR is merged into the main branch, you need to consider whether it should be backported to earlier branches.
 If the content is a new feature designated for the next release, obviously backporting is not appropriate. But if it is a fix or
 update to an existing topic, don't forget to cherry-pick the PR back to earlier branches as needed.
 When in doubt, consult the maintainer that merged the PR for advice.
@@ -272,9 +272,9 @@ Replace ``2.0`` with the branch that you want to backport to. If there are no me
 a new PR is automatically generated in that branch that still requires the normal approval process to be merged.
 Remember to add a comment to the original PR for each branch that you want to backport to.
 
-If there are merge conflicts, use the GitHub ``cherry-pick`` command instead, by providing the ``SHA`` from the commit in the master branch.
+If there are merge conflicts, use the GitHub ``cherry-pick`` command instead, by providing the ``SHA`` from the commit in the main branch.
 
-- The following example shows how to cherry-pick a commit from the master branch into the release-2.0 branch:
+- The following example shows how to cherry-pick a commit from the main branch into the release-2.0 branch:
 
 .. code::
 
@@ -287,12 +287,12 @@ If there are merge conflicts, use the GitHub ``cherry-pick`` command instead, by
   git pull upstream release-2.0
   git push origin release-2.0
 
-- Create a new local branch to cherry-pick the content to and then cherry-pick the content by providing the SHA from the master branch.
+- Create a new local branch to cherry-pick the content to and then cherry-pick the content by providing the SHA from the main branch.
 
 .. code::
 
   git checkout -b <my2.0branch>
-  git cherry-pick <SHA from master branch>
+  git cherry-pick <SHA from main branch>
 
 - Resolve any merge conflicts and then push to your local branch.
 
@@ -323,17 +323,17 @@ Syncing Your Fork With the Upstream Repository
 As your development progresses, invariably new commits will be merged into the original
 project from which your forked repo was generated from. To avoid surprise merge conflicts
 you should integrate these changes into your local repository. To integrate changes
-from the upstream repository, assuming you are working on changes to the master branch,
+from the upstream repository, assuming you are working on changes to the main branch,
 execute the following commands from the root of your repository:
 
 .. code::
 
    git fetch upstream
-   git rebase upstream/master
+   git rebase upstream/main
 
 Syncing your fork only updates your local repository, you will need to push these
 updates to your forked repository to save them using the following command:
 
 .. code::
 
-   git push origin master
+   git push origin main

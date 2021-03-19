@@ -145,7 +145,7 @@ If you’ve read through the key concept topic on :doc:`peers/peers`, you should
 
 These roles are important to understand before you create a peer, as they will influence your customization and deployment decisions. For a look at the various decisions you will need to make, check out :doc:`deploypeer/peerplan`.
 
-The configuration values in a peer's ``core.yaml`` file must be customized or overridden with environment variables. You can find the default ``core.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/master/sampleconfig/core.yaml>`_. This configuration file is bundled with the peer image and is also included with the downloadable binaries. For information about how to download the production ``core.yaml`` along with the peer image, check out :doc:`deploypeer/peerdeploy`.
+The configuration values in a peer's ``core.yaml`` file must be customized or overridden with environment variables. You can find the default ``core.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/main/sampleconfig/core.yaml>`_. This configuration file is bundled with the peer image and is also included with the downloadable binaries. For information about how to download the production ``core.yaml`` along with the peer image, check out :doc:`deploypeer/peerdeploy`.
 
 While there are many parameters in the default ``core.yaml``, you will only need to customize a small percentage of them. In general, if you do not have the need to change a tuning value, keep the default value.
 
@@ -180,7 +180,7 @@ If you’ve read through the key concept topic on :doc:`orderer/ordering_service
 
 These roles are important to understand before you create an ordering service, as it will influence your customization and deployment decisions. Among the chief differences between a peer and ordering service is that in a production network, multiple ordering nodes work together to form the “ordering service” of a channel (these nodes are also known as the “consenter set”). This creates a series of important decisions that need to be made at both the node level and at the cluster level. Some of these cluster decisions are not made in individual ordering node ``orderer.yaml`` files but instead in the ``configtx.yaml`` file that is used to generate the genesis block for an application channel. For a look at the various decisions you will need to make, check out :doc:`deployorderer/ordererplan`.
 
-The configuration values in an ordering node’s ``orderer.yaml`` file must be customized or overridden with environment variables. You can find the default ``orderer.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/master/sampleconfig/orderer.yaml>`_.
+The configuration values in an ordering node’s ``orderer.yaml`` file must be customized or overridden with environment variables. You can find the default ``orderer.yaml`` configuration file `in the sampleconfig directory of Hyperledger Fabric <https://github.com/hyperledger/fabric/blob/main/sampleconfig/orderer.yaml>`_.
 
 This configuration file is bundled with the orderer image and is also included with the downloadable binaries. For information about how to download the production ``orderer.yaml`` along with the orderer image, check out :doc:`deployorderer/ordererdeploy`.
 

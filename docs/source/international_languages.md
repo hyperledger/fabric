@@ -17,10 +17,10 @@ In this topic, we're going to cover:
 Hyperledger Fabric documentation is being translated into many different
 languages. For example:
 
-* [Chinese](https://github.com/hyperledger/fabric-docs-i18n/tree/master/docs/locale/zh_CN)
-* [Malayalam](https://github.com/hyperledger/fabric-docs-i18n/tree/master/docs/locale/ml_IN)
-* [Brazilian Portuguese](https://github.com/hyperledger/fabric-docs-i18n/tree/master/docs/locale/pt_BR)
-* [Japanese](https://github.com/hyperledger/fabric-docs-i18n/tree/master/docs/locale/ja_JP)
+* [Chinese](https://github.com/hyperledger/fabric-docs-i18n/tree/main/docs/locale/zh_CN)
+* [Malayalam](https://github.com/hyperledger/fabric-docs-i18n/tree/main/docs/locale/ml_IN)
+* [Brazilian Portuguese](https://github.com/hyperledger/fabric-docs-i18n/tree/main/docs/locale/pt_BR)
+* [Japanese](https://github.com/hyperledger/fabric-docs-i18n/tree/main/docs/locale/ja_JP)
 
 If your chosen language is not available, then the first thing to do is to
 create a new language workgroup.
@@ -74,7 +74,7 @@ as spoken in Mexico:
    code `es_MX`.
 
 1. Update the fabric
-   [`CODEOWNERS`](https://github.com/hyperledger/fabric-docs-i18n/blob/master/CODEOWNERS) file
+   [`CODEOWNERS`](https://github.com/hyperledger/fabric-docs-i18n/blob/main/CODEOWNERS) file
    in the root directory. Add the following line:
    ```bash
    /docs/locale/ex_EX/ @hyperledger/fabric-core-doc-maintainers @hyperledger/fabric-es_MX-doc-maintainers
@@ -94,7 +94,7 @@ as spoken in Mexico:
    repository.
 
 1. Customize the `README.md` file for your new language using [this
-   example](https://github.com/hyperledger/fabric-docs-i18n/tree/master/docs/locale/pt_BR/README.md).
+   example](https://github.com/hyperledger/fabric-docs-i18n/tree/main/docs/locale/pt_BR/README.md).
 
 1. Commit your changes locally:
    ```

@@ -35,7 +35,7 @@ generating logs.
    2018-11-01 15:32:38.357 UTC [peer] func1 -> INFO 007 Returning peer0.org1.example.com:7051
 
 An arbitrary number of loggers can be created at runtime, therefore there is
-no "master list" of loggers, and logging control constructs can not check
+no "global list" of loggers, and logging control constructs can not check
 whether logging loggers actually do or will exist.
 
 Logging specification

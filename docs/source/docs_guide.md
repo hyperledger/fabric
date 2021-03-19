@@ -96,17 +96,17 @@ fabric/docs
 ```
 
 Spend a little time navigating the [docs
-folder](https://github.com/hyperledger/fabric/tree/master/docs) in the
+folder](https://github.com/hyperledger/fabric/tree/main/docs) in the
 Hyperledger Fabric repository. Click on the following links to see how different
 source files map to their corresponding published topics.
 
-* [`/docs/source/index.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/index.rst) maps to [Hyperledger Fabric title page](https://hyperledger-fabric.readthedocs.io/en/{RTD_TAG}/)
+* [`/docs/source/index.rst`](https://raw.githubusercontent.com/hyperledger/fabric/main/docs/source/index.rst) maps to [Hyperledger Fabric title page](https://hyperledger-fabric.readthedocs.io/en/{RTD_TAG}/)
 
-* [`/docs/source/developapps/developing-applications.rst`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/developapps/developing_applications.rst)
+* [`/docs/source/developapps/developing-applications.rst`](https://raw.githubusercontent.com/hyperledger/fabric/main/docs/source/developapps/developing_applications.rst)
   maps to [Developing
   applications](https://hyperledger-fabric.readthedocs.io/en/{RTD_TAG}/developapps/developing_applications.html)
 
-* [`/docs/source/peers/peers.md`](https://raw.githubusercontent.com/hyperledger/fabric/master/docs/source/peers/peers.md)
+* [`/docs/source/peers/peers.md`](https://raw.githubusercontent.com/hyperledger/fabric/main/docs/source/peers/peers.md)
   maps to
   [Peers](https://hyperledger-fabric.readthedocs.io/en/{RTD_TAG}/peers/peers.html)
 
@@ -282,11 +282,11 @@ Japanese translation must be approved by a Japanese maintainer, and so on. You
 can find the maintainers listed in the following `CODEOWNERS` files:
 
 * US English
-  [`CODEOWNERS`](https://github.com/hyperledger/fabric/blob/master/CODEOWNERS)
+  [`CODEOWNERS`](https://github.com/hyperledger/fabric/blob/main/CODEOWNERS)
   and their [maintainer GitHub
   IDs](https://github.com/orgs/hyperledger/teams/fabric-core-doc-maintainers)
 * International language
-  [`CODEOWNERS`](https://github.com/hyperledger/fabric-docs-i18n/blob/master/CODEOWNERS)
+  [`CODEOWNERS`](https://github.com/hyperledger/fabric-docs-i18n/blob/main/CODEOWNERS)
   and their [maintainer GitHub
   IDs](https://github.com/orgs/hyperledger/teams/fabric-contributors)
 

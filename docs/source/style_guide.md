@@ -231,7 +231,7 @@ Both file formats don't like when these things are done out of order. For exampl
   For other files, such as text or YAML files, use a direct link to the file in
   github for example:
 
-  [https://github.com/hyperledger/fabric/blob/master/docs/README.md](https://github.com/hyperledger/fabric/blob/master/docs/README.md)
+  [https://github.com/hyperledger/fabric/blob/main/docs/README.md](https://github.com/hyperledger/fabric/blob/main/docs/README.md)
 
   Relative links are unfortunately not working on github when browsing through a
   RST file.

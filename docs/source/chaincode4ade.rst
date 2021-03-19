@@ -332,7 +332,7 @@ return all of the assets on the ledger.
           to keep this tutorial as clear and straightforward as possible. In a
           real-world implementation, it is likely that packages will be segmented
           where a ``main`` package imports the chaincode package to allow for easy unit testing.
-          To see what this looks like, see the asset-transfer `Go chaincode <https://github.com/hyperledger/fabric-samples/tree/master/asset-transfer-basic/chaincode-go>`__
+          To see what this looks like, see the asset-transfer `Go chaincode <https://github.com/hyperledger/fabric-samples/tree/main/asset-transfer-basic/chaincode-go>`__
           in fabric-samples. If you look at ``assetTransfer.go``, you will see that
           it contains ``package main`` and imports ``package chaincode`` defined in ``smartcontract.go`` and
           located at ``fabric-samples/asset-transfer-basic/chaincode-go/chaincode/``.

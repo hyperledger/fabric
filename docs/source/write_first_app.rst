@@ -158,12 +158,12 @@ Sample application
 ^^^^^^^^^^^^^^^^^^
 Next, let's prepare the sample Asset Transfer Javascript application that will be used to interact with the deployed chaincode.
 
-- `JavaScript application <https://github.com/hyperledger/fabric-samples/blob/master/asset-transfer-basic/application-javascript>`__
+- `JavaScript application <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-basic/application-javascript>`__
 
 Note that the sample application is also available in Go and Java at the links below:
 
-- `Go application <https://github.com/hyperledger/fabric-samples/blob/master/asset-transfer-basic/application-go>`__
-- `Java application <https://github.com/hyperledger/fabric-samples/blob/master/asset-transfer-basic/application-java>`__
+- `Go application <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-basic/application-go>`__
+- `Java application <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-basic/application-java>`__
 
 
 Open a new terminal, and navigate to the ``application-javascript`` folder.
@@ -971,10 +971,10 @@ The asset-transfer ('basic') smart contract
 -------------------------------------------
 The smart contract sample is available in the following languages:
 
-- `Golang <https://github.com/hyperledger/fabric-samples/blob/master/asset-transfer-basic/chaincode-go>`__
-- `Java <https://github.com/hyperledger/fabric-samples/blob/master/asset-transfer-basic/chaincode-java>`__
-- `JavaScript <https://github.com/hyperledger/fabric-samples/blob/master/asset-transfer-basic/chaincode-javascript>`__
-- `Typescript <https://github.com/hyperledger/fabric-samples/blob/master/asset-transfer-basic/chaincode-typescript>`__
+- `Golang <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-basic/chaincode-go>`__
+- `Java <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-basic/chaincode-java>`__
+- `JavaScript <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-basic/chaincode-javascript>`__
+- `Typescript <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-basic/chaincode-typescript>`__
 
 Clean up
 --------
