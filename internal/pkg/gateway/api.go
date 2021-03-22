@@ -44,7 +44,11 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 		return nil, status.Errorf(codes.NotFound, "no endorsing peers found for channel: %s", request.ChannelId)
 	}
 
-	endorser := endorsers[0] // TODO choose suitable peer based on block height, etc (future user story)
+	endorser := endorsers[0] // The peer with highest ledger height is first in the list
+
+	ctx, cancel := context.WithTimeout(ctx, gs.options.EndorsementTimeout)
+	defer cancel()
+
 	response, err := endorser.client.ProcessProposal(ctx, signedProposal)
 	if err != nil {
 		return nil, rpcError(
