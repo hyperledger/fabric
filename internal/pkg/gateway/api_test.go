@@ -57,7 +57,7 @@ type commitFinder interface {
 	CommitFinder
 }
 
-type endorsementPlan map[string][]string
+type endorsementPlan map[string][]endorserState
 
 type networkMember struct {
 	id       string
@@ -97,6 +97,7 @@ type testDef struct {
 	errDetails         []*pb.EndpointError
 	endpointDefinition *endpointDef
 	postSetup          func(def *preparedTest)
+	expectedEndorsers  []string
 	finderStatus       peer.TxValidationCode
 	finderErr          error
 	expectedResponse   proto.Message
@@ -119,7 +120,7 @@ func TestEvaluate(t *testing.T) {
 		{
 			name: "single endorser",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051"}},
 			},
 		},
 		{
@@ -128,9 +129,25 @@ func TestEvaluate(t *testing.T) {
 			errString: "no endorsing peers",
 		},
 		{
+			name: "five endorsers, two groups, prefer largest ledger height",
+			plan: endorsementPlan{
+				"g1": {{endpoint: "peer3:10051", height: 4}, {endpoint: "localhost:7051", height: 4}, {endpoint: "peer4:11051", height: 4}},
+				"g2": {{endpoint: "peer1:8051", height: 3}, {endpoint: "peer2:9051", height: 5}},
+			},
+			expectedEndorsers: []string{"peer2:9051"},
+		},
+		{
+			name: "five endorsers, two groups, prefer host peer",
+			plan: endorsementPlan{
+				"g1": {{endpoint: "peer3:10051", height: 4}, {endpoint: "localhost:7051", height: 4}, {endpoint: "peer4:11051", height: 4}},
+				"g2": {{endpoint: "peer1:8051", height: 3}, {endpoint: "peer2:9051", height: 4}},
+			},
+			expectedEndorsers: []string{"localhost:7051"},
+		},
+		{
 			name: "discovery fails",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051"}},
 			},
 			postSetup: func(def *preparedTest) {
 				def.discovery.PeersForEndorsementReturns(nil, fmt.Errorf("mango-tango"))
@@ -140,7 +157,7 @@ func TestEvaluate(t *testing.T) {
 		{
 			name: "process proposal fails",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051"}},
 			},
 			endpointDefinition: &endpointDef{
 				proposalError: status.Error(codes.Aborted, "mumbo-jumbo"),
@@ -155,7 +172,7 @@ func TestEvaluate(t *testing.T) {
 		{
 			name: "process proposal chaincode error",
 			plan: endorsementPlan{
-				"g1": {"peer1:8051"},
+				"g1": {{endpoint: "peer1:8051"}},
 			},
 			endpointDefinition: &endpointDef{
 				proposalResponseStatus:  400,
@@ -171,7 +188,7 @@ func TestEvaluate(t *testing.T) {
 		{
 			name: "dialing endorser endpoint fails",
 			plan: endorsementPlan{
-				"g1": {"peer2:9051"},
+				"g1": {{endpoint: "peer2:9051"}},
 			},
 			postSetup: func(def *preparedTest) {
 				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
@@ -186,7 +203,7 @@ func TestEvaluate(t *testing.T) {
 		{
 			name: "dialing orderer endpoint fails",
 			plan: endorsementPlan{
-				"g1": {"peer2:9051"},
+				"g1": {{endpoint: "peer2:9051"}},
 			},
 			postSetup: func(def *preparedTest) {
 				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
@@ -217,11 +234,8 @@ func TestEvaluate(t *testing.T) {
 			// assert the result is the payload from the proposal response returned by the local endorser
 			require.Equal(t, []byte("mock_response"), response.Result.Payload, "Incorrect result")
 
-			// check the local endorser (mock) was called with the right parameters
-			require.Equal(t, 1, test.localEndorser.ProcessProposalCallCount())
-			ectx, prop, _ := test.localEndorser.ProcessProposalArgsForCall(0)
-			require.Equal(t, test.signedProposal, prop)
-			require.Same(t, test.ctx, ectx)
+			// check the correct endorsers (mock) were called with the right parameters
+			checkEndorsers(t, tt.expectedEndorsers, test)
 
 			// check the discovery service (mock) was invoked as expected
 			require.Equal(t, 1, test.discovery.PeersForEndorsementCallCount())
@@ -249,16 +263,25 @@ func TestEndorse(t *testing.T) {
 		{
 			name: "two endorsers",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
-				"g2": {"peer1:8051"},
+				"g1": {{endpoint: "localhost:7051", height: 3}},
+				"g2": {{endpoint: "peer1:8051", height: 3}},
 			},
 		},
 		{
 			name: "three endorsers, two groups",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
-				"g2": {"peer1:8051", "peer2:9051"},
+				"g1": {{endpoint: "localhost:7051", height: 4}},
+				"g2": {{endpoint: "peer1:8051", height: 4}, {endpoint: "peer2:9051", height: 5}},
 			},
+			expectedEndorsers: []string{"localhost:7051", "peer2:9051"},
+		},
+		{
+			name: "three endorsers, two groups, prefer host peer",
+			plan: endorsementPlan{
+				"g1": {{endpoint: "peer3:10051", height: 4}, {endpoint: "localhost:7051", height: 4}, {endpoint: "peer4:11051", height: 4}},
+				"g2": {{endpoint: "peer1:8051", height: 4}, {endpoint: "peer2:9051", height: 5}},
+			},
+			expectedEndorsers: []string{"localhost:7051", "peer2:9051"},
 		},
 		{
 			name:      "no endorsers",
@@ -268,8 +291,8 @@ func TestEndorse(t *testing.T) {
 		{
 			name: "non-matching responses",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
-				"g2": {"peer1:8051"},
+				"g1": {{endpoint: "localhost:7051", height: 4}},
+				"g2": {{endpoint: "peer1:8051", height: 5}},
 			},
 			localResponse: "different_response",
 			errString:     "failed to assemble transaction: ProposalResponsePayloads do not match",
@@ -277,7 +300,7 @@ func TestEndorse(t *testing.T) {
 		{
 			name: "discovery fails",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051", height: 2}},
 			},
 			postSetup: func(def *preparedTest) {
 				def.discovery.PeersForEndorsementReturns(nil, fmt.Errorf("peach-melba"))
@@ -287,7 +310,7 @@ func TestEndorse(t *testing.T) {
 		{
 			name: "process proposal fails",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051", height: 1}},
 			},
 			endpointDefinition: &endpointDef{
 				proposalError: status.Error(codes.Aborted, "wibble"),
@@ -302,7 +325,7 @@ func TestEndorse(t *testing.T) {
 		{
 			name: "process proposal chaincode error",
 			plan: endorsementPlan{
-				"g1": {"peer1:8051"},
+				"g1": {{endpoint: "peer1:8051", height: 2}},
 			},
 			endpointDefinition: &endpointDef{
 				proposalResponseStatus:  400,
@@ -333,15 +356,8 @@ func TestEndorse(t *testing.T) {
 			// assert the preparedTxn is the payload from the proposal response
 			require.Equal(t, []byte("mock_response"), response.Result.Payload, "Incorrect response")
 
-			// check the local endorser (mock) was called with the right parameters
-			require.Equal(t, 1, test.localEndorser.ProcessProposalCallCount())
-			ectx, prop, _ := test.localEndorser.ProcessProposalArgsForCall(0)
-			require.Equal(t, test.signedProposal, prop)
-			require.Equal(t, "apples", ectx.Value(contextKey("orange")))
-			// context timeout was set to -1s, so deadline should be in the past
-			deadline, ok := ectx.Deadline()
-			require.True(t, ok)
-			require.Negative(t, time.Until(deadline))
+			// check the correct endorsers (mock) were called with the right parameters
+			checkEndorsers(t, tt.expectedEndorsers, test)
 
 			// check the prepare transaction (Envelope) contains the right number of endorsements
 			payload, err := protoutil.UnmarshalPayload(response.PreparedTransaction.Payload)
@@ -379,14 +395,14 @@ func TestSubmit(t *testing.T) {
 		{
 			name: "two endorsers",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
-				"g2": {"peer1:8051"},
+				"g1": {{endpoint: "localhost:7051", height: 3}},
+				"g2": {{endpoint: "peer1:8051", height: 3}},
 			},
 		},
 		{
 			name: "discovery fails",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051"}},
 			},
 			postSetup: func(def *preparedTest) {
 				def.discovery.ConfigReturnsOnCall(1, nil, fmt.Errorf("jabberwocky"))
@@ -396,7 +412,7 @@ func TestSubmit(t *testing.T) {
 		{
 			name: "no orderers",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051"}},
 			},
 			postSetup: func(def *preparedTest) {
 				def.discovery.ConfigReturns(&dp.ConfigResult{
@@ -409,7 +425,7 @@ func TestSubmit(t *testing.T) {
 		{
 			name: "send to orderer fails",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051"}},
 			},
 			endpointDefinition: &endpointDef{
 				proposalResponseStatus: 200,
@@ -425,7 +441,7 @@ func TestSubmit(t *testing.T) {
 		{
 			name: "receive from orderer fails",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051"}},
 			},
 			endpointDefinition: &endpointDef{
 				proposalResponseStatus: 200,
@@ -441,7 +457,7 @@ func TestSubmit(t *testing.T) {
 		{
 			name: "orderer returns nil",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051"}},
 			},
 			postSetup: func(def *preparedTest) {
 				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
@@ -455,7 +471,7 @@ func TestSubmit(t *testing.T) {
 		{
 			name: "orderer returns unsuccessful response",
 			plan: endorsementPlan{
-				"g1": {"localhost:7051"},
+				"g1": {{endpoint: "localhost:7051"}},
 			},
 			postSetup: func(def *preparedTest) {
 				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
@@ -697,6 +713,29 @@ func checkError(t *testing.T, err error, errString string, details []*pb.Endpoin
 	}
 }
 
+func checkEndorsers(t *testing.T, endorsers []string, test *preparedTest) {
+	// check the correct endorsers (mock) were called with the right parameters
+	if endorsers == nil {
+		endorsers = []string{"localhost:7051"}
+	}
+	for _, e := range endorsers {
+		var ec *mocks.EndorserClient
+		if e == test.server.registry.localEndorser.address {
+			ec = test.localEndorser
+		} else {
+			ec = test.server.registry.remoteEndorsers[e].client.(*mocks.EndorserClient)
+		}
+		require.Equal(t, 1, ec.ProcessProposalCallCount())
+		ectx, prop, _ := ec.ProcessProposalArgsForCall(0)
+		require.Equal(t, test.signedProposal, prop)
+		require.Equal(t, "apples", ectx.Value(contextKey("orange")))
+		// context timeout was set to -1s, so deadline should be in the past
+		deadline, ok := ectx.Deadline()
+		require.True(t, ok)
+		require.Negative(t, time.Until(deadline))
+	}
+}
+
 func mockDiscovery(t *testing.T, plan endorsementPlan, members []networkMember, config *dp.ConfigResult) *mocks.Discovery {
 	discovery := &mocks.Discovery{}
 
@@ -714,14 +753,14 @@ func mockDiscovery(t *testing.T, plan endorsementPlan, members []networkMember, 
 	return discovery
 }
 
-func createMockEndorsementDescriptor(t *testing.T, plan map[string][]string) *dp.EndorsementDescriptor {
+func createMockEndorsementDescriptor(t *testing.T, plan map[string][]endorserState) *dp.EndorsementDescriptor {
 	quantitiesByGroup := map[string]uint32{}
 	endorsersByGroups := map[string]*dp.Peers{}
-	for group, names := range plan {
+	for group, endorsers := range plan {
 		quantitiesByGroup[group] = 1 // for now
 		var peers []*dp.Peer
-		for _, name := range names {
-			peers = append(peers, createMockPeer(t, name))
+		for _, endorser := range endorsers {
+			peers = append(peers, createMockPeer(t, endorser.endpoint, endorser.height))
 		}
 		endorsersByGroups[group] = &dp.Peers{Peers: peers}
 	}
@@ -737,22 +776,37 @@ func createMockEndorsementDescriptor(t *testing.T, plan map[string][]string) *dp
 	return descriptor
 }
 
-func createMockPeer(t *testing.T, name string) *dp.Peer {
-	msg := &gossip.GossipMessage{
-		Content: &gossip.GossipMessage_AliveMsg{
-			AliveMsg: &gossip.AliveMessage{
-				Membership: &gossip.Member{Endpoint: name},
+func createMockPeer(t *testing.T, name string, ledgerHeight uint64) *dp.Peer {
+	aliveMsgBytes, err := proto.Marshal(
+		&gossip.GossipMessage{
+			Content: &gossip.GossipMessage_AliveMsg{
+				AliveMsg: &gossip.AliveMessage{
+					Membership: &gossip.Member{Endpoint: name},
+				},
 			},
-		},
-	}
+		})
 
-	msgBytes, err := proto.Marshal(msg)
-	require.NoError(t, err, "Failed to create mock peer")
+	require.NoError(t, err)
+
+	stateInfoBytes, err := proto.Marshal(
+		&gossip.GossipMessage{
+			Content: &gossip.GossipMessage_StateInfo{
+				StateInfo: &gossip.StateInfo{
+					Properties: &gossip.Properties{
+						LedgerHeight: ledgerHeight,
+					},
+				},
+			},
+		})
+
+	require.NoError(t, err)
 
 	return &dp.Peer{
-		StateInfo: nil,
+		StateInfo: &gossip.Envelope{
+			Payload: stateInfoBytes,
+		},
 		MembershipInfo: &gossip.Envelope{
-			Payload: msgBytes,
+			Payload: aliveMsgBytes,
 		},
 		Identity: []byte(name),
 	}

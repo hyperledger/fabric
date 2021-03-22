@@ -8,7 +8,7 @@ package gateway
 
 import (
 	"fmt"
-	"math/rand"
+	"sort"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -39,6 +39,12 @@ type registry struct {
 	configLock          sync.RWMutex
 }
 
+type endorserState struct {
+	peer     *dp.Peer
+	endpoint string
+	height   uint64
+}
+
 // Returns a set of endorsers that satisfies the endorsement plan for the given chaincode on a channel.
 func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, error) {
 	err := reg.registerChannel(channel)
@@ -67,35 +73,59 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, e
 	// choose first layout for now - todo implement retry logic
 	if len(descriptor.Layouts) > 0 {
 		layout := descriptor.Layouts[0].QuantitiesByGroup
-		var r []*dp.Peer
+		var r []*endorserState
 		for group, quantity := range layout {
-			// For now, select n remoteEndorsers from each group at random. Future story, sort by block height
-			endorsers := e[group].Peers
-			rand.Shuffle(len(endorsers), func(i, j int) {
-				endorsers[i], endorsers[j] = endorsers[j], endorsers[i]
-			})
-			peerGroup := endorsers[0:quantity]
+			// Select n remoteEndorsers from each group sorted by block height
+
+			// block heights
+			var groupPeers []*endorserState
+			for _, peer := range e[group].Peers {
+				msg := &gossip.GossipMessage{}
+				err := proto.Unmarshal(peer.StateInfo.Payload, msg)
+				if err != nil {
+					return nil, err
+				}
+
+				height := msg.GetStateInfo().Properties.LedgerHeight
+				err = proto.Unmarshal(peer.MembershipInfo.Payload, msg)
+				if err != nil {
+					return nil, err
+				}
+				endpoint := msg.GetAliveMsg().Membership.Endpoint
+
+				groupPeers = append(groupPeers, &endorserState{peer: peer, endpoint: endpoint, height: height})
+			}
+			// sort by decreasing height
+			sort.Slice(groupPeers, sorter(groupPeers, reg.localEndorser.address))
+
+			peerGroup := groupPeers[0:quantity]
 			r = append(r, peerGroup...)
 		}
+		// sort the group of groups by decreasing height (since Evaluate will just choose the first one)
+		sort.Slice(r, sorter(r, reg.localEndorser.address))
 
 		for _, peer := range r {
-			msg := &gossip.GossipMessage{}
-			err := proto.Unmarshal(peer.MembershipInfo.Payload, msg)
-			if err != nil {
-				return nil, err
-			}
-			endpoint := msg.GetAliveMsg().Membership.Endpoint
-			if endpoint == reg.localEndorser.address {
+			if peer.endpoint == reg.localEndorser.address {
 				endorsers = append(endorsers, reg.localEndorser)
-			} else if endorser, ok := reg.remoteEndorsers[endpoint]; ok {
+			} else if endorser, ok := reg.remoteEndorsers[peer.endpoint]; ok {
 				endorsers = append(endorsers, endorser)
 			} else {
-				reg.logger.Warnf("Failed to find endorser at %s", endpoint)
+				reg.logger.Warnf("Failed to find endorser at %s", peer.endpoint)
 			}
 		}
 	}
 
 	return endorsers, nil
+}
+
+func sorter(e []*endorserState, host string) func(i, j int) bool {
+	return func(i, j int) bool {
+		if e[i].height == e[j].height {
+			// prefer host peer
+			return e[i].endpoint == host
+		}
+		return e[i].height > e[j].height
+	}
 }
 
 // Returns a set of broadcastClients that can order a transaction for the given channel.
