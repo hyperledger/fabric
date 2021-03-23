@@ -9,6 +9,7 @@ package commit
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -23,6 +24,21 @@ type queryProvider interface { // Mimic QueryProvider to avoid circular import w
 }
 
 func TestFinder(t *testing.T) {
+	sendUntilDone := func(commitSend chan<- *ledger.CommitNotification, msg *ledger.CommitNotification) chan struct{} {
+		done := make(chan struct{})
+
+		go func() {
+			for ; ; time.Sleep(10 * time.Millisecond) {
+				select {
+				case commitSend <- msg:
+				case <-done:
+				}
+			}
+		}()
+
+		return done
+	}
+
 	t.Run("passes channel name to query provider", func(t *testing.T) {
 		provider := &mock.QueryProvider{}
 		provider.TransactionStatusReturns(peer.TxValidationCode_MVCC_READ_CONFLICT, nil)
@@ -70,13 +86,14 @@ func TestFinder(t *testing.T) {
 	t.Run("returns notified transaction status when no previous commit", func(t *testing.T) {
 		provider := &mock.QueryProvider{}
 		provider.TransactionStatusReturns(0, errors.New("NOT_FOUND"))
-		commitSend := make(chan *ledger.CommitNotification, 1)
-		commitSend <- &ledger.CommitNotification{
+		commitSend := make(chan *ledger.CommitNotification)
+		msg := &ledger.CommitNotification{
 			BlockNumber: 1,
 			TxIDValidationCodes: map[string]peer.TxValidationCode{
 				"TX_ID": peer.TxValidationCode_MVCC_READ_CONFLICT,
 			},
 		}
+		defer close(sendUntilDone(commitSend, msg))
 		finder := &Finder{
 			Query:    provider,
 			Notifier: NewNotifier(newNotificationSupplier(commitSend)),
