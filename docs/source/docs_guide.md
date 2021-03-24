@@ -205,13 +205,14 @@ your GitHub account.
    For International Languages (Malayalam as an example):
    ```bash
    git clone git@github.com:hyperledger/fabric-docs-i18n.git
-   cd fabric
+   cd fabric-docs-i18n
    make docs-lang-ml_IN
    ```
 
-   The `make` command generates documentation html files in the `build/html/`
+   The `make` command generates documentation html files in the `docs/build/html/`
    folder which you can now view locally; simply navigate your browser to the
-   `build/html/index.html` file.
+   `docs/build/html/index.html` file. For International Languages, you need to read `docs/build/html/` as
+   `docs/locale/${LANG_CODE}/_build/html/` (e.g., `docs/locale/ml_IN/_build/html/`).
 
 4. Now make a small change to a file, and rebuild the documentation to verify
    that your change was as expected. Every time you make a change to the
@@ -222,7 +223,7 @@ your GitHub account.
 
    ```bash
    sudo apt-get install apache2
-   cd build/html
+   cd docs/build/html
    sudo cp -r * /var/www/html/
    ```
 
