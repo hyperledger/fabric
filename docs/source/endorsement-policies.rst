@@ -185,6 +185,18 @@ distribution policy.  For example a majority of organizations may be required
 to endorse a chaincode transaction, but a specific organization may be required
 to endorse a transaction that includes a key in a specific collection.
 
+If you do not specify a collection-level endorsement policy, the chaincode-level
+endorsement policy will be applied to protect writes to a private data collection
+key namespace. This may be desirable if a set of organizations meeting the chaincode-level
+endorsement policy are authorized to create data in other organization's private
+data collection. For example if those organizations are trusted to process
+transactions but are not authorized to store and later query private data due to industry privacy regulations,
+or if the private data is being shared or transferred from one set of organizations
+to another through the use of private data collections.
+In other scenarios, the private data collection members may
+need to be in full control of writes to the private data collection, in which case
+a collection-level endorsement policy should be provided.
+
 The syntax for collection-level endorsement policies exactly matches the syntax
 for chaincode-level endorsement policies --- in the collection configuration
 you can specify an ``endorsementPolicy`` with either a ``signaturePolicy`` or
