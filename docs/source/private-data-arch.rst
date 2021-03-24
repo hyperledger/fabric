@@ -251,6 +251,7 @@ This ``transient`` field gets excluded from the channel transaction.
 
 Protecting private data content
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 If the private data is relatively simple and predictable (e.g. transaction dollar
 amount), channel members who are not authorized to the private data collection
 could try to guess the content of the private data via brute force hashing of
@@ -261,6 +262,16 @@ value, so that a matching hash cannot realistically be found via brute force.
 The random "salt" can be generated at the client side (e.g. by sampling a secure
 pseudo-random source) and then passed along with the private data in the transient
 field at the time of chaincode invocation.
+
+Protecting private data responses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Chaincode can return any data to a client application in the proposal response payload field.
+For read-only chaincode functions that query private data and which will not get submitted as transactions to the ordering service,
+private data may be returned in the proposal response payload field to the requesting client.
+For chaincode functions that propose private data writes however, take care not to include
+private data in the proposal response payload field, since this field will get
+included in the transaction which all channel members can access.
 
 Access control for private data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
