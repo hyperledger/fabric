@@ -32,6 +32,7 @@ func TestFinder(t *testing.T) {
 				select {
 				case commitSend <- msg:
 				case <-done:
+					return
 				}
 			}
 		}()
