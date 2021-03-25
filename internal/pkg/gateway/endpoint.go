@@ -23,7 +23,7 @@ type endorser struct {
 }
 
 type orderer struct {
-	client ab.AtomicBroadcast_BroadcastClient
+	client ab.AtomicBroadcastClient
 	*endpointConfig
 }
 
@@ -34,7 +34,7 @@ type endpointConfig struct {
 
 type (
 	endorserConnector func(*grpc.ClientConn) peer.EndorserClient
-	ordererConnector  func(*grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error)
+	ordererConnector  func(*grpc.ClientConn) ab.AtomicBroadcastClient
 )
 
 //go:generate counterfeiter -o mocks/dialer.go --fake-name Dialer . dialer
@@ -69,14 +69,10 @@ func (ef *endpointFactory) newOrderer(address, mspid string, tlsRootCerts [][]by
 	}
 	connectOrderer := ef.connectOrderer
 	if connectOrderer == nil {
-		connectOrderer = defaultOrdererConnector
-	}
-	client, err := connectOrderer(conn)
-	if err != nil {
-		return nil, err
+		connectOrderer = ab.NewAtomicBroadcastClient
 	}
 	return &orderer{
-		client:         client,
+		client:         connectOrderer(conn),
 		endpointConfig: &endpointConfig{address: address, mspid: mspid},
 	}, nil
 }
@@ -107,8 +103,4 @@ func (ef *endpointFactory) newConnection(address string, tlsRootCerts [][]byte) 
 		return nil, fmt.Errorf("failed to create new connection: %w", err)
 	}
 	return conn, nil
-}
-
-func defaultOrdererConnector(conn *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
-	return ab.NewAtomicBroadcastClient(conn).Broadcast(context.Background())
 }

@@ -175,8 +175,17 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	}
 
 	orderer := orderers[0] // send to first orderer for now
+
+	broadcast, err := orderer.client.Broadcast(ctx)
+	if err != nil {
+		return nil, rpcError(
+			codes.Aborted,
+			"failed to send transaction to orderer",
+			&gp.EndpointError{Address: orderer.address, MspId: orderer.mspid, Message: err.Error()},
+		)
+	}
 	logger.Info("Submitting txn to orderer")
-	if err := orderer.client.Send(txn); err != nil {
+	if err := broadcast.Send(txn); err != nil {
 		return nil, rpcError(
 			codes.Aborted,
 			"failed to send transaction to orderer",
@@ -184,7 +193,7 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 		)
 	}
 
-	response, err := orderer.client.Recv()
+	response, err := broadcast.Recv()
 	if err != nil {
 		return nil, rpcError(
 			codes.Aborted,
