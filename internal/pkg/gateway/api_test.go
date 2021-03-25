@@ -49,6 +49,11 @@ type discovery interface {
 
 //go:generate counterfeiter -o mocks/abclient.go --fake-name ABClient . abClient
 type abClient interface {
+	ab.AtomicBroadcastClient
+}
+
+//go:generate counterfeiter -o mocks/abbclient.go --fake-name ABBClient . abbClient
+type abbClient interface {
 	ab.AtomicBroadcast_BroadcastClient
 }
 
@@ -72,6 +77,7 @@ type endpointDef struct {
 	proposalError           error
 	ordererResponse         string
 	ordererStatus           int32
+	ordererBroadcastError   error
 	ordererSendError        error
 	ordererRecvError        error
 }
@@ -423,6 +429,22 @@ func TestSubmit(t *testing.T) {
 			errString: "no broadcastClients discovered",
 		},
 		{
+			name: "orderer broadcast fails",
+			plan: endorsementPlan{
+				"g1": {{endpoint: "localhost:7051"}},
+			},
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererBroadcastError:  status.Error(codes.FailedPrecondition, "Orderer not listening!"),
+			},
+			errString: "rpc error: code = Aborted desc = failed to send transaction to orderer",
+			errDetails: []*pb.EndpointError{{
+				Address: "orderer:7050",
+				MspId:   "msp1",
+				Message: "rpc error: code = FailedPrecondition desc = Orderer not listening!",
+			}},
+		},
+		{
 			name: "send to orderer fails",
 			plan: endorsementPlan{
 				"g1": {{endpoint: "localhost:7051"}},
@@ -455,15 +477,17 @@ func TestSubmit(t *testing.T) {
 			}},
 		},
 		{
-			name: "orderer returns nil",
+			name: "orderer Send() returns nil",
 			plan: endorsementPlan{
 				"g1": {{endpoint: "localhost:7051"}},
 			},
 			postSetup: func(def *preparedTest) {
-				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
+				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
 					abc := &mocks.ABClient{}
-					abc.RecvReturns(nil, nil)
-					return abc, nil
+					abbc := &mocks.ABBClient{}
+					abbc.RecvReturns(nil, nil)
+					abc.BroadcastReturns(abbc, nil)
+					return abc
 				}
 			},
 			errString: "received nil response from orderer",
@@ -474,13 +498,15 @@ func TestSubmit(t *testing.T) {
 				"g1": {{endpoint: "localhost:7051"}},
 			},
 			postSetup: func(def *preparedTest) {
-				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
+				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
 					abc := &mocks.ABClient{}
+					abbc := &mocks.ABBClient{}
 					response := &ab.BroadcastResponse{
 						Status: cp.Status_BAD_REQUEST,
 					}
-					abc.RecvReturns(response, nil)
-					return abc, nil
+					abbc.RecvReturns(response, nil)
+					abc.BroadcastReturns(abbc, nil)
+					return abc
 				}
 			},
 			errString: cp.Status_name[int32(cp.Status_BAD_REQUEST)],
@@ -824,14 +850,20 @@ func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer)
 			}
 			return e
 		},
-		connectOrderer: func(_ *grpc.ClientConn) (ab.AtomicBroadcast_BroadcastClient, error) {
+		connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
 			abc := &mocks.ABClient{}
-			abc.SendReturns(definition.ordererSendError)
-			abc.RecvReturns(&ab.BroadcastResponse{
+			if definition.ordererBroadcastError != nil {
+				abc.BroadcastReturns(nil, definition.ordererBroadcastError)
+				return abc
+			}
+			abbc := &mocks.ABBClient{}
+			abbc.SendReturns(definition.ordererSendError)
+			abbc.RecvReturns(&ab.BroadcastResponse{
 				Info:   definition.ordererResponse,
 				Status: cp.Status(definition.ordererStatus),
 			}, definition.ordererRecvError)
-			return abc, nil
+			abc.BroadcastReturns(abbc, nil)
+			return abc
 		},
 		dialer: dialer,
 	}
