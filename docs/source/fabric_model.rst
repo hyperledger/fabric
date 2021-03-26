@@ -122,10 +122,7 @@ governed on the broader network and on channel levels.  This "permissioned" noti
 of Hyperledger Fabric, coupled with the existence and capabilities of channels,
 helps address scenarios where privacy and confidentiality are paramount concerns.
 
-See the :doc:`msp` topic to better understand cryptographic
-implementations, and the sign, verify, authenticate approach used in
-Hyperledger Fabric.
-
+For more information see the :doc:`security_model` topic.
 
 Consensus
 ---------
