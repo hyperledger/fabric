@@ -17,4 +17,5 @@ Key Concepts
    chaincode_lifecycle.md
    private-data/private-data.md
    capabilities_concept.md
+   security_model.md
    usecases
