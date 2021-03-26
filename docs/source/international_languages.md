@@ -148,7 +148,7 @@ Before your new language can be published to the documentation website, you must
 translate the following topics.  These topics help users and translators of your
 new language get started.
 
-* [Fabric front page](https://hyperledger-fabric.readthedocs.io/zh_CN/{BRANCH_DOC}/)
+* [Fabric front page](https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/)
 
   This is your advert! Thanks to you, users can now see that the documentation
   is available in their language. It might not be complete yet, but its clear
