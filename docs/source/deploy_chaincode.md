@@ -11,7 +11,7 @@ You can use this tutorial to learn how to use the [peer lifecycle chaincode comm
 
 ## Start the network
 
-We will start by deploying an instance of the Fabric test network. Before you begin, make sure that that you have installed the necessary software by following the instructions on [getting_started](getting_started.html). Use the following command to navigate to the test network directory within your local clone of the `fabric-samples` repository:
+We will start by deploying an instance of the Fabric test network. Before you begin, make sure that you have installed the necessary software by following the instructions on [getting_started](getting_started.html). Use the following command to navigate to the test network directory within your local clone of the `fabric-samples` repository:
 ```
 cd fabric-samples/test-network
 ```
