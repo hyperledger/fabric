@@ -9,31 +9,29 @@ name: Automatically Trigger Azure Pipeline
 jobs:
   trigger:
     name: TriggerAZP
-    if: github.event.issue.pull_request != '' && contains(github.event.comment.body, '/ci-run')
+    if: ${{ github.event.issue.pull_request }} && contains(github.event.comment.body, '/ci-run')
     runs-on: ubuntu-latest
     steps:
-    - name: Trigger Build
-      run: |
-        org=$(jq -r ".repository.owner.login" "${GITHUB_EVENT_PATH}")
-        pr_number=$(jq -r ".issue.number" "${GITHUB_EVENT_PATH}")
-        project=$(jq -r ".repository.name" "${GITHUB_EVENT_PATH}")
-        repo=$(jq -r ".repository.full_name" "${GITHUB_EVENT_PATH}")
-
-        comment_url="https://api.github.com/repos/${repo}/issues/${pr_number}/comments"
-        pr_url="https://api.github.com/repos/${repo}/pulls/${pr_number}"
-
-        pr_resp=$(curl "${pr_url}")
-        sha=$(echo "${pr_resp}" | jq -r ".head.sha")
-
-        az extension add --name azure-devops
-        echo ${AZP_TOKEN} | az devops login --organization "https://dev.azure.com/${org}"
-        runs=$(az pipelines build list --project ${project} | jq -c ".[] | select(.sourceVersion | contains(\"${sha}\"))" | jq -r .status | grep -v completed | wc -l)
-        if [[ $runs -eq 0 ]]; then
-          az pipelines build queue --branch refs/pull/${pr_number}/merge --commit-id ${sha} --project ${project} --definition-name Fabric-Pull-Request
-          curl -s -H "Authorization: token ${GITHUB_TOKEN}" -X POST -d '{"body": "AZP build triggered!"}' "${comment_url}"
-        else
-          curl -s -H "Authorization: token ${GITHUB_TOKEN}" -X POST -d '{"body": "AZP build already running!"}' "${comment_url}"
-        fi
-      env:
-        AZP_TOKEN: ${{ secrets.AZP_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Trigger Build
+        run: |
+          echo "${AZP_TOKEN}" | az devops login --organization "https://dev.azure.com/hyperledger"
+          runs=$(az pipelines build list --project "Fabric" | jq -c ".[] | select(.sourceVersion | contains(\"${SHA}\"))" | jq -r .status | grep -vc completed)
+          if [[ $runs -eq 0 ]]; then
+            az pipelines build queue --branch "refs/pull/${PR_NUMBER}/merge" --commit-id "${SHA}" --project "Fabric" --definition-name "Fabric-Pull-Request"
+            curl -s -H "Authorization: token ${GITHUB_TOKEN}" -X POST -d '{"body": "AZP build triggered!"}' "${COMMENT_URL}"
+          else
+            curl -s -H "Authorization: token ${GITHUB_TOKEN}" -X POST -d '{"body": "AZP build already running!"}' "${COMMENT_URL}"
+          fi
+        env:
+          AZP_TOKEN: ${{ secrets.AZP_TOKEN }}
+          COMMENT_URL: ${{ github.event.issue.comments_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          SHA: ${{ github.sha }}
+      - name: Report Failure
+        if: ${{ failure() }}
+        run: |
+          curl -s -H "Authorization: token ${GITHUB_TOKEN}" -X POST -d '{"body": "Failed to trigger build!"}' "${COMMENT_URL}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_URL: ${{ github.event.issue.comments_url }}
