@@ -251,10 +251,10 @@ func (p *Provider) initSnapshotDir() error {
 		return errors.Wrapf(err, "error while deleting the dir: %s", inProgressSnapshotsPath)
 	}
 	if err := os.MkdirAll(inProgressSnapshotsPath, 0755); err != nil {
-		return errors.Wrapf(err, "error while creating the dir: %s", inProgressSnapshotsPath)
+		return errors.Wrapf(err, "error while creating the dir: %s, ensure peer has write access to configured ledger.snapshots.rootDir directory", inProgressSnapshotsPath)
 	}
 	if err := os.MkdirAll(completedSnapshotsPath, 0755); err != nil {
-		return errors.Wrapf(err, "error while creating the dir: %s", completedSnapshotsPath)
+		return errors.Wrapf(err, "error while creating the dir: %s, ensure peer has write access to configured ledger.snapshots.rootDir directory", completedSnapshotsPath)
 	}
 	return fileutil.SyncDir(snapshotsRootDir)
 }
