@@ -112,7 +112,7 @@ localMspId: SampleOrg
 # modification that might corrupt the peer operations.
 fileSystemPath: /var/hyperledger/production
 ```
-- **`fileSystemPath`**: (Default value should be overridden.) This is the path to the ledger and installed chaincodes on the local filesystem of the peer. It can be an absolute path or relative to `FABRIC_CFG_PATH`. It defaults to `/var/hyperledger/production`. The user running the peer needs to own and have write access to this directory. **The best practice is to store this data in persistent storage**. This prevents the ledger and any installed chaincodes from being lost if your peer containers are destroyed for some reason.
+- **`fileSystemPath`**: (Default value should be overridden.) This is the path to the ledger and installed chaincodes on the local filesystem of the peer. It can be an absolute path or relative to `FABRIC_CFG_PATH`. It defaults to `/var/hyperledger/production`. The user running the peer needs to own and have write access to this directory. **The best practice is to store this data in persistent storage**. This prevents the ledger and any installed chaincodes from being lost if your peer containers are destroyed for some reason. Note that ledger snapshots will be written to  `ledger.snapshots.rootDir`, described in the [ledger.* section](#ledger).
 
 ## peer.gossip.*
 

@@ -80,7 +80,13 @@ Note that the local MSP contains the signed certificate (public key) and the pri
 
 ### Storage
 
-You must provision persistent storage for your ledger. If you are not using an external chaincode builder and launcher, you should factor in storage for that as well. The default location for the ledger is located at `/var/hyperledger/production`. Ensure that your peer has write access to the folder. If you choose to use a different location, provide that path in the `peer.fileSystemPath` parameter in the `core.yaml` file. If you decide to use Kubernetes or Docker, recall that in a containerized environment local storage disappears when the container goes away, so you will need to provision or mount persistent storage for the ledger before you deploy a peer.
+You must provision persistent storage for your ledger files. The following properties in `core.yaml` dictates where ledger files and snapshots are written:
+* `peer.fileSystemPath` - defaults to `/var/hyperledger/production`
+* `ledger.snapshots.rootDir` - defaults to `/var/hyperledger/production/snapshots`
+
+Ensure that your peer has write access to these directories.
+
+If you decide to use Kubernetes or Docker, recall that in a containerized environment local storage disappears when the container goes away, so you will need to provision or mount persistent storage for the ledger before you deploy a peer.
 
 ### Configuration of `core.yaml`
 
