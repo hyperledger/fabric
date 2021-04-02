@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/common/fabhttp"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/common/metrics"
 )
@@ -73,6 +74,9 @@ type CouchDBConfig struct {
 	Username string
 	// Password is the password for Username.
 	Password string
+	// TLS represents the TLS configuration to connect to the CouchDB instance
+	// using HTTPS
+	TLS fabhttp.TLS
 	// MaxRetries is the maximum number of times to retry CouchDB operations on
 	// failure.
 	MaxRetries int

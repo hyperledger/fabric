@@ -42,10 +42,15 @@ var (
 )
 
 func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.Provider) (*couchInstance, error) {
+	scheme := "http"
+	if config.TLS.Enabled {
+		scheme += "s"
+	}
+
 	// make sure the address is valid
 	connectURL := &url.URL{
 		Host:   config.Address,
-		Scheme: "http",
+		Scheme: scheme,
 	}
 	_, err := url.Parse(connectURL.String())
 	if err != nil {
@@ -75,6 +80,14 @@ func createCouchInstance(config *ledger.CouchDBConfig, metricsProvider metrics.P
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 		DisableKeepAlives:     disableKeepAlive,
+	}
+	if config.TLS.Enabled {
+		tlsConfig, err := config.TLS.Config()
+		if err != nil {
+			return nil, err
+		}
+		// Set TLS configuration to allow the client to communicate with the Couchdb insance through HTTPS
+		transport.TLSClientConfig = tlsConfig
 	}
 
 	client.Transport = transport
