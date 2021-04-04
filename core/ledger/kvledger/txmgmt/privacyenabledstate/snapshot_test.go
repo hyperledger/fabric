@@ -32,12 +32,12 @@ var testNewHashFunc = func() (hash.Hash, error) {
 func TestSnapshot(t *testing.T) {
 	for _, env := range testEnvs {
 		t.Run(env.GetName(), func(t *testing.T) {
-			testSanpshot(t, env)
+			testSnapshot(t, env)
 		})
 	}
 }
 
-func testSanpshot(t *testing.T, env TestEnv) {
+func testSnapshot(t *testing.T, env TestEnv) {
 	// generateSampleData returns a slice of KVs. The returned value contains five KVs for each of the namespaces
 	generateSampleData := func(namespaces ...string) []*statedb.VersionedKV {
 		sampleData := []*statedb.VersionedKV{}
