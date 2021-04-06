@@ -15,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
@@ -66,6 +65,22 @@ type vsccValidator interface {
 	VSCCValidateTx(seq int, payload *common.Payload, envBytes []byte, block *common.Block) (peer.TxValidationCode, error)
 }
 
+// The IdentityDeserializerGetter is used to acquire a reference to the MSP
+// associated with a channel. In a sane world, we would use the
+// ChannelResources to acquire the MSP associated with the channel insstead of
+// using the channel ID to get the the MSP; this is not a sane world.
+//
+// The "common" validator function uses the channel id from the channel header
+// of the transaction to locate the MSP. While this should match the channel
+// that's doing the validation, I haven't spotted the place where that's
+// enforced. (But I have to believe it exists somewhere...)
+//
+// So, out of an abundance of caution, we'll use the same pattern to find the
+// MSP.
+type IdentityDeserializerGetter interface {
+	GetIdentityDeserializer(cid string) msp.IdentityDeserializer
+}
+
 // implementation of Validator interface, keeps
 // reference to the ledger to enable tx simulation
 // and execution of vscc
@@ -74,7 +89,7 @@ type TxValidator struct {
 	Semaphore        Semaphore
 	ChannelResources ChannelResources
 	Vscc             vsccValidator
-	CryptoProvider   bccsp.BCCSP
+	Validator        *validation.Validator
 }
 
 var logger = flogging.MustGetLogger("committer.txvalidator")
@@ -95,7 +110,7 @@ type blockValidationResult struct {
 }
 
 // NewTxValidator creates new transactions validator
-func NewTxValidator(channelID string, sem Semaphore, cr ChannelResources, pm plugin.Mapper, cryptoProvider bccsp.BCCSP) *TxValidator {
+func NewTxValidator(channelID string, sem Semaphore, cr ChannelResources, pm plugin.Mapper, idg IdentityDeserializerGetter) *TxValidator {
 	// Encapsulates interface implementation
 	pluginValidator := NewPluginValidator(pm, cr.Ledger(), &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr})
 	return &TxValidator{
@@ -103,7 +118,7 @@ func NewTxValidator(channelID string, sem Semaphore, cr ChannelResources, pm plu
 		Semaphore:        sem,
 		ChannelResources: cr,
 		Vscc:             newVSCCValidator(channelID, cr, pluginValidator),
-		CryptoProvider:   cryptoProvider,
+		Validator:        &validation.Validator{IDDeserializerFactory: idg},
 	}
 }
 
@@ -300,7 +315,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		var txsChaincodeName *sysccprovider.ChaincodeInstance
 		var txsUpgradedChaincode *sysccprovider.ChaincodeInstance
 
-		if payload, txResult = validation.ValidateTransaction(env, v.CryptoProvider); txResult != peer.TxValidationCode_VALID {
+		if payload, txResult = v.Validator.ValidateTransaction(env); txResult != peer.TxValidationCode_VALID {
 			logger.Errorf("Invalid transaction with index %d", tIdx)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,

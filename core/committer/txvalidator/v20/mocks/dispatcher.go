@@ -22,14 +22,14 @@ func (_m *Dispatcher) Dispatch(seq int, payload *common.Payload, envBytes []byte
 	if rf, ok := ret.Get(0).(func(int, *common.Payload, []byte, *common.Block) peer.TxValidationCode); ok {
 		r0 = rf(seq, payload, envBytes, block)
 	} else {
-		r0 = ret.Get(1).(peer.TxValidationCode)
+		r0 = ret.Get(0).(peer.TxValidationCode)
 	}
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(int, *common.Payload, []byte, *common.Block) error); ok {
 		r1 = rf(seq, payload, envBytes, block)
 	} else {
-		r1 = ret.Error(0)
+		r1 = ret.Error(1)
 	}
 
 	return r0, r1

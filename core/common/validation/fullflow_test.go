@@ -134,9 +134,8 @@ func TestGoodPath(t *testing.T) {
 	}
 
 	// validate the transaction
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-	payl, txResult := ValidateTransaction(tx, cryptoProvider)
+	validator := &Validator{IDDeserializerFactory: idDeserializerGetter}
+	payl, txResult := validator.ValidateTransaction(tx)
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
@@ -196,9 +195,8 @@ func TestTXWithTwoActionsRejected(t *testing.T) {
 	}
 
 	// validate the transaction
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-	_, txResult := ValidateTransaction(tx, cryptoProvider)
+	validator := &Validator{IDDeserializerFactory: idDeserializerGetter}
+	_, txResult := validator.ValidateTransaction(tx)
 	if txResult == peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction should have failed")
 		return
@@ -237,14 +235,13 @@ func TestBadTx(t *testing.T) {
 
 	// mess with the transaction payload
 	paylOrig := tx.Payload
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
+	validator := &Validator{IDDeserializerFactory: idDeserializerGetter}
 	for i := 0; i < len(paylOrig); i++ {
 		paylCopy := make([]byte, len(paylOrig))
 		copy(paylCopy, paylOrig)
 		paylCopy[i] = byte(int(paylCopy[i]+1) % 255)
 		// validate the transaction it should fail
-		_, txResult := ValidateTransaction(&common.Envelope{Signature: tx.Signature, Payload: paylCopy}, cryptoProvider)
+		_, txResult := validator.ValidateTransaction(&common.Envelope{Signature: tx.Signature, Payload: paylCopy})
 		if txResult == peer.TxValidationCode_VALID {
 			t.Fatal("ValidateTransaction should have failed")
 			return
@@ -262,7 +259,7 @@ func TestBadTx(t *testing.T) {
 	corrupt(tx.Signature)
 
 	// validate the transaction it should fail
-	_, txResult := ValidateTransaction(tx, cryptoProvider)
+	_, txResult := validator.ValidateTransaction(tx)
 	if txResult == peer.TxValidationCode_VALID {
 		t.Fatal("ValidateTransaction should have failed")
 		return
@@ -305,9 +302,8 @@ func Test2EndorsersAgree(t *testing.T) {
 	}
 
 	// validate the transaction
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-	_, txResult := ValidateTransaction(tx, cryptoProvider)
+	validator := &Validator{IDDeserializerFactory: idDeserializerGetter}
+	_, txResult := validator.ValidateTransaction(tx)
 	if txResult != peer.TxValidationCode_VALID {
 		t.Fatalf("ValidateTransaction failed, err %s", err)
 		return
@@ -351,12 +347,10 @@ func Test2EndorsersDisagree(t *testing.T) {
 }
 
 func TestInvocationsBadArgs(t *testing.T) {
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-
-	_, code := ValidateTransaction(nil, cryptoProvider)
+	validator := &Validator{IDDeserializerFactory: idDeserializerGetter}
+	_, code := validator.ValidateTransaction(nil)
 	require.Equal(t, code, peer.TxValidationCode_NIL_ENVELOPE)
-	err = validateEndorserTransaction(nil, nil)
+	err := validateEndorserTransaction(nil, nil)
 	require.Error(t, err)
 	err = validateConfigTransaction(nil, nil)
 	require.Error(t, err)
@@ -372,15 +366,26 @@ func TestInvocationsBadArgs(t *testing.T) {
 	require.Error(t, err)
 	err = validateSignatureHeader(&common.SignatureHeader{Nonce: []byte("a")})
 	require.Error(t, err)
-	err = checkSignatureFromCreator(nil, nil, nil, "", cryptoProvider)
+	err = checkSignatureFromCreator(nil, nil, nil, "", idDeserializerGetter)
 	require.Error(t, err)
 }
 
 var (
-	signer           msp.SigningIdentity
-	signerSerialized []byte
-	signerMSPId      string
+	signer               msp.SigningIdentity
+	signerSerialized     []byte
+	signerMSPId          string
+	localMSP             msp.MSP
+	idDeserializerGetter *idsGetter
 )
+
+type idsGetter struct{ localMSP msp.MSP }
+
+func (idsg idsGetter) GetIdentityDeserializer(cid string) msp.IdentityDeserializer {
+	if cid == signerMSPId || cid == "testchannelid" {
+		return idsg.localMSP
+	}
+	return nil
+}
 
 func TestMain(m *testing.M) {
 	// setup crypto algorithms
@@ -399,7 +404,9 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	signer, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	localMSP = mspmgmt.GetLocalMSP(cryptoProvider)
+	idDeserializerGetter = &idsGetter{localMSP: localMSP}
+	signer, err = localMSP.GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Println("Could not get signer")
 		os.Exit(-1)

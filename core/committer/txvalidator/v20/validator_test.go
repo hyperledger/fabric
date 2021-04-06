@@ -189,7 +189,7 @@ func setupValidatorWithMspMgr(mspmgr msp.MSPManager, mockID *supportmocks.Identi
 		mockCR,
 		pm,
 		mockCpmg,
-		cryptoProvider,
+		&idsGetter{ids: mspmgr},
 	)
 
 	return v, mockQE, mockID, mockCR
@@ -1095,7 +1095,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
-		cryptoProvider,
+		idDeserializerGetter,
 	)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -1169,7 +1169,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
-		cryptoProvider,
+		idDeserializerGetter,
 	)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -1222,7 +1222,7 @@ func TestValidationPluginNotFound(t *testing.T) {
 		&txvalidatormocks.CollectionResources{},
 		pm,
 		mockCpmg,
-		cryptoProvider,
+		idDeserializerGetter,
 	)
 
 	tx := getEnv(ccID, nil, createRWset(t, ccID), t)
@@ -1236,9 +1236,18 @@ func TestValidationPluginNotFound(t *testing.T) {
 	require.Contains(t, executionErr.Error(), "plugin with name vscc wasn't found")
 }
 
-var signer msp.SigningIdentity
+var (
+	signer               msp.SigningIdentity
+	signerSerialized     []byte
+	localMSP             msp.MSP
+	idDeserializerGetter *idsGetter
+)
 
-var signerSerialized []byte
+type idsGetter struct{ ids msp.IdentityDeserializer }
+
+func (idsg idsGetter) GetIdentityDeserializer(cid string) msp.IdentityDeserializer {
+	return idsg.ids
+}
 
 func TestMain(m *testing.M) {
 	msptesttools.LoadMSPSetupForTesting()
@@ -1251,7 +1260,9 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	signer, err = mgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	localMSP = mgmt.GetLocalMSP(cryptoProvider)
+	idDeserializerGetter = &idsGetter{ids: localMSP}
+	signer, err = localMSP.GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Println("Could not get signer")
 		os.Exit(-1)

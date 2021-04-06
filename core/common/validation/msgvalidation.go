@@ -11,19 +11,29 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/flogging"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
+	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
 
 var putilsLogger = flogging.MustGetLogger("protoutils")
 
+// An IdentityDeserializerGetter acquires the msp.IdentityDeserializer
+// associated with a channel.
+type IdentityDeserializerGetter interface {
+	GetIdentityDeserializer(cid string) msp.IdentityDeserializer
+}
+
+// An Validator performs basic validation of a transaction envelope.
+type Validator struct {
+	IDDeserializerFactory IdentityDeserializerGetter
+}
+
 // given a creator, a message and a signature,
 // this function returns nil if the creator
 // is a valid cert and the signature is valid
-func checkSignatureFromCreator(creatorBytes, sig, msg []byte, ChannelID string, cryptoProvider bccsp.BCCSP) error {
+func checkSignatureFromCreator(creatorBytes, sig, msg []byte, ChannelID string, idg IdentityDeserializerGetter) error {
 	putilsLogger.Debugf("begin")
 
 	// check for nil argument
@@ -31,7 +41,7 @@ func checkSignatureFromCreator(creatorBytes, sig, msg []byte, ChannelID string, 
 		return errors.New("nil arguments")
 	}
 
-	mspObj := mspmgmt.GetIdentityDeserializer(ChannelID, cryptoProvider)
+	mspObj := idg.GetIdentityDeserializer(ChannelID)
 	if mspObj == nil {
 		return errors.Errorf("could not get msp for channel [%s]", ChannelID)
 	}
@@ -245,7 +255,7 @@ func validateEndorserTransaction(data []byte, hdr *common.Header) error {
 }
 
 // ValidateTransaction checks that the transaction envelope is properly formed
-func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*common.Payload, pb.TxValidationCode) {
+func (v Validator) ValidateTransaction(e *common.Envelope) (*common.Payload, pb.TxValidationCode) {
 	putilsLogger.Debugf("ValidateTransactionEnvelope starts for envelope %p", e)
 
 	// check for nil argument
@@ -271,7 +281,7 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 	}
 
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(shdr.Creator, e.Signature, e.Payload, chdr.ChannelId, cryptoProvider)
+	err = checkSignatureFromCreator(shdr.Creator, e.Signature, e.Payload, chdr.ChannelId, v.IDDeserializerFactory)
 	if err != nil {
 		putilsLogger.Errorf("checkSignatureFromCreator returns err %s", err)
 		return nil, pb.TxValidationCode_BAD_CREATOR_SIGNATURE
@@ -296,24 +306,22 @@ func ValidateTransaction(e *common.Envelope, cryptoProvider bccsp.BCCSP) (*commo
 		}
 
 		err = validateEndorserTransaction(payload.Data, payload.Header)
-		putilsLogger.Debugf("ValidateTransactionEnvelope returns err %s", err)
-
 		if err != nil {
 			putilsLogger.Errorf("validateEndorserTransaction returns err %s", err)
 			return payload, pb.TxValidationCode_INVALID_ENDORSER_TRANSACTION
 		}
 		return payload, pb.TxValidationCode_VALID
+
 	case common.HeaderType_CONFIG:
 		// Config transactions have signatures inside which will be validated, especially at genesis there may be no creator or
 		// signature on the outermost envelope
-
 		err = validateConfigTransaction(payload.Data, payload.Header)
-
 		if err != nil {
 			putilsLogger.Errorf("validateConfigTransaction returns err %s", err)
 			return payload, pb.TxValidationCode_INVALID_CONFIG_TRANSACTION
 		}
 		return payload, pb.TxValidationCode_VALID
+
 	default:
 		return nil, pb.TxValidationCode_UNSUPPORTED_TX_PAYLOAD
 	}

@@ -21,6 +21,7 @@ import (
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/common/sysccprovider"
+	"github.com/hyperledger/fabric/core/common/validation"
 	ledger2 "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt"
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
@@ -33,6 +34,13 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
+
+// Simple adapter to return IdentityDeserializer.
+type mockIDDGetter struct{ ids msp.IdentityDeserializer }
+
+func (m mockIDDGetter) GetIdentityDeserializer(cid string) msp.IdentityDeserializer {
+	return m.ids
+}
 
 func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []byte, nBlocks int) {
 	txid := util2.GenerateUUID()
@@ -51,6 +59,7 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
+	localMSP := mspmgmt.GetLocalMSP(cryptoProvider)
 	mockVsccValidator := &validator.MockVsccValidator{}
 	mockCapabilities := &mocks.ApplicationCapabilities{}
 	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(false)
@@ -59,7 +68,9 @@ func testValidationWithNTXes(t *testing.T, ledger ledger2.PeerLedger, gbHash []b
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: mockCapabilities},
 		Vscc:             mockVsccValidator,
-		CryptoProvider:   cryptoProvider,
+		Validator: &validation.Validator{
+			IDDeserializerFactory: &mockIDDGetter{ids: localMSP},
+		},
 	}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -131,6 +142,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
+	localMSP := mspmgmt.GetLocalMSP(cryptoProvider)
 	mockVsccValidator := &validator.MockVsccValidator{}
 	acv := &mocks.ApplicationCapabilities{}
 	tValidator := &TxValidator{
@@ -138,7 +150,9 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: acv},
 		Vscc:             mockVsccValidator,
-		CryptoProvider:   cryptoProvider,
+		Validator: &validation.Validator{
+			IDDeserializerFactory: &mockIDDGetter{ids: localMSP},
+		},
 	}
 
 	bcInfo, _ := ledger.GetBlockchainInfo()
@@ -215,21 +229,25 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	ledgerMgr, cleanup := constructLedgerMgrWithTestDefaults(t, "txvalidator")
 	defer cleanup()
 
-	gb, _ := test.MakeGenesisBlock("TestLedger")
-	ledger, _ := ledgerMgr.CreateLedger("TestLedger", gb)
-
+	gb, err := test.MakeGenesisBlock("TestLedger")
+	require.NoError(t, err)
+	ledger, err := ledgerMgr.CreateLedger("TestLedger", gb)
+	require.NoError(t, err)
 	defer ledger.Close()
 
 	mockCapabilities := &mocks.ApplicationCapabilities{}
 	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(false)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	localMSP := mspmgmt.GetLocalMSP(cryptoProvider)
 	require.NoError(t, err)
 	tValidator := &TxValidator{
 		ChannelID:        "",
 		Semaphore:        semaphore.New(10),
 		ChannelResources: &mocktxvalidator.Support{LedgerVal: ledger, ACVal: mockCapabilities},
 		Vscc:             &validator.MockVsccValidator{},
-		CryptoProvider:   cryptoProvider,
+		Validator: &validation.Validator{
+			IDDeserializerFactory: &mockIDDGetter{ids: localMSP},
+		},
 	}
 
 	mockSigner, err := mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
@@ -365,9 +383,7 @@ func TestGetTxCCInstance(t *testing.T) {
 		ChaincodeVersion: upgradeCCVersion,
 	}
 
-	tValidator := &TxValidator{
-		CryptoProvider: cryptoProvider,
-	}
+	tValidator := &TxValidator{}
 	invokeCCIns, upgradeCCIns, err := tValidator.getTxCCInstance(payload)
 	if err != nil {
 		t.Fatalf("Get chaincode from tx error: %s", err)
@@ -413,11 +429,7 @@ func TestInvalidTXsForUpgradeCC(t *testing.T) {
 	expectTxsFltr.SetFlag(6, peer.TxValidationCode_CHAINCODE_VERSION_CONFLICT)
 	expectTxsFltr.SetFlag(7, peer.TxValidationCode_VALID)
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-	tValidator := &TxValidator{
-		CryptoProvider: cryptoProvider,
-	}
+	tValidator := &TxValidator{}
 	tValidator.invalidTXsForUpgradeCC(txsChaincodeNames, upgradedChaincodes, txsfltr)
 
 	require.EqualValues(t, expectTxsFltr, txsfltr)

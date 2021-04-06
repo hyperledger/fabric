@@ -14,7 +14,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/configtx"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
@@ -101,6 +100,22 @@ type PolicyManager interface {
 
 //go:generate mockery -dir plugindispatcher/ -name CollectionResources -case underscore -output mocks/
 
+// The IdentityDeserializerGetter is used to acquire a reference to the MSP
+// associated with a channel. In a sane world, we would use the
+// ChannelResources to acquire the MSP associated with the channel insstead of
+// using the channel ID to get the the MSP; this is not a sane world.
+//
+// The "common" validator function uses the channel id from the channel header
+// of the transaction to locate the MSP. While this should match the channel
+// that's doing the validation, I haven't spotted the place where that's
+// enforced. (But I have to believe it exists somewhere...)
+//
+// So, out of an abundance of caution, we'll use the same pattern to find the
+// MSP.
+type IdentityDeserializerGetter interface {
+	GetIdentityDeserializer(cid string) msp.IdentityDeserializer
+}
+
 // TxValidator is the implementation of Validator interface, keeps
 // reference to the ledger to enable tx simulation
 // and execution of plugins
@@ -110,7 +125,7 @@ type TxValidator struct {
 	ChannelResources ChannelResources
 	LedgerResources  LedgerResources
 	Dispatcher       Dispatcher
-	CryptoProvider   bccsp.BCCSP
+	Validator        *validation.Validator
 }
 
 var logger = flogging.MustGetLogger("committer.txvalidator")
@@ -138,17 +153,24 @@ func NewTxValidator(
 	cor plugindispatcher.CollectionResources,
 	pm plugin.Mapper,
 	channelPolicyManagerGetter policies.ChannelPolicyManagerGetter,
-	cryptoProvider bccsp.BCCSP,
+	idg IdentityDeserializerGetter,
 ) *TxValidator {
 	// Encapsulates interface implementation
-	pluginValidator := plugindispatcher.NewPluginValidator(pm, ler, &dynamicDeserializer{cr: cr}, &dynamicCapabilities{cr: cr}, channelPolicyManagerGetter, cor)
+	pluginValidator := plugindispatcher.NewPluginValidator(
+		pm,
+		ler,
+		&dynamicDeserializer{cr: cr},
+		&dynamicCapabilities{cr: cr},
+		channelPolicyManagerGetter,
+		cor,
+	)
 	return &TxValidator{
 		ChannelID:        channelID,
 		Semaphore:        sem,
 		ChannelResources: cr,
 		LedgerResources:  ler,
 		Dispatcher:       plugindispatcher.New(channelID, cr, ler, lcr, pluginValidator),
-		CryptoProvider:   cryptoProvider,
+		Validator:        &validation.Validator{IDDeserializerFactory: idg},
 	}
 }
 
@@ -326,7 +348,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 		var err error
 		var txResult peer.TxValidationCode
 
-		if payload, txResult = validation.ValidateTransaction(env, v.CryptoProvider); txResult != peer.TxValidationCode_VALID {
+		if payload, txResult = v.Validator.ValidateTransaction(env); txResult != peer.TxValidationCode_VALID {
 			logger.Errorf("Invalid transaction with index %d", tIdx)
 			results <- &blockValidationResult{
 				tIdx:           tIdx,

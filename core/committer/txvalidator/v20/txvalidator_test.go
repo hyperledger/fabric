@@ -17,9 +17,11 @@ import (
 	"github.com/hyperledger/fabric/common/semaphore"
 	tmocks "github.com/hyperledger/fabric/core/committer/txvalidator/mocks"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v20/mocks"
+	"github.com/hyperledger/fabric/core/common/validation"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	mocktxvalidator "github.com/hyperledger/fabric/core/mocks/txvalidator"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
+	"github.com/hyperledger/fabric/msp"
 	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
@@ -38,6 +40,13 @@ func (v *mockDispatcher) Dispatch(seq int, payload *common.Payload, envBytes []b
 	return v.DispatchRv, v.DispatchErr
 }
 
+// Simple adapter to return the IdentityDeserializer.
+type mockIDDGetter struct{ ids msp.IdentityDeserializer }
+
+func (m mockIDDGetter) GetIdentityDeserializer(cid string) msp.IdentityDeserializer {
+	return m.ids
+}
+
 func testValidationWithNTXes(t *testing.T, nBlocks int) {
 	rwsb := rwsetutil.NewRWSetBuilder()
 	rwsb.AddToWriteSet("ns1", "key1", []byte("value1"))
@@ -53,7 +62,7 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-
+	localMSP := mspmgmt.GetLocalMSP(cryptoProvider)
 	mockDispatcher := &mockDispatcher{}
 	mockLedger := &mocks.LedgerResources{}
 	mockCapabilities := &tmocks.ApplicationCapabilities{}
@@ -64,7 +73,7 @@ func testValidationWithNTXes(t *testing.T, nBlocks int) {
 		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       mockDispatcher,
 		LedgerResources:  mockLedger,
-		CryptoProvider:   cryptoProvider,
+		Validator:        &validation.Validator{IDDeserializerFactory: &mockIDDGetter{ids: localMSP}},
 	}
 
 	sr := [][]byte{}
@@ -121,7 +130,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-
+	localMSP := mspmgmt.GetLocalMSP(cryptoProvider)
 	mockDispatcher := &mockDispatcher{}
 	mockCapabilities := &tmocks.ApplicationCapabilities{}
 	mockCapabilities.On("ForbidDuplicateTXIdInBlock").Return(true)
@@ -133,7 +142,7 @@ func TestBlockValidationDuplicateTXId(t *testing.T) {
 		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       mockDispatcher,
 		LedgerResources:  mockLedger,
-		CryptoProvider:   cryptoProvider,
+		Validator:        &validation.Validator{IDDeserializerFactory: &mockIDDGetter{ids: localMSP}},
 	}
 
 	envs := []*common.Envelope{}
@@ -171,6 +180,7 @@ func TestVeryLargeParallelBlockValidation(t *testing.T) {
 func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
+	localMSP := mspmgmt.GetLocalMSP(cryptoProvider)
 
 	mockLedger := &mocks.LedgerResources{}
 	mockLedger.On("TxIDExists", mock.Anything).Return(false, nil)
@@ -181,7 +191,7 @@ func TestTxValidationFailure_InvalidTxid(t *testing.T) {
 		ChannelResources: &mocktxvalidator.Support{ACVal: mockCapabilities},
 		Dispatcher:       &mockDispatcher{},
 		LedgerResources:  mockLedger,
-		CryptoProvider:   cryptoProvider,
+		Validator:        &validation.Validator{IDDeserializerFactory: &mockIDDGetter{ids: localMSP}},
 	}
 
 	mockSigner, err := mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()

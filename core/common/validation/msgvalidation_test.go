@@ -12,7 +12,6 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
@@ -64,20 +63,17 @@ func TestCheckSignatureFromCreator(t *testing.T) {
 	chdr, shdr, err := validateCommonHeader(payload.Header)
 	require.NoError(t, err, "validateCommonHeader returns err %s", err)
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-
 	// validate the signature in the envelope
-	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, chdr.ChannelId, cryptoProvider)
+	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, chdr.ChannelId, idDeserializerGetter)
 	require.NoError(t, err, "checkSignatureFromCreator returns err %s", err)
 
 	// corrupt the creator
-	err = checkSignatureFromCreator([]byte("junk"), env.Signature, env.Payload, chdr.ChannelId, cryptoProvider)
+	err = checkSignatureFromCreator([]byte("junk"), env.Signature, env.Payload, chdr.ChannelId, idDeserializerGetter)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "MSP error: could not deserialize")
 
 	// check nonexistent channel
-	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, "junkchannel", cryptoProvider)
+	err = checkSignatureFromCreator(shdr.Creator, env.Signature, env.Payload, "junkchannel", idDeserializerGetter)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "MSP error: channel doesn't exist")
+	require.Contains(t, err.Error(), "could not get msp for channel [junkchannel]")
 }

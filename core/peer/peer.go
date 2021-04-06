@@ -316,6 +316,8 @@ func (p *Peer) createChannel(
 		channel.bundleUpdate,
 	)
 
+	var idDeserializerFactory privdata.IdentityDeserializerFactoryFunc = p.GetIdentityDeserializer
+
 	committer := committer.NewLedgerCommitter(l)
 	validator := &txvalidator.ValidationRouter{
 		CapabilityProvider: channel,
@@ -324,7 +326,7 @@ func (p *Peer) createChannel(
 			p.validationWorkersSemaphore,
 			channel,
 			p.pluginMapper,
-			p.CryptoProvider,
+			idDeserializerFactory,
 		),
 		V20Validator: validatorv20.NewTxValidator(
 			cid,
@@ -341,7 +343,7 @@ func (p *Peer) createChannel(
 			},
 			p.pluginMapper,
 			policies.PolicyManagerGetterFunc(p.GetPolicyManager),
-			p.CryptoProvider,
+			idDeserializerFactory,
 		),
 	}
 
@@ -352,7 +354,6 @@ func (p *Peer) createChannel(
 	}
 	channel.store = store
 
-	var idDeserializerFactory privdata.IdentityDeserializerFactoryFunc = p.GetIdentityDeserializer
 	simpleCollectionStore := privdata.NewSimpleCollectionStore(l, deployedCCInfoProvider, idDeserializerFactory)
 	p.GossipService.InitializeChannel(bundle.ConfigtxValidator().ChannelID(), ordererSource, store, gossipservice.Support{
 		Validator:            validator,

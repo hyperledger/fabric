@@ -127,14 +127,16 @@ func setupLedgerAndValidatorExplicitWithMSP(t *testing.T, cpb *tmocks.Applicatio
 	pm.On("FactoryByName", vp.Name("vscc")).Return(factory)
 	factory.On("New").Return(plugin)
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
+	idg := &idsGetter{ids: localMSP}
+	if mspMgr != nil {
+		idg = &idsGetter{ids: mspMgr}
+	}
 	theValidator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: cpb, MSPManagerVal: mspMgr},
 		pm,
-		cryptoProvider,
+		idg,
 	)
 
 	return theLedger,
@@ -740,9 +742,9 @@ func TestParallelValidation(t *testing.T) {
 		case 6:
 			fallthrough
 		case 9:
-			require.True(t, txsFilter.IsInvalid(txNum))
+			require.Truef(t, txsFilter.IsInvalid(txNum), "expected txNum %d to be invalid", txNum)
 		default:
-			require.False(t, txsFilter.IsInvalid(txNum))
+			require.False(t, txsFilter.IsInvalid(txNum), "expectec txNum %d to be valid", txNum)
 		}
 	}
 }
@@ -1657,9 +1659,7 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 	support, l, cleanup := createCustomSupportAndLedger(t)
 	defer cleanup()
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-	v := txvalidatorv14.NewTxValidator("", semaphore.New(10), support, pm, cryptoProvider)
+	v := txvalidatorv14.NewTxValidator("", semaphore.New(10), support, pm, idDeserializerGetter)
 
 	ccID := "mycc"
 
@@ -1672,7 +1672,7 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 	}
 
 	// Perform a validation of a block
-	err = v.Validate(b)
+	err := v.Validate(b)
 	require.NoError(t, err)
 	assertValid(b, t)
 	// Record the number of times the capabilities and the MSP Manager were invoked
@@ -1702,14 +1702,12 @@ func TestDynamicCapabilitiesAndMSP(t *testing.T) {
 func TestLedgerIsNoAvailable(t *testing.T) {
 	theLedger := new(mockLedger)
 	pm := &mocks.Mapper{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
-		cryptoProvider,
+		idDeserializerGetter,
 	)
 
 	ccID := "mycc"
@@ -1726,7 +1724,7 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 
-	err = validator.Validate(b)
+	err := validator.Validate(b)
 
 	assertion := require.New(t)
 	// We suppose to get the error which indicates we cannot commit the block
@@ -1738,14 +1736,12 @@ func TestLedgerIsNoAvailable(t *testing.T) {
 func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 	theLedger := new(mockLedger)
 	pm := &mocks.Mapper{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
-		cryptoProvider,
+		idDeserializerGetter,
 	)
 
 	ccID := "mycc"
@@ -1758,7 +1754,7 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 
-	err = validator.Validate(b)
+	err := validator.Validate(b)
 
 	assertion := require.New(t)
 	// We expect a validation error because the ledger wasn't ready to tell us whether there was a tx with that ID or not
@@ -1768,14 +1764,12 @@ func TestLedgerIsNotAvailableForCheckingTxidDuplicate(t *testing.T) {
 func TestDuplicateTxId(t *testing.T) {
 	theLedger := new(mockLedger)
 	pm := &mocks.Mapper{}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
-		cryptoProvider,
+		idDeserializerGetter,
 	)
 
 	ccID := "mycc"
@@ -1788,7 +1782,7 @@ func TestDuplicateTxId(t *testing.T) {
 		Header: &common.BlockHeader{},
 	}
 
-	err = validator.Validate(b)
+	err := validator.Validate(b)
 
 	assertion := require.New(t)
 	// We expect no validation error because we simply mark the tx as invalid
@@ -1809,14 +1803,12 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	plugin.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	plugin.On("Validate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("invalid tx"))
 	pm.On("FactoryByName", vp.Name("vscc")).Return(factory)
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: theLedger, ACVal: preV12Capabilities()},
 		pm,
-		cryptoProvider,
+		idDeserializerGetter,
 	)
 
 	ccID := "mycc"
@@ -1843,7 +1835,7 @@ func TestValidationInvalidEndorsing(t *testing.T) {
 	}
 
 	// Keep default callback
-	err = validator.Validate(b)
+	err := validator.Validate(b)
 	// Restore default callback
 	require.NoError(t, err)
 	assertInvalid(b, t, peer.TxValidationCode_ENDORSEMENT_POLICY_FAILURE)
@@ -1887,6 +1879,7 @@ func TestValidationPluginExecutionError(t *testing.T) {
 	})
 
 	err := v.Validate(b)
+	require.Error(t, err, "expected an error from validation")
 	executionErr := err.(*commonerrors.VSCCExecutionFailureError)
 	require.Contains(t, executionErr.Error(), "I/O error")
 }
@@ -1903,23 +1896,30 @@ func TestValidationPluginNotFound(t *testing.T) {
 
 	pm := &mocks.Mapper{}
 	pm.On("FactoryByName", vp.Name("vscc")).Return(nil)
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
 	validator := txvalidatorv14.NewTxValidator(
 		"",
 		semaphore.New(10),
 		&mocktxvalidator.Support{LedgerVal: l, ACVal: preV12Capabilities()},
 		pm,
-		cryptoProvider,
+		idDeserializerGetter,
 	)
-	err = validator.Validate(b)
+	err := validator.Validate(b)
 	executionErr := err.(*commonerrors.VSCCExecutionFailureError)
 	require.Contains(t, executionErr.Error(), "plugin with name vscc wasn't found")
 }
 
-var signer msp.SigningIdentity
+var (
+	signer               msp.SigningIdentity
+	signerSerialized     []byte
+	localMSP             msp.MSP
+	idDeserializerGetter *idsGetter
+)
 
-var signerSerialized []byte
+type idsGetter struct{ ids msp.IdentityDeserializer }
+
+func (idsg idsGetter) GetIdentityDeserializer(cid string) msp.IdentityDeserializer {
+	return idsg.ids
+}
 
 func TestMain(m *testing.M) {
 	msptesttools.LoadMSPSetupForTesting()
@@ -1932,7 +1932,9 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	signer, err = mgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	localMSP = mgmt.GetLocalMSP(cryptoProvider)
+	idDeserializerGetter = &idsGetter{ids: localMSP}
+	signer, err = localMSP.GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Println("Could not get signer")
 		os.Exit(-1)
