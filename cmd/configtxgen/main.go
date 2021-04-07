@@ -141,7 +141,7 @@ func doInspectBlock(inspectBlock string) error {
 	logger.Info("Parsing genesis block")
 	block, err := protoutil.UnmarshalBlock(data)
 	if err != nil {
-		return fmt.Errorf("error unmarshaling to block: %s", err)
+		return fmt.Errorf("error unmarshalling to block: %s", err)
 	}
 	err = protolator.DeepMarshalJSON(os.Stdout, block)
 	if err != nil {
@@ -160,7 +160,7 @@ func doInspectChannelCreateTx(inspectChannelCreateTx string) error {
 	logger.Info("Parsing transaction")
 	env, err := protoutil.UnmarshalEnvelope(data)
 	if err != nil {
-		return fmt.Errorf("Error unmarshaling envelope: %s", err)
+		return fmt.Errorf("Error unmarshalling envelope: %s", err)
 	}
 
 	err = protolator.DeepMarshalJSON(os.Stdout, env)

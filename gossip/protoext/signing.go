@@ -61,7 +61,7 @@ func EnvelopeToGossipMessage(e *gossip.Envelope) (*SignedGossipMessage, error) {
 	msg := &gossip.GossipMessage{}
 	err := proto.Unmarshal(e.Payload, msg)
 	if err != nil {
-		return nil, fmt.Errorf("Failed unmarshaling GossipMessage from envelope: %v", err)
+		return nil, fmt.Errorf("Failed unmarshalling GossipMessage from envelope: %v", err)
 	}
 	return &SignedGossipMessage{
 		GossipMessage: msg,

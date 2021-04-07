@@ -5083,7 +5083,7 @@ Fri Jun 23 14:53:05 EDT 2017
 * [0a72230b](https://github.com/hyperledger/fabric/commit/0a72230b) [FAB-2487](https://jira.hyperledger.org/browse/FAB-2487) Change test string to comply with rule
 * [e02053c9](https://github.com/hyperledger/fabric/commit/e02053c9) [FAB-4473](https://jira.hyperledger.org/browse/FAB-4473) mod cc cache strategy to store minimal data
 * [49b3851b](https://github.com/hyperledger/fabric/commit/49b3851b) [FAB-4500](https://jira.hyperledger.org/browse/FAB-4500) Fix words in orderer.yaml
-* [9c4cb515](https://github.com/hyperledger/fabric/commit/9c4cb515) [FAB-4616](https://jira.hyperledger.org/browse/FAB-4616) Skip type switch on unmarshaling error
+* [9c4cb515](https://github.com/hyperledger/fabric/commit/9c4cb515) [FAB-4616](https://jira.hyperledger.org/browse/FAB-4616) Skip type switch on unmarshalling error
 * [ad608166](https://github.com/hyperledger/fabric/commit/ad608166) [FAB-4176](https://jira.hyperledger.org/browse/FAB-4176) Weekly Test Runs for Auction App
 * [abc81afb](https://github.com/hyperledger/fabric/commit/abc81afb) [FAB-3934](https://jira.hyperledger.org/browse/FAB-3934) Daily Test Runs for Auction App
 * [03d43c36](https://github.com/hyperledger/fabric/commit/03d43c36) [FAB-2487](https://jira.hyperledger.org/browse/FAB-2487) Cleanup couchdb name translation logic

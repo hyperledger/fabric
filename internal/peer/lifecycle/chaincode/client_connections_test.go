@@ -28,7 +28,7 @@ func TestNewClientConnections(t *testing.T) {
 		c, err := NewClientConnections(input, cryptoProvider)
 		require.Nil(c)
 		require.Error(err)
-		require.Contains(err.Error(), "failed to validate peer connection parameters: error unmarshaling YAML")
+		require.Contains(err.Error(), "failed to validate peer connection parameters: error unmarshalling YAML")
 	})
 
 	t.Run("uneven connection profile", func(t *testing.T) {

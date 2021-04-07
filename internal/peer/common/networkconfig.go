@@ -169,7 +169,7 @@ func GetConfig(fileName string) (*NetworkConfig, error) {
 	config := &NetworkConfig{}
 	err = yaml.Unmarshal([]byte(configData), &config)
 	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling YAML")
+		return nil, errors.Wrap(err, "error unmarshalling YAML")
 	}
 
 	return config, nil

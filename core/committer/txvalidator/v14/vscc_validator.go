@@ -47,7 +47,7 @@ func getChaincodeHeaderExtension(hdr *common.Header) (*peer.ChaincodeHeaderExten
 
 	chaincodeHdrExt := &peer.ChaincodeHeaderExtension{}
 	err = proto.Unmarshal(chdr.Extension, chaincodeHdrExt)
-	return chaincodeHdrExt, errors.Wrap(err, "error unmarshaling ChaincodeHeaderExtension")
+	return chaincodeHdrExt, errors.Wrap(err, "error unmarshalling ChaincodeHeaderExtension")
 }
 
 // VSCCValidateTx executes vscc validation for transaction

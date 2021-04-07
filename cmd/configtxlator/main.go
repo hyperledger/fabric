@@ -163,7 +163,7 @@ func decodeProto(msgName string, input, output *os.File) error {
 
 	err = proto.Unmarshal(in, msg)
 	if err != nil {
-		return errors.Wrapf(err, "error unmarshaling")
+		return errors.Wrapf(err, "error unmarshalling")
 	}
 
 	err = protolator.DeepMarshalJSON(output, msg)
@@ -183,7 +183,7 @@ func computeUpdt(original, updated, output *os.File, channelID string) error {
 	origConf := &cb.Config{}
 	err = proto.Unmarshal(origIn, origConf)
 	if err != nil {
-		return errors.Wrapf(err, "error unmarshaling original config")
+		return errors.Wrapf(err, "error unmarshalling original config")
 	}
 
 	updtIn, err := ioutil.ReadAll(updated)
@@ -194,7 +194,7 @@ func computeUpdt(original, updated, output *os.File, channelID string) error {
 	updtConf := &cb.Config{}
 	err = proto.Unmarshal(updtIn, updtConf)
 	if err != nil {
-		return errors.Wrapf(err, "error unmarshaling updated config")
+		return errors.Wrapf(err, "error unmarshalling updated config")
 	}
 
 	cu, err := update.Compute(origConf, updtConf)

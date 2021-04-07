@@ -229,12 +229,12 @@ func NewDefaultTemplator(support DefaultTemplatorSupport, bccsp bccsp.BCCSP) *De
 func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfig.Resources, error) {
 	configUpdatePayload, err := protoutil.UnmarshalPayload(envConfigUpdate.Payload)
 	if err != nil {
-		return nil, fmt.Errorf("Failing initial channel config creation because of payload unmarshaling error: %s", err)
+		return nil, fmt.Errorf("Failing initial channel config creation because of payload unmarshalling error: %s", err)
 	}
 
 	configUpdateEnv, err := configtx.UnmarshalConfigUpdateEnvelope(configUpdatePayload.Data)
 	if err != nil {
-		return nil, fmt.Errorf("Failing initial channel config creation because of config update envelope unmarshaling error: %s", err)
+		return nil, fmt.Errorf("Failing initial channel config creation because of config update envelope unmarshalling error: %s", err)
 	}
 
 	if configUpdatePayload.Header == nil {
@@ -248,7 +248,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 
 	configUpdate, err := configtx.UnmarshalConfigUpdate(configUpdateEnv.ConfigUpdate)
 	if err != nil {
-		return nil, fmt.Errorf("Failing initial channel config creation because of config update unmarshaling error: %s", err)
+		return nil, fmt.Errorf("Failing initial channel config creation because of config update unmarshalling error: %s", err)
 	}
 
 	if configUpdate.ChannelId != channelHeader.ChannelId {
@@ -275,7 +275,7 @@ func (dt *DefaultTemplator) NewChannelConfig(envConfigUpdate *cb.Envelope) (chan
 	consortium := &cb.Consortium{}
 	err = proto.Unmarshal(consortiumConfigValue.Value, consortium)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading unmarshaling consortium name: %s", err)
+		return nil, fmt.Errorf("Error reading unmarshalling consortium name: %s", err)
 	}
 
 	applicationGroup := protoutil.NewConfigGroup()

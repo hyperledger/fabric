@@ -709,7 +709,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
-			"error while unmarshaling metadata: error while unmarshaling signable metadata: unexpected end of JSON input",
+			"error while unmarshalling metadata: error while unmarshalling signable metadata: unexpected end of JSON input",
 		)
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})
@@ -722,7 +722,7 @@ func testCreateLedgerFromSnapshotErrorPaths(t *testing.T, originalSnapshotDir st
 		_, _, err := provider.CreateFromSnapshot(snapshotDirForTest)
 		require.EqualError(t,
 			err,
-			"error while unmarshaling metadata: error while unmarshaling additional metadata: unexpected end of JSON input",
+			"error while unmarshalling metadata: error while unmarshalling additional metadata: unexpected end of JSON input",
 		)
 		verifyLedgerDoesNotExist(t, provider, metadata.ChannelName)
 	})

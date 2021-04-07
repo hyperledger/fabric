@@ -742,7 +742,7 @@ func discoverConfiguration(n *nwo.Network, peer *nwo.Peer) *discovery.ConfigResu
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 
-	By("unmarshaling the response")
+	By("unmarshalling the response")
 	discoveredConfig := &discovery.ConfigResult{}
 	err = json.Unmarshal(sess.Out.Contents(), &discoveredConfig)
 	Expect(err).NotTo(HaveOccurred())

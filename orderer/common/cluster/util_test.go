@@ -212,7 +212,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 		},
 		{
 			name:          "nil metadata",
-			errorContains: "failed unmarshaling medatata for signatures",
+			errorContains: "failed unmarshalling medatata for signatures",
 			mutateBlock: func(block *common.Block) *common.Block {
 				block.Metadata.Metadata[0] = []byte{1, 2, 3}
 				return block
@@ -220,7 +220,7 @@ func TestVerifyBlockSignature(t *testing.T) {
 		},
 		{
 			name:          "bad signature header",
-			errorContains: "failed unmarshaling signature header",
+			errorContains: "failed unmarshalling signature header",
 			mutateBlock: func(block *common.Block) *common.Block {
 				metadata := protoutil.GetMetadataFromBlockOrPanic(block, common.BlockMetadataIndex_SIGNATURES)
 				metadata.Signatures[0].SignatureHeader = []byte{1, 2, 3}
@@ -691,7 +691,7 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 		},
 		{
 			name:          "invalid payload",
-			expectedError: "error unmarshaling Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)",
+			expectedError: "error unmarshalling Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)",
 			block:         &common.Block{Data: &common.BlockData{Data: [][]byte{{1, 2, 3}}}},
 		},
 		{
@@ -707,19 +707,19 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 		},
 		{
 			name:          "invalid envelope in block",
-			expectedError: "error unmarshaling Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)",
+			expectedError: "error unmarshalling Envelope: proto: common.Envelope: illegal tag 0 (wire type 1)",
 			block:         &common.Block{Data: &common.BlockData{Data: [][]byte{{1, 2, 3}}}},
 		},
 		{
 			name:          "invalid payload in block envelope",
-			expectedError: "error unmarshaling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
+			expectedError: "error unmarshalling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
 			block: &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
 				Payload: []byte{1, 2, 3},
 			})}}},
 		},
 		{
 			name:          "invalid channel header",
-			expectedError: "error unmarshaling ChannelHeader: proto: common.ChannelHeader: illegal tag 0 (wire type 1)",
+			expectedError: "error unmarshalling ChannelHeader: proto: common.ChannelHeader: illegal tag 0 (wire type 1)",
 			block: &common.Block{
 				Header: &common.BlockHeader{Number: 1},
 				Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{

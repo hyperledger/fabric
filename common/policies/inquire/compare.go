@@ -111,7 +111,7 @@ func (cp *ComparablePrincipal) ToOURole() *ComparablePrincipal {
 	ouRole := &msp.OrganizationUnit{}
 	err := proto.Unmarshal(cp.principal.Principal, ouRole)
 	if err != nil {
-		logger.Warning("Failed unmarshaling principal:", err)
+		logger.Warning("Failed unmarshalling principal:", err)
 		return nil
 	}
 	cp.mspID = ouRole.MspIdentifier
@@ -124,7 +124,7 @@ func (cp *ComparablePrincipal) ToRole() *ComparablePrincipal {
 	mspRole := &msp.MSPRole{}
 	err := proto.Unmarshal(cp.principal.Principal, mspRole)
 	if err != nil {
-		logger.Warning("Failed unmarshaling principal:", err)
+		logger.Warning("Failed unmarshalling principal:", err)
 		return nil
 	}
 	cp.mspID = mspRole.MspIdentifier

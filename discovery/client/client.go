@@ -412,13 +412,13 @@ func peersForChannel(membersRes *discovery.PeerMembershipResult, qt protoext.Que
 		for _, peer := range peersOfCurrentOrg.Peers {
 			aliveMsg, err := gprotoext.EnvelopeToGossipMessage(peer.MembershipInfo)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed unmarshaling alive message")
+				return nil, errors.Wrap(err, "failed unmarshalling alive message")
 			}
 			var stateInfoMsg *gprotoext.SignedGossipMessage
 			if isStateInfoExpected(qt) {
 				stateInfoMsg, err = gprotoext.EnvelopeToGossipMessage(peer.StateInfo)
 				if err != nil {
-					return nil, errors.Wrap(err, "failed unmarshaling stateInfo message")
+					return nil, errors.Wrap(err, "failed unmarshalling stateInfo message")
 				}
 				if err := validateStateInfoMessage(stateInfoMsg); err != nil {
 					return nil, errors.Wrap(err, "failed validating stateInfo message")
@@ -530,11 +530,11 @@ func endorser(peer *discovery.Peer, chaincode, channel string) (*Peer, error) {
 	}
 	aliveMsg, err := gprotoext.EnvelopeToGossipMessage(peer.MembershipInfo)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed unmarshaling gossip envelope to alive message")
+		return nil, errors.Wrap(err, "failed unmarshalling gossip envelope to alive message")
 	}
 	stateInfMsg, err := gprotoext.EnvelopeToGossipMessage(peer.StateInfo)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed unmarshaling gossip envelope to state info message")
+		return nil, errors.Wrap(err, "failed unmarshalling gossip envelope to state info message")
 	}
 	if err := validateAliveMessage(aliveMsg); err != nil {
 		return nil, errors.Wrap(err, "failed validating alive message")
@@ -544,7 +544,7 @@ func endorser(peer *discovery.Peer, chaincode, channel string) (*Peer, error) {
 	}
 	sID := &msp.SerializedIdentity{}
 	if err := proto.Unmarshal(peer.Identity, sID); err != nil {
-		return nil, errors.Wrap(err, "failed unmarshaling peer's identity")
+		return nil, errors.Wrap(err, "failed unmarshalling peer's identity")
 	}
 	return &Peer{
 		Identity:         peer.Identity,

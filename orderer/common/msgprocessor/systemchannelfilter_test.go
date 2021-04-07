@@ -271,7 +271,7 @@ func TestBadProposal(t *testing.T) {
 				},
 				Data: []byte("bad configTx"),
 			},
-			"payload data error unmarshaling to envelope",
+			"payload data error unmarshalling to envelope",
 		},
 		{
 			"BadConfigTxPayload",
@@ -289,7 +289,7 @@ func TestBadProposal(t *testing.T) {
 					},
 				),
 			},
-			"error unmarshaling wrapped configtx envelope payload",
+			"error unmarshalling wrapped configtx envelope payload",
 		},
 		{
 			"MissingConfigTxChannelHeader",
@@ -333,7 +333,7 @@ func TestBadProposal(t *testing.T) {
 					},
 				),
 			},
-			"error unmarshaling wrapped configtx envelope channel header",
+			"error unmarshalling wrapped configtx envelope channel header",
 		},
 		{
 			"BadConfigTxChannelHeaderType",

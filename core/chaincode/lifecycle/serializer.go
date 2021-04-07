@@ -460,7 +460,7 @@ func (s *Serializer) DeserializeAllMetadata(namespace string, state RangeableSta
 		metadata := &lb.StateMetadata{}
 		err = proto.Unmarshal(value, metadata)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error unmarshaling metadata for key %s", key)
+			return nil, errors.Wrapf(err, "error unmarshalling metadata for key %s", key)
 		}
 		result[name] = metadata
 	}

@@ -31,7 +31,7 @@ func ConfigFromFile(file string) (Config, error) {
 	config := Config{}
 
 	if err := yaml.Unmarshal([]byte(configData), &config); err != nil {
-		return Config{}, errors.Errorf("error unmarshaling YAML file %s: %s", file, err)
+		return Config{}, errors.Errorf("error unmarshalling YAML file %s: %s", file, err)
 	}
 
 	return config, validateConfig(config)

@@ -332,7 +332,7 @@ func (l *kvLedger) lastPersistedCommitHash() ([]byte, error) {
 	commitHash := &common.Metadata{}
 	err = proto.Unmarshal(block.Metadata.Metadata[common.BlockMetadataIndex_COMMIT_HASH], commitHash)
 	if err != nil {
-		return nil, errors.Wrap(err, "error unmarshaling last persisted commit hash")
+		return nil, errors.Wrap(err, "error unmarshalling last persisted commit hash")
 	}
 	return commitHash.Value, nil
 }

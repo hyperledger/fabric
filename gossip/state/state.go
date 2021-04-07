@@ -503,7 +503,7 @@ func (s *GossipStateProviderImpl) handleStateResponse(msg protoext.ReceivedMessa
 		s.logger.Debugf("Received payload with sequence number %d.", payload.SeqNum)
 		block, err := protoutil.UnmarshalBlock(payload.Data)
 		if err != nil {
-			s.logger.Warningf("Error unmarshaling payload to block for sequence number %d, due to %+v", payload.SeqNum, err)
+			s.logger.Warningf("Error unmarshalling payload to block for sequence number %d, due to %+v", payload.SeqNum, err)
 			return uint64(0), err
 		}
 

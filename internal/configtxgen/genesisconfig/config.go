@@ -438,7 +438,7 @@ func (c *configCache) load(config *viperutil.ConfigParser, configPath string) (*
 	if !ok {
 		err := config.EnhancedExactUnmarshal(conf)
 		if err != nil {
-			return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
+			return nil, fmt.Errorf("Error unmarshalling config into struct: %s", err)
 		}
 
 		serializedConf, err = json.Marshal(conf)

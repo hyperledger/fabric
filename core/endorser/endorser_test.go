@@ -714,11 +714,11 @@ var _ = Describe("Endorser", func() {
 
 		It("wraps and returns an error and responds to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).To(MatchError("error unmarshaling Proposal: proto: can't skip unknown wire type 7"))
+			Expect(err).To(MatchError("error unmarshalling Proposal: proto: can't skip unknown wire type 7"))
 			Expect(proposalResponse).To(Equal(&pb.ProposalResponse{
 				Response: &pb.Response{
 					Status:  500,
-					Message: "error unmarshaling Proposal: proto: can't skip unknown wire type 7",
+					Message: "error unmarshalling Proposal: proto: can't skip unknown wire type 7",
 				},
 			}))
 		})
@@ -974,7 +974,7 @@ var _ = Describe("Endorser", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(proposalResponse.Response).To(Equal(&pb.Response{
 					Status:  500,
-					Message: "error in simulation: error unmarshaling ChaincodeDeploymentSpec: unexpected EOF",
+					Message: "error in simulation: error unmarshalling ChaincodeDeploymentSpec: unexpected EOF",
 				}))
 				Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
 			})

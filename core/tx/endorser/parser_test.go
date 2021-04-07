@@ -107,7 +107,7 @@ var _ = Describe("Parser", func() {
 
 			It("returns an error", func() {
 				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
-				Expect(err).To(MatchError("error unmarshaling Transaction: unexpected EOF"))
+				Expect(err).To(MatchError("error unmarshalling Transaction: unexpected EOF"))
 				Expect(pe).To(BeNil())
 			})
 		})
@@ -149,7 +149,7 @@ var _ = Describe("Parser", func() {
 
 			It("returns an error", func() {
 				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
-				Expect(err).To(MatchError("error unmarshaling ChaincodeActionPayload: unexpected EOF"))
+				Expect(err).To(MatchError("error unmarshalling ChaincodeActionPayload: unexpected EOF"))
 				Expect(pe).To(BeNil())
 			})
 		})
@@ -196,7 +196,7 @@ var _ = Describe("Parser", func() {
 
 			It("returns an error", func() {
 				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
-				Expect(err).To(MatchError("error unmarshaling ChaincodeHeaderExtension: unexpected EOF"))
+				Expect(err).To(MatchError("error unmarshalling ChaincodeHeaderExtension: unexpected EOF"))
 				Expect(pe).To(BeNil())
 			})
 		})
@@ -220,7 +220,7 @@ var _ = Describe("Parser", func() {
 
 			It("returns an error", func() {
 				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
-				Expect(err).To(MatchError("error unmarshaling ProposalResponsePayload: unexpected EOF"))
+				Expect(err).To(MatchError("error unmarshalling ProposalResponsePayload: unexpected EOF"))
 				Expect(pe).To(BeNil())
 			})
 		})
@@ -244,7 +244,7 @@ var _ = Describe("Parser", func() {
 
 			It("returns an error", func() {
 				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
-				Expect(err).To(MatchError("error unmarshaling ChaincodeAction: unexpected EOF"))
+				Expect(err).To(MatchError("error unmarshalling ChaincodeAction: unexpected EOF"))
 				Expect(pe).To(BeNil())
 			})
 		})

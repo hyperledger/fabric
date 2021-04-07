@@ -261,7 +261,7 @@ func getConfig() (*Config, error) {
 	config := &Config{}
 	err := yaml.Unmarshal([]byte(configData), &config)
 	if err != nil {
-		return nil, fmt.Errorf("Error Unmarshaling YAML: %s", err)
+		return nil, fmt.Errorf("Error Unmarshalling YAML: %s", err)
 	}
 
 	return config, nil

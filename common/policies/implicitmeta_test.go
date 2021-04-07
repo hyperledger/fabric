@@ -31,7 +31,7 @@ func (ap acceptPolicy) EvaluateIdentities(identity []msp.Identity) error {
 
 func TestImplicitMarshalError(t *testing.T) {
 	_, err := NewImplicitMetaPolicy([]byte("GARBAGE"), nil)
-	require.Error(t, err, "Should have errored unmarshaling garbage")
+	require.Error(t, err, "Should have errored unmarshalling garbage")
 }
 
 func makeManagers(count, passing int) map[string]*ManagerImpl {

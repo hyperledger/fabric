@@ -104,7 +104,7 @@ func TestMaintenanceParseEnvelope(t *testing.T) {
 		{
 			name:     "Bad payload",
 			envelope: &common.Envelope{Payload: badBytes},
-			errMsg:   "envelope unmarshalling failed: error unmarshaling Payload",
+			errMsg:   "envelope unmarshalling failed: error unmarshalling Payload",
 		},
 		{
 			name: "Bad ChannelHeader",
@@ -115,7 +115,7 @@ func TestMaintenanceParseEnvelope(t *testing.T) {
 					},
 				}),
 			},
-			errMsg: "envelope unmarshalling failed: error unmarshaling ChannelHeader",
+			errMsg: "envelope unmarshalling failed: error unmarshalling ChannelHeader",
 		},
 		{
 			name: "Bad ChannelHeader Type",
@@ -144,7 +144,7 @@ func TestMaintenanceParseEnvelope(t *testing.T) {
 					Data: badBytes,
 				}),
 			},
-			errMsg: "envelope unmarshalling failed: error unmarshaling message for type CONFIG",
+			errMsg: "envelope unmarshalling failed: error unmarshalling message for type CONFIG",
 		},
 	}
 

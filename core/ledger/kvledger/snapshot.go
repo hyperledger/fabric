@@ -76,12 +76,12 @@ type snapshotMetadataJSONs struct {
 func (j *snapshotMetadataJSONs) toMetadata() (*snapshotMetadata, error) {
 	metadata := &snapshotSignableMetadata{}
 	if err := json.Unmarshal([]byte(j.signableMetadata), metadata); err != nil {
-		return nil, errors.Wrap(err, "error while unmarshaling signable metadata")
+		return nil, errors.Wrap(err, "error while unmarshalling signable metadata")
 	}
 
 	additionalMetadata := &snapshotAdditionalMetadata{}
 	if err := json.Unmarshal([]byte(j.additionalMetadata), additionalMetadata); err != nil {
-		return nil, errors.Wrap(err, "error while unmarshaling additional metadata")
+		return nil, errors.Wrap(err, "error while unmarshalling additional metadata")
 	}
 	return &snapshotMetadata{
 		snapshotSignableMetadata:   metadata,
@@ -228,7 +228,7 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 
 	metadata, err := metadataJSONs.toMetadata()
 	if err != nil {
-		return nil, "", errors.WithMessagef(err, "error while unmarshaling metadata")
+		return nil, "", errors.WithMessagef(err, "error while unmarshalling metadata")
 	}
 
 	if err := verifySnapshot(snapshotDir, metadata, p.initializer.HashProvider); err != nil {

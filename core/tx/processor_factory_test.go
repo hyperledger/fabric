@@ -45,13 +45,13 @@ func TestBasicTxValidity(t *testing.T) {
 		},
 		{
 			[]byte("bad env"), &pkgtx.InvalidErr{
-				ActualErr:      errors.New("error unmarshaling Envelope: unexpected EOF"),
+				ActualErr:      errors.New("error unmarshalling Envelope: unexpected EOF"),
 				ValidationCode: peer.TxValidationCode_INVALID_OTHER_REASON,
 			},
 		},
 		{
 			protoutil.MarshalOrPanic(&common.Envelope{Payload: []byte("bad payload"), Signature: []byte("signature")}), &pkgtx.InvalidErr{
-				ActualErr:      errors.New("error unmarshaling Payload: unexpected EOF"),
+				ActualErr:      errors.New("error unmarshalling Payload: unexpected EOF"),
 				ValidationCode: peer.TxValidationCode_BAD_PAYLOAD,
 			},
 		},
@@ -81,13 +81,13 @@ func TestBasicTxValidity(t *testing.T) {
 		},
 		{
 			protoutil.MarshalOrPanic(&common.Envelope{Payload: protoutil.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: []byte("bad channel header"), SignatureHeader: protoutil.MarshalOrPanic(&common.SignatureHeader{Creator: []byte("creator"), Nonce: []byte("nonce")})}}), Signature: []byte("signature")}), &pkgtx.InvalidErr{
-				ActualErr:      errors.New("error unmarshaling ChannelHeader: unexpected EOF"),
+				ActualErr:      errors.New("error unmarshalling ChannelHeader: unexpected EOF"),
 				ValidationCode: peer.TxValidationCode_BAD_PAYLOAD,
 			},
 		},
 		{
 			protoutil.MarshalOrPanic(&common.Envelope{Payload: protoutil.MarshalOrPanic(&common.Payload{Header: &common.Header{ChannelHeader: protoutil.MarshalOrPanic(&common.ChannelHeader{ChannelId: "myc", TxId: "tid"}), SignatureHeader: []byte("bad sig hdr")}}), Signature: []byte("signature")}), &pkgtx.InvalidErr{
-				ActualErr:      errors.New("error unmarshaling SignatureHeader: unexpected EOF"),
+				ActualErr:      errors.New("error unmarshalling SignatureHeader: unexpected EOF"),
 				ValidationCode: peer.TxValidationCode_BAD_PAYLOAD,
 			},
 		},

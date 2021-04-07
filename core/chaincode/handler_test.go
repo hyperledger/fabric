@@ -522,7 +522,7 @@ var _ = Describe("Handler", func() {
 			}))
 		})
 
-		Context("when unmarshaling the request fails", func() {
+		Context("when unmarshalling the request fails", func() {
 			BeforeEach(func() {
 				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
 			})
@@ -680,7 +680,7 @@ var _ = Describe("Handler", func() {
 			})
 		})
 
-		Context("when unmarshaling the request fails", func() {
+		Context("when unmarshalling the request fails", func() {
 			BeforeEach(func() {
 				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
 			})
@@ -2341,7 +2341,7 @@ var _ = Describe("Handler", func() {
 			})
 		})
 
-		Context("when unmarshaling the request fails", func() {
+		Context("when unmarshalling the request fails", func() {
 			BeforeEach(func() {
 				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
 			})
@@ -2704,7 +2704,7 @@ var _ = Describe("Handler", func() {
 			})
 		})
 
-		Context("when unmarshaling the request fails", func() {
+		Context("when unmarshalling the request fails", func() {
 			BeforeEach(func() {
 				incomingMessage.Payload = []byte("this-is-a-bogus-payload")
 			})

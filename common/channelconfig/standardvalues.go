@@ -55,7 +55,7 @@ func NewStandardValues(protosStructs ...interface{}) (*StandardValues, error) {
 
 // Deserialize looks up the backing Values proto of the given name, unmarshals the given bytes
 // to populate the backing message structure, and returns a referenced to the retained deserialized
-// message (or an error, either because the key did not exist, or there was an an error unmarshaling
+// message (or an error, either because the key did not exist, or there was an an error unmarshalling
 func (sv *StandardValues) Deserialize(key string, value []byte) (proto.Message, error) {
 	msg, ok := sv.lookup[key]
 	if !ok {

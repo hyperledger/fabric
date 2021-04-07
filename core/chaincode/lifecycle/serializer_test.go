@@ -815,7 +815,7 @@ var _ = Describe("Serializer", func() {
 
 			It("returns an error", func() {
 				_, err := s.DeserializeAllMetadata("namespaces", fakeState)
-				Expect(err).To(MatchError("error unmarshaling metadata for key namespaces/metadata/bad: unexpected EOF"))
+				Expect(err).To(MatchError("error unmarshalling metadata for key namespaces/metadata/bad: unexpected EOF"))
 			})
 		})
 	})

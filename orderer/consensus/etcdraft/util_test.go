@@ -82,7 +82,7 @@ func TestIsConsenterOfChannel(t *testing.T) {
 		{
 			name: "invalid envelope inside block",
 			expectedError: "failed to unmarshal payload from envelope:" +
-				" error unmarshaling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
+				" error unmarshalling Payload: proto: common.Payload: illegal tag 0 (wire type 1)",
 			configBlock: &common.Block{
 				Header: &common.BlockHeader{},
 				Data: &common.BlockData{

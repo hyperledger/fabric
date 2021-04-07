@@ -35,7 +35,7 @@ func fieldConfigProto(fieldName string, r *http.Request) (*cb.Config, error) {
 	config := &cb.Config{}
 	err = proto.Unmarshal(fieldBytes, config)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling field bytes: %s", err)
+		return nil, fmt.Errorf("error unmarshalling field bytes: %s", err)
 	}
 
 	return config, nil
