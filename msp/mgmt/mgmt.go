@@ -107,12 +107,3 @@ func loadLocalMSP(bccsp bccsp.BCCSP) msp.MSP {
 
 	return mspInst
 }
-
-// GetIdentityDeserializer returns the IdentityDeserializer for the given chain
-func GetIdentityDeserializer(chainID string, cryptoProvider bccsp.BCCSP) msp.IdentityDeserializer {
-	if chainID == "" {
-		return GetLocalMSP(cryptoProvider)
-	}
-
-	return GetManagerForChain(chainID)
-}

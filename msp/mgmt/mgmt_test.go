@@ -44,17 +44,6 @@ func TestGetManagerForChains_usingMSPConfigHandlers(t *testing.T) {
 	}
 }
 
-func TestGetIdentityDeserializer(t *testing.T) {
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-
-	XXXSetMSPManager("baz", msp.NewMSPManager())
-	ids := GetIdentityDeserializer("baz", cryptoProvider)
-	require.NotNil(t, ids)
-	ids = GetIdentityDeserializer("", cryptoProvider)
-	require.NotNil(t, ids)
-}
-
 func TestUpdateLocalMspCache(t *testing.T) {
 	// reset localMsp to force it to be initialized on the first call
 	localMsp = nil
