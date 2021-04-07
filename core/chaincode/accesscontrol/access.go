@@ -66,7 +66,7 @@ func (ac *Authenticator) authenticate(msg *pb.ChaincodeMessage, stream grpc.Serv
 	chaincodeID := &pb.ChaincodeID{}
 	err := proto.Unmarshal(msg.Payload, chaincodeID)
 	if err != nil {
-		logger.Warning("Failed unmarshaling message:", err)
+		logger.Warning("Failed unmarshalling message:", err)
 		return err
 	}
 	ccName := chaincodeID.Name

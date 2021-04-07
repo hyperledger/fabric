@@ -515,9 +515,9 @@ func TestCreateProposalResponseFailure(t *testing.T) {
 	require.Equal(t, int32(502), prespFailure.Response.Status)
 	// drilldown into the response to find the chaincode response
 	pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(prespFailure.Payload)
-	require.NoError(t, err, "Error while unmarshaling proposal response payload: %s", err)
+	require.NoError(t, err, "Error while unmarshalling proposal response payload: %s", err)
 	ca, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
-	require.NoError(t, err, "Error while unmarshaling chaincode action: %s", err)
+	require.NoError(t, err, "Error while unmarshalling chaincode action: %s", err)
 
 	require.Equal(t, int32(502), ca.Response.Status)
 	require.Equal(t, "Invalid function name", string(ca.Response.Payload))

@@ -57,7 +57,7 @@ func TestUnmarshalPayload(t *testing.T) {
 		Data: []byte("payload"),
 	})
 	payload, err := UnmarshalPayload(good)
-	require.NoError(t, err, "Unexpected error unmarshaling payload")
+	require.NoError(t, err, "Unexpected error unmarshalling payload")
 	require.NotNil(t, payload, "Payload should not be nil")
 	payload = UnmarshalPayloadOrPanic(good)
 	require.NotNil(t, payload, "Payload should not be nil")
@@ -65,21 +65,21 @@ func TestUnmarshalPayload(t *testing.T) {
 	bad := []byte("bad payload")
 	require.Panics(t, func() {
 		_ = UnmarshalPayloadOrPanic(bad)
-	}, "Expected panic unmarshaling malformed payload")
+	}, "Expected panic unmarshalling malformed payload")
 }
 
 func TestUnmarshalSignatureHeader(t *testing.T) {
 	t.Run("invalid header", func(t *testing.T) {
 		sighdrBytes := []byte("invalid signature header")
 		_, err := UnmarshalSignatureHeader(sighdrBytes)
-		require.Error(t, err, "Expected unmarshaling error")
+		require.Error(t, err, "Expected unmarshalling error")
 	})
 
 	t.Run("valid empty header", func(t *testing.T) {
 		sighdr := &cb.SignatureHeader{}
 		sighdrBytes := MarshalOrPanic(sighdr)
 		sighdr, err := UnmarshalSignatureHeader(sighdrBytes)
-		require.NoError(t, err, "Unexpected error unmarshaling signature header")
+		require.NoError(t, err, "Unexpected error unmarshalling signature header")
 		require.Nil(t, sighdr.Creator)
 		require.Nil(t, sighdr.Nonce)
 	})
@@ -91,7 +91,7 @@ func TestUnmarshalSignatureHeader(t *testing.T) {
 		}
 		sighdrBytes := MarshalOrPanic(sighdr)
 		sighdr, err := UnmarshalSignatureHeader(sighdrBytes)
-		require.NoError(t, err, "Unexpected error unmarshaling signature header")
+		require.NoError(t, err, "Unexpected error unmarshalling signature header")
 		require.Equal(t, []byte("creator"), sighdr.Creator)
 		require.Equal(t, []byte("nonce"), sighdr.Nonce)
 	})
@@ -118,7 +118,7 @@ func TestUnmarshalEnvelope(t *testing.T) {
 	var env *cb.Envelope
 	good, _ := proto.Marshal(&cb.Envelope{})
 	env, err := UnmarshalEnvelope(good)
-	require.NoError(t, err, "Unexpected error unmarshaling envelope")
+	require.NoError(t, err, "Unexpected error unmarshalling envelope")
 	require.NotNil(t, env, "Envelope should not be nil")
 	env = UnmarshalEnvelopeOrPanic(good)
 	require.NotNil(t, env, "Envelope should not be nil")
@@ -126,14 +126,14 @@ func TestUnmarshalEnvelope(t *testing.T) {
 	bad := []byte("bad envelope")
 	require.Panics(t, func() {
 		_ = UnmarshalEnvelopeOrPanic(bad)
-	}, "Expected panic unmarshaling malformed envelope")
+	}, "Expected panic unmarshalling malformed envelope")
 }
 
 func TestUnmarshalBlock(t *testing.T) {
 	var env *cb.Block
 	good, _ := proto.Marshal(&cb.Block{})
 	env, err := UnmarshalBlock(good)
-	require.NoError(t, err, "Unexpected error unmarshaling block")
+	require.NoError(t, err, "Unexpected error unmarshalling block")
 	require.NotNil(t, env, "Block should not be nil")
 	env = UnmarshalBlockOrPanic(good)
 	require.NotNil(t, env, "Block should not be nil")
@@ -141,7 +141,7 @@ func TestUnmarshalBlock(t *testing.T) {
 	bad := []byte("bad block")
 	require.Panics(t, func() {
 		_ = UnmarshalBlockOrPanic(bad)
-	}, "Expected panic unmarshaling malformed block")
+	}, "Expected panic unmarshalling malformed block")
 }
 
 func TestUnmarshalEnvelopeOfType(t *testing.T) {
@@ -149,7 +149,7 @@ func TestUnmarshalEnvelopeOfType(t *testing.T) {
 
 	env.Payload = []byte("bad payload")
 	_, err := UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, nil)
-	require.Error(t, err, "Expected error unmarshaling malformed envelope")
+	require.Error(t, err, "Expected error unmarshalling malformed envelope")
 
 	payload, _ := proto.Marshal(&cb.Payload{
 		Header: nil,
@@ -204,7 +204,7 @@ func TestUnmarshalEnvelopeOfType(t *testing.T) {
 	})
 	env.Payload = payload
 	_, err = UnmarshalEnvelopeOfType(env, cb.HeaderType_CONFIG, &cb.ConfigEnvelope{})
-	require.NoError(t, err, "Unexpected error unmarshaling envelope")
+	require.NoError(t, err, "Unexpected error unmarshalling envelope")
 }
 
 func TestExtractEnvelopeNilData(t *testing.T) {

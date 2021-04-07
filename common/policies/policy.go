@@ -405,7 +405,7 @@ func logMessageForSerializedIdentity(serializedIdentity []byte) (string, error) 
 	id := &msp.SerializedIdentity{}
 	err := proto.Unmarshal(serializedIdentity, id)
 	if err != nil {
-		return "", errors.Wrap(err, "unmarshaling serialized identity")
+		return "", errors.Wrap(err, "unmarshalling serialized identity")
 	}
 	pemBlock, _ := pem.Decode(id.IdBytes)
 	if pemBlock == nil {

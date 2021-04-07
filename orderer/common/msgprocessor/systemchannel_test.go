@@ -513,7 +513,7 @@ func TestNewChannelConfig(t *testing.T) {
 			&cb.Payload{
 				Data: []byte("bad payload data"),
 			},
-			"^Failing initial channel config creation because of config update envelope unmarshaling error:",
+			"^Failing initial channel config creation because of config update envelope unmarshalling error:",
 		},
 		{
 			"BadConfigUpdate",
@@ -523,7 +523,7 @@ func TestNewChannelConfig(t *testing.T) {
 					ConfigUpdate: []byte("bad config update envelope data"),
 				}),
 			},
-			"^Failing initial channel config creation because of config update unmarshaling error:",
+			"^Failing initial channel config creation because of config update unmarshalling error:",
 		},
 		{
 			"MismatchedChannelID",
@@ -645,7 +645,7 @@ func TestNewChannelConfig(t *testing.T) {
 					),
 				}),
 			},
-			"^Error reading unmarshaling consortium name:",
+			"^Error reading unmarshalling consortium name:",
 		},
 		{
 			"UnknownConsortiumName",

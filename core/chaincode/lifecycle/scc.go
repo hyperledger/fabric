@@ -151,7 +151,7 @@ type SCC struct {
 	// Functions provides the backing implementation of lifecycle.
 	Functions SCCFunctions
 
-	// Dispatcher handles the rote protobuf boilerplate for unmarshaling/marshaling
+	// Dispatcher handles the rote protobuf boilerplate for unmarshalling/marshaling
 	// the inputs and outputs of the SCC functions.
 	Dispatcher *dispatcher.Dispatcher
 }

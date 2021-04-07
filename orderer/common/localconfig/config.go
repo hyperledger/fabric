@@ -328,7 +328,7 @@ func (c *configCache) load() (*TopLevel, error) {
 	if !ok {
 		err := config.EnhancedExactUnmarshal(&uconf)
 		if err != nil {
-			return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
+			return nil, fmt.Errorf("Error unmarshalling config into struct: %s", err)
 		}
 
 		serializedConf, err = json.Marshal(uconf)

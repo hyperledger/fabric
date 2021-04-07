@@ -269,7 +269,7 @@ func (index *blockIndex) getTxIDVal(txID string) (*TxIDIndexValue, error) {
 	}
 	val := &TxIDIndexValue{}
 	if err := proto.Unmarshal(valBytes, val); err != nil {
-		return nil, errors.Wrapf(err, "unexpected error while unmarshaling bytes [%#v] into TxIDIndexValProto", valBytes)
+		return nil, errors.Wrapf(err, "unexpected error while unmarshalling bytes [%#v] into TxIDIndexValProto", valBytes)
 	}
 	return val, nil
 }
@@ -521,18 +521,18 @@ func (flp *fileLocPointer) unmarshal(b []byte) error {
 	buffer := proto.NewBuffer(b)
 	i, e := buffer.DecodeVarint()
 	if e != nil {
-		return errors.Wrapf(e, "unexpected error while unmarshaling bytes [%#v] into fileLocPointer", b)
+		return errors.Wrapf(e, "unexpected error while unmarshalling bytes [%#v] into fileLocPointer", b)
 	}
 	flp.fileSuffixNum = int(i)
 
 	i, e = buffer.DecodeVarint()
 	if e != nil {
-		return errors.Wrapf(e, "unexpected error while unmarshaling bytes [%#v] into fileLocPointer", b)
+		return errors.Wrapf(e, "unexpected error while unmarshalling bytes [%#v] into fileLocPointer", b)
 	}
 	flp.offset = int(i)
 	i, e = buffer.DecodeVarint()
 	if e != nil {
-		return errors.Wrapf(e, "unexpected error while unmarshaling bytes [%#v] into fileLocPointer", b)
+		return errors.Wrapf(e, "unexpected error while unmarshalling bytes [%#v] into fileLocPointer", b)
 	}
 	flp.bytesLength = int(i)
 	return nil

@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Dispatcher is used to handle the boilerplate proto tasks of unmarshaling inputs and remarshaling outputs
+// Dispatcher is used to handle the boilerplate proto tasks of unmarshalling inputs and remarshaling outputs
 // so that the receiver may focus on the implementation details rather than the proto hassles.
 type Dispatcher struct {
 	// Protobuf should pass through to Google Protobuf in production paths

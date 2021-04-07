@@ -1013,7 +1013,7 @@ func (lscc *SCC) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		cds := &pb.ChaincodeDeploymentSpec{}
 		err := proto.Unmarshal(depSpec, cds)
 		if err != nil {
-			return shim.Error(fmt.Sprintf("error unmarshaling ChaincodeDeploymentSpec: %s", err))
+			return shim.Error(fmt.Sprintf("error unmarshalling ChaincodeDeploymentSpec: %s", err))
 		}
 
 		// optional arguments here (they can each be nil and may or may not be present)

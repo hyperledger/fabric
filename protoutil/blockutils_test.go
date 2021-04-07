@@ -200,7 +200,7 @@ func TestGetMetadataFromBlock(t *testing.T) {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_ORDERER] = []byte("bad metadata")
 		_, err := protoutil.GetMetadataFromBlock(block, cb.BlockMetadataIndex_ORDERER)
 		require.Error(t, err, "Expected error with malformed metadata")
-		require.Contains(t, err.Error(), "error unmarshaling metadata at index [ORDERER]")
+		require.Contains(t, err.Error(), "error unmarshalling metadata at index [ORDERER]")
 		require.Panics(t, func() {
 			_ = protoutil.GetMetadataFromBlockOrPanic(block, cb.BlockMetadataIndex_ORDERER)
 		}, "Expected panic with malformed metadata")
@@ -329,7 +329,7 @@ func TestGetLastConfigIndexFromBlock(t *testing.T) {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = []byte("apple")
 		_, err := protoutil.GetLastConfigIndexFromBlock(block)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to retrieve metadata: error unmarshaling metadata at index [SIGNATURES]")
+		require.Contains(t, err.Error(), "failed to retrieve metadata: error unmarshalling metadata at index [SIGNATURES]")
 	})
 
 	t.Run("block with malformed orderer block metadata", func(t *testing.T) {
@@ -359,7 +359,7 @@ func TestGetLastConfigIndexFromBlock(t *testing.T) {
 		block.Metadata.Metadata[cb.BlockMetadataIndex_LAST_CONFIG] = []byte("bad metadata")
 		_, err := protoutil.GetLastConfigIndexFromBlock(block)
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to retrieve metadata: error unmarshaling metadata at index [LAST_CONFIG]")
+		require.Contains(t, err.Error(), "failed to retrieve metadata: error unmarshalling metadata at index [LAST_CONFIG]")
 	})
 
 	t.Run("malformed last config", func(t *testing.T) {
@@ -368,7 +368,7 @@ func TestGetLastConfigIndexFromBlock(t *testing.T) {
 		})
 		_, err := protoutil.GetLastConfigIndexFromBlock(block)
 		require.Error(t, err, "Expected error with malformed last config metadata")
-		require.Contains(t, err.Error(), "error unmarshaling LastConfig")
+		require.Contains(t, err.Error(), "error unmarshalling LastConfig")
 		require.Panics(t, func() {
 			_ = protoutil.GetLastConfigIndexFromBlockOrPanic(block)
 		}, "Expected panic with malformed last config metadata")

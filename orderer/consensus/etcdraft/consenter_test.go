@@ -149,7 +149,7 @@ var _ = Describe("Consenter", func() {
 				block.Data.Data = [][]byte{{1, 2, 3, 4}, {5, 6, 7, 8}}
 				return block
 			}(),
-			MatchError(HavePrefix("block data does not carry an envelope at index 0: error unmarshaling Envelope: proto:"))),
+			MatchError(HavePrefix("block data does not carry an envelope at index 0: error unmarshalling Envelope: proto:"))),
 	)
 
 	When("the consenter is asked about join-block membership", func() {

@@ -117,7 +117,7 @@ func GetMetadataFromBlock(block *cb.Block, index cb.BlockMetadataIndex) (*cb.Met
 	md := &cb.Metadata{}
 	err := proto.Unmarshal(block.Metadata.Metadata[index], md)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error unmarshaling metadata at index [%s]", index)
+		return nil, errors.Wrapf(err, "error unmarshalling metadata at index [%s]", index)
 	}
 	return md, nil
 }
@@ -177,7 +177,7 @@ func GetLastConfigIndexFromBlock(block *cb.Block) (uint64, error) {
 		lc := &cb.LastConfig{}
 		err = proto.Unmarshal(m.Value, lc)
 		if err != nil {
-			return 0, errors.Wrap(err, "error unmarshaling LastConfig")
+			return 0, errors.Wrap(err, "error unmarshalling LastConfig")
 		}
 		return lc.Index, nil
 	}

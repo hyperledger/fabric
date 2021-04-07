@@ -147,11 +147,11 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, invoke bool, cf *ChaincodeCmdFac
 		logger.Debugf("ESCC invoke result: %v", proposalResp)
 		pRespPayload, err := protoutil.UnmarshalProposalResponsePayload(proposalResp.Payload)
 		if err != nil {
-			return errors.WithMessage(err, "error while unmarshaling proposal response payload")
+			return errors.WithMessage(err, "error while unmarshalling proposal response payload")
 		}
 		ca, err := protoutil.UnmarshalChaincodeAction(pRespPayload.Extension)
 		if err != nil {
-			return errors.WithMessage(err, "error while unmarshaling chaincode action")
+			return errors.WithMessage(err, "error while unmarshalling chaincode action")
 		}
 		if proposalResp.Endorsement == nil {
 			return errors.Errorf("endorsement failure during invoke. response: %v", proposalResp.Response)

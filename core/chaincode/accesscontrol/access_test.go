@@ -259,7 +259,7 @@ func TestAccessControl(t *testing.T) {
 	malformedMessageCC.sendMsg(registerMsg)
 	malformedMessageCC.sendMsg(putStateMsg)
 	require.Nil(t, malformedMessageCC.recv())
-	assertLogContains(t, recorder, "Failed unmarshaling message")
+	assertLogContains(t, recorder, "Failed unmarshalling message")
 	// Recover old payload
 	registerMsg.Payload = originalPayload
 

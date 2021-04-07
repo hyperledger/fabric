@@ -170,7 +170,7 @@ func validateBlockChannelID(blockBytes []byte, channelID string) error {
 	block := &common.Block{}
 	err := proto.Unmarshal(blockBytes, block)
 	if err != nil {
-		return fmt.Errorf("unmarshaling block: %s", err)
+		return fmt.Errorf("unmarshalling block: %s", err)
 	}
 
 	blockChannelID, err := protoutil.GetChannelIDFromBlock(block)

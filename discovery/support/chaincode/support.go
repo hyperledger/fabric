@@ -45,7 +45,7 @@ func (s *DiscoverySupport) PoliciesByChaincode(channel string, cc string, collec
 	// chaincode policy
 	pol := &common2.SignaturePolicyEnvelope{}
 	if err := proto.Unmarshal(chaincodeData.Policy, pol); err != nil {
-		logger.Errorf("Failed unmarshaling policy for chaincode '%s': %s", cc, err)
+		logger.Errorf("Failed unmarshalling policy for chaincode '%s': %s", cc, err)
 		return nil
 	}
 	if len(pol.Identities) == 0 || pol.Rule == nil {
@@ -76,7 +76,7 @@ func (s *DiscoverySupport) PoliciesByChaincode(channel string, cc string, collec
 		collectionPolicy := chaincodeData.CollectionPolicies[collectionName]
 		pol := &common2.SignaturePolicyEnvelope{}
 		if err := proto.Unmarshal(collectionPolicy, pol); err != nil {
-			logger.Errorf("Failed unmarshaling collection policy for chaincode '%s' collection '%s': %s", cc, collectionName, err)
+			logger.Errorf("Failed unmarshalling collection policy for chaincode '%s' collection '%s': %s", cc, collectionName, err)
 			return nil
 		}
 		if len(pol.Identities) == 0 || pol.Rule == nil {

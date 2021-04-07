@@ -66,7 +66,7 @@ func TestTxIDIndexErrorPropagations(t *testing.T) {
 		[]byte("junkValue"),
 		false,
 	)
-	expectedErrMsg := fmt.Sprintf("unexpected error while unmarshaling bytes [%#v] into TxIDIndexValProto:", []byte("junkValue"))
+	expectedErrMsg := fmt.Sprintf("unexpected error while unmarshalling bytes [%#v] into TxIDIndexValProto:", []byte("junkValue"))
 	for _, f := range txIDBasedFunctions {
 		err := f()
 		require.Error(t, err)

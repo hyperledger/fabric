@@ -245,7 +245,7 @@ func GetOrdererEndpointOfChain(chainID string, signer Signer, endorserClient pb.
 	// parse config
 	channelConfig := &pcommon.Config{}
 	if err := proto.Unmarshal(proposalResp.Response.Payload, channelConfig); err != nil {
-		return nil, errors.WithMessage(err, "error unmarshaling channel config")
+		return nil, errors.WithMessage(err, "error unmarshalling channel config")
 	}
 
 	bundle, err := channelconfig.NewBundle(chainID, channelConfig, cryptoProvider)

@@ -91,7 +91,7 @@ func deployedCCToNameVersion(cc chaincode.Metadata) nameVersion {
 func extractCCInfo(data []byte) (*ccprovider.ChaincodeData, error) {
 	cd := &ccprovider.ChaincodeData{}
 	if err := proto.Unmarshal(data, cd); err != nil {
-		return nil, errors.Wrap(err, "failed unmarshaling lscc read value into ChaincodeData")
+		return nil, errors.Wrap(err, "failed unmarshalling lscc read value into ChaincodeData")
 	}
 	return cd, nil
 }

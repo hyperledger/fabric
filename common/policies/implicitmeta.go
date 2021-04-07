@@ -30,7 +30,7 @@ type ImplicitMetaPolicy struct {
 func NewImplicitMetaPolicy(data []byte, managers map[string]*ManagerImpl) (*ImplicitMetaPolicy, error) {
 	definition := &cb.ImplicitMetaPolicy{}
 	if err := proto.Unmarshal(data, definition); err != nil {
-		return nil, fmt.Errorf("Error unmarshaling to ImplicitMetaPolicy: %s", err)
+		return nil, fmt.Errorf("Error unmarshalling to ImplicitMetaPolicy: %s", err)
 	}
 
 	subPolicies := make([]Policy, len(managers))

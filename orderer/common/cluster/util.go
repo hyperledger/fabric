@@ -333,14 +333,14 @@ func SignatureSetFromBlock(block *common.Block) ([]*protoutil.SignedData, error)
 	}
 	metadata, err := protoutil.GetMetadataFromBlock(block, common.BlockMetadataIndex_SIGNATURES)
 	if err != nil {
-		return nil, errors.Errorf("failed unmarshaling medatata for signatures: %v", err)
+		return nil, errors.Errorf("failed unmarshalling medatata for signatures: %v", err)
 	}
 
 	var signatureSet []*protoutil.SignedData
 	for _, metadataSignature := range metadata.Signatures {
 		sigHdr, err := protoutil.UnmarshalSignatureHeader(metadataSignature.SignatureHeader)
 		if err != nil {
-			return nil, errors.Errorf("failed unmarshaling signature header for block with id %d: %v",
+			return nil, errors.Errorf("failed unmarshalling signature header for block with id %d: %v",
 				block.Header.Number, err)
 		}
 		signatureSet = append(signatureSet,

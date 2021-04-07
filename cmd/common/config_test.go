@@ -55,7 +55,7 @@ func TestConfig(t *testing.T) {
 
 	t.Run("bad config isn't loaded", func(t *testing.T) {
 		_, err := ConfigFromFile(filepath.Join("testdata", "not_a_yaml.yaml"))
-		require.Contains(t, err.Error(), "error unmarshaling YAML file")
+		require.Contains(t, err.Error(), "error unmarshalling YAML file")
 	})
 
 	t.Run("file that doesn't exist isn't loaded", func(t *testing.T) {
