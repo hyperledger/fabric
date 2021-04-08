@@ -25,7 +25,6 @@ import (
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/common/privdata"
@@ -38,7 +37,6 @@ import (
 	privdatamocks "github.com/hyperledger/fabric/gossip/privdata/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
@@ -574,9 +572,9 @@ var expectedCommittedPrivateData2 = map[uint64]*ledger.TxPvtData{
 var expectedCommittedPrivateData3 = map[uint64]*ledger.TxPvtData{}
 
 func TestCoordinatorStoreInvalidBlock(t *testing.T) {
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -627,7 +625,7 @@ func TestCoordinatorStoreInvalidBlock(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 	block := bf.withoutMetadata().create()
 	// Scenario I: Block we got doesn't have any metadata with it
@@ -884,9 +882,9 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 		it has ns1:c1 in transient store, while it has wrong
 		hash, hence it will fetch ns1:c1 from other peers
 	*/
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -963,7 +961,7 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1").create()
@@ -1011,9 +1009,9 @@ func TestCoordinatorToFilterOutPvtRWSetsWithWrongHash(t *testing.T) {
 }
 
 func TestCoordinatorStoreBlock(t *testing.T) {
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -1078,7 +1076,7 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").
@@ -1312,9 +1310,9 @@ func TestCoordinatorStoreBlock(t *testing.T) {
 }
 
 func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -1352,7 +1350,7 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").
@@ -1387,9 +1385,9 @@ func TestCoordinatorStoreBlockWhenPvtDataExistInLedger(t *testing.T) {
 func TestProceedWithoutPrivateData(t *testing.T) {
 	// Scenario: we are missing private data (c2 in ns3) and it cannot be obtained from any peer.
 	// Block needs to be committed with missing private data.
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -1474,7 +1472,7 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
@@ -1504,9 +1502,9 @@ func TestProceedWithoutPrivateData(t *testing.T) {
 func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	// Scenario: we are missing private data (c2 in ns3) and it cannot be obtained from any peer.
 	// Block needs to be committed with missing private data.
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -1550,7 +1548,7 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 
 	block := bf.AddTxn("tx1", "ns3", hash, "c2").create()
@@ -1577,9 +1575,9 @@ func TestProceedWithInEligiblePrivateData(t *testing.T) {
 
 func TestCoordinatorGetBlocks(t *testing.T) {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -1597,7 +1595,7 @@ func TestCoordinatorGetBlocks(t *testing.T) {
 	defer store.tearDown()
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 
 	fetcher := &fetcherMock{t: t}
@@ -1658,6 +1656,8 @@ func TestPurgeBelowHeight(t *testing.T) {
 	mspID := "Org1MSP"
 	peerSelfSignedData := protoutil.SignedData{}
 	cs := createcollectionStore(peerSelfSignedData).thatAcceptsAll()
+	_, localMSP, err := msptesttools.NewTestMSP()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
 	committer := &privdatamocks.Committer{}
 	committer.On("CommitLegacy", mock.Anything, mock.Anything).Return(nil)
@@ -1722,7 +1722,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 
 	pdFactory := &pvtDataFactory{}
@@ -1753,7 +1753,7 @@ func TestPurgeBelowHeight(t *testing.T) {
 		return assertPurged(false)
 	}
 	require.Eventually(t, assertPurgedBlocks, 2*time.Second, 100*time.Millisecond)
-	err := coordinator.StoreBlock(block, pvtData)
+	err = coordinator.StoreBlock(block, pvtData)
 	require.NoError(t, err)
 	// test first 6 blocks were purged
 	assertPurgedBlocks = func() bool {
@@ -1771,8 +1771,10 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 	store := newTransientStore(t)
 	defer store.tearDown()
 
+	_, localMSP, err := msptesttools.NewTestMSP()
+	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 
 	fetcher := &fetcherMock{t: t}
@@ -1792,7 +1794,7 @@ func TestCoordinatorStorePvtData(t *testing.T) {
 	}, store.store, protoutil.SignedData{}, metrics, testConfig, idDeserializerFactory)
 	pvtData := (&pvtDataFactory{}).addRWSet().addNSRWSet("ns1", "c1").create()
 	// Green path: ledger height can be retrieved from ledger/committer
-	err := coordinator.StorePvtData("tx1", &tspb.TxPvtReadWriteSetWithConfigInfo{
+	err = coordinator.StorePvtData("tx1", &tspb.TxPvtReadWriteSetWithConfigInfo{
 		PvtRwset:          pvtData[0].WriteSet,
 		CollectionConfigs: make(map[string]*peer.CollectionConfigPackage),
 	}, uint64(5))
@@ -1824,9 +1826,9 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	// transient store or other peers, the test would fail.
 	// Also - we check that at commit time - the coordinator concluded that
 	// no missing private data was found.
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -1869,7 +1871,7 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 
 	// The block contains a read only private data transaction
@@ -1897,9 +1899,9 @@ func TestIgnoreReadOnlyColRWSets(t *testing.T) {
 }
 
 func TestCoordinatorMetrics(t *testing.T) {
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -1928,7 +1930,7 @@ func TestCoordinatorMetrics(t *testing.T) {
 	}
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain("testchannelid")
+		return localMSP
 	})
 
 	block := bf.AddTxnWithEndorsement("tx1", "ns1", hash, "org1", true, "c1", "c2").

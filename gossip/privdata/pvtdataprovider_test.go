@@ -20,7 +20,6 @@ import (
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	tspb "github.com/hyperledger/fabric-protos-go/transientstore"
-	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/metrics/disabled"
 	util2 "github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
@@ -30,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/gossip/privdata/mocks"
 	"github.com/hyperledger/fabric/gossip/util"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
@@ -43,6 +41,7 @@ type testSupport struct {
 	blockNum           uint64
 	endorsers          []string
 	peerSelfSignedData protoutil.SignedData
+	mspManager         msp.MSPManager
 }
 
 type rwSet struct {
@@ -58,10 +57,10 @@ func init() {
 }
 
 func TestRetrievePvtdata(t *testing.T) {
-	err := msptesttools.LoadMSPSetupForTesting()
+	mspManager, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -85,6 +84,7 @@ func TestRetrievePvtdata(t *testing.T) {
 		blockNum:           uint64(1),
 		endorsers:          []string{identity.GetMSPIdentifier()},
 		peerSelfSignedData: peerSelfSignedData,
+		mspManager:         mspManager,
 	}
 
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
@@ -831,10 +831,10 @@ func TestRetrievePvtdata(t *testing.T) {
 }
 
 func TestRetrievePvtdataFailure(t *testing.T) {
-	err := msptesttools.LoadMSPSetupForTesting()
+	mspManager, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -858,6 +858,7 @@ func TestRetrievePvtdataFailure(t *testing.T) {
 		blockNum:           uint64(1),
 		endorsers:          []string{identity.GetMSPIdentifier()},
 		peerSelfSignedData: peerSelfSignedData,
+		mspManager:         mspManager,
 	}
 
 	invalidns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
@@ -891,10 +892,10 @@ func TestRetrievePvtdataFailure(t *testing.T) {
 }
 
 func TestRetryFetchFromPeer(t *testing.T) {
-	err := msptesttools.LoadMSPSetupForTesting()
+	mspManager, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -918,6 +919,7 @@ func TestRetryFetchFromPeer(t *testing.T) {
 		blockNum:           uint64(1),
 		endorsers:          []string{identity.GetMSPIdentifier()},
 		peerSelfSignedData: peerSelfSignedData,
+		mspManager:         mspManager,
 	}
 
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
@@ -986,10 +988,10 @@ func TestRetryFetchFromPeer(t *testing.T) {
 }
 
 func TestSkipPullingAllInvalidTransactions(t *testing.T) {
-	err := msptesttools.LoadMSPSetupForTesting()
+	mspManager, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -1013,6 +1015,7 @@ func TestSkipPullingAllInvalidTransactions(t *testing.T) {
 		blockNum:           uint64(1),
 		endorsers:          []string{identity.GetMSPIdentifier()},
 		peerSelfSignedData: peerSelfSignedData,
+		mspManager:         mspManager,
 	}
 
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
@@ -1088,10 +1091,10 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 	conf := testConfig
 	conf.TransientBlockRetention = 5
 
-	err := msptesttools.LoadMSPSetupForTesting()
+	mspManager, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err, fmt.Sprintf("Failed to setup local msp for testing, got err %s", err))
 
-	identity, err := mspmgmt.GetLocalMSP(factory.GetDefault()).GetDefaultSigningIdentity()
+	identity, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 	serializedID, err := identity.Serialize()
 	require.NoError(t, err, fmt.Sprintf("Serialize should have succeeded, got err %s", err))
@@ -1115,6 +1118,7 @@ func TestRetrievedPvtdataPurgeBelowHeight(t *testing.T) {
 		blockNum:           uint64(9),
 		endorsers:          []string{identity.GetMSPIdentifier()},
 		peerSelfSignedData: peerSelfSignedData,
+		mspManager:         mspManager,
 	}
 
 	ns1c1 := collectionPvtdataInfoFromTemplate("ns1", "c1", identity.GetMSPIdentifier(), ts.hash, endorser, signature)
@@ -1250,14 +1254,16 @@ func TestFetchStats(t *testing.T) {
 	require.Equal(t, "(1 from local cache, 2 from transient store, 3 from other peers)", fetchStats.String())
 }
 
-func testRetrievePvtdataSuccess(t *testing.T,
+func testRetrievePvtdataSuccess(
+	t *testing.T,
 	scenario string,
 	ts testSupport,
 	storePvtdataOfInvalidTx, skipPullingInvalidTransactions bool,
 	rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer []rwSet,
 	expectedDigKeys []privdatacommon.DigKey,
 	pvtdataToRetrieve []*ledger.TxPvtdataInfo,
-	expectedBlockPvtdata *ledger.BlockPvtdata) {
+	expectedBlockPvtdata *ledger.BlockPvtdata,
+) {
 	fmt.Println("\n" + scenario)
 
 	tempdir, err := ioutil.TempDir("", "ts")
@@ -1322,11 +1328,15 @@ func setupPrivateDataProvider(t *testing.T,
 	config CoordinatorConfig,
 	storePvtdataOfInvalidTx, skipPullingInvalidTransactions bool, store *transientstore.Store,
 	rwSetsInCache, rwSetsInTransientStore, rwSetsInPeer []rwSet,
-	expectedDigKeys []privdatacommon.DigKey) *PvtdataProvider {
+	expectedDigKeys []privdatacommon.DigKey,
+) *PvtdataProvider {
 	metrics := metrics.NewGossipMetrics(&disabled.Provider{}).PrivdataMetrics
 
 	idDeserializerFactory := IdentityDeserializerFactoryFunc(func(chainID string) msp.IdentityDeserializer {
-		return mspmgmt.GetManagerForChain(ts.channelID)
+		if chainID == ts.channelID {
+			return ts.mspManager
+		}
+		return nil
 	})
 
 	// set up data in cache
