@@ -11,29 +11,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/stretchr/testify/require"
 )
-
-func TestGetManagerForChains(t *testing.T) {
-	// MSPManager for channel does not exist prior to this call
-	mspMgr1 := XXXGetManagerForChain("test")
-	// ensure MSPManager is set
-	if mspMgr1 == nil {
-		t.Fatal("mspMgr1 fail")
-	}
-
-	// MSPManager for channel now exists
-	mspMgr2 := XXXGetManagerForChain("test")
-	// ensure MSPManager returned matches the first result
-	if mspMgr2 != mspMgr1 {
-		t.Fatal("mspMgr2 != mspMgr1 fail")
-	}
-}
 
 func TestUpdateLocalMspCache(t *testing.T) {
 	// reset localMsp to force it to be initialized on the first call
@@ -56,55 +39,6 @@ func TestUpdateLocalMspCache(t *testing.T) {
 	if firstMsp != secondMsp {
 		t.Fatalf("firstMsp != secondMsp")
 	}
-}
-
-func TestNewMSPMgmtMgr(t *testing.T) {
-	cryptoProvider, err := LoadMSPSetupForTesting()
-	require.Nil(t, err)
-
-	id, err := GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
-	require.NoError(t, err)
-	require.NotNil(t, id)
-
-	serializedID, err := id.Serialize()
-	require.NoError(t, err)
-
-	// test for nonexistent channel
-	mspMgmtMgr := XXXGetManagerForChain("fake")
-
-	idBack, err := mspMgmtMgr.DeserializeIdentity(serializedID)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "channel doesn't exist")
-	require.Nil(t, idBack, "deserialized identity should have been nil")
-
-	// test for existing channel
-	mspMgmtMgr = XXXGetManagerForChain("testchannelid")
-
-	idBack, err = mspMgmtMgr.DeserializeIdentity(serializedID)
-	require.NoError(t, err)
-	require.NotNil(t, idBack, "deserialized identity should not have been nil")
-}
-
-func LoadMSPSetupForTesting() (bccsp.BCCSP, error) {
-	dir := configtest.GetDevMspDir()
-	conf, err := msp.GetLocalMspConfig(dir, nil, "SampleOrg")
-	if err != nil {
-		return nil, err
-	}
-
-	cryptoProvider := factory.GetDefault()
-
-	err = GetLocalMSP(cryptoProvider).Setup(conf)
-	if err != nil {
-		return nil, err
-	}
-
-	err = XXXGetManagerForChain("testchannelid").Setup([]msp.MSP{GetLocalMSP(cryptoProvider)})
-	if err != nil {
-		return nil, err
-	}
-
-	return cryptoProvider, nil
 }
 
 func TestLocalMSP(t *testing.T) {

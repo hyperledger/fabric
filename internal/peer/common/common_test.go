@@ -264,7 +264,8 @@ func TestInitCmdWithoutInitCrypto(t *testing.T) {
 }
 
 func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
-	require.NoError(t, msptesttools.LoadMSPSetupForTesting())
+	_, _, err := msptesttools.NewTestMSP()
+	require.NoError(t, err)
 	signer, err := common.GetDefaultSigner()
 	require.NoError(t, err)
 	factory.InitFactories(nil)

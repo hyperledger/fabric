@@ -38,14 +38,12 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/gossip/mocks"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 )
 
 func TestMain(m *testing.M) {
-	msptesttools.LoadMSPSetupForTesting()
 	rc := m.Run()
 	os.Exit(rc)
 }
@@ -55,12 +53,13 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 	require.NoError(t, err, "failed to create temporary directory")
 
 	// Initialize gossip service
+	_, localMSP, err := msptesttools.NewTestMSP()
+	require.NoError(t, err)
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
-	signer, err := mgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	signer, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 
-	localMSP := mgmt.GetLocalMSP(cryptoProvider)
 	getChannelDesers := func() map[string]msp.IdentityDeserializer { return nil }
 	deserManager := peergossip.NewDeserializersManager(localMSP, getChannelDesers)
 	messageCryptoService := peergossip.NewMCS(

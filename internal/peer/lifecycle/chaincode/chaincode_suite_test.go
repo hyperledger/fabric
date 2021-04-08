@@ -69,9 +69,8 @@ var _ = BeforeSuite(func() {
 	flogging.SetWriter(GinkgoWriter)
 })
 
-// TODO remove this?
 func TestMain(m *testing.M) {
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, _, err := msptesttools.NewTestMSP()
 	if err != nil {
 		panic(fmt.Sprintf("Fatal error when reading MSP config: %s", err))
 	}

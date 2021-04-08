@@ -15,10 +15,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 )
@@ -286,37 +284,24 @@ var (
 
 func TestMain(m *testing.M) {
 	// setup the MSP manager so that we can sign/verify
-	err := msptesttools.LoadMSPSetupForTesting()
+	var err error
+	_, localmsp, err = msptesttools.NewTestMSP()
 	if err != nil {
 		os.Exit(-1)
 		fmt.Printf("Could not initialize msp")
 		return
 	}
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	if err != nil {
-		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", cryptoProvider)
-		os.Exit(-1)
-		return
-	}
-	localmsp = mspmgmt.GetLocalMSP(cryptoProvider)
-	if localmsp == nil {
-		os.Exit(-1)
-		fmt.Printf("Could not get msp")
-		return
-	}
 	signer, err = localmsp.GetDefaultSigningIdentity()
 	if err != nil {
-		os.Exit(-1)
 		fmt.Printf("Could not get signer")
-		return
+		os.Exit(-1)
 	}
 
 	signerSerialized, err = signer.Serialize()
 	if err != nil {
-		os.Exit(-1)
 		fmt.Printf("Could not serialize identity")
-		return
+		os.Exit(-1)
 	}
 
 	os.Exit(m.Run())

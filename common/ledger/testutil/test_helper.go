@@ -13,14 +13,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/configtx/test"
 	"github.com/hyperledger/fabric/common/crypto"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 
 	"github.com/hyperledger/fabric/common/ledger/testutil/fakes"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
@@ -30,15 +28,11 @@ var signer msp.SigningIdentity
 
 func init() {
 	// setup the MSP manager so that we can sign/verify
-	var err error = msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	if err != nil {
 		panic(fmt.Errorf("Could not load msp config, err %s", err))
 	}
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	if err != nil {
-		panic(fmt.Errorf("Initialize cryptoProvider failed: %s", err))
-	}
-	signer, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	signer, err = localMSP.GetDefaultSigningIdentity()
 	if err != nil {
 		panic(fmt.Errorf("Could not initialize msp/signer"))
 	}

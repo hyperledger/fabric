@@ -56,7 +56,6 @@ import (
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/viper"
@@ -1429,21 +1428,18 @@ func endTxSimulation(peerInstance *peer.Peer, channelID string, ccid *pb.Chainco
 	return nil
 }
 
-func TestMain(m *testing.M) {
-	var err error
+var signer msp.SigningIdentity
 
-	msptesttools.LoadMSPSetupForTesting()
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+func TestMain(m *testing.M) {
+	_, localMSP, err := msptesttools.NewTestMSP()
 	if err != nil {
-		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
+		fmt.Print("could not initialize test msp")
 		os.Exit(-1)
-		return
 	}
-	signer, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	signer, err = localMSP.GetDefaultSigningIdentity()
 	if err != nil {
-		fmt.Print("Could not initialize msp/signer")
+		fmt.Print("could not get default signing identity")
 		os.Exit(-1)
-		return
 	}
 
 	setupTestConfig()
@@ -1472,5 +1468,3 @@ func setupTestConfig() {
 		panic(fmt.Errorf("Could not initialize BCCSP Factories [%s]", err))
 	}
 }
-
-var signer msp.SigningIdentity

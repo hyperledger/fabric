@@ -354,11 +354,9 @@ func createCCUpgradeEnvelope(channelID, chaincodeName, chaincodeVersion string, 
 
 func TestGetTxCCInstance(t *testing.T) {
 	// setup the MSP manager so that we can sign/verify
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err)
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	require.NoError(t, err)
-	signer, err := mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	signer, err := localMSP.GetDefaultSigningIdentity()
 	require.NoError(t, err)
 
 	channelID := "testchannelid"

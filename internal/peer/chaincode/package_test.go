@@ -23,11 +23,10 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	err := msptesttools.LoadMSPSetupForTesting()
+	_, _, err := msptesttools.NewTestMSP()
 	if err != nil {
 		panic(fmt.Sprintf("Fatal error when reading MSP config: %s", err))
 	}
-
 	os.Exit(m.Run())
 }
 

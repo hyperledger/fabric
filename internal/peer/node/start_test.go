@@ -42,7 +42,8 @@ func TestStartCmd(t *testing.T) {
 	viper.Set("chaincode.mode", "dev")
 	viper.Set("vm.endpoint", "unix:///var/run/docker.sock")
 
-	msptesttools.LoadMSPSetupForTesting()
+	_, _, err = msptesttools.NewTestMSP()
+	require.NoError(t, err, "failed to initialize test MSP")
 
 	go func() {
 		cmd := startCmd()

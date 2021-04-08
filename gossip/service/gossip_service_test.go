@@ -111,10 +111,9 @@ func TestInitGossipService(t *testing.T) {
 	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
 	require.NoError(t, err)
 
-	err = msptesttools.LoadMSPSetupForTesting()
+	_, localMSP, err := msptesttools.NewTestMSP()
 	require.NoError(t, err)
 
-	localMSP := mgmt.GetLocalMSP(cryptoProvider)
 	getChannelDesers := func() map[string]msp.IdentityDeserializer { return nil }
 	deserManager := peergossip.NewDeserializersManager(localMSP, getChannelDesers)
 	signer, err := localMSP.GetDefaultSigningIdentity()

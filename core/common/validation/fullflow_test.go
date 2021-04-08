@@ -15,9 +15,7 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
@@ -390,27 +388,18 @@ func (idsg idsGetter) GetIdentityDeserializer(cid string) msp.IdentityDeserializ
 func TestMain(m *testing.M) {
 	// setup crypto algorithms
 	// setup the MSP manager so that we can sign/verify
-	err := msptesttools.LoadMSPSetupForTesting()
+	var err error
+	_, localMSP, err := msptesttools.NewTestMSP()
 	if err != nil {
 		fmt.Printf("Could not initialize msp, err %s", err)
 		os.Exit(-1)
-		return
 	}
 
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	if err != nil {
-		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
-		os.Exit(-1)
-		return
-	}
-
-	localMSP = mspmgmt.GetLocalMSP(cryptoProvider)
 	idDeserializerGetter = &idsGetter{localMSP: localMSP}
 	signer, err = localMSP.GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Println("Could not get signer")
 		os.Exit(-1)
-		return
 	}
 	signerMSPId = signer.GetMSPIdentifier()
 
@@ -418,7 +407,6 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		fmt.Println("Could not serialize identity")
 		os.Exit(-1)
-		return
 	}
 
 	os.Exit(m.Run())

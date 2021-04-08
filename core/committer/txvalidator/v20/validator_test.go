@@ -38,7 +38,6 @@ import (
 	supportmocks "github.com/hyperledger/fabric/discovery/support/mocks"
 	"github.com/hyperledger/fabric/internal/pkg/txflags"
 	"github.com/hyperledger/fabric/msp"
-	"github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
@@ -1249,30 +1248,24 @@ func (idsg idsGetter) GetIdentityDeserializer(cid string) msp.IdentityDeserializ
 }
 
 func TestMain(m *testing.M) {
-	msptesttools.LoadMSPSetupForTesting()
-
 	var err error
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	_, localMSP, err = msptesttools.NewTestMSP()
 	if err != nil {
-		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
+		fmt.Printf("failed to initialize test MSP: %s", err)
 		os.Exit(-1)
-		return
 	}
 
-	localMSP = mgmt.GetLocalMSP(cryptoProvider)
 	idDeserializerGetter = &idsGetter{ids: localMSP}
 	signer, err = localMSP.GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Println("Could not get signer")
 		os.Exit(-1)
-		return
 	}
 
 	signerSerialized, err = signer.Serialize()
 	if err != nil {
 		fmt.Println("Could not serialize identity")
 		os.Exit(-1)
-		return
 	}
 
 	os.Exit(m.Run())

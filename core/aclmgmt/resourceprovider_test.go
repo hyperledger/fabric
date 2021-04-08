@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package aclmgmt
 
 import (
-	"fmt"
-	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -17,7 +15,6 @@ import (
 	"github.com/hyperledger/fabric/core/aclmgmt/mocks"
 	"github.com/hyperledger/fabric/core/policy"
 	"github.com/hyperledger/fabric/internal/pkg/identity"
-	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/require"
 )
@@ -128,14 +125,4 @@ func TestCheckACLNoChannel(t *testing.T) {
 	rp = &resourceProvider{defaultProvider: defAclProvider}
 	err = rp.CheckACLNoChannel("aptype", struct{}{})
 	require.EqualError(t, err, "Unknown id on channelless checkACL aptype")
-}
-
-func init() {
-	// setup the MSP manager so that we can sign/verify
-	err := msptesttools.LoadMSPSetupForTesting()
-	if err != nil {
-		fmt.Printf("Could not load msp config, err %s", err)
-		os.Exit(-1)
-		return
-	}
 }

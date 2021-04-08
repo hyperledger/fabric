@@ -16,52 +16,21 @@ import (
 	"github.com/spf13/viper"
 )
 
-// FIXME: AS SOON AS THE CHAIN MANAGEMENT CODE IS COMPLETE,
-// THESE MAPS AND HELPER FUNCTIONS SHOULD DISAPPEAR BECAUSE
-// OWNERSHIP OF PER-CHAIN MSP MANAGERS WILL BE HANDLED BY IT;
-// HOWEVER IN THE INTERIM, THESE HELPER FUNCTIONS ARE REQUIRED
-
 var (
-	m         sync.Mutex
-	localMsp  msp.MSP
-	mspMap    = make(map[string]msp.MSPManager)
 	mspLogger = flogging.MustGetLogger("msp")
+
+	m        sync.Mutex
+	localMsp msp.MSP
 )
-
-// TODO - this is a temporary solution to allow the peer to track whether the
-// MSPManager has been setup for a channel, which indicates whether the channel
-// exists or not
-type mspMgmtMgr struct {
-	msp.MSPManager
-}
-
-// XXXGetManagerForChain returns the msp manager for the supplied
-// chain; if no such manager exists, one is created
-func XXXGetManagerForChain(chainID string) msp.MSPManager {
-	m.Lock()
-	defer m.Unlock()
-
-	mspMgr, ok := mspMap[chainID]
-	if !ok {
-		mspLogger.Debugf("Created new msp manager for channel `%s`", chainID)
-		mspMgmtMgr := &mspMgmtMgr{msp.NewMSPManager()}
-		mspMap[chainID] = mspMgmtMgr
-		mspMgr = mspMgmtMgr
-	}
-	return mspMgr
-}
 
 // GetLocalMSP returns the local msp (and creates it if it doesn't exist)
 func GetLocalMSP(cryptoProvider bccsp.BCCSP) msp.MSP {
 	m.Lock()
 	defer m.Unlock()
 
-	if localMsp != nil {
-		return localMsp
+	if localMsp == nil {
+		localMsp = loadLocalMSP(cryptoProvider)
 	}
-
-	localMsp = loadLocalMSP(cryptoProvider)
-
 	return localMsp
 }
 

@@ -38,7 +38,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/ledgermgmt/ledgermgmttest"
 	"github.com/hyperledger/fabric/core/scc/lscc/mock"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	mspmocks "github.com/hyperledger/fabric/msp/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -1475,16 +1474,13 @@ func NewMockProvider() sysccprovider.SystemChaincodeProvider {
 }
 
 func TestMain(m *testing.M) {
-	var err error
-	msptesttools.LoadMSPSetupForTesting()
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	_, localMSP, err := msptesttools.NewTestMSP()
 	if err != nil {
-		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
+		fmt.Printf("failed to initialize test MSP: %s", err)
 		os.Exit(-1)
 	}
 
-	id, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	id, err = localMSP.GetDefaultSigningIdentity()
 	if err != nil {
 		fmt.Printf("GetDefaultSigningIdentity failed with err %s", err)
 		os.Exit(-1)

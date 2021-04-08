@@ -42,7 +42,6 @@ import (
 	peergossip "github.com/hyperledger/fabric/internal/peer/gossip"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
-	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -71,12 +70,6 @@ type channelPolicyManagerGetter interface {
 
 type storeProvider interface {
 	transientstore.StoreProvider
-}
-
-func TestMain(m *testing.M) {
-	msptesttools.LoadMSPSetupForTesting()
-	rc := m.Run()
-	os.Exit(rc)
 }
 
 func TestConfigerInit(t *testing.T) {
