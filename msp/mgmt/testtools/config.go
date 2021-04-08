@@ -34,3 +34,25 @@ func LoadMSPSetupForTesting() error {
 
 	return nil
 }
+
+func NewTestMSP() (mgr msp.MSPManager, localMSP msp.MSP, err error) {
+	dir := configtest.GetDevMspDir()
+	conf, err := msp.GetLocalMspConfig(dir, nil, "SampleOrg")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	localMSP = mgmt.GetLocalMSP(factory.GetDefault())
+	err = localMSP.Setup(conf)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mgr = msp.NewMSPManager()
+	err = mgr.Setup([]msp.MSP{localMSP})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return mgr, localMSP, nil
+}

@@ -14,7 +14,6 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
 	"github.com/hyperledger/fabric/common/policydsl"
 	"github.com/hyperledger/fabric/core/committer/txvalidator/v14"
@@ -23,7 +22,6 @@ import (
 	vs "github.com/hyperledger/fabric/core/handlers/validation/api/state"
 	"github.com/hyperledger/fabric/core/handlers/validation/builtin/v20/mocks"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/stretchr/testify/mock"
@@ -110,7 +108,7 @@ func newCustomValidationInstance(sf vs.StateFetcher, c validation.Capabilities) 
 
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
-		IdentityDeserializer: mspmgmt.GetManagerForChain("testchannelid"),
+		IdentityDeserializer: testMSPManager,
 	}
 	v := New(c, sf, is, pe, mockCR)
 
@@ -129,7 +127,7 @@ func TestStateBasedValidationFailure(t *testing.T) {
 	sf := &mocks.StateFetcher{}
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
-		IdentityDeserializer: mspmgmt.GetManagerForChain("testchannelid"),
+		IdentityDeserializer: testMSPManager,
 	}
 	v := New(&mocks.Capabilities{}, sf, is, pe, mockCR)
 	v.stateBasedValidator = sbvm
@@ -243,17 +241,16 @@ func TestToApplicationPolicyTranslator_Translate(t *testing.T) {
 }
 
 var (
-	id        msp.SigningIdentity
-	sid       []byte
-	mspid     string
-	channelID string = "testchannelid"
+	id             msp.SigningIdentity
+	sid            []byte
+	mspid          string
+	testMSPManager msp.MSPManager
 )
 
 func TestMain(m *testing.M) {
 	code := -1
-	defer func() {
-		os.Exit(code)
-	}()
+	defer func() { os.Exit(code) }()
+
 	testDir, err := ioutil.TempDir("", "v1.3-validation")
 	if err != nil {
 		fmt.Printf("Could not create temp dir: %s", err)
@@ -262,51 +259,27 @@ func TestMain(m *testing.M) {
 	defer os.RemoveAll(testDir)
 	ccprovider.SetChaincodesPath(testDir)
 
-	// setup the MSP manager so that we can sign/verify
-	msptesttools.LoadMSPSetupForTesting()
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
+	var localMSP msp.MSP
+	testMSPManager, localMSP, err = msptesttools.NewTestMSP()
 	if err != nil {
-		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", err)
+		fmt.Fprintf(os.Stderr, "failed to create test MSP Manager: %s", err)
 		return
 	}
-
-	id, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
+	id, err = localMSP.GetDefaultSigningIdentity()
 	if err != nil {
-		fmt.Printf("GetDefaultSigningIdentity failed with err %s", err)
+		fmt.Fprintf(os.Stderr, "GetDefaultSigningIdentity failed with err %s", err)
 		return
 	}
-
+	mspid, err = localMSP.GetIdentifier()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failure getting the msp identifier, err %s", err)
+		return
+	}
 	sid, err = id.Serialize()
 	if err != nil {
 		fmt.Printf("Serialize failed with err %s", err)
 		return
 	}
-
-	// determine the MSP identifier for the first MSP in the default chain
-	var msp msp.MSP
-	mspMgr := mspmgmt.GetManagerForChain(channelID)
-	msps, err := mspMgr.GetMSPs()
-	if err != nil {
-		fmt.Printf("Could not retrieve the MSPs for the chain manager, err %s", err)
-		return
-	}
-	if len(msps) == 0 {
-		fmt.Printf("At least one MSP was expected")
-		return
-	}
-	for _, m := range msps {
-		msp = m
-		break
-	}
-	mspid, err = msp.GetIdentifier()
-	if err != nil {
-		fmt.Printf("Failure getting the msp identifier, err %s", err)
-		return
-	}
-
-	// also set the MSP for the "test" chain
-	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain("testchannelid"))
 
 	code = m.Run()
 }

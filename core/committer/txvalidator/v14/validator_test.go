@@ -625,8 +625,7 @@ func TestParallelValidation(t *testing.T) {
 		SatPrinError: errors.New("nope"),
 		MspID:        "Org2",
 	}
-	mgmt.GetManagerForChain("foochain")
-	mgr := mgmt.GetManagerForChain("foochain")
+	mgr := msp.NewMSPManager()
 	mgr.Setup([]msp.MSP{msp1, msp2})
 
 	vpKey := peer.MetaDataKeys_VALIDATION_PARAMETER.String()

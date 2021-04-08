@@ -3,6 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package v12
 
 import (
@@ -16,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/capabilities"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/policydsl"
@@ -29,7 +29,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/scc/lscc"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
@@ -289,7 +288,7 @@ func newValidationInstance(state map[string]map[string][]byte) *Validator {
 func newCustomValidationInstance(sf StateFetcher, c validation.Capabilities) *Validator {
 	is := &mocks.IdentityDeserializer{}
 	pe := &txvalidator.PolicyEvaluator{
-		IdentityDeserializer: mspmgmt.GetManagerForChain("testchannelid"),
+		IdentityDeserializer: testMSPManager,
 	}
 	return New(c, sf, is, pe)
 }
@@ -1568,13 +1567,6 @@ func TestValidateUpgradeWithPoliciesFail(t *testing.T) {
 	require.EqualError(t, err, "chaincode instantiation policy violated, error signature set did not satisfy policy")
 }
 
-var (
-	id      msp.SigningIdentity
-	sid     []byte
-	mspid   string
-	chainId string = "testchannelid"
-)
-
 func createCollectionConfig(collectionName string, signaturePolicyEnvelope *common.SignaturePolicyEnvelope,
 	requiredPeerCount int32, maximumPeerCount int32, blockToLive uint64,
 ) *peer.CollectionConfig {
@@ -1801,68 +1793,6 @@ func TestValidateRWSetAndCollectionForUpgrade(t *testing.T) {
 	require.EqualError(t, err, "the BlockToLive in the following existing collections must not be modified: [mycollection2]")
 }
 
-func TestMain(m *testing.M) {
-	code := -1
-	defer func() {
-		os.Exit(code)
-	}()
-	testDir, err := ioutil.TempDir("", "v1.2-validation")
-	if err != nil {
-		fmt.Printf("Could not create temp dir: %s", err)
-		return
-	}
-	defer os.RemoveAll(testDir)
-	ccprovider.SetChaincodesPath(testDir)
-
-	// setup the MSP manager so that we can sign/verify
-	msptesttools.LoadMSPSetupForTesting()
-
-	cryptoProvider, err := sw.NewDefaultSecurityLevelWithKeystore(sw.NewDummyKeyStore())
-	if err != nil {
-		fmt.Printf("Initialize cryptoProvider bccsp failed: %s", cryptoProvider)
-		return
-	}
-
-	id, err = mspmgmt.GetLocalMSP(cryptoProvider).GetDefaultSigningIdentity()
-	if err != nil {
-		fmt.Printf("GetDefaultSigningIdentity failed with err %s", err)
-		return
-	}
-
-	sid, err = id.Serialize()
-	if err != nil {
-		fmt.Printf("Serialize failed with err %s", err)
-		return
-	}
-
-	// determine the MSP identifier for the first MSP in the default chain
-	var msp msp.MSP
-	mspMgr := mspmgmt.GetManagerForChain(chainId)
-	msps, err := mspMgr.GetMSPs()
-	if err != nil {
-		fmt.Printf("Could not retrieve the MSPs for the chain manager, err %s", err)
-		return
-	}
-	if len(msps) == 0 {
-		fmt.Printf("At least one MSP was expected")
-		return
-	}
-	for _, m := range msps {
-		msp = m
-		break
-	}
-	mspid, err = msp.GetIdentifier()
-	if err != nil {
-		fmt.Printf("Failure getting the msp identifier, err %s", err)
-		return
-	}
-
-	// also set the MSP for the "test" chain
-	mspmgmt.XXXSetMSPManager("mycc", mspmgmt.GetManagerForChain("testchannelid"))
-
-	code = m.Run()
-}
-
 func TestInValidCollectionName(t *testing.T) {
 	validNames := []string{"collection1", "collection_2"}
 	inValidNames := []string{"collection.1", "collection%2", ""}
@@ -1873,4 +1803,48 @@ func TestInValidCollectionName(t *testing.T) {
 	for _, name := range inValidNames {
 		require.Error(t, validateCollectionName(name), "Testing for name = "+name)
 	}
+}
+
+var (
+	id             msp.SigningIdentity
+	sid            []byte
+	mspid          string
+	testMSPManager msp.MSPManager
+)
+
+func TestMain(m *testing.M) {
+	code := -1
+	defer func() { os.Exit(code) }()
+
+	testDir, err := ioutil.TempDir("", "v1.2-validation")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not create temp dir: %s", err)
+		return
+	}
+	defer os.RemoveAll(testDir)
+	ccprovider.SetChaincodesPath(testDir)
+
+	var localMSP msp.MSP
+	testMSPManager, localMSP, err = msptesttools.NewTestMSP()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create test MSP Manager: %s", err)
+		return
+	}
+	id, err = localMSP.GetDefaultSigningIdentity()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "GetDefaultSigningIdentity failed with err %s", err)
+		return
+	}
+	mspid, err = localMSP.GetIdentifier()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failure getting the msp identifier, err %s", err)
+		return
+	}
+	sid, err = id.Serialize()
+	if err != nil {
+		fmt.Printf("Serialize failed with err %s", err)
+		return
+	}
+
+	code = m.Run()
 }
