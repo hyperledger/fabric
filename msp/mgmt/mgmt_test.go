@@ -21,26 +21,17 @@ import (
 
 func TestGetManagerForChains(t *testing.T) {
 	// MSPManager for channel does not exist prior to this call
-	mspMgr1 := GetManagerForChain("test")
+	mspMgr1 := XXXGetManagerForChain("test")
 	// ensure MSPManager is set
 	if mspMgr1 == nil {
 		t.Fatal("mspMgr1 fail")
 	}
 
 	// MSPManager for channel now exists
-	mspMgr2 := GetManagerForChain("test")
+	mspMgr2 := XXXGetManagerForChain("test")
 	// ensure MSPManager returned matches the first result
 	if mspMgr2 != mspMgr1 {
 		t.Fatal("mspMgr2 != mspMgr1 fail")
-	}
-}
-
-func TestGetManagerForChains_usingMSPConfigHandlers(t *testing.T) {
-	XXXSetMSPManager("foo", msp.NewMSPManager())
-	msp2 := GetManagerForChain("foo")
-	// return value should be set because the MSPManager was initialized
-	if msp2 == nil {
-		t.FailNow()
 	}
 }
 
@@ -79,7 +70,7 @@ func TestNewMSPMgmtMgr(t *testing.T) {
 	require.NoError(t, err)
 
 	// test for nonexistent channel
-	mspMgmtMgr := GetManagerForChain("fake")
+	mspMgmtMgr := XXXGetManagerForChain("fake")
 
 	idBack, err := mspMgmtMgr.DeserializeIdentity(serializedID)
 	require.Error(t, err)
@@ -87,7 +78,7 @@ func TestNewMSPMgmtMgr(t *testing.T) {
 	require.Nil(t, idBack, "deserialized identity should have been nil")
 
 	// test for existing channel
-	mspMgmtMgr = GetManagerForChain("testchannelid")
+	mspMgmtMgr = XXXGetManagerForChain("testchannelid")
 
 	idBack, err = mspMgmtMgr.DeserializeIdentity(serializedID)
 	require.NoError(t, err)
@@ -108,7 +99,7 @@ func LoadMSPSetupForTesting() (bccsp.BCCSP, error) {
 		return nil, err
 	}
 
-	err = GetManagerForChain("testchannelid").Setup([]msp.MSP{GetLocalMSP(cryptoProvider)})
+	err = XXXGetManagerForChain("testchannelid").Setup([]msp.MSP{GetLocalMSP(cryptoProvider)})
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +138,6 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	XXXSetMSPManager("foo", msp.NewMSPManager())
 	retVal := m.Run()
 	os.Exit(retVal)
 }

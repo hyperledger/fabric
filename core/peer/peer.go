@@ -36,7 +36,6 @@ import (
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/peer/orderers"
 	"github.com/hyperledger/fabric/msp"
-	mspmgmt "github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -274,11 +273,6 @@ func (p *Peer) createChannel(
 		p.updateTrustedRoots(bundle)
 	}
 
-	mspCallback := func(bundle *channelconfig.Bundle) {
-		// TODO remove once all references to mspmgmt are gone from peer code
-		mspmgmt.XXXSetMSPManager(cid, bundle.MSPManager())
-	}
-
 	osLogger := flogging.MustGetLogger("peer.orderers")
 	namedOSLogger := osLogger.With("channel", cid)
 	ordererSource := orderers.NewConnectionSource(namedOSLogger, p.OrdererEndpointOverrides)
@@ -312,7 +306,6 @@ func (p *Peer) createChannel(
 		ordererSourceCallback,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
-		mspCallback,
 		channel.bundleUpdate,
 	)
 

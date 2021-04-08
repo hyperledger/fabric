@@ -27,7 +27,7 @@ func LoadMSPSetupForTesting() error {
 		return err
 	}
 
-	err = mgmt.GetManagerForChain("testchannelid").Setup([]msp.MSP{mgmt.GetLocalMSP(factory.GetDefault())})
+	err = mgmt.XXXGetManagerForChain("testchannelid").Setup([]msp.MSP{mgmt.GetLocalMSP(factory.GetDefault())})
 	if err != nil {
 		return err
 	}

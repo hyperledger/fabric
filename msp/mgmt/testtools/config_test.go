@@ -27,7 +27,7 @@ func TestFakeSetup(t *testing.T) {
 		t.Fatalf("GetDefaultSigningIdentity failed, err %s", err)
 	}
 
-	msps, err := mgmt.GetManagerForChain("testchannelid").GetMSPs()
+	msps, err := mgmt.XXXGetManagerForChain("testchannelid").GetMSPs()
 	if err != nil {
 		t.Fatalf("EnlistedMSPs failed, err %s", err)
 	}

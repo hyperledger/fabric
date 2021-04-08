@@ -90,7 +90,6 @@ func TestMain(m *testing.M) {
 		os.Exit(-1)
 	}
 
-	mgmt.XXXSetMSPManager("foo", msp.NewMSPManager())
 	retVal := m.Run()
 	os.Exit(retVal)
 }

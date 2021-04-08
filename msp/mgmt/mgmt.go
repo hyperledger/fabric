@@ -35,9 +35,9 @@ type mspMgmtMgr struct {
 	msp.MSPManager
 }
 
-// GetManagerForChain returns the msp manager for the supplied
+// XXXGetManagerForChain returns the msp manager for the supplied
 // chain; if no such manager exists, one is created
-func GetManagerForChain(chainID string) msp.MSPManager {
+func XXXGetManagerForChain(chainID string) msp.MSPManager {
 	m.Lock()
 	defer m.Unlock()
 
@@ -49,16 +49,6 @@ func GetManagerForChain(chainID string) msp.MSPManager {
 		mspMgr = mspMgmtMgr
 	}
 	return mspMgr
-}
-
-// XXXSetMSPManager is a stopgap solution to transition from the custom MSP config block
-// parsing to the channelconfig.Resources interface, while preserving the problematic singleton
-// nature of the MSP manager
-func XXXSetMSPManager(chainID string, manager msp.MSPManager) {
-	m.Lock()
-	defer m.Unlock()
-
-	mspMap[chainID] = &mspMgmtMgr{manager}
 }
 
 // GetLocalMSP returns the local msp (and creates it if it doesn't exist)
