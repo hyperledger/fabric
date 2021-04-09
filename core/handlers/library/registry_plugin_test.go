@@ -28,9 +28,14 @@ const (
 	validationTestPlugin   = "github.com/hyperledger/fabric/core/handlers/validation/testdata/"
 )
 
-// raceEnabled is set to true when the race build tag is enabled.
-// see race_test.go
-var raceEnabled bool
+var (
+	// raceEnabled is set to true when the race build tag is enabled.
+	// See race_test.go
+	raceEnabled bool
+	// noplugin is set to true when the noplugin tag is enabled.
+	// See noplugin_test.go
+	noplugin bool
+)
 
 func buildPlugin(t *testing.T, dest, pkg string) {
 	cmd := exec.Command("go", "build", "-o", dest, "-buildmode=plugin")
@@ -43,7 +48,9 @@ func buildPlugin(t *testing.T, dest, pkg string) {
 }
 
 func TestLoadAuthPlugin(t *testing.T) {
-	endorser := &mockEndorserServer{}
+	if noplugin {
+		t.Skip("plugins disabled")
+	}
 
 	testDir, err := ioutil.TempDir("", "")
 	require.NoError(t, err, "Could not create temp directory for plugins")
@@ -56,12 +63,17 @@ func TestLoadAuthPlugin(t *testing.T) {
 	testReg.loadPlugin(pluginPath, Auth)
 	require.Len(t, testReg.filters, 1, "Expected filter to be registered")
 
+	endorser := &mockEndorserServer{}
 	testReg.filters[0].Init(endorser)
 	testReg.filters[0].ProcessProposal(context.TODO(), nil)
 	require.True(t, endorser.invoked, "Expected filter to invoke endorser on invoke")
 }
 
 func TestLoadDecoratorPlugin(t *testing.T) {
+	if noplugin {
+		t.Skip("plugins disabled")
+	}
+
 	testProposal := &peer.Proposal{Payload: []byte("test")}
 	testInput := &peer.ChaincodeInput{Args: [][]byte{[]byte("test")}}
 
@@ -81,6 +93,10 @@ func TestLoadDecoratorPlugin(t *testing.T) {
 }
 
 func TestEndorsementPlugin(t *testing.T) {
+	if noplugin {
+		t.Skip("plugins disabled")
+	}
+
 	testDir, err := ioutil.TempDir("", "")
 	require.NoError(t, err, "Could not create temp directory for plugins")
 	defer os.Remove(testDir)
@@ -102,6 +118,10 @@ func TestEndorsementPlugin(t *testing.T) {
 }
 
 func TestValidationPlugin(t *testing.T) {
+	if noplugin {
+		t.Skip("plugins disabled")
+	}
+
 	testDir, err := ioutil.TempDir("", "")
 	require.NoError(t, err, "Could not create temp directory for plugins")
 	defer os.Remove(testDir)
@@ -122,6 +142,10 @@ func TestValidationPlugin(t *testing.T) {
 }
 
 func TestLoadPluginInvalidPath(t *testing.T) {
+	if noplugin {
+		t.Skip("plugins disabled")
+	}
+
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("Expected panic with incorrect plugin path")
