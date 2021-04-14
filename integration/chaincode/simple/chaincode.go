@@ -71,7 +71,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		// Deletes an entity from its state
 		return t.delete(stub, args)
 	case "query":
-		// the old "Query" is now implemtned in invoke
+		// the old "Query" is now implemented in invoke
 		return t.query(stub, args)
 	case "respond":
 		// return with an error
