@@ -13,10 +13,10 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Jay Guo | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
-| Jason Yellick | [jyellick][jyellick] | jyellick | <jyellick@us.ibm.com>
+| Jason Yellick | [jyellick][jyellick] | jyellick | <jason-github@unaddressable.org>
 | Manish Sethi | [manish-sethi][manish-sethi] | manish-sethi | <manish.sethi@gmail.com>
 | Gari Singh | [mastersingh24][mastersingh24] | mastersingh24 | <gari.r.singh@gmail.com>
-| Matthew Sykes | [sykesm][sykesm] | sykesm | <sykesmat@us.ibm.com>
+| Matthew Sykes | [sykesm][sykesm] | sykesm | <matthew.sykes@gmail.com>
 | Will Lahti | [wlahti][wlahti] | wlahti | <wtlahti@us.ibm.com>
 | Yacov Manevich | [yacovm][yacovm] | yacovm | <yacovm@il.ibm.com>
 
