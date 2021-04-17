@@ -5791,7 +5791,7 @@ Wed Jun  7 08:49:09 EDT 2017
 * [4e0f96b](https://github.com/hyperledger/fabric/commit/4e0f96b) create ledger with genesis block
 * [466ab2d](https://github.com/hyperledger/fabric/commit/466ab2d) It must be an absolute path in gotools/Makefile
 * [43dfde6](https://github.com/hyperledger/fabric/commit/43dfde6) fabric-ca readthedocs update
-* [4323395](https://github.com/hyperledger/fabric/commit/4323395) [FAB-2954](https://jira.hyperledger.org/browse/FAB-2954) Upated yaml.v2 with latest version
+* [4323395](https://github.com/hyperledger/fabric/commit/4323395) [FAB-2954](https://jira.hyperledger.org/browse/FAB-2954) Updated yaml.v2 with latest version
 * [0aa53d7](https://github.com/hyperledger/fabric/commit/0aa53d7) Enhance validation of chaincode names/versions in LCCC
 * [a37fa64](https://github.com/hyperledger/fabric/commit/a37fa64) [FAB-2678](https://jira.hyperledger.org/browse/FAB-2678) o.h.protos to o.h.fabric.protos.peer
 * [047cc27](https://github.com/hyperledger/fabric/commit/047cc27) [FAB-2936](https://jira.hyperledger.org/browse/FAB-2936) Vendor latest version of sarama library
