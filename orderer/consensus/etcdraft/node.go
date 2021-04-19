@@ -9,12 +9,12 @@ package etcdraft
 import (
 	"context"
 	"crypto/sha256"
+	"github.com/golang/protobuf/proto"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/clock"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -50,6 +50,7 @@ type node struct {
 	raft.Node
 }
 
+// TODO(harry_knight) Of node struct, storage, config, and metadata, need to be replaced with mirbft counterparts.
 func (n *node) start(fresh, join bool) {
 	raftPeers := RaftPeers(n.metadata.ConsenterIds)
 	n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
@@ -70,17 +71,22 @@ func (n *node) start(fresh, join bool) {
 				campaign = true
 			}
 		}
-		n.Node = raft.StartNode(n.config, raftPeers)
+
+		// TODO(harry_knight) config and metadata are initialised during block genesis/ordering service startup.
+		// 	So need to alter Orderer section of configtx.yaml and add new package under fabric-protos/orderer
 	} else {
 		n.logger.Info("Restarting raft node")
-		n.Node = raft.RestartNode(n.config)
 	}
 
 	n.subscriberC = make(chan chan uint64)
 
+	//go n.run()
 	go n.run(campaign)
 }
 
+// TODO(harry_knight) The logic contained in the infinite for loops should be retained.
+// 	It serves to start, manage, and respond to the internal clock of the FSM.
+// 	Auxiliary calls should be adapted to occur during block genesis/orderer service startup.
 func (n *node) run(campaign bool) {
 	electionTimeout := n.tickInterval.Seconds() * float64(n.config.ElectionTick)
 	halfElectionTimeout := electionTimeout / 2
@@ -205,7 +211,7 @@ func (n *node) send(msgs []raftpb.Message) {
 		err := n.rpc.SendConsensus(msg.To, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
 		if err != nil {
 			n.ReportUnreachable(msg.To)
-			n.logSendFailure(msg.To, err)
+			//n.logSendFailure(msg.To, err)
 
 			status = raft.SnapshotFailure
 		} else if _, ok := n.unreachable[msg.To]; ok {
