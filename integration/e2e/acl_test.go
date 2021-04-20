@@ -104,7 +104,7 @@ var _ = Describe("EndToEndACL", func() {
 		}
 
 		//
-		// when the ACL policy for DeliverFiltered is satisified
+		// when the ACL policy for DeliverFiltered is satisfied
 		//
 		By("setting the filtered block event ACL policy to Org1/Admins")
 		policyName := resources.Event_FilteredBlock
@@ -372,7 +372,7 @@ var _ = Describe("EndToEndACL", func() {
 		nwo.EnsureChaincodeApproved(network, org1Peer0, "testchannel", chaincode.Name, chaincode.Sequence)
 
 		//
-		// when the ACL policy for CheckCommitReadiness is not satisified
+		// when the ACL policy for CheckCommitReadiness is not satisfied
 		//
 		By("setting the simulate commit chaincode definition ACL policy to Org1/Admins")
 		policyName = resources.Lifecycle_CheckCommitReadiness
@@ -397,12 +397,12 @@ var _ = Describe("EndToEndACL", func() {
 		Expect(sess.Err).To(gbytes.Say(`\QError: query failed with status: 500 - Failed to authorize invocation due to failed ACL check: failed evaluating policy on signed data during check policy [/Channel/Application/Org1/Admins]: [signature set did not satisfy policy]\E`))
 
 		//
-		// when the ACL policy for CheckCommitReadiness is satisified
+		// when the ACL policy for CheckCommitReadiness is satisfied
 		//
 		nwo.CheckCommitReadinessUntilReady(network, "testchannel", chaincode, network.PeerOrgs(), org1Peer0)
 
 		//
-		// when the ACL policy for CommitChaincodeDefinition is not satisified
+		// when the ACL policy for CommitChaincodeDefinition is not satisfied
 		//
 		By("setting the commit chaincode definition ACL policy to Org1/Admins")
 		policyName = resources.Lifecycle_CommitChaincodeDefinition
@@ -433,12 +433,12 @@ var _ = Describe("EndToEndACL", func() {
 		Expect(sess.Err).To(gbytes.Say(`\QError: proposal failed with status: 500 - Failed to authorize invocation due to failed ACL check: failed evaluating policy on signed data during check policy [/Channel/Application/Org1/Admins]: [signature set did not satisfy policy]\E`))
 
 		//
-		// when the ACL policy for CommitChaincodeDefinition is satisified
+		// when the ACL policy for CommitChaincodeDefinition is satisfied
 		//
 		nwo.CommitChaincode(network, "testchannel", orderer, chaincode, org1Peer0, org1Peer0, org2Peer0)
 
 		//
-		// when the ACL policy for QueryChaincodeDefinition is satisified
+		// when the ACL policy for QueryChaincodeDefinition is satisfied
 		//
 		By("setting the query chaincode definition ACL policy to Org1/Admins")
 		policyName = resources.Lifecycle_QueryChaincodeDefinition
