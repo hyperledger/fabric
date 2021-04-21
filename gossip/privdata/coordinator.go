@@ -236,7 +236,7 @@ func (c *coordinator) StoreBlock(block *common.Block, privateDataSets util.PvtDa
 	return nil
 }
 
-// StorePvtData used to persist private date into transient store
+// StorePvtData used to persist private data into transient store
 func (c *coordinator) StorePvtData(txID string, privData *protostransientstore.TxPvtReadWriteSetWithConfigInfo, blkHeight uint64) error {
 	return c.store.Persist(txID, blkHeight, privData)
 }
