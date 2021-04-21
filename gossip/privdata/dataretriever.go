@@ -24,7 +24,7 @@ type RWSetScanner interface {
 	transientstore.RWSetScanner
 }
 
-// StorageDataRetriever defines an API to retrieve private date from the storage.
+// StorageDataRetriever defines an API to retrieve private data from the storage.
 type StorageDataRetriever interface {
 	// CollectionRWSet retrieves for give digest relevant private data if
 	// available otherwise returns nil, bool which is true if data fetched from ledger and false if was fetched from transient store, and an error

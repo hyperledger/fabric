@@ -103,7 +103,7 @@ type ledgerResources interface {
 	// returns missing transaction ids
 	StoreBlock(block *common.Block, data util.PvtDataCollections) error
 
-	// StorePvtData used to persist private date into transient store
+	// StorePvtData used to persist private data into transient store
 	StorePvtData(txid string, privData *transientstore.TxPvtReadWriteSetWithConfigInfo, blckHeight uint64) error
 
 	// GetPvtDataAndBlockByNum gets block by number and also returns all related private data
