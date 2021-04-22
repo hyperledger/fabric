@@ -113,7 +113,7 @@ type Options struct {
 	MaxSizePerMsg     uint64
 	MaxInflightBlocks int
 
-	// BlockMetdata and Consenters should only be modified while under lock
+	// BlockMetadata and Consenters should only be modified while under lock
 	// of raftMetadataLock
 	BlockMetadata *etcdraft.BlockMetadata
 	Consenters    map[uint64]*etcdraft.Consenter

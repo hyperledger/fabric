@@ -88,7 +88,7 @@ func (fpl *FallbackPackageLocator) GetChaincodePackage(packageID string) (*Chain
 
 	mdBytes, err := json.Marshal(md)
 	if err != nil {
-		return nil, nil, nil, errors.WithMessagef(err, "could not marshal metdata for chaincode package '%s'", packageID)
+		return nil, nil, nil, errors.WithMessagef(err, "could not marshal metadata for chaincode package '%s'", packageID)
 	}
 
 	return md,
