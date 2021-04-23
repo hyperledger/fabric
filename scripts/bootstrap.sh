@@ -6,7 +6,7 @@
 #
 
 # if version not passed in, default to latest released version
-export VERSION=1.4.11
+export VERSION=1.4.12
 # if ca version not passed in, default to latest released version
 export CA_VERSION=1.4.9
 # current version of thirdparty images (couchdb, kafka and zookeeper) released
