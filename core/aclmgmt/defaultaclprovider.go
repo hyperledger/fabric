@@ -129,6 +129,7 @@ func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idin
 			return fmt.Errorf("Unmapped policy for %s", resName)
 		}
 	}
+	aclLogger.Debugw("Applying default access policy for resource", "channel", channelID, "policy", policy, "resource", resName)
 
 	switch typedData := idinfo.(type) {
 	case *pb.SignedProposal:
