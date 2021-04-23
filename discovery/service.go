@@ -137,7 +137,7 @@ func (s *Service) chaincodeQuery(q *discovery.Query) *discovery.QueryResult {
 	for _, interest := range q.GetCcQuery().Interests {
 		desc, err := s.PeersForEndorsement(common2.ChannelID(q.Channel), interest)
 		if err != nil {
-			logger.Errorf("Failed constructing descriptor for chaincode %s,: %v", interest, err)
+			logger.Errorf("Failed constructing descriptor for chaincode %s: %v", interest, err)
 			return wrapError(errors.Errorf("failed constructing descriptor for %v", interest))
 		}
 		descriptors = append(descriptors, desc)
