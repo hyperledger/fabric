@@ -44,8 +44,8 @@
 #   - docker-tag-stable - re-tags the images made by 'make docker' with the :stable tag
 #   - help-docs - generate the command reference docs
 
-BASE_VERSION = 1.4.11
-PREV_VERSION = 1.4.10
+BASE_VERSION = 1.4.12
+PREV_VERSION = 1.4.11
 CHAINTOOL_RELEASE=1.1.3
 BASEIMAGE_RELEASE=0.4.22
 

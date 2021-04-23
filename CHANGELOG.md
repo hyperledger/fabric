@@ -1,3 +1,10 @@
+## v1.4.12
+Fri Apr 23 12:46:22 EDT 2021
+
+* [d276ee1](https://github.com/hyperledger/fabric/commit/d276ee1) pkcs11: backport integration test to release-1.4
+* [c810dca](https://github.com/hyperledger/fabric/commit/c810dca) This commit upgrades goleveldb. This upgraded version includes a fix for the manifest file corruption issue [FAB-18304](https://jira.hyperledger.org/browse/FAB-18304).
+* [16123fe](https://github.com/hyperledger/fabric/commit/16123fe) Update Docker Publish Script
+
 ## v1.4.11
 Wed Feb 24 23:51:43 EST 2021
 
