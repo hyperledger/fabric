@@ -125,7 +125,7 @@ func (s *DB) ExportPubStateAndPvtStateHashes(dir string, newHashFunc snapshot.Ne
 }
 
 // snapshotWriter generates two files, a data file and a metadata file. The datafile contains a series of tuples <key, dbValue>
-// and the metadata file contains a series of tuples <namesapce, number-of-tuples-in-the-data-file-that-belong-to-this-namespace>
+// and the metadata file contains a series of tuples <namespace, number-of-tuples-in-the-data-file-that-belong-to-this-namespace>
 type snapshotWriter struct {
 	dataFile     *snapshot.FileWriter
 	metadataFile *snapshot.FileWriter

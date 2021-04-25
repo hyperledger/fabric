@@ -1059,9 +1059,9 @@ func TestDataExportImport(
 	}
 
 	// add the sample data for five namespaces to the db
-	allNamesapces := stringset{"", "ns1", "ns2", "ns3", "ns4"}
+	allnamespaces := stringset{"", "ns1", "ns2", "ns3", "ns4"}
 	batch := statedb.NewUpdateBatch()
-	for _, kv := range generateSampleData(allNamesapces...) {
+	for _, kv := range generateSampleData(allnamespaces...) {
 		batch.PutValAndMetadata(kv.Namespace, kv.Key, kv.Value, kv.Metadata, kv.Version)
 	}
 	require.NoError(t, sourceDB.ApplyUpdates(batch, version.NewHeight(5, 5)))
@@ -1090,7 +1090,7 @@ func TestDataExportImport(
 		)
 		require.NoError(t, err)
 
-		expectedNamespacesInDestinationDB := allNamesapces.minus(skipNamespaces)
+		expectedNamespacesInDestinationDB := allnamespaces.minus(skipNamespaces)
 		actualResults := []*statedb.VersionedKV{}
 		for {
 			kv, err := fullScanItr.Next()
