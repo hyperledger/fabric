@@ -27,10 +27,10 @@ type ErrorCausingBTLPolicy struct {
 	Err error
 }
 
-func (p *ErrorCausingBTLPolicy) GetBTL(namesapce string, collection string) (uint64, error) {
+func (p *ErrorCausingBTLPolicy) GetBTL(namespace string, collection string) (uint64, error) {
 	return 0, p.Err
 }
 
-func (p *ErrorCausingBTLPolicy) GetExpiringBlock(namesapce string, collection string, committingBlock uint64) (uint64, error) {
+func (p *ErrorCausingBTLPolicy) GetExpiringBlock(namespace string, collection string, committingBlock uint64) (uint64, error) {
 	return 0, p.Err
 }
