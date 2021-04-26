@@ -34,6 +34,7 @@ of *modification policy*.
 
 ## The sample network
 
+<<<<<<< HEAD
 Before we start, let's show you what we're aiming at! Here's a diagram
 representing the **final state** of our sample network.
 
@@ -91,6 +92,31 @@ The configuration NC4 contains the policies that describe the starting set of
 administrative capabilities for the network. Initially this is set to only give
 R4 rights over the network. This will change, as we'll see later, but for now R4
 is the only member of the network.
+=======
+Before we start, let's show you what we're aiming at! Here's a diagram representing the **final state** of our sample network.
+
+It might look complicated right now, but as we go through this topic, we will build up the network piece by piece, so that you see how the organizations R1, R2 and R0 contribute infrastructure to the network to help form it. This infrastructure implements the blockchain network, and it is governed by policies agreed by the organizations who form the network -- for example, who can add new organizations. You'll discover how applications consume the ledger and smart contract services provided by the blockchain network.
+
+![network.1](./network.diagram.1.png)
+
+Three organizations, R1, R2, and R0 have jointly decided that they will establish a network. This network has a configuration, CC1, which all of the organizations have agreed to and which lists the definition of the organizations as well as the policies which define the roles each organization will play on the channel.
+
+On this channel, R1 and R2 will join peers, named P1 and P2, to the channel, C1, while R0 owns O, the ordering service of the channel. All of these nodes will contain a copy of the ledger (L1) of the channel, which is where transactions are recorded. Note that the copy of the ledger kept by the ordering service does not contain a [state database](../glossary.html#state-database). R1 and R2 will also interact with the channel through the applications A1 and A2, which they own. All three organizations have a Certificate Authority that has generated the necessary certificates for the nodes, admins, organizations definitions, and applications of its organization.
+
+## Creating the network
+
+The first step in creating a network or a channel is to agree to and then define its configuration:
+
+![network.2](./network.diagram.2.png)
+
+The channel configuration, CC1, has been agreed to by organizations R1, R2, and R0 and is contained in a block known as a "configuration block" that is, typically, created by the `configtxgen` tool from a `configtx.yaml` file. While it is possible for one organization to create this a channel unilaterally and then invite other organizations to it (we'll explore this in [Adding an organization to an existing channel](#adding-an-organization-to-an-existing-channel)), for now we'll assume that the organizations wish to collaborate on the channel from the beginning.
+
+Once a configuration block exists, a channel can be said to **logically exist**, even though no components are physically joined to it. This configuration block contains a record of the organizations that can join components and interact on the channel, as well as the **policies** that define the structure for how decisions are made and specific outcomes are reached. While the peers and applications are critical actors in the network, their behavior in a channel is dictated more by the channel configuration policy than any other factor. For more information about the policies and how they are defined in a channel configuration, check out [Policies](../policies/policies.html).
+
+The definitions of these organizations, and the identities of their admins, must be created by a Certificate Authority (CA) associated with each organization. In our example, the organizations R1, R2, and R0 have had their certifications and organization definition created by CA1, CA2, and CA0, respectively. For information about how to create a CA, check out [Planning for a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/ca-deploy-topology.html). After the CA has been created, check out [Registering and enrolling identities with a CA](https://hyperledger-fabric-ca.readthedocs.io/en/latest/deployguide/use_CA.html) for information about how to define an organization and create identities for admins and nodes.
+
+For more information about using `configtxgen` to create a configuration block, check out [Using configtx.yaml to build a channel configuration](../create_channel/create_channel_config.html).
+>>>>>>> ef59964c19... Removed early mentioning of organization R3
 
 ### Certificate Authorities
 
