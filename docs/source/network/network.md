@@ -18,7 +18,7 @@ In most cases, multiple [organizations](../glossary.html#organization) come toge
 
 Before we start, let's show you what we're aiming at! Here's a diagram representing the **final state** of our sample network.
 
-It might look complicated right now, but as we go through this topic, we will build up the network piece by piece, so that you see how the organizations R1, R2, R3 and R0 contribute infrastructure to the network to help form it. This infrastructure implements the blockchain network, and it is governed by policies agreed by the organizations who form the network -- for example, who can add new organizations. You'll discover how applications consume the ledger and smart contract services provided by the blockchain network.
+It might look complicated right now, but as we go through this topic, we will build up the network piece by piece, so that you see how the organizations R1, R2 and R0 contribute infrastructure to the network to help form it. This infrastructure implements the blockchain network, and it is governed by policies agreed by the organizations who form the network -- for example, who can add new organizations. You'll discover how applications consume the ledger and smart contract services provided by the blockchain network.
 
 ![network.1](./network.diagram.1.png)
 
