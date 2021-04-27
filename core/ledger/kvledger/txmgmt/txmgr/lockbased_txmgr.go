@@ -156,7 +156,7 @@ func (txmgr *LockBasedTxMgr) NewTxSimulator(txid string) (ledger.TxSimulator, er
 func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAndPvtData, doMVCCValidation bool) (
 	[]*validation.TxStatInfo, []byte, error,
 ) {
-	// Among ValidateAndPrepare(), PrepareExpiringKeys(), and
+	// Among ValidateAndPrepare(), PrepareForExpiringKeys(), and
 	// RemoveStaleAndCommitPvtDataOfOldBlocks(), we can allow only one
 	// function to execute at a time. The reason is that each function calls
 	// LoadCommittedVersions() which would clear the existing entries in the
@@ -201,7 +201,7 @@ func (txmgr *LockBasedTxMgr) ValidateAndPrepare(blockAndPvtdata *ledger.BlockAnd
 // marked "Valid". In the current design, kvledger (a single consumer of this function),
 // filters out the data of "invalid" transactions and supplies the data for "valid" transactions only.
 func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(reconciledPvtdata map[uint64][]*ledger.TxPvtData) error {
-	// (0) Among ValidateAndPrepare(), PrepareExpiringKeys(), and
+	// (0) Among ValidateAndPrepare(), PrepareForExpiringKeys(), and
 	// RemoveStaleAndCommitPvtDataOfOldBlocks(), we can allow only one
 	// function to execute at a time. The reason is that each function calls
 	// LoadCommittedVersions() which would clear the existing entries in the
@@ -240,7 +240,7 @@ func (txmgr *LockBasedTxMgr) RemoveStaleAndCommitPvtDataOfOldBlocks(reconciledPv
 
 	// (5) update bookkeeping in the purge manager and update toPurgeList
 	// (i.e., the list of expiry keys). As the expiring keys would have
-	// been constructed during last PrepareExpiringKeys from commit, we need
+	// been constructed during last PrepareForExpiringKeys from commit, we need
 	// to update the list. This is because RemoveStaleAndCommitPvtDataOfOldBlocks
 	// may have added new data which might be eligible for expiry during the
 	// next regular block commit.
