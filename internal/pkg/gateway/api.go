@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -226,9 +227,23 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 //
 // If the transaction commit status cannot be returned, for example if the specified channel does not exist, a
 // FailedPrecondition error will be returned.
-func (gs *Server) CommitStatus(ctx context.Context, request *gp.CommitStatusRequest) (*gp.CommitStatusResponse, error) {
-	if request == nil {
+func (gs *Server) CommitStatus(ctx context.Context, signedRequest *gp.SignedCommitStatusRequest) (*gp.CommitStatusResponse, error) {
+	if signedRequest == nil {
 		return nil, status.Error(codes.InvalidArgument, "a commit status request is required")
+	}
+
+	request := &gp.CommitStatusRequest{}
+	if err := proto.Unmarshal(signedRequest.Request, request); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid status request")
+	}
+
+	signedData := &protoutil.SignedData{
+		Data:      signedRequest.Request,
+		Identity:  request.Identity,
+		Signature: signedRequest.Signature,
+	}
+	if err := gs.policy.CheckACL(resources.Gateway_CommitStatus, request.ChannelId, signedData); err != nil {
+		return nil, status.Error(codes.PermissionDenied, err.Error())
 	}
 
 	txStatus, err := gs.commitFinder.TransactionStatus(ctx, request.ChannelId, request.TransactionId)

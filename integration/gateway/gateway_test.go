@@ -21,6 +21,9 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var _ = Describe("GatewayService", func() {
@@ -170,15 +173,22 @@ var _ = Describe("GatewayService", func() {
 	})
 
 	Describe("CommitStatus", func() {
-		It("should respond with status of submitted transaction", func() {
-			conn := network.PeerClientConn(org1Peer0)
-			defer conn.Close()
-			gatewayClient := gateway.NewGatewayClient(conn)
-			ctx, cancel := context.WithTimeout(context.Background(), network.EventuallyTimeout)
-			defer cancel()
+		var conn *grpc.ClientConn
+		var gatewayClient gateway.GatewayClient
+		var ctx context.Context
+		var cancel context.CancelFunc
+		var signingIdentity *nwo.SigningIdentity
+		var transactionID string
+		var identity []byte
 
-			signingIdentity := network.PeerUserSigner(org1Peer0, "User1")
-			proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", "respond", []byte("200"), []byte("conga message"), []byte("conga payload"))
+		BeforeEach(func() {
+			conn = network.PeerClientConn(org1Peer0)
+			gatewayClient = gateway.NewGatewayClient(conn)
+			ctx, cancel = context.WithTimeout(context.Background(), network.EventuallyTimeout)
+
+			signingIdentity = network.PeerUserSigner(org1Peer0, "User1")
+			var proposedTransaction *peer.SignedProposal
+			proposedTransaction, transactionID = NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", "respond", []byte("200"), []byte("conga message"), []byte("conga payload"))
 
 			endorseRequest := &gateway.EndorseRequest{
 				TransactionId:       transactionID,
@@ -201,17 +211,93 @@ var _ = Describe("GatewayService", func() {
 			_, err = gatewayClient.Submit(ctx, submitRequest)
 			Expect(err).NotTo(HaveOccurred())
 
+			identity, err = signingIdentity.Serialize()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			conn.Close()
+			cancel()
+		})
+
+		It("should respond with status of submitted transaction", func() {
 			statusRequest := &gateway.CommitStatusRequest{
 				ChannelId:     "testchannel",
+				Identity:      identity,
 				TransactionId: transactionID,
 			}
-			actualStatus, err := gatewayClient.CommitStatus(ctx, statusRequest)
+
+			statusRequestBytes, err := proto.Marshal(statusRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			signature, err := signingIdentity.Sign(statusRequestBytes)
+			Expect(err).NotTo(HaveOccurred())
+
+			signedStatusRequest := &gateway.SignedCommitStatusRequest{
+				Request:   statusRequestBytes,
+				Signature: signature,
+			}
+
+			actualStatus, err := gatewayClient.CommitStatus(ctx, signedStatusRequest)
 			Expect(err).NotTo(HaveOccurred())
 
 			expectedStatus := &gateway.CommitStatusResponse{
 				Result: peer.TxValidationCode_VALID,
 			}
 			Expect(proto.Equal(actualStatus, expectedStatus)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", actualStatus, expectedStatus)
+		})
+
+		It("should fail on unauthorized identity", func() {
+			badSigningIdentity := network.OrdererUserSigner(network.Orderer("orderer"), "Admin")
+			badIdentity, err := badSigningIdentity.Serialize()
+			Expect(err).NotTo(HaveOccurred())
+
+			statusRequest := &gateway.CommitStatusRequest{
+				ChannelId:     "testchannel",
+				Identity:      badIdentity,
+				TransactionId: transactionID,
+			}
+			statusRequestBytes, err := proto.Marshal(statusRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			signature, err := badSigningIdentity.Sign(statusRequestBytes)
+			Expect(err).NotTo(HaveOccurred())
+
+			signedStatusRequest := &gateway.SignedCommitStatusRequest{
+				Request:   statusRequestBytes,
+				Signature: signature,
+			}
+
+			_, err = gatewayClient.CommitStatus(ctx, signedStatusRequest)
+			Expect(err).To(HaveOccurred())
+
+			grpcErr, _ := status.FromError(err)
+			Expect(grpcErr.Code()).To(Equal(codes.PermissionDenied))
+		})
+
+		It("should fail on bad signature", func() {
+			statusRequest := &gateway.CommitStatusRequest{
+				ChannelId:     "testchannel",
+				Identity:      identity,
+				TransactionId: transactionID,
+			}
+
+			statusRequestBytes, err := proto.Marshal(statusRequest)
+			Expect(err).NotTo(HaveOccurred())
+
+			signature, err := signingIdentity.Sign([]byte("WRONG"))
+			Expect(err).NotTo(HaveOccurred())
+
+			signedStatusRequest := &gateway.SignedCommitStatusRequest{
+				Request:   statusRequestBytes,
+				Signature: signature,
+			}
+
+			_, err = gatewayClient.CommitStatus(ctx, signedStatusRequest)
+			Expect(err).To(HaveOccurred())
+
+			grpcErr, _ := status.FromError(err)
+			Expect(grpcErr.Code()).To(Equal(codes.PermissionDenied))
 		})
 	})
 })
