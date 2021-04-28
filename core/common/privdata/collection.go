@@ -108,7 +108,7 @@ type CollectionStore interface {
 	// RetrieveCollectionPersistenceConfigs retrieves the collection's persistence related configurations
 	RetrieveCollectionPersistenceConfigs(CollectionCriteria) (CollectionPersistenceConfigs, error)
 
-	// RetrieveReadWritePermission retrieves the read-write persmission of the creator of the
+	// RetrieveReadWritePermission retrieves the read-write permission of the creator of the
 	// signedProposal for a given collection using collection access policy and flags such as
 	// memberOnlyRead & memberOnlyWrite
 	RetrieveReadWritePermission(CollectionCriteria, *peer.SignedProposal, ledger.QueryExecutor) (bool, bool, error)
