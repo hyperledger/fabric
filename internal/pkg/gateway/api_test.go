@@ -437,7 +437,7 @@ func TestSubmit(t *testing.T) {
 				proposalResponseStatus: 200,
 				ordererBroadcastError:  status.Error(codes.FailedPrecondition, "Orderer not listening!"),
 			},
-			errString: "rpc error: code = Aborted desc = failed to send transaction to orderer",
+			errString: "rpc error: code = Aborted desc = failed to create BroadcastClient",
 			errDetails: []*pb.EndpointError{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
