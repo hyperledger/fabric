@@ -187,7 +187,7 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	if err != nil {
 		return nil, rpcError(
 			codes.Aborted,
-			"failed to send transaction to orderer",
+			"failed to create BroadcastClient",
 			&gp.EndpointError{Address: orderer.address, MspId: orderer.mspid, Message: err.Error()},
 		)
 	}
