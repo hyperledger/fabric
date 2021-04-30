@@ -787,7 +787,7 @@ func oidInExtensions(oid asn1.ObjectIdentifier, exts []pkix.Extension) bool {
 // matched against according to RFC 6125 2.2, with some leniency to accommodate
 // legacy values.
 //
-// This implementation is sourced from the standaard library.
+// This implementation is sourced from the standard library.
 func validHostname(host string) bool {
 	host = strings.TrimSuffix(host, ".")
 

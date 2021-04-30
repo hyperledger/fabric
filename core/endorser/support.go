@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// PeerOperations contains the peer operatiosn required to support the
+// PeerOperations contains the peer operation required to support the
 // endorser.
 type PeerOperations interface {
 	GetApplicationConfig(cid string) (channelconfig.Application, bool)
