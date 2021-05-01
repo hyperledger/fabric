@@ -132,7 +132,7 @@ components. Run the following command to list all of Docker containers that
 are running on your machine. You should see the three nodes that were created by
 the `network.sh` script:
 ```
-docker ps -a
+docker ps
 ```
 
 Each node and user that interacts with a Fabric network needs to belong to an
