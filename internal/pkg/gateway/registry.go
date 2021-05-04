@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gateway
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strings"
@@ -165,12 +166,19 @@ func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string
 	defer reg.configLock.RUnlock()
 
 	for _, member := range members {
+		pkiid := member.PKIid
 		endpoint := member.PreferredEndpoint()
+
 		// find the endorser in the registry for this endpoint
 		var endorser *endorser
-		if endpoint == reg.localEndorser.address {
+		if bytes.Equal(pkiid, reg.localEndorser.pkiid) {
+			logger.Debugw("Found local endorser", "pkiid", pkiid)
 			endorser = reg.localEndorser
+		} else if endpoint == "" {
+			reg.logger.Warnf("No endpoint for endorser with PKI ID %s", pkiid.String())
+			continue
 		} else if e, ok := reg.remoteEndorsers[endpoint]; ok {
+			logger.Debugw("Found remote endorser", "endpoint", endpoint)
 			endorser = e
 		} else {
 			reg.logger.Warnf("Failed to find endorser at %s", endpoint)
@@ -317,13 +325,13 @@ func (reg *registry) registerChannel(channel string) error {
 	}
 	for mspid, infoset := range reg.discovery.IdentityInfo().ByOrg() {
 		for _, info := range infoset {
-			pkid := info.PKIId.String()
-			if address, ok := peers[pkid]; ok {
+			pkiid := info.PKIId
+			if address, ok := peers[pkiid.String()]; ok {
 				// add the peer to the peer map - except the local peer, which seems to have an empty address
 				if _, ok := reg.remoteEndorsers[address]; !ok && len(address) > 0 {
 					// this peer is new - connect to it and add to the remoteEndorsers registry
 					tlsRootCerts := reg.tlsRootCerts[mspid]
-					endorser, err := reg.endpointFactory.newEndorser(address, mspid, tlsRootCerts)
+					endorser, err := reg.endpointFactory.newEndorser(pkiid, address, mspid, tlsRootCerts)
 					if err != nil {
 						return err
 					}

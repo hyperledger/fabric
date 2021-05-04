@@ -55,15 +55,15 @@ func StartPort() int {
 	return integration.GatewayBasePort.StartPortForNode()
 }
 
-func NewProposedTransaction(signingIdentity *nwo.SigningIdentity, channelName, chaincodeName, transactionName string, args ...[]byte) (*peer.SignedProposal, string) {
-	proposal, transactionID := newProposalProto(signingIdentity, channelName, chaincodeName, transactionName, args...)
+func NewProposedTransaction(signingIdentity *nwo.SigningIdentity, channelName, chaincodeName, transactionName string, transientData map[string][]byte, args ...[]byte) (*peer.SignedProposal, string) {
+	proposal, transactionID := newProposalProto(signingIdentity, channelName, chaincodeName, transactionName, transientData, args...)
 	signedProposal, err := protoutil.GetSignedProposal(proposal, signingIdentity)
 	Expect(err).NotTo(HaveOccurred())
 
 	return signedProposal, transactionID
 }
 
-func newProposalProto(signingIdentity *nwo.SigningIdentity, channelName, chaincodeName, transactionName string, args ...[]byte) (*peer.Proposal, string) {
+func newProposalProto(signingIdentity *nwo.SigningIdentity, channelName, chaincodeName, transactionName string, transientData map[string][]byte, args ...[]byte) (*peer.Proposal, string) {
 	creator, err := signingIdentity.Serialize()
 	Expect(err).NotTo(HaveOccurred())
 
@@ -75,11 +75,12 @@ func newProposalProto(signingIdentity *nwo.SigningIdentity, channelName, chainco
 		},
 	}
 
-	result, transactionID, err := protoutil.CreateChaincodeProposal(
+	result, transactionID, err := protoutil.CreateChaincodeProposalWithTransient(
 		common.HeaderType_ENDORSER_TRANSACTION,
 		channelName,
 		invocationSpec,
 		creator,
+		transientData,
 	)
 	Expect(err).NotTo(HaveOccurred())
 

@@ -70,6 +70,9 @@ func (t *MarblesPrivateChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Re
 	case "getMarblePrivateDetailsHash":
 		// get private data hash for collectionMarblePrivateDetails
 		return t.getMarblePrivateDetailsHash(stub, args)
+	case "checkEndorsingOrg":
+		// check mspid of the current peer
+		return t.checkEndorsingOrg(stub)
 	default:
 		// error
 		fmt.Println("invoke did not find func: " + function)
@@ -493,4 +496,31 @@ func (t *MarblesPrivateChaincode) getMarblesByRange(stub shim.ChaincodeStubInter
 	fmt.Printf("- getMarblesByRange queryResult:\n%s\n", buffer.String())
 
 	return shim.Success(buffer.Bytes())
+}
+
+// CheckEndorsingOrg checks that the peer org is present in the given transient data
+func (t *MarblesPrivateChaincode) checkEndorsingOrg(stub shim.ChaincodeStubInterface) pb.Response {
+	transient, err := stub.GetTransient()
+	if err != nil {
+		return shim.Error(fmt.Sprintf("failed to get transient data: %v", err))
+	}
+
+	peerOrgMSP, err := shim.GetMSPID()
+	if err != nil {
+		return shim.Error(fmt.Sprintf("failed getting client's orgID: %v", err))
+	}
+
+	var result string
+	if _, ok := transient[peerOrgMSP]; ok {
+		result = "Peer mspid OK"
+	} else {
+		expectedMSPs := make([]string, 0, len(transient))
+		for k := range transient {
+			expectedMSPs = append(expectedMSPs, k)
+		}
+
+		result = fmt.Sprintf("Unexpected peer mspid! Expected MSP IDs: %s Actual MSP ID: %s", expectedMSPs, peerOrgMSP)
+	}
+
+	return shim.Success([]byte(result))
 }
