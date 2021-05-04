@@ -114,7 +114,7 @@ var _ = Describe("GatewayService", func() {
 	})
 
 	submitTransaction := func(transactionName string, args ...[]byte) (*peer.Response, string) {
-		proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", transactionName, args...)
+		proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", transactionName, nil, args...)
 
 		endorseRequest := &gateway.EndorseRequest{
 			TransactionId:       transactionID,
@@ -165,7 +165,7 @@ var _ = Describe("GatewayService", func() {
 
 	Describe("Evaluate", func() {
 		It("should respond with the expected result", func() {
-			proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", "respond", []byte("200"), []byte("conga message"), []byte("conga payload"))
+			proposedTransaction, transactionID := NewProposedTransaction(signingIdentity, "testchannel", "gatewaycc", "respond", nil, []byte("200"), []byte("conga message"), []byte("conga payload"))
 
 			request := &gateway.EvaluateRequest{
 				TransactionId:       transactionID,

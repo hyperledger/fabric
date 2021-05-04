@@ -197,6 +197,17 @@ func TestEvaluate(t *testing.T) {
 			expectedEndorsers: []string{"localhost:7051"},
 		},
 		{
+			name: "five endorsers, prefer host peer despite no endpoint",
+			members: []networkMember{
+				{"id1", "", "msp1", 5},
+				{"id2", "peer1:8051", "msp1", 5},
+				{"id3", "peer2:9051", "msp2", 6},
+				{"id4", "peer3:10051", "msp2", 5},
+				{"id5", "peer4:11051", "msp3", 6},
+			},
+			expectedEndorsers: []string{"localhost:7051"},
+		},
+		{
 			name: "evaluate with targetOrganizations, prefer local org despite block height",
 			members: []networkMember{
 				{"id1", "localhost:7051", "msp1", 5},
@@ -974,6 +985,7 @@ func TestNilArgs(t *testing.T) {
 		&mocks.CommitFinder{},
 		&mocks.Eventer{},
 		&mocks.ACLChecker{},
+		common.PKIidType("id1"),
 		"localhost:7051",
 		"msp1",
 		config.GetOptions(viper.New()),
@@ -1080,7 +1092,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		EndorsementTimeout: endorsementTimeout,
 	}
 
-	server := newServer(localEndorser, disc, mockFinder, mockEventer, mockPolicy, "localhost:7051", "msp1", options)
+	server := newServer(localEndorser, disc, mockFinder, mockEventer, mockPolicy, common.PKIidType("id1"), "localhost:7051", "msp1", options)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)

@@ -11,6 +11,7 @@ import (
 	peerproto "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"google.golang.org/grpc"
@@ -62,16 +63,17 @@ func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, p
 		commit.NewFinder(adapter, notifier),
 		commit.NewEventer(notifier),
 		policy,
+		peerInstance.GossipService.SelfMembershipInfo().PKIid,
 		peerInstance.GossipService.SelfMembershipInfo().Endpoint,
 		localMSPID,
 		options,
 	)
 }
 
-func newServer(localEndorser peerproto.EndorserClient, discovery Discovery, finder CommitFinder, eventer Eventer, policy ACLChecker, localEndpoint, localMSPID string, options config.Options) *Server {
+func newServer(localEndorser peerproto.EndorserClient, discovery Discovery, finder CommitFinder, eventer Eventer, policy ACLChecker, localPKIID common.PKIidType, localEndpoint, localMSPID string, options config.Options) *Server {
 	gwServer := &Server{
 		registry: &registry{
-			localEndorser:       &endorser{client: localEndorser, endpointConfig: &endpointConfig{address: localEndpoint, mspid: localMSPID}},
+			localEndorser:       &endorser{client: localEndorser, endpointConfig: &endpointConfig{pkiid: localPKIID, address: localEndpoint, mspid: localMSPID}},
 			discovery:           discovery,
 			logger:              logger,
 			endpointFactory:     &endpointFactory{timeout: options.EndorsementTimeout},
