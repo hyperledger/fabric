@@ -834,6 +834,7 @@ func serve(args []string) error {
 						Query:    peerAdapter,
 						Notifier: commit.NewNotifier(peerAdapter),
 					},
+					aclProvider,
 					peerInstance.GossipService.SelfMembershipInfo().Endpoint,
 					coreConfig.LocalMSPID,
 					coreConfig.GatewayOptions,

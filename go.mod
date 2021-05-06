@@ -30,7 +30,7 @@ require (
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20201119163726-f8ef75b17719
 	github.com/hyperledger/fabric-config v0.1.0
 	github.com/hyperledger/fabric-lib-go v1.0.0
-	github.com/hyperledger/fabric-protos-go v0.0.0-20210311171918-e08edaab0493
+	github.com/hyperledger/fabric-protos-go v0.0.0-20210422135545-37e930696e2a
 	github.com/kr/pretty v0.2.1
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect

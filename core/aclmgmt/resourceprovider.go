@@ -126,6 +126,9 @@ func (rp *aclmgmtPolicyProviderImpl) CheckACL(polName string, idinfo interface{}
 			return err
 		}
 
+	case *protoutil.SignedData:
+		sd = []*protoutil.SignedData{idinfo}
+
 	default:
 		return InvalidIdInfo(polName)
 	}

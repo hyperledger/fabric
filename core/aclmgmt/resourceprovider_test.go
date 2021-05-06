@@ -57,17 +57,32 @@ type signerSerializer interface {
 //go:generate counterfeiter -o mocks/defaultaclprovider.go --fake-name DefaultACLProvider . defaultACLProvider
 
 func TestPolicyBase(t *testing.T) {
-	peval := &mockPolicyEvaluatorImpl{pmap: map[string]string{"res": "pol"}, peval: map[string]error{"pol": nil}}
-	pprov := newPolicyProvider(peval)
-	sProp, _ := protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
-	err := pprov.CheckACL("pol", sProp)
-	require.NoError(t, err)
+	evaluator := &mockPolicyEvaluatorImpl{pmap: map[string]string{"res": "pol"}, peval: map[string]error{"pol": nil}}
+	provider := newPolicyProvider(evaluator)
 
-	signer := &mocks.SignerSerializer{}
-	env, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, "myc", signer, &common.ConfigEnvelope{}, 0, 0)
-	require.NoError(t, err)
-	err = pprov.CheckACL("pol", env)
-	require.NoError(t, err)
+	t.Run("SignedProposal", func(t *testing.T) {
+		proposal, _ := protoutil.MockSignedEndorserProposalOrPanic("A", &peer.ChaincodeSpec{}, []byte("Alice"), []byte("msg1"))
+		err := provider.CheckACL("pol", proposal)
+		require.NoError(t, err)
+	})
+
+	t.Run("Envelope", func(t *testing.T) {
+		signer := &mocks.SignerSerializer{}
+		envelope, err := protoutil.CreateSignedEnvelope(common.HeaderType_CONFIG, "myc", signer, &common.ConfigEnvelope{}, 0, 0)
+		require.NoError(t, err)
+		err = provider.CheckACL("pol", envelope)
+		require.NoError(t, err)
+	})
+
+	t.Run("SignedData", func(t *testing.T) {
+		data := &protoutil.SignedData{
+			Data:      []byte("DATA"),
+			Identity:  []byte("IDENTITY"),
+			Signature: []byte("SIGNATURE"),
+		}
+		err := provider.CheckACL("pol", data)
+		require.NoError(t, err)
+	})
 }
 
 func TestPolicyBad(t *testing.T) {

@@ -62,6 +62,11 @@ type commitFinder interface {
 	CommitFinder
 }
 
+//go:generate counterfeiter -o mocks/aclchecker.go --fake-name ACLChecker . aclChecker
+type aclChecker interface {
+	ACLChecker
+}
+
 type endorsementPlan map[string][]endorserState
 
 type networkMember struct {
@@ -98,14 +103,16 @@ const (
 type testDef struct {
 	name               string
 	plan               endorsementPlan
+	identity           []byte
 	localResponse      string
 	errString          string
 	errDetails         []*pb.EndpointError
 	endpointDefinition *endpointDef
-	postSetup          func(def *preparedTest)
+	postSetup          func(t *testing.T, def *preparedTest)
 	expectedEndorsers  []string
 	finderStatus       peer.TxValidationCode
 	finderErr          error
+	policyErr          error
 	expectedResponse   proto.Message
 }
 
@@ -117,6 +124,7 @@ type preparedTest struct {
 	discovery      *mocks.Discovery
 	dialer         *mocks.Dialer
 	finder         *mocks.CommitFinder
+	policy         *mocks.ACLChecker
 }
 
 type contextKey string
@@ -155,7 +163,7 @@ func TestEvaluate(t *testing.T) {
 			plan: endorsementPlan{
 				"g1": {{endpoint: "localhost:7051"}},
 			},
-			postSetup: func(def *preparedTest) {
+			postSetup: func(t *testing.T, def *preparedTest) {
 				def.discovery.PeersForEndorsementReturns(nil, fmt.Errorf("mango-tango"))
 			},
 			errString: "mango-tango",
@@ -196,7 +204,7 @@ func TestEvaluate(t *testing.T) {
 			plan: endorsementPlan{
 				"g1": {{endpoint: "peer2:9051"}},
 			},
-			postSetup: func(def *preparedTest) {
+			postSetup: func(t *testing.T, def *preparedTest) {
 				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
 					if target == "peer2:9051" {
 						return nil, fmt.Errorf("endorser not answering")
@@ -211,7 +219,7 @@ func TestEvaluate(t *testing.T) {
 			plan: endorsementPlan{
 				"g1": {{endpoint: "peer2:9051"}},
 			},
-			postSetup: func(def *preparedTest) {
+			postSetup: func(t *testing.T, def *preparedTest) {
 				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
 					if target == "orderer:7050" {
 						return nil, fmt.Errorf("orderer not answering")
@@ -308,7 +316,7 @@ func TestEndorse(t *testing.T) {
 			plan: endorsementPlan{
 				"g1": {{endpoint: "localhost:7051", height: 2}},
 			},
-			postSetup: func(def *preparedTest) {
+			postSetup: func(t *testing.T, def *preparedTest) {
 				def.discovery.PeersForEndorsementReturns(nil, fmt.Errorf("peach-melba"))
 			},
 			errString: "peach-melba",
@@ -410,7 +418,7 @@ func TestSubmit(t *testing.T) {
 			plan: endorsementPlan{
 				"g1": {{endpoint: "localhost:7051"}},
 			},
-			postSetup: func(def *preparedTest) {
+			postSetup: func(t *testing.T, def *preparedTest) {
 				def.discovery.ConfigReturnsOnCall(1, nil, fmt.Errorf("jabberwocky"))
 			},
 			errString: "jabberwocky",
@@ -420,7 +428,7 @@ func TestSubmit(t *testing.T) {
 			plan: endorsementPlan{
 				"g1": {{endpoint: "localhost:7051"}},
 			},
-			postSetup: func(def *preparedTest) {
+			postSetup: func(t *testing.T, def *preparedTest) {
 				def.discovery.ConfigReturns(&dp.ConfigResult{
 					Orderers: map[string]*dp.Endpoints{},
 					Msps:     map[string]*msp.FabricMSPConfig{},
@@ -481,7 +489,7 @@ func TestSubmit(t *testing.T) {
 			plan: endorsementPlan{
 				"g1": {{endpoint: "localhost:7051"}},
 			},
-			postSetup: func(def *preparedTest) {
+			postSetup: func(t *testing.T, def *preparedTest) {
 				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
 					abc := &mocks.ABClient{}
 					abbc := &mocks.ABBClient{}
@@ -497,7 +505,7 @@ func TestSubmit(t *testing.T) {
 			plan: endorsementPlan{
 				"g1": {{endpoint: "localhost:7051"}},
 			},
-			postSetup: func(def *preparedTest) {
+			postSetup: func(t *testing.T, def *preparedTest) {
 				def.server.registry.endpointFactory.connectOrderer = func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
 					abc := &mocks.ABClient{}
 					abbc := &mocks.ABBClient{}
@@ -568,11 +576,9 @@ func TestCommitStatus(t *testing.T) {
 		},
 		{
 			name: "passes channel name to finder",
-			postSetup: func(test *preparedTest) {
+			postSetup: func(t *testing.T, test *preparedTest) {
 				test.finder.TransactionStatusCalls(func(ctx context.Context, channelName string, transactionID string) (peer.TxValidationCode, error) {
-					if channelName != testChannel {
-						return 0, errors.Errorf("channel name: %s", channelName)
-					}
+					require.Equal(t, testChannel, channelName)
 					return peer.TxValidationCode_MVCC_READ_CONFLICT, nil
 				})
 			},
@@ -582,14 +588,46 @@ func TestCommitStatus(t *testing.T) {
 		},
 		{
 			name: "passes transaction ID to finder",
-			postSetup: func(test *preparedTest) {
+			postSetup: func(t *testing.T, test *preparedTest) {
 				test.finder.TransactionStatusCalls(func(ctx context.Context, channelName string, transactionID string) (peer.TxValidationCode, error) {
-					if transactionID != "TX_ID" {
-						return 0, errors.Errorf("transaction ID: %s", transactionID)
-					}
+					require.Equal(t, "TX_ID", transactionID)
 					return peer.TxValidationCode_MVCC_READ_CONFLICT, nil
 				})
 			},
+			expectedResponse: &pb.CommitStatusResponse{
+				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			},
+		},
+		{
+			name:      "failed policy or signature check",
+			policyErr: errors.New("POLICY_ERROR"),
+			errString: "rpc error: code = PermissionDenied desc = POLICY_ERROR",
+		},
+		{
+			name: "passes channel name to policy checker",
+			postSetup: func(t *testing.T, test *preparedTest) {
+				test.policy.CheckACLCalls(func(policyName string, channelName string, data interface{}) error {
+					require.Equal(t, testChannel, channelName)
+					return nil
+				})
+			},
+			finderStatus: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			expectedResponse: &pb.CommitStatusResponse{
+				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			},
+		},
+		{
+			name:     "passes identity to policy checker",
+			identity: []byte("IDENTITY"),
+			postSetup: func(t *testing.T, test *preparedTest) {
+				test.policy.CheckACLCalls(func(policyName string, channelName string, data interface{}) error {
+					require.IsType(t, &protoutil.SignedData{}, data)
+					signedData := data.(*protoutil.SignedData)
+					require.Equal(t, []byte("IDENTITY"), signedData.Identity)
+					return nil
+				})
+			},
+			finderStatus: peer.TxValidationCode_MVCC_READ_CONFLICT,
 			expectedResponse: &pb.CommitStatusResponse{
 				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
 			},
@@ -599,8 +637,20 @@ func TestCommitStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			test := prepareTest(t, &tt)
 
-			// skeleton test code - to be completed when CommitStatus is implemented
-			response, err := test.server.CommitStatus(test.ctx, &pb.CommitStatusRequest{ChannelId: testChannel, TransactionId: "TX_ID"})
+			request := &pb.CommitStatusRequest{
+				ChannelId:     testChannel,
+				Identity:      tt.identity,
+				TransactionId: "TX_ID",
+			}
+			requestBytes, err := proto.Marshal(request)
+			require.NoError(t, err)
+
+			signedRequest := &pb.SignedCommitStatusRequest{
+				Request:   requestBytes,
+				Signature: []byte{},
+			}
+
+			response, err := test.server.CommitStatus(test.ctx, signedRequest)
 
 			if tt.errString != "" {
 				checkError(t, err, tt.errString, tt.errDetails)
@@ -617,7 +667,7 @@ func TestCommitStatus(t *testing.T) {
 }
 
 func TestNilArgs(t *testing.T) {
-	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, &mocks.CommitFinder{}, "localhost:7051", "msp1", config.GetOptions(viper.New()))
+	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, &mocks.CommitFinder{}, &mocks.ACLChecker{}, "localhost:7051", "msp1", config.GetOptions(viper.New()))
 	ctx := context.Background()
 
 	_, err := server.Evaluate(ctx, nil)
@@ -669,6 +719,9 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	mockFinder := &mocks.CommitFinder{}
 	mockFinder.TransactionStatusReturns(tt.finderStatus, tt.finderErr)
 
+	mockPolicy := &mocks.ACLChecker{}
+	mockPolicy.CheckACLReturns(tt.policyErr)
+
 	validProposal := createProposal(t, testChannel, testChaincode)
 	validSignedProposal, err := protoutil.GetSignedProposal(validProposal, mockSigner)
 	require.NoError(t, err)
@@ -703,7 +756,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		EndorsementTimeout: endorsementTimeout,
 	}
 
-	server := CreateServer(localEndorser, disc, mockFinder, "localhost:7051", "msp1", options)
+	server := CreateServer(localEndorser, disc, mockFinder, mockPolicy, "localhost:7051", "msp1", options)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)
@@ -720,9 +773,10 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		discovery:      disc,
 		dialer:         dialer,
 		finder:         mockFinder,
+		policy:         mockPolicy,
 	}
 	if tt.postSetup != nil {
-		tt.postSetup(pt)
+		tt.postSetup(t, pt)
 	}
 	return pt
 }

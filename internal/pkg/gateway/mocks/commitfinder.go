@@ -36,15 +36,16 @@ func (fake *CommitFinder) TransactionStatus(arg1 context.Context, arg2 string, a
 		arg2 string
 		arg3 string
 	}{arg1, arg2, arg3})
+	stub := fake.TransactionStatusStub
+	fakeReturns := fake.transactionStatusReturns
 	fake.recordInvocation("TransactionStatus", []interface{}{arg1, arg2, arg3})
 	fake.transactionStatusMutex.Unlock()
-	if fake.TransactionStatusStub != nil {
-		return fake.TransactionStatusStub(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.transactionStatusReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
