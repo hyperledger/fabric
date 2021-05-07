@@ -49,16 +49,15 @@ func (fake *ABClient) Broadcast(arg1 context.Context, arg2 ...grpc.CallOption) (
 		arg1 context.Context
 		arg2 []grpc.CallOption
 	}{arg1, arg2})
-	stub := fake.BroadcastStub
-	fakeReturns := fake.broadcastReturns
 	fake.recordInvocation("Broadcast", []interface{}{arg1, arg2})
 	fake.broadcastMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2...)
+	if fake.BroadcastStub != nil {
+		return fake.BroadcastStub(arg1, arg2...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.broadcastReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -114,16 +113,15 @@ func (fake *ABClient) Deliver(arg1 context.Context, arg2 ...grpc.CallOption) (or
 		arg1 context.Context
 		arg2 []grpc.CallOption
 	}{arg1, arg2})
-	stub := fake.DeliverStub
-	fakeReturns := fake.deliverReturns
 	fake.recordInvocation("Deliver", []interface{}{arg1, arg2})
 	fake.deliverMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2...)
+	if fake.DeliverStub != nil {
+		return fake.DeliverStub(arg1, arg2...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.deliverReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 

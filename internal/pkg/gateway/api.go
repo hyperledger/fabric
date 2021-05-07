@@ -37,7 +37,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
 	}
 
-	endorsers, err := gs.registry.endorsers(channel, chaincodeID)
+	endorsers, err := gs.registry.endorsers(channel, chaincodeID) // TODO next story, implement endorsingOrgs for Evaluate
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, "%s", err)
 	}
@@ -95,7 +95,13 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
 	}
-	endorsers, err := gs.registry.endorsers(channel, chaincodeID)
+
+	var endorsers []*endorser
+	if len(request.EndorsingOrganizations) > 0 {
+		endorsers, err = gs.registry.endorsersForOrgs(channel, chaincodeID, request.EndorsingOrganizations)
+	} else {
+		endorsers, err = gs.registry.endorsers(channel, chaincodeID)
+	}
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, "%s", err)
 	}
