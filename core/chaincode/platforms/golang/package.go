@@ -105,10 +105,11 @@ func findSource(gopath, pkg string) (SourceMap, error) {
 				return nil
 			}
 
-			// Allow import of META-INF metadata directories into chaincode code package tar.
+			// Allow import of META-INF metadata directories and vendor directories into chaincode code package tar.
 			// META-INF directories contain chaincode metadata artifacts such as statedb index definitions
-			if isMetadataDir(path, tld) {
-				logger.Debug("Files in META-INF directory will be included in code package tar:", path)
+			// vendor directories contain chaincode vendor dependencies
+			if isMetadataDir(path, tld) || isVendorDir(path, tld) {
+				logger.Debug("Files in META-INF and vendor directory will be included in code package tar:", path)
 				return nil
 			}
 
@@ -143,4 +144,9 @@ func findSource(gopath, pkg string) (SourceMap, error) {
 // isMetadataDir checks to see if the current path is in the META-INF directory at the root of the chaincode directory
 func isMetadataDir(path, tld string) bool {
 	return strings.HasPrefix(path, filepath.Join(tld, "META-INF"))
+}
+
+// isVendorDir checks to see if the current path is in the vendor directory at the root of the chaincode directory
+func isVendorDir(path, tld string) bool {
+	return strings.HasPrefix(path, filepath.Join(tld, "vendor"))
 }
