@@ -708,15 +708,15 @@ func (exp *certificateExpirationCheck) checkExpiration(currentTime time.Time, ch
 // CachePublicKeyComparisons creates CertificateComparator that caches invocations based on input arguments.
 // The given CertificateComparator must be a stateless function.
 func CachePublicKeyComparisons(f CertificateComparator) CertificateComparator {
-	m := &ComparisonMemoizer{
+	m := &ComparisonMemorizer{
 		MaxEntries: 4096,
 		F:          f,
 	}
 	return m.Compare
 }
 
-// ComparisonMemoizer speeds up comparison computations by caching past invocations of a stateless function
-type ComparisonMemoizer struct {
+// ComparisonMemorizer speeds up comparison computations by caching past invocations of a stateless function
+type ComparisonMemorizer struct {
 	// Configuration
 	F          func(a, b []byte) bool
 	MaxEntries uint16
@@ -731,8 +731,8 @@ type arguments struct {
 	a, b string
 }
 
-// Size returns the number of computations the ComparisonMemoizer currently caches.
-func (cm *ComparisonMemoizer) Size() int {
+// Size returns the number of computations the ComparisonMemorizer currently caches.
+func (cm *ComparisonMemorizer) Size() int {
 	cm.lock.RLock()
 	defer cm.lock.RUnlock()
 	return len(cm.cache)
@@ -741,7 +741,7 @@ func (cm *ComparisonMemoizer) Size() int {
 // Compare compares the given two byte slices.
 // It may return previous computations for the given two arguments,
 // otherwise it will compute the function F and cache the result.
-func (cm *ComparisonMemoizer) Compare(a, b []byte) bool {
+func (cm *ComparisonMemorizer) Compare(a, b []byte) bool {
 	cm.once.Do(cm.setup)
 	key := arguments{
 		a: string(a),
@@ -767,7 +767,7 @@ func (cm *ComparisonMemoizer) Compare(a, b []byte) bool {
 	return result
 }
 
-func (cm *ComparisonMemoizer) shrinkIfNeeded() {
+func (cm *ComparisonMemorizer) shrinkIfNeeded() {
 	for {
 		currentSize := uint16(len(cm.cache))
 		if currentSize < cm.MaxEntries {
@@ -777,7 +777,7 @@ func (cm *ComparisonMemoizer) shrinkIfNeeded() {
 	}
 }
 
-func (cm *ComparisonMemoizer) shrink() {
+func (cm *ComparisonMemorizer) shrink() {
 	// Shrink the cache by 25% by removing every fourth element (on average)
 	for key := range cm.cache {
 		if cm.rand.Int()%4 != 0 {
@@ -787,7 +787,7 @@ func (cm *ComparisonMemoizer) shrink() {
 	}
 }
 
-func (cm *ComparisonMemoizer) setup() {
+func (cm *ComparisonMemorizer) setup() {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
 	cm.rand = rand.New(rand.NewSource(time.Now().UnixNano()))

@@ -1189,10 +1189,10 @@ qz8bY+s6AiBvO0aOfE8M4ibjmRE4vSXo0+gkOIJKqZcmiRdnJSr8Xw==
 	require.Equal(t, expected, actual)
 }
 
-func TestComparisonMemoizer(t *testing.T) {
+func TestComparisonMemorizer(t *testing.T) {
 	var invocations int
 
-	m := &cluster.ComparisonMemoizer{
+	m := &cluster.ComparisonMemorizer{
 		MaxEntries: 5,
 		F: func(a, b []byte) bool {
 			invocations++
