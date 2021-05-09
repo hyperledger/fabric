@@ -152,7 +152,7 @@ For more information about upgrading a chaincode, check out [Upgrade a chaincode
 
 ### Adding existing components to the newly joined channel
 
-Now that R3 is able to fully participate in channel C2, it can add its components to the channel. Rather than do this one component at a time, let's show how its peer, its local copy of a ledger, a smart contract and a client application can be joined all at once!
+Now that R3 is able to fully participate in channel C1, it can add its components to the channel. Rather than do this one component at a time, let's show how its peer, its local copy of a ledger, a smart contract and a client application can be joined all at once!
 
 ![network.8](./network.diagram.8.png)
 
