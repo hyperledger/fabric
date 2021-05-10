@@ -60,7 +60,7 @@ var _ = Describe("TransactionContext", func() {
 	})
 
 	Describe("GetQueryIterator", func() {
-		It("returns the results iteraterator provided to initialize query context", func() {
+		It("returns the results iterator provided to initialize query context", func() {
 			transactionContext.InitializeQueryContext("query-id", resultsIterator)
 			iter := transactionContext.GetQueryIterator("query-id")
 			Expect(iter).To(Equal(resultsIterator))

@@ -63,7 +63,7 @@ type Config struct {
 	InternalEndpoint string
 	// ExternalEndpoint is the peer publishes this endpoint instead of selfEndpoint to foreign organizations.
 	ExternalEndpoint string
-	// TimeForMembershipTracker determines time for polloing with membershipTracker.
+	// TimeForMembershipTracker determines time for polling with membershipTracker.
 	TimeForMembershipTracker time.Duration
 
 	// DigestWaitTime is the time to wait before pull engine processes incoming digests.
