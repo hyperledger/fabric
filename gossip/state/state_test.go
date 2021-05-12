@@ -1308,7 +1308,7 @@ func (mock *coordinatorMock) Close() {
 	mock.Called()
 }
 
-// StorePvtData used to persist private date into transient store
+// StorePvtData used to persist private data into transient store
 func (mock *coordinatorMock) StorePvtData(txid string, privData *tspb.TxPvtReadWriteSetWithConfigInfo, blkHeight uint64) error {
 	return mock.Called().Error(0)
 }

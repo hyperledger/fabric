@@ -21,7 +21,7 @@ type BTLPolicy interface {
 	// GetBTL returns BlockToLive for a given namespace and collection
 	GetBTL(ns string, coll string) (uint64, error)
 	// GetExpiringBlock returns the block number by which the pvtdata for given namespace,collection, and committingBlock should expire
-	GetExpiringBlock(namesapce string, collection string, committingBlock uint64) (uint64, error)
+	GetExpiringBlock(namespace string, collection string, committingBlock uint64) (uint64, error)
 }
 
 // LSCCBasedBTLPolicy implements interface BTLPolicy.
@@ -47,20 +47,20 @@ func ConstructBTLPolicy(collInfoProvider collectionInfoProvider) BTLPolicy {
 }
 
 // GetBTL implements corresponding function in interface `BTLPolicyMgr`
-func (p *LSCCBasedBTLPolicy) GetBTL(namesapce string, collection string) (uint64, error) {
+func (p *LSCCBasedBTLPolicy) GetBTL(namespace string, collection string) (uint64, error) {
 	var btl uint64
 	var ok bool
-	key := btlkey{namesapce, collection}
+	key := btlkey{namespace, collection}
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	btl, ok = p.cache[key]
 	if !ok {
-		collConfig, err := p.collInfoProvider.CollectionInfo(namesapce, collection)
+		collConfig, err := p.collInfoProvider.CollectionInfo(namespace, collection)
 		if err != nil {
 			return 0, err
 		}
 		if collConfig == nil {
-			return 0, privdata.NoSuchCollectionError{Namespace: namesapce, Collection: collection}
+			return 0, privdata.NoSuchCollectionError{Namespace: namespace, Collection: collection}
 		}
 		btlConfigured := collConfig.BlockToLive
 		if btlConfigured > 0 {
@@ -74,15 +74,15 @@ func (p *LSCCBasedBTLPolicy) GetBTL(namesapce string, collection string) (uint64
 }
 
 // GetExpiringBlock implements function from the interface `BTLPolicy`
-func (p *LSCCBasedBTLPolicy) GetExpiringBlock(namesapce string, collection string, committingBlock uint64) (uint64, error) {
-	btl, err := p.GetBTL(namesapce, collection)
+func (p *LSCCBasedBTLPolicy) GetExpiringBlock(namespace string, collection string, committingBlock uint64) (uint64, error) {
+	btl, err := p.GetBTL(namespace, collection)
 	if err != nil {
 		return 0, err
 	}
-	return ComputeExpiringBlock(namesapce, collection, committingBlock, btl), nil
+	return ComputeExpiringBlock(namespace, collection, committingBlock, btl), nil
 }
 
-func ComputeExpiringBlock(namesapce, collection string, committingBlock, btl uint64) uint64 {
+func ComputeExpiringBlock(namespace, collection string, committingBlock, btl uint64) uint64 {
 	expiryBlk := committingBlock + btl + uint64(1)
 	if expiryBlk <= committingBlock { // committingBlk + btl overflows uint64-max
 		expiryBlk = math.MaxUint64

@@ -18,7 +18,7 @@ In most cases, multiple [organizations](../glossary.html#organization) come toge
 
 Before we start, let's show you what we're aiming at! Here's a diagram representing the **final state** of our sample network.
 
-It might look complicated right now, but as we go through this topic, we will build up the network piece by piece, so that you see how the organizations R1, R2, R3 and R0 contribute infrastructure to the network to help form it. This infrastructure implements the blockchain network, and it is governed by policies agreed by the organizations who form the network -- for example, who can add new organizations. You'll discover how applications consume the ledger and smart contract services provided by the blockchain network.
+It might look complicated right now, but as we go through this topic, we will build up the network piece by piece, so that you see how the organizations R1, R2 and R0 contribute infrastructure to the network to help form it. This infrastructure implements the blockchain network, and it is governed by policies agreed by the organizations who form the network -- for example, who can add new organizations. You'll discover how applications consume the ledger and smart contract services provided by the blockchain network.
 
 ![network.1](./network.diagram.1.png)
 
@@ -152,7 +152,7 @@ For more information about upgrading a chaincode, check out [Upgrade a chaincode
 
 ### Adding existing components to the newly joined channel
 
-Now that R3 is able to fully participate in channel C2, it can add its components to the channel. Rather than do this one component at a time, let's show how its peer, its local copy of a ledger, a smart contract and a client application can be joined all at once!
+Now that R3 is able to fully participate in channel C1, it can add its components to the channel. Rather than do this one component at a time, let's show how its peer, its local copy of a ledger, a smart contract and a client application can be joined all at once!
 
 ![network.8](./network.diagram.8.png)
 

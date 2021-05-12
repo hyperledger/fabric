@@ -193,7 +193,7 @@ func (c *SimpleCollectionStore) RetrieveCollectionPersistenceConfigs(cc Collecti
 	return &SimpleCollectionPersistenceConfigs{staticCollectionConfig.BlockToLive}, nil
 }
 
-// RetrieveReadWritePermission retrieves the read-write persmission of the creator of the
+// RetrieveReadWritePermission retrieves the read-write permission of the creator of the
 // signedProposal for a given collection using collection access policy and flags such as
 // memberOnlyRead & memberOnlyWrite
 func (c *SimpleCollectionStore) RetrieveReadWritePermission(
@@ -210,7 +210,7 @@ func (c *SimpleCollectionStore) RetrieveReadWritePermission(
 		return true, true, nil
 	}
 
-	// all members have read-write persmission
+	// all members have read-write permission
 	if isAMember, err := isCreatorOfProposalAMember(signedProposal, collection); err != nil {
 		return false, false, err
 	} else if isAMember {

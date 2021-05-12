@@ -108,6 +108,9 @@ func newDefaultACLProvider(policyChecker policy.PolicyChecker) defaultACLProvide
 	d.cResourcePolicyMap[resources.Event_Block] = CHANNELREADERS
 	d.cResourcePolicyMap[resources.Event_FilteredBlock] = CHANNELREADERS
 
+	// Gateway resources
+	d.cResourcePolicyMap[resources.Gateway_CommitStatus] = CHANNELREADERS
+
 	return d
 }
 
@@ -129,6 +132,7 @@ func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idin
 			return fmt.Errorf("Unmapped policy for %s", resName)
 		}
 	}
+	aclLogger.Debugw("Applying default access policy for resource", "channel", channelID, "policy", policy, "resource", resName)
 
 	switch typedData := idinfo.(type) {
 	case *pb.SignedProposal:
@@ -139,6 +143,8 @@ func (d *defaultACLProviderImpl) CheckACL(resName string, channelID string, idin
 			return err
 		}
 		return d.policyChecker.CheckPolicyBySignedData(channelID, policy, sd)
+	case *protoutil.SignedData:
+		return d.policyChecker.CheckPolicyBySignedData(channelID, policy, []*protoutil.SignedData{typedData})
 	case []*protoutil.SignedData:
 		return d.policyChecker.CheckPolicyBySignedData(channelID, policy, typedData)
 	default:

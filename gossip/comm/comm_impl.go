@@ -482,7 +482,7 @@ func (c *commImpl) authenticateRemotePeer(stream stream, initiator, isProbe bool
 	}
 	// Final step - verify the signature on the connection message itself
 	verifier := func(peerIdentity []byte, signature, message []byte) error {
-		pkiID := c.idMapper.GetPKIidOfCert(api.PeerIdentityType(peerIdentity))
+		pkiID := c.idMapper.GetPKIidOfCert(peerIdentity)
 		return c.idMapper.Verify(pkiID, signature, message)
 	}
 	err = m.Verify(receivedMsg.Identity, verifier)

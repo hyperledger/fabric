@@ -168,7 +168,7 @@ func NewSignature(cred *Credential, sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP2
 	// disclosed attributes
 	// message being signed
 	// the amount of bytes needed for the nonrevocation proof
-	proofData := make([]byte, len([]byte(signLabel))+7*(2*FieldBytes+1)+FieldBytes+len(Disclosure)+len(msg)+ProofBytes[RevocationAlgorithm(cri.RevocationAlg)])
+	proofData := make([]byte, len(signLabel)+7*(2*FieldBytes+1)+FieldBytes+len(Disclosure)+len(msg)+ProofBytes[RevocationAlgorithm(cri.RevocationAlg)])
 	index := 0
 	index = appendBytesString(proofData, index, signLabel)
 	index = appendBytesG1(proofData, index, t1)
@@ -349,7 +349,7 @@ func (sig *Signature) Ver(Disclosure []byte, ipk *IssuerPublicKey, msg []byte, a
 	// one bigint (hash of the issuer public key) of length FieldBytes
 	// disclosed attributes
 	// message that was signed
-	proofData := make([]byte, len([]byte(signLabel))+7*(2*FieldBytes+1)+FieldBytes+len(Disclosure)+len(msg)+ProofBytes[RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)])
+	proofData := make([]byte, len(signLabel)+7*(2*FieldBytes+1)+FieldBytes+len(Disclosure)+len(msg)+ProofBytes[RevocationAlgorithm(sig.NonRevocationProof.RevocationAlg)])
 	index := 0
 	index = appendBytesString(proofData, index, signLabel)
 	index = appendBytesG1(proofData, index, t1)

@@ -328,7 +328,7 @@ func (u *dbUpdates) upsertBootKVHashes(ns, coll string, blkNum, txNum uint64, ke
 	)
 }
 
-func (u *dbUpdates) upsertExpiryEntry(expiringBlk, committingBlk uint64, namesapce, collection string, txNum uint64) {
+func (u *dbUpdates) upsertExpiryEntry(expiringBlk, committingBlk uint64, namespace, collection string, txNum uint64) {
 	key := expiryKey{
 		expiringBlk:   expiringBlk,
 		committingBlk: committingBlk,
@@ -338,8 +338,8 @@ func (u *dbUpdates) upsertExpiryEntry(expiringBlk, committingBlk uint64, namesap
 		expiryData = newExpiryData()
 		u.expiryEntries[key] = expiryData
 	}
-	expiryData.addMissingData(namesapce, collection)
-	expiryData.addBootKVHash(namesapce, collection, txNum)
+	expiryData.addMissingData(namespace, collection)
+	expiryData.addBootKVHash(namespace, collection, txNum)
 }
 
 func (u *dbUpdates) numKVHashesEntries() int {
