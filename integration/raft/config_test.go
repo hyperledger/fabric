@@ -403,6 +403,9 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			newConsenterCert, err := x509.ParseCertificate(newConsenterCertPem.Bytes)
 			Expect(err).NotTo(HaveOccurred())
 
+			newConsenterHost := "127.0.0.1"
+			newConsenterPort := uint32(network.OrdererPort(orderer3, nwo.ListenPort))
+
 			current, updated := consenterAdder(
 				network,
 				peer,
@@ -411,13 +414,13 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 				etcdraft.Consenter{
 					ServerTlsCert: client.Cert,
 					ClientTlsCert: client.Cert,
-					Host:          "127.0.0.1",
-					Port:          uint32(network.OrdererPort(orderer3, nwo.ListenPort)),
+					Host:          newConsenterHost,
+					Port:          newConsenterPort,
 				},
 			)
 			sess = nwo.UpdateOrdererConfigSession(network, orderer, network.SystemChannel.Name, current, updated, peer, orderer)
 			Eventually(sess, network.EventuallyTimeout).Should(gexec.Exit(1))
-			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'systemchannel': consensus metadata update for channel config update is invalid: invalid new config metadata: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", newConsenterCert.SerialNumber)))
+			Expect(sess.Err).To(gbytes.Say(fmt.Sprintf("BAD_REQUEST -- error applying config update to existing channel 'systemchannel': consensus metadata update for channel config update is invalid: invalid new config metadata: consenter %s:%d has invalid certificate: verifying tls client cert with serial number %d: x509: certificate signed by unknown authority", newConsenterHost, newConsenterPort, newConsenterCert.SerialNumber)))
 		})
 	})
 
