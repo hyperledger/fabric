@@ -247,7 +247,7 @@ func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts x509.Ver
 			return errors.Errorf("metadata has nil consenter")
 		}
 		if err := validateConsenterTLSCerts(consenter, verifyOpts, true); err != nil {
-			return err
+			return errors.WithMessagef(err, "consenter %s:%d has invalid certificate", consenter.Host, consenter.Port)
 		}
 	}
 
