@@ -437,12 +437,17 @@ type snapshotReader struct {
 	cursor   *cursor
 }
 
+// If the passed in file name does not exist a nil response is returned
 func newSnapshotReader(dir, dataFileName, metadataFileName string) (*snapshotReader, error) {
 	dataFilePath := filepath.Join(dir, dataFileName)
 	metadataFilePath := filepath.Join(dir, metadataFileName)
 	exist, _, err := fileutil.FileExists(dataFilePath)
-	if err != nil || !exist {
-		return nil, err
+	if err != nil {
+		return nil, errors.WithMessage(err, "error while checking if data file exists")
+	}
+	if !exist {
+		logger.Infow("Data file does not exist. Nothing to be done.", "filepath", dataFilePath)
+		return nil, nil
 	}
 
 	var dataFile, metadataFile *snapshot.FileReader
