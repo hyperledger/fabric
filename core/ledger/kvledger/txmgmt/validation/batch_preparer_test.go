@@ -411,6 +411,7 @@ func TestTxStatsInfo(t *testing.T) {
 				ChaincodeName:     "cc_1",
 				ChaincodeVersion:  "cc_1_v1",
 				SimulationResults: tx1SimulationResults,
+				ChaincodeEvents:   []byte("cc1_events_data"),
 				Type:              common.HeaderType_ENDORSER_TRANSACTION,
 			},
 			{
@@ -418,6 +419,7 @@ func TestTxStatsInfo(t *testing.T) {
 				ChaincodeName:     "cc_2",
 				ChaincodeVersion:  "cc_2_v1",
 				SimulationResults: tx2SimulationResults,
+				ChaincodeEvents:   []byte("cc2_events_data"),
 				Type:              common.HeaderType_ENDORSER_TRANSACTION,
 			},
 			{
@@ -454,12 +456,14 @@ func TestTxStatsInfo(t *testing.T) {
 			TxType:                common.HeaderType_ENDORSER_TRANSACTION,
 			ValidationCode:        peer.TxValidationCode_VALID,
 			ChaincodeID:           &peer.ChaincodeID{Name: "cc_1", Version: "cc_1_v1"},
+			ChaincodeEventData:    []byte("cc1_events_data"),
 		},
 		{
 			TxIDFromChannelHeader: "tx_2",
 			TxType:                common.HeaderType_ENDORSER_TRANSACTION,
 			ValidationCode:        peer.TxValidationCode_MVCC_READ_CONFLICT,
 			ChaincodeID:           &peer.ChaincodeID{Name: "cc_2", Version: "cc_2_v1"},
+			ChaincodeEventData:    []byte("cc2_events_data"),
 		},
 		{
 			TxIDFromChannelHeader: "tx_3",

@@ -48,11 +48,11 @@ func (notifier *channelLevelNotifier) run() {
 }
 
 func (notifier *channelLevelNotifier) receiveBlock(blockCommit *ledger.CommitNotification) {
-	for transactionID, status := range blockCommit.TxIDValidationCodes {
+	for transactionID, txInfo := range blockCommit.TxsByTxID {
 		n := &notification{
 			BlockNumber:    blockCommit.BlockNumber,
 			TransactionID:  transactionID,
-			ValidationCode: status,
+			ValidationCode: txInfo.ValidationCode,
 		}
 		notifier.notify(n)
 	}

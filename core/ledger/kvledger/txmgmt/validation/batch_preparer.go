@@ -45,6 +45,7 @@ type TxStatInfo struct {
 	ValidationCode        peer.TxValidationCode
 	TxType                common.HeaderType
 	ChaincodeID           *peer.ChaincodeID
+	ChaincodeEventData    []byte
 	NumCollections        int
 }
 
@@ -234,6 +235,7 @@ func preprocessProtoBlock(postOrderSimulatorProvider PostOrderSimulatorProvider,
 				continue
 			}
 			txStatInfo.ChaincodeID = respPayload.ChaincodeId
+			txStatInfo.ChaincodeEventData = respPayload.Events
 			txRWSet = &rwsetutil.TxRwSet{}
 			if err = txRWSet.FromProtoBytes(respPayload.Results); err != nil {
 				txsFilter.SetFlag(txIndex, peer.TxValidationCode_INVALID_OTHER_REASON)
