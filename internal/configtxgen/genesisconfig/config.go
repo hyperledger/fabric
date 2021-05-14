@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
@@ -23,6 +24,8 @@ import (
 const (
 	// The type key for etcd based RAFT consensus.
 	EtcdRaft = "etcdraft"
+	// The type key for IBM based Mir-BFT consensus.
+	MirBFT = "hlmirbft"
 )
 
 var logger = flogging.MustGetLogger("common.tools.configtxgen.localconfig")
@@ -156,6 +159,7 @@ type Orderer struct {
 	BatchSize     BatchSize                `yaml:"BatchSize"`
 	Kafka         Kafka                    `yaml:"Kafka"`
 	EtcdRaft      *etcdraft.ConfigMetadata `yaml:"EtcdRaft"`
+	MirBFT        *hlmirbft.ConfigMetadata `yaml:"MirBFT"`
 	Organizations []*Organization          `yaml:"Organizations"`
 	MaxChannels   uint64                   `yaml:"MaxChannels"`
 	Capabilities  map[string]bool          `yaml:"Capabilities"`
@@ -193,6 +197,14 @@ var genesisDefaults = TopLevel{
 				HeartbeatTick:        1,
 				MaxInflightBlocks:    5,
 				SnapshotIntervalSize: 16 * 1024 * 1024, // 16 MB
+			},
+		},
+		MirBFT: &hlmirbft.ConfigMetadata{
+			Options: &hlmirbft.Options{
+				HeartbeatTicks:       2,
+				SuspectTicks:         4,
+				NewEpochTimeoutTicks: 8,
+				BufferSize:           5 * 1024 * 1024, // 5 MB
 			},
 		},
 	},
@@ -386,6 +398,61 @@ loop:
 		}
 
 		for _, c := range ord.EtcdRaft.GetConsenters() {
+			if c.Host == "" {
+				logger.Panicf("consenter info in %s configuration did not specify host", EtcdRaft)
+			}
+			if c.Port == 0 {
+				logger.Panicf("consenter info in %s configuration did not specify port", EtcdRaft)
+			}
+			if c.ClientTlsCert == nil {
+				logger.Panicf("consenter info in %s configuration did not specify client TLS cert", EtcdRaft)
+			}
+			if c.ServerTlsCert == nil {
+				logger.Panicf("consenter info in %s configuration did not specify server TLS cert", EtcdRaft)
+			}
+			clientCertPath := string(c.GetClientTlsCert())
+			cf.TranslatePathInPlace(configDir, &clientCertPath)
+			c.ClientTlsCert = []byte(clientCertPath)
+			serverCertPath := string(c.GetServerTlsCert())
+			cf.TranslatePathInPlace(configDir, &serverCertPath)
+			c.ServerTlsCert = []byte(serverCertPath)
+		}
+	case MirBFT:
+		if ord.MirBFT == nil {
+			logger.Panicf("%s configuration missing", MirBFT)
+		}
+		if ord.MirBFT.Options == nil {
+			logger.Infof("Orderer.MirBFT.Options unset, setting to %v", genesisDefaults.Orderer.MirBFT.Options)
+			ord.MirBFT.Options = genesisDefaults.Orderer.MirBFT.Options
+		}
+	third_loop:
+		for {
+			switch {
+			case ord.MirBFT.Options.HeartbeatTicks == 0:
+				logger.Infof("Orderer.MirBFT.Options.HeartbeatTicks unset, setting to %v", genesisDefaults.Orderer.MirBFT.Options.HeartbeatTicks)
+				ord.MirBFT.Options.HeartbeatTicks = genesisDefaults.Orderer.MirBFT.Options.HeartbeatTicks
+
+			case ord.MirBFT.Options.SuspectTicks == 0:
+				logger.Infof("Orderer.MirBFT.Options.SuspectTicks unset, setting to %v", genesisDefaults.Orderer.MirBFT.Options.SuspectTicks)
+				ord.MirBFT.Options.SuspectTicks = genesisDefaults.Orderer.MirBFT.Options.SuspectTicks
+
+			case ord.MirBFT.Options.NewEpochTimeoutTicks == 0:
+				logger.Infof("Orderer.MirBFT.Options.NewEpochTimeoutTicks unset, setting to %v", genesisDefaults.Orderer.MirBFT.Options.NewEpochTimeoutTicks)
+				ord.MirBFT.Options.NewEpochTimeoutTicks = genesisDefaults.Orderer.MirBFT.Options.NewEpochTimeoutTicks
+
+			case ord.MirBFT.Options.BufferSize == 0:
+				logger.Infof("Orderer.MirBFT.Options.BufferSize unset, setting to %v", genesisDefaults.Orderer.MirBFT.Options.BufferSize)
+				ord.MirBFT.Options.BufferSize = genesisDefaults.Orderer.MirBFT.Options.BufferSize
+
+			case len(ord.MirBFT.Consenters) == 0:
+				logger.Panicf("%s configuration did not specify any consenter", MirBFT)
+
+			default:
+				break third_loop
+			}
+		}
+
+		for _, c := range ord.MirBFT.GetConsenters() {
 			if c.Host == "" {
 				logger.Panicf("consenter info in %s configuration did not specify host", EtcdRaft)
 			}

@@ -4,8 +4,7 @@ go 1.14
 
 require (
 	code.cloudfoundry.org/clock v1.0.0
-	github.com/DataDog/zstd v1.4.5 // indirect
-	github.com/IBM/mirbft v0.0.0-20210415060536-f247ec55c7e1 // indirect
+	github.com/DataDog/zstd v1.4.8 // indirect
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/Shopify/sarama v1.20.1
 	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
@@ -14,6 +13,8 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20190620071333-e64a0ec8b42a // indirect
 	github.com/coreos/pkg v0.0.0-20180108230652-97fdf19511ea // indirect
 	github.com/davecgh/go-spew v1.1.1
+	github.com/dgraph-io/ristretto v0.0.3 // indirect
+	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
@@ -21,12 +22,13 @@ require (
 	github.com/fsouza/go-dockerclient v1.7.0
 	github.com/go-kit/kit v0.9.0
 	github.com/golang/protobuf v1.5.2
-	github.com/golang/snappy v0.0.3-0.20201103224600-674baa8c7fc3 // indirect
+	github.com/golang/snappy v0.0.3 // indirect
 	github.com/gorilla/handlers v1.4.0
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
+	github.com/harrymknight/fabric-protos-go v0.0.3
 	github.com/hashicorp/go-version v1.2.0
-	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/hyperledger-labs/mirbft v0.0.0-20210420202220-a3e98d713f28
 	github.com/hyperledger/fabric-amcl v0.0.0-20200424173818-327c9e2cf77a
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20201119163726-f8ef75b17719
 	github.com/hyperledger/fabric-config v0.1.0
@@ -56,15 +58,17 @@ require (
 	github.com/sykesm/zap-logfmt v0.0.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 	github.com/tedsuo/ifrit v0.0.0-20180802180643-bea94bb476cc
+	github.com/tidwall/gjson v1.7.5 // indirect
+	github.com/tidwall/wal v0.1.4 // indirect
 	github.com/willf/bitset v1.1.10
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20181228115726-23731bf9ba55
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect
+	golang.org/x/net v0.0.0-20210420072503-d25e30425868 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20210415045647-66c3f260301c // indirect
+	golang.org/x/sys v0.0.0-20210420072515-93ed5bcd2bfe // indirect
 	golang.org/x/tools v0.1.0
 	google.golang.org/grpc v1.31.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6

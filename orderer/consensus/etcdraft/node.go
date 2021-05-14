@@ -50,7 +50,7 @@ type node struct {
 	raft.Node
 }
 
-// TODO(harry_knight) Of node struct, storage, config, and metadata, need to be replaced with mirbft counterparts.
+// TODO(harry_knight) Of node struct, storage, config, and metadata, need to be replaced with hlmirbft counterparts.
 func (n *node) start(fresh, join bool) {
 	raftPeers := RaftPeers(n.metadata.ConsenterIds)
 	n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))

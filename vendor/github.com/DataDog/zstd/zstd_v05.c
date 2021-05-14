@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-present, Yann Collet, Facebook, Inc.
+ * Copyright (c) 2016-2020, Yann Collet, Facebook, Inc.
  * All rights reserved.
  *
  * This source code is licensed under both the BSD-style license (found in the
@@ -80,7 +80,11 @@ extern "C" {
 *  Basic Types
 *****************************************************************/
 #if defined (__cplusplus) || (defined (__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) /* C99 */)
-# include <stdint.h>
+# if defined(_AIX)
+#  include <inttypes.h>
+# else
+#  include <stdint.h> /* intptr_t */
+# endif
   typedef  uint8_t BYTE;
   typedef uint16_t U16;
   typedef  int16_t S16;
@@ -1804,7 +1808,7 @@ static size_t HUFv05_readStats(BYTE* huffWeight, size_t hwSize, U32* rankStats,
 
     if (!srcSize) return ERROR(srcSize_wrong);
     iSize = ip[0];
-    //memset(huffWeight, 0, hwSize);   /* is not necessary, even though some analyzer complain ... */
+    /* memset(huffWeight, 0, hwSize); */   /* is not necessary, even though some analyzer complain ... */
 
     if (iSize >= 128)  { /* special header */
         if (iSize >= (242)) {  /* RLE */
@@ -1879,7 +1883,7 @@ size_t HUFv05_readDTableX2 (U16* DTable, const void* src, size_t srcSize)
     HUFv05_DEltX2* const dt = (HUFv05_DEltX2*)dtPtr;
 
     HUFv05_STATIC_ASSERT(sizeof(HUFv05_DEltX2) == sizeof(U16));   /* if compilation fails here, assertion is false */
-    //memset(huffWeight, 0, sizeof(huffWeight));   /* is not necessary, even though some analyzer complain ... */
+    /* memset(huffWeight, 0, sizeof(huffWeight)); */   /* is not necessary, even though some analyzer complain ... */
 
     iSize = HUFv05_readStats(huffWeight, HUFv05_MAX_SYMBOL_VALUE + 1, rankVal, &nbSymbols, &tableLog, src, srcSize);
     if (HUFv05_isError(iSize)) return iSize;
@@ -2210,7 +2214,7 @@ size_t HUFv05_readDTableX4 (unsigned* DTable, const void* src, size_t srcSize)
 
     HUFv05_STATIC_ASSERT(sizeof(HUFv05_DEltX4) == sizeof(unsigned));   /* if compilation fails here, assertion is false */
     if (memLog > HUFv05_ABSOLUTEMAX_TABLELOG) return ERROR(tableLog_tooLarge);
-    //memset(weightList, 0, sizeof(weightList));   /* is not necessary, even though some analyzer complain ... */
+    /* memset(weightList, 0, sizeof(weightList)); */   /* is not necessary, even though some analyzer complain ... */
 
     iSize = HUFv05_readStats(weightList, HUFv05_MAX_SYMBOL_VALUE + 1, rankStats, &nbSymbols, &tableLog, src, srcSize);
     if (HUFv05_isError(iSize)) return iSize;
@@ -2539,9 +2543,9 @@ size_t HUFv05_decompress (void* dst, size_t dstSize, const void* cSrc, size_t cS
 
     return decompress[algoNb](dst, dstSize, cSrc, cSrcSize);
 
-    //return HUFv05_decompress4X2(dst, dstSize, cSrc, cSrcSize);   /* multi-streams single-symbol decoding */
-    //return HUFv05_decompress4X4(dst, dstSize, cSrc, cSrcSize);   /* multi-streams double-symbols decoding */
-    //return HUFv05_decompress4X6(dst, dstSize, cSrc, cSrcSize);   /* multi-streams quad-symbols decoding */
+    /* return HUFv05_decompress4X2(dst, dstSize, cSrc, cSrcSize); */   /* multi-streams single-symbol decoding */
+    /* return HUFv05_decompress4X4(dst, dstSize, cSrc, cSrcSize); */   /* multi-streams double-symbols decoding */
+    /* return HUFv05_decompress4X6(dst, dstSize, cSrc, cSrcSize); */   /* multi-streams quad-symbols decoding */
 }
 /*
     zstd - standard compression library
@@ -3362,8 +3366,10 @@ static size_t ZSTDv05_decompressSequences(
         size_t lastLLSize = litEnd - litPtr;
         if (litPtr > litEnd) return ERROR(corruption_detected);   /* too many literals already used */
         if (op+lastLLSize > oend) return ERROR(dstSize_tooSmall);
-        memcpy(op, litPtr, lastLLSize);
-        op += lastLLSize;
+        if (lastLLSize > 0) {
+            memcpy(op, litPtr, lastLLSize);
+            op += lastLLSize;
+        }
     }
 
     return op-ostart;
@@ -3791,7 +3797,9 @@ static size_t ZBUFFv05_blockHeaderSize = 3;
 static size_t ZBUFFv05_limitCopy(void* dst, size_t maxDstSize, const void* src, size_t srcSize)
 {
     size_t length = MIN(maxDstSize, srcSize);
-    memcpy(dst, src, length);
+    if (length > 0) {
+        memcpy(dst, src, length);
+    }
     return length;
 }
 
@@ -3928,7 +3936,7 @@ size_t ZBUFFv05_decompressContinue(ZBUFFv05_DCtx* zbc, void* dst, size_t* maxDst
                     *maxDstSizePtr = 0;
                     return headerSize - zbc->hPos;
                 }
-                // zbc->stage = ZBUFFv05ds_decodeHeader; break;   /* useless : stage follows */
+                /* zbc->stage = ZBUFFv05ds_decodeHeader; break; */   /* useless : stage follows */
             }
 	    /* fall-through */
         case ZBUFFv05ds_decodeHeader:
@@ -4001,7 +4009,7 @@ size_t ZBUFFv05_decompressContinue(ZBUFFv05_DCtx* zbc, void* dst, size_t* maxDst
                     if (!decodedSize) { zbc->stage = ZBUFFv05ds_read; break; }   /* this was just a header */
                     zbc->outEnd = zbc->outStart +  decodedSize;
                     zbc->stage = ZBUFFv05ds_flush;
-                    // break; /* ZBUFFv05ds_flush follows */
+                    /* break; */  /* ZBUFFv05ds_flush follows */
                 }
 	    }
 	    /* fall-through */

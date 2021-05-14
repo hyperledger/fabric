@@ -486,7 +486,7 @@ func (c *Chain) isRunning() error {
 }
 
 // Consensus passes the given ConsensusRequest message to the raft.Node instance
-// TODO(harry_knight) Change stepMsg type to mirbft
+// TODO(harry_knight) Change stepMsg type to hlmirbft
 func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
 		return err
@@ -526,7 +526,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 // - the local run goroutine if this is leader
 // - the actual leader via the transport mechanism
 // The call fails if there's no leader elected yet.
-// TODO(harry_knight) no longer single leader in case of mirbft. Send to bucket/s which is watched by a leader?
+// TODO(harry_knight) no longer single leader in case of hlmirbft. Send to bucket/s which is watched by a leader?
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
 		c.Metrics.ProposalFailures.Add(1)
@@ -600,7 +600,7 @@ func (c *Chain) run() {
 	cancelProp = func() {} // no-op as initial value
 
 	// TODO(harry_knight) Intrinsic to raft? If so is it safe to remove?
-	// 	May reuse this pattern for mirbft.
+	// 	May reuse this pattern for hlmirbft.
 	becomeLeader := func() (chan<- *common.Block, context.CancelFunc) {
 		c.Metrics.IsLeader.Set(1)
 
@@ -649,7 +649,7 @@ func (c *Chain) run() {
 	}
 
 	// TODO(harry_knight) Also intrinsic to raft but may be reusable.
-	// 	In the case of mirbft a follower is a replica that isn't a leader.
+	// 	In the case of hlmirbft a follower is a replica that isn't a leader.
 	becomeFollower := func() {
 		cancelProp()
 		c.blockInflight = 0
@@ -661,7 +661,7 @@ func (c *Chain) run() {
 	}
 
 	for {
-		// TODO(harry_knight) Infinite loop which manages chain. Will be adapted for mirbft.
+		// TODO(harry_knight) Infinite loop which manages chain. Will be adapted for hlmirbft.
 		select {
 		// TODO(harry_knight) Submit channel takes transactions which are to be batched (into a block).
 		case s := <-submitC:
@@ -708,7 +708,7 @@ func (c *Chain) run() {
 
 		// TODO(harry_knight) c.applyC is tied to raft FSM. Remove?
 		// 	Tentative answer: applyC executes actions which modify the chain e.g. adding a block.
-		// 	So channel must be retained for mirbft
+		// 	So channel must be retained for hlmirbft
 		case app := <-c.applyC:
 			if app.soft != nil {
 				newLeader := atomic.LoadUint64(&app.soft.Lead) // etcdraft requires atomic access
@@ -761,7 +761,7 @@ func (c *Chain) run() {
 				}
 			}
 
-			// TODO(harry_knight) Adapt for mirbft.
+			// TODO(harry_knight) Adapt for hlmirbft.
 			c.apply(app.entries)
 
 			if c.justElected {
@@ -804,7 +804,7 @@ func (c *Chain) run() {
 			c.propose(propC, bc, batch) // we are certain this is normal block, no need to block
 
 		// TODO(harry_knight) snapshot is associated with raft FSM. Remove?
-		// 	Tentative answer: mirbft has snapshot functionality so adapt instead
+		// 	Tentative answer: hlmirbft has snapshot functionality so adapt instead
 		case sn := <-c.snapC:
 			if sn.Metadata.Index != 0 {
 				if sn.Metadata.Index <= c.appliedIndex {
@@ -1021,7 +1021,7 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 	return changes
 }
 
-// TODO(harry_knight) Will have to be adapted for mirbft as a block is written in this method (line 1047).
+// TODO(harry_knight) Will have to be adapted for hlmirbft as a block is written in this method (line 1047).
 // 	Unsure if equivalent ApplyConfChange method exists.
 func (c *Chain) apply(ents []raftpb.Entry) {
 	if len(ents) == 0 {

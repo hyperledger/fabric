@@ -60,6 +60,9 @@ NewWriterLevelDict(w io.Writer, level int, dict []byte) *Writer
 // Write compresses the input data and write it to the underlying writer
 (w *Writer) Write(p []byte) (int, error)
 
+// Flush writes any unwritten data to the underlying writer
+(w *Writer) Flush() error
+
 // Close flushes the buffer and frees C zstd objects
 (w *Writer) Close() error
 ```

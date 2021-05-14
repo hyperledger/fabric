@@ -1,0 +1,92 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+package statemachine
+
+import (
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	"github.com/IBM/mirbft/pkg/pb/msgs"
+	"github.com/IBM/mirbft/pkg/pb/state"
+)
+
+var _ = Describe("StateMachineInitialization", func() {
+	var (
+		networkState *msgs.NetworkState
+		sm           *StateMachine
+	)
+
+	BeforeEach(func() {
+		networkState = StandardInitialNetworkState(4, 1)
+
+		sm = &StateMachine{
+			Logger: ConsoleInfoLogger,
+		}
+
+		sm.ApplyEvent(&state.Event{
+			Type: &state.Event_Initialize{
+				Initialize: &state.EventInitialParameters{
+					Id:                   1,
+					BatchSize:            1,
+					HeartbeatTicks:       1,
+					SuspectTicks:         2,
+					NewEpochTimeoutTicks: 4,
+					BufferSize:           4 * 1024 * 1024,
+				},
+			},
+		})
+	})
+
+	It("is not yet initialized", func() {
+		Expect(sm.state).NotTo(Equal(smInitialized))
+	})
+
+	When("fresh initialization state is applied", func() {
+		BeforeEach(func() {
+			for i, walEntry := range []*msgs.Persistent{
+				{
+					Type: &msgs.Persistent_CEntry{
+						CEntry: &msgs.CEntry{
+							SeqNo:           0,
+							CheckpointValue: []byte("fake-initial-value"),
+							NetworkState:    networkState,
+						},
+					},
+				},
+				{
+					Type: &msgs.Persistent_FEntry{
+						FEntry: &msgs.FEntry{
+							EndsEpochConfig: &msgs.EpochConfig{
+								Number:  0,
+								Leaders: networkState.Config.Nodes,
+							},
+						},
+					},
+				},
+			} {
+				sm.ApplyEvent(&msgs.StateEvent{
+					Type: &msgs.StateEvent_LoadEntry{
+						LoadEntry: &msgs.StateEvent_PersistedEntry{
+							Index: uint64(i),
+							Data:  walEntry,
+						},
+					},
+				})
+			}
+
+			sm.ApplyEvent(&msgs.StateEvent{
+				Type: &msgs.StateEvent_CompleteInitialization{
+					CompleteInitialization: &state.vent_LoadCompleted{},
+				},
+			})
+		})
+
+		It("is initialized", func() {
+			Expect(sm.state).To(Equal(smInitialized))
+		})
+	})
+})

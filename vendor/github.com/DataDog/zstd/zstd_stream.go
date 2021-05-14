@@ -2,7 +2,6 @@ package zstd
 
 /*
 #define ZSTD_STATIC_LINKING_ONLY
-#include "stdint.h"  // for uintptr_t
 #include "zstd.h"
 
 typedef struct compressStream2_result_s {
@@ -11,9 +10,10 @@ typedef struct compressStream2_result_s {
 	size_t bytes_written;
 } compressStream2_result;
 
-static void ZSTD_compressStream2_wrapper(compressStream2_result* result, ZSTD_CCtx* ctx, uintptr_t dst, size_t maxDstSize, const uintptr_t src, size_t srcSize) {
-	ZSTD_outBuffer outBuffer = { (void*)dst, maxDstSize, 0 };
-	ZSTD_inBuffer inBuffer = { (void*)src, srcSize, 0 };
+static void ZSTD_compressStream2_wrapper(compressStream2_result* result, ZSTD_CCtx* ctx,
+		void* dst, size_t maxDstSize, const void* src, size_t srcSize) {
+	ZSTD_outBuffer outBuffer = { dst, maxDstSize, 0 };
+	ZSTD_inBuffer inBuffer = { src, srcSize, 0 };
 	size_t retCode = ZSTD_compressStream2(ctx, &outBuffer, &inBuffer, ZSTD_e_continue);
 
 	result->return_code = retCode;
@@ -21,9 +21,21 @@ static void ZSTD_compressStream2_wrapper(compressStream2_result* result, ZSTD_CC
 	result->bytes_written = outBuffer.pos;
 }
 
-static void ZSTD_compressStream2_finish(compressStream2_result* result, ZSTD_CCtx* ctx, uintptr_t dst, size_t maxDstSize, const uintptr_t src, size_t srcSize) {
-	ZSTD_outBuffer outBuffer = { (void*)dst, maxDstSize, 0 };
-	ZSTD_inBuffer inBuffer = { (void*)src, srcSize, 0 };
+static void ZSTD_compressStream2_flush(compressStream2_result* result, ZSTD_CCtx* ctx,
+		void* dst, size_t maxDstSize, const void* src, size_t srcSize) {
+	ZSTD_outBuffer outBuffer = { dst, maxDstSize, 0 };
+	ZSTD_inBuffer inBuffer = { src, srcSize, 0 };
+	size_t retCode = ZSTD_compressStream2(ctx, &outBuffer, &inBuffer, ZSTD_e_flush);
+
+	result->return_code = retCode;
+	result->bytes_consumed = inBuffer.pos;
+	result->bytes_written = outBuffer.pos;
+}
+
+static void ZSTD_compressStream2_finish(compressStream2_result* result, ZSTD_CCtx* ctx,
+		void* dst, size_t maxDstSize, const void* src, size_t srcSize) {
+	ZSTD_outBuffer outBuffer = { dst, maxDstSize, 0 };
+	ZSTD_inBuffer inBuffer = { src, srcSize, 0 };
 	size_t retCode = ZSTD_compressStream2(ctx, &outBuffer, &inBuffer, ZSTD_e_end);
 
 	result->return_code = retCode;
@@ -38,9 +50,10 @@ typedef struct decompressStream2_result_s {
 	size_t bytes_written;
 } decompressStream2_result;
 
-static void ZSTD_decompressStream_wrapper(decompressStream2_result* result, ZSTD_DCtx* ctx, uintptr_t dst, size_t maxDstSize, const uintptr_t src, size_t srcSize) {
-	ZSTD_outBuffer outBuffer = { (void*)dst, maxDstSize, 0 };
-	ZSTD_inBuffer inBuffer = { (void*)src, srcSize, 0 };
+static void ZSTD_decompressStream_wrapper(decompressStream2_result* result, ZSTD_DCtx* ctx,
+		void* dst, size_t maxDstSize, const void* src, size_t srcSize) {
+	ZSTD_outBuffer outBuffer = { dst, maxDstSize, 0 };
+	ZSTD_inBuffer inBuffer = { src, srcSize, 0 };
 	size_t retCode = ZSTD_decompressStream(ctx, &outBuffer, &inBuffer);
 
 	result->return_code = retCode;
@@ -155,20 +168,19 @@ func (w *Writer) Write(p []byte) (int, error) {
 		srcData = w.srcBuffer
 	}
 
-	srcPtr := C.uintptr_t(uintptr(0)) // Do not point anywhere, if src is empty
+	var srcPtr *byte // Do not point anywhere, if src is empty
 	if len(srcData) > 0 {
-		srcPtr = C.uintptr_t(uintptr(unsafe.Pointer(&srcData[0])))
+		srcPtr = &srcData[0]
 	}
 
 	C.ZSTD_compressStream2_wrapper(
 		w.resultBuffer,
 		w.ctx,
-		C.uintptr_t(uintptr(unsafe.Pointer(&w.dstBuffer[0]))),
+		unsafe.Pointer(&w.dstBuffer[0]),
 		C.size_t(len(w.dstBuffer)),
-		srcPtr,
+		unsafe.Pointer(srcPtr),
 		C.size_t(len(srcData)),
 	)
-	runtime.KeepAlive(p) // Ensure p is kept until here so pointer doesn't disappear during C call
 	ret := int(w.resultBuffer.return_code)
 	if err := getError(ret); err != nil {
 		return 0, err
@@ -203,6 +215,49 @@ func (w *Writer) Write(p []byte) (int, error) {
 	return len(p), err
 }
 
+// Flush writes any unwritten data to the underlying io.Writer.
+func (w *Writer) Flush() error {
+	if w.firstError != nil {
+		return w.firstError
+	}
+
+	ret := 1 // So we loop at least once
+	for ret > 0 {
+		var srcPtr *byte // Do not point anywhere, if src is empty
+		if len(w.srcBuffer) > 0 {
+			srcPtr = &w.srcBuffer[0]
+		}
+
+		C.ZSTD_compressStream2_flush(
+			w.resultBuffer,
+			w.ctx,
+			unsafe.Pointer(&w.dstBuffer[0]),
+			C.size_t(len(w.dstBuffer)),
+			unsafe.Pointer(srcPtr),
+			C.size_t(len(w.srcBuffer)),
+		)
+		ret = int(w.resultBuffer.return_code)
+		if err := getError(ret); err != nil {
+			return err
+		}
+		w.srcBuffer = w.srcBuffer[w.resultBuffer.bytes_consumed:]
+		written := int(w.resultBuffer.bytes_written)
+		_, err := w.underlyingWriter.Write(w.dstBuffer[:written])
+		if err != nil {
+			return err
+		}
+
+		if ret > 0 { // We have a hint if we need to resize the dstBuffer
+			w.dstBuffer = w.dstBuffer[:cap(w.dstBuffer)]
+			if len(w.dstBuffer) < ret {
+				w.dstBuffer = make([]byte, ret)
+			}
+		}
+	}
+
+	return nil
+}
+
 // Close closes the Writer, flushing any unwritten data to the underlying
 // io.Writer and freeing objects, but does not close the underlying io.Writer.
 func (w *Writer) Close() error {
@@ -212,17 +267,17 @@ func (w *Writer) Close() error {
 
 	ret := 1 // So we loop at least once
 	for ret > 0 {
-		srcPtr := C.uintptr_t(uintptr(0)) // Do not point anywhere, if src is empty
+		var srcPtr *byte // Do not point anywhere, if src is empty
 		if len(w.srcBuffer) > 0 {
-			srcPtr = C.uintptr_t(uintptr(unsafe.Pointer(&w.srcBuffer[0])))
+			srcPtr = &w.srcBuffer[0]
 		}
 
 		C.ZSTD_compressStream2_finish(
 			w.resultBuffer,
 			w.ctx,
-			C.uintptr_t(uintptr(unsafe.Pointer(&w.dstBuffer[0]))),
+			unsafe.Pointer(&w.dstBuffer[0]),
 			C.size_t(len(w.dstBuffer)),
-			srcPtr,
+			unsafe.Pointer(srcPtr),
 			C.size_t(len(w.srcBuffer)),
 		)
 		ret = int(w.resultBuffer.return_code)
@@ -231,7 +286,11 @@ func (w *Writer) Close() error {
 		}
 		w.srcBuffer = w.srcBuffer[w.resultBuffer.bytes_consumed:]
 		written := int(w.resultBuffer.bytes_written)
-		w.underlyingWriter.Write(w.dstBuffer[:written])
+		_, err := w.underlyingWriter.Write(w.dstBuffer[:written])
+		if err != nil {
+			C.ZSTD_freeCStream(w.ctx)
+			return err
+		}
 
 		if ret > 0 { // We have a hint if we need to resize the dstBuffer
 			w.dstBuffer = w.dstBuffer[:cap(w.dstBuffer)]
@@ -388,17 +447,17 @@ func (r *reader) Read(p []byte) (int, error) {
 		src = src[:r.compressionLeft+n]
 
 		// C code
-		srcPtr := C.uintptr_t(uintptr(0)) // Do not point anywhere, if src is empty
+		var srcPtr *byte // Do not point anywhere, if src is empty
 		if len(src) > 0 {
-			srcPtr = C.uintptr_t(uintptr(unsafe.Pointer(&src[0])))
+			srcPtr = &src[0]
 		}
 
 		C.ZSTD_decompressStream_wrapper(
 			r.resultBuffer,
 			r.ctx,
-			C.uintptr_t(uintptr(unsafe.Pointer(&r.decompressionBuffer[0]))),
+			unsafe.Pointer(&r.decompressionBuffer[0]),
 			C.size_t(len(r.decompressionBuffer)),
-			srcPtr,
+			unsafe.Pointer(srcPtr),
 			C.size_t(len(src)),
 		)
 		retCode := int(r.resultBuffer.return_code)
