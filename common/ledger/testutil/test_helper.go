@@ -56,6 +56,7 @@ type TxDetails struct {
 	TxID                            string
 	ChaincodeName, ChaincodeVersion string
 	SimulationResults               []byte
+	ChaincodeEvents                 []byte
 	Type                            common.HeaderType
 }
 
@@ -171,7 +172,7 @@ func ConstructTransactionFromTxDetails(txDetails *TxDetails, sign bool) (*common
 			nil,
 			txDetails.SimulationResults,
 			txDetails.TxID,
-			nil,
+			txDetails.ChaincodeEvents,
 			nil,
 			txDetails.Type,
 		)
@@ -182,7 +183,7 @@ func ConstructTransactionFromTxDetails(txDetails *TxDetails, sign bool) (*common
 			nil,
 			txDetails.SimulationResults,
 			txDetails.TxID,
-			nil,
+			txDetails.ChaincodeEvents,
 			nil,
 			txDetails.Type,
 		)
@@ -441,7 +442,7 @@ func ConstructSignedTxEnv(
 		prop.Payload,
 		pResponse,
 		simulationResults,
-		nil,
+		events,
 		ccid,
 		signer,
 	)

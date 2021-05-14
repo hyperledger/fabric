@@ -1138,6 +1138,9 @@ func TestCommitNotifications(t *testing.T) {
 			{
 				TxIDFromChannelHeader: "txid_1",
 				ValidationCode:        peer.TxValidationCode_BAD_RWSET,
+				ChaincodeID:           &peer.ChaincodeID{Name: "cc1"},
+				ChaincodeEventData:    []byte("cc1_event"),
+				TxType:                common.HeaderType_ENDORSER_TRANSACTION,
 			},
 			{
 				TxIDFromChannelHeader: "txid_1",
@@ -1146,6 +1149,9 @@ func TestCommitNotifications(t *testing.T) {
 			{
 				TxIDFromChannelHeader: "txid_2",
 				ValidationCode:        peer.TxValidationCode_VALID,
+				ChaincodeID:           &peer.ChaincodeID{Name: "cc2"},
+				ChaincodeEventData:    []byte("cc2_event"),
+				TxType:                common.HeaderType_ENDORSER_TRANSACTION,
 			},
 		})
 
@@ -1153,9 +1159,19 @@ func TestCommitNotifications(t *testing.T) {
 		require.Equal(t,
 			&ledger.CommitNotification{
 				BlockNumber: 1,
-				TxIDValidationCodes: map[string]peer.TxValidationCode{
-					"txid_1": peer.TxValidationCode_BAD_RWSET,
-					"txid_2": peer.TxValidationCode_VALID,
+				TxsByTxID: map[string]*ledger.CommitNotificationTxInfo{
+					"txid_1": {
+						ValidationCode:     peer.TxValidationCode_BAD_RWSET,
+						ChaincodeID:        &peer.ChaincodeID{Name: "cc1"},
+						ChaincodeEventData: []byte("cc1_event"),
+						TxType:             common.HeaderType_ENDORSER_TRANSACTION,
+					},
+					"txid_2": {
+						ValidationCode:     peer.TxValidationCode_VALID,
+						ChaincodeID:        &peer.ChaincodeID{Name: "cc2"},
+						ChaincodeEventData: []byte("cc2_event"),
+						TxType:             common.HeaderType_ENDORSER_TRANSACTION,
+					},
 				},
 			},
 			commitNotification,
@@ -1178,8 +1194,8 @@ func TestCommitNotifications(t *testing.T) {
 		commitNotification := <-dataChannel
 		require.Equal(t,
 			&ledger.CommitNotification{
-				BlockNumber:         1,
-				TxIDValidationCodes: map[string]peer.TxValidationCode{},
+				BlockNumber: 1,
+				TxsByTxID:   map[string]*ledger.CommitNotificationTxInfo{},
 			},
 			commitNotification,
 		)
@@ -1211,7 +1227,7 @@ func TestCommitNotificationsOnBlockCommit(t *testing.T) {
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 	defer provider.Close()
 
-	bg, gb := testutil.NewBlockGenerator(t, "testLedger", false)
+	_, gb := testutil.NewBlockGenerator(t, "testLedger", false)
 	l, err := provider.CreateFromGenesisBlock(gb)
 	require.NoError(t, err)
 	defer l.Close()
@@ -1232,24 +1248,50 @@ func TestCommitNotificationsOnBlockCommit(t *testing.T) {
 	require.NoError(t, err)
 	s.Done()
 
-	block := bg.NextBlockWithTxid(
-		[][]byte{
-			srBytes,
-			srBytes, // same read-sets: should cause mvcc conflict
-		},
-		[]string{
-			"txid_1",
-			"txid_2",
-		},
+	block := testutil.ConstructBlockFromBlockDetails(
+		t, &testutil.BlockDetails{
+			BlockNum:     1,
+			PreviousHash: protoutil.BlockHeaderHash(gb.Header),
+			Txs: []*testutil.TxDetails{
+				{
+					Type:              common.HeaderType_ENDORSER_TRANSACTION,
+					TxID:              "txid_1",
+					ChaincodeName:     "foo",
+					ChaincodeVersion:  "v1",
+					SimulationResults: srBytes,
+					ChaincodeEvents:   []byte("foo-event"),
+				},
+
+				{
+					Type:              common.HeaderType_ENDORSER_TRANSACTION,
+					TxID:              "txid_2",
+					ChaincodeName:     "bar",
+					ChaincodeVersion:  "v2",
+					SimulationResults: srBytes, // same read-sets: should cause mvcc conflict
+					ChaincodeEvents:   []byte("bar-event"),
+				},
+			},
+		}, false,
 	)
+
 	require.NoError(t, lgr.CommitLegacy(&ledger.BlockAndPvtData{Block: block}, &ledger.CommitOptions{}))
 	commitNotification := <-dataChannel
 	require.Equal(t,
 		&ledger.CommitNotification{
 			BlockNumber: 1,
-			TxIDValidationCodes: map[string]peer.TxValidationCode{
-				"txid_1": peer.TxValidationCode_VALID,
-				"txid_2": peer.TxValidationCode_MVCC_READ_CONFLICT,
+			TxsByTxID: map[string]*ledger.CommitNotificationTxInfo{
+				"txid_1": {
+					TxType:             common.HeaderType_ENDORSER_TRANSACTION,
+					ValidationCode:     peer.TxValidationCode_VALID,
+					ChaincodeID:        &peer.ChaincodeID{Name: "foo", Version: "v1"},
+					ChaincodeEventData: []byte("foo-event"),
+				},
+				"txid_2": {
+					TxType:             common.HeaderType_ENDORSER_TRANSACTION,
+					ValidationCode:     peer.TxValidationCode_MVCC_READ_CONFLICT,
+					ChaincodeID:        &peer.ChaincodeID{Name: "bar", Version: "v2"},
+					ChaincodeEventData: []byte("bar-event"),
+				},
 			},
 		},
 		commitNotification,
