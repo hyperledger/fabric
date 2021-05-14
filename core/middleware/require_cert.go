@@ -29,6 +29,7 @@ func (r *requireCert) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	case len(req.TLS.VerifiedChains) == 0:
 		fallthrough
 	case len(req.TLS.VerifiedChains[0]) == 0:
+		logger.Warnw("Client request not authorized, client must pass a valid client certificate for this operation", "URL", req.URL, "Method", req.Method, "RemoteAddr", req.RemoteAddr)
 		w.WriteHeader(http.StatusUnauthorized)
 	default:
 		r.next.ServeHTTP(w, req)

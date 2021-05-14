@@ -126,13 +126,15 @@ When TLS is disabled, authorization is bypassed and any client that can
 connect to the operations endpoint will be able to use the API.
 
 When TLS is enabled, a valid client certificate must be provided in order to
-access all resources unless explicitly noted otherwise below.
+access the logging and metrics services. The health check and version services
+only require a valid client certificate when ``clientAuthRequired`` is enabled,
+since these services are often used by network operators and only provide read-only information.
 
-When clientAuthRequired is also enabled, the TLS layer will require
+When ``clientAuthRequired`` is enabled, the TLS layer will also require
 a valid client certificate regardless of the resource being accessed.
 
 Log Level Management
-~~~~~~~~~~~~~~~~~~~~
+--------------------
 
 The operations service provides a ``/logspec`` resource that operators can use to
 manage the active logging spec for a peer or orderer. The resource is a
@@ -161,49 +163,8 @@ and an error payload:
 
   {"error":"error message"}
 
-Health Checks
--------------
-
-The operations service provides a ``/healthz`` resource that operators can use to
-help determine the liveness and health of peers and orderers. The resource is
-a conventional REST resource that supports GET requests. The implementation is
-intended to be compatible with the liveness probe model used by Kubernetes but
-can be used in other contexts.
-
-When a ``GET /healthz`` request is received, the operations service will call all
-registered health checkers for the process. When all of the health checkers
-return successfully, the operations service will respond with a ``200 "OK"`` and a
-JSON body:
-
-.. code:: json
-
-  {
-    "status": "OK",
-    "time": "2009-11-10T23:00:00Z"
-  }
-
-If one or more of the health checkers returns an error, the operations service
-will respond with a ``503 "Service Unavailable"`` and a JSON body that includes
-information about which health checker failed:
-
-.. code:: json
-
-  {
-    "status": "Service Unavailable",
-    "time": "2009-11-10T23:00:00Z",
-    "failed_checks": [
-      {
-        "component": "docker",
-        "reason": "failed to connect to Docker daemon: invalid endpoint"
-      }
-    ]
-  }
-
-In the current version, the only health check that is registered is for Docker.
-Future versions will be enhanced to add additional health checks.
-
-When TLS is enabled, a valid client certificate is not required to use this
-service unless ``clientAuthRequired`` is set to ``true``.
+When TLS is enabled, a valid client certificate is required to use this
+service regardless of whether ``clientAuthRequired`` is set to ``true`` at the TLS level.
 
 Metrics
 -------
@@ -228,6 +189,9 @@ requesting the metrics, it is considered a pull system.
 
 When configured, a Fabric peer or orderer will present a ``/metrics`` resource
 on the operations service.
+
+When TLS is enabled, a valid client certificate is required to use this
+service regardless of whether ``clientAuthRequired`` is set to ``true`` at the TLS level.
 
 Peer
 ^^^^
@@ -305,12 +269,59 @@ metrics.
 For a look at the different metrics that are generated, check out
 :doc:`metrics_reference`.
 
+Health Checks
+-------------
+
+The operations service provides a ``/healthz`` resource that operators can use to
+help determine the liveness and health of peers and orderers. The resource is
+a conventional REST resource that supports GET requests. The implementation is
+intended to be compatible with the liveness probe model used by Kubernetes but
+can be used in other contexts.
+
+When a ``GET /healthz`` request is received, the operations service will call all
+registered health checkers for the process. When all of the health checkers
+return successfully, the operations service will respond with a ``200 "OK"`` and a
+JSON body:
+
+.. code:: json
+
+  {
+    "status": "OK",
+    "time": "2009-11-10T23:00:00Z"
+  }
+
+If one or more of the health checkers returns an error, the operations service
+will respond with a ``503 "Service Unavailable"`` and a JSON body that includes
+information about which health checker failed:
+
+.. code:: json
+
+  {
+    "status": "Service Unavailable",
+    "time": "2009-11-10T23:00:00Z",
+    "failed_checks": [
+      {
+        "component": "docker",
+        "reason": "failed to connect to Docker daemon: invalid endpoint"
+      }
+    ]
+  }
+
+In the current version, the only health check that is registered is for Docker.
+Future versions will be enhanced to add additional health checks.
+
+When TLS is enabled, a valid client certificate is not required to use this
+service unless ``clientAuthRequired`` is set to ``true``.
+
 Version
 -------
 
 The orderer and peer both expose a ``/version`` endpoint. This endpoint
 serves a JSON document containing the orderer or peer version and the commit
 SHA on which the release was created.
+
+When TLS is enabled, a valid client certificate is not required to use this
+service unless ``clientAuthRequired`` is set to ``true``.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

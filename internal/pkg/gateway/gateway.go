@@ -20,6 +20,7 @@ var logger = flogging.MustGetLogger("gateway")
 type Server struct {
 	registry     *registry
 	commitFinder CommitFinder
+	policy       ACLChecker
 	options      config.Options
 }
 
@@ -35,8 +36,12 @@ type CommitFinder interface {
 	TransactionStatus(ctx context.Context, channelName string, transactionID string) (peer.TxValidationCode, error)
 }
 
+type ACLChecker interface {
+	CheckACL(policyName string, channelName string, data interface{}) error
+}
+
 // CreateServer creates an embedded instance of the Gateway.
-func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, finder CommitFinder, localEndpoint, localMSPID string, options config.Options) *Server {
+func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, finder CommitFinder, policy ACLChecker, localEndpoint, localMSPID string, options config.Options) *Server {
 	gwServer := &Server{
 		registry: &registry{
 			localEndorser:       &endorser{client: localEndorser, endpointConfig: &endpointConfig{address: localEndpoint, mspid: localMSPID}},
@@ -49,6 +54,7 @@ func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, finder
 			channelsInitialized: map[string]bool{},
 		},
 		commitFinder: finder,
+		policy:       policy,
 		options:      options,
 	}
 

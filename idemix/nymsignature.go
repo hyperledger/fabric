@@ -42,7 +42,7 @@ func NewNymSignature(sk *FP256BN.BIG, Nym *FP256BN.ECP, RNym *FP256BN.BIG, ipk *
 	// - one bigint (hash of the issuer public key) of length FieldBytes
 	// - disclosed attributes
 	// - message being signed
-	proofData := make([]byte, len([]byte(signLabel))+2*(2*FieldBytes+1)+FieldBytes+len(msg))
+	proofData := make([]byte, len(signLabel)+2*(2*FieldBytes+1)+FieldBytes+len(msg))
 	index := 0
 	index = appendBytesString(proofData, index, signLabel)
 	index = appendBytesG1(proofData, index, t)
@@ -88,7 +88,7 @@ func (sig *NymSignature) Ver(nym *FP256BN.ECP, ipk *IssuerPublicKey, msg []byte)
 	t.Sub(nym.Mul(ProofC)) // t = h_{sk}^{s_{sk} \ cdot h_r^{s_{RNym}
 
 	// Recompute challenge
-	proofData := make([]byte, len([]byte(signLabel))+2*(2*FieldBytes+1)+FieldBytes+len(msg))
+	proofData := make([]byte, len(signLabel)+2*(2*FieldBytes+1)+FieldBytes+len(msg))
 	index := 0
 	index = appendBytesString(proofData, index, signLabel)
 	index = appendBytesG1(proofData, index, t)

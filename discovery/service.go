@@ -17,7 +17,6 @@ import (
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/discovery/protoext"
 	common2 "github.com/hyperledger/fabric/gossip/common"
-	discovery2 "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -137,7 +136,7 @@ func (s *Service) chaincodeQuery(q *discovery.Query) *discovery.QueryResult {
 	for _, interest := range q.GetCcQuery().Interests {
 		desc, err := s.PeersForEndorsement(common2.ChannelID(q.Channel), interest)
 		if err != nil {
-			logger.Errorf("Failed constructing descriptor for chaincode %s,: %v", interest, err)
+			logger.Errorf("Failed constructing descriptor for chaincode %s: %v", interest, err)
 			return wrapError(errors.Errorf("failed constructing descriptor for %v", interest))
 		}
 		descriptors = append(descriptors, desc)
@@ -181,7 +180,7 @@ func (s *Service) channelMembershipResponse(q *discovery.Query) *discovery.Query
 		return wrapError(err)
 	}
 	membersByOrgs := make(map[string]*discovery.Peers)
-	chanPeerByID := discovery2.Members(chanPeers).ByID()
+	chanPeerByID := chanPeers.ByID()
 	for org, ids2Peers := range s.computeMembership(q) {
 		membersByOrgs[org] = &discovery.Peers{}
 		for id, peer := range ids2Peers {
@@ -211,7 +210,7 @@ func (s *Service) localMembershipResponse(q *discovery.Query) *discovery.QueryRe
 
 func (s *Service) computeMembership(_ *discovery.Query) map[string]peerMapping {
 	peersByOrg := make(map[string]peerMapping)
-	peerAliveInfo := discovery2.Members(s.Peers()).ByID()
+	peerAliveInfo := s.Peers().ByID()
 	for org, peerIdentities := range s.IdentityInfo().ByOrg() {
 		peersForCurrentOrg := make(peerMapping)
 		peersByOrg[org] = peersForCurrentOrg

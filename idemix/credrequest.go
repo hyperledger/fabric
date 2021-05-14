@@ -51,7 +51,7 @@ func NewCredRequest(sk *FP256BN.BIG, IssuerNonce []byte, ipk *IssuerPublicKey, r
 	// 3 elements of G1 each taking 2*FieldBytes+1 bytes
 	// hash of the issuer public key of length FieldBytes
 	// issuer nonce of length FieldBytes
-	proofData := make([]byte, len([]byte(credRequestLabel))+3*(2*FieldBytes+1)+2*FieldBytes)
+	proofData := make([]byte, len(credRequestLabel)+3*(2*FieldBytes+1)+2*FieldBytes)
 	index := 0
 	index = appendBytesString(proofData, index, credRequestLabel)
 	index = appendBytesG1(proofData, index, t)
@@ -93,7 +93,7 @@ func (m *CredRequest) Check(ipk *IssuerPublicKey) error {
 	t.Sub(Nym.Mul(ProofC)) // t = h_{sk}^s / Nym^C
 
 	// Recompute challenge
-	proofData := make([]byte, len([]byte(credRequestLabel))+3*(2*FieldBytes+1)+2*FieldBytes)
+	proofData := make([]byte, len(credRequestLabel)+3*(2*FieldBytes+1)+2*FieldBytes)
 	index := 0
 	index = appendBytesString(proofData, index, credRequestLabel)
 	index = appendBytesG1(proofData, index, t)

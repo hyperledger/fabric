@@ -350,8 +350,8 @@ func (p *Provider) CreateFromSnapshot(snapshotDir string) (ledger.PeerLedger, st
 }
 
 func loadSnapshotMetadataJSONs(snapshotDir string) (*snapshotMetadataJSONs, error) {
-	signableMetdataFilePath := filepath.Join(snapshotDir, snapshotSignableMetadataFileName)
-	signableMetadataBytes, err := ioutil.ReadFile(signableMetdataFilePath)
+	signableMetadataFilePath := filepath.Join(snapshotDir, snapshotSignableMetadataFileName)
+	signableMetadataBytes, err := ioutil.ReadFile(signableMetadataFilePath)
 	if err != nil {
 		return nil, err
 	}
