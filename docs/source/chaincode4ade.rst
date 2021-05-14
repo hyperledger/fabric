@@ -383,7 +383,7 @@ Now let's compile your chaincode.
 
 .. code:: bash
 
-  go get -u github.com/hyperledger/fabric/core/chaincode/shim@v1.4
+  GO111MODULE=on go get -u github.com/hyperledger/fabric/core/chaincode/shim@v1.4
   go build
 
 Assuming there are no errors, now we can proceed to the next step, testing
