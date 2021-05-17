@@ -334,6 +334,10 @@ func extractSystemChannel(lf blockledger.Factory, bccsp bccsp.BCCSP) *cb.Block {
 		if err != nil {
 			logger.Panicf("Failed getting channel %v's ledger: %v", cID, err)
 		}
+		if channelLedger.Height() == 0 {
+			logger.Infof("Skipped channel %v's empty ledger", cID)
+			continue // skip empty ledger
+		}
 		channelConfigBlock := multichannel.ConfigBlock(channelLedger)
 
 		err = onboarding.ValidateBootstrapBlock(channelConfigBlock, bccsp)

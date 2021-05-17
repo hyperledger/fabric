@@ -148,6 +148,10 @@ func (flbs fileLedgerBlockStore) RetrieveBlocks(startBlockNumber uint64) (common
 	return flbs.GetBlocksIterator(startBlockNumber)
 }
 
+func (flbs fileLedgerBlockStore) RetrieveBlockByNumber(blockNum uint64) (*common.Block, error) {
+	return flbs.GetBlockByNumber(blockNum)
+}
+
 // NewConfigSupport returns
 func NewConfigSupport(peer *Peer) cc.Manager {
 	return &configSupport{

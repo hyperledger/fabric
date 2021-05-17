@@ -665,3 +665,67 @@ func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsC
 		c.ClientTlsCert = []byte(clnP)
 	}
 }
+
+func TestRegistrar_ConfigBlock(t *testing.T) {
+
+	t.Run("Panics when ledger is empty", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "file-ledger")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		_, l := newLedgerAndFactory(tmpdir, "testchannelid", nil)
+
+		require.PanicsWithValue(t, "Failed to retrieve block", func() {
+			ConfigBlock(l)
+		})
+	})
+
+	t.Run("Panics when config block not complete", func(t *testing.T) {
+		block := protoutil.NewBlock(0, nil)
+		block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = []byte("bad metadata")
+
+		tmpdir, err := ioutil.TempDir("", "file-ledger")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		_, l := newLedgerAndFactory(tmpdir, "testchannelid", block)
+
+		require.PanicsWithValue(t, "Chain did not have appropriately encoded last config in its latest block", func() {
+			ConfigBlock(l)
+		})
+	})
+
+	t.Run("Panics when block referenes invalid config block", func(t *testing.T) {
+		block := protoutil.NewBlock(0, nil)
+		block.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = protoutil.MarshalOrPanic(&cb.Metadata{
+			Value: protoutil.MarshalOrPanic(&cb.OrdererBlockMetadata{
+				LastConfig: &cb.LastConfig{Index: 2},
+			}),
+		})
+
+		tmpdir, err := ioutil.TempDir("", "file-ledger")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		_, l := newLedgerAndFactory(tmpdir, "testchannelid", block)
+
+		require.PanicsWithValue(t, "Failed to retrieve config block", func() {
+			ConfigBlock(l)
+		})
+	})
+
+	t.Run("Returns valid config block", func(t *testing.T) {
+		confSys := genesisconfig.Load(genesisconfig.SampleInsecureSoloProfile, configtest.GetDevConfigDir())
+		genesisBlockSys := encoder.New(confSys).GenesisBlock()
+
+		tmpdir, err := ioutil.TempDir("", "file-ledger")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		_, l := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
+
+		cBlock := ConfigBlock(l)
+		assert.Equal(t, genesisBlockSys.Header, cBlock.Header)
+		assert.Equal(t, genesisBlockSys.Data, cBlock.Data)
+	})
+}
