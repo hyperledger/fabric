@@ -9,8 +9,8 @@ package etcdraft
 import (
 	"crypto/x509"
 	"encoding/pem"
+
 	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -40,13 +40,13 @@ func RaftPeers(consenterIDs []uint64) []raft.Peer {
 
 type ConsentersMap map[string]struct{}
 
-func (c ConsentersMap) Exists(consenter *etcdraft.Consenter) bool {
+func (c ConsentersMap) Exists(consenter *hlmirbft.Consenter) bool {
 	_, exists := c[string(consenter.ClientTlsCert)]
 	return exists
 }
 
 // ConsentersToMap maps consenters into set where key is client TLS certificate
-func ConsentersToMap(consenters []*etcdraft.Consenter) ConsentersMap {
+func ConsentersToMap(consenters []*hlmirbft.Consenter) ConsentersMap {
 	set := map[string]struct{}{}
 	for _, c := range consenters {
 		set[string(c.ClientTlsCert)] = struct{}{}
@@ -85,13 +85,13 @@ func MetadataHasDuplication(md *etcdraft.ConfigMetadata) error {
 }
 
 // MetadataFromConfigValue reads and translates configuration updates from config value into raft metadata
-func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigMetadata, error) {
+func MetadataFromConfigValue(configValue *common.ConfigValue) (*hlmirbft.ConfigMetadata, error) {
 	consensusTypeValue := &orderer.ConsensusType{}
 	if err := proto.Unmarshal(configValue.Value, consensusTypeValue); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal consensusType config update")
 	}
 
-	updatedMetadata := &etcdraft.ConfigMetadata{}
+	updatedMetadata := &hlmirbft.ConfigMetadata{}
 	if err := proto.Unmarshal(consensusTypeValue.Metadata, updatedMetadata); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
 	}
@@ -100,7 +100,7 @@ func MetadataFromConfigValue(configValue *common.ConfigValue) (*etcdraft.ConfigM
 }
 
 // MetadataFromConfigUpdate extracts consensus metadata from config update
-func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*etcdraft.ConfigMetadata, error) {
+func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*hlmirbft.ConfigMetadata, error) {
 	var baseVersion uint64
 	if update.ReadSet != nil && update.ReadSet.Groups != nil {
 		if ordererConfigGroup, ok := update.ReadSet.Groups["Orderer"]; ok {
@@ -178,7 +178,7 @@ func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
 }
 
 // ConsensusMetadataFromConfigBlock reads consensus metadata updates from the configuration block
-func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMetadata, error) {
+func ConsensusMetadataFromConfigBlock(block *common.Block) (*hlmirbft.ConfigMetadata, error) {
 	if block == nil {
 		return nil, errors.New("nil block")
 	}
@@ -207,54 +207,54 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*etcdraft.ConfigMeta
 
 // VerifyConfigMetadata validates Raft config metadata.
 // Note: ignores certificates expiration.
-func VerifyConfigMetadata(metadata *etcdraft.ConfigMetadata, verifyOpts x509.VerifyOptions) error {
-	if metadata == nil {
-		// defensive check. this should not happen as CheckConfigMetadata
-		// should always be called with non-nil config metadata
-		return errors.Errorf("nil Raft config metadata")
-	}
-
-	if metadata.Options == nil {
-		return errors.Errorf("nil Raft config metadata options")
-	}
-
-	if metadata.Options.HeartbeatTick == 0 ||
-		metadata.Options.ElectionTick == 0 ||
-		metadata.Options.MaxInflightBlocks == 0 {
-		// if SnapshotIntervalSize is zero, DefaultSnapshotIntervalSize is used
-		return errors.Errorf("none of HeartbeatTick (%d), ElectionTick (%d) and MaxInflightBlocks (%d) can be zero",
-			metadata.Options.HeartbeatTick, metadata.Options.ElectionTick, metadata.Options.MaxInflightBlocks)
-	}
-
-	// check Raft options
-	if metadata.Options.ElectionTick <= metadata.Options.HeartbeatTick {
-		return errors.Errorf("ElectionTick (%d) must be greater than HeartbeatTick (%d)",
-			metadata.Options.ElectionTick, metadata.Options.HeartbeatTick)
-	}
-
-	if d, err := time.ParseDuration(metadata.Options.TickInterval); err != nil {
-		return errors.Errorf("failed to parse TickInterval (%s) to time duration: %s", metadata.Options.TickInterval, err)
-	} else if d == 0 {
-		return errors.Errorf("TickInterval cannot be zero")
-	}
-
-	if len(metadata.Consenters) == 0 {
-		return errors.Errorf("empty consenter set")
-	}
-
-	// verifying certificates for being signed by CA, expiration is ignored
-	for _, consenter := range metadata.Consenters {
-		if consenter == nil {
-			return errors.Errorf("metadata has nil consenter")
+func VerifyConfigMetadata(metadata *hlmirbft.ConfigMetadata, verifyOpts x509.VerifyOptions) error {
+	/*	if metadata == nil {
+			// defensive check. this should not happen as CheckConfigMetadata
+			// should always be called with non-nil config metadata
+			return errors.Errorf("nil Raft config metadata")
 		}
-		if err := validateConsenterTLSCerts(consenter, verifyOpts, true); err != nil {
+
+		if metadata.Options == nil {
+			return errors.Errorf("nil Raft config metadata options")
+		}
+
+		if metadata.Options.HeartbeatTick == 0 ||
+			metadata.Options.ElectionTick == 0 ||
+			metadata.Options.MaxInflightBlocks == 0 {
+			// if SnapshotIntervalSize is zero, DefaultSnapshotIntervalSize is used
+			return errors.Errorf("none of HeartbeatTick (%d), ElectionTick (%d) and MaxInflightBlocks (%d) can be zero",
+				metadata.Options.HeartbeatTick, metadata.Options.ElectionTick, metadata.Options.MaxInflightBlocks)
+		}
+
+		// check Raft options
+		if metadata.Options.ElectionTick <= metadata.Options.HeartbeatTick {
+			return errors.Errorf("ElectionTick (%d) must be greater than HeartbeatTick (%d)",
+				metadata.Options.ElectionTick, metadata.Options.HeartbeatTick)
+		}
+
+		if d, err := time.ParseDuration(metadata.Options.TickInterval); err != nil {
+			return errors.Errorf("failed to parse TickInterval (%s) to time duration: %s", metadata.Options.TickInterval, err)
+		} else if d == 0 {
+			return errors.Errorf("TickInterval cannot be zero")
+		}
+
+		if len(metadata.Consenters) == 0 {
+			return errors.Errorf("empty consenter set")
+		}
+
+		// verifying certificates for being signed by CA, expiration is ignored
+		for _, consenter := range metadata.Consenters {
+			if consenter == nil {
+				return errors.Errorf("metadata has nil consenter")
+			}
+			if err := validateConsenterTLSCerts(consenter, verifyOpts, true); err != nil {
+				return err
+			}
+		}
+
+		if err := MetadataHasDuplication(metadata); err != nil {
 			return err
-		}
-	}
-
-	if err := MetadataHasDuplication(metadata); err != nil {
-		return err
-	}
+		}*/
 
 	return nil
 }
@@ -322,7 +322,7 @@ func createX509VerifyOptions(ordererConfig channelconfig.Orderer) (x509.VerifyOp
 }
 
 // validateConsenterTLSCerts decodes PEM cert, parses and validates it.
-func validateConsenterTLSCerts(c *etcdraft.Consenter, opts x509.VerifyOptions, ignoreExpiration bool) error {
+func validateConsenterTLSCerts(c *hlmirbft.Consenter, opts x509.VerifyOptions, ignoreExpiration bool) error {
 	clientCert, err := parseCertificateFromBytes(c.ClientTlsCert)
 	if err != nil {
 		return errors.Wrapf(err, "parsing tls client cert of %s:%d", c.Host, c.Port)

@@ -7,21 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 package etcdraft
 
 import (
-	"context"
-	"crypto/sha256"
-	"github.com/golang/protobuf/proto"
+	"sync"
+	"time"
+
 	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"sync"
-	"sync/atomic"
-	"time"
 
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/protoutil"
-	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
 )
 
@@ -54,43 +47,43 @@ type node struct {
 
 // TODO(harry_knight) Of node struct, storage, config, and metadata, need to be replaced with hlmirbft counterparts.
 func (n *node) start(fresh, join bool) {
-	raftPeers := RaftPeers(n.metadata.ConsenterIds)
-	n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
+	/*	raftPeers := RaftPeers(n.metadata.ConsenterIds)
+		n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
 
-	var campaign bool
-	if fresh {
-		if join {
-			raftPeers = nil
-			n.logger.Info("Starting raft node to join an existing channel")
-		} else {
-			n.logger.Info("Starting raft node as part of a new channel")
+		var campaign bool
+		if fresh {
+			if join {
+				raftPeers = nil
+				n.logger.Info("Starting raft node to join an existing channel")
+			} else {
+				n.logger.Info("Starting raft node as part of a new channel")
 
-			// determine the node to start campaign by selecting the node with ID equals to:
-			//                hash(channelID) % cluster_size + 1
-			sha := sha256.Sum256([]byte(n.chainID))
-			number, _ := proto.DecodeVarint(sha[24:])
-			if n.config.ID == number%uint64(len(raftPeers))+1 {
-				campaign = true
+				// determine the node to start campaign by selecting the node with ID equals to:
+				//                hash(channelID) % cluster_size + 1
+				sha := sha256.Sum256([]byte(n.chainID))
+				number, _ := proto.DecodeVarint(sha[24:])
+				if n.config.ID == number%uint64(len(raftPeers))+1 {
+					campaign = true
+				}
 			}
+
+			// TODO(harry_knight) config and metadata are initialised during block genesis/ordering service startup.
+			// 	So need to alter Orderer section of configtx.yaml and add new package under fabric-protos/orderer
+		} else {
+			n.logger.Info("Restarting raft node")
 		}
 
-		// TODO(harry_knight) config and metadata are initialised during block genesis/ordering service startup.
-		// 	So need to alter Orderer section of configtx.yaml and add new package under fabric-protos/orderer
-	} else {
-		n.logger.Info("Restarting raft node")
-	}
+		n.subscriberC = make(chan chan uint64)
 
-	n.subscriberC = make(chan chan uint64)
-
-	//go n.run()
-	go n.run(campaign)
+		//go n.run()
+		go n.run(campaign)*/
 }
 
 // TODO(harry_knight) The logic contained in the infinite for loops should be retained.
 // 	It serves to start, manage, and respond to the internal clock of the FSM.
 // 	Auxiliary calls should be adapted to occur during block genesis/orderer service startup.
 func (n *node) run(campaign bool) {
-	electionTimeout := n.tickInterval.Seconds() * float64(n.config.ElectionTick)
+	/*electionTimeout := n.tickInterval.Seconds() * float64(n.config.ElectionTick)
 	halfElectionTimeout := electionTimeout / 2
 
 	raftTicker := n.clock.NewTicker(n.tickInterval)
@@ -195,11 +188,11 @@ func (n *node) run(campaign bool) {
 			close(n.chain.doneC) // close after all the artifacts are closed
 			return
 		}
-	}
+	}*/
 }
 
 func (n *node) send(msgs []raftpb.Message) {
-	n.unreachableLock.RLock()
+	/*n.unreachableLock.RLock()
 	defer n.unreachableLock.RUnlock()
 
 	for _, msg := range msgs {
@@ -224,7 +217,7 @@ func (n *node) send(msgs []raftpb.Message) {
 		if msg.Type == raftpb.MsgSnap {
 			n.ReportSnapshot(msg.To, status)
 		}
-	}
+	}*/
 }
 
 // If this is called on leader, it picks a node that is
@@ -232,7 +225,7 @@ func (n *node) send(msgs []raftpb.Message) {
 // If this is called on follower, it simply waits for a
 // leader change till timeout (ElectionTimeout).
 func (n *node) abdicateLeader(currentLead uint64) {
-	status := n.Status()
+	/*status := n.Status()
 
 	if status.Lead != raft.None && status.Lead != currentLead {
 		n.logger.Warn("Leader has changed since asked to transfer leadership")
@@ -281,7 +274,7 @@ func (n *node) abdicateLeader(currentLead uint64) {
 	case l := <-notifyc:
 		n.logger.Infof("Leader has been transferred from %d to %d", currentLead, l)
 	case <-n.chain.doneC:
-	}
+	}*/
 }
 
 func (n *node) logSendFailure(dest uint64, err error) {
@@ -295,12 +288,13 @@ func (n *node) logSendFailure(dest uint64, err error) {
 }
 
 func (n *node) takeSnapshot(index uint64, cs raftpb.ConfState, data []byte) {
-	if err := n.storage.TakeSnapshot(index, cs, data); err != nil {
+	/*if err := n.storage.TakeSnapshot(index, cs, data); err != nil {
 		n.logger.Errorf("Failed to create snapshot at index %d: %s", index, err)
-	}
+	}*/
 }
 
 func (n *node) lastIndex() uint64 {
-	i, _ := n.storage.ram.LastIndex()
-	return i
+	/*i, _ := n.storage.ram.LastIndex()
+	return i*/
+	return 0
 }

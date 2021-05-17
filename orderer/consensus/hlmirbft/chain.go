@@ -10,12 +10,13 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
-	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
-	"github.com/hyperledger-labs/mirbft"
-	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
+	"github.com/hyperledger-labs/mirbft"
+	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
 
 	"code.cloudfoundry.org/clock"
 	"github.com/golang/protobuf/proto"
@@ -212,13 +213,13 @@ type MirBFTLogger struct {
 func (ml *MirBFTLogger) Log(level mirbft.LogLevel, text string, args ...interface{}) {
 	switch level {
 	case mirbft.LevelDebug:
-		ml.Debugf(text, args)
+		ml.Debugf(text, args...)
 	case mirbft.LevelError:
-		ml.Errorf(text, args)
+		ml.Errorf(text, args...)
 	case mirbft.LevelInfo:
-		ml.Infof(text, args)
+		ml.Infof(text, args...)
 	case mirbft.LevelWarn:
-		ml.Warnf(text, args)
+		ml.Warnf(text, args...)
 	}
 }
 
@@ -571,7 +572,7 @@ func isCandidate(state raft.StateType) bool {
 }
 
 func (c *Chain) run() {
-	ticking := false
+	/*ticking := false
 	timer := c.clock.NewTimer(time.Second)
 	// we need a stopped timer rather than nil,
 	// because we will be select waiting on timer.C()
@@ -841,7 +842,7 @@ func (c *Chain) run() {
 			c.periodicChecker.Stop()
 			return
 		}
-	}
+	}*/
 }
 
 func (c *Chain) writeBlock(block *common.Block, index uint64) {
@@ -973,62 +974,70 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 }
 
 func (c *Chain) commitBlock(block *common.Block) {
-	if !protoutil.IsConfigBlock(block) {
-		c.support.WriteBlock(block, nil)
-		return
-	}
-
-	c.support.WriteConfigBlock(block, nil)
-
-	configMembership := c.detectConfChange(block)
-
-	if configMembership != nil && configMembership.Changed() {
-		c.logger.Infof("Config block [%d] changes consenter set, communication should be reconfigured", block.Header.Number)
-
-		c.raftMetadataLock.Lock()
-		c.opts.BlockMetadata = configMembership.NewBlockMetadata
-		c.opts.Consenters = configMembership.NewConsenters
-		c.raftMetadataLock.Unlock()
-
-		if err := c.configureComm(); err != nil {
-			c.logger.Panicf("Failed to configure communication: %s", err)
+	/*	if !protoutil.IsConfigBlock(block) {
+			c.support.WriteBlock(block, nil)
+			return
 		}
-	}
+
+		c.support.WriteConfigBlock(block, nil)
+
+		configMembership := c.detectConfChange(block)
+
+		if configMembership != nil && configMembership.Changed() {
+			c.logger.Infof("Config block [%d] changes consenter set, communication should be reconfigured", block.Header.Number)
+
+			c.raftMetadataLock.Lock()
+			c.opts.BlockMetadata = configMembership.NewBlockMetadata
+			c.opts.Consenters = configMembership.NewConsenters
+			c.raftMetadataLock.Unlock()
+
+			if err := c.configureComm(); err != nil {
+				c.logger.Panicf("Failed to configure communication: %s", err)
+			}
+		}*/
 }
 
 func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
-	// If config is targeting THIS channel, inspect consenter set and
-	// propose raft ConfChange if it adds/removes node.
-	configMetadata := c.newConfigMetadata(block)
+	/*	// If config is targeting THIS channel, inspect consenter set and
+		// propose raft ConfChange if it adds/removes node.
+		configMetadata := c.newConfigMetadata(block)
 
-	if configMetadata == nil {
-		return nil
+		if configMetadata == nil {
+			return nil
+		}
+
+		if configMetadata.Options != nil &&
+			configMetadata.Options.SnapshotIntervalSize != 0 &&
+			configMetadata.Options.SnapshotIntervalSize != c.sizeLimit {
+			c.logger.Infof("Update snapshot interval size to %d bytes (was %d)",
+				configMetadata.Options.SnapshotIntervalSize, c.sizeLimit)
+			c.sizeLimit = configMetadata.Options.SnapshotIntervalSize
+		}
+
+		changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMetadata.Consenters)
+		if err != nil {
+			c.logger.Panicf("illegal configuration change detected: %s", err)
+		}
+
+		if changes.Rotated() {
+			c.logger.Infof("Config block [%d] rotates TLS certificate of node %d", block.Header.Number, changes.RotatedNode)
+		}
+
+		return changes*/
+	return &MembershipChanges{
+		NewBlockMetadata: nil,
+		NewConsenters:    nil,
+		AddedNodes:       nil,
+		RemovedNodes:     nil,
+		ConfChange:       nil,
+		RotatedNode:      0,
 	}
-
-	if configMetadata.Options != nil &&
-		configMetadata.Options.SnapshotIntervalSize != 0 &&
-		configMetadata.Options.SnapshotIntervalSize != c.sizeLimit {
-		c.logger.Infof("Update snapshot interval size to %d bytes (was %d)",
-			configMetadata.Options.SnapshotIntervalSize, c.sizeLimit)
-		c.sizeLimit = configMetadata.Options.SnapshotIntervalSize
-	}
-
-	changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMetadata.Consenters)
-	if err != nil {
-		c.logger.Panicf("illegal configuration change detected: %s", err)
-	}
-
-	if changes.Rotated() {
-		c.logger.Infof("Config block [%d] rotates TLS certificate of node %d", block.Header.Number, changes.RotatedNode)
-	}
-
-	return changes
 }
 
 // TODO(harry_knight) Will have to be adapted for hlmirbft as a block is written in this method (line 1047).
 // 	Unsure if equivalent ApplyConfChange method exists.
 func (c *Chain) apply(ents []raftpb.Entry) {
-	if len(ents) == 0 {
+	/*if len(ents) == 0 {
 		return
 	}
 
@@ -1134,7 +1143,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		default:
 			c.logger.Warnf("Snapshotting is in progress, it is very likely that SnapshotIntervalSize is too small")
 		}
-	}
+	}*/
 }
 
 func (c *Chain) gc() {
@@ -1180,7 +1189,7 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 	var nodes []cluster.RemoteNode
 	for raftID, consenter := range c.opts.Consenters {
 		// No need to know yourself
-		if raftID == c.raftID {
+		if raftID == c.MirBFTID {
 			continue
 		}
 		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, raftID, "server", c.logger)
@@ -1214,7 +1223,7 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 // addition extracts updates about raft replica set and if there
 // are changes updates cluster membership as well
 func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
-	hdr, err := ConfigChannelHeader(block)
+	/*hdr, err := ConfigChannelHeader(block)
 	if err != nil {
 		c.logger.Panicf("Failed to get config header type from config block: %s", err)
 	}
@@ -1295,42 +1304,42 @@ func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 
 	default:
 		c.logger.Panicf("Programming error: unexpected config type: %s", common.HeaderType(hdr.Type))
-	}
+	}*/
 }
 
 // getInFlightConfChange returns ConfChange in-flight if any.
 // It returns confChangeInProgress if it is not nil. Otherwise
 // it returns ConfChange from the last committed block (might be nil).
-func (c *Chain) getInFlightConfChange() *raftpb.ConfChange {
-	if c.confChangeInProgress != nil {
-		return c.confChangeInProgress
-	}
+func (c *Chain) getInFlightConfChange() {
+	/*	if c.confChangeInProgress != nil {
+			return c.confChangeInProgress
+		}
 
-	if c.lastBlock.Header.Number == 0 {
-		return nil // nothing to failover just started the chain
-	}
+		if c.lastBlock.Header.Number == 0 {
+			return nil // nothing to failover just started the chain
+		}
 
-	if !protoutil.IsConfigBlock(c.lastBlock) {
-		return nil
-	}
+		if !protoutil.IsConfigBlock(c.lastBlock) {
+			return nil
+		}
 
-	// extracting current Raft configuration state
-	confState := c.Node.ApplyConfChange(raftpb.ConfChange{})
+		// extracting current Raft configuration state
+		confState := c.Node.ApplyConfChange(raftpb.ConfChange{})
 
-	if len(confState.Nodes) == len(c.opts.BlockMetadata.ConsenterIds) {
-		// Raft configuration change could only add one node or
-		// remove one node at a time, if raft conf state size is
-		// equal to membership stored in block metadata field,
-		// that means everything is in sync and no need to propose
-		// config update.
-		return nil
-	}
+		if len(confState.Nodes) == len(c.opts.BlockMetadata.ConsenterIds) {
+			// Raft configuration change could only add one node or
+			// remove one node at a time, if raft conf state size is
+			// equal to membership stored in block metadata field,
+			// that means everything is in sync and no need to propose
+			// config update.
+			return nil
+		}
 
-	return ConfChange(c.opts.BlockMetadata, confState)
+		return ConfChange(c.opts.BlockMetadata, confState)*/
 }
 
 // newMetadata extract config metadata from the configuration block
-func (c *Chain) newConfigMetadata(block *common.Block) *etcdraft.ConfigMetadata {
+func (c *Chain) newConfigMetadata(block *common.Block) *hlmirbft.ConfigMetadata {
 	metadata, err := ConsensusMetadataFromConfigBlock(block)
 	if err != nil {
 		c.logger.Panicf("error reading consensus metadata: %s", err)
@@ -1361,12 +1370,12 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 		return nil
 	}
 
-	oldMetadata := &etcdraft.ConfigMetadata{}
+	oldMetadata := &hlmirbft.ConfigMetadata{}
 	if err := proto.Unmarshal(oldOrdererConfig.ConsensusMetadata(), oldMetadata); err != nil {
 		c.logger.Panicf("Programming Error: Failed to unmarshal old etcdraft consensus metadata: %v", err)
 	}
 
-	newMetadata := &etcdraft.ConfigMetadata{}
+	newMetadata := &hlmirbft.ConfigMetadata{}
 	if err := proto.Unmarshal(newOrdererConfig.ConsensusMetadata(), newMetadata); err != nil {
 		return errors.Wrap(err, "failed to unmarshal new etcdraft metadata configuration")
 	}
@@ -1393,7 +1402,7 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 
 	// create the dummy parameters for ComputeMembershipChanges
 	c.raftMetadataLock.RLock()
-	dummyOldBlockMetadata := proto.Clone(c.opts.BlockMetadata).(*etcdraft.BlockMetadata)
+	dummyOldBlockMetadata := proto.Clone(c.opts.BlockMetadata).(*hlmirbft.BlockMetadata)
 	c.raftMetadataLock.RUnlock()
 
 	dummyOldConsentersMap := CreateConsentersMap(dummyOldBlockMetadata, oldMetadata)
@@ -1442,7 +1451,7 @@ func (c *Chain) newEvictionSuspector() *evictionSuspector {
 
 	return &evictionSuspector{
 		amIInChannel:               consenterCertificate.IsConsenterOfChannel,
-		evictionSuspicionThreshold: c.opts.EvictionSuspicion,
+		evictionSuspicionThreshold: 0,
 		writeBlock:                 c.support.Append,
 		createPuller:               c.createPuller,
 		height:                     c.support.Height,

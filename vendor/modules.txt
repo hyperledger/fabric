@@ -55,8 +55,6 @@ github.com/alecthomas/template/parse
 github.com/alecthomas/units
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
-# github.com/cespare/xxhash v1.1.0
-github.com/cespare/xxhash
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
 # github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59
@@ -76,21 +74,10 @@ github.com/coreos/pkg/capnslog
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/dgraph-io/badger/v2 v2.2007.2
-github.com/dgraph-io/badger/v2
-github.com/dgraph-io/badger/v2/options
-github.com/dgraph-io/badger/v2/pb
-github.com/dgraph-io/badger/v2/skl
-github.com/dgraph-io/badger/v2/table
-github.com/dgraph-io/badger/v2/trie
-github.com/dgraph-io/badger/v2/y
 # github.com/dgraph-io/ristretto v0.0.3
 ## explicit
-github.com/dgraph-io/ristretto
-github.com/dgraph-io/ristretto/z
 # github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13
 ## explicit
-github.com/dgryski/go-farm
 # github.com/docker/docker v20.10.0-beta1.0.20201113105859-b6bfff2a628f+incompatible
 github.com/docker/docker/api/types/blkiodev
 github.com/docker/docker/api/types/container
@@ -195,8 +182,6 @@ github.com/hyperledger-labs/mirbft
 github.com/hyperledger-labs/mirbft/pkg/pb/msgs
 github.com/hyperledger-labs/mirbft/pkg/pb/state
 github.com/hyperledger-labs/mirbft/pkg/processor
-github.com/hyperledger-labs/mirbft/pkg/reqstore
-github.com/hyperledger-labs/mirbft/pkg/simplewal
 github.com/hyperledger-labs/mirbft/pkg/statemachine
 github.com/hyperledger-labs/mirbft/pkg/status
 # github.com/hyperledger/fabric-amcl v0.0.0-20200424173818-327c9e2cf77a
@@ -411,16 +396,8 @@ github.com/tedsuo/ifrit/ginkgomon
 github.com/tedsuo/ifrit/grouper
 # github.com/tidwall/gjson v1.7.5
 ## explicit
-github.com/tidwall/gjson
-# github.com/tidwall/match v1.0.3
-github.com/tidwall/match
-# github.com/tidwall/pretty v1.1.0
-github.com/tidwall/pretty
-# github.com/tidwall/tinylru v1.0.2
-github.com/tidwall/tinylru
 # github.com/tidwall/wal v0.1.4
 ## explicit
-github.com/tidwall/wal
 # github.com/willf/bitset v1.1.10
 ## explicit
 github.com/willf/bitset

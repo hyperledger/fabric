@@ -9,8 +9,9 @@ package etcdraft
 import (
 	"fmt"
 
+	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
+
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
@@ -18,7 +19,7 @@ import (
 
 // MembershipByCert convert consenters map into set encapsulated by map
 // where key is client TLS certificate
-func MembershipByCert(consenters map[uint64]*etcdraft.Consenter) map[string]uint64 {
+func MembershipByCert(consenters map[uint64]*hlmirbft.Consenter) map[string]uint64 {
 	set := map[string]uint64{}
 	for nodeID, c := range consenters {
 		set[string(c.ClientTlsCert)] = nodeID
@@ -29,22 +30,22 @@ func MembershipByCert(consenters map[uint64]*etcdraft.Consenter) map[string]uint
 // MembershipChanges keeps information about membership
 // changes introduced during configuration update
 type MembershipChanges struct {
-	NewBlockMetadata *etcdraft.BlockMetadata
-	NewConsenters    map[uint64]*etcdraft.Consenter
-	AddedNodes       []*etcdraft.Consenter
-	RemovedNodes     []*etcdraft.Consenter
+	NewBlockMetadata *hlmirbft.BlockMetadata
+	NewConsenters    map[uint64]*hlmirbft.Consenter
+	AddedNodes       []*hlmirbft.Consenter
+	RemovedNodes     []*hlmirbft.Consenter
 	ConfChange       *raftpb.ConfChange
 	RotatedNode      uint64
 }
 
 // ComputeMembershipChanges computes membership update based on information about new consenters, returns
 // two slices: a slice of added consenters and a slice of consenters to be removed
-func ComputeMembershipChanges(oldMetadata *etcdraft.BlockMetadata, oldConsenters map[uint64]*etcdraft.Consenter, newConsenters []*etcdraft.Consenter) (mc *MembershipChanges, err error) {
+func ComputeMembershipChanges(oldMetadata *hlmirbft.BlockMetadata, oldConsenters map[uint64]*hlmirbft.Consenter, newConsenters []*hlmirbft.Consenter) (mc *MembershipChanges, err error) {
 	result := &MembershipChanges{
-		NewConsenters:    map[uint64]*etcdraft.Consenter{},
-		NewBlockMetadata: proto.Clone(oldMetadata).(*etcdraft.BlockMetadata),
-		AddedNodes:       []*etcdraft.Consenter{},
-		RemovedNodes:     []*etcdraft.Consenter{},
+		NewConsenters:    map[uint64]*hlmirbft.Consenter{},
+		NewBlockMetadata: proto.Clone(oldMetadata).(*hlmirbft.BlockMetadata),
+		AddedNodes:       []*hlmirbft.Consenter{},
+		RemovedNodes:     []*hlmirbft.Consenter{},
 	}
 
 	result.NewBlockMetadata.ConsenterIds = make([]uint64, len(newConsenters))

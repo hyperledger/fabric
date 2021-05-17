@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	hlmirbftproto "github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger/fabric-protos-go/common"
-	etcdraftproto "github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -151,14 +151,13 @@ func TestVerifyConfigMetadata(t *testing.T) {
 	unknownClientCert, err := parseCertificateFromBytes(unknownClientPair.Cert)
 	require.NoError(t, err, "failed to parse unknown client certificate")
 
-	validOptions := &etcdraftproto.Options{
-		TickInterval:         "500ms",
-		ElectionTick:         10,
-		HeartbeatTick:        1,
-		MaxInflightBlocks:    5,
-		SnapshotIntervalSize: 20 * 1024 * 1024, // 20 MB
+	validOptions := &hlmirbftproto.Options{
+		HeartbeatTicks:       2,
+		SuspectTicks:         4,
+		NewEpochTimeoutTicks: 8,
+		BufferSize:           5 * 1024 * 1024, // 5 MB
 	}
-	singleConsenter := &etcdraftproto.Consenter{
+	singleConsenter := &hlmirbftproto.Consenter{
 		Host:          "host1",
 		Port:          10001,
 		ClientTlsCert: clientPair.Cert,
@@ -176,9 +175,9 @@ func TestVerifyConfigMetadata(t *testing.T) {
 	}
 
 	// valid metadata should give nil error
-	goodMetadata := &etcdraftproto.ConfigMetadata{
+	goodMetadata := &hlmirbftproto.ConfigMetadata{
 		Options: validOptions,
-		Consenters: []*etcdraftproto.Consenter{
+		Consenters: []*hlmirbftproto.Consenter{
 			singleConsenter,
 		},
 	}
@@ -187,7 +186,7 @@ func TestVerifyConfigMetadata(t *testing.T) {
 	// test variety of bad metadata
 	for _, testCase := range []struct {
 		description string
-		metadata    *etcdraftproto.ConfigMetadata
+		metadata    *hlmirbftproto.ConfigMetadata
 		verifyOpts  x509.VerifyOptions
 		errRegex    string
 	}{
@@ -199,95 +198,72 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		},
 		{
 			description: "nil options",
-			metadata:    &etcdraftproto.ConfigMetadata{},
+			metadata:    &hlmirbftproto.ConfigMetadata{},
 			verifyOpts:  goodVerifyingOpts,
 			errRegex:    "nil Raft config metadata options",
 		},
 		{
-			description: "HeartbeatTick is 0",
-			metadata: &etcdraftproto.ConfigMetadata{
-				Options: &etcdraftproto.Options{
-					HeartbeatTick: 0,
+			description: "HeartbeatTicks is 0",
+			metadata: &hlmirbftproto.ConfigMetadata{
+				Options: &hlmirbftproto.Options{
+					HeartbeatTicks:       0,
+					SuspectTicks:         4,
+					NewEpochTimeoutTicks: 8,
+					BufferSize:           5 * 1024 * 1024, // 5
+					// MB
 				},
 			},
 			verifyOpts: goodVerifyingOpts,
-			errRegex:   "none of HeartbeatTick .* can be zero",
+			errRegex:   "none of HeartbeatTicks .* can be zero",
 		},
 		{
-			description: "ElectionTick is 0",
-			metadata: &etcdraftproto.ConfigMetadata{
-				Options: &etcdraftproto.Options{
-					HeartbeatTick: validOptions.HeartbeatTick,
-					ElectionTick:  0,
+			description: "SuspectTicks is 0",
+			metadata: &hlmirbftproto.ConfigMetadata{
+				Options: &hlmirbftproto.Options{
+					HeartbeatTicks: validOptions.HeartbeatTicks,
+					SuspectTicks:   0,
 				},
 			},
 			verifyOpts: goodVerifyingOpts,
-			errRegex:   "none of .* ElectionTick .* can be zero",
+			errRegex:   "none of .* SuspectsTick .* can be zero",
 		},
 		{
-			description: "MaxInflightBlocks is 0",
-			metadata: &etcdraftproto.ConfigMetadata{
-				Options: &etcdraftproto.Options{
-					HeartbeatTick:     validOptions.HeartbeatTick,
-					ElectionTick:      validOptions.ElectionTick,
-					MaxInflightBlocks: 0,
+			description: "SuspectTicks is less than HeartbeatTicks",
+			metadata: &hlmirbftproto.ConfigMetadata{
+				Options: &hlmirbftproto.Options{
+					HeartbeatTicks: 10,
+					SuspectTicks:   1,
 				},
 			},
 			verifyOpts: goodVerifyingOpts,
-			errRegex:   "none of .* MaxInflightBlocks .* can be zero",
+			errRegex:   "SuspectsTicks .* must be greater than HeartbeatTicks",
 		},
 		{
-			description: "ElectionTick is less than HeartbeatTick",
-			metadata: &etcdraftproto.ConfigMetadata{
-				Options: &etcdraftproto.Options{
-					HeartbeatTick:     10,
-					ElectionTick:      1,
-					MaxInflightBlocks: validOptions.MaxInflightBlocks,
+			description: "SuspectTicks is 0",
+			metadata: &hlmirbftproto.ConfigMetadata{
+				Options: &hlmirbftproto.Options{
+					HeartbeatTicks:       validOptions.HeartbeatTicks,
+					SuspectTicks:         0,
+					NewEpochTimeoutTicks: validOptions.NewEpochTimeoutTicks,
 				},
 			},
 			verifyOpts: goodVerifyingOpts,
-			errRegex:   "ElectionTick .* must be greater than HeartbeatTick",
-		},
-		{
-			description: "TickInterval is not parsable",
-			metadata: &etcdraftproto.ConfigMetadata{
-				Options: &etcdraftproto.Options{
-					HeartbeatTick:     validOptions.HeartbeatTick,
-					ElectionTick:      validOptions.ElectionTick,
-					MaxInflightBlocks: validOptions.MaxInflightBlocks,
-					TickInterval:      "abcd",
-				},
-			},
-			verifyOpts: goodVerifyingOpts,
-			errRegex:   "failed to parse TickInterval .* to time duration",
-		},
-		{
-			description: "TickInterval is 0",
-			metadata: &etcdraftproto.ConfigMetadata{
-				Options: &etcdraftproto.Options{
-					HeartbeatTick:     validOptions.HeartbeatTick,
-					ElectionTick:      validOptions.ElectionTick,
-					MaxInflightBlocks: validOptions.MaxInflightBlocks,
-					TickInterval:      "0s",
-				},
-			},
-			verifyOpts: goodVerifyingOpts,
-			errRegex:   "TickInterval cannot be zero",
+			errRegex:   "SuspectTicks cannot be zero",
 		},
 		{
 			description: "consenter set is empty",
-			metadata: &etcdraftproto.ConfigMetadata{
+			metadata: &hlmirbftproto.ConfigMetadata{
 				Options:    validOptions,
-				Consenters: []*etcdraftproto.Consenter{},
+				Consenters: []*hlmirbftproto.Consenter{},
 			},
 			verifyOpts: goodVerifyingOpts,
 			errRegex:   "empty consenter set",
 		},
 		{
 			description: "metadata has nil consenter",
-			metadata: &etcdraftproto.ConfigMetadata{
+			metadata: &hlmirbftproto.ConfigMetadata{
 				Options: validOptions,
-				Consenters: []*etcdraftproto.Consenter{
+				Consenters: []*hlmirbftproto.Consenter{
 					nil,
 				},
 			},
@@ -296,9 +272,9 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		},
 		{
 			description: "consenter has invalid server cert",
-			metadata: &etcdraftproto.ConfigMetadata{
+			metadata: &hlmirbftproto.ConfigMetadata{
 				Options: validOptions,
-				Consenters: []*etcdraftproto.Consenter{
+				Consenters: []*hlmirbftproto.Consenter{
 					{
 						ServerTlsCert: []byte("invalid"),
 						ClientTlsCert: clientPair.Cert,
@@ -310,9 +286,9 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		},
 		{
 			description: "consenter has invalid client cert",
-			metadata: &etcdraftproto.ConfigMetadata{
+			metadata: &hlmirbftproto.ConfigMetadata{
 				Options: validOptions,
-				Consenters: []*etcdraftproto.Consenter{
+				Consenters: []*hlmirbftproto.Consenter{
 					{
 						ServerTlsCert: serverPair.Cert,
 						ClientTlsCert: []byte("invalid"),
@@ -324,9 +300,9 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		},
 		{
 			description: "metadata has duplicate consenters",
-			metadata: &etcdraftproto.ConfigMetadata{
+			metadata: &hlmirbftproto.ConfigMetadata{
 				Options: validOptions,
-				Consenters: []*etcdraftproto.Consenter{
+				Consenters: []*hlmirbftproto.Consenter{
 					singleConsenter,
 					singleConsenter,
 				},
@@ -336,9 +312,9 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		},
 		{
 			description: "consenter has client cert signed by unknown authority",
-			metadata: &etcdraftproto.ConfigMetadata{
+			metadata: &hlmirbftproto.ConfigMetadata{
 				Options: validOptions,
-				Consenters: []*etcdraftproto.Consenter{
+				Consenters: []*hlmirbftproto.Consenter{
 					{
 						ClientTlsCert: unknownClientPair.Cert,
 						ServerTlsCert: serverPair.Cert,
@@ -350,9 +326,9 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		},
 		{
 			description: "consenter has server cert signed by unknown authority",
-			metadata: &etcdraftproto.ConfigMetadata{
+			metadata: &hlmirbftproto.ConfigMetadata{
 				Options: validOptions,
-				Consenters: []*etcdraftproto.Consenter{
+				Consenters: []*hlmirbftproto.Consenter{
 					{
 						ServerTlsCert: unknownServerPair.Cert,
 						ClientTlsCert: clientPair.Cert,
@@ -388,22 +364,21 @@ func TestVerifyConfigMetadata(t *testing.T) {
 		require.True(t, ok, "expected an x509.CertificateInvalidError but got %T", err)
 		require.Equal(t, x509.Expired, cie.Reason)
 
-		consenterWithExpiredCerts := &etcdraftproto.Consenter{
+		consenterWithExpiredCerts := &hlmirbftproto.Consenter{
 			Host:          "host1",
 			Port:          10001,
 			ClientTlsCert: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: clientCertBytes}),
 			ServerTlsCert: serverPair.Cert,
 		}
 
-		metadataWithExpiredConsenter := &etcdraftproto.ConfigMetadata{
-			Options: &etcdraftproto.Options{
-				TickInterval:         "500ms",
-				ElectionTick:         10,
-				HeartbeatTick:        1,
-				MaxInflightBlocks:    5,
-				SnapshotIntervalSize: 20 * 1024 * 1024, // 20 MB
+		metadataWithExpiredConsenter := &hlmirbftproto.ConfigMetadata{
+			Options: &hlmirbftproto.Options{
+				HeartbeatTicks:       2,
+				SuspectTicks:         4,
+				NewEpochTimeoutTicks: 8,
+				BufferSize:           5 * 1024 * 1024, // 5 MB
 			},
-			Consenters: []*etcdraftproto.Consenter{
+			Consenters: []*hlmirbftproto.Consenter{
 				consenterWithExpiredCerts,
 			},
 		}

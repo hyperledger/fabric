@@ -8,12 +8,14 @@ package etcdraft
 
 import (
 	"bytes"
+	"path"
+	"reflect"
+
 	"code.cloudfoundry.org/clock"
 	"github.com/golang/protobuf/proto"
 	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/crypto"
@@ -28,8 +30,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"path"
-	"reflect"
 )
 
 //go:generate counterfeiter -o mocks/inactive_chain_registry.go --fake-name InactiveChainRegistry . InactiveChainRegistry
@@ -245,7 +245,7 @@ func (c *Consenter) IsChannelMember(joinBlock *common.Block) (bool, error) {
 	if !exists {
 		return false, errors.New("no orderer config in bundle")
 	}
-	configMetadata := &etcdraft.ConfigMetadata{}
+	configMetadata := &hlmirbft.ConfigMetadata{}
 	if err := proto.Unmarshal(oc.ConsensusMetadata(), configMetadata); err != nil {
 		return false, err
 	}
