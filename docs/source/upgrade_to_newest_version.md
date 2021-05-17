@@ -33,7 +33,8 @@ For information about how to edit the relevant channel configurations to enable 
 
 ### Chaincode shim changes (Go chaincode only)
 
-The recommended approach is to vendor the shim in your v1.4 Go chaincode before making upgrades to the peers and channels. If you are already using an existing tool such as ``govendor`` you may continue using it to vendor the new chaincode shim. Best practice, however, would be to use Go modules to vendor the new chaincode shim, as modules are now the de facto standard for dependency management in the Go ecosystem. Note that since Fabric 2.0.0, chaincode using Go modules without vendored dependencies is also supported. If you do this, you do not need to make any additional changes to your chaincode.
+The v2.x `ccenv` image that is used to build Go chaincodes no longer automatically vendors the Go chaincode shim dependency like the v1.4 `ccenv` image did. 
+The recommended approach is to vendor the shim in your v1.4 Go chaincode before making upgrades to the peers and channels, since this approach works with both a v1.4.x and v2.x peer. If you are already using an existing tool such as ``govendor`` you may continue using it to vendor the chaincode shim. Best practice, however, would be to use Go modules to vendor the chaincode shim, as modules are now the de facto standard for dependency management in the Go ecosystem. Note that since Fabric v2.0, chaincode using Go modules without vendored dependencies is also supported. If you do this, you do not need to make any additional changes to your chaincode.
 
 If you did not vendor the shim in your v1.4 chaincode, the old v1.4 chaincode images will still technically work after upgrade, but you are in a risky state. If the chaincode image gets deleted from your environment for whatever reason, the next invoke on v2.x peer will try to rebuild the chaincode image and you'll get an error that the shim cannot be found.
 
