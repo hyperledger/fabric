@@ -32,6 +32,19 @@ type FileLedgerBlockStore struct {
 		result1 *common.BlockchainInfo
 		result2 error
 	}
+	RetrieveBlockByNumberStub        func(uint64) (*common.Block, error)
+	retrieveBlockByNumberMutex       sync.RWMutex
+	retrieveBlockByNumberArgsForCall []struct {
+		arg1 uint64
+	}
+	retrieveBlockByNumberReturns struct {
+		result1 *common.Block
+		result2 error
+	}
+	retrieveBlockByNumberReturnsOnCall map[int]struct {
+		result1 *common.Block
+		result2 error
+	}
 	RetrieveBlocksStub        func(uint64) (ledger.ResultsIterator, error)
 	retrieveBlocksMutex       sync.RWMutex
 	retrieveBlocksArgsForCall []struct {
@@ -59,15 +72,16 @@ func (fake *FileLedgerBlockStore) AddBlock(arg1 *common.Block) error {
 	fake.addBlockArgsForCall = append(fake.addBlockArgsForCall, struct {
 		arg1 *common.Block
 	}{arg1})
+	stub := fake.AddBlockStub
+	fakeReturns := fake.addBlockReturns
 	fake.recordInvocation("AddBlock", []interface{}{arg1})
 	fake.addBlockMutex.Unlock()
-	if fake.AddBlockStub != nil {
-		return fake.AddBlockStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.addBlockReturns
 	return fakeReturns.result1
 }
 
@@ -118,15 +132,16 @@ func (fake *FileLedgerBlockStore) GetBlockchainInfo() (*common.BlockchainInfo, e
 	ret, specificReturn := fake.getBlockchainInfoReturnsOnCall[len(fake.getBlockchainInfoArgsForCall)]
 	fake.getBlockchainInfoArgsForCall = append(fake.getBlockchainInfoArgsForCall, struct {
 	}{})
+	stub := fake.GetBlockchainInfoStub
+	fakeReturns := fake.getBlockchainInfoReturns
 	fake.recordInvocation("GetBlockchainInfo", []interface{}{})
 	fake.getBlockchainInfoMutex.Unlock()
-	if fake.GetBlockchainInfoStub != nil {
-		return fake.GetBlockchainInfoStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.getBlockchainInfoReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -168,21 +183,86 @@ func (fake *FileLedgerBlockStore) GetBlockchainInfoReturnsOnCall(i int, result1 
 	}{result1, result2}
 }
 
+func (fake *FileLedgerBlockStore) RetrieveBlockByNumber(arg1 uint64) (*common.Block, error) {
+	fake.retrieveBlockByNumberMutex.Lock()
+	ret, specificReturn := fake.retrieveBlockByNumberReturnsOnCall[len(fake.retrieveBlockByNumberArgsForCall)]
+	fake.retrieveBlockByNumberArgsForCall = append(fake.retrieveBlockByNumberArgsForCall, struct {
+		arg1 uint64
+	}{arg1})
+	stub := fake.RetrieveBlockByNumberStub
+	fakeReturns := fake.retrieveBlockByNumberReturns
+	fake.recordInvocation("RetrieveBlockByNumber", []interface{}{arg1})
+	fake.retrieveBlockByNumberMutex.Unlock()
+	if stub != nil {
+		return stub(arg1)
+	}
+	if specificReturn {
+		return ret.result1, ret.result2
+	}
+	return fakeReturns.result1, fakeReturns.result2
+}
+
+func (fake *FileLedgerBlockStore) RetrieveBlockByNumberCallCount() int {
+	fake.retrieveBlockByNumberMutex.RLock()
+	defer fake.retrieveBlockByNumberMutex.RUnlock()
+	return len(fake.retrieveBlockByNumberArgsForCall)
+}
+
+func (fake *FileLedgerBlockStore) RetrieveBlockByNumberCalls(stub func(uint64) (*common.Block, error)) {
+	fake.retrieveBlockByNumberMutex.Lock()
+	defer fake.retrieveBlockByNumberMutex.Unlock()
+	fake.RetrieveBlockByNumberStub = stub
+}
+
+func (fake *FileLedgerBlockStore) RetrieveBlockByNumberArgsForCall(i int) uint64 {
+	fake.retrieveBlockByNumberMutex.RLock()
+	defer fake.retrieveBlockByNumberMutex.RUnlock()
+	argsForCall := fake.retrieveBlockByNumberArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *FileLedgerBlockStore) RetrieveBlockByNumberReturns(result1 *common.Block, result2 error) {
+	fake.retrieveBlockByNumberMutex.Lock()
+	defer fake.retrieveBlockByNumberMutex.Unlock()
+	fake.RetrieveBlockByNumberStub = nil
+	fake.retrieveBlockByNumberReturns = struct {
+		result1 *common.Block
+		result2 error
+	}{result1, result2}
+}
+
+func (fake *FileLedgerBlockStore) RetrieveBlockByNumberReturnsOnCall(i int, result1 *common.Block, result2 error) {
+	fake.retrieveBlockByNumberMutex.Lock()
+	defer fake.retrieveBlockByNumberMutex.Unlock()
+	fake.RetrieveBlockByNumberStub = nil
+	if fake.retrieveBlockByNumberReturnsOnCall == nil {
+		fake.retrieveBlockByNumberReturnsOnCall = make(map[int]struct {
+			result1 *common.Block
+			result2 error
+		})
+	}
+	fake.retrieveBlockByNumberReturnsOnCall[i] = struct {
+		result1 *common.Block
+		result2 error
+	}{result1, result2}
+}
+
 func (fake *FileLedgerBlockStore) RetrieveBlocks(arg1 uint64) (ledger.ResultsIterator, error) {
 	fake.retrieveBlocksMutex.Lock()
 	ret, specificReturn := fake.retrieveBlocksReturnsOnCall[len(fake.retrieveBlocksArgsForCall)]
 	fake.retrieveBlocksArgsForCall = append(fake.retrieveBlocksArgsForCall, struct {
 		arg1 uint64
 	}{arg1})
+	stub := fake.RetrieveBlocksStub
+	fakeReturns := fake.retrieveBlocksReturns
 	fake.recordInvocation("RetrieveBlocks", []interface{}{arg1})
 	fake.retrieveBlocksMutex.Unlock()
-	if fake.RetrieveBlocksStub != nil {
-		return fake.RetrieveBlocksStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.retrieveBlocksReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -235,9 +315,10 @@ func (fake *FileLedgerBlockStore) Shutdown() {
 	fake.shutdownMutex.Lock()
 	fake.shutdownArgsForCall = append(fake.shutdownArgsForCall, struct {
 	}{})
+	stub := fake.ShutdownStub
 	fake.recordInvocation("Shutdown", []interface{}{})
 	fake.shutdownMutex.Unlock()
-	if fake.ShutdownStub != nil {
+	if stub != nil {
 		fake.ShutdownStub()
 	}
 }
@@ -261,6 +342,8 @@ func (fake *FileLedgerBlockStore) Invocations() map[string][][]interface{} {
 	defer fake.addBlockMutex.RUnlock()
 	fake.getBlockchainInfoMutex.RLock()
 	defer fake.getBlockchainInfoMutex.RUnlock()
+	fake.retrieveBlockByNumberMutex.RLock()
+	defer fake.retrieveBlockByNumberMutex.RUnlock()
 	fake.retrieveBlocksMutex.RLock()
 	defer fake.retrieveBlocksMutex.RUnlock()
 	fake.shutdownMutex.RLock()
