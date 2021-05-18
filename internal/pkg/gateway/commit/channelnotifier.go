@@ -31,7 +31,7 @@ func newChannelNotifier(done <-chan struct{}, commitChannel <-chan *ledger.Commi
 }
 
 func (notifier *channelLevelNotifier) run() {
-	for {
+	for !notifier.isClosed() {
 		select {
 		case blockCommit, ok := <-notifier.commitChannel:
 			if !ok {
@@ -98,15 +98,20 @@ func (notifier *channelLevelNotifier) notify(n *notification) {
 
 func (notifier *channelLevelNotifier) registerListener(done <-chan struct{}, transactionID string) <-chan notification {
 	notifyChannel := make(chan notification, 1) // avoid blocking and only expect one notification per channel
-	listener := &transactionListener{
-		done:          done,
-		transactionID: transactionID,
-		notifyChannel: notifyChannel,
-	}
 
 	notifier.lock.Lock()
 	defer notifier.lock.Unlock()
-	notifier.listeners[transactionID] = append(notifier.listeners[transactionID], listener)
+
+	if notifier.closed {
+		close(notifyChannel)
+	} else {
+		listener := &transactionListener{
+			done:          done,
+			transactionID: transactionID,
+			notifyChannel: notifyChannel,
+		}
+		notifier.listeners[transactionID] = append(notifier.listeners[transactionID], listener)
+	}
 
 	return notifyChannel
 }
