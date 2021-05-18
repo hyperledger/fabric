@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
@@ -77,7 +78,10 @@ BCCSP:
 			os.Exit(rc)
 		}
 	}
-	os.Exit(0)
+
+	// bypass the waiting for race detector done by os.Exit(0) as it hangs when used with
+	// softhsm 2.6.1
+	syscall.Exit(0)
 }
 
 func TestGetDefault(t *testing.T) {

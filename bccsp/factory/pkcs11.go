@@ -14,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const pkcs11Enabled = false
+const pkcs11Enabled = true
 
 // FactoryOpts holds configuration information used to initialize factory implementations
 type FactoryOpts struct {
