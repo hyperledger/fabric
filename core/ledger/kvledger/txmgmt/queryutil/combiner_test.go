@@ -25,7 +25,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("util,statedb=debug")
+	flogging.ActivateSpec("util,statedb=info")
 	os.Exit(m.Run())
 }
 

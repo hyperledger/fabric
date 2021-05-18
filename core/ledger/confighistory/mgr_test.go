@@ -30,7 +30,7 @@ var testNewHashFunc = func() (hash.Hash, error) {
 }
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("confighistory=debug")
+	flogging.ActivateSpec("confighistory=info")
 	os.Exit(m.Run())
 }
 

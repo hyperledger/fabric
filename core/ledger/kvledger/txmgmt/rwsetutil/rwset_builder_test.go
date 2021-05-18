@@ -20,7 +20,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("rwsetutil=debug")
+	flogging.ActivateSpec("rwsetutil=info")
 	os.Exit(m.Run())
 }
 

@@ -1454,7 +1454,7 @@ func TestMain(m *testing.M) {
 	}
 
 	setupTestConfig()
-	flogging.ActivateSpec("chaincode=debug")
+	flogging.ActivateSpec("chaincode=info")
 	os.Exit(m.Run())
 }
 

@@ -34,7 +34,7 @@ var testEnvs = map[string]privacyenabledstate.TestEnv{
 }
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("pvtstatepurgemgmt,privacyenabledstate=debug")
+	flogging.ActivateSpec("pvtstatepurgemgmt,privacyenabledstate=info")
 	exitCode := m.Run()
 	for _, testEnv := range testEnvs {
 		testEnv.StopExternalResource()

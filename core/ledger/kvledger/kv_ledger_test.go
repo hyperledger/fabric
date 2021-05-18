@@ -35,7 +35,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,valimpl,confighistory,pvtstatepurgemgmt=debug")
+	flogging.ActivateSpec("lockbasedtxmgr,statevalidator,valimpl,confighistory,pvtstatepurgemgmt=info")
 	exitCode := m.Run()
 	if couchDBAddress != "" {
 		couchDBAddress = ""

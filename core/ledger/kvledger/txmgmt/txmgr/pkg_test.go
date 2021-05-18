@@ -32,7 +32,7 @@ import (
 
 func TestMain(m *testing.M) {
 	flogging.ActivateSpec(
-		"lockbasedtxmgr,statevalidator,statebasedval,statecouchdb,valimpl,pvtstatepurgemgmt,valinternal=debug",
+		"lockbasedtxmgr,statevalidator,statebasedval,statecouchdb,valimpl,pvtstatepurgemgmt,valinternal=info",
 	)
 	exitCode := m.Run()
 	for _, testEnv := range testEnvs {

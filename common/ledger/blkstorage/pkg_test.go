@@ -24,7 +24,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("blkstorage=debug")
+	flogging.ActivateSpec("blkstorage=info")
 	os.Exit(m.Run())
 }
 

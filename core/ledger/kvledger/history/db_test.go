@@ -30,7 +30,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("leveldbhelper,history=debug")
+	flogging.ActivateSpec("leveldbhelper,history=info")
 	os.Exit(m.Run())
 }
 

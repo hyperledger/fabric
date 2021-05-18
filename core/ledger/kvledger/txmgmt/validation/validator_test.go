@@ -55,7 +55,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("statevalidator,statebasedval,statecouchdb=debug")
+	flogging.ActivateSpec("statevalidator,statebasedval,statecouchdb=info")
 	exitCode := m.Run()
 	for _, testEnv := range testEnvs {
 		testEnv.StopExternalResource()

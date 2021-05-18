@@ -131,7 +131,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("statecouchdb=debug")
+	flogging.ActivateSpec("statecouchdb=info")
 
 	rc := m.Run()
 	if vdbEnv.couchDBEnv != nil {

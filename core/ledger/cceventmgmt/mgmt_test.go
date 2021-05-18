@@ -18,7 +18,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("eventmgmt=debug")
+	flogging.ActivateSpec("eventmgmt=info")
 	os.Exit(m.Run())
 }
 

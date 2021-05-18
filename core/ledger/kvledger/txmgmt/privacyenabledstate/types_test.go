@@ -18,7 +18,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	flogging.ActivateSpec("privacyenabledstate=debug")
+	flogging.ActivateSpec("privacyenabledstate=info")
 	exitCode := m.Run()
 	for _, testEnv := range testEnvs {
 		testEnv.StopExternalResource()

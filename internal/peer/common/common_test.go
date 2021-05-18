@@ -217,9 +217,9 @@ func TestInitCmd(t *testing.T) {
 	require.Equal(t, "warn", flogging.LoggerLevel("test.test2"))
 
 	origEnvValue := os.Getenv("FABRIC_LOGGING_SPEC")
-	os.Setenv("FABRIC_LOGGING_SPEC", "chaincode=debug:test.test2=fatal:abc=error")
+	os.Setenv("FABRIC_LOGGING_SPEC", "chaincode=info:test.test2=fatal:abc=error")
 	common.InitCmd(&cobra.Command{}, nil)
-	require.Equal(t, "debug", flogging.LoggerLevel("chaincode"))
+	require.Equal(t, "info", flogging.LoggerLevel("chaincode"))
 	require.Equal(t, "info", flogging.LoggerLevel("test"))
 	require.Equal(t, "fatal", flogging.LoggerLevel("test.test2"))
 	require.Equal(t, "error", flogging.LoggerLevel("abc"))
