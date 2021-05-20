@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package etcdraft
+package hlmirbft
 
 import (
 	"bytes"
@@ -57,7 +57,7 @@ type ChainManager interface {
 // Config contains hlmirbft configurations
 type Config struct {
 	WALDir  string // WAL data of <my-channel> is stored in WALDir/<my-channel>
-	SnapDir string // Requests of <my-channel> are stored in ReqStoreDir/<my-channel>
+	SnapDir string // Snaps of <my-channel> are started in SnapDir/<my-channel>
 }
 
 // Consenter implements hlmirbft consenter
@@ -354,7 +354,7 @@ func New(
 	orderer.RegisterClusterServer(srv.Server(), svc)
 
 	if icr == nil {
-		logger.Debug("Created an etcdraft consenter without a system channel, InactiveChainRegistry is nil")
+		logger.Debug("Created an hlmirbft consenter without a system channel, InactiveChainRegistry is nil")
 	}
 
 	return consenter

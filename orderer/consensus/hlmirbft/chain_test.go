@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package etcdraft_test
+package hlmirbft_test
 
 import (
 	"encoding/pem"

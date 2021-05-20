@@ -25,7 +25,7 @@ const (
 	// The type key for etcd based RAFT consensus.
 	EtcdRaft = "etcdraft"
 	// The type key for IBM based Mir-BFT consensus.
-	MirBFT = "hlmirbft"
+	HLMirBFT = "hlmirbft"
 )
 
 var logger = flogging.MustGetLogger("common.tools.configtxgen.localconfig")
@@ -417,9 +417,9 @@ loop:
 			cf.TranslatePathInPlace(configDir, &serverCertPath)
 			c.ServerTlsCert = []byte(serverCertPath)
 		}
-	case MirBFT:
+	case HLMirBFT:
 		if ord.MirBFT == nil {
-			logger.Panicf("%s configuration missing", MirBFT)
+			logger.Panicf("%s configuration missing", HLMirBFT)
 		}
 		if ord.MirBFT.Options == nil {
 			logger.Infof("Orderer.MirBFT.Options unset, setting to %v", genesisDefaults.Orderer.MirBFT.Options)
@@ -445,7 +445,7 @@ loop:
 				ord.MirBFT.Options.BufferSize = genesisDefaults.Orderer.MirBFT.Options.BufferSize
 
 			case len(ord.MirBFT.Consenters) == 0:
-				logger.Panicf("%s configuration did not specify any consenter", MirBFT)
+				logger.Panicf("%s configuration did not specify any consenter", HLMirBFT)
 
 			default:
 				break third_loop

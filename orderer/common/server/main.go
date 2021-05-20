@@ -10,15 +10,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/hyperledger/fabric/orderer/consensus/hlmirbft"
 	"io/ioutil"
 	"net"
 	"net/http"
-	_ "net/http/pprof" // This is essentially the main package for the orderer
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	// This is essentially the main package for the orderer
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
@@ -810,7 +813,8 @@ func initializeMultichannelRegistrar(
 			icr = etcdConsenter.InactiveChainRegistry
 		} else if bootstrapBlock == nil {
 			// without a system channel: assume cluster type, InactiveChainRegistry == nil, no go-routine.
-			consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
+			// consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
+			consenters["hlmirbft"] = hlmirbft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
 		}
 	}
 

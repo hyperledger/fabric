@@ -4,7 +4,7 @@
  SPDX-License-Identifier: Apache-2.0
 */
 
-package etcdraft_test
+package hlmirbft_test
 
 import (
 	"io/ioutil"

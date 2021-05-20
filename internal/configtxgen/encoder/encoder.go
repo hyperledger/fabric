@@ -38,8 +38,10 @@ const (
 	ConsensusTypeSolo = "solo"
 	// ConsensusTypeKafka identifies the Kafka-based consensus implementation.
 	ConsensusTypeKafka = "kafka"
-	// ConsensusTypeKafka identifies the Kafka-based consensus implementation.
+	// ConsensusTypeEtcdRaft identifies the Raft-based consensus implementation.
 	ConsensusTypeEtcdRaft = "etcdraft"
+	// ConsensusTypeMirBFT identifies the MirBFT-based consensus implementation.
+	ConsensusTypeHLMirBFT = "hlmirbft"
 
 	// BlockValidationPolicyKey TODO
 	BlockValidationPolicyKey = "BlockValidation"
@@ -205,6 +207,10 @@ func NewOrdererGroup(conf *genesisconfig.Orderer) (*cb.ConfigGroup, error) {
 	case ConsensusTypeEtcdRaft:
 		if consensusMetadata, err = channelconfig.MarshalEtcdRaftMetadata(conf.EtcdRaft); err != nil {
 			return nil, errors.Errorf("cannot marshal metadata for orderer type %s: %s", ConsensusTypeEtcdRaft, err)
+		}
+	case ConsensusTypeHLMirBFT:
+		if consensusMetadata, err = channelconfig.MarshalHLMirBFTMetadata(conf.MirBFT); err != nil {
+			return nil, errors.Errorf("cannot marshal metadata for orderer type %s: %s", ConsensusTypeHLMirBFT, err)
 		}
 	default:
 		return nil, errors.Errorf("unknown orderer type: %s", conf.OrdererType)

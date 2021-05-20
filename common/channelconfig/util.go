@@ -11,6 +11,8 @@ import (
 	"io/ioutil"
 	"math"
 
+	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
+
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
@@ -311,6 +313,27 @@ func extractChannelConfig(block *cb.Block, bccsp bccsp.BCCSP) (*ChannelConfig, e
 // MarshalEtcdRaftMetadata serializes etcd RAFT metadata.
 func MarshalEtcdRaftMetadata(md *etcdraft.ConfigMetadata) ([]byte, error) {
 	copyMd := proto.Clone(md).(*etcdraft.ConfigMetadata)
+	for _, c := range copyMd.Consenters {
+		// Expect the user to set the config value for client/server certs to the
+		// path where they are persisted locally, then load these files to memory.
+		clientCert, err := ioutil.ReadFile(string(c.GetClientTlsCert()))
+		if err != nil {
+			return nil, fmt.Errorf("cannot load client cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+		}
+		c.ClientTlsCert = clientCert
+
+		serverCert, err := ioutil.ReadFile(string(c.GetServerTlsCert()))
+		if err != nil {
+			return nil, fmt.Errorf("cannot load server cert for consenter %s:%d: %s", c.GetHost(), c.GetPort(), err)
+		}
+		c.ServerTlsCert = serverCert
+	}
+	return proto.Marshal(copyMd)
+}
+
+// MarshalHLMirBFTMetadata serializes hyperledger-labs MirBFT metadata.
+func MarshalHLMirBFTMetadata(md *hlmirbft.ConfigMetadata) ([]byte, error) {
+	copyMd := proto.Clone(md).(*hlmirbft.ConfigMetadata)
 	for _, c := range copyMd.Consenters {
 		// Expect the user to set the config value for client/server certs to the
 		// path where they are persisted locally, then load these files to memory.
