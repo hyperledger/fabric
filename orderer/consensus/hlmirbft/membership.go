@@ -40,6 +40,7 @@ type MembershipChanges struct {
 
 // ComputeMembershipChanges computes membership update based on information about new consenters, returns
 // two slices: a slice of added consenters and a slice of consenters to be removed
+// TODO(harrymknight) adapt for MirBFT. Type ConfChange is Raft specific. Find out if MirBFT equivalent exists.
 func ComputeMembershipChanges(oldMetadata *hlmirbft.BlockMetadata, oldConsenters map[uint64]*hlmirbft.Consenter, newConsenters []*hlmirbft.Consenter) (mc *MembershipChanges, err error) {
 	result := &MembershipChanges{
 		NewConsenters:    map[uint64]*hlmirbft.Consenter{},
@@ -124,6 +125,7 @@ func (mc *MembershipChanges) Rotated() bool {
 // UnacceptableQuorumLoss returns true if membership change will result in avoidable quorum loss,
 // given current number of active nodes in cluster. Avoidable means that more nodes can be started
 // to prevent quorum loss. Sometimes, quorum loss is inevitable, for example expanding 1-node cluster.
+// TODO(harrymknight) adapt for MirBFT. Quorum will be lost if consenters is less than 4.
 func (mc *MembershipChanges) UnacceptableQuorumLoss(active []uint64) bool {
 	activeMap := make(map[uint64]struct{})
 	for _, i := range active {

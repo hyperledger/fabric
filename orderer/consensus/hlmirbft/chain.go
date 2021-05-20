@@ -1369,12 +1369,12 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 
 	oldMetadata := &hlmirbft.ConfigMetadata{}
 	if err := proto.Unmarshal(oldOrdererConfig.ConsensusMetadata(), oldMetadata); err != nil {
-		c.logger.Panicf("Programming Error: Failed to unmarshal old etcdraft consensus metadata: %v", err)
+		c.logger.Panicf("Programming Error: Failed to unmarshal old hlmirbft consensus metadata: %v", err)
 	}
 
 	newMetadata := &hlmirbft.ConfigMetadata{}
 	if err := proto.Unmarshal(newOrdererConfig.ConsensusMetadata(), newMetadata); err != nil {
-		return errors.Wrap(err, "failed to unmarshal new etcdraft metadata configuration")
+		return errors.Wrap(err, "failed to unmarshal new hlmirbft metadata configuration")
 	}
 
 	verifyOpts, err := createX509VerifyOptions(newOrdererConfig)

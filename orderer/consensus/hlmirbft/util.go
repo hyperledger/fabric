@@ -9,7 +9,6 @@ package hlmirbft
 import (
 	"crypto/x509"
 	"encoding/pem"
-
 	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
 
 	"github.com/golang/protobuf/proto"
@@ -57,7 +56,7 @@ func ConsentersToMap(consenters []*hlmirbft.Consenter) ConsentersMap {
 // MetadataHasDuplication returns an error if the metadata has duplication of consenters.
 // A duplication is defined by having a server or a client TLS certificate that is found
 // in two different consenters, regardless of the type of certificate (client/server).
-func MetadataHasDuplication(md *etcdraft.ConfigMetadata) error {
+func MetadataHasDuplication(md *hlmirbft.ConfigMetadata) error {
 	if md == nil {
 		return errors.New("nil metadata")
 	}
@@ -208,53 +207,51 @@ func ConsensusMetadataFromConfigBlock(block *common.Block) (*hlmirbft.ConfigMeta
 // VerifyConfigMetadata validates Raft config metadata.
 // Note: ignores certificates expiration.
 func VerifyConfigMetadata(metadata *hlmirbft.ConfigMetadata, verifyOpts x509.VerifyOptions) error {
-	/*	if metadata == nil {
-			// defensive check. this should not happen as CheckConfigMetadata
-			// should always be called with non-nil config metadata
-			return errors.Errorf("nil Raft config metadata")
-		}
+	if metadata == nil {
+		// defensive check. this should not happen as CheckConfigMetadata
+		// should always be called with non-nil config metadata
+		return errors.Errorf("nil Raft config metadata")
+	}
 
-		if metadata.Options == nil {
-			return errors.Errorf("nil Raft config metadata options")
-		}
+	if metadata.Options == nil {
+		return errors.Errorf("nil Raft config metadata options")
+	}
 
-		if metadata.Options.HeartbeatTick == 0 ||
-			metadata.Options.ElectionTick == 0 ||
-			metadata.Options.MaxInflightBlocks == 0 {
-			// if SnapshotIntervalSize is zero, DefaultSnapshotIntervalSize is used
-			return errors.Errorf("none of HeartbeatTick (%d), ElectionTick (%d) and MaxInflightBlocks (%d) can be zero",
-				metadata.Options.HeartbeatTick, metadata.Options.ElectionTick, metadata.Options.MaxInflightBlocks)
-		}
+	if metadata.Options.HeartbeatTicks == 0 ||
+		metadata.Options.NewEpochTimeoutTicks == 0 ||
+		metadata.Options.SuspectTicks == 0 {
+		return errors.Errorf("none of HeartbeatTicks (%d), NewEpochTimeoutTicks (%d) and SuspectTicks (%d) can be zero",
+			metadata.Options.HeartbeatTicks, metadata.Options.NewEpochTimeoutTicks, metadata.Options.SuspectTicks)
+	}
 
-		// check Raft options
-		if metadata.Options.ElectionTick <= metadata.Options.HeartbeatTick {
-			return errors.Errorf("ElectionTick (%d) must be greater than HeartbeatTick (%d)",
-				metadata.Options.ElectionTick, metadata.Options.HeartbeatTick)
-		}
+	// check Raft options
+	if metadata.Options.NewEpochTimeoutTicks <= metadata.Options.HeartbeatTicks {
+		return errors.Errorf("NewEpochTimeoutTicks (%d) must be greater than HeartbeatTicks (%d)",
+			metadata.Options.NewEpochTimeoutTicks, metadata.Options.HeartbeatTicks)
+	}
 
-		if d, err := time.ParseDuration(metadata.Options.TickInterval); err != nil {
-			return errors.Errorf("failed to parse TickInterval (%s) to time duration: %s", metadata.Options.TickInterval, err)
-		} else if d == 0 {
-			return errors.Errorf("TickInterval cannot be zero")
-		}
+	if metadata.Options.SuspectTicks <= metadata.Options.HeartbeatTicks {
+		return errors.Errorf("SuspectTicks (%d) must be greater than HeartbeatTicks (%d)",
+			metadata.Options.SuspectTicks, metadata.Options.HeartbeatTicks)
+	}
 
-		if len(metadata.Consenters) == 0 {
-			return errors.Errorf("empty consenter set")
-		}
+	if len(metadata.Consenters) == 0 {
+		return errors.Errorf("empty consenter set")
+	}
 
-		// verifying certificates for being signed by CA, expiration is ignored
-		for _, consenter := range metadata.Consenters {
-			if consenter == nil {
-				return errors.Errorf("metadata has nil consenter")
-			}
-			if err := validateConsenterTLSCerts(consenter, verifyOpts, true); err != nil {
-				return err
-			}
+	// verifying certificates for being signed by CA, expiration is ignored
+	for _, consenter := range metadata.Consenters {
+		if consenter == nil {
+			return errors.Errorf("metadata has nil consenter")
 		}
-
-		if err := MetadataHasDuplication(metadata); err != nil {
+		if err := validateConsenterTLSCerts(consenter, verifyOpts, true); err != nil {
 			return err
-		}*/
+		}
+	}
+
+	if err := MetadataHasDuplication(metadata); err != nil {
+		return err
+	}
 
 	return nil
 }
