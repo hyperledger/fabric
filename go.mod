@@ -18,6 +18,7 @@ require (
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
+	github.com/fly2plan/fabric-protos-go v0.0.4-0.20210521101252-fb0f5fa86fdb
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/fsouza/go-dockerclient v1.7.0
 	github.com/go-kit/kit v0.9.0
@@ -33,7 +34,7 @@ require (
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20201119163726-f8ef75b17719
 	github.com/hyperledger/fabric-config v0.1.0
 	github.com/hyperledger/fabric-lib-go v1.0.0
-	github.com/hyperledger/fabric-protos-go v0.0.0-20210422135545-37e930696e2a
+	github.com/hyperledger/fabric-protos-go v0.0.0-20210520141515-88b9de28f790
 	github.com/kr/pretty v0.2.1
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect

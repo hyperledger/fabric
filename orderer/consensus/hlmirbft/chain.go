@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
+	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
 

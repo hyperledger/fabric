@@ -114,6 +114,9 @@ github.com/eapache/go-xerial-snappy
 # github.com/eapache/queue v1.1.0
 ## explicit
 github.com/eapache/queue
+# github.com/fly2plan/fabric-protos-go v0.0.4-0.20210521101252-fb0f5fa86fdb
+## explicit
+github.com/fly2plan/fabric-protos-go/orderer/hlmirbft
 # github.com/frankban/quicktest v1.11.3
 ## explicit
 # github.com/fsnotify/fsnotify v1.4.9
@@ -210,7 +213,7 @@ github.com/hyperledger/fabric-config/protolator/protoext/peerext
 # github.com/hyperledger/fabric-lib-go v1.0.0
 ## explicit
 github.com/hyperledger/fabric-lib-go/healthz
-# github.com/hyperledger/fabric-protos-go v0.0.0-20210422135545-37e930696e2a
+# github.com/hyperledger/fabric-protos-go v0.0.0-20210520141515-88b9de28f790
 ## explicit
 github.com/hyperledger/fabric-protos-go/common
 github.com/hyperledger/fabric-protos-go/discovery

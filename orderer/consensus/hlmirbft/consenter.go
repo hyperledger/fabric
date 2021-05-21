@@ -12,8 +12,8 @@ import (
 	"reflect"
 
 	"code.cloudfoundry.org/clock"
+	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/golang/protobuf/proto"
-	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp"

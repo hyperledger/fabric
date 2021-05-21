@@ -110,6 +110,8 @@ github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1m
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
+github.com/fly2plan/fabric-protos-go v0.0.4-0.20210521101252-fb0f5fa86fdb h1:dAqkXfRb4Qs01aHsh5RYZei/aA+SXl5hEeISAb5duGM=
+github.com/fly2plan/fabric-protos-go v0.0.4-0.20210521101252-fb0f5fa86fdb/go.mod h1:VzHNHg7XVJcOQrxgXSKYCgdveiXZfAPN0GKQaly1Upo=
 github.com/frankban/quicktest v1.11.3 h1:8sXhOn0uLys67V8EsXLc6eszDs8VXWxL3iRvebPhedY=
 github.com/frankban/quicktest v1.11.3/go.mod h1:wRf/ReqHper53s+kmmSZizM8NamnL3IM0I9ntUbOk+k=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
@@ -196,6 +198,8 @@ github.com/hyperledger/fabric-protos-go v0.0.0-20190919234611-2a87503ac7c9/go.mo
 github.com/hyperledger/fabric-protos-go v0.0.0-20200424173316-dd554ba3746e/go.mod h1:xVYTjK4DtZRBxZ2D9aE4y6AbLaPwue2o/criQyQbVD0=
 github.com/hyperledger/fabric-protos-go v0.0.0-20210422135545-37e930696e2a h1:sJwXhCxTQ7euBj+4w7pomn0CzOgdHkLlUOqtDgsI8IA=
 github.com/hyperledger/fabric-protos-go v0.0.0-20210422135545-37e930696e2a/go.mod h1:xVYTjK4DtZRBxZ2D9aE4y6AbLaPwue2o/criQyQbVD0=
+github.com/hyperledger/fabric-protos-go v0.0.0-20210520141515-88b9de28f790 h1:TB5A4O5MviIjLPtM0UjQFitHtxitKqMyk0BGJKbGqyw=
+github.com/hyperledger/fabric-protos-go v0.0.0-20210520141515-88b9de28f790/go.mod h1:xVYTjK4DtZRBxZ2D9aE4y6AbLaPwue2o/criQyQbVD0=
 github.com/inconshreveable/mousetrap v1.0.0 h1:Z8tu5sraLXCXIcARxBp/8cbvlwVa7Z1NHg9XEKhtSvM=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
