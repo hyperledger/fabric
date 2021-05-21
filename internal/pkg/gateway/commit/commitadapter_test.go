@@ -32,7 +32,7 @@ func TestPeerCommitAdapter(t *testing.T) {
 				Peer: &peer.Peer{},
 			}
 
-			_, err := adapter.TransactionStatus("CHANNEL", "TX_ID")
+			_, _, err := adapter.TransactionStatus("CHANNEL", "TX_ID")
 
 			require.ErrorContains(t, err, "CHANNEL")
 		})

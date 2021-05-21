@@ -825,6 +825,7 @@ func serve(args []string) error {
 			peerAdapter := &commit.PeerAdapter{
 				Peer: peerInstance,
 			}
+			notifier := commit.NewNotifier(peerAdapter)
 			gatewayprotos.RegisterGatewayServer(
 				peerServer.Server(),
 				gateway.CreateServer(
@@ -832,7 +833,10 @@ func serve(args []string) error {
 					discoveryService,
 					&commit.Finder{
 						Query:    peerAdapter,
-						Notifier: commit.NewNotifier(peerAdapter),
+						Notifier: notifier,
+					},
+					&commit.Eventer{
+						Notifier: notifier,
 					},
 					aclProvider,
 					peerInstance.GossipService.SelfMembershipInfo().Endpoint,

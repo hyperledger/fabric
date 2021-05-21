@@ -28,14 +28,20 @@ func (adapter *PeerAdapter) CommitNotifications(done <-chan struct{}, channelNam
 	return channel.Ledger().CommitNotificationsChannel(done)
 }
 
-func (adapter *PeerAdapter) TransactionStatus(channelName string, transactionID string) (peerproto.TxValidationCode, error) {
+func (adapter *PeerAdapter) TransactionStatus(channelName string, transactionID string) (peerproto.TxValidationCode, uint64, error) {
 	channel, err := adapter.channel(channelName)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	validationCode, _, err := channel.Ledger().GetTxValidationCodeByTxID(transactionID)
-	return validationCode, err
+	ledger := channel.Ledger()
+
+	status, blockNumber, err := ledger.GetTxValidationCodeByTxID(transactionID)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return status, blockNumber, nil
 }
 
 func (adapter *PeerAdapter) channel(name string) (*peer.Channel, error) {

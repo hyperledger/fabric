@@ -79,8 +79,10 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	case "mspid":
 		// Checks the shim's GetMSPID() API
 		return t.mspid(args)
+	case "event":
+		return t.event(stub, args)
 	default:
-		return shim.Error(`Invalid invoke function name. Expecting "invoke", "delete", "query", "respond", or "mspid"`)
+		return shim.Error(`Invalid invoke function name. Expecting "invoke", "delete", "query", "respond", "mspid", or "event"`)
 	}
 }
 
@@ -227,4 +229,17 @@ func (t *SimpleChaincode) mspid(args []string) pb.Response {
 
 	fmt.Printf("MSPID:%s\n", mspid)
 	return shim.Success([]byte(mspid))
+}
+
+// event emits a chaincode event
+func (t *SimpleChaincode) event(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	if len(args) != 2 {
+		return shim.Error("Incorrect number of arguments. Expecting 2")
+	}
+
+	if err := stub.SetEvent(args[0], []byte(args[1])); err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(nil)
 }
