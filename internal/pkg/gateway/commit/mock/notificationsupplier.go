@@ -33,16 +33,15 @@ func (fake *NotificationSupplier) CommitNotifications(arg1 <-chan struct{}, arg2
 		arg1 <-chan struct{}
 		arg2 string
 	}{arg1, arg2})
-	stub := fake.CommitNotificationsStub
-	fakeReturns := fake.commitNotificationsReturns
 	fake.recordInvocation("CommitNotifications", []interface{}{arg1, arg2})
 	fake.commitNotificationsMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
+	if fake.CommitNotificationsStub != nil {
+		return fake.CommitNotificationsStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.commitNotificationsReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
