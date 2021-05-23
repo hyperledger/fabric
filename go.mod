@@ -29,7 +29,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
 	github.com/harrymknight/fabric-protos-go v0.0.3
 	github.com/hashicorp/go-version v1.2.0
-	github.com/hyperledger-labs/mirbft v0.0.0-20210420202220-a3e98d713f28
+	github.com/hyperledger-labs/mirbft v0.0.0-20210513065819-2525f29404f5
 	github.com/hyperledger/fabric-amcl v0.0.0-20200424173818-327c9e2cf77a
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20201119163726-f8ef75b17719
 	github.com/hyperledger/fabric-config v0.1.0
@@ -59,7 +59,7 @@ require (
 	github.com/sykesm/zap-logfmt v0.0.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 	github.com/tedsuo/ifrit v0.0.0-20180802180643-bea94bb476cc
-	github.com/tidwall/gjson v1.7.5 // indirect
+	github.com/tidwall/gjson v1.8.0 // indirect
 	github.com/tidwall/wal v0.1.4 // indirect
 	github.com/willf/bitset v1.1.10
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20181228115726-23731bf9ba55
@@ -67,9 +67,9 @@ require (
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/net v0.0.0-20210420072503-d25e30425868 // indirect
+	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20210420072515-93ed5bcd2bfe // indirect
+	golang.org/x/sys v0.0.0-20210521090106-6ca3eb03dfc2 // indirect
 	golang.org/x/tools v0.1.0
 	google.golang.org/grpc v1.31.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6

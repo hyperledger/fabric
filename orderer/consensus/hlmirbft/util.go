@@ -23,19 +23,8 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
 )
-
-// RaftPeers maps consenters to slice of raft.Peer
-func RaftPeers(consenterIDs []uint64) []raft.Peer {
-	var peers []raft.Peer
-
-	for _, raftID := range consenterIDs {
-		peers = append(peers, raft.Peer{ID: raftID})
-	}
-	return peers
-}
 
 type ConsentersMap map[string]struct{}
 

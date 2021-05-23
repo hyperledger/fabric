@@ -102,6 +102,7 @@ type Options struct {
 
 	WALDir               string
 	SnapDir              string
+	ReqStoreDir          string
 	SnapshotIntervalSize uint32
 
 	// This is configurable mainly for testing purpose. Users are not
@@ -331,21 +332,16 @@ func NewChain(
 	c.ActiveNodes.Store([]uint64{})
 
 	c.Node = &node{
-		chainID:  c.channelID,
-		chain:    c,
-		logger:   c.logger,
-		metrics:  c.Metrics,
-		rpc:      disseminator,
-		config:   config,
-		clock:    c.clock,
-		metadata: c.opts.BlockMetadata,
-		tracker: &Tracker{
-			id:     c.MirBFTID,
-			sender: disseminator,
-			gauge:  c.Metrics.ActiveNodes,
-			active: &c.ActiveNodes,
-			logger: c.logger,
-		},
+		chainID:     c.channelID,
+		chain:       c,
+		logger:      c.logger,
+		metrics:     c.Metrics,
+		rpc:         disseminator,
+		config:      config,
+		WALDir:      opts.WALDir,
+		ReqStoreDir: opts.ReqStoreDir,
+		clock:       c.clock,
+		metadata:    c.opts.BlockMetadata,
 	}
 
 	return c, nil
@@ -364,7 +360,7 @@ func (c *Chain) Start() {
 	isJoin := c.support.Height() > 1
 	if isJoin && c.opts.MigrationInit {
 		isJoin = false
-		c.logger.Infof("Consensus-type migration detected, starting new raft node on an existing channel; height=%d", c.support.Height())
+		c.logger.Infof("Consensus-type migration detected, starting new mirbft node on an existing channel; height=%d", c.support.Height())
 	}
 	c.Node.start(c.fresh, isJoin)
 
@@ -494,7 +490,6 @@ func (c *Chain) isRunning() error {
 }
 
 // Consensus passes the given ConsensusRequest message to the raft.Node instance
-// TODO(harry_knight) Change stepMsg type to hlmirbft
 func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
 		return err
@@ -1465,4 +1460,17 @@ func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
 	case c.snapC <- sn:
 	case <-c.doneC:
 	}
+}
+
+// TODO(harrymknight) Implement these methods
+func (c *Chain) Apply(*msgs.QEntry) error {
+	return nil
+}
+
+func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
+	return nil, nil, nil
+}
+
+func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
+	return nil, nil
 }
