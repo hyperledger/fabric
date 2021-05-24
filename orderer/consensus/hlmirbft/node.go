@@ -8,6 +8,8 @@ package hlmirbft
 
 import (
 	"crypto"
+	"sync"
+
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
@@ -15,7 +17,6 @@ import (
 	"github.com/hyperledger-labs/mirbft/pkg/simplewal"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/protoutil"
-	"sync"
 
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -57,7 +58,13 @@ func (n *node) start(fresh, join bool) {
 
 		// Checking if the configuration settings have been passed correctly.
 		wal, err := simplewal.Open(n.WALDir)
+		if err != nil {
+			n.logger.Error(err, "Failed to create WAL")
+		}
 		reqStore, err := reqstore.Open(n.ReqStoreDir)
+		if err != nil {
+			n.logger.Error(err, "Failed to create request store")
+		}
 		node, err := mirbft.NewNode(
 			n.chain.MirBFTID,
 			n.config,

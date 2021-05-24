@@ -7,6 +7,7 @@ package gateway
 
 import (
 	"context"
+
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"

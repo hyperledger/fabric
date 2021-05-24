@@ -9,6 +9,7 @@ package hlmirbft
 import (
 	"crypto/x509"
 	"encoding/pem"
+
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 
 	"github.com/golang/protobuf/proto"

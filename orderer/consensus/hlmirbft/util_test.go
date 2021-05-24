@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
+	hlmirbftproto "github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/golang/protobuf/proto"
-	hlmirbftproto "github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
