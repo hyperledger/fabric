@@ -93,6 +93,7 @@ func TestGlobalConfig(t *testing.T) {
 	coreConfig := deliverservice.GlobalConfig()
 
 	expectedConfig := &deliverservice.DeliverServiceConfig{
+		BlockGossipEnabled:          true,
 		PeerTLSEnabled:              true,
 		ReConnectBackoffThreshold:   25 * time.Second,
 		ReconnectTotalTimeThreshold: 20 * time.Second,
@@ -119,6 +120,7 @@ func TestGlobalConfigDefault(t *testing.T) {
 	coreConfig := deliverservice.GlobalConfig()
 
 	expectedConfig := &deliverservice.DeliverServiceConfig{
+		BlockGossipEnabled:          true,
 		PeerTLSEnabled:              false,
 		ReConnectBackoffThreshold:   deliverservice.DefaultReConnectBackoffThreshold,
 		ReconnectTotalTimeThreshold: deliverservice.DefaultReConnectTotalTimeThreshold,
