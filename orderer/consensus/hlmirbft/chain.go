@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -354,6 +355,7 @@ func NewChain(
 // Start instructs the orderer to begin serving the chain and keep it current.
 func (c *Chain) Start() {
 	c.logger.Infof("Starting MirBFT node")
+
 	if err := c.configureComm(); err != nil {
 		c.logger.Errorf("Failed to start chain, aborting: +%v", err)
 		close(c.doneC)
@@ -538,7 +540,7 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	// case c.submitC <- &submit{req, leadC}:
 
 	case c.submitC <- &submit{req}:
-		//JIRA issue FLY2-64 Proposed change: broadcast message to all mirbft nodes
+		//JIRA issue FLY2-64 Proposed change:broadcast message to all nodes
 		for nodeID, _ := range c.opts.Consenters {
 			if nodeID != c.MirBFTID {
 				err := c.rpc.SendSubmit(nodeID, req)
@@ -856,9 +858,10 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 //   -- err error; the error encountered, if any.
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
 
-//JIRA issue FLY2-64 PROPOSED CHANGE: - from ordered we propose the message
+//JIRA ISSUEFLY2-64 PROPOSED CHANGE- from ordered we propose the message
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 	seq := c.support.Sequence()
+
 	if c.isConfig(msg.Payload) {
 		if msg.LastValidationSeq < seq {
 			c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
@@ -868,7 +871,7 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 				return errors.Errorf("bad config message: %s", err)
 			}
 		}
-		// Need to adopt diffrent methode.
+
 		// batch := c.support.BlockCutter().Cut()
 		// batches = [][]*common.Envelope{}
 		// if len(batch) != 0 {
@@ -883,8 +886,7 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 			return errors.Errorf("bad normal message: %s", err)
 		}
 
-		//FLY2-64 - proposed change
-		// new function to propose message
+		//JIRA isuue FLY2-64 - proposed change:/ new function to propose message
 		if err := c.proposeMsg(msg); err != nil {
 			return err
 		}
@@ -898,14 +900,31 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 //JIRA issue FLY2-64 - Proposed Change
 //New function to propose normal messages to node
 func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
+	//convert common.envelope into signedData list
+	sigData, err := protoutil.EnvelopeAsSignedData(msg.Payload)
+	if err != nil {
+		return errors.Errorf("Cannot Unmarshal Payload Signature")
+	}
+
+	//Get serialisedID from signedData list
+	serialID, err := protoutil.UnmarshalSerializedIdentity(sigData[0].Identity)
+	if err != nil {
+		return errors.Errorf("Cannot Unmarshal Serialized Identity")
+	}
+
 	data := protoutil.MarshalOrPanic(msg.Payload)
-	clientID := c.MirBFTID
+
+	//convert MSP string to uint64
+	clientID, err := strconv.ParseUint(serialID.Mspid, 10, 64)
+	if err != nil {
+		return errors.Errorf("Cannot parse Application MSP")
+	}
+
 	proposer := c.Node.Client(clientID)
 	reqNo, err := proposer.NextReqNo()
 	if err != nil {
-		return errors.Errorf("unknown client id\n", clientID)
+		return errors.Errorf("Cannot generate Next Request Number")
 	}
-
 	err = proposer.Propose(context.Background(), reqNo, data)
 	if err != nil {
 		return errors.WithMessagef(err, "failed to propose message to client %d", clientID)
