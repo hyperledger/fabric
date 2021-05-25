@@ -343,6 +343,11 @@ peer:
 
     # Delivery service related config
     deliveryclient:
+        # Enables this peer to disseminate blocks it pulled from the ordering service
+        # via gossip.
+        # Note that 'gossip.state.enabled' controls point to point block replication
+        # of blocks committed in the past.
+        blockGossipEnabled: true
         # It sets the total time the delivery service may spend in reconnection
         # attempts until its retry logic gives up and returns an error
         reconnectTotalTimeThreshold: 3600s
