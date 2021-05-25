@@ -536,10 +536,9 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	//leadC := make(chan uint64, 1)
 	select {
 	// case c.submitC <- &submit{req, leadC}:
-	//FLY
+
 	case c.submitC <- &submit{req}:
-		//FLY2-64 Proposed change
-		//broadcast message to all nodes
+		//JIRA issue FLY2-64 Proposed change: broadcast message to all mirbft nodes
 		for nodeID, _ := range c.opts.Consenters {
 			if nodeID != c.MirBFTID {
 				err := c.rpc.SendSubmit(nodeID, req)
@@ -857,20 +856,19 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 //   -- err error; the error encountered, if any.
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
 
-//FLY2-64 PROPOSED CHANGE
-// - from ordered we propose the message
+//JIRA issue FLY2-64 PROPOSED CHANGE: - from ordered we propose the message
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 	seq := c.support.Sequence()
 	if c.isConfig(msg.Payload) {
-		// if msg.LastValidationSeq < seq {
-		// 	c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
-		// 	msg.Payload, _, err = c.support.ProcessConfigMsg(msg.Payload)
-		// 	if err != nil {
-		// 		c.Metrics.ProposalFailures.Add(1)
-		// 		return nil, true, errors.Errorf("bad config message: %s", err)
-		// 	}
-		// }
-
+		if msg.LastValidationSeq < seq {
+			c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
+			msg.Payload, _, err = c.support.ProcessConfigMsg(msg.Payload)
+			if err != nil {
+				c.Metrics.ProposalFailures.Add(1)
+				return errors.Errorf("bad config message: %s", err)
+			}
+		}
+		// Need to adopt diffrent methode.
 		// batch := c.support.BlockCutter().Cut()
 		// batches = [][]*common.Envelope{}
 		// if len(batch) != 0 {
@@ -897,7 +895,7 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 
 }
 
-//FLY2-64 - Proposed Change
+//JIRA issue FLY2-64 - Proposed Change
 //New function to propose normal messages to node
 func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 	data := protoutil.MarshalOrPanic(msg.Payload)
