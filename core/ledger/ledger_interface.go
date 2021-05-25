@@ -733,10 +733,12 @@ type HashProvider interface {
 	GetHash(opts bccsp.HashOpts) (hash.Hash, error)
 }
 
-// CommitNotification is sent on each block commit to the channel returned by PeerLedger.CommitNotificationsChannel()
+// CommitNotification is sent on each block commit to the channel returned by PeerLedger.CommitNotificationsChannel().
+// TxsInfo field contains the info about individual transactions in the block in the order the transactions appear in the block
+// The transactions with a unique and non-empty txID are included in the notification
 type CommitNotification struct {
 	BlockNumber uint64
-	TxsByTxID   map[string]*CommitNotificationTxInfo
+	TxsInfo     []*CommitNotificationTxInfo
 }
 
 // CommitNotificationTxInfo contains the details of a transaction that is included in the CommitNotification
@@ -745,6 +747,7 @@ type CommitNotification struct {
 // However, it is guaranteed be non-nil if the transaction is a valid endorser transaction.
 type CommitNotificationTxInfo struct {
 	TxType             common.HeaderType
+	TxID               string
 	ValidationCode     peer.TxValidationCode
 	ChaincodeID        *peer.ChaincodeID
 	ChaincodeEventData []byte

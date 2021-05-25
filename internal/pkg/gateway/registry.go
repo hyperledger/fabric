@@ -9,6 +9,7 @@ package gateway
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -41,7 +42,7 @@ type registry struct {
 
 type endorserState struct {
 	peer     *dp.Peer
-	endpoint string
+	endorser *endorser
 	height   uint64
 }
 
@@ -65,21 +66,18 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, e
 		return nil, err
 	}
 
-	e := descriptor.EndorsersByGroups
-
 	reg.configLock.RLock()
 	defer reg.configLock.RUnlock()
 
-	// choose first layout for now - todo implement retry logic
-	if len(descriptor.Layouts) > 0 {
-		layout := descriptor.Layouts[0].QuantitiesByGroup
-		var r []*endorserState
-		for group, quantity := range layout {
+	for _, layout := range descriptor.Layouts {
+		var receivers []*endorserState // The set of peers the client needs to request endorsements from
+		abandonLayout := false
+		for group, quantity := range layout.QuantitiesByGroup {
 			// Select n remoteEndorsers from each group sorted by block height
 
 			// block heights
 			var groupPeers []*endorserState
-			for _, peer := range e[group].Peers {
+			for _, peer := range descriptor.EndorsersByGroups[group].Peers {
 				msg := &gossip.GossipMessage{}
 				err := proto.Unmarshal(peer.StateInfo.Payload, msg)
 				if err != nil {
@@ -93,26 +91,97 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, e
 				}
 				endpoint := msg.GetAliveMsg().Membership.Endpoint
 
-				groupPeers = append(groupPeers, &endorserState{peer: peer, endpoint: endpoint, height: height})
+				// find the endorser in the registry for this endpoint
+				var endorser *endorser
+				if endpoint == reg.localEndorser.address {
+					endorser = reg.localEndorser
+				} else if e, ok := reg.remoteEndorsers[endpoint]; ok {
+					endorser = e
+				} else {
+					reg.logger.Warnf("Failed to find endorser at %s", endpoint)
+					continue
+				}
+
+				groupPeers = append(groupPeers, &endorserState{peer: peer, endorser: endorser, height: height})
 			}
+
+			// If the number of available endorsers less than the quantity required, try the next layout
+			if len(groupPeers) < int(quantity) {
+				abandonLayout = true
+				break
+			}
+
 			// sort by decreasing height
 			sort.Slice(groupPeers, sorter(groupPeers, reg.localEndorser.address))
 
-			peerGroup := groupPeers[0:quantity]
-			r = append(r, peerGroup...)
+			receivers = append(receivers, groupPeers[0:quantity]...)
 		}
-		// sort the group of groups by decreasing height (since Evaluate will just choose the first one)
-		sort.Slice(r, sorter(r, reg.localEndorser.address))
 
-		for _, peer := range r {
-			if peer.endpoint == reg.localEndorser.address {
-				endorsers = append(endorsers, reg.localEndorser)
-			} else if endorser, ok := reg.remoteEndorsers[peer.endpoint]; ok {
-				endorsers = append(endorsers, endorser)
-			} else {
-				reg.logger.Warnf("Failed to find endorser at %s", peer.endpoint)
+		if abandonLayout {
+			// try the next layout
+			continue
+		}
+
+		// sort the group of groups by decreasing height (since Evaluate will just choose the first one)
+		sort.Slice(receivers, sorter(receivers, reg.localEndorser.address))
+
+		for _, peer := range receivers {
+			endorsers = append(endorsers, peer.endorser)
+		}
+		return endorsers, nil
+	}
+
+	return nil, fmt.Errorf("failed to select a set of endorsers that satisfy the endorsement policy")
+}
+
+// endorsersForOrgs returns a set of endorsers owned by the given orgs for the given chaincode on a channel.
+func (reg *registry) endorsersForOrgs(channel string, chaincode string, endorsingOrgs []string) ([]*endorser, error) {
+	err := reg.registerChannel(channel)
+	if err != nil {
+		return nil, err
+	}
+
+	endorsersByOrg := make(map[string][]*endorserState)
+
+	members := reg.discovery.PeersOfChannel(common.ChannelID(channel))
+	for _, member := range members {
+		endpoint := member.Endpoint
+		// find the endorser in the registry for this endpoint
+		var endorser *endorser
+		if endpoint == reg.localEndorser.address {
+			endorser = reg.localEndorser
+		} else if e, ok := reg.remoteEndorsers[endpoint]; ok {
+			endorser = e
+		} else {
+			reg.logger.Warnf("Failed to find endorser at %s", endpoint)
+			continue
+		}
+		// check the org membership
+		if contains(endorsingOrgs, endorser.mspid) && member.Properties != nil {
+			for _, installedChaincode := range member.Properties.Chaincodes {
+				// only consider the peers that have our chaincode installed
+				if installedChaincode.Name == chaincode {
+					endorsersByOrg[endorser.mspid] = append(endorsersByOrg[endorser.mspid], &endorserState{endorser: endorser, height: member.Properties.LedgerHeight})
+				}
 			}
 		}
+	}
+
+	if len(endorsersByOrg) != len(endorsingOrgs) {
+		missingOrgs := []string{}
+		for _, required := range endorsingOrgs {
+			if _, ok := endorsersByOrg[required]; !ok {
+				missingOrgs = append(missingOrgs, required)
+			}
+		}
+		return nil, fmt.Errorf("failed to find any endorsing peers for org(s): %s", strings.Join(missingOrgs, ", "))
+	}
+
+	var endorsers []*endorser
+	for _, es := range endorsersByOrg {
+		// sort by decreasing height and select the highest one from each org
+		sort.Slice(es, sorter(es, reg.localEndorser.address))
+		endorsers = append(endorsers, es[0].endorser)
 	}
 
 	return endorsers, nil
@@ -122,10 +191,19 @@ func sorter(e []*endorserState, host string) func(i, j int) bool {
 	return func(i, j int) bool {
 		if e[i].height == e[j].height {
 			// prefer host peer
-			return e[i].endpoint == host
+			return e[i].endorser.address == host
 		}
 		return e[i].height > e[j].height
 	}
+}
+
+func contains(slice []string, entry string) bool {
+	for _, item := range slice {
+		if entry == item {
+			return true
+		}
+	}
+	return false
 }
 
 // Returns a set of broadcastClients that can order a transaction for the given channel.

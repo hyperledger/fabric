@@ -37,16 +37,15 @@ func (fake *EndorserClient) ProcessProposal(arg1 context.Context, arg2 *peer.Sig
 		arg2 *peer.SignedProposal
 		arg3 []grpc.CallOption
 	}{arg1, arg2, arg3})
-	stub := fake.ProcessProposalStub
-	fakeReturns := fake.processProposalReturns
 	fake.recordInvocation("ProcessProposal", []interface{}{arg1, arg2, arg3})
 	fake.processProposalMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2, arg3...)
+	if fake.ProcessProposalStub != nil {
+		return fake.ProcessProposalStub(arg1, arg2, arg3...)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.processProposalReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
