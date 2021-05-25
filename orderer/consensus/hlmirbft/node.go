@@ -46,7 +46,6 @@ type node struct {
 	mirbft.Node
 }
 
-// TODO(harry_knight) Of node struct, storage, config, and metadata, need to be replaced with hlmirbft counterparts.
 func (n *node) start(fresh, join bool) {
 	n.logger.Debugf("Starting mirbft node: #peers: %v", len(n.metadata.ConsenterIds))
 	if fresh {
