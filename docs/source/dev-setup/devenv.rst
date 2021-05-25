@@ -27,7 +27,7 @@ Once Homebrew is ready, installing the necessary prerequisites is very easy:
 ::
 
     brew install git go jq softhsm
-    brew cask install --appdir="/Applications" docker
+    brew install --cask docker
 
 Docker Desktop must be launched to complete the installation so be sure to open
 the application after installing it:
