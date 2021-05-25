@@ -533,6 +533,28 @@ var _ = Describe("Blocksprovider", func() {
 				},
 			}))
 		})
+
+		When("gossip dissemination is disabled", func() {
+			BeforeEach(func() {
+				d.BlockGossipDisabled = true
+			})
+
+			It("doesn't gossip, only adds to the payload buffer", func() {
+				Eventually(fakeGossipServiceAdapter.AddPayloadCallCount).Should(Equal(1))
+				channelID, payload := fakeGossipServiceAdapter.AddPayloadArgsForCall(0)
+				Expect(channelID).To(Equal("channel-id"))
+				Expect(payload).To(Equal(&gossip.Payload{
+					Data: protoutil.MarshalOrPanic(&common.Block{
+						Header: &common.BlockHeader{
+							Number: 8,
+						},
+					}),
+					SeqNum: 8,
+				}))
+
+				Consistently(fakeGossipServiceAdapter.GossipCallCount).Should(Equal(0))
+			})
+		})
 	})
 
 	When("the deliver client returns a status", func() {

@@ -29,6 +29,8 @@ const (
 type DeliverServiceConfig struct {
 	// PeerTLSEnabled enables/disables Peer TLS.
 	PeerTLSEnabled bool
+	// BlockGossipEnabled enables block forwarding via gossip
+	BlockGossipEnabled bool
 	// ReConnectBackoffThreshold sets the delivery service maximal delay between consencutive retries.
 	ReConnectBackoffThreshold time.Duration
 	// ReconnectTotalTimeThreshold sets the total time the delivery service may spend in reconnection attempts
@@ -95,6 +97,13 @@ func LoadOverridesMap() (map[string]*orderers.Endpoint, error) {
 }
 
 func (c *DeliverServiceConfig) loadDeliverServiceConfig() {
+	enabledKey := "peer.deliveryclient.blockGossipEnabled"
+	enabledConfigOptionMissing := !viper.IsSet(enabledKey)
+	if enabledConfigOptionMissing {
+		logger.Infof("peer.deliveryclient.blockGossipEnabled is not set, defaulting to true.")
+	}
+	c.BlockGossipEnabled = enabledConfigOptionMissing || viper.GetBool(enabledKey)
+
 	c.PeerTLSEnabled = viper.GetBool("peer.tls.enabled")
 
 	c.ReConnectBackoffThreshold = viper.GetDuration("peer.deliveryclient.reConnectBackoffThreshold")
