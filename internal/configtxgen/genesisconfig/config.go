@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
+	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"

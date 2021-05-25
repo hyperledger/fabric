@@ -11,7 +11,7 @@ import (
 	"io/ioutil"
 	"math"
 
-	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
+	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"

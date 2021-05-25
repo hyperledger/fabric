@@ -63,9 +63,18 @@ The following orderer metrics are exported for consumption by Prometheus.
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_active_nodes              | gauge     | Number of active nodes in this channel.                    | channel   |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_etcdraft_active_nodes              | gauge     | Number of active nodes in this channel.                    | channel   |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_etcdraft_cluster_size              | gauge     | Number of nodes in this channel.                           | channel   |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_cluster_size              | gauge     | Number of nodes in this channel.                           | channel   |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_committed_block_number    | gauge     | The block number of the latest block committed.            | channel   |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_etcdraft_committed_block_number    | gauge     | The block number of the latest block committed.            | channel   |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_etcdraft_config_proposals_received | counter   | The total number of proposals received for config type     | channel   |                                                                    |
+|                                              |           | transactions.                                              |           |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_config_proposals_received | counter   | The total number of proposals received for config type     | channel   |                                                                    |
 |                                              |           | transactions.                                              |           |                                                                    |
@@ -73,15 +82,30 @@ The following orderer metrics are exported for consumption by Prometheus.
 | consensus_etcdraft_data_persist_duration     | histogram | The time taken for etcd/raft data to be persisted in       | channel   |                                                                    |
 |                                              |           | storage (in seconds).                                      |           |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_etcdraft_data_persist_duration     | histogram | The time taken for etcd/raft data to be persisted in       | channel   |                                                                    |
+|                                              |           | storage (in seconds).                                      |           |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_is_leader                 | gauge     | The leadership status of the current node: 1 if it is the  | channel   |                                                                    |
 |                                              |           | leader else 0.                                             |           |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_etcdraft_is_leader                 | gauge     | The leadership status of the current node: 1 if it is the  | channel   |                                                                    |
+|                                              |           | leader else 0.                                             |           |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_etcdraft_leader_changes            | counter   | The number of leader changes since process start.          | channel   |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_leader_changes            | counter   | The number of leader changes since process start.          | channel   |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_normal_proposals_received | counter   | The total number of proposals received for normal type     | channel   |                                                                    |
 |                                              |           | transactions.                                              |           |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_etcdraft_normal_proposals_received | counter   | The total number of proposals received for normal type     | channel   |                                                                    |
+|                                              |           | transactions.                                              |           |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_proposal_failures         | counter   | The number of proposal failures.                           | channel   |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_etcdraft_proposal_failures         | counter   | The number of proposal failures.                           | channel   |                                                                    |
++----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
+| consensus_etcdraft_snapshot_block_number     | gauge     | The block number of the latest snapshot.                   | channel   |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
 | consensus_etcdraft_snapshot_block_number     | gauge     | The block number of the latest snapshot.                   | channel   |                                                                    |
 +----------------------------------------------+-----------+------------------------------------------------------------+-----------+--------------------------------------------------------------------+
@@ -241,9 +265,18 @@ associated with the metric.
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.active_nodes.%{channel}                                | gauge     | Number of active nodes in this channel.                    |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.active_nodes.%{channel}                                | gauge     | Number of active nodes in this channel.                    |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.cluster_size.%{channel}                                | gauge     | Number of nodes in this channel.                           |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.cluster_size.%{channel}                                | gauge     | Number of nodes in this channel.                           |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.committed_block_number.%{channel}                      | gauge     | The block number of the latest block committed.            |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.committed_block_number.%{channel}                      | gauge     | The block number of the latest block committed.            |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.config_proposals_received.%{channel}                   | counter   | The total number of proposals received for config type     |
+|                                                                           |           | transactions.                                              |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.config_proposals_received.%{channel}                   | counter   | The total number of proposals received for config type     |
 |                                                                           |           | transactions.                                              |
@@ -251,15 +284,30 @@ associated with the metric.
 | consensus.etcdraft.data_persist_duration.%{channel}                       | histogram | The time taken for etcd/raft data to be persisted in       |
 |                                                                           |           | storage (in seconds).                                      |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.data_persist_duration.%{channel}                       | histogram | The time taken for etcd/raft data to be persisted in       |
+|                                                                           |           | storage (in seconds).                                      |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.is_leader.%{channel}                                   | gauge     | The leadership status of the current node: 1 if it is the  |
 |                                                                           |           | leader else 0.                                             |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.is_leader.%{channel}                                   | gauge     | The leadership status of the current node: 1 if it is the  |
+|                                                                           |           | leader else 0.                                             |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.leader_changes.%{channel}                              | counter   | The number of leader changes since process start.          |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.leader_changes.%{channel}                              | counter   | The number of leader changes since process start.          |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.normal_proposals_received.%{channel}                   | counter   | The total number of proposals received for normal type     |
 |                                                                           |           | transactions.                                              |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.normal_proposals_received.%{channel}                   | counter   | The total number of proposals received for normal type     |
+|                                                                           |           | transactions.                                              |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.proposal_failures.%{channel}                           | counter   | The number of proposal failures.                           |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.proposal_failures.%{channel}                           | counter   | The number of proposal failures.                           |
++---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
+| consensus.etcdraft.snapshot_block_number.%{channel}                       | gauge     | The block number of the latest snapshot.                   |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+
 | consensus.etcdraft.snapshot_block_number.%{channel}                       | gauge     | The block number of the latest snapshot.                   |
 +---------------------------------------------------------------------------+-----------+------------------------------------------------------------+

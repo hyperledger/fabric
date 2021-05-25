@@ -9,6 +9,7 @@ package hlmirbft
 import (
 	"crypto/x509"
 	"encoding/pem"
+
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 
 	"github.com/golang/protobuf/proto"
@@ -224,7 +225,7 @@ func VerifyConfigMetadata(metadata *hlmirbft.ConfigMetadata, verifyOpts x509.Ver
 			metadata.Options.HeartbeatTicks, metadata.Options.NewEpochTimeoutTicks, metadata.Options.SuspectTicks)
 	}
 
-	// check Raft options
+	// check Mir-BFT options
 	if metadata.Options.NewEpochTimeoutTicks <= metadata.Options.HeartbeatTicks {
 		return errors.Errorf("NewEpochTimeoutTicks (%d) must be greater than HeartbeatTicks (%d)",
 			metadata.Options.NewEpochTimeoutTicks, metadata.Options.HeartbeatTicks)

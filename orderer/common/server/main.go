@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/hyperledger/fabric/orderer/consensus/hlmirbft"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -20,6 +19,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/hyperledger/fabric/orderer/consensus/hlmirbft"
 
 	// This is essentially the main package for the orderer
 
