@@ -31,16 +31,15 @@ func (fake *ACLChecker) CheckACL(arg1 string, arg2 string, arg3 interface{}) err
 		arg2 string
 		arg3 interface{}
 	}{arg1, arg2, arg3})
-	stub := fake.CheckACLStub
-	fakeReturns := fake.checkACLReturns
 	fake.recordInvocation("CheckACL", []interface{}{arg1, arg2, arg3})
 	fake.checkACLMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2, arg3)
+	if fake.CheckACLStub != nil {
+		return fake.CheckACLStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
 	}
+	fakeReturns := fake.checkACLReturns
 	return fakeReturns.result1
 }
 

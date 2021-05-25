@@ -1159,18 +1159,20 @@ func TestCommitNotifications(t *testing.T) {
 		require.Equal(t,
 			&ledger.CommitNotification{
 				BlockNumber: 1,
-				TxsByTxID: map[string]*ledger.CommitNotificationTxInfo{
-					"txid_1": {
+				TxsInfo: []*ledger.CommitNotificationTxInfo{
+					{
+						TxID:               "txid_1",
+						TxType:             common.HeaderType_ENDORSER_TRANSACTION,
 						ValidationCode:     peer.TxValidationCode_BAD_RWSET,
 						ChaincodeID:        &peer.ChaincodeID{Name: "cc1"},
 						ChaincodeEventData: []byte("cc1_event"),
-						TxType:             common.HeaderType_ENDORSER_TRANSACTION,
 					},
-					"txid_2": {
+					{
+						TxID:               "txid_2",
+						TxType:             common.HeaderType_ENDORSER_TRANSACTION,
 						ValidationCode:     peer.TxValidationCode_VALID,
 						ChaincodeID:        &peer.ChaincodeID{Name: "cc2"},
 						ChaincodeEventData: []byte("cc2_event"),
-						TxType:             common.HeaderType_ENDORSER_TRANSACTION,
 					},
 				},
 			},
@@ -1195,7 +1197,7 @@ func TestCommitNotifications(t *testing.T) {
 		require.Equal(t,
 			&ledger.CommitNotification{
 				BlockNumber: 1,
-				TxsByTxID:   map[string]*ledger.CommitNotificationTxInfo{},
+				TxsInfo:     []*ledger.CommitNotificationTxInfo{},
 			},
 			commitNotification,
 		)
@@ -1279,15 +1281,17 @@ func TestCommitNotificationsOnBlockCommit(t *testing.T) {
 	require.Equal(t,
 		&ledger.CommitNotification{
 			BlockNumber: 1,
-			TxsByTxID: map[string]*ledger.CommitNotificationTxInfo{
-				"txid_1": {
+			TxsInfo: []*ledger.CommitNotificationTxInfo{
+				{
 					TxType:             common.HeaderType_ENDORSER_TRANSACTION,
+					TxID:               "txid_1",
 					ValidationCode:     peer.TxValidationCode_VALID,
 					ChaincodeID:        &peer.ChaincodeID{Name: "foo", Version: "v1"},
 					ChaincodeEventData: []byte("foo-event"),
 				},
-				"txid_2": {
+				{
 					TxType:             common.HeaderType_ENDORSER_TRANSACTION,
+					TxID:               "txid_2",
 					ValidationCode:     peer.TxValidationCode_MVCC_READ_CONFLICT,
 					ChaincodeID:        &peer.ChaincodeID{Name: "bar", Version: "v2"},
 					ChaincodeEventData: []byte("bar-event"),

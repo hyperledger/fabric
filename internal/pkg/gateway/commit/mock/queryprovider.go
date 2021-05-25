@@ -33,16 +33,15 @@ func (fake *QueryProvider) TransactionStatus(arg1 string, arg2 string) (peer.TxV
 		arg1 string
 		arg2 string
 	}{arg1, arg2})
-	stub := fake.TransactionStatusStub
-	fakeReturns := fake.transactionStatusReturns
 	fake.recordInvocation("TransactionStatus", []interface{}{arg1, arg2})
 	fake.transactionStatusMutex.Unlock()
-	if stub != nil {
-		return stub(arg1, arg2)
+	if fake.TransactionStatusStub != nil {
+		return fake.TransactionStatusStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
+	fakeReturns := fake.transactionStatusReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
