@@ -541,7 +541,7 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 
 	case c.submitC <- &submit{req}:
 		//JIRA issue FLY2-64 Proposed change:broadcast message to all nodes
-		for nodeID, _ := range c.opts.Consenters {
+		/*for nodeID, _ := range c.opts.Consenters {
 			if nodeID != c.MirBFTID {
 				err := c.rpc.SendSubmit(nodeID, req)
 				if err != nil {
@@ -550,7 +550,7 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 				}
 			}
 
-		}
+		}*/
 
 		// lead := <-leadC
 		// if lead == raft.None {
