@@ -241,21 +241,19 @@ them for approval. The following instructions show you how to use ReadTheDocs to
 do this.
 
 1. Go to [`http://readthedocs.org`](http://readthedocs.org) and sign up for an
-   account.
-2. Create a project. Your username will preface the URL and you may want to
-   append `-fabric` to ensure that you can distinguish between this and other
-   docs that you need to create for other projects. So for example:
-   `YOURGITHUBID-fabric.readthedocs.io/en/{BRANCH_DOC}`.
-3. Click `Admin`, click `Integrations`, click `Add integration`, choose `GitHub
-   incoming webhook`, then click `Add integration`.
-4. Fork the [`fabric`](https://github.com/hyperledger/fabric) repository.
+   account. Choose the "sign up with GitHub" option.
+2. Fork the [`fabric`](https://github.com/hyperledger/fabric) repository.
+3. Import a project. Select your fork of the fabric repository. You will need to
+   create a unique name for the project, such as YOUR_USERNAME-fabric.
+4. Check in the `Admin`, `Integrations` settings to verify you have one `GitHub
+   incoming webhook`.
 5. From your fork, go to `Settings` in the upper right portion of the screen.
 6. Click `Webhooks`.
-7. Click `Add webhook`.
-8. Add the ReadTheDocs's URL into `Payload URL`.
-9. Choose `Let me select individual events`:`Pushes`、`Branch or tag creation`、
-   `Branch or tag deletion`.
-10. Click `Add webhook`.
+7. Find your new webhook. It will begin with
+  `https://readthedocs.org/api/v2/webhook/YOUR_PROJECT_NAME`
+8. Scroll to the `Which events would you like to trigger this webhook?` setting
+   and unselect `Pull requests`.
+9. Click `Update webhook`.
 
 Use `fabric-docs-i18n` instead of `fabric` in the above instructions if you're
 building an international language translation.
