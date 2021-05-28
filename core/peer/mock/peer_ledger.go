@@ -207,18 +207,20 @@ type PeerLedger struct {
 		result1 *peera.ProcessedTransaction
 		result2 error
 	}
-	GetTxValidationCodeByTxIDStub        func(string) (peera.TxValidationCode, error)
+	GetTxValidationCodeByTxIDStub        func(string) (peera.TxValidationCode, uint64, error)
 	getTxValidationCodeByTxIDMutex       sync.RWMutex
 	getTxValidationCodeByTxIDArgsForCall []struct {
 		arg1 string
 	}
 	getTxValidationCodeByTxIDReturns struct {
 		result1 peera.TxValidationCode
-		result2 error
+		result2 uint64
+		result3 error
 	}
 	getTxValidationCodeByTxIDReturnsOnCall map[int]struct {
 		result1 peera.TxValidationCode
-		result2 error
+		result2 uint64
+		result3 error
 	}
 	NewHistoryQueryExecutorStub        func() (ledger.HistoryQueryExecutor, error)
 	newHistoryQueryExecutorMutex       sync.RWMutex
@@ -1249,7 +1251,7 @@ func (fake *PeerLedger) GetTransactionByIDReturnsOnCall(i int, result1 *peera.Pr
 	}{result1, result2}
 }
 
-func (fake *PeerLedger) GetTxValidationCodeByTxID(arg1 string) (peera.TxValidationCode, error) {
+func (fake *PeerLedger) GetTxValidationCodeByTxID(arg1 string) (peera.TxValidationCode, uint64, error) {
 	fake.getTxValidationCodeByTxIDMutex.Lock()
 	ret, specificReturn := fake.getTxValidationCodeByTxIDReturnsOnCall[len(fake.getTxValidationCodeByTxIDArgsForCall)]
 	fake.getTxValidationCodeByTxIDArgsForCall = append(fake.getTxValidationCodeByTxIDArgsForCall, struct {
@@ -1261,10 +1263,10 @@ func (fake *PeerLedger) GetTxValidationCodeByTxID(arg1 string) (peera.TxValidati
 		return fake.GetTxValidationCodeByTxIDStub(arg1)
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1, ret.result2, ret.result3
 	}
 	fakeReturns := fake.getTxValidationCodeByTxIDReturns
-	return fakeReturns.result1, fakeReturns.result2
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
 func (fake *PeerLedger) GetTxValidationCodeByTxIDCallCount() int {
@@ -1273,7 +1275,7 @@ func (fake *PeerLedger) GetTxValidationCodeByTxIDCallCount() int {
 	return len(fake.getTxValidationCodeByTxIDArgsForCall)
 }
 
-func (fake *PeerLedger) GetTxValidationCodeByTxIDCalls(stub func(string) (peera.TxValidationCode, error)) {
+func (fake *PeerLedger) GetTxValidationCodeByTxIDCalls(stub func(string) (peera.TxValidationCode, uint64, error)) {
 	fake.getTxValidationCodeByTxIDMutex.Lock()
 	defer fake.getTxValidationCodeByTxIDMutex.Unlock()
 	fake.GetTxValidationCodeByTxIDStub = stub
@@ -1286,30 +1288,33 @@ func (fake *PeerLedger) GetTxValidationCodeByTxIDArgsForCall(i int) string {
 	return argsForCall.arg1
 }
 
-func (fake *PeerLedger) GetTxValidationCodeByTxIDReturns(result1 peera.TxValidationCode, result2 error) {
+func (fake *PeerLedger) GetTxValidationCodeByTxIDReturns(result1 peera.TxValidationCode, result2 uint64, result3 error) {
 	fake.getTxValidationCodeByTxIDMutex.Lock()
 	defer fake.getTxValidationCodeByTxIDMutex.Unlock()
 	fake.GetTxValidationCodeByTxIDStub = nil
 	fake.getTxValidationCodeByTxIDReturns = struct {
 		result1 peera.TxValidationCode
-		result2 error
-	}{result1, result2}
+		result2 uint64
+		result3 error
+	}{result1, result2, result3}
 }
 
-func (fake *PeerLedger) GetTxValidationCodeByTxIDReturnsOnCall(i int, result1 peera.TxValidationCode, result2 error) {
+func (fake *PeerLedger) GetTxValidationCodeByTxIDReturnsOnCall(i int, result1 peera.TxValidationCode, result2 uint64, result3 error) {
 	fake.getTxValidationCodeByTxIDMutex.Lock()
 	defer fake.getTxValidationCodeByTxIDMutex.Unlock()
 	fake.GetTxValidationCodeByTxIDStub = nil
 	if fake.getTxValidationCodeByTxIDReturnsOnCall == nil {
 		fake.getTxValidationCodeByTxIDReturnsOnCall = make(map[int]struct {
 			result1 peera.TxValidationCode
-			result2 error
+			result2 uint64
+			result3 error
 		})
 	}
 	fake.getTxValidationCodeByTxIDReturnsOnCall[i] = struct {
 		result1 peera.TxValidationCode
-		result2 error
-	}{result1, result2}
+		result2 uint64
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *PeerLedger) NewHistoryQueryExecutor() (ledger.HistoryQueryExecutor, error) {

@@ -294,12 +294,15 @@ func TestBlockfileMgrGetTxByIdDuplicateTxid(t *testing.T) {
 	blk, _ = blkFileMgr.retrieveBlockByTxID("txid-3")
 	require.Equal(t, block2, blk)
 
-	validationCode, _ := blkFileMgr.retrieveTxValidationCodeByTxID("txid-1")
+	validationCode, blkNum, _ := blkFileMgr.retrieveTxValidationCodeByTxID("txid-1")
 	require.Equal(t, peer.TxValidationCode_VALID, validationCode)
-	validationCode, _ = blkFileMgr.retrieveTxValidationCodeByTxID("txid-2")
+	require.Equal(t, uint64(1), blkNum)
+	validationCode, blkNum, _ = blkFileMgr.retrieveTxValidationCodeByTxID("txid-2")
 	require.Equal(t, peer.TxValidationCode_INVALID_OTHER_REASON, validationCode)
-	validationCode, _ = blkFileMgr.retrieveTxValidationCodeByTxID("txid-3")
+	require.Equal(t, uint64(1), blkNum)
+	validationCode, blkNum, _ = blkFileMgr.retrieveTxValidationCodeByTxID("txid-3")
 	require.Equal(t, peer.TxValidationCode_VALID, validationCode)
+	require.Equal(t, uint64(2), blkNum)
 
 	// though we do not expose an API for retrieving all the txs by same id but we may in future
 	// and the data is persisted to support this. below code tests this behavior internally

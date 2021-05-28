@@ -34,7 +34,8 @@ func (adapter *PeerAdapter) TransactionStatus(channelName string, transactionID 
 		return 0, err
 	}
 
-	return channel.Ledger().GetTxValidationCodeByTxID(transactionID)
+	validationCode, _, err := channel.Ledger().GetTxValidationCodeByTxID(transactionID)
+	return validationCode, err
 }
 
 func (adapter *PeerAdapter) channel(name string) (*peer.Channel, error) {

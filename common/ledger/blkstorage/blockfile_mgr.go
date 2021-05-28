@@ -544,15 +544,15 @@ func (mgr *blockfileMgr) retrieveBlockByTxID(txID string) (*common.Block, error)
 	return mgr.fetchBlock(loc)
 }
 
-func (mgr *blockfileMgr) retrieveTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+func (mgr *blockfileMgr) retrieveTxValidationCodeByTxID(txID string) (peer.TxValidationCode, uint64, error) {
 	logger.Debugf("retrieveTxValidationCodeByTxID() - txID = [%s]", txID)
-	validationCode, err := mgr.index.getTxValidationCodeByTxID(txID)
+	validationCode, blkNum, err := mgr.index.getTxValidationCodeByTxID(txID)
 	if err == errNilValue {
-		return peer.TxValidationCode(-1), errors.Errorf(
+		return peer.TxValidationCode(-1), 0, errors.Errorf(
 			"details for the TXID [%s] not available. Ledger bootstrapped from a snapshot. First available block = [%d]",
 			txID, mgr.firstPossibleBlockNumberInBlockFiles())
 	}
-	return validationCode, err
+	return validationCode, blkNum, err
 }
 
 func (mgr *blockfileMgr) retrieveBlockHeaderByNumber(blockNum uint64) (*common.BlockHeader, error) {

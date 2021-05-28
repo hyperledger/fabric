@@ -148,8 +148,10 @@ func TestKVLedgerBlockStorage(t *testing.T) {
 		require.True(t, proto.Equal(b1, block1), "proto messages are not equal")
 
 		// get the transaction validation code for this transaction id
-		validCode, _ := lgr.GetTxValidationCodeByTxID(txID2)
+		validCode, blkNum, err := lgr.GetTxValidationCodeByTxID(txID2)
+		require.NoError(t, err)
 		require.Equal(t, peer.TxValidationCode_VALID, validCode)
+		require.Equal(t, uint64(1), blkNum)
 
 		exists, err = lgr.TxIDExists("random-txid")
 		require.NoError(t, err)

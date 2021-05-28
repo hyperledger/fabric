@@ -488,7 +488,7 @@ func verifyQueriesOnBlocksPriorToSnapshot(
 			_, err = bootstrappedBlockStore.RetrieveTxByID(txID)
 			require.EqualError(t, err, expectedErrorStr)
 
-			_, err = bootstrappedBlockStore.RetrieveTxValidationCodeByTxID(txID)
+			_, _, err = bootstrappedBlockStore.RetrieveTxValidationCodeByTxID(txID)
 			require.EqualError(t, err, expectedErrorStr)
 
 			exists, err := bootstrappedBlockStore.TxIDExists(txID)
@@ -550,9 +550,10 @@ func verifyQueriesOnBlocksAddedAfterBootstrapping(t *testing.T,
 		}
 
 		for j, validationCode := range d.validationCodes {
-			retrievedValidationCode, err := bootstrappedBlockStore.RetrieveTxValidationCodeByTxID(d.txIDs[j])
+			retrievedValidationCode, blkNum, err := bootstrappedBlockStore.RetrieveTxValidationCodeByTxID(d.txIDs[j])
 			require.NoError(t, err)
 			require.Equal(t, validationCode, retrievedValidationCode)
+			require.Equal(t, block.Header.Number, blkNum)
 		}
 	}
 }

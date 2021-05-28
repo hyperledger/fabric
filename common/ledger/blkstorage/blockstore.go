@@ -93,7 +93,7 @@ func (store *BlockStore) RetrieveBlockByTxID(txID string) (*common.Block, error)
 }
 
 // RetrieveTxValidationCodeByTxID returns the validation code for the specified txID
-func (store *BlockStore) RetrieveTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+func (store *BlockStore) RetrieveTxValidationCodeByTxID(txID string) (peer.TxValidationCode, uint64, error) {
 	return store.fileMgr.retrieveTxValidationCodeByTxID(txID)
 }
 
