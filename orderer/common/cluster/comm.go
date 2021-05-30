@@ -521,6 +521,7 @@ func (stream *Stream) sendOrDrop(request *orderer.StepRequest, allowDrop bool) e
 	case <-stream.abortChan:
 		return errors.Errorf("stream %d aborted", stream.ID)
 	case stream.sendBuff <- request:
+		// Note - async send, errors are not returned back
 		return nil
 	case <-stream.commShutdown:
 		return nil
@@ -528,19 +529,18 @@ func (stream *Stream) sendOrDrop(request *orderer.StepRequest, allowDrop bool) e
 }
 
 // sendMessage sends the request down the stream
+// Note - any errors are swallowed and not returned back - TODO Is this intentional? Shouldn't SubmitRequest errors get returned to client?
 func (stream *Stream) sendMessage(request *orderer.StepRequest) {
 	start := time.Now()
 	var err error
 	defer func() {
-		if !stream.Logger.IsEnabledFor(zap.DebugLevel) {
-			return
-		}
-		var result string
+		message := fmt.Sprintf("Send of %s to %s(%s) took %v",
+			requestAsString(request), stream.NodeName, stream.Endpoint, time.Since(start))
 		if err != nil {
-			result = fmt.Sprintf("but failed due to %s", err.Error())
+			stream.Logger.Errorf("%s but failed due to %s", message, err.Error())
+		} else {
+			stream.Logger.Debug(message)
 		}
-		stream.Logger.Debugf("Send of %s to %s(%s) took %v %s", requestAsString(request),
-			stream.NodeName, stream.Endpoint, time.Since(start), result)
 	}()
 
 	f := func() (*orderer.StepResponse, error) {
