@@ -286,11 +286,12 @@ func (n *node) logSendFailure(dest uint64, err error) {
 	n.logger.Errorf("Failed to send StepRequest to %d, because: %s", dest, err)
 	n.unreachable[dest] = struct{}{}
 }
+//FLY2-64 Proposed change : Changed the parameters of the takesnapshot function
+func (n *node) takeSnapshot(index uint64, status status.StateMachine) {
 
-func (n *node) takeSnapshot(index uint64, cs raftpb.ConfState, data []byte) {
-	/*if err := n.storage.TakeSnapshot(index, cs, data); err != nil {
+	if err := n.storage.TakeSnapshot(index, status); err != nil {
 		n.logger.Errorf("Failed to create snapshot at index %d: %s", index, err)
-	}*/
+	}
 }
 
 func (n *node) lastIndex() uint64 {

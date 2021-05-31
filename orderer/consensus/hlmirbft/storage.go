@@ -7,13 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package hlmirbft
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
+	"github.com/hyperledger-labs/mirbft/pkg/status"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/etcdserver/api/snap"
@@ -39,14 +42,14 @@ type MemoryStorage interface {
 	raft.Storage
 	Append(entries []raftpb.Entry) error
 	SetHardState(st raftpb.HardState) error
-	CreateSnapshot(i uint64, cs *raftpb.ConfState, data []byte) (raftpb.Snapshot, error)
+	CreateSnapshot(i uint64, status *status.StateMachine) (raftpb.Snapshot, error)
 	Compact(compactIndex uint64) error
 	ApplySnapshot(snap raftpb.Snapshot) error
 }
 
-// RaftStorage encapsulates storages needed for etcd/raft data, i.e. memory, wal
-type RaftStorage struct {
-	SnapshotCatchUpEntries uint64
+// MirBFTStorage encapsulates storages needed for etcd/raft data, i.e. memory, wal
+type MirBFTStorage struct {
+	// SnapshotCatchUpEntries uint64
 
 	walDir  string
 	snapDir string
@@ -57,7 +60,7 @@ type RaftStorage struct {
 	wal  *wal.WAL
 	snap *snap.Snapshotter
 
-	// a queue that keeps track of indices of snapshots on disk
+	// // a queue that keeps track of indices of snapshots on disk
 	snapshotIndex []uint64
 }
 
@@ -68,7 +71,7 @@ func CreateStorage(
 	walDir string,
 	snapDir string,
 	ram MemoryStorage,
-) (*RaftStorage, error) {
+) (*MirBFTStorage, error) {
 	sn, err := createSnapshotter(lg, snapDir)
 	if err != nil {
 		return nil, err
@@ -105,7 +108,7 @@ func CreateStorage(
 	lg.Debugf("Appending %d entries to memory storage", len(ents))
 	ram.Append(ents) // MemoryStorage.Append always return nil
 
-	return &RaftStorage{
+	return &MirBFTStorage{
 		lg:            lg,
 		ram:           ram,
 		wal:           w,
@@ -234,13 +237,13 @@ func createOrReadWAL(lg *flogging.FabricLogger, walDir string, snapshot *raftpb.
 }
 
 // Snapshot returns the latest snapshot stored in memory
-func (rs *RaftStorage) Snapshot() raftpb.Snapshot {
+func (rs *MirBFTStorage) Snapshot() raftpb.Snapshot {
 	sn, _ := rs.ram.Snapshot() // Snapshot always returns nil error
 	return sn
 }
 
 // Store persists etcd/raft data
-func (rs *RaftStorage) Store(entries []raftpb.Entry, hardstate raftpb.HardState, snapshot raftpb.Snapshot) error {
+func (rs *MirBFTStorage) Store(entries []raftpb.Entry, hardstate raftpb.HardState, snapshot raftpb.Snapshot) error {
 	if err := rs.wal.Save(hardstate, entries); err != nil {
 		return err
 	}
@@ -267,24 +270,24 @@ func (rs *RaftStorage) Store(entries []raftpb.Entry, hardstate raftpb.HardState,
 	return nil
 }
 
-func (rs *RaftStorage) saveSnap(snap raftpb.Snapshot) error {
+func (rs *MirBFTStorage) saveSnap(snap raftpb.Snapshot) error {
 	rs.lg.Infof("Persisting snapshot (term: %d, index: %d) to WAL and disk", snap.Metadata.Term, snap.Metadata.Index)
 
 	// must save the snapshot index to the WAL before saving the
 	// snapshot to maintain the invariant that we only Open the
 	// wal at previously-saved snapshot indexes.
-	walsnap := walpb.Snapshot{
-		Index: snap.Metadata.Index,
-		Term:  snap.Metadata.Term,
-	}
+	// walsnap := walpb.Snapshot{
+	// 	Index: snap.Metadata.Index,
+	// 	Term:  snap.Metadata.Term,
+	// }
 
-	if err := rs.wal.SaveSnapshot(walsnap); err != nil {
-		return errors.Errorf("failed to save snapshot to WAL: %s", err)
-	}
+	// if err := rs.wal.SaveSnapshot(walsnap); err != nil {
+	// 	return errors.Errorf("failed to save snapshot to WAL: %s", err)
+	// }
 
-	if err := rs.snap.SaveSnap(snap); err != nil {
-		return errors.Errorf("failed to save snapshot to disk: %s", err)
-	}
+	// if err := rs.snap.SaveSnap(snap); err != nil {
+	// 	return errors.Errorf("failed to save snapshot to disk: %s", err)
+	// }
 
 	rs.lg.Debugf("Releasing lock to wal files prior to %d", snap.Metadata.Index)
 	if err := rs.wal.ReleaseLockTo(snap.Metadata.Index); err != nil {
@@ -295,40 +298,39 @@ func (rs *RaftStorage) saveSnap(snap raftpb.Snapshot) error {
 }
 
 // TakeSnapshot takes a snapshot at index i from MemoryStorage, and persists it to wal and disk.
-func (rs *RaftStorage) TakeSnapshot(i uint64, cs raftpb.ConfState, data []byte) error {
-	rs.lg.Debugf("Creating snapshot at index %d from MemoryStorage", i)
-	snap, err := rs.ram.CreateSnapshot(i, &cs, data)
-	if err != nil {
-		return errors.Errorf("failed to create snapshot from MemoryStorage: %s", err)
+//FLY2-66 Proposed change
+//changed the Takesnapshot function
+// Modified it to include directory creation,data marshal and writing of the marshaled data
+func (rs *MirBFTStorage) TakeSnapshot(i uint64, status status.StateMachine) error {
+	if err := os.MkdirAll(rs.snapDir, os.ModePerm); err != nil {
+		return errors.Errorf("failed to mkdir '%s' for snapshot: %s", rs.snapDir, err)
 	}
+	TimeStamp := time.Now().Unix()
+	fname := fmt.Sprintf("%016x-%016x%s", TimeStamp, i, ".snap")
 
-	if err = rs.saveSnap(snap); err != nil {
+	spath := filepath.Join(rs.snapDir, fname)
+	//used json to marshal data
+	d, err := json.Marshal(status)
+	if err != nil {
+		return errors.Errorf("Cannot marshal Static Snapshots")
+	}
+	f, err := os.OpenFile(spath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
 		return err
 	}
-
-	rs.snapshotIndex = append(rs.snapshotIndex, snap.Metadata.Index)
-
-	// Keep some entries in memory for slow followers to catchup
-	if i > rs.SnapshotCatchUpEntries {
-		compacti := i - rs.SnapshotCatchUpEntries
-		rs.lg.Debugf("Purging in-memory raft entries prior to %d", compacti)
-		if err = rs.ram.Compact(compacti); err != nil {
-			if err == raft.ErrCompacted {
-				rs.lg.Warnf("Raft entries prior to %d are already purged", compacti)
-			} else {
-				rs.lg.Fatalf("Failed to purge raft entries: %s", err)
-			}
-		}
+	n, err := f.Write(d)
+	if err == nil && n < len(d) {
+		err = io.ErrShortWrite
+		return err
 	}
-
-	rs.lg.Infof("Snapshot is taken at index %d", i)
-
-	rs.gc()
-	return nil
+	if err1 := f.Close(); err == nil {
+		err = err1
+	}
+	return err
 }
 
 // gc collects etcd/raft garbage files, namely wal and snapshot files
-func (rs *RaftStorage) gc() {
+func (rs *MirBFTStorage) gc() {
 	if len(rs.snapshotIndex) < MaxSnapshotFiles {
 		rs.lg.Debugf("Snapshots on disk (%d) < limit (%d), no need to purge wal/snapshot",
 			len(rs.snapshotIndex), MaxSnapshotFiles)
@@ -341,7 +343,7 @@ func (rs *RaftStorage) gc() {
 	rs.purgeSnap()
 }
 
-func (rs *RaftStorage) purgeWAL() {
+func (rs *MirBFTStorage) purgeWAL() {
 	retain := rs.snapshotIndex[0]
 
 	var files []string
@@ -379,7 +381,7 @@ func (rs *RaftStorage) purgeWAL() {
 	rs.purge(files[:len(files)-1])
 }
 
-func (rs *RaftStorage) purgeSnap() {
+func (rs *MirBFTStorage) purgeSnap() {
 	var files []string
 	err := filepath.Walk(rs.snapDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -406,7 +408,7 @@ func (rs *RaftStorage) purgeSnap() {
 	rs.purge(files[:l-MaxSnapshotFiles]) // retain last MaxSnapshotFiles snapshot files
 }
 
-func (rs *RaftStorage) purge(files []string) {
+func (rs *MirBFTStorage) purge(files []string) {
 	for _, file := range files {
 		l, err := fileutil.TryLockFile(file, os.O_WRONLY, fileutil.PrivateFileMode)
 		if err != nil {
@@ -427,7 +429,7 @@ func (rs *RaftStorage) purge(files []string) {
 }
 
 // ApplySnapshot applies snapshot to local memory storage
-func (rs *RaftStorage) ApplySnapshot(snap raftpb.Snapshot) {
+func (rs *MirBFTStorage) ApplySnapshot(snap raftpb.Snapshot) {
 	if err := rs.ram.ApplySnapshot(snap); err != nil {
 		if err == raft.ErrSnapOutOfDate {
 			rs.lg.Warnf("Attempted to apply out-of-date snapshot at Term %d and Index %d",
@@ -439,7 +441,7 @@ func (rs *RaftStorage) ApplySnapshot(snap raftpb.Snapshot) {
 }
 
 // Close closes storage
-func (rs *RaftStorage) Close() error {
+func (rs *MirBFTStorage) Close() error {
 	if err := rs.wal.Close(); err != nil {
 		return err
 	}
