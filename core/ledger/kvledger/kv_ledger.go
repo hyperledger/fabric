@@ -554,6 +554,7 @@ func (l *kvLedger) GetBlockByTxID(txID string) (*common.Block, error) {
 	return block, err
 }
 
+// GetTxValidationCodeByTxID returns transaction validation code and block number in which the transaction was committed
 func (l *kvLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode, uint64, error) {
 	l.blockAPIsRWLock.RLock()
 	defer l.blockAPIsRWLock.RUnlock()
