@@ -89,7 +89,7 @@ func TestSnapshotGenerationAndBootstrap(t *testing.T) {
 	_, err = lgr.GetBlockByNumber(3)
 	require.EqualError(t, err, "cannot serve block [3]. The ledger is bootstrapped from a snapshot. First available block = [4]")
 
-	_, err = lgr.GetTxValidationCodeByTxID("txid-1")
+	_, _, err = lgr.GetTxValidationCodeByTxID("txid-1")
 	require.EqualError(t, err, "details for the TXID [txid-1] not available. Ledger bootstrapped from a snapshot. First available block = [4]")
 
 	testLedger.verifyTXIDExists("txid-1", "txid-2")

@@ -196,7 +196,7 @@ func (index *blockIndex) getBlockLocByBlockNum(blockNum uint64) (*fileLocPointer
 }
 
 func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
-	v, err := index.getTxIDVal(txID)
+	v, _, err := index.getTxIDVal(txID)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func (index *blockIndex) getTxLoc(txID string) (*fileLocPointer, error) {
 }
 
 func (index *blockIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error) {
-	v, err := index.getTxIDVal(txID)
+	v, _, err := index.getTxIDVal(txID)
 	if err != nil {
 		return nil, err
 	}
@@ -219,12 +219,12 @@ func (index *blockIndex) getBlockLocByTxID(txID string) (*fileLocPointer, error)
 	return blkFLP, nil
 }
 
-func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
-	v, err := index.getTxIDVal(txID)
+func (index *blockIndex) getTxValidationCodeByTxID(txID string) (peer.TxValidationCode, uint64, error) {
+	v, blkNum, err := index.getTxIDVal(txID)
 	if err != nil {
-		return peer.TxValidationCode(-1), err
+		return peer.TxValidationCode(-1), 0, err
 	}
-	return peer.TxValidationCode(v.TxValidationCode), nil
+	return peer.TxValidationCode(v.TxValidationCode), blkNum, nil
 }
 
 func (index *blockIndex) txIDExists(txID string) (bool, error) {
@@ -245,33 +245,37 @@ func (index *blockIndex) txIDExists(txID string) (bool, error) {
 	return present, nil
 }
 
-func (index *blockIndex) getTxIDVal(txID string) (*TxIDIndexValue, error) {
+func (index *blockIndex) getTxIDVal(txID string) (*TxIDIndexValue, uint64, error) {
 	if !index.isAttributeIndexed(IndexableAttrTxID) {
-		return nil, errors.New("transaction IDs not maintained in index")
+		return nil, 0, errors.New("transaction IDs not maintained in index")
 	}
 	rangeScan := constructTxIDRangeScan(txID)
 	itr, err := index.db.GetIterator(rangeScan.startKey, rangeScan.stopKey)
 	if err != nil {
-		return nil, errors.WithMessagef(err, "error while trying to retrieve transaction info by TXID [%s]", txID)
+		return nil, 0, errors.WithMessagef(err, "error while trying to retrieve transaction info by TXID [%s]", txID)
 	}
 	defer itr.Release()
 
 	present := itr.Next()
 	if err := itr.Error(); err != nil {
-		return nil, errors.Wrapf(err, "error while trying to retrieve transaction info by TXID [%s]", txID)
+		return nil, 0, errors.Wrapf(err, "error while trying to retrieve transaction info by TXID [%s]", txID)
 	}
 	if !present {
-		return nil, errors.Errorf("no such transaction ID [%s] in index", txID)
+		return nil, 0, errors.Errorf("no such transaction ID [%s] in index", txID)
 	}
 	valBytes := itr.Value()
 	if len(valBytes) == 0 {
-		return nil, errNilValue
+		return nil, 0, errNilValue
 	}
 	val := &TxIDIndexValue{}
 	if err := proto.Unmarshal(valBytes, val); err != nil {
-		return nil, errors.Wrapf(err, "unexpected error while unmarshalling bytes [%#v] into TxIDIndexValProto", valBytes)
+		return nil, 0, errors.Wrapf(err, "unexpected error while unmarshalling bytes [%#v] into TxIDIndexValProto", valBytes)
 	}
-	return val, nil
+	blockNum, err := retrieveBlockNum(itr.Key(), len(rangeScan.startKey))
+	if err != nil {
+		return nil, 0, errors.WithMessage(err, "error while decoding block number from txID index key")
+	}
+	return val, blockNum, nil
 }
 
 func (index *blockIndex) getTXLocByBlockNumTranNum(blockNum uint64, tranNum uint64) (*fileLocPointer, error) {
@@ -442,6 +446,11 @@ func retrieveTxID(encodedTxIDKey []byte) (string, error) {
 		return "", errors.Errorf("invalid txIDKey {%x}, fewer bytes present", encodedTxIDKey)
 	}
 	return string(remainingBytes[:int(txIDLen)]), nil
+}
+
+func retrieveBlockNum(encodedTxIDKey []byte, BlkNumStartingIndex int) (uint64, error) {
+	n, _, err := util.DecodeOrderPreservingVarUint64(encodedTxIDKey[BlkNumStartingIndex:])
+	return n, err
 }
 
 type rangeScan struct {

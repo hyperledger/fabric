@@ -502,7 +502,7 @@ func (l *kvLedger) GetTransactionByID(txID string) (*peer.ProcessedTransaction, 
 	if err != nil {
 		return nil, err
 	}
-	txVResult, err := l.blockStore.RetrieveTxValidationCodeByTxID(txID)
+	txVResult, _, err := l.blockStore.RetrieveTxValidationCodeByTxID(txID)
 	if err != nil {
 		return nil, err
 	}
@@ -554,11 +554,11 @@ func (l *kvLedger) GetBlockByTxID(txID string) (*common.Block, error) {
 	return block, err
 }
 
-func (l *kvLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error) {
+func (l *kvLedger) GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode, uint64, error) {
 	l.blockAPIsRWLock.RLock()
 	defer l.blockAPIsRWLock.RUnlock()
-	txValidationCode, err := l.blockStore.RetrieveTxValidationCodeByTxID(txID)
-	return txValidationCode, err
+	txValidationCode, blkNum, err := l.blockStore.RetrieveTxValidationCodeByTxID(txID)
+	return txValidationCode, blkNum, err
 }
 
 // NewTxSimulator returns new `ledger.TxSimulator`

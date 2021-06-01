@@ -164,7 +164,7 @@ type PeerLedger interface {
 	// GetBlockByTxID returns a block which contains a transaction
 	GetBlockByTxID(txID string) (*common.Block, error)
 	// GetTxValidationCodeByTxID returns reason code of transaction validation
-	GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode, error)
+	GetTxValidationCodeByTxID(txID string) (peer.TxValidationCode, uint64, error)
 	// NewTxSimulator gives handle to a transaction simulator.
 	// A client can obtain more than one 'TxSimulator's for parallel execution.
 	// Any snapshoting/synchronization should be performed at the implementation level if required

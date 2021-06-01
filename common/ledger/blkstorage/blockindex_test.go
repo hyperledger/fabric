@@ -189,12 +189,13 @@ func testBlockIndexSelectiveIndexing(t *testing.T, indexItems []IndexableAttr) {
 				txid, err = protoutil.GetOrComputeTxIDFromEnvelope(d)
 				require.NoError(t, err)
 
-				reason, err := blockfileMgr.retrieveTxValidationCodeByTxID(txid)
+				reason, blkNum, err := blockfileMgr.retrieveTxValidationCodeByTxID(txid)
 
 				if containsAttr(indexItems, IndexableAttrTxID) {
 					require.NoError(t, err)
 					reasonFromFlags := flags.Flag(idx)
 					require.Equal(t, reasonFromFlags, reason)
+					require.Equal(t, block.Header.Number, blkNum)
 				} else {
 					require.EqualError(t, err, "transaction IDs not maintained in index")
 				}

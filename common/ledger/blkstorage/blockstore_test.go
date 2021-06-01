@@ -56,7 +56,7 @@ func TestTxIDIndexErrorPropagations(t *testing.T) {
 			return err
 		},
 		func() error {
-			_, err := store.RetrieveTxValidationCodeByTxID("junkTxID")
+			_, _, err := store.RetrieveTxValidationCodeByTxID("junkTxID")
 			return err
 		},
 	}

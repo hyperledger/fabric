@@ -130,9 +130,10 @@ func checkBlocks(t *testing.T, expectedBlocks []*common.Block, store *BlockStore
 			retrievedTxEnv, _ = store.RetrieveTxByBlockNumTranNum(uint64(blockNum), uint64(txNum))
 			require.Equal(t, txEnv, retrievedTxEnv)
 
-			retrievedTxValCode, err := store.RetrieveTxValidationCodeByTxID(txid)
+			retrievedTxValCode, blkNum, err := store.RetrieveTxValidationCodeByTxID(txid)
 			require.NoError(t, err)
 			require.Equal(t, flags.Flag(txNum), retrievedTxValCode)
+			require.Equal(t, uint64(blockNum), blkNum)
 		}
 	}
 }
@@ -154,8 +155,9 @@ func checkWithWrongInputs(t *testing.T, store *BlockStore, numBlocks int) {
 	require.Nil(t, tx)
 	require.EqualError(t, err, fmt.Sprintf("no such blockNumber, transactionNumber <%d, 0> in index", numBlocks+1))
 
-	txCode, err := store.RetrieveTxValidationCodeByTxID("non-existent-txid")
+	txCode, blkNum, err := store.RetrieveTxValidationCodeByTxID("non-existent-txid")
 	require.Equal(t, peer.TxValidationCode(-1), txCode)
+	require.Equal(t, uint64(0), blkNum)
 	require.EqualError(t, err, "no such transaction ID [non-existent-txid] in index")
 }
 
