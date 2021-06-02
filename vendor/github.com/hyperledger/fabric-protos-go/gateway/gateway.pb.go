@@ -36,7 +36,7 @@ type EndorseRequest struct {
 	// The signed proposal ready for endorsement.
 	ProposedTransaction *peer.SignedProposal `protobuf:"bytes,3,opt,name=proposed_transaction,json=proposedTransaction,proto3" json:"proposed_transaction,omitempty"`
 	// If targeting the peers of specific organizations (e.g. for private data scenarios),
-	// the list of organizations should be supplied here.
+	// the list of organizations' MSPIDs should be supplied here.
 	EndorsingOrganizations []string `protobuf:"bytes,4,rep,name=endorsing_organizations,json=endorsingOrganizations,proto3" json:"endorsing_organizations,omitempty"`
 	XXX_NoUnkeyedLiteral   struct{} `json:"-"`
 	XXX_unrecognized       []byte   `json:"-"`
@@ -99,7 +99,7 @@ func (m *EndorseRequest) GetEndorsingOrganizations() []string {
 // EndorseResponse returns the result of endorsing a transaction.
 type EndorseResponse struct {
 	// The response that is returned by the transaction function, as defined
-	// in peer/proposal_response.proto
+	// in peer/proposal_response.proto.
 	Result *peer.Response `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
 	// The unsigned set of transaction responses from the endorsing peers for signing by the client
 	// before submitting to ordering service (via gateway).
@@ -242,7 +242,7 @@ var xxx_messageInfo_SubmitResponse proto.InternalMessageInfo
 // SignedCommitStatusRequest contains a serialized CommitStatusRequest message, and a digital signature for the
 // serialized request message.
 type SignedCommitStatusRequest struct {
-	// Serialized CommitStatusRequest message
+	// Serialized CommitStatusRequest message.
 	Request []byte `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
 	// Signature for request message.
 	Signature            []byte   `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
@@ -352,11 +352,13 @@ func (m *CommitStatusRequest) GetIdentity() []byte {
 
 // CommitStatusResponse returns the result of committing a transaction.
 type CommitStatusResponse struct {
-	// The result of the transaction commit, as defined in peer/transaction.proto
-	Result               peer.TxValidationCode `protobuf:"varint,1,opt,name=result,proto3,enum=protos.TxValidationCode" json:"result,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
-	XXX_unrecognized     []byte                `json:"-"`
-	XXX_sizecache        int32                 `json:"-"`
+	// The result of the transaction commit, as defined in peer/transaction.proto.
+	Result peer.TxValidationCode `protobuf:"varint,1,opt,name=result,proto3,enum=protos.TxValidationCode" json:"result,omitempty"`
+	// Block number that contains the transaction.
+	BlockNumber          uint64   `protobuf:"varint,2,opt,name=block_number,json=blockNumber,proto3" json:"block_number,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *CommitStatusResponse) Reset()         { *m = CommitStatusResponse{} }
@@ -391,6 +393,13 @@ func (m *CommitStatusResponse) GetResult() peer.TxValidationCode {
 	return peer.TxValidationCode_VALID
 }
 
+func (m *CommitStatusResponse) GetBlockNumber() uint64 {
+	if m != nil {
+		return m.BlockNumber
+	}
+	return 0
+}
+
 // EvaluateRequest contains the details required to evaluate a transaction (query the ledger).
 type EvaluateRequest struct {
 	// Identifier of the transaction to evaluate.
@@ -398,10 +407,13 @@ type EvaluateRequest struct {
 	// Identifier of the channel this request is bound for.
 	ChannelId string `protobuf:"bytes,2,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
 	// The signed proposal ready for evaluation.
-	ProposedTransaction  *peer.SignedProposal `protobuf:"bytes,3,opt,name=proposed_transaction,json=proposedTransaction,proto3" json:"proposed_transaction,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
+	ProposedTransaction *peer.SignedProposal `protobuf:"bytes,3,opt,name=proposed_transaction,json=proposedTransaction,proto3" json:"proposed_transaction,omitempty"`
+	// If targeting the peers of specific organizations (e.g. for private data scenarios),
+	// the list of organizations' MSPIDs should be supplied here.
+	TargetOrganizations  []string `protobuf:"bytes,4,rep,name=target_organizations,json=targetOrganizations,proto3" json:"target_organizations,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
 }
 
 func (m *EvaluateRequest) Reset()         { *m = EvaluateRequest{} }
@@ -450,10 +462,17 @@ func (m *EvaluateRequest) GetProposedTransaction() *peer.SignedProposal {
 	return nil
 }
 
+func (m *EvaluateRequest) GetTargetOrganizations() []string {
+	if m != nil {
+		return m.TargetOrganizations
+	}
+	return nil
+}
+
 // EvaluateResponse returns the result of evaluating a transaction.
 type EvaluateResponse struct {
 	// The response that is returned by the transaction function, as defined
-	// in peer/proposal_response.proto
+	// in peer/proposal_response.proto.
 	Result               *peer.Response `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
@@ -492,6 +511,167 @@ func (m *EvaluateResponse) GetResult() *peer.Response {
 	return nil
 }
 
+// SignedChaincodeEventsRequest contains a serialized ChaincodeEventsRequest message, and a digital signature for the
+// serialized request message.
+type SignedChaincodeEventsRequest struct {
+	// Serialized ChaincodeEventsRequest message.
+	Request []byte `protobuf:"bytes,1,opt,name=request,proto3" json:"request,omitempty"`
+	// Signature for request message.
+	Signature            []byte   `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *SignedChaincodeEventsRequest) Reset()         { *m = SignedChaincodeEventsRequest{} }
+func (m *SignedChaincodeEventsRequest) String() string { return proto.CompactTextString(m) }
+func (*SignedChaincodeEventsRequest) ProtoMessage()    {}
+func (*SignedChaincodeEventsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_285396c8df15061f, []int{9}
+}
+
+func (m *SignedChaincodeEventsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SignedChaincodeEventsRequest.Unmarshal(m, b)
+}
+func (m *SignedChaincodeEventsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SignedChaincodeEventsRequest.Marshal(b, m, deterministic)
+}
+func (m *SignedChaincodeEventsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SignedChaincodeEventsRequest.Merge(m, src)
+}
+func (m *SignedChaincodeEventsRequest) XXX_Size() int {
+	return xxx_messageInfo_SignedChaincodeEventsRequest.Size(m)
+}
+func (m *SignedChaincodeEventsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SignedChaincodeEventsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_SignedChaincodeEventsRequest proto.InternalMessageInfo
+
+func (m *SignedChaincodeEventsRequest) GetRequest() []byte {
+	if m != nil {
+		return m.Request
+	}
+	return nil
+}
+
+func (m *SignedChaincodeEventsRequest) GetSignature() []byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+// ChaincodeEventsRequest contains details of the chaincode events that the caller wants to receive.
+type ChaincodeEventsRequest struct {
+	// Identifier of the channel this request is bound for.
+	ChannelId string `protobuf:"bytes,1,opt,name=channel_id,json=channelId,proto3" json:"channel_id,omitempty"`
+	// Name of the chaincode for which events are requested.
+	ChaincodeId string `protobuf:"bytes,2,opt,name=chaincode_id,json=chaincodeId,proto3" json:"chaincode_id,omitempty"`
+	// Client requestor identity.
+	Identity             []byte   `protobuf:"bytes,3,opt,name=identity,proto3" json:"identity,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ChaincodeEventsRequest) Reset()         { *m = ChaincodeEventsRequest{} }
+func (m *ChaincodeEventsRequest) String() string { return proto.CompactTextString(m) }
+func (*ChaincodeEventsRequest) ProtoMessage()    {}
+func (*ChaincodeEventsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_285396c8df15061f, []int{10}
+}
+
+func (m *ChaincodeEventsRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ChaincodeEventsRequest.Unmarshal(m, b)
+}
+func (m *ChaincodeEventsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ChaincodeEventsRequest.Marshal(b, m, deterministic)
+}
+func (m *ChaincodeEventsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChaincodeEventsRequest.Merge(m, src)
+}
+func (m *ChaincodeEventsRequest) XXX_Size() int {
+	return xxx_messageInfo_ChaincodeEventsRequest.Size(m)
+}
+func (m *ChaincodeEventsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChaincodeEventsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChaincodeEventsRequest proto.InternalMessageInfo
+
+func (m *ChaincodeEventsRequest) GetChannelId() string {
+	if m != nil {
+		return m.ChannelId
+	}
+	return ""
+}
+
+func (m *ChaincodeEventsRequest) GetChaincodeId() string {
+	if m != nil {
+		return m.ChaincodeId
+	}
+	return ""
+}
+
+func (m *ChaincodeEventsRequest) GetIdentity() []byte {
+	if m != nil {
+		return m.Identity
+	}
+	return nil
+}
+
+// ChaincodeEventsResponse returns chaincode events emitted from a specific block.
+type ChaincodeEventsResponse struct {
+	// Chaincode events emitted by the requested chaincode. The events are presented in the same order that the
+	// transactions that emitted them appear within the block.
+	Events []*peer.ChaincodeEvent `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	// Block number in which the chaincode events were emitted.
+	BlockNumber          uint64   `protobuf:"varint,2,opt,name=block_number,json=blockNumber,proto3" json:"block_number,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ChaincodeEventsResponse) Reset()         { *m = ChaincodeEventsResponse{} }
+func (m *ChaincodeEventsResponse) String() string { return proto.CompactTextString(m) }
+func (*ChaincodeEventsResponse) ProtoMessage()    {}
+func (*ChaincodeEventsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_285396c8df15061f, []int{11}
+}
+
+func (m *ChaincodeEventsResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ChaincodeEventsResponse.Unmarshal(m, b)
+}
+func (m *ChaincodeEventsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ChaincodeEventsResponse.Marshal(b, m, deterministic)
+}
+func (m *ChaincodeEventsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChaincodeEventsResponse.Merge(m, src)
+}
+func (m *ChaincodeEventsResponse) XXX_Size() int {
+	return xxx_messageInfo_ChaincodeEventsResponse.Size(m)
+}
+func (m *ChaincodeEventsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChaincodeEventsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChaincodeEventsResponse proto.InternalMessageInfo
+
+func (m *ChaincodeEventsResponse) GetEvents() []*peer.ChaincodeEvent {
+	if m != nil {
+		return m.Events
+	}
+	return nil
+}
+
+func (m *ChaincodeEventsResponse) GetBlockNumber() uint64 {
+	if m != nil {
+		return m.BlockNumber
+	}
+	return 0
+}
+
 // If any of the functions in the Gateway service returns an error, then it will be in the format of
 // a google.rpc.Status message. The 'details' field of this message will be populated with extra
 // information if the error is a result of one or more failed requests to remote peers or orderer nodes.
@@ -514,7 +694,7 @@ func (m *EndpointError) Reset()         { *m = EndpointError{} }
 func (m *EndpointError) String() string { return proto.CompactTextString(m) }
 func (*EndpointError) ProtoMessage()    {}
 func (*EndpointError) Descriptor() ([]byte, []int) {
-	return fileDescriptor_285396c8df15061f, []int{9}
+	return fileDescriptor_285396c8df15061f, []int{12}
 }
 
 func (m *EndpointError) XXX_Unmarshal(b []byte) error {
@@ -562,17 +742,19 @@ type ProposedTransaction struct {
 	// Identifier of the proposed transaction.
 	TransactionId string `protobuf:"bytes,1,opt,name=transaction_id,json=transactionId,proto3" json:"transaction_id,omitempty"`
 	// The signed proposal.
-	Proposal             *peer.SignedProposal `protobuf:"bytes,2,opt,name=proposal,proto3" json:"proposal,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
+	Proposal *peer.SignedProposal `protobuf:"bytes,2,opt,name=proposal,proto3" json:"proposal,omitempty"`
+	// The list of endorsing organizations.
+	EndorsingOrganizations []string `protobuf:"bytes,3,rep,name=endorsing_organizations,json=endorsingOrganizations,proto3" json:"endorsing_organizations,omitempty"`
+	XXX_NoUnkeyedLiteral   struct{} `json:"-"`
+	XXX_unrecognized       []byte   `json:"-"`
+	XXX_sizecache          int32    `json:"-"`
 }
 
 func (m *ProposedTransaction) Reset()         { *m = ProposedTransaction{} }
 func (m *ProposedTransaction) String() string { return proto.CompactTextString(m) }
 func (*ProposedTransaction) ProtoMessage()    {}
 func (*ProposedTransaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_285396c8df15061f, []int{10}
+	return fileDescriptor_285396c8df15061f, []int{13}
 }
 
 func (m *ProposedTransaction) XXX_Unmarshal(b []byte) error {
@@ -607,6 +789,13 @@ func (m *ProposedTransaction) GetProposal() *peer.SignedProposal {
 	return nil
 }
 
+func (m *ProposedTransaction) GetEndorsingOrganizations() []string {
+	if m != nil {
+		return m.EndorsingOrganizations
+	}
+	return nil
+}
+
 // PreparedTransaction contains the details required for offline signing prior to submitting a transaction.
 type PreparedTransaction struct {
 	// Identifier of the prepared transaction.
@@ -625,7 +814,7 @@ func (m *PreparedTransaction) Reset()         { *m = PreparedTransaction{} }
 func (m *PreparedTransaction) String() string { return proto.CompactTextString(m) }
 func (*PreparedTransaction) ProtoMessage()    {}
 func (*PreparedTransaction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_285396c8df15061f, []int{11}
+	return fileDescriptor_285396c8df15061f, []int{14}
 }
 
 func (m *PreparedTransaction) XXX_Unmarshal(b []byte) error {
@@ -677,6 +866,9 @@ func init() {
 	proto.RegisterType((*CommitStatusResponse)(nil), "gateway.CommitStatusResponse")
 	proto.RegisterType((*EvaluateRequest)(nil), "gateway.EvaluateRequest")
 	proto.RegisterType((*EvaluateResponse)(nil), "gateway.EvaluateResponse")
+	proto.RegisterType((*SignedChaincodeEventsRequest)(nil), "gateway.SignedChaincodeEventsRequest")
+	proto.RegisterType((*ChaincodeEventsRequest)(nil), "gateway.ChaincodeEventsRequest")
+	proto.RegisterType((*ChaincodeEventsResponse)(nil), "gateway.ChaincodeEventsResponse")
 	proto.RegisterType((*EndpointError)(nil), "gateway.EndpointError")
 	proto.RegisterType((*ProposedTransaction)(nil), "gateway.ProposedTransaction")
 	proto.RegisterType((*PreparedTransaction)(nil), "gateway.PreparedTransaction")
@@ -685,50 +877,59 @@ func init() {
 func init() { proto.RegisterFile("gateway/gateway.proto", fileDescriptor_285396c8df15061f) }
 
 var fileDescriptor_285396c8df15061f = []byte{
-	// 674 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x55, 0xcd, 0x6a, 0x1b, 0x3b,
-	0x14, 0x66, 0xe2, 0x7b, 0xfd, 0x73, 0xe2, 0xf8, 0x06, 0x39, 0x71, 0x1c, 0x93, 0x40, 0x18, 0x08,
-	0x78, 0x71, 0x63, 0x17, 0x77, 0x51, 0x0a, 0x81, 0x42, 0x82, 0x69, 0xbd, 0xaa, 0x3b, 0x0e, 0x5d,
-	0x64, 0x63, 0x64, 0x4b, 0x1d, 0x0b, 0x3c, 0xd2, 0x54, 0x92, 0x93, 0xa6, 0xab, 0x3e, 0x44, 0xe9,
-	0xa2, 0xcb, 0x3e, 0x56, 0x9f, 0xa6, 0xcc, 0x48, 0x1a, 0x8f, 0x1b, 0xbb, 0x24, 0x90, 0x45, 0x57,
-	0xe3, 0xf3, 0xf3, 0x49, 0xdf, 0x39, 0x3a, 0xdf, 0x31, 0xec, 0x87, 0x58, 0xd3, 0x5b, 0x7c, 0xd7,
-	0xb5, 0xdf, 0x4e, 0x2c, 0x85, 0x16, 0xa8, 0x64, 0xcd, 0x56, 0x3d, 0xa6, 0x54, 0x76, 0x63, 0x29,
-	0x62, 0xa1, 0xf0, 0xdc, 0x44, 0x5b, 0x47, 0x2b, 0xce, 0xb1, 0xa4, 0x2a, 0x16, 0x5c, 0x51, 0x1b,
-	0x6d, 0xa4, 0x51, 0x2d, 0x31, 0x57, 0x78, 0xaa, 0x99, 0xe0, 0xd6, 0x5f, 0x9f, 0x8a, 0x28, 0x12,
-	0xbc, 0x6b, 0x3e, 0xc6, 0xe9, 0xff, 0xf4, 0xa0, 0xd6, 0xe7, 0x44, 0x48, 0x45, 0x03, 0xfa, 0x71,
-	0x41, 0x95, 0x46, 0xa7, 0x50, 0xcb, 0x81, 0xc7, 0x8c, 0x34, 0xbd, 0x13, 0xaf, 0x5d, 0x09, 0x76,
-	0x72, 0xde, 0x01, 0x41, 0xc7, 0x00, 0xd3, 0x19, 0xe6, 0x9c, 0xce, 0x93, 0x94, 0xad, 0x34, 0xa5,
-	0x62, 0x3d, 0x03, 0x82, 0x06, 0xb0, 0x67, 0x08, 0x52, 0x32, 0xce, 0x01, 0x9b, 0x85, 0x13, 0xaf,
-	0xbd, 0xdd, 0x6b, 0x98, 0xeb, 0x55, 0x67, 0xc4, 0x42, 0x4e, 0xc9, 0xd0, 0x96, 0x12, 0xd4, 0x1d,
-	0xe6, 0x6a, 0x09, 0x41, 0x2f, 0xe0, 0x80, 0xa6, 0x14, 0x19, 0x0f, 0xc7, 0x42, 0x86, 0x98, 0xb3,
-	0xcf, 0x38, 0x89, 0xa8, 0xe6, 0x3f, 0x27, 0x85, 0x76, 0x25, 0x68, 0x64, 0xe1, 0xb7, 0xf9, 0xa8,
-	0xff, 0xc5, 0x83, 0xff, 0xb2, 0xe2, 0x4c, 0x8f, 0x50, 0x1b, 0x8a, 0x92, 0xaa, 0xc5, 0x5c, 0xa7,
-	0x55, 0x6d, 0xf7, 0x76, 0x1d, 0x13, 0x97, 0x11, 0xd8, 0x38, 0xba, 0x4c, 0x2a, 0xa0, 0x31, 0x96,
-	0xbf, 0x55, 0xb0, 0x65, 0x71, 0xb6, 0x8f, 0x7d, 0x7e, 0x43, 0xe7, 0x22, 0xa6, 0x09, 0x77, 0x93,
-	0x9d, 0xe3, 0xee, 0x7f, 0xf7, 0x60, 0x67, 0xb4, 0x98, 0x44, 0x4c, 0x3f, 0x6d, 0x7b, 0x37, 0x91,
-	0x2b, 0x3c, 0x86, 0xdc, 0x2e, 0xd4, 0x1c, 0x37, 0x53, 0xbb, 0x3f, 0x82, 0x43, 0xf3, 0x22, 0x97,
-	0x22, 0x8a, 0x98, 0x1e, 0x69, 0xac, 0x17, 0xca, 0x31, 0x6f, 0x42, 0x49, 0x9a, 0x9f, 0x29, 0xe5,
-	0x6a, 0xe0, 0x4c, 0x74, 0x04, 0x15, 0xc5, 0x42, 0x8e, 0xf5, 0x42, 0xd2, 0x94, 0x6b, 0x35, 0x58,
-	0x3a, 0xfc, 0x5b, 0xa8, 0xaf, 0x3b, 0xee, 0x69, 0x1a, 0xd1, 0x82, 0x32, 0x23, 0x94, 0x6b, 0xa6,
-	0xef, 0xd2, 0xe2, 0xab, 0x41, 0x66, 0xfb, 0x6f, 0x60, 0x6f, 0xf5, 0x62, 0x3b, 0x03, 0xcf, 0x56,
-	0x66, 0xa0, 0xd6, 0x6b, 0xba, 0x19, 0xb8, 0xfa, 0xf4, 0x1e, 0xcf, 0x19, 0x49, 0xc7, 0xe7, 0x52,
-	0x90, 0x6c, 0x16, 0xfc, 0x1f, 0xc9, 0x24, 0xdd, 0xe0, 0xf9, 0x02, 0xeb, 0xbf, 0x56, 0x27, 0xfe,
-	0x39, 0xec, 0x2e, 0x39, 0x3e, 0x76, 0xdc, 0xfd, 0x6b, 0xd8, 0xe9, 0x73, 0x12, 0x0b, 0xc6, 0x75,
-	0x5f, 0x4a, 0x21, 0x93, 0xe7, 0xc6, 0x84, 0x48, 0xaa, 0x94, 0x2d, 0xcc, 0x99, 0x68, 0x1f, 0x8a,
-	0x91, 0x8a, 0x97, 0xe5, 0xfc, 0x1b, 0xa9, 0x78, 0x40, 0x12, 0x40, 0x44, 0x95, 0xc2, 0x21, 0x4d,
-	0xd9, 0x57, 0x02, 0x67, 0xfa, 0x31, 0xd4, 0x87, 0x6b, 0x84, 0xfd, 0xc0, 0x0e, 0xf6, 0xa0, 0xec,
-	0x76, 0x9d, 0x15, 0xdf, 0xa6, 0xb6, 0x64, 0x79, 0xfe, 0x57, 0x2f, 0xb9, 0xf2, 0xde, 0xc8, 0x3f,
-	0xf4, 0xca, 0xff, 0xa1, 0x4c, 0xad, 0x74, 0x36, 0xea, 0x3d, 0xcb, 0xc8, 0x35, 0xb9, 0xf0, 0xe7,
-	0x26, 0xf7, 0xbe, 0x6d, 0x41, 0xe9, 0xb5, 0x59, 0xed, 0xe8, 0x1c, 0x4a, 0x76, 0x39, 0xa1, 0x83,
-	0x8e, 0x5b, 0xff, 0xab, 0xbb, 0xb8, 0xd5, 0xbc, 0x1f, 0xb0, 0x0f, 0xfb, 0x12, 0x8a, 0x46, 0xbb,
-	0xa8, 0x91, 0xe5, 0xac, 0x2c, 0x9a, 0xd6, 0xc1, 0x3d, 0xbf, 0x85, 0xbe, 0x83, 0x6a, 0x5e, 0x16,
-	0xc8, 0x5f, 0x26, 0x6e, 0xd2, 0x7e, 0xeb, 0x38, 0xcb, 0x59, 0xab, 0xa8, 0x57, 0x50, 0x76, 0xa3,
-	0x87, 0x72, 0x9c, 0x57, 0x15, 0xd3, 0x3a, 0x5c, 0x13, 0x31, 0x07, 0x5c, 0xcc, 0xe0, 0x54, 0xc8,
-	0xb0, 0x33, 0xbb, 0x8b, 0xa9, 0x9c, 0x53, 0x12, 0x52, 0xd9, 0xf9, 0x80, 0x27, 0x92, 0x4d, 0x5d,
-	0x2b, 0x2d, 0xf2, 0xa2, 0x6a, 0xdb, 0x37, 0x4c, 0xdc, 0x43, 0xef, 0xba, 0x1b, 0x32, 0x3d, 0x5b,
-	0x4c, 0x92, 0xd7, 0xe9, 0xe6, 0xd0, 0x5d, 0x83, 0x3e, 0x33, 0xe8, 0xb3, 0x50, 0xb8, 0x3f, 0xd8,
-	0x49, 0x31, 0x75, 0x3d, 0xff, 0x15, 0x00, 0x00, 0xff, 0xff, 0xc6, 0xbb, 0xec, 0xa0, 0x7a, 0x07,
-	0x00, 0x00,
+	// 820 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xcc, 0x56, 0xcb, 0x6e, 0xe3, 0x36,
+	0x14, 0x85, 0xe2, 0xa9, 0x1f, 0xd7, 0x8e, 0x27, 0x90, 0x33, 0xb6, 0x47, 0xc8, 0x00, 0x1e, 0x01,
+	0x01, 0xbc, 0xe8, 0xd8, 0x53, 0x77, 0x51, 0x14, 0x18, 0xa0, 0xc0, 0x04, 0x46, 0xe1, 0x4d, 0xeb,
+	0xca, 0x83, 0x59, 0x04, 0x05, 0x0c, 0xda, 0x62, 0x65, 0x21, 0x12, 0xa9, 0x92, 0x94, 0xd3, 0x74,
+	0xd5, 0x8f, 0xe8, 0xaa, 0x7f, 0xd0, 0x0f, 0xea, 0xa6, 0xdf, 0xd1, 0x0f, 0x28, 0x44, 0x91, 0x7a,
+	0xf8, 0x91, 0x26, 0x68, 0x16, 0xb3, 0x92, 0x79, 0x1f, 0xe4, 0xb9, 0x97, 0xe7, 0x1e, 0x1a, 0x5e,
+	0x78, 0x48, 0xe0, 0x5b, 0x74, 0x37, 0x56, 0xdf, 0x51, 0xc4, 0xa8, 0xa0, 0x66, 0x4d, 0x2d, 0x2d,
+	0x2b, 0xc2, 0x98, 0x8d, 0xd7, 0x1b, 0xe4, 0x93, 0x35, 0x75, 0xf1, 0x12, 0x6f, 0x31, 0x11, 0x69,
+	0x90, 0xd5, 0x91, 0xbe, 0x88, 0xd1, 0x88, 0x72, 0x14, 0x28, 0xe3, 0x45, 0xc9, 0xb8, 0x64, 0x98,
+	0x47, 0x94, 0x70, 0xac, 0xbc, 0x5d, 0xe9, 0x15, 0x0c, 0x11, 0x8e, 0xd6, 0xc2, 0xa7, 0x44, 0x6f,
+	0xb5, 0xa6, 0x61, 0x48, 0xc9, 0x38, 0xfd, 0xa4, 0x46, 0xfb, 0x6f, 0x03, 0xda, 0x53, 0xe2, 0x52,
+	0xc6, 0xb1, 0x83, 0x7f, 0x8e, 0x31, 0x17, 0xe6, 0x25, 0xb4, 0x0b, 0xc9, 0x4b, 0xdf, 0xed, 0x1b,
+	0x03, 0x63, 0xd8, 0x70, 0x4e, 0x0b, 0xd6, 0x99, 0x6b, 0xbe, 0x02, 0x58, 0x6f, 0x10, 0x21, 0x38,
+	0x48, 0x42, 0x4e, 0x64, 0x48, 0x43, 0x59, 0x66, 0xae, 0x39, 0x83, 0xf3, 0x14, 0x20, 0x76, 0x97,
+	0x85, 0xc4, 0x7e, 0x65, 0x60, 0x0c, 0x9b, 0x93, 0x6e, 0x7a, 0x3c, 0x1f, 0x2d, 0x7c, 0x8f, 0x60,
+	0x77, 0xae, 0x4a, 0x71, 0x3a, 0x3a, 0xe7, 0x43, 0x9e, 0x62, 0x7e, 0x05, 0x3d, 0x2c, 0x21, 0xfa,
+	0xc4, 0x5b, 0x52, 0xe6, 0x21, 0xe2, 0xff, 0x8a, 0x12, 0x0f, 0xef, 0x3f, 0x1b, 0x54, 0x86, 0x0d,
+	0xa7, 0x9b, 0xb9, 0xbf, 0x2f, 0x7a, 0xed, 0xdf, 0x0c, 0x78, 0x9e, 0x15, 0x97, 0xf6, 0xc8, 0x1c,
+	0x42, 0x95, 0x61, 0x1e, 0x07, 0x42, 0x56, 0xd5, 0x9c, 0x9c, 0x69, 0x24, 0x3a, 0xc2, 0x51, 0x7e,
+	0xf3, 0x2a, 0xa9, 0x00, 0x47, 0x88, 0xed, 0x54, 0x70, 0xa2, 0xf2, 0x54, 0x1f, 0xa7, 0x64, 0x8b,
+	0x03, 0x1a, 0xe1, 0x04, 0x7b, 0x1a, 0x5d, 0xc0, 0x6e, 0xff, 0x61, 0xc0, 0xe9, 0x22, 0x5e, 0x85,
+	0xbe, 0x78, 0xda, 0xf6, 0x1e, 0x03, 0x57, 0x79, 0x0c, 0xb8, 0x33, 0x68, 0x6b, 0x6c, 0x69, 0xed,
+	0xf6, 0x02, 0x5e, 0xa6, 0x37, 0x72, 0x45, 0xc3, 0xd0, 0x17, 0x0b, 0x81, 0x44, 0xcc, 0x35, 0xf2,
+	0x3e, 0xd4, 0x58, 0xfa, 0x53, 0x42, 0x6e, 0x39, 0x7a, 0x69, 0x5e, 0x40, 0x83, 0xfb, 0x1e, 0x41,
+	0x22, 0x66, 0x58, 0x62, 0x6d, 0x39, 0xb9, 0xc1, 0xbe, 0x85, 0xce, 0xa1, 0xed, 0x9e, 0xa6, 0x11,
+	0x16, 0xd4, 0x7d, 0x17, 0x13, 0xe1, 0x8b, 0x3b, 0x59, 0x7c, 0xcb, 0xc9, 0xd6, 0xf6, 0x0d, 0x9c,
+	0x97, 0x0f, 0x56, 0x1c, 0x78, 0x5b, 0xe2, 0x40, 0x7b, 0xd2, 0xd7, 0x1c, 0xf8, 0xf0, 0xcb, 0x47,
+	0x14, 0xf8, 0xae, 0xa4, 0xcf, 0x15, 0x75, 0x73, 0x2e, 0xbc, 0x86, 0xd6, 0x2a, 0xa0, 0xeb, 0x9b,
+	0x25, 0x89, 0xc3, 0x15, 0x66, 0x12, 0xc6, 0x33, 0xa7, 0x29, 0x6d, 0xdf, 0x49, 0x93, 0xfd, 0x57,
+	0x42, 0xb6, 0x2d, 0x0a, 0x62, 0x24, 0x3e, 0xdd, 0x51, 0xfa, 0x02, 0xce, 0x05, 0x62, 0x1e, 0x16,
+	0x07, 0xe7, 0xa8, 0x93, 0xfa, 0xca, 0x43, 0xf4, 0x0e, 0xce, 0xf2, 0xb2, 0x1e, 0x3b, 0x44, 0xf6,
+	0x47, 0xb8, 0x50, 0x84, 0xd2, 0xf2, 0x36, 0x4d, 0xd4, 0xed, 0x7f, 0x73, 0x6a, 0x0b, 0xdd, 0x23,
+	0x3b, 0x96, 0x9b, 0x69, 0xec, 0x36, 0xf3, 0x35, 0xb4, 0x72, 0xa5, 0xcd, 0xba, 0xdd, 0xcc, 0x6c,
+	0xff, 0x41, 0xa9, 0x00, 0x7a, 0x7b, 0xe7, 0xaa, 0xa6, 0x8c, 0xa0, 0x2a, 0x95, 0x9b, 0xf7, 0x8d,
+	0x41, 0xa5, 0x78, 0x31, 0xe5, 0x04, 0x47, 0x45, 0x3d, 0x84, 0x53, 0xd7, 0x70, 0x3a, 0x25, 0x6e,
+	0x44, 0x7d, 0x22, 0xa6, 0x8c, 0x51, 0x96, 0xb4, 0x0b, 0xb9, 0x2e, 0xc3, 0x9c, 0xab, 0xca, 0xf4,
+	0xd2, 0x7c, 0x01, 0xd5, 0x90, 0x47, 0x79, 0x45, 0x9f, 0x85, 0x3c, 0x9a, 0xb9, 0x49, 0x42, 0x88,
+	0x39, 0x47, 0x1e, 0x96, 0xa5, 0x34, 0x1c, 0xbd, 0xb4, 0xff, 0x34, 0xa0, 0x33, 0x3f, 0x40, 0x91,
+	0x07, 0x72, 0x76, 0x02, 0x75, 0xfd, 0x00, 0x29, 0x45, 0x3c, 0x46, 0xc4, 0x2c, 0xee, 0x3e, 0x21,
+	0xaf, 0xdc, 0x2b, 0xe4, 0xbf, 0x4b, 0xac, 0x7b, 0x02, 0xf6, 0x50, 0xac, 0x9f, 0x43, 0x1d, 0x2b,
+	0x21, 0x3c, 0xaa, 0xde, 0x59, 0x44, 0x81, 0xdc, 0x95, 0xfb, 0xc9, 0x3d, 0xf9, 0xe7, 0x04, 0x6a,
+	0xdf, 0xa6, 0x8f, 0xb8, 0xf9, 0x0e, 0x6a, 0xea, 0xa9, 0x31, 0x7b, 0x23, 0xfd, 0xd0, 0x97, 0x5f,
+	0x56, 0xab, 0xbf, 0xef, 0x50, 0xdc, 0xf9, 0x1a, 0xaa, 0xa9, 0x12, 0x9b, 0xdd, 0x2c, 0xa6, 0xf4,
+	0x6c, 0x58, 0xbd, 0x3d, 0xbb, 0x4a, 0xfd, 0x01, 0x5a, 0x45, 0x91, 0x33, 0xed, 0x3c, 0xf0, 0x98,
+	0x92, 0x5b, 0xaf, 0xb2, 0x98, 0x83, 0xfa, 0xf8, 0x0d, 0xd4, 0xf5, 0xc8, 0x9b, 0x05, 0xcc, 0x65,
+	0x71, 0xb3, 0x5e, 0x1e, 0xf0, 0xa8, 0x0d, 0x7e, 0x84, 0xe7, 0x3b, 0x53, 0x62, 0x5e, 0xee, 0xc2,
+	0x3a, 0x38, 0xbd, 0xd6, 0x20, 0x47, 0x76, 0x78, 0xcc, 0xde, 0x1a, 0xef, 0x37, 0x70, 0x49, 0x99,
+	0x37, 0xda, 0xdc, 0x45, 0x98, 0x05, 0xd8, 0xf5, 0x30, 0x1b, 0xfd, 0x84, 0x56, 0xcc, 0x5f, 0xeb,
+	0x8b, 0x52, 0x5b, 0xbc, 0x6f, 0xa9, 0xcb, 0x99, 0x27, 0xe6, 0xb9, 0x71, 0x3d, 0xf6, 0x7c, 0xb1,
+	0x89, 0x57, 0xc9, 0xdd, 0x8f, 0x0b, 0xd9, 0xe3, 0x34, 0xfb, 0x4d, 0x9a, 0xfd, 0xc6, 0xa3, 0xfa,
+	0x8f, 0xda, 0xaa, 0x2a, 0x4d, 0x5f, 0xfe, 0x1b, 0x00, 0x00, 0xff, 0xff, 0xc7, 0x98, 0x25, 0x58,
+	0xc2, 0x09, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -749,7 +950,7 @@ type GatewayClient interface {
 	// forward to the appropriate peers for endorsement. It will return to the client a
 	// prepared transaction in the form of an Envelope message as defined
 	// in common/common.proto. The client must sign the contents of this envelope
-	// before invoking the Submit service
+	// before invoking the Submit service.
 	Endorse(ctx context.Context, in *EndorseRequest, opts ...grpc.CallOption) (*EndorseResponse, error)
 	// The Submit service will process the prepared transaction returned from Endorse service
 	// once it has been signed by the client. It will wait for the transaction to be submitted to the
@@ -764,6 +965,11 @@ type GatewayClient interface {
 	// transaction function and return the result to the client. No ledger updates are made.
 	// The gateway will select an appropriate peer to query based on block height and load.
 	Evaluate(ctx context.Context, in *EvaluateRequest, opts ...grpc.CallOption) (*EvaluateResponse, error)
+	// The ChaincodeEvents service supplies a stream of responses, each containing all the events emitted by the
+	// requested chaincode for a specific block. The streamed responses are ordered by ascending block number. Responses
+	// are only returned for blocks that contain the requested events, while blocks not containing any of the requested
+	// events are skipped.
+	ChaincodeEvents(ctx context.Context, in *SignedChaincodeEventsRequest, opts ...grpc.CallOption) (Gateway_ChaincodeEventsClient, error)
 }
 
 type gatewayClient struct {
@@ -810,6 +1016,38 @@ func (c *gatewayClient) Evaluate(ctx context.Context, in *EvaluateRequest, opts 
 	return out, nil
 }
 
+func (c *gatewayClient) ChaincodeEvents(ctx context.Context, in *SignedChaincodeEventsRequest, opts ...grpc.CallOption) (Gateway_ChaincodeEventsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_Gateway_serviceDesc.Streams[0], "/gateway.Gateway/ChaincodeEvents", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &gatewayChaincodeEventsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Gateway_ChaincodeEventsClient interface {
+	Recv() (*ChaincodeEventsResponse, error)
+	grpc.ClientStream
+}
+
+type gatewayChaincodeEventsClient struct {
+	grpc.ClientStream
+}
+
+func (x *gatewayChaincodeEventsClient) Recv() (*ChaincodeEventsResponse, error) {
+	m := new(ChaincodeEventsResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // GatewayServer is the server API for Gateway service.
 type GatewayServer interface {
 	// The Endorse service passes a proposed transaction to the gateway in order to
@@ -818,7 +1056,7 @@ type GatewayServer interface {
 	// forward to the appropriate peers for endorsement. It will return to the client a
 	// prepared transaction in the form of an Envelope message as defined
 	// in common/common.proto. The client must sign the contents of this envelope
-	// before invoking the Submit service
+	// before invoking the Submit service.
 	Endorse(context.Context, *EndorseRequest) (*EndorseResponse, error)
 	// The Submit service will process the prepared transaction returned from Endorse service
 	// once it has been signed by the client. It will wait for the transaction to be submitted to the
@@ -833,6 +1071,11 @@ type GatewayServer interface {
 	// transaction function and return the result to the client. No ledger updates are made.
 	// The gateway will select an appropriate peer to query based on block height and load.
 	Evaluate(context.Context, *EvaluateRequest) (*EvaluateResponse, error)
+	// The ChaincodeEvents service supplies a stream of responses, each containing all the events emitted by the
+	// requested chaincode for a specific block. The streamed responses are ordered by ascending block number. Responses
+	// are only returned for blocks that contain the requested events, while blocks not containing any of the requested
+	// events are skipped.
+	ChaincodeEvents(*SignedChaincodeEventsRequest, Gateway_ChaincodeEventsServer) error
 }
 
 // UnimplementedGatewayServer can be embedded to have forward compatible implementations.
@@ -850,6 +1093,9 @@ func (*UnimplementedGatewayServer) CommitStatus(ctx context.Context, req *Signed
 }
 func (*UnimplementedGatewayServer) Evaluate(ctx context.Context, req *EvaluateRequest) (*EvaluateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Evaluate not implemented")
+}
+func (*UnimplementedGatewayServer) ChaincodeEvents(req *SignedChaincodeEventsRequest, srv Gateway_ChaincodeEventsServer) error {
+	return status.Errorf(codes.Unimplemented, "method ChaincodeEvents not implemented")
 }
 
 func RegisterGatewayServer(s *grpc.Server, srv GatewayServer) {
@@ -928,6 +1174,27 @@ func _Gateway_Evaluate_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Gateway_ChaincodeEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SignedChaincodeEventsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(GatewayServer).ChaincodeEvents(m, &gatewayChaincodeEventsServer{stream})
+}
+
+type Gateway_ChaincodeEventsServer interface {
+	Send(*ChaincodeEventsResponse) error
+	grpc.ServerStream
+}
+
+type gatewayChaincodeEventsServer struct {
+	grpc.ServerStream
+}
+
+func (x *gatewayChaincodeEventsServer) Send(m *ChaincodeEventsResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 var _Gateway_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "gateway.Gateway",
 	HandlerType: (*GatewayServer)(nil),
@@ -949,6 +1216,12 @@ var _Gateway_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Gateway_Evaluate_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ChaincodeEvents",
+			Handler:       _Gateway_ChaincodeEvents_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "gateway/gateway.proto",
 }
