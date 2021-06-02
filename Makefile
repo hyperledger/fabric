@@ -298,7 +298,7 @@ $(BUILD_DIR)/image/%/Dockerfile: images/%/Dockerfile.in
 $(BUILD_DIR)/image/tools/$(DUMMY): $(BUILD_DIR)/image/tools/Dockerfile
 	$(eval TARGET = ${patsubst $(BUILD_DIR)/image/%/$(DUMMY),%,${@}})
 	@echo "Building docker $(TARGET)-image"
-	$(DBUILD) -t $(DOCKER_NS)/fabric-$(TARGET) -f $(@D)/Dockerfile .
+	$(DBUILD) -t $(DOCKER_NS)/fabric-$(TARGET) -f $(@D)/Dockerfile --build-arg GO_TAGS=$(GO_TAGS) .
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(DOCKER_TAG)
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(ARCH)-latest
 	docker tag $(DOCKER_NS)/fabric-$(TARGET) $(DOCKER_NS)/fabric-$(TARGET):$(BASE_VERSION)
