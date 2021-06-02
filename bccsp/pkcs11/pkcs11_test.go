@@ -49,6 +49,14 @@ func newKeyStore(t *testing.T) (bccsp.KeyStore, func()) {
 	return ks, func() { os.RemoveAll(tempDir) }
 }
 
+func newSWProvider(t *testing.T) bccsp.BCCSP {
+	ks, _ := newKeyStore(t)
+	swCsp, err := sw.NewDefaultSecurityLevelWithKeystore(ks)
+	require.NoError(t, err)
+
+	return swCsp
+}
+
 func newProvider(t *testing.T, opts PKCS11Opts, options ...Option) (*Provider, func()) {
 	ks, ksCleanup := newKeyStore(t)
 	csp, err := New(opts, ks, options...)
@@ -401,6 +409,45 @@ func updateKeyIdentifier(t *testing.T, pctx *pkcs11.Ctx, sess pkcs11.SessionHand
 	require.NoError(t, err)
 }
 
+func TestVerify(t *testing.T) {
+	pkcs11CSP, cleanup := newProvider(t, defaultOptions())
+	defer cleanup()
+
+	digest, err := pkcs11CSP.Hash([]byte("Hello, World."), &bccsp.SHAOpts{})
+	require.NoError(t, err)
+	otherDigest, err := pkcs11CSP.Hash([]byte("Bye, World."), &bccsp.SHAOpts{})
+	require.NoError(t, err)
+
+	pkcs11Key, err := pkcs11CSP.KeyGen(&bccsp.ECDSAKeyGenOpts{Temporary: true})
+	require.NoError(t, err)
+	pkcs11PublicKey, err := pkcs11Key.PublicKey()
+	require.NoError(t, err)
+	b, err := pkcs11PublicKey.Bytes()
+	require.NoError(t, err)
+
+	swCSP := newSWProvider(t)
+	swKey, err := swCSP.KeyImport(b, &bccsp.ECDSAPKIXPublicKeyImportOpts{Temporary: false})
+	require.NoError(t, err)
+
+	signature, err := pkcs11CSP.Sign(pkcs11Key, digest, nil)
+	require.NoError(t, err)
+
+	swPublicKey, err := swKey.PublicKey()
+	require.NoError(t, err)
+
+	valid, err := pkcs11CSP.Verify(swPublicKey, signature, digest, nil)
+	require.NoError(t, err)
+	require.True(t, valid, "signature should be valid from software public key")
+
+	valid, err = pkcs11CSP.Verify(swPublicKey, signature, otherDigest, nil)
+	require.NoError(t, err)
+	require.False(t, valid, "signature should not be valid from software public key")
+
+	valid, err = pkcs11CSP.Verify(pkcs11Key, signature, digest, nil)
+	require.Error(t, err)
+	require.False(t, valid, "Verify should not handle a pkcs11 key")
+}
+
 func TestECDSAVerify(t *testing.T) {
 	csp, cleanup := newProvider(t, defaultOptions())
 	defer cleanup()
@@ -422,6 +469,9 @@ func TestECDSAVerify(t *testing.T) {
 		"WithSoftVerify":    true,
 		"WithoutSoftVerify": false,
 	}
+
+	pkcs11PublicKey := pk.(*ecdsaPublicKey)
+
 	for name, softVerify := range tests {
 		t.Run(name, func(t *testing.T) {
 			opts := defaultOptions()
@@ -429,19 +479,11 @@ func TestECDSAVerify(t *testing.T) {
 			csp, cleanup := newProvider(t, opts)
 			defer cleanup()
 
-			valid, err := csp.Verify(k, signature, digest, nil)
-			require.NoError(t, err)
-			require.True(t, valid, "signature should be valid from private key")
-
-			valid, err = csp.Verify(pk, signature, digest, nil)
+			valid, err := csp.verifyECDSA(*pkcs11PublicKey, signature, digest)
 			require.NoError(t, err)
 			require.True(t, valid, "signature should be valid from public key")
 
-			valid, err = csp.Verify(k, signature, otherDigest, nil)
-			require.NoError(t, err)
-			require.False(t, valid, "signature should be valid from private key")
-
-			valid, err = csp.Verify(pk, signature, otherDigest, nil)
+			valid, err = csp.verifyECDSA(*pkcs11PublicKey, signature, otherDigest)
 			require.NoError(t, err)
 			require.False(t, valid, "signature should not be valid from public key")
 		})
@@ -488,7 +530,10 @@ func TestECDSALowS(t *testing.T) {
 			t.Fatal("Invalid signature. It must have low-S")
 		}
 
-		valid, err := csp.Verify(k, signature, digest, nil)
+		pk, err := k.PublicKey()
+		require.NoError(t, err)
+
+		valid, err := csp.verifyECDSA(*(pk.(*ecdsaPublicKey)), signature, digest)
 		require.NoError(t, err)
 		require.True(t, valid, "signature should be valid")
 	})
@@ -705,7 +750,7 @@ func TestSessionHandleCaching(t *testing.T) {
 		require.Len(t, csp.sessPool, 1, "sessionPool should have one handle (sess1)")
 		require.Len(t, csp.handleCache, 2, "expected two handles in handle cache")
 
-		sess1, err = csp.getSession()
+		_, err = csp.getSession()
 		require.NoError(t, err)
 		require.Len(t, csp.sessions, 1, "expected one open session (sess1)")
 		require.Len(t, csp.sessPool, 0, "sessionPool should be empty")
