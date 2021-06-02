@@ -74,7 +74,7 @@ type Configurator interface {
 // RPC is used to mock the transport layer in tests.
 type RPC interface {
 	SendConsensus(dest uint64, msg *orderer.ConsensusRequest) error
-	SendSubmit(dest uint64, request *orderer.SubmitRequest) error
+	SendSubmit(dest uint64, request *orderer.SubmitRequest, report func(err error)) error
 }
 
 //go:generate counterfeiter -o mocks/mock_blockpuller.go . BlockPuller
@@ -92,7 +92,8 @@ type CreateBlockPuller func() (BlockPuller, error)
 
 // Options contains all the configurations relevant to the chain.
 type Options struct {
-	RaftID uint64
+	RPCTimeout time.Duration
+	RaftID     uint64
 
 	Clock clock.Clock
 
@@ -541,8 +542,7 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 		}
 
 		if lead != c.raftID {
-			if err := c.rpc.SendSubmit(lead, req); err != nil {
-				c.Metrics.ProposalFailures.Add(1)
+			if err := c.forwardToLeader(lead, req); err != nil {
 				return err
 			}
 		}
@@ -552,6 +552,38 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 		return errors.Errorf("chain is stopped")
 	}
 
+	return nil
+}
+
+func (c *Chain) forwardToLeader(lead uint64, req *orderer.SubmitRequest) error {
+	c.logger.Infof("Forwarding transaction to the leader %d", lead)
+	timer := time.NewTimer(c.opts.RPCTimeout)
+	defer timer.Stop()
+
+	sentChan := make(chan struct{})
+	atomicErr := &atomic.Value{}
+
+	report := func(err error) {
+		if err != nil {
+			atomicErr.Store(err.Error())
+			c.Metrics.ProposalFailures.Add(1)
+		}
+		close(sentChan)
+	}
+
+	c.rpc.SendSubmit(lead, req, report)
+
+	select {
+	case <-sentChan:
+	case <-c.doneC:
+		return errors.Errorf("chain is stopped")
+	case <-timer.C:
+		return errors.Errorf("timed out (%v) waiting on forwarding to %d", c.opts.RPCTimeout, lead)
+	}
+
+	if atomicErr.Load() != nil {
+		return errors.Errorf(atomicErr.Load().(string))
+	}
 	return nil
 }
 
