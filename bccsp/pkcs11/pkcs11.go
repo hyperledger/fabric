@@ -292,12 +292,11 @@ func (csp *Provider) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.Si
 		return false, errors.New("Invalid digest. Cannot be empty")
 	}
 
-	// Check key type
-	switch key := k.(type) {
-	case *ecdsaPrivateKey:
-		return csp.verifyECDSA(key.pub, signature, digest)
-	case *ecdsaPublicKey:
-		return csp.verifyECDSA(*key, signature, digest)
+	// key (k) will never be a pkcs11 key, do verify using the software implementation
+	// but validate it just in case
+	switch k.(type) {
+	case *ecdsaPrivateKey, *ecdsaPublicKey:
+		return false, errors.New("Unexpected pkcs11 key, expected software based key")
 	default:
 		return csp.BCCSP.Verify(k, signature, digest, opts)
 	}
