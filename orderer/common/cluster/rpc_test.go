@@ -26,6 +26,72 @@ import (
 	"google.golang.org/grpc"
 )
 
+func noopReport(_ error) {
+}
+
+func TestSendSubmitWithReport(t *testing.T) {
+	t.Parallel()
+	node1 := newTestNode(t)
+	node2 := newTestNode(t)
+
+	var receptionWaitGroup sync.WaitGroup
+	receptionWaitGroup.Add(1)
+	node2.handler.On("OnSubmit", testChannel, mock.Anything, mock.Anything).Return(nil).Run(func(args mock.Arguments) {
+		receptionWaitGroup.Done()
+	})
+
+	defer node1.stop()
+	defer node2.stop()
+
+	config := []cluster.RemoteNode{node1.nodeInfo, node2.nodeInfo}
+	node1.c.Configure(testChannel, config)
+	node2.c.Configure(testChannel, config)
+
+	node1RPC := &cluster.RPC{
+		Logger:        flogging.MustGetLogger("test"),
+		Timeout:       time.Hour,
+		StreamsByType: cluster.NewStreamsByType(),
+		Channel:       testChannel,
+		Comm:          node1.c,
+	}
+
+	// Wait for connections to be established
+	time.Sleep(time.Second * 5)
+
+	err := node1RPC.SendSubmit(node2.nodeInfo.ID, &orderer.SubmitRequest{Channel: testChannel, Payload: &common.Envelope{Payload: []byte("1")}}, noopReport)
+	require.NoError(t, err)
+	receptionWaitGroup.Wait() // Wait for message to be received
+
+	// Restart the node
+	node2.stop()
+	node2.resurrect()
+
+	var wg2 sync.WaitGroup
+	wg2.Add(1)
+
+	reportSubmitFailed := func(err error) {
+		require.EqualError(t, err, io.EOF.Error())
+		defer wg2.Done()
+	}
+
+	err = node1RPC.SendSubmit(node2.nodeInfo.ID, &orderer.SubmitRequest{Channel: testChannel, Payload: &common.Envelope{Payload: []byte("2")}}, reportSubmitFailed)
+	require.NoError(t, err)
+
+	wg2.Wait()
+
+	// Ensure stale stream is cleaned up and removed from the mapping
+	require.Len(t, node1RPC.StreamsByType[cluster.SubmitOperation], 0)
+
+	// Wait for connection to be re-established
+	time.Sleep(time.Second * 5)
+
+	// Send again, this time it should be received
+	receptionWaitGroup.Add(1)
+	err = node1RPC.SendSubmit(node2.nodeInfo.ID, &orderer.SubmitRequest{Channel: testChannel, Payload: &common.Envelope{Payload: []byte("3")}}, noopReport)
+	require.NoError(t, err)
+	receptionWaitGroup.Wait()
+}
+
 func TestRPCChangeDestination(t *testing.T) {
 	// We send a Submit() to 2 different nodes - 1 and 2.
 	// The first invocation of Submit() establishes a stream with node 1
@@ -82,8 +148,8 @@ func TestRPCChangeDestination(t *testing.T) {
 	streamToNode1.On("Recv").Return(nil, io.EOF)
 	streamToNode2.On("Recv").Return(nil, io.EOF)
 
-	rpc.SendSubmit(1, &orderer.SubmitRequest{Channel: "mychannel"})
-	rpc.SendSubmit(2, &orderer.SubmitRequest{Channel: "mychannel"})
+	rpc.SendSubmit(1, &orderer.SubmitRequest{Channel: "mychannel"}, noopReport)
+	rpc.SendSubmit(2, &orderer.SubmitRequest{Channel: "mychannel"}, noopReport)
 
 	sent.Wait()
 	streamToNode1.AssertNumberOfCalls(t, "Send", 1)
@@ -111,7 +177,7 @@ func TestSend(t *testing.T) {
 	}
 
 	submit := func(rpc *cluster.RPC) error {
-		err := rpc.SendSubmit(1, submitRequest)
+		err := rpc.SendSubmit(1, submitRequest, noopReport)
 		return err
 	}
 
@@ -291,7 +357,7 @@ func TestRPCGarbageCollection(t *testing.T) {
 
 	defineMocks(1)
 
-	rpc.SendSubmit(1, &orderer.SubmitRequest{Channel: "mychannel"})
+	rpc.SendSubmit(1, &orderer.SubmitRequest{Channel: "mychannel"}, noopReport)
 	// Wait for the message to arrive
 	sent.Wait()
 	// Ensure the stream is initialized in the mapping
@@ -311,7 +377,7 @@ func TestRPCGarbageCollection(t *testing.T) {
 	defineMocks(2)
 
 	// Send a message to a different node.
-	rpc.SendSubmit(2, &orderer.SubmitRequest{Channel: "mychannel"})
+	rpc.SendSubmit(2, &orderer.SubmitRequest{Channel: "mychannel"}, noopReport)
 	// The mapping should be now cleaned from the previous stream.
 	assert.Len(t, mapping[cluster.SubmitOperation], 1)
 	assert.Equal(t, uint64(2), mapping[cluster.SubmitOperation][2].ID)

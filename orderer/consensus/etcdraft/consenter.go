@@ -197,6 +197,7 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 	}
 
 	opts := Options{
+		RPCTimeout:    c.OrdererConfig.General.Cluster.RPCTimeout,
 		RaftID:        id,
 		Clock:         clock.NewClock(),
 		MemoryStorage: raft.NewMemoryStorage(),
