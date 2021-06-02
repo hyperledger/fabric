@@ -184,6 +184,7 @@ var _ = Describe("Chain", func() {
 			fakeFields = newFakeMetricsFields()
 
 			opts = etcdraft.Options{
+				RPCTimeout:        time.Second * 5,
 				RaftID:            1,
 				Clock:             clock,
 				TickInterval:      interval,
@@ -2640,7 +2641,28 @@ var _ = Describe("Chain", func() {
 				})
 			})
 
+			When("gRPC stream to leader is stuck", func() {
+				BeforeEach(func() {
+					c2.opts.RPCTimeout = time.Second
+					network.Lock()
+					network.delayWG.Add(1)
+					network.Unlock()
+				})
+				It("correctly times out", func() {
+					err := c2.Order(env, 0)
+					Expect(err).To(MatchError("timed out (1s) waiting on forwarding to 1"))
+					network.delayWG.Done()
+				})
+			})
+
 			When("leader is disconnected", func() {
+				It("correctly returns a failure to the client when forwarding from a follower", func() {
+					network.disconnect(1)
+
+					err := c2.Order(env, 0)
+					Expect(err).To(MatchError("connection lost"))
+				})
+
 				It("proactively steps down to follower", func() {
 					network.disconnect(1)
 
@@ -3377,6 +3399,7 @@ func newChain(
 	fakeFields := newFakeMetricsFields()
 
 	opts := etcdraft.Options{
+		RPCTimeout:          timeout,
 		RaftID:              uint64(id),
 		Clock:               clock,
 		TickInterval:        interval,
@@ -3543,6 +3566,7 @@ func (c *chain) getStepFunc() stepFunc {
 }
 
 type network struct {
+	delayWG sync.WaitGroup
 	sync.RWMutex
 
 	leader uint64
@@ -3621,21 +3645,30 @@ func (n *network) addChain(c *chain) {
 		return c.step(dest, msg)
 	}
 
-	c.rpc.SendSubmitStub = func(dest uint64, msg *orderer.SubmitRequest) error {
+	c.rpc.SendSubmitStub = func(dest uint64, msg *orderer.SubmitRequest, f func(error)) error {
 		if !n.linked(c.id, dest) {
-			return errors.Errorf("connection refused")
+			err := errors.Errorf("connection refused")
+			f(err)
+			return err
 		}
 
 		if !n.connected(c.id) || !n.connected(dest) {
-			return errors.Errorf("connection lost")
+			err := errors.Errorf("connection lost")
+			f(err)
+			return err
 		}
 
 		n.RLock()
 		target := n.chains[dest]
 		n.RUnlock()
 		go func() {
+			n.Lock()
+			n.delayWG.Wait()
+			n.Unlock()
+
 			defer GinkgoRecover()
 			target.Submit(msg, c.id)
+			f(nil)
 		}()
 		return nil
 	}

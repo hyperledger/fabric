@@ -21,11 +21,12 @@ type FakeRPC struct {
 	sendConsensusReturnsOnCall map[int]struct {
 		result1 error
 	}
-	SendSubmitStub        func(uint64, *orderer.SubmitRequest) error
+	SendSubmitStub        func(uint64, *orderer.SubmitRequest, func(err error)) error
 	sendSubmitMutex       sync.RWMutex
 	sendSubmitArgsForCall []struct {
 		arg1 uint64
 		arg2 *orderer.SubmitRequest
+		arg3 func(err error)
 	}
 	sendSubmitReturns struct {
 		result1 error
@@ -98,17 +99,18 @@ func (fake *FakeRPC) SendConsensusReturnsOnCall(i int, result1 error) {
 	}{result1}
 }
 
-func (fake *FakeRPC) SendSubmit(arg1 uint64, arg2 *orderer.SubmitRequest) error {
+func (fake *FakeRPC) SendSubmit(arg1 uint64, arg2 *orderer.SubmitRequest, arg3 func(err error)) error {
 	fake.sendSubmitMutex.Lock()
 	ret, specificReturn := fake.sendSubmitReturnsOnCall[len(fake.sendSubmitArgsForCall)]
 	fake.sendSubmitArgsForCall = append(fake.sendSubmitArgsForCall, struct {
 		arg1 uint64
 		arg2 *orderer.SubmitRequest
-	}{arg1, arg2})
-	fake.recordInvocation("SendSubmit", []interface{}{arg1, arg2})
+		arg3 func(err error)
+	}{arg1, arg2, arg3})
+	fake.recordInvocation("SendSubmit", []interface{}{arg1, arg2, arg3})
 	fake.sendSubmitMutex.Unlock()
 	if fake.SendSubmitStub != nil {
-		return fake.SendSubmitStub(arg1, arg2)
+		return fake.SendSubmitStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
@@ -123,17 +125,17 @@ func (fake *FakeRPC) SendSubmitCallCount() int {
 	return len(fake.sendSubmitArgsForCall)
 }
 
-func (fake *FakeRPC) SendSubmitCalls(stub func(uint64, *orderer.SubmitRequest) error) {
+func (fake *FakeRPC) SendSubmitCalls(stub func(uint64, *orderer.SubmitRequest, func(err error)) error) {
 	fake.sendSubmitMutex.Lock()
 	defer fake.sendSubmitMutex.Unlock()
 	fake.SendSubmitStub = stub
 }
 
-func (fake *FakeRPC) SendSubmitArgsForCall(i int) (uint64, *orderer.SubmitRequest) {
+func (fake *FakeRPC) SendSubmitArgsForCall(i int) (uint64, *orderer.SubmitRequest, func(err error)) {
 	fake.sendSubmitMutex.RLock()
 	defer fake.sendSubmitMutex.RUnlock()
 	argsForCall := fake.sendSubmitArgsForCall[i]
-	return argsForCall.arg1, argsForCall.arg2
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *FakeRPC) SendSubmitReturns(result1 error) {

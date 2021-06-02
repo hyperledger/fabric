@@ -8,6 +8,7 @@ package cluster
 
 import (
 	"context"
+	"io"
 	"sync"
 	"time"
 
@@ -64,6 +65,14 @@ const (
 	SubmitOperation
 )
 
+func (ot OperationType) String() string {
+	if ot == SubmitOperation {
+		return "transaction"
+	}
+
+	return "consensus"
+}
+
 // SendConsensus passes the given ConsensusRequest message to the raft.Node instance.
 func (s *RPC) SendConsensus(destination uint64, msg *orderer.ConsensusRequest) error {
 	if s.Logger.IsEnabledFor(zapcore.DebugLevel) {
@@ -86,14 +95,14 @@ func (s *RPC) SendConsensus(destination uint64, msg *orderer.ConsensusRequest) e
 
 	err = stream.Send(req)
 	if err != nil {
-		s.unMapStream(destination, ConsensusOperation)
+		s.unMapStream(destination, ConsensusOperation, stream.ID)
 	}
 
 	return err
 }
 
 // SendSubmit sends a SubmitRequest to the given destination node.
-func (s *RPC) SendSubmit(destination uint64, request *orderer.SubmitRequest) error {
+func (s *RPC) SendSubmit(destination uint64, request *orderer.SubmitRequest, report func(error)) error {
 	if s.Logger.IsEnabledFor(zapcore.DebugLevel) {
 		defer s.submitSent(time.Now(), destination, request)
 	}
@@ -109,12 +118,20 @@ func (s *RPC) SendSubmit(destination uint64, request *orderer.SubmitRequest) err
 		},
 	}
 
+	unmapOnFailure := func(err error) {
+		if err != nil && err.Error() == io.EOF.Error() {
+			s.Logger.Infof("Un-mapping transaction stream to %d because encountered a stale stream", destination)
+			s.unMapStream(destination, SubmitOperation, stream.ID)
+		}
+		report(err)
+	}
+
 	s.submitLock.Lock()
 	defer s.submitLock.Unlock()
 
-	err = stream.Send(req)
+	err = stream.SendWithReport(req, unmapOnFailure)
 	if err != nil {
-		s.unMapStream(destination, SubmitOperation)
+		s.unMapStream(destination, SubmitOperation, stream.ID)
 	}
 	return err
 }
@@ -128,7 +145,7 @@ func (s *RPC) consensusSent(start time.Time, to uint64, msg *orderer.ConsensusRe
 }
 
 // getOrCreateStream obtains a Submit stream for the given destination node
-func (s *RPC) getOrCreateStream(destination uint64, operationType OperationType) (orderer.Cluster_StepClient, error) {
+func (s *RPC) getOrCreateStream(destination uint64, operationType OperationType) (*Stream, error) {
 	stream := s.getStream(destination, operationType)
 	if stream != nil {
 		return stream, nil
@@ -158,9 +175,21 @@ func (s *RPC) mapStream(destination uint64, stream *Stream, operationType Operat
 	s.cleanCanceledStreams(operationType)
 }
 
-func (s *RPC) unMapStream(destination uint64, operationType OperationType) {
+func (s *RPC) unMapStream(destination uint64, operationType OperationType, streamIDToUnmap uint64) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
+	stream, exists := s.StreamsByType[operationType][destination]
+	if !exists {
+		s.Logger.Debugf("No %s stream to %d found, nothing to unmap", operationType, destination)
+		return
+	}
+
+	if stream.ID != streamIDToUnmap {
+		s.Logger.Debugf("Stream for %s to %d has an ID of %d, not %d", operationType, destination, stream.ID, streamIDToUnmap)
+		return
+	}
+
 	delete(s.StreamsByType[operationType], destination)
 }
 
