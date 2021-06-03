@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package commit
+package gateway
 
 import (
 	"testing"
@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPeerCommitAdapter(t *testing.T) {
+func TestPeerAdapter(t *testing.T) {
 	t.Run("CommitNotifications", func(t *testing.T) {
 		t.Run("returns error when channel does not exist", func(t *testing.T) {
-			adapter := &PeerAdapter{
+			adapter := &peerAdapter{
 				Peer: &peer.Peer{},
 			}
 
@@ -28,7 +28,7 @@ func TestPeerCommitAdapter(t *testing.T) {
 
 	t.Run("TransactionStatus", func(t *testing.T) {
 		t.Run("returns error when channel does not exist", func(t *testing.T) {
-			adapter := &PeerAdapter{
+			adapter := &peerAdapter{
 				Peer: &peer.Peer{},
 			}
 

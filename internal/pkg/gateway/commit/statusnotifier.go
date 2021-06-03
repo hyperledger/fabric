@@ -15,9 +15,9 @@ import (
 type statusListenerSet map[*statusListener]struct{}
 
 type statusNotifier struct {
-	closed          bool
 	lock            sync.Mutex
 	listenersByTxID map[string]statusListenerSet
+	closed          bool
 }
 
 func newStatusNotifier() *statusNotifier {

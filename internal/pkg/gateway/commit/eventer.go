@@ -9,9 +9,15 @@ package commit
 import "context"
 
 type Eventer struct {
-	Notifier *Notifier
+	notifier *Notifier
+}
+
+func NewEventer(notifier *Notifier) *Eventer {
+	return &Eventer{
+		notifier: notifier,
+	}
 }
 
 func (e *Eventer) ChaincodeEvents(ctx context.Context, channelName string, chaincodeName string) (<-chan *BlockChaincodeEvents, error) {
-	return e.Notifier.notifyChaincodeEvents(ctx.Done(), channelName, chaincodeName)
+	return e.notifier.notifyChaincodeEvents(ctx.Done(), channelName, chaincodeName)
 }

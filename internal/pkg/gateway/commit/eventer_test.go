@@ -24,9 +24,7 @@ func TestEventer(t *testing.T) {
 			supplier.CommitNotificationsReturns(nil, errors.New("MY_ERROR"))
 			notifier := NewNotifier(supplier)
 			defer notifier.close()
-			eventer := &Eventer{
-				Notifier: notifier,
-			}
+			eventer := NewEventer(notifier)
 
 			_, err := eventer.ChaincodeEvents(context.Background(), "CHANNEL_NAME", "CHAINCODE_NAME")
 
@@ -37,9 +35,7 @@ func TestEventer(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
 			defer notifier.close()
-			eventer := &Eventer{
-				Notifier: notifier,
-			}
+			eventer := NewEventer(notifier)
 
 			eventReceive, err := eventer.ChaincodeEvents(context.Background(), "CHANNEL_NAME", "CHAINCODE_NAME")
 			require.NoError(t, err)
@@ -66,9 +62,7 @@ func TestEventer(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
 			defer notifier.close()
-			eventer := &Eventer{
-				Notifier: notifier,
-			}
+			eventer := NewEventer(notifier)
 
 			eventReceive, err := eventer.ChaincodeEvents(context.Background(), "CHANNEL_NAME", "CHAINCODE_NAME")
 			require.NoError(t, err)
@@ -102,9 +96,7 @@ func TestEventer(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
 			defer notifier.close()
-			eventer := &Eventer{
-				Notifier: notifier,
-			}
+			eventer := NewEventer(notifier)
 
 			eventReceive, err := eventer.ChaincodeEvents(context.Background(), "CHANNEL_NAME", "CHAINCODE_NAME")
 			require.NoError(t, err)
@@ -145,9 +137,7 @@ func TestEventer(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 2)
 			notifier := newTestNotifier(commitSend)
 			defer notifier.close()
-			eventer := &Eventer{
-				Notifier: notifier,
-			}
+			eventer := NewEventer(notifier)
 
 			eventReceive, err := eventer.ChaincodeEvents(context.Background(), "CHANNEL_NAME", "CHAINCODE_NAME")
 			require.NoError(t, err)
@@ -178,9 +168,7 @@ func TestEventer(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 2)
 			notifier := newTestNotifier(commitSend)
 			defer notifier.close()
-			eventer := &Eventer{
-				Notifier: notifier,
-			}
+			eventer := NewEventer(notifier)
 
 			eventReceive, err := eventer.ChaincodeEvents(context.Background(), "CHANNEL_NAME", "CHAINCODE_NAME")
 			require.NoError(t, err)
@@ -216,9 +204,7 @@ func TestEventer(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
 			defer notifier.close()
-			eventer := &Eventer{
-				Notifier: notifier,
-			}
+			eventer := NewEventer(notifier)
 
 			eventReceive1, err := eventer.ChaincodeEvents(context.Background(), "CHANNEL_NAME", "CHAINCODE_NAME")
 			require.NoError(t, err)
@@ -250,9 +236,7 @@ func TestEventer(t *testing.T) {
 			commitSend := make(chan *ledger.CommitNotification, 1)
 			notifier := newTestNotifier(commitSend)
 			defer notifier.close()
-			eventer := &Eventer{
-				Notifier: notifier,
-			}
+			eventer := NewEventer(notifier)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			eventReceive, err := eventer.ChaincodeEvents(ctx, "CHANNEL_NAME", "CHAINCODE_NAME")

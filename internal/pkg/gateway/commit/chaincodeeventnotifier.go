@@ -22,9 +22,9 @@ type BlockChaincodeEvents struct {
 type chaincodeEventListenerSet map[*chaincodeEventListener]struct{}
 
 type chaincodeEventNotifier struct {
-	closed                   bool
 	lock                     sync.Mutex
 	listenersByChaincodeName map[string]chaincodeEventListenerSet
+	closed                   bool
 }
 
 func newChaincodeEventNotifier() *chaincodeEventNotifier {

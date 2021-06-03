@@ -914,7 +914,7 @@ func TestChaincodeEvents(t *testing.T) {
 }
 
 func TestNilArgs(t *testing.T) {
-	server := CreateServer(
+	server := newServer(
 		&mocks.EndorserClient{},
 		&mocks.Discovery{},
 		&mocks.CommitFinder{},
@@ -1022,7 +1022,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		EndorsementTimeout: endorsementTimeout,
 	}
 
-	server := CreateServer(localEndorser, disc, mockFinder, mockEventer, mockPolicy, "localhost:7051", "msp1", options)
+	server := newServer(localEndorser, disc, mockFinder, mockEventer, mockPolicy, "localhost:7051", "msp1", options)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)

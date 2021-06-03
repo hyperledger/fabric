@@ -43,10 +43,7 @@ func TestFinder(t *testing.T) {
 	t.Run("passes channel name to query provider", func(t *testing.T) {
 		provider := &mocks.QueryProvider{}
 		provider.TransactionStatusReturns(peer.TxValidationCode_MVCC_READ_CONFLICT, 101, nil)
-		finder := &Finder{
-			Query:    provider,
-			Notifier: NewNotifier(newNotificationSupplier(nil)),
-		}
+		finder := NewFinder(provider, newTestNotifier(nil))
 
 		finder.TransactionStatus(context.Background(), "CHANNEL", "TX_ID")
 
@@ -59,10 +56,7 @@ func TestFinder(t *testing.T) {
 	t.Run("passes transaction ID to query provider", func(t *testing.T) {
 		provider := &mocks.QueryProvider{}
 		provider.TransactionStatusReturns(peer.TxValidationCode_MVCC_READ_CONFLICT, 101, nil)
-		finder := &Finder{
-			Query:    provider,
-			Notifier: NewNotifier(newNotificationSupplier(nil)),
-		}
+		finder := NewFinder(provider, newTestNotifier(nil))
 
 		finder.TransactionStatus(context.Background(), "CHANNEL", "TX_ID")
 
@@ -75,10 +69,7 @@ func TestFinder(t *testing.T) {
 	t.Run("returns previously committed transaction status", func(t *testing.T) {
 		provider := &mocks.QueryProvider{}
 		provider.TransactionStatusReturns(peer.TxValidationCode_MVCC_READ_CONFLICT, 101, nil)
-		finder := &Finder{
-			Query:    provider,
-			Notifier: NewNotifier(newNotificationSupplier(nil)),
-		}
+		finder := NewFinder(provider, newTestNotifier(nil))
 
 		actual, err := finder.TransactionStatus(context.Background(), "CHANNEL", "TX_ID")
 		require.NoError(t, err)
@@ -95,10 +86,7 @@ func TestFinder(t *testing.T) {
 		provider := &mocks.QueryProvider{}
 		provider.TransactionStatusReturns(0, 0, errors.New("NOT_FOUND"))
 		commitSend := make(chan *ledger.CommitNotification)
-		finder := &Finder{
-			Query:    provider,
-			Notifier: newTestNotifier(commitSend),
-		}
+		finder := NewFinder(provider, newTestNotifier(commitSend))
 
 		msg := &ledger.CommitNotification{
 			BlockNumber: 101,
@@ -127,10 +115,7 @@ func TestFinder(t *testing.T) {
 		provider.TransactionStatusReturns(0, 0, errors.New("NOT_FOUND"))
 		supplier := &mocks.NotificationSupplier{}
 		supplier.CommitNotificationsReturns(nil, errors.New("MY_ERROR"))
-		finder := &Finder{
-			Query:    provider,
-			Notifier: NewNotifier(supplier),
-		}
+		finder := NewFinder(provider, NewNotifier(supplier))
 
 		_, err := finder.TransactionStatus(context.Background(), "CHANNEL", "TX_ID")
 		require.ErrorContains(t, err, "MY_ERROR")
@@ -141,10 +126,7 @@ func TestFinder(t *testing.T) {
 		provider.TransactionStatusReturns(0, 0, errors.New("NOT_FOUND"))
 		supplier := &mocks.NotificationSupplier{}
 		supplier.CommitNotificationsReturns(nil, errors.New("MY_ERROR"))
-		finder := &Finder{
-			Query:    provider,
-			Notifier: NewNotifier(supplier),
-		}
+		finder := NewFinder(provider, NewNotifier(supplier))
 
 		finder.TransactionStatus(context.Background(), "CHANNEL", "TX_ID")
 
@@ -157,10 +139,7 @@ func TestFinder(t *testing.T) {
 	t.Run("returns context error when context cancelled", func(t *testing.T) {
 		provider := &mocks.QueryProvider{}
 		provider.TransactionStatusReturns(0, 0, errors.New("NOT_FOUND"))
-		finder := &Finder{
-			Query:    provider,
-			Notifier: newTestNotifier(nil),
-		}
+		finder := NewFinder(provider, newTestNotifier(nil))
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -174,10 +153,7 @@ func TestFinder(t *testing.T) {
 		provider.TransactionStatusReturns(0, 0, errors.New("NOT_FOUND"))
 		commitSend := make(chan *ledger.CommitNotification)
 		close(commitSend)
-		finder := &Finder{
-			Query:    provider,
-			Notifier: newTestNotifier(commitSend),
-		}
+		finder := NewFinder(provider, newTestNotifier(commitSend))
 
 		_, err := finder.TransactionStatus(context.Background(), "CHANNEL", "TX_ID")
 
