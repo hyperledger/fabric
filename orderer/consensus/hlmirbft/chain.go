@@ -1397,7 +1397,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	}
 	persistBytes = append([]byte{}, c.Node.CheckpointHash...)
 	persistBytes = append(persistBytes, checkpointBytes...)
-	err = c.Node.PersistSnapshot(c.appliedIndex, persistBytes)
+	err = c.Node.PersistSnapshot(c.Node.LastSeqNo, persistBytes)
 	if err != nil {
 		c.logger.Panicf("Cannot Persist Snap to file: %s", err)
 	}
