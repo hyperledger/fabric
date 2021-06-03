@@ -59,7 +59,7 @@ type node struct {
 	metadata *hlmirbft.BlockMetadata
 
 	subscriberC             chan chan uint64
-	PendingReconfigurations []*msgs.Reconfiguration //FLY2-66  Added to keep checkpoints hash
+	PendingReconfigurations []*msgs.Reconfiguration //FLY2-66  Added to keep pending  config change
 
 	mirbft.Node
 }
