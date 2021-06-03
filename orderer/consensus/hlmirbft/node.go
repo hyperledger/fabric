@@ -64,6 +64,8 @@ type node struct {
 	mirbft.Node
 }
 
+const snapSuffix = ".snap"
+
 // TODO(harry_knight) Of node struct, storage, config, and metadata, need to be replaced with hlmirbft counterparts.
 func (n *node) start(fresh, join bool) {
 	/*	raftPeers := RaftPeers(n.metadata.ConsenterIds)
@@ -319,7 +321,7 @@ func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 		return errors.Errorf("failed to mkdir '%s' for snapshot: %s", n.chain.opts.SnapDir, err)
 	}
 	TimeStamp := time.Now().Unix()
-	fname := fmt.Sprintf("%016x-%016x%s", TimeStamp, seqNo, ".snap")
+	fname := fmt.Sprintf("%016x-%016x%s", TimeStamp, seqNo, snapSuffix)
 
 	spath := filepath.Join(n.chain.opts.SnapDir, fname)
 
