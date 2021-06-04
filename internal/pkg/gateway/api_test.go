@@ -84,6 +84,7 @@ type networkMember struct {
 	id       string
 	endpoint string
 	mspid    string
+	height   uint64
 }
 
 type endpointDef struct {
@@ -115,6 +116,7 @@ type testDef struct {
 	name               string
 	plan               endorsementPlan
 	layouts            []endorsementLayout
+	members            []networkMember
 	identity           []byte
 	localResponse      string
 	errString          string
@@ -162,60 +164,81 @@ func TestEvaluate(t *testing.T) {
 	tests := []testDef{
 		{
 			name: "single endorser",
-			plan: endorsementPlan{
-				"g1": {{endorser: localhostMock}},
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 5},
 			},
 		},
 		{
 			name:      "no endorsers",
 			plan:      endorsementPlan{},
+			members:   []networkMember{},
 			errString: "no endorsing peers",
 		},
 		{
-			name: "five endorsers, two groups, prefer largest ledger height",
-			plan: endorsementPlan{
-				"g1": {{endorser: peer3Mock, height: 4}, {endorser: localhostMock, height: 4}, {endorser: peer4Mock, height: 4}},
-				"g2": {{endorser: peer1Mock, height: 3}, {endorser: peer2Mock, height: 5}},
+			name: "five endorsers, prefer local org",
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 5},
+				{"id2", "peer1:8051", "msp1", 6},
+				{"id3", "peer2:9051", "msp2", 6},
+				{"id4", "peer3:10051", "msp2", 5},
+				{"id5", "peer4:11051", "msp3", 6},
 			},
-			expectedEndorsers: []string{"peer2:9051"},
+			expectedEndorsers: []string{"peer1:8051"},
 		},
 		{
-			name: "five endorsers, two groups, prefer host peer",
-			plan: endorsementPlan{
-				"g1": {{endorser: peer3Mock, height: 4}, {endorser: localhostMock, height: 4}, {endorser: peer4Mock, height: 4}},
-				"g2": {{endorser: peer1Mock, height: 3}, {endorser: peer2Mock, height: 4}},
+			name: "five endorsers, prefer host peer",
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 5},
+				{"id2", "peer1:8051", "msp1", 5},
+				{"id3", "peer2:9051", "msp2", 6},
+				{"id4", "peer3:10051", "msp2", 5},
+				{"id5", "peer4:11051", "msp3", 6},
 			},
 			expectedEndorsers: []string{"localhost:7051"},
 		},
 		{
-			name: "discovery fails",
-			plan: endorsementPlan{
-				"g1": {{endorser: localhostMock}},
+			name: "evaluate with targetOrganizations, prefer local org despite block height",
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 5},
+				{"id2", "peer1:8051", "msp1", 5},
+				{"id3", "peer2:9051", "msp2", 6},
+				{"id4", "peer3:10051", "msp2", 5},
+				{"id5", "peer4:11051", "msp3", 6},
 			},
-			postSetup: func(t *testing.T, def *preparedTest) {
-				def.discovery.PeersForEndorsementReturns(nil, fmt.Errorf("mango-tango"))
+			endorsingOrgs:     []string{"msp3", "msp1"},
+			expectedEndorsers: []string{"localhost:7051"},
+		},
+		{
+			name: "evaluate with targetOrganizations that doesn't include local org, prefer highest block height",
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 5},
+				{"id2", "peer1:8051", "msp1", 5},
+				{"id3", "peer2:9051", "msp2", 6},
+				{"id4", "peer3:10051", "msp2", 5},
+				{"id5", "peer4:11051", "msp3", 7},
 			},
-			errString: "mango-tango",
+			endorsingOrgs:     []string{"msp2", "msp3"},
+			expectedEndorsers: []string{"peer4:11051"},
 		},
 		{
 			name: "process proposal fails",
-			plan: endorsementPlan{
-				"g1": {{endorser: localhostMock}},
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 5},
 			},
 			endpointDefinition: &endpointDef{
-				proposalError: status.Error(codes.Aborted, "mumbo-jumbo"),
+				proposalError: status.Error(codes.Aborted, "wibble"),
 			},
 			errString: "rpc error: code = Aborted desc = failed to evaluate transaction",
 			errDetails: []*pb.EndpointError{{
 				Address: "localhost:7051",
 				MspId:   "msp1",
-				Message: "rpc error: code = Aborted desc = mumbo-jumbo",
+				Message: "rpc error: code = Aborted desc = wibble",
 			}},
 		},
 		{
 			name: "process proposal chaincode error",
-			plan: endorsementPlan{
-				"g1": {{endorser: peer1Mock}},
+			members: []networkMember{
+				{"id2", "peer1:8051", "msp1", 5},
 			},
 			endpointDefinition: &endpointDef{
 				proposalResponseStatus:  400,
@@ -230,8 +253,8 @@ func TestEvaluate(t *testing.T) {
 		},
 		{
 			name: "dialing endorser endpoint fails",
-			plan: endorsementPlan{
-				"g1": {{endorser: peer2Mock}},
+			members: []networkMember{
+				{"id3", "peer2:9051", "msp2", 5},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
@@ -245,8 +268,8 @@ func TestEvaluate(t *testing.T) {
 		},
 		{
 			name: "dialing orderer endpoint fails",
-			plan: endorsementPlan{
-				"g1": {{endorser: peer2Mock}},
+			members: []networkMember{
+				{"id3", "peer2:9051", "msp2", 5},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
@@ -263,7 +286,7 @@ func TestEvaluate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			test := prepareTest(t, &tt)
 
-			response, err := test.server.Evaluate(test.ctx, &pb.EvaluateRequest{ProposedTransaction: test.signedProposal})
+			response, err := test.server.Evaluate(test.ctx, &pb.EvaluateRequest{ProposedTransaction: test.signedProposal, TargetOrganizations: tt.endorsingOrgs})
 
 			if tt.errString != "" {
 				checkError(t, err, tt.errString, tt.errDetails)
@@ -281,19 +304,11 @@ func TestEvaluate(t *testing.T) {
 			checkEndorsers(t, tt.expectedEndorsers, test)
 
 			// check the discovery service (mock) was invoked as expected
-			require.Equal(t, 1, test.discovery.PeersForEndorsementCallCount())
-			channel, interest := test.discovery.PeersForEndorsementArgsForCall(0)
 			expectedChannel := common.ChannelID(testChannel)
-			expectedInterest := &dp.ChaincodeInterest{
-				Chaincodes: []*dp.ChaincodeCall{{
-					Name: testChaincode,
-				}},
-			}
+			require.Equal(t, 2, test.discovery.PeersOfChannelCallCount())
+			channel := test.discovery.PeersOfChannelArgsForCall(0)
 			require.Equal(t, expectedChannel, channel)
-			require.Equal(t, expectedInterest, interest)
-
-			require.Equal(t, 1, test.discovery.PeersOfChannelCallCount())
-			channel = test.discovery.PeersOfChannelArgsForCall(0)
+			channel = test.discovery.PeersOfChannelArgsForCall(1)
 			require.Equal(t, expectedChannel, channel)
 
 			require.Equal(t, 1, test.discovery.IdentityInfoCallCount())
@@ -1008,11 +1023,15 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	}
 
 	members := []networkMember{
-		{"id1", "localhost:7051", "msp1"},
-		{"id2", "peer1:8051", "msp1"},
-		{"id3", "peer2:9051", "msp2"},
-		{"id4", "peer3:10051", "msp2"},
-		{"id5", "peer4:11051", "msp3"},
+		{"id1", "localhost:7051", "msp1", 0},
+		{"id2", "peer1:8051", "msp1", 0},
+		{"id3", "peer2:9051", "msp2", 0},
+		{"id4", "peer3:10051", "msp2", 0},
+		{"id5", "peer4:11051", "msp3", 0},
+	}
+
+	if tt.members != nil {
+		members = tt.members
 	}
 
 	disc := mockDiscovery(t, tt.plan, tt.layouts, members, configResult)
@@ -1093,7 +1112,7 @@ func mockDiscovery(t *testing.T, plan endorsementPlan, layouts []endorsementLayo
 		peers = append(peers, gdiscovery.NetworkMember{
 			Endpoint:   member.endpoint,
 			PKIid:      []byte(member.id),
-			Properties: &gossip.Properties{Chaincodes: []*gossip.Chaincode{{Name: testChaincode}}},
+			Properties: &gossip.Properties{Chaincodes: []*gossip.Chaincode{{Name: testChaincode}}, LedgerHeight: member.height},
 		})
 		infoset = append(infoset, api.PeerIdentityInfo{Organization: []byte(member.mspid), PKIId: []byte(member.id)})
 	}
