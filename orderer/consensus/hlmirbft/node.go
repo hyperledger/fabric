@@ -49,7 +49,6 @@ type node struct {
 	Hasher          processor.Hasher   //FLY2 - 66 proposed changes added to store checkpoints hash
 	ActiveHash      hash.Hash          //FLY2 - 66 proposed changes added to store checkpoints hash
 	CheckpointSeqNo uint64             //FLY2 - 66 proposed changes added to store checkpoints seq#
-	LastSeqNo       uint64             //FLY2 - 66 proposed changes added to keep track of last seq#
 	CheckpointState *msgs.NetworkState //FLY2-66 change to keep checkpoint state
 	CheckpointHash  []byte             //FLY2-66  Added to keep checkpoints hash
 
