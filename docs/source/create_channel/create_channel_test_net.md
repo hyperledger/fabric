@@ -228,7 +228,7 @@ export CORE_PEER_ADDRESS=localhost:7051
 
 In order to use the peer CLI, we also need to modify the `FABRIC_CONFIG_PATH`:
 ```
-FABRIC_CFG_PATH=$PWD/../config/
+export FABRIC_CFG_PATH=$PWD/../config/
 ```
 To join the test network peer from `Org1` to the channel `channel1` simply pass the genesis block in a join request:
 ```
