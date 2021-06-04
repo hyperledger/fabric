@@ -1381,8 +1381,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	var persistBytes []byte
 	pr := c.Node.PendingReconfigurations
 	c.Node.PendingReconfigurations = nil
-	c.Node.CheckpointSeqNo ++
-
+	
 	c.Node.CheckpointState = &msgs.NetworkState{
 		Config:                  networkConfig,
 		Clients:                 clientsState,
@@ -1397,6 +1396,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	}
 	persistBytes = append([]byte{}, c.Node.CheckpointHash...)
 	persistBytes = append(persistBytes, checkpointBytes...)
+	c.Node.CheckpointSeqNo ++
 	err = c.Node.PersistSnapshot(c.Node.CheckpointSeqNo, persistBytes)
 	if err != nil {
 		c.logger.Panicf("Cannot Persist Snap to file: %s", err)
