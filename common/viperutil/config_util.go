@@ -449,3 +449,19 @@ func (c *ConfigParser) EnhancedExactUnmarshal(output interface{}) error {
 	}
 	return decoder.Decode(leafKeys)
 }
+
+// YamlStringToStructHook is a hook for viper(viper.Unmarshal(*,*, here)), it is able to parse a string of minified yaml into a slice of structs
+func YamlStringToStructHook(m interface{}) func(rf reflect.Kind, rt reflect.Kind, data interface{}) (interface{}, error) {
+	return func(rf reflect.Kind, rt reflect.Kind, data interface{}) (interface{}, error) {
+		if rf != reflect.String || rt != reflect.Slice {
+			return data, nil
+		}
+
+		raw := data.(string)
+		if raw == "" {
+			return m, nil
+		}
+
+		return m, yaml.UnmarshalStrict([]byte(raw), &m)
+	}
+}
