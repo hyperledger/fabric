@@ -69,15 +69,16 @@ func (fake *Discovery) Config(arg1 string) (*discovery.ConfigResult, error) {
 	fake.configArgsForCall = append(fake.configArgsForCall, struct {
 		arg1 string
 	}{arg1})
+	stub := fake.ConfigStub
+	fakeReturns := fake.configReturns
 	fake.recordInvocation("Config", []interface{}{arg1})
 	fake.configMutex.Unlock()
-	if fake.ConfigStub != nil {
-		return fake.ConfigStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.configReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -131,15 +132,16 @@ func (fake *Discovery) IdentityInfo() api.PeerIdentitySet {
 	ret, specificReturn := fake.identityInfoReturnsOnCall[len(fake.identityInfoArgsForCall)]
 	fake.identityInfoArgsForCall = append(fake.identityInfoArgsForCall, struct {
 	}{})
+	stub := fake.IdentityInfoStub
+	fakeReturns := fake.identityInfoReturns
 	fake.recordInvocation("IdentityInfo", []interface{}{})
 	fake.identityInfoMutex.Unlock()
-	if fake.IdentityInfoStub != nil {
-		return fake.IdentityInfoStub()
+	if stub != nil {
+		return stub()
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.identityInfoReturns
 	return fakeReturns.result1
 }
 
@@ -185,15 +187,16 @@ func (fake *Discovery) PeersForEndorsement(arg1 common.ChannelID, arg2 *discover
 		arg1 common.ChannelID
 		arg2 *discovery.ChaincodeInterest
 	}{arg1, arg2})
+	stub := fake.PeersForEndorsementStub
+	fakeReturns := fake.peersForEndorsementReturns
 	fake.recordInvocation("PeersForEndorsement", []interface{}{arg1, arg2})
 	fake.peersForEndorsementMutex.Unlock()
-	if fake.PeersForEndorsementStub != nil {
-		return fake.PeersForEndorsementStub(arg1, arg2)
+	if stub != nil {
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.peersForEndorsementReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -248,15 +251,16 @@ func (fake *Discovery) PeersOfChannel(arg1 common.ChannelID) discoverya.Members 
 	fake.peersOfChannelArgsForCall = append(fake.peersOfChannelArgsForCall, struct {
 		arg1 common.ChannelID
 	}{arg1})
+	stub := fake.PeersOfChannelStub
+	fakeReturns := fake.peersOfChannelReturns
 	fake.recordInvocation("PeersOfChannel", []interface{}{arg1})
 	fake.peersOfChannelMutex.Unlock()
-	if fake.PeersOfChannelStub != nil {
-		return fake.PeersOfChannelStub(arg1)
+	if stub != nil {
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	fakeReturns := fake.peersOfChannelReturns
 	return fakeReturns.result1
 }
 

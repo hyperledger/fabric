@@ -258,9 +258,53 @@ func (gs *Server) CommitStatus(ctx context.Context, signedRequest *gp.SignedComm
 	}
 
 	response := &gp.CommitStatusResponse{
-		Result: txStatus,
+		Result:      txStatus.Code,
+		BlockNumber: txStatus.BlockNumber,
 	}
 	return response, nil
+}
+
+// ChaincodeEvents supplies a stream of responses, each containing all the events emitted by the requested chaincode
+// for a specific block. The streamed responses are ordered by ascending block number. Responses are only returned for
+// blocks that contain the requested events, while blocks not containing any of the requested events are skipped. The
+// events within each response message are presented in the same order that the transactions that emitted them appear
+// within the block.
+func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest, stream gp.Gateway_ChaincodeEventsServer) error {
+	if signedRequest == nil {
+		return status.Error(codes.InvalidArgument, "a chaincode events request is required")
+	}
+
+	request := &gp.ChaincodeEventsRequest{}
+	if err := proto.Unmarshal(signedRequest.Request, request); err != nil {
+		return status.Error(codes.InvalidArgument, "invalid chaincode events request")
+	}
+
+	signedData := &protoutil.SignedData{
+		Data:      signedRequest.Request,
+		Identity:  request.Identity,
+		Signature: signedRequest.Signature,
+	}
+	if err := gs.policy.CheckACL(resources.Gateway_ChaincodeEvents, request.ChannelId, signedData); err != nil {
+		return status.Error(codes.PermissionDenied, err.Error())
+	}
+
+	events, err := gs.eventer.ChaincodeEvents(stream.Context(), request.ChannelId, request.ChaincodeId)
+	if err != nil {
+		return status.Error(codes.FailedPrecondition, err.Error())
+	}
+
+	for event := range events {
+		response := &gp.ChaincodeEventsResponse{
+			BlockNumber: event.BlockNumber,
+			Events:      event.Events,
+		}
+		if err := stream.Send(response); err != nil {
+			return err // Likely stream closed by the client
+		}
+	}
+
+	// If stream is still open, this was a server-side error; otherwise client won't see it anyway
+	return status.Error(codes.Unavailable, "failed to read events")
 }
 
 func endpointError(e *endorser, err error) *gp.EndpointError {

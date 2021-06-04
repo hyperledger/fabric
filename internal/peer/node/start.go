@@ -93,7 +93,6 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/version"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/gateway"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/msp/mgmt"
 	"github.com/hyperledger/fabric/protoutil"
@@ -822,24 +821,15 @@ func serve(args []string) error {
 		if coreConfig.DiscoveryEnabled {
 			logger.Info("Starting peer with Gateway enabled")
 
-			peerAdapter := &commit.PeerAdapter{
-				Peer: peerInstance,
-			}
-			gatewayprotos.RegisterGatewayServer(
-				peerServer.Server(),
-				gateway.CreateServer(
-					&gateway.EndorserServerAdapter{Server: serverEndorser},
-					discoveryService,
-					&commit.Finder{
-						Query:    peerAdapter,
-						Notifier: commit.NewNotifier(peerAdapter),
-					},
-					aclProvider,
-					peerInstance.GossipService.SelfMembershipInfo().Endpoint,
-					coreConfig.LocalMSPID,
-					coreConfig.GatewayOptions,
-				),
+			gatewayServer := gateway.CreateServer(
+				serverEndorser,
+				discoveryService,
+				peerInstance,
+				aclProvider,
+				coreConfig.LocalMSPID,
+				coreConfig.GatewayOptions,
 			)
+			gatewayprotos.RegisterGatewayServer(peerServer.Server(), gatewayServer)
 		} else {
 			logger.Warning("Discovery service must be enabled for embedded gateway")
 		}

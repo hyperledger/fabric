@@ -63,5 +63,6 @@ const (
 	Event_FilteredBlock = "event/FilteredBlock"
 
 	// Gateway resources
-	Gateway_CommitStatus = "gateway/CommitStatus"
+	Gateway_CommitStatus    = "gateway/CommitStatus"
+	Gateway_ChaincodeEvents = "gateway/ChaincodeEvents"
 )

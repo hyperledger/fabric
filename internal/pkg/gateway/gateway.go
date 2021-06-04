@@ -8,8 +8,10 @@ package gateway
 import (
 	"context"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	peerproto "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/core/peer"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"google.golang.org/grpc"
 )
@@ -20,20 +22,25 @@ var logger = flogging.MustGetLogger("gateway")
 type Server struct {
 	registry     *registry
 	commitFinder CommitFinder
+	eventer      Eventer
 	policy       ACLChecker
 	options      config.Options
 }
 
 type EndorserServerAdapter struct {
-	Server peer.EndorserServer
+	Server peerproto.EndorserServer
 }
 
-func (e *EndorserServerAdapter) ProcessProposal(ctx context.Context, req *peer.SignedProposal, _ ...grpc.CallOption) (*peer.ProposalResponse, error) {
+func (e *EndorserServerAdapter) ProcessProposal(ctx context.Context, req *peerproto.SignedProposal, _ ...grpc.CallOption) (*peerproto.ProposalResponse, error) {
 	return e.Server.ProcessProposal(ctx, req)
 }
 
 type CommitFinder interface {
-	TransactionStatus(ctx context.Context, channelName string, transactionID string) (peer.TxValidationCode, error)
+	TransactionStatus(ctx context.Context, channelName string, transactionID string) (*commit.Status, error)
+}
+
+type Eventer interface {
+	ChaincodeEvents(ctx context.Context, channelName string, chaincodeName string) (<-chan *commit.BlockChaincodeEvents, error)
 }
 
 type ACLChecker interface {
@@ -41,7 +48,27 @@ type ACLChecker interface {
 }
 
 // CreateServer creates an embedded instance of the Gateway.
-func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, finder CommitFinder, policy ACLChecker, localEndpoint, localMSPID string, options config.Options) *Server {
+func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, peerInstance *peer.Peer, policy ACLChecker, localMSPID string, options config.Options) *Server {
+	adapter := &peerAdapter{
+		Peer: peerInstance,
+	}
+	notifier := commit.NewNotifier(adapter)
+
+	return newServer(
+		&EndorserServerAdapter{
+			Server: localEndorser,
+		},
+		discovery,
+		commit.NewFinder(adapter, notifier),
+		commit.NewEventer(notifier),
+		policy,
+		peerInstance.GossipService.SelfMembershipInfo().Endpoint,
+		localMSPID,
+		options,
+	)
+}
+
+func newServer(localEndorser peerproto.EndorserClient, discovery Discovery, finder CommitFinder, eventer Eventer, policy ACLChecker, localEndpoint, localMSPID string, options config.Options) *Server {
 	gwServer := &Server{
 		registry: &registry{
 			localEndorser:       &endorser{client: localEndorser, endpointConfig: &endpointConfig{address: localEndpoint, mspid: localMSPID}},
@@ -54,6 +81,7 @@ func CreateServer(localEndorser peer.EndorserClient, discovery Discovery, finder
 			channelsInitialized: map[string]bool{},
 		},
 		commitFinder: finder,
+		eventer:      eventer,
 		policy:       policy,
 		options:      options,
 	}

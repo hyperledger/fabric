@@ -5,11 +5,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 )
 
 type CommitFinder struct {
-	TransactionStatusStub        func(context.Context, string, string) (peer.TxValidationCode, error)
+	TransactionStatusStub        func(context.Context, string, string) (*commit.Status, error)
 	transactionStatusMutex       sync.RWMutex
 	transactionStatusArgsForCall []struct {
 		arg1 context.Context
@@ -17,18 +17,18 @@ type CommitFinder struct {
 		arg3 string
 	}
 	transactionStatusReturns struct {
-		result1 peer.TxValidationCode
+		result1 *commit.Status
 		result2 error
 	}
 	transactionStatusReturnsOnCall map[int]struct {
-		result1 peer.TxValidationCode
+		result1 *commit.Status
 		result2 error
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *CommitFinder) TransactionStatus(arg1 context.Context, arg2 string, arg3 string) (peer.TxValidationCode, error) {
+func (fake *CommitFinder) TransactionStatus(arg1 context.Context, arg2 string, arg3 string) (*commit.Status, error) {
 	fake.transactionStatusMutex.Lock()
 	ret, specificReturn := fake.transactionStatusReturnsOnCall[len(fake.transactionStatusArgsForCall)]
 	fake.transactionStatusArgsForCall = append(fake.transactionStatusArgsForCall, struct {
@@ -36,15 +36,16 @@ func (fake *CommitFinder) TransactionStatus(arg1 context.Context, arg2 string, a
 		arg2 string
 		arg3 string
 	}{arg1, arg2, arg3})
+	stub := fake.TransactionStatusStub
+	fakeReturns := fake.transactionStatusReturns
 	fake.recordInvocation("TransactionStatus", []interface{}{arg1, arg2, arg3})
 	fake.transactionStatusMutex.Unlock()
-	if fake.TransactionStatusStub != nil {
-		return fake.TransactionStatusStub(arg1, arg2, arg3)
+	if stub != nil {
+		return stub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	fakeReturns := fake.transactionStatusReturns
 	return fakeReturns.result1, fakeReturns.result2
 }
 
@@ -54,7 +55,7 @@ func (fake *CommitFinder) TransactionStatusCallCount() int {
 	return len(fake.transactionStatusArgsForCall)
 }
 
-func (fake *CommitFinder) TransactionStatusCalls(stub func(context.Context, string, string) (peer.TxValidationCode, error)) {
+func (fake *CommitFinder) TransactionStatusCalls(stub func(context.Context, string, string) (*commit.Status, error)) {
 	fake.transactionStatusMutex.Lock()
 	defer fake.transactionStatusMutex.Unlock()
 	fake.TransactionStatusStub = stub
@@ -67,28 +68,28 @@ func (fake *CommitFinder) TransactionStatusArgsForCall(i int) (context.Context, 
 	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
-func (fake *CommitFinder) TransactionStatusReturns(result1 peer.TxValidationCode, result2 error) {
+func (fake *CommitFinder) TransactionStatusReturns(result1 *commit.Status, result2 error) {
 	fake.transactionStatusMutex.Lock()
 	defer fake.transactionStatusMutex.Unlock()
 	fake.TransactionStatusStub = nil
 	fake.transactionStatusReturns = struct {
-		result1 peer.TxValidationCode
+		result1 *commit.Status
 		result2 error
 	}{result1, result2}
 }
 
-func (fake *CommitFinder) TransactionStatusReturnsOnCall(i int, result1 peer.TxValidationCode, result2 error) {
+func (fake *CommitFinder) TransactionStatusReturnsOnCall(i int, result1 *commit.Status, result2 error) {
 	fake.transactionStatusMutex.Lock()
 	defer fake.transactionStatusMutex.Unlock()
 	fake.TransactionStatusStub = nil
 	if fake.transactionStatusReturnsOnCall == nil {
 		fake.transactionStatusReturnsOnCall = make(map[int]struct {
-			result1 peer.TxValidationCode
+			result1 *commit.Status
 			result2 error
 		})
 	}
 	fake.transactionStatusReturnsOnCall[i] = struct {
-		result1 peer.TxValidationCode
+		result1 *commit.Status
 		result2 error
 	}{result1, result2}
 }

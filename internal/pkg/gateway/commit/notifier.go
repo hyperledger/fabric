@@ -9,7 +9,6 @@ package commit
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/ledger"
 )
 
@@ -19,39 +18,48 @@ type NotificationSupplier interface {
 	CommitNotifications(done <-chan struct{}, channelName string) (<-chan *ledger.CommitNotification, error)
 }
 
-// Notifier provides notification of transaction commits.
-type Notifier struct {
-	supplier         NotificationSupplier
-	lock             sync.Mutex
-	channelNotifiers map[string]*channelLevelNotifier
-	cancel           chan struct{}
-	once             sync.Once
+type notifiers struct {
+	block           *blockNotifier
+	status          *statusNotifier
+	chaincodeEvents *chaincodeEventNotifier
 }
 
-// notification of a specific transaction commit.
-type notification struct {
-	BlockNumber    uint64
-	TransactionID  string
-	ValidationCode peer.TxValidationCode
+// Notifier provides notification of transaction commits.
+type Notifier struct {
+	supplier           NotificationSupplier
+	lock               sync.Mutex
+	notifiersByChannel map[string]*notifiers
+	cancel             chan struct{}
+	once               sync.Once
 }
 
 func NewNotifier(supplier NotificationSupplier) *Notifier {
 	return &Notifier{
-		supplier:         supplier,
-		channelNotifiers: make(map[string]*channelLevelNotifier),
-		cancel:           make(chan struct{}),
+		supplier:           supplier,
+		notifiersByChannel: make(map[string]*notifiers),
+		cancel:             make(chan struct{}),
 	}
 }
 
-// notify the caller when the named transaction commits on the named channel. The caller is only notified of commits
-// occurring after registering for notifications.
-func (n *Notifier) notify(done <-chan struct{}, channelName string, transactionID string) (<-chan notification, error) {
-	channelNotifier, err := n.channelNotifier(channelName)
+// notifyStatus notifies the caller when the named transaction commits on the named channel. The caller is only notified
+// of commits occurring after registering for notifications.
+func (n *Notifier) notifyStatus(done <-chan struct{}, channelName string, transactionID string) (<-chan *Status, error) {
+	notifiers, err := n.notifiersForChannel(channelName)
 	if err != nil {
 		return nil, err
 	}
 
-	notifyChannel := channelNotifier.registerListener(done, transactionID)
+	notifyChannel := notifiers.status.registerListener(done, transactionID)
+	return notifyChannel, nil
+}
+
+func (n *Notifier) notifyChaincodeEvents(done <-chan struct{}, channelName string, chaincodeName string) (<-chan *BlockChaincodeEvents, error) {
+	notifiers, err := n.notifiersForChannel(channelName)
+	if err != nil {
+		return nil, err
+	}
+
+	notifyChannel := notifiers.chaincodeEvents.registerListener(done, chaincodeName)
 	return notifyChannel, nil
 }
 
@@ -63,12 +71,12 @@ func (n *Notifier) close() {
 	})
 }
 
-func (n *Notifier) channelNotifier(channelName string) (*channelLevelNotifier, error) {
+func (n *Notifier) notifiersForChannel(channelName string) (*notifiers, error) {
 	n.lock.Lock()
 	defer n.lock.Unlock()
 
-	result := n.channelNotifiers[channelName]
-	if result != nil && !result.isClosed() {
+	result := n.notifiersByChannel[channelName]
+	if result != nil && !result.block.isClosed() {
 		return result, nil
 	}
 
@@ -77,8 +85,15 @@ func (n *Notifier) channelNotifier(channelName string) (*channelLevelNotifier, e
 		return nil, err
 	}
 
-	result = newChannelNotifier(n.cancel, commitChannel)
-	n.channelNotifiers[channelName] = result
+	statusNotifier := newStatusNotifier()
+	chaincodeEventNotifier := newChaincodeEventNotifier()
+	blockNotifier := newBlockNotifier(n.cancel, commitChannel, statusNotifier, chaincodeEventNotifier)
+	result = &notifiers{
+		block:           blockNotifier,
+		status:          statusNotifier,
+		chaincodeEvents: chaincodeEventNotifier,
+	}
+	n.notifiersByChannel[channelName] = result
 
 	return result, nil
 }

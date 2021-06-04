@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	idmocks "github.com/hyperledger/fabric/internal/pkg/identity/mocks"
@@ -61,6 +62,13 @@ type abbClient interface {
 type commitFinder interface {
 	CommitFinder
 }
+
+//go:generate counterfeiter -o mocks/eventer.go --fake-name Eventer . eventer
+type eventer interface {
+	Eventer
+}
+
+//go:generate counterfeiter -o mocks/chaincodeeventsserver.go --fake-name ChaincodeEventsServer github.com/hyperledger/fabric-protos-go/gateway.Gateway_ChaincodeEventsServer
 
 //go:generate counterfeiter -o mocks/aclchecker.go --fake-name ACLChecker . aclChecker
 type aclChecker interface {
@@ -115,10 +123,13 @@ type testDef struct {
 	endorsingOrgs      []string
 	postSetup          func(t *testing.T, def *preparedTest)
 	expectedEndorsers  []string
-	finderStatus       peer.TxValidationCode
+	finderStatus       *commit.Status
 	finderErr          error
+	chaincodeEvents    []*commit.BlockChaincodeEvents
+	eventErr           error
 	policyErr          error
 	expectedResponse   proto.Message
+	expectedResponses  []proto.Message
 }
 
 type preparedTest struct {
@@ -129,6 +140,8 @@ type preparedTest struct {
 	discovery      *mocks.Discovery
 	dialer         *mocks.Dialer
 	finder         *mocks.CommitFinder
+	eventer        *mocks.Eventer
+	eventsServer   *mocks.ChaincodeEventsServer
 	policy         *mocks.ACLChecker
 }
 
@@ -656,34 +669,40 @@ func TestCommitStatus(t *testing.T) {
 			errString: "rpc error: code = FailedPrecondition desc = FINDER_ERROR",
 		},
 		{
-			name:         "returns transaction status",
-			finderStatus: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			name: "returns transaction status",
+			finderStatus: &commit.Status{
+				Code:        peer.TxValidationCode_MVCC_READ_CONFLICT,
+				BlockNumber: 101,
+			},
 			expectedResponse: &pb.CommitStatusResponse{
-				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
+				Result:      peer.TxValidationCode_MVCC_READ_CONFLICT,
+				BlockNumber: 101,
 			},
 		},
 		{
 			name: "passes channel name to finder",
 			postSetup: func(t *testing.T, test *preparedTest) {
-				test.finder.TransactionStatusCalls(func(ctx context.Context, channelName string, transactionID string) (peer.TxValidationCode, error) {
+				test.finder.TransactionStatusCalls(func(ctx context.Context, channelName string, transactionID string) (*commit.Status, error) {
 					require.Equal(t, testChannel, channelName)
-					return peer.TxValidationCode_MVCC_READ_CONFLICT, nil
+					status := &commit.Status{
+						Code:        peer.TxValidationCode_MVCC_READ_CONFLICT,
+						BlockNumber: 101,
+					}
+					return status, nil
 				})
-			},
-			expectedResponse: &pb.CommitStatusResponse{
-				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
 			},
 		},
 		{
 			name: "passes transaction ID to finder",
 			postSetup: func(t *testing.T, test *preparedTest) {
-				test.finder.TransactionStatusCalls(func(ctx context.Context, channelName string, transactionID string) (peer.TxValidationCode, error) {
+				test.finder.TransactionStatusCalls(func(ctx context.Context, channelName string, transactionID string) (*commit.Status, error) {
 					require.Equal(t, "TX_ID", transactionID)
-					return peer.TxValidationCode_MVCC_READ_CONFLICT, nil
+					status := &commit.Status{
+						Code:        peer.TxValidationCode_MVCC_READ_CONFLICT,
+						BlockNumber: 101,
+					}
+					return status, nil
 				})
-			},
-			expectedResponse: &pb.CommitStatusResponse{
-				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
 			},
 		},
 		{
@@ -699,9 +718,9 @@ func TestCommitStatus(t *testing.T) {
 					return nil
 				})
 			},
-			finderStatus: peer.TxValidationCode_MVCC_READ_CONFLICT,
-			expectedResponse: &pb.CommitStatusResponse{
-				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			finderStatus: &commit.Status{
+				Code:        peer.TxValidationCode_MVCC_READ_CONFLICT,
+				BlockNumber: 101,
 			},
 		},
 		{
@@ -715,9 +734,9 @@ func TestCommitStatus(t *testing.T) {
 					return nil
 				})
 			},
-			finderStatus: peer.TxValidationCode_MVCC_READ_CONFLICT,
-			expectedResponse: &pb.CommitStatusResponse{
-				Result: peer.TxValidationCode_MVCC_READ_CONFLICT,
+			finderStatus: &commit.Status{
+				Code:        peer.TxValidationCode_MVCC_READ_CONFLICT,
+				BlockNumber: 101,
 			},
 		},
 	}
@@ -754,8 +773,157 @@ func TestCommitStatus(t *testing.T) {
 	}
 }
 
+func TestChaincodeEvents(t *testing.T) {
+	closedEventsChannel := make(chan *commit.BlockChaincodeEvents)
+	close(closedEventsChannel)
+
+	tests := []testDef{
+		{
+			name:      "error establishing event reading",
+			eventErr:  errors.New("EVENT_ERROR"),
+			errString: "rpc error: code = FailedPrecondition desc = EVENT_ERROR",
+		},
+		{
+			name: "returns chaincode events",
+			chaincodeEvents: []*commit.BlockChaincodeEvents{
+				{
+					BlockNumber: 101,
+					Events: []*peer.ChaincodeEvent{
+						{
+							ChaincodeId: testChaincode,
+							TxId:        "TX_ID",
+							EventName:   "EVENT_NAME",
+							Payload:     []byte("PAYLOAD"),
+						},
+					},
+				},
+			},
+			expectedResponses: []proto.Message{
+				&pb.ChaincodeEventsResponse{
+					BlockNumber: 101,
+					Events: []*peer.ChaincodeEvent{
+						{
+							ChaincodeId: testChaincode,
+							TxId:        "TX_ID",
+							EventName:   "EVENT_NAME",
+							Payload:     []byte("PAYLOAD"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "passes channel name to eventer",
+			postSetup: func(t *testing.T, test *preparedTest) {
+				test.eventer.ChaincodeEventsCalls(func(ctx context.Context, channelName string, chaincodeName string) (<-chan *commit.BlockChaincodeEvents, error) {
+					require.Equal(t, testChannel, channelName)
+					return closedEventsChannel, nil
+				})
+			},
+		},
+		{
+			name: "passes chaincode ID to eventer",
+			postSetup: func(t *testing.T, test *preparedTest) {
+				test.eventer.ChaincodeEventsCalls(func(ctx context.Context, channelName string, chaincodeName string) (<-chan *commit.BlockChaincodeEvents, error) {
+					require.Equal(t, testChaincode, chaincodeName)
+					return closedEventsChannel, nil
+				})
+			},
+		},
+		{
+			name: "returns error from send to client",
+			chaincodeEvents: []*commit.BlockChaincodeEvents{
+				{
+					BlockNumber: 101,
+					Events: []*peer.ChaincodeEvent{
+						{
+							ChaincodeId: testChaincode,
+							TxId:        "TX_ID",
+							EventName:   "EVENT_NAME",
+							Payload:     []byte("PAYLOAD"),
+						},
+					},
+				},
+			},
+			errString: "SEND_ERROR",
+			postSetup: func(t *testing.T, test *preparedTest) {
+				test.eventsServer.SendReturns(status.Error(codes.Aborted, "SEND_ERROR"))
+			},
+		},
+		{
+			name:      "failed policy or signature check",
+			policyErr: errors.New("POLICY_ERROR"),
+			errString: "rpc error: code = PermissionDenied desc = POLICY_ERROR",
+		},
+		{
+			name: "passes channel name to policy checker",
+			postSetup: func(t *testing.T, test *preparedTest) {
+				test.policy.CheckACLCalls(func(policyName string, channelName string, data interface{}) error {
+					require.Equal(t, testChannel, channelName)
+					return nil
+				})
+			},
+		},
+		{
+			name:     "passes identity to policy checker",
+			identity: []byte("IDENTITY"),
+			postSetup: func(t *testing.T, test *preparedTest) {
+				test.policy.CheckACLCalls(func(policyName string, channelName string, data interface{}) error {
+					require.IsType(t, &protoutil.SignedData{}, data)
+					signedData := data.(*protoutil.SignedData)
+					require.Equal(t, []byte("IDENTITY"), signedData.Identity)
+					return nil
+				})
+			},
+		},
+		{
+			name:      "error when no more events can be read",
+			errString: "rpc error: code = Unavailable desc = failed to read events",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			test := prepareTest(t, &tt)
+
+			request := &pb.ChaincodeEventsRequest{
+				ChannelId:   testChannel,
+				Identity:    tt.identity,
+				ChaincodeId: testChaincode,
+			}
+			requestBytes, err := proto.Marshal(request)
+			require.NoError(t, err)
+
+			signedRequest := &pb.SignedChaincodeEventsRequest{
+				Request:   requestBytes,
+				Signature: []byte{},
+			}
+
+			err = test.server.ChaincodeEvents(signedRequest, test.eventsServer)
+
+			if tt.errString != "" {
+				checkError(t, err, tt.errString, tt.errDetails)
+				return
+			}
+
+			for i, expectedResponse := range tt.expectedResponses {
+				actualResponse := test.eventsServer.SendArgsForCall(i)
+				require.True(t, proto.Equal(expectedResponse, actualResponse))
+			}
+		})
+	}
+}
+
 func TestNilArgs(t *testing.T) {
-	server := CreateServer(&mocks.EndorserClient{}, &mocks.Discovery{}, &mocks.CommitFinder{}, &mocks.ACLChecker{}, "localhost:7051", "msp1", config.GetOptions(viper.New()))
+	server := newServer(
+		&mocks.EndorserClient{},
+		&mocks.Discovery{},
+		&mocks.CommitFinder{},
+		&mocks.Eventer{},
+		&mocks.ACLChecker{},
+		"localhost:7051",
+		"msp1",
+		config.GetOptions(viper.New()),
+	)
 	ctx := context.Background()
 
 	_, err := server.Evaluate(ctx, nil)
@@ -807,6 +975,14 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	mockFinder := &mocks.CommitFinder{}
 	mockFinder.TransactionStatusReturns(tt.finderStatus, tt.finderErr)
 
+	eventChannel := make(chan *commit.BlockChaincodeEvents, len(tt.chaincodeEvents))
+	for _, event := range tt.chaincodeEvents {
+		eventChannel <- event
+	}
+	close(eventChannel)
+	mockEventer := &mocks.Eventer{}
+	mockEventer.ChaincodeEventsReturns(eventChannel, tt.eventErr)
+
 	mockPolicy := &mocks.ACLChecker{}
 	mockPolicy.CheckACLReturns(tt.policyErr)
 
@@ -846,7 +1022,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		EndorsementTimeout: endorsementTimeout,
 	}
 
-	server := CreateServer(localEndorser, disc, mockFinder, mockPolicy, "localhost:7051", "msp1", options)
+	server := newServer(localEndorser, disc, mockFinder, mockEventer, mockPolicy, "localhost:7051", "msp1", options)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)
@@ -863,6 +1039,8 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		discovery:      disc,
 		dialer:         dialer,
 		finder:         mockFinder,
+		eventer:        mockEventer,
+		eventsServer:   &mocks.ChaincodeEventsServer{},
 		policy:         mockPolicy,
 	}
 	if tt.postSetup != nil {
