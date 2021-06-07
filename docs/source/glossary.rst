@@ -148,8 +148,10 @@ Concurrency Control Version Check
 
 Concurrency Control Version Check is a method of keeping ledger state in sync across
 peers on a channel. Peers execute transactions in parallel, and before committing
-to the ledger, peers check whether the state read at the time the transaction was executed
-has been modified. If the data read for the transaction has changed between execution time and
+to the ledger, peers check whether the state read at the time the transaction
+was executed has been modified in a new block that was in-flight at time of execution
+or in a prior transaction in the same block.
+If the data read for the transaction has changed between execution time and
 commit time, then a Concurrency Control Version Check violation has
 occurred, and the transaction is marked as invalid on the ledger and values
 are not updated in the state database.
