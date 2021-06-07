@@ -69,27 +69,27 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, e
 	reg.configLock.RLock()
 	defer reg.configLock.RUnlock()
 
-	for _, layout := range descriptor.Layouts {
+	for _, layout := range descriptor.GetLayouts() {
 		var receivers []*endorserState // The set of peers the client needs to request endorsements from
 		abandonLayout := false
-		for group, quantity := range layout.QuantitiesByGroup {
+		for group, quantity := range layout.GetQuantitiesByGroup() {
 			// Select n remoteEndorsers from each group sorted by block height
 
 			// block heights
 			var groupPeers []*endorserState
-			for _, peer := range descriptor.EndorsersByGroups[group].Peers {
+			for _, peer := range descriptor.GetEndorsersByGroups()[group].GetPeers() {
 				msg := &gossip.GossipMessage{}
-				err := proto.Unmarshal(peer.StateInfo.Payload, msg)
+				err := proto.Unmarshal(peer.GetStateInfo().GetPayload(), msg)
 				if err != nil {
 					return nil, err
 				}
 
-				height := msg.GetStateInfo().Properties.LedgerHeight
-				err = proto.Unmarshal(peer.MembershipInfo.Payload, msg)
+				height := msg.GetStateInfo().GetProperties().GetLedgerHeight()
+				err = proto.Unmarshal(peer.GetMembershipInfo().GetPayload(), msg)
 				if err != nil {
 					return nil, err
 				}
-				endpoint := msg.GetAliveMsg().Membership.Endpoint
+				endpoint := msg.GetAliveMsg().GetMembership().GetEndpoint()
 
 				// find the endorser in the registry for this endpoint
 				var endorser *endorser
@@ -165,7 +165,7 @@ func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string
 	defer reg.configLock.RUnlock()
 
 	for _, member := range members {
-		endpoint := member.Endpoint
+		endpoint := member.PreferredEndpoint()
 		// find the endorser in the registry for this endpoint
 		var endorser *endorser
 		if endpoint == reg.localEndorser.address {
@@ -178,8 +178,8 @@ func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string
 		}
 		for _, installedChaincode := range member.Properties.GetChaincodes() {
 			// only consider the peers that have our chaincode installed
-			if installedChaincode.Name == chaincode {
-				endorsersByOrg[endorser.mspid] = append(endorsersByOrg[endorser.mspid], &endorserState{endorser: endorser, height: member.Properties.LedgerHeight})
+			if installedChaincode.GetName() == chaincode {
+				endorsersByOrg[endorser.mspid] = append(endorsersByOrg[endorser.mspid], &endorserState{endorser: endorser, height: member.Properties.GetLedgerHeight()})
 			}
 		}
 		for _, es := range endorsersByOrg {

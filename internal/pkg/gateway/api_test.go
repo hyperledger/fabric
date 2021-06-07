@@ -281,6 +281,16 @@ func TestEvaluate(t *testing.T) {
 			},
 			errString: "failed to create new connection: orderer not answering",
 		},
+		{
+			name: "discovery returns incomplete information - no Properties",
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.discovery.PeersOfChannelReturns([]gdiscovery.NetworkMember{{
+					Endpoint: "localhost:7051",
+					PKIid:    []byte("ill-defined"),
+				}})
+			},
+			errString: "no endorsing peers found for channel",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -427,6 +437,35 @@ func TestEndorse(t *testing.T) {
 				def.discovery.PeersForEndorsementReturns(nil, fmt.Errorf("peach-melba"))
 			},
 			errString: "peach-melba",
+		},
+		{
+			name: "discovery returns incomplete protos - nil layout",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 2}},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				ed := &dp.EndorsementDescriptor{
+					Chaincode: "my_channel",
+					Layouts:   []*dp.Layout{nil},
+				}
+				def.discovery.PeersForEndorsementReturns(ed, nil)
+			},
+			errString: "failed to assemble transaction",
+		},
+		{
+			name: "discovery returns incomplete protos - nil state info",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 2}},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				ed := &dp.EndorsementDescriptor{
+					Chaincode:         "my_channel",
+					Layouts:           []*dp.Layout{{QuantitiesByGroup: map[string]uint32{"g1": 1}}},
+					EndorsersByGroups: map[string]*dp.Peers{"g1": {Peers: []*dp.Peer{{StateInfo: nil}}}},
+				}
+				def.discovery.PeersForEndorsementReturns(ed, nil)
+			},
+			errString: "failed to select a set of endorsers that satisfy the endorsement policy",
 		},
 		{
 			name: "process proposal fails",
