@@ -96,6 +96,11 @@ func (m *mockReader) Height() uint64 {
 	return args.Get(0).(uint64)
 }
 
+func (m *mockReader) RetrieveBlockByNumber(blockNum uint64) (*common.Block, error) {
+	args := m.Called()
+	return args.Get(0).(*common.Block), args.Error(1)
+}
+
 // mockChainSupport
 type mockChainSupport struct {
 	mock.Mock
