@@ -37,15 +37,10 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
 	}
 
-	endorsers, err := gs.registry.endorsers(channel, chaincodeID) // TODO next story, implement endorsingOrgs for Evaluate
+	endorser, err := gs.registry.evaluator(channel, chaincodeID, request.GetTargetOrganizations())
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, "%s", err)
 	}
-	if len(endorsers) == 0 {
-		return nil, status.Errorf(codes.NotFound, "no endorsing peers found for channel: %s", request.ChannelId)
-	}
-
-	endorser := endorsers[0] // The peer with highest ledger height is first in the list
 
 	ctx, cancel := context.WithTimeout(ctx, gs.options.EndorsementTimeout)
 	defer cancel()

@@ -122,9 +122,6 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, e
 			continue
 		}
 
-		// sort the group of groups by decreasing height (since Evaluate will just choose the first one)
-		sort.Slice(receivers, sorter(receivers, reg.localEndorser.address))
-
 		for _, peer := range receivers {
 			endorsers = append(endorsers, peer.endorser)
 		}
@@ -141,9 +138,32 @@ func (reg *registry) endorsersForOrgs(channel string, chaincode string, endorsin
 		return nil, err
 	}
 
+	endorsersByOrg := reg.endorsersByOrg(channel, chaincode)
+
+	var endorsers []*endorser
+	missingOrgs := []string{}
+	for _, required := range endorsingOrgs {
+		if e, ok := endorsersByOrg[required]; ok {
+			endorsers = append(endorsers, e[0].endorser)
+		} else {
+			missingOrgs = append(missingOrgs, required)
+		}
+	}
+	if len(missingOrgs) > 0 {
+		return nil, fmt.Errorf("failed to find any endorsing peers for org(s): %s", strings.Join(missingOrgs, ", "))
+	}
+
+	return endorsers, nil
+}
+
+func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string][]*endorserState {
 	endorsersByOrg := make(map[string][]*endorserState)
 
 	members := reg.discovery.PeersOfChannel(common.ChannelID(channel))
+
+	reg.configLock.RLock()
+	defer reg.configLock.RUnlock()
+
 	for _, member := range members {
 		endpoint := member.Endpoint
 		// find the endorser in the registry for this endpoint
@@ -156,35 +176,52 @@ func (reg *registry) endorsersForOrgs(channel string, chaincode string, endorsin
 			reg.logger.Warnf("Failed to find endorser at %s", endpoint)
 			continue
 		}
-		// check the org membership
-		if contains(endorsingOrgs, endorser.mspid) && member.Properties != nil {
-			for _, installedChaincode := range member.Properties.Chaincodes {
-				// only consider the peers that have our chaincode installed
-				if installedChaincode.Name == chaincode {
-					endorsersByOrg[endorser.mspid] = append(endorsersByOrg[endorser.mspid], &endorserState{endorser: endorser, height: member.Properties.LedgerHeight})
-				}
+		for _, installedChaincode := range member.Properties.GetChaincodes() {
+			// only consider the peers that have our chaincode installed
+			if installedChaincode.Name == chaincode {
+				endorsersByOrg[endorser.mspid] = append(endorsersByOrg[endorser.mspid], &endorserState{endorser: endorser, height: member.Properties.LedgerHeight})
 			}
 		}
-	}
-
-	if len(endorsersByOrg) != len(endorsingOrgs) {
-		missingOrgs := []string{}
-		for _, required := range endorsingOrgs {
-			if _, ok := endorsersByOrg[required]; !ok {
-				missingOrgs = append(missingOrgs, required)
-			}
+		for _, es := range endorsersByOrg {
+			// sort by decreasing height in each org
+			sort.Slice(es, sorter(es, reg.localEndorser.address))
 		}
-		return nil, fmt.Errorf("failed to find any endorsing peers for org(s): %s", strings.Join(missingOrgs, ", "))
+	}
+	return endorsersByOrg
+}
+
+// evaluator returns a single endorser, preferably from local org, if available
+// targetOrgs specifies the orgs that are allowed receive the request, due to private data restrictions
+func (reg *registry) evaluator(channel string, chaincode string, targetOrgs []string) (*endorser, error) {
+	err := reg.registerChannel(channel)
+	if err != nil {
+		return nil, err
 	}
 
-	var endorsers []*endorser
-	for _, es := range endorsersByOrg {
-		// sort by decreasing height and select the highest one from each org
-		sort.Slice(es, sorter(es, reg.localEndorser.address))
-		endorsers = append(endorsers, es[0].endorser)
+	endorsersByOrg := reg.endorsersByOrg(channel, chaincode)
+	// If no targetOrgs are specified (i.e. no restrictions), then populate with all available orgs
+	if len(targetOrgs) == 0 {
+		for org := range endorsersByOrg {
+			targetOrgs = append(targetOrgs, org)
+		}
 	}
-
-	return endorsers, nil
+	// Prefer a local org endorser, if present
+	if e, ok := endorsersByOrg[reg.localEndorser.mspid]; ok && contains(targetOrgs, reg.localEndorser.mspid) {
+		return e[0].endorser, nil
+	}
+	// Otherwise highest block height peer (first in list) from another org
+	var evaluator *endorser
+	var maxHeight uint64
+	for _, org := range targetOrgs {
+		if e, ok := endorsersByOrg[org]; ok && e[0].height > maxHeight {
+			evaluator = e[0].endorser
+			maxHeight = e[0].height
+		}
+	}
+	if evaluator != nil {
+		return evaluator, nil
+	}
+	return nil, fmt.Errorf("no endorsing peers found for channel: %s", channel)
 }
 
 func sorter(e []*endorserState, host string) func(i, j int) bool {
