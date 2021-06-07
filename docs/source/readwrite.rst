@@ -73,12 +73,12 @@ read-write set for updating the versions and the values of the affected
 keys.
 
 In the validation phase, a transaction is considered ``valid`` if the
-version of each key present in the read set of the transaction matches
-the version for the same key in the world state - assuming all the
-preceding ``valid`` transactions (including the preceding transactions
-in the same block) are committed (*committed-state*). An additional
-validation is performed if the read-write set also contains one or more
-query-info.
+version of each key present in the read set of the transaction (from time of simulation)
+matches the current version for the same key, taking into consideration
+``valid`` transactions that have been committed to state from new
+blocks since the transaction was simulated, as well as valid preceding transactions
+in the same block. An additional validation is performed if the read-write set
+also contains one or more query-info.
 
 This additional validation should ensure that no key has been
 inserted/deleted/updated in the super range (i.e., union of the ranges)
