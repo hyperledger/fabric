@@ -545,3 +545,7 @@ func (p *Peer) Initialize(
 		p.initChannel(cid)
 	}
 }
+
+func (flbs fileLedgerBlockStore) RetrieveBlockByNumber(blockNum uint64) (*common.Block, error) {
+	return flbs.GetBlockByNumber(blockNum)
+}
