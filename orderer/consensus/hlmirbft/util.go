@@ -9,7 +9,6 @@ package hlmirbft
 import (
 	"crypto/x509"
 	"encoding/pem"
-
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 
 	"github.com/golang/protobuf/proto"
@@ -25,7 +24,6 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
 )
 
 // RaftPeers maps consenters to slice of raft.Peer
@@ -429,7 +427,7 @@ func NodeExists(id uint64, nodes []uint64) bool {
 
 // ConfChange computes Raft configuration changes based on current Raft
 // configuration state and consenters IDs stored in RaftMetadata.
-func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
+/*func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
 	raftConfChange := &raftpb.ConfChange{}
 
 	// need to compute conf changes to propose
@@ -454,7 +452,7 @@ func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfSta
 	}
 
 	return raftConfChange
-}
+}*/
 
 // CreateConsentersMap creates a map of Raft Node IDs to Consenter given the block metadata and the config metadata.
 func CreateConsentersMap(blockMetadata *hlmirbft.BlockMetadata, configMetadata *hlmirbft.ConfigMetadata) map[uint64]*hlmirbft.Consenter {
