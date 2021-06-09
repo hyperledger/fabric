@@ -369,7 +369,7 @@ In the unlikely case where two peers are running on the same node, you need to m
 - **`operations.listenAddress:`** (Required when using the operations service.) Specify the address and port of the operations server.
 - **`operations.tls.cert.file*:`** (Required when using the operations service). Can be the same file as the `peer.tls.cert.file`.
 - **`operations.tls.key.file*:`** (Required when using the operations service). Can be the same file as the `peer.tls.key.file`.
-- **`operations.tls.clientAuthRequired*:`** (Required when using the operations service). Must be set tp `true` to enable mutual TLS between the client and the server.
+- **`operations.tls.clientAuthRequired*:`** (Required when using the operations service). Must be set to `true` to enable mutual TLS between the client and the server.
 - **`operations.tls.clientRootCAs.files*:`** (Required when using the operations service). Similar to the [peer.tls.clientRootCAs.files](#tls), it contains a list of client root CA certificates that can be used to verify client certificates. If the client enrolled with the peer organization CA, then this value is the peer organization root CA cert.
 
 ## metrics.*
