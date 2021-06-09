@@ -266,7 +266,7 @@ We can now start using the `configtxlator` tool to start working with the channe
 
 ```
 configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
-jq .data.data[0].payload.data.config config_block.json > config.json
+jq '.data.data[0].payload.data.config' config_block.json > config.json
 ```
 
 These commands convert the channel configuration block into a streamlined JSON, `config.json`, that will serve as the baseline for our update. Because we don't want to edit this file directly, we will make a copy that we can edit. We will use the original channel config in a future step.
@@ -331,7 +331,7 @@ cd channel-artifacts
 You can then decode and copy the configuration block.
 ```
 configtxlator proto_decode --input config_block.pb --type common.Block --output config_block.json
-jq .data.data[0].payload.data.config config_block.json > config.json
+jq '.data.data[0].payload.data.config' config_block.json > config.json
 cp config.json config_copy.json
 ```
 
