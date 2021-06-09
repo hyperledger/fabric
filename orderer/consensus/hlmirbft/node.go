@@ -320,7 +320,7 @@ func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 		return errors.Errorf("failed to mkdir '%s' for snapshot: %s", n.chain.opts.SnapDir, err)
 	}
 	TimeStamp := time.Now().Unix()
-	fname := fmt.Sprintf("%016x-%016x%s", TimeStamp, seqNo, snapSuffix)
+	fname := fmt.Sprintf("%016x-%016x%s", seqNo, TimeStamp,snapSuffix)
 
 	spath := filepath.Join(n.chain.opts.SnapDir, fname)
 
