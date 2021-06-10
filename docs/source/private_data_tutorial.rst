@@ -238,7 +238,7 @@ Org1 and Org2 to have the private data in a side database, and the collection
 ``Org1MSPPrivateCollection`` allows only peers of Org1 to have their
 private data in a side database and ``Org2MSPPrivateCollection`` allows peers
 of Org2 to have their private data in a side database.
-For implementation details refer to the following two `asset transfer private data functions <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/asset-transfer-private-data/chaincode-go/chaincode/asset_queries.go>`__:
+For implementation details refer to the following two `asset transfer private data functions <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-private-data/chaincode-go/chaincode/asset_queries.go>`__:
 
  * **ReadAsset** for querying the values of the ``assetID, color, size and owner`` attributes.
  * **ReadAssetPrivateDetails** for querying the values of the ``appraisedValue`` attribute.
@@ -966,7 +966,7 @@ Using indexes with private data
 
 Indexes can also be applied to private data collections, by packaging indexes in
 the ``META-INF/statedb/couchdb/collections/<collection_name>/indexes`` directory
-alongside the chaincode. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}//asset-transfer-private-data/chaincode-go/META-INF/statedb/couchdb/collections/assetCollection/indexes/indexOwner.json>`__ .
+alongside the chaincode. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/main/asset-transfer-private-data/chaincode-go/META-INF/statedb/couchdb/collections/assetCollection/indexes/indexOwner.json>`__ .
 
 For deployment of chaincode to production environments, it is recommended
 to define any indexes alongside chaincode so that the chaincode and supporting
