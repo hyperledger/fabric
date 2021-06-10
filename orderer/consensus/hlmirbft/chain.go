@@ -1491,6 +1491,7 @@ func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
 	return nil
 }
 
+//JIRA FLY2-66 proposed changes: Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
 
 	var persistBytes []byte
@@ -1521,8 +1522,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	return persistBytes, pr, nil
 }
 
-//FLY2-58 proposed changes
-// Implemented the TransferTo Function
+//JIRA FLY2-58 proposed changes: Implemented the TransferTo Function
 func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
 	networkState := &msgs.NetworkState{}
 	hashString := string(snap[:32]) //get the hash of the snap
