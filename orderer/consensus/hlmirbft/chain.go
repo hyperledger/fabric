@@ -1486,11 +1486,10 @@ func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
 	}
 }
 
-//FLY2- 66 Proposed changes
-//Implenetation of Snap() function
-// func (c *Chain) Apply(*msgs.QEntry) error {
-// 	return nil
-// }
+
+ func (c *Chain) Apply(*msgs.QEntry) error {
+	return nil
+}
 
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
 
