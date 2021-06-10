@@ -54,12 +54,15 @@ func (s *DiscoverySupport) PeersOfChannel(chain common.ChannelID) discovery.Memb
 		return nil
 	}
 	stateInf := msg.GetStateInfo()
-	selfMember := discovery.NetworkMember{
-		Properties: stateInf.Properties,
-		PKIid:      stateInf.PkiId,
-		Envelope:   msg.Envelope,
-	}
-	return append(s.Gossip.PeersOfChannel(chain), selfMember)
+
+	selfMember := s.Gossip.SelfMembershipInfo()
+	selfMember.Properties = stateInf.Properties
+	selfMember.Envelope = msg.Envelope
+
+	peers := s.Gossip.PeersOfChannel(chain)
+	peers = append(peers, selfMember)
+	// Return only the peers that have an external endpoint, and sanitizes the envelopes.
+	return discovery.Members(peers).Filter(discovery.HasExternalEndpoint).Map(sanitizeEnvelope)
 }
 
 // Peers returns the NetworkMembers considered alive
