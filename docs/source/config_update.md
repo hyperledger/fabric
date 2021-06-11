@@ -941,7 +941,7 @@ However, as you'll see, this conceptual simplicity is wrapped in a somewhat conv
 We have two tutorials that deal specifically with editing a channel configuration to achieve a specific end:
 
 * [Adding an Org to a Channel](./channel_update_tutorial.html): shows the process for adding an additional organization to an existing channel.
-* [Updating channel capabilities](./updating_a_channel.html): shows how to update channel capabilities.
+* [Updating channel capabilities](./updating_capabilities.html): shows how to update channel capabilities.
 
 In this topic, we'll show the process of editing a channel configuration independent of the end goal of the configuration update.
 
@@ -994,7 +994,7 @@ At this point, you have two options of how you want to modify the config.
 1. Open ``modified_config.json`` using the text editor of your choice and make edits. Online tutorials exist that describe how to copy a file from a container that does not have an editor, edit it, and add it back to the container.
 2. Use ``jq`` to apply edits to the config.
 
-Whether you choose to edit the config manually or using `jq` depends on your use case. Because `jq` is concise and scriptable (an advantage when the same configuration update will be made to multiple channels), it's the recommend method for performing a channel update. For an example on how `jq` can be used, check out [Updating channel capabilities](./updating_a_channel.html#Create-a-capabilities-config-file), which shows multiple `jq` commands leveraging a capabilities config file called `capabilities.json`. If you are updating something other than the capabilities in your channel, you will have to modify your `jq` command and JSON file accordingly.
+Whether you choose to edit the config manually or using `jq` depends on your use case. Because `jq` is concise and scriptable (an advantage when the same configuration update will be made to multiple channels), it's the recommend method for performing a channel update. For an example on how `jq` can be used, check out [Updating channel capabilities](./updating_capabilities.html#Create-a-capabilities-config-file), which shows multiple `jq` commands leveraging a capabilities config file called `capabilities.json`. If you are updating something other than the capabilities in your channel, you will have to modify your `jq` command and JSON file accordingly.
 
 For more information about the content and structure of a channel configuration, check out our [sample channel config](#Sample-channel-configuration) above.
 
