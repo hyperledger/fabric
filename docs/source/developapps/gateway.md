@@ -39,7 +39,7 @@ A gateway can be used by an application in two different ways:
   these roles in the connection profile [topic](./connectionprofile.html).
 
   The SDK will use this static topology, in conjunction with gateway
-  [connection options](./connectionoptions), to manage the transaction
+  [connection options](connectionoptions.html), to manage the transaction
   submission and notification processes. The connection profile must contain
   enough of the network topology to allow a gateway to interact with the
   network on behalf of the application; this includes the network channels,
