@@ -17,7 +17,7 @@ You can use this tutorial to learn how to use the `configtx.yaml` file to build 
 
 Because different sections of the file work together to create the policies that govern the channel, we will discuss channel policies in [their own tutorial](channel_policies.html).
 
-Building off of the [Creating a channel tutorial](create_channel.html), we will use the `configtx.yaml` file that is used to deploy the Fabric test network as an example. Open a command terminal on your local machine and navigate to the `test-network` directory in your local clone of the Fabric samples:
+Building off of the [Creating a channel tutorial](create_channel_participation.html), we will use the `configtx.yaml` file that is used to deploy the Fabric test network as an example. Open a command terminal on your local machine and navigate to the `test-network` directory in your local clone of the Fabric samples:
 ```
 cd fabric-samples/test-network
 ```
