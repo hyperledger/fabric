@@ -61,7 +61,7 @@ By default, when you start the test network, it does not contain any channels. T
 
 ### Set up the configtxgen tool
 
-Channels are created by generating a channel creation transaction in a genesis block, and then passing that genesis block to an ordering service node in a join request. The channel creation transaction specifies the initial configuration of the channel and can be created by the [configtxgen](../commands/configtxgen.html) tool. The tool reads the `configtx.yaml` file that defines the configuration of our channel, and then writes the relevant information into the channel creation transaction and outputs a genesis block including the channel creation transaction. When you [installed Fabric](install.html), the `configtxgen` tool was installed in the `fabric-samples\bin` directory for you.
+Channels are created by generating a channel creation transaction in a genesis block, and then passing that genesis block to an ordering service node in a join request. The channel creation transaction specifies the initial configuration of the channel and can be created by the [configtxgen](../commands/configtxgen.html) tool. The tool reads the `configtx.yaml` file that defines the configuration of our channel, and then writes the relevant information into the channel creation transaction and outputs a genesis block including the channel creation transaction. When you [installed Fabric](../install.html), the `configtxgen` tool was installed in the `fabric-samples\bin` directory for you.
 
 Ensure that you are still operating from the `test-network` directory of your local clone of `fabric-samples` and run this command:
 
