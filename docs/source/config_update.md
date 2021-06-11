@@ -9,7 +9,7 @@ Like many complex systems, Hyperledger Fabric networks are comprised of both **s
 * **Structure**: encompassing users (like admins), organizations, peers, ordering nodes, CAs, smart contracts, and applications.
 * **Process**: the way these structures interact. Most important of these are [Policies](./policies/policies.html), the rules that govern which users can do what, and under what conditions.
 
-Information identifying the structure of blockchain networks and the processes governing how structures interact are contained in **channel configurations**. These configurations are collectively decided upon by the members of channels and are contained in blocks that are committed to the ledger of a channel. Channel configurations can be built using a tool called `configtxgen`, which uses a `configtx.yaml` file as its input. You can look at a [sample `configtx.yaml` file here](http://github.com/hyperledger/fabric/blob/release-2.0/sampleconfig/configtx.yaml).
+Information identifying the structure of blockchain networks and the processes governing how structures interact are contained in **channel configurations**. These configurations are collectively decided upon by the members of channels and are contained in blocks that are committed to the ledger of a channel. Channel configurations can be built using a tool called `configtxgen`, which uses a `configtx.yaml` file as its input. You can look at a [sample `configtx.yaml` file here](http://github.com/hyperledger/fabric/blob/release-2.2/sampleconfig/configtx.yaml).
 
 Because configurations are contained in blocks (the first of these is known as the genesis block with the latest representing the current configuration of the channel), the process for updating a channel configuration (changing the structure by adding members, for example, or processes by modifying channel policies) is known as a **configuration update transaction**.
 
@@ -951,7 +951,7 @@ However, as you'll see, this conceptual simplicity is wrapped in a somewhat conv
 We have two tutorials that deal specifically with editing a channel configuration to achieve a specific end:
 
 * [Adding an Org to a Channel](./channel_update_tutorial.html): shows the process for adding an additional organization to an existing channel.
-* [Updating channel capabilities](./updating_a_channel.html): shows how to update channel capabilities.
+* [Updating channel capabilities](./updating_capabilities.html): shows how to update channel capabilities.
 
 In this topic, we'll show the process of editing a channel configuration independent of the end goal of the configuration update.
 
