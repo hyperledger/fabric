@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	resultFilename = "./result.json"
+	resultFilename      = "./result.json"
+	compareErrorMessage = "Ledger Compare Error: "
 )
 
 var (
@@ -24,6 +25,7 @@ var (
 	compare       = app.Command("compare", "Compare two ledgers via their snapshots.")
 	snapshotPath1 = compare.Arg("snapshotPath1", "File path to first ledger snapshot.").Required().String()
 	snapshotPath2 = compare.Arg("snapshotPath2", "File path to second ledger snapshot.").Required().String()
+	all           = compare.Flag("all", "Saves all snapshot divergences to the output file. Default is the earliest 10 divergences.").Short('a').Bool()
 
 	troubleshoot = app.Command("troubleshoot", "Identify potentially divergent transactions.")
 
@@ -43,12 +45,17 @@ func main() {
 
 	case compare.FullCommand():
 
-		count, err := ledger.Compare(*snapshotPath1, *snapshotPath2, resultFilename)
+		count, err := ledger.Compare(*snapshotPath1, *snapshotPath2, resultFilename, *all)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("%s%s", compareErrorMessage, err)
 			return
 		}
 		fmt.Printf("\nSuccessfully compared snapshots. Result saved to %s. Total differences found: %v\n", resultFilename, count)
+		if *all {
+			fmt.Println("All found divergences were saved.")
+		} else {
+			fmt.Println("Only the first 10 found divergences were saved.")
+		}
 
 	case troubleshoot.FullCommand():
 

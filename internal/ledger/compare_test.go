@@ -102,6 +102,96 @@ func TestCompare(t *testing.T) {
 		},
 	}
 
+	sampleRecords5 := []*testRecord{
+		{
+			namespace: "ns1", key: "k1", value: "v1",
+			blockNum: 1, txNum: 1, metadata: "md1",
+		},
+		{
+			namespace: "ns2", key: "k2", value: "v2",
+			blockNum: 1, txNum: 2, metadata: "md2",
+		},
+		{
+			namespace: "ns3", key: "k3", value: "v3",
+			blockNum: 1, txNum: 3, metadata: "md3",
+		},
+		{
+			namespace: "ns4", key: "k4", value: "v4",
+			blockNum: 1, txNum: 4, metadata: "md4",
+		},
+		{
+			namespace: "ns5", key: "k5", value: "v5",
+			blockNum: 1, txNum: 5, metadata: "md5",
+		},
+		{
+			namespace: "ns6", key: "k6", value: "v6",
+			blockNum: 2, txNum: 1, metadata: "md6",
+		},
+		{
+			namespace: "ns7", key: "k7", value: "v7",
+			blockNum: 2, txNum: 2, metadata: "md7",
+		},
+		{
+			namespace: "ns8", key: "k8", value: "v8",
+			blockNum: 2, txNum: 3, metadata: "md8",
+		},
+		{
+			namespace: "ns9", key: "k9", value: "v9",
+			blockNum: 2, txNum: 4, metadata: "md9",
+		},
+		{
+			namespace: "ns10", key: "k10", value: "v10",
+			blockNum: 2, txNum: 5, metadata: "md10",
+		},
+	}
+
+	sampleRecords6 := []*testRecord{
+		{
+			namespace: "ns1", key: "k1", value: "v1",
+			blockNum: 1, txNum: 1, metadata: "md1",
+		},
+		{
+			namespace: "ns2", key: "k2", value: "v7",
+			blockNum: 1, txNum: 2, metadata: "md2",
+		},
+		{
+			namespace: "ns3", key: "k3", value: "v6",
+			blockNum: 1, txNum: 3, metadata: "md3",
+		},
+		{
+			namespace: "ns4", key: "k4", value: "v3",
+			blockNum: 1, txNum: 4, metadata: "md4",
+		},
+		{
+			namespace: "ns6", key: "k6", value: "v2",
+			blockNum: 2, txNum: 1, metadata: "md6",
+		},
+		{
+			namespace: "ns8", key: "k8", value: "v8",
+			blockNum: 2, txNum: 3, metadata: "md8",
+		},
+		{
+			namespace: "ns9", key: "k9", value: "v4",
+			blockNum: 2, txNum: 4, metadata: "md9",
+		},
+		{
+			namespace: "ns10", key: "k10", value: "v11",
+			blockNum: 2, txNum: 5, metadata: "md10",
+		},
+		{
+			namespace: "ns11", key: "k11", value: "v11",
+			blockNum: 3, txNum: 1, metadata: "md11",
+		},
+		{
+			namespace: "ns11", key: "k12", value: "v12",
+			blockNum: 3, txNum: 2, metadata: "md12",
+		},
+		{
+			namespace: "ns11", key: "k13", value: "v13",
+			blockNum: 3, txNum: 3, metadata: "md13",
+		},
+	}
+
 	// Signable metadata samples for snapshots
 	sampleSignableMetadata1 := &kvledger.SnapshotSignableMetadata{
 		ChannelName:            "testchannel",
@@ -236,6 +326,136 @@ func TestCompare(t *testing.T) {
 				}
 			}
 		]`
+	expectedOver10Default := `[
+		{
+			"namespace":"ns2",
+			"key":"k2",
+			"snapshotrecord1": {"blockNum":1, "txNum":2, "value":"v2"},
+			"snapshotrecord2": {"blockNum":1, "txNum":2, "value":"v7"}
+		},
+		{
+			"namespace":"ns3",
+			"key":"k3",
+			"snapshotrecord1": {"blockNum":1, "txNum":3, "value":"v3"},
+			"snapshotrecord2":{"blockNum":1, "txNum":3, "value":"v6"}
+		},
+		{
+			"namespace":"ns4",
+			"key":"k4",
+			"snapshotrecord1":{"blockNum":1, "txNum":4, "value":"v4"},
+			"snapshotrecord2":{"blockNum":1, "txNum":4, "value":"v3"}
+		},
+		{
+			"namespace":"ns5",
+			"key":"k5",
+			"snapshotrecord1":{"blockNum":1, "txNum":5, "value":"v5"},
+			"snapshotrecord2":{}
+		},
+		{
+			"namespace":"ns6",
+			"key":"k6",
+			"snapshotrecord1":{"blockNum":2, "txNum":1, "value":"v6"},
+			"snapshotrecord2":{"blockNum":2, "txNum":1, "value":"v2"}
+		},
+		{
+			"namespace":"ns7",
+			"key":"k7",
+			"snapshotrecord1":{"blockNum":2, "txNum":2, "value":"v7"},
+			"snapshotrecord2":{}
+		},
+		{
+			"namespace":"ns9",
+			"key":"k9",
+			"snapshotrecord1":{"blockNum":2, "txNum":4, "value":"v9"},
+			"snapshotrecord2":{"blockNum":2, "txNum":4, "value":"v4"}
+		},
+		{
+			"namespace":"ns10",
+			"key":"k10",
+			"snapshotrecord1":{"blockNum":2, "txNum":5, "value":"v10"},
+			"snapshotrecord2":{"blockNum":2, "txNum":5, "value":"v11"}
+		},
+		{
+			"namespace":"ns11",
+			"key":"k11",
+			"snapshotrecord1":{},
+			"snapshotrecord2":{"blockNum":3, "txNum":1, "value":"v11"}
+		},
+		{
+			"namespace":"ns11",
+			"key":"k12",
+			"snapshotrecord1":{},
+			"snapshotrecord2":{"blockNum":3, "txNum":2, "value":"v12"}
+		}
+	]`
+	expectedOver10All := `[
+		{
+			"namespace":"ns2",
+			"key":"k2",
+			"snapshotrecord1": {"blockNum":1, "txNum":2, "value":"v2"},
+			"snapshotrecord2": {"blockNum":1, "txNum":2, "value":"v7"}
+		},
+		{
+			"namespace":"ns3",
+			"key":"k3",
+			"snapshotrecord1": {"blockNum":1, "txNum":3, "value":"v3"},
+			"snapshotrecord2":{"blockNum":1, "txNum":3, "value":"v6"}
+		},
+		{
+			"namespace":"ns4",
+			"key":"k4",
+			"snapshotrecord1":{"blockNum":1, "txNum":4, "value":"v4"},
+			"snapshotrecord2":{"blockNum":1, "txNum":4, "value":"v3"}
+		},
+		{
+			"namespace":"ns5",
+			"key":"k5",
+			"snapshotrecord1":{"blockNum":1, "txNum":5, "value":"v5"},
+			"snapshotrecord2":{}
+		},
+		{
+			"namespace":"ns6",
+			"key":"k6",
+			"snapshotrecord1":{"blockNum":2, "txNum":1, "value":"v6"},
+			"snapshotrecord2":{"blockNum":2, "txNum":1, "value":"v2"}
+		},
+		{
+			"namespace":"ns7",
+			"key":"k7",
+			"snapshotrecord1":{"blockNum":2, "txNum":2, "value":"v7"},
+			"snapshotrecord2":{}
+		},
+		{
+			"namespace":"ns9",
+			"key":"k9",
+			"snapshotrecord1":{"blockNum":2, "txNum":4, "value":"v9"},
+			"snapshotrecord2":{"blockNum":2, "txNum":4, "value":"v4"}
+		},
+		{
+			"namespace":"ns10",
+			"key":"k10",
+			"snapshotrecord1":{"blockNum":2, "txNum":5, "value":"v10"},
+			"snapshotrecord2":{"blockNum":2, "txNum":5, "value":"v11"}
+		},
+		{
+			"namespace":"ns11",
+			"key":"k11",
+			"snapshotrecord1":{},
+			"snapshotrecord2":{"blockNum":3, "txNum":1, "value":"v11"}
+		},
+		{
+			"namespace":"ns11",
+			"key":"k12",
+			"snapshotrecord1":{},
+			"snapshotrecord2":{"blockNum":3, "txNum":2, "value":"v12"}
+		},
+		{
+			"namespace":"ns11",
+			"key":"k13",
+			"snapshotrecord1":{},
+			"snapshotrecord2":{"blockNum":3, "txNum":3, "value":"v13"}
+		}
+	]`
 	expectedSamePubStateError := "both snapshots public state hashes are same. Aborting compare"
 	expectedDiffDatabaseError := "the supplied snapshots appear to be non-comparable. State db types do not match." +
 		"\nSnapshot1 state db type: testdatabase\nSnapshot2 state db type: testdatabase2"
@@ -245,6 +465,7 @@ func TestCompare(t *testing.T) {
 		inputSignableMetadata1 *kvledger.SnapshotSignableMetadata
 		inputTestRecords2      []*testRecord
 		inputSignableMetadata2 *kvledger.SnapshotSignableMetadata
+		inputAllFlag           bool
 		expectedOutput         string
 		expectedOutputType     string
 		expectedDiffCount      int
@@ -319,6 +540,28 @@ func TestCompare(t *testing.T) {
 			expectedOutputType:     "error",
 			expectedDiffCount:      0,
 		},
+		// All flag is false with more than 10 divergences
+		"over-10-default": {
+			inputTestRecords1:      sampleRecords5,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords6,
+			inputSignableMetadata2: sampleSignableMetadata2,
+			inputAllFlag:           false,
+			expectedOutput:         expectedOver10Default,
+			expectedOutputType:     "json",
+			expectedDiffCount:      10,
+		},
+		// All flag is true with more than 10 divergences
+		"over-10-all": {
+			inputTestRecords1:      sampleRecords5,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords6,
+			inputSignableMetadata2: sampleSignableMetadata2,
+			inputAllFlag:           true,
+			expectedOutput:         expectedOver10All,
+			expectedOutputType:     "json",
+			expectedDiffCount:      11,
+		},
 	}
 
 	// Run test cases individually
@@ -342,7 +585,7 @@ func TestCompare(t *testing.T) {
 			require.NoError(t, err)
 
 			// Compare snapshots and check the output
-			count, out, err := compareSnapshots(snapshotDir1, snapshotDir2, filepath.Join(resultsDir, "results.json"))
+			count, out, err := compareSnapshots(snapshotDir1, snapshotDir2, filepath.Join(resultsDir, "results.json"), testCase.inputAllFlag)
 			require.Equal(t, testCase.expectedDiffCount, count)
 			switch testCase.expectedOutputType {
 			case "error":
@@ -404,9 +647,9 @@ func createSnapshot(dir string, pubStateRecords []*testRecord, signableMetadata 
 }
 
 // compareSnapshots calls the Compare tool and extracts the result json
-func compareSnapshots(ss1 string, ss2 string, res string) (int, string, error) {
+func compareSnapshots(ss1 string, ss2 string, res string, all bool) (int, string, error) {
 	// Run compare tool on snapshots
-	count, err := Compare(ss1, ss2, res)
+	count, err := Compare(ss1, ss2, res, all)
 	if err != nil {
 		return 0, "", err
 	}

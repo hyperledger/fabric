@@ -25,7 +25,15 @@ import (
 
 // Compare - Compares two ledger snapshots and outputs the differences in snapshot records
 // This function will overwrite the file at outputPath if it already exists
-func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count int, err error) {
+func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string, all bool) (count int, err error) {
+	finishCompare := func(f *jsonArrayFileWriter) (int, error) {
+		err = f.close()
+		if err != nil {
+			return 0, err
+		}
+		return f.count, nil
+	}
+
 	// Check the hashes between two files
 	hashPath1 := filepath.Join(snapshotDir1, kvledger.SnapshotSignableMetadataFileName)
 	hashPath2 := filepath.Join(snapshotDir2, kvledger.SnapshotSignableMetadataFileName)
@@ -137,6 +145,11 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count
 		default:
 			panic("unexpected code path: bug")
 		}
+
+		// Check if divergence limit reached
+		if !all && jsonOutputFile.count >= 10 {
+			return finishCompare(jsonOutputFile)
+		}
 	}
 
 	// Check for tailing records
@@ -152,6 +165,9 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count
 			err = jsonOutputFile.addRecord(*diffRecord)
 			if err != nil {
 				return 0, err
+			}
+			if !all && jsonOutputFile.count >= 10 {
+				return finishCompare(jsonOutputFile)
 			}
 			namespace1, snapshotRecord1, err = snapshotReader1.Next()
 			if err != nil {
@@ -170,6 +186,9 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count
 			if err != nil {
 				return 0, err
 			}
+			if !all && jsonOutputFile.count >= 10 {
+				return finishCompare(jsonOutputFile)
+			}
 			namespace2, snapshotRecord2, err = snapshotReader2.Next()
 			if err != nil {
 				return 0, err
@@ -177,11 +196,7 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count
 		}
 	}
 
-	err = jsonOutputFile.close()
-	if err != nil {
-		return 0, err
-	}
-	return jsonOutputFile.count, nil
+	return finishCompare(jsonOutputFile)
 }
 
 // diffRecord represents a diverging record in json
