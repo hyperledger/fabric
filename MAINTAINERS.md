@@ -9,7 +9,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 |------|--------|------|----------------------
 | Alessandro Sorniotti | [ale-linux][ale-linux] | aso | <ale.linux@sopit.net>
 | Brett Logan | [lindluni][lindluni] | BrettLogan | <development.brett@gmail.com>
-| Artem Barger | [c0rwin][c0rwin] | c0rwin | <bartem@il.ibm.com>
+| Artem Barger | [c0rwin][c0rwin] | c0rwin | <artem@bargr.net>
 | Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
 | Jay Guo | [guoger][guoger] | guoger | <guojiannan1101@gmail.com>
