@@ -856,7 +856,7 @@ All the time, the underlying Fabric SDK handles the transaction endorsement,
 ordering and notification process, making the application's logic
 straightforward; the SDK uses a [gateway](../developapps/gateway.html) to
 abstract away network details and
-[connectionOptions](../developapps/connectoptions.html) to declare more advanced
+[connectionOptions](../developapps/connectionoptions.html) to declare more advanced
 processing strategies such as transaction retry.
 
 Let's now follow the lifecycle of MagnetoCorp `00001` by switching our emphasis

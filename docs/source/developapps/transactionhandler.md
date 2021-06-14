@@ -80,7 +80,7 @@ result returned by the transaction.
 
 Once a handler has been added to the smart contract, it can be invoked during
 transaction processing. During processing, the handler receives `ctx`, the
-[transaction context](./transationcontext.md), performs some processing, and
+[transaction context](./transationcontext.html), performs some processing, and
 returns control as it completes. Processing continues as follows:
 
 * **Before handler**: If the handler completes successfully, the transaction is

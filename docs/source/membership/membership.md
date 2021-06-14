@@ -22,7 +22,7 @@ Finally, consider if you want to join an _existing_ network, you need a way to t
 1. Have an identity issued by a CA that is trusted by the network.
 2. Become a member of an _organization_ that is recognized and approved by the network members. The MSP is how the identity is linked to the membership of an organization. Membership is achieved by adding the member's public key (also known as certificate, signing cert, or signcert) to the organization’s MSP.
 3. Add the MSP to either a [consortium](../glossary.html#consortium) on the network or a channel.
-4. Ensure the MSP is included in the [policy](../policies/policies.html) definitions on the network.
+4. Ensure the MSP is included in the policy definitions on the network.
 
 ## What is an MSP?
 

@@ -111,7 +111,7 @@ They allow an application to declare how it would like the gateway to use the
 connection profile. They are interpreted by the SDK to control interaction
 patterns with network components, for example to select which identity to
 connect with, or which peers to use for event notifications. Read
-[about](./connectoptions.html) the list of available connection options and
+[about](./connectionoptions.html) the list of available connection options and
 when to use them.
 
 ## Structure
@@ -209,7 +209,7 @@ about it:
   application operations relate to organizations rather than channels. For
   example, an application can request notification from one or all peers within
   its organization, or all organizations within the network -- using [connection
-  options](./connectoptions.html).  For this, there needs to be an organization
+  options](./connectionoptions.html).  For this, there needs to be an organization
   to peer mapping, and this section provides it.
 
 * Line 101: `MagnetoCorp:`
