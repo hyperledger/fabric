@@ -144,7 +144,7 @@ particular `identityLabel`.
 The `Gateway` class only requires the `mspId` and `type` metadata to be set for
 an identity -- `Org1MSP` and `X.509` in the above example. It *currently* uses the
 MSP ID value to identify particular peers from a [connection profile](./connectionprofile.html),
-for example when a specific notification [strategy](./connectoptions.html) is
+for example when a specific notification [strategy](./connectionoptions.html) is
 requested. In the DigiBank gateway file `networkConnection.yaml`, see how
 `Org1MSP` notifications will be associated with `peer0.org1.example.com`:
 

@@ -389,7 +389,7 @@ smart contracts to communicate between channels so that ledger information can
 be accessed between them.
 
 You can read more about how ledgers work with channels in this
-[topic](./developapps/chaincodenamespace.html#channel).
+[topic](../developapps/chaincodenamespace.html#channel).
 
 
 ## More information

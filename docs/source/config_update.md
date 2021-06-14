@@ -951,7 +951,7 @@ However, as you'll see, this conceptual simplicity is wrapped in a somewhat conv
 We have two tutorials that deal specifically with editing a channel configuration to achieve a specific end:
 
 * [Adding an Org to a Channel](./channel_update_tutorial.html): shows the process for adding an additional organization to an existing channel.
-* [Updating channel capabilities](./updating_a_channel.html): shows how to update channel capabilities.
+* [Updating channel capabilities](./updating_capabilities.html): shows how to update channel capabilities.
 
 In this topic, we'll show the process of editing a channel configuration independent of the end goal of the configuration update.
 
