@@ -50,7 +50,7 @@ You can find the `configtx.yaml` file that is used to deploy the test network in
 
   The `configtxgen` tool uses `configtx.yaml` file to create a complete genesis block for the system channel. As a result, the system channel profile needs to specify the full system channel configuration. The channel profile used to create the channel creation transaction only needs to contain the additional configuration information required to create an application channel.
 
-You can visit the [Using configtx.yaml to create a channel genesis block](create_channel_genesis.html) tutorial to learn more about this file. For now, we will return to the operational aspects of creating the channel, though we will reference parts of this file in future steps.
+You can visit the [Using configtx.yaml to build a channel configuration](create_channel_config.html) tutorial to learn more about this file. For now, we will return to the operational aspects of creating the channel, though we will reference parts of this file in future steps.
 
 ## Start the network
 
