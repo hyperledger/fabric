@@ -132,7 +132,7 @@ Note that in Markdown, enumerated lists will not work if you separate the number
 
 **Linking.**
 
-When linking to another doc, use relative links, not direct links. When naming a link, do not just call it "link". Use a more creative and descriptive name. For accessibility reasons, the link name should also make it clear that it is a link. For example, check out [this link to Google](www.google.com).
+When linking to another doc, use relative links, not direct links. When naming a link, do not just call it "link". Use a more creative and descriptive name. For accessibility reasons, the link name should also make it clear that it is a link. For example, check out [this link to Google](https://www.google.com).
 
 **curl vs cURL.**
 
