@@ -184,7 +184,7 @@ channel, and elect a leader on each channel.
 
 **Note**: Since Raft-based ordering service requires mutual TLS between orderer nodes,
 **additional configurations** are required before you start them again, see
-[Section: Local Configuration](./raft_configuration.md#local-configuration) for more details.
+[Section: Local Configuration](../raft_configuration.md#local-configuration) for more details.
 
 After restart process finished, make sure to **validate** that a
 leader has been elected on each channel by inspecting the node logs (you can see

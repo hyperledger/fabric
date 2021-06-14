@@ -16,11 +16,7 @@ To fork a repository:
 
 - Navigate to the GitHub repository you wish to fork in your browser
 - In the top right corner select the Fork button
-
-.. image:: ../images/fork.png
-   :scale: 50%
-
-- Your browser will automatically take you to the forked repostiory within
+- Your browser will automatically take you to the forked repository within
   your personal GitHub account once the forking process has complete
 
 You can now clone your personal fork to your local machine.
@@ -140,7 +136,7 @@ Perform the following steps to commit and push your code to your forked reposito
    git add <file1> <file2>
 
 - You can now create your commit containing the changes you just added. Your commit
-  message should contain meaningingful information as to why this work was completed,
+  message should contain meaningful information as to why this work was completed,
   as well as the Jira number in the commit header:
 
 .. code::
@@ -149,7 +145,7 @@ Perform the following steps to commit and push your code to your forked reposito
 
 .. note::
 
-   Hyperledger requires that commits be signed by the commiter.
+   Hyperledger requires that commits be signed by the committer.
    When issuing the `commit` command, specify the `-s` flag to
    automatically add your signature to your commit.
 
@@ -182,16 +178,12 @@ repository from which you created your fork and begin the code review process.
 - Select the Hyperledger repo from which you created the fork as the `base repository`
   and the branch you want to merge into as the `base`
 - Select your fork as the `head repository` and your feature branch as the `compare`
-
-.. image:: ../images/pull_request.png
-   :scale: 50%
-
 - Select `Create Pull Request`
 - You can now enter a title for your pull request and a comment if you desire
 - You can now choose one of two options for creating your pull request.
   In the green `Create Pull Request` box select the down-arrow to the right of it.
 - You can choose the first option to open your pull request as-is.
-  This will automatically assign the repostiories maintainers as reviewers for
+  This will automatically assign the repositories maintainers as reviewers for
   your pull request.
 - You can choose the second option to open your pull request as a draft.
   Opening your pull request as a draft will not assign any reviewers, but will
@@ -203,7 +195,7 @@ by navigating to the `Checks` tab of the pull request.
 
 .. warning::
 
-   If you bypass the perscribed pull request process and generate a pull request
+   If you bypass the prescribed pull request process and generate a pull request
    from an edit you made using GitHub's editor UI, you must manually add your
    signature to the commit message when the commit is generated in the UI.
 
