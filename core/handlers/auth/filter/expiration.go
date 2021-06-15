@@ -48,7 +48,7 @@ func validateProposal(signedProp *peer.SignedProposal) error {
 	}
 	expirationTime := crypto.ExpiresAt(sh.Creator)
 	if !expirationTime.IsZero() && time.Now().After(expirationTime) {
-		return errors.New("identity expired")
+		return errors.New("proposal client identity expired")
 	}
 	return nil
 }

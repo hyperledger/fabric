@@ -135,7 +135,7 @@ func (is *identityMapperImpl) Put(pkiID common.PKIidType, identity api.PeerIdent
 	var expirationTimer *time.Timer
 	if !expirationDate.IsZero() {
 		if time.Now().After(expirationDate) {
-			return errors.New("identity expired")
+			return errors.New("gossipping peer identity expired")
 		}
 		// Identity would be wiped out a millisecond after its expiration date
 		timeToLive := time.Until(expirationDate.Add(time.Millisecond))
