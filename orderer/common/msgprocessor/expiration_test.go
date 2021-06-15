@@ -108,8 +108,13 @@ func TestExpirationRejectRule(t *testing.T) {
 		env := createEnvelope(t, createX509Identity(t, "expiredCert.pem"))
 		mockCapabilities.ExpirationCheckReturns(true)
 		err := NewExpirationRejectRule(mockResources).Apply(env)
+<<<<<<< HEAD
 		assert.Error(t, err)
 		assert.Equal(t, err.Error(), "identity expired")
+=======
+		require.Error(t, err)
+		require.Equal(t, err.Error(), "broadcast client identity expired")
+>>>>>>> fd218eb65 (Clarify "identity expired" error messages (#2685))
 
 		mockCapabilities.ExpirationCheckReturns(false)
 		err = NewExpirationRejectRule(mockResources).Apply(env)
