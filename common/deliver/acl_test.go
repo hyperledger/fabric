@@ -116,7 +116,7 @@ var _ = Describe("SessionAccessControl", func() {
 			err = sac.Evaluate()
 			Expect(err).NotTo(HaveOccurred())
 
-			Eventually(sac.Evaluate).Should(MatchError(ContainSubstring("client identity expired")))
+			Eventually(sac.Evaluate).Should(MatchError(ContainSubstring("deliver client identity expired")))
 		})
 	})
 
