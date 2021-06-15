@@ -724,7 +724,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			p, err := ordererclient.Broadcast(network, orderer, channelCreateTxn)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(p.Status).To(Equal(common.Status_BAD_REQUEST))
-			Expect(p.Info).To(ContainSubstring("identity expired"))
+			Expect(p.Info).To(ContainSubstring("broadcast client identity expired"))
 
 			By("Attempting to fetch a block from orderer and failing")
 			denv := CreateDeliverEnvelope(network, orderer, 0, network.SystemChannel.Name)
@@ -733,7 +733,7 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			block, err := ordererclient.Deliver(network, orderer, denv)
 			Expect(err).To(HaveOccurred())
 			Expect(block).To(BeNil())
-			Eventually(runner.Err(), time.Minute, time.Second).Should(gbytes.Say("client identity expired"))
+			Eventually(runner.Err(), time.Minute, time.Second).Should(gbytes.Say("deliver client identity expired"))
 
 			By("Killing orderer")
 			ordererProc.Signal(syscall.SIGTERM)

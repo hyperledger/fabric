@@ -109,7 +109,7 @@ func TestExpirationRejectRule(t *testing.T) {
 		mockCapabilities.ExpirationCheckReturns(true)
 		err := NewExpirationRejectRule(mockResources).Apply(env)
 		require.Error(t, err)
-		require.Equal(t, err.Error(), "identity expired")
+		require.Equal(t, err.Error(), "broadcast client identity expired")
 
 		mockCapabilities.ExpirationCheckReturns(false)
 		err = NewExpirationRejectRule(mockResources).Apply(env)
