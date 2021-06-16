@@ -82,13 +82,46 @@ func (n *node) start(fresh, join bool) {
 			n.Node = *node
 		}
 
-		// TODO(harrymknight) Once client (fabric application) management is implemented nodes can be started like so
-		// initialNetworkState := mirbft.StandardInitialNetworkState(len(n.metadata.ConsenterIds), 1)
-		// err = n.ProcessAsNewNode(n.chain.doneC, n.clock.NewTicker(10).C(), initialNetworkState, []byte("fake"))
+		initialNetworkState := InitialNetworkState(n.metadata.ConsenterIds)
+		// TODO(harrymknight) Tick interval is fixed. Perhaps introduce TickInterval field in configuration options
+		err = n.ProcessAsNewNode(n.chain.doneC, n.clock.NewTicker(10).C(), initialNetworkState, []byte("first"))
 
 	} else {
 		n.logger.Info("Restarting mirbft node")
-		/*n.RestartProcessing(n.chain.doneC, n.clock.NewTicker(10).C())*/
+		n.RestartProcessing(n.chain.doneC, n.clock.NewTicker(10).C())
+	}
+}
+
+func InitialNetworkState(ConsenterIds []uint64) *msgs.NetworkState {
+	var nodes []uint64
+	for i := 0; i < len(ConsenterIds); i++ {
+		nodes[i] = ConsenterIds[i]
+	}
+
+	numberOfBuckets := int32(len(ConsenterIds))
+	checkpointInterval := numberOfBuckets * 5
+	maxEpochLength := checkpointInterval * 10
+
+	// TODO(harrymknight) The width of a client window is fixed.
+	//  Could optimise by varying according to the checkpoint interval and batch size
+	clients := make([]*msgs.NetworkState_Client, len(ConsenterIds))
+	for i := range clients {
+		clients[i] = &msgs.NetworkState_Client{
+			Id:           ConsenterIds[i],
+			Width:        100,
+			LowWatermark: 0,
+		}
+	}
+
+	return &msgs.NetworkState{
+		Config: &msgs.NetworkState_Config{
+			Nodes:              nodes,
+			F:                  int32((len(ConsenterIds) - 1) / 3),
+			NumberOfBuckets:    numberOfBuckets,
+			CheckpointInterval: checkpointInterval,
+			MaxEpochLength:     uint64(maxEpochLength),
+		},
+		Clients: clients,
 	}
 }
 
