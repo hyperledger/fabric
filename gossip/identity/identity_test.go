@@ -268,7 +268,7 @@ func TestExpiration(t *testing.T) {
 	err := idStore.Put(x509PkiID, x509Identity)
 	assert.NoError(t, err)
 	err = idStore.Put(expiredX509PkiID, expiredX509Identity)
-	assert.Equal(t, "identity expired", err.Error())
+	assert.Equal(t, "gossipping peer identity expired", err.Error())
 	err = idStore.Put(nonX509PkiID, nonX509Identity)
 	assert.NoError(t, err)
 	err = idStore.Put(notSupportedPkiID, notSupportedIdentity)

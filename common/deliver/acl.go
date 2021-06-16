@@ -57,7 +57,7 @@ type SessionAccessControl struct {
 // changes.
 func (ac *SessionAccessControl) Evaluate() error {
 	if !ac.sessionEndTime.IsZero() && time.Now().After(ac.sessionEndTime) {
-		return errors.Errorf("client identity expired %v before", time.Since(ac.sessionEndTime))
+		return errors.Errorf("deliver client identity expired %v before", time.Since(ac.sessionEndTime))
 	}
 
 	policyCheckNeeded := !ac.usedAtLeastOnce
