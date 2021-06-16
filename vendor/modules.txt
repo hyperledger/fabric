@@ -192,7 +192,9 @@ github.com/hashicorp/hcl/json/token
 # github.com/hyperledger-labs/mirbft v0.0.0-20210513065819-2525f29404f5
 ## explicit
 github.com/hyperledger-labs/mirbft
+github.com/hyperledger-labs/mirbft/pkg/eventlog
 github.com/hyperledger-labs/mirbft/pkg/pb/msgs
+github.com/hyperledger-labs/mirbft/pkg/pb/recording
 github.com/hyperledger-labs/mirbft/pkg/pb/state
 github.com/hyperledger-labs/mirbft/pkg/processor
 github.com/hyperledger-labs/mirbft/pkg/reqstore

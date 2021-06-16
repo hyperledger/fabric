@@ -7,11 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 package hlmirbft
 
 import (
+	"bytes"
 	"crypto"
 	"sync"
 
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
+	"github.com/hyperledger-labs/mirbft/pkg/eventlog"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
 	"github.com/hyperledger-labs/mirbft/pkg/reqstore"
 	"github.com/hyperledger-labs/mirbft/pkg/simplewal"
@@ -73,7 +75,7 @@ func (n *node) start(fresh, join bool) {
 				App:          n.chain,
 				WAL:          wal,
 				RequestStore: reqStore,
-				Interceptor:  nil,
+				Interceptor:  eventlog.NewRecorder(n.chain.MirBFTID, &bytes.Buffer{}),
 			},
 		)
 		if err != nil {
