@@ -491,23 +491,25 @@ func (c *Chain) isRunning() error {
 
 // Consensus passes the given ConsensusRequest message to the raft.Node instance
 // TODO(harry_knight) Change stepMsg type to hlmirbft
-//JIRA FLY2-57 change  
+// JIRA FLY2-57 change  
 func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
 		return err
 	}
-	//JIRA FLY2-57 proposed change
+	//FLY2-57 proposed chang
 	// - unmarshal submit request
 	// - check if the submit request payload can be unmarshaled to stepmsg
 	// - if not, propose msg
 	submitReqMsg := &orderer.SubmitRequest{}
-	err := proto.Unmarshal(req.Payload, submitReqMsg)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal : %s", err)
-	}
 	stepMsg := &msgs.Msg{}
-	err = proto.Unmarshal(submitReqMsg.Payload.Payload, stepMsg)
+
+	err := proto.Unmarshal(req.Payload, stepMsg)
+
 	if err != nil {
+		err = proto.Unmarshal(req.Payload, submitReqMsg)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal : %s", err)
+		}
 		return c.proposeMsg(submitReqMsg)
 	}
 	if err := c.Node.Step(context.TODO(), sender, stepMsg); err != nil {
@@ -528,7 +530,6 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 
 	return nil
 }
-
 //JIRA FLY2-64 : Proposed Change:New function to propose normal messages to node
 func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 
