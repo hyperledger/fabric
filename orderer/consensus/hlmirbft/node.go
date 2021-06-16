@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
+	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
 	"github.com/hyperledger-labs/mirbft/pkg/processor"
@@ -41,24 +41,32 @@ type node struct {
 
 	rpc RPC
 
-	storage *MirBFTStorage //SNAPCHANGE- need to change Mir Storage Structure
+	//storage *MirBFTStorage //SNAPCHANGE- need to change Mir Storage Structure
 
 	chain *Chain
 
-
-	Hasher          processor.Hasher   //FLY2 - 66 proposed changes added to store checkpoints hash
-	ActiveHash      hash.Hash          //FLY2 - 66 proposed changes added to store checkpoints hash
-	CheckpointSeqNo uint64             //FLY2 - 66 proposed changes added to store checkpoints seq#
-	CheckpointState *msgs.NetworkState //FLY2-66 change to keep checkpoint state
-	CheckpointHash  []byte             //FLY2-66  Added to keep checkpoints hash
+	//JIRA FLY2 - 66 proposed changes Added  new variables
+	// - Hasher
+	// - ActiveHash
+	// - CheckpointSeqNumber
+	// - LastSeqNo
+	// - CheckpointState
+	// - CheckpointHash
+	// - PendingReconfigurations
+	Hasher                  processor.Hasher
+	ActiveHash              hash.Hash
+	CheckpointSeqNo         uint64
+	CheckpointState         *msgs.NetworkState
+	CheckpointHash          []byte
+	PendingReconfigurations []*msgs.Reconfiguration
+	SnapByteMap             map[string]uint64
 
 	tickInterval time.Duration
 	clock        clock.Clock
 
 	metadata *hlmirbft.BlockMetadata
 
-	subscriberC             chan chan uint64
-	PendingReconfigurations []*msgs.Reconfiguration //FLY2-66  Added to keep pending  config change
+	subscriberC chan chan uint64
 
 	mirbft.Node
 }
@@ -67,6 +75,7 @@ const snapSuffix = ".snap"
 
 // TODO(harry_knight) Of node struct, storage, config, and metadata, need to be replaced with hlmirbft counterparts.
 func (n *node) start(fresh, join bool) {
+
 	/*	raftPeers := RaftPeers(n.metadata.ConsenterIds)
 		n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
 
@@ -245,7 +254,7 @@ func (n *node) send(msgs []raftpb.Message) {
 // If this is called on follower, it simply waits for a
 // leader change till timeout (ElectionTimeout).
 func (n *node) abdicateLeader(currentLead uint64) {
-	status := n.Status()
+	/*status := n.Status()
 
 	if status.Lead != raft.None && status.Lead != currentLead {
 		n.logger.Warn("Leader has changed since asked to transfer leadership")
@@ -313,14 +322,13 @@ func (n *node) lastIndex() uint64 {
 	return 0
 }
 
-//FLY2- 66 Proposed changes
-//Implemented the PersistSnapshot functionality to persist the snaps to local files
+//JIRA FLY2- 66 Proposed changes:Implemented the PersistSnapshot functionality to persist the snaps to local files
 func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 	if err := os.MkdirAll(n.chain.opts.SnapDir, os.ModePerm); err != nil {
 		return errors.Errorf("failed to mkdir '%s' for snapshot: %s", n.chain.opts.SnapDir, err)
 	}
 	TimeStamp := time.Now().Unix()
-	fname := fmt.Sprintf("%016x-%016x%s", seqNo, TimeStamp,snapSuffix)
+	fname := fmt.Sprintf("%016x-%016x%s", seqNo, TimeStamp, snapSuffix )
 
 	spath := filepath.Join(n.chain.opts.SnapDir, fname)
 
@@ -328,6 +336,7 @@ func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 	if err != nil {
 		return err
 	}
+
 	byteNumber, err := f.Write(Data)
 	if err == nil && byteNumber < len(Data) {
 		err = io.ErrShortWrite
@@ -337,4 +346,40 @@ func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 		err = err1
 	}
 	return err
+}
+
+//JIRA FLY2-58 proposed changes:readSnapFiles loads the snap file based on the sequence number and reads the contents
+func (n *node) readSnapFiles(seqNo uint64, SnapDir string) ([]byte, error) {
+	var snapBytes []byte
+	fileNamePattern := fmt.Sprintf("%016x-*", seqNo)
+
+	snapFileList, err := GetFileByPattern(SnapDir, fileNamePattern)
+	if err != nil {
+		return nil, err
+	}
+	numberOfFiles := len(snapFileList)
+	switch {
+	case numberOfFiles == 0:
+		err = errors.Errorf("file not found Error : No files found for sequence number %016x", seqNo)
+		snapBytes = nil
+	case numberOfFiles == 1:
+		snapBytes, err = ReadFile(SnapDir, snapFileList[0])
+	case numberOfFiles > 1:
+		n.logger.Warning("File Duplication : multiple files detected for sequence number %016x", seqNo)
+		snapBytes, err = ReadFile(SnapDir, snapFileList[numberOfFiles-1])
+	}
+	return snapBytes, err
+}
+
+// JIRA FLY2-58 proposed changes: PurgeSnapFiles takes the list of snap files in the snap directory  and removes them
+func (n *node) purgeSnapFiles(SnapDir string) error {
+	snapFileList, err := GetFileByPattern(SnapDir, snapSuffix )
+	if err != nil {
+		return errors.Errorf("Cannot retrive snap files : %s", err)
+	}
+	err = PurgeFiles(snapFileList[:len(snapFileList)-2], SnapDir, n.logger)
+	if err != nil {
+		return err
+	}
+	return nil
 }
