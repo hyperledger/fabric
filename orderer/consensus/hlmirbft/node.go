@@ -1,464 +1,300 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
+
 SPDX-License-Identifier: Apache-2.0
 */
 
 package hlmirbft
 
 import (
-	"crypto/x509"
-	"encoding/pem"
-	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
+	"sync"
+	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
-	"github.com/hyperledger/fabric/common/crypto"
+	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
+	"github.com/hyperledger-labs/mirbft"
+
+	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/protoutil"
-	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
 )
 
-// RaftPeers maps consenters to slice of raft.Peer
-func RaftPeers(consenterIDs []uint64) []raft.Peer {
-	var peers []raft.Peer
+type node struct {
+	chainID string
+	logger  *flogging.FabricLogger
+	metrics *Metrics
 
-	for _, raftID := range consenterIDs {
-		peers = append(peers, raft.Peer{ID: raftID})
-	}
-	return peers
+	unreachableLock sync.RWMutex
+	unreachable     map[uint64]struct{}
+
+	tracker *Tracker
+
+	config          *mirbft.Config
+	processorConfig *mirbft.ProcessorConfig
+
+	rpc RPC
+
+	chain *Chain
+
+	tickInterval time.Duration
+	clock        clock.Clock
+
+	metadata *hlmirbft.BlockMetadata
+
+	subscriberC chan chan uint64
+
+	mirbft.Node
 }
 
-type ConsentersMap map[string]struct{}
+// TODO(harry_knight) Of node struct, storage, config, and metadata, need to be replaced with hlmirbft counterparts.
+func (n *node) start(fresh, join bool) {
+	/*	raftPeers := RaftPeers(n.metadata.ConsenterIds)
+		n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
 
-func (c ConsentersMap) Exists(consenter *hlmirbft.Consenter) bool {
-	_, exists := c[string(consenter.ClientTlsCert)]
-	return exists
-}
+		var campaign bool
+		if fresh {
+			if join {
+				raftPeers = nil
+				n.logger.Info("Starting raft node to join an existing channel")
+			} else {
+				n.logger.Info("Starting raft node as part of a new channel")
 
-// ConsentersToMap maps consenters into set where key is client TLS certificate
-func ConsentersToMap(consenters []*hlmirbft.Consenter) ConsentersMap {
-	set := map[string]struct{}{}
-	for _, c := range consenters {
-		set[string(c.ClientTlsCert)] = struct{}{}
-	}
-	return set
-}
-
-// MetadataHasDuplication returns an error if the metadata has duplication of consenters.
-// A duplication is defined by having a server or a client TLS certificate that is found
-// in two different consenters, regardless of the type of certificate (client/server).
-func MetadataHasDuplication(md *hlmirbft.ConfigMetadata) error {
-	if md == nil {
-		return errors.New("nil metadata")
-	}
-
-	for _, consenter := range md.Consenters {
-		if consenter == nil {
-			return errors.New("nil consenter in metadata")
-		}
-	}
-
-	seen := make(map[string]struct{})
-	for _, consenter := range md.Consenters {
-		serverKey := string(consenter.ServerTlsCert)
-		clientKey := string(consenter.ClientTlsCert)
-		_, duplicateServerCert := seen[serverKey]
-		_, duplicateClientCert := seen[clientKey]
-		if duplicateServerCert || duplicateClientCert {
-			return errors.Errorf("duplicate consenter: server cert: %s, client cert: %s", serverKey, clientKey)
-		}
-
-		seen[serverKey] = struct{}{}
-		seen[clientKey] = struct{}{}
-	}
-	return nil
-}
-
-// MetadataFromConfigValue reads and translates configuration updates from config value into raft metadata
-func MetadataFromConfigValue(configValue *common.ConfigValue) (*hlmirbft.ConfigMetadata, error) {
-	consensusTypeValue := &orderer.ConsensusType{}
-	if err := proto.Unmarshal(configValue.Value, consensusTypeValue); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal consensusType config update")
-	}
-
-	updatedMetadata := &hlmirbft.ConfigMetadata{}
-	if err := proto.Unmarshal(consensusTypeValue.Metadata, updatedMetadata); err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal updated (new) etcdraft metadata configuration")
-	}
-
-	return updatedMetadata, nil
-}
-
-// MetadataFromConfigUpdate extracts consensus metadata from config update
-func MetadataFromConfigUpdate(update *common.ConfigUpdate) (*hlmirbft.ConfigMetadata, error) {
-	var baseVersion uint64
-	if update.ReadSet != nil && update.ReadSet.Groups != nil {
-		if ordererConfigGroup, ok := update.ReadSet.Groups["Orderer"]; ok {
-			if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
-				baseVersion = val.Version
-			}
-		}
-	}
-
-	if update.WriteSet != nil && update.WriteSet.Groups != nil {
-		if ordererConfigGroup, ok := update.WriteSet.Groups["Orderer"]; ok {
-			if val, ok := ordererConfigGroup.Values["ConsensusType"]; ok {
-				if baseVersion == val.Version {
-					// Only if the version in the write set differs from the read-set
-					// should we consider this to be an update to the consensus type
-					return nil, nil
+				// determine the node to start campaign by selecting the node with ID equals to:
+				//                hash(channelID) % cluster_size + 1
+				sha := sha256.Sum256([]byte(n.chainID))
+				number, _ := proto.DecodeVarint(sha[24:])
+				if n.config.ID == number%uint64(len(raftPeers))+1 {
+					campaign = true
 				}
-				return MetadataFromConfigValue(val)
 			}
+
+			// TODO(harry_knight) config and metadata are initialised during block genesis/ordering service startup.
+			// 	So need to alter Orderer section of configtx.yaml and add new package under fabric-protos/orderer
+		} else {
+			n.logger.Info("Restarting raft node")
 		}
-	}
-	return nil, nil
+
+		n.subscriberC = make(chan chan uint64)
+
+		//go n.run()
+		go n.run(campaign)*/
 }
 
-// ConfigChannelHeader expects a config block and returns the header type
-// of the config envelope wrapped in it, e.g. HeaderType_ORDERER_TRANSACTION
-func ConfigChannelHeader(block *common.Block) (hdr *common.ChannelHeader, err error) {
-	envelope, err := protoutil.ExtractEnvelope(block, 0)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to extract envelope from the block")
+// TODO(harry_knight) The logic contained in the infinite for loops should be retained.
+// 	It serves to start, manage, and respond to the internal clock of the FSM.
+// 	Auxiliary calls should be adapted to occur during block genesis/orderer service startup.
+func (n *node) run(campaign bool) {
+	/*electionTimeout := n.tickInterval.Seconds() * float64(n.config.ElectionTick)
+	halfElectionTimeout := electionTimeout / 2
+
+	raftTicker := n.clock.NewTicker(n.tickInterval)
+
+	if s := n.storage.Snapshot(); !raft.IsEmptySnap(s) {
+		n.chain.snapC <- &s
 	}
 
-	channelHeader, err := protoutil.ChannelHeader(envelope)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot extract channel header")
-	}
+	elected := make(chan struct{})
+	if campaign {
+		n.logger.Infof("This node is picked to start campaign")
+		go func() {
+			// Attempt campaign every two HeartbeatTimeout elapses, until leader is present - either this
+			// node successfully claims leadership, or another leader already existed when this node starts.
+			// We could do this more lazily and exit proactive campaign once transitioned to Candidate state
+			// (not PreCandidate because other nodes might not have started yet, in which case PreVote
+			// messages are dropped at recipients). But there is no obvious reason (for now) to be lazy.
+			//
+			// 2*HeartbeatTick is used to avoid excessive campaign when network latency is significant and
+			// Raft term keeps advancing in this extreme case.
+			campaignTicker := n.clock.NewTicker(n.tickInterval * time.Duration(n.config.HeartbeatTick) * 2)
+			defer campaignTicker.Stop()
 
-	return channelHeader, nil
-}
-
-// ConfigEnvelopeFromBlock extracts configuration envelope from the block based on the
-// config type, i.e. HeaderType_ORDERER_TRANSACTION or HeaderType_CONFIG
-func ConfigEnvelopeFromBlock(block *common.Block) (*common.Envelope, error) {
-	if block == nil {
-		return nil, errors.New("nil block")
-	}
-
-	envelope, err := protoutil.ExtractEnvelope(block, 0)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to extract envelope from the block")
-	}
-
-	channelHeader, err := protoutil.ChannelHeader(envelope)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot extract channel header")
-	}
-
-	switch channelHeader.Type {
-	case int32(common.HeaderType_ORDERER_TRANSACTION):
-		payload, err := protoutil.UnmarshalPayload(envelope.Payload)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshal envelope to extract config payload for orderer transaction")
-		}
-		configEnvelop, err := protoutil.UnmarshalEnvelope(payload.Data)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to unmarshal config envelope for orderer type transaction")
-		}
-
-		return configEnvelop, nil
-	case int32(common.HeaderType_CONFIG):
-		return envelope, nil
-	default:
-		return nil, errors.Errorf("unexpected header type: %v", channelHeader.Type)
-	}
-}
-
-// ConsensusMetadataFromConfigBlock reads consensus metadata updates from the configuration block
-func ConsensusMetadataFromConfigBlock(block *common.Block) (*hlmirbft.ConfigMetadata, error) {
-	if block == nil {
-		return nil, errors.New("nil block")
-	}
-
-	if !protoutil.IsConfigBlock(block) {
-		return nil, errors.New("not a config block")
-	}
-
-	configEnvelope, err := ConfigEnvelopeFromBlock(block)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot read config update")
-	}
-
-	payload, err := protoutil.UnmarshalPayload(configEnvelope.Payload)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to extract payload from config envelope")
-	}
-	// get config update
-	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not read config update")
-	}
-
-	return MetadataFromConfigUpdate(configUpdate)
-}
-
-// VerifyConfigMetadata validates Raft config metadata.
-// Note: ignores certificates expiration.
-func VerifyConfigMetadata(metadata *hlmirbft.ConfigMetadata, verifyOpts x509.VerifyOptions) error {
-	if metadata == nil {
-		// defensive check. this should not happen as CheckConfigMetadata
-		// should always be called with non-nil config metadata
-		return errors.Errorf("nil Raft config metadata")
-	}
-
-	if metadata.Options == nil {
-		return errors.Errorf("nil Raft config metadata options")
-	}
-
-	if metadata.Options.HeartbeatTicks == 0 ||
-		metadata.Options.NewEpochTimeoutTicks == 0 ||
-		metadata.Options.SuspectTicks == 0 {
-		return errors.Errorf("none of HeartbeatTicks (%d), NewEpochTimeoutTicks (%d) and SuspectTicks (%d) can be zero",
-			metadata.Options.HeartbeatTicks, metadata.Options.NewEpochTimeoutTicks, metadata.Options.SuspectTicks)
-	}
-
-	// check Raft options
-	if metadata.Options.NewEpochTimeoutTicks <= metadata.Options.HeartbeatTicks {
-		return errors.Errorf("NewEpochTimeoutTicks (%d) must be greater than HeartbeatTicks (%d)",
-			metadata.Options.NewEpochTimeoutTicks, metadata.Options.HeartbeatTicks)
-	}
-
-	if metadata.Options.SuspectTicks <= metadata.Options.HeartbeatTicks {
-		return errors.Errorf("SuspectTicks (%d) must be greater than HeartbeatTicks (%d)",
-			metadata.Options.SuspectTicks, metadata.Options.HeartbeatTicks)
-	}
-
-	if len(metadata.Consenters) == 0 {
-		return errors.Errorf("empty consenter set")
-	}
-
-	// verifying certificates for being signed by CA, expiration is ignored
-	for _, consenter := range metadata.Consenters {
-		if consenter == nil {
-			return errors.Errorf("metadata has nil consenter")
-		}
-		if err := validateConsenterTLSCerts(consenter, verifyOpts, true); err != nil {
-			return err
-		}
-	}
-
-	if err := MetadataHasDuplication(metadata); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func parseCertificateFromBytes(cert []byte) (*x509.Certificate, error) {
-	pemBlock, _ := pem.Decode(cert)
-	if pemBlock == nil {
-		return &x509.Certificate{}, errors.Errorf("no PEM data found in cert[% x]", cert)
-	}
-
-	certificate, err := x509.ParseCertificate(pemBlock.Bytes)
-	if err != nil {
-		return nil, errors.Errorf("%s TLS certificate has invalid ASN1 structure %s", err, string(pemBlock.Bytes))
-	}
-
-	return certificate, nil
-}
-
-func parseCertificateListFromBytes(certs [][]byte) ([]*x509.Certificate, error) {
-	var certificateList []*x509.Certificate
-
-	for _, cert := range certs {
-		certificate, err := parseCertificateFromBytes(cert)
-		if err != nil {
-			return certificateList, err
-		}
-
-		certificateList = append(certificateList, certificate)
-	}
-
-	return certificateList, nil
-}
-
-func createX509VerifyOptions(ordererConfig channelconfig.Orderer) (x509.VerifyOptions, error) {
-	tlsRoots := x509.NewCertPool()
-	tlsIntermediates := x509.NewCertPool()
-
-	for _, org := range ordererConfig.Organizations() {
-		rootCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSRootCerts())
-		if err != nil {
-			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls root certs")
-		}
-		intermediateCerts, err := parseCertificateListFromBytes(org.MSP().GetTLSIntermediateCerts())
-		if err != nil {
-			return x509.VerifyOptions{}, errors.Wrap(err, "parsing tls intermediate certs")
-		}
-
-		for _, cert := range rootCerts {
-			tlsRoots.AddCert(cert)
-		}
-
-		for _, cert := range intermediateCerts {
-			tlsIntermediates.AddCert(cert)
-		}
-	}
-
-	return x509.VerifyOptions{
-		Roots:         tlsRoots,
-		Intermediates: tlsIntermediates,
-		KeyUsages: []x509.ExtKeyUsage{
-			x509.ExtKeyUsageClientAuth,
-			x509.ExtKeyUsageServerAuth,
-		},
-	}, nil
-}
-
-// validateConsenterTLSCerts decodes PEM cert, parses and validates it.
-func validateConsenterTLSCerts(c *hlmirbft.Consenter, opts x509.VerifyOptions, ignoreExpiration bool) error {
-	clientCert, err := parseCertificateFromBytes(c.ClientTlsCert)
-	if err != nil {
-		return errors.Wrapf(err, "parsing tls client cert of %s:%d", c.Host, c.Port)
-	}
-
-	serverCert, err := parseCertificateFromBytes(c.ServerTlsCert)
-	if err != nil {
-		return errors.Wrapf(err, "parsing tls server cert of %s:%d", c.Host, c.Port)
-	}
-
-	verify := func(certType string, cert *x509.Certificate, opts x509.VerifyOptions) error {
-		if _, err := cert.Verify(opts); err != nil {
-			if validationRes, ok := err.(x509.CertificateInvalidError); !ok || (!ignoreExpiration || validationRes.Reason != x509.Expired) {
-				return errors.Wrapf(err, "verifying tls %s cert with serial number %d", certType, cert.SerialNumber)
+			for {
+				select {
+				case <-campaignTicker.C():
+					n.Campaign(context.TODO())
+				case <-elected:
+					return
+				case <-n.chain.doneC:
+					return
+				}
 			}
-		}
-		return nil
+		}()
 	}
 
-	if err := verify("client", clientCert, opts); err != nil {
-		return err
-	}
-	if err := verify("server", serverCert, opts); err != nil {
-		return err
-	}
+	var notifyLeaderChangeC chan uint64
 
-	return nil
-}
+	for {
+		select {
+		case <-raftTicker.C():
+			// grab raft Status before ticking it, so `RecentActive` attributes
+			// are not reset yet.
+			status := n.Status()
 
-// ConsenterCertificate denotes a TLS certificate of a consenter
-type ConsenterCertificate struct {
-	ConsenterCertificate []byte
-	CryptoProvider       bccsp.BCCSP
-	Logger               *flogging.FabricLogger
-}
+			n.Tick()
+			n.tracker.Check(&status)
 
-// IsConsenterOfChannel returns whether the caller is a consenter of a channel
-// by inspecting the given configuration block.
-// It returns nil if true, else returns an error.
-func (conCert ConsenterCertificate) IsConsenterOfChannel(configBlock *common.Block) error {
-	if configBlock == nil || configBlock.Header == nil {
-		return errors.New("nil block or nil header")
-	}
-	envelopeConfig, err := protoutil.ExtractEnvelope(configBlock, 0)
-	if err != nil {
-		return err
-	}
-	bundle, err := channelconfig.NewBundleFromEnvelope(envelopeConfig, conCert.CryptoProvider)
-	if err != nil {
-		return err
-	}
-	oc, exists := bundle.OrdererConfig()
-	if !exists {
-		return errors.New("no orderer config in bundle")
-	}
-	m := &etcdraft.ConfigMetadata{}
-	if err := proto.Unmarshal(oc.ConsensusMetadata(), m); err != nil {
-		return err
-	}
-
-	bl, _ := pem.Decode(conCert.ConsenterCertificate)
-	if bl == nil {
-		return errors.Errorf("my consenter certificate %s is not a valid PEM", string(conCert.ConsenterCertificate))
-	}
-
-	myCertDER := bl.Bytes
-
-	var failedMatches []string
-	for _, consenter := range m.Consenters {
-		candidateBlock, _ := pem.Decode(consenter.ServerTlsCert)
-		if candidateBlock == nil {
-			return errors.Errorf("candidate server certificate %s is not a valid PEM", string(consenter.ServerTlsCert))
-		}
-		sameServerCertErr := crypto.CertificatesWithSamePublicKey(myCertDER, candidateBlock.Bytes)
-
-		candidateBlock, _ = pem.Decode(consenter.ClientTlsCert)
-		if candidateBlock == nil {
-			return errors.Errorf("candidate client certificate %s is not a valid PEM", string(consenter.ClientTlsCert))
-		}
-		sameClientCertErr := crypto.CertificatesWithSamePublicKey(myCertDER, candidateBlock.Bytes)
-
-		if sameServerCertErr == nil || sameClientCertErr == nil {
-			return nil
-		}
-		conCert.Logger.Debugf("I am not %s:%d because %s, %s", consenter.Host, consenter.Port, sameServerCertErr, sameClientCertErr)
-		failedMatches = append(failedMatches, string(consenter.ClientTlsCert))
-	}
-	conCert.Logger.Debugf("Failed matching our certificate %s against certificates encoded in config block %d: %v",
-		string(conCert.ConsenterCertificate),
-		configBlock.Header.Number,
-		failedMatches)
-
-	return cluster.ErrNotInChannel
-}
-
-// NodeExists returns trues if node id exists in the slice
-// and false otherwise
-func NodeExists(id uint64, nodes []uint64) bool {
-	for _, nodeID := range nodes {
-		if nodeID == id {
-			return true
-		}
-	}
-	return false
-}
-
-// ConfChange computes Raft configuration changes based on current Raft
-// configuration state and consenters IDs stored in RaftMetadata.
-func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
-	raftConfChange := &raftpb.ConfChange{}
-
-	// need to compute conf changes to propose
-	if len(confState.Nodes) < len(blockMetadata.ConsenterIds) {
-		// adding new node
-		raftConfChange.Type = raftpb.ConfChangeAddNode
-		for _, consenterID := range blockMetadata.ConsenterIds {
-			if NodeExists(consenterID, confState.Nodes) {
-				continue
+		case rd := <-n.Ready():
+			startStoring := n.clock.Now()
+			if err := n.storage.Store(rd.Entries, rd.HardState, rd.Snapshot); err != nil {
+				n.logger.Panicf("Failed to persist etcd/raft data: %s", err)
 			}
-			raftConfChange.NodeID = consenterID
-		}
-	} else {
-		// removing node
-		raftConfChange.Type = raftpb.ConfChangeRemoveNode
-		for _, nodeID := range confState.Nodes {
-			if NodeExists(nodeID, blockMetadata.ConsenterIds) {
-				continue
+			duration := n.clock.Since(startStoring).Seconds()
+			n.metrics.DataPersistDuration.Observe(float64(duration))
+			if duration > halfElectionTimeout {
+				n.logger.Warningf("WAL sync took %v seconds and the network is configured to start elections after %v seconds. Your disk is too slow and may cause loss of quorum and trigger leadership election.", duration, electionTimeout)
 			}
-			raftConfChange.NodeID = nodeID
-		}
-	}
 
-	return raftConfChange
+			if !raft.IsEmptySnap(rd.Snapshot) {
+				n.chain.snapC <- &rd.Snapshot
+			}
+
+			if notifyLeaderChangeC != nil && rd.SoftState != nil {
+				if l := atomic.LoadUint64(&rd.SoftState.Lead); l != raft.None {
+					select {
+					case notifyLeaderChangeC <- l:
+					default:
+					}
+
+					notifyLeaderChangeC = nil
+				}
+			}
+
+			// skip empty apply
+			if len(rd.CommittedEntries) != 0 || rd.SoftState != nil {
+				n.chain.applyC <- apply{rd.CommittedEntries, rd.SoftState}
+			}
+
+			if campaign && rd.SoftState != nil {
+				leader := atomic.LoadUint64(&rd.SoftState.Lead) // etcdraft requires atomic access to this var
+				if leader != raft.None {
+					n.logger.Infof("Leader %d is present, quit campaign", leader)
+					campaign = false
+					close(elected)
+				}
+			}
+
+			n.Advance()
+
+			// TODO(jay_guo) leader can write to disk in parallel with replicating
+			// to the followers and them writing to their disks. Check 10.2.1 in thesis
+			n.send(rd.Messages)
+
+		case notifyLeaderChangeC = <-n.subscriberC:
+
+		case <-n.chain.haltC:
+			raftTicker.Stop()
+			n.Stop()
+			n.storage.Close()
+			n.logger.Infof("Raft node stopped")
+			close(n.chain.doneC) // close after all the artifacts are closed
+			return
+		}
+	}*/
 }
 
-// CreateConsentersMap creates a map of Raft Node IDs to Consenter given the block metadata and the config metadata.
-func CreateConsentersMap(blockMetadata *hlmirbft.BlockMetadata, configMetadata *hlmirbft.ConfigMetadata) map[uint64]*hlmirbft.Consenter {
-	consenters := map[uint64]*hlmirbft.Consenter{}
-	for i, consenter := range configMetadata.Consenters {
-		consenters[blockMetadata.ConsenterIds[i]] = consenter
+func (n *node) send(msgs []raftpb.Message) {
+	/*n.unreachableLock.RLock()
+	defer n.unreachableLock.RUnlock()
+
+	for _, msg := range msgs {
+		if msg.To == 0 {
+			continue
+		}
+
+		status := raft.SnapshotFinish
+
+		msgBytes := protoutil.MarshalOrPanic(&msg)
+		err := n.rpc.SendConsensus(msg.To, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
+		if err != nil {
+			n.ReportUnreachable(msg.To)
+			//n.logSendFailure(msg.To, err)
+
+			status = raft.SnapshotFailure
+		} else if _, ok := n.unreachable[msg.To]; ok {
+			n.logger.Infof("Successfully sent StepRequest to %d after failed attempt(s)", msg.To)
+			delete(n.unreachable, msg.To)
+		}
+
+		if msg.Type == raftpb.MsgSnap {
+			n.ReportSnapshot(msg.To, status)
+		}
+	}*/
+}
+
+// If this is called on leader, it picks a node that is
+// recently active, and attempt to transfer leadership to it.
+// If this is called on follower, it simply waits for a
+// leader change till timeout (ElectionTimeout).
+func (n *node) abdicateLeader(currentLead uint64) {
+	/*status := n.Status()
+
+	if status.Lead != raft.None && status.Lead != currentLead {
+		n.logger.Warn("Leader has changed since asked to transfer leadership")
+		return
 	}
-	return consenters
+
+	// register a leader subscriberC
+	notifyc := make(chan uint64, 1)
+	select {
+	case n.subscriberC <- notifyc:
+	case <-n.chain.doneC:
+		return
+	}
+
+	// Leader initiates leader transfer
+	if status.RaftState == raft.StateLeader {
+		var transferee uint64
+		for id, pr := range status.Progress {
+			if id == status.ID {
+				continue // skip self
+			}
+
+			if pr.RecentActive && !pr.Paused {
+				transferee = id
+				break
+			}
+
+			n.logger.Debugf("Node %d is not qualified as transferee because it's either paused or not active", id)
+		}
+
+		if transferee == raft.None {
+			n.logger.Errorf("No follower is qualified as transferee, abort leader transfer")
+			return
+		}
+
+		n.logger.Infof("Transferring leadership to %d", transferee)
+		n.TransferLeadership(context.TODO(), status.ID, transferee)
+	}
+
+	timer := n.clock.NewTimer(time.Duration(n.config.ElectionTick) * n.tickInterval)
+	defer timer.Stop() // prevent timer leak
+
+	select {
+	case <-timer.C():
+		n.logger.Warn("Leader transfer timeout")
+	case l := <-notifyc:
+		n.logger.Infof("Leader has been transferred from %d to %d", currentLead, l)
+	case <-n.chain.doneC:
+	}*/
+}
+
+func (n *node) logSendFailure(dest uint64, err error) {
+	if _, ok := n.unreachable[dest]; ok {
+		n.logger.Debugf("Failed to send StepRequest to %d, because: %s", dest, err)
+		return
+	}
+
+	n.logger.Errorf("Failed to send StepRequest to %d, because: %s", dest, err)
+	n.unreachable[dest] = struct{}{}
+}
+
+func (n *node) takeSnapshot(index uint64, cs raftpb.ConfState, data []byte) {
+	/*if err := n.storage.TakeSnapshot(index, cs, data); err != nil {
+		n.logger.Errorf("Failed to create snapshot at index %d: %s", index, err)
+	}*/
+}
+
+func (n *node) lastIndex() uint64 {
+	/*i, _ := n.storage.ram.LastIndex()
+	return i*/
+	return 0
 }
