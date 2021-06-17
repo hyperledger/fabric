@@ -8,6 +8,8 @@ package hlmirbft
 
 import (
 
+	"crypto"
+	"sync"
 	"fmt"
 	"hash"
 	"io"
@@ -15,10 +17,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"crypto"
-	"sync"
-
-    "github.com/hyperledger-labs/mirbft/pkg/processor"
+        "github.com/hyperledger-labs/mirbft/pkg/processor"
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
@@ -26,11 +25,12 @@ import (
 	"github.com/hyperledger-labs/mirbft/pkg/simplewal"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/protoutil"
-	"github.com/pkg/errors"
+	
 
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
 	"go.etcd.io/etcd/raft/raftpb"
+	 "github.com/pkg/errors"
 )
 
 type node struct {
