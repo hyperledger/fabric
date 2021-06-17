@@ -7,18 +7,25 @@ SPDX-License-Identifier: Apache-2.0
 package hlmirbft
 
 import (
+
 	"fmt"
 	"hash"
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
-	"github.com/harrymknight/fabric-protos-go/orderer/hlmirbft"
+	"crypto"
+	"sync"
+
+    "github.com/hyperledger-labs/mirbft/pkg/processor"
+	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
-	"github.com/hyperledger-labs/mirbft/pkg/processor"
+	"github.com/hyperledger-labs/mirbft/pkg/reqstore"
+	"github.com/hyperledger-labs/mirbft/pkg/simplewal"
+	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 
 	"code.cloudfoundry.org/clock"
@@ -34,16 +41,17 @@ type node struct {
 	unreachableLock sync.RWMutex
 	unreachable     map[uint64]struct{}
 
-	tracker *Tracker
-
-	config          *mirbft.Config
-	processorConfig *mirbft.ProcessorConfig
+	config      *mirbft.Config
+	WALDir      string
+	ReqStoreDir string
 
 	rpc RPC
 
-	storage *MirBFTStorage //SNAPCHANGE- need to change Mir Storage Structure
-
 	chain *Chain
+
+	clock clock.Clock
+
+	metadata *hlmirbft.BlockMetadata
 
 
 	Hasher          processor.Hasher   //FLY2 - 66 proposed changes added to store checkpoints hash
@@ -52,51 +60,56 @@ type node struct {
 	CheckpointState *msgs.NetworkState //FLY2-66 change to keep checkpoint state
 	CheckpointHash  []byte             //FLY2-66  Added to keep checkpoints hash
 
-	tickInterval time.Duration
-	clock        clock.Clock
-
-	metadata *hlmirbft.BlockMetadata
-
-	subscriberC             chan chan uint64
 	PendingReconfigurations []*msgs.Reconfiguration //FLY2-66  Added to keep pending  config change
 
 	mirbft.Node
 }
-
 const snapSuffix = ".snap"
 
-// TODO(harry_knight) Of node struct, storage, config, and metadata, need to be replaced with hlmirbft counterparts.
 func (n *node) start(fresh, join bool) {
-	/*	raftPeers := RaftPeers(n.metadata.ConsenterIds)
-		n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
-
-		var campaign bool
-		if fresh {
-			if join {
-				raftPeers = nil
-				n.logger.Info("Starting raft node to join an existing channel")
-			} else {
-				n.logger.Info("Starting raft node as part of a new channel")
-
-				// determine the node to start campaign by selecting the node with ID equals to:
-				//                hash(channelID) % cluster_size + 1
-				sha := sha256.Sum256([]byte(n.chainID))
-				number, _ := proto.DecodeVarint(sha[24:])
-				if n.config.ID == number%uint64(len(raftPeers))+1 {
-					campaign = true
-				}
-			}
-
-			// TODO(harry_knight) config and metadata are initialised during block genesis/ordering service startup.
-			// 	So need to alter Orderer section of configtx.yaml and add new package under fabric-protos/orderer
+	n.logger.Debugf("Starting mirbft node: #peers: %v", len(n.metadata.ConsenterIds))
+	if fresh {
+		if join {
+			n.logger.Info("Starting mirbft node to join an existing channel")
 		} else {
-			n.logger.Info("Restarting raft node")
+			n.logger.Info("Starting mirbft node as part of a new channel")
 		}
 
-		n.subscriberC = make(chan chan uint64)
+		// Checking if the configuration settings have been passed correctly.
+		wal, err := simplewal.Open(n.WALDir)
+		if err != nil {
+			n.logger.Error(err, "Failed to create WAL")
+		}
+		reqStore, err := reqstore.Open(n.ReqStoreDir)
+		if err != nil {
+			n.logger.Error(err, "Failed to create request store")
+		}
+		node, err := mirbft.NewNode(
+			n.chain.MirBFTID,
+			n.config,
+			&mirbft.ProcessorConfig{
+				Link:         n,
+				Hasher:       crypto.SHA256,
+				App:          n.chain,
+				WAL:          wal,
+				RequestStore: reqStore,
+				Interceptor:  nil,
+			},
+		)
+		if err != nil {
+			n.logger.Error(err, "Failed to create mirbft node")
+		} else {
+			n.Node = *node
+		}
 
-		//go n.run()
-		go n.run(campaign)*/
+		// TODO(harrymknight) Once client (fabric application) management is implemented nodes can be started like so
+		// initialNetworkState := mirbft.StandardInitialNetworkState(len(n.metadata.ConsenterIds), 1)
+		// err = n.ProcessAsNewNode(n.chain.doneC, n.clock.NewTicker(10).C(), initialNetworkState, []byte("fake"))
+
+	} else {
+		n.logger.Info("Restarting mirbft node")
+		/*n.RestartProcessing(n.chain.doneC, n.clock.NewTicker(10).C())*/
+	}
 }
 
 // TODO(harry_knight) The logic contained in the infinite for loops should be retained.
@@ -211,33 +224,18 @@ func (n *node) run(campaign bool) {
 	}*/
 }
 
-func (n *node) send(msgs []raftpb.Message) {
-	/*n.unreachableLock.RLock()
+func (n *node) Send(dest uint64, msg *msgs.Msg) {
+	n.unreachableLock.RLock()
 	defer n.unreachableLock.RUnlock()
 
-	for _, msg := range msgs {
-		if msg.To == 0 {
-			continue
-		}
-
-		status := raft.SnapshotFinish
-
-		msgBytes := protoutil.MarshalOrPanic(&msg)
-		err := n.rpc.SendConsensus(msg.To, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
-		if err != nil {
-			n.ReportUnreachable(msg.To)
-			//n.logSendFailure(msg.To, err)
-
-			status = raft.SnapshotFailure
-		} else if _, ok := n.unreachable[msg.To]; ok {
-			n.logger.Infof("Successfully sent StepRequest to %d after failed attempt(s)", msg.To)
-			delete(n.unreachable, msg.To)
-		}
-
-		if msg.Type == raftpb.MsgSnap {
-			n.ReportSnapshot(msg.To, status)
-		}
-	}*/
+	msgBytes := protoutil.MarshalOrPanic(msg)
+	err := n.rpc.SendConsensus(dest, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
+	if err != nil {
+		n.logSendFailure(dest, err)
+	} else if _, ok := n.unreachable[dest]; ok {
+		n.logger.Infof("Successfully sent StepRequest to %d after failed attempt(s)", dest)
+		delete(n.unreachable, dest)
+	}
 }
 
 // If this is called on leader, it picks a node that is
@@ -245,7 +243,7 @@ func (n *node) send(msgs []raftpb.Message) {
 // If this is called on follower, it simply waits for a
 // leader change till timeout (ElectionTimeout).
 func (n *node) abdicateLeader(currentLead uint64) {
-	status := n.Status()
+	/*status := n.Status()
 
 	if status.Lead != raft.None && status.Lead != currentLead {
 		n.logger.Warn("Leader has changed since asked to transfer leadership")
@@ -307,11 +305,18 @@ func (n *node) logSendFailure(dest uint64, err error) {
 	n.unreachable[dest] = struct{}{}
 }
 
+func (n *node) takeSnapshot(index uint64, cs raftpb.ConfState, data []byte) {
+	/*if err := n.storage.TakeSnapshot(index, cs, data); err != nil {
+		n.logger.Errorf("Failed to create snapshot at index %d: %s", index, err)
+	}*/
+}
+
 func (n *node) lastIndex() uint64 {
 	/*i, _ := n.storage.ram.LastIndex()
 	return i*/
 	return 0
 }
+
 
 //FLY2- 66 Proposed changes
 //Implemented the PersistSnapshot functionality to persist the snaps to local files
