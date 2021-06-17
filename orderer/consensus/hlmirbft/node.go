@@ -10,13 +10,13 @@ import (
 
 	"crypto"
 	"sync"
+	
 	"fmt"
 	"hash"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
-
         "github.com/hyperledger-labs/mirbft/pkg/processor"
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
@@ -25,12 +25,10 @@ import (
 	"github.com/hyperledger-labs/mirbft/pkg/simplewal"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/protoutil"
-	
-
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
 	"go.etcd.io/etcd/raft/raftpb"
-	 "github.com/pkg/errors"
+	"github.com/pkg/errors"
 )
 
 type node struct {
