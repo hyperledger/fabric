@@ -1,6 +1,5 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
-
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,10 +8,6 @@ package hlmirbft
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 
 	"github.com/golang/protobuf/proto"
@@ -27,7 +22,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/pkg/fileutil"
 	"go.etcd.io/etcd/raft"
 )
 
@@ -430,6 +424,33 @@ func NodeExists(id uint64, nodes []uint64) bool {
 	return false
 }
 
+// ConfChange computes Raft configuration changes based on current Raft
+// configuration state and consenters IDs stored in RaftMetadata.
+/*func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
+	raftConfChange := &raftpb.ConfChange{}
+	// need to compute conf changes to propose
+	if len(confState.Nodes) < len(blockMetadata.ConsenterIds) {
+		// adding new node
+		raftConfChange.Type = raftpb.ConfChangeAddNode
+		for _, consenterID := range blockMetadata.ConsenterIds {
+			if NodeExists(consenterID, confState.Nodes) {
+				continue
+			}
+			raftConfChange.NodeID = consenterID
+		}
+	} else {
+		// removing node
+		raftConfChange.Type = raftpb.ConfChangeRemoveNode
+		for _, nodeID := range confState.Nodes {
+			if NodeExists(nodeID, blockMetadata.ConsenterIds) {
+				continue
+			}
+			raftConfChange.NodeID = nodeID
+		}
+	}
+	return raftConfChange
+}*/
+
 // CreateConsentersMap creates a map of Raft Node IDs to Consenter given the block metadata and the config metadata.
 func CreateConsentersMap(blockMetadata *hlmirbft.BlockMetadata, configMetadata *hlmirbft.ConfigMetadata) map[uint64]*hlmirbft.Consenter {
 	consenters := map[uint64]*hlmirbft.Consenter{}
@@ -437,38 +458,4 @@ func CreateConsentersMap(blockMetadata *hlmirbft.BlockMetadata, configMetadata *
 		consenters[blockMetadata.ConsenterIds[i]] = consenter
 	}
 	return consenters
-}
-
-//JIRA FLY2-58 :Get File Names by Pattern
-func GetFileByPattern(dirPath string, pattern string) ([]string, error) {
-
-	return filepath.Glob(filepath.Join(dirPath, pattern))
-}
-
-//JIRA FLY2-58 :Read files
-func ReadFile(dirPath string, fname string) ([]byte, error) {
-	return ioutil.ReadFile(filepath.Join(dirPath, fname))
-
-}
-
-//JIRA FLY2-58 : Remove Files
-func PurgeFiles(files []string, dirPath string, logger *flogging.FabricLogger) error {
-	for _, file := range files {
-		fpath := filepath.Join(dirPath, file)
-		l, err := fileutil.TryLockFile(fpath, os.O_WRONLY, fileutil.PrivateFileMode)
-		if err != nil {
-			logger.Debugf("Failed to lock %s, abort purging", file)
-			break
-		}
-		if err = os.Remove(fpath); err != nil {
-			logger.Errorf("Failed to remove %s: %s", file, err)
-		} else {
-			logger.Debugf("Purged file %s", file)
-		}
-
-		if err = l.Close(); err != nil {
-			logger.Errorf("Failed to close file lock %s: %s", l.Name(), err)
-		}
-	}
-	return nil
 }
