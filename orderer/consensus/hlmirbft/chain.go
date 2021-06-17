@@ -535,19 +535,8 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 
 	//JIRA FLY2-64 proposed changes: added standerdized code for dealing with requests.
     //For Testing, we have derived the clientID and request number using the following code convert common.envelope into signedData list.
-	sigData, err := protoutil.EnvelopeAsSignedData(msg.Payload)
-	if err != nil {
-		return errors.Errorf("Cannot Unmarshal Payload Signature")
-	}
-
-	//Get serialisedID from signedData list
-	serialID, err := protoutil.UnmarshalSerializedIdentity(sigData[0].Identity)
-	if err != nil {
-		return errors.Errorf("Cannot Unmarshal Serialized Identity")
-	}
-
-	//convert MSP string to uint64
-	clientID, err := strconv.ParseUint(serialID.Mspid, 10, 64)
+	
+	clientID :=  c.MirBFTID;
 	if err != nil {
 		return errors.Errorf("Cannot parse Application MSP")
 	}
