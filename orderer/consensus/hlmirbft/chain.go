@@ -165,7 +165,7 @@ type Chain struct {
 	errorCLock sync.RWMutex
 	errorC     chan struct{} // returned by Errored()
 
-	raftMetadataLock     sync.RWMutex
+	mirbftMetadataLock   sync.RWMutex
 	confChangeInProgress *raftpb.ConfChange
 	justElected          bool // this is true when node has just been elected
 	configInflight       bool // this is true when there is config block or ConfChange in flight
@@ -857,10 +857,10 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 		return
 	}
 
-	c.raftMetadataLock.Lock()
+	c.mirbftMetadataLock.Lock()
 	c.opts.BlockMetadata.RaftIndex = index
 	m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
-	c.raftMetadataLock.Unlock()
+	c.mirbftMetadataLock.Unlock()
 
 	c.support.WriteBlock(block, m)
 }
@@ -1175,8 +1175,8 @@ func (c *Chain) configureComm() error {
 }
 
 func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
-	c.raftMetadataLock.RLock()
-	defer c.raftMetadataLock.RUnlock()
+	c.mirbftMetadataLock.RLock()
+	defer c.mirbftMetadataLock.RUnlock()
 
 	var nodes []cluster.RemoteNode
 	for raftID, consenter := range c.opts.Consenters {
@@ -1393,9 +1393,9 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 	}
 
 	// create the dummy parameters for ComputeMembershipChanges
-	c.raftMetadataLock.RLock()
+	c.mirbftMetadataLock.RLock()
 	dummyOldBlockMetadata := proto.Clone(c.opts.BlockMetadata).(*hlmirbft.BlockMetadata)
-	c.raftMetadataLock.RUnlock()
+	c.mirbftMetadataLock.RUnlock()
 
 	dummyOldConsentersMap := CreateConsentersMap(dummyOldBlockMetadata, oldMetadata)
 	changes, err := ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters)
@@ -1410,9 +1410,9 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 		}
 	}
 
-	active := c.ActiveNodes.Load().([]uint64)
-	if changes.UnacceptableQuorumLoss(active) {
-		return errors.Errorf("%d out of %d nodes are alive, configuration will result in quorum loss", len(active), len(dummyOldConsentersMap))
+	//TODO(harrymknight) Possibly remove c.ActiveNodes field from Metrics
+	if changes.UnacceptableQuorumLoss() {
+		return errors.Errorf("only %d out of a required 4 nodes are provided, configuration will result in quorum loss", len(changes.NewConsenters))
 	}
 
 	return nil

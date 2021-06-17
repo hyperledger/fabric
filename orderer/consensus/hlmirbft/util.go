@@ -25,6 +25,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/raftpb"
+
 )
 
 type ConsentersMap map[string]struct{}
@@ -214,7 +215,7 @@ func VerifyConfigMetadata(metadata *hlmirbft.ConfigMetadata, verifyOpts x509.Ver
 			metadata.Options.HeartbeatTicks, metadata.Options.NewEpochTimeoutTicks, metadata.Options.SuspectTicks)
 	}
 
-	// check Raft options
+	// check Mir-BFT options
 	if metadata.Options.NewEpochTimeoutTicks <= metadata.Options.HeartbeatTicks {
 		return errors.Errorf("NewEpochTimeoutTicks (%d) must be greater than HeartbeatTicks (%d)",
 			metadata.Options.NewEpochTimeoutTicks, metadata.Options.HeartbeatTicks)
@@ -418,7 +419,7 @@ func NodeExists(id uint64, nodes []uint64) bool {
 
 // ConfChange computes Raft configuration changes based on current Raft
 // configuration state and consenters IDs stored in RaftMetadata.
-func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
+/*func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
 	raftConfChange := &raftpb.ConfChange{}
 
 	// need to compute conf changes to propose
@@ -443,7 +444,7 @@ func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfSta
 	}
 
 	return raftConfChange
-}
+}*/
 
 // CreateConsentersMap creates a map of Raft Node IDs to Consenter given the block metadata and the config metadata.
 func CreateConsentersMap(blockMetadata *hlmirbft.BlockMetadata, configMetadata *hlmirbft.ConfigMetadata) map[uint64]*hlmirbft.Consenter {
