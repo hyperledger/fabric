@@ -15,12 +15,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"code.cloudfoundry.org/clock"
+	"github.com/golang/protobuf/proto"
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
-
-	"code.cloudfoundry.org/clock"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -52,7 +51,7 @@ const (
 	DefaultSnapshotCatchUpEntries = uint64(4)
 
 	// DefaultSnapshotIntervalSize is the default snapshot interval. It is
-	// used if SnapshotIntervalSize is not provided in channel config options.
+	// used if SnapshotIntervalSize is not provided in channel config optioc.Node.
 	// It is needed to enforce snapshot being set.
 	DefaultSnapshotIntervalSize = 16 * MEGABYTE
 
@@ -136,9 +135,6 @@ type submit struct {
 }
 
 type gc struct {
-	index uint64
-	state raftpb.ConfState
-	data  []byte
 }
 
 // Chain implements consensus.Chain interface.
@@ -495,16 +491,27 @@ func (c *Chain) isRunning() error {
 
 // Consensus passes the given ConsensusRequest message to the raft.Node instance
 // TODO(harry_knight) Change stepMsg type to hlmirbft
+// JIRA FLY2-57 change  
 func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
 		return err
 	}
-
+	//FLY2-57 proposed chang
+	// - unmarshal submit request
+	// - check if the submit request payload can be unmarshaled to stepmsg
+	// - if not, propose msg
+	submitReqMsg := &orderer.SubmitRequest{}
 	stepMsg := &msgs.Msg{}
-	if err := proto.Unmarshal(req.Payload, stepMsg); err != nil {
-		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
-	}
 
+	err := proto.Unmarshal(req.Payload, stepMsg)
+
+	if err != nil {
+		err = proto.Unmarshal(req.Payload, submitReqMsg)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal : %s", err)
+		}
+		return c.proposeMsg(submitReqMsg)
+	}
 	if err := c.Node.Step(context.TODO(), sender, stepMsg); err != nil {
 		return fmt.Errorf("failed to process Raft Step message: %s", err)
 	}
@@ -523,6 +530,42 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 
 	return nil
 }
+//JIRA FLY2-64 : Proposed Change:New function to propose normal messages to node
+func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
+
+	//JIRA FLY2-64 proposed changes: added standerdized code for dealing with requests.
+    //For Testing, we have derived the clientID and request number using the following code convert common.envelope into signedData list.
+	
+	clientID :=  c.MirBFTID;
+	if err != nil {
+		return errors.Errorf("Cannot parse Application MSP")
+	}
+
+	proposer := c.Node.Client(clientID)
+	reqNo, err := proposer.NextReqNo() //
+	if err != nil {
+		return errors.Errorf("Cannot generate Next Request Number")
+	}
+	err = proposer.Propose(context.Background(), reqNo, msg.Payload.GetPayload())
+
+	if err != nil {
+		return errors.WithMessagef(err, "failed to propose message to client %d", clientID)
+	}
+	return nil
+
+	//In actuality the payload of submit request should be unmarsheld to pb.Request.
+	// the following code represents the standered way of addressing a request
+	// reqMsg := &pb.Request{}
+	// err = proto.Unmarshal(msg.Payload.Payload, reqMsg)
+	// if err != nil {
+	// 	return errors.WithMessage(err, "unexpected unmarshaling error")
+	// }
+	// clientID := reqMsg.ClientId
+	// data := reqMsg.Data
+	// reqNo := reqMsg.ReqNo
+
+}
+
 
 // Submit forwards the incoming request to:
 // - the local run goroutine if this is leader
@@ -538,19 +581,24 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	//leadC := make(chan uint64, 1)
 	select {
 	// case c.submitC <- &submit{req, leadC}:
-
+	//FLY2-64 Proposed change
+	//broadcast message to all nodes
 	case c.submitC <- &submit{req}:
-		//JIRA issue FLY2-64 Proposed change:broadcast message to all nodes
-		/*for nodeID, _ := range c.opts.Consenters {
-			if nodeID != c.MirBFTID {
-				err := c.rpc.SendSubmit(nodeID, req)
-				if err != nil {
-					c.logger.Warnf("Failed to broadcast Message to Node : %d ", nodeID)
-					return err
-				}
+		//JIRA FLY2-57 proposed change marshal submit request and pass it to sendConsensus as payload
+		payloadBytes, err := protoutil.Marshal(req)
+		if err != nil {
+			c.logger.Warnf("Cannot marshel message")
+			return err
+		}
+	
+		for nodeID, _ := range c.opts.Consenters {
+			err := c.Node.rpc.SendConsensus(c.MirBFTID, &orderer.ConsensusRequest{Channel: req.Channel, Payload: payloadBytes})
+			if err != nil {
+				c.logger.Warnf("Failed to broadcast Message to Node : %d ", nodeID)
+				return err
 			}
 
-		}*/
+		}
 
 		// lead := <-leadC
 		// if lead == raft.None {
@@ -686,11 +734,11 @@ func (c *Chain) run() {
 			// 		// TODO(harry_knight) Check if the method, ordered, is independent of raft
 			// 		// 	Tentative answer: Only dependent on config sequence which is dependent on configtx.
 			// 		batches, pending, err := c.ordered(s.req)
-			err := c.ordered(s.req)
-			if err != nil {
-				c.logger.Errorf("Failed to order message: %s", err)
-				continue
-			}
+			// err := c.ordered(s.req)
+			// if err != nil {
+			// 	c.logger.Errorf("Failed to order message: %s", err)
+			// 	continue
+			// }
 			// 		if err != nil {
 			// 			c.logger.Errorf("Failed to order message: %s", err)
 			// 			continue
@@ -858,19 +906,23 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 //   -- err error; the error encountered, if any.
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
 
-//JIRA ISSUEFLY2-64 PROPOSED CHANGE- from ordered we propose the message
+//FLY2-64 PROPOSED CHANGE
+// - from ordered we propose the message
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 	seq := c.support.Sequence()
 
 	if c.isConfig(msg.Payload) {
-		if msg.LastValidationSeq < seq {
-			c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
-			msg.Payload, _, err = c.support.ProcessConfigMsg(msg.Payload)
-			if err != nil {
-				c.Metrics.ProposalFailures.Add(1)
-				return errors.Errorf("bad config message: %s", err)
-			}
-		}
+
+		c.configInflight = true
+
+		// if msg.LastValidationSeq < seq {
+		// 	c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
+		// 	msg.Payload, _, err = c.support.ProcessConfigMsg(msg.Payload)
+		// 	if err != nil {
+		// 		c.Metrics.ProposalFailures.Add(1)
+		// 		return nil, true, errors.Errorf("bad config message: %s", err)
+		// 	}
+		// }
 
 		// batch := c.support.BlockCutter().Cut()
 		// batches = [][]*common.Envelope{}
@@ -886,7 +938,8 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 			return errors.Errorf("bad normal message: %s", err)
 		}
 
-		//JIRA isuue FLY2-64 - proposed change:/ new function to propose message
+		//FLY2-64 - proposed change
+		// new function to propose message
 		if err := c.proposeMsg(msg); err != nil {
 			return err
 		}
@@ -894,42 +947,6 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 	return nil
 
 	// batches = append(batches, []*common.Envelope{msg.Payload})
-
-}
-
-//JIRA issue FLY2-64 - Proposed Change
-//New function to propose normal messages to node
-func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
-	//convert common.envelope into signedData list
-	sigData, err := protoutil.EnvelopeAsSignedData(msg.Payload)
-	if err != nil {
-		return errors.Errorf("Cannot Unmarshal Payload Signature")
-	}
-
-	//Get serialisedID from signedData list
-	serialID, err := protoutil.UnmarshalSerializedIdentity(sigData[0].Identity)
-	if err != nil {
-		return errors.Errorf("Cannot Unmarshal Serialized Identity")
-	}
-
-	data := protoutil.MarshalOrPanic(msg.Payload)
-
-	//convert MSP string to uint64
-	clientID, err := strconv.ParseUint(serialID.Mspid, 10, 64)
-	if err != nil {
-		return errors.Errorf("Cannot parse Application MSP")
-	}
-
-	proposer := c.Node.Client(clientID)
-	reqNo, err := proposer.NextReqNo()
-	if err != nil {
-		return errors.Errorf("Cannot generate Next Request Number")
-	}
-	err = proposer.Propose(context.Background(), reqNo, data)
-	if err != nil {
-		return errors.WithMessagef(err, "failed to propose message to client %d", clientID)
-	}
-	return nil
 
 }
 
@@ -1027,11 +1044,11 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 		}
 
 		if configMetadata.Options != nil &&
-			configMetadata.Options.SnapshotIntervalSize != 0 &&
-			configMetadata.Options.SnapshotIntervalSize != c.sizeLimit {
+			configMetadata.Optioc.Node.SnapshotIntervalSize != 0 &&
+			configMetadata.Optioc.Node.SnapshotIntervalSize != c.sizeLimit {
 			c.logger.Infof("Update snapshot interval size to %d bytes (was %d)",
-				configMetadata.Options.SnapshotIntervalSize, c.sizeLimit)
-			c.sizeLimit = configMetadata.Options.SnapshotIntervalSize
+				configMetadata.Optioc.Node.SnapshotIntervalSize, c.sizeLimit)
+			c.sizeLimit = configMetadata.Optioc.Node.SnapshotIntervalSize
 		}
 
 		changes, err := ComputeMembershipChanges(c.opts.BlockMetadata, c.opts.Consenters, configMetadata.Consenters)
@@ -1057,120 +1074,117 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 // TODO(harry_knight) Will have to be adapted for hlmirbft as a block is written in this method (line 1047).
 // 	Unsure if equivalent ApplyConfChange method exists.
 func (c *Chain) apply(ents []raftpb.Entry) {
-	/*if len(ents) == 0 {
-		return
-	}
+	// 	if len(ents) == 0 {
+	// 		return
+	// 	}
 
-	if ents[0].Index > c.appliedIndex+1 {
-		c.logger.Panicf("first index of committed entry[%d] should <= appliedIndex[%d]+1", ents[0].Index, c.appliedIndex)
-	}
+	// 	if ents[0].Index > c.appliedIndex+1 {
+	// 		c.logger.Panicf("first index of committed entry[%d] should <= appliedIndex[%d]+1", ents[0].Index, c.appliedIndex)
+	// 	}
 
-	var position int
-	for i := range ents {
-		switch ents[i].Type {
-		case raftpb.EntryNormal:
-			if len(ents[i].Data) == 0 {
-				break
-			}
+	// 	// var position int
+	// 	for i := range ents {
+	// 		switch ents[i].Type {
+	// 		case raftpb.EntryNormal:
+	// 			if len(ents[i].Data) == 0 {
+	// 				break
+	// 			}
 
-			position = i
-			c.accDataSize += uint32(len(ents[i].Data))
+	// 			position = i
+	// 			c.accDataSize += uint32(len(ents[i].Data))
 
-			// We need to strictly avoid re-applying normal entries,
-			// otherwise we are writing the same block twice.
-			if ents[i].Index <= c.appliedIndex {
-				c.logger.Debugf("Received block with raft index (%d) <= applied index (%d), skip", ents[i].Index, c.appliedIndex)
-				break
-			}
+	// 			// We need to strictly avoid re-applying normal entries,
+	// 			// otherwise we are writing the same block twice.
+	// 			if ents[i].Index <= c.appliedIndex {
+	// 				c.logger.Debugf("Received block with raft index (%d) <= applied index (%d), skip", ents[i].Index, c.appliedIndex)
+	// 				break
+	// 			}
 
-			block := protoutil.UnmarshalBlockOrPanic(ents[i].Data)
-			c.writeBlock(block, ents[i].Index)
-			c.Metrics.CommittedBlockNumber.Set(float64(block.Header.Number))
+	// 			block := protoutil.UnmarshalBlockOrPanic(ents[i].Data)
+	// 			c.writeBlock(block, ents[i].Index)
+	// 			c.Metrics.CommittedBlockNumber.Set(float64(block.Header.Number))
 
-		case raftpb.EntryConfChange:
-			var cc raftpb.ConfChange
-			if err := cc.Unmarshal(ents[i].Data); err != nil {
-				c.logger.Warnf("Failed to unmarshal ConfChange data: %s", err)
-				continue
-			}
+	// 		case raftpb.EntryConfChange:
+	// 			var cc raftpb.ConfChange
+	// 			if err := cc.Unmarshal(ents[i].Data); err != nil {
+	// 				c.logger.Warnf("Failed to unmarshal ConfChange data: %s", err)
+	// 				continue
+	// 			}
 
-			c.confState = *c.Node.ApplyConfChange(cc)
+	// 			c.confState = *c.Node.ApplyConfChange(cc)
 
-			switch cc.Type {
-			case raftpb.ConfChangeAddNode:
-				c.logger.Infof("Applied config change to add node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Nodes)
-			case raftpb.ConfChangeRemoveNode:
-				c.logger.Infof("Applied config change to remove node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Nodes)
-			default:
-				c.logger.Panic("Programming error, encountered unsupported raft config change")
-			}
+	// 			switch cc.Type {
+	// 			case raftpb.ConfChangeAddNode:
+	// 				c.logger.Infof("Applied config change to add node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Nodes)
+	// 			case raftpb.ConfChangeRemoveNode:
+	// 				c.logger.Infof("Applied config change to remove node %d, current nodes in channel: %+v", cc.NodeID, c.confState.Nodes)
+	// 			default:
+	// 				c.logger.Panic("Programming error, encountered unsupported raft config change")
+	// 			}
 
-			// This ConfChange was introduced by a previously committed config block,
-			// we can now unblock submitC to accept envelopes.
-			var configureComm bool
-			if c.confChangeInProgress != nil &&
-				c.confChangeInProgress.NodeID == cc.NodeID &&
-				c.confChangeInProgress.Type == cc.Type {
+	// 			// This ConfChange was introduced by a previously committed config block,
+	// 			// we can now unblock submitC to accept envelopes.
+	// 			var configureComm bool
+	// 			if c.confChangeInProgress != nil &&
+	// 				c.confChangeInProgress.NodeID == cc.NodeID &&
+	// 				c.confChangeInProgress.Type == cc.Type {
 
-				configureComm = true
-				c.confChangeInProgress = nil
-				c.configInflight = false
-				// report the new cluster size
-				c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
-			}
+	// 				configureComm = true
+	// 				c.confChangeInProgress = nil
+	// 				c.configInflight = false
+	// 				// report the new cluster size
+	// 				c.Metrics.ClusterSize.Set(float64(len(c.opts.BlockMetadata.ConsenterIds)))
+	// 			}
 
-			lead := atomic.LoadUint64(&c.lastKnownLeader)
-			removeLeader := cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == lead
-			shouldHalt := cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID
+	// 			lead := atomic.LoadUint64(&c.lastKnownLeader)
+	// 			removeLeader := cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == lead
+	// 			shouldHalt := cc.Type == raftpb.ConfChangeRemoveNode && cc.NodeID == c.raftID
 
-			// unblock `run` go routine so it can still consume Raft messages
-			go func() {
-				if removeLeader {
-					c.logger.Infof("Current leader is being removed from channel, attempt leadership transfer")
-					c.Node.abdicateLeader(lead)
-				}
+	// 			// unblock `run` go routine so it can still consume Raft messages
+	// 			go func() {
+	// 				if removeLeader {
+	// 					c.logger.Infof("Current leader is being removed from channel, attempt leadership transfer")
+	// 					c.Node.abdicateLeader(lead)
+	// 				}
 
-				if configureComm && !shouldHalt { // no need to configure comm if this node is going to halt
-					if err := c.configureComm(); err != nil {
-						c.logger.Panicf("Failed to configure communication: %s", err)
-					}
-				}
+	// 				if configureComm && !shouldHalt { // no need to configure comm if this node is going to halt
+	// 					if err := c.configureComm(); err != nil {
+	// 						c.logger.Panicf("Failed to configure communication: %s", err)
+	// 					}
+	// 				}
 
-				if shouldHalt {
-					c.logger.Infof("This node is being removed from replica set")
-					c.halt()
-					return
-				}
-			}()
-		}
+	// 				if shouldHalt {
+	// 					c.logger.Infof("This node is being removed from replica set")
+	// 					c.halt()
+	// 					return
+	// 				}
+	// 			}()
+	// 		}
 
-		if ents[i].Index > c.appliedIndex {
-			c.appliedIndex = ents[i].Index
-		}
-	}
+	// 		if ents[i].Index > c.appliedIndex {
+	// 			c.appliedIndex = ents[i].Index
+	// 		}
+	// 	}
 
 	if c.accDataSize >= c.sizeLimit {
-		b := protoutil.UnmarshalBlockOrPanic(ents[position].Data)
-
+		// b := protoutil.UnmarshalBlockOrPanic(ents[position].Data)
 		select {
-		case c.gcC <- &gc{index: c.appliedIndex, state: c.confState, data: ents[position].Data}:
-			c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
-				"taking snapshot at block [%d] (index: %d), last snapshotted block number is %d, current nodes: %+v",
-				c.accDataSize, c.sizeLimit, b.Header.Number, c.appliedIndex, c.lastSnapBlockNum, c.confState.Nodes)
-			c.accDataSize = 0
-			c.lastSnapBlockNum = b.Header.Number
-			c.Metrics.SnapshotBlockNumber.Set(float64(b.Header.Number))
+		// case c.gcC <- &gc{index: c.appliedIndex, staticSnap: *currentStaticSnap}:
+		// c.logger.Infof("Accumulated %d bytes since last snapshot, exceeding size limit (%d bytes), "+
+		// 	"taking snapshot at block [%d] (index: %d), last snapshotted block number is %d, current nodes: %+v",
+		// 	c.accDataSize, c.sizeLimit, b.Header.Number, c.appliedIndex, c.lastSnapBlockNum, c.confState.Nodes)
+		// c.accDataSize = 0
+		// c.lastSnapBlockNum = b.Header.Number
+		// c.Metrics.SnapshotBlockNumber.Set(float64(b.Header.Number))
 		default:
 			c.logger.Warnf("Snapshotting is in progress, it is very likely that SnapshotIntervalSize is too small")
 		}
-	}*/
+	}
 }
 
 func (c *Chain) gc() {
 	for {
 		select {
-		case g := <-c.gcC:
-			c.Node.takeSnapshot(g.index, g.state, g.data)
 		case <-c.doneC:
 			c.logger.Infof("Stop garbage collecting")
 			return
@@ -1488,4 +1502,68 @@ func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
 	case c.snapC <- sn:
 	case <-c.doneC:
 	}
+}
+
+//FLY2- 66 Proposed changes
+//Implenetation of Snap() function
+// func (c *Chain) Apply(*msgs.QEntry) error {
+// 	return nil
+// }
+
+func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
+
+	var persistBytes []byte
+	c.Node.purgeSnapFiles(c.opts.SnapDir)
+	pr := c.Node.PendingReconfigurations
+	c.Node.PendingReconfigurations = nil
+
+	c.Node.CheckpointState = &msgs.NetworkState{
+		Config:                  networkConfig,
+		Clients:                 clientsState,
+		PendingReconfigurations: pr,
+	}
+	c.Node.CheckpointHash = c.Node.ActiveHash.Sum(nil)
+	c.Node.ActiveHash = c.Node.Hasher.New()
+	c.Node.ActiveHash.Write(c.Node.CheckpointHash)
+	checkpointBytes, err := proto.Marshal(c.Node.CheckpointState)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	persistBytes = append([]byte{}, c.Node.CheckpointHash...)
+	persistBytes = append(persistBytes, checkpointBytes...)
+	err = c.Node.PersistSnapshot(c.Node.CheckpointSeqNo, persistBytes)
+	if err != nil {
+		c.logger.Panicf("Cannot Persist Snap to file: %s", err)
+	}
+	c.Node.SnapByteMap[string(c.Node.CheckpointHash)] = c.Node.CheckpointSeqNo
+	return persistBytes, pr, nil
+}
+
+//FLY2-58 proposed changes
+// Implemented the TransferTo Function
+func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
+	networkState := &msgs.NetworkState{}
+	hashString := string(snap[:32]) //get the hash of the snap
+
+	//check if the snap hash is stored in the snapByte map
+	if _, exist := c.Node.SnapByteMap[hashString]; !exist {
+		//if it doesn't exist , it means that the snap data dosen't exist
+		return nil, errors.Errorf("Snap File Not Found")
+	}
+	//else, get the snap information based on the seq number
+	snapBytes, err := c.Node.readSnapFiles(seqNo, c.opts.SnapDir)
+	if err != nil {
+		return nil, err
+	}
+	if err := proto.Unmarshal(snapBytes[32:], networkState); err != nil {
+		return nil, err
+	}
+	c.Node.CheckpointSeqNo = seqNo
+	c.Node.CheckpointState = networkState
+	c.Node.CheckpointHash = snap[:32]
+	c.Node.ActiveHash = c.Node.Hasher.New()
+	c.Node.ActiveHash.Write(c.Node.CheckpointHash)
+
+	return networkState, nil
 }
