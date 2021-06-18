@@ -24,6 +24,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/raft/raftpb"
 
 
 )

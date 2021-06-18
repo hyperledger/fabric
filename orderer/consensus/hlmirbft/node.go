@@ -9,13 +9,13 @@ package hlmirbft
 import (
 	"crypto"
 	"sync"
+
 	"fmt"
 	"hash"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
-
 
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
@@ -42,16 +42,16 @@ type node struct {
 
 	config      *mirbft.Config
 	WALDir      string
+  
 	ReqStoreDir string
+	Hasher                  processor.Hasher  //JIRA FLY2-66
+	ActiveHash              hash.Hash  //JIRA FLY2-66
+	CheckpointSeqNo         uint64  //JIRA FLY2-66
+	CheckpointState         *msgs.NetworkState  //JIRA FLY2-66
+	CheckpointHash          []byte  //JIRA FLY2-66
+	PendingReconfigurations []*msgs.Reconfiguration  //JIRA FLY2-66
+	SnapByteMap             map[string]uint64 //JIRA FLY2-66
 
-	
-	Hasher                  processor.Hasher
-	ActiveHash              hash.Hash
-	CheckpointSeqNo         uint64
-	CheckpointState         *msgs.NetworkState
-	CheckpointHash          []byte
-	PendingReconfigurations []*msgs.Reconfiguration
-	SnapByteMap             map[string]uint64 //JIRA FLY2-58
 
 	rpc RPC
 
