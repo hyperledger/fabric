@@ -1467,13 +1467,14 @@ func (c *Chain) Apply(*msgs.QEntry) error {
 	return nil
 }
 
-
-//FLY2-66 JIRA issue code change
+//JIRA FLY2-66 proposed changes: Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
+
 	var persistBytes []byte
+	c.Node.PurgeSnapFiles(c.opts.SnapDir)
 	pr := c.Node.PendingReconfigurations
 	c.Node.PendingReconfigurations = nil
-	
+
 	c.Node.CheckpointState = &msgs.NetworkState{
 		Config:                  networkConfig,
 		Clients:                 clientsState,
@@ -1486,16 +1487,19 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	if err != nil {
 		return nil, nil, err
 	}
+
 	persistBytes = append([]byte{}, c.Node.CheckpointHash...)
 	persistBytes = append(persistBytes, checkpointBytes...)
-	c.Node.CheckpointSeqNo ++
-
 	err = c.Node.PersistSnapshot(c.Node.CheckpointSeqNo, persistBytes)
 	if err != nil {
 		c.logger.Panicf("Cannot Persist Snap to file: %s", err)
 	}
+	c.Node.SnapByteMap[string(c.Node.CheckpointHash)] = c.Node.CheckpointSeqNo
 	return persistBytes, pr, nil
+	
 }
+
+
 
 func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
 	return nil, nil
