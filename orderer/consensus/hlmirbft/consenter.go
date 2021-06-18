@@ -56,8 +56,9 @@ type ChainManager interface {
 
 // Config contains hlmirbft configurations
 type Config struct {
-	WALDir  string // WAL data of <my-channel> is stored in WALDir/<my-channel>
-	SnapDir string // Snaps of <my-channel> are started in SnapDir/<my-channel>
+	WALDir      string // WAL data of <my-channel> is stored in WALDir/<my-channel>
+	SnapDir     string // Snaps of <my-channel> are stored in SnapDir/<my-channel>
+	ReqStoreDir string // Requests of <my-channel> are stored in ReqStoreDir/<my-channel>
 }
 
 // Consenter implements hlmirbft consenter
@@ -187,10 +188,11 @@ func (c *Consenter) HandleChain(support consensus.ConsenterSupport, metadata *co
 
 		MigrationInit: isMigration,
 
-		WALDir:  path.Join(c.HLMirBFTConfig.WALDir, support.ChannelID()),
-		SnapDir: path.Join(c.HLMirBFTConfig.SnapDir, support.ChannelID()),
-		Cert:    c.Cert,
-		Metrics: c.Metrics,
+		WALDir:      path.Join(c.HLMirBFTConfig.WALDir, support.ChannelID()),
+		SnapDir:     path.Join(c.HLMirBFTConfig.SnapDir, support.ChannelID()),
+		ReqStoreDir: path.Join(c.HLMirBFTConfig.ReqStoreDir, support.ChannelID()),
+		Cert:        c.Cert,
+		Metrics:     c.Metrics,
 	}
 
 	rpc := &cluster.RPC{

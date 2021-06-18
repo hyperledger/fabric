@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"fmt"
-
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
@@ -21,7 +20,6 @@ import (
 	"github.com/hyperledger-labs/mirbft/pkg/simplewal"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/protoutil"
-
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
 	"go.etcd.io/etcd/raft/raftpb"
@@ -41,14 +39,6 @@ type node struct {
 	WALDir      string
 	ReqStoreDir string
 
-	//JIRA FLY2 - 66 proposed changes Added  new variables
-	// - Hasher
-	// - ActiveHash
-	// - CheckpointSeqNumber
-	// - LastSeqNo
-	// - CheckpointState
-	// - CheckpointHash
-	// - PendingReconfigurations
 	Hasher                  processor.Hasher
 	ActiveHash              hash.Hash
 	CheckpointSeqNo         uint64
@@ -56,6 +46,7 @@ type node struct {
 	CheckpointHash          []byte
 	PendingReconfigurations []*msgs.Reconfiguration
 	SnapByteMap             map[string]uint64
+
 
 	rpc RPC
 

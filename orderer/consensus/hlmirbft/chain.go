@@ -1473,6 +1473,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 //JIRA FLY2-58 proposed changes:Implemented the TransferTo Function
 func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
+  
 	networkState := &msgs.NetworkState{}
 	hashString := string(snap[:32]) //get the hash of the snap
 
@@ -1495,4 +1496,5 @@ func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error
 	c.Node.ActiveHash = c.Node.Hasher.New()
 	c.Node.ActiveHash.Write(c.Node.CheckpointHash)
 	return networkState, nil
+
 }
