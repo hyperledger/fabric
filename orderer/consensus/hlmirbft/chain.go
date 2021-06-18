@@ -17,6 +17,7 @@ import (
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
+	pb "github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
 
 	"code.cloudfoundry.org/clock"
 	"github.com/golang/protobuf/proto"
@@ -948,10 +949,20 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 
 	proposer := c.Node.Client(clientID)
 	reqNo, err := proposer.NextReqNo() //
+
 	if err != nil {
 		return errors.Errorf("Cannot generate Next Request Number")
 	}
-	err = proposer.Propose(context.Background(), reqNo, msg.Payload.GetPayload())
+	req := &pb.Request{
+		ClientId: clientID,
+		ReqNo:    reqNo,
+		Data:     msg.Payload.GetPayload(),
+	}
+	reqBytes, err := proto.Marshal(req)
+	if err != nil {
+		return errors.Errorf("Cannot marshal Message : %s",err)
+	}
+	err = proposer.Propose(context.Background(), reqNo, reqBytes)
 
 	if err != nil {
 		return errors.WithMessagef(err, "failed to propose message to client %d", clientID)
