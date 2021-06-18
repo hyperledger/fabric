@@ -7,19 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package hlmirbft
 
 import (
-	"fmt"
-	"hash"
-	"io"
-	"os"
-	"path/filepath"
+	"crypto"
 	"sync"
-	"time"
 
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
-	"github.com/hyperledger-labs/mirbft/pkg/processor"
-	"github.com/pkg/errors"
+	"github.com/hyperledger-labs/mirbft/pkg/reqstore"
+	"github.com/hyperledger-labs/mirbft/pkg/simplewal"
+	"github.com/hyperledger/fabric-protos-go/orderer"
+	"github.com/hyperledger/fabric/protoutil"
 
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -34,78 +31,65 @@ type node struct {
 	unreachableLock sync.RWMutex
 	unreachable     map[uint64]struct{}
 
-	tracker *Tracker
-
-	config          *mirbft.Config
-	processorConfig *mirbft.ProcessorConfig
+	config      *mirbft.Config
+	WALDir      string
+	ReqStoreDir string
 
 	rpc RPC
 
-	//storage *MirBFTStorage //SNAPCHANGE- need to change Mir Storage Structure
-
 	chain *Chain
 
-	//JIRA FLY2 - 66 proposed changes Added  new variables
-	// - Hasher
-	// - ActiveHash
-	// - CheckpointSeqNumber
-	// - LastSeqNo
-	// - CheckpointState
-	// - CheckpointHash
-	// - PendingReconfigurations
-	Hasher                  processor.Hasher
-	ActiveHash              hash.Hash
-	CheckpointSeqNo         uint64
-	CheckpointState         *msgs.NetworkState
-	CheckpointHash          []byte
-	PendingReconfigurations []*msgs.Reconfiguration
-	SnapByteMap             map[string]uint64
-
-	tickInterval time.Duration
-	clock        clock.Clock
+	clock clock.Clock
 
 	metadata *hlmirbft.BlockMetadata
-
-	subscriberC chan chan uint64
 
 	mirbft.Node
 }
 
-const snapSuffix = ".snap"
-
-// TODO(harry_knight) Of node struct, storage, config, and metadata, need to be replaced with hlmirbft counterparts.
 func (n *node) start(fresh, join bool) {
-
-	/*	raftPeers := RaftPeers(n.metadata.ConsenterIds)
-		n.logger.Debugf("Starting raft node: #peers: %v", len(raftPeers))
-
-		var campaign bool
-		if fresh {
-			if join {
-				raftPeers = nil
-				n.logger.Info("Starting raft node to join an existing channel")
-			} else {
-				n.logger.Info("Starting raft node as part of a new channel")
-
-				// determine the node to start campaign by selecting the node with ID equals to:
-				//                hash(channelID) % cluster_size + 1
-				sha := sha256.Sum256([]byte(n.chainID))
-				number, _ := proto.DecodeVarint(sha[24:])
-				if n.config.ID == number%uint64(len(raftPeers))+1 {
-					campaign = true
-				}
-			}
-
-			// TODO(harry_knight) config and metadata are initialised during block genesis/ordering service startup.
-			// 	So need to alter Orderer section of configtx.yaml and add new package under fabric-protos/orderer
+	n.logger.Debugf("Starting mirbft node: #peers: %v", len(n.metadata.ConsenterIds))
+	if fresh {
+		if join {
+			n.logger.Info("Starting mirbft node to join an existing channel")
 		} else {
-			n.logger.Info("Restarting raft node")
+			n.logger.Info("Starting mirbft node as part of a new channel")
 		}
 
-		n.subscriberC = make(chan chan uint64)
+		// Checking if the configuration settings have been passed correctly.
+		wal, err := simplewal.Open(n.WALDir)
+		if err != nil {
+			n.logger.Error(err, "Failed to create WAL")
+		}
+		reqStore, err := reqstore.Open(n.ReqStoreDir)
+		if err != nil {
+			n.logger.Error(err, "Failed to create request store")
+		}
+		node, err := mirbft.NewNode(
+			n.chain.MirBFTID,
+			n.config,
+			&mirbft.ProcessorConfig{
+				Link:         n,
+				Hasher:       crypto.SHA256,
+				App:          n.chain,
+				WAL:          wal,
+				RequestStore: reqStore,
+				Interceptor:  nil,
+			},
+		)
+		if err != nil {
+			n.logger.Error(err, "Failed to create mirbft node")
+		} else {
+			n.Node = *node
+		}
 
-		//go n.run()
-		go n.run(campaign)*/
+		// TODO(harrymknight) Once client (fabric application) management is implemented nodes can be started like so
+		// initialNetworkState := mirbft.StandardInitialNetworkState(len(n.metadata.ConsenterIds), 1)
+		// err = n.ProcessAsNewNode(n.chain.doneC, n.clock.NewTicker(10).C(), initialNetworkState, []byte("fake"))
+
+	} else {
+		n.logger.Info("Restarting mirbft node")
+		/*n.RestartProcessing(n.chain.doneC, n.clock.NewTicker(10).C())*/
+	}
 }
 
 // TODO(harry_knight) The logic contained in the infinite for loops should be retained.
@@ -220,33 +204,18 @@ func (n *node) run(campaign bool) {
 	}*/
 }
 
-func (n *node) send(msgs []raftpb.Message) {
-	/*n.unreachableLock.RLock()
+func (n *node) Send(dest uint64, msg *msgs.Msg) {
+	n.unreachableLock.RLock()
 	defer n.unreachableLock.RUnlock()
 
-	for _, msg := range msgs {
-		if msg.To == 0 {
-			continue
-		}
-
-		status := raft.SnapshotFinish
-
-		msgBytes := protoutil.MarshalOrPanic(&msg)
-		err := n.rpc.SendConsensus(msg.To, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
-		if err != nil {
-			n.ReportUnreachable(msg.To)
-			//n.logSendFailure(msg.To, err)
-
-			status = raft.SnapshotFailure
-		} else if _, ok := n.unreachable[msg.To]; ok {
-			n.logger.Infof("Successfully sent StepRequest to %d after failed attempt(s)", msg.To)
-			delete(n.unreachable, msg.To)
-		}
-
-		if msg.Type == raftpb.MsgSnap {
-			n.ReportSnapshot(msg.To, status)
-		}
-	}*/
+	msgBytes := protoutil.MarshalOrPanic(msg)
+	err := n.rpc.SendConsensus(dest, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
+	if err != nil {
+		n.logSendFailure(dest, err)
+	} else if _, ok := n.unreachable[dest]; ok {
+		n.logger.Infof("Successfully sent StepRequest to %d after failed attempt(s)", dest)
+		delete(n.unreachable, dest)
+	}
 }
 
 // If this is called on leader, it picks a node that is
@@ -316,70 +285,14 @@ func (n *node) logSendFailure(dest uint64, err error) {
 	n.unreachable[dest] = struct{}{}
 }
 
+func (n *node) takeSnapshot(index uint64, cs raftpb.ConfState, data []byte) {
+	/*if err := n.storage.TakeSnapshot(index, cs, data); err != nil {
+		n.logger.Errorf("Failed to create snapshot at index %d: %s", index, err)
+	}*/
+}
+
 func (n *node) lastIndex() uint64 {
 	/*i, _ := n.storage.ram.LastIndex()
 	return i*/
 	return 0
-}
-
-//JIRA FLY2- 66 Proposed changes:Implemented the PersistSnapshot functionality to persist the snaps to local files
-func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
-	if err := os.MkdirAll(n.chain.opts.SnapDir, os.ModePerm); err != nil {
-		return errors.Errorf("failed to mkdir '%s' for snapshot: %s", n.chain.opts.SnapDir, err)
-	}
-	TimeStamp := time.Now().Unix()
-	fname := fmt.Sprintf("%016x-%016x%s", seqNo, TimeStamp, snapSuffix )
-
-	spath := filepath.Join(n.chain.opts.SnapDir, fname)
-
-	f, err := os.OpenFile(spath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-	if err != nil {
-		return err
-	}
-
-	byteNumber, err := f.Write(Data)
-	if err == nil && byteNumber < len(Data) {
-		err = io.ErrShortWrite
-		return err
-	}
-	if err1 := f.Close(); err == nil {
-		err = err1
-	}
-	return err
-}
-
-//JIRA FLY2-58 proposed changes:readSnapFiles loads the snap file based on the sequence number and reads the contents
-func (n *node) readSnapFiles(seqNo uint64, SnapDir string) ([]byte, error) {
-	var snapBytes []byte
-	fileNamePattern := fmt.Sprintf("%016x-*", seqNo)
-
-	snapFileList, err := GetFileByPattern(SnapDir, fileNamePattern)
-	if err != nil {
-		return nil, err
-	}
-	numberOfFiles := len(snapFileList)
-	switch {
-	case numberOfFiles == 0:
-		err = errors.Errorf("file not found Error : No files found for sequence number %016x", seqNo)
-		snapBytes = nil
-	case numberOfFiles == 1:
-		snapBytes, err = ReadFile(SnapDir, snapFileList[0])
-	case numberOfFiles > 1:
-		n.logger.Warning("File Duplication : multiple files detected for sequence number %016x", seqNo)
-		snapBytes, err = ReadFile(SnapDir, snapFileList[numberOfFiles-1])
-	}
-	return snapBytes, err
-}
-
-// JIRA FLY2-58 proposed changes: PurgeSnapFiles takes the list of snap files in the snap directory  and removes them
-func (n *node) purgeSnapFiles(SnapDir string) error {
-	snapFileList, err := GetFileByPattern(SnapDir, snapSuffix )
-	if err != nil {
-		return errors.Errorf("Cannot retrive snap files : %s", err)
-	}
-	err = PurgeFiles(snapFileList[:len(snapFileList)-2], SnapDir, n.logger)
-	if err != nil {
-		return err
-	}
-	return nil
 }
