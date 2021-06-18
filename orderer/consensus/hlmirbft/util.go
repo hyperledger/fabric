@@ -1,6 +1,5 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
-
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,9 +8,9 @@ package hlmirbft
 import (
 	"crypto/x509"
 	"encoding/pem"
-
+	"os"
+	"path/filepath"
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
@@ -24,19 +23,10 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
+	"go.etcd.io/etcd/pkg/fileutil"
+
+
 )
-
-// RaftPeers maps consenters to slice of raft.Peer
-func RaftPeers(consenterIDs []uint64) []raft.Peer {
-	var peers []raft.Peer
-
-	for _, raftID := range consenterIDs {
-		peers = append(peers, raft.Peer{ID: raftID})
-	}
-	return peers
-}
 
 type ConsentersMap map[string]struct{}
 
@@ -429,9 +419,8 @@ func NodeExists(id uint64, nodes []uint64) bool {
 
 // ConfChange computes Raft configuration changes based on current Raft
 // configuration state and consenters IDs stored in RaftMetadata.
-func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
+/*func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
 	raftConfChange := &raftpb.ConfChange{}
-
 	// need to compute conf changes to propose
 	if len(confState.Nodes) < len(blockMetadata.ConsenterIds) {
 		// adding new node
@@ -452,9 +441,8 @@ func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfSta
 			raftConfChange.NodeID = nodeID
 		}
 	}
-
 	return raftConfChange
-}
+}*/
 
 // CreateConsentersMap creates a map of Raft Node IDs to Consenter given the block metadata and the config metadata.
 func CreateConsentersMap(blockMetadata *hlmirbft.BlockMetadata, configMetadata *hlmirbft.ConfigMetadata) map[uint64]*hlmirbft.Consenter {
@@ -463,4 +451,26 @@ func CreateConsentersMap(blockMetadata *hlmirbft.BlockMetadata, configMetadata *
 		consenters[blockMetadata.ConsenterIds[i]] = consenter
 	}
 	return consenters
+}
+//JIRA FLY2-58 : Remove Files
+func PurgeFiles(files []string, dirPath string, logger *flogging.FabricLogger) error {
+
+	for _, file := range files {
+		fpath := filepath.Join(dirPath, file)
+		l, err := fileutil.TryLockFile(fpath, os.O_WRONLY, fileutil.PrivateFileMode)
+		if err != nil {
+			logger.Debugf("Failed to lock %s, abort purging", file)
+			break
+		}
+		if err = os.Remove(fpath); err != nil {
+			logger.Errorf("Failed to remove %s: %s", file, err)
+		} else {
+			logger.Debugf("Purged file %s", file)
+		}
+
+		if err = l.Close(); err != nil {
+			logger.Errorf("Failed to close file lock %s: %s", l.Name(), err)
+		}
+	}
+	return nil
 }
