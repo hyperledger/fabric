@@ -7,17 +7,16 @@ SPDX-License-Identifier: Apache-2.0
 package hlmirbft
 
 import (
-
 	"crypto"
 	"sync"
-	
 	"fmt"
 	"hash"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
-        "github.com/hyperledger-labs/mirbft/pkg/processor"
+
+
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
@@ -25,9 +24,11 @@ import (
 	"github.com/hyperledger-labs/mirbft/pkg/simplewal"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/protoutil"
+
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
 	"go.etcd.io/etcd/raft/raftpb"
+	"github.com/hyperledger-labs/mirbft/pkg/processor"
 	"github.com/pkg/errors"
 )
 
@@ -43,6 +44,15 @@ type node struct {
 	WALDir      string
 	ReqStoreDir string
 
+	
+	Hasher                  processor.Hasher
+	ActiveHash              hash.Hash
+	CheckpointSeqNo         uint64
+	CheckpointState         *msgs.NetworkState
+	CheckpointHash          []byte
+	PendingReconfigurations []*msgs.Reconfiguration
+	SnapByteMap             map[string]uint64 //JIRA FLY2-58
+
 	rpc RPC
 
 	chain *Chain
@@ -51,18 +61,10 @@ type node struct {
 
 	metadata *hlmirbft.BlockMetadata
 
-
-	Hasher          processor.Hasher   //FLY2 - 66 proposed changes added to store checkpoints hash
-	ActiveHash      hash.Hash          //FLY2 - 66 proposed changes added to store checkpoints hash
-	CheckpointSeqNo uint64             //FLY2 - 66 proposed changes added to store checkpoints seq#
-	CheckpointState *msgs.NetworkState //FLY2-66 change to keep checkpoint state
-	CheckpointHash  []byte             //FLY2-66  Added to keep checkpoints hash
-
-	PendingReconfigurations []*msgs.Reconfiguration //FLY2-66  Added to keep pending  config change
-
 	mirbft.Node
 }
 const snapSuffix = ".snap"
+
 
 func (n *node) start(fresh, join bool) {
 	n.logger.Debugf("Starting mirbft node: #peers: %v", len(n.metadata.ConsenterIds))
@@ -315,15 +317,13 @@ func (n *node) lastIndex() uint64 {
 	return 0
 }
 
-
-//FLY2- 66 Proposed changes
-//Implemented the PersistSnapshot functionality to persist the snaps to local files
+//JIRA FLY2- 66 Proposed changes:Implemented the PersistSnapshot functionality to persist the snaps to local files
 func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 	if err := os.MkdirAll(n.chain.opts.SnapDir, os.ModePerm); err != nil {
 		return errors.Errorf("failed to mkdir '%s' for snapshot: %s", n.chain.opts.SnapDir, err)
 	}
 	TimeStamp := time.Now().Unix()
-	fname := fmt.Sprintf("%016x-%016x%s", seqNo, TimeStamp,snapSuffix)
+	fname := fmt.Sprintf("%016x-%016x%s", seqNo, TimeStamp, snapSuffix )
 
 	spath := filepath.Join(n.chain.opts.SnapDir, fname)
 
@@ -331,6 +331,7 @@ func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 	if err != nil {
 		return err
 	}
+
 	byteNumber, err := f.Write(Data)
 	if err == nil && byteNumber < len(Data) {
 		err = io.ErrShortWrite
@@ -340,4 +341,17 @@ func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 		err = err1
 	}
 	return err
+}
+
+// JIRA FLY2-66 proposed changes: PurgeSnapFiles takes the list of snap files in the snap directory  and removes them
+func (n *node) PurgeSnapFiles(SnapDir string) error {
+	snapFileList, err := filepath.Glob(filepath.Join(SnapDir, snapSuffix))
+	if err != nil {
+		return errors.Errorf("Cannot retrive snap files : %s", err)
+	}
+	err = PurgeFiles(snapFileList[:len(snapFileList)-2], SnapDir, n.logger)
+	if err != nil {
+		return err
+	}
+	return nil
 }
