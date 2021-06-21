@@ -523,10 +523,8 @@ func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
 }
 
 // Submit forwards the incoming request to:
-// - the local run goroutine if this is leader
-// - the actual leader via the transport mechanism
-// The call fails if there's no leader elected yet.
-// TODO(harry_knight) no longer single leader in case of hlmirbft. Send to bucket/s which is watched by a leader?
+// - to all nodes via the transport mechanism if the request hasn't been forwarded
+// - the underlying state machine if the request has been forwarded
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 
 	if err := c.isRunning(); err != nil {
