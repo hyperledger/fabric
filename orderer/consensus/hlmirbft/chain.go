@@ -159,11 +159,9 @@ type Chain struct {
 	errorCLock sync.RWMutex
 	errorC     chan struct{} // returned by Errored()
 
-	mirbftMetadataLock   sync.RWMutex
-	confChangeInProgress *raftpb.ConfChange
-	justElected          bool // this is true when node has just been elected
-	configInflight       bool // this is true when there is config block or ConfChange in flight
-	blockInflight        int  // number of in flight blocks
+	mirbftMetadataLock sync.RWMutex
+	configInflight     bool // this is true when there is config block or ConfChange in flight
+	blockInflight      int  // number of in flight blocks
 
 	clock clock.Clock // Tests can inject a fake clock
 
@@ -173,10 +171,7 @@ type Chain struct {
 	appliedIndex uint64
 
 	// needed by snapshotting
-	sizeLimit        uint32 // SnapshotIntervalSize in bytes
-	accDataSize      uint32 // accumulative data size since last snapshot
 	lastSnapBlockNum uint64
-	confState        raftpb.ConfState // Etcdraft requires ConfState to be persisted within snapshot
 
 	createPuller CreateBlockPuller // func used to create BlockPuller on demand
 
