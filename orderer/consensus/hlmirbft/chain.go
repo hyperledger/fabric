@@ -14,12 +14,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"code.cloudfoundry.org/clock"
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
-	pb "github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
-	"code.cloudfoundry.org/clock"
-	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
@@ -64,7 +63,7 @@ const (
 	// its own leadership status.
 	DefaultLeaderlessCheckInterval = time.Second * 10
 
-	//JIRA FLY2-57: Prepend flag to check request is forward 
+	//JIRA FLY2-57: Prepend flag to check request is forward
 	ForwardFlag = "@forward/"
 )
 
@@ -134,7 +133,7 @@ type Options struct {
 }
 
 type submit struct {
-	req    *orderer.SubmitRequest
+	req *orderer.SubmitRequest
 }
 
 type gc struct {
@@ -371,7 +370,6 @@ func (c *Chain) Start() {
 
 }
 
-
 // Order submits normal type transactions for ordering.
 func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
 	c.Metrics.NormalProposalsReceived.Add(1)
@@ -504,10 +502,9 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	return nil
 }
 
-
 // Check for forward flag in payload
 func (c *Chain) CheckPrependForwardFlag(reqPayload []byte) bool {
-	
+
 	prependedFlag := reqPayload[:9]
 
 	if string(prependedFlag) == ForwardFlag {
@@ -519,10 +516,10 @@ func (c *Chain) CheckPrependForwardFlag(reqPayload []byte) bool {
 }
 
 func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
-		forwardFlag := []byte(ForwardFlag)
-	    prependReq       := append([]byte{}, forwardFlag...)
-		prependReq        = append(prependReq, reqPayload...)
-		return prependReq
+	forwardFlag := []byte(ForwardFlag)
+	prependReq := append([]byte{}, forwardFlag...)
+	prependReq = append(prependReq, reqPayload...)
+	return prependReq
 }
 
 // Submit forwards the incoming request to:
@@ -537,7 +534,7 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 		return err
 	}
 
-	submitPayload    := req.Payload.GetPayload()
+	submitPayload := req.Payload.GetPayload()
 	isForwardRequest := c.CheckPrependForwardFlag(submitPayload)
 
 	if !isForwardRequest {
@@ -556,14 +553,14 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 
 		}
 
-	} 
+	}
 
 	req.Payload.Payload = submitPayload[9:]
-	
+
 	return c.ordered(req)
 
-
 }
+
 type apply struct {
 	entries []raftpb.Entry
 	soft    *raft.SoftState
@@ -610,16 +607,16 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 //   -- err error; the error encountered, if any.
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
 
-//JIRA FLY2-57 - proposed changes 
+//JIRA FLY2-57 - proposed changes
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 
 	seq := c.support.Sequence()
-	
-	if msg.LastValidationSeq < seq { 
+
+	if msg.LastValidationSeq < seq {
 
 		if c.isConfig(msg.Payload) {
 
-			c.configInflight = true //JIRA FLY2-57 - proposed changes 
+			c.configInflight = true //JIRA FLY2-57 - proposed changes
 		}
 
 		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
@@ -631,7 +628,7 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 
 	}
 
-   return c.proposeMsg(msg);
+	return c.proposeMsg(msg)
 
 }
 
@@ -640,12 +637,12 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 
 	clientID := c.MirBFTID
 	proposer := c.Node.Client(clientID)
-	reqNo, err := proposer.NextReqNo() 
+	reqNo, err := proposer.NextReqNo()
 
 	if err != nil {
 		return errors.Errorf("failed to generate next request number")
 	}
-	req := &pb.Request{
+	req := &msgs.Request{
 		ClientId: clientID,
 		ReqNo:    reqNo,
 		Data:     msg.Payload.GetPayload(),
@@ -654,7 +651,7 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 	reqBytes, err := proto.Marshal(req)
 
 	if err != nil {
-		return errors.Errorf("Cannot marshal Message : %s",err)
+		return errors.Errorf("Cannot marshal Message : %s", err)
 	}
 
 	err = proposer.Propose(context.Background(), reqNo, reqBytes)
@@ -664,7 +661,6 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 	}
 
 	return nil
-	
 
 }
 
@@ -923,7 +919,6 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 		return errors.Errorf("only %d out of a required 4 nodes are provided, configuration will result in quorum loss", len(changes.NewConsenters))
 	}
 
-
 	return nil
 }
 
@@ -976,7 +971,6 @@ func (c *Chain) Apply(*msgs.QEntry) error {
 	return nil
 }
 
-
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
 
@@ -996,7 +990,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 	}
 
-    c.Node.CheckpointSeqNo++
+	c.Node.CheckpointSeqNo++
 
 	countValue := make([]byte, 8)
 

@@ -10,7 +10,9 @@ import (
 	"crypto"
 	"fmt"
 	"github.com/pkg/errors"
+	"io"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -25,7 +27,6 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/raftpb"
 )
 
@@ -41,8 +42,8 @@ type node struct {
 	WALDir      string
 	ReqStoreDir string
 
-	CheckpointSeqNo uint64 //JIRA FLY2-66
-	PendingReconfigurations []*msgs.Reconfiguration  //JIRA FLY2-66
+	CheckpointSeqNo         uint64                  //JIRA FLY2-66
+	PendingReconfigurations []*msgs.Reconfiguration //JIRA FLY2-66
 
 	rpc RPC
 
@@ -154,10 +155,9 @@ func (n *node) lastIndex() uint64 {
 	return 0
 }
 
-
 //JIRA FLY2-58 proposed changes:readSnapFiles loads the snap file based on the sequence number and reads the contents
 func (n *node) ReadSnapFiles(seqNo uint64, SnapDir string) ([]byte, error) {
-	
+
 	var snapBytes []byte
 	fileNamePattern := fmt.Sprintf("%016x-*", seqNo)
 
@@ -187,7 +187,7 @@ func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 
 	TimeStamp := time.Now().Unix()
 
-	fname := fmt.Sprintf("%016x-%016x%s", seqNo, TimeStamp, snapSuffix )
+	fname := fmt.Sprintf("%016x-%016x%s", seqNo, TimeStamp, snapSuffix)
 
 	spath := filepath.Join(n.chain.opts.SnapDir, fname)
 
