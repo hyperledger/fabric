@@ -64,7 +64,7 @@ const (
 	// its own leadership status.
 	DefaultLeaderlessCheckInterval = time.Second * 10
 
-	//JIRA FLY2-64: Prepend flag to check request is forward 
+	//JIRA FLY2-57: Prepend flag to check request is forward 
 	ForwardFlag = "@forward/"
 )
 
@@ -135,7 +135,6 @@ type Options struct {
 
 type submit struct {
 	req    *orderer.SubmitRequest
-	//leader chan uint64 //JIRA FLY2-64 :No leader required with mirbft.
 }
 
 type gc struct {
@@ -506,8 +505,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 }
 
 
-
-//JIRA FLY2-64 - proposed  check for forward flag in payload
+// Check for forward flag in payload
 func (c *Chain) CheckPrependForwardFlag(reqPayload []byte) bool {
 	
 	prependedFlag := reqPayload[:9]
@@ -520,7 +518,6 @@ func (c *Chain) CheckPrependForwardFlag(reqPayload []byte) bool {
 
 }
 
-//JIRA FLY2-64 : prepend forward flag
 func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
 		forwardFlag := []byte(ForwardFlag)
 	    prependReq       := append([]byte{}, forwardFlag...)
@@ -612,14 +609,21 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 // Returns
 //   -- err error; the error encountered, if any.
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
-//JIRA FLY2-64 - proposed changes 
+
+//JIRA FLY2-57 - proposed changes 
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 
 	seq := c.support.Sequence()
-
 	
 	if msg.LastValidationSeq < seq { 
-			
+
+		if c.isConfig(msg.Payload) {
+
+			c.configInflight = true //JIRA FLY2-57 - proposed changes 
+		}
+
+		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
+
 		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
 			c.Metrics.ProposalFailures.Add(1)
 			return errors.Errorf("bad normal message: %s", err)
@@ -627,11 +631,11 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 
 	}
 
-	return c.proposeMsg(msg);
+   return c.proposeMsg(msg);
 
 }
 
-//FLY2-64 - Proposed Change: New function to propose normal messages to node
+//FLY2-57 - Proposed Change: New function to propose normal messages to node
 func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 
 	clientID := c.MirBFTID
