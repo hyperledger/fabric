@@ -136,12 +136,6 @@ type submit struct {
 	req *orderer.SubmitRequest
 }
 
-type gc struct {
-	index uint64
-	state raftpb.ConfState
-	data  []byte
-}
-
 // Chain implements consensus.Chain interface.
 type Chain struct {
 	configurator Configurator
@@ -161,7 +155,6 @@ type Chain struct {
 	doneC    chan struct{}         // Closes when the chain halts
 	startC   chan struct{}         // Closes when the node is started
 	snapC    chan *raftpb.Snapshot // Signal to catch up with snapshot
-	gcC      chan *gc              // Signal to take snapshot
 
 	errorCLock sync.RWMutex
 	errorC     chan struct{} // returned by Errored()
@@ -278,7 +271,6 @@ func NewChain(
 		startC:            make(chan struct{}),
 		snapC:             make(chan *raftpb.Snapshot),
 		errorC:            make(chan struct{}),
-		gcC:               make(chan *gc),
 		observeC:          observeC,
 		support:           support,
 		fresh:             fresh,
@@ -365,7 +357,6 @@ func (c *Chain) Start() {
 	close(c.startC)
 	close(c.errorC)
 
-	go c.gc()
 	go c.run()
 
 }
@@ -742,18 +733,6 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 // 	Unsure if equivalent ApplyConfChange method exists.
 func (c *Chain) apply(ents []raftpb.Entry) {
 
-}
-
-func (c *Chain) gc() {
-	for {
-		select {
-		case g := <-c.gcC:
-			c.Node.takeSnapshot(g.index, g.state, g.data)
-		case <-c.doneC:
-			c.logger.Infof("Stop garbage collecting")
-			return
-		}
-	}
 }
 
 func (c *Chain) isConfig(env *common.Envelope) bool {
