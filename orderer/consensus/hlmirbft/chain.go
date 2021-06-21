@@ -8,6 +8,7 @@ package hlmirbft
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/pem"
 	"fmt"
 	"sync"
@@ -975,10 +976,46 @@ func (c *Chain) Apply(*msgs.QEntry) error {
 	return nil
 }
 
+
+//JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
-	return nil, nil, nil
+
+	pr := c.Node.PendingReconfigurations
+
+	c.Node.PendingReconfigurations = nil
+
+	data, err := proto.Marshal(&msgs.NetworkState{
+		Config:                  networkConfig,
+		Clients:                 clientsState,
+		PendingReconfigurations: pr,
+	})
+
+	if err != nil {
+
+		return nil, nil, errors.WithMessage(err, "could not marsshal network state")
+
+	}
+
+    c.Node.CheckpointSeqNo++
+
+	countValue := make([]byte, 8)
+
+	binary.BigEndian.PutUint64(countValue, uint64(c.Node.CheckpointSeqNo))
+
+	networkStates := append(countValue, data...)
+
+	err = c.Node.PersistSnapshot(c.Node.CheckpointSeqNo, networkStates)
+
+	if err != nil {
+
+		c.logger.Panicf("error while snap persist : %s", err)
+
+	}
+
+	return networkStates, pr, nil
+
 }
 
 func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
-	return nil, nil
+  return nil,nil
 }
