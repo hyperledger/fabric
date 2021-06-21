@@ -48,7 +48,7 @@ func generateCertificates(tempDir string) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func newHTTPClient(tlsDir string, withClientCert bool) *http.Client {
+func newHTTPClient(tlsDir string, withClientCert bool, tlsOpts ...func(config *tls.Config)) *http.Client {
 	clientCertPool := x509.NewCertPool()
 	caCert, err := ioutil.ReadFile(filepath.Join(tlsDir, "server-ca.pem"))
 	Expect(err).NotTo(HaveOccurred())
@@ -64,6 +64,10 @@ func newHTTPClient(tlsDir string, withClientCert bool) *http.Client {
 		)
 		Expect(err).NotTo(HaveOccurred())
 		tlsClientConfig.Certificates = []tls.Certificate{clientCert}
+	}
+
+	for _, opt := range tlsOpts {
+		opt(tlsClientConfig)
 	}
 
 	return &http.Client{

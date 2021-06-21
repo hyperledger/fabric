@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package fabhttp_test
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -65,6 +66,27 @@ var _ = Describe("Server", func() {
 		if server != nil {
 			server.Stop()
 		}
+	})
+
+	When("trying to connect with an old TLS version", func() {
+		BeforeEach(func() {
+			tlsOpts := []func(config *tls.Config){func(config *tls.Config) {
+				config.MaxVersion = tls.VersionTLS11
+				config.ClientAuth = tls.RequireAndVerifyClientCert
+			}}
+
+			client = newHTTPClient(tempDir, true, tlsOpts...)
+		})
+
+		It("does not answer clients using an older TLS version than 1.2", func() {
+			server.RegisterHandler(AdditionalTestApiPath, &fakes.Handler{Code: http.StatusOK, Text: "secure"}, options.TLS.Enabled)
+			err := server.Start()
+			Expect(err).NotTo(HaveOccurred())
+
+			addApiURL := fmt.Sprintf("https://%s%s", server.Addr(), AdditionalTestApiPath)
+			_, err = client.Get(addApiURL)
+			Expect(err.Error()).To(ContainSubstring("tls: protocol version not supported"))
+		})
 	})
 
 	It("does not host a secure endpoint for additional APIs by default", func() {
