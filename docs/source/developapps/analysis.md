@@ -170,7 +170,7 @@ Purchase time = 3 June 2020 15:59:00 EST
 Price = 4.90M USD
 ```
 
-See how the paper owners changes, and how in out example, the price changes. Can
+See how the paper's owner changes, and how in our example, the price changes. Can
 you think of a reason why the price of MagnetoCorp commercial paper might be
 falling?
 
