@@ -39,6 +39,7 @@ func (t TLS) Config() (*tls.Config, error) {
 			caCertPool.AppendCertsFromPEM(caPem)
 		}
 		tlsConfig = &tls.Config{
+			MinVersion:   tls.VersionTLS12,
 			Certificates: []tls.Certificate{cert},
 			CipherSuites: comm.DefaultTLSCipherSuites,
 			ClientCAs:    caCertPool,
