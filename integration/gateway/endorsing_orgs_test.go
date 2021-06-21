@@ -104,6 +104,8 @@ var _ = Describe("GatewayService with endorsing orgs", func() {
 	It("should execute chaincode on a peer in the specified org", func() {
 		peers := [3]*nwo.Peer{org1Peer0, org2Peer0, org3Peer0}
 
+		// Submit transactions using every peer's gateway, with every peer as the endorsing
+		// org, to reduce the likelihood of tests passing by chance
 		for _, p := range peers {
 			conn := network.PeerClientConn(p)
 			defer conn.Close()
@@ -115,13 +117,13 @@ var _ = Describe("GatewayService with endorsing orgs", func() {
 			for _, o := range peers {
 				mspid := network.Organization(o.Organization).MSPID
 
-				submitCheckEndorsingOrgTransaction(ctx, gatewayClient, signingIdentity, mspid)
+				submitCheckEndorsingOrgsTransaction(ctx, gatewayClient, signingIdentity, mspid)
 			}
 		}
 	})
 })
 
-func submitCheckEndorsingOrgTransaction(ctx context.Context, client gateway.GatewayClient, signingIdentity *nwo.SigningIdentity, mspids ...string) {
+func submitCheckEndorsingOrgsTransaction(ctx context.Context, client gateway.GatewayClient, signingIdentity *nwo.SigningIdentity, mspids ...string) {
 	transientData := make(map[string][]byte)
 	for _, m := range mspids {
 		transientData[m] = []byte(`true`)
