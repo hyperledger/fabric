@@ -1,6 +1,5 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
-
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,6 +7,7 @@ package hlmirbft
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/pem"
 	"fmt"
 	"sync"
@@ -135,7 +135,6 @@ type Options struct {
 
 type submit struct {
 	req    *orderer.SubmitRequest
-	//leader chan uint64 //JIRA FLY2-57 :No leader required with mirbft.
 }
 
 type gc struct {
@@ -245,18 +244,15 @@ func NewChain(
 		if err != nil {
 			return nil, errors.Errorf("failed to restore persisted raft data: %s", err)
 		}
-
 		if opts.SnapshotCatchUpEntries == 0 {
 			storage.SnapshotCatchUpEntries = DefaultSnapshotCatchUpEntries
 		} else {
 			storage.SnapshotCatchUpEntries = opts.SnapshotCatchUpEntries
 		}
-
 		sizeLimit := opts.SnapshotIntervalSize
 		if sizeLimit == 0 {
 			sizeLimit = DefaultSnapshotIntervalSize
 		}
-
 		// get block number in last snapshot, if exists
 		var snapBlkNum uint64
 		var cc raftpb.ConfState
@@ -374,6 +370,7 @@ func (c *Chain) Start() {
 	go c.run()
 
 }
+
 
 // Order submits normal type transactions for ordering.
 func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
@@ -508,8 +505,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 }
 
 
-
-//JIRA FLY2-57 - proposed  check for forward flag in payload
+// Check for forward flag in payload
 func (c *Chain) CheckPrependForwardFlag(reqPayload []byte) bool {
 	
 	prependedFlag := reqPayload[:9]
@@ -522,7 +518,6 @@ func (c *Chain) CheckPrependForwardFlag(reqPayload []byte) bool {
 
 }
 
-//JIRA FLY2-57 : prepend forward flag
 func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
 		forwardFlag := []byte(ForwardFlag)
 	    prependReq       := append([]byte{}, forwardFlag...)
@@ -537,8 +532,6 @@ func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
 // TODO(harry_knight) no longer single leader in case of hlmirbft. Send to bucket/s which is watched by a leader?
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 
-        //JIRA FLY2-57 : prepend forward flag
-	
 	if err := c.isRunning(); err != nil {
 		c.Metrics.ProposalFailures.Add(1)
 		return err
@@ -616,6 +609,7 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 // Returns
 //   -- err error; the error encountered, if any.
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
+
 //JIRA FLY2-57 - proposed changes 
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 
@@ -924,9 +918,11 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 	}
 
 	//TODO(harrymknight) Possibly remove c.ActiveNodes field from Metrics
+
 	if changes.UnacceptableQuorumLoss() {
 		return errors.Errorf("only %d out of a required 4 nodes are provided, configuration will result in quorum loss", len(changes.NewConsenters))
 	}
+
 
 	return nil
 }
@@ -980,10 +976,65 @@ func (c *Chain) Apply(*msgs.QEntry) error {
 	return nil
 }
 
+
+//JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
-	return nil, nil, nil
+
+	pr := c.Node.PendingReconfigurations
+
+	c.Node.PendingReconfigurations = nil
+
+	data, err := proto.Marshal(&msgs.NetworkState{
+		Config:                  networkConfig,
+		Clients:                 clientsState,
+		PendingReconfigurations: pr,
+	})
+
+	if err != nil {
+
+		return nil, nil, errors.WithMessage(err, "could not marsshal network state")
+
+	}
+
+    c.Node.CheckpointSeqNo++
+
+	countValue := make([]byte, 8)
+
+	binary.BigEndian.PutUint64(countValue, uint64(c.Node.CheckpointSeqNo))
+
+	networkStates := append(countValue, data...)
+
+	err = c.Node.PersistSnapshot(c.Node.CheckpointSeqNo, networkStates)
+
+	if err != nil {
+
+		c.logger.Panicf("error while snap persist : %s", err)
+
+	}
+
+	return networkStates, pr, nil
+
 }
 
+//JIRA FLY2-58 proposed changes:Implemented the TransferTo Function
 func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
-	return nil, nil
+
+	networkState := &msgs.NetworkState{}
+
+	checkSeqNo := snap[:8] //get the sequence number of the snap
+
+	snapShot, err := c.Node.ReadSnapFiles(binary.BigEndian.Uint64(checkSeqNo), c.opts.SnapDir)
+
+	if err != nil {
+
+		return nil, err
+	}
+
+	if err := proto.Unmarshal(snapShot[8:], networkState); err != nil {
+
+		return nil, err
+
+	}
+
+	return networkState, nil
 }
