@@ -221,7 +221,7 @@ func (id *identity) getHashOpt(hashFamily string) (bccsp.HashOpts, error) {
 	case bccsp.SHA3:
 		return bccsp.GetHashOpt(bccsp.SHA3_256)
 	}
-	return nil, errors.Errorf("hash familiy not recognized [%s]", hashFamily)
+	return nil, errors.Errorf("hash family not recognized [%s]", hashFamily)
 }
 
 type signingidentity struct {
