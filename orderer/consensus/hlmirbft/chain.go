@@ -263,7 +263,6 @@ func NewChain(
 		haltC:             make(chan struct{}),
 		doneC:             make(chan struct{}),
 		startC:            make(chan struct{}),
-		snapC:             make(chan *raftpb.Snapshot),
 		errorC:            make(chan struct{}),
 		observeC:          observeC,
 		support:           support,
@@ -667,6 +666,9 @@ func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]
 	}
 }
 
+// TODO(harrymknight) Will have to be adapted for Mir. When TransferTo is called we want both the state machine to catch-up
+//  and the underlying ledger of this node. This is why TransferTo is called with the checkpointSeqNo. The checkpointSeqNo
+//  will map to the index of the config block that has been written to the ledger.
 func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 	b, err := protoutil.UnmarshalBlock(snap.Data)
 	if err != nil {
