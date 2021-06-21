@@ -60,6 +60,7 @@ var _ = Describe("TLS", func() {
 		tlsConfig, err := httpTLS.Config()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(tlsConfig).To(Equal(&tls.Config{
+			MinVersion:   tls.VersionTLS12,
 			Certificates: []tls.Certificate{cert},
 			CipherSuites: []uint16{
 				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
