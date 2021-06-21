@@ -314,3 +314,24 @@ func TestChannelParticipationDefaults(t *testing.T) {
 	require.Equal(t, cfg.ChannelParticipation.Enabled, Defaults.ChannelParticipation.Enabled)
 	require.Equal(t, cfg.ChannelParticipation.MaxRequestBodySize, Defaults.ChannelParticipation.MaxRequestBodySize)
 }
+
+func TestKeepaliveConfig(t *testing.T) {
+	os.Setenv("ORDERER_GENERAL_KEEPALIVE_CLIENTINTERVAL", "30s")
+	os.Setenv("ORDERER_GENERAL_KEEPALIVE_SERVERINTERVAL", "60s")
+	os.Setenv("ORDERER_GENERAL_KEEPALIVE_SERVERTIMEOUT", "30s")
+	defer os.Unsetenv("ORDERER_GENERAL_KEEPALIVE_CLIENTINTERVAL")
+	defer os.Unsetenv("ORDERER_GENERAL_KEEPALIVE_SERVERINTERVAL")
+	defer os.Unsetenv("ORDERER_GENERAL_KEEPALIVE_SERVERTIMEOUT")
+	cleanup := configtest.SetDevFabricConfigPath(t)
+	defer cleanup()
+
+	cc := &configCache{}
+	cfg, err := cc.load()
+	require.NoError(t, err, "Load good config returned unexpected error")
+	require.NotNil(t, cfg, "Could not load config")
+	require.Equal(t, 30*time.Second, cfg.General.Keepalive.ClientInterval)
+	require.Equal(t, Defaults.General.Keepalive.ClientTimeout, cfg.General.Keepalive.ClientTimeout)
+	require.Equal(t, Defaults.General.Keepalive.ServerMinInterval, cfg.General.Keepalive.ServerMinInterval)
+	require.Equal(t, 60*time.Second, cfg.General.Keepalive.ServerInterval)
+	require.Equal(t, 30*time.Second, cfg.General.Keepalive.ServerTimeout)
+}

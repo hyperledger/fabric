@@ -41,6 +41,11 @@ General:
         ClientRootCAs:
     # Keepalive settings for the GRPC server.
     Keepalive:
+        # ClientInterval is the time between pings to server
+        ClientInterval: 60s
+        # ClientTimeout is the duration the client waits for a response from
+        # a server before closing the connection
+        ClientTimeout: 20s
         # ServerMinInterval is the minimum permitted time between client pings.
         # If clients send pings more frequently, the server will
         # disconnect them.

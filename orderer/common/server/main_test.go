@@ -155,11 +155,11 @@ func TestInitializeServerConfig(t *testing.T) {
 	require.Equal(t, [][]byte{expectedContent}, sc.SecOpts.ClientRootCAs)
 
 	sc = initializeServerConfig(conf, nil)
-	defaultOpts := comm.DefaultKeepaliveOptions
-	require.Equal(t, defaultOpts.ServerMinInterval, sc.KaOpts.ServerMinInterval)
+	require.Equal(t, time.Duration(0), sc.KaOpts.ServerMinInterval)
 	require.Equal(t, time.Duration(0), sc.KaOpts.ServerInterval)
 	require.Equal(t, time.Duration(0), sc.KaOpts.ServerTimeout)
 	require.Equal(t, 7*time.Second, sc.ConnectionTimeout)
+
 	testDuration := 10 * time.Second
 	conf.General.Keepalive = localconfig.Keepalive{
 		ServerMinInterval: testDuration,

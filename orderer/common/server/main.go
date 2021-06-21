@@ -532,9 +532,13 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 }
 
 func initializeClusterClientConfig(conf *localconfig.TopLevel) (comm.ClientConfig, bool) {
+	kaOpts := comm.DefaultKeepaliveOptions
+	kaOpts.ClientTimeout = conf.General.Keepalive.ClientTimeout
+	kaOpts.ClientInterval = conf.General.Keepalive.ClientInterval
+
 	cc := comm.ClientConfig{
 		AsyncConnect: true,
-		KaOpts:       comm.DefaultKeepaliveOptions,
+		KaOpts:       kaOpts,
 		DialTimeout:  conf.General.Cluster.DialTimeout,
 		SecOpts:      comm.SecureOptions{},
 	}
@@ -636,11 +640,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		logger.Infof("Starting orderer with %s enabled", msg)
 	}
 	kaOpts := comm.DefaultKeepaliveOptions
-	// keepalive settings
-	// ServerMinInterval must be greater than 0
-	if conf.General.Keepalive.ServerMinInterval > time.Duration(0) {
-		kaOpts.ServerMinInterval = conf.General.Keepalive.ServerMinInterval
-	}
+	kaOpts.ServerMinInterval = conf.General.Keepalive.ServerMinInterval
 	kaOpts.ServerInterval = conf.General.Keepalive.ServerInterval
 	kaOpts.ServerTimeout = conf.General.Keepalive.ServerTimeout
 

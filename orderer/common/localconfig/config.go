@@ -73,6 +73,8 @@ type Cluster struct {
 
 // Keepalive contains configuration for gRPC servers.
 type Keepalive struct {
+	ClientInterval    time.Duration
+	ClientTimeout     time.Duration
 	ServerMinInterval time.Duration
 	ServerInterval    time.Duration
 	ServerTimeout     time.Duration
@@ -233,6 +235,13 @@ var Defaults = TopLevel{
 			ReplicationRetryTimeout:              time.Second * 5,
 			ReplicationPullTimeout:               time.Second * 5,
 			CertExpirationWarningThreshold:       time.Hour * 24 * 7,
+		},
+		Keepalive: Keepalive{
+			ClientInterval:    time.Minute * 1,
+			ClientTimeout:     time.Second * 20,
+			ServerInterval:    time.Hour * 2,
+			ServerTimeout:     time.Second * 20,
+			ServerMinInterval: time.Minute * 1,
 		},
 		LocalMSPDir: "msp",
 		LocalMSPID:  "SampleOrg",
@@ -414,6 +423,16 @@ func (c *TopLevel) completeInitialization(configDir string) {
 			c.General.Cluster.ReplicationBackgroundRefreshInterval = Defaults.General.Cluster.ReplicationBackgroundRefreshInterval
 		case c.General.Cluster.CertExpirationWarningThreshold == 0:
 			c.General.Cluster.CertExpirationWarningThreshold = Defaults.General.Cluster.CertExpirationWarningThreshold
+		case c.General.Keepalive.ClientInterval == 0:
+			c.General.Keepalive.ClientInterval = Defaults.General.Keepalive.ClientInterval
+		case c.General.Keepalive.ClientTimeout == 0:
+			c.General.Keepalive.ClientTimeout = Defaults.General.Keepalive.ClientTimeout
+		case c.General.Keepalive.ServerInterval == 0:
+			c.General.Keepalive.ServerInterval = Defaults.General.Keepalive.ServerInterval
+		case c.General.Keepalive.ServerTimeout == 0:
+			c.General.Keepalive.ServerTimeout = Defaults.General.Keepalive.ServerTimeout
+		case c.General.Keepalive.ServerMinInterval == 0:
+			c.General.Keepalive.ServerMinInterval = Defaults.General.Keepalive.ServerMinInterval
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.Certificate == "":
 			logger.Panicf("General.Kafka.TLS.Certificate must be set if General.Kafka.TLS.Enabled is set to true.")
 		case c.Kafka.TLS.Enabled && c.Kafka.TLS.PrivateKey == "":
