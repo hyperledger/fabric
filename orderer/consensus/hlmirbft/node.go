@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
@@ -24,6 +25,7 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/pkg/errors"
 	"go.etcd.io/etcd/raft/raftpb"
 )
 
@@ -39,6 +41,9 @@ type node struct {
 	WALDir      string
 	ReqStoreDir string
 
+	CheckpointSeqNo uint64 //JIRA FLY2-66
+	PendingReconfigurations []*msgs.Reconfiguration  //JIRA FLY2-66
+
 	rpc RPC
 
 	chain *Chain
@@ -49,6 +54,8 @@ type node struct {
 
 	mirbft.Node
 }
+
+const snapSuffix = ".snap"
 
 func (n *node) start(fresh, join bool) {
 	n.logger.Debugf("Starting mirbft node: #peers: %v", len(n.metadata.ConsenterIds))
@@ -170,4 +177,47 @@ func (n *node) ReadSnapFiles(seqNo uint64, SnapDir string) ([]byte, error) {
 		snapBytes, err = ioutil.ReadFile(filepath.Join(SnapDir, snapFileList[numberOfFiles-1]))
 	}
 	return snapBytes, err
+}
+
+//JIRA FLY2- 66 Proposed changes:Implemented the PersistSnapshot functionality to persist the snaps to local files
+func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
+	if err := os.MkdirAll(n.chain.opts.SnapDir, os.ModePerm); err != nil {
+		return errors.Errorf("failed to mkdir '%s' for snapshot: %s", n.chain.opts.SnapDir, err)
+	}
+
+	TimeStamp := time.Now().Unix()
+
+	fname := fmt.Sprintf("%016x-%016x%s", seqNo, TimeStamp, snapSuffix )
+
+	spath := filepath.Join(n.chain.opts.SnapDir, fname)
+
+	f, err := os.OpenFile(spath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+
+	byteNumber, err := f.Write(Data)
+	if err == nil && byteNumber < len(Data) {
+		err = io.ErrShortWrite
+		return err
+	}
+	if err1 := f.Close(); err == nil {
+		err = err1
+	}
+	return err
+}
+
+// JIRA FLY2-66 proposed changes: PurgeSnapFiles takes the list of snap files in the snap directory  and removes them
+func (n *node) PurgeSnapFiles(SnapDir string) error {
+
+	snapFileList, err := filepath.Glob(filepath.Join(SnapDir, snapSuffix))
+
+	if err != nil {
+		return errors.Errorf("Cannot retrive snap files : %s", err)
+	}
+	err = PurgeFiles(snapFileList[:len(snapFileList)-2], SnapDir, n.logger)
+	if err != nil {
+		return err
+	}
+	return nil
 }
