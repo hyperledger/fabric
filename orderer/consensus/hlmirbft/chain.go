@@ -154,7 +154,6 @@ type Chain struct {
 	haltC    chan struct{}         // Signals to goroutines that the chain is halting
 	doneC    chan struct{}         // Closes when the chain halts
 	startC   chan struct{}         // Closes when the node is started
-	snapC    chan *raftpb.Snapshot // Signal to catch up with snapshot
 
 	errorCLock sync.RWMutex
 	errorC     chan struct{} // returned by Errored()
