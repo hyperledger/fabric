@@ -20,7 +20,7 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
-	"go.etcd.io/etcd/raft/raftpb"
+	
 )
 
 type node struct {
