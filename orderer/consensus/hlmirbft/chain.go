@@ -918,9 +918,9 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 
 	//TODO(harrymknight) Possibly remove c.ActiveNodes field from Metrics
 
-	/*if changes.UnacceptableQuorumLoss() {
+	if changes.UnacceptableQuorumLoss() {
 		return errors.Errorf("only %d out of a required 4 nodes are provided, configuration will result in quorum loss", len(changes.NewConsenters))
-	}*/
+	}
 
 
 	return nil
