@@ -1,85 +1,130 @@
 # MirBFT Library
 
-MirBFT is a library implementing the [Mir byzantine fault tolerant consensus protocol](https://arxiv.org/abs/1906.05552) in a network transport, storage, and cryptographic algorithm agnostic way.  MirBFT hopes to be a building block of a next generation of distributed systems, providing an implementation of [atomic broadcast](https://en.wikipedia.org/wiki/Atomic_broadcast) which can be utilized by any distributed system.
+This open-source project is part of [Hyperledger Labs](https://labs.hyperledger.org/labs/mir-bft.html).
+It aims at developing a production-quality implementation of the
+[Mir Byzantine fault tolerant consensus protocol](https://arxiv.org/abs/1906.05552)
+and integrating it with Hyperledger Fabric.
+Being framed as a library, however, MirBFT's goal is also to serve as a general-purpose high-performance BFT component
+of other projects as well.
 
-MirBFT improves on traditional atomic broadcast protocols like PBFT and Raft which always have a single active leader by allowing concurrent leaders and reconciling total order in a deterministic and provably safe way.  The multi-leader nature of Mir should lead to exceptional performance especially on wide area networks but should be suitable for LAN deployments as well.
+The [research branch](https://github.com/hyperledger-labs/mirbft/tree/research) contains code developed independently
+as a research prototype and was used to produce experimental results
+for the [research paper](https://arxiv.org/abs/1906.05552).
 
-MirBFT, like the original [PBFT](https://www.microsoft.com/en-us/research/wp-content/uploads/2017/01/p398-castro-bft-tocs.pdf) protocol, emphasizes consenting over digests, rather than over actual request data.  This allows for more novel methods of request dissemination, and in the optimal case, the state machine may never need to fetch request data.
+## Current status
 
-MirBFT, also like the original PBFT shuns signatures internally, instead preferring to collect quorum certificates during epoch change and other such events.  In many ways, this complicates the internal implementation of the library, but it drastically simplifies the external interface and prevents signature validation from becoming a bottleneck under certain workloads.
+This library is in development and not usable yet.
+This document describes what the library _should become_ rather than what it _currently is_.
+This document itself is more than likely to still change.
+You are more than welcome to contribute to accelerating the development of the MirBFT library.
+Have a look at the [Contributions section](#contributing) if you want to help out!
 
-[![Build Status](https://github.com/hyperledger-labs/mirbft/workflows/test/badge.svg)](https://github.com/hyperledger-labs/mirbft/actions)
+[![Build Status](https://github.com/hyperledger-labs/mirbft/actions/workflows/test.yml/badge.svg)](https://github.com/hyperledger-labs/mirbft/actions)
 [![GoDoc](https://godoc.org/github.com/hyperledger-labs/mirbft?status.svg)](https://godoc.org/github.com/hyperledger-labs/mirbft)
 
-## Architecture
+## Overview
 
-The high level structure of the MirBFT library steals heavily from the architecture of [etcdraft](https://github.com/etcd-io/etcd/tree/master/raft). A single threaded state machine is mutated by short lived, non-blocking operations.  Operations which might block or which have any degree of computational complexity (like hashing, network calls, etc.) are delegated to the caller.
+MirBFT is a library implementing the [Mir byzantine fault tolerant consensus protocol](https://arxiv.org/abs/1906.05552)
+in a network transport, storage, and cryptographic algorithm agnostic way.
+MirBFT hopes to be a building block of a next generation of distributed systems,
+providing an implementation of [atomic broadcast](https://en.wikipedia.org/wiki/Atomic_broadcast)
+which can be utilized by any distributed system.
 
-The required components not dictated by the implementation include:
+MirBFT improves on traditional atomic broadcast protocols
+like [PBFT](https://www.microsoft.com/en-us/research/wp-content/uploads/2017/01/p398-castro-bft-tocs.pdf) and Raft
+which always have a single active leader by allowing concurrent leaders
+and reconciling total order in a deterministic way.
 
-1. A write-ahead-log for persisting the state machine log entries. (or use [the provided one](https://github.com/hyperledger-labs/mirbft/blob/master/pkg/simplewal/wal.go)).
-2. A hashing implementation (such as the builtin [sha256](https://golang.org/pkg/crypto/sha256/)).
-3. A request store for persisting application requests while they are consented upon (or use [the provided one](https://github.com/hyperledger-labs/mirbft/blob/master/pkg/reqstore/reqstore.go)).
-4. An application state which can apply committed requests and may be snapshotted.
+The multi-leader nature of Mir should lead to exceptional performance
+especially on wide area networks,
+but should be suitable for LAN deployments as well.
 
-For basic applications, only (4) may need to be written, though for applications which wish to optimize for throughput (for instance avoiding committing request data to disk twice), a custom implementation of (3) which integrates with (4) may be desirable.
+MirBFT, decouples request payload dissemination from ordering,
+outputting totally ordered request digests rather than all request data.
+This allows for novel methods of request dissemination.
+The provided request dissemination method, however, does guarantee the availability of all request payload data.
 
-For more information, see the detailed [design document](/docs/Design.md).  Note, the documentation has fallen a bit behind based on the implementation work that has happened over the last few months.  The documentation should be taken with a grain of salt.
+## Design
+
+The high level structure of the MirBFT library
+is inspired by [etcdraft](https://github.com/etcd-io/etcd/tree/master/raft).
+The protocol logic is implemented as a state machine that is mutated by short-lived, non-blocking operations.
+Operations which might block or which have any degree of computational complexity (like hashing, I/O, etc.)
+are delegated to the caller.
+
+TODO: Link the "state machine" to the documentation of the state machine interface when it exists.
+
+Additional components required to use the library are:
+
+1. A **write-ahead-log (WAL)** that the protocol uses for persisting its state.
+   This is crucial for crash-recovery - a recovering node will use the entries in this log when re-initializing.
+   External actions (like sending messages or interacting with the application) are always reflected in the WAL
+   before they occur.
+   This way a crash of a node and a subsequent recovery are completely transparent to the rest of the system,
+   except a potential delay incurred by the recovery.
+   The users of this library can use their own WAL implementation
+   or use [the library-provided one](https://github.com/hyperledger-labs/mirbft/tree/main/pkg/simplewal)
+2. A **request store** for persisting application requests.
+   This is a simple persistent key-value store where requests are indexed by their hashes.
+   The users of this library can use their own request store implementation
+   or use [the library-provided one](https://github.com/hyperledger-labs/mirbft/tree/main/pkg/reqstore).
+3. A hashing implementation.
+   Any hash implementation can be provided that satisfies Go's standard library interface,
+   e.g., [sha256](https://golang.org/pkg/crypto/sha256/).
+4. An application that will consume the agreed-upon requests and provide state snapshots on library request.
+   Looking at MirBFT as a state machine replication (SMR) library,
+   this application is the "state machine" in terms of SMR.
+   It is not to be confused with the library-internal state machine that implements the protocol.
+5. A networking component that implements sending and receiving messages over the network.
+   It is the networking component's task to establish physical connections to other nodes
+   and abstract away addresses, ports, authentication, etc.
+   The library relies on nodes being addressable by their numerical IDs and the messages received being authenticated.
+   TODO: Provide a simple implementation and link it here.
+
+TODO: Link the component names to the documentation of the respective interfaces when this documentation is ready.
+
+For basic applications, the library-provided components should be sufficient.
+To increase performance, the user of the library may provide their own optimized implementations.
 
 ## Using Mir
  
-This repository is a new project and under active development and as such, unless you're interested in contributing, it's probably not a good choice for your project (yet!). Most all basic features are present, including state transfer and reconfiguration.  For now, if you'd like to see a sample application based on some older code, please look at [mirbft-sample](https://github.com/jyellick/mirbft-sample), but this can and should be updated..
+TODO: Refer to the sample application when it is integrated in this repository.
 
-### Preview
+## Contributing
 
-Currently, the Mir APIs are mostly stable, but there are significant caveats associated with assorted features.  There are APIs for reconfiguration, but it does not entirely work, and there are some assorted unhandled internal cases (like some known missing validation in new epoch messages, poor new epoch leader selection, and more).  However, the overall code architecture is finalizing, and it should be possible to parse it and begin to replicate the patterns and begin contributing.
+**Contributions are more than welcome!**
 
-```
-networkState := mirbft.StandardInitialNetworkState(4, 0)
+If you want to contribute, have a look at Contributor's guide
+(TODO: create a contributor's guide link when there is a contributor's guide.)
+and at the open [issues](https://github.com/hyperledger-labs/mirbft/issues).
+If you have any questions (specific or general),
+do not hesitate to post them on [MirBFT's Rocket.Chat channel](https://chat.hyperledger.org/channel/mirbft).
+You can also drop an email to the active maintainer(s).
 
-nodeConfig := &mirbft.Config{
-	ID:     uint64(i),
-	Logger: mirbft.ConsoleInfoLogger,
-	BatchSize: 20,
-	HeartbeatTicks:       2,
-	SuspectTicks:         4,
-	NewEpochTimeoutTicks: 8,
-	BufferSize:           500,
-}
+## Summary of References
 
-applicationLog := MyNewApplicationLog(networkState)
+- Public Rocket.Chat channel: https://chat.hyperledger.org/channel/mirbft
+- Hyperledger Labs page: https://labs.hyperledger.org/labs/mir-bft.html
+- Paper describing the algorithm: https://arxiv.org/abs/1906.05552
+- Original PBFT paper: https://www.microsoft.com/en-us/research/wp-content/uploads/2017/01/p398-castro-bft-tocs.pdf
 
-node, err := mirbft.StartNewNode(nodeConfig, networkState, applicationLog.Snap())
-// handle err
+## Active maintainer(s)
 
-processor := &mirbft.SerialProcessor{
-	Node:      node,
-	Hasher:    sha256.New,
-	Log:       applicationLog,   // mirbft.Log interface impl
-	Link:      network,          // mirbft.Link interface impl
-}
+- [Matej Pavlovic](https://github.com/matejpavlovic) (mpa@zurich.ibm.com)
 
-go func() {
-	ticker := time.NewTicker(time.Millisecond)
-	defer ticker.Stop()
+## Initial Committers
 
-	for {
-		select {
-		case actions := <-node.Ready():
-			node.AddResults(processor.Process(&actions))
-		case <-ticker.C:
-			node.Tick()
-		case <-node.Err():
-			return
-		}
-	}
-}()
+- [Jason Yellick](https://github.com/jyellick)
+- [Matej Pavlovic](https://github.com/matejpavlovic)
+- [Chrysoula Stathakopoulou](https://github.com/stchrysa)
+- [Marko Vukolic](https://github.com/vukolic)
 
-// Perform application logic
-err := node.Propose(context.TODO(), &pb.Request{
-	ClientId: 0,
-	ReqNo: 0,
-	Data: []byte("some-data"),
-})
-...
-```
+## Sponsor
+
+[Angelo de Caro](https://github.com/adecaro) (adc@zurich.ibm.com).
+
+## License
+
+The MirBFT library source code is made available under the Apache License, version 2.0 (Apache-2.0).
+
+TODO: Add a license file and link to it.

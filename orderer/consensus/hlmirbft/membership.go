@@ -8,13 +8,10 @@ package hlmirbft
 
 import (
 	"fmt"
-
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
-	"go.etcd.io/etcd/raft"
-	"go.etcd.io/etcd/raft/raftpb"
 )
 
 // MembershipByCert convert consenters map into set encapsulated by map
@@ -27,6 +24,18 @@ func MembershipByCert(consenters map[uint64]*hlmirbft.Consenter) map[string]uint
 	return set
 }
 
+type Type int
+
+const (
+	ConfChangeRemoveNode Type = iota
+	ConfChangeAddNode
+)
+
+type ConfChange struct {
+	NodeID uint64
+	Type   Type
+}
+
 // MembershipChanges keeps information about membership
 // changes introduced during configuration update
 type MembershipChanges struct {
@@ -34,13 +43,12 @@ type MembershipChanges struct {
 	NewConsenters    map[uint64]*hlmirbft.Consenter
 	AddedNodes       []*hlmirbft.Consenter
 	RemovedNodes     []*hlmirbft.Consenter
-	ConfChange       *raftpb.ConfChange
+	ConfChange       *ConfChange
 	RotatedNode      uint64
 }
 
 // ComputeMembershipChanges computes membership update based on information about new consenters, returns
 // two slices: a slice of added consenters and a slice of consenters to be removed
-// TODO(harrymknight) adapt for MirBFT. Type ConfChange is Raft specific. Find out if MirBFT equivalent exists.
 func ComputeMembershipChanges(oldMetadata *hlmirbft.BlockMetadata, oldConsenters map[uint64]*hlmirbft.Consenter, newConsenters []*hlmirbft.Consenter) (mc *MembershipChanges, err error) {
 	result := &MembershipChanges{
 		NewConsenters:    map[uint64]*hlmirbft.Consenter{},
@@ -85,16 +93,16 @@ func ComputeMembershipChanges(oldMetadata *hlmirbft.BlockMetadata, oldConsenters
 		result.NewConsenters[nodeID] = result.AddedNodes[0]
 		result.NewBlockMetadata.ConsenterIds[addedNodeIndex] = nodeID
 		result.NewBlockMetadata.NextConsenterId++
-		result.ConfChange = &raftpb.ConfChange{
+		result.ConfChange = &ConfChange{
 			NodeID: nodeID,
-			Type:   raftpb.ConfChangeAddNode,
+			Type:   ConfChangeAddNode,
 		}
 	case len(result.AddedNodes) == 0 && len(result.RemovedNodes) == 1:
 		// removed node
 		nodeID := deletedNodeID
-		result.ConfChange = &raftpb.ConfChange{
+		result.ConfChange = &ConfChange{
 			NodeID: nodeID,
-			Type:   raftpb.ConfChangeRemoveNode,
+			Type:   ConfChangeRemoveNode,
 		}
 		delete(result.NewConsenters, nodeID)
 	case len(result.AddedNodes) == 0 && len(result.RemovedNodes) == 0:
@@ -122,30 +130,22 @@ func (mc *MembershipChanges) Rotated() bool {
 	return len(mc.AddedNodes) == 1 && len(mc.RemovedNodes) == 1
 }
 
-// UnacceptableQuorumLoss returns true if membership change will result in avoidable quorum loss,
-// given current number of active nodes in cluster. Avoidable means that more nodes can be started
-// to prevent quorum loss. Sometimes, quorum loss is inevitable, for example expanding 1-node cluster.
-// TODO(harrymknight) adapt for MirBFT. Quorum will be lost if consenters is less than 4.
-func (mc *MembershipChanges) UnacceptableQuorumLoss(active []uint64) bool {
-	activeMap := make(map[uint64]struct{})
-	for _, i := range active {
-		activeMap[i] = struct{}{}
-	}
+// UnacceptableQuorumLoss returns true if membership change will result in avoidable quorum loss.
+// There is no need to check for the number of active nodes since we assert that there are at most f byzantine nodes.
+// By this assertion the remaining nodes are active and configuration consensus will be reached.
+func (mc *MembershipChanges) UnacceptableQuorumLoss() bool {
 
-	isCFT := len(mc.NewConsenters) > 2 // if resulting cluster cannot tolerate any fault, quorum loss is inevitable
-	quorum := len(mc.NewConsenters)/2 + 1
+	isBFT := len(mc.NewConsenters) > 3 // if resulting cluster is not byzantine fault tolerant, quorum correctness in not guaranteed
 
 	switch {
-	case mc.ConfChange != nil && mc.ConfChange.Type == raftpb.ConfChangeAddNode: // Add
-		return isCFT && len(active) < quorum
+	case mc.ConfChange != nil && mc.ConfChange.Type == ConfChangeAddNode: // Add
+		return !isBFT
 
-	case mc.RotatedNode != raft.None: // Rotate
-		delete(activeMap, mc.RotatedNode)
-		return isCFT && len(activeMap) < quorum
+	case mc.RotatedNode != 0: // Rotate
+		return !isBFT
 
-	case mc.ConfChange != nil && mc.ConfChange.Type == raftpb.ConfChangeRemoveNode: // Remove
-		delete(activeMap, mc.ConfChange.NodeID)
-		return len(activeMap) < quorum
+	case mc.ConfChange != nil && mc.ConfChange.Type == ConfChangeRemoveNode: // Remove
+		return !isBFT
 
 	default: // No change
 		return false
