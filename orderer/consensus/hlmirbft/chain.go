@@ -18,7 +18,7 @@ import (
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
-
+	pb "github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
 	"code.cloudfoundry.org/clock"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -64,6 +64,9 @@ const (
 	// DefaultLeaderlessCheckInterval is the interval that a chain checks
 	// its own leadership status.
 	DefaultLeaderlessCheckInterval = time.Second * 10
+
+	//JIRA FLY2-64: Prepend flag to check request is forward 
+	ForwardFlag = "@forward/"
 )
 
 //go:generate counterfeiter -o mocks/configurator.go . Configurator
@@ -133,7 +136,7 @@ type Options struct {
 
 type submit struct {
 	req    *orderer.SubmitRequest
-	leader chan uint64
+	//leader chan uint64 //JIRA FLY2-64 :No leader required with mirbft.
 }
 
 type gc struct {
@@ -373,6 +376,7 @@ func (c *Chain) Start() {
 
 }
 
+
 // Order submits normal type transactions for ordering.
 func (c *Chain) Order(env *common.Envelope, configSeq uint64) error {
 	c.Metrics.NormalProposalsReceived.Add(1)
@@ -505,41 +509,68 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	return nil
 }
 
+
+
+//JIRA FLY2-64 - proposed  check for forward flag in payload
+func (c *Chain) CheckPrependForwardFlag(reqPayload []byte) bool {
+	
+	prependedFlag := reqPayload[:9]
+
+	if string(prependedFlag) == ForwardFlag {
+		return true
+	}
+
+	return false
+
+}
+
+//JIRA FLY2-64 : prepend forward flag
+func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
+		forwardFlag := []byte(ForwardFlag)
+	    prependReq       := append([]byte{}, forwardFlag...)
+		prependReq        = append(prependReq, reqPayload...)
+		return prependReq
+}
+
 // Submit forwards the incoming request to:
 // - the local run goroutine if this is leader
 // - the actual leader via the transport mechanism
 // The call fails if there's no leader elected yet.
 // TODO(harry_knight) no longer single leader in case of hlmirbft. Send to bucket/s which is watched by a leader?
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
+
 	if err := c.isRunning(); err != nil {
 		c.Metrics.ProposalFailures.Add(1)
 		return err
 	}
 
-	leadC := make(chan uint64, 1)
-	select {
-	case c.submitC <- &submit{req, leadC}:
-		lead := <-leadC
-		if lead == raft.None {
-			c.Metrics.ProposalFailures.Add(1)
-			return errors.Errorf("no Raft leader")
-		}
+	submitPayload    := req.Payload.GetPayload()
+	isForwardRequest := c.CheckPrependForwardFlag(submitPayload)
 
-		if lead != c.MirBFTID {
-			if err := c.rpc.SendSubmit(lead, req); err != nil {
-				c.Metrics.ProposalFailures.Add(1)
-				return err
+	if !isForwardRequest {
+
+		req.Payload.Payload = c.PrependForwardFlag(submitPayload)
+
+		for nodeID, _ := range c.opts.Consenters {
+
+			if nodeID != c.MirBFTID {
+				err := c.Node.rpc.SendSubmit(nodeID, req)
+				if err != nil {
+					c.logger.Warnf("Failed to broadcast Message to Node : %d ", nodeID)
+					return err
+				}
 			}
+
 		}
 
-	case <-c.doneC:
-		c.Metrics.ProposalFailures.Add(1)
-		return errors.Errorf("chain is stopped")
-	}
+	} 
 
-	return nil
+	req.Payload.Payload = submitPayload[9:]
+	
+	return c.ordered(req)
+
+
 }
-
 type apply struct {
 	entries []raftpb.Entry
 	soft    *raft.SoftState
@@ -583,42 +614,58 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 
 // Orders the envelope in the `msg` content. SubmitRequest.
 // Returns
-//   -- batches [][]*common.Envelope; the batches cut,
-//   -- pending bool; if there are envelopes pending to be ordered,
 //   -- err error; the error encountered, if any.
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
-func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelope, pending bool, err error) {
+//JIRA FLY2-64 - proposed changes 
+func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
+
 	seq := c.support.Sequence()
 
-	if c.isConfig(msg.Payload) {
-		// ConfigMsg
-		if msg.LastValidationSeq < seq {
-			c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
-			msg.Payload, _, err = c.support.ProcessConfigMsg(msg.Payload)
-			if err != nil {
-				c.Metrics.ProposalFailures.Add(1)
-				return nil, true, errors.Errorf("bad config message: %s", err)
-			}
-		}
-
-		batch := c.support.BlockCutter().Cut()
-		batches = [][]*common.Envelope{}
-		if len(batch) != 0 {
-			batches = append(batches, batch)
-		}
-		batches = append(batches, []*common.Envelope{msg.Payload})
-		return batches, false, nil
-	}
-	// it is a normal message
-	if msg.LastValidationSeq < seq {
-		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
+	
+	if msg.LastValidationSeq < seq { 
+			
 		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
 			c.Metrics.ProposalFailures.Add(1)
-			return nil, true, errors.Errorf("bad normal message: %s", err)
+			return errors.Errorf("bad normal message: %s", err)
 		}
+
 	}
-	batches, pending = c.support.BlockCutter().Ordered(msg.Payload)
-	return batches, pending, nil
+
+	return c.proposeMsg(msg);
+
+}
+
+//FLY2-64 - Proposed Change: New function to propose normal messages to node
+func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
+
+	clientID := c.MirBFTID
+	proposer := c.Node.Client(clientID)
+	reqNo, err := proposer.NextReqNo() 
+
+	if err != nil {
+		return errors.Errorf("failed to generate next request number")
+	}
+	req := &pb.Request{
+		ClientId: clientID,
+		ReqNo:    reqNo,
+		Data:     msg.Payload.GetPayload(),
+	}
+
+	reqBytes, err := proto.Marshal(req)
+
+	if err != nil {
+		return errors.Errorf("Cannot marshal Message : %s",err)
+	}
+
+	err = proposer.Propose(context.Background(), reqNo, reqBytes)
+
+	if err != nil {
+		return errors.WithMessagef(err, "failed to propose message to client %d", clientID)
+	}
+
+	return nil
+	
+
 }
 
 func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]*common.Envelope) {
@@ -871,9 +918,11 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 	}
 
 	//TODO(harrymknight) Possibly remove c.ActiveNodes field from Metrics
+
 	if changes.UnacceptableQuorumLoss() {
 		return errors.Errorf("only %d out of a required 4 nodes are provided, configuration will result in quorum loss", len(changes.NewConsenters))
 	}
+
 
 	return nil
 }
