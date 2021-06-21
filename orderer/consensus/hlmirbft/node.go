@@ -29,7 +29,6 @@ import (
 
 	"code.cloudfoundry.org/clock"
 	"github.com/hyperledger/fabric/common/flogging"
-	"go.etcd.io/etcd/raft/raftpb"
 )
 
 type node struct {
@@ -139,13 +138,6 @@ func InitialNetworkState(ConsenterIds []uint64) *msgs.NetworkState {
 	}
 }
 
-// TODO(harry_knight) The logic contained in the infinite for loops should be retained.
-// 	It serves to start, manage, and respond to the internal clock of the FSM.
-// 	Auxiliary calls should be adapted to occur during block genesis/orderer service startup.
-func (n *node) run(campaign bool) {
-
-}
-
 func (n *node) Send(dest uint64, msg *msgs.Msg) {
 	n.unreachableLock.RLock()
 	defer n.unreachableLock.RUnlock()
@@ -160,14 +152,6 @@ func (n *node) Send(dest uint64, msg *msgs.Msg) {
 	}
 }
 
-// If this is called on leader, it picks a node that is
-// recently active, and attempt to transfer leadership to it.
-// If this is called on follower, it simply waits for a
-// leader change till timeout (ElectionTimeout).
-func (n *node) abdicateLeader(currentLead uint64) {
-
-}
-
 func (n *node) logSendFailure(dest uint64, err error) {
 	if _, ok := n.unreachable[dest]; ok {
 		n.logger.Debugf("Failed to send StepRequest to %d, because: %s", dest, err)
@@ -176,18 +160,6 @@ func (n *node) logSendFailure(dest uint64, err error) {
 
 	n.logger.Errorf("Failed to send StepRequest to %d, because: %s", dest, err)
 	n.unreachable[dest] = struct{}{}
-}
-
-func (n *node) takeSnapshot(index uint64, cs raftpb.ConfState, data []byte) {
-	/*if err := n.storage.TakeSnapshot(index, cs, data); err != nil {
-		n.logger.Errorf("Failed to create snapshot at index %d: %s", index, err)
-	}*/
-}
-
-func (n *node) lastIndex() uint64 {
-	/*i, _ := n.storage.ram.LastIndex()
-	return i*/
-	return 0
 }
 
 //JIRA FLY2-58 proposed changes:readSnapFiles loads the snap file based on the sequence number and reads the contents
