@@ -913,34 +913,6 @@ func (c *Chain) suspectEviction() bool {
 	return atomic.LoadUint64(&c.lastKnownLeader) == uint64(0)
 }
 
-func (c *Chain) newEvictionSuspector() *evictionSuspector {
-	consenterCertificate := &ConsenterCertificate{
-		Logger:               c.logger,
-		ConsenterCertificate: c.opts.Cert,
-		CryptoProvider:       c.CryptoProvider,
-	}
-
-	return &evictionSuspector{
-		amIInChannel:               consenterCertificate.IsConsenterOfChannel,
-		evictionSuspicionThreshold: 0,
-		writeBlock:                 c.support.Append,
-		createPuller:               c.createPuller,
-		height:                     c.support.Height,
-		triggerCatchUp:             c.triggerCatchup,
-		logger:                     c.logger,
-		halt: func() {
-			c.halt()
-		},
-	}
-}
-
-func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
-	select {
-	case c.snapC <- sn:
-	case <-c.doneC:
-	}
-}
-
 // TODO(harrymknight) Implement these methods
 func (c *Chain) Apply(*msgs.QEntry) error {
 	return nil
