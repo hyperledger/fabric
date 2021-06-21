@@ -9,8 +9,8 @@ package hlmirbft
 import (
 	"crypto"
 	"fmt"
-	"io"
-	"os"
+	"github.com/pkg/errors"
+	"io/ioutil"
 	"path/filepath"
 	"sync"
 	"time"
@@ -155,6 +155,29 @@ func (n *node) lastIndex() uint64 {
 }
 
 
+//JIRA FLY2-58 proposed changes:readSnapFiles loads the snap file based on the sequence number and reads the contents
+func (n *node) ReadSnapFiles(seqNo uint64, SnapDir string) ([]byte, error) {
+	
+	var snapBytes []byte
+	fileNamePattern := fmt.Sprintf("%016x-*", seqNo)
+
+	snapFileList, err := filepath.Glob(filepath.Join(SnapDir, fileNamePattern))
+	if err != nil {
+		return nil, err
+	}
+	numberOfFiles := len(snapFileList)
+	switch {
+	case numberOfFiles == 0:
+		err = errors.Errorf("file not found Error : No files found for sequence number %016x", seqNo)
+		snapBytes = nil
+	case numberOfFiles == 1:
+		snapBytes, err = ioutil.ReadFile(filepath.Join(SnapDir, snapFileList[0]))
+	case numberOfFiles > 1:
+		n.logger.Warning("File Duplication : multiple files detected for sequence number %016x", seqNo)
+		snapBytes, err = ioutil.ReadFile(filepath.Join(SnapDir, snapFileList[numberOfFiles-1]))
+	}
+	return snapBytes, err
+}
 
 //JIRA FLY2- 66 Proposed changes:Implemented the PersistSnapshot functionality to persist the snaps to local files
 func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
@@ -184,7 +207,6 @@ func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 	return err
 }
 
-
 // JIRA FLY2-66 proposed changes: PurgeSnapFiles takes the list of snap files in the snap directory  and removes them
 func (n *node) PurgeSnapFiles(SnapDir string) error {
 
@@ -199,5 +221,3 @@ func (n *node) PurgeSnapFiles(SnapDir string) error {
 	}
 	return nil
 }
-
-

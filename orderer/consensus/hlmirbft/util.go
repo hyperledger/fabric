@@ -417,35 +417,6 @@ func NodeExists(id uint64, nodes []uint64) bool {
 	return false
 }
 
-// ConfChange computes Raft configuration changes based on current Raft
-// configuration state and consenters IDs stored in RaftMetadata.
-/*func ConfChange(blockMetadata *etcdraft.BlockMetadata, confState *raftpb.ConfState) *raftpb.ConfChange {
-	raftConfChange := &raftpb.ConfChange{}
-
-	// need to compute conf changes to propose
-	if len(confState.Nodes) < len(blockMetadata.ConsenterIds) {
-		// adding new node
-		raftConfChange.Type = raftpb.ConfChangeAddNode
-		for _, consenterID := range blockMetadata.ConsenterIds {
-			if NodeExists(consenterID, confState.Nodes) {
-				continue
-			}
-			raftConfChange.NodeID = consenterID
-		}
-	} else {
-		// removing node
-		raftConfChange.Type = raftpb.ConfChangeRemoveNode
-		for _, nodeID := range confState.Nodes {
-			if NodeExists(nodeID, blockMetadata.ConsenterIds) {
-				continue
-			}
-			raftConfChange.NodeID = nodeID
-		}
-	}
-
-	return raftConfChange
-}*/
-
 // CreateConsentersMap creates a map of Raft Node IDs to Consenter given the block metadata and the config metadata.
 func CreateConsentersMap(blockMetadata *hlmirbft.BlockMetadata, configMetadata *hlmirbft.ConfigMetadata) map[uint64]*hlmirbft.Consenter {
 	consenters := map[uint64]*hlmirbft.Consenter{}

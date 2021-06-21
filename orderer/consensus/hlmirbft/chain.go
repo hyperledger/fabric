@@ -1,6 +1,5 @@
 /*
 Copyright IBM Corp. All Rights Reserved.
-
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -246,18 +245,15 @@ func NewChain(
 		if err != nil {
 			return nil, errors.Errorf("failed to restore persisted raft data: %s", err)
 		}
-
 		if opts.SnapshotCatchUpEntries == 0 {
 			storage.SnapshotCatchUpEntries = DefaultSnapshotCatchUpEntries
 		} else {
 			storage.SnapshotCatchUpEntries = opts.SnapshotCatchUpEntries
 		}
-
 		sizeLimit := opts.SnapshotIntervalSize
 		if sizeLimit == 0 {
 			sizeLimit = DefaultSnapshotIntervalSize
 		}
-
 		// get block number in last snapshot, if exists
 		var snapBlkNum uint64
 		var cc raftpb.ConfState
@@ -1016,6 +1012,25 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 }
 
+//JIRA FLY2-58 proposed changes:Implemented the TransferTo Function
 func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
-  return nil,nil
+
+	networkState := &msgs.NetworkState{}
+
+	checkSeqNo := snap[:8] //get the sequence number of the snap
+
+	snapShot, err := c.Node.ReadSnapFiles(binary.BigEndian.Uint64(checkSeqNo), c.opts.SnapDir)
+
+	if err != nil {
+
+		return nil, err
+	}
+
+	if err := proto.Unmarshal(snapShot[8:], networkState); err != nil {
+
+		return nil, err
+
+	}
+
+	return networkState, nil
 }
