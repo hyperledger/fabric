@@ -901,6 +901,9 @@ func (c *Chain) ValidateConsensusMetadata(oldOrdererConfig, newOrdererConfig cha
 	c.mirbftMetadataLock.RUnlock()
 
 	dummyOldConsentersMap := CreateConsentersMap(dummyOldBlockMetadata, oldMetadata)
+	// TODO(harrymknight) Possible Optimisation: Mir allows for complete reconfiguration i.e. add/remove
+	//  multiple orderer nodes at a time. Check if current restriction (only remove/add one orderer node at a time)
+	//  is imposed by Raft or Fabric.
 	changes, err := ComputeMembershipChanges(dummyOldBlockMetadata, dummyOldConsentersMap, newMetadata.Consenters)
 	if err != nil {
 		return err
