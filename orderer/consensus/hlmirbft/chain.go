@@ -63,7 +63,7 @@ const (
 	// its own leadership status.
 	DefaultLeaderlessCheckInterval = time.Second * 10
 
-	//JIRA FLY2-57: Prepend flag to check request is forward
+	// JIRA FLY2-57: Prepend flag to check request is forward
 	ForwardFlag = "@forward/"
 )
 
@@ -351,7 +351,6 @@ func (c *Chain) Start() {
 	close(c.errorC)
 
 	go c.run()
-
 }
 
 // Order submits normal type transactions for ordering.
@@ -488,15 +487,8 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 
 // Check for forward flag in payload
 func (c *Chain) CheckPrependForwardFlag(reqPayload []byte) bool {
-
 	prependedFlag := reqPayload[:9]
-
-	if string(prependedFlag) == ForwardFlag {
-		return true
-	}
-
-	return false
-
+	return string(prependedFlag) == ForwardFlag
 }
 
 func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
@@ -523,8 +515,7 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 
 		req.Payload.Payload = c.PrependForwardFlag(submitPayload)
 
-		for nodeID, _ := range c.opts.Consenters {
-
+		for nodeID := range c.opts.Consenters {
 			if nodeID != c.MirBFTID {
 				err := c.Node.rpc.SendSubmit(nodeID, req)
 				if err != nil {
@@ -532,7 +523,6 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 					return err
 				}
 			}
-
 		}
 
 	}
@@ -540,7 +530,6 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	req.Payload.Payload = submitPayload[9:]
 
 	return c.ordered(req)
-
 }
 
 type apply struct {
@@ -553,7 +542,6 @@ func isCandidate(state raft.StateType) bool {
 }
 
 func (c *Chain) run() {
-
 }
 
 func (c *Chain) writeBlock(block *common.Block, index uint64) {
@@ -589,16 +577,14 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 //   -- err error; the error encountered, if any.
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
 
-//JIRA FLY2-57 - proposed changes
+// JIRA FLY2-57 - proposed changes
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
-
 	seq := c.support.Sequence()
 
 	if msg.LastValidationSeq < seq {
 
 		if c.isConfig(msg.Payload) {
-
-			c.configInflight = true //JIRA FLY2-57 - proposed changes
+			c.configInflight = true // JIRA FLY2-57 - proposed changes
 		}
 
 		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
@@ -614,13 +600,11 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 
 }
 
-//FLY2-57 - Proposed Change: New function to propose normal messages to node
+// FLY2-57 - Proposed Change: New function to propose normal messages to node
 func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
-
 	clientID := c.MirBFTID
 	proposer := c.Node.Client(clientID)
 	reqNo, err := proposer.NextReqNo()
-
 	if err != nil {
 		return errors.Errorf("failed to generate next request number")
 	}
@@ -631,7 +615,6 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 	}
 
 	reqBytes, err := proto.Marshal(req)
-
 	if err != nil {
 		return errors.Errorf("Cannot marshal Message : %s", err)
 	}
@@ -643,7 +626,6 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 	}
 
 	return nil
-
 }
 
 func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]*common.Envelope) {
@@ -710,11 +692,9 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 }
 
 func (c *Chain) commitBlock(block *common.Block) {
-
 }
 
 func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
-
 	return &MembershipChanges{
 		NewBlockMetadata: nil,
 		NewConsenters:    nil,
@@ -728,7 +708,6 @@ func (c *Chain) detectConfChange(block *common.Block) *MembershipChanges {
 // TODO(harry_knight) Will have to be adapted for hlmirbft as a block is written in this method (line 1047).
 // 	Unsure if equivalent ApplyConfChange method exists.
 func (c *Chain) apply(ents []raftpb.Entry) {
-
 }
 
 func (c *Chain) isConfig(env *common.Envelope) bool {
@@ -796,14 +775,12 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 // addition extracts updates about raft replica set and if there
 // are changes updates cluster membership as well
 func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
-
 }
 
 // getInFlightConfChange returns ConfChange in-flight if any.
 // It returns confChangeInProgress if it is not nil. Otherwise
 // it returns ConfChange from the last committed block (might be nil).
 func (c *Chain) getInFlightConfChange() {
-
 }
 
 // newMetadata extract config metadata from the configuration block
@@ -919,9 +896,8 @@ func (c *Chain) Apply(*msgs.QEntry) error {
 	return nil
 }
 
-//JIRA FLY2-66 proposed changes:Implemented the Snap Function
+// JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
-
 	pr := c.Node.PendingReconfigurations
 
 	c.Node.PendingReconfigurations = nil
@@ -931,11 +907,8 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 		Clients:                 clientsState,
 		PendingReconfigurations: pr,
 	})
-
 	if err != nil {
-
 		return nil, nil, errors.WithMessage(err, "could not marsshal network state")
-
 	}
 
 	c.Node.CheckpointSeqNo++
@@ -949,33 +922,25 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	err = c.Node.PersistSnapshot(c.Node.CheckpointSeqNo, networkStates)
 
 	if err != nil {
-
 		c.logger.Panicf("error while snap persist : %s", err)
-
 	}
 
 	return networkStates, pr, nil
-
 }
 
-//JIRA FLY2-58 proposed changes:Implemented the TransferTo Function
+// JIRA FLY2-58 proposed changes:Implemented the TransferTo Function
 func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
-
 	networkState := &msgs.NetworkState{}
 
-	checkSeqNo := snap[:8] //get the sequence number of the snap
+	checkSeqNo := snap[:8] // get the sequence number of the snap
 
 	snapShot, err := c.Node.ReadSnapFiles(binary.BigEndian.Uint64(checkSeqNo), c.opts.SnapDir)
-
 	if err != nil {
-
 		return nil, err
 	}
 
 	if err := proto.Unmarshal(snapShot[8:], networkState); err != nil {
-
 		return nil, err
-
 	}
 
 	return networkState, nil
