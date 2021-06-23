@@ -8,6 +8,7 @@ package hlmirbft
 
 import (
 	"fmt"
+
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 
 	"github.com/golang/protobuf/proto"
@@ -134,7 +135,6 @@ func (mc *MembershipChanges) Rotated() bool {
 // There is no need to check for the number of active nodes since we assert that there are at most f byzantine nodes.
 // By this assertion the remaining nodes are active and configuration consensus will be reached.
 func (mc *MembershipChanges) UnacceptableQuorumLoss() bool {
-
 	isBFT := len(mc.NewConsenters) > 3 // if resulting cluster is not byzantine fault tolerant, quorum correctness in not guaranteed
 
 	switch {
