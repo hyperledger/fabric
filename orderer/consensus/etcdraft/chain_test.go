@@ -14,6 +14,7 @@ import (
 	"os/user"
 	"path"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/clock/fakeclock"
@@ -2026,6 +2027,93 @@ var _ = Describe("Chain", func() {
 					})
 				})
 
+				When("Snapshot is enabled", func() {
+					BeforeEach(func() {
+						c1.opts.SnapshotIntervalSize = 1
+						c1.opts.SnapshotCatchUpEntries = 1
+					})
+
+					It("adds node to the cluster after snapshot is taken", func() {
+						addConsenterUpdate := addConsenterConfigValue()
+						configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterUpdate))
+						c1.cutter.CutNext = true
+
+						By("sending config transaction")
+						err := c1.Configure(configEnv, 0)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(c1.fakeFields.fakeConfigProposalsReceived.AddCallCount()).To(Equal(1))
+						Expect(c1.fakeFields.fakeConfigProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
+
+						network.exec(func(c *chain) {
+							Eventually(c.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+							Eventually(c.fakeFields.fakeClusterSize.SetCallCount, LongEventualTimeout).Should(Equal(2))
+							Expect(c.fakeFields.fakeClusterSize.SetArgsForCall(1)).To(Equal(float64(4)))
+						})
+
+						snapOnWire := atomic.Value{}
+
+						c1stub := c1.rpc.SendConsensusStub
+						c1.rpc.SendConsensusStub = func(receiver uint64, request *orderer.ConsensusRequest) error {
+							stepMsg := &raftpb.Message{}
+							err := proto.Unmarshal(request.Payload, stepMsg)
+							Expect(err).NotTo(HaveOccurred())
+
+							if stepMsg.Type != raftpb.MsgSnap {
+								return c1stub(receiver, request)
+							}
+
+							// If we put assertions here, the failure would cause panic because stub
+							// is called within goroutine from production code. Instead, we store the
+							// value for later comparison.
+							defer func() { c1.rpc.SendConsensusStub = c1stub }()
+
+							snapOnWire.Store(stepMsg.Snapshot.Metadata.ConfState.Nodes)
+							return c1stub(receiver, request)
+						}
+
+						_, raftmetabytes := c1.support.WriteConfigBlockArgsForCall(0)
+						meta := &common.Metadata{Value: raftmetabytes}
+						raftmeta, err := etcdraft.ReadBlockMetadata(meta, nil)
+						Expect(err).NotTo(HaveOccurred())
+
+						c4 := newChain(timeout, channelID, dataDir, 4, raftmeta, consenters, cryptoProvider, nil, nil)
+						// if we join a node to existing network, it MUST already obtained blocks
+						// till the config block that adds this node to cluster.
+						c4.support.WriteBlock(c1.support.WriteBlockArgsForCall(0))
+						c4.support.WriteConfigBlock(c1.support.WriteConfigBlockArgsForCall(0))
+						c4.init()
+
+						network.addChain(c4)
+						c4.Start()
+
+						// ConfChange is applied to etcd/raft asynchronously, meaning node 4 is not added
+						// to leader's node list right away. An immediate tick does not trigger a heartbeat
+						// being sent to node 4. Therefore, we repeatedly tick the leader until node 4 joins
+						// the cluster successfully.
+						Eventually(func() <-chan raft.SoftState {
+							c1.clock.Increment(interval)
+							return c4.observe
+						}, defaultTimeout).Should(Receive(Equal(raft.SoftState{Lead: 1, RaftState: raft.StateFollower})))
+
+						Eventually(c4.support.WriteBlockCallCount, defaultTimeout).Should(Equal(1))
+						Eventually(c4.support.WriteConfigBlockCallCount, defaultTimeout).Should(Equal(1))
+
+						By("submitting new transaction to follower")
+						c1.cutter.CutNext = true
+						err = c4.Order(env, 0)
+						Expect(err).NotTo(HaveOccurred())
+						Expect(c4.fakeFields.fakeNormalProposalsReceived.AddCallCount()).To(Equal(1))
+						Expect(c4.fakeFields.fakeNormalProposalsReceived.AddArgsForCall(0)).To(Equal(float64(1)))
+
+						network.exec(func(c *chain) {
+							Eventually(c.support.WriteBlockCallCount, defaultTimeout).Should(Equal(2))
+						})
+
+						// Assert that c1 insert 4 into outgoing snapshot, which was taken prior to addition of node 4.
+						Expect(snapOnWire.Load().([]uint64)).To(ConsistOf(uint64(1), uint64(2), uint64(3), uint64(4)))
+					})
+				})
+
 				It("adding node to the cluster", func() {
 					addConsenterUpdate := addConsenterConfigValue()
 					configEnv := newConfigEnv(channelID, common.HeaderType_CONFIG, newConfigUpdateEnv(channelID, nil, addConsenterUpdate))
@@ -3519,6 +3607,7 @@ func newChain(
 
 	// consume ingress messages for chain
 	go func() {
+		defer GinkgoRecover()
 		for msg := range c.msgBuffer {
 			c.Consensus(msg.req, msg.sender)
 		}

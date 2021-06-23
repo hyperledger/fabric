@@ -33,8 +33,9 @@ type node struct {
 
 	tracker *Tracker
 
-	storage *RaftStorage
-	config  *raft.Config
+	storage   *RaftStorage
+	config    *raft.Config
+	confState atomic.Value // stores raft ConfState
 
 	rpc RPC
 
@@ -201,6 +202,14 @@ func (n *node) send(msgs []raftpb.Message) {
 
 		status := raft.SnapshotFinish
 
+		// Replace node list in snapshot with CURRENT node list in cluster.
+		if msg.Type == raftpb.MsgSnap {
+			state := n.confState.Load()
+			if state != nil {
+				msg.Snapshot.Metadata.ConfState.Nodes = state.(*raftpb.ConfState).Nodes
+			}
+		}
+
 		msgBytes := protoutil.MarshalOrPanic(&msg)
 		err := n.rpc.SendConsensus(msg.To, &orderer.ConsensusRequest{Channel: n.chainID, Payload: msgBytes})
 		if err != nil {
@@ -295,4 +304,10 @@ func (n *node) takeSnapshot(index uint64, cs raftpb.ConfState, data []byte) {
 func (n *node) lastIndex() uint64 {
 	i, _ := n.storage.ram.LastIndex()
 	return i
+}
+
+func (n *node) ApplyConfChange(cc raftpb.ConfChange) *raftpb.ConfState {
+	state := n.Node.ApplyConfChange(cc)
+	n.confState.Store(state)
+	return state
 }
