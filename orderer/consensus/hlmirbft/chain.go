@@ -65,6 +65,7 @@ const (
 
 	// JIRA FLY2-57: Prepend flag to check request is forward
 	ForwardFlag = "@forward/"
+	FourthNode  = "forthnode"
 )
 
 //go:generate counterfeiter -o mocks/configurator.go . Configurator
@@ -148,12 +149,13 @@ type Chain struct {
 	lastKnownLeader uint64
 	ActiveNodes     atomic.Value
 
-	submitC  chan *submit
-	applyC   chan apply
-	observeC chan<- raft.SoftState // Notifies external observer on leader change (passed in optionally as an argument for tests)
-	haltC    chan struct{}         // Signals to goroutines that the chain is halting
-	doneC    chan struct{}         // Closes when the chain halts
-	startC   chan struct{}         // Closes when the node is started
+	metadataC chan *common.Metadata
+	submitC   chan *submit
+	applyC    chan apply
+	observeC  chan<- raft.SoftState // Notifies external observer on leader change (passed in optionally as an argument for tests)
+	haltC     chan struct{}         // Signals to goroutines that the chain is halting
+	doneC     chan struct{}         // Closes when the chain halts
+	startC    chan struct{}         // Closes when the node is started
 
 	errorCLock sync.RWMutex
 	errorC     chan struct{} // returned by Errored()
@@ -258,6 +260,7 @@ func NewChain(
 		rpc:               rpc,
 		channelID:         support.ChannelID(),
 		MirBFTID:          opts.MirBFTID,
+		metadataC:         make(chan *common.Metadata),
 		submitC:           make(chan *submit),
 		applyC:            make(chan apply),
 		haltC:             make(chan struct{}),
@@ -461,6 +464,12 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 		return err
 	}
 
+	// A forth node has been added to the consenting set
+	if string(req.Payload) == FourthNode {
+		metadata := &common.Metadata{Value: req.Metadata}
+		c.metadataC <- metadata
+	}
+
 	stepMsg := &msgs.Msg{}
 	if err := proto.Unmarshal(req.Payload, stepMsg); err != nil {
 		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
@@ -502,7 +511,6 @@ func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
 // - to all nodes via the transport mechanism if the request hasn't been forwarded
 // - the underlying state machine if the request has been forwarded
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
-
 	if err := c.isRunning(); err != nil {
 		c.Metrics.ProposalFailures.Add(1)
 		return err
@@ -597,7 +605,6 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 	}
 
 	return c.proposeMsg(msg)
-
 }
 
 // FLY2-57 - Proposed Change: New function to propose normal messages to node
@@ -892,7 +899,12 @@ func (c *Chain) suspectEviction() bool {
 }
 
 // TODO(harrymknight) Implement these methods
-func (c *Chain) Apply(*msgs.QEntry) error {
+func (c *Chain) Apply(batch *msgs.QEntry) error {
+	// Testing to see if batches are ordered correctly across nodes
+	c.logger.Infof("batch with seqNo - %d and digest - %s\n", batch.SeqNo, batch.Digest)
+	for i, tx := range batch.Requests {
+		c.logger.Infof("request - %d with reqNo -%d and digest -%s", i, tx.ReqNo, tx.Digest)
+	}
 	return nil
 }
 
