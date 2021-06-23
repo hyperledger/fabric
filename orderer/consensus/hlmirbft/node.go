@@ -10,13 +10,14 @@ import (
 	"bytes"
 	"crypto"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 
 	"github.com/pkg/errors"
 
