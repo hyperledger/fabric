@@ -117,7 +117,7 @@ func (n *node) start(fresh, join bool) {
 		}
 
 		// I am the forth node so broadcast my metadata to the 3 nodes which preceded me
-		if len(ConsenterIds) == 4 && ConsenterIds[len(ConsenterIds)] == n.chain.MirBFTID {
+		if len(ConsenterIds) == 4 && ConsenterIds[len(ConsenterIds)-1] == n.chain.MirBFTID {
 			blockMetadata := protoutil.MarshalOrPanic(n.metadata)
 			n.rpc.UpdateMetadata(blockMetadata)
 			for _, Id := range n.metadata.ConsenterIds {
