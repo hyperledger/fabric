@@ -180,10 +180,10 @@ need to horizontally scroll to locate the information):
 * The Ordering Org CA, `ca_orderer`, is running in container `7b01f5454832`
 
 These containers all form a [Docker network](https://docs.docker.com/network/)
-called `net_test`. You can view the network with the `docker network` command:
+called `fabric_test`. You can view the network with the `docker network` command:
 
 ```
-$ docker network inspect net_test
+$ docker network inspect fabric_test
 
   [
       {
