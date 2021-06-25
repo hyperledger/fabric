@@ -17,3 +17,5 @@ require (
 	honnef.co/go/tools v0.1.1
 	mvdan.cc/gofumpt v0.1.0
 )
+
+replace github.com/golang/protobuf => github.com/golang/protobuf v1.3.3
