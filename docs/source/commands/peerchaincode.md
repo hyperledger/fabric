@@ -23,6 +23,18 @@ different chaincode operations that are relevant to a peer. For example, use the
 the `peer chaincode query` subcommand option to query a chaincode for the
 current value on a peer's ledger.
 
+Some subcommands take flag `--ctor`, of which the value must be a JSON string 
+that has either key 'Args' or 'Function' and 'Args'. These keys are 
+case-insensitive.
+
+If the JSON string only has the Args key, the key value is an array, where the
+first array element is the target function to call, and the subsequent elements
+are arguments of the function. If the JSON string has both 'Function' and
+'Args', the value of Function is the target function to call, and the value of
+Args is an array of arguments of the function. For instance,
+`{"Args":["GetAllAssets"]}` is equvalent to
+`{"Function":"GetAllAssets", "Args":[]}`.
+
 Each peer chaincode subcommand is described together with its options in its own
 section in this topic.
 
