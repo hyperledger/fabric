@@ -37,7 +37,7 @@ first array element is the target function to call, and the subsequent elements
 are arguments of the function. If the JSON string has both 'Function' and
 'Args', the value of Function is the target function to call, and the value of
 Args is an array of arguments of the function. For instance,
-`{"Args":["GetAllAssets"]}` is equvalent to
+`{"Args":["GetAllAssets"]}` is equivalent to
 `{"Function":"GetAllAssets", "Args":[]}`.
 
 Each peer chaincode subcommand is described together with its options in its own
