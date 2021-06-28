@@ -74,9 +74,17 @@ func (n *node) start(fresh, join bool) {
 		}
 
 		// Checking if the configuration settings have been passed correctly.
+		err := os.MkdirAll(n.ReqStoreDir, 0700)
+		if err != nil {
+			n.logger.Error(err, "Failed to create WAL directory")
+		}
 		wal, err := simplewal.Open(n.WALDir)
 		if err != nil {
 			n.logger.Error(err, "Failed to create WAL")
+		}
+		err = os.MkdirAll(n.ReqStoreDir, 0700)
+		if err != nil {
+			n.logger.Error(err, "Failed to create request store directory")
 		}
 		reqStore, err := reqstore.Open(n.ReqStoreDir)
 		if err != nil {
