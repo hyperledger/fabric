@@ -215,12 +215,12 @@ The required sign-offs on transactions are enforced through rules, which
 are evaluated before appending a transaction to the ledger. Only if the
 required signatures are present, Fabric will accept a transaction as valid.
 
-You're now in a great place translate these ideas into a smart contract. Don't
+You're now in a great place to translate these ideas into a smart contract. Don't
 worry if your programming is a little rusty, we'll provide tips and pointers to
 understand the program code. Mastering the commercial paper smart contract is
 the first big step towards designing your own application. Or, if you're a
 business analyst who's comfortable with a little programming, don't be afraid to
-keep dig a little deeper!
+dig a little deeper!
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License
 https://creativecommons.org/licenses/by/4.0/ -->
