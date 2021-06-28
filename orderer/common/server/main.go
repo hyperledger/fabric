@@ -814,7 +814,7 @@ func initializeMultichannelRegistrar(
 			icr = etcdConsenter.InactiveChainRegistry
 		} else if bootstrapBlock == nil {
 			// cluster must be assigned to only one OSN type
-			switch conf.Type {
+			switch conf.General.Type {
 			case "etcdraft":
 				consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
 			case "hlmirbft":

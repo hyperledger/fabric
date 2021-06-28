@@ -21,7 +21,6 @@ var logger = flogging.MustGetLogger("localconfig")
 
 // TopLevel directly corresponds to the orderer config YAML.
 type TopLevel struct {
-	Type                 Type
 	General              General
 	FileLedger           FileLedger
 	Kafka                Kafka
@@ -33,13 +32,12 @@ type TopLevel struct {
 	Admin                Admin
 }
 
-// Type is the type of the orderer:
-// - This type was introduced as the cluster settings must be unique to a cluster
-// - Currently this type can have values "etcdraft" or "hlmirbft"
-type Type string
-
 // General contains config which should be common among all orderer types.
 type General struct {
+	// Type is the type of the orderer:
+	// - This type was introduced as the cluster settings must be unique to a cluster
+	// - Currently this type can have values "etcdraft" or "hlmirbft"
+	Type              string
 	ListenAddress     string
 	ListenPort        uint16
 	TLS               TLS
@@ -221,6 +219,7 @@ type ChannelParticipation struct {
 // Defaults carries the default orderer configuration values.
 var Defaults = TopLevel{
 	General: General{
+		Type:            "etcdraft",
 		ListenAddress:   "127.0.0.1",
 		ListenPort:      7050,
 		BootstrapMethod: "file",
@@ -380,6 +379,9 @@ func (c *TopLevel) completeInitialization(configDir string) {
 
 	for {
 		switch {
+		case c.General.Type == "":
+			logger.Infof("General.Type unset, setting to %s", Defaults.General.Type)
+			c.General.Type = Defaults.General.Type
 		case c.General.ListenAddress == "":
 			logger.Infof("General.ListenAddress unset, setting to %s", Defaults.General.ListenAddress)
 			c.General.ListenAddress = Defaults.General.ListenAddress
