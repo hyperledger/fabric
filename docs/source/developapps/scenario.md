@@ -9,6 +9,17 @@ Fabric, to issue, buy and redeem commercial paper. We're going to use the
 scenario to outline requirements for the development of commercial paper
 applications and smart contracts used by the participant organizations.
 
+## What is commercial paper?
+
+Commercial paper is a commonly used type of unsecured, short-term debt instrument 
+issued by corporations, typically used for the financing of payroll, accounts 
+payable and inventories, and meeting other short-term liabilities. Maturities on 
+commercial paper typically last several days, and rarely range longer than 270 days. 
+The face value of the commerical paper is the value the issuing corporating would be
+paying the redeemer of the paper upon maturity. While buying the paper, the lender 
+buys it for a price lesser than the face value. The difference between the face value and 
+the price the lender bought the paper for is the profit made by the lender.
+
 ## PaperNet network
 
 PaperNet is a commercial paper network that allows suitably authorized
