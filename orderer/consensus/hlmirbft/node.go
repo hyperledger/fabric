@@ -121,7 +121,7 @@ func (n *node) start(fresh, join bool) {
 
 func InitialNetworkState(nodeCount int) *msgs.NetworkState {
 	nodes := make([]uint64, nodeCount)
-	for i := 0; i < nodeCount; i++ {
+	for i := 1; i < nodeCount+1; i++ {
 		nodes[i] = uint64(i)
 	}
 
