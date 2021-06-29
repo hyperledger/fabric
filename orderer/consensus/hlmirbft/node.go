@@ -17,8 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-
 	"github.com/pkg/errors"
 
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
@@ -108,34 +106,7 @@ func (n *node) start(fresh, join bool) {
 			n.Node = *node
 		}
 
-		ConsenterIds := n.metadata.ConsenterIds
-
-		// A node must halt until there are at least 3 other nodes to communicate with
-		for len(n.metadata.ConsenterIds) < 4 {
-			metadata := <-n.chain.metadataC
-			blockMetadata := &hlmirbft.BlockMetadata{}
-			if err := proto.Unmarshal(metadata.Value, blockMetadata); err != nil {
-				n.logger.Error(err, "Failed to unmarshal block metadata")
-			}
-			if len(blockMetadata.ConsenterIds) == 4 {
-				n.rpc.UpdateMetadata(metadata.Value)
-				n.metadata = blockMetadata
-				break
-			}
-		}
-
-		// I am the forth node so broadcast my metadata to the 3 nodes which preceded me
-		if len(ConsenterIds) == 4 && ConsenterIds[len(ConsenterIds)-1] == n.chain.MirBFTID {
-			blockMetadata := protoutil.MarshalOrPanic(n.metadata)
-			n.rpc.UpdateMetadata(blockMetadata)
-			for _, Id := range n.metadata.ConsenterIds {
-				if Id != n.chain.MirBFTID {
-					n.rpc.SendConsensus(Id, &orderer.ConsensusRequest{Channel: n.chainID, Payload: []byte(FourthNode)})
-				}
-			}
-		}
-
-		initialNetworkState := InitialNetworkState(ConsenterIds)
+		initialNetworkState := InitialNetworkState(len(n.chain.opts.Consenters))
 		// TODO(harrymknight) Tick interval is fixed. Perhaps introduce TickInterval field in configuration options
 		err = n.ProcessAsNewNode(n.chain.doneC, n.clock.NewTicker(10*time.Millisecond).C(), initialNetworkState, []byte("first"))
 		if err != nil {
@@ -148,22 +119,22 @@ func (n *node) start(fresh, join bool) {
 	}
 }
 
-func InitialNetworkState(ConsenterIds []uint64) *msgs.NetworkState {
-	nodes := make([]uint64, len(ConsenterIds))
-	for i := 0; i < len(ConsenterIds); i++ {
-		nodes[i] = ConsenterIds[i]
+func InitialNetworkState(nodeCount int) *msgs.NetworkState {
+	nodes := make([]uint64, nodeCount)
+	for i := 0; i < nodeCount; i++ {
+		nodes[i] = uint64(i)
 	}
 
-	numberOfBuckets := int32(len(ConsenterIds))
+	numberOfBuckets := int32(nodeCount)
 	checkpointInterval := numberOfBuckets * 5
 	maxEpochLength := checkpointInterval * 10
 
 	// TODO(harrymknight) The width of a client window is fixed.
 	//  Could optimise by varying according to the checkpoint interval and batch size
-	clients := make([]*msgs.NetworkState_Client, len(ConsenterIds))
+	clients := make([]*msgs.NetworkState_Client, nodeCount)
 	for i := range clients {
 		clients[i] = &msgs.NetworkState_Client{
-			Id:           ConsenterIds[i],
+			Id:           uint64(i),
 			Width:        100,
 			LowWatermark: 0,
 		}
@@ -172,7 +143,7 @@ func InitialNetworkState(ConsenterIds []uint64) *msgs.NetworkState {
 	return &msgs.NetworkState{
 		Config: &msgs.NetworkState_Config{
 			Nodes:              nodes,
-			F:                  int32((len(ConsenterIds) - 1) / 3),
+			F:                  int32((nodeCount - 1) / 3),
 			NumberOfBuckets:    numberOfBuckets,
 			CheckpointInterval: checkpointInterval,
 			MaxEpochLength:     uint64(maxEpochLength),

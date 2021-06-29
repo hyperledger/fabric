@@ -65,7 +65,6 @@ const (
 
 	// JIRA FLY2-57: Prepend flag to check request is forward
 	ForwardFlag = "@forward/"
-	FourthNode  = "forthnode"
 )
 
 //go:generate counterfeiter -o mocks/configurator.go . Configurator
@@ -149,13 +148,12 @@ type Chain struct {
 	lastKnownLeader uint64
 	ActiveNodes     atomic.Value
 
-	metadataC chan *common.Metadata
-	submitC   chan *submit
-	applyC    chan apply
-	observeC  chan<- raft.SoftState // Notifies external observer on leader change (passed in optionally as an argument for tests)
-	haltC     chan struct{}         // Signals to goroutines that the chain is halting
-	doneC     chan struct{}         // Closes when the chain halts
-	startC    chan struct{}         // Closes when the node is started
+	submitC  chan *submit
+	applyC   chan apply
+	observeC chan<- raft.SoftState // Notifies external observer on leader change (passed in optionally as an argument for tests)
+	haltC    chan struct{}         // Signals to goroutines that the chain is halting
+	doneC    chan struct{}         // Closes when the chain halts
+	startC   chan struct{}         // Closes when the node is started
 
 	errorCLock sync.RWMutex
 	errorC     chan struct{} // returned by Errored()
@@ -260,7 +258,6 @@ func NewChain(
 		rpc:               rpc,
 		channelID:         support.ChannelID(),
 		MirBFTID:          opts.MirBFTID,
-		metadataC:         make(chan *common.Metadata),
 		submitC:           make(chan *submit),
 		applyC:            make(chan apply),
 		haltC:             make(chan struct{}),
@@ -462,12 +459,6 @@ func (c *Chain) isRunning() error {
 func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
 		return err
-	}
-
-	// A forth node has been added to the consenting set
-	if string(req.Payload) == FourthNode {
-		metadata := &common.Metadata{Value: req.Metadata}
-		c.metadataC <- metadata
 	}
 
 	stepMsg := &msgs.Msg{}
@@ -746,21 +737,21 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 	defer c.mirbftMetadataLock.RUnlock()
 
 	var nodes []cluster.RemoteNode
-	for raftID, consenter := range c.opts.Consenters {
+	for MirBFTID, consenter := range c.opts.Consenters {
 		// No need to know yourself
-		if raftID == c.MirBFTID {
+		if MirBFTID == c.MirBFTID {
 			continue
 		}
-		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, raftID, "server", c.logger)
+		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, MirBFTID, "server", c.logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		clientCertAsDER, err := pemToDER(consenter.ClientTlsCert, raftID, "client", c.logger)
+		clientCertAsDER, err := pemToDER(consenter.ClientTlsCert, MirBFTID, "client", c.logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		nodes = append(nodes, cluster.RemoteNode{
-			ID:            raftID,
+			ID:            MirBFTID,
 			Endpoint:      fmt.Sprintf("%s:%d", consenter.Host, consenter.Port),
 			ServerTLSCert: serverCertAsDER,
 			ClientTLSCert: clientCertAsDER,
