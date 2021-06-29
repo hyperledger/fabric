@@ -53,7 +53,7 @@ func TestCompare(t *testing.T) {
 		},
 		{
 			namespace: "ns3", key: "k1", value: "v4",
-			blockNum: 2, txNum: 1, metadata: "md4",
+			blockNum: 2, txNum: 0, metadata: "md4",
 		},
 	}
 
@@ -72,7 +72,7 @@ func TestCompare(t *testing.T) {
 		},
 		{
 			namespace: "ns3", key: "k1", value: "v4",
-			blockNum: 2, txNum: 1, metadata: "md4",
+			blockNum: 2, txNum: 0, metadata: "md4",
 		},
 	}
 
@@ -87,7 +87,7 @@ func TestCompare(t *testing.T) {
 		},
 		{
 			namespace: "ns3", key: "k1", value: "v4",
-			blockNum: 2, txNum: 1, metadata: "md4",
+			blockNum: 2, txNum: 0, metadata: "md4",
 		},
 	}
 
@@ -177,14 +177,14 @@ func TestCompare(t *testing.T) {
 					"blockNum" : 1,
 					"txNum" : 1
 				},
-				"snapshotrecord2" : {}
+				"snapshotrecord2" : null
 			}
 		]`
 	expectedMissingResult2 := `[
 			{
 				"namespace" : "ns1",
 				"key" : "k2",
-				"snapshotrecord1" : {},
+				"snapshotrecord1" : null,
 				"snapshotrecord2" : {
 					"value" : "v2",
 					"blockNum" : 1,
@@ -201,7 +201,7 @@ func TestCompare(t *testing.T) {
 					"blockNum" : 1,
 					"txNum" : 2
 				},
-				"snapshotrecord2" : {}
+				"snapshotrecord2" : null
 			},
 			{
 				"namespace" : "ns3",
@@ -209,16 +209,16 @@ func TestCompare(t *testing.T) {
 				"snapshotrecord1" : {
 					"value" : "v4",
 					"blockNum" : 2,
-					"txNum" : 1
+					"txNum" : 0
 				},
-				"snapshotrecord2" : {}
+				"snapshotrecord2" : null
 			}
 		]`
 	expectedMissingTailResult2 := `[
 			{
 				"namespace" : "ns2",
 				"key" : "k1",
-				"snapshotrecord1" : {},
+				"snapshotrecord1" : null,
 				"snapshotrecord2" : {
 					"value" : "v3",
 					"blockNum" : 1,
@@ -228,11 +228,11 @@ func TestCompare(t *testing.T) {
 			{
 				"namespace" : "ns3",
 				"key" : "k1",
-				"snapshotrecord1" : {},
+				"snapshotrecord1" : null,
 				"snapshotrecord2" : {
 					"value" : "v4",
 					"blockNum" : 2,
-					"txNum" : 1
+					"txNum" : 0
 				}
 			}
 		]`
@@ -454,20 +454,12 @@ func TestJSONArrayFileWriter(t *testing.T) {
 				BlockNum: 472,
 				TxNum:    61,
 			},
-			Record2: &snapshotRecord{
-				Value:    "",
-				BlockNum: 0,
-				TxNum:    0,
-			},
+			Record2: nil,
 		},
 		{
 			Namespace: "xyz",
 			Key:       "key-44",
-			Record1: &snapshotRecord{
-				Value:    "",
-				BlockNum: 0,
-				TxNum:    0,
-			},
+			Record1:   nil,
 			Record2: &snapshotRecord{
 				Value:    "purple",
 				BlockNum: 566,
@@ -499,12 +491,12 @@ func TestJSONArrayFileWriter(t *testing.T) {
 				"blockNum" : 472,
 				"txNum" : 61
 			},
-			"snapshotrecord2" : {}
+			"snapshotrecord2" : null
 		},
 		{
 			"namespace" : "xyz",
 			"key" : "key-44",
-			"snapshotrecord1" : {},
+			"snapshotrecord1" : null,
 			"snapshotrecord2" : {
 				"value" : "purple",
 				"blockNum" : 566,
