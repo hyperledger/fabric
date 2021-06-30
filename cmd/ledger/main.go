@@ -9,21 +9,23 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/hyperledger/fabric/internal/ledger"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
-	resultFilename = "./result.json"
+	resultFilename = "result.json"
 )
 
 var (
 	app = kingpin.New("ledger", "Ledger Utility Tool")
 
 	compare       = app.Command("compare", "Compare two ledgers via their snapshots.")
-	snapshotPath1 = compare.Arg("snapshotPath1", "File path to first ledger snapshot.").Required().String()
-	snapshotPath2 = compare.Arg("snapshotPath2", "File path to second ledger snapshot.").Required().String()
+	snapshotPath1 = compare.Arg("snapshotPath1", "First ledger snapshot directory.").Required().String()
+	snapshotPath2 = compare.Arg("snapshotPath2", "Second ledger snapshot directory.").Required().String()
+	outputDir     = compare.Flag("outputDir", "Snapshot comparison json results output directory. Default is the current directory.").Short('o').String()
 
 	troubleshoot = app.Command("troubleshoot", "Identify potentially divergent transactions.")
 
@@ -39,16 +41,30 @@ func main() {
 		return
 	}
 
-	switch command {
-
-	case compare.FullCommand():
-
-		count, err := ledger.Compare(*snapshotPath1, *snapshotPath2, resultFilename)
+	// Determine result json file location
+	var resultFilepath string
+	if outputDir != nil {
+		resultFilepath = *outputDir
+	} else {
+		resultFilepath, err = os.Getwd()
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		fmt.Printf("\nSuccessfully compared snapshots. Result saved to %s. Total differences found: %v\n", resultFilename, count)
+	}
+	resultFilepath = filepath.Join(resultFilepath, resultFilename)
+
+	// Command logic
+	switch command {
+
+	case compare.FullCommand():
+
+		count, err := ledger.Compare(*snapshotPath1, *snapshotPath2, resultFilepath)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf("\nSuccessfully compared snapshots. Result saved to %s. Total differences found: %d\n", resultFilepath, count)
 
 	case troubleshoot.FullCommand():
 
