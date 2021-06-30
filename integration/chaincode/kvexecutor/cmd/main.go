@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	err := shim.Start(&kvexecutor.KVExcutor{})
+	err := shim.Start(&kvexecutor.KVExecutor{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Exiting Simple chaincode: %s", err)
 		os.Exit(2)

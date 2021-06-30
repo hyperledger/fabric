@@ -16,10 +16,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-// KVExcutor is a chaincode implementation that takes a KVData array as read parameter
+// KVExecutor is a chaincode implementation that takes a KVData array as read parameter
 // and a a KVData array as write parameter, and then calls GetXXX/PutXXX methods to read and write
 // state/collection data. Both input params should be marshalled json data and then base64 encoded.
-type KVExcutor struct{}
+type KVExecutor struct{}
 
 // KVData contains the data to read/write a key.
 // Key is required. Value is required for write and ignored for read.
@@ -33,13 +33,13 @@ type KVData struct {
 
 // Init initializes chaincode
 // ===========================
-func (t *KVExcutor) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *KVExecutor) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	return shim.Success(nil)
 }
 
 // Invoke - Our entry point for Invocations
 // ========================================
-func (t *KVExcutor) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (t *KVExecutor) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	fmt.Println("invoke is running " + function)
 
@@ -54,7 +54,7 @@ func (t *KVExcutor) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 }
 
 // both params should be marshalled json data and base64 encoded
-func (t *KVExcutor) readWriteKVs(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (t *KVExecutor) readWriteKVs(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	if len(args) != 2 {
 		return shim.Error("Incorrect number of arguments. Expecting 2 (readInputs and writeInputs)")
 	}
