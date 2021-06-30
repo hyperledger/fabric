@@ -49,7 +49,7 @@ func TestHealthCheckRegister(t *testing.T) {
 }
 
 func TestGetIndexInfo(t *testing.T) {
-	chaincodeIndexPath := "META-INF/statedb/couchdb/indexes/indexColorSortName.json"
+	chaincodeIndexPath := "META-INF/statedb/couchdb/indexes"
 	actualIndexInfo := getIndexInfo(chaincodeIndexPath)
 	expectedIndexInfo := &indexInfo{
 		hasIndexForChaincode:  true,
@@ -58,7 +58,7 @@ func TestGetIndexInfo(t *testing.T) {
 	}
 	require.Equal(t, expectedIndexInfo, actualIndexInfo)
 
-	collectionIndexPath := "META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexCollMarbles.json"
+	collectionIndexPath := "META-INF/statedb/couchdb/collections/collectionMarbles/indexes"
 	actualIndexInfo = getIndexInfo(collectionIndexPath)
 	expectedIndexInfo = &indexInfo{
 		hasIndexForChaincode:  false,
@@ -67,7 +67,7 @@ func TestGetIndexInfo(t *testing.T) {
 	}
 	require.Equal(t, expectedIndexInfo, actualIndexInfo)
 
-	incorrectChaincodeIndexPath := "META-INF/statedb/couchdb/indexColorSortName.json"
+	incorrectChaincodeIndexPath := "META-INF/statedb/couchdb"
 	actualIndexInfo = getIndexInfo(incorrectChaincodeIndexPath)
 	expectedIndexInfo = &indexInfo{
 		hasIndexForChaincode:  false,
@@ -76,11 +76,15 @@ func TestGetIndexInfo(t *testing.T) {
 	}
 	require.Equal(t, expectedIndexInfo, actualIndexInfo)
 
-	incorrectCollectionIndexPath := "META-INF/statedb/couchdb/collections/indexes/indexCollMarbles.json"
+	incorrectCollectionIndexPath := "META-INF/statedb/couchdb/collections/indexes"
 	actualIndexInfo = getIndexInfo(incorrectCollectionIndexPath)
 	require.Equal(t, expectedIndexInfo, actualIndexInfo)
 
-	incorrectIndexPath := "META-INF/statedb/"
+	incorrectCollectionIndexPath = "META-INF/statedb/couchdb/collections"
+	actualIndexInfo = getIndexInfo(incorrectCollectionIndexPath)
+	require.Equal(t, expectedIndexInfo, actualIndexInfo)
+
+	incorrectIndexPath := "META-INF/statedb"
 	actualIndexInfo = getIndexInfo(incorrectIndexPath)
 	require.Equal(t, expectedIndexInfo, actualIndexInfo)
 }
