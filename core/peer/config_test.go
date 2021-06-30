@@ -456,6 +456,26 @@ func TestPropagateEnvironment(t *testing.T) {
 	require.Equal(t, expectedConfig, coreConfig)
 }
 
+func TestExternalBuilderConfigAsEnvVar(t *testing.T) {
+	defer viper.Reset()
+	viper.Set("peer.address", "localhost:8080")
+	viper.Set("chaincode.externalBuilders", "[{name: relative, path: relative/plugin_dir, propagateEnvironment: [ENVVAR_NAME_TO_PROPAGATE_FROM_PEER, GOPROXY]}, {name: absolute, path: /absolute/plugin_dir}]")
+	coreConfig, err := GlobalConfig()
+	require.NoError(t, err)
+
+	require.Equal(t, []ExternalBuilder{
+		{
+			Path:                 "relative/plugin_dir",
+			Name:                 "relative",
+			PropagateEnvironment: []string{"ENVVAR_NAME_TO_PROPAGATE_FROM_PEER", "GOPROXY"},
+		},
+		{
+			Path: "/absolute/plugin_dir",
+			Name: "absolute",
+		},
+	}, coreConfig.ExternalBuilders)
+}
+
 func TestMissingExternalBuilderPath(t *testing.T) {
 	defer viper.Reset()
 	viper.Set("peer.address", "localhost:8080")
