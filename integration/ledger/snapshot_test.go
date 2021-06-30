@@ -294,7 +294,7 @@ var _ = Describe("Snapshot Generation and Bootstrap", func() {
 				Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/kvexecutor/cmd"),
 				Lang:            "binary",
 				SignaturePolicy: `OR ('Org1MSP.member','Org2MSP.member', 'Org3MSP.member', 'Org4MSP.member')`,
-				PackageFile:     filepath.Join(setup.testDir, "kvexcutor20.tar.gz"),
+				PackageFile:     filepath.Join(setup.testDir, "kvexecutor20.tar.gz"),
 				Label:           "kvexecutor-20",
 				Sequence:        "1",
 			}
