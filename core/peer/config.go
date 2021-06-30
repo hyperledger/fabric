@@ -28,6 +28,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/hyperledger/fabric/common/viperutil"
 	"github.com/hyperledger/fabric/core/config"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/pkg/errors"
@@ -276,10 +277,12 @@ func (c *Config) load() error {
 
 	c.ChaincodePull = viper.GetBool("chaincode.pull")
 	var externalBuilders []ExternalBuilder
-	err = viper.UnmarshalKey("chaincode.externalBuilders", &externalBuilders)
+
+	err = viper.UnmarshalKey("chaincode.externalBuilders", &externalBuilders, viper.DecodeHook(viperutil.YamlStringToStructHook(externalBuilders)))
 	if err != nil {
 		return err
 	}
+
 	c.ExternalBuilders = externalBuilders
 	for builderIndex, builder := range c.ExternalBuilders {
 		if builder.Path == "" {
