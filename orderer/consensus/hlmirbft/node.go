@@ -108,14 +108,20 @@ func (n *node) start(fresh, join bool) {
 
 		initialNetworkState := InitialNetworkState(len(n.chain.opts.Consenters))
 		// TODO(harrymknight) Tick interval is fixed. Perhaps introduce TickInterval field in configuration options
-		err = n.ProcessAsNewNode(n.chain.doneC, n.clock.NewTicker(10*time.Millisecond).C(), initialNetworkState, []byte("first"))
-		if err != nil {
-			n.logger.Error(err, "Failed to start mirbft node")
-		}
-
+		go func() {
+			err := n.ProcessAsNewNode(n.chain.doneC, n.clock.NewTicker(10*time.Millisecond).C(), initialNetworkState, []byte("first"))
+			if err != nil {
+				n.logger.Error(err, "Failed to start mirbft node")
+			}
+		}()
 	} else {
 		n.logger.Info("Restarting mirbft node")
-		n.RestartProcessing(n.chain.doneC, n.clock.NewTicker(10*time.Millisecond).C())
+		go func() {
+			err := n.RestartProcessing(n.chain.doneC, n.clock.NewTicker(10*time.Millisecond).C())
+			if err != nil {
+				n.logger.Error(err, "Failed to restart mirbft node")
+			}
+		}()
 	}
 }
 
