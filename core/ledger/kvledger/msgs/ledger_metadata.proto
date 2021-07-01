@@ -15,6 +15,7 @@ enum Status {
     ACTIVE = 0;
     INACTIVE = 1;
     UNDER_CONSTRUCTION = 2;
+    UNDER_DELETION = 3;
 }
 
 // BootSnapshotMetadata captures the metadata of the snapshot that was used to bootstrap the ledger
