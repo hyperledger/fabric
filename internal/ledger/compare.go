@@ -188,21 +188,14 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count
 type diffRecord struct {
 	Namespace string          `json:"namespace,omitempty"`
 	Key       string          `json:"key,omitempty"`
-	Record1   *snapshotRecord `json:"snapshotrecord1,omitempty"`
-	Record2   *snapshotRecord `json:"snapshotrecord2,omitempty"`
+	Record1   *snapshotRecord `json:"snapshotrecord1"`
+	Record2   *snapshotRecord `json:"snapshotrecord2"`
 }
 
 // Creates a new diffRecord
 func newDiffRecord(namespace string, record1 *privacyenabledstate.SnapshotRecord,
 	record2 *privacyenabledstate.SnapshotRecord) (*diffRecord, error) {
-	// Empty snapshot
-	s0 := snapshotRecord{
-		Value:    "",
-		BlockNum: 0,
-		TxNum:    0,
-	}
-
-	var s1, s2 *snapshotRecord = &s0, &s0 // snapshot records
+	var s1, s2 *snapshotRecord = nil, nil // snapshot records
 	var k string                          // key
 	var err error
 
@@ -233,9 +226,9 @@ func newDiffRecord(namespace string, record1 *privacyenabledstate.SnapshotRecord
 
 // snapshotRecord represents the data of a snapshot record in json
 type snapshotRecord struct {
-	Value    string `json:"value,omitempty"`
-	BlockNum uint64 `json:"blockNum,omitempty"`
-	TxNum    uint64 `json:"txNum,omitempty"`
+	Value    string `json:"value"`
+	BlockNum uint64 `json:"blockNum"`
+	TxNum    uint64 `json:"txNum"`
 }
 
 // Creates a new SnapshotRecord
