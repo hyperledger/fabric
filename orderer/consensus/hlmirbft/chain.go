@@ -21,7 +21,6 @@ import (
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -467,14 +466,14 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	}
 
 	if err := c.Node.Step(context.TODO(), sender, stepMsg); err != nil {
-		return fmt.Errorf("failed to process Raft Step message: %s", err)
+		return fmt.Errorf("failed to process Mir-BFT Step message: %s", err)
 	}
 
 	if len(req.Metadata) == 0 || atomic.LoadUint64(&c.lastKnownLeader) != sender { // ignore metadata from non-leader
 		return nil
 	}
 
-	clusterMetadata := &etcdraft.ClusterMetadata{}
+	clusterMetadata := &hlmirbft.ClusterMetadata{}
 	if err := proto.Unmarshal(req.Metadata, clusterMetadata); err != nil {
 		return errors.Errorf("failed to unmarshal ClusterMetadata: %s", err)
 	}
