@@ -513,9 +513,7 @@ func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
 	return prependReq
 }
 
-// Submit forwards the incoming request to:
-// - to all nodes via the transport mechanism if the request hasn't been forwarded
-// - the underlying state machine if the request has been forwarded
+// Submit forwards the incoming request to all nodes via the transport mechanism
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 
 	if err := c.isRunning(); err != nil {
@@ -523,24 +521,18 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 		return err
 	}
 
-	submitPayload := req.Payload.GetPayload()
-	isForwardRequest := c.CheckPrependForwardFlag(submitPayload)
-
-	if !isForwardRequest {
-
-		req.Payload.Payload = c.PrependForwardFlag(submitPayload)
-
-		for nodeID, _ := range c.opts.Consenters {
-
-			if nodeID != c.MirBFTID {
-				err := c.Node.rpc.SendSubmit(nodeID, req)
-				if err != nil {
-					c.logger.Warnf("Failed to broadcast Message to Node : %d ", nodeID)
-					return err
-				}
+	reqBytes := protoutil.MarshalOrPanic(req)
+	for nodeID, _ := range c.opts.Consenters {
+		if nodeID != c.MirBFTID {
+			forwardedReq := &msgs.Msg{Type: &msgs.Msg_ForwardRequest{ForwardRequest: &msgs.ForwardRequest{RequestData: reqBytes}}}
+			forwardedReqBytes := protoutil.MarshalOrPanic(forwardedReq)
+			err := c.Node.rpc.SendConsensus(nodeID, &orderer.ConsensusRequest{Channel: c.channelID, Payload: forwardedReqBytes})
+			if err != nil {
+				c.logger.Warnf("Failed to broadcast Message to Node : %d ", nodeID)
+				return err
 			}
-
 		}
+	}
 
 	}
 
