@@ -813,9 +813,13 @@ func initializeMultichannelRegistrar(
 			etcdConsenter := initializeEtcdraftConsenter(consenters, conf, lf, clusterDialer, bootstrapBlock, repInitiator, srvConf, srv, registrar, metricsProvider, bccsp)
 			icr = etcdConsenter.InactiveChainRegistry
 		} else if bootstrapBlock == nil {
-			// without a system channel: assume cluster type, InactiveChainRegistry == nil, no go-routine.
-			// consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
-			consenters["hlmirbft"] = hlmirbft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
+			// cluster must be assigned to only one OSN type
+			switch conf.General.Type {
+			case "etcdraft":
+				consenters["etcdraft"] = etcdraft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
+			case "hlmirbft":
+				consenters["hlmirbft"] = hlmirbft.New(clusterDialer, conf, srvConf, srv, registrar, nil, metricsProvider, bccsp)
+			}
 		}
 	}
 
