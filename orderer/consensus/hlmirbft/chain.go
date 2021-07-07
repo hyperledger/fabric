@@ -624,7 +624,7 @@ func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 func (c *Chain) proposeMsg(msg *orderer.SubmitRequest, sender uint64) (err error) {
 	clientID := sender
 	proposer := c.Node.Client(clientID)
-	//The reqNo of a client should only ever be incremented by the node the client belongs to
+	//Incrementation of the reqNo of a client should only ever be caused by the node the client belongs to
 	reqNo, err := proposer.NextReqNo()
 
 	if err != nil {
