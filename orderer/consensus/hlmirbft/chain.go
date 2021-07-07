@@ -992,7 +992,7 @@ func (c *Chain) processBatch( batch *msgs.QEntry) error{
 		}
 		if c.isConfig(env) {
 			configBlock := c.CreateBlock([]*common.Envelope{env})
-			c.writeConfigBlock(configBlock,)
+			c.writeConfigBlock(configBlock)
 		}else{
 			envs = append(envs,env)
 		}
@@ -1014,16 +1014,17 @@ func (c *Chain) Apply(batch *msgs.QEntry) error {
 		seqNumbers = append(seqNumbers, k)
 	}
 	sort.SliceStable(seqNumbers, func(i, j int) bool { return seqNumbers[i] < seqNumbers[j] })
-
-	for i:=0 ;i<len(seqNumbers)  ;i++{
+	for i:=0;i<len(seqNumbers);i++{
+		
 			if c.Node.LastCommittedSeqNo+1 != seqNumbers[i] {
 				break
 			}
 			err := c.processBatch(c.pendingBatches[seqNumbers[i]])
 			if err != nil {
-					return errors.WithMessage(err, "Batch Processing Error")}
+			    return errors.WithMessage(err, "Batch Processing Error")
+			}
 			delete(c.pendingBatches, seqNumbers[i])
-			c.Node.LastCommittedSeqNo = seqNumbers[i]
+			c.Node.LastCommittedSeqNo++
 	}
 	return nil
 }
