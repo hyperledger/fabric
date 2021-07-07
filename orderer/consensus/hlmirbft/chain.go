@@ -591,34 +591,25 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 	c.support.WriteBlock(block, m)
 }
 
-// Orders the envelope in the `msg` content. SubmitRequest.
+// Checks the envelope in the `msg` content. SubmitRequest.
 // Returns
 //   -- err error; the error encountered, if any.
-// It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
+// It takes care of the revalidation of messages if the config sequence has advanced.
 
-//JIRA FLY2-57 - proposed changes
-func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
-
+//JIRA FLY2-57 - proposed changes -> adapted in JIRA FLY2-94
+func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 	seq := c.support.Sequence()
 
 	if msg.LastValidationSeq < seq {
-
-		if c.isConfig(msg.Payload) {
-
-			c.configInflight = true //JIRA FLY2-57 - proposed changes
-		}
-
 		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
 
 		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
 			c.Metrics.ProposalFailures.Add(1)
 			return errors.Errorf("bad normal message: %s", err)
 		}
-
 	}
 
-	return c.proposeMsg(msg)
-
+	return nil
 }
 
 //FLY2-57 - Proposed Change: New function to propose normal messages to node
