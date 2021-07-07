@@ -474,6 +474,22 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
 	}
 
+	// Check if the request is a forwarded transaction
+	switch t := stepMsg.Type.(type) {
+	case *msgs.Msg_ForwardRequest:
+		// If this forwarded request has no acknowledgements then we know it is a forwarded transaction
+		if t.ForwardRequest.RequestAck == nil {
+			forwardedReq := &orderer.SubmitRequest{}
+			if err := proto.Unmarshal(t.ForwardRequest.RequestData, forwardedReq); err != nil {
+				return fmt.Errorf("failed to unmarshal ForwardedRequest payload to SubmitRequest: %s", err)
+			}
+			if err := c.checkMsg(forwardedReq); err != nil {
+				return err
+			}
+			return c.proposeMsg(forwardedReq, sender)
+		}
+	}
+
 	if err := c.Node.Step(context.TODO(), sender, stepMsg); err != nil {
 		return fmt.Errorf("failed to process Raft Step message: %s", err)
 	}
