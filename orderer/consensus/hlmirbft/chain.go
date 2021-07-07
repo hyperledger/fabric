@@ -612,11 +612,11 @@ func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 	return nil
 }
 
-//FLY2-57 - Proposed Change: New function to propose normal messages to node
-func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
-
-	clientID := c.MirBFTID
+//FLY2-57 - Proposed Change: New function to propose normal messages to node -> adapted in JIRA FLY2-94
+func (c *Chain) proposeMsg(msg *orderer.SubmitRequest, sender uint64) (err error) {
+	clientID := sender
 	proposer := c.Node.Client(clientID)
+	//The reqNo of a client should only ever be incremented by the node the client belongs to
 	reqNo, err := proposer.NextReqNo()
 
 	if err != nil {
