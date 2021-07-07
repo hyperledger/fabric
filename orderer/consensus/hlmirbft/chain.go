@@ -463,7 +463,7 @@ func (c *Chain) isRunning() error {
 	return nil
 }
 
-// Consensus passes the given ConsensusRequest message to the raft.Node instance
+// Consensus passes the given ConsensusRequest message to the mirbft.Node instance
 func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
 		return err
