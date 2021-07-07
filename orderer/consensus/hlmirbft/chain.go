@@ -550,12 +550,12 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 		}
 	}
 
+	if err := c.checkMsg(req); err != nil {
+		return err
 	}
 
-	req.Payload.Payload = submitPayload[9:]
-
-	return c.ordered(req)
-
+	//This request was sent by a Fabric application
+	return c.proposeMsg(req, c.MirBFTID)
 }
 
 type apply struct {
