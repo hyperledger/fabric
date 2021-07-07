@@ -676,6 +676,14 @@ func verifyLedgerDoesNotExist(t *testing.T, provider *Provider, ledgerID string)
 	require.NoError(t, err)
 	require.False(t, exists)
 
+	metadata, err := provider.idStore.getLedgerMetadata(ledgerID)
+	require.NoError(t, err)
+	require.Nil(t, metadata)
+
+	activeLedgerIDs, err := provider.List()
+	require.NoError(t, err)
+	require.NotContains(t, activeLedgerIDs, ledgerID)
+
 	exists, err = provider.blkStoreProvider.Exists(ledgerID)
 	require.NoError(t, err)
 	require.False(t, exists)
