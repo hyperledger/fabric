@@ -278,7 +278,7 @@ func NewChain(
 		observeC:          observeC,
 		support:           support,
 		fresh:             fresh,
-		appliedIndex:      opts.BlockMetadata.RaftIndex,
+		appliedIndex:      opts.BlockMetadata.MirbftIndex,
 		lastBlock:         b,
 		createPuller:      f,
 		clock:             opts.Clock,
@@ -584,7 +584,7 @@ func (c *Chain) writeBlock(block *common.Block) {
 
 	c.mirbftMetadataLock.Lock()
 	c.appliedIndex++
-	c.opts.BlockMetadata.RaftIndex = c.appliedIndex
+	c.opts.BlockMetadata.MirbftIndex = c.appliedIndex
 
 	m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
 	c.mirbftMetadataLock.Unlock()
@@ -810,7 +810,7 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 func (c *Chain) writeConfigBlock(block *common.Block) {
 	c.mirbftMetadataLock.Lock()
 	c.appliedIndex++
-	c.opts.BlockMetadata.RaftIndex = c.appliedIndex
+	c.opts.BlockMetadata.MirbftIndex = c.appliedIndex
 	m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
 	c.mirbftMetadataLock.Unlock()
 	c.support.WriteConfigBlock(block,m)
@@ -1006,16 +1006,17 @@ func (c *Chain) processBatch( batch *msgs.QEntry) error{
 }
 
 
-//JIRA FLY2-48 proposed changes:Write block in accordence with the sequence number
+//JIRA FLY2-48 proposed changes:Write block in accordance with the sequence number
 func (c *Chain) Apply(batch *msgs.QEntry) error {
 	c.pendingBatches[batch.SeqNo] = batch
-	seqNumbers := make([]uint64, 0, len(c.pendingBatches))
+	index := 0  // Review comment change to rpelace append by index.
+	seqNumbers := make([]uint64, len(c.pendingBatches))
 	for k := range c.pendingBatches {
-		seqNumbers = append(seqNumbers, k)
+		seqNumbers[index] = k
+		index++
 	}
 	sort.SliceStable(seqNumbers, func(i, j int) bool { return seqNumbers[i] < seqNumbers[j] })
 	for i:=0;i<len(seqNumbers);i++{
-		
 			if c.Node.LastCommittedSeqNo+1 != seqNumbers[i] {
 				break
 			}
