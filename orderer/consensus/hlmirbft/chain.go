@@ -10,6 +10,7 @@ import (
 	"encoding/binary"
 	"encoding/pem"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -160,6 +161,8 @@ type Chain struct {
 	errorC     chan struct{} // returned by Errored()
 
 	mirbftMetadataLock   sync.RWMutex
+	//JIRA FLY2-48 - proposed changes:map to store the pending batches before committing
+	pendingBatches        map[uint64]*msgs.QEntry
 	confChangeInProgress *raftpb.ConfChange
 	justElected          bool // this is true when node has just been elected
 	configInflight       bool // this is true when there is config block or ConfChange in flight
@@ -200,6 +203,7 @@ type Chain struct {
 	// BCCSP instance
 	CryptoProvider bccsp.BCCSP
 }
+
 
 type MirBFTLogger struct {
 	*flogging.FabricLogger
@@ -274,7 +278,7 @@ func NewChain(
 		observeC:          observeC,
 		support:           support,
 		fresh:             fresh,
-		appliedIndex:      opts.BlockMetadata.RaftIndex,
+		appliedIndex:      opts.BlockMetadata.MirbftIndex,
 		lastBlock:         b,
 		createPuller:      f,
 		clock:             opts.Clock,
@@ -563,7 +567,7 @@ func (c *Chain) run() {
 
 }
 
-func (c *Chain) writeBlock(block *common.Block, index uint64) {
+func (c *Chain) writeBlock(block *common.Block) {
 	if block.Header.Number > c.lastBlock.Header.Number+1 {
 		c.logger.Panicf("Got block [%d], expect block [%d]", block.Header.Number, c.lastBlock.Header.Number+1)
 	} else if block.Header.Number < c.lastBlock.Header.Number+1 {
@@ -576,19 +580,17 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 	}
 	c.lastBlock = block
 
-	c.logger.Infof("Writing block [%d] (Raft index: %d) to ledger", block.Header.Number, index)
-
-	if protoutil.IsConfigBlock(block) {
-		c.writeConfigBlock(block, index)
-		return
-	}
+	c.logger.Infof("Writing block [%d] to ledger", block.Header.Number)
 
 	c.mirbftMetadataLock.Lock()
-	c.opts.BlockMetadata.RaftIndex = index
+	c.appliedIndex++
+	c.opts.BlockMetadata.MirbftIndex = c.appliedIndex
+
 	m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
 	c.mirbftMetadataLock.Unlock()
 
 	c.support.WriteBlock(block, m)
+
 }
 
 // Orders the envelope in the `msg` content. SubmitRequest.
@@ -631,10 +633,16 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 	if err != nil {
 		return errors.Errorf("failed to generate next request number")
 	}
+
+	//FLY2-48-proposed change:In apply function,Block generation requires *Common.Envelope rather than payload data byte .*Common.Envelope helps to identify request id config or not
+	data,err := proto.Marshal(msg.Payload)
+	if err != nil {
+		return errors.Errorf("Cannot marshal payload")
+	}
 	req := &msgs.Request{
 		ClientId: clientID,
 		ReqNo:    reqNo,
-		Data:     msg.Payload.GetPayload(),
+		Data:     data,
 	}
 
 	reqBytes, err := proto.Marshal(req)
@@ -799,7 +807,14 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 // writeConfigBlock writes configuration blocks into the ledger in
 // addition extracts updates about raft replica set and if there
 // are changes updates cluster membership as well
-func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
+func (c *Chain) writeConfigBlock(block *common.Block) {
+	c.mirbftMetadataLock.Lock()
+	c.appliedIndex++
+	c.opts.BlockMetadata.MirbftIndex = c.appliedIndex
+	m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
+	c.mirbftMetadataLock.Unlock()
+	c.support.WriteConfigBlock(block,m)
+	c.lastBlock = block
 
 }
 
@@ -945,10 +960,84 @@ func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
 	case <-c.doneC:
 	}
 }
+//JIRA FLY2-48 proposed changes: fetch request from request store
+func (c *Chain) fetchRequest(ack *msgs.RequestAck) (*msgs.Request,error){
 
-// TODO(harrymknight) Implement these methods
-func (c *Chain) Apply(*msgs.QEntry) error {
+	reqByte, err := c.Node.ReqStore.GetRequest(ack)
+	if err != nil {
+		return nil, errors.WithMessage(err, "Cannot Fetch Request")
+	}
+	if reqByte == nil {
+		return nil,errors.Errorf("reqstore should have request if we are committing it")
+	}
+	reqMsg := &msgs.Request{}
+	err = proto.Unmarshal(reqByte,reqMsg)
+	if err != nil {
+		return nil,errors.WithMessage(err, "Cannot Unmarshal Request")
+	}
+	return reqMsg,nil
+}
+//FLY2-48 proposed changes
+// - convert batches to block and write to the ledger
+func (c *Chain) processBatch( batch *msgs.QEntry) error{
+	var envs []*common.Envelope
+	for _, requestAck := range batch.Requests {
+		reqMsg,err := c.fetchRequest(requestAck)
+		if err != nil {
+			return errors.WithMessage(err, "Cannot fetch request from Request Store")
+		}
+		env,err:= protoutil.UnmarshalEnvelope(reqMsg.Data)
+		if err != nil {
+			return errors.WithMessage(err, "Cannot Unmarshal Request Data")
+		}
+		if c.isConfig(env) {
+			configBlock := c.CreateBlock([]*common.Envelope{env})
+			c.writeConfigBlock(configBlock)
+		}else{
+			envs = append(envs,env)
+		}
+	}
+	if len(envs)!=0 {
+		block := c.CreateBlock(envs)
+		c.writeBlock(block)
+	}
+
 	return nil
+}
+
+
+//JIRA FLY2-48 proposed changes:Write block in accordance with the sequence number
+func (c *Chain) Apply(batch *msgs.QEntry) error {
+	c.pendingBatches[batch.SeqNo] = batch
+	index := 0  // Review comment change to rpelace append by index.
+	seqNumbers := make([]uint64, len(c.pendingBatches))
+	for k := range c.pendingBatches {
+		seqNumbers[index] = k
+		index++
+	}
+	sort.SliceStable(seqNumbers, func(i, j int) bool { return seqNumbers[i] < seqNumbers[j] })
+	for i:=0;i<len(seqNumbers);i++{
+			if c.Node.LastCommittedSeqNo+1 != seqNumbers[i] {
+				break
+			}
+			err := c.processBatch(c.pendingBatches[seqNumbers[i]])
+			if err != nil {
+			    return errors.WithMessage(err, "Batch Processing Error")
+			}
+			delete(c.pendingBatches, seqNumbers[i])
+			c.Node.LastCommittedSeqNo++
+	}
+	return nil
+}
+//FLY2-48 proposed changes
+//	- create Blocks
+func (c *Chain ) CreateBlock(envs []*common.Envelope) *common.Block {
+	bc := &blockCreator{
+		hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
+		number: c.lastBlock.Header.Number,
+		logger: c.logger,
+	}
+	return bc.createNextBlock(envs)
 }
 
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
