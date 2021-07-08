@@ -477,7 +477,9 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	// Check if the request is a forwarded transaction
 	switch t := stepMsg.Type.(type) {
 	case *msgs.Msg_ForwardRequest:
-		// If this forwarded request has no acknowledgements then we know it is a forwarded transaction
+		// If this forwarded request has no acknowledgements
+		// then it has only been sent to a node by a Fabric application
+		// and then forwarded to at least f+1 nodes
 		if t.ForwardRequest.RequestAck == nil {
 			forwardedReq := &orderer.SubmitRequest{}
 			if err := proto.Unmarshal(t.ForwardRequest.RequestData, forwardedReq); err != nil {
