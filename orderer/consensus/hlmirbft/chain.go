@@ -467,7 +467,7 @@ func (c *Chain) isRunning() error {
 	return nil
 }
 
-// Consensus passes the given ConsensusRequest message to the raft.Node instance
+// Consensus passes the given ConsensusRequest message to the mirbft.Node instance
 func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	if err := c.isRunning(); err != nil {
 		return err
@@ -476,6 +476,24 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	stepMsg := &msgs.Msg{}
 	if err := proto.Unmarshal(req.Payload, stepMsg); err != nil {
 		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
+	}
+
+	// Check if the request is a forwarded transaction
+	switch t := stepMsg.Type.(type) {
+	case *msgs.Msg_ForwardRequest:
+		// If this forwarded request has no acknowledgements
+		// then it has only been sent to a node by a Fabric application
+		// and then forwarded to at least f+1 nodes
+		if t.ForwardRequest.RequestAck == nil {
+			forwardedReq := &orderer.SubmitRequest{}
+			if err := proto.Unmarshal(t.ForwardRequest.RequestData, forwardedReq); err != nil {
+				return fmt.Errorf("failed to unmarshal ForwardedRequest payload to SubmitRequest: %s", err)
+			}
+			if err := c.checkMsg(forwardedReq); err != nil {
+				return err
+			}
+			return c.proposeMsg(forwardedReq, sender)
+		}
 	}
 
 	if err := c.Node.Step(context.TODO(), sender, stepMsg); err != nil {
@@ -517,9 +535,7 @@ func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
 	return prependReq
 }
 
-// Submit forwards the incoming request to:
-// - to all nodes via the transport mechanism if the request hasn't been forwarded
-// - the underlying state machine if the request has been forwarded
+// Submit forwards the incoming request to all nodes via the transport mechanism
 func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 
 	if err := c.isRunning(); err != nil {
@@ -527,31 +543,25 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 		return err
 	}
 
-	submitPayload := req.Payload.GetPayload()
-	isForwardRequest := c.CheckPrependForwardFlag(submitPayload)
-
-	if !isForwardRequest {
-
-		req.Payload.Payload = c.PrependForwardFlag(submitPayload)
-
-		for nodeID, _ := range c.opts.Consenters {
-
-			if nodeID != c.MirBFTID {
-				err := c.Node.rpc.SendSubmit(nodeID, req)
-				if err != nil {
-					c.logger.Warnf("Failed to broadcast Message to Node : %d ", nodeID)
-					return err
-				}
+	reqBytes := protoutil.MarshalOrPanic(req)
+	for nodeID, _ := range c.opts.Consenters {
+		if nodeID != c.MirBFTID {
+			forwardedReq := &msgs.Msg{Type: &msgs.Msg_ForwardRequest{ForwardRequest: &msgs.ForwardRequest{RequestData: reqBytes}}}
+			forwardedReqBytes := protoutil.MarshalOrPanic(forwardedReq)
+			err := c.Node.rpc.SendConsensus(nodeID, &orderer.ConsensusRequest{Channel: c.channelID, Payload: forwardedReqBytes})
+			if err != nil {
+				c.logger.Warnf("Failed to broadcast Message to Node : %d ", nodeID)
+				return err
 			}
-
 		}
-
 	}
 
-	req.Payload.Payload = submitPayload[9:]
+	if err := c.checkMsg(req); err != nil {
+		return err
+	}
 
-	return c.ordered(req)
-
+	//This request was sent by a Fabric application
+	return c.proposeMsg(req, c.MirBFTID)
 }
 
 type apply struct {
@@ -593,41 +603,32 @@ func (c *Chain) writeBlock(block *common.Block) {
 
 }
 
-// Orders the envelope in the `msg` content. SubmitRequest.
+// Checks the envelope in the `msg` content. SubmitRequest.
 // Returns
 //   -- err error; the error encountered, if any.
-// It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
+// It takes care of the revalidation of messages if the config sequence has advanced.
 
-//JIRA FLY2-57 - proposed changes
-func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
-
+//JIRA FLY2-57 - proposed changes -> adapted in JIRA FLY2-94
+func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 	seq := c.support.Sequence()
 
 	if msg.LastValidationSeq < seq {
-
-		if c.isConfig(msg.Payload) {
-
-			c.configInflight = true //JIRA FLY2-57 - proposed changes
-		}
-
 		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
 
 		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
 			c.Metrics.ProposalFailures.Add(1)
 			return errors.Errorf("bad normal message: %s", err)
 		}
-
 	}
 
-	return c.proposeMsg(msg)
-
+	return nil
 }
 
-//FLY2-57 - Proposed Change: New function to propose normal messages to node
-func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
-
-	clientID := c.MirBFTID
+//FLY2-57 - Proposed Change: New function to propose normal messages to node -> adapted in JIRA FLY2-94
+func (c *Chain) proposeMsg(msg *orderer.SubmitRequest, sender uint64) (err error) {
+	clientID := sender
 	proposer := c.Node.Client(clientID)
+	//Incrementation of the reqNo of a client should only ever be caused by the node the client belongs to
 	reqNo, err := proposer.NextReqNo()
 
 	if err != nil {
