@@ -44,8 +44,12 @@ type node struct {
 	WALDir      string
 	ReqStoreDir string
 
-	CheckpointSeqNo         uint64                  // JIRA FLY2-66
-	PendingReconfigurations []*msgs.Reconfiguration // JIRA FLY2-66
+	CheckpointSeqNo         uint64                  //JIRA FLY2-66
+	PendingReconfigurations []*msgs.Reconfiguration //JIRA FLY2-66
+
+	LastCommittedSeqNo uint64 //JIRA FLY2-48 - proposed changes: To track the last committed sequence number
+
+	ReqStore *reqstore.Store //JIRA FLY2-48 - Stores the request store instance of mirbft node. This for getting Request object using request #.
 
 	rpc *Disseminator
 
@@ -85,6 +89,9 @@ func (n *node) start(fresh, join bool) {
 			n.logger.Error(err, "Failed to create request store directory")
 		}
 		reqStore, err := reqstore.Open(n.ReqStoreDir)
+		//FL2-48 proposed changes
+		// - store the mirbft node request store instance to node
+		n.ReqStore = reqStore
 		if err != nil {
 			n.logger.Error(err, "Failed to create request store")
 		}
