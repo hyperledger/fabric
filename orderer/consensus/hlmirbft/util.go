@@ -470,7 +470,7 @@ func  CompareConsenterList(existingConsenters, updatedConsenters []*hlmirbft.Con
 	}
 	for _, value := range updatedConsenters {
 		if !consenter_Map[value] {
-		return value
+			return value
 		}
 	}
 	return nil
@@ -486,4 +486,14 @@ func GetConsenterId(consenters  map[uint64]*hlmirbft.Consenter, consenter *hlmir
 	}
 	return
 }
-
+//JIRA FLY2-103 : Function to remove nodeID from NodeID list
+func removeNodeID(nodeList []uint64, nodeID uint64) []uint64{
+	var index int
+	for i:=0;i<len(nodeList);i++{
+		if nodeList[i] == nodeID{
+			index = i
+		}
+	}
+	newNodeList := append(nodeList[:index], nodeList[index+1:]...)
+	return  newNodeList
+}
