@@ -607,22 +607,7 @@ func(c *Chain) getConfigMetadata(msgPayload []byte) (*hlmirbft.ConfigMetadata, e
 	return  MetadataFromConfigUpdate(configUpdate)
 
 }
-//JIRA FLY2-103 : function to update protocol parameters
-func (c *Chain) updateProtocolParameters(configMetaData *hlmirbft.ConfigMetadata,nodeList []uint64)  {
-	c.Node.config.HeartbeatTicks = configMetaData.Options.HeartbeatTicks
-	c.Node.config.SuspectTicks = configMetaData.Options.SuspectTicks
-	c.Node.config.NewEpochTimeoutTicks = configMetaData.Options.NewEpochTimeoutTicks
-	c.Node.config.BufferSize = configMetaData.Options.BufferSize
 
-	c.opts.HeartbeatTicks = configMetaData.Options.HeartbeatTicks
-	c.opts.SuspectTicks = configMetaData.Options.SuspectTicks
-	c.opts.NewEpochTimeoutTicks = configMetaData.Options.NewEpochTimeoutTicks
-	c.opts.BufferSize = configMetaData.Options.BufferSize
-	c.mirbftMetadataLock.Lock()
-	c.opts.BlockMetadata.ConsenterIds = nodeList
-	c.mirbftMetadataLock.Unlock()
-
-}
 //JIRA FLY2-103 : function to generate new network state config
 func (c *Chain) getNewNetworkStateConfig(newNodeList []uint64) *msgs.NetworkState_Config  {
 	nodes := newNodeList
@@ -652,25 +637,22 @@ func (c *Chain) getUpdatedConfigChange(configMetaData *hlmirbft.ConfigMetadata,c
 			Width: 100,
 		}}
 		consenterList = append(consenterList,newNodeId)
-		newNetStateConfig = c.getNewNetworkStateConfig(consenterList)
 	} else if configChangeType < 0 {
 		removedConsenter := CompareConsenterList(currentConsenters,updatedConsenters)
 		removedConsenterID,ok := GetConsenterId(c.opts.Consenters,removedConsenter)
 		if !ok {
-			return nil, errors.Errorf("Cannot Retrive Consenter ID")
+			return nil, errors.Errorf("Cannot Retrieve Consenter ID")
 		}
 		updatedConfig.Type = &msgs.Reconfiguration_RemoveClient{
 			RemoveClient: removedConsenterID,
 		}
 		consenterList = removeNodeID(consenterList,removedConsenterID)
-		newNetStateConfig = c.getNewNetworkStateConfig(consenterList)
 	}
 
-
+	newNetStateConfig = c.getNewNetworkStateConfig(consenterList)
 	newNetworkState.Type = &msgs.Reconfiguration_NewConfig{
 		NewConfig: newNetStateConfig,
 	}
-	c.updateProtocolParameters(configMetaData,consenterList)
 
 	return  []*msgs.Reconfiguration{updatedConfig,newNetworkState} , nil
 
