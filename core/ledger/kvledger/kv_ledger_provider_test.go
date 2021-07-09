@@ -566,6 +566,19 @@ func constructTestLedgerID(i int) string {
 	return fmt.Sprintf("ledger_%06d", i)
 }
 
+func constructTestLedger(t *testing.T, provider *Provider, sequenceID int) string {
+	ledgerID := constructTestLedgerID(sequenceID)
+	gb, err := configtxtest.MakeGenesisBlock(ledgerID)
+	require.NoError(t, err)
+	require.NotNil(t, gb)
+
+	lgr, err := provider.CreateFromGenesisBlock(gb)
+	require.NoError(t, err)
+	require.NotNil(t, lgr)
+
+	return ledgerID
+}
+
 func testConfig(t *testing.T) (conf *ledger.Config, cleanup func()) {
 	path, err := ioutil.TempDir("", "kvledger")
 	require.NoError(t, err, "Failed to create test ledger directory")

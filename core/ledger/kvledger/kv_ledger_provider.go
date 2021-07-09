@@ -119,7 +119,7 @@ func NewProvider(initializer *ledger.Initializer) (pr *Provider, e error) {
 		return nil, err
 	}
 	p.initLedgerStatistics()
-	if err := p.deleteUnderConstructionLedgers(); err != nil {
+	if err := p.deletePartialLedgers(); err != nil {
 		return nil, err
 	}
 	if err := p.initSnapshotDir(); err != nil {
@@ -420,21 +420,21 @@ func (p *Provider) Close() {
 	}
 }
 
-// deleteUnderConstructionLedgers checks whether there is a ledger that is partially created - this would be the case
-// if a crash had happened during creation of ledger and the ledger creation could have been left in intermediate
-// state. This function deletes such a ledger so the ledger can be recreated a fresh
-func (p *Provider) deleteUnderConstructionLedgers() error {
-	logger.Debugf("Recovering under construction ledger")
+// deletePartialLedgers scans for and deletes any ledger with a status of UNDER_CONSTRUCTION or UNDER_DELETION.
+// UNDER_CONSTRUCTION ledgers represent residual structures created as a side effect of a crash during ledger creation.
+// UNDER_DELETION ledgers represent residual structures created as a side effect of a crash during a peer channel unjoin.
+func (p *Provider) deletePartialLedgers() error {
+	logger.Debug("Removing ledgers in state UNDER_CONSTRUCTION or UNDER_DELETION")
 	itr := p.idStore.db.GetIterator(metadataKeyPrefix, metadataKeyStop)
 	defer itr.Release()
 	if err := itr.Error(); err != nil {
-		return errors.WithMessage(err, "error while obtaining iterator for checking for any under construction ledger")
+		return errors.WithMessage(err, "error obtaining iterator for incomplete ledger scans")
 	}
 	for {
 		hasMore := itr.Next()
 		err := itr.Error()
 		if err != nil {
-			return errors.WithMessage(err, "error while iterating over ledger for checking for any under construction ledger")
+			return errors.WithMessage(err, "error while iterating over ledger list while scanning for incomplete ledgers")
 		}
 		if !hasMore {
 			return nil
@@ -444,18 +444,20 @@ func (p *Provider) deleteUnderConstructionLedgers() error {
 		if err := proto.Unmarshal(itr.Value(), metadata); err != nil {
 			return errors.Wrapf(err, "error while unmarshalling metadata bytes for ledger [%s]", ledgerID)
 		}
-		if metadata.Status == msgs.Status_UNDER_CONSTRUCTION {
+		if metadata.Status == msgs.Status_UNDER_CONSTRUCTION || metadata.Status == msgs.Status_UNDER_DELETION {
 			logger.Infow(
-				"An under-construction ledger found at start. This indicates a peer stop/crash during creation of a ledger. Going to delete the partially created ledger",
+				"A partial ledger was identified at peer launch, indicating a peer stop/crash during creation or a failed channel unjoin.  The partial ledger wil be deleted.",
 				"ledgerID", ledgerID,
+				"Status", metadata.Status,
 			)
 			if err := p.runCleanup(ledgerID); err != nil {
 				logger.Errorw(
 					"Error while deleting a partially created ledger at start",
 					"ledgerID", ledgerID,
+					"Status", metadata.Status,
 					"error", err,
 				)
-				return errors.WithMessagef(err, "error while deleting a partially created ledger at start for ledger = [%s]", ledgerID)
+				return errors.WithMessagef(err, "error while deleting a partially constructed ledger with status [%s] at start for ledger = [%s]", metadata.Status, ledgerID)
 			}
 		}
 	}
