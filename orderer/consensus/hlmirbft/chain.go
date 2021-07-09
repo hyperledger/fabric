@@ -475,8 +475,6 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 		return fmt.Errorf("failed to unmarshal StepRequest payload to Raft Message: %s", err)
 	}
 
-	fmt.Printf("%v %v", stepMsg, stepMsg.Type)
-
 	// Check if the request is a forwarded transaction
 	switch t := stepMsg.Type.(type) {
 	case *msgs.Msg_ForwardRequest:
