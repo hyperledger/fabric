@@ -44,13 +44,13 @@ func TestArguments(t *testing.T) {
 
 	// Build ledger binary
 	gt := gomega.NewWithT(t)
-	ledger, err := gexec.Build("github.com/hyperledger/fabric/cmd/ledger")
+	ledgerutil, err := gexec.Build("github.com/hyperledger/fabric/cmd/ledgerutil")
 	gt.Expect(err).NotTo(gomega.HaveOccurred())
 	defer gexec.CleanupBuildArtifacts()
 
 	for testName, testCase := range testCases {
 		t.Run(testName, func(t *testing.T) {
-			cmd := exec.Command(ledger, testCase.args...)
+			cmd := exec.Command(ledgerutil, testCase.args...)
 			session, err := gexec.Start(cmd, nil, nil)
 			gt.Expect(err).NotTo(gomega.HaveOccurred())
 			gt.Eventually(session, 5*time.Second).Should(gexec.Exit(testCase.exitCode))
