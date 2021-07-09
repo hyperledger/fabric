@@ -6,11 +6,16 @@ SPDX-License-Identifier: Apache-2.0
 package hlmirbft
 
 import (
-	"code.cloudfoundry.org/clock"
 	"context"
 	"encoding/binary"
 	"encoding/pem"
 	"fmt"
+	"github.com/hyperledger/fabric/common/configtx"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"code.cloudfoundry.org/clock"
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger-labs/mirbft"
@@ -20,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/orderer/common/cluster"
 	"github.com/hyperledger/fabric/orderer/common/types"
@@ -30,10 +34,6 @@ import (
 	"go.etcd.io/etcd/raft"
 	"go.etcd.io/etcd/raft/raftpb"
 	"go.etcd.io/etcd/wal"
-	"sort"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -161,9 +161,6 @@ type Chain struct {
 	errorC     chan struct{} // returned by Errored()
 
 	mirbftMetadataLock   sync.RWMutex
-	//FLY2-48 - proposed changes
-	// - map to store the pending batches before committing
-	pendingBatches        map[uint64]*msgs.QEntry
 	confChangeInProgress *raftpb.ConfChange
 	justElected          bool // this is true when node has just been elected
 	configInflight       bool // this is true when there is config block or ConfChange in flight
@@ -204,7 +201,6 @@ type Chain struct {
 	// BCCSP instance
 	CryptoProvider bccsp.BCCSP
 }
-
 
 type MirBFTLogger struct {
 	*flogging.FabricLogger
@@ -568,7 +564,7 @@ func (c *Chain) run() {
 
 }
 
-func (c *Chain) writeBlock(block *common.Block) {
+func (c *Chain) writeBlock(block *common.Block, index uint64) {
 	if block.Header.Number > c.lastBlock.Header.Number+1 {
 		c.logger.Panicf("Got block [%d], expect block [%d]", block.Header.Number, c.lastBlock.Header.Number+1)
 	} else if block.Header.Number < c.lastBlock.Header.Number+1 {
@@ -581,28 +577,24 @@ func (c *Chain) writeBlock(block *common.Block) {
 	}
 	c.lastBlock = block
 
-	c.logger.Infof("Writing block [%d] to ledger", block.Header.Number)
+	c.logger.Infof("Writing block [%d] (Raft index: %d) to ledger", block.Header.Number, index)
+
+	if protoutil.IsConfigBlock(block) {
+		c.writeConfigBlock(block, index)
+		return
+	}
 
 	c.mirbftMetadataLock.Lock()
-	c.appliedIndex++
-	c.opts.BlockMetadata.RaftIndex = c.appliedIndex
-
+	c.opts.BlockMetadata.RaftIndex = index
 	m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
 	c.mirbftMetadataLock.Unlock()
 
 	c.support.WriteBlock(block, m)
-
 }
-
-// Orders the envelope in the `msg` content. SubmitRequest.
-// Returns
-//   -- err error; the error encountered, if any.
-// It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
-
 
 
 //JIRA FLY2-103 :function to get the config metadata from envelope payload
-func(c *Chain) getConfigMetaData(msgPayload []byte) (*hlmirbft.ConfigMetadata, error) {
+func(c *Chain) getConfigMetadata(msgPayload []byte) (*hlmirbft.ConfigMetadata, error) {
 	payload, err := protoutil.UnmarshalPayload(msgPayload)
 	if err != nil {
 		return nil,err
@@ -611,22 +603,56 @@ func(c *Chain) getConfigMetaData(msgPayload []byte) (*hlmirbft.ConfigMetadata, e
 	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
 	if err != nil {
 		return nil,err
-
 	}
 	return  MetadataFromConfigUpdate(configUpdate)
 
 }
-//JIRA FLY2-103 : function to identify the type of config update and return the config change
-func (c *Chain) getUpdatedConfigChange(currentConsenters , updatedConsenters []*hlmirbft.Consenter) (*msgs.Reconfiguration,error){
-	var updatedConfig *msgs.Reconfiguration
-	configChangeType := len(currentConsenters) - len(updatedConsenters)
+//JIRA FLY2-103 : function to update protocol parameters
+func (c *Chain) updateProtocolParameters(configMetaData *hlmirbft.ConfigMetadata,nodeList []uint64)  {
+	c.Node.config.HeartbeatTicks = configMetaData.Options.HeartbeatTicks
+	c.Node.config.SuspectTicks = configMetaData.Options.SuspectTicks
+	c.Node.config.NewEpochTimeoutTicks = configMetaData.Options.NewEpochTimeoutTicks
+	c.Node.config.BufferSize = configMetaData.Options.BufferSize
 
+	c.opts.HeartbeatTicks = configMetaData.Options.HeartbeatTicks
+	c.opts.SuspectTicks = configMetaData.Options.SuspectTicks
+	c.opts.NewEpochTimeoutTicks = configMetaData.Options.NewEpochTimeoutTicks
+	c.opts.BufferSize = configMetaData.Options.BufferSize
+	c.mirbftMetadataLock.Lock()
+	c.opts.BlockMetadata.ConsenterIds = nodeList
+	c.mirbftMetadataLock.Unlock()
+
+}
+//JIRA FLY2-103 : function to generate new network state config
+func (c *Chain) getNewNetworkStateConfig(newNodeList []uint64) *msgs.NetworkState_Config  {
+	nodes := newNodeList
+	nodeCount := len(nodes)
+	numberOfBuckets := int32(nodeCount)
+	checkpointInterval := numberOfBuckets * 5
+	maxEpochLength := uint64(checkpointInterval * 10)
+	return &msgs.NetworkState_Config{
+			Nodes:              nodes,
+			MaxEpochLength:     maxEpochLength,
+			CheckpointInterval: checkpointInterval,
+			F:                  int32((nodeCount - 1) / 3),
+			NumberOfBuckets:    numberOfBuckets,
+		}
+}
+
+//JIRA FLY2-103 : function to identify the type of config update and return the config change
+func (c *Chain) getUpdatedConfigChange(configMetaData *hlmirbft.ConfigMetadata,currentConsenters , updatedConsenters []*hlmirbft.Consenter) ([]*msgs.Reconfiguration,error){
+	var updatedConfig,newNetworkState *msgs.Reconfiguration
+	var newNetStateConfig *msgs.NetworkState_Config
+	configChangeType := len(currentConsenters) - len(updatedConsenters)
+	consenterList := c.opts.BlockMetadata.ConsenterIds
 	if configChangeType > 0 {
 		newNodeId := uint64(len(currentConsenters)+1)
 		updatedConfig.Type = &msgs.Reconfiguration_NewClient_{NewClient: &msgs.Reconfiguration_NewClient{
 			Id: newNodeId,
 			Width: 100,
 		}}
+		consenterList = append(consenterList,newNodeId)
+		newNetStateConfig = c.getNewNetworkStateConfig(consenterList)
 	} else if configChangeType < 0 {
 		removedConsenter := CompareConsenterList(currentConsenters,updatedConsenters)
 		removedConsenterID,ok := GetConsenterId(c.opts.Consenters,removedConsenter)
@@ -636,45 +662,47 @@ func (c *Chain) getUpdatedConfigChange(currentConsenters , updatedConsenters []*
 		updatedConfig.Type = &msgs.Reconfiguration_RemoveClient{
 			RemoveClient: removedConsenterID,
 		}
-	}else if configChangeType == 0{
-		nodes := c.opts.BlockMetadata.ConsenterIds
-		nodeCount := len(nodes)
-		numberOfBuckets := int32(nodeCount)
-		checkpointInterval := numberOfBuckets * 5
-		maxEpochLength := uint64(checkpointInterval * 10)
-		updatedConfig.Type = &msgs.Reconfiguration_NewConfig{
-			NewConfig: &msgs.NetworkState_Config{
-				Nodes:              nodes,
-				MaxEpochLength:     maxEpochLength,
-				CheckpointInterval: checkpointInterval,
-				F:                  int32((nodeCount - 1) / 3),
-				NumberOfBuckets:    numberOfBuckets,
-			},
-		}
-
+		consenterList = removeNodeID(consenterList,removedConsenterID)
+		newNetStateConfig = c.getNewNetworkStateConfig(consenterList)
 	}
-	return  updatedConfig , nil
+
+
+	newNetworkState.Type = &msgs.Reconfiguration_NewConfig{
+		NewConfig: newNetStateConfig,
+	}
+	c.updateProtocolParameters(configMetaData,consenterList)
+
+	return  []*msgs.Reconfiguration{updatedConfig,newNetworkState} , nil
 
 }
 //JIRA FLY2-103 : function to process the config Metadata
-func (c *Chain) processReconfiguration(configMetaData *hlmirbft.ConfigMetadata)(*msgs.Reconfiguration,error){
+func (c *Chain) processReconfiguration(configMetaData *hlmirbft.ConfigMetadata)([]*msgs.Reconfiguration,error){
 	var currentConsenters  []*hlmirbft.Consenter
 	for  _, value := range c.opts.Consenters {
 		currentConsenters = append(currentConsenters, value)
 	}
 	updatedConsenters := configMetaData.Consenters
-	return c.getUpdatedConfigChange(currentConsenters,updatedConsenters)
+	return c.getUpdatedConfigChange(configMetaData,currentConsenters,updatedConsenters)
 
 }
+
+
+
+// Orders the envelope in the `msg` content. SubmitRequest.
+// Returns
+//   -- err error; the error encountered, if any.
+// It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
+
 //JIRA FLY2-57 - proposed changes
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
+
 	seq := c.support.Sequence()
 	if msg.LastValidationSeq < seq {
 
 		if c.isConfig(msg.Payload) {
 
 			//JIRA FLY2-103 : get config Metadata from envelope payload
-			configMetaData, err := c.getConfigMetaData(msg.Payload.Payload)
+			configMetaData, err := c.getConfigMetadata(msg.Payload.Payload)
 			if err != nil {
 				return errors.Errorf("bad normal message: %s", err)
 			}
@@ -684,9 +712,8 @@ func (c *Chain) ordered(msg *orderer.SubmitRequest) (err error) {
 			if err != nil {
 				return errors.Errorf("Cannot Generate Reconfiguration Data: %s", err)
 			}
-
 			//JIRA FLY2-103 : append reconfiguration to c.Node.PendingReconfigurations
-			c.Node.PendingReconfigurations = append(c.Node.PendingReconfigurations, reconfig)
+			c.Node.PendingReconfigurations = append(c.Node.PendingReconfigurations, reconfig...)
 		}
 
 		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
@@ -712,17 +739,10 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest) (err error) {
 	if err != nil {
 		return errors.Errorf("failed to generate next request number")
 	}
-
-	//FLY2-48-proposed change
-	// - in apply function,Block generation requires *Common.Envelope rather than payload data byte
-	data,err := proto.Marshal(msg.Payload)
-	if err != nil {
-		return errors.Errorf("Cannot marshal payload")
-	}
 	req := &msgs.Request{
 		ClientId: clientID,
 		ReqNo:    reqNo,
-		Data:     data,
+		Data:     msg.Payload.GetPayload(),
 	}
 
 	reqBytes, err := proto.Marshal(req)
@@ -852,7 +872,6 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 	defer c.mirbftMetadataLock.RUnlock()
 
 	var nodes []cluster.RemoteNode
-	
 	for raftID, consenter := range c.opts.Consenters {
 		// No need to know yourself
 		if raftID == c.MirBFTID {
@@ -888,14 +907,7 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 // writeConfigBlock writes configuration blocks into the ledger in
 // addition extracts updates about raft replica set and if there
 // are changes updates cluster membership as well
-func (c *Chain) writeConfigBlock(block *common.Block) {
-	c.mirbftMetadataLock.Lock()
-	c.appliedIndex++
-	c.opts.BlockMetadata.RaftIndex = c.appliedIndex
-	m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
-	c.mirbftMetadataLock.Unlock()
-	c.support.WriteConfigBlock(block,m)
-	c.lastBlock = block
+func (c *Chain) writeConfigBlock(block *common.Block, index uint64) {
 
 }
 
@@ -1041,85 +1053,10 @@ func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
 	case <-c.doneC:
 	}
 }
-//FLY2-48 proposed changes
-// - fetch request from request store
-func (c *Chain) fetchRequest(ack *msgs.RequestAck) (*msgs.Request,error){
 
-	reqByte, err := c.Node.ReqStore.GetRequest(ack)
-	if err != nil {
-		return nil, errors.WithMessage(err, "Cannot Fetch Request")
-	}
-	if reqByte == nil {
-		return nil,errors.Errorf("reqstore should have request if we are committing it")
-	}
-	reqMsg := &msgs.Request{}
-	err = proto.Unmarshal(reqByte,reqMsg)
-	if err != nil {
-		return nil,errors.WithMessage(err, "Cannot Unmarshal Request")
-	}
-	return reqMsg,nil
-}
-//FLY2-48 proposed changes
-// - convert batches to block and write to the ledger
-func (c *Chain) processBatch( batch *msgs.QEntry) error{
-	var envs []*common.Envelope
-	for _, requestAck := range batch.Requests {
-		reqMsg,err := c.fetchRequest(requestAck)
-		if err != nil {
-			return errors.WithMessage(err, "Cannot fetch request from Request Store")
-		}
-		env,err:= protoutil.UnmarshalEnvelope(reqMsg.Data)
-		if err != nil {
-			return errors.WithMessage(err, "Cannot Unmarshal Request Data")
-		}
-		if c.isConfig(env) {
-			configBlock := c.CreateBlock([]*common.Envelope{env})
-			c.writeConfigBlock(configBlock,)
-		}else{
-			envs = append(envs,env)
-		}
-	}
-	if len(envs)!=0 {
-		block := c.CreateBlock(envs)
-		c.writeBlock(block)
-	}
-
+// TODO(harrymknight) Implement these methods
+func (c *Chain) Apply(*msgs.QEntry) error {
 	return nil
-}
-
-
-//FLY2-48 proposed changes
-//	- write block in accordance with the sequence number
-func (c *Chain) Apply(batch *msgs.QEntry) error {
-	c.pendingBatches[batch.SeqNo] = batch
-	seqNumbers := make([]uint64, 0, len(c.pendingBatches))
-
-	for k := range c.pendingBatches {
-		seqNumbers = append(seqNumbers, k)
-	}
-	sort.SliceStable(seqNumbers, func(i, j int) bool { return seqNumbers[i] < seqNumbers[j] })
-
-	for i:=0 ;i<len(seqNumbers)  ;i++{
-			if c.Node.LastCommittedSeqNo+1 != seqNumbers[i] {
-				break
-			}
-			err := c.processBatch(c.pendingBatches[seqNumbers[i]])
-			if err != nil {
-					return errors.WithMessage(err, "Batch Processing Error")}
-			delete(c.pendingBatches, seqNumbers[i])
-			c.Node.LastCommittedSeqNo++
-	}
-	return nil
-}
-//FLY2-48 proposed changes
-//	- create Blocks
-func (c *Chain ) CreateBlock(envs []*common.Envelope) *common.Block {
-	bc := &blockCreator{
-		hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
-		number: c.lastBlock.Header.Number,
-		logger: c.logger,
-	}
-	return bc.createNextBlock(envs)
 }
 
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
