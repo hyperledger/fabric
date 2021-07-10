@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hyperledger/fabric/internal/ledger"
+	"github.com/hyperledger/fabric/internal/ledgerutil"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	app = kingpin.New("ledger", "Ledger Utility Tool")
+	app = kingpin.New("ledgerutil", "Ledger Utility Tool")
 
 	compare       = app.Command("compare", "Compare two ledgers via their snapshots.")
 	snapshotPath1 = compare.Arg("snapshotPath1", "First ledger snapshot directory.").Required().String()
@@ -59,7 +59,7 @@ func main() {
 
 	case compare.FullCommand():
 
-		count, err := ledger.Compare(*snapshotPath1, *snapshotPath2, resultFilepath)
+		count, err := ledgerutil.Compare(*snapshotPath1, *snapshotPath2, resultFilepath)
 		if err != nil {
 			fmt.Println(err)
 			return
