@@ -157,7 +157,7 @@ gossip:
     # Gossip state transfer related configuration
     state:
         # indicates whenever state transfer is enabled or not
-        # default value is true, i.e. state transfer is active
+        # default value is false, i.e. state transfer is active
         # and takes care to sync up missing blocks allowing
         # lagging peer to catch up to speed with rest network
         enabled: false
