@@ -602,6 +602,7 @@ func (c *Chain) writeBlock(block *common.Block) {
 
 	c.support.WriteBlock(block, m)
 
+
 }
 //JIRA FLY2-103 :Function to get the config metadata from envelope payload
 func(c *Chain) getConfigMetadata(msgPayload []byte) (*hlmirbft.ConfigMetadata, error) {
@@ -676,6 +677,8 @@ func (c *Chain) processReconfiguration(configMetaData *hlmirbft.ConfigMetadata)(
 
 }
 
+
+
 // Checks the envelope in the `msg` content. SubmitRequest.
 // Returns
 //   -- err error; the error encountered, if any.
@@ -687,7 +690,7 @@ func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 
 	if msg.LastValidationSeq < seq {
 		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
-		
+	
 		//JIRA FLY2-103 : Check msg type
 		if c.isConfig(msg.Payload) {
 
@@ -705,7 +708,6 @@ func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 			//JIRA FLY2-103 : append reconfiguration to c.Node.PendingReconfigurations
 			c.Node.PendingReconfigurations = append(c.Node.PendingReconfigurations, reconfig...)
 		}
-
 		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
 			c.Metrics.ProposalFailures.Add(1)
 			return errors.Errorf("bad normal message: %s", err)
@@ -727,7 +729,9 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest, sender uint64) (err error
 	}
 
 	//FLY2-48-proposed change:In apply function,Block generation requires *Common.Envelope rather than payload data byte .*Common.Envelope helps to identify request id config or not
+
 	data, err := proto.Marshal(msg.Payload)
+
 	if err != nil {
 		return errors.Errorf("Cannot marshal payload")
 	}
@@ -1085,16 +1089,56 @@ func (c *Chain) processBatch( batch *msgs.QEntry) error{
 		if c.isConfig(env) {
 			configBlock := c.CreateBlock([]*common.Envelope{env})
 			c.writeConfigBlock(configBlock)
-			\} else {
-				envs = append(envs, env)
-			}
-	}
-	if len(envs)!=0 {
+		} else {
+      
+			envs = append(envs,env)
+      
+		}
+
+}
+if len(envs)!=0 {
 		block := c.CreateBlock(envs)
 		c.writeBlock(block)
+}
+
+
+	return nil
+}
+
+
+//JIRA FLY2-48 proposed changes:Write block in accordance with the sequence number
+func (c *Chain) Apply(batch *msgs.QEntry) error {
+	c.pendingBatches[batch.SeqNo] = batch
+	index := 0  // Review comment change to rpelace append by index.
+	seqNumbers := make([]uint64, len(c.pendingBatches))
+	for k := range c.pendingBatches {
+		seqNumbers[index] = k
+		index++
+	}
+	sort.SliceStable(seqNumbers, func(i, j int) bool { return seqNumbers[i] < seqNumbers[j] })
+	for i:=0;i<len(seqNumbers);i++{
+			if c.Node.LastCommittedSeqNo+1 != seqNumbers[i] {
+				break
+			}
+			err := c.processBatch(c.pendingBatches[seqNumbers[i]])
+			if err != nil {
+			    return errors.WithMessage(err, "Batch Processing Error")
+			}
+			delete(c.pendingBatches, seqNumbers[i])
+			c.Node.LastCommittedSeqNo++
 	}
 
 	return nil
+}
+//FLY2-48 proposed changes
+//	- create Blocks
+func (c *Chain ) CreateBlock(envs []*common.Envelope) *common.Block {
+	bc := &blockCreator{
+		hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
+		number: c.lastBlock.Header.Number,
+		logger: c.logger,
+	}
+	return bc.createNextBlock(envs)
 }
 
 
