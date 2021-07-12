@@ -383,12 +383,6 @@ func (c *Chain) WaitReady() error {
 		return err
 	}
 
-	select {
-	case c.submitC <- nil:
-	case <-c.doneC:
-		return errors.Errorf("chain is stopped")
-	}
-
 	return nil
 }
 
