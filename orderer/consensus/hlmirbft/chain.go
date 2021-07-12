@@ -617,10 +617,10 @@ func (c *Chain) getNewNetworkStateConfig(newNodeList []uint64) *msgs.NetworkStat
 	maxEpochLength := uint64(checkpointInterval * 10)
 	return &msgs.NetworkState_Config{
 			Nodes:              nodes,
-			MaxEpochLength:     maxEpochLength,
-			CheckpointInterval: checkpointInterval,
+			MaxEpochLength:     configMetaData.Options.MaxEpochLength,
+			CheckpointInterval: configMetaData.Options.CheckpointInterval,
 			F:                  int32((nodeCount - 1) / 3),
-			NumberOfBuckets:    numberOfBuckets,
+			NumberOfBuckets:    configMetaData.Options.NumberOfBuckets,
 		}
 }
 
