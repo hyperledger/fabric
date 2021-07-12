@@ -458,7 +458,7 @@ This allows Org1 and Org2 to create an asset without receiving an endorsement fr
 the other organization. You can see the steps required to deploy the chaincode
 printed in your logs after you issue the command above.
 
-When both organizations approve the chaincode defition using the
+When both organizations approve the chaincode definition using the
 `peer lifecycle chaincode approveformyorg <commands/peerlifecycle.html#peer-lifecycle-chaincode-approveformyorg>`__
 command, the chaincode definition includes the path to the private data collection
 definition using the ``--collections-config`` flag. You can see the following `approveformyorg`
