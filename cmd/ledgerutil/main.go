@@ -9,14 +9,13 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/hyperledger/fabric/internal/ledgerutil"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
-	resultFilename = "result.json"
+	compareErrorMessage = "Ledger Compare Error: "
 )
 
 var (
@@ -41,30 +40,31 @@ func main() {
 		return
 	}
 
-	// Determine result json file location
-	var resultFilepath string
-	if outputDir != nil {
-		resultFilepath = *outputDir
-	} else {
-		resultFilepath, err = os.Getwd()
+	// Set results directory location; an empty location sets the current directory by default
+	if *outputDir != "" {
+		err = os.Chdir(*outputDir)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("%s%s\n", compareErrorMessage, err)
 			return
 		}
 	}
-	resultFilepath = filepath.Join(resultFilepath, resultFilename)
+	*outputDir, err = os.Getwd()
+	if err != nil {
+		fmt.Printf("%s%s\n", compareErrorMessage, err)
+		return
+	}
 
 	// Command logic
 	switch command {
 
 	case compare.FullCommand():
 
-		count, err := ledgerutil.Compare(*snapshotPath1, *snapshotPath2, resultFilepath)
+		count, _, err := ledgerutil.Compare(*snapshotPath1, *snapshotPath2, *outputDir)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("%s%s\n", compareErrorMessage, err)
 			return
 		}
-		fmt.Printf("\nSuccessfully compared snapshots. Result saved to %s. Total differences found: %d\n", resultFilepath, count)
+		fmt.Printf("\nSuccessfully compared snapshots. Result saved to %s. Total differences found: %d\n", *outputDir, count)
 
 	case troubleshoot.FullCommand():
 

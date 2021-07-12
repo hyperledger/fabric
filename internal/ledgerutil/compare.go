@@ -23,48 +23,67 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	resultsDir      = "ledger_comparison_results"
+	allDivsFilename = "all_divergences.json"
+)
+
 // Compare - Compares two ledger snapshots and outputs the differences in snapshot records
-// This function will overwrite the file at outputPath if it already exists
-func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count int, err error) {
+// This function will not overwrite existing files
+func Compare(snapshotDir1 string, snapshotDir2 string, outputDir string) (count int, allRes string, err error) {
 	// Check the hashes between two files
 	hashPath1 := filepath.Join(snapshotDir1, kvledger.SnapshotSignableMetadataFileName)
 	hashPath2 := filepath.Join(snapshotDir2, kvledger.SnapshotSignableMetadataFileName)
 
 	equal, err := snapshotsComparable(hashPath1, hashPath2)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	if equal {
-		return 0, errors.New("both snapshots public state hashes are same. Aborting compare")
+		return 0, "", errors.New("both snapshots public state hashes are same. Aborting compare")
 	}
 
-	// Create the output file
-	jsonOutputFile, err := newJSONFileWriter(outputFile)
+	// Create the output files
+	err = os.Chdir(outputDir)
 	if err != nil {
-		return 0, err
+		return 0, "", err
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return 0, "", err
+	}
+	err = os.Mkdir(resultsDir, 0o777)
+	if err != nil {
+		return 0, "", err
+	}
+
+	allRes = filepath.Join(wd, resultsDir, allDivsFilename)
+	jsonOutputFile, err := newJSONFileWriter(allRes)
+	if err != nil {
+		return 0, "", err
 	}
 
 	// Create snapshot readers to read both snapshots
 	snapshotReader1, err := privacyenabledstate.NewSnapshotReader(snapshotDir1,
 		privacyenabledstate.PubStateDataFileName, privacyenabledstate.PubStateMetadataFileName)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	snapshotReader2, err := privacyenabledstate.NewSnapshotReader(snapshotDir2,
 		privacyenabledstate.PubStateDataFileName, privacyenabledstate.PubStateMetadataFileName)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	// Read each snapshot record  to begin looking for divergences
 	namespace1, snapshotRecord1, err := snapshotReader1.Next()
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	namespace2, snapshotRecord2, err := snapshotReader2.Next()
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	// Main snapshot record comparison loop
@@ -82,56 +101,56 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count
 				// Keys are the same but records are different
 				diffRecord, err := newDiffRecord(namespace1, snapshotRecord1, snapshotRecord2)
 				if err != nil {
-					return 0, err
+					return 0, "", err
 				}
 				// Add difference to output JSON file
 				err = jsonOutputFile.addRecord(*diffRecord)
 				if err != nil {
-					return 0, err
+					return 0, "", err
 				}
 			}
 			// Advance both snapshot readers
 			namespace1, snapshotRecord1, err = snapshotReader1.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			namespace2, snapshotRecord2, err = snapshotReader2.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 
 		case 1: // Key 1 is bigger, snapshot 1 is missing a record
 			// Snapshot 2 has the missing record, add missing to output JSON file
 			diffRecord, err := newDiffRecord(namespace2, nil, snapshotRecord2)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			// Add missing record to output JSON file
 			err = jsonOutputFile.addRecord(*diffRecord)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			// Advance the second snapshot reader
 			namespace2, snapshotRecord2, err = snapshotReader2.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 
 		case -1: // Key 2 is bigger, snapshot 2 is missing a record
 			// Snapshot 1 has the missing record, add missing to output JSON file
 			diffRecord, err := newDiffRecord(namespace1, snapshotRecord1, nil)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			// Add missing record to output JSON file
 			err = jsonOutputFile.addRecord(*diffRecord)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			// Advance the first snapshot reader
 			namespace1, snapshotRecord1, err = snapshotReader1.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 
 		default:
@@ -147,15 +166,15 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count
 			// Add missing to output JSON file
 			diffRecord, err := newDiffRecord(namespace1, snapshotRecord1, nil)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			err = jsonOutputFile.addRecord(*diffRecord)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			namespace1, snapshotRecord1, err = snapshotReader1.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 		}
 
@@ -164,24 +183,24 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count
 			// Add missing to output JSON file
 			diffRecord, err := newDiffRecord(namespace2, nil, snapshotRecord2)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			err = jsonOutputFile.addRecord(*diffRecord)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			namespace2, snapshotRecord2, err = snapshotReader2.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 		}
 	}
 
 	err = jsonOutputFile.close()
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
-	return jsonOutputFile.count, nil
+	return jsonOutputFile.count, allRes, nil
 }
 
 // diffRecord represents a diverging record in json

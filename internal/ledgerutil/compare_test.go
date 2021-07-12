@@ -342,7 +342,7 @@ func TestCompare(t *testing.T) {
 			require.NoError(t, err)
 
 			// Compare snapshots and check the output
-			count, out, err := compareSnapshots(snapshotDir1, snapshotDir2, filepath.Join(resultsDir, "results.json"))
+			count, out, err := compareSnapshots(snapshotDir1, snapshotDir2, resultsDir)
 			require.Equal(t, testCase.expectedDiffCount, count)
 			switch testCase.expectedOutputType {
 			case "error":
@@ -406,16 +406,16 @@ func createSnapshot(dir string, pubStateRecords []*testRecord, signableMetadata 
 // compareSnapshots calls the Compare tool and extracts the result json
 func compareSnapshots(ss1 string, ss2 string, res string) (int, string, error) {
 	// Run compare tool on snapshots
-	count, err := Compare(ss1, ss2, res)
+	count, allRes, err := Compare(ss1, ss2, res)
 	if err != nil {
 		return 0, "", err
 	}
 	// Read results of output
-	resBytes, err := ioutil.ReadFile(res)
+	allResBytes, err := ioutil.ReadFile(allRes)
 	if err != nil {
 		return 0, "", err
 	}
-	out, err := ioutil.ReadAll(bytes.NewReader(resBytes))
+	out, err := ioutil.ReadAll(bytes.NewReader(allResBytes))
 	if err != nil {
 		return 0, "", err
 	}
