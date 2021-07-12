@@ -1,5 +1,7 @@
 module github.com/hyperledger/fabric
 
+module github.com/hyperledger/fabric
+
 go 1.14
 
 require (
@@ -18,7 +20,7 @@ require (
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
-	github.com/fly2plan/fabric-protos-go v0.0.0-20210524122828-67268ab197d0
+	github.com/fly2plan/fabric-protos-go v0.0.0-20210712113213-ff6db94ab34c
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/fsouza/go-dockerclient v1.7.0
 	github.com/go-kit/kit v0.9.0
@@ -79,3 +81,4 @@ require (
 )
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
+
