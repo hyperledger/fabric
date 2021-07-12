@@ -1142,40 +1142,6 @@ func (c *Chain ) CreateBlock(envs []*common.Envelope) *common.Block {
 }
 
 
-//JIRA FLY2-48 proposed changes:Write block in accordance with the sequence number
-func (c *Chain) Apply(batch *msgs.QEntry) error {
-	c.pendingBatches[batch.SeqNo] = batch
-	index := 0  // Review comment change to rpelace append by index.
-	seqNumbers := make([]uint64, len(c.pendingBatches))
-	for k := range c.pendingBatches {
-		seqNumbers[index] = k
-		index++
-	}
-	sort.SliceStable(seqNumbers, func(i, j int) bool { return seqNumbers[i] < seqNumbers[j] })
-	for i:=0;i<len(seqNumbers);i++{
-			if c.Node.LastCommittedSeqNo+1 != seqNumbers[i] {
-				break
-			}
-			err := c.processBatch(c.pendingBatches[seqNumbers[i]])
-			if err != nil {
-			    return errors.WithMessage(err, "Batch Processing Error")
-			}
-			delete(c.pendingBatches, seqNumbers[i])
-			c.Node.LastCommittedSeqNo++
-	}
-	return nil
-}
-//FLY2-48 proposed changes
-//	- create Blocks
-func (c *Chain ) CreateBlock(envs []*common.Envelope) *common.Block {
-	bc := &blockCreator{
-		hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
-		number: c.lastBlock.Header.Number,
-		logger: c.logger,
-	}
-	return bc.createNextBlock(envs)
-}
-
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
 
