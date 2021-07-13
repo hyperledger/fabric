@@ -1,7 +1,5 @@
 module github.com/hyperledger/fabric
 
-module github.com/hyperledger/fabric
-
 go 1.14
 
 require (
