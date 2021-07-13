@@ -1144,20 +1144,16 @@ func (c *Chain ) CreateBlock(envs []*common.Envelope) *common.Block {
 
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
-	var reconfigList []*msgs.Reconfiguration
+	
 	pr := c.Node.PendingReconfigurations
-	for _,value := range pr {
-		reconfigList = append(reconfigList,value...)
-	}
-
+	
 	c.Node.PendingReconfigurations = nil
 
 	data, err := proto.Marshal(&msgs.NetworkState{
 		Config:                  networkConfig,
 		Clients:                 clientsState,
-		PendingReconfigurations: reconfigList,
+		PendingReconfigurations: pr[0],
 	})
-
 	if err != nil {
 
 		return nil, nil, errors.WithMessage(err, "could not marsshal network state")
@@ -1181,8 +1177,8 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 	}
 
-	return networkStates, reconfigList, nil
-
+	return networkStates, pr[0], nil
+	
 }
 
 //JIRA FLY2-58 proposed changes:Implemented the TransferTo Function
