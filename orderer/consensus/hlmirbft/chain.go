@@ -1160,7 +1160,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 	}
 
-	c.Node.CheckpointSeqNo = c.lastBlock.Header.Number
+	c.Node.CheckpointSeqNo++
 
 
 	countValue := make([]byte, 8)
