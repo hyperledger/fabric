@@ -79,4 +79,3 @@ require (
 )
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
-
