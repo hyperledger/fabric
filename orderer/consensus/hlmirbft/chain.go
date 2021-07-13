@@ -706,7 +706,7 @@ func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 				return errors.Errorf("Cannot Generate Reconfiguration Data: %s", err)
 			}
 			//JIRA FLY2-103 : append reconfiguration to c.Node.PendingReconfigurations
-			c.Node.PendingReconfigurations = append(c.Node.PendingReconfigurations, reconfig...)
+			c.Node.PendingReconfigurations = append(c.Node.PendingReconfigurations, reconfig)
 		}
 		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
 			c.Metrics.ProposalFailures.Add(1)
@@ -1144,15 +1144,18 @@ func (c *Chain ) CreateBlock(envs []*common.Envelope) *common.Block {
 
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
-
+	var reconfigList []*msgs.Reconfiguration
 	pr := c.Node.PendingReconfigurations
+	for _,value := range pr {
+		reconfigList = append(reconfigList,value...)
+	}
 
 	c.Node.PendingReconfigurations = nil
 
 	data, err := proto.Marshal(&msgs.NetworkState{
 		Config:                  networkConfig,
 		Clients:                 clientsState,
-		PendingReconfigurations: pr,
+		PendingReconfigurations: reconfigList,
 	})
 
 	if err != nil {
@@ -1161,7 +1164,8 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 	}
 
-	c.Node.CheckpointSeqNo++
+	c.Node.CheckpointSeqNo = c.lastBlock.Header.Number
+
 
 	countValue := make([]byte, 8)
 
@@ -1177,7 +1181,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 	}
 
-	return networkStates, pr, nil
+	return networkStates, reconfigList, nil
 
 }
 
