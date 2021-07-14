@@ -2,6 +2,8 @@
 ## explicit
 code.cloudfoundry.org/clock
 code.cloudfoundry.org/clock/fakeclock
+# github.com/766b/go-outliner v0.0.0-20180511142203-fc6edecdadd7
+## explicit
 # github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
@@ -127,7 +129,7 @@ github.com/eapache/go-xerial-snappy
 # github.com/eapache/queue v1.1.0
 ## explicit
 github.com/eapache/queue
-# github.com/fly2plan/fabric-protos-go v0.0.0-20210712113213-ff6db94ab34c
+# github.com/fly2plan/fabric-protos-go v0.0.0-20210714052649-e2b01f419caf
 ## explicit
 github.com/fly2plan/fabric-protos-go/orderer/hlmirbft
 # github.com/frankban/quicktest v1.11.3

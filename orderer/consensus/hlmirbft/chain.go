@@ -7,7 +7,6 @@ package hlmirbft
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/pem"
 	"fmt"
 	"github.com/hyperledger/fabric/common/configtx"
@@ -776,9 +775,10 @@ func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]
 		c.blockInflight++
 	}
 }
+//JIRA FLY2-106 function to catch up and synchronise blocks across nodes in the network
+func (c *Chain) catchUp(blockBytes []byte) error {
 
-func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
-	b, err := protoutil.UnmarshalBlock(snap.Data)
+	b, err := protoutil.UnmarshalBlock(blockBytes)
 	if err != nil {
 		return errors.Errorf("failed to unmarshal snapshot data to block: %s", err)
 	}
@@ -1144,58 +1144,78 @@ func (c *Chain ) CreateBlock(envs []*common.Envelope) *common.Block {
 
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
-	
+
 	pr := c.Node.PendingReconfigurations
-	
 	c.Node.PendingReconfigurations = nil
 
-	data, err := proto.Marshal(&msgs.NetworkState{
+	networkStateBytes, err := proto.Marshal(&msgs.NetworkState{
 		Config:                  networkConfig,
 		Clients:                 clientsState,
 		PendingReconfigurations: pr[0],
 	})
 	if err != nil {
 
-		return nil, nil, errors.WithMessage(err, "could not marsshal network state")
+		return nil, nil, errors.WithMessage(err, "Could not marshal network state")
 
 	}
 
-	c.Node.CheckpointSeqNo++
-
-
-	countValue := make([]byte, 8)
-
-	binary.BigEndian.PutUint64(countValue, uint64(c.Node.CheckpointSeqNo))
-
-	networkStates := append(countValue, data...)
-
-	err = c.Node.PersistSnapshot(c.Node.CheckpointSeqNo, networkStates)
+	//JIRA FLY2-106 Generating last block bytes to be added to snap data
+	lastBlockBytes, err := proto.Marshal(c.lastBlock)
 
 	if err != nil {
 
-		c.logger.Panicf("error while snap persist : %s", err)
+		return nil, nil, errors.WithMessage(err, "Could not marshal block")
 
 	}
 
-	return networkStates, pr[0], nil
-	
+
+	c.Node.CheckpointSeqNo = c.lastBlock.Header.Number
+
+	//JIRA FLY2-106 generating snapdatabytes
+	snapDataBytes, err := proto.Marshal(&hlmirbft.SnapData{
+		LastCommitedBlock: lastBlockBytes,
+		NetworkState: networkStateBytes,
+	})
+	if err != nil {
+
+		return nil, nil, errors.WithMessage(err, "Could not marshal Snap Data")
+
+	}
+
+	err = c.Node.PersistSnapshot(c.Node.CheckpointSeqNo, snapDataBytes)
+
+	if err != nil {
+
+		c.logger.Panicf("Error while snap persist : %s", err)
+
+	}
+
+	return snapDataBytes, pr[0], nil
+
 }
 
 //JIRA FLY2-58 proposed changes:Implemented the TransferTo Function
 func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
 
+
+	snapData := &hlmirbft.SnapData{}
 	networkState := &msgs.NetworkState{}
-
-	checkSeqNo := snap[:8] //get the sequence number of the snap
-
-	snapShot, err := c.Node.ReadSnapFiles(binary.BigEndian.Uint64(checkSeqNo), c.opts.SnapDir)
-
-	if err != nil {
+	if err := proto.Unmarshal(snap, snapData); err != nil {
 
 		return nil, err
 	}
+	//JIRA FLY2-106 retrieving network state bytes and block bytes from snap data
+	networkStateBytes := snapData.NetworkState
+	blockBytes := snapData.LastCommitedBlock
+	//JIRA FLY2-106 using block data to catch up and synchronise with rest of the nodes
+	err := c.catchUp(blockBytes)
+	if err != nil {
 
-	if err := proto.Unmarshal(snapShot[8:], networkState); err != nil {
+		return nil, errors.WithMessage(err, "Catchup failed")
+
+	}
+
+	if err := proto.Unmarshal(networkStateBytes, networkState); err != nil {
 
 		return nil, err
 

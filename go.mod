@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	code.cloudfoundry.org/clock v1.0.0
+	github.com/766b/go-outliner v0.0.0-20180511142203-fc6edecdadd7 // indirect
 	github.com/DataDog/zstd v1.4.8 // indirect
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/Shopify/sarama v1.20.1
@@ -18,7 +19,7 @@ require (
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
-	github.com/fly2plan/fabric-protos-go v0.0.0-20210712113213-ff6db94ab34c
+	github.com/fly2plan/fabric-protos-go v0.0.0-20210714052649-e2b01f419caf
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/fsouza/go-dockerclient v1.7.0
 	github.com/go-kit/kit v0.9.0
