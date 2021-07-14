@@ -231,6 +231,16 @@ export ASSET_PRICE=$(echo -n "{\"asset_id\":\"asset1\",\"trade_id\":\"109f4b3c50
 peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n secured -c '{"function":"AgreeToSell","Args":["asset1"]}' --transient "{\"asset_price\":\"$ASSET_PRICE\"}"
 ```
 
+NOTE: If you reach the following error:
+```
+Error: error parsing transient string: invalid character '\n' in string literal - proposal response: <nil>
+```
+It is because on linux, base64 command adds a newline character to wrap after every 76 characters. To fix this, manually remove all existing newline characters, as:
+```
+export ASSET_PRICE=$(echo -n "{\"asset_id\":\"asset1\",\"trade_id\":\"109f4b3c50d7b0df729d299bc6f8e9ef9066971f\",\"price\":110}" | base64 | tr -d \\n)
+```
+
+
 We can query the Org1 private data collection to read the agreed to selling price:
 
 ```
@@ -246,12 +256,31 @@ export ASSET_PROPERTIES=$(echo -n "{\"object_type\":\"asset_properties\",\"asset
 peer chaincode query -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n secured -c '{"function":"VerifyAssetProperties","Args":["asset1"]}' --transient "{\"asset_properties\":\"$ASSET_PROPERTIES\"}"
 ```
 
+NOTE: If you reach the following error:
+```
+Error: error parsing transient string: invalid character '\n' in string literal - proposal response: <nil>
+```
+It is because on linux, base64 command adds a newline character to wrap after every 76 characters. To fix this, manually remove all existing newline characters, as:
+```
+export ASSET_PROPERTIES=$(echo -n "{\"object_type\":\"asset_properties\",\"asset_id\":\"asset1\",\"color\":\"blue\",\"size\":35,\"salt\":\"a94a8fe5ccb19ba61c4c0873d391e987982fbbd3\"}" | base64 | tr -d \\n)
+```
+
+
 Run the following command to agree to buy asset1 for 100 dollars. As of now, Org2 will agree to a different price than Org2. Don't worry, the two organizations will agree to the same price in a future step. However, we we can use this temporary disagreement as a test of what happens if the buyer and the seller agree to a different price. Org2 needs to use the same `trade_id` as Org1.
 
 ```
 export ASSET_PRICE=$(echo -n "{\"asset_id\":\"asset1\",\"trade_id\":\"109f4b3c50d7b0df729d299bc6f8e9ef9066971f\",\"price\":100}" | base64)
 peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n secured -c '{"function":"AgreeToBuy","Args":["asset1"]}' --transient "{\"asset_price\":\"$ASSET_PRICE\"}"
 ```
+NOTE: If you reach the following error:
+```
+Error: error parsing transient string: invalid character '\n' in string literal - proposal response: <nil>
+```
+It is because on linux, base64 command adds a newline character to wrap after every 76 characters. To fix this, manually remove all existing newline characters, as:
+```
+export ASSET_PRICE=$(echo -n "{\"asset_id\":\"asset1\",\"trade_id\":\"109f4b3c50d7b0df729d299bc6f8e9ef9066971f\",\"price\":100}" | base64 | tr -d \\n)
+```
+
 
 You can read the agreed purchase price from the Org2 implicit data collection:
 
@@ -286,6 +315,16 @@ As a result, Org1 and Org2 come to a new agreement on the price at which the ass
 export ASSET_PRICE=$(echo -n "{\"asset_id\":\"asset1\",\"trade_id\":\"109f4b3c50d7b0df729d299bc6f8e9ef9066971f\",\"price\":100}" | base64)
 peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n secured -c '{"function":"AgreeToSell","Args":["asset1"]}' --transient "{\"asset_price\":\"$ASSET_PRICE\"}"
 ```
+
+NOTE: If you reach the following error:
+```
+Error: error parsing transient string: invalid character '\n' in string literal - proposal response: <nil>
+```
+It is because on linux, base64 command adds a newline character to wrap after every 76 characters. To fix this, manually remove all existing newline characters, as:
+```
+export ASSET_PRICE=$(echo -n "{\"asset_id\":\"asset1\",\"trade_id\":\"109f4b3c50d7b0df729d299bc6f8e9ef9066971f\",\"price\":100}" | base64 | tr -d \\n)
+```
+
 
 Now that the buyer and seller have agreed to the same price, Org1 can transfer the asset to Org2.
 
