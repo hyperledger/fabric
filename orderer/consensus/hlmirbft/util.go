@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"os"
 	"path/filepath"
+	"reflect"
 
 	"go.etcd.io/etcd/pkg/fileutil"
 
@@ -453,4 +454,39 @@ func PurgeFiles(files []string, dirPath string, logger *flogging.FabricLogger) e
 	}
 
 	return nil
+}
+//JIRA FLY2-103 : Function to identify the removed consenter details by comparing the current and updated consenter list
+func  CompareConsenterList(existingConsenters, updatedConsenters []*hlmirbft.Consenter) *hlmirbft.Consenter {
+	consenter_Map := make(map[*hlmirbft.Consenter]bool, len(existingConsenters))
+	for _, value := range existingConsenters {
+		consenter_Map[value] = true
+	}
+	for _, value := range updatedConsenters {
+		if !consenter_Map[value] {
+			return value
+		}
+	}
+	return nil
+}
+//JIRA FLY2-103 : Function to fetch the consenter ID using the consenter details
+func GetConsenterId(consenters  map[uint64]*hlmirbft.Consenter, consenter *hlmirbft.Consenter) (key uint64, ok bool) {
+	for k, v := range consenters {
+		if  reflect.DeepEqual(v,consenter) {
+			key = k
+			ok = true
+			return key,ok
+		}
+	}
+	return
+}
+//JIRA FLY2-103 : Function to remove nodeID from NodeID list
+func removeNodeID(nodeList []uint64, nodeID uint64) []uint64{
+	var index int
+	for i:=0;i<len(nodeList);i++{
+		if nodeList[i] == nodeID{
+			index = i
+		}
+	}
+	newNodeList := append(nodeList[:index], nodeList[index+1:]...)
+	return  newNodeList
 }

@@ -127,7 +127,7 @@ github.com/eapache/go-xerial-snappy
 # github.com/eapache/queue v1.1.0
 ## explicit
 github.com/eapache/queue
-# github.com/fly2plan/fabric-protos-go v0.0.0-20210707094648-b17a4e4c449f
+# github.com/fly2plan/fabric-protos-go v0.0.0-20210712113213-ff6db94ab34c
 ## explicit
 github.com/fly2plan/fabric-protos-go/orderer/hlmirbft
 # github.com/frankban/quicktest v1.11.3

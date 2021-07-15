@@ -10,6 +10,7 @@ import (
 	"encoding/binary"
 	"encoding/pem"
 	"fmt"
+	"github.com/hyperledger/fabric/common/configtx"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -572,7 +573,82 @@ func (c *Chain) writeBlock(block *common.Block) {
 
 	c.support.WriteBlock(block, m)
 
+
 }
+//JIRA FLY2-103 :Function to get the config metadata from envelope payload
+func(c *Chain) getConfigMetadata(msgPayload []byte) (*hlmirbft.ConfigMetadata, error) {
+	payload, err := protoutil.UnmarshalPayload(msgPayload)
+	if err != nil {
+		return nil,err
+	}
+	// get config update
+	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
+	if err != nil {
+		return nil,err
+	}
+	return  MetadataFromConfigUpdate(configUpdate)
+
+}
+
+//JIRA FLY2-103 : Generate new network state config
+func (c *Chain) getNewNetworkStateConfig(configMetaData *hlmirbft.ConfigMetadata,newNodeList []uint64) *msgs.NetworkState_Config  {
+	nodes := newNodeList
+	nodeCount := len(nodes)
+
+	return &msgs.NetworkState_Config{
+		Nodes:              nodes,
+		MaxEpochLength:     configMetaData.Options.MaxEpochLength,
+		CheckpointInterval: configMetaData.Options.CheckpointInterval,
+		F:                  int32((nodeCount - 1) / 3),
+		NumberOfBuckets:    configMetaData.Options.NumberOfBuckets,
+	}
+}
+
+//JIRA FLY2-103 : Identify the type of config update and return the config change
+func (c *Chain) getUpdatedConfigChange(configMetaData *hlmirbft.ConfigMetadata,currentConsenters , updatedConsenters []*hlmirbft.Consenter) ([]*msgs.Reconfiguration,error){
+	var updatedConfig,newNetworkState *msgs.Reconfiguration
+	var newNetStateConfig *msgs.NetworkState_Config
+	configChangeType := len(currentConsenters) - len(updatedConsenters)
+	consenterList := c.opts.BlockMetadata.ConsenterIds
+	if configChangeType > 0 {
+		newNodeId := uint64(len(currentConsenters)+1)
+		updatedConfig.Type = &msgs.Reconfiguration_NewClient_{NewClient: &msgs.Reconfiguration_NewClient{
+			Id: newNodeId,
+			Width: 100,
+		}}
+		consenterList = append(consenterList,newNodeId)
+	} else if configChangeType < 0 {
+		removedConsenter := CompareConsenterList(currentConsenters,updatedConsenters)
+		removedConsenterID,ok := GetConsenterId(c.opts.Consenters,removedConsenter)
+		if !ok {
+			return nil, errors.Errorf("Cannot Retrieve Consenter ID")
+		}
+		updatedConfig.Type = &msgs.Reconfiguration_RemoveClient{
+			RemoveClient: removedConsenterID,
+		}
+		consenterList = removeNodeID(consenterList,removedConsenterID)
+	}
+
+	newNetStateConfig = c.getNewNetworkStateConfig(configMetaData, consenterList)
+	newNetworkState.Type = &msgs.Reconfiguration_NewConfig{
+		NewConfig: newNetStateConfig,
+	}
+
+	return  []*msgs.Reconfiguration{updatedConfig,newNetworkState} , nil
+
+}
+//JIRA FLY2-103 : Process the config Metadata
+func (c *Chain) processReconfiguration(configMetaData *hlmirbft.ConfigMetadata)([]*msgs.Reconfiguration,error){
+	var currentConsenters  []*hlmirbft.Consenter
+	for  _, value := range c.opts.Consenters {
+		currentConsenters = append(currentConsenters, value)
+	}
+	updatedConsenters := configMetaData.Consenters
+	return c.getUpdatedConfigChange(configMetaData,currentConsenters,updatedConsenters)
+
+}
+
+
 
 // Checks the envelope in the `msg` content. SubmitRequest.
 // Returns
@@ -586,6 +662,23 @@ func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 	if msg.LastValidationSeq < seq {
 		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
 
+		//JIRA FLY2-103 : Check msg type
+		if c.isConfig(msg.Payload) {
+
+			//JIRA FLY2-103 : get config Metadata from envelope payload
+			configMetaData, err := c.getConfigMetadata(msg.Payload.Payload)
+			if err != nil {
+				return errors.Errorf("bad normal message: %s", err)
+			}
+
+			//JIRA FLY2-103 : get the reconfiguration
+			reconfig,err := c.processReconfiguration(configMetaData)
+			if err != nil {
+				return errors.Errorf("Cannot Generate Reconfiguration Data: %s", err)
+			}
+			//JIRA FLY2-103 : append reconfiguration to c.Node.PendingReconfigurations
+			c.Node.PendingReconfigurations = append(c.Node.PendingReconfigurations, reconfig)
+		}
 		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
 			c.Metrics.ProposalFailures.Add(1)
 			return errors.Errorf("bad normal message: %s", err)
@@ -607,7 +700,9 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest, sender uint64) (err error
 	}
 
 	//FLY2-48-proposed change:In apply function,Block generation requires *Common.Envelope rather than payload data byte .*Common.Envelope helps to identify request id config or not
+
 	data, err := proto.Marshal(msg.Payload)
+
 	if err != nil {
 		return errors.Errorf("Cannot marshal payload")
 	}
@@ -968,13 +1063,17 @@ func (c *Chain) processBatch(batch *msgs.QEntry) error {
 			configBlock := c.CreateBlock([]*common.Envelope{env})
 			c.writeConfigBlock(configBlock)
 		} else {
+
 			envs = append(envs, env)
+
 		}
-	}
-	if len(envs) != 0 {
+
+}
+if len(envs) != 0 {
 		block := c.CreateBlock(envs)
 		c.writeBlock(block)
-	}
+}
+
 
 	return nil
 }
@@ -1000,6 +1099,7 @@ func (c *Chain) Apply(batch *msgs.QEntry) error {
 		delete(c.pendingBatches, seqNumbers[i])
 		c.Node.LastCommittedSeqNo++
 	}
+
 	return nil
 }
 
@@ -1014,6 +1114,7 @@ func (c *Chain) CreateBlock(envs []*common.Envelope) *common.Block {
 	return bc.createNextBlock(envs)
 }
 
+
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
 
@@ -1024,9 +1125,8 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	data, err := proto.Marshal(&msgs.NetworkState{
 		Config:                  networkConfig,
 		Clients:                 clientsState,
-		PendingReconfigurations: pr,
+		PendingReconfigurations: pr[0],
 	})
-
 	if err != nil {
 
 		return nil, nil, errors.WithMessage(err, "could not marsshal network state")
@@ -1034,6 +1134,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	}
 
 	c.Node.CheckpointSeqNo++
+
 
 	countValue := make([]byte, 8)
 
@@ -1049,7 +1150,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 	}
 
-	return networkStates, pr, nil
+	return networkStates, pr[0], nil
 
 }
 
