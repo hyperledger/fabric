@@ -985,12 +985,18 @@ func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
 }
 
 func (c *Chain) commitBlock(block *common.Block) {
+	// read consenters metadata to write into the replicated block
+	blockMeta, err := protoutil.GetConsenterMetadataFromBlock(block)
+	if err != nil {
+		c.logger.Panicf("Failed to obtain metadata: %s", err)
+	}
+
 	if !protoutil.IsConfigBlock(block) {
-		c.support.WriteBlock(block, nil)
+		c.support.WriteBlock(block, blockMeta.Value)
 		return
 	}
 
-	c.support.WriteConfigBlock(block, nil)
+	c.support.WriteConfigBlock(block, blockMeta.Value)
 
 	configMembership := c.detectConfChange(block)
 
