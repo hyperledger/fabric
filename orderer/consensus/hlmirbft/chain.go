@@ -326,16 +326,17 @@ func NewChain(
 	c.ActiveNodes.Store([]uint64{})
 
 	c.Node = &node{
-		chainID:     c.channelID,
-		chain:       c,
-		logger:      c.logger,
-		metrics:     c.Metrics,
-		rpc:         disseminator,
-		config:      config,
-		WALDir:      opts.WALDir,
-		ReqStoreDir: opts.ReqStoreDir,
-		clock:       c.clock,
-		metadata:    c.opts.BlockMetadata,
+		chainID:                 c.channelID,
+		chain:                   c,
+		logger:                  c.logger,
+		metrics:                 c.Metrics,
+		rpc:                     disseminator,
+		config:                  config,
+		WALDir:                  opts.WALDir,
+		ReqStoreDir:             opts.ReqStoreDir,
+		PendingReconfigurations: make([][]*msgs.Reconfiguration, 0),
+		clock:                   c.clock,
+		metadata:                c.opts.BlockMetadata,
 	}
 
 	return c, nil
@@ -573,25 +574,25 @@ func (c *Chain) writeBlock(block *common.Block) {
 
 	c.support.WriteBlock(block, m)
 
-
 }
+
 //JIRA FLY2-103 :Function to get the config metadata from envelope payload
-func(c *Chain) getConfigMetadata(msgPayload []byte) (*hlmirbft.ConfigMetadata, error) {
+func (c *Chain) getConfigMetadata(msgPayload []byte) (*hlmirbft.ConfigMetadata, error) {
 	payload, err := protoutil.UnmarshalPayload(msgPayload)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	// get config update
 	configUpdate, err := configtx.UnmarshalConfigUpdateFromPayload(payload)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
-	return  MetadataFromConfigUpdate(configUpdate)
+	return MetadataFromConfigUpdate(configUpdate)
 
 }
 
 //JIRA FLY2-103 : Generate new network state config
-func (c *Chain) getNewNetworkStateConfig(configMetaData *hlmirbft.ConfigMetadata,newNodeList []uint64) *msgs.NetworkState_Config  {
+func (c *Chain) getNewNetworkStateConfig(configMetaData *hlmirbft.ConfigMetadata, newNodeList []uint64) *msgs.NetworkState_Config {
 	nodes := newNodeList
 	nodeCount := len(nodes)
 
@@ -605,28 +606,28 @@ func (c *Chain) getNewNetworkStateConfig(configMetaData *hlmirbft.ConfigMetadata
 }
 
 //JIRA FLY2-103 : Identify the type of config update and return the config change
-func (c *Chain) getUpdatedConfigChange(configMetaData *hlmirbft.ConfigMetadata,currentConsenters , updatedConsenters []*hlmirbft.Consenter) ([]*msgs.Reconfiguration,error){
-	var updatedConfig,newNetworkState *msgs.Reconfiguration
+func (c *Chain) getUpdatedConfigChange(configMetaData *hlmirbft.ConfigMetadata, currentConsenters, updatedConsenters []*hlmirbft.Consenter) ([]*msgs.Reconfiguration, error) {
+	var updatedConfig, newNetworkState *msgs.Reconfiguration
 	var newNetStateConfig *msgs.NetworkState_Config
 	configChangeType := len(currentConsenters) - len(updatedConsenters)
 	consenterList := c.opts.BlockMetadata.ConsenterIds
 	if configChangeType > 0 {
-		newNodeId := uint64(len(currentConsenters)+1)
+		newNodeId := uint64(len(currentConsenters) + 1)
 		updatedConfig.Type = &msgs.Reconfiguration_NewClient_{NewClient: &msgs.Reconfiguration_NewClient{
-			Id: newNodeId,
+			Id:    newNodeId,
 			Width: 100,
 		}}
-		consenterList = append(consenterList,newNodeId)
+		consenterList = append(consenterList, newNodeId)
 	} else if configChangeType < 0 {
-		removedConsenter := CompareConsenterList(currentConsenters,updatedConsenters)
-		removedConsenterID,ok := GetConsenterId(c.opts.Consenters,removedConsenter)
+		removedConsenter := CompareConsenterList(currentConsenters, updatedConsenters)
+		removedConsenterID, ok := GetConsenterId(c.opts.Consenters, removedConsenter)
 		if !ok {
 			return nil, errors.Errorf("Cannot Retrieve Consenter ID")
 		}
 		updatedConfig.Type = &msgs.Reconfiguration_RemoveClient{
 			RemoveClient: removedConsenterID,
 		}
-		consenterList = removeNodeID(consenterList,removedConsenterID)
+		consenterList = removeNodeID(consenterList, removedConsenterID)
 	}
 
 	newNetStateConfig = c.getNewNetworkStateConfig(configMetaData, consenterList)
@@ -634,21 +635,20 @@ func (c *Chain) getUpdatedConfigChange(configMetaData *hlmirbft.ConfigMetadata,c
 		NewConfig: newNetStateConfig,
 	}
 
-	return  []*msgs.Reconfiguration{updatedConfig,newNetworkState} , nil
+	return []*msgs.Reconfiguration{updatedConfig, newNetworkState}, nil
 
 }
+
 //JIRA FLY2-103 : Process the config Metadata
-func (c *Chain) processReconfiguration(configMetaData *hlmirbft.ConfigMetadata)([]*msgs.Reconfiguration,error){
-	var currentConsenters  []*hlmirbft.Consenter
-	for  _, value := range c.opts.Consenters {
+func (c *Chain) processReconfiguration(configMetaData *hlmirbft.ConfigMetadata) ([]*msgs.Reconfiguration, error) {
+	var currentConsenters []*hlmirbft.Consenter
+	for _, value := range c.opts.Consenters {
 		currentConsenters = append(currentConsenters, value)
 	}
 	updatedConsenters := configMetaData.Consenters
-	return c.getUpdatedConfigChange(configMetaData,currentConsenters,updatedConsenters)
+	return c.getUpdatedConfigChange(configMetaData, currentConsenters, updatedConsenters)
 
 }
-
-
 
 // Checks the envelope in the `msg` content. SubmitRequest.
 // Returns
@@ -672,7 +672,7 @@ func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 			}
 
 			//JIRA FLY2-103 : get the reconfiguration
-			reconfig,err := c.processReconfiguration(configMetaData)
+			reconfig, err := c.processReconfiguration(configMetaData)
 			if err != nil {
 				return errors.Errorf("Cannot Generate Reconfiguration Data: %s", err)
 			}
@@ -1027,33 +1027,35 @@ func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
 	case <-c.doneC:
 	}
 }
+
 //JIRA FLY2-48 proposed changes: fetch request from request store
-func (c *Chain) fetchRequest(ack *msgs.RequestAck) (*msgs.Request,error){
+func (c *Chain) fetchRequest(ack *msgs.RequestAck) (*msgs.Request, error) {
 
 	reqByte, err := c.Node.ReqStore.GetRequest(ack)
 	if err != nil {
 		return nil, errors.WithMessage(err, "Cannot Fetch Request")
 	}
 	if reqByte == nil {
-		return nil,errors.Errorf("reqstore should have request if we are committing it")
+		return nil, errors.Errorf("reqstore should have request if we are committing it")
 	}
 	reqMsg := &msgs.Request{}
-	err = proto.Unmarshal(reqByte,reqMsg)
+	err = proto.Unmarshal(reqByte, reqMsg)
 	if err != nil {
-		return nil,errors.WithMessage(err, "Cannot Unmarshal Request")
+		return nil, errors.WithMessage(err, "Cannot Unmarshal Request")
 	}
-	return reqMsg,nil
+	return reqMsg, nil
 }
+
 //FLY2-48 proposed changes
 // - convert batches to block and write to the ledger
-func (c *Chain) processBatch( batch *msgs.QEntry) error{
+func (c *Chain) processBatch(batch *msgs.QEntry) error {
 	var envs []*common.Envelope
 	for _, requestAck := range batch.Requests {
-		reqMsg,err := c.fetchRequest(requestAck)
+		reqMsg, err := c.fetchRequest(requestAck)
 		if err != nil {
 			return errors.WithMessage(err, "Cannot fetch request from Request Store")
 		}
-		env,err:= protoutil.UnmarshalEnvelope(reqMsg.Data)
+		env, err := protoutil.UnmarshalEnvelope(reqMsg.Data)
 		if err != nil {
 			return errors.WithMessage(err, "Cannot Unmarshal Request Data")
 		}
@@ -1062,41 +1064,39 @@ func (c *Chain) processBatch( batch *msgs.QEntry) error{
 			c.writeConfigBlock(configBlock)
 		} else {
 
-			envs = append(envs,env)
+			envs = append(envs, env)
 
 		}
 
-}
-if len(envs)!=0 {
+	}
+	if len(envs) != 0 {
 		block := c.CreateBlock(envs)
 		c.writeBlock(block)
-}
-
+	}
 
 	return nil
 }
 
-
 //JIRA FLY2-48 proposed changes:Write block in accordance with the sequence number
 func (c *Chain) Apply(batch *msgs.QEntry) error {
 	c.pendingBatches[batch.SeqNo] = batch
-	index := 0  // Review comment change to rpelace append by index.
+	index := 0 // Review comment change to rpelace append by index.
 	seqNumbers := make([]uint64, len(c.pendingBatches))
 	for k := range c.pendingBatches {
 		seqNumbers[index] = k
 		index++
 	}
 	sort.SliceStable(seqNumbers, func(i, j int) bool { return seqNumbers[i] < seqNumbers[j] })
-	for i:=0;i<len(seqNumbers);i++{
-			if c.Node.LastCommittedSeqNo+1 != seqNumbers[i] {
-				break
-			}
-			err := c.processBatch(c.pendingBatches[seqNumbers[i]])
-			if err != nil {
-			    return errors.WithMessage(err, "Batch Processing Error")
-			}
-			delete(c.pendingBatches, seqNumbers[i])
-			c.Node.LastCommittedSeqNo++
+	for i := 0; i < len(seqNumbers); i++ {
+		if c.Node.LastCommittedSeqNo+1 != seqNumbers[i] {
+			break
+		}
+		err := c.processBatch(c.pendingBatches[seqNumbers[i]])
+		if err != nil {
+			return errors.WithMessage(err, "Batch Processing Error")
+		}
+		delete(c.pendingBatches, seqNumbers[i])
+		c.Node.LastCommittedSeqNo++
 	}
 
 	return nil
@@ -1113,13 +1113,14 @@ func (c *Chain) CreateBlock(envs []*common.Envelope) *common.Block {
 	return bc.createNextBlock(envs)
 }
 
-
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
 
 	pr := c.Node.PendingReconfigurations
 
-	c.Node.PendingReconfigurations = nil
+	if len(pr) == 0 {
+		pr = append(pr, []*msgs.Reconfiguration{nil})
+	}
 
 	data, err := proto.Marshal(&msgs.NetworkState{
 		Config:                  networkConfig,
@@ -1134,7 +1135,6 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	}
 
 	c.Node.CheckpointSeqNo++
-
 
 	countValue := make([]byte, 8)
 
