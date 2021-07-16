@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -23,24 +24,48 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	// AllDiffsByKey - Filename for the json output that contains all differences ordered by key
+	AllDiffsByKey = "all_diffs_by_key.json"
+)
+
 // Compare - Compares two ledger snapshots and outputs the differences in snapshot records
-// This function will overwrite the file at outputPath if it already exists
-func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count int, err error) {
+// This function will throw an error if the output directory already exist in the outputDirLoc
+// Function will return count of -1 if the public state hashes are the same
+func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string) (count int, err error) {
 	// Check the hashes between two files
 	hashPath1 := filepath.Join(snapshotDir1, kvledger.SnapshotSignableMetadataFileName)
 	hashPath2 := filepath.Join(snapshotDir2, kvledger.SnapshotSignableMetadataFileName)
 
-	equal, err := snapshotsComparable(hashPath1, hashPath2)
+	equal, channelName, blockHeight, err := snapshotsComparable(hashPath1, hashPath2)
 	if err != nil {
 		return 0, err
 	}
 
 	if equal {
-		return 0, errors.New("both snapshots public state hashes are same. Aborting compare")
+		return -1, nil
+	}
+
+	// Output directory creation
+	outputDirName := fmt.Sprintf("%s_%d_comparison", channelName, blockHeight)
+	outputDirPath := filepath.Join(outputDirLoc, outputDirName)
+
+	empty, err := fileutil.CreateDirIfMissing(outputDirPath)
+	if err != nil {
+		return 0, err
+	}
+	if !empty {
+		switch outputDirLoc {
+		case ".":
+			outputDirLoc = "the current directory"
+		case "..":
+			outputDirLoc = "the parent directory"
+		}
+		return 0, errors.Errorf("%s already exists in %s. Choose a different location or remove the existing results. Aborting compare", outputDirName, outputDirLoc)
 	}
 
 	// Create the output file
-	jsonOutputFile, err := newJSONFileWriter(outputFile)
+	jsonOutputFile, err := newJSONFileWriter(filepath.Join(outputDirPath, AllDiffsByKey))
 	if err != nil {
 		return 0, err
 	}
@@ -57,7 +82,7 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count
 		return 0, err
 	}
 
-	// Read each snapshot record  to begin looking for divergences
+	// Read each snapshot record  to begin looking for differences
 	namespace1, snapshotRecord1, err := snapshotReader1.Next()
 	if err != nil {
 		return 0, err
@@ -278,49 +303,55 @@ func nsKeyCompare(k1, k2 *nsKey) int {
 	return bytes.Compare(k1.key, k2.key)
 }
 
+// Extracts metadata from provided filepath
+func readMetadata(fpath string) (*kvledger.SnapshotSignableMetadata, error) {
+	var mdata kvledger.SnapshotSignableMetadata
+
+	// Open file
+	f, err := ioutil.ReadFile(fpath)
+	if err != nil {
+		return nil, err
+	}
+	// Unmarshal bytes
+	err = json.Unmarshal([]byte(f), &mdata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mdata, nil
+}
+
 // Compares hashes of snapshots
-func snapshotsComparable(fpath1 string, fpath2 string) (bool, error) {
-	var mdata1, mdata2 kvledger.SnapshotSignableMetadata
+func snapshotsComparable(fpath1 string, fpath2 string) (bool, string, uint64, error) {
+	var mdata1, mdata2 *kvledger.SnapshotSignableMetadata
 
-	// Open the first file
-	f, err := ioutil.ReadFile(fpath1)
+	// Read metadata from snapshot metadata filepaths
+	mdata1, err := readMetadata(fpath1)
 	if err != nil {
-		return false, err
+		return false, "", 0, err
 	}
-
-	err = json.Unmarshal([]byte(f), &mdata1)
+	mdata2, err = readMetadata(fpath2)
 	if err != nil {
-		return false, err
-	}
-
-	// Open the second file
-	f, err = ioutil.ReadFile(fpath2)
-	if err != nil {
-		return false, err
-	}
-
-	err = json.Unmarshal([]byte(f), &mdata2)
-	if err != nil {
-		return false, err
+		return false, "", 0, err
 	}
 
 	if mdata1.ChannelName != mdata2.ChannelName {
-		return false, errors.Errorf("the supplied snapshots appear to be non-comparable. Channel names do not match."+
+		return false, "", 0, errors.Errorf("the supplied snapshots appear to be non-comparable. Channel names do not match."+
 			"\nSnapshot1 channel name: %s\nSnapshot2 channel name: %s", mdata1.ChannelName, mdata2.ChannelName)
 	}
 
 	if mdata1.LastBlockNumber != mdata2.LastBlockNumber {
-		return false, errors.Errorf("the supplied snapshots appear to be non-comparable. Last block numbers do not match."+
+		return false, "", 0, errors.Errorf("the supplied snapshots appear to be non-comparable. Last block numbers do not match."+
 			"\nSnapshot1 last block number: %v\nSnapshot2 last block number: %v", mdata1.LastBlockNumber, mdata2.LastBlockNumber)
 	}
 
 	if mdata1.LastBlockHashInHex != mdata2.LastBlockHashInHex {
-		return false, errors.Errorf("the supplied snapshots appear to be non-comparable. Last block hashes do not match."+
+		return false, "", 0, errors.Errorf("the supplied snapshots appear to be non-comparable. Last block hashes do not match."+
 			"\nSnapshot1 last block hash: %s\nSnapshot2 last block hash: %s", mdata1.LastBlockHashInHex, mdata2.LastBlockHashInHex)
 	}
 
 	if mdata1.StateDBType != mdata2.StateDBType {
-		return false, errors.Errorf("the supplied snapshots appear to be non-comparable. State db types do not match."+
+		return false, "", 0, errors.Errorf("the supplied snapshots appear to be non-comparable. State db types do not match."+
 			"\nSnapshot1 state db type: %s\nSnapshot2 state db type: %s", mdata1.StateDBType, mdata2.StateDBType)
 	}
 
@@ -330,7 +361,7 @@ func snapshotsComparable(fpath1 string, fpath2 string) (bool, error) {
 	pubDataHash2 := mdata2.FilesAndHashes[privacyenabledstate.PubStateDataFileName]
 	pubMdataHash2 := mdata2.FilesAndHashes[privacyenabledstate.PubStateMetadataFileName]
 
-	return (pubDataHash1 == pubDataHash2 && pubMdataHash1 == pubMdataHash2), nil
+	return (pubDataHash1 == pubDataHash2 && pubMdataHash1 == pubMdataHash2), mdata1.ChannelName, mdata1.LastBlockNumber, nil
 }
 
 // jsonArrayFileWriter writes a list of diffRecords to a json file
