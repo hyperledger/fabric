@@ -1,3 +1,11 @@
+# Hyperledger Fabric Changelog
+
+Hyperledger Fabric [releases](https://github.com/hyperledger/fabric/releases) each have a changelog maintained by GitHub.
+
+# Early Hyperledger Fabric release Changelogs
+
+Early Hyperledger Fabric releases prior to v2.0 copied commit history into the changelog file below.
+
 ## "v2.0.0-beta"
 
 * [7cd1eda](https://github.com/hyperledger/fabric/commit/7cd1eda) Add release notes for v2.0.0-beta
