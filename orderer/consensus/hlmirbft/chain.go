@@ -1125,7 +1125,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	data, err := proto.Marshal(&msgs.NetworkState{
 		Config:                  networkConfig,
 		Clients:                 clientsState,
-		PendingReconfigurations: pr[0],
+		PendingReconfigurations: nil,
 	})
 
 	if err != nil {
@@ -1150,7 +1150,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 	}
 
-	return networkStates, pr[0], nil
+	return networkStates, nil, nil
 
 }
 
