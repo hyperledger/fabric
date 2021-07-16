@@ -205,14 +205,23 @@ func (f *FileLock) Lock() error {
 		panic(fmt.Sprintf("Error creating dir if missing: %s", err))
 	}
 	dbOpts.ErrorIfMissing = !dirEmpty
-	f.db, err = leveldb.OpenFile(f.filePath, dbOpts)
+	db, err := leveldb.OpenFile(f.filePath, dbOpts)
 	if err != nil && err == syscall.EAGAIN {
 		return errors.Errorf("lock is already acquired on file %s", f.filePath)
 	}
 	if err != nil {
 		panic(fmt.Sprintf("Error acquiring lock on file %s: %s", f.filePath, err))
 	}
+
+	// only mutate the lock db reference AFTER validating that the lock was held.
+	f.db = db
+
 	return nil
+}
+
+// Determine if the lock is currently held open.
+func (f *FileLock) IsLocked() bool {
+	return f.db != nil
 }
 
 // Unlock releases a previously acquired lock. We achieve this by closing
