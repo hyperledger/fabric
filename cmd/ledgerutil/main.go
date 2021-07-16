@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	resultFilename = "result.json"
+	compareErrorMessage = "Ledger Compare Error: "
 )
 
 var (
@@ -41,30 +41,42 @@ func main() {
 		return
 	}
 
-	// Determine result json file location
-	var resultFilepath string
-	if outputDir != nil {
-		resultFilepath = *outputDir
-	} else {
-		resultFilepath, err = os.Getwd()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	}
-	resultFilepath = filepath.Join(resultFilepath, resultFilename)
-
 	// Command logic
 	switch command {
 
 	case compare.FullCommand():
 
-		count, err := ledgerutil.Compare(*snapshotPath1, *snapshotPath2, resultFilepath)
+		cleanpath := filepath.Clean(*outputDir)
+
+		// Determine result json file location
+		if *outputDir == "" {
+			*outputDir, err = os.Getwd()
+			if err != nil {
+				fmt.Printf("%s%s\n", compareErrorMessage, err)
+				return
+			}
+			cleanpath = "the current directory"
+		}
+		// Clean output
+		switch cleanpath {
+		case ".":
+			cleanpath = "the current directory"
+		case "..":
+			cleanpath = "the parent directory"
+		}
+
+		count, err := ledgerutil.Compare(*snapshotPath1, *snapshotPath2, *outputDir)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("%s%s\n", compareErrorMessage, err)
 			return
 		}
-		fmt.Printf("\nSuccessfully compared snapshots. Result saved to %s. Total differences found: %d\n", resultFilepath, count)
+
+		fmt.Print("\nSuccessfully compared snapshots. ")
+		if count == -1 {
+			fmt.Println("Both snapshot public state hashes were the same. No results were generated.")
+		} else {
+			fmt.Printf("Results saved to %s. Total differences found: %d\n", cleanpath, count)
+		}
 
 	case troubleshoot.FullCommand():
 

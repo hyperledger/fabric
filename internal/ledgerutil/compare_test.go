@@ -236,7 +236,6 @@ func TestCompare(t *testing.T) {
 				}
 			}
 		]`
-	expectedSamePubStateError := "both snapshots public state hashes are same. Aborting compare"
 	expectedDiffDatabaseError := "the supplied snapshots appear to be non-comparable. State db types do not match." +
 		"\nSnapshot1 state db type: testdatabase\nSnapshot2 state db type: testdatabase2"
 
@@ -305,9 +304,9 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords1,
 			inputSignableMetadata2: sampleSignableMetadata1,
-			expectedOutput:         expectedSamePubStateError,
-			expectedOutputType:     "error",
-			expectedDiffCount:      0,
+			expectedOutput:         "",
+			expectedOutputType:     "same-hash",
+			expectedDiffCount:      -1,
 		},
 		// Snapshots contain different metadata (different databases in this case) that makes them non-comparable
 		"different-database": {
@@ -317,6 +316,15 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata2: sampleSignableMetadata3,
 			expectedOutput:         expectedDiffDatabaseError,
 			expectedOutputType:     "error",
+			expectedDiffCount:      0,
+		},
+		// Output directory file already exists
+		"output-dir-exists": {
+			inputTestRecords1:      sampleRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords2,
+			inputSignableMetadata2: sampleSignableMetadata2,
+			expectedOutputType:     "exists-error",
 			expectedDiffCount:      0,
 		},
 	}
@@ -342,14 +350,23 @@ func TestCompare(t *testing.T) {
 			require.NoError(t, err)
 
 			// Compare snapshots and check the output
-			count, out, err := compareSnapshots(snapshotDir1, snapshotDir2, filepath.Join(resultsDir, "results.json"))
-			require.Equal(t, testCase.expectedDiffCount, count)
+			count, out, err := compareSnapshots(snapshotDir1, snapshotDir2, resultsDir)
 			switch testCase.expectedOutputType {
 			case "error":
+				require.Equal(t, testCase.expectedDiffCount, count)
 				require.ErrorContains(t, err, testCase.expectedOutput)
+			case "exists-error":
+				require.NoError(t, err)
+				count, _, err = compareSnapshots(snapshotDir1, snapshotDir2, resultsDir)
+				require.Equal(t, testCase.expectedDiffCount, count)
+				require.ErrorContains(t, err, "testchannel_2_comparison already exists in "+resultsDir+". Choose a different location or remove the existing results. Aborting compare")
 			case "json":
+				require.Equal(t, testCase.expectedDiffCount, count)
 				require.NoError(t, err)
 				require.JSONEq(t, testCase.expectedOutput, out)
+			case "same-hash":
+				require.Equal(t, testCase.expectedDiffCount, count)
+				require.NoError(t, err)
 			default:
 				panic("unexpected code path: bug")
 			}
@@ -407,11 +424,17 @@ func createSnapshot(dir string, pubStateRecords []*testRecord, signableMetadata 
 func compareSnapshots(ss1 string, ss2 string, res string) (int, string, error) {
 	// Run compare tool on snapshots
 	count, err := Compare(ss1, ss2, res)
+	if err != nil || count == -1 {
+		return count, "", err
+	}
+
+	// Read results of output
+	md, err := readMetadata(filepath.Join(ss1, kvledger.SnapshotSignableMetadataFileName))
 	if err != nil {
 		return 0, "", err
 	}
-	// Read results of output
-	resBytes, err := ioutil.ReadFile(res)
+	odir := fmt.Sprintf("%s_%d_comparison", md.ChannelName, md.LastBlockNumber)
+	resBytes, err := ioutil.ReadFile(filepath.Join(res, odir, AllDiffsByKey))
 	if err != nil {
 		return 0, "", err
 	}
