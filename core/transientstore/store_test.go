@@ -40,28 +40,31 @@ func TestMain(m *testing.M) {
 type testEnv struct {
 	storeProvider StoreProvider
 	store         *Store
+	tempdir       string
 	cleanup       func()
 }
 
-func (env *testEnv) initTestEnv(t *testing.T) {
+func initTestEnv(t *testing.T) *testEnv {
 	tempdir, err := ioutil.TempDir("", "ts")
-	if err != nil {
-		t.Fatalf("Failed to create test directory: %s", err)
-	}
+	require.NoErrorf(t, err, "failed to create test directory [%s]", tempdir)
 
-	env.cleanup = func() {
-		os.RemoveAll(tempdir)
-	}
-
-	env.storeProvider, err = NewStoreProvider(tempdir)
-	if err != nil {
-		t.Fatalf("Failed to open test store: %s", err)
-	}
-	env.store, err = env.storeProvider.OpenStore("TestStore")
+	storeProvider, err := NewStoreProvider(tempdir)
 	require.NoError(t, err)
-}
+	require.NotNil(t, storeProvider)
 
-var env testEnv
+	store, err := storeProvider.OpenStore("TestStore")
+	require.NoError(t, err)
+	require.NotNil(t, store)
+
+	return &testEnv{
+		storeProvider: storeProvider,
+		store:         store,
+		tempdir:       tempdir,
+		cleanup: func() {
+			require.NoError(t, os.RemoveAll(tempdir))
+		},
+	}
+}
 
 func TestPurgeIndexKeyCodingEncoding(t *testing.T) {
 	require := require.New(t)
@@ -109,7 +112,7 @@ func TestRWSetKeyCodingEncoding(t *testing.T) {
 }
 
 func TestTransientStorePersistAndRetrieve(t *testing.T) {
-	env.initTestEnv(t)
+	env := initTestEnv(t)
 	defer env.cleanup()
 	testStore := env.store
 	require := require.New(t)
@@ -161,7 +164,7 @@ func TestTransientStorePersistAndRetrieve(t *testing.T) {
 }
 
 func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
-	env.initTestEnv(t)
+	env := initTestEnv(t)
 	defer env.cleanup()
 	testStore := env.store
 	require := require.New(t)
@@ -218,7 +221,7 @@ func TestTransientStorePersistAndRetrieveBothOldAndNewProto(t *testing.T) {
 }
 
 func TestTransientStorePurgeByTxids(t *testing.T) {
-	env.initTestEnv(t)
+	env := initTestEnv(t)
 	defer env.cleanup()
 	testStore := env.store
 	require := require.New(t)
@@ -382,7 +385,7 @@ func TestTransientStorePurgeByTxids(t *testing.T) {
 }
 
 func TestTransientStorePurgeBelowHeight(t *testing.T) {
-	env.initTestEnv(t)
+	env := initTestEnv(t)
 	defer env.cleanup()
 	testStore := env.store
 	require := require.New(t)
@@ -498,7 +501,7 @@ func TestTransientStorePurgeBelowHeight(t *testing.T) {
 }
 
 func TestTransientStoreRetrievalWithFilter(t *testing.T) {
-	env.initTestEnv(t)
+	env := initTestEnv(t)
 	defer env.cleanup()
 	testStore := env.store
 
@@ -708,7 +711,7 @@ func (s *Store) persistOldProto(txid string, blockHeight uint64,
 }
 
 func TestIteratorErrorCases(t *testing.T) {
-	env.initTestEnv(t)
+	env := initTestEnv(t)
 	defer env.cleanup()
 	testStore := env.store
 	env.storeProvider.Close()
@@ -724,4 +727,51 @@ func TestIteratorErrorCases(t *testing.T) {
 
 	require.EqualError(t, testStore.PurgeBelowHeight(0), errStr)
 	require.EqualError(t, testStore.PurgeByTxids([]string{"tx1"}), errStr)
+}
+
+func TestDeleteTransientStore(t *testing.T) {
+	env := initTestEnv(t)
+	defer env.cleanup()
+
+	ledgerID := "test-deleted-tx-count"
+	store, err := env.storeProvider.OpenStore(ledgerID)
+	require.NoError(t, err)
+	require.NotNil(t, store)
+
+	// Write some transactions into the transient storage.
+	samplePvtSimResWithConfig := samplePvtDataWithConfigInfo(t)
+	testTxid := "testTxid"
+	numEntries := 5
+	for i := 0; i < numEntries; i++ {
+		store.Persist(testTxid, uint64(i), samplePvtSimResWithConfig)
+	}
+
+	height, err := store.GetMinTransientBlkHt()
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), height)
+
+	// undercut a few blocks, and we should still have a lower tx bound.
+	require.NoError(t, store.PurgeBelowHeight(3))
+	height, err = store.GetMinTransientBlkHt()
+	require.NoError(t, err)
+	require.Equal(t, uint64(3), height)
+
+	// Delete the store
+	require.NoError(t, env.storeProvider.DeleteStore(ledgerID))
+
+	// After delete the storage should be empty.
+	height, err = store.GetMinTransientBlkHt()
+	require.EqualError(t, err, "Transient store is empty")
+	require.Equal(t, uint64(0), height)
+
+	isEmpty, err := store.db.IsEmpty()
+	require.NoError(t, err)
+	require.True(t, isEmpty)
+}
+
+func TestDeleteMissingTransientStoreIsOK(t *testing.T) {
+	env := initTestEnv(t)
+	defer env.cleanup()
+
+	require.NoError(t, env.storeProvider.DeleteStore("_not_a_valid_store"))
 }
