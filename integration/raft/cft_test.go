@@ -329,8 +329,6 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 			}, orderers, peer, network)
 
 			By("Removing OSN from the channel")
-			removeConsenter(network, peer, victim, "systemchannel", victimCertBytes)
-
 			remainedOrderers := []*nwo.Orderer{}
 			remainedRunners := []*ginkgomon.Runner{}
 
@@ -342,6 +340,9 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				remainedRunners = append(remainedRunners, ordererRunners[i])
 			}
 
+			removeConsenter(network, peer, remainedOrderers[0], "systemchannel", victimCertBytes)
+
+			By("Asserting all remaining nodes got last block")
 			assertBlockReception(map[string]int{
 				"systemchannel": 2,
 			}, remainedOrderers, peer, network)
