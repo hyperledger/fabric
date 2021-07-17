@@ -10,6 +10,9 @@ import (
 	"fmt"
 	"testing"
 
+	common2 "github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric/common/policydsl"
+
 	"github.com/golang/protobuf/proto"
 	discoveryprotos "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
@@ -550,6 +553,203 @@ func TestPeersForEndorsement(t *testing.T) {
 			peerIdentityString("p0"): {},
 			peerIdentityString("p6"): {},
 		}, extractPeers(desc))
+	})
+
+	t.Run("Chaincode call with state based endorsement policy I", func(t *testing.T) {
+		// Scenario XIII: A chaincode call with a state based endorsement policy
+		// Total organizations are 0, 2, 4, 6, 10, 12
+		// and the endorsement policies of the chaincode is:
+		// cc1: OR(AND(0, 2), AND(6, 10))
+		// However the chaincode call is accompanied with a hint
+		// for a state based endorsement policy for organization 10
+		// Therefore, the result should be: 6, 10
+
+		chanPeers := peerSet{}
+		for _, id := range []int{0, 2, 4, 6, 10, 12} {
+			peer := newPeer(id).withChaincode("cc1", "1.0")
+			chanPeers = append(chanPeers, peer)
+		}
+
+		g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
+
+		mf := &metadataFetcher{}
+		mf.On("Metadata").Return(&chaincode.Metadata{
+			Name:    "cc1",
+			Version: "1.0",
+		}).Once()
+
+		pb := principalBuilder{}
+		cc1policy := pb.newSet().addPrincipal(peerRole("p0")).addPrincipal(peerRole("p2")).
+			newSet().addPrincipal(peerRole("p6")).addPrincipal(peerRole("p10")).buildPolicy()
+
+		pf.On("PoliciesByChaincode", "cc1").Return(cc1policy).Once()
+
+		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
+				{
+					Name: "cc1",
+					KeyPolicies: []*common2.SignaturePolicyEnvelope{
+						{
+							Identities: []*msp.MSPPrincipal{peerRole("p10")},
+							Rule:       policydsl.SignedBy(0),
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 1)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Equal(t, map[string]struct{}{
+			peerIdentityString("p6"):  {},
+			peerIdentityString("p10"): {},
+		}, extractPeers(desc))
+	})
+
+	t.Run("Chaincode call with state based endorsement policy II", func(t *testing.T) {
+		// Scenario XIV: A chaincode call with a state based endorsement policy
+		// Total organizations are 0, 2, 4, 6, 10, 12
+		// and the endorsement policies of the chaincode is:
+		// cc1: OR(AND(0, 2), AND(6, 10))
+		// However the chaincode call is accompanied with a hint
+		// for a state based endorsement policy for organization 12
+		// Therefore, the result should be: {0, 2, 12} or {6, 10, 12}
+
+		chanPeers := peerSet{}
+		for _, id := range []int{0, 2, 4, 6, 10, 12} {
+			peer := newPeer(id).withChaincode("cc1", "1.0")
+			chanPeers = append(chanPeers, peer)
+		}
+
+		g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
+
+		mf := &metadataFetcher{}
+		mf.On("Metadata").Return(&chaincode.Metadata{
+			Name:    "cc1",
+			Version: "1.0",
+		}).Once()
+
+		pb := principalBuilder{}
+		cc1policy := pb.newSet().addPrincipal(peerRole("p0")).addPrincipal(peerRole("p2")).
+			newSet().addPrincipal(peerRole("p6")).addPrincipal(peerRole("p10")).buildPolicy()
+
+		pf.On("PoliciesByChaincode", "cc1").Return(cc1policy).Once()
+
+		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
+				{
+					Name: "cc1",
+					KeyPolicies: []*common2.SignaturePolicyEnvelope{
+						{
+							Identities: []*msp.MSPPrincipal{peerRole("p12")},
+							Rule:       policydsl.SignedBy(0),
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 2)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 3)
+		require.Len(t, desc.Layouts[1].QuantitiesByGroup, 3)
+		require.Equal(t, map[string]struct{}{
+			peerIdentityString("p0"):  {},
+			peerIdentityString("p2"):  {},
+			peerIdentityString("p6"):  {},
+			peerIdentityString("p10"): {},
+			peerIdentityString("p12"): {},
+		}, extractPeers(desc))
+		// Find ID of org 12
+
+		// Ensure org 12 (and no other org) is found in both layouts
+		var intersectionSize int
+		for g1 := range desc.Layouts[0].QuantitiesByGroup {
+			for g2 := range desc.Layouts[1].QuantitiesByGroup {
+				if g1 == g2 {
+					require.Equal(t, intersectionSize, 0)
+					intersectionSize++
+					require.Equal(t, peerIdentityString("p12"), string(desc.EndorsersByGroups[g1].Peers[0].Identity))
+				}
+			}
+		}
+	})
+
+	t.Run("Chaincode call with state based endorsement policy III", func(t *testing.T) {
+		// Scenario XV: A chaincode call with a state based endorsement policy
+		// Total organizations are 0, 2, 4, 6, 10, 12
+		// and the endorsement policies of the chaincode is:
+		// cc1: OR(AND(0, 2), AND(6, 10, 12))
+		// However the chaincode call is accompanied with a hint
+		// for a state based endorsement policy for both organizations 2 and 6
+		// Therefore, the result should be: {0, 2, 6} or {2, 6, 10}
+
+		chanPeers := peerSet{}
+		for _, id := range []int{0, 2, 4, 6, 10, 12} {
+			peer := newPeer(id).withChaincode("cc1", "1.0")
+			chanPeers = append(chanPeers, peer)
+		}
+
+		g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
+
+		mf := &metadataFetcher{}
+		mf.On("Metadata").Return(&chaincode.Metadata{
+			Name:    "cc1",
+			Version: "1.0",
+		}).Once()
+
+		pb := principalBuilder{}
+		cc1policy := pb.newSet().addPrincipal(peerRole("p0")).addPrincipal(peerRole("p2")).
+			newSet().addPrincipal(peerRole("p6")).addPrincipal(peerRole("p10")).buildPolicy()
+
+		pf.On("PoliciesByChaincode", "cc1").Return(cc1policy).Once()
+
+		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
+				{
+					Name: "cc1",
+					KeyPolicies: []*common2.SignaturePolicyEnvelope{
+						{
+							Identities: []*msp.MSPPrincipal{peerRole("p2")},
+							Rule:       policydsl.SignedBy(0),
+						},
+						{
+							Identities: []*msp.MSPPrincipal{peerRole("p6")},
+							Rule:       policydsl.SignedBy(0),
+						},
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 2)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 3)
+		require.Equal(t, map[string]struct{}{
+			peerIdentityString("p0"):  {},
+			peerIdentityString("p2"):  {},
+			peerIdentityString("p6"):  {},
+			peerIdentityString("p10"): {},
+		}, extractPeers(desc))
+
+		// Ensure orgs 2, 6 are found in both layouts
+		intersection := make(map[string]struct{})
+		for g1 := range desc.Layouts[0].QuantitiesByGroup {
+			for g2 := range desc.Layouts[1].QuantitiesByGroup {
+				if g1 == g2 {
+					intersection[string(desc.EndorsersByGroups[g1].Peers[0].Identity)] = struct{}{}
+				}
+			}
+		}
+
+		require.Equal(t, map[string]struct{}{
+			peerIdentityString("p2"): {},
+			peerIdentityString("p6"): {},
+		}, intersection)
 	})
 }
 
