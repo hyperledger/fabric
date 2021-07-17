@@ -216,21 +216,64 @@ func filterOutUnsatisfiedLayouts(endorsersByGroup map[string]*discovery.Peers, l
 	return filteredLayouts
 }
 
+func computeStateBasedPrincipalSets(chaincodes []*peer.ChaincodeCall, logger *flogging.FabricLogger) (inquire.ComparablePrincipalSets, error) {
+	var stateBasedCPS []inquire.ComparablePrincipalSets
+	for _, chaincode := range chaincodes {
+		if len(chaincode.KeyPolicies) == 0 {
+			continue
+		}
+
+		logger.Debugf("Chaincode call to %s is satisfied by %d state based policies of %v",
+			chaincode.Name, len(chaincode.KeyPolicies), chaincode.KeyPolicies)
+
+		for _, stateBasedPolicy := range chaincode.KeyPolicies {
+			var cmpsets inquire.ComparablePrincipalSets
+			stateBasedPolicy := inquire.NewInquireableSignaturePolicy(stateBasedPolicy)
+			for _, ps := range stateBasedPolicy.SatisfiedBy() {
+				cps := inquire.NewComparablePrincipalSet(ps)
+				if cps == nil {
+					return nil, errors.New("failed creating a comparable principal set for state based endorsement")
+				}
+				cmpsets = append(cmpsets, cps)
+			}
+			if len(cmpsets) == 0 {
+				return nil, errors.New("state based endorsement policy cannot be satisfied")
+			}
+			stateBasedCPS = append(stateBasedCPS, cmpsets)
+		}
+	}
+
+	if len(stateBasedCPS) > 0 {
+		stateBasedPrincipalSet, err := mergePrincipalSets(stateBasedCPS)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		logger.Debugf("Merging state based policies: %v --> %v", stateBasedCPS, stateBasedPrincipalSet)
+
+		return stateBasedPrincipalSet, nil
+	}
+
+	logger.Debugf("No state based policies requested")
+
+	return nil, nil
+}
+
 func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, interest *peer.ChaincodeInterest) (policies.PrincipalSets, error) {
 	sessionLogger := logger.With("channel", string(channelID))
-	var inquireablePolicies []policies.InquireablePolicy
+	var inquireablePoliciesForChaincodeAndCollections []policies.InquireablePolicy
 	for _, chaincode := range interest.Chaincodes {
 		policies := ea.PoliciesByChaincode(string(channelID), chaincode.Name, chaincode.CollectionNames...)
 		if len(policies) == 0 {
 			sessionLogger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 			return nil, errors.New("policy not found")
 		}
-		inquireablePolicies = append(inquireablePolicies, policies...)
+		inquireablePoliciesForChaincodeAndCollections = append(inquireablePoliciesForChaincodeAndCollections, policies...)
 	}
 
 	var cpss []inquire.ComparablePrincipalSets
 
-	for _, policy := range inquireablePolicies {
+	for _, policy := range inquireablePoliciesForChaincodeAndCollections {
 		var cmpsets inquire.ComparablePrincipalSets
 		for _, ps := range policy.SatisfiedBy() {
 			cps := inquire.NewComparablePrincipalSet(ps)
@@ -245,10 +288,21 @@ func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, 
 		cpss = append(cpss, cmpsets)
 	}
 
+	stateBasedCPS, err := computeStateBasedPrincipalSets(interest.Chaincodes, sessionLogger)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if len(stateBasedCPS) > 0 {
+		cpss = append(cpss, stateBasedCPS)
+	}
+
 	cps, err := mergePrincipalSets(cpss)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+
+	sessionLogger.Debugf("Merging principal sets: %v --> %v", cpss, cps)
 
 	return cps.ToPrincipalSets(), nil
 }
