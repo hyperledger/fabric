@@ -16,6 +16,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	dp "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	gossipapi "github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
@@ -25,7 +26,7 @@ import (
 type Discovery interface {
 	Config(channel string) (*dp.ConfigResult, error)
 	IdentityInfo() gossipapi.PeerIdentitySet
-	PeersForEndorsement(channel common.ChannelID, interest *dp.ChaincodeInterest) (*dp.EndorsementDescriptor, error)
+	PeersForEndorsement(channel common.ChannelID, interest *peer.ChaincodeInterest) (*dp.EndorsementDescriptor, error)
 	PeersOfChannel(common.ChannelID) gossipdiscovery.Members
 }
 
@@ -56,8 +57,8 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, e
 
 	var endorsers []*endorser
 
-	interest := &dp.ChaincodeInterest{
-		Chaincodes: []*dp.ChaincodeCall{{
+	interest := &peer.ChaincodeInterest{
+		Chaincodes: []*peer.ChaincodeCall{{
 			Name: chaincode,
 		}},
 	}

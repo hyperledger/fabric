@@ -13,6 +13,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
@@ -107,7 +109,7 @@ func TestService(t *testing.T) {
 	// Scenario V: Request a CC query with no chaincodes at all
 	req.Queries[0].Query = &discovery.Query_CcQuery{
 		CcQuery: &discovery.ChaincodeQuery{
-			Interests: []*discovery.ChaincodeInterest{
+			Interests: []*peer.ChaincodeInterest{
 				{},
 			},
 		},
@@ -119,7 +121,7 @@ func TestService(t *testing.T) {
 	// Scenario VI: Request a CC query with no interests at all
 	req.Queries[0].Query = &discovery.Query_CcQuery{
 		CcQuery: &discovery.ChaincodeQuery{
-			Interests: []*discovery.ChaincodeInterest{},
+			Interests: []*peer.ChaincodeInterest{},
 		},
 	}
 	resp, err = service.Discover(ctx, toSignedRequest(req))
@@ -129,8 +131,8 @@ func TestService(t *testing.T) {
 	// Scenario VII: Request a CC query with a chaincode name that is empty
 	req.Queries[0].Query = &discovery.Query_CcQuery{
 		CcQuery: &discovery.ChaincodeQuery{
-			Interests: []*discovery.ChaincodeInterest{{
-				Chaincodes: []*discovery.ChaincodeCall{{
+			Interests: []*peer.ChaincodeInterest{{
+				Chaincodes: []*peer.ChaincodeCall{{
 					Name: "",
 				}},
 			}},
@@ -143,12 +145,12 @@ func TestService(t *testing.T) {
 	// Scenario VIII: Request with a CC query where one chaincode is unavailable
 	req.Queries[0].Query = &discovery.Query_CcQuery{
 		CcQuery: &discovery.ChaincodeQuery{
-			Interests: []*discovery.ChaincodeInterest{
+			Interests: []*peer.ChaincodeInterest{
 				{
-					Chaincodes: []*discovery.ChaincodeCall{{Name: "unknownCC"}},
+					Chaincodes: []*peer.ChaincodeCall{{Name: "unknownCC"}},
 				},
 				{
-					Chaincodes: []*discovery.ChaincodeCall{{Name: "cc1"}},
+					Chaincodes: []*peer.ChaincodeCall{{Name: "cc1"}},
 				},
 			},
 		},
@@ -162,15 +164,15 @@ func TestService(t *testing.T) {
 	// Scenario IX: Request with a CC query where all are available
 	req.Queries[0].Query = &discovery.Query_CcQuery{
 		CcQuery: &discovery.ChaincodeQuery{
-			Interests: []*discovery.ChaincodeInterest{
+			Interests: []*peer.ChaincodeInterest{
 				{
-					Chaincodes: []*discovery.ChaincodeCall{{Name: "cc1"}},
+					Chaincodes: []*peer.ChaincodeCall{{Name: "cc1"}},
 				},
 				{
-					Chaincodes: []*discovery.ChaincodeCall{{Name: "cc2"}},
+					Chaincodes: []*peer.ChaincodeCall{{Name: "cc2"}},
 				},
 				{
-					Chaincodes: []*discovery.ChaincodeCall{{Name: "cc3"}},
+					Chaincodes: []*peer.ChaincodeCall{{Name: "cc3"}},
 				},
 			},
 		},
@@ -238,7 +240,7 @@ func TestService(t *testing.T) {
 			Channel: "channelWithSomeProblem",
 			Query: &discovery.Query_PeerQuery{
 				PeerQuery: &discovery.PeerMembershipQuery{
-					Filter: &discovery.ChaincodeInterest{},
+					Filter: &peer.ChaincodeInterest{},
 				},
 			},
 		},
@@ -426,7 +428,7 @@ func TestValidateStructure(t *testing.T) {
 
 func TestValidateCCQuery(t *testing.T) {
 	err := validateCCQuery(&discovery.ChaincodeQuery{
-		Interests: []*discovery.ChaincodeInterest{
+		Interests: []*peer.ChaincodeInterest{
 			nil,
 		},
 	})
@@ -504,7 +506,7 @@ func (ms *mockSupport) Peers() gdisc.Members {
 	return ms.Called().Get(0).(gdisc.Members)
 }
 
-func (ms *mockSupport) PeersForEndorsement(channel gcommon.ChannelID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+func (ms *mockSupport) PeersForEndorsement(channel gcommon.ChannelID, interest *peer.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
 	cc := interest.Chaincodes[0].Name
 	args := ms.Called(cc)
 	if args.Get(0) == nil {
@@ -513,7 +515,7 @@ func (ms *mockSupport) PeersForEndorsement(channel gcommon.ChannelID, interest *
 	return args.Get(0).(*discovery.EndorsementDescriptor), args.Error(1)
 }
 
-func (ms *mockSupport) PeersAuthorizedByCriteria(chainID gcommon.ChannelID, interest *discovery.ChaincodeInterest) (gdisc.Members, error) {
+func (ms *mockSupport) PeersAuthorizedByCriteria(chainID gcommon.ChannelID, interest *peer.ChaincodeInterest) (gdisc.Members, error) {
 	args := ms.Called(chainID)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)

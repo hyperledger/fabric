@@ -13,6 +13,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
@@ -90,17 +92,17 @@ func (pc *EndorsersCmd) Execute(conf common.Config) error {
 		return err
 	}
 
-	var ccCalls []*discovery.ChaincodeCall
+	var ccCalls []*peer.ChaincodeCall
 
 	for _, cc := range *ccAndCol.Chaincodes {
-		ccCalls = append(ccCalls, &discovery.ChaincodeCall{
+		ccCalls = append(ccCalls, &peer.ChaincodeCall{
 			Name:            cc,
 			CollectionNames: cc2collections[cc],
 			NoPrivateReads:  ccAndCol.noPrivateReads(cc),
 		})
 	}
 
-	req, err := discoveryclient.NewRequest().OfChannel(channel).AddEndorsersQuery(&discovery.ChaincodeInterest{Chaincodes: ccCalls})
+	req, err := discoveryclient.NewRequest().OfChannel(channel).AddEndorsersQuery(&peer.ChaincodeInterest{Chaincodes: ccCalls})
 	if err != nil {
 		return errors.Wrap(err, "failed creating request")
 	}

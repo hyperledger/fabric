@@ -9,6 +9,8 @@ package endorsement
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
+
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/chaincode"
@@ -79,7 +81,7 @@ func NewEndorsementAnalyzer(gs gossipSupport, pf policyFetcher, pe principalEval
 type peerPrincipalEvaluator func(member gossipdiscovery.NetworkMember, principal *msp.MSPPrincipal) bool
 
 // PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
-func (ea *endorsementAnalyzer) PeersForEndorsement(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+func (ea *endorsementAnalyzer) PeersForEndorsement(channelID common.ChannelID, interest *peer.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
 	membersAndCC, err := ea.peersByCriteria(channelID, interest, false)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -107,12 +109,12 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(channelID common.ChannelID, i
 	})
 }
 
-func (ea *endorsementAnalyzer) PeersAuthorizedByCriteria(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (gossipdiscovery.Members, error) {
+func (ea *endorsementAnalyzer) PeersAuthorizedByCriteria(channelID common.ChannelID, interest *peer.ChaincodeInterest) (gossipdiscovery.Members, error) {
 	res, err := ea.peersByCriteria(channelID, interest, true)
 	return res.members, err
 }
 
-func (ea *endorsementAnalyzer) peersByCriteria(channelID common.ChannelID, interest *discovery.ChaincodeInterest, excludePeersWithoutChaincode bool) (membersChaincodeMapping, error) {
+func (ea *endorsementAnalyzer) peersByCriteria(channelID common.ChannelID, interest *peer.ChaincodeInterest, excludePeersWithoutChaincode bool) (membersChaincodeMapping, error) {
 	peersOfChannel := ea.PeersOfChannel(channelID)
 	if interest == nil || len(interest.Chaincodes) == 0 {
 		return membersChaincodeMapping{members: peersOfChannel}, nil
@@ -214,7 +216,7 @@ func filterOutUnsatisfiedLayouts(endorsersByGroup map[string]*discovery.Peers, l
 	return filteredLayouts
 }
 
-func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (policies.PrincipalSets, error) {
+func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, interest *peer.ChaincodeInterest) (policies.PrincipalSets, error) {
 	sessionLogger := logger.With("channel", string(channelID))
 	var inquireablePolicies []policies.InquireablePolicy
 	for _, chaincode := range interest.Chaincodes {
@@ -253,7 +255,7 @@ func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, 
 
 type metadataAndFilterContext struct {
 	chainID          common.ChannelID
-	interest         *discovery.ChaincodeInterest
+	interest         *peer.ChaincodeInterest
 	fetch            chaincodeMetadataFetcher
 	identityInfoByID map[string]api.PeerIdentityInfo
 	evaluator        principalEvaluator
