@@ -110,8 +110,6 @@ github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1m
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
-github.com/fly2plan/fabric-config v0.1.1-0.20210717145508-456134cc6ee1 h1:pzi0U3lbRip05+LVJlZ6owuD/TJiTydOI7w3YXbq/fY=
-github.com/fly2plan/fabric-config v0.1.1-0.20210717145508-456134cc6ee1/go.mod h1:rqNvfSbEI/7C5lgu+4pQ4g0Bes3nLqPDQBBNsEIGyos=
 github.com/fly2plan/fabric-config v0.1.1-0.20210718104244-eda31746213a h1:ZNqYssshvQ9zmU0gyrIhFeEEqAzmT6PCzeSv9VtsijU=
 github.com/fly2plan/fabric-config v0.1.1-0.20210718104244-eda31746213a/go.mod h1:8747We+hEX/VBH5681ktxKAnnFs+DByLoq6DOBQtsH0=
 github.com/fly2plan/fabric-protos-go v0.0.0-20210714052649-e2b01f419caf h1:dzK9VyW+nskK1yhKxYgryI5uHfzfeLYwX2Su7Hj4T6Q=
