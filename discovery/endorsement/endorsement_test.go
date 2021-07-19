@@ -97,8 +97,8 @@ func TestPeersForEndorsement(t *testing.T) {
 			Version: "1.0",
 		}).Once()
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name: ccWithMissingPolicy,
 				},
@@ -121,8 +121,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		mf.On("Metadata").Return(&chaincode.Metadata{Name: cc, Version: "1.0"}).Once()
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
 		pf.On("PoliciesByChaincode", cc).Return(policy).Once()
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name: cc,
 				},
@@ -148,8 +148,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		}).Once()
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
 		pf.On("PoliciesByChaincode", cc).Return(policy).Once()
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name: cc,
 				},
@@ -181,8 +181,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		}).Once()
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
 		pf.On("PoliciesByChaincode", cc).Return(policy).Once()
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name: cc,
 				},
@@ -214,8 +214,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
 		pf.On("PoliciesByChaincode", cc).Return(policy).Once()
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name: cc,
 				},
@@ -239,8 +239,8 @@ func TestPeersForEndorsement(t *testing.T) {
 			Name:    cc,
 			Version: "1.0",
 		}).Once()
-		desc, err = analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err = analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name: cc,
 				},
@@ -261,8 +261,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		mf := &metadataFetcher{}
 		mf.On("Metadata").Return(nil).Once()
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name: cc,
 				},
@@ -297,8 +297,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
 		pf.On("PoliciesByChaincode", cc).Return(policy).Once()
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name:            cc,
 					CollectionNames: []string{"collection"},
@@ -360,8 +360,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		pf.On("PoliciesByChaincode", "cc3").Return(cc3policy).Once()
 
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name: "cc1",
 				},
@@ -429,8 +429,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		pf.On("PoliciesByChaincode", "cc2").Return(cc2policy).Once()
 
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name: "cc1",
 				},
@@ -481,8 +481,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		pf := &policyFetcherMock{}
 		pf.On("PoliciesByChaincode", cc).Return([]policies.InquireablePolicy{chaincodeEP, collectionEP}).Once()
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name:            cc,
 					CollectionNames: []string{"collection"},
@@ -533,8 +533,8 @@ func TestPeersForEndorsement(t *testing.T) {
 		pf := &policyFetcherMock{}
 		pf.On("PoliciesByChaincode", cc).Return([]policies.InquireablePolicy{chaincodeEP, collectionEP}).Once()
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
-		desc, err := analyzer.PeersForEndorsement(channel, &discoveryprotos.ChaincodeInterest{
-			Chaincodes: []*discoveryprotos.ChaincodeCall{
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
 				{
 					Name:            cc,
 					CollectionNames: []string{"collection"},
@@ -587,7 +587,7 @@ func TestPeersAuthorizedByCriteria(t *testing.T) {
 
 	for _, tst := range []struct {
 		name                 string
-		arguments            *discoveryprotos.ChaincodeInterest
+		arguments            *peer.ChaincodeInterest
 		totalExistingMembers discovery.Members
 		metadata             []*chaincode.Metadata
 		expected             discovery.Members
@@ -600,14 +600,14 @@ func TestPeersAuthorizedByCriteria(t *testing.T) {
 		},
 		{
 			name:                 "Empty interest invocation chain",
-			arguments:            &discoveryprotos.ChaincodeInterest{},
+			arguments:            &peer.ChaincodeInterest{},
 			totalExistingMembers: members,
 			expected:             members,
 		},
 		{
 			name: "Chaincodes only installed on some peers",
-			arguments: &discoveryprotos.ChaincodeInterest{
-				Chaincodes: []*discoveryprotos.ChaincodeCall{
+			arguments: &peer.ChaincodeInterest{
+				Chaincodes: []*peer.ChaincodeCall{
 					{Name: cc1},
 					{Name: cc2},
 				},
@@ -627,8 +627,8 @@ func TestPeersAuthorizedByCriteria(t *testing.T) {
 		},
 		{
 			name: "Only some peers authorized by collection",
-			arguments: &discoveryprotos.ChaincodeInterest{
-				Chaincodes: []*discoveryprotos.ChaincodeCall{
+			arguments: &peer.ChaincodeInterest{
+				Chaincodes: []*peer.ChaincodeCall{
 					{Name: cc1, CollectionNames: []string{"collection"}},
 				},
 			},
@@ -703,8 +703,8 @@ func TestMergePrincipalSetsNilInput(t *testing.T) {
 func TestComputePrincipalSetsNoPolicies(t *testing.T) {
 	// Tests a hypothetical case where no chaincodes populate the chaincode interest.
 
-	interest := &discoveryprotos.ChaincodeInterest{
-		Chaincodes: []*discoveryprotos.ChaincodeCall{},
+	interest := &peer.ChaincodeInterest{
+		Chaincodes: []*peer.ChaincodeCall{},
 	}
 	ea := &endorsementAnalyzer{}
 	_, err := ea.computePrincipalSets(common.ChannelID("mychannel"), interest)
@@ -713,8 +713,8 @@ func TestComputePrincipalSetsNoPolicies(t *testing.T) {
 }
 
 func TestLoadMetadataAndFiltersCollectionNotPresentInConfig(t *testing.T) {
-	interest := &discoveryprotos.ChaincodeInterest{
-		Chaincodes: []*discoveryprotos.ChaincodeCall{
+	interest := &peer.ChaincodeInterest{
+		Chaincodes: []*peer.ChaincodeCall{
 			{
 				Name:            "mycc",
 				CollectionNames: []string{"bar"},
@@ -750,8 +750,8 @@ func TestLoadMetadataAndFiltersCollectionNotPresentInConfig(t *testing.T) {
 }
 
 func TestLoadMetadataAndFiltersInvalidCollectionData(t *testing.T) {
-	interest := &discoveryprotos.ChaincodeInterest{
-		Chaincodes: []*discoveryprotos.ChaincodeCall{
+	interest := &peer.ChaincodeInterest{
+		Chaincodes: []*peer.ChaincodeCall{
 			{
 				Name:            "mycc",
 				CollectionNames: []string{"col1"},

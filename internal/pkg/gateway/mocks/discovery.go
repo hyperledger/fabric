@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/discovery"
+	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	discoverya "github.com/hyperledger/fabric/gossip/discovery"
@@ -26,19 +27,18 @@ type Discovery struct {
 	}
 	IdentityInfoStub        func() api.PeerIdentitySet
 	identityInfoMutex       sync.RWMutex
-	identityInfoArgsForCall []struct {
-	}
-	identityInfoReturns struct {
+	identityInfoArgsForCall []struct{}
+	identityInfoReturns     struct {
 		result1 api.PeerIdentitySet
 	}
 	identityInfoReturnsOnCall map[int]struct {
 		result1 api.PeerIdentitySet
 	}
-	PeersForEndorsementStub        func(common.ChannelID, *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error)
+	PeersForEndorsementStub        func(common.ChannelID, *peer.ChaincodeInterest) (*discovery.EndorsementDescriptor, error)
 	peersForEndorsementMutex       sync.RWMutex
 	peersForEndorsementArgsForCall []struct {
 		arg1 common.ChannelID
-		arg2 *discovery.ChaincodeInterest
+		arg2 *peer.ChaincodeInterest
 	}
 	peersForEndorsementReturns struct {
 		result1 *discovery.EndorsementDescriptor
@@ -130,8 +130,7 @@ func (fake *Discovery) ConfigReturnsOnCall(i int, result1 *discovery.ConfigResul
 func (fake *Discovery) IdentityInfo() api.PeerIdentitySet {
 	fake.identityInfoMutex.Lock()
 	ret, specificReturn := fake.identityInfoReturnsOnCall[len(fake.identityInfoArgsForCall)]
-	fake.identityInfoArgsForCall = append(fake.identityInfoArgsForCall, struct {
-	}{})
+	fake.identityInfoArgsForCall = append(fake.identityInfoArgsForCall, struct{}{})
 	stub := fake.IdentityInfoStub
 	fakeReturns := fake.identityInfoReturns
 	fake.recordInvocation("IdentityInfo", []interface{}{})
@@ -180,12 +179,12 @@ func (fake *Discovery) IdentityInfoReturnsOnCall(i int, result1 api.PeerIdentity
 	}{result1}
 }
 
-func (fake *Discovery) PeersForEndorsement(arg1 common.ChannelID, arg2 *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+func (fake *Discovery) PeersForEndorsement(arg1 common.ChannelID, arg2 *peer.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
 	fake.peersForEndorsementMutex.Lock()
 	ret, specificReturn := fake.peersForEndorsementReturnsOnCall[len(fake.peersForEndorsementArgsForCall)]
 	fake.peersForEndorsementArgsForCall = append(fake.peersForEndorsementArgsForCall, struct {
 		arg1 common.ChannelID
-		arg2 *discovery.ChaincodeInterest
+		arg2 *peer.ChaincodeInterest
 	}{arg1, arg2})
 	stub := fake.PeersForEndorsementStub
 	fakeReturns := fake.peersForEndorsementReturns
@@ -206,13 +205,13 @@ func (fake *Discovery) PeersForEndorsementCallCount() int {
 	return len(fake.peersForEndorsementArgsForCall)
 }
 
-func (fake *Discovery) PeersForEndorsementCalls(stub func(common.ChannelID, *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error)) {
+func (fake *Discovery) PeersForEndorsementCalls(stub func(common.ChannelID, *peer.ChaincodeInterest) (*discovery.EndorsementDescriptor, error)) {
 	fake.peersForEndorsementMutex.Lock()
 	defer fake.peersForEndorsementMutex.Unlock()
 	fake.PeersForEndorsementStub = stub
 }
 
-func (fake *Discovery) PeersForEndorsementArgsForCall(i int) (common.ChannelID, *discovery.ChaincodeInterest) {
+func (fake *Discovery) PeersForEndorsementArgsForCall(i int) (common.ChannelID, *peer.ChaincodeInterest) {
 	fake.peersForEndorsementMutex.RLock()
 	defer fake.peersForEndorsementMutex.RUnlock()
 	argsForCall := fake.peersForEndorsementArgsForCall[i]

@@ -543,8 +543,8 @@ func TestEndorse(t *testing.T) {
 
 			// check the discovery service (mock) was invoked as expected
 			expectedChannel := common.ChannelID(testChannel)
-			expectedInterest := &dp.ChaincodeInterest{
-				Chaincodes: []*dp.ChaincodeCall{{
+			expectedInterest := &peer.ChaincodeInterest{
+				Chaincodes: []*peer.ChaincodeCall{{
 					Name: testChaincode,
 				}},
 			}

@@ -703,11 +703,11 @@ func TestAddEndorsersQueryInvalidInput(t *testing.T) {
 	_, err = NewRequest().AddEndorsersQuery(nil)
 	require.Contains(t, err.Error(), "chaincode interest is nil")
 
-	_, err = NewRequest().AddEndorsersQuery(&discovery.ChaincodeInterest{})
+	_, err = NewRequest().AddEndorsersQuery(&peer.ChaincodeInterest{})
 	require.Contains(t, err.Error(), "invocation chain should not be empty")
 
-	_, err = NewRequest().AddEndorsersQuery(&discovery.ChaincodeInterest{
-		Chaincodes: []*discovery.ChaincodeCall{{}},
+	_, err = NewRequest().AddEndorsersQuery(&peer.ChaincodeInterest{
+		Chaincodes: []*peer.ChaincodeCall{{}},
 	})
 	require.Contains(t, err.Error(), "chaincode name should not be empty")
 }
@@ -759,11 +759,11 @@ func TestValidateStateInfoMessage(t *testing.T) {
 
 func TestString(t *testing.T) {
 	var ic InvocationChain
-	ic = append(ic, &discovery.ChaincodeCall{
+	ic = append(ic, &peer.ChaincodeCall{
 		Name:            "foo",
 		CollectionNames: []string{"c1", "c2"},
 	})
-	ic = append(ic, &discovery.ChaincodeCall{
+	ic = append(ic, &peer.ChaincodeCall{
 		Name:            "bar",
 		CollectionNames: []string{"c3", "c4"},
 	})
@@ -824,9 +824,9 @@ func (pf *policyFetcher) PoliciesByChaincode(channel string, cc string, collecti
 }
 
 type endorsementAnalyzer interface {
-	PeersForEndorsement(chainID gossipcommon.ChannelID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error)
+	PeersForEndorsement(chainID gossipcommon.ChannelID, interest *peer.ChaincodeInterest) (*discovery.EndorsementDescriptor, error)
 
-	PeersAuthorizedByCriteria(chainID gossipcommon.ChannelID, interest *discovery.ChaincodeInterest) (gdisc.Members, error)
+	PeersAuthorizedByCriteria(chainID gossipcommon.ChannelID, interest *peer.ChaincodeInterest) (gdisc.Members, error)
 }
 
 type inquireablePolicy struct {
@@ -957,11 +957,11 @@ func (ms *mockSupport) Peers() gdisc.Members {
 	return ms.Called().Get(0).(gdisc.Members)
 }
 
-func (ms *mockSupport) PeersForEndorsement(channel gossipcommon.ChannelID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+func (ms *mockSupport) PeersForEndorsement(channel gossipcommon.ChannelID, interest *peer.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
 	return ms.endorsementAnalyzer.PeersForEndorsement(channel, interest)
 }
 
-func (ms *mockSupport) PeersAuthorizedByCriteria(channel gossipcommon.ChannelID, interest *discovery.ChaincodeInterest) (gdisc.Members, error) {
+func (ms *mockSupport) PeersAuthorizedByCriteria(channel gossipcommon.ChannelID, interest *peer.ChaincodeInterest) (gdisc.Members, error) {
 	return ms.endorsementAnalyzer.PeersAuthorizedByCriteria(channel, interest)
 }
 
@@ -1007,32 +1007,32 @@ func (ds *mockDiscoveryServer) Discover(context.Context, *discovery.SignedReques
 	return args.Get(0).(*discovery.Response), nil
 }
 
-func ccCall(ccNames ...string) []*discovery.ChaincodeCall {
-	var call []*discovery.ChaincodeCall
+func ccCall(ccNames ...string) []*peer.ChaincodeCall {
+	var call []*peer.ChaincodeCall
 	for _, ccName := range ccNames {
-		call = append(call, &discovery.ChaincodeCall{
+		call = append(call, &peer.ChaincodeCall{
 			Name: ccName,
 		})
 	}
 	return call
 }
 
-func cc2ccInterests(invocationsChains ...[]*discovery.ChaincodeCall) []*discovery.ChaincodeInterest {
-	var interests []*discovery.ChaincodeInterest
+func cc2ccInterests(invocationsChains ...[]*peer.ChaincodeCall) []*peer.ChaincodeInterest {
+	var interests []*peer.ChaincodeInterest
 	for _, invocationChain := range invocationsChains {
-		interests = append(interests, &discovery.ChaincodeInterest{
+		interests = append(interests, &peer.ChaincodeInterest{
 			Chaincodes: invocationChain,
 		})
 	}
 	return interests
 }
 
-func interest(ccNames ...string) *discovery.ChaincodeInterest {
-	interest := &discovery.ChaincodeInterest{
-		Chaincodes: []*discovery.ChaincodeCall{},
+func interest(ccNames ...string) *peer.ChaincodeInterest {
+	interest := &peer.ChaincodeInterest{
+		Chaincodes: []*peer.ChaincodeCall{},
 	}
 	for _, cc := range ccNames {
-		interest.Chaincodes = append(interest.Chaincodes, &discovery.ChaincodeCall{
+		interest.Chaincodes = append(interest.Chaincodes, &peer.ChaincodeCall{
 			Name: cc,
 		})
 	}
