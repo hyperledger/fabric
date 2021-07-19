@@ -682,7 +682,7 @@ func TestPeersForEndorsement(t *testing.T) {
 		// Scenario XV: A chaincode call with a state based endorsement policy
 		// Total organizations are 0, 2, 4, 6, 10, 12
 		// and the endorsement policies of the chaincode is:
-		// cc1: OR(AND(0, 2), AND(6, 10, 12))
+		// cc1: OR(AND(0, 2), AND(6, 10))
 		// However the chaincode call is accompanied with a hint
 		// for a state based endorsement policy for both organizations 2 and 6
 		// Therefore, the result should be: {0, 2, 6} or {2, 6, 10}
