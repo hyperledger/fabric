@@ -132,7 +132,7 @@ github.com/eapache/queue
 github.com/fly2plan/fabric-config/protolator
 github.com/fly2plan/fabric-config/protolator/protoext
 github.com/fly2plan/fabric-config/protolator/protoext/ordererext
-# github.com/fly2plan/fabric-protos-go v0.0.0-20210714052649-e2b01f419caf
+# github.com/fly2plan/fabric-protos-go v0.0.0-20210719114830-e6188356a08e
 ## explicit
 github.com/fly2plan/fabric-protos-go/orderer/hlmirbft
 # github.com/frankban/quicktest v1.11.3
@@ -586,7 +586,7 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# google.golang.org/protobuf v1.26.0
+# google.golang.org/protobuf v1.27.1
 google.golang.org/protobuf/cmd/protoc-gen-go
 google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
 google.golang.org/protobuf/compiler/protogen
