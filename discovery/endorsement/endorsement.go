@@ -268,6 +268,23 @@ func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, 
 			sessionLogger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 			return nil, errors.New("policy not found")
 		}
+		if chaincode.DisregardNamespacePolicy && len(chaincode.KeyPolicies) == 0 && len(policies) == 1 {
+			sessionLogger.Warnf("Client requested to disregard chaincode %s's policy, but it did not specify any "+
+				"collection policies or key policies. This is probably a bug in the client side code, as the client should"+
+				"either not specify DisregardNamespacePolicy, or specify at least one key policy or at least one collection policy", chaincode.Name)
+			return nil, errors.Errorf("requested to disregard chaincode %s's policy but key and collection policies are missing, either "+
+				"disable DisregardNamespacePolicy or specify at least one key policy or at least one collection policy", chaincode.Name)
+		}
+		if chaincode.DisregardNamespacePolicy {
+			if len(policies) == 1 {
+				sessionLogger.Debugf("Client requested to disregard the namespace policy for chaincode %s,"+
+					" and no collection policies are present", chaincode.Name)
+				continue
+			}
+			sessionLogger.Debugf("Client requested to disregard the namespace policy for chaincode %s,"+
+				" however there exist %d collection policies taken into account", chaincode.Name, len(policies)-1)
+			policies = policies[1:]
+		}
 		inquireablePoliciesForChaincodeAndCollections = append(inquireablePoliciesForChaincodeAndCollections, policies...)
 	}
 
