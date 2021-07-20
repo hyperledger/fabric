@@ -7,9 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package txmgr
 
 import (
+	"github.com/hyperledger/fabric-protos-go/peer"
 	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/statemetadata"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/pkg/errors"
 )
 
@@ -21,13 +24,14 @@ type txSimulator struct {
 	pvtdataQueriesPerformed   bool
 	simulationResultsComputed bool
 	paginatedQueriesPerformed bool
+	keySignaturePolicies      map[string]struct{}
 }
 
 func newTxSimulator(txmgr *LockBasedTxMgr, txid string, hashFunc rwsetutil.HashFunc) (*txSimulator, error) {
 	rwsetBuilder := rwsetutil.NewRWSetBuilder()
 	qe := newQueryExecutor(txmgr, txid, rwsetBuilder, true, hashFunc)
 	logger.Debugf("constructing new tx simulator txid = [%s]", txid)
-	return &txSimulator{qe, rwsetBuilder, false, false, false, false}, nil
+	return &txSimulator{qe, rwsetBuilder, false, false, false, false, map[string]struct{}{}}, nil
 }
 
 // SetState implements method in interface `ledger.TxSimulator`
@@ -36,6 +40,39 @@ func (s *txSimulator) SetState(ns string, key string, value []byte) error {
 		return err
 	}
 	s.rwsetBuilder.AddToWriteSet(ns, key, value)
+	// if this has a key level signature policy, add it to the interest
+	return s.checkKeySignaturePolicy(ns, key)
+}
+
+// If this key has a SBE policy, add that policy to the set
+func (s *txSimulator) checkKeySignaturePolicy(ns string, key string) error {
+	var metadata []byte
+	var err error
+	if metadata, err = s.txmgr.db.GetStateMetadata(ns, key); err != nil {
+		return err
+	}
+	return s.addToKeySignaturePolicies(metadata)
+}
+
+// If this private collection key has a SBE policy, add that policy to the set
+func (s *txSimulator) checkPrivateKeySignaturePolicy(ns string, coll string, key string) error {
+	metadata, err := s.txmgr.db.GetPrivateDataMetadataByHash(ns, coll, util.ComputeStringHash(key))
+	if err != nil {
+		return err
+	}
+	return s.addToKeySignaturePolicies(metadata)
+}
+
+func (s *txSimulator) addToKeySignaturePolicies(metadata []byte) error {
+	if metadata != nil {
+		sm, err := statemetadata.Deserialize(metadata)
+		if err != nil {
+			return err
+		}
+		if policy, ok := sm[peer.MetaDataKeys_VALIDATION_PARAMETER.String()]; ok {
+			s.keySignaturePolicies[string(policy)] = struct{}{}
+		}
+	}
 	return nil
 }
 
@@ -60,7 +97,7 @@ func (s *txSimulator) SetStateMetadata(namespace, key string, metadata map[strin
 		return err
 	}
 	s.rwsetBuilder.AddToMetadataWriteSet(namespace, key, metadata)
-	return nil
+	return s.checkKeySignaturePolicy(namespace, key)
 }
 
 // DeleteStateMetadata implements method in interface `ledger.TxSimulator`
@@ -78,7 +115,7 @@ func (s *txSimulator) SetPrivateData(ns, coll, key string, value []byte) error {
 	}
 	s.writePerformed = true
 	s.rwsetBuilder.AddToPvtAndHashedWriteSet(ns, coll, key, value)
-	return nil
+	return s.checkPrivateKeySignaturePolicy(ns, coll, key)
 }
 
 // DeletePrivateData implements method in interface `ledger.TxSimulator`
@@ -113,7 +150,7 @@ func (s *txSimulator) SetPrivateDataMetadata(namespace, collection, key string, 
 		return err
 	}
 	s.rwsetBuilder.AddToHashedMetadataWriteSet(namespace, collection, key, metadata)
-	return nil
+	return s.checkPrivateKeySignaturePolicy(namespace, collection, key)
 }
 
 // DeletePrivateMetadata implements method in interface `ledger.TxSimulator`
@@ -157,7 +194,16 @@ func (s *txSimulator) GetTxSimulationResults() (*ledger.TxSimulationResults, err
 		return nil, s.queryExecutor.err
 	}
 	s.queryExecutor.addRangeQueryInfo()
-	return s.rwsetBuilder.GetTxSimulationResults()
+	simResults, err := s.rwsetBuilder.GetTxSimulationResults()
+	if err != nil {
+		return nil, err
+	}
+	// The PrivateReads map needs to be cloned so that subsequent RW set additions don't modify these TX simulation results
+	simResults.PrivateReads = s.privateReads.Clone()
+	for policy := range s.keySignaturePolicies {
+		simResults.KeySignaturePolicies = append(simResults.KeySignaturePolicies, []byte(policy))
+	}
+	return simResults, nil
 }
 
 // ExecuteUpdate implements method in interface `ledger.TxSimulator`

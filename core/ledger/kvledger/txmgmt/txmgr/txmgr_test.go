@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
@@ -88,6 +90,10 @@ func TestTxSimulatorGetResults(t *testing.T) {
 	simulationResults1, err := simulator.GetTxSimulationResults()
 	require.NoError(t, err)
 	require.Len(t, simulationResults1.PubSimulationResults.NsRwset, 1)
+	// verify the Private Read has been captured
+	expectedPrivateReads := ledger.PrivateReads{}
+	expectedPrivateReads.Add("ns1", "coll1")
+	require.Equal(t, expectedPrivateReads, simulationResults1.PrivateReads)
 	// clone freeze simulationResults1
 	buff1 := new(bytes.Buffer)
 	require.NoError(t, gob.NewEncoder(buff1).Encode(simulationResults1))
@@ -1493,7 +1499,7 @@ func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
 	require.NoError(t, s1.SetPrivateDataMetadata(ns, coll, key3, metadata3))
 	s1.Done()
 
-	blkAndPvtdata1 := prepareNextBlockForTestFromSimulator(t, bg, s1)
+	blkAndPvtdata1, _ := prepareNextBlockForTestFromSimulator(t, bg, s1)
 	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
@@ -1512,7 +1518,7 @@ func testTxWithPvtdataMetadata(t *testing.T, env testEnv, ns, coll string) {
 	require.NoError(t, s2.DeletePrivateDataMetadata(ns, coll, key2))
 	s2.Done()
 
-	blkAndPvtdata2 := prepareNextBlockForTestFromSimulator(t, bg, s2)
+	blkAndPvtdata2, _ := prepareNextBlockForTestFromSimulator(t, bg, s2)
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata2, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
@@ -1538,17 +1544,18 @@ func prepareNextBlockForTest(t *testing.T, txMgr *LockBasedTxMgr, bg *testutil.B
 	if isMissing {
 		return prepareNextBlockForTestFromSimulatorWithMissingData(t, bg, simulator, txid, 1, "ns", "coll", true)
 	}
-	return prepareNextBlockForTestFromSimulator(t, bg, simulator)
+	nb, _ := prepareNextBlockForTestFromSimulator(t, bg, simulator)
+	return nb
 }
 
-func prepareNextBlockForTestFromSimulator(t *testing.T, bg *testutil.BlockGenerator, simulator ledger.TxSimulator) *ledger.BlockAndPvtData {
+func prepareNextBlockForTestFromSimulator(t *testing.T, bg *testutil.BlockGenerator, simulator ledger.TxSimulator) (*ledger.BlockAndPvtData, *ledger.TxSimulationResults) {
 	simRes, _ := simulator.GetTxSimulationResults()
 	pubSimBytes, _ := simRes.GetPubSimulationBytes()
 	block := bg.NextBlock([][]byte{pubSimBytes})
 	return &ledger.BlockAndPvtData{
 		Block:   block,
 		PvtData: ledger.TxPvtDataMap{0: {SeqInBlock: 0, WriteSet: simRes.PvtSimulationResults}},
-	}
+	}, simRes
 }
 
 func prepareNextBlockForTestFromSimulatorWithMissingData(t *testing.T, bg *testutil.BlockGenerator, simulator ledger.TxSimulator,
@@ -1591,4 +1598,123 @@ func TestName(t *testing.T) {
 	defer testEnv.cleanup()
 	txMgr := testEnv.getTxMgr()
 	require.Equal(t, "state", txMgr.Name())
+}
+
+func TestTxSimulatorWithStateBasedEndorsement(t *testing.T) {
+	for _, testEnv := range testEnvs {
+		t.Run(testEnv.getName(), func(t *testing.T) {
+			testEnv.init(t, "testtxsimulatorwithdtstebasedendorsement", nil)
+			testTxSimulatorWithStateBasedEndorsement(t, testEnv)
+			testEnv.cleanup()
+		})
+	}
+}
+
+func testTxSimulatorWithStateBasedEndorsement(t *testing.T, env testEnv) {
+	txMgr := env.getTxMgr()
+	txMgrHelper := newTxMgrTestHelper(t, txMgr)
+	sbe1 := []byte("SBE1")
+	sbe2 := []byte("SBE2")
+
+	// simulate tx1
+	s1, _ := txMgr.NewTxSimulator("test_tx1")
+	require.NoError(t, s1.SetState("ns1", "key1", []byte("value1")))
+	require.NoError(t, s1.SetState("ns1", "key2", []byte("value2")))
+	require.NoError(t, s1.SetStateMetadata("ns1", "key2", map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): sbe1}))
+	require.NoError(t, s1.SetState("ns2", "key3", []byte("value3")))
+	require.NoError(t, s1.SetStateMetadata("ns2", "key3", map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): sbe2}))
+	require.NoError(t, s1.SetState("ns2", "key4", []byte("value4")))
+	s1.Done()
+	// validate and commit RWset
+	txRWSet1, _ := s1.GetTxSimulationResults()
+	txMgrHelper.validateAndCommitRWSet(txRWSet1.PubSimulationResults)
+
+	// simulate tx2 that make changes to existing data and updates a key policy
+	s2, _ := txMgr.NewTxSimulator("test_tx2")
+	sbe3 := []byte("SBE3")
+	require.NoError(t, s2.SetState("ns1", "key1", []byte("value1b")))
+	require.NoError(t, s2.SetState("ns1", "key2", []byte("value2b")))
+	require.NoError(t, s2.SetStateMetadata("ns2", "key3", map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): sbe3}))
+	require.NoError(t, s2.SetState("ns2", "key4", []byte("value4b")))
+	s2.Done()
+	// validate and commit RWset for tx2
+	txRWSet2, err := s2.GetTxSimulationResults()
+	require.NoError(t, err)
+	txMgrHelper.validateAndCommitRWSet(txRWSet2.PubSimulationResults)
+	// check the SBE policies are captured
+	require.ElementsMatch(t, [][]byte{sbe1, sbe2}, txRWSet2.KeySignaturePolicies)
+
+	// simulate tx3
+	s3, _ := txMgr.NewTxSimulator("test_tx3")
+	require.NoError(t, s3.SetState("ns1", "key1", []byte("value1c")))
+	require.NoError(t, s3.SetState("ns1", "key2", []byte("value2c")))
+	require.NoError(t, s3.SetState("ns2", "key3", []byte("value3c")))
+	require.NoError(t, s3.SetState("ns2", "key4", []byte("value4c")))
+	s3.Done()
+
+	// check the updated SBE policies are captured
+	txRWSet3, err := s3.GetTxSimulationResults()
+	require.NoError(t, err)
+	require.ElementsMatch(t, [][]byte{sbe1, sbe3}, txRWSet3.KeySignaturePolicies)
+}
+
+func TestTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T) {
+	ledgerid, ns, coll := "testtxwithprivatedatastatebasedendorsement", "ns1", "coll1"
+	btlPolicy := btltestutil.SampleBTLPolicy(
+		map[[2]string]uint64{
+			{ns, coll}: 1000,
+		},
+	)
+	for _, testEnv := range testEnvs {
+		t.Logf("Running test for TestEnv = %s", testEnv.getName())
+		testEnv.init(t, ledgerid, btlPolicy)
+		testTxSimulatorWithPrivateDataStateBasedEndorsement(t, testEnv, ns, coll)
+		testEnv.cleanup()
+	}
+}
+
+func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testEnv, ns, coll string) {
+	ledgerid := "testtxwithprivatedatastatebasedendorsement"
+	txMgr := env.getTxMgr()
+	bg, _ := testutil.NewBlockGenerator(t, ledgerid, false)
+
+	populateCollConfigForTest(t, txMgr, []collConfigkey{{ns, coll}}, version.NewHeight(1, 1))
+
+	sbe1 := []byte("SBE1")
+	sbe2 := []byte("SBE2")
+	// Simulate and commit tx1 - set private data and key policy
+	s1, _ := txMgr.NewTxSimulator("test_tx1")
+	require.NoError(t, s1.SetPrivateData(ns, coll, "key1", []byte("private_value1")))
+	require.NoError(t, s1.SetPrivateDataMetadata(ns, coll, "key1", map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): sbe1}))
+	s1.Done()
+
+	blkAndPvtdata1, _ := prepareNextBlockForTestFromSimulator(t, bg, s1)
+	_, _, err := txMgr.ValidateAndPrepare(blkAndPvtdata1, true)
+	require.NoError(t, err)
+	require.NoError(t, txMgr.Commit())
+
+	// simulate tx2 that make changes to existing data and updates a key policy
+	s2, _ := txMgr.NewTxSimulator("test_tx2")
+	require.NoError(t, s2.SetPrivateData(ns, coll, "key1", []byte("private_value2")))
+	require.NoError(t, s2.SetPrivateDataMetadata(ns, coll, "key1", map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): sbe2}))
+	s2.Done()
+
+	blkAndPvtdata2, simRes2 := prepareNextBlockForTestFromSimulator(t, bg, s2)
+	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata2, true)
+	require.NoError(t, err)
+	require.NoError(t, txMgr.Commit())
+	// check the SBE policies are captured
+	require.ElementsMatch(t, [][]byte{sbe1}, simRes2.KeySignaturePolicies)
+
+	// simulate tx3 that make changes to existing data
+	s3, _ := txMgr.NewTxSimulator("test_tx3")
+	require.NoError(t, s3.SetPrivateData(ns, coll, "key1", []byte("private_value2")))
+	s3.Done()
+
+	blkAndPvtdata3, simRes3 := prepareNextBlockForTestFromSimulator(t, bg, s3)
+	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata3, true)
+	require.NoError(t, err)
+	require.NoError(t, txMgr.Commit())
+	// check the SBE policies are captured
+	require.ElementsMatch(t, [][]byte{sbe2}, simRes3.KeySignaturePolicies)
 }
