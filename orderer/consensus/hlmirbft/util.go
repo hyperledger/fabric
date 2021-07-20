@@ -497,12 +497,3 @@ func removeNodeID(nodeList []uint64, nodeID uint64) []uint64{
 	newNodeList := append(nodeList[:index], nodeList[index+1:]...)
 	return  newNodeList
 }
-//JIRA FLY2-103 - pop the first element from pending reconfigurations
-func PopReconfiguration(pr [][]*msgs.Reconfiguration) (newPendingReconfig [][]*msgs.Reconfiguration){
-	if len(pr) > 1 {
-		pr = pr[1:]
-	}else{
-		pr  = nil
-	}
-	return pr
-}
