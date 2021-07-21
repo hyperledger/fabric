@@ -156,6 +156,13 @@ func UnmarshalChaincodeProposalPayload(bytes []byte) (*peer.ChaincodeProposalPay
 	return cpp, errors.Wrap(err, "error unmarshalling ChaincodeProposalPayload")
 }
 
+// UnmarshalSignaturePolicy unmarshals bytes to a SignaturePolicyEnvelope
+func UnmarshalSignaturePolicy(bytes []byte) (*common.SignaturePolicyEnvelope, error) {
+	sp := &common.SignaturePolicyEnvelope{}
+	err := proto.Unmarshal(bytes, sp)
+	return sp, errors.Wrap(err, "error unmarshalling SignaturePolicyEnvelope")
+}
+
 // UnmarshalPayloadOrPanic unmarshals bytes to a Payload structure or panics
 // on error
 func UnmarshalPayloadOrPanic(encoded []byte) *common.Payload {
