@@ -132,6 +132,8 @@ type testDef struct {
 	policyErr          error
 	expectedResponse   proto.Message
 	expectedResponses  []proto.Message
+	transientData      map[string][]byte
+	interest           *peer.ChaincodeInterest
 }
 
 type preparedTest struct {
@@ -150,14 +152,14 @@ type preparedTest struct {
 type contextKey string
 
 var (
-	localhostMock    = &endorser{endpointConfig: &endpointConfig{address: "localhost:7051"}}
-	peer1Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer1:8051"}}
-	peer2Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer2:9051"}}
-	peer3Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer3:10051"}}
-	peer4Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer4:11051"}}
-	unavailable1Mock = &endorser{endpointConfig: &endpointConfig{address: "unavailable1:12051"}}
-	unavailable2Mock = &endorser{endpointConfig: &endpointConfig{address: "unavailable1:13051"}}
-	unavailable3Mock = &endorser{endpointConfig: &endpointConfig{address: "unavailable1:14051"}}
+	localhostMock    = &endorser{endpointConfig: &endpointConfig{address: "localhost:7051", mspid: "msp1"}}
+	peer1Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer1:8051", mspid: "msp1"}}
+	peer2Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer2:9051", mspid: "msp2"}}
+	peer3Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer3:10051", mspid: "msp2"}}
+	peer4Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer4:11051", mspid: "msp3"}}
+	unavailable1Mock = &endorser{endpointConfig: &endpointConfig{address: "unavailable1:12051", mspid: "msp1"}}
+	unavailable2Mock = &endorser{endpointConfig: &endpointConfig{address: "unavailable1:13051", mspid: "msp1"}}
+	unavailable3Mock = &endorser{endpointConfig: &endpointConfig{address: "unavailable1:14051", mspid: "msp1"}}
 )
 
 func TestEvaluate(t *testing.T) {
@@ -342,24 +344,24 @@ func TestEndorse(t *testing.T) {
 		{
 			name: "two endorsers",
 			plan: endorsementPlan{
-				"g1": {{endorser: localhostMock, height: 3}},
-				"g2": {{endorser: peer1Mock, height: 3}},
+				"g1": {{endorser: localhostMock, height: 3}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 3}},     // msp2
 			},
-			expectedEndorsers: []string{"localhost:7051", "peer1:8051"},
+			expectedEndorsers: []string{"localhost:7051", "peer2:9051"},
 		},
 		{
 			name: "three endorsers, two groups",
 			plan: endorsementPlan{
-				"g1": {{endorser: localhostMock, height: 4}},
-				"g2": {{endorser: peer1Mock, height: 4}, {endorser: peer2Mock, height: 5}},
+				"g1": {{endorser: localhostMock, height: 4}},                               // msp1
+				"g2": {{endorser: peer3Mock, height: 4}, {endorser: peer2Mock, height: 5}}, // msp2
 			},
 			expectedEndorsers: []string{"localhost:7051", "peer2:9051"},
 		},
 		{
 			name: "multiple endorsers, two groups, prefer host peer",
 			plan: endorsementPlan{
-				"g1": {{endorser: peer3Mock, height: 4}, {endorser: localhostMock, height: 4}, {endorser: unavailable1Mock, height: 4}},
-				"g2": {{endorser: peer1Mock, height: 4}, {endorser: peer2Mock, height: 5}},
+				"g1": {{endorser: peer2Mock, height: 4}, {endorser: localhostMock, height: 4}, {endorser: unavailable1Mock, height: 4}}, // msp1
+				"g2": {{endorser: peer3Mock, height: 4}, {endorser: peer2Mock, height: 5}},                                              // msp2
 			},
 			expectedEndorsers: []string{"localhost:7051", "peer2:9051"},
 		},
@@ -412,6 +414,77 @@ func TestEndorse(t *testing.T) {
 			expectedEndorsers: []string{"localhost:7051", "peer4:11051"},
 		},
 		{
+			name: "non-local endorsers",
+			plan: endorsementPlan{
+				"g1": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}}, // msp2
+				"g2": {{endorser: peer4Mock, height: 5}},                                   // msp3
+			},
+			layouts: []endorsementLayout{
+				{"g1": 1, "g2": 1},
+			},
+			members: []networkMember{
+				{"id2", "peer2:9051", "msp2", 3},
+				{"id3", "peer3:10051", "msp2", 4},
+				{"id4", "peer4:11051", "msp3", 5},
+			},
+			expectedEndorsers: []string{"peer3:10051", "peer4:11051"},
+		},
+		{
+			name: "local endorser is not in the endorsement plan",
+			plan: endorsementPlan{
+				"g1": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}}, // msp2
+				"g2": {{endorser: peer4Mock, height: 5}},                                   // msp3
+			},
+			layouts: []endorsementLayout{
+				{"g1": 1, "g2": 1},
+			},
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 3},
+				{"id2", "peer2:9051", "msp2", 3},
+				{"id3", "peer3:10051", "msp2", 4},
+				{"id4", "peer4:11051", "msp3", 5},
+			},
+			expectedEndorsers: []string{"peer3:10051", "peer4:11051"},
+		},
+		{
+			name: "non-local endorsers with transient data will fail",
+			plan: endorsementPlan{
+				"g1": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}}, // msp2
+				"g2": {{endorser: peer4Mock, height: 5}},                                   // msp3
+			},
+			members: []networkMember{
+				{"id2", "peer2:9051", "msp2", 3},
+				{"id3", "peer3:10051", "msp2", 4},
+				{"id4", "peer4:11051", "msp3", 5},
+			},
+			transientData: map[string][]byte{"transient-key": []byte("transient-value")},
+			errString:     "rpc error: code = FailedPrecondition desc = no endorsers found in the gateway's organization; retry specifying endorsing organization(s) to protect transient data",
+		},
+		{
+			name: "extra endorsers with transient data",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
+				"g2": {{endorser: peer4Mock, height: 5}},                                       // msp3
+			},
+			transientData:     map[string][]byte{"transient-key": []byte("transient-value")},
+			expectedEndorsers: []string{"localhost:7051", "peer4:11051"},
+		},
+		{
+			name: "non-local endorsers with transient data and set endorsing orgs",
+			plan: endorsementPlan{
+				"g1": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}}, // msp2
+				"g2": {{endorser: peer4Mock, height: 5}},                                   // msp3
+			},
+			members: []networkMember{
+				{"id2", "peer2:9051", "msp2", 3},
+				{"id3", "peer3:10051", "msp2", 4},
+				{"id4", "peer4:11051", "msp3", 5},
+			},
+			endorsingOrgs:     []string{"msp2", "msp3"},
+			transientData:     map[string][]byte{"transient-key": []byte("transient-value")},
+			expectedEndorsers: []string{"peer3:10051", "peer4:11051"},
+		},
+		{
 			name: "endorse with multiple layouts - non-availability of peers fails on all layouts",
 			plan: endorsementPlan{
 				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}},           // msp1
@@ -426,15 +499,10 @@ func TestEndorse(t *testing.T) {
 			errString: "failed to select a set of endorsers that satisfy the endorsement policy",
 		},
 		{
-			name:      "no endorsers",
-			plan:      endorsementPlan{},
-			errString: "failed to assemble transaction: at least one proposal response is required",
-		},
-		{
 			name: "non-matching responses",
 			plan: endorsementPlan{
-				"g1": {{endorser: localhostMock, height: 4}},
-				"g2": {{endorser: peer1Mock, height: 5}},
+				"g1": {{endorser: localhostMock, height: 4}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 5}},     // msp2
 			},
 			localResponse: "different_response",
 			errString:     "failed to assemble transaction: ProposalResponsePayloads do not match",
@@ -461,7 +529,7 @@ func TestEndorse(t *testing.T) {
 				}
 				def.discovery.PeersForEndorsementReturns(ed, nil)
 			},
-			errString: "failed to assemble transaction",
+			errString: "failed to select a set of endorsers that satisfy the endorsement policy",
 		},
 		{
 			name: "discovery returns incomplete protos - nil state info",
@@ -494,9 +562,28 @@ func TestEndorse(t *testing.T) {
 			}},
 		},
 		{
+			name: "local endorser succeeds, remote endorser fails",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 1}},
+				"g2": {{endorser: peer4Mock, height: 1}},
+			},
+			endpointDefinition: &endpointDef{
+				proposalError: status.Error(codes.Aborted, "remote-wobble"),
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.localEndorser.ProcessProposalReturns(createProposalResponse(t, localhostMock.address, "all_good", 200, ""), nil)
+			},
+			errString: "failed to endorse transaction",
+			errDetails: []*pb.EndpointError{{
+				Address: "peer4:11051",
+				MspId:   "msp3",
+				Message: "rpc error: code = Aborted desc = remote-wobble",
+			}},
+		},
+		{
 			name: "process proposal chaincode error",
 			plan: endorsementPlan{
-				"g1": {{endorser: peer1Mock, height: 2}},
+				"g1": {{endorser: localhostMock, height: 2}},
 			},
 			endpointDefinition: &endpointDef{
 				proposalResponseStatus:  400,
@@ -504,10 +591,45 @@ func TestEndorse(t *testing.T) {
 			},
 			errString: "rpc error: code = Aborted desc = failed to endorse transaction",
 			errDetails: []*pb.EndpointError{{
-				Address: "peer1:8051",
+				Address: "localhost:7051",
 				MspId:   "msp1",
 				Message: "error 400, Mock chaincode error",
 			}},
+		},
+		{
+			name: "local endorser succeeds, remote endorser chaincode error",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 1}},
+				"g2": {{endorser: peer4Mock, height: 1}},
+			},
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus:  400,
+				proposalResponseMessage: "Mock chaincode error",
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.localEndorser.ProcessProposalReturns(createProposalResponse(t, localhostMock.address, "all_good", 200, ""), nil)
+			},
+			errString: "failed to endorse transaction",
+			errDetails: []*pb.EndpointError{{
+				Address: "peer4:11051",
+				MspId:   "msp3",
+				Message: "error 400, Mock chaincode error",
+			}},
+		},
+		{
+			name: "first endorser returns chaincode interest",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 3}},
+				"g2": {{endorser: peer2Mock, height: 3}},
+			},
+			interest: &peer.ChaincodeInterest{
+				Chaincodes: []*peer.ChaincodeCall{{
+					Name:            testChaincode,
+					CollectionNames: []string{"mycollection1", "mycollection2"},
+					NoPrivateReads:  true,
+				}},
+			},
+			expectedEndorsers: []string{"localhost:7051", "peer2:9051"},
 		},
 	}
 	for _, tt := range tests {
@@ -527,45 +649,11 @@ func TestEndorse(t *testing.T) {
 			// assert the preparedTxn is the payload from the proposal response
 			require.Equal(t, []byte("mock_response"), response.Result.Payload, "Incorrect response")
 
-			// check the correct endorsers (mock) were called with the right parameters
+			// check the generated transaction envelope contains the correct endorsements
+			checkTransaction(t, tt.expectedEndorsers, response.PreparedTransaction)
+
+			// check the correct endorsers (mocks) were called with the right parameters
 			checkEndorsers(t, tt.expectedEndorsers, test)
-
-			// check the prepare transaction (Envelope) contains the right number of endorsements
-			payload, err := protoutil.UnmarshalPayload(response.PreparedTransaction.Payload)
-			require.NoError(t, err)
-			txn, err := protoutil.UnmarshalTransaction(payload.Data)
-			require.NoError(t, err)
-			cap, err := protoutil.UnmarshalChaincodeActionPayload(txn.Actions[0].Payload)
-			require.NoError(t, err)
-			endorsements := cap.Action.Endorsements
-			expectedLen := len(tt.expectedEndorsers)
-			require.Len(t, endorsements, expectedLen)
-
-			// check the discovery service (mock) was invoked as expected
-			expectedChannel := common.ChannelID(testChannel)
-			expectedInterest := &peer.ChaincodeInterest{
-				Chaincodes: []*peer.ChaincodeCall{{
-					Name: testChaincode,
-				}},
-			}
-			if tt.endorsingOrgs != nil {
-				require.Equal(t, 2, test.discovery.PeersOfChannelCallCount())
-				channel := test.discovery.PeersOfChannelArgsForCall(0)
-				require.Equal(t, expectedChannel, channel)
-				channel = test.discovery.PeersOfChannelArgsForCall(1)
-				require.Equal(t, expectedChannel, channel)
-			} else {
-				require.Equal(t, 1, test.discovery.PeersForEndorsementCallCount())
-				channel, interest := test.discovery.PeersForEndorsementArgsForCall(0)
-				require.Equal(t, expectedChannel, channel)
-				require.Equal(t, expectedInterest, interest)
-
-				require.Equal(t, 1, test.discovery.PeersOfChannelCallCount())
-				channel = test.discovery.PeersOfChannelArgsForCall(0)
-				require.Equal(t, expectedChannel, channel)
-			}
-
-			require.Equal(t, 1, test.discovery.IdentityInfoCallCount())
 		})
 	}
 }
@@ -1005,7 +1093,7 @@ func TestNilArgs(t *testing.T) {
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "the proposed transaction must contain a signed proposal"))
 
 	_, err = server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: &peer.SignedProposal{ProposalBytes: []byte("jibberish")}})
-	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "failed to unpack transaction proposal: error unmarshalling Proposal: unexpected EOF"))
+	require.ErrorContains(t, err, "rpc error: code = InvalidArgument desc = failed to unpack transaction proposal: error unmarshalling Proposal")
 
 	_, err = server.Submit(ctx, nil)
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a submit request is required"))
@@ -1032,7 +1120,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	if epDef.proposalError != nil {
 		localEndorser.ProcessProposalReturns(nil, epDef.proposalError)
 	} else {
-		localEndorser.ProcessProposalReturns(createProposalResponse(t, localResponse, 200, ""), nil)
+		localEndorser.ProcessProposalReturns(createProposalResponseWithInterest(t, localhostMock.address, localResponse, epDef.proposalResponseStatus, epDef.proposalResponseMessage, tt.interest), nil)
 	}
 
 	mockSigner := &idmocks.SignerSerializer{}
@@ -1052,7 +1140,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	mockPolicy := &mocks.ACLChecker{}
 	mockPolicy.CheckACLReturns(tt.policyErr)
 
-	validProposal := createProposal(t, testChannel, testChaincode)
+	validProposal := createProposal(t, testChannel, testChaincode, tt.transientData)
 	validSignedProposal, err := protoutil.GetSignedProposal(validProposal, mockSigner)
 	require.NoError(t, err)
 
@@ -1154,6 +1242,25 @@ func checkEndorsers(t *testing.T, endorsers []string, test *preparedTest) {
 	}
 }
 
+func checkTransaction(t *testing.T, expectedEndorsers []string, transaction *cp.Envelope) {
+	// check the prepared transaction contains the correct endorsements
+	var actualEndorsers []string
+
+	payload, err := protoutil.UnmarshalPayload(transaction.GetPayload())
+	require.NoError(t, err)
+	txn, err := protoutil.UnmarshalTransaction(payload.GetData())
+	require.NoError(t, err)
+	for _, action := range txn.GetActions() {
+		cap, err := protoutil.UnmarshalChaincodeActionPayload(action.GetPayload())
+		require.NoError(t, err)
+		for _, endorsement := range cap.GetAction().GetEndorsements() {
+			actualEndorsers = append(actualEndorsers, string(endorsement.GetEndorser()))
+		}
+	}
+
+	require.ElementsMatch(t, expectedEndorsers, actualEndorsers)
+}
+
 func mockDiscovery(t *testing.T, plan endorsementPlan, layouts []endorsementLayout, members []networkMember, config *dp.ConfigResult) *mocks.Discovery {
 	discovery := &mocks.Discovery{}
 
@@ -1182,7 +1289,7 @@ func createMockEndorsementDescriptor(t *testing.T, plan endorsementPlan, layouts
 		quantitiesByGroup[group] = 1 // for now
 		var peers []*dp.Peer
 		for _, endorser := range endorsers {
-			peers = append(peers, createMockPeer(t, endorser.endorser.address, endorser.height))
+			peers = append(peers, createMockPeer(t, &endorser))
 		}
 		endorsersByGroups[group] = &dp.Peers{Peers: peers}
 	}
@@ -1203,12 +1310,12 @@ func createMockEndorsementDescriptor(t *testing.T, plan endorsementPlan, layouts
 	return descriptor
 }
 
-func createMockPeer(t *testing.T, name string, ledgerHeight uint64) *dp.Peer {
+func createMockPeer(t *testing.T, endorser *endorserState) *dp.Peer {
 	aliveMsgBytes, err := proto.Marshal(
 		&gossip.GossipMessage{
 			Content: &gossip.GossipMessage_AliveMsg{
 				AliveMsg: &gossip.AliveMessage{
-					Membership: &gossip.Member{Endpoint: name},
+					Membership: &gossip.Member{Endpoint: endorser.endorser.address},
 				},
 			},
 		})
@@ -1220,7 +1327,7 @@ func createMockPeer(t *testing.T, name string, ledgerHeight uint64) *dp.Peer {
 			Content: &gossip.GossipMessage_StateInfo{
 				StateInfo: &gossip.StateInfo{
 					Properties: &gossip.Properties{
-						LedgerHeight: ledgerHeight,
+						LedgerHeight: endorser.height,
 					},
 				},
 			},
@@ -1235,19 +1342,23 @@ func createMockPeer(t *testing.T, name string, ledgerHeight uint64) *dp.Peer {
 		MembershipInfo: &gossip.Envelope{
 			Payload: aliveMsgBytes,
 		},
-		Identity: []byte(name),
+		Identity: marshal(&msp.SerializedIdentity{
+			IdBytes: []byte(endorser.endorser.address),
+			Mspid:   endorser.endorser.mspid,
+		}, t),
 	}
 }
 
 func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer) *endpointFactory {
+	var endpoint string
 	return &endpointFactory{
 		timeout: 5 * time.Second,
-		connectEndorser: func(_ *grpc.ClientConn) peer.EndorserClient {
+		connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
 			e := &mocks.EndorserClient{}
 			if definition.proposalError != nil {
 				e.ProcessProposalReturns(nil, definition.proposalError)
 			} else {
-				e.ProcessProposalReturns(createProposalResponse(t, definition.proposalResponseValue, definition.proposalResponseStatus, definition.proposalResponseMessage), nil)
+				e.ProcessProposalReturns(createProposalResponse(t, endpoint, definition.proposalResponseValue, definition.proposalResponseStatus, definition.proposalResponseMessage), nil)
 			}
 			return e
 		},
@@ -1266,11 +1377,14 @@ func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer)
 			abc.BroadcastReturns(abbc, nil)
 			return abc
 		},
-		dialer: dialer,
+		dialer: func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+			endpoint = target
+			return dialer(ctx, target, opts...)
+		},
 	}
 }
 
-func createProposal(t *testing.T, channel string, chaincode string, args ...[]byte) *peer.Proposal {
+func createProposal(t *testing.T, channel string, chaincode string, transient map[string][]byte, args ...[]byte) *peer.Proposal {
 	invocationSpec := &peer.ChaincodeInvocationSpec{
 		ChaincodeSpec: &peer.ChaincodeSpec{
 			Type:        peer.ChaincodeSpec_NODE,
@@ -1279,11 +1393,12 @@ func createProposal(t *testing.T, channel string, chaincode string, args ...[]by
 		},
 	}
 
-	proposal, _, err := protoutil.CreateChaincodeProposal(
+	proposal, _, err := protoutil.CreateChaincodeProposalWithTransient(
 		cp.HeaderType_ENDORSER_TRANSACTION,
 		channel,
 		invocationSpec,
 		[]byte{},
+		transient,
 	)
 
 	require.NoError(t, err, "Failed to create the proposal")
@@ -1291,7 +1406,7 @@ func createProposal(t *testing.T, channel string, chaincode string, args ...[]by
 	return proposal
 }
 
-func createProposalResponse(t *testing.T, value string, status int32, errMessage string) *peer.ProposalResponse {
+func createProposalResponse(t *testing.T, endorser, value string, status int32, errMessage string) *peer.ProposalResponse {
 	response := &peer.Response{
 		Status:  status,
 		Payload: []byte(value),
@@ -1304,13 +1419,23 @@ func createProposalResponse(t *testing.T, value string, status int32, errMessage
 		ProposalHash: []byte{},
 		Extension:    marshal(action, t),
 	}
-	endorsement := &peer.Endorsement{}
+	endorsement := &peer.Endorsement{
+		Endorser: []byte(endorser),
+	}
 
 	return &peer.ProposalResponse{
 		Payload:     marshal(payload, t),
 		Response:    response,
 		Endorsement: endorsement,
 	}
+}
+
+func createProposalResponseWithInterest(t *testing.T, endorser, value string, status int32, errMessage string, interest *peer.ChaincodeInterest) *peer.ProposalResponse {
+	response := createProposalResponse(t, endorser, value, status, errMessage)
+	if interest != nil {
+		response.Interest = interest
+	}
+	return response
 }
 
 func marshal(msg proto.Message, t *testing.T) []byte {
