@@ -9,6 +9,8 @@ package protoutil
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/pkg/errors"
@@ -154,6 +156,27 @@ func UnmarshalChaincodeProposalPayload(bytes []byte) (*peer.ChaincodeProposalPay
 	cpp := &peer.ChaincodeProposalPayload{}
 	err := proto.Unmarshal(bytes, cpp)
 	return cpp, errors.Wrap(err, "error unmarshalling ChaincodeProposalPayload")
+}
+
+// UnmarshalTxReadWriteSet unmarshals bytes to a TxReadWriteSet
+func UnmarshalTxReadWriteSet(bytes []byte) (*rwset.TxReadWriteSet, error) {
+	rws := &rwset.TxReadWriteSet{}
+	err := proto.Unmarshal(bytes, rws)
+	return rws, errors.Wrap(err, "error unmarshalling TxReadWriteSet")
+}
+
+// UnmarshalKVRWSet unmarshals bytes to a KVRWSet
+func UnmarshalKVRWSet(bytes []byte) (*kvrwset.KVRWSet, error) {
+	rws := &kvrwset.KVRWSet{}
+	err := proto.Unmarshal(bytes, rws)
+	return rws, errors.Wrap(err, "error unmarshalling KVRWSet")
+}
+
+// UnmarshalHashedRWSet unmarshals bytes to a HashedRWSet
+func UnmarshalHashedRWSet(bytes []byte) (*kvrwset.HashedRWSet, error) {
+	hrws := &kvrwset.HashedRWSet{}
+	err := proto.Unmarshal(bytes, hrws)
+	return hrws, errors.Wrap(err, "error unmarshalling HashedRWSet")
 }
 
 // UnmarshalSignaturePolicy unmarshals bytes to a SignaturePolicyEnvelope
