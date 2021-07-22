@@ -44,7 +44,7 @@ type node struct {
 	WALDir      string
 	ReqStoreDir string
 
-	CheckpointSeqNo         uint64                  //JIRA FLY2-66
+	CheckpointSeqNo uint64 //JIRA FLY2-66
 
 	PendingReconfigurations [][]*msgs.Reconfiguration //JIRA FLY2-66 : modified for FLY2-103 review comments
 
@@ -225,7 +225,7 @@ func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 
 	spath := filepath.Join(n.chain.opts.SnapDir, fname)
 
-	f, err := os.OpenFile(spath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o666)
+	f, err := os.OpenFile(spath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
