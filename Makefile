@@ -100,7 +100,7 @@ include docker-env.mk
 include gotools.mk
 
 .PHONY: all
-all: check-go-version native docker checks
+all: check-go-version native docker build
 
 .PHONY: checks
 checks: basic-checks
@@ -343,3 +343,7 @@ spaces:
 .PHONY: docs
 docs:
 	@docker run --rm -v $$(pwd):/docs n42org/tox:3.4.0 sh -c 'cd /docs && tox -e docs'
+
+.PHONY: build
+build:
+	@scripts/build.sh

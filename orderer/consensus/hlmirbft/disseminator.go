@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/orderer"
 )
 
-// Disseminator piggybacks cluster metadata, if any, to egress messages.
+// Disseminator piggybacks block metadata, if any, to egress messages.
 type Disseminator struct {
 	RPC
 

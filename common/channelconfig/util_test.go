@@ -12,8 +12,8 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/fly2plan/fabric-config/protolator"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-config/protolator"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	mspprotos "github.com/hyperledger/fabric-protos-go/msp"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"

@@ -8,6 +8,7 @@ package ordererext
 
 import (
 	"fmt"
+	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -58,7 +59,7 @@ type ConsensusTypeMetadataFactory interface {
 	NewMessage() proto.Message
 }
 
-// ConsensuTypeMetadataMap should have consensus implementations register their metadata message factories
+// ConsensusTypeMetadataMap should have consensus implementations register their metadata message factories
 var ConsensusTypeMetadataMap = map[string]ConsensusTypeMetadataFactory{}
 
 type ConsensusType struct {
@@ -80,6 +81,8 @@ func (ct *ConsensusType) VariablyOpaqueFieldProto(name string) (proto.Message, e
 	switch ct.Type {
 	case "etcdraft":
 		return &etcdraft.ConfigMetadata{}, nil
+	case "hlmirbft":
+		return &hlmirbft.ConfigMetadata{}, nil
 	default:
 		return &empty.Empty{}, nil
 	}

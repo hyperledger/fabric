@@ -13,8 +13,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/fly2plan/fabric-config/protolator"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-config/protolator"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/channelconfig"
