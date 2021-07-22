@@ -507,6 +507,10 @@ func (e *Endorser) buildChaincodeInterest(simResult *ledger.TxSimulationResults)
 
 	// 3. Add/merge collections from the PrivateReads struct
 	for ns, entry := range simResult.PrivateReads {
+		if e.Support.IsSysCC(ns) {
+			// skip system chaincodes
+			continue
+		}
 		if cc := chaincodes[ns]; cc == nil {
 			// chaincode either not already in the map, or nil entry - add it
 			chaincodes[ns] = map[string]bool{}
