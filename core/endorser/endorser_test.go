@@ -1223,5 +1223,69 @@ var _ = Describe("Endorser", func() {
 				},
 			)).To(BeTrue())
 		})
+
+		It("ignores system chaincodes", func() {
+			fakeSupport.IsSysCCStub = func(cc string) bool {
+				return cc == "_lifecycle"
+			}
+			pubSimResults = &rwset.TxReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsRwset: []*rwset.NsReadWriteSet{
+					{
+						Namespace: "myCC",
+						Rwset:     []byte("public RW set"),
+					},
+					{
+						Namespace: "_lifecycle",
+						Rwset:     []byte("should be ignored 1"),
+					},
+				},
+			}
+
+			pvtSimResults = &rwset.TxPvtReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsPvtRwset: []*rwset.NsPvtReadWriteSet{
+					{
+						Namespace: "myCC",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "mycollection-1",
+								Rwset:          []byte("private RW set"),
+							},
+						},
+					},
+					{
+						Namespace: "_lifecycle",
+						CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
+							{
+								CollectionName: "mycollection-2",
+								Rwset:          []byte("should be ignored 2"),
+							},
+						},
+					},
+				},
+			}
+			privateReads := ledger.PrivateReads{}
+			privateReads.Add("myCC", "mycollection-1")
+			privateReads.Add("_lifecycle", "mycollection-1")
+
+			fakeTxSimulator.GetTxSimulationResultsReturns(
+				&ledger.TxSimulationResults{
+					PubSimulationResults: pubSimResults,
+					PvtSimulationResults: pvtSimResults,
+					PrivateReads:         privateReads,
+				},
+				nil,
+			)
+
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(proposalResponse.Interest).To(Equal(&pb.ChaincodeInterest{
+				Chaincodes: []*pb.ChaincodeCall{{
+					Name:            "myCC",
+					CollectionNames: []string{"mycollection-1"},
+				}},
+			}))
+		})
 	})
 })
