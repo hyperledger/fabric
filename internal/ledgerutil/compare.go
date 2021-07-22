@@ -23,9 +23,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	// AllDivsFilename - Filename for the json output that contains all divergences
+	AllDivsFilename = "all_divergences.json"
+)
+
 // Compare - Compares two ledger snapshots and outputs the differences in snapshot records
-// This function will overwrite the file at outputPath if it already exists
-func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count int, err error) {
+// This function will throw an error if the output files already exist in the outputDir
+func Compare(snapshotDir1 string, snapshotDir2 string, outputDir string) (count int, err error) {
 	// Check the hashes between two files
 	hashPath1 := filepath.Join(snapshotDir1, kvledger.SnapshotSignableMetadataFileName)
 	hashPath2 := filepath.Join(snapshotDir2, kvledger.SnapshotSignableMetadataFileName)
@@ -39,8 +44,19 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputFile string) (count
 		return 0, errors.New("both snapshots public state hashes are same. Aborting compare")
 	}
 
+	allDivsFilepath := filepath.Join(outputDir, AllDivsFilename)
+	outputFullpath, err := filepath.Abs(outputDir)
+	if err != nil {
+		return 0, err
+	}
+
+	// Check for existing output files
+	if _, err := os.Stat(allDivsFilepath); !os.IsNotExist(err) {
+		return 0, errors.Errorf("%s already exists in %s. Aborting compare", AllDivsFilename, outputFullpath)
+	}
+
 	// Create the output file
-	jsonOutputFile, err := newJSONFileWriter(outputFile)
+	jsonOutputFile, err := newJSONFileWriter(allDivsFilepath)
 	if err != nil {
 		return 0, err
 	}

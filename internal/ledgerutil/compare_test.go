@@ -247,6 +247,7 @@ func TestCompare(t *testing.T) {
 		inputSignableMetadata2 *kvledger.SnapshotSignableMetadata
 		expectedOutput         string
 		expectedOutputType     string
+		expectedExistingFile   string
 		expectedDiffCount      int
 	}{
 		// Snapshots have a single difference in record
@@ -319,6 +320,16 @@ func TestCompare(t *testing.T) {
 			expectedOutputType:     "error",
 			expectedDiffCount:      0,
 		},
+		// All divergences output json file already exists
+		"all-divs-exists": {
+			inputTestRecords1:      sampleRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords2,
+			inputSignableMetadata2: sampleSignableMetadata2,
+			expectedExistingFile:   AllDivsFilename,
+			expectedOutputType:     "exists-error",
+			expectedDiffCount:      0,
+		},
 	}
 
 	// Run test cases individually
@@ -342,12 +353,18 @@ func TestCompare(t *testing.T) {
 			require.NoError(t, err)
 
 			// Compare snapshots and check the output
-			count, out, err := compareSnapshots(snapshotDir1, snapshotDir2, filepath.Join(resultsDir, "results.json"))
-			require.Equal(t, testCase.expectedDiffCount, count)
+			count, out, err := compareSnapshots(snapshotDir1, snapshotDir2, resultsDir)
 			switch testCase.expectedOutputType {
 			case "error":
+				require.Equal(t, testCase.expectedDiffCount, count)
 				require.ErrorContains(t, err, testCase.expectedOutput)
+			case "exists-error":
+				require.NoError(t, err)
+				count, _, err = compareSnapshots(snapshotDir1, snapshotDir2, resultsDir)
+				require.Equal(t, testCase.expectedDiffCount, count)
+				require.ErrorContains(t, err, testCase.expectedExistingFile+" already exists in "+resultsDir+". Aborting compare")
 			case "json":
+				require.Equal(t, testCase.expectedDiffCount, count)
 				require.NoError(t, err)
 				require.JSONEq(t, testCase.expectedOutput, out)
 			default:
@@ -411,7 +428,7 @@ func compareSnapshots(ss1 string, ss2 string, res string) (int, string, error) {
 		return 0, "", err
 	}
 	// Read results of output
-	resBytes, err := ioutil.ReadFile(res)
+	resBytes, err := ioutil.ReadFile(filepath.Join(res, AllDivsFilename))
 	if err != nil {
 		return 0, "", err
 	}
