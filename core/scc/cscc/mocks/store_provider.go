@@ -12,6 +12,17 @@ type StoreProvider struct {
 	closeMutex       sync.RWMutex
 	closeArgsForCall []struct {
 	}
+	DeleteStoreStub        func(string) error
+	deleteStoreMutex       sync.RWMutex
+	deleteStoreArgsForCall []struct {
+		arg1 string
+	}
+	deleteStoreReturns struct {
+		result1 error
+	}
+	deleteStoreReturnsOnCall map[int]struct {
+		result1 error
+	}
 	OpenStoreStub        func(string) (*transientstore.Store, error)
 	openStoreMutex       sync.RWMutex
 	openStoreArgsForCall []struct {
@@ -50,6 +61,66 @@ func (fake *StoreProvider) CloseCalls(stub func()) {
 	fake.closeMutex.Lock()
 	defer fake.closeMutex.Unlock()
 	fake.CloseStub = stub
+}
+
+func (fake *StoreProvider) DeleteStore(arg1 string) error {
+	fake.deleteStoreMutex.Lock()
+	ret, specificReturn := fake.deleteStoreReturnsOnCall[len(fake.deleteStoreArgsForCall)]
+	fake.deleteStoreArgsForCall = append(fake.deleteStoreArgsForCall, struct {
+		arg1 string
+	}{arg1})
+	fake.recordInvocation("DeleteStore", []interface{}{arg1})
+	fake.deleteStoreMutex.Unlock()
+	if fake.DeleteStoreStub != nil {
+		return fake.DeleteStoreStub(arg1)
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.deleteStoreReturns
+	return fakeReturns.result1
+}
+
+func (fake *StoreProvider) DeleteStoreCallCount() int {
+	fake.deleteStoreMutex.RLock()
+	defer fake.deleteStoreMutex.RUnlock()
+	return len(fake.deleteStoreArgsForCall)
+}
+
+func (fake *StoreProvider) DeleteStoreCalls(stub func(string) error) {
+	fake.deleteStoreMutex.Lock()
+	defer fake.deleteStoreMutex.Unlock()
+	fake.DeleteStoreStub = stub
+}
+
+func (fake *StoreProvider) DeleteStoreArgsForCall(i int) string {
+	fake.deleteStoreMutex.RLock()
+	defer fake.deleteStoreMutex.RUnlock()
+	argsForCall := fake.deleteStoreArgsForCall[i]
+	return argsForCall.arg1
+}
+
+func (fake *StoreProvider) DeleteStoreReturns(result1 error) {
+	fake.deleteStoreMutex.Lock()
+	defer fake.deleteStoreMutex.Unlock()
+	fake.DeleteStoreStub = nil
+	fake.deleteStoreReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *StoreProvider) DeleteStoreReturnsOnCall(i int, result1 error) {
+	fake.deleteStoreMutex.Lock()
+	defer fake.deleteStoreMutex.Unlock()
+	fake.DeleteStoreStub = nil
+	if fake.deleteStoreReturnsOnCall == nil {
+		fake.deleteStoreReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.deleteStoreReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *StoreProvider) OpenStore(arg1 string) (*transientstore.Store, error) {
@@ -120,6 +191,8 @@ func (fake *StoreProvider) Invocations() map[string][][]interface{} {
 	defer fake.invocationsMutex.RUnlock()
 	fake.closeMutex.RLock()
 	defer fake.closeMutex.RUnlock()
+	fake.deleteStoreMutex.RLock()
+	defer fake.deleteStoreMutex.RUnlock()
 	fake.openStoreMutex.RLock()
 	defer fake.openStoreMutex.RUnlock()
 	copiedInvocations := map[string][][]interface{}{}

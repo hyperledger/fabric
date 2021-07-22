@@ -7,7 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package transientstore
 
 import (
-	"errors"
+	"encoding/json"
+	"path/filepath"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
@@ -16,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 )
 
@@ -26,6 +29,9 @@ var (
 	nilByte    = byte('\x00')
 	// ErrStoreEmpty is used to indicate that there are no entries in transient store
 	ErrStoreEmpty = errors.New("Transient store is empty")
+	// transient system namespace is the name of a db used for storage bookkeeping metadata.
+	systemNamespace  = ""
+	underDeletionKey = []byte("UNDER_DELETION")
 )
 
 //////////////////////////////////////////////
@@ -36,6 +42,7 @@ var (
 type StoreProvider interface {
 	OpenStore(ledgerID string) (*Store, error)
 	Close()
+	DeleteStore(ledgerID string) error
 }
 
 // RWSetScanner provides an iterator for EndorserPvtSimulationResults
@@ -84,7 +91,16 @@ func NewStoreProvider(path string) (StoreProvider, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &storeProvider{dbProvider: dbProvider}, nil
+
+	provider := &storeProvider{dbProvider: dbProvider}
+
+	// purge any databases marked for deletion.  This may occur at the next peer init after a
+	// transient storage deletion failed due to a crash or system error.
+	if err = provider.processPendingStorageDeletions(); err != nil {
+		return nil, errors.WithMessagef(err, "processing pending storage deletions in folder [%s]", path)
+	}
+
+	return provider, nil
 }
 
 // OpenStore returns a handle to a ledgerId in Store
@@ -96,6 +112,173 @@ func (provider *storeProvider) OpenStore(ledgerID string) (*Store, error) {
 // Close closes the TransientStoreProvider
 func (provider *storeProvider) Close() {
 	provider.dbProvider.Close()
+}
+
+// DeleteStore deletes the TransientStoreProvider for a given ledger.
+func (provider *storeProvider) DeleteStore(ledgerID string) error {
+	return provider.dbProvider.Drop(ledgerID)
+}
+
+func (provider *storeProvider) markStorageForDelete(ledgerID string) error {
+	marked, err := provider.getStorageMarkedForDeletion()
+	if err != nil {
+		return errors.WithMessage(err, "while listing delete marked storage")
+	}
+
+	// don't update if the storage is already marked for deletion.
+	for i := 0; i < len(marked); i++ {
+		if strings.EqualFold(ledgerID, marked[i]) {
+			logger.Infof("transient storage %s was already marked for delete", ledgerID)
+			return nil
+		}
+	}
+
+	marked = append(marked, ledgerID)
+
+	err = provider.markStorageListForDelete(marked)
+	if err != nil {
+		return errors.WithMessagef(err, "while updating storage list %v for deletion", marked)
+	}
+
+	return nil
+}
+
+// Write the UNDER_DELETE ledger set as a JSON array in the transient system catalog.
+func (provider *storeProvider) markStorageListForDelete(storageList []string) error {
+	json, err := json.Marshal(storageList)
+	if err != nil {
+		return errors.WithMessagef(err, "marshalling delete list")
+	}
+
+	db := provider.dbProvider.GetDBHandle(systemNamespace)
+	defer db.Close()
+
+	if err = db.Put(underDeletionKey, json, true); err != nil {
+		return errors.WithMessagef(err, "writing delete list to system storage")
+	}
+
+	return nil
+}
+
+// Find the set of ledgers tagged as UNDER_DELETE.
+func (provider *storeProvider) getStorageMarkedForDeletion() ([]string, error) {
+	var deleteList []string
+
+	db := provider.dbProvider.GetDBHandle(systemNamespace)
+	defer db.Close()
+
+	val, err := db.Get(underDeletionKey)
+	if err != nil {
+		return nil, errors.WithMessagef(err, "retrieving storage marked for deletion")
+	}
+
+	// no storage previously marked as delete
+	if val == nil {
+		return deleteList, nil
+	}
+
+	if err = json.Unmarshal(val, &deleteList); err != nil {
+		return nil, errors.WithMessagef(err, "unmarshalling json delete list: %s", string(val))
+	}
+
+	return deleteList, nil
+}
+
+// Remove a ledger ID from the list of transient storages currently marked for delete.
+func (provider *storeProvider) clearStorageDeletionStatus(ledgerID string) error {
+	dl, err := provider.getStorageMarkedForDeletion()
+	if err != nil {
+		return errors.WithMessagef(err, "clearing storage flag for ledger [%s]", ledgerID)
+	}
+
+	var updatedList []string
+
+	// retain all entries other than the one to be cleared.
+	for i := 0; i < len(dl); i++ {
+		if !strings.EqualFold(ledgerID, dl[i]) {
+			updatedList = append(updatedList, dl[i])
+		}
+	}
+
+	// Nothing to do: ledgerID was not in the current delete list
+	if len(dl) == len(updatedList) {
+		return nil
+	}
+
+	if err = provider.markStorageListForDelete(updatedList); err != nil {
+		return errors.WithMessagef(err, "subtracting [%s] from delete tag list", ledgerID)
+	}
+
+	return nil
+}
+
+// Delete any transient storages that are marked as UNDER_DELETION.  This routine may be called
+// at provider construction to purge any partially deleted transient stores.
+func (provider *storeProvider) processPendingStorageDeletions() error {
+	dl, err := provider.getStorageMarkedForDeletion()
+	if err != nil {
+		return errors.WithMessage(err, "processing pending deletion list")
+	}
+
+	for i := 0; i < len(dl); i++ {
+		err = provider.DeleteStore(dl[i])
+		if err != nil {
+			return errors.WithMessagef(err, "processing delete for storage [%s]", dl[i])
+		}
+
+		err = provider.clearStorageDeletionStatus(dl[i])
+		if err != nil {
+			return errors.WithMessagef(err, "clearing deletion status for storage [%s]", dl[i])
+		}
+	}
+
+	return nil
+}
+
+// Drop removes a transient storage associated with an input channel/ledger.
+// This function must be invoked while the peer is shut down.  To recover from partial deletion
+// due to a crash, the storage will be marked with an UNDER_DELETION status in the a system
+// namespace db.  At the next peer startup, transient storage marked with UNDER_DELETION will
+// be scrubbed from the system.
+func Drop(providerPath, ledgerID string) error {
+	logger.Infof("Dropping ledger [%s] from transient storage path [%s]", ledgerID, providerPath)
+
+	// Ensure the routine is invoked while the peer is down.
+	lockPath := filepath.Join(providerPath, "fileLock")
+	fileLock := leveldbhelper.NewFileLock(lockPath)
+	if err := fileLock.Lock(); err != nil {
+		return errors.WithMessage(err, "as another peer node command is executing,"+
+			" wait for that command to complete its execution or terminate it before retrying")
+	}
+	defer fileLock.Unlock()
+
+	// Set up a StoreProvider and type assert as a storeProvider
+	sp, err := NewStoreProvider(providerPath)
+	if err != nil {
+		return errors.WithMessagef(err, "constructing provider from path [%s]", providerPath)
+	}
+	provider := sp.(*storeProvider)
+	defer provider.Close()
+
+	// Mark the storage as UNDER_DELETION so that it can be purged if an error occurred during the drop
+	err = provider.markStorageForDelete(ledgerID)
+	if err != nil {
+		return errors.WithMessagef(err, "marking storage [%s] for deletion", ledgerID)
+	}
+
+	// actually delete the storage.
+	if err = provider.DeleteStore(ledgerID); err != nil {
+		return errors.WithMessagef(err, "dropping ledger [%s] from transient storage", ledgerID)
+	}
+
+	// reset the deletion flag
+	if err = provider.clearStorageDeletionStatus(ledgerID); err != nil {
+		return errors.WithMessagef(err, "clearing deletion state for transient storage [%s]", ledgerID)
+	}
+
+	logger.Infof("Successfully dropped ledger [%s] from transient storage", ledgerID)
+
+	return nil
 }
 
 // Persist stores the private write set of a transaction along with the collection config
