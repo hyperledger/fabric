@@ -321,6 +321,7 @@ func NewChain(
 	disseminator.UpdateMetadata(nil) // initialize
 	c.ActiveNodes.Store([]uint64{})
 
+	// TODO initialize with accurate node list.
 	c.Node = &node{
 		chainID:      c.channelID,
 		chain:        c,
