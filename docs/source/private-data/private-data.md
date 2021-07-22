@@ -15,6 +15,14 @@ That's why Fabric offers the ability to create
 channel the ability to endorse, commit, or query private data without having to
 create a separate channel.
 
+Private data collections can be defined explicitly within a chaincode definition.
+Additionally, every chaincode has an implicit private data namespace reserved for organization-specific
+private data. These implicit organization-specific private data collections can
+be used to store an individual organization's private data, which is useful
+if you would like to store private data related to a single organization,
+such as details about an asset owned by an organization or an organization's
+approval for a step in a multi-party business process implemented in chaincode.
+
 ## What is a private data collection?
 
 A collection is the combination of two elements:
