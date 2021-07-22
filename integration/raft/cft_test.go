@@ -411,6 +411,10 @@ var _ = Describe("EndToEnd Crash Fault Tolerance", func() {
 				return len(files)
 			}, network.EventuallyTimeout).Should(BeNumerically(">", 0))
 
+			assertBlockReception(map[string]int{
+				"systemchannel": 10,
+			}, []*nwo.Orderer{remainedOrderers[0]}, peer, network)
+
 			By("Make sure we can restart and connect to orderer1 with orderer4")
 			ordererProc.Signal(syscall.SIGTERM)
 			Eventually(ordererProc.Wait(), network.EventuallyTimeout).Should(Receive())
