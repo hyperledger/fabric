@@ -950,7 +950,10 @@ func (c *Chain) writeConfigBlock(block *common.Block) {
 	c.mirbftMetadataLock.Lock()
 	c.appliedIndex++
 	c.opts.BlockMetadata.MirbftIndex = c.appliedIndex
-	m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
+	m,err := protoutil.Marshal(c.opts.BlockMetadata)
+	if err != nil{
+		c.logger.Errorf("Error Occured : ",err)
+	}
 	c.mirbftMetadataLock.Unlock()
 	//change
 	c.support.WriteBlock(block, m)
@@ -1219,6 +1222,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	if len(c.Node.PendingReconfigurations) != 0 {
 		pr = c.Node.PendingReconfigurations[0]
 		newNetworkConfig = pr[1].GetNewConfig()
+
 		//JIRA FLY2-106 wait till pending batch list is empty
 		c.waitForPendingBatchCommits()
 		if !reflect.DeepEqual(newNetworkConfig, networkConfig) {
