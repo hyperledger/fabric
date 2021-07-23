@@ -9,13 +9,13 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
+	"github.com/hyperledger/fabric/common/configtx"
 	"reflect"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/hyperledger/fabric/common/configtx"
 	"github.com/hyperledger/fabric/common/util"
 
 	"code.cloudfoundry.org/clock"
@@ -25,7 +25,6 @@ import (
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -140,7 +139,11 @@ type Options struct {
 type submit struct {
 	req *orderer.SubmitRequest
 }
-
+//JIRA FLY2-106 struct to store the network config and transaction envelope
+type pendingConfigEnvs struct{
+	env *common.Envelope
+	netConfig *msgs.NetworkState_Config
+}
 // Chain implements consensus.Chain interface.
 type Chain struct {
 	configurator Configurator
@@ -167,8 +170,8 @@ type Chain struct {
 	mirbftMetadataLock sync.RWMutex
 	//JIRA FLY2-48 - proposed changes:map to store the pending batches before committing
 	pendingBatches map[uint64]*msgs.QEntry
-	//JIRA FLY2-106 - map to store the config transaction envelope
-	pendingConfigEnv     map[string][]byte
+	//JIRA FLY2-106 list of pendingConfigEnvs
+	pendingConfigs     []pendingConfigEnvs
 	confChangeInProgress *raftpb.ConfChange
 	justElected          bool // this is true when node has just been elected
 	configInflight       bool // this is true when there is config block or ConfChange in flight
@@ -281,6 +284,7 @@ func NewChain(
 		snapC:             make(chan *raftpb.Snapshot),
 		errorC:            make(chan struct{}),
 		observeC:          observeC,
+		pendingBatches:    make(map[uint64]*msgs.QEntry),
 		support:           support,
 		fresh:             fresh,
 		appliedIndex:      opts.BlockMetadata.MirbftIndex,
@@ -331,16 +335,17 @@ func NewChain(
 	c.ActiveNodes.Store([]uint64{})
 
 	c.Node = &node{
-		chainID:     c.channelID,
-		chain:       c,
-		logger:      c.logger,
-		metrics:     c.Metrics,
-		rpc:         disseminator,
-		config:      config,
-		WALDir:      opts.WALDir,
-		ReqStoreDir: opts.ReqStoreDir,
-		clock:       c.clock,
-		metadata:    c.opts.BlockMetadata,
+		chainID:                 c.channelID,
+		chain:                   c,
+		logger:                  c.logger,
+		metrics:                 c.Metrics,
+		rpc:                     disseminator,
+		config:                  config,
+		WALDir:                  opts.WALDir,
+		ReqStoreDir:             opts.ReqStoreDir,
+		PendingReconfigurations: make([][]*msgs.Reconfiguration, 0),
+		clock:                   c.clock,
+		metadata:                c.opts.BlockMetadata,
 	}
 
 	return c, nil
@@ -502,14 +507,14 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	}
 
 	if err := c.Node.Step(context.TODO(), sender, stepMsg); err != nil {
-		return fmt.Errorf("failed to process Raft Step message: %s", err)
+		return fmt.Errorf("failed to process Mir-BFT Step message: %s", err)
 	}
 
 	if len(req.Metadata) == 0 || atomic.LoadUint64(&c.lastKnownLeader) != sender { // ignore metadata from non-leader
 		return nil
 	}
 
-	clusterMetadata := &etcdraft.ClusterMetadata{}
+	clusterMetadata := &hlmirbft.ClusterMetadata{}
 	if err := proto.Unmarshal(req.Metadata, clusterMetadata); err != nil {
 		return errors.Errorf("failed to unmarshal ClusterMetadata: %s", err)
 	}
@@ -551,7 +556,7 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	reqBytes := protoutil.MarshalOrPanic(req)
 	for nodeID, _ := range c.opts.Consenters {
 		if nodeID != c.MirBFTID {
-			forwardedReq := &msgs.Msg{Type: &msgs.Msg_ForwardRequest{ForwardRequest: &msgs.ForwardRequest{RequestData: reqBytes}}}
+			forwardedReq := &msgs.Msg{Type: &msgs.Msg_ForwardRequest{ForwardRequest: &msgs.ForwardRequest{RequestData: reqBytes, RequestAck: nil}}}
 			forwardedReqBytes := protoutil.MarshalOrPanic(forwardedReq)
 			err := c.Node.rpc.SendConsensus(nodeID, &orderer.ConsensusRequest{Channel: c.channelID, Payload: forwardedReqBytes})
 			if err != nil {
@@ -693,22 +698,8 @@ func (c *Chain) getMsgHash(message proto.Message) ([]byte, error) {
 }
 
 //JIRA FLY2-106 function to add or retrieve envelope of config transactions which is mapped against network state
-func (c *Chain) setConfigEnv(networkState *msgs.NetworkState_Config, msg *common.Envelope) (error) {
-	networkStateHash, _ := c.getMsgHash(networkState)
-	envBytes, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	c.pendingConfigEnv[string(networkStateHash)] = envBytes
-	return  nil
-}
 
-func (c *Chain) getConfigEnv(networkState *msgs.NetworkState_Config) (*common.Envelope, error) {
-	networkStateHash, _ := c.getMsgHash(networkState)
-	envBytes := c.pendingConfigEnv[string(networkStateHash)]
-	return protoutil.UnmarshalEnvelope(envBytes)
 
-}
 
 //JIRA FLY2-106 function to retrieve new reconfiguration from config envelope
 func(c *Chain) getNewReconfiguration(envelope *common.Envelope) ([]*msgs.Reconfiguration, error){
@@ -899,21 +890,21 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 	defer c.mirbftMetadataLock.RUnlock()
 
 	var nodes []cluster.RemoteNode
-	for raftID, consenter := range c.opts.Consenters {
+	for MirBFTID, consenter := range c.opts.Consenters {
 		// No need to know yourself
-		if raftID == c.MirBFTID {
+		if MirBFTID == c.MirBFTID {
 			continue
 		}
-		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, raftID, "server", c.logger)
+		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, MirBFTID, "server", c.logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		clientCertAsDER, err := pemToDER(consenter.ClientTlsCert, raftID, "client", c.logger)
+		clientCertAsDER, err := pemToDER(consenter.ClientTlsCert, MirBFTID, "client", c.logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		nodes = append(nodes, cluster.RemoteNode{
-			ID:            raftID,
+			ID:            MirBFTID,
 			Endpoint:      fmt.Sprintf("%s:%d", consenter.Host, consenter.Port),
 			ServerTLSCert: serverCertAsDER,
 			ClientTLSCert: clientCertAsDER,
@@ -934,7 +925,8 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 // writeConfigBlock writes configuration blocks into the ledger in
 // addition extracts updates about raft replica set and if there
 // are changes updates cluster membership as well
-func (c *Chain) writeConfigBlock(block *common.Block) {
+func (c *Chain) writeConfigBlock(env  *common.Envelope) {
+	b := c.CreateBlock([]*common.Envelope{env})
 	c.mirbftMetadataLock.Lock()
 	c.appliedIndex++
 	c.opts.BlockMetadata.MirbftIndex = c.appliedIndex
@@ -944,8 +936,8 @@ func (c *Chain) writeConfigBlock(block *common.Block) {
 	}
 	c.mirbftMetadataLock.Unlock()
 	//change
-	c.support.WriteBlock(block, m)
-	c.lastBlock = block
+	c.support.WriteBlock(b, m)
+	c.lastBlock = b
 
 }
 
@@ -1125,16 +1117,22 @@ func (c *Chain) processBatch(batch *msgs.QEntry) error {
 		}
 		if c.isConfig(env) {
 			reconfig, err := c.getNewReconfiguration(env)
-
 			if err != nil {
 				return errors.Errorf("Cannot Generate Reconfiguration: %s", err)
 			}
-			c.Node.PendingReconfigurations = append(c.Node.PendingReconfigurations, reconfig)
-			//JIRA FLY2-106 set config envelope
-			err = c.setConfigEnv(reconfig[1].GetNewConfig(), env)
-			if err != nil {
-				return errors.Errorf("Cannot map config transaction: %s", err)
+			if reconfig == nil {
+				c.writeConfigBlock(env)
+				continue
 			}
+			c.Node.PendingReconfigurations = append(c.Node.PendingReconfigurations, reconfig)
+			//JIRA FLY2-106 append config envelope
+			c.pendingConfigs = append(c.pendingConfigs,pendingConfigEnvs{
+				env: env,
+				netConfig: reconfig[1].GetNewConfig(),
+			})
+
+
+
 		} else {
 			envs = append(envs, env)
 
@@ -1204,42 +1202,31 @@ func (c *Chain) waitForPendingBatchCommits() {
 }
 
 //JIRA FLY2-106 function to remove pending config envelope
-func (c *Chain) removeConfigEnv(config *msgs.NetworkState_Config) error{
-	networkConfigHash, err := c.getMsgHash(config)
-	if err !=nil {
-		return err
-
+func (c *Chain) removeConfigEnv(){
+	if len(c.pendingConfigs) > 1 {
+		c.pendingConfigs = c.pendingConfigs[1:]
+	}else {
+		c.pendingConfigs = nil
 	}
-	delete(c.pendingConfigEnv, string(networkConfigHash))
-	return nil
-
 }
 
 
 
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
-	var pr []*msgs.Reconfiguration
+	pr := make([]*msgs.Reconfiguration, 0)
 	var newNetworkConfig *msgs.NetworkState_Config
 	//JIRA - 106 check reconfiguration length
 	if len(c.Node.PendingReconfigurations) != 0 {
 		pr = c.Node.PendingReconfigurations[0]
 		newNetworkConfig = pr[1].GetNewConfig()
-
 		//JIRA FLY2-106 wait till pending batch list is empty
 		c.waitForPendingBatchCommits()
 		if reflect.DeepEqual(newNetworkConfig, networkConfig) {
 			//JIRA FLY2-106 get config envelope
-			env, err := c.getConfigEnv(newNetworkConfig)
-			if err != nil {
-				return nil, nil, errors.WithMessage(err, "Could not retrieve payload")
-			}
-			b := c.CreateBlock([]*common.Envelope{env})
-			c.writeConfigBlock(b)
-			err = c.removeConfigEnv(newNetworkConfig)
-			if err!=nil{
-				c.logger.Panic("Cannot remove pending reconfiguration envelope")
-			}
+			env := c.pendingConfigs[0].env
+			c.writeConfigBlock(env)
+			c.removeConfigEnv()
 			//JIRA FLY2-106 remove reconfiguration
 			defer func() {
 				c.Node.PendingReconfigurations = PopReconfiguration(c.Node.PendingReconfigurations)
@@ -1254,7 +1241,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	networkStateBytes, err := proto.Marshal(&msgs.NetworkState{
 		Config:                  networkConfig,
 		Clients:                 clientsState,
-		PendingReconfigurations: pr,
+		PendingReconfigurations: c.Node.PendingReconfigurations[0],
 	})
 	if err != nil {
 
