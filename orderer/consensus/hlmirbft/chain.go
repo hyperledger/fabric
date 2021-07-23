@@ -169,9 +169,11 @@ type Chain struct {
 
 	mirbftMetadataLock sync.RWMutex
 	//JIRA FLY2-48 - proposed changes:map to store the pending batches before committing
+
 	pendingBatches map[uint64]*msgs.QEntry
 	//JIRA FLY2-106 list of pendingConfigEnvs
 	pendingConfigs     []pendingConfigEnvs
+
 	confChangeInProgress *raftpb.ConfChange
 	justElected          bool // this is true when node has just been elected
 	configInflight       bool // this is true when there is config block or ConfChange in flight
@@ -369,10 +371,8 @@ func (c *Chain) Start() {
 	c.Node.start(c.fresh, isJoin)
 
 	close(c.startC)
-	close(c.errorC)
 
 	go c.run()
-
 }
 
 // Order submits normal type transactions for ordering.
@@ -394,12 +394,6 @@ func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 func (c *Chain) WaitReady() error {
 	if err := c.isRunning(); err != nil {
 		return err
-	}
-
-	select {
-	case c.submitC <- nil:
-	case <-c.doneC:
-		return errors.Errorf("chain is stopped")
 	}
 
 	return nil
@@ -491,7 +485,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	// Check if the request is a forwarded transaction
 	switch t := stepMsg.Type.(type) {
 	case *msgs.Msg_ForwardRequest:
-		// If this forwarded request has no acknowledgements
+		// If this forwarded request has no acknowledgement
 		// then it has only been sent to a node by a Fabric application
 		// and then forwarded to at least f+1 nodes
 		if t.ForwardRequest.RequestAck == nil {
@@ -523,26 +517,6 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	c.ActiveNodes.Store(clusterMetadata.ActiveNodes)
 
 	return nil
-}
-
-// Check for forward flag in payload
-func (c *Chain) CheckPrependForwardFlag(reqPayload []byte) bool {
-
-	prependedFlag := reqPayload[:9]
-
-	if string(prependedFlag) == ForwardFlag {
-		return true
-	}
-
-	return false
-
-}
-
-func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
-	forwardFlag := []byte(ForwardFlag)
-	prependReq := append([]byte{}, forwardFlag...)
-	prependReq = append(prependReq, reqPayload...)
-	return prependReq
 }
 
 // Submit forwards the incoming request to all nodes via the transport mechanism
@@ -687,6 +661,7 @@ func (c *Chain) processReconfiguration(configMetaData *hlmirbft.ConfigMetadata) 
 
 }
 
+
 func (c *Chain) getMsgHash(message proto.Message) ([]byte, error) {
 	msgByte, err := proto.Marshal(message)
 	if err != nil {
@@ -717,18 +692,19 @@ func(c *Chain) getNewReconfiguration(envelope *common.Envelope) ([]*msgs.Reconfi
 
 	return reconfig,nil
 }
+
 // Checks the envelope in the `msg` content. SubmitRequest.
 // Returns
 //   -- err error; the error encountered, if any.
 // It takes care of the revalidation of messages if the config sequence has advanced.
-
 //JIRA FLY2-57 - proposed changes -> adapted in JIRA FLY2-94
 func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 	seq := c.support.Sequence()
 
 	if msg.LastValidationSeq < seq {
 		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
-		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
+
+    if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
 			c.Metrics.ProposalFailures.Add(1)
 			return errors.Errorf("bad normal message: %s", err)
 		}
@@ -926,18 +902,18 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 // addition extracts updates about raft replica set and if there
 // are changes updates cluster membership as well
 func (c *Chain) writeConfigBlock(env  *common.Envelope) {
-	b := c.CreateBlock([]*common.Envelope{env})
+	block := c.CreateBlock([]*common.Envelope{env})
 	c.mirbftMetadataLock.Lock()
 	c.appliedIndex++
 	c.opts.BlockMetadata.MirbftIndex = c.appliedIndex
-	m,err := protoutil.Marshal(c.opts.BlockMetadata)
+	metaData,err := protoutil.Marshal(c.opts.BlockMetadata)
 	if err != nil{
 		c.logger.Errorf("Error Occured : ",err)
 	}
 	c.mirbftMetadataLock.Unlock()
-	//change
-	c.support.WriteBlock(b, m)
-	c.lastBlock = b
+	c.support.WriteBlock(block, metaData)
+	c.lastBlock = block
+
 
 }
 
@@ -1134,9 +1110,11 @@ func (c *Chain) processBatch(batch *msgs.QEntry) error {
 
 
 		} else {
+
 			envs = append(envs, env)
 
 		}
+
 	}
 	if len(envs) != 0 {
 		block := c.CreateBlock(envs)
@@ -1174,8 +1152,7 @@ func (c *Chain) Apply(batch *msgs.QEntry) error {
 //FLY2-48 proposed changes
 //	- create Blocks
 func (c *Chain) CreateBlock(envs []*common.Envelope) *common.Block {
-
-	bc := &blockCreator{
+bc := &blockCreator{
 		hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
 		//change
 		number: c.lastBlock.Header.Number,
@@ -1209,8 +1186,6 @@ func (c *Chain) removeConfigEnv(){
 		c.pendingConfigs = nil
 	}
 }
-
-
 
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
@@ -1274,6 +1249,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	return snapDataBytes, pr, nil
 
 }
+
 
 //JIRA FLY2-58 proposed changes:Implemented the TransferTo Function
 func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {

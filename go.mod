@@ -19,7 +19,8 @@ require (
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
-	github.com/fly2plan/fabric-protos-go v0.0.0-20210714052649-e2b01f419caf
+	github.com/fly2plan/fabric-config v0.1.1-0.20210720100109-69fb94527cd9
+	github.com/fly2plan/fabric-protos-go v0.0.0-20210720095300-b410e4bf46cf
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/fsouza/go-dockerclient v1.7.0
 	github.com/go-kit/kit v0.9.0

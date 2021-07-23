@@ -10,13 +10,14 @@ import (
 	"bytes"
 	"crypto"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/hyperledger-labs/mirbft"
@@ -43,14 +44,15 @@ type node struct {
 	WALDir      string
 	ReqStoreDir string
 
-	CheckpointSeqNo         uint64                  //JIRA FLY2-66
+	CheckpointSeqNo uint64 //JIRA FLY2-66
+
 	PendingReconfigurations [][]*msgs.Reconfiguration //JIRA FLY2-66 : modified for FLY2-103 review comments
-	
+
 	LastCommittedSeqNo uint64 //JIRA FLY2-48 - proposed changes: To track the last committed sequence number
-	
+
 	ReqStore *reqstore.Store //JIRA FLY2-48 - Stores the request store instance of mirbft node. This for getting Request object using request #.
 
-	rpc RPC
+	rpc *Disseminator
 
 	chain *Chain
 
@@ -61,7 +63,9 @@ type node struct {
 	mirbft.Node
 }
 
-const snapSuffix = ".snap"
+const (
+	snapSuffix = ".snap"
+)
 
 func (n *node) start(fresh, join bool) {
 	n.logger.Debugf("Starting mirbft node: #peers: %v", len(n.metadata.ConsenterIds))
@@ -73,9 +77,17 @@ func (n *node) start(fresh, join bool) {
 		}
 
 		// Checking if the configuration settings have been passed correctly.
+		err := os.MkdirAll(n.ReqStoreDir, 0700)
+		if err != nil {
+			n.logger.Error(err, "Failed to create WAL directory")
+		}
 		wal, err := simplewal.Open(n.WALDir)
 		if err != nil {
 			n.logger.Error(err, "Failed to create WAL")
+		}
+		err = os.MkdirAll(n.ReqStoreDir, 0700)
+		if err != nil {
+			n.logger.Error(err, "Failed to create request store directory")
 		}
 		reqStore, err := reqstore.Open(n.ReqStoreDir)
 		//FL2-48 proposed changes
@@ -102,32 +114,41 @@ func (n *node) start(fresh, join bool) {
 			n.Node = *node
 		}
 
-		initialNetworkState := InitialNetworkState(n.metadata.ConsenterIds)
+		initialNetworkState := InitialNetworkState(len(n.chain.opts.Consenters))
 		// TODO(harrymknight) Tick interval is fixed. Perhaps introduce TickInterval field in configuration options
-		err = n.ProcessAsNewNode(n.chain.doneC, n.clock.NewTicker(10*time.Millisecond).C(), initialNetworkState, []byte("first"))
-
+		go func() {
+			err := n.ProcessAsNewNode(n.chain.doneC, n.clock.NewTicker(2*time.Second).C(), initialNetworkState, []byte("first"))
+			if err != nil {
+				n.logger.Error(err, "Failed to start mirbft node")
+			}
+		}()
 	} else {
 		n.logger.Info("Restarting mirbft node")
-		n.RestartProcessing(n.chain.doneC, n.clock.NewTicker(10*time.Millisecond).C())
+		go func() {
+			err := n.RestartProcessing(n.chain.doneC, n.clock.NewTicker(2*time.Second).C())
+			if err != nil {
+				n.logger.Error(err, "Failed to restart mirbft node")
+			}
+		}()
 	}
 }
 
-func InitialNetworkState(ConsenterIds []uint64) *msgs.NetworkState {
-	var nodes []uint64
-	for i := 0; i < len(ConsenterIds); i++ {
-		nodes[i] = ConsenterIds[i]
+func InitialNetworkState(nodeCount int) *msgs.NetworkState {
+	nodes := make([]uint64, nodeCount)
+	for i := 1; i < nodeCount+1; i++ {
+		nodes[i-1] = uint64(i)
 	}
 
-	numberOfBuckets := int32(len(ConsenterIds))
+	numberOfBuckets := int32(nodeCount)
 	checkpointInterval := numberOfBuckets * 5
 	maxEpochLength := checkpointInterval * 10
 
 	// TODO(harrymknight) The width of a client window is fixed.
 	//  Could optimise by varying according to the checkpoint interval and batch size
-	clients := make([]*msgs.NetworkState_Client, len(ConsenterIds))
+	clients := make([]*msgs.NetworkState_Client, nodeCount)
 	for i := range clients {
 		clients[i] = &msgs.NetworkState_Client{
-			Id:           ConsenterIds[i],
+			Id:           uint64(i),
 			Width:        100,
 			LowWatermark: 0,
 		}
@@ -136,7 +157,7 @@ func InitialNetworkState(ConsenterIds []uint64) *msgs.NetworkState {
 	return &msgs.NetworkState{
 		Config: &msgs.NetworkState_Config{
 			Nodes:              nodes,
-			F:                  int32((len(ConsenterIds) - 1) / 3),
+			F:                  int32((nodeCount - 1) / 3),
 			NumberOfBuckets:    numberOfBuckets,
 			CheckpointInterval: checkpointInterval,
 			MaxEpochLength:     uint64(maxEpochLength),
@@ -169,9 +190,8 @@ func (n *node) logSendFailure(dest uint64, err error) {
 	n.unreachable[dest] = struct{}{}
 }
 
-//JIRA FLY2-58 proposed changes:readSnapFiles loads the snap file based on the sequence number and reads the contents
+// JIRA FLY2-58 proposed changes:readSnapFiles loads the snap file based on the sequence number and reads the contents
 func (n *node) ReadSnapFiles(seqNo uint64, SnapDir string) ([]byte, error) {
-
 	var snapBytes []byte
 	fileNamePattern := fmt.Sprintf("%016x-*", seqNo)
 
@@ -187,13 +207,13 @@ func (n *node) ReadSnapFiles(seqNo uint64, SnapDir string) ([]byte, error) {
 	case numberOfFiles == 1:
 		snapBytes, err = ioutil.ReadFile(filepath.Join(SnapDir, snapFileList[0]))
 	case numberOfFiles > 1:
-		n.logger.Warning("File Duplication : multiple files detected for sequence number %016x", seqNo)
+		n.logger.Warnf("File Duplication : multiple files detected for sequence number %016x", seqNo)
 		snapBytes, err = ioutil.ReadFile(filepath.Join(SnapDir, snapFileList[numberOfFiles-1]))
 	}
 	return snapBytes, err
 }
 
-//JIRA FLY2- 66 Proposed changes:Implemented the PersistSnapshot functionality to persist the snaps to local files
+// JIRA FLY2- 66 Proposed changes:Implemented the PersistSnapshot functionality to persist the snaps to local files
 func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 	if err := os.MkdirAll(n.chain.opts.SnapDir, os.ModePerm); err != nil {
 		return errors.Errorf("failed to mkdir '%s' for snapshot: %s", n.chain.opts.SnapDir, err)
@@ -223,9 +243,7 @@ func (n *node) PersistSnapshot(seqNo uint64, Data []byte) error {
 
 // JIRA FLY2-66 proposed changes: PurgeSnapFiles takes the list of snap files in the snap directory  and removes them
 func (n *node) PurgeSnapFiles(SnapDir string) error {
-
 	snapFileList, err := filepath.Glob(filepath.Join(SnapDir, snapSuffix))
-
 	if err != nil {
 		return errors.Errorf("Cannot retrive snap files : %s", err)
 	}
