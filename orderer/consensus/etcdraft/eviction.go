@@ -113,13 +113,6 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 
 	es.logger.Infof("Last config block was found to be block [%d]", lastConfigBlock.Header.Number)
 
-	height := es.height()
-
-	if lastConfigBlock.Header.Number+1 <= height {
-		es.logger.Infof("Our height is higher or equal than the height of the orderer we pulled the last block from, aborting.")
-		return
-	}
-
 	err = es.amIInChannel(lastConfigBlock)
 	if err != cluster.ErrNotInChannel && err != cluster.ErrForbidden {
 		details := fmt.Sprintf(", our certificate was found in config block with sequence %d", lastConfigBlock.Header.Number)
@@ -131,12 +124,18 @@ func (es *evictionSuspector) confirmSuspicion(cumulativeSuspicion time.Duration)
 		es.triggerCatchUp(&raftpb.Snapshot{Data: protoutil.MarshalOrPanic(lastConfigBlock)})
 		return
 	}
-
 	es.logger.Warningf("Detected our own eviction from the channel in block [%d]", lastConfigBlock.Header.Number)
 
 	es.logger.Infof("Waiting for chain to halt")
 	es.halt()
 	es.halted = true
+
+	height := es.height()
+	if lastConfigBlock.Header.Number+1 <= height {
+		es.logger.Infof("Our height is higher or equal than the height of the orderer we pulled the last block from, aborting.")
+		return
+	}
+
 	es.logger.Infof("Chain has been halted, pulling remaining blocks up to (and including) eviction block.")
 
 	nextBlock := height

@@ -169,14 +169,6 @@ func TestEvictionSuspector(t *testing.T) {
 			halt:                       t.Fail,
 		},
 		{
-			description:                "our height is the highest",
-			expectedLog:                "Our height is higher or equal than the height of the orderer we pulled the last block from, aborting",
-			evictionSuspicionThreshold: 10*time.Minute - time.Second,
-			blockPuller:                puller,
-			height:                     10,
-			halt:                       t.Fail,
-		},
-		{
 			description:                "failed pulling the block",
 			expectedLog:                "Cannot confirm our own eviction from the channel: bad block",
 			evictionSuspicionThreshold: 10*time.Minute - time.Second,
@@ -193,6 +185,15 @@ func TestEvictionSuspector(t *testing.T) {
 			blockPuller:                puller,
 			height:                     9,
 			halt:                       t.Fail,
+		},
+		{
+			description:                "our height is the highest",
+			expectedLog:                "Our height is higher or equal than the height of the orderer we pulled the last block from, aborting",
+			evictionSuspicionThreshold: 10*time.Minute - time.Second,
+			amIInChannelReturns:        cluster.ErrNotInChannel,
+			blockPuller:                puller,
+			height:                     10,
+			halt:                       func() {},
 		},
 		{
 			description:                 "we are not in the channel",
