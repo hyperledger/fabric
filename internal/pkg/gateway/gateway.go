@@ -26,6 +26,7 @@ type Server struct {
 	eventer      Eventer
 	policy       ACLChecker
 	options      config.Options
+	logger       *flogging.FabricLogger
 }
 
 type EndorserServerAdapter struct {
@@ -86,6 +87,7 @@ func newServer(localEndorser peerproto.EndorserClient, discovery Discovery, find
 		eventer:      eventer,
 		policy:       policy,
 		options:      options,
+		logger:       logger,
 	}
 
 	return gwServer
