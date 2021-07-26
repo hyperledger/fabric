@@ -10,7 +10,7 @@ import (
 	"math"
 	"os"
 
-	"github.com/hyperledger/fabric-config/protolator"
+	"github.com/fly2plan/fabric-config/protolator"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp/factory"

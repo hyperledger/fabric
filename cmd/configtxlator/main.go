@@ -14,8 +14,8 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/fly2plan/fabric-config/protolator"
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric-config/protolator"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	_ "github.com/hyperledger/fabric-protos-go/msp"
 	_ "github.com/hyperledger/fabric-protos-go/orderer"

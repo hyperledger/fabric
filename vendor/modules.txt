@@ -127,7 +127,16 @@ github.com/eapache/go-xerial-snappy
 # github.com/eapache/queue v1.1.0
 ## explicit
 github.com/eapache/queue
-# github.com/fly2plan/fabric-protos-go v0.0.0-20210712113213-ff6db94ab34c
+# github.com/fly2plan/fabric-config v0.1.1-0.20210720100109-69fb94527cd9
+## explicit
+github.com/fly2plan/fabric-config/protolator
+github.com/fly2plan/fabric-config/protolator/protoext
+github.com/fly2plan/fabric-config/protolator/protoext/commonext
+github.com/fly2plan/fabric-config/protolator/protoext/ledger/rwsetext
+github.com/fly2plan/fabric-config/protolator/protoext/mspext
+github.com/fly2plan/fabric-config/protolator/protoext/ordererext
+github.com/fly2plan/fabric-config/protolator/protoext/peerext
+# github.com/fly2plan/fabric-protos-go v0.0.0-20210720095300-b410e4bf46cf
 ## explicit
 github.com/fly2plan/fabric-protos-go/orderer/hlmirbft
 # github.com/frankban/quicktest v1.11.3
@@ -217,13 +226,6 @@ github.com/hyperledger/fabric-config/configtx
 github.com/hyperledger/fabric-config/configtx/internal/policydsl
 github.com/hyperledger/fabric-config/configtx/membership
 github.com/hyperledger/fabric-config/configtx/orderer
-github.com/hyperledger/fabric-config/protolator
-github.com/hyperledger/fabric-config/protolator/protoext
-github.com/hyperledger/fabric-config/protolator/protoext/commonext
-github.com/hyperledger/fabric-config/protolator/protoext/ledger/rwsetext
-github.com/hyperledger/fabric-config/protolator/protoext/mspext
-github.com/hyperledger/fabric-config/protolator/protoext/ordererext
-github.com/hyperledger/fabric-config/protolator/protoext/peerext
 # github.com/hyperledger/fabric-lib-go v1.0.0
 ## explicit
 github.com/hyperledger/fabric-lib-go/healthz
@@ -581,7 +583,7 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# google.golang.org/protobuf v1.26.0
+# google.golang.org/protobuf v1.27.1
 google.golang.org/protobuf/cmd/protoc-gen-go
 google.golang.org/protobuf/cmd/protoc-gen-go/internal_gengo
 google.golang.org/protobuf/compiler/protogen

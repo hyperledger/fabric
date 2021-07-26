@@ -23,7 +23,6 @@ import (
 	"github.com/hyperledger-labs/mirbft/pkg/pb/msgs"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/orderer"
-	"github.com/hyperledger/fabric-protos-go/orderer/etcdraft"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -276,6 +275,7 @@ func NewChain(
 		snapC:             make(chan *raftpb.Snapshot),
 		errorC:            make(chan struct{}),
 		observeC:          observeC,
+		pendingBatches:    make(map[uint64]*msgs.QEntry),
 		support:           support,
 		fresh:             fresh,
 		appliedIndex:      opts.BlockMetadata.MirbftIndex,
@@ -326,16 +326,17 @@ func NewChain(
 	c.ActiveNodes.Store([]uint64{})
 
 	c.Node = &node{
-		chainID:     c.channelID,
-		chain:       c,
-		logger:      c.logger,
-		metrics:     c.Metrics,
-		rpc:         disseminator,
-		config:      config,
-		WALDir:      opts.WALDir,
-		ReqStoreDir: opts.ReqStoreDir,
-		clock:       c.clock,
-		metadata:    c.opts.BlockMetadata,
+		chainID:                 c.channelID,
+		chain:                   c,
+		logger:                  c.logger,
+		metrics:                 c.Metrics,
+		rpc:                     disseminator,
+		config:                  config,
+		WALDir:                  opts.WALDir,
+		ReqStoreDir:             opts.ReqStoreDir,
+		PendingReconfigurations: make([][]*msgs.Reconfiguration, 0),
+		clock:                   c.clock,
+		metadata:                c.opts.BlockMetadata,
 	}
 
 	return c, nil
@@ -361,7 +362,6 @@ func (c *Chain) Start() {
 	close(c.startC)
 
 	go c.run()
-
 }
 
 // Order submits normal type transactions for ordering.
@@ -383,12 +383,6 @@ func (c *Chain) Configure(env *common.Envelope, configSeq uint64) error {
 func (c *Chain) WaitReady() error {
 	if err := c.isRunning(); err != nil {
 		return err
-	}
-
-	select {
-	case c.submitC <- nil:
-	case <-c.doneC:
-		return errors.Errorf("chain is stopped")
 	}
 
 	return nil
@@ -480,7 +474,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	// Check if the request is a forwarded transaction
 	switch t := stepMsg.Type.(type) {
 	case *msgs.Msg_ForwardRequest:
-		// If this forwarded request has no acknowledgements
+		// If this forwarded request has no acknowledgement
 		// then it has only been sent to a node by a Fabric application
 		// and then forwarded to at least f+1 nodes
 		if t.ForwardRequest.RequestAck == nil {
@@ -496,14 +490,14 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	}
 
 	if err := c.Node.Step(context.TODO(), sender, stepMsg); err != nil {
-		return fmt.Errorf("failed to process Raft Step message: %s", err)
+		return fmt.Errorf("failed to process Mir-BFT Step message: %s", err)
 	}
 
 	if len(req.Metadata) == 0 || atomic.LoadUint64(&c.lastKnownLeader) != sender { // ignore metadata from non-leader
 		return nil
 	}
 
-	clusterMetadata := &etcdraft.ClusterMetadata{}
+	clusterMetadata := &hlmirbft.ClusterMetadata{}
 	if err := proto.Unmarshal(req.Metadata, clusterMetadata); err != nil {
 		return errors.Errorf("failed to unmarshal ClusterMetadata: %s", err)
 	}
@@ -512,26 +506,6 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	c.ActiveNodes.Store(clusterMetadata.ActiveNodes)
 
 	return nil
-}
-
-// Check for forward flag in payload
-func (c *Chain) CheckPrependForwardFlag(reqPayload []byte) bool {
-
-	prependedFlag := reqPayload[:9]
-
-	if string(prependedFlag) == ForwardFlag {
-		return true
-	}
-
-	return false
-
-}
-
-func (c *Chain) PrependForwardFlag(reqPayload []byte) []byte {
-	forwardFlag := []byte(ForwardFlag)
-	prependReq := append([]byte{}, forwardFlag...)
-	prependReq = append(prependReq, reqPayload...)
-	return prependReq
 }
 
 // Submit forwards the incoming request to all nodes via the transport mechanism
@@ -545,7 +519,7 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	reqBytes := protoutil.MarshalOrPanic(req)
 	for nodeID, _ := range c.opts.Consenters {
 		if nodeID != c.MirBFTID {
-			forwardedReq := &msgs.Msg{Type: &msgs.Msg_ForwardRequest{ForwardRequest: &msgs.ForwardRequest{RequestData: reqBytes}}}
+			forwardedReq := &msgs.Msg{Type: &msgs.Msg_ForwardRequest{ForwardRequest: &msgs.ForwardRequest{RequestData: reqBytes, RequestAck: nil}}}
 			forwardedReqBytes := protoutil.MarshalOrPanic(forwardedReq)
 			err := c.Node.rpc.SendConsensus(nodeID, &orderer.ConsensusRequest{Channel: c.channelID, Payload: forwardedReqBytes})
 			if err != nil {
@@ -865,21 +839,21 @@ func (c *Chain) remotePeers() ([]cluster.RemoteNode, error) {
 	defer c.mirbftMetadataLock.RUnlock()
 
 	var nodes []cluster.RemoteNode
-	for raftID, consenter := range c.opts.Consenters {
+	for MirBFTID, consenter := range c.opts.Consenters {
 		// No need to know yourself
-		if raftID == c.MirBFTID {
+		if MirBFTID == c.MirBFTID {
 			continue
 		}
-		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, raftID, "server", c.logger)
+		serverCertAsDER, err := pemToDER(consenter.ServerTlsCert, MirBFTID, "server", c.logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		clientCertAsDER, err := pemToDER(consenter.ClientTlsCert, raftID, "client", c.logger)
+		clientCertAsDER, err := pemToDER(consenter.ClientTlsCert, MirBFTID, "client", c.logger)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
 		nodes = append(nodes, cluster.RemoteNode{
-			ID:            raftID,
+			ID:            MirBFTID,
 			Endpoint:      fmt.Sprintf("%s:%d", consenter.Host, consenter.Port),
 			ServerTLSCert: serverCertAsDER,
 			ClientTLSCert: clientCertAsDER,
@@ -1144,13 +1118,16 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 	pr := c.Node.PendingReconfigurations
 
-	c.Node.PendingReconfigurations = nil
+	if len(pr) == 0 {
+		pr = append(pr, []*msgs.Reconfiguration{nil})
+	}
 
 	data, err := proto.Marshal(&msgs.NetworkState{
 		Config:                  networkConfig,
 		Clients:                 clientsState,
-		PendingReconfigurations: pr[0],
+		PendingReconfigurations: nil,
 	})
+
 	if err != nil {
 
 		return nil, nil, errors.WithMessage(err, "could not marsshal network state")
@@ -1173,7 +1150,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 
 	}
 
-	return networkStates, pr[0], nil
+	return networkStates, nil, nil
 
 }
 
