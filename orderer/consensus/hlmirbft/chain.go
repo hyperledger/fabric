@@ -139,11 +139,13 @@ type Options struct {
 type submit struct {
 	req *orderer.SubmitRequest
 }
+
 //JIRA FLY2-106 struct to store the network config and transaction envelope
-type pendingConfigEnvelope struct{
-	env *common.Envelope
+type pendingConfigEnvelope struct {
+	env              *common.Envelope
 	reconfigurations []*msgs.Reconfiguration
 }
+
 // Chain implements consensus.Chain interface.
 type Chain struct {
 	configurator Configurator
@@ -171,7 +173,7 @@ type Chain struct {
 	//JIRA FLY2-48 - proposed changes:map to store the pending batches before committing
 	pendingBatches map[uint64]*msgs.QEntry
 	//JIRA FLY2-106 list of pendingConfigEnvs
-	pendingConfigs     []pendingConfigEnvelope
+	pendingConfigs       []pendingConfigEnvelope
 	confChangeInProgress *raftpb.ConfChange
 	justElected          bool // this is true when node has just been elected
 	configInflight       bool // this is true when there is config block or ConfChange in flight
@@ -335,16 +337,16 @@ func NewChain(
 	c.ActiveNodes.Store([]uint64{})
 
 	c.Node = &node{
-		chainID:                 c.channelID,
-		chain:                   c,
-		logger:                  c.logger,
-		metrics:                 c.Metrics,
-		rpc:                     disseminator,
-		config:                  config,
-		WALDir:                  opts.WALDir,
-		ReqStoreDir:             opts.ReqStoreDir,
-		clock:                   c.clock,
-		metadata:                c.opts.BlockMetadata,
+		chainID:     c.channelID,
+		chain:       c,
+		logger:      c.logger,
+		metrics:     c.Metrics,
+		rpc:         disseminator,
+		config:      config,
+		WALDir:      opts.WALDir,
+		ReqStoreDir: opts.ReqStoreDir,
+		clock:       c.clock,
+		metadata:    c.opts.BlockMetadata,
 	}
 
 	return c, nil
@@ -368,7 +370,6 @@ func (c *Chain) Start() {
 	c.Node.start(c.fresh, isJoin)
 
 	close(c.startC)
-	close(c.errorC)
 
 	go c.run()
 
@@ -678,10 +679,8 @@ func (c *Chain) getMsgHash(message proto.Message) ([]byte, error) {
 
 //JIRA FLY2-106 function to add or retrieve envelope of config transactions which is mapped against network state
 
-
-
 //JIRA FLY2-106 function to retrieve new reconfiguration from config envelope
-func(c *Chain) getNewReconfiguration(envelope *common.Envelope) ([]*msgs.Reconfiguration, error){
+func (c *Chain) getNewReconfiguration(envelope *common.Envelope) ([]*msgs.Reconfiguration, error) {
 	//JIRA FLY2-103 : get config Metadata from envelope payload
 	configMetaData, err := c.getConfigMetadata(envelope.Payload)
 	if err != nil {
@@ -694,8 +693,9 @@ func(c *Chain) getNewReconfiguration(envelope *common.Envelope) ([]*msgs.Reconfi
 	}
 	//JIRA FLY2-103 : append reconfiguration to c.Node.PendingReconfigurations
 
-	return reconfig,nil
+	return reconfig, nil
 }
+
 // Checks the envelope in the `msg` content. SubmitRequest.
 // Returns
 //   -- err error; the error encountered, if any.
@@ -905,13 +905,13 @@ func pemToDER(pemBytes []byte, id uint64, certType string, logger *flogging.Fabr
 // writeConfigBlock writes configuration blocks into the ledger in
 // addition extracts updates about raft replica set and if there
 // are changes updates cluster membership as well
-func (c *Chain) writeConfigBlock(block  *common.Block) {
+func (c *Chain) writeConfigBlock(block *common.Block) {
 	c.mirbftMetadataLock.Lock()
 	c.appliedIndex++
 	c.opts.BlockMetadata.MirbftIndex = c.appliedIndex
-	metaData,err := protoutil.Marshal(c.opts.BlockMetadata)
-	if err != nil{
-		c.logger.Errorf("Error Occured : ",err)
+	metaData, err := protoutil.Marshal(c.opts.BlockMetadata)
+	if err != nil {
+		c.logger.Errorf("Error Occured : ", err)
 	}
 	c.mirbftMetadataLock.Unlock()
 	c.support.WriteBlock(block, metaData)
@@ -1104,12 +1104,10 @@ func (c *Chain) processBatch(batch *msgs.QEntry) error {
 				continue
 			}
 			//JIRA FLY2-106 append config envelope
-			c.pendingConfigs = append(c.pendingConfigs,pendingConfigEnvelope{
-				env: env,
+			c.pendingConfigs = append(c.pendingConfigs, pendingConfigEnvelope{
+				env:              env,
 				reconfigurations: reconfig,
 			})
-
-
 
 		} else {
 			envs = append(envs, env)
@@ -1154,7 +1152,7 @@ func (c *Chain) Apply(batch *msgs.QEntry) error {
 func (c *Chain) CreateBlock(envs []*common.Envelope) *common.Block {
 
 	bc := &blockCreator{
-		hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
+		hash: protoutil.BlockHeaderHash(c.lastBlock.Header),
 		//change
 		number: c.lastBlock.Header.Number,
 		logger: c.logger,
@@ -1180,15 +1178,13 @@ func (c *Chain) waitForPendingBatchCommits() {
 }
 
 //JIRA FLY2-106 function to remove pending config envelope
-func (c *Chain) removeConfigEnv(){
+func (c *Chain) removeConfigEnv() {
 	if len(c.pendingConfigs) > 1 {
 		c.pendingConfigs = c.pendingConfigs[1:]
-	}else {
+	} else {
 		c.pendingConfigs = nil
 	}
 }
-
-
 
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
@@ -1196,7 +1192,7 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 	//JIRA - 106 check reconfiguration length
 	if len(c.pendingConfigs) != 0 {
 		reconfig := c.pendingConfigs[0]
-		for _,config := range reconfig.reconfigurations{
+		for _, config := range reconfig.reconfigurations {
 			pr = append(pr,
 				proto.Clone(config).(*msgs.Reconfiguration))
 		}
@@ -1214,10 +1210,9 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 				c.pendingConfigs = PopReconfiguration(c.pendingConfigs)
 			}()
 		}
-	}else{
+	} else {
 		pr = nil
 	}
-
 
 	c.Node.CheckpointSeqNo = c.lastBlock.Header.Number
 	networkStateBytes, err := proto.Marshal(&msgs.NetworkState{
