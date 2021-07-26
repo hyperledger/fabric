@@ -9,11 +9,10 @@ package hlmirbft
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"go.etcd.io/etcd/pkg/fileutil"
 	"os"
 	"path/filepath"
 	"reflect"
-
-	"go.etcd.io/etcd/pkg/fileutil"
 
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
 	"github.com/golang/protobuf/proto"
@@ -428,13 +427,15 @@ func CreateConsentersMap(blockMetadata *hlmirbft.BlockMetadata, configMetadata *
 	return consenters
 }
 
-// JIRA FLY2-66 : Remove Files
+//JIRA FLY2-66 : Remove Files
 func PurgeFiles(files []string, dirPath string, logger *flogging.FabricLogger) error {
+
 	for _, file := range files {
 
 		fpath := filepath.Join(dirPath, file)
 
 		l, err := fileutil.TryLockFile(fpath, os.O_WRONLY, fileutil.PrivateFileMode)
+
 		if err != nil {
 
 			logger.Debugf("Failed to lock %s, abort purging", file)
@@ -443,17 +444,23 @@ func PurgeFiles(files []string, dirPath string, logger *flogging.FabricLogger) e
 		}
 
 		if err = os.Remove(fpath); err != nil {
+
 			logger.Errorf("Failed to remove %s: %s", file, err)
+
 		} else {
+
 			logger.Debugf("Purged file %s", file)
+
 		}
 
 		if err = l.Close(); err != nil {
+			
 			logger.Errorf("Failed to close file lock %s: %s", l.Name(), err)
 		}
 	}
 
 	return nil
+
 }
 //JIRA FLY2-103 : Function to identify the removed consenter details by comparing the current and updated consenter list
 func  CompareConsenterList(existingConsenters, updatedConsenters []*hlmirbft.Consenter) *hlmirbft.Consenter {
@@ -490,12 +497,15 @@ func removeNodeID(nodeList []uint64, nodeID uint64) []uint64{
 	newNodeList := append(nodeList[:index], nodeList[index+1:]...)
 	return  newNodeList
 }
+
+
 //JIRA FLY2-103 - pop the first element from pending reconfigurations
-func PopReconfiguration(pr [][]*msgs.Reconfiguration) (newPendingReconfig [][]*msgs.Reconfiguration){
-	if len(pr) > 1 {
-		pr = pr[1:]
+func PopReconfiguration(configEnvs []pendingConfigEnvelope) (newPendingReconfig []pendingConfigEnvelope){
+	if len(configEnvs) > 1 {
+		configEnvs = configEnvs[1:]
 	}else{
-		pr  = nil
+		configEnvs  = nil
 	}
-	return pr
+	return configEnvs
 }
+
