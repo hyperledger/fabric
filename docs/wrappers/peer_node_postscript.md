@@ -65,6 +65,17 @@ peer node start --peer-chaincodedev
 starts a peer node in chaincode development mode. Normally chaincode containers are started
 and maintained by peer. However in chaincode development mode, chaincode is built and started by the user. This mode is useful during chaincode development phase for iterative development.
 
+### peer node unjoin example 
+
+The following command: 
+
+```
+peer node unjoin -c mychannel
+```
+
+unjoins the peer from channel `mychannel`, removing all content from the ledger and transient storage.  When unjoining a channel, the peer must be shut down.
+
+
 ### peer node upgrade-dbs example
 
 The following command:
