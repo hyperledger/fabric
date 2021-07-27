@@ -910,9 +910,9 @@ func (c *Chain) writeConfigBlock(block *common.Block) {
 	if err != nil {
 		c.logger.Errorf("Error Occurred : ", err)
 	}
-	c.mirbftMetadataLock.Unlock()
-	c.support.WriteBlock(block, metaData)
+	c.support.WriteConfigBlock(block, metaData)
 	c.lastBlock = block
+	c.mirbftMetadataLock.Unlock()
 
 }
 
