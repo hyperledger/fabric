@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/pkg/errors"
@@ -39,6 +40,7 @@ type Packager struct {
 // PackageInput holds the input parameters for packaging a
 // ChaincodeInstallPackage
 type PackageInput struct {
+	Name       string
 	OutputFile string
 	Path       string
 	Type       string
@@ -47,6 +49,12 @@ type PackageInput struct {
 
 // Validate checks for the required inputs
 func (p *PackageInput) Validate() error {
+	if p.Name == "" {
+		return errors.New("chaincode name must be specified")
+	}
+	if !lifecycle.ChaincodeNameRegExp.MatchString(p.Name) {
+		return errors.Errorf("invalid chaincode name '%s'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics", p.Name)
+	}
 	if p.Path == "" {
 		return errors.New("chaincode path must be specified")
 	}
@@ -88,6 +96,7 @@ func PackageCmd(p *Packager) *cobra.Command {
 		},
 	}
 	flagList := []string{
+		"name",
 		"label",
 		"lang",
 		"path",
@@ -118,6 +127,7 @@ func (p *Packager) PackageChaincode(args []string) error {
 func (p *Packager) setInput(outputFile string) {
 	p.Input = &PackageInput{
 		OutputFile: outputFile,
+		Name:       chaincodeName,
 		Path:       chaincodePath,
 		Type:       chaincodeLang,
 		Label:      packageLabel,
@@ -162,7 +172,7 @@ func (p *Packager) getTarGzBytes() ([]byte, error) {
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to normalize chaincode path")
 	}
-	metadataBytes, err := toJSON(normalizedPath, p.Input.Type, p.Input.Label)
+	metadataBytes, err := toJSON(p.Input.Name, normalizedPath, p.Input.Type, p.Input.Label)
 	if err != nil {
 		return nil, err
 	}
@@ -212,15 +222,17 @@ func writeBytesToPackage(tw *tar.Writer, name string, payload []byte) error {
 	return nil
 }
 
-// PackageMetadata holds the path and type for a chaincode package
+// PackageMetadata holds the name, path and type for a chaincode package
 type PackageMetadata struct {
+	Name  string `json:"name"`
 	Path  string `json:"path"`
 	Type  string `json:"type"`
 	Label string `json:"label"`
 }
 
-func toJSON(path, ccType, label string) ([]byte, error) {
+func toJSON(name, path, ccType, label string) ([]byte, error) {
 	metadata := &PackageMetadata{
+		Name:  name,
 		Path:  path,
 		Type:  ccType,
 		Label: label,

@@ -201,6 +201,7 @@ func (c ChannelFetch) Args() []string {
 }
 
 type ChaincodePackage struct {
+	Name       string
 	Path       string
 	Lang       string
 	Label      string
@@ -215,6 +216,7 @@ func (c ChaincodePackage) SessionName() string {
 func (c ChaincodePackage) Args() []string {
 	args := []string{
 		"lifecycle", "chaincode", "package",
+		"--name", c.Name,
 		"--path", c.Path,
 		"--lang", c.Lang,
 		"--label", c.Label,

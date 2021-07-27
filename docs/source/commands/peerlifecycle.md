@@ -97,6 +97,7 @@ Flags:
   -h, --help                           help for package
       --label string                   The package label contains a human-readable description of the package
   -l, --lang string                    Language the chaincode is written in (default "golang")
+  -n, --name string                    Name of the chaincode
   -p, --path string                    Path to the chaincode
       --peerAddresses stringArray      The addresses of the peers to connect to
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag

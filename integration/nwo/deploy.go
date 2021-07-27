@@ -147,6 +147,7 @@ func PackageAndInstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer)
 
 func PackageChaincode(n *Network, chaincode Chaincode, peer *Peer) {
 	sess, err := n.PeerAdminSession(peer, commands.ChaincodePackage{
+		Name:       chaincode.Name,
 		Path:       chaincode.Path,
 		Lang:       chaincode.Lang,
 		Label:      chaincode.Label,

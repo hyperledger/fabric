@@ -39,6 +39,7 @@ var _ = Describe("Package", func() {
 
 			input = &chaincode.PackageInput{
 				OutputFile: "testDir/testPackage",
+				Name:       "testName",
 				Path:       "testPath",
 				Type:       "testType",
 				Label:      "testLabel",
@@ -77,7 +78,29 @@ var _ = Describe("Package", func() {
 
 			metadata, err := readMetadataFromBytes(pkgTarGzBytes)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(metadata).To(MatchJSON(`{"path":"normalizedPath","type":"testType","label":"testLabel"}`))
+			Expect(metadata).To(MatchJSON(`{"name":"testName","path":"normalizedPath","type":"testType","label":"testLabel"}`))
+		})
+
+		Context("when the name is not provided", func() {
+			BeforeEach(func() {
+				input.Name = ""
+			})
+
+			It("returns an error", func() {
+				err := packager.Package()
+				Expect(err).To(MatchError("chaincode name must be specified"))
+			})
+		})
+
+		Context("when the name is not valid", func() {
+			BeforeEach(func() {
+				input.Name = "testName_1.2.3"
+			})
+
+			It("returns an error", func() {
+				err := packager.Package()
+				Expect(err).To(MatchError("invalid chaincode name 'testName_1.2.3'. Names can only consist of alphanumerics, '_', and '-' and can only begin with alphanumerics"))
+			})
 		})
 
 		Context("when the path is not provided", func() {
@@ -178,6 +201,7 @@ var _ = Describe("Package", func() {
 			packageCmd.SilenceUsage = true
 			packageCmd.SetArgs([]string{
 				"testPackage",
+				"--name=testName",
 				"--path=testPath",
 				"--lang=golang",
 				"--label=testLabel",
