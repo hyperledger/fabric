@@ -1098,7 +1098,12 @@ func (c *Chain) processBatch(batch *msgs.QEntry) error {
 			if reconfig == nil {
 				block := c.CreateBlock([]*common.Envelope{env})
 				c.writeConfigBlock(block)
-				continue
+			} else {
+				//JIRA FLY2-106 append config envelope
+				c.pendingConfigs = append(c.pendingConfigs, pendingConfigEnvelope{
+					req:              req,
+					reconfigurations: reconfig,
+				})
 			}
 			//JIRA FLY2-106 append config envelope
 			c.pendingConfigs = append(c.pendingConfigs, pendingConfigEnvelope{
