@@ -905,7 +905,7 @@ func (c *Chain) writeConfigBlock(block *common.Block) {
 	c.opts.BlockMetadata.MirbftIndex = c.appliedIndex
 	metaData, err := protoutil.Marshal(c.opts.BlockMetadata)
 	if err != nil {
-		c.logger.Errorf("Error Occured : ", err)
+		c.logger.Errorf("Error Occurred : ", err)
 	}
 	c.mirbftMetadataLock.Unlock()
 	c.support.WriteBlock(block, metaData)
