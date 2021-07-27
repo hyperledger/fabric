@@ -1105,11 +1105,6 @@ func (c *Chain) processBatch(batch *msgs.QEntry) error {
 					reconfigurations: reconfig,
 				})
 			}
-			//JIRA FLY2-106 append config envelope
-			c.pendingConfigs = append(c.pendingConfigs, pendingConfigEnvelope{
-				env:              env,
-				reconfigurations: reconfig,
-			})
 
 		} else {
 			envs = append(envs, env)
