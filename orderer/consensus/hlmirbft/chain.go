@@ -1090,7 +1090,12 @@ func (c *Chain) processBatch(batch *msgs.QEntry) error {
 		if err != nil {
 			return errors.WithMessage(err, "Cannot Unmarshal Request Data")
 		}
+		env := req.Payload
 		if c.isConfig(env) {
+			env, err := c.revalidateConfigMsg(req)
+			if err != nil {
+				return err
+			}
 			reconfig, err := c.getNewReconfiguration(env)
 			if err != nil {
 				return errors.Errorf("Cannot Generate Reconfiguration: %s", err)
@@ -1183,6 +1188,20 @@ func (c *Chain) removeConfigEnv() {
 	}
 }
 
+func (c *Chain) revalidateConfigMsg(msg *orderer.SubmitRequest) (*common.Envelope, error) {
+	seq := c.support.Sequence()
+	if msg.LastValidationSeq < seq {
+		c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
+		env, _, err := c.support.ProcessConfigMsg(msg.Payload)
+		if err != nil {
+			c.Metrics.ProposalFailures.Add(1)
+			return nil, errors.Errorf("bad config message: %s", err)
+		}
+		return env, nil
+	}
+	return msg.Payload, nil
+}
+
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
 	pr := make([]*msgs.Reconfiguration, 0)
@@ -1193,11 +1212,16 @@ func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*ms
 			pr = append(pr,
 				proto.Clone(config).(*msgs.Reconfiguration))
 		}
-		env := reconfig.env
+		req := reconfig.req
 		newNetworkConfig := pr[1].GetNewConfig()
 		//JIRA FLY2-106 wait till pending batch list is empty
 		c.waitForPendingBatchCommits()
 		if reflect.DeepEqual(newNetworkConfig, networkConfig) {
+			env := req.Payload
+			env, err := c.revalidateConfigMsg(req)
+			if err != nil {
+				return nil, nil, err
+			}
 			//JIRA FLY2-106 get config envelope
 			block := c.CreateBlock([]*common.Envelope{env})
 			c.writeConfigBlock(block)
