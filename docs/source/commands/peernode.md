@@ -19,6 +19,7 @@ The `peer node` command has the following subcommands:
   * resume
   * rollback
   * start
+  * unjoin
   * upgrade-dbs
 
 ## peer node pause
@@ -95,6 +96,19 @@ Usage:
 Flags:
   -h, --help                help for start
       --peer-chaincodedev   start peer in chaincode development mode
+```
+
+
+## peer node unjoin
+```
+Unjoin the peer from a channel.  When the command is executed, the peer must be offline.
+
+Usage:
+  peer node unjoin [flags]
+
+Flags:
+  -c, --channelID string   Channel to unjoin.
+  -h, --help               help for unjoin
 ```
 
 
@@ -175,6 +189,17 @@ peer node start --peer-chaincodedev
 
 starts a peer node in chaincode development mode. Normally chaincode containers are started
 and maintained by peer. However in chaincode development mode, chaincode is built and started by the user. This mode is useful during chaincode development phase for iterative development.
+
+### peer node unjoin example 
+
+The following command: 
+
+```
+peer node unjoin -c mychannel
+```
+
+unjoins the peer from channel `mychannel`, removing all content from the ledger and transient storage.  When unjoining a channel, the peer must be shut down.
+
 
 ### peer node upgrade-dbs example
 
