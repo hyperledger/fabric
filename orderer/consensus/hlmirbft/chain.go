@@ -680,6 +680,9 @@ func (c *Chain) getNewReconfiguration(envelope *common.Envelope) ([]*msgs.Reconf
 	if err != nil {
 		return nil, errors.Errorf("bad normal message: %s", err)
 	}
+	if configMetaData == nil {
+		return nil, nil
+	}
 	//JIRA FLY2-103 : get the reconfiguration
 	reconfig, err := c.processReconfiguration(configMetaData)
 	if err != nil {
