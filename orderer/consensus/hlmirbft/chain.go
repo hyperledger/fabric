@@ -142,7 +142,7 @@ type submit struct {
 
 //JIRA FLY2-106 struct to store the network config and transaction envelope
 type pendingConfigEnvelope struct {
-	env              *common.Envelope
+	req              *orderer.SubmitRequest
 	reconfigurations []*msgs.Reconfiguration
 }
 
@@ -496,7 +496,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 			if err := c.checkMsg(forwardedReq); err != nil {
 				return err
 			}
-			return c.proposeMsg(forwardedReq.Payload, sender)
+			return c.proposeMsg(forwardedReq, sender)
 		}
 	}
 
@@ -545,7 +545,7 @@ func (c *Chain) Submit(req *orderer.SubmitRequest, sender uint64) error {
 	}
 
 	//This request was sent by a Fabric application
-	return c.proposeMsg(req.Payload, c.MirBFTID)
+	return c.proposeMsg(req, c.MirBFTID)
 }
 
 type apply struct {
@@ -715,7 +715,7 @@ func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 }
 
 //FLY2-57 - Proposed Change: New function to propose normal messages to node -> adapted in JIRA FLY2-94
-func (c *Chain) proposeMsg(msg *common.Envelope, sender uint64) (err error) {
+func (c *Chain) proposeMsg(msg *orderer.SubmitRequest, sender uint64) (err error) {
 	clientID := sender
 	proposer := c.Node.Client(clientID)
 	//Incrementation of the reqNo of a client should only ever be caused by the node the client belongs to
@@ -1086,7 +1086,7 @@ func (c *Chain) processBatch(batch *msgs.QEntry) error {
 		if err != nil {
 			return errors.WithMessage(err, "Cannot fetch request from Request Store")
 		}
-		env, err := protoutil.UnmarshalEnvelope(reqMsg.Data)
+		req, err := protoutil.UnmarshalSubmitRequest(reqMsg.Data)
 		if err != nil {
 			return errors.WithMessage(err, "Cannot Unmarshal Request Data")
 		}
