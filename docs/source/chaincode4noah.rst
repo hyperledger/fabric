@@ -109,7 +109,7 @@ for the chaincode. The instantiation policy has the same format as an
 endorsement policy and specifies which identities can instantiate the
 chaincode. In the example above, only the admin of OrgA is allowed to
 instantiate the chaincode. If no policy is provided, the default policy
-is used, which only allows the admin identity of the peer's MSP to
+is used, which allows an admin from any of the channel MSPs to
 instantiate chaincode.
 
 Package signing
