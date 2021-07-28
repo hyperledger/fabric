@@ -45,8 +45,6 @@ var _ = Describe("GatewayService with endorsing orgs", func() {
 		config := nwo.ThreeOrgRaft()
 		network = nwo.New(config, testDir, client, StartPort(), components)
 
-		network.GatewayEnabled = true
-
 		network.GenerateConfigTree()
 		network.Bootstrap()
 

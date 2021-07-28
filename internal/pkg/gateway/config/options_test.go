@@ -23,6 +23,12 @@ peer:
     dialTimeout: 2m
 `)
 
+var testConfigOff = []byte(`
+peer:
+  gateway:
+    enabled: false
+`)
+
 func TestDefaultOptions(t *testing.T) {
 	v := viper.New()
 	options := GetOptions(v)
@@ -39,6 +45,20 @@ func TestOverriddenOptions(t *testing.T) {
 		Enabled:            true,
 		EndorsementTimeout: 30 * time.Second,
 		DialTimeout:        2 * time.Minute,
+	}
+	require.Equal(t, expectedOptions, options)
+}
+
+func TestDisabledGatewayOption(t *testing.T) {
+	v := viper.New()
+	v.SetConfigType("yaml")
+	v.ReadConfig(bytes.NewBuffer(testConfigOff))
+	options := GetOptions(v)
+
+	expectedOptions := Options{
+		Enabled:            false,
+		EndorsementTimeout: 10 * time.Second,
+		DialTimeout:        30 * time.Second,
 	}
 	require.Equal(t, expectedOptions, options)
 }
