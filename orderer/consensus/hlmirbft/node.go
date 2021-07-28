@@ -46,8 +46,6 @@ type node struct {
 
 	CheckpointSeqNo uint64 //JIRA FLY2-66
 
-	PendingReconfigurations [][]*msgs.Reconfiguration //JIRA FLY2-66 : modified for FLY2-103 review comments
-
 	LastCommittedSeqNo uint64 //JIRA FLY2-48 - proposed changes: To track the last committed sequence number
 
 	ReqStore *reqstore.Store //JIRA FLY2-48 - Stores the request store instance of mirbft node. This for getting Request object using request #.

@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	code.cloudfoundry.org/clock v1.0.0
+	github.com/766b/go-outliner v0.0.0-20180511142203-fc6edecdadd7 // indirect
 	github.com/DataDog/zstd v1.4.8 // indirect
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/Shopify/sarama v1.20.1

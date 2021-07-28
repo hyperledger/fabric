@@ -7,14 +7,16 @@ package hlmirbft
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/pem"
 	"fmt"
 	"github.com/hyperledger/fabric/common/configtx"
+	"reflect"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hyperledger/fabric/common/util"
 
 	"code.cloudfoundry.org/clock"
 	"github.com/fly2plan/fabric-protos-go/orderer/hlmirbft"
@@ -40,11 +42,12 @@ const (
 	BYTE = 1 << (10 * iota)
 	KILOBYTE
 	MEGABYTE
-	GIGABYTE
+	IGABYTE
 	TERABYTE
 )
 
 const (
+
 	// DefaultSnapshotCatchUpEntries is the default number of entries
 	// to preserve in memory when a snapshot is taken. This is for
 	// slow followers to catch up.
@@ -137,6 +140,12 @@ type submit struct {
 	req *orderer.SubmitRequest
 }
 
+//JIRA FLY2-106 struct to store the network config and transaction envelope
+type pendingConfigEnvelope struct {
+	req              *orderer.SubmitRequest
+	reconfigurations []*msgs.Reconfiguration
+}
+
 // Chain implements consensus.Chain interface.
 type Chain struct {
 	configurator Configurator
@@ -162,7 +171,9 @@ type Chain struct {
 
 	mirbftMetadataLock sync.RWMutex
 	//JIRA FLY2-48 - proposed changes:map to store the pending batches before committing
-	pendingBatches       map[uint64]*msgs.QEntry
+	pendingBatches map[uint64]*msgs.QEntry
+	//JIRA FLY2-106 list of pendingConfigEnvs
+	pendingConfigs       []pendingConfigEnvelope
 	confChangeInProgress *raftpb.ConfChange
 	justElected          bool // this is true when node has just been elected
 	configInflight       bool // this is true when there is config block or ConfChange in flight
@@ -326,17 +337,16 @@ func NewChain(
 	c.ActiveNodes.Store([]uint64{})
 
 	c.Node = &node{
-		chainID:                 c.channelID,
-		chain:                   c,
-		logger:                  c.logger,
-		metrics:                 c.Metrics,
-		rpc:                     disseminator,
-		config:                  config,
-		WALDir:                  opts.WALDir,
-		ReqStoreDir:             opts.ReqStoreDir,
-		PendingReconfigurations: make([][]*msgs.Reconfiguration, 0),
-		clock:                   c.clock,
-		metadata:                c.opts.BlockMetadata,
+		chainID:     c.channelID,
+		chain:       c,
+		logger:      c.logger,
+		metrics:     c.Metrics,
+		rpc:         disseminator,
+		config:      config,
+		WALDir:      opts.WALDir,
+		ReqStoreDir: opts.ReqStoreDir,
+		clock:       c.clock,
+		metadata:    c.opts.BlockMetadata,
 	}
 
 	return c, nil
@@ -362,6 +372,7 @@ func (c *Chain) Start() {
 	close(c.startC)
 
 	go c.run()
+
 }
 
 // Order submits normal type transactions for ordering.
@@ -474,7 +485,7 @@ func (c *Chain) Consensus(req *orderer.ConsensusRequest, sender uint64) error {
 	// Check if the request is a forwarded transaction
 	switch t := stepMsg.Type.(type) {
 	case *msgs.Msg_ForwardRequest:
-		// If this forwarded request has no acknowledgement
+		// If this forwarded request has no acknowledgements
 		// then it has only been sent to a node by a Fabric application
 		// and then forwarded to at least f+1 nodes
 		if t.ForwardRequest.RequestAck == nil {
@@ -650,6 +661,38 @@ func (c *Chain) processReconfiguration(configMetaData *hlmirbft.ConfigMetadata) 
 
 }
 
+func (c *Chain) getMsgHash(message proto.Message) ([]byte, error) {
+	msgByte, err := proto.Marshal(message)
+	if err != nil {
+		return nil, errors.WithMessage(err, "Cannot marshal message")
+	}
+	msgHash := util.ComputeSHA256(msgByte)
+	return msgHash, nil
+
+}
+
+//JIRA FLY2-106 function to add or retrieve envelope of config transactions which is mapped against network state
+
+//JIRA FLY2-106 function to retrieve new reconfiguration from config envelope
+func (c *Chain) getNewReconfiguration(envelope *common.Envelope) ([]*msgs.Reconfiguration, error) {
+	//JIRA FLY2-103 : get config Metadata from envelope payload
+	configMetaData, err := c.getConfigMetadata(envelope.Payload)
+	if err != nil {
+		return nil, errors.Errorf("bad normal message: %s", err)
+	}
+	if configMetaData == nil {
+		return nil, nil
+	}
+	//JIRA FLY2-103 : get the reconfiguration
+	reconfig, err := c.processReconfiguration(configMetaData)
+	if err != nil {
+		return nil, errors.Errorf("Cannot Generate Reconfiguration Data: %s", err)
+	}
+	//JIRA FLY2-103 : append reconfiguration to c.Node.PendingReconfigurations
+
+	return reconfig, nil
+}
+
 // Checks the envelope in the `msg` content. SubmitRequest.
 // Returns
 //   -- err error; the error encountered, if any.
@@ -662,23 +705,6 @@ func (c *Chain) checkMsg(msg *orderer.SubmitRequest) (err error) {
 	if msg.LastValidationSeq < seq {
 		c.logger.Warnf("Normal message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
 
-		//JIRA FLY2-103 : Check msg type
-		if c.isConfig(msg.Payload) {
-
-			//JIRA FLY2-103 : get config Metadata from envelope payload
-			configMetaData, err := c.getConfigMetadata(msg.Payload.Payload)
-			if err != nil {
-				return errors.Errorf("bad normal message: %s", err)
-			}
-
-			//JIRA FLY2-103 : get the reconfiguration
-			reconfig, err := c.processReconfiguration(configMetaData)
-			if err != nil {
-				return errors.Errorf("Cannot Generate Reconfiguration Data: %s", err)
-			}
-			//JIRA FLY2-103 : append reconfiguration to c.Node.PendingReconfigurations
-			c.Node.PendingReconfigurations = append(c.Node.PendingReconfigurations, reconfig)
-		}
 		if _, err := c.support.ProcessNormalMsg(msg.Payload); err != nil {
 			c.Metrics.ProposalFailures.Add(1)
 			return errors.Errorf("bad normal message: %s", err)
@@ -701,7 +727,7 @@ func (c *Chain) proposeMsg(msg *orderer.SubmitRequest, sender uint64) (err error
 
 	//FLY2-48-proposed change:In apply function,Block generation requires *Common.Envelope rather than payload data byte .*Common.Envelope helps to identify request id config or not
 
-	data, err := proto.Marshal(msg.Payload)
+	data, err := proto.Marshal(msg)
 
 	if err != nil {
 		return errors.Errorf("Cannot marshal payload")
@@ -748,8 +774,10 @@ func (c *Chain) propose(ch chan<- *common.Block, bc *blockCreator, batches ...[]
 	}
 }
 
-func (c *Chain) catchUp(snap *raftpb.Snapshot) error {
-	b, err := protoutil.UnmarshalBlock(snap.Data)
+//JIRA FLY2-106 function to catch up and synchronise blocks across nodes in the network
+func (c *Chain) catchUp(blockBytes []byte) error {
+
+	b, err := protoutil.UnmarshalBlock(blockBytes)
 	if err != nil {
 		return errors.Errorf("failed to unmarshal snapshot data to block: %s", err)
 	}
@@ -878,10 +906,13 @@ func (c *Chain) writeConfigBlock(block *common.Block) {
 	c.mirbftMetadataLock.Lock()
 	c.appliedIndex++
 	c.opts.BlockMetadata.MirbftIndex = c.appliedIndex
-	m := protoutil.MarshalOrPanic(c.opts.BlockMetadata)
-	c.mirbftMetadataLock.Unlock()
-	c.support.WriteConfigBlock(block, m)
+	metaData, err := protoutil.Marshal(c.opts.BlockMetadata)
+	if err != nil {
+		c.logger.Errorf("Error Occurred : ", err)
+	}
+	c.support.WriteConfigBlock(block, metaData)
 	c.lastBlock = block
+	c.mirbftMetadataLock.Unlock()
 
 }
 
@@ -1055,19 +1086,35 @@ func (c *Chain) processBatch(batch *msgs.QEntry) error {
 		if err != nil {
 			return errors.WithMessage(err, "Cannot fetch request from Request Store")
 		}
-		env, err := protoutil.UnmarshalEnvelope(reqMsg.Data)
+		req, err := protoutil.UnmarshalSubmitRequest(reqMsg.Data)
 		if err != nil {
 			return errors.WithMessage(err, "Cannot Unmarshal Request Data")
 		}
+		env := req.Payload
 		if c.isConfig(env) {
-			configBlock := c.CreateBlock([]*common.Envelope{env})
-			c.writeConfigBlock(configBlock)
-		} else {
+			env, err := c.revalidateConfigMsg(req)
+			if err != nil {
+				return err
+			}
+			reconfig, err := c.getNewReconfiguration(env)
+			if err != nil {
+				return errors.Errorf("Cannot Generate Reconfiguration: %s", err)
+			}
+			if reconfig == nil {
+				block := c.CreateBlock([]*common.Envelope{env})
+				c.writeConfigBlock(block)
+			} else {
+				//JIRA FLY2-106 append config envelope
+				c.pendingConfigs = append(c.pendingConfigs, pendingConfigEnvelope{
+					req:              req,
+					reconfigurations: reconfig,
+				})
+			}
 
+		} else {
 			envs = append(envs, env)
 
 		}
-
 	}
 	if len(envs) != 0 {
 		block := c.CreateBlock(envs)
@@ -1105,70 +1152,148 @@ func (c *Chain) Apply(batch *msgs.QEntry) error {
 //FLY2-48 proposed changes
 //	- create Blocks
 func (c *Chain) CreateBlock(envs []*common.Envelope) *common.Block {
+
 	bc := &blockCreator{
-		hash:   protoutil.BlockHeaderHash(c.lastBlock.Header),
+		hash: protoutil.BlockHeaderHash(c.lastBlock.Header),
+		//change
 		number: c.lastBlock.Header.Number,
 		logger: c.logger,
 	}
 	return bc.createNextBlock(envs)
 }
 
+//JIRA FLY2-106 check if pending batch list is empty
+func (c *Chain) isPendingBatchesEmpty() bool {
+	if len(c.pendingBatches) == 0 {
+		return true
+	}
+	return false
+}
+
+//JIRA FLY2-106 sleep till pending batch list is empty
+func (c *Chain) waitForPendingBatchCommits() {
+	isEmpty := c.isPendingBatchesEmpty()
+	for !isEmpty {
+		time.Sleep(400 * time.Millisecond)
+		isEmpty = c.isPendingBatchesEmpty()
+	}
+}
+
+//JIRA FLY2-106 function to remove pending config envelope
+func (c *Chain) removeConfigEnv() {
+	if len(c.pendingConfigs) > 1 {
+		c.pendingConfigs = c.pendingConfigs[1:]
+	} else {
+		c.pendingConfigs = nil
+	}
+}
+
+func (c *Chain) revalidateConfigMsg(msg *orderer.SubmitRequest) (*common.Envelope, error) {
+	seq := c.support.Sequence()
+	if msg.LastValidationSeq < seq {
+		c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
+		env, _, err := c.support.ProcessConfigMsg(msg.Payload)
+		if err != nil {
+			c.Metrics.ProposalFailures.Add(1)
+			return nil, errors.Errorf("bad config message: %s", err)
+		}
+		return env, nil
+	}
+	return msg.Payload, nil
+}
+
 //JIRA FLY2-66 proposed changes:Implemented the Snap Function
 func (c *Chain) Snap(networkConfig *msgs.NetworkState_Config, clientsState []*msgs.NetworkState_Client) ([]byte, []*msgs.Reconfiguration, error) {
-
-	pr := c.Node.PendingReconfigurations
-
-	if len(pr) == 0 {
-		pr = append(pr, []*msgs.Reconfiguration{nil})
+	pr := make([]*msgs.Reconfiguration, 0)
+	//JIRA - 106 check reconfiguration length
+	if len(c.pendingConfigs) != 0 {
+		reconfig := c.pendingConfigs[0]
+		for _, config := range reconfig.reconfigurations {
+			pr = append(pr,
+				proto.Clone(config).(*msgs.Reconfiguration))
+		}
+		req := reconfig.req
+		newNetworkConfig := pr[1].GetNewConfig()
+		//JIRA FLY2-106 wait till pending batch list is empty
+		c.waitForPendingBatchCommits()
+		if reflect.DeepEqual(newNetworkConfig, networkConfig) {
+			env := req.Payload
+			env, err := c.revalidateConfigMsg(req)
+			if err != nil {
+				return nil, nil, err
+			}
+			//JIRA FLY2-106 get config envelope
+			block := c.CreateBlock([]*common.Envelope{env})
+			c.writeConfigBlock(block)
+			c.removeConfigEnv()
+			//JIRA FLY2-106 remove reconfiguration
+			defer func() {
+				c.pendingConfigs = PopReconfiguration(c.pendingConfigs)
+			}()
+		}
+	} else {
+		pr = nil
 	}
 
-	data, err := proto.Marshal(&msgs.NetworkState{
+	c.Node.CheckpointSeqNo = c.lastBlock.Header.Number
+	networkStateBytes, err := proto.Marshal(&msgs.NetworkState{
 		Config:                  networkConfig,
 		Clients:                 clientsState,
-		PendingReconfigurations: nil,
+		PendingReconfigurations: pr,
 	})
-
 	if err != nil {
 
-		return nil, nil, errors.WithMessage(err, "could not marsshal network state")
+		return nil, nil, errors.WithMessage(err, "Could not marshal network state")
+
+	}
+	//JIRA FLY2-106 Generating last block bytes to be added to snap data
+	lastBlockBytes, err := proto.Marshal(c.lastBlock)
+	if err != nil {
+
+		return nil, nil, errors.WithMessage(err, "Could not marshal block")
 
 	}
 
-	c.Node.CheckpointSeqNo++
-
-	countValue := make([]byte, 8)
-
-	binary.BigEndian.PutUint64(countValue, uint64(c.Node.CheckpointSeqNo))
-
-	networkStates := append(countValue, data...)
-
-	err = c.Node.PersistSnapshot(c.Node.CheckpointSeqNo, networkStates)
-
+	//JIRA FLY2-106 generating snap data bytes
+	snapDataBytes, err := proto.Marshal(&hlmirbft.SnapData{
+		LastCommitedBlock: lastBlockBytes,
+		NetworkState:      networkStateBytes,
+	})
 	if err != nil {
 
-		c.logger.Panicf("error while snap persist : %s", err)
+		return nil, nil, errors.WithMessage(err, "Could not marshal Snap Data")
 
 	}
+	err = c.Node.PersistSnapshot(c.Node.CheckpointSeqNo, snapDataBytes)
+	if err != nil {
+		c.logger.Panicf("Error while snap persist : %s", err)
+	}
 
-	return networkStates, nil, nil
+	return snapDataBytes, pr, nil
 
 }
 
 //JIRA FLY2-58 proposed changes:Implemented the TransferTo Function
 func (c *Chain) TransferTo(seqNo uint64, snap []byte) (*msgs.NetworkState, error) {
 
+	snapData := &hlmirbft.SnapData{}
 	networkState := &msgs.NetworkState{}
-
-	checkSeqNo := snap[:8] //get the sequence number of the snap
-
-	snapShot, err := c.Node.ReadSnapFiles(binary.BigEndian.Uint64(checkSeqNo), c.opts.SnapDir)
-
-	if err != nil {
+	if err := proto.Unmarshal(snap, snapData); err != nil {
 
 		return nil, err
 	}
+	//JIRA FLY2-106 retrieving network state bytes and block bytes from snap data
+	networkStateBytes := snapData.NetworkState
+	blockBytes := snapData.LastCommitedBlock
+	//JIRA FLY2-106 using block data to catch up and synchronise with rest of the nodes
+	err := c.catchUp(blockBytes)
+	if err != nil {
 
-	if err := proto.Unmarshal(snapShot[8:], networkState); err != nil {
+		return nil, errors.WithMessage(err, "Catchup failed")
+
+	}
+
+	if err := proto.Unmarshal(networkStateBytes, networkState); err != nil {
 
 		return nil, err
 
