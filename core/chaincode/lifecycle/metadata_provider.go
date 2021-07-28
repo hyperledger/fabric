@@ -13,6 +13,8 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/chaincode"
 	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/common/policydsl"
+	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -127,6 +129,36 @@ func (mp *MetadataProvider) Metadata(channel string, ccName string, collections 
 		Policy:             spe,
 		CollectionPolicies: map[string][]byte{},
 		CollectionsConfig:  ccInfo.Definition.Collections,
+	}
+
+	for _, col := range collections {
+		if isImplicit, mspID := implicitcollection.MspIDIfImplicitCollection(col); isImplicit {
+			// Implicit collection
+
+			// Initialize definition of collections if it's missing
+			if ccInfo.Definition.Collections == nil {
+				ccInfo.Definition.Collections = &peer.CollectionConfigPackage{}
+			}
+
+			spe := policydsl.SignedByMspMember(mspID)
+			ccInfo.Definition.Collections.Config = append(ccInfo.Definition.Collections.Config, &peer.CollectionConfig{
+				Payload: &peer.CollectionConfig_StaticCollectionConfig{
+					StaticCollectionConfig: &peer.StaticCollectionConfig{
+						Name: col,
+						MemberOrgsPolicy: &peer.CollectionPolicyConfig{
+							Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
+								SignaturePolicy: spe,
+							},
+						},
+						EndorsementPolicy: &peer.ApplicationPolicy{
+							Type: &peer.ApplicationPolicy_SignaturePolicy{
+								SignaturePolicy: spe,
+							},
+						},
+					},
+				},
+			})
+		}
 	}
 
 	if ccInfo.Definition.Collections == nil {
