@@ -51,8 +51,6 @@ var _ = Describe("GatewayService", func() {
 		config := nwo.BasicEtcdRaft()
 		network = nwo.New(config, testDir, client, StartPort(), components)
 
-		network.GatewayEnabled = true
-
 		network.GenerateConfigTree()
 		network.Bootstrap()
 

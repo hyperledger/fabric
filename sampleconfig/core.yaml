@@ -46,6 +46,18 @@ peer:
     # When set to true, will override peer address.
     addressAutoDetect: false
 
+    # Settings for the Peer's gateway server.
+    gateway:
+        # Whether the gateway is enabled for this Peer.
+        enabled: true
+        # endorsementTimeout is the duration the gateway waits for a response
+        # from other endorsing peers before returning a timeout error to the client.
+        endorsementTimeout: 30s
+        # dialTimeout is the duration the gateway waits for a connection
+        # to other network nodes.
+        dialTimeout: 2m
+
+
     # Keepalive settings for peer server and clients
     keepalive:
         # Interval is the duration after which if the server does not see
