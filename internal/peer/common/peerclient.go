@@ -77,6 +77,16 @@ func NewPeerClientForAddress(address, tlsRootCertFile string) (*PeerClient, erro
 		}
 		clientConfig.SecOpts.ServerRootCAs = [][]byte{caPEM}
 	}
+
+	clientConfig.MaxRecvMsgSize = comm.DefaultMaxRecvMsgSize
+	if viper.IsSet("peer.maxRecvMsgSize") {
+		clientConfig.MaxRecvMsgSize = int(viper.GetInt32("peer.maxRecvMsgSize"))
+	}
+	clientConfig.MaxSendMsgSize = comm.DefaultMaxSendMsgSize
+	if viper.IsSet("peer.maxSendMsgSize") {
+		clientConfig.MaxSendMsgSize = int(viper.GetInt32("peer.maxSendMsgSize"))
+	}
+
 	return newPeerClientForClientConfig(address, override, clientConfig)
 }
 
