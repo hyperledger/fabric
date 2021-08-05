@@ -14,18 +14,21 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	"github.com/hyperledger/fabric/common/channelconfig"
+	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
 	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
 	"github.com/hyperledger/fabric/internal/peer/common"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/msp"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
 	"github.com/hyperledger/fabric/protoutil"
@@ -347,4 +350,64 @@ func TestGetOrdererEndpointFromConfigTx(t *testing.T) {
 		_, err := common.GetOrdererEndpointOfChain("test-channel", signer, mockEndorserClient, cryptoProvider)
 		require.EqualError(t, err, "error loading channel config: config must contain a channel group")
 	})
+}
+
+func TestConfigFromEnv(t *testing.T) {
+	tempdir, err := ioutil.TempDir("", "peer-clientcert")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempdir)
+
+	// peer client config
+	address, _, clientConfig, err := common.ConfigFromEnv("peer")
+	require.NoError(t, err)
+	require.Equal(t, "", address, "ClientConfig.address by default not set")
+	require.Equal(t, common.DefaultConnTimeout, clientConfig.Timeout, "ClientConfig.Timeout should be set to default value of %v", common.DefaultConnTimeout)
+	require.Equal(t, false, clientConfig.SecOpts.UseTLS, "ClientConfig.SecOpts.UseTLS default value should be false")
+	require.Equal(t, comm.DefaultMaxRecvMsgSize, clientConfig.MaxRecvMsgSize, "ServerConfig.MaxRecvMsgSize should be set to default value %v", comm.DefaultMaxRecvMsgSize)
+	require.Equal(t, comm.DefaultMaxSendMsgSize, clientConfig.MaxSendMsgSize, "ServerConfig.MaxSendMsgSize should be set to default value %v", comm.DefaultMaxSendMsgSize)
+
+	viper.Set("peer.address", "127.0.0.1")
+	viper.Set("peer.client.connTimeout", "30s")
+	viper.Set("peer.maxRecvMsgSize", "1024")
+	viper.Set("peer.maxSendMsgSize", "2048")
+	address, _, clientConfig, err = common.ConfigFromEnv("peer")
+	require.NoError(t, err)
+	require.Equal(t, "127.0.0.1", address, "ClientConfig.address should be set to 127.0.0.1")
+	require.Equal(t, 30*time.Second, clientConfig.Timeout, "ClientConfig.Timeout should be set to default value of 30s")
+	require.Equal(t, 1024, clientConfig.MaxRecvMsgSize, "ClientConfig.MaxRecvMsgSize should be set to 1024")
+	require.Equal(t, 2048, clientConfig.MaxSendMsgSize, "ClientConfig.maxSendMsgSize should be set to 2048")
+
+	viper.Set("peer.tls.enabled", true)
+	viper.Set("peer.tls.rootcert.file", "./filenotfound.pem")
+	_, _, _, err = common.ConfigFromEnv("peer")
+	require.Error(t, err, "ClientConfig should return with bad root cert file path")
+
+	viper.Set("peer.tls.enabled", false)
+	viper.Set("peer.tls.clientAuthRequired", true)
+	viper.Set("peer.tls.clientKey.file", "./filenotfound.pem")
+	_, _, clientConfig, err = common.ConfigFromEnv("peer")
+	require.Equal(t, false, clientConfig.SecOpts.UseTLS, "ClientConfig.SecOpts.UseTLS should be false")
+	require.Error(t, err, "ClientConfig should return with client key file path")
+
+	org1CA, err := tlsgen.NewCA()
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-ca-cert.pem"), org1CA.CertBytes(), 0o644)
+	require.NoError(t, err)
+	org1ServerKP, err := org1CA.NewServerCertKeyPair("localhost")
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-peer1-cert.pem"), org1ServerKP.Cert, 0o644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(tempdir, "org1-peer1-key.pem"), org1ServerKP.Key, 0o600)
+	require.NoError(t, err)
+
+	viper.Set("peer.tls.enabled", true)
+	viper.Set("peer.tls.clientAuthRequired", true)
+	viper.Set("peer.tls.rootcert.file", filepath.Join(tempdir, "org1-ca-cert.pem"))
+	viper.Set("peer.tls.clientCert.file", filepath.Join(tempdir, "org1-peer1-cert.pem"))
+	viper.Set("peer.tls.clientKey.file", filepath.Join(tempdir, "org1-peer1-key.pem"))
+	_, _, clientConfig, err = common.ConfigFromEnv("peer")
+	require.NoError(t, err)
+	require.Equal(t, 1, len(clientConfig.SecOpts.ServerRootCAs), "ClientConfig.SecOpts.ServerRootCAs should contain 1 entries")
+	require.Equal(t, org1ServerKP.Key, clientConfig.SecOpts.Key, "Client.SecOpts.Key should be set to configured key")
+	require.Equal(t, org1ServerKP.Cert, clientConfig.SecOpts.Certificate, "Client.SecOpts.Certificate shoulbe bet set to configured certificate")
 }
