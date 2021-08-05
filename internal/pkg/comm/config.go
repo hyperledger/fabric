@@ -70,6 +70,10 @@ type ServerConfig struct {
 	HealthCheckEnabled bool
 	// ServerStatsHandler should be set if metrics on connections are to be reported.
 	ServerStatsHandler *ServerStatsHandler
+	// Maximum message size the server can receive
+	MaxRecvMsgSize int
+	// Maximum message size the server can send
+	MaxSendMsgSize int
 }
 
 // ClientConfig defines the parameters for configuring a GRPCClient instance

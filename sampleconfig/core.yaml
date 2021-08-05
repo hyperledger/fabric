@@ -468,6 +468,13 @@ peer:
             # deliverService limits concurrent event listeners registered to deliver service for blocks and transaction events.
             deliverService: 2500
 
+    # Since all nodes should be consistent it is recommended to keep
+    # the default value of 100MB for MaxRecvMsgSize & MaxSendMsgSize
+    # Max message size in bytes GRPC server and client can receive
+    maxRecvMsgSize: 104857600
+    # Max message size in bytes GRPC server and client can send
+    maxSendMsgSize: 104857600
+
 ###############################################################################
 #
 #    VM section
