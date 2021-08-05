@@ -67,8 +67,8 @@ func NewTestPeer(t *testing.T) (*Peer, func()) {
 		defaultDeliverClientDialOpts,
 		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize),
-			grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize),
+			grpc.MaxCallRecvMsgSize(comm.DefaultMaxRecvMsgSize),
+			grpc.MaxCallSendMsgSize(comm.DefaultMaxSendMsgSize),
 		),
 	)
 	defaultDeliverClientDialOpts = append(

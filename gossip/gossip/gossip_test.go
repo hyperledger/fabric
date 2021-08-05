@@ -670,7 +670,7 @@ func TestNoMessagesSelfLoop(t *testing.T) {
 			case msg := <-ch:
 				{
 					if protoext.IsDataMsg(msg.GetGossipMessage().GossipMessage) {
-						t.Fatal("Should not receive data message back, got", msg)
+						t.Errorf("Should not receive data message back, got %s", msg)
 					}
 				}
 				// Waiting for 2 seconds to make sure we won't
