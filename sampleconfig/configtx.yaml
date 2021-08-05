@@ -287,6 +287,8 @@ Orderer: &OrdererDefaults
         # this value will be rejected by ordering. If the "kafka" OrdererType is
         # selected, set 'message.max.bytes' and 'replica.fetch.max.bytes' on
         # the Kafka brokers to a value that is larger than this one.
+        # Based on networking configuration the value needs to be tuned. With
+        # default 100 MB node grpc msg configuration, 49 MB is the max can be set.
         AbsoluteMaxBytes: 10 MB
 
         # Preferred Max Bytes: The preferred maximum number of bytes allowed
