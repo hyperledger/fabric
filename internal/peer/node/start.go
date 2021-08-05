@@ -1148,9 +1148,17 @@ func secureDialOpts(credSupport *comm.CredentialSupport) func() []grpc.DialOptio
 	return func() []grpc.DialOption {
 		var dialOpts []grpc.DialOption
 		// set max send/recv msg sizes
+		maxRecvMsgSize := comm.DefaultMaxRecvMsgSize
+		if viper.IsSet("peer.maxRecvMsgSize") {
+			maxRecvMsgSize = int(viper.GetInt32("peer.maxRecvMsgSize"))
+		}
+		maxSendMsgSize := comm.DefaultMaxSendMsgSize
+		if viper.IsSet("peer.maxSendMsgSize") {
+			maxSendMsgSize = int(viper.GetInt32("peer.maxSendMsgSize"))
+		}
 		dialOpts = append(
 			dialOpts,
-			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.DefaultMaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.DefaultMaxSendMsgSize)),
+			grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxRecvMsgSize), grpc.MaxCallSendMsgSize(maxSendMsgSize)),
 		)
 		// set the keepalive options
 		kaOpts := comm.DefaultKeepaliveOptions
