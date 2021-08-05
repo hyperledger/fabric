@@ -287,7 +287,7 @@ func TestConfigerInvokeJoinChainCorrectParams(t *testing.T) {
 	defaultDeliverClientDialOpts = append(
 		defaultDeliverClientDialOpts,
 		grpc.WithBlock(),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.MaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.MaxSendMsgSize)),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(comm.DefaultMaxRecvMsgSize), grpc.MaxCallSendMsgSize(comm.DefaultMaxSendMsgSize)),
 	)
 	defaultDeliverClientDialOpts = append(
 		defaultDeliverClientDialOpts,
