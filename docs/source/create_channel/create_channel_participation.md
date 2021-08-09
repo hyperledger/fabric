@@ -259,7 +259,7 @@ Before using `configtxgen`, confirm you have to set the `FABRIC_CFG_PATH` enviro
 export FABRIC_CFG_PATH=../config
 ```
 
- You can check that you can are able to use the tool by printing the `configtxgen` help text:
+You can check that you are able to use the tool by printing the `configtxgen` help text:
 
 ```
 configtxgen --help
@@ -468,7 +468,7 @@ _You used the configtxgen command to create the channel genesis block and provid
 
 Assuming you have successfully run the `osnadmin channel join` on all three ordering nodes, you now have an active channel and the ordering service is ready to order transactions into blocks. Peers can join the channel and clients can begin to transact.
 
-If you want to join additional ordering nodes to the consenter set of the channel, following the instructions in the next section.
+If you want to join additional ordering nodes to the consenter set of the channel, follow the instructions in the next section.
 
 ## Step three: Join additional ordering nodes
 
