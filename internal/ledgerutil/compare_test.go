@@ -102,6 +102,25 @@ func TestCompare(t *testing.T) {
 		},
 	}
 
+	sampleRecords5 := []*testRecord{
+		{
+			namespace: "ns1", key: "k1", value: "v1",
+			blockNum: 1, txNum: 1, metadata: "md1",
+		},
+		{
+			namespace: "ns1", key: "k2", value: "v3",
+			blockNum: 1, txNum: 1, metadata: "md2",
+		},
+		{
+			namespace: "ns3", key: "k1", value: "v4",
+			blockNum: 2, txNum: 1, metadata: "md4",
+		},
+		{
+			namespace: "ns3", key: "k2", value: "v5",
+			blockNum: 1, txNum: 3, metadata: "md5",
+		},
+	}
+
 	// Signable metadata samples for snapshots
 	sampleSignableMetadata1 := &kvledger.SnapshotSignableMetadata{
 		ChannelName:            "testchannel",
@@ -238,13 +257,101 @@ func TestCompare(t *testing.T) {
 		]`
 	expectedDiffDatabaseError := "the supplied snapshots appear to be non-comparable. State db types do not match." +
 		"\nSnapshot1 state db type: testdatabase\nSnapshot2 state db type: testdatabase2"
+	expectedFirstDiffs := `[
+		{
+			"namespace" : "ns1",
+			"key" : "k2",
+			"snapshotrecord1" : {
+				"value" : "v2",
+				"blockNum" : 1,
+				"txNum" : 1
+			},
+			"snapshotrecord2" : {
+				"value" : "v3",
+				"blockNum" : 1,
+				"txNum" : 1
+			}
+		},
+		{
+			"namespace" : "ns2",
+			"key" : "k1",
+			"snapshotrecord1" : {
+				"value" : "v3",
+				"blockNum" : 1,
+				"txNum" : 2
+			},
+			"snapshotrecord2" : null
+		},
+		{
+			"namespace" : "ns3",
+			"key" : "k2",
+			"snapshotrecord1" : null,
+			"snapshotrecord2" : {
+				"value" : "v5",
+				"blockNum" : 1,
+				"txNum" : 3
+			}
+		}
+	]`
+	expectedAllDiffs := `[
+		{
+			"namespace" : "ns1",
+			"key" : "k2",
+			"snapshotrecord1" : {
+				"value" : "v2",
+				"blockNum" : 1,
+				"txNum" : 1
+			},
+			"snapshotrecord2" : {
+				"value" : "v3",
+				"blockNum" : 1,
+				"txNum" : 1
+			}
+		},
+		{
+			"namespace" : "ns2",
+			"key" : "k1",
+			"snapshotrecord1" : {
+				"value" : "v3",
+				"blockNum" : 1,
+				"txNum" : 2
+			},
+			"snapshotrecord2" : null
+		},
+		{
+			"namespace" : "ns3",
+			"key" : "k1",
+			"snapshotrecord1" : {
+				"value" : "v4",
+				"blockNum" : 2,
+				"txNum" : 0
+			},
+			"snapshotrecord2" : {
+				"value" : "v4",
+				"blockNum" : 2,
+				"txNum" : 1
+			}
+		},
+		{
+			"namespace" : "ns3",
+			"key" : "k2",
+			"snapshotrecord1" : null,
+			"snapshotrecord2" : {
+				"value" : "v5",
+				"blockNum" : 1,
+				"txNum" : 3
+			}
+		}
+	]`
 
 	testCases := map[string]struct {
 		inputTestRecords1      []*testRecord
 		inputSignableMetadata1 *kvledger.SnapshotSignableMetadata
 		inputTestRecords2      []*testRecord
 		inputSignableMetadata2 *kvledger.SnapshotSignableMetadata
-		expectedOutput         string
+		expectedAllOutput      string
+		expectedFirstOutput    string
+		firstN                 int
 		expectedOutputType     string
 		expectedDiffCount      int
 	}{
@@ -254,7 +361,7 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords2,
 			inputSignableMetadata2: sampleSignableMetadata2,
-			expectedOutput:         expectedDifferenceResult,
+			expectedAllOutput:      expectedDifferenceResult,
 			expectedOutputType:     "json",
 			expectedDiffCount:      1,
 		},
@@ -264,7 +371,7 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords3,
 			inputSignableMetadata2: sampleSignableMetadata2,
-			expectedOutput:         expectedMissingResult1,
+			expectedAllOutput:      expectedMissingResult1,
 			expectedOutputType:     "json",
 			expectedDiffCount:      1,
 		},
@@ -274,7 +381,7 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata2,
 			inputTestRecords2:      sampleRecords1,
 			inputSignableMetadata2: sampleSignableMetadata1,
-			expectedOutput:         expectedMissingResult2,
+			expectedAllOutput:      expectedMissingResult2,
 			expectedOutputType:     "json",
 			expectedDiffCount:      1,
 		},
@@ -284,7 +391,7 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords4,
 			inputSignableMetadata2: sampleSignableMetadata2,
-			expectedOutput:         expectedMissingTailResult1,
+			expectedAllOutput:      expectedMissingTailResult1,
 			expectedOutputType:     "json",
 			expectedDiffCount:      2,
 		},
@@ -294,7 +401,7 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata2,
 			inputTestRecords2:      sampleRecords1,
 			inputSignableMetadata2: sampleSignableMetadata1,
-			expectedOutput:         expectedMissingTailResult2,
+			expectedAllOutput:      expectedMissingTailResult2,
 			expectedOutputType:     "json",
 			expectedDiffCount:      2,
 		},
@@ -304,7 +411,7 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords1,
 			inputSignableMetadata2: sampleSignableMetadata1,
-			expectedOutput:         "",
+			expectedAllOutput:      "",
 			expectedOutputType:     "same-hash",
 			expectedDiffCount:      -1,
 		},
@@ -314,7 +421,7 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords2,
 			inputSignableMetadata2: sampleSignableMetadata3,
-			expectedOutput:         expectedDiffDatabaseError,
+			expectedAllOutput:      expectedDiffDatabaseError,
 			expectedOutputType:     "error",
 			expectedDiffCount:      0,
 		},
@@ -326,6 +433,18 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata2: sampleSignableMetadata2,
 			expectedOutputType:     "exists-error",
 			expectedDiffCount:      0,
+		},
+		// User requested first 3 differences
+		"first-3-diffs": {
+			inputTestRecords1:      sampleRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords5,
+			inputSignableMetadata2: sampleSignableMetadata2,
+			expectedAllOutput:      expectedAllDiffs,
+			expectedFirstOutput:    expectedFirstDiffs,
+			firstN:                 3,
+			expectedOutputType:     "json",
+			expectedDiffCount:      4,
 		},
 	}
 
@@ -350,20 +469,24 @@ func TestCompare(t *testing.T) {
 			require.NoError(t, err)
 
 			// Compare snapshots and check the output
-			count, out, err := compareSnapshots(snapshotDir1, snapshotDir2, resultsDir)
+			count, allOut, firstOut, err := compareSnapshots(snapshotDir1, snapshotDir2, resultsDir, testCase.firstN)
 			switch testCase.expectedOutputType {
 			case "error":
 				require.Equal(t, testCase.expectedDiffCount, count)
-				require.ErrorContains(t, err, testCase.expectedOutput)
+				require.ErrorContains(t, err, testCase.expectedAllOutput)
 			case "exists-error":
 				require.NoError(t, err)
-				count, _, err = compareSnapshots(snapshotDir1, snapshotDir2, resultsDir)
+				count, _, _, err = compareSnapshots(snapshotDir1, snapshotDir2, resultsDir, testCase.firstN)
 				require.Equal(t, testCase.expectedDiffCount, count)
 				require.ErrorContains(t, err, "testchannel_2_comparison already exists in "+resultsDir+". Choose a different location or remove the existing results. Aborting compare")
 			case "json":
 				require.Equal(t, testCase.expectedDiffCount, count)
 				require.NoError(t, err)
-				require.JSONEq(t, testCase.expectedOutput, out)
+				require.JSONEq(t, testCase.expectedAllOutput, allOut)
+				if firstOut != "" {
+					require.JSONEq(t, testCase.expectedFirstOutput, firstOut)
+				}
+
 			case "same-hash":
 				require.Equal(t, testCase.expectedDiffCount, count)
 				require.NoError(t, err)
@@ -421,29 +544,35 @@ func createSnapshot(dir string, pubStateRecords []*testRecord, signableMetadata 
 }
 
 // compareSnapshots calls the Compare tool and extracts the result json
-func compareSnapshots(ss1 string, ss2 string, res string) (int, string, error) {
+func compareSnapshots(ss1 string, ss2 string, res string, firstN int) (int, string, string, error) {
 	// Run compare tool on snapshots
-	count, err := Compare(ss1, ss2, res)
+	count, opath, err := Compare(ss1, ss2, res, firstN)
 	if err != nil || count == -1 {
-		return count, "", err
+		return count, "", "", err
 	}
 
 	// Read results of output
-	md, err := readMetadata(filepath.Join(ss1, kvledger.SnapshotSignableMetadataFileName))
+	allBytes, err := ioutil.ReadFile(filepath.Join(opath, AllDiffsByKey))
 	if err != nil {
-		return 0, "", err
+		return 0, "", "", err
 	}
-	odir := fmt.Sprintf("%s_%d_comparison", md.ChannelName, md.LastBlockNumber)
-	resBytes, err := ioutil.ReadFile(filepath.Join(res, odir, AllDiffsByKey))
+	allOut, err := ioutil.ReadAll(bytes.NewReader(allBytes))
 	if err != nil {
-		return 0, "", err
+		return 0, "", "", err
 	}
-	out, err := ioutil.ReadAll(bytes.NewReader(resBytes))
-	if err != nil {
-		return 0, "", err
+	if firstN != 0 {
+		firstBytes, err := ioutil.ReadFile(filepath.Join(opath, FirstDiffsByHeight))
+		if err != nil {
+			return 0, "", "", err
+		}
+		firstOut, err := ioutil.ReadAll(bytes.NewReader(firstBytes))
+		if err != nil {
+			return 0, "", "", err
+		}
+		return count, string(allOut), string(firstOut), nil
 	}
 
-	return count, string(out), nil
+	return count, string(allOut), "", nil
 }
 
 // toBytes serializes the Height
