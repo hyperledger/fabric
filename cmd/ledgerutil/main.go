@@ -9,7 +9,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/hyperledger/fabric/internal/ledgerutil"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -17,6 +16,11 @@ import (
 
 const (
 	compareErrorMessage = "Ledger Compare Error: "
+	outputDirDesc       = "Snapshot comparison json results output directory. Default is the current directory."
+	firstDiffsDesc      = "Number of differences to record in " + ledgerutil.FirstDiffsByHeight +
+		". Generating a file of more than the first 10 differences will result in a large amount " +
+		"of memory usage and is not recommended. Defaults to 10. If set to 0, will not produce " +
+		ledgerutil.FirstDiffsByHeight + "."
 )
 
 var (
@@ -25,7 +29,8 @@ var (
 	compare       = app.Command("compare", "Compare two ledgers via their snapshots.")
 	snapshotPath1 = compare.Arg("snapshotPath1", "First ledger snapshot directory.").Required().String()
 	snapshotPath2 = compare.Arg("snapshotPath2", "Second ledger snapshot directory.").Required().String()
-	outputDir     = compare.Flag("outputDir", "Snapshot comparison json results output directory. Default is the current directory.").Short('o').String()
+	outputDir     = compare.Flag("outputDir", outputDirDesc).Short('o').String()
+	firstDiffs    = compare.Flag("firstDiffs", firstDiffsDesc).Short('f').Default("10").Int()
 
 	troubleshoot = app.Command("troubleshoot", "Identify potentially divergent transactions.")
 
@@ -46,8 +51,6 @@ func main() {
 
 	case compare.FullCommand():
 
-		cleanpath := filepath.Clean(*outputDir)
-
 		// Determine result json file location
 		if *outputDir == "" {
 			*outputDir, err = os.Getwd()
@@ -55,17 +58,9 @@ func main() {
 				fmt.Printf("%s%s\n", compareErrorMessage, err)
 				return
 			}
-			cleanpath = "the current directory"
-		}
-		// Clean output
-		switch cleanpath {
-		case ".":
-			cleanpath = "the current directory"
-		case "..":
-			cleanpath = "the parent directory"
 		}
 
-		count, err := ledgerutil.Compare(*snapshotPath1, *snapshotPath2, *outputDir)
+		count, outputDirPath, err := ledgerutil.Compare(*snapshotPath1, *snapshotPath2, *outputDir, *firstDiffs)
 		if err != nil {
 			fmt.Printf("%s%s\n", compareErrorMessage, err)
 			return
@@ -75,7 +70,7 @@ func main() {
 		if count == -1 {
 			fmt.Println("Both snapshot public state hashes were the same. No results were generated.")
 		} else {
-			fmt.Printf("Results saved to %s. Total differences found: %d\n", cleanpath, count)
+			fmt.Printf("Results saved to %s. Total differences found: %d\n", outputDirPath, count)
 		}
 
 	case troubleshoot.FullCommand():

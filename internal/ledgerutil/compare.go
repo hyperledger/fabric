@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -27,32 +28,36 @@ import (
 const (
 	// AllDiffsByKey - Filename for the json output that contains all differences ordered by key
 	AllDiffsByKey = "all_diffs_by_key.json"
+	// FirstDiffsByHeight - Filename for the json output that contains the first n differences ordered by height
+	FirstDiffsByHeight = "first_diffs_by_height.json"
 )
 
 // Compare - Compares two ledger snapshots and outputs the differences in snapshot records
 // This function will throw an error if the output directory already exist in the outputDirLoc
 // Function will return count of -1 if the public state hashes are the same
-func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string) (count int, err error) {
+func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firstDiffs int) (count int, outputDirPath string, err error) {
+	var records diffRecordSlice
+
 	// Check the hashes between two files
 	hashPath1 := filepath.Join(snapshotDir1, kvledger.SnapshotSignableMetadataFileName)
 	hashPath2 := filepath.Join(snapshotDir2, kvledger.SnapshotSignableMetadataFileName)
 
 	equal, channelName, blockHeight, err := snapshotsComparable(hashPath1, hashPath2)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
-
+	// Snapshot hashes are the same
 	if equal {
-		return -1, nil
+		return -1, "", nil
 	}
 
 	// Output directory creation
 	outputDirName := fmt.Sprintf("%s_%d_comparison", channelName, blockHeight)
-	outputDirPath := filepath.Join(outputDirLoc, outputDirName)
+	outputDirPath = filepath.Join(outputDirLoc, outputDirName)
 
 	empty, err := fileutil.CreateDirIfMissing(outputDirPath)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	if !empty {
 		switch outputDirLoc {
@@ -61,35 +66,35 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string) (cou
 		case "..":
 			outputDirLoc = "the parent directory"
 		}
-		return 0, errors.Errorf("%s already exists in %s. Choose a different location or remove the existing results. Aborting compare", outputDirName, outputDirLoc)
+		return 0, "", errors.Errorf("%s already exists in %s. Choose a different location or remove the existing results. Aborting compare", outputDirName, outputDirLoc)
 	}
 
-	// Create the output file
-	jsonOutputFile, err := newJSONFileWriter(filepath.Join(outputDirPath, AllDiffsByKey))
+	// Create the output files
+	allOutputFile, err := newJSONFileWriter(filepath.Join(outputDirPath, AllDiffsByKey))
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	// Create snapshot readers to read both snapshots
 	snapshotReader1, err := privacyenabledstate.NewSnapshotReader(snapshotDir1,
 		privacyenabledstate.PubStateDataFileName, privacyenabledstate.PubStateMetadataFileName)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	snapshotReader2, err := privacyenabledstate.NewSnapshotReader(snapshotDir2,
 		privacyenabledstate.PubStateDataFileName, privacyenabledstate.PubStateMetadataFileName)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	// Read each snapshot record  to begin looking for differences
 	namespace1, snapshotRecord1, err := snapshotReader1.Next()
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	namespace2, snapshotRecord2, err := snapshotReader2.Next()
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	// Main snapshot record comparison loop
@@ -107,56 +112,65 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string) (cou
 				// Keys are the same but records are different
 				diffRecord, err := newDiffRecord(namespace1, snapshotRecord1, snapshotRecord2)
 				if err != nil {
-					return 0, err
+					return 0, "", err
 				}
 				// Add difference to output JSON file
-				err = jsonOutputFile.addRecord(*diffRecord)
+				err = allOutputFile.addRecord(*diffRecord)
 				if err != nil {
-					return 0, err
+					return 0, "", err
+				}
+				if firstDiffs != 0 {
+					records = append(records, diffRecord)
 				}
 			}
 			// Advance both snapshot readers
 			namespace1, snapshotRecord1, err = snapshotReader1.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			namespace2, snapshotRecord2, err = snapshotReader2.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 
 		case 1: // Key 1 is bigger, snapshot 1 is missing a record
 			// Snapshot 2 has the missing record, add missing to output JSON file
 			diffRecord, err := newDiffRecord(namespace2, nil, snapshotRecord2)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			// Add missing record to output JSON file
-			err = jsonOutputFile.addRecord(*diffRecord)
+			err = allOutputFile.addRecord(*diffRecord)
 			if err != nil {
-				return 0, err
+				return 0, "", err
+			}
+			if firstDiffs != 0 {
+				records = append(records, diffRecord)
 			}
 			// Advance the second snapshot reader
 			namespace2, snapshotRecord2, err = snapshotReader2.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 
 		case -1: // Key 2 is bigger, snapshot 2 is missing a record
 			// Snapshot 1 has the missing record, add missing to output JSON file
 			diffRecord, err := newDiffRecord(namespace1, snapshotRecord1, nil)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 			// Add missing record to output JSON file
-			err = jsonOutputFile.addRecord(*diffRecord)
+			err = allOutputFile.addRecord(*diffRecord)
 			if err != nil {
-				return 0, err
+				return 0, "", err
+			}
+			if firstDiffs != 0 {
+				records = append(records, diffRecord)
 			}
 			// Advance the first snapshot reader
 			namespace1, snapshotRecord1, err = snapshotReader1.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 
 		default:
@@ -172,15 +186,18 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string) (cou
 			// Add missing to output JSON file
 			diffRecord, err := newDiffRecord(namespace1, snapshotRecord1, nil)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
-			err = jsonOutputFile.addRecord(*diffRecord)
+			err = allOutputFile.addRecord(*diffRecord)
 			if err != nil {
-				return 0, err
+				return 0, "", err
+			}
+			if firstDiffs != 0 {
+				records = append(records, diffRecord)
 			}
 			namespace1, snapshotRecord1, err = snapshotReader1.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 		}
 
@@ -189,24 +206,64 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string) (cou
 			// Add missing to output JSON file
 			diffRecord, err := newDiffRecord(namespace2, nil, snapshotRecord2)
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
-			err = jsonOutputFile.addRecord(*diffRecord)
+			err = allOutputFile.addRecord(*diffRecord)
 			if err != nil {
-				return 0, err
+				return 0, "", err
+			}
+			if firstDiffs != 0 {
+				records = append(records, diffRecord)
 			}
 			namespace2, snapshotRecord2, err = snapshotReader2.Next()
 			if err != nil {
-				return 0, err
+				return 0, "", err
 			}
 		}
 	}
 
-	err = jsonOutputFile.close()
+	err = allOutputFile.close()
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
-	return jsonOutputFile.count, nil
+
+	// Create early differences output file
+	if firstDiffs != 0 {
+		firstDiffsOutputFile, err := newJSONFileWriter(filepath.Join(outputDirPath, FirstDiffsByHeight))
+		if err != nil {
+			return 0, "", err
+		}
+		sort.Sort(records)
+		for i := 0; i < firstDiffs && i < len(records); i++ {
+			firstDiffsOutputFile.addRecord(records[i])
+		}
+		err = firstDiffsOutputFile.close()
+		if err != nil {
+			return 0, "", err
+		}
+	}
+
+	return allOutputFile.count, outputDirPath, nil
+}
+
+type diffRecordSlice []*diffRecord
+
+func (s diffRecordSlice) Len() int {
+	return len(s)
+}
+
+func (s diffRecordSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s diffRecordSlice) Less(i, j int) bool {
+	iBlockNum, iTxNum := s[i].getHeight()
+	jBlockNum, jTxNum := s[j].getHeight()
+
+	if iBlockNum == jBlockNum {
+		return iTxNum <= jTxNum
+	}
+	return iBlockNum < jBlockNum
 }
 
 // diffRecord represents a diverging record in json
@@ -249,11 +306,38 @@ func newDiffRecord(namespace string, record1 *privacyenabledstate.SnapshotRecord
 	}, nil
 }
 
+// Get height from a diffRecord
+func (d diffRecord) getHeight() (blockNum uint64, txNum uint64) {
+	r := earlierRecord(d.Record1, d.Record2)
+	return r.BlockNum, r.TxNum
+}
+
 // snapshotRecord represents the data of a snapshot record in json
 type snapshotRecord struct {
 	Value    string `json:"value"`
 	BlockNum uint64 `json:"blockNum"`
 	TxNum    uint64 `json:"txNum"`
+}
+
+func earlierRecord(r1 *snapshotRecord, r2 *snapshotRecord) *snapshotRecord {
+	if r1 == nil {
+		return r2
+	}
+	if r2 == nil {
+		return r1
+	}
+	// Determine earlier record by block height
+	if r1.BlockNum < r2.BlockNum {
+		return r1
+	}
+	if r2.BlockNum < r1.BlockNum {
+		return r2
+	}
+	// Record block heights are the same, determine earlier transaction
+	if r1.TxNum < r2.TxNum {
+		return r1
+	}
+	return r2
 }
 
 // Creates a new SnapshotRecord
