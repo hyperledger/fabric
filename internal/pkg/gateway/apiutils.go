@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc/codes"
@@ -78,4 +79,22 @@ func rpcError(code codes.Code, message string, details ...proto.Message) error {
 		} // otherwise return the error without the details
 	}
 	return st.Err()
+}
+
+func wrappedRpcError(err error, message string, details ...proto.Message) error {
+	statusErr := status.Convert(err)
+	return rpcError(statusErr.Code(), message+": "+statusErr.Message(), details...)
+}
+
+func endpointError(e *endpointConfig, err error) *gp.EndpointError {
+	return &gp.EndpointError{Address: e.address, MspId: e.mspid, Message: err.Error()}
+}
+
+func detailsAsString(details ...proto.Message) string {
+	var detailStrings []string
+	for _, detail := range details {
+		detailStrings = append(detailStrings, "{"+detail.String()+"}")
+	}
+
+	return fmt.Sprint(detailStrings)
 }
