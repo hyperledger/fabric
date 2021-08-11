@@ -53,21 +53,13 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 	response, err := endorser.client.ProcessProposal(ctx, signedProposal)
 	if err != nil {
 		logger.Debugw("Evaluate call to endorser failed", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", err)
-		return nil, rpcError(
-			codes.Aborted,
-			"failed to evaluate transaction",
-			&gp.EndpointError{Address: endorser.address, MspId: endorser.mspid, Message: err.Error()},
-		)
+		return nil, wrappedRpcError(err, "failed to evaluate transaction", endpointError(endorser.endpointConfig, err))
 	}
 
 	retVal, err := getTransactionResponse(response)
 	if err != nil {
-		logger.Debugw("Evaluate call to endorser returned failure", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", err)
-		return nil, rpcError(
-			codes.Aborted,
-			"transaction evaluation error",
-			&gp.EndpointError{Address: endorser.address, MspId: endorser.mspid, Message: err.Error()},
-		)
+		logger.Debugw("Evaluate call to endorser returned a malformed or error response", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", err)
+		return nil, rpcError(codes.Unknown, err.Error(), endpointError(endorser.endpointConfig, err))
 	}
 	evaluateResponse := &gp.EvaluateResponse{
 		Result: retVal,
@@ -144,10 +136,13 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 		// 2. Process the proposal on this endorser
 		firstResponse, err := firstEndorser.client.ProcessProposal(ctx, signedProposal)
 		if err != nil {
-			return nil, rpcError(codes.Aborted, "failed to endorse transaction", endpointError(firstEndorser, err))
+			return nil, wrappedRpcError(err, "failed to endorse transaction", endpointError(firstEndorser.endpointConfig, err))
 		}
 		if firstResponse.Response.Status < 200 || firstResponse.Response.Status >= 400 {
-			return nil, rpcError(codes.Aborted, "failed to endorse transaction", endpointError(firstEndorser, fmt.Errorf("error %d, %s", firstResponse.Response.Status, firstResponse.Response.Message)))
+			err := fmt.Errorf("error %d, %s", firstResponse.Response.Status, firstResponse.Response.Message)
+			endpointErr := endpointError(firstEndorser.endpointConfig, err)
+			errorMessage := "failed to endorse transaction: " + detailsAsString(endpointErr)
+			return nil, rpcError(codes.Aborted, errorMessage, endpointErr)
 		}
 
 		// 3. Extract ChaincodeInterest and SBE policies
@@ -194,11 +189,11 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 			switch {
 			case err != nil:
 				logger.Debugw("Endorse call to endorser failed", "channel", request.ChannelId, "txid", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "error", err)
-				responseCh <- &endorserResponse{err: endpointError(e, err)}
+				responseCh <- &endorserResponse{err: endpointError(e.endpointConfig, err)}
 			case response.Response.Status < 200 || response.Response.Status >= 400:
 				// this is an error case and will be returned in the error details to the client
 				logger.Debugw("Endorse call to endorser returned failure", "channel", request.ChannelId, "txid", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "status", response.Response.Status, "message", response.Response.Message)
-				responseCh <- &endorserResponse{err: endpointError(e, fmt.Errorf("error %d, %s", response.Response.Status, response.Response.Message))}
+				responseCh <- &endorserResponse{err: endpointError(e.endpointConfig, fmt.Errorf("error %d, %s", response.Response.Status, response.Response.Message))}
 			default:
 				logger.Debugw("Endorse call to endorser returned success", "channel", request.ChannelId, "txid", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "status", response.Response.Status, "message", response.Response.Message)
 				responseCh <- &endorserResponse{pr: response}
@@ -218,7 +213,8 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	}
 
 	if len(errorDetails) != 0 {
-		return nil, rpcError(codes.Aborted, "failed to endorse transaction", errorDetails...)
+		errorMessage := "failed to endorse transaction: " + detailsAsString(errorDetails...)
+		return nil, rpcError(codes.Aborted, errorMessage, errorDetails...)
 	}
 
 	env, err := protoutil.CreateTx(proposal, responses...)
@@ -258,35 +254,23 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	}
 
 	if len(orderers) == 0 {
-		return nil, status.Errorf(codes.NotFound, "no broadcastClients discovered")
+		return nil, status.Errorf(codes.Unavailable, "no broadcastClients discovered")
 	}
 
 	orderer := orderers[0] // send to first orderer for now
 
 	broadcast, err := orderer.client.Broadcast(ctx)
 	if err != nil {
-		return nil, rpcError(
-			codes.Aborted,
-			"failed to create BroadcastClient",
-			&gp.EndpointError{Address: orderer.address, MspId: orderer.mspid, Message: err.Error()},
-		)
+		return nil, wrappedRpcError(err, "failed to create BroadcastClient", endpointError(orderer.endpointConfig, err))
 	}
 	logger.Info("Submitting txn to orderer")
 	if err := broadcast.Send(txn); err != nil {
-		return nil, rpcError(
-			codes.Aborted,
-			"failed to send transaction to orderer",
-			&gp.EndpointError{Address: orderer.address, MspId: orderer.mspid, Message: err.Error()},
-		)
+		return nil, wrappedRpcError(err, "failed to send transaction to orderer", endpointError(orderer.endpointConfig, err))
 	}
 
 	response, err := broadcast.Recv()
 	if err != nil {
-		return nil, rpcError(
-			codes.Aborted,
-			"failed to receive response from orderer",
-			&gp.EndpointError{Address: orderer.address, MspId: orderer.mspid, Message: err.Error()},
-		)
+		return nil, wrappedRpcError(err, "failed to receive response from orderer", endpointError(orderer.endpointConfig, err))
 	}
 
 	if response == nil {
@@ -313,7 +297,7 @@ func (gs *Server) CommitStatus(ctx context.Context, signedRequest *gp.SignedComm
 
 	request := &gp.CommitStatusRequest{}
 	if err := proto.Unmarshal(signedRequest.Request, request); err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid status request")
+		return nil, status.Errorf(codes.InvalidArgument, "invalid status request: %v", err)
 	}
 
 	signedData := &protoutil.SignedData{
@@ -349,7 +333,7 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 
 	request := &gp.ChaincodeEventsRequest{}
 	if err := proto.Unmarshal(signedRequest.Request, request); err != nil {
-		return status.Error(codes.InvalidArgument, "invalid chaincode events request")
+		return status.Errorf(codes.InvalidArgument, "invalid chaincode events request: %v", err)
 	}
 
 	signedData := &protoutil.SignedData{
@@ -378,8 +362,4 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 
 	// If stream is still open, this was a server-side error; otherwise client won't see it anyway
 	return status.Error(codes.Unavailable, "failed to read events")
-}
-
-func endpointError(e *endorser, err error) *gp.EndpointError {
-	return &gp.EndpointError{Address: e.address, MspId: e.mspid, Message: err.Error()}
 }
