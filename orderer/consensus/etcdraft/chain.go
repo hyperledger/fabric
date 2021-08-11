@@ -890,8 +890,13 @@ func (c *Chain) writeBlock(block *common.Block, index uint64) {
 // It takes care of config messages as well as the revalidation of messages if the config sequence has advanced.
 func (c *Chain) ordered(msg *orderer.SubmitRequest) (batches [][]*common.Envelope, pending bool, err error) {
 	seq := c.support.Sequence()
+	
+	isconfig, err := c.isConfig(msg.Payload)
+	if err != nil {
+		return nil, false, errors.Errorf("bad message: %s", err)
+	}
 
-	if c.isConfig(msg.Payload) {
+	if isconfig {
 		// ConfigMsg
 		if msg.LastValidationSeq < seq {
 			c.logger.Warnf("Config message was validated against %d, although current config seq has advanced (%d)", msg.LastValidationSeq, seq)
@@ -1163,13 +1168,14 @@ func (c *Chain) gc() {
 	}
 }
 
-func (c *Chain) isConfig(env *common.Envelope) bool {
+func (c *Chain) isConfig(env *common.Envelope) (bool,error) {
 	h, err := protoutil.ChannelHeader(env)
 	if err != nil {
-		c.logger.Panicf("failed to extract channel header from envelope")
+		c.logger.Errorf("failed to extract channel header from envelope")
+		return false, err
 	}
 
-	return h.Type == int32(common.HeaderType_CONFIG) || h.Type == int32(common.HeaderType_ORDERER_TRANSACTION)
+	return h.Type == int32(common.HeaderType_CONFIG) || h.Type == int32(common.HeaderType_ORDERER_TRANSACTION),nil
 }
 
 func (c *Chain) configureComm() error {
