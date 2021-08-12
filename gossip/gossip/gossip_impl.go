@@ -110,7 +110,7 @@ func New(conf *Config, s *grpc.Server, sa api.SecurityAdvisor,
 		gossipMetrics.CommMetrics, commConfig)
 
 	if err != nil {
-		lgr.Error("Failed instntiating communication layer:", err)
+		lgr.Error("Failed instantiating communication layer:", err)
 		return nil
 	}
 
