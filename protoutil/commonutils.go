@@ -212,6 +212,10 @@ func IsConfigBlock(block *cb.Block) bool {
 
 // ChannelHeader returns the *cb.ChannelHeader for a given *cb.Envelope.
 func ChannelHeader(env *cb.Envelope) (*cb.ChannelHeader, error) {
+	if env == nil {
+		return nil, errors.New("Invalid envelope payload. can't be nil")
+	}
+
 	envPayload, err := UnmarshalPayload(env.Payload)
 	if err != nil {
 		return nil, err
