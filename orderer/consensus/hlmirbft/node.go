@@ -67,7 +67,7 @@ const (
 
 func (n *node) start(fresh, join bool) {
 	n.logger.Debugf("Starting mirbft node: #peers: %v", len(n.metadata.ConsenterIds))
-	if fresh {
+
 		if join {
 			n.logger.Info("Starting mirbft node to join an existing channel")
 		} else {
@@ -113,6 +113,8 @@ func (n *node) start(fresh, join bool) {
 		}
 
 		initialNetworkState := InitialNetworkState(len(n.chain.opts.Consenters))
+		//FLY2-167 - Restructured the if condition
+	if fresh {
 		// TODO(harrymknight) Tick interval is fixed. Perhaps introduce TickInterval field in configuration options
 		go func() {
 			err := n.ProcessAsNewNode(n.chain.doneC, n.clock.NewTicker(2*time.Second).C(), initialNetworkState, []byte("first"))
