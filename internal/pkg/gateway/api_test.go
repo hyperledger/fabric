@@ -234,6 +234,41 @@ func TestEvaluate(t *testing.T) {
 			expectedEndorsers: []string{"peer4:11051"},
 		},
 		{
+			name: "evaluate with transient data should select local org, highest block height",
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 4},
+				{"id2", "peer1:8051", "msp1", 5},
+				{"id3", "peer2:9051", "msp2", 6},
+				{"id4", "peer3:10051", "msp2", 5},
+				{"id5", "peer4:11051", "msp3", 7},
+			},
+			transientData:     map[string][]byte{"transient-key": []byte("transient-value")},
+			expectedEndorsers: []string{"peer1:8051"},
+		},
+		{
+			name: "evaluate with transient data should fail if local org not available",
+			members: []networkMember{
+				{"id3", "peer2:9051", "msp2", 6},
+				{"id4", "peer3:10051", "msp2", 5},
+				{"id5", "peer4:11051", "msp3", 7},
+			},
+			transientData: map[string][]byte{"transient-key": []byte("transient-value")},
+			errString:     "rpc error: code = Unavailable desc = no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data",
+		},
+		{
+			name: "evaluate with transient data and target (non-local) orgs should select the highest block height peer",
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 11},
+				{"id2", "peer1:8051", "msp1", 5},
+				{"id3", "peer2:9051", "msp2", 6},
+				{"id4", "peer3:10051", "msp2", 9},
+				{"id5", "peer4:11051", "msp3", 7},
+			},
+			transientData:     map[string][]byte{"transient-key": []byte("transient-value")},
+			endorsingOrgs:     []string{"msp2", "msp3"},
+			expectedEndorsers: []string{"peer3:10051"},
+		},
+		{
 			name: "process proposal fails",
 			members: []networkMember{
 				{"id1", "localhost:7051", "msp1", 5},
