@@ -87,6 +87,21 @@ func (n NodeResume) Args() []string {
 	}
 }
 
+type NodeUnjoin struct {
+	ChannelID string
+}
+
+func (n NodeUnjoin) SessionName() string {
+	return "peer-node-unjoin"
+}
+
+func (n NodeUnjoin) Args() []string {
+	return []string{
+		"node", "unjoin",
+		"--channelID", n.ChannelID,
+	}
+}
+
 type ChannelCreate struct {
 	ChannelID   string
 	Orderer     string

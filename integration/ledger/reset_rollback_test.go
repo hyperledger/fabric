@@ -28,7 +28,7 @@ import (
 	"github.com/tedsuo/ifrit"
 )
 
-var _ = Describe("rollback, reset, pause and resume peer node commands", func() {
+var _ = Describe("rollback, reset, pause, resume, and unjoin peer node commands", func() {
 	// at the beginning of each test under this block, we have defined two collections:
 	// 1. collectionMarbles - Org1 and Org2 have access to this collection
 	// 2. collectionMarblePrivateDetails - Org2 and Org3 have access to this collection
@@ -73,7 +73,7 @@ var _ = Describe("rollback, reset, pause and resume peer node commands", func() 
 		By("creating 5 blocks")
 		for i := 1; i <= 5; i++ {
 			helper.addMarble("marblesp", fmt.Sprintf(`{"name":"marble%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), org2peer0)
-			helper.waitUntilEqualLedgerHeight(height + i)
+			helper.waitUntilAllPeersEqualLedgerHeight(height + i)
 		}
 
 		By("verifying marble1 to marble5 exist in collectionMarbles & collectionMarblePrivateDetails in Org2.peer0")
@@ -164,13 +164,13 @@ var _ = Describe("rollback, reset, pause and resume peer node commands", func() 
 		setup.network.VerifyMembership(setup.peers, setup.channelID, "marblesp")
 
 		By("Verifying leger height on all peers")
-		helper.waitUntilEqualLedgerHeight(14)
+		helper.waitUntilAllPeersEqualLedgerHeight(14)
 
 		// Test chaincode works correctly after the commands
 		By("Creating 2 more blocks post rollback/reset")
 		for i := 6; i <= 7; i++ {
 			helper.addMarble("marblesp", fmt.Sprintf(`{"name":"marble%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), org2peer0)
-			helper.waitUntilEqualLedgerHeight(14 + i - 5)
+			helper.waitUntilAllPeersEqualLedgerHeight(14 + i - 5)
 		}
 
 		By("Verifying marble1 to marble7 exist in collectionMarbles & collectionMarblePrivateDetails on org2peer0")
@@ -190,6 +190,68 @@ var _ = Describe("rollback, reset, pause and resume peer node commands", func() 
 		setup.startPeer(peer)
 		Expect(dbPath).To(BeADirectory())
 		helper.assertPresentInCollectionM("marblesp", "marble2", peer)
+	})
+
+	// This test exercises peer node unjoin on the following peers:
+	// Org1.peer0 - unjoin
+	// Org2.peer0 -
+	// Org3.peer0 - unjoin (via partial / resumed deletion on restart)
+	It("unjoins channels and checks side effects on the ledger and transient storage", func() {
+		By("Checking ledger heights on each peer")
+		for _, peer := range helper.peers {
+			Expect(helper.getLedgerHeight(peer)).Should(Equal(14))
+		}
+
+		org1peer0 := setup.network.Peer("Org1", "peer0")
+		org2peer0 := setup.network.Peer("Org2", "peer0")
+		org3peer0 := setup.network.Peer("Org3", "peer0")
+
+		// Negative test: peer node unjoin should fail when the peer is online.
+		By("unjoining the peer while the peer node is online")
+		expectedErrMessage := "as another peer node command is executing," +
+			" wait for that command to complete its execution or terminate it before retrying"
+		helper.unjoin(org1peer0, expectedErrMessage, false)
+		helper.unjoin(org2peer0, expectedErrMessage, false)
+		helper.unjoin(org3peer0, expectedErrMessage, false)
+
+		By("stopping the peers to test unjoin commands")
+		setup.stopPeers()
+
+		By("Unjoining from a channel while the peer is down")
+		helper.unjoin(org1peer0, "", true)
+
+		// Negative test: unjoin when the channel has been unjoined
+		By("Double unjoining from a channel")
+		expectedErrMessage = "unjoin channel \\[testchannel\\]: cannot update ledger status, ledger \\[testchannel\\] does not exist"
+		helper.unjoin(org1peer0, expectedErrMessage, false)
+
+		// Simulate an error in peer unjoin by marking the ledger folder as read-only.
+		By("Unjoining from a peer with a read-only ledger file system")
+		ledgerStoragePath := filepath.Join(setup.network.PeerLedgerDir(org3peer0), "chains/chains", helper.channelID)
+		Expect(os.Chmod(ledgerStoragePath, 0o555)).NotTo(HaveOccurred())
+		Expect(os.RemoveAll(ledgerStoragePath)).To(HaveOccurred()) // can not delete write-only ledger folder
+		expectedErrMessage = "ledgersData/chains/chains/testchannel/blockfile_000000: permission denied"
+		helper.unjoin(org3peer0, expectedErrMessage, false)
+		Expect(os.Chmod(ledgerStoragePath, 0o755)).NotTo(HaveOccurred())
+
+		By("restarting peers")
+		setup.startPeer(org1peer0)
+		setup.startPeer(org2peer0)
+		setup.startPeer(org3peer0)
+
+		helper.assertUnjoinedChannel(org1peer0)
+		helper.assertUnjoinedChannel(org3peer0)
+
+		By("rejoining the channel with org1")
+		setup.network.JoinChannel(helper.channelID, setup.orderer, org1peer0)
+		helper.waitUntilPeerEqualLedgerHeight(org1peer0, 14)
+
+		By("Creating 2 more blocks post re-join org1")
+		for i := 6; i <= 7; i++ {
+			helper.addMarble("marblesp", fmt.Sprintf(`{"name":"marble%d", "color":"blue", "size":35, "owner":"tom", "price":99}`, i), org1peer0)
+			helper.waitUntilPeerEqualLedgerHeight(org1peer0, 14+i-5)
+			helper.waitUntilPeerEqualLedgerHeight(org2peer0, 14+i-5)
+		}
 	})
 })
 
@@ -311,15 +373,19 @@ type networkHelper struct {
 
 func (nh *networkHelper) deployChaincode(chaincode nwo.Chaincode) {
 	nwo.DeployChaincode(nh.Network, nh.channelID, nh.orderer, chaincode)
-	nh.waitUntilEqualLedgerHeight(nh.getLedgerHeight(nh.peers[0]))
+	nh.waitUntilAllPeersEqualLedgerHeight(nh.getLedgerHeight(nh.peers[0]))
 }
 
-func (nh *networkHelper) waitUntilEqualLedgerHeight(height int) {
+func (nh *networkHelper) waitUntilAllPeersEqualLedgerHeight(height int) {
 	for _, peer := range nh.peers {
-		Eventually(func() int {
-			return nh.getLedgerHeight(peer)
-		}, nh.EventuallyTimeout).Should(Equal(height))
+		nh.waitUntilPeerEqualLedgerHeight(peer, height)
 	}
+}
+
+func (nh *networkHelper) waitUntilPeerEqualLedgerHeight(peer *nwo.Peer, height int) {
+	Eventually(func() int {
+		return nh.getLedgerHeight(peer)
+	}, nh.EventuallyTimeout).Should(Equal(height))
 }
 
 func (nh *networkHelper) getLedgerHeight(peer *nwo.Peer) int {
@@ -394,6 +460,18 @@ func (nh *networkHelper) pause(peer *nwo.Peer, expectedErrMessage string, expect
 func (nh *networkHelper) resume(peer *nwo.Peer, expectedErrMessage string, expectSuccess bool) {
 	resumeCmd := commands.NodeResume{ChannelID: nh.channelID}
 	sess, err := nh.PeerUserSession(peer, "User1", resumeCmd)
+	Expect(err).NotTo(HaveOccurred())
+	if expectSuccess {
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
+	} else {
+		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(1))
+		Expect(sess.Err).To(gbytes.Say(expectedErrMessage))
+	}
+}
+
+func (nh *networkHelper) unjoin(peer *nwo.Peer, expectedErrMessage string, expectSuccess bool) {
+	unjoinCmd := commands.NodeUnjoin{ChannelID: nh.channelID}
+	sess, err := nh.PeerUserSession(peer, "User1", unjoinCmd)
 	Expect(err).NotTo(HaveOccurred())
 	if expectSuccess {
 		Eventually(sess, nh.EventuallyTimeout).Should(gexec.Exit(0))
@@ -480,4 +558,16 @@ func (th *testHelper) assertPausedChannel(peer *nwo.Peer) {
 	Expect(err).NotTo(HaveOccurred())
 	Eventually(sess, th.EventuallyTimeout).Should(gexec.Exit(1))
 	Expect(sess.Err).To(gbytes.Say("Invalid chain ID"))
+}
+
+func (th *testHelper) assertUnjoinedChannel(peer *nwo.Peer) {
+	sess, err := th.PeerUserSession(peer, "User1", commands.ChannelInfo{
+		ChannelID: th.channelID,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, th.EventuallyTimeout).Should(gexec.Exit(1))
+	Expect(sess.Err).To(gbytes.Say("Invalid chain ID"))
+
+	channelLedgerDir := filepath.Join(th.Network.PeerLedgerDir(peer), "chains/chains", th.channelID)
+	Expect(channelLedgerDir).NotTo(BeADirectory())
 }
