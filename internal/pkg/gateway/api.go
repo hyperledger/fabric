@@ -32,7 +32,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 		return nil, status.Error(codes.InvalidArgument, "an evaluate request is required")
 	}
 	signedProposal := request.GetProposedTransaction()
-	channel, chaincodeID, _, err := getChannelAndChaincodeFromSignedProposal(signedProposal)
+	channel, chaincodeID, hasTransientData, err := getChannelAndChaincodeFromSignedProposal(signedProposal)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
 	}
@@ -42,8 +42,18 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 		return nil, status.Errorf(codes.Unavailable, "%s", err)
 	}
 
-	endorser, err := gs.registry.evaluator(channel, chaincodeID, request.GetTargetOrganizations())
+	targetOrgs := request.GetTargetOrganizations()
+	transientProtected := false
+	if hasTransientData && targetOrgs == nil {
+		targetOrgs = []string{gs.registry.localEndorser.mspid}
+		transientProtected = true
+	}
+
+	endorser, err := gs.registry.evaluator(channel, chaincodeID, targetOrgs)
 	if err != nil {
+		if transientProtected {
+			return nil, status.Error(codes.Unavailable, "no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data")
+		}
 		return nil, status.Errorf(codes.Unavailable, "%s", err)
 	}
 
