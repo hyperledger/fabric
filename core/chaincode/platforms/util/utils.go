@@ -29,6 +29,10 @@ type DockerBuildOptions struct {
 	OutputStream io.Writer
 }
 
+func (dbo DockerBuildOptions) String() string {
+	return fmt.Sprintf("Image=%s Env=%s Cmd=%s)", dbo.Image, dbo.Env, dbo.Cmd)
+}
+
 //-------------------------------------------------------------------------------------------
 // DockerBuild
 //-------------------------------------------------------------------------------------------
@@ -60,7 +64,7 @@ func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 		}
 	}
 
-	logger.Debugf("Attempting build with image %s", opts.Image)
+	logger.Debugf("Attempting build with options: %s", opts)
 
 	//-----------------------------------------------------------------------------------
 	// Ensure the image exists locally, or pull it from a registry if it doesn't
@@ -145,6 +149,7 @@ func DockerBuild(opts DockerBuildOptions, client *docker.Client) error {
 	}
 
 	if retval > 0 {
+		logger.Errorf("Docker build failed using options: %s", opts)
 		return fmt.Errorf("Error returned from build: %d \"%s\"", retval, stdout.String())
 	}
 
