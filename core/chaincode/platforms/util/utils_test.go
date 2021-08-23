@@ -105,3 +105,15 @@ func TestTwoDigitVersion(t *testing.T) {
 	actual = twoDigitVersion(version)
 	require.Equal(t, expected, actual, `Error parsing two digit version. Expected "%s", got "%s"`, expected, actual)
 }
+
+func TestDockerBuildOptions(t *testing.T) {
+	buildOptions := DockerBuildOptions{
+		Image: "imageName",
+		Cmd:   "theCommand",
+		Env:   []string{"ENV_VARIABLE"},
+	}
+
+	actualBuildOptionsString := buildOptions.String()
+	expectedBuildOptionsString := "Image=imageName Env=[ENV_VARIABLE] Cmd=theCommand)"
+	require.Equal(t, expectedBuildOptionsString, actualBuildOptionsString, `Expected "%s", got "%s"`, expectedBuildOptionsString, actualBuildOptionsString)
+}

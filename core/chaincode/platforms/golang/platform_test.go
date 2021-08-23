@@ -378,7 +378,7 @@ elif [ -f "/chaincode/input/src/the-path/go.mod" ]; then
     cd /chaincode/input/src/the-path
     GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 else
-    GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+    GO111MODULE=off GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 fi
 echo Done!
 `,
@@ -419,7 +419,7 @@ elif [ -f "/chaincode/input/src/the-path/go.mod" ]; then
     cd /chaincode/input/src/the-path
     GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
 else
-    GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
+    GO111MODULE=off GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 fi
 echo Done!
 `,
