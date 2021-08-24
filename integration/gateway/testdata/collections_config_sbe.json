@@ -1,0 +1,12 @@
+[
+  {
+    "name": "col",
+    "policy": "OR('Org2MSP.peer', 'Org3MSP.peer')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive":1000000,
+    "endorsementPolicy": {
+      "signaturePolicy": "OR('Org2MSP.member')"
+    }
+  }
+]
