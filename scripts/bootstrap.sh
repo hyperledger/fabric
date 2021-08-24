@@ -66,7 +66,7 @@ cloneSamplesRepo() {
         echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
         git checkout -q v${VERSION}
     else
-        echo "fabric-samples v${VERSION} does not exist, defaulting main"
+        echo "fabric-samples v${VERSION} does not exist, defaulting to main. fabric-samples main branch is intended to work with recent versions of fabric."
         git checkout -q main
     fi
 }
