@@ -7,6 +7,7 @@
 
 # if version not passed in, default to latest released version
 VERSION=2.3.2
+SAMPLE_VERSION_BANDAID=2.2.3
 # if ca version not passed in, default to latest released version
 CA_VERSION=1.5.1
 ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
@@ -62,11 +63,11 @@ cloneSamplesRepo() {
         git clone -b main https://github.com/hyperledger/fabric-samples.git && cd fabric-samples
     fi
 
-    if GIT_DIR=.git git rev-parse v${VERSION} >/dev/null 2>&1; then
-        echo "===> Checking out v${VERSION} of hyperledger/fabric-samples"
-        git checkout -q v${VERSION}
+    if GIT_DIR=.git git rev-parse v${SAMPLE_VERSION_BANDAID} >/dev/null 2>&1; then
+        echo "===> Checking out v${SAMPLE_VERSION_BANDAID} of hyperledger/fabric-samples"
+        git checkout -q v${SAMPLE_VERSION_BANDAID}
     else
-        echo "fabric-samples v${VERSION} does not exist, defaulting main"
+        echo "fabric-samples v${SAMPLE_VERSION_BANDAID} does not exist, defaulting main"
         git checkout -q main
     fi
 }
@@ -76,7 +77,7 @@ download() {
     local BINARY_FILE=$1
     local URL=$2
     echo "===> Downloading: " "${URL}"
-    curl -L --retry 5 --retry-delay 3 "${URL}" | tar xz || rc=$?
+    curl -OL --retry 5 --retry-delay 3 "${URL}" | tar xz || rc=$?
     if [ -n "$rc" ]; then
         echo "==> There was an error downloading the binary file."
         return 22
