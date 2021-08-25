@@ -17,6 +17,7 @@ import (
 	"github.com/hyperledger/fabric/core/comm"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCacheConfigurationNegative(t *testing.T) {
@@ -165,6 +166,15 @@ func TestGetServerConfig(t *testing.T) {
 		"ServerConfig.SecOpts.RequireClientCert should be true")
 	assert.Equal(t, 2, len(sc.SecOpts.ClientRootCAs),
 		"ServerConfig.SecOpts.ClientRootCAs should contain 2 entries")
+
+	// GRPC max message size options
+	require.Equal(t, comm.DefaultMaxRecvMsgSize, sc.MaxRecvMsgSize, "ServerConfig.MaxRecvMsgSize should be set to default value %v", comm.DefaultMaxRecvMsgSize)
+	require.Equal(t, comm.DefaultMaxSendMsgSize, sc.MaxSendMsgSize, "ServerConfig.MaxSendMsgSize should be set to default value %v", comm.DefaultMaxSendMsgSize)
+	viper.Set("peer.maxRecvMsgSize", "1024")
+	viper.Set("peer.maxSendMsgSize", "1024")
+	sc, _ = GetServerConfig()
+	require.Equal(t, 1024, sc.MaxRecvMsgSize, "ServerConfig.MaxRecvMsgSize should be set to custom value 1024")
+	require.Equal(t, 1024, sc.MaxSendMsgSize, "ServerConfig.MaxSendMsgSize should be set to custom value 1024")
 
 	// bad config with TLS
 	viper.Set("peer.tls.rootcert.file", filepath.Join("testdata", "Org11-cert.pem"))

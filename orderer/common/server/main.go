@@ -422,10 +422,12 @@ func configureClusterListener(conf *localconfig.TopLevel, generalConf comm.Serve
 
 func initializeClusterClientConfig(conf *localconfig.TopLevel) comm.ClientConfig {
 	cc := comm.ClientConfig{
-		AsyncConnect: true,
-		KaOpts:       comm.DefaultKeepaliveOptions,
-		Timeout:      conf.General.Cluster.DialTimeout,
-		SecOpts:      &comm.SecureOptions{},
+		AsyncConnect:   true,
+		KaOpts:         comm.DefaultKeepaliveOptions,
+		Timeout:        conf.General.Cluster.DialTimeout,
+		SecOpts:        &comm.SecureOptions{},
+		MaxRecvMsgSize: int(conf.General.MaxRecvMsgSize),
+		MaxSendMsgSize: int(conf.General.MaxSendMsgSize),
 	}
 
 	if conf.General.Cluster.ClientCertificate == "" {
@@ -554,6 +556,8 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 				grpclogging.WithLeveler(grpclogging.LevelerFunc(grpcLeveler)),
 			),
 		},
+		MaxRecvMsgSize: int(conf.General.MaxRecvMsgSize),
+		MaxSendMsgSize: int(conf.General.MaxSendMsgSize),
 	}
 }
 
