@@ -10,12 +10,10 @@ import (
 	"context"
 	"fmt"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
-
+	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	mspproto "github.com/hyperledger/fabric-protos-go/msp"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
@@ -23,10 +21,11 @@ import (
 	"github.com/hyperledger/fabric/core/endorser"
 	"github.com/hyperledger/fabric/core/endorser/fake"
 	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/protoutil"
-
-	"github.com/golang/protobuf/proto"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
+	"github.com/hyperledger/fabric/protoutil"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 )
 
 var _ = Describe("Endorser", func() {
@@ -1023,6 +1022,8 @@ var _ = Describe("Endorser", func() {
 	Context("when building the ChaincodeInterest", func() {
 		var pvtSimResults *rwset.TxPvtReadWriteSet
 		var pubSimResults *rwset.TxReadWriteSet
+		var readWrites []byte
+		var readSet []byte
 
 		BeforeEach(func() {
 			ccPkg := &pb.CollectionConfigPackage{
@@ -1045,12 +1046,30 @@ var _ = Describe("Endorser", func() {
 			mockDeployedCCInfoProvider.AllCollectionsConfigPkgReturns(ccPkg, nil)
 			fakeSupport.GetDeployedCCInfoProviderReturns(mockDeployedCCInfoProvider)
 
+			var err error
+			readWrites, err = proto.Marshal(
+				&kvrwset.KVRWSet{
+					Writes: []*kvrwset.KVWrite{
+						{Key: "myKey", Value: []byte("myValue")},
+					},
+				},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			readSet, err = proto.Marshal(
+				&kvrwset.KVRWSet{
+					Reads: []*kvrwset.KVRead{
+						{Key: "myKey"},
+					},
+				},
+			)
+			Expect(err).NotTo(HaveOccurred())
+
 			pubSimResults = &rwset.TxReadWriteSet{
 				DataModel: rwset.TxReadWriteSet_KV,
 				NsRwset: []*rwset.NsReadWriteSet{
 					{
 						Namespace: "myCC",
-						Rwset:     []byte("public RW set"),
+						Rwset:     readWrites,
 					},
 				},
 			}
@@ -1074,12 +1093,15 @@ var _ = Describe("Endorser", func() {
 		It("add private collection which gets read", func() {
 			privateReads := ledger.PrivateReads{}
 			privateReads.Add("myCC", "mycollection-1")
+			writesetMetadata := ledger.WritesetMetadata{}
+			writesetMetadata.Add("myCC", "mycollection-1", "mykey", nil)
 
 			fakeTxSimulator.GetTxSimulationResultsReturns(
 				&ledger.TxSimulationResults{
 					PubSimulationResults: &rwset.TxReadWriteSet{},
 					PvtSimulationResults: pvtSimResults,
 					PrivateReads:         privateReads,
+					WritesetMetadata:     writesetMetadata,
 				},
 				nil,
 			)
@@ -1097,12 +1119,25 @@ var _ = Describe("Endorser", func() {
 		It("add private collection which gets read, but not written", func() {
 			privateReads := ledger.PrivateReads{}
 			privateReads.Add("myCC", "mycollection-1")
+			writesetMetadata := ledger.WritesetMetadata{}
+
+			// a private read will also have an entry in public hashed RWset
+			pubSimResults = &rwset.TxReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsRwset: []*rwset.NsReadWriteSet{
+					{
+						Namespace:             "myCC",
+						CollectionHashedRwset: []*rwset.CollectionHashedReadWriteSet{{CollectionName: "mycollection-1"}},
+					},
+				},
+			}
 
 			fakeTxSimulator.GetTxSimulationResultsReturns(
 				&ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
+					PubSimulationResults: pubSimResults,
 					PvtSimulationResults: &rwset.TxPvtReadWriteSet{},
 					PrivateReads:         privateReads,
+					WritesetMetadata:     writesetMetadata,
 				},
 				nil,
 			)
@@ -1110,21 +1145,38 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(proposalResponse.Interest).To(Equal(&pb.ChaincodeInterest{
-				Chaincodes: []*pb.ChaincodeCall{{
-					Name:            "myCC",
-					CollectionNames: []string{"mycollection-1"},
-				}},
+				Chaincodes: []*pb.ChaincodeCall{
+					{
+						Name: "myCC",
+					},
+					{
+						Name:            "myCC",
+						CollectionNames: []string{"mycollection-1"},
+					},
+				},
 			}))
 		})
 
 		It("add private collection which is not read", func() {
 			privateReads := ledger.PrivateReads{}
+			writesetMetadata := ledger.WritesetMetadata{}
+			writesetMetadata.Add("myCC", "mycollection-1", "mykey", nil)
+			pubSimResults = &rwset.TxReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsRwset: []*rwset.NsReadWriteSet{
+					{
+						Namespace: "myCC",
+						Rwset:     readSet,
+					},
+				},
+			}
 
 			fakeTxSimulator.GetTxSimulationResultsReturns(
 				&ledger.TxSimulationResults{
-					PubSimulationResults: &rwset.TxReadWriteSet{},
+					PubSimulationResults: pubSimResults,
 					PvtSimulationResults: pvtSimResults,
 					PrivateReads:         privateReads,
+					WritesetMetadata:     writesetMetadata,
 				},
 				nil,
 			)
@@ -1142,28 +1194,70 @@ var _ = Describe("Endorser", func() {
 
 		It("add private collection and SBE", func() {
 			privateReads := ledger.PrivateReads{}
-			sbe1 := &cb.SignaturePolicyEnvelope{
+
+			sbe := &cb.SignaturePolicyEnvelope{
 				Rule: &cb.SignaturePolicy{
 					Type: &cb.SignaturePolicy_SignedBy{SignedBy: 0},
 				},
 			}
-			sbe1Bytes, err := proto.Marshal(sbe1)
+			sbeBytes, err := proto.Marshal(sbe)
 			Expect(err).NotTo(HaveOccurred())
+			metadata := map[string][]byte{pb.MetaDataKeys_VALIDATION_PARAMETER.String(): sbeBytes}
 
-			sbe2 := &cb.SignaturePolicyEnvelope{
-				Rule: &cb.SignaturePolicy{
-					Type: &cb.SignaturePolicy_SignedBy{SignedBy: 1},
-				},
-			}
-			sbe2Bytes, err := proto.Marshal(sbe2)
-			Expect(err).NotTo(HaveOccurred())
+			writesetMetadata := ledger.WritesetMetadata{}
+			writesetMetadata.Add("myCC", "mycollection-1", "mykey1", nil)
+			writesetMetadata.Add("myCC", "mycollection-1", "mykey2", metadata)
 
 			fakeTxSimulator.GetTxSimulationResultsReturns(
 				&ledger.TxSimulationResults{
 					PubSimulationResults: &rwset.TxReadWriteSet{},
 					PvtSimulationResults: pvtSimResults,
 					PrivateReads:         privateReads,
-					KeySignaturePolicies: [][]byte{sbe1Bytes, sbe2Bytes},
+					WritesetMetadata:     writesetMetadata,
+				},
+				nil,
+			)
+
+			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(proto.Equal(
+				proposalResponse.Interest,
+				&pb.ChaincodeInterest{
+					Chaincodes: []*pb.ChaincodeCall{
+						{
+							Name:                     "myCC",
+							KeyPolicies:              []*cb.SignaturePolicyEnvelope{sbe},
+							DisregardNamespacePolicy: true,
+						},
+						{
+							Name:            "myCC",
+							CollectionNames: []string{"mycollection-1"},
+							NoPrivateReads:  true,
+						},
+					},
+				},
+			)).To(BeTrue())
+		})
+
+		It("SBE only, no chaincode policy updates", func() {
+			sbe := &cb.SignaturePolicyEnvelope{
+				Rule: &cb.SignaturePolicy{
+					Type: &cb.SignaturePolicy_SignedBy{SignedBy: 0},
+				},
+			}
+			sbeBytes, err := proto.Marshal(sbe)
+			Expect(err).NotTo(HaveOccurred())
+			metadata := map[string][]byte{pb.MetaDataKeys_VALIDATION_PARAMETER.String(): sbeBytes}
+
+			writesetMetadata := ledger.WritesetMetadata{}
+			writesetMetadata.Add("myCC", "", "myKey", metadata)
+
+			fakeTxSimulator.GetTxSimulationResultsReturns(
+				&ledger.TxSimulationResults{
+					PubSimulationResults: pubSimResults,
+					PvtSimulationResults: pvtSimResults,
+					WritesetMetadata:     writesetMetadata,
 				},
 				nil,
 			)
@@ -1175,37 +1269,38 @@ var _ = Describe("Endorser", func() {
 				proposalResponse.Interest,
 				&pb.ChaincodeInterest{
 					Chaincodes: []*pb.ChaincodeCall{{
-						Name:            "myCC",
-						CollectionNames: []string{"mycollection-1"},
-						NoPrivateReads:  true,
-						KeyPolicies:     []*cb.SignaturePolicyEnvelope{sbe1, sbe2},
+						Name:                     "myCC",
+						KeyPolicies:              []*cb.SignaturePolicyEnvelope{sbe},
+						DisregardNamespacePolicy: true,
 					}},
 				},
 			)).To(BeTrue())
 		})
 
-		It("add SBE only", func() {
-			sbe1 := &cb.SignaturePolicyEnvelope{
-				Rule: &cb.SignaturePolicy{
-					Type: &cb.SignaturePolicy_SignedBy{SignedBy: 0},
+		It("chaincode to chaincode calls", func() {
+			cc3ccSimResults := &rwset.TxReadWriteSet{
+				DataModel: rwset.TxReadWriteSet_KV,
+				NsRwset: []*rwset.NsReadWriteSet{
+					{
+						Namespace: "myCC",
+						Rwset:     readWrites,
+					},
+					{
+						Namespace: "otherCC",
+						Rwset:     readWrites,
+					},
 				},
 			}
-			sbe1Bytes, err := proto.Marshal(sbe1)
-			Expect(err).NotTo(HaveOccurred())
 
-			sbe2 := &cb.SignaturePolicyEnvelope{
-				Rule: &cb.SignaturePolicy{
-					Type: &cb.SignaturePolicy_SignedBy{SignedBy: 1},
-				},
-			}
-			sbe2Bytes, err := proto.Marshal(sbe2)
-			Expect(err).NotTo(HaveOccurred())
+			writesetMetadata := ledger.WritesetMetadata{}
+			writesetMetadata.Add("myCC", "", "mykey", nil)
+			writesetMetadata.Add("otherCC", "", "mykey", nil)
 
 			fakeTxSimulator.GetTxSimulationResultsReturns(
 				&ledger.TxSimulationResults{
-					PubSimulationResults: pubSimResults,
+					PubSimulationResults: cc3ccSimResults,
 					PvtSimulationResults: &rwset.TxPvtReadWriteSet{},
-					KeySignaturePolicies: [][]byte{sbe1Bytes, sbe2Bytes},
+					WritesetMetadata:     writesetMetadata,
 				},
 				nil,
 			)
@@ -1213,15 +1308,10 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(proto.Equal(
-				proposalResponse.Interest,
-				&pb.ChaincodeInterest{
-					Chaincodes: []*pb.ChaincodeCall{{
-						Name:        "myCC",
-						KeyPolicies: []*cb.SignaturePolicyEnvelope{sbe1, sbe2},
-					}},
-				},
-			)).To(BeTrue())
+			Expect(proposalResponse.Interest.Chaincodes).To(ContainElements([]*pb.ChaincodeCall{
+				{Name: "myCC"},
+				{Name: "otherCC"},
+			}))
 		})
 
 		It("ignores system chaincodes", func() {
@@ -1233,11 +1323,11 @@ var _ = Describe("Endorser", func() {
 				NsRwset: []*rwset.NsReadWriteSet{
 					{
 						Namespace: "myCC",
-						Rwset:     []byte("public RW set"),
+						Rwset:     readWrites,
 					},
 					{
 						Namespace: "_lifecycle",
-						Rwset:     []byte("should be ignored 1"),
+						Rwset:     readWrites,
 					},
 				},
 			}
@@ -1268,23 +1358,25 @@ var _ = Describe("Endorser", func() {
 			privateReads := ledger.PrivateReads{}
 			privateReads.Add("myCC", "mycollection-1")
 			privateReads.Add("_lifecycle", "mycollection-1")
+			writesetMetadata := ledger.WritesetMetadata{}
+			writesetMetadata.Add("myCC", "mycollection-1", "mykey", nil)
+			writesetMetadata.Add("_lifecycle", "mycollection-2", "mykey", nil)
 
 			fakeTxSimulator.GetTxSimulationResultsReturns(
 				&ledger.TxSimulationResults{
 					PubSimulationResults: pubSimResults,
 					PvtSimulationResults: pvtSimResults,
 					PrivateReads:         privateReads,
+					WritesetMetadata:     writesetMetadata,
 				},
 				nil,
 			)
 
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(proposalResponse.Interest).To(Equal(&pb.ChaincodeInterest{
-				Chaincodes: []*pb.ChaincodeCall{{
-					Name:            "myCC",
-					CollectionNames: []string{"mycollection-1"},
-				}},
+
+			Expect(proposalResponse.Interest.Chaincodes).To(ContainElements([]*pb.ChaincodeCall{
+				{Name: "myCC", CollectionNames: []string{"mycollection-1"}},
 			}))
 		})
 	})
