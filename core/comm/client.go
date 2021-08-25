@@ -24,10 +24,6 @@ type GRPCClient struct {
 	dialOpts []grpc.DialOption
 	// Duration for which to block while established a new connection
 	timeout time.Duration
-	// Maximum message size the client can receive
-	maxRecvMsgSize int
-	// Maximum message size the client can send
-	maxSendMsgSize int
 }
 
 // NewGRPCClient creates a new implementation of GRPCClient given an address
@@ -63,8 +59,18 @@ func NewGRPCClient(config ClientConfig) (*GRPCClient, error) {
 	}
 	client.timeout = config.Timeout
 	// set send/recv message size to package defaults
-	client.maxRecvMsgSize = MaxRecvMsgSize
-	client.maxSendMsgSize = MaxSendMsgSize
+	maxRecvMsgSize := DefaultMaxRecvMsgSize
+	if config.MaxRecvMsgSize != 0 {
+		maxRecvMsgSize = config.MaxRecvMsgSize
+	}
+	maxSendMsgSize := DefaultMaxSendMsgSize
+	if config.MaxSendMsgSize != 0 {
+		maxSendMsgSize = config.MaxSendMsgSize
+	}
+	client.dialOpts = append(client.dialOpts, grpc.WithDefaultCallOptions(
+		grpc.MaxCallRecvMsgSize(maxRecvMsgSize),
+		grpc.MaxCallSendMsgSize(maxSendMsgSize),
+	))
 
 	return client, nil
 }
@@ -138,16 +144,6 @@ func (client *GRPCClient) MutualTLSRequired() bool {
 		len(client.tlsConfig.Certificates) > 0
 }
 
-// SetMaxRecvMsgSize sets the maximum message size the client can receive
-func (client *GRPCClient) SetMaxRecvMsgSize(size int) {
-	client.maxRecvMsgSize = size
-}
-
-// SetMaxSendMsgSize sets the maximum message size the client can send
-func (client *GRPCClient) SetMaxSendMsgSize(size int) {
-	client.maxSendMsgSize = size
-}
-
 // SetServerRootCAs sets the list of authorities used to verify server
 // certificates based on a list of PEM-encoded X509 certificate authorities
 func (client *GRPCClient) SetServerRootCAs(serverRoots [][]byte) error {
@@ -189,9 +185,6 @@ func (client *GRPCClient) NewConnection(address string, serverNameOverride strin
 	} else {
 		dialOpts = append(dialOpts, grpc.WithInsecure())
 	}
-	dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(
-		grpc.MaxCallRecvMsgSize(client.maxRecvMsgSize),
-		grpc.MaxCallSendMsgSize(client.maxSendMsgSize)))
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.timeout)
 	defer cancel()

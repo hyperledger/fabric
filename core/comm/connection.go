@@ -223,8 +223,8 @@ func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled b
 		opts = append(opts, grpc.WithBlock())
 	}
 	opts = append(opts, grpc.WithDefaultCallOptions(
-		grpc.MaxCallRecvMsgSize(MaxRecvMsgSize),
-		grpc.MaxCallSendMsgSize(MaxSendMsgSize),
+		grpc.MaxCallRecvMsgSize(DefaultMaxRecvMsgSize),
+		grpc.MaxCallSendMsgSize(DefaultMaxSendMsgSize),
 	))
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()

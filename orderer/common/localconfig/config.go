@@ -13,6 +13,7 @@ import (
 	bccsp "github.com/hyperledger/fabric/bccsp/factory"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
+	"github.com/hyperledger/fabric/core/comm"
 	coreconfig "github.com/hyperledger/fabric/core/config"
 	"github.com/spf13/viper"
 )
@@ -56,6 +57,8 @@ type General struct {
 	LocalMSPID        string
 	BCCSP             *bccsp.FactoryOpts
 	Authentication    Authentication
+	MaxRecvMsgSize    int32
+	MaxSendMsgSize    int32
 }
 
 type Cluster struct {
@@ -242,6 +245,8 @@ var Defaults = TopLevel{
 		Authentication: Authentication{
 			TimeWindow: time.Duration(15 * time.Minute),
 		},
+		MaxRecvMsgSize: comm.DefaultMaxRecvMsgSize,
+		MaxSendMsgSize: comm.DefaultMaxSendMsgSize,
 	},
 	RAMLedger: RAMLedger{
 		HistorySize: 10000,
@@ -450,6 +455,13 @@ func (c *TopLevel) completeInitialization(configDir string) {
 		case c.Kafka.Version == sarama.KafkaVersion{}:
 			logger.Infof("Kafka.Version unset, setting to %v", Defaults.Kafka.Version)
 			c.Kafka.Version = Defaults.Kafka.Version
+
+		case c.General.MaxRecvMsgSize == 0:
+			logger.Infof("General.MaxRecvMsgSize is unset, setting to %v", Defaults.General.MaxRecvMsgSize)
+			c.General.MaxRecvMsgSize = Defaults.General.MaxRecvMsgSize
+		case c.General.MaxSendMsgSize == 0:
+			logger.Infof("General.MaxSendMsgSize is unset, setting to %v", Defaults.General.MaxSendMsgSize)
+			c.General.MaxSendMsgSize = Defaults.General.MaxSendMsgSize
 
 		default:
 			return

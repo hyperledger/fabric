@@ -174,6 +174,16 @@ func GetServerConfig() (comm.ServerConfig, error) {
 	if viper.IsSet("peer.keepalive.minInterval") {
 		serverConfig.KaOpts.ServerMinInterval = viper.GetDuration("peer.keepalive.minInterval")
 	}
+
+	serverConfig.MaxRecvMsgSize = comm.DefaultMaxRecvMsgSize
+	serverConfig.MaxSendMsgSize = comm.DefaultMaxSendMsgSize
+
+	if viper.IsSet("peer.maxRecvMsgSize") {
+		serverConfig.MaxRecvMsgSize = int(viper.GetInt("peer.maxRecvMsgSize"))
+	}
+	if viper.IsSet("peer.maxSendMsgSize") {
+		serverConfig.MaxSendMsgSize = int(viper.GetInt("peer.maxSendMsgSize"))
+	}
 	return serverConfig, nil
 }
 
