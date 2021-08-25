@@ -1613,16 +1613,17 @@ func TestTxSimulatorWithStateBasedEndorsement(t *testing.T) {
 func testTxSimulatorWithStateBasedEndorsement(t *testing.T, env testEnv) {
 	txMgr := env.getTxMgr()
 	txMgrHelper := newTxMgrTestHelper(t, txMgr)
-	sbe1 := []byte("SBE1")
-	sbe2 := []byte("SBE2")
+	sbe1 := map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): []byte("SBE1")}
+	sbe2 := map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): []byte("SBE2")}
+	sbe3 := map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): []byte("SBE3")}
 
 	// simulate tx1
 	s1, _ := txMgr.NewTxSimulator("test_tx1")
 	require.NoError(t, s1.SetState("ns1", "key1", []byte("value1")))
 	require.NoError(t, s1.SetState("ns1", "key2", []byte("value2")))
-	require.NoError(t, s1.SetStateMetadata("ns1", "key2", map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): sbe1}))
+	require.NoError(t, s1.SetStateMetadata("ns1", "key2", sbe1))
 	require.NoError(t, s1.SetState("ns2", "key3", []byte("value3")))
-	require.NoError(t, s1.SetStateMetadata("ns2", "key3", map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): sbe2}))
+	require.NoError(t, s1.SetStateMetadata("ns2", "key3", sbe2))
 	require.NoError(t, s1.SetState("ns2", "key4", []byte("value4")))
 	s1.Done()
 	// validate and commit RWset
@@ -1631,18 +1632,22 @@ func testTxSimulatorWithStateBasedEndorsement(t *testing.T, env testEnv) {
 
 	// simulate tx2 that make changes to existing data and updates a key policy
 	s2, _ := txMgr.NewTxSimulator("test_tx2")
-	sbe3 := []byte("SBE3")
 	require.NoError(t, s2.SetState("ns1", "key1", []byte("value1b")))
 	require.NoError(t, s2.SetState("ns1", "key2", []byte("value2b")))
-	require.NoError(t, s2.SetStateMetadata("ns2", "key3", map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): sbe3}))
+	require.NoError(t, s2.SetStateMetadata("ns2", "key3", sbe3))
 	require.NoError(t, s2.SetState("ns2", "key4", []byte("value4b")))
 	s2.Done()
 	// validate and commit RWset for tx2
 	txRWSet2, err := s2.GetTxSimulationResults()
 	require.NoError(t, err)
 	txMgrHelper.validateAndCommitRWSet(txRWSet2.PubSimulationResults)
-	// check the SBE policies are captured
-	require.ElementsMatch(t, [][]byte{sbe1, sbe2}, txRWSet2.KeySignaturePolicies)
+	// check the metadata are captured
+	metadata := ledger.WritesetMetadata{}
+	metadata.Add("ns1", "", "key1", nil)
+	metadata.Add("ns1", "", "key2", sbe1)
+	metadata.Add("ns2", "", "key3", sbe2)
+	metadata.Add("ns2", "", "key4", nil)
+	require.Equal(t, metadata, txRWSet2.WritesetMetadata)
 
 	// simulate tx3
 	s3, _ := txMgr.NewTxSimulator("test_tx3")
@@ -1651,11 +1656,16 @@ func testTxSimulatorWithStateBasedEndorsement(t *testing.T, env testEnv) {
 	require.NoError(t, s3.SetState("ns2", "key3", []byte("value3c")))
 	require.NoError(t, s3.SetState("ns2", "key4", []byte("value4c")))
 	s3.Done()
-
-	// check the updated SBE policies are captured
 	txRWSet3, err := s3.GetTxSimulationResults()
 	require.NoError(t, err)
-	require.ElementsMatch(t, [][]byte{sbe1, sbe3}, txRWSet3.KeySignaturePolicies)
+
+	// check the metadata are captured
+	metadata = ledger.WritesetMetadata{}
+	metadata.Add("ns1", "", "key1", nil)
+	metadata.Add("ns1", "", "key2", sbe1)
+	metadata.Add("ns2", "", "key3", sbe3)
+	metadata.Add("ns2", "", "key4", nil)
+	require.Equal(t, metadata, txRWSet3.WritesetMetadata)
 }
 
 func TestTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T) {
@@ -1680,12 +1690,13 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 
 	populateCollConfigForTest(t, txMgr, []collConfigkey{{ns, coll}}, version.NewHeight(1, 1))
 
-	sbe1 := []byte("SBE1")
-	sbe2 := []byte("SBE2")
+	sbe1 := map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): []byte("SBE1")}
+	sbe2 := map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): []byte("SBE2")}
+
 	// Simulate and commit tx1 - set private data and key policy
 	s1, _ := txMgr.NewTxSimulator("test_tx1")
 	require.NoError(t, s1.SetPrivateData(ns, coll, "key1", []byte("private_value1")))
-	require.NoError(t, s1.SetPrivateDataMetadata(ns, coll, "key1", map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): sbe1}))
+	require.NoError(t, s1.SetPrivateDataMetadata(ns, coll, "key1", sbe1))
 	s1.Done()
 
 	blkAndPvtdata1, _ := prepareNextBlockForTestFromSimulator(t, bg, s1)
@@ -1696,15 +1707,17 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 	// simulate tx2 that make changes to existing data and updates a key policy
 	s2, _ := txMgr.NewTxSimulator("test_tx2")
 	require.NoError(t, s2.SetPrivateData(ns, coll, "key1", []byte("private_value2")))
-	require.NoError(t, s2.SetPrivateDataMetadata(ns, coll, "key1", map[string][]byte{peer.MetaDataKeys_VALIDATION_PARAMETER.String(): sbe2}))
+	require.NoError(t, s2.SetPrivateDataMetadata(ns, coll, "key1", sbe2))
 	s2.Done()
 
 	blkAndPvtdata2, simRes2 := prepareNextBlockForTestFromSimulator(t, bg, s2)
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata2, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
-	// check the SBE policies are captured
-	require.ElementsMatch(t, [][]byte{sbe1}, simRes2.KeySignaturePolicies)
+	// check the metadata are captured
+	metadata := ledger.WritesetMetadata{}
+	metadata.Add(ns, coll, "key1", sbe1)
+	require.Equal(t, metadata, simRes2.WritesetMetadata)
 
 	// simulate tx3 that make changes to existing data
 	s3, _ := txMgr.NewTxSimulator("test_tx3")
@@ -1715,6 +1728,8 @@ func testTxSimulatorWithPrivateDataStateBasedEndorsement(t *testing.T, env testE
 	_, _, err = txMgr.ValidateAndPrepare(blkAndPvtdata3, true)
 	require.NoError(t, err)
 	require.NoError(t, txMgr.Commit())
-	// check the SBE policies are captured
-	require.ElementsMatch(t, [][]byte{sbe2}, simRes3.KeySignaturePolicies)
+	// check the metadata are captured
+	metadata = ledger.WritesetMetadata{}
+	metadata.Add(ns, coll, "key1", sbe2)
+	require.Equal(t, metadata, simRes3.WritesetMetadata)
 }

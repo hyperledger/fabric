@@ -492,12 +492,52 @@ func (pr PrivateReads) Clone() PrivateReads {
 	return clone
 }
 
+// Exists returns whether a collection has been read
+func (pr PrivateReads) Exists(ns, coll string) bool {
+	if c, ok := pr[ns]; ok {
+		if _, ok2 := c[coll]; ok2 {
+			return true
+		}
+	}
+	return false
+}
+
+// WritesetMetadata represents the content of the state metadata for each state (key) that gets written to during transaction simulation.
+type WritesetMetadata map[string]map[string]map[string]map[string][]byte
+
+// Add metadata to the structure.
+func (wm WritesetMetadata) Add(ns, coll, key string, metadata map[string][]byte) {
+	if _, ok := wm[ns]; !ok {
+		wm[ns] = map[string]map[string]map[string][]byte{}
+	}
+	if _, ok := wm[ns][coll]; !ok {
+		wm[ns][coll] = map[string]map[string][]byte{}
+	}
+	if metadata == nil {
+		metadata = map[string][]byte{}
+	}
+	wm[ns][coll][key] = metadata
+}
+
+// Clone returns a copy of this struct.
+func (wm WritesetMetadata) Clone() WritesetMetadata {
+	clone := WritesetMetadata{}
+	for ns, cm := range wm {
+		for coll, km := range cm {
+			for key, metadata := range km {
+				clone.Add(ns, coll, key, metadata)
+			}
+		}
+	}
+	return clone
+}
+
 // TxSimulationResults captures the details of the simulation results
 type TxSimulationResults struct {
 	PubSimulationResults *rwset.TxReadWriteSet
 	PvtSimulationResults *rwset.TxPvtReadWriteSet
 	PrivateReads         PrivateReads
-	KeySignaturePolicies [][]byte
+	WritesetMetadata     WritesetMetadata
 }
 
 // GetPubSimulationBytes returns the serialized bytes of public readwrite set

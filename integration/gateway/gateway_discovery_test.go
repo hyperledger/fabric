@@ -106,12 +106,26 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			Ctor:              `{"Args":["init"]}`,
 			Lang:              "binary",
 			PackageFile:       filepath.Join(testDir, "sbecc.tar.gz"),
-			Policy:            `OR ('Org3MSP.member')`,
 			SignaturePolicy:   `OR ('Org3MSP.member')`,
 			Sequence:          "1",
 			InitRequired:      true,
 			Label:             "sbecc_label",
 			CollectionsConfig: filepath.Join("testdata", "collections_config_sbe.json"),
+		}
+		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
+
+		chaincode = nwo.Chaincode{
+			Name:              "readpvtcc",
+			Version:           "0.0",
+			Path:              components.Build("github.com/hyperledger/fabric/integration/chaincode/keylevelep/cmd"),
+			Ctor:              `{"Args":["init"]}`,
+			Lang:              "binary",
+			PackageFile:       filepath.Join(testDir, "readpvtcc.tar.gz"),
+			SignaturePolicy:   `OR ('Org1MSP.member', 'Org3MSP.member')`,
+			Sequence:          "1",
+			InitRequired:      true,
+			Label:             "readpvtcc_label",
+			CollectionsConfig: filepath.Join("testdata", "collections_config_read.json"),
 		}
 		nwo.DeployChaincode(network, "testchannel", orderer, chaincode)
 	})
@@ -157,7 +171,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		arguments []string,
 		transientData map[string][]byte,
 		expectedEndorsers []string,
-	) {
+	) *peer.Response {
 		args := [][]byte{}
 		for _, arg := range arguments {
 			args = append(args, []byte(arg))
@@ -187,7 +201,9 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		preparedTransaction.Signature, err = signer.Sign(preparedTransaction.Payload)
 		Expect(err).NotTo(HaveOccurred())
 
-		verifyEndorsers(endorseResponse, expectedEndorsers)
+		if expectedEndorsers != nil {
+			verifyEndorsers(endorseResponse, expectedEndorsers)
+		}
 
 		submitRequest := &gateway.SubmitRequest{
 			TransactionId:       transactionID,
@@ -216,8 +232,11 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			Signature: signature,
 		}
 
-		_, err = gatewayClient.CommitStatus(ctx, signedStatusRequest)
+		statusResponse, err := gatewayClient.CommitStatus(ctx, signedStatusRequest)
 		Expect(err).NotTo(HaveOccurred())
+		Expect(statusResponse.Result).To(Equal(peer.TxValidationCode_VALID))
+
+		return endorseResponse.Result
 	}
 
 	evaluateTransaction := func(
@@ -257,7 +276,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		return evaluateResponse.GetResult()
 	}
 
-	It("SBE policy should cause extra endorsers to be selected", func() {
+	It("setting SBE policy should override chaincode policy", func() {
 		conn := network.PeerClientConn(org1Peer0)
 		defer conn.Close()
 		gatewayClient := gateway.NewGatewayClient(conn)
@@ -275,7 +294,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			[]string{org3Peer0.ID()},
 		)
 
-		// add org1 to SBE policy - requires endorsement from org2 & org3 peers
+		// add org1 to SBE policy - requires endorsement from org2 peer (SBE policy)
 		submitTransaction(
 			gatewayClient,
 			signingIdentity,
@@ -284,10 +303,10 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			"addorgs",
 			[]string{"pub", "Org1MSP"},
 			nil,
-			[]string{org2Peer0.ID(), org3Peer0.ID()},
+			[]string{org2Peer0.ID()},
 		)
 
-		// remove org2 to SBE policy - requires endorsement from org1, org2 & org3 peers
+		// remove org2 to SBE policy - requires endorsement from org1, org2 peers (SBE policy)
 		submitTransaction(
 			gatewayClient,
 			signingIdentity,
@@ -296,15 +315,15 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			"delorgs",
 			[]string{"pub", "Org2MSP"},
 			nil,
-			[]string{org1Peer0.ID(), org2Peer0.ID(), org3Peer0.ID()},
+			[]string{org1Peer0.ID(), org2Peer0.ID()},
 		)
 	})
 
-	It("Writing to private collections should select endorsers based on collection policy", func() {
-		conn := network.PeerClientConn(org3Peer0)
+	It("setting SBE policy on private key then writing to should override the collection & chaincode policies", func() {
+		conn := network.PeerClientConn(org1Peer0)
 		defer conn.Close()
 		gatewayClient := gateway.NewGatewayClient(conn)
-		signingIdentity := network.PeerUserSigner(org3Peer0, "User1")
+		signingIdentity := network.PeerUserSigner(org1Peer0, "User1")
 
 		// write to private collection - requires endorsement from org2 peer (collection policy)
 		submitTransaction(
@@ -313,7 +332,7 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			"testchannel",
 			"sbecc",
 			"setval",
-			[]string{"priv", "gateway test value"},
+			[]string{"priv", "initial private value"},
 			nil,
 			[]string{org2Peer0.ID()},
 		)
@@ -328,8 +347,185 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			[]string{"priv"},
 			nil,
 		)
+		Expect(result.Payload).To(Equal([]byte("initial private value")))
 
-		Expect(result.Payload).To(Equal([]byte("gateway test value")))
+		// add org1 to SBE policy - requires endorsement from org2 peer (collection policy)
+		submitTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"addorgs",
+			[]string{"priv", "Org1MSP"},
+			nil,
+			[]string{org2Peer0.ID()},
+		)
+
+		// write to private collection - requires endorsement from org1 peer (SBE policy)
+		submitTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"setval",
+			[]string{"priv", "updated private value"},
+			nil,
+			[]string{org1Peer0.ID()},
+		)
+
+		// check the value was set
+		result = evaluateTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"getval",
+			[]string{"priv"},
+			nil,
+		)
+
+		Expect(result.Payload).To(Equal([]byte("updated private value")))
+	})
+
+	It("writing to public and private keys should combine the collection & chaincode policies", func() {
+		conn := network.PeerClientConn(org1Peer0)
+		defer conn.Close()
+		gatewayClient := gateway.NewGatewayClient(conn)
+		signingIdentity := network.PeerUserSigner(org1Peer0, "User1")
+
+		// write to both pub&priv - requires endorsement from org2 (collection policy) and org3 (chaincode policy)
+		submitTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"setval",
+			[]string{"both", "initial value"},
+			nil,
+			[]string{org2Peer0.ID(), org3Peer0.ID()},
+		)
+
+		// check the private value was set
+		result := evaluateTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"getval",
+			[]string{"priv"},
+			nil,
+		)
+		Expect(result.Payload).To(Equal([]byte("initial value")))
+
+		// check the public value was set
+		result = evaluateTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"getval",
+			[]string{"pub"},
+			nil,
+		)
+		Expect(result.Payload).To(Equal([]byte("initial value")))
+	})
+
+	It("should combine chaincode and private SBE policies", func() {
+		conn := network.PeerClientConn(org1Peer0)
+		defer conn.Close()
+		gatewayClient := gateway.NewGatewayClient(conn)
+		signingIdentity := network.PeerUserSigner(org1Peer0, "User1")
+
+		// write to both public & private states - requires endorsement from org2 peer (collection policy) and org3 peer (chaincode) policy
+		submitTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"setval",
+			[]string{"both", "initial private & public value"},
+			nil,
+			[]string{org2Peer0.ID(), org3Peer0.ID()},
+		)
+
+		// add org1 to SBE policy for private state - requires endorsement from org2 peer (collection policy)
+		submitTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"addorgs",
+			[]string{"priv", "Org1MSP"},
+			nil,
+			[]string{org2Peer0.ID()},
+		)
+
+		// write to both pub&priv - requires endorsement from org1 (SBE policy) and org3 (chaincode policy)
+		submitTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"setval",
+			[]string{"both", "chaincode and SBE policies"},
+			nil,
+			[]string{org1Peer0.ID(), org3Peer0.ID()},
+		)
+
+		// check the private value was set
+		result := evaluateTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"getval",
+			[]string{"priv"},
+			nil,
+		)
+		Expect(result.Payload).To(Equal([]byte("chaincode and SBE policies")))
+	})
+
+	It("should combine collection and public SBE policies", func() {
+		conn := network.PeerClientConn(org3Peer0)
+		defer conn.Close()
+		gatewayClient := gateway.NewGatewayClient(conn)
+		signingIdentity := network.PeerUserSigner(org3Peer0, "User1")
+
+		// add org1 to SBE policy - requires endorsement from org3 peer (chaincode policy)
+		submitTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"addorgs",
+			[]string{"pub", "Org1MSP"},
+			nil,
+			[]string{org3Peer0.ID()},
+		)
+
+		// write to both pub&priv - requires endorsement from org1 (SBE policy) and org2 (collection policy)
+		submitTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"setval",
+			[]string{"both", "collection and SBE policies"},
+			nil,
+			[]string{org1Peer0.ID(), org2Peer0.ID()},
+		)
+
+		// check the private value was set
+		result := evaluateTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"sbecc",
+			"getval",
+			[]string{"pub"},
+			nil,
+		)
+		Expect(result.Payload).To(Equal([]byte("collection and SBE policies")))
 	})
 
 	It("should endorse chaincode on org3 and also seek endorsement from another org for cc2cc call", func() {
@@ -361,5 +557,36 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		)
 
 		Expect(result.Payload).To(Equal([]byte("90")))
+	})
+
+	It("reading private data should use the collection ownership policy, not signature policy", func() {
+		conn := network.PeerClientConn(org1Peer0)
+		defer conn.Close()
+		gatewayClient := gateway.NewGatewayClient(conn)
+		signingIdentity := network.PeerUserSigner(org1Peer0, "User1")
+
+		submitTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"readpvtcc",
+			"setval",
+			[]string{"priv", "abcd"},
+			nil,
+			nil, // don't care - not testing this part
+		)
+
+		result := submitTransaction(
+			gatewayClient,
+			signingIdentity,
+			"testchannel",
+			"readpvtcc",
+			"getval",
+			[]string{"priv"},
+			nil,
+			[]string{org1Peer0.ID()},
+		)
+
+		Expect(result.Payload).To(Equal([]byte("abcd")))
 	})
 })
