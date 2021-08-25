@@ -68,7 +68,7 @@ func main() {
 
 		fmt.Print("\nSuccessfully compared snapshots. ")
 		if count == -1 {
-			fmt.Println("Both snapshot public state hashes were the same. No results were generated.")
+			fmt.Println("Both snapshot public state and private state hashes were the same. No results were generated.")
 		} else {
 			fmt.Printf("Results saved to %s. Total differences found: %d\n", outputDirPath, count)
 		}

@@ -121,6 +121,20 @@ func TestCompare(t *testing.T) {
 		},
 	}
 
+	samplePvtRecords1 := []*testRecord{
+		{
+			namespace: "_lifecycle$$h_implicit_org_Org1MSP", key: "sk1", value: "#!",
+			blockNum: 1, txNum: 1, metadata: "md1",
+		},
+	}
+
+	samplePvtRecords2 := []*testRecord{
+		{
+			namespace: "_lifecycle$$h_implicit_org_Org1MSP", key: "sk1", value: "$^",
+			blockNum: 1, txNum: 1, metadata: "md1",
+		},
+	}
+
 	// Signable metadata samples for snapshots
 	sampleSignableMetadata1 := &kvledger.SnapshotSignableMetadata{
 		ChannelName:            "testchannel",
@@ -144,8 +158,8 @@ func TestCompare(t *testing.T) {
 		LastBlockHashInHex:     "last_block_hash",
 		PreviousBlockHashInHex: "previous_block_hash",
 		FilesAndHashes: map[string]string{
-			"private_state_hashes.data":     "private_state_hash2",
-			"private_state_hashes.metadata": "private_state_hash2",
+			"private_state_hashes.data":     "private_state_hash1",
+			"private_state_hashes.metadata": "private_state_hash1",
 			"public_state.data":             "public_state_hash2",
 			"public_state.metadata":         "public_state_hash2",
 			"txids.data":                    "txids_hash2",
@@ -168,6 +182,38 @@ func TestCompare(t *testing.T) {
 			"txids.metadata":                "txids_hash2",
 		},
 		StateDBType: "testdatabase2",
+	}
+
+	sampleSignableMetadata4 := &kvledger.SnapshotSignableMetadata{
+		ChannelName:            "testchannel",
+		LastBlockNumber:        sampleRecords1[len(sampleRecords1)-1].blockNum,
+		LastBlockHashInHex:     "last_block_hash",
+		PreviousBlockHashInHex: "previous_block_hash",
+		FilesAndHashes: map[string]string{
+			"private_state_hashes.data":     "private_state_hash2",
+			"private_state_hashes.metadata": "private_state_hash2",
+			"public_state.data":             "public_state_hash2",
+			"public_state.metadata":         "public_state_hash2",
+			"txids.data":                    "txids_hash2",
+			"txids.metadata":                "txids_hash2",
+		},
+		StateDBType: "testdatabase",
+	}
+
+	sampleSignableMetadata5 := &kvledger.SnapshotSignableMetadata{
+		ChannelName:            "testchannel",
+		LastBlockNumber:        sampleRecords1[len(sampleRecords1)-1].blockNum,
+		LastBlockHashInHex:     "last_block_hash",
+		PreviousBlockHashInHex: "previous_block_hash",
+		FilesAndHashes: map[string]string{
+			"private_state_hashes.data":     "private_state_hash2",
+			"private_state_hashes.metadata": "private_state_hash2",
+			"public_state.data":             "public_state_hash1",
+			"public_state.metadata":         "public_state_hash1",
+			"txids.data":                    "txids_hash2",
+			"txids.metadata":                "txids_hash2",
+		},
+		StateDBType: "testdatabase",
 	}
 
 	// Expected outputs
@@ -293,7 +339,7 @@ func TestCompare(t *testing.T) {
 			}
 		}
 	]`
-	expectedAllDiffs := `[
+	expectedAllPubDiffs := `[
 		{
 			"namespace" : "ns1",
 			"key" : "k2",
@@ -343,16 +389,37 @@ func TestCompare(t *testing.T) {
 			}
 		}
 	]`
+	expectedPvtDiffResult := `[
+			{
+				"namespace" : "_lifecycle$$h_implicit_org_Org1MSP",
+				"key" : "sk1",
+				"snapshotrecord1" : {
+					"value" : "#!",
+					"blockNum" : 1,
+					"txNum" : 1
+				},
+				"snapshotrecord2" : {
+					"value" : "$^",
+					"blockNum" : 1,
+					"txNum" : 1
+				}
+			}
+		]`
+	expectedEmpty := "null"
 
 	testCases := map[string]struct {
 		inputTestRecords1      []*testRecord
+		inputTestPvtRecords1   []*testRecord
 		inputSignableMetadata1 *kvledger.SnapshotSignableMetadata
 		inputTestRecords2      []*testRecord
+		inputTestPvtRecords2   []*testRecord
 		inputSignableMetadata2 *kvledger.SnapshotSignableMetadata
-		expectedAllOutput      string
-		expectedFirstOutput    string
-		firstN                 int
 		expectedOutputType     string
+		expectedPubOutput      string
+		expectedPvtOutput      string
+		expectedFirOutput      string
+		expectedError          string
+		firstN                 int
 		expectedDiffCount      int
 	}{
 		// Snapshots have a single difference in record
@@ -361,8 +428,10 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords2,
 			inputSignableMetadata2: sampleSignableMetadata2,
-			expectedAllOutput:      expectedDifferenceResult,
 			expectedOutputType:     "json",
+			expectedPubOutput:      expectedDifferenceResult,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedEmpty,
 			expectedDiffCount:      1,
 		},
 		// Second snapshot is missing a record
@@ -371,8 +440,10 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords3,
 			inputSignableMetadata2: sampleSignableMetadata2,
-			expectedAllOutput:      expectedMissingResult1,
 			expectedOutputType:     "json",
+			expectedPubOutput:      expectedMissingResult1,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedEmpty,
 			expectedDiffCount:      1,
 		},
 		// First snapshot is missing a record
@@ -381,8 +452,10 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata2,
 			inputTestRecords2:      sampleRecords1,
 			inputSignableMetadata2: sampleSignableMetadata1,
-			expectedAllOutput:      expectedMissingResult2,
 			expectedOutputType:     "json",
+			expectedPubOutput:      expectedMissingResult2,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedEmpty,
 			expectedDiffCount:      1,
 		},
 		// Second snapshot is missing tailing records
@@ -391,8 +464,10 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords4,
 			inputSignableMetadata2: sampleSignableMetadata2,
-			expectedAllOutput:      expectedMissingTailResult1,
 			expectedOutputType:     "json",
+			expectedPubOutput:      expectedMissingTailResult1,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedEmpty,
 			expectedDiffCount:      2,
 		},
 		// First snapshot is missing tailing records
@@ -401,8 +476,10 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata2,
 			inputTestRecords2:      sampleRecords1,
 			inputSignableMetadata2: sampleSignableMetadata1,
-			expectedAllOutput:      expectedMissingTailResult2,
 			expectedOutputType:     "json",
+			expectedPubOutput:      expectedMissingTailResult2,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedEmpty,
 			expectedDiffCount:      2,
 		},
 		// Snapshots contain the same public state hashes
@@ -411,7 +488,6 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords1,
 			inputSignableMetadata2: sampleSignableMetadata1,
-			expectedAllOutput:      "",
 			expectedOutputType:     "same-hash",
 			expectedDiffCount:      -1,
 		},
@@ -421,8 +497,8 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords2,
 			inputSignableMetadata2: sampleSignableMetadata3,
-			expectedAllOutput:      expectedDiffDatabaseError,
 			expectedOutputType:     "error",
+			expectedError:          expectedDiffDatabaseError,
 			expectedDiffCount:      0,
 		},
 		// Output directory file already exists
@@ -440,11 +516,40 @@ func TestCompare(t *testing.T) {
 			inputSignableMetadata1: sampleSignableMetadata1,
 			inputTestRecords2:      sampleRecords5,
 			inputSignableMetadata2: sampleSignableMetadata2,
-			expectedAllOutput:      expectedAllDiffs,
-			expectedFirstOutput:    expectedFirstDiffs,
-			firstN:                 3,
 			expectedOutputType:     "json",
+			expectedPubOutput:      expectedAllPubDiffs,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedFirstDiffs,
+			firstN:                 3,
 			expectedDiffCount:      4,
+		},
+		// Snapshots have a single difference public difference and a single private difference
+		"pub-and-pvt-difference": {
+			inputTestRecords1:      sampleRecords1,
+			inputTestPvtRecords1:   samplePvtRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords2,
+			inputTestPvtRecords2:   samplePvtRecords2,
+			inputSignableMetadata2: sampleSignableMetadata4,
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedDifferenceResult,
+			expectedPvtOutput:      expectedPvtDiffResult,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      2,
+		},
+		// Snapshots have a single private difference only
+		"pvt-difference-only": {
+			inputTestRecords1:      sampleRecords1,
+			inputTestPvtRecords1:   samplePvtRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords1,
+			inputTestPvtRecords2:   samplePvtRecords2,
+			inputSignableMetadata2: sampleSignableMetadata5,
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedEmpty,
+			expectedPvtOutput:      expectedPvtDiffResult,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      1,
 		},
 	}
 
@@ -463,30 +568,28 @@ func TestCompare(t *testing.T) {
 			defer os.RemoveAll(resultsDir)
 
 			// Populate temporary directories with sample snapshot data
-			err = createSnapshot(snapshotDir1, testCase.inputTestRecords1, testCase.inputSignableMetadata1)
+			err = createSnapshot(snapshotDir1, testCase.inputTestRecords1, testCase.inputTestPvtRecords1, testCase.inputSignableMetadata1)
 			require.NoError(t, err)
-			err = createSnapshot(snapshotDir2, testCase.inputTestRecords2, testCase.inputSignableMetadata2)
+			err = createSnapshot(snapshotDir2, testCase.inputTestRecords2, testCase.inputTestPvtRecords2, testCase.inputSignableMetadata2)
 			require.NoError(t, err)
 
 			// Compare snapshots and check the output
-			count, allOut, firstOut, err := compareSnapshots(snapshotDir1, snapshotDir2, resultsDir, testCase.firstN)
+			count, pubOut, pvtOut, firOut, err := compareSnapshots(snapshotDir1, snapshotDir2, resultsDir, testCase.firstN)
 			switch testCase.expectedOutputType {
 			case "error":
 				require.Equal(t, testCase.expectedDiffCount, count)
-				require.ErrorContains(t, err, testCase.expectedAllOutput)
+				require.ErrorContains(t, err, testCase.expectedError)
 			case "exists-error":
 				require.NoError(t, err)
-				count, _, _, err = compareSnapshots(snapshotDir1, snapshotDir2, resultsDir, testCase.firstN)
+				count, _, _, _, err = compareSnapshots(snapshotDir1, snapshotDir2, resultsDir, testCase.firstN)
 				require.Equal(t, testCase.expectedDiffCount, count)
 				require.ErrorContains(t, err, "testchannel_2_comparison already exists in "+resultsDir+". Choose a different location or remove the existing results. Aborting compare")
 			case "json":
 				require.Equal(t, testCase.expectedDiffCount, count)
 				require.NoError(t, err)
-				require.JSONEq(t, testCase.expectedAllOutput, allOut)
-				if firstOut != "" {
-					require.JSONEq(t, testCase.expectedFirstOutput, firstOut)
-				}
-
+				require.JSONEq(t, testCase.expectedPubOutput, pubOut)
+				require.JSONEq(t, testCase.expectedPvtOutput, pvtOut)
+				require.JSONEq(t, testCase.expectedFirOutput, firOut)
 			case "same-hash":
 				require.Equal(t, testCase.expectedDiffCount, count)
 				require.NoError(t, err)
@@ -498,7 +601,8 @@ func TestCompare(t *testing.T) {
 }
 
 // createSnapshot generates a sample snapshot based on the passed in records and metadata
-func createSnapshot(dir string, pubStateRecords []*testRecord, signableMetadata *kvledger.SnapshotSignableMetadata) error {
+func createSnapshot(dir string, pubStateRecords []*testRecord, pvtStateRecords []*testRecord,
+	signableMetadata *kvledger.SnapshotSignableMetadata) error {
 	// Generate public state of sample snapshot
 	pubStateWriter, err := privacyenabledstate.NewSnapshotWriter(
 		dir,
@@ -529,6 +633,36 @@ func createSnapshot(dir string, pubStateRecords []*testRecord, signableMetadata 
 		return err
 	}
 
+	// Generate private state of sample snapshot
+	pvtStateWriter, err := privacyenabledstate.NewSnapshotWriter(
+		dir,
+		privacyenabledstate.PvtStateHashesFileName,
+		privacyenabledstate.PvtStateHashesMetadataFileName,
+		testNewHashFunc,
+	)
+	if err != nil {
+		return err
+	}
+	defer pvtStateWriter.Close()
+
+	// Add sample records to sample snapshot
+	for _, sample := range pvtStateRecords {
+		err = pvtStateWriter.AddData(sample.namespace, &privacyenabledstate.SnapshotRecord{
+			Key:      []byte(sample.key),
+			Value:    []byte(sample.value),
+			Metadata: []byte(sample.metadata),
+			Version:  toBytes(sample.blockNum, sample.txNum),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	_, _, err = pvtStateWriter.Done()
+	if err != nil {
+		return err
+	}
+
 	// Generate the signable metadata files for sample snapshot
 	signableMetadataBytes, err := signableMetadata.ToJSON()
 	if err != nil {
@@ -544,35 +678,59 @@ func createSnapshot(dir string, pubStateRecords []*testRecord, signableMetadata 
 }
 
 // compareSnapshots calls the Compare tool and extracts the result json
-func compareSnapshots(ss1 string, ss2 string, res string, firstN int) (int, string, string, error) {
+func compareSnapshots(ss1 string, ss2 string, res string, firstN int) (int, string, string, string, error) {
 	// Run compare tool on snapshots
 	count, opath, err := Compare(ss1, ss2, res, firstN)
 	if err != nil || count == -1 {
-		return count, "", "", err
+		return count, "", "", "", err
 	}
 
-	// Read results of output
-	allBytes, err := ioutil.ReadFile(filepath.Join(opath, AllDiffsByKey))
+	// Get json as a string from generated output files
+	pubStr, err := outputFileToString(AllPubDiffsByKey, opath)
 	if err != nil {
-		return 0, "", "", err
+		return 0, "", "", "", err
 	}
-	allOut, err := ioutil.ReadAll(bytes.NewReader(allBytes))
+	pvtStr, err := outputFileToString(AllPvtDiffsByKey, opath)
 	if err != nil {
-		return 0, "", "", err
+		return 0, "", "", "", err
 	}
-	if firstN != 0 {
-		firstBytes, err := ioutil.ReadFile(filepath.Join(opath, FirstDiffsByHeight))
-		if err != nil {
-			return 0, "", "", err
-		}
-		firstOut, err := ioutil.ReadAll(bytes.NewReader(firstBytes))
-		if err != nil {
-			return 0, "", "", err
-		}
-		return count, string(allOut), string(firstOut), nil
+	firStr, err := outputFileToString(FirstDiffsByHeight, opath)
+	if err != nil {
+		return 0, "", "", "", err
 	}
 
-	return count, string(allOut), "", nil
+	return count, pubStr, pvtStr, firStr, nil
+}
+
+func outputFileToString(f string, path string) (string, error) {
+	fpath := filepath.Join(path, f)
+	exists, err := outputFileExists(fpath)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		b, err := ioutil.ReadFile(fpath)
+		if err != nil {
+			return "", err
+		}
+		out, err := ioutil.ReadAll(bytes.NewReader(b))
+		if err != nil {
+			return "", err
+		}
+		return string(out), nil
+	}
+	return "null", nil
+}
+
+func outputFileExists(f string) (bool, error) {
+	_, err := os.Stat(f)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // toBytes serializes the Height
