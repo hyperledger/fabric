@@ -8,6 +8,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Name | GitHub | Chat | email
 |------|--------|------|----------------------
 | Alessandro Sorniotti | [ale-linux][ale-linux] | aso | <ale.linux@sopit.net>
+| Andrew Coleman | [andrew-coleman][andrew-coleman] | andrew-coleman | <andrew_coleman@uk.ibm.com>
 | Artem Barger | [c0rwin][c0rwin] | c0rwin | <artem@bargr.net>
 | Senthilnathan Natarajan | [cendhu][cendhu] | Senthil1 | <cendhu@gmail.com>
 | Dave Enyeart | [denyeart][denyeart] | dave.enyeart | <enyeart@us.ibm.com>
@@ -57,6 +58,7 @@ See [the documentation on Maintainers](https://hyperledger-fabric.readthedocs.io
 | Will Lahti | [wlahti][wlahti] | wlahti | <will.lahti@gmail.com>
 
 [ale-linux]: https://github.com/ale-linux
+[andrew-coleman]: https://github.com/andrew-coleman
 [binhn]: https://github.com/binhn
 [lindluni]: https://github.com/lindluni
 [c0rwin]: https://github.com/c0rwin
