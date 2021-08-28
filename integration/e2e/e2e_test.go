@@ -364,7 +364,7 @@ var _ = Describe("EndToEnd", func() {
 			By("Starting orderer with malformed genesis block")
 			ordererRunner := network.OrdererGroupRunner()
 			process = ifrit.Invoke(ordererRunner)
-			Eventually(process.Wait, network.EventuallyTimeout).Should(Receive()) // orderer process should exit
+			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive()) // orderer process should exit
 			os.RemoveAll(testDir)
 
 			By("Starting orderer with correct genesis block")
@@ -403,7 +403,7 @@ var _ = Describe("EndToEnd", func() {
 			peer1org2 := network.Peer("Org2", "peer1")
 
 			network.CreateChannelFail(channel, orderer, peer1org1, peer1org1, peer1org2, orderer)
-			Consistently(process.Wait).ShouldNot(Receive()) // malformed tx should not crash orderer
+			Consistently(process.Wait()).ShouldNot(Receive()) // malformed tx should not crash orderer
 			Expect(runner.Err()).To(gbytes.Say(`rejected by Configure: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 
 			By("Submitting channel config update with illegal value")
