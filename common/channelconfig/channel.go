@@ -32,7 +32,7 @@ const (
 	// OrdererAddressesKey is the cb.ConfigItem type key name for the OrdererAddresses message
 	OrdererAddressesKey = "OrdererAddresses"
 
-	// GroupKey is the name of the channel group
+	// ChannelGroupKey is the name of the channel group
 	ChannelGroupKey = "Channel"
 
 	// CapabilitiesKey is the name of the key which refers to capabilities, it appears at the channel,
@@ -86,13 +86,13 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 		return nil, errors.Wrap(err, "failed to deserialize values")
 	}
 
-	capabilities := cc.Capabilities()
+	channelCapabilities := cc.Capabilities()
 
-	if err := cc.Validate(capabilities); err != nil {
+	if err := cc.Validate(channelCapabilities); err != nil {
 		return nil, err
 	}
 
-	mspConfigHandler := NewMSPConfigHandler(capabilities.MSPVersion(), bccsp)
+	mspConfigHandler := NewMSPConfigHandler(channelCapabilities.MSPVersion(), bccsp)
 
 	var err error
 	for groupName, group := range channelGroup.Groups {
@@ -100,7 +100,7 @@ func NewChannelConfig(channelGroup *cb.ConfigGroup, bccsp bccsp.BCCSP) (*Channel
 		case ApplicationGroupKey:
 			cc.appConfig, err = NewApplicationConfig(group, mspConfigHandler)
 		case OrdererGroupKey:
-			cc.ordererConfig, err = NewOrdererConfig(group, mspConfigHandler, capabilities)
+			cc.ordererConfig, err = NewOrdererConfig(group, mspConfigHandler, channelCapabilities)
 		case ConsortiumsGroupKey:
 			cc.consortiumsConfig, err = NewConsortiumsConfig(group, mspConfigHandler)
 		default:
@@ -143,7 +143,7 @@ func (cc *ChannelConfig) HashingAlgorithm() func(input []byte) []byte {
 	return cc.hashingAlgorithm
 }
 
-// BlockDataHashingStructure returns the width to use when forming the block data hashing structure
+// BlockDataHashingStructureWidth returns the width to use when forming the block data hashing structure
 func (cc *ChannelConfig) BlockDataHashingStructureWidth() uint32 {
 	return cc.protos.BlockDataHashingStructure.Width
 }

@@ -172,7 +172,7 @@ type ApplicationCapabilities interface {
 	//  - new chaincode lifecycle, as described in FAB-11237
 	V1_3Validation() bool
 
-	// StorePvtDataOfInvalidTx() returns true if the peer needs to store the pvtData of
+	// StorePvtDataOfInvalidTx returns true if the peer needs to store the pvtData of
 	// invalid transactions (as introduced in v142).
 	StorePvtDataOfInvalidTx() bool
 
@@ -246,8 +246,8 @@ type Resources interface {
 	// and whether the Orderer config exists
 	OrdererConfig() (Orderer, bool)
 
-	// ConsortiumsConfig() returns the config.Consortiums for the channel
-	// and whether the consortiums config exists
+	// ConsortiumsConfig returns the config.Consortiums for the channel
+	// and whether the consortiums' config exists
 	ConsortiumsConfig() (Consortiums, bool)
 
 	// ApplicationConfig returns the configtxapplication.SharedConfig for the channel

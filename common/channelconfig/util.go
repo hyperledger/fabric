@@ -73,7 +73,7 @@ func ConsortiumValue(name string) *StandardConfigValue {
 	}
 }
 
-// HashingAlgorithm returns the only currently valid hashing algorithm.
+// HashingAlgorithmValue returns the default hashing algorithm.
 // It is a value for the /Channel group.
 func HashingAlgorithmValue() *StandardConfigValue {
 	return &StandardConfigValue{
