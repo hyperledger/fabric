@@ -77,7 +77,7 @@ You can then use the following command to start the test network:
 ```
 This command will create a Fabric network with the two peer organizations and the single ordering organization defined in the `configtx.yaml` file. The peer organizations will operate one peer each, while the ordering service administrator will operate a single ordering node. When you run the command, the script will print out logs of the nodes being created:
 ```
-Creating network "net_test" with the default driver
+Creating network "fabric_test" with the default driver
 Creating volume "net_orderer.example.com" with default driver
 Creating volume "net_peer0.org1.example.com" with default driver
 Creating volume "net_peer0.org2.example.com" with default driver
