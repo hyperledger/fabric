@@ -56,7 +56,7 @@ find . -name monitordocker.sh
 
 You can then start Logspout by running the following command:
 ```
-./monitordocker.sh net_test
+./monitordocker.sh fabric_test
 ```
 You should see output similar to the following:
 ```
