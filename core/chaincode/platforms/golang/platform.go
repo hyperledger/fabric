@@ -219,7 +219,7 @@ elif [ -f "/chaincode/input/src/%[2]s/go.mod" ]; then
     cd /chaincode/input/src/%[2]s
     GO111MODULE=on go build -v -mod=readonly %[1]s -o /chaincode/output/chaincode .
 else
-    GOPATH=/chaincode/input:$GOPATH go build -v %[1]s -o /chaincode/output/chaincode %[2]s
+    GO111MODULE=off GOPATH=/chaincode/input:$GOPATH go build -v %[1]s -o /chaincode/output/chaincode %[2]s
 fi
 echo Done!
 `
