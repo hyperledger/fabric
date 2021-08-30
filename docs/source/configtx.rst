@@ -334,7 +334,7 @@ with different names.
 
         Values: map<string, *ConfigValue> {
             "HashingAlgorithm":common.HashingAlgorithm,
-            "BlockHashingDataStructure":common.BlockDataHashingStructure,
+            "BlockDataHashingStructure":common.BlockDataHashingStructure,
             "Consortium":common.Consortium,
             "OrdererAddresses":common.OrdererAddresses,
         },

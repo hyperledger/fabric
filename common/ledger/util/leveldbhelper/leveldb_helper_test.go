@@ -157,6 +157,33 @@ func TestFileLock(t *testing.T) {
 	require.NoError(t, os.RemoveAll(fileLockPath))
 }
 
+func TestFileLockLockUnlockLock(t *testing.T) {
+	// create an open lock
+	lockPath := testDBPath + "/fileLock"
+	lock := NewFileLock(lockPath)
+	require.Nil(t, lock.db)
+	require.Equal(t, lock.filePath, lockPath)
+	require.False(t, lock.IsLocked())
+
+	defer lock.Unlock()
+	defer os.RemoveAll(lockPath)
+
+	// lock
+	require.NoError(t, lock.Lock())
+	require.True(t, lock.IsLocked())
+
+	// lock
+	require.ErrorContains(t, lock.Lock(), "lock is already acquired")
+
+	// unlock
+	lock.Unlock()
+	require.False(t, lock.IsLocked())
+
+	// lock - this should not error
+	require.NoError(t, lock.Lock())
+	require.True(t, lock.IsLocked())
+}
+
 func TestCreateDBInEmptyDir(t *testing.T) {
 	require.NoError(t, os.RemoveAll(testDBPath), "")
 	require.NoError(t, os.MkdirAll(testDBPath, 0o775), "")

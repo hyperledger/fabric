@@ -13,20 +13,22 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
+
 	"github.com/golang/protobuf/proto"
 	dp "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric/common/flogging"
 	gossipapi "github.com/hyperledger/fabric/gossip/api"
-	"github.com/hyperledger/fabric/gossip/common"
+	gossipcommon "github.com/hyperledger/fabric/gossip/common"
 	gossipdiscovery "github.com/hyperledger/fabric/gossip/discovery"
 )
 
 type Discovery interface {
 	Config(channel string) (*dp.ConfigResult, error)
 	IdentityInfo() gossipapi.PeerIdentitySet
-	PeersForEndorsement(channel common.ChannelID, interest *dp.ChaincodeInterest) (*dp.EndorsementDescriptor, error)
-	PeersOfChannel(common.ChannelID) gossipdiscovery.Members
+	PeersForEndorsement(channel gossipcommon.ChannelID, interest *peer.ChaincodeInterest) (*dp.EndorsementDescriptor, error)
+	PeersOfChannel(gossipcommon.ChannelID) gossipdiscovery.Members
 }
 
 type registry struct {
@@ -48,44 +50,38 @@ type endorserState struct {
 }
 
 // Returns a set of endorsers that satisfies the endorsement plan for the given chaincode on a channel.
-func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, error) {
-	err := reg.registerChannel(channel)
-	if err != nil {
-		return nil, err
-	}
-
+func (reg *registry) endorsers(channel string, interest *peer.ChaincodeInterest, preferOrg string) ([]*endorser, error) {
 	var endorsers []*endorser
+	var reserveEndorsers []*endorser
 
-	interest := &dp.ChaincodeInterest{
-		Chaincodes: []*dp.ChaincodeCall{{
-			Name: chaincode,
-		}},
-	}
-
-	descriptor, err := reg.discovery.PeersForEndorsement(common.ChannelID(channel), interest)
+	descriptor, err := reg.discovery.PeersForEndorsement(gossipcommon.ChannelID(channel), interest)
 	if err != nil {
-		return nil, err
+		logger.Errorw("PeersForEndorsement failed.", "error", err, "channel", channel, "ChaincodeInterest", proto.MarshalTextString(interest))
+		return nil, fmt.Errorf("discovery service failed to build endorsement plan: %s", err)
 	}
+
+	layouts := descriptor.GetLayouts()
 
 	reg.configLock.RLock()
 	defer reg.configLock.RUnlock()
 
-	for _, layout := range descriptor.GetLayouts() {
+	for _, layout := range layouts {
 		var receivers []*endorserState // The set of peers the client needs to request endorsements from
 		abandonLayout := false
+		hasPreferredOrg := false
 		for group, quantity := range layout.GetQuantitiesByGroup() {
 			// Select n remoteEndorsers from each group sorted by block height
-
-			// block heights
 			var groupPeers []*endorserState
 			for _, peer := range descriptor.GetEndorsersByGroups()[group].GetPeers() {
+				// extract block height
 				msg := &gossip.GossipMessage{}
-				err := proto.Unmarshal(peer.GetStateInfo().GetPayload(), msg)
+				err = proto.Unmarshal(peer.GetStateInfo().GetPayload(), msg)
 				if err != nil {
 					return nil, err
 				}
-
 				height := msg.GetStateInfo().GetProperties().GetLedgerHeight()
+
+				// extract endpoint
 				err = proto.Unmarshal(peer.GetMembershipInfo().GetPayload(), msg)
 				if err != nil {
 					return nil, err
@@ -103,6 +99,10 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, e
 					continue
 				}
 
+				if endorser.mspid == preferOrg {
+					hasPreferredOrg = true
+				}
+
 				groupPeers = append(groupPeers, &endorserState{peer: peer, endorser: endorser, height: height})
 			}
 
@@ -115,6 +115,7 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, e
 			// sort by decreasing height
 			sort.Slice(groupPeers, sorter(groupPeers, reg.localEndorser.address))
 
+			// put the local org peers at the head of the slice
 			receivers = append(receivers, groupPeers[0:quantity]...)
 		}
 
@@ -126,7 +127,22 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, e
 		for _, peer := range receivers {
 			endorsers = append(endorsers, peer.endorser)
 		}
+
+		// if this plan doesn't contain the `preferOrg` org, abandon it in favour of one that does, since we already have a local endorsement
+		// but save it in reserve in case there are no layouts with the local org
+		if preferOrg != "" && !hasPreferredOrg {
+			if reserveEndorsers == nil {
+				reserveEndorsers = endorsers
+			}
+			// try the next layout
+			continue
+		}
+
 		return endorsers, nil
+	}
+
+	if reserveEndorsers != nil {
+		return reserveEndorsers, nil
 	}
 
 	return nil, fmt.Errorf("failed to select a set of endorsers that satisfy the endorsement policy")
@@ -134,11 +150,6 @@ func (reg *registry) endorsers(channel string, chaincode string) ([]*endorser, e
 
 // endorsersForOrgs returns a set of endorsers owned by the given orgs for the given chaincode on a channel.
 func (reg *registry) endorsersForOrgs(channel string, chaincode string, endorsingOrgs []string) ([]*endorser, error) {
-	err := reg.registerChannel(channel)
-	if err != nil {
-		return nil, err
-	}
-
 	endorsersByOrg := reg.endorsersByOrg(channel, chaincode)
 
 	var endorsers []*endorser
@@ -160,7 +171,7 @@ func (reg *registry) endorsersForOrgs(channel string, chaincode string, endorsin
 func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string][]*endorserState {
 	endorsersByOrg := make(map[string][]*endorserState)
 
-	members := reg.discovery.PeersOfChannel(common.ChannelID(channel))
+	members := reg.discovery.PeersOfChannel(gossipcommon.ChannelID(channel))
 
 	reg.configLock.RLock()
 	defer reg.configLock.RUnlock()
@@ -201,12 +212,8 @@ func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string
 // evaluator returns a single endorser, preferably from local org, if available
 // targetOrgs specifies the orgs that are allowed receive the request, due to private data restrictions
 func (reg *registry) evaluator(channel string, chaincode string, targetOrgs []string) (*endorser, error) {
-	err := reg.registerChannel(channel)
-	if err != nil {
-		return nil, err
-	}
-
 	endorsersByOrg := reg.endorsersByOrg(channel, chaincode)
+
 	// If no targetOrgs are specified (i.e. no restrictions), then populate with all available orgs
 	if len(targetOrgs) == 0 {
 		for org := range endorsersByOrg {
@@ -318,9 +325,9 @@ func (reg *registry) registerChannel(channel string) error {
 
 	// get the remoteEndorsers for the channel
 	peers := map[string]string{}
-	members := reg.discovery.PeersOfChannel(common.ChannelID(channel))
+	members := reg.discovery.PeersOfChannel(gossipcommon.ChannelID(channel))
 	for _, member := range members {
-		id := member.PKIid.String() // TODO this is fragile
+		id := member.PKIid.String()
 		peers[id] = member.PreferredEndpoint()
 	}
 	for mspid, infoset := range reg.discovery.IdentityInfo().ByOrg() {

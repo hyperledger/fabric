@@ -58,6 +58,11 @@ You can see the part of `configtx.yaml` that defines Org1 of the test network be
           Endorsement:
               Type: Signature
               Rule: "OR('Org1MSP.peer')"
+
+      # OrdererEndpoints is a list of all orderers this org runs which clients
+      # and peers may to connect to to push transactions and receive blocks respectively.
+      OrdererEndpoints:
+          - "orderer.example.com:7050"
   ```  
 
   - The `Name` field is an informal name used to identify the organization.
@@ -73,6 +78,8 @@ You can see the part of `configtx.yaml` that defines Org1 of the test network be
     The MSP folder that is used to create the channel MSP only contains public certificates. As a result, you can build the MSP folder locally, and then send the MSP to the organization that is creating the channel.
 
   - The `Policies` section is used to define a set of signature policies that reference the channel member. We will discuss these policies in more detail when we discuss [channel policies](channel_policies.html).
+
+  - The `OrdererEndpoints` indicates the orderer node endpoints that this organization makes available to clients and peers. Service discovery uses this information so that clients can pass the appropriate TLS certificates when connecting to an orderer endpoint.
 
 ## Capabilities
 
@@ -113,13 +120,11 @@ Each channel configuration includes the orderer nodes in the channel [consenter 
         Port: 7050
         ClientTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
         ServerTLSCert: ../organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
-      Addresses:
-      - orderer.example.com:7050
   ```
 
-  Each ordering node in the list of consenters is identified by their endpoint address and their client and server TLS certificate. If you are deploying a multi-node ordering service, you would need to provide the hostname, port, and the path to the TLS certificates used by each node. You would also need to add the endpoint address of each ordering node to the list of `Addresses`.
+  Each ordering node in the list of consenters is identified by their endpoint address and their client and server TLS certificate. If you are deploying a multi-node ordering service, you would need to provide the hostname, port, and the path to the TLS certificates used by each node.
 
-- You can use the `BatchTimeout` and `BatchSize` fields to tune the latency and throughput of the channel by changing the maximum size of each block and how often a new block is created.
+- You can use the `BatchTimeout` and `BatchSize` fields to tune the latency and throughput of the channel by changing the maximum size of each block and how often a new block is created. The `BatchSize` property includes `MaxMessageCount`, `AbsoluteMaxBytes`, and `PreferredMaxBytes` settings. A block will be cut when any of the `BatchTimeout` or `BatchSize` criteria has been met. For `AbsoluteMaxBytes` it is recommended not to exceed 49 MB, given the default gRPC maximum message size of 100 MB configured on orderer and peer nodes (and allowing for message expansion during communication).
 
 - The `Policies` section creates the policies that govern the channel consenter set. The test network uses the default policies provided by Fabric, which require that a majority of orderer administrators approve the addition or removal of ordering nodes, organizations, or an update to the block cutting parameters.
 

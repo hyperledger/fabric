@@ -23,7 +23,7 @@ type Options struct {
 }
 
 var defaultOptions = Options{
-	Enabled:            false,
+	Enabled:            true,
 	EndorsementTimeout: 10 * time.Second,
 	DialTimeout:        30 * time.Second,
 }

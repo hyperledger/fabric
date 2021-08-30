@@ -201,8 +201,8 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 		Profiles:       c.Profiles,
 		Consortiums:    c.Consortiums,
 		Templates:      c.Templates,
-		TLSEnabled:     true,  // Set TLS enabled as true for default
-		GatewayEnabled: false, // Set Gateway enabled as false for default
+		TLSEnabled:     true, // Set TLS enabled as true for default
+		GatewayEnabled: true, // Set Gateway enabled as true for default
 
 		mutex:        &sync.Mutex{},
 		lastExecuted: make(map[string]time.Time),

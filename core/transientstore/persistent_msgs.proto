@@ -1,0 +1,15 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+option go_package = "github.com/hyperledger/fabric/core/transientstore";
+
+package transientstore;
+
+message PendingDeleteStorageList {
+    repeated string list = 1;
+}

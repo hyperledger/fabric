@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc/codes"
@@ -19,7 +20,7 @@ import (
 func getTransactionResponse(response *peer.ProposalResponse) (*peer.Response, error) {
 	var retVal *peer.Response
 
-	if response != nil && response.Payload != nil {
+	if response.GetPayload() != nil {
 		payload, err := protoutil.UnmarshalProposalResponsePayload(response.Payload)
 		if err != nil {
 			return nil, err
@@ -30,7 +31,7 @@ func getTransactionResponse(response *peer.ProposalResponse) (*peer.Response, er
 			return nil, err
 		}
 
-		if extension != nil && extension.Response != nil {
+		if extension.GetResponse() != nil {
 			if extension.Response.Status < 200 || extension.Response.Status >= 400 {
 				return nil, fmt.Errorf("error %d, %s", extension.Response.Status, extension.Response.Message)
 			}
@@ -41,32 +42,32 @@ func getTransactionResponse(response *peer.ProposalResponse) (*peer.Response, er
 	return retVal, nil
 }
 
-func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposal) (string, string, error) {
+func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposal) (string, string, bool, error) {
 	if signedProposal == nil {
-		return "", "", fmt.Errorf("a signed proposal is required")
+		return "", "", false, fmt.Errorf("a signed proposal is required")
 	}
 	proposal, err := protoutil.UnmarshalProposal(signedProposal.ProposalBytes)
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 	header, err := protoutil.UnmarshalHeader(proposal.Header)
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 	channelHeader, err := protoutil.UnmarshalChannelHeader(header.ChannelHeader)
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 	payload, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.Payload)
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 	spec, err := protoutil.UnmarshalChaincodeInvocationSpec(payload.Input)
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 
-	return channelHeader.ChannelId, spec.ChaincodeSpec.ChaincodeId.Name, nil
+	return channelHeader.ChannelId, spec.ChaincodeSpec.ChaincodeId.Name, len(payload.TransientMap) > 0, nil
 }
 
 func rpcError(code codes.Code, message string, details ...proto.Message) error {
@@ -78,4 +79,22 @@ func rpcError(code codes.Code, message string, details ...proto.Message) error {
 		} // otherwise return the error without the details
 	}
 	return st.Err()
+}
+
+func wrappedRpcError(err error, message string, details ...proto.Message) error {
+	statusErr := status.Convert(err)
+	return rpcError(statusErr.Code(), message+": "+statusErr.Message(), details...)
+}
+
+func endpointError(e *endpointConfig, err error) *gp.EndpointError {
+	return &gp.EndpointError{Address: e.address, MspId: e.mspid, Message: err.Error()}
+}
+
+func detailsAsString(details ...proto.Message) string {
+	var detailStrings []string
+	for _, detail := range details {
+		detailStrings = append(detailStrings, "{"+detail.String()+"}")
+	}
+
+	return fmt.Sprint(detailStrings)
 }

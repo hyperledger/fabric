@@ -14,4 +14,5 @@ The `peer node` command has the following subcommands:
   * resume
   * rollback
   * start
+  * unjoin
   * upgrade-dbs

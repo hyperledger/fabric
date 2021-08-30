@@ -13,10 +13,10 @@ const (
 	// an error will be returned.
 	ECDSA = "ECDSA"
 
-	// ECDSA Elliptic Curve Digital Signature Algorithm over P-256 curve
+	// ECDSAP256 Elliptic Curve Digital Signature Algorithm over P-256 curve
 	ECDSAP256 = "ECDSAP256"
 
-	// ECDSA Elliptic Curve Digital Signature Algorithm over P-384 curve
+	// ECDSAP384 Elliptic Curve Digital Signature Algorithm over P-384 curve
 	ECDSAP384 = "ECDSAP384"
 
 	// ECDSAReRand ECDSA key re-randomization
@@ -26,11 +26,11 @@ const (
 	// Each BCCSP may or may not support default security level. If not supported than
 	// an error will be returned.
 	AES = "AES"
-	// AES Advanced Encryption Standard at 128 bit security level
+	// AES128 Advanced Encryption Standard at 128 bit security level
 	AES128 = "AES128"
-	// AES Advanced Encryption Standard at 192 bit security level
+	// AES192 Advanced Encryption Standard at 192 bit security level
 	AES192 = "AES192"
-	// AES Advanced Encryption Standard at 256 bit security level
+	// AES256 Advanced Encryption Standard at 256 bit security level
 	AES256 = "AES256"
 
 	// HMAC keyed-hash message authentication code

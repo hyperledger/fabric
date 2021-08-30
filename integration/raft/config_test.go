@@ -162,7 +162,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 			By("Starting orderer with malformed genesis block")
 			ordererRunner := network.OrdererGroupRunner()
 			process := ifrit.Invoke(ordererRunner)
-			Eventually(process.Wait, network.EventuallyTimeout).Should(Receive()) // orderer process should exit
+			Eventually(process.Wait(), network.EventuallyTimeout).Should(Receive()) // orderer process should exit
 			network.Cleanup()
 			os.RemoveAll(testDir)
 
@@ -208,7 +208,7 @@ var _ = Describe("EndToEnd reconfiguration and onboarding", func() {
 
 			exitCode := network.CreateChannelExitCode(channel, orderer, org1Peer0, org1Peer0, org2Peer0, orderer)
 			Expect(exitCode).NotTo(Equal(0))
-			Consistently(process.Wait).ShouldNot(Receive()) // malformed tx should not crash orderer
+			Consistently(process.Wait()).ShouldNot(Receive()) // malformed tx should not crash orderer
 			Expect(runner.Err()).To(gbytes.Say(`invalid new config metadata: ElectionTick \(10\) must be greater than HeartbeatTick \(10\)`))
 
 			By("Submitting channel config update with illegal value")

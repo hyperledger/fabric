@@ -9,6 +9,8 @@ package endorsement
 import (
 	"fmt"
 
+	"github.com/hyperledger/fabric-protos-go/peer"
+
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric/common/chaincode"
@@ -79,7 +81,7 @@ func NewEndorsementAnalyzer(gs gossipSupport, pf policyFetcher, pe principalEval
 type peerPrincipalEvaluator func(member gossipdiscovery.NetworkMember, principal *msp.MSPPrincipal) bool
 
 // PeersForEndorsement returns an EndorsementDescriptor for a given set of peers, channel, and chaincode
-func (ea *endorsementAnalyzer) PeersForEndorsement(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
+func (ea *endorsementAnalyzer) PeersForEndorsement(channelID common.ChannelID, interest *peer.ChaincodeInterest) (*discovery.EndorsementDescriptor, error) {
 	membersAndCC, err := ea.peersByCriteria(channelID, interest, false)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -107,12 +109,12 @@ func (ea *endorsementAnalyzer) PeersForEndorsement(channelID common.ChannelID, i
 	})
 }
 
-func (ea *endorsementAnalyzer) PeersAuthorizedByCriteria(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (gossipdiscovery.Members, error) {
+func (ea *endorsementAnalyzer) PeersAuthorizedByCriteria(channelID common.ChannelID, interest *peer.ChaincodeInterest) (gossipdiscovery.Members, error) {
 	res, err := ea.peersByCriteria(channelID, interest, true)
 	return res.members, err
 }
 
-func (ea *endorsementAnalyzer) peersByCriteria(channelID common.ChannelID, interest *discovery.ChaincodeInterest, excludePeersWithoutChaincode bool) (membersChaincodeMapping, error) {
+func (ea *endorsementAnalyzer) peersByCriteria(channelID common.ChannelID, interest *peer.ChaincodeInterest, excludePeersWithoutChaincode bool) (membersChaincodeMapping, error) {
 	peersOfChannel := ea.PeersOfChannel(channelID)
 	if interest == nil || len(interest.Chaincodes) == 0 {
 		return membersChaincodeMapping{members: peersOfChannel}, nil
@@ -214,21 +216,81 @@ func filterOutUnsatisfiedLayouts(endorsersByGroup map[string]*discovery.Peers, l
 	return filteredLayouts
 }
 
-func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, interest *discovery.ChaincodeInterest) (policies.PrincipalSets, error) {
+func computeStateBasedPrincipalSets(chaincodes []*peer.ChaincodeCall, logger *flogging.FabricLogger) (inquire.ComparablePrincipalSets, error) {
+	var stateBasedCPS []inquire.ComparablePrincipalSets
+	for _, chaincode := range chaincodes {
+		if len(chaincode.KeyPolicies) == 0 {
+			continue
+		}
+
+		logger.Debugf("Chaincode call to %s is satisfied by %d state based policies of %v",
+			chaincode.Name, len(chaincode.KeyPolicies), chaincode.KeyPolicies)
+
+		for _, stateBasedPolicy := range chaincode.KeyPolicies {
+			var cmpsets inquire.ComparablePrincipalSets
+			stateBasedPolicy := inquire.NewInquireableSignaturePolicy(stateBasedPolicy)
+			for _, ps := range stateBasedPolicy.SatisfiedBy() {
+				cps := inquire.NewComparablePrincipalSet(ps)
+				if cps == nil {
+					return nil, errors.New("failed creating a comparable principal set for state based endorsement")
+				}
+				cmpsets = append(cmpsets, cps)
+			}
+			if len(cmpsets) == 0 {
+				return nil, errors.New("state based endorsement policy cannot be satisfied")
+			}
+			stateBasedCPS = append(stateBasedCPS, cmpsets)
+		}
+	}
+
+	if len(stateBasedCPS) > 0 {
+		stateBasedPrincipalSet, err := mergePrincipalSets(stateBasedCPS)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		logger.Debugf("Merging state based policies: %v --> %v", stateBasedCPS, stateBasedPrincipalSet)
+
+		return stateBasedPrincipalSet, nil
+	}
+
+	logger.Debugf("No state based policies requested")
+
+	return nil, nil
+}
+
+func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, interest *peer.ChaincodeInterest) (policies.PrincipalSets, error) {
 	sessionLogger := logger.With("channel", string(channelID))
-	var inquireablePolicies []policies.InquireablePolicy
+	var inquireablePoliciesForChaincodeAndCollections []policies.InquireablePolicy
 	for _, chaincode := range interest.Chaincodes {
 		policies := ea.PoliciesByChaincode(string(channelID), chaincode.Name, chaincode.CollectionNames...)
 		if len(policies) == 0 {
 			sessionLogger.Debug("Policy for chaincode '", chaincode, "'doesn't exist")
 			return nil, errors.New("policy not found")
 		}
-		inquireablePolicies = append(inquireablePolicies, policies...)
+		if chaincode.DisregardNamespacePolicy && len(chaincode.KeyPolicies) == 0 && len(policies) == 1 {
+			sessionLogger.Warnf("Client requested to disregard chaincode %s's policy, but it did not specify any "+
+				"collection policies or key policies. This is probably a bug in the client side code, as the client should"+
+				"either not specify DisregardNamespacePolicy, or specify at least one key policy or at least one collection policy", chaincode.Name)
+			return nil, errors.Errorf("requested to disregard chaincode %s's policy but key and collection policies are missing, either "+
+				"disable DisregardNamespacePolicy or specify at least one key policy or at least one collection policy", chaincode.Name)
+		}
+		if chaincode.DisregardNamespacePolicy {
+			if len(policies) == 1 {
+				sessionLogger.Debugf("Client requested to disregard the namespace policy for chaincode %s,"+
+					" and no collection policies are present", chaincode.Name)
+				continue
+			}
+			sessionLogger.Debugf("Client requested to disregard the namespace policy for chaincode %s,"+
+				" however there exist %d collection policies taken into account", chaincode.Name, len(policies)-1)
+			policies = policies[1:]
+		}
+		inquireablePoliciesForChaincodeAndCollections = append(inquireablePoliciesForChaincodeAndCollections, policies...)
 	}
 
 	var cpss []inquire.ComparablePrincipalSets
 
-	for _, policy := range inquireablePolicies {
+	for _, policy := range inquireablePoliciesForChaincodeAndCollections {
 		var cmpsets inquire.ComparablePrincipalSets
 		for _, ps := range policy.SatisfiedBy() {
 			cps := inquire.NewComparablePrincipalSet(ps)
@@ -243,17 +305,28 @@ func (ea *endorsementAnalyzer) computePrincipalSets(channelID common.ChannelID, 
 		cpss = append(cpss, cmpsets)
 	}
 
+	stateBasedCPS, err := computeStateBasedPrincipalSets(interest.Chaincodes, sessionLogger)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	if len(stateBasedCPS) > 0 {
+		cpss = append(cpss, stateBasedCPS)
+	}
+
 	cps, err := mergePrincipalSets(cpss)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+
+	sessionLogger.Debugf("Merging principal sets: %v --> %v", cpss, cps)
 
 	return cps.ToPrincipalSets(), nil
 }
 
 type metadataAndFilterContext struct {
 	chainID          common.ChannelID
-	interest         *discovery.ChaincodeInterest
+	interest         *peer.ChaincodeInterest
 	fetch            chaincodeMetadataFetcher
 	identityInfoByID map[string]api.PeerIdentityInfo
 	evaluator        principalEvaluator

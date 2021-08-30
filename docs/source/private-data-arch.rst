@@ -13,15 +13,13 @@ used to control dissemination of private data at endorsement time and,
 optionally, whether the data will be purged.
 
 Beginning with the Fabric chaincode lifecycle introduced with Fabric v2.0, the
-collection definition is part of the chaincode definition. The collection is
-approved by channel members, and then deployed when the chaincode definition
-is committed to the channel. The collection file needs to be the same for all
-channel members. If you are using the peer CLI to approve and commit the
+collection definition is part of the chaincode definition. The chaincode including
+collection definition must be approved by the required channel members, and
+then becomes effective when the chaincode definition is committed to the channel.
+The collection definition that is approved must be identical for each of the required
+channel members. When using the peer CLI to approve and commit the
 chaincode definition, use the ``--collections-config`` flag to specify the path
-to the collection definition file. If you are using the Fabric SDK for Node.js,
-visit `How to install and start your chaincode <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-chaincode-lifecycle.html>`_.
-To use the `previous lifecycle process <https://hyperledger-fabric.readthedocs.io/en/release-1.4/chaincode4noah.html>`_ to deploy a private data collection,
-use the ``--collections-config`` flag when `instantiating your chaincode <https://hyperledger-fabric.readthedocs.io/en/{BRANCH_DOC}/commands/peerchaincode.html#peer-chaincode-instantiate>`_.
+to the collection definition file.
 
 Collection definitions are composed of the following properties:
 
@@ -143,6 +141,44 @@ though the chaincode level endorsement policy may require endorsement from
 In this way you can control which organizations are entrusted to write to certain
 private data collections.
 
+Implicit private data collections
+---------------------------------
+
+In addition to explicitly defined private data collections,
+every chaincode has an implicit private data namespace reserved for organization-specific
+private data. These implicit organization-specific private data collections can
+be used to store an individual organization's private data, and do not need to
+be defined explicitly.
+
+The private data dissemination policy and endorsement policy for implicit
+organization-specific collections is the respective organization itself.
+The implication is that if data exists in an implicit private data collection,
+it was endorsed by the respective organization. Implicit private data collections
+can therefore be used by an organization to record their agreement or vote
+for some fact, which is a useful pattern to leverage in multi-party business
+processes implemented in chaincode since other organizations can check
+the on-chain hash to verify the organization's record. Private data
+can also be shared or transferred to an implicit collection of another organization,
+making implicit collections a useful pattern to leverage in chaincode
+applications, without the need to explicitly manage collection definitions.
+
+Since implicit private data collections are not explicitly defined,
+it is not possible to set the additional collection properties. Specifically,
+``memberOnlyRead`` and ``memberOnlyWrite`` are not available,
+meaning that access control for clients reading data from or writing data to
+an implicit private data collection must be encoded in the chaincode on the organization's peer.
+Furthermore, ``blockToLive`` is not available, meaning that private data is never automatically purged.
+
+The properties ``requiredPeerCount`` and ``maxPeerCount`` can however be set in the peer's core.yaml
+(``peer.gossip.pvtData.implicitCollectionDisseminationPolicy.requiredPeerCount`` and
+``peer.gossip.pvtData.implicitCollectionDisseminationPolicy.maxPeerCount``). An organization
+can set these properties based on the number of peers that they deploy, as described
+in the next section.
+
+.. note:: Since implicit private data collections are not explicitly defined,
+          it is not possible to associate CouchDB indexes with them. Utilize
+          key-based queries and key-range queries rather than JSON queries.
+
 Private data dissemination
 --------------------------
 
@@ -152,7 +188,7 @@ to all peers in a channel, the endorsing peer plays an important role in
 disseminating private data to other peers of authorized organizations. This ensures
 the availability of private data in the channel's collection, even if endorsing
 peers become unavailable after their endorsement. To assist with this dissemination,
-the  ``maxPeerCount`` and ``requiredPeerCount`` properties in the collection definition
+the  ``maxPeerCount`` and ``requiredPeerCount`` properties
 control the degree of dissemination at endorsement time.
 
 If the endorsing peer cannot successfully disseminate the private data to at least
@@ -287,7 +323,8 @@ configuration definitions and how to set them, refer back to the
 `Private data collection definition`_  section of this topic.
 
 .. note:: If you would like more granular access control, you can set
-          ``memberOnlyRead`` and ``memberOnlyWrite`` to false. You can then apply your
+          ``memberOnlyRead`` and ``memberOnlyWrite`` to false (implicit collections always
+          behave as if ``memberOnlyRead`` and ``memberOnlyWrite`` are false). You can then apply your
           own access control logic in chaincode, for example by calling the GetCreator()
           chaincode API or using the client identity
           `chaincode library <https://godoc.org/github.com/hyperledger/fabric-chaincode-go/shim#ChaincodeStub.GetCreator>`__ .
@@ -301,19 +338,19 @@ shim APIs:
 * ``GetPrivateDataByRange(collection, startKey, endKey string)``
 * ``GetPrivateDataByPartialCompositeKey(collection, objectType string, keys []string)``
 
-And for the CouchDB state database, JSON content queries can be passed using the
-shim API:
+And if using explicit private data collections and CouchDB state database,
+JSON content queries can be passed using the shim API:
 
 * ``GetPrivateDataQueryResult(collection, query string)``
 
 Limitations:
 
-* Clients that call chaincode that executes range or rich JSON queries should be aware
+* Clients that call chaincode that executes key range queries or JSON queries should be aware
   that they may receive a subset of the result set, if the peer they query has missing
   private data, based on the explanation in Private Data Dissemination section
   above.  Clients can query multiple peers and compare the results to
   determine if a peer may be missing some of the result set.
-* Chaincode that executes range or rich JSON queries and updates data in a single
+* Chaincode that executes key range queries or JSON queries and updates data in a single
   transaction is not supported, as the query results cannot be validated on the peers
   that don’t have access to the private data, or on peers that are missing the
   private data that they have access to. If a chaincode invocation both queries
@@ -323,6 +360,9 @@ Limitations:
   chaincode function to make the updates. Note that calls to GetPrivateData() to retrieve
   individual keys can be made in the same transaction as PutPrivateData() calls, since
   all peers can validate key reads based on the hashed key version.
+* Since implicit private data collections are not explicitly defined,
+  it is not possible to associate CouchDB indexes with them.
+  It is therefore not recommended to utilize JSON queries with implicit private data collections.
 
 Using Indexes with collections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -331,7 +371,7 @@ The topic :doc:`couchdb_as_state_database` describes indexes that can be
 applied to the channel’s state database to enable JSON content queries, by
 packaging indexes in a ``META-INF/statedb/couchdb/indexes`` directory at chaincode
 installation time.  Similarly, indexes can also be applied to private data
-collections, by packaging indexes in a ``META-INF/statedb/couchdb/collections/<collection_name>/indexes``
+collections that are explicitly defined, by packaging indexes in a ``META-INF/statedb/couchdb/collections/<collection_name>/indexes``
 directory. An example index is available `here <https://github.com/hyperledger/fabric-samples/blob/{BRANCH}/chaincode/marbles02_private/go/META-INF/statedb/couchdb/collections/collectionMarbles/indexes/indexOwner.json>`_.
 
 Considerations when using private data
@@ -340,8 +380,8 @@ Considerations when using private data
 Private data purging
 ~~~~~~~~~~~~~~~~~~~~
 
-Private data can be periodically purged from peers. For more details,
-see the ``blockToLive`` collection definition property above.
+Private data in explicitly defined private data collections can be periodically purged from peers.
+For more details, see the ``blockToLive`` collection definition property above.
 
 Additionally, recall that prior to commit, peers store private data in a local
 transient data store. This data automatically gets purged when the transaction

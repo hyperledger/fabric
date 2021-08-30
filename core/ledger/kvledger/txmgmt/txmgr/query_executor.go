@@ -35,6 +35,7 @@ type queryExecutor struct {
 	doneInvoked       bool
 	hasher            rwsetutil.HashFunc
 	txid              string
+	privateReads      *ledger.PrivateReads
 }
 
 func newQueryExecutor(txmgr *LockBasedTxMgr,
@@ -53,6 +54,7 @@ func newQueryExecutor(txmgr *LockBasedTxMgr,
 	qe.hasher = hashFunc
 	validator := newCollNameValidator(txmgr.ledgerid, txmgr.ccInfoProvider, qe, !performCollCheck)
 	qe.collNameValidator = validator
+	qe.privateReads = &ledger.PrivateReads{}
 	return qe
 }
 
@@ -219,6 +221,7 @@ func (q *queryExecutor) GetPrivateData(ns, coll, key string) ([]byte, error) {
 	}
 	if q.collectReadset {
 		q.rwsetBuilder.AddToHashedReadSet(ns, coll, key, ver)
+		q.privateReads.Add(ns, coll)
 	}
 	return val, nil
 }
@@ -319,6 +322,7 @@ func (q *queryExecutor) GetPrivateDataMultipleKeys(ns, coll string, keys []strin
 		val, _, ver := decomposeVersionedValue(versionedValue)
 		if q.collectReadset {
 			q.rwsetBuilder.AddToHashedReadSet(ns, coll, keys[i], ver)
+			q.privateReads.Add(ns, coll)
 		}
 		values[i] = val
 	}

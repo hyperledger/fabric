@@ -50,6 +50,14 @@ General:
         # ServerTimeout is the duration the server waits for a response from
         # a client before closing the connection.
         ServerTimeout: 20s
+
+    # Since all nodes should be consistent it is recommended to keep
+    # the default value of 100MB for MaxRecvMsgSize & MaxSendMsgSize
+    # Max message size in bytes the GRPC server and client can receive
+    MaxRecvMsgSize: 104857600
+    # Max message size in bytes the GRPC server and client can send
+    MaxSendMsgSize: 104857600
+
     # Cluster settings for ordering service nodes that communicate with other ordering service nodes
     # such as Raft based ordering service.
     Cluster:

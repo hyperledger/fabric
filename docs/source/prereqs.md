@@ -78,13 +78,13 @@ docker-compose version 1.27.2, build 18f557f9
 
 ### Go
 
-Optional: Install the latest version of [Go](https://golang.org/doc/install) if it is not already installed
-(only required if you will be writing Go chaincode or SDK applications).
+Optional: Install the latest Fabric supported version of [Go](https://golang.org/doc/install) if it is not already
+installed (only required if you will be writing Go chaincode or SDK applications).
 
 ```shell
-$ brew install go
+$ brew install go@1.16.7
 $ go version
-go1.15.7 darwin/amd64
+go1.16.7 darwin/amd64
 ```
 
 ### JQ

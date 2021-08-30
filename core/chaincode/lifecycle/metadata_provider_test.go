@@ -78,6 +78,11 @@ var _ = Describe("MetadataProvider", func() {
 		))
 	})
 
+	It("returns metadata for implicit collections", func() {
+		metadata := metadataProvider.Metadata("testchannel", "cc-name", "_implicit_org_msp1")
+		Expect(metadata.CollectionPolicies).To(HaveKey("_implicit_org_msp1"))
+	})
+
 	Context("when the chaincode is not found by the ChaincodeInfoProvider", func() {
 		BeforeEach(func() {
 			fakeChaincodeInfoProvider.ChaincodeInfoReturns(nil, errors.New("scrumtrulescent"))

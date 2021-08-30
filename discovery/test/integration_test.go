@@ -23,12 +23,13 @@ import (
 	"testing"
 	"time"
 
+	discovery_protos "github.com/hyperledger/fabric-protos-go/discovery"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
-	. "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
 	msprotos "github.com/hyperledger/fabric-protos-go/msp"
-	"github.com/hyperledger/fabric-protos-go/peer"
+	. "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
 	bccsp "github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/hyperledger/fabric/common/cauthdsl"
@@ -331,7 +332,7 @@ func TestRevocation(t *testing.T) {
 
 type client struct {
 	*disc.Client
-	*AuthInfo
+	*discovery_protos.AuthInfo
 	conn *grpc.ClientConn
 }
 
@@ -482,7 +483,7 @@ func createClientAndService(t *testing.T, testdir string) (*client, *client, *se
 		AuthCachePurgeRetentionRatio: 0.5,
 	}, sup)
 
-	RegisterDiscoveryServer(gRPCServer.Server(), svc)
+	discovery_protos.RegisterDiscoveryServer(gRPCServer.Server(), svc)
 
 	require.NoError(t, err)
 	go gRPCServer.Start()
@@ -503,7 +504,7 @@ func createClientAndService(t *testing.T, testdir string) (*client, *client, *se
 	require.NoError(t, err)
 
 	userSigner := createUserSigner(t)
-	wrapperUserClient := &client{AuthInfo: &AuthInfo{
+	wrapperUserClient := &client{AuthInfo: &discovery_protos.AuthInfo{
 		ClientIdentity:    userSigner.Creator,
 		ClientTlsCertHash: util.ComputeSHA256(clientKeyPair.TLSCert.Raw),
 	}, conn: conn}
@@ -511,7 +512,7 @@ func createClientAndService(t *testing.T, testdir string) (*client, *client, *se
 	wrapperUserClient.Client = disc.NewClient(wrapperUserClient.newConnection, userSigner.Sign, signerCacheSize)
 
 	adminSigner := createAdminSigner(t)
-	wrapperAdminClient := &client{AuthInfo: &AuthInfo{
+	wrapperAdminClient := &client{AuthInfo: &discovery_protos.AuthInfo{
 		ClientIdentity:    adminSigner.Creator,
 		ClientTlsCertHash: util.ComputeSHA256(clientKeyPair.TLSCert.Raw),
 	}, conn: conn}
@@ -882,14 +883,14 @@ func aliveMsg(pkiID gcommon.PKIidType) gdisc.NetworkMember {
 }
 
 func buildCollectionConfig(col2principals map[string][]*msprotos.MSPPrincipal) []byte {
-	collections := &peer.CollectionConfigPackage{}
+	collections := &CollectionConfigPackage{}
 	for col, principals := range col2principals {
-		collections.Config = append(collections.Config, &peer.CollectionConfig{
-			Payload: &peer.CollectionConfig_StaticCollectionConfig{
-				StaticCollectionConfig: &peer.StaticCollectionConfig{
+		collections.Config = append(collections.Config, &CollectionConfig{
+			Payload: &CollectionConfig_StaticCollectionConfig{
+				StaticCollectionConfig: &StaticCollectionConfig{
 					Name: col,
-					MemberOrgsPolicy: &peer.CollectionPolicyConfig{
-						Payload: &peer.CollectionPolicyConfig_SignaturePolicy{
+					MemberOrgsPolicy: &CollectionPolicyConfig{
+						Payload: &CollectionPolicyConfig_SignaturePolicy{
 							SignaturePolicy: &common.SignaturePolicyEnvelope{
 								Identities: principals,
 							},

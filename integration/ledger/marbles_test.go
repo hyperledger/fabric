@@ -65,7 +65,7 @@ var _ = Describe("all shim APIs for non-private data", func() {
 		By("adding six marbles, marble-0 to marble-5")
 		for i := 0; i <= 5; i++ {
 			helper.invokeMarblesChaincode(ccName, peer, "initMarble", fmt.Sprintf("marble-%d", i), "blue", "35", "tom")
-			helper.waitUntilEqualLedgerHeight(height + i + 1)
+			helper.waitUntilAllPeersEqualLedgerHeight(height + i + 1)
 		}
 
 		By("getting marbles by range")

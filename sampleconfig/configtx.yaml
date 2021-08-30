@@ -66,9 +66,9 @@ Organizations:
             - "127.0.0.1:7050"
 
         # AnchorPeers defines the location of peers which can be used for
-        # cross-org gossip communication. 
+        # cross-org gossip communication.
         #
-        # NOTE: this value should only be set when using the deprecated 
+        # NOTE: this value should only be set when using the deprecated
         # `configtxgen --outputAnchorPeersUpdate` command. It is recommended
         # to instead use the channel configuration update process to set the
         # anchor peers for each organization.
@@ -288,9 +288,9 @@ Orderer: &OrdererDefaults
         # the serialized messages in a batch. The maximum block size is this value
         # plus the size of the associated metadata (usually a few KB depending
         # upon the size of the signing identities). Any transaction larger than
-        # this value will be rejected by ordering. If the "kafka" OrdererType is
-        # selected, set 'message.max.bytes' and 'replica.fetch.max.bytes' on
-        # the Kafka brokers to a value that is larger than this one.
+        # this value will be rejected by ordering.
+        # It is recommended not to exceed 49 MB, given the default grpc max message size of 100 MB
+        # configured on orderer and peer nodes (and allowing for message expansion during communication).
         AbsoluteMaxBytes: 10 MB
 
         # Preferred Max Bytes: The preferred maximum number of bytes allowed
@@ -607,15 +607,15 @@ Profiles:
                               Rule: "OR('SampleOrg.member')"
 
     # SampleAppChannelInsecureSolo defines an application channel configuration
-    # which uses the Solo orderer and contains no MSP definitions. 
+    # which uses the Solo orderer and contains no MSP definitions.
     SampleAppChannelInsecureSolo:
         <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
-        Application: 
+        Application:
             <<: *ApplicationDefaults
 
-    # SampleAppChannelEtcdRaft defines an application channel configuration 
+    # SampleAppChannelEtcdRaft defines an application channel configuration
     # that uses the etcd/raft-based orderer.
     SampleAppChannelEtcdRaft:
         <<: *ChannelDefaults
