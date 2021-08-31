@@ -37,4 +37,16 @@ func TestPeerAdapter(t *testing.T) {
 			require.ErrorContains(t, err, "CHANNEL")
 		})
 	})
+
+	t.Run("Ledger", func(t *testing.T) {
+		t.Run("returns error when channel does not exist", func(t *testing.T) {
+			adapter := &peerAdapter{
+				Peer: &peer.Peer{},
+			}
+
+			_, err := adapter.Ledger("CHANNEL")
+
+			require.ErrorContains(t, err, "CHANNEL")
+		})
+	})
 }

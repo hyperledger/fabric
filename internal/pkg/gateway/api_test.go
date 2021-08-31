@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	cp "github.com/hyperledger/fabric-protos-go/common"
 	dp "github.com/hyperledger/fabric-protos-go/discovery"
 	pb "github.com/hyperledger/fabric-protos-go/gateway"
@@ -21,6 +22,7 @@ import (
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
@@ -63,16 +65,26 @@ type commitFinder interface {
 	CommitFinder
 }
 
-//go:generate counterfeiter -o mocks/eventer.go --fake-name Eventer . eventer
-type eventer interface {
-	Eventer
-}
-
 //go:generate counterfeiter -o mocks/chaincodeeventsserver.go --fake-name ChaincodeEventsServer github.com/hyperledger/fabric-protos-go/gateway.Gateway_ChaincodeEventsServer
 
 //go:generate counterfeiter -o mocks/aclchecker.go --fake-name ACLChecker . aclChecker
 type aclChecker interface {
 	ACLChecker
+}
+
+//go:generate counterfeiter -o mocks/ledgerprovider.go --fake-name LedgerProvider . ledgerProvider
+type ledgerProvider interface {
+	LedgerProvider
+}
+
+//go:generate counterfeiter -o mocks/ledger.go --fake-name Ledger . mockLedger
+type mockLedger interface {
+	commonledger.Ledger
+}
+
+//go:generate counterfeiter -o mocks/resultsiterator.go --fake-name ResultsIterator . resultsIterator
+type mockResultsIterator interface {
+	commonledger.ResultsIterator
 }
 
 type (
@@ -124,16 +136,17 @@ type testDef struct {
 	endpointDefinition *endpointDef
 	endorsingOrgs      []string
 	postSetup          func(t *testing.T, def *preparedTest)
+	postTest           func(t *testing.T, def *preparedTest)
 	expectedEndorsers  []string
 	finderStatus       *commit.Status
 	finderErr          error
-	chaincodeEvents    []*commit.BlockChaincodeEvents
 	eventErr           error
 	policyErr          error
 	expectedResponse   proto.Message
 	expectedResponses  []proto.Message
 	transientData      map[string][]byte
 	interest           *peer.ChaincodeInterest
+	blocks             []*cp.Block
 }
 
 type preparedTest struct {
@@ -144,9 +157,11 @@ type preparedTest struct {
 	discovery      *mocks.Discovery
 	dialer         *mocks.Dialer
 	finder         *mocks.CommitFinder
-	eventer        *mocks.Eventer
 	eventsServer   *mocks.ChaincodeEventsServer
 	policy         *mocks.ACLChecker
+	ledgerProvider *mocks.LedgerProvider
+	ledger         *mocks.Ledger
+	blockIterator  *mocks.ResultsIterator
 }
 
 type contextKey string
@@ -962,76 +977,234 @@ func TestCommitStatus(t *testing.T) {
 }
 
 func TestChaincodeEvents(t *testing.T) {
-	closedEventsChannel := make(chan *commit.BlockChaincodeEvents)
-	close(closedEventsChannel)
+	now := time.Now()
+	transactionId := "TRANSACTION_ID"
+
+	matchChaincodeEvent := &peer.ChaincodeEvent{
+		ChaincodeId: testChaincode,
+		TxId:        transactionId,
+		EventName:   "EVENT_NAME",
+		Payload:     []byte("PAYLOAD"),
+	}
+
+	mismatchChaincodeEvent := &peer.ChaincodeEvent{
+		ChaincodeId: "WRONG_CHAINCODE_ID",
+		TxId:        transactionId,
+		EventName:   "EVENT_NAME",
+		Payload:     []byte("PAYLOAD"),
+	}
+
+	txHeader := &cp.Header{
+		ChannelHeader: protoutil.MarshalOrPanic(&cp.ChannelHeader{
+			Type: int32(cp.HeaderType_ENDORSER_TRANSACTION),
+			Timestamp: &timestamp.Timestamp{
+				Seconds: now.Unix(),
+				Nanos:   int32(now.Nanosecond()),
+			},
+			TxId: transactionId,
+		}),
+	}
+
+	matchTxEnvelope := &cp.Envelope{
+		Payload: protoutil.MarshalOrPanic(&cp.Payload{
+			Header: txHeader,
+			Data: protoutil.MarshalOrPanic(&peer.Transaction{
+				Actions: []*peer.TransactionAction{
+					{
+						Payload: protoutil.MarshalOrPanic(&peer.ChaincodeActionPayload{
+							Action: &peer.ChaincodeEndorsedAction{
+								ProposalResponsePayload: protoutil.MarshalOrPanic(&peer.ProposalResponsePayload{
+									Extension: protoutil.MarshalOrPanic(&peer.ChaincodeAction{
+										Events: protoutil.MarshalOrPanic(matchChaincodeEvent),
+									}),
+								}),
+							},
+						}),
+					},
+				},
+			}),
+		}),
+	}
+
+	mismatchTxEnvelope := &cp.Envelope{
+		Payload: protoutil.MarshalOrPanic(&cp.Payload{
+			Header: txHeader,
+			Data: protoutil.MarshalOrPanic(&peer.Transaction{
+				Actions: []*peer.TransactionAction{
+					{
+						Payload: protoutil.MarshalOrPanic(&peer.ChaincodeActionPayload{
+							Action: &peer.ChaincodeEndorsedAction{
+								ProposalResponsePayload: protoutil.MarshalOrPanic(&peer.ProposalResponsePayload{
+									Extension: protoutil.MarshalOrPanic(&peer.ChaincodeAction{
+										Events: protoutil.MarshalOrPanic(mismatchChaincodeEvent),
+									}),
+								}),
+							},
+						}),
+					},
+				},
+			}),
+		}),
+	}
+
+	block100Proto := &cp.Block{
+		Header: &cp.BlockHeader{
+			Number: 100,
+		},
+		Metadata: &cp.BlockMetadata{
+			Metadata: [][]byte{
+				nil,
+				nil,
+				{
+					byte(peer.TxValidationCode_VALID),
+				},
+				nil,
+				nil,
+			},
+		},
+		Data: &cp.BlockData{
+			Data: [][]byte{
+				protoutil.MarshalOrPanic(mismatchTxEnvelope),
+			},
+		},
+	}
+
+	block101Proto := &cp.Block{
+		Header: &cp.BlockHeader{
+			Number: 101,
+		},
+		Metadata: &cp.BlockMetadata{
+			Metadata: [][]byte{
+				nil,
+				nil,
+				{
+					byte(peer.TxValidationCode_VALID),
+					byte(peer.TxValidationCode_VALID),
+					byte(peer.TxValidationCode_VALID),
+				},
+				nil,
+				nil,
+			},
+		},
+		Data: &cp.BlockData{
+			Data: [][]byte{
+				protoutil.MarshalOrPanic(&cp.Envelope{
+					Payload: protoutil.MarshalOrPanic(&cp.Payload{
+						Header: &cp.Header{
+							ChannelHeader: protoutil.MarshalOrPanic(&cp.ChannelHeader{
+								Type: int32(cp.HeaderType_CONFIG_UPDATE),
+							}),
+						},
+					}),
+				}),
+				protoutil.MarshalOrPanic(mismatchTxEnvelope),
+				protoutil.MarshalOrPanic(matchTxEnvelope),
+			},
+		},
+	}
 
 	tests := []testDef{
 		{
-			name:      "error establishing event reading",
+			name:      "error reading events",
 			eventErr:  errors.New("EVENT_ERROR"),
-			errString: "rpc error: code = FailedPrecondition desc = EVENT_ERROR",
+			errString: "rpc error: code = Unavailable desc = EVENT_ERROR",
 		},
 		{
 			name: "returns chaincode events",
-			chaincodeEvents: []*commit.BlockChaincodeEvents{
-				{
-					BlockNumber: 101,
-					Events: []*peer.ChaincodeEvent{
-						{
-							ChaincodeId: testChaincode,
-							TxId:        "TX_ID",
-							EventName:   "EVENT_NAME",
-							Payload:     []byte("PAYLOAD"),
-						},
-					},
-				},
+			blocks: []*cp.Block{
+				block101Proto,
 			},
 			expectedResponses: []proto.Message{
 				&pb.ChaincodeEventsResponse{
-					BlockNumber: 101,
+					BlockNumber: block101Proto.GetHeader().GetNumber(),
 					Events: []*peer.ChaincodeEvent{
 						{
 							ChaincodeId: testChaincode,
-							TxId:        "TX_ID",
-							EventName:   "EVENT_NAME",
-							Payload:     []byte("PAYLOAD"),
+							TxId:        matchChaincodeEvent.GetTxId(),
+							EventName:   matchChaincodeEvent.GetEventName(),
+							Payload:     matchChaincodeEvent.GetPayload(),
 						},
 					},
 				},
 			},
 		},
 		{
-			name: "passes channel name to eventer",
-			postSetup: func(t *testing.T, test *preparedTest) {
-				test.eventer.ChaincodeEventsCalls(func(ctx context.Context, channelName string, chaincodeName string) (<-chan *commit.BlockChaincodeEvents, error) {
-					require.Equal(t, testChannel, channelName)
-					return closedEventsChannel, nil
-				})
+			name: "skips blocks containing only non-matching chaincode events",
+			blocks: []*cp.Block{
+				block100Proto,
+				block101Proto,
+			},
+			expectedResponses: []proto.Message{
+				&pb.ChaincodeEventsResponse{
+					BlockNumber: block101Proto.GetHeader().GetNumber(),
+					Events: []*peer.ChaincodeEvent{
+						{
+							ChaincodeId: testChaincode,
+							TxId:        matchChaincodeEvent.GetTxId(),
+							EventName:   matchChaincodeEvent.GetEventName(),
+							Payload:     matchChaincodeEvent.GetPayload(),
+						},
+					},
+				},
 			},
 		},
 		{
-			name: "passes chaincode ID to eventer",
+			name: "passes channel name to ledger provider",
+			postTest: func(t *testing.T, test *preparedTest) {
+				require.Equal(t, 1, test.ledgerProvider.LedgerCallCount())
+				require.Equal(t, testChannel, test.ledgerProvider.LedgerArgsForCall(0))
+			},
+		},
+		{
+			name: "returns error obtaining ledger",
+			blocks: []*cp.Block{
+				block101Proto,
+			},
+			errString: "rpc error: code = InvalidArgument desc = LEDGER_PROVIDER_ERROR",
 			postSetup: func(t *testing.T, test *preparedTest) {
-				test.eventer.ChaincodeEventsCalls(func(ctx context.Context, channelName string, chaincodeName string) (<-chan *commit.BlockChaincodeEvents, error) {
-					require.Equal(t, testChaincode, chaincodeName)
-					return closedEventsChannel, nil
-				})
+				test.ledgerProvider.LedgerReturns(nil, errors.New("LEDGER_PROVIDER_ERROR"))
+			},
+		},
+		{
+			name: "returns error obtaining ledger height",
+			blocks: []*cp.Block{
+				block101Proto,
+			},
+			errString: "rpc error: code = Unavailable desc = LEDGER_INFO_ERROR",
+			postSetup: func(t *testing.T, test *preparedTest) {
+				test.ledger.GetBlockchainInfoReturns(nil, errors.New("LEDGER_INFO_ERROR"))
+			},
+		},
+		{
+			name: "uses block height as default start block",
+			blocks: []*cp.Block{
+				block101Proto,
+			},
+			postSetup: func(t *testing.T, test *preparedTest) {
+				ledgerInfo := &cp.BlockchainInfo{
+					Height: 101,
+				}
+				test.ledger.GetBlockchainInfoReturns(ledgerInfo, nil)
+			},
+			postTest: func(t *testing.T, test *preparedTest) {
+				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
+				require.EqualValues(t, 101, test.ledger.GetBlocksIteratorArgsForCall(0))
+			},
+		},
+		{
+			name: "returns error obtaining ledger iterator",
+			blocks: []*cp.Block{
+				block101Proto,
+			},
+			errString: "rpc error: code = Unavailable desc = LEDGER_ITERATOR_ERROR",
+			postSetup: func(t *testing.T, test *preparedTest) {
+				test.ledger.GetBlocksIteratorReturns(nil, errors.New("LEDGER_ITERATOR_ERROR"))
 			},
 		},
 		{
 			name: "returns error from send to client",
-			chaincodeEvents: []*commit.BlockChaincodeEvents{
-				{
-					BlockNumber: 101,
-					Events: []*peer.ChaincodeEvent{
-						{
-							ChaincodeId: testChaincode,
-							TxId:        "TX_ID",
-							EventName:   "EVENT_NAME",
-							Payload:     []byte("PAYLOAD"),
-						},
-					},
-				},
+			blocks: []*cp.Block{
+				block101Proto,
 			},
 			errString: "rpc error: code = Aborted desc = SEND_ERROR",
 			postSetup: func(t *testing.T, test *preparedTest) {
@@ -1045,28 +1218,22 @@ func TestChaincodeEvents(t *testing.T) {
 		},
 		{
 			name: "passes channel name to policy checker",
-			postSetup: func(t *testing.T, test *preparedTest) {
-				test.policy.CheckACLCalls(func(policyName string, channelName string, data interface{}) error {
-					require.Equal(t, testChannel, channelName)
-					return nil
-				})
+			postTest: func(t *testing.T, test *preparedTest) {
+				require.Equal(t, 1, test.policy.CheckACLCallCount())
+				_, channelName, _ := test.policy.CheckACLArgsForCall(0)
+				require.Equal(t, testChannel, channelName)
 			},
 		},
 		{
 			name:     "passes identity to policy checker",
 			identity: []byte("IDENTITY"),
-			postSetup: func(t *testing.T, test *preparedTest) {
-				test.policy.CheckACLCalls(func(policyName string, channelName string, data interface{}) error {
-					require.IsType(t, &protoutil.SignedData{}, data)
-					signedData := data.(*protoutil.SignedData)
-					require.Equal(t, []byte("IDENTITY"), signedData.Identity)
-					return nil
-				})
+			postTest: func(t *testing.T, test *preparedTest) {
+				require.Equal(t, 1, test.policy.CheckACLCallCount())
+				_, _, data := test.policy.CheckACLArgsForCall(0)
+				require.IsType(t, &protoutil.SignedData{}, data)
+				signedData := data.(*protoutil.SignedData)
+				require.Equal(t, []byte("IDENTITY"), signedData.Identity)
 			},
-		},
-		{
-			name:      "error when no more events can be read",
-			errString: "rpc error: code = Unavailable desc = failed to read events",
 		},
 	}
 	for _, tt := range tests {
@@ -1095,7 +1262,11 @@ func TestChaincodeEvents(t *testing.T) {
 
 			for i, expectedResponse := range tt.expectedResponses {
 				actualResponse := test.eventsServer.SendArgsForCall(i)
-				require.True(t, proto.Equal(expectedResponse, actualResponse))
+				require.True(t, proto.Equal(expectedResponse, actualResponse), "response[%d] mismatch: %v", i, actualResponse)
+			}
+
+			if tt.postTest != nil {
+				tt.postTest(t, test)
 			}
 		})
 	}
@@ -1106,8 +1277,8 @@ func TestNilArgs(t *testing.T) {
 		&mocks.EndorserClient{},
 		&mocks.Discovery{},
 		&mocks.CommitFinder{},
-		&mocks.Eventer{},
 		&mocks.ACLChecker{},
+		&mocks.LedgerProvider{},
 		common.PKIidType("id1"),
 		"localhost:7051",
 		"msp1",
@@ -1164,16 +1335,37 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	mockFinder := &mocks.CommitFinder{}
 	mockFinder.TransactionStatusReturns(tt.finderStatus, tt.finderErr)
 
-	eventChannel := make(chan *commit.BlockChaincodeEvents, len(tt.chaincodeEvents))
-	for _, event := range tt.chaincodeEvents {
-		eventChannel <- event
-	}
-	close(eventChannel)
-	mockEventer := &mocks.Eventer{}
-	mockEventer.ChaincodeEventsReturns(eventChannel, tt.eventErr)
-
 	mockPolicy := &mocks.ACLChecker{}
 	mockPolicy.CheckACLReturns(tt.policyErr)
+
+	mockBlockIterator := &mocks.ResultsIterator{}
+	blockChannel := make(chan *cp.Block, len(tt.blocks))
+	for _, block := range tt.blocks {
+		blockChannel <- block
+	}
+	close(blockChannel)
+	mockBlockIterator.NextCalls(func() (commonledger.QueryResult, error) {
+		if tt.eventErr != nil {
+			return nil, tt.eventErr
+		}
+
+		block := <-blockChannel
+		if block == nil {
+			return nil, errors.New("NO_MORE_BLOCKS")
+		}
+
+		return block, nil
+	})
+
+	mockLedger := &mocks.Ledger{}
+	ledgerInfo := &cp.BlockchainInfo{
+		Height: 1,
+	}
+	mockLedger.GetBlockchainInfoReturns(ledgerInfo, nil)
+	mockLedger.GetBlocksIteratorReturns(mockBlockIterator, nil)
+
+	mockLedgerProvider := &mocks.LedgerProvider{}
+	mockLedgerProvider.LedgerReturns(mockLedger, nil)
 
 	validProposal := createProposal(t, testChannel, testChaincode, tt.transientData)
 	validSignedProposal, err := protoutil.GetSignedProposal(validProposal, mockSigner)
@@ -1215,7 +1407,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		EndorsementTimeout: endorsementTimeout,
 	}
 
-	server := newServer(localEndorser, disc, mockFinder, mockEventer, mockPolicy, common.PKIidType("id1"), "localhost:7051", "msp1", options)
+	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, common.PKIidType("id1"), "localhost:7051", "msp1", options)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)
@@ -1232,9 +1424,11 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		discovery:      disc,
 		dialer:         dialer,
 		finder:         mockFinder,
-		eventer:        mockEventer,
 		eventsServer:   &mocks.ChaincodeEventsServer{},
 		policy:         mockPolicy,
+		ledgerProvider: mockLedgerProvider,
+		ledger:         mockLedger,
+		blockIterator:  mockBlockIterator,
 	}
 	if tt.postSetup != nil {
 		tt.postSetup(t, pt)
