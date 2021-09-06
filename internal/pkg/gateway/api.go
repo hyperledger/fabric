@@ -16,6 +16,7 @@ import (
 	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/event"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -355,21 +356,46 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 		return status.Error(codes.PermissionDenied, err.Error())
 	}
 
-	events, err := gs.eventer.ChaincodeEvents(stream.Context(), request.ChannelId, request.ChaincodeId)
+	ledger, err := gs.ledgerProvider.Ledger(request.ChannelId)
 	if err != nil {
-		return status.Error(codes.FailedPrecondition, err.Error())
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	for event := range events {
-		response := &gp.ChaincodeEventsResponse{
-			BlockNumber: event.BlockNumber,
-			Events:      event.Events,
+	ledgerInfo, err := ledger.GetBlockchainInfo()
+	if err != nil {
+		return status.Error(codes.Unavailable, err.Error())
+	}
+
+	ledgerIter, err := ledger.GetBlocksIterator(ledgerInfo.Height)
+	if err != nil {
+		return status.Error(codes.Unavailable, err.Error())
+	}
+
+	eventsIter := event.NewChaincodeEventsIterator(ledgerIter)
+	defer eventsIter.Close()
+
+	for {
+		response, err := eventsIter.Next()
+		if err != nil {
+			return status.Error(codes.Unavailable, err.Error())
 		}
+
+		var matchingEvents []*peer.ChaincodeEvent
+
+		for _, event := range response.Events {
+			if event.GetChaincodeId() == request.ChaincodeId {
+				matchingEvents = append(matchingEvents, event)
+			}
+		}
+
+		if len(matchingEvents) == 0 {
+			continue
+		}
+
+		response.Events = matchingEvents
+
 		if err := stream.Send(response); err != nil {
 			return err // Likely stream closed by the client
 		}
 	}
-
-	// If stream is still open, this was a server-side error; otherwise client won't see it anyway
-	return status.Error(codes.Unavailable, "failed to read events")
 }

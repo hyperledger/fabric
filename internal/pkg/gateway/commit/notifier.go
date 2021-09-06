@@ -19,9 +19,8 @@ type NotificationSupplier interface {
 }
 
 type notifiers struct {
-	block           *blockNotifier
-	status          *statusNotifier
-	chaincodeEvents *chaincodeEventNotifier
+	block  *blockNotifier
+	status *statusNotifier
 }
 
 // Notifier provides notification of transaction commits.
@@ -53,16 +52,6 @@ func (n *Notifier) notifyStatus(done <-chan struct{}, channelName string, transa
 	return notifyChannel, nil
 }
 
-func (n *Notifier) notifyChaincodeEvents(done <-chan struct{}, channelName string, chaincodeName string) (<-chan *BlockChaincodeEvents, error) {
-	notifiers, err := n.notifiersForChannel(channelName)
-	if err != nil {
-		return nil, err
-	}
-
-	notifyChannel := notifiers.chaincodeEvents.registerListener(done, chaincodeName)
-	return notifyChannel, nil
-}
-
 // close the notifier. This closes all notification channels obtained from this notifier. Behavior is undefined after
 // closing and the notifier should not be used.
 func (n *Notifier) close() {
@@ -86,12 +75,10 @@ func (n *Notifier) notifiersForChannel(channelName string) (*notifiers, error) {
 	}
 
 	statusNotifier := newStatusNotifier()
-	chaincodeEventNotifier := newChaincodeEventNotifier()
-	blockNotifier := newBlockNotifier(n.cancel, commitChannel, statusNotifier, chaincodeEventNotifier)
+	blockNotifier := newBlockNotifier(n.cancel, commitChannel, statusNotifier)
 	result = &notifiers{
-		block:           blockNotifier,
-		status:          statusNotifier,
-		chaincodeEvents: chaincodeEventNotifier,
+		block:  blockNotifier,
+		status: statusNotifier,
 	}
 	n.notifiersByChannel[channelName] = result
 

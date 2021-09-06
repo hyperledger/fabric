@@ -27,8 +27,9 @@ type Discovery struct {
 	}
 	IdentityInfoStub        func() api.PeerIdentitySet
 	identityInfoMutex       sync.RWMutex
-	identityInfoArgsForCall []struct{}
-	identityInfoReturns     struct {
+	identityInfoArgsForCall []struct {
+	}
+	identityInfoReturns struct {
 		result1 api.PeerIdentitySet
 	}
 	identityInfoReturnsOnCall map[int]struct {
@@ -130,7 +131,8 @@ func (fake *Discovery) ConfigReturnsOnCall(i int, result1 *discovery.ConfigResul
 func (fake *Discovery) IdentityInfo() api.PeerIdentitySet {
 	fake.identityInfoMutex.Lock()
 	ret, specificReturn := fake.identityInfoReturnsOnCall[len(fake.identityInfoArgsForCall)]
-	fake.identityInfoArgsForCall = append(fake.identityInfoArgsForCall, struct{}{})
+	fake.identityInfoArgsForCall = append(fake.identityInfoArgsForCall, struct {
+	}{})
 	stub := fake.IdentityInfoStub
 	fakeReturns := fake.identityInfoReturns
 	fake.recordInvocation("IdentityInfo", []interface{}{})

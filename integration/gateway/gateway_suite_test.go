@@ -10,12 +10,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/integration"
 	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -53,45 +50,4 @@ var _ = SynchronizedAfterSuite(func() {
 
 func StartPort() int {
 	return integration.GatewayBasePort.StartPortForNode()
-}
-
-func NewProposedTransaction(signingIdentity *nwo.SigningIdentity, channelName, chaincodeName, transactionName string, transientData map[string][]byte, args ...[]byte) (*peer.SignedProposal, string) {
-	proposal, transactionID := newProposalProto(signingIdentity, channelName, chaincodeName, transactionName, transientData, args...)
-	signedProposal, err := protoutil.GetSignedProposal(proposal, signingIdentity)
-	Expect(err).NotTo(HaveOccurred())
-
-	return signedProposal, transactionID
-}
-
-func newProposalProto(signingIdentity *nwo.SigningIdentity, channelName, chaincodeName, transactionName string, transientData map[string][]byte, args ...[]byte) (*peer.Proposal, string) {
-	creator, err := signingIdentity.Serialize()
-	Expect(err).NotTo(HaveOccurred())
-
-	invocationSpec := &peer.ChaincodeInvocationSpec{
-		ChaincodeSpec: &peer.ChaincodeSpec{
-			Type:        peer.ChaincodeSpec_NODE,
-			ChaincodeId: &peer.ChaincodeID{Name: chaincodeName},
-			Input:       &peer.ChaincodeInput{Args: chaincodeArgs(transactionName, args...)},
-		},
-	}
-
-	result, transactionID, err := protoutil.CreateChaincodeProposalWithTransient(
-		common.HeaderType_ENDORSER_TRANSACTION,
-		channelName,
-		invocationSpec,
-		creator,
-		transientData,
-	)
-	Expect(err).NotTo(HaveOccurred())
-
-	return result, transactionID
-}
-
-func chaincodeArgs(transactionName string, args ...[]byte) [][]byte {
-	result := make([][]byte, len(args)+1)
-
-	result[0] = []byte(transactionName)
-	copy(result[1:], args)
-
-	return result
 }

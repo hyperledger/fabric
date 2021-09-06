@@ -8,18 +8,19 @@ package gateway
 
 import (
 	peerproto "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/ledger"
+	commonledger "github.com/hyperledger/fabric/common/ledger"
+	coreledger "github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/pkg/errors"
 )
 
 // peerAdapter presents a small piece of the Peer in a form that can be easily used (and mocked) by the gateway's
-// transaction status checking.
+// transaction status checking and eventing.
 type peerAdapter struct {
 	Peer *peer.Peer
 }
 
-func (adapter *peerAdapter) CommitNotifications(done <-chan struct{}, channelName string) (<-chan *ledger.CommitNotification, error) {
+func (adapter *peerAdapter) CommitNotifications(done <-chan struct{}, channelName string) (<-chan *coreledger.CommitNotification, error) {
 	channel, err := adapter.channel(channelName)
 	if err != nil {
 		return nil, err
@@ -34,14 +35,21 @@ func (adapter *peerAdapter) TransactionStatus(channelName string, transactionID 
 		return 0, 0, err
 	}
 
-	ledger := channel.Ledger()
-
-	status, blockNumber, err := ledger.GetTxValidationCodeByTxID(transactionID)
+	status, blockNumber, err := channel.Ledger().GetTxValidationCodeByTxID(transactionID)
 	if err != nil {
 		return 0, 0, err
 	}
 
 	return status, blockNumber, nil
+}
+
+func (adapter *peerAdapter) Ledger(channelName string) (commonledger.Ledger, error) {
+	channel, err := adapter.channel(channelName)
+	if err != nil {
+		return nil, err
+	}
+
+	return channel.Ledger(), nil
 }
 
 func (adapter *peerAdapter) channel(name string) (*peer.Channel, error) {
