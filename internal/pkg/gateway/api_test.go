@@ -147,6 +147,7 @@ type testDef struct {
 	transientData      map[string][]byte
 	interest           *peer.ChaincodeInterest
 	blocks             []*cp.Block
+	startPosition      *ab.SeekPosition
 }
 
 type preparedTest struct {
@@ -1176,7 +1177,51 @@ func TestChaincodeEvents(t *testing.T) {
 			},
 		},
 		{
-			name: "uses block height as default start block",
+			name: "uses block height as start block if next commit is specified as start position",
+			blocks: []*cp.Block{
+				block101Proto,
+			},
+			postSetup: func(t *testing.T, test *preparedTest) {
+				ledgerInfo := &cp.BlockchainInfo{
+					Height: 101,
+				}
+				test.ledger.GetBlockchainInfoReturns(ledgerInfo, nil)
+			},
+			startPosition: &ab.SeekPosition{
+				Type: &ab.SeekPosition_NextCommit{
+					NextCommit: &ab.SeekNextCommit{},
+				},
+			},
+			postTest: func(t *testing.T, test *preparedTest) {
+				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
+				require.EqualValues(t, 101, test.ledger.GetBlocksIteratorArgsForCall(0))
+			},
+		},
+		{
+			name: "uses specified start block",
+			blocks: []*cp.Block{
+				block101Proto,
+			},
+			postSetup: func(t *testing.T, test *preparedTest) {
+				ledgerInfo := &cp.BlockchainInfo{
+					Height: 101,
+				}
+				test.ledger.GetBlockchainInfoReturns(ledgerInfo, nil)
+			},
+			startPosition: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Specified{
+					Specified: &ab.SeekSpecified{
+						Number: 99,
+					},
+				},
+			},
+			postTest: func(t *testing.T, test *preparedTest) {
+				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
+				require.EqualValues(t, 99, test.ledger.GetBlocksIteratorArgsForCall(0))
+			},
+		},
+		{
+			name: "defaults to next commit if start position not specified",
 			blocks: []*cp.Block{
 				block101Proto,
 			},
@@ -1190,6 +1235,18 @@ func TestChaincodeEvents(t *testing.T) {
 				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
 				require.EqualValues(t, 101, test.ledger.GetBlocksIteratorArgsForCall(0))
 			},
+		},
+		{
+			name: "returns error for unsupported start position type",
+			blocks: []*cp.Block{
+				block101Proto,
+			},
+			startPosition: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Oldest{
+					Oldest: &ab.SeekOldest{},
+				},
+			},
+			errString: "rpc error: code = InvalidArgument desc = invalid start position type: *orderer.SeekPosition_Oldest",
 		},
 		{
 			name: "returns error obtaining ledger iterator",
@@ -1244,6 +1301,9 @@ func TestChaincodeEvents(t *testing.T) {
 				ChannelId:   testChannel,
 				Identity:    tt.identity,
 				ChaincodeId: testChaincode,
+			}
+			if tt.startPosition != nil {
+				request.StartPosition = tt.startPosition
 			}
 			requestBytes, err := proto.Marshal(request)
 			require.NoError(t, err)
