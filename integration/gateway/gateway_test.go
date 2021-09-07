@@ -215,10 +215,12 @@ var _ = Describe("GatewayService", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		request := &gateway.ChaincodeEventsRequest{
-			ChannelId:     "testchannel",
-			ChaincodeId:   "gatewaycc",
-			Identity:      identityBytes,
-			StartPosition: startPosition,
+			ChannelId:   "testchannel",
+			ChaincodeId: "gatewaycc",
+			Identity:    identityBytes,
+		}
+		if startPosition != nil {
+			request.StartPosition = startPosition
 		}
 
 		requestBytes, err := proto.Marshal(request)
@@ -363,6 +365,31 @@ var _ = Describe("GatewayService", func() {
 
 			eventsClient, err := chaincodeEvents(eventCtx, startPosition, signingIdentity.Serialize, signingIdentity.Sign)
 			Expect(err).NotTo(HaveOccurred())
+
+			event, err := eventsClient.Recv()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(event.BlockNumber).To(Equal(statusResult.BlockNumber), "block number")
+			Expect(event.Events).To(HaveLen(1), "number of events")
+			expectedEvent := &peer.ChaincodeEvent{
+				ChaincodeId: "gatewaycc",
+				TxId:        transactionID,
+				EventName:   "EVENT_NAME",
+				Payload:     []byte("EVENT_PAYLOAD"),
+			}
+			Expect(proto.Equal(event.Events[0], expectedEvent)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", event.Events[0], expectedEvent)
+		})
+
+		It("should default to next commit if start position not specified", func() {
+			eventCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			defer cancel()
+
+			var startPosition *orderer.SeekPosition
+
+			eventsClient, err := chaincodeEvents(eventCtx, startPosition, signingIdentity.Serialize, signingIdentity.Sign)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, transactionID := submitTransaction("event", []byte("EVENT_NAME"), []byte("EVENT_PAYLOAD"))
 
 			event, err := eventsClient.Recv()
 			Expect(err).NotTo(HaveOccurred())

@@ -1221,6 +1221,22 @@ func TestChaincodeEvents(t *testing.T) {
 			},
 		},
 		{
+			name: "defaults to next commit if start position not specified",
+			blocks: []*cp.Block{
+				block101Proto,
+			},
+			postSetup: func(t *testing.T, test *preparedTest) {
+				ledgerInfo := &cp.BlockchainInfo{
+					Height: 101,
+				}
+				test.ledger.GetBlockchainInfoReturns(ledgerInfo, nil)
+			},
+			postTest: func(t *testing.T, test *preparedTest) {
+				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
+				require.EqualValues(t, 101, test.ledger.GetBlocksIteratorArgsForCall(0))
+			},
+		},
+		{
 			name: "returns error for unsupported start position type",
 			blocks: []*cp.Block{
 				block101Proto,
@@ -1282,17 +1298,12 @@ func TestChaincodeEvents(t *testing.T) {
 			test := prepareTest(t, &tt)
 
 			request := &pb.ChaincodeEventsRequest{
-				ChannelId:     testChannel,
-				Identity:      tt.identity,
-				ChaincodeId:   testChaincode,
-				StartPosition: tt.startPosition,
+				ChannelId:   testChannel,
+				Identity:    tt.identity,
+				ChaincodeId: testChaincode,
 			}
-			if request.StartPosition == nil {
-				request.StartPosition = &ab.SeekPosition{
-					Type: &ab.SeekPosition_NextCommit{
-						NextCommit: &ab.SeekNextCommit{},
-					},
-				}
+			if tt.startPosition != nil {
+				request.StartPosition = tt.startPosition
 			}
 			requestBytes, err := proto.Marshal(request)
 			require.NoError(t, err)

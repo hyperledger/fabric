@@ -357,13 +357,21 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 		return status.Error(codes.PermissionDenied, err.Error())
 	}
 
-	ledger, err := gs.ledgerProvider.Ledger(request.ChannelId)
+	ledger, err := gs.ledgerProvider.Ledger(request.GetChannelId())
 	if err != nil {
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	var startBlock uint64
-	switch seek := request.StartPosition.Type.(type) {
+	switch seek := request.GetStartPosition().GetType().(type) {
+	case nil:
+		ledgerInfo, err := ledger.GetBlockchainInfo()
+		if err != nil {
+			return status.Error(codes.Unavailable, err.Error())
+		}
+
+		startBlock = ledgerInfo.GetHeight()
+
 	case *ab.SeekPosition_NextCommit:
 		ledgerInfo, err := ledger.GetBlockchainInfo()
 		if err != nil {
@@ -371,8 +379,10 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 		}
 
 		startBlock = ledgerInfo.GetHeight()
+
 	case *ab.SeekPosition_Specified:
 		startBlock = seek.Specified.GetNumber()
+
 	default:
 		return status.Errorf(codes.InvalidArgument, "invalid start position type: %T", seek)
 	}
@@ -394,7 +404,7 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 		var matchingEvents []*peer.ChaincodeEvent
 
 		for _, event := range response.Events {
-			if event.GetChaincodeId() == request.ChaincodeId {
+			if event.GetChaincodeId() == request.GetChaincodeId() {
 				matchingEvents = append(matchingEvents, event)
 			}
 		}
