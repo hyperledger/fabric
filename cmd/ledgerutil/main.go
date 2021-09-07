@@ -21,6 +21,7 @@ const (
 		". Generating a file of more than the first 10 differences will result in a large amount " +
 		"of memory usage and is not recommended. Defaults to 10. If set to 0, will not produce " +
 		ledgerutil.FirstDiffsByHeight + "."
+	namespaceDesc = "Namepace filter. Only differences of the given namespace will be compared."
 )
 
 var (
@@ -31,6 +32,7 @@ var (
 	snapshotPath2 = compare.Arg("snapshotPath2", "Second ledger snapshot directory.").Required().String()
 	outputDir     = compare.Flag("outputDir", outputDirDesc).Short('o').String()
 	firstDiffs    = compare.Flag("firstDiffs", firstDiffsDesc).Short('f').Default("10").Int()
+	namespace     = compare.Flag("namespace", namespaceDesc).Short('n').String()
 
 	troubleshoot = app.Command("troubleshoot", "Identify potentially divergent transactions.")
 
@@ -60,19 +62,24 @@ func main() {
 			}
 		}
 
-		count, outputDirPath, err := ledgerutil.Compare(*snapshotPath1, *snapshotPath2, *outputDir, *firstDiffs)
+		count, outputDirPath, err := ledgerutil.Compare(*snapshotPath1, *snapshotPath2, *outputDir, *firstDiffs, *namespace)
 		if err != nil {
 			fmt.Printf("%s%s\n", compareErrorMessage, err)
 			return
 		}
 
 		fmt.Print("\nSuccessfully compared snapshots. ")
-		if count == -1 {
+		if *namespace != "" {
+			fmt.Printf("The namespace \"%s\" was used as a filter. ", *namespace)
+		}
+		switch count {
+		case -1:
 			fmt.Println("Both snapshot public state and private state hashes were the same. No results were generated.")
-		} else {
+		case 0:
+			fmt.Println("No differences were found. No results were generated.")
+		default:
 			fmt.Printf("Results saved to %s. Total differences found: %d\n", outputDirPath, count)
 		}
-
 	case troubleshoot.FullCommand():
 
 		fmt.Println("Command TBD")

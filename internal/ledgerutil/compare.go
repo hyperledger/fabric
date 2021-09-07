@@ -37,7 +37,7 @@ const (
 // Compare - Compares two ledger snapshots and outputs the differences in snapshot records
 // This function will throw an error if the output directory already exist in the outputDirLoc
 // Function will return count of -1 if the public state and private state hashes are the same
-func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firstDiffs int) (count int, outputDirPath string, err error) {
+func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firstDiffs int, nsFilter string) (count int, outputDirPath string, err error) {
 	// firstRecords - Slice of diffRecords that stores found differences based on block height, used to generate first n differences output file
 	firstRecords := &firstRecords{records: &diffRecordSlice{}, highestRecord: &diffRecord{}, highestIndex: 0, limit: firstDiffs}
 
@@ -84,7 +84,8 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 		if err != nil {
 			return 0, "", err
 		}
-		outputPubFileWriter, err := findAndWriteDifferences(outputDirPath, AllPubDiffsByKey, snapshotPubReader1, snapshotPubReader2, firstDiffs, firstRecords)
+		outputPubFileWriter, err := findAndWriteDifferences(outputDirPath, AllPubDiffsByKey, snapshotPubReader1,
+			snapshotPubReader2, firstDiffs, firstRecords, nsFilter)
 		if err != nil {
 			return 0, "", err
 		}
@@ -103,7 +104,8 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 		if err != nil {
 			return 0, "", err
 		}
-		outputPvtFileWriter, err := findAndWriteDifferences(outputDirPath, AllPvtDiffsByKey, snapshotPvtReader1, snapshotPvtReader2, firstDiffs, firstRecords)
+		outputPvtFileWriter, err := findAndWriteDifferences(outputDirPath, AllPvtDiffsByKey, snapshotPvtReader1,
+			snapshotPvtReader2, firstDiffs, firstRecords, nsFilter)
 		if err != nil {
 			return 0, "", err
 		}
@@ -111,7 +113,7 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 	}
 
 	// Generate early differences output file
-	if firstDiffs != 0 {
+	if firstDiffs != 0 && count != 0 {
 		firstDiffsOutputFileWriter, err := newJSONFileWriter(filepath.Join(outputDirPath, FirstDiffsByHeight))
 		if err != nil {
 			return 0, "", err
@@ -126,20 +128,28 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 		}
 	}
 
+	// No results generated, delete output directory
+	if count == 0 {
+		err = os.Remove(outputDirPath)
+		if err != nil {
+			return 0, "", err
+		}
+	}
+
 	return count, outputDirPath, nil
 }
 
 // Finds the differing records between two snapshot data files using SnapshotReaders and saves differences
 // to an output file. Simultaneously, keep track of the first n differences.
 func findAndWriteDifferences(outputDirPath string, outputFilename string, snapshotReader1 *privacyenabledstate.SnapshotReader, snapshotReader2 *privacyenabledstate.SnapshotReader,
-	firstDiffs int, firstRecords *firstRecords) (outputFileWriter *jsonArrayFileWriter, err error) {
+	firstDiffs int, firstRecords *firstRecords, nsFilter string) (outputFileWriter *jsonArrayFileWriter, err error) {
 	// Create the output file
 	outputFileWriter, err = newJSONFileWriter(filepath.Join(outputDirPath, outputFilename))
 	if err != nil {
 		return nil, err
 	}
 
-	// Read each snapshot record  to begin looking for differences
+	// Read each snapshot record to begin looking for differences
 	namespace1, snapshotRecord1, err := snapshotReader1.Next()
 	if err != nil {
 		return nil, err
@@ -149,8 +159,27 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, snapsh
 		return nil, err
 	}
 
+	// Filter through irrelevant namespaces in each ledger if a namespace filter was used
+	for nsFilter != "" && namespace1 != nsFilter && snapshotRecord1 != nil {
+		namespace1, snapshotRecord1, err = snapshotReader1.Next()
+		if err != nil {
+			return nil, err
+		}
+	}
+	for nsFilter != "" && namespace2 != nsFilter && snapshotRecord2 != nil {
+		namespace2, snapshotRecord2, err = snapshotReader2.Next()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Main snapshot record comparison loop
 	for snapshotRecord1 != nil && snapshotRecord2 != nil {
+
+		// Stop comparing once irrelevant namespaces are found if a namespace filter was used
+		if nsFilter != "" && namespace1 != nsFilter && namespace2 != nsFilter {
+			break
+		}
 
 		// nsKeys used for comparing snapshot records
 		key1 := &nsKey{namespace: namespace1, key: snapshotRecord1.Key}
@@ -235,6 +264,11 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, snapsh
 
 	case snapshotRecord1 != nil: // Snapshot 2 is missing a record
 		for snapshotRecord1 != nil {
+			// Stop comparing once irrelevant namespaces are found if a namespace filter was used
+			if nsFilter != "" && namespace1 != nsFilter {
+				break
+			}
+
 			// Add missing to output JSON file
 			diffRecord, err := newDiffRecord(namespace1, snapshotRecord1, nil)
 			if err != nil {
@@ -255,6 +289,11 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, snapsh
 
 	case snapshotRecord2 != nil: // Snapshot 1 is missing a record
 		for snapshotRecord2 != nil {
+			// Stop comparing once irrelevant namespaces are found if a namespace filter was used
+			if nsFilter != "" && namespace2 != nsFilter {
+				break
+			}
+
 			// Add missing to output JSON file
 			diffRecord, err := newDiffRecord(namespace2, nil, snapshotRecord2)
 			if err != nil {
@@ -277,6 +316,14 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, snapsh
 	err = outputFileWriter.close()
 	if err != nil {
 		return nil, err
+	}
+
+	// No differences found, delete output file
+	if outputFileWriter.count == 0 {
+		err = os.Remove(filepath.Join(outputDirPath, outputFilename))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return outputFileWriter, nil

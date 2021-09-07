@@ -405,6 +405,72 @@ func TestCompare(t *testing.T) {
 				}
 			}
 		]`
+	expectedNS1FilterPub := `[
+			{
+				"namespace" : "ns1",
+				"key" : "k2",
+				"snapshotrecord1" : {
+					"value" : "v2",
+					"blockNum" : 1,
+					"txNum" : 1
+				},
+				"snapshotrecord2" : {
+					"value" : "v3",
+					"blockNum" : 1,
+					"txNum" : 1
+				}
+			}
+		]`
+	expectedNS2FilterPub := `[
+			{
+				"namespace" : "ns2",
+				"key" : "k1",
+				"snapshotrecord1" : {
+					"value" : "v3",
+					"blockNum" : 1,
+					"txNum" : 2
+				},
+				"snapshotrecord2" : null
+			}
+		]`
+	expectedNS3FilterPub := `[
+			{
+				"namespace" : "ns3",
+				"key" : "k1",
+				"snapshotrecord1" : {
+					"value" : "v4",
+					"blockNum" : 2,
+					"txNum" : 0
+				},
+				"snapshotrecord2" : {
+					"value" : "v4",
+					"blockNum" : 2,
+					"txNum" : 1
+				}
+			},
+			{
+				"namespace" : "ns3",
+				"key" : "k2",
+				"snapshotrecord1" : null,
+				"snapshotrecord2" : {
+					"value" : "v5",
+					"blockNum" : 1,
+					"txNum" : 3
+				}
+			}
+		]`
+	expectedNS3FilterFirst := `[
+			{
+				"namespace" : "ns3",
+				"key" : "k2",
+				"snapshotrecord1" : null,
+				"snapshotrecord2" : {
+					"value" : "v5",
+					"blockNum" : 1,
+					"txNum" : 3
+				}
+			}
+		]`
 	expectedEmpty := "null"
 
 	testCases := map[string]struct {
@@ -414,6 +480,7 @@ func TestCompare(t *testing.T) {
 		inputTestRecords2      []*testRecord
 		inputTestPvtRecords2   []*testRecord
 		inputSignableMetadata2 *kvledger.SnapshotSignableMetadata
+		namespaceFilter        string
 		expectedOutputType     string
 		expectedPubOutput      string
 		expectedPvtOutput      string
@@ -551,6 +618,77 @@ func TestCompare(t *testing.T) {
 			expectedFirOutput:      expectedEmpty,
 			expectedDiffCount:      1,
 		},
+		// User used a namespace filter of ns3
+		"ns-filter-ns1": {
+			inputTestRecords1:      sampleRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords5,
+			inputSignableMetadata2: sampleSignableMetadata2,
+			namespaceFilter:        "ns1",
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedNS1FilterPub,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      1,
+		},
+		// User used a namespace filter of ns3
+		"ns-filter-ns2": {
+			inputTestRecords1:      sampleRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords5,
+			inputSignableMetadata2: sampleSignableMetadata2,
+			namespaceFilter:        "ns2",
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedNS2FilterPub,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedNS2FilterPub,
+			firstN:                 3,
+			expectedDiffCount:      1,
+		},
+		// User used a namespace filter of ns3
+		"ns-filter-ns3": {
+			inputTestRecords1:      sampleRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords5,
+			inputSignableMetadata2: sampleSignableMetadata2,
+			namespaceFilter:        "ns3",
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedNS3FilterPub,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedNS3FilterFirst,
+			firstN:                 1,
+			expectedDiffCount:      2,
+		},
+		// User used a namespace of a private hash
+		"ns-filter-pvt-difference": {
+			inputTestRecords1:      sampleRecords1,
+			inputTestPvtRecords1:   samplePvtRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords2,
+			inputTestPvtRecords2:   samplePvtRecords2,
+			inputSignableMetadata2: sampleSignableMetadata4,
+			namespaceFilter:        "_lifecycle$$h_implicit_org_Org1MSP",
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedEmpty,
+			expectedPvtOutput:      expectedPvtDiffResult,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      1,
+		},
+		// No differences found for given namespace
+		"no-differences": {
+			inputTestRecords1:      sampleRecords1,
+			inputTestPvtRecords1:   samplePvtRecords1,
+			inputSignableMetadata1: sampleSignableMetadata1,
+			inputTestRecords2:      sampleRecords2,
+			inputTestPvtRecords2:   samplePvtRecords2,
+			inputSignableMetadata2: sampleSignableMetadata4,
+			namespaceFilter:        "ns0",
+			expectedOutputType:     "json",
+			expectedPubOutput:      expectedEmpty,
+			expectedPvtOutput:      expectedEmpty,
+			expectedFirOutput:      expectedEmpty,
+			expectedDiffCount:      0,
+		},
 	}
 
 	// Run test cases individually
@@ -574,14 +712,14 @@ func TestCompare(t *testing.T) {
 			require.NoError(t, err)
 
 			// Compare snapshots and check the output
-			count, pubOut, pvtOut, firOut, err := compareSnapshots(snapshotDir1, snapshotDir2, resultsDir, testCase.firstN)
+			count, pubOut, pvtOut, firOut, err := compareSnapshots(snapshotDir1, snapshotDir2, resultsDir, testCase.firstN, testCase.namespaceFilter)
 			switch testCase.expectedOutputType {
 			case "error":
 				require.Equal(t, testCase.expectedDiffCount, count)
 				require.ErrorContains(t, err, testCase.expectedError)
 			case "exists-error":
 				require.NoError(t, err)
-				count, _, _, _, err = compareSnapshots(snapshotDir1, snapshotDir2, resultsDir, testCase.firstN)
+				count, _, _, _, err = compareSnapshots(snapshotDir1, snapshotDir2, resultsDir, testCase.firstN, testCase.namespaceFilter)
 				require.Equal(t, testCase.expectedDiffCount, count)
 				require.ErrorContains(t, err, "testchannel_2_comparison already exists in "+resultsDir+". Choose a different location or remove the existing results. Aborting compare")
 			case "json":
@@ -678,9 +816,9 @@ func createSnapshot(dir string, pubStateRecords []*testRecord, pvtStateRecords [
 }
 
 // compareSnapshots calls the Compare tool and extracts the result json
-func compareSnapshots(ss1 string, ss2 string, res string, firstN int) (int, string, string, string, error) {
+func compareSnapshots(ss1 string, ss2 string, res string, firstN int, nsFilter string) (int, string, string, string, error) {
 	// Run compare tool on snapshots
-	count, opath, err := Compare(ss1, ss2, res, firstN)
+	count, opath, err := Compare(ss1, ss2, res, firstN, nsFilter)
 	if err != nil || count == -1 {
 		return count, "", "", "", err
 	}
