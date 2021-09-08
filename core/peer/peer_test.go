@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hyperledger/fabric/common/channelconfig"
+
 	"github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -296,6 +298,42 @@ func TestDeliverSupportManager(t *testing.T) {
 	peerInstance.channels = map[string]*Channel{"testchain": {}}
 	chainSupport = manager.GetChain("testchain")
 	require.NotNil(t, chainSupport, "chain support should not be nil")
+}
+
+func TestConfigCallback(t *testing.T) {
+	peerInstance, cleanup := NewTestPeer(t)
+	defer cleanup()
+
+	var callbackInvoked bool
+	peerInstance.AddConfigCallbacks(func(bundle *channelconfig.Bundle) {
+		callbackInvoked = true
+		orderer, exists := bundle.OrdererConfig()
+		require.True(t, exists)
+		require.NotEmpty(t, orderer.Organizations()["SampleOrg"].Endpoints)
+	})
+
+	peerInstance.Initialize(
+		nil,
+		nil,
+		plugin.MapBasedMapper(map[string]validation.PluginFactory{}),
+		&ledgermocks.DeployedChaincodeInfoProvider{},
+		nil,
+		nil,
+		runtime.NumCPU(),
+	)
+
+	testChannelID := fmt.Sprintf("mytestchannelid-%d", rand.Int())
+	block, err := configtxtest.MakeGenesisBlock(testChannelID)
+	require.NoError(t, err)
+
+	// We expect the callback to be invoked when the channel is created
+	require.False(t, callbackInvoked)
+
+	err = peerInstance.CreateChannel(testChannelID, block, &ledgermocks.DeployedChaincodeInfoProvider{}, nil, nil)
+	require.NoError(t, err)
+
+	// the callback should have been invoked
+	require.True(t, callbackInvoked)
 }
 
 func constructLedgerMgrWithTestDefaults(ledgersDataDir string) (*ledgermgmt.LedgerMgr, error) {

@@ -162,6 +162,14 @@ type Peer struct {
 	// channels is a map of channelID to channel
 	mutex    sync.RWMutex
 	channels map[string]*Channel
+
+	configCallbacks []channelconfig.BundleActor
+}
+
+// AddConfigCallbacks adds one or more BundleActor functions to list of callbacks that
+// get invoked when a channel configuration update event is received via gossip.
+func (p *Peer) AddConfigCallbacks(callbacks ...channelconfig.BundleActor) {
+	p.configCallbacks = append(p.configCallbacks, callbacks...)
 }
 
 func (p *Peer) openStore(cid string) (*transientstore.Store, error) {
@@ -307,13 +315,18 @@ func (p *Peer) createChannel(
 		cryptoProvider: p.CryptoProvider,
 	}
 
-	channel.bundleSource = channelconfig.NewBundleSource(
-		bundle,
+	callbacks := append(
+		p.configCallbacks,
 		ordererSourceCallback,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
 		channel.bundleUpdate,
+	)
+
+	channel.bundleSource = channelconfig.NewBundleSource(
+		bundle,
+		callbacks...,
 	)
 
 	committer := committer.NewLedgerCommitter(l)

@@ -57,7 +57,7 @@ func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, p
 	}
 	notifier := commit.NewNotifier(adapter)
 
-	return newServer(
+	server := newServer(
 		&EndorserServerAdapter{
 			Server: localEndorser,
 		},
@@ -70,19 +70,21 @@ func CreateServer(localEndorser peerproto.EndorserServer, discovery Discovery, p
 		localMSPID,
 		options,
 	)
+
+	peerInstance.AddConfigCallbacks(server.registry.configUpdate)
+
+	return server
 }
 
 func newServer(localEndorser peerproto.EndorserClient, discovery Discovery, finder CommitFinder, policy ACLChecker, ledgerProvider LedgerProvider, localPKIID common.PKIidType, localEndpoint, localMSPID string, options config.Options) *Server {
 	return &Server{
 		registry: &registry{
-			localEndorser:       &endorser{client: localEndorser, endpointConfig: &endpointConfig{pkiid: localPKIID, address: localEndpoint, mspid: localMSPID}},
-			discovery:           discovery,
-			logger:              logger,
-			endpointFactory:     &endpointFactory{timeout: options.EndorsementTimeout},
-			remoteEndorsers:     map[string]*endorser{},
-			broadcastClients:    map[string]*orderer{},
-			tlsRootCerts:        map[string][][]byte{},
-			channelsInitialized: map[string]bool{},
+			localEndorser:      &endorser{client: localEndorser, endpointConfig: &endpointConfig{pkiid: localPKIID, address: localEndpoint, mspid: localMSPID}},
+			discovery:          discovery,
+			logger:             logger,
+			endpointFactory:    &endpointFactory{timeout: options.EndorsementTimeout},
+			remoteEndorsers:    map[string]*endorser{},
+			channelInitialized: map[string]bool{},
 		},
 		commitFinder:   finder,
 		policy:         policy,

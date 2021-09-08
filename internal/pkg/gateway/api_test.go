@@ -129,6 +129,7 @@ type testDef struct {
 	plan               endorsementPlan
 	layouts            []endorsementLayout
 	members            []networkMember
+	config             *dp.ConfigResult
 	identity           []byte
 	localResponse      string
 	errString          string
@@ -329,21 +330,6 @@ func TestEvaluate(t *testing.T) {
 				})
 			},
 			errString: "rpc error: code = Unavailable desc = failed to create new connection: endorser not answering",
-		},
-		{
-			name: "dialing orderer endpoint fails",
-			members: []networkMember{
-				{"id3", "peer2:9051", "msp2", 5},
-			},
-			postSetup: func(t *testing.T, def *preparedTest) {
-				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
-					if target == "orderer:7050" {
-						return nil, fmt.Errorf("orderer not answering")
-					}
-					return nil, nil
-				})
-			},
-			errString: "rpc error: code = Unavailable desc = failed to create new connection: orderer not answering",
 		},
 		{
 			name: "discovery returns incomplete information - no Properties",
@@ -726,7 +712,7 @@ func TestSubmit(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.discovery.ConfigReturnsOnCall(1, nil, fmt.Errorf("jabberwocky"))
 			},
-			errString: "rpc error: code = Unavailable desc = jabberwocky",
+			errString: "rpc error: code = Unavailable desc = failed to get config for channel [test_channel]: jabberwocky",
 		},
 		{
 			name: "no orderers",
@@ -739,7 +725,7 @@ func TestSubmit(t *testing.T) {
 					Msps:     map[string]*msp.FabricMSPConfig{},
 				}, nil)
 			},
-			errString: "rpc error: code = Unavailable desc = no broadcastClients discovered",
+			errString: "rpc error: code = Unavailable desc = no orderer nodes available",
 		},
 		{
 			name: "orderer broadcast fails",
@@ -824,6 +810,21 @@ func TestSubmit(t *testing.T) {
 			},
 			errString: "rpc error: code = Aborted desc = received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
 		},
+		{
+			name: "dialing orderer endpoint fails",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.dialer.Calls(func(_ context.Context, target string, _ ...grpc.DialOption) (*grpc.ClientConn, error) {
+					if target == "orderer:7050" {
+						return nil, fmt.Errorf("orderer not answering")
+					}
+					return nil, nil
+				})
+			},
+			errString: "rpc error: code = Unavailable desc = no orderer nodes available",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -839,7 +840,7 @@ func TestSubmit(t *testing.T) {
 			preparedTx.Signature = []byte("mysignature")
 
 			// submit
-			submitResponse, err := test.server.Submit(test.ctx, &pb.SubmitRequest{PreparedTransaction: preparedTx})
+			submitResponse, err := test.server.Submit(test.ctx, &pb.SubmitRequest{PreparedTransaction: preparedTx, ChannelId: testChannel})
 
 			if tt.errString != "" {
 				checkError(t, err, tt.errString, tt.errDetails)
@@ -1446,6 +1447,10 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 				TlsRootCerts: [][]byte{ca.CertBytes()},
 			},
 		},
+	}
+
+	if tt.config != nil {
+		configResult = tt.config
 	}
 
 	members := []networkMember{
