@@ -95,6 +95,7 @@ fabric contract api package and define our SmartContract.
 
   import (
     "fmt"
+    "encoding/json"
     "log"
     "github.com/hyperledger/fabric-contract-api-go/contractapi"
   )
@@ -106,16 +107,22 @@ fabric contract api package and define our SmartContract.
 
 Next, let's add a struct ``Asset`` to represent simple assets on the ledger.
 Note the JSON annotations, which will be used to marshal the asset to JSON which is stored on the ledger.
+JSON though is not a deterministic data format - the order of elements can change, whilst still representing the same data semantically.
+The challenge, therefore, is to be able to generate a consistent set of JSON.
+Below is also shown a good approach to achieve consistency which consists of creating an asset object struct following alphabetic order.
 
 .. code:: go
 
   // Asset describes basic details of what makes up a simple asset
+  // Insert struct field in alphabetic order => to achieve determinism accross languages
+  // golang keeps the order when marshal to json but doesn't order automatically
+
   type Asset struct {
+    AppraisedValue int    `json:"AppraisedValue"`
+    Color          string `json:"Color"`
     ID             string `json:"ID"`
-    Color          string `json:"color"`
-    Size           int    `json:"size"`
-    Owner          string `json:"owner"`
-    AppraisedValue int    `json:"appraisedValue"`
+    Owner          string `json:"Owner"`
+    Size           int    `json:"Size"`
   }
 
 Initializing the Chaincode
@@ -585,6 +592,58 @@ directory.
 Once dependencies are vendored in your chaincode directory, ``peer chaincode package``
 and ``peer chaincode install`` operations will then include code associated with the
 dependencies into the chaincode package.
+
+JSON determinism
+----------------
+Being able to predictably handle data formats is critical, and also the ability to search the data held within the blockchain.
+
+Technical Problem
+^^^^^^^^^^^^^^^^^
+The format of the data that is stored in Fabric is at the discretion of the user. 
+The lowest level API accepts a byte array and stores that - what this represents is not a concern to Fabric.
+The important thing is when simulating transactions, given the same inputs chaincode gives the same byte array.
+Otherwise, the endorsements may not all match and the transaction will either not be submitted or will be invalidated.
+
+JSON is often used as the data format to store data on the ledger, and is required if using CouchDB queries.
+
+JSON though is not a deterministic data format - the order of elements can change,
+whilst still representing the same data semantically. The challenge, therefore, is to be able to generate a consistent set of JSON.
+
+A solution
+^^^^^^^^^^
+Generate a consistent set of ``JSON`` across multiple languages.
+Each language have different features and libraries that you can use to convert an object to JSON.
+The best approach to achieve determinism across different languages is to choose a canonical way as a common guideline to format JSON.
+In order to get a consistent hash across languages you can format JSON in alphabetic order.
+
+Golang
+^^^^^^
+In Golang the ``encoding/json`` package is utilized to serialise a Struct Object into JSON.
+More specifically the ``Marshal`` function is used, the latter marshals maps in sorted key order and keeps structs in the order that the fields are declared.
+Since structs are marshaled in field declaration order, follow alphabetic order when defining a new structure.
+
+Node.js
+^^^^^^^
+In Javascript, when serialising object into JSON, the function ``JSON.stringify()`` is commonly used.
+However, to achieve consistent results, a deterministic version of JSON.stringify() is needed; in this way it is possible to get a consistent hash from stringified results.
+``json-stringify-deterministic`` is a good library to do so and can be used combined with ``sort-keys-recursive`` to attain alphabetic order too. 
+`Here <https://www.npmjs.com/package/json-stringify-deterministic>`_ for a more in-depth tutorial.
+
+Java
+^^^^
+Java provides several libraries to serialize an object into a JSON string. However not all of them provide consistency and ordering.
+The ``Gson`` library, for example, does not provide any consistency and should therefore be avoided for this application. On the other hand,
+the ``Genson`` library is a good fit for our purpose as it produces consistent JSON in alphabetic oreder.
+
+You can find a good exemplification of this practise on the `asset-transfer-basic <https://github.com/hyperledger/fabric-samples/tree/main/asset-transfer-basic>`_ chaincodes.
+
+.. Note:: 
+        This is only one of the many approaches which we think can be effective.
+        When serialising you can utilise various methods to achieve consistency; nevertheless,
+        considering the different characteristics of the programming languages used in Fabric,
+        the alphabetic approach represents an easy and efficient solution to the problem.
+        In conclusion, feel free to employ a different method if it best suites your needs.
+        P.S. Don’t forget to let us know in the comments if you used a different approach.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
