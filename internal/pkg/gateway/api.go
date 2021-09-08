@@ -276,7 +276,7 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	}
 
 	if len(orderers) == 0 {
-		return nil, status.Errorf(codes.Unavailable, "no broadcastClients discovered")
+		return nil, status.Errorf(codes.Unavailable, "no orderer nodes available")
 	}
 
 	orderer := orderers[0] // send to first orderer for now

@@ -24,14 +24,16 @@ type endorser struct {
 }
 
 type orderer struct {
-	client ab.AtomicBroadcastClient
+	client          ab.AtomicBroadcastClient
+	closeConnection func() error
 	*endpointConfig
 }
 
 type endpointConfig struct {
-	pkiid   common.PKIidType
-	address string
-	mspid   string
+	pkiid        common.PKIidType
+	address      string
+	mspid        string
+	tlsRootCerts [][]byte
 }
 
 type (
@@ -60,7 +62,7 @@ func (ef *endpointFactory) newEndorser(pkiid common.PKIidType, address, mspid st
 	}
 	return &endorser{
 		client:         connectEndorser(conn),
-		endpointConfig: &endpointConfig{pkiid: pkiid, address: address, mspid: mspid},
+		endpointConfig: &endpointConfig{pkiid: pkiid, address: address, mspid: mspid, tlsRootCerts: tlsRootCerts},
 	}, nil
 }
 
@@ -74,8 +76,9 @@ func (ef *endpointFactory) newOrderer(address, mspid string, tlsRootCerts [][]by
 		connectOrderer = ab.NewAtomicBroadcastClient
 	}
 	return &orderer{
-		client:         connectOrderer(conn),
-		endpointConfig: &endpointConfig{address: address, mspid: mspid},
+		client:          connectOrderer(conn),
+		closeConnection: conn.Close,
+		endpointConfig:  &endpointConfig{address: address, mspid: mspid, tlsRootCerts: tlsRootCerts},
 	}, nil
 }
 

@@ -13,11 +13,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hyperledger/fabric-protos-go/peer"
-
 	"github.com/golang/protobuf/proto"
 	dp "github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/gossip"
+	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/channelconfig"
 	"github.com/hyperledger/fabric/common/flogging"
 	gossipapi "github.com/hyperledger/fabric/gossip/api"
 	gossipcommon "github.com/hyperledger/fabric/gossip/common"
@@ -32,15 +32,15 @@ type Discovery interface {
 }
 
 type registry struct {
-	localEndorser       *endorser
-	discovery           Discovery
-	logger              *flogging.FabricLogger
-	endpointFactory     *endpointFactory
-	remoteEndorsers     map[string]*endorser
-	broadcastClients    map[string]*orderer
-	tlsRootCerts        map[string][][]byte
-	channelsInitialized map[string]bool
-	configLock          sync.RWMutex
+	localEndorser      *endorser
+	discovery          Discovery
+	logger             *flogging.FabricLogger
+	endpointFactory    *endpointFactory
+	remoteEndorsers    map[string]*endorser
+	broadcastClients   sync.Map // orderer address (string) -> client connection (orderer)
+	channelInitialized map[string]bool
+	configLock         sync.RWMutex
+	channelOrderers    sync.Map // channel (string) -> orderer addresses (endpointConfig)
 }
 
 type endorserState struct {
@@ -260,67 +260,57 @@ func contains(slice []string, entry string) bool {
 
 // Returns a set of broadcastClients that can order a transaction for the given channel.
 func (reg *registry) orderers(channel string) ([]*orderer, error) {
-	err := reg.registerChannel(channel)
-	if err != nil {
-		return nil, err
-	}
 	var orderers []*orderer
-
-	// Get the config
-	config, err := reg.discovery.Config(channel)
-	if err != nil {
-		return nil, err
+	var ordererEndpoints []*endpointConfig
+	addr, exists := reg.channelOrderers.Load(channel)
+	// if it doesn't exist, get the orderers config for this channel
+	if exists {
+		ordererEndpoints = addr.([]*endpointConfig)
+	} else {
+		// no entry in the map - get the orderer config from discovery
+		channelOrderers, err := reg.config(channel)
+		if err != nil {
+			return nil, err
+		}
+		// A config update may have saved this first, in which case don't overwrite it.
+		addr, _ = reg.channelOrderers.LoadOrStore(channel, channelOrderers)
+		ordererEndpoints = addr.([]*endpointConfig)
 	}
-
-	reg.configLock.RLock()
-	defer reg.configLock.RUnlock()
-
-	for _, eps := range config.GetOrderers() {
-		for _, ep := range eps.Endpoint {
-			url := fmt.Sprintf("%s:%d", ep.Host, ep.Port)
-			if ord, ok := reg.broadcastClients[url]; ok {
-				orderers = append(orderers, ord)
+	for _, ep := range ordererEndpoints {
+		entry, exists := reg.broadcastClients.Load(ep.address)
+		if !exists {
+			// this orderer is new - connect to it and add to the broadcastClients registry
+			client, err := reg.endpointFactory.newOrderer(ep.address, ep.mspid, ep.tlsRootCerts)
+			if err != nil {
+				// Failed to connect to this orderer for some reason.  Log the problem and skip to the next one.
+				reg.logger.Warnw("Failed to connect to orderer", "address", ep.address, "err", err)
+				continue
+			}
+			var loaded bool
+			entry, loaded = reg.broadcastClients.LoadOrStore(ep.address, client)
+			if loaded {
+				// another goroutine got there first, close this new connection
+				err = client.closeConnection()
+				if err != nil {
+					// Failed to close this new connection.  Log the problem.
+					reg.logger.Warnw("Failed to close connection to orderer", "address", ep.address, "err", err)
+				}
+			} else {
+				reg.logger.Infow("Added orderer to registry", "address", ep.address)
 			}
 		}
+		orderers = append(orderers, entry.(*orderer))
 	}
 
 	return orderers, nil
 }
 
 func (reg *registry) registerChannel(channel string) error {
-	// todo need to handle membership updates
 	reg.configLock.Lock() // take a write lock to populate the registry maps
 	defer reg.configLock.Unlock()
 
-	if reg.channelsInitialized[channel] {
+	if reg.channelInitialized[channel] {
 		return nil
-	}
-	// get config and peer discovery info for this channel
-
-	// Get the config
-	config, err := reg.discovery.Config(channel)
-	if err != nil {
-		return err
-	}
-	// get the tlscerts
-	for msp, info := range config.GetMsps() {
-		reg.tlsRootCerts[msp] = info.GetTlsRootCerts()
-	}
-
-	for mspid, eps := range config.GetOrderers() {
-		for _, ep := range eps.Endpoint {
-			address := fmt.Sprintf("%s:%d", ep.Host, ep.Port)
-			if _, ok := reg.broadcastClients[address]; !ok {
-				// this orderer is new - connect to it and add to the broadcastClients registry
-				tlsRootCerts := reg.tlsRootCerts[mspid]
-				orderer, err := reg.endpointFactory.newOrderer(address, mspid, tlsRootCerts)
-				if err != nil {
-					return err
-				}
-				reg.broadcastClients[address] = orderer
-				reg.logger.Infof("Added orderer to registry: %s", address)
-			}
-		}
 	}
 
 	// get the remoteEndorsers for the channel
@@ -330,14 +320,21 @@ func (reg *registry) registerChannel(channel string) error {
 		id := member.PKIid.String()
 		peers[id] = member.PreferredEndpoint()
 	}
+	config, err := reg.discovery.Config(channel)
+	if err != nil {
+		return fmt.Errorf("failed to get config for channel [%s]: %w", channel, err)
+	}
 	for mspid, infoset := range reg.discovery.IdentityInfo().ByOrg() {
+		var tlsRootCerts [][]byte
+		if mspInfo, ok := config.GetMsps()[mspid]; ok {
+			tlsRootCerts = mspInfo.GetTlsRootCerts()
+		}
 		for _, info := range infoset {
 			pkiid := info.PKIId
 			if address, ok := peers[pkiid.String()]; ok {
 				// add the peer to the peer map - except the local peer, which seems to have an empty address
 				if _, ok := reg.remoteEndorsers[address]; !ok && len(address) > 0 {
 					// this peer is new - connect to it and add to the remoteEndorsers registry
-					tlsRootCerts := reg.tlsRootCerts[mspid]
 					endorser, err := reg.endpointFactory.newEndorser(pkiid, address, mspid, tlsRootCerts)
 					if err != nil {
 						return err
@@ -348,7 +345,39 @@ func (reg *registry) registerChannel(channel string) error {
 			}
 		}
 	}
-	reg.channelsInitialized[channel] = true
+	reg.channelInitialized[channel] = true
 
 	return nil
+}
+
+func (reg *registry) config(channel string) ([]*endpointConfig, error) {
+	config, err := reg.discovery.Config(channel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config for channel [%s]: %w", channel, err)
+	}
+	var channelOrderers []*endpointConfig
+	for mspid, eps := range config.GetOrderers() {
+		for _, ep := range eps.Endpoint {
+			address := fmt.Sprintf("%s:%d", ep.Host, ep.Port)
+			var tlsRootCerts [][]byte
+			if mspInfo, ok := config.GetMsps()[mspid]; ok {
+				tlsRootCerts = mspInfo.GetTlsRootCerts()
+			}
+			channelOrderers = append(channelOrderers, &endpointConfig{address: address, mspid: mspid, tlsRootCerts: tlsRootCerts})
+		}
+	}
+	return channelOrderers, nil
+}
+
+func (reg *registry) configUpdate(bundle *channelconfig.Bundle) {
+	if _, ok := bundle.OrdererConfig(); ok {
+		// orderer config has changed - invalidate the cache for this channel
+		channel := bundle.ConfigtxValidator().ChannelID()
+		channelOrderers, err := reg.config(channel)
+		if err != nil {
+			reg.logger.Errorw("Failed update orderer config", "channel", channel, "err", err)
+			return
+		}
+		reg.channelOrderers.Store(channel, channelOrderers)
+	}
 }
