@@ -16,6 +16,7 @@ import (
 	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/event"
 	"github.com/hyperledger/fabric/protoutil"
@@ -362,29 +363,9 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	var startBlock uint64
-	switch seek := request.GetStartPosition().GetType().(type) {
-	case nil:
-		ledgerInfo, err := ledger.GetBlockchainInfo()
-		if err != nil {
-			return status.Error(codes.Unavailable, err.Error())
-		}
-
-		startBlock = ledgerInfo.GetHeight()
-
-	case *ab.SeekPosition_NextCommit:
-		ledgerInfo, err := ledger.GetBlockchainInfo()
-		if err != nil {
-			return status.Error(codes.Unavailable, err.Error())
-		}
-
-		startBlock = ledgerInfo.GetHeight()
-
-	case *ab.SeekPosition_Specified:
-		startBlock = seek.Specified.GetNumber()
-
-	default:
-		return status.Errorf(codes.InvalidArgument, "invalid start position type: %T", seek)
+	startBlock, err := startBlockFromLedgerPosition(ledger, request.GetStartPosition())
+	if err != nil {
+		return err
 	}
 
 	ledgerIter, err := ledger.GetBlocksIterator(startBlock)
@@ -419,4 +400,22 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 			return err // Likely stream closed by the client
 		}
 	}
+}
+
+func startBlockFromLedgerPosition(ledger ledger.Ledger, position *ab.SeekPosition) (uint64, error) {
+	switch seek := position.GetType().(type) {
+	case nil:
+	case *ab.SeekPosition_NextCommit:
+	case *ab.SeekPosition_Specified:
+		return seek.Specified.GetNumber(), nil
+	default:
+		return 0, status.Errorf(codes.InvalidArgument, "invalid start position type: %T", seek)
+	}
+
+	ledgerInfo, err := ledger.GetBlockchainInfo()
+	if err != nil {
+		return 0, status.Error(codes.Unavailable, err.Error())
+	}
+
+	return ledgerInfo.GetHeight(), nil
 }
