@@ -145,7 +145,8 @@ Perform the following steps to commit and push your code to your forked reposito
   - one line summary of the work in this commit as title, followed by an empty line
   - in the commit message body, explain why this change is needed, and how you approached it.
     This helps reviewers better understand your code and often speeds up the review process.
-  - link to JIRA item or JIRA number, i.e. FAB-XXXXX
+  - link to GitHub issue (if exists), using syntax like "Resolves #<GitHub issue number>" so that the
+    GitHub issue automatically gets linked and closed when the PR gets merged.
   - (optional) if no new tests are added, how the code is tested
 
 .. code::
