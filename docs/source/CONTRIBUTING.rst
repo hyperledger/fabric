@@ -19,10 +19,6 @@ As a user:
 
 - `Making Feature/Enhancement Proposals`_
 - `Reporting bugs`_
-- Help test an upcoming Epic on the
-  `release roadmap <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`_.
-  Contact the Epic assignee via the Jira work item or on
-  `RocketChat <https://chat.hyperledger.org>`_.
 
 As a writer or information developer:
 
@@ -49,14 +45,14 @@ Jump to `Contributing documentation`_ to get started on your journey.
 As a developer:
 
 - If you only have a little time, consider picking up a
-  `"help-wanted" <https://jira.hyperledger.org/issues/?filter=10147>`_ task,
+  `"good first issue" <https://github.com/hyperledger/fabric/labels/good%20first%20issue>`_ task,
   see `Fixing issues and working stories`_.
 - If you can commit to full-time development, either propose a new feature
   (see `Making Feature/Enhancement Proposals`_) and
   bring a team to implement it, or join one of the teams working on an existing Epic.
   If you see an Epic that interests you on the
-  `release roadmap <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`_,
-  contact the Epic assignee via the Jira work item or on `RocketChat <https://chat.hyperledger.org/>`__.
+  `GitHub epic backlog <https://github.com/hyperledger/fabric/labels/Epic>`_,
+  contact the Epic assignee via the GitHub issue.
 
 Getting a Linux Foundation account
 ----------------------------------
@@ -65,7 +61,6 @@ In order to participate in the development of the Hyperledger Fabric
 project, you will need a Linux Foundation
 account. Once you have a LF ID you will be able to
 access all the Hyperledger community tools, including
-`Jira issue management <https://jira.hyperledger.org>`__,
 `RocketChat <https://chat.hyperledger.org/>`__, and the
 `Wiki <https://wiki.hyperledger.org/display/fabric/Hyperledger+Fabric>`__ (for editing, only).
 
@@ -86,8 +81,7 @@ already have one.
 5. Verify that your browser displays the message
    ``You have successfully validated your e-mail address``.
 
-6. Access `Jira issue management <https://jira.hyperledger.org>`__, or
-   `RocketChat <https://chat.hyperledger.org/>`__.
+6. Access `RocketChat <https://chat.hyperledger.org/>`__ to confirm access.
 
 Contributing documentation
 --------------------------
@@ -152,7 +146,7 @@ Releases
 ~~~~~~~~
 
 Fabric provides a release approximately once every four months with new features and improvements.
-New feature work is merged to the Fabric main branch on `Github <https://github.com/hyperledger/fabric>`__.
+New feature work is merged to the Fabric main branch on `GitHub <https://github.com/hyperledger/fabric>`__.
 Releases branches are created prior to each release so that the code can stabilize while
 new features continue to get merged to the main branch.
 Important fixes will also be backported to the most recent LTS (long-term support) release branch,
@@ -167,8 +161,8 @@ Minor improvements can be implemented and reviewed via the normal `GitHub pull r
 
 This process is intended to provide a consistent and controlled path for major changes to Fabric and other official project components, so that all stakeholders can be confident about the direction in which Fabric is evolving.
 
-To propose a new feature, first, check
-`JIRA <https://jira.hyperledger.org/projects/FAB/issues>`__ and the `Fabric RFC repository <https://github.com/hyperledger/fabric-rfcs/>`__ to be sure that there isn't already an open (or recently closed) proposal for the same functionality. If there isn't, follow `the RFC process <https://github.com/hyperledger/fabric-rfcs/blob/main/README.md>`__ to make a proposal.
+To propose a new feature, first, check the
+`GitHub issues backlog <https://github.com/hyperledger/fabric/issues>`__ and the `Fabric RFC repository <https://github.com/hyperledger/fabric-rfcs/>`__ to be sure that there isn't already an open (or recently closed) proposal for the same functionality. If there isn't, follow `the RFC process <https://github.com/hyperledger/fabric-rfcs/blob/main/README.md>`__ to make a proposal.
 
 Contributor meeting
 ~~~~~~~~~~~~~~~~~~~
@@ -188,18 +182,18 @@ maintainers meeting for consideration, feedback and acceptance.
 Release roadmap
 ~~~~~~~~~~~~~~~
 
-The Fabric release roadmap of epics is maintained in
-`JIRA <https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104>`__.
+The Fabric release roadmap is managed as a list of
+`GitHub issues with Epic label <https://github.com/hyperledger/fabric/labels/Epic>`__.
 
 Communications
 ~~~~~~~~~~~~~~
 
 We use `RocketChat <https://chat.hyperledger.org/>`__ for communication
 and Google Hangouts™ for screen sharing between developers. Our
-development planning and prioritization is done in
-`JIRA <https://jira.hyperledger.org>`__, and we take longer running
-discussions/decisions to the `mailing
-list <https://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__.
+development planning and prioritization is done using a
+`GitHub Issues ZenHub board <https://app.zenhub.com/workspaces/fabric-57c43689b6f3d8060d082cf1/board>`__, and we take longer running
+discussions/decisions to the `Fabric contributor meeting <https://wiki.hyperledger.org/display/fabric/Contributor+Meetings>`__
+or `mailing list <https://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__.
 
 Contribution guide
 ------------------
@@ -230,8 +224,8 @@ Reporting bugs
 ~~~~~~~~~~~~~~
 
 If you are a user and you have found a bug, please submit an issue using
-`JIRA <https://jira.hyperledger.org/projects/FAB/issues>`__.
-Before you create a new JIRA issue, please try to search the existing items to
+`GitHub Issues <https://github.com/hyperledger/fabric/issues>`__.
+Before you create a new GitHub issue, please try to search the existing issues to
 be sure no one else has previously reported it. If it has been previously
 reported, then you might add a comment that you also are interested in seeing
 the defect fixed.
@@ -241,7 +235,7 @@ the defect fixed.
 
 If it has not been previously reported, you may either submit a PR with a
 well documented commit message describing the defect and the fix, or you
-may create a new JIRA. Please try to provide
+may create a new GitHub issue. Please try to provide
 sufficient information for someone else to reproduce the
 issue. One of the project's maintainers should respond to your issue within 24
 hours. If not, please bump the issue with a comment and request that it be
@@ -253,18 +247,18 @@ and so on...
 Submitting your fix
 ~~~~~~~~~~~~~~~~~~~
 
-If you just submitted a JIRA for a bug you've discovered, and would like to
-provide a fix, we would welcome that gladly! Please assign the JIRA issue to
+If you just submitted a GitHub issue for a bug you've discovered, and would like to
+provide a fix, we would welcome that gladly! Please assign the GitHub issue to
 yourself, then submit a pull request (PR). Please refer to :doc:`github/github`
 for a detailed workflow.
 
 Fixing issues and working stories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Fabric issues and bugs are managed in `JIRA <https://jira.hyperledger.org/projects/FAB/issues>`__.
+Fabric issues and bugs are managed in `GitHub issues <https://github.com/hyperledger/fabric/issues>`__.
 Review the list of issues and find
 something that interests you. You could also check the
-`"help-wanted" <https://jira.hyperledger.org/issues/?filter=10147>`__
+`"good first issue" <https://github.com/hyperledger/fabric/labels/good%20first%20issue>`__
 list. It is wise to start with something relatively straight forward and
 achievable, and that no one is already assigned. If no one is assigned,
 then assign the issue to yourself. Please be considerate and rescind the
@@ -272,9 +266,9 @@ assignment if you cannot finish in a reasonable time, or add a comment
 saying that you are still actively working the issue if you need a
 little more time.
 
-While Jira tracks a backlog of known issues that could be worked in the future,
-if you intend to immediately work on a change that does not yet have a corresponding Jira issue,
-you can submit a pull request to `Github <https://github.com/hyperledger/fabric>`__ without linking to an existing Jira issue.
+While GitHub issues tracks a backlog of known issues that could be worked in the future,
+if you intend to immediately work on a change that does not yet have a corresponding issue,
+you can submit a pull request to `Github <https://github.com/hyperledger/fabric>`__ without linking to an existing issue.
 
 Reviewing submitted Pull Requests (PRs)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -339,12 +333,13 @@ What makes a good pull request?
    regression, it is much easier to identify the culprit commit than if
    we have some composite change that impacts more of the code.
 
--  If there is a corresponding Jira issue or bug, include a link to the
-   Jira issue in the PR summary and commit message.
-   Why? Because the maintainer that merges the PR will need to close
-   any corresponding Jira issue.
-   Also, in many cases, there will be additional discussion around
-   a proposed change or bug in Jira.
+-  If there is a corresponding GitHub issue, include a link to the
+   GitHub issue in the PR summary and commit message.
+   Why? Because there will often be additional discussion around
+   a proposed change or bug in the GitHub issue.
+   Additionally, if you use syntax like "Resolves #<GitHub issue number>"
+   in the PR summary and commit message, the GitHub issue will
+   automatically be closed when the PR is merged.
 
 -  Include unit and integration tests (or changes to existing tests)
    with every change. This does not mean just happy path testing,
