@@ -156,7 +156,7 @@ func (bw *BlockWriter) WriteConfigBlock(block *cb.Block, encodedMetadataValue []
 		logger.Panicf("Told to write a config block with unknown header type: %v", chdr.Type)
 	}
 
-	bw.WriteBlock(block, encodedMetadataValue)
+	bw.WriteBlockSync(block, encodedMetadataValue)
 }
 
 // WriteBlock should be invoked for blocks which contain normal transactions.
@@ -173,6 +173,23 @@ func (bw *BlockWriter) WriteBlock(block *cb.Block, encodedMetadataValue []byte) 
 		defer bw.committingBlock.Unlock()
 		bw.commitBlock(encodedMetadataValue)
 	}()
+}
+
+// WriteBlockSync is same as WriteBlock, but commits block synchronously.
+// Note: WriteConfigBlock should use WriteBlockSync instead of WriteBlock.
+//       If the block contains a transaction that remove the node from consenters,
+//       the node will switch to follower and pull blocks from other nodes.
+//       Suppose writing block asynchronously, the block maybe not persist to disk
+//       when the follower chain starts working. The follower chain will read a block
+//       before the config block, in which the node is still a consenter, so the follower
+//       chain will switch to the consensus chain. That's a dead loop!
+//       So WriteConfigBlock should use WriteBlockSync instead of WriteBlock.
+func (bw *BlockWriter) WriteBlockSync(block *cb.Block, encodedMetadataValue []byte) {
+	bw.committingBlock.Lock()
+	bw.lastBlock = block
+
+	defer bw.committingBlock.Unlock()
+	bw.commitBlock(encodedMetadataValue)
 }
 
 // commitBlock should only ever be invoked with the bw.committingBlock held
