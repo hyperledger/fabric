@@ -30,7 +30,7 @@ create a new language workgroup.
 It's much easier to translate, maintain, and manage a language repository if you
 collaborate with other translators. Start this process by adding a new workgroup
 to the [list of international
-workgroups](https://wiki.hyperledger.org/display/fabric/International+groups),
+workgroups](https://wiki.hyperledger.org/display/I18N/International+groups),
 using one of the existing workgroup pages as an exemplar.
 
 Document how your workgroup will collaborate; meetings, chat and mailing lists
