@@ -59,7 +59,7 @@ wiki](https://wiki.hyperledger.org/display/fabric/Documentation+Working+Group).
 
 Each of the international languages has a welcoming workgroup that you are
 encouraged to join. View the [list of international
-workgroups](https://wiki.hyperledger.org/display/fabric/International+groups).
+workgroups](https://wiki.hyperledger.org/display/I18N/International+groups).
 See what your favorite workgroup is doing, and get connected with them.
 Each workgroup has a list of members and their contact information.
 
