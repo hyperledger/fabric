@@ -191,7 +191,7 @@ channel with the default name of `mychannel`:
 If the command was successful, you can see the following message printed in your
 logs:
 ```
-========= Channel successfully joined ===========
+Channel 'mychannel' joined
 ```
 
 You can also use the channel flag to create a channel with custom name. As an
