@@ -143,7 +143,7 @@ T1,..,T5 (could be contained in a single block or different blocks)
 4. ``T4`` fails the validation because it reads a key, ``k2``, which was
    modified by a preceding transaction ``T1``
 
-5. ``T5`` passes validation because it reads a key, ``k5,`` which was
+5. ``T5`` passes validation because it reads a key, ``k5``, which was
    not modified by any of the preceding transactions
 
 **Note**: Transactions with multiple read-write sets are not yet supported.
