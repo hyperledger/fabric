@@ -38,6 +38,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/multichannel/mocks"
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -659,6 +660,35 @@ func TestCreateChain(t *testing.T) {
 
 		// The new chain is not halted: Close the channel to prove that.
 		close(chain2.Chain.(*mockChainCluster).queue)
+	})
+
+	t.Run("chain of type etcdraft.Chain is already created", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		lf, _ := newLedgerAndFactory(tmpdir, "testchannelid", genesisBlockSys)
+
+		consenter := &mocks.Consenter{}
+		consenter.HandleChainCalls(handleChain)
+		consenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: consenter}
+
+		manager := NewRegistrar(localconfig.TopLevel{}, lf, mockCrypto(), &disabled.Provider{}, cryptoProvider, nil)
+		manager.Initialize(consenters)
+
+		testChainSupport := &ChainSupport{Chain: &etcdraft.Chain{}}
+		manager.chains["test"] = testChainSupport
+
+		orglessChannelConf := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
+		envConfigUpdate, err := encoder.MakeChannelCreationTransaction("test", mockCrypto(), orglessChannelConf)
+		require.NoError(t, err, "Constructing chain creation tx")
+
+		manager.newChain(envConfigUpdate)
+
+		testChainSupport2 := manager.GetChain("test")
+		require.NotNil(t, testChainSupport2)
+
+		assert.Same(t, testChainSupport, testChainSupport2)
 	})
 
 	// This test brings up the entire system, with the mock consenter, including the broadcasters etc. and creates a new chain
