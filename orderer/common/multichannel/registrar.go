@@ -32,6 +32,7 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
 	"github.com/hyperledger/fabric/orderer/common/types"
 	"github.com/hyperledger/fabric/orderer/consensus"
+	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/pkg/errors"
 )
@@ -537,7 +538,10 @@ func (r *Registrar) CreateChain(chainName string) {
 	if chain != nil {
 		logger.Infof("A chain of type %T for channel %s already exists. "+
 			"Halting it.", chain.Chain, chainName)
+		r.lock.Lock()
 		chain.Halt()
+		delete(r.chains, chainName)
+		r.lock.Unlock()
 	}
 	r.newChain(configTx(lf))
 }
@@ -545,6 +549,20 @@ func (r *Registrar) CreateChain(chainName string) {
 func (r *Registrar) newChain(configtx *cb.Envelope) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
+
+	channelName, err := channelNameFromConfigTx(configtx)
+	if err != nil {
+		logger.Warnf("Failed extracting channel name: %v", err)
+		return
+	}
+
+	// fixes https://github.com/hyperledger/fabric/issues/2931
+	if existingChain, exists := r.chains[channelName]; exists {
+		if _, isRaftChain := existingChain.Chain.(*etcdraft.Chain); isRaftChain {
+			logger.Infof("Channel %s already created, skipping its creation", channelName)
+			return
+		}
+	}
 
 	cs := r.createNewChain(configtx)
 	cs.start()
@@ -1112,4 +1130,22 @@ func (r *Registrar) removeLedgerAsync(channelID string) {
 func (r *Registrar) ReportConsensusRelationAndStatusMetrics(channelID string, relation types.ConsensusRelation, status types.Status) {
 	r.channelParticipationMetrics.reportConsensusRelation(channelID, relation)
 	r.channelParticipationMetrics.reportStatus(channelID, status)
+}
+
+func channelNameFromConfigTx(configtx *cb.Envelope) (string, error) {
+	payload, err := protoutil.UnmarshalPayload(configtx.Payload)
+	if err != nil {
+		return "", errors.WithMessage(err, "error umarshaling envelope to payload")
+	}
+
+	if payload.Header == nil {
+		return "", errors.New("missing channel header")
+	}
+
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return "", errors.WithMessage(err, "error unmarshalling channel header")
+	}
+
+	return chdr.ChannelId, nil
 }
