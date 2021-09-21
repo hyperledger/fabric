@@ -916,7 +916,7 @@ var _ = Describe("Cache", func() {
 						return []byte("package-bytes"), nil
 					}
 				})
-				It("supresses the error", func() {
+				It("suppresses the error", func() {
 					err := c.RegisterListener("channel-id", fakeListener, true)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(fakeListener.HandleChaincodeDeployCallCount()).To(Equal(1))
@@ -928,7 +928,7 @@ var _ = Describe("Cache", func() {
 				BeforeEach(func() {
 					fakeParser.ParseReturns(nil, fmt.Errorf("parsing-error"))
 				})
-				It("supresses the error", func() {
+				It("suppresses the error", func() {
 					err := c.RegisterListener("channel-id", fakeListener, true)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(fakeListener.HandleChaincodeDeployCallCount()).To(Equal(0))
@@ -940,7 +940,7 @@ var _ = Describe("Cache", func() {
 				BeforeEach(func() {
 					fakeListener.HandleChaincodeDeployReturns(fmt.Errorf("listener-error"))
 				})
-				It("supresses the error", func() {
+				It("suppresses the error", func() {
 					err := c.RegisterListener("channel-id", fakeListener, true)
 					Expect(err).NotTo(HaveOccurred())
 					Expect(fakeListener.HandleChaincodeDeployCallCount()).To(Equal(2))
