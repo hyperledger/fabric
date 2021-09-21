@@ -66,12 +66,20 @@ func TestSendSubmitWithReport(t *testing.T) {
 	node2.stop()
 	node2.resurrect()
 
+	/*
+	 * allow the node2 to restart completely
+	 * if restart not complete, the existing stream able to successfully send
+	 * the next SubmitRequest which makes the testcase fails. Hence this delay
+	 * required
+	 */
+	time.Sleep(time.Second * 5)
+
 	var wg2 sync.WaitGroup
 	wg2.Add(1)
 
 	reportSubmitFailed := func(err error) {
-		require.EqualError(t, err, io.EOF.Error())
 		defer wg2.Done()
+		require.EqualError(t, err, io.EOF.Error())
 	}
 
 	err = node1RPC.SendSubmit(node2.nodeInfo.ID, &orderer.SubmitRequest{Channel: testChannel, Payload: &common.Envelope{Payload: []byte("2")}}, reportSubmitFailed)
