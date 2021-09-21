@@ -74,7 +74,7 @@ fabric/docs
 └── wrappers
 ```
 
-The most important folders is `source/` becuase it holds the source language
+The most important folders is `source/` because it holds the source language
 files. The documentation build process uses the `make` command to convert these
 source files to HTML, which are stored in the dynamically created `build/html/`
 folder:

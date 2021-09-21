@@ -15,7 +15,7 @@ Commercial paper is a commonly used type of unsecured, short-term debt instrumen
 issued by corporations, typically used for the financing of payroll, accounts 
 payable and inventories, and meeting other short-term liabilities. Maturities on 
 commercial paper typically last several days, and rarely range longer than 270 days. 
-The face value of the commerical paper is the value the issuing corporating would be
+The face value of the commercial paper is the value the issuing corporating would be
 paying the redeemer of the paper upon maturity. While buying the paper, the lender 
 buys it for a price lesser than the face value. The difference between the face value and 
 the price the lender bought the paper for is the profit made by the lender.

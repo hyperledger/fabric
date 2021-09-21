@@ -193,7 +193,7 @@ func TestTxIDExists(t *testing.T) {
 				require.True(t, exists)
 			}
 		}
-		exists, err := blkStore.TxIDExists("non-existant-txid")
+		exists, err := blkStore.TxIDExists("non-existent-txid")
 		require.NoError(t, err)
 		require.False(t, exists)
 	})
