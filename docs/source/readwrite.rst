@@ -117,7 +117,7 @@ shows the snapshot of the world state against which the transactions are
 simulated and the sequence of read and write activities performed by
 each of these transactions.
 
-::
+.. code-block:: none
 
     World state: (k1,1,v1), (k2,1,v2), (k3,1,v3), (k4,1,v4), (k5,1,v5)
     T1 -> Write(k1, v1'), Write(k2, v2')
