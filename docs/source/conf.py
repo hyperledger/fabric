@@ -126,6 +126,8 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+html_style = 'css/custom.css'
+
 def placeholderReplace(app, docname, source):
     result = source[0]
     for key in app.config.placeholder_replacements:
@@ -134,7 +136,6 @@ def placeholderReplace(app, docname, source):
 
 
 def setup(app):
-    app.add_stylesheet('css/custom.css')
     app.add_config_value('placeholder_replacements', {}, True)
     app.connect('source-read', placeholderReplace)
 
