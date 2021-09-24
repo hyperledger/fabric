@@ -9,6 +9,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 
 	"github.com/golang/protobuf/proto"
@@ -279,31 +280,44 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 		return nil, status.Errorf(codes.Unavailable, "no orderer nodes available")
 	}
 
-	orderer := orderers[0] // send to first orderer for now
+	// try each orderer in random order
+	var errDetails []proto.Message
+	for _, index := range rand.Perm(len(orderers)) {
+		orderer := orderers[index]
+		err := gs.broadcast(ctx, orderer, txn)
+		if err == nil {
+			return &gp.SubmitResponse{}, nil
+		}
+		logger.Warnw("Error sending transaction to orderer", "TxID", request.TransactionId, "endpoint", orderer.address, "err", err)
+		errDetails = append(errDetails, endpointError(orderer.endpointConfig, err))
+	}
 
+	return nil, rpcError(codes.Aborted, "no orderers could successfully process transaction", errDetails...)
+}
+
+func (gs *Server) broadcast(ctx context.Context, orderer *orderer, txn *common.Envelope) error {
 	broadcast, err := orderer.client.Broadcast(ctx)
 	if err != nil {
-		return nil, wrappedRpcError(err, "failed to create BroadcastClient", endpointError(orderer.endpointConfig, err))
+		return fmt.Errorf("failed to create BroadcastClient: %w", err)
 	}
 	logger.Info("Submitting txn to orderer")
 	if err := broadcast.Send(txn); err != nil {
-		return nil, wrappedRpcError(err, "failed to send transaction to orderer", endpointError(orderer.endpointConfig, err))
+		return fmt.Errorf("failed to send transaction to orderer: %w", err)
 	}
 
 	response, err := broadcast.Recv()
 	if err != nil {
-		return nil, wrappedRpcError(err, "failed to receive response from orderer", endpointError(orderer.endpointConfig, err))
+		return fmt.Errorf("failed to receive response from orderer: %w", err)
 	}
 
 	if response == nil {
-		return nil, status.Error(codes.Aborted, "received nil response from orderer")
+		return fmt.Errorf("received nil response from orderer")
 	}
 
 	if response.Status != common.Status_SUCCESS {
-		return nil, status.Errorf(codes.Aborted, "received unsuccessful response from orderer: %s", common.Status_name[int32(response.Status)])
+		return fmt.Errorf("received unsuccessful response from orderer: %s", common.Status_name[int32(response.Status)])
 	}
-
-	return &gp.SubmitResponse{}, nil
+	return nil
 }
 
 // CommitStatus returns the validation code for a specific transaction on a specific channel. If the transaction is
