@@ -188,6 +188,7 @@ func (r *Replicator) PullChannel(channel string) error {
 	puller := r.Puller.Clone()
 	defer puller.Close()
 	puller.Channel = channel
+	puller.Logger = flogging.MustGetLogger("orderer.common.cluster.replication").With("channel", channel)
 
 	ledger, err := r.LedgerFactory.GetOrCreate(channel)
 	if err != nil {
@@ -294,6 +295,7 @@ func (r *Replicator) channelsToPull(channels GenesisBlocks) channelPullHints {
 	for _, channel := range channels {
 		r.Logger.Info("Probing whether I should pull channel", channel.ChannelName)
 		puller := r.Puller.Clone()
+		puller.Logger = flogging.MustGetLogger("orderer.common.cluster.replication").With("channel", channel.ChannelName)
 		puller.Channel = channel.ChannelName
 		// Disable puller buffering when we check whether we are in the channel,
 		// as we only need to know about a single block.
