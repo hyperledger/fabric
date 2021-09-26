@@ -6,8 +6,8 @@ package localconfig
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -16,8 +16,6 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/viperutil"
 	coreconfig "github.com/hyperledger/fabric/core/config"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
-	"github.com/spf13/viper"
 )
 
 // Prefix for environment variables.
@@ -320,12 +318,9 @@ var cache = &configCache{}
 func (c *configCache) load() (*TopLevel, error) {
 	var uconf TopLevel
 
-	config := viper.New()
-	coreconfig.InitViper(config, "orderer")
+	config := viperutil.New()
+	config.SetConfigName("orderer")
 	config.SetEnvPrefix(Prefix)
-	config.AutomaticEnv()
-	replacer := strings.NewReplacer(".", "_")
-	config.SetEnvKeyReplacer(replacer)
 
 	if err := config.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("Error reading configuration: %s", err)
@@ -335,7 +330,7 @@ func (c *configCache) load() (*TopLevel, error) {
 	defer c.mutex.Unlock()
 	serializedConf, ok := c.cache[config.ConfigFileUsed()]
 	if !ok {
-		err := viperutil.EnhancedExactUnmarshal(config, &uconf)
+		err := config.EnhancedExactUnmarshal(&uconf)
 		if err != nil {
 			return nil, fmt.Errorf("Error unmarshaling config into struct: %s", err)
 		}

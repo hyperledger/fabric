@@ -96,31 +96,35 @@ func TestInitCrypto(t *testing.T) {
 func TestSetBCCSPKeystorePath(t *testing.T) {
 	cfgKey := "peer.BCCSP.SW.FileKeyStore.KeyStore"
 	cfgPath := "./testdata"
-	absPath, _ := filepath.Abs(cfgPath)
+	absPath, err := filepath.Abs(cfgPath)
+	assert.NoError(t, err)
+
 	keystorePath := "/msp/keystore"
+	defer os.Unsetenv("FABRIC_CFG_PATH")
 
 	os.Setenv("FABRIC_CFG_PATH", cfgPath)
 	viper.Reset()
-	_ = common.InitConfig("notset")
+	err = common.InitConfig("notset")
 	common.SetBCCSPKeystorePath()
 	t.Log(viper.GetString(cfgKey))
 	assert.Equal(t, "", viper.GetString(cfgKey))
+	assert.Nil(t, viper.Get(cfgKey))
 
 	viper.Reset()
-	_ = common.InitConfig("absolute")
+	err = common.InitConfig("absolute")
+	assert.NoError(t, err)
 	common.SetBCCSPKeystorePath()
 	t.Log(viper.GetString(cfgKey))
 	assert.Equal(t, keystorePath, viper.GetString(cfgKey))
 
 	viper.Reset()
-	_ = common.InitConfig("relative")
+	err = common.InitConfig("relative")
+	assert.NoError(t, err)
 	common.SetBCCSPKeystorePath()
 	t.Log(viper.GetString(cfgKey))
-	assert.Equal(t, filepath.Join(absPath, keystorePath),
-		viper.GetString(cfgKey))
+	assert.Equal(t, filepath.Join(absPath, keystorePath), viper.GetString(cfgKey))
 
 	viper.Reset()
-	os.Unsetenv("FABRIC_CFG_PATH")
 }
 
 func TestCheckLogLevel(t *testing.T) {

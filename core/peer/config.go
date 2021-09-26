@@ -22,6 +22,7 @@ package peer
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/hyperledger/fabric/common/viperutil"
 	"io/ioutil"
 	"net"
 	"path/filepath"
@@ -276,7 +277,7 @@ func (c *Config) load() error {
 
 	c.ChaincodePull = viper.GetBool("chaincode.pull")
 	var externalBuilders []ExternalBuilder
-	err = viper.UnmarshalKey("chaincode.externalBuilders", &externalBuilders)
+	err = viper.UnmarshalKey("chaincode.externalBuilders", &externalBuilders, viper.DecodeHook(viperutil.YamlStringToStructHook(externalBuilders)))
 	if err != nil {
 		return err
 	}

@@ -10,8 +10,11 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
+	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -24,14 +27,150 @@ import (
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 var logger = flogging.MustGetLogger("viperutil")
 
-type viperGetter func(key string) interface{}
+// ConfigPaths returns the paths from environment and
+// defaults which are CWD and /etc/hyperledger/fabric.
+func ConfigPaths() []string {
+	var paths []string
+	if p := os.Getenv("FABRIC_CFG_PATH"); p != "" {
+		paths = append(paths, p)
+	}
+	return append(paths, ".", "/etc/hyperledger/fabric")
+}
 
-func getKeysRecursively(base string, getKey viperGetter, nodeKeys map[string]interface{}, oType reflect.Type) map[string]interface{} {
+// ConfigParser holds the configuration file locations.
+// It keeps the config file directory locations and env variables.
+// From the file the config is unmarshalled and stored.
+// Currently "yaml" is supported.
+type ConfigParser struct {
+	// configuration file to process
+	configPaths []string
+	configName  string
+	configFile  string
+
+	// env variable prefix
+	envPrefix string
+
+	// parsed config
+	config map[string]interface{}
+}
+
+// New creates a ConfigParser instance
+func New() *ConfigParser {
+	return &ConfigParser{
+		config: map[string]interface{}{},
+	}
+}
+
+// AddConfigPaths keeps a list of path to search the relevant
+// config file. Multiple paths can be provided.
+func (c *ConfigParser) AddConfigPaths(cfgPaths ...string) {
+	if len(cfgPaths) > 0 {
+		for _, p := range cfgPaths {
+			c.configPaths = append(c.configPaths, p)
+		}
+	}
+}
+
+// SetConfigName initializes config file name. The extension is not included.
+func (c *ConfigParser) SetConfigName(in string) {
+	c.configName = in
+}
+
+// SetConfigFile sets the full config file name.
+// In this case, configPaths search shall not be done.
+func (c *ConfigParser) SetConfigFile(in string) {
+	c.configFile = in
+}
+
+// ConfigFileUsed returns the used configFile.
+func (c *ConfigParser) ConfigFileUsed() string { return c.configFile }
+
+// SetEnvPrefix initializes the envPrefix.
+// For example, if "peer" is set here, all environment variable
+// searches shall be prefixed with "PEER_"
+func (c *ConfigParser) SetEnvPrefix(in string) {
+	c.envPrefix = in
+}
+
+// Search for the existence of filename for all supported extensions
+func (c *ConfigParser) searchInPath(in string) (filename string) {
+	var supportedExts []string = []string{"yaml", "yml"}
+	for _, ext := range supportedExts {
+		fullPath := filepath.Join(in, c.configName+"."+ext)
+		_, err := os.Stat(fullPath)
+		if err == nil {
+			return fullPath
+		}
+	}
+	return ""
+}
+
+// Search for the configName in all configPaths
+func (c *ConfigParser) findConfigFile() string {
+	paths := c.configPaths
+	if len(paths) == 0 {
+		paths = ConfigPaths()
+	}
+	for _, cp := range paths {
+		file := c.searchInPath(cp)
+		if file != "" {
+			return file
+		}
+	}
+	return ""
+}
+
+// Get the valid and present config file
+func (c *ConfigParser) getConfigFile() string {
+	// if explicitly set, then use it
+	if c.configFile != "" {
+		return c.configFile
+	}
+
+	c.configFile = c.findConfigFile()
+	return c.configFile
+}
+
+// ReadInConfig reads and unmarshals the config file.
+func (c *ConfigParser) ReadInConfig() error {
+	cf := c.getConfigFile()
+	logger.Debugf("Attempting to open the config file : %s", cf)
+	file, err := os.Open(cf)
+	if err != nil {
+		logger.Errorf("Unable to open the config file : %s", cf)
+		return err
+	}
+	defer file.Close()
+
+	return c.ReadConfig(file)
+}
+
+// ReadConfig parses the buffer and initializes the config.
+func (c *ConfigParser) ReadConfig(in io.Reader) error {
+	dec := yaml.NewDecoder(in)
+	return dec.Decode(c.config)
+}
+
+// Get value for the key by searching
+// environment variables
+func (c *ConfigParser) getFromEnv(key string) interface{} {
+	envKey := key
+	if c.envPrefix != "" {
+		envKey = strings.ToUpper(c.envPrefix + "_" + envKey)
+	}
+	envKey = strings.ReplaceAll(envKey, ".", "_")
+	return os.Getenv(envKey)
+}
+
+// Prototype declaration for getFromEnv function.
+type envGetter func(key string) interface{}
+
+func getKeysRecursively(base string, getKey envGetter, nodeKeys map[string]interface{}, oType reflect.Type) map[string]interface{} {
 	subTypes := map[string]reflect.Type{}
 
 	if oType != nil && oType.Kind() == reflect.Struct {
@@ -56,7 +195,12 @@ func getKeysRecursively(base string, getKey viperGetter, nodeKeys map[string]int
 	for key := range nodeKeys {
 		fqKey := base + key
 
-		val := getKey(fqKey)
+		var val interface{}
+		val = nodeKeys[key]
+		// overwrite val, if an environment is available
+		if envVal := getKey(fqKey); envVal != "" {
+			val = envVal
+		}
 		if m, ok := val.(map[interface{}]interface{}); ok {
 			logger.Debugf("Found map[interface{}]interface{} value for %s", fqKey)
 			tmp := make(map[string]interface{})
@@ -76,8 +220,11 @@ func getKeysRecursively(base string, getKey viperGetter, nodeKeys map[string]int
 			result[key] = m
 		} else {
 			if val == nil {
+				var fileVal interface{}
 				fileSubKey := fqKey + ".File"
-				fileVal := getKey(fileSubKey)
+				if envVal := getKey(fileSubKey); envVal != "" {
+					fileVal = envVal
+				}
 				if fileVal != nil {
 					result[key] = map[string]interface{}{"File": fileVal}
 					continue
@@ -315,7 +462,7 @@ func bccspHook(f reflect.Type, t reflect.Type, data interface{}) (interface{}, e
 // EnhancedExactUnmarshal is intended to unmarshal a config file into a structure
 // producing error when extraneous variables are introduced and supporting
 // the time.Duration type
-func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
+func (c *ConfigParser) EnhancedExactUnmarshal(output interface{}) error {
 	oType := reflect.TypeOf(output)
 	if oType.Kind() != reflect.Ptr {
 		return errors.Errorf("supplied output argument must be a pointer to a struct but is not pointer")
@@ -325,10 +472,8 @@ func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
 		return errors.Errorf("supplied output argument must be a pointer to a struct, but it is pointer to something else")
 	}
 
-	baseKeys := v.AllSettings()
-
-	getterWithClass := func(key string) interface{} { return v.Get(key) } // hide receiver
-	leafKeys := getKeysRecursively("", getterWithClass, baseKeys, eType)
+	baseKeys := c.config
+	leafKeys := getKeysRecursively("", c.getFromEnv, baseKeys, eType)
 
 	logger.Debugf("%+v", leafKeys)
 	config := &mapstructure.DecoderConfig{
@@ -351,4 +496,20 @@ func EnhancedExactUnmarshal(v *viper.Viper, output interface{}) error {
 		return err
 	}
 	return decoder.Decode(leafKeys)
+}
+
+// YamlStringToStructHook is a hook for viper(viper.Unmarshal(*,*, here)), it is able to parse a string of minified yaml into a slice of structs
+func YamlStringToStructHook(m interface{}) func(rf reflect.Kind, rt reflect.Kind, data interface{}) (interface{}, error) {
+	return func(rf reflect.Kind, rt reflect.Kind, data interface{}) (interface{}, error) {
+		if rf != reflect.String || rt != reflect.Slice {
+			return data, nil
+		}
+
+		raw := data.(string)
+		if raw == "" {
+			return m, nil
+		}
+
+		return m, yaml.UnmarshalStrict([]byte(raw), &m)
+	}
 }
