@@ -189,14 +189,16 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 			}
 		}
 
-		gs.logger.Infow("Endorsement required from:", func() []interface{} {
-			var es []interface{}
-			for _, e := range endorsers {
-				es = append(es, e.mspid)
-				es = append(es, e.address)
-			}
-			return es
-		}()...)
+		if len(endorsers) > 0 {
+			gs.logger.Infow("Seeking extra endorsements from:", func() []interface{} {
+				var es []interface{}
+				for _, e := range endorsers {
+					es = append(es, e.mspid)
+					es = append(es, e.address)
+				}
+				return es
+			}()...)
+		}
 	}
 
 	var wg sync.WaitGroup
