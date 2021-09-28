@@ -392,7 +392,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 			It("does not attempt to rebuild it itself", func() {
 				_, err := ef.InstallChaincode([]byte("cc-package"))
-				Expect(err).To(MatchError("chaincode already successfully installed"))
+				Expect(err).To(MatchError("chaincode already successfully installed (package ID 'fake-hash')"))
 				Expect(fakeChaincodeBuilder.BuildCallCount()).To(Equal(0))
 			})
 		})
