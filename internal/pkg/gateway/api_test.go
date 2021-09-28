@@ -736,11 +736,11 @@ func TestSubmit(t *testing.T) {
 				proposalResponseStatus: 200,
 				ordererBroadcastError:  status.Error(codes.FailedPrecondition, "Orderer not listening!"),
 			},
-			errString: "rpc error: code = FailedPrecondition desc = failed to create BroadcastClient: Orderer not listening!",
+			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
 			errDetails: []*pb.EndpointError{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
-				Message: "rpc error: code = FailedPrecondition desc = Orderer not listening!",
+				Message: "failed to create BroadcastClient: rpc error: code = FailedPrecondition desc = Orderer not listening!",
 			}},
 		},
 		{
@@ -752,11 +752,11 @@ func TestSubmit(t *testing.T) {
 				proposalResponseStatus: 200,
 				ordererSendError:       status.Error(codes.Internal, "Orderer says no!"),
 			},
-			errString: "rpc error: code = Internal desc = failed to send transaction to orderer: Orderer says no!",
+			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
 			errDetails: []*pb.EndpointError{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
-				Message: "rpc error: code = Internal desc = Orderer says no!",
+				Message: "failed to send transaction to orderer: rpc error: code = Internal desc = Orderer says no!",
 			}},
 		},
 		{
@@ -768,11 +768,11 @@ func TestSubmit(t *testing.T) {
 				proposalResponseStatus: 200,
 				ordererRecvError:       status.Error(codes.FailedPrecondition, "Orderer not happy!"),
 			},
-			errString: "rpc error: code = FailedPrecondition desc = failed to receive response from orderer: Orderer not happy!",
+			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
 			errDetails: []*pb.EndpointError{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
-				Message: "rpc error: code = FailedPrecondition desc = Orderer not happy!",
+				Message: "failed to receive response from orderer: rpc error: code = FailedPrecondition desc = Orderer not happy!",
 			}},
 		},
 		{
@@ -789,7 +789,12 @@ func TestSubmit(t *testing.T) {
 					return abc
 				}
 			},
-			errString: "rpc error: code = Aborted desc = received nil response from orderer",
+			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
+			errDetails: []*pb.EndpointError{{
+				Address: "orderer:7050",
+				MspId:   "msp1",
+				Message: "received nil response from orderer",
+			}},
 		},
 		{
 			name: "orderer returns unsuccessful response",
@@ -808,7 +813,12 @@ func TestSubmit(t *testing.T) {
 					return abc
 				}
 			},
-			errString: "rpc error: code = Aborted desc = received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
+			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
+			errDetails: []*pb.EndpointError{{
+				Address: "orderer:7050",
+				MspId:   "msp1",
+				Message: "received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
+			}},
 		},
 		{
 			name: "dialing orderer endpoint fails",
@@ -824,6 +834,96 @@ func TestSubmit(t *testing.T) {
 				})
 			},
 			errString: "rpc error: code = Unavailable desc = no orderer nodes available",
+		},
+		{
+			name: "orderer retry",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				abc := &mocks.ABClient{}
+				abbc := &mocks.ABBClient{}
+				abbc.SendReturnsOnCall(0, status.Error(codes.FailedPrecondition, "First orderer error"))
+				abbc.SendReturnsOnCall(1, status.Error(codes.FailedPrecondition, "Second orderer error"))
+				abbc.SendReturnsOnCall(2, nil) // third time lucky
+				abbc.RecvReturns(&ab.BroadcastResponse{
+					Info:   "success",
+					Status: cp.Status(200),
+				}, nil)
+				abc.BroadcastReturns(abbc, nil)
+				def.server.registry.endpointFactory = &endpointFactory{
+					timeout: 5 * time.Second,
+					connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
+						return &mocks.EndorserClient{}
+					},
+					connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
+						return abc
+					},
+					dialer: func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+						return nil, nil
+					},
+				}
+			},
+		},
+		{
+			name: "multiple orderers all fail",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock}},
+			},
+			config: &dp.ConfigResult{
+				Orderers: map[string]*dp.Endpoints{
+					"msp1": {
+						Endpoint: []*dp.Endpoint{
+							{Host: "orderer1", Port: 7050},
+							{Host: "orderer2", Port: 7050},
+							{Host: "orderer3", Port: 7050},
+						},
+					},
+				},
+				Msps: map[string]*msp.FabricMSPConfig{
+					"msp1": {
+						TlsRootCerts: [][]byte{},
+					},
+				},
+			},
+			endpointDefinition: &endpointDef{
+				proposalResponseStatus: 200,
+				ordererBroadcastError:  status.Error(codes.FailedPrecondition, "Orderer not listening!"),
+			},
+			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
+			errDetails: []*pb.EndpointError{
+				{
+					Address: "orderer1:7050",
+					MspId:   "msp1",
+					Message: "failed to create BroadcastClient: rpc error: code = FailedPrecondition desc = Orderer not listening!",
+				},
+				{
+					Address: "orderer2:7050",
+					MspId:   "msp1",
+					Message: "failed to create BroadcastClient: rpc error: code = FailedPrecondition desc = Orderer not listening!",
+				},
+				{
+					Address: "orderer3:7050",
+					MspId:   "msp1",
+					Message: "failed to create BroadcastClient: rpc error: code = FailedPrecondition desc = Orderer not listening!",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -1506,10 +1606,8 @@ func checkError(t *testing.T, err error, errString string, details []*pb.Endpoin
 	s, ok := status.FromError(err)
 	require.True(t, ok, "Expected a gRPC status error")
 	require.Len(t, s.Details(), len(details))
-	for i, detail := range details {
-		require.Equal(t, detail.Message, s.Details()[i].(*pb.EndpointError).Message)
-		require.Equal(t, detail.MspId, s.Details()[i].(*pb.EndpointError).MspId)
-		require.Equal(t, detail.Address, s.Details()[i].(*pb.EndpointError).Address)
+	for _, detail := range s.Details() {
+		require.Contains(t, details, detail)
 	}
 }
 
