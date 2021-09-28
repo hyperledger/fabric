@@ -645,6 +645,38 @@ func TestRegistrar_JoinChannel(t *testing.T) {
 		// After creating the chain, it exists
 		assert.NotNil(t, registrar.GetChain("my-raft-channel"))
 	})
+
+	t.Run("chain of type etcdraft.Chain is already created", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		require.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		ledgerFactory, _ := newLedgerAndFactory(tmpdir, "", nil)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}, "etcdraft": &mockConsenter{}}
+		config := localconfig.TopLevel{}
+		config.General.BootstrapMethod = "none"
+		config.General.GenesisFile = ""
+		registrar := NewRegistrar(config, ledgerFactory, mockCrypto(), &disabled.Provider{}, cryptoProvider)
+		registrar.Initialize(mockConsenters)
+
+		ledger, err := ledgerFactory.GetOrCreate("my-channel")
+		assert.NoError(t, err)
+		ledger.Append(genesisBlockApp)
+
+		testChainSupport := &ChainSupport{Chain: &mockRaftChain{}}
+		registrar.chains["test"] = testChainSupport
+
+		orglessChannelConf := genesisconfig.Load(genesisconfig.SampleSingleMSPChannelProfile, configtest.GetDevConfigDir())
+		envConfigUpdate, err := encoder.MakeChannelCreationTransaction("test", mockCrypto(), orglessChannelConf)
+		require.NoError(t, err, "Constructing chain creation tx")
+
+		registrar.newChain(envConfigUpdate)
+
+		testChainSupport2 := registrar.GetChain("test")
+		require.NotNil(t, testChainSupport2)
+
+		assert.Same(t, testChainSupport, testChainSupport2)
+	})
 }
 
 func generateCertificates(t *testing.T, confAppRaft *genesisconfig.Profile, tlsCA tlsgen.CA, certDir string) {
@@ -727,4 +759,33 @@ func TestRegistrar_ConfigBlockOrPanic(t *testing.T) {
 		assert.Equal(t, genesisBlockSys.Header, cBlock.Header)
 		assert.Equal(t, genesisBlockSys.Data, cBlock.Data)
 	})
+}
+
+type mockRaftChain struct {
+}
+
+func (c *mockRaftChain) Order(env *cb.Envelope, configSeq uint64) error {
+	return nil
+}
+
+func (c *mockRaftChain) Configure(config *cb.Envelope, configSeq uint64) error {
+	return nil
+}
+
+func (c *mockRaftChain) WaitReady() error {
+	return nil
+}
+
+func (c *mockRaftChain) Errored() <-chan struct{} {
+	return nil
+}
+
+func (c *mockRaftChain) Start() {
+}
+
+func (c *mockRaftChain) Halt() {
+}
+
+func (c *mockRaftChain) IsRaft() bool {
+	return true
 }
