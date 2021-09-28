@@ -62,6 +62,27 @@ bccsp:
 
 By default, when private keys are generated using the HSM, the private key is mutable, meaning PKCS11 private key  attributes can be changed after the key is generated. Setting `Immutable` to `true` means that the private key attributes cannot be altered after key generation. Before you configure immutability by setting `Immutable: true`, ensure that PKCS11 object copy is supported by the HSM.
 
+If you are using AWS HSM there is an additional step required:
+
+- Add the parameter, `AltID` to the `pkcs11` section of the `bccsp` block. When AWS HSM is being used, this parameter is used to assign a unique value for the Subject Key Identifier (SKI). Create a long secure string outside of Fabric and assign it to the `AltID` parameter. For example:
+
+  ```
+  #############################################################################
+  # BCCSP (BlockChain Crypto Service Provider) section is used to select which
+  # crypto library implementation to use
+  #############################################################################
+  bccsp:
+    default: PKCS11
+    pkcs11:
+      Library: /etc/hyperledger/fabric/libsofthsm2.so
+      Pin: 71811222
+      Label: fabric
+      hash: SHA2
+      security: 256
+      Immutable: false
+      AltID: 4AMfmFMtLY6B6vN3q4SQtCkCQ6UY5f6gUF3rDRE4wqD4YDUrunuZbmZpVk8zszkt86yenPBUGE2aCQCZmQFcmnj3UaxyLzfTMjCnapAe3
+  ```
+
 You can also use environment variables to override the relevant fields of the configuration file. If you are connecting to softhsm2 using the Fabric CA server, you could set the following environment variables or directly set the corresponding values in the CA server config file:
 
 ```
