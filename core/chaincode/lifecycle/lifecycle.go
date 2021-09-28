@@ -685,7 +685,7 @@ func (ef *ExternalFunctions) InstallChaincode(chaincodeInstallPackage []byte) (*
 		// installed a chaincode with this package id
 		<-buildStatus.Done()
 		if buildStatus.Err() == nil {
-			return nil, errors.New("chaincode already successfully installed")
+			return nil, errors.Errorf("chaincode already successfully installed (package ID '%s')", packageID)
 		}
 		buildStatus = ef.BuildRegistry.ResetBuildStatus(packageID)
 	}
