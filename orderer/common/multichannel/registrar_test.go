@@ -303,7 +303,7 @@ func TestCreateChain(t *testing.T) {
 		assert.NoError(t, err)
 		defer os.RemoveAll(tmpdir)
 
-		ledgerFactory, _ := newRAMLedgerAndFactory(10, "", nil)
+		ledgerFactory, _ := newRAMLedgerAndFactory(10, genesisconfig.TestChainID, genesisBlockSys)
 		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}, "etcdraft": &mockConsenter{}}
 
 		registrar := NewRegistrar(conf, ledgerFactory, mockCrypto(), &disabled.Provider{})
