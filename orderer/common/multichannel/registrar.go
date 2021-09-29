@@ -348,7 +348,10 @@ func (r *Registrar) CreateChain(chainName string) {
 	if chain != nil {
 		logger.Infof("A chain of type %T for channel %s already exists. "+
 			"Halting it.", chain.Chain, chainName)
+		r.lock.Lock()
 		chain.Halt()
+		delete(r.chains, chainName)
+		r.lock.Unlock()
 	}
 	r.newChain(configTx(lf))
 }
@@ -357,6 +360,20 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	channelName, err := channelNameFromConfigTx(configtx)
+	if err != nil {
+		logger.Warnf("Failed extracting channel name: %v", err)
+		return
+	}
+
+	// fixes https://github.com/hyperledger/fabric/issues/2931
+	if existingChain, exists := r.chains[channelName]; exists {
+		if raftChain, isRaftChain := existingChain.Chain.(RaftChain); isRaftChain && raftChain.IsRaft() {
+			logger.Infof("Channel %s already created, skipping its creation", channelName)
+			return
+		}
+	}
+
 	ledgerResources, err := r.newLedgerResources(configtx)
 	if err != nil {
 		logger.Panicf("Error creating ledger resources: %s", err)
@@ -364,7 +381,9 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 
 	// If we have no blocks, we need to create the genesis block ourselves.
 	if ledgerResources.Height() == 0 {
-		ledgerResources.Append(blockledger.CreateNextBlock(ledgerResources, []*cb.Envelope{configtx}))
+		if err := ledgerResources.Append(blockledger.CreateNextBlock(ledgerResources, []*cb.Envelope{configtx})); err != nil {
+			logger.Panicf("Error appending genesis block to ledger: %s", err)
+		}
 	}
 	cs, err := newChainSupport(r, ledgerResources, r.consenters, r.signer, r.blockcutterMetrics, r.bccsp)
 	if err != nil {
@@ -493,4 +512,26 @@ func (r *Registrar) JoinChannel(channelID string, configBlock *cb.Block, isAppCh
 func (r *Registrar) RemoveChannel(channelID string, removeStorage bool) error {
 	//TODO
 	return errors.New("Not implemented yet")
+}
+
+type RaftChain interface {
+	IsRaft() bool
+}
+
+func channelNameFromConfigTx(configtx *cb.Envelope) (string, error) {
+	payload, err := protoutil.UnmarshalPayload(configtx.Payload)
+	if err != nil {
+		return "", errors.WithMessage(err, "error umarshaling envelope to payload")
+	}
+
+	if payload.Header == nil {
+		return "", errors.New("missing channel header")
+	}
+
+	chdr, err := protoutil.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return "", errors.WithMessage(err, "error unmarshalling channel header")
+	}
+
+	return chdr.ChannelId, nil
 }
