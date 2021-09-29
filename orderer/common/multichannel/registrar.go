@@ -374,12 +374,6 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 		}
 	}
 
-	cs := r.createNewChain(configtx)
-	cs.start()
-	logger.Infof("Created and started new channel %s", cs.ChannelID())
-}
-
-func (r *Registrar) createNewChain(configtx *cb.Envelope) *ChainSupport {
 	ledgerResources, err := r.newLedgerResources(configtx)
 	if err != nil {
 		logger.Panicf("Error creating ledger resources: %s", err)
@@ -399,7 +393,8 @@ func (r *Registrar) createNewChain(configtx *cb.Envelope) *ChainSupport {
 	chainID := ledgerResources.ConfigtxValidator().ChannelID()
 	r.chains[chainID] = cs
 
-	return cs
+	logger.Infof("Created and starting new channel %s", chainID)
+	cs.start()
 }
 
 // ChannelsCount returns the count of the current total number of channels.
