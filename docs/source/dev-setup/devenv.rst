@@ -109,7 +109,8 @@ SoftHSM generally requires additional configuration before it can be used. For
 example, the default configuration will attempt to store token data in a system
 directory that unprivileged users are unable to write to.
 
-SoftHSM configuration typically involves copying ``/etc/softhsm/softhsm2.conf`` to
+SoftHSM configuration typically involves copying ``/etc/softhsm/softhsm2.conf``
+(or ``/usr/local/etc/softhsm/softhsm2.conf`` for macOS) to
 ``$HOME/.config/softhsm2/softhsm2.conf`` and changing ``directories.tokendir``
 to an appropriate location. Please see the man page for ``softhsm2.conf`` for
 details.
