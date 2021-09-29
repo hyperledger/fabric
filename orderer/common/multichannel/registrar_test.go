@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package multichannel
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -295,6 +297,33 @@ func TestCreateChain(t *testing.T) {
 		rcs := newChainSupport(manager, chainSupport.ledgerResources, consenters, mockCrypto(), blockcutter.NewMetrics(&disabled.Provider{}))
 		assert.Equal(t, expectedLastConfigSeq, rcs.lastConfigSeq, "On restart, incorrect lastConfigSeq")
 	})
+
+	t.Run("chain of type etcdraft.Chain is already created", func(t *testing.T) {
+		tmpdir, err := ioutil.TempDir("", "registrar_test-")
+		assert.NoError(t, err)
+		defer os.RemoveAll(tmpdir)
+
+		ledgerFactory, _ := newRAMLedgerAndFactory(10, genesisconfig.TestChainID, genesisBlockSys)
+		mockConsenters := map[string]consensus.Consenter{confSys.Orderer.OrdererType: &mockConsenter{}, "etcdraft": &mockConsenter{}}
+
+		registrar := NewRegistrar(conf, ledgerFactory, mockCrypto(), &disabled.Provider{})
+		registrar.Initialize(mockConsenters)
+
+		testChainSupport := &ChainSupport{Chain: &mockRaftChain{}}
+		registrar.chains["test"] = testChainSupport
+
+		orglessChannelConf := configtxgentest.Load(genesisconfig.SampleSingleMSPChannelProfile)
+		orglessChannelConf.Application.Organizations = nil
+		envConfigUpdate, err := encoder.MakeChannelCreationTransaction("test", mockCrypto(), orglessChannelConf)
+		assert.NoError(t, err, "Constructing chain creation tx")
+
+		registrar.newChain(envConfigUpdate)
+
+		testChainSupport2 := registrar.GetChain("test")
+		assert.NotNil(t, testChainSupport2)
+
+		assert.True(t, testChainSupport == testChainSupport2)
+	})
 }
 
 func testLastConfigBlockNumber(t *testing.T, block *cb.Block, expectedBlockNumber uint64) {
@@ -389,4 +418,33 @@ func TestBroadcastChannelSupportRejection(t *testing.T) {
 		_, _, _, err := registrar.BroadcastChannelSupport(configTx)
 		assert.Error(t, err, "Messages of type HeaderType_CONFIG should return an error.")
 	})
+}
+
+type mockRaftChain struct {
+}
+
+func (c *mockRaftChain) Order(env *cb.Envelope, configSeq uint64) error {
+	return nil
+}
+
+func (c *mockRaftChain) Configure(config *cb.Envelope, configSeq uint64) error {
+	return nil
+}
+
+func (c *mockRaftChain) WaitReady() error {
+	return nil
+}
+
+func (c *mockRaftChain) Errored() <-chan struct{} {
+	return nil
+}
+
+func (c *mockRaftChain) Start() {
+}
+
+func (c *mockRaftChain) Halt() {
+}
+
+func (c *mockRaftChain) IsRaft() bool {
+	return true
 }
