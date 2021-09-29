@@ -56,7 +56,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 	endorser, err := gs.registry.evaluator(channel, chaincodeID, targetOrgs)
 	if err != nil {
 		if transientProtected {
-			return nil, status.Error(codes.Unavailable, "no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data")
+			return nil, status.Errorf(codes.Unavailable, "no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data: %s", err)
 		}
 		return nil, status.Errorf(codes.Unavailable, "%s", err)
 	}

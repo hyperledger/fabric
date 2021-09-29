@@ -57,7 +57,7 @@ func (reg *registry) endorsers(channel string, interest *peer.ChaincodeInterest,
 	descriptor, err := reg.discovery.PeersForEndorsement(gossipcommon.ChannelID(channel), interest)
 	if err != nil {
 		logger.Errorw("PeersForEndorsement failed.", "error", err, "channel", channel, "ChaincodeInterest", proto.MarshalTextString(interest))
-		return nil, fmt.Errorf("discovery service failed to build endorsement plan: %s", err)
+		return nil, fmt.Errorf("no combination of peers can be derived which satisfy the endorsement policy: %s", err)
 	}
 
 	layouts := descriptor.GetLayouts()
@@ -236,7 +236,7 @@ func (reg *registry) evaluator(channel string, chaincode string, targetOrgs []st
 	if evaluator != nil {
 		return evaluator, nil
 	}
-	return nil, fmt.Errorf("no endorsing peers found for channel: %s", channel)
+	return nil, fmt.Errorf("no endorsing peers found for chaincode %s in channel %s", chaincode, channel)
 }
 
 func sorter(e []*endorserState, host string) func(i, j int) bool {
