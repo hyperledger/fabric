@@ -303,7 +303,10 @@ func (r *Registrar) CreateChain(chainName string) {
 	if chain != nil {
 		logger.Infof("A chain of type %T for channel %s already exists. "+
 			"Halting it.", chain.Chain, chainName)
+		r.lock.Lock()
 		chain.Halt()
+		delete(r.chains, chainName)
+		r.lock.Unlock()
 	}
 	r.newChain(configTx(lf))
 }
@@ -312,10 +315,26 @@ func (r *Registrar) newChain(configtx *cb.Envelope) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	channelName, err := channelNameFromConfigTx(configtx)
+	if err != nil {
+		logger.Warnf("Failed extracting channel name: %v", err)
+		return
+	}
+
+	// fixes https://github.com/hyperledger/fabric/issues/2931
+	if existingChain, exists := r.chains[channelName]; exists {
+		if raftChain, isRaftChain := existingChain.Chain.(RaftChain); isRaftChain && raftChain.IsRaft() {
+			logger.Infof("Channel %s already created, skipping its creation", channelName)
+			return
+		}
+	}
+
 	ledgerResources := r.newLedgerResources(configtx)
 	// If we have no blocks, we need to create the genesis block ourselves.
 	if ledgerResources.Height() == 0 {
-		ledgerResources.Append(blockledger.CreateNextBlock(ledgerResources, []*cb.Envelope{configtx}))
+		if err := ledgerResources.Append(blockledger.CreateNextBlock(ledgerResources, []*cb.Envelope{configtx})); err != nil {
+			logger.Panicf("Error appending genesis block to ledger: %s", err)
+		}
 	}
 
 	// Copy the map to allow concurrent reads from broadcast/deliver while the new chainSupport is
@@ -351,4 +370,26 @@ func (r *Registrar) NewChannelConfig(envConfigUpdate *cb.Envelope) (channelconfi
 // CreateBundle calls channelconfig.NewBundle
 func (r *Registrar) CreateBundle(channelID string, config *cb.Config) (channelconfig.Resources, error) {
 	return channelconfig.NewBundle(channelID, config)
+}
+
+type RaftChain interface {
+	IsRaft() bool
+}
+
+func channelNameFromConfigTx(configtx *cb.Envelope) (string, error) {
+	payload, err := utils.UnmarshalPayload(configtx.Payload)
+	if err != nil {
+		return "", errors.WithMessage(err, "error umarshaling envelope to payload")
+	}
+
+	if payload.Header == nil {
+		return "", errors.New("missing channel header")
+	}
+
+	chdr, err := utils.UnmarshalChannelHeader(payload.Header.ChannelHeader)
+	if err != nil {
+		return "", errors.WithMessage(err, "error unmarshalling channel header")
+	}
+
+	return chdr.ChannelId, nil
 }

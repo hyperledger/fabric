@@ -1362,3 +1362,7 @@ func (c *Chain) triggerCatchup(sn *raftpb.Snapshot) {
 	case <-c.doneC:
 	}
 }
+
+func (c *Chain) IsRaft() bool {
+	return true
+}
