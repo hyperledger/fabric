@@ -39,8 +39,7 @@ Additionally, each LTS release is upgradable to the next LTS release.
 
 Fabric releases and release notes can be found on the [GitHub releases page](https://github.com/hyperledger/fabric/releases).
 
-Please visit the [Hyperledger Fabric Jira dashboard](https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104) for our release roadmap.
-
+Please visit the [GitHub issues with Epic label](https://github.com/hyperledger/fabric/labels/Epic) for our release roadmap.
 Follow the release discussion on the [#fabric-release](https://chat.hyperledger.org/channel/fabric-release) channel in RocketChat.
 
 ## Documentation, Getting Started and Developer Guides
@@ -74,7 +73,7 @@ for the full details.
 
 [Hyperledger Chat](http://chat.hyperledger.org/channel/fabric)
 
-[Hyperledger Fabric Issue Tracking (JIRA)](https://jira.hyperledger.org/secure/Dashboard.jspa?selectPageId=10104)
+[Hyperledger Fabric Issue Tracking (GitHub Issues)](https://github.com/hyperledger/fabric/issues)
 
 [Hyperledger Fabric Wiki](https://wiki.hyperledger.org/display/Fabric)
 
