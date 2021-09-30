@@ -9,6 +9,7 @@ package endorser_test
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -27,6 +28,34 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 )
+
+type CcInterest pb.ChaincodeInterest
+
+func (a CcInterest) Len() int { return len(a.Chaincodes) }
+func (a CcInterest) Swap(i, j int) {
+	a.Chaincodes[i], a.Chaincodes[j] = a.Chaincodes[j], a.Chaincodes[i]
+}
+
+func (a CcInterest) Less(i, j int) bool {
+	ai := a.Chaincodes[i]
+	aj := a.Chaincodes[j]
+
+	if ai.Name != aj.Name {
+		return ai.Name < aj.Name
+	}
+
+	if len(ai.CollectionNames) != len(aj.CollectionNames) {
+		return len(ai.CollectionNames) < len(aj.CollectionNames)
+	}
+
+	for ii := range ai.CollectionNames {
+		if ai.CollectionNames[ii] != aj.CollectionNames[ii] {
+			return ai.CollectionNames[ii] < aj.CollectionNames[ii]
+		}
+	}
+
+	return false
+}
 
 var _ = Describe("Endorser", func() {
 	var (
@@ -1108,6 +1137,7 @@ var _ = Describe("Endorser", func() {
 
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
+			sort.Sort(CcInterest(*proposalResponse.Interest))
 			Expect(proposalResponse.Interest).To(Equal(&pb.ChaincodeInterest{
 				Chaincodes: []*pb.ChaincodeCall{{
 					Name:            "myCC",
@@ -1144,6 +1174,7 @@ var _ = Describe("Endorser", func() {
 
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
+			sort.Sort(CcInterest(*proposalResponse.Interest))
 			Expect(proposalResponse.Interest).To(Equal(&pb.ChaincodeInterest{
 				Chaincodes: []*pb.ChaincodeCall{
 					{
@@ -1183,6 +1214,7 @@ var _ = Describe("Endorser", func() {
 
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
+			sort.Sort(CcInterest(*proposalResponse.Interest))
 			Expect(proposalResponse.Interest).To(Equal(&pb.ChaincodeInterest{
 				Chaincodes: []*pb.ChaincodeCall{{
 					Name:            "myCC",
@@ -1221,6 +1253,7 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 
+			sort.Sort(CcInterest(*proposalResponse.Interest))
 			Expect(proto.Equal(
 				proposalResponse.Interest,
 				&pb.ChaincodeInterest{
@@ -1265,6 +1298,7 @@ var _ = Describe("Endorser", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 			Expect(err).NotTo(HaveOccurred())
 
+			sort.Sort(CcInterest(*proposalResponse.Interest))
 			Expect(proto.Equal(
 				proposalResponse.Interest,
 				&pb.ChaincodeInterest{
