@@ -29,6 +29,7 @@ import (
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/onsi/gomega/gexec"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func blockWithPayload() *common.Block {
@@ -74,8 +75,8 @@ func TestMSPIDMapping(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.Remove(cryptogen)
 
-	idemixgen, err := gexec.Build("github.com/hyperledger/fabric/cmd/idemixgen")
-	assert.NoError(t, err)
+	idemixgen, err := gexec.Build("github.com/IBM/idemix/tools/idemixgen", "-mod=mod")
+	require.NoError(t, err)
 	defer os.Remove(idemixgen)
 
 	cryptoConfigDir := filepath.Join(dir, "crypto-config")

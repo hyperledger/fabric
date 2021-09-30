@@ -626,7 +626,7 @@ func buildBinaries() error {
 		return errors.WithStack(err)
 	}
 
-	idemixgen, err = gexec.Build("github.com/hyperledger/fabric/cmd/idemixgen")
+	idemixgen, err = gexec.Build("github.com/IBM/idemix/tools/idemixgen", "-mod=mod")
 	if err != nil {
 		return errors.WithStack(err)
 	}

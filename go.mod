@@ -8,6 +8,7 @@ replace golang.org/x/sys => golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380
 require (
 	code.cloudfoundry.org/clock v1.0.0
 	github.com/DataDog/zstd v1.4.0 // indirect
+	github.com/IBM/idemix v0.0.0-20210930104432-e4a1410f5353
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/Microsoft/hcsshim v0.8.6 // indirect
 	github.com/Shopify/sarama v1.20.1
@@ -34,11 +35,10 @@ require (
 	github.com/gorilla/mux v1.7.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
 	github.com/hashicorp/go-version v1.2.0
-	github.com/hyperledger/fabric-amcl v0.0.0-20200128223036-d1aa2665426a
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20200128192331-2d899240a7ed
 	github.com/hyperledger/fabric-config v0.0.7
 	github.com/hyperledger/fabric-lib-go v1.0.0
-	github.com/hyperledger/fabric-protos-go v0.0.0-20200506201313-25f6564b9ac4
+	github.com/hyperledger/fabric-protos-go v0.0.0-20210911123859-041d13f0980c
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.2.0
 	github.com/magiconair/properties v1.8.1 // indirect
@@ -63,13 +63,15 @@ require (
 	github.com/tedsuo/ifrit v0.0.0-20180802180643-bea94bb476cc
 	github.com/willf/bitset v1.1.10
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20181228115726-23731bf9ba55
-	go.uber.org/zap v1.14.1
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	go.uber.org/zap v1.16.0
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/tools v0.0.0-20200131233409-575de47986ce
-	google.golang.org/grpc v1.29.1
+	google.golang.org/grpc v1.31.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gopkg.in/yaml.v2 v2.2.8
 )
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
+
+replace github.com/hyperledger/fabric-protos-go => github.com/hyperledger/fabric-protos-go v0.0.0-20200506201313-25f6564b9ac4 // pin to release-2.2 protos even though github.com/IBM/idemix depends on a more recent version

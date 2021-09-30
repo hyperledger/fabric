@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package msp
 
 import (
+	"github.com/IBM/idemix"
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/pkg/errors"
 )
@@ -66,9 +67,19 @@ func New(opts NewOpts, cryptoProvider bccsp.BCCSP) (MSP, error) {
 		case MSPv1_4_3:
 			fallthrough
 		case MSPv1_3:
-			return newIdemixMsp(MSPv1_3)
+			msp, err := idemix.NewIdemixMsp(MSPv1_3)
+			if err != nil {
+				return nil, err
+			}
+
+			return &idemixMSPWrapper{msp.(*idemix.Idemixmsp)}, nil
 		case MSPv1_1:
-			return newIdemixMsp(MSPv1_1)
+			msp, err := idemix.NewIdemixMsp(MSPv1_1)
+			if err != nil {
+				return nil, err
+			}
+
+			return &idemixMSPWrapper{msp.(*idemix.Idemixmsp)}, nil
 		default:
 			return nil, errors.Errorf("Invalid *IdemixNewOpts. Version not recognized [%v]", opts.GetVersion())
 		}

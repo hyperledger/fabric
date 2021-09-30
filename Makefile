@@ -24,7 +24,6 @@
 #   - docker-thirdparty - pulls thirdparty images (kafka,zookeeper,couchdb)
 #   - gotools - installs go tools like golint
 #   - help-docs - generate the command reference docs
-#   - idemixgen - builds a native idemixgen binary
 #   - integration-test-prereqs - setup prerequisites for integration tests
 #   - integration-test - runs the integration tests
 #   - license - checks go source files for Apache license header
@@ -82,13 +81,12 @@ GO_TAGS ?=
 RELEASE_EXES = orderer $(TOOLS_EXES)
 RELEASE_IMAGES = baseos ccenv orderer peer tools
 RELEASE_PLATFORMS = darwin-amd64 linux-amd64 windows-amd64
-TOOLS_EXES = configtxgen configtxlator cryptogen discover idemixgen peer
+TOOLS_EXES = configtxgen configtxlator cryptogen discover peer
 
 pkgmap.configtxgen    := $(PKGNAME)/cmd/configtxgen
 pkgmap.configtxlator  := $(PKGNAME)/cmd/configtxlator
 pkgmap.cryptogen      := $(PKGNAME)/cmd/cryptogen
 pkgmap.discover       := $(PKGNAME)/cmd/discover
-pkgmap.idemixgen      := $(PKGNAME)/cmd/idemixgen
 pkgmap.orderer        := $(PKGNAME)/cmd/orderer
 pkgmap.peer           := $(PKGNAME)/cmd/peer
 

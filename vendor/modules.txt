@@ -10,6 +10,24 @@ github.com/BurntSushi/toml
 # github.com/DataDog/zstd v1.4.0
 ## explicit
 github.com/DataDog/zstd
+# github.com/IBM/idemix v0.0.0-20210930104432-e4a1410f5353
+## explicit
+github.com/IBM/idemix
+github.com/IBM/idemix/bccsp
+github.com/IBM/idemix/bccsp/keystore
+github.com/IBM/idemix/bccsp/schemes
+github.com/IBM/idemix/bccsp/schemes/dlog/bridge
+github.com/IBM/idemix/bccsp/schemes/dlog/crypto
+github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl
+github.com/IBM/idemix/bccsp/schemes/dlog/handlers
+github.com/IBM/idemix/common/flogging
+github.com/IBM/idemix/common/flogging/fabenc
+# github.com/IBM/mathlib v0.0.0-20210928081244-f5486459a290
+github.com/IBM/mathlib
+github.com/IBM/mathlib/driver
+github.com/IBM/mathlib/driver/amcl
+github.com/IBM/mathlib/driver/common
+github.com/IBM/mathlib/driver/gurvy
 # github.com/Knetic/govaluate v3.0.0+incompatible
 ## explicit
 github.com/Knetic/govaluate
@@ -29,15 +47,22 @@ github.com/Shopify/sarama/mocks
 github.com/VictoriaMetrics/fastcache
 # github.com/VividCortex/gohistogram v1.0.0
 ## explicit
-# github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc
+# github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 github.com/alecthomas/template
 github.com/alecthomas/template/parse
-# github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf
+# github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922
 github.com/alecthomas/units
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
+# github.com/consensys/gnark-crypto v0.4.0
+github.com/consensys/gnark-crypto/ecc
+github.com/consensys/gnark-crypto/ecc/bn254
+github.com/consensys/gnark-crypto/ecc/bn254/fp
+github.com/consensys/gnark-crypto/ecc/bn254/fr
+github.com/consensys/gnark-crypto/ecc/bn254/internal/fptower
+github.com/consensys/gnark-crypto/internal/parallel
 # github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc
 ## explicit
 github.com/containerd/continuity/pathdriver
@@ -143,10 +168,11 @@ github.com/grpc-ecosystem/go-grpc-middleware
 # github.com/hashicorp/go-version v1.2.0
 ## explicit
 github.com/hashicorp/go-version
-# github.com/hyperledger/fabric-amcl v0.0.0-20200128223036-d1aa2665426a
-## explicit
+# github.com/hyperledger/fabric-amcl v0.0.0-20210603140002-2670f91851c8
 github.com/hyperledger/fabric-amcl/amcl
 github.com/hyperledger/fabric-amcl/amcl/FP256BN
+github.com/hyperledger/fabric-amcl/core
+github.com/hyperledger/fabric-amcl/core/FP256BN
 # github.com/hyperledger/fabric-chaincode-go v0.0.0-20200128192331-2d899240a7ed
 ## explicit
 github.com/hyperledger/fabric-chaincode-go/pkg/statebased
@@ -169,7 +195,7 @@ github.com/hyperledger/fabric-config/protolator/protoext/peerext
 # github.com/hyperledger/fabric-lib-go v1.0.0
 ## explicit
 github.com/hyperledger/fabric-lib-go/healthz
-# github.com/hyperledger/fabric-protos-go v0.0.0-20200506201313-25f6564b9ac4
+# github.com/hyperledger/fabric-protos-go v0.0.0-20210911123859-041d13f0980c => github.com/hyperledger/fabric-protos-go v0.0.0-20200506201313-25f6564b9ac4
 ## explicit
 github.com/hyperledger/fabric-protos-go/common
 github.com/hyperledger/fabric-protos-go/discovery
@@ -356,7 +382,7 @@ go.etcd.io/etcd/wal/walpb
 go.uber.org/atomic
 # go.uber.org/multierr v1.5.0
 go.uber.org/multierr
-# go.uber.org/zap v1.14.1
+# go.uber.org/zap v1.16.0
 ## explicit
 go.uber.org/zap
 go.uber.org/zap/buffer
@@ -366,10 +392,10 @@ go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
 go.uber.org/zap/zapgrpc
 go.uber.org/zap/zaptest/observer
-# golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+# golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 ## explicit
 golang.org/x/crypto/sha3
-# golang.org/x/net v0.0.0-20200813134508-3edf25e44fcc
+# golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 golang.org/x/net/html
 golang.org/x/net/html/atom
 golang.org/x/net/html/charset
@@ -379,7 +405,7 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
-# golang.org/x/sys v0.0.0-20200814200057-3d37ad5750ed => golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380
+# golang.org/x/sys v0.0.0-20210326220804-49726bf1d181 => golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
 golang.org/x/sys/windows
@@ -419,13 +445,14 @@ golang.org/x/xerrors
 golang.org/x/xerrors/internal
 # google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.29.1
+# google.golang.org/grpc v1.31.0
 ## explicit
 google.golang.org/grpc
 google.golang.org/grpc/attributes
 google.golang.org/grpc/backoff
 google.golang.org/grpc/balancer
 google.golang.org/grpc/balancer/base
+google.golang.org/grpc/balancer/grpclb/state
 google.golang.org/grpc/balancer/roundrobin
 google.golang.org/grpc/binarylog/grpc_binarylog_v1
 google.golang.org/grpc/codes
@@ -443,6 +470,7 @@ google.golang.org/grpc/internal/balancerload
 google.golang.org/grpc/internal/binarylog
 google.golang.org/grpc/internal/buffer
 google.golang.org/grpc/internal/channelz
+google.golang.org/grpc/internal/credentials
 google.golang.org/grpc/internal/envconfig
 google.golang.org/grpc/internal/grpclog
 google.golang.org/grpc/internal/grpcrand
@@ -450,12 +478,12 @@ google.golang.org/grpc/internal/grpcsync
 google.golang.org/grpc/internal/grpcutil
 google.golang.org/grpc/internal/resolver/dns
 google.golang.org/grpc/internal/resolver/passthrough
+google.golang.org/grpc/internal/serviceconfig
 google.golang.org/grpc/internal/status
 google.golang.org/grpc/internal/syscall
 google.golang.org/grpc/internal/transport
 google.golang.org/grpc/keepalive
 google.golang.org/grpc/metadata
-google.golang.org/grpc/naming
 google.golang.org/grpc/peer
 google.golang.org/grpc/resolver
 google.golang.org/grpc/serviceconfig
@@ -477,3 +505,4 @@ gopkg.in/yaml.v2
 gopkg.in/yaml.v3
 # golang.org/x/sys => golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380
 # github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
+# github.com/hyperledger/fabric-protos-go => github.com/hyperledger/fabric-protos-go v0.0.0-20200506201313-25f6564b9ac4
