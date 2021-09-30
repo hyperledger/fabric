@@ -1,0 +1,32 @@
+/*
+Copyright IBM Corp. All Rights Reserved.
+
+SPDX-License-Identifier: Apache-2.0
+*/
+
+syntax = "proto3";
+
+package amcl;
+
+option go_package = "github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl";
+
+// The Identity Mixer protocols make use of pairings (bilinear maps) -
+// functions that can be described as e: G1 x G2 -> GT  that
+// map group elements from the source groups (G1 and G2) to the target group
+// Such groups can be represented by the points on an elliptic curve
+
+// ECP is an elliptic curve point specified by its coordinates
+// ECP corresponds to an element of the first group (G1)
+message ECP {
+	bytes x = 1;
+	bytes y = 2;
+}
+
+// ECP2 is an elliptic curve point specified by its coordinates
+// ECP2 corresponds to an element of the second group (G2)
+message ECP2 {
+	bytes xa = 1;
+	bytes xb = 2;
+	bytes ya = 3;
+	bytes yb = 4;
+}
