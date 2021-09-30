@@ -17,31 +17,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func getTransactionResponse(response *peer.ProposalResponse) (*peer.Response, error) {
-	var retVal *peer.Response
-
-	if response.GetPayload() != nil {
-		payload, err := protoutil.UnmarshalProposalResponsePayload(response.Payload)
-		if err != nil {
-			return nil, err
-		}
-
-		extension, err := protoutil.UnmarshalChaincodeAction(payload.Extension)
-		if err != nil {
-			return nil, err
-		}
-
-		if extension.GetResponse() != nil {
-			if extension.Response.Status < 200 || extension.Response.Status >= 400 {
-				return nil, fmt.Errorf("error %d, %s", extension.Response.Status, extension.Response.Message)
-			}
-			retVal = extension.Response
-		}
-	}
-
-	return retVal, nil
-}
-
 func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposal) (string, string, bool, error) {
 	if signedProposal == nil {
 		return "", "", false, fmt.Errorf("a signed proposal is required")

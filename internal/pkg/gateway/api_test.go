@@ -309,11 +309,11 @@ func TestEvaluate(t *testing.T) {
 				proposalResponseStatus:  400,
 				proposalResponseMessage: "Mock chaincode error",
 			},
-			errString: "rpc error: code = Unknown desc = error 400, Mock chaincode error",
+			errString: "rpc error: code = Unknown desc = error returned from chaincode: Mock chaincode error",
 			errDetails: []*pb.EndpointError{{
 				Address: "peer1:8051",
 				MspId:   "msp1",
-				Message: "error 400, Mock chaincode error",
+				Message: "error 400 returned from chaincode test_chaincode on channel test_channel: Mock chaincode error",
 			}},
 		},
 		{

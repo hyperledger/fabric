@@ -66,20 +66,22 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 
 	response, err := endorser.client.ProcessProposal(ctx, signedProposal)
 	if err != nil {
-		logger.Debugw("Evaluate call to endorser failed", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", err)
+		logger.Debugw("Evaluate call to endorser failed", "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", err)
 		return nil, wrappedRpcError(err, "failed to evaluate transaction", endpointError(endorser.endpointConfig, err))
 	}
 
-	retVal, err := getTransactionResponse(response)
-	if err != nil {
-		logger.Debugw("Evaluate call to endorser returned a malformed or error response", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", err)
-		return nil, rpcError(codes.Unknown, err.Error(), endpointError(endorser.endpointConfig, err))
-	}
-	evaluateResponse := &gp.EvaluateResponse{
-		Result: retVal,
+	rr := response.GetResponse()
+	if rr != nil && (rr.Status < 200 || rr.Status >= 400) {
+		logger.Debugw("Evaluate call to endorser returned a malformed or error response", "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", rr.Status, "message", rr.Message)
+		err = fmt.Errorf("error %d returned from chaincode %s on channel %s: %s", rr.Status, chaincodeID, channel, rr.Message)
+		return nil, rpcError(codes.Unknown, "error returned from chaincode: "+rr.Message, endpointError(endorser.endpointConfig, err))
 	}
 
-	logger.Debugw("Evaluate call to endorser returned success", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", retVal.GetStatus(), "message", retVal.GetMessage())
+	evaluateResponse := &gp.EvaluateResponse{
+		Result: rr,
+	}
+
+	logger.Debugw("Evaluate call to endorser returned success", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", rr.GetStatus(), "message", rr.GetMessage())
 	return evaluateResponse, nil
 }
 
@@ -247,13 +249,8 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 		return nil, status.Errorf(codes.Aborted, "failed to assemble transaction: %s", err)
 	}
 
-	retVal, err := getTransactionResponse(responses[0])
-	if err != nil {
-		return nil, status.Errorf(codes.Aborted, "failed to extract transaction response: %s", err)
-	}
-
 	endorseResponse := &gp.EndorseResponse{
-		Result:              retVal,
+		Result:              responses[0].GetResponse(),
 		PreparedTransaction: env,
 	}
 	return endorseResponse, nil
