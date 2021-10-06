@@ -5,7 +5,7 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 -  `Git client <https://git-scm.com/downloads>`__
--  `Go <https://golang.org/dl/>`__ version 1.15.x
+-  `Go <https://golang.org/dl/>`__ version 1.16.x (recommended Go version can be found in project Makefile)
 -  `Docker <https://docs.docker.com/get-docker/>`__ version 18.03 or later
 -  (macOS) `Xcode Command Line Tools <https://developer.apple.com/downloads/>`__
 -  `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__
@@ -18,9 +18,9 @@ Steps
 Install the Prerequisites
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For macOS, we recommend using `Homebrew <https://brew.sh>`__ to manage the
-development prereqs. The Xcode command line tools will be installed as part of
-the Homebrew installation.
+For macOS, `Homebrew <https://brew.sh>`__ can be used to manage the
+development prereqs (assuming that you would like to install the latest versions).
+The Xcode command line tools will be installed as part of the Homebrew installation.
 
 Once Homebrew is ready, installing the necessary prerequisites is very easy:
 
