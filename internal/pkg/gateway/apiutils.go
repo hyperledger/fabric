@@ -61,8 +61,8 @@ func wrappedRpcError(err error, message string, details ...proto.Message) error 
 	return rpcError(statusErr.Code(), message+": "+statusErr.Message(), details...)
 }
 
-func endpointError(e *endpointConfig, err error) *gp.EndpointError {
-	return &gp.EndpointError{Address: e.address, MspId: e.mspid, Message: err.Error()}
+func errorDetail(e *endpointConfig, err error) *gp.ErrorDetail {
+	return &gp.ErrorDetail{Address: e.address, MspId: e.mspid, Message: err.Error()}
 }
 
 func detailsAsString(details ...proto.Message) string {

@@ -133,7 +133,7 @@ type testDef struct {
 	identity           []byte
 	localResponse      string
 	errString          string
-	errDetails         []*pb.EndpointError
+	errDetails         []*pb.ErrorDetail
 	endpointDefinition *endpointDef
 	endorsingOrgs      []string
 	postSetup          func(t *testing.T, def *preparedTest)
@@ -294,7 +294,7 @@ func TestEvaluate(t *testing.T) {
 				proposalError: status.Error(codes.Aborted, "wibble"),
 			},
 			errString: "rpc error: code = Aborted desc = failed to evaluate transaction: wibble",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "localhost:7051",
 				MspId:   "msp1",
 				Message: "rpc error: code = Aborted desc = wibble",
@@ -310,7 +310,7 @@ func TestEvaluate(t *testing.T) {
 				proposalResponseMessage: "Mock chaincode error",
 			},
 			errString: "rpc error: code = Unknown desc = error returned from chaincode: Mock chaincode error",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "peer1:8051",
 				MspId:   "msp1",
 				Message: "error 400 returned from chaincode test_chaincode on channel test_channel: Mock chaincode error",
@@ -592,7 +592,7 @@ func TestEndorse(t *testing.T) {
 				proposalError: status.Error(codes.Aborted, "wibble"),
 			},
 			errString: "rpc error: code = Aborted desc = failed to endorse transaction: wibble",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "localhost:7051",
 				MspId:   "msp1",
 				Message: "rpc error: code = Aborted desc = wibble",
@@ -611,7 +611,7 @@ func TestEndorse(t *testing.T) {
 				def.localEndorser.ProcessProposalReturns(createProposalResponse(t, localhostMock.address, "all_good", 200, ""), nil)
 			},
 			errString: "rpc error: code = Aborted desc = failed to endorse transaction: [{address:\"peer4:11051\" msp_id:\"msp3\" message:\"rpc error: code = Aborted desc = remote-wobble\" }]",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "peer4:11051",
 				MspId:   "msp3",
 				Message: "rpc error: code = Aborted desc = remote-wobble",
@@ -627,7 +627,7 @@ func TestEndorse(t *testing.T) {
 				proposalResponseMessage: "Mock chaincode error",
 			},
 			errString: "rpc error: code = Aborted desc = failed to endorse transaction: [{address:\"localhost:7051\" msp_id:\"msp1\" message:\"error 400, Mock chaincode error\" }]",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "localhost:7051",
 				MspId:   "msp1",
 				Message: "error 400, Mock chaincode error",
@@ -647,7 +647,7 @@ func TestEndorse(t *testing.T) {
 				def.localEndorser.ProcessProposalReturns(createProposalResponse(t, localhostMock.address, "all_good", 200, ""), nil)
 			},
 			errString: "rpc error: code = Aborted desc = failed to endorse transaction: [{address:\"peer4:11051\" msp_id:\"msp3\" message:\"error 400, Mock chaincode error\" }]",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "peer4:11051",
 				MspId:   "msp3",
 				Message: "error 400, Mock chaincode error",
@@ -737,7 +737,7 @@ func TestSubmit(t *testing.T) {
 				ordererBroadcastError:  status.Error(codes.FailedPrecondition, "Orderer not listening!"),
 			},
 			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
 				Message: "failed to create BroadcastClient: rpc error: code = FailedPrecondition desc = Orderer not listening!",
@@ -753,7 +753,7 @@ func TestSubmit(t *testing.T) {
 				ordererSendError:       status.Error(codes.Internal, "Orderer says no!"),
 			},
 			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
 				Message: "failed to send transaction to orderer: rpc error: code = Internal desc = Orderer says no!",
@@ -769,7 +769,7 @@ func TestSubmit(t *testing.T) {
 				ordererRecvError:       status.Error(codes.FailedPrecondition, "Orderer not happy!"),
 			},
 			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
 				Message: "failed to receive response from orderer: rpc error: code = FailedPrecondition desc = Orderer not happy!",
@@ -790,7 +790,7 @@ func TestSubmit(t *testing.T) {
 				}
 			},
 			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
 				Message: "received nil response from orderer",
@@ -814,7 +814,7 @@ func TestSubmit(t *testing.T) {
 				}
 			},
 			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
-			errDetails: []*pb.EndpointError{{
+			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
 				Message: "received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
@@ -907,7 +907,7 @@ func TestSubmit(t *testing.T) {
 				ordererBroadcastError:  status.Error(codes.FailedPrecondition, "Orderer not listening!"),
 			},
 			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
-			errDetails: []*pb.EndpointError{
+			errDetails: []*pb.ErrorDetail{
 				{
 					Address: "orderer1:7050",
 					MspId:   "msp1",
@@ -1601,7 +1601,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	return pt
 }
 
-func checkError(t *testing.T, err error, errString string, details []*pb.EndpointError) {
+func checkError(t *testing.T, err error, errString string, details []*pb.ErrorDetail) {
 	require.EqualError(t, err, errString)
 	s, ok := status.FromError(err)
 	require.True(t, ok, "Expected a gRPC status error")
