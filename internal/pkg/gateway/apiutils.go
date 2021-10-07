@@ -64,12 +64,3 @@ func wrappedRpcError(err error, message string, details ...proto.Message) error 
 func errorDetail(e *endpointConfig, err error) *gp.ErrorDetail {
 	return &gp.ErrorDetail{Address: e.address, MspId: e.mspid, Message: err.Error()}
 }
-
-func detailsAsString(details ...proto.Message) string {
-	var detailStrings []string
-	for _, detail := range details {
-		detailStrings = append(detailStrings, "{"+detail.String()+"}")
-	}
-
-	return fmt.Sprint(detailStrings)
-}

@@ -169,14 +169,21 @@ type preparedTest struct {
 type contextKey string
 
 var (
-	localhostMock    = &endorser{endpointConfig: &endpointConfig{address: "localhost:7051", mspid: "msp1"}}
-	peer1Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer1:8051", mspid: "msp1"}}
-	peer2Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer2:9051", mspid: "msp2"}}
-	peer3Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer3:10051", mspid: "msp2"}}
-	peer4Mock        = &endorser{endpointConfig: &endpointConfig{address: "peer4:11051", mspid: "msp3"}}
-	unavailable1Mock = &endorser{endpointConfig: &endpointConfig{address: "unavailable1:12051", mspid: "msp1"}}
-	unavailable2Mock = &endorser{endpointConfig: &endpointConfig{address: "unavailable1:13051", mspid: "msp1"}}
-	unavailable3Mock = &endorser{endpointConfig: &endpointConfig{address: "unavailable1:14051", mspid: "msp1"}}
+	localhostMock    = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("0"), address: "localhost:7051", mspid: "msp1"}}
+	peer1Mock        = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("1"), address: "peer1:8051", mspid: "msp1"}}
+	peer2Mock        = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("2"), address: "peer2:9051", mspid: "msp2"}}
+	peer3Mock        = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("3"), address: "peer3:10051", mspid: "msp2"}}
+	peer4Mock        = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("4"), address: "peer4:11051", mspid: "msp3"}}
+	unavailable1Mock = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("5"), address: "unavailable1:12051", mspid: "msp1"}}
+	unavailable2Mock = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("6"), address: "unavailable1:13051", mspid: "msp1"}}
+	unavailable3Mock = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("7"), address: "unavailable1:14051", mspid: "msp1"}}
+	endorsers        = map[string]*endorser{
+		localhostMock.address: localhostMock,
+		peer1Mock.address:     peer1Mock,
+		peer2Mock.address:     peer2Mock,
+		peer3Mock.address:     peer3Mock,
+		peer4Mock.address:     peer4Mock,
+	}
 )
 
 func TestEvaluate(t *testing.T) {
@@ -397,7 +404,7 @@ func TestEndorse(t *testing.T) {
 		{
 			name: "multiple endorsers, two groups, prefer host peer",
 			plan: endorsementPlan{
-				"g1": {{endorser: peer2Mock, height: 4}, {endorser: localhostMock, height: 4}, {endorser: unavailable1Mock, height: 4}}, // msp1
+				"g1": {{endorser: peer1Mock, height: 4}, {endorser: localhostMock, height: 4}, {endorser: unavailable1Mock, height: 4}}, // msp1
 				"g2": {{endorser: peer3Mock, height: 4}, {endorser: peer2Mock, height: 5}},                                              // msp2
 			},
 			expectedEndorsers: []string{"localhost:7051", "peer2:9051"},
@@ -435,6 +442,86 @@ func TestEndorse(t *testing.T) {
 				{"g2": 1, "g3": 1},
 			},
 			expectedEndorsers: []string{"localhost:7051", "peer3:10051"},
+		},
+		{
+			name: "endorse retry - localhost and peer2 fail - retry on peer1 and peer2",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
+				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
+			},
+			layouts: []endorsementLayout{
+				{"g1": 1, "g2": 1},
+				{"g1": 1, "g3": 1},
+				{"g2": 1, "g3": 1},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.localEndorser.ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad local endorser"))
+				peer3Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer3 endorser"))
+			},
+			expectedEndorsers: []string{"peer1:8051", "peer2:9051"},
+		},
+		{
+			name: "endorse retry - org3 fail - retry with layout 3",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
+				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
+			},
+			layouts: []endorsementLayout{
+				{"g1": 1, "g3": 1},
+				{"g2": 1, "g3": 1},
+				{"g1": 1, "g2": 1},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				peer2Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer2 endorser"))
+				peer3Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(createProposalResponse(t, peer3Mock.address, "mock_response", 200, ""), nil)
+				peer4Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer4 endorser"))
+			},
+			expectedEndorsers: []string{"localhost:7051", "peer3:10051"},
+		},
+		{
+			name: "endorse retry - org3 fail & 1 org2 peer fail - requires 2 from org1",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 5}, {endorser: peer3Mock, height: 4}},     // msp2
+				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
+			},
+			layouts: []endorsementLayout{
+				{"g1": 1, "g2": 1, "g3": 1},
+				{"g1": 1, "g2": 2},
+				{"g1": 2, "g2": 1},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				peer2Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer2 endorser"))
+				peer3Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(createProposalResponse(t, peer3Mock.address, "mock_response", 200, ""), nil)
+				peer4Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer4 endorser"))
+			},
+			expectedEndorsers: []string{"localhost:7051", "peer1:8051", "peer3:10051"},
+		},
+		{
+			name: "endorse retry - org 2 & org3 fail - fails to endorse",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
+				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
+			},
+			layouts: []endorsementLayout{
+				{"g1": 1, "g3": 1},
+				{"g2": 1, "g3": 1},
+				{"g1": 1, "g2": 1},
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				peer2Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer2 endorser"))
+				peer3Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer3 endorser"))
+				peer4Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer4 endorser"))
+			},
+			errString: "rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info",
+			errDetails: []*pb.ErrorDetail{
+				{Address: "peer2:9051", MspId: "msp2", Message: "rpc error: code = Aborted desc = bad peer2 endorser"},
+				{Address: "peer3:10051", MspId: "msp2", Message: "rpc error: code = Aborted desc = bad peer3 endorser"},
+				{Address: "peer4:11051", MspId: "msp3", Message: "rpc error: code = Aborted desc = bad peer4 endorser"},
+			},
 		},
 		{
 			name: "endorse with multiple layouts - non-availability forces second layout",
@@ -591,12 +678,19 @@ func TestEndorse(t *testing.T) {
 			endpointDefinition: &endpointDef{
 				proposalError: status.Error(codes.Aborted, "wibble"),
 			},
-			errString: "rpc error: code = Aborted desc = failed to endorse transaction: wibble",
-			errDetails: []*pb.ErrorDetail{{
-				Address: "localhost:7051",
-				MspId:   "msp1",
-				Message: "rpc error: code = Aborted desc = wibble",
-			}},
+			errString: "rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info",
+			errDetails: []*pb.ErrorDetail{
+				{
+					Address: "localhost:7051",
+					MspId:   "msp1",
+					Message: "rpc error: code = Aborted desc = wibble",
+				},
+				{
+					Address: "peer1:8051",
+					MspId:   "msp1",
+					Message: "rpc error: code = Aborted desc = wibble",
+				},
+			},
 		},
 		{
 			name: "local endorser succeeds, remote endorser fails",
@@ -610,7 +704,7 @@ func TestEndorse(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.localEndorser.ProcessProposalReturns(createProposalResponse(t, localhostMock.address, "all_good", 200, ""), nil)
 			},
-			errString: "rpc error: code = Aborted desc = failed to endorse transaction: [{address:\"peer4:11051\" msp_id:\"msp3\" message:\"rpc error: code = Aborted desc = remote-wobble\" }]",
+			errString: "rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer4:11051",
 				MspId:   "msp3",
@@ -626,12 +720,19 @@ func TestEndorse(t *testing.T) {
 				proposalResponseStatus:  400,
 				proposalResponseMessage: "Mock chaincode error",
 			},
-			errString: "rpc error: code = Aborted desc = failed to endorse transaction: [{address:\"localhost:7051\" msp_id:\"msp1\" message:\"error 400, Mock chaincode error\" }]",
-			errDetails: []*pb.ErrorDetail{{
-				Address: "localhost:7051",
-				MspId:   "msp1",
-				Message: "error 400, Mock chaincode error",
-			}},
+			errString: "rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info",
+			errDetails: []*pb.ErrorDetail{
+				{
+					Address: "localhost:7051",
+					MspId:   "msp1",
+					Message: "error 400, Mock chaincode error",
+				},
+				{
+					Address: "peer1:8051",
+					MspId:   "msp1",
+					Message: "error 400, Mock chaincode error",
+				},
+			},
 		},
 		{
 			name: "local endorser succeeds, remote endorser chaincode error",
@@ -646,7 +747,7 @@ func TestEndorse(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.localEndorser.ProcessProposalReturns(createProposalResponse(t, localhostMock.address, "all_good", 200, ""), nil)
 			},
-			errString: "rpc error: code = Aborted desc = failed to endorse transaction: [{address:\"peer4:11051\" msp_id:\"msp3\" message:\"error 400, Mock chaincode error\" }]",
+			errString: "rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer4:11051",
 				MspId:   "msp3",
@@ -1490,6 +1591,15 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		localEndorser.ProcessProposalReturns(createProposalResponseWithInterest(t, localhostMock.address, localResponse, epDef.proposalResponseStatus, epDef.proposalResponseMessage, tt.interest), nil)
 	}
 
+	for _, e := range endorsers {
+		e.client = &mocks.EndorserClient{}
+		if epDef.proposalError != nil {
+			e.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, epDef.proposalError)
+		} else {
+			e.client.(*mocks.EndorserClient).ProcessProposalReturns(createProposalResponseWithInterest(t, e.address, epDef.proposalResponseValue, epDef.proposalResponseStatus, epDef.proposalResponseMessage, tt.interest), nil)
+		}
+	}
+
 	mockSigner := &idmocks.SignerSerializer{}
 	mockSigner.SignReturns([]byte("my_signature"), nil)
 
@@ -1746,13 +1856,10 @@ func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer)
 	return &endpointFactory{
 		timeout: 5 * time.Second,
 		connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
-			e := &mocks.EndorserClient{}
-			if definition.proposalError != nil {
-				e.ProcessProposalReturns(nil, definition.proposalError)
-			} else {
-				e.ProcessProposalReturns(createProposalResponse(t, endpoint, definition.proposalResponseValue, definition.proposalResponseStatus, definition.proposalResponseMessage), nil)
+			if ep, ok := endorsers[endpoint]; ok && ep.client != nil {
+				return ep.client
 			}
-			return e
+			return nil
 		},
 		connectOrderer: func(_ *grpc.ClientConn) ab.AtomicBroadcastClient {
 			abc := &mocks.ABClient{}

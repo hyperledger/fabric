@@ -19,7 +19,8 @@ import (
 )
 
 type endorser struct {
-	client peer.EndorserClient
+	client          peer.EndorserClient
+	closeConnection func() error
 	*endpointConfig
 }
 
@@ -60,9 +61,16 @@ func (ef *endpointFactory) newEndorser(pkiid common.PKIidType, address, mspid st
 	if connectEndorser == nil {
 		connectEndorser = peer.NewEndorserClient
 	}
+	close := func() error {
+		if conn != nil {
+			return conn.Close()
+		}
+		return nil
+	}
 	return &endorser{
-		client:         connectEndorser(conn),
-		endpointConfig: &endpointConfig{pkiid: pkiid, address: address, mspid: mspid, tlsRootCerts: tlsRootCerts},
+		client:          connectEndorser(conn),
+		closeConnection: close,
+		endpointConfig:  &endpointConfig{pkiid: pkiid, address: address, mspid: mspid, tlsRootCerts: tlsRootCerts},
 	}, nil
 }
 
