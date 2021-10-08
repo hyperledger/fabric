@@ -788,7 +788,7 @@ var _ = Describe("ExternalFunctions", func() {
 
 				It("returns an error", func() {
 					err := ef.ApproveChaincodeDefinitionForOrg("my-channel", "cc-name", testDefinition, "hash", fakePublicState, fakeOrgState)
-					Expect(err).To(MatchError("could not fetch metadata for current definition: could not unmarshal metadata for namespace namespaces/cc-name: proto: can't skip unknown wire type 7"))
+					Expect(err).To(MatchError("could not fetch metadata for current definition: could not unmarshal metadata for namespace namespaces/cc-name: proto: cannot parse invalid wire-format data"))
 				})
 			})
 

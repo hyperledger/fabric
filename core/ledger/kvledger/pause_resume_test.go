@@ -103,10 +103,10 @@ func TestPauseAndResumeErrors(t *testing.T) {
 
 	// error if metadata cannot be unmarshaled
 	err = PauseChannel(conf.RootFSPath, ledgerID)
-	require.EqualError(t, err, "error unmarshalling ledger metadata: unexpected EOF")
+	require.EqualError(t, err, "error unmarshalling ledger metadata: proto: cannot parse invalid wire-format data")
 
 	err = ResumeChannel(conf.RootFSPath, ledgerID)
-	require.EqualError(t, err, "error unmarshalling ledger metadata: unexpected EOF")
+	require.EqualError(t, err, "error unmarshalling ledger metadata: proto: cannot parse invalid wire-format data")
 }
 
 // verify status for paused ledgers and non-paused ledgers

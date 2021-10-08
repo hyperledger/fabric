@@ -174,8 +174,8 @@ func TestInitializeServerConfig(t *testing.T) {
 	sc = initializeServerConfig(conf, nil)
 	require.NotNil(t, sc.Logger)
 	require.Equal(t, comm.NewServerStatsHandler(&disabled.Provider{}), sc.ServerStatsHandler)
-	require.Len(t, sc.UnaryInterceptors, 2)
-	require.Len(t, sc.StreamInterceptors, 2)
+	require.Len(t, sc.UnaryInterceptors, 3)
+	require.Len(t, sc.StreamInterceptors, 3)
 
 	sc = initializeServerConfig(conf, &prometheus.Provider{})
 	require.NotNil(t, sc.ServerStatsHandler)

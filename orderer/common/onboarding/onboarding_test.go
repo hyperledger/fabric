@@ -1156,7 +1156,7 @@ func TestValidateBootstrapBlock(t *testing.T) {
 				},
 			},
 			expectedError: "failed extracting envelope from block: " +
-				"proto: common.Envelope: illegal tag 0 (wire type 1)",
+				"proto: cannot parse invalid wire-format data",
 		},
 		{
 			description:   "application channel block",

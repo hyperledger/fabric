@@ -172,7 +172,7 @@ var _ = Describe("UnpackProposal", func() {
 
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
-			Expect(err).To(MatchError("error unmarshalling Proposal: proto: can't skip unknown wire type 7"))
+			Expect(err).To(MatchError("error unmarshalling Proposal"))
 		})
 	})
 

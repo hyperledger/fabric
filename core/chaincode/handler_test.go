@@ -529,7 +529,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandlePutState(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 
@@ -687,7 +687,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandlePutStateMetadata(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 
@@ -813,7 +813,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleDelState(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 
@@ -932,7 +932,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetState(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 
@@ -1138,7 +1138,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetPrivateDataHash(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 
@@ -1537,7 +1537,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetStateByRange(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 
@@ -1649,7 +1649,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleQueryStateNext(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 
@@ -1760,7 +1760,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleQueryStateClose(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 
@@ -1951,7 +1951,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetQueryResult(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 
@@ -2049,7 +2049,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleGetHistoryForKey(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 
@@ -2348,7 +2348,7 @@ var _ = Describe("Handler", func() {
 
 			It("returns an error", func() {
 				_, err := handler.HandleInvokeChaincode(incomingMessage, txContext)
-				Expect(err).To(MatchError("unmarshal failed: proto: can't skip unknown wire type 4"))
+				Expect(err).To(MatchError("unmarshal failed: proto: cannot parse invalid wire-format data"))
 			})
 		})
 

@@ -315,7 +315,7 @@ func TestHTTPHandler_ServeHTTP_Join(t *testing.T) {
 		resp := httptest.NewRecorder()
 		req := genJoinRequestFormData(t, []byte{1, 2, 3, 4})
 		h.ServeHTTP(resp, req)
-		checkErrorResponse(t, http.StatusBadRequest, "cannot unmarshal file part config-block into a block: proto: common.Block: illegal tag 0 (wire type 1)", resp)
+		checkErrorResponse(t, http.StatusBadRequest, "cannot unmarshal file part config-block into a block: proto: cannot parse invalid wire-format data", resp)
 	})
 
 	t.Run("bad body - invalid join block", func(t *testing.T) {

@@ -50,7 +50,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-const TIMEOUT = 45 * time.Second
+const TIMEOUT = 90 * time.Second
 
 func init() {
 	util.SetupTestLogging()

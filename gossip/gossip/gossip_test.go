@@ -36,7 +36,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var timeout = time.Second * time.Duration(180)
+var timeout = time.Second * time.Duration(270)
 
 func TestMain(m *testing.M) {
 	util.SetupTestLogging()

@@ -523,7 +523,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	require.EqualError(t, err, "unmarhsalling of ChaincodeData failed, error unexpected EOF")
+	require.EqualError(t, err, "unmarhsalling of ChaincodeData failed, error proto: cannot parse invalid wire-format data")
 
 	/**********************/
 	/* test bad LSCC args */
@@ -577,7 +577,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	require.EqualError(t, err, "GetChaincodeDeploymentSpec error error unmarshalling ChaincodeDeploymentSpec: unexpected EOF")
+	require.EqualError(t, err, "GetChaincodeDeploymentSpec error error unmarshalling ChaincodeDeploymentSpec: proto: cannot parse invalid wire-format data")
 
 	/***********************/
 	/* test bad cc version */

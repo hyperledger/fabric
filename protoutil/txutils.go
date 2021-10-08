@@ -207,9 +207,14 @@ func createTx(
 	}
 
 	// fill endorsements
-	endorsements := make([]*peer.Endorsement, len(resps))
-	for n, r := range resps {
-		endorsements[n] = r.Endorsement
+	var endorsements []*peer.Endorsement
+	for _, r := range resps {
+		if r.Endorsement != nil {
+			endorsements = append(endorsements, r.Endorsement)
+		}
+	}
+	if len(endorsements) == 0 {
+		return nil, errors.New("No endorsements provided")
 	}
 
 	// create ChaincodeEndorsedAction
