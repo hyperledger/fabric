@@ -498,6 +498,8 @@ vm:
     # unix:///var/run/docker.sock
     # http://localhost:2375
     # https://localhost:2376
+    # If you utilize external chaincode builders and don't need the default Docker chaincode builder,
+    # the endpoint should be unconfigured so that the peer's Docker health checker doesn't get registered.
     endpoint: unix:///var/run/docker.sock
 
     # settings for docker vms
@@ -581,6 +583,7 @@ chaincode:
     # List of directories to treat as external builders and launchers for
     # chaincode. The external builder detection processing will iterate over the
     # builders in the order specified below.
+    # If you don't need to fallback to the default Docker builder, also unconfigure vm.endpoint above.
     # To override this property via env variable use CORE_CHAINCODE_EXTERNALBUILDERS: [{name: x, path: dir1}, {name: y, path: dir2}]
     externalBuilders: []
         # - path: /path/to/directory
