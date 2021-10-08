@@ -20,6 +20,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/common/grpctracing"
+
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -247,11 +249,13 @@ func serve(args []string) error {
 		serverConfig.UnaryInterceptors,
 		grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
 		grpclogging.UnaryServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+		grpctracing.UnaryServerInterceptor(),
 	)
 	serverConfig.StreamInterceptors = append(
 		serverConfig.StreamInterceptors,
 		grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
 		grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+		grpctracing.StreamServerInterceptor(),
 	)
 
 	semaphores := initGrpcSemaphores(coreConfig)

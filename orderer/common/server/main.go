@@ -20,6 +20,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/fabric/common/grpctracing"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-lib-go/healthz"
 	cb "github.com/hyperledger/fabric-protos-go/common"
@@ -661,6 +663,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 		StreamInterceptors: []grpc.StreamServerInterceptor{
 			grpcmetrics.StreamServerInterceptor(grpcmetrics.NewStreamMetrics(metricsProvider)),
 			grpclogging.StreamServerInterceptor(flogging.MustGetLogger("comm.grpc.server").Zap()),
+			grpctracing.StreamServerInterceptor(),
 		},
 		UnaryInterceptors: []grpc.UnaryServerInterceptor{
 			grpcmetrics.UnaryServerInterceptor(grpcmetrics.NewUnaryMetrics(metricsProvider)),
@@ -668,6 +671,7 @@ func initializeServerConfig(conf *localconfig.TopLevel, metricsProvider metrics.
 				flogging.MustGetLogger("comm.grpc.server").Zap(),
 				grpclogging.WithLeveler(grpclogging.LevelerFunc(grpcLeveler)),
 			),
+			grpctracing.UnaryServerInterceptor(),
 		},
 		MaxRecvMsgSize: int(conf.General.MaxRecvMsgSize),
 		MaxSendMsgSize: int(conf.General.MaxSendMsgSize),
