@@ -8,26 +8,37 @@ Prerequisites
 -  `Go <https://golang.org/dl/>`__ version 1.16.x (recommended Go version can be found in project Makefile)
 -  `Docker <https://docs.docker.com/get-docker/>`__ version 18.03 or later
 -  (macOS) `Xcode Command Line Tools <https://developer.apple.com/downloads/>`__
--  `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__
+-  `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__ use version 2.5 as 2.6 is broken in this environment
 -  `jq <https://stedolan.github.io/jq/download/>`__
 
 
 Steps
 ~~~~~
 
-Install the Prerequisites
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Installing SoftHSM
+^^^^^^^^^^^^^^^^^^
+Ensure you install ``2.5`` of softhsm, if you are using a distribution package manager such as ``apt`` on ubuntu
+or Homebrew on Mac OS, make sure that it offers this version otherwise you will need to install from source. Version 2.6
+of SoftHSM is known to have problems. Older versions than 2.5 may work however.
+
+When installing SoftHSM, you should note the path where the shared library ``libsofthsm2.so`` is installed
+you may need to have to provide this later in an environment variable to get the PKCS11 tests to pass.
+
+Install the Prerequisites using Homebrew on MacOS
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For macOS, `Homebrew <https://brew.sh>`__ can be used to manage the
 development prereqs (assuming that you would like to install the latest versions).
 The Xcode command line tools will be installed as part of the Homebrew installation.
 
-Once Homebrew is ready, installing the necessary prerequisites is very easy:
+Once Homebrew is ready, installing the necessary prerequisites is very easy, for example:
 
 ::
 
-    brew install git go jq softhsm
+    brew install git jq
     brew install --cask docker
+
+Go and SoftHSM are akso available from Homebrew but make sure you install the appropriate versions
 
 Docker Desktop must be launched to complete the installation so be sure to open
 the application after installing it:
@@ -124,13 +135,23 @@ initialize the token required by the unit tests:
 
 If tests are unable to locate the libsofthsm2.so library in your environment,
 specify the library path, the PIN, and the label of your token in the
-appropriate environment variables. For example, on macOS:
+appropriate environment variables. For example, on macOS, depending on where the
+library has been installed:
 
 ::
 
     export PKCS11_LIB="/usr/local/Cellar/softhsm/2.6.1/lib/softhsm/libsofthsm2.so"
     export PKCS11_PIN=98765432
     export PKCS11_LABEL="ForFabric"
+
+If you installed SoftHSM on ubuntu from source then the environment variables may look like
+
+::
+
+    export PKCS11_LIB="/usr/local/lib/softhsm/libsofthsm2.so"
+    export PKCS11_PIN=98765432
+    export PKCS11_LABEL="ForFabric"
+
 
 The tests don't always clean up after themselves and, over time, this causes
 the PKCS #11 tests to take a long time to run. The easiest way to recover from
