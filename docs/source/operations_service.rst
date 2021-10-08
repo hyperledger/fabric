@@ -279,7 +279,8 @@ intended to be compatible with the liveness probe model used by Kubernetes but
 can be used in other contexts.
 
 When a ``GET /healthz`` request is received, the operations service will call all
-registered health checkers for the process. When all of the health checkers
+registered health checkers for the process to ensure all registered services and
+dependencies are available. When all of the health checkers
 return successfully, the operations service will respond with a ``200 "OK"`` and a
 JSON body:
 
@@ -307,8 +308,10 @@ information about which health checker failed:
     ]
   }
 
-In the current version, the only health check that is registered is for Docker.
-Future versions will be enhanced to add additional health checks.
+The peer has the following health checks available:
+
+- Docker daemon health check (if a Docker endpoint is configured for chaincodes)
+- CouchDB health check (if CouchDB is configured as the state database)
 
 When TLS is enabled, a valid client certificate is not required to use this
 service unless ``clientAuthRequired`` is set to ``true``.
