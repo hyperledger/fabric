@@ -1086,12 +1086,24 @@ func TestBlockPullerBadBlocks(t *testing.T) {
 				return nil
 			}))
 
-			bp.PullBlock(10)
+			endPullBlock := make(chan struct{})
+			go func() {
+				bp.PullBlock(10)
+				close(endPullBlock)
+			}()
 
 			select {
 			case <-detectedBadBlockDone:
 			case <-time.After(10 * time.Second):
 				t.Fatalf("expected %q to be logged but it was not seen", testCase.expectedErrMsg)
+			}
+
+			select {
+			case <-endPullBlock:
+			case <-time.After(10 * time.Second):
+				// Signal PullBlock to give up on the retries & mark the test as fail
+				close(bp.StopChannel)
+				t.Fatalf("PullBlock did not complete within time")
 			}
 
 			bp.Close()
