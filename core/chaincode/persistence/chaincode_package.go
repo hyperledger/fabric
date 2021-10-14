@@ -260,59 +260,8 @@ func ValidateLabel(label string) error {
 // Parse parses a set of bytes as a chaincode package
 // and returns the parsed package as a struct
 func (ccpp ChaincodePackageParser) Parse(source []byte) (*ChaincodePackage, error) {
-	gzReader, err := gzip.NewReader(bytes.NewBuffer(source))
+	ccPackageMetadata, codePackage, err := ParseChaincodePackage(source)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error reading as gzip stream")
-	}
-
-	tarReader := tar.NewReader(gzReader)
-
-	var codePackage []byte
-	var ccPackageMetadata *ChaincodePackageMetadata
-	for {
-		header, err := tarReader.Next()
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			return nil, errors.Wrapf(err, "error inspecting next tar header")
-		}
-
-		if header.Typeflag != tar.TypeReg {
-			return nil, errors.Errorf("tar entry %s is not a regular file, type %v", header.Name, header.Typeflag)
-		}
-
-		fileBytes, err := ioutil.ReadAll(tarReader)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not read %s from tar", header.Name)
-		}
-
-		switch header.Name {
-
-		case MetadataFile:
-			ccPackageMetadata = &ChaincodePackageMetadata{}
-			err := json.Unmarshal(fileBytes, ccPackageMetadata)
-			if err != nil {
-				return nil, errors.Wrapf(err, "could not unmarshal %s as json", MetadataFile)
-			}
-
-		case CodePackageFile:
-			codePackage = fileBytes
-		default:
-			logger.Warningf("Encountered unexpected file '%s' in top level of chaincode package", header.Name)
-		}
-	}
-
-	if codePackage == nil {
-		return nil, errors.Errorf("did not find a code package inside the package")
-	}
-
-	if ccPackageMetadata == nil {
-		return nil, errors.Errorf("did not find any package metadata (missing %s)", MetadataFile)
-	}
-
-	if err := ValidateLabel(ccPackageMetadata.Label); err != nil {
 		return nil, err
 	}
 
@@ -326,4 +275,66 @@ func (ccpp ChaincodePackageParser) Parse(source []byte) (*ChaincodePackage, erro
 		CodePackage: codePackage,
 		DBArtifacts: dbArtifacts,
 	}, nil
+}
+
+// ParseChaincodePackage parses a set of bytes as a chaincode package
+// and returns the parsed package as a metadata struct and a code package
+func ParseChaincodePackage(source []byte) (*ChaincodePackageMetadata, []byte, error) {
+	gzReader, err := gzip.NewReader(bytes.NewBuffer(source))
+	if err != nil {
+		return &ChaincodePackageMetadata{}, nil, errors.Wrapf(err, "error reading as gzip stream")
+	}
+
+	tarReader := tar.NewReader(gzReader)
+
+	var codePackage []byte
+	var ccPackageMetadata *ChaincodePackageMetadata
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return ccPackageMetadata, nil, errors.Wrapf(err, "error inspecting next tar header")
+		}
+
+		if header.Typeflag != tar.TypeReg {
+			return ccPackageMetadata, nil, errors.Errorf("tar entry %s is not a regular file, type %v", header.Name, header.Typeflag)
+		}
+
+		fileBytes, err := ioutil.ReadAll(tarReader)
+		if err != nil {
+			return ccPackageMetadata, nil, errors.Wrapf(err, "could not read %s from tar", header.Name)
+		}
+
+		switch header.Name {
+
+		case MetadataFile:
+			ccPackageMetadata = &ChaincodePackageMetadata{}
+			err := json.Unmarshal(fileBytes, ccPackageMetadata)
+			if err != nil {
+				return ccPackageMetadata, nil, errors.Wrapf(err, "could not unmarshal %s as json", MetadataFile)
+			}
+
+		case CodePackageFile:
+			codePackage = fileBytes
+		default:
+			logger.Warningf("Encountered unexpected file '%s' in top level of chaincode package", header.Name)
+		}
+	}
+
+	if codePackage == nil {
+		return ccPackageMetadata, nil, errors.Errorf("did not find a code package inside the package")
+	}
+
+	if ccPackageMetadata == nil {
+		return ccPackageMetadata, nil, errors.Errorf("did not find any package metadata (missing %s)", MetadataFile)
+	}
+
+	if err := ValidateLabel(ccPackageMetadata.Label); err != nil {
+		return ccPackageMetadata, nil, err
+	}
+
+	return ccPackageMetadata, codePackage, nil
 }

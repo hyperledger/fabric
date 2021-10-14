@@ -144,8 +144,7 @@ func (s *Store) Initialize() {
 // Save persists chaincode install package bytes. It returns
 // the hash of the chaincode install package
 func (s *Store) Save(label string, ccInstallPkg []byte) (string, error) {
-	hash := util.ComputeSHA256(ccInstallPkg)
-	packageID := packageID(label, hash)
+	packageID := PackageID(label, ccInstallPkg)
 
 	ccInstallPkgFileName := CCFileName(packageID)
 	ccInstallPkgFilePath := filepath.Join(s.Path, ccInstallPkgFileName)
@@ -227,6 +226,12 @@ func (s *Store) ListInstalledChaincodes() ([]chaincode.InstalledChaincode, error
 // are installed
 func (s *Store) GetChaincodeInstallPath() string {
 	return s.Path
+}
+
+// PackageID returns the package ID with the label and hash of the chaincode install package
+func PackageID(label string, ccInstallPkg []byte) string {
+	hash := util.ComputeSHA256(ccInstallPkg)
+	return packageID(label, hash)
 }
 
 func packageID(label string, hash []byte) string {

@@ -347,7 +347,7 @@ func InitCmd(cmd *cobra.Command, args []string) {
 	})
 
 	// chaincode packaging does not require material from the local MSP
-	if cmd.CommandPath() == "peer lifecycle chaincode package" {
+	if cmd.CommandPath() == "peer lifecycle chaincode package" || cmd.CommandPath() == "peer lifecycle chaincode calculatepackageid" {
 		mainLogger.Debug("peer lifecycle chaincode package does not need to init crypto")
 		return
 	}
