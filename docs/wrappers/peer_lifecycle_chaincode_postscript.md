@@ -99,6 +99,28 @@ identifier returned by `queryinstalled`.
   peer lifecycle chaincode getinstalledpackage --package-id myccv1:a7ca45a7cc85f1d89c905b775920361ed089a364e12a9b6d55ba75c965ddd6a9 --output-directory /tmp --peerAddresses peer0.org1.example.com:7051
   ```
 
+### peer lifecycle chaincode calculatepackageid example
+
+You can calculate the package ID from a packaged chaincode without installing the chaincode on peers
+using the `peer lifecycle chaincode calculatepackageid` command.
+This command will be useful, for example, in the following cases:
+
+  * When multiple chaincode packages with the same label name are installed,
+  it is possible to identify which ID corresponds to which package later.
+  * To check whether a particular chaincode package is installed or not without
+  installing that package.
+
+Calcuate the package ID for the `mycc.tar.gz` package:
+
+```
+peer lifecycle chaincode calculatepackageid mycc.tar.gz
+```
+
+A successful command will return the package ID for the packaged chaincode.
+
+```
+Package ID: myccv1:cc7bb5f50a53c207f68d37e9423c32f968083282e5ffac00d41ffc5768dc1873
+```
 
 ### peer lifecycle chaincode approveformyorg example
 

@@ -25,6 +25,7 @@ The `peer lifecycle chaincode` command has the following subcommands:
   * install
   * queryinstalled
   * getinstalledpackage
+  * calculatepackageid
   * approveformyorg
   * queryapproved
   * checkcommitreadiness
@@ -42,7 +43,7 @@ Usage:
   peer lifecycle [command]
 
 Available Commands:
-  chaincode   Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted
+  chaincode   Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted
 
 Flags:
   -h, --help   help for lifecycle
@@ -53,13 +54,14 @@ Use "peer lifecycle [command] --help" for more information about a command.
 
 ## peer lifecycle chaincode
 ```
-Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted
+Perform chaincode operations: package|install|queryinstalled|getinstalledpackage|calculatepackageid|approveformyorg|queryapproved|checkcommitreadiness|commit|querycommitted
 
 Usage:
   peer lifecycle chaincode [command]
 
 Available Commands:
   approveformyorg      Approve the chaincode definition for my org.
+  calculatepackageid   Calculate the package ID for a chaincode.
   checkcommitreadiness Check whether a chaincode definition is ready to be committed on a channel.
   commit               Commit the chaincode definition on the channel.
   getinstalledpackage  Get an installed chaincode package from a peer.
@@ -183,6 +185,32 @@ Flags:
       --package-id string              The identifier of the chaincode install package
       --peerAddresses stringArray      The addresses of the peers to connect to
       --targetPeer string              When using a connection profile, the name of the peer to target for this action
+      --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
+
+Global Flags:
+      --cafile string                       Path to file containing PEM-encoded trusted certificate(s) for the ordering endpoint
+      --certfile string                     Path to file containing PEM-encoded X509 public key to use for mutual TLS communication with the orderer endpoint
+      --clientauth                          Use mutual TLS when communicating with the orderer endpoint
+      --connTimeout duration                Timeout for client to connect (default 3s)
+      --keyfile string                      Path to file containing PEM-encoded private key to use for mutual TLS communication with the orderer endpoint
+  -o, --orderer string                      Ordering service endpoint
+      --ordererTLSHostnameOverride string   The hostname override to use when validating the TLS connection to the orderer
+      --tls                                 Use TLS when communicating with the orderer endpoint
+      --tlsHandshakeTimeShift duration      The amount of time to shift backwards for certificate expiration checks during TLS handshakes with the orderer endpoint
+```
+
+
+## peer lifecycle chaincode calculatepackageid
+```
+Calculate the package ID for a packaged chaincode.
+
+Usage:
+  peer lifecycle chaincode calculatepackageid packageFile [flags]
+
+Flags:
+      --connectionProfile string       The fully qualified path to the connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
+  -h, --help                           help for calculatepackageid
+      --peerAddresses stringArray      The addresses of the peers to connect to
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
 
 Global Flags:
@@ -471,6 +499,28 @@ identifier returned by `queryinstalled`.
   peer lifecycle chaincode getinstalledpackage --package-id myccv1:a7ca45a7cc85f1d89c905b775920361ed089a364e12a9b6d55ba75c965ddd6a9 --output-directory /tmp --peerAddresses peer0.org1.example.com:7051
   ```
 
+### peer lifecycle chaincode calculatepackageid example
+
+You can calculate the package ID from a packaged chaincode without installing the chaincode on peers
+using the `peer lifecycle chaincode calculatepackageid` command.
+This command will be useful, for example, in the following cases:
+
+  * When multiple chaincode packages with the same label name are installed,
+  it is possible to identify which ID corresponds to which package later.
+  * To check whether a particular chaincode package is installed or not without
+  installing that package.
+
+Calcuate the package ID for the `mycc.tar.gz` package:
+
+```
+peer lifecycle chaincode calculatepackageid mycc.tar.gz
+```
+
+A successful command will return the package ID for the packaged chaincode.
+
+```
+Package ID: myccv1:cc7bb5f50a53c207f68d37e9423c32f968083282e5ffac00d41ffc5768dc1873
+```
 
 ### peer lifecycle chaincode approveformyorg example
 
