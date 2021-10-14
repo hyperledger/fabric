@@ -283,6 +283,7 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	var errDetails []proto.Message
 	for _, index := range rand.Perm(len(orderers)) {
 		orderer := orderers[index]
+		logger.Infow("Sending transaction to orderer", "TxID", request.TransactionId, "endpoint", orderer.address)
 		err := gs.broadcast(ctx, orderer, txn)
 		if err == nil {
 			return &gp.SubmitResponse{}, nil
@@ -299,7 +300,6 @@ func (gs *Server) broadcast(ctx context.Context, orderer *orderer, txn *common.E
 	if err != nil {
 		return fmt.Errorf("failed to create BroadcastClient: %w", err)
 	}
-	logger.Info("Submitting txn to orderer")
 	if err := broadcast.Send(txn); err != nil {
 		return fmt.Errorf("failed to send transaction to orderer: %w", err)
 	}
