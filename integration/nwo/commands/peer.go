@@ -275,6 +275,28 @@ func (c ChaincodePackageLegacy) Args() []string {
 	return args
 }
 
+type ChaincodeCalculatePackageID struct {
+	PackageFile string
+	ClientAuth  bool
+}
+
+func (c ChaincodeCalculatePackageID) SessionName() string {
+	return "peer-lifecycle-chaincode-calculatepackageid"
+}
+
+func (c ChaincodeCalculatePackageID) Args() []string {
+	args := []string{
+		"lifecycle", "chaincode", "calculatepackageid",
+		c.PackageFile,
+	}
+
+	if c.ClientAuth {
+		args = append(args, "--clientauth")
+	}
+
+	return args
+}
+
 type ChaincodeInstall struct {
 	PackageFile   string
 	PeerAddresses []string

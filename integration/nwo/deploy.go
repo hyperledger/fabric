@@ -170,6 +170,15 @@ func PackageChaincodeLegacy(n *Network, chaincode Chaincode, peer *Peer) {
 	Eventually(sess, n.EventuallyTimeout).Should(gexec.Exit(0))
 }
 
+func CheckPackageID(n *Network, packageFile string, packageID string, peer *Peer) {
+	sess, err := n.PeerAdminSession(peer, commands.ChaincodeCalculatePackageID{
+		PackageFile: packageFile,
+		ClientAuth:  n.ClientAuthRequired,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	Eventually(sess, n.EventuallyTimeout).Should(gbytes.Say(fmt.Sprintf(`\QPackage ID: %s\E`, packageID)))
+}
+
 func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 	// Ensure 'jq' exists in path, because we need it to build chaincode
 	if _, err := exec.LookPath("jq"); err != nil {
@@ -189,6 +198,7 @@ func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {
 		EventuallyWithOffset(1, sess, n.EventuallyTimeout).Should(gexec.Exit())
 
 		EnsureInstalled(n, chaincode.Label, chaincode.PackageID, p)
+		CheckPackageID(n, chaincode.PackageFile, chaincode.PackageID, p)
 	}
 }
 
