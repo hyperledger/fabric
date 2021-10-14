@@ -20,6 +20,7 @@ The `peer lifecycle chaincode` command has the following subcommands:
   * install
   * queryinstalled
   * getinstalledpackage
+  * calculatepackageid
   * approveformyorg
   * queryapproved
   * checkcommitreadiness
