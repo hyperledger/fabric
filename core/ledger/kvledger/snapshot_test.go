@@ -568,7 +568,7 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 		require.Error(t, err)
 		errStackTrace := fmt.Sprintf("%+v", err)
 		require.Contains(t, errStackTrace, "internal leveldb error while obtaining db iterator")
-		require.Contains(t, errStackTrace, "fabric/common/ledger/blkstorage/blockindex.go")
+		require.Contains(t, errStackTrace, "github.com/hyperledger/fabric/common/ledger/blkstorage")
 	})
 
 	t.Run("config history mgr returns error", func(t *testing.T) {
@@ -578,7 +578,7 @@ func TestGenerateSnapshotErrors(t *testing.T) {
 		require.Error(t, err)
 		errStackTrace := fmt.Sprintf("%+v", err)
 		require.Contains(t, errStackTrace, "internal leveldb error while obtaining db iterator")
-		require.Contains(t, errStackTrace, "fabric/core/ledger/confighistory/mgr.go")
+		require.Contains(t, errStackTrace, "github.com/hyperledger/fabric/core/ledger/confighistory")
 	})
 
 	t.Run("statedb returns error", func(t *testing.T) {
