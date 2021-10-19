@@ -78,11 +78,13 @@ var _ = Describe("ChaincodeAsExternalServer", func() {
 			network.Peer("Org1", "peer0"), network.Peer("Org2", "peer0"),
 		)
 
+		// set to use the 'ccaas' builder rathern than binary
+		// binary build remains as an example of a scripted approach
 		chaincode = nwo.Chaincode{
 			Name:            "mycc",
 			Version:         "0.0",
 			Path:            components.Build("github.com/hyperledger/fabric/integration/chaincode/server"),
-			Lang:            "binary",
+			Lang:            "ccaas",
 			PackageFile:     filepath.Join(testDir, "server.tar.gz"),
 			Ctor:            `{"Args":["init","a","100","b","200"]}`,
 			InitRequired:    true,
