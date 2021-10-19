@@ -148,7 +148,7 @@ integration-test: integration-test-prereqs
 	./scripts/run-integration-tests.sh
 
 .PHONY: integration-test-prereqs
-integration-test-prereqs: gotool.ginkgo baseos-docker ccenv-docker docker-thirdparty
+integration-test-prereqs: gotool.ginkgo baseos-docker ccenv-docker docker-thirdparty ccaasbuilder
 
 .PHONY: unit-test
 unit-test: unit-test-clean docker-thirdparty-couchdb
@@ -280,7 +280,7 @@ dist: dist-clean dist/$(MARCH)
 
 .PHONY: dist-all
 dist-all: dist-clean $(RELEASE_PLATFORMS:%=dist/%)
-dist/%: release/%
+dist/%: release/% ccaasbuilder
 	mkdir -p release/$(@F)/config
 	cp -r sampleconfig/*.yaml release/$(@F)/config
 	cd release/$(@F) && tar -czvf hyperledger-fabric-$(@F).$(PROJECT_VERSION).tar.gz *
@@ -344,3 +344,13 @@ spaces:
 .PHONY: docs
 docs:
 	@docker run --rm -v $$(pwd):/docs n42org/tox:3.4.0 sh -c 'cd /docs && tox -e docs'
+
+.PHONY: ccaasbuilder-clean
+ccaasbuilder-clean:
+	rm -rf $(MARCH:%=release/%)/bin/ccaas_builder
+
+.PHONY: ccaasbuilder
+ccaasbuilder: ccaasbuilder-clean
+	cd ccaas_builder && go test -v ./cmd/detect && go build -o ../$(MARCH:%=release/%)/bin/ccaas_builder/bin/ ./cmd/detect/
+	cd ccaas_builder && go test -v ./cmd/build && go build -o ../$(MARCH:%=release/%)/bin/ccaas_builder/bin/ ./cmd/build/
+	cd ccaas_builder && go test -v ./cmd/release && go build -o ../$(MARCH:%=release/%)/bin/ccaas_builder/bin/ ./cmd/release/
