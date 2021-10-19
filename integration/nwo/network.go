@@ -208,12 +208,19 @@ func New(c *Config, rootDir string, dockerClient *docker.Client, startPort int, 
 		lastExecuted: make(map[string]time.Time),
 	}
 
+	// add the ccaas builder as well; that is built into the release directory
+	// so work that out based on current runtime.
+	// make integration-preqreqs have been updated to ensure this is built
 	cwd, err := os.Getwd()
 	Expect(err).NotTo(HaveOccurred())
 	network.ExternalBuilders = []fabricconfig.ExternalBuilder{{
 		Path:                 filepath.Join(cwd, "..", "externalbuilders", "binary"),
 		Name:                 "binary",
 		PropagateEnvironment: []string{"GOPROXY"},
+	}, {
+		Path:                 filepath.Join(cwd, "..", "..", "release", fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH), "bin", "ccaas_builder"),
+		Name:                 "ccaas",
+		PropagateEnvironment: []string{"CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG"},
 	}}
 
 	if network.Templates == nil {
