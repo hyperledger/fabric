@@ -23,8 +23,8 @@ _arg_comp=('' )
 
 # if version not passed in, default to latest released version
 # if ca version not passed in, default to latest released version
-_arg_fabric_version="2.3.4"
-_arg_ca_version="1.5.1"
+_arg_fabric_version="2.3.3"
+_arg_ca_version="1.5.2"
 
 ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
 MARCH=$(uname -m)
@@ -50,9 +50,9 @@ begins_with_short_option()
 print_help()
 {
 	printf 'Usage: %s [-f|--fabric-version <arg>] [-c|--ca-version <arg>] <comp-1> [<comp-2>] ... [<comp-n>] ...\n' "$0"
-	printf '\t%s\n' "<comp>: Component to install one or more of  d[ocker]|b[inary]|s[amples]"
-	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.3.4')"
-	printf '\t%s\n' "-c, --ca-version: Fabric CA Version (default: '1.5.1')"
+	printf '\t%s\n' "<comp>: Component to install one or more of  d[ocker]|b[inary]|s[amples]. If none specified, all will be installed"
+	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.3.3')"
+	printf '\t%s\n' "-c, --ca-version: Fabric CA Version (default: '1.5.2')"
 }
 
 
@@ -107,7 +107,7 @@ parse_commandline()
 handle_passed_args_count()
 {
 	local _required_args_string="'comp'"
-	test "${_positionals_count}" -ge 1 || _PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}." 1
+	# test "${_positionals_count}" -ge 1 || _PRINT_HELP=yes die "FATAL ERROR: Not enough positional arguments - we require at least 1 (namely: $_required_args_string), but got only ${_positionals_count}." 1
 }
 
 
@@ -182,8 +182,13 @@ cloneSamplesRepo() {
 download() {
     local BINARY_FILE=$1
     local URL=$2
+    local DEST_DIR=$(pwd)
     echo "===> Downloading: " "${URL}"
-    curl -L --retry 5 --retry-delay 3 "${URL}" | tar xz || rc=$?
+    if [ -d fabric-samples ]; then
+       DEST_DIR="fabric-samples"
+    fi
+    echo "===> Will unpack to: ${DEST_DIR}" 
+    curl -L --retry 5 --retry-delay 3 "${URL}" | tar xz -C ${DEST_DIR}|| rc=$?
     if [ -n "$rc" ]; then
         echo "==> There was an error downloading the binary file."
         return 22
@@ -261,26 +266,32 @@ fi
 BINARY_FILE=hyperledger-fabric-${ARCH}-${VERSION}.tar.gz
 CA_BINARY_FILE=hyperledger-fabric-ca-${ARCH}-${CA_VERSION}.tar.gz
 
+# if nothing has been specified, assume everything
+if [[ ${_arg_comp[@]} =~ ^$ ]]; then
+    echo "Getting all samples, binaries, and docker images"
+    _arg_comp=('samples','binary','docker')
+fi
 
-for _comp in ${_arg_comp[@]}
-do 
-    if [[ "$_comp" == "samples" || "$_comp" == "s" ]]; then
+# Process samples first then the binaries. So if the fabric-samples dir is present
+# the binaries will go there
+if [[ "${_arg_comp[@]}" =~ s(amples)? ]]; then
         echo
         echo "Clone hyperledger/fabric-samples repo"
         echo
         cloneSamplesRepo
-    elif [[ "$_comp" == "binary" || "$_comp" == "b" ]]; then
+fi
+  
+if [[ "${_arg_comp[@]}" =~ b(inary)? ]]; then
         echo
         echo "Pull Hyperledger Fabric binaries"
         echo
         pullBinaries
-    elif [[ "$_comp" == "docker" || "$_comp" == "d" ]]; then
+fi
+
+if [[ ${_arg_comp[@]} =~ d(ocker)? ]]; then
         echo
         echo "Pull Hyperledger Fabric docker images"
         echo
         pullDockerImages
-    else 
-        echo
-        _PRINT_HELP=yes die "Unknown component ${_comp}" 1
-    fi
-done
+fi
+
