@@ -52,22 +52,6 @@ func CreateAndSyncFile(filePath string, content []byte, perm os.FileMode) error 
 	return nil
 }
 
-// SyncDir fsyncs the given dir
-func SyncDir(dirPath string) error {
-	dir, err := os.Open(dirPath)
-	if err != nil {
-		return errors.Wrapf(err, "error while opening dir:%s", dirPath)
-	}
-	if err := dir.Sync(); err != nil {
-		dir.Close()
-		return errors.Wrapf(err, "error while synching dir:%s", dirPath)
-	}
-	if err := dir.Close(); err != nil {
-		return errors.Wrapf(err, "error while closing dir:%s", dirPath)
-	}
-	return err
-}
-
 // SyncParentDir fsyncs the parent dir of the given path
 func SyncParentDir(path string) error {
 	return SyncDir(filepath.Dir(path))
