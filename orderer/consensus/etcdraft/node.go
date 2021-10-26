@@ -57,8 +57,8 @@ func (n *node) start(fresh, join bool) {
 	var campaign bool
 	if fresh {
 		if join {
-			raftPeers = nil
 			n.logger.Info("Starting raft node to join an existing channel")
+			n.Node = raft.RestartNode(n.config)
 		} else {
 			n.logger.Info("Starting raft node as part of a new channel")
 
@@ -69,8 +69,8 @@ func (n *node) start(fresh, join bool) {
 			if n.config.ID == number%uint64(len(raftPeers))+1 {
 				campaign = true
 			}
+			n.Node = raft.StartNode(n.config, raftPeers)
 		}
-		n.Node = raft.StartNode(n.config, raftPeers)
 	} else {
 		n.logger.Info("Restarting raft node")
 		n.Node = raft.RestartNode(n.config)

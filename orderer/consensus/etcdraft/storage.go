@@ -274,8 +274,9 @@ func (rs *RaftStorage) saveSnap(snap raftpb.Snapshot) error {
 	// snapshot to maintain the invariant that we only Open the
 	// wal at previously-saved snapshot indexes.
 	walsnap := walpb.Snapshot{
-		Index: snap.Metadata.Index,
-		Term:  snap.Metadata.Term,
+		Index:     snap.Metadata.Index,
+		Term:      snap.Metadata.Term,
+		ConfState: &snap.Metadata.ConfState,
 	}
 
 	if err := rs.wal.SaveSnapshot(walsnap); err != nil {
