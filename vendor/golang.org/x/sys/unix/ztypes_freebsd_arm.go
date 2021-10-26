@@ -33,8 +33,6 @@ type Timeval struct {
 	_    [4]byte
 }
 
-type Time_t int32
-
 type Rusage struct {
 	Utime    Timeval
 	Stime    Timeval
@@ -658,10 +656,9 @@ type Winsize struct {
 
 const (
 	AT_FDCWD            = -0x64
-	AT_EACCESS          = 0x100
-	AT_SYMLINK_NOFOLLOW = 0x200
-	AT_SYMLINK_FOLLOW   = 0x400
 	AT_REMOVEDIR        = 0x800
+	AT_SYMLINK_FOLLOW   = 0x400
+	AT_SYMLINK_NOFOLLOW = 0x200
 )
 
 type PollFd struct {
