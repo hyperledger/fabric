@@ -12,7 +12,6 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.5.7
 	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/bits-and-blooms/bitset v1.2.1
-	github.com/coreos/go-systemd v0.0.0-20190620071333-e64a0ec8b42a // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
@@ -54,11 +53,9 @@ require (
 	github.com/sykesm/zap-logfmt v0.0.2
 	github.com/syndtr/goleveldb v1.0.1-0.20210305035536-64b5b1c73954
 	github.com/tedsuo/ifrit v0.0.0-20180802180643-bea94bb476cc
-	github.com/willf/bitset v1.1.10 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.1
 	go.etcd.io/etcd/raft/v3 v3.5.1
 	go.etcd.io/etcd/server/v3 v3.5.1
-	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 	golang.org/x/tools v0.1.2
