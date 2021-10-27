@@ -194,9 +194,9 @@ func (reg *registry) endorsersByOrg(channel string, chaincode string) map[string
 	return endorsersByOrg
 }
 
-// evaluator returns a single endorser, preferably from local org, if available
+// evaluator returns a plan representing a single endorsement, preferably from local org, if available
 // targetOrgs specifies the orgs that are allowed receive the request, due to private data restrictions
-func (reg *registry) evaluator(channel string, chaincode string, targetOrgs []string) (*endorser, error) {
+func (reg *registry) evaluator(channel string, chaincode string, targetOrgs []string) (*plan, error) {
 	endorsersByOrg := reg.endorsersByOrg(channel, chaincode)
 
 	// If no targetOrgs are specified (i.e. no restrictions), then populate with all available orgs
@@ -205,21 +205,29 @@ func (reg *registry) evaluator(channel string, chaincode string, targetOrgs []st
 			targetOrgs = append(targetOrgs, org)
 		}
 	}
-	// Prefer a local org endorser, if present
-	if e, ok := endorsersByOrg[reg.localEndorser.mspid]; ok && contains(targetOrgs, reg.localEndorser.mspid) {
-		return e[0].endorser, nil
-	}
-	// Otherwise highest block height peer (first in list) from another org
-	var evaluator *endorser
-	var maxHeight uint64
+
+	localOrgEndorsers := []*endorserState{}
+	otherOrgEndorsers := []*endorserState{}
 	for _, org := range targetOrgs {
-		if e, ok := endorsersByOrg[org]; ok && e[0].height > maxHeight {
-			evaluator = e[0].endorser
-			maxHeight = e[0].height
+		if es, ok := endorsersByOrg[org]; ok {
+			if org == reg.localEndorser.mspid {
+				localOrgEndorsers = es
+			} else {
+				otherOrgEndorsers = append(otherOrgEndorsers, es...)
+			}
 		}
 	}
-	if evaluator != nil {
-		return evaluator, nil
+	// sort all the 'other orgs' endorsers by decreasing block height
+	sort.Slice(otherOrgEndorsers, sorter(otherOrgEndorsers, ""))
+
+	var allEndorsers []*endorser
+	for _, e := range append(localOrgEndorsers, otherOrgEndorsers...) {
+		allEndorsers = append(allEndorsers, e.endorser)
+	}
+	if len(allEndorsers) > 0 {
+		layout := []*layout{{required: map[string]int{"g1": 1}}} // single layout, one group, one endorsement
+		groupEndorsers := map[string][]*endorser{"g1": allEndorsers}
+		return newPlan(layout, groupEndorsers), nil
 	}
 	return nil, fmt.Errorf("no endorsing peers found for chaincode %s in channel %s", chaincode, channel)
 }
@@ -232,15 +240,6 @@ func sorter(e []*endorserState, host string) func(i, j int) bool {
 		}
 		return e[i].height > e[j].height
 	}
-}
-
-func contains(slice []string, entry string) bool {
-	for _, item := range slice {
-		if entry == item {
-			return true
-		}
-	}
-	return false
 }
 
 // Returns a set of broadcastClients that can order a transaction for the given channel.

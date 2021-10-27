@@ -300,7 +300,7 @@ func TestEvaluate(t *testing.T) {
 			endpointDefinition: &endpointDef{
 				proposalError: status.Error(codes.Aborted, "wibble"),
 			},
-			errString: "rpc error: code = Aborted desc = failed to evaluate transaction: wibble",
+			errString: "rpc error: code = Aborted desc = failed to evaluate transaction, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "localhost:7051",
 				MspId:   "msp1",
@@ -316,12 +316,65 @@ func TestEvaluate(t *testing.T) {
 				proposalResponseStatus:  400,
 				proposalResponseMessage: "Mock chaincode error",
 			},
-			errString: "rpc error: code = Unknown desc = error returned from chaincode: Mock chaincode error",
+			errString: "rpc error: code = Aborted desc = evaluate call to endorser returned an error response, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer1:8051",
 				MspId:   "msp1",
 				Message: "error 400 returned from chaincode test_chaincode on channel test_channel: Mock chaincode error",
 			}},
+		},
+		{
+			name: "evaluate on local org fails - retry in other org",
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 4},
+				{"id2", "peer1:8051", "msp1", 4},
+				{"id3", "peer2:9051", "msp2", 3},
+				{"id4", "peer3:10051", "msp2", 4},
+				{"id5", "peer4:11051", "msp3", 5},
+			},
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
+				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.localEndorser.ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad local endorser"))
+				peer1Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer1 endorser"))
+			},
+			expectedEndorsers: []string{"peer4:11051"},
+		},
+		{
+			name: "restrict to local org peers - which all fail",
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 4},
+				{"id2", "peer1:8051", "msp1", 4},
+				{"id3", "peer2:9051", "msp2", 3},
+				{"id4", "peer3:10051", "msp2", 4},
+				{"id5", "peer4:11051", "msp3", 5},
+			},
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
+				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.localEndorser.ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad local endorser"))
+				peer1Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer1 endorser"))
+			},
+			endorsingOrgs: []string{"msp1"},
+			errString:     "rpc error: code = Aborted desc = failed to evaluate transaction, see attached details for more info",
+			errDetails: []*pb.ErrorDetail{
+				{
+					Address: "localhost:7051",
+					MspId:   "msp1",
+					Message: "rpc error: code = Aborted desc = bad local endorser",
+				},
+				{
+					Address: "peer1:8051",
+					MspId:   "msp1",
+					Message: "rpc error: code = Aborted desc = bad peer1 endorser",
+				},
+			},
 		},
 		{
 			name: "dialing endorser endpoint fails",

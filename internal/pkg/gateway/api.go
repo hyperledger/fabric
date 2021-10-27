@@ -53,7 +53,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 		transientProtected = true
 	}
 
-	endorser, err := gs.registry.evaluator(channel, chaincodeID, targetOrgs)
+	plan, err := gs.registry.evaluator(channel, chaincodeID, targetOrgs)
 	if err != nil {
 		if transientProtected {
 			return nil, status.Errorf(codes.Unavailable, "no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data: %s", err)
@@ -64,24 +64,39 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 	ctx, cancel := context.WithTimeout(ctx, gs.options.EndorsementTimeout)
 	defer cancel()
 
-	response, err := endorser.client.ProcessProposal(ctx, signedProposal)
-	if err != nil {
-		logger.Debugw("Evaluate call to endorser failed", "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", err)
-		return nil, wrappedRpcError(err, "failed to evaluate transaction", errorDetail(endorser.endpointConfig, err))
-	}
+	endorser := plan.endorsers()[0]
+	var response *peer.Response
+	var errDetails []proto.Message
+	for response == nil {
+		gs.logger.Debugw("Sending to peer:", "channel", channel, "chaincode", chaincodeID, "MSPID", endorser.mspid, "endpoint", endorser.address)
 
-	rr := response.GetResponse()
-	if rr != nil && (rr.Status < 200 || rr.Status >= 400) {
-		logger.Debugw("Evaluate call to endorser returned a malformed or error response", "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", rr.Status, "message", rr.Message)
-		err = fmt.Errorf("error %d returned from chaincode %s on channel %s: %s", rr.Status, chaincodeID, channel, rr.Message)
-		return nil, rpcError(codes.Unknown, "error returned from chaincode: "+rr.Message, errorDetail(endorser.endpointConfig, err))
+		pr, err := endorser.client.ProcessProposal(ctx, signedProposal)
+		if err != nil {
+			logger.Debugw("Evaluate call to endorser failed", "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", err)
+			errDetails = append(errDetails, errorDetail(endorser.endpointConfig, err))
+			gs.registry.removeEndorser(endorser)
+			endorser = plan.retry(endorser)
+			if endorser == nil {
+				return nil, rpcError(codes.Aborted, "failed to evaluate transaction, see attached details for more info", errDetails...)
+			}
+		}
+
+		response = pr.GetResponse()
+		if response != nil && (response.Status < 200 || response.Status >= 400) {
+			logger.Debugw("Evaluate call to endorser returned a malformed or error response", "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.Status, "message", response.Message)
+			err = fmt.Errorf("error %d returned from chaincode %s on channel %s: %s", response.Status, chaincodeID, channel, response.Message)
+			endpointErr := errorDetail(endorser.endpointConfig, err)
+			errDetails = append(errDetails, endpointErr)
+			// this is a chaincode error response - don't retry
+			return nil, rpcError(codes.Aborted, "evaluate call to endorser returned an error response, see attached details for more info", errDetails...)
+		}
 	}
 
 	evaluateResponse := &gp.EvaluateResponse{
-		Result: rr,
+		Result: response,
 	}
 
-	logger.Debugw("Evaluate call to endorser returned success", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", rr.GetStatus(), "message", rr.GetMessage())
+	logger.Debugw("Evaluate call to endorser returned success", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.GetStatus(), "message", response.GetMessage())
 	return evaluateResponse, nil
 }
 
