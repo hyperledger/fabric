@@ -30,6 +30,11 @@ The **discovery service** improves this process by having the peers compute
 the needed information dynamically and present it to the SDK in a consumable
 manner.
 
+Starting with v2.4, the :doc:`Fabric Gateway <gateway>` interacts with service discovery in order to determine
+which peers are required to endorse a transaction, and which orderer nodes to send
+the transaction to.  Consequently, client applications written using the new gateway
+SDKs do not interact directly with service discovery at all.
+
 How service discovery works in Fabric
 -------------------------------------
 
