@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -240,7 +240,7 @@ func (p *Provider) initLedgerStatistics() {
 
 func (p *Provider) initSnapshotDir() error {
 	snapshotsRootDir := p.initializer.Config.SnapshotsConfig.RootDir
-	if !path.IsAbs(snapshotsRootDir) {
+	if !filepath.IsAbs(snapshotsRootDir) {
 		return errors.Errorf("invalid path: %s. The path for the snapshot dir is expected to be an absolute path", snapshotsRootDir)
 	}
 
