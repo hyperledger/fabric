@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
@@ -84,6 +86,23 @@ var _ = Describe("CalculatePackageID", func() {
 			It("returns an error", func() {
 				err := packageIDCalculator.PackageID()
 				Expect(err).To(MatchError(ContainSubstring("could not parse as a chaincode install package")))
+			})
+		})
+
+		Context("when JSON-formatted output is requested", func() {
+			BeforeEach(func() {
+				packageIDCalculator.Input.OutputFormat = "json"
+			})
+
+			It("calculates the package IDs for chaincodes and writes the output as JSON", func() {
+				err := packageIDCalculator.PackageID()
+				Expect(err).NotTo(HaveOccurred())
+				expectedOutput := &chaincode.CalculatePackageIDOutput{
+					PackageID: "Real-Label:fb3edf9621c5e3d864079d8c9764205f4db09d7021cfa4124aa79f4edcc2f64a",
+				}
+				json, err := json.MarshalIndent(expectedOutput, "", "\t")
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(packageIDCalculator.Writer).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, string(json))))
 			})
 		})
 	})

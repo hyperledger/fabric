@@ -7,9 +7,11 @@ SPDX-License-Identifier: Apache-2.0
 package chaincode
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/hyperledger/fabric/core/chaincode/persistence"
 	"github.com/pkg/errors"
@@ -28,7 +30,13 @@ type PackageIDCalculator struct {
 // CalculatePackageIDInput holds the input parameters for calculating
 // the package ID of a packaged chaincode
 type CalculatePackageIDInput struct {
-	PackageFile string
+	PackageFile  string
+	OutputFormat string
+}
+
+// CalculatePackageIDOutput holds the JSON output format
+type CalculatePackageIDOutput struct {
+	PackageID string `json:"package_id"`
 }
 
 // Validate checks that the required parameters are provided
@@ -64,6 +72,7 @@ func CalculatePackageIDCmd(p *PackageIDCalculator) *cobra.Command {
 		"peerAddresses",
 		"tlsRootCertFiles",
 		"connectionProfile",
+		"output",
 	}
 	attachFlags(calculatePackageIDCmd, flagList)
 
@@ -103,12 +112,25 @@ func (p *PackageIDCalculator) PackageID() error {
 
 	packageID := persistence.PackageID(metadata.Label, pkgBytes)
 
+	if strings.ToLower(p.Input.OutputFormat) == "json" {
+		output := CalculatePackageIDOutput{
+			PackageID: packageID,
+		}
+		outputJson, err := json.MarshalIndent(&output, "", "\t")
+		if err != nil {
+			return errors.WithMessage(err, "failed to marshal output")
+		}
+		fmt.Fprintf(p.Writer, "%s\n", string(outputJson))
+		return nil
+	}
+
 	fmt.Fprintf(p.Writer, "%s\n", packageID)
 	return nil
 }
 
 func (p *PackageIDCalculator) setInput(packageFile string) {
 	p.Input = &CalculatePackageIDInput{
-		PackageFile: packageFile,
+		PackageFile:  packageFile,
+		OutputFormat: output,
 	}
 }
