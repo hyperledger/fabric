@@ -78,3 +78,8 @@ flags are
 * `--transient <string>`
 
   Transient map of arguments in JSON encoding
+
+Flags of type stringArray are to be repeated rather than concatenating their
+values. For example, you will use `--peerAddresses localhost:9051
+--peerAddresses localhost:7051` rather than `--peerAddresses "localhost:9051
+localhost:7051"`.
