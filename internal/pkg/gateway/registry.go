@@ -377,7 +377,6 @@ func (reg *registry) removeEndorser(endorser *endorser) {
 	reg.configLock.Lock()
 	defer reg.configLock.Unlock()
 
-	reg.logger.Infow("Closing connection to remote endorser", "address", endorser.address, "mspid", endorser.mspid)
 	err := endorser.closeConnection()
 	if err != nil {
 		reg.logger.Errorw("Failed to close connection to endorser", "address", endorser.address, "mspid", endorser.mspid, "err", err)

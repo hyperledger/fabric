@@ -16,6 +16,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/common"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 )
 
 type endorser struct {
@@ -62,7 +63,8 @@ func (ef *endpointFactory) newEndorser(pkiid common.PKIidType, address, mspid st
 		connectEndorser = peer.NewEndorserClient
 	}
 	close := func() error {
-		if conn != nil {
+		if conn != nil && conn.GetState() != connectivity.Shutdown {
+			logger.Infow("Closing connection to remote endorser", "address", address, "mspid", mspid)
 			return conn.Close()
 		}
 		return nil
