@@ -258,7 +258,7 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	}
 
 	if endorsements == nil {
-		return nil, rpcError(codes.Aborted, "failed to endorse transaction, see attached details for more info", errorDetails...)
+		return nil, rpcError(codes.Aborted, "failed to collect enough transaction endorsements, see attached details for more info", errorDetails...)
 	}
 
 	env, err := protoutil.CreateTx(proposal, endorsements...)
