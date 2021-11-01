@@ -210,6 +210,7 @@ Usage:
 Flags:
       --connectionProfile string       The fully qualified path to the connection profile that provides the necessary connection information for the network. Note: currently only supported for providing peer connection information
   -h, --help                           help for calculatepackageid
+  -O, --output string                  The output format for query results. Default is human-readable plain-text. json is currently the only supported format.
       --peerAddresses stringArray      The addresses of the peers to connect to
       --tlsRootCertFiles stringArray   If TLS is enabled, the paths to the TLS root cert files of the peers to connect to. The order and number of certs specified should match the --peerAddresses flag
 
@@ -521,6 +522,20 @@ A successful command will return the package ID for the packaged chaincode.
 ```
 myccv1:cc7bb5f50a53c207f68d37e9423c32f968083282e5ffac00d41ffc5768dc1873
 ```
+
+  * You can also use the `--output` flag to have the CLI format the output as JSON.
+
+    ```
+    peer lifecycle chaincode calculatepackageid mycc.tar.gz --output json
+    ```
+
+    If successful, the command will return the chaincode package ID as JSON.
+
+    ```
+    {
+      "package_id": "myccv1:cc7bb5f50a53c207f68d37e9423c32f968083282e5ffac00d41ffc5768dc1873"
+    }
+    ```
 
 ### peer lifecycle chaincode approveformyorg example
 

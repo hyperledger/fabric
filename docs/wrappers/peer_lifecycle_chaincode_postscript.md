@@ -122,6 +122,20 @@ A successful command will return the package ID for the packaged chaincode.
 myccv1:cc7bb5f50a53c207f68d37e9423c32f968083282e5ffac00d41ffc5768dc1873
 ```
 
+  * You can also use the `--output` flag to have the CLI format the output as JSON.
+
+    ```
+    peer lifecycle chaincode calculatepackageid mycc.tar.gz --output json
+    ```
+
+    If successful, the command will return the chaincode package ID as JSON.
+
+    ```
+    {
+      "package_id": "myccv1:cc7bb5f50a53c207f68d37e9423c32f968083282e5ffac00d41ffc5768dc1873"
+    }
+    ```
+
 ### peer lifecycle chaincode approveformyorg example
 
 Once the chaincode package has been installed on your peers, you can approve
