@@ -49,7 +49,7 @@ var _ = Describe("CalculatePackageID", func() {
 		It("calculates the package IDs for chaincodes", func() {
 			err := packageIDCalculator.PackageID()
 			Expect(err).NotTo(HaveOccurred())
-			Eventually(packageIDCalculator.Writer).Should(gbytes.Say("Package ID: Real-Label:fb3edf9621c5e3d864079d8c9764205f4db09d7021cfa4124aa79f4edcc2f64a\n"))
+			Eventually(packageIDCalculator.Writer).Should(gbytes.Say("Real-Label:fb3edf9621c5e3d864079d8c9764205f4db09d7021cfa4124aa79f4edcc2f64a\n"))
 		})
 
 		Context("when the chaincode install package is not provided", func() {

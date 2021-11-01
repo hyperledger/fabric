@@ -176,7 +176,7 @@ func CheckPackageID(n *Network, packageFile string, packageID string, peer *Peer
 		ClientAuth:  n.ClientAuthRequired,
 	})
 	Expect(err).NotTo(HaveOccurred())
-	Eventually(sess, n.EventuallyTimeout).Should(gbytes.Say(fmt.Sprintf(`\QPackage ID: %s\E`, packageID)))
+	Eventually(sess, n.EventuallyTimeout).Should(gbytes.Say(fmt.Sprintf(`\Q%s\E`, packageID)))
 }
 
 func InstallChaincode(n *Network, chaincode Chaincode, peers ...*Peer) {

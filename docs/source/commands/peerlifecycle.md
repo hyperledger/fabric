@@ -519,7 +519,7 @@ peer lifecycle chaincode calculatepackageid mycc.tar.gz
 A successful command will return the package ID for the packaged chaincode.
 
 ```
-Package ID: myccv1:cc7bb5f50a53c207f68d37e9423c32f968083282e5ffac00d41ffc5768dc1873
+myccv1:cc7bb5f50a53c207f68d37e9423c32f968083282e5ffac00d41ffc5768dc1873
 ```
 
 ### peer lifecycle chaincode approveformyorg example

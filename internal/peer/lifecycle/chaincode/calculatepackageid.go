@@ -103,7 +103,7 @@ func (p *PackageIDCalculator) PackageID() error {
 
 	packageID := persistence.PackageID(metadata.Label, pkgBytes)
 
-	fmt.Fprintf(p.Writer, "Package ID: %s\n", packageID)
+	fmt.Fprintf(p.Writer, "%s\n", packageID)
 	return nil
 }
 
