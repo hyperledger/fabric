@@ -569,7 +569,7 @@ func TestEndorse(t *testing.T) {
 				peer3Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer3 endorser"))
 				peer4Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer4 endorser"))
 			},
-			errString: "rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info",
+			errString: "rpc error: code = Aborted desc = failed to collect enough transaction endorsements, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{
 				{Address: "peer2:9051", MspId: "msp2", Message: "rpc error: code = Aborted desc = bad peer2 endorser"},
 				{Address: "peer3:10051", MspId: "msp2", Message: "rpc error: code = Aborted desc = bad peer3 endorser"},
@@ -757,7 +757,7 @@ func TestEndorse(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.localEndorser.ProcessProposalReturns(createProposalResponse(t, localhostMock.address, "all_good", 200, ""), nil)
 			},
-			errString: "rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info",
+			errString: "rpc error: code = Aborted desc = failed to collect enough transaction endorsements, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer4:11051",
 				MspId:   "msp3",
@@ -800,7 +800,7 @@ func TestEndorse(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.localEndorser.ProcessProposalReturns(createProposalResponse(t, localhostMock.address, "all_good", 200, ""), nil)
 			},
-			errString: "rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info",
+			errString: "rpc error: code = Aborted desc = failed to collect enough transaction endorsements, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer4:11051",
 				MspId:   "msp3",
