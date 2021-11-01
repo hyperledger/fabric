@@ -11,10 +11,13 @@ import (
 	"fmt"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/policies"
 	"github.com/hyperledger/fabric/msp"
 	"github.com/hyperledger/fabric/protoutil"
 )
+
+var logger = flogging.MustGetLogger("policy")
 
 // PolicyChecker offers methods to check a signed proposal against a specific policy
 // defined in a channel or not.
@@ -128,6 +131,7 @@ func (p *policyChecker) CheckPolicyNoChannel(policyName string, signedProp *pb.S
 	// Deserialize proposal's creator with the local MSP
 	id, err := p.localMSP.DeserializeIdentity(shdr.Creator)
 	if err != nil {
+		logger.Warnw("Failed deserializing proposal creator during channelless check policy", "error", err, "policyName", policyName, "identity", protoutil.LogMessageForSerializedIdentity(shdr.Creator))
 		return fmt.Errorf("Failed deserializing proposal creator during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
@@ -140,6 +144,7 @@ func (p *policyChecker) CheckPolicyNoChannel(policyName string, signedProp *pb.S
 	// Verify that proposal's creator satisfies the principal
 	err = id.SatisfiesPrincipal(principal)
 	if err != nil {
+		logger.Warnw("Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy", "error", err, "policyName", policyName, "requiredPrincipal", principal, "signingIdentity", protoutil.LogMessageForSerializedIdentity(shdr.Creator))
 		return fmt.Errorf("Failed verifying that proposal's creator satisfies local MSP principal during channelless check policy with policy [%s]: [%s]", policyName, err)
 	}
 
@@ -174,6 +179,7 @@ func (p *policyChecker) CheckPolicyBySignedData(channelID, policyName string, sd
 	// Evaluate the policy
 	err := policy.EvaluateSignedData(sd)
 	if err != nil {
+		logger.Warnw("Failed evaluating policy on signed data", "error", err, "policyName", policyName, "identities", protoutil.LogMessageForSerializedIdentities(sd))
 		return fmt.Errorf("Failed evaluating policy on signed data during check policy on channel [%s] with policy [%s]: [%s]", channelID, policyName, err)
 	}
 
@@ -195,6 +201,7 @@ func (p *policyChecker) CheckPolicyNoChannelBySignedData(policyName string, sign
 		// Deserialize identity with the local MSP
 		id, err := p.localMSP.DeserializeIdentity(data.Identity)
 		if err != nil {
+			logger.Warnw("Failed deserializing signed data identity during channelless check policy", "error", err, "policyName", policyName, "identity", protoutil.LogMessageForSerializedIdentity(data.Identity))
 			return fmt.Errorf("failed deserializing signed data identity during channelless check policy with policy [%s]: [%s]", policyName, err)
 		}
 
@@ -207,6 +214,7 @@ func (p *policyChecker) CheckPolicyNoChannelBySignedData(policyName string, sign
 		// Verify that proposal's creator satisfies the principal
 		err = id.SatisfiesPrincipal(principal)
 		if err != nil {
+			logger.Warnw("failed verifying that the signed data identity satisfies local MSP principal during channelless check policy", "error", err, "policyName", policyName, "requiredPrincipal", principal, "identity", protoutil.LogMessageForSerializedIdentity(data.Identity))
 			return fmt.Errorf("failed verifying that the signed data identity satisfies local MSP principal during channelless check policy with policy [%s]: [%s]", policyName, err)
 		}
 

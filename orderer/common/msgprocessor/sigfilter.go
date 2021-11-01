@@ -73,7 +73,7 @@ func (sf *SigFilter) Apply(message *cb.Envelope) error {
 
 	err = policy.EvaluateSignedData(signedData)
 	if err != nil {
-		logger.Debugf("SigFilter evaluation failed: %s, policyName: %s, ConsensusState: %s", err.Error(), policyName, ordererConf.ConsensusState())
+		logger.Warnw("SigFilter evaluation failed", "error", err.Error(), "ConsensusState", ordererConf.ConsensusState(), "policyName", policyName, "signingIdentity", protoutil.LogMessageForSerializedIdentities(signedData))
 		return errors.Wrap(errors.WithStack(ErrPermissionDenied), err.Error())
 	}
 	return nil

@@ -9,6 +9,7 @@ package statebased
 import (
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	commonerrors "github.com/hyperledger/fabric/common/errors"
@@ -268,7 +269,16 @@ func (klv *KeyLevelValidator) Validate(cc string, blockNum, txNum uint64, rwsetB
 	}
 
 	// return the decision of the policy evaluator
-	return policyEvaluator.Evaluate(blockNum, txNum, rwset.NsRwSets, cc, signatureSet)
+	err := policyEvaluator.Evaluate(blockNum, txNum, rwset.NsRwSets, cc, signatureSet)
+	if err != nil {
+		// If endorsement policy check fails, log the endorsement policy and endorser identities.
+		// No need to handle Unmarshal() errors since it will simply result in endorsementPolicy being empty in the log message.
+		endorsementPolicy := &peer.ApplicationPolicy{}
+		proto.Unmarshal(ccEP, endorsementPolicy)
+		logger.Warnw("Endorsment policy failure", "error", err, "chaincode", cc, "endorsementPolicy", endorsementPolicy, "endorsingIdentities", protoutil.LogMessageForSerializedIdentities(signatureSet))
+
+	}
+	return err
 }
 
 // PostValidate implements the function of the StateBasedValidator interface

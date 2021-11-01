@@ -302,6 +302,7 @@ func TestSignatureSetToValidIdentitiesDeserializeErr(t *testing.T) {
 	client1, err := ca.NewClientCertKeyPair()
 	require.NoError(t, err)
 	id := &msp.SerializedIdentity{
+		Mspid:   "MyMSP",
 		IdBytes: client1.Cert,
 	}
 	idBytes, err := proto.Marshal(id)
@@ -328,7 +329,7 @@ func TestSignatureSetToValidIdentitiesDeserializeErr(t *testing.T) {
 					Identity: idBytes,
 				},
 			},
-			expectedLogEntryContains: []string{"invalid identity", fmt.Sprintf("certificate subject=%s serialnumber=%d", client1.TLSCert.Subject, client1.TLSCert.SerialNumber), "error=mango"},
+			expectedLogEntryContains: []string{"invalid identity", fmt.Sprintf("mspid=MyMSP subject=%s issuer=%s serialnumber=%d", client1.TLSCert.Subject, client1.TLSCert.Issuer, client1.TLSCert.SerialNumber), "error=mango"},
 		},
 	}
 
@@ -370,6 +371,10 @@ func TestSignatureSetToValidIdentitiesVerifyErr(t *testing.T) {
 
 func assertLogContains(t *testing.T, r *floggingtest.Recorder, ss ...string) {
 	defer r.Reset()
+	entries := r.Entries()
+	for _, entry := range entries {
+		fmt.Println(entry)
+	}
 	for _, s := range ss {
 		require.NotEmpty(t, r.EntriesContaining(s))
 	}

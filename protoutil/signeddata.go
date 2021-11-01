@@ -8,10 +8,14 @@ package protoutil
 
 import (
 	"bytes"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"strings"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
+	"github.com/hyperledger/fabric-protos-go/msp"
 )
 
 // SignedData is used to represent the general triplet required to verify a signature
@@ -79,4 +83,34 @@ func EnvelopeAsSignedData(env *common.Envelope) ([]*SignedData, error) {
 		Identity:  shdr.Creator,
 		Signature: env.Signature,
 	}}, nil
+}
+
+// LogMessageForSerializedIdentity returns a string with seriealized identity information,
+// or a string indicating why the serialized identity information cannot be returned.
+// Any errors are intentially returned in the return strings so that the function can be used in single-line log messages with minimal clutter.
+func LogMessageForSerializedIdentity(serializedIdentity []byte) string {
+	id := &msp.SerializedIdentity{}
+	err := proto.Unmarshal(serializedIdentity, id)
+	if err != nil {
+		return fmt.Sprintf("Could not unmarshal serialized identity: %s", err)
+	}
+	pemBlock, _ := pem.Decode(id.IdBytes)
+	if pemBlock == nil {
+		// not all identities are certificates so simply log the serialized
+		// identity bytes
+		return fmt.Sprintf("serialized-identity=%x", serializedIdentity)
+	}
+	cert, err := x509.ParseCertificate(pemBlock.Bytes)
+	if err != nil {
+		return fmt.Sprintf("Could not parse certificate: %s", err)
+	}
+	return fmt.Sprintf("(mspid=%s subject=%s issuer=%s serialnumber=%d)", id.Mspid, cert.Subject, cert.Issuer, cert.SerialNumber)
+}
+
+func LogMessageForSerializedIdentities(signedData []*SignedData) (logMsg string) {
+	var identityMessages []string
+	for _, sd := range signedData {
+		identityMessages = append(identityMessages, LogMessageForSerializedIdentity(sd.Identity))
+	}
+	return strings.Join(identityMessages, ", ")
 }
