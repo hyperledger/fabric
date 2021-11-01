@@ -169,7 +169,7 @@ func (up *UnpackedProposal) Validate(idDeserializer msp.IdentityDeserializer) er
 	// get the identity of the creator
 	creator, err := idDeserializer.DeserializeIdentity(up.SignatureHeader.Creator)
 	if err != nil {
-		logger.Warningf("access denied: channel %s", err)
+		logger.Warnw("access denied", "error", err, "identity", protoutil.LogMessageForSerializedIdentity(up.SignatureHeader.Creator))
 		return errors.Errorf("access denied: channel [%s] creator org unknown, creator is malformed", up.ChannelID())
 	}
 
@@ -177,7 +177,7 @@ func (up *UnpackedProposal) Validate(idDeserializer msp.IdentityDeserializer) er
 	// ensure that creator is a valid certificate
 	err = creator.Validate()
 	if err != nil {
-		logger.Warningf("access denied: identity is not valid: %s", err)
+		logger.Warnw("access denied: identity is not valid", "error", err, "identity", protoutil.LogMessageForSerializedIdentity(up.SignatureHeader.Creator))
 		return genericAuthError
 	}
 
@@ -188,7 +188,7 @@ func (up *UnpackedProposal) Validate(idDeserializer msp.IdentityDeserializer) er
 	// validate the signature
 	err = creator.Verify(up.SignedProposal.ProposalBytes, up.SignedProposal.Signature)
 	if err != nil {
-		logger.Warningf("access denied: creator's signature over the proposal is not valid: %s", err)
+		logger.Warnw("access denied: creator's signature over the proposal is not valid", "error", err, "identity", protoutil.LogMessageForSerializedIdentity(up.SignatureHeader.Creator))
 		return genericAuthError
 	}
 

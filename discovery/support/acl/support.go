@@ -96,9 +96,14 @@ func (s *DiscoverySupport) SatisfiesPrincipal(channel string, rawIdentity []byte
 	}
 	identity, err := mspMgr.DeserializeIdentity(rawIdentity)
 	if err != nil {
+		logger.Warnw("failed deserializing identity", "error", err, "identity", protoutil.LogMessageForSerializedIdentity(rawIdentity))
 		return errors.Wrap(err, "failed deserializing identity")
 	}
-	return identity.SatisfiesPrincipal(principal)
+	err = identity.SatisfiesPrincipal(principal)
+	if err != nil {
+		logger.Warnw("identity does not satisfy principal", "error", err, "requiredPrincipal", principal, "identity", protoutil.LogMessageForSerializedIdentity(rawIdentity))
+	}
+	return err
 }
 
 // ChannelPolicyManagerGetter is a support interface
