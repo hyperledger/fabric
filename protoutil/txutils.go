@@ -202,7 +202,7 @@ func createTx(
 		}
 
 		if !bytes.Equal(a1, r.Payload) {
-			return nil, errors.New("ProposalResponsePayloads do not match")
+			return nil, errors.Errorf("ProposalResponsePayloads do not match with %v", r)
 		}
 	}
 
