@@ -316,7 +316,7 @@ func TestEvaluate(t *testing.T) {
 				proposalResponseStatus:  400,
 				proposalResponseMessage: "Mock chaincode error",
 			},
-			errString: "rpc error: code = Aborted desc = evaluate call to endorser returned an error response, see attached details for more info",
+			errString: "rpc error: code = Aborted desc = evaluate call to endorser returned error: Mock chaincode error",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer1:8051",
 				MspId:   "msp1",

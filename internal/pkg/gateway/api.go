@@ -88,7 +88,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 			endpointErr := errorDetail(endorser.endpointConfig, err)
 			errDetails = append(errDetails, endpointErr)
 			// this is a chaincode error response - don't retry
-			return nil, rpcError(codes.Aborted, "evaluate call to endorser returned an error response, see attached details for more info", errDetails...)
+			return nil, rpcError(codes.Aborted, "evaluate call to endorser returned error: "+response.Message, errDetails...)
 		}
 	}
 
