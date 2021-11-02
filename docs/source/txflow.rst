@@ -32,7 +32,7 @@ Client A and Client B. The endorsement policy states that both peers must
 endorse any transaction, therefore the request goes to ``peerA`` and ``peerB``.
 
 Next, the transaction proposal is constructed. An application leveraging a
-supported SDK (Node, Java, Python) utilizes one of the available API's
+supported SDK (Node, Java, Go) utilizes one of the available API's
 to generate a transaction proposal. The proposal is a request to invoke a
 chaincode function with certain input parameters, with the intent of reading
 and/or updating the ledger.
@@ -40,7 +40,10 @@ and/or updating the ledger.
 The SDK serves as a shim to package the transaction proposal into the properly
 architected format (protocol buffer over gRPC) and takes the user’s
 cryptographic credentials to produce a unique signature for this transaction
-proposal.
+proposal. The SDK submits the transaction proposal to a target peer,
+which will manage the transaction submission on behalf of the client.
+The target peer first forwards the transaction proposal to other peers
+for execution, as required by the endorsement policy.
 
 .. image:: images/step2.png
 
@@ -57,8 +60,7 @@ executed against the current state database to produce transaction results
 including a response value, read set, and write set (i.e. key/value pairs
 representing an asset to create or update). No updates are made to the
 ledger at this point. The set of these values, along with the endorsing peer’s
-signature is passed back as a “proposal response” to the SDK which parses the
-payload for the application to consume.
+signature is passed back as a “proposal response” to the target peer.
 
 .. note:: The MSP is a peer component that allows peers to verify transaction
           requests arriving from clients and to sign transaction results
@@ -71,28 +73,19 @@ payload for the application to consume.
 
 3. **Proposal responses are inspected**
 
-The application verifies the endorsing peer signatures and compares the proposal
-responses to determine if the proposal responses are the same. If the chaincode
-is only querying the ledger, the application would only inspect the query response and
-would typically not submit the transaction to the ordering service. If the client
-application intends to submit the transaction to the ordering service to update the
-ledger, the application determines if the specified endorsement policy has been
-fulfilled before submitting (i.e. did peerA and peerB both endorse). The
-architecture is such that even if an application chooses not to inspect
-responses or otherwise forwards an unendorsed transaction, the endorsement
-policy will still be enforced by peers and upheld at the commit validation
-phase.
+The target peer verifies the proposal responses are the same prior to proceeding with the transaction submission.
+The architecture is such that even if a transaction is submitted without this check,
+the endorsement policy will still be checked and enforced when each peer validates transactions prior to committing them.
 
 .. image:: images/step4.png
 
-4. **Client assembles endorsements into a transaction**
+4. **Target peer assembles endorsements into a transaction**
 
-The application “broadcasts” the transaction proposal and response within a
-“transaction message” to the ordering service. The transaction will contain the
-read/write sets, the endorsing peers signatures and the Channel ID. The
-ordering service does not need to inspect the entire content of a transaction in
-order to perform its operation, it simply receives transactions from all
-channels in the network, orders them chronologically by channel, and creates
+The target peer “broadcasts” the transaction proposal and response within a
+“transaction message” to the ordering service. The transaction contains the
+Channel ID, the read/write sets, and a signature from each endorsing peer.
+The ordering service does not need to inspect the entire content of a transaction in
+order to perform its operation, it simply receives transactions, orders them, and creates
 blocks of transactions per channel.
 
 .. image:: images/step5.png
