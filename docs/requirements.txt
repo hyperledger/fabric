@@ -11,6 +11,6 @@ Pygments==2.1.3
 pytz==2016.4
 six==1.10.0
 snowballstemmer==1.2.1
-Sphinx==1.8.0
+Sphinx==1.8.2
 sphinx-rtd-theme==0.4.2
 recommonmark==0.4.0
