@@ -85,7 +85,7 @@ type eligibilityComputer struct {
 	idDeserializerFactory   IdentityDeserializerFactory
 }
 
-// computeEligibility computes eligilibity of private data and
+// computeEligibility computes eligibility of private data and
 // groups all private data as either eligibleMissing or ineligibleMissing prior to fetching
 func (ec *eligibilityComputer) computeEligibility(mspID string, pvtdataToRetrieve []*ledger.TxPvtdataInfo) (*pvtdataRetrievalInfo, error) {
 	sources := make(map[rwSetKey][]*peer.Endorsement)
