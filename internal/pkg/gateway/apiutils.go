@@ -45,7 +45,7 @@ func getChannelAndChaincodeFromSignedProposal(signedProposal *peer.SignedProposa
 	return channelHeader.ChannelId, spec.ChaincodeSpec.ChaincodeId.Name, len(payload.TransientMap) > 0, nil
 }
 
-func rpcError(code codes.Code, message string, details ...proto.Message) error {
+func newRpcError(code codes.Code, message string, details ...proto.Message) error {
 	st := status.New(code, message)
 	if len(details) != 0 {
 		std, err := st.WithDetails(details...)
@@ -58,7 +58,21 @@ func rpcError(code codes.Code, message string, details ...proto.Message) error {
 
 func wrappedRpcError(err error, message string, details ...proto.Message) error {
 	statusErr := status.Convert(err)
-	return rpcError(statusErr.Code(), message+": "+statusErr.Message(), details...)
+	return newRpcError(statusErr.Code(), message+": "+statusErr.Message(), details...)
+}
+
+func toRpcError(err error, unknownCode codes.Code) error {
+	errStatus, ok := status.FromError(err)
+	if ok {
+		return errStatus.Err()
+	}
+
+	errStatus = status.FromContextError(err)
+	if errStatus.Code() != codes.Unknown {
+		return errStatus.Err()
+	}
+
+	return status.Error(unknownCode, err.Error())
 }
 
 func errorDetail(e *endpointConfig, err error) *gp.ErrorDetail {
