@@ -8,8 +8,8 @@ package protoutil
 
 import (
 	"bytes"
-	b64 "encoding/base64"
 	"crypto/sha256"
+	b64 "encoding/base64"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/common"
@@ -203,8 +203,8 @@ func createTx(
 		}
 
 		if !bytes.Equal(a1, r.Payload) {
-			return nil, errors.Errorf("ProposalResponsePayloads do not match (base64):\n %s\n vs\n %s",
-						b64.StdEncoding.EncodeToString(r.Payload), b64.StdEncoding.EncodeToString(a1))
+			return nil, errors.Errorf("ProposalResponsePayloads do not match (base64): '%s' vs '%s'",
+				b64.StdEncoding.EncodeToString(r.Payload), b64.StdEncoding.EncodeToString(a1))
 		}
 	}
 

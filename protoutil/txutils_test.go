@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -175,14 +176,6 @@ func TestCreateSignedTx(t *testing.T) {
 		responses     []*pb.ProposalResponse
 		expectedError string
 	}{
-		// good responses, but different payloads
-		{
-			[]*pb.ProposalResponse{
-				{Payload: []byte("payload"), Response: &pb.Response{Status: int32(200)}},
-				{Payload: []byte("payload2"), Response: &pb.Response{Status: int32(200)}},
-			},
-			"ProposalResponsePayloads do not match",
-		},
 		// good response followed by bad response
 		{
 			[]*pb.ProposalResponse{
@@ -203,6 +196,16 @@ func TestCreateSignedTx(t *testing.T) {
 	for i, nonMatchingTest := range nonMatchingTests {
 		_, err = protoutil.CreateSignedTx(prop, signID, nonMatchingTest.responses...)
 		require.EqualErrorf(t, err, nonMatchingTest.expectedError, "Expected non-matching response error '%v' for test %d", nonMatchingTest.expectedError, i)
+	}
+
+	// good responses, but different payloads
+	responses = []*pb.ProposalResponse{
+		{Payload: []byte("payload"), Response: &pb.Response{Status: int32(200)}},
+		{Payload: []byte("payload2"), Response: &pb.Response{Status: int32(200)}},
+	}
+	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
+	if err == nil || strings.HasPrefix(err.Error(), "ProposalResponsePayloads do not match (base64):") == false {
+		require.FailNow(t, "Error is expected when response payloads do not match")
 	}
 
 	// no endorsement
