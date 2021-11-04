@@ -77,7 +77,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 			gs.registry.removeEndorser(endorser)
 			endorser = plan.retry(endorser)
 			if endorser == nil {
-				return nil, rpcError(codes.Aborted, "failed to evaluate transaction, see attached details for more info", errDetails...)
+				return nil, newRpcError(codes.Aborted, "failed to evaluate transaction, see attached details for more info", errDetails...)
 			}
 		}
 
@@ -88,7 +88,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 			endpointErr := errorDetail(endorser.endpointConfig, err)
 			errDetails = append(errDetails, endpointErr)
 			// this is a chaincode error response - don't retry
-			return nil, rpcError(codes.Aborted, "evaluate call to endorser returned error: "+response.Message, errDetails...)
+			return nil, newRpcError(codes.Aborted, "evaluate call to endorser returned error: "+response.Message, errDetails...)
 		}
 	}
 
@@ -176,7 +176,7 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 			}
 		}
 		if firstEndorser == nil || firstResponse == nil {
-			return nil, rpcError(codes.Aborted, "failed to endorse transaction, see attached details for more info", errDetails...)
+			return nil, newRpcError(codes.Aborted, "failed to endorse transaction, see attached details for more info", errDetails...)
 		}
 
 		// 3. Extract ChaincodeInterest and SBE policies
@@ -258,7 +258,7 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	}
 
 	if endorsements == nil {
-		return nil, rpcError(codes.Aborted, "failed to collect enough transaction endorsements, see attached details for more info", errorDetails...)
+		return nil, newRpcError(codes.Aborted, "failed to collect enough transaction endorsements, see attached details for more info", errorDetails...)
 	}
 
 	env, err := protoutil.CreateTx(proposal, endorsements...)
@@ -309,7 +309,7 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 		errDetails = append(errDetails, errorDetail(orderer.endpointConfig, err))
 	}
 
-	return nil, rpcError(codes.Aborted, "no orderers could successfully process transaction", errDetails...)
+	return nil, newRpcError(codes.Aborted, "no orderers could successfully process transaction", errDetails...)
 }
 
 func (gs *Server) broadcast(ctx context.Context, orderer *orderer, txn *common.Envelope) error {
@@ -363,7 +363,7 @@ func (gs *Server) CommitStatus(ctx context.Context, signedRequest *gp.SignedComm
 
 	txStatus, err := gs.commitFinder.TransactionStatus(ctx, request.ChannelId, request.TransactionId)
 	if err != nil {
-		return nil, status.Error(codes.FailedPrecondition, err.Error())
+		return nil, toRpcError(err, codes.FailedPrecondition)
 	}
 
 	response := &gp.CommitStatusResponse{

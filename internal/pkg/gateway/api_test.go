@@ -1198,6 +1198,16 @@ func TestCommitStatus(t *testing.T) {
 				BlockNumber: 101,
 			},
 		},
+		{
+			name:      "context timeout",
+			finderErr: context.DeadlineExceeded,
+			errString: "rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+		},
+		{
+			name:      "context canceled",
+			finderErr: context.Canceled,
+			errString: "rpc error: code = Canceled desc = context canceled",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1624,7 +1634,7 @@ func TestNilArgs(t *testing.T) {
 }
 
 func TestRpcErrorWithBadDetails(t *testing.T) {
-	err := rpcError(codes.InvalidArgument, "terrible error", nil)
+	err := newRpcError(codes.InvalidArgument, "terrible error", nil)
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "terrible error"))
 }
 
@@ -1741,7 +1751,6 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	dialer.Returns(nil, nil)
 	server.registry.endpointFactory = createEndpointFactory(t, epDef, dialer.Spy)
 
-	require.NoError(t, err, "Failed to sign the proposal")
 	ctx := context.WithValue(context.Background(), contextKey("orange"), "apples")
 
 	pt := &preparedTest{
