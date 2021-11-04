@@ -286,7 +286,7 @@ var _ = Describe("Endorser", func() {
 
 		It("returns the error, but with no payload encoded", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(MatchError("endorsing with plugin failed: fake-endorserment-error"))
 			Expect(proposalResponse.Payload).To(BeNil())
 			Expect(proposalResponse.Response).To(Equal(&pb.Response{
 				Status:  500,
@@ -337,7 +337,7 @@ var _ = Describe("Endorser", func() {
 
 		It("returns a response with the error", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(MatchError("fake-simulator-error"))
 			Expect(proposalResponse.Payload).To(BeNil())
 			Expect(proposalResponse.Response).To(Equal(&pb.Response{
 				Status:  500,
@@ -361,7 +361,7 @@ var _ = Describe("Endorser", func() {
 
 		It("returns a response with the error", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(MatchError("fake-history-error"))
 			Expect(proposalResponse.Payload).To(BeNil())
 			Expect(proposalResponse.Response).To(Equal(&pb.Response{
 				Status:  500,
@@ -478,7 +478,7 @@ var _ = Describe("Endorser", func() {
 
 		It("returns an error in the response", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(MatchError("make sure the chaincode chaincode-name has been successfully defined on channel channel-id and try again: fake-definition-error"))
 			Expect(proposalResponse.Response).To(Equal(&pb.Response{
 				Status:  500,
 				Message: "make sure the chaincode chaincode-name has been successfully defined on channel channel-id and try again: fake-definition-error",
@@ -508,7 +508,7 @@ var _ = Describe("Endorser", func() {
 
 		It("returns a response with the error and no payload", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(MatchError("error in simulation: fake-chaincode-execution-error"))
 			Expect(proposalResponse.Payload).To(BeNil())
 			Expect(proposalResponse.Response).To(Equal(&pb.Response{
 				Status:  500,
@@ -541,7 +541,7 @@ var _ = Describe("Endorser", func() {
 
 		It("returns a response with the error and no payload", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(MatchError("error in simulation: fake-private-data-error"))
 			Expect(proposalResponse.Payload).To(BeNil())
 			Expect(proposalResponse.Response).To(Equal(&pb.Response{
 				Status:  500,
@@ -564,7 +564,7 @@ var _ = Describe("Endorser", func() {
 
 		It("returns a response with the error and no payload", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(MatchError("error in simulation: failed to obtain ledger height for channel 'channel-id': fake-block-height-error"))
 			Expect(proposalResponse.Payload).To(BeNil())
 			Expect(proposalResponse.Response).To(Equal(&pb.Response{
 				Status:  500,
@@ -878,7 +878,7 @@ var _ = Describe("Endorser", func() {
 
 			It("returns an error to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(MatchError("error in simulation: lscc upgrade/deploy should not include a code packages"))
 				Expect(proposalResponse.Response).To(Equal(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: lscc upgrade/deploy should not include a code packages",
@@ -900,7 +900,7 @@ var _ = Describe("Endorser", func() {
 
 			It("returns an error to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(MatchError("error in simulation: Private data is forbidden to be used in instantiate"))
 				Expect(proposalResponse.Response).To(Equal(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: Private data is forbidden to be used in instantiate",
@@ -922,7 +922,7 @@ var _ = Describe("Endorser", func() {
 
 			It("returns an error to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(MatchError("error in simulation: bad simulation"))
 				Expect(proposalResponse.Response).To(Equal(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: bad simulation",
@@ -941,7 +941,7 @@ var _ = Describe("Endorser", func() {
 
 			It("returns an error to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(MatchError("error in simulation: proto: Marshal called with nil"))
 				Expect(proposalResponse.Response).To(Equal(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: proto: Marshal called with nil",
@@ -957,7 +957,7 @@ var _ = Describe("Endorser", func() {
 
 			It("returns an error and increments the metric", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(MatchError("error in simulation: fake-legacy-init-error"))
 				Expect(proposalResponse.Response).To(Equal(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: fake-legacy-init-error",
@@ -981,7 +981,7 @@ var _ = Describe("Endorser", func() {
 
 			It("triggers the legacy init, and returns the response from lscc", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(MatchError("error in simulation: attempting to deploy a system chaincode deploy-name/channel-id"))
 				Expect(proposalResponse.Response).To(Equal(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: attempting to deploy a system chaincode deploy-name/channel-id",
@@ -999,7 +999,7 @@ var _ = Describe("Endorser", func() {
 
 			It("returns an error to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(MatchError("error in simulation: error unmarshalling ChaincodeDeploymentSpec: unexpected EOF"))
 				Expect(proposalResponse.Response).To(Equal(&pb.Response{
 					Status:  500,
 					Message: "error in simulation: error unmarshalling ChaincodeDeploymentSpec: unexpected EOF",
@@ -1039,7 +1039,7 @@ var _ = Describe("Endorser", func() {
 
 		It("returns an error to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).To(MatchError("error in simulation: failed to obtain collections config: no collection config for chaincode \"myCC\""))
 			Expect(proposalResponse.Response).To(Equal(&pb.Response{
 				Status:  500,
 				Message: "error in simulation: failed to obtain collections config: no collection config for chaincode \"myCC\"",

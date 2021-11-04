@@ -135,7 +135,7 @@ var _ bool = Describe("PrivateData", func() {
 				},
 				WaitForEvent: true,
 			}
-			expectedErrMsg := `Error: endorsement failure during invoke. response: status:500 message:"error in simulation: failed to distribute private collection`
+			expectedErrMsg := `error in simulation: failed to distribute private collection`
 			invokeChaincodeExpectErr(network, network.Peer("Org1", "peer0"), command, expectedErrMsg)
 		})
 

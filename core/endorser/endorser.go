@@ -345,7 +345,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	pResp, err := e.ProcessProposalSuccessfullyOrError(up)
 	if err != nil {
 		endorserLogger.Warnw("Failed to invoke chaincode", "channel", up.ChannelHeader.ChannelId, "chaincode", up.ChaincodeName, "error", err.Error())
-		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
+		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
 	if pResp.Endorsement != nil || up.ChannelHeader.ChannelId == "" {
