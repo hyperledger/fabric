@@ -682,7 +682,7 @@ func TestEndorse(t *testing.T) {
 				"g2": {{endorser: peer2Mock, height: 5}},     // msp2
 			},
 			localResponse: "different_response",
-			errString:     "rpc error: code = Aborted desc = failed to assemble transaction: ProposalResponsePayloads do not match",
+			errString:     "rpc error: code = Aborted desc = failed to assemble transaction: ProposalResponsePayloads do not match (base64): 'EhQaEgjIARoNbW9ja19yZXNwb25zZQ==' vs 'EhkaFwjIARoSZGlmZmVyZW50X3Jlc3BvbnNl'",
 		},
 		{
 			name: "discovery fails",
