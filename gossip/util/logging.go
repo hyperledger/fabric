@@ -34,7 +34,7 @@ var (
 )
 
 // defaultTestSpec is the default logging level for gossip tests
-var defaultTestSpec = "WARNING"
+var defaultTestSpec = "DEBUG"
 
 type Logger interface {
 	Debug(args ...interface{})
