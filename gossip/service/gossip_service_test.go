@@ -50,7 +50,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-const TIMEOUT = 90 * time.Second
+const TIMEOUT = 45 * time.Second
 
 func init() {
 	util.SetupTestLogging()
@@ -298,16 +298,19 @@ func TestWithStaticDeliverClientNotLeader(t *testing.T) {
 	}
 	n := 2
 	gossips := startPeers(serviceConfig, n, 0, 1)
+	fmt.Printf("We have %d gossips\n", len(gossips))
 
 	channelName := "chanA"
 	peerIndexes := make([]int, n)
 	for i := 0; i < n; i++ {
 		peerIndexes[i] = i
 	}
-
+	fmt.Printf("About to add peers to channel %v\n", peerIndexes)
 	addPeersToChannel(channelName, gossips, peerIndexes)
+	fmt.Printf("Added peers to channel %v\n", peerIndexes)
 
 	waitForFullMembershipOrFailNow(t, channelName, gossips, n, TIMEOUT, time.Second*2)
+	fmt.Println("this far")
 
 	store := newTransientStore(t)
 	defer store.tearDown()
@@ -616,8 +619,11 @@ func waitForFullMembershipOrFailNow(t *testing.T, channel string, gossips []*gos
 	end := start.Add(timeout)
 	var correctPeers int
 	for time.Now().Before(end) {
+		fmt.Println("trying to check membership")
 		correctPeers = 0
 		for _, g := range gossips {
+			fmt.Printf("About to try with gossip %s\n", string(g.peerIdentity))
+			fmt.Printf("Found %d peers\n", len(g.PeersOfChannel(gossipcommon.ChannelID(channel))))
 			if len(g.PeersOfChannel(gossipcommon.ChannelID(channel))) == (peersNum - 1) {
 				correctPeers++
 			}
