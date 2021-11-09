@@ -82,7 +82,7 @@ func newServer(localEndorser peerproto.EndorserClient, discovery Discovery, find
 			localEndorser:      &endorser{client: localEndorser, endpointConfig: &endpointConfig{pkiid: localPKIID, address: localEndpoint, mspid: localMSPID}},
 			discovery:          discovery,
 			logger:             logger,
-			endpointFactory:    &endpointFactory{timeout: options.EndorsementTimeout},
+			endpointFactory:    &endpointFactory{timeout: options.DialTimeout},
 			remoteEndorsers:    map[string]*endorser{},
 			channelInitialized: map[string]bool{},
 		},
