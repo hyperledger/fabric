@@ -66,6 +66,7 @@ func (reg *registry) endorsementPlan(channel string, interest *peer.ChaincodeInt
 	// Also build a map of endorser pkiid to groupId
 	groupEndorsers := map[string][]*endorser{}
 	var preferredGroup string
+	var unavailableEndorsers []string
 
 	for group, peers := range descriptor.GetEndorsersByGroups() {
 		var groupPeers []*endorserState
@@ -88,6 +89,7 @@ func (reg *registry) endorsementPlan(channel string, interest *peer.ChaincodeInt
 			// find the endorser in the registry for this endpoint
 			endorser := reg.lookupEndorser(member.GetEndpoint(), member.GetPkiId(), channel)
 			if endorser == nil {
+				unavailableEndorsers = append(unavailableEndorsers, member.GetEndpoint())
 				continue
 			}
 			if endorser == preferredEndorser {
@@ -140,7 +142,7 @@ layout:
 	layouts := append(preferredLayouts, otherLayouts...)
 
 	if len(layouts) == 0 {
-		return nil, fmt.Errorf("failed to select a set of endorsers that satisfy the endorsement policy")
+		return nil, fmt.Errorf("failed to select a set of endorsers that satisfy the endorsement policy due to unavailability of peers: %v", unavailableEndorsers)
 	}
 
 	return newPlan(layouts, groupEndorsers), nil
