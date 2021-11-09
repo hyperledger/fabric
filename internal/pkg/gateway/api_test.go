@@ -175,8 +175,8 @@ var (
 	peer3Mock        = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("3"), address: "peer3:10051", mspid: "msp2"}}
 	peer4Mock        = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("4"), address: "peer4:11051", mspid: "msp3"}}
 	unavailable1Mock = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("5"), address: "unavailable1:12051", mspid: "msp1"}}
-	unavailable2Mock = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("6"), address: "unavailable1:13051", mspid: "msp1"}}
-	unavailable3Mock = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("7"), address: "unavailable1:14051", mspid: "msp1"}}
+	unavailable2Mock = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("6"), address: "unavailable2:13051", mspid: "msp1"}}
+	unavailable3Mock = &endorser{endpointConfig: &endpointConfig{pkiid: []byte("7"), address: "unavailable3:14051", mspid: "msp1"}}
 	endorsers        = map[string]*endorser{
 		localhostMock.address: localhostMock,
 		peer1Mock.address:     peer1Mock,
@@ -673,7 +673,8 @@ func TestEndorse(t *testing.T) {
 				{"g1": 1, "g3": 1},
 				{"g2": 1, "g3": 1},
 			},
-			errString: "rpc error: code = Unavailable desc = failed to select a set of endorsers that satisfy the endorsement policy",
+			// the following is a substring of the error message - the endpoints get listed in indeterminate order which would lead to flaky test
+			errString: "rpc error: code = Unavailable desc = failed to select a set of endorsers that satisfy the endorsement policy due to unavailability of peers",
 		},
 		{
 			name: "non-matching responses",
@@ -1774,7 +1775,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 }
 
 func checkError(t *testing.T, err error, errString string, details []*pb.ErrorDetail) {
-	require.EqualError(t, err, errString)
+	require.ErrorContains(t, err, errString)
 	s, ok := status.FromError(err)
 	require.True(t, ok, "Expected a gRPC status error")
 	require.Len(t, s.Details(), len(details))
