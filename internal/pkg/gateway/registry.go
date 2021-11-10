@@ -231,7 +231,7 @@ func (reg *registry) evaluator(channel string, chaincode string, targetOrgs []st
 		groupEndorsers := map[string][]*endorser{"g1": allEndorsers}
 		return newPlan(layout, groupEndorsers), nil
 	}
-	return nil, fmt.Errorf("no endorsing peers found for chaincode %s in channel %s", chaincode, channel)
+	return nil, fmt.Errorf("no peers available to evaluate chaincode %s in channel %s", chaincode, channel)
 }
 
 func sorter(e []*endorserState, host string) func(i, j int) bool {
