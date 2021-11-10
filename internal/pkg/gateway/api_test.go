@@ -198,7 +198,7 @@ func TestEvaluate(t *testing.T) {
 			name:      "no endorsers",
 			plan:      endorsementPlan{},
 			members:   []networkMember{},
-			errString: "rpc error: code = Unavailable desc = no endorsing peers found for chaincode test_chaincode in channel test_channel",
+			errString: "rpc error: code = Unavailable desc = no peers available to evaluate chaincode test_chaincode in channel test_channel",
 		},
 		{
 			name: "five endorsers, prefer local org",
@@ -277,7 +277,7 @@ func TestEvaluate(t *testing.T) {
 				{"id5", "peer4:11051", "msp3", 7},
 			},
 			transientData: map[string][]byte{"transient-key": []byte("transient-value")},
-			errString:     "rpc error: code = Unavailable desc = no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data: no endorsing peers found for chaincode test_chaincode in channel test_channel",
+			errString:     "rpc error: code = Unavailable desc = no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data: no peers available to evaluate chaincode test_chaincode in channel test_channel",
 		},
 		{
 			name: "evaluate with transient data and target (non-local) orgs should select the highest block height peer",
@@ -399,7 +399,7 @@ func TestEvaluate(t *testing.T) {
 					PKIid:    []byte("ill-defined"),
 				}})
 			},
-			errString: "rpc error: code = Unavailable desc = no endorsing peers found for chaincode test_chaincode in channel test_channel",
+			errString: "rpc error: code = Unavailable desc = no peers available to evaluate chaincode test_chaincode in channel test_channel",
 		},
 	}
 	for _, tt := range tests {
