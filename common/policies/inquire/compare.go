@@ -21,6 +21,7 @@ type ComparablePrincipal struct {
 	ou        *msp.OrganizationUnit
 	role      *msp.MSPRole
 	mspID     string
+	idBytes   []byte
 }
 
 // Equal returns whether this ComparablePrincipal is equal to the given ComparablePrincipal.
@@ -44,6 +45,8 @@ func NewComparablePrincipal(principal *msp.MSPPrincipal) *ComparablePrincipal {
 		return cp.ToRole()
 	case msp.MSPPrincipal_ORGANIZATION_UNIT:
 		return cp.ToOURole()
+	case msp.MSPPrincipal_IDENTITY:
+		return cp.ToIdentity()
 	}
 	mapping := msp.MSPPrincipal_Classification_name[int32(principal.PrincipalClassification)]
 	logger.Warning("Received an unsupported principal type:", principal.PrincipalClassification, "mapped to", mapping)
@@ -101,6 +104,10 @@ func (cp *ComparablePrincipal) IsA(other *ComparablePrincipal) bool {
 		return this.role.Role == other.role.Role
 	}
 
+	if this.principal.PrincipalClassification == msp.MSPPrincipal_IDENTITY {
+		return bytes.Equal(this.idBytes, other.idBytes) && this.mspID == other.mspID
+	}
+
 	// Else, we can't say anything, because we have no knowledge
 	// about the OUs that make up the MSP roles - so return false
 	return false
@@ -116,6 +123,19 @@ func (cp *ComparablePrincipal) ToOURole() *ComparablePrincipal {
 	}
 	cp.mspID = ouRole.MspIdentifier
 	cp.ou = ouRole
+	return cp
+}
+
+// ToIdentity converts this ComparablePrincipal to Identity principal, and returns nil on failure
+func (cp *ComparablePrincipal) ToIdentity() *ComparablePrincipal {
+	sID := &msp.SerializedIdentity{}
+	err := proto.Unmarshal(cp.principal.Principal, sID)
+	if err != nil {
+		logger.Warning("Failed unmarshalling principal:", err)
+		return nil
+	}
+	cp.mspID = sID.Mspid
+	cp.idBytes = sID.IdBytes
 	return cp
 }
 

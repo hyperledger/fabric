@@ -47,8 +47,17 @@ func TestNewComparablePrincipal(t *testing.T) {
 		require.Nil(t, NewComparablePrincipal(nil))
 	})
 
-	t.Run("Invalid principal type", func(t *testing.T) {
-		require.Nil(t, NewComparablePrincipal(identity(mspID)))
+	t.Run("Identity", func(t *testing.T) {
+		expectedPrincipal := &ComparablePrincipal{
+			mspID:   mspID,
+			idBytes: []byte("identity"),
+			principal: &msp.MSPPrincipal{
+				PrincipalClassification: msp.MSPPrincipal_IDENTITY,
+				Principal:               protoutil.MarshalOrPanic(&msp.SerializedIdentity{IdBytes: []byte("identity"), Mspid: mspID}),
+			},
+		}
+
+		require.Equal(t, expectedPrincipal, NewComparablePrincipal(identity(mspID, []byte("identity"))))
 	})
 
 	t.Run("Invalid principal input", func(t *testing.T) {
@@ -88,6 +97,9 @@ func TestNewComparablePrincipal(t *testing.T) {
 }
 
 func TestIsA(t *testing.T) {
+	id1 := NewComparablePrincipal(identity("Org1MSP", []byte("identity")))
+	id2 := NewComparablePrincipal(identity("Org2MSP", []byte("identity")))
+	id3 := NewComparablePrincipal(identity("Org1MSP", []byte("identity2")))
 	member1 := NewComparablePrincipal(member("Org1MSP"))
 	member2 := NewComparablePrincipal(member("Org2MSP"))
 	peer1 := NewComparablePrincipal(peer("Org1MSP"))
@@ -145,6 +157,15 @@ func TestIsA(t *testing.T) {
 	t.Run("OUs and Peers aren't the same", func(t *testing.T) {
 		require.False(t, ou1.IsA(peer1))
 	})
+	t.Run("Same identity", func(t *testing.T) {
+		require.True(t, id1.IsA(id1))
+	})
+	t.Run("Different identity bytes", func(t *testing.T) {
+		require.False(t, id1.IsA(id3))
+	})
+	t.Run("Different MSP ID", func(t *testing.T) {
+		require.False(t, id1.IsA(id2))
+	})
 }
 
 func TestIsFound(t *testing.T) {
@@ -160,8 +181,11 @@ func TestIsFound(t *testing.T) {
 
 func TestNewComparablePrincipalSet(t *testing.T) {
 	t.Run("Invalid principal", func(t *testing.T) {
-		principals := []*msp.MSPPrincipal{member("Org1MSP"), identity("Org1MSP")}
-		require.Nil(t, NewComparablePrincipalSet(policies.PrincipalSet(principals)))
+		idCP := NewComparablePrincipal(identity("Org1MSP", []byte("identity")))
+		principals := []*msp.MSPPrincipal{member("Org1MSP"), identity("Org1MSP", []byte("identity"))}
+		cps := NewComparablePrincipalSet(principals)
+		expected := ComparablePrincipalSet([]*ComparablePrincipal{member1, idCP})
+		require.Equal(t, expected, cps)
 	})
 
 	t.Run("Valid Principals", func(t *testing.T) {
@@ -195,9 +219,9 @@ func ou(orgName string) *msp.MSPPrincipal {
 	}
 }
 
-func identity(orgName string) *msp.MSPPrincipal {
+func identity(orgName string, idBytes []byte) *msp.MSPPrincipal {
 	return &msp.MSPPrincipal{
 		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
-		Principal:               protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: orgName, IdBytes: []byte("identity")}),
+		Principal:               protoutil.MarshalOrPanic(&msp.SerializedIdentity{Mspid: orgName, IdBytes: idBytes}),
 	}
 }
