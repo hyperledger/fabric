@@ -139,6 +139,32 @@ func TestCreateTx(t *testing.T) {
 	require.True(t, proto.Equal(signedTx, unsignedTx), "got: %#v, want: %#v", signedTx, unsignedTx)
 }
 
+func TestDeduplicateEndorsements(t *testing.T) {
+	proposal := &pb.Proposal{
+		Header: protoutil.MarshalOrPanic(&cb.Header{
+			ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+				Extension: protoutil.MarshalOrPanic(&pb.ChaincodeHeaderExtension{}),
+			}),
+		}),
+	}
+	responses := []*pb.ProposalResponse{
+		{Payload: []byte("payload"), Endorsement: &pb.Endorsement{Endorser: []byte{5, 4, 3}}, Response: &pb.Response{Status: int32(200)}},
+		{Payload: []byte("payload"), Endorsement: &pb.Endorsement{Endorser: []byte{5, 4, 3}}, Response: &pb.Response{Status: int32(200)}},
+	}
+
+	transaction, err := protoutil.CreateTx(proposal, responses...)
+	require.NoError(t, err)
+	require.True(t, proto.Equal(transaction, transaction), "got: %#v, want: %#v", transaction, transaction)
+
+	pl := protoutil.UnmarshalPayloadOrPanic(transaction.Payload)
+	tx, err := protoutil.UnmarshalTransaction(pl.Data)
+	require.NoError(t, err)
+	ccap, err := protoutil.UnmarshalChaincodeActionPayload(tx.Actions[0].Payload)
+	require.NoError(t, err)
+	require.Len(t, ccap.Action.Endorsements, 1)
+	require.Equal(t, []byte{5, 4, 3}, ccap.Action.Endorsements[0].Endorser)
+}
+
 func TestCreateSignedTx(t *testing.T) {
 	var err error
 	prop := &pb.Proposal{}

@@ -208,10 +208,23 @@ func createTx(
 		}
 	}
 
-	// fill endorsements
-	endorsements := make([]*peer.Endorsement, len(resps))
-	for n, r := range resps {
-		endorsements[n] = r.Endorsement
+	// fill endorsements according to their uniqueness
+	endorsersUsed := make(map[string]struct{})
+	var endorsements []*peer.Endorsement
+	for _, r := range resps {
+		if r.Endorsement == nil {
+			continue
+		}
+		key := string(r.Endorsement.Endorser)
+		if _, used := endorsersUsed[key]; used {
+			continue
+		}
+		endorsements = append(endorsements, r.Endorsement)
+		endorsersUsed[key] = struct{}{}
+	}
+
+	if len(endorsements) == 0 {
+		return nil, errors.Errorf("no endorsements")
 	}
 
 	// create ChaincodeEndorsedAction

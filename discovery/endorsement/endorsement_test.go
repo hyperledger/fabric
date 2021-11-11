@@ -256,11 +256,7 @@ func TestPeersForEndorsement(t *testing.T) {
 	t.Run("NoChaincodeMetadataFromLedger", func(t *testing.T) {
 		// Scenario VII: Policy is found, there are enough peers to satisfy the policy,
 		// but the chaincode metadata cannot be fetched from the ledger.
-		pb := principalBuilder{}
-		policy := pb.newSet().addPrincipal(peerRole("p0")).addPrincipal(peerRole("p6")).
-			newSet().addPrincipal(peerRole("p12")).buildPolicy()
 		g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
-		pf.On("PoliciesByChaincode", cc).Return(policy).Once()
 		mf := &metadataFetcher{}
 		mf.On("Metadata").Return(nil).Once()
 		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
@@ -908,6 +904,40 @@ func TestPeersForEndorsement(t *testing.T) {
 			peerIdentityString("p2"): {},
 		}, extractPeers(desc))
 	})
+
+	t.Run("Identity based endorsement policy doesn't interfere with discovery", func(t *testing.T) {
+		// Scenario XIX: Policy is based on either identities or on organizations
+		// 2 principal combinations:
+		// p0 and p6 (organizations), or p7 (identity)
+
+		pb := principalBuilder{}
+		policy := pb.newSet().addPrincipal(peerRole("p0")).addPrincipal(peerRole("p6")).
+			newSet().addPrincipal(identity("p7")).buildPolicy()
+		g.On("PeersOfChannel").Return(chanPeers.toMembers()).Once()
+		mf := &metadataFetcher{}
+		mf.On("Metadata").Return(&chaincode.Metadata{
+			Name:    cc,
+			Version: "1.0",
+		}).Once()
+		analyzer := NewEndorsementAnalyzer(g, pf, &principalEvaluatorMock{}, mf)
+
+		pf.On("PoliciesByChaincode", cc).Return(policy).Once()
+		desc, err := analyzer.PeersForEndorsement(channel, &peer.ChaincodeInterest{
+			Chaincodes: []*peer.ChaincodeCall{
+				{
+					Name: cc,
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, desc)
+		require.Len(t, desc.Layouts, 1)
+		require.Len(t, desc.Layouts[0].QuantitiesByGroup, 2)
+		require.Equal(t, map[string]struct{}{
+			peerIdentityString("p0"): {},
+			peerIdentityString("p6"): {},
+		}, extractPeers(desc))
+	})
 }
 
 func TestPeersAuthorizedByCriteria(t *testing.T) {
@@ -1202,6 +1232,16 @@ func peerRole(pkiID string) *msp.MSPPrincipal {
 	}
 }
 
+func identity(pkiID string) *msp.MSPPrincipal {
+	return &msp.MSPPrincipal{
+		PrincipalClassification: msp.MSPPrincipal_IDENTITY,
+		Principal: protoutil.MarshalOrPanic(&msp.SerializedIdentity{
+			Mspid:   pkiID2MSPID[pkiID],
+			IdBytes: []byte(pkiID),
+		}),
+	}
+}
+
 func (pi *peerInfo) withChaincode(name, version string) *peerInfo {
 	if pi.Properties == nil {
 		pi.Properties = &gossip.Properties{}
@@ -1278,13 +1318,24 @@ func (ip inquireablePolicy) SatisfiedBy() []policies.PrincipalSet {
 
 type principalEvaluatorMock struct{}
 
-func (pe *principalEvaluatorMock) SatisfiesPrincipal(channel string, identity []byte, principal *msp.MSPPrincipal) error {
-	peerRole := &msp.MSPRole{}
-	if err := proto.Unmarshal(principal.Principal, peerRole); err != nil {
-		return err
-	}
+func (pe *principalEvaluatorMock) SatisfiesPrincipal(_ string, identity []byte, principal *msp.MSPPrincipal) error {
 	sId := &msp.SerializedIdentity{}
 	if err := proto.Unmarshal(identity, sId); err != nil {
+		return err
+	}
+	if principal.PrincipalClassification == msp.MSPPrincipal_IDENTITY {
+		identityPrincipal := &msp.SerializedIdentity{}
+		if err := proto.Unmarshal(principal.Principal, identityPrincipal); err != nil {
+			return err
+		}
+		if proto.Equal(sId, identityPrincipal) {
+			return nil
+		}
+		return fmt.Errorf("identities do not match")
+	}
+	// Else, it's either an OU type or a role type, so we only classify by MSP ID
+	peerRole := &msp.MSPRole{}
+	if err := proto.Unmarshal(principal.Principal, peerRole); err != nil {
 		return err
 	}
 	if peerRole.MspIdentifier == sId.Mspid {
