@@ -298,6 +298,9 @@ func (e *Endorser) preProcess(up *UnpackedProposal, channel *Channel) error {
 }
 
 // ProcessProposal process the Proposal
+// Errors related to the proposal itself are returned with an error that results in a grpc error.
+// Errors related to proposal processing (either infrastructure errors or chaincode errors) are returned with a nil error,
+// clients are expected to look at the ProposalResponse response status code (e.g. 500) and message.
 func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedProposal) (*pb.ProposalResponse, error) {
 	// start time for computing elapsed time metric for successfully endorsed proposals
 	startTime := time.Now()
@@ -345,6 +348,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	pResp, err := e.ProcessProposalSuccessfullyOrError(up)
 	if err != nil {
 		endorserLogger.Warnw("Failed to invoke chaincode", "channel", up.ChannelHeader.ChannelId, "chaincode", up.ChaincodeName, "error", err.Error())
+		// Return a nil error since clients are expected to look at the ProposalResponse response status code (500) and message.
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, nil
 	}
 
