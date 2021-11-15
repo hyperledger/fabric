@@ -76,8 +76,8 @@ func toRpcError(err error, unknownCode codes.Code) error {
 	return status.Error(unknownCode, err.Error())
 }
 
-func errorDetail(e *endpointConfig, err error) *gp.ErrorDetail {
-	return &gp.ErrorDetail{Address: e.address, MspId: e.mspid, Message: err.Error()}
+func errorDetail(e *endpointConfig, msg string) *gp.ErrorDetail {
+	return &gp.ErrorDetail{Address: e.address, MspId: e.mspid, Message: msg}
 }
 
 func getResultFromProposalResponse(proposalResponse *peer.ProposalResponse) ([]byte, error) {

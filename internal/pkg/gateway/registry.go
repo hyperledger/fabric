@@ -371,6 +371,9 @@ func (reg *registry) connectChannelPeers(channel string, force bool) error {
 	return nil
 }
 
+// removeEndorser closes the connection and removes from the registry, but if the next call to discovery returns that
+// peer in its plan, then it will attempt to reconnect and add it back. This could happen if the peer had gone down,
+// but the gossip has not notified the discovery service yet.
 func (reg *registry) removeEndorser(endorser *endorser) {
 	if endorser == reg.localEndorser {
 		// nothing to close

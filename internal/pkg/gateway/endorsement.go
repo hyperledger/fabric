@@ -123,9 +123,9 @@ func (p *plan) update(endorser *endorser, endorsement *peer.ProposalResponse) []
 	return nil
 }
 
-// Invoke retry if an endorsement fails for the given endorser.
+// Invoke nextPeerInGroup if an endorsement fails for the given endorser.
 // Returns the next endorser in the same group as given endorser with which to retry the proposal, or nil if there are no more.
-func (p *plan) retry(endorser *endorser) *endorser {
+func (p *plan) nextPeerInGroup(endorser *endorser) *endorser {
 	p.planLock.Lock()
 	defer p.planLock.Unlock()
 
