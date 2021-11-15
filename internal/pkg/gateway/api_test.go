@@ -316,11 +316,11 @@ func TestEvaluate(t *testing.T) {
 				proposalResponseStatus:  400,
 				proposalResponseMessage: "Mock chaincode error",
 			},
-			errString: "rpc error: code = Aborted desc = evaluate call to endorser returned error: Mock chaincode error",
+			errString: "rpc error: code = Aborted desc = evaluate call to endorser returned error: chaincode response 400, Mock chaincode error",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer1:8051",
 				MspId:   "msp1",
-				Message: "error 400 returned from chaincode test_chaincode on channel test_channel: Mock chaincode error",
+				Message: "chaincode response 400, Mock chaincode error",
 			}},
 		},
 		{
@@ -338,8 +338,8 @@ func TestEvaluate(t *testing.T) {
 				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				def.localEndorser.ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad local endorser"))
-				peer1Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer1 endorser"))
+				def.localEndorser.ProcessProposalReturns(createErrorResponse(t, 500, "bad local endorser", nil), nil)
+				peer1Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(createErrorResponse(t, 500, "bad peer1 endorser", nil), nil)
 			},
 			expectedEndorsers: []string{"peer4:11051"},
 		},
@@ -358,8 +358,8 @@ func TestEvaluate(t *testing.T) {
 				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
-				def.localEndorser.ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad local endorser"))
-				peer1Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer1 endorser"))
+				def.localEndorser.ProcessProposalReturns(createErrorResponse(t, 500, "bad local endorser", nil), nil)
+				peer1Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(createErrorResponse(t, 500, "bad peer1 endorser", nil), nil)
 			},
 			endorsingOrgs: []string{"msp1"},
 			errString:     "rpc error: code = Aborted desc = failed to evaluate transaction, see attached details for more info",
@@ -367,12 +367,72 @@ func TestEvaluate(t *testing.T) {
 				{
 					Address: "localhost:7051",
 					MspId:   "msp1",
-					Message: "rpc error: code = Aborted desc = bad local endorser",
+					Message: "bad local endorser",
 				},
 				{
 					Address: "peer1:8051",
 					MspId:   "msp1",
-					Message: "rpc error: code = Aborted desc = bad peer1 endorser",
+					Message: "bad peer1 endorser",
+				},
+			},
+		},
+		{
+			name: "fails due to invalid signature (pre-process check) - does not retry",
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 4},
+				{"id2", "peer1:8051", "msp1", 4},
+				{"id3", "peer2:9051", "msp2", 3},
+				{"id4", "peer3:10051", "msp2", 4},
+				{"id5", "peer4:11051", "msp3", 5},
+			},
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
+				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.localEndorser.ProcessProposalReturns(createErrorResponse(t, 500, "invalid signature", nil), fmt.Errorf("invalid signature"))
+			},
+			endorsingOrgs: []string{"msp1"},
+			errString:     "rpc error: code = Aborted desc = evaluate call to endorser returned error: invalid signature",
+			errDetails: []*pb.ErrorDetail{
+				{
+					Address: "localhost:7051",
+					MspId:   "msp1",
+					Message: "invalid signature",
+				},
+			},
+		},
+		{
+			name: "fails due to chaincode panic - retry on next peer",
+			members: []networkMember{
+				{"id1", "localhost:7051", "msp1", 4},
+				{"id2", "peer1:8051", "msp1", 4},
+				{"id3", "peer2:9051", "msp2", 3},
+				{"id4", "peer3:10051", "msp2", 4},
+				{"id5", "peer4:11051", "msp3", 5},
+			},
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
+				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
+				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				def.localEndorser.ProcessProposalReturns(createErrorResponse(t, 500, "error in simulation: chaincode stream terminated", nil), nil)
+				peer1Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(createErrorResponse(t, 500, "error in simulation: chaincode stream terminated", nil), nil)
+			},
+			endorsingOrgs: []string{"msp1"},
+			errString:     "rpc error: code = Aborted desc = failed to evaluate transaction, see attached details for more info",
+			errDetails: []*pb.ErrorDetail{
+				{
+					Address: "localhost:7051",
+					MspId:   "msp1",
+					Message: "error in simulation: chaincode stream terminated",
+				},
+				{
+					Address: "peer1:8051",
+					MspId:   "msp1",
+					Message: "error in simulation: chaincode stream terminated",
 				},
 			},
 		},
@@ -779,12 +839,12 @@ func TestEndorse(t *testing.T) {
 				{
 					Address: "localhost:7051",
 					MspId:   "msp1",
-					Message: "error 400, Mock chaincode error",
+					Message: "chaincode response 400, Mock chaincode error",
 				},
 				{
 					Address: "peer1:8051",
 					MspId:   "msp1",
-					Message: "error 400, Mock chaincode error",
+					Message: "chaincode response 400, Mock chaincode error",
 				},
 			},
 		},
@@ -805,7 +865,7 @@ func TestEndorse(t *testing.T) {
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer4:11051",
 				MspId:   "msp3",
-				Message: "error 400, Mock chaincode error",
+				Message: "chaincode response 400, Mock chaincode error",
 			}},
 		},
 		{
@@ -1653,7 +1713,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		epDef = defaultEndpointDef
 	}
 	if epDef.proposalError != nil {
-		localEndorser.ProcessProposalReturns(nil, epDef.proposalError)
+		localEndorser.ProcessProposalReturns(createErrorResponse(t, 500, epDef.proposalError.Error(), nil), nil)
 	} else {
 		localEndorser.ProcessProposalReturns(createProposalResponseWithInterest(t, localhostMock.address, localResponse, epDef.proposalResponseStatus, epDef.proposalResponseMessage, tt.interest), nil)
 	}
@@ -1661,7 +1721,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	for _, e := range endorsers {
 		e.client = &mocks.EndorserClient{}
 		if epDef.proposalError != nil {
-			e.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, epDef.proposalError)
+			e.client.(*mocks.EndorserClient).ProcessProposalReturns(createErrorResponse(t, 500, epDef.proposalError.Error(), nil), nil)
 		} else {
 			e.client.(*mocks.EndorserClient).ProcessProposalReturns(createProposalResponseWithInterest(t, e.address, epDef.proposalResponseValue, epDef.proposalResponseStatus, epDef.proposalResponseMessage, tt.interest), nil)
 		}
@@ -2001,6 +2061,16 @@ func createProposalResponseWithInterest(t *testing.T, endorser, value string, st
 		response.Interest = interest
 	}
 	return response
+}
+
+func createErrorResponse(t *testing.T, status int32, errMessage string, payload []byte) *peer.ProposalResponse {
+	return &peer.ProposalResponse{
+		Response: &peer.Response{
+			Status:  status,
+			Payload: payload,
+			Message: errMessage,
+		},
+	}
 }
 
 func marshal(msg proto.Message, t *testing.T) []byte {

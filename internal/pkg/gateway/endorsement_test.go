@@ -60,13 +60,13 @@ func TestSingleLayoutRetry(t *testing.T) {
 	response2 := &peer.ProposalResponse{Payload: []byte("p2")}
 	response3 := &peer.ProposalResponse{Payload: []byte("p3")}
 
-	retry := plan.retry(localhostMock)
+	retry := plan.nextPeerInGroup(localhostMock)
 	require.Equal(t, peer1Mock, retry)
 	endorsements := plan.update(retry, response1)
 	require.Nil(t, endorsements)
 	endorsements = plan.update(peer2Mock, response2)
 	require.Nil(t, endorsements)
-	retry = plan.retry(peer3Mock)
+	retry = plan.nextPeerInGroup(peer3Mock)
 	require.Equal(t, peer4Mock, retry)
 	endorsements = plan.update(retry, response3)
 	require.Len(t, endorsements, 3)
@@ -95,7 +95,7 @@ func TestMultiLayoutRetry(t *testing.T) {
 	response2 := &peer.ProposalResponse{Payload: []byte("p2")}
 
 	// localhost (g1) fails, returns peer1 to retry
-	retry := plan.retry(localhostMock)
+	retry := plan.nextPeerInGroup(localhostMock)
 	require.Equal(t, peer1Mock, retry)
 
 	// peer2 (g2) succeeds
@@ -103,7 +103,7 @@ func TestMultiLayoutRetry(t *testing.T) {
 	require.Nil(t, endorsements)
 
 	// peer1 (g1) also fails - returns nil, since no more peers in g1
-	retry = plan.retry(retry)
+	retry = plan.nextPeerInGroup(retry)
 	require.Nil(t, retry)
 
 	// get endorsers for next layout - should be layout 3 because second layout also required g1
@@ -143,11 +143,11 @@ func TestMultiLayoutFailures(t *testing.T) {
 	require.Nil(t, endorsements)
 
 	// peer2 (g2) fails - returns peer3 to retry
-	retry := plan.retry(peer2Mock)
+	retry := plan.nextPeerInGroup(peer2Mock)
 	require.Equal(t, peer3Mock, retry)
 
 	// peer4 (g3) also fails - returns nil, since no more peers in g3
-	g3retry := plan.retry(peer4Mock)
+	g3retry := plan.nextPeerInGroup(peer4Mock)
 	require.Nil(t, g3retry)
 
 	// retry g2 - succeeds
@@ -162,7 +162,7 @@ func TestMultiLayoutFailures(t *testing.T) {
 	require.Equal(t, peer1Mock, endorsers[0])
 
 	// this one fails too
-	retry = plan.retry(peer1Mock)
+	retry = plan.nextPeerInGroup(peer1Mock)
 	// no more in this group
 	require.Nil(t, retry)
 	endorsers = plan.endorsers()
