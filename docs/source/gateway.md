@@ -1,10 +1,10 @@
 # Fabric Gateway
 
-Fabric Gateway is a service, introduced in Hyperledger Fabric v2.4, that provides a simplified, minimal API for submitting transactions to a Fabric network. Requirements previously placed on the client SDKs, such as specifying specific endorsement peers, are migrated to a single Fabric Gateway peer to enable simplified application development in v2.4.
+Fabric Gateway is a service, introduced in Hyperledger Fabric v2.4 peers, that provides a simplified, minimal API for submitting transactions to a Fabric network. Requirements previously placed on the client SDKs, such as gathering transaction endorsements from peers of various organizations, are delegated to the Fabric Gateway service running within a peer to enable simplified application development and transaction submission in v2.4.
 
 ## Writing client applications
 
-Starting with Fabric v2.4, client applications should use a v2.4 SDK (Go, Node, or Java), which are optimized to interact with the Fabric Gateway. These SDKs expose the same high-level programming model which was initially introduced in Fabric v1.4.
+Starting with Fabric v2.4, client applications should use one of the gateway SDKs (Go, Node, or Java), which are optimized to interact with the Fabric Gateway. These SDKs expose the same high-level programming model which was initially introduced in Fabric v1.4.
 
 Fabric Gateway (aka *the gateway*) manages the following transaction steps:
 
@@ -20,7 +20,7 @@ get the commit (validation/invalidation) status code.
 - Receive **chaincode events**. This will allow client applications to respond to events that are emitted by a smart contract
 function when a transaction is committed to the ledger.
 
-The gateway SDKs combine the Endorse/Submit/CommitStatus actions into a single blocking SubmitTransaction function to support transaction submission with a single line of code. Alternatively, the individual actions can be invoked to support flexible application patterns.
+The gateway SDKs combine the Endorse/Submit/CommitStatus actions into a single blocking **SubmitTransaction** function to support transaction submission with a single line of code. Alternatively, the individual actions can be invoked to support flexible application patterns.
 
 ## Software Development Kits (SDKs)
 
@@ -32,9 +32,9 @@ but this is *not* an admin API].
 
 Hyperledger Fabric currently supports client application development in three languages:
 
-- **Go**.  See the [Go SDK documentation](https://pkg.go.dev/github.com/hyperledger/fabric-gateway/pkg/client) for full details.
-- **Node (Typescript/Javascript)**.  See the [Node SDK documentation](https://hyperledger.github.io/fabric-gateway/main/api/node/) for full details.
-- **Java**. See the [Java SDK documentation](https://hyperledger.github.io/fabric-gateway/main/api/java/) for full details.
+- **Go**.  See the [Go SDK for Fabric Gateway documentation](https://pkg.go.dev/github.com/hyperledger/fabric-gateway/pkg/client) for full details.
+- **Node (Typescript/Javascript)**.  See the [Node SDK for Fabric Gateway documentation](https://hyperledger.github.io/fabric-gateway/main/api/node/) for full details.
+- **Java**. See the [Java SDK for Fabric Gateway documentation](https://hyperledger.github.io/fabric-gateway/main/api/java/) for full details.
 
 ## How the gateway endorses your transaction proposal
 
@@ -60,13 +60,17 @@ stored on the endorsement peer's ledger).
 - The captured policy information is assembled into a `ChaincodeInterest` protobuf structure and passed to the discovery service in order to derive an endorsement plan specific to the proposed transaction.
 - The gateway applies the endorsement plan by requesting endorsement from the organizations required to satisfy all policies in the plan. For each organization, the gateway peer requests endorsement from the (available) peer with the highest block height.
 
-The gateway is dependent on the [discovery service](discovery-overview.html) to get the connection details of both the available peers and ordering service nodes, and for calculating the combination of peers that are required to endorse the transaction proposal. The discovery service must therefore always remain enabled on the Fabric Gateway peer.
+The gateway is dependent on the [discovery service](discovery-overview.html) to get the connection details of both the available peers and ordering service nodes, and for calculating the combination of peers that are required to endorse the transaction proposal. The discovery service must therefore always remain enabled on peers where the gateway service is enabled.
 
-The gateway endorsement process is more restrictive for transient data because it often contains sensitive or personal information that must not persist in the ledger. In this case, the gateway will restrict the set of endorsing organizations to those that are members of the private data collection to be accessed (either read or write). If this restriction for transient data results in failed endorsement, the gateway rejects the transaction proposal. If rejected, the client should [explicitly define which organizations should endorse](#how-to-override-endorsement-policy-detection) the transaction, which must be restricted to members of the private data collection.
+The gateway endorsement process is more restrictive for private data passed in the proposal as transient data because it often contains sensitive or personal information that must not be passed to peers of all organizations. In this case, the gateway will restrict the set of endorsing organizations to those that are members of the private data collection to be accessed (either read or write). If this restriction for transient data would not satisfy the endorsement policy, the gateway returns an error to the client rather than forwarding the private data to organizations that may not be authorized to access the private data. In these cases, client applications should be written to [explicitly define which organizations should endorse](#targeting-specific-endorsement-peers) the transaction.
 
 ### Targeting specific endorsement peers
 
-In some cases, a client application must explicitly identify the specific organizations to evaluate or endorse a transaction proposal. Transient data, for example, often contains personal or sensitive information that must only be written to a shared private data collection. In these cases, the client application can explicitly specify the endorsing organizations; the gateway will select the available peer with the highest block count from each organization. However, if the inclusion of an organization violates a required endorsement policy, then the transaction is invalidated by all of the requested endorsing peers. This failed endorsement is recorded on the ledger but no transaction writes will exist in the state database.
+In some cases, a client application must explicitly select the organizations to evaluate or endorse a transaction proposal.
+For example, transient data often contains personal or sensitive information which must be written only to a private data collection, thereby limiting the pool of endorsement organizations.
+In these cases, the client application can explicitly specify the endorsing organizations to meet both the privacy and endorsement requirements of the application; the gateway will then select the (available) endorsing peer with the highest block count from each specified organization.
+However, if the client specifies a set of organizations that does not satisfy an endorsement policy, the transaction may still get endorsed by the specified peers and submitted for ordering, but the transaction will later be invalidated by all peers in the channel during the validation and commit phase.
+This invalidated transaction is recorded on the ledger but the transaction's updates are not written to the state database on any channel peer.
 
 ### Retry and error handling
 
@@ -82,9 +86,9 @@ The Fabric Gateway manages gRPC connections to network peer and ordering nodes. 
 
 #### Timeouts
 
-The Fabric Gateway `Evaluate` and `Endorse` methods make gRPC requests to peers external to the gateway. In order to limit the length of time that the client must wait for these collective responses, the `EndorsementTimeout` value can be overridden in the gateway section of the [peer config file](https://github.com/hyperledger/fabric/blob/main/sampleconfig/core.yaml#L55).
+The Fabric Gateway `Evaluate` and `Endorse` methods make gRPC requests to peers external to the gateway. In order to limit the length of time that the client must wait for these collective responses, the `peer.gateway.endorsementTimeout` value can be overridden in the gateway section of the peer `core.yaml` configuration file.
 
-Each SDK also provides a mechanism for setting timeouts for each gateway method when invoked from the client application.
+Each Gateway SDK also provides a mechanism for setting timeouts for each gateway method when invoked from the client application.
 
 ## Listening for events
 
