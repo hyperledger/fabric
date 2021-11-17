@@ -1,12 +1,12 @@
 # Fabric Gateway
 
-Fabric Gateway is a service, introduced in Hyperledger Fabric v2.4 peers, that provides a simplified, minimal API for submitting transactions to a Fabric network. Requirements previously placed on the client SDKs, such as gathering transaction endorsements from peers of various organizations, are delegated to the Fabric Gateway service running within a peer to enable simplified application development and transaction submission in v2.4.
+Fabric Gateway (the gateway) is a service, introduced in Hyperledger Fabric v2.4, which provides a simplified, minimal API for submitting transactions to a Fabric network. Requirements previously placed on the client application, such as managing transaction endorsements, are delegated to a gateway peer to provide simplified application development and transaction submission in v2.4.
 
 ## Writing client applications
 
-Starting with Fabric v2.4, client applications should use one of the gateway SDKs (Go, Node, or Java), which are optimized to interact with the Fabric Gateway. These SDKs expose the same high-level programming model which was initially introduced in Fabric v1.4.
+Starting with Fabric v2.4, client applications should use a gateway SDK (Go, Node, or Java), which are optimized to interact with Fabric Gateway. The gateway SDKs expose the same high-level programming model which was initially introduced in Fabric v1.4.
 
-Fabric Gateway (aka *the gateway*) manages the following transaction steps:
+The gateway manages the following transaction steps:
 
 - **Evaluate** a transaction proposal. This will invoke a smart contract (chaincode) function on a single peer and return the result to the client. This is typically used to query the current state of the ledger without making any ledger updates.
 The gateway will preferably select a peer in the same organization as the gateway peer and choose the peer
@@ -20,15 +20,11 @@ get the commit (validation/invalidation) status code.
 - Receive **chaincode events**. This will allow client applications to respond to events that are emitted by a smart contract
 function when a transaction is committed to the ledger.
 
-The gateway SDKs combine the Endorse/Submit/CommitStatus actions into a single blocking **SubmitTransaction** function to support transaction submission with a single line of code. Alternatively, the individual actions can be invoked to support flexible application patterns.
+The gateway SDKs combine the Endorse/Submit/CommitStatus actions into a single blocking **SubmitTransaction** function to support transaction submission with a single line of code. Alternatively, the individual actions can be invoked.
 
 ## Software Development Kits (SDKs)
 
-The Gateway and its SDKs are designed to allow you, as a client application developer, to concentrate on the *business logic*
-of your application without having to concern yourself with the *infrastructure logic* associated with a Fabric network.
-As such, the APIs provide logical abstractions such as *organization* and *contract* rather than operational abstractions
-such as *peer* and *chaincode*. [Side note - clearly an admin API would want to expose these operational abstractions,
-but this is *not* an admin API].
+Fabric Gateway and its SDKs are designed to allow you, as a client application developer, to concentrate on the *business logic* of your application without having to concern yourself with the *infrastructure logic* associated with a Fabric network. As such, the APIs provide logical abstractions such as *organization* and *contract* rather than operational abstractions such as *peer* and *chaincode*. (The Fabric Gateway API is not a system admin API which would expose these operational abstractions.)
 
 Hyperledger Fabric currently supports client application development in three languages:
 
@@ -38,39 +34,32 @@ Hyperledger Fabric currently supports client application development in three la
 
 ## How the gateway endorses your transaction proposal
 
-In order for a transaction to be successfully committed to the ledger, a sufficient number of endorsements are required in order to satisfy
-the [endorsement policy](endorsement-policies.html). Getting an endorsement from an organization involves connecting to one
-of its peers and have it simulate (execute) the transaction proposal against its copy of the ledger. The peer simulates the transaction by invoking the chaincode function, as specified by its name and arguments in the proposal, and building (and signing) a read-write set. The read-write set contains the current ledger state and proposed changes in response to the state get/set instructions in that function.
+For a transaction to be successfully committed to the ledger, a sufficient number of endorsements, from the required organizations, must be received to satisfy the [endorsement policy](endorsement-policies.html). Getting an endorsement from an organization involves connecting to one of its peers to have it simulate (execute) the transaction proposal against its copy of the ledger. The peer simulates the transaction by invoking the chaincode function, as specified by its name and arguments in the proposal, and building (and signing) a read-write set. The read-write set contains the current ledger state and proposed changes in response to the state get/set instructions in that function.
 
-The endorsement policy, or sum of multiple policies, that gets applied to a transaction depends on the implementation of the chaincode function that is being invoked, and could be a combination of the following:
+The endorsement policy, or sum of endorsement policies, that gets applied to a transaction depends on the implementation of the chaincode function that is being invoked, and could be a combination of the following:
 
-- **Chaincode endorsement policies**. These are the policies agreed to by channel members when they approve a chaincode definition for their organization. If the chaincode function invokes a function in another chaincode, then both policies will need to be satisfied.
-- **Private data collection endorsement policies**. If the chaincode function writes to a state in a private data collection,
-then the endorsement policy for that collection will override the chaincode policy for that state. If the chaincode function reads from a private data collection, then it will be restricted to organizations that are members of that collection.
-- **State-based endorsement (SBE) policies**. Also known as key-level signature policies, these can be applied to individual
-states and will override the chaincode policy or collection policy for private data collection states. The endorsement policies themselves are stored in the ledger and can be updated by new transactions.
+- **Chaincode endorsement policies**. These are the policies agreed to by channel members when they approve a chaincode definition for their organization. If the chaincode function invokes a function in another chaincode, then both policies must be satisfied.
+- **Private data collection endorsement policies**. If the chaincode function writes to a state in a private data collection, then the endorsement policy for that collection will override the chaincode policy for that state. If the chaincode function reads from a private data collection, it will be restricted to organizations that are members of that collection.
+- **State-based endorsement (SBE) policies**. Also known as key-level signature policies, these can be applied to individual states and will override the chaincode policy or collection policy for private data collection states. The endorsement policies are stored in the ledger and can be updated by new transactions.
 
 The combination of endorsement policies to be applied to the transaction proposal is determined at chaincode runtime and cannot necessarily be derived from static analysis.
 
 The Fabric Gateway manages the complexity of transaction endorsement on behalf of the client, using the following process:
 
-- The Fabric Gateway selects the endorsing peer from the gateway peer's organization (MSPID) by identifying the (available) peer with the highest ledger block height. The assumption is that all peers within the gateway peer's organization are *trusted* by the client application that connects to the gateway peer.
-- The transaction proposal is simulated on the selected endorsement peer. This simulation captures information about the accessed states, and therefore the endorsement policies to be combined (including any individual state-based policies
-stored on the endorsement peer's ledger).  
+- Fabric Gateway selects the endorsing peer from the gateway peer's organization (MSPID) by identifying the (available) peer with the highest ledger block height. The assumption is that all peers within the gateway peer's organization are *trusted* by the client application that connects to the gateway peer.
+- The transaction proposal is simulated on the selected endorsement peer. This simulation captures information about the accessed states, and therefore the endorsement policies to be combined (including any individual state-based policies stored on the endorsement peer's ledger).  
 - The captured policy information is assembled into a `ChaincodeInterest` protobuf structure and passed to the discovery service in order to derive an endorsement plan specific to the proposed transaction.
 - The gateway applies the endorsement plan by requesting endorsement from the organizations required to satisfy all policies in the plan. For each organization, the gateway peer requests endorsement from the (available) peer with the highest block height.
 
 The gateway is dependent on the [discovery service](discovery-overview.html) to get the connection details of both the available peers and ordering service nodes, and for calculating the combination of peers that are required to endorse the transaction proposal. The discovery service must therefore always remain enabled on peers where the gateway service is enabled.
 
-The gateway endorsement process is more restrictive for private data passed in the proposal as transient data because it often contains sensitive or personal information that must not be passed to peers of all organizations. In this case, the gateway will restrict the set of endorsing organizations to those that are members of the private data collection to be accessed (either read or write). If this restriction for transient data would not satisfy the endorsement policy, the gateway returns an error to the client rather than forwarding the private data to organizations that may not be authorized to access the private data. In these cases, client applications should be written to [explicitly define which organizations should endorse](#targeting-specific-endorsement-peers) the transaction.
+### Endorsing private data
 
-### Targeting specific endorsement peers
+The gateway endorsement process is more restrictive for private data, passed in a transaction proposal as transient data, because it often contains sensitive or personal information that must never be shared with all organizations. In this case, the gateway will restrict the set of endorsing organizations to only members of the private data collection to be accessed (either read or write). If this restriction for private data would not satisfy the endorsement policy, the gateway returns an error to the client and does not submit the transaction to any organization for endorsement. In this case, the client application must explicitly [specify the organizations](#targeting-specific-endorsement-peers) to request endorsement from.
 
-In some cases, a client application must explicitly select the organizations to evaluate or endorse a transaction proposal.
-For example, transient data often contains personal or sensitive information which must be written only to a private data collection, thereby limiting the pool of endorsement organizations.
-In these cases, the client application can explicitly specify the endorsing organizations to meet both the privacy and endorsement requirements of the application; the gateway will then select the (available) endorsing peer with the highest block count from each specified organization.
-However, if the client specifies a set of organizations that does not satisfy an endorsement policy, the transaction may still get endorsed by the specified peers and submitted for ordering, but the transaction will later be invalidated by all peers in the channel during the validation and commit phase.
-This invalidated transaction is recorded on the ledger but the transaction's updates are not written to the state database on any channel peer.
+### Specifying endorsement organizations
+
+A client application can explicitly specify the endorsing organizations to meet both the privacy and endorsement requirements of the application; the gateway will then select the (available) endorsing peer with the highest block count in each specified organization. If the client specifies a set of organizations that does not satisfy an endorsement policy, the transaction can still receive endorsement from the specified peers and be submitted for ordering. However, the transaction will ultimately be rejected by all peers in the channel, during the validation and commit phase. The invalidated transaction is recorded on the channel ledger, but its results are not written to the state database on any peer.
 
 ### Retry and error handling
 
@@ -82,7 +71,7 @@ The gateway will use discovery service information to retry any transaction that
 
 #### Error handling
 
-The Fabric Gateway manages gRPC connections to network peer and ordering nodes. If a gateway service request error originates from a network peer or ordering node (i.e. external to the gateway), the gateway returns error, endpoint, and organization (MSPID) information to the client in the message `Details` field. If the `Details` field is empty, then the error originated from the gateway peer.
+The Fabric Gateway manages gRPC connections to network peer and ordering nodes. If a gateway service request error originates from a network peer or ordering node (i.e. external to the gateway service), the gateway returns error, endpoint, and organization (MSPID) information to the client in the message `Details` field. If the `Details` field is empty, then the error originated from the gateway peer.
 
 #### Timeouts
 
