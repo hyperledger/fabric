@@ -179,7 +179,10 @@ var _ = Describe("GatewayService", func() {
 		_, err = gatewayClient.Submit(ctx, submitRequest)
 		Expect(err).NotTo(HaveOccurred())
 
-		return endorseResponse.Result, transactionID
+		chaincodeAction, err := protoutil.GetActionFromEnvelopeMsg(endorseResponse.GetPreparedTransaction())
+		Expect(err).NotTo(HaveOccurred())
+
+		return chaincodeAction.GetResponse(), transactionID
 	}
 
 	commitStatus := func(transactionID string, identity func() ([]byte, error), sign func(msg []byte) ([]byte, error)) (*gateway.CommitStatusResponse, error) {

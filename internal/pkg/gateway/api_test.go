@@ -838,11 +838,14 @@ func TestEndorse(t *testing.T) {
 
 			// test the assertions
 			require.NoError(t, err)
+
 			// assert the preparedTxn is the payload from the proposal response
-			require.Equal(t, []byte("mock_response"), response.Result.Payload, "Incorrect response")
+			chaincodeAction, err := protoutil.GetActionFromEnvelopeMsg(response.GetPreparedTransaction())
+			require.NoError(t, err)
+			require.Equal(t, []byte("mock_response"), chaincodeAction.GetResponse().GetPayload(), "Incorrect response")
 
 			// check the generated transaction envelope contains the correct endorsements
-			checkTransaction(t, tt.expectedEndorsers, response.PreparedTransaction)
+			checkTransaction(t, tt.expectedEndorsers, response.GetPreparedTransaction())
 
 			// check the correct endorsers (mocks) were called with the right parameters
 			checkEndorsers(t, tt.expectedEndorsers, test)

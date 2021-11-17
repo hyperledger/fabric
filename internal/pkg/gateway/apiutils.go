@@ -13,6 +13,7 @@ import (
 	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/protoutil"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -77,4 +78,22 @@ func toRpcError(err error, unknownCode codes.Code) error {
 
 func errorDetail(e *endpointConfig, err error) *gp.ErrorDetail {
 	return &gp.ErrorDetail{Address: e.address, MspId: e.mspid, Message: err.Error()}
+}
+
+func getResultFromProposalResponse(proposalResponse *peer.ProposalResponse) ([]byte, error) {
+	responsePayload := &peer.ProposalResponsePayload{}
+	if err := proto.Unmarshal(proposalResponse.GetPayload(), responsePayload); err != nil {
+		return nil, errors.Wrap(err, "failed to deserialize proposal response payload")
+	}
+
+	return getResultFromProposalResponsePayload(responsePayload)
+}
+
+func getResultFromProposalResponsePayload(responsePayload *peer.ProposalResponsePayload) ([]byte, error) {
+	chaincodeAction := &peer.ChaincodeAction{}
+	if err := proto.Unmarshal(responsePayload.GetExtension(), chaincodeAction); err != nil {
+		return nil, errors.Wrap(err, "failed to deserialize chaincode action")
+	}
+
+	return chaincodeAction.GetResponse().GetPayload(), nil
 }
