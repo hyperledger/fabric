@@ -9,12 +9,12 @@ package ledgerutil
 import (
 	"bufio"
 	"bytes"
+	"container/heap"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/golang/protobuf/proto"
@@ -39,7 +39,7 @@ const (
 // Function will return count of -1 if the public state and private state hashes are the same
 func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firstDiffs int) (count int, outputDirPath string, err error) {
 	// firstRecords - Slice of diffRecords that stores found differences based on block height, used to generate first n differences output file
-	firstRecords := &firstRecords{records: &diffRecordSlice{}, highestRecord: &diffRecord{}, highestIndex: 0, limit: firstDiffs}
+	firstRecords := &firstRecords{records: &diffRecordHeap{}, limit: firstDiffs}
 
 	// Check the hashes between two files
 	hashPath1 := filepath.Join(snapshotDir1, kvledger.SnapshotSignableMetadataFileName)
@@ -116,8 +116,7 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 		if err != nil {
 			return 0, "", err
 		}
-		sort.Sort(*firstRecords.records)
-		for _, r := range *firstRecords.records {
+		for _, r := range firstRecords.getAllRecords() {
 			firstDiffsOutputFileWriter.addRecord(*r)
 		}
 		err = firstDiffsOutputFileWriter.close()
@@ -283,51 +282,63 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, snapsh
 }
 
 // firstRecords is a struct used to hold only the earliest records up to a given limit
+// Basically a max heap with a size limit
 type firstRecords struct {
-	records       *diffRecordSlice
-	highestRecord *diffRecord
-	highestIndex  int
-	limit         int
+	records *diffRecordHeap
+	limit   int
 }
 
 func (s *firstRecords) addRecord(r *diffRecord) {
-	if len(*s.records) < s.limit {
-		*s.records = append(*s.records, r)
-		s.setHighestRecord()
-	} else {
-		if r.lessThan(s.highestRecord) {
-			(*s.records)[s.highestIndex] = r
-			s.setHighestRecord()
-		}
-	}
-}
-
-func (s *firstRecords) setHighestRecord() {
-	if len(*s.records) == 1 {
-		s.highestRecord = (*s.records)[0]
-		s.highestIndex = 0
+	if s.limit == 0 {
 		return
 	}
-	for i, r := range *s.records {
-		if s.highestRecord.lessThan(r) {
-			s.highestRecord = r
-			s.highestIndex = i
+	// Limit not reached, can still add elements
+	if len(*s.records) < s.limit {
+		heap.Push(s.records, r)
+		// Limit reached, check new record against root
+	} else {
+		// Only add records earlier than the root
+		if r.earlierThan((*s.records)[0]) {
+			heap.Push(s.records, r)
+			heap.Pop(s.records)
 		}
 	}
 }
 
-type diffRecordSlice []*diffRecord
+// Returns list of diffRecords currently in heap sorted from earliest to latest, will empty the heap
+func (s *firstRecords) getAllRecords() []*diffRecord {
+	n := len(*s.records)
+	t := make([]*diffRecord, n)
+	for i := 0; i < n; i++ {
+		r := heap.Pop(s.records)
+		t[n-i-1] = r.(*diffRecord)
+	}
+	return t
+}
 
-func (s diffRecordSlice) Len() int {
+// diffRecordHeap implements heap interface where later records have higher priority than earlier records
+type diffRecordHeap []*diffRecord
+
+func (s diffRecordHeap) Len() int {
 	return len(s)
 }
 
-func (s diffRecordSlice) Swap(i, j int) {
+func (s diffRecordHeap) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-func (s diffRecordSlice) Less(i, j int) bool {
-	return (s[i]).lessThan(s[j])
+func (s diffRecordHeap) Less(i, j int) bool {
+	return !(s[i]).earlierThan(s[j])
+}
+
+func (s *diffRecordHeap) Push(x interface{}) {
+	*s = append(*s, x.(*diffRecord))
+}
+
+func (s *diffRecordHeap) Pop() interface{} {
+	popped := (*s)[len(*s)-1]
+	*s = (*s)[0 : len(*s)-1]
+	return popped
 }
 
 // diffRecord represents a diverging record in json
@@ -372,12 +383,12 @@ func newDiffRecord(namespace string, record1 *privacyenabledstate.SnapshotRecord
 
 // Get height from a diffRecord
 func (d *diffRecord) getHeight() (blockNum uint64, txNum uint64) {
-	r := earlierRecord(d.Record1, d.Record2)
+	r := earlierSSRecord(d.Record1, d.Record2)
 	return r.BlockNum, r.TxNum
 }
 
 // Returns true if d is an earlier diffRecord than e
-func (d *diffRecord) lessThan(e *diffRecord) bool {
+func (d *diffRecord) earlierThan(e *diffRecord) bool {
 	dBlockNum, dTxNum := d.getHeight()
 	eBlockNum, eTxNum := e.getHeight()
 
@@ -395,7 +406,7 @@ type snapshotRecord struct {
 }
 
 // Returns the snapshotRecord with the earlier height
-func earlierRecord(r1 *snapshotRecord, r2 *snapshotRecord) *snapshotRecord {
+func earlierSSRecord(r1 *snapshotRecord, r2 *snapshotRecord) *snapshotRecord {
 	if r1 == nil {
 		return r2
 	}
