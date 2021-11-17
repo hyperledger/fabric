@@ -103,9 +103,16 @@ We're now going to show how applications interact with peers to access the
 ledger. Ledger-query interactions involve a simple three-step dialogue between
 an application and a peer; ledger-update interactions are a little more
 involved, and require two extra steps. We've simplified these steps a little to
-help you get started with Fabric, but don't worry --- what's most important to
+help you get started with Fabric, but don't worry&mdash;what's most important to
 understand is the difference in application-peer interactions for ledger-query
 compared to ledger-update transaction styles.
+
+**Attention**: Hyperledger Fabric v2.4 introduces the optional Fabric Gateway  
+and Gateway peer, which simplify client application development by managing
+transaction proposal and endorsement for the client. To get started, read the
+[Fabric Gateway](../gateway.html) discussion about the Gateway process and
+simplified SDKs. The legacy relationship between applications and peers remains
+unchanged, as discussed below.
 
 Applications always connect to peers when they need to access ledgers and
 chaincodes. The Fabric Software Development Kit (SDK) makes this
@@ -160,6 +167,22 @@ Later in this section, you'll learn more about the detailed nature of this
 ordering process --- and for a really detailed look at this process see the
 [Transaction Flow](../txflow.html) topic.
 
+### Using Fabric Gateway
+
+Hyperledger Fabric v2.4 introduces the optional Fabric Gateway to simplify client
+application development. Fabric Gateway (the gateway) migrates code for transaction
+proposals and endorsements to the gateway peer, which then interacts with the channels
+and peers required by the transaction. The legacy model of transaction proposal and
+endorsement code residing in the client application remains supported. For those
+who are ready to migrate to the new Fabric Gateway model, updated SDKs (Go, Node,
+Java) are provided.
+
+Before starting with the new SDKs, you should understand the
+[Fabric Gateway](../gateway.html) methodology, including the gateway's handling
+of the transaction proposal and endorsement process, interactions with the
+discovery service, and collection of endorsement policy results.
+
+
 ## Peers and Channels
 
 Although this section is about peers rather than channels, it's worth spending a
@@ -186,9 +209,9 @@ channel as a pathway for communications between particular applications and
 peers. (For simplicity, orderers are not shown in this diagram, but must be
 present in a functioning network.)*
 
-We see that channels don't exist in the same way that peers do --- it's more
+We see that channels don't exist in the same way that peers do&mdash;it's more
 appropriate to think of a channel as a logical structure that is formed by a
-collection of physical peers. *It is vital to understand this point --- peers
+collection of physical peers. *It is vital to understand this point&mdash;peers
 provide the control point for access to, and management of, channels*.
 
 ## Peers and Organizations
@@ -197,10 +220,16 @@ Now that you understand peers and their relationship to ledgers, chaincodes
 and channels, you'll be able to see how multiple organizations come together to
 form a blockchain network.
 
+**Attention**: Hyperledger Fabric v2.4 introduces the optional Fabric Gateway and
+Gateway peer, which manages transaction proposals and endorsements on behalf of
+client applications. Read the [Fabric Gateway](../gateway.html) documentation for
+details on the Gateway peer and simplified SDKs. The legacy relationship between
+peers and organizations continues to apply, as discussed below.
+
 Blockchain networks are administered by a collection of organizations rather
 than a single organization. Peers are central to how this kind of distributed
-network is built because they are owned by --- and are the connection points to
-the network for --- these organizations.
+network is built because they are owned by&mdash;and are the connection points to
+the network for&mdash;these organizations.
 
 <a name="Peer8"></a>
 ![Peer8](./peers.diagram.8.png)
@@ -319,7 +348,7 @@ peers and orderers manage the consensus process in this section.
 
 Specifically, applications that want to update the ledger are involved in a
 3-phase process, which ensures that all the peers in a blockchain network keep
-their ledgers consistent with each other. 
+their ledgers consistent with each other.
 
 * In the first phase, applications work with a subset of *endorsing peers*, each of
   which provide an endorsement of the proposed ledger update to the application,
@@ -340,6 +369,13 @@ Phase 1 of the transaction workflow involves an interaction between an
 application and a set of peers --- it does not involve orderers. Phase 1 is only
 concerned with an application asking different organizations' endorsing peers to
 agree to the results of the proposed chaincode invocation.
+
+**Attention**: Hyperledger Fabric v2.4 introduces Fabric Gateway, which
+simplifies client application development by migrating transaction proposal and
+endorsement code from the client application to the gateway peer. Refer to
+the [Fabric Gateway](../gateway.html) documentation on the gateway process
+and simplified SDKs. The legacy process, including coding transaction proposal and
+endorsement in the client application, remains supported, as discussed below.
 
 To start phase 1, applications generate a transaction proposal which they send
 to each of the required set of peers for endorsement. Each of these *endorsing peers* then
