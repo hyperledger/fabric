@@ -14,7 +14,7 @@ applications of PaperNet.
 
 As we've seen, there are two important concepts that concern us when dealing
 with commercial paper; **states** and **transactions**. Indeed, this is true for
-*all* blockchain use cases; there are conceptual objects of value, modeled as
+_all_ blockchain use cases; there are conceptual objects of value, modeled as
 states, whose lifecycle transitions are described by transactions. An effective
 analysis of states and transactions is an essential starting point for a
 successful implementation.
@@ -22,10 +22,10 @@ successful implementation.
 We can represent the life cycle of a commercial paper using a state transition
 diagram:
 
-![develop.statetransition](./develop.diagram.4.png) *The state transition
+![develop.statetransition](./develop.diagram.4.png) _The state transition
 diagram for commercial paper. Commercial papers transition between **issued**,
 **trading** and **redeemed** states by means of the **issue**, **buy** and
-**redeem** transactions.*
+**redeem** transactions._
 
 See how the state diagram describes how commercial papers change over time, and
 how specific transactions govern the life cycle transitions. In Hyperledger
@@ -37,12 +37,11 @@ in the ledger world state; so let's take a closer look at them.
 
 Recall the structure of a commercial paper:
 
-![develop.paperstructure](./develop.diagram.5.png) *A commercial paper can be
+![develop.paperstructure](./develop.diagram.5.png) _A commercial paper can be
 represented as a set of properties, each with a value. Typically, some
-combination of these properties will provide a unique key for each paper.*
+combination of these properties will provide a unique key for each paper._
 
-See how a commercial paper `Paper` property has value `00001`, and the `Face
-value` property has value `5M USD`. Most importantly, the `Current state`
+See how a commercial paper `Paper` property has value `00001`, and the `Face value` property has value `5M USD`. Most importantly, the `Current state`
 property indicates whether the commercial paper is `issued`,`trading` or
 `redeemed`. In combination, the full set of properties make up the **state** of
 a commercial paper. Moreover, the entire collection of these individual
@@ -50,7 +49,7 @@ commercial paper states constitutes the ledger
 [world state](../ledger/ledger.html#world-state).
 
 All ledger state share this form; each has a set of properties, each with a
-different value. This *multi-property* aspect of states is a powerful feature --
+different value. This _multi-property_ aspect of states is a powerful feature --
 it allows us to think of a Fabric state as a vector rather than a simple scalar.
 We then represent facts about whole objects as individual states, which
 subsequently undergo transitions controlled by transaction logic. A Fabric state
@@ -64,13 +63,13 @@ sophisticated object retrieval.
 See how MagnetoCorp's paper `00001` is represented as a state vector that
 transitions according to different transaction stimuli:
 
-![develop.paperstates](./develop.diagram.6.png) *A commercial paper state is
+![develop.paperstates](./develop.diagram.6.png) _A commercial paper state is
 brought into existence and transitions as a result of different transactions.
 Hyperledger Fabric states have multiple properties, making them vectors rather
-than scalars.*
+than scalars._
 
 Notice how each individual paper starts with the empty state, which is
-technically a [`nil`](https://en.wikipedia.org/wiki/Null_(SQL)) state for the
+technically a [`nil`](<https://en.wikipedia.org/wiki/Null_(SQL)>) state for the
 paper, as it doesn't exist! See how paper `00001` is brought into existence by
 the **issue** transaction, and how it is subsequently updated as a result of the
 **buy** and **redeem** transactions.
@@ -121,9 +120,9 @@ commercial papers are issued or otherwise changed.
 It's helpful to think of all PaperNet commercial papers being in a single list
 of commercial papers:
 
-![develop.paperlist](./develop.diagram.7.png) *MagnetoCorp's
-newly created commercial  paper 00004 is added to the list of existing
-commercial papers.*
+![develop.paperlist](./develop.diagram.7.png) _MagnetoCorp's
+newly created commercial paper 00004 is added to the list of existing
+commercial papers._
 
 New papers can be added to the list as a result of an **issue** transaction, and
 papers already in the list can be updated with **buy** or **redeem**
@@ -140,26 +139,25 @@ While it's correct to think of a single list of papers in PaperNet --
 Fabric states, whose composite key associates the state with its list. In this
 way, each state's composite key is both unique and supports effective list query.
 
-![develop.paperphysical](./develop.diagram.8.png) *Representing a list of
-PaperNet commercial papers as a set of distinct Hyperledger Fabric states*
+![develop.paperphysical](./develop.diagram.8.png) _Representing a list of
+PaperNet commercial papers as a set of distinct Hyperledger Fabric states_
 
 Notice how each paper in the list is represented by a vector state, with a
 unique **composite** key formed by the concatenation of `org.papernet.paper`,
 `Issuer` and `Paper` properties. This structure is helpful for two reasons:
 
-  * It allows us to examine any state vector in the ledger to determine which
-    list it's in, without reference to a separate list. It's analogous to
-    looking at set of sports fans, and identifying which team they support by
-    the colour of the shirt they are wearing. The sports fans self-declare their
-    allegiance; we don't need a list of fans.
+- It allows us to examine any state vector in the ledger to determine which
+  list it's in, without reference to a separate list. It's analogous to
+  looking at set of sports fans, and identifying which team they support by
+  the color of the shirt they are wearing. The sports fans self-declare their
+  allegiance; we don't need a list of fans.
 
-
-  * Hyperledger Fabric internally uses a concurrency control
-    mechanism <!-- Add more information to explain this topic-->
-    to update a ledger, such that keeping papers in separate state vectors vastly
-    reduces the opportunity for shared-state collisions. Such collisions require
-    transaction re-submission, complicate application design, and decrease
-    performance.
+- Hyperledger Fabric internally uses a concurrency control
+  mechanism <!-- Add more information to explain this topic-->
+  to update a ledger, such that keeping papers in separate state vectors vastly
+  reduces the opportunity for shared-state collisions. Such collisions require
+  transaction re-submission, complicate application design, and decrease
+  performance.
 
 This second point is actually a key take-away for Hyperledger Fabric; the
 physical design of state vectors is **very important** to optimum performance
@@ -177,7 +175,6 @@ This means that in PaperNet, we can set one rule for the whole namespace that
 determines which organizations can issue new papers. Later, rules can be set
 and updated for individual papers to capture the trust relationships of buy
 and redeem transactions.
-
 
 In the next topic, we will show you how to combine these design concepts to
 implement the PaperNet commercial paper smart contract, and then an application
