@@ -82,13 +82,22 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 		}
 
 		response = pr.GetResponse()
-		if response != nil && (response.Status < 200 || response.Status >= 400) {
-			logger.Debugw("Evaluate call to endorser returned a malformed or error response", "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.Status, "message", response.Message)
-			err = fmt.Errorf("error %d returned from chaincode %s on channel %s: %s", response.Status, chaincodeID, channel, response.Message)
-			endpointErr := errorDetail(endorser.endpointConfig, err)
-			errDetails = append(errDetails, endpointErr)
-			// this is a chaincode error response - don't retry
-			return nil, newRpcError(codes.Aborted, "evaluate call to endorser returned error: "+response.Message, errDetails...)
+		if response != nil {
+			if response.Status < 200 || response.Status >= 400 {
+				logger.Debugw("Evaluate call to endorser returned a malformed or error response", "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.Status, "message", response.Message)
+				err = fmt.Errorf("error %d returned from chaincode %s on channel %s: %s", response.Status, chaincodeID, channel, response.Message)
+				endpointErr := errorDetail(endorser.endpointConfig, err)
+				errDetails = append(errDetails, endpointErr)
+				// this is a chaincode error response - don't retry
+				return nil, newRpcError(codes.Aborted, "evaluate call to endorser returned error: "+response.Message, errDetails...)
+			}
+
+			// Prefer result from proposal response as Response.Payload is not required to be transaction result
+			if result, err := getResultFromProposalResponse(pr); err == nil {
+				response.Payload = result
+			} else {
+				logger.Warnw("Successful proposal response contained no transaction result", "error", err.Error(), "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.Status, "message", response.Message)
+			}
 		}
 	}
 
@@ -236,6 +245,12 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 						e = plan.retry(e)
 					default:
 						logger.Debugw("Endorse call to endorser returned success", "channel", request.ChannelId, "txid", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "status", response.Response.Status, "message", response.Response.Message)
+
+						responseMessage := response.GetResponse()
+						if responseMessage != nil {
+							responseMessage.Payload = nil // Remove any duplicate response payload
+						}
+
 						endorsements := plan.update(e, response)
 						responseCh <- &endorserResponse{endorsementSet: endorsements}
 						e = nil
@@ -267,7 +282,6 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	}
 
 	endorseResponse := &gp.EndorseResponse{
-		Result:              endorsements[0].GetResponse(),
 		PreparedTransaction: env,
 	}
 	return endorseResponse, nil

@@ -18,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/integration/nwo"
+	"github.com/hyperledger/fabric/protoutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -139,7 +140,11 @@ func submitCheckEndorsingOrgsTransaction(ctx context.Context, client gateway.Gat
 	endorseResponse, err := client.Endorse(ctx, endorseRequest)
 	Expect(err).NotTo(HaveOccurred())
 
-	result := endorseResponse.GetResult()
+	chaincodeAction, err := protoutil.GetActionFromEnvelopeMsg(endorseResponse.GetPreparedTransaction())
+	Expect(err).NotTo(HaveOccurred())
+
+	result := chaincodeAction.GetResponse()
+
 	expectedPayload := "Peer mspid OK"
 	Expect(string(result.Payload)).To(Equal(expectedPayload))
 	expectedResult := &peer.Response{

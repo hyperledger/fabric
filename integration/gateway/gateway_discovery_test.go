@@ -236,7 +236,10 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(statusResponse.Result).To(Equal(peer.TxValidationCode_VALID))
 
-		return endorseResponse.Result
+		chaincodeAction, err := protoutil.GetActionFromEnvelopeMsg(endorseResponse.GetPreparedTransaction())
+		Expect(err).NotTo(HaveOccurred())
+
+		return chaincodeAction.GetResponse()
 	}
 
 	evaluateTransaction := func(
@@ -587,6 +590,6 @@ var _ = Describe("GatewayService with endorser discovery", func() {
 			[]string{org1Peer0.ID()},
 		)
 
-		Expect(result.Payload).To(Equal([]byte("abcd")))
+		Expect(result.GetPayload()).To(Equal([]byte("abcd")))
 	})
 })
