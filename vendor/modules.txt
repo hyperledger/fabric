@@ -221,7 +221,7 @@ github.com/hyperledger/fabric-config/protolator/protoext/peerext
 # github.com/hyperledger/fabric-lib-go v1.0.0
 ## explicit
 github.com/hyperledger/fabric-lib-go/healthz
-# github.com/hyperledger/fabric-protos-go v0.0.0-20211006172752-14f4318ce71c
+# github.com/hyperledger/fabric-protos-go v0.0.0-20211118165945-23d738fc3553
 ## explicit
 github.com/hyperledger/fabric-protos-go/common
 github.com/hyperledger/fabric-protos-go/discovery
