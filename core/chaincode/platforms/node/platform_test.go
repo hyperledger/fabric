@@ -15,7 +15,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -140,14 +139,43 @@ fi
 `
 
 func TestGenerateBuildOptions(t *testing.T) {
-	opts, err := platform.DockerBuildOptions("pathname")
-	require.NoError(t, err)
+	t.Run("basic test", func(t *testing.T) {
+		opts, err := platform.DockerBuildOptions("pathname")
+		require.NoError(t, err)
 
-	expectedOpts := util.DockerBuildOptions{
-		Image: "hyperledger/fabric-nodeenv:latest",
-		Cmd:   expectedBuildScript,
-	}
-	require.Equal(t, expectedOpts, opts)
+		require.Equal(t, opts.Image, "hyperledger/fabric-nodeenv:latest")
+		require.Equal(t, opts.Cmd, expectedBuildScript)
+	})
+
+	t.Run("proxy test", func(t *testing.T) {
+		env := map[string]string{
+			"https_proxy": "the-httpsproxy",
+			"http_proxy":  "the-httpproxy",
+			"no_proxy":    "the-noproxy",
+			"HTTPS_PROXY": "THE-HTTPSPROXY",
+			"HTTP_PROXY":  "THE-HTTPPROXY",
+			"NO_PROXY":    "THE-NOPROXY",
+		}
+
+		for key, val := range env {
+			oldval, set := os.LookupEnv(key)
+			if set {
+				defer os.Setenv(key, oldval)
+			} else {
+				defer os.Unsetenv(key)
+			}
+			os.Setenv(key, val)
+		}
+
+		opts, err := platform.DockerBuildOptions("the-path")
+		require.NoError(t, err, "unexpected error from DockerBuildOptions")
+
+		require.Equal(t, opts.Image, "hyperledger/fabric-nodeenv:latest")
+		require.Equal(t, opts.Cmd, expectedBuildScript)
+		for key, val := range env {
+			require.Contains(t, opts.Env, fmt.Sprintf("%s=%s", key, val))
+		}
+	})
 }
 
 func makeCodePackage(pfiles []*packageFile) ([]byte, error) {

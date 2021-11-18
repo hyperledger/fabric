@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/chaincode/platforms/util"
 	"github.com/hyperledger/fabric/core/config/configtest"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -357,13 +356,7 @@ func TestGetLDFlagsOpts(t *testing.T) {
 
 func TestDockerBuildOptions(t *testing.T) {
 	platform := &Platform{}
-
-	t.Run("GOPROXY and GOSUMDB not set", func(t *testing.T) {
-		opts, err := platform.DockerBuildOptions("the-path")
-		require.NoError(t, err, "unexpected error from DockerBuildOptions")
-
-		expectedOpts := util.DockerBuildOptions{
-			Cmd: `
+	Cmd := `
 set -e
 if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
     cd /chaincode/input/src
@@ -381,51 +374,67 @@ else
     GO111MODULE=off GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
 fi
 echo Done!
-`,
-			Env: []string{"GOPROXY=https://proxy.golang.org"},
-		}
-		require.Equal(t, expectedOpts, opts)
+`
+
+	t.Run("GOPROXY and GOSUMDB not set", func(t *testing.T) {
+		opts, err := platform.DockerBuildOptions("the-path")
+		require.NoError(t, err, "unexpected error from DockerBuildOptions")
+
+		require.Equal(t, opts.Cmd, Cmd)
+		require.Contains(t, opts.Env, "GOPROXY=https://proxy.golang.org")
 	})
 
 	t.Run("GOPROXY and GOSUMDB set", func(t *testing.T) {
 		oldGoproxy, set := os.LookupEnv("GOPROXY")
 		if set {
 			defer os.Setenv("GOPROXY", oldGoproxy)
+		} else {
+			defer os.Unsetenv("GOPROXY")
 		}
 		os.Setenv("GOPROXY", "the-goproxy")
 
 		oldGosumdb, set := os.LookupEnv("GOSUMDB")
 		if set {
 			defer os.Setenv("GOSUMDB", oldGosumdb)
+		} else {
+			defer os.Unsetenv("GOSUMDB")
 		}
 		os.Setenv("GOSUMDB", "the-gosumdb")
 
 		opts, err := platform.DockerBuildOptions("the-path")
 		require.NoError(t, err, "unexpected error from DockerBuildOptions")
 
-		expectedOpts := util.DockerBuildOptions{
-			Cmd: `
-set -e
-if [ -f "/chaincode/input/src/go.mod" ] && [ -d "/chaincode/input/src/vendor" ]; then
-    cd /chaincode/input/src
-    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
-elif [ -f "/chaincode/input/src/go.mod" ]; then
-    cd /chaincode/input/src
-    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
-elif [ -f "/chaincode/input/src/the-path/go.mod" ] && [ -d "/chaincode/input/src/the-path/vendor" ]; then
-    cd /chaincode/input/src/the-path
-    GO111MODULE=on go build -v -mod=vendor -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
-elif [ -f "/chaincode/input/src/the-path/go.mod" ]; then
-    cd /chaincode/input/src/the-path
-    GO111MODULE=on go build -v -mod=readonly -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode .
-else
-    GO111MODULE=off GOPATH=/chaincode/input:$GOPATH go build -v -ldflags "-linkmode external -extldflags '-static'" -o /chaincode/output/chaincode the-path
-fi
-echo Done!
-`,
-			Env: []string{"GOPROXY=the-goproxy", "GOSUMDB=the-gosumdb"},
+		require.Equal(t, opts.Cmd, Cmd)
+		require.Contains(t, opts.Env, "GOPROXY=the-goproxy")
+		require.Contains(t, opts.Env, "GOSUMDB=the-gosumdb")
+	})
+
+	t.Run("proxy test", func(t *testing.T) {
+		env := map[string]string{
+			"https_proxy": "the-httpsproxy",
+			"http_proxy":  "the-httpproxy",
+			"no_proxy":    "the-noproxy",
+			"HTTPS_PROXY": "THE-HTTPSPROXY",
+			"HTTP_PROXY":  "THE-HTTPPROXY",
+			"NO_PROXY":    "THE-NOPROXY",
 		}
-		require.Equal(t, expectedOpts, opts)
+
+		for key, val := range env {
+			oldval, set := os.LookupEnv(key)
+			if set {
+				defer os.Setenv(key, oldval)
+			} else {
+				defer os.Unsetenv(key)
+			}
+			os.Setenv(key, val)
+		}
+
+		opts, err := platform.DockerBuildOptions("the-path")
+		require.NoError(t, err, "unexpected error from DockerBuildOptions")
+		require.Equal(t, opts.Cmd, Cmd)
+		for key, val := range env {
+			require.Contains(t, opts.Env, fmt.Sprintf("%s=%s", key, val))
+		}
 	})
 }
 

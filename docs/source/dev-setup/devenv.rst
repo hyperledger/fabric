@@ -204,5 +204,19 @@ If those commands completely successfully, you're ready to Go!
 
 If you plan to use the Hyperledger Fabric application SDKs then be sure to check out their prerequisites in the Node.js SDK `README <https://github.com/hyperledger/fabric-sdk-node#build-and-test>`__, Java SDK `README <https://github.com/hyperledger/fabric-gateway-java/blob/main/README.md>`__, and Go SDK `README <https://github.com/hyperledger/fabric-sdk-go/blob/main/README.md>`__.
 
+
+setup no_proxy environment variable when your devenv localted behind http proxy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Fabric test codes use some fake domains and hostnames (without domain).
+When your devenv is located behind http proxy, you need to add them in no_proxy environment variable as below to avoid test making the wrong judge.
+
+::
+
+    export no_proxy='localhost,127.0.0.1/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.local,.example.com,.host.com,host.com,.invalid,couchdb'
+
+Note that you may need to add your domain to no_proxy.
+
+
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/

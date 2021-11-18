@@ -228,7 +228,7 @@ echo Done!
 
 func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
 	env := []string{}
-	for _, key := range []string{"GOPROXY", "GOSUMDB"} {
+	for _, key := range []string{"GOPROXY", "GOSUMDB", "https_proxy", "http_proxy", "no_proxy", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} {
 		if val, ok := os.LookupEnv(key); ok {
 			env = append(env, fmt.Sprintf("%s=%s", key, val))
 			continue

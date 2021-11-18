@@ -183,8 +183,17 @@ fi
 `
 
 func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
+	env := []string{}
+	for _, key := range []string{"https_proxy", "http_proxy", "no_proxy", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"} {
+		if val, ok := os.LookupEnv(key); ok {
+			env = append(env, fmt.Sprintf("%s=%s", key, val))
+			continue
+		}
+	}
+
 	return util.DockerBuildOptions{
 		Image: util.GetDockerImageFromConfig("chaincode.node.runtime"),
 		Cmd:   buildScript,
+		Env:   env,
 	}, nil
 }

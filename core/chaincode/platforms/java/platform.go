@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 
@@ -130,8 +131,20 @@ func (p *Platform) GenerateDockerfile() (string, error) {
 }
 
 func (p *Platform) DockerBuildOptions(path string) (util.DockerBuildOptions, error) {
+	env := []string{}
+	for _, key := range []string{
+		"https_proxy", "http_proxy", "no_proxy", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY",
+		"JAVA_OPTS", "JAVA_TOOL_OPTIONS", "MAVEN_OPTS", "GRADLE_OPTS",
+	} {
+		if val, ok := os.LookupEnv(key); ok {
+			env = append(env, fmt.Sprintf("%s=%s", key, val))
+			continue
+		}
+	}
+
 	return util.DockerBuildOptions{
 		Image: util.GetDockerImageFromConfig("chaincode.java.runtime"),
 		Cmd:   "./build.sh",
+		Env:   env,
 	}, nil
 }
