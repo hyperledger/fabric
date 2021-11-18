@@ -315,6 +315,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	up, err := UnpackProposal(signedProp)
 	if err != nil {
 		e.Metrics.ProposalValidationFailed.Add(1)
+		endorserLogger.Warnw("Failed to unpack proposal", "error", err.Error())
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
@@ -333,6 +334,7 @@ func (e *Endorser) ProcessProposal(ctx context.Context, signedProp *pb.SignedPro
 	// 0 -- check and validate
 	err = e.preProcess(up, channel)
 	if err != nil {
+		endorserLogger.Warnw("Failed to preProcess proposal", "error", err.Error())
 		return &pb.ProposalResponse{Response: &pb.Response{Status: 500, Message: err.Error()}}, err
 	}
 
@@ -531,7 +533,7 @@ func (e *Endorser) buildChaincodeInterest(simResult *ledger.TxSimulationResults)
 		}
 	}
 
-	endorserLogger.Info("ccInterest", ccInterest)
+	endorserLogger.Debug("ccInterest", ccInterest)
 	return ccInterest, nil
 }
 

@@ -171,7 +171,7 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 			success, message, _, remove := gs.responseStatus(firstResponse, err)
 
 			if !success {
-				logger.Debugw("Endorse call to endorser failed", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", firstEndorser.endpointConfig.address, "endorserMspid", firstEndorser.endpointConfig.mspid, "error", message)
+				logger.Warnw("Endorse call to endorser failed", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", firstEndorser.endpointConfig.address, "endorserMspid", firstEndorser.endpointConfig.mspid, "error", message)
 				errDetails = append(errDetails, errorDetail(firstEndorser.endpointConfig, message))
 				if remove {
 					gs.registry.removeEndorser(firstEndorser)
@@ -244,7 +244,7 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 						responseCh <- &endorserResponse{endorsementSet: endorsements}
 						e = nil
 					} else {
-						logger.Debugw("Endorse call to endorser failed", "channel", request.ChannelId, "txid", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "error", message)
+						logger.Warnw("Endorse call to endorser failed", "channel", request.ChannelId, "txid", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "error", message)
 						responseCh <- &endorserResponse{err: errorDetail(e.endpointConfig, message)}
 						if remove {
 							gs.registry.removeEndorser(e)

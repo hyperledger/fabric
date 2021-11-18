@@ -126,7 +126,7 @@ func (m *MetadataManager) Metadata(channel string, cc string, collections ...str
 		return nil
 	}
 	if len(md) == 0 {
-		Logger.Info("Chaincode", cc, "isn't defined in channel", channel)
+		Logger.Warn("Chaincode", cc, "isn't defined in channel", channel)
 		return nil
 	}
 
