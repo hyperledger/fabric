@@ -90,6 +90,19 @@ The Fabric Gateway `Evaluate` and `Endorse` methods make gRPC requests to peers 
 
 Each Gateway SDK also provides a mechanism for setting timeouts for each gateway method when invoked from the client application.
 
+## Gateway Service Routing with Kubernetes 
+
+In typical Fabric deployments on Kubernetes, each peer node is exposed via a single Kubernetes `Service` instance and resolved using a Kube DNS.  This technique is sufficient for the Fabric Gateway and application clients to resolve individual peers within a Fabric network.  In cases requiring high-availability and/or client connection load-balancing, Kubernetes can be configured with an additional `Service` resource bound to multiple gateway peers.  Using an HA topology, gateway clients may reference a set of peer nodes with a single DNS alias.
+
+While [Kubernetes Service routing](https://kubernetes.io/docs/concepts/services-networking/service/#virtual-ips-and-service-proxies) does not provide request-level load balancing at the gRPC message layer, it can be utilized to provide a basic level of HA, failover, and client connection load balancing.  In the event of an outage in a backing peer/pod, Kubernetes will assign an active peer at the next connection attempt from the gateway client.
+
+By default Kubernetes will use `iptables` to bind client connections to a peer pod using random assignment.  Pods backing the service may additionally define Readiness Probes to ensure that Gateway client connections are distributed across healthy peer nodes.  In addition to random assignment, the Kube cluster may be configured with the [IPVS proxy mode](https://kubernetes.io/docs/concepts/services-networking/service/#proxy-mode-ipvs) for balancing traffic across backend Pods.  For additional information on IPVS routing, refer to the Kubernetes [IPVS-based Load Balancing Deep Dive](https://kubernetes.io/blog/2018/07/09/ipvs-based-in-cluster-load-balancing-deep-dive/) blog.
+
+An example load-balanced gateway service is available in the [Kubernetes Test Network](https://github.com/hyperledger/fabric-samples/blob/main/test-network-k8s/docs/HIGH_AVAILABILITY.md).  In this example:
+- Each organization defines an `orgN-peer-gateway` `Service`, bound to a set of peer `Deployments`.
+- The TLS enrollments / certificates for each peer include the shared service / Subject Alternate Name alias.
+- Client applications reference the Fabric Gateway using the `orgN-peer-gateway` service alias.
+
 ## Listening for events
 
 The gateway provides a simplified API for client applications to receive [chaincode events](peer_event_services.html#how-to-register-for-events) in the client applications. Each SDK provides a mechanism to handle these events using its language-specific idiom.
