@@ -5,7 +5,6 @@ Architecture Reference
    :maxdepth: 1
 
    Hyperledger Fabric CA's User Guide <http://hyperledger-fabric-ca.readthedocs.io/en/latest>
-   fabric-sdks
    txflow
    gateway
    discovery-overview
