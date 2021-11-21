@@ -1,10 +1,11 @@
+//go:build ignore
+// +build ignore
+
 /*
 Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-
-// +build ignore
 
 //go:generate -command gencerts go run ./generate.go
 //go:generate gencerts -orgs 2 -child-orgs 2 -servers 2 -clients 2
