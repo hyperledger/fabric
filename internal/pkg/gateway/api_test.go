@@ -461,6 +461,23 @@ func TestEvaluate(t *testing.T) {
 			},
 			errString: "rpc error: code = Unavailable desc = no peers available to evaluate chaincode test_chaincode in channel test_channel",
 		},
+		{
+			name: "context timeout during evaluate",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 3}}, // msp1
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				var cancel context.CancelFunc
+				def.ctx, cancel = context.WithTimeout(def.ctx, 100*time.Millisecond)
+
+				def.localEndorser.ProcessProposalStub = func(ctx context.Context, proposal *peer.SignedProposal, option ...grpc.CallOption) (*peer.ProposalResponse, error) {
+					cancel()
+					time.Sleep(200 * time.Millisecond)
+					return createProposalResponse(t, peer1Mock.address, "mock_response", 200, ""), nil
+				}
+			},
+			errString: "rpc error: code = DeadlineExceeded desc = evaluate timeout expired",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -882,6 +899,42 @@ func TestEndorse(t *testing.T) {
 				}},
 			},
 			expectedEndorsers: []string{"localhost:7051", "peer2:9051"},
+		},
+		{
+			name: "context timeout during first endorsement",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 3}}, // msp1
+				"g2": {{endorser: peer4Mock, height: 5}},     // msp3
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				var cancel context.CancelFunc
+				def.ctx, cancel = context.WithTimeout(def.ctx, 100*time.Millisecond)
+
+				def.localEndorser.ProcessProposalStub = func(ctx context.Context, proposal *peer.SignedProposal, option ...grpc.CallOption) (*peer.ProposalResponse, error) {
+					cancel()
+					time.Sleep(200 * time.Millisecond)
+					return createProposalResponse(t, peer1Mock.address, "mock_response", 200, ""), nil
+				}
+			},
+			errString: "rpc error: code = DeadlineExceeded desc = endorsement timeout expired while collecting first endorsement",
+		},
+		{
+			name: "context timeout collecting endorsements",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 3}}, // msp1
+				"g2": {{endorser: peer4Mock, height: 5}},     // msp3
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				var cancel context.CancelFunc
+				def.ctx, cancel = context.WithTimeout(def.ctx, 100*time.Millisecond)
+
+				peer4Mock.client.(*mocks.EndorserClient).ProcessProposalStub = func(ctx context.Context, proposal *peer.SignedProposal, option ...grpc.CallOption) (*peer.ProposalResponse, error) {
+					cancel()
+					time.Sleep(200 * time.Millisecond)
+					return createProposalResponse(t, peer4Mock.address, "mock_response", 200, ""), nil
+				}
+			},
+			errString: "rpc error: code = DeadlineExceeded desc = endorsement timeout expired while collecting endorsements",
 		},
 	}
 	for _, tt := range tests {
