@@ -319,7 +319,7 @@ peers and orderers manage the consensus process in this section.
 
 Specifically, applications that want to update the ledger are involved in a
 3-phase process, which ensures that all the peers in a blockchain network keep
-their ledgers consistent with each other. 
+their ledgers consistent with each other.
 
 * In the first phase, applications work with a subset of *endorsing peers*, each of
   which provide an endorsement of the proposed ledger update to the application,
