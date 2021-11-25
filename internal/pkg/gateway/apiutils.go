@@ -63,17 +63,21 @@ func wrappedRpcError(err error, message string, details ...proto.Message) error 
 }
 
 func toRpcError(err error, unknownCode codes.Code) error {
-	errStatus, ok := status.FromError(err)
-	if ok {
-		return errStatus.Err()
-	}
-
-	errStatus = status.FromContextError(err)
+	errStatus := toRpcStatus(err)
 	if errStatus.Code() != codes.Unknown {
 		return errStatus.Err()
 	}
 
 	return status.Error(unknownCode, err.Error())
+}
+
+func toRpcStatus(err error) *status.Status {
+	errStatus, ok := status.FromError(err)
+	if ok {
+		return errStatus
+	}
+
+	return status.FromContextError(err)
 }
 
 func errorDetail(e *endpointConfig, msg string) *gp.ErrorDetail {
