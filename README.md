@@ -47,6 +47,7 @@ Follow the release discussion on the [#fabric-release](https://chat.hyperledger.
 Please visit our
 online documentation for
 information on getting started using and developing with the fabric, SDK and chaincode:
+- [v2.4](http://hyperledger-fabric.readthedocs.io/en/release-2.4/)
 - [v2.3](http://hyperledger-fabric.readthedocs.io/en/release-2.3/)
 - [v2.2](http://hyperledger-fabric.readthedocs.io/en/release-2.2/)
 - [v2.1](http://hyperledger-fabric.readthedocs.io/en/release-2.1/)
