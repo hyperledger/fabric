@@ -84,13 +84,18 @@ While it's now technically possible to drive transactions using the peer CLI, th
 
 ## Using an application on the channel
 
-After a smart contract has been committed, client applications can be used to invoke transactions on a chaincode. This completes the structure we showed in the first image:
+After a smart contract has been committed, client applications can be used to invoke transactions on a chaincode,
+via the Fabric Gateway service (the gateway). This completes the structure we showed in the first image:
 
 ![network.1](./network.diagram.1.png)
 
 Just like peers and orderers, a client application has an identity that associates it with an organization. In our example, client application A1 is associated with organization R1 and is connected to C1.
 
-Once a chaincode has been installed on a peer node and defined on a channel it can be [invoked](../glossary.html#invoke) by a client application. Client applications do this by sending transaction proposals to peers owned by the organizations specified by the endorsement policy. The transaction proposal serves as input to the chaincode, which uses it to generate an endorsed transaction response, which is returned by the peer node to the client application.
+Once a chaincode has been installed on a peer node and defined on a channel it can be [invoked](../glossary.html#invoke) by a client application. Client applications do this by sending transaction proposals to the gateway. The target peer --- a peer in the same organization submitting the proposal --- then runs the transaction and forwards the proposal to endorsing peers in the organizations required by the endorsement policy. The transaction proposal serves as input to the chaincode, which uses it to generate an endorsed transaction response, which is returned by the target peer to the client application.
+
+Note: Instead of delegating transaction endorsement to the gateway, the client application can specify the endorsing organizations and collect the endorsements --- refer to the [v2.3 Applications and Peers](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
+
+### Phase 2 - Transaction Ordering
 
 We can see that our peer organizations, R1 and R2, are fully participating in the channel. Their applications can access the ledger L1 via smart contract S5 to generate transactions that will be endorsed by the organizations specified in the endorsement policy and written to the ledger.
 
