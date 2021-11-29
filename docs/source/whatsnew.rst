@@ -1,6 +1,49 @@
 What's new in Hyperledger Fabric v2.x
 =====================================
 
+What's New in Hyperledger Fabric v2.4
+-------------------------------------
+
+Fabric Gateway
+^^^^^^^^^^^^^^
+
+Fabric Gateway is a new service running on peer nodes that manages transaction submission and processing for client applications, with the following benefits:
+
+* Simplifies client applications and SDKs - Your client application can simply delegate transaction submission to a trusted peer. There is no need for your application to open connections to peer nodes and ordering service nodes from other organizations.
+* Fabric Gateway manages the collection of transaction endorsements from other organizations and submission to the ordering service on behalf of client applications.
+* Fabric Gateway has intelligence to determine what endorsements are required for a given transaction, even if your solution utilizes a combination of chaincode-level endorsement policies, private data collection endorsement policies, and state-based endorsement policies.
+
+New lightweight Gateway SDKs (v1.0.0) are available for Node, Java, and Go. The SDKs support flexible application patterns:
+
+* You can utilize the high-level programming model similar to prior SDK versions, allowing your application to simply call a single SubmitTransaction() function.
+* More advanced applications can leverage the gateway's individual Endorse, Submit, and CommitStatus services for transaction submission, and the Evaluate service for queries.
+* You can delegate transaction endorsement entirely to the gateway, or if needed, specify the endorsing organizations and the gateway will utilize a peer from each organization.
+
+For more information, see the :doc:`gateway` topic.
+
+Peer node unjoin
+^^^^^^^^^^^^^^^^
+
+You can now unjoin a peer from a channel when the channel is no longer needed. All channel resources will be removed from the peer and the peer will no longer process blocks from the channel.
+
+For more details, see the `peer node unjoin` :doc:`command reference topic<commands/peernode>`.
+
+Calculate package ID of a packaged chaincode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can calculate the package ID from a packaged chaincode without installing the chaincode on peers using the new `peer lifecycle chaincode calculatepackageid` command.
+This command will be useful, for example, in the following scenarios:
+
+* When multiple chaincode packages with the same label name are installed, it is possible to identify which ID corresponds to which package later.
+* To check whether a particular chaincode package is installed or not without installing that package.
+
+For more information, see the `peer lifecycle chaincode calculatepackageid` :doc:`command reference topic<commands/peerlifecycle>`.
+
+
+.. note::
+
+   While Fabric v2.4.0 introduces new features, Fabric v2.2.x remains the current long-term support release until the next LTS release is announced.
+
 What's New in Hyperledger Fabric v2.3
 -------------------------------------
 
@@ -279,6 +322,7 @@ announced in each of the v2.x releases.
 * `Fabric v2.3.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.3.1>`_.
 * `Fabric v2.3.2 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.3.2>`_.
 * `Fabric v2.3.3 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.3.3>`_.
+* `Fabric v2.4.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.0>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
