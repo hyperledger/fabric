@@ -37,7 +37,7 @@ as there has been for previous releases.
 
 .. note:: It is a best practice to upgrade your SDK to the latest version as a
           part of a general upgrade of your network. While the SDK will always
-          be compatible with equivalent releases of Fabric and lower, it might
+          be compatible with equivalent releases of Fabric and higher, it might
           be necessary to upgrade to the latest SDK to leverage the latest Fabric
           features. Consult the documentation of the Fabric SDK you are using
           for information about how to upgrade.
