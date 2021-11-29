@@ -42,7 +42,11 @@ The organization that will use the snapshot to join the channel will then:
 
 If an organization that is already joined to the channel wants to join a new peer using a snapshot, it might decide to skip the process of having other organizations take snapshots and evaluate them, though it is a best practice for an organization to periodically take snapshots of all its peers and compare them to ensure the no ledger forks have occurred. In that case, the organization can take a snapshot immediately and then use the snapshot to join the new peer to the channel.
 
-**Note: snapshots can also be used to verify that the public state between peers is identical (in other words, that no ledger fork has occurred), even if no new peer will use the snapshot to join the channel. This can be done by ensuring that the `snapshot_hash` in the file `_snapshot_additional_metadata.json` in the snapshots generated across peers is the same.**
+## Using snapshots to verify peer integrity
+
+Snapshots can be used to verify that the state between peers is identical (in other words, that no ledger fork has occurred), even if no new peer will use the snapshot to join the channel.
+This can be done by ensuring that the `snapshot_hash` in the file `_snapshot_additional_metadata.json` in the snapshots generated across peers is the same.
+If the hashes are not identical, you can use the [`ledgerutil compare` utility](./commands/ledgerutil.html) to troubleshoot which keys are different across any two snapshots and to understand when a divergence may have occurred.
 
 ## Taking a snapshot
 

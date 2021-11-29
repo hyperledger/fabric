@@ -15,5 +15,6 @@ Commands Reference
    commands/configtxgen.md
    commands/configtxlator.md
    commands/cryptogen.md
+   commands/ledgerutil.md
    discovery-cli.md
    commands/fabric-ca-commands
