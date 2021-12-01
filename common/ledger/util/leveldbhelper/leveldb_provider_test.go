@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/hyperledger/fabric/common/ledger/dataformat"
+	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/stretchr/testify/require"
@@ -35,9 +36,9 @@ func TestIterator(t *testing.T) {
 	db2 := p.GetDBHandle("db2")
 	db3 := p.GetDBHandle("db3")
 	for i := 0; i < 20; i++ {
-		db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false)
-		db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false)
-		db3.Put([]byte(createTestKey(i)), []byte(createTestValue("db3", i)), false)
+		require.NoError(t, db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false))
+		require.NoError(t, db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false))
+		require.NoError(t, db3.Put([]byte(createTestKey(i)), []byte(createTestValue("db3", i)), false))
 	}
 
 	rangeTestCases := []struct {
@@ -176,13 +177,13 @@ func TestBatchedUpdates(t *testing.T) {
 		batch.Put([]byte("key1"), []byte("value1"))
 		batch.Put([]byte("key2"), []byte("value2"))
 		batch.Put([]byte("key3"), []byte("value3"))
-		db.WriteBatch(batch, true)
+		require.NoError(t, db.WriteBatch(batch, true))
 	}
 
 	for _, db := range dbs {
 		batch := db.NewUpdateBatch()
 		batch.Delete([]byte("key2"))
-		db.WriteBatch(batch, true)
+		require.NoError(t, db.WriteBatch(batch, true))
 	}
 
 	for _, db := range dbs {
@@ -212,12 +213,12 @@ func TestDrop(t *testing.T) {
 	require.Contains(t, p.dbHandles, "db3")
 
 	for i := 0; i < 20; i++ {
-		db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false)
-		db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false)
+		require.NoError(t, db1.Put([]byte(createTestKey(i)), []byte(createTestValue("db1", i)), false))
+		require.NoError(t, db2.Put([]byte(createTestKey(i)), []byte(createTestValue("db2", i)), false))
 	}
 	// db3 is used to test remove when multiple batches are needed (each long key has 125 bytes)
 	for i := 0; i < 10000; i++ {
-		db3.Put([]byte(createTestLongKey(i)), []byte(createTestValue("db3", i)), false)
+		require.NoError(t, db3.Put([]byte(createTestLongKey(i)), []byte(createTestValue("db3", i)), false))
 	}
 
 	expectedSetup := []struct {
@@ -400,7 +401,7 @@ func TestIsEmpty(t *testing.T) {
 		setup()
 		defer cleanup()
 
-		db1.Put([]byte("key"), []byte("value"), false)
+		require.NoError(t, db1.Put([]byte("key"), []byte("value"), false))
 		empty, err := db1.IsEmpty()
 		require.NoError(t, err)
 		require.False(t, empty)
@@ -414,8 +415,8 @@ func TestIsEmpty(t *testing.T) {
 		setup()
 		defer cleanup()
 
-		db1.Put([]byte("key"), []byte("value"), false)
-		db2.Put([]byte("key"), []byte("value"), false)
+		require.NoError(t, db1.Put([]byte("key"), []byte("value"), false))
+		require.NoError(t, db2.Put([]byte("key"), []byte("value"), false))
 
 		empty, err := db1.IsEmpty()
 		require.NoError(t, err)
@@ -439,6 +440,115 @@ func TestIsEmpty(t *testing.T) {
 		require.EqualError(t, err, "internal leveldb error while obtaining db iterator: leveldb: closed")
 		require.False(t, empty)
 	})
+}
+
+func TestRetrieveDataFormatInfo(t *testing.T) {
+	var env *testDBProviderEnv
+	var provider *Provider
+	setup := func() {
+		env = newTestProviderEnv(t, testDBPath)
+		provider = env.provider
+	}
+
+	cleanup := func() {
+		env.cleanup()
+	}
+
+	t.Run("fresh db provider", func(t *testing.T) {
+		setup()
+		defer cleanup()
+
+		provider.Close()
+		info, err := RetrieveDataFormatInfo(testDBPath)
+		require.NoError(t, err)
+		require.Equal(t,
+			&DataFormatInfo{
+				FormatVerison: "",
+				IsDBEmpty:     true,
+			},
+			info,
+		)
+	})
+
+	t.Run("db provider with existing data", func(t *testing.T) {
+		setup()
+		defer cleanup()
+
+		db := provider.GetDBHandle("dummy")
+		require.NoError(t, db.Put([]byte("k"), []byte("v"), true))
+		provider.Close()
+
+		info, err := RetrieveDataFormatInfo(testDBPath)
+		require.NoError(t, err)
+		require.Equal(t,
+			&DataFormatInfo{
+				FormatVerison: "",
+				IsDBEmpty:     false,
+			},
+			info,
+		)
+	})
+
+	t.Run("db provider with existing data and version", func(t *testing.T) {
+		setup()
+		defer cleanup()
+
+		require.NoError(t, provider.SetDataFormat("2.6"))
+		db := provider.GetDBHandle("dummy")
+		require.NoError(t, db.Put([]byte("k"), []byte("v"), true))
+		env.provider.Close()
+		info, err := RetrieveDataFormatInfo(testDBPath)
+		require.NoError(t, err)
+		require.Equal(t,
+			&DataFormatInfo{
+				FormatVerison: "2.6",
+				IsDBEmpty:     false,
+			},
+			info,
+		)
+	})
+}
+
+func TestUpdateBatch(t *testing.T) {
+	b := &UpdateBatch{
+		dbName:       "mydb",
+		leveldbBatch: &leveldb.Batch{},
+	}
+
+	require.Equal(t, 0, b.Size())
+	require.Equal(t, 0, b.Len())
+
+	k := []byte("key")
+	v := []byte("value")
+
+	// put a key and verify size and len
+	b.Put(k, v)
+	expectedSize := len("mydb") + len(dbNameKeySep) + len(k) + len(v)
+	require.Equal(t, expectedSize, b.Size())
+	require.Equal(t, 1, b.Len())
+
+	// put the key again and verify size and len
+	b.Put(k, v)
+	expectedSize *= 2
+	require.Equal(t, expectedSize, b.Size())
+	require.Equal(t, 2, b.Len())
+
+	// delete the key and verify size and len
+	b.Delete(k)
+	expectedSize += len("mydb") + len(dbNameKeySep) + len(k)
+	require.Equal(t, expectedSize, b.Size())
+	require.Equal(t, 3, b.Len())
+
+	// reset and verify size and len
+	b.Reset()
+	require.Equal(t, 0, b.Size())
+	require.Equal(t, 0, b.Len())
+
+	// add key again after reset
+	b.Put(k, v)
+	expectedSize = len("mydb") + len(dbNameKeySep) + len(k) + len(v)
+	require.Equal(t, expectedSize, b.Size())
+	require.Equal(t, 1, b.Len())
 }
 
 func testFormatCheck(t *testing.T, dataFormat, expectedFormat string, dataExists bool, expectedErr *dataformat.ErrFormatMismatch) {
@@ -478,9 +588,9 @@ func testDBBasicWriteAndReads(t *testing.T, dbNames ...string) {
 
 	for _, dbName := range dbNames {
 		db := p.GetDBHandle(dbName)
-		db.Put([]byte("key1"), []byte("value1_"+dbName), false)
-		db.Put([]byte("key2"), []byte("value2_"+dbName), false)
-		db.Put([]byte("key3"), []byte("value3_"+dbName), false)
+		require.NoError(t, db.Put([]byte("key1"), []byte("value1_"+dbName), false))
+		require.NoError(t, db.Put([]byte("key2"), []byte("value2_"+dbName), false))
+		require.NoError(t, db.Put([]byte("key3"), []byte("value3_"+dbName), false))
 	}
 
 	for _, dbName := range dbNames {

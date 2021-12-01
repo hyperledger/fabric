@@ -8,9 +8,12 @@ package pvtdatastorage
 
 import (
 	"bytes"
-	math "math"
+	"fmt"
+	"math"
 	"testing"
 
+	"github.com/hyperledger/fabric/core/ledger/internal/version"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +26,7 @@ func TestDataKeyEncoding(t *testing.T) {
 
 func TestDataKeyRange(t *testing.T) {
 	blockNum := uint64(20)
-	startKey, endKey := datakeyRange(blockNum)
+	startKey, endKey := getDataKeysForRangeScanByBlockNum(blockNum)
 	var txNum uint64
 	for txNum = 0; txNum < 100; txNum++ {
 		keyOfBlock := encodeDataKey(
@@ -179,5 +182,79 @@ func TestEncodingDecodingLastBlockInSnapshotVal(t *testing.T) {
 	t.Run("error-case", func(t *testing.T) {
 		_, err := decodeLastBlockInBootSnapshotVal([]byte{0xff})
 		require.EqualError(t, err, "unexpected bytes for interpreting as varint")
+	})
+}
+
+func TestEncodingHashedIndexKey(t *testing.T) {
+	encKey := encodeHashedIndexKey(&hashedIndexKey{
+		ns:         "ns",
+		coll:       "coll",
+		pvtkeyHash: []byte("pvtkeyHash"),
+		blkNum:     10,
+		txNum:      100,
+	})
+
+	expectedEncKey := []byte("bns\x00coll\x00pvtkeyHash")
+	expectedEncKey = append(expectedEncKey, version.NewHeight(10, 100).ToBytes()...)
+	require.Equal(t, expectedEncKey, encKey)
+}
+
+func TestDeriveDataKeyFromHashedIndexKey(t *testing.T) {
+	testcases := []struct {
+		ns, coll      string
+		blkNum, txNum uint64
+	}{
+		{
+			"ns", "coll", 10, 1000,
+		},
+		{
+			"ns", "coll", 0, 0,
+		},
+		{
+			"", "coll", 0, 0,
+		},
+		{
+			"ns", "", 0, 0,
+		},
+		{
+			"", "", 0, 0,
+		},
+		{
+			"", "", 10, 10,
+		},
+	}
+
+	for i, testcase := range testcases {
+		t.Run(fmt.Sprintf("testcase-%d", i), func(t *testing.T) {
+			datakeyBytes, err := deriveDataKeyFromEncodedHashedIndexKey(
+				encodeHashedIndexKey(&hashedIndexKey{
+					ns:         testcase.ns,
+					coll:       testcase.coll,
+					blkNum:     testcase.blkNum,
+					txNum:      testcase.txNum,
+					pvtkeyHash: util.ComputeStringHash("dummyKey"),
+				}),
+			)
+			require.NoError(t, err)
+
+			dk, err := decodeDatakey(datakeyBytes)
+			require.NoError(t, err)
+			require.Equal(t,
+				&dataKey{
+					nsCollBlk: nsCollBlk{
+						ns:     testcase.ns,
+						coll:   testcase.coll,
+						blkNum: testcase.blkNum,
+					},
+					txNum: testcase.txNum,
+				},
+				dk,
+			)
+		})
+	}
+
+	t.Run("random bytes should cause an error", func(t *testing.T) {
+		_, err := deriveDataKeyFromEncodedHashedIndexKey([]byte("random-bytes"))
+		require.EqualError(t, err, fmt.Sprintf("unexpected bytes [%x] for HashedIndexed key", "random-bytes"))
 	})
 }
