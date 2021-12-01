@@ -573,7 +573,7 @@ func TestEndorse(t *testing.T) {
 			errString:     "failed to find any endorsing peers for org(s): msp4, msp5",
 		},
 		{
-			name: "endorse with multiple layouts - default choice first layout",
+			name: "endorse retry - localhost and peer3 fail - retry on peer1 and peer2",
 			plan: endorsementPlan{
 				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
 				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
@@ -581,22 +581,6 @@ func TestEndorse(t *testing.T) {
 			},
 			layouts: []endorsementLayout{
 				{"g1": 1, "g2": 1},
-				{"g1": 1, "g3": 1},
-				{"g2": 1, "g3": 1},
-			},
-			expectedEndorsers: []string{"localhost:7051", "peer3:10051"},
-		},
-		{
-			name: "endorse retry - localhost and peer2 fail - retry on peer1 and peer2",
-			plan: endorsementPlan{
-				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
-				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
-				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
-			},
-			layouts: []endorsementLayout{
-				{"g1": 1, "g2": 1},
-				{"g1": 1, "g3": 1},
-				{"g2": 1, "g3": 1},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.localEndorser.ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad local endorser"))
