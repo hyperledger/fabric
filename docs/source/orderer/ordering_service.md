@@ -63,7 +63,7 @@ a root CA and then intermediate CAs associated with that root CA, is up to you.
 
 ## Orderers and the transaction flow
 
-### Phase one: Proposal
+### Phase one: Transaction Proposal and Endorsement
 
 We've seen from our topic on [Peers](../peers/peers.html) that they form the basis
 for a blockchain network, hosting ledgers, which can be queried and updated by
@@ -73,20 +73,21 @@ Specifically, applications that want to update the ledger are involved in a
 process with three phases that ensures all of the peers in a blockchain network
 keep their ledgers consistent with each other.
 
-In the first phase, a client application sends a transaction proposal to
-the Fabric Gateway service. The target peer --- a peer in the same organization
-submitting the proposal --- then runs the transaction. The gateway also forwards
-the proposal to peers in the organizations required by the endorsement policy. The
-endorsed transaction proposals will ultimately be ordered into blocks in phase
-two, and then distributed to all peers for final validation and commitment to
-the ledger in phase three.
+In the first phase, a client application sends a transaction proposal to the Fabric
+Gateway service, via a trusted peer. This peer executes the proposed transaction or
+forwards it to another peer in its organization for execution.
 
-Note: Instead of delegating to the gateway, the client application can manage
-transaction endorsement by using a Fabric v2.3 SDK --- refer to the [v2.3 Applications and Peers](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
+The gateway also forwards the transaction to peers in the organizations required by the endorsement policy. These endorsing peers run the transaction and return the
+transaction response to the gateway service. They do not apply the proposed update to
+their copy of the ledger at this time. The endorsed transaction proposals will ultimately
+be ordered into blocks in phase two, and then distributed to all peers for final validation
+and commitment to the ledger in phase three.
 
-For an in-depth look at the first phase, refer back to the [Peers](../peers/peers.html#phase-1-proposal) topic.
+Note: Fabric v2.3 SDKs embed the logic of the v2.4 Fabric Gateway service in the client application --- refer to the [v2.3 Applications and Peers](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
 
-### Phase two: Ordering and packaging transactions into blocks
+For an in-depth look at phase one, refer back to the [Peers](../peers/peers.html#applications-and-peers) topic.
+
+### Phase two: Transaction Submission and Ordering
 
 With successful completion of the first transaction phase (proposal), the client
 application has received an endorsed transaction proposal response from the
@@ -111,23 +112,6 @@ If a peer happens to be down at this time, or joins
 the channel later, it will receive the blocks by gossiping with another peer.
 We'll see how this block is processed by peers in the third phase.
 
-<!-- diagram and diagram summary need updating for gateway method.
-commenting out for short term
-
-![Orderer1](./orderer.diagram.1.png)
-
-*The first role of an ordering node is to package proposed ledger updates. In
-this example, application A1 sends a transaction T1 endorsed by E1 and E2 to
-the orderer O1. In parallel, Application A2 sends transaction T2 endorsed by E1
-to the orderer O1. O1 packages transaction T1 from application A1 and
-transaction T2 from application A2 together with other transactions from other
-applications in the network into block B2. We can see that in B2, the
-transaction order is T1,T2,T3,T4,T6,T5 -- which may not be the order in which
-these transactions arrived at the orderer! (This example shows a very
-simplified ordering service configuration with only one ordering node.)*
-
--->
-
 It's worth noting that the sequencing of transactions in a block is not
 necessarily the same as the order received by the ordering service, since there
 can be multiple ordering service nodes that receive transactions at approximately
@@ -144,7 +128,7 @@ ledger is immutably assured. As we said earlier, Hyperledger Fabric's finality
 means that there are no **ledger forks** --- validated and committed transactions
 will never be reverted or dropped.
 
-We can also see that, whereas peers execute smart contracts and process transactions,
+We can also see that, whereas peers execute smart contracts (chaincode) and process transactions,
 orderers most definitely do not. Every authorized transaction that arrives at an
 orderer is then mechanically packaged into a block --- the orderer makes no judgement
 as to the content of a transaction (except for channel configuration transactions,
@@ -152,9 +136,9 @@ as mentioned earlier).
 
 At the end of phase two, we see that orderers have been responsible for the simple
 but vital processes of collecting proposed transaction updates, ordering them,
-and packaging them into blocks, ready for distribution to the gateway service.
+and packaging them into blocks, ready for distribution to the channel peers.
 
-### Phase three: Validation and commitment
+### Phase three: Transaction Validation and Commitment
 
 The third phase of the transaction workflow involves the distribution of
 ordered and packaged blocks from the ordering service to the channel peers
