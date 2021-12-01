@@ -30,6 +30,7 @@ var (
 	elgDeprioritizedMissingDataGroup = []byte{8}
 	bootKVHashesKeyPrefix            = []byte{9}
 	lastBlockInBootSnapshotKey       = []byte{'a'}
+	hashedIndexKeyPrefix             = []byte{'b'}
 
 	nilByte    = byte(0)
 	emptyValue = []byte{}
@@ -262,9 +263,9 @@ func createRangeScanKeysForCollElg() (startKey, endKey []byte) {
 		encodeCollElgKey(0)
 }
 
-func datakeyRange(blockNum uint64) ([]byte, []byte) {
-	startKey := append(pvtDataKeyPrefix, version.NewHeight(blockNum, 0).ToBytes()...)
-	endKey := append(pvtDataKeyPrefix, version.NewHeight(blockNum, math.MaxUint64).ToBytes()...)
+func entireDatakeyRange() ([]byte, []byte) {
+	startKey := append(pvtDataKeyPrefix, version.NewHeight(0, 0).ToBytes()...)
+	endKey := append(pvtDataKeyPrefix, version.NewHeight(math.MaxUint64, math.MaxUint64).ToBytes()...)
 	return startKey, endKey
 }
 
@@ -272,6 +273,48 @@ func eligibleMissingdatakeyRange(blkNum uint64) ([]byte, []byte) {
 	startKey := append(elgPrioritizedMissingDataGroup, encodeReverseOrderVarUint64(blkNum)...)
 	endKey := append(elgPrioritizedMissingDataGroup, encodeReverseOrderVarUint64(blkNum-1)...)
 	return startKey, endKey
+}
+
+func encodeHashedIndexKey(k *hashedIndexKey) []byte {
+	encKey := append(hashedIndexKeyPrefix, []byte(k.ns)...)
+	encKey = append(encKey, nilByte)
+	encKey = append(encKey, []byte(k.coll)...)
+	encKey = append(encKey, nilByte)
+	encKey = append(encKey, k.pvtkeyHash...)
+	return append(encKey, version.NewHeight(k.blkNum, k.txNum).ToBytes()...)
+}
+
+func deriveDataKeyFromEncodedHashedIndexKey(encHashedIndexKey []byte) ([]byte, error) {
+	firstNilByteIndex := 0
+	secondNilByteIndex := 0
+	foundFirstNilByte := false
+	lengthHashedPvtKey := 32 // 256/8 bytes
+
+	for i, b := range encHashedIndexKey {
+		if b == 0x00 {
+			if !foundFirstNilByte {
+				firstNilByteIndex = i
+				foundFirstNilByte = true
+			} else {
+				secondNilByteIndex = i
+				break
+			}
+		}
+	}
+
+	if secondNilByteIndex == 0 {
+		return nil, errors.Errorf("unexpected bytes [%x] for HashedIndexed key", encHashedIndexKey)
+	}
+
+	ns := encHashedIndexKey[1:firstNilByteIndex]
+	coll := encHashedIndexKey[firstNilByteIndex+1 : secondNilByteIndex]
+	blkNumTxNumBytes := encHashedIndexKey[secondNilByteIndex+lengthHashedPvtKey+1:]
+
+	encDataKey := append(pvtDataKeyPrefix, blkNumTxNumBytes...)
+	encDataKey = append(encDataKey, ns...)
+	encDataKey = append(encDataKey, nilByte)
+	encDataKey = append(encDataKey, coll...)
+	return encDataKey, nil
 }
 
 // encodeReverseOrderVarUint64 returns a byte-representation for a uint64 number such that

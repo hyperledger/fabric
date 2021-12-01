@@ -114,6 +114,12 @@ type bootKVHashesKey struct {
 	coll   string
 }
 
+type hashedIndexKey struct {
+	ns, coll      string
+	pvtkeyHash    []byte
+	blkNum, txNum uint64
+}
+
 type storeEntries struct {
 	dataEntries             []*dataEntry
 	expiryEntries           []*expiryEntry
