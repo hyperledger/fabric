@@ -170,8 +170,8 @@ a86f50ca1907        hyperledger/fabric-peer:latest      "peer node start"       
 
 See if you can map these containers to the nodes of the test network (you may
 need to horizontally scroll to locate the information):
-* The Org1 peer, `peer0.org1.example.com`, is running in container `a86f50ca1907`
-* The Org2 peer, `peer0.org2.example.com`, is running in container `77d0fcaee61b`
+* The Org1 peer, `peer0.org1.example.com`, is running in container `77d0fcaee61b`
+* The Org2 peer, `peer0.org2.example.com`, is running in container `a86f50ca1907`
 * The CouchDB database for the Org1 peer, `couchdb0`, is running in container `7eb5f64bfe5f`
 * The CouchDB database for the Org2 peer, `couchdb1`, is running in container `2438df719f57`
 * The Ordering node, `orderer.example.com`, is running in container `03373d116c5a`
