@@ -110,13 +110,13 @@ continue to run in Fabric v2.4.
 ## Applications and Peers
 
 We're now going to show how client applications interact with peers, and more
-specifically the [Fabric Gateway](../gateway.html) service running on peers,
+specifically, with the [Fabric Gateway](../gateway.html) service running on peers,
 to access the ledger. Ledger-queries involve a simple dialogue between an
 application and a peer, while ledger-updates (writes) involve additional steps.
 
 A client application connects to the [Fabric Gateway](../gateway.html) service
 on a peer in order to access ledgers and chaincodes. Starting in Fabric v2.4, the Gateway SDKs
-(v1.0.0) make this easy for programmers. The APIs enable applications, via
+(v1.x) make this easy for programmers. The APIs enable applications, via
 the gateway, to submit transaction proposals (which invokes chaincode), request
 endorsement, receive events, and forward endorsed transactions to the ordering
 service.
@@ -132,39 +132,38 @@ and current on every peer in a channel. The following sequence, in three
 phases, describes how interactions between a client application, the gateway
 service running on a peer, orderer nodes and additional peers update the ledger.
 
-**Attention:** The three transaction phases which follow explain the internal methods of how Fabric manages transactions. The Fabric Gateway SDKs implement these phases seamlessly; developers only need to use a [Gateway SDK (1.0.0)](../gateway.html).
+**Attention:** The three transaction phases which follow explain the internal methods of how Fabric manages transactions. The Fabric Gateway SDKs implement these phases seamlessly; developers only need to use a [Gateway SDK (1.x)](../gateway.html).
 
 ### Phase 1 - Transaction Proposal and Endorsement
 
-Phase 1 of a ledger update (write) consists of transaction proposal submission, execution and endorsement delegation:
+Phase 1 of a ledger update (write) consists of transaction proposal submission, execution and endorsement:
 
 a) **Transaction proposal** --- The client application (A1) submits a signed transaction proposal by connecting to the gateway service on P1. A1 must either delegate the selection of endorsing organizations to the gateway service or explicitly identify the organizations required for endorsement.
 
 b) **Transaction execution** --- The gateway service selects P1, or another peer in its organization, to execute the transaction. The selected peer executes the chaincode (S1) specified in the proposal, generates a proposal response (containing the read-write set). The selected peer signs the proposal response and returns it to the gateway.
 
-c) **Proposal endorsement** --- The gateway repeats transaction execution (b) for each organization required by the endorsement policies. The gateway service collects the signed proposal responses and creates a transaction envelope --- which it returns to the client (SDK) for signing.
+c) **Transaction endorsement** --- The gateway repeats transaction execution (b) for each organization required by the chaincode (smart contract) endorsement policies. The gateway service collects the signed proposal responses and creates a transaction envelope --- which it returns to the client (SDK) for signing.
 
-### Phase 2 - Transaction submission and ordering
+### Phase 2 - Transaction Submission and Ordering
 
-Phase 2 of a ledger update consists of transaction ordering and packaging into blocks:
+Phase 2 of a ledger update consists of transaction submission and ordering into blocks:
 
 a) **Transaction submission** --- The client (SDK) sends the signed transaction envelope to the gateway service. The gateway forwards the envelope to an ordering node and returns a success message to the client.
 
-b) **Transaction ordering** --- The ordering node (O1) verifies the signature, and the ordering service orders the transaction, and packages it with ordered transactions into blocks. The ordering service then distributes the block to all peers in the channel for validation and commitment to the ledger.
+b) **Transaction ordering** --- The ordering node (O1) verifies the signature, and the ordering service orders the transaction, and packages it with other ordered transactions into blocks. The ordering service then distributes the block to all peers in the channel for validation and commitment to the ledger.
 
 ### Phase 3 - Transaction Validation and Commitment
 
 Phase 3 of a ledger update consists of transaction validation, ledger commitment and a commit event:
 
-a) **Validation** --- Each peer checks that the client signature on the transaction envelope matches the signature on the original proposal. Each peer check that all endorsements match, that
-the endorsements satisfy the endorsement policy by ensuring that all read-write sets and
-status responses are equivalent. Each peer then marks each transaction as valid or invalid; only valid transactions are applied to the world state (essentially, the current sum of the entire transaction history on the ledger.)
+a) **Transaction validation** --- Each peer checks that the client signature on the transaction envelope matches the signature on the original transaction proposal. Each peer also checks that
+all read-write sets and status responses are equivalent (i.e. the endorsements from all peers match) and that the endorsements satisfy the endorsement policies. Each peer then marks each transaction as valid or invalid for commitment to the ledger.
 
-b) **Ledger commitment** --- Each peer commits (writes) the block of transactions to the channel ledger (L1). The commit is an immutable ledger update (write) to the channel ledger. The world state is updated with the results of valid transactions.
+b) **Transaction commitment** --- Each peer commits the ordered block of transactions to the channel ledger (L1). The commit is an immutable ledger update (write) to the channel ledger. The world state (essentially, the sum of all valid transactions) of the channel is updated with results of valid transactions only.
 
 c) **Commit event** --- Each peer that commits to the ledger sends the client a commit status event with proof of the ledger update.
 
-Note: Fabric v2.3 SDKs embed the transaction proposal functionality in the client applications, which remain supported in Fabric v2.4. Refer to the [v2.3 Applications and Peers](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
+Note: Fabric v2.3 SDKs, which embed transaction proposal and endorsement functionality in the client application, remain supported in Fabric v2.4. Refer to the [v2.3 Applications and Peers](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
 
 ## Peers and Channels
 
