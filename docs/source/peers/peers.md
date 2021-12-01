@@ -132,33 +132,39 @@ and current on every peer in a channel. The following sequence, in three
 phases, describes how interactions between a client application, the gateway
 service running on a peer, orderer nodes and additional peers update the ledger.
 
-### Phase 1 - Transaction Proposal
+**Attention:** The three transaction phases which follow explain the internal methods of how Fabric manages transactions. The Fabric Gateway SDKs implement these phases seamlessly; developers only need to use a [Gateway SDK (1.0.0)](../gateway.html).
+
+### Phase 1 - Transaction Proposal and Endorsement
 
 Phase 1 of a ledger update (write) consists of transaction proposal submission, execution and endorsement delegation:
 
-a) **Proposal submission** --- The client application (A1) submits a signed transaction proposal by connecting to the gateway service on P1. A1 must either delegate the selection of endorsing organizations to the gateway service or explicitly identify the organizations required for endorsement.
+a) **Transaction proposal** --- The client application (A1) submits a signed transaction proposal by connecting to the gateway service on P1. A1 must either delegate the selection of endorsing organizations to the gateway service or explicitly identify the organizations required for endorsement.
 
-b) **Transaction execution** --- The gateway service selects P1, or another peer in its organization, to execute the transaction. The selected peer calls the chaincode (S1) specified in the proposal. The gateway service also requests endorsement from a peer in its own organization (selecting the available peer with the highest block height, which can be P1).
+b) **Transaction execution** --- The gateway service selects P1, or another peer in its organization, to execute the transaction. The selected peer executes the chaincode (S1) specified in the proposal, generates a proposal response (containing the read-write set). The selected peer signs the proposal response and returns it to the gateway.
 
-c) **Endorsement delegation** --- If A1 delegates the selection of endorsement peers to the gateway service, P1 reads the set of endorsement policies for the updated keys and forwards the proposal to a peer in each organizations required to endorse this transaction. P1 then collects the transaction endorsement results and returns the proposal response to the client. The client application then signs the (endorsed) transaction proposal and submits it to the ordering service.
+c) **Proposal endorsement** --- The gateway repeats transaction execution (b) for each organization required by the endorsement policies. The gateway service collects the signed proposal responses and creates a transaction envelope --- which it returns to the client (SDK) for signing.
 
-Note: Using a Fabric v2.3 SDK enables the client application to manage transaction endorsement instead of the gateway service. Refer to the [v2.3 Applications and Peers](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
-
-### Phase 2 - Transaction Ordering
+### Phase 2 - Transaction submission and ordering
 
 Phase 2 of a ledger update consists of transaction ordering and packaging into blocks:
 
-a) **Transaction ordering** --- If the returned endorsements satisfy the endorsement policy requirements, P1 submits the transaction (with other pending transactions) to the ordering service. Once the ordering service validates and orders the transaction, P1 returns a transaction envelope with the endorsements to the client for signing.
+a) **Transaction submission** --- The client (SDK) sends the signed transaction envelope to the gateway service. The gateway forwards the envelope to an ordering node and returns a success message to the client.
 
-b) **Transaction packaging** --- The client signs and returns the endorsed transaction to O1 for ordering and packaging.
+b) **Transaction ordering** --- The ordering node (O1) verifies the signature, and the ordering service orders the transaction, and packages it with ordered transactions into blocks. The ordering service then distributes the block to all peers in the channel for validation and commitment to the ledger.
 
-### Phase 3 - Transaction Commitment
+### Phase 3 - Transaction Validation and Commitment
 
 Phase 3 of a ledger update consists of transaction validation, ledger commitment and a commit event:
 
-a) **Ledger commitment** --- O1 collects signed transactions from across the channel, packages them as ordered blocks, and distributes the blocks to all channel peers. The gateway service validates the transaction by ensuring that results are equivalent on all peers before committing the transaction to the channel ledger (L1). The commit is an immutable ledger update (write) to the channel ledger (for both blockchain and world state).
+a) **Validation** --- Each peer checks that the client signature on the transaction envelope matches the signature on the original proposal. Each peer check that all endorsements match, that
+the endorsements satisfy the endorsement policy by ensuring that all read-write sets and
+status responses are equivalent. Each peer then marks each transaction as valid or invalid; only valid transactions are applied to the world state (essentially, the current sum of the entire transaction history on the ledger.)
 
-b) **Commit event** --- The gateway service sends the client a commit status event with proof of the ledger update.
+b) **Ledger commitment** --- Each peer commits (writes) the block of transactions to the channel ledger (L1). The commit is an immutable ledger update (write) to the channel ledger. The world state is updated with the results of valid transactions.
+
+c) **Commit event** --- Each peer that commits to the ledger sends the client a commit status event with proof of the ledger update.
+
+Note: Fabric v2.3 SDKs embed the transaction proposal functionality in the client applications, which remain supported in Fabric v2.4. Refer to the [v2.3 Applications and Peers](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
 
 ## Peers and Channels
 
@@ -294,7 +300,7 @@ other to keep the ledger current and consistent across a channel --- the Fabric
 Gateway service --- is mediated by special nodes called *orderers*. It's to
 these orderer nodes that we now turn our attention.
 
-An ledger update transaction is different from a query transaction because a single
+A ledger update transaction is different from a query transaction because a single
 peer cannot, on its own, update the ledger --- that requires the consent of other
 peers in the network, a process known as *consensus*. When the peers required to
 approve the transaction do so, and the transaction is committed to the ledger,
