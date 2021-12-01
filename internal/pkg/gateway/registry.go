@@ -9,6 +9,7 @@ package gateway
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
 	"sync"
@@ -139,6 +140,9 @@ layout:
 		}
 	}
 
+	// shuffle the layouts - keep the preferred ones first
+	rand.Shuffle(len(preferredLayouts), func(i, j int) { preferredLayouts[i], preferredLayouts[j] = preferredLayouts[j], preferredLayouts[i] })
+	rand.Shuffle(len(otherLayouts), func(i, j int) { otherLayouts[i], otherLayouts[j] = otherLayouts[j], otherLayouts[i] })
 	layouts := append(preferredLayouts, otherLayouts...)
 
 	if len(layouts) == 0 {
