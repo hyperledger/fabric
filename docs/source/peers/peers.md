@@ -13,7 +13,7 @@ that are shared by channel peers. These aspects of peers make them a good starti
 point for understanding a Fabric network.
 
 Besides peers, other elements of a Fabric blockchain network are also important:  
-ledgers and smart contracts, orderers, endorsement policies, channels, client applications,
+ledgers and smart contracts, orderers, policies, channels, client applications,
 organizations, identities, and membership, which you can read about in their own dedicated sections.
 This section focuses on peers, and their relationships to these other elements in a Fabric
 network.
@@ -27,8 +27,8 @@ the distributed ledger L1. P1, P2 and P3 each invoke the same chaincode, S1,
 to access their respective copies of the distributed ledger.*
 
 Peers are a flexible and redundant element that can be created, started,
-stopped, reconfigured and deleted. Peers expose a set of APIs that enable administrators
-and client applications to interact with the services that peers provide --- the
+stopped, reconfigured and deleted. Peers expose a set of APIs that enable
+client applications to interact with the services that peers provide --- the
 [Fabric Gateway](../gateway.html) service in particular.
 
 ## Chaincode terminology
@@ -83,9 +83,8 @@ configuration of the Fabric network.
 
 ### Multiple Chaincodes
 
-There is no fixed relationship between the number of ledgers hosted on a peer and
-the number of installed chaincodes that can access a ledger. Any peer can host
-multiple chaincodes, each of which could access multiple ledgers.
+A chaincode is instantiated on a single channel. Each channel (and ledger) can
+have multiple chaincodes that interact with it.
 
 ![Peer4](./peers.diagram.4.png)
 
@@ -243,7 +242,7 @@ contribute equally.
 Applications used by organizations, as in the [previous diagram](#Peer8), may or
 may not be the same, because each organization can decide how it wants to use
 data on the ledger. Both application and presentation logic can therefore vary
-across organizations, even though all peers host an equivalent copy of the ledger..
+across organizations, even though all peers host an equivalent copy of the ledger.
 
 ## Peers and Identity
 
@@ -295,9 +294,9 @@ is owned by Org2.
 We've seen that peers form the basis for a Fabric blockchain network, hosting
 ledgers and smart contracts which can be queried and updated by peer-connected
 applications. The mechanism by which applications and peers interact with each
-other to keep the ledger current and consistent across a channel --- the Fabric
-Gateway service --- is mediated by special nodes called *orderers*. It's to
-these orderer nodes that we now turn our attention.
+other to keep the ledger current and consistent across a channel is mediated by
+special nodes called *orderers*. It's to these orderer nodes that we now turn our
+attention.
 
 A ledger update transaction is different from a query transaction because a single
 peer cannot, on its own, update the ledger --- that requires the consent of other
@@ -333,25 +332,8 @@ transaction and return their results to the peer. The gateway service collects
 all responses, and if they collectively satisfy the endorsement policies, forwards
 the transaction to the ordering service.
 
-If the endorsement policies are not satisfied, or if the proposed transaction would
-write to a private data collection, (as *transient* data) the gateway service returns
-a failed proposal message to the client. The client application must then be updated
-to explicitly specify the organizations required for endorsement.
-
-<!-- peer 10 diagram needs an update for gateway
-
-![Peer10](./peers.diagram.10.png)
-
-*Transaction proposals are independently executed by peers who return endorsed
-proposal responses. In this example, application A1 generates transaction T1
-proposal P which it sends to both peer P1 and peer P2 on channel C. P1 executes
-S1 using transaction T1 proposal P generating transaction T1 response R1 which
-it endorses with E1. Independently, P2 executes S1 using transaction T1
-proposal P generating transaction T1 response R2 which it endorses with E2.
-Application A1 receives two endorsed responses for transaction T1, namely E1
-and E2.*
-
--->
+If the proposed transaction would write to a private data collection, (as *transient* data)
+the client application must explicitly specify the organizations required for endorsement.
 
 Note that a peer endorses a proposal response by adding its digital signature, and
 signing the entire payload using its private key. This endorsement can be subsequently
