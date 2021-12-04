@@ -33,7 +33,13 @@ Throughout this tutorial, all commands are performed from the `fabric/` folder. 
     ```
     export FABRIC_CFG_PATH=$(pwd)/sampleconfig
     ```
-5. Generate the genesis block for the ordering service. Run the following command to generate the genesis block and store it in `$(pwd)/sampleconfig/genesisblock` so that it can be used by the orderer in the next step when the orderer is started.
+5. Create the `hyperledger` subdirectory in the `/var` directory. This is a location the orderer uses to store blocks as defined in the      `orderer.yaml`. To create the `hyperledger` subdirectory, execute these commands, replacing the question marks with your username:
+
+    ```
+    sudo mkdir /var/hyperledger
+    sudo chown ????? /var/hyperledger
+    ```
+6. Generate the genesis block for the ordering service. Run the following command to generate the genesis block and store it in `$(pwd)/sampleconfig/genesisblock` so that it can be used by the orderer in the next step when the orderer is started.
     ```
     configtxgen -profile SampleDevModeSolo -channelID syschannel -outputBlock genesisblock -configPath $FABRIC_CFG_PATH -outputBlock "$(pwd)/sampleconfig/genesisblock"
     ```
