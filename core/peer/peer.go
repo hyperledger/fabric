@@ -315,14 +315,14 @@ func (p *Peer) createChannel(
 		cryptoProvider: p.CryptoProvider,
 	}
 
-	callbacks := append(
-		p.configCallbacks,
+	callbacks := []channelconfig.BundleActor{
 		ordererSourceCallback,
 		gossipCallbackWrapper,
 		trustedRootsCallbackWrapper,
 		mspCallback,
 		channel.bundleUpdate,
-	)
+	}
+	callbacks = append(callbacks, p.configCallbacks...)
 
 	channel.bundleSource = channelconfig.NewBundleSource(
 		bundle,
