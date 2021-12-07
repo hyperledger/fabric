@@ -33,14 +33,7 @@ func TestOrdererCache(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, orderers, 1)
 
-	// add 2 more orderer nodes
-	test.discovery.ConfigReturns(buildConfig(t, []string{"orderer1", "orderer2", "orderer3"}), nil)
-	// the config is cached in the registry - so will still return the single orderer
-	orderers, err = test.server.registry.orderers(channelName)
-	require.NoError(t, err)
-	require.Len(t, orderers, 1)
-
-	// the config update callback is triggered, which will invalidate the cache
+	// trigger the config update callback, updating the orderers
 	bundle, err := createChannelConfigBundle()
 	require.NoError(t, err)
 	test.server.registry.configUpdate(bundle)
@@ -74,6 +67,7 @@ func buildConfig(t *testing.T, orderers []string) *dp.ConfigResult {
 func createChannelConfigBundle() (*channelconfig.Bundle, error) {
 	conf := genesisconfig.Load(genesisconfig.SampleDevModeSoloProfile, configtest.GetDevConfigDir())
 	conf.Capabilities = map[string]bool{"V2_0": true}
+	conf.Orderer.Organizations[0].OrdererEndpoints = []string{"orderer1", "orderer2", "orderer3"}
 
 	cg, err := encoder.NewChannelGroup(conf)
 	if err != nil {
