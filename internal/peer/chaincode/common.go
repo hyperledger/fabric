@@ -612,7 +612,7 @@ func ChaincodeInvokeOrQuery(
 				return proposalResp, nil
 			}
 			// assemble a signed transaction (it's an Envelope message)
-			env, err := protoutil.CreateSignedTx(prop, signer, responses...)
+			env, err := protoutil.CreateSignedTxWithLogger(prop, signer, logger.With("channel", cID, "txID", txID), responses...)
 			if err != nil {
 				return proposalResp, errors.WithMessage(err, "could not assemble transaction")
 			}

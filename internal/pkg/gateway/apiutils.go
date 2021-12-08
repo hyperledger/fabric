@@ -57,11 +57,6 @@ func newRpcError(code codes.Code, message string, details ...proto.Message) erro
 	return st.Err()
 }
 
-func wrappedRpcError(err error, message string, details ...proto.Message) error {
-	statusErr := status.Convert(err)
-	return newRpcError(statusErr.Code(), message+": "+statusErr.Message(), details...)
-}
-
 func toRpcError(err error, unknownCode codes.Code) error {
 	errStatus := toRpcStatus(err)
 	if errStatus.Code() != codes.Unknown {

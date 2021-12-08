@@ -134,12 +134,28 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	}
 	proposal, err := protoutil.UnmarshalProposal(signedProposal.ProposalBytes)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	channel, chaincodeID, hasTransientData, err := getChannelAndChaincodeFromSignedProposal(signedProposal)
+	header, err := protoutil.UnmarshalHeader(proposal.Header)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	channelHeader, err := protoutil.UnmarshalChannelHeader(header.ChannelHeader)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	payload, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.Payload)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	spec, err := protoutil.UnmarshalChaincodeInvocationSpec(payload.Input)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	channel := channelHeader.ChannelId
+	chaincodeID := spec.GetChaincodeSpec().GetChaincodeId().GetName()
+	hasTransientData := len(payload.GetTransientMap()) > 0
 
 	defaultInterest := &peer.ChaincodeInterest{
 		Chaincodes: []*peer.ChaincodeCall{{
@@ -321,7 +337,7 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 		return nil, newRpcError(codes.Aborted, "failed to collect enough transaction endorsements, see attached details for more info", errorDetails...)
 	}
 
-	env, err := protoutil.CreateTx(proposal, endorsements...)
+	env, err := protoutil.CreateTx(header, proposal.Payload, logger.With("channel", channel, "txID", request.TransactionId), endorsements...)
 	if err != nil {
 		return nil, status.Errorf(codes.Aborted, "failed to assemble transaction: %s", err)
 	}

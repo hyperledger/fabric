@@ -10,17 +10,21 @@ import (
 	"encoding/hex"
 	"errors"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-
 	"github.com/hyperledger/fabric/protoutil"
 	"github.com/hyperledger/fabric/protoutil/fakes"
 	"github.com/stretchr/testify/require"
 )
+
+//go:generate counterfeiter -o fakes/logger.go --fake-name Logger . logger
+
+type logger interface {
+	protoutil.Logger
+}
 
 func TestGetPayloads(t *testing.T) {
 	var txAction *pb.TransactionAction
@@ -120,18 +124,19 @@ func TestGetPayloads(t *testing.T) {
 }
 
 func TestCreateTx(t *testing.T) {
-	proposal := &pb.Proposal{
-		Header: protoutil.MarshalOrPanic(&cb.Header{
-			ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
-				Extension: protoutil.MarshalOrPanic(&pb.ChaincodeHeaderExtension{}),
-			}),
+	header := &cb.Header{
+		ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+			Extension: protoutil.MarshalOrPanic(&pb.ChaincodeHeaderExtension{}),
 		}),
+	}
+	proposal := &pb.Proposal{
+		Header: protoutil.MarshalOrPanic(header),
 	}
 	responses := []*pb.ProposalResponse{
 		{Payload: []byte("payload"), Endorsement: &pb.Endorsement{}, Response: &pb.Response{Status: int32(200)}},
 	}
 
-	unsignedTx, err := protoutil.CreateTx(proposal, responses...)
+	unsignedTx, err := protoutil.CreateTx(header, proposal.Payload, &fakes.Logger{}, responses...)
 	require.NoError(t, err)
 	signedTx, err := protoutil.CreateSignedTx(proposal, &fakes.SignerSerializer{}, responses...)
 	require.NoError(t, err)
@@ -140,19 +145,20 @@ func TestCreateTx(t *testing.T) {
 }
 
 func TestDeduplicateEndorsements(t *testing.T) {
-	proposal := &pb.Proposal{
-		Header: protoutil.MarshalOrPanic(&cb.Header{
-			ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
-				Extension: protoutil.MarshalOrPanic(&pb.ChaincodeHeaderExtension{}),
-			}),
+	header := &cb.Header{
+		ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
+			Extension: protoutil.MarshalOrPanic(&pb.ChaincodeHeaderExtension{}),
 		}),
+	}
+	proposal := &pb.Proposal{
+		Header: protoutil.MarshalOrPanic(header),
 	}
 	responses := []*pb.ProposalResponse{
 		{Payload: []byte("payload"), Endorsement: &pb.Endorsement{Endorser: []byte{5, 4, 3}}, Response: &pb.Response{Status: int32(200)}},
 		{Payload: []byte("payload"), Endorsement: &pb.Endorsement{Endorser: []byte{5, 4, 3}}, Response: &pb.Response{Status: int32(200)}},
 	}
 
-	transaction, err := protoutil.CreateTx(proposal, responses...)
+	transaction, err := protoutil.CreateTx(header, proposal.Payload, &fakes.Logger{}, responses...)
 	require.NoError(t, err)
 	require.True(t, proto.Equal(transaction, transaction), "got: %#v, want: %#v", transaction, transaction)
 
@@ -202,7 +208,6 @@ func TestCreateSignedTx(t *testing.T) {
 		responses     []*pb.ProposalResponse
 		expectedError string
 	}{
-		// good response followed by bad response
 		{
 			[]*pb.ProposalResponse{
 				{Payload: []byte("payload"), Response: &pb.Response{Status: int32(200)}},
@@ -229,10 +234,10 @@ func TestCreateSignedTx(t *testing.T) {
 		{Payload: []byte("payload"), Response: &pb.Response{Status: int32(200)}},
 		{Payload: []byte("payload2"), Response: &pb.Response{Status: int32(200)}},
 	}
-	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	if err == nil || strings.HasPrefix(err.Error(), "ProposalResponsePayloads do not match (base64):") == false {
-		require.FailNow(t, "Error is expected when response payloads do not match")
-	}
+	logger := &fakes.Logger{}
+	_, err = protoutil.CreateSignedTxWithLogger(prop, signID, logger, responses...)
+	require.EqualError(t, err, "ProposalResponsePayloads do not match")
+	require.Equal(t, 1, logger.InfowCallCount())
 
 	// no endorsement
 	responses = []*pb.ProposalResponse{{

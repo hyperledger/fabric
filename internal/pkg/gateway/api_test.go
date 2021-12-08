@@ -761,7 +761,7 @@ func TestEndorse(t *testing.T) {
 			},
 			localResponse: "different_response",
 			errCode:       codes.Aborted,
-			errString:     "failed to assemble transaction: ProposalResponsePayloads do not match (base64): 'EhQaEgjIARoNbW9ja19yZXNwb25zZQ==' vs 'EhkaFwjIARoSZGlmZmVyZW50X3Jlc3BvbnNl'",
+			errString:     "failed to assemble transaction: ProposalResponsePayloads do not match",
 		},
 		{
 			name: "discovery fails",
@@ -1777,7 +1777,7 @@ func TestNilArgs(t *testing.T) {
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "the proposed transaction must contain a signed proposal"))
 
 	_, err = server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: &peer.SignedProposal{ProposalBytes: []byte("jibberish")}})
-	require.ErrorContains(t, err, "rpc error: code = InvalidArgument desc = failed to unpack transaction proposal: error unmarshalling Proposal")
+	require.ErrorContains(t, err, "rpc error: code = InvalidArgument desc = error unmarshalling Proposal")
 
 	_, err = server.Submit(ctx, nil)
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a submit request is required"))

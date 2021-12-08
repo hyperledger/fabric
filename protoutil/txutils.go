@@ -128,13 +128,20 @@ type Signer interface {
 	Serialize() ([]byte, error)
 }
 
-// CreateTx assembles an Envelope message from a proposal and endorsements.
+// Logger defines the interface for injecting a logger
+type Logger interface {
+	Infow(msg string, kvPairs ...interface{})
+}
+
+// CreateTx assembles an Envelope message from a proposal header, serialized payload and endorsements.
 // The envelope that is returned is not signed.
 func CreateTx(
-	proposal *peer.Proposal,
+	header *common.Header,
+	proposalPayload []byte,
+	logger Logger,
 	resps ...*peer.ProposalResponse,
 ) (*common.Envelope, error) {
-	return createTx(proposal, nil, resps...)
+	return createTx(header, proposalPayload, nil, logger, resps...)
 }
 
 // CreateSignedTx assembles an Envelope message from proposal, endorsements,
@@ -146,19 +153,21 @@ func CreateSignedTx(
 	signer Signer,
 	resps ...*peer.ProposalResponse,
 ) (*common.Envelope, error) {
-	if signer == nil {
-		return nil, errors.New("signer is required when creating a signed transaction")
-	}
-	return createTx(proposal, signer, resps...)
+	return CreateSignedTxWithLogger(proposal, signer, nil, resps...)
 }
 
-func createTx(
+// CreateSignedTxWithLogger assembles an Envelope message from proposal, endorsements,
+// and a signer. This function should be called by a client when it has
+// collected enough endorsements for a proposal to create a transaction and
+// submit it to peers for ordering.
+func CreateSignedTxWithLogger(
 	proposal *peer.Proposal,
 	signer Signer,
+	logger Logger,
 	resps ...*peer.ProposalResponse,
 ) (*common.Envelope, error) {
-	if len(resps) == 0 {
-		return nil, errors.New("at least one proposal response is required")
+	if signer == nil {
+		return nil, errors.New("signer is required when creating a signed transaction")
 	}
 
 	// the original header
@@ -167,8 +176,22 @@ func createTx(
 		return nil, err
 	}
 
+	return createTx(hdr, proposal.Payload, signer, logger, resps...)
+}
+
+func createTx(
+	header *common.Header,
+	proposalPayload []byte,
+	signer Signer,
+	logger Logger,
+	resps ...*peer.ProposalResponse,
+) (*common.Envelope, error) {
+	if len(resps) == 0 {
+		return nil, errors.New("at least one proposal response is required")
+	}
+
 	// the original payload
-	pPayl, err := UnmarshalChaincodeProposalPayload(proposal.Payload)
+	pPayl, err := UnmarshalChaincodeProposalPayload(proposalPayload)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +203,7 @@ func createTx(
 			return nil, err
 		}
 
-		shdr, err := UnmarshalSignatureHeader(hdr.SignatureHeader)
+		shdr, err := UnmarshalSignatureHeader(header.SignatureHeader)
 		if err != nil {
 			return nil, err
 		}
@@ -203,8 +226,10 @@ func createTx(
 		}
 
 		if !bytes.Equal(a1, r.Payload) {
-			return nil, errors.Errorf("ProposalResponsePayloads do not match (base64): '%s' vs '%s'",
-				b64.StdEncoding.EncodeToString(r.Payload), b64.StdEncoding.EncodeToString(a1))
+			if logger != nil {
+				logger.Infow("ProposalResponsePayloads do not match (base64)", "payload1", b64.StdEncoding.EncodeToString(a1), "payload2", b64.StdEncoding.EncodeToString(r.Payload))
+			}
+			return nil, errors.New("ProposalResponsePayloads do not match")
 		}
 	}
 
@@ -244,10 +269,7 @@ func createTx(
 	}
 
 	// create a transaction
-	taa := &peer.TransactionAction{Header: hdr.SignatureHeader, Payload: capBytes}
-	taas := make([]*peer.TransactionAction, 1)
-	taas[0] = taa
-	tx := &peer.Transaction{Actions: taas}
+	tx := &peer.Transaction{Actions: []*peer.TransactionAction{{Header: header.SignatureHeader, Payload: capBytes}}}
 
 	// serialize the tx
 	txBytes, err := GetBytesTransaction(tx)
@@ -256,7 +278,7 @@ func createTx(
 	}
 
 	// create the payload
-	payl := &common.Payload{Header: hdr, Data: txBytes}
+	payl := &common.Payload{Header: header, Data: txBytes}
 	paylBytes, err := GetBytesPayload(payl)
 	if err != nil {
 		return nil, err
