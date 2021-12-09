@@ -164,7 +164,7 @@ Org3 peer. From the ``addOrg3`` directory, issue the following command:
 
 If the command is successful, you will see the creation of the Org3 peer:
 
-.. code:: bash
+.. code::
 
   Creating peer0.org3.example.com ... done
 
@@ -194,6 +194,7 @@ to remove).
 Navigate back to the ``test-network`` directory.
 
 .. code:: bash
+
   cd ..
 
 Because Org3 is not yet a member of the channel, we need to operate as the admin
@@ -228,7 +229,7 @@ represented and its encoding (protobuf or JSON) is recommended.
 When you issued the ``peer channel fetch`` command, the following output is
 displayed in your logs:
 
-.. code:: bash
+.. code::
 
   2021-01-07 18:46:33.687 UTC [cli.common] readBlock -> INFO 004 Received block: 2
 
@@ -251,7 +252,8 @@ the update process separate from other artifacts. Change into the  ``channel-art
 folder to complete the next steps:
 
 .. code:: bash
-   cd channel-artifacts
+
+  cd channel-artifacts
 
 Now we will make use of the ``configtxlator`` tool to decode this channel
 configuration block into JSON format (which can be read and modified by humans).
@@ -354,7 +356,8 @@ First, let's sign this update proto as Org1. Navigate back to the ``test-network
 directory:
 
 .. code:: bash
-   cd ..
+
+  cd ..
 
 Remember that we exported the necessary environment variables to operate as the Org1 admin.
 As a result, the following ``peer channel signconfigtx`` command will sign the update as Org1.
@@ -699,7 +702,8 @@ this we will use the configtxlator tool, as done previously when adding Org3 to 
 channel. First, change into the  ``channel-artifacts`` folder:
 
 .. code:: bash
-   cd channel-artifacts
+
+  cd channel-artifacts
 
 When converting it we need to remove all the headers, metadata, and signatures
 that are not required to update Org3 to include an anchor peer by using the ``jq``
@@ -772,7 +776,8 @@ Now that the update has been properly formatted it is time to sign off and submi
 Navigate back to the ``test-network`` directory:
 
 .. code:: bash
-   cd ..
+
+  cd ..
 
 
 Since this is only an update to Org3 we only need to have Org3 sign off on the update. Run the following
