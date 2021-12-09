@@ -406,6 +406,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				return
 			}
 
+			logger.Debugw("Config transaction envelope passed validation checks", "channel", channel)
 			if err := v.ChannelResources.Apply(configEnvelope); err != nil {
 				err = errors.WithMessage(err, "error validating config which passed initial validity checks")
 				logger.Criticalf("%+v", err)
@@ -415,7 +416,7 @@ func (v *TxValidator) validateTx(req *blockValidationRequest, results chan<- *bl
 				}
 				return
 			}
-			logger.Debugf("config transaction received for chain %s", channel)
+			logger.Infow("Config transaction validated and applied to channel resources", "channel", channel)
 		} else {
 			logger.Warningf("Unknown transaction type [%s] in block number [%d] transaction index [%d]",
 				common.HeaderType(chdr.Type), block.Header.Number, tIdx)
