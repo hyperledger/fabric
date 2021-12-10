@@ -33,7 +33,7 @@ Throughout this tutorial, all commands are performed from the `fabric/` folder. 
     ```
     export FABRIC_CFG_PATH=$(pwd)/sampleconfig
     ```
-5. Create the `hyperledger` subdirectory in the `/var` directory. This is a location the orderer uses to store blocks as defined in the orderer `orderer.yaml` and peer `core.yaml` files. To create the `hyperledger` subdirectory, execute these commands, replacing the question marks with your username:
+5. Create the `hyperledger` subdirectory in the `/var` directory. This is the default location Fabric uses to store blocks as defined in the orderer `orderer.yaml` and peer `core.yaml` files. To create the `hyperledger` subdirectory, execute these commands, replacing the question marks with your username:
 
     ```
     sudo mkdir /var/hyperledger
