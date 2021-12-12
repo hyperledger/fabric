@@ -159,6 +159,6 @@ func TestSignerBadConfig(t *testing.T) {
 	}
 
 	signer, err = NewSigner(conf)
-	require.EqualError(t, err, "enrollment certificate is not a valid x509 certificate: asn1: syntax error: data truncated")
+	require.EqualError(t, err, "enrollment certificate is not a valid x509 certificate: x509: malformed certificate")
 	require.Nil(t, signer)
 }
