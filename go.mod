@@ -69,3 +69,5 @@ require (
 )
 
 replace github.com/onsi/gomega => github.com/onsi/gomega v1.9.0
+
+replace github.com/cespare/xxhash/v2 => github.com/cespare/xxhash/v2 v2.1.2 // fix for Go 1.17 in github.com/prometheus/client_golang dependency without updating protobuf
