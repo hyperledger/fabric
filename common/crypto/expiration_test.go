@@ -275,14 +275,14 @@ cRv6rqxvy5M+t0DhRtiwCen70YCUsksb
 	}{
 		{
 			description: "Bad first certificate",
-			errContains: "asn1:",
+			errContains: "malformed certificate",
 			first:       []byte{1, 2, 3},
 			second:      bob,
 		},
 
 		{
 			description: "Bad second certificate",
-			errContains: "asn1:",
+			errContains: "malformed certificate",
 			first:       alice,
 			second:      []byte{1, 2, 3},
 		},

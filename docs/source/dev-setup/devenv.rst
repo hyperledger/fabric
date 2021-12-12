@@ -5,7 +5,7 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 -  `Git client <https://git-scm.com/downloads>`__
--  `Go <https://golang.org/dl/>`__ version 1.16.x (recommended Go version can be found in project Makefile)
+-  `Go <https://golang.org/dl/>`__ version 1.17.x (recommended Go version can be found in project Makefile)
 -  `Docker <https://docs.docker.com/get-docker/>`__ version 18.03 or later
 -  (macOS) `Xcode Command Line Tools <https://developer.apple.com/downloads/>`__
 -  `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__ use version 2.5 as 2.6 is broken in this environment
