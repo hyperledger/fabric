@@ -119,31 +119,19 @@ func TestGetPayloads(t *testing.T) {
 	t.Logf("error6 [%s]", err)
 }
 
-func TestCreateTx(t *testing.T) {
-	proposal := &pb.Proposal{
-		Header: protoutil.MarshalOrPanic(&cb.Header{
-			ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
-				Extension: protoutil.MarshalOrPanic(&pb.ChaincodeHeaderExtension{}),
-			}),
-		}),
-	}
-	responses := []*pb.ProposalResponse{
-		{Payload: []byte("payload"), Endorsement: &pb.Endorsement{}, Response: &pb.Response{Status: int32(200)}},
-	}
-
-	unsignedTx, err := protoutil.CreateTx(proposal, responses...)
-	require.NoError(t, err)
-	signedTx, err := protoutil.CreateSignedTx(proposal, &fakes.SignerSerializer{}, responses...)
-	require.NoError(t, err)
-
-	require.True(t, proto.Equal(signedTx, unsignedTx), "got: %#v, want: %#v", signedTx, unsignedTx)
-}
-
 func TestDeduplicateEndorsements(t *testing.T) {
+	signID := &fakes.SignerSerializer{}
+	signID.SerializeReturns([]byte("signer"), nil)
+	signerBytes, err := signID.Serialize()
+	require.NoError(t, err, "Unexpected error serializing signing identity")
+
 	proposal := &pb.Proposal{
 		Header: protoutil.MarshalOrPanic(&cb.Header{
 			ChannelHeader: protoutil.MarshalOrPanic(&cb.ChannelHeader{
 				Extension: protoutil.MarshalOrPanic(&pb.ChaincodeHeaderExtension{}),
+			}),
+			SignatureHeader: protoutil.MarshalOrPanic(&cb.SignatureHeader{
+				Creator: signerBytes,
 			}),
 		}),
 	}
@@ -152,7 +140,7 @@ func TestDeduplicateEndorsements(t *testing.T) {
 		{Payload: []byte("payload"), Endorsement: &pb.Endorsement{Endorser: []byte{5, 4, 3}}, Response: &pb.Response{Status: int32(200)}},
 	}
 
-	transaction, err := protoutil.CreateTx(proposal, responses...)
+	transaction, err := protoutil.CreateSignedTx(proposal, signID, responses...)
 	require.NoError(t, err)
 	require.True(t, proto.Equal(transaction, transaction), "got: %#v, want: %#v", transaction, transaction)
 
@@ -282,7 +270,7 @@ func TestCreateSignedTx(t *testing.T) {
 }
 
 func TestCreateSignedTxNoSigner(t *testing.T) {
-	_, err := protoutil.CreateSignedTx(nil, nil)
+	_, err := protoutil.CreateSignedTx(nil, nil, &pb.ProposalResponse{})
 	require.ErrorContains(t, err, "signer is required when creating a signed transaction")
 }
 

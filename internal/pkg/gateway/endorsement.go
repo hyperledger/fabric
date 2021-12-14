@@ -8,6 +8,8 @@ package gateway
 
 import (
 	"bytes"
+	b64 "encoding/base64"
+	"errors"
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -15,7 +17,7 @@ import (
 
 type layout struct {
 	required     map[string]int // group -> quantity
-	endorsements []*peer.ProposalResponse
+	endorsements []*peer.Endorsement
 }
 
 // The plan structure is initialised with an endorsement plan from discovery. It is used to manage the
@@ -24,12 +26,13 @@ type layout struct {
 // Note that this structure and its methods assume that each endorsing peer is in one and only one group.
 // This is a constraint of the current algorithm in the discovery service.
 type plan struct {
-	layouts        []*layout
-	groupEndorsers map[string][]*endorser // group -> endorsing peers
-	groupIds       map[string]string      // peer pkiid -> group
-	nextLayout     int
-	size           int
-	planLock       sync.Mutex
+	layouts         []*layout
+	groupEndorsers  map[string][]*endorser // group -> endorsing peers
+	groupIds        map[string]string      // peer pkiid -> group
+	nextLayout      int
+	size            int
+	responsePayload []byte
+	planLock        sync.Mutex
 }
 
 // construct and initialise an endorsement plan
@@ -83,10 +86,10 @@ func (p *plan) endorsers() []*endorser {
 	return endorsers
 }
 
-// Invoke update when an endorsement has been successfully received for the given endorser.
+// Invoke processEndorsement when an endorsement has been successfully received for the given endorser.
 // All layouts containing the group that contains this endorser are updated with the endorsement.
-// Returns array of endorsements, if at least one layout in the plan has been satisfied, otherwise nil.
-func (p *plan) update(endorser *endorser, endorsement *peer.ProposalResponse) []*peer.ProposalResponse {
+// Returns a ChaincodeEndorsedAction, if at least one layout in the plan has been satisfied, otherwise nil.
+func (p *plan) processEndorsement(endorser *endorser, response *peer.ProposalResponse) (*peer.ChaincodeEndorsedAction, error) {
 	p.planLock.Lock()
 	defer p.planLock.Unlock()
 
@@ -102,6 +105,16 @@ func (p *plan) update(endorser *endorser, endorsement *peer.ProposalResponse) []
 		}
 	}
 
+	// check the proposal responses are the same
+	if p.responsePayload == nil {
+		p.responsePayload = response.GetPayload()
+	} else {
+		if !bytes.Equal(p.responsePayload, response.GetPayload()) {
+			logger.Warnw("ProposalResponsePayloads do not match (base64)", "payload1", b64.StdEncoding.EncodeToString(p.responsePayload), "payload2", b64.StdEncoding.EncodeToString(response.GetPayload()))
+			return nil, errors.New("ProposalResponsePayloads do not match")
+		}
+	}
+
 	for i := p.nextLayout; i < len(p.layouts); i++ {
 		layout := p.layouts[i]
 		if layout == nil {
@@ -109,18 +122,18 @@ func (p *plan) update(endorser *endorser, endorsement *peer.ProposalResponse) []
 		}
 		if quantity, ok := layout.required[group]; ok {
 			layout.required[group] = quantity - 1
-			layout.endorsements = append(layout.endorsements, endorsement)
+			layout.endorsements = append(layout.endorsements, response.Endorsement)
 			if layout.required[group] == 0 {
 				// this group for this layout is complete - remove from map
 				delete(layout.required, group)
 				if len(layout.required) == 0 {
 					// no groups left - this layout is now satisfied
-					return layout.endorsements
+					return &peer.ChaincodeEndorsedAction{ProposalResponsePayload: p.responsePayload, Endorsements: uniqueEndorsements(layout.endorsements)}, nil
 				}
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // Invoke nextPeerInGroup if an endorsement fails for the given endorser.
@@ -153,4 +166,21 @@ func (p *plan) nextPeerInGroup(endorser *endorser) *endorser {
 	p.nextLayout++
 
 	return nil
+}
+
+func uniqueEndorsements(endorsements []*peer.Endorsement) []*peer.Endorsement {
+	endorsersUsed := make(map[string]struct{})
+	var unique []*peer.Endorsement
+	for _, e := range endorsements {
+		if e == nil {
+			continue
+		}
+		key := string(e.Endorser)
+		if _, used := endorsersUsed[key]; used {
+			continue
+		}
+		unique = append(unique, e)
+		endorsersUsed[key] = struct{}{}
+	}
+	return unique
 }

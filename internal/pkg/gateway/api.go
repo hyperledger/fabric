@@ -29,7 +29,7 @@ import (
 )
 
 type endorserResponse struct {
-	endorsementSet []*peer.ProposalResponse
+	action         *peer.ChaincodeEndorsedAction
 	err            *gp.ErrorDetail
 	timeoutExpired bool
 }
@@ -134,12 +134,28 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	}
 	proposal, err := protoutil.UnmarshalProposal(signedProposal.ProposalBytes)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	channel, chaincodeID, hasTransientData, err := getChannelAndChaincodeFromSignedProposal(signedProposal)
+	header, err := protoutil.UnmarshalHeader(proposal.Header)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	channelHeader, err := protoutil.UnmarshalChannelHeader(header.ChannelHeader)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	payload, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.Payload)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	spec, err := protoutil.UnmarshalChaincodeInvocationSpec(payload.Input)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	channel := channelHeader.ChannelId
+	chaincodeID := spec.GetChaincodeSpec().GetChaincodeId().GetName()
+	hasTransientData := len(payload.GetTransientMap()) > 0
 
 	defaultInterest := &peer.ChaincodeInterest{
 		Chaincodes: []*peer.ChaincodeCall{{
@@ -148,12 +164,12 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	}
 
 	var plan *plan
-	var endorsements []*peer.ProposalResponse
+	var action *peer.ChaincodeEndorsedAction
 	if len(request.EndorsingOrganizations) > 0 {
 		// The client is specifying the endorsing orgs and taking responsibility for ensuring it meets the signature policy
 		plan, err = gs.registry.planForOrgs(channel, chaincodeID, request.EndorsingOrganizations)
 		if err != nil {
-			return nil, status.Errorf(codes.Unavailable, "%s", err)
+			return nil, status.Error(codes.Unavailable, err.Error())
 		}
 	} else {
 		// The client is delegating choice of endorsers to the gateway.
@@ -168,7 +184,7 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 			// Otherwise, just let discovery pick one.
 			plan, err = gs.registry.endorsementPlan(channel, defaultInterest, nil)
 			if err != nil {
-				return nil, status.Errorf(codes.FailedPrecondition, "%s", err)
+				return nil, status.Error(codes.FailedPrecondition, err.Error())
 			}
 		}
 		firstEndorser := plan.endorsers()[0]
@@ -230,15 +246,18 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 		// The preferred discovery layout will contain the firstEndorser's Org.
 		plan, err = gs.registry.endorsementPlan(channel, interest, firstEndorser)
 		if err != nil {
-			return nil, status.Errorf(codes.FailedPrecondition, "%s", err)
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
 		}
 
 		// 6. Remove the gateway org's endorser, since we've already done that
-		endorsements = plan.update(firstEndorser, firstResponse)
+		action, err = plan.processEndorsement(firstEndorser, firstResponse)
+		if err != nil {
+			return nil, status.Error(codes.Aborted, err.Error())
+		}
 	}
 
 	var errorDetails []proto.Message
-	for endorsements == nil {
+	for action == nil {
 		// loop through the layouts until one gets satisfied
 		endorsers := plan.endorsers()
 		if endorsers == nil {
@@ -272,8 +291,12 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 								responseMessage.Payload = nil // Remove any duplicate response payload
 							}
 
-							endorsements := plan.update(e, response)
-							done <- &endorserResponse{endorsementSet: endorsements}
+							action, err := plan.processEndorsement(e, response)
+							if err != nil {
+								done <- &endorserResponse{err: errorDetail(e.endpointConfig, err.Error())}
+								return
+							}
+							done <- &endorserResponse{action: action}
 						} else {
 							logger.Warnw("Endorse call to endorser failed", "channel", request.ChannelId, "txID", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "error", message)
 							if remove {
@@ -307,8 +330,8 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 				logger.Warnw("Endorse call timed out while collecting endorsements", "channel", request.ChannelId, "txID", request.TransactionId, "numEndorsers", len(endorsers))
 				return nil, newRpcError(codes.DeadlineExceeded, "endorsement timeout expired while collecting endorsements")
 			}
-			if response.endorsementSet != nil {
-				endorsements = response.endorsementSet
+			if response.action != nil {
+				action = response.action
 				break
 			}
 			if response.err != nil {
@@ -317,19 +340,16 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 		}
 	}
 
-	if endorsements == nil {
+	if action == nil {
 		return nil, newRpcError(codes.Aborted, "failed to collect enough transaction endorsements, see attached details for more info", errorDetails...)
 	}
 
-	env, err := protoutil.CreateTx(proposal, endorsements...)
+	preparedTransaction, err := prepareTransaction(header, payload, action)
 	if err != nil {
 		return nil, status.Errorf(codes.Aborted, "failed to assemble transaction: %s", err)
 	}
 
-	endorseResponse := &gp.EndorseResponse{
-		PreparedTransaction: env,
-	}
-	return endorseResponse, nil
+	return &gp.EndorseResponse{PreparedTransaction: preparedTransaction}, nil
 }
 
 // responseStatus unpacks the proposal response and error values that are returned from ProcessProposal and

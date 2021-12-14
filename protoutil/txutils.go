@@ -128,15 +128,6 @@ type Signer interface {
 	Serialize() ([]byte, error)
 }
 
-// CreateTx assembles an Envelope message from a proposal and endorsements.
-// The envelope that is returned is not signed.
-func CreateTx(
-	proposal *peer.Proposal,
-	resps ...*peer.ProposalResponse,
-) (*common.Envelope, error) {
-	return createTx(proposal, nil, resps...)
-}
-
 // CreateSignedTx assembles an Envelope message from proposal, endorsements,
 // and a signer. This function should be called by a client when it has
 // collected enough endorsements for a proposal to create a transaction and
@@ -146,19 +137,12 @@ func CreateSignedTx(
 	signer Signer,
 	resps ...*peer.ProposalResponse,
 ) (*common.Envelope, error) {
-	if signer == nil {
-		return nil, errors.New("signer is required when creating a signed transaction")
-	}
-	return createTx(proposal, signer, resps...)
-}
-
-func createTx(
-	proposal *peer.Proposal,
-	signer Signer,
-	resps ...*peer.ProposalResponse,
-) (*common.Envelope, error) {
 	if len(resps) == 0 {
 		return nil, errors.New("at least one proposal response is required")
+	}
+
+	if signer == nil {
+		return nil, errors.New("signer is required when creating a signed transaction")
 	}
 
 	// the original header
@@ -174,20 +158,18 @@ func createTx(
 	}
 
 	// check that the signer is the same that is referenced in the header
-	if signer != nil {
-		signerBytes, err := signer.Serialize()
-		if err != nil {
-			return nil, err
-		}
+	signerBytes, err := signer.Serialize()
+	if err != nil {
+		return nil, err
+	}
 
-		shdr, err := UnmarshalSignatureHeader(hdr.SignatureHeader)
-		if err != nil {
-			return nil, err
-		}
+	shdr, err := UnmarshalSignatureHeader(hdr.SignatureHeader)
+	if err != nil {
+		return nil, err
+	}
 
-		if !bytes.Equal(signerBytes, shdr.Creator) {
-			return nil, errors.New("signer must be the same as the one referenced in the header")
-		}
+	if !bytes.Equal(signerBytes, shdr.Creator) {
+		return nil, errors.New("signer must be the same as the one referenced in the header")
 	}
 
 	// ensure that all actions are bitwise equal and that they are successful
@@ -263,12 +245,9 @@ func createTx(
 	}
 
 	// sign the payload
-	var sig []byte
-	if signer != nil {
-		sig, err = signer.Sign(paylBytes)
-		if err != nil {
-			return nil, err
-		}
+	sig, err := signer.Sign(paylBytes)
+	if err != nil {
+		return nil, err
 	}
 
 	// here's the envelope
