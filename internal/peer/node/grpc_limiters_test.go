@@ -21,15 +21,17 @@ func TestInitGrpcSemaphores(t *testing.T) {
 	config := peer.Config{
 		LimitsConcurrencyEndorserService: 5,
 		LimitsConcurrencyDeliverService:  5,
+		LimitsConcurrencyGatewayService:  5,
 	}
 	semaphores := initGrpcSemaphores(&config)
-	require.Equal(t, 2, len(semaphores))
+	require.Equal(t, 3, len(semaphores))
 }
 
 func TestInitGrpcNoSemaphores(t *testing.T) {
 	config := peer.Config{
 		LimitsConcurrencyEndorserService: 0,
 		LimitsConcurrencyDeliverService:  0,
+		LimitsConcurrencyGatewayService:  0,
 	}
 	semaphores := initGrpcSemaphores(&config)
 	require.Equal(t, 0, len(semaphores))
@@ -75,4 +77,9 @@ func TestGetServiceName(t *testing.T) {
 	require.Equal(t, "/protos.Deliver", getServiceName("/protos.Deliver/Deliver"))
 	require.Equal(t, "/protos.Deliver", getServiceName("/protos.Deliver/DeliverFiltered"))
 	require.Equal(t, "/protos.Deliver", getServiceName("/protos.Deliver/DeliverWithPrivateData"))
+	require.Equal(t, "/gateway.Gateway", getServiceName("/gateway.Gateway/Evaluate"))
+	require.Equal(t, "/gateway.Gateway", getServiceName("/gateway.Gateway/Endorse"))
+	require.Equal(t, "/gateway.Gateway", getServiceName("/gateway.Gateway/Submit"))
+	require.Equal(t, "/gateway.Gateway", getServiceName("/gateway.Gateway/CommitStatus"))
+	require.Equal(t, "/gateway.Gateway", getServiceName("/gateway.Gateway/ChaincodeEvents"))
 }
