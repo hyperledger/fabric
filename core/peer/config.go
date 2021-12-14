@@ -125,6 +125,10 @@ type Config struct {
 	// registered to deliver service for blocks and transaction events.
 	LimitsConcurrencyDeliverService int
 
+	// LimitsConcurrencyGatewayService sets the limits for concurrent requests to
+	// gateway service that handles the submission and evaluation of transactions.
+	LimitsConcurrencyGatewayService int
+
 	// ----- TLS -----
 	// Require server-side TLS.
 	// TODO: create separate sub-struct for PeerTLS config.
@@ -251,6 +255,7 @@ func (c *Config) load() error {
 	c.NetworkID = viper.GetString("peer.networkId")
 	c.LimitsConcurrencyEndorserService = viper.GetInt("peer.limits.concurrency.endorserService")
 	c.LimitsConcurrencyDeliverService = viper.GetInt("peer.limits.concurrency.deliverService")
+	c.LimitsConcurrencyGatewayService = viper.GetInt("peer.limits.concurrency.gatewayService")
 	c.DiscoveryEnabled = viper.GetBool("peer.discovery.enabled")
 	c.ProfileEnabled = viper.GetBool("peer.profile.enabled")
 	c.ProfileListenAddress = viper.GetString("peer.profile.listenAddress")
