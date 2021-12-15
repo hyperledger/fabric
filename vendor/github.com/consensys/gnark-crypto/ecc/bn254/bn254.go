@@ -30,9 +30,6 @@ var twist fptower.E2
 // bTwistCurveCoeff b coeff of the twist (defined over Fp2) curve
 var bTwistCurveCoeff fptower.E2
 
-// twoInv 1/2 mod p (needed for DoubleStep in Miller loop)
-var twoInv fp.Element
-
 // generators of the r-torsion group, resp. in ker(pi-id), ker(Tr)
 var g1Gen G1Jac
 var g2Gen G2Jac
@@ -69,14 +66,15 @@ var endo struct {
 // generator of the curve
 var xGen big.Int
 
+// fixefCoeff t-1 = 6*xGen^2
+var fixedCoeff big.Int
+
 func init() {
 
 	bCurveCoeff.SetUint64(3)
 	twist.A0.SetUint64(9)
 	twist.A1.SetUint64(1)
 	bTwistCurveCoeff.Inverse(&twist).MulByElement(&bTwistCurveCoeff, &bCurveCoeff)
-
-	twoInv.SetOne().Double(&twoInv).Inverse(&twoInv)
 
 	g1Gen.X.SetString("1")
 	g1Gen.Y.SetString("2")
@@ -113,6 +111,8 @@ func init() {
 	ecc.NafDecomposition(optimaAteLoop, loopCounter[:])
 
 	xGen.SetString("4965661367192848881", 10)
+
+	fixedCoeff.SetString("147946756881789318990833708069417712966", 10)
 
 }
 

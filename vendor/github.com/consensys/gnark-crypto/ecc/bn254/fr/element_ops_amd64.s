@@ -233,3 +233,108 @@ TEXT ·MulBy5(SB), NOSPLIT, $0-8
 	MOVQ BX, 16(AX)
 	MOVQ SI, 24(AX)
 	RET
+
+// MulBy13(x *Element)
+TEXT ·MulBy13(SB), NOSPLIT, $0-8
+	MOVQ x+0(FP), AX
+	MOVQ 0(AX), DX
+	MOVQ 8(AX), CX
+	MOVQ 16(AX), BX
+	MOVQ 24(AX), SI
+	ADDQ DX, DX
+	ADCQ CX, CX
+	ADCQ BX, BX
+	ADCQ SI, SI
+
+	// reduce element(DX,CX,BX,SI) using temp registers (DI,R8,R9,R10)
+	REDUCE(DX,CX,BX,SI,DI,R8,R9,R10)
+
+	ADDQ DX, DX
+	ADCQ CX, CX
+	ADCQ BX, BX
+	ADCQ SI, SI
+
+	// reduce element(DX,CX,BX,SI) using temp registers (R11,R12,R13,R14)
+	REDUCE(DX,CX,BX,SI,R11,R12,R13,R14)
+
+	MOVQ DX, R11
+	MOVQ CX, R12
+	MOVQ BX, R13
+	MOVQ SI, R14
+	ADDQ DX, DX
+	ADCQ CX, CX
+	ADCQ BX, BX
+	ADCQ SI, SI
+
+	// reduce element(DX,CX,BX,SI) using temp registers (DI,R8,R9,R10)
+	REDUCE(DX,CX,BX,SI,DI,R8,R9,R10)
+
+	ADDQ R11, DX
+	ADCQ R12, CX
+	ADCQ R13, BX
+	ADCQ R14, SI
+
+	// reduce element(DX,CX,BX,SI) using temp registers (DI,R8,R9,R10)
+	REDUCE(DX,CX,BX,SI,DI,R8,R9,R10)
+
+	ADDQ 0(AX), DX
+	ADCQ 8(AX), CX
+	ADCQ 16(AX), BX
+	ADCQ 24(AX), SI
+
+	// reduce element(DX,CX,BX,SI) using temp registers (DI,R8,R9,R10)
+	REDUCE(DX,CX,BX,SI,DI,R8,R9,R10)
+
+	MOVQ DX, 0(AX)
+	MOVQ CX, 8(AX)
+	MOVQ BX, 16(AX)
+	MOVQ SI, 24(AX)
+	RET
+
+// Butterfly(a, b *Element) sets a = a + b; b = a - b
+TEXT ·Butterfly(SB), NOSPLIT, $0-16
+	MOVQ    a+0(FP), AX
+	MOVQ    0(AX), CX
+	MOVQ    8(AX), BX
+	MOVQ    16(AX), SI
+	MOVQ    24(AX), DI
+	MOVQ    CX, R8
+	MOVQ    BX, R9
+	MOVQ    SI, R10
+	MOVQ    DI, R11
+	XORQ    AX, AX
+	MOVQ    b+8(FP), DX
+	ADDQ    0(DX), CX
+	ADCQ    8(DX), BX
+	ADCQ    16(DX), SI
+	ADCQ    24(DX), DI
+	SUBQ    0(DX), R8
+	SBBQ    8(DX), R9
+	SBBQ    16(DX), R10
+	SBBQ    24(DX), R11
+	MOVQ    $0x43e1f593f0000001, R12
+	MOVQ    $0x2833e84879b97091, R13
+	MOVQ    $0xb85045b68181585d, R14
+	MOVQ    $0x30644e72e131a029, R15
+	CMOVQCC AX, R12
+	CMOVQCC AX, R13
+	CMOVQCC AX, R14
+	CMOVQCC AX, R15
+	ADDQ    R12, R8
+	ADCQ    R13, R9
+	ADCQ    R14, R10
+	ADCQ    R15, R11
+	MOVQ    R8, 0(DX)
+	MOVQ    R9, 8(DX)
+	MOVQ    R10, 16(DX)
+	MOVQ    R11, 24(DX)
+
+	// reduce element(CX,BX,SI,DI) using temp registers (R8,R9,R10,R11)
+	REDUCE(CX,BX,SI,DI,R8,R9,R10,R11)
+
+	MOVQ a+0(FP), AX
+	MOVQ CX, 0(AX)
+	MOVQ BX, 8(AX)
+	MOVQ SI, 16(AX)
+	MOVQ DI, 24(AX)
+	RET
