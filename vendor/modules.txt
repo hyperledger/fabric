@@ -8,7 +8,7 @@ github.com/Azure/go-ansiterm/winterm
 # github.com/DataDog/zstd v1.4.5
 ## explicit
 github.com/DataDog/zstd
-# github.com/IBM/idemix v0.0.0-20210930104432-e4a1410f5353
+# github.com/IBM/idemix v0.0.0-20220112103229-701e7610d405
 ## explicit
 github.com/IBM/idemix
 github.com/IBM/idemix/bccsp
@@ -20,7 +20,7 @@ github.com/IBM/idemix/bccsp/schemes/dlog/crypto/translator/amcl
 github.com/IBM/idemix/bccsp/schemes/dlog/handlers
 github.com/IBM/idemix/common/flogging
 github.com/IBM/idemix/common/flogging/fabenc
-# github.com/IBM/mathlib v0.0.0-20210928081244-f5486459a290
+# github.com/IBM/mathlib v0.0.0-20220112091634-0a7378db6912
 github.com/IBM/mathlib
 github.com/IBM/mathlib/driver
 github.com/IBM/mathlib/driver/amcl
@@ -76,12 +76,16 @@ github.com/beorn7/perks/quantile
 github.com/bits-and-blooms/bitset
 # github.com/cespare/xxhash/v2 v2.1.1 => github.com/cespare/xxhash/v2 v2.1.2
 github.com/cespare/xxhash/v2
-# github.com/consensys/gnark-crypto v0.4.0
+# github.com/consensys/gnark-crypto v0.6.0
 github.com/consensys/gnark-crypto/ecc
 github.com/consensys/gnark-crypto/ecc/bn254
 github.com/consensys/gnark-crypto/ecc/bn254/fp
 github.com/consensys/gnark-crypto/ecc/bn254/fr
+github.com/consensys/gnark-crypto/ecc/bn254/fr/mimc
 github.com/consensys/gnark-crypto/ecc/bn254/internal/fptower
+github.com/consensys/gnark-crypto/field
+github.com/consensys/gnark-crypto/field/internal/addchain
+github.com/consensys/gnark-crypto/internal/generator/config
 github.com/consensys/gnark-crypto/internal/parallel
 # github.com/containerd/cgroups v0.0.0-20200531161412-0dbf7f05ba59
 github.com/containerd/cgroups/stats/v1
@@ -264,6 +268,29 @@ github.com/miekg/pkcs11
 # github.com/mitchellh/mapstructure v1.3.2
 ## explicit
 github.com/mitchellh/mapstructure
+# github.com/mmcloughlin/addchain v0.4.0
+github.com/mmcloughlin/addchain
+github.com/mmcloughlin/addchain/acc
+github.com/mmcloughlin/addchain/acc/ast
+github.com/mmcloughlin/addchain/acc/ir
+github.com/mmcloughlin/addchain/acc/parse
+github.com/mmcloughlin/addchain/acc/parse/internal/parser
+github.com/mmcloughlin/addchain/acc/pass
+github.com/mmcloughlin/addchain/acc/printer
+github.com/mmcloughlin/addchain/alg
+github.com/mmcloughlin/addchain/alg/contfrac
+github.com/mmcloughlin/addchain/alg/dict
+github.com/mmcloughlin/addchain/alg/ensemble
+github.com/mmcloughlin/addchain/alg/exec
+github.com/mmcloughlin/addchain/alg/heuristic
+github.com/mmcloughlin/addchain/alg/opt
+github.com/mmcloughlin/addchain/internal/bigint
+github.com/mmcloughlin/addchain/internal/bigints
+github.com/mmcloughlin/addchain/internal/bigvector
+github.com/mmcloughlin/addchain/internal/container/heap
+github.com/mmcloughlin/addchain/internal/errutil
+github.com/mmcloughlin/addchain/internal/print
+github.com/mmcloughlin/addchain/meta
 # github.com/moby/sys/mount v0.2.0
 github.com/moby/sys/mount
 # github.com/moby/sys/mountinfo v0.4.0
@@ -456,7 +483,7 @@ golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.0.0-20210326220804-49726bf1d181
+# golang.org/x/sys v0.0.0-20210420205809-ac73e9fd8988
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix

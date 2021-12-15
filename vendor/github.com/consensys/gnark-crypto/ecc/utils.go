@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"math/big"
+	"math/bits"
 )
 
 //-------------------------------------------------------
@@ -248,4 +249,20 @@ func ExpandMsgXmd(msg, dst []byte, lenInBytes int) ([]byte, error) {
 		copy(res[h.Size()*(i-1):h.Size()*i], b1)
 	}
 	return res, nil
+}
+
+// NextPowerOfTwo returns the next power of 2 of n
+func NextPowerOfTwo(n uint64) uint64 {
+	c := bits.OnesCount64(n)
+	if c == 0 {
+		return 1
+	}
+	if c == 1 {
+		return n
+	}
+	t := bits.LeadingZeros64(n)
+	if t == 0 {
+		panic("next power of 2 overflows uint64")
+	}
+	return uint64(1) << (64 - t)
 }

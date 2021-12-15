@@ -17,7 +17,9 @@
 package bn254
 
 import (
+	"math"
 	"math/big"
+	"runtime"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fp"
@@ -55,6 +57,30 @@ func (p *G1Affine) ScalarMultiplication(a *G1Affine, s *big.Int) *G1Affine {
 	_p.FromAffine(a)
 	_p.mulGLV(&_p, s)
 	p.FromJacobian(&_p)
+	return p
+}
+
+// Add adds two point in affine coordinates.
+// This should rarely be used as it is very inneficient compared to Jacobian
+// TODO implement affine addition formula
+func (p *G1Affine) Add(a, b *G1Affine) *G1Affine {
+	var p1, p2 G1Jac
+	p1.FromAffine(a)
+	p2.FromAffine(b)
+	p1.AddAssign(&p2)
+	p.FromJacobian(&p1)
+	return p
+}
+
+// Sub subs two point in affine coordinates.
+// This should rarely be used as it is very inneficient compared to Jacobian
+// TODO implement affine addition formula
+func (p *G1Affine) Sub(a, b *G1Affine) *G1Affine {
+	var p1, p2 G1Jac
+	p1.FromAffine(a)
+	p2.FromAffine(b)
+	p1.SubAssign(&p2)
+	p.FromJacobian(&p1)
 	return p
 }
 
@@ -112,7 +138,7 @@ func (p *G1Affine) IsOnCurve() bool {
 func (p *G1Affine) IsInSubGroup() bool {
 	var _p G1Jac
 	_p.FromAffine(p)
-	return _p.IsOnCurve() && _p.IsInSubGroup()
+	return _p.IsInSubGroup()
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -391,7 +417,6 @@ func (p *G1Jac) phi(a *G1Jac) *G1Jac {
 func (p *G1Jac) mulGLV(a *G1Jac, s *big.Int) *G1Jac {
 
 	var table [15]G1Jac
-	var zero big.Int
 	var res G1Jac
 	var k1, k2 fr.Element
 
@@ -404,11 +429,11 @@ func (p *G1Jac) mulGLV(a *G1Jac, s *big.Int) *G1Jac {
 	// split the scalar, modifies +-a, phi(a) accordingly
 	k := ecc.SplitScalar(s, &glvBasis)
 
-	if k[0].Cmp(&zero) == -1 {
+	if k[0].Sign() == -1 {
 		k[0].Neg(&k[0])
 		table[0].Neg(&table[0])
 	}
-	if k[1].Cmp(&zero) == -1 {
+	if k[1].Sign() == -1 {
 		k[1].Neg(&k[1])
 		table[3].Neg(&table[3])
 	}
@@ -434,7 +459,7 @@ func (p *G1Jac) mulGLV(a *G1Jac, s *big.Int) *G1Jac {
 	k2.SetBigInt(&k[1]).FromMont()
 
 	// loop starts from len(k1)/2 due to the bounds
-	for i := len(k1)/2 - 1; i >= 0; i-- {
+	for i := int(math.Ceil(fr.Limbs/2. - 1)); i >= 0; i-- {
 		mask := uint64(3) << 62
 		for j := 0; j < 32; j++ {
 			res.Double(&res).Double(&res)
@@ -753,10 +778,10 @@ func (p *g1JacExtended) doubleMixed(q *G1Affine) *g1JacExtended {
 	return p
 }
 
-// BatchJacobianToAffineG1Affine converts points in Jacobian coordinates to Affine coordinates
+// BatchJacobianToAffineG1 converts points in Jacobian coordinates to Affine coordinates
 // performing a single field inversion (Montgomery batch inversion trick)
 // result must be allocated with len(result) == len(points)
-func BatchJacobianToAffineG1Affine(points []G1Jac, result []G1Affine) {
+func BatchJacobianToAffineG1(points []G1Jac, result []G1Affine) {
 	zeroes := make([]bool, len(points))
 	accumulator := fp.One()
 
@@ -843,7 +868,7 @@ func BatchScalarMultiplicationG1(base *G1Affine, scalars []fr.Element) []G1Affin
 		baseTable[i].AddMixed(base)
 	}
 
-	pScalars := partitionScalars(scalars, c)
+	pScalars, _ := partitionScalars(scalars, c, false, runtime.NumCPU())
 
 	// compute offset and word selector / shift to select the right bits of our windows
 	selectors := make([]selector, nbChunks)
@@ -863,7 +888,7 @@ func BatchScalarMultiplicationG1(base *G1Affine, scalars []fr.Element) []G1Affin
 	}
 	// convert our base exp table into affine to use AddMixed
 	baseTableAff := make([]G1Affine, (1 << (c - 1)))
-	BatchJacobianToAffineG1Affine(baseTable, baseTableAff)
+	BatchJacobianToAffineG1(baseTable, baseTableAff)
 	toReturn := make([]G1Jac, len(scalars))
 
 	// for each digit, take value in the base table, double it c time, voila.
@@ -906,6 +931,6 @@ func BatchScalarMultiplicationG1(base *G1Affine, scalars []fr.Element) []G1Affin
 		}
 	})
 	toReturnAff := make([]G1Affine, len(scalars))
-	BatchJacobianToAffineG1Affine(toReturn, toReturnAff)
+	BatchJacobianToAffineG1(toReturn, toReturnAff)
 	return toReturnAff
 }

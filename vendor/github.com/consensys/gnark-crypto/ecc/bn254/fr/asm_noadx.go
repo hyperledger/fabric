@@ -1,3 +1,4 @@
+//go:build noadx
 // +build noadx
 
 // Copyright 2020 ConsenSys Software Inc.

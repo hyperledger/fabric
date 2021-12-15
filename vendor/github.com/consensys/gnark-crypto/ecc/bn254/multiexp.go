@@ -17,32 +17,13 @@
 package bn254
 
 import (
+	"errors"
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark-crypto/internal/parallel"
 	"math"
 	"runtime"
-	"sync"
 )
-
-// CPUSemaphore enables users to set optional number of CPUs the multiexp will use
-// this is thread safe and can be used accross parallel calls of MultiExp
-type CPUSemaphore struct {
-	chCpus chan struct{} // semaphore to limit number of cpus iterating through points and scalrs at the same time
-	lock   sync.Mutex
-}
-
-// NewCPUSemaphore returns a new multiExp options to be used with MultiExp
-// this option can be shared between different MultiExp calls and will ensure only numCpus are used
-// through a semaphore
-func NewCPUSemaphore(numCpus int) *CPUSemaphore {
-	toReturn := &CPUSemaphore{
-		chCpus: make(chan struct{}, numCpus),
-	}
-	for i := 0; i < numCpus; i++ {
-		toReturn.chCpus <- struct{}{}
-	}
-	return toReturn
-}
 
 // selector stores the index, mask and shifts needed to select bits from a scalar
 // it is used during the multiExp algorithm or the batch scalar multiplication
@@ -61,7 +42,10 @@ type selector struct {
 // 2^{c} to the current digit, making it negative.
 // negative digits can be processed in a later step as adding -G into the bucket instead of G
 // (computing -G is cheap, and this saves us half of the buckets in the MultiExp or BatchScalarMul)
-func partitionScalars(scalars []fr.Element, c uint64) []fr.Element {
+// scalarsMont indicates wheter the provided scalars are in montgomery form
+// returns smallValues, which represent the number of scalars which meets the following condition
+// 0 < scalar < 2^c (in other words, scalars where only the c-least significant bits are non zero)
+func partitionScalars(scalars []fr.Element, c uint64, scalarsMont bool, nbTasks int) ([]fr.Element, int) {
 	toReturn := make([]fr.Element, len(scalars))
 
 	// number of c-bit radixes in a scalar
@@ -92,9 +76,35 @@ func partitionScalars(scalars []fr.Element, c uint64) []fr.Element {
 		selectors[chunk] = d
 	}
 
+	// for each chunk, we could track the number of non-zeros points we will need to process
+	// this way, if a chunk has more work to do than others, we can spawn off more go routines
+	// (at the cost of more buckets allocated)
+	// a simplified approach is to track the small values where only the first word is set
+	// if this number represent a significant number of points, then we will split first chunk
+	// processing in the msm in 2, to ensure all go routines finish at ~same time
+	// /!\ nbTasks is enough as parallel.Execute is not going to spawn more than nbTasks go routine
+	// if it does, though, this will deadlocK.
+	chSmallValues := make(chan int, nbTasks)
+
 	parallel.Execute(len(scalars), func(start, end int) {
+		smallValues := 0
 		for i := start; i < end; i++ {
 			var carry int
+
+			scalar := scalars[i]
+			if scalarsMont {
+				scalar.FromMont()
+			}
+			if scalar.IsUint64() {
+				// everything is 0, no need to process this scalar
+				if scalar[0] == 0 {
+					continue
+				}
+				// low c-bits are 1 in mask
+				if scalar[0]&mask == scalar[0] {
+					smallValues++
+				}
+			}
 
 			// for each chunk in the scalar, compute the current digit, and an eventual carry
 			for chunk := uint64(0); chunk < nbChunks; chunk++ {
@@ -105,11 +115,16 @@ func partitionScalars(scalars []fr.Element, c uint64) []fr.Element {
 				carry = 0
 
 				// digit = value of the c-bit window
-				digit += int((scalars[i][s.index] & s.mask) >> s.shift)
+				digit += int((scalar[s.index] & s.mask) >> s.shift)
 
 				if s.multiWordSelect {
 					// we are selecting bits over 2 words
-					digit += int(scalars[i][s.index+1]&s.maskHigh) << s.shiftHigh
+					digit += int(scalar[s.index+1]&s.maskHigh) << s.shiftHigh
+				}
+
+				// if digit is zero, no impact on result
+				if digit == 0 {
+					continue
 				}
 
 				// if the digit is larger than 2^{c-1}, then, we borrow 2^c from the next window and substract
@@ -133,24 +148,32 @@ func partitionScalars(scalars []fr.Element, c uint64) []fr.Element {
 
 			}
 		}
-	})
-	return toReturn
+
+		chSmallValues <- smallValues
+
+	}, nbTasks)
+
+	// aggregate small values
+	close(chSmallValues)
+	smallValues := 0
+	for o := range chSmallValues {
+		smallValues += o
+	}
+	return toReturn, smallValues
 }
 
 // MultiExp implements section 4 of https://eprint.iacr.org/2012/549.pdf
-// optionally, takes as parameter a CPUSemaphore struct
-// enabling to set max number of cpus to use
-func (p *G1Affine) MultiExp(points []G1Affine, scalars []fr.Element, opts ...*CPUSemaphore) *G1Affine {
+func (p *G1Affine) MultiExp(points []G1Affine, scalars []fr.Element, config ecc.MultiExpConfig) (*G1Affine, error) {
 	var _p G1Jac
-	_p.MultiExp(points, scalars, opts...)
+	if _, err := _p.MultiExp(points, scalars, config); err != nil {
+		return nil, err
+	}
 	p.FromJacobian(&_p)
-	return p
+	return p, nil
 }
 
 // MultiExp implements section 4 of https://eprint.iacr.org/2012/549.pdf
-// optionally, takes as parameter a CPUSemaphore struct
-// enabling to set max number of cpus to use
-func (p *G1Jac) MultiExp(points []G1Affine, scalars []fr.Element, opts ...*CPUSemaphore) *G1Jac {
+func (p *G1Jac) MultiExp(points []G1Affine, scalars []fr.Element, config ecc.MultiExpConfig) (*G1Jac, error) {
 	// note:
 	// each of the msmCX method is the same, except for the c constant it declares
 	// duplicating (through template generation) these methods allows to declare the buckets on the stack
@@ -177,98 +200,144 @@ func (p *G1Jac) MultiExp(points []G1Affine, scalars []fr.Element, opts ...*CPUSe
 	// step 3
 	// reduce the buckets weigthed sums into our result (msmReduceChunk)
 
-	var opt *CPUSemaphore
-	if len(opts) > 0 {
-		opt = opts[0]
-	} else {
-		opt = NewCPUSemaphore(runtime.NumCPU())
+	// ensure len(points) == len(scalars)
+	nbPoints := len(points)
+	if nbPoints != len(scalars) {
+		return nil, errors.New("len(points) != len(scalars)")
+	}
+
+	// if nbTasks is not set, use all available CPUs
+	if config.NbTasks <= 0 {
+		config.NbTasks = runtime.NumCPU()
+	}
+
+	// here, we compute the best C for nbPoints
+	// we split recursively until nbChunks(c) >= nbTasks,
+	bestC := func(nbPoints int) uint64 {
+		// implemented msmC methods (the c we use must be in this slice)
+		implementedCs := []uint64{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21}
+		var C uint64
+		// approximate cost (in group operations)
+		// cost = bits/c * (nbPoints + 2^{c})
+		// this needs to be verified empirically.
+		// for example, on a MBP 2016, for G2 MultiExp > 8M points, hand picking c gives better results
+		min := math.MaxFloat64
+		for _, c := range implementedCs {
+			cc := fr.Limbs * 64 * (nbPoints + (1 << (c)))
+			cost := float64(cc) / float64(c)
+			if cost < min {
+				min = cost
+				C = c
+			}
+		}
+		// empirical, needs to be tuned.
+		// if C > 16 && nbPoints < 1 << 23 {
+		// 	C = 16
+		// }
+		return C
 	}
 
 	var C uint64
-	nbPoints := len(points)
-
-	// implemented msmC methods (the c we use must be in this slice)
-	implementedCs := []uint64{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21}
-
-	// approximate cost (in group operations)
-	// cost = bits/c * (nbPoints + 2^{c})
-	// this needs to be verified empirically.
-	// for example, on a MBP 2016, for G2 MultiExp > 8M points, hand picking c gives better results
-	min := math.MaxFloat64
-	for _, c := range implementedCs {
-		cc := fr.Limbs * 64 * (nbPoints + (1 << (c)))
-		cost := float64(cc) / float64(c)
-		if cost < min {
-			min = cost
-			C = c
+	nbSplits := 1
+	nbChunks := 0
+	for nbChunks < config.NbTasks {
+		C = bestC(nbPoints)
+		nbChunks = int(fr.Limbs * 64 / C) // number of c-bit radixes in a scalar
+		if (fr.Limbs*64)%C != 0 {
+			nbChunks++
+		}
+		nbChunks *= nbSplits
+		if nbChunks < config.NbTasks {
+			nbSplits <<= 1
+			nbPoints >>= 1
 		}
 	}
-
-	// empirical, needs to be tuned.
-	// if C > 16 && nbPoints < 1 << 23 {
-	// 	C = 16
-	// }
-
-	// take all the cpus to ourselves
-	opt.lock.Lock()
 
 	// partition the scalars
 	// note: we do that before the actual chunk processing, as for each c-bit window (starting from LSW)
 	// if it's larger than 2^{c-1}, we have a carry we need to propagate up to the higher window
-	scalars = partitionScalars(scalars, C)
+	var smallValues int
+	scalars, smallValues = partitionScalars(scalars, C, config.ScalarsMont, config.NbTasks)
 
-	switch C {
+	// if we have more than 10% of small values, we split the processing of the first chunk in 2
+	// we may want to do that in msmInnerG1Jac , but that would incur a cost of looping through all scalars one more time
+	splitFirstChunk := (float64(smallValues) / float64(len(scalars))) >= 0.1
+
+	// we have nbSplits intermediate results that we must sum together.
+	_p := make([]G1Jac, nbSplits-1)
+	chDone := make(chan int, nbSplits-1)
+	for i := 0; i < nbSplits-1; i++ {
+		start := i * nbPoints
+		end := start + nbPoints
+		go func(start, end, i int) {
+			msmInnerG1Jac(&_p[i], int(C), points[start:end], scalars[start:end], splitFirstChunk)
+			chDone <- i
+		}(start, end, i)
+	}
+
+	msmInnerG1Jac(p, int(C), points[(nbSplits-1)*nbPoints:], scalars[(nbSplits-1)*nbPoints:], splitFirstChunk)
+	for i := 0; i < nbSplits-1; i++ {
+		done := <-chDone
+		p.AddAssign(&_p[done])
+	}
+	close(chDone)
+	return p, nil
+}
+
+func msmInnerG1Jac(p *G1Jac, c int, points []G1Affine, scalars []fr.Element, splitFirstChunk bool) {
+
+	switch c {
 
 	case 4:
-		return p.msmC4(points, scalars, opt)
+		p.msmC4(points, scalars, splitFirstChunk)
 
 	case 5:
-		return p.msmC5(points, scalars, opt)
+		p.msmC5(points, scalars, splitFirstChunk)
 
 	case 6:
-		return p.msmC6(points, scalars, opt)
+		p.msmC6(points, scalars, splitFirstChunk)
 
 	case 7:
-		return p.msmC7(points, scalars, opt)
+		p.msmC7(points, scalars, splitFirstChunk)
 
 	case 8:
-		return p.msmC8(points, scalars, opt)
+		p.msmC8(points, scalars, splitFirstChunk)
 
 	case 9:
-		return p.msmC9(points, scalars, opt)
+		p.msmC9(points, scalars, splitFirstChunk)
 
 	case 10:
-		return p.msmC10(points, scalars, opt)
+		p.msmC10(points, scalars, splitFirstChunk)
 
 	case 11:
-		return p.msmC11(points, scalars, opt)
+		p.msmC11(points, scalars, splitFirstChunk)
 
 	case 12:
-		return p.msmC12(points, scalars, opt)
+		p.msmC12(points, scalars, splitFirstChunk)
 
 	case 13:
-		return p.msmC13(points, scalars, opt)
+		p.msmC13(points, scalars, splitFirstChunk)
 
 	case 14:
-		return p.msmC14(points, scalars, opt)
+		p.msmC14(points, scalars, splitFirstChunk)
 
 	case 15:
-		return p.msmC15(points, scalars, opt)
+		p.msmC15(points, scalars, splitFirstChunk)
 
 	case 16:
-		return p.msmC16(points, scalars, opt)
+		p.msmC16(points, scalars, splitFirstChunk)
 
 	case 20:
-		return p.msmC20(points, scalars, opt)
+		p.msmC20(points, scalars, splitFirstChunk)
 
 	case 21:
-		return p.msmC21(points, scalars, opt)
+		p.msmC21(points, scalars, splitFirstChunk)
 
 	case 22:
-		return p.msmC22(points, scalars, opt)
+		p.msmC22(points, scalars, splitFirstChunk)
 
 	default:
-		panic("unimplemented")
+		panic("not implemented")
 	}
 }
 
@@ -349,643 +418,832 @@ func msmProcessChunkG1Affine(chunk uint64,
 	}
 
 	chRes <- total
-	close(chRes)
+
 }
 
-func (p *G1Jac) msmC4(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 4                          // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC4(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 4                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
+
+	// each go routine sends its result in chChunks[i] channel
 	var chChunks [nbChunks]chan g1JacExtended
-
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
-	for chunk := nbChunks - 1; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
+
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC5(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 5                              // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC5(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 5                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC6(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 6                              // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC6(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 6                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC7(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 7                              // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC7(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 7                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC8(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 8                          // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC8(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 8                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
+
+	// each go routine sends its result in chChunks[i] channel
 	var chChunks [nbChunks]chan g1JacExtended
-
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
-	for chunk := nbChunks - 1; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
+
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC9(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 9                              // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC9(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 9                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC10(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 10                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC10(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 10                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC11(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 11                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC11(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 11                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC12(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 12                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC12(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 12                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC13(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 13                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC13(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 13                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC14(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 14                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC14(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 14                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC15(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 15                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC15(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 15                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC16(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 16                         // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC16(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 16                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
+
+	// each go routine sends its result in chChunks[i] channel
 	var chChunks [nbChunks]chan g1JacExtended
-
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
-	for chunk := nbChunks - 1; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
+
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC20(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 20                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC20(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 20                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC21(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 21                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC21(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 21                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
-	// c doesn't divide 256, last window is smaller we can allocate less buckets
-	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
-		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
-
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	// c doesn't divide 256, last window is smaller we can allocate less buckets
+	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
+		var buckets [1 << (lastC - 1)]g1JacExtended
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
+	}
+
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
+
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
-func (p *G1Jac) msmC22(points []G1Affine, scalars []fr.Element, opt *CPUSemaphore) *G1Jac {
-	const c = 22                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G1Jac) msmC22(points []G1Affine, scalars []fr.Element, splitFirstChunk bool) *G1Jac {
+	const (
+		c        = 22                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g1JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
-	// c doesn't divide 256, last window is smaller we can allocate less buckets
-	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g1JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-		wg.Done()
-		var buckets [1 << (lastC - 1)]g1JacExtended
-		msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
-
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g1JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g1JacExtended, points []G1Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g1JacExtended
-			msmProcessChunkG1Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g1JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g1JacExtended, 1)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	// c doesn't divide 256, last window is smaller we can allocate less buckets
+	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
+	go func(j uint64, points []G1Affine, scalars []fr.Element) {
+		var buckets [1 << (lastC - 1)]g1JacExtended
+		msmProcessChunkG1Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	processChunk := func(j int, points []G1Affine, scalars []fr.Element, chChunk chan g1JacExtended) {
+		var buckets [1 << (c - 1)]g1JacExtended
+		msmProcessChunkG1Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
+	}
+
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
+
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g1JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG1Affine(p, c, chChunks[:])
 }
 
 // MultiExp implements section 4 of https://eprint.iacr.org/2012/549.pdf
-// optionally, takes as parameter a CPUSemaphore struct
-// enabling to set max number of cpus to use
-func (p *G2Affine) MultiExp(points []G2Affine, scalars []fr.Element, opts ...*CPUSemaphore) *G2Affine {
+func (p *G2Affine) MultiExp(points []G2Affine, scalars []fr.Element, config ecc.MultiExpConfig) (*G2Affine, error) {
 	var _p G2Jac
-	_p.MultiExp(points, scalars, opts...)
+	if _, err := _p.MultiExp(points, scalars, config); err != nil {
+		return nil, err
+	}
 	p.FromJacobian(&_p)
-	return p
+	return p, nil
 }
 
 // MultiExp implements section 4 of https://eprint.iacr.org/2012/549.pdf
-// optionally, takes as parameter a CPUSemaphore struct
-// enabling to set max number of cpus to use
-func (p *G2Jac) MultiExp(points []G2Affine, scalars []fr.Element, opts ...*CPUSemaphore) *G2Jac {
+func (p *G2Jac) MultiExp(points []G2Affine, scalars []fr.Element, config ecc.MultiExpConfig) (*G2Jac, error) {
 	// note:
 	// each of the msmCX method is the same, except for the c constant it declares
 	// duplicating (through template generation) these methods allows to declare the buckets on the stack
@@ -1012,98 +1270,144 @@ func (p *G2Jac) MultiExp(points []G2Affine, scalars []fr.Element, opts ...*CPUSe
 	// step 3
 	// reduce the buckets weigthed sums into our result (msmReduceChunk)
 
-	var opt *CPUSemaphore
-	if len(opts) > 0 {
-		opt = opts[0]
-	} else {
-		opt = NewCPUSemaphore(runtime.NumCPU())
+	// ensure len(points) == len(scalars)
+	nbPoints := len(points)
+	if nbPoints != len(scalars) {
+		return nil, errors.New("len(points) != len(scalars)")
+	}
+
+	// if nbTasks is not set, use all available CPUs
+	if config.NbTasks <= 0 {
+		config.NbTasks = runtime.NumCPU()
+	}
+
+	// here, we compute the best C for nbPoints
+	// we split recursively until nbChunks(c) >= nbTasks,
+	bestC := func(nbPoints int) uint64 {
+		// implemented msmC methods (the c we use must be in this slice)
+		implementedCs := []uint64{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21, 22}
+		var C uint64
+		// approximate cost (in group operations)
+		// cost = bits/c * (nbPoints + 2^{c})
+		// this needs to be verified empirically.
+		// for example, on a MBP 2016, for G2 MultiExp > 8M points, hand picking c gives better results
+		min := math.MaxFloat64
+		for _, c := range implementedCs {
+			cc := fr.Limbs * 64 * (nbPoints + (1 << (c)))
+			cost := float64(cc) / float64(c)
+			if cost < min {
+				min = cost
+				C = c
+			}
+		}
+		// empirical, needs to be tuned.
+		// if C > 16 && nbPoints < 1 << 23 {
+		// 	C = 16
+		// }
+		return C
 	}
 
 	var C uint64
-	nbPoints := len(points)
-
-	// implemented msmC methods (the c we use must be in this slice)
-	implementedCs := []uint64{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21, 22}
-
-	// approximate cost (in group operations)
-	// cost = bits/c * (nbPoints + 2^{c})
-	// this needs to be verified empirically.
-	// for example, on a MBP 2016, for G2 MultiExp > 8M points, hand picking c gives better results
-	min := math.MaxFloat64
-	for _, c := range implementedCs {
-		cc := fr.Limbs * 64 * (nbPoints + (1 << (c)))
-		cost := float64(cc) / float64(c)
-		if cost < min {
-			min = cost
-			C = c
+	nbSplits := 1
+	nbChunks := 0
+	for nbChunks < config.NbTasks {
+		C = bestC(nbPoints)
+		nbChunks = int(fr.Limbs * 64 / C) // number of c-bit radixes in a scalar
+		if (fr.Limbs*64)%C != 0 {
+			nbChunks++
+		}
+		nbChunks *= nbSplits
+		if nbChunks < config.NbTasks {
+			nbSplits <<= 1
+			nbPoints >>= 1
 		}
 	}
-
-	// empirical, needs to be tuned.
-	// if C > 16 && nbPoints < 1 << 23 {
-	// 	C = 16
-	// }
-
-	// take all the cpus to ourselves
-	opt.lock.Lock()
 
 	// partition the scalars
 	// note: we do that before the actual chunk processing, as for each c-bit window (starting from LSW)
 	// if it's larger than 2^{c-1}, we have a carry we need to propagate up to the higher window
-	scalars = partitionScalars(scalars, C)
+	var smallValues int
+	scalars, smallValues = partitionScalars(scalars, C, config.ScalarsMont, config.NbTasks)
 
-	switch C {
+	// if we have more than 10% of small values, we split the processing of the first chunk in 2
+	// we may want to do that in msmInnerG2Jac , but that would incur a cost of looping through all scalars one more time
+	splitFirstChunk := (float64(smallValues) / float64(len(scalars))) >= 0.1
+
+	// we have nbSplits intermediate results that we must sum together.
+	_p := make([]G2Jac, nbSplits-1)
+	chDone := make(chan int, nbSplits-1)
+	for i := 0; i < nbSplits-1; i++ {
+		start := i * nbPoints
+		end := start + nbPoints
+		go func(start, end, i int) {
+			msmInnerG2Jac(&_p[i], int(C), points[start:end], scalars[start:end], splitFirstChunk)
+			chDone <- i
+		}(start, end, i)
+	}
+
+	msmInnerG2Jac(p, int(C), points[(nbSplits-1)*nbPoints:], scalars[(nbSplits-1)*nbPoints:], splitFirstChunk)
+	for i := 0; i < nbSplits-1; i++ {
+		done := <-chDone
+		p.AddAssign(&_p[done])
+	}
+	close(chDone)
+	return p, nil
+}
+
+func msmInnerG2Jac(p *G2Jac, c int, points []G2Affine, scalars []fr.Element, splitFirstChunk bool) {
+
+	switch c {
 
 	case 4:
-		return p.msmC4(points, scalars, opt)
+		p.msmC4(points, scalars, splitFirstChunk)
 
 	case 5:
-		return p.msmC5(points, scalars, opt)
+		p.msmC5(points, scalars, splitFirstChunk)
 
 	case 6:
-		return p.msmC6(points, scalars, opt)
+		p.msmC6(points, scalars, splitFirstChunk)
 
 	case 7:
-		return p.msmC7(points, scalars, opt)
+		p.msmC7(points, scalars, splitFirstChunk)
 
 	case 8:
-		return p.msmC8(points, scalars, opt)
+		p.msmC8(points, scalars, splitFirstChunk)
 
 	case 9:
-		return p.msmC9(points, scalars, opt)
+		p.msmC9(points, scalars, splitFirstChunk)
 
 	case 10:
-		return p.msmC10(points, scalars, opt)
+		p.msmC10(points, scalars, splitFirstChunk)
 
 	case 11:
-		return p.msmC11(points, scalars, opt)
+		p.msmC11(points, scalars, splitFirstChunk)
 
 	case 12:
-		return p.msmC12(points, scalars, opt)
+		p.msmC12(points, scalars, splitFirstChunk)
 
 	case 13:
-		return p.msmC13(points, scalars, opt)
+		p.msmC13(points, scalars, splitFirstChunk)
 
 	case 14:
-		return p.msmC14(points, scalars, opt)
+		p.msmC14(points, scalars, splitFirstChunk)
 
 	case 15:
-		return p.msmC15(points, scalars, opt)
+		p.msmC15(points, scalars, splitFirstChunk)
 
 	case 16:
-		return p.msmC16(points, scalars, opt)
+		p.msmC16(points, scalars, splitFirstChunk)
 
 	case 20:
-		return p.msmC20(points, scalars, opt)
+		p.msmC20(points, scalars, splitFirstChunk)
 
 	case 21:
-		return p.msmC21(points, scalars, opt)
+		p.msmC21(points, scalars, splitFirstChunk)
 
 	case 22:
-		return p.msmC22(points, scalars, opt)
+		p.msmC22(points, scalars, splitFirstChunk)
 
 	default:
-		panic("unimplemented")
+		panic("not implemented")
 	}
 }
 
@@ -1184,625 +1488,816 @@ func msmProcessChunkG2Affine(chunk uint64,
 	}
 
 	chRes <- total
-	close(chRes)
+
 }
 
-func (p *G2Jac) msmC4(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 4                          // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC4(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 4                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
+
+	// each go routine sends its result in chChunks[i] channel
 	var chChunks [nbChunks]chan g2JacExtended
-
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
-	for chunk := nbChunks - 1; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
+
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC5(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 5                              // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC5(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 5                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC6(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 6                              // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC6(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 6                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC7(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 7                              // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC7(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 7                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC8(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 8                          // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC8(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 8                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
+
+	// each go routine sends its result in chChunks[i] channel
 	var chChunks [nbChunks]chan g2JacExtended
-
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
-	for chunk := nbChunks - 1; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
+
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC9(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 9                              // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC9(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 9                   // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC10(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 10                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC10(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 10                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC11(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 11                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC11(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 11                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC12(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 12                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC12(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 12                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC13(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 13                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC13(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 13                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC14(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 14                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC14(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 14                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC15(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 15                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC15(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 15                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC16(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 16                         // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC16(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 16                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
+
+	// each go routine sends its result in chChunks[i] channel
 	var chChunks [nbChunks]chan g2JacExtended
-
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
-	for chunk := nbChunks - 1; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
+
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC20(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 20                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC20(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 20                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
+	}
+
 	// c doesn't divide 256, last window is smaller we can allocate less buckets
 	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
 		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC21(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 21                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC21(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 21                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
-	// c doesn't divide 256, last window is smaller we can allocate less buckets
-	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
-		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
-
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	// c doesn't divide 256, last window is smaller we can allocate less buckets
+	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
+		var buckets [1 << (lastC - 1)]g2JacExtended
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
+	}
+
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
+
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }
 
-func (p *G2Jac) msmC22(points []G2Affine, scalars []fr.Element, opt *CPUSemaphore) *G2Jac {
-	const c = 22                             // scalars partitioned into c-bit radixes
-	const nbChunks = (fr.Limbs * 64 / c) + 1 // number of c-bit radixes in a scalar
+func (p *G2Jac) msmC22(points []G2Affine, scalars []fr.Element, splitFirstChunk bool) *G2Jac {
+	const (
+		c        = 22                  // scalars partitioned into c-bit radixes
+		nbChunks = (fr.Limbs * 64 / c) // number of c-bit radixes in a scalar
+	)
 
-	// for each chunk, spawn a go routine that'll loop through all the scalars
-	var chChunks [nbChunks]chan g2JacExtended
+	// for each chunk, spawn one go routine that'll loop through all the scalars in the
+	// corresponding bit-window
+	// note that buckets is an array allocated on the stack (for most sizes of c) and this is
+	// critical for performance
 
-	// wait group to wait for all the go routines to start
-	var wg sync.WaitGroup
-	// c doesn't divide 256, last window is smaller we can allocate less buckets
-	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
-	chChunks[nbChunks-1] = make(chan g2JacExtended, 1)
-	<-opt.chCpus // wait to have a cpu before scheduling
-	wg.Add(1)
-	go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-		wg.Done()
-		var buckets [1 << (lastC - 1)]g2JacExtended
-		msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-		opt.chCpus <- struct{}{} // release token in the semaphore
-	}(uint64(nbChunks-1), chChunks[nbChunks-1], points, scalars)
-
-	for chunk := nbChunks - 2; chunk >= 0; chunk-- {
-		chChunks[chunk] = make(chan g2JacExtended, 1)
-		<-opt.chCpus // wait to have a cpu before scheduling
-		wg.Add(1)
-		go func(j uint64, chRes chan g2JacExtended, points []G2Affine, scalars []fr.Element) {
-			wg.Done()
-			var buckets [1 << (c - 1)]g2JacExtended
-			msmProcessChunkG2Affine(j, chRes, buckets[:], c, points, scalars)
-			opt.chCpus <- struct{}{} // release token in the semaphore
-		}(uint64(chunk), chChunks[chunk], points, scalars)
+	// each go routine sends its result in chChunks[i] channel
+	var chChunks [nbChunks + 1]chan g2JacExtended
+	for i := 0; i < len(chChunks); i++ {
+		chChunks[i] = make(chan g2JacExtended, 1)
 	}
 
-	// wait for all goRoutines to actually start
-	wg.Wait()
+	// c doesn't divide 256, last window is smaller we can allocate less buckets
+	const lastC = (fr.Limbs * 64) - (c * (fr.Limbs * 64 / c))
+	go func(j uint64, points []G2Affine, scalars []fr.Element) {
+		var buckets [1 << (lastC - 1)]g2JacExtended
+		msmProcessChunkG2Affine(j, chChunks[j], buckets[:], c, points, scalars)
+	}(uint64(nbChunks), points, scalars)
 
-	// all my tasks are scheduled, I can let other func use avaiable tokens in the semaphore
-	opt.lock.Unlock()
+	processChunk := func(j int, points []G2Affine, scalars []fr.Element, chChunk chan g2JacExtended) {
+		var buckets [1 << (c - 1)]g2JacExtended
+		msmProcessChunkG2Affine(uint64(j), chChunk, buckets[:], c, points, scalars)
+	}
+
+	for j := int(nbChunks - 1); j > 0; j-- {
+		go processChunk(j, points, scalars, chChunks[j])
+	}
+
+	if !splitFirstChunk {
+		go processChunk(0, points, scalars, chChunks[0])
+	} else {
+		chSplit := make(chan g2JacExtended, 2)
+		split := len(points) / 2
+		go processChunk(0, points[:split], scalars[:split], chSplit)
+		go processChunk(0, points[split:], scalars[split:], chSplit)
+		go func() {
+			s1 := <-chSplit
+			s2 := <-chSplit
+			close(chSplit)
+			s1.add(&s2)
+			chChunks[0] <- s1
+		}()
+	}
+
 	return msmReduceChunkG2Affine(p, c, chChunks[:])
 }

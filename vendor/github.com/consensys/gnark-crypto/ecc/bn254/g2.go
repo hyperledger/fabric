@@ -17,7 +17,9 @@
 package bn254
 
 import (
+	"math"
 	"math/big"
+	"runtime"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -60,6 +62,30 @@ func (p *G2Affine) ScalarMultiplication(a *G2Affine, s *big.Int) *G2Affine {
 	_p.FromAffine(a)
 	_p.mulGLV(&_p, s)
 	p.FromJacobian(&_p)
+	return p
+}
+
+// Add adds two point in affine coordinates.
+// This should rarely be used as it is very inneficient compared to Jacobian
+// TODO implement affine addition formula
+func (p *G2Affine) Add(a, b *G2Affine) *G2Affine {
+	var p1, p2 G2Jac
+	p1.FromAffine(a)
+	p2.FromAffine(b)
+	p1.AddAssign(&p2)
+	p.FromJacobian(&p1)
+	return p
+}
+
+// Sub subs two point in affine coordinates.
+// This should rarely be used as it is very inneficient compared to Jacobian
+// TODO implement affine addition formula
+func (p *G2Affine) Sub(a, b *G2Affine) *G2Affine {
+	var p1, p2 G2Jac
+	p1.FromAffine(a)
+	p2.FromAffine(b)
+	p1.SubAssign(&p2)
+	p.FromJacobian(&p1)
 	return p
 }
 
@@ -117,7 +143,7 @@ func (p *G2Affine) IsOnCurve() bool {
 func (p *G2Affine) IsInSubGroup() bool {
 	var _p G2Jac
 	_p.FromAffine(p)
-	return _p.IsOnCurve() && _p.IsInSubGroup()
+	return _p.IsInSubGroup()
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -346,20 +372,12 @@ func (p *G2Jac) IsOnCurve() bool {
 }
 
 // IsInSubGroup returns true if p is on the r-torsion, false otherwise.
-// Z[r,0]+Z[-lambdaG2Affine, 1] is the kernel
-// of (u,v)->u+lambdaG2Affinev mod r. Expressing r, lambdaG2Affine as
-// polynomials in x, a short vector of this Zmodule is
-// (4x+2), (-12x**2+4*x). So we check that (4x+2)p+(-12x**2+4*x)phi(p)
-// is the infinity.
+// [r]P == 0 <==> Frob(P) == [6x^2]P
 func (p *G2Jac) IsInSubGroup() bool {
-
-	var res, xphip, phip G2Jac
-	phip.phi(p)
-	xphip.ScalarMultiplication(&phip, &xGen)           // x*phi(p)
-	res.Double(&xphip).AddAssign(&xphip)               // 3x*phi(p)
-	res.AddAssign(&phip).SubAssign(p)                  // 3x*phi(p)+phi(p)-p
-	res.Double(&res).ScalarMultiplication(&res, &xGen) // 6x**2*phi(p)+2x*phi(p)-2x*p
-	res.SubAssign(p).Double(&res)                      // 12x**2*phi(p)+4x*phi(p)-4x*p-2p
+	var a, res G2Jac
+	a.psi(p)
+	res.ScalarMultiplication(p, &fixedCoeff).
+		SubAssign(&a)
 
 	return res.IsOnCurve() && res.Z.IsZero()
 
@@ -416,7 +434,6 @@ func (p *G2Jac) phi(a *G2Jac) *G2Jac {
 func (p *G2Jac) mulGLV(a *G2Jac, s *big.Int) *G2Jac {
 
 	var table [15]G2Jac
-	var zero big.Int
 	var res G2Jac
 	var k1, k2 fr.Element
 
@@ -429,11 +446,11 @@ func (p *G2Jac) mulGLV(a *G2Jac, s *big.Int) *G2Jac {
 	// split the scalar, modifies +-a, phi(a) accordingly
 	k := ecc.SplitScalar(s, &glvBasis)
 
-	if k[0].Cmp(&zero) == -1 {
+	if k[0].Sign() == -1 {
 		k[0].Neg(&k[0])
 		table[0].Neg(&table[0])
 	}
-	if k[1].Cmp(&zero) == -1 {
+	if k[1].Sign() == -1 {
 		k[1].Neg(&k[1])
 		table[3].Neg(&table[3])
 	}
@@ -459,7 +476,7 @@ func (p *G2Jac) mulGLV(a *G2Jac, s *big.Int) *G2Jac {
 	k2.SetBigInt(&k[1]).FromMont()
 
 	// loop starts from len(k1)/2 due to the bounds
-	for i := len(k1)/2 - 1; i >= 0; i-- {
+	for i := int(math.Ceil(fr.Limbs/2. - 1)); i >= 0; i-- {
 		mask := uint64(3) << 62
 		for j := 0; j < 32; j++ {
 			res.Double(&res).Double(&res)
@@ -477,7 +494,7 @@ func (p *G2Jac) mulGLV(a *G2Jac, s *big.Int) *G2Jac {
 	return p
 }
 
-// ClearCofactor ...
+// ClearCofactor maps a point in curve to r-torsion
 func (p *G2Affine) ClearCofactor(a *G2Affine) *G2Affine {
 	var _p G2Jac
 	_p.FromAffine(a)
@@ -486,7 +503,7 @@ func (p *G2Affine) ClearCofactor(a *G2Affine) *G2Affine {
 	return p
 }
 
-// ClearCofactor ...
+// ClearCofactor maps a point in curve to r-torsion
 func (p *G2Jac) ClearCofactor(a *G2Jac) *G2Jac {
 	// cf http://cacr.uwaterloo.ca/techreports/2011/cacr2011-26.pdf, 6.1
 	var points [4]G2Jac
@@ -822,6 +839,13 @@ func (p *g2Proj) Set(a *g2Proj) *g2Proj {
 	return p
 }
 
+// Neg computes -G
+func (p *g2Proj) Neg(a *g2Proj) *g2Proj {
+	*p = *a
+	p.y.Neg(&a.y)
+	return p
+}
+
 // FromJacobian converts a point from Jacobian to projective coordinates
 func (p *g2Proj) FromJacobian(Q *G2Jac) *g2Proj {
 	var buf fptower.E2
@@ -890,7 +914,7 @@ func BatchScalarMultiplicationG2(base *G2Affine, scalars []fr.Element) []G2Affin
 		baseTable[i].AddMixed(base)
 	}
 
-	pScalars := partitionScalars(scalars, c)
+	pScalars, _ := partitionScalars(scalars, c, false, runtime.NumCPU())
 
 	// compute offset and word selector / shift to select the right bits of our windows
 	selectors := make([]selector, nbChunks)

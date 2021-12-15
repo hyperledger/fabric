@@ -123,6 +123,70 @@ func (z *E6) MulByNonResidue(x *E6) *E6 {
 	return z
 }
 
+// MulByE2 multiplies an element in E6 by an element in E2
+func (z *E6) MulByE2(x *E6, y *E2) *E6 {
+	var yCopy E2
+	yCopy.Set(y)
+	z.B0.Mul(&x.B0, &yCopy)
+	z.B1.Mul(&x.B1, &yCopy)
+	z.B2.Mul(&x.B2, &yCopy)
+	return z
+}
+
+// MulBy01 multiplication by sparse element (c0,c1,0)
+func (z *E6) MulBy01(c0, c1 *E2) *E6 {
+
+	var a, b, tmp, t0, t1, t2 E2
+
+	a.Mul(&z.B0, c0)
+	b.Mul(&z.B1, c1)
+
+	tmp.Add(&z.B1, &z.B2)
+	t0.Mul(c1, &tmp)
+	t0.Sub(&t0, &b)
+	t0.MulByNonResidue(&t0)
+	t0.Add(&t0, &a)
+
+	tmp.Add(&z.B0, &z.B2)
+	t2.Mul(c0, &tmp)
+	t2.Sub(&t2, &a)
+	t2.Add(&t2, &b)
+
+	t1.Add(c0, c1)
+	tmp.Add(&z.B0, &z.B1)
+	t1.Mul(&t1, &tmp)
+	t1.Sub(&t1, &a)
+	t1.Sub(&t1, &b)
+
+	z.B0.Set(&t0)
+	z.B1.Set(&t1)
+	z.B2.Set(&t2)
+
+	return z
+}
+
+// MulBy1 multiplication of E6 by sparse element (0, c1, 0)
+func (z *E6) MulBy1(c1 *E2) *E6 {
+
+	var b, tmp, t0, t1 E2
+	b.Mul(&z.B1, c1)
+
+	tmp.Add(&z.B1, &z.B2)
+	t0.Mul(c1, &tmp)
+	t0.Sub(&t0, &b)
+	t0.MulByNonResidue(&t0)
+
+	tmp.Add(&z.B0, &z.B1)
+	t1.Mul(c1, &tmp)
+	t1.Sub(&t1, &b)
+
+	z.B0.Set(&t0)
+	z.B1.Set(&t1)
+	z.B2.Set(&b)
+
+	return z
+}
+
 // Mul sets z to the E6 product of x,y, returns z
 func (z *E6) Mul(x, y *E6) *E6 {
 	// Algorithm 13 from https://eprint.iacr.org/2010/354.pdf

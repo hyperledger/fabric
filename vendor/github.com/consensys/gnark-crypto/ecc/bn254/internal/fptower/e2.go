@@ -157,6 +157,12 @@ func (z *E2) Conjugate(x *E2) *E2 {
 	return z
 }
 
+// Halve sets z = z / 2
+func (z *E2) Halve() {
+	z.A0.Halve()
+	z.A1.Halve()
+}
+
 // Legendre returns the Legendre symbol of z
 func (z *E2) Legendre() int {
 	var n fp.Element
@@ -220,4 +226,38 @@ func (z *E2) Sqrt(x *E2) *E2 {
 	b.Exp(b, &sqrtExp2).Mul(&x0, &b)
 	z.Set(&b)
 	return z
+}
+
+// BatchInvert returns a new slice with every element inverted.
+// Uses Montgomery batch inversion trick
+func BatchInvert(a []E2) []E2 {
+	res := make([]E2, len(a))
+	if len(a) == 0 {
+		return res
+	}
+
+	zeroes := make([]bool, len(a))
+	var accumulator E2
+	accumulator.SetOne()
+
+	for i := 0; i < len(a); i++ {
+		if a[i].IsZero() {
+			zeroes[i] = true
+			continue
+		}
+		res[i].Set(&accumulator)
+		accumulator.Mul(&accumulator, &a[i])
+	}
+
+	accumulator.Inverse(&accumulator)
+
+	for i := len(a) - 1; i >= 0; i-- {
+		if zeroes[i] {
+			continue
+		}
+		res[i].Mul(&res[i], &accumulator)
+		accumulator.Mul(&accumulator, &a[i])
+	}
+
+	return res
 }

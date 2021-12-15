@@ -330,10 +330,10 @@ TEXT ·negE2(SB), NOSPLIT, $0-16
 	ORQ   R8, AX
 	TESTQ AX, AX
 	JNE   l1
-	MOVQ  AX, 32(DX)
-	MOVQ  AX, 40(DX)
-	MOVQ  AX, 48(DX)
-	MOVQ  AX, 56(DX)
+	MOVQ  AX, 0(DX)
+	MOVQ  AX, 8(DX)
+	MOVQ  AX, 16(DX)
+	MOVQ  AX, 24(DX)
 	JMP   l3
 
 l1:
