@@ -7,7 +7,7 @@
 
 # A modified version of the Fabric bootstrap script
 # Use positional arguments to select componenets to install
-# 
+#
 # Has exactly the same functional power of bootstrap.sh
 
 
@@ -23,7 +23,7 @@ _arg_comp=('' )
 
 # if version not passed in, default to latest released version
 # if ca version not passed in, default to latest released version
-_arg_fabric_version="2.3.3"
+_arg_fabric_version="2.4.0"
 _arg_ca_version="1.5.2"
 
 ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
@@ -51,7 +51,7 @@ print_help()
 {
 	printf 'Usage: %s [-f|--fabric-version <arg>] [-c|--ca-version <arg>] <comp-1> [<comp-2>] ... [<comp-n>] ...\n' "$0"
 	printf '\t%s\n' "<comp>: Component to install one or more of  d[ocker]|b[inary]|s[amples]. If none specified, all will be installed"
-	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.3.3')"
+	printf '\t%s\n' "-f, --fabric-version: FabricVersion (default: '2.4.0')"
 	printf '\t%s\n' "-c, --ca-version: Fabric CA Version (default: '1.5.2')"
 }
 
@@ -86,7 +86,7 @@ parse_commandline()
 			-h*)
 				print_help
 				exit 0
-				;;                
+				;;
 			--ca-version=*)
 				_arg_ca_version="${_key##--ca-version=}"
 				;;
@@ -187,7 +187,7 @@ download() {
     if [ -d fabric-samples ]; then
        DEST_DIR="fabric-samples"
     fi
-    echo "===> Will unpack to: ${DEST_DIR}" 
+    echo "===> Will unpack to: ${DEST_DIR}"
     curl -L --retry 5 --retry-delay 3 "${URL}" | tar xz -C ${DEST_DIR}|| rc=$?
     if [ -n "$rc" ]; then
         echo "==> There was an error downloading the binary file."
@@ -280,7 +280,7 @@ if [[ "${_arg_comp[@]}" =~ s(amples)? ]]; then
         echo
         cloneSamplesRepo
 fi
-  
+
 if [[ "${_arg_comp[@]}" =~ b(inary)? ]]; then
         echo
         echo "Pull Hyperledger Fabric binaries"
@@ -294,4 +294,3 @@ if [[ ${_arg_comp[@]} =~ d(ocker)? ]]; then
         echo
         pullDockerImages
 fi
-

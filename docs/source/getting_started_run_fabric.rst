@@ -1,5 +1,5 @@
 Getting Started - Run Fabric
-=========================
+============================
 
 .. toctree::
    :maxdepth: 1

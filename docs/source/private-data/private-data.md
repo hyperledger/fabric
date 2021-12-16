@@ -118,23 +118,30 @@ For details on transaction flows that don't use private data refer to our
 documentation on [transaction flow](../txflow.html).
 
 1. The client application submits a proposal request to invoke a chaincode
-   function (reading or writing private data) to endorsing peers which are
-   part of authorized organizations of the collection. The private data, or
-   data used to generate private data in chaincode, is sent in a `transient`
-   field of the proposal.
-
+   function (reading or writing private data) to a target peer, which will manage 
+   the transaction submission on behalf of the client. The client application can
+   [specify which organizations](../gateway.html#targeting-specific-endorsement-peers)
+   should endorse the proposal request, or it can delegate the 
+   [endorser selection logic](../gateway.html#how-the-gateway-endorses-your-transaction-proposal)
+   to the gateway service in the target peer.  In the latter case, the gateway will 
+   attempt to select a set of endorsing peers which are part of authorized organizations 
+   of the collection(s) affected by the chaincode. The private data, or data used to 
+   generate private data in chaincode, is sent in a `transient` field in the proposal.
+   
 2. The endorsing peers simulate the transaction and store the private data in
    a `transient data store` (a temporary storage local to the peer). They
    distribute the private data, based on the collection policy, to authorized peers
    via [gossip](../gossip.html).
 
-3. The endorsing peer sends the proposal response back to the client. The proposal
+3. The endorsing peers send the proposal response back to the target peer. The proposal
    response includes the endorsed read/write set, which includes public
    data, as well as a hash of any private data keys and values. *No private data is
-   sent back to the client*. For more information on how endorsement works with
+   sent back to the target peer or client*. For more information on how endorsement works with
    private data, click [here](../private-data-arch.html#endorsement).
 
-4. The client application submits the transaction (which includes the proposal
+4. The target peer verifies the proposal responses are the same before assembling the
+   endorsements into a transaction, which is sent back to the client for signing.
+   The target peer "broadcasts" the transaction (which includes the proposal
    response with the private data hashes) to the ordering service. The transactions
    with the private data hashes get included in blocks as normal.
    The block with the private data hashes is distributed to all the peers. In this way,
@@ -150,6 +157,9 @@ documentation on [transaction flow](../txflow.html).
    transaction and the block. Upon validation/commit, the private data is moved to
    their copy of the private state database and private writeset storage. The
    private data is then deleted from the `transient data store`.
+
+Note: The client application can collect the endorsements instead of delegating that step to the target peer.
+Refer to the [v2.3 Peers and Applications](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
 
 ## Sharing private data
 

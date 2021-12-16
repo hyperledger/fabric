@@ -20,8 +20,9 @@ func initGrpcSemaphores(config *peer.Config) map[string]semaphore.Semaphore {
 	semaphores := make(map[string]semaphore.Semaphore)
 	endorserConcurrency := config.LimitsConcurrencyEndorserService
 	deliverConcurrency := config.LimitsConcurrencyDeliverService
+	gatewayConcurrency := config.LimitsConcurrencyGatewayService
 
-	// Currently concurrency limit is applied to endorser service and deliver service.
+	// Currently concurrency limit is applied to endorser service, deliver service and gateway service.
 	// These services are defined in fabric-protos and fabric-protos-go (generated from fabric-protos).
 	// Below service names must match their definitions.
 	if endorserConcurrency != 0 {
@@ -31,6 +32,10 @@ func initGrpcSemaphores(config *peer.Config) map[string]semaphore.Semaphore {
 	if deliverConcurrency != 0 {
 		logger.Infof("concurrency limit for deliver service is %d", deliverConcurrency)
 		semaphores["/protos.Deliver"] = semaphore.New(deliverConcurrency)
+	}
+	if gatewayConcurrency != 0 {
+		logger.Infof("concurrency limit for gateway service is %d", gatewayConcurrency)
+		semaphores["/gateway.Gateway"] = semaphore.New(gatewayConcurrency)
 	}
 
 	return semaphores

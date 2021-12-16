@@ -17,22 +17,20 @@ import (
 const (
 	compareErrorMessage = "Ledger Compare Error: "
 	outputDirDesc       = "Snapshot comparison json results output directory. Default is the current directory."
-	firstDiffsDesc      = "Number of differences to record in " + ledgerutil.FirstDiffsByHeight +
-		". Generating a file of more than the first 10 differences will result in a large amount " +
-		"of memory usage and is not recommended. Defaults to 10. If set to 0, will not produce " +
+	firstDiffsDesc      = "Maximum number of differences to record in " + ledgerutil.FirstDiffsByHeight +
+		". Requesting a report with many differences may result in a large amount " +
+		"of memory usage. Defaults to 10. If set to 0, will not produce " +
 		ledgerutil.FirstDiffsByHeight + "."
 )
 
 var (
 	app = kingpin.New("ledgerutil", "Ledger Utility Tool")
 
-	compare       = app.Command("compare", "Compare two ledgers via their snapshots.")
+	compare       = app.Command("compare", "Compare channel snapshots from two different peers.")
 	snapshotPath1 = compare.Arg("snapshotPath1", "First ledger snapshot directory.").Required().String()
 	snapshotPath2 = compare.Arg("snapshotPath2", "Second ledger snapshot directory.").Required().String()
 	outputDir     = compare.Flag("outputDir", outputDirDesc).Short('o').String()
 	firstDiffs    = compare.Flag("firstDiffs", firstDiffsDesc).Short('f').Default("10").Int()
-
-	troubleshoot = app.Command("troubleshoot", "Identify potentially divergent transactions.")
 
 	args = os.Args[1:]
 )
@@ -48,7 +46,6 @@ func main() {
 
 	// Command logic
 	switch command {
-
 	case compare.FullCommand():
 
 		// Determine result json file location
@@ -72,10 +69,5 @@ func main() {
 		} else {
 			fmt.Printf("Results saved to %s. Total differences found: %d\n", outputDirPath, count)
 		}
-
-	case troubleshoot.FullCommand():
-
-		fmt.Println("Command TBD")
-
 	}
 }

@@ -91,10 +91,23 @@ A filtered block contains:
      * array of filtered chaincode actions.
         * chaincode event for the transaction (with the payload nilled out).
 
-SDK event documentation
------------------------
+Application API documentation
+-----------------------------
 
-For further details on using the event services, refer to the `SDK documentation. <https://hyperledger.github.io/fabric-sdk-node/{BRANCH}/tutorial-channel-events.html>`_
+The Fabric Gateway application API allows client applications to receive
+chaincode events emitted by successfully committed transactions. These events
+can be used to trigger external business processes in response to ledger
+updates. For further details, refer to the API documentation:
+
+* `Go <https://pkg.go.dev/github.com/hyperledger/fabric-gateway/pkg/client#Network.ChaincodeEvents>`_
+* `Node.js <https://hyperledger.github.io/fabric-gateway/main/api/node/interfaces/Network.html#getChaincodeEvents>`_
+* `Java <https://hyperledger.github.io/fabric-gateway/main/api/java/org/hyperledger/fabric/client/Network.html>`_
+
+Legacy application SDKs use the deliver service and allow client applications
+to receive block events, or only chaincode events emitted by successfully
+committed transactions within those blocks.
+
+For further details, refer to the :doc:`SDK documentation <sdk_chaincode>`.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
     https://creativecommons.org/licenses/by/4.0/

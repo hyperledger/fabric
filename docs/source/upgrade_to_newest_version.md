@@ -2,41 +2,22 @@
 
 In this topic we'll cover recommendations for upgrading to the newest release from the previous release as well as from the most recent long term support (LTS) release.
 
-## Upgrading from 2.1 to 2.2
+## Upgrading from a prior v2.x release to a later v2.x release.
 
-The v2.1 and v2.2 releases of Fabric are stabilization releases, featuring bug fixes and other forms of code hardening. As such there are no particular considerations needed for upgrade, and no new capability levels requiring particular image versions or channel configuration updates.
+While new features have been added in each v2.x release, there have been no capability updates since v2.0.0. Therefore there are no special considerations, simply follow the steps in [Upgrading your components](./upgrading_your_components.html).
 
-### Upgrading from 2.2 to 2.3
+## Upgrading from v1.4.x long term support release to a v2.x release
 
-The v2.3 release of Fabric includes two main new features:
+Before attempting to upgrade from v1.4.x to v2.x, make sure to consider the following before, during, and after your peer upgrades.
 
-1. The ability to take snapshots of the ledgers on peers (and to bootstrap a new peer from a snapshot). For more information, check out [Taking ledger snapshots and using them to join channels](./peer_ledger_snapshot.html).
-2. Channels can now be created without first creating a system channel. For more information, check out [Creating a channel without a system channel](./create_channel/create_channel_participation.html).
+### Prior to upgrading peer nodes
 
-Neither of these features require channel updates to capability in order to function. However, you will need to upgrade to v2.3 to take advantage of both features and, in the case of the new channel creation process, need to migrate away from the system channel, which is covered in the [Creating a channel without a system channel](./create_channel/create_channel_participation.html) tutorial.
+#### Chaincode shim changes (Go chaincode only)
 
-## Upgrading to 2.2 from the 1.4.x long term support release
-
-Before attempting to upgrade from v1.4.x to v2.2, make sure to consider the following:
-
-### Chaincode lifecycle
-
-The new chaincode lifecycle that debuted in v2.0 allows multiple organizations to agree on how a chaincode will be operated before it can be used on a channel. For more information about the new chaincode lifecycle, check out [Fabric chaincode lifecycle](./chaincode_lifecycle.html) concept topic.
-
-It is a best practice to upgrade all of the peers on a channel before enabling the `Channel` and `Application` capabilities that enable the new chaincode lifecycle (the `Channel` capability is not strictly required, but it makes sense to update it at this time). Note that any peers that are not at v2.x will crash after enabling either capability, while any ordering nodes that are not at v2.x will crash after the `Channel` capability has been enabled. This crashing behavior is intentional, as the peer or orderer cannot safely participate in the channel if it does not support the required capabilities.
-
-After the `Application` capability has been updated to `V2_0` on a channel, you must use the v2.x lifecycle procedures to package, install, approve, and commit new chaincodes on the channel. As a result, make sure to be prepared for the new lifecycle before updating the capability.
-
-The new lifecycle defaults to using the endorsement policy configured in the channel config (e.g., a `MAJORITY` of orgs). Therefore this endorsement policy should be added to the channel configuration when enabling capabilities on the channel.
-
-For information about how to edit the relevant channel configurations to enable the new lifecycle by adding an endorsement policy for each organization, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
-
-### Chaincode shim changes (Go chaincode only)
-
-The v2.x `ccenv` image that is used to build Go chaincodes no longer automatically vendors the Go chaincode shim dependency like the v1.4 `ccenv` image did. 
+The v2.x `ccenv` image that is used to build Go chaincodes no longer automatically vendors the Go chaincode shim dependency like the v1.4 `ccenv` image did.
 The recommended approach is to vendor the shim in your v1.4 Go chaincode before making upgrades to the peers and channels, since this approach works with both a v1.4.x and v2.x peer. If you are already using an existing tool such as ``govendor`` you may continue using it to vendor the chaincode shim. Best practice, however, would be to use Go modules to vendor the chaincode shim, as modules are now the de facto standard for dependency management in the Go ecosystem. Note that since Fabric v2.0, chaincode using Go modules without vendored dependencies is also supported. If you do this, you do not need to make any additional changes to your chaincode.
 
-If you did not vendor the shim in your v1.4 chaincode, the old v1.4 chaincode images will still technically work after upgrade, but you are in a risky state. If the chaincode image gets deleted from your environment for whatever reason, the next invoke on v2.x peer will try to rebuild the chaincode image and you'll get an error that the shim cannot be found.
+If you did not vendor the shim in your v1.4 chaincode, the old v1.4 chaincode images will still technically work after peer upgrade, but you are in a risky state. If the chaincode image gets deleted from your environment for whatever reason, the next invoke on v2.x peer will try to rebuild the chaincode image and you'll get an error that the shim cannot be found.
 
 At this point, you have two options:
 
@@ -44,13 +25,17 @@ At this point, you have two options:
 
 2. If the entire channel is not yet ready to upgrade the chaincode, you can use peer environment variables to specify the v1.4 chaincode environment `ccenv` be used to rebuild the chaincode images. This v1.4 `ccenv` should still work with a v2.x peer.
 
-### Chaincode logger (Go chaincode only)
+To eliminate these concerns, the recommendation is to make sure the chaincode shim is vendored and the chaincode is upgraded, prior to upgrading a peer to v2.x.
+
+#### Chaincode logger (Go chaincode only)
 
 Support for user chaincodes to utilize the chaincode shim's logger via `NewLogger()` has been removed. Chaincodes that used the shim's `NewLogger()` must now shift to their own preferred logging mechanism.
 
 For more information, check out [Logging control](./logging-control.html#chaincode).
 
-### Peer databases upgrade
+### While upgrading peer nodes
+
+#### Peer databases upgrade
 
 For information about how to upgrade peers, check out our documentation on [upgrading components](./upgrading_your_components.html). During the process for [upgrading your peers](./upgrading_your_components.html#upgrade-the-peers), you will need to perform one additional step to upgrade the peer databases. The databases of all peers (which include not just the state database but the history database and other internal databases for the peer) must be rebuilt using the v2.x data format as part of the upgrade to v2.x. To trigger the rebuild, the databases must be dropped before the peer is started. The instructions below utilize the `peer node upgrade-dbs` command to drop the local databases managed by the peer and prepare them for upgrade, so that they can be rebuilt the first time the v2.x peer starts. If you are using CouchDB as the state database, the peer has support to automatically drop this database as of v2.2. To leverage the support, you must configure the peer with CouchDB as the state database and start CouchDB before running the `upgrade-dbs` command. In v2.0 and v2.1, the peer does not automatically drop the CouchDB state database; therefore you must drop it yourself.
 
@@ -80,7 +65,24 @@ The peer will rebuild the databases using the v2.x data format the first time it
 
 If the database is not dropped as part of the upgrade process, the peer start will return an error message stating that its databases are in the old format and must be dropped using the `peer node upgrade-dbs` command above (or dropped manually if using CouchDB state database). The node will then need to be restarted again.
 
-### Capabilities
+### After upgrading nodes
+
+#### Chaincode lifecycle
+
+The new chaincode lifecycle that debuted in v2.0 allows multiple organizations to agree on how a chaincode will be operated before it can be used on a channel. For more information about the new chaincode lifecycle, check out [Fabric chaincode lifecycle](./chaincode_lifecycle.html) concept topic.
+
+It is a best practice to upgrade all of the peers on a channel before enabling the `Channel` and `Application` capabilities that enable the new chaincode lifecycle (the `Channel` capability is not strictly required, but it makes sense to update it at this time). Note that any peers that are not at v2.x will crash after enabling either capability, while any ordering nodes that are not at v2.x will crash after the `Channel` capability has been enabled. This crashing behavior is intentional, as the peer or orderer cannot safely participate in the channel if it does not support the required capabilities.
+
+After the `Application` capability has been updated to `V2_0` on a channel, chaincodes that were deployed using the v1.x chaincode lifecycle will continue to run, and will continue to utilize the same chaincode endorsement policy as before.
+However, the next time that you would like to update these chaincodes, you must utilize the v2.x lifecycle procedures to package, install, approve, and commit chaincodes on the channel. This will effectively shift the chaincode from the v1.x lifecycle framework to the v2.x lifecycle framework.
+Additionally, any new chaincode deployements must also utilize the v2.x lifecycle procedures to package, install, approve, and commit chaincodes on the channel.
+As a result, make sure to be prepared for the new lifecycle before updating the capability.
+
+The new lifecycle defaults to using the endorsement policy configured in the channel config (e.g., a `MAJORITY` of orgs). Therefore this endorsement policy should be added to the channel configuration when enabling capabilities on the channel.
+
+For information about how to edit the relevant channel configurations to enable the new lifecycle by adding an endorsement policy for each organization, check out [Enabling the new chaincode lifecycle](./enable_cc_lifecycle.html).
+
+#### Capabilities
 
 The 2.0 release featured three new capabilities.
 
@@ -94,7 +96,7 @@ As with any update of the capability levels, make sure to upgrade your peer bina
 
 For information about how to set new capabilities, check out [Updating the capability level of a channel](./updating_capabilities.html).
 
-### Define ordering node endpoint per org (recommend)
+#### Define ordering node endpoint per org (recommend)
 
 Starting with version v1.4.2, it was recommended to define orderer endpoints in all channels at the organization level by adding a new `OrdererEndpoints` stanza within the channel configuration of an organization, replacing the global `OrdererAddresses` section of channel configuration. If at least one organization has an ordering service endpoint defined at an organizational level, all orderers and peers will ignore the channel level endpoints when connecting to ordering nodes.
 

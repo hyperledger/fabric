@@ -9,6 +9,7 @@ package gateway
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
 	"sync"
@@ -139,6 +140,9 @@ layout:
 		}
 	}
 
+	// shuffle the layouts - keep the preferred ones first
+	rand.Shuffle(len(preferredLayouts), func(i, j int) { preferredLayouts[i], preferredLayouts[j] = preferredLayouts[j], preferredLayouts[i] })
+	rand.Shuffle(len(otherLayouts), func(i, j int) { otherLayouts[i], otherLayouts[j] = otherLayouts[j], otherLayouts[i] })
 	layouts := append(preferredLayouts, otherLayouts...)
 
 	if len(layouts) == 0 {
@@ -396,12 +400,12 @@ func (reg *registry) config(channel string) ([]*endpointConfig, error) {
 	}
 	var channelOrderers []*endpointConfig
 	for mspid, eps := range config.GetOrderers() {
+		var tlsRootCerts [][]byte
+		if mspInfo, ok := config.GetMsps()[mspid]; ok {
+			tlsRootCerts = mspInfo.GetTlsRootCerts()
+		}
 		for _, ep := range eps.Endpoint {
 			address := fmt.Sprintf("%s:%d", ep.Host, ep.Port)
-			var tlsRootCerts [][]byte
-			if mspInfo, ok := config.GetMsps()[mspid]; ok {
-				tlsRootCerts = mspInfo.GetTlsRootCerts()
-			}
 			channelOrderers = append(channelOrderers, &endpointConfig{address: address, mspid: mspid, tlsRootCerts: tlsRootCerts})
 		}
 	}
@@ -409,14 +413,21 @@ func (reg *registry) config(channel string) ([]*endpointConfig, error) {
 }
 
 func (reg *registry) configUpdate(bundle *channelconfig.Bundle) {
-	if _, ok := bundle.OrdererConfig(); ok {
-		// orderer config has changed - invalidate the cache for this channel
+	if ordererConfig, ok := bundle.OrdererConfig(); ok {
+		// orderer config has changed - process the bundle
 		channel := bundle.ConfigtxValidator().ChannelID()
-		channelOrderers, err := reg.config(channel)
-		if err != nil {
-			reg.logger.Errorw("Failed update orderer config", "channel", channel, "err", err)
-			return
+		reg.logger.Infow("Updating orderer config", "channel", channel)
+		var channelOrderers []*endpointConfig
+		for _, org := range ordererConfig.Organizations() {
+			mspid := org.MSPID()
+			tlsRootCerts := org.MSP().GetTLSRootCerts()
+			for _, address := range org.Endpoints() {
+				channelOrderers = append(channelOrderers, &endpointConfig{address: address, mspid: mspid, tlsRootCerts: tlsRootCerts})
+				reg.logger.Debugw("Channel orderer", "address", address, "mspid", mspid)
+			}
 		}
-		reg.channelOrderers.Store(channel, channelOrderers)
+		if len(channelOrderers) > 0 {
+			reg.channelOrderers.Store(channel, channelOrderers)
+		}
 	}
 }

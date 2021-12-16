@@ -1,4 +1,5 @@
-//+build noplugin !cgo
+//go:build noplugin || !cgo
+// +build noplugin !cgo
 
 /*
  Copyright IBM Corp All Rights Reserved.

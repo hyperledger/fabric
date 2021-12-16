@@ -64,7 +64,11 @@ func (pe *policyEvaluatorImpl) Evaluate(polName string, sd []*protoutil.SignedDa
 		return PolicyNotFound(polName)
 	}
 
-	return policy.EvaluateSignedData(sd)
+	err := policy.EvaluateSignedData(sd)
+	if err != nil {
+		aclLogger.Warnw("EvaluateSignedData policy check failed", "error", err, "policyName", polName, policy, "policy", "signingIdentities", protoutil.LogMessageForSerializedIdentities(sd))
+	}
+	return err
 }
 
 //------ resourcePolicyProvider ----------

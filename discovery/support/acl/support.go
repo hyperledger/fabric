@@ -96,6 +96,7 @@ func (s *DiscoverySupport) SatisfiesPrincipal(channel string, rawIdentity []byte
 	}
 	identity, err := mspMgr.DeserializeIdentity(rawIdentity)
 	if err != nil {
+		logger.Warnw("failed deserializing identity", "error", err, "identity", protoutil.LogMessageForSerializedIdentity(rawIdentity))
 		return errors.Wrap(err, "failed deserializing identity")
 	}
 	return identity.SatisfiesPrincipal(principal)

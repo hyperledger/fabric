@@ -63,7 +63,7 @@ a root CA and then intermediate CAs associated with that root CA, is up to you.
 
 ## Orderers and the transaction flow
 
-### Phase one: Proposal
+### Phase one: Transaction Proposal and Endorsement
 
 We've seen from our topic on [Peers](../peers/peers.html) that they form the basis
 for a blockchain network, hosting ledgers, which can be queried and updated by
@@ -73,54 +73,44 @@ Specifically, applications that want to update the ledger are involved in a
 process with three phases that ensures all of the peers in a blockchain network
 keep their ledgers consistent with each other.
 
-In the first phase, a client application sends a transaction proposal to
-a subset of peers that will invoke a smart contract to produce a proposed
-ledger update and then endorse the results. The endorsing peers do not apply
-the proposed update to their copy of the ledger at this time. Instead, the
-endorsing peers return a proposal response to the client application. The
-endorsed transaction proposals will ultimately be ordered into blocks in phase
-two, and then distributed to all peers for final validation and commit in
-phase three.
+In the first phase, a client application sends a transaction proposal to the Fabric
+Gateway service, via a trusted peer. This peer executes the proposed transaction or
+forwards it to another peer in its organization for execution.
 
-For an in-depth look at the first phase, refer back to the [Peers](../peers/peers.html#phase-1-proposal) topic.
+The gateway also forwards the transaction to peers in the organizations required by the endorsement policy. These endorsing peers run the transaction and return the
+transaction response to the gateway service. They do not apply the proposed update to
+their copy of the ledger at this time. The endorsed transaction proposals will ultimately
+be ordered into blocks in phase two, and then distributed to all peers for final validation
+and commitment to the ledger in phase three.
 
-### Phase two: Ordering and packaging transactions into blocks
+Note: Fabric v2.3 SDKs embed the logic of the v2.4 Fabric Gateway service in the client application --- refer to the [v2.3 Applications and Peers](https://hyperledger-fabric.readthedocs.io/en/release-2.3/peers/peers.html#applications-and-peers) topic for details.
 
-After the completion of the first phase of a transaction, a client
-application has received an endorsed transaction proposal response from a set of
-peers. It's now time for the second phase of a transaction.
+For an in-depth look at phase one, refer back to the [Peers](../peers/peers.html#applications-and-peers) topic.
 
-In this phase, application clients submit transactions containing endorsed
-transaction proposal responses to an ordering service node. The ordering service
-creates blocks of transactions which will ultimately be distributed to
-all peers on the channel for final validation and commit in phase three.
+### Phase two: Transaction Submission and Ordering
+
+With successful completion of the first transaction phase (proposal), the client
+application has received an endorsed transaction proposal response from the
+Fabric Gateway service for signing. For an endorsed transaction, the gateway service
+forwards the transaction to the ordering service, which orders it with
+other endorsed transactions, and packages them all into a block.
+
+The ordering service creates these blocks of transactions, which will ultimately
+be distributed to all peers on the channel for validation and commitment to
+the ledger in phase three. The blocks themselves are also ordered and are the
+basic components of a blockchain ledger.
 
 Ordering service nodes receive transactions from many different application
-clients concurrently. These ordering service nodes work together to collectively
-form the ordering service. Its job is to arrange batches of submitted transactions
-into a well-defined sequence and package them into *blocks*. These blocks will
-become the *blocks* of the blockchain!
+clients (via the gateway) concurrently. These ordering service nodes collectively
+form the ordering service, which may be shared by multiple channels.
 
 The number of transactions in a block depends on channel configuration
 parameters related to the desired size and maximum elapsed duration for a
 block (`BatchSize` and `BatchTimeout` parameters, to be exact). The blocks are
-then saved to the orderer's ledger and distributed to all peers that have joined
-the channel. If a peer happens to be down at this time, or joins the channel
-later, it will receive the blocks after reconnecting to an ordering service
-node, or by gossiping with another peer. We'll see how this block is processed
-by peers in the third phase.
-
-![Orderer1](./orderer.diagram.1.png)
-
-*The first role of an ordering node is to package proposed ledger updates. In
-this example, application A1 sends a transaction T1 endorsed by E1 and E2 to
-the orderer O1. In parallel, Application A2 sends transaction T2 endorsed by E1
-to the orderer O1. O1 packages transaction T1 from application A1 and
-transaction T2 from application A2 together with other transactions from other
-applications in the network into block B2. We can see that in B2, the
-transaction order is T1,T2,T3,T4,T6,T5 -- which may not be the order in which
-these transactions arrived at the orderer! (This example shows a very
-simplified ordering service configuration with only one ordering node.)*
+then saved to the orderer's ledger and distributed to all peers on the channel.
+If a peer happens to be down at this time, or joins
+the channel later, it will receive the blocks by gossiping with another peer.
+We'll see how this block is processed by peers in the third phase.
 
 It's worth noting that the sequencing of transactions in a block is not
 necessarily the same as the order received by the ordering service, since there
@@ -135,36 +125,36 @@ packaged into multiple different blocks that compete to form a chain.
 In Hyperledger Fabric, the blocks generated by the ordering service are
 **final**. Once a transaction has been written to a block, its position in the
 ledger is immutably assured. As we said earlier, Hyperledger Fabric's finality
-means that there are no **ledger forks** --- validated transactions will never
-be reverted or dropped.
+means that there are no **ledger forks** --- validated and committed transactions
+will never be reverted or dropped.
 
-We can also see that, whereas peers execute smart contracts and process transactions,
+We can also see that, whereas peers execute smart contracts (chaincode) and process transactions,
 orderers most definitely do not. Every authorized transaction that arrives at an
-orderer is mechanically packaged in a block --- the orderer makes no judgement
+orderer is then mechanically packaged into a block --- the orderer makes no judgement
 as to the content of a transaction (except for channel configuration transactions,
 as mentioned earlier).
 
 At the end of phase two, we see that orderers have been responsible for the simple
 but vital processes of collecting proposed transaction updates, ordering them,
-and packaging them into blocks, ready for distribution.
+and packaging them into blocks, ready for distribution to the channel peers.
 
-### Phase three: Validation and commit
+### Phase three: Transaction Validation and Commitment
 
-The third phase of the transaction workflow involves the distribution and
-subsequent validation of blocks from the orderer to the peers, where they can be
-committed to the ledger.
+The third phase of the transaction workflow involves the distribution of
+ordered and packaged blocks from the ordering service to the channel peers
+for validation and commitment to the ledger.
 
-Phase 3 begins with the orderer distributing blocks to all peers connected to
-it. It's also worth noting that not every peer needs to be connected to an orderer ---
+Phase three begins with the ordering service distributing blocks to all channel
+peers. It's worth noting that not every peer needs to be connected to an orderer ---
 peers can cascade blocks to other peers using the [**gossip**](../gossip.html)
-protocol.
+protocol --- although receiving blocks directly from the ordering service is
+recommended.
 
-Each peer will validate distributed blocks independently, but in a deterministic
-fashion, ensuring that ledgers remain consistent. Specifically, each peer in the
-channel will validate each transaction in the block to ensure it has been endorsed
-by the required organization's peers, that its endorsements match, and that
-it hasn't become invalidated by other recently committed transactions which may
-have been in-flight when the transaction was originally endorsed. Invalidated
+Each peer will validate distributed blocks independently, ensuring that ledgers
+remain consistent. Specifically, each peer in the channel will validate each
+transaction in the block to ensure it has been endorsed
+by the required organizations, that its endorsements match, and that
+it hasn't become invalidated by other recently committed transactions. Invalidated
 transactions are still retained in the immutable block created by the orderer,
 but they are marked as invalid by the peer and do not update the ledger's state.
 
@@ -178,10 +168,10 @@ ledger L1 on P2. Once this process is complete, the ledger L1 has been
 consistently updated on peers P1 and P2, and each may inform connected
 applications that the transaction has been processed.*
 
-In summary, phase three sees the blocks generated by the ordering service applied
-consistently to the ledger. The strict ordering of transactions into blocks
-allows each peer to validate that transaction updates are consistently applied
-across the blockchain network.
+In summary, phase three sees the blocks of transactions created by the ordering
+service applied consistently to the ledger by the peers. The strict
+ordering of transactions into blocks allows each peer to validate that transaction
+updates are consistently applied across the channel.
 
 For a deeper look at phase 3, refer back to the [Peers](../peers/peers.html#phase-3-validation-and-commit) topic.
 

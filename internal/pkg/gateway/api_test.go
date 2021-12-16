@@ -9,6 +9,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
@@ -133,6 +134,7 @@ type testDef struct {
 	identity           []byte
 	localResponse      string
 	errString          string
+	errCode            codes.Code
 	errDetails         []*pb.ErrorDetail
 	endpointDefinition *endpointDef
 	endorsingOrgs      []string
@@ -198,7 +200,8 @@ func TestEvaluate(t *testing.T) {
 			name:      "no endorsers",
 			plan:      endorsementPlan{},
 			members:   []networkMember{},
-			errString: "rpc error: code = Unavailable desc = no peers available to evaluate chaincode test_chaincode in channel test_channel",
+			errCode:   codes.FailedPrecondition,
+			errString: "no peers available to evaluate chaincode test_chaincode in channel test_channel",
 		},
 		{
 			name: "five endorsers, prefer local org",
@@ -277,7 +280,8 @@ func TestEvaluate(t *testing.T) {
 				{"id5", "peer4:11051", "msp3", 7},
 			},
 			transientData: map[string][]byte{"transient-key": []byte("transient-value")},
-			errString:     "rpc error: code = Unavailable desc = no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data: no peers available to evaluate chaincode test_chaincode in channel test_channel",
+			errCode:       codes.FailedPrecondition,
+			errString:     "no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data: no peers available to evaluate chaincode test_chaincode in channel test_channel",
 		},
 		{
 			name: "evaluate with transient data and target (non-local) orgs should select the highest block height peer",
@@ -300,7 +304,8 @@ func TestEvaluate(t *testing.T) {
 			endpointDefinition: &endpointDef{
 				proposalError: status.Error(codes.Aborted, "wibble"),
 			},
-			errString: "rpc error: code = Aborted desc = failed to evaluate transaction, see attached details for more info",
+			errCode:   codes.Aborted,
+			errString: "failed to evaluate transaction, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "localhost:7051",
 				MspId:   "msp1",
@@ -316,7 +321,8 @@ func TestEvaluate(t *testing.T) {
 				proposalResponseStatus:  400,
 				proposalResponseMessage: "Mock chaincode error",
 			},
-			errString: "rpc error: code = Aborted desc = evaluate call to endorser returned error: chaincode response 400, Mock chaincode error",
+			errCode:   codes.Unknown,
+			errString: "evaluate call to endorser returned error: chaincode response 400, Mock chaincode error",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer1:8051",
 				MspId:   "msp1",
@@ -362,7 +368,8 @@ func TestEvaluate(t *testing.T) {
 				peer1Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(createErrorResponse(t, 500, "bad peer1 endorser", nil), nil)
 			},
 			endorsingOrgs: []string{"msp1"},
-			errString:     "rpc error: code = Aborted desc = failed to evaluate transaction, see attached details for more info",
+			errCode:       codes.Aborted,
+			errString:     "failed to evaluate transaction, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{
 				{
 					Address: "localhost:7051",
@@ -394,7 +401,8 @@ func TestEvaluate(t *testing.T) {
 				def.localEndorser.ProcessProposalReturns(createErrorResponse(t, 500, "invalid signature", nil), fmt.Errorf("invalid signature"))
 			},
 			endorsingOrgs: []string{"msp1"},
-			errString:     "rpc error: code = Aborted desc = evaluate call to endorser returned error: invalid signature",
+			errCode:       codes.FailedPrecondition, // Code path could fail for reasons other than authentication
+			errString:     "evaluate call to endorser returned error: invalid signature",
 			errDetails: []*pb.ErrorDetail{
 				{
 					Address: "localhost:7051",
@@ -422,7 +430,8 @@ func TestEvaluate(t *testing.T) {
 				peer1Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(createErrorResponse(t, 500, "error in simulation: chaincode stream terminated", nil), nil)
 			},
 			endorsingOrgs: []string{"msp1"},
-			errString:     "rpc error: code = Aborted desc = failed to evaluate transaction, see attached details for more info",
+			errCode:       codes.Aborted,
+			errString:     "failed to evaluate transaction, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{
 				{
 					Address: "localhost:7051",
@@ -449,7 +458,8 @@ func TestEvaluate(t *testing.T) {
 					return nil, nil
 				})
 			},
-			errString: "rpc error: code = Unavailable desc = failed to create new connection: endorser not answering",
+			errCode:   codes.Unavailable,
+			errString: "failed to create new connection: endorser not answering",
 		},
 		{
 			name: "discovery returns incomplete information - no Properties",
@@ -459,7 +469,26 @@ func TestEvaluate(t *testing.T) {
 					PKIid:    []byte("ill-defined"),
 				}})
 			},
-			errString: "rpc error: code = Unavailable desc = no peers available to evaluate chaincode test_chaincode in channel test_channel",
+			errCode:   codes.FailedPrecondition,
+			errString: "no peers available to evaluate chaincode test_chaincode in channel test_channel",
+		},
+		{
+			name: "context timeout during evaluate",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 3}}, // msp1
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				var cancel context.CancelFunc
+				def.ctx, cancel = context.WithTimeout(def.ctx, 100*time.Millisecond)
+
+				def.localEndorser.ProcessProposalStub = func(ctx context.Context, proposal *peer.SignedProposal, option ...grpc.CallOption) (*peer.ProposalResponse, error) {
+					cancel()
+					time.Sleep(200 * time.Millisecond)
+					return createProposalResponse(t, peer1Mock.address, "mock_response", 200, ""), nil
+				}
+			},
+			errCode:   codes.DeadlineExceeded,
+			errString: "evaluate timeout expired",
 		},
 	}
 	for _, tt := range tests {
@@ -468,9 +497,8 @@ func TestEvaluate(t *testing.T) {
 
 			response, err := test.server.Evaluate(test.ctx, &pb.EvaluateRequest{ProposedTransaction: test.signedProposal, TargetOrganizations: tt.endorsingOrgs})
 
-			if tt.errString != "" {
-				checkError(t, err, tt.errString, tt.errDetails)
-				require.Nil(t, response)
+			if checkError(t, &tt, err) {
+				require.Nil(t, response, "response on error")
 				return
 			}
 
@@ -535,15 +563,17 @@ func TestEndorse(t *testing.T) {
 		{
 			name:          "endorse with specified orgs, but fails to satisfy one org",
 			endorsingOrgs: []string{"msp2", "msp4"},
-			errString:     "rpc error: code = Unavailable desc = failed to find any endorsing peers for org(s): msp4",
+			errCode:       codes.Unavailable,
+			errString:     "failed to find any endorsing peers for org(s): msp4",
 		},
 		{
 			name:          "endorse with specified orgs, but fails to satisfy two orgs",
 			endorsingOrgs: []string{"msp2", "msp4", "msp5"},
-			errString:     "rpc error: code = Unavailable desc = failed to find any endorsing peers for org(s): msp4, msp5",
+			errCode:       codes.Unavailable,
+			errString:     "failed to find any endorsing peers for org(s): msp4, msp5",
 		},
 		{
-			name: "endorse with multiple layouts - default choice first layout",
+			name: "endorse retry - localhost and peer3 fail - retry on peer1 and peer2",
 			plan: endorsementPlan{
 				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
 				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
@@ -551,22 +581,6 @@ func TestEndorse(t *testing.T) {
 			},
 			layouts: []endorsementLayout{
 				{"g1": 1, "g2": 1},
-				{"g1": 1, "g3": 1},
-				{"g2": 1, "g3": 1},
-			},
-			expectedEndorsers: []string{"localhost:7051", "peer3:10051"},
-		},
-		{
-			name: "endorse retry - localhost and peer2 fail - retry on peer1 and peer2",
-			plan: endorsementPlan{
-				"g1": {{endorser: localhostMock, height: 4}, {endorser: peer1Mock, height: 4}}, // msp1
-				"g2": {{endorser: peer2Mock, height: 3}, {endorser: peer3Mock, height: 4}},     // msp2
-				"g3": {{endorser: peer4Mock, height: 5}},                                       // msp3
-			},
-			layouts: []endorsementLayout{
-				{"g1": 1, "g2": 1},
-				{"g1": 1, "g3": 1},
-				{"g2": 1, "g3": 1},
 			},
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.localEndorser.ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad local endorser"))
@@ -629,7 +643,8 @@ func TestEndorse(t *testing.T) {
 				peer3Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer3 endorser"))
 				peer4Mock.client.(*mocks.EndorserClient).ProcessProposalReturns(nil, status.Error(codes.Aborted, "bad peer4 endorser"))
 			},
-			errString: "rpc error: code = Aborted desc = failed to collect enough transaction endorsements, see attached details for more info",
+			errCode:   codes.Aborted,
+			errString: "failed to collect enough transaction endorsements, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{
 				{Address: "peer2:9051", MspId: "msp2", Message: "rpc error: code = Aborted desc = bad peer2 endorser"},
 				{Address: "peer3:10051", MspId: "msp2", Message: "rpc error: code = Aborted desc = bad peer3 endorser"},
@@ -695,7 +710,8 @@ func TestEndorse(t *testing.T) {
 				{"id4", "peer4:11051", "msp3", 5},
 			},
 			transientData: map[string][]byte{"transient-key": []byte("transient-value")},
-			errString:     "rpc error: code = FailedPrecondition desc = no endorsers found in the gateway's organization; retry specifying endorsing organization(s) to protect transient data",
+			errCode:       codes.FailedPrecondition,
+			errString:     "no endorsers found in the gateway's organization; retry specifying endorsing organization(s) to protect transient data",
 		},
 		{
 			name: "extra endorsers with transient data",
@@ -733,8 +749,9 @@ func TestEndorse(t *testing.T) {
 				{"g1": 1, "g3": 1},
 				{"g2": 1, "g3": 1},
 			},
+			errCode: codes.FailedPrecondition,
 			// the following is a substring of the error message - the endpoints get listed in indeterminate order which would lead to flaky test
-			errString: "rpc error: code = Unavailable desc = failed to select a set of endorsers that satisfy the endorsement policy due to unavailability of peers",
+			errString: "failed to select a set of endorsers that satisfy the endorsement policy due to unavailability of peers",
 		},
 		{
 			name: "non-matching responses",
@@ -743,7 +760,15 @@ func TestEndorse(t *testing.T) {
 				"g2": {{endorser: peer2Mock, height: 5}},     // msp2
 			},
 			localResponse: "different_response",
-			errString:     "rpc error: code = Aborted desc = failed to assemble transaction: ProposalResponsePayloads do not match (base64): 'EhQaEgjIARoNbW9ja19yZXNwb25zZQ==' vs 'EhkaFwjIARoSZGlmZmVyZW50X3Jlc3BvbnNl'",
+			errCode:       codes.Aborted,
+			errString:     "failed to collect enough transaction endorsements",
+			errDetails: []*pb.ErrorDetail{
+				{
+					Address: "peer2:9051",
+					MspId:   "msp2",
+					Message: "ProposalResponsePayloads do not match",
+				},
+			},
 		},
 		{
 			name: "discovery fails",
@@ -753,7 +778,8 @@ func TestEndorse(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.discovery.PeersForEndorsementReturns(nil, fmt.Errorf("peach-melba"))
 			},
-			errString: "rpc error: code = Unavailable desc = no combination of peers can be derived which satisfy the endorsement policy: peach-melba",
+			errCode:   codes.FailedPrecondition,
+			errString: "no combination of peers can be derived which satisfy the endorsement policy: peach-melba",
 		},
 		{
 			name: "discovery returns incomplete protos - nil layout",
@@ -767,7 +793,8 @@ func TestEndorse(t *testing.T) {
 				}
 				def.discovery.PeersForEndorsementReturns(ed, nil)
 			},
-			errString: "rpc error: code = Unavailable desc = failed to select a set of endorsers that satisfy the endorsement policy",
+			errCode:   codes.FailedPrecondition,
+			errString: "failed to select a set of endorsers that satisfy the endorsement policy",
 		},
 		{
 			name: "discovery returns incomplete protos - nil state info",
@@ -782,7 +809,8 @@ func TestEndorse(t *testing.T) {
 				}
 				def.discovery.PeersForEndorsementReturns(ed, nil)
 			},
-			errString: "rpc error: code = Unavailable desc = failed to select a set of endorsers that satisfy the endorsement policy",
+			errCode:   codes.FailedPrecondition,
+			errString: "failed to select a set of endorsers that satisfy the endorsement policy",
 		},
 		{
 			name: "process proposal fails",
@@ -792,7 +820,8 @@ func TestEndorse(t *testing.T) {
 			endpointDefinition: &endpointDef{
 				proposalError: status.Error(codes.Aborted, "wibble"),
 			},
-			errString: "rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info",
+			errCode:   codes.Aborted,
+			errString: "failed to endorse transaction, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{
 				{
 					Address: "localhost:7051",
@@ -818,7 +847,8 @@ func TestEndorse(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.localEndorser.ProcessProposalReturns(createProposalResponse(t, localhostMock.address, "all_good", 200, ""), nil)
 			},
-			errString: "rpc error: code = Aborted desc = failed to collect enough transaction endorsements, see attached details for more info",
+			errCode:   codes.Aborted,
+			errString: "failed to collect enough transaction endorsements, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer4:11051",
 				MspId:   "msp3",
@@ -834,7 +864,8 @@ func TestEndorse(t *testing.T) {
 				proposalResponseStatus:  400,
 				proposalResponseMessage: "Mock chaincode error",
 			},
-			errString: "rpc error: code = Aborted desc = failed to endorse transaction, see attached details for more info",
+			errCode:   codes.Aborted,
+			errString: "failed to endorse transaction, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{
 				{
 					Address: "localhost:7051",
@@ -861,7 +892,8 @@ func TestEndorse(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.localEndorser.ProcessProposalReturns(createProposalResponse(t, localhostMock.address, "all_good", 200, ""), nil)
 			},
-			errString: "rpc error: code = Aborted desc = failed to collect enough transaction endorsements, see attached details for more info",
+			errCode:   codes.Aborted,
+			errString: "failed to collect enough transaction endorsements, see attached details for more info",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "peer4:11051",
 				MspId:   "msp3",
@@ -883,6 +915,44 @@ func TestEndorse(t *testing.T) {
 			},
 			expectedEndorsers: []string{"localhost:7051", "peer2:9051"},
 		},
+		{
+			name: "context timeout during first endorsement",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 3}}, // msp1
+				"g2": {{endorser: peer4Mock, height: 5}},     // msp3
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				var cancel context.CancelFunc
+				def.ctx, cancel = context.WithTimeout(def.ctx, 100*time.Millisecond)
+
+				def.localEndorser.ProcessProposalStub = func(ctx context.Context, proposal *peer.SignedProposal, option ...grpc.CallOption) (*peer.ProposalResponse, error) {
+					cancel()
+					time.Sleep(200 * time.Millisecond)
+					return createProposalResponse(t, peer1Mock.address, "mock_response", 200, ""), nil
+				}
+			},
+			errCode:   codes.DeadlineExceeded,
+			errString: "endorsement timeout expired while collecting first endorsement",
+		},
+		{
+			name: "context timeout collecting endorsements",
+			plan: endorsementPlan{
+				"g1": {{endorser: localhostMock, height: 3}}, // msp1
+				"g2": {{endorser: peer4Mock, height: 5}},     // msp3
+			},
+			postSetup: func(t *testing.T, def *preparedTest) {
+				var cancel context.CancelFunc
+				def.ctx, cancel = context.WithTimeout(def.ctx, 100*time.Millisecond)
+
+				peer4Mock.client.(*mocks.EndorserClient).ProcessProposalStub = func(ctx context.Context, proposal *peer.SignedProposal, option ...grpc.CallOption) (*peer.ProposalResponse, error) {
+					cancel()
+					time.Sleep(200 * time.Millisecond)
+					return createProposalResponse(t, peer4Mock.address, "mock_response", 200, ""), nil
+				}
+			},
+			errCode:   codes.DeadlineExceeded,
+			errString: "endorsement timeout expired while collecting endorsements",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -890,9 +960,8 @@ func TestEndorse(t *testing.T) {
 
 			response, err := test.server.Endorse(test.ctx, &pb.EndorseRequest{ProposedTransaction: test.signedProposal, EndorsingOrganizations: tt.endorsingOrgs})
 
-			if tt.errString != "" {
-				checkError(t, err, tt.errString, tt.errDetails)
-				require.Nil(t, response)
+			if checkError(t, &tt, err) {
+				require.Nil(t, response, "response on error")
 				return
 			}
 
@@ -930,7 +999,8 @@ func TestSubmit(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				def.discovery.ConfigReturnsOnCall(1, nil, fmt.Errorf("jabberwocky"))
 			},
-			errString: "rpc error: code = Unavailable desc = failed to get config for channel [test_channel]: jabberwocky",
+			errCode:   codes.FailedPrecondition,
+			errString: "failed to get config for channel [test_channel]: jabberwocky",
 		},
 		{
 			name: "no orderers",
@@ -943,7 +1013,8 @@ func TestSubmit(t *testing.T) {
 					Msps:     map[string]*msp.FabricMSPConfig{},
 				}, nil)
 			},
-			errString: "rpc error: code = Unavailable desc = no orderer nodes available",
+			errCode:   codes.Unavailable,
+			errString: "no orderer nodes available",
 		},
 		{
 			name: "orderer broadcast fails",
@@ -954,11 +1025,12 @@ func TestSubmit(t *testing.T) {
 				proposalResponseStatus: 200,
 				ordererBroadcastError:  status.Error(codes.FailedPrecondition, "Orderer not listening!"),
 			},
-			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
+			errCode:   codes.FailedPrecondition,
+			errString: "Orderer not listening!",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
-				Message: "failed to create BroadcastClient: rpc error: code = FailedPrecondition desc = Orderer not listening!",
+				Message: "rpc error: code = FailedPrecondition desc = Orderer not listening!",
 			}},
 		},
 		{
@@ -970,11 +1042,12 @@ func TestSubmit(t *testing.T) {
 				proposalResponseStatus: 200,
 				ordererSendError:       status.Error(codes.Internal, "Orderer says no!"),
 			},
-			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
+			errCode:   codes.Internal,
+			errString: "Orderer says no!",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
-				Message: "failed to send transaction to orderer: rpc error: code = Internal desc = Orderer says no!",
+				Message: "rpc error: code = Internal desc = Orderer says no!",
 			}},
 		},
 		{
@@ -986,11 +1059,12 @@ func TestSubmit(t *testing.T) {
 				proposalResponseStatus: 200,
 				ordererRecvError:       status.Error(codes.FailedPrecondition, "Orderer not happy!"),
 			},
-			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
+			errCode:   codes.FailedPrecondition,
+			errString: "Orderer not happy!",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
-				Message: "failed to receive response from orderer: rpc error: code = FailedPrecondition desc = Orderer not happy!",
+				Message: "rpc error: code = FailedPrecondition desc = Orderer not happy!",
 			}},
 		},
 		{
@@ -1007,11 +1081,12 @@ func TestSubmit(t *testing.T) {
 					return abc
 				}
 			},
-			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
+			errCode:   codes.Aborted,
+			errString: "received unsuccessful response from orderer",
 			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
-				Message: "received nil response from orderer",
+				Message: "rpc error: code = Aborted desc = received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_UNKNOWN)],
 			}},
 		},
 		{
@@ -1031,11 +1106,12 @@ func TestSubmit(t *testing.T) {
 					return abc
 				}
 			},
-			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
+			errCode:   codes.Aborted,
+			errString: "received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
 			errDetails: []*pb.ErrorDetail{{
 				Address: "orderer:7050",
 				MspId:   "msp1",
-				Message: "received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
+				Message: "rpc error: code = Aborted desc = received unsuccessful response from orderer: " + cp.Status_name[int32(cp.Status_BAD_REQUEST)],
 			}},
 		},
 		{
@@ -1051,7 +1127,8 @@ func TestSubmit(t *testing.T) {
 					return nil, nil
 				})
 			},
-			errString: "rpc error: code = Unavailable desc = no orderer nodes available",
+			errCode:   codes.Unavailable,
+			errString: "no orderer nodes available",
 		},
 		{
 			name: "orderer retry",
@@ -1077,8 +1154,8 @@ func TestSubmit(t *testing.T) {
 			postSetup: func(t *testing.T, def *preparedTest) {
 				abc := &mocks.ABClient{}
 				abbc := &mocks.ABBClient{}
-				abbc.SendReturnsOnCall(0, status.Error(codes.FailedPrecondition, "First orderer error"))
-				abbc.SendReturnsOnCall(1, status.Error(codes.FailedPrecondition, "Second orderer error"))
+				abbc.SendReturnsOnCall(0, status.Error(codes.Unavailable, "First orderer error"))
+				abbc.SendReturnsOnCall(1, status.Error(codes.Unavailable, "Second orderer error"))
 				abbc.SendReturnsOnCall(2, nil) // third time lucky
 				abbc.RecvReturns(&ab.BroadcastResponse{
 					Info:   "success",
@@ -1122,24 +1199,25 @@ func TestSubmit(t *testing.T) {
 			},
 			endpointDefinition: &endpointDef{
 				proposalResponseStatus: 200,
-				ordererBroadcastError:  status.Error(codes.FailedPrecondition, "Orderer not listening!"),
+				ordererBroadcastError:  status.Error(codes.Unavailable, "Orderer not listening!"),
 			},
-			errString: "rpc error: code = Aborted desc = no orderers could successfully process transaction",
+			errCode:   codes.Unavailable,
+			errString: "no orderers could successfully process transaction",
 			errDetails: []*pb.ErrorDetail{
 				{
 					Address: "orderer1:7050",
 					MspId:   "msp1",
-					Message: "failed to create BroadcastClient: rpc error: code = FailedPrecondition desc = Orderer not listening!",
+					Message: "rpc error: code = Unavailable desc = Orderer not listening!",
 				},
 				{
 					Address: "orderer2:7050",
 					MspId:   "msp1",
-					Message: "failed to create BroadcastClient: rpc error: code = FailedPrecondition desc = Orderer not listening!",
+					Message: "rpc error: code = Unavailable desc = Orderer not listening!",
 				},
 				{
 					Address: "orderer3:7050",
 					MspId:   "msp1",
-					Message: "failed to create BroadcastClient: rpc error: code = FailedPrecondition desc = Orderer not listening!",
+					Message: "rpc error: code = Unavailable desc = Orderer not listening!",
 				},
 			},
 		},
@@ -1160,9 +1238,8 @@ func TestSubmit(t *testing.T) {
 			// submit
 			submitResponse, err := test.server.Submit(test.ctx, &pb.SubmitRequest{PreparedTransaction: preparedTx, ChannelId: testChannel})
 
-			if tt.errString != "" {
-				checkError(t, err, tt.errString, tt.errDetails)
-				require.Nil(t, submitResponse)
+			if checkError(t, &tt, err) {
+				require.Nil(t, submitResponse, "response on error")
 				return
 			}
 
@@ -1189,7 +1266,8 @@ func TestCommitStatus(t *testing.T) {
 		{
 			name:      "error finding transaction status",
 			finderErr: errors.New("FINDER_ERROR"),
-			errString: "rpc error: code = FailedPrecondition desc = FINDER_ERROR",
+			errCode:   codes.Aborted,
+			errString: "FINDER_ERROR",
 		},
 		{
 			name: "returns transaction status",
@@ -1231,7 +1309,8 @@ func TestCommitStatus(t *testing.T) {
 		{
 			name:      "failed policy or signature check",
 			policyErr: errors.New("POLICY_ERROR"),
-			errString: "rpc error: code = PermissionDenied desc = POLICY_ERROR",
+			errCode:   codes.PermissionDenied,
+			errString: "POLICY_ERROR",
 		},
 		{
 			name: "passes channel name to policy checker",
@@ -1265,12 +1344,14 @@ func TestCommitStatus(t *testing.T) {
 		{
 			name:      "context timeout",
 			finderErr: context.DeadlineExceeded,
-			errString: "rpc error: code = DeadlineExceeded desc = context deadline exceeded",
+			errCode:   codes.DeadlineExceeded,
+			errString: "context deadline exceeded",
 		},
 		{
 			name:      "context canceled",
 			finderErr: context.Canceled,
-			errString: "rpc error: code = Canceled desc = context canceled",
+			errCode:   codes.Canceled,
+			errString: "context canceled",
 		},
 	}
 	for _, tt := range tests {
@@ -1292,9 +1373,8 @@ func TestCommitStatus(t *testing.T) {
 
 			response, err := test.server.CommitStatus(test.ctx, signedRequest)
 
-			if tt.errString != "" {
-				checkError(t, err, tt.errString, tt.errDetails)
-				require.Nil(t, response)
+			if checkError(t, &tt, err) {
+				require.Nil(t, response, "response on error")
 				return
 			}
 
@@ -1437,7 +1517,8 @@ func TestChaincodeEvents(t *testing.T) {
 		{
 			name:      "error reading events",
 			eventErr:  errors.New("EVENT_ERROR"),
-			errString: "rpc error: code = Unavailable desc = EVENT_ERROR",
+			errCode:   codes.Aborted,
+			errString: "EVENT_ERROR",
 		},
 		{
 			name: "returns chaincode events",
@@ -1490,7 +1571,8 @@ func TestChaincodeEvents(t *testing.T) {
 			blocks: []*cp.Block{
 				block101Proto,
 			},
-			errString: "rpc error: code = InvalidArgument desc = LEDGER_PROVIDER_ERROR",
+			errCode:   codes.NotFound,
+			errString: "LEDGER_PROVIDER_ERROR",
 			postSetup: func(t *testing.T, test *preparedTest) {
 				test.ledgerProvider.LedgerReturns(nil, errors.New("LEDGER_PROVIDER_ERROR"))
 			},
@@ -1500,7 +1582,8 @@ func TestChaincodeEvents(t *testing.T) {
 			blocks: []*cp.Block{
 				block101Proto,
 			},
-			errString: "rpc error: code = Unavailable desc = LEDGER_INFO_ERROR",
+			errCode:   codes.Aborted,
+			errString: "LEDGER_INFO_ERROR",
 			postSetup: func(t *testing.T, test *preparedTest) {
 				test.ledger.GetBlockchainInfoReturns(nil, errors.New("LEDGER_INFO_ERROR"))
 			},
@@ -1575,24 +1658,37 @@ func TestChaincodeEvents(t *testing.T) {
 					Oldest: &ab.SeekOldest{},
 				},
 			},
-			errString: "rpc error: code = InvalidArgument desc = invalid start position type: *orderer.SeekPosition_Oldest",
+			errCode:   codes.InvalidArgument,
+			errString: "invalid start position type: *orderer.SeekPosition_Oldest",
 		},
 		{
 			name: "returns error obtaining ledger iterator",
 			blocks: []*cp.Block{
 				block101Proto,
 			},
-			errString: "rpc error: code = Unavailable desc = LEDGER_ITERATOR_ERROR",
+			errCode:   codes.Aborted,
+			errString: "LEDGER_ITERATOR_ERROR",
 			postSetup: func(t *testing.T, test *preparedTest) {
 				test.ledger.GetBlocksIteratorReturns(nil, errors.New("LEDGER_ITERATOR_ERROR"))
 			},
 		},
 		{
-			name: "returns error from send to client",
+			name: "returns canceled status error when client closes stream",
 			blocks: []*cp.Block{
 				block101Proto,
 			},
-			errString: "rpc error: code = Aborted desc = SEND_ERROR",
+			errCode: codes.Canceled,
+			postSetup: func(t *testing.T, test *preparedTest) {
+				test.eventsServer.SendReturns(io.EOF)
+			},
+		},
+		{
+			name: "returns status error from send to client",
+			blocks: []*cp.Block{
+				block101Proto,
+			},
+			errCode:   codes.Aborted,
+			errString: "SEND_ERROR",
 			postSetup: func(t *testing.T, test *preparedTest) {
 				test.eventsServer.SendReturns(status.Error(codes.Aborted, "SEND_ERROR"))
 			},
@@ -1600,7 +1696,8 @@ func TestChaincodeEvents(t *testing.T) {
 		{
 			name:      "failed policy or signature check",
 			policyErr: errors.New("POLICY_ERROR"),
-			errString: "rpc error: code = PermissionDenied desc = POLICY_ERROR",
+			errCode:   codes.PermissionDenied,
+			errString: "POLICY_ERROR",
 		},
 		{
 			name: "passes channel name to policy checker",
@@ -1644,8 +1741,7 @@ func TestChaincodeEvents(t *testing.T) {
 
 			err = test.server.ChaincodeEvents(signedRequest, test.eventsServer)
 
-			if tt.errString != "" {
-				checkError(t, err, tt.errString, tt.errDetails)
+			if checkError(t, &tt, err) {
 				return
 			}
 
@@ -1688,7 +1784,7 @@ func TestNilArgs(t *testing.T) {
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "the proposed transaction must contain a signed proposal"))
 
 	_, err = server.Endorse(ctx, &pb.EndorseRequest{ProposedTransaction: &peer.SignedProposal{ProposalBytes: []byte("jibberish")}})
-	require.ErrorContains(t, err, "rpc error: code = InvalidArgument desc = failed to unpack transaction proposal: error unmarshalling Proposal")
+	require.ErrorContains(t, err, "rpc error: code = InvalidArgument desc = error unmarshalling Proposal")
 
 	_, err = server.Submit(ctx, nil)
 	require.ErrorIs(t, err, status.Error(codes.InvalidArgument, "a submit request is required"))
@@ -1837,14 +1933,39 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 	return pt
 }
 
-func checkError(t *testing.T, err error, errString string, details []*pb.ErrorDetail) {
-	require.ErrorContains(t, err, errString)
-	s, ok := status.FromError(err)
-	require.True(t, ok, "Expected a gRPC status error")
-	require.Len(t, s.Details(), len(details))
-	for _, detail := range s.Details() {
-		require.Contains(t, details, detail)
+func checkError(t *testing.T, tt *testDef, err error) (checked bool) {
+	stringCheck := tt.errString != ""
+	codeCheck := tt.errCode != codes.OK
+	detailsCheck := len(tt.errDetails) > 0
+
+	checked = stringCheck || codeCheck || detailsCheck
+	if !checked {
+		return
 	}
+
+	require.NotNil(t, err, "error")
+
+	if stringCheck {
+		require.ErrorContains(t, err, tt.errString, "error string")
+	}
+
+	s, ok := status.FromError(err)
+	if !ok {
+		s = status.FromContextError(err)
+	}
+
+	if codeCheck {
+		require.Equal(t, tt.errCode.String(), s.Code().String(), "error status code")
+	}
+
+	if detailsCheck {
+		require.Len(t, s.Details(), len(tt.errDetails))
+		for _, detail := range s.Details() {
+			require.Contains(t, tt.errDetails, detail, "error details, expected: %v", tt.errDetails)
+		}
+	}
+
+	return
 }
 
 func checkEndorsers(t *testing.T, endorsers []string, test *preparedTest) {

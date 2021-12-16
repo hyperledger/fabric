@@ -9,6 +9,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"strings"
 	"sync"
@@ -28,8 +29,9 @@ import (
 )
 
 type endorserResponse struct {
-	endorsementSet []*peer.ProposalResponse
+	action         *peer.ChaincodeEndorsedAction
 	err            *gp.ErrorDetail
+	timeoutExpired bool
 }
 
 // Evaluate will invoke the transaction function as specified in the SignedProposal
@@ -58,44 +60,57 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 	plan, err := gs.registry.evaluator(channel, chaincodeID, targetOrgs)
 	if err != nil {
 		if transientProtected {
-			return nil, status.Errorf(codes.Unavailable, "no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data: %s", err)
+			return nil, status.Errorf(codes.FailedPrecondition, "no endorsers found in the gateway's organization; retry specifying target organization(s) to protect transient data: %s", err)
 		}
-		return nil, status.Errorf(codes.Unavailable, "%s", err)
+		return nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, gs.options.EndorsementTimeout)
-	defer cancel()
 
 	endorser := plan.endorsers()[0]
 	var response *peer.Response
 	var errDetails []proto.Message
 	for response == nil {
-		gs.logger.Debugw("Sending to peer:", "channel", channel, "chaincode", chaincodeID, "MSPID", endorser.mspid, "endpoint", endorser.address)
+		gs.logger.Debugw("Sending to peer:", "channel", channel, "chaincode", chaincodeID, "txID", request.TransactionId, "MSPID", endorser.mspid, "endpoint", endorser.address)
 
-		pr, err := endorser.client.ProcessProposal(ctx, signedProposal)
-		success, message, retry, remove := gs.responseStatus(pr, err)
-		if success {
-			response = pr.Response
-			// Prefer result from proposal response as Response.Payload is not required to be transaction result
-			if result, err := getResultFromProposalResponse(pr); err == nil {
-				response.Payload = result
+		done := make(chan error)
+		go func() {
+			defer close(done)
+			ctx, cancel := context.WithTimeout(ctx, gs.options.EndorsementTimeout)
+			defer cancel()
+			pr, err := endorser.client.ProcessProposal(ctx, signedProposal)
+			code, message, retry, remove := gs.responseStatus(pr, err)
+			if code == codes.OK {
+				response = pr.Response
+				// Prefer result from proposal response as Response.Payload is not required to be transaction result
+				if result, err := getResultFromProposalResponse(pr); err == nil {
+					response.Payload = result
+				} else {
+					logger.Warnw("Successful proposal response contained no transaction result", "error", err.Error(), "chaincode", chaincodeID, "channel", channel, "txID", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.Status, "message", response.Message)
+				}
 			} else {
-				logger.Warnw("Successful proposal response contained no transaction result", "error", err.Error(), "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.Status, "message", response.Message)
+				logger.Debugw("Evaluate call to endorser failed", "chaincode", chaincodeID, "channel", channel, "txID", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", message)
+				errDetails = append(errDetails, errorDetail(endorser.endpointConfig, message))
+				if remove {
+					gs.registry.removeEndorser(endorser)
+				}
+				if retry {
+					endorser = plan.nextPeerInGroup(endorser)
+				} else {
+					done <- newRpcError(code, "evaluate call to endorser returned error: "+message, errDetails...)
+				}
+				if endorser == nil {
+					done <- newRpcError(code, "failed to evaluate transaction, see attached details for more info", errDetails...)
+				}
 			}
-		} else {
-			logger.Debugw("Evaluate call to endorser failed", "chaincode", chaincodeID, "channel", channel, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "error", message)
-			errDetails = append(errDetails, errorDetail(endorser.endpointConfig, message))
-			if remove {
-				gs.registry.removeEndorser(endorser)
+		}()
+		select {
+		case status := <-done:
+			if status != nil {
+				return nil, status
 			}
-			if retry {
-				endorser = plan.nextPeerInGroup(endorser)
-			} else {
-				return nil, newRpcError(codes.Aborted, "evaluate call to endorser returned error: "+message, errDetails...)
-			}
-			if endorser == nil {
-				return nil, newRpcError(codes.Aborted, "failed to evaluate transaction, see attached details for more info", errDetails...)
-			}
+		case <-ctx.Done():
+			// Overall evaluation timeout expired
+			logger.Warnw("Evaluate call timed out while processing request", "channel", request.ChannelId, "txID", request.TransactionId)
+			return nil, newRpcError(codes.DeadlineExceeded, "evaluate timeout expired")
 		}
 	}
 
@@ -103,7 +118,7 @@ func (gs *Server) Evaluate(ctx context.Context, request *gp.EvaluateRequest) (*g
 		Result: response,
 	}
 
-	logger.Debugw("Evaluate call to endorser returned success", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.GetStatus(), "message", response.GetMessage())
+	logger.Debugw("Evaluate call to endorser returned success", "channel", request.ChannelId, "txID", request.TransactionId, "endorserAddress", endorser.endpointConfig.address, "endorserMspid", endorser.endpointConfig.mspid, "status", response.GetStatus(), "message", response.GetMessage())
 	return evaluateResponse, nil
 }
 
@@ -119,15 +134,28 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	}
 	proposal, err := protoutil.UnmarshalProposal(signedProposal.ProposalBytes)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	channel, chaincodeID, hasTransientData, err := getChannelAndChaincodeFromSignedProposal(signedProposal)
+	header, err := protoutil.UnmarshalHeader(proposal.Header)
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "failed to unpack transaction proposal: %s", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	channelHeader, err := protoutil.UnmarshalChannelHeader(header.ChannelHeader)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	payload, err := protoutil.UnmarshalChaincodeProposalPayload(proposal.Payload)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	spec, err := protoutil.UnmarshalChaincodeInvocationSpec(payload.Input)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, gs.options.EndorsementTimeout)
-	defer cancel()
+	channel := channelHeader.ChannelId
+	chaincodeID := spec.GetChaincodeSpec().GetChaincodeId().GetName()
+	hasTransientData := len(payload.GetTransientMap()) > 0
 
 	defaultInterest := &peer.ChaincodeInterest{
 		Chaincodes: []*peer.ChaincodeCall{{
@@ -136,12 +164,12 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 	}
 
 	var plan *plan
-	var endorsements []*peer.ProposalResponse
+	var action *peer.ChaincodeEndorsedAction
 	if len(request.EndorsingOrganizations) > 0 {
 		// The client is specifying the endorsing orgs and taking responsibility for ensuring it meets the signature policy
 		plan, err = gs.registry.planForOrgs(channel, chaincodeID, request.EndorsingOrganizations)
 		if err != nil {
-			return nil, status.Errorf(codes.Unavailable, "%s", err)
+			return nil, status.Error(codes.Unavailable, err.Error())
 		}
 	} else {
 		// The client is delegating choice of endorsers to the gateway.
@@ -156,28 +184,43 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 			// Otherwise, just let discovery pick one.
 			plan, err = gs.registry.endorsementPlan(channel, defaultInterest, nil)
 			if err != nil {
-				return nil, status.Errorf(codes.Unavailable, "%s", err)
+				return nil, status.Error(codes.FailedPrecondition, err.Error())
 			}
 		}
 		firstEndorser := plan.endorsers()[0]
 
-		gs.logger.Debugw("Sending to first endorser:", "channel", channel, "chaincode", chaincodeID, "MSPID", firstEndorser.mspid, "endpoint", firstEndorser.address)
+		gs.logger.Debugw("Sending to first endorser:", "channel", channel, "chaincode", chaincodeID, "txID", request.TransactionId, "MSPID", firstEndorser.mspid, "endpoint", firstEndorser.address)
 
 		// 2. Process the proposal on this endorser
 		var firstResponse *peer.ProposalResponse
 		var errDetails []proto.Message
-		for firstResponse == nil && firstEndorser != nil {
-			firstResponse, err = firstEndorser.client.ProcessProposal(ctx, signedProposal)
-			success, message, _, remove := gs.responseStatus(firstResponse, err)
 
-			if !success {
-				logger.Warnw("Endorse call to endorser failed", "channel", request.ChannelId, "txid", request.TransactionId, "endorserAddress", firstEndorser.endpointConfig.address, "endorserMspid", firstEndorser.endpointConfig.mspid, "error", message)
-				errDetails = append(errDetails, errorDetail(firstEndorser.endpointConfig, message))
-				if remove {
-					gs.registry.removeEndorser(firstEndorser)
+		for firstResponse == nil && firstEndorser != nil {
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				ctx, cancel := context.WithTimeout(ctx, gs.options.EndorsementTimeout)
+				defer cancel()
+				firstResponse, err = firstEndorser.client.ProcessProposal(ctx, signedProposal)
+				code, message, _, remove := gs.responseStatus(firstResponse, err)
+
+				if code != codes.OK {
+					logger.Warnw("Endorse call to endorser failed", "channel", request.ChannelId, "txID", request.TransactionId, "endorserAddress", firstEndorser.endpointConfig.address, "endorserMspid", firstEndorser.endpointConfig.mspid, "error", message)
+					errDetails = append(errDetails, errorDetail(firstEndorser.endpointConfig, message))
+					if remove {
+						gs.registry.removeEndorser(firstEndorser)
+					}
+					firstEndorser = plan.nextPeerInGroup(firstEndorser)
+					firstResponse = nil
 				}
-				firstEndorser = plan.nextPeerInGroup(firstEndorser)
-				firstResponse = nil
+			}()
+			select {
+			case <-done:
+				// Endorser completed normally
+			case <-ctx.Done():
+				// Overall endorsement timeout expired
+				logger.Warnw("Endorse call timed out while collecting first endorsement", "channel", request.ChannelId, "txID", request.TransactionId)
+				return nil, newRpcError(codes.DeadlineExceeded, "endorsement timeout expired while collecting first endorsement")
 			}
 		}
 		if firstEndorser == nil || firstResponse == nil {
@@ -203,15 +246,18 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 		// The preferred discovery layout will contain the firstEndorser's Org.
 		plan, err = gs.registry.endorsementPlan(channel, interest, firstEndorser)
 		if err != nil {
-			return nil, status.Errorf(codes.Unavailable, "%s", err)
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
 		}
 
 		// 6. Remove the gateway org's endorser, since we've already done that
-		endorsements = plan.update(firstEndorser, firstResponse)
+		action, err = plan.processEndorsement(firstEndorser, firstResponse)
+		if err != nil {
+			return nil, status.Error(codes.Aborted, err.Error())
+		}
 	}
 
 	var errorDetails []proto.Message
-	for endorsements == nil {
+	for action == nil {
 		// loop through the layouts until one gets satisfied
 		endorsers := plan.endorsers()
 		if endorsers == nil {
@@ -226,30 +272,52 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 			go func(e *endorser) {
 				defer wg.Done()
 				for e != nil {
-					gs.logger.Debugw("Sending to endorser:", "channel", channel, "chaincode", chaincodeID, "MSPID", e.mspid, "endpoint", e.address)
-					response, err := e.client.ProcessProposal(ctx, signedProposal)
-					// Ignore the retry flag returned by the following responseStatus call. Endorse will retry until all endorsement layouts have been exhausted.
-					// It tries to get a successful endorsement from each org and minimise the changes of a rogue peer scuppering the transaction.
-					// If an org is behaving badly, it can move on to a different layout.
-					success, message, _, remove := gs.responseStatus(response, err)
-					if success {
-						logger.Debugw("Endorse call to endorser returned success", "channel", request.ChannelId, "txid", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "status", response.Response.Status, "message", response.Response.Message)
+					done := make(chan *endorserResponse)
+					go func() {
+						defer close(done)
+						gs.logger.Debugw("Sending to endorser:", "channel", channel, "chaincode", chaincodeID, "txID", request.TransactionId, "MSPID", e.mspid, "endpoint", e.address)
+						ctx, cancel := context.WithTimeout(ctx, gs.options.EndorsementTimeout) // timeout of individual endorsement
+						defer cancel()
+						response, err := e.client.ProcessProposal(ctx, signedProposal)
+						// Ignore the retry flag returned by the following responseStatus call. Endorse will retry until all endorsement layouts have been exhausted.
+						// It tries to get a successful endorsement from each org and minimise the changes of a rogue peer scuppering the transaction.
+						// If an org is behaving badly, it can move on to a different layout.
+						code, message, _, remove := gs.responseStatus(response, err)
+						if code == codes.OK {
+							logger.Debugw("Endorse call to endorser returned success", "channel", request.ChannelId, "txID", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "status", response.Response.Status, "message", response.Response.Message)
 
-						responseMessage := response.GetResponse()
-						if responseMessage != nil {
-							responseMessage.Payload = nil // Remove any duplicate response payload
-						}
+							responseMessage := response.GetResponse()
+							if responseMessage != nil {
+								responseMessage.Payload = nil // Remove any duplicate response payload
+							}
 
-						endorsements := plan.update(e, response)
-						responseCh <- &endorserResponse{endorsementSet: endorsements}
-						e = nil
-					} else {
-						logger.Warnw("Endorse call to endorser failed", "channel", request.ChannelId, "txid", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "error", message)
-						responseCh <- &endorserResponse{err: errorDetail(e.endpointConfig, message)}
-						if remove {
-							gs.registry.removeEndorser(e)
+							action, err := plan.processEndorsement(e, response)
+							if err != nil {
+								done <- &endorserResponse{err: errorDetail(e.endpointConfig, err.Error())}
+								return
+							}
+							done <- &endorserResponse{action: action}
+						} else {
+							logger.Warnw("Endorse call to endorser failed", "channel", request.ChannelId, "txID", request.TransactionId, "numEndorsers", len(endorsers), "endorserAddress", e.endpointConfig.address, "endorserMspid", e.endpointConfig.mspid, "error", message)
+							if remove {
+								gs.registry.removeEndorser(e)
+							}
+							done <- &endorserResponse{err: errorDetail(e.endpointConfig, message)}
 						}
-						e = plan.nextPeerInGroup(e)
+					}()
+					select {
+					case resp := <-done:
+						// Endorser completed normally
+						if resp.err != nil {
+							e = plan.nextPeerInGroup(e)
+						} else {
+							e = nil
+						}
+						responseCh <- resp
+					case <-ctx.Done():
+						// Overall endorsement timeout expired
+						responseCh <- &endorserResponse{timeoutExpired: true}
+						return
 					}
 				}
 			}(e)
@@ -258,8 +326,12 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 		close(responseCh)
 
 		for response := range responseCh {
-			if response.endorsementSet != nil {
-				endorsements = response.endorsementSet
+			if response.timeoutExpired {
+				logger.Warnw("Endorse call timed out while collecting endorsements", "channel", request.ChannelId, "txID", request.TransactionId, "numEndorsers", len(endorsers))
+				return nil, newRpcError(codes.DeadlineExceeded, "endorsement timeout expired while collecting endorsements")
+			}
+			if response.action != nil {
+				action = response.action
 				break
 			}
 			if response.err != nil {
@@ -268,56 +340,53 @@ func (gs *Server) Endorse(ctx context.Context, request *gp.EndorseRequest) (*gp.
 		}
 	}
 
-	if endorsements == nil {
+	if action == nil {
 		return nil, newRpcError(codes.Aborted, "failed to collect enough transaction endorsements, see attached details for more info", errorDetails...)
 	}
 
-	env, err := protoutil.CreateTx(proposal, endorsements...)
+	preparedTransaction, err := prepareTransaction(header, payload, action)
 	if err != nil {
 		return nil, status.Errorf(codes.Aborted, "failed to assemble transaction: %s", err)
 	}
 
-	endorseResponse := &gp.EndorseResponse{
-		PreparedTransaction: env,
-	}
-	return endorseResponse, nil
+	return &gp.EndorseResponse{PreparedTransaction: preparedTransaction}, nil
 }
 
 // responseStatus unpacks the proposal response and error values that are returned from ProcessProposal and
 // determines how the gateway should react (retry?, close connection?).
 // Uses the grpc canonical status error codes and their recommended actions.
 // Returns:
-// - response successful (bool)
+// - response status code, with codes.OK indicating success and other values indicating likely error type
 // - error message extracted from the err or generated from 500 proposal response (string)
 // - should the gateway retry (only the Evaluate() uses this) (bool)
 // - should the gateway close the connection and remove the peer from its registry (bool)
-func (gs *Server) responseStatus(response *peer.ProposalResponse, err error) (success bool, message string, retry bool, remove bool) {
+func (gs *Server) responseStatus(response *peer.ProposalResponse, err error) (statusCode codes.Code, message string, retry bool, remove bool) {
 	if err != nil {
 		if response == nil {
 			// there is no ProposalResponse, so this must have been generated by grpc in response to an unavailable peer
 			// - close the connection and retry on another
-			return false, err.Error(), true, true
+			return codes.Unavailable, err.Error(), true, true
 		}
 		// there is a response and an err, so it must have been from the unpackProposal() or preProcess() stages
 		// preProcess does all the signature and ACL checking. In either case, no point retrying, or closing the connection (it's a client error)
-		return false, err.Error(), false, false
+		return codes.FailedPrecondition, err.Error(), false, false
 	}
 	if response.Response.Status < 200 || response.Response.Status >= 400 {
 		if response.Payload == nil && response.Response.Status == 500 {
 			// there's a error 500 response but no payload, so the response was generated in the peer rather than the chaincode
 			if strings.HasSuffix(response.Response.Message, chaincode.ErrorStreamTerminated) {
 				// chaincode container crashed probably. Close connection and retry on another peer
-				return false, response.Response.Message, true, true
+				return codes.Aborted, response.Response.Message, true, true
 			}
 			// some other error - retry on another peer
-			return false, response.Response.Message, true, false
+			return codes.Aborted, response.Response.Message, true, false
 		} else {
 			// otherwise it must be an error response generated by the chaincode
-			return false, fmt.Sprintf("chaincode response %d, %s", response.Response.Status, response.Response.Message), false, false
+			return codes.Unknown, fmt.Sprintf("chaincode response %d, %s", response.Response.Status, response.Response.Message), false, false
 		}
 	}
 	// anything else is a success
-	return true, "", false, false
+	return codes.OK, "", false, false
 }
 
 // Submit will send the signed transaction to the ordering service. The response indicates whether the transaction was
@@ -336,7 +405,7 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	}
 	orderers, err := gs.registry.orderers(request.ChannelId)
 	if err != nil {
-		return nil, status.Errorf(codes.Unavailable, "%s", err)
+		return nil, status.Errorf(codes.FailedPrecondition, "%s", err)
 	}
 
 	if len(orderers) == 0 {
@@ -347,39 +416,43 @@ func (gs *Server) Submit(ctx context.Context, request *gp.SubmitRequest) (*gp.Su
 	var errDetails []proto.Message
 	for _, index := range rand.Perm(len(orderers)) {
 		orderer := orderers[index]
-		logger.Infow("Sending transaction to orderer", "TxID", request.TransactionId, "endpoint", orderer.address)
+		logger.Infow("Sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address)
 		err := gs.broadcast(ctx, orderer, txn)
 		if err == nil {
 			return &gp.SubmitResponse{}, nil
 		}
-		logger.Warnw("Error sending transaction to orderer", "TxID", request.TransactionId, "endpoint", orderer.address, "err", err)
+
+		logger.Warnw("Error sending transaction to orderer", "txID", request.TransactionId, "endpoint", orderer.address, "err", err)
 		errDetails = append(errDetails, errorDetail(orderer.endpointConfig, err.Error()))
+
+		errStatus := toRpcStatus(err)
+		if errStatus.Code() != codes.Unavailable {
+			return nil, newRpcError(errStatus.Code(), errStatus.Message(), errDetails...)
+		}
 	}
 
-	return nil, newRpcError(codes.Aborted, "no orderers could successfully process transaction", errDetails...)
+	return nil, newRpcError(codes.Unavailable, "no orderers could successfully process transaction", errDetails...)
 }
 
 func (gs *Server) broadcast(ctx context.Context, orderer *orderer, txn *common.Envelope) error {
 	broadcast, err := orderer.client.Broadcast(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create BroadcastClient: %w", err)
+		return err
 	}
+
 	if err := broadcast.Send(txn); err != nil {
-		return fmt.Errorf("failed to send transaction to orderer: %w", err)
+		return err
 	}
 
 	response, err := broadcast.Recv()
 	if err != nil {
-		return fmt.Errorf("failed to receive response from orderer: %w", err)
+		return err
 	}
 
-	if response == nil {
-		return fmt.Errorf("received nil response from orderer")
+	if response.GetStatus() != common.Status_SUCCESS {
+		return status.Errorf(codes.Aborted, "received unsuccessful response from orderer: %s", common.Status_name[int32(response.GetStatus())])
 	}
 
-	if response.Status != common.Status_SUCCESS {
-		return fmt.Errorf("received unsuccessful response from orderer: %s", common.Status_name[int32(response.Status)])
-	}
 	return nil
 }
 
@@ -410,7 +483,7 @@ func (gs *Server) CommitStatus(ctx context.Context, signedRequest *gp.SignedComm
 
 	txStatus, err := gs.commitFinder.TransactionStatus(ctx, request.ChannelId, request.TransactionId)
 	if err != nil {
-		return nil, toRpcError(err, codes.FailedPrecondition)
+		return nil, toRpcError(err, codes.Aborted)
 	}
 
 	response := &gp.CommitStatusResponse{
@@ -446,7 +519,7 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 
 	ledger, err := gs.ledgerProvider.Ledger(request.GetChannelId())
 	if err != nil {
-		return status.Error(codes.InvalidArgument, err.Error())
+		return status.Error(codes.NotFound, err.Error())
 	}
 
 	startBlock, err := startBlockFromLedgerPosition(ledger, request.GetStartPosition())
@@ -456,7 +529,7 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 
 	ledgerIter, err := ledger.GetBlocksIterator(startBlock)
 	if err != nil {
-		return status.Error(codes.Unavailable, err.Error())
+		return status.Error(codes.Aborted, err.Error())
 	}
 
 	eventsIter := event.NewChaincodeEventsIterator(ledgerIter)
@@ -465,7 +538,7 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 	for {
 		response, err := eventsIter.Next()
 		if err != nil {
-			return status.Error(codes.Unavailable, err.Error())
+			return status.Error(codes.Aborted, err.Error())
 		}
 
 		var matchingEvents []*peer.ChaincodeEvent
@@ -483,7 +556,11 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 		response.Events = matchingEvents
 
 		if err := stream.Send(response); err != nil {
-			return err // Likely stream closed by the client
+			if err == io.EOF {
+				// Stream closed by the client
+				return status.Error(codes.Canceled, err.Error())
+			}
+			return err
 		}
 	}
 }
@@ -500,7 +577,7 @@ func startBlockFromLedgerPosition(ledger ledger.Ledger, position *ab.SeekPositio
 
 	ledgerInfo, err := ledger.GetBlockchainInfo()
 	if err != nil {
-		return 0, status.Error(codes.Unavailable, err.Error())
+		return 0, status.Error(codes.Aborted, err.Error())
 	}
 
 	return ledgerInfo.GetHeight(), nil

@@ -25,7 +25,7 @@ func TestLevelDBHelperWriteWithoutOpen(t *testing.T) {
 			t.Fatalf("A panic is expected when writing to db before opening")
 		}
 	}()
-	db.Put([]byte("key"), []byte("value"), false)
+	require.NoError(t, db.Put([]byte("key"), []byte("value"), false))
 }
 
 func TestLevelDBHelperReadWithoutOpen(t *testing.T) {
@@ -37,7 +37,8 @@ func TestLevelDBHelperReadWithoutOpen(t *testing.T) {
 			t.Fatalf("A panic is expected when writing to db before opening")
 		}
 	}()
-	db.Get([]byte("key"))
+	_, err := db.Get([]byte("key"))
+	require.NoError(t, err)
 }
 
 func TestLevelDBHelper(t *testing.T) {
@@ -51,15 +52,15 @@ func TestLevelDBHelper(t *testing.T) {
 	IsEmpty, err := db.IsEmpty()
 	require.NoError(t, err)
 	require.True(t, IsEmpty)
-	db.Put([]byte("key1"), []byte("value1"), false)
-	db.Put([]byte("key2"), []byte("value2"), true)
-	db.Put([]byte("key3"), []byte("value3"), true)
+	require.NoError(t, db.Put([]byte("key1"), []byte("value1"), false))
+	require.NoError(t, db.Put([]byte("key2"), []byte("value2"), true))
+	require.NoError(t, db.Put([]byte("key3"), []byte("value3"), true))
 
 	val, _ := db.Get([]byte("key2"))
 	require.Equal(t, "value2", string(val))
 
-	db.Delete([]byte("key1"), false)
-	db.Delete([]byte("key2"), true)
+	require.NoError(t, db.Delete([]byte("key1"), false))
+	require.NoError(t, db.Delete([]byte("key2"), true))
 
 	val1, err1 := db.Get([]byte("key1"))
 	require.NoError(t, err1, "")
@@ -89,7 +90,7 @@ func TestLevelDBHelper(t *testing.T) {
 	batch.Put([]byte("key1"), []byte("value1"))
 	batch.Put([]byte("key2"), []byte("value2"))
 	batch.Delete([]byte("key3"))
-	db.WriteBatch(batch, true)
+	require.NoError(t, db.WriteBatch(batch, true))
 
 	val1, err1 = db.Get([]byte("key1"))
 	require.NoError(t, err1, "")

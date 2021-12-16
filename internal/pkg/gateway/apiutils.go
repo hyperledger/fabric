@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/hyperledger/fabric-protos-go/common"
 	gp "github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/protoutil"
@@ -57,23 +58,22 @@ func newRpcError(code codes.Code, message string, details ...proto.Message) erro
 	return st.Err()
 }
 
-func wrappedRpcError(err error, message string, details ...proto.Message) error {
-	statusErr := status.Convert(err)
-	return newRpcError(statusErr.Code(), message+": "+statusErr.Message(), details...)
-}
-
 func toRpcError(err error, unknownCode codes.Code) error {
-	errStatus, ok := status.FromError(err)
-	if ok {
-		return errStatus.Err()
-	}
-
-	errStatus = status.FromContextError(err)
+	errStatus := toRpcStatus(err)
 	if errStatus.Code() != codes.Unknown {
 		return errStatus.Err()
 	}
 
 	return status.Error(unknownCode, err.Error())
+}
+
+func toRpcStatus(err error) *status.Status {
+	errStatus, ok := status.FromError(err)
+	if ok {
+		return errStatus
+	}
+
+	return status.FromContextError(err)
 }
 
 func errorDetail(e *endpointConfig, msg string) *gp.ErrorDetail {
@@ -96,4 +96,32 @@ func getResultFromProposalResponsePayload(responsePayload *peer.ProposalResponse
 	}
 
 	return chaincodeAction.GetResponse().GetPayload(), nil
+}
+
+func prepareTransaction(header *common.Header, payload *peer.ChaincodeProposalPayload, action *peer.ChaincodeEndorsedAction) (*common.Envelope, error) {
+	cppNoTransient := &peer.ChaincodeProposalPayload{Input: payload.Input, TransientMap: nil}
+	cppBytes, err := protoutil.GetBytesChaincodeProposalPayload(cppNoTransient)
+	if err != nil {
+		return nil, err
+	}
+
+	cap := &peer.ChaincodeActionPayload{ChaincodeProposalPayload: cppBytes, Action: action}
+	capBytes, err := protoutil.GetBytesChaincodeActionPayload(cap)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := &peer.Transaction{Actions: []*peer.TransactionAction{{Header: header.SignatureHeader, Payload: capBytes}}}
+	txBytes, err := protoutil.GetBytesTransaction(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	payl := &common.Payload{Header: header, Data: txBytes}
+	paylBytes, err := protoutil.GetBytesPayload(payl)
+	if err != nil {
+		return nil, err
+	}
+
+	return &common.Envelope{Payload: paylBytes}, nil
 }
