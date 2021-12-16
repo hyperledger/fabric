@@ -39,6 +39,17 @@ This command will be useful, for example, in the following scenarios:
 
 For more information, see the `peer lifecycle chaincode calculatepackageid` :doc:`command reference topic<commands/peerlifecycle>`.
 
+'Chaincode as a service' builder delivered with fabric-peer image
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Starting in v2.0 chaincode can be run as a service by utilizing the external builder pattern for chaincodes.
+Running 'chaincode as a service' has advantages in Kubernetes and other deployment environments since the chaincode can be managed independently rather than requiring the peer to build chaincode images and start chaincode containers at runtime.
+The external builder pattern required you to deliver a builder script or program alongside the peer.
+
+Starting in v2.4.1 an external builder for 'chaincode as a service' is available in the Fabric release artifacts, and the 'ccaas_builder' is pre-configured with the fabric-peer docker image,
+removing the need to build your own external builder and repackage and configure the peer.
+
+For more information, see the :doc:`cc_service` topic.
 
 .. note::
 
@@ -323,6 +334,7 @@ announced in each of the v2.x releases.
 * `Fabric v2.3.2 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.3.2>`_.
 * `Fabric v2.3.3 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.3.3>`_.
 * `Fabric v2.4.0 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.0>`_.
+* `Fabric v2.4.1 release notes <https://github.com/hyperledger/fabric/releases/tag/v2.4.1>`_.
 
 .. Licensed under Creative Commons Attribution 4.0 International License
    https://creativecommons.org/licenses/by/4.0/
