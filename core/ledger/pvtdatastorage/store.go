@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bits-and-blooms/bitset"
 	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric/common/flogging"
@@ -19,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/confighistory"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/pkg/errors"
-	"github.com/willf/bitset"
 )
 
 var logger = flogging.MustGetLogger("pvtdatastorage")

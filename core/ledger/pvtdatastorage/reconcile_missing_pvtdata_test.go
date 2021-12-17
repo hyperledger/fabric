@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/bits-and-blooms/bitset"
 	"github.com/hyperledger/fabric/core/ledger"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/stretchr/testify/require"
-	"github.com/willf/bitset"
 )
 
 type blockTxPvtDataInfoForTest struct {

@@ -71,6 +71,9 @@ github.com/alecthomas/template/parse
 github.com/alecthomas/units
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
+# github.com/bits-and-blooms/bitset v1.2.1
+## explicit
+github.com/bits-and-blooms/bitset
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
 # github.com/consensys/gnark-crypto v0.4.0
@@ -405,9 +408,6 @@ github.com/syndtr/goleveldb/leveldb/util
 github.com/tedsuo/ifrit
 github.com/tedsuo/ifrit/ginkgomon
 github.com/tedsuo/ifrit/grouper
-# github.com/willf/bitset v1.1.10
-## explicit
-github.com/willf/bitset
 # go.etcd.io/etcd v0.5.0-alpha.5.0.20181228115726-23731bf9ba55
 ## explicit
 go.etcd.io/etcd/etcdserver/api/snap
