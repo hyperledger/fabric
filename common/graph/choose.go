@@ -59,7 +59,17 @@ func choose(n int, targetAmount int, i int, currentSubGroup []int, subGroups *or
 		return
 	}
 	// We either pick the current element
-	choose(n, targetAmount, i+1, append(currentSubGroup, i), subGroups)
+	choose(n, targetAmount, i+1, concatInts(currentSubGroup, i), subGroups)
 	// Or don't pick it
-	choose(n, targetAmount, i+1, append(make([]int, 0), currentSubGroup...), subGroups)
+	choose(n, targetAmount, i+1, currentSubGroup, subGroups)
+}
+
+func concatInts(a []int, elements ...int) []int {
+	var res []int
+	res = append(res, a...)
+	for _, e := range elements {
+		res = append(res, e)
+	}
+
+	return res
 }
