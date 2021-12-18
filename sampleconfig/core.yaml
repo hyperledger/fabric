@@ -731,7 +731,7 @@ ledger:
 ###############################################################################
 operations:
     # host and port for the operations server
-    listenAddress: 127.0.0.1:9443
+    listenAddress: 127.0.0.1:9444
 
     # TLS configuration for the operations endpoint
     tls:
