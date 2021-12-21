@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package graph
 
 import (
-	"reflect"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,7 +27,6 @@ func TestCombinationsExceed(t *testing.T) {
 }
 
 func TestChooseKoutOfN(t *testing.T) {
-	results := chooseKoutOfN(6, 4)
 	expectedSets := indiceSets{
 		&indiceSet{[]int{0, 1, 2, 3}},
 		&indiceSet{[]int{0, 1, 2, 4}},
@@ -45,14 +44,13 @@ func TestChooseKoutOfN(t *testing.T) {
 		&indiceSet{[]int{1, 3, 4, 5}},
 		&indiceSet{[]int{2, 3, 4, 5}},
 	}
-	for _, expected := range expectedSets {
-		matched := false
-		for _, result := range results {
-			if reflect.DeepEqual(expected.indices, result.indices) {
-				matched = true
-				break
-			}
-		}
-		require.True(t, matched)
+	require.Equal(t, indiceSetsToStrings(expectedSets), indiceSetsToStrings(chooseKoutOfN(6, 4)))
+}
+
+func indiceSetsToStrings(sets indiceSets) []string {
+	var res []string
+	for _, set := range sets {
+		res = append(res, fmt.Sprintf("%v", set.indices))
 	}
+	return res
 }
