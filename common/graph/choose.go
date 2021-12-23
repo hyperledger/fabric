@@ -67,9 +67,6 @@ func choose(n int, targetAmount int, i int, currentSubGroup []int, subGroups *or
 func concatInts(a []int, elements ...int) []int {
 	var res []int
 	res = append(res, a...)
-	for _, e := range elements {
-		res = append(res, e)
-	}
-
+	res = append(res, elements...)
 	return res
 }
