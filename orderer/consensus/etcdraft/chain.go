@@ -1139,7 +1139,7 @@ func (c *Chain) apply(ents []raftpb.Entry) {
 		}
 	}
 
-	if c.accDataSize >= c.sizeLimit {
+	if c.accDataSize >= c.sizeLimit && len(ents[position].Data) > 0 {
 		b := protoutil.UnmarshalBlockOrPanic(ents[position].Data)
 
 		select {
