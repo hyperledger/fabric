@@ -642,6 +642,12 @@ If you have any problems with the tutorial, review the following:
    ```
    :set ff=unix
    ```
+-  If you see an error similar to the following:
+   ```
+   Error response from daemon: driver failed programming external connectivity on endpoint orderer.example.com: (iptables failed: iptables --wait -t nat -A DOCKER -p tcp -d 0/0 --dport 9443 -j DNAT --to-destination <ipaddress> ! -i br-37ea6d3c5cd5: iptables v1.8.7 (legacy): unknown option "--dport"
+   ```
+   
+   Ensure that you have the right version of iptables installed. On some Linux-distributions are legacy versions that cause this error. See, e.g., this [forum entry](https://bbs.archlinux.org/viewtopic.php?id=256709) for a solution.
 
 If you continue to see errors, share your logs on the **fabric-questions**
 channel on [Hyperledger Rocket Chat](https://chat.hyperledger.org/home) or on
