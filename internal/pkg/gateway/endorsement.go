@@ -9,9 +9,9 @@ package gateway
 import (
 	"bytes"
 	b64 "encoding/base64"
-	"errors"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/hyperledger/fabric-protos-go/peer"
 )
 
@@ -32,6 +32,8 @@ type plan struct {
 	nextLayout      int
 	size            int
 	responsePayload []byte
+	completedLayout *layout
+	errorDetails    []proto.Message
 	planLock        sync.Mutex
 }
 
@@ -88,8 +90,9 @@ func (p *plan) endorsers() []*endorser {
 
 // Invoke processEndorsement when an endorsement has been successfully received for the given endorser.
 // All layouts containing the group that contains this endorser are updated with the endorsement.
-// Returns a ChaincodeEndorsedAction, if at least one layout in the plan has been satisfied, otherwise nil.
-func (p *plan) processEndorsement(endorser *endorser, response *peer.ProposalResponse) (*peer.ChaincodeEndorsedAction, error) {
+// Returns Boolean true if endorser returns with a payload that matches the response payloads of
+// the other endorsers in the plan.
+func (p *plan) processEndorsement(endorser *endorser, response *peer.ProposalResponse) bool {
 	p.planLock.Lock()
 	defer p.planLock.Unlock()
 
@@ -111,7 +114,8 @@ func (p *plan) processEndorsement(endorser *endorser, response *peer.ProposalRes
 	} else {
 		if !bytes.Equal(p.responsePayload, response.GetPayload()) {
 			logger.Warnw("ProposalResponsePayloads do not match (base64)", "payload1", b64.StdEncoding.EncodeToString(p.responsePayload), "payload2", b64.StdEncoding.EncodeToString(response.GetPayload()))
-			return nil, errors.New("ProposalResponsePayloads do not match")
+			p.errorDetails = append(p.errorDetails, errorDetail(endorser.endpointConfig, "ProposalResponsePayloads do not match"))
+			return false
 		}
 	}
 
@@ -128,12 +132,13 @@ func (p *plan) processEndorsement(endorser *endorser, response *peer.ProposalRes
 				delete(layout.required, group)
 				if len(layout.required) == 0 {
 					// no groups left - this layout is now satisfied
-					return &peer.ChaincodeEndorsedAction{ProposalResponsePayload: p.responsePayload, Endorsements: uniqueEndorsements(layout.endorsements)}, nil
+					p.completedLayout = layout
+					return true
 				}
 			}
 		}
 	}
-	return nil, nil
+	return true
 }
 
 // Invoke nextPeerInGroup if an endorsement fails for the given endorser.
@@ -166,6 +171,12 @@ func (p *plan) nextPeerInGroup(endorser *endorser) *endorser {
 	p.nextLayout++
 
 	return nil
+}
+
+func (p *plan) addError(detail proto.Message) {
+	p.planLock.Lock()
+	defer p.planLock.Unlock()
+	p.errorDetails = append(p.errorDetails, detail)
 }
 
 func uniqueEndorsements(endorsements []*peer.Endorsement) []*peer.Endorsement {
