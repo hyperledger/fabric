@@ -32,17 +32,17 @@ func TestSingleLayoutPlan(t *testing.T) {
 	response2 := &peer.ProposalResponse{Payload: []byte("p"), Endorsement: &peer.Endorsement{Endorser: []byte("e2")}}
 	response3 := &peer.ProposalResponse{Payload: []byte("p"), Endorsement: &peer.Endorsement{Endorser: []byte("e3")}}
 
-	action, err := plan.processEndorsement(peer1Mock, response1)
-	require.NoError(t, err)
-	require.Nil(t, action)
-	action, err = plan.processEndorsement(peer2Mock, response2)
-	require.NoError(t, err)
-	require.Nil(t, action)
-	action, err = plan.processEndorsement(peer3Mock, response3)
-	require.NoError(t, err)
-	require.Equal(t, action.GetProposalResponsePayload(), response1.Payload)
-	require.Len(t, action.GetEndorsements(), 3)
-	require.ElementsMatch(t, action.GetEndorsements(), []*peer.Endorsement{response1.Endorsement, response2.Endorsement, response3.Endorsement})
+	success := plan.processEndorsement(peer1Mock, response1)
+	require.True(t, success)
+	require.Nil(t, plan.completedLayout)
+	success = plan.processEndorsement(peer2Mock, response2)
+	require.True(t, success)
+	require.Nil(t, plan.completedLayout)
+	success = plan.processEndorsement(peer3Mock, response3)
+	require.True(t, success)
+	require.Equal(t, plan.responsePayload, response1.Payload)
+	require.Len(t, plan.completedLayout.endorsements, 3)
+	require.ElementsMatch(t, plan.completedLayout.endorsements, []*peer.Endorsement{response1.Endorsement, response2.Endorsement, response3.Endorsement})
 }
 
 func TestSingleLayoutRetry(t *testing.T) {
@@ -66,19 +66,19 @@ func TestSingleLayoutRetry(t *testing.T) {
 
 	retry := plan.nextPeerInGroup(localhostMock)
 	require.Equal(t, peer1Mock, retry)
-	action, err := plan.processEndorsement(retry, response1)
-	require.NoError(t, err)
-	require.Nil(t, action)
-	action, err = plan.processEndorsement(peer2Mock, response2)
-	require.NoError(t, err)
-	require.Nil(t, action)
+	success := plan.processEndorsement(retry, response1)
+	require.True(t, success)
+	require.Nil(t, plan.completedLayout)
+	success = plan.processEndorsement(peer2Mock, response2)
+	require.True(t, success)
+	require.Nil(t, plan.completedLayout)
 	retry = plan.nextPeerInGroup(peer3Mock)
 	require.Equal(t, peer4Mock, retry)
-	action, err = plan.processEndorsement(retry, response3)
-	require.NoError(t, err)
-	require.Equal(t, action.GetProposalResponsePayload(), response1.Payload)
-	require.Len(t, action.GetEndorsements(), 3)
-	require.ElementsMatch(t, action.GetEndorsements(), []*peer.Endorsement{response1.Endorsement, response2.Endorsement, response3.Endorsement})
+	success = plan.processEndorsement(retry, response3)
+	require.True(t, success)
+	require.Equal(t, plan.responsePayload, response1.Payload)
+	require.Len(t, plan.completedLayout.endorsements, 3)
+	require.ElementsMatch(t, plan.completedLayout.endorsements, []*peer.Endorsement{response1.Endorsement, response2.Endorsement, response3.Endorsement})
 }
 
 func TestMultiLayoutRetry(t *testing.T) {
@@ -107,9 +107,8 @@ func TestMultiLayoutRetry(t *testing.T) {
 	require.Equal(t, peer1Mock, retry)
 
 	// peer2 (g2) succeeds
-	action, err := plan.processEndorsement(peer2Mock, response1)
-	require.NoError(t, err)
-	require.Nil(t, action)
+	success := plan.processEndorsement(peer2Mock, response1)
+	require.True(t, success)
 
 	// peer1 (g1) also fails - returns nil, since no more peers in g1
 	retry = plan.nextPeerInGroup(retry)
@@ -121,11 +120,11 @@ func TestMultiLayoutRetry(t *testing.T) {
 	require.Len(t, endorsers, 1)
 	require.Equal(t, peer4Mock, endorsers[0])
 
-	action, err = plan.processEndorsement(peer4Mock, response2)
-	require.NoError(t, err)
-	require.Equal(t, action.GetProposalResponsePayload(), response1.Payload)
-	require.Len(t, action.GetEndorsements(), 2)
-	require.ElementsMatch(t, action.GetEndorsements(), []*peer.Endorsement{response1.Endorsement, response2.Endorsement})
+	success = plan.processEndorsement(peer4Mock, response2)
+	require.True(t, success)
+	require.Equal(t, plan.responsePayload, response1.Payload)
+	require.Len(t, plan.completedLayout.endorsements, 2)
+	require.ElementsMatch(t, plan.completedLayout.endorsements, []*peer.Endorsement{response1.Endorsement, response2.Endorsement})
 }
 
 func TestMultiLayoutFailures(t *testing.T) {
@@ -150,9 +149,8 @@ func TestMultiLayoutFailures(t *testing.T) {
 	response2 := &peer.ProposalResponse{Payload: []byte("p"), Endorsement: &peer.Endorsement{Endorser: []byte("e2")}}
 
 	// localhost (g1) succeeds
-	action, err := plan.processEndorsement(localhostMock, response1)
-	require.NoError(t, err)
-	require.Nil(t, action)
+	success := plan.processEndorsement(localhostMock, response1)
+	require.True(t, success)
 
 	// peer2 (g2) fails - returns peer3 to retry
 	retry := plan.nextPeerInGroup(peer2Mock)
@@ -163,9 +161,8 @@ func TestMultiLayoutFailures(t *testing.T) {
 	require.Nil(t, g3retry)
 
 	// retry g2 - succeeds
-	action, err = plan.processEndorsement(retry, response2)
-	require.NoError(t, err)
-	require.Nil(t, action)
+	success = plan.processEndorsement(retry, response2)
+	require.True(t, success)
 
 	// nothing more to try in this layout - get endorsers for next layout
 	// layout 2 requires a second endorsement from g2, but all g2 peers have been tried - only 1 succeeded
@@ -218,16 +215,15 @@ func TestMultiPlan(t *testing.T) {
 	// localhost succeeds, remove from plan 2
 	endorsers = plan2.endorsers()
 	require.Len(t, endorsers, 2)
-	action, err := plan2.processEndorsement(localhostMock, response1)
-	require.NoError(t, err)
-	require.Nil(t, action)
+	success := plan2.processEndorsement(localhostMock, response1)
+	require.True(t, success)
 
 	// peer2 (g2) succeeds
-	action, err = plan2.processEndorsement(peer2Mock, response2)
-	require.NoError(t, err)
-	require.Equal(t, action.GetProposalResponsePayload(), response1.Payload)
-	require.Len(t, action.GetEndorsements(), 2)
-	require.ElementsMatch(t, action.GetEndorsements(), []*peer.Endorsement{response1.Endorsement, response2.Endorsement})
+	success = plan2.processEndorsement(peer2Mock, response2)
+	require.True(t, success)
+	require.Equal(t, plan2.responsePayload, response1.Payload)
+	require.Len(t, plan2.completedLayout.endorsements, 2)
+	require.ElementsMatch(t, plan2.completedLayout.endorsements, []*peer.Endorsement{response1.Endorsement, response2.Endorsement})
 }
 
 func TestMultiPlanNoOverlap(t *testing.T) {
@@ -263,46 +259,27 @@ func TestMultiPlanNoOverlap(t *testing.T) {
 	// localhost succeeds, try to remove from plan 2 (should be no-op)
 	endorsers = plan2.endorsers()
 	require.Len(t, endorsers, 2)
-	action, err := plan2.processEndorsement(localhostMock, response1)
-	require.NoError(t, err)
-	require.Nil(t, action)
+	success := plan2.processEndorsement(localhostMock, response1)
+	require.True(t, success)
 
 	// peer2 (g2) succeeds
-	action, err = plan2.processEndorsement(peer2Mock, response2)
-	require.NoError(t, err)
-	require.Nil(t, action)
+	success = plan2.processEndorsement(peer2Mock, response2)
+	require.True(t, success)
 
 	// peer4 (g3) succeeds
-	action, err = plan2.processEndorsement(peer4Mock, response3)
-	require.NoError(t, err)
-	require.Equal(t, action.GetProposalResponsePayload(), response2.Payload)
-	require.Len(t, action.GetEndorsements(), 2)
-	require.ElementsMatch(t, action.GetEndorsements(), []*peer.Endorsement{response2.Endorsement, response3.Endorsement})
+	success = plan2.processEndorsement(peer4Mock, response3)
+	require.True(t, success)
+	require.Equal(t, plan2.responsePayload, response1.Payload)
+	require.Len(t, plan2.completedLayout.endorsements, 2)
+	require.ElementsMatch(t, plan2.completedLayout.endorsements, []*peer.Endorsement{response2.Endorsement, response3.Endorsement})
 }
 
-func TestDuplicateEndorsements(t *testing.T) {
-	layouts := []*layout{
-		{required: map[string]int{"g1": 2}},
-	}
-	groupEndorsers := map[string][]*endorser{
-		"g1": {peer1Mock, peer2Mock},
-	}
-	plan := newPlan(layouts, groupEndorsers)
-	require.Equal(t, plan.size, 2) // total number of endorsers in all layouts
-
-	endorsers := plan.endorsers()
-	require.Len(t, endorsers, 2)
-	require.ElementsMatch(t, endorsers, []*endorser{peer1Mock, peer2Mock})
-
-	response1 := &peer.ProposalResponse{Payload: []byte("p"), Endorsement: &peer.Endorsement{Endorser: []byte("duplicate")}}
-	response2 := &peer.ProposalResponse{Payload: []byte("p"), Endorsement: &peer.Endorsement{Endorser: []byte("duplicate")}}
-
-	action, err := plan.processEndorsement(peer1Mock, response1)
-	require.NoError(t, err)
-	require.Nil(t, action)
-	action, err = plan.processEndorsement(peer2Mock, response2)
-	require.NoError(t, err)
-	require.Equal(t, action.GetProposalResponsePayload(), response1.Payload)
-	require.Len(t, action.GetEndorsements(), 1)
-	require.ElementsMatch(t, action.GetEndorsements(), []*peer.Endorsement{response1.Endorsement})
+func TestUniqueEndorsements(t *testing.T) {
+	e1 := &peer.Endorsement{Endorser: []byte("endorserA")}
+	e2 := &peer.Endorsement{Endorser: []byte("endorserB")}
+	e3 := &peer.Endorsement{Endorser: []byte("endorserA")}
+	e4 := &peer.Endorsement{Endorser: []byte("endorserC")}
+	unique := uniqueEndorsements([]*peer.Endorsement{e1, e2, e3, e4})
+	require.Len(t, unique, 3)
+	require.ElementsMatch(t, unique, []*peer.Endorsement{e1, e2, e4})
 }
