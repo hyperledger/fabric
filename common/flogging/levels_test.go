@@ -9,7 +9,7 @@ package flogging_test
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/flogging"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 )

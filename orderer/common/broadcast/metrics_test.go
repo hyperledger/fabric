@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/hyperledger/fabric/orderer/common/broadcast"
-	"github.com/hyperledger/fabric/orderer/common/broadcast/mock"
+	"github.com/hyperledger/fabric/v2/orderer/common/broadcast"
+	"github.com/hyperledger/fabric/v2/orderer/common/broadcast/mock"
 )
 
 var _ = Describe("Metrics", func() {

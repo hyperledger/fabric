@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/crypto"
-	"github.com/hyperledger/fabric/core/handlers/auth"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/common/crypto"
+	"github.com/hyperledger/fabric/v2/core/handlers/auth"
+	"github.com/hyperledger/fabric/v2/protoutil"
 	"github.com/pkg/errors"
 )
 

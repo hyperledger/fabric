@@ -12,11 +12,11 @@ import (
 	. "github.com/onsi/gomega"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/configtxgen/encoder"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/v2/bccsp/sw"
+	"github.com/hyperledger/fabric/v2/common/channelconfig"
+	"github.com/hyperledger/fabric/v2/core/config/configtest"
+	"github.com/hyperledger/fabric/v2/internal/configtxgen/encoder"
+	"github.com/hyperledger/fabric/v2/internal/configtxgen/genesisconfig"
 
 	"github.com/pkg/errors"
 )

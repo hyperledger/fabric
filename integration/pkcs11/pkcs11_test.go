@@ -24,9 +24,9 @@ import (
 	"syscall"
 	"time"
 
-	bpkcs11 "github.com/hyperledger/fabric/bccsp/pkcs11"
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/fabricconfig"
+	bpkcs11 "github.com/hyperledger/fabric/v2/bccsp/pkcs11"
+	"github.com/hyperledger/fabric/v2/integration/nwo"
+	"github.com/hyperledger/fabric/v2/integration/nwo/fabricconfig"
 	"github.com/miekg/pkcs11"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

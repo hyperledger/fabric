@@ -9,7 +9,7 @@ package discovery
 import (
 	"github.com/hyperledger/fabric-protos-go/discovery"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/gossip/protoext"
+	"github.com/hyperledger/fabric/v2/gossip/protoext"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )

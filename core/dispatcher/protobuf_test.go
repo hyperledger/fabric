@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	lc "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/core/dispatcher"
+	"github.com/hyperledger/fabric/v2/core/dispatcher"
 
 	"github.com/golang/protobuf/proto"
 )

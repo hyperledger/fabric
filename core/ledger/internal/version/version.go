@@ -19,7 +19,7 @@ package version
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/common/ledger/util"
+	"github.com/hyperledger/fabric/v2/common/ledger/util"
 )
 
 // Height represents the height of a transaction in blockchain

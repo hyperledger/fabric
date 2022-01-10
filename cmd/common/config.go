@@ -9,8 +9,8 @@ package common
 import (
 	"io/ioutil"
 
-	"github.com/hyperledger/fabric/cmd/common/comm"
-	"github.com/hyperledger/fabric/cmd/common/signer"
+	"github.com/hyperledger/fabric/v2/cmd/common/comm"
+	"github.com/hyperledger/fabric/v2/cmd/common/signer"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 )

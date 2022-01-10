@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/orderer/common/cluster"
-	"github.com/hyperledger/fabric/orderer/common/follower"
+	"github.com/hyperledger/fabric/v2/orderer/common/cluster"
+	"github.com/hyperledger/fabric/v2/orderer/common/follower"
 )
 
 type ChannelPuller struct {

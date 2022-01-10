@@ -4,7 +4,7 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/common/policies"
+	"github.com/hyperledger/fabric/v2/common/policies"
 )
 
 type PolicyManager struct {

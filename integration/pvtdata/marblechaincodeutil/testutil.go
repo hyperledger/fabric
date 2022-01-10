@@ -11,8 +11,8 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/hyperledger/fabric/integration/nwo"
-	"github.com/hyperledger/fabric/integration/nwo/commands"
+	"github.com/hyperledger/fabric/v2/integration/nwo"
+	"github.com/hyperledger/fabric/v2/integration/nwo/commands"
 
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"

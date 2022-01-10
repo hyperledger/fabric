@@ -8,11 +8,11 @@ package consensus
 
 import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/internal/pkg/identity"
-	"github.com/hyperledger/fabric/orderer/common/blockcutter"
-	"github.com/hyperledger/fabric/orderer/common/msgprocessor"
-	"github.com/hyperledger/fabric/protoutil"
+	"github.com/hyperledger/fabric/v2/common/channelconfig"
+	"github.com/hyperledger/fabric/v2/internal/pkg/identity"
+	"github.com/hyperledger/fabric/v2/orderer/common/blockcutter"
+	"github.com/hyperledger/fabric/v2/orderer/common/msgprocessor"
+	"github.com/hyperledger/fabric/v2/protoutil"
 )
 
 // Consenter defines the backing ordering mechanism.

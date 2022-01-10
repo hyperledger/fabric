@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/hyperledger/fabric/internal/configtxgen/metadata"
+	"github.com/hyperledger/fabric/v2/internal/configtxgen/metadata"
 	"github.com/stretchr/testify/require"
 )
 

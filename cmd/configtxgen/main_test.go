@@ -14,9 +14,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/core/config/configtest"
-	"github.com/hyperledger/fabric/internal/configtxgen/genesisconfig"
+	"github.com/hyperledger/fabric/v2/bccsp/factory"
+	"github.com/hyperledger/fabric/v2/core/config/configtest"
+	"github.com/hyperledger/fabric/v2/internal/configtxgen/genesisconfig"
 	"github.com/stretchr/testify/require"
 )
 

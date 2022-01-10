@@ -17,8 +17,8 @@ import (
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	pb "github.com/hyperledger/fabric-protos-go/peer"
 
-	"github.com/hyperledger/fabric/protoutil"
-	"github.com/hyperledger/fabric/protoutil/fakes"
+	"github.com/hyperledger/fabric/v2/protoutil"
+	"github.com/hyperledger/fabric/v2/protoutil/fakes"
 	"github.com/stretchr/testify/require"
 )
 

@@ -10,9 +10,9 @@ import (
 	"fmt"
 
 	lb "github.com/hyperledger/fabric-protos-go/peer/lifecycle"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle/mock"
-	"github.com/hyperledger/fabric/core/scc"
+	"github.com/hyperledger/fabric/v2/core/chaincode/lifecycle"
+	"github.com/hyperledger/fabric/v2/core/chaincode/lifecycle/mock"
+	"github.com/hyperledger/fabric/v2/core/scc"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

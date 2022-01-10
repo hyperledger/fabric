@@ -10,11 +10,11 @@ import (
 	"errors"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/bccsp/sw"
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
-	"github.com/hyperledger/fabric/core/common/ccprovider"
-	"github.com/hyperledger/fabric/core/scc/lscc"
-	"github.com/hyperledger/fabric/core/scc/lscc/mock"
+	"github.com/hyperledger/fabric/v2/bccsp/sw"
+	"github.com/hyperledger/fabric/v2/core/chaincode/lifecycle"
+	"github.com/hyperledger/fabric/v2/core/common/ccprovider"
+	"github.com/hyperledger/fabric/v2/core/scc/lscc"
+	"github.com/hyperledger/fabric/v2/core/scc/lscc/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

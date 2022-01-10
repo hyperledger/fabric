@@ -9,11 +9,11 @@ package privdata
 import (
 	protosgossip "github.com/hyperledger/fabric-protos-go/gossip"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
-	"github.com/hyperledger/fabric/core/committer"
-	"github.com/hyperledger/fabric/core/ledger"
-	"github.com/hyperledger/fabric/core/transientstore"
-	"github.com/hyperledger/fabric/gossip/privdata/common"
-	"github.com/hyperledger/fabric/gossip/util"
+	"github.com/hyperledger/fabric/v2/core/committer"
+	"github.com/hyperledger/fabric/v2/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/transientstore"
+	"github.com/hyperledger/fabric/v2/gossip/privdata/common"
+	"github.com/hyperledger/fabric/v2/gossip/util"
 	"github.com/pkg/errors"
 )
 

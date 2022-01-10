@@ -9,7 +9,7 @@ package v13
 import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	commonerrors "github.com/hyperledger/fabric/common/errors"
+	commonerrors "github.com/hyperledger/fabric/v2/common/errors"
 )
 
 // StateBasedValidator is used to validate a transaction that performs changes to

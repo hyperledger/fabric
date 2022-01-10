@@ -11,8 +11,8 @@ import (
 	"fmt"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	endorsement "github.com/hyperledger/fabric/core/handlers/endorsement/api"
-	identities "github.com/hyperledger/fabric/core/handlers/endorsement/api/identities"
+	endorsement "github.com/hyperledger/fabric/v2/core/handlers/endorsement/api"
+	identities "github.com/hyperledger/fabric/v2/core/handlers/endorsement/api/identities"
 )
 
 // To build the plugin,

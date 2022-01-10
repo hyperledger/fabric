@@ -9,8 +9,8 @@ package chaincode_test
 import (
 	"fmt"
 
-	"github.com/hyperledger/fabric/core/chaincode"
-	"github.com/hyperledger/fabric/core/chaincode/mock"
+	"github.com/hyperledger/fabric/v2/core/chaincode"
+	"github.com/hyperledger/fabric/v2/core/chaincode/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

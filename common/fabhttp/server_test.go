@@ -16,8 +16,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/hyperledger/fabric/common/fabhttp"
-	"github.com/hyperledger/fabric/core/operations/fakes"
+	"github.com/hyperledger/fabric/v2/common/fabhttp"
+	"github.com/hyperledger/fabric/v2/core/operations/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"

@@ -9,7 +9,7 @@ package packaging_test
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/internal/peer/packaging"
+	"github.com/hyperledger/fabric/v2/internal/peer/packaging"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

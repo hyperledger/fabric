@@ -12,8 +12,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hyperledger/fabric/cmd/common/comm"
-	"github.com/hyperledger/fabric/cmd/common/signer"
+	"github.com/hyperledger/fabric/v2/cmd/common/comm"
+	"github.com/hyperledger/fabric/v2/cmd/common/signer"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 

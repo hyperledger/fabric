@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hyperledger/fabric/common/ledger/dataformat"
-	"github.com/hyperledger/fabric/core/ledger/mock"
-	"github.com/hyperledger/fabric/internal/fileutil"
+	"github.com/hyperledger/fabric/v2/common/ledger/dataformat"
+	"github.com/hyperledger/fabric/v2/core/ledger/mock"
+	"github.com/hyperledger/fabric/v2/internal/fileutil"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )

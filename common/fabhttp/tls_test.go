@@ -13,7 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hyperledger/fabric/common/fabhttp"
+	"github.com/hyperledger/fabric/v2/common/fabhttp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

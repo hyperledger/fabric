@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package nwo
 
-import "github.com/hyperledger/fabric/integration/nwo/template"
+import "github.com/hyperledger/fabric/v2/integration/nwo/template"
 
 // Templates can be used to provide custom templates to GenerateConfigTree.
 type Templates struct {

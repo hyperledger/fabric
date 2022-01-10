@@ -28,10 +28,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/hyperledger/fabric/common/viperutil"
-	"github.com/hyperledger/fabric/core/config"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
-	gatewayconfig "github.com/hyperledger/fabric/internal/pkg/gateway/config"
+	"github.com/hyperledger/fabric/v2/common/viperutil"
+	"github.com/hyperledger/fabric/v2/core/config"
+	"github.com/hyperledger/fabric/v2/internal/pkg/comm"
+	gatewayconfig "github.com/hyperledger/fabric/v2/internal/pkg/gateway/config"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )

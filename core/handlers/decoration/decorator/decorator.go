@@ -8,7 +8,7 @@ package decorator
 
 import (
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/core/handlers/decoration"
+	"github.com/hyperledger/fabric/v2/core/handlers/decoration"
 )
 
 // NewDecorator creates a new decorator

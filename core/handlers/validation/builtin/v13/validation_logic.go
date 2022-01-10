@@ -12,14 +12,14 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	commonerrors "github.com/hyperledger/fabric/common/errors"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/core/common/validation/statebased"
-	vc "github.com/hyperledger/fabric/core/handlers/validation/api/capabilities"
-	vi "github.com/hyperledger/fabric/core/handlers/validation/api/identities"
-	vp "github.com/hyperledger/fabric/core/handlers/validation/api/policies"
-	vs "github.com/hyperledger/fabric/core/handlers/validation/api/state"
-	"github.com/hyperledger/fabric/protoutil"
+	commonerrors "github.com/hyperledger/fabric/v2/common/errors"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/core/common/validation/statebased"
+	vc "github.com/hyperledger/fabric/v2/core/handlers/validation/api/capabilities"
+	vi "github.com/hyperledger/fabric/v2/core/handlers/validation/api/identities"
+	vp "github.com/hyperledger/fabric/v2/core/handlers/validation/api/policies"
+	vs "github.com/hyperledger/fabric/v2/core/handlers/validation/api/state"
+	"github.com/hyperledger/fabric/v2/protoutil"
 )
 
 var logger = flogging.MustGetLogger("vscc")

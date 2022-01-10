@@ -11,7 +11,7 @@ import (
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
-	cc "github.com/hyperledger/fabric/common/capabilities"
+	cc "github.com/hyperledger/fabric/v2/common/capabilities"
 	"github.com/stretchr/testify/require"
 )
 

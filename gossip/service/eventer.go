@@ -10,8 +10,8 @@ import (
 	"reflect"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/channelconfig"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/v2/common/channelconfig"
+	"github.com/hyperledger/fabric/v2/msp"
 )
 
 // A ConfigUpdate holds the portions of channelconfig Bundle update used by

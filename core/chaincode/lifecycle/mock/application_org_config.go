@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/msp"
+	"github.com/hyperledger/fabric/v2/msp"
 )
 
 type ApplicationOrgConfig struct {

@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
-	"github.com/hyperledger/fabric/internal/peer/common"
+	"github.com/hyperledger/fabric/v2/internal/peer/common"
 	"github.com/stretchr/testify/require"
 )
 

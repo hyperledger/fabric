@@ -11,7 +11,7 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hyperledger/fabric/common/util"
+	"github.com/hyperledger/fabric/v2/common/util"
 	"github.com/pkg/errors"
 )
 

@@ -9,12 +9,12 @@ import (
 	"context"
 
 	peerproto "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger"
-	"github.com/hyperledger/fabric/core/peer"
-	"github.com/hyperledger/fabric/gossip/common"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
-	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/ledger"
+	"github.com/hyperledger/fabric/v2/core/peer"
+	"github.com/hyperledger/fabric/v2/gossip/common"
+	"github.com/hyperledger/fabric/v2/internal/pkg/gateway/commit"
+	"github.com/hyperledger/fabric/v2/internal/pkg/gateway/config"
 	"google.golang.org/grpc"
 )
 

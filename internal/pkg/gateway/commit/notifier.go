@@ -9,7 +9,7 @@ package commit
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/v2/core/ledger"
 )
 
 // NotificationSupplier obtains a commit notification channel for a specific ledger. It provides an abstraction of the use of

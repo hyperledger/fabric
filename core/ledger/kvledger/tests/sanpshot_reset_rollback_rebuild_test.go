@@ -9,7 +9,7 @@ package tests
 import (
 	"testing"
 
-	"github.com/hyperledger/fabric/core/ledger/kvledger"
+	"github.com/hyperledger/fabric/v2/core/ledger/kvledger"
 	"github.com/stretchr/testify/require"
 )
 

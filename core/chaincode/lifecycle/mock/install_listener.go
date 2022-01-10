@@ -4,8 +4,8 @@ package mock
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/chaincode/lifecycle"
-	"github.com/hyperledger/fabric/core/chaincode/persistence"
+	"github.com/hyperledger/fabric/v2/core/chaincode/lifecycle"
+	"github.com/hyperledger/fabric/v2/core/chaincode/persistence"
 )
 
 type InstallListener struct {

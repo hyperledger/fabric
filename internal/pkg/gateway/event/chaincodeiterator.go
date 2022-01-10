@@ -8,7 +8,7 @@ package event
 import (
 	"github.com/hyperledger/fabric-protos-go/gateway"
 	"github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/v2/common/ledger"
 )
 
 type ChaincodeEventsIterator struct {

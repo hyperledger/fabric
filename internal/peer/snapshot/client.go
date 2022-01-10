@@ -11,8 +11,8 @@ import (
 	"os"
 
 	pb "github.com/hyperledger/fabric-protos-go/peer"
-	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/internal/peer/common"
+	"github.com/hyperledger/fabric/v2/bccsp"
+	"github.com/hyperledger/fabric/v2/internal/peer/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )

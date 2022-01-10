@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/hyperledger/fabric/common/metrics"
+	"github.com/hyperledger/fabric/v2/common/metrics"
 )
 
 type Collector struct {

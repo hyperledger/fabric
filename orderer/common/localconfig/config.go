@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	bccsp "github.com/hyperledger/fabric/bccsp/factory"
-	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/viperutil"
-	coreconfig "github.com/hyperledger/fabric/core/config"
-	"github.com/hyperledger/fabric/internal/pkg/comm"
+	bccsp "github.com/hyperledger/fabric/v2/bccsp/factory"
+	"github.com/hyperledger/fabric/v2/common/flogging"
+	"github.com/hyperledger/fabric/v2/common/viperutil"
+	coreconfig "github.com/hyperledger/fabric/v2/core/config"
+	"github.com/hyperledger/fabric/v2/internal/pkg/comm"
 )
 
 var logger = flogging.MustGetLogger("localconfig")
