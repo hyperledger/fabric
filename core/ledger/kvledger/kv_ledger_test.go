@@ -14,11 +14,13 @@ import (
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/ledger/queryresult"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
+	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
 	"github.com/hyperledger/fabric/common/util"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/validation"
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
@@ -1399,22 +1401,41 @@ func sampleDataWithPvtdataForAllTxs(t *testing.T, bg *testutil.BlockGenerator) [
 }
 
 func samplePvtData(t *testing.T, txNums []uint64) map[uint64]*ledger.TxPvtData {
-	pvtWriteSet := &rwset.TxPvtReadWriteSet{DataModel: rwset.TxReadWriteSet_KV}
-	pvtWriteSet.NsPvtRwset = []*rwset.NsPvtReadWriteSet{
-		{
-			Namespace: "ns-1",
-			CollectionPvtRwset: []*rwset.CollectionPvtReadWriteSet{
-				{
-					CollectionName: "coll-1",
-					Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll1"),
-				},
-				{
-					CollectionName: "coll-2",
-					Rwset:          []byte("RandomBytes-PvtRWSet-ns1-coll2"),
+	txPvtWS := &rwsetutil.TxPvtRwSet{
+		NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
+			{
+				NameSpace: "ns-1",
+				CollPvtRwSets: []*rwsetutil.CollPvtRwSet{
+					{
+						CollectionName: "coll-1",
+						KvRwSet: &kvrwset.KVRWSet{
+							Writes: []*kvrwset.KVWrite{
+								{
+									Key:   "testKey",
+									Value: []byte("testValue"),
+								},
+							},
+						},
+					},
+					{
+						CollectionName: "coll-2",
+						KvRwSet: &kvrwset.KVRWSet{
+							Writes: []*kvrwset.KVWrite{
+								{
+									Key:   "testKey",
+									Value: []byte("testValue"),
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 	}
+
+	pvtWriteSet, err := txPvtWS.ToProtoMsg()
+	require.NoError(t, err)
+
 	var pvtData []*ledger.TxPvtData
 	for _, txNum := range txNums {
 		pvtData = append(pvtData, &ledger.TxPvtData{SeqInBlock: txNum, WriteSet: pvtWriteSet})

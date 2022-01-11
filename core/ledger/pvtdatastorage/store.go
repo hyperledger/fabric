@@ -83,6 +83,11 @@ type dataEntry struct {
 	value *rwset.CollectionPvtReadWriteSet
 }
 
+type hashedIndexEntry struct {
+	key   *hashedIndexKey
+	value string
+}
+
 type expiryEntry struct {
 	key   *expiryKey
 	value *ExpiryData
@@ -122,6 +127,7 @@ type hashedIndexKey struct {
 
 type storeEntries struct {
 	dataEntries             []*dataEntry
+	hashedIndexEntries      []*hashedIndexEntry
 	expiryEntries           []*expiryEntry
 	elgMissingDataEntries   map[missingDataKey]*bitset.BitSet
 	inelgMissingDataEntries map[missingDataKey]*bitset.BitSet
@@ -282,6 +288,11 @@ func (s *Store) Commit(blockNum uint64, pvtData []*ledger.TxPvtData, missingPvtD
 			return err
 		}
 		batch.Put(key, val)
+	}
+
+	for _, hashedIndexEntry := range storeEntries.hashedIndexEntries {
+		key := encodeHashedIndexKey(hashedIndexEntry.key)
+		batch.Put(key, []byte(hashedIndexEntry.value))
 	}
 
 	for _, expiryEntry := range storeEntries.expiryEntries {
@@ -650,6 +661,18 @@ func (s *Store) purgeExpiredData(minBlkNum, maxBlkNum uint64) error {
 			batch.Delete(encodeBootKVHashesKey(bootKVHashesKey))
 		}
 
+		dataEntries, err := s.retrieveDataEntries(dataKeys)
+		if err != nil {
+			return err
+		}
+		hashedIndexEntries, err := prepareHashedIndexEntries(dataEntries)
+		if err != nil {
+			return err
+		}
+		for _, hashedIndexEntry := range hashedIndexEntries {
+			batch.Delete(encodeHashedIndexKey(hashedIndexEntry.key))
+		}
+
 		if err := s.db.WriteBatch(batch, false); err != nil {
 			return err
 		}
@@ -684,6 +707,28 @@ func (s *Store) retrieveExpiryEntries(minBlkNum, maxBlkNum uint64) ([]*expiryEnt
 		expiryEntries = append(expiryEntries, &expiryEntry{key: expiryKey, value: expiryValue})
 	}
 	return expiryEntries, nil
+}
+
+func (s *Store) retrieveDataEntries(dataKeys []*dataKey) ([]*dataEntry, error) {
+	dataEntries := []*dataEntry{}
+	for _, k := range dataKeys {
+		v, err := s.db.Get(encodeDataKey(k))
+		if err != nil {
+			return nil, err
+		}
+
+		collWS, err := decodeDataValue(v)
+		if err != nil {
+			return nil, err
+		}
+
+		dataEntries = append(dataEntries,
+			&dataEntry{
+				key:   k,
+				value: collWS,
+			})
+	}
+	return dataEntries, nil
 }
 
 func (s *Store) launchCollElgProc() {

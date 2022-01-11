@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
+	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -463,6 +464,22 @@ func TestStorePurge(t *testing.T) {
 	ns1Coll1 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}, txNum: 2}
 	ns2Coll2 := &dataKey{nsCollBlk: nsCollBlk{ns: "ns-2", coll: "coll-2", blkNum: 1}, txNum: 2}
 
+	ns1Coll1Blk1Tx2HI := &hashedIndexKey{
+		ns:         "ns-1",
+		coll:       "coll-1",
+		pvtkeyHash: util.ComputeStringHash("key-ns-1-coll-1"),
+		blkNum:     1,
+		txNum:      2,
+	}
+
+	ns2Coll2Blk1Tx2HI := &hashedIndexKey{
+		ns:         "ns-2",
+		coll:       "coll-2",
+		pvtkeyHash: util.ComputeStringHash("key-ns-2-coll-2"),
+		blkNum:     1,
+		txNum:      2,
+	}
+
 	// eligible missingData entries for ns-1:coll-1, ns-1:coll-2 (neverExpires) should exist in store
 	ns1Coll1elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-1", blkNum: 1}}
 	ns1Coll2elgMD := &missingDataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}}
@@ -480,6 +497,9 @@ func TestStorePurge(t *testing.T) {
 
 	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll1inelgMD))
 	require.True(t, testInelgMissingDataKeyExists(t, s, ns3Coll2inelgMD))
+
+	require.True(t, testHashedIndexExists(t, s, ns1Coll1Blk1Tx2HI))
+	require.True(t, testHashedIndexExists(t, s, ns2Coll2Blk1Tx2HI))
 
 	deprioritizedList := ledger.MissingPvtDataInfo{
 		1: ledger.MissingBlockPvtdataInfo{
@@ -503,6 +523,10 @@ func TestStorePurge(t *testing.T) {
 	testWaitForPurgerRoutineToFinish(s)
 	require.True(t, testDataKeyExists(t, s, ns1Coll1))
 	require.True(t, testDataKeyExists(t, s, ns2Coll2))
+
+	require.True(t, testHashedIndexExists(t, s, ns1Coll1Blk1Tx2HI))
+	require.True(t, testHashedIndexExists(t, s, ns2Coll2Blk1Tx2HI))
+
 	// eligible missingData entries for ns-1:coll-1, ns-1:coll-2 (neverExpires) should exist in store
 	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll1elgMD))
 	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll2elgMD))
@@ -519,7 +543,11 @@ func TestStorePurge(t *testing.T) {
 	// but ns-2:coll-2 should exist because it expires at block 5
 	testWaitForPurgerRoutineToFinish(s)
 	require.False(t, testDataKeyExists(t, s, ns1Coll1))
+	require.False(t, testHashedIndexExists(t, s, ns1Coll1Blk1Tx2HI))
+
 	require.True(t, testDataKeyExists(t, s, ns2Coll2))
+	require.True(t, testHashedIndexExists(t, s, ns2Coll2Blk1Tx2HI))
+
 	// eligible missingData entries for ns-1:coll-1 should have expired and ns-1:coll-2 (neverExpires) should exist in store
 	require.False(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll1elgMD))
 	require.True(t, testElgPrioMissingDataKeyExists(t, s, ns1Coll2elgMD))
@@ -534,17 +562,32 @@ func TestStorePurge(t *testing.T) {
 	// ns-2:coll-2 should exist because though the data expires at block 5 but purger is launched every second block
 	testWaitForPurgerRoutineToFinish(s)
 	require.False(t, testDataKeyExists(t, s, ns1Coll1))
+	require.False(t, testHashedIndexExists(t, s, ns1Coll1Blk1Tx2HI))
+
 	require.True(t, testDataKeyExists(t, s, ns2Coll2))
+	require.True(t, testHashedIndexExists(t, s, ns2Coll2Blk1Tx2HI))
 
 	// write pvt data for block 6
 	require.NoError(t, s.Commit(6, nil, nil))
 	// ns-2:coll-2 should not exists now (because purger should be launched at block 6)
 	testWaitForPurgerRoutineToFinish(s)
 	require.False(t, testDataKeyExists(t, s, ns1Coll1))
+	require.False(t, testHashedIndexExists(t, s, ns1Coll1Blk1Tx2HI))
+
 	require.False(t, testDataKeyExists(t, s, ns2Coll2))
+	require.False(t, testHashedIndexExists(t, s, ns2Coll2Blk1Tx2HI))
 
 	// "ns-2:coll-1" should never have been purged (because, it was no btl was declared for this)
 	require.True(t, testDataKeyExists(t, s, &dataKey{nsCollBlk: nsCollBlk{ns: "ns-1", coll: "coll-2", blkNum: 1}, txNum: 2}))
+	require.True(t, testHashedIndexExists(t, s,
+		&hashedIndexKey{
+			ns:         "ns-1",
+			coll:       "coll-2",
+			pvtkeyHash: util.ComputeStringHash("key-ns-1-coll-2"),
+			blkNum:     1,
+			txNum:      2,
+		},
+	))
 }
 
 func TestStoreState(t *testing.T) {
@@ -841,6 +884,17 @@ func testInelgMissingDataKeyExists(t *testing.T, s *Store, missingDataKey *missi
 	val, err := s.db.Get(key)
 	require.NoError(t, err)
 	return len(val) != 0
+}
+
+func testHashedIndexExists(t *testing.T, s *Store, h *hashedIndexKey) bool {
+	val, err := s.db.Get(encodeHashedIndexKey(h))
+	require.NoError(t, err)
+
+	if len(val) == 0 {
+		return false
+	}
+	require.Equal(t, h.pvtkeyHash, util.ComputeHash(val))
+	return true
 }
 
 func testWaitForPurgerRoutineToFinish(s *Store) {
