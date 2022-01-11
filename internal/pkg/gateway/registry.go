@@ -427,7 +427,37 @@ func (reg *registry) configUpdate(bundle *channelconfig.Bundle) {
 			}
 		}
 		if len(channelOrderers) > 0 {
+			reg.closeStaleOrdererConnections(channel, channelOrderers)
 			reg.channelOrderers.Store(channel, channelOrderers)
+		}
+	}
+}
+
+func (reg *registry) closeStaleOrdererConnections(channel string, channelOrderers []*endpointConfig) {
+	// Load the list of orderers that is about to be overwritten, if loaded is false, then another goroutine got there first
+	oldList, loaded := reg.channelOrderers.LoadAndDelete(channel)
+	if loaded {
+		currentEndpoints := map[string]struct{}{}
+		reg.channelOrderers.Range(func(key, value interface{}) bool {
+			for _, ep := range value.([]*endpointConfig) {
+				currentEndpoints[ep.address] = struct{}{}
+			}
+			return true
+		})
+		for _, ep := range channelOrderers {
+			currentEndpoints[ep.address] = struct{}{}
+		}
+		// if there are any in the oldEndpoints that are not in the currentEndpoints, then remove from registry and close connection
+		for _, ep := range oldList.([]*endpointConfig) {
+			if _, exists := currentEndpoints[ep.address]; !exists {
+				client, found := reg.broadcastClients.LoadAndDelete(ep.address)
+				if found {
+					err := client.(*orderer).closeConnection()
+					if err != nil {
+						reg.logger.Errorw("Failed to close connection to orderer", "address", ep.address, "mspid", ep.mspid, "err", err)
+					}
+				}
+			}
 		}
 	}
 }
