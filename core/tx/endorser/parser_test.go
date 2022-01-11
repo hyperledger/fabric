@@ -107,7 +107,7 @@ var _ = Describe("Parser", func() {
 
 			It("returns an error", func() {
 				pe, err := endorsertx.UnmarshalEndorserTxAndValidate(txenv)
-				Expect(err).To(MatchError("error unmarshalling Transaction: unexpected EOF"))
+				Expect(err).To(MatchError("error unmarshalling Transaction"))
 				Expect(pe).To(BeNil())
 			})
 		})

@@ -210,7 +210,7 @@ func TestGetAllMSPIDs_NegativeTests(t *testing.T) {
 	configBlock.Metadata.Metadata[cb.BlockMetadataIndex_SIGNATURES] = []byte("invalid_bytes")
 	require.NoError(t, blkStore.AddBlock(configBlock))
 	_, err = channelInfoProvider.getAllMSPIDs()
-	require.EqualError(t, err, "failed to retrieve metadata: error unmarshalling metadata at index [SIGNATURES]: unexpected EOF")
+	require.ErrorContains(t, err, "failed to retrieve metadata: error unmarshalling metadata at index [SIGNATURES]")
 
 	// test RetrieveBlockByNumber error (before calling GetLastConfigIndexFromBlock) by closing block store provider
 	blkStoreProvider.Close()

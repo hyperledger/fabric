@@ -751,7 +751,7 @@ func TestParticipant(t *testing.T) {
 					Metadata: [][]byte{{1, 2, 3}},
 				},
 			},
-			expectedError: "failed to retrieve metadata: error unmarshaling metadata at index [SIGNATURES]",
+			expectedError: "failed to retrieve metadata: error unmarshalling metadata at index [SIGNATURES]",
 		},
 		{
 			name: "Pulled block's LAST_CONFIG metadata is malformed",
@@ -764,7 +764,7 @@ func TestParticipant(t *testing.T) {
 					Metadata: [][]byte{{}, {1, 2, 3}},
 				},
 			},
-			expectedError: "failed to retrieve metadata: error unmarshaling metadata at index [LAST_CONFIG]",
+			expectedError: "failed to retrieve metadata: error unmarshalling metadata at index [LAST_CONFIG]",
 		},
 		{
 			name: "Pulled block's metadata is valid and has a last config",
@@ -866,7 +866,7 @@ func TestBlockPullerFromConfigBlockFailures(t *testing.T) {
 		},
 		{
 			name:        "bad envelope inside block",
-			expectedErr: "failed extracting bundle from envelope: failed to unmarshal payload from envelope: error unmarshaling Payload",
+			expectedErr: "failed extracting bundle from envelope: failed to unmarshal payload from envelope: error unmarshalling Payload",
 			block: &common.Block{
 				Data: &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
@@ -1146,7 +1146,7 @@ func TestExtractGenesisBlock(t *testing.T) {
 		},
 		{
 			name:        "corrupt envelope in block",
-			expectedErr: "block data does not carry an envelope at index 0: error unmarshaling Envelope",
+			expectedErr: "block data does not carry an envelope at index 0: error unmarshalling Envelope",
 			block: &common.Block{
 				Data: &common.BlockData{
 					Data: [][]byte{{1, 2, 3}},
@@ -1155,7 +1155,7 @@ func TestExtractGenesisBlock(t *testing.T) {
 		},
 		{
 			name:        "corrupt payload in envelope",
-			expectedErr: "error unmarshaling Payload",
+			expectedErr: "error unmarshalling Payload",
 			block: &common.Block{
 				Data: &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
@@ -1177,7 +1177,7 @@ func TestExtractGenesisBlock(t *testing.T) {
 		},
 		{
 			name:        "corrupt channel header",
-			expectedErr: "error unmarshaling ChannelHeader",
+			expectedErr: "error unmarshalling ChannelHeader",
 			block: &common.Block{
 				Data: &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
@@ -1209,7 +1209,7 @@ func TestExtractGenesisBlock(t *testing.T) {
 		},
 		{
 			name:        "orderer transaction with corrupt inner envelope",
-			expectedErr: "error unmarshaling Envelope",
+			expectedErr: "error unmarshalling Envelope",
 			block: &common.Block{
 				Data: &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
@@ -1227,7 +1227,7 @@ func TestExtractGenesisBlock(t *testing.T) {
 		},
 		{
 			name:        "orderer transaction with corrupt inner payload",
-			expectedErr: "error unmarshaling Payload",
+			expectedErr: "error unmarshalling Payload",
 			block: &common.Block{
 				Data: &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
@@ -1267,7 +1267,7 @@ func TestExtractGenesisBlock(t *testing.T) {
 		},
 		{
 			name:        "orderer transaction with corrupt inner channel header",
-			expectedErr: "error unmarshaling ChannelHeader",
+			expectedErr: "error unmarshalling ChannelHeader",
 			block: &common.Block{
 				Data: &common.BlockData{
 					Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{

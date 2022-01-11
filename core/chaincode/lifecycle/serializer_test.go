@@ -214,7 +214,7 @@ var _ = Describe("Serializer", func() {
 
 				It("wraps and returns the error", func() {
 					err := s.Serialize("namespaces", "fake", testStruct, fakeState)
-					Expect(err).To(MatchError("could not deserialize metadata for namespace namespaces/fake: could not unmarshal metadata for namespace namespaces/fake: unexpected EOF"))
+					Expect(err).To(MatchError("could not deserialize metadata for namespace namespaces/fake: could not unmarshal metadata for namespace namespaces/fake"))
 				})
 			})
 		})

@@ -173,7 +173,7 @@ var _ = Describe("UnpackProposal", func() {
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(HavePrefix("error unmarshaling Proposal"))
+			Expect(err.Error()).To(HavePrefix("error unmarshalling Proposal"))
 		})
 	})
 
@@ -187,7 +187,7 @@ var _ = Describe("UnpackProposal", func() {
 		It("wraps and returns the error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(HavePrefix("error unmarshaling Header"))
+			Expect(err.Error()).To(HavePrefix("error unmarshalling Header"))
 		})
 	})
 
@@ -201,7 +201,7 @@ var _ = Describe("UnpackProposal", func() {
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(HavePrefix("error unmarshaling ChannelHeader"))
+			Expect(err.Error()).To(HavePrefix("error unmarshalling ChannelHeader"))
 		})
 	})
 
@@ -215,7 +215,7 @@ var _ = Describe("UnpackProposal", func() {
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(HavePrefix("error unmarshaling SignatureHeader"))
+			Expect(err.Error()).To(HavePrefix("error unmarshalling SignatureHeader"))
 		})
 	})
 
@@ -229,7 +229,7 @@ var _ = Describe("UnpackProposal", func() {
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(HavePrefix("error unmarshaling ChaincodeHeaderExtension"))
+			Expect(err.Error()).To(HavePrefix("error unmarshalling ChaincodeHeaderExtension"))
 		})
 	})
 
@@ -243,7 +243,7 @@ var _ = Describe("UnpackProposal", func() {
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(HavePrefix("error unmarshaling ChaincodeProposalPayload"))
+			Expect(err.Error()).To(HavePrefix("error unmarshalling ChaincodeProposalPayload"))
 		})
 	})
 
@@ -279,7 +279,7 @@ var _ = Describe("UnpackProposal", func() {
 		It("wraps and returns an error", func() {
 			_, err := endorser.UnpackProposal(signedProposal)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(HavePrefix("error unmarshaling ChaincodeInvocationSpec"))
+			Expect(err.Error()).To(HavePrefix("error unmarshalling ChaincodeInvocationSpec"))
 		})
 	})
 

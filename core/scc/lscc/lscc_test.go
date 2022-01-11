@@ -316,7 +316,7 @@ func TestDeploy(t *testing.T) {
 
 	res = stub.MockInvokeWithSignedProposal("1", [][]byte{[]byte("deploy"), []byte("chain"), []byte("barf")}, nil)
 	require.NotEqual(t, int32(shim.OK), res.Status)
-	require.Equal(t, "error unmarshalling ChaincodeDeploymentSpec: unexpected EOF", res.Message)
+	require.Contains(t, res.Message, "error unmarshalling ChaincodeDeploymentSpec")
 
 	testDeploy(t, "example02", "1.0", path, false, false, true, "", scc, stub, nil)
 	testDeploy(t, "example02", "1.0", path, false, false, true, "chaincode with name 'example02' already exists", scc, stub, nil)

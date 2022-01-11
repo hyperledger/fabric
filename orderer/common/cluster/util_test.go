@@ -691,7 +691,7 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 		},
 		{
 			name:          "invalid payload",
-			expectedError: "error unmarshaling Envelope",
+			expectedError: "error unmarshalling Envelope",
 			block:         &common.Block{Data: &common.BlockData{Data: [][]byte{{1, 2, 3}}}},
 		},
 		{
@@ -707,19 +707,19 @@ func TestConfigFromBlockBadInput(t *testing.T) {
 		},
 		{
 			name:          "invalid envelope in block",
-			expectedError: "error unmarshaling Envelope",
+			expectedError: "error unmarshalling Envelope",
 			block:         &common.Block{Data: &common.BlockData{Data: [][]byte{{1, 2, 3}}}},
 		},
 		{
 			name:          "invalid payload in block envelope",
-			expectedError: "error unmarshaling Payload",
+			expectedError: "error unmarshalling Payload",
 			block: &common.Block{Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{
 				Payload: []byte{1, 2, 3},
 			})}}},
 		},
 		{
 			name:          "invalid channel header",
-			expectedError: "error unmarshaling ChannelHeader",
+			expectedError: "error unmarshalling ChannelHeader",
 			block: &common.Block{
 				Header: &common.BlockHeader{Number: 1},
 				Data: &common.BlockData{Data: [][]byte{protoutil.MarshalOrPanic(&common.Envelope{

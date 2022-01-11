@@ -468,7 +468,7 @@ func (vscc *Validator) ValidateLSCCInvocation(
 		cdRWSet := &ccprovider.ChaincodeData{}
 		err = proto.Unmarshal(lsccrwset.Writes[0].Value, cdRWSet)
 		if err != nil {
-			return policyErr(fmt.Errorf("unmarhsalling of ChaincodeData failed, error %s", err))
+			return policyErr(fmt.Errorf("unmarshalling of ChaincodeData failed, error %s", err))
 		}
 		// the chaincode name in the lsccwriteset must match the chaincode name in the deployment spec
 		if cdRWSet.Name != cdsArgs.ChaincodeSpec.ChaincodeId.Name {

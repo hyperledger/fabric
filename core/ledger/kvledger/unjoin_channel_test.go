@@ -128,6 +128,6 @@ func TestUnjoinChannelWithInvalidMetadataErrors(t *testing.T) {
 	provider.Close()
 
 	// fail if metadata can not be unmarshaled
-	require.EqualError(t, UnjoinChannel(conf, ledgerID),
-		"unjoin channel [ledger_000099]: error unmarshalling ledger metadata: unexpected EOF")
+	require.ErrorContains(t, UnjoinChannel(conf, ledgerID),
+		"unjoin channel [ledger_000099]: error unmarshalling ledger metadata")
 }
