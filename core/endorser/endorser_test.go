@@ -743,7 +743,7 @@ var _ = Describe("Endorser", func() {
 		It("wraps and returns an error and responds to the client", func() {
 			proposalResponse, err := e.ProcessProposal(context.Background(), signedProposal)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(HavePrefix("error unmarshaling Proposal"))
+			Expect(err.Error()).To(HavePrefix("error unmarshalling Proposal"))
 			Expect(proposalResponse.Response.Status).To(Equal(int32(500)))
 			Expect(proposalResponse.Response.Message).To(HavePrefix("error unmarshaling Proposal"))
 		})

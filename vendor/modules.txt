@@ -95,8 +95,6 @@ github.com/containerd/containerd/sys
 # github.com/containerd/continuity v0.0.0-20200928162600-f2cc35102c2a
 github.com/containerd/continuity/fs
 github.com/containerd/continuity/sysx
-# github.com/coreos/go-systemd v0.0.0-20190620071333-e64a0ec8b42a
-## explicit
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
@@ -428,8 +426,6 @@ github.com/syndtr/goleveldb/leveldb/util
 github.com/tedsuo/ifrit
 github.com/tedsuo/ifrit/ginkgomon
 github.com/tedsuo/ifrit/grouper
-# github.com/willf/bitset v1.1.10
-## explicit
 # go.etcd.io/etcd/client/pkg/v3 v3.5.1
 ## explicit
 go.etcd.io/etcd/client/pkg/v3/fileutil
@@ -459,7 +455,6 @@ go.opencensus.io/trace/tracestate
 # go.uber.org/atomic v1.7.0
 go.uber.org/atomic
 # go.uber.org/multierr v1.6.0
-## explicit
 go.uber.org/multierr
 # go.uber.org/zap v1.17.0
 ## explicit

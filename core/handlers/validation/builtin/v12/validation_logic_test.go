@@ -523,7 +523,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	require.EqualError(t, err, "unmarhsalling of ChaincodeData failed, error unexpected EOF")
+	require.ErrorContains(t, err, "unmarshalling of ChaincodeData failed")
 
 	/**********************/
 	/* test bad LSCC args */
