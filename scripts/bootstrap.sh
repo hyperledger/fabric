@@ -9,7 +9,7 @@
 VERSION=2.4.1
 # if ca version not passed in, default to latest released version
 CA_VERSION=1.5.2
-ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')")
+ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | uname -m | sed -E -e 's/x86_64|arm64/amd64/g')")
 MARCH=$(uname -m)
 
 printHelp() {
