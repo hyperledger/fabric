@@ -74,7 +74,7 @@ and we'll see later how Hyperledger Fabric provides flexibility in this regard.
 The world state can change frequently, as states can be created, updated and deleted.
 
 Secondly, there's a **blockchain** -- a transaction log that records all the
-changes that have resulted in the current the world state. Transactions are
+changes that have resulted in the current world state. Transactions are
 collected inside blocks that are appended to the blockchain -- enabling you to
 understand the history of changes that have resulted in the current world state.
 The blockchain data structure is very different to the world state because once
