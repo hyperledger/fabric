@@ -633,7 +633,7 @@ Java
 ^^^^
 Java provides several libraries to serialize an object into a JSON string. However not all of them provide consistency and ordering.
 The ``Gson`` library, for example, does not provide any consistency and should therefore be avoided for this application. On the other hand,
-the ``Genson`` library is a good fit for our purpose as it produces consistent JSON in alphabetic oreder.
+the ``Genson`` library is a good fit for our purpose as it produces consistent JSON in alphabetic order.
 
 You can find a good exemplification of this practise on the `asset-transfer-basic <https://github.com/hyperledger/fabric-samples/tree/main/asset-transfer-basic>`_ chaincodes.
 
