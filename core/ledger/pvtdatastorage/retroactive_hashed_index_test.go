@@ -15,12 +15,18 @@ import (
 
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset/kvrwset"
 	"github.com/hyperledger/fabric/common/ledger/testutil"
-	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	btltestutil "github.com/hyperledger/fabric/core/ledger/pvtdatapolicy/testutil"
 	"github.com/hyperledger/fabric/core/ledger/util"
 	"github.com/stretchr/testify/require"
 )
+
+// TestConstructHashedIndexAndUpgradeDataFmtRetroactively test that we create hashed indexes retroactively on the existing
+// data and we upgrade the existing data in V11 format to V12 format.
+// This test uses a pvt data store that is produced in one of the upgrade tests.
+// The store contains total 15 blocks. Block number one to nine has not
+// pvt data because, that time peer code was v1.0 and hence no pvt data. Block 10 contains
+// a pvtdata from peer v1.1. Block 11 - 13 has not pvt data. Block 14 has pvt data from peer v1.2
 
 func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 	testWorkingDir, err := ioutil.TempDir("", "pdstore")
@@ -30,20 +36,13 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 	require.NoError(t, testutil.CopyDir("testdata/v11_v12/ledgersData/pvtdataStore", testWorkingDir, false))
 	storePath := filepath.Join(testWorkingDir, "pvtdataStore")
 
-	require.NoError(t, checkAndConstructHashedIndex(storePath, []string{"ch1"}))
-
-	levelProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{
-		DBPath:         storePath,
-		ExpectedFormat: currentDataVersion,
-	})
-	require.NoError(t, err)
+	require.NoError(t, CheckAndConstructHashedIndex(storePath, []string{"ch1"}))
 
 	pvtdataConf := pvtDataConf()
 	pvtdataConf.StorePath = storePath
-	storeProvider := &Provider{
-		dbProvider: levelProvider,
-		pvtData:    pvtdataConf,
-	}
+
+	storeProvider, err := NewProvider(pvtdataConf)
+	require.NoError(t, err)
 	defer storeProvider.Close()
 
 	s, err := storeProvider.OpenStore("ch1")
@@ -69,6 +68,10 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 	})
 
 	t.Run("upgraded-v11-data-can-be-retrieved", func(t *testing.T) {
+		for blk := 0; blk < 10; blk++ {
+			checkDataNotExists(t, s, blk)
+		}
+
 		pvtdata, err := s.GetPvtDataByBlockNum(10, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(pvtdata))
@@ -110,6 +113,55 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 		},
 			pvtWS,
 		)
+
+		for blk := 11; blk < 14; blk++ {
+			checkDataNotExists(t, s, blk)
+		}
+
+		pvtdata, err = s.GetPvtDataByBlockNum(14, nil)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(pvtdata))
+		require.Equal(t, uint64(0), pvtdata[0].SeqInBlock)
+		pvtWS, err = rwsetutil.TxPvtRwSetFromProtoMsg(pvtdata[0].WriteSet)
+		require.NoError(t, err)
+
+		require.Equal(t, &rwsetutil.TxPvtRwSet{
+			NsPvtRwSet: []*rwsetutil.NsPvtRwSet{
+				{
+					NameSpace: "marbles_private",
+					CollPvtRwSets: []*rwsetutil.CollPvtRwSet{
+						{
+							CollectionName: "collectionMarblePrivateDetails",
+							KvRwSet: &kvrwset.KVRWSet{
+								Writes: []*kvrwset.KVWrite{
+									{
+										Key:   "marble2",
+										Value: []byte(`{"docType":"marblePrivateDetails","name":"marble2","price":250}`),
+									},
+								},
+							},
+						},
+
+						{
+							CollectionName: "collectionMarbles",
+							KvRwSet: &kvrwset.KVRWSet{
+								Writes: []*kvrwset.KVWrite{
+									{
+										Key:   "marble2",
+										Value: []byte(`{"docType":"marble","name":"marble2","color":"red","size":100,"owner":"tom"}`),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+			pvtWS,
+		)
+
+		_, err = s.GetPvtDataByBlockNum(uint64(15), nil)
+		require.EqualError(t, err, "last committed block number [14] smaller than the requested block number [15]")
 	})
 
 	t.Run("hashed-indexs-get-constructed", func(t *testing.T) {
@@ -159,4 +211,10 @@ func TestConstructHashedIndexAndUpgradeDataFmtRetroactively(t *testing.T) {
 		err := constructHashedIndex(storePath, []string{"ch1"})
 		require.ErrorContains(t, err, "data format = [2.5], expected format = []")
 	})
+}
+
+func checkDataNotExists(t *testing.T, s *Store, blkNum int) {
+	data, err := s.GetPvtDataByBlockNum(uint64(blkNum), nil)
+	require.NoError(t, err)
+	require.Nil(t, data)
 }
