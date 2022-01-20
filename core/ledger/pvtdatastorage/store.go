@@ -142,7 +142,11 @@ type lastUpdatedOldBlocksList []uint64
 
 // NewProvider instantiates a StoreProvider
 func NewProvider(conf *PrivateDataConfig) (*Provider, error) {
-	dbProvider, err := leveldbhelper.NewProvider(&leveldbhelper.Conf{DBPath: conf.StorePath})
+	dbProvider, err := leveldbhelper.NewProvider(
+		&leveldbhelper.Conf{
+			DBPath:         conf.StorePath,
+			ExpectedFormat: currentDataVersion,
+		})
 	if err != nil {
 		return nil, err
 	}

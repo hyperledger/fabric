@@ -119,20 +119,38 @@ func testLedgerProvider(t *testing.T, enableHistoryDB bool) {
 	require.EqualError(t, err, "cannot open ledger [ledger_000010], ledger does not exist")
 }
 
-func TestGetActiveLedgerIDsIteratorError(t *testing.T) {
+func TestGetLedger(t *testing.T) {
 	conf, cleanup := testConfig(t)
 	defer cleanup()
 	provider := testutilNewProvider(conf, t, &mock.DeployedChaincodeInfoProvider{})
 
-	for i := 0; i < 2; i++ {
-		genesisBlock, _ := configtxtest.MakeGenesisBlock(constructTestLedgerID(i))
-		_, err := provider.CreateFromGenesisBlock(genesisBlock)
-		require.NoError(t, err)
+	inputTestData := map[string]msgs.Status{
+		"1": msgs.Status_UNDER_CONSTRUCTION,
+		"2": msgs.Status_UNDER_DELETION,
+		"3": msgs.Status_ACTIVE,
+		"4": msgs.Status_ACTIVE,
+		"5": msgs.Status_INACTIVE,
+		"6": msgs.Status_INACTIVE,
 	}
+
+	for ledgerID, status := range inputTestData {
+		require.NoError(t, provider.idStore.createLedgerID(ledgerID, &msgs.LedgerMetadata{Status: status}))
+	}
+
+	l, err := provider.idStore.getActiveLedgerIDs()
+	require.NoError(t, err)
+	require.Equal(t, []string{"3", "4"}, l)
+
+	l, err = provider.idStore.getActiveAndInactiveLedgerIDs()
+	require.NoError(t, err)
+	require.Equal(t, []string{"3", "4", "5", "6"}, l)
 
 	// close provider to trigger db error
 	provider.Close()
-	_, err := provider.idStore.getActiveLedgerIDs()
+	_, err = provider.idStore.getActiveLedgerIDs()
+	require.EqualError(t, err, "error getting ledger ids from idStore: leveldb: closed")
+
+	_, err = provider.idStore.getActiveAndInactiveLedgerIDs()
 	require.EqualError(t, err, "error getting ledger ids from idStore: leveldb: closed")
 }
 
