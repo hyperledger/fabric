@@ -3243,7 +3243,7 @@ var _ = Describe("Chain", func() {
 						})
 				})
 
-				FIt("aborts waiting for block to be committed upon leadership lost", func() {
+				It("aborts waiting for block to be committed upon leadership lost", func() {
 					network.disconnect(1)
 
 					c1.cutter.CutNext = true
