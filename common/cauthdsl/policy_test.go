@@ -103,8 +103,7 @@ func TestNewPolicyErrorCase(t *testing.T) {
 	pol1, msg1, err1 := provider.NewPolicy([]byte{0})
 	require.Nil(t, pol1)
 	require.Nil(t, msg1)
-	require.Error(t, err1)
-	require.Contains(t, err1.Error(), "Error unmarshalling to SignaturePolicy")
+	require.ErrorContains(t, err1, "Error unmarshalling to SignaturePolicy")
 
 	sigPolicy2 := &cb.SignaturePolicyEnvelope{Version: -1}
 	data2 := marshalOrPanic(sigPolicy2)

@@ -577,7 +577,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	require.EqualError(t, err, "GetChaincodeDeploymentSpec error error unmarshalling ChaincodeDeploymentSpec")
+	require.ErrorContains(t, err, "GetChaincodeDeploymentSpec error error unmarshalling ChaincodeDeploymentSpec")
 
 	/***********************/
 	/* test bad cc version */
@@ -628,7 +628,7 @@ func TestValidateDeployFail(t *testing.T) {
 
 	b = &common.Block{Data: &common.BlockData{Data: [][]byte{envBytes}}}
 	err = v.Validate(b, "lscc", 0, 0, policy)
-	require.EqualError(t, err, "txRWSet.FromProtoBytes error unexpected EOF")
+	require.ErrorContains(t, err, "txRWSet.FromProtoBytes error")
 
 	/********************/
 	/* test bad cc name */
