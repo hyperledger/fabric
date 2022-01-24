@@ -4,13 +4,16 @@ Setting up the development environment
 Prerequisites
 ~~~~~~~~~~~~~
 
--  `Git client <https://git-scm.com/downloads>`__
--  `Go <https://golang.org/dl/>`__ version 1.17.x (recommended Go version can be found in project Makefile)
--  `Docker <https://docs.docker.com/get-docker/>`__ version 18.03 or later
--  (macOS) `Xcode Command Line Tools <https://developer.apple.com/downloads/>`__
--  `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__ use version 2.5 as 2.6 is broken in this environment
--  `jq <https://stedolan.github.io/jq/download/>`__
+In addition to the standard :doc:`../prereqs` for Fabric, the following prerequisites are also required:
 
+-  (macOS) `Xcode Command Line Tools <https://developer.apple.com/downloads/>`__
+-  (All platforms) `SoftHSM <https://github.com/opendnssec/SoftHSMv2>`__ use version 2.5 as 2.6 is not operable in this environment
+-  (All platforms) `jq <https://stedolan.github.io/jq/download/>`__
+
+For Linux platforms, including WSL2 on Windows, also required are various build tools such as gnu-make and 
+C compiler. On ubuntu and it's derivatives you can install the required toolset by using the command 
+``sudo apt install build-essential``. Other distributions may already have the appropriate tools installed
+or provide a convenient way to install the various build tools.
 
 Steps
 ~~~~~
@@ -38,9 +41,9 @@ Once Homebrew is ready, installing the necessary prerequisites is very easy, for
     brew install git jq
     brew install --cask docker
 
-Go and SoftHSM are akso available from Homebrew but make sure you install the appropriate versions
+Go and SoftHSM are also available from Homebrew, but make sure you install the appropriate versions
 
-Docker Desktop must be launched to complete the installation so be sure to open
+Docker Desktop must be launched to complete the installation, so be sure to open
 the application after installing it:
 
 ::
@@ -50,33 +53,7 @@ the application after installing it:
 Developing on Windows
 ~~~~~~~~~~~~~~~~~~~~~
 
-On Windows 10 you should use the native Docker distribution and you
-may use the Windows PowerShell. However, for the ``binaries``
-command to succeed you will still need to have the ``uname`` command
-available. You can get it as part of Git but beware that only the
-64bit version is supported.
-
-Before running any ``git clone`` commands, run the following commands:
-
-::
-
-    git config --global core.autocrlf false
-    git config --global core.longpaths true
-
-You can check the setting of these parameters with the following commands:
-
-::
-
-    git config --get core.autocrlf
-    git config --get core.longpaths
-
-These need to be ``false`` and ``true`` respectively.
-
-The ``curl`` command that comes with Git and Docker Toolbox is old and
-does not handle properly the redirect used in
-:doc:`../getting_started`. Make sure you have and use a newer version
-which can be downloaded from the `cURL downloads page
-<https://curl.haxx.se/download.html>`__
+It is recommended that all development be done within your WSL2 Linux distribution.
 
 Clone the Hyperledger Fabric source
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,21 +67,6 @@ the repository.
     mkdir -p github.com/<your_github_userid>
     cd github.com/<your_github_userid>
     git clone https://github.com/<your_github_userid>/fabric
-
-.. note::
-    If you are running Windows, before cloning the repository, run the following
-    command:
-
-    ::
-
-        git config --get core.autocrlf
-
-    If ``core.autocrlf`` is set to ``true``, you must set it to ``false`` by
-    running:
-
-    ::
-
-        git config --global core.autocrlf false
 
 
 Configure SoftHSM
@@ -176,8 +138,8 @@ library. For example:
 
 ::
 
-    export PKCS11_LIB="/usr/lib/softhsm/libsofthsm2.so"
-    export PKCS11SPY="/usr/lib/x86_64-linux-gnu/pkcs11/pkcs11-spy.so"
+    export PKCS11SPY="/usr/lib/softhsm/libsofthsm2.so"
+    export PKCS11_LIB="/usr/lib/x86_64-linux-gnu/pkcs11/pkcs11-spy.so"
 
 
 Install the development tools
