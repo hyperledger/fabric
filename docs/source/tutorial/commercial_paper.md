@@ -39,7 +39,7 @@ network.
   [buy](#buy-application) and [redeem](#redeem-application) commercial paper
 
 This tutorial has been tested on MacOS and Ubuntu, and should work on other
-Linux distributions. A Windows version is under development.
+Linux distributions.
 
 ## Prerequisites
 
