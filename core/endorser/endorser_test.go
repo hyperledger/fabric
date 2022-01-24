@@ -997,10 +997,8 @@ var _ = Describe("Endorser", func() {
 			It("returns an error to the client", func() {
 				proposalResponse, err := e.ProcessProposal(context.TODO(), signedProposal)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(proposalResponse.Response).To(Equal(&pb.Response{
-					Status:  500,
-					Message: "error in simulation: error unmarshalling ChaincodeDeploymentSpec: unexpected EOF",
-				}))
+				Expect(proposalResponse.Response.Status).To(Equal(int32(500)))
+				Expect(proposalResponse.Response.Message).To(ContainSubstring("error in simulation: error unmarshalling ChaincodeDeploymentSpec"))
 				Expect(fakeSimulateFailure.AddCallCount()).To(Equal(1))
 			})
 		})
