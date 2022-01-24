@@ -496,7 +496,7 @@ func TestNewGRPCServerInvalidParameters(t *testing.T) {
 
 	badRootCAs := [][]byte{[]byte(badPEM)}
 	err = srv.SetClientRootCAs(badRootCAs)
-	assert.EqualError(t, err, "failed to set client root certificate(s): asn1: syntax error: data truncated")
+	assert.EqualError(t, err, "failed to set client root certificate(s): x509: malformed certificate")
 }
 
 func TestNewGRPCServer(t *testing.T) {
