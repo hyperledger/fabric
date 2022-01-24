@@ -1,3 +1,4 @@
+//go:build pkcs11
 // +build pkcs11
 
 /*
