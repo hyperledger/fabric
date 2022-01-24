@@ -57,21 +57,6 @@ programming language runtimes and dependencies.
 - Ensure you have a suitable version of Node installed. Instructions for installing Node can be found in the `Node.js
   documentation <https://nodejs.dev/learn/how-to-install-nodejs>`_.
 
-- If you are on Windows, you can use npm to install the `windows-build-tools <https://github.com/felixrieseberg/windows-build-tools#readme>`_
-  which installs all required compilers and tooling by running the following command:
-
-  .. code-block:: bash
-
-    npm install --global windows-build-tools
-
-- If you are on Linux, you need to install `Python v2.7 <https://www.python.org/download/releases/2.7/>`_, `make <https://www.gnu.org/software/make/>`_,
-  and a C/C++ compiler toolchain such as `GCC <https://gcc.gnu.org/>`_. You can run the following command to install
-  these tools:
-
-  .. code-block:: bash
-
-    sudo apt install build-essential
-
 
 Set up the blockchain network
 =============================
