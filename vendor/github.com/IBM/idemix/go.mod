@@ -3,7 +3,7 @@ module github.com/IBM/idemix
 go 1.16
 
 require (
-	github.com/IBM/mathlib v0.0.0-20210928081244-f5486459a290
+	github.com/IBM/mathlib v0.0.0-20220112091634-0a7378db6912
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20210912230133-d1bdfacee922 // indirect
 	github.com/golang/protobuf v1.3.3

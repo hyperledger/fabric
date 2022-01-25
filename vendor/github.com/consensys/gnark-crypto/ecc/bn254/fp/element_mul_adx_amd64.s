@@ -46,7 +46,7 @@ GLOBL qInv0<>(SB), (RODATA+NOPTR), $8
 TEXT ·mul(SB), NOSPLIT, $0-24
 
 	// the algorithm is described here
-	// https://hackmd.io/@zkteam/modular_multiplication
+	// https://hackmd.io/@gnark/modular_multiplication
 	// however, to benefit from the ADCX and ADOX carry chains
 	// we split the inner loops in 2:
 	// for i=0 to N-1
@@ -72,7 +72,7 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 
 	// A -> BP
 	// t[0] -> R14
-	// t[1] -> R15
+	// t[1] -> R13
 	// t[2] -> CX
 	// t[3] -> BX
 	// clear the flags
@@ -80,11 +80,11 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 	MOVQ 0(R11), DX
 
 	// (A,t[0])  := x[0]*y[0] + A
-	MULXQ DI, R14, R15
+	MULXQ DI, R14, R13
 
 	// (A,t[1])  := x[1]*y[0] + A
 	MULXQ R8, AX, CX
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (A,t[2])  := x[2]*y[0] + A
 	MULXQ R9, AX, BX
@@ -111,14 +111,14 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 	MOVQ  R12, R14
 
 	// (C,t[0]) := t[1] + m*q[1] + C
-	ADCXQ R15, R14
-	MULXQ q<>+8(SB), AX, R15
+	ADCXQ R13, R14
+	MULXQ q<>+8(SB), AX, R13
 	ADOXQ AX, R14
 
 	// (C,t[1]) := t[2] + m*q[2] + C
-	ADCXQ CX, R15
+	ADCXQ CX, R13
 	MULXQ q<>+16(SB), AX, CX
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (C,t[2]) := t[3] + m*q[3] + C
 	ADCXQ BX, CX
@@ -139,9 +139,9 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 	ADOXQ AX, R14
 
 	// (A,t[1])  := t[1] + x[1]*y[1] + A
-	ADCXQ BP, R15
+	ADCXQ BP, R13
 	MULXQ R8, AX, BP
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (A,t[2])  := t[2] + x[2]*y[1] + A
 	ADCXQ BP, CX
@@ -171,14 +171,14 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 	MOVQ  R12, R14
 
 	// (C,t[0]) := t[1] + m*q[1] + C
-	ADCXQ R15, R14
-	MULXQ q<>+8(SB), AX, R15
+	ADCXQ R13, R14
+	MULXQ q<>+8(SB), AX, R13
 	ADOXQ AX, R14
 
 	// (C,t[1]) := t[2] + m*q[2] + C
-	ADCXQ CX, R15
+	ADCXQ CX, R13
 	MULXQ q<>+16(SB), AX, CX
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (C,t[2]) := t[3] + m*q[3] + C
 	ADCXQ BX, CX
@@ -199,9 +199,9 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 	ADOXQ AX, R14
 
 	// (A,t[1])  := t[1] + x[1]*y[2] + A
-	ADCXQ BP, R15
+	ADCXQ BP, R13
 	MULXQ R8, AX, BP
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (A,t[2])  := t[2] + x[2]*y[2] + A
 	ADCXQ BP, CX
@@ -231,14 +231,14 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 	MOVQ  R12, R14
 
 	// (C,t[0]) := t[1] + m*q[1] + C
-	ADCXQ R15, R14
-	MULXQ q<>+8(SB), AX, R15
+	ADCXQ R13, R14
+	MULXQ q<>+8(SB), AX, R13
 	ADOXQ AX, R14
 
 	// (C,t[1]) := t[2] + m*q[2] + C
-	ADCXQ CX, R15
+	ADCXQ CX, R13
 	MULXQ q<>+16(SB), AX, CX
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (C,t[2]) := t[3] + m*q[3] + C
 	ADCXQ BX, CX
@@ -259,9 +259,9 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 	ADOXQ AX, R14
 
 	// (A,t[1])  := t[1] + x[1]*y[3] + A
-	ADCXQ BP, R15
+	ADCXQ BP, R13
 	MULXQ R8, AX, BP
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (A,t[2])  := t[2] + x[2]*y[3] + A
 	ADCXQ BP, CX
@@ -291,14 +291,14 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 	MOVQ  R12, R14
 
 	// (C,t[0]) := t[1] + m*q[1] + C
-	ADCXQ R15, R14
-	MULXQ q<>+8(SB), AX, R15
+	ADCXQ R13, R14
+	MULXQ q<>+8(SB), AX, R13
 	ADOXQ AX, R14
 
 	// (C,t[1]) := t[2] + m*q[2] + C
-	ADCXQ CX, R15
+	ADCXQ CX, R13
 	MULXQ q<>+16(SB), AX, CX
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (C,t[2]) := t[3] + m*q[3] + C
 	ADCXQ BX, CX
@@ -310,12 +310,12 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 	ADCXQ AX, BX
 	ADOXQ BP, BX
 
-	// reduce element(R14,R15,CX,BX) using temp registers (R13,SI,R12,R11)
-	REDUCE(R14,R15,CX,BX,R13,SI,R12,R11)
+	// reduce element(R14,R13,CX,BX) using temp registers (SI,R12,R11,DI)
+	REDUCE(R14,R13,CX,BX,SI,R12,R11,DI)
 
 	MOVQ res+0(FP), AX
 	MOVQ R14, 0(AX)
-	MOVQ R15, 8(AX)
+	MOVQ R13, 8(AX)
 	MOVQ CX, 16(AX)
 	MOVQ BX, 24(AX)
 	RET
@@ -323,7 +323,7 @@ TEXT ·mul(SB), NOSPLIT, $0-24
 TEXT ·fromMont(SB), NOSPLIT, $0-8
 
 	// the algorithm is described here
-	// https://hackmd.io/@zkteam/modular_multiplication
+	// https://hackmd.io/@gnark/modular_multiplication
 	// when y = 1 we have:
 	// for i=0 to N-1
 	// 		t[i] = x[i]
@@ -335,7 +335,7 @@ TEXT ·fromMont(SB), NOSPLIT, $0-8
 	// 		t[N-1] = C
 	MOVQ res+0(FP), DX
 	MOVQ 0(DX), R14
-	MOVQ 8(DX), R15
+	MOVQ 8(DX), R13
 	MOVQ 16(DX), CX
 	MOVQ 24(DX), BX
 	XORQ DX, DX
@@ -351,14 +351,14 @@ TEXT ·fromMont(SB), NOSPLIT, $0-8
 	MOVQ  BP, R14
 
 	// (C,t[0]) := t[1] + m*q[1] + C
-	ADCXQ R15, R14
-	MULXQ q<>+8(SB), AX, R15
+	ADCXQ R13, R14
+	MULXQ q<>+8(SB), AX, R13
 	ADOXQ AX, R14
 
 	// (C,t[1]) := t[2] + m*q[2] + C
-	ADCXQ CX, R15
+	ADCXQ CX, R13
 	MULXQ q<>+16(SB), AX, CX
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (C,t[2]) := t[3] + m*q[3] + C
 	ADCXQ BX, CX
@@ -380,14 +380,14 @@ TEXT ·fromMont(SB), NOSPLIT, $0-8
 	MOVQ  BP, R14
 
 	// (C,t[0]) := t[1] + m*q[1] + C
-	ADCXQ R15, R14
-	MULXQ q<>+8(SB), AX, R15
+	ADCXQ R13, R14
+	MULXQ q<>+8(SB), AX, R13
 	ADOXQ AX, R14
 
 	// (C,t[1]) := t[2] + m*q[2] + C
-	ADCXQ CX, R15
+	ADCXQ CX, R13
 	MULXQ q<>+16(SB), AX, CX
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (C,t[2]) := t[3] + m*q[3] + C
 	ADCXQ BX, CX
@@ -409,14 +409,14 @@ TEXT ·fromMont(SB), NOSPLIT, $0-8
 	MOVQ  BP, R14
 
 	// (C,t[0]) := t[1] + m*q[1] + C
-	ADCXQ R15, R14
-	MULXQ q<>+8(SB), AX, R15
+	ADCXQ R13, R14
+	MULXQ q<>+8(SB), AX, R13
 	ADOXQ AX, R14
 
 	// (C,t[1]) := t[2] + m*q[2] + C
-	ADCXQ CX, R15
+	ADCXQ CX, R13
 	MULXQ q<>+16(SB), AX, CX
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (C,t[2]) := t[3] + m*q[3] + C
 	ADCXQ BX, CX
@@ -438,14 +438,14 @@ TEXT ·fromMont(SB), NOSPLIT, $0-8
 	MOVQ  BP, R14
 
 	// (C,t[0]) := t[1] + m*q[1] + C
-	ADCXQ R15, R14
-	MULXQ q<>+8(SB), AX, R15
+	ADCXQ R13, R14
+	MULXQ q<>+8(SB), AX, R13
 	ADOXQ AX, R14
 
 	// (C,t[1]) := t[2] + m*q[2] + C
-	ADCXQ CX, R15
+	ADCXQ CX, R13
 	MULXQ q<>+16(SB), AX, CX
-	ADOXQ AX, R15
+	ADOXQ AX, R13
 
 	// (C,t[2]) := t[3] + m*q[3] + C
 	ADCXQ BX, CX
@@ -455,12 +455,12 @@ TEXT ·fromMont(SB), NOSPLIT, $0-8
 	ADCXQ AX, BX
 	ADOXQ AX, BX
 
-	// reduce element(R14,R15,CX,BX) using temp registers (SI,DI,R8,R9)
-	REDUCE(R14,R15,CX,BX,SI,DI,R8,R9)
+	// reduce element(R14,R13,CX,BX) using temp registers (SI,DI,R8,R9)
+	REDUCE(R14,R13,CX,BX,SI,DI,R8,R9)
 
 	MOVQ res+0(FP), AX
 	MOVQ R14, 0(AX)
-	MOVQ R15, 8(AX)
+	MOVQ R13, 8(AX)
 	MOVQ CX, 16(AX)
 	MOVQ BX, 24(AX)
 	RET
