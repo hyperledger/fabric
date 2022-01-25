@@ -157,7 +157,7 @@ func TestDialerBadConfig(t *testing.T) {
 	_, err := dialer.Dial("127.0.0.1:8080", func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 		return nil
 	})
-	assert.EqualError(t, err, "error adding root certificate: asn1: syntax error: sequence truncated")
+	assert.EqualError(t, err, "error adding root certificate: x509: malformed certificate")
 }
 
 func TestDERtoPEM(t *testing.T) {
@@ -178,7 +178,7 @@ func TestStandardDialer(t *testing.T) {
 	_, err := standardDialer.Dial(cluster.EndpointCriteria{Endpoint: "127.0.0.1:8080", TLSRootCAs: certPool})
 	assert.EqualError(t,
 		err,
-		"failed creating gRPC client: error adding root certificate: asn1: syntax error: sequence truncated",
+		"failed creating gRPC client: error adding root certificate: x509: malformed certificate",
 	)
 }
 
