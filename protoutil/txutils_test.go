@@ -230,7 +230,7 @@ func TestCreateSignedTx(t *testing.T) {
 		},
 	}}
 	_, err = protoutil.CreateSignedTx(prop, signID, responses...)
-	require.Error(t, err, "Expected error because no endorsements were present")
+	require.Error(t, err, "Expected error with no endorsements")
 
 	// success
 	responses = []*pb.ProposalResponse{{
