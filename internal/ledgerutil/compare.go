@@ -84,7 +84,7 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 		if err != nil {
 			return 0, "", err
 		}
-		outputPubFileWriter, err := findAndWriteDifferences(outputDirPath, AllPubDiffsByKey, snapshotPubReader1, snapshotPubReader2, firstDiffs, firstRecords)
+		outputPubFileWriter, err := findAndWriteDifferences(outputDirPath, AllPubDiffsByKey, channelName, snapshotPubReader1, snapshotPubReader2, firstDiffs, firstRecords)
 		if err != nil {
 			return 0, "", err
 		}
@@ -103,7 +103,7 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 		if err != nil {
 			return 0, "", err
 		}
-		outputPvtFileWriter, err := findAndWriteDifferences(outputDirPath, AllPvtDiffsByKey, snapshotPvtReader1, snapshotPvtReader2, firstDiffs, firstRecords)
+		outputPvtFileWriter, err := findAndWriteDifferences(outputDirPath, AllPvtDiffsByKey, channelName, snapshotPvtReader1, snapshotPvtReader2, firstDiffs, firstRecords)
 		if err != nil {
 			return 0, "", err
 		}
@@ -112,7 +112,7 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 
 	// Generate early differences output file
 	if firstDiffs != 0 {
-		firstDiffsOutputFileWriter, err := newJSONFileWriter(filepath.Join(outputDirPath, FirstDiffsByHeight))
+		firstDiffsOutputFileWriter, err := newJSONFileWriter(filepath.Join(outputDirPath, FirstDiffsByHeight), channelName)
 		if err != nil {
 			return 0, "", err
 		}
@@ -130,10 +130,10 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 
 // Finds the differing records between two snapshot data files using SnapshotReaders and saves differences
 // to an output file. Simultaneously, keep track of the first n differences.
-func findAndWriteDifferences(outputDirPath string, outputFilename string, snapshotReader1 *privacyenabledstate.SnapshotReader, snapshotReader2 *privacyenabledstate.SnapshotReader,
+func findAndWriteDifferences(outputDirPath string, outputFilename string, channelName string, snapshotReader1 *privacyenabledstate.SnapshotReader, snapshotReader2 *privacyenabledstate.SnapshotReader,
 	firstDiffs int, firstRecords *firstRecords) (outputFileWriter *jsonArrayFileWriter, err error) {
 	// Create the output file
-	outputFileWriter, err = newJSONFileWriter(filepath.Join(outputDirPath, outputFilename))
+	outputFileWriter, err = newJSONFileWriter(filepath.Join(outputDirPath, outputFilename), channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -555,15 +555,16 @@ type jsonArrayFileWriter struct {
 	count              int
 }
 
-func newJSONFileWriter(filePath string) (*jsonArrayFileWriter, error) {
+func newJSONFileWriter(filePath string, ledgerid string) (*jsonArrayFileWriter, error) {
 	f, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0o644)
 	if err != nil {
 		return nil, err
 	}
 
 	b := bufio.NewWriter(f)
-	// Opening bracket for beginning of diffRecord list
-	_, err = b.Write([]byte("[\n"))
+	// Opening json brace, ledgerid, and beginning of diffRecord list
+	openingStr := fmt.Sprintf("{\n\"ledgerid\":\"%s\",\n\"diffRecords\":[\n", ledgerid)
+	_, err = b.Write([]byte(openingStr))
 	if err != nil {
 		return nil, err
 	}
@@ -596,7 +597,7 @@ func (w *jsonArrayFileWriter) addRecord(r interface{}) error {
 }
 
 func (w *jsonArrayFileWriter) close() error {
-	_, err := w.buffer.Write([]byte("]\n"))
+	_, err := w.buffer.Write([]byte("]\n}\n"))
 	if err != nil {
 		return err
 	}
