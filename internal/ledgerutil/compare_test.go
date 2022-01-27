@@ -217,194 +217,218 @@ func TestCompare(t *testing.T) {
 	}
 
 	// Expected outputs
-	expectedDifferenceResult := `[
-			{
-				"namespace" : "ns2",
-				"key" : "k1",
-				"snapshotrecord1" : {
-					"value" : "v3",
-					"blockNum" : 1,
-					"txNum" : 2
-				},
-				"snapshotrecord2" : {
-					"value" : "v4",
-					"blockNum" : 1,
-					"txNum" : 2
+	expectedDifferenceResult := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "ns2",
+					"key" : "k1",
+					"snapshotrecord1" : {
+						"value" : "v3",
+						"blockNum" : 1,
+						"txNum" : 2
+					},
+					"snapshotrecord2" : {
+						"value" : "v4",
+						"blockNum" : 1,
+						"txNum" : 2
+					}
 				}
-			}
-		]`
-	expectedMissingResult1 := `[
-			{
-				"namespace" : "ns1",
-				"key" : "k2",
-				"snapshotrecord1" : {
-					"value" : "v2",
-					"blockNum" : 1,
-					"txNum" : 1
-				},
-				"snapshotrecord2" : null
-			}
-		]`
-	expectedMissingResult2 := `[
-			{
-				"namespace" : "ns1",
-				"key" : "k2",
-				"snapshotrecord1" : null,
-				"snapshotrecord2" : {
-					"value" : "v2",
-					"blockNum" : 1,
-					"txNum" : 1
+			]
+		}`
+	expectedMissingResult1 := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "ns1",
+					"key" : "k2",
+					"snapshotrecord1" : {
+						"value" : "v2",
+						"blockNum" : 1,
+						"txNum" : 1
+					},
+					"snapshotrecord2" : null
 				}
-			}
-		]`
-	expectedMissingTailResult1 := `[
-			{
-				"namespace" : "ns2",
-				"key" : "k1",
-				"snapshotrecord1" : {
-					"value" : "v3",
-					"blockNum" : 1,
-					"txNum" : 2
-				},
-				"snapshotrecord2" : null
-			},
-			{
-				"namespace" : "ns3",
-				"key" : "k1",
-				"snapshotrecord1" : {
-					"value" : "v4",
-					"blockNum" : 2,
-					"txNum" : 0
-				},
-				"snapshotrecord2" : null
-			}
-		]`
-	expectedMissingTailResult2 := `[
-			{
-				"namespace" : "ns2",
-				"key" : "k1",
-				"snapshotrecord1" : null,
-				"snapshotrecord2" : {
-					"value" : "v3",
-					"blockNum" : 1,
-					"txNum" : 2
+			]
+		}`
+	expectedMissingResult2 := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "ns1",
+					"key" : "k2",
+					"snapshotrecord1" : null,
+					"snapshotrecord2" : {
+						"value" : "v2",
+						"blockNum" : 1,
+						"txNum" : 1
+					}
 				}
-			},
-			{
-				"namespace" : "ns3",
-				"key" : "k1",
-				"snapshotrecord1" : null,
-				"snapshotrecord2" : {
-					"value" : "v4",
-					"blockNum" : 2,
-					"txNum" : 0
+			]
+		}`
+	expectedMissingTailResult1 := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "ns2",
+					"key" : "k1",
+					"snapshotrecord1" : {
+						"value" : "v3",
+						"blockNum" : 1,
+						"txNum" : 2
+					},
+					"snapshotrecord2" : null
+				},
+				{
+					"namespace" : "ns3",
+					"key" : "k1",
+					"snapshotrecord1" : {
+						"value" : "v4",
+						"blockNum" : 2,
+						"txNum" : 0
+					},
+					"snapshotrecord2" : null
 				}
-			}
-		]`
+			]
+		}`
+	expectedMissingTailResult2 := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "ns2",
+					"key" : "k1",
+					"snapshotrecord1" : null,
+					"snapshotrecord2" : {
+						"value" : "v3",
+						"blockNum" : 1,
+						"txNum" : 2
+					}
+				},
+				{
+					"namespace" : "ns3",
+					"key" : "k1",
+					"snapshotrecord1" : null,
+					"snapshotrecord2" : {
+						"value" : "v4",
+						"blockNum" : 2,
+						"txNum" : 0
+					}
+				}
+			]
+		}`
 	expectedDiffDatabaseError := "the supplied snapshots appear to be non-comparable. State db types do not match." +
 		"\nSnapshot1 state db type: testdatabase\nSnapshot2 state db type: testdatabase2"
-	expectedFirstDiffs := `[
-		{
-			"namespace" : "ns1",
-			"key" : "k2",
-			"snapshotrecord1" : {
-				"value" : "v2",
-				"blockNum" : 1,
-				"txNum" : 1
-			},
-			"snapshotrecord2" : {
-				"value" : "v3",
-				"blockNum" : 1,
-				"txNum" : 1
-			}
-		},
-		{
-			"namespace" : "ns2",
-			"key" : "k1",
-			"snapshotrecord1" : {
-				"value" : "v3",
-				"blockNum" : 1,
-				"txNum" : 2
-			},
-			"snapshotrecord2" : null
-		},
-		{
-			"namespace" : "ns3",
-			"key" : "k2",
-			"snapshotrecord1" : null,
-			"snapshotrecord2" : {
-				"value" : "v5",
-				"blockNum" : 1,
-				"txNum" : 3
-			}
-		}
-	]`
-	expectedAllPubDiffs := `[
-		{
-			"namespace" : "ns1",
-			"key" : "k2",
-			"snapshotrecord1" : {
-				"value" : "v2",
-				"blockNum" : 1,
-				"txNum" : 1
-			},
-			"snapshotrecord2" : {
-				"value" : "v3",
-				"blockNum" : 1,
-				"txNum" : 1
-			}
-		},
-		{
-			"namespace" : "ns2",
-			"key" : "k1",
-			"snapshotrecord1" : {
-				"value" : "v3",
-				"blockNum" : 1,
-				"txNum" : 2
-			},
-			"snapshotrecord2" : null
-		},
-		{
-			"namespace" : "ns3",
-			"key" : "k1",
-			"snapshotrecord1" : {
-				"value" : "v4",
-				"blockNum" : 2,
-				"txNum" : 0
-			},
-			"snapshotrecord2" : {
-				"value" : "v4",
-				"blockNum" : 2,
-				"txNum" : 1
-			}
-		},
-		{
-			"namespace" : "ns3",
-			"key" : "k2",
-			"snapshotrecord1" : null,
-			"snapshotrecord2" : {
-				"value" : "v5",
-				"blockNum" : 1,
-				"txNum" : 3
-			}
-		}
-	]`
-	expectedPvtDiffResult := `[
+	expectedFirstDiffs := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "ns1",
+					"key" : "k2",
+					"snapshotrecord1" : {
+						"value" : "v2",
+						"blockNum" : 1,
+						"txNum" : 1
+					},
+					"snapshotrecord2" : {
+						"value" : "v3",
+						"blockNum" : 1,
+						"txNum" : 1
+					}
+				},
+				{
+					"namespace" : "ns2",
+					"key" : "k1",
+					"snapshotrecord1" : {
+						"value" : "v3",
+						"blockNum" : 1,
+						"txNum" : 2
+					},
+					"snapshotrecord2" : null
+				},
+				{
+					"namespace" : "ns3",
+					"key" : "k2",
+					"snapshotrecord1" : null,
+					"snapshotrecord2" : {
+						"value" : "v5",
+						"blockNum" : 1,
+						"txNum" : 3
+					}
+				}
+			]
+		}`
+	expectedAllPubDiffs := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
 			{
-				"namespace" : "_lifecycle$$h_implicit_org_Org1MSP",
-				"key" : "sk1",
+				"namespace" : "ns1",
+				"key" : "k2",
 				"snapshotrecord1" : {
-					"value" : "#!",
+					"value" : "v2",
 					"blockNum" : 1,
 					"txNum" : 1
 				},
 				"snapshotrecord2" : {
-					"value" : "$^",
+					"value" : "v3",
 					"blockNum" : 1,
 					"txNum" : 1
 				}
+			},
+			{
+				"namespace" : "ns2",
+				"key" : "k1",
+				"snapshotrecord1" : {
+					"value" : "v3",
+					"blockNum" : 1,
+					"txNum" : 2
+				},
+				"snapshotrecord2" : null
+			},
+			{
+				"namespace" : "ns3",
+				"key" : "k1",
+				"snapshotrecord1" : {
+					"value" : "v4",
+					"blockNum" : 2,
+					"txNum" : 0
+				},
+				"snapshotrecord2" : {
+					"value" : "v4",
+					"blockNum" : 2,
+					"txNum" : 1
+				}
+			},
+			{
+				"namespace" : "ns3",
+				"key" : "k2",
+				"snapshotrecord1" : null,
+				"snapshotrecord2" : {
+					"value" : "v5",
+					"blockNum" : 1,
+					"txNum" : 3
+				}
 			}
-		]`
+		]
+	}`
+	expectedPvtDiffResult := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+				{
+					"namespace" : "_lifecycle$$h_implicit_org_Org1MSP",
+					"key" : "sk1",
+					"snapshotrecord1" : {
+						"value" : "#!",
+						"blockNum" : 1,
+						"txNum" : 1
+					},
+					"snapshotrecord2" : {
+						"value" : "$^",
+						"blockNum" : 1,
+						"txNum" : 1
+					}
+				}
+			]
+		}`
 	expectedEmpty := "null"
 
 	testCases := map[string]struct {
@@ -778,49 +802,52 @@ func TestJSONArrayFileWriter(t *testing.T) {
 		},
 	}
 
-	expectedResult := `[
-		{
-			"namespace" : "abc",
-			"key" : "key-52",
-			"snapshotrecord1" : {
-				"value" : "red",
-				"blockNum" : 254,
-				"txNum" : 21
+	expectedResult := `{
+			"ledgerid" : "testchannel",
+			"diffRecords" : [
+			{
+				"namespace" : "abc",
+				"key" : "key-52",
+				"snapshotrecord1" : {
+					"value" : "red",
+					"blockNum" : 254,
+					"txNum" : 21
+				},
+				"snapshotrecord2" : {
+					"value" : "blue",
+					"blockNum" : 254,
+					"txNum" : 21
+				}
 			},
-			"snapshotrecord2" : {
-				"value" : "blue",
-				"blockNum" : 254,
-				"txNum" : 21
-			}
-		},
-		{
-			"namespace" : "abc",
-			"key" : "key-73",
-			"snapshotrecord1" : {
-				"value" : "green",
-				"blockNum" : 472,
-				"txNum" : 61
+			{
+				"namespace" : "abc",
+				"key" : "key-73",
+				"snapshotrecord1" : {
+					"value" : "green",
+					"blockNum" : 472,
+					"txNum" : 61
+				},
+				"snapshotrecord2" : null
 			},
-			"snapshotrecord2" : null
-		},
-		{
-			"namespace" : "xyz",
-			"key" : "key-44",
-			"snapshotrecord1" : null,
-			"snapshotrecord2" : {
-				"value" : "purple",
-				"blockNum" : 566,
-				"txNum" : 3
+			{
+				"namespace" : "xyz",
+				"key" : "key-44",
+				"snapshotrecord1" : null,
+				"snapshotrecord2" : {
+					"value" : "purple",
+					"blockNum" : 566,
+					"txNum" : 3
+				}
 			}
-		}
-	]`
+		]
+	}`
 
 	// Create temporary directory for output
 	resultDir, err := ioutil.TempDir("", "result")
 	require.NoError(t, err)
 	defer os.RemoveAll(resultDir)
 	// Create the output file
-	jsonResultFile, err := newJSONFileWriter(filepath.Join(resultDir, "result.json"))
+	jsonResultFile, err := newJSONFileWriter(filepath.Join(resultDir, "result.json"), "testchannel")
 	require.NoError(t, err)
 	// Write each sample diffRecord to the output file and close
 	for _, diffRecord := range sampleDiffRecords {
