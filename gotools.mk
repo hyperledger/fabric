@@ -9,7 +9,7 @@ GOTOOLS_BINDIR ?= $(shell go env GOPATH)/bin
 
 # go tool->path mapping
 go.fqp.counterfeiter := github.com/maxbrunsfeld/counterfeiter/v6
-go.fqp.ginkgo        := github.com/onsi/ginkgo/ginkgo
+go.fqp.ginkgo        := github.com/onsi/ginkgo/v2/ginkgo
 go.fqp.gocov         := github.com/axw/gocov/gocov
 go.fqp.gocov-xml     := github.com/AlekSi/gocov-xml
 go.fqp.gofumpt       := mvdan.cc/gofumpt

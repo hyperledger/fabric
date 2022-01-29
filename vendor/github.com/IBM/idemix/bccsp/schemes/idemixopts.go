@@ -236,7 +236,12 @@ func (o *IdemixCredentialSignerOpts) IssuerPublicKey() Key {
 	return o.IssuerPK
 }
 
+// NymEIDAuditData contains the data that is used to audit the nym EID.
+// Notice that this data should be used only after validating the corresponding signature.
 type NymEIDAuditData struct {
+	// Nym is the EID Nym
+	Nym *math.G1
+
 	// RNymEid is the randomness used to generate the EID Nym
 	RNymEid *math.Zr
 
@@ -245,6 +250,7 @@ type NymEIDAuditData struct {
 }
 
 type IdemixSignerMetadata struct {
+	NymEID          []byte
 	NymEIDAuditData *NymEIDAuditData
 }
 
@@ -289,9 +295,10 @@ func (o *IdemixSignerOpts) HashFunc() crypto.Hash {
 }
 
 type EidNymAuditOpts struct {
-	EidIndex     int
-	EnrollmentID string
-	RNymEid      *math.Zr
+	AuditVerificationType AuditVerificationType
+	EidIndex              int
+	EnrollmentID          string
+	RNymEid               *math.Zr
 }
 
 func (o *EidNymAuditOpts) HashFunc() crypto.Hash {
@@ -401,4 +408,14 @@ const (
 	ExpectStandard
 	// ExpectEidNym expects a SignatureType of type EidNym
 	ExpectEidNym
+)
+
+// AuditVerificationType describes the type of audit verification that is required
+type AuditVerificationType int
+
+const (
+	// AuditExpectSignature performs the audit verification against a signature
+	AuditExpectSignature AuditVerificationType = iota
+	// AuditExpectEidNym performs the audit verification against a Nym EID
+	AuditExpectEidNym
 )

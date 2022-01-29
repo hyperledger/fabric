@@ -16,7 +16,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/common"
 	"github.com/hyperledger/fabric/internal/peer/lifecycle/chaincode"
 	msptesttools "github.com/hyperledger/fabric/msp/mgmt/testtools"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

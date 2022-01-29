@@ -18,3 +18,7 @@ unit-tests-race:
 .PHONY: check-deps
 check-deps:
 	@go get -u github.com/google/addlicense
+
+.PHONY: idemixgen
+idemixgen:
+	@go install ./tools/idemixgen

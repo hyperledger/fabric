@@ -78,17 +78,13 @@ func (db *DB) newIterator(auxm *memDB, auxt tFiles, seq uint64, slice *util.Rang
 	}
 	rawIter := db.newRawIterator(auxm, auxt, islice, ro)
 	iter := &dbIter{
-		db:              db,
-		icmp:            db.s.icmp,
-		iter:            rawIter,
-		seq:             seq,
-		strict:          opt.GetStrict(db.s.o.Options, ro, opt.StrictReader),
-		disableSampling: db.s.o.GetDisableSeeksCompaction() || db.s.o.GetIteratorSamplingRate() <= 0,
-		key:             make([]byte, 0),
-		value:           make([]byte, 0),
-	}
-	if !iter.disableSampling {
-		iter.samplingGap = db.iterSamplingRate()
+		db:     db,
+		icmp:   db.s.icmp,
+		iter:   rawIter,
+		seq:    seq,
+		strict: opt.GetStrict(db.s.o.Options, ro, opt.StrictReader),
+		key:    make([]byte, 0),
+		value:  make([]byte, 0),
 	}
 	atomic.AddInt32(&db.aliveIters, 1)
 	runtime.SetFinalizer(iter, (*dbIter).Release)
@@ -111,14 +107,13 @@ const (
 
 // dbIter represent an interator states over a database session.
 type dbIter struct {
-	db              *DB
-	icmp            *iComparer
-	iter            iterator.Iterator
-	seq             uint64
-	strict          bool
-	disableSampling bool
+	db     *DB
+	icmp   *iComparer
+	iter   iterator.Iterator
+	seq    uint64
+	strict bool
 
-	samplingGap int
+	smaplingGap int
 	dir         dir
 	key         []byte
 	value       []byte
@@ -127,14 +122,10 @@ type dbIter struct {
 }
 
 func (i *dbIter) sampleSeek() {
-	if i.disableSampling {
-		return
-	}
-
 	ikey := i.iter.Key()
-	i.samplingGap -= len(ikey) + len(i.iter.Value())
-	for i.samplingGap < 0 {
-		i.samplingGap += i.db.iterSamplingRate()
+	i.smaplingGap -= len(ikey) + len(i.iter.Value())
+	for i.smaplingGap < 0 {
+		i.smaplingGap += i.db.iterSamplingRate()
 		i.db.sampleSeek(ikey)
 	}
 }

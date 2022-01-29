@@ -8,8 +8,7 @@ package chaincode_test
 
 import (
 	"github.com/hyperledger/fabric/core/chaincode"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

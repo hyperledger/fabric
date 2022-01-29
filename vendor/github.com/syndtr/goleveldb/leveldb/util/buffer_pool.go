@@ -195,9 +195,6 @@ func (p *BufferPool) String() string {
 		return "<nil>"
 	}
 
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	return fmt.Sprintf("BufferPool{B·%d Z·%v Zm·%v Zh·%v G·%d P·%d H·%d <·%d =·%d >·%d M·%d}",
 		p.baseline0, p.size, p.sizeMiss, p.sizeHalf, p.get, p.put, p.half, p.less, p.equal, p.greater, p.miss)
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/hyperledger/fabric-protos-go/peer"
 	txpkg "github.com/hyperledger/fabric/pkg/tx"
 	"github.com/hyperledger/fabric/protoutil"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

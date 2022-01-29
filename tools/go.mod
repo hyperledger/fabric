@@ -7,10 +7,9 @@ require (
 	github.com/axw/gocov v1.0.0
 	github.com/client9/misspell v0.3.4
 	github.com/go-swagger/go-swagger v0.25.0
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/protobuf v1.5.2
 	github.com/maxbrunsfeld/counterfeiter/v6 v6.2.2
-	github.com/onsi/ginkgo v1.11.0
-	github.com/onsi/gomega v1.7.0 // indirect
+	github.com/onsi/ginkgo/v2 v2.1.1
 	github.com/vektra/mockery v0.0.0-20181123154057-e78b021dcbb5
 	golang.org/x/lint v0.0.0-20191125180803-fdd1cda4f05f
 	golang.org/x/tools v0.1.0

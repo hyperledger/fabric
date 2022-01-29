@@ -6,8 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 package handlers
 
 import (
-	bccsp "github.com/IBM/idemix/bccsp/schemes"
 	"github.com/pkg/errors"
+
+	bccsp "github.com/IBM/idemix/bccsp/schemes"
 )
 
 type Signer struct {
@@ -46,7 +47,8 @@ func (s *Signer) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte
 	sigma, meta, err := s.SignatureScheme.Sign(
 		signerOpts.Credential,
 		userSecretKey.Sk,
-		nymSk.Pk, nymSk.Sk,
+		nymSk.Pk,
+		nymSk.Sk,
 		ipk.pk,
 		signerOpts.Attributes,
 		digest,
@@ -54,6 +56,7 @@ func (s *Signer) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte
 		signerOpts.EidIndex,
 		signerOpts.CRI,
 		signerOpts.SigType,
+		signerOpts.Metadata,
 	)
 	if err != nil {
 		return nil, err
@@ -89,6 +92,7 @@ func (v *Verifier) AuditNymEid(k bccsp.Key, signature, digest []byte, opts bccsp
 		signature,
 		signerOpts.EnrollmentID,
 		signerOpts.RNymEid,
+		signerOpts.AuditVerificationType,
 	)
 	if err != nil {
 		return false, err

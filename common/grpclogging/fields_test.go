@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/hyperledger/fabric/common/grpclogging"
 	"github.com/hyperledger/fabric/common/grpclogging/testpb"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"

@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

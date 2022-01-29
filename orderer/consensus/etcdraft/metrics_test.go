@@ -9,7 +9,7 @@ package etcdraft_test
 import (
 	"github.com/hyperledger/fabric/common/metrics/metricsfakes"
 	"github.com/hyperledger/fabric/orderer/consensus/etcdraft"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

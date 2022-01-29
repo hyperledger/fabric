@@ -69,9 +69,6 @@ func (tr *Transaction) Has(key []byte, ro *opt.ReadOptions) (bool, error) {
 // DB. And a nil Range.Limit is treated as a key after all keys in
 // the DB.
 //
-// The returned iterator has locks on its own resources, so it can live beyond
-// the lifetime of the transaction who creates them.
-//
 // WARNING: Any slice returned by interator (e.g. slice returned by calling
 // Iterator.Key() or Iterator.Key() methods), its content should not be modified
 // unless noted otherwise.
@@ -212,7 +209,7 @@ func (tr *Transaction) Commit() error {
 		tr.stats.startTimer()
 		var cerr error
 		for retry := 0; retry < 3; retry++ {
-			cerr = tr.db.s.commit(&tr.rec, false)
+			cerr = tr.db.s.commit(&tr.rec)
 			if cerr != nil {
 				tr.db.logf("transaction@commit error R·%d %q", retry, cerr)
 				select {
@@ -255,14 +252,13 @@ func (tr *Transaction) discard() {
 	// Discard transaction.
 	for _, t := range tr.tables {
 		tr.db.logf("transaction@discard @%d", t.fd.Num)
-		// Iterator may still use the table, so we use tOps.remove here.
-		tr.db.s.tops.remove(t.fd)
+		if err1 := tr.db.s.stor.Remove(t.fd); err1 == nil {
+			tr.db.s.reuseFileNum(t.fd.Num)
+		}
 	}
 }
 
 // Discard discards the transaction.
-// This method is noop if transaction is already closed (either committed or
-// discarded)
 //
 // Other methods should not be called after transaction has been discarded.
 func (tr *Transaction) Discard() {
@@ -286,10 +282,8 @@ func (db *DB) waitCompaction() error {
 // until in-flight transaction is committed or discarded.
 // The returned transaction handle is safe for concurrent use.
 //
-// Transaction is very expensive and can overwhelm compaction, especially if
+// Transaction is expensive and can overwhelm compaction, especially if
 // transaction size is small. Use with caution.
-// The rule of thumb is if you need to merge at least same amount of
-// `Options.WriteBuffer` worth of data then use transaction, otherwise don't.
 //
 // The transaction must be closed once done, either by committing or discarding
 // the transaction.
