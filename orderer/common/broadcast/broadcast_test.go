@@ -12,7 +12,7 @@ import (
 	"io"
 
 	"github.com/golang/protobuf/proto"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"

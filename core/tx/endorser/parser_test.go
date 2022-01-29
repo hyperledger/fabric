@@ -15,7 +15,7 @@ import (
 	endorsertx "github.com/hyperledger/fabric/core/tx/endorser"
 	"github.com/hyperledger/fabric/pkg/tx"
 	"github.com/hyperledger/fabric/protoutil"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

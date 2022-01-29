@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/container/externalbuilder"
 	"github.com/hyperledger/fabric/core/ledger"
 	ledgermock "github.com/hyperledger/fabric/core/ledger/mock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 )

@@ -26,7 +26,7 @@ import (
 	"github.com/hyperledger/fabric/common/metrics/statsd"
 	"github.com/hyperledger/fabric/core/operations"
 	"github.com/hyperledger/fabric/core/operations/fakes"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/tedsuo/ifrit"

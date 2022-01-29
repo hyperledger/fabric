@@ -18,7 +18,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/hyperledger/fabric/protoutil"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

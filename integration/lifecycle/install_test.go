@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	docker "github.com/fsouza/go-dockerclient"

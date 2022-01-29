@@ -34,7 +34,7 @@ import (
 	consensusmocks "github.com/hyperledger/fabric/orderer/consensus/mocks"
 	mockblockcutter "github.com/hyperledger/fabric/orderer/mocks/common/blockcutter"
 	"github.com/hyperledger/fabric/protoutil"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"github.com/pkg/errors"

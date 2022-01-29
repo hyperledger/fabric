@@ -18,7 +18,7 @@ import (
 	"github.com/hyperledger/fabric/core/dispatcher"
 	"github.com/hyperledger/fabric/protoutil"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/golang/protobuf/proto"

@@ -9,7 +9,7 @@ package endorser_test
 import (
 	"fmt"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	cb "github.com/hyperledger/fabric-protos-go/common"
