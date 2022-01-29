@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package dispatcher_test
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	lc "github.com/hyperledger/fabric-protos-go/peer/lifecycle"

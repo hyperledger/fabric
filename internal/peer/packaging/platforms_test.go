@@ -12,7 +12,7 @@ import (
 	"github.com/hyperledger/fabric/internal/peer/packaging"
 	"github.com/hyperledger/fabric/internal/peer/packaging/mock"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

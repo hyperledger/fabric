@@ -13,7 +13,7 @@ import (
 
 	"github.com/hyperledger/fabric/core/middleware"
 	"github.com/hyperledger/fabric/core/middleware/fakes"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

@@ -28,7 +28,7 @@ You must have the following installed:
 
 ::
 
-    $ go get github.com/onsi/ginkgo/ginkgo
+    $ go get github.com/onsi/ginkgo/v2
 
 Ensure that you have Docker for `Linux`_, `Mac`_ or `Windows`_ 1.12 or higher properly installed on
 your machine.
