@@ -32,7 +32,7 @@ the correct version tag. The command also installs the Hyperledger Fabric platfo
 binaries and config files for the version into the `/bin` and `/config` directories of `fabric-samples`.
 
 ```
-curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.2.2 1.4.9
+curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.2.5 1.5.2
 ```
 
 ## Bring up the test network
