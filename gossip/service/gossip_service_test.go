@@ -50,7 +50,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-const TIMEOUT = 45 * time.Second
+const TIMEOUT = 90 * time.Second
 
 func init() {
 	util.SetupTestLogging()
@@ -611,7 +611,9 @@ func (jmc *joinChanMsg) AnchorPeersOf(org api.OrgIdentityType) []api.AnchorPeer 
 }
 
 func waitForFullMembershipOrFailNow(t *testing.T, channel string, gossips []*gossipGRPC, peersNum int, timeout time.Duration, testPollInterval time.Duration) {
-	end := time.Now().Add(timeout)
+	logger.Warning("Waiting for", peersNum, "members")
+	start := time.Now()
+	end := start.Add(timeout)
 	var correctPeers int
 	for time.Now().Before(end) {
 		correctPeers = 0
@@ -621,6 +623,7 @@ func waitForFullMembershipOrFailNow(t *testing.T, channel string, gossips []*gos
 			}
 		}
 		if correctPeers == peersNum {
+			logger.Warning("Established full channel membership in", time.Since(start))
 			return
 		}
 		time.Sleep(testPollInterval)
