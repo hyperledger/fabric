@@ -11,9 +11,9 @@ Smart contract APIs are available for Go, Node.js, and Java.
 
 ## Fabric Application APIs
 
-Hyperledger Fabric offers a Fabric Gateway application API to support developing applications in Go, Node.js, and Java. This API uses the Gateway peer capability introduced in Fabric v2.4 to interact with the Fabric network, and is an evolution of the new application programming model introduced in Fabric v1.4. The Fabric Gateway API is the preferred API for developing applications for Fabric v2.4 onwards.
+Hyperledger Fabric offers a Fabric Gateway client API to support developing applications in Go, Node.js, and Java. This API uses the Gateway peer capability introduced in Fabric v2.4 to interact with the Fabric network, and is an evolution of the new application programming model introduced in Fabric v1.4. The Fabric Gateway client API is the preferred API for developing applications for Fabric v2.4 onwards.
 
-* [Fabric Gateway application API](https://github.com/hyperledger/fabric-gateway) and [documentation](https://hyperledger.github.io/fabric-gateway/).
+* [Fabric Gateway client API](https://github.com/hyperledger/fabric-gateway) and [documentation](https://hyperledger.github.io/fabric-gateway/).
 
 Legacy application SDKs also exist for various programming languages, and can be used with Fabric v2.4. These application SDKs support versions of Fabric prior to v2.4, and do not require the Gateway peer capability. They also include some functionality, such as administrative actions for managing enrollment of identities with a Certificate Authority (CA), that are not offered by the Fabric Gateway API. Application SDKs are available for Go, Node.js and Java.
 
