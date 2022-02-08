@@ -70,7 +70,7 @@ General:
 
     # Genesis method: The method by which the genesis block for the orderer
     # system channel is specified. The option can be one of:
-    #   "file" - path to a faile containing the genesis block or config block of system channel
+    #   "file" - path to a file containing the genesis block or config block of system channel
     #   "none" - allows an orderer to start without a system channel configuration
     GenesisMethod: file
 
