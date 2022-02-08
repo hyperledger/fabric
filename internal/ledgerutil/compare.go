@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"bytes"
 	"container/heap"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -84,7 +85,7 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 		if err != nil {
 			return 0, "", err
 		}
-		outputPubFileWriter, err := findAndWriteDifferences(outputDirPath, AllPubDiffsByKey, channelName, snapshotPubReader1, snapshotPubReader2, firstDiffs, firstRecords)
+		outputPubFileWriter, err := findAndWriteDifferences(outputDirPath, AllPubDiffsByKey, channelName, false, snapshotPubReader1, snapshotPubReader2, firstDiffs, firstRecords)
 		if err != nil {
 			return 0, "", err
 		}
@@ -103,7 +104,7 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 		if err != nil {
 			return 0, "", err
 		}
-		outputPvtFileWriter, err := findAndWriteDifferences(outputDirPath, AllPvtDiffsByKey, channelName, snapshotPvtReader1, snapshotPvtReader2, firstDiffs, firstRecords)
+		outputPvtFileWriter, err := findAndWriteDifferences(outputDirPath, AllPvtDiffsByKey, channelName, true, snapshotPvtReader1, snapshotPvtReader2, firstDiffs, firstRecords)
 		if err != nil {
 			return 0, "", err
 		}
@@ -130,7 +131,8 @@ func Compare(snapshotDir1 string, snapshotDir2 string, outputDirLoc string, firs
 
 // Finds the differing records between two snapshot data files using SnapshotReaders and saves differences
 // to an output file. Simultaneously, keep track of the first n differences.
-func findAndWriteDifferences(outputDirPath string, outputFilename string, channelName string, snapshotReader1 *privacyenabledstate.SnapshotReader, snapshotReader2 *privacyenabledstate.SnapshotReader,
+func findAndWriteDifferences(outputDirPath string, outputFilename string, channelName string, hashed bool,
+	snapshotReader1 *privacyenabledstate.SnapshotReader, snapshotReader2 *privacyenabledstate.SnapshotReader,
 	firstDiffs int, firstRecords *firstRecords) (outputFileWriter *jsonArrayFileWriter, err error) {
 	// Create the output file
 	outputFileWriter, err = newJSONFileWriter(filepath.Join(outputDirPath, outputFilename), channelName)
@@ -161,7 +163,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 		case 0: // Keys are the same, look for a difference in records
 			if !(proto.Equal(snapshotRecord1, snapshotRecord2)) {
 				// Keys are the same but records are different
-				diffRecord, err := newDiffRecord(namespace1, snapshotRecord1, snapshotRecord2)
+				diffRecord, err := newDiffRecord(namespace1, hashed, snapshotRecord1, snapshotRecord2)
 				if err != nil {
 					return nil, err
 				}
@@ -186,7 +188,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 
 		case 1: // Key 1 is bigger, snapshot 1 is missing a record
 			// Snapshot 2 has the missing record, add missing to output JSON file
-			diffRecord, err := newDiffRecord(namespace2, nil, snapshotRecord2)
+			diffRecord, err := newDiffRecord(namespace2, hashed, nil, snapshotRecord2)
 			if err != nil {
 				return nil, err
 			}
@@ -206,7 +208,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 
 		case -1: // Key 2 is bigger, snapshot 2 is missing a record
 			// Snapshot 1 has the missing record, add missing to output JSON file
-			diffRecord, err := newDiffRecord(namespace1, snapshotRecord1, nil)
+			diffRecord, err := newDiffRecord(namespace1, hashed, snapshotRecord1, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -235,7 +237,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 	case snapshotRecord1 != nil: // Snapshot 2 is missing a record
 		for snapshotRecord1 != nil {
 			// Add missing to output JSON file
-			diffRecord, err := newDiffRecord(namespace1, snapshotRecord1, nil)
+			diffRecord, err := newDiffRecord(namespace1, hashed, snapshotRecord1, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -255,7 +257,7 @@ func findAndWriteDifferences(outputDirPath string, outputFilename string, channe
 	case snapshotRecord2 != nil: // Snapshot 1 is missing a record
 		for snapshotRecord2 != nil {
 			// Add missing to output JSON file
-			diffRecord, err := newDiffRecord(namespace2, nil, snapshotRecord2)
+			diffRecord, err := newDiffRecord(namespace2, hashed, nil, snapshotRecord2)
 			if err != nil {
 				return nil, err
 			}
@@ -345,12 +347,13 @@ func (s *diffRecordHeap) Pop() interface{} {
 type diffRecord struct {
 	Namespace string          `json:"namespace,omitempty"`
 	Key       string          `json:"key,omitempty"`
+	Hashed    bool            `json:"hashed"`
 	Record1   *snapshotRecord `json:"snapshotrecord1"`
 	Record2   *snapshotRecord `json:"snapshotrecord2"`
 }
 
 // Creates a new diffRecord
-func newDiffRecord(namespace string, record1 *privacyenabledstate.SnapshotRecord,
+func newDiffRecord(namespace string, hashed bool, record1 *privacyenabledstate.SnapshotRecord,
 	record2 *privacyenabledstate.SnapshotRecord) (*diffRecord, error) {
 	var s1, s2 *snapshotRecord = nil, nil // snapshot records
 	var k string                          // key
@@ -358,16 +361,16 @@ func newDiffRecord(namespace string, record1 *privacyenabledstate.SnapshotRecord
 
 	// Snapshot2 has a missing record
 	if record1 != nil {
-		k = string(record1.Key)
-		s1, err = newSnapshotRecord(record1)
+		k = bytesToString(record1.Key, hashed)
+		s1, err = newSnapshotRecord(record1, hashed)
 		if err != nil {
 			return nil, err
 		}
 	}
 	// Snapshot1 has a missing record
 	if record2 != nil {
-		k = string(record2.Key)
-		s2, err = newSnapshotRecord(record2)
+		k = bytesToString(record2.Key, hashed)
+		s2, err = newSnapshotRecord(record2, hashed)
 		if err != nil {
 			return nil, err
 		}
@@ -376,6 +379,7 @@ func newDiffRecord(namespace string, record1 *privacyenabledstate.SnapshotRecord
 	return &diffRecord{
 		Namespace: namespace,
 		Key:       k,
+		Hashed:    hashed,
 		Record1:   s1,
 		Record2:   s2,
 	}, nil
@@ -428,17 +432,27 @@ func earlierSSRecord(r1 *snapshotRecord, r2 *snapshotRecord) *snapshotRecord {
 }
 
 // Creates a new SnapshotRecord
-func newSnapshotRecord(record *privacyenabledstate.SnapshotRecord) (*snapshotRecord, error) {
+func newSnapshotRecord(record *privacyenabledstate.SnapshotRecord, hashed bool) (*snapshotRecord, error) {
 	blockNum, txNum, err := heightFromBytes(record.Version)
 	if err != nil {
 		return nil, err
 	}
 
 	return &snapshotRecord{
-		Value:    string(record.Value),
+		Value:    bytesToString(record.Value, hashed),
 		BlockNum: blockNum,
 		TxNum:    txNum,
 	}, nil
+}
+
+// Converts byte slice to string, respects hashed data integrity
+// If data is hashed, converts byte slice to hexadecimal string encoding
+func bytesToString(v []byte, h bool) string {
+	if h {
+		return hex.EncodeToString(v)
+	} else {
+		return string(v)
+	}
 }
 
 // Obtain the block height and transaction height of a snapshot from its version bytes

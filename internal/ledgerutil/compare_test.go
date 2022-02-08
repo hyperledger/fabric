@@ -223,6 +223,7 @@ func TestCompare(t *testing.T) {
 				{
 					"namespace" : "ns2",
 					"key" : "k1",
+					"hashed" : false,
 					"snapshotrecord1" : {
 						"value" : "v3",
 						"blockNum" : 1,
@@ -242,6 +243,7 @@ func TestCompare(t *testing.T) {
 				{
 					"namespace" : "ns1",
 					"key" : "k2",
+					"hashed" : false,
 					"snapshotrecord1" : {
 						"value" : "v2",
 						"blockNum" : 1,
@@ -257,6 +259,7 @@ func TestCompare(t *testing.T) {
 				{
 					"namespace" : "ns1",
 					"key" : "k2",
+					"hashed" : false,
 					"snapshotrecord1" : null,
 					"snapshotrecord2" : {
 						"value" : "v2",
@@ -272,6 +275,7 @@ func TestCompare(t *testing.T) {
 				{
 					"namespace" : "ns2",
 					"key" : "k1",
+					"hashed" : false,
 					"snapshotrecord1" : {
 						"value" : "v3",
 						"blockNum" : 1,
@@ -282,6 +286,7 @@ func TestCompare(t *testing.T) {
 				{
 					"namespace" : "ns3",
 					"key" : "k1",
+					"hashed" : false,
 					"snapshotrecord1" : {
 						"value" : "v4",
 						"blockNum" : 2,
@@ -297,6 +302,7 @@ func TestCompare(t *testing.T) {
 				{
 					"namespace" : "ns2",
 					"key" : "k1",
+					"hashed" : false,
 					"snapshotrecord1" : null,
 					"snapshotrecord2" : {
 						"value" : "v3",
@@ -307,6 +313,7 @@ func TestCompare(t *testing.T) {
 				{
 					"namespace" : "ns3",
 					"key" : "k1",
+					"hashed" : false,
 					"snapshotrecord1" : null,
 					"snapshotrecord2" : {
 						"value" : "v4",
@@ -324,6 +331,7 @@ func TestCompare(t *testing.T) {
 				{
 					"namespace" : "ns1",
 					"key" : "k2",
+					"hashed" : false,
 					"snapshotrecord1" : {
 						"value" : "v2",
 						"blockNum" : 1,
@@ -338,6 +346,7 @@ func TestCompare(t *testing.T) {
 				{
 					"namespace" : "ns2",
 					"key" : "k1",
+					"hashed" : false,
 					"snapshotrecord1" : {
 						"value" : "v3",
 						"blockNum" : 1,
@@ -348,6 +357,7 @@ func TestCompare(t *testing.T) {
 				{
 					"namespace" : "ns3",
 					"key" : "k2",
+					"hashed" : false,
 					"snapshotrecord1" : null,
 					"snapshotrecord2" : {
 						"value" : "v5",
@@ -363,6 +373,7 @@ func TestCompare(t *testing.T) {
 			{
 				"namespace" : "ns1",
 				"key" : "k2",
+				"hashed" : false,
 				"snapshotrecord1" : {
 					"value" : "v2",
 					"blockNum" : 1,
@@ -377,6 +388,7 @@ func TestCompare(t *testing.T) {
 			{
 				"namespace" : "ns2",
 				"key" : "k1",
+				"hashed" : false,
 				"snapshotrecord1" : {
 					"value" : "v3",
 					"blockNum" : 1,
@@ -387,6 +399,7 @@ func TestCompare(t *testing.T) {
 			{
 				"namespace" : "ns3",
 				"key" : "k1",
+				"hashed" : false,
 				"snapshotrecord1" : {
 					"value" : "v4",
 					"blockNum" : 2,
@@ -401,6 +414,7 @@ func TestCompare(t *testing.T) {
 			{
 				"namespace" : "ns3",
 				"key" : "k2",
+				"hashed" : false,
 				"snapshotrecord1" : null,
 				"snapshotrecord2" : {
 					"value" : "v5",
@@ -415,14 +429,15 @@ func TestCompare(t *testing.T) {
 			"diffRecords" : [
 				{
 					"namespace" : "_lifecycle$$h_implicit_org_Org1MSP",
-					"key" : "sk1",
+					"key" : "736b31",
+					"hashed" : true,
 					"snapshotrecord1" : {
-						"value" : "#!",
+						"value" : "2321",
 						"blockNum" : 1,
 						"txNum" : 1
 					},
 					"snapshotrecord2" : {
-						"value" : "$^",
+						"value" : "245e",
 						"blockNum" : 1,
 						"txNum" : 1
 					}
@@ -769,6 +784,7 @@ func TestJSONArrayFileWriter(t *testing.T) {
 		{
 			Namespace: "abc",
 			Key:       "key-52",
+			Hashed:    false,
 			Record1: &snapshotRecord{
 				Value:    "red",
 				BlockNum: 254,
@@ -783,6 +799,7 @@ func TestJSONArrayFileWriter(t *testing.T) {
 		{
 			Namespace: "abc",
 			Key:       "key-73",
+			Hashed:    false,
 			Record1: &snapshotRecord{
 				Value:    "green",
 				BlockNum: 472,
@@ -793,6 +810,7 @@ func TestJSONArrayFileWriter(t *testing.T) {
 		{
 			Namespace: "xyz",
 			Key:       "key-44",
+			Hashed:    false,
 			Record1:   nil,
 			Record2: &snapshotRecord{
 				Value:    "purple",
@@ -808,6 +826,7 @@ func TestJSONArrayFileWriter(t *testing.T) {
 			{
 				"namespace" : "abc",
 				"key" : "key-52",
+				"hashed" : false,
 				"snapshotrecord1" : {
 					"value" : "red",
 					"blockNum" : 254,
@@ -822,6 +841,7 @@ func TestJSONArrayFileWriter(t *testing.T) {
 			{
 				"namespace" : "abc",
 				"key" : "key-73",
+				"hashed" : false,
 				"snapshotrecord1" : {
 					"value" : "green",
 					"blockNum" : 472,
@@ -832,6 +852,7 @@ func TestJSONArrayFileWriter(t *testing.T) {
 			{
 				"namespace" : "xyz",
 				"key" : "key-44",
+				"hashed" : false,
 				"snapshotrecord1" : null,
 				"snapshotrecord2" : {
 					"value" : "purple",
