@@ -101,7 +101,7 @@ func constructHashedIndexFor(ledgerID string, db *leveldbhelper.DBHandle) error 
 				return err
 			}
 
-			txPvtData, err := v11DecodeKV(k, v, nil)
+			txPvtData, err := v11DecodeKV(k, v)
 			if err != nil {
 				return err
 			}

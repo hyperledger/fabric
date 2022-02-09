@@ -31,6 +31,8 @@ var (
 	bootKVHashesKeyPrefix            = []byte{9}
 	lastBlockInBootSnapshotKey       = []byte{'a'}
 	hashedIndexKeyPrefix             = []byte{'b'}
+	purgeMarkerKeyPrefix             = []byte{'c'}
+	purgeMarkerCollKeyPrefix         = []byte{'d'}
 
 	nilByte    = byte(0)
 	emptyValue = []byte{}
@@ -282,6 +284,31 @@ func encodeHashedIndexKey(k *hashedIndexKey) []byte {
 	encKey = append(encKey, nilByte)
 	encKey = append(encKey, k.pvtkeyHash...)
 	return append(encKey, version.NewHeight(k.blkNum, k.txNum).ToBytes()...)
+}
+
+func encodePurgeMarkerCollKey(k *purgeMarkerCollKey) []byte {
+	encKey := append(purgeMarkerCollKeyPrefix, []byte(k.ns)...)
+	encKey = append(encKey, nilByte)
+	encKey = append(encKey, []byte(k.coll)...)
+	return encKey
+}
+
+func encodePurgeMarkerKey(k *purgeMarkerKey) []byte {
+	encKey := append(purgeMarkerKeyPrefix, []byte(k.ns)...)
+	encKey = append(encKey, nilByte)
+	encKey = append(encKey, []byte(k.coll)...)
+	encKey = append(encKey, nilByte)
+	encKey = append(encKey, k.pvtkeyHash...)
+	return encKey
+}
+
+func encodePurgeMarkerVal(v *purgeMarkerVal) []byte {
+	return version.NewHeight(v.blkNum, v.txNum).ToBytes()
+}
+
+func decodePurgeMarkerVal(b []byte) (*version.Height, error) {
+	v, _, err := version.NewHeightFromBytes(b)
+	return v, err
 }
 
 func deriveDataKeyFromEncodedHashedIndexKey(encHashedIndexKey []byte) ([]byte, error) {
