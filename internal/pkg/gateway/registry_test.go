@@ -32,6 +32,7 @@ func TestOrdererCache(t *testing.T) {
 	orderers, err := test.server.registry.orderers(channelName)
 	require.NoError(t, err)
 	require.Len(t, orderers, 1)
+	require.Len(t, orderers[0].tlsRootCerts, 3) // 1 tlsrootCA + 2 tlsintermediateCAs
 
 	// trigger the config update callback, updating the orderers
 	bundle, err := createChannelConfigBundle(channelName, []string{"orderer1:7050", "orderer2:7050", "orderer3:7050"})
@@ -40,6 +41,7 @@ func TestOrdererCache(t *testing.T) {
 	orderers, err = test.server.registry.orderers(channelName)
 	require.NoError(t, err)
 	require.Len(t, orderers, 3)
+	require.Len(t, orderers[2].tlsRootCerts, 2) // 1 tlsrootCA + 1 tlsintermediateCA from sampleconfig folder
 }
 
 func TestStaleOrdererConnections(t *testing.T) {
@@ -75,8 +77,6 @@ func TestStaleOrdererConnections(t *testing.T) {
 
 func TestStaleMultiChannelOrdererConnections(t *testing.T) {
 	channel1 := "channel1"
-	// channel2 := "channel2"
-	// channel3 := "channel3"
 
 	def := &testDef{
 		config: buildConfig(t, []string{"orderer1", "orderer2"}),
@@ -121,6 +121,10 @@ func TestStaleMultiChannelOrdererConnections(t *testing.T) {
 func buildConfig(t *testing.T, orderers []string) *dp.ConfigResult {
 	ca, err := tlsgen.NewCA()
 	require.NoError(t, err)
+	ica1, err := ca.NewIntermediateCA()
+	require.NoError(t, err)
+	ica2, err := ica1.NewIntermediateCA()
+	require.NoError(t, err)
 	var endpoints []*dp.Endpoint
 	for _, o := range orderers {
 		endpoints = append(endpoints, &dp.Endpoint{Host: o, Port: 7050})
@@ -134,7 +138,8 @@ func buildConfig(t *testing.T, orderers []string) *dp.ConfigResult {
 		},
 		Msps: map[string]*msp.FabricMSPConfig{
 			"msp1": {
-				TlsRootCerts: [][]byte{ca.CertBytes()},
+				TlsRootCerts:         [][]byte{ca.CertBytes()},
+				TlsIntermediateCerts: [][]byte{ica1.CertBytes(), ica2.CertBytes()},
 			},
 		},
 	}
