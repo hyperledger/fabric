@@ -353,7 +353,8 @@ func (reg *registry) connectChannelPeers(channel string, force bool) error {
 	for mspid, infoset := range reg.discovery.IdentityInfo().ByOrg() {
 		var tlsRootCerts [][]byte
 		if mspInfo, ok := config.GetMsps()[mspid]; ok {
-			tlsRootCerts = mspInfo.GetTlsRootCerts()
+			tlsRootCerts = append(tlsRootCerts, mspInfo.GetTlsRootCerts()...)
+			tlsRootCerts = append(tlsRootCerts, mspInfo.GetTlsIntermediateCerts()...)
 		}
 		for _, info := range infoset {
 			pkiid := info.PKIId
@@ -402,7 +403,8 @@ func (reg *registry) config(channel string) ([]*endpointConfig, error) {
 	for mspid, eps := range config.GetOrderers() {
 		var tlsRootCerts [][]byte
 		if mspInfo, ok := config.GetMsps()[mspid]; ok {
-			tlsRootCerts = mspInfo.GetTlsRootCerts()
+			tlsRootCerts = append(tlsRootCerts, mspInfo.GetTlsRootCerts()...)
+			tlsRootCerts = append(tlsRootCerts, mspInfo.GetTlsIntermediateCerts()...)
 		}
 		for _, ep := range eps.Endpoint {
 			address := fmt.Sprintf("%s:%d", ep.Host, ep.Port)
@@ -420,7 +422,9 @@ func (reg *registry) configUpdate(bundle *channelconfig.Bundle) {
 		var channelOrderers []*endpointConfig
 		for _, org := range ordererConfig.Organizations() {
 			mspid := org.MSPID()
-			tlsRootCerts := org.MSP().GetTLSRootCerts()
+			msp := org.MSP()
+			tlsRootCerts := append([][]byte{}, msp.GetTLSRootCerts()...)
+			tlsRootCerts = append(tlsRootCerts, msp.GetTLSIntermediateCerts()...)
 			for _, address := range org.Endpoints() {
 				channelOrderers = append(channelOrderers, &endpointConfig{address: address, mspid: mspid, tlsRootCerts: tlsRootCerts})
 				reg.logger.Debugw("Channel orderer", "address", address, "mspid", mspid)
