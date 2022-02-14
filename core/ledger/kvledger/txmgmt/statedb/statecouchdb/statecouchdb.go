@@ -1098,6 +1098,9 @@ func (scanner *queryScanner) GetBookmarkAndClose() string {
 		retval = scanner.paginationInfo.bookmark
 	} else {
 		retval = scanner.queryDefinition.startKey
+		if retval == scanner.queryDefinition.endKey {
+			retval = ""
+		}
 	}
 	scanner.Close()
 	return retval

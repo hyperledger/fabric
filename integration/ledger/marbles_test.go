@@ -124,10 +124,8 @@ var _ = Describe("all shim APIs for non-private data", func() {
 		bookmark = helper.assertQueryMarblesWithPagination(ccName, peer, expectedQueryResult,
 			"getMarblesByRangeWithPagination", "marble-1", "marble-6", "3", bookmark)
 
-		By("quering marbles by range with pagination size 3, 3rd call should return no marble")
-		expectedQueryResult = make([]*marbleQueryResult, 0)
-		helper.assertQueryMarblesWithPagination(ccName, peer, expectedQueryResult,
-			"getMarblesByRangeWithPagination", "marble-1", "marble-6", "3", bookmark)
+		By("after 2nd call, bookmark should be empty string")
+		Expect(bookmark).To(Equal(""))
 
 		By("quering marbles by search criteria with pagination size 10, 1st call")
 		bookmark = ""

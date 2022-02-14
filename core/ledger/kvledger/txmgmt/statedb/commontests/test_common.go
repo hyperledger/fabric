@@ -913,6 +913,17 @@ func TestPaginatedRangeQuery(t *testing.T, dbProvider statedb.VersionedDBProvide
 	returnKeys = []string{"key1", "key10", "key11", "key12"}
 	_, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(4), returnKeys)
 	require.NoError(t, err)
+
+	// Test the returned bookmark of range query when there are no more results in that range
+	returnKeys = []string{"key1", "key10", "key11"}
+	nextStartKey, err = executeRangeQuery(t, db, "ns1", "key1", "key15", int32(3), returnKeys)
+	require.NoError(t, err)
+
+	// NextStartKey is now passed in as startKey, and return the nextStartKey which should be empty string
+	returnKeys = []string{"key12", "key13", "key14"}
+	nextStartKey, err = executeRangeQuery(t, db, "ns1", nextStartKey, "key15", int32(3), returnKeys)
+	require.NoError(t, err)
+	require.Equal(t, "", nextStartKey)
 }
 
 // TestRangeQuerySpecialCharacters tests range queries for keys with special characters and/or non-English characters

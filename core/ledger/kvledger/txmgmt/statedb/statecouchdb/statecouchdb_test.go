@@ -1690,7 +1690,7 @@ func testRangeQueryWithPageSize(
 			continue
 		}
 		nextStartKey := itr.GetBookmarkAndClose()
-		if nextStartKey == endKey {
+		if nextStartKey == "" {
 			break
 		}
 		itr, err = db.GetStateRangeScanIteratorWithPagination(ns, nextStartKey, endKey, int32(pageSize))
