@@ -15,6 +15,7 @@ Key Concepts
    orderer/ordering_service.md
    smartcontract/smartcontract.md
    chaincode_lifecycle.md
+   gateway.md
    private-data/private-data.md
    capabilities_concept.md
    security_model.md
