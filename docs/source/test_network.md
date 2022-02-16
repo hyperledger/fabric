@@ -386,10 +386,6 @@ local machine, you can use the tutorials to start developing your own solution:
 - Visit the [Running a Fabric Application](write_first_app.html) tutorial
 to learn how to use the APIs provided by the Fabric SDKs to invoke smart
 contracts from your client applications.
-- If you are ready to deploy a more complicated smart contract to the network, follow
-the [commercial paper tutorial](tutorial/commercial_paper.html) to explore a
-use case in which two organizations use a blockchain network to trade commercial
-paper.
 
 You can find the complete list of Fabric tutorials on the [tutorials](tutorials.html)
 page.
