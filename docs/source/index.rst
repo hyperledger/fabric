@@ -20,7 +20,6 @@ modularity and versatility for a broad set of industry use cases.
    key_concepts
    getting_started
    getting_started_run_fabric
-   developapps/developing_applications
    tutorials
    deployment_guide_overview
    ops_guide
