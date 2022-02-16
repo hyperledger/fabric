@@ -21,6 +21,8 @@ const (
 		". Requesting a report with many differences may result in a large amount " +
 		"of memory usage. Defaults to 10. If set to 0, will not produce " +
 		ledgerutil.FirstDiffsByHeight + "."
+
+	identifyTxsErrorMessage = "Identify Txs Error: "
 )
 
 var (
@@ -31,6 +33,11 @@ var (
 	snapshotPath2 = compare.Arg("snapshotPath2", "Second ledger snapshot directory.").Required().String()
 	outputDir     = compare.Flag("outputDir", outputDirDesc).Short('o').String()
 	firstDiffs    = compare.Flag("firstDiffs", firstDiffsDesc).Short('f').Default("10").Int()
+
+	identifyTxs = app.Command("identifytxs", "Identify the transaction that causes difference in snapshots.")
+	ledgerPath  = identifyTxs.Arg("ledgerPath", "Ledger directory").Required().String()
+	channelName = identifyTxs.Flag("channel", "Channel name to inspect").Short('c').Required().String()
+	outputFile  = identifyTxs.Flag("outputFile", "result file").Short('o').Required().String()
 
 	args = os.Args[1:]
 )
@@ -70,5 +77,15 @@ func main() {
 			fmt.Printf("Results saved to %s. Total differences found: %d\n", outputDirPath, count)
 			os.Exit(2)
 		}
+
+	case identifyTxs.FullCommand():
+
+		err := ledgerutil.IdentifyTxs(*ledgerPath, *channelName, *outputFile)
+		if err != nil {
+			fmt.Printf("%s%s\n", identifyTxsErrorMessage, err)
+			os.Exit(1)
+		}
+
+		fmt.Print("\nIdentifyTxs successful.\n")
 	}
 }
