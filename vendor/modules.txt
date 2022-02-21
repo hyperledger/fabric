@@ -140,6 +140,8 @@ github.com/eapache/go-xerial-snappy
 # github.com/eapache/queue v1.1.0
 ## explicit
 github.com/eapache/queue
+# github.com/felixge/httpsnoop v1.0.1
+github.com/felixge/httpsnoop
 # github.com/frankban/quicktest v1.11.3
 ## explicit
 # github.com/fsnotify/fsnotify v1.4.9
@@ -175,7 +177,7 @@ github.com/golang/protobuf/ptypes/timestamp
 # github.com/golang/snappy v0.0.3-0.20201103224600-674baa8c7fc3
 ## explicit
 github.com/golang/snappy
-# github.com/gorilla/handlers v1.4.0
+# github.com/gorilla/handlers v1.5.1
 ## explicit
 github.com/gorilla/handlers
 # github.com/gorilla/mux v1.8.0
