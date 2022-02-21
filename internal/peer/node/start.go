@@ -825,6 +825,7 @@ func serve(args []string) error {
 				serverEndorser,
 				discoveryService,
 				peerInstance,
+				&serverConfig.SecOpts,
 				aclProvider,
 				coreConfig.LocalMSPID,
 				coreConfig.GatewayOptions,

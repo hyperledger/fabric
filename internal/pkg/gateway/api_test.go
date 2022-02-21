@@ -27,6 +27,7 @@ import (
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
+	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
@@ -1764,9 +1765,12 @@ func TestNilArgs(t *testing.T) {
 		&mocks.CommitFinder{},
 		&mocks.ACLChecker{},
 		&mocks.LedgerProvider{},
-		common.PKIidType("id1"),
-		"localhost:7051",
+		gdiscovery.NetworkMember{
+			PKIid:    common.PKIidType("id1"),
+			Endpoint: "localhost:7051",
+		},
 		"msp1",
+		&comm.SecureOptions{},
 		config.GetOptions(viper.New()),
 	)
 	ctx := context.Background()
@@ -1905,7 +1909,12 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		EndorsementTimeout: endorsementTimeout,
 	}
 
-	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, common.PKIidType("id1"), "localhost:7051", "msp1", options)
+	member := gdiscovery.NetworkMember{
+		PKIid:    common.PKIidType("id1"),
+		Endpoint: "localhost:7051",
+	}
+
+	server := newServer(localEndorser, disc, mockFinder, mockPolicy, mockLedgerProvider, member, "msp1", &comm.SecureOptions{}, options)
 
 	dialer := &mocks.Dialer{}
 	dialer.Returns(nil, nil)
@@ -2100,6 +2109,10 @@ func createMockPeer(t *testing.T, endorser *endorserState) *dp.Peer {
 
 func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer) *endpointFactory {
 	var endpoint string
+	ca, err := tlsgen.NewCA()
+	require.NoError(t, err, "failed to create CA")
+	pair, err := ca.NewClientCertKeyPair()
+	require.NoError(t, err, "failed to create client key pair")
 	return &endpointFactory{
 		timeout: 5 * time.Second,
 		connectEndorser: func(conn *grpc.ClientConn) peer.EndorserClient {
@@ -2127,6 +2140,8 @@ func createEndpointFactory(t *testing.T, definition *endpointDef, dialer dialer)
 			endpoint = target
 			return dialer(ctx, target, opts...)
 		},
+		clientKey:  pair.Key,
+		clientCert: pair.Cert,
 	}
 }
 
