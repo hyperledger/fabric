@@ -51,6 +51,8 @@ type endpointFactory struct {
 	connectEndorser endorserConnector
 	connectOrderer  ordererConnector
 	dialer          dialer
+	clientCert      []byte
+	clientKey       []byte
 }
 
 func (ef *endpointFactory) newEndorser(pkiid common.PKIidType, address, mspid string, tlsRootCerts [][]byte) (*endorser, error) {
@@ -97,7 +99,9 @@ func (ef *endpointFactory) newConnection(address string, tlsRootCerts [][]byte) 
 		SecOpts: comm.SecureOptions{
 			UseTLS:            len(tlsRootCerts) > 0,
 			ServerRootCAs:     tlsRootCerts,
-			RequireClientCert: false,
+			RequireClientCert: true,
+			Certificate:       ef.clientCert,
+			Key:               ef.clientKey,
 		},
 		DialTimeout: ef.timeout,
 	}
