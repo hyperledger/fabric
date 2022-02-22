@@ -6,21 +6,17 @@ require (
 	code.cloudfoundry.org/clock v1.0.0
 	github.com/DataDog/zstd v1.4.5 // indirect
 	github.com/IBM/idemix v0.0.0-20220112103229-701e7610d405
-	github.com/Knetic/govaluate v3.0.0+incompatible
+	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible
 	github.com/Shopify/sarama v1.20.1
-	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
 	github.com/VictoriaMetrics/fastcache v1.5.7
-	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/bits-and-blooms/bitset v1.2.1
 	github.com/coreos/go-systemd v0.0.0-20190620071333-e64a0ec8b42a // indirect
 	github.com/coreos/pkg v0.0.0-20180108230652-97fdf19511ea // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/eapache/go-resiliency v1.2.0 // indirect
-	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
-	github.com/eapache/queue v1.1.0 // indirect
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/fsouza/go-dockerclient v1.7.0
-	github.com/go-kit/kit v0.9.0
+	github.com/go-kit/kit v0.10.0
 	github.com/golang/protobuf v1.3.3
 	github.com/golang/snappy v0.0.3-0.20201103224600-674baa8c7fc3 // indirect
 	github.com/gorilla/handlers v1.5.1
