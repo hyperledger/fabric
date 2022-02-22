@@ -147,20 +147,6 @@ func TestCAValidation(t *testing.T) {
 		gt.Expect(err).NotTo(gomega.HaveOccurred())
 	})
 
-	t.Run("ExpiredCert", func(t *testing.T) {
-		mspImpl := &bccspmsp{
-			opts: &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()},
-		}
-		cert, err := mspImpl.getCertFromPem([]byte(caExpired))
-		gt.Expect(err).NotTo(gomega.HaveOccurred())
-
-		mspImpl.opts.Roots.AddCert(cert)
-		mspImpl.rootCerts = []Identity{&identity{cert: cert}}
-
-		err = mspImpl.finalizeSetupCAs()
-		gt.Expect(err).NotTo(gomega.HaveOccurred())
-	})
-
 	t.Run("NonCACert", func(t *testing.T) {
 		mspImpl := &bccspmsp{
 			opts: &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()},
