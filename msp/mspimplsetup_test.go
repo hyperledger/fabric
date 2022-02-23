@@ -65,6 +65,21 @@ vpx58pjg15TqKgrZF2h+TJ5jFa48O1wBvtMhP8WL6/6O+NjOEP56UnXPGie/3HLC
 yvhEkMILRkzGUfd091cpuNxd+aGA37mZbwc+8UBpYbZFhq3NORL8zSxUQLzm1NcV
 U98sznvJPRCkRiwYp5L9C5Xq72CHG/3M6cmoN0Cl0xjZicfpfnZSA/ix
 -----END CERTIFICATE-----`
+
+	caExpired = `-----BEGIN CERTIFICATE-----
+MIICODCCAd+gAwIBAgIUCpmti37GM0i87c7H9JXnAnXlkeQwCgYIKoZIzj0EAwIw
+WDELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDVNh
+biBGcmFuY2lzY28xDTALBgNVBAoMBE9yZzIxDTALBgNVBAMMBE9yZzIwHhcNMjIw
+MjE1MjA1NzQ5WhcNMjIwMjE2MjA1NzQ5WjBYMQswCQYDVQQGEwJVUzETMBEGA1UE
+CAwKQ2FsaWZvcm5pYTEWMBQGA1UEBwwNU2FuIEZyYW5jaXNjbzENMAsGA1UECgwE
+T3JnMjENMAsGA1UEAwwET3JnMjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABD9x
+9DArA8shjxhqajd9OjTThUoJAHMCKXEORYaN8p/sofXJYYBJvg9y2zEOuevB7++p
+PxhMmNISxt0U5IGlOlSjgYYwgYMwHQYDVR0OBBYEFLqzZtVcEWu2pw4IkpClBg9f
+S4EEMB8GA1UdIwQYMBaAFLqzZtVcEWu2pw4IkpClBg9fS4EEMA8GA1UdEwEB/wQF
+MAMBAf8wCwYDVR0PBAQDAgGmMA8GA1UdEQQIMAaCBE9yZzIwEgYDVR0TAQH/BAgw
+BgEB/wIBADAKBggqhkjOPQQDAgNHADBEAiAccYeHn6h6Q1AA2fZc88sYgReSDSGY
+MsALS92an024EQIgcFMjj0D0j2NhcjULCu0L7aGKac1q8XuCcvzfUdfbsdM=
+-----END CERTIFICATE-----`
 )
 
 func TestTLSCAValidation(t *testing.T) {
@@ -77,6 +92,17 @@ func TestTLSCAValidation(t *testing.T) {
 
 		err := mspImpl.setupTLSCAs(&msp.FabricMSPConfig{
 			TlsRootCerts: [][]byte{[]byte(caCert)},
+		})
+		gt.Expect(err).NotTo(gomega.HaveOccurred())
+	})
+
+	t.Run("ExpiredCert", func(t *testing.T) {
+		mspImpl := &bccspmsp{
+			opts: &x509.VerifyOptions{Roots: x509.NewCertPool(), Intermediates: x509.NewCertPool()},
+		}
+
+		err := mspImpl.setupTLSCAs(&msp.FabricMSPConfig{
+			TlsRootCerts: [][]byte{[]byte(caExpired)},
 		})
 		gt.Expect(err).NotTo(gomega.HaveOccurred())
 	})

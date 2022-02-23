@@ -493,6 +493,7 @@ func (msp *bccspmsp) setupTLSCAs(conf *m.FabricMSPConfig) error {
 			return errors.WithMessagef(err, "CA Certificate problem with Subject Key Identifier extension, (SN: %x)", cert.SerialNumber)
 		}
 
+		opts.CurrentTime = cert.NotBefore.Add(time.Second)
 		if err := msp.validateTLSCAIdentity(cert, opts); err != nil {
 			return errors.WithMessagef(err, "CA Certificate is not valid, (SN: %s)", cert.SerialNumber)
 		}
