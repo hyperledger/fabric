@@ -1,5 +1,5 @@
 # Introduction
-
+https://justwriteclick.com/blog/wp-content/uploads/2019/01/Octocat-700x300.png
 In general terms, a blockchain is an immutable transaction ledger, maintained
 within a distributed network of _peer nodes_. These nodes each maintain a copy
 of the ledger by applying transactions that have been validated by a _consensus
