@@ -80,6 +80,9 @@ github.com/bits-and-blooms/bitset
 # github.com/cespare/xxhash/v2 v2.1.1 => github.com/cespare/xxhash/v2 v2.1.2
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
+# github.com/cheggaaa/pb v1.0.29
+## explicit; go 1.12
+github.com/cheggaaa/pb
 # github.com/consensys/gnark-crypto v0.6.0
 ## explicit; go 1.16
 github.com/consensys/gnark-crypto/ecc
@@ -618,9 +621,6 @@ google.golang.org/grpc/tap
 # gopkg.in/alecthomas/kingpin.v2 v2.2.6
 ## explicit
 gopkg.in/alecthomas/kingpin.v2
-# gopkg.in/cheggaaa/pb.v1 v1.0.28
-## explicit
-gopkg.in/cheggaaa/pb.v1
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 ## explicit
 gopkg.in/tomb.v1

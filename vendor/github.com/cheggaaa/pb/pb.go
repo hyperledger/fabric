@@ -13,7 +13,7 @@ import (
 )
 
 // Current version
-const Version = "1.0.28"
+const Version = "1.0.29"
 
 const (
 	// Default refresh rate - 200ms
@@ -274,6 +274,12 @@ func (pb *ProgressBar) Read(p []byte) (n int, err error) {
 // Takes io.Reader or io.ReadCloser
 func (pb *ProgressBar) NewProxyReader(r io.Reader) *Reader {
 	return &Reader{r, pb}
+}
+
+// Create new proxy writer over bar
+// Takes io.Writer or io.WriteCloser
+func (pb *ProgressBar) NewProxyWriter(r io.Writer) *Writer {
+	return &Writer{r, pb}
 }
 
 func (pb *ProgressBar) write(total, current int64) {

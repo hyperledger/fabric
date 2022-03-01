@@ -1,0 +1,12 @@
+language: go
+go:
+  - 1.9.x
+  - 1.12.x
+sudo: false
+os:
+  - linux
+  - osx
+before_install:
+  - go get github.com/mattn/goveralls
+script:
+  - $GOPATH/bin/goveralls -package github.com/cheggaaa/pb/v3 -repotoken QT1y5Iujb8ete6JOiE0ytKFlBDv9vheWc
