@@ -18,6 +18,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 
 // Close the reader when it implements io.Closer
 func (r *Reader) Close() (err error) {
+	r.bar.Finish()
 	if closer, ok := r.Reader.(io.Closer); ok {
 		return closer.Close()
 	}

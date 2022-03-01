@@ -10,6 +10,7 @@ import (
 	"os"
 	"sync"
 
+	pb "github.com/cheggaaa/pb"
 	cb "github.com/hyperledger/fabric-protos-go/common"
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric/bccsp/factory"
@@ -19,7 +20,6 @@ import (
 	"github.com/hyperledger/fabric/orderer/common/localconfig"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc"
-	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 type broadcastClient struct {

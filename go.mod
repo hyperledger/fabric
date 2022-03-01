@@ -9,6 +9,7 @@ require (
 	github.com/Shopify/sarama v1.20.1
 	github.com/VictoriaMetrics/fastcache v1.5.7
 	github.com/bits-and-blooms/bitset v1.2.1
+	github.com/cheggaaa/pb v1.0.29
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fsouza/go-dockerclient v1.7.0
 	github.com/go-kit/kit v0.10.0
@@ -42,7 +43,6 @@ require (
 	golang.org/x/tools v0.0.0-20200131233409-575de47986ce
 	google.golang.org/grpc v1.31.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-	gopkg.in/cheggaaa/pb.v1 v1.0.28
 	gopkg.in/yaml.v2 v2.4.0
 )
 
