@@ -45,7 +45,7 @@ The smart contract uses the following Fabric features to ensure that the asset c
 
 ### Agreeing to the transfer
 
-After a asset is created, channel members can use the smart contract to agree to transfer the asset:
+After an asset is created, channel members can use the smart contract to agree to transfer the asset:
 
 - The owner of the asset can change the description in the public ownership record, for example to advertise that the asset is for sale. Smart contract access control enforces that this change needs to be submitted from a member of the asset owner organization. The state based endorsement policy enforces that this description change must be endorsed by a peer from the owner's organization.
 
@@ -215,7 +215,7 @@ peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.exa
 The smart contract does not allow Org2 to access the public description of the asset.
 
 ```
-Error: endorsement failure during invoke. response: status:500 message:"a client from Org2MSP cannot update the description of a asset owned by Org1MSP"
+Error: endorsement failure during invoke. response: status:500 message:"a client from Org2MSP cannot update the description of an asset owned by Org1MSP"
 ```
 
 ## Agree to sell the asset

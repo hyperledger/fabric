@@ -392,7 +392,7 @@ by "tom" using the ``QueryAssets`` function.
 :guilabel:`Try it yourself`
 
 Before querying the database, we should add some data. Run the following
-command as Org1 to create a asset owned by "tom":
+command as Org1 to create an asset owned by "tom":
 
 .. code:: bash
 

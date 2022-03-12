@@ -12,6 +12,7 @@ import (
 	"math"
 	"os"
 
+	"github.com/bits-and-blooms/bitset"
 	"github.com/hyperledger/fabric/common/ledger/util"
 	"github.com/hyperledger/fabric/common/ledger/util/leveldbhelper"
 	"github.com/hyperledger/fabric/core/chaincode/implicitcollection"
@@ -20,7 +21,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/internal/version"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
 	"github.com/pkg/errors"
-	"github.com/willf/bitset"
 )
 
 var (

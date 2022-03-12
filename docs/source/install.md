@@ -46,23 +46,18 @@ To view the help and available commands for the download script, please use the 
 curl -sSL https://bit.ly/2ysbOFE | bash -s -- -h
 ```
 
-To download a specific release, pass a version identifier for Fabric and Fabric CA Docker images. The command below demonstrates how to download the latest production releases - `Fabric v2.4.0` and `Fabric CA v1.5.2` 
+To download a specific release, pass a version identifier for Fabric and Fabric CA Docker images. The command below demonstrates how to download the latest production releases - `Fabric v2.4.2` and `Fabric CA v1.5.2` 
 
 ```shell
 curl -sSL https://bit.ly/2ysbOFE | bash -s -- <fabric_version> <fabric-ca_version>
-curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.4.0 1.5.2
+curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.4.2 1.5.2
 ```
 
 ## Notes
 
-### Windows considerations
-
-The recommended directory on Windows is `%USERPROFILE%\go\src\github.com\<your_github_userid>`.
-If using another directory, please consult the Docker documentation for [file sharing](https://docs.docker.com/docker-for-windows/#file-sharing) and the [GOPATH environment](https://golang.org/doc/gopath_code.html#GOPATH) documentation.
-
 ### Other considerations
 
-* Setting GOPATH is not required when using Go modules in your projects, or when using the recommended directory. If you would like to use a different location for fabric-samples, you may set GOPATH to point to your specific go workspace. For example on macOS:
+* Setting GOPATH is not required when using Go modules in your projects, or when using the recommended directory. If you would like to use a different location for fabric-samples, you may set GOPATH to point to your specific Go workspace. For example on macOS:
 
   ```shell
   $ export GOPATH:$Home/<user-defined-workspace>/go

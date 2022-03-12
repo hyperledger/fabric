@@ -20,7 +20,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fp"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"math/big"
 )
 
@@ -135,7 +134,186 @@ func (z *E12) Square(x *E12) *E12 {
 	return z
 }
 
-// CyclotomicSquare https://eprint.iacr.org/2009/565.pdf, 3.2
+// Karabina's compressed cyclotomic square
+// https://eprint.iacr.org/2010/542.pdf
+// Th. 3.2 with minor modifications to fit our tower
+func (z *E12) CyclotomicSquareCompressed(x *E12) *E12 {
+
+	var t [7]E2
+
+	// t0 = g1^2
+	t[0].Square(&x.C0.B1)
+	// t1 = g5^2
+	t[1].Square(&x.C1.B2)
+	// t5 = g1 + g5
+	t[5].Add(&x.C0.B1, &x.C1.B2)
+	// t2 = (g1 + g5)^2
+	t[2].Square(&t[5])
+
+	// t3 = g1^2 + g5^2
+	t[3].Add(&t[0], &t[1])
+	// t5 = 2 * g1 * g5
+	t[5].Sub(&t[2], &t[3])
+
+	// t6 = g3 + g2
+	t[6].Add(&x.C1.B0, &x.C0.B2)
+	// t3 = (g3 + g2)^2
+	t[3].Square(&t[6])
+	// t2 = g3^2
+	t[2].Square(&x.C1.B0)
+
+	// t6 = 2 * nr * g1 * g5
+	t[6].MulByNonResidue(&t[5])
+	// t5 = 4 * nr * g1 * g5 + 2 * g3
+	t[5].Add(&t[6], &x.C1.B0).
+		Double(&t[5])
+	// z3 = 6 * nr * g1 * g5 + 2 * g3
+	z.C1.B0.Add(&t[5], &t[6])
+
+	// t4 = nr * g5^2
+	t[4].MulByNonResidue(&t[1])
+	// t5 = nr * g5^2 + g1^2
+	t[5].Add(&t[0], &t[4])
+	// t6 = nr * g5^2 + g1^2 - g2
+	t[6].Sub(&t[5], &x.C0.B2)
+
+	// t1 = g2^2
+	t[1].Square(&x.C0.B2)
+
+	// t6 = 2 * nr * g5^2 + 2 * g1^2 - 2*g2
+	t[6].Double(&t[6])
+	// z2 = 3 * nr * g5^2 + 3 * g1^2 - 2*g2
+	z.C0.B2.Add(&t[6], &t[5])
+
+	// t4 = nr * g2^2
+	t[4].MulByNonResidue(&t[1])
+	// t5 = g3^2 + nr * g2^2
+	t[5].Add(&t[2], &t[4])
+	// t6 = g3^2 + nr * g2^2 - g1
+	t[6].Sub(&t[5], &x.C0.B1)
+	// t6 = 2 * g3^2 + 2 * nr * g2^2 - 2 * g1
+	t[6].Double(&t[6])
+	// z1 = 3 * g3^2 + 3 * nr * g2^2 - 2 * g1
+	z.C0.B1.Add(&t[6], &t[5])
+
+	// t0 = g2^2 + g3^2
+	t[0].Add(&t[2], &t[1])
+	// t5 = 2 * g3 * g2
+	t[5].Sub(&t[3], &t[0])
+	// t6 = 2 * g3 * g2 + g5
+	t[6].Add(&t[5], &x.C1.B2)
+	// t6 = 4 * g3 * g2 + 2 * g5
+	t[6].Double(&t[6])
+	// z5 = 6 * g3 * g2 + 2 * g5
+	z.C1.B2.Add(&t[5], &t[6])
+
+	return z
+}
+
+// Decompress Karabina's cyclotomic square result
+func (z *E12) Decompress(x *E12) *E12 {
+
+	var t [3]E2
+	var one E2
+	one.SetOne()
+
+	// t0 = g1^2
+	t[0].Square(&x.C0.B1)
+	// t1 = 3 * g1^2 - 2 * g2
+	t[1].Sub(&t[0], &x.C0.B2).
+		Double(&t[1]).
+		Add(&t[1], &t[0])
+		// t0 = E * g5^2 + t1
+	t[2].Square(&x.C1.B2)
+	t[0].MulByNonResidue(&t[2]).
+		Add(&t[0], &t[1])
+	// t1 = 1/(4 * g3)
+	t[1].Double(&x.C1.B0).
+		Double(&t[1]).
+		Inverse(&t[1]) // costly
+	// z4 = g4
+	z.C1.B1.Mul(&t[0], &t[1])
+
+	// t1 = g2 * g1
+	t[1].Mul(&x.C0.B2, &x.C0.B1)
+	// t2 = 2 * g4^2 - 3 * g2 * g1
+	t[2].Square(&z.C1.B1).
+		Sub(&t[2], &t[1]).
+		Double(&t[2]).
+		Sub(&t[2], &t[1])
+	// t1 = g3 * g5
+	t[1].Mul(&x.C1.B0, &x.C1.B2)
+	// c_0 = E * (2 * g4^2 + g3 * g5 - 3 * g2 * g1) + 1
+	t[2].Add(&t[2], &t[1])
+	z.C0.B0.MulByNonResidue(&t[2]).
+		Add(&z.C0.B0, &one)
+
+	z.C0.B1.Set(&x.C0.B1)
+	z.C0.B2.Set(&x.C0.B2)
+	z.C1.B0.Set(&x.C1.B0)
+	z.C1.B2.Set(&x.C1.B2)
+
+	return z
+}
+
+// BatchDecompress multiple Karabina's cyclotomic square results
+func BatchDecompress(x []E12) []E12 {
+
+	n := len(x)
+	if n == 0 {
+		return x
+	}
+
+	t0 := make([]E2, n)
+	t1 := make([]E2, n)
+	t2 := make([]E2, n)
+
+	var one E2
+	one.SetOne()
+
+	for i := 0; i < n; i++ {
+		// t0 = g1^2
+		t0[i].Square(&x[i].C0.B1)
+		// t1 = 3 * g1^2 - 2 * g2
+		t1[i].Sub(&t0[i], &x[i].C0.B2).
+			Double(&t1[i]).
+			Add(&t1[i], &t0[i])
+			// t0 = E * g5^2 + t1
+		t2[i].Square(&x[i].C1.B2)
+		t0[i].MulByNonResidue(&t2[i]).
+			Add(&t0[i], &t1[i])
+		// t1 = 4 * g3
+		t1[i].Double(&x[i].C1.B0).
+			Double(&t1[i])
+	}
+
+	t1 = BatchInvert(t1) // costs 1 inverse
+
+	for i := 0; i < n; i++ {
+		// z4 = g4
+		x[i].C1.B1.Mul(&t0[i], &t1[i])
+
+		// t1 = g2 * g1
+		t1[i].Mul(&x[i].C0.B2, &x[i].C0.B1)
+		// t2 = 2 * g4^2 - 3 * g2 * g1
+		t2[i].Square(&x[i].C1.B1)
+		t2[i].Sub(&t2[i], &t1[i])
+		t2[i].Double(&t2[i])
+		t2[i].Sub(&t2[i], &t1[i])
+
+		// t1 = g3 * g5
+		t1[i].Mul(&x[i].C1.B0, &x[i].C1.B2)
+		// z0 = E * (2 * g4^2 + g3 * g5 - 3 * g2 * g1) + 1
+		t2[i].Add(&t2[i], &t1[i])
+		x[i].C0.B0.MulByNonResidue(&t2[i]).
+			Add(&x[i].C0.B0, &one)
+	}
+
+	return x
+}
+
+// Granger-Scott's cyclotomic square
+// https://eprint.iacr.org/2009/565.pdf, 3.2
 func (z *E12) CyclotomicSquare(x *E12) *E12 {
 
 	// x=(x0,x1,x2,x3,x4,x5,x6,x7) in E2^6
@@ -336,20 +514,19 @@ func (z *E12) SetBytes(e []byte) error {
 
 	z.C1.B2.A1.SetBytes(e[0 : 0+fp.Bytes])
 
-	// TODO is it the right place?
-	//if !z.IsInSubGroup() {
-	//	return errors.New("subgroup check failed")
-	//}
-
 	return nil
 }
 
-var frModulus = fr.Modulus()
-
 // IsInSubGroup ensures GT/E12 is in correct sugroup
 func (z *E12) IsInSubGroup() bool {
-	var one, _z E12
-	one.SetOne()
-	_z.Exp(z, *frModulus)
-	return _z.Equal(&one)
+	var a, b, _b E12
+
+	a.Frobenius(z)
+	b.Expt(z).
+		Expt(&b).
+		CyclotomicSquare(&b)
+	_b.CyclotomicSquare(&b)
+	b.Mul(&b, &_b)
+
+	return a.Equal(&b)
 }

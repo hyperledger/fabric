@@ -4,7 +4,7 @@ Fabric Gateway is a service, introduced in Hyperledger Fabric v2.4 peers, that p
 
 ## Writing client applications
 
-Starting with Fabric v2.4, client applications should use one of the gateway SDKs (Go, Node, or Java), which are optimized to interact with the Fabric Gateway. These SDKs expose the same high-level programming model which was initially introduced in Fabric v1.4.
+Starting with Fabric v2.4, client applications should use one of the Fabric Gateway client APIs (Go, Node, or Java), which are optimized to interact with the Fabric Gateway. These APIs expose the same high-level programming model which was initially introduced in Fabric v1.4.
 
 Fabric Gateway (aka *the gateway*) manages the following transaction steps:
 
@@ -20,11 +20,11 @@ get the commit (validation/invalidation) status code.
 - Receive **chaincode events**. This will allow client applications to respond to events that are emitted by a smart contract
 function when a transaction is committed to the ledger.
 
-The gateway SDKs combine the Endorse/Submit/CommitStatus actions into a single blocking **SubmitTransaction** function to support transaction submission with a single line of code. Alternatively, the individual actions can be invoked to support flexible application patterns.
+The Fabric Gateway client APIs combine the Endorse/Submit/CommitStatus actions into a single blocking **SubmitTransaction** function to support transaction submission with a single line of code. Alternatively, the individual actions can be invoked to support flexible application patterns.
 
-## Software Development Kits (SDKs)
+## Client application APIs
 
-The Gateway and its SDKs are designed to allow you, as a client application developer, to concentrate on the *business logic*
+The Gateway and its client APIs are designed to allow you, as a client application developer, to concentrate on the *business logic*
 of your application without having to concern yourself with the *infrastructure logic* associated with a Fabric network.
 As such, the APIs provide logical abstractions such as *organization* and *contract* rather than operational abstractions
 such as *peer* and *chaincode*. [Side note - clearly an admin API would want to expose these operational abstractions,
@@ -32,9 +32,9 @@ but this is *not* an admin API].
 
 Hyperledger Fabric currently supports client application development in three languages:
 
-- **Go**.  See the [Go SDK for Fabric Gateway documentation](https://pkg.go.dev/github.com/hyperledger/fabric-gateway/pkg/client) for full details.
-- **Node (Typescript/Javascript)**.  See the [Node SDK for Fabric Gateway documentation](https://hyperledger.github.io/fabric-gateway/main/api/node/) for full details.
-- **Java**. See the [Java SDK for Fabric Gateway documentation](https://hyperledger.github.io/fabric-gateway/main/api/java/) for full details.
+- **Go**.  See the [Go API documentation](https://pkg.go.dev/github.com/hyperledger/fabric-gateway/pkg/client) for full details.
+- **Node (Typescript/Javascript)**.  See the [Node API documentation](https://hyperledger.github.io/fabric-gateway/main/api/node/) for full details.
+- **Java**. See the [Java API documentation](https://hyperledger.github.io/fabric-gateway/main/api/java/) for full details.
 
 ## How the gateway endorses your transaction proposal
 
@@ -54,7 +54,7 @@ The combination of endorsement policies to be applied to the transaction proposa
 
 The Fabric Gateway manages the complexity of transaction endorsement on behalf of the client, using the following process:
 
-- The Fabric Gateway selects the endorsing peer from the gateway peer's organization (MSPID) by identifying the (available) peer with the highest ledger block height. The assumption is that all peers within the gateway peer's organization are *trusted* by the client application that connects to the gateway peer.
+- The Fabric Gateway selects the endorsing peer from the gateway peer's organization ([MSP ID](membership/membership.html)) by identifying the (available) peer with the highest ledger block height. The assumption is that all peers within the gateway peer's organization are *trusted* by the client application that connects to the gateway peer.
 - The transaction proposal is simulated on the selected endorsement peer. This simulation captures information about the accessed states, and therefore the endorsement policies to be combined (including any individual state-based policies
 stored on the endorsement peer's ledger).  
 - The captured policy information is assembled into a `ChaincodeInterest` protobuf structure and passed to the discovery service in order to derive an endorsement plan specific to the proposed transaction.
@@ -82,14 +82,14 @@ The gateway will use discovery service information to retry any transaction that
 
 #### Error handling
 
-The Fabric Gateway manages gRPC connections to network peer and ordering nodes. If a gateway service request error originates from a network peer or ordering node (i.e. external to the gateway), the gateway returns error, endpoint, and organization (MSPID) information to the client in the message `Details` field. If the `Details` field is empty, then the error originated from the gateway peer.
+The Fabric Gateway manages gRPC connections to network peer and ordering nodes. If a gateway service request error originates from a network peer or ordering node (i.e. external to the gateway), the gateway returns error, endpoint, and organization ([MSP ID](membership/membership.html)) information to the client in the message `Details` field. If the `Details` field is empty, then the error originated from the gateway peer.
 
 #### Timeouts
 
 The Fabric Gateway `Evaluate` and `Endorse` methods make gRPC requests to peers external to the gateway. In order to limit the length of time that the client must wait for these collective responses, the `peer.gateway.endorsementTimeout` value can be overridden in the gateway section of the peer `core.yaml` configuration file.
 
-Each Gateway SDK also provides a mechanism for setting timeouts for each gateway method when invoked from the client application.
+The Fabric Gateway client API also provides mechanisms for setting default and per-call timeouts for each gateway method when invoked from the client application.
 
 ## Listening for events
 
-The gateway provides a simplified API for client applications to receive [chaincode events](peer_event_services.html#how-to-register-for-events) in the client applications. Each SDK provides a mechanism to handle these events using its language-specific idiom.
+The gateway provides a simplified API for client applications to receive [chaincode events](peer_event_services.html#how-to-register-for-events) in the client applications. The client API provides a mechanism to handle these events using language-specific idioms.

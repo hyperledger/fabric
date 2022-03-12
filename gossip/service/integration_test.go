@@ -104,7 +104,7 @@ func TestLeaderYield(t *testing.T) {
 	// Add peers to the channel
 	addPeersToChannel(channelName, gossips, peerIndexes)
 	// Prime the membership view of the peers
-	waitForFullMembershipOrFailNow(t, channelName, gossips, n, time.Second*30, time.Millisecond*100)
+	waitForFullMembershipOrFailNow(t, channelName, gossips, n, TIMEOUT, time.Millisecond*100)
 
 	store := newTransientStore(t)
 	defer store.tearDown()

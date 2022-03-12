@@ -23,7 +23,7 @@ const (
 	maxUpgradeBatchSize = 4 * 1024 * 1024 // 4 MB
 )
 
-func checkAndConstructHashedIndex(storePath string, ledgerIDs []string) error {
+func CheckAndConstructHashedIndex(storePath string, ledgerIDs []string) error {
 	info, err := leveldbhelper.RetrieveDataFormatInfo(storePath)
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func constructHashedIndexFor(ledgerID string, db *leveldbhelper.DBHandle) error 
 				return err
 			}
 
-			txPvtData, err := v11DecodeKV(k, v, nil)
+			txPvtData, err := v11DecodeKV(k, v)
 			if err != nil {
 				return err
 			}

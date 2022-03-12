@@ -14,6 +14,7 @@ import (
 	"path"
 	"testing"
 
+	"github.com/bits-and-blooms/bitset"
 	"github.com/hyperledger/fabric-protos-go/common"
 	"github.com/hyperledger/fabric-protos-go/msp"
 	"github.com/hyperledger/fabric-protos-go/peer"
@@ -24,7 +25,6 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/mock"
 	"github.com/hyperledger/fabric/internal/fileutil"
 	"github.com/stretchr/testify/require"
-	"github.com/willf/bitset"
 )
 
 func TestSnapshotImporter(t *testing.T) {

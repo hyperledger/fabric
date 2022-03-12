@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package graph
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,4 +24,33 @@ func TestCombinationsExceed(t *testing.T) {
 
 	// N < K returns false
 	require.False(t, CombinationsExceed(20, 30, 0))
+}
+
+func TestChooseKoutOfN(t *testing.T) {
+	expectedSets := indiceSets{
+		&indiceSet{[]int{0, 1, 2, 3}},
+		&indiceSet{[]int{0, 1, 2, 4}},
+		&indiceSet{[]int{0, 1, 2, 5}},
+		&indiceSet{[]int{0, 1, 3, 4}},
+		&indiceSet{[]int{0, 1, 3, 5}},
+		&indiceSet{[]int{0, 1, 4, 5}},
+		&indiceSet{[]int{0, 2, 3, 4}},
+		&indiceSet{[]int{0, 2, 3, 5}},
+		&indiceSet{[]int{0, 2, 4, 5}},
+		&indiceSet{[]int{0, 3, 4, 5}},
+		&indiceSet{[]int{1, 2, 3, 4}},
+		&indiceSet{[]int{1, 2, 3, 5}},
+		&indiceSet{[]int{1, 2, 4, 5}},
+		&indiceSet{[]int{1, 3, 4, 5}},
+		&indiceSet{[]int{2, 3, 4, 5}},
+	}
+	require.Equal(t, indiceSetsToStrings(expectedSets), indiceSetsToStrings(chooseKoutOfN(6, 4)))
+}
+
+func indiceSetsToStrings(sets indiceSets) []string {
+	var res []string
+	for _, set := range sets {
+		res = append(res, fmt.Sprintf("%v", set.indices))
+	}
+	return res
 }

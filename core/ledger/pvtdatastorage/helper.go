@@ -9,16 +9,22 @@ package pvtdatastorage
 import (
 	"math"
 
+	"github.com/bits-and-blooms/bitset"
 	"github.com/hyperledger/fabric-protos-go/ledger/rwset"
 	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/rwsetutil"
 	"github.com/hyperledger/fabric/core/ledger/pvtdatapolicy"
-	"github.com/willf/bitset"
+	"github.com/hyperledger/fabric/core/ledger/util"
 )
 
 func prepareStoreEntries(blockNum uint64, pvtData []*ledger.TxPvtData, btlPolicy pvtdatapolicy.BTLPolicy,
 	missingPvtData ledger.TxMissingPvtData) (*storeEntries, error) {
 	dataEntries := prepareDataEntries(blockNum, pvtData)
 
+	hashedIndexEntries, err := prepareHashedIndexEntries(dataEntries)
+	if err != nil {
+		return nil, err
+	}
 	elgMissingDataEntries, inelgMissingDataEntries := prepareMissingDataEntries(blockNum, missingPvtData)
 
 	expiryEntries, err := prepareExpiryEntries(blockNum, dataEntries, elgMissingDataEntries, inelgMissingDataEntries, btlPolicy)
@@ -28,6 +34,7 @@ func prepareStoreEntries(blockNum uint64, pvtData []*ledger.TxPvtData, btlPolicy
 
 	return &storeEntries{
 		dataEntries:             dataEntries,
+		hashedIndexEntries:      hashedIndexEntries,
 		expiryEntries:           expiryEntries,
 		elgMissingDataEntries:   elgMissingDataEntries,
 		inelgMissingDataEntries: inelgMissingDataEntries,
@@ -148,6 +155,30 @@ func prepareExpiryEntriesForMissingData(mapByExpiringBlk map[uint64]*ExpiryData,
 
 	expiryData.addMissingData(missingKey.ns, missingKey.coll)
 	return nil
+}
+
+func prepareHashedIndexEntries(dataEntires []*dataEntry) ([]*hashedIndexEntry, error) {
+	hashedIndexEntries := []*hashedIndexEntry{}
+	for _, d := range dataEntires {
+		collPvtWS, err := rwsetutil.CollPvtRwSetFromProtoMsg(d.value)
+		if err != nil {
+			return nil, err
+		}
+		for _, w := range collPvtWS.KvRwSet.Writes {
+			hashedIndexEntries = append(hashedIndexEntries,
+				&hashedIndexEntry{
+					key: &hashedIndexKey{
+						ns:         d.key.ns,
+						coll:       d.key.coll,
+						blkNum:     d.key.blkNum,
+						txNum:      d.key.txNum,
+						pvtkeyHash: util.ComputeStringHash(w.Key),
+					},
+					value: w.Key,
+				})
+		}
+	}
+	return hashedIndexEntries, nil
 }
 
 func getOrCreateExpiryData(mapByExpiringBlk map[uint64]*ExpiryData, expiringBlk uint64) *ExpiryData {

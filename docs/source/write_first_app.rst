@@ -7,8 +7,8 @@ Running a Fabric Application
           flow, documented in the :doc:`gateway` section.
 
 This tutorial provides an introduction to how Fabric applications interact with deployed blockchain networks. The
-tutorial uses sample programs built using the Fabric Gateway application API to invoke a smart contract, which queries
-and updates the ledger with the smart contract API -- described in detail in :doc:`/developapps/smartcontract`.
+tutorial uses sample programs built using the Fabric Gateway client API to invoke a smart contract, which queries
+and updates the ledger with the smart contract API -- described in detail in :doc:`deploy_chaincode`.
 
 **About Asset Transfer**
 
@@ -50,27 +50,14 @@ work together to manage data on the distributed ledger of a blockchain network.
 
 Before you begin
 ================
-In addition to the standard :doc:`prereqs` for Fabric, this tutorial leverages the Fabric Gateway application API
-for Node. See the `documentation <https://hyperledger.github.io/fabric-gateway/>`_ for a up to date list of supported
-programming language runtimes and dependencies.
+Before you can run the sample application, you need to install Fabric Samples in your environment. Follow the
+instructions on :doc:`getting_started` to install the required software.
+
+The sample application in this tutorial uses the Fabric Gateway client API for Node. See the `documentation <https://hyperledger.github.io/fabric-gateway/>`_
+for a up to date list of supported programming language runtimes and dependencies.
 
 - Ensure you have a suitable version of Node installed. Instructions for installing Node can be found in the `Node.js
   documentation <https://nodejs.dev/learn/how-to-install-nodejs>`_.
-
-- If you are on Windows, you can use npm to install the `windows-build-tools <https://github.com/felixrieseberg/windows-build-tools#readme>`_
-  which installs all required compilers and tooling by running the following command:
-
-  .. code-block:: bash
-
-    npm install --global windows-build-tools
-
-- If you are on Linux, you need to install `Python v2.7 <https://www.python.org/download/releases/2.7/>`_, `make <https://www.gnu.org/software/make/>`_,
-  and a C/C++ compiler toolchain such as `GCC <https://gcc.gnu.org/>`_. You can run the following command to install
-  these tools:
-
-  .. code-block:: bash
-
-    sudo apt install build-essential
 
 
 Set up the blockchain network
@@ -145,7 +132,7 @@ Open a new terminal, and navigate to the ``application-gateway-typescript`` dire
 
   cd asset-transfer-basic/application-gateway-typescript
 
-This directory contains a sample application developed using the Fabric Gateway application API for Node.
+This directory contains a sample application developed using the Fabric Gateway client API for Node.
 
 Run the following command to install the dependencies and build the application. It may take some time to complete:
 
@@ -154,7 +141,7 @@ Run the following command to install the dependencies and build the application.
   npm install
 
 This process installs the application dependencies defined in the application's ``package.json``. The most important
-of which is the ``@hyperledger/fabric-gateway`` Node.js package; this provides the Fabric Gateway application API used
+of which is the ``@hyperledger/fabric-gateway`` Node.js package; this provides the Fabric Gateway client API used
 to connect a Fabric Gateway and, using a specific client identity, to submit and evaluate transactions, and receive
 events.
 
@@ -272,9 +259,6 @@ The sample application uses the ``Gateway`` connection to get a reference to the
 
 .. code-block:: TypeScript
 
-  const channelName = 'mychannel';
-  const chaincodeName = 'basic';
-
   const network = gateway.getNetwork(channelName);
   const contract = network.getContract(chaincodeName);
 
@@ -284,7 +268,7 @@ call. For example:
 
 .. code-block:: TypeScript
 
-  const contract = network.getContract('chaincodeName', 'smartContractName');
+  const contract = network.getContract(chaincodeName, smartContractName);
 
 
 Fourth, populate the ledger with sample assets
@@ -559,7 +543,7 @@ Summary
 =======
 You have now seen how to set up a blockchain network by launching the test network and deploying a smart contract. You
 have then run a client application, and examined the application code to understand how it uses the Fabric Gateway
-application API to query and update the ledger by connecting to a Fabric Gateway and invoking transaction functions on
+client API to query and update the ledger by connecting to a Fabric Gateway and invoking transaction functions on
 the deployed smart contract.
 
 
