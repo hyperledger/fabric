@@ -44,6 +44,14 @@ func TestArguments(t *testing.T) {
 			exitCode: 1,
 			args:     []string{"compare", "/non-existent/snapshot1", "/non-existent/snapshot2"},
 		},
+		"identifytxs-help": {
+			exitCode: 0,
+			args:     []string{"identifytxs", "--help"},
+		},
+		"identifytxs": {
+			exitCode: 1,
+			args:     []string{"identifytxs"},
+		},
 	}
 
 	// Build ledger binary

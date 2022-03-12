@@ -1,0 +1,7 @@
+{
+    "ledgerid":"mychannel",
+    "diffRecords":[
+        {"namespace":"marbles","key":"marble3","snapshotrecord1":{"value":"{\"docType\":\"marble\",\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\"}","blockNum":3,"txNum":0},"snapshotrecord2":{}},
+        {"namespace":"marbles","key":"marble3","snapshotrecord1":{"value":"{\"docType\":\"marble\",\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\"}","blockNum":3,"txNum":0},"snapshotrecord2":{}}
+    ]
+}

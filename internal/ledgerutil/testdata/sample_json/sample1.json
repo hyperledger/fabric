@@ -1,0 +1,15 @@
+{
+"This is": "a sample",
+"of some": "JSON",
+"stuff": [
+{
+"Thing1": "Hello",
+"bool": false
+},
+{
+"Thing2": "World",
+"bool": true
+}
+],
+"num": 101
+}

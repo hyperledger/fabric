@@ -4,7 +4,7 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package ledgerutil
+package compare
 
 import (
 	"bytes"
@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/fabric/core/ledger/kvledger"
 	"github.com/hyperledger/fabric/core/ledger/kvledger/txmgmt/privacyenabledstate"
 	"github.com/hyperledger/fabric/internal/fileutil"
+	"github.com/hyperledger/fabric/internal/ledgerutil/jsonrw"
 	"github.com/stretchr/testify/require"
 )
 
@@ -725,51 +726,20 @@ func compareSnapshots(ss1 string, ss2 string, res string, firstN int) (int, stri
 	}
 
 	// Get json as a string from generated output files
-	pubStr, err := outputFileToString(AllPubDiffsByKey, opath)
+	pubStr, err := jsonrw.OutputFileToString(AllPubDiffsByKey, opath)
 	if err != nil {
 		return 0, "", "", "", err
 	}
-	pvtStr, err := outputFileToString(AllPvtDiffsByKey, opath)
+	pvtStr, err := jsonrw.OutputFileToString(AllPvtDiffsByKey, opath)
 	if err != nil {
 		return 0, "", "", "", err
 	}
-	firStr, err := outputFileToString(FirstDiffsByHeight, opath)
+	firStr, err := jsonrw.OutputFileToString(FirstDiffsByHeight, opath)
 	if err != nil {
 		return 0, "", "", "", err
 	}
 
 	return count, pubStr, pvtStr, firStr, nil
-}
-
-func outputFileToString(f string, path string) (string, error) {
-	fpath := filepath.Join(path, f)
-	exists, err := outputFileExists(fpath)
-	if err != nil {
-		return "", err
-	}
-	if exists {
-		b, err := ioutil.ReadFile(fpath)
-		if err != nil {
-			return "", err
-		}
-		out, err := ioutil.ReadAll(bytes.NewReader(b))
-		if err != nil {
-			return "", err
-		}
-		return string(out), nil
-	}
-	return "null", nil
-}
-
-func outputFileExists(f string) (bool, error) {
-	_, err := os.Stat(f)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
 }
 
 // toBytes serializes the Height
