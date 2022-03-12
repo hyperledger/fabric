@@ -1,0 +1,9 @@
+{
+    "ledgerid":"mychannel",
+    "diffRecords":[
+    {"namespace":"_lifecycle$$h_implicit_org_SampleOrg","key":"611af3834f634fc870855f91fa171fe1ad1347f37d68fa49aac4a7fdae0b0d75","hashed":true,"snapshotrecord1":null,"snapshotrecord2":{"value":"18a308f4889f4e6d5cb478488d8a11dfd1fbc98cc790a5e591f274c45075b752","blockNum":1,"txNum":0}}
+    ,
+    {"namespace":"_lifecycle$$h_implicit_org_SampleOrg","key":"e01e1c4304282cc5eda5d51c41785bbe49636fbf174514dbd4b98dc9b9ecf5da","hashed":true,"snapshotrecord1":null,"snapshotrecord2":{"value":"0c52a3dbc7b322ff35728afdd691244cfc0fc9c4743c254b57059a2394e14daf","blockNum":1,"txNum":0}}
+    ]
+    }
+    

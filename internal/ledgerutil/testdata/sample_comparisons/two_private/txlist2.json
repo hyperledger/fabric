@@ -1,0 +1,11 @@
+{
+"namespace":"_lifecycle"
+,
+"key":"e01e1c4304282cc5eda5d51c41785bbe49636fbf174514dbd4b98dc9b9ecf5da"
+,
+"txs":[
+{"txid":"8d4dbd2d73f6d78a0716ae72baabe97521642931ae3483b2e78e477b0298a642","blockNum":1,"txNum":0,"txValidationStatus":"VALID","keyWrite":"0c52a3dbc7b322ff35728afdd691244cfc0fc9c4743c254b57059a2394e14daf"}
+]
+,
+"blockStoreHeightSufficient":true
+}

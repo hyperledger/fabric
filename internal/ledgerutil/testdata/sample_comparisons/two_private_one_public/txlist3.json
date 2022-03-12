@@ -1,0 +1,11 @@
+{
+"namespace":"marbles"
+,
+"key":"marble1"
+,
+"txs":[
+{"txid":"a67c735fa1ef3390199aa2669a4f8023ea469cfe213afebf1014e57bceaf0a57","blockNum":4,"txNum":0,"txValidationStatus":"VALID","keyWrite":"{\"docType\":\"marble\",\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\"}"}
+]
+,
+"blockStoreHeightSufficient":true
+}
