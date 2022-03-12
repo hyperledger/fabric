@@ -68,8 +68,14 @@ When it is successful you should see results similar to:
 
 ## Start the peer in DevMode
 
-Open another terminal window and set the required environment variables to override the peer configuration and start the peer node. Starting the peer with the `--peer-chaincodedev=true` flag puts the peer into DevMode.
+Open another terminal window and set the required environment variables to override the peer configuration and start the peer node.
 
+**Note:** If you intend to keep the orderer and peer in the same environment (not in separate containers), only then set the `CORE_OPERATIONS_LISTENADDRESS` environment variable (port can be anything except 9443).
+```
+export CORE_OPERATIONS_LISTENADDRESS=127.0.0.1:9444
+```
+
+Starting the peer with the `--peer-chaincodedev=true` flag puts the peer into DevMode.
 ```
 export PATH=$(pwd)/build/bin:$PATH
 export FABRIC_CFG_PATH=$(pwd)/sampleconfig
