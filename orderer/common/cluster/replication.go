@@ -562,6 +562,11 @@ func (ci *ChainInspector) Channels() []ChannelGenesisBlock {
 			continue
 		}
 
+		if _, exist := channels[channel]; exist {
+			ci.Logger.Warnf("Block %d attempts to create an existing channel [%s], ignore", seq, channel)
+			continue
+		}
+
 		ci.Logger.Info("Block", seq, "contains channel", channel)
 		channels[channel] = ChannelGenesisBlock{
 			ChannelName:  channel,
