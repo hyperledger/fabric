@@ -212,6 +212,7 @@ var _ = Describe("GatewayService", func() {
 	chaincodeEvents := func(
 		ctx context.Context,
 		startPosition *orderer.SeekPosition,
+		afterTxID string,
 		identity func() ([]byte, error),
 		sign func(msg []byte) ([]byte, error),
 	) (gateway.Gateway_ChaincodeEventsClient, error) {
@@ -225,6 +226,9 @@ var _ = Describe("GatewayService", func() {
 		}
 		if startPosition != nil {
 			request.StartPosition = startPosition
+		}
+		if len(afterTxID) > 0 {
+			request.AfterTransactionId = afterTxID
 		}
 
 		requestBytes, err := proto.Marshal(request)
@@ -375,7 +379,7 @@ var _ = Describe("GatewayService", func() {
 				},
 			}
 
-			eventsClient, err := chaincodeEvents(eventCtx, startPosition, signingIdentity.Serialize, signingIdentity.Sign)
+			eventsClient, err := chaincodeEvents(eventCtx, startPosition, "", signingIdentity.Serialize, signingIdentity.Sign)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, transactionID := submitTransaction("event", []byte("EVENT_NAME"), []byte("EVENT_PAYLOAD"))
@@ -409,7 +413,7 @@ var _ = Describe("GatewayService", func() {
 				},
 			}
 
-			eventsClient, err := chaincodeEvents(eventCtx, startPosition, signingIdentity.Serialize, signingIdentity.Sign)
+			eventsClient, err := chaincodeEvents(eventCtx, startPosition, "", signingIdentity.Serialize, signingIdentity.Sign)
 			Expect(err).NotTo(HaveOccurred())
 
 			event, err := eventsClient.Recv()
@@ -426,13 +430,50 @@ var _ = Describe("GatewayService", func() {
 			Expect(proto.Equal(event.Events[0], expectedEvent)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", event.Events[0], expectedEvent)
 		})
 
+		It("should respond with replayed chaincode events after specified transaction ID", func() {
+			_, afterTransactionID := submitTransaction("event", []byte("WRONG_EVENT_NAME"), []byte("WRONG_EVENT_PAYLOAD"))
+			_, nextTransactionID := submitTransaction("event", []byte("CORRECT_EVENT_NAME"), []byte("CORRECT_EVENT_PAYLOAD"))
+
+			statusResult, err := commitStatus(afterTransactionID, signingIdentity.Serialize, signingIdentity.Sign)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = commitStatus(nextTransactionID, signingIdentity.Serialize, signingIdentity.Sign)
+			Expect(err).NotTo(HaveOccurred())
+
+			eventCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			defer cancel()
+
+			startPosition := &orderer.SeekPosition{
+				Type: &orderer.SeekPosition_Specified{
+					Specified: &orderer.SeekSpecified{
+						Number: statusResult.BlockNumber,
+					},
+				},
+			}
+
+			eventsClient, err := chaincodeEvents(eventCtx, startPosition, afterTransactionID, signingIdentity.Serialize, signingIdentity.Sign)
+			Expect(err).NotTo(HaveOccurred())
+
+			event, err := eventsClient.Recv()
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(event.Events).To(HaveLen(1), "number of events")
+			expectedEvent := &peer.ChaincodeEvent{
+				ChaincodeId: "gatewaycc",
+				TxId:        nextTransactionID,
+				EventName:   "CORRECT_EVENT_NAME",
+				Payload:     []byte("CORRECT_EVENT_PAYLOAD"),
+			}
+			Expect(proto.Equal(event.Events[0], expectedEvent)).To(BeTrue(), "Expected\n\t%#v\nto proto.Equal\n\t%#v", event.Events[0], expectedEvent)
+		})
+
 		It("should default to next commit if start position not specified", func() {
 			eventCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 
 			var startPosition *orderer.SeekPosition
 
-			eventsClient, err := chaincodeEvents(eventCtx, startPosition, signingIdentity.Serialize, signingIdentity.Sign)
+			eventsClient, err := chaincodeEvents(eventCtx, startPosition, "", signingIdentity.Serialize, signingIdentity.Sign)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, transactionID := submitTransaction("event", []byte("EVENT_NAME"), []byte("EVENT_PAYLOAD"))
@@ -462,7 +503,7 @@ var _ = Describe("GatewayService", func() {
 				},
 			}
 
-			eventsClient, err := chaincodeEvents(eventCtx, startPosition, badIdentity.Serialize, signingIdentity.Sign)
+			eventsClient, err := chaincodeEvents(eventCtx, startPosition, "", badIdentity.Serialize, signingIdentity.Sign)
 			Expect(err).NotTo(HaveOccurred())
 
 			event, err := eventsClient.Recv()
@@ -486,7 +527,7 @@ var _ = Describe("GatewayService", func() {
 				},
 			}
 
-			eventsClient, err := chaincodeEvents(eventCtx, startPosition, signingIdentity.Serialize, badSign)
+			eventsClient, err := chaincodeEvents(eventCtx, startPosition, "", signingIdentity.Serialize, badSign)
 			Expect(err).NotTo(HaveOccurred())
 
 			event, err := eventsClient.Recv()

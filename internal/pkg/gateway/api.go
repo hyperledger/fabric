@@ -548,6 +548,8 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 		return err
 	}
 
+	isMatch := chaincodeEventMatcher(request)
+
 	ledgerIter, err := ledger.GetBlocksIterator(startBlock)
 	if err != nil {
 		return status.Error(codes.Aborted, err.Error())
@@ -563,9 +565,8 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 		}
 
 		var matchingEvents []*peer.ChaincodeEvent
-
 		for _, event := range response.Events {
-			if event.GetChaincodeId() == request.GetChaincodeId() {
+			if isMatch(event) {
 				matchingEvents = append(matchingEvents, event)
 			}
 		}
@@ -583,6 +584,30 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 			}
 			return err
 		}
+	}
+}
+
+func chaincodeEventMatcher(request *gp.ChaincodeEventsRequest) func(event *peer.ChaincodeEvent) bool {
+	chaincodeID := request.GetChaincodeId()
+	previousTransactionID := request.GetAfterTransactionId()
+
+	if len(previousTransactionID) == 0 {
+		return func(event *peer.ChaincodeEvent) bool {
+			return event.GetChaincodeId() == chaincodeID
+		}
+	}
+
+	passedPreviousTransaction := false
+
+	return func(event *peer.ChaincodeEvent) bool {
+		if !passedPreviousTransaction {
+			if event.TxId == previousTransactionID {
+				passedPreviousTransaction = true
+			}
+			return false
+		}
+
+		return event.GetChaincodeId() == chaincodeID
 	}
 }
 
