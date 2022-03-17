@@ -26,13 +26,14 @@ import (
 	"github.com/hyperledger/fabric/common/crypto/tlsgen"
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric/common/flogging/mock"
-	commonledger "github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/gossip/api"
 	"github.com/hyperledger/fabric/gossip/common"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
+	ledgermocks "github.com/hyperledger/fabric/internal/pkg/gateway/ledger/mocks"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/mocks"
 	idmocks "github.com/hyperledger/fabric/internal/pkg/identity/mocks"
 	"github.com/hyperledger/fabric/protoutil"
@@ -78,19 +79,9 @@ type aclChecker interface {
 	ACLChecker
 }
 
-//go:generate counterfeiter -o mocks/ledgerprovider.go --fake-name LedgerProvider . ledgerProvider
-type ledgerProvider interface {
-	LedgerProvider
-}
-
-//go:generate counterfeiter -o mocks/ledger.go --fake-name Ledger . mockLedger
-type mockLedger interface {
-	commonledger.Ledger
-}
-
-//go:generate counterfeiter -o mocks/resultsiterator.go --fake-name ResultsIterator . resultsIterator
+//go:generate counterfeiter -o mocks/resultsiterator.go --fake-name ResultsIterator . mockResultsIterator
 type mockResultsIterator interface {
-	commonledger.ResultsIterator
+	ledger.ResultsIterator
 }
 
 type (
@@ -169,8 +160,8 @@ type preparedTest struct {
 	finder         *mocks.CommitFinder
 	eventsServer   *mocks.ChaincodeEventsServer
 	policy         *mocks.ACLChecker
-	ledgerProvider *mocks.LedgerProvider
-	ledger         *mocks.Ledger
+	ledgerProvider *ledgermocks.Provider
+	ledger         *ledgermocks.Ledger
 	blockIterator  *mocks.ResultsIterator
 	logLevel       string
 	logFields      []string
@@ -1652,7 +1643,7 @@ func TestChaincodeEvents(t *testing.T) {
 			},
 		},
 		{
-			name: "identifies previous transaction ID if from different chaincode",
+			name: "identifies specified transaction if from different chaincode",
 			blocks: []*cp.Block{
 				differentChaincodePartReadBlock,
 			},
@@ -1672,7 +1663,7 @@ func TestChaincodeEvents(t *testing.T) {
 			},
 		},
 		{
-			name: "identifies previous transaction ID if not in start block",
+			name: "identifies specified transaction if not in first read block",
 			blocks: []*cp.Block{
 				noMatchingEventsBlock,
 				partReadBlock,
@@ -1779,6 +1770,65 @@ func TestChaincodeEvents(t *testing.T) {
 			postTest: func(t *testing.T, test *preparedTest) {
 				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
 				require.EqualValues(t, 101, test.ledger.GetBlocksIteratorArgsForCall(0))
+			},
+		},
+		{
+			name: "uses block containing specified transaction instead of start block",
+			blocks: []*cp.Block{
+				matchingEventBlock,
+			},
+			postSetup: func(t *testing.T, test *preparedTest) {
+				ledgerInfo := &cp.BlockchainInfo{
+					Height: 101,
+				}
+				test.ledger.GetBlockchainInfoReturns(ledgerInfo, nil)
+
+				block := &cp.Block{
+					Header: &cp.BlockHeader{
+						Number: 99,
+					},
+				}
+				test.ledger.GetBlockByTxIDReturns(block, nil)
+			},
+			afterTxID: "TX_ID",
+			startPosition: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Specified{
+					Specified: &ab.SeekSpecified{
+						Number: 1,
+					},
+				},
+			},
+			postTest: func(t *testing.T, test *preparedTest) {
+				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
+				require.EqualValues(t, 99, test.ledger.GetBlocksIteratorArgsForCall(0))
+				require.Equal(t, 1, test.ledger.GetBlockByTxIDCallCount())
+				require.Equal(t, "TX_ID", test.ledger.GetBlockByTxIDArgsForCall(0))
+			},
+		},
+		{
+			name: "uses start block if specified transaction not found",
+			blocks: []*cp.Block{
+				matchingEventBlock,
+			},
+			postSetup: func(t *testing.T, test *preparedTest) {
+				ledgerInfo := &cp.BlockchainInfo{
+					Height: 101,
+				}
+				test.ledger.GetBlockchainInfoReturns(ledgerInfo, nil)
+
+				test.ledger.GetBlockByTxIDReturns(nil, errors.New("NOT_FOUND"))
+			},
+			afterTxID: "TX_ID",
+			startPosition: &ab.SeekPosition{
+				Type: &ab.SeekPosition_Specified{
+					Specified: &ab.SeekSpecified{
+						Number: 1,
+					},
+				},
+			},
+			postTest: func(t *testing.T, test *preparedTest) {
+				require.Equal(t, 1, test.ledger.GetBlocksIteratorCallCount())
+				require.EqualValues(t, 1, test.ledger.GetBlocksIteratorArgsForCall(0))
 			},
 		},
 		{
@@ -1899,7 +1949,7 @@ func TestNilArgs(t *testing.T) {
 		&mocks.Discovery{},
 		&mocks.CommitFinder{},
 		&mocks.ACLChecker{},
-		&mocks.LedgerProvider{},
+		&ledgermocks.Provider{},
 		gdiscovery.NetworkMember{
 			PKIid:    common.PKIidType("id1"),
 			Endpoint: "localhost:7051",
@@ -1978,7 +2028,7 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		blockChannel <- block
 	}
 	close(blockChannel)
-	mockBlockIterator.NextCalls(func() (commonledger.QueryResult, error) {
+	mockBlockIterator.NextCalls(func() (ledger.QueryResult, error) {
 		if tt.eventErr != nil {
 			return nil, tt.eventErr
 		}
@@ -1991,14 +2041,14 @@ func prepareTest(t *testing.T, tt *testDef) *preparedTest {
 		return block, nil
 	})
 
-	mockLedger := &mocks.Ledger{}
+	mockLedger := &ledgermocks.Ledger{}
 	ledgerInfo := &cp.BlockchainInfo{
 		Height: 1,
 	}
 	mockLedger.GetBlockchainInfoReturns(ledgerInfo, nil)
 	mockLedger.GetBlocksIteratorReturns(mockBlockIterator, nil)
 
-	mockLedgerProvider := &mocks.LedgerProvider{}
+	mockLedgerProvider := &ledgermocks.Provider{}
 	mockLedgerProvider.LedgerReturns(mockLedger, nil)
 
 	validProposal := createProposal(t, testChannel, testChaincode, tt.transientData)

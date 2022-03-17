@@ -10,13 +10,13 @@ import (
 
 	peerproto "github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/peer"
 	"github.com/hyperledger/fabric/core/scc"
 	gdiscovery "github.com/hyperledger/fabric/gossip/discovery"
 	"github.com/hyperledger/fabric/internal/pkg/comm"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/commit"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/config"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 	"google.golang.org/grpc"
 )
 
@@ -29,7 +29,7 @@ type Server struct {
 	policy         ACLChecker
 	options        config.Options
 	logger         *flogging.FabricLogger
-	ledgerProvider LedgerProvider
+	ledgerProvider ledger.Provider
 }
 
 type EndorserServerAdapter struct {
@@ -48,10 +48,6 @@ type ACLChecker interface {
 	CheckACL(policyName string, channelName string, data interface{}) error
 }
 
-type LedgerProvider interface {
-	Ledger(channelName string) (ledger.Ledger, error)
-}
-
 // CreateServer creates an embedded instance of the Gateway.
 func CreateServer(
 	localEndorser peerproto.EndorserServer,
@@ -63,7 +59,7 @@ func CreateServer(
 	options config.Options,
 	systemChaincodes scc.BuiltinSCCs,
 ) *Server {
-	adapter := &peerAdapter{
+	adapter := &ledger.PeerAdapter{
 		Peer: peerInstance,
 	}
 	notifier := commit.NewNotifier(adapter)
@@ -92,7 +88,7 @@ func newServer(localEndorser peerproto.EndorserClient,
 	discovery Discovery,
 	finder CommitFinder,
 	policy ACLChecker,
-	ledgerProvider LedgerProvider,
+	ledgerProvider ledger.Provider,
 	localInfo gdiscovery.NetworkMember,
 	localMSPID string,
 	secureOptions *comm.SecureOptions,
