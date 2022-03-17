@@ -4,10 +4,10 @@ package mocks
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/common/ledger"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 )
 
-type LedgerProvider struct {
+type Provider struct {
 	LedgerStub        func(string) (ledger.Ledger, error)
 	ledgerMutex       sync.RWMutex
 	ledgerArgsForCall []struct {
@@ -25,7 +25,7 @@ type LedgerProvider struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *LedgerProvider) Ledger(arg1 string) (ledger.Ledger, error) {
+func (fake *Provider) Ledger(arg1 string) (ledger.Ledger, error) {
 	fake.ledgerMutex.Lock()
 	ret, specificReturn := fake.ledgerReturnsOnCall[len(fake.ledgerArgsForCall)]
 	fake.ledgerArgsForCall = append(fake.ledgerArgsForCall, struct {
@@ -44,26 +44,26 @@ func (fake *LedgerProvider) Ledger(arg1 string) (ledger.Ledger, error) {
 	return fakeReturns.result1, fakeReturns.result2
 }
 
-func (fake *LedgerProvider) LedgerCallCount() int {
+func (fake *Provider) LedgerCallCount() int {
 	fake.ledgerMutex.RLock()
 	defer fake.ledgerMutex.RUnlock()
 	return len(fake.ledgerArgsForCall)
 }
 
-func (fake *LedgerProvider) LedgerCalls(stub func(string) (ledger.Ledger, error)) {
+func (fake *Provider) LedgerCalls(stub func(string) (ledger.Ledger, error)) {
 	fake.ledgerMutex.Lock()
 	defer fake.ledgerMutex.Unlock()
 	fake.LedgerStub = stub
 }
 
-func (fake *LedgerProvider) LedgerArgsForCall(i int) string {
+func (fake *Provider) LedgerArgsForCall(i int) string {
 	fake.ledgerMutex.RLock()
 	defer fake.ledgerMutex.RUnlock()
 	argsForCall := fake.ledgerArgsForCall[i]
 	return argsForCall.arg1
 }
 
-func (fake *LedgerProvider) LedgerReturns(result1 ledger.Ledger, result2 error) {
+func (fake *Provider) LedgerReturns(result1 ledger.Ledger, result2 error) {
 	fake.ledgerMutex.Lock()
 	defer fake.ledgerMutex.Unlock()
 	fake.LedgerStub = nil
@@ -73,7 +73,7 @@ func (fake *LedgerProvider) LedgerReturns(result1 ledger.Ledger, result2 error) 
 	}{result1, result2}
 }
 
-func (fake *LedgerProvider) LedgerReturnsOnCall(i int, result1 ledger.Ledger, result2 error) {
+func (fake *Provider) LedgerReturnsOnCall(i int, result1 ledger.Ledger, result2 error) {
 	fake.ledgerMutex.Lock()
 	defer fake.ledgerMutex.Unlock()
 	fake.LedgerStub = nil
@@ -89,7 +89,7 @@ func (fake *LedgerProvider) LedgerReturnsOnCall(i int, result1 ledger.Ledger, re
 	}{result1, result2}
 }
 
-func (fake *LedgerProvider) Invocations() map[string][][]interface{} {
+func (fake *Provider) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
 	fake.ledgerMutex.RLock()
@@ -101,7 +101,7 @@ func (fake *LedgerProvider) Invocations() map[string][][]interface{} {
 	return copiedInvocations
 }
 
-func (fake *LedgerProvider) recordInvocation(key string, args []interface{}) {
+func (fake *Provider) recordInvocation(key string, args []interface{}) {
 	fake.invocationsMutex.Lock()
 	defer fake.invocationsMutex.Unlock()
 	if fake.invocations == nil {
@@ -112,3 +112,5 @@ func (fake *LedgerProvider) recordInvocation(key string, args []interface{}) {
 	}
 	fake.invocations[key] = append(fake.invocations[key], args)
 }
+
+var _ ledger.Provider = new(Provider)

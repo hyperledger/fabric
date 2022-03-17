@@ -19,10 +19,10 @@ import (
 	ab "github.com/hyperledger/fabric-protos-go/orderer"
 	"github.com/hyperledger/fabric-protos-go/peer"
 	"github.com/hyperledger/fabric/common/flogging"
-	"github.com/hyperledger/fabric/common/ledger"
 	"github.com/hyperledger/fabric/core/aclmgmt/resources"
 	"github.com/hyperledger/fabric/core/chaincode"
 	"github.com/hyperledger/fabric/internal/pkg/gateway/event"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 	"github.com/hyperledger/fabric/protoutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -529,7 +529,7 @@ func (gs *Server) ChaincodeEvents(signedRequest *gp.SignedChaincodeEventsRequest
 		return status.Error(codes.NotFound, err.Error())
 	}
 
-	startBlock, err := startBlockFromLedgerPosition(ledger, request.GetStartPosition())
+	startBlock, err := chaincodeEventsStartBlock(ledger, request)
 	if err != nil {
 		return err
 	}
@@ -595,6 +595,17 @@ func chaincodeEventMatcher(request *gp.ChaincodeEventsRequest) func(event *peer.
 
 		return event.GetChaincodeId() == chaincodeID
 	}
+}
+
+func chaincodeEventsStartBlock(ledger ledger.Ledger, request *gp.ChaincodeEventsRequest) (uint64, error) {
+	afterTransactionID := request.GetAfterTransactionId()
+	if len(afterTransactionID) > 0 {
+		if block, err := ledger.GetBlockByTxID(afterTransactionID); err == nil {
+			return block.GetHeader().GetNumber(), nil
+		}
+	}
+
+	return startBlockFromLedgerPosition(ledger, request.GetStartPosition())
 }
 
 func startBlockFromLedgerPosition(ledger ledger.Ledger, position *ab.SeekPosition) (uint64, error) {
