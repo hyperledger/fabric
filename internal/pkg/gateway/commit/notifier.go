@@ -9,14 +9,8 @@ package commit
 import (
 	"sync"
 
-	"github.com/hyperledger/fabric/core/ledger"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 )
-
-// NotificationSupplier obtains a commit notification channel for a specific ledger. It provides an abstraction of the use of
-// Peer, Channel and Ledger to obtain this result, and allows mocking in unit tests.
-type NotificationSupplier interface {
-	CommitNotifications(done <-chan struct{}, channelName string) (<-chan *ledger.CommitNotification, error)
-}
 
 type notifiers struct {
 	block  *blockNotifier
@@ -25,16 +19,16 @@ type notifiers struct {
 
 // Notifier provides notification of transaction commits.
 type Notifier struct {
-	supplier           NotificationSupplier
+	provider           ledger.Provider
 	lock               sync.Mutex
 	notifiersByChannel map[string]*notifiers
 	cancel             chan struct{}
 	once               sync.Once
 }
 
-func NewNotifier(supplier NotificationSupplier) *Notifier {
+func NewNotifier(provider ledger.Provider) *Notifier {
 	return &Notifier{
-		supplier:           supplier,
+		provider:           provider,
 		notifiersByChannel: make(map[string]*notifiers),
 		cancel:             make(chan struct{}),
 	}
@@ -69,7 +63,12 @@ func (n *Notifier) notifiersForChannel(channelName string) (*notifiers, error) {
 		return result, nil
 	}
 
-	commitChannel, err := n.supplier.CommitNotifications(n.cancel, channelName)
+	ledger, err := n.provider.Ledger(channelName)
+	if err != nil {
+		return nil, err
+	}
+
+	commitChannel, err := ledger.CommitNotificationsChannel(n.cancel)
 	if err != nil {
 		return nil, err
 	}

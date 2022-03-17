@@ -12,6 +12,7 @@ import (
 	"context"
 
 	"github.com/hyperledger/fabric-protos-go/peer"
+	"github.com/hyperledger/fabric/internal/pkg/gateway/ledger"
 
 	"github.com/pkg/errors"
 )
@@ -22,21 +23,15 @@ type Status struct {
 	Code          peer.TxValidationCode
 }
 
-// QueryProvider provides status of previously committed transactions on a given channel. An error is returned if the
-// transaction is not present in the ledger.
-type QueryProvider interface {
-	TransactionStatus(channelName string, transactionID string) (peer.TxValidationCode, uint64, error)
-}
-
 // Finder is used to obtain transaction status.
 type Finder struct {
-	query    QueryProvider
+	provider ledger.Provider
 	notifier *Notifier
 }
 
-func NewFinder(query QueryProvider, notifier *Notifier) *Finder {
+func NewFinder(provider ledger.Provider, notifier *Notifier) *Finder {
 	return &Finder{
-		query:    query,
+		provider: provider,
 		notifier: notifier,
 	}
 }
@@ -53,7 +48,12 @@ func (finder *Finder) TransactionStatus(ctx context.Context, channelName string,
 		return nil, err
 	}
 
-	if code, blockNumber, err := finder.query.TransactionStatus(channelName, transactionID); err == nil {
+	ledger, err := finder.provider.Ledger(channelName)
+	if err != nil {
+		return nil, err
+	}
+
+	if code, blockNumber, err := ledger.GetTxValidationCodeByTxID(transactionID); err == nil {
 		status := &Status{
 			BlockNumber:   blockNumber,
 			TransactionID: transactionID,
