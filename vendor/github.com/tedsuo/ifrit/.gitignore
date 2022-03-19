@@ -1,0 +1,28 @@
+.DS_Store
+
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+
+# Folders
+_obj
+_test
+
+*.exe
+
+*.iml
+*.zpi
+*.zwi
+
+*.go-e
+
+# Test output
+*.test
+
+# Log files
+*.log
+
+# IDE
+.idea/
+

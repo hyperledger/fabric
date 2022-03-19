@@ -1,0 +1,10 @@
+language: go
+
+matrix:
+  include:
+  - go: "1.10.x"
+  - go: "1.11.x"
+    install: true
+    env: GO111MODULE=on
+
+script: go test -race ./...
