@@ -66,7 +66,7 @@ func (*ecdsaPKIXPublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts 
 		return nil, errors.New("Invalid raw. It must not be nil.")
 	}
 
-	lowLevelKey, err := derToPublicKey(der)
+	lowLevelKey, err := DerToPublicKey(der)
 	if err != nil {
 		return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
 	}
@@ -91,7 +91,7 @@ func (*ecdsaPrivateKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bcc
 		return nil, errors.New("[ECDSADERPrivateKeyImportOpts] Invalid raw. It must not be nil.")
 	}
 
-	lowLevelKey, err := derToPrivateKey(der)
+	lowLevelKey, err := DerToPrivateKey(der)
 	if err != nil {
 		return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
 	}

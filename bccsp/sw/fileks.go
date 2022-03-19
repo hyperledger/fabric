@@ -232,7 +232,7 @@ func (ks *fileBasedKeyStore) searchKeystoreForSKI(ski []byte) (k bccsp.Key, err 
 			continue
 		}
 
-		key, err := pemToPrivateKey(raw, ks.pwd)
+		key, err := PemToPrivateKey(raw, ks.pwd)
 		if err != nil {
 			logger.Debugf("Skipping unparseable key file [%s]", f.Name())
 			continue
@@ -277,7 +277,7 @@ func (ks *fileBasedKeyStore) getSuffix(alias string) string {
 }
 
 func (ks *fileBasedKeyStore) storePrivateKey(alias string, privateKey interface{}) error {
-	rawKey, err := privateKeyToPEM(privateKey, ks.pwd)
+	rawKey, err := PrivateKeyToPEM(privateKey, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting private key to PEM [%s]: [%s]", alias, err)
 		return err
@@ -293,7 +293,7 @@ func (ks *fileBasedKeyStore) storePrivateKey(alias string, privateKey interface{
 }
 
 func (ks *fileBasedKeyStore) storePublicKey(alias string, publicKey interface{}) error {
-	rawKey, err := publicKeyToPEM(publicKey, ks.pwd)
+	rawKey, err := PublicKeyToPEM(publicKey, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting public key to PEM [%s]: [%s]", alias, err)
 		return err
@@ -309,7 +309,7 @@ func (ks *fileBasedKeyStore) storePublicKey(alias string, publicKey interface{})
 }
 
 func (ks *fileBasedKeyStore) storeKey(alias string, key []byte) error {
-	pem, err := aesToEncryptedPEM(key, ks.pwd)
+	pem, err := AesToEncryptedPEM(key, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed converting key to PEM [%s]: [%s]", alias, err)
 		return err
@@ -335,7 +335,7 @@ func (ks *fileBasedKeyStore) loadPrivateKey(alias string) (interface{}, error) {
 		return nil, err
 	}
 
-	privateKey, err := pemToPrivateKey(raw, ks.pwd)
+	privateKey, err := PemToPrivateKey(raw, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed parsing private key [%s]: [%s].", alias, err.Error())
 
@@ -356,7 +356,7 @@ func (ks *fileBasedKeyStore) loadPublicKey(alias string) (interface{}, error) {
 		return nil, err
 	}
 
-	pubKey, err := pemToPublicKey(raw, ks.pwd)
+	pubKey, err := PemToPublicKey(raw, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed parsing pub key [%s]: [%s].", alias, err.Error())
 
@@ -377,7 +377,7 @@ func (ks *fileBasedKeyStore) loadKey(alias string) ([]byte, error) {
 		return nil, err
 	}
 
-	key, err := pemToAES(pem, ks.pwd)
+	key, err := PemToAES(pem, ks.pwd)
 	if err != nil {
 		logger.Errorf("Failed parsing key [%s]: [%s]", alias, err)
 

@@ -518,8 +518,8 @@ func TestVariousAESKeyEncoding(t *testing.T) {
 	}
 
 	// PEM format
-	pem := aesToPEM(key)
-	keyFromPEM, err := pemToAES(pem, nil)
+	pem := AesToPEM(key)
+	keyFromPEM, err := PemToAES(pem, nil)
 	if err != nil {
 		t.Fatalf("Failed converting PEM to AES key [%s]", err)
 	}
@@ -528,11 +528,11 @@ func TestVariousAESKeyEncoding(t *testing.T) {
 	}
 
 	// Encrypted PEM format
-	pem, err = aesToEncryptedPEM(key, []byte("passwd"))
+	pem, err = AesToEncryptedPEM(key, []byte("passwd"))
 	if err != nil {
 		t.Fatalf("Failed converting AES key to Encrypted PEM [%s]", err)
 	}
-	keyFromPEM, err = pemToAES(pem, []byte("passwd"))
+	keyFromPEM, err = PemToAES(pem, []byte("passwd"))
 	if err != nil {
 		t.Fatalf("Failed converting encrypted PEM to AES key [%s]", err)
 	}
