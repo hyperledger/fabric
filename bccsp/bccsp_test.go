@@ -46,23 +46,6 @@ func TestAESOpts(t *testing.T) {
 	assert.False(t, opts.Ephemeral())
 }
 
-func TestRSAOpts(t *testing.T) {
-	test := func(ephemeral bool) {
-		for _, opts := range []KeyGenOpts{
-			&RSA1024KeyGenOpts{ephemeral},
-			&RSA2048KeyGenOpts{ephemeral},
-			&RSA3072KeyGenOpts{ephemeral},
-			&RSA4096KeyGenOpts{ephemeral},
-		} {
-			expectedAlgorithm := reflect.TypeOf(opts).String()[7:14]
-			assert.Equal(t, expectedAlgorithm, opts.Algorithm())
-			assert.Equal(t, ephemeral, opts.Ephemeral())
-		}
-	}
-	test(true)
-	test(false)
-}
-
 func TestECDSAOpts(t *testing.T) {
 	test := func(ephemeral bool) {
 		for _, opts := range []KeyGenOpts{
@@ -133,17 +116,13 @@ func TestHMAC(t *testing.T) {
 
 func TestKeyGenOpts(t *testing.T) {
 	expectedAlgorithms := map[reflect.Type]string{
-		reflect.TypeOf(&HMACImportKeyOpts{}):        "HMAC",
-		reflect.TypeOf(&RSAKeyGenOpts{}):            "RSA",
-		reflect.TypeOf(&RSAGoPublicKeyImportOpts{}): "RSA",
-		reflect.TypeOf(&X509PublicKeyImportOpts{}):  "X509Certificate",
-		reflect.TypeOf(&AES256ImportKeyOpts{}):      "AES",
+		reflect.TypeOf(&HMACImportKeyOpts{}):       "HMAC",
+		reflect.TypeOf(&X509PublicKeyImportOpts{}): "X509Certificate",
+		reflect.TypeOf(&AES256ImportKeyOpts{}):     "AES",
 	}
 	test := func(ephemeral bool) {
 		for _, opts := range []KeyGenOpts{
 			&HMACImportKeyOpts{ephemeral},
-			&RSAKeyGenOpts{ephemeral},
-			&RSAGoPublicKeyImportOpts{ephemeral},
 			&X509PublicKeyImportOpts{ephemeral},
 			&AES256ImportKeyOpts{ephemeral},
 		} {

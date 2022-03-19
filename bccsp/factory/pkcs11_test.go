@@ -1,3 +1,4 @@
+//go:build pkcs11
 // +build pkcs11
 
 /*
@@ -18,7 +19,7 @@ import (
 
 func TestExportedInitFactories(t *testing.T) {
 	// Reset errors from previous negative test runs
-	factoriesInitError = nil
+	factoriesInitError = initFactories(nil)
 
 	err := InitFactories(nil)
 	assert.NoError(t, err)
@@ -32,33 +33,7 @@ func TestInitFactories(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestSetFactoriesWithMultipleProviders(t *testing.T) {
-	err := initFactories(&FactoryOpts{
-		ProviderName: "SW",
-		SwOpts:       &SwOpts{},
-		Pkcs11Opts:   &pkcs11.PKCS11Opts{},
-		PluginOpts:   &PluginOpts{},
-	})
-	assert.EqualError(t, err, "Failed initializing SW.BCCSP: Could not initialize BCCSP SW [Failed initializing configuration at [0,]: Hash Family not supported []]")
-
-	err = initFactories(&FactoryOpts{
-		ProviderName: "PKCS11",
-		SwOpts:       &SwOpts{},
-		Pkcs11Opts:   &pkcs11.PKCS11Opts{},
-		PluginOpts:   &PluginOpts{},
-	})
-	assert.EqualError(t, err, "Failed initializing PKCS11.BCCSP: Could not initialize BCCSP PKCS11 [Failed initializing configuration: Hash Family not supported []]")
-
-	err = initFactories(&FactoryOpts{
-		ProviderName: "PLUGIN",
-		SwOpts:       &SwOpts{},
-		Pkcs11Opts:   &pkcs11.PKCS11Opts{},
-		PluginOpts:   &PluginOpts{},
-	})
-	assert.EqualError(t, err, "Failed initializing PLUGIN.BCCSP: Could not initialize BCCSP PLUGIN [Invalid config: missing property 'Library']")
-}
-
-func TestSetFactoriesInvalidArgs(t *testing.T) {
+func TestInitFactoriesInvalidArgs(t *testing.T) {
 	err := initFactories(&FactoryOpts{
 		ProviderName: "SW",
 		SwOpts:       &SwOpts{},

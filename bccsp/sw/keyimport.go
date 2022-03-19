@@ -1,17 +1,7 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package sw
@@ -19,13 +9,15 @@ package sw
 import (
 	"crypto/ecdsa"
 	"crypto/rsa"
-	"crypto/x509"
+
 	"errors"
 	"fmt"
 	"reflect"
 
+	"github.com/hyperledger/fabric/bccsp/utils/x509"
+
 	"github.com/hyperledger/fabric/bccsp"
-	"github.com/hyperledger/fabric/bccsp/utils"
+	"github.com/hyperledger/fabric/bccsp/pqc"
 )
 
 type aes256ImportKeyOptsKeyImporter struct{}
@@ -44,7 +36,7 @@ func (*aes256ImportKeyOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.Key
 		return nil, fmt.Errorf("Invalid Key Length [%d]. Must be 32 bytes", len(aesRaw))
 	}
 
-	return &aesPrivateKey{utils.Clone(aesRaw), false}, nil
+	return &aesPrivateKey{aesRaw, false}, nil
 }
 
 type hmacImportKeyOptsKeyImporter struct{}
@@ -59,7 +51,7 @@ func (*hmacImportKeyOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyIm
 		return nil, errors.New("Invalid raw material. It must not be nil.")
 	}
 
-	return &aesPrivateKey{utils.Clone(aesRaw), false}, nil
+	return &aesPrivateKey{aesRaw, false}, nil
 }
 
 type ecdsaPKIXPublicKeyImportOptsKeyImporter struct{}
@@ -74,7 +66,7 @@ func (*ecdsaPKIXPublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts 
 		return nil, errors.New("Invalid raw. It must not be nil.")
 	}
 
-	lowLevelKey, err := utils.DERToPublicKey(der)
+	lowLevelKey, err := derToPublicKey(der)
 	if err != nil {
 		return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
 	}
@@ -99,7 +91,7 @@ func (*ecdsaPrivateKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bcc
 		return nil, errors.New("[ECDSADERPrivateKeyImportOpts] Invalid raw. It must not be nil.")
 	}
 
-	lowLevelKey, err := utils.DERToPrivateKey(der)
+	lowLevelKey, err := derToPrivateKey(der)
 	if err != nil {
 		return nil, fmt.Errorf("Failed converting PKIX to ECDSA public key [%s]", err)
 	}
@@ -123,17 +115,6 @@ func (*ecdsaGoPublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bc
 	return &ecdsaPublicKey{lowLevelKey}, nil
 }
 
-type rsaGoPublicKeyImportOptsKeyImporter struct{}
-
-func (*rsaGoPublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (bccsp.Key, error) {
-	lowLevelKey, ok := raw.(*rsa.PublicKey)
-	if !ok {
-		return nil, errors.New("Invalid raw material. Expected *rsa.PublicKey.")
-	}
-
-	return &rsaPublicKey{lowLevelKey}, nil
-}
-
 type x509PublicKeyImportOptsKeyImporter struct {
 	bccsp *CSP
 }
@@ -141,21 +122,63 @@ type x509PublicKeyImportOptsKeyImporter struct {
 func (ki *x509PublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (bccsp.Key, error) {
 	x509Cert, ok := raw.(*x509.Certificate)
 	if !ok {
-		return nil, errors.New("Invalid raw material. Expected *x509.Certificate.")
+		return nil, errors.New("Invalid raw material. Expected *utils.x509.Certificate.")
 	}
 
 	pk := x509Cert.PublicKey
 
-	switch pk.(type) {
+	switch pk := pk.(type) {
+	case *pqc.PublicKey:
+		return ki.bccsp.KeyImporters[reflect.TypeOf(&bccsp.PQCGoPublicKeyImportOpts{})].KeyImport(
+			pk, &bccsp.PQCGoPublicKeyImportOpts{Temporary: opts.Ephemeral()})
+
 	case *ecdsa.PublicKey:
 		return ki.bccsp.KeyImporters[reflect.TypeOf(&bccsp.ECDSAGoPublicKeyImportOpts{})].KeyImport(
 			pk,
 			&bccsp.ECDSAGoPublicKeyImportOpts{Temporary: opts.Ephemeral()})
+
 	case *rsa.PublicKey:
-		return ki.bccsp.KeyImporters[reflect.TypeOf(&bccsp.RSAGoPublicKeyImportOpts{})].KeyImport(
-			pk,
-			&bccsp.RSAGoPublicKeyImportOpts{Temporary: opts.Ephemeral()})
+		// This path only exists to support environments that use RSA certificate
+		// authorities to issue ECDSA certificates.
+		return &rsaPublicKey{pubKey: pk}, nil
+
 	default:
-		return nil, errors.New("Certificate's public key type not recognized. Supported keys: [ECDSA, RSA]")
+		return nil, errors.New("Certificate's public key type not recognized. Supported keys: [ECDSA, RSA, PQC]")
 	}
+}
+
+type pqcGoPublicKeyImportOptsKeyImporter struct{}
+
+func (*pqcGoPublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (bccsp.Key, error) {
+	lowLevelKey, ok := raw.(*pqc.PublicKey)
+	if !ok {
+		return nil, errors.New("Invalid raw material. Expected *pqc.PublicKey.")
+	}
+
+	return &pqcPublicKey{lowLevelKey}, nil
+}
+
+type pqcPublicKeyImportOptsKeyImporter struct{}
+
+func (*pqcPublicKeyImportOptsKeyImporter) KeyImport(raw interface{}, opts bccsp.KeyImportOpts) (bccsp.Key, error) {
+	der, ok := raw.([]byte)
+	if !ok {
+		return nil, errors.New("Invalid raw material. Expected byte array.")
+	}
+
+	if len(der) == 0 {
+		return nil, errors.New("Invalid raw. It must not be nil.")
+	}
+
+	lowLevelKey, err := pqc.ParsePKIXPublicKey(der)
+	if err != nil {
+		return nil, fmt.Errorf("Failed converting PKIX to pqc public key [%s]", err)
+	}
+
+	pqcPK, ok := lowLevelKey.(*pqc.PublicKey)
+	if !ok {
+		return nil, errors.New("Failed casting to PQC public key. Invalid raw material.")
+	}
+
+	return &pqcPublicKey{pqcPK}, nil
 }

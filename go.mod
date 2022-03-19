@@ -7,6 +7,8 @@ require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/Shopify/sarama v1.19.0
+	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
+	github.com/VividCortex/gohistogram v1.0.0 // indirect
 	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc // indirect
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
 	github.com/containerd/continuity v0.0.0-20181003075958-be9bd761db19 // indirect
@@ -38,6 +40,7 @@ require (
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7
+	github.com/open-quantum-safe/liboqs-go v0.0.0-20220105163900-e0f759d70fa5
 	github.com/pierrec/lz4 v0.0.0-20180906185208-bb6bfd13c6a2 // indirect
 	github.com/pkg/errors v0.8.0
 	github.com/prometheus/client_golang v0.9.0

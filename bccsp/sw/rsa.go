@@ -1,72 +1,52 @@
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
 
 package sw
 
 import (
-	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
 	"errors"
 	"fmt"
 
 	"github.com/hyperledger/fabric/bccsp"
 )
 
-type rsaSigner struct{}
+// An rsaPublicKey wraps the standard library implementation of an RSA public
+// key with functions that satisfy the bccsp.Key interface.
+//
+// NOTE: Fabric does not support RSA signing or verification. This code simply
+// allows MSPs to include RSA CAs in their certificate chains.
+type rsaPublicKey struct{ pubKey *rsa.PublicKey }
 
-func (s *rsaSigner) Sign(k bccsp.Key, digest []byte, opts bccsp.SignerOpts) ([]byte, error) {
-	if opts == nil {
-		return nil, errors.New("Invalid options. Must be different from nil.")
+func (k *rsaPublicKey) Symmetric() bool               { return false }
+func (k *rsaPublicKey) Private() bool                 { return false }
+func (k *rsaPublicKey) PublicKey() (bccsp.Key, error) { return k, nil }
+
+// Bytes converts this key to its serialized representation.
+func (k *rsaPublicKey) Bytes() (raw []byte, err error) {
+	if k.pubKey == nil {
+		return nil, errors.New("Failed marshalling key. Key is nil.")
 	}
-
-	return k.(*rsaPrivateKey).privKey.Sign(rand.Reader, digest, opts)
+	raw, err = x509.MarshalPKIXPublicKey(k.pubKey)
+	if err != nil {
+		return nil, fmt.Errorf("Failed marshalling key [%s]", err)
+	}
+	return
 }
 
-type rsaPrivateKeyVerifier struct{}
-
-func (v *rsaPrivateKeyVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
-	if opts == nil {
-		return false, errors.New("Invalid options. It must not be nil.")
+// SKI returns the subject key identifier of this key.
+func (k *rsaPublicKey) SKI() []byte {
+	if k.pubKey == nil {
+		return nil
 	}
-	switch opts.(type) {
-	case *rsa.PSSOptions:
-		err := rsa.VerifyPSS(&(k.(*rsaPrivateKey).privKey.PublicKey),
-			(opts.(*rsa.PSSOptions)).Hash,
-			digest, signature, opts.(*rsa.PSSOptions))
 
-		return err == nil, err
-	default:
-		return false, fmt.Errorf("Opts type not recognized [%s]", opts)
-	}
-}
-
-type rsaPublicKeyKeyVerifier struct{}
-
-func (v *rsaPublicKeyKeyVerifier) Verify(k bccsp.Key, signature, digest []byte, opts bccsp.SignerOpts) (bool, error) {
-	if opts == nil {
-		return false, errors.New("Invalid options. It must not be nil.")
-	}
-	switch opts.(type) {
-	case *rsa.PSSOptions:
-		err := rsa.VerifyPSS(k.(*rsaPublicKey).pubKey,
-			(opts.(*rsa.PSSOptions)).Hash,
-			digest, signature, opts.(*rsa.PSSOptions))
-
-		return err == nil, err
-	default:
-		return false, fmt.Errorf("Opts type not recognized [%s]", opts)
-	}
+	// Marshal the public key and hash it
+	raw := x509.MarshalPKCS1PublicKey(k.pubKey)
+	hash := sha256.Sum256(raw)
+	return hash[:]
 }

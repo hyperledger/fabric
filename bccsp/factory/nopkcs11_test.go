@@ -1,3 +1,4 @@
+//go:build !pkcs11
 // +build !pkcs11
 
 /*
@@ -14,18 +15,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestInitFactoriesWithMultipleProviders(t *testing.T) {
+func TestInitFactories(t *testing.T) {
 	err := initFactories(&FactoryOpts{
 		ProviderName: "SW",
 		SwOpts:       &SwOpts{},
-		PluginOpts:   &PluginOpts{},
 	})
 	assert.EqualError(t, err, "Failed initializing BCCSP: Could not initialize BCCSP SW [Failed initializing configuration at [0,]: Hash Family not supported []]")
 
 	err = initFactories(&FactoryOpts{
-		ProviderName: "PLUGIN",
-		SwOpts:       &SwOpts{},
-		PluginOpts:   &PluginOpts{},
+		ProviderName: "PKCS11",
 	})
-	assert.EqualError(t, err, "Failed initializing PLUGIN.BCCSP: Could not initialize BCCSP PLUGIN [Invalid config: missing property 'Library']")
+	assert.EqualError(t, err, "Could not find default `PKCS11` BCCSP")
 }

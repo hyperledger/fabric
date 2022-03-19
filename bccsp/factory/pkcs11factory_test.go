@@ -1,28 +1,22 @@
+//go:build pkcs11
 // +build pkcs11
 
 /*
-Copyright IBM Corp. 2017 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 package factory
 
 import (
-	"os"
+	"crypto/sha256"
+	"encoding/hex"
 	"testing"
 
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPKCS11FactoryName(t *testing.T) {
@@ -65,12 +59,11 @@ func TestPKCS11FactoryGet(t *testing.T) {
 
 	opts = &FactoryOpts{
 		Pkcs11Opts: &pkcs11.PKCS11Opts{
-			SecLevel:     256,
-			HashFamily:   "SHA2",
-			FileKeystore: &pkcs11.FileKeystoreOpts{KeyStorePath: os.TempDir()},
-			Library:      lib,
-			Pin:          pin,
-			Label:        label,
+			SecLevel:   256,
+			HashFamily: "SHA2",
+			Library:    lib,
+			Pin:        pin,
+			Label:      label,
 		},
 	}
 	csp, err = f.Get(opts)
@@ -90,4 +83,74 @@ func TestPKCS11FactoryGet(t *testing.T) {
 	csp, err = f.Get(opts)
 	assert.NoError(t, err)
 	assert.NotNil(t, csp)
+}
+
+func TestPKCS11FactoryGetEmptyKeyStorePath(t *testing.T) {
+	f := &PKCS11Factory{}
+	lib, pin, label := pkcs11.FindPKCS11Lib()
+
+	opts := &FactoryOpts{
+		Pkcs11Opts: &pkcs11.PKCS11Opts{
+			SecLevel:   256,
+			HashFamily: "SHA2",
+			Library:    lib,
+			Pin:        pin,
+			Label:      label,
+		},
+	}
+	csp, err := f.Get(opts)
+	assert.NoError(t, err)
+	assert.NotNil(t, csp)
+
+	opts = &FactoryOpts{
+		Pkcs11Opts: &pkcs11.PKCS11Opts{
+			SecLevel:   256,
+			HashFamily: "SHA2",
+			Library:    lib,
+			Pin:        pin,
+			Label:      label,
+		},
+	}
+	csp, err = f.Get(opts)
+	assert.NoError(t, err)
+	assert.NotNil(t, csp)
+}
+
+func TestSKIMapper(t *testing.T) {
+	inputSKI := sha256.New().Sum([]byte("some-ski"))
+	tests := []struct {
+		name     string
+		altID    string
+		keyIDs   map[string]string
+		expected []byte
+	}{
+		{name: "DefaultBehavior", expected: inputSKI},
+		{name: "AltIDOnly", altID: "alternate-ID", expected: []byte("alternate-ID")},
+		{name: "MapEntry", keyIDs: map[string]string{hex.EncodeToString(inputSKI): "mapped-id"}, expected: []byte("mapped-id")},
+		{name: "AltIDAsDefault", altID: "alternate-ID", keyIDs: map[string]string{"another-ski": "another-id"}, expected: []byte("alternate-ID")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := defaultOptions()
+			options.AltID = tt.altID
+			for k, v := range tt.keyIDs {
+				options.KeyIDs = append(options.KeyIDs, pkcs11.KeyIDMapping{SKI: k, ID: v})
+			}
+
+			mapper := skiMapper(*options)
+			result := mapper(inputSKI)
+			require.Equal(t, tt.expected, result, "got %x, want %x", result, tt.expected)
+		})
+	}
+}
+
+func defaultOptions() *pkcs11.PKCS11Opts {
+	lib, pin, label := pkcs11.FindPKCS11Lib()
+	return &pkcs11.PKCS11Opts{
+		SecLevel:   256,
+		HashFamily: "SHA2",
+		Library:    lib,
+		Pin:        pin,
+		Label:      label,
+	}
 }

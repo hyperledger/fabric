@@ -3,6 +3,7 @@ Copyright IBM Corp. All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
+
 package bccsp
 
 import (
@@ -30,5 +31,5 @@ func (r *IdemixIssuerPublicKeyImporterError) Error() string {
 		return fmt.Sprintf("%s: %s", r.ErrorMsg, r.Cause)
 	}
 
-	return fmt.Sprintf("%s", r.ErrorMsg)
+	return r.ErrorMsg
 }

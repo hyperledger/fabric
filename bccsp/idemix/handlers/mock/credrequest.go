@@ -8,12 +8,12 @@ import (
 )
 
 type CredRequest struct {
-	SignStub        func(sk handlers.Big, ipk handlers.IssuerPublicKey, nonce []byte) ([]byte, error)
+	SignStub        func(handlers.Big, handlers.IssuerPublicKey, []byte) ([]byte, error)
 	signMutex       sync.RWMutex
 	signArgsForCall []struct {
-		sk    handlers.Big
-		ipk   handlers.IssuerPublicKey
-		nonce []byte
+		arg1 handlers.Big
+		arg2 handlers.IssuerPublicKey
+		arg3 []byte
 	}
 	signReturns struct {
 		result1 []byte
@@ -23,12 +23,12 @@ type CredRequest struct {
 		result1 []byte
 		result2 error
 	}
-	VerifyStub        func(credRequest []byte, ipk handlers.IssuerPublicKey, nonce []byte) error
+	VerifyStub        func([]byte, handlers.IssuerPublicKey, []byte) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
-		credRequest []byte
-		ipk         handlers.IssuerPublicKey
-		nonce       []byte
+		arg1 []byte
+		arg2 handlers.IssuerPublicKey
+		arg3 []byte
 	}
 	verifyReturns struct {
 		result1 error
@@ -40,28 +40,29 @@ type CredRequest struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *CredRequest) Sign(sk handlers.Big, ipk handlers.IssuerPublicKey, nonce []byte) ([]byte, error) {
-	var nonceCopy []byte
-	if nonce != nil {
-		nonceCopy = make([]byte, len(nonce))
-		copy(nonceCopy, nonce)
+func (fake *CredRequest) Sign(arg1 handlers.Big, arg2 handlers.IssuerPublicKey, arg3 []byte) ([]byte, error) {
+	var arg3Copy []byte
+	if arg3 != nil {
+		arg3Copy = make([]byte, len(arg3))
+		copy(arg3Copy, arg3)
 	}
 	fake.signMutex.Lock()
 	ret, specificReturn := fake.signReturnsOnCall[len(fake.signArgsForCall)]
 	fake.signArgsForCall = append(fake.signArgsForCall, struct {
-		sk    handlers.Big
-		ipk   handlers.IssuerPublicKey
-		nonce []byte
-	}{sk, ipk, nonceCopy})
-	fake.recordInvocation("Sign", []interface{}{sk, ipk, nonceCopy})
+		arg1 handlers.Big
+		arg2 handlers.IssuerPublicKey
+		arg3 []byte
+	}{arg1, arg2, arg3Copy})
+	fake.recordInvocation("Sign", []interface{}{arg1, arg2, arg3Copy})
 	fake.signMutex.Unlock()
 	if fake.SignStub != nil {
-		return fake.SignStub(sk, ipk, nonce)
+		return fake.SignStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.signReturns.result1, fake.signReturns.result2
+	fakeReturns := fake.signReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *CredRequest) SignCallCount() int {
@@ -70,13 +71,22 @@ func (fake *CredRequest) SignCallCount() int {
 	return len(fake.signArgsForCall)
 }
 
+func (fake *CredRequest) SignCalls(stub func(handlers.Big, handlers.IssuerPublicKey, []byte) ([]byte, error)) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
+	fake.SignStub = stub
+}
+
 func (fake *CredRequest) SignArgsForCall(i int) (handlers.Big, handlers.IssuerPublicKey, []byte) {
 	fake.signMutex.RLock()
 	defer fake.signMutex.RUnlock()
-	return fake.signArgsForCall[i].sk, fake.signArgsForCall[i].ipk, fake.signArgsForCall[i].nonce
+	argsForCall := fake.signArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *CredRequest) SignReturns(result1 []byte, result2 error) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
 	fake.SignStub = nil
 	fake.signReturns = struct {
 		result1 []byte
@@ -85,6 +95,8 @@ func (fake *CredRequest) SignReturns(result1 []byte, result2 error) {
 }
 
 func (fake *CredRequest) SignReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
 	fake.SignStub = nil
 	if fake.signReturnsOnCall == nil {
 		fake.signReturnsOnCall = make(map[int]struct {
@@ -98,33 +110,34 @@ func (fake *CredRequest) SignReturnsOnCall(i int, result1 []byte, result2 error)
 	}{result1, result2}
 }
 
-func (fake *CredRequest) Verify(credRequest []byte, ipk handlers.IssuerPublicKey, nonce []byte) error {
-	var credRequestCopy []byte
-	if credRequest != nil {
-		credRequestCopy = make([]byte, len(credRequest))
-		copy(credRequestCopy, credRequest)
+func (fake *CredRequest) Verify(arg1 []byte, arg2 handlers.IssuerPublicKey, arg3 []byte) error {
+	var arg1Copy []byte
+	if arg1 != nil {
+		arg1Copy = make([]byte, len(arg1))
+		copy(arg1Copy, arg1)
 	}
-	var nonceCopy []byte
-	if nonce != nil {
-		nonceCopy = make([]byte, len(nonce))
-		copy(nonceCopy, nonce)
+	var arg3Copy []byte
+	if arg3 != nil {
+		arg3Copy = make([]byte, len(arg3))
+		copy(arg3Copy, arg3)
 	}
 	fake.verifyMutex.Lock()
 	ret, specificReturn := fake.verifyReturnsOnCall[len(fake.verifyArgsForCall)]
 	fake.verifyArgsForCall = append(fake.verifyArgsForCall, struct {
-		credRequest []byte
-		ipk         handlers.IssuerPublicKey
-		nonce       []byte
-	}{credRequestCopy, ipk, nonceCopy})
-	fake.recordInvocation("Verify", []interface{}{credRequestCopy, ipk, nonceCopy})
+		arg1 []byte
+		arg2 handlers.IssuerPublicKey
+		arg3 []byte
+	}{arg1Copy, arg2, arg3Copy})
+	fake.recordInvocation("Verify", []interface{}{arg1Copy, arg2, arg3Copy})
 	fake.verifyMutex.Unlock()
 	if fake.VerifyStub != nil {
-		return fake.VerifyStub(credRequest, ipk, nonce)
+		return fake.VerifyStub(arg1, arg2, arg3)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.verifyReturns.result1
+	fakeReturns := fake.verifyReturns
+	return fakeReturns.result1
 }
 
 func (fake *CredRequest) VerifyCallCount() int {
@@ -133,13 +146,22 @@ func (fake *CredRequest) VerifyCallCount() int {
 	return len(fake.verifyArgsForCall)
 }
 
+func (fake *CredRequest) VerifyCalls(stub func([]byte, handlers.IssuerPublicKey, []byte) error) {
+	fake.verifyMutex.Lock()
+	defer fake.verifyMutex.Unlock()
+	fake.VerifyStub = stub
+}
+
 func (fake *CredRequest) VerifyArgsForCall(i int) ([]byte, handlers.IssuerPublicKey, []byte) {
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
-	return fake.verifyArgsForCall[i].credRequest, fake.verifyArgsForCall[i].ipk, fake.verifyArgsForCall[i].nonce
+	argsForCall := fake.verifyArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
 }
 
 func (fake *CredRequest) VerifyReturns(result1 error) {
+	fake.verifyMutex.Lock()
+	defer fake.verifyMutex.Unlock()
 	fake.VerifyStub = nil
 	fake.verifyReturns = struct {
 		result1 error
@@ -147,6 +169,8 @@ func (fake *CredRequest) VerifyReturns(result1 error) {
 }
 
 func (fake *CredRequest) VerifyReturnsOnCall(i int, result1 error) {
+	fake.verifyMutex.Lock()
+	defer fake.verifyMutex.Unlock()
 	fake.VerifyStub = nil
 	if fake.verifyReturnsOnCall == nil {
 		fake.verifyReturnsOnCall = make(map[int]struct {

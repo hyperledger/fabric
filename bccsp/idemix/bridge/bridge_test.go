@@ -140,7 +140,6 @@ var _ = Describe("Idemix Bridge", func() {
 					Expect(raw).NotTo(BeEmpty())
 
 					pk, err = Issuer.NewPublicKeyFromBytes(raw, nil)
-					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("invalid issuer public key: zero knowledge proof in public key invalid"))
 					Expect(pk).To(BeNil())
 				})
@@ -190,18 +189,18 @@ var _ = Describe("Idemix Bridge", func() {
 		Context("secret key import", func() {
 			It("success", func() {
 				key, err := User.NewKey()
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				raw, err := key.Bytes()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(raw).ToNot(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw).NotTo(BeNil())
 
 				key2, err := User.NewKeyFromBytes(raw)
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
 				raw2, err := key2.Bytes()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(raw2).ToNot(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw2).NotTo(BeNil())
 
 				Expect(raw2).To(BeEquivalentTo(raw))
 			})
@@ -259,32 +258,32 @@ var _ = Describe("Idemix Bridge", func() {
 		})
 
 		Context("public nym import", func() {
-
 			It("success", func() {
 				npk := handlers.NewNymPublicKey(&bridge.Ecp{
 					E: FP256BN.NewECPbigs(FP256BN.NewBIGint(10), FP256BN.NewBIGint(20)),
 				})
 				raw, err := npk.Bytes()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(raw).ToNot(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw).NotTo(BeNil())
 
 				npk2, err := User.NewPublicNymFromBytes(raw)
+				Expect(err).NotTo(HaveOccurred())
 				raw2, err := npk2.Bytes()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(raw2).ToNot(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(raw2).NotTo(BeNil())
 
 				Expect(raw2).To(BeEquivalentTo(raw))
 			})
 
 			It("panic on nil raw", func() {
 				key, err := User.NewPublicNymFromBytes(nil)
-				Expect(err).To(MatchError("failure [%!s(<nil>)]"))
+				Expect(err).To(MatchError("failure [runtime error: index out of range [0] with length 0]"))
 				Expect(key).To(BeNil())
 			})
 
 			It("failure unmarshalling invalid raw", func() {
 				key, err := User.NewPublicNymFromBytes([]byte{0, 1, 2, 3})
-				Expect(err).To(MatchError("failure [%!s(<nil>)]"))
+				Expect(err).To(MatchError("failure [runtime error: index out of range [2] with length 2]"))
 				Expect(key).To(BeNil())
 			})
 
@@ -765,9 +764,9 @@ var _ = Describe("Idemix Bridge", func() {
 					IssuerPublicKey,
 					credRequest,
 					nil,
-					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pine-aple-pine-apple-pinapple")},
+					&bccsp.IdemixCredentialRequestSignerOpts{IssuerNonce: []byte("pin-apple-pine-apple-pineapple")},
 				)
-				Expect(err).To(MatchError("invalid issuer nonce, expected length 32, got 29"))
+				Expect(err).To(MatchError("invalid issuer nonce, expected length 32, got 30"))
 				Expect(valid).NotTo(BeTrue())
 			})
 
@@ -1156,7 +1155,12 @@ var _ = Describe("Idemix Bridge", func() {
 			})
 
 			It("fails when the credential is invalid", func() {
-				credential[4] = 0
+				if credential[4] != 0 {
+					credential[4] = 0
+				} else {
+					credential[4] = 1
+				}
+
 				signature, err := Signer.Sign(
 					UserKey,
 					[]byte("a message"),
@@ -1170,8 +1174,8 @@ var _ = Describe("Idemix Bridge", func() {
 						CRI:        cri,
 					},
 				)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(signature).ToNot(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(signature).NotTo(BeNil())
 
 				valid, err := Verifier.Verify(
 					IssuerPublicKey,

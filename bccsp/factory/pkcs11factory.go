@@ -1,23 +1,17 @@
+//go:build pkcs11
 // +build pkcs11
 
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 package factory
 
 import (
+	"encoding/hex"
+
 	"github.com/hyperledger/fabric/bccsp"
 	"github.com/hyperledger/fabric/bccsp/pkcs11"
 	"github.com/hyperledger/fabric/bccsp/sw"
@@ -44,9 +38,27 @@ func (f *PKCS11Factory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 		return nil, errors.New("Invalid config. It must not be nil.")
 	}
 
-	p11Opts := config.Pkcs11Opts
-
-	//TODO: PKCS11 does not need a keystore, but we have not migrated all of PKCS11 BCCSP to PKCS11 yet
+	p11Opts := *config.Pkcs11Opts
 	ks := sw.NewDummyKeyStore()
-	return pkcs11.New(*p11Opts, ks)
+	mapper := skiMapper(p11Opts)
+
+	return pkcs11.New(p11Opts, ks, pkcs11.WithKeyMapper(mapper))
+}
+
+func skiMapper(p11Opts pkcs11.PKCS11Opts) func([]byte) []byte {
+	keyMap := map[string]string{}
+	for _, k := range p11Opts.KeyIDs {
+		keyMap[k.SKI] = k.ID
+	}
+
+	return func(ski []byte) []byte {
+		keyID := hex.EncodeToString(ski)
+		if id, ok := keyMap[keyID]; ok {
+			return []byte(id)
+		}
+		if p11Opts.AltID != "" {
+			return []byte(p11Opts.AltID)
+		}
+		return ski
+	}
 }

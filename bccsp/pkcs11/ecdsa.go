@@ -46,6 +46,6 @@ func (csp *impl) verifyECDSA(k ecdsaPublicKey, signature, digest []byte, opts bc
 	if csp.softVerify {
 		return ecdsa.Verify(k.pub, digest, r, s), nil
 	}
-	return csp.verifyP11ECDSA(k.ski, digest, r, s, k.pub.Curve.Params().BitSize/8)
 
+	return csp.verifyP11ECDSA(k.ski, digest, r, s, k.pub.Curve.Params().BitSize/8)
 }

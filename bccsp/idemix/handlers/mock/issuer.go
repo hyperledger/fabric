@@ -8,10 +8,10 @@ import (
 )
 
 type Issuer struct {
-	NewKeyStub        func(AttributeNames []string) (handlers.IssuerSecretKey, error)
+	NewKeyStub        func([]string) (handlers.IssuerSecretKey, error)
 	newKeyMutex       sync.RWMutex
 	newKeyArgsForCall []struct {
-		AttributeNames []string
+		arg1 []string
 	}
 	newKeyReturns struct {
 		result1 handlers.IssuerSecretKey
@@ -21,11 +21,11 @@ type Issuer struct {
 		result1 handlers.IssuerSecretKey
 		result2 error
 	}
-	NewPublicKeyFromBytesStub        func(raw []byte, attributes []string) (handlers.IssuerPublicKey, error)
+	NewPublicKeyFromBytesStub        func([]byte, []string) (handlers.IssuerPublicKey, error)
 	newPublicKeyFromBytesMutex       sync.RWMutex
 	newPublicKeyFromBytesArgsForCall []struct {
-		raw        []byte
-		attributes []string
+		arg1 []byte
+		arg2 []string
 	}
 	newPublicKeyFromBytesReturns struct {
 		result1 handlers.IssuerPublicKey
@@ -39,26 +39,27 @@ type Issuer struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *Issuer) NewKey(AttributeNames []string) (handlers.IssuerSecretKey, error) {
-	var AttributeNamesCopy []string
-	if AttributeNames != nil {
-		AttributeNamesCopy = make([]string, len(AttributeNames))
-		copy(AttributeNamesCopy, AttributeNames)
+func (fake *Issuer) NewKey(arg1 []string) (handlers.IssuerSecretKey, error) {
+	var arg1Copy []string
+	if arg1 != nil {
+		arg1Copy = make([]string, len(arg1))
+		copy(arg1Copy, arg1)
 	}
 	fake.newKeyMutex.Lock()
 	ret, specificReturn := fake.newKeyReturnsOnCall[len(fake.newKeyArgsForCall)]
 	fake.newKeyArgsForCall = append(fake.newKeyArgsForCall, struct {
-		AttributeNames []string
-	}{AttributeNamesCopy})
-	fake.recordInvocation("NewKey", []interface{}{AttributeNamesCopy})
+		arg1 []string
+	}{arg1Copy})
+	fake.recordInvocation("NewKey", []interface{}{arg1Copy})
 	fake.newKeyMutex.Unlock()
 	if fake.NewKeyStub != nil {
-		return fake.NewKeyStub(AttributeNames)
+		return fake.NewKeyStub(arg1)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.newKeyReturns.result1, fake.newKeyReturns.result2
+	fakeReturns := fake.newKeyReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Issuer) NewKeyCallCount() int {
@@ -67,13 +68,22 @@ func (fake *Issuer) NewKeyCallCount() int {
 	return len(fake.newKeyArgsForCall)
 }
 
+func (fake *Issuer) NewKeyCalls(stub func([]string) (handlers.IssuerSecretKey, error)) {
+	fake.newKeyMutex.Lock()
+	defer fake.newKeyMutex.Unlock()
+	fake.NewKeyStub = stub
+}
+
 func (fake *Issuer) NewKeyArgsForCall(i int) []string {
 	fake.newKeyMutex.RLock()
 	defer fake.newKeyMutex.RUnlock()
-	return fake.newKeyArgsForCall[i].AttributeNames
+	argsForCall := fake.newKeyArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *Issuer) NewKeyReturns(result1 handlers.IssuerSecretKey, result2 error) {
+	fake.newKeyMutex.Lock()
+	defer fake.newKeyMutex.Unlock()
 	fake.NewKeyStub = nil
 	fake.newKeyReturns = struct {
 		result1 handlers.IssuerSecretKey
@@ -82,6 +92,8 @@ func (fake *Issuer) NewKeyReturns(result1 handlers.IssuerSecretKey, result2 erro
 }
 
 func (fake *Issuer) NewKeyReturnsOnCall(i int, result1 handlers.IssuerSecretKey, result2 error) {
+	fake.newKeyMutex.Lock()
+	defer fake.newKeyMutex.Unlock()
 	fake.NewKeyStub = nil
 	if fake.newKeyReturnsOnCall == nil {
 		fake.newKeyReturnsOnCall = make(map[int]struct {
@@ -95,32 +107,33 @@ func (fake *Issuer) NewKeyReturnsOnCall(i int, result1 handlers.IssuerSecretKey,
 	}{result1, result2}
 }
 
-func (fake *Issuer) NewPublicKeyFromBytes(raw []byte, attributes []string) (handlers.IssuerPublicKey, error) {
-	var rawCopy []byte
-	if raw != nil {
-		rawCopy = make([]byte, len(raw))
-		copy(rawCopy, raw)
+func (fake *Issuer) NewPublicKeyFromBytes(arg1 []byte, arg2 []string) (handlers.IssuerPublicKey, error) {
+	var arg1Copy []byte
+	if arg1 != nil {
+		arg1Copy = make([]byte, len(arg1))
+		copy(arg1Copy, arg1)
 	}
-	var attributesCopy []string
-	if attributes != nil {
-		attributesCopy = make([]string, len(attributes))
-		copy(attributesCopy, attributes)
+	var arg2Copy []string
+	if arg2 != nil {
+		arg2Copy = make([]string, len(arg2))
+		copy(arg2Copy, arg2)
 	}
 	fake.newPublicKeyFromBytesMutex.Lock()
 	ret, specificReturn := fake.newPublicKeyFromBytesReturnsOnCall[len(fake.newPublicKeyFromBytesArgsForCall)]
 	fake.newPublicKeyFromBytesArgsForCall = append(fake.newPublicKeyFromBytesArgsForCall, struct {
-		raw        []byte
-		attributes []string
-	}{rawCopy, attributesCopy})
-	fake.recordInvocation("NewPublicKeyFromBytes", []interface{}{rawCopy, attributesCopy})
+		arg1 []byte
+		arg2 []string
+	}{arg1Copy, arg2Copy})
+	fake.recordInvocation("NewPublicKeyFromBytes", []interface{}{arg1Copy, arg2Copy})
 	fake.newPublicKeyFromBytesMutex.Unlock()
 	if fake.NewPublicKeyFromBytesStub != nil {
-		return fake.NewPublicKeyFromBytesStub(raw, attributes)
+		return fake.NewPublicKeyFromBytesStub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.newPublicKeyFromBytesReturns.result1, fake.newPublicKeyFromBytesReturns.result2
+	fakeReturns := fake.newPublicKeyFromBytesReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Issuer) NewPublicKeyFromBytesCallCount() int {
@@ -129,13 +142,22 @@ func (fake *Issuer) NewPublicKeyFromBytesCallCount() int {
 	return len(fake.newPublicKeyFromBytesArgsForCall)
 }
 
+func (fake *Issuer) NewPublicKeyFromBytesCalls(stub func([]byte, []string) (handlers.IssuerPublicKey, error)) {
+	fake.newPublicKeyFromBytesMutex.Lock()
+	defer fake.newPublicKeyFromBytesMutex.Unlock()
+	fake.NewPublicKeyFromBytesStub = stub
+}
+
 func (fake *Issuer) NewPublicKeyFromBytesArgsForCall(i int) ([]byte, []string) {
 	fake.newPublicKeyFromBytesMutex.RLock()
 	defer fake.newPublicKeyFromBytesMutex.RUnlock()
-	return fake.newPublicKeyFromBytesArgsForCall[i].raw, fake.newPublicKeyFromBytesArgsForCall[i].attributes
+	argsForCall := fake.newPublicKeyFromBytesArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *Issuer) NewPublicKeyFromBytesReturns(result1 handlers.IssuerPublicKey, result2 error) {
+	fake.newPublicKeyFromBytesMutex.Lock()
+	defer fake.newPublicKeyFromBytesMutex.Unlock()
 	fake.NewPublicKeyFromBytesStub = nil
 	fake.newPublicKeyFromBytesReturns = struct {
 		result1 handlers.IssuerPublicKey
@@ -144,6 +166,8 @@ func (fake *Issuer) NewPublicKeyFromBytesReturns(result1 handlers.IssuerPublicKe
 }
 
 func (fake *Issuer) NewPublicKeyFromBytesReturnsOnCall(i int, result1 handlers.IssuerPublicKey, result2 error) {
+	fake.newPublicKeyFromBytesMutex.Lock()
+	defer fake.newPublicKeyFromBytesMutex.Unlock()
 	fake.NewPublicKeyFromBytesStub = nil
 	if fake.newPublicKeyFromBytesReturnsOnCall == nil {
 		fake.newPublicKeyFromBytesReturnsOnCall = make(map[int]struct {

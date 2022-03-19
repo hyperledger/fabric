@@ -20,10 +20,11 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"fmt"
 
 	"github.com/hyperledger/fabric/bccsp"
+	"github.com/hyperledger/fabric/bccsp/pqc"
+	"github.com/open-quantum-safe/liboqs-go/oqs"
 )
 
 type ecdsaKeyGenerator struct {
@@ -52,16 +53,33 @@ func (kg *aesKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
 	return &aesPrivateKey{lowLevelKey, false}, nil
 }
 
-type rsaKeyGenerator struct {
-	length int
-}
+type pqcKeyGenerator struct{}
 
-func (kg *rsaKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
-	lowLevelKey, err := rsa.GenerateKey(rand.Reader, int(kg.length))
-
-	if err != nil {
-		return nil, fmt.Errorf("Failed generating RSA %d key [%s]", kg.length, err)
+func (kg *pqcKeyGenerator) KeyGen(opts bccsp.KeyGenOpts) (bccsp.Key, error) {
+	alg := opts.Algorithm()
+	if alg == "" {
+		alg = "Dilithium3"
 	}
 
-	return &rsaPrivateKey{lowLevelKey}, nil
+	sig := pqc.SigType(alg)
+
+	//初始化
+	signer := oqs.Signature{}
+	// defer signer.Clean()
+	if err := signer.Init(alg, nil); err != nil {
+		return nil, fmt.Errorf("Failed PQC init %s key [%s]", alg, err)
+	}
+
+	//生成密钥对
+	pubKey, err := signer.GenerateKeyPair()
+	if err != nil {
+		return nil, fmt.Errorf("Failed generating PQC KeyPair %s key [%s]", alg, err)
+	}
+	privKey := signer.ExportSecretKey()
+
+	lowLevelKey := &pqc.SecretKey{}
+	lowLevelKey.Sk = privKey
+	lowLevelKey.PublicKey = *&pqc.PublicKey{Pk: pubKey, Sig: *&pqc.OQSSigInfo{Algorithm: sig}}
+
+	return &pqcPrivateKey{lowLevelKey}, nil
 }

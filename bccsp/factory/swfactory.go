@@ -44,15 +44,16 @@ func (f *SWFactory) Get(config *FactoryOpts) (bccsp.BCCSP, error) {
 	swOpts := config.SwOpts
 
 	var ks bccsp.KeyStore
-	if swOpts.FileKeystore != nil {
+	switch {
+	case swOpts.FileKeystore != nil:
 		fks, err := sw.NewFileBasedKeyStore(nil, swOpts.FileKeystore.KeyStorePath, false)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Failed to initialize software key store")
 		}
 		ks = fks
-	} else if swOpts.InmemKeystore != nil {
+	case swOpts.InmemKeystore != nil:
 		ks = sw.NewInMemoryKeyStore()
-	} else {
+	default:
 		// Default to ephemeral key store
 		ks = sw.NewDummyKeyStore()
 	}

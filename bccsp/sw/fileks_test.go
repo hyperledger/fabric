@@ -1,32 +1,21 @@
 /*
-Copyright IBM Corp. 2016 All Rights Reserved.
+Copyright IBM Corp. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-		 http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+SPDX-License-Identifier: Apache-2.0
 */
+
 package sw
 
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/hyperledger/fabric/bccsp/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,8 +28,7 @@ func TestInvalidStoreKey(t *testing.T) {
 
 	ks, err := NewFileBasedKeyStore(nil, filepath.Join(tempDir, "bccspks"), false)
 	if err != nil {
-		fmt.Printf("Failed initiliazing KeyStore [%s]", err)
-		os.Exit(-1)
+		t.Fatalf("Failed initiliazing KeyStore [%s]", err)
 	}
 
 	err = ks.StoreKey(nil)
@@ -54,16 +42,6 @@ func TestInvalidStoreKey(t *testing.T) {
 	}
 
 	err = ks.StoreKey(&ecdsaPublicKey{nil})
-	if err == nil {
-		t.Fatal("Error should be different from nil in this case")
-	}
-
-	err = ks.StoreKey(&rsaPublicKey{nil})
-	if err == nil {
-		t.Fatal("Error should be different from nil in this case")
-	}
-
-	err = ks.StoreKey(&rsaPrivateKey{nil})
 	if err == nil {
 		t.Fatal("Error should be different from nil in this case")
 	}
@@ -93,11 +71,11 @@ func TestBigKeyFile(t *testing.T) {
 
 	cspKey := &ecdsaPrivateKey{privKey}
 	ski := cspKey.SKI()
-	rawKey, err := utils.PrivateKeyToPEM(privKey, nil)
+	rawKey, err := privateKeyToPEM(privKey, nil)
 	assert.NoError(t, err)
 
 	// Large padding array, of some values PEM parser will NOOP
-	bigBuff := make([]byte, (1 << 17))
+	bigBuff := make([]byte, 1<<17)
 	for i := range bigBuff {
 		bigBuff[i] = '\n'
 	}
@@ -108,7 +86,7 @@ func TestBigKeyFile(t *testing.T) {
 
 	_, err = ks.GetKey(ski)
 	assert.Error(t, err)
-	expected := fmt.Sprintf("Key with SKI %s not found in %s", hex.EncodeToString(ski), ksPath)
+	expected := fmt.Sprintf("key with SKI %x not found in %s", ski, ksPath)
 	assert.EqualError(t, err, expected)
 
 	// 1k, so that the key would be found
@@ -128,31 +106,35 @@ func TestReInitKeyStore(t *testing.T) {
 	fbKs, isFileBased := ks.(*fileBasedKeyStore)
 	assert.True(t, isFileBased)
 	err = fbKs.Init(nil, ksPath, false)
-	assert.EqualError(t, err, "KeyStore already initilized.")
+	assert.EqualError(t, err, "keystore is already initialized")
+}
+func TestDirExists(t *testing.T) {
+	r, err := dirExists("")
+	assert.False(t, r)
+	assert.NoError(t, err)
+
+	r, err = dirExists(os.TempDir())
+	assert.NoError(t, err)
+	assert.Equal(t, true, r)
+
+	r, err = dirExists(filepath.Join(os.TempDir(), "7rhf90239vhev90"))
+	assert.NoError(t, err)
+	assert.Equal(t, false, r)
 }
 
-func TestCreateKeyStoreFailed(t *testing.T) {
-	tempDir, err := ioutil.TempDir("", "bccspks")
+func TestDirEmpty(t *testing.T) {
+	_, err := dirEmpty("")
+	assert.Error(t, err)
+
+	path := filepath.Join(os.TempDir(), "7rhf90239vhev90")
+	defer os.Remove(path)
+	os.Mkdir(path, os.ModePerm)
+
+	r, err := dirEmpty(path)
 	assert.NoError(t, err)
-	defer os.RemoveAll(tempDir)
-	validpath := filepath.Join(tempDir, "keystore")
+	assert.Equal(t, true, r)
 
-	cs := []struct {
-		valid bool
-		path  string
-	}{
-		{false, "/invalid/keystore"},
-		{true, validpath},
-	}
-
-	for i, c := range cs {
-		cid := fmt.Sprintf("case %d", i)
-
-		_, err := NewFileBasedKeyStore(nil, c.path, false)
-		if c.valid {
-			assert.NoError(t, err, cid)
-		} else {
-			assert.Error(t, err, cid)
-		}
-	}
+	r, err = dirEmpty(os.TempDir())
+	assert.NoError(t, err)
+	assert.Equal(t, false, r)
 }

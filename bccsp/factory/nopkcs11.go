@@ -1,3 +1,4 @@
+//go:build !pkcs11
 // +build !pkcs11
 
 /*
@@ -17,9 +18,8 @@ const pkcs11Enabled = false
 
 // FactoryOpts holds configuration information used to initialize factory implementations
 type FactoryOpts struct {
-	ProviderName string      `mapstructure:"default" json:"default" yaml:"Default"`
-	SwOpts       *SwOpts     `mapstructure:"SW,omitempty" json:"SW,omitempty" yaml:"SwOpts"`
-	PluginOpts   *PluginOpts `mapstructure:"PLUGIN,omitempty" json:"PLUGIN,omitempty" yaml:"PluginOpts"`
+	ProviderName string  `mapstructure:"default" json:"default" yaml:"Default"`
+	SwOpts       *SwOpts `mapstructure:"SW,omitempty" json:"SW,omitempty" yaml:"SW,omitempty"`
 }
 
 // InitFactories must be called before using factory interfaces
@@ -48,32 +48,20 @@ func initFactories(config *FactoryOpts) error {
 		config.SwOpts = GetDefaultOpts().SwOpts
 	}
 
-	// Initialize factories map
-	bccspMap = make(map[string]bccsp.BCCSP)
-
 	// Software-Based BCCSP
 	if config.ProviderName == "SW" && config.SwOpts != nil {
 		f := &SWFactory{}
-		err := initBCCSP(f, config)
+		var err error
+		defaultBCCSP, err = initBCCSP(f, config)
 		if err != nil {
 			return errors.Wrapf(err, "Failed initializing BCCSP")
 		}
 	}
 
-	// BCCSP Plugin
-	if config.ProviderName == "PLUGIN" && config.PluginOpts != nil {
-		f := &PluginFactory{}
-		err := initBCCSP(f, config)
-		if err != nil {
-			return errors.Wrapf(err, "Failed initializing PLUGIN.BCCSP")
-		}
-	}
-
-	var ok bool
-	defaultBCCSP, ok = bccspMap[config.ProviderName]
-	if !ok {
+	if defaultBCCSP == nil {
 		return errors.Errorf("Could not find default `%s` BCCSP", config.ProviderName)
 	}
+
 	return nil
 }
 
@@ -83,8 +71,6 @@ func GetBCCSPFromOpts(config *FactoryOpts) (bccsp.BCCSP, error) {
 	switch config.ProviderName {
 	case "SW":
 		f = &SWFactory{}
-	case "PLUGIN":
-		f = &PluginFactory{}
 	default:
 		return nil, errors.Errorf("Could not find BCCSP, no '%s' provider", config.ProviderName)
 	}

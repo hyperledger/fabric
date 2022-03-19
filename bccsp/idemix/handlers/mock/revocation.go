@@ -12,8 +12,9 @@ import (
 type Revocation struct {
 	NewKeyStub        func() (*ecdsa.PrivateKey, error)
 	newKeyMutex       sync.RWMutex
-	newKeyArgsForCall []struct{}
-	newKeyReturns     struct {
+	newKeyArgsForCall []struct {
+	}
+	newKeyReturns struct {
 		result1 *ecdsa.PrivateKey
 		result2 error
 	}
@@ -21,13 +22,13 @@ type Revocation struct {
 		result1 *ecdsa.PrivateKey
 		result2 error
 	}
-	SignStub        func(key *ecdsa.PrivateKey, unrevokedHandles [][]byte, epoch int, alg bccsp.RevocationAlgorithm) ([]byte, error)
+	SignStub        func(*ecdsa.PrivateKey, [][]byte, int, bccsp.RevocationAlgorithm) ([]byte, error)
 	signMutex       sync.RWMutex
 	signArgsForCall []struct {
-		key              *ecdsa.PrivateKey
-		unrevokedHandles [][]byte
-		epoch            int
-		alg              bccsp.RevocationAlgorithm
+		arg1 *ecdsa.PrivateKey
+		arg2 [][]byte
+		arg3 int
+		arg4 bccsp.RevocationAlgorithm
 	}
 	signReturns struct {
 		result1 []byte
@@ -37,13 +38,13 @@ type Revocation struct {
 		result1 []byte
 		result2 error
 	}
-	VerifyStub        func(pk *ecdsa.PublicKey, cri []byte, epoch int, alg bccsp.RevocationAlgorithm) error
+	VerifyStub        func(*ecdsa.PublicKey, []byte, int, bccsp.RevocationAlgorithm) error
 	verifyMutex       sync.RWMutex
 	verifyArgsForCall []struct {
-		pk    *ecdsa.PublicKey
-		cri   []byte
-		epoch int
-		alg   bccsp.RevocationAlgorithm
+		arg1 *ecdsa.PublicKey
+		arg2 []byte
+		arg3 int
+		arg4 bccsp.RevocationAlgorithm
 	}
 	verifyReturns struct {
 		result1 error
@@ -58,7 +59,8 @@ type Revocation struct {
 func (fake *Revocation) NewKey() (*ecdsa.PrivateKey, error) {
 	fake.newKeyMutex.Lock()
 	ret, specificReturn := fake.newKeyReturnsOnCall[len(fake.newKeyArgsForCall)]
-	fake.newKeyArgsForCall = append(fake.newKeyArgsForCall, struct{}{})
+	fake.newKeyArgsForCall = append(fake.newKeyArgsForCall, struct {
+	}{})
 	fake.recordInvocation("NewKey", []interface{}{})
 	fake.newKeyMutex.Unlock()
 	if fake.NewKeyStub != nil {
@@ -67,7 +69,8 @@ func (fake *Revocation) NewKey() (*ecdsa.PrivateKey, error) {
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.newKeyReturns.result1, fake.newKeyReturns.result2
+	fakeReturns := fake.newKeyReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Revocation) NewKeyCallCount() int {
@@ -76,7 +79,15 @@ func (fake *Revocation) NewKeyCallCount() int {
 	return len(fake.newKeyArgsForCall)
 }
 
+func (fake *Revocation) NewKeyCalls(stub func() (*ecdsa.PrivateKey, error)) {
+	fake.newKeyMutex.Lock()
+	defer fake.newKeyMutex.Unlock()
+	fake.NewKeyStub = stub
+}
+
 func (fake *Revocation) NewKeyReturns(result1 *ecdsa.PrivateKey, result2 error) {
+	fake.newKeyMutex.Lock()
+	defer fake.newKeyMutex.Unlock()
 	fake.NewKeyStub = nil
 	fake.newKeyReturns = struct {
 		result1 *ecdsa.PrivateKey
@@ -85,6 +96,8 @@ func (fake *Revocation) NewKeyReturns(result1 *ecdsa.PrivateKey, result2 error) 
 }
 
 func (fake *Revocation) NewKeyReturnsOnCall(i int, result1 *ecdsa.PrivateKey, result2 error) {
+	fake.newKeyMutex.Lock()
+	defer fake.newKeyMutex.Unlock()
 	fake.NewKeyStub = nil
 	if fake.newKeyReturnsOnCall == nil {
 		fake.newKeyReturnsOnCall = make(map[int]struct {
@@ -98,29 +111,30 @@ func (fake *Revocation) NewKeyReturnsOnCall(i int, result1 *ecdsa.PrivateKey, re
 	}{result1, result2}
 }
 
-func (fake *Revocation) Sign(key *ecdsa.PrivateKey, unrevokedHandles [][]byte, epoch int, alg bccsp.RevocationAlgorithm) ([]byte, error) {
-	var unrevokedHandlesCopy [][]byte
-	if unrevokedHandles != nil {
-		unrevokedHandlesCopy = make([][]byte, len(unrevokedHandles))
-		copy(unrevokedHandlesCopy, unrevokedHandles)
+func (fake *Revocation) Sign(arg1 *ecdsa.PrivateKey, arg2 [][]byte, arg3 int, arg4 bccsp.RevocationAlgorithm) ([]byte, error) {
+	var arg2Copy [][]byte
+	if arg2 != nil {
+		arg2Copy = make([][]byte, len(arg2))
+		copy(arg2Copy, arg2)
 	}
 	fake.signMutex.Lock()
 	ret, specificReturn := fake.signReturnsOnCall[len(fake.signArgsForCall)]
 	fake.signArgsForCall = append(fake.signArgsForCall, struct {
-		key              *ecdsa.PrivateKey
-		unrevokedHandles [][]byte
-		epoch            int
-		alg              bccsp.RevocationAlgorithm
-	}{key, unrevokedHandlesCopy, epoch, alg})
-	fake.recordInvocation("Sign", []interface{}{key, unrevokedHandlesCopy, epoch, alg})
+		arg1 *ecdsa.PrivateKey
+		arg2 [][]byte
+		arg3 int
+		arg4 bccsp.RevocationAlgorithm
+	}{arg1, arg2Copy, arg3, arg4})
+	fake.recordInvocation("Sign", []interface{}{arg1, arg2Copy, arg3, arg4})
 	fake.signMutex.Unlock()
 	if fake.SignStub != nil {
-		return fake.SignStub(key, unrevokedHandles, epoch, alg)
+		return fake.SignStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1, ret.result2
 	}
-	return fake.signReturns.result1, fake.signReturns.result2
+	fakeReturns := fake.signReturns
+	return fakeReturns.result1, fakeReturns.result2
 }
 
 func (fake *Revocation) SignCallCount() int {
@@ -129,13 +143,22 @@ func (fake *Revocation) SignCallCount() int {
 	return len(fake.signArgsForCall)
 }
 
+func (fake *Revocation) SignCalls(stub func(*ecdsa.PrivateKey, [][]byte, int, bccsp.RevocationAlgorithm) ([]byte, error)) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
+	fake.SignStub = stub
+}
+
 func (fake *Revocation) SignArgsForCall(i int) (*ecdsa.PrivateKey, [][]byte, int, bccsp.RevocationAlgorithm) {
 	fake.signMutex.RLock()
 	defer fake.signMutex.RUnlock()
-	return fake.signArgsForCall[i].key, fake.signArgsForCall[i].unrevokedHandles, fake.signArgsForCall[i].epoch, fake.signArgsForCall[i].alg
+	argsForCall := fake.signArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *Revocation) SignReturns(result1 []byte, result2 error) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
 	fake.SignStub = nil
 	fake.signReturns = struct {
 		result1 []byte
@@ -144,6 +167,8 @@ func (fake *Revocation) SignReturns(result1 []byte, result2 error) {
 }
 
 func (fake *Revocation) SignReturnsOnCall(i int, result1 []byte, result2 error) {
+	fake.signMutex.Lock()
+	defer fake.signMutex.Unlock()
 	fake.SignStub = nil
 	if fake.signReturnsOnCall == nil {
 		fake.signReturnsOnCall = make(map[int]struct {
@@ -157,29 +182,30 @@ func (fake *Revocation) SignReturnsOnCall(i int, result1 []byte, result2 error) 
 	}{result1, result2}
 }
 
-func (fake *Revocation) Verify(pk *ecdsa.PublicKey, cri []byte, epoch int, alg bccsp.RevocationAlgorithm) error {
-	var criCopy []byte
-	if cri != nil {
-		criCopy = make([]byte, len(cri))
-		copy(criCopy, cri)
+func (fake *Revocation) Verify(arg1 *ecdsa.PublicKey, arg2 []byte, arg3 int, arg4 bccsp.RevocationAlgorithm) error {
+	var arg2Copy []byte
+	if arg2 != nil {
+		arg2Copy = make([]byte, len(arg2))
+		copy(arg2Copy, arg2)
 	}
 	fake.verifyMutex.Lock()
 	ret, specificReturn := fake.verifyReturnsOnCall[len(fake.verifyArgsForCall)]
 	fake.verifyArgsForCall = append(fake.verifyArgsForCall, struct {
-		pk    *ecdsa.PublicKey
-		cri   []byte
-		epoch int
-		alg   bccsp.RevocationAlgorithm
-	}{pk, criCopy, epoch, alg})
-	fake.recordInvocation("Verify", []interface{}{pk, criCopy, epoch, alg})
+		arg1 *ecdsa.PublicKey
+		arg2 []byte
+		arg3 int
+		arg4 bccsp.RevocationAlgorithm
+	}{arg1, arg2Copy, arg3, arg4})
+	fake.recordInvocation("Verify", []interface{}{arg1, arg2Copy, arg3, arg4})
 	fake.verifyMutex.Unlock()
 	if fake.VerifyStub != nil {
-		return fake.VerifyStub(pk, cri, epoch, alg)
+		return fake.VerifyStub(arg1, arg2, arg3, arg4)
 	}
 	if specificReturn {
 		return ret.result1
 	}
-	return fake.verifyReturns.result1
+	fakeReturns := fake.verifyReturns
+	return fakeReturns.result1
 }
 
 func (fake *Revocation) VerifyCallCount() int {
@@ -188,13 +214,22 @@ func (fake *Revocation) VerifyCallCount() int {
 	return len(fake.verifyArgsForCall)
 }
 
+func (fake *Revocation) VerifyCalls(stub func(*ecdsa.PublicKey, []byte, int, bccsp.RevocationAlgorithm) error) {
+	fake.verifyMutex.Lock()
+	defer fake.verifyMutex.Unlock()
+	fake.VerifyStub = stub
+}
+
 func (fake *Revocation) VerifyArgsForCall(i int) (*ecdsa.PublicKey, []byte, int, bccsp.RevocationAlgorithm) {
 	fake.verifyMutex.RLock()
 	defer fake.verifyMutex.RUnlock()
-	return fake.verifyArgsForCall[i].pk, fake.verifyArgsForCall[i].cri, fake.verifyArgsForCall[i].epoch, fake.verifyArgsForCall[i].alg
+	argsForCall := fake.verifyArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3, argsForCall.arg4
 }
 
 func (fake *Revocation) VerifyReturns(result1 error) {
+	fake.verifyMutex.Lock()
+	defer fake.verifyMutex.Unlock()
 	fake.VerifyStub = nil
 	fake.verifyReturns = struct {
 		result1 error
@@ -202,6 +237,8 @@ func (fake *Revocation) VerifyReturns(result1 error) {
 }
 
 func (fake *Revocation) VerifyReturnsOnCall(i int, result1 error) {
+	fake.verifyMutex.Lock()
+	defer fake.verifyMutex.Unlock()
 	fake.VerifyStub = nil
 	if fake.verifyReturnsOnCall == nil {
 		fake.verifyReturnsOnCall = make(map[int]struct {
