@@ -649,8 +649,7 @@ If you have any problems with the tutorial, review the following:
    :set ff=unix
    ```
 
-If you continue to see errors, share your logs on the **fabric-questions**
-channel on [Hyperledger Rocket Chat](https://chat.hyperledger.org/home) or on
+If you continue to see errors, share your logs on one of the Fabric [Discord channels](https://discord.com/invite/hyperledger) or on
 [StackOverflow](https://stackoverflow.com/questions/tagged/hyperledger-fabric).
 
 <!--- Licensed under Creative Commons Attribution 4.0 International License

@@ -8,7 +8,7 @@ language translations provided by Fabric.
 In this topic, we're going to cover:
 
 * [How to get started](#getting-started)
-* [Using Rocket chat](#rocket-chat)
+* [Using Discord chat](#discord)
 * [Documentation workgroup call](#documentation-workgroup-call)
 * [Join a language translation workgroup](#join-a-language-translation-workgroup)
 * [Other ways to connect](#other-ways-to-connect)
@@ -16,42 +16,21 @@ In this topic, we're going to cover:
 ## Getting started
 
 Before you make a documentation change, you might like to connect with other
-people working on the Fabric documentation. Your [Linux Foundation
-account](./CONTRIBUTING.html#getting-a-linux-foundation-account) will give you
-access to many different resources to help you connect with other contributors
-to the documentation.
-
-Once you have a Linux Foundation account, use any or all of the following
+people working on the Fabric documentation. Use any or all of the following
 mechanisms to connect with others.
 
-## Rocket chat
+## Discord
 
-Hyperledger Fabric uses [Rocket chat](https://chat.hyperledger.org/home) for
+Hyperledger Fabric uses [Discord](https://discord.com/invite/hyperledger) for
 interactive discussions on a variety of project topics.
-
-* [Documentation
-  channel](https://chat.hyperledger.org/channel/fabric-documentation)
-
-  You'll find beginners and experts sharing information on the Fabric
-  documentation. Read the conversation or ask a question on how to get started.
-
-
-* [International languages channel](https://chat.hyperledger.org/channel/i18n)
-
-  A dedicated channel for general questions on international languages.
-
-
-* [Japanese
-  channel](https://chat.hyperledger.org/channel/fabric-docs-japanese)
-
-  Read, discuss and share ideas related to the Japanese translation.
+Reach out to us on the fabric-documentation channel to discuss documentation
+topics including contributions, questions, feedback, and translation.
 
 ## Documentation workgroup call
 
-A great place to meet people working on documentation is the Documentation workgroup
-call. These are held twice every Friday at a time convenient for both
-Eastern and Western hemispheres. The agenda is published in advance, and
-there are minutes and recordings of each session.  Find out more on the
+A great place to meet people working on documentation is the monthly Documentation workgroup
+call. The agenda is published in advance, and
+there are minutes and recordings of each session. Find out more on the
 [Documentation
 wiki](https://wiki.hyperledger.org/display/fabric/Documentation+Working+Group).
 
@@ -66,7 +45,7 @@ Each workgroup has a list of members and their contact information.
 ## Other ways to connect
 
 Hyperledger Fabric has many other collaboration mechanisms such as mailing
-lists, contributor meetings and maintainer meetings. Find out about these and
+list and contributor meetings. Find out about these and
 more [here](./CONTRIBUTING.html).
 
 Good luck getting started and thanks for your contribution.
