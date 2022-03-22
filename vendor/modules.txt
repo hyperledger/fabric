@@ -61,8 +61,8 @@ github.com/Microsoft/hcsshim/osversion
 ## explicit
 github.com/Shopify/sarama
 github.com/Shopify/sarama/mocks
-# github.com/VictoriaMetrics/fastcache v1.5.7
-## explicit
+# github.com/VictoriaMetrics/fastcache v1.9.0
+## explicit; go 1.13
 github.com/VictoriaMetrics/fastcache
 # github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 ## explicit
@@ -77,7 +77,7 @@ github.com/beorn7/perks/quantile
 # github.com/bits-and-blooms/bitset v1.2.1
 ## explicit; go 1.14
 github.com/bits-and-blooms/bitset
-# github.com/cespare/xxhash/v2 v2.1.1 => github.com/cespare/xxhash/v2 v2.1.2
+# github.com/cespare/xxhash/v2 v2.1.2 => github.com/cespare/xxhash/v2 v2.1.2
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
 # github.com/cheggaaa/pb v1.0.29
@@ -196,7 +196,7 @@ github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/golang/snappy v0.0.3-0.20201103224600-674baa8c7fc3
+# github.com/golang/snappy v0.0.4
 ## explicit
 github.com/golang/snappy
 # github.com/gorilla/handlers v1.5.1
@@ -528,8 +528,8 @@ golang.org/x/net/trace
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 ## explicit
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.0.0-20210420205809-ac73e9fd8988
-## explicit; go 1.12
+# golang.org/x/sys v0.0.0-20220204135822-1c1b9b1eba6a
+## explicit; go 1.17
 golang.org/x/sys/cpu
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
