@@ -54,35 +54,6 @@ As a developer:
   `GitHub epic backlog <https://github.com/hyperledger/fabric/labels/Epic>`_,
   contact the Epic assignee via the GitHub issue.
 
-Getting a Linux Foundation account
-----------------------------------
-
-In order to participate in the development of the Hyperledger Fabric
-project, you will need a Linux Foundation
-account. Once you have a LF ID you will be able to
-access all the Hyperledger community tools, including
-`RocketChat <https://chat.hyperledger.org/>`__, and the
-`Wiki <https://wiki.hyperledger.org/display/fabric/Hyperledger+Fabric>`__ (for editing, only).
-
-Follow the steps below to create a Linux Foundation account if you don't
-already have one.
-
-1. Go to the `Linux Foundation ID
-   website <https://identity.linuxfoundation.org/>`__.
-
-2. Select the option ``I need to create a Linux Foundation ID``, and fill
-   out the form that appears.
-
-3. Wait a few minutes, then look for an email message with the subject line:
-   "Validate your Linux Foundation ID email".
-
-4. Open the received URL to validate your email address.
-
-5. Verify that your browser displays the message
-   ``You have successfully validated your e-mail address``.
-
-6. Access `RocketChat <https://chat.hyperledger.org/>`__ to confirm access.
-
 Contributing documentation
 --------------------------
 
@@ -185,15 +156,24 @@ Release roadmap
 The Fabric release roadmap is managed as a list of
 `GitHub issues with Epic label <https://github.com/hyperledger/fabric/labels/Epic>`__.
 
-Communications
-~~~~~~~~~~~~~~
+Communications and Getting Help
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-We use `RocketChat <https://chat.hyperledger.org/>`__ for communication
-and Google Hangouts™ for screen sharing between developers. Our
-development planning and prioritization is done using a
+We use the `Fabric mailing list <https://lists.hyperledger.org/g/fabric/>`__ for formal communication and
+`Discord <https://discord.com/invite/hyperledger/>`__ for community chat.
+Feel free to reach out for help on one of the Fabric channels!
+If you'd like contribution help or suggestions reach out on the #fabric-code-contributors channel.
+
+Our development planning and prioritization is done using a
 `GitHub Issues ZenHub board <https://app.zenhub.com/workspaces/fabric-57c43689b6f3d8060d082cf1/board>`__, and we take longer running
-discussions/decisions to the `Fabric contributor meeting <https://wiki.hyperledger.org/display/fabric/Contributor+Meetings>`__
-or `mailing list <https://lists.hyperledger.org/mailman/listinfo/hyperledger-fabric>`__.
+discussions/decisions to the `Fabric contributor meeting <https://wiki.hyperledger.org/display/fabric/Contributor+Meetings>`__.
+
+The mailing list, Discord, and GitHub each require their own login which you can request upon your first interaction.
+
+The Hyperledger Fabric `wiki <https://wiki.hyperledger.org/display/fabric>`__
+and the legacy issue management system in `Jira <https://jira.hyperledger.org/projects/FAB/issues>`__
+require a `Linux Foundation ID <https://identity.linuxfoundation.org/>`__,
+but these resources are primarily for read-only reference and you will likely not need an ID.
 
 Contribution guide
 ------------------
@@ -205,20 +185,6 @@ Before we begin, if you haven't already done so, you may wish to check that
 you have all the :doc:`prerequisites <prereqs>` installed on the platform(s)
 on which you'll be developing blockchain applications and/or operating
 Hyperledger Fabric.
-
-Getting help
-~~~~~~~~~~~~
-
-If you are looking for something to work on, or need some expert
-assistance in debugging a problem or working out a fix to an issue, our
-`community <https://www.hyperledger.org/community>`__ is always eager to
-help. We hang out on
-`Chat <https://chat.hyperledger.org/channel/fabric/>`__, IRC
-(#hyperledger on freenode.net) and the `mailing
-lists <https://lists.hyperledger.org/>`__. Most of us don't bite :grin:
-and will be glad to help. The only silly question is the one you don't
-ask. Questions are in fact a great way to help improve the project as
-they highlight where our documentation could be clearer.
 
 Reporting bugs
 ~~~~~~~~~~~~~~

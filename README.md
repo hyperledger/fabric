@@ -1,7 +1,4 @@
-# Hyperledger Fabric [![join the chat][rocketchat-image]][rocketchat-url]
-
-[rocketchat-url]: https://chat.hyperledger.org/channel/fabric
-[rocketchat-image]: https://open.rocket.chat/images/join-chat.svg
+# Hyperledger Fabric
 
 [![Build Status](https://dev.azure.com/Hyperledger/Fabric/_apis/build/status/Merge?branchName=main)](https://dev.azure.com/Hyperledger/Fabric/_build/latest?definitionId=51&branchName=main)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/955/badge)](https://bestpractices.coreinfrastructure.org/projects/955)
@@ -40,7 +37,6 @@ Additionally, each LTS release is upgradable to the next LTS release.
 Fabric releases and release notes can be found on the [GitHub releases page](https://github.com/hyperledger/fabric/releases).
 
 Please visit the [GitHub issues with Epic label](https://github.com/hyperledger/fabric/labels/Epic) for our release roadmap.
-Follow the release discussion on the [#fabric-release](https://chat.hyperledger.org/channel/fabric-release) channel in RocketChat.
 
 ## Documentation, Getting Started and Developer Guides
 
@@ -72,7 +68,7 @@ for the full details.
 
 [Hyperledger mailing lists and archives](http://lists.hyperledger.org/)
 
-[Hyperledger Chat](http://chat.hyperledger.org/channel/fabric)
+[Hyperledger Discord Chat](https://discord.com/invite/hyperledger)
 
 [Hyperledger Fabric Issue Tracking (GitHub Issues)](https://github.com/hyperledger/fabric/issues)
 
