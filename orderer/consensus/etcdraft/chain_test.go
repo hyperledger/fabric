@@ -3053,7 +3053,8 @@ var _ = Describe("Chain", func() {
 
 					Eventually(c1.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(3))
 					Eventually(c3.support.WriteBlockCallCount, LongEventualTimeout).Should(Equal(1))
-					Expect(countSnapShotsForChain(c1)).Should(Equal(3))
+					countSnapShotsForc1 := func() int { return countSnapShotsForChain(c1) }
+					Eventually(countSnapShotsForc1, LongEventualTimeout).Should(Equal(3))
 					// No snapshot would be taken for node 3 after this orrderer request
 					addtional_snapshots_for_node3 := countSnapShotsForChain(c3) - snapshots_on_node3
 					Expect(addtional_snapshots_for_node3).Should(Equal(0))
