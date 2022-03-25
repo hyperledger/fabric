@@ -57,6 +57,25 @@ func DeleteMarble(n *nwo.Network, orderer *nwo.Orderer, channelID, chaincodeName
 	nwo.WaitUntilEqualLedgerHeight(n, channelID, nwo.GetLedgerHeight(n, peer, channelID), n.Peers...)
 }
 
+// PurgeMarble invokes marbles_private chaincode to purge a marble
+func PurgeMarble(n *nwo.Network, orderer *nwo.Orderer, channelID, chaincodeName, marblePurge string, peer *nwo.Peer) {
+	marblePurgeBase64 := base64.StdEncoding.EncodeToString([]byte(marblePurge))
+
+	command := commands.ChaincodeInvoke{
+		ChannelID: channelID,
+		Orderer:   n.OrdererAddress(orderer, nwo.ListenPort),
+		Name:      chaincodeName,
+		Ctor:      `{"Args":["purge"]}`,
+		Transient: fmt.Sprintf(`{"marble_purge":"%s"}`, marblePurgeBase64),
+		PeerAddresses: []string{
+			n.PeerAddress(peer, nwo.ListenPort),
+		},
+		WaitForEvent: true,
+	}
+	invokeChaincode(n, peer, command)
+	nwo.WaitUntilEqualLedgerHeight(n, channelID, nwo.GetLedgerHeight(n, peer, channelID), n.Peers...)
+}
+
 // TransferMarble invokes marbles_private chaincode to transfer marble's ownership
 func TransferMarble(n *nwo.Network, orderer *nwo.Orderer, channelID, chaincodeName, marbleOwner string, peer *nwo.Peer) {
 	marbleOwnerBase64 := base64.StdEncoding.EncodeToString([]byte(marbleOwner))
